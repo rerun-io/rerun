@@ -34,10 +34,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///    0.0     0.0    1.0
 /// ```
 #[derive(Clone, Debug, Copy, PartialEq, PartialOrd, ::re_byte_size::SizeBytes)]
-pub struct PinholeProjection(pub crate::datatypes::Mat3x3);
+pub struct PinholeProjection(pub crate::encodings::Mat3x3);
 
 impl ::re_types_core::WrapperComponent for PinholeProjection {
-    type Datatype = crate::datatypes::Mat3x3;
+    type Encoding = crate::encodings::Mat3x3;
 
     #[inline]
     fn name() -> ComponentType {
@@ -45,38 +45,38 @@ impl ::re_types_core::WrapperComponent for PinholeProjection {
     }
 
     #[inline]
-    fn into_inner(self) -> Self::Datatype {
+    fn into_inner(self) -> Self::Encoding {
         self.0
     }
 }
 
 ::re_types_core::macros::impl_into_cow!(PinholeProjection);
 
-impl<T: Into<crate::datatypes::Mat3x3>> From<T> for PinholeProjection {
+impl<T: Into<crate::encodings::Mat3x3>> From<T> for PinholeProjection {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl std::borrow::Borrow<crate::datatypes::Mat3x3> for PinholeProjection {
+impl std::borrow::Borrow<crate::encodings::Mat3x3> for PinholeProjection {
     #[inline]
-    fn borrow(&self) -> &crate::datatypes::Mat3x3 {
+    fn borrow(&self) -> &crate::encodings::Mat3x3 {
         &self.0
     }
 }
 
 impl std::ops::Deref for PinholeProjection {
-    type Target = crate::datatypes::Mat3x3;
+    type Target = crate::encodings::Mat3x3;
 
     #[inline]
-    fn deref(&self) -> &crate::datatypes::Mat3x3 {
+    fn deref(&self) -> &crate::encodings::Mat3x3 {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for PinholeProjection {
     #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Mat3x3 {
+    fn deref_mut(&mut self) -> &mut crate::encodings::Mat3x3 {
         &mut self.0
     }
 }

@@ -11,7 +11,7 @@ import numpy as np
 import pyarrow as pa
 from attrs import define, field
 
-from .. import components, datatypes
+from .. import components, encodings
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
@@ -22,7 +22,7 @@ from ..error_utils import catch_and_log_exceptions
 from .points2d_ext import Points2DExt
 
 if TYPE_CHECKING:
-    from ..blueprint.datatypes import VisualizerComponentMappingLike
+    from ..blueprint.encodings import VisualizerComponentMappingLike
 
 __all__ = ["Points2D"]
 
@@ -148,14 +148,14 @@ class Points2D(Points2DExt, Archetype, VisualizableArchetype):
         cls,
         *,
         clear_unset: bool = False,
-        positions: datatypes.Vec2DArrayLike | None = None,
-        radii: datatypes.Float32ArrayLike | None = None,
-        colors: datatypes.Rgba32ArrayLike | None = None,
-        labels: datatypes.Utf8ArrayLike | None = None,
-        show_labels: datatypes.BoolLike | None = None,
-        draw_order: datatypes.Float32Like | None = None,
-        class_ids: datatypes.ClassIdArrayLike | None = None,
-        keypoint_ids: datatypes.KeypointIdArrayLike | None = None,
+        positions: encodings.Vec2DArrayLike | None = None,
+        radii: encodings.Float32ArrayLike | None = None,
+        colors: encodings.Rgba32ArrayLike | None = None,
+        labels: encodings.Utf8ArrayLike | None = None,
+        show_labels: encodings.BoolLike | None = None,
+        draw_order: encodings.Float32Like | None = None,
+        class_ids: encodings.ClassIdArrayLike | None = None,
+        keypoint_ids: encodings.KeypointIdArrayLike | None = None,
     ) -> Points2D:
         """
         Update only some specific fields of a `Points2D`.
@@ -299,14 +299,14 @@ class Points2D(Points2DExt, Archetype, VisualizableArchetype):
     def columns(
         cls,
         *,
-        positions: datatypes.Vec2DArrayLike | None = None,
-        radii: datatypes.Float32ArrayLike | None = None,
-        colors: datatypes.Rgba32ArrayLike | None = None,
-        labels: datatypes.Utf8ArrayLike | None = None,
-        show_labels: datatypes.BoolArrayLike | None = None,
-        draw_order: datatypes.Float32ArrayLike | None = None,
-        class_ids: datatypes.ClassIdArrayLike | None = None,
-        keypoint_ids: datatypes.KeypointIdArrayLike | None = None,
+        positions: encodings.Vec2DArrayLike | None = None,
+        radii: encodings.Float32ArrayLike | None = None,
+        colors: encodings.Rgba32ArrayLike | None = None,
+        labels: encodings.Utf8ArrayLike | None = None,
+        show_labels: encodings.BoolArrayLike | None = None,
+        draw_order: encodings.Float32ArrayLike | None = None,
+        class_ids: encodings.ClassIdArrayLike | None = None,
+        keypoint_ids: encodings.KeypointIdArrayLike | None = None,
     ) -> ComponentColumnList:
         """
         Construct a new column-oriented component bundle.

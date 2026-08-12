@@ -33,10 +33,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// that the entity path may be using (defined by an [`archetypes::CoordinateFrame`][crate::archetypes::CoordinateFrame]).
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ::re_byte_size::SizeBytes)]
 #[repr(transparent)]
-pub struct TransformFrameId(pub crate::datatypes::Utf8);
+pub struct TransformFrameId(pub crate::encodings::Utf8);
 
 impl ::re_types_core::WrapperComponent for TransformFrameId {
-    type Datatype = crate::datatypes::Utf8;
+    type Encoding = crate::encodings::Utf8;
 
     #[inline]
     fn name() -> ComponentType {
@@ -44,38 +44,38 @@ impl ::re_types_core::WrapperComponent for TransformFrameId {
     }
 
     #[inline]
-    fn into_inner(self) -> Self::Datatype {
+    fn into_inner(self) -> Self::Encoding {
         self.0
     }
 }
 
 ::re_types_core::macros::impl_into_cow!(TransformFrameId);
 
-impl<T: Into<crate::datatypes::Utf8>> From<T> for TransformFrameId {
+impl<T: Into<crate::encodings::Utf8>> From<T> for TransformFrameId {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl std::borrow::Borrow<crate::datatypes::Utf8> for TransformFrameId {
+impl std::borrow::Borrow<crate::encodings::Utf8> for TransformFrameId {
     #[inline]
-    fn borrow(&self) -> &crate::datatypes::Utf8 {
+    fn borrow(&self) -> &crate::encodings::Utf8 {
         &self.0
     }
 }
 
 impl std::ops::Deref for TransformFrameId {
-    type Target = crate::datatypes::Utf8;
+    type Target = crate::encodings::Utf8;
 
     #[inline]
-    fn deref(&self) -> &crate::datatypes::Utf8 {
+    fn deref(&self) -> &crate::encodings::Utf8 {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for TransformFrameId {
     #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Utf8 {
+    fn deref_mut(&mut self) -> &mut crate::encodings::Utf8 {
         &mut self.0
     }
 }

@@ -3,7 +3,7 @@
 
 #include "line_strip3d.hpp"
 
-#include "../datatypes/vec3d.hpp"
+#include "../encodings/vec3d.hpp"
 
 #include <arrow/builder.h>
 #include <arrow/type_fwd.h>
@@ -13,7 +13,7 @@ namespace rerun::components {}
 namespace rerun {
     const std::shared_ptr<arrow::DataType>& Loggable<components::LineStrip3D>::arrow_datatype() {
         static const auto datatype = arrow::list(
-            arrow::field("item", Loggable<rerun::datatypes::Vec3D>::arrow_datatype(), false)
+            arrow::field("item", Loggable<rerun::encodings::Vec3D>::arrow_datatype(), false)
         );
         return datatype;
     }
@@ -59,7 +59,7 @@ namespace rerun {
             const auto& element = elements[elem_idx];
             ARROW_RETURN_NOT_OK(builder->Append());
             if (element.points.data()) {
-                RR_RETURN_NOT_OK(Loggable<rerun::datatypes::Vec3D>::fill_arrow_array_builder(
+                RR_RETURN_NOT_OK(Loggable<rerun::encodings::Vec3D>::fill_arrow_array_builder(
                     value_builder,
                     element.points.data(),
                     element.points.size()

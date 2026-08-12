@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "../datatypes/video_timestamp.hpp"
+#include "../encodings/video_timestamp.hpp"
 #include "../result.hpp"
 
 #include <chrono>
@@ -13,7 +13,7 @@
 namespace rerun::components {
     /// **Component**: Timestamp inside a `archetypes::AssetVideo`.
     struct VideoTimestamp {
-        rerun::datatypes::VideoTimestamp timestamp;
+        rerun::encodings::VideoTimestamp timestamp;
 
       public: // START of extensions from video_timestamp_ext.cpp:
         /// Creates a new `VideoTimestamp` from a presentation timestamp as a chrono duration.
@@ -61,9 +61,9 @@ namespace rerun::components {
       public:
         VideoTimestamp() = default;
 
-        VideoTimestamp(rerun::datatypes::VideoTimestamp timestamp_) : timestamp(timestamp_) {}
+        VideoTimestamp(rerun::encodings::VideoTimestamp timestamp_) : timestamp(timestamp_) {}
 
-        VideoTimestamp& operator=(rerun::datatypes::VideoTimestamp timestamp_) {
+        VideoTimestamp& operator=(rerun::encodings::VideoTimestamp timestamp_) {
             timestamp = timestamp_;
             return *this;
         }
@@ -75,15 +75,15 @@ namespace rerun::components {
             return *this;
         }
 
-        /// Cast to the underlying VideoTimestamp datatype
-        operator rerun::datatypes::VideoTimestamp() const {
+        /// Cast to the underlying VideoTimestamp encoding
+        operator rerun::encodings::VideoTimestamp() const {
             return timestamp;
         }
     };
 } // namespace rerun::components
 
 namespace rerun {
-    static_assert(sizeof(rerun::datatypes::VideoTimestamp) == sizeof(components::VideoTimestamp));
+    static_assert(sizeof(rerun::encodings::VideoTimestamp) == sizeof(components::VideoTimestamp));
 
     /// \private
     template <>
@@ -92,7 +92,7 @@ namespace rerun {
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
-            return Loggable<rerun::datatypes::VideoTimestamp>::arrow_datatype();
+            return Loggable<rerun::encodings::VideoTimestamp>::arrow_datatype();
         }
 
         /// Serializes an array of `rerun::components::VideoTimestamp` into an arrow array.
@@ -100,14 +100,14 @@ namespace rerun {
             const components::VideoTimestamp* instances, size_t num_instances
         ) {
             if (num_instances == 0) {
-                return Loggable<rerun::datatypes::VideoTimestamp>::to_arrow(nullptr, 0);
+                return Loggable<rerun::encodings::VideoTimestamp>::to_arrow(nullptr, 0);
             } else if (instances == nullptr) {
                 return rerun::Error(
                     ErrorCode::UnexpectedNullArgument,
                     "Passed array instances is null when num_elements> 0."
                 );
             } else {
-                return Loggable<rerun::datatypes::VideoTimestamp>::to_arrow(
+                return Loggable<rerun::encodings::VideoTimestamp>::to_arrow(
                     &instances->timestamp,
                     num_instances
                 );

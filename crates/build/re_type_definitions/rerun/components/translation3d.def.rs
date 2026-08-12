@@ -7,5 +7,5 @@
 #[rust(repr = "transparent")]
 #[rerun(state = "stable")]
 pub struct Translation3D {
-    pub vector: rerun::datatypes::Vec3D,
+    pub vector: rerun::encodings::Vec3D,
 }

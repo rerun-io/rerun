@@ -9,7 +9,7 @@ from typing import Any, ClassVar
 
 from attrs import define, field
 
-from ... import components, datatypes
+from ... import components, encodings
 from ..._baseclasses import (
     Archetype,
     ComponentDescriptor,
@@ -33,9 +33,9 @@ class ForcePosition(Archetype):
     def __init__(
         self: Any,
         *,
-        enabled: datatypes.BoolLike | None = None,
-        strength: datatypes.Float64Like | None = None,
-        position: datatypes.Vec2DLike | None = None,
+        enabled: encodings.BoolLike | None = None,
+        strength: encodings.Float64Like | None = None,
+        position: encodings.Vec2DLike | None = None,
     ) -> None:
         """
         Create a new instance of the ForcePosition archetype.
@@ -79,9 +79,9 @@ class ForcePosition(Archetype):
         cls,
         *,
         clear_unset: bool = False,
-        enabled: datatypes.BoolLike | None = None,
-        strength: datatypes.Float64Like | None = None,
-        position: datatypes.Vec2DLike | None = None,
+        enabled: encodings.BoolLike | None = None,
+        strength: encodings.Float64Like | None = None,
+        position: encodings.Vec2DLike | None = None,
     ) -> ForcePosition:
         """
         Update only some specific fields of a `ForcePosition`.

@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from .. import datatypes
+from .. import encodings
 from .._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,7 +14,7 @@ from .._baseclasses import (
 __all__ = ["TransformMat3x3", "TransformMat3x3Batch"]
 
 
-class TransformMat3x3(datatypes.Mat3x3, ComponentMixin):
+class TransformMat3x3(encodings.Mat3x3, ComponentMixin):
     """
     **Component**: A 3x3 transformation matrix Matrix.
 
@@ -56,10 +56,10 @@ class TransformMat3x3(datatypes.Mat3x3, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of TransformMat3x3Ext in transform_mat3x3_ext.py
 
-    # Note: there are no fields here because TransformMat3x3 delegates to datatypes.Mat3x3
+    # Note: there are no fields here because TransformMat3x3 delegates to encodings.Mat3x3
 
 
-class TransformMat3x3Batch(datatypes.Mat3x3Batch, ComponentBatchMixin):
+class TransformMat3x3Batch(encodings.Mat3x3Batch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.components.TransformMat3x3"
 
 

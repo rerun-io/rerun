@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from .. import datatypes
+from .. import encodings
 from .._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,7 +14,7 @@ from .._baseclasses import (
 __all__ = ["VideoSample", "VideoSampleBatch"]
 
 
-class VideoSample(datatypes.Blob, ComponentMixin):
+class VideoSample(encodings.Blob, ComponentMixin):
     """
     **Component**: Video sample data (also known as "video chunk").
 
@@ -27,10 +27,10 @@ class VideoSample(datatypes.Blob, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of VideoSampleExt in video_sample_ext.py
 
-    # Note: there are no fields here because VideoSample delegates to datatypes.Blob
+    # Note: there are no fields here because VideoSample delegates to encodings.Blob
 
 
-class VideoSampleBatch(datatypes.BlobBatch, ComponentBatchMixin):
+class VideoSampleBatch(encodings.BlobBatch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.components.VideoSample"
 
 

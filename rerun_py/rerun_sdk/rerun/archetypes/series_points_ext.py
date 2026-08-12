@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .. import components, datatypes
+from .. import components, encodings
 from ..error_utils import catch_and_log_exceptions
 
 
@@ -12,11 +12,11 @@ class SeriesPointsExt:
     def __init__(
         self: Any,
         *,
-        colors: datatypes.Rgba32ArrayLike | None = None,
+        colors: encodings.Rgba32ArrayLike | None = None,
         markers: components.MarkerShapeArrayLike | None = None,
-        names: datatypes.Utf8ArrayLike | None = None,
-        visible_series: datatypes.BoolArrayLike | None = None,
-        marker_sizes: datatypes.Float32ArrayLike | None = None,
+        names: encodings.Utf8ArrayLike | None = None,
+        visible_series: encodings.BoolArrayLike | None = None,
+        marker_sizes: encodings.Float32ArrayLike | None = None,
     ) -> None:
         """
         Create a new instance of the SeriesPoints archetype.

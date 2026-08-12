@@ -5,7 +5,7 @@
 ///
 /// Each pixel corresponds to a depth value in units specified by [`rerun::components::DepthMeter`].
 ///
-/// \cpp Since the underlying `rerun::datatypes::ImageBuffer` uses `rerun::Collection` internally,
+/// \cpp Since the underlying `rerun::encodings::ImageBuffer` uses `rerun::Collection` internally,
 /// \cpp data can be passed in without a copy from raw pointers or by reference from `std::vector`/`std::array`/c-arrays.
 /// \cpp If needed, this "borrow-behavior" can be extended by defining your own `rerun::CollectionAdapter`.
 ///

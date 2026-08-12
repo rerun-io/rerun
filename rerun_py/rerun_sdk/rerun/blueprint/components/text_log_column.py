@@ -9,12 +9,12 @@ from ..._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
 )
-from ...blueprint import datatypes as blueprint_datatypes
+from ...blueprint import encodings as blueprint_encodings
 
 __all__ = ["TextLogColumn", "TextLogColumnBatch"]
 
 
-class TextLogColumn(blueprint_datatypes.TextLogColumn, ComponentMixin):
+class TextLogColumn(blueprint_encodings.TextLogColumn, ComponentMixin):
     """
     **Component**: A text log column.
 
@@ -24,10 +24,10 @@ class TextLogColumn(blueprint_datatypes.TextLogColumn, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of TextLogColumnExt in text_log_column_ext.py
 
-    # Note: there are no fields here because TextLogColumn delegates to datatypes.TextLogColumn
+    # Note: there are no fields here because TextLogColumn delegates to encodings.TextLogColumn
 
 
-class TextLogColumnBatch(blueprint_datatypes.TextLogColumnBatch, ComponentBatchMixin):
+class TextLogColumnBatch(blueprint_encodings.TextLogColumnBatch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.blueprint.components.TextLogColumn"
 
 

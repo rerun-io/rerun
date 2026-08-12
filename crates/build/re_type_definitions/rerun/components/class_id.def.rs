@@ -3,7 +3,7 @@
 
 /// A 16-bit ID representing a type of semantic class.
 ///
-/// \rs Used to look up a [`rerun::datatypes::ClassDescription`] within the [`rerun::components::AnnotationContext`].
+/// \rs Used to look up a [`rerun::encodings::ClassDescription`] within the [`rerun::components::AnnotationContext`].
 #[rerun::rerun_type]
 #[python(aliases = "int")]
 #[python(
@@ -24,5 +24,5 @@
 #[rust(repr = "transparent")]
 #[rerun(state = "stable")]
 pub struct ClassId {
-    pub id: rerun::datatypes::ClassId,
+    pub id: rerun::encodings::ClassId,
 }

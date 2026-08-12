@@ -3,7 +3,7 @@ from __future__ import annotations
 import math
 from typing import TYPE_CHECKING, Any, cast
 
-from ..datatypes import Float32Like, Mat3x3Like, Rgba32Like, Utf8Like, Vec2D, Vec2DLike, ViewCoordinatesLike
+from ..encodings import Float32Like, Mat3x3Like, Rgba32Like, Utf8Like, Vec2D, Vec2DLike, ViewCoordinatesLike
 from ..error_utils import _send_warning_or_raise, catch_and_log_exceptions
 
 if TYPE_CHECKING:

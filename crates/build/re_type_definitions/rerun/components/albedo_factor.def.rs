@@ -16,5 +16,5 @@
 #[rust(repr = "transparent")]
 #[rerun(state = "stable")]
 pub struct AlbedoFactor {
-    pub albedo_factor: rerun::datatypes::Rgba32,
+    pub albedo_factor: rerun::encodings::Rgba32,
 }

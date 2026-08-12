@@ -18,7 +18,7 @@ from ...error_utils import catch_and_log_exceptions
 from .visible_time_ranges_ext import VisibleTimeRangesExt
 
 if TYPE_CHECKING:
-    from ... import datatypes
+    from ... import encodings
 
 __all__ = ["VisibleTimeRanges"]
 
@@ -61,7 +61,7 @@ class VisibleTimeRanges(VisibleTimeRangesExt, Archetype):
         cls,
         *,
         clear_unset: bool = False,
-        ranges: datatypes.VisibleTimeRangeArrayLike | None = None,
+        ranges: encodings.VisibleTimeRangeArrayLike | None = None,
     ) -> VisibleTimeRanges:
         """
         Update only some specific fields of a `VisibleTimeRanges`.

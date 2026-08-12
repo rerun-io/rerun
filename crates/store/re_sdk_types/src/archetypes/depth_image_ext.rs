@@ -1,6 +1,6 @@
 use super::DepthImage;
 use crate::components::{ImageBuffer, ImageFormat};
-use crate::datatypes::{ChannelDatatype, ColorModel, TensorData};
+use crate::encodings::{ChannelDatatype, ColorModel, TensorData};
 use crate::image::{
     ImageConstructionError, blob_and_datatype_from_tensor, find_non_empty_dim_indices,
 };

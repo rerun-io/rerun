@@ -10,5 +10,5 @@
 #[rust(repr = "transparent")]
 #[rerun(state = "stable")]
 pub struct RotationAxisAngle {
-    pub rotation: rerun::datatypes::RotationAxisAngle,
+    pub rotation: rerun::encodings::RotationAxisAngle,
 }

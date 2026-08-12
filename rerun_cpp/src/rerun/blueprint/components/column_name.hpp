@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "../../datatypes/utf8.hpp"
+#include "../../encodings/utf8.hpp"
 #include "../../result.hpp"
 
 #include <cstdint>
@@ -17,14 +17,14 @@ namespace rerun::blueprint::components {
     /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     ///
     struct ColumnName {
-        rerun::datatypes::Utf8 value;
+        rerun::encodings::Utf8 value;
 
       public:
         ColumnName() = default;
 
-        ColumnName(rerun::datatypes::Utf8 value_) : value(std::move(value_)) {}
+        ColumnName(rerun::encodings::Utf8 value_) : value(std::move(value_)) {}
 
-        ColumnName& operator=(rerun::datatypes::Utf8 value_) {
+        ColumnName& operator=(rerun::encodings::Utf8 value_) {
             value = std::move(value_);
             return *this;
         }
@@ -36,15 +36,15 @@ namespace rerun::blueprint::components {
             return *this;
         }
 
-        /// Cast to the underlying Utf8 datatype
-        operator rerun::datatypes::Utf8() const {
+        /// Cast to the underlying Utf8 encoding
+        operator rerun::encodings::Utf8() const {
             return value;
         }
     };
 } // namespace rerun::blueprint::components
 
 namespace rerun {
-    static_assert(sizeof(rerun::datatypes::Utf8) == sizeof(blueprint::components::ColumnName));
+    static_assert(sizeof(rerun::encodings::Utf8) == sizeof(blueprint::components::ColumnName));
 
     /// \private
     template <>
@@ -53,7 +53,7 @@ namespace rerun {
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
-            return Loggable<rerun::datatypes::Utf8>::arrow_datatype();
+            return Loggable<rerun::encodings::Utf8>::arrow_datatype();
         }
 
         /// Serializes an array of `rerun::blueprint:: components::ColumnName` into an arrow array.
@@ -61,14 +61,14 @@ namespace rerun {
             const blueprint::components::ColumnName* instances, size_t num_instances
         ) {
             if (num_instances == 0) {
-                return Loggable<rerun::datatypes::Utf8>::to_arrow(nullptr, 0);
+                return Loggable<rerun::encodings::Utf8>::to_arrow(nullptr, 0);
             } else if (instances == nullptr) {
                 return rerun::Error(
                     ErrorCode::UnexpectedNullArgument,
                     "Passed array instances is null when num_elements> 0."
                 );
             } else {
-                return Loggable<rerun::datatypes::Utf8>::to_arrow(&instances->value, num_instances);
+                return Loggable<rerun::encodings::Utf8>::to_arrow(&instances->value, num_instances);
             }
         }
     };

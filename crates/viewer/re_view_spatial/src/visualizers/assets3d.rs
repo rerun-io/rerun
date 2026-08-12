@@ -23,7 +23,7 @@ struct Asset3DComponentData<'a> {
     index: (TimeInt, RowId),
     query_result_hash: Hash64,
 
-    blob: re_sdk_types::datatypes::Blob,
+    blob: re_sdk_types::encodings::Blob,
     media_type: Option<ArrowString>,
     albedo_factor: Option<&'a AlbedoFactor>,
 }

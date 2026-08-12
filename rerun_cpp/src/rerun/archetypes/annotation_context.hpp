@@ -23,7 +23,7 @@ namespace rerun::archetypes {
     /// path-hierarchy when searching up through the ancestors of a given entity
     /// path.
     ///
-    /// See also `datatypes::ClassDescription`.
+    /// See also `encodings::ClassDescription`.
     ///
     /// ## Example
     ///

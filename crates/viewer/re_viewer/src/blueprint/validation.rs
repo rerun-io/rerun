@@ -45,7 +45,7 @@ pub fn is_valid_blueprint(
     } else {
         mismatches.sort();
         re_log::warn_once!(
-            "Blueprint has {} component(s) with unexpected datatypes:\n{}",
+            "Blueprint has {} component(s) with unexpected encodings:\n{}",
             mismatches.len(),
             mismatches.join("\n"),
         );

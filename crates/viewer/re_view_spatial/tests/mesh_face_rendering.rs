@@ -2,7 +2,7 @@ use re_log_types::TimePoint;
 use re_sdk_types::RowId;
 use re_sdk_types::archetypes::Mesh3D;
 use re_sdk_types::components::{AlbedoFactor, MeshFaceRendering};
-use re_sdk_types::datatypes::Rgba32;
+use re_sdk_types::encodings::Rgba32;
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
 use re_viewer_context::{RecommendedView, ViewClass as _};

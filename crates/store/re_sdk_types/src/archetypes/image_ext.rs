@@ -1,6 +1,6 @@
 use super::Image;
 use crate::components::ImageBuffer;
-use crate::datatypes::{ChannelDatatype, ColorModel, ImageFormat, PixelFormat, TensorData};
+use crate::encodings::{ChannelDatatype, ColorModel, ImageFormat, PixelFormat, TensorData};
 use crate::image::{
     ImageChannelType, ImageConstructionError, blob_and_datatype_from_tensor,
     find_non_empty_dim_indices,

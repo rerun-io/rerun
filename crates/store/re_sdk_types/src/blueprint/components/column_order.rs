@@ -29,7 +29,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Debug, Default, PartialEq, Eq, ::re_byte_size::SizeBytes)]
-pub struct ColumnOrder(pub Vec<crate::datatypes::EntityPath>);
+pub struct ColumnOrder(pub Vec<crate::encodings::EntityPath>);
 
 impl ::re_types_core::Component for ColumnOrder {
     #[inline]
@@ -46,7 +46,7 @@ impl ::re_types_core::Loggable for ColumnOrder {
         use arrow::datatypes::*;
         DataType::List(std::sync::Arc::new(Field::new(
             "item",
-            <crate::datatypes::EntityPath>::arrow_datatype(),
+            <crate::encodings::EntityPath>::arrow_datatype(),
             false,
         )))
     }
@@ -84,7 +84,7 @@ impl ::re_types_core::Loggable for ColumnOrder {
                 as_array_ref(ListArray::try_new(
                     std::sync::Arc::new(Field::new(
                         "item",
-                        <crate::datatypes::EntityPath>::arrow_datatype(),
+                        <crate::encodings::EntityPath>::arrow_datatype(),
                         false,
                     )),
                     offsets,
@@ -168,7 +168,7 @@ impl ::re_types_core::Loggable for ColumnOrder {
                             .map(|res_or_opt| {
                                 res_or_opt.map(|res_or_opt| {
                                     res_or_opt.map(|v| {
-                                        crate::datatypes::EntityPath(
+                                        crate::encodings::EntityPath(
                                             ::re_types_core::ArrowString::from(v),
                                         )
                                     })
@@ -216,7 +216,7 @@ impl ::re_types_core::Loggable for ColumnOrder {
     }
 }
 
-impl<I: Into<crate::datatypes::EntityPath>, T: IntoIterator<Item = I>> From<T> for ColumnOrder {
+impl<I: Into<crate::encodings::EntityPath>, T: IntoIterator<Item = I>> From<T> for ColumnOrder {
     fn from(v: T) -> Self {
         Self(v.into_iter().map(|v| v.into()).collect())
     }

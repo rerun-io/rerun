@@ -17,7 +17,7 @@ from ...blueprint import components as blueprint_components
 from ...error_utils import catch_and_log_exceptions
 
 if TYPE_CHECKING:
-    from ... import datatypes
+    from ... import encodings
 
 __all__ = ["TimeAxis"]
 
@@ -36,8 +36,8 @@ class TimeAxis(Archetype):
         self: Any,
         *,
         link: blueprint_components.LinkAxisLike | None = None,
-        view_range: datatypes.TimeRangeLike | None = None,
-        zoom_lock: datatypes.BoolLike | None = None,
+        view_range: encodings.TimeRangeLike | None = None,
+        zoom_lock: encodings.BoolLike | None = None,
     ) -> None:
         """
         Create a new instance of the TimeAxis archetype.
@@ -82,8 +82,8 @@ class TimeAxis(Archetype):
         *,
         clear_unset: bool = False,
         link: blueprint_components.LinkAxisLike | None = None,
-        view_range: datatypes.TimeRangeLike | None = None,
-        zoom_lock: datatypes.BoolLike | None = None,
+        view_range: encodings.TimeRangeLike | None = None,
+        zoom_lock: encodings.BoolLike | None = None,
     ) -> TimeAxis:
         """
         Update only some specific fields of a `TimeAxis`.

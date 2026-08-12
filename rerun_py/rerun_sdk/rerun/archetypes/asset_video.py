@@ -11,7 +11,7 @@ import numpy as np
 import pyarrow as pa
 from attrs import define, field
 
-from .. import components, datatypes
+from .. import components, encodings
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
@@ -142,8 +142,8 @@ class AssetVideo(AssetVideoExt, Archetype):
         cls,
         *,
         clear_unset: bool = False,
-        blob: datatypes.BlobLike | None = None,
-        media_type: datatypes.Utf8Like | None = None,
+        blob: encodings.BlobLike | None = None,
+        media_type: encodings.Utf8Like | None = None,
     ) -> AssetVideo:
         """
         Update only some specific fields of a `AssetVideo`.
@@ -206,8 +206,8 @@ class AssetVideo(AssetVideoExt, Archetype):
     def columns(
         cls,
         *,
-        blob: datatypes.BlobArrayLike | None = None,
-        media_type: datatypes.Utf8ArrayLike | None = None,
+        blob: encodings.BlobArrayLike | None = None,
+        media_type: encodings.Utf8ArrayLike | None = None,
     ) -> ComponentColumnList:
         """
         Construct a new column-oriented component bundle.

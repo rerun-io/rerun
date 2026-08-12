@@ -17,5 +17,5 @@
 #[rust(derive(PartialEq, Eq, PartialOrd, Ord))]
 #[rust(repr = "transparent")]
 pub struct TransformFrameId {
-    pub value: rerun::datatypes::Utf8,
+    pub value: rerun::encodings::Utf8,
 }

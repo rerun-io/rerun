@@ -11,7 +11,7 @@ import numpy as np
 import pyarrow as pa
 from attrs import define, field
 
-from .. import components, datatypes
+from .. import components, encodings
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
@@ -95,7 +95,7 @@ class Scalars(Archetype):
 
     NAME: ClassVar[str] = "rerun.archetypes.Scalars"
 
-    def __init__(self: Any, scalars: datatypes.Float64ArrayLike) -> None:
+    def __init__(self: Any, scalars: encodings.Float64ArrayLike) -> None:
         """
         Create a new instance of the Scalars archetype.
 
@@ -130,7 +130,7 @@ class Scalars(Archetype):
         cls,
         *,
         clear_unset: bool = False,
-        scalars: datatypes.Float64ArrayLike | None = None,
+        scalars: encodings.Float64ArrayLike | None = None,
     ) -> Scalars:
         """
         Update only some specific fields of a `Scalars`.
@@ -176,7 +176,7 @@ class Scalars(Archetype):
     def columns(
         cls,
         *,
-        scalars: datatypes.Float64ArrayLike | None = None,
+        scalars: encodings.Float64ArrayLike | None = None,
     ) -> ComponentColumnList:
         """
         Construct a new column-oriented component bundle.

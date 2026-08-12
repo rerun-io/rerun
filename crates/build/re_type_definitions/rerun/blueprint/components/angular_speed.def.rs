@@ -10,5 +10,5 @@
 #[rerun(state = "unstable")]
 pub struct AngularSpeed {
     /// Speed value in radians per second.
-    pub speed: rerun::datatypes::Float64,
+    pub speed: rerun::encodings::Float64,
 }

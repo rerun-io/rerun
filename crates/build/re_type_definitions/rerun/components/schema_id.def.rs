@@ -11,5 +11,5 @@
 #[rust(repr = "transparent")]
 #[rerun(state = "stable")]
 pub struct SchemaId {
-    pub id: rerun::datatypes::UInt16,
+    pub id: rerun::encodings::UInt16,
 }

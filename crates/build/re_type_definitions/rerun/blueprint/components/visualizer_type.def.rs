@@ -8,5 +8,5 @@
 #[rerun(state = "unstable")]
 pub struct VisualizerType {
     /// The type of the visualizer.
-    pub visualizer_type: rerun::datatypes::Utf8,
+    pub visualizer_type: rerun::encodings::Utf8,
 }

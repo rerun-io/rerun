@@ -18,7 +18,7 @@ from ...error_utils import catch_and_log_exceptions
 from .visual_bounds2d_ext import VisualBounds2DExt
 
 if TYPE_CHECKING:
-    from ... import datatypes
+    from ... import encodings
 
 __all__ = ["VisualBounds2D"]
 
@@ -59,7 +59,7 @@ class VisualBounds2D(VisualBounds2DExt, Archetype):
         cls,
         *,
         clear_unset: bool = False,
-        range: datatypes.Range2DLike | None = None,
+        range: encodings.Range2DLike | None = None,
     ) -> VisualBounds2D:
         """
         Update only some specific fields of a `VisualBounds2D`.

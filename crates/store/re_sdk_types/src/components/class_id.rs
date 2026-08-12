@@ -24,7 +24,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: A 16-bit ID representing a type of semantic class.
 ///
-/// Used to look up a [`datatypes::ClassDescription`][crate::datatypes::ClassDescription] within the [`components::AnnotationContext`][crate::components::AnnotationContext].
+/// Used to look up a [`encodings::ClassDescription`][crate::encodings::ClassDescription] within the [`components::AnnotationContext`][crate::components::AnnotationContext].
 #[derive(
     Clone,
     Debug,
@@ -41,10 +41,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
     ::re_byte_size::SizeBytes,
 )]
 #[repr(transparent)]
-pub struct ClassId(pub crate::datatypes::ClassId);
+pub struct ClassId(pub crate::encodings::ClassId);
 
 impl ::re_types_core::WrapperComponent for ClassId {
-    type Datatype = crate::datatypes::ClassId;
+    type Encoding = crate::encodings::ClassId;
 
     #[inline]
     fn name() -> ComponentType {
@@ -52,38 +52,38 @@ impl ::re_types_core::WrapperComponent for ClassId {
     }
 
     #[inline]
-    fn into_inner(self) -> Self::Datatype {
+    fn into_inner(self) -> Self::Encoding {
         self.0
     }
 }
 
 ::re_types_core::macros::impl_into_cow!(ClassId);
 
-impl<T: Into<crate::datatypes::ClassId>> From<T> for ClassId {
+impl<T: Into<crate::encodings::ClassId>> From<T> for ClassId {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl std::borrow::Borrow<crate::datatypes::ClassId> for ClassId {
+impl std::borrow::Borrow<crate::encodings::ClassId> for ClassId {
     #[inline]
-    fn borrow(&self) -> &crate::datatypes::ClassId {
+    fn borrow(&self) -> &crate::encodings::ClassId {
         &self.0
     }
 }
 
 impl std::ops::Deref for ClassId {
-    type Target = crate::datatypes::ClassId;
+    type Target = crate::encodings::ClassId;
 
     #[inline]
-    fn deref(&self) -> &crate::datatypes::ClassId {
+    fn deref(&self) -> &crate::encodings::ClassId {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for ClassId {
     #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::ClassId {
+    fn deref_mut(&mut self) -> &mut crate::encodings::ClassId {
         &mut self.0
     }
 }

@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from ... import datatypes
+from ... import encodings
 from ..._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,7 +14,7 @@ from ..._baseclasses import (
 __all__ = ["ViewerRecommendationHash", "ViewerRecommendationHashBatch"]
 
 
-class ViewerRecommendationHash(datatypes.UInt64, ComponentMixin):
+class ViewerRecommendationHash(encodings.UInt64, ComponentMixin):
     """
     **Component**: Hash of a viewer recommendation.
 
@@ -26,10 +26,10 @@ class ViewerRecommendationHash(datatypes.UInt64, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of ViewerRecommendationHashExt in viewer_recommendation_hash_ext.py
 
-    # Note: there are no fields here because ViewerRecommendationHash delegates to datatypes.UInt64
+    # Note: there are no fields here because ViewerRecommendationHash delegates to encodings.UInt64
 
 
-class ViewerRecommendationHashBatch(datatypes.UInt64Batch, ComponentBatchMixin):
+class ViewerRecommendationHashBatch(encodings.UInt64Batch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.blueprint.components.ViewerRecommendationHash"
 
 

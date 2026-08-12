@@ -8,5 +8,5 @@
 #[rust(repr = "transparent")]
 #[rerun(state = "unstable")]
 pub struct AbsoluteTimeRange {
-    pub range: rerun::datatypes::AbsoluteTimeRange,
+    pub range: rerun::encodings::AbsoluteTimeRange,
 }

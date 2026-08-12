@@ -30,7 +30,7 @@ pub trait Loggable: 'static + Send + Sync + Clone + Sized + SizeBytes {
     /// Given an iterator of owned or reference values to the current [`Loggable`], serializes
     /// them into an Arrow array.
     ///
-    /// When using Rerun's builtin components & datatypes, this can only fail if the data
+    /// When using Rerun's builtin components & encodings, this can only fail if the data
     /// exceeds the maximum number of entries in an Arrow array (2^31 for standard arrays,
     /// 2^63 for large arrays).
     #[inline]
@@ -46,7 +46,7 @@ pub trait Loggable: 'static + Send + Sync + Clone + Sized + SizeBytes {
     /// Given an iterator of options of owned or reference values to the current
     /// [`Loggable`], serializes them into an Arrow array.
     ///
-    /// When using Rerun's builtin components & datatypes, this can only fail if the data
+    /// When using Rerun's builtin components & encodings, this can only fail if the data
     /// exceeds the maximum number of entries in an Arrow array (2^31 for standard arrays,
     /// 2^63 for large arrays).
     fn to_arrow_opt<'a>(

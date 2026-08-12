@@ -45,11 +45,11 @@ DOCUMENTED_PACKAGES: Final[dict[str, tuple[str, ...]]] = {
     "rerun": ("Core",),
     "rerun.archetypes": ("Archetypes",),
     "rerun.components": ("Components",),
-    "rerun.datatypes": ("Datatypes",),
+    "rerun.encodings": ("Encodings",),
     "rerun.blueprint": ("Blueprint", "APIs"),
     "rerun.blueprint.archetypes": ("Blueprint", "Archetypes"),
     "rerun.blueprint.components": ("Blueprint", "Components"),
-    "rerun.blueprint.datatypes": ("Blueprint", "Datatypes"),
+    "rerun.blueprint.encodings": ("Blueprint", "Encodings"),
     "rerun.blueprint.views": ("Blueprint", "Views"),
     "rerun.catalog": ("Catalog",),
     "rerun.experimental": ("Experimental",),
@@ -91,6 +91,11 @@ EXCLUDED_FROM_TRACK_A: Final[set[str]] = {
     # Sampling-manifest internals; its only public symbol (`Manifest`) is
     # re-exported flat into `rerun.experimental.dataloader` and documented there.
     "rerun.experimental.dataloader.manifest",
+    # Deprecated aliases for `rerun.encodings` / `rerun.blueprint.encodings`, which
+    # are documented. They forward every symbol and warn on import, so documenting
+    # them would advertise the spelling we want people to stop using.
+    "rerun.datatypes",
+    "rerun.blueprint.datatypes",
 }
 
 # Per-package, per-symbol allow-list of public symbols that should NOT be
@@ -178,8 +183,8 @@ CURATED_GROUPS: Final[list[Group]] = [
         title="Annotations",
         items=[
             "archetypes.AnnotationContext",
-            "datatypes.AnnotationInfo",
-            "datatypes.ClassDescription",
+            "encodings.AnnotationInfo",
+            "encodings.ClassDescription",
         ],
     ),
     Group(
@@ -258,8 +263,8 @@ CURATED_GROUPS: Final[list[Group]] = [
             "archetypes.InstancePoses3D",
             "archetypes.ViewCoordinates",
             "components.Scale3D",
-            "datatypes.Quaternion",
-            "datatypes.RotationAxisAngle",
+            "encodings.Quaternion",
+            "encodings.RotationAxisAngle",
             "archetypes.CoordinateFrame",
         ],
     ),
@@ -512,11 +517,11 @@ def display_name(item: str) -> str:
     """
     Compute the rendered name for a curated-table entry.
 
-    Strip `archetypes.` / `components.` / `datatypes.` prefixes when the
+    Strip `archetypes.` / `components.` / `encodings.` prefixes when the
     symbol is also flat-re-exported into top-level `rerun`, so the table
     shows `rerun.Points3D` rather than `rerun.archetypes.Points3D`.
     """
-    for prefix in ("archetypes.", "components.", "datatypes."):
+    for prefix in ("archetypes.", "components.", "encodings."):
         stripped = item.removeprefix(prefix)
         if stripped != item and stripped in rerun_pkg.members:
             return f"rerun.{stripped}"

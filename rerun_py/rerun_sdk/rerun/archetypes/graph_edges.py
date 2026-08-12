@@ -11,7 +11,7 @@ import numpy as np
 import pyarrow as pa
 from attrs import define, field
 
-from .. import components, datatypes
+from .. import components, encodings
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
@@ -21,7 +21,7 @@ from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
 
 if TYPE_CHECKING:
-    from ..blueprint.datatypes import VisualizerComponentMappingLike
+    from ..blueprint.encodings import VisualizerComponentMappingLike
 
 __all__ = ["GraphEdges"]
 
@@ -68,7 +68,7 @@ class GraphEdges(Archetype, VisualizableArchetype):
     NAME: ClassVar[str] = "rerun.archetypes.GraphEdges"
 
     def __init__(
-        self: Any, edges: datatypes.Utf8PairArrayLike, *, graph_type: components.GraphTypeLike | None = None
+        self: Any, edges: encodings.Utf8PairArrayLike, *, graph_type: components.GraphTypeLike | None = None
     ) -> None:
         """
         Create a new instance of the GraphEdges archetype.
@@ -109,7 +109,7 @@ class GraphEdges(Archetype, VisualizableArchetype):
         cls,
         *,
         clear_unset: bool = False,
-        edges: datatypes.Utf8PairArrayLike | None = None,
+        edges: encodings.Utf8PairArrayLike | None = None,
         graph_type: components.GraphTypeLike | None = None,
     ) -> GraphEdges:
         """
@@ -169,7 +169,7 @@ class GraphEdges(Archetype, VisualizableArchetype):
     def columns(
         cls,
         *,
-        edges: datatypes.Utf8PairArrayLike | None = None,
+        edges: encodings.Utf8PairArrayLike | None = None,
         graph_type: components.GraphTypeArrayLike | None = None,
     ) -> ComponentColumnList:
         """

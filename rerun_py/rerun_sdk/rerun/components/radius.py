@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from .. import datatypes
+from .. import encodings
 from .._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -15,7 +15,7 @@ from .radius_ext import RadiusExt
 __all__ = ["Radius", "RadiusBatch"]
 
 
-class Radius(RadiusExt, datatypes.Float32, ComponentMixin):
+class Radius(RadiusExt, encodings.Float32, ComponentMixin):
     """
     **Component**: The radius of something, e.g. a point.
 
@@ -30,10 +30,10 @@ class Radius(RadiusExt, datatypes.Float32, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of RadiusExt in radius_ext.py
 
-    # Note: there are no fields here because Radius delegates to datatypes.Float32
+    # Note: there are no fields here because Radius delegates to encodings.Float32
 
 
-class RadiusBatch(datatypes.Float32Batch, ComponentBatchMixin):
+class RadiusBatch(encodings.Float32Batch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.components.Radius"
 
 

@@ -17,7 +17,7 @@ from rerun._baseclasses import (
 )
 
 if TYPE_CHECKING:
-    from .. import datatypes
+    from .. import encodings
 
 __all__ = ["AffixFuzzer16", "AffixFuzzer16ArrayLike", "AffixFuzzer16Batch", "AffixFuzzer16Like"]
 
@@ -32,7 +32,7 @@ class AffixFuzzer16(ComponentMixin):
         # You can define your own __init__ function as a member of AffixFuzzer16Ext in affix_fuzzer16_ext.py
         self.__attrs_init__(many_required_unions=many_required_unions)
 
-    many_required_unions: list[datatypes.ScalarUnion] = field()
+    many_required_unions: list[encodings.ScalarUnion] = field()
 
     def __len__(self) -> int:
         # You can define your own __len__ function as a member of AffixFuzzer16Ext in affix_fuzzer16_ext.py

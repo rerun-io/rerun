@@ -5,7 +5,7 @@
 
 mod color;
 pub mod color_swatch;
-mod datatype_uis;
+mod encoding_uis;
 mod entity_path;
 mod geo_line_string;
 mod image_format;
@@ -30,7 +30,7 @@ mod visible_dnd;
 mod visual_bounds2d;
 mod zoom_level;
 
-use datatype_uis::{
+use encoding_uis::{
     edit_bool, edit_f32_min_to_max_float, edit_f32_zero_to_max, edit_f32_zero_to_one,
     edit_f64_min_to_max_float, edit_f64_zero_to_max, edit_multiline_string, edit_or_view_vec2d,
     edit_or_view_vec3d, edit_or_view_vec3d_positive, edit_singleline_string, edit_u32_range,

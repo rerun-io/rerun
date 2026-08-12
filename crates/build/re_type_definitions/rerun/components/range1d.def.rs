@@ -7,5 +7,5 @@
 #[rust(repr = "transparent")]
 #[rerun(state = "stable")]
 pub struct Range1D {
-    pub range: rerun::datatypes::Range1D,
+    pub range: rerun::encodings::Range1D,
 }

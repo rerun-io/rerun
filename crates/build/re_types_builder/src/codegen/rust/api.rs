@@ -129,7 +129,7 @@ impl RustCodeGenerator {
                 .filter(|obj| obj.module_name() == module_name)
                 .collect_vec();
 
-            // src/{testing/}{datatypes|components|archetypes}/mod.rs
+            // src/{testing/}{encodings|components|archetypes}/mod.rs
             generate_mod_file(&module_path, &relevant_objs, files_to_write);
         }
     }
@@ -654,7 +654,7 @@ fn quote_obj_docs(reporter: &Reporter, objects: &Objects, obj: &Object) -> Token
         Target::Rust,
     );
 
-    // Prefix first line with `**Datatype**: ` etc:
+    // Prefix first line with `**Encoding**: ` etc:
     if let Some(first) = lines.first_mut() {
         *first = format!("**{}**: {}", obj.kind.singular_name(), first.trim());
     } else if !obj.is_testing() {
@@ -767,8 +767,8 @@ fn quote_trait_impls_from_obj(
     obj: &Object,
 ) -> TokenStream {
     match obj.kind {
-        ObjectKind::Datatype | ObjectKind::Component => {
-            quote_trait_impls_for_datatype_or_component(objects, type_registry, obj)
+        ObjectKind::Encoding | ObjectKind::Component => {
+            quote_trait_impls_for_encoding_or_component(objects, type_registry, obj)
         }
 
         ObjectKind::Archetype => quote_trait_impls_for_archetype(reporter, obj),
@@ -777,7 +777,7 @@ fn quote_trait_impls_from_obj(
     }
 }
 
-fn quote_trait_impls_for_datatype_or_component(
+fn quote_trait_impls_for_encoding_or_component(
     objects: &Objects,
     type_registry: &TypeRegistry,
     obj: &Object,
@@ -786,7 +786,7 @@ fn quote_trait_impls_for_datatype_or_component(
         fqname, name, kind, ..
     } = obj;
 
-    assert!(matches!(kind, ObjectKind::Datatype | ObjectKind::Component));
+    assert!(matches!(kind, ObjectKind::Encoding | ObjectKind::Component));
 
     let name = format_ident!("{name}");
 
@@ -805,7 +805,7 @@ fn quote_trait_impls_for_datatype_or_component(
         if let Some(forwarded_type) = forwarded_type.as_ref() {
             quote! {
                 impl ::re_types_core::WrapperComponent for #name {
-                    type Datatype = #forwarded_type;
+                    type Encoding = #forwarded_type;
 
                     #[inline]
                     fn name() -> ComponentType {
@@ -813,7 +813,7 @@ fn quote_trait_impls_for_datatype_or_component(
                     }
 
                     #[inline]
-                    fn into_inner(self) -> Self::Datatype {
+                    fn into_inner(self) -> Self::Encoding {
                         self.0
                     }
                 }
@@ -884,7 +884,7 @@ fn quote_trait_impls_for_datatype_or_component(
             quote!()
         };
 
-        // Forward deserialization to existing datatype if it's transparent.
+        // Forward deserialization to existing encoding if it's transparent.
         let quoted_deserializer = {
             let quoted_deserializer = quote_arrow_deserializer(type_registry, objects, obj);
             quote! {
@@ -1220,7 +1220,7 @@ fn quote_trait_impls_for_view(reporter: &Reporter, obj: &Object) -> TokenStream 
     }
 }
 
-/// Only makes sense for components & datatypes.
+/// Only makes sense for components & encodings.
 fn quote_from_impl_from_obj(obj: &Object) -> TokenStream {
     if obj.kind == ObjectKind::Archetype {
         return TokenStream::new();
@@ -1324,9 +1324,9 @@ fn quote_from_impl_from_obj(obj: &Object) -> TokenStream {
             )
         };
 
-        // If the field is not a custom datatype, emit `Deref`/`DerefMut` only for components.
+        // If the field is not a custom encoding, emit `Deref`/`DerefMut` only for components.
         // (in the long run all components are implemented with custom data types, making it so that we don't hit this path anymore)
-        // For ObjectKind::Datatype we sometimes have custom implementations for `Deref`, e.g. `Utf8String` derefs to `&str` instead of `ArrowString`.
+        // For ObjectKind::Encoding we sometimes have custom implementations for `Deref`, e.g. `Utf8String` derefs to `&str` instead of `ArrowString`.
         let deref_impl = if obj.kind == ObjectKind::Component {
             deref_impl
         } else {

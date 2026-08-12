@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from .. import datatypes
+from .. import encodings
 from .._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,7 +14,7 @@ from .._baseclasses import (
 __all__ = ["VoxelIndex", "VoxelIndexBatch"]
 
 
-class VoxelIndex(datatypes.IVec3D, ComponentMixin):
+class VoxelIndex(encodings.IVec3D, ComponentMixin):
     """
     **Component**: Integer index of a voxel in a sparse 3D voxel grid.
 
@@ -24,10 +24,10 @@ class VoxelIndex(datatypes.IVec3D, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of VoxelIndexExt in voxel_index_ext.py
 
-    # Note: there are no fields here because VoxelIndex delegates to datatypes.IVec3D
+    # Note: there are no fields here because VoxelIndex delegates to encodings.IVec3D
 
 
-class VoxelIndexBatch(datatypes.IVec3DBatch, ComponentBatchMixin):
+class VoxelIndexBatch(encodings.IVec3DBatch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.components.VoxelIndex"
 
 

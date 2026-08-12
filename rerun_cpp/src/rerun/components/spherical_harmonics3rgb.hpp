@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "../datatypes/spherical_harmonics3rgb.hpp"
+#include "../encodings/spherical_harmonics3rgb.hpp"
 #include "../half.hpp"
 #include "../result.hpp"
 
@@ -19,15 +19,15 @@ namespace rerun::components {
     /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     ///
     struct SphericalHarmonics3Rgb {
-        rerun::datatypes::SphericalHarmonics3Rgb coefficients;
+        rerun::encodings::SphericalHarmonics3Rgb coefficients;
 
       public:
         SphericalHarmonics3Rgb() = default;
 
-        SphericalHarmonics3Rgb(rerun::datatypes::SphericalHarmonics3Rgb coefficients_)
+        SphericalHarmonics3Rgb(rerun::encodings::SphericalHarmonics3Rgb coefficients_)
             : coefficients(coefficients_) {}
 
-        SphericalHarmonics3Rgb& operator=(rerun::datatypes::SphericalHarmonics3Rgb coefficients_) {
+        SphericalHarmonics3Rgb& operator=(rerun::encodings::SphericalHarmonics3Rgb coefficients_) {
             coefficients = coefficients_;
             return *this;
         }
@@ -41,8 +41,8 @@ namespace rerun::components {
             return *this;
         }
 
-        /// Cast to the underlying SphericalHarmonics3Rgb datatype
-        operator rerun::datatypes::SphericalHarmonics3Rgb() const {
+        /// Cast to the underlying SphericalHarmonics3Rgb encoding
+        operator rerun::encodings::SphericalHarmonics3Rgb() const {
             return coefficients;
         }
     };
@@ -50,7 +50,7 @@ namespace rerun::components {
 
 namespace rerun {
     static_assert(
-        sizeof(rerun::datatypes::SphericalHarmonics3Rgb) ==
+        sizeof(rerun::encodings::SphericalHarmonics3Rgb) ==
         sizeof(components::SphericalHarmonics3Rgb)
     );
 
@@ -61,7 +61,7 @@ namespace rerun {
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
-            return Loggable<rerun::datatypes::SphericalHarmonics3Rgb>::arrow_datatype();
+            return Loggable<rerun::encodings::SphericalHarmonics3Rgb>::arrow_datatype();
         }
 
         /// Serializes an array of `rerun::components::SphericalHarmonics3Rgb` into an arrow array.
@@ -69,14 +69,14 @@ namespace rerun {
             const components::SphericalHarmonics3Rgb* instances, size_t num_instances
         ) {
             if (num_instances == 0) {
-                return Loggable<rerun::datatypes::SphericalHarmonics3Rgb>::to_arrow(nullptr, 0);
+                return Loggable<rerun::encodings::SphericalHarmonics3Rgb>::to_arrow(nullptr, 0);
             } else if (instances == nullptr) {
                 return rerun::Error(
                     ErrorCode::UnexpectedNullArgument,
                     "Passed array instances is null when num_elements> 0."
                 );
             } else {
-                return Loggable<rerun::datatypes::SphericalHarmonics3Rgb>::to_arrow(
+                return Loggable<rerun::encodings::SphericalHarmonics3Rgb>::to_arrow(
                     &instances->coefficients,
                     num_instances
                 );

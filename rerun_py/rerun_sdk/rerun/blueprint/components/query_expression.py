@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from ... import datatypes
+from ... import encodings
 from ..._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,9 +14,9 @@ from ..._baseclasses import (
 __all__ = ["QueryExpression", "QueryExpressionBatch"]
 
 
-class QueryExpression(datatypes.Utf8, ComponentMixin):
+class QueryExpression(encodings.Utf8, ComponentMixin):
     """
-    **Component**: An individual query expression used to filter a set of [`datatypes.EntityPath`][rerun.datatypes.EntityPath]s.
+    **Component**: An individual query expression used to filter a set of [`encodings.EntityPath`][rerun.encodings.EntityPath]s.
 
     Each expression is either an inclusion or an exclusion expression.
     Inclusions start with an optional `+` and exclusions must start with a `-`.
@@ -33,10 +33,10 @@ class QueryExpression(datatypes.Utf8, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of QueryExpressionExt in query_expression_ext.py
 
-    # Note: there are no fields here because QueryExpression delegates to datatypes.Utf8
+    # Note: there are no fields here because QueryExpression delegates to encodings.Utf8
 
 
-class QueryExpressionBatch(datatypes.Utf8Batch, ComponentBatchMixin):
+class QueryExpressionBatch(encodings.Utf8Batch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.blueprint.components.QueryExpression"
 
 

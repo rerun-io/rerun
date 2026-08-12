@@ -3,7 +3,7 @@
 
 #include "affix_fuzzer22.hpp"
 
-#include "../datatypes/fixed_size_bytes.hpp"
+#include "../encodings/fixed_size_bytes.hpp"
 
 #include <arrow/builder.h>
 #include <arrow/type_fwd.h>
@@ -12,7 +12,7 @@ namespace rerun::components {}
 
 namespace rerun {
     const std::shared_ptr<arrow::DataType>& Loggable<components::AffixFuzzer22>::arrow_datatype() {
-        static const auto datatype = Loggable<rerun::datatypes::FixedSizeBytes>::arrow_datatype();
+        static const auto datatype = Loggable<rerun::encodings::FixedSizeBytes>::arrow_datatype();
         return datatype;
     }
 

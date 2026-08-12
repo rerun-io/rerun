@@ -25,10 +25,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Component**: Specifies a concrete index on a tensor dimension.
 #[derive(Clone, Debug, Hash, Copy, PartialEq, Eq, Default, ::re_byte_size::SizeBytes)]
 #[repr(transparent)]
-pub struct TensorDimensionIndexSelection(pub crate::datatypes::TensorDimensionIndexSelection);
+pub struct TensorDimensionIndexSelection(pub crate::encodings::TensorDimensionIndexSelection);
 
 impl ::re_types_core::WrapperComponent for TensorDimensionIndexSelection {
-    type Datatype = crate::datatypes::TensorDimensionIndexSelection;
+    type Encoding = crate::encodings::TensorDimensionIndexSelection;
 
     #[inline]
     fn name() -> ComponentType {
@@ -36,14 +36,14 @@ impl ::re_types_core::WrapperComponent for TensorDimensionIndexSelection {
     }
 
     #[inline]
-    fn into_inner(self) -> Self::Datatype {
+    fn into_inner(self) -> Self::Encoding {
         self.0
     }
 }
 
 ::re_types_core::macros::impl_into_cow!(TensorDimensionIndexSelection);
 
-impl<T: Into<crate::datatypes::TensorDimensionIndexSelection>> From<T>
+impl<T: Into<crate::encodings::TensorDimensionIndexSelection>> From<T>
     for TensorDimensionIndexSelection
 {
     fn from(v: T) -> Self {
@@ -51,27 +51,27 @@ impl<T: Into<crate::datatypes::TensorDimensionIndexSelection>> From<T>
     }
 }
 
-impl std::borrow::Borrow<crate::datatypes::TensorDimensionIndexSelection>
+impl std::borrow::Borrow<crate::encodings::TensorDimensionIndexSelection>
     for TensorDimensionIndexSelection
 {
     #[inline]
-    fn borrow(&self) -> &crate::datatypes::TensorDimensionIndexSelection {
+    fn borrow(&self) -> &crate::encodings::TensorDimensionIndexSelection {
         &self.0
     }
 }
 
 impl std::ops::Deref for TensorDimensionIndexSelection {
-    type Target = crate::datatypes::TensorDimensionIndexSelection;
+    type Target = crate::encodings::TensorDimensionIndexSelection;
 
     #[inline]
-    fn deref(&self) -> &crate::datatypes::TensorDimensionIndexSelection {
+    fn deref(&self) -> &crate::encodings::TensorDimensionIndexSelection {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for TensorDimensionIndexSelection {
     #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::TensorDimensionIndexSelection {
+    fn deref_mut(&mut self) -> &mut crate::encodings::TensorDimensionIndexSelection {
         &mut self.0
     }
 }

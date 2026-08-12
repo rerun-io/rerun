@@ -11,5 +11,5 @@
 #[rust(derive(Copy, PartialEq, Eq, PartialOrd, Ord))]
 #[rust(repr = "transparent")]
 pub struct Count {
-    pub value: rerun::datatypes::UInt64,
+    pub value: rerun::encodings::UInt64,
 }

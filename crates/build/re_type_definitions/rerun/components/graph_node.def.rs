@@ -9,5 +9,5 @@
 #[rust(repr = "transparent")]
 #[rerun(state = "stable")]
 pub struct GraphNode {
-    pub id: rerun::datatypes::Utf8,
+    pub id: rerun::encodings::Utf8,
 }

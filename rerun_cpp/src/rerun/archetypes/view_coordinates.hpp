@@ -72,8 +72,8 @@ namespace rerun::archetypes {
       public: // START of extensions from view_coordinates_ext.cpp:
         /// Construct `ViewCoordinates` from x/y/z enum values.
         ViewCoordinates(
-            rerun::datatypes::ViewDir axis0, rerun::datatypes::ViewDir axis1,
-            rerun::datatypes::ViewDir axis2
+            rerun::encodings::ViewDir axis0, rerun::encodings::ViewDir axis1,
+            rerun::encodings::ViewDir axis2
         )
             : ViewCoordinates(rerun::components::ViewCoordinates(axis0, axis1, axis2)) {}
 

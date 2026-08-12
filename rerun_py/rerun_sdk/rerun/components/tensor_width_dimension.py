@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from .. import datatypes
+from .. import encodings
 from .._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,16 +14,16 @@ from .._baseclasses import (
 __all__ = ["TensorWidthDimension", "TensorWidthDimensionBatch"]
 
 
-class TensorWidthDimension(datatypes.TensorDimensionSelection, ComponentMixin):
+class TensorWidthDimension(encodings.TensorDimensionSelection, ComponentMixin):
     """**Component**: Specifies which dimension to use for width."""
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of TensorWidthDimensionExt in tensor_width_dimension_ext.py
 
-    # Note: there are no fields here because TensorWidthDimension delegates to datatypes.TensorDimensionSelection
+    # Note: there are no fields here because TensorWidthDimension delegates to encodings.TensorDimensionSelection
 
 
-class TensorWidthDimensionBatch(datatypes.TensorDimensionSelectionBatch, ComponentBatchMixin):
+class TensorWidthDimensionBatch(encodings.TensorDimensionSelectionBatch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.components.TensorWidthDimension"
 
 

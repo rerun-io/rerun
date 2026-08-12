@@ -14,7 +14,7 @@ pub use view::{
 };
 
 // Re-export types for working with visualizers and component mappings
-pub use re_sdk_types::blueprint::datatypes::{ComponentSourceKind, VisualizerComponentMapping};
+pub use re_sdk_types::blueprint::encodings::{ComponentSourceKind, VisualizerComponentMapping};
 pub use re_sdk_types::{VisualizableArchetype, Visualizer};
 
 /// Components used exclusively in blueprint stores.
@@ -22,7 +22,10 @@ pub mod components {
     pub use re_sdk_types::blueprint::components::*;
 }
 
-/// Datatypes used exclusively in blueprint stores.
-pub mod datatypes {
-    pub use re_sdk_types::blueprint::datatypes::*;
+/// Encodings used exclusively in blueprint stores.
+pub mod encodings {
+    pub use re_sdk_types::blueprint::encodings::*;
 }
+
+#[deprecated(since = "0.37.0", note = "renamed to `encodings`")]
+pub use self::encodings as datatypes;

@@ -9,5 +9,5 @@
 #[rerun(state = "unstable")]
 pub struct RootContainer {
     /// `ContainerId` for the root.
-    pub id: rerun::datatypes::Uuid,
+    pub id: rerun::encodings::Uuid,
 }

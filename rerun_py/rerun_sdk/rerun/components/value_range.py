@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from .. import datatypes
+from .. import encodings
 from .._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,7 +14,7 @@ from .._baseclasses import (
 __all__ = ["ValueRange", "ValueRangeBatch"]
 
 
-class ValueRange(datatypes.Range1D, ComponentMixin):
+class ValueRange(encodings.Range1D, ComponentMixin):
     """
     **Component**: Range of expected or valid values, specifying a lower and upper bound.
 
@@ -24,10 +24,10 @@ class ValueRange(datatypes.Range1D, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of ValueRangeExt in value_range_ext.py
 
-    # Note: there are no fields here because ValueRange delegates to datatypes.Range1D
+    # Note: there are no fields here because ValueRange delegates to encodings.Range1D
 
 
-class ValueRangeBatch(datatypes.Range1DBatch, ComponentBatchMixin):
+class ValueRangeBatch(encodings.Range1DBatch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.components.ValueRange"
 
 

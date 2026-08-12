@@ -153,7 +153,7 @@ rec.log("world/path",
         rerun::Vec3D(camera_position.data()),
         rerun::Mat3x3(camera_orientation.data()), true));
 
-std::vector<rerun::datatypes::Vec3D> path;
+std::vector<rerun::encodings::Vec3D> path;
 // …
 rec.log("world/path", rerun::LineStrips3D(rerun::LineStrip3D(path)));
 ```

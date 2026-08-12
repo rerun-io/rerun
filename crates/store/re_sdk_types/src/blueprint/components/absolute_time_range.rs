@@ -27,10 +27,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Debug, Copy, PartialEq, Eq, PartialOrd, Ord, ::re_byte_size::SizeBytes)]
 #[repr(transparent)]
-pub struct AbsoluteTimeRange(pub crate::datatypes::AbsoluteTimeRange);
+pub struct AbsoluteTimeRange(pub crate::encodings::AbsoluteTimeRange);
 
 impl ::re_types_core::WrapperComponent for AbsoluteTimeRange {
-    type Datatype = crate::datatypes::AbsoluteTimeRange;
+    type Encoding = crate::encodings::AbsoluteTimeRange;
 
     #[inline]
     fn name() -> ComponentType {
@@ -38,38 +38,38 @@ impl ::re_types_core::WrapperComponent for AbsoluteTimeRange {
     }
 
     #[inline]
-    fn into_inner(self) -> Self::Datatype {
+    fn into_inner(self) -> Self::Encoding {
         self.0
     }
 }
 
 ::re_types_core::macros::impl_into_cow!(AbsoluteTimeRange);
 
-impl<T: Into<crate::datatypes::AbsoluteTimeRange>> From<T> for AbsoluteTimeRange {
+impl<T: Into<crate::encodings::AbsoluteTimeRange>> From<T> for AbsoluteTimeRange {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl std::borrow::Borrow<crate::datatypes::AbsoluteTimeRange> for AbsoluteTimeRange {
+impl std::borrow::Borrow<crate::encodings::AbsoluteTimeRange> for AbsoluteTimeRange {
     #[inline]
-    fn borrow(&self) -> &crate::datatypes::AbsoluteTimeRange {
+    fn borrow(&self) -> &crate::encodings::AbsoluteTimeRange {
         &self.0
     }
 }
 
 impl std::ops::Deref for AbsoluteTimeRange {
-    type Target = crate::datatypes::AbsoluteTimeRange;
+    type Target = crate::encodings::AbsoluteTimeRange;
 
     #[inline]
-    fn deref(&self) -> &crate::datatypes::AbsoluteTimeRange {
+    fn deref(&self) -> &crate::encodings::AbsoluteTimeRange {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for AbsoluteTimeRange {
     #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::AbsoluteTimeRange {
+    fn deref_mut(&mut self) -> &mut crate::encodings::AbsoluteTimeRange {
         &mut self.0
     }
 }

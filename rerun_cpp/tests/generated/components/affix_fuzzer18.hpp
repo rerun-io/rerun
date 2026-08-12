@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "../datatypes/nested_union.hpp"
+#include "../encodings/nested_union.hpp"
 
 #include <cstdint>
 #include <memory>
@@ -20,18 +20,18 @@ namespace arrow {
 
 namespace rerun::components {
     struct AffixFuzzer18 {
-        std::optional<rerun::Collection<rerun::datatypes::NestedUnion>> many_optional_unions;
+        std::optional<rerun::Collection<rerun::encodings::NestedUnion>> many_optional_unions;
 
       public:
         AffixFuzzer18() = default;
 
         AffixFuzzer18(
-            std::optional<rerun::Collection<rerun::datatypes::NestedUnion>> many_optional_unions_
+            std::optional<rerun::Collection<rerun::encodings::NestedUnion>> many_optional_unions_
         )
             : many_optional_unions(std::move(many_optional_unions_)) {}
 
         AffixFuzzer18& operator=(
-            std::optional<rerun::Collection<rerun::datatypes::NestedUnion>> many_optional_unions_
+            std::optional<rerun::Collection<rerun::encodings::NestedUnion>> many_optional_unions_
         ) {
             many_optional_unions = std::move(many_optional_unions_);
             return *this;

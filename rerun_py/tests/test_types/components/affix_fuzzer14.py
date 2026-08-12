@@ -10,19 +10,19 @@ from rerun._baseclasses import (
     ComponentMixin,
 )
 
-from .. import datatypes
+from .. import encodings
 
 __all__ = ["AffixFuzzer14", "AffixFuzzer14Batch"]
 
 
-class AffixFuzzer14(datatypes.ScalarUnion, ComponentMixin):
+class AffixFuzzer14(encodings.ScalarUnion, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of AffixFuzzer14Ext in affix_fuzzer14_ext.py
 
-    # Note: there are no fields here because AffixFuzzer14 delegates to datatypes.ScalarUnion
+    # Note: there are no fields here because AffixFuzzer14 delegates to encodings.ScalarUnion
 
 
-class AffixFuzzer14Batch(datatypes.ScalarUnionBatch, ComponentBatchMixin):
+class AffixFuzzer14Batch(encodings.ScalarUnionBatch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.testing.components.AffixFuzzer14"
 
 

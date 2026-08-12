@@ -5,14 +5,14 @@
 //! easier.
 
 use glam::{DAffine3, DMat3, DQuat, DVec3};
-use re_sdk_types::{components, datatypes};
+use re_sdk_types::{components, encodings};
 
 // ---------------------------------------------------------------------------
-// Helper functions for datatypes
+// Helper functions for encodings
 
 #[inline]
 #[expect(clippy::result_unit_err)]
-pub fn quaternion_to_dquat(q: datatypes::Quaternion) -> Result<DQuat, ()> {
+pub fn quaternion_to_dquat(q: encodings::Quaternion) -> Result<DQuat, ()> {
     let q = q.0;
     glam::DVec4::new(q[0] as f64, q[1] as f64, q[2] as f64, q[3] as f64)
         .try_normalize()
@@ -21,7 +21,7 @@ pub fn quaternion_to_dquat(q: datatypes::Quaternion) -> Result<DQuat, ()> {
 }
 
 #[inline]
-pub fn vec3d_to_dvec3(v: datatypes::Vec3D) -> DVec3 {
+pub fn vec3d_to_dvec3(v: encodings::Vec3D) -> DVec3 {
     let v = v.0;
     DVec3::new(v[0] as f64, v[1] as f64, v[2] as f64)
 }

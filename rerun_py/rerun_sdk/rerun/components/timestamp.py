@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from .. import datatypes
+from .. import encodings
 from .._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,7 +14,7 @@ from .._baseclasses import (
 __all__ = ["Timestamp", "TimestampBatch"]
 
 
-class Timestamp(datatypes.TimeInt, ComponentMixin):
+class Timestamp(encodings.TimeInt, ComponentMixin):
     """
     **Component**: When the recording started.
 
@@ -24,10 +24,10 @@ class Timestamp(datatypes.TimeInt, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of TimestampExt in timestamp_ext.py
 
-    # Note: there are no fields here because Timestamp delegates to datatypes.TimeInt
+    # Note: there are no fields here because Timestamp delegates to encodings.TimeInt
 
 
-class TimestampBatch(datatypes.TimeIntBatch, ComponentBatchMixin):
+class TimestampBatch(encodings.TimeIntBatch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.components.Timestamp"
 
 

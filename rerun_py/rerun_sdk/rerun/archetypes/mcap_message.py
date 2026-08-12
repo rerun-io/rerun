@@ -11,7 +11,7 @@ import numpy as np
 import pyarrow as pa
 from attrs import define, field
 
-from .. import components, datatypes
+from .. import components, encodings
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
@@ -41,7 +41,7 @@ class McapMessage(Archetype):
 
     NAME: ClassVar[str] = "rerun.archetypes.McapMessage"
 
-    def __init__(self: Any, data: datatypes.BlobLike) -> None:
+    def __init__(self: Any, data: encodings.BlobLike) -> None:
         """
         Create a new instance of the McapMessage archetype.
 
@@ -81,7 +81,7 @@ class McapMessage(Archetype):
         cls,
         *,
         clear_unset: bool = False,
-        data: datatypes.BlobLike | None = None,
+        data: encodings.BlobLike | None = None,
     ) -> McapMessage:
         """
         Update only some specific fields of a `McapMessage`.
@@ -132,7 +132,7 @@ class McapMessage(Archetype):
     def columns(
         cls,
         *,
-        data: datatypes.BlobArrayLike | None = None,
+        data: encodings.BlobArrayLike | None = None,
     ) -> ComponentColumnList:
         """
         Construct a new column-oriented component bundle.

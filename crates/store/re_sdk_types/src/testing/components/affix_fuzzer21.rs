@@ -23,10 +23,10 @@ use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 #[derive(Clone, Debug, Default, PartialEq, ::re_byte_size::SizeBytes)]
-pub struct AffixFuzzer21(pub crate::testing::datatypes::Float16Fields);
+pub struct AffixFuzzer21(pub crate::testing::encodings::Float16Fields);
 
 impl ::re_types_core::WrapperComponent for AffixFuzzer21 {
-    type Datatype = crate::testing::datatypes::Float16Fields;
+    type Encoding = crate::testing::encodings::Float16Fields;
 
     #[inline]
     fn name() -> ComponentType {
@@ -34,38 +34,38 @@ impl ::re_types_core::WrapperComponent for AffixFuzzer21 {
     }
 
     #[inline]
-    fn into_inner(self) -> Self::Datatype {
+    fn into_inner(self) -> Self::Encoding {
         self.0
     }
 }
 
 ::re_types_core::macros::impl_into_cow!(AffixFuzzer21);
 
-impl<T: Into<crate::testing::datatypes::Float16Fields>> From<T> for AffixFuzzer21 {
+impl<T: Into<crate::testing::encodings::Float16Fields>> From<T> for AffixFuzzer21 {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl std::borrow::Borrow<crate::testing::datatypes::Float16Fields> for AffixFuzzer21 {
+impl std::borrow::Borrow<crate::testing::encodings::Float16Fields> for AffixFuzzer21 {
     #[inline]
-    fn borrow(&self) -> &crate::testing::datatypes::Float16Fields {
+    fn borrow(&self) -> &crate::testing::encodings::Float16Fields {
         &self.0
     }
 }
 
 impl std::ops::Deref for AffixFuzzer21 {
-    type Target = crate::testing::datatypes::Float16Fields;
+    type Target = crate::testing::encodings::Float16Fields;
 
     #[inline]
-    fn deref(&self) -> &crate::testing::datatypes::Float16Fields {
+    fn deref(&self) -> &crate::testing::encodings::Float16Fields {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for AffixFuzzer21 {
     #[inline]
-    fn deref_mut(&mut self) -> &mut crate::testing::datatypes::Float16Fields {
+    fn deref_mut(&mut self) -> &mut crate::testing::encodings::Float16Fields {
         &mut self.0
     }
 }

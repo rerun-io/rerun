@@ -4,7 +4,7 @@
 #pragma once
 
 #include "../collection.hpp"
-#include "../datatypes/utf8pair.hpp"
+#include "../encodings/utf8pair.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -27,15 +27,15 @@ namespace rerun::components {
     ///
     struct KeyValuePairs {
         /// The key-value pairs that make up this string map.
-        rerun::Collection<rerun::datatypes::Utf8Pair> pairs;
+        rerun::Collection<rerun::encodings::Utf8Pair> pairs;
 
       public:
         KeyValuePairs() = default;
 
-        KeyValuePairs(rerun::Collection<rerun::datatypes::Utf8Pair> pairs_)
+        KeyValuePairs(rerun::Collection<rerun::encodings::Utf8Pair> pairs_)
             : pairs(std::move(pairs_)) {}
 
-        KeyValuePairs& operator=(rerun::Collection<rerun::datatypes::Utf8Pair> pairs_) {
+        KeyValuePairs& operator=(rerun::Collection<rerun::encodings::Utf8Pair> pairs_) {
             pairs = std::move(pairs_);
             return *this;
         }

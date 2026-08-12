@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from ... import datatypes
+from ... import encodings
 from ..._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,7 +14,7 @@ from ..._baseclasses import (
 __all__ = ["ColumnName", "ColumnNameBatch"]
 
 
-class ColumnName(datatypes.Utf8, ComponentMixin):
+class ColumnName(encodings.Utf8, ComponentMixin):
     """
     **Component**: The name of a column in a table.
 
@@ -24,10 +24,10 @@ class ColumnName(datatypes.Utf8, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of ColumnNameExt in column_name_ext.py
 
-    # Note: there are no fields here because ColumnName delegates to datatypes.Utf8
+    # Note: there are no fields here because ColumnName delegates to encodings.Utf8
 
 
-class ColumnNameBatch(datatypes.Utf8Batch, ComponentBatchMixin):
+class ColumnNameBatch(encodings.Utf8Batch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.blueprint.components.ColumnName"
 
 

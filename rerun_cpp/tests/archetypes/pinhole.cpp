@@ -15,7 +15,7 @@ SCENARIO(
         // TODO(andreas): Allow this?
         // auto from_builder = Pinhole({{1.0f, 2.0f, 3.0f}, {4.0f, 5.0f, 6.0f}, {7.0f, 8.0f, 9.0f}}
 
-        auto from_builder = Pinhole(rerun::datatypes::Mat3x3({
+        auto from_builder = Pinhole(rerun::encodings::Mat3x3({
                                         {1.0f, 2.0f, 3.0f},
                                         {4.0f, 5.0f, 6.0f},
                                         {7.0f, 8.0f, 9.0f},
@@ -25,7 +25,7 @@ SCENARIO(
         Pinhole from_manual;
         from_manual.image_from_camera =
             rerun::ComponentBatch::from_loggable(
-                rerun::components::PinholeProjection(rerun::datatypes::Mat3x3({
+                rerun::components::PinholeProjection(rerun::encodings::Mat3x3({
                     {1.0f, 2.0f, 3.0f},
                     {4.0f, 5.0f, 6.0f},
                     {7.0f, 8.0f, 9.0f},
@@ -48,7 +48,7 @@ SCENARIO(
         Pinhole from_manual;
         from_manual.image_from_camera =
             rerun::ComponentBatch::from_loggable(
-                rerun::components::PinholeProjection(rerun::datatypes::Mat3x3({
+                rerun::components::PinholeProjection(rerun::encodings::Mat3x3({
                     {1.0f, 0.0f, 0.0f},
                     {0.0f, 2.0f, 0.0f},
                     {1.5f, 2.0f, 1.0f},

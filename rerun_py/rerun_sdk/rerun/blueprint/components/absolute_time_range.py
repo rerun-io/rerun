@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from ... import datatypes
+from ... import encodings
 from ..._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,7 +14,7 @@ from ..._baseclasses import (
 __all__ = ["AbsoluteTimeRange", "AbsoluteTimeRangeBatch"]
 
 
-class AbsoluteTimeRange(datatypes.AbsoluteTimeRange, ComponentMixin):
+class AbsoluteTimeRange(encodings.AbsoluteTimeRange, ComponentMixin):
     """
     **Component**: A reference to a range of time.
 
@@ -24,10 +24,10 @@ class AbsoluteTimeRange(datatypes.AbsoluteTimeRange, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of AbsoluteTimeRangeExt in absolute_time_range_ext.py
 
-    # Note: there are no fields here because AbsoluteTimeRange delegates to datatypes.AbsoluteTimeRange
+    # Note: there are no fields here because AbsoluteTimeRange delegates to encodings.AbsoluteTimeRange
 
 
-class AbsoluteTimeRangeBatch(datatypes.AbsoluteTimeRangeBatch, ComponentBatchMixin):
+class AbsoluteTimeRangeBatch(encodings.AbsoluteTimeRangeBatch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.blueprint.components.AbsoluteTimeRange"
 
 

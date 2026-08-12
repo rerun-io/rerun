@@ -9,7 +9,7 @@ def test_spherical_harmonics3rgb_accepts_coefficient_major_shapes() -> None:
     """`(15, 3)`, `(45,)`, and batches thereof are all coefficient-major."""
     for shape in [(15, 3), (45,), (4, 15, 3), (4, 45)]:
         values = np.arange(int(np.prod(shape)), dtype=np.float16).reshape(shape)
-        batch = rr.datatypes.SphericalHarmonics3RgbBatch(values)
+        batch = rr.encodings.SphericalHarmonics3RgbBatch(values)
         assert len(batch.as_arrow_array()) == max(int(np.prod(shape)) // 45, 1)
 
 
@@ -18,7 +18,7 @@ def test_spherical_harmonics3rgb_rejects_channel_major() -> None:
     rr.set_strict_mode(True)
 
     with pytest.raises(ValueError):
-        rr.datatypes.SphericalHarmonics3RgbBatch(np.zeros((3, 15), dtype=np.float16))
+        rr.encodings.SphericalHarmonics3RgbBatch(np.zeros((3, 15), dtype=np.float16))
 
 
 def test_spherical_harmonics3rgb_rejects_unpadded_lower_degree() -> None:
@@ -26,7 +26,7 @@ def test_spherical_harmonics3rgb_rejects_unpadded_lower_degree() -> None:
     rr.set_strict_mode(True)
 
     with pytest.raises(ValueError):
-        rr.datatypes.SphericalHarmonics3RgbBatch(np.zeros((45, 8, 3), dtype=np.float16))
+        rr.encodings.SphericalHarmonics3RgbBatch(np.zeros((45, 8, 3), dtype=np.float16))
 
 
 def test_gaussian_splats3d_roundtrip() -> None:

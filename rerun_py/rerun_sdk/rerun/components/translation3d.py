@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from .. import datatypes
+from .. import encodings
 from .._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,16 +14,16 @@ from .._baseclasses import (
 __all__ = ["Translation3D", "Translation3DBatch"]
 
 
-class Translation3D(datatypes.Vec3D, ComponentMixin):
+class Translation3D(encodings.Vec3D, ComponentMixin):
     """**Component**: A translation vector in 3D space."""
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of Translation3DExt in translation3d_ext.py
 
-    # Note: there are no fields here because Translation3D delegates to datatypes.Vec3D
+    # Note: there are no fields here because Translation3D delegates to encodings.Vec3D
 
 
-class Translation3DBatch(datatypes.Vec3DBatch, ComponentBatchMixin):
+class Translation3DBatch(encodings.Vec3DBatch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.components.Translation3D"
 
 

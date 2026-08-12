@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from .. import datatypes
+from .. import encodings
 from .._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,7 +14,7 @@ from .._baseclasses import (
 __all__ = ["FillRatio", "FillRatioBatch"]
 
 
-class FillRatio(datatypes.Float32, ComponentMixin):
+class FillRatio(encodings.Float32, ComponentMixin):
     """
     **Component**: How much a primitive fills out the available space.
 
@@ -27,10 +27,10 @@ class FillRatio(datatypes.Float32, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of FillRatioExt in fill_ratio_ext.py
 
-    # Note: there are no fields here because FillRatio delegates to datatypes.Float32
+    # Note: there are no fields here because FillRatio delegates to encodings.Float32
 
 
-class FillRatioBatch(datatypes.Float32Batch, ComponentBatchMixin):
+class FillRatioBatch(encodings.Float32Batch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.components.FillRatio"
 
 

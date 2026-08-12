@@ -52,7 +52,7 @@ The 2D points are visualized over the video/image for a better understanding and
 The 3D points allows the creation of a 3D model of the face reconstruction for a more comprehensive representation of the face.
 
 The 2D and 3D points are logged through a combination of two archetypes. First, a static
-[`ClassDescription`](https://www.rerun.io/docs/reference/types/datatypes/class_description) is logged, that contains the information which maps keypoint ids to labels and how to connect
+[`ClassDescription`](https://www.rerun.io/docs/reference/types/encodings/class_description?speculative-link) is logged, that contains the information which maps keypoint ids to labels and how to connect
 the keypoints. Defining these connections automatically renders lines between them.
 Second, the actual keypoint positions are logged in 2D and 3D as [`Points2D`](https://www.rerun.io/docs/reference/types/archetypes/points2d) and [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d) archetypes, respectively.
 

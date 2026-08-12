@@ -396,6 +396,8 @@ fn fields_from_message(descriptor: &MessageDescriptor) -> Fields {
                 Field::new(oneof.name(), DataType::Struct(inner), nullable).with_metadata(
                     std::iter::once((
                         "ARROW:extension:name".to_owned(),
+                        // TODO(RR-5430): rename to `rerun.encodings.ProtobufOneOf`.
+                        // Wire-format identifier, not a code-generated encoding; kept as-is.
                         "rerun.datatypes.ProtobufOneOf".to_owned(),
                     ))
                     .collect(),
@@ -541,6 +543,8 @@ fn arrow_field_from(descr: &FieldDescriptor) -> Field {
         field = field.with_metadata(
             std::iter::once((
                 "ARROW:extension:name".to_owned(),
+                // TODO(RR-5430): rename to `rerun.encodings.ProtobufEnum`.
+                // Wire-format identifier, not a code-generated encoding; kept as-is.
                 "rerun.datatypes.ProtobufEnum".to_owned(),
             ))
             .collect(),

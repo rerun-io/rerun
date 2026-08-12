@@ -5,8 +5,8 @@ title: "TensorWidthDimension"
 
 Specifies which dimension to use for width.
 
-## Rerun datatype
-[`TensorDimensionSelection`](../datatypes/tensor_dimension_selection.md)
+## Rerun encoding
+[`TensorDimensionSelection`](../encodings/tensor_dimension_selection.md)
 
 
 ## Arrow datatype

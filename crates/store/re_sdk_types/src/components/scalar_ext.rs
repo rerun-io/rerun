@@ -1,4 +1,4 @@
-use re_types_core::datatypes::Float64;
+use re_types_core::encodings::Float64;
 
 use super::Scalar;
 

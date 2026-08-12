@@ -27,10 +27,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// Should be an absolute time, i.e. relative to Unix Epoch.
 #[derive(Clone, Debug, Copy, PartialEq, Eq, PartialOrd, Ord, ::re_byte_size::SizeBytes)]
 #[repr(transparent)]
-pub struct Timestamp(pub crate::datatypes::TimeInt);
+pub struct Timestamp(pub crate::encodings::TimeInt);
 
 impl ::re_types_core::WrapperComponent for Timestamp {
-    type Datatype = crate::datatypes::TimeInt;
+    type Encoding = crate::encodings::TimeInt;
 
     #[inline]
     fn name() -> ComponentType {
@@ -38,38 +38,38 @@ impl ::re_types_core::WrapperComponent for Timestamp {
     }
 
     #[inline]
-    fn into_inner(self) -> Self::Datatype {
+    fn into_inner(self) -> Self::Encoding {
         self.0
     }
 }
 
 ::re_types_core::macros::impl_into_cow!(Timestamp);
 
-impl<T: Into<crate::datatypes::TimeInt>> From<T> for Timestamp {
+impl<T: Into<crate::encodings::TimeInt>> From<T> for Timestamp {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl std::borrow::Borrow<crate::datatypes::TimeInt> for Timestamp {
+impl std::borrow::Borrow<crate::encodings::TimeInt> for Timestamp {
     #[inline]
-    fn borrow(&self) -> &crate::datatypes::TimeInt {
+    fn borrow(&self) -> &crate::encodings::TimeInt {
         &self.0
     }
 }
 
 impl std::ops::Deref for Timestamp {
-    type Target = crate::datatypes::TimeInt;
+    type Target = crate::encodings::TimeInt;
 
     #[inline]
-    fn deref(&self) -> &crate::datatypes::TimeInt {
+    fn deref(&self) -> &crate::encodings::TimeInt {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for Timestamp {
     #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::TimeInt {
+    fn deref_mut(&mut self) -> &mut crate::encodings::TimeInt {
         &mut self.0
     }
 }

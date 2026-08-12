@@ -9,8 +9,8 @@ The main purpose of this component existing separately from the labels themselve
 is to be overridden when desired, to allow hiding and showing from the viewer and
 blueprints.
 
-## Rerun datatype
-[`Bool`](../datatypes/bool.md)
+## Rerun encoding
+[`Bool`](../encodings/bool.md)
 
 
 ## Arrow datatype

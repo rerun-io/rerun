@@ -31,10 +31,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
     Clone, Debug, Copy, Default, PartialEq, Eq, PartialOrd, Ord, ::re_byte_size::SizeBytes,
 )]
 #[repr(transparent)]
-pub struct LockRangeDuringZoom(pub crate::datatypes::Bool);
+pub struct LockRangeDuringZoom(pub crate::encodings::Bool);
 
 impl ::re_types_core::WrapperComponent for LockRangeDuringZoom {
-    type Datatype = crate::datatypes::Bool;
+    type Encoding = crate::encodings::Bool;
 
     #[inline]
     fn name() -> ComponentType {
@@ -42,38 +42,38 @@ impl ::re_types_core::WrapperComponent for LockRangeDuringZoom {
     }
 
     #[inline]
-    fn into_inner(self) -> Self::Datatype {
+    fn into_inner(self) -> Self::Encoding {
         self.0
     }
 }
 
 ::re_types_core::macros::impl_into_cow!(LockRangeDuringZoom);
 
-impl<T: Into<crate::datatypes::Bool>> From<T> for LockRangeDuringZoom {
+impl<T: Into<crate::encodings::Bool>> From<T> for LockRangeDuringZoom {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl std::borrow::Borrow<crate::datatypes::Bool> for LockRangeDuringZoom {
+impl std::borrow::Borrow<crate::encodings::Bool> for LockRangeDuringZoom {
     #[inline]
-    fn borrow(&self) -> &crate::datatypes::Bool {
+    fn borrow(&self) -> &crate::encodings::Bool {
         &self.0
     }
 }
 
 impl std::ops::Deref for LockRangeDuringZoom {
-    type Target = crate::datatypes::Bool;
+    type Target = crate::encodings::Bool;
 
     #[inline]
-    fn deref(&self) -> &crate::datatypes::Bool {
+    fn deref(&self) -> &crate::encodings::Bool {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for LockRangeDuringZoom {
     #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Bool {
+    fn deref_mut(&mut self) -> &mut crate::encodings::Bool {
         &mut self.0
     }
 }

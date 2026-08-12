@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "../datatypes/mixed_fields.hpp"
+#include "../encodings/mixed_fields.hpp"
 
 #include <cstdint>
 #include <memory>
@@ -20,16 +20,16 @@ namespace arrow {
 
 namespace rerun::components {
     struct AffixFuzzer7 {
-        std::optional<rerun::Collection<rerun::datatypes::MixedFields>> many_optional;
+        std::optional<rerun::Collection<rerun::encodings::MixedFields>> many_optional;
 
       public:
         AffixFuzzer7() = default;
 
-        AffixFuzzer7(std::optional<rerun::Collection<rerun::datatypes::MixedFields>> many_optional_)
+        AffixFuzzer7(std::optional<rerun::Collection<rerun::encodings::MixedFields>> many_optional_)
             : many_optional(std::move(many_optional_)) {}
 
         AffixFuzzer7& operator=(
-            std::optional<rerun::Collection<rerun::datatypes::MixedFields>> many_optional_
+            std::optional<rerun::Collection<rerun::encodings::MixedFields>> many_optional_
         ) {
             many_optional = std::move(many_optional_);
             return *this;

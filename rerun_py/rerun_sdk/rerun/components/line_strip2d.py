@@ -48,7 +48,7 @@ class LineStrip2D(LineStrip2DExt, ComponentMixin):
         # You can define your own __init__ function as a member of LineStrip2DExt in line_strip2d_ext.py
         self.__attrs_init__(points=points)
 
-    points: list[datatypes.Vec2D] = field()
+    points: list[encodings.Vec2D] = field()
 
     def __len__(self) -> int:
         # You can define your own __len__ function as a member of LineStrip2DExt in line_strip2d_ext.py
@@ -56,9 +56,9 @@ class LineStrip2D(LineStrip2DExt, ComponentMixin):
 
 
 if TYPE_CHECKING:
-    from .. import datatypes
+    from .. import encodings
 
-    LineStrip2DLike = LineStrip2D | datatypes.Vec2DArrayLike | npt.NDArray[np.float32]
+    LineStrip2DLike = LineStrip2D | encodings.Vec2DArrayLike | npt.NDArray[np.float32]
     """A type alias for any LineStrip2D-like object."""
 else:
     LineStrip2DLike = Any

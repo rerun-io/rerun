@@ -40,7 +40,7 @@ class ColumnOrder(ColumnOrderExt, ComponentMixin):
         # You can define your own __init__ function as a member of ColumnOrderExt in column_order_ext.py
         self.__attrs_init__(entity_paths=entity_paths)
 
-    entity_paths: list[datatypes.EntityPath] = field()
+    entity_paths: list[encodings.EntityPath] = field()
 
     def __len__(self) -> int:
         # You can define your own __len__ function as a member of ColumnOrderExt in column_order_ext.py
@@ -48,9 +48,9 @@ class ColumnOrder(ColumnOrderExt, ComponentMixin):
 
 
 if TYPE_CHECKING:
-    from ... import datatypes
+    from ... import encodings
 
-    ColumnOrderLike = ColumnOrder | Sequence[datatypes.EntityPathLike]
+    ColumnOrderLike = ColumnOrder | Sequence[encodings.EntityPathLike]
     """A type alias for any ColumnOrder-like object."""
 else:
     ColumnOrderLike = Any

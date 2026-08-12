@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from .. import datatypes
+from .. import encodings
 from .._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,16 +14,16 @@ from .._baseclasses import (
 __all__ = ["AxisLength", "AxisLengthBatch"]
 
 
-class AxisLength(datatypes.Float32, ComponentMixin):
+class AxisLength(encodings.Float32, ComponentMixin):
     """**Component**: The length of an axis in local units of the space."""
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of AxisLengthExt in axis_length_ext.py
 
-    # Note: there are no fields here because AxisLength delegates to datatypes.Float32
+    # Note: there are no fields here because AxisLength delegates to encodings.Float32
 
 
-class AxisLengthBatch(datatypes.Float32Batch, ComponentBatchMixin):
+class AxisLengthBatch(encodings.Float32Batch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.components.AxisLength"
 
 

@@ -17,5 +17,5 @@
 #[rust(repr = "transparent")]
 #[rerun(state = "stable")]
 pub struct TextLogLevel {
-    pub value: rerun::datatypes::Utf8,
+    pub value: rerun::encodings::Utf8,
 }

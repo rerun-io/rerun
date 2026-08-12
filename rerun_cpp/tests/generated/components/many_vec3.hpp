@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "../datatypes/many_vec3.hpp"
+#include "../encodings/many_vec3.hpp"
 
 #include <array>
 #include <cstdint>
@@ -12,15 +12,15 @@
 
 namespace rerun::components {
     struct ManyVec3 {
-        rerun::datatypes::ManyVec3 nested_array_of_structs;
+        rerun::encodings::ManyVec3 nested_array_of_structs;
 
       public:
         ManyVec3() = default;
 
-        ManyVec3(rerun::datatypes::ManyVec3 nested_array_of_structs_)
+        ManyVec3(rerun::encodings::ManyVec3 nested_array_of_structs_)
             : nested_array_of_structs(nested_array_of_structs_) {}
 
-        ManyVec3& operator=(rerun::datatypes::ManyVec3 nested_array_of_structs_) {
+        ManyVec3& operator=(rerun::encodings::ManyVec3 nested_array_of_structs_) {
             nested_array_of_structs = nested_array_of_structs_;
             return *this;
         }
@@ -33,15 +33,15 @@ namespace rerun::components {
             return *this;
         }
 
-        /// Cast to the underlying ManyVec3 datatype
-        operator rerun::datatypes::ManyVec3() const {
+        /// Cast to the underlying ManyVec3 encoding
+        operator rerun::encodings::ManyVec3() const {
             return nested_array_of_structs;
         }
     };
 } // namespace rerun::components
 
 namespace rerun {
-    static_assert(sizeof(rerun::datatypes::ManyVec3) == sizeof(components::ManyVec3));
+    static_assert(sizeof(rerun::encodings::ManyVec3) == sizeof(components::ManyVec3));
 
     /// \private
     template <>
@@ -50,7 +50,7 @@ namespace rerun {
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
-            return Loggable<rerun::datatypes::ManyVec3>::arrow_datatype();
+            return Loggable<rerun::encodings::ManyVec3>::arrow_datatype();
         }
 
         /// Serializes an array of `rerun::components::ManyVec3` into an arrow array.
@@ -58,14 +58,14 @@ namespace rerun {
             const components::ManyVec3* instances, size_t num_instances
         ) {
             if (num_instances == 0) {
-                return Loggable<rerun::datatypes::ManyVec3>::to_arrow(nullptr, 0);
+                return Loggable<rerun::encodings::ManyVec3>::to_arrow(nullptr, 0);
             } else if (instances == nullptr) {
                 return rerun::Error(
                     ErrorCode::UnexpectedNullArgument,
                     "Passed array instances is null when num_elements> 0."
                 );
             } else {
-                return Loggable<rerun::datatypes::ManyVec3>::to_arrow(
+                return Loggable<rerun::encodings::ManyVec3>::to_arrow(
                     &instances->nested_array_of_structs,
                     num_instances
                 );

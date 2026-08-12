@@ -3,7 +3,7 @@
 
 #include "affix_fuzzer15.hpp"
 
-#include "../datatypes/scalar_union.hpp"
+#include "../encodings/scalar_union.hpp"
 
 #include <arrow/builder.h>
 #include <arrow/type_fwd.h>
@@ -12,7 +12,7 @@ namespace rerun::components {}
 
 namespace rerun {
     const std::shared_ptr<arrow::DataType>& Loggable<components::AffixFuzzer15>::arrow_datatype() {
-        static const auto datatype = Loggable<rerun::datatypes::ScalarUnion>::arrow_datatype();
+        static const auto datatype = Loggable<rerun::encodings::ScalarUnion>::arrow_datatype();
         return datatype;
     }
 

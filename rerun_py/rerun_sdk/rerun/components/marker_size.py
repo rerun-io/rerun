@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from .. import datatypes
+from .. import encodings
 from .._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,16 +14,16 @@ from .._baseclasses import (
 __all__ = ["MarkerSize", "MarkerSizeBatch"]
 
 
-class MarkerSize(datatypes.Float32, ComponentMixin):
+class MarkerSize(encodings.Float32, ComponentMixin):
     """**Component**: Radius of a marker of a point in e.g. a 2D plot, measured in UI points."""
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of MarkerSizeExt in marker_size_ext.py
 
-    # Note: there are no fields here because MarkerSize delegates to datatypes.Float32
+    # Note: there are no fields here because MarkerSize delegates to encodings.Float32
 
 
-class MarkerSizeBatch(datatypes.Float32Batch, ComponentBatchMixin):
+class MarkerSizeBatch(encodings.Float32Batch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.components.MarkerSize"
 
 

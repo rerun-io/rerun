@@ -2,7 +2,7 @@ use re_log_types::EntityPath;
 use re_sdk_types::ViewClassIdentifier;
 use re_sdk_types::blueprint::components::VisualizerInstructionId;
 use re_sdk_types::components::{RotationAxisAngle, RotationQuat, Translation3D};
-use re_sdk_types::datatypes::Quaternion;
+use re_sdk_types::encodings::Quaternion;
 use re_tf::TransformFrameIdHash;
 use re_viewer_context::{ViewClass as _, ViewerReportSeverity, VisualizerExecutionOutput};
 

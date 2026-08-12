@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from .. import datatypes
+from .. import encodings
 from .._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,16 +14,16 @@ from .._baseclasses import (
 __all__ = ["TensorHeightDimension", "TensorHeightDimensionBatch"]
 
 
-class TensorHeightDimension(datatypes.TensorDimensionSelection, ComponentMixin):
+class TensorHeightDimension(encodings.TensorDimensionSelection, ComponentMixin):
     """**Component**: Specifies which dimension to use for height."""
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of TensorHeightDimensionExt in tensor_height_dimension_ext.py
 
-    # Note: there are no fields here because TensorHeightDimension delegates to datatypes.TensorDimensionSelection
+    # Note: there are no fields here because TensorHeightDimension delegates to encodings.TensorDimensionSelection
 
 
-class TensorHeightDimensionBatch(datatypes.TensorDimensionSelectionBatch, ComponentBatchMixin):
+class TensorHeightDimensionBatch(encodings.TensorDimensionSelectionBatch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.components.TensorHeightDimension"
 
 

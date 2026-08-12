@@ -11,7 +11,7 @@ import numpy as np
 import pyarrow as pa
 from attrs import define, field
 
-from .. import components, datatypes
+from .. import components, encodings
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
@@ -22,7 +22,7 @@ from ..error_utils import catch_and_log_exceptions
 from .series_points_ext import SeriesPointsExt
 
 if TYPE_CHECKING:
-    from ..blueprint.datatypes import VisualizerComponentMappingLike
+    from ..blueprint.encodings import VisualizerComponentMappingLike
 
 __all__ = ["SeriesPoints"]
 
@@ -120,11 +120,11 @@ class SeriesPoints(SeriesPointsExt, Archetype, VisualizableArchetype):
         cls,
         *,
         clear_unset: bool = False,
-        colors: datatypes.Rgba32ArrayLike | None = None,
+        colors: encodings.Rgba32ArrayLike | None = None,
         markers: components.MarkerShapeArrayLike | None = None,
-        names: datatypes.Utf8ArrayLike | None = None,
-        visible_series: datatypes.BoolArrayLike | None = None,
-        marker_sizes: datatypes.Float32ArrayLike | None = None,
+        names: encodings.Utf8ArrayLike | None = None,
+        visible_series: encodings.BoolArrayLike | None = None,
+        marker_sizes: encodings.Float32ArrayLike | None = None,
     ) -> SeriesPoints:
         """
         Update only some specific fields of a `SeriesPoints`.
@@ -228,11 +228,11 @@ class SeriesPoints(SeriesPointsExt, Archetype, VisualizableArchetype):
     def columns(
         cls,
         *,
-        colors: datatypes.Rgba32ArrayLike | None = None,
+        colors: encodings.Rgba32ArrayLike | None = None,
         markers: components.MarkerShapeArrayLike | None = None,
-        names: datatypes.Utf8ArrayLike | None = None,
-        visible_series: datatypes.BoolArrayLike | None = None,
-        marker_sizes: datatypes.Float32ArrayLike | None = None,
+        names: encodings.Utf8ArrayLike | None = None,
+        visible_series: encodings.BoolArrayLike | None = None,
+        marker_sizes: encodings.Float32ArrayLike | None = None,
     ) -> ComponentColumnList:
         """
         Construct a new column-oriented component bundle.

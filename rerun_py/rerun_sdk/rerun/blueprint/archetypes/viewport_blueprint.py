@@ -17,7 +17,7 @@ from ...blueprint import components as blueprint_components
 from ...error_utils import catch_and_log_exceptions
 
 if TYPE_CHECKING:
-    from ... import datatypes
+    from ... import encodings
 
 __all__ = ["ViewportBlueprint"]
 
@@ -35,11 +35,11 @@ class ViewportBlueprint(Archetype):
     def __init__(
         self: Any,
         *,
-        root_container: datatypes.UuidLike | None = None,
-        maximized: datatypes.UuidLike | None = None,
-        auto_layout: datatypes.BoolLike | None = None,
-        auto_views: datatypes.BoolLike | None = None,
-        past_viewer_recommendations: datatypes.UInt64ArrayLike | None = None,
+        root_container: encodings.UuidLike | None = None,
+        maximized: encodings.UuidLike | None = None,
+        auto_layout: encodings.BoolLike | None = None,
+        auto_views: encodings.BoolLike | None = None,
+        past_viewer_recommendations: encodings.UInt64ArrayLike | None = None,
     ) -> None:
         """
         Create a new instance of the ViewportBlueprint archetype.
@@ -105,11 +105,11 @@ class ViewportBlueprint(Archetype):
         cls,
         *,
         clear_unset: bool = False,
-        root_container: datatypes.UuidLike | None = None,
-        maximized: datatypes.UuidLike | None = None,
-        auto_layout: datatypes.BoolLike | None = None,
-        auto_views: datatypes.BoolLike | None = None,
-        past_viewer_recommendations: datatypes.UInt64ArrayLike | None = None,
+        root_container: encodings.UuidLike | None = None,
+        maximized: encodings.UuidLike | None = None,
+        auto_layout: encodings.BoolLike | None = None,
+        auto_views: encodings.BoolLike | None = None,
+        past_viewer_recommendations: encodings.UInt64ArrayLike | None = None,
     ) -> ViewportBlueprint:
         """
         Update only some specific fields of a `ViewportBlueprint`.

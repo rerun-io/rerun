@@ -27,10 +27,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
     Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, ::re_byte_size::SizeBytes,
 )]
 #[repr(transparent)]
-pub struct GraphNode(pub crate::datatypes::Utf8);
+pub struct GraphNode(pub crate::encodings::Utf8);
 
 impl ::re_types_core::WrapperComponent for GraphNode {
-    type Datatype = crate::datatypes::Utf8;
+    type Encoding = crate::encodings::Utf8;
 
     #[inline]
     fn name() -> ComponentType {
@@ -38,38 +38,38 @@ impl ::re_types_core::WrapperComponent for GraphNode {
     }
 
     #[inline]
-    fn into_inner(self) -> Self::Datatype {
+    fn into_inner(self) -> Self::Encoding {
         self.0
     }
 }
 
 ::re_types_core::macros::impl_into_cow!(GraphNode);
 
-impl<T: Into<crate::datatypes::Utf8>> From<T> for GraphNode {
+impl<T: Into<crate::encodings::Utf8>> From<T> for GraphNode {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl std::borrow::Borrow<crate::datatypes::Utf8> for GraphNode {
+impl std::borrow::Borrow<crate::encodings::Utf8> for GraphNode {
     #[inline]
-    fn borrow(&self) -> &crate::datatypes::Utf8 {
+    fn borrow(&self) -> &crate::encodings::Utf8 {
         &self.0
     }
 }
 
 impl std::ops::Deref for GraphNode {
-    type Target = crate::datatypes::Utf8;
+    type Target = crate::encodings::Utf8;
 
     #[inline]
-    fn deref(&self) -> &crate::datatypes::Utf8 {
+    fn deref(&self) -> &crate::encodings::Utf8 {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for GraphNode {
     #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Utf8 {
+    fn deref_mut(&mut self) -> &mut crate::encodings::Utf8 {
         &mut self.0
     }
 }

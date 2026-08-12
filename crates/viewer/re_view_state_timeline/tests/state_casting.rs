@@ -14,7 +14,7 @@ use re_log_types::external::arrow::array::{
 };
 use re_log_types::{EntityPath, Timeline};
 use re_sdk_types::archetypes::TextLog;
-use re_sdk_types::blueprint::datatypes::{ComponentSourceKind, VisualizerComponentMapping};
+use re_sdk_types::blueprint::encodings::{ComponentSourceKind, VisualizerComponentMapping};
 use re_sdk_types::{ArchetypeName, ComponentIdentifier, DynamicArchetype, Visualizer};
 use re_test_context::TestContext;
 use re_test_context::VisualizerBlueprintContext as _;

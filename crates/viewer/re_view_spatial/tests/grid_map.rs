@@ -5,7 +5,7 @@ use re_sdk_types::{
     blueprint::archetypes::{EyeControls3D, LineGrid3D, SpatialInformation},
     blueprint::components::{Enabled, GridSpacing},
     components::{Colormap, ImageFormat, Position3D, RotationAxisAngle},
-    datatypes::{ChannelDatatype, ColorModel},
+    encodings::{ChannelDatatype, ColorModel},
 };
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;

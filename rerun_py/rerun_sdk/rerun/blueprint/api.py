@@ -8,7 +8,7 @@ import rerun_bindings as bindings
 
 from .._baseclasses import AsComponents, ComponentBatchLike, DescribedComponentBatch
 from .._spawn import _spawn_viewer
-from ..datatypes import BoolLike, EntityPathLike, Float32ArrayLike, Utf8ArrayLike, Utf8Like
+from ..encodings import BoolLike, EntityPathLike, Float32ArrayLike, Utf8ArrayLike, Utf8Like
 from ..recording_stream import RecordingStream
 from .archetypes import (
     ActiveVisualizers,

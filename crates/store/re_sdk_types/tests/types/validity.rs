@@ -47,7 +47,7 @@ fn nested_fixed_size_list_of_the_wrong_width_errors() {
 
     use arrow::array::{Array as _, FixedSizeListArray, Float16Array};
     use arrow::datatypes::{DataType, Field};
-    use re_sdk_types::datatypes::SphericalHarmonics3Rgb;
+    use re_sdk_types::encodings::SphericalHarmonics3Rgb;
 
     // `SphericalHarmonics3Rgb` is a `FixedSizeList(FixedSizeList(f16, 3), 15)`.
     // Widen the inner list to 4: still 60 values, but no longer a whole number of coefficients.

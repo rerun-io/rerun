@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from ... import datatypes
+from ... import encodings
 from ..._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,7 +14,7 @@ from ..._baseclasses import (
 __all__ = ["PlaybackSpeed", "PlaybackSpeedBatch"]
 
 
-class PlaybackSpeed(datatypes.Float64, ComponentMixin):
+class PlaybackSpeed(encodings.Float64, ComponentMixin):
     """
     **Component**: A playback speed which determines how fast time progresses.
 
@@ -24,10 +24,10 @@ class PlaybackSpeed(datatypes.Float64, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of PlaybackSpeedExt in playback_speed_ext.py
 
-    # Note: there are no fields here because PlaybackSpeed delegates to datatypes.Float64
+    # Note: there are no fields here because PlaybackSpeed delegates to encodings.Float64
 
 
-class PlaybackSpeedBatch(datatypes.Float64Batch, ComponentBatchMixin):
+class PlaybackSpeedBatch(encodings.Float64Batch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.blueprint.components.PlaybackSpeed"
 
 

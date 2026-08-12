@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from ... import datatypes
+from ... import encodings
 from ..._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,7 +14,7 @@ from ..._baseclasses import (
 __all__ = ["GridSpacing", "GridSpacingBatch"]
 
 
-class GridSpacing(datatypes.Float32, ComponentMixin):
+class GridSpacing(encodings.Float32, ComponentMixin):
     """
     **Component**: Space between grid lines of one line to the next in scene units.
 
@@ -24,10 +24,10 @@ class GridSpacing(datatypes.Float32, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of GridSpacingExt in grid_spacing_ext.py
 
-    # Note: there are no fields here because GridSpacing delegates to datatypes.Float32
+    # Note: there are no fields here because GridSpacing delegates to encodings.Float32
 
 
-class GridSpacingBatch(datatypes.Float32Batch, ComponentBatchMixin):
+class GridSpacingBatch(encodings.Float32Batch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.blueprint.components.GridSpacing"
 
 

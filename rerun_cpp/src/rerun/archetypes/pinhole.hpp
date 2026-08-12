@@ -219,7 +219,7 @@ namespace rerun::archetypes {
         ///
         /// Assumes the principal point to be in the middle of the sensor.
         static Pinhole from_focal_length_and_resolution(
-            const datatypes::Vec2D& focal_length, const datatypes::Vec2D& resolution
+            const encodings::Vec2D& focal_length, const encodings::Vec2D& resolution
         );
 
         /// Creates a symmetric pinhole from the camera focal length and resolution, both specified
@@ -229,7 +229,7 @@ namespace rerun::archetypes {
         ///
         /// Assumes the principal point to be in the middle of the sensor.
         static Pinhole from_focal_length_and_resolution(
-            float focal_length, const datatypes::Vec2D& resolution
+            float focal_length, const encodings::Vec2D& resolution
         ) {
             return from_focal_length_and_resolution({focal_length, focal_length}, resolution);
         }

@@ -1,11 +1,11 @@
 use re_sdk_types::archetypes::SegmentationImage;
 use re_sdk_types::components::{ImageBuffer, ImageFormat};
-use re_sdk_types::datatypes::{self, ChannelDatatype};
+use re_sdk_types::encodings::{self, ChannelDatatype};
 use re_sdk_types::{Archetype as _, AsComponents as _, ComponentBatch as _};
 
 #[test]
 fn segmentation_image_roundtrip() {
-    let format_expected = ImageFormat(datatypes::ImageFormat {
+    let format_expected = ImageFormat(encodings::ImageFormat {
         width: 3,
         height: 2,
         pixel_format: None,

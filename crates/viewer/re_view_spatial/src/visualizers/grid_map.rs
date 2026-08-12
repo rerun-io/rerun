@@ -6,7 +6,7 @@ use re_sdk_types::components::{
     CellSize, Colormap, ImageBuffer, ImageFormat, Opacity, RotationAxisAngle, RotationQuat,
     Translation3D,
 };
-use re_sdk_types::datatypes::ColorModel;
+use re_sdk_types::encodings::ColorModel;
 use re_sdk_types::image::ImageKind;
 use re_sdk_types::reflection::Enum as _;
 use re_viewer_context::{
@@ -346,7 +346,7 @@ impl GridMapVisualizer {
             Colormap::RvizMap | Colormap::RvizCostmap | Colormap::Costmap
         ) && !matches!(
             component_data.image.format.datatype(),
-            re_sdk_types::datatypes::ChannelDatatype::U8
+            re_sdk_types::encodings::ChannelDatatype::U8
         ) {
             results.report_for_component(
                 GridMap::descriptor_colormap().component,

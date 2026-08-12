@@ -12,7 +12,7 @@ import yfinance as yf
 
 import rerun as rr
 import rerun.blueprint as rrb
-from rerun.blueprint.datatypes import ComponentSourceKind, VisualizerComponentMapping
+from rerun.blueprint.encodings import ComponentSourceKind, VisualizerComponentMapping
 
 
 def log_market_data(tickers: list[str]) -> None:

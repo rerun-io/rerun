@@ -9,5 +9,5 @@
 #[rust(repr = "transparent")]
 #[rerun(state = "unstable")]
 pub struct ComponentColumnSelector {
-    pub selector: rerun::blueprint::datatypes::ComponentColumnSelector,
+    pub selector: rerun::blueprint::encodings::ComponentColumnSelector,
 }

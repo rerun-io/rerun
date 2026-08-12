@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from .. import datatypes
+from .. import encodings
 from .._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -15,7 +15,7 @@ from .view_coordinates_ext import ViewCoordinatesExt
 __all__ = ["ViewCoordinates", "ViewCoordinatesBatch"]
 
 
-class ViewCoordinates(ViewCoordinatesExt, datatypes.ViewCoordinates, ComponentMixin):
+class ViewCoordinates(ViewCoordinatesExt, encodings.ViewCoordinates, ComponentMixin):
     """
     **Component**: An orientation convention for a camera or 3D view.
 
@@ -34,10 +34,10 @@ class ViewCoordinates(ViewCoordinatesExt, datatypes.ViewCoordinates, ComponentMi
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of ViewCoordinatesExt in view_coordinates_ext.py
 
-    # Note: there are no fields here because ViewCoordinates delegates to datatypes.ViewCoordinates
+    # Note: there are no fields here because ViewCoordinates delegates to encodings.ViewCoordinates
 
 
-class ViewCoordinatesBatch(datatypes.ViewCoordinatesBatch, ComponentBatchMixin):
+class ViewCoordinatesBatch(encodings.ViewCoordinatesBatch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.components.ViewCoordinates"
 
 

@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "../datatypes/multi_enum.hpp"
+#include "../encodings/multi_enum.hpp"
 
 #include <cstdint>
 #include <memory>
@@ -18,21 +18,21 @@ namespace arrow {
 
 namespace rerun::components {
     struct AffixFuzzer23 {
-        std::optional<rerun::datatypes::MultiEnum> multi_enum;
+        std::optional<rerun::encodings::MultiEnum> multi_enum;
 
       public:
         AffixFuzzer23() = default;
 
-        AffixFuzzer23(std::optional<rerun::datatypes::MultiEnum> multi_enum_)
+        AffixFuzzer23(std::optional<rerun::encodings::MultiEnum> multi_enum_)
             : multi_enum(multi_enum_) {}
 
-        AffixFuzzer23& operator=(std::optional<rerun::datatypes::MultiEnum> multi_enum_) {
+        AffixFuzzer23& operator=(std::optional<rerun::encodings::MultiEnum> multi_enum_) {
             multi_enum = multi_enum_;
             return *this;
         }
 
-        /// Cast to the underlying MultiEnum datatype
-        operator std::optional<rerun::datatypes::MultiEnum>() const {
+        /// Cast to the underlying MultiEnum encoding
+        operator std::optional<rerun::encodings::MultiEnum>() const {
             return multi_enum;
         }
     };

@@ -13,7 +13,7 @@ use crossbeam::channel::Sender;
 use re_chunk::{Chunk, ChunkBuilder, ChunkId, EntityPath, RowId, TimePoint};
 use re_sdk_types::archetypes::{Asset3D, CoordinateFrame, InstancePoses3D, Transform3D};
 use re_sdk_types::components::Color;
-use re_sdk_types::datatypes::{Rgba32, Vec3D};
+use re_sdk_types::encodings::{Rgba32, Vec3D};
 use re_sdk_types::external::glam;
 use re_sdk_types::{AsComponents, Component as _, ComponentDescriptor};
 use urdf_rs::{Geometry, Joint, Vec3, Vec4};

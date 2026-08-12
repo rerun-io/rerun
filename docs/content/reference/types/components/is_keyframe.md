@@ -11,8 +11,8 @@ Not every intra-coded frame qualifies. Some codecs have intra-only frames that m
 still reference existing decoder state and are therefore not valid sync points.
 See [`components.VideoCodec`](https://rerun.io/docs/reference/types/components/video_codec) for the codec-specific definition of a keyframe.
 
-## Rerun datatype
-[`Bool`](../datatypes/bool.md)
+## Rerun encoding
+[`Bool`](../encodings/bool.md)
 
 
 ## Arrow datatype

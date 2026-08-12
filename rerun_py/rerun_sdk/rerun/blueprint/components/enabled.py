@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from ... import datatypes
+from ... import encodings
 from ..._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,7 +14,7 @@ from ..._baseclasses import (
 __all__ = ["Enabled", "EnabledBatch"]
 
 
-class Enabled(datatypes.Bool, ComponentMixin):
+class Enabled(encodings.Bool, ComponentMixin):
     """
     **Component**: Whether a procedure is enabled.
 
@@ -24,10 +24,10 @@ class Enabled(datatypes.Bool, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of EnabledExt in enabled_ext.py
 
-    # Note: there are no fields here because Enabled delegates to datatypes.Bool
+    # Note: there are no fields here because Enabled delegates to encodings.Bool
 
 
-class EnabledBatch(datatypes.BoolBatch, ComponentBatchMixin):
+class EnabledBatch(encodings.BoolBatch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.blueprint.components.Enabled"
 
 

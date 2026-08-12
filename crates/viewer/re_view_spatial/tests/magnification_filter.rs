@@ -34,7 +34,7 @@ fn run_magnification_filter_test(
             &re_sdk_types::archetypes::Image::from_elements(
                 &pixels,
                 size,
-                re_sdk_types::datatypes::ColorModel::RGB,
+                re_sdk_types::encodings::ColorModel::RGB,
             )
             .with_magnification_filter(filter),
         )

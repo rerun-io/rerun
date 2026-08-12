@@ -18,7 +18,7 @@
 namespace rerun::archetypes {
     /// **Archetype**: An N-dimensional array of numbers.
     ///
-    /// Since the underlying `rerun::datatypes::TensorData` uses `rerun::Collection` internally,
+    /// Since the underlying `rerun::encodings::TensorData` uses `rerun::Collection` internally,
     /// data can be passed in without a copy from raw pointers or by reference from `std::vector`/`std::array`/c-arrays.
     /// If needed, this "borrow-behavior" can be extended by defining your own `rerun::CollectionAdapter`.
     ///
@@ -89,21 +89,21 @@ namespace rerun::archetypes {
         RR_DISABLE_MAYBE_UNINITIALIZED_PUSH
 
         /// New Tensor from dimensions and tensor buffer.
-        Tensor(Collection<uint64_t> shape, datatypes::TensorBuffer buffer)
-            : Tensor(datatypes::TensorData(std::move(shape), std::move(buffer))) {}
+        Tensor(Collection<uint64_t> shape, encodings::TensorBuffer buffer)
+            : Tensor(encodings::TensorData(std::move(shape), std::move(buffer))) {}
 
         RR_DISABLE_MAYBE_UNINITIALIZED_POP
 
         /// New tensor from dimensions and pointer to tensor data.
         ///
-        /// Type must be one of the types supported by `rerun::datatypes::TensorData`.
+        /// Type must be one of the types supported by `rerun::encodings::TensorData`.
         /// \param shape
         /// Shape of the image. Determines the number of elements expected to be in `data`.
         /// \param data_
         /// Target of the pointer must outlive the archetype.
         template <typename TElement>
         explicit Tensor(Collection<uint64_t> shape, const TElement* data_)
-            : Tensor(datatypes::TensorData(std::move(shape), data_)) {}
+            : Tensor(encodings::TensorData(std::move(shape), data_)) {}
 
         /// Update the `names` of the contained `TensorData` dimensions.
         ///

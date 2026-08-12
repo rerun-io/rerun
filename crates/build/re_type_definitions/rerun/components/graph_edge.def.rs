@@ -7,5 +7,5 @@
 #[rust(repr = "transparent")]
 #[rerun(state = "stable")]
 pub struct GraphEdge {
-    pub edge: rerun::datatypes::Utf8Pair,
+    pub edge: rerun::encodings::Utf8Pair,
 }

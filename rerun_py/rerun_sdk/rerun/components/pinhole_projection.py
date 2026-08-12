@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from .. import datatypes
+from .. import encodings
 from .._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,7 +14,7 @@ from .._baseclasses import (
 __all__ = ["PinholeProjection", "PinholeProjectionBatch"]
 
 
-class PinholeProjection(datatypes.Mat3x3, ComponentMixin):
+class PinholeProjection(encodings.Mat3x3, ComponentMixin):
     """
     **Component**: Camera projection, from image coordinates to view coordinates.
 
@@ -33,10 +33,10 @@ class PinholeProjection(datatypes.Mat3x3, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of PinholeProjectionExt in pinhole_projection_ext.py
 
-    # Note: there are no fields here because PinholeProjection delegates to datatypes.Mat3x3
+    # Note: there are no fields here because PinholeProjection delegates to encodings.Mat3x3
 
 
-class PinholeProjectionBatch(datatypes.Mat3x3Batch, ComponentBatchMixin):
+class PinholeProjectionBatch(encodings.Mat3x3Batch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.components.PinholeProjection"
 
 

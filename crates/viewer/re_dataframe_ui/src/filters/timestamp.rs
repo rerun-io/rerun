@@ -25,7 +25,7 @@ use datafusion::logical_expr::{Expr, TypeSignature, col, not};
 use jiff::{RoundMode, Timestamp, TimestampRound, ToSpan as _};
 use re_log_types::TimestampFormat;
 use re_types_core::Loggable as _;
-use re_types_core::datatypes::TimeInt;
+use re_types_core::encodings::TimeInt;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_ui::{DesignTokens, SyntaxHighlighting, UiExt as _};
 use strum::VariantArray as _;

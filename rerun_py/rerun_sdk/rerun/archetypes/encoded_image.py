@@ -11,7 +11,7 @@ import numpy as np
 import pyarrow as pa
 from attrs import define, field
 
-from .. import components, datatypes
+from .. import components, encodings
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
@@ -22,7 +22,7 @@ from ..error_utils import catch_and_log_exceptions
 from .encoded_image_ext import EncodedImageExt
 
 if TYPE_CHECKING:
-    from ..blueprint.datatypes import VisualizerComponentMappingLike
+    from ..blueprint.encodings import VisualizerComponentMappingLike
 
 __all__ = ["EncodedImage"]
 
@@ -89,10 +89,10 @@ class EncodedImage(EncodedImageExt, Archetype, VisualizableArchetype):
         cls,
         *,
         clear_unset: bool = False,
-        blob: datatypes.BlobLike | None = None,
-        media_type: datatypes.Utf8Like | None = None,
-        opacity: datatypes.Float32Like | None = None,
-        draw_order: datatypes.Float32Like | None = None,
+        blob: encodings.BlobLike | None = None,
+        media_type: encodings.Utf8Like | None = None,
+        opacity: encodings.Float32Like | None = None,
+        draw_order: encodings.Float32Like | None = None,
         magnification_filter: components.MagnificationFilterLike | None = None,
     ) -> EncodedImage:
         """
@@ -194,10 +194,10 @@ class EncodedImage(EncodedImageExt, Archetype, VisualizableArchetype):
     def columns(
         cls,
         *,
-        blob: datatypes.BlobArrayLike | None = None,
-        media_type: datatypes.Utf8ArrayLike | None = None,
-        opacity: datatypes.Float32ArrayLike | None = None,
-        draw_order: datatypes.Float32ArrayLike | None = None,
+        blob: encodings.BlobArrayLike | None = None,
+        media_type: encodings.Utf8ArrayLike | None = None,
+        opacity: encodings.Float32ArrayLike | None = None,
+        draw_order: encodings.Float32ArrayLike | None = None,
         magnification_filter: components.MagnificationFilterArrayLike | None = None,
     ) -> ComponentColumnList:
         """

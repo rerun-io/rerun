@@ -199,7 +199,7 @@ namespace rerun::archetypes {
         //
         // TODO(andreas): This should not take an std::vector.
         static Ellipsoids3D from_centers_and_radii(
-            const std::vector<datatypes::Vec3D>& centers, const std::vector<float>& radii
+            const std::vector<encodings::Vec3D>& centers, const std::vector<float>& radii
         );
 
         /// Creates new `Ellipsoids3D` with `half_sizes` centered around the local origin.

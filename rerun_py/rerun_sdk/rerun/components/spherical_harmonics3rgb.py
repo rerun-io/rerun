@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from .. import datatypes
+from .. import encodings
 from .._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,7 +14,7 @@ from .._baseclasses import (
 __all__ = ["SphericalHarmonics3Rgb", "SphericalHarmonics3RgbBatch"]
 
 
-class SphericalHarmonics3Rgb(datatypes.SphericalHarmonics3Rgb, ComponentMixin):
+class SphericalHarmonics3Rgb(encodings.SphericalHarmonics3Rgb, ComponentMixin):
     """
     **Component**: View-dependent color, expressed as spherical harmonics coefficients of degrees 1 through 3.
 
@@ -26,10 +26,10 @@ class SphericalHarmonics3Rgb(datatypes.SphericalHarmonics3Rgb, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of SphericalHarmonics3RgbExt in spherical_harmonics3rgb_ext.py
 
-    # Note: there are no fields here because SphericalHarmonics3Rgb delegates to datatypes.SphericalHarmonics3Rgb
+    # Note: there are no fields here because SphericalHarmonics3Rgb delegates to encodings.SphericalHarmonics3Rgb
 
 
-class SphericalHarmonics3RgbBatch(datatypes.SphericalHarmonics3RgbBatch, ComponentBatchMixin):
+class SphericalHarmonics3RgbBatch(encodings.SphericalHarmonics3RgbBatch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.components.SphericalHarmonics3Rgb"
 
 

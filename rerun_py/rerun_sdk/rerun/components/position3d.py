@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from .. import datatypes
+from .. import encodings
 from .._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,16 +14,16 @@ from .._baseclasses import (
 __all__ = ["Position3D", "Position3DBatch"]
 
 
-class Position3D(datatypes.Vec3D, ComponentMixin):
+class Position3D(encodings.Vec3D, ComponentMixin):
     """**Component**: A position in 3D space."""
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of Position3DExt in position3d_ext.py
 
-    # Note: there are no fields here because Position3D delegates to datatypes.Vec3D
+    # Note: there are no fields here because Position3D delegates to encodings.Vec3D
 
 
-class Position3DBatch(datatypes.Vec3DBatch, ComponentBatchMixin):
+class Position3DBatch(encodings.Vec3DBatch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.components.Position3D"
 
 

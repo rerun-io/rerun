@@ -15,7 +15,7 @@ use re_log_types::EntityPath;
 use re_sdk_types::ComponentDescriptor;
 use re_sdk_types::blueprint::components::{ComponentColumnSelector, QueryExpression};
 use re_sdk_types::components::{self, GraphEdge, GraphNode, ImageFormat, Text};
-use re_sdk_types::datatypes::{ChannelDatatype, PixelFormat};
+use re_sdk_types::encodings::{ChannelDatatype, PixelFormat};
 use re_test_context::TestContext;
 use re_types_core::reflection::Reflection;
 use re_types_core::{Component, ComponentBatch, ComponentType};

@@ -10,7 +10,7 @@ use arrow::datatypes::{DataType, Field};
 use itertools::Itertools as _;
 use re_lenses_core::combinators::Error;
 use re_sdk_types::Loggable as _;
-use re_sdk_types::datatypes::ImageFormat;
+use re_sdk_types::encodings::ImageFormat;
 
 use crate::semantic::helpers::get_field_as;
 

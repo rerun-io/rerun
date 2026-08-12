@@ -574,7 +574,7 @@ impl DataQueryPropertyResolver<'_> {
 
                         let (_high, low) = uuid.as_u64_pair();
                         let id = VisualizerInstructionId::from(
-                            re_sdk_types::datatypes::Uuid::from(uuid),
+                            re_sdk_types::encodings::Uuid::from(uuid),
                         );
                         known_ids.insert(low, id);
                     }

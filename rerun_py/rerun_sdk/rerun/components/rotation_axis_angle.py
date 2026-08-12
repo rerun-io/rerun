@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from .. import datatypes
+from .. import encodings
 from .._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,7 +14,7 @@ from .._baseclasses import (
 __all__ = ["RotationAxisAngle", "RotationAxisAngleBatch"]
 
 
-class RotationAxisAngle(datatypes.RotationAxisAngle, ComponentMixin):
+class RotationAxisAngle(encodings.RotationAxisAngle, ComponentMixin):
     """
     **Component**: 3D rotation represented by a rotation around a given axis.
 
@@ -25,10 +25,10 @@ class RotationAxisAngle(datatypes.RotationAxisAngle, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of RotationAxisAngleExt in rotation_axis_angle_ext.py
 
-    # Note: there are no fields here because RotationAxisAngle delegates to datatypes.RotationAxisAngle
+    # Note: there are no fields here because RotationAxisAngle delegates to encodings.RotationAxisAngle
 
 
-class RotationAxisAngleBatch(datatypes.RotationAxisAngleBatch, ComponentBatchMixin):
+class RotationAxisAngleBatch(encodings.RotationAxisAngleBatch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.components.RotationAxisAngle"
 
 

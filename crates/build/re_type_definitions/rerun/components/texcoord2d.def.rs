@@ -25,5 +25,5 @@
 #[rust(repr = "transparent")]
 #[rerun(state = "stable")]
 pub struct Texcoord2D {
-    pub uv: rerun::datatypes::Vec2D,
+    pub uv: rerun::encodings::Vec2D,
 }

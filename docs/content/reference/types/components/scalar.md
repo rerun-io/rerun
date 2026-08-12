@@ -7,8 +7,8 @@ A scalar value, encoded as a 64-bit floating point.
 
 Used for time series plots.
 
-## Rerun datatype
-[`Float64`](../datatypes/float64.md)
+## Rerun encoding
+[`Float64`](../encodings/float64.md)
 
 
 ## Arrow datatype

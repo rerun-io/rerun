@@ -9,7 +9,7 @@ from typing import Any, ClassVar
 
 from attrs import define, field
 
-from ... import components, datatypes
+from ... import components, encodings
 from ..._baseclasses import (
     Archetype,
     ComponentDescriptor,
@@ -32,11 +32,11 @@ class ViewBlueprint(Archetype):
 
     def __init__(
         self: Any,
-        class_identifier: datatypes.Utf8Like,
+        class_identifier: encodings.Utf8Like,
         *,
-        display_name: datatypes.Utf8Like | None = None,
-        space_origin: datatypes.EntityPathLike | None = None,
-        visible: datatypes.BoolLike | None = None,
+        display_name: encodings.Utf8Like | None = None,
+        space_origin: encodings.EntityPathLike | None = None,
+        visible: encodings.BoolLike | None = None,
     ) -> None:
         """
         Create a new instance of the ViewBlueprint archetype.
@@ -93,10 +93,10 @@ class ViewBlueprint(Archetype):
         cls,
         *,
         clear_unset: bool = False,
-        class_identifier: datatypes.Utf8Like | None = None,
-        display_name: datatypes.Utf8Like | None = None,
-        space_origin: datatypes.EntityPathLike | None = None,
-        visible: datatypes.BoolLike | None = None,
+        class_identifier: encodings.Utf8Like | None = None,
+        display_name: encodings.Utf8Like | None = None,
+        space_origin: encodings.EntityPathLike | None = None,
+        visible: encodings.BoolLike | None = None,
     ) -> ViewBlueprint:
         """
         Update only some specific fields of a `ViewBlueprint`.

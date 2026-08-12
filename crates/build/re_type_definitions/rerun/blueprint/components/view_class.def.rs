@@ -9,5 +9,5 @@
 #[rust(repr = "transparent")]
 #[rerun(state = "unstable")]
 pub struct ViewClass {
-    pub value: rerun::datatypes::Utf8,
+    pub value: rerun::encodings::Utf8,
 }

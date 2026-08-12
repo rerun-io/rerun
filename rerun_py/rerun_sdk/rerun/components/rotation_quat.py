@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from .. import datatypes
+from .. import encodings
 from .._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,7 +14,7 @@ from .._baseclasses import (
 __all__ = ["RotationQuat", "RotationQuatBatch"]
 
 
-class RotationQuat(datatypes.Quaternion, ComponentMixin):
+class RotationQuat(encodings.Quaternion, ComponentMixin):
     """
     **Component**: A 3D rotation expressed as a quaternion.
 
@@ -26,10 +26,10 @@ class RotationQuat(datatypes.Quaternion, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of RotationQuatExt in rotation_quat_ext.py
 
-    # Note: there are no fields here because RotationQuat delegates to datatypes.Quaternion
+    # Note: there are no fields here because RotationQuat delegates to encodings.Quaternion
 
 
-class RotationQuatBatch(datatypes.QuaternionBatch, ComponentBatchMixin):
+class RotationQuatBatch(encodings.QuaternionBatch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.components.RotationQuat"
 
 

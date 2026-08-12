@@ -27,10 +27,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Debug, Copy, PartialEq, Eq, ::re_byte_size::SizeBytes)]
 #[repr(transparent)]
-pub struct TimeRange(pub crate::datatypes::TimeRange);
+pub struct TimeRange(pub crate::encodings::TimeRange);
 
 impl ::re_types_core::WrapperComponent for TimeRange {
-    type Datatype = crate::datatypes::TimeRange;
+    type Encoding = crate::encodings::TimeRange;
 
     #[inline]
     fn name() -> ComponentType {
@@ -38,38 +38,38 @@ impl ::re_types_core::WrapperComponent for TimeRange {
     }
 
     #[inline]
-    fn into_inner(self) -> Self::Datatype {
+    fn into_inner(self) -> Self::Encoding {
         self.0
     }
 }
 
 ::re_types_core::macros::impl_into_cow!(TimeRange);
 
-impl<T: Into<crate::datatypes::TimeRange>> From<T> for TimeRange {
+impl<T: Into<crate::encodings::TimeRange>> From<T> for TimeRange {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl std::borrow::Borrow<crate::datatypes::TimeRange> for TimeRange {
+impl std::borrow::Borrow<crate::encodings::TimeRange> for TimeRange {
     #[inline]
-    fn borrow(&self) -> &crate::datatypes::TimeRange {
+    fn borrow(&self) -> &crate::encodings::TimeRange {
         &self.0
     }
 }
 
 impl std::ops::Deref for TimeRange {
-    type Target = crate::datatypes::TimeRange;
+    type Target = crate::encodings::TimeRange;
 
     #[inline]
-    fn deref(&self) -> &crate::datatypes::TimeRange {
+    fn deref(&self) -> &crate::encodings::TimeRange {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for TimeRange {
     #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::TimeRange {
+    fn deref_mut(&mut self) -> &mut crate::encodings::TimeRange {
         &mut self.0
     }
 }

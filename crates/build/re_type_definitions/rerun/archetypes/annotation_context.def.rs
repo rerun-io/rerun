@@ -9,7 +9,7 @@
 /// path-hierarchy when searching up through the ancestors of a given entity
 /// path.
 ///
-/// See also [`rerun::datatypes::ClassDescription`].
+/// See also [`rerun::encodings::ClassDescription`].
 ///
 /// \example archetypes/annotation_context_rects !api title="Rectangles" image="https://static.rerun.io/annotation_context_rects/9b446c36011ed30fce7dc6ed03d5fd9557460f70/1200w.png"
 /// \example archetypes/annotation_context_segmentation title="Segmentation" image="https://static.rerun.io/annotation_context_segmentation/6c9e88fc9d44a08031cadd444c2e58a985cc1208/1200w.png""

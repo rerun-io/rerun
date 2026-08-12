@@ -26,5 +26,5 @@ pub use re_types_builder_prelude::{Binary, f16, rerun_type};
 pub mod archetypes;
 pub mod blueprint;
 pub mod components;
-pub mod datatypes;
+pub mod encodings;
 pub mod testing;

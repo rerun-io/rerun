@@ -9,5 +9,5 @@
 #[rerun(state = "unstable")]
 pub struct TextLogColumn {
     /// The text log column.
-    pub text_log_column: rerun::blueprint::datatypes::TextLogColumn,
+    pub text_log_column: rerun::blueprint::encodings::TextLogColumn,
 }

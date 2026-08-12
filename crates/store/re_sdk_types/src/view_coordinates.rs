@@ -1,6 +1,6 @@
 #![expect(missing_docs)]
 
-pub use crate::datatypes::ViewDir;
+pub use crate::encodings::ViewDir;
 
 /// One of `X`, `Y`, `Z`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]

@@ -5,9 +5,9 @@ use re_log::ResultExt as _;
 use re_log_types::{EntityPath, TimelineName};
 use re_sdk_types::blueprint::archetypes::{TextLogColumns, TextLogFormat, TextLogRows};
 use re_sdk_types::blueprint::components::{Enabled, TextLogColumn, TimelineColumn};
-use re_sdk_types::blueprint::datatypes as bp_datatypes;
+use re_sdk_types::blueprint::encodings as bp_encodings;
 use re_sdk_types::components::TextLogLevel;
-use re_sdk_types::{View as _, ViewClassIdentifier, datatypes};
+use re_sdk_types::{View as _, ViewClassIdentifier, encodings};
 use re_ui::list_item::LabelContent;
 use re_ui::{DesignTokens, Help, UiExt as _};
 use re_viewer_context::{
@@ -92,7 +92,7 @@ Filter message types and toggle column visibility in a selection panel.",
             TextLogColumns::descriptor_timeline_columns().component,
             |ctx| {
                 let active_timeline = ctx.viewer_ctx().time_ctrl.timeline_name();
-                vec![TimelineColumn(bp_datatypes::TimelineColumn {
+                vec![TimelineColumn(bp_encodings::TimelineColumn {
                     visible: true.into(),
                     timeline: active_timeline.as_str().into(),
                 })]
@@ -103,12 +103,12 @@ Filter message types and toggle column visibility in a selection panel.",
             TextLogColumns::descriptor_text_log_columns().component,
             |_ctx| {
                 [
-                    bp_datatypes::TextLogColumnKind::EntityPath,
-                    bp_datatypes::TextLogColumnKind::LogLevel,
-                    bp_datatypes::TextLogColumnKind::Body,
+                    bp_encodings::TextLogColumnKind::EntityPath,
+                    bp_encodings::TextLogColumnKind::LogLevel,
+                    bp_encodings::TextLogColumnKind::Body,
                 ]
                 .map(|kind| {
-                    TextLogColumn(bp_datatypes::TextLogColumn {
+                    TextLogColumn(bp_encodings::TextLogColumn {
                         kind,
                         visible: true.into(),
                     })
@@ -129,7 +129,7 @@ Filter message types and toggle column visibility in a selection panel.",
                 state
                     .seen_levels
                     .iter()
-                    .map(|lvl| TextLogLevel(datatypes::Utf8::from(lvl.as_str())))
+                    .map(|lvl| TextLogLevel(encodings::Utf8::from(lvl.as_str())))
                     .collect::<Vec<_>>()
             },
         );
@@ -351,11 +351,11 @@ fn table_ui(
         }
 
         let col = match col.kind {
-            bp_datatypes::TextLogColumnKind::EntityPath => {
+            bp_encodings::TextLogColumnKind::EntityPath => {
                 size_column(Column::auto().clip(true), 32)
             }
-            bp_datatypes::TextLogColumnKind::LogLevel => size_column(Column::auto(), 30),
-            bp_datatypes::TextLogColumnKind::Body => size_column(Column::remainder(), 100),
+            bp_encodings::TextLogColumnKind::LogLevel => size_column(Column::auto(), 30),
+            bp_encodings::TextLogColumnKind::Body => size_column(Column::remainder(), 100),
         };
 
         table_builder = table_builder.column(col);
@@ -442,7 +442,7 @@ fn table_ui(
                     }
 
                     row.col(|ui| match col.kind {
-                        bp_datatypes::TextLogColumnKind::EntityPath => {
+                        bp_encodings::TextLogColumnKind::EntityPath => {
                             item_ui::entity_path_button(
                                 &ctx.active_recording_store_view_context(),
                                 ui,
@@ -450,14 +450,14 @@ fn table_ui(
                                 &entry.entity_path,
                             );
                         }
-                        bp_datatypes::TextLogColumnKind::LogLevel => {
+                        bp_encodings::TextLogColumnKind::LogLevel => {
                             if let Some(lvl) = &entry.level {
                                 ui.label(level_to_rich_text(ui, lvl));
                             } else {
                                 ui.label("-");
                             }
                         }
-                        bp_datatypes::TextLogColumnKind::Body => {
+                        bp_encodings::TextLogColumnKind::Body => {
                             let mut text = egui::RichText::new(entry.body.as_str());
 
                             if monospace_body {
@@ -485,7 +485,7 @@ fn table_ui(
     }
 }
 
-fn column_name_ui(ui: &mut egui::Ui, column: &bp_datatypes::TextLogColumnKind) -> egui::Response {
+fn column_name_ui(ui: &mut egui::Ui, column: &bp_encodings::TextLogColumnKind) -> egui::Response {
     ui.strong(column.name())
 }
 

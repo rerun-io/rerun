@@ -31,10 +31,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
     Clone, Debug, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable, ::re_byte_size::SizeBytes,
 )]
 #[repr(transparent)]
-pub struct Scale3D(pub crate::datatypes::Vec3D);
+pub struct Scale3D(pub crate::encodings::Vec3D);
 
 impl ::re_types_core::WrapperComponent for Scale3D {
-    type Datatype = crate::datatypes::Vec3D;
+    type Encoding = crate::encodings::Vec3D;
 
     #[inline]
     fn name() -> ComponentType {
@@ -42,38 +42,38 @@ impl ::re_types_core::WrapperComponent for Scale3D {
     }
 
     #[inline]
-    fn into_inner(self) -> Self::Datatype {
+    fn into_inner(self) -> Self::Encoding {
         self.0
     }
 }
 
 ::re_types_core::macros::impl_into_cow!(Scale3D);
 
-impl<T: Into<crate::datatypes::Vec3D>> From<T> for Scale3D {
+impl<T: Into<crate::encodings::Vec3D>> From<T> for Scale3D {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl std::borrow::Borrow<crate::datatypes::Vec3D> for Scale3D {
+impl std::borrow::Borrow<crate::encodings::Vec3D> for Scale3D {
     #[inline]
-    fn borrow(&self) -> &crate::datatypes::Vec3D {
+    fn borrow(&self) -> &crate::encodings::Vec3D {
         &self.0
     }
 }
 
 impl std::ops::Deref for Scale3D {
-    type Target = crate::datatypes::Vec3D;
+    type Target = crate::encodings::Vec3D;
 
     #[inline]
-    fn deref(&self) -> &crate::datatypes::Vec3D {
+    fn deref(&self) -> &crate::encodings::Vec3D {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for Scale3D {
     #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Vec3D {
+    fn deref_mut(&mut self) -> &mut crate::encodings::Vec3D {
         &mut self.0
     }
 }

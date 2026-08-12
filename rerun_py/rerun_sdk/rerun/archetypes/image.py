@@ -11,7 +11,7 @@ import numpy as np
 import pyarrow as pa
 from attrs import define, field
 
-from .. import components, datatypes
+from .. import components, encodings
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
@@ -22,7 +22,7 @@ from ..error_utils import catch_and_log_exceptions
 from .image_ext import ImageExt
 
 if TYPE_CHECKING:
-    from ..blueprint.datatypes import VisualizerComponentMappingLike
+    from ..blueprint.encodings import VisualizerComponentMappingLike
 
 __all__ = ["Image"]
 
@@ -145,10 +145,10 @@ class Image(ImageExt, Archetype, VisualizableArchetype):
         cls,
         *,
         clear_unset: bool = False,
-        buffer: datatypes.BlobLike | None = None,
-        format: datatypes.ImageFormatLike | None = None,
-        opacity: datatypes.Float32Like | None = None,
-        draw_order: datatypes.Float32Like | None = None,
+        buffer: encodings.BlobLike | None = None,
+        format: encodings.ImageFormatLike | None = None,
+        opacity: encodings.Float32Like | None = None,
+        draw_order: encodings.Float32Like | None = None,
         magnification_filter: components.MagnificationFilterLike | None = None,
     ) -> Image:
         """
@@ -244,10 +244,10 @@ class Image(ImageExt, Archetype, VisualizableArchetype):
     def columns(
         cls,
         *,
-        buffer: datatypes.BlobArrayLike | None = None,
-        format: datatypes.ImageFormatArrayLike | None = None,
-        opacity: datatypes.Float32ArrayLike | None = None,
-        draw_order: datatypes.Float32ArrayLike | None = None,
+        buffer: encodings.BlobArrayLike | None = None,
+        format: encodings.ImageFormatArrayLike | None = None,
+        opacity: encodings.Float32ArrayLike | None = None,
+        draw_order: encodings.Float32ArrayLike | None = None,
         magnification_filter: components.MagnificationFilterArrayLike | None = None,
     ) -> ComponentColumnList:
         """

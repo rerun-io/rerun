@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from .. import datatypes
+from .. import encodings
 from .._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,16 +14,16 @@ from .._baseclasses import (
 __all__ = ["VoxelValue", "VoxelValueBatch"]
 
 
-class VoxelValue(datatypes.Float32, ComponentMixin):
+class VoxelValue(encodings.Float32, ComponentMixin):
     """**Component**: Optional scalar occupancy or value associated with a voxel."""
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of VoxelValueExt in voxel_value_ext.py
 
-    # Note: there are no fields here because VoxelValue delegates to datatypes.Float32
+    # Note: there are no fields here because VoxelValue delegates to encodings.Float32
 
 
-class VoxelValueBatch(datatypes.Float32Batch, ComponentBatchMixin):
+class VoxelValueBatch(encodings.Float32Batch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.components.VoxelValue"
 
 

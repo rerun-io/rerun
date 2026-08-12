@@ -20,5 +20,5 @@
 #[rust(derive(Copy, PartialEq, Eq, PartialOrd, Ord))]
 #[rust(repr = "transparent")]
 pub struct SphericalHarmonicsDegree {
-    pub degree: rerun::datatypes::UInt32,
+    pub degree: rerun::encodings::UInt32,
 }

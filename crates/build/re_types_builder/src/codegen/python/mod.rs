@@ -61,15 +61,15 @@ fn classmethod_decorators(obj: &Object) -> String {
 trait PythonObjectExt {
     /// Returns `true` if the object is a delegating component.
     ///
-    /// Components can either use a native type, or a custom datatype. In the latter case, the
-    /// component delegates its implementation to the datatype.
+    /// Components can either use a native type, or a custom encoding. In the latter case, the
+    /// component delegates its implementation to the encoding.
     fn is_delegating_component(&self) -> bool;
 
     /// Returns `true` if the object is a non-delegating component.
     fn is_non_delegating_component(&self) -> bool;
 
-    /// If the object is a delegating component, returns the datatype it delegates to.
-    fn delegate_datatype<'a>(&self, objects: &'a Objects) -> Option<&'a Object>;
+    /// If the object is a delegating component, returns the encoding it delegates to.
+    fn delegate_encoding<'a>(&self, objects: &'a Objects) -> Option<&'a Object>;
 }
 
 impl PythonObjectExt for Object {
@@ -81,7 +81,7 @@ impl PythonObjectExt for Object {
         self.kind == ObjectKind::Component && !self.is_delegating_component()
     }
 
-    fn delegate_datatype<'a>(&self, objects: &'a Objects) -> Option<&'a Object> {
+    fn delegate_encoding<'a>(&self, objects: &'a Objects) -> Option<&'a Object> {
         self.is_delegating_component()
             .then(|| {
                 if let Type::Object { fqname } = &self.fields[0].typ {
@@ -331,17 +331,17 @@ fn check_ext_consistency(
     let mut expected_fields = HashSet::new();
 
     for field in &obj.fields {
-        if obj.kind == ObjectKind::Archetype || obj.kind == ObjectKind::Datatype {
-            // For archetypes/datatypes, always use the direct field names since they reference components
+        if obj.kind == ObjectKind::Archetype || obj.kind == ObjectKind::Encoding {
+            // For archetypes/encodings, always use the direct field names since they reference components
             // and we want to use the component names directly, not look inside the components
             expected_fields.insert(&field.name);
         } else {
-            // For components and datatypes, check if this field references another rerun datatype
+            // For components and encodings, check if this field references another rerun encoding
             if let Type::Object { fqname } = &field.typ {
                 if let Some(referenced_obj) = objects.get(fqname) {
-                    // Only apply field indirection if referencing another datatype, not component
-                    if referenced_obj.kind == ObjectKind::Datatype {
-                        // Use the referenced datatype's fields instead of the direct field name
+                    // Only apply field indirection if referencing another encoding, not component
+                    if referenced_obj.kind == ObjectKind::Encoding {
+                        // Use the referenced encoding's fields instead of the direct field name
                         for referenced_field in &referenced_obj.fields {
                             expected_fields.insert(&referenced_field.name);
                         }
@@ -502,7 +502,7 @@ impl PythonCodeGenerator {
                 .expect("We created this for every object");
 
             let names = match obj.kind {
-                ObjectKind::Datatype | ObjectKind::Component => {
+                ObjectKind::Encoding | ObjectKind::Component => {
                     let name = &obj.name;
 
                     if obj.is_delegating_component() {
@@ -519,7 +519,7 @@ impl PythonCodeGenerator {
                 ObjectKind::View | ObjectKind::Archetype => vec![obj.name.clone()],
             };
 
-            // NOTE: Isolating the file stem only works because we're handling datatypes, components
+            // NOTE: Isolating the file stem only works because we're handling encodings, components
             // and archetypes separately (and even then it's a bit shady, eh).
             if obj.is_testing() {
                 &mut test_mods
@@ -633,7 +633,7 @@ impl PythonCodeGenerator {
                 );
                 code.push_unindented(
                     format!(
-                        "from {rerun_path}blueprint.datatypes import VisualizerComponentMappingLike"
+                        "from {rerun_path}blueprint.encodings import VisualizerComponentMappingLike"
                     ),
                     1,
                 );
@@ -647,7 +647,7 @@ impl PythonCodeGenerator {
                 }),
                 obj.fields.iter().filter_map(|field| {
                     let fqname = field.typ.fqname()?;
-                    objects[fqname].delegate_datatype(objects).map(|delegate| {
+                    objects[fqname].delegate_encoding(objects).map(|delegate| {
                         quote_import_clauses_from_fqname(obj.scope().as_ref(), &delegate.fqname)
                     })
                 }),
@@ -701,7 +701,7 @@ impl PythonCodeGenerator {
             files_to_write.insert(filepath.clone(), code);
         }
 
-        // rerun/[{scope}]/{datatypes|components|archetypes|views}/__init__.py
+        // rerun/[{scope}]/{encodings|components|archetypes|views}/__init__.py
         write_init_file(&kind_path, &mods, files_to_write);
         write_init_file(&test_kind_path, &test_mods, files_to_write);
         for (scope, mods) in scoped_mods {
@@ -834,14 +834,14 @@ fn code_for_struct(
     // Delegating component inheritance comes after the `ExtensionClass`
     // This way if a component needs to override `__init__` it still can.
     if obj.is_delegating_component() {
-        let delegate = obj.delegate_datatype(objects).unwrap();
+        let delegate = obj.delegate_encoding(objects).unwrap();
         let scope = match delegate.scope() {
             Some(scope) => format!("{scope}_"),
             None => String::new(),
         };
         superclasses.push(format!(
-            "{scope}datatypes.{}",
-            obj.delegate_datatype(objects).unwrap().name
+            "{scope}encodings.{}",
+            obj.delegate_encoding(objects).unwrap().name
         ));
     }
 
@@ -927,9 +927,9 @@ fn code_for_struct(
         code.push_indented(
             1,
             format!(
-                "# Note: there are no fields here because {} delegates to datatypes.{}",
+                "# Note: there are no fields here because {} delegates to encodings.{}",
                 obj.name,
-                obj.delegate_datatype(objects).unwrap().name
+                obj.delegate_encoding(objects).unwrap().name
             ),
             1,
         );
@@ -1059,7 +1059,7 @@ fn code_for_struct(
                 1,
             );
         }
-        ObjectKind::Datatype => {
+        ObjectKind::Encoding => {
             code.push_indented(
                 0,
                 quote_arrow_support_from_obj(reporter, type_registry, ext_class, objects, obj),
@@ -1084,7 +1084,7 @@ fn code_for_enum(
     assert!(obj.class.is_enum());
     assert!(matches!(
         obj.kind,
-        ObjectKind::Datatype | ObjectKind::Component
+        ObjectKind::Encoding | ObjectKind::Component
     ));
 
     let Object {
@@ -1229,7 +1229,7 @@ def auto(cls, val: str | int | {enum_name}) -> {enum_name}:
         ObjectKind::Archetype => {
             reporter.error(&obj.virtpath, &obj.fqname, "An archetype cannot be an enum");
         }
-        ObjectKind::Component | ObjectKind::Datatype => {
+        ObjectKind::Component | ObjectKind::Encoding => {
             code.push_indented(
                 0,
                 quote_arrow_support_from_obj(reporter, type_registry, ext_class, objects, obj),
@@ -1253,7 +1253,7 @@ fn code_for_union(
     obj: &Object,
 ) -> String {
     assert_eq!(obj.class, ObjectClass::Union);
-    assert_eq!(obj.kind, ObjectKind::Datatype);
+    assert_eq!(obj.kind, ObjectKind::Encoding);
 
     let Object {
         name, kind, fields, ..
@@ -1340,7 +1340,7 @@ fn code_for_union(
         field_types.iter().next().unwrap().clone()
     };
 
-    // components and datatypes have converters only if manually provided
+    // components and encodings have converters only if manually provided
     let converter_override_name = format!("inner{FIELD_CONVERTER_SUFFIX}");
 
     let converter = if ext_class
@@ -1396,7 +1396,7 @@ fn code_for_union(
         ObjectKind::Component => {
             reporter.error(&obj.virtpath, &obj.fqname, "An component cannot be an enum");
         }
-        ObjectKind::Datatype => {
+        ObjectKind::Encoding => {
             code.push_indented(
                 0,
                 quote_arrow_support_from_obj(reporter, type_registry, ext_class, objects, obj),
@@ -1625,7 +1625,7 @@ fn quote_union_kind_from_fields(
 /// Automatically implement `__array__` if the object is a single
 /// `npt.ArrayLike`/integer/floating-point field.
 ///
-/// Only applies to datatypes and components.
+/// Only applies to encodings and components.
 fn quote_array_method_from_obj(
     ext_class: &ExtensionClass,
     objects: &Objects,
@@ -1694,7 +1694,7 @@ fn quote_len_method_from_obj(ext_class: &ExtensionClass, obj: &Object) -> String
 /// Automatically implement `__str__`, `__int__`, or `__float__` as well as `__hash__` methods if the object has a single
 /// field of the corresponding type that is not optional.
 ///
-/// Only applies to datatypes and components.
+/// Only applies to encodings and components.
 fn quote_native_types_method_from_obj(objects: &Objects, obj: &Object) -> String {
     let typ = quote_field_type_from_field(objects, &obj.fields[0], false).0;
     let typ = typ.as_str();
@@ -1724,7 +1724,7 @@ fn quote_native_types_method_from_obj(objects: &Objects, obj: &Object) -> String
     ))
 }
 
-/// Only applies to datatypes and components.
+/// Only applies to encodings and components.
 fn quote_aliases_from_object(obj: &Object) -> String {
     assert_ne!(obj.kind, ObjectKind::Archetype);
 
@@ -1779,7 +1779,7 @@ fn quote_aliases_from_object(obj: &Object) -> String {
     code
 }
 
-/// Quote typing aliases for union datatypes. The types for the union arms are automatically
+/// Quote typing aliases for union encodings. The types for the union arms are automatically
 /// included.
 fn quote_union_aliases_from_object<'a>(
     obj: &Object,
@@ -1831,14 +1831,14 @@ fn quote_import_clauses_from_field(
         _ => None,
     };
 
-    // NOTE: The distinction between `from .` vs. `from rerun.datatypes` has been shown to fix some
+    // NOTE: The distinction between `from .` vs. `from rerun.encodings` has been shown to fix some
     // nasty lazy circular dependencies in weird edge cases…
     // In any case it will be normalized by `ruff` if it turns out to be unnecessary.
     fqname.map(|fqname| quote_import_clauses_from_fqname(obj_scope, fqname))
 }
 
 fn quote_import_clauses_from_fqname(obj_scope: Option<&String>, fqname: &str) -> String {
-    // NOTE: The distinction between `from .` vs. `from rerun.datatypes` has been shown to fix some
+    // NOTE: The distinction between `from .` vs. `from rerun.encodings` has been shown to fix some
     // nasty lazy circular dependencies in weird edge cases…
     // In any case it will be normalized by `ruff` if it turns out to be unnecessary.
 
@@ -1846,10 +1846,10 @@ fn quote_import_clauses_from_fqname(obj_scope: Option<&String>, fqname: &str) ->
     let (from, class) = fqname.rsplit_once('.').unwrap_or(("", fqname.as_str()));
 
     if let Some(scope) = obj_scope {
-        if from.starts_with("rerun.datatypes") {
-            "from ... import datatypes".to_owned() // NOLINT
-        } else if from.starts_with(format!("rerun.{scope}.datatypes").as_str()) {
-            format!("from ...{scope} import datatypes as {scope}_datatypes") // NOLINT
+        if from.starts_with("rerun.encodings") {
+            "from ... import encodings".to_owned() // NOLINT
+        } else if from.starts_with(format!("rerun.{scope}.encodings").as_str()) {
+            format!("from ...{scope} import encodings as {scope}_encodings") // NOLINT
         } else if from.starts_with("rerun.components") {
             "from ... import components".to_owned() // NOLINT
         } else if from.starts_with(format!("rerun.{scope}.components").as_str()) {
@@ -1865,8 +1865,8 @@ fn quote_import_clauses_from_fqname(obj_scope: Option<&String>, fqname: &str) ->
         } else {
             format!("from {from} import {class}")
         }
-    } else if from.starts_with("rerun.datatypes") {
-        "from .. import datatypes".to_owned()
+    } else if from.starts_with("rerun.encodings") {
+        "from .. import encodings".to_owned()
     } else if from.starts_with("rerun.components") {
         "from .. import components".to_owned()
     } else if from.starts_with("rerun.archetypes") {
@@ -2094,9 +2094,9 @@ fn quote_enum_array_field_converter(
         field.name
     );
     let enum_name = &enum_obj.name;
-    // E.g. `datatypes.EnumTest`. This relies on the module (e.g. `datatypes`) being importable
+    // E.g. `encodings.EnumTest`. This relies on the module (e.g. `encodings`) being importable
     // relative to the generated file, which also works for the test types (where the absolute
-    // `rerun.testing.datatypes` path does not exist).
+    // `rerun.testing.encodings` path does not exist).
     let enum_type = fqname_to_type(&enum_obj.fqname);
     let enum_module = enum_type.rsplit_once('.').map_or_else(
         || panic!("Missing '.' separator in type: {enum_type:?}"),
@@ -2159,10 +2159,10 @@ fn fqname_to_type(fqname: &str) -> String {
     let parts = fqname.split('.').collect::<Vec<_>>();
 
     match parts[..] {
-        ["rerun", "datatypes", name] => format!("datatypes.{name}"),
+        ["rerun", "encodings", name] => format!("encodings.{name}"),
         ["rerun", "components", name] => format!("components.{name}"),
         ["rerun", "archetypes", name] => format!("archetypes.{name}"),
-        ["rerun", scope, "datatypes", name] => format!("{scope}_datatypes.{name}"),
+        ["rerun", scope, "encodings", name] => format!("{scope}_encodings.{name}"),
         ["rerun", scope, "components", name] => format!("{scope}_components.{name}"),
         ["rerun", scope, "archetypes", name] => format!("{scope}_archetypes.{name}"),
         _ => {
@@ -2209,8 +2209,8 @@ fn quote_type_from_element_type(typ: &ElementType) -> String {
 
 /// Arrow support objects
 ///
-/// Generated for Components using native types and Datatypes. Components using a Datatype instead
-/// delegate to the Datatype's arrow support.
+/// Generated for Components using native types and Encodings. Components using an Encoding instead
+/// delegate to the Encoding's arrow support.
 fn quote_arrow_support_from_obj(
     reporter: &Reporter,
     type_registry: &TypeRegistry,
@@ -2223,26 +2223,26 @@ fn quote_arrow_support_from_obj(
     let mut type_superclasses: Vec<String> = vec![];
     let mut batch_superclasses: Vec<String> = vec![];
 
-    let many_aliases = if let Some(data_type) = obj.delegate_datatype(objects) {
+    let many_aliases = if let Some(data_type) = obj.delegate_encoding(objects) {
         let scope = match data_type.scope() {
             Some(scope) => format!("{scope}."),
             None => String::new(),
         };
-        format!("{scope}datatypes{}ArrayLike", data_type.name)
+        format!("{scope}encodings{}ArrayLike", data_type.name)
     } else {
         format!("{name}ArrayLike")
     };
 
-    if obj.kind == ObjectKind::Datatype {
+    if obj.kind == ObjectKind::Encoding {
         batch_superclasses.push(format!("BaseBatch[{many_aliases}]"));
     } else if obj.kind == ObjectKind::Component {
-        if let Some(data_type) = obj.delegate_datatype(objects) {
+        if let Some(data_type) = obj.delegate_encoding(objects) {
             let scope = match data_type.scope() {
                 Some(scope) => format!("{scope}_"),
                 None => String::new(),
             };
-            let data_extension_type = format!("{scope}datatypes.{}Type", data_type.name);
-            let data_extension_array = format!("{scope}datatypes.{}Batch", data_type.name);
+            let data_extension_type = format!("{scope}encodings.{}Type", data_type.name);
+            let data_extension_array = format!("{scope}encodings.{}Batch", data_type.name);
             type_superclasses.push(data_extension_type);
             batch_superclasses.push(data_extension_array);
         } else {
@@ -2298,8 +2298,8 @@ fn quote_arrow_support_from_obj(
         format!("({})", batch_superclasses.join(","))
     };
 
-    if obj.kind == ObjectKind::Datatype {
-        // Datatypes and non-delegating components declare init
+    if obj.kind == ObjectKind::Encoding {
+        // Encodings and non-delegating components declare init
         let mut code = unindent(&format!(
             r#"
             class {extension_batch}{batch_superclass_decl}:
@@ -2312,7 +2312,7 @@ fn quote_arrow_support_from_obj(
         code.push_indented(2, native_to_pa_array_impl, 1);
         code
     } else if obj.is_non_delegating_component() {
-        // Datatypes and non-delegating components declare init
+        // Encodings and non-delegating components declare init
         let mut code = unindent(&format!(
             r#"
             class {extension_batch}{batch_superclass_decl}:
@@ -2761,7 +2761,7 @@ fn quote_local_batch_type_imports(fields: &[ObjectField], current_obj_is_testing
             let is_field_testing = crate::objects::is_testing_fqname(field_fqname);
             let import_path = if current_obj_is_testing && is_field_testing {
                 // Extract the relative path within the testing namespace
-                if let Some(testing_prefix) = mod_path.strip_prefix("rerun.testing.datatypes") {
+                if let Some(testing_prefix) = mod_path.strip_prefix("rerun.testing.encodings") {
                     format!(".{testing_prefix}")
                 } else if mod_path == "rerun.testing" {
                     ".".to_owned()
@@ -2789,7 +2789,7 @@ fn quote_parameter_type_alias(
 ) -> String {
     let obj = &objects[arg_type_fqname];
 
-    let base = if let Some(delegate) = obj.delegate_datatype(objects) {
+    let base = if let Some(delegate) = obj.delegate_encoding(objects) {
         fqname_to_type(&delegate.fqname)
     } else if arg_type_fqname == class_fqname {
         // We're in the same namespace, so we can use the object name directly.

@@ -5,8 +5,8 @@ title: "TensorDimensionIndexSelection"
 
 Specifies a concrete index on a tensor dimension.
 
-## Rerun datatype
-[`TensorDimensionIndexSelection`](../datatypes/tensor_dimension_index_selection.md)
+## Rerun encoding
+[`TensorDimensionIndexSelection`](../encodings/tensor_dimension_index_selection.md)
 
 
 ## Arrow datatype

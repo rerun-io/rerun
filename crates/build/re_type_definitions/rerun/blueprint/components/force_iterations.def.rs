@@ -10,5 +10,5 @@
 #[rust(repr = "transparent")]
 #[rerun(state = "unstable")]
 pub struct ForceIterations {
-    pub distance: rerun::datatypes::UInt64,
+    pub distance: rerun::encodings::UInt64,
 }

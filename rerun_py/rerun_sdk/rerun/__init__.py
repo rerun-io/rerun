@@ -169,7 +169,10 @@ from .components import (
     TransformRelation as TransformRelation,
     VideoCodec as VideoCodec,
 )
-from .datatypes import (
+from .dynamic_archetype import (
+    DynamicArchetype as DynamicArchetype,
+)
+from .encodings import (
     Angle as Angle,
     AnnotationInfo as AnnotationInfo,
     ChannelDatatype as ChannelDatatype,
@@ -184,9 +187,6 @@ from .datatypes import (
     TimeRange as TimeRange,
     TimeRangeBoundary as TimeRangeBoundary,
     VisibleTimeRange as VisibleTimeRange,
-)
-from .dynamic_archetype import (
-    DynamicArchetype as DynamicArchetype,
 )
 from .error_utils import (
     set_strict_mode as set_strict_mode,
@@ -261,6 +261,10 @@ def __getattr__(name: str) -> Any:
             stacklevel=2,
         )
         return EXTERNAL_IMPORTER_INCOMPATIBLE_EXIT_CODE
+    if name == "datatypes":
+        from . import datatypes  # The module itself warns.
+
+        return datatypes
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 

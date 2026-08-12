@@ -9,12 +9,12 @@ from ..._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
 )
-from ...blueprint import datatypes as blueprint_datatypes
+from ...blueprint import encodings as blueprint_encodings
 
 __all__ = ["SelectedColumns", "SelectedColumnsBatch"]
 
 
-class SelectedColumns(blueprint_datatypes.SelectedColumns, ComponentMixin):
+class SelectedColumns(blueprint_encodings.SelectedColumns, ComponentMixin):
     """
     **Component**: Describe a component column to be selected in the dataframe view.
 
@@ -24,10 +24,10 @@ class SelectedColumns(blueprint_datatypes.SelectedColumns, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of SelectedColumnsExt in selected_columns_ext.py
 
-    # Note: there are no fields here because SelectedColumns delegates to datatypes.SelectedColumns
+    # Note: there are no fields here because SelectedColumns delegates to encodings.SelectedColumns
 
 
-class SelectedColumnsBatch(blueprint_datatypes.SelectedColumnsBatch, ComponentBatchMixin):
+class SelectedColumnsBatch(blueprint_encodings.SelectedColumnsBatch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.blueprint.components.SelectedColumns"
 
 

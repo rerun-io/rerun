@@ -1,5 +1,5 @@
 use re_sdk_types::Loggable as _;
-use re_sdk_types::testing::datatypes::{EnumTest, FixedSizeEnumArray};
+use re_sdk_types::testing::encodings::{EnumTest, FixedSizeEnumArray};
 
 #[test]
 fn roundtrip() {

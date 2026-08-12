@@ -6,7 +6,7 @@
 #include <rerun/components/blob.hpp>
 
 using namespace rerun::archetypes;
-using namespace rerun::datatypes;
+using namespace rerun::encodings;
 
 #define TEST_TAG "[image][archetypes]"
 

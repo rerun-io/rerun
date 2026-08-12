@@ -12,5 +12,5 @@
 #[rust(repr = "transparent")]
 #[rerun(state = "stable")]
 pub struct HalfSize3D {
-    pub xyz: rerun::datatypes::Vec3D,
+    pub xyz: rerun::encodings::Vec3D,
 }

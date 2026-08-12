@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from .. import datatypes
+from .. import encodings
 from .._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,16 +14,16 @@ from .._baseclasses import (
 __all__ = ["AlbedoFactor", "AlbedoFactorBatch"]
 
 
-class AlbedoFactor(datatypes.Rgba32, ComponentMixin):
+class AlbedoFactor(encodings.Rgba32, ComponentMixin):
     """**Component**: A color multiplier, usually applied to a whole entity, e.g. a mesh."""
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of AlbedoFactorExt in albedo_factor_ext.py
 
-    # Note: there are no fields here because AlbedoFactor delegates to datatypes.Rgba32
+    # Note: there are no fields here because AlbedoFactor delegates to encodings.Rgba32
 
 
-class AlbedoFactorBatch(datatypes.Rgba32Batch, ComponentBatchMixin):
+class AlbedoFactorBatch(encodings.Rgba32Batch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.components.AlbedoFactor"
 
 

@@ -17,7 +17,7 @@ from ...blueprint import components as blueprint_components
 from ...error_utils import catch_and_log_exceptions
 
 if TYPE_CHECKING:
-    from ... import datatypes
+    from ... import encodings
 
 __all__ = ["TableBlueprint"]
 
@@ -35,10 +35,10 @@ class TableBlueprint(Archetype):
     def __init__(
         self: Any,
         *,
-        segment_preview_column: datatypes.Utf8Like | None = None,
-        flag_column: datatypes.Utf8Like | None = None,
-        grid_view_card_title: datatypes.Utf8Like | None = None,
-        url_column: datatypes.Utf8Like | None = None,
+        segment_preview_column: encodings.Utf8Like | None = None,
+        flag_column: encodings.Utf8Like | None = None,
+        grid_view_card_title: encodings.Utf8Like | None = None,
+        url_column: encodings.Utf8Like | None = None,
     ) -> None:
         """
         Create a new instance of the TableBlueprint archetype.
@@ -106,10 +106,10 @@ class TableBlueprint(Archetype):
         cls,
         *,
         clear_unset: bool = False,
-        segment_preview_column: datatypes.Utf8Like | None = None,
-        flag_column: datatypes.Utf8Like | None = None,
-        grid_view_card_title: datatypes.Utf8Like | None = None,
-        url_column: datatypes.Utf8Like | None = None,
+        segment_preview_column: encodings.Utf8Like | None = None,
+        flag_column: encodings.Utf8Like | None = None,
+        grid_view_card_title: encodings.Utf8Like | None = None,
+        url_column: encodings.Utf8Like | None = None,
     ) -> TableBlueprint:
         """
         Update only some specific fields of a `TableBlueprint`.

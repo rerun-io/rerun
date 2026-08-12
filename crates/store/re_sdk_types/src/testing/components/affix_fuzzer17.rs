@@ -23,7 +23,7 @@ use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 #[derive(Clone, Debug, Default, PartialEq, ::re_byte_size::SizeBytes)]
-pub struct AffixFuzzer17(pub Option<Vec<crate::testing::datatypes::ScalarUnion>>);
+pub struct AffixFuzzer17(pub Option<Vec<crate::testing::encodings::ScalarUnion>>);
 
 impl ::re_types_core::Component for AffixFuzzer17 {
     #[inline]
@@ -40,7 +40,7 @@ impl ::re_types_core::Loggable for AffixFuzzer17 {
         use arrow::datatypes::*;
         DataType::List(std::sync::Arc::new(Field::new(
             "item",
-            <crate::testing::datatypes::ScalarUnion>::arrow_datatype(),
+            <crate::testing::encodings::ScalarUnion>::arrow_datatype(),
             true,
         )))
     }
@@ -78,13 +78,13 @@ impl ::re_types_core::Loggable for AffixFuzzer17 {
                 as_array_ref(ListArray::try_new(
                     std::sync::Arc::new(Field::new(
                         "item",
-                        <crate::testing::datatypes::ScalarUnion>::arrow_datatype(),
+                        <crate::testing::encodings::ScalarUnion>::arrow_datatype(),
                         true,
                     )),
                     offsets,
                     {
                         _ = data0_inner_validity;
-                        crate::testing::datatypes::ScalarUnion::to_arrow_opt(
+                        crate::testing::encodings::ScalarUnion::to_arrow_opt(
                             data0_inner_data.into_iter().map(Some),
                         )?
                     },
@@ -117,7 +117,7 @@ impl ::re_types_core::Loggable for AffixFuzzer17 {
             } else {
                 let arrow_data_inner = {
                     let arrow_data_inner = &**arrow_data.values();
-                    crate::testing::datatypes::ScalarUnion::from_arrow_opt(arrow_data_inner)
+                    crate::testing::encodings::ScalarUnion::from_arrow_opt(arrow_data_inner)
                         .with_context(
                             "rerun.testing.components.AffixFuzzer17#many_optional_unions",
                         )?
@@ -160,7 +160,7 @@ impl ::re_types_core::Loggable for AffixFuzzer17 {
     }
 }
 
-impl<I: Into<crate::testing::datatypes::ScalarUnion>, T: IntoIterator<Item = I>> From<Option<T>>
+impl<I: Into<crate::testing::encodings::ScalarUnion>, T: IntoIterator<Item = I>> From<Option<T>>
     for AffixFuzzer17
 {
     fn from(v: Option<T>) -> Self {

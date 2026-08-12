@@ -30,10 +30,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// Draw order for entities with the same draw order is generally undefined.
 #[derive(Clone, Debug, Copy, ::re_byte_size::SizeBytes)]
 #[repr(transparent)]
-pub struct DrawOrder(pub crate::datatypes::Float32);
+pub struct DrawOrder(pub crate::encodings::Float32);
 
 impl ::re_types_core::WrapperComponent for DrawOrder {
-    type Datatype = crate::datatypes::Float32;
+    type Encoding = crate::encodings::Float32;
 
     #[inline]
     fn name() -> ComponentType {
@@ -41,38 +41,38 @@ impl ::re_types_core::WrapperComponent for DrawOrder {
     }
 
     #[inline]
-    fn into_inner(self) -> Self::Datatype {
+    fn into_inner(self) -> Self::Encoding {
         self.0
     }
 }
 
 ::re_types_core::macros::impl_into_cow!(DrawOrder);
 
-impl<T: Into<crate::datatypes::Float32>> From<T> for DrawOrder {
+impl<T: Into<crate::encodings::Float32>> From<T> for DrawOrder {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl std::borrow::Borrow<crate::datatypes::Float32> for DrawOrder {
+impl std::borrow::Borrow<crate::encodings::Float32> for DrawOrder {
     #[inline]
-    fn borrow(&self) -> &crate::datatypes::Float32 {
+    fn borrow(&self) -> &crate::encodings::Float32 {
         &self.0
     }
 }
 
 impl std::ops::Deref for DrawOrder {
-    type Target = crate::datatypes::Float32;
+    type Target = crate::encodings::Float32;
 
     #[inline]
-    fn deref(&self) -> &crate::datatypes::Float32 {
+    fn deref(&self) -> &crate::encodings::Float32 {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for DrawOrder {
     #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Float32 {
+    fn deref_mut(&mut self) -> &mut crate::encodings::Float32 {
         &mut self.0
     }
 }

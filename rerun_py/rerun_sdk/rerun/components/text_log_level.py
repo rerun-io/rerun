@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from .. import datatypes
+from .. import encodings
 from .._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -15,7 +15,7 @@ from .text_log_level_ext import TextLogLevelExt
 __all__ = ["TextLogLevel", "TextLogLevelBatch"]
 
 
-class TextLogLevel(TextLogLevelExt, datatypes.Utf8, ComponentMixin):
+class TextLogLevel(TextLogLevelExt, encodings.Utf8, ComponentMixin):
     """
     **Component**: The severity level of a text log message.
 
@@ -31,10 +31,10 @@ class TextLogLevel(TextLogLevelExt, datatypes.Utf8, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of TextLogLevelExt in text_log_level_ext.py
 
-    # Note: there are no fields here because TextLogLevel delegates to datatypes.Utf8
+    # Note: there are no fields here because TextLogLevel delegates to encodings.Utf8
 
 
-class TextLogLevelBatch(datatypes.Utf8Batch, ComponentBatchMixin):
+class TextLogLevelBatch(encodings.Utf8Batch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.components.TextLogLevel"
 
 

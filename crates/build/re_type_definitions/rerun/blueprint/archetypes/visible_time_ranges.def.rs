@@ -11,7 +11,7 @@
 /// - For time series and state timeline views, the default is to show the entire timeline.
 /// - For any other view, the default is to apply latest-at semantics.
 #[rerun::rerun_type]
-#[python(aliases = "datatypes.VisibleTimeRangeLike | Sequence[datatypes.VisibleTimeRangeLike]")]
+#[python(aliases = "encodings.VisibleTimeRangeLike | Sequence[encodings.VisibleTimeRangeLike]")]
 #[rerun(scope = "blueprint")]
 #[rust(derive(Default))]
 #[rerun(state = "unstable")]

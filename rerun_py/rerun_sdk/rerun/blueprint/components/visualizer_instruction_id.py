@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from ... import datatypes
+from ... import encodings
 from ..._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,7 +14,7 @@ from ..._baseclasses import (
 __all__ = ["VisualizerInstructionId", "VisualizerInstructionIdBatch"]
 
 
-class VisualizerInstructionId(datatypes.Uuid, ComponentMixin):
+class VisualizerInstructionId(encodings.Uuid, ComponentMixin):
     """
     **Component**: ID for a visualizer instruction.
 
@@ -27,10 +27,10 @@ class VisualizerInstructionId(datatypes.Uuid, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of VisualizerInstructionIdExt in visualizer_instruction_id_ext.py
 
-    # Note: there are no fields here because VisualizerInstructionId delegates to datatypes.Uuid
+    # Note: there are no fields here because VisualizerInstructionId delegates to encodings.Uuid
 
 
-class VisualizerInstructionIdBatch(datatypes.UuidBatch, ComponentBatchMixin):
+class VisualizerInstructionIdBatch(encodings.UuidBatch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.blueprint.components.VisualizerInstructionId"
 
 

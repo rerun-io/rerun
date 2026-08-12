@@ -13,11 +13,11 @@ from ..._baseclasses import (
     Archetype,
     ComponentDescriptor,
 )
-from ...blueprint import components as blueprint_components, datatypes as blueprint_datatypes
+from ...blueprint import components as blueprint_components, encodings as blueprint_encodings
 from ...error_utils import catch_and_log_exceptions
 
 if TYPE_CHECKING:
-    from ... import datatypes
+    from ... import encodings
 
 __all__ = ["VisualizerInstruction"]
 
@@ -34,9 +34,9 @@ class VisualizerInstruction(Archetype):
 
     def __init__(
         self: Any,
-        visualizer_type: datatypes.Utf8Like,
+        visualizer_type: encodings.Utf8Like,
         *,
-        component_map: blueprint_datatypes.VisualizerComponentMappingArrayLike | None = None,
+        component_map: blueprint_encodings.VisualizerComponentMappingArrayLike | None = None,
     ) -> None:
         """
         Create a new instance of the VisualizerInstruction archetype.
@@ -75,8 +75,8 @@ class VisualizerInstruction(Archetype):
         cls,
         *,
         clear_unset: bool = False,
-        visualizer_type: datatypes.Utf8Like | None = None,
-        component_map: blueprint_datatypes.VisualizerComponentMappingArrayLike | None = None,
+        visualizer_type: encodings.Utf8Like | None = None,
+        component_map: blueprint_encodings.VisualizerComponentMappingArrayLike | None = None,
     ) -> VisualizerInstruction:
         """
         Update only some specific fields of a `VisualizerInstruction`.

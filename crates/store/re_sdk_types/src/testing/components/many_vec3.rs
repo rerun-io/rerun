@@ -33,10 +33,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
     ::re_byte_size::SizeBytes,
 )]
 #[repr(transparent)]
-pub struct ManyVec3(pub crate::testing::datatypes::ManyVec3);
+pub struct ManyVec3(pub crate::testing::encodings::ManyVec3);
 
 impl ::re_types_core::WrapperComponent for ManyVec3 {
-    type Datatype = crate::testing::datatypes::ManyVec3;
+    type Encoding = crate::testing::encodings::ManyVec3;
 
     #[inline]
     fn name() -> ComponentType {
@@ -44,38 +44,38 @@ impl ::re_types_core::WrapperComponent for ManyVec3 {
     }
 
     #[inline]
-    fn into_inner(self) -> Self::Datatype {
+    fn into_inner(self) -> Self::Encoding {
         self.0
     }
 }
 
 ::re_types_core::macros::impl_into_cow!(ManyVec3);
 
-impl<T: Into<crate::testing::datatypes::ManyVec3>> From<T> for ManyVec3 {
+impl<T: Into<crate::testing::encodings::ManyVec3>> From<T> for ManyVec3 {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl std::borrow::Borrow<crate::testing::datatypes::ManyVec3> for ManyVec3 {
+impl std::borrow::Borrow<crate::testing::encodings::ManyVec3> for ManyVec3 {
     #[inline]
-    fn borrow(&self) -> &crate::testing::datatypes::ManyVec3 {
+    fn borrow(&self) -> &crate::testing::encodings::ManyVec3 {
         &self.0
     }
 }
 
 impl std::ops::Deref for ManyVec3 {
-    type Target = crate::testing::datatypes::ManyVec3;
+    type Target = crate::testing::encodings::ManyVec3;
 
     #[inline]
-    fn deref(&self) -> &crate::testing::datatypes::ManyVec3 {
+    fn deref(&self) -> &crate::testing::encodings::ManyVec3 {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for ManyVec3 {
     #[inline]
-    fn deref_mut(&mut self) -> &mut crate::testing::datatypes::ManyVec3 {
+    fn deref_mut(&mut self) -> &mut crate::testing::encodings::ManyVec3 {
         &mut self.0
     }
 }

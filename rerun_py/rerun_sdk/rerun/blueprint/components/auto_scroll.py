@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from ... import datatypes
+from ... import encodings
 from ..._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,7 +14,7 @@ from ..._baseclasses import (
 __all__ = ["AutoScroll", "AutoScrollBatch"]
 
 
-class AutoScroll(datatypes.Bool, ComponentMixin):
+class AutoScroll(encodings.Bool, ComponentMixin):
     """
     **Component**: Whether the view should auto-scroll to follow the time cursor.
 
@@ -24,10 +24,10 @@ class AutoScroll(datatypes.Bool, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of AutoScrollExt in auto_scroll_ext.py
 
-    # Note: there are no fields here because AutoScroll delegates to datatypes.Bool
+    # Note: there are no fields here because AutoScroll delegates to encodings.Bool
 
 
-class AutoScrollBatch(datatypes.BoolBatch, ComponentBatchMixin):
+class AutoScrollBatch(encodings.BoolBatch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.blueprint.components.AutoScroll"
 
 

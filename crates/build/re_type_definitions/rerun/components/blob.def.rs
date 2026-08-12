@@ -11,5 +11,5 @@
 #[rust(repr = "transparent")]
 #[rerun(state = "stable")]
 pub struct Blob {
-    pub data: rerun::datatypes::Blob,
+    pub data: rerun::encodings::Blob,
 }

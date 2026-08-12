@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pyarrow as pa
 import pytest
-from test_types.datatypes import (
+from test_types.encodings import (
     FixedSizeEnumArray,
     FixedSizeEnumArrayBatch,
     FixedSizeWideEnumArray,

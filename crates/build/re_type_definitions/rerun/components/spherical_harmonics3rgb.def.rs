@@ -9,5 +9,5 @@
 #[rust(derive(Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable))]
 #[rust(repr = "transparent")]
 pub struct SphericalHarmonics3Rgb {
-    pub coefficients: rerun::datatypes::SphericalHarmonics3Rgb,
+    pub coefficients: rerun::encodings::SphericalHarmonics3Rgb,
 }

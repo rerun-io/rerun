@@ -11,7 +11,7 @@ import numpy as np
 import pyarrow as pa
 from attrs import define, field
 
-from .. import components, datatypes
+from .. import components, encodings
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
@@ -22,7 +22,7 @@ from ..error_utils import catch_and_log_exceptions
 from .geo_line_strings_ext import GeoLineStringsExt
 
 if TYPE_CHECKING:
-    from ..blueprint.datatypes import VisualizerComponentMappingLike
+    from ..blueprint.encodings import VisualizerComponentMappingLike
 
 __all__ = ["GeoLineStrings"]
 
@@ -94,8 +94,8 @@ class GeoLineStrings(GeoLineStringsExt, Archetype, VisualizableArchetype):
         *,
         clear_unset: bool = False,
         line_strings: components.GeoLineStringArrayLike | None = None,
-        radii: datatypes.Float32ArrayLike | None = None,
-        colors: datatypes.Rgba32ArrayLike | None = None,
+        radii: encodings.Float32ArrayLike | None = None,
+        colors: encodings.Rgba32ArrayLike | None = None,
     ) -> GeoLineStrings:
         """
         Update only some specific fields of a `GeoLineStrings`.
@@ -170,8 +170,8 @@ class GeoLineStrings(GeoLineStringsExt, Archetype, VisualizableArchetype):
         cls,
         *,
         line_strings: components.GeoLineStringArrayLike | None = None,
-        radii: datatypes.Float32ArrayLike | None = None,
-        colors: datatypes.Rgba32ArrayLike | None = None,
+        radii: encodings.Float32ArrayLike | None = None,
+        colors: encodings.Rgba32ArrayLike | None = None,
     ) -> ComponentColumnList:
         """
         Construct a new column-oriented component bundle.

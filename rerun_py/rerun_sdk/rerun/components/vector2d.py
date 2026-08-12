@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from .. import datatypes
+from .. import encodings
 from .._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,16 +14,16 @@ from .._baseclasses import (
 __all__ = ["Vector2D", "Vector2DBatch"]
 
 
-class Vector2D(datatypes.Vec2D, ComponentMixin):
+class Vector2D(encodings.Vec2D, ComponentMixin):
     """**Component**: A vector in 2D space."""
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of Vector2DExt in vector2d_ext.py
 
-    # Note: there are no fields here because Vector2D delegates to datatypes.Vec2D
+    # Note: there are no fields here because Vector2D delegates to encodings.Vec2D
 
 
-class Vector2DBatch(datatypes.Vec2DBatch, ComponentBatchMixin):
+class Vector2DBatch(encodings.Vec2DBatch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.components.Vector2D"
 
 

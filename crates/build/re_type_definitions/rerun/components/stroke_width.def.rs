@@ -9,5 +9,5 @@
 #[rust(repr = "transparent")]
 #[rerun(state = "stable")]
 pub struct StrokeWidth {
-    pub width: rerun::datatypes::Float32,
+    pub width: rerun::encodings::Float32,
 }

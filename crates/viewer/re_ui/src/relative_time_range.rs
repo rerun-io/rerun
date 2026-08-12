@@ -1,4 +1,4 @@
-use re_log_types::external::re_types_core::datatypes::{TimeInt, TimeRange, TimeRangeBoundary};
+use re_log_types::external::re_types_core::encodings::{TimeInt, TimeRange, TimeRangeBoundary};
 use re_log_types::{AbsoluteTimeRange, TimeType, TimestampFormat};
 
 use crate::list_item::{self, LabelContent};
@@ -265,7 +265,7 @@ mod tests {
     use std::ops::RangeInclusive;
 
     use egui_kittest::{Harness, SnapshotResults};
-    use re_log_types::external::re_types_core::datatypes::{TimeInt, TimeRange, TimeRangeBoundary};
+    use re_log_types::external::re_types_core::encodings::{TimeInt, TimeRange, TimeRangeBoundary};
     use re_log_types::{TimeType, TimestampFormat};
 
     use super::RelativeTimeRange;

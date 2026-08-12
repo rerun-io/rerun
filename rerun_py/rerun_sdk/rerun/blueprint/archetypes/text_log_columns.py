@@ -13,7 +13,7 @@ from ..._baseclasses import (
     Archetype,
     ComponentDescriptor,
 )
-from ...blueprint import components as blueprint_components, datatypes as blueprint_datatypes
+from ...blueprint import components as blueprint_components, encodings as blueprint_encodings
 from ...error_utils import catch_and_log_exceptions
 
 __all__ = ["TextLogColumns"]
@@ -32,8 +32,8 @@ class TextLogColumns(Archetype):
     def __init__(
         self: Any,
         *,
-        timeline_columns: blueprint_datatypes.TimelineColumnArrayLike | None = None,
-        text_log_columns: blueprint_datatypes.TextLogColumnArrayLike | None = None,
+        timeline_columns: blueprint_encodings.TimelineColumnArrayLike | None = None,
+        text_log_columns: blueprint_encodings.TextLogColumnArrayLike | None = None,
     ) -> None:
         """
         Create a new instance of the TextLogColumns archetype.
@@ -76,8 +76,8 @@ class TextLogColumns(Archetype):
         cls,
         *,
         clear_unset: bool = False,
-        timeline_columns: blueprint_datatypes.TimelineColumnArrayLike | None = None,
-        text_log_columns: blueprint_datatypes.TextLogColumnArrayLike | None = None,
+        timeline_columns: blueprint_encodings.TimelineColumnArrayLike | None = None,
+        text_log_columns: blueprint_encodings.TextLogColumnArrayLike | None = None,
     ) -> TextLogColumns:
         """
         Update only some specific fields of a `TextLogColumns`.

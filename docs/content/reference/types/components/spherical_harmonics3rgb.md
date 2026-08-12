@@ -8,8 +8,8 @@ View-dependent color, expressed as spherical harmonics coefficients of degrees 1
 
 The view-independent (degree-0) base color is represented as a separate [`components.Color`](https://rerun.io/docs/reference/types/components/color).
 
-## Rerun datatype
-[`SphericalHarmonics3Rgb`](../datatypes/spherical_harmonics3rgb.md)
+## Rerun encoding
+[`SphericalHarmonics3Rgb`](../encodings/spherical_harmonics3rgb.md)
 
 
 ## Arrow datatype

@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from ... import datatypes
+from ... import encodings
 from ..._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,7 +14,7 @@ from ..._baseclasses import (
 __all__ = ["VisibleTimeRange", "VisibleTimeRangeBatch"]
 
 
-class VisibleTimeRange(datatypes.VisibleTimeRange, ComponentMixin):
+class VisibleTimeRange(encodings.VisibleTimeRange, ComponentMixin):
     """
     **Component**: The range of values on a given timeline that will be included in a view's query.
 
@@ -26,10 +26,10 @@ class VisibleTimeRange(datatypes.VisibleTimeRange, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of VisibleTimeRangeExt in visible_time_range_ext.py
 
-    # Note: there are no fields here because VisibleTimeRange delegates to datatypes.VisibleTimeRange
+    # Note: there are no fields here because VisibleTimeRange delegates to encodings.VisibleTimeRange
 
 
-class VisibleTimeRangeBatch(datatypes.VisibleTimeRangeBatch, ComponentBatchMixin):
+class VisibleTimeRangeBatch(encodings.VisibleTimeRangeBatch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.blueprint.components.VisibleTimeRange"
 
 

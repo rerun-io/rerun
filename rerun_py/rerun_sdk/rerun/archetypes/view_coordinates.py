@@ -11,7 +11,7 @@ import numpy as np
 import pyarrow as pa
 from attrs import define, field
 
-from .. import components, datatypes
+from .. import components, encodings
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
@@ -74,7 +74,7 @@ class ViewCoordinates(ViewCoordinatesExt, Archetype):
 
     NAME: ClassVar[str] = "rerun.archetypes.ViewCoordinates"
 
-    def __init__(self: Any, xyz: datatypes.ViewCoordinatesLike) -> None:
+    def __init__(self: Any, xyz: encodings.ViewCoordinatesLike) -> None:
         """
         Create a new instance of the ViewCoordinates archetype.
 
@@ -109,7 +109,7 @@ class ViewCoordinates(ViewCoordinatesExt, Archetype):
         cls,
         *,
         clear_unset: bool = False,
-        xyz: datatypes.ViewCoordinatesLike | None = None,
+        xyz: encodings.ViewCoordinatesLike | None = None,
     ) -> ViewCoordinates:
         """
         Update only some specific fields of a `ViewCoordinates`.
@@ -155,7 +155,7 @@ class ViewCoordinates(ViewCoordinatesExt, Archetype):
     def columns(
         cls,
         *,
-        xyz: datatypes.ViewCoordinatesArrayLike | None = None,
+        xyz: encodings.ViewCoordinatesArrayLike | None = None,
     ) -> ComponentColumnList:
         """
         Construct a new column-oriented component bundle.

@@ -10,19 +10,19 @@ from rerun._baseclasses import (
     ComponentMixin,
 )
 
-from .. import datatypes
+from .. import encodings
 
 __all__ = ["ManyVec3", "ManyVec3Batch"]
 
 
-class ManyVec3(datatypes.ManyVec3, ComponentMixin):
+class ManyVec3(encodings.ManyVec3, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of ManyVec3Ext in many_vec3_ext.py
 
-    # Note: there are no fields here because ManyVec3 delegates to datatypes.ManyVec3
+    # Note: there are no fields here because ManyVec3 delegates to encodings.ManyVec3
 
 
-class ManyVec3Batch(datatypes.ManyVec3Batch, ComponentBatchMixin):
+class ManyVec3Batch(encodings.ManyVec3Batch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.testing.components.ManyVec3"
 
 

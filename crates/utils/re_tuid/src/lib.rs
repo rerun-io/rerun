@@ -68,6 +68,12 @@ impl Tuid {
     /// We give an actual name to [`Tuid`], and inject that name into the Arrow datatype extensions,
     /// as a hack so that we can compactly format them when printing Arrow data to the terminal.
     /// Check out `re_arrow_util::format` for context.
+    ///
+    /// NOTE: this says `datatypes`, not `encodings`. It is a wire-format identifier written into
+    /// every recording, and [`Tuid`] is not one of the code-generated encodings anyway, so renaming
+    /// it needs a Sorbet migration to keep existing data readable.
+    ///
+    /// TODO(RR-5430): rename to `rerun.encodings.TUID`, accepting this spelling on read.
     pub const ARROW_EXTENSION_NAME: &'static str = "rerun.datatypes.TUID";
 }
 

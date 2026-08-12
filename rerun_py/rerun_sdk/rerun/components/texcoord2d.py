@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from .. import datatypes
+from .. import encodings
 from .._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,7 +14,7 @@ from .._baseclasses import (
 __all__ = ["Texcoord2D", "Texcoord2DBatch"]
 
 
-class Texcoord2D(datatypes.Vec2D, ComponentMixin):
+class Texcoord2D(encodings.Vec2D, ComponentMixin):
     """
     **Component**: A 2D texture UV coordinate.
 
@@ -37,10 +37,10 @@ class Texcoord2D(datatypes.Vec2D, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of Texcoord2DExt in texcoord2d_ext.py
 
-    # Note: there are no fields here because Texcoord2D delegates to datatypes.Vec2D
+    # Note: there are no fields here because Texcoord2D delegates to encodings.Vec2D
 
 
-class Texcoord2DBatch(datatypes.Vec2DBatch, ComponentBatchMixin):
+class Texcoord2DBatch(encodings.Vec2DBatch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.components.Texcoord2D"
 
 

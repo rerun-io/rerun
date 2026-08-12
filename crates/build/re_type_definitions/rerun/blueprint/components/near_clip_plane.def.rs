@@ -9,5 +9,5 @@
 #[rerun(state = "unstable")]
 pub struct NearClipPlane {
     /// Distance to the near clip plane in 3D scene units.
-    pub near_clip_plane: rerun::datatypes::Float32,
+    pub near_clip_plane: rerun::encodings::Float32,
 }

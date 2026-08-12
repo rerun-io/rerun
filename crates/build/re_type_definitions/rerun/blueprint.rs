@@ -2,5 +2,5 @@
 
 pub mod archetypes;
 pub mod components;
-pub mod datatypes;
+pub mod encodings;
 pub mod views;

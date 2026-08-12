@@ -10,5 +10,5 @@
 #[rust(repr = "transparent")]
 #[rerun(state = "unstable")]
 pub struct VisibleTimeRange {
-    pub value: rerun::datatypes::VisibleTimeRange,
+    pub value: rerun::encodings::VisibleTimeRange,
 }

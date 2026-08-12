@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from .. import datatypes
+from .. import encodings
 from .._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,7 +14,7 @@ from .._baseclasses import (
 __all__ = ["Interactive", "InteractiveBatch"]
 
 
-class Interactive(datatypes.Bool, ComponentMixin):
+class Interactive(encodings.Bool, ComponentMixin):
     """
     **Component**: Whether the entity can be interacted with.
 
@@ -24,10 +24,10 @@ class Interactive(datatypes.Bool, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of InteractiveExt in interactive_ext.py
 
-    # Note: there are no fields here because Interactive delegates to datatypes.Bool
+    # Note: there are no fields here because Interactive delegates to encodings.Bool
 
 
-class InteractiveBatch(datatypes.BoolBatch, ComponentBatchMixin):
+class InteractiveBatch(encodings.BoolBatch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.components.Interactive"
 
 

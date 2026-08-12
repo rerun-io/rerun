@@ -442,7 +442,7 @@ impl Parser<'_> {
         } else {
             match kind {
                 // TODO(#9427): make the `attr.rerun.state` attribute mandatory
-                ObjectKind::Datatype | ObjectKind::Component => State::Stable,
+                ObjectKind::Encoding | ObjectKind::Component => State::Stable,
                 ObjectKind::Archetype => {
                     self.error(span, format!("Missing attribute `{}`", RerunAttr::State));
                     State::Stable
@@ -711,7 +711,7 @@ impl Parser<'_> {
                         Spanned::span(path),
                         format!(
                             "Unknown type `{other}`. Refer to other definitions by their full \
-                             path, e.g. `rerun::datatypes::Vec3D`"
+                             path, e.g. `rerun::encodings::Vec3D`"
                         ),
                     );
                     Err(Fail)
@@ -1143,23 +1143,23 @@ mod tests {
     #[test]
     fn struct_with_named_fields() {
         let objects = parse_ok(
-            "rerun.datatypes",
+            "rerun.encodings",
             r#"
             #[rerun_type]
             pub struct AnnotationInfo {
                 pub id: u16,
                 pub label: Option<String>,
-                pub color: Option<rerun::datatypes::Rgba32>,
+                pub color: Option<rerun::encodings::Rgba32>,
             }
             "#,
         );
 
         assert_eq!(objects.len(), 1);
         let object = &objects[0];
-        assert_eq!(object.fqname, "rerun.datatypes.AnnotationInfo");
-        assert_eq!(object.pkg_name, "rerun.datatypes");
+        assert_eq!(object.fqname, "rerun.encodings.AnnotationInfo");
+        assert_eq!(object.pkg_name, "rerun.encodings");
         assert_eq!(object.name, "AnnotationInfo");
-        assert_eq!(object.kind, ObjectKind::Datatype);
+        assert_eq!(object.kind, ObjectKind::Encoding);
         assert_eq!(object.class, ObjectClass::Struct);
 
         assert_eq!(
@@ -1170,7 +1170,7 @@ mod tests {
                 (
                     "color",
                     &Type::Object {
-                        fqname: "rerun.datatypes.Rgba32".to_owned()
+                        fqname: "rerun.encodings.Rgba32".to_owned()
                     },
                     true
                 ),
@@ -1178,7 +1178,7 @@ mod tests {
         );
 
         // Source order is the order; there is no `order` attribute to get wrong.
-        assert_eq!(object.fields[0].fqname, "rerun.datatypes.AnnotationInfo#id");
+        assert_eq!(object.fields[0].fqname, "rerun.encodings.AnnotationInfo#id");
     }
 
     #[test]
@@ -1200,7 +1200,7 @@ mod tests {
     #[test]
     fn every_supported_data_type() {
         let objects = parse_ok(
-            "rerun.datatypes",
+            "rerun.encodings",
             r#"
             #[rerun_type]
             pub struct TypeZoo {
@@ -1215,7 +1215,7 @@ mod tests {
                 pub fixed: [f32; 3],
                 pub list: Vec<u8>,
                 pub nested: [[f32; 4]; 4],
-                pub objects: Vec<rerun::datatypes::Vec3D>,
+                pub objects: Vec<rerun::encodings::Vec3D>,
             }
             "#,
         );
@@ -1261,7 +1261,7 @@ mod tests {
                     "objects",
                     &Type::List {
                         elem_type: ElementType::Object {
-                            fqname: "rerun.datatypes.Vec3D".to_owned()
+                            fqname: "rerun.encodings.Vec3D".to_owned()
                         }
                     },
                     false
@@ -1323,13 +1323,13 @@ mod tests {
     #[test]
     fn union_with_payloads_and_a_unit_variant() {
         let objects = parse_ok(
-            "rerun.datatypes",
+            "rerun.encodings",
             r#"
             #[rerun_type]
             #[repr(i8)]
             pub enum TimeRangeBoundary {
-                CursorRelative(rerun::datatypes::TimeInt) = 1,
-                Absolute(rerun::datatypes::TimeInt) = 2,
+                CursorRelative(rerun::encodings::TimeInt) = 1,
+                Absolute(rerun::encodings::TimeInt) = 2,
 
                 /// The boundary extends to infinity.
                 Infinite = 3,
@@ -1347,14 +1347,14 @@ mod tests {
                 (
                     "CursorRelative",
                     &Type::Object {
-                        fqname: "rerun.datatypes.TimeInt".to_owned()
+                        fqname: "rerun.encodings.TimeInt".to_owned()
                     },
                     false
                 ),
                 (
                     "Absolute",
                     &Type::Object {
-                        fqname: "rerun.datatypes.TimeInt".to_owned()
+                        fqname: "rerun.encodings.TimeInt".to_owned()
                     },
                     false
                 ),
@@ -1407,7 +1407,7 @@ mod tests {
 
         // A path list is emitted verbatim, leading `::` and all.
         let objects = parse_ok(
-            "rerun.datatypes",
+            "rerun.encodings",
             r#"
             #[rerun_type]
             #[rust(derive(Copy, bytemuck::Pod, ::serde::Serialize))]
@@ -1437,7 +1437,7 @@ mod tests {
     #[test]
     fn doc_comments_keep_their_tags() {
         let objects = parse_ok(
-            "rerun.datatypes",
+            "rerun.encodings",
             r#"
             /// A position in 3D space.
             ///
@@ -1468,17 +1468,17 @@ mod tests {
 
     #[test]
     fn state_defaults_by_kind_and_scope() {
-        let datatype = parse_ok("rerun.datatypes", "#[rerun_type] pub struct A(pub f32);");
+        let datatype = parse_ok("rerun.encodings", "#[rerun_type] pub struct A(pub f32);");
         assert_eq!(datatype[0].state, State::Stable);
 
         let blueprint = parse_ok(
-            "rerun.blueprint.datatypes",
+            "rerun.blueprint.encodings",
             r#"#[rerun_type] #[rerun(scope = "blueprint")] pub struct A(pub f32);"#,
         );
         assert_eq!(blueprint[0].state, State::Unstable);
 
         let deprecated = parse_ok(
-            "rerun.datatypes",
+            "rerun.encodings",
             r#"
             #[rerun_type]
             #[rerun(state = "deprecated", deprecated_since = "0.30", deprecated_notice = "Use B")]
@@ -1506,11 +1506,11 @@ mod tests {
     #[test]
     fn errors_point_at_the_offending_line() {
         let error = parse_err(
-            "rerun.datatypes",
+            "rerun.encodings",
             "#[rerun_type]\npub struct A {\n    pub bad: HashMap<u8, u8>,\n}",
         );
         assert!(
-            error.starts_with("/definitions/rerun/datatypes/test.def.rs:3:14:"),
+            error.starts_with("/definitions/rerun/encodings/test.def.rs:3:14:"),
             "{error}"
         );
     }
@@ -1521,7 +1521,7 @@ mod tests {
             // (definition, expected substring of the error)
             ("pub fn foo() {}", "Only `struct` and `enum`"),
             ("impl Foo {}", "Only `struct` and `enum`"),
-            ("use rerun::datatypes::Vec3D;", "Only `struct` and `enum`"),
+            ("use rerun::encodings::Vec3D;", "Only `struct` and `enum`"),
             ("pub const N: u8 = 1;", "Only `struct` and `enum`"),
             ("pub struct A<T> { pub a: T }", "Generic parameters"),
             ("pub struct A<'a> { pub a: &'a u8 }", "Generic parameters"),
@@ -1597,7 +1597,7 @@ mod tests {
         ];
 
         for (definition, expected) in cases {
-            let error = parse_err("rerun.datatypes", definition);
+            let error = parse_err("rerun.encodings", definition);
             assert!(
                 error.contains(expected),
                 "Expected {expected:?} in error for {definition:?}, got: {error}"

@@ -16,12 +16,12 @@ from ..api import View, ViewContentsLike, VisualizerLike
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
 
-    from ... import datatypes
+    from ... import encodings
     from ..._baseclasses import (
         AsComponents,
         DescribedComponentBatch,
     )
-    from ...datatypes import EntityPathLike, Utf8Like
+    from ...encodings import EntityPathLike, Utf8Like
 
 
 class MapView(View):
@@ -78,10 +78,10 @@ class MapView(View):
         origin: EntityPathLike = "/",
         contents: ViewContentsLike = "$origin/**",
         name: Utf8Like | None = None,
-        visible: datatypes.BoolLike | None = None,
+        visible: encodings.BoolLike | None = None,
         defaults: Iterable[AsComponents | Iterable[DescribedComponentBatch]] | None = None,
         overrides: Mapping[EntityPathLike, VisualizerLike | Iterable[VisualizerLike]] | None = None,
-        zoom: blueprint_archetypes.MapZoom | datatypes.Float64Like | None = None,
+        zoom: blueprint_archetypes.MapZoom | encodings.Float64Like | None = None,
         background: blueprint_archetypes.MapBackground | blueprint_components.MapProviderLike | None = None,
     ) -> None:
         """

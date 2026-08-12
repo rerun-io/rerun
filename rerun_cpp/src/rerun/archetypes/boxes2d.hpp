@@ -138,7 +138,7 @@ namespace rerun::archetypes {
         ///
         /// TODO(#3285): Does *not* preserve data as-is and instead creates half-sizes from the
         /// input data.
-        static Boxes2D from_sizes(const std::vector<datatypes::Vec2D>& sizes);
+        static Boxes2D from_sizes(const std::vector<encodings::Vec2D>& sizes);
 
         /// Creates new `Boxes2D` with `centers` and `half_sizes` created from centers and (full)
         /// sizes.
@@ -146,7 +146,7 @@ namespace rerun::archetypes {
         /// TODO(#3285): Does *not* preserve data as-is and instead creates centers and half-sizes
         /// from the input data.
         static Boxes2D from_centers_and_sizes(
-            Collection<components::Position2D> centers, const std::vector<datatypes::Vec2D>& sizes
+            Collection<components::Position2D> centers, const std::vector<encodings::Vec2D>& sizes
         ) {
             return from_sizes(std::move(sizes)).with_centers(std::move(centers));
         }
@@ -157,7 +157,7 @@ namespace rerun::archetypes {
         /// TODO(#3285): Does *not* preserve data as-is and instead creates centers and half-sizes
         /// from the input data.
         static Boxes2D from_mins_and_sizes(
-            const std::vector<datatypes::Vec2D>& mins, const std::vector<datatypes::Vec2D>& sizes
+            const std::vector<encodings::Vec2D>& mins, const std::vector<encodings::Vec2D>& sizes
         );
 
         // END of extensions from boxes2d_ext.cpp, start of generated code:

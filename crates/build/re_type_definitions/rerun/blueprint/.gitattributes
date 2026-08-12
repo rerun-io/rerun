@@ -3,5 +3,5 @@
 .gitattributes linguist-generated=true
 archetypes.rs linguist-generated=true
 components.rs linguist-generated=true
-datatypes.rs linguist-generated=true
+encodings.rs linguist-generated=true
 views.rs linguist-generated=true

@@ -915,7 +915,7 @@ fn test_tree_transforms() -> Result<(), Box<dyn std::error::Error>> {
             // This involves casting f32 components to f64 and renormalizing, which produces
             // slightly different values than directly computing in f64.
             Some(DAffine3::from_quat(
-                convert::quaternion_to_dquat(re_sdk_types::datatypes::Quaternion::from(
+                convert::quaternion_to_dquat(re_sdk_types::encodings::Quaternion::from(
                     glam::Quat::from_rotation_x(1.0),
                 ))
                 .unwrap(),

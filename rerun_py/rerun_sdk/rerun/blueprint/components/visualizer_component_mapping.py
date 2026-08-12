@@ -9,12 +9,12 @@ from ..._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
 )
-from ...blueprint import datatypes as blueprint_datatypes
+from ...blueprint import encodings as blueprint_encodings
 
 __all__ = ["VisualizerComponentMapping", "VisualizerComponentMappingBatch"]
 
 
-class VisualizerComponentMapping(blueprint_datatypes.VisualizerComponentMapping, ComponentMixin):
+class VisualizerComponentMapping(blueprint_encodings.VisualizerComponentMapping, ComponentMixin):
     """
     **Component**: Associates components of an entity to components of a visualizer.
 
@@ -24,10 +24,10 @@ class VisualizerComponentMapping(blueprint_datatypes.VisualizerComponentMapping,
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of VisualizerComponentMappingExt in visualizer_component_mapping_ext.py
 
-    # Note: there are no fields here because VisualizerComponentMapping delegates to datatypes.VisualizerComponentMapping
+    # Note: there are no fields here because VisualizerComponentMapping delegates to encodings.VisualizerComponentMapping
 
 
-class VisualizerComponentMappingBatch(blueprint_datatypes.VisualizerComponentMappingBatch, ComponentBatchMixin):
+class VisualizerComponentMappingBatch(blueprint_encodings.VisualizerComponentMappingBatch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.blueprint.components.VisualizerComponentMapping"
 
 

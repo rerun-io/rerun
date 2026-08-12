@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from .. import datatypes
+from .. import encodings
 from .._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,7 +14,7 @@ from .._baseclasses import (
 __all__ = ["ImagePlaneDistance", "ImagePlaneDistanceBatch"]
 
 
-class ImagePlaneDistance(datatypes.Float32, ComponentMixin):
+class ImagePlaneDistance(encodings.Float32, ComponentMixin):
     """
     **Component**: The distance from the camera origin to the image plane when the projection is shown in a 3D viewer.
 
@@ -24,10 +24,10 @@ class ImagePlaneDistance(datatypes.Float32, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of ImagePlaneDistanceExt in image_plane_distance_ext.py
 
-    # Note: there are no fields here because ImagePlaneDistance delegates to datatypes.Float32
+    # Note: there are no fields here because ImagePlaneDistance delegates to encodings.Float32
 
 
-class ImagePlaneDistanceBatch(datatypes.Float32Batch, ComponentBatchMixin):
+class ImagePlaneDistanceBatch(encodings.Float32Batch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.components.ImagePlaneDistance"
 
 

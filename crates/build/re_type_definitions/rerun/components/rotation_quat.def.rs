@@ -11,5 +11,5 @@
 #[rust(repr = "transparent")]
 #[rerun(state = "stable")]
 pub struct RotationQuat {
-    pub quaternion: rerun::datatypes::Quaternion,
+    pub quaternion: rerun::encodings::Quaternion,
 }

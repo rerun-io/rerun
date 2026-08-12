@@ -29,10 +29,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Debug, Copy, PartialEq, Eq, PartialOrd, Ord, ::re_byte_size::SizeBytes)]
 #[repr(transparent)]
-pub struct Count(pub crate::datatypes::UInt64);
+pub struct Count(pub crate::encodings::UInt64);
 
 impl ::re_types_core::WrapperComponent for Count {
-    type Datatype = crate::datatypes::UInt64;
+    type Encoding = crate::encodings::UInt64;
 
     #[inline]
     fn name() -> ComponentType {
@@ -40,38 +40,38 @@ impl ::re_types_core::WrapperComponent for Count {
     }
 
     #[inline]
-    fn into_inner(self) -> Self::Datatype {
+    fn into_inner(self) -> Self::Encoding {
         self.0
     }
 }
 
 ::re_types_core::macros::impl_into_cow!(Count);
 
-impl<T: Into<crate::datatypes::UInt64>> From<T> for Count {
+impl<T: Into<crate::encodings::UInt64>> From<T> for Count {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl std::borrow::Borrow<crate::datatypes::UInt64> for Count {
+impl std::borrow::Borrow<crate::encodings::UInt64> for Count {
     #[inline]
-    fn borrow(&self) -> &crate::datatypes::UInt64 {
+    fn borrow(&self) -> &crate::encodings::UInt64 {
         &self.0
     }
 }
 
 impl std::ops::Deref for Count {
-    type Target = crate::datatypes::UInt64;
+    type Target = crate::encodings::UInt64;
 
     #[inline]
-    fn deref(&self) -> &crate::datatypes::UInt64 {
+    fn deref(&self) -> &crate::encodings::UInt64 {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for Count {
     #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::UInt64 {
+    fn deref_mut(&mut self) -> &mut crate::encodings::UInt64 {
         &mut self.0
     }
 }

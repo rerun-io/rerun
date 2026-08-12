@@ -15,8 +15,8 @@ Lowering this in the blueprint can make the rendering a lot faster.
 
 Defaults to 3, i.e. every coefficient the data has.
 
-## Rerun datatype
-[`UInt32`](../datatypes/uint32.md)
+## Rerun encoding
+[`UInt32`](../encodings/uint32.md)
 
 
 ## Arrow datatype

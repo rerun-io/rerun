@@ -11,7 +11,7 @@ import numpy as np
 import pyarrow as pa
 from attrs import define, field
 
-from .. import components, datatypes
+from .. import components, encodings
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
@@ -21,7 +21,7 @@ from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
 
 if TYPE_CHECKING:
-    from ..blueprint.datatypes import VisualizerComponentMappingLike
+    from ..blueprint.encodings import VisualizerComponentMappingLike
 
 __all__ = ["StateChange"]
 
@@ -70,7 +70,7 @@ class StateChange(Archetype, VisualizableArchetype):
 
     NAME: ClassVar[str] = "rerun.archetypes.StateChange"
 
-    def __init__(self: Any, *, state: datatypes.Utf8ArrayLike | None = None) -> None:
+    def __init__(self: Any, *, state: encodings.Utf8ArrayLike | None = None) -> None:
         """
         Create a new instance of the StateChange archetype.
 
@@ -111,7 +111,7 @@ class StateChange(Archetype, VisualizableArchetype):
         cls,
         *,
         clear_unset: bool = False,
-        state: datatypes.Utf8ArrayLike | None = None,
+        state: encodings.Utf8ArrayLike | None = None,
     ) -> StateChange:
         """
         Update only some specific fields of a `StateChange`.
@@ -163,7 +163,7 @@ class StateChange(Archetype, VisualizableArchetype):
     def columns(
         cls,
         *,
-        state: datatypes.Utf8ArrayLike | None = None,
+        state: encodings.Utf8ArrayLike | None = None,
     ) -> ComponentColumnList:
         """
         Construct a new column-oriented component bundle.

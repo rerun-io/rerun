@@ -11,7 +11,7 @@ import numpy as np
 import pyarrow as pa
 from attrs import define, field
 
-from .. import components, datatypes
+from .. import components, encodings
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
@@ -21,7 +21,7 @@ from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
 
 if TYPE_CHECKING:
-    from ..blueprint.datatypes import VisualizerComponentMappingLike
+    from ..blueprint.encodings import VisualizerComponentMappingLike
 
 __all__ = ["VideoStream"]
 
@@ -136,10 +136,10 @@ class VideoStream(Archetype, VisualizableArchetype):
         self: Any,
         codec: components.VideoCodecLike,
         *,
-        sample: datatypes.BlobLike | None = None,
-        is_keyframe: datatypes.BoolLike | None = None,
-        opacity: datatypes.Float32Like | None = None,
-        draw_order: datatypes.Float32Like | None = None,
+        sample: encodings.BlobLike | None = None,
+        is_keyframe: encodings.BoolLike | None = None,
+        opacity: encodings.Float32Like | None = None,
+        draw_order: encodings.Float32Like | None = None,
     ) -> None:
         """
         Create a new instance of the VideoStream archetype.
@@ -227,10 +227,10 @@ class VideoStream(Archetype, VisualizableArchetype):
         *,
         clear_unset: bool = False,
         codec: components.VideoCodecLike | None = None,
-        sample: datatypes.BlobLike | None = None,
-        is_keyframe: datatypes.BoolLike | None = None,
-        opacity: datatypes.Float32Like | None = None,
-        draw_order: datatypes.Float32Like | None = None,
+        sample: encodings.BlobLike | None = None,
+        is_keyframe: encodings.BoolLike | None = None,
+        opacity: encodings.Float32Like | None = None,
+        draw_order: encodings.Float32Like | None = None,
     ) -> VideoStream:
         """
         Update only some specific fields of a `VideoStream`.
@@ -358,10 +358,10 @@ class VideoStream(Archetype, VisualizableArchetype):
         cls,
         *,
         codec: components.VideoCodecArrayLike | None = None,
-        sample: datatypes.BlobArrayLike | None = None,
-        is_keyframe: datatypes.BoolArrayLike | None = None,
-        opacity: datatypes.Float32ArrayLike | None = None,
-        draw_order: datatypes.Float32ArrayLike | None = None,
+        sample: encodings.BlobArrayLike | None = None,
+        is_keyframe: encodings.BoolArrayLike | None = None,
+        opacity: encodings.Float32ArrayLike | None = None,
+        draw_order: encodings.Float32ArrayLike | None = None,
     ) -> ComponentColumnList:
         """
         Construct a new column-oriented component bundle.

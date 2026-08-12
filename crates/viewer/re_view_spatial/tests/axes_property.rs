@@ -5,7 +5,7 @@
 use re_log_types::{EntityPath, EntityPathFilter, TimePoint};
 use re_sdk_types::blueprint::archetypes::SpatialInformation;
 use re_sdk_types::components::ViewCoordinates;
-use re_sdk_types::datatypes::ViewDir;
+use re_sdk_types::encodings::ViewDir;
 use re_sdk_types::{archetypes, components};
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;

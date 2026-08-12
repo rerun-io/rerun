@@ -17,7 +17,7 @@ from ...blueprint import components as blueprint_components
 from ...error_utils import catch_and_log_exceptions
 
 if TYPE_CHECKING:
-    from ... import datatypes
+    from ... import encodings
 
 __all__ = ["MapZoom"]
 
@@ -32,7 +32,7 @@ class MapZoom(Archetype):
 
     NAME: ClassVar[str] = "rerun.blueprint.archetypes.MapZoom"
 
-    def __init__(self: Any, zoom: datatypes.Float64Like) -> None:
+    def __init__(self: Any, zoom: encodings.Float64Like) -> None:
         """
         Create a new instance of the MapZoom archetype.
 
@@ -69,7 +69,7 @@ class MapZoom(Archetype):
         cls,
         *,
         clear_unset: bool = False,
-        zoom: datatypes.Float64Like | None = None,
+        zoom: encodings.Float64Like | None = None,
     ) -> MapZoom:
         """
         Update only some specific fields of a `MapZoom`.

@@ -16,5 +16,5 @@
 #[rust(derive(Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable))]
 #[rust(repr = "transparent")]
 pub struct DepthMeter {
-    pub value: rerun::datatypes::Float32,
+    pub value: rerun::encodings::Float32,
 }

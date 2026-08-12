@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from .. import datatypes
+from .. import encodings
 from .._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,7 +14,7 @@ from .._baseclasses import (
 __all__ = ["IsKeyframe", "IsKeyframeBatch"]
 
 
-class IsKeyframe(datatypes.Bool, ComponentMixin):
+class IsKeyframe(encodings.Bool, ComponentMixin):
     """
     **Component**: Whether a [`components.VideoSample`][rerun.components.VideoSample] contains a keyframe (also known as a sync sample or IDR).
 
@@ -28,10 +28,10 @@ class IsKeyframe(datatypes.Bool, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of IsKeyframeExt in is_keyframe_ext.py
 
-    # Note: there are no fields here because IsKeyframe delegates to datatypes.Bool
+    # Note: there are no fields here because IsKeyframe delegates to encodings.Bool
 
 
-class IsKeyframeBatch(datatypes.BoolBatch, ComponentBatchMixin):
+class IsKeyframeBatch(encodings.BoolBatch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.components.IsKeyframe"
 
 

@@ -8,7 +8,7 @@ use re_log_types::{
     hash::Hash64,
 };
 use re_query::LatestAtResults;
-use re_sdk_types::blueprint::datatypes::ComponentSourceKind;
+use re_sdk_types::blueprint::encodings::ComponentSourceKind;
 use re_types_core::{Archetype, ComponentIdentifier};
 use re_viewer_context::{DataResult, QueryRange, ViewContext, ViewQuery, ViewerContext};
 
@@ -24,7 +24,7 @@ use crate::{BlueprintResolvedResults, ComponentMappingError};
 /// way, or two views given the same range would end up showing different data.
 pub fn resolve_visible_time_range(
     ctx: &ViewerContext<'_>,
-    time_range: &re_sdk_types::datatypes::TimeRange,
+    time_range: &re_sdk_types::encodings::TimeRange,
 ) -> re_log_types::AbsoluteTimeRange {
     let cursor = ctx.time_ctrl.time_int().unwrap_or(TimeInt::ZERO);
     re_log_types::AbsoluteTimeRange::from_relative_time_range(time_range, cursor)

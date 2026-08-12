@@ -28,7 +28,7 @@ namespace rerun::archetypes {
     ///
     /// Use `archetypes::AnnotationContext` to associate each class with a color and a label.
     ///
-    /// Since the underlying `rerun::datatypes::TensorData` uses `rerun::Collection` internally,
+    /// Since the underlying `rerun::encodings::TensorData` uses `rerun::Collection` internally,
     /// data can be passed in without a copy from raw pointers or by reference from `std::vector`/`std::array`/c-arrays.
     /// If needed, this "borrow-behavior" can be extended by defining your own `rerun::CollectionAdapter`.
     ///
@@ -147,7 +147,7 @@ namespace rerun::archetypes {
         /// @param resolution The resolution of the image as {width, height}.
         /// @param datatype How the data should be interpreted.
         SegmentationImage(
-            const void* bytes, WidthHeight resolution, datatypes::ChannelDatatype datatype
+            const void* bytes, WidthHeight resolution, encodings::ChannelDatatype datatype
         )
             : SegmentationImage{
                   Collection<uint8_t>::borrow(bytes, num_bytes(resolution, datatype)),
@@ -164,9 +164,9 @@ namespace rerun::archetypes {
         /// @param resolution The resolution of the image as {width, height}.
         /// @param datatype How the data should be interpreted.
         SegmentationImage(
-            Collection<uint8_t> bytes, WidthHeight resolution, datatypes::ChannelDatatype datatype
+            Collection<uint8_t> bytes, WidthHeight resolution, encodings::ChannelDatatype datatype
         ) {
-            auto image_format = datatypes::ImageFormat{resolution, datatype};
+            auto image_format = encodings::ImageFormat{resolution, datatype};
             if (bytes.size() != image_format.num_bytes()) {
                 Error(
                     ErrorCode::InvalidTensorDimension,

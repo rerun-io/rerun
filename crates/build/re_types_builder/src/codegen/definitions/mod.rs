@@ -243,7 +243,7 @@ mod tests {
     #[test]
     fn crate_root_module_file() {
         let generated = module_file(
-            &contents(&[], &["blueprint", "components", "datatypes"]),
+            &contents(&[], &["blueprint", "components", "encodings"]),
             None,
         );
         insta::assert_snapshot!(generated, @r#"
@@ -274,7 +274,7 @@ mod tests {
 
         pub mod blueprint;
         pub mod components;
-        pub mod datatypes;
+        pub mod encodings;
         "#);
     }
 

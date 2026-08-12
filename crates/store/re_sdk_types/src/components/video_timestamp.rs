@@ -25,10 +25,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Component**: Timestamp inside a [`archetypes::AssetVideo`][crate::archetypes::AssetVideo].
 #[derive(Clone, Debug, Copy, PartialEq, Eq, Default, ::re_byte_size::SizeBytes)]
 #[repr(transparent)]
-pub struct VideoTimestamp(pub crate::datatypes::VideoTimestamp);
+pub struct VideoTimestamp(pub crate::encodings::VideoTimestamp);
 
 impl ::re_types_core::WrapperComponent for VideoTimestamp {
-    type Datatype = crate::datatypes::VideoTimestamp;
+    type Encoding = crate::encodings::VideoTimestamp;
 
     #[inline]
     fn name() -> ComponentType {
@@ -36,38 +36,38 @@ impl ::re_types_core::WrapperComponent for VideoTimestamp {
     }
 
     #[inline]
-    fn into_inner(self) -> Self::Datatype {
+    fn into_inner(self) -> Self::Encoding {
         self.0
     }
 }
 
 ::re_types_core::macros::impl_into_cow!(VideoTimestamp);
 
-impl<T: Into<crate::datatypes::VideoTimestamp>> From<T> for VideoTimestamp {
+impl<T: Into<crate::encodings::VideoTimestamp>> From<T> for VideoTimestamp {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl std::borrow::Borrow<crate::datatypes::VideoTimestamp> for VideoTimestamp {
+impl std::borrow::Borrow<crate::encodings::VideoTimestamp> for VideoTimestamp {
     #[inline]
-    fn borrow(&self) -> &crate::datatypes::VideoTimestamp {
+    fn borrow(&self) -> &crate::encodings::VideoTimestamp {
         &self.0
     }
 }
 
 impl std::ops::Deref for VideoTimestamp {
-    type Target = crate::datatypes::VideoTimestamp;
+    type Target = crate::encodings::VideoTimestamp;
 
     #[inline]
-    fn deref(&self) -> &crate::datatypes::VideoTimestamp {
+    fn deref(&self) -> &crate::encodings::VideoTimestamp {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for VideoTimestamp {
     #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::VideoTimestamp {
+    fn deref_mut(&mut self) -> &mut crate::encodings::VideoTimestamp {
         &mut self.0
     }
 }

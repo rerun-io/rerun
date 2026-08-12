@@ -3,7 +3,7 @@
 
 #include "affix_fuzzer18.hpp"
 
-#include "../datatypes/nested_union.hpp"
+#include "../encodings/nested_union.hpp"
 
 #include <arrow/builder.h>
 #include <arrow/type_fwd.h>
@@ -13,7 +13,7 @@ namespace rerun::components {}
 namespace rerun {
     const std::shared_ptr<arrow::DataType>& Loggable<components::AffixFuzzer18>::arrow_datatype() {
         static const auto datatype = arrow::list(
-            arrow::field("item", Loggable<rerun::datatypes::NestedUnion>::arrow_datatype(), true)
+            arrow::field("item", Loggable<rerun::encodings::NestedUnion>::arrow_datatype(), true)
         );
         return datatype;
     }
@@ -61,7 +61,7 @@ namespace rerun {
                 ARROW_RETURN_NOT_OK(builder->Append());
                 if (element.many_optional_unions.value().data()) {
                     RR_RETURN_NOT_OK(
-                        Loggable<rerun::datatypes::NestedUnion>::fill_arrow_array_builder(
+                        Loggable<rerun::encodings::NestedUnion>::fill_arrow_array_builder(
                             value_builder,
                             element.many_optional_unions.value().data(),
                             element.many_optional_unions.value().size()

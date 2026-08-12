@@ -4,7 +4,7 @@ pub enum QueryRange {
     /// Use a time range on the currently active timeline.
     ///
     /// This is also known as "visible time range"
-    TimeRange(re_sdk_types::datatypes::TimeRange),
+    TimeRange(re_sdk_types::encodings::TimeRange),
 
     /// Use latest-at semantics.
     #[default]

@@ -17,7 +17,7 @@ from ...blueprint import components as blueprint_components
 from ...error_utils import catch_and_log_exceptions
 
 if TYPE_CHECKING:
-    from ... import datatypes
+    from ... import encodings
 
 __all__ = ["ActiveVisualizers"]
 
@@ -39,7 +39,7 @@ class ActiveVisualizers(Archetype):
 
     NAME: ClassVar[str] = "rerun.blueprint.archetypes.ActiveVisualizers"
 
-    def __init__(self: Any, instruction_ids: datatypes.UuidArrayLike) -> None:
+    def __init__(self: Any, instruction_ids: encodings.UuidArrayLike) -> None:
         """
         Create a new instance of the ActiveVisualizers archetype.
 
@@ -74,7 +74,7 @@ class ActiveVisualizers(Archetype):
         cls,
         *,
         clear_unset: bool = False,
-        instruction_ids: datatypes.UuidArrayLike | None = None,
+        instruction_ids: encodings.UuidArrayLike | None = None,
     ) -> ActiveVisualizers:
         """
         Update only some specific fields of a `ActiveVisualizers`.

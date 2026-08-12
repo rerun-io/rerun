@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from .. import datatypes
+from .. import encodings
 from .._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,7 +14,7 @@ from .._baseclasses import (
 __all__ = ["TensorData", "TensorDataBatch"]
 
 
-class TensorData(datatypes.TensorData, ComponentMixin):
+class TensorData(encodings.TensorData, ComponentMixin):
     """
     **Component**: An N-dimensional array of numbers.
 
@@ -29,10 +29,10 @@ class TensorData(datatypes.TensorData, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of TensorDataExt in tensor_data_ext.py
 
-    # Note: there are no fields here because TensorData delegates to datatypes.TensorData
+    # Note: there are no fields here because TensorData delegates to encodings.TensorData
 
 
-class TensorDataBatch(datatypes.TensorDataBatch, ComponentBatchMixin):
+class TensorDataBatch(encodings.TensorDataBatch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.components.TensorData"
 
 

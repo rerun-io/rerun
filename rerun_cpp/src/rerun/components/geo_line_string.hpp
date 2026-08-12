@@ -4,7 +4,7 @@
 #pragma once
 
 #include "../collection.hpp"
-#include "../datatypes/dvec2d.hpp"
+#include "../encodings/dvec2d.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -19,11 +19,11 @@ namespace arrow {
 namespace rerun::components {
     /// **Component**: A geospatial line string expressed in [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees).
     struct GeoLineString {
-        rerun::Collection<rerun::datatypes::DVec2D> lat_lon;
+        rerun::Collection<rerun::encodings::DVec2D> lat_lon;
 
       public: // START of extensions from geo_line_string_ext.cpp:
         /// Creates a new GeoLineString object based on [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees).
-        static GeoLineString from_lat_lon(Collection<datatypes::DVec2D> lat_lon_) {
+        static GeoLineString from_lat_lon(Collection<encodings::DVec2D> lat_lon_) {
             GeoLineString line_string;
             line_string.lat_lon = std::move(lat_lon_);
             return line_string;

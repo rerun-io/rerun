@@ -12,5 +12,5 @@
 #[rust(derive(Default, PartialEq, Eq))]
 pub struct KeyValuePairs {
     /// The key-value pairs that make up this string map.
-    pub pairs: Vec<rerun::datatypes::Utf8Pair>,
+    pub pairs: Vec<rerun::encodings::Utf8Pair>,
 }

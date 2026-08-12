@@ -9,5 +9,5 @@
 #[rust(repr = "transparent")]
 #[rerun(state = "unstable")]
 pub struct AutoScroll {
-    pub auto_scroll: rerun::datatypes::Bool,
+    pub auto_scroll: rerun::encodings::Bool,
 }

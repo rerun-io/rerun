@@ -11,7 +11,7 @@ import numpy as np
 import pyarrow as pa
 from attrs import define, field
 
-from .. import components, datatypes
+from .. import components, encodings
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
@@ -76,7 +76,7 @@ class CoordinateFrame(Archetype):
 
     NAME: ClassVar[str] = "rerun.archetypes.CoordinateFrame"
 
-    def __init__(self: Any, frame: datatypes.Utf8Like) -> None:
+    def __init__(self: Any, frame: encodings.Utf8Like) -> None:
         """
         Create a new instance of the CoordinateFrame archetype.
 
@@ -113,7 +113,7 @@ class CoordinateFrame(Archetype):
         cls,
         *,
         clear_unset: bool = False,
-        frame: datatypes.Utf8Like | None = None,
+        frame: encodings.Utf8Like | None = None,
     ) -> CoordinateFrame:
         """
         Update only some specific fields of a `CoordinateFrame`.
@@ -161,7 +161,7 @@ class CoordinateFrame(Archetype):
     def columns(
         cls,
         *,
-        frame: datatypes.Utf8ArrayLike | None = None,
+        frame: encodings.Utf8ArrayLike | None = None,
     ) -> ComponentColumnList:
         """
         Construct a new column-oriented component bundle.

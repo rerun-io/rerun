@@ -9,7 +9,7 @@ from typing import Any, ClassVar
 
 from attrs import define, field
 
-from ... import components, datatypes
+from ... import components, encodings
 from ..._baseclasses import (
     Archetype,
     ComponentDescriptor,
@@ -34,7 +34,7 @@ class TensorScalarMapping(Archetype):
         *,
         mag_filter: components.MagnificationFilterLike | None = None,
         colormap: components.ColormapLike | None = None,
-        gamma: datatypes.Float32Like | None = None,
+        gamma: encodings.Float32Like | None = None,
     ) -> None:
         """
         Create a new instance of the TensorScalarMapping archetype.
@@ -86,7 +86,7 @@ class TensorScalarMapping(Archetype):
         clear_unset: bool = False,
         mag_filter: components.MagnificationFilterLike | None = None,
         colormap: components.ColormapLike | None = None,
-        gamma: datatypes.Float32Like | None = None,
+        gamma: encodings.Float32Like | None = None,
     ) -> TensorScalarMapping:
         """
         Update only some specific fields of a `TensorScalarMapping`.

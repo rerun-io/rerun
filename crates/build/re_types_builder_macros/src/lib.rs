@@ -14,7 +14,7 @@
 //! pub struct Position3D {
 //!     /// The position.
 //!     #[rerun(required)]
-//!     pub xyz: rerun::datatypes::Vec3D,
+//!     pub xyz: rerun::encodings::Vec3D,
 //! }
 //! ```
 //!

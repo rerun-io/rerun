@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "../datatypes/view_coordinates.hpp"
-#include "../datatypes/view_dir.hpp"
+#include "../encodings/view_coordinates.hpp"
+#include "../encodings/view_dir.hpp"
 #include "../rerun_sdk_export.hpp"
 #include "../result.hpp"
 
@@ -27,13 +27,13 @@ namespace rerun::components {
     ///
     struct ViewCoordinates {
         /// The directions of the [x, y, z] axes.
-        rerun::datatypes::ViewCoordinates coordinates;
+        rerun::encodings::ViewCoordinates coordinates;
 
       public: // START of extensions from view_coordinates_ext.cpp:
         /// Construct `ViewCoordinates` from x/y/z enum values.
         constexpr ViewCoordinates(
-            rerun::datatypes::ViewDir axis0, rerun::datatypes::ViewDir axis1,
-            rerun::datatypes::ViewDir axis2
+            rerun::encodings::ViewDir axis0, rerun::encodings::ViewDir axis1,
+            rerun::encodings::ViewDir axis2
         )
             : coordinates(axis0, axis1, axis2) {}
 
@@ -286,15 +286,15 @@ namespace rerun::components {
       public:
         ViewCoordinates() = default;
 
-        /// Cast to the underlying ViewCoordinates datatype
-        operator rerun::datatypes::ViewCoordinates() const {
+        /// Cast to the underlying ViewCoordinates encoding
+        operator rerun::encodings::ViewCoordinates() const {
             return coordinates;
         }
     };
 } // namespace rerun::components
 
 namespace rerun {
-    static_assert(sizeof(rerun::datatypes::ViewCoordinates) == sizeof(components::ViewCoordinates));
+    static_assert(sizeof(rerun::encodings::ViewCoordinates) == sizeof(components::ViewCoordinates));
 
     /// \private
     template <>
@@ -303,7 +303,7 @@ namespace rerun {
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
-            return Loggable<rerun::datatypes::ViewCoordinates>::arrow_datatype();
+            return Loggable<rerun::encodings::ViewCoordinates>::arrow_datatype();
         }
 
         /// Serializes an array of `rerun::components::ViewCoordinates` into an arrow array.
@@ -311,14 +311,14 @@ namespace rerun {
             const components::ViewCoordinates* instances, size_t num_instances
         ) {
             if (num_instances == 0) {
-                return Loggable<rerun::datatypes::ViewCoordinates>::to_arrow(nullptr, 0);
+                return Loggable<rerun::encodings::ViewCoordinates>::to_arrow(nullptr, 0);
             } else if (instances == nullptr) {
                 return rerun::Error(
                     ErrorCode::UnexpectedNullArgument,
                     "Passed array instances is null when num_elements> 0."
                 );
             } else {
-                return Loggable<rerun::datatypes::ViewCoordinates>::to_arrow(
+                return Loggable<rerun::encodings::ViewCoordinates>::to_arrow(
                     &instances->coordinates,
                     num_instances
                 );

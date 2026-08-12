@@ -6,7 +6,7 @@ import numpy as np
 import numpy.typing as npt
 
 from ..components import ImageFormat
-from ..datatypes import ChannelDatatype, Float32Like
+from ..encodings import ChannelDatatype, Float32Like
 
 if TYPE_CHECKING:
     ImageLike = (

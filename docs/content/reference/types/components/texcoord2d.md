@@ -20,8 +20,8 @@ V |           .
 This is the same convention as in Vulkan/Metal/DX12/WebGPU, but (!) unlike OpenGL,
 which places the origin at the bottom-left.
 
-## Rerun datatype
-[`Vec2D`](../datatypes/vec2d.md)
+## Rerun encoding
+[`Vec2D`](../encodings/vec2d.md)
 
 
 ## Arrow datatype

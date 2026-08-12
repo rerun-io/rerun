@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from .. import datatypes
+from .. import encodings
 from .._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,7 +14,7 @@ from .._baseclasses import (
 __all__ = ["VoxelSize", "VoxelSizeBatch"]
 
 
-class VoxelSize(datatypes.Vec3D, ComponentMixin):
+class VoxelSize(encodings.Vec3D, ComponentMixin):
     """
     **Component**: The scene-unit dimensions of one voxel in a sparse 3D voxel grid.
 
@@ -25,10 +25,10 @@ class VoxelSize(datatypes.Vec3D, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of VoxelSizeExt in voxel_size_ext.py
 
-    # Note: there are no fields here because VoxelSize delegates to datatypes.Vec3D
+    # Note: there are no fields here because VoxelSize delegates to encodings.Vec3D
 
 
-class VoxelSizeBatch(datatypes.Vec3DBatch, ComponentBatchMixin):
+class VoxelSizeBatch(encodings.Vec3DBatch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.components.VoxelSize"
 
 

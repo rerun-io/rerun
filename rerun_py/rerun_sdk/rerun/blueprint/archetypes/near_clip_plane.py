@@ -17,7 +17,7 @@ from ...blueprint import components as blueprint_components
 from ...error_utils import catch_and_log_exceptions
 
 if TYPE_CHECKING:
-    from ... import datatypes
+    from ... import encodings
 
 __all__ = ["NearClipPlane"]
 
@@ -32,7 +32,7 @@ class NearClipPlane(Archetype):
 
     NAME: ClassVar[str] = "rerun.blueprint.archetypes.NearClipPlane"
 
-    def __init__(self: Any, near_clip_plane: datatypes.Float32Like) -> None:
+    def __init__(self: Any, near_clip_plane: encodings.Float32Like) -> None:
         """
         Create a new instance of the NearClipPlane archetype.
 
@@ -69,7 +69,7 @@ class NearClipPlane(Archetype):
         cls,
         *,
         clear_unset: bool = False,
-        near_clip_plane: datatypes.Float32Like | None = None,
+        near_clip_plane: encodings.Float32Like | None = None,
     ) -> NearClipPlane:
         """
         Update only some specific fields of a `NearClipPlane`.

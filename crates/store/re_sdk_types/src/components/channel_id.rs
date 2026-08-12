@@ -27,10 +27,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// Used to identify specific channels within an MCAP file.
 #[derive(Clone, Debug, Copy, PartialEq, Eq, PartialOrd, Ord, ::re_byte_size::SizeBytes)]
 #[repr(transparent)]
-pub struct ChannelId(pub crate::datatypes::UInt16);
+pub struct ChannelId(pub crate::encodings::UInt16);
 
 impl ::re_types_core::WrapperComponent for ChannelId {
-    type Datatype = crate::datatypes::UInt16;
+    type Encoding = crate::encodings::UInt16;
 
     #[inline]
     fn name() -> ComponentType {
@@ -38,38 +38,38 @@ impl ::re_types_core::WrapperComponent for ChannelId {
     }
 
     #[inline]
-    fn into_inner(self) -> Self::Datatype {
+    fn into_inner(self) -> Self::Encoding {
         self.0
     }
 }
 
 ::re_types_core::macros::impl_into_cow!(ChannelId);
 
-impl<T: Into<crate::datatypes::UInt16>> From<T> for ChannelId {
+impl<T: Into<crate::encodings::UInt16>> From<T> for ChannelId {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl std::borrow::Borrow<crate::datatypes::UInt16> for ChannelId {
+impl std::borrow::Borrow<crate::encodings::UInt16> for ChannelId {
     #[inline]
-    fn borrow(&self) -> &crate::datatypes::UInt16 {
+    fn borrow(&self) -> &crate::encodings::UInt16 {
         &self.0
     }
 }
 
 impl std::ops::Deref for ChannelId {
-    type Target = crate::datatypes::UInt16;
+    type Target = crate::encodings::UInt16;
 
     #[inline]
-    fn deref(&self) -> &crate::datatypes::UInt16 {
+    fn deref(&self) -> &crate::encodings::UInt16 {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for ChannelId {
     #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::UInt16 {
+    fn deref_mut(&mut self) -> &mut crate::encodings::UInt16 {
         &mut self.0
     }
 }

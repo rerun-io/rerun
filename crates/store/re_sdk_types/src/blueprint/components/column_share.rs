@@ -28,11 +28,11 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug, Default, ::re_byte_size::SizeBytes)]
 pub struct ColumnShare(
     /// The layout shares of a column in the container.
-    pub crate::datatypes::Float32,
+    pub crate::encodings::Float32,
 );
 
 impl ::re_types_core::WrapperComponent for ColumnShare {
-    type Datatype = crate::datatypes::Float32;
+    type Encoding = crate::encodings::Float32;
 
     #[inline]
     fn name() -> ComponentType {
@@ -40,38 +40,38 @@ impl ::re_types_core::WrapperComponent for ColumnShare {
     }
 
     #[inline]
-    fn into_inner(self) -> Self::Datatype {
+    fn into_inner(self) -> Self::Encoding {
         self.0
     }
 }
 
 ::re_types_core::macros::impl_into_cow!(ColumnShare);
 
-impl<T: Into<crate::datatypes::Float32>> From<T> for ColumnShare {
+impl<T: Into<crate::encodings::Float32>> From<T> for ColumnShare {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl std::borrow::Borrow<crate::datatypes::Float32> for ColumnShare {
+impl std::borrow::Borrow<crate::encodings::Float32> for ColumnShare {
     #[inline]
-    fn borrow(&self) -> &crate::datatypes::Float32 {
+    fn borrow(&self) -> &crate::encodings::Float32 {
         &self.0
     }
 }
 
 impl std::ops::Deref for ColumnShare {
-    type Target = crate::datatypes::Float32;
+    type Target = crate::encodings::Float32;
 
     #[inline]
-    fn deref(&self) -> &crate::datatypes::Float32 {
+    fn deref(&self) -> &crate::encodings::Float32 {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for ColumnShare {
     #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Float32 {
+    fn deref_mut(&mut self) -> &mut crate::encodings::Float32 {
         &mut self.0
     }
 }

@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from ... import datatypes
+from ... import encodings
 from ..._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,7 +14,7 @@ from ..._baseclasses import (
 __all__ = ["ForceDistance", "ForceDistanceBatch"]
 
 
-class ForceDistance(datatypes.Float64, ComponentMixin):
+class ForceDistance(encodings.Float64, ComponentMixin):
     """
     **Component**: The target distance between two nodes.
 
@@ -26,10 +26,10 @@ class ForceDistance(datatypes.Float64, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of ForceDistanceExt in force_distance_ext.py
 
-    # Note: there are no fields here because ForceDistance delegates to datatypes.Float64
+    # Note: there are no fields here because ForceDistance delegates to encodings.Float64
 
 
-class ForceDistanceBatch(datatypes.Float64Batch, ComponentBatchMixin):
+class ForceDistanceBatch(encodings.Float64Batch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.blueprint.components.ForceDistance"
 
 

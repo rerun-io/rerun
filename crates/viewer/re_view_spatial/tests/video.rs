@@ -4,7 +4,7 @@ use re_chunk_store::RowId;
 use re_log_types::TimePoint;
 use re_sdk_types::archetypes::{AssetVideo, TextLog, VideoFrameReference, VideoStream};
 use re_sdk_types::components::{self, MediaType, VideoTimestamp};
-use re_sdk_types::datatypes;
+use re_sdk_types::encodings;
 use re_test_context::TestContext;
 use re_test_context::external::egui_kittest::SnapshotOptions;
 use re_test_viewport::TestContextExt as _;
@@ -183,7 +183,7 @@ fn test_video(video_type: VideoType, codec: &VideoCodec) {
         VideoType::VideoStream => {
             // Pretend the file is a video stream.
             let blob_bytes =
-                datatypes::Blob::serialized_blob_as_slice(video_asset.blob.as_ref().unwrap())
+                encodings::Blob::serialized_blob_as_slice(video_asset.blob.as_ref().unwrap())
                     .unwrap();
             let video_data_description = VideoDataDescription::load_from_bytes(
                 blob_bytes,

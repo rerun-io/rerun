@@ -9,7 +9,7 @@ from typing import ClassVar
 
 from attrs import define, field
 
-from ... import components, datatypes
+from ... import components, encodings
 from ..._baseclasses import (
     Archetype,
     ComponentDescriptor,
@@ -55,11 +55,11 @@ class LineGrid3D(LineGrid3DExt, Archetype):
         cls,
         *,
         clear_unset: bool = False,
-        visible: datatypes.BoolLike | None = None,
-        spacing: datatypes.Float32Like | None = None,
-        plane: datatypes.Plane3DLike | None = None,
-        stroke_width: datatypes.Float32Like | None = None,
-        color: datatypes.Rgba32Like | None = None,
+        visible: encodings.BoolLike | None = None,
+        spacing: encodings.Float32Like | None = None,
+        plane: encodings.Plane3DLike | None = None,
+        stroke_width: encodings.Float32Like | None = None,
+        color: encodings.Rgba32Like | None = None,
     ) -> LineGrid3D:
         """
         Update only some specific fields of a `LineGrid3D`.

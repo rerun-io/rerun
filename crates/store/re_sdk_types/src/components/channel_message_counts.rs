@@ -30,7 +30,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug, Default, PartialEq, Eq, ::re_byte_size::SizeBytes)]
 pub struct ChannelMessageCounts(
     /// The channel ID to message count pairs.
-    pub Vec<crate::datatypes::ChannelCountPair>,
+    pub Vec<crate::encodings::ChannelCountPair>,
 );
 
 impl ::re_types_core::Component for ChannelMessageCounts {
@@ -48,7 +48,7 @@ impl ::re_types_core::Loggable for ChannelMessageCounts {
         use arrow::datatypes::*;
         DataType::List(std::sync::Arc::new(Field::new(
             "item",
-            <crate::datatypes::ChannelCountPair>::arrow_datatype(),
+            <crate::encodings::ChannelCountPair>::arrow_datatype(),
             false,
         )))
     }
@@ -86,13 +86,13 @@ impl ::re_types_core::Loggable for ChannelMessageCounts {
                 as_array_ref(ListArray::try_new(
                     std::sync::Arc::new(Field::new(
                         "item",
-                        <crate::datatypes::ChannelCountPair>::arrow_datatype(),
+                        <crate::encodings::ChannelCountPair>::arrow_datatype(),
                         false,
                     )),
                     offsets,
                     {
                         _ = data0_inner_validity;
-                        crate::datatypes::ChannelCountPair::to_arrow_opt(
+                        crate::encodings::ChannelCountPair::to_arrow_opt(
                             data0_inner_data.into_iter().map(Some),
                         )?
                     },
@@ -125,7 +125,7 @@ impl ::re_types_core::Loggable for ChannelMessageCounts {
             } else {
                 let arrow_data_inner = {
                     let arrow_data_inner = &**arrow_data.values();
-                    crate::datatypes::ChannelCountPair::from_arrow_opt(arrow_data_inner)
+                    crate::encodings::ChannelCountPair::from_arrow_opt(arrow_data_inner)
                         .with_context("rerun.components.ChannelMessageCounts#counts")?
                         .into_iter()
                         .collect::<Vec<_>>()
@@ -166,7 +166,7 @@ impl ::re_types_core::Loggable for ChannelMessageCounts {
     }
 }
 
-impl<I: Into<crate::datatypes::ChannelCountPair>, T: IntoIterator<Item = I>> From<T>
+impl<I: Into<crate::encodings::ChannelCountPair>, T: IntoIterator<Item = I>> From<T>
     for ChannelMessageCounts
 {
     fn from(v: T) -> Self {

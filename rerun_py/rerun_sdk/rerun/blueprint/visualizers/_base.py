@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
     from ..._baseclasses import DescribedComponentBatch
-    from ...blueprint.datatypes import VisualizerComponentMappingLike
+    from ...blueprint.encodings import VisualizerComponentMappingLike
 
 
 class Visualizer:

@@ -12,7 +12,7 @@ extern crate self as rerun;
 
 pub use re_types_builder_prelude::{Binary, f16, rerun_type};
 
-pub mod datatypes {
+pub mod encodings {
     /// A vector in 3D space.
     #[rerun::rerun_type]
     #[rerun(state = "stable")]
@@ -57,7 +57,7 @@ pub mod components {
     #[rerun::rerun_type]
     #[rerun(state = "stable")]
     #[python(aliases = "npt.NDArray[Any] | Sequence[float]")]
-    pub struct Position3D(pub rerun::datatypes::Vec3D);
+    pub struct Position3D(pub rerun::encodings::Vec3D);
 }
 
 pub mod archetypes {
@@ -73,7 +73,7 @@ pub mod archetypes {
         /// Which color model the point cloud is in, if any.
         #[rerun(optional)]
         #[cpp(rename_field = "color_model_")]
-        pub color_model: Option<rerun::datatypes::ColorModel>,
+        pub color_model: Option<rerun::encodings::ColorModel>,
     }
 }
 

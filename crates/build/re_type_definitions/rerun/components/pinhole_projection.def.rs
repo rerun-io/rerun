@@ -16,5 +16,5 @@
 #[rust(derive(Copy, PartialEq, PartialOrd))]
 #[rerun(state = "stable")]
 pub struct PinholeProjection {
-    pub image_from_camera: rerun::datatypes::Mat3x3,
+    pub image_from_camera: rerun::encodings::Mat3x3,
 }

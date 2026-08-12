@@ -9,12 +9,12 @@ from ..._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
 )
-from ...blueprint import datatypes as blueprint_datatypes
+from ...blueprint import encodings as blueprint_encodings
 
 __all__ = ["TensorDimensionIndexSlider", "TensorDimensionIndexSliderBatch"]
 
 
-class TensorDimensionIndexSlider(blueprint_datatypes.TensorDimensionIndexSlider, ComponentMixin):
+class TensorDimensionIndexSlider(blueprint_encodings.TensorDimensionIndexSlider, ComponentMixin):
     """
     **Component**: Show a slider for the index of some dimension of a slider.
 
@@ -24,10 +24,10 @@ class TensorDimensionIndexSlider(blueprint_datatypes.TensorDimensionIndexSlider,
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of TensorDimensionIndexSliderExt in tensor_dimension_index_slider_ext.py
 
-    # Note: there are no fields here because TensorDimensionIndexSlider delegates to datatypes.TensorDimensionIndexSlider
+    # Note: there are no fields here because TensorDimensionIndexSlider delegates to encodings.TensorDimensionIndexSlider
 
 
-class TensorDimensionIndexSliderBatch(blueprint_datatypes.TensorDimensionIndexSliderBatch, ComponentBatchMixin):
+class TensorDimensionIndexSliderBatch(blueprint_encodings.TensorDimensionIndexSliderBatch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.blueprint.components.TensorDimensionIndexSlider"
 
 

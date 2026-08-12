@@ -31,11 +31,11 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct VisualBounds2D(
     /// X and y ranges that should be visible.
-    pub crate::datatypes::Range2D,
+    pub crate::encodings::Range2D,
 );
 
 impl ::re_types_core::WrapperComponent for VisualBounds2D {
-    type Datatype = crate::datatypes::Range2D;
+    type Encoding = crate::encodings::Range2D;
 
     #[inline]
     fn name() -> ComponentType {
@@ -43,38 +43,38 @@ impl ::re_types_core::WrapperComponent for VisualBounds2D {
     }
 
     #[inline]
-    fn into_inner(self) -> Self::Datatype {
+    fn into_inner(self) -> Self::Encoding {
         self.0
     }
 }
 
 ::re_types_core::macros::impl_into_cow!(VisualBounds2D);
 
-impl<T: Into<crate::datatypes::Range2D>> From<T> for VisualBounds2D {
+impl<T: Into<crate::encodings::Range2D>> From<T> for VisualBounds2D {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl std::borrow::Borrow<crate::datatypes::Range2D> for VisualBounds2D {
+impl std::borrow::Borrow<crate::encodings::Range2D> for VisualBounds2D {
     #[inline]
-    fn borrow(&self) -> &crate::datatypes::Range2D {
+    fn borrow(&self) -> &crate::encodings::Range2D {
         &self.0
     }
 }
 
 impl std::ops::Deref for VisualBounds2D {
-    type Target = crate::datatypes::Range2D;
+    type Target = crate::encodings::Range2D;
 
     #[inline]
-    fn deref(&self) -> &crate::datatypes::Range2D {
+    fn deref(&self) -> &crate::encodings::Range2D {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for VisualBounds2D {
     #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Range2D {
+    fn deref_mut(&mut self) -> &mut crate::encodings::Range2D {
         &mut self.0
     }
 }

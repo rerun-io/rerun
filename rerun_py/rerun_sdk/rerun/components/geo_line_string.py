@@ -30,7 +30,7 @@ class GeoLineString(GeoLineStringExt, ComponentMixin):
     _BATCH_TYPE = None
     # __init__ can be found in geo_line_string_ext.py
 
-    lat_lon: list[datatypes.DVec2D] = field()
+    lat_lon: list[encodings.DVec2D] = field()
 
     def __len__(self) -> int:
         # You can define your own __len__ function as a member of GeoLineStringExt in geo_line_string_ext.py
@@ -38,9 +38,9 @@ class GeoLineString(GeoLineStringExt, ComponentMixin):
 
 
 if TYPE_CHECKING:
-    from .. import datatypes
+    from .. import encodings
 
-    GeoLineStringLike = GeoLineString | datatypes.DVec2DArrayLike | npt.NDArray[np.float64]
+    GeoLineStringLike = GeoLineString | encodings.DVec2DArrayLike | npt.NDArray[np.float64]
     """A type alias for any GeoLineString-like object."""
 else:
     GeoLineStringLike = Any

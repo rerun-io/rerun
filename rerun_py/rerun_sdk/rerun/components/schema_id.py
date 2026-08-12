@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from .. import datatypes
+from .. import encodings
 from .._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,16 +14,16 @@ from .._baseclasses import (
 __all__ = ["SchemaId", "SchemaIdBatch"]
 
 
-class SchemaId(datatypes.UInt16, ComponentMixin):
+class SchemaId(encodings.UInt16, ComponentMixin):
     """**Component**: A 16-bit unique identifier for a schema within the MCAP file."""
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of SchemaIdExt in schema_id_ext.py
 
-    # Note: there are no fields here because SchemaId delegates to datatypes.UInt16
+    # Note: there are no fields here because SchemaId delegates to encodings.UInt16
 
 
-class SchemaIdBatch(datatypes.UInt16Batch, ComponentBatchMixin):
+class SchemaIdBatch(encodings.UInt16Batch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.components.SchemaId"
 
 

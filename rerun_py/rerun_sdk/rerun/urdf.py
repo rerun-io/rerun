@@ -135,7 +135,7 @@ class UrdfJoint:
 
         """
         from . import Transform3D
-        from .datatypes import Quaternion
+        from .encodings import Quaternion
 
         result = self._inner.compute_transform(value, clamp=clamp)
 

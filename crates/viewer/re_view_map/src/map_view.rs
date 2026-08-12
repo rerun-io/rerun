@@ -327,7 +327,7 @@ impl ViewClass for MapView {
             map_zoom.save_blueprint_component(
                 ctx,
                 &MapZoom::descriptor_zoom(),
-                &ZoomLevel(re_sdk_types::datatypes::Float64(map_memory.zoom())),
+                &ZoomLevel(re_sdk_types::encodings::Float64(map_memory.zoom())),
             );
         }
 

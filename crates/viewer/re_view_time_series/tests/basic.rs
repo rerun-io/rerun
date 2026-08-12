@@ -573,9 +573,9 @@ fn test_series_lines_single_logged_point() {
         .save_blueprint_component(
             ctx,
             &re_sdk_types::blueprint::archetypes::TimeAxis::descriptor_view_range(),
-            &re_sdk_types::datatypes::TimeRange {
-                start: re_sdk_types::datatypes::TimeRangeBoundary::Absolute(0.into()),
-                end: re_sdk_types::datatypes::TimeRangeBoundary::Absolute(20.into()),
+            &re_sdk_types::encodings::TimeRange {
+                start: re_sdk_types::encodings::TimeRangeBoundary::Absolute(0.into()),
+                end: re_sdk_types::encodings::TimeRangeBoundary::Absolute(20.into()),
             },
         );
 
@@ -713,13 +713,13 @@ fn test_bootstrapped_secondaries_impl(partial_range: bool, snapshot_results: &mu
                 override_path.clone(),
                 &re_sdk_types::blueprint::archetypes::VisibleTimeRanges::new([
                     re_sdk_types::blueprint::components::VisibleTimeRange(
-                        re_sdk_types::datatypes::VisibleTimeRange {
+                        re_sdk_types::encodings::VisibleTimeRange {
                             timeline: "log_tick".into(),
-                            range: re_sdk_types::datatypes::TimeRange {
-                                start: re_sdk_types::datatypes::TimeRangeBoundary::Absolute(
+                            range: re_sdk_types::encodings::TimeRange {
+                                start: re_sdk_types::encodings::TimeRangeBoundary::Absolute(
                                     70.into(),
                                 ),
-                                end: re_sdk_types::datatypes::TimeRangeBoundary::Infinite,
+                                end: re_sdk_types::encodings::TimeRangeBoundary::Infinite,
                             },
                         },
                     ),

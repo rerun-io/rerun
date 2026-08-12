@@ -1,6 +1,6 @@
 use super::TimelineName;
 
-// Not needed as there is a blanket implementation for impl Into<datatypes::Utf8>
+// Not needed as there is a blanket implementation for impl Into<encodings::Utf8>
 // impl From<re_log_types::TimelineName> for TimelineName {}
 
 // NOTE: fallible, because the blueprint component is a free-form string that can hold

@@ -23,10 +23,10 @@ use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 #[derive(Clone, Debug, Default, PartialEq, ::re_byte_size::SizeBytes)]
-pub struct AffixFuzzer14(pub crate::testing::datatypes::ScalarUnion);
+pub struct AffixFuzzer14(pub crate::testing::encodings::ScalarUnion);
 
 impl ::re_types_core::WrapperComponent for AffixFuzzer14 {
-    type Datatype = crate::testing::datatypes::ScalarUnion;
+    type Encoding = crate::testing::encodings::ScalarUnion;
 
     #[inline]
     fn name() -> ComponentType {
@@ -34,38 +34,38 @@ impl ::re_types_core::WrapperComponent for AffixFuzzer14 {
     }
 
     #[inline]
-    fn into_inner(self) -> Self::Datatype {
+    fn into_inner(self) -> Self::Encoding {
         self.0
     }
 }
 
 ::re_types_core::macros::impl_into_cow!(AffixFuzzer14);
 
-impl<T: Into<crate::testing::datatypes::ScalarUnion>> From<T> for AffixFuzzer14 {
+impl<T: Into<crate::testing::encodings::ScalarUnion>> From<T> for AffixFuzzer14 {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl std::borrow::Borrow<crate::testing::datatypes::ScalarUnion> for AffixFuzzer14 {
+impl std::borrow::Borrow<crate::testing::encodings::ScalarUnion> for AffixFuzzer14 {
     #[inline]
-    fn borrow(&self) -> &crate::testing::datatypes::ScalarUnion {
+    fn borrow(&self) -> &crate::testing::encodings::ScalarUnion {
         &self.0
     }
 }
 
 impl std::ops::Deref for AffixFuzzer14 {
-    type Target = crate::testing::datatypes::ScalarUnion;
+    type Target = crate::testing::encodings::ScalarUnion;
 
     #[inline]
-    fn deref(&self) -> &crate::testing::datatypes::ScalarUnion {
+    fn deref(&self) -> &crate::testing::encodings::ScalarUnion {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for AffixFuzzer14 {
     #[inline]
-    fn deref_mut(&mut self) -> &mut crate::testing::datatypes::ScalarUnion {
+    fn deref_mut(&mut self) -> &mut crate::testing::encodings::ScalarUnion {
         &mut self.0
     }
 }

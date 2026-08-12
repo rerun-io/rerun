@@ -9,5 +9,5 @@
 #[rust(repr = "transparent")]
 #[rerun(state = "unstable")]
 pub struct Enabled {
-    pub visible: rerun::datatypes::Bool,
+    pub visible: rerun::encodings::Bool,
 }

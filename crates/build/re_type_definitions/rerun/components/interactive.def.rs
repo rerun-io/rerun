@@ -9,5 +9,5 @@
 #[rust(derive(Copy, PartialEq, Eq, PartialOrd, Ord))]
 #[rust(repr = "transparent")]
 pub struct Interactive {
-    pub interactive: rerun::datatypes::Bool,
+    pub interactive: rerun::encodings::Bool,
 }

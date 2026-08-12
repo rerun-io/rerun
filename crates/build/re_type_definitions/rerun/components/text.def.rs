@@ -9,5 +9,5 @@
 #[rust(derive(Default, PartialEq, Eq, PartialOrd, Ord))]
 #[rust(repr = "transparent")]
 pub struct Text {
-    pub value: rerun::datatypes::Utf8,
+    pub value: rerun::encodings::Utf8,
 }

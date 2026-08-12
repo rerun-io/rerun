@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from ... import datatypes
+from ... import encodings
 from ..._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,7 +14,7 @@ from ..._baseclasses import (
 __all__ = ["GridColumns", "GridColumnsBatch"]
 
 
-class GridColumns(datatypes.UInt32, ComponentMixin):
+class GridColumns(encodings.UInt32, ComponentMixin):
     """
     **Component**: How many columns a grid container should have.
 
@@ -24,10 +24,10 @@ class GridColumns(datatypes.UInt32, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of GridColumnsExt in grid_columns_ext.py
 
-    # Note: there are no fields here because GridColumns delegates to datatypes.UInt32
+    # Note: there are no fields here because GridColumns delegates to encodings.UInt32
 
 
-class GridColumnsBatch(datatypes.UInt32Batch, ComponentBatchMixin):
+class GridColumnsBatch(encodings.UInt32Batch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.blueprint.components.GridColumns"
 
 

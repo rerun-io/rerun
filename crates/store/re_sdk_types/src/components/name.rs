@@ -25,10 +25,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Component**: A display name, typically for an entity or a item like a plot series.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ::re_byte_size::SizeBytes)]
 #[repr(transparent)]
-pub struct Name(pub crate::datatypes::Utf8);
+pub struct Name(pub crate::encodings::Utf8);
 
 impl ::re_types_core::WrapperComponent for Name {
-    type Datatype = crate::datatypes::Utf8;
+    type Encoding = crate::encodings::Utf8;
 
     #[inline]
     fn name() -> ComponentType {
@@ -36,38 +36,38 @@ impl ::re_types_core::WrapperComponent for Name {
     }
 
     #[inline]
-    fn into_inner(self) -> Self::Datatype {
+    fn into_inner(self) -> Self::Encoding {
         self.0
     }
 }
 
 ::re_types_core::macros::impl_into_cow!(Name);
 
-impl<T: Into<crate::datatypes::Utf8>> From<T> for Name {
+impl<T: Into<crate::encodings::Utf8>> From<T> for Name {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl std::borrow::Borrow<crate::datatypes::Utf8> for Name {
+impl std::borrow::Borrow<crate::encodings::Utf8> for Name {
     #[inline]
-    fn borrow(&self) -> &crate::datatypes::Utf8 {
+    fn borrow(&self) -> &crate::encodings::Utf8 {
         &self.0
     }
 }
 
 impl std::ops::Deref for Name {
-    type Target = crate::datatypes::Utf8;
+    type Target = crate::encodings::Utf8;
 
     #[inline]
-    fn deref(&self) -> &crate::datatypes::Utf8 {
+    fn deref(&self) -> &crate::encodings::Utf8 {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for Name {
     #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Utf8 {
+    fn deref_mut(&mut self) -> &mut crate::encodings::Utf8 {
         &mut self.0
     }
 }

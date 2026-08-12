@@ -9,5 +9,5 @@
 #[rust(repr = "transparent")]
 #[rerun(state = "unstable")]
 pub struct TimeInt {
-    pub time: rerun::datatypes::TimeInt,
+    pub time: rerun::encodings::TimeInt,
 }

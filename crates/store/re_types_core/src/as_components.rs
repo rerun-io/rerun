@@ -244,7 +244,7 @@ mod tests {
         where
             Self: 'a,
         {
-            use crate::datatypes::UInt32;
+            use crate::encodings::UInt32;
             UInt32::to_arrow_opt(
                 data.into_iter()
                     .map(|opt| opt.map(Into::into).map(|c| UInt32(c.0))),
@@ -254,7 +254,7 @@ mod tests {
         fn from_arrow_opt(
             data: &dyn arrow::array::Array,
         ) -> crate::DeserializationResult<Vec<Option<Self>>> {
-            use crate::datatypes::UInt32;
+            use crate::encodings::UInt32;
             Ok(UInt32::from_arrow_opt(data)?
                 .into_iter()
                 .map(|opt| opt.map(|v| Self(v.0)))

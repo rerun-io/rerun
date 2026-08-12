@@ -11,5 +11,5 @@
 #[rust(repr = "transparent")]
 #[rerun(state = "stable")]
 pub struct ImageBuffer {
-    pub buffer: rerun::datatypes::Blob,
+    pub buffer: rerun::encodings::Blob,
 }

@@ -8,5 +8,5 @@
 #[rust(derive(Copy, PartialEq, PartialOrd))]
 #[rerun(state = "stable")]
 pub struct ImagePlaneDistance {
-    pub image_from_camera: rerun::datatypes::Float32,
+    pub image_from_camera: rerun::encodings::Float32,
 }

@@ -41,7 +41,7 @@ namespace rerun::archetypes {
     /// @param datatype How the data should be interpreted.
     SegmentationImage(
         const void* bytes, WidthHeight resolution,
-        datatypes::ChannelDatatype datatype
+        encodings::ChannelDatatype datatype
     )
         : SegmentationImage{Collection<uint8_t>::borrow(bytes, num_bytes(resolution, datatype)), resolution, datatype} {}
 
@@ -55,9 +55,9 @@ namespace rerun::archetypes {
     /// @param datatype How the data should be interpreted.
     SegmentationImage(
         Collection<uint8_t> bytes, WidthHeight resolution,
-        datatypes::ChannelDatatype datatype
+        encodings::ChannelDatatype datatype
     ) {
-        auto image_format = datatypes::ImageFormat{resolution, datatype};
+        auto image_format = encodings::ImageFormat{resolution, datatype};
         if (bytes.size() != image_format.num_bytes()) {
             Error(
                 ErrorCode::InvalidTensorDimension,

@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from .. import datatypes
+from .. import encodings
 from .._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -15,7 +15,7 @@ from .scale3d_ext import Scale3DExt
 __all__ = ["Scale3D", "Scale3DBatch"]
 
 
-class Scale3D(Scale3DExt, datatypes.Vec3D, ComponentMixin):
+class Scale3D(Scale3DExt, encodings.Vec3D, ComponentMixin):
     """
     **Component**: A 3D scale factor.
 
@@ -27,10 +27,10 @@ class Scale3D(Scale3DExt, datatypes.Vec3D, ComponentMixin):
     _BATCH_TYPE = None
     # __init__ can be found in scale3d_ext.py
 
-    # Note: there are no fields here because Scale3D delegates to datatypes.Vec3D
+    # Note: there are no fields here because Scale3D delegates to encodings.Vec3D
 
 
-class Scale3DBatch(datatypes.Vec3DBatch, ComponentBatchMixin):
+class Scale3DBatch(encodings.Vec3DBatch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.components.Scale3D"
 
 

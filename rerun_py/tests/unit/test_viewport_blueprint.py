@@ -16,9 +16,9 @@ from rerun.blueprint.components.viewer_recommendation_hash import (
 from .common_arrays import none_empty_or_value, uuid_bytes0, uuid_bytes1
 
 if TYPE_CHECKING:
-    from rerun.datatypes.bool import BoolLike
-    from rerun.datatypes.uint64 import UInt64ArrayLike
-    from rerun.datatypes.uuid import UuidLike
+    from rerun.encodings.bool import BoolLike
+    from rerun.encodings.uint64 import UInt64ArrayLike
+    from rerun.encodings.uuid import UuidLike
 
 
 def test_viewport_blueprint() -> None:

@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from .. import datatypes
+from .. import encodings
 from .._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,7 +14,7 @@ from .._baseclasses import (
 __all__ = ["Opacity", "OpacityBatch"]
 
 
-class Opacity(datatypes.Float32, ComponentMixin):
+class Opacity(encodings.Float32, ComponentMixin):
     """
     **Component**: Degree of transparency ranging from 0.0 (fully transparent) to 1.0 (fully opaque).
 
@@ -25,10 +25,10 @@ class Opacity(datatypes.Float32, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of OpacityExt in opacity_ext.py
 
-    # Note: there are no fields here because Opacity delegates to datatypes.Float32
+    # Note: there are no fields here because Opacity delegates to encodings.Float32
 
 
-class OpacityBatch(datatypes.Float32Batch, ComponentBatchMixin):
+class OpacityBatch(encodings.Float32Batch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.components.Opacity"
 
 

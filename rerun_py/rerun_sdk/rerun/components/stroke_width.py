@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from .. import datatypes
+from .. import encodings
 from .._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,16 +14,16 @@ from .._baseclasses import (
 __all__ = ["StrokeWidth", "StrokeWidthBatch"]
 
 
-class StrokeWidth(datatypes.Float32, ComponentMixin):
+class StrokeWidth(encodings.Float32, ComponentMixin):
     """**Component**: The width of a stroke specified in UI points."""
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of StrokeWidthExt in stroke_width_ext.py
 
-    # Note: there are no fields here because StrokeWidth delegates to datatypes.Float32
+    # Note: there are no fields here because StrokeWidth delegates to encodings.Float32
 
 
-class StrokeWidthBatch(datatypes.Float32Batch, ComponentBatchMixin):
+class StrokeWidthBatch(encodings.Float32Batch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.components.StrokeWidth"
 
 

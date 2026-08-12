@@ -8,5 +8,5 @@
 #[rust(derive(Copy, PartialEq))]
 #[rerun(state = "stable")]
 pub struct Resolution {
-    pub resolution: rerun::datatypes::Vec2D,
+    pub resolution: rerun::encodings::Vec2D,
 }

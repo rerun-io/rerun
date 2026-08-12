@@ -11,7 +11,7 @@ import numpy as np
 import pyarrow as pa
 from attrs import define, field
 
-from .. import components, datatypes
+from .. import components, encodings
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
@@ -22,7 +22,7 @@ from ..error_utils import catch_and_log_exceptions
 from .pinhole_ext import PinholeExt
 
 if TYPE_CHECKING:
-    from ..blueprint.datatypes import VisualizerComponentMappingLike
+    from ..blueprint.encodings import VisualizerComponentMappingLike
 
 __all__ = ["Pinhole"]
 
@@ -129,14 +129,14 @@ class Pinhole(PinholeExt, Archetype, VisualizableArchetype):
         cls,
         *,
         clear_unset: bool = False,
-        image_from_camera: datatypes.Mat3x3Like | None = None,
-        resolution: datatypes.Vec2DLike | None = None,
-        camera_xyz: datatypes.ViewCoordinatesLike | None = None,
-        child_frame: datatypes.Utf8Like | None = None,
-        parent_frame: datatypes.Utf8Like | None = None,
-        image_plane_distance: datatypes.Float32Like | None = None,
-        color: datatypes.Rgba32Like | None = None,
-        line_width: datatypes.Float32Like | None = None,
+        image_from_camera: encodings.Mat3x3Like | None = None,
+        resolution: encodings.Vec2DLike | None = None,
+        camera_xyz: encodings.ViewCoordinatesLike | None = None,
+        child_frame: encodings.Utf8Like | None = None,
+        parent_frame: encodings.Utf8Like | None = None,
+        image_plane_distance: encodings.Float32Like | None = None,
+        color: encodings.Rgba32Like | None = None,
+        line_width: encodings.Float32Like | None = None,
     ) -> Pinhole:
         """
         Update only some specific fields of a `Pinhole`.
@@ -309,14 +309,14 @@ class Pinhole(PinholeExt, Archetype, VisualizableArchetype):
     def columns(
         cls,
         *,
-        image_from_camera: datatypes.Mat3x3ArrayLike | None = None,
-        resolution: datatypes.Vec2DArrayLike | None = None,
-        camera_xyz: datatypes.ViewCoordinatesArrayLike | None = None,
-        child_frame: datatypes.Utf8ArrayLike | None = None,
-        parent_frame: datatypes.Utf8ArrayLike | None = None,
-        image_plane_distance: datatypes.Float32ArrayLike | None = None,
-        color: datatypes.Rgba32ArrayLike | None = None,
-        line_width: datatypes.Float32ArrayLike | None = None,
+        image_from_camera: encodings.Mat3x3ArrayLike | None = None,
+        resolution: encodings.Vec2DArrayLike | None = None,
+        camera_xyz: encodings.ViewCoordinatesArrayLike | None = None,
+        child_frame: encodings.Utf8ArrayLike | None = None,
+        parent_frame: encodings.Utf8ArrayLike | None = None,
+        image_plane_distance: encodings.Float32ArrayLike | None = None,
+        color: encodings.Rgba32ArrayLike | None = None,
+        line_width: encodings.Float32ArrayLike | None = None,
     ) -> ComponentColumnList:
         """
         Construct a new column-oriented component bundle.

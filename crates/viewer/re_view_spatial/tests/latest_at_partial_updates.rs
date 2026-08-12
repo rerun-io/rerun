@@ -95,7 +95,7 @@ fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
         ctx.save_blueprint_archetype(
             property_path.clone(),
             &re_sdk_types::blueprint::archetypes::VisualBounds2D::new(
-                re_sdk_types::datatypes::Range2D {
+                re_sdk_types::encodings::Range2D {
                     x_range: [-0.5, 1.5].into(),
                     y_range: [-0.5, 1.5].into(),
                 },

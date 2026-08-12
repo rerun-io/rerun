@@ -59,7 +59,7 @@ impl From<GltfTransform> for rerun::Transform3D {
     fn from(transform: GltfTransform) -> Self {
         rerun::Transform3D::from_translation_rotation_scale(
             transform.t,
-            rerun::datatypes::Quaternion::from_xyzw(transform.r),
+            rerun::encodings::Quaternion::from_xyzw(transform.r),
             transform.s,
         )
     }

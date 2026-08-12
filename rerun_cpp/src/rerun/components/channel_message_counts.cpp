@@ -3,7 +3,7 @@
 
 #include "channel_message_counts.hpp"
 
-#include "../datatypes/channel_count_pair.hpp"
+#include "../encodings/channel_count_pair.hpp"
 
 #include <arrow/builder.h>
 #include <arrow/type_fwd.h>
@@ -15,7 +15,7 @@ namespace rerun {
         Loggable<components::ChannelMessageCounts>::arrow_datatype() {
         static const auto datatype = arrow::list(arrow::field(
             "item",
-            Loggable<rerun::datatypes::ChannelCountPair>::arrow_datatype(),
+            Loggable<rerun::encodings::ChannelCountPair>::arrow_datatype(),
             false
         ));
         return datatype;
@@ -64,7 +64,7 @@ namespace rerun {
             ARROW_RETURN_NOT_OK(builder->Append());
             if (element.counts.data()) {
                 RR_RETURN_NOT_OK(
-                    Loggable<rerun::datatypes::ChannelCountPair>::fill_arrow_array_builder(
+                    Loggable<rerun::encodings::ChannelCountPair>::fill_arrow_array_builder(
                         value_builder,
                         element.counts.data(),
                         element.counts.size()

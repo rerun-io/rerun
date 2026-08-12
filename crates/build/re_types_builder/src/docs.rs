@@ -393,7 +393,7 @@ mod doclink_translation {
                 // For instance, https://rerun.io/docs/reference/types/views/spatial2d_view
                 // TODO(emilk): relative links would be nicer for the local markdown files
                 let type_name_snake_case = re_case::to_snake_case(type_name);
-                let query = if is_unreleased {
+                let query = if is_unreleased || object.kind.has_unpublished_docs() {
                     "?speculative-link" // or our link checker will complain
                 } else {
                     ""

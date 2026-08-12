@@ -5,7 +5,7 @@ from fractions import Fraction
 import numpy as np
 import pytest
 import rerun as rr
-from rerun.datatypes import (
+from rerun.encodings import (
     Vec2D,
     Vec2DArrayLike,
     Vec2DBatch,

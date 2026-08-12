@@ -5,7 +5,7 @@ use re_log_types::{EntityPath, EntityPathHash};
 use re_sdk_types::blueprint::archetypes::{PlotBackground, PlotLegend};
 use re_sdk_types::blueprint::components::{Corner2D, Enabled};
 use re_sdk_types::components::{Color, Visible};
-use re_sdk_types::datatypes::TensorBuffer;
+use re_sdk_types::encodings::TensorBuffer;
 use re_sdk_types::{View as _, ViewClassIdentifier};
 use re_ui::{Help, IconText, MouseButtonText, icons, list_item};
 use re_view::controls::SELECTION_RECT_ZOOM_BUTTON;

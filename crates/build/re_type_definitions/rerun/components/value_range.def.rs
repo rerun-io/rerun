@@ -7,5 +7,5 @@
 #[rust(derive(Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable))]
 #[rust(repr = "transparent")]
 pub struct ValueRange {
-    pub range: rerun::datatypes::Range1D,
+    pub range: rerun::encodings::Range1D,
 }

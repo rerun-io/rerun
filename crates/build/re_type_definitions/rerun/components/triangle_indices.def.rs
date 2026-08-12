@@ -7,5 +7,5 @@
 #[rust(repr = "transparent")]
 #[rerun(state = "stable")]
 pub struct TriangleIndices {
-    pub indices: rerun::datatypes::UVec3D,
+    pub indices: rerun::encodings::UVec3D,
 }

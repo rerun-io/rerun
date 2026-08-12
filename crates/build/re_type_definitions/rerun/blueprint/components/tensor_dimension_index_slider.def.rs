@@ -8,5 +8,5 @@
 #[rust(repr = "transparent")]
 #[rerun(state = "unstable")]
 pub struct TensorDimensionIndexSlider {
-    pub selection: rerun::blueprint::datatypes::TensorDimensionIndexSlider,
+    pub selection: rerun::blueprint::encodings::TensorDimensionIndexSlider,
 }

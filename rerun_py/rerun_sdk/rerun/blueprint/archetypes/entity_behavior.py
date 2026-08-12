@@ -9,7 +9,7 @@ from typing import Any, ClassVar
 
 from attrs import define, field
 
-from ... import components, datatypes
+from ... import components, encodings
 from ..._baseclasses import (
     Archetype,
     ComponentDescriptor,
@@ -71,7 +71,7 @@ class EntityBehavior(Archetype):
     NAME: ClassVar[str] = "rerun.blueprint.archetypes.EntityBehavior"
 
     def __init__(
-        self: Any, *, interactive: datatypes.BoolLike | None = None, visible: datatypes.BoolLike | None = None
+        self: Any, *, interactive: encodings.BoolLike | None = None, visible: encodings.BoolLike | None = None
     ) -> None:
         """
         Create a new instance of the EntityBehavior archetype.
@@ -120,8 +120,8 @@ class EntityBehavior(Archetype):
         cls,
         *,
         clear_unset: bool = False,
-        interactive: datatypes.BoolLike | None = None,
-        visible: datatypes.BoolLike | None = None,
+        interactive: encodings.BoolLike | None = None,
+        visible: encodings.BoolLike | None = None,
     ) -> EntityBehavior:
         """
         Update only some specific fields of a `EntityBehavior`.

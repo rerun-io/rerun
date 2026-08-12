@@ -13,5 +13,5 @@
 #[rust(repr = "transparent")]
 #[rerun(state = "stable")]
 pub struct VoxelIndex {
-    pub index: rerun::datatypes::IVec3D,
+    pub index: rerun::encodings::IVec3D,
 }

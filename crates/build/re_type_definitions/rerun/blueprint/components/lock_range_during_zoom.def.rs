@@ -10,5 +10,5 @@
 #[rust(repr = "transparent")]
 #[rerun(state = "unstable")]
 pub struct LockRangeDuringZoom {
-    pub lock_range: rerun::datatypes::Bool,
+    pub lock_range: rerun::encodings::Bool,
 }

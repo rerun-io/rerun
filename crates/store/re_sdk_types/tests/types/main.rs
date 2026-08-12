@@ -1,6 +1,6 @@
 //! Tests mainly, but not exclusively, of [`re_sdk_types::archetypes`].
 
-// Tests of archetypes and their related components and datatypes
+// Tests of archetypes and their related components and encodings
 
 mod annotation_context;
 mod arrows3d;

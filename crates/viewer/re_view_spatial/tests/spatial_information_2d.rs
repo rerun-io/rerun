@@ -62,7 +62,7 @@ fn test_spatial_information_2d() {
         );
         ctx.save_blueprint_archetype(
             visual_bounds_path,
-            &VisualBounds2D::new(re_sdk_types::datatypes::Range2D {
+            &VisualBounds2D::new(re_sdk_types::encodings::Range2D {
                 x_range: [-1.0, 11.0].into(),
                 y_range: [-1.0, 11.0].into(),
             }),

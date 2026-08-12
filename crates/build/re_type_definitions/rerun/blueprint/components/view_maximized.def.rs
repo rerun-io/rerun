@@ -8,5 +8,5 @@
 #[rust(derive(Default))]
 #[rerun(state = "unstable")]
 pub struct ViewMaximized {
-    pub view_id: rerun::datatypes::Uuid,
+    pub view_id: rerun::encodings::Uuid,
 }

@@ -25,10 +25,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Component**: The metadata describing the contents of a [`components::ImageBuffer`][crate::components::ImageBuffer].
 #[derive(Clone, Debug, Default, Copy, PartialEq, Eq, Hash, ::re_byte_size::SizeBytes)]
 #[repr(transparent)]
-pub struct ImageFormat(pub crate::datatypes::ImageFormat);
+pub struct ImageFormat(pub crate::encodings::ImageFormat);
 
 impl ::re_types_core::WrapperComponent for ImageFormat {
-    type Datatype = crate::datatypes::ImageFormat;
+    type Encoding = crate::encodings::ImageFormat;
 
     #[inline]
     fn name() -> ComponentType {
@@ -36,38 +36,38 @@ impl ::re_types_core::WrapperComponent for ImageFormat {
     }
 
     #[inline]
-    fn into_inner(self) -> Self::Datatype {
+    fn into_inner(self) -> Self::Encoding {
         self.0
     }
 }
 
 ::re_types_core::macros::impl_into_cow!(ImageFormat);
 
-impl<T: Into<crate::datatypes::ImageFormat>> From<T> for ImageFormat {
+impl<T: Into<crate::encodings::ImageFormat>> From<T> for ImageFormat {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl std::borrow::Borrow<crate::datatypes::ImageFormat> for ImageFormat {
+impl std::borrow::Borrow<crate::encodings::ImageFormat> for ImageFormat {
     #[inline]
-    fn borrow(&self) -> &crate::datatypes::ImageFormat {
+    fn borrow(&self) -> &crate::encodings::ImageFormat {
         &self.0
     }
 }
 
 impl std::ops::Deref for ImageFormat {
-    type Target = crate::datatypes::ImageFormat;
+    type Target = crate::encodings::ImageFormat;
 
     #[inline]
-    fn deref(&self) -> &crate::datatypes::ImageFormat {
+    fn deref(&self) -> &crate::encodings::ImageFormat {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for ImageFormat {
     #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::ImageFormat {
+    fn deref_mut(&mut self) -> &mut crate::encodings::ImageFormat {
         &mut self.0
     }
 }

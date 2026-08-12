@@ -75,7 +75,7 @@
 //!
 //! We say "broadly" here because the way these affixes ultimately affect objects in practice will
 //! actually depend on the kind of object that they are applied to, of which there are 3: archetypes,
-//! components and datatypes.
+//! components and encodings.
 //!
 //! Not only that, but objects defined in Rerun's IDL are materialized into 3 distinct environments:
 //! IDL definitions, Arrow datatypes and native code (e.g. Rust & Python).

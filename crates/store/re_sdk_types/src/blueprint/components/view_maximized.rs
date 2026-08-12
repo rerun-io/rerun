@@ -26,10 +26,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Debug, Default, ::re_byte_size::SizeBytes)]
-pub struct ViewMaximized(pub crate::datatypes::Uuid);
+pub struct ViewMaximized(pub crate::encodings::Uuid);
 
 impl ::re_types_core::WrapperComponent for ViewMaximized {
-    type Datatype = crate::datatypes::Uuid;
+    type Encoding = crate::encodings::Uuid;
 
     #[inline]
     fn name() -> ComponentType {
@@ -37,38 +37,38 @@ impl ::re_types_core::WrapperComponent for ViewMaximized {
     }
 
     #[inline]
-    fn into_inner(self) -> Self::Datatype {
+    fn into_inner(self) -> Self::Encoding {
         self.0
     }
 }
 
 ::re_types_core::macros::impl_into_cow!(ViewMaximized);
 
-impl<T: Into<crate::datatypes::Uuid>> From<T> for ViewMaximized {
+impl<T: Into<crate::encodings::Uuid>> From<T> for ViewMaximized {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl std::borrow::Borrow<crate::datatypes::Uuid> for ViewMaximized {
+impl std::borrow::Borrow<crate::encodings::Uuid> for ViewMaximized {
     #[inline]
-    fn borrow(&self) -> &crate::datatypes::Uuid {
+    fn borrow(&self) -> &crate::encodings::Uuid {
         &self.0
     }
 }
 
 impl std::ops::Deref for ViewMaximized {
-    type Target = crate::datatypes::Uuid;
+    type Target = crate::encodings::Uuid;
 
     #[inline]
-    fn deref(&self) -> &crate::datatypes::Uuid {
+    fn deref(&self) -> &crate::encodings::Uuid {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for ViewMaximized {
     #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Uuid {
+    fn deref_mut(&mut self) -> &mut crate::encodings::Uuid {
         &mut self.0
     }
 }

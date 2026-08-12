@@ -2,7 +2,7 @@
 
 use super::ViewCoordinates;
 use crate::components;
-use crate::datatypes::ViewDir;
+use crate::encodings::ViewDir;
 
 macro_rules! define_coordinates {
     ($docstring:literal, $name:ident => ($x:ident, $y:ident, $z:ident) ) => {

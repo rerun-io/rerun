@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from .. import datatypes
+from .. import encodings
 from .._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,7 +14,7 @@ from .._baseclasses import (
 __all__ = ["Length", "LengthBatch"]
 
 
-class Length(datatypes.Float32, ComponentMixin):
+class Length(encodings.Float32, ComponentMixin):
     """
     **Component**: Length, or one-dimensional size.
 
@@ -25,10 +25,10 @@ class Length(datatypes.Float32, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of LengthExt in length_ext.py
 
-    # Note: there are no fields here because Length delegates to datatypes.Float32
+    # Note: there are no fields here because Length delegates to encodings.Float32
 
 
-class LengthBatch(datatypes.Float32Batch, ComponentBatchMixin):
+class LengthBatch(encodings.Float32Batch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.components.Length"
 
 

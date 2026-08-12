@@ -25,10 +25,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Component**: Specifies which dimension to use for width.
 #[derive(Clone, Debug, Hash, Copy, PartialEq, Eq, Default, ::re_byte_size::SizeBytes)]
 #[repr(transparent)]
-pub struct TensorWidthDimension(pub crate::datatypes::TensorDimensionSelection);
+pub struct TensorWidthDimension(pub crate::encodings::TensorDimensionSelection);
 
 impl ::re_types_core::WrapperComponent for TensorWidthDimension {
-    type Datatype = crate::datatypes::TensorDimensionSelection;
+    type Encoding = crate::encodings::TensorDimensionSelection;
 
     #[inline]
     fn name() -> ComponentType {
@@ -36,38 +36,38 @@ impl ::re_types_core::WrapperComponent for TensorWidthDimension {
     }
 
     #[inline]
-    fn into_inner(self) -> Self::Datatype {
+    fn into_inner(self) -> Self::Encoding {
         self.0
     }
 }
 
 ::re_types_core::macros::impl_into_cow!(TensorWidthDimension);
 
-impl<T: Into<crate::datatypes::TensorDimensionSelection>> From<T> for TensorWidthDimension {
+impl<T: Into<crate::encodings::TensorDimensionSelection>> From<T> for TensorWidthDimension {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl std::borrow::Borrow<crate::datatypes::TensorDimensionSelection> for TensorWidthDimension {
+impl std::borrow::Borrow<crate::encodings::TensorDimensionSelection> for TensorWidthDimension {
     #[inline]
-    fn borrow(&self) -> &crate::datatypes::TensorDimensionSelection {
+    fn borrow(&self) -> &crate::encodings::TensorDimensionSelection {
         &self.0
     }
 }
 
 impl std::ops::Deref for TensorWidthDimension {
-    type Target = crate::datatypes::TensorDimensionSelection;
+    type Target = crate::encodings::TensorDimensionSelection;
 
     #[inline]
-    fn deref(&self) -> &crate::datatypes::TensorDimensionSelection {
+    fn deref(&self) -> &crate::encodings::TensorDimensionSelection {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for TensorWidthDimension {
     #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::TensorDimensionSelection {
+    fn deref_mut(&mut self) -> &mut crate::encodings::TensorDimensionSelection {
         &mut self.0
     }
 }

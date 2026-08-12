@@ -8,5 +8,5 @@
 #[rust(derive(Copy, PartialEq, Eq, Default))]
 #[rust(repr = "transparent")]
 pub struct VideoTimestamp {
-    pub timestamp: rerun::datatypes::VideoTimestamp,
+    pub timestamp: rerun::encodings::VideoTimestamp,
 }

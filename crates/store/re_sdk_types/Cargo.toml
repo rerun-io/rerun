@@ -42,7 +42,7 @@ image = ["dep:ecolor", "dep:image", "dep:tiff"]
 ## Inspecting video data.
 video = ["dep:re_video"]
 
-## Include testing archetypes/components/datatypes into the crate.
+## Include testing archetypes/components/encodings into the crate.
 ## Only useful for testing purposes.
 testing = []
 

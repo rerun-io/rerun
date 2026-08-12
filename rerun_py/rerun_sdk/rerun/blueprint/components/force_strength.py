@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from ... import datatypes
+from ... import encodings
 from ..._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,7 +14,7 @@ from ..._baseclasses import (
 __all__ = ["ForceStrength", "ForceStrengthBatch"]
 
 
-class ForceStrength(datatypes.Float64, ComponentMixin):
+class ForceStrength(encodings.Float64, ComponentMixin):
     """
     **Component**: The strength of a given force.
 
@@ -26,10 +26,10 @@ class ForceStrength(datatypes.Float64, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of ForceStrengthExt in force_strength_ext.py
 
-    # Note: there are no fields here because ForceStrength delegates to datatypes.Float64
+    # Note: there are no fields here because ForceStrength delegates to encodings.Float64
 
 
-class ForceStrengthBatch(datatypes.Float64Batch, ComponentBatchMixin):
+class ForceStrengthBatch(encodings.Float64Batch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.blueprint.components.ForceStrength"
 
 

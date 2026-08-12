@@ -27,7 +27,7 @@ pub fn test_opacity_2d() {
                 RowId::new(),
                 TimePoint::default(),
                 &re_sdk_types::archetypes::Image::from_color_model_and_tensor(
-                    re_sdk_types::datatypes::ColorModel::RGB,
+                    re_sdk_types::encodings::ColorModel::RGB,
                     image,
                 )
                 .unwrap()

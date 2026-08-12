@@ -11,7 +11,7 @@ import numpy as np
 import pyarrow as pa
 from attrs import define, field
 
-from .. import components, datatypes
+from .. import components, encodings
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
@@ -21,7 +21,7 @@ from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
 
 if TYPE_CHECKING:
-    from ..blueprint.datatypes import VisualizerComponentMappingLike
+    from ..blueprint.encodings import VisualizerComponentMappingLike
 
 __all__ = ["StateConfiguration"]
 
@@ -83,10 +83,10 @@ class StateConfiguration(Archetype, VisualizableArchetype):
     def __init__(
         self: Any,
         *,
-        values: datatypes.Utf8ArrayLike | None = None,
-        labels: datatypes.Utf8ArrayLike | None = None,
-        colors: datatypes.Rgba32ArrayLike | None = None,
-        visible: datatypes.BoolArrayLike | None = None,
+        values: encodings.Utf8ArrayLike | None = None,
+        labels: encodings.Utf8ArrayLike | None = None,
+        colors: encodings.Rgba32ArrayLike | None = None,
+        visible: encodings.BoolArrayLike | None = None,
     ) -> None:
         """
         Create a new instance of the StateConfiguration archetype.
@@ -143,10 +143,10 @@ class StateConfiguration(Archetype, VisualizableArchetype):
         cls,
         *,
         clear_unset: bool = False,
-        values: datatypes.Utf8ArrayLike | None = None,
-        labels: datatypes.Utf8ArrayLike | None = None,
-        colors: datatypes.Rgba32ArrayLike | None = None,
-        visible: datatypes.BoolArrayLike | None = None,
+        values: encodings.Utf8ArrayLike | None = None,
+        labels: encodings.Utf8ArrayLike | None = None,
+        colors: encodings.Rgba32ArrayLike | None = None,
+        visible: encodings.BoolArrayLike | None = None,
     ) -> StateConfiguration:
         """
         Update only some specific fields of a `StateConfiguration`.
@@ -237,10 +237,10 @@ class StateConfiguration(Archetype, VisualizableArchetype):
     def columns(
         cls,
         *,
-        values: datatypes.Utf8ArrayLike | None = None,
-        labels: datatypes.Utf8ArrayLike | None = None,
-        colors: datatypes.Rgba32ArrayLike | None = None,
-        visible: datatypes.BoolArrayLike | None = None,
+        values: encodings.Utf8ArrayLike | None = None,
+        labels: encodings.Utf8ArrayLike | None = None,
+        colors: encodings.Rgba32ArrayLike | None = None,
+        visible: encodings.BoolArrayLike | None = None,
     ) -> ComponentColumnList:
         """
         Construct a new column-oriented component bundle.

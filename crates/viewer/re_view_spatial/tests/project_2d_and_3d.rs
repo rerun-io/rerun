@@ -2,7 +2,7 @@
 
 use re_log_types::{EntityPath, EntityPathFilter, TimePoint};
 use re_sdk_types::components::RotationAxisAngle;
-use re_sdk_types::datatypes::Angle;
+use re_sdk_types::encodings::Angle;
 use re_sdk_types::{archetypes, blueprint::archetypes as blueprint_archetypes, components};
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
@@ -42,7 +42,7 @@ fn setup_scene(test_context: &mut TestContext, use_explicit_frames: bool) {
         }
 
         archetypes::Image::from_color_model_and_tensor(
-            re_sdk_types::datatypes::ColorModel::RGB,
+            re_sdk_types::encodings::ColorModel::RGB,
             data,
         )
         .expect("failed to create image")

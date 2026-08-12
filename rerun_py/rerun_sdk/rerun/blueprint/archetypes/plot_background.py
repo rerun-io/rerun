@@ -9,7 +9,7 @@ from typing import Any, ClassVar
 
 from attrs import define, field
 
-from ... import components, datatypes
+from ... import components, encodings
 from ..._baseclasses import (
     Archetype,
     ComponentDescriptor,
@@ -31,7 +31,7 @@ class PlotBackground(Archetype):
     NAME: ClassVar[str] = "rerun.blueprint.archetypes.PlotBackground"
 
     def __init__(
-        self: Any, *, color: datatypes.Rgba32Like | None = None, show_grid: datatypes.BoolLike | None = None
+        self: Any, *, color: encodings.Rgba32Like | None = None, show_grid: encodings.BoolLike | None = None
     ) -> None:
         """
         Create a new instance of the PlotBackground archetype.
@@ -70,8 +70,8 @@ class PlotBackground(Archetype):
         cls,
         *,
         clear_unset: bool = False,
-        color: datatypes.Rgba32Like | None = None,
-        show_grid: datatypes.BoolLike | None = None,
+        color: encodings.Rgba32Like | None = None,
+        show_grid: encodings.BoolLike | None = None,
     ) -> PlotBackground:
         """
         Update only some specific fields of a `PlotBackground`.

@@ -10,5 +10,5 @@
 #[rust(derive(Copy, PartialEq, Eq, PartialOrd, Ord))]
 #[rust(repr = "transparent")]
 pub struct Timestamp {
-    pub timestamp: rerun::datatypes::TimeInt,
+    pub timestamp: rerun::encodings::TimeInt,
 }

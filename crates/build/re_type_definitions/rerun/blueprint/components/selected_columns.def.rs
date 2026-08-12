@@ -9,5 +9,5 @@
 #[rust(repr = "transparent")]
 #[rerun(state = "unstable")]
 pub struct SelectedColumns {
-    pub selected_columns: rerun::blueprint::datatypes::SelectedColumns,
+    pub selected_columns: rerun::blueprint::encodings::SelectedColumns,
 }

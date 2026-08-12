@@ -17,7 +17,7 @@ from ...blueprint import components as blueprint_components
 from ...error_utils import catch_and_log_exceptions
 
 if TYPE_CHECKING:
-    from ... import datatypes
+    from ... import encodings
 
 __all__ = ["ForceManyBody"]
 
@@ -35,7 +35,7 @@ class ForceManyBody(Archetype):
     NAME: ClassVar[str] = "rerun.blueprint.archetypes.ForceManyBody"
 
     def __init__(
-        self: Any, *, enabled: datatypes.BoolLike | None = None, strength: datatypes.Float64Like | None = None
+        self: Any, *, enabled: encodings.BoolLike | None = None, strength: encodings.Float64Like | None = None
     ) -> None:
         """
         Create a new instance of the ForceManyBody archetype.
@@ -79,8 +79,8 @@ class ForceManyBody(Archetype):
         cls,
         *,
         clear_unset: bool = False,
-        enabled: datatypes.BoolLike | None = None,
-        strength: datatypes.Float64Like | None = None,
+        enabled: encodings.BoolLike | None = None,
+        strength: encodings.Float64Like | None = None,
     ) -> ForceManyBody:
         """
         Update only some specific fields of a `ForceManyBody`.

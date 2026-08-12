@@ -17,7 +17,7 @@ from rerun._baseclasses import (
 )
 
 if TYPE_CHECKING:
-    from .. import datatypes
+    from .. import encodings
 
 __all__ = ["AffixFuzzer17", "AffixFuzzer17ArrayLike", "AffixFuzzer17Batch", "AffixFuzzer17Like"]
 
@@ -26,13 +26,13 @@ __all__ = ["AffixFuzzer17", "AffixFuzzer17ArrayLike", "AffixFuzzer17Batch", "Aff
 class AffixFuzzer17(ComponentMixin):
     _BATCH_TYPE = None
 
-    def __init__(self: Any, *, many_optional_unions: datatypes.ScalarUnionArrayLike | None = None) -> None:
+    def __init__(self: Any, *, many_optional_unions: encodings.ScalarUnionArrayLike | None = None) -> None:
         """Create a new instance of the AffixFuzzer17 component."""
 
         # You can define your own __init__ function as a member of AffixFuzzer17Ext in affix_fuzzer17_ext.py
         self.__attrs_init__(many_optional_unions=many_optional_unions)
 
-    many_optional_unions: list[datatypes.ScalarUnion] | None = field(default=None)
+    many_optional_unions: list[encodings.ScalarUnion] | None = field(default=None)
 
     def __len__(self) -> int:
         # You can define your own __len__ function as a member of AffixFuzzer17Ext in affix_fuzzer17_ext.py

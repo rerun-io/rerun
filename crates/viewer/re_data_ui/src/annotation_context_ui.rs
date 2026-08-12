@@ -2,7 +2,7 @@ use egui::{NumExt as _, Vec2, color_picker};
 use itertools::Itertools as _;
 use re_log_types::EntityPath;
 use re_sdk_types::components::{self, AnnotationContext};
-use re_sdk_types::datatypes::{
+use re_sdk_types::encodings::{
     AnnotationInfo, ClassDescription, ClassDescriptionMapElem, KeypointId, KeypointPair,
 };
 use re_sdk_types::{Component as _, ComponentDescriptor, RowId};
@@ -171,7 +171,7 @@ fn class_description_ui(
     ui: &mut egui::Ui,
     ui_layout: UiLayout,
     class: &ClassDescription,
-    id: re_sdk_types::datatypes::ClassId,
+    id: re_sdk_types::encodings::ClassId,
 ) {
     if class.keypoint_connections.is_empty() && class.keypoint_annotations.is_empty() {
         return;

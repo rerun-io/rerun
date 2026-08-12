@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from .. import datatypes
+from .. import encodings
 from .._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,16 +14,16 @@ from .._baseclasses import (
 __all__ = ["ClassId", "ClassIdBatch"]
 
 
-class ClassId(datatypes.ClassId, ComponentMixin):
+class ClassId(encodings.ClassId, ComponentMixin):
     """**Component**: A 16-bit ID representing a type of semantic class."""
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of ClassIdExt in class_id_ext.py
 
-    # Note: there are no fields here because ClassId delegates to datatypes.ClassId
+    # Note: there are no fields here because ClassId delegates to encodings.ClassId
 
 
-class ClassIdBatch(datatypes.ClassIdBatch, ComponentBatchMixin):
+class ClassIdBatch(encodings.ClassIdBatch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.components.ClassId"
 
 

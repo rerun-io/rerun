@@ -8,5 +8,5 @@
 #[rerun(state = "unstable")]
 pub struct VisualizerComponentMapping {
     /// The component mapping pairs.
-    pub mapping: rerun::blueprint::datatypes::VisualizerComponentMapping,
+    pub mapping: rerun::blueprint::encodings::VisualizerComponentMapping,
 }

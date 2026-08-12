@@ -109,7 +109,7 @@ pub fn test_transform_hierarchy() {
                     &re_sdk_types::archetypes::Transform3D::from_rotation(
                         re_sdk_types::components::RotationAxisAngle::new(
                             (0.0, 1.0, 0.0),
-                            re_sdk_types::datatypes::Angle::from_degrees(90.0),
+                            re_sdk_types::encodings::Angle::from_degrees(90.0),
                         ),
                     ),
                 )
@@ -130,7 +130,7 @@ pub fn test_transform_hierarchy() {
                         // -45 degrees around the y axis.
                         // Via https://www.andre-gaschler.com/rotationconverter/
                         re_sdk_types::components::RotationQuat(
-                            re_sdk_types::datatypes::Quaternion::from_xyzw([
+                            re_sdk_types::encodings::Quaternion::from_xyzw([
                                 0.0, -0.3826834, 0.0, 0.9238796,
                             ]),
                         ),

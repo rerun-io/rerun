@@ -3,5 +3,5 @@
 .gitattributes linguist-generated=true
 archetypes.md linguist-generated=true
 components.md linguist-generated=true
-datatypes.md linguist-generated=true
+encodings.md linguist-generated=true
 views.md linguist-generated=true

@@ -13,5 +13,5 @@
 #[rerun(state = "stable")]
 pub struct ShowLabels {
     /// Whether the entity's [`rerun::components::Text`] label is shown.
-    pub show_labels: rerun::datatypes::Bool,
+    pub show_labels: rerun::encodings::Bool,
 }

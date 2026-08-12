@@ -10,5 +10,5 @@
 #[rerun(state = "unstable")]
 pub struct ColumnShare {
     /// The layout shares of a column in the container.
-    pub share: rerun::datatypes::Float32,
+    pub share: rerun::encodings::Float32,
 }

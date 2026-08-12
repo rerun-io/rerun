@@ -9,5 +9,5 @@
 #[rust(repr = "transparent")]
 #[rerun(state = "unstable")]
 pub struct ViewOrigin {
-    pub value: rerun::datatypes::EntityPath,
+    pub value: rerun::encodings::EntityPath,
 }

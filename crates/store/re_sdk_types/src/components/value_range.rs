@@ -29,10 +29,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
     Clone, Debug, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable, ::re_byte_size::SizeBytes,
 )]
 #[repr(transparent)]
-pub struct ValueRange(pub crate::datatypes::Range1D);
+pub struct ValueRange(pub crate::encodings::Range1D);
 
 impl ::re_types_core::WrapperComponent for ValueRange {
-    type Datatype = crate::datatypes::Range1D;
+    type Encoding = crate::encodings::Range1D;
 
     #[inline]
     fn name() -> ComponentType {
@@ -40,38 +40,38 @@ impl ::re_types_core::WrapperComponent for ValueRange {
     }
 
     #[inline]
-    fn into_inner(self) -> Self::Datatype {
+    fn into_inner(self) -> Self::Encoding {
         self.0
     }
 }
 
 ::re_types_core::macros::impl_into_cow!(ValueRange);
 
-impl<T: Into<crate::datatypes::Range1D>> From<T> for ValueRange {
+impl<T: Into<crate::encodings::Range1D>> From<T> for ValueRange {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl std::borrow::Borrow<crate::datatypes::Range1D> for ValueRange {
+impl std::borrow::Borrow<crate::encodings::Range1D> for ValueRange {
     #[inline]
-    fn borrow(&self) -> &crate::datatypes::Range1D {
+    fn borrow(&self) -> &crate::encodings::Range1D {
         &self.0
     }
 }
 
 impl std::ops::Deref for ValueRange {
-    type Target = crate::datatypes::Range1D;
+    type Target = crate::encodings::Range1D;
 
     #[inline]
-    fn deref(&self) -> &crate::datatypes::Range1D {
+    fn deref(&self) -> &crate::encodings::Range1D {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for ValueRange {
     #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Range1D {
+    fn deref_mut(&mut self) -> &mut crate::encodings::Range1D {
         &mut self.0
     }
 }

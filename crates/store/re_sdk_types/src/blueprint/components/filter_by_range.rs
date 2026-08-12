@@ -27,10 +27,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Debug, PartialEq, Eq, ::re_byte_size::SizeBytes)]
 #[repr(transparent)]
-pub struct FilterByRange(pub crate::blueprint::datatypes::FilterByRange);
+pub struct FilterByRange(pub crate::blueprint::encodings::FilterByRange);
 
 impl ::re_types_core::WrapperComponent for FilterByRange {
-    type Datatype = crate::blueprint::datatypes::FilterByRange;
+    type Encoding = crate::blueprint::encodings::FilterByRange;
 
     #[inline]
     fn name() -> ComponentType {
@@ -38,38 +38,38 @@ impl ::re_types_core::WrapperComponent for FilterByRange {
     }
 
     #[inline]
-    fn into_inner(self) -> Self::Datatype {
+    fn into_inner(self) -> Self::Encoding {
         self.0
     }
 }
 
 ::re_types_core::macros::impl_into_cow!(FilterByRange);
 
-impl<T: Into<crate::blueprint::datatypes::FilterByRange>> From<T> for FilterByRange {
+impl<T: Into<crate::blueprint::encodings::FilterByRange>> From<T> for FilterByRange {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl std::borrow::Borrow<crate::blueprint::datatypes::FilterByRange> for FilterByRange {
+impl std::borrow::Borrow<crate::blueprint::encodings::FilterByRange> for FilterByRange {
     #[inline]
-    fn borrow(&self) -> &crate::blueprint::datatypes::FilterByRange {
+    fn borrow(&self) -> &crate::blueprint::encodings::FilterByRange {
         &self.0
     }
 }
 
 impl std::ops::Deref for FilterByRange {
-    type Target = crate::blueprint::datatypes::FilterByRange;
+    type Target = crate::blueprint::encodings::FilterByRange;
 
     #[inline]
-    fn deref(&self) -> &crate::blueprint::datatypes::FilterByRange {
+    fn deref(&self) -> &crate::blueprint::encodings::FilterByRange {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for FilterByRange {
     #[inline]
-    fn deref_mut(&mut self) -> &mut crate::blueprint::datatypes::FilterByRange {
+    fn deref_mut(&mut self) -> &mut crate::blueprint::encodings::FilterByRange {
         &mut self.0
     }
 }

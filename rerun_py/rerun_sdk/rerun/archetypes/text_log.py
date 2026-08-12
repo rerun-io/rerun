@@ -11,7 +11,7 @@ import numpy as np
 import pyarrow as pa
 from attrs import define, field
 
-from .. import components, datatypes
+from .. import components, encodings
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
@@ -21,7 +21,7 @@ from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
 
 if TYPE_CHECKING:
-    from ..blueprint.datatypes import VisualizerComponentMappingLike
+    from ..blueprint.encodings import VisualizerComponentMappingLike
 
 __all__ = ["TextLog"]
 
@@ -68,10 +68,10 @@ class TextLog(Archetype, VisualizableArchetype):
 
     def __init__(
         self: Any,
-        text: datatypes.Utf8Like,
+        text: encodings.Utf8Like,
         *,
-        level: datatypes.Utf8Like | None = None,
-        color: datatypes.Rgba32Like | None = None,
+        level: encodings.Utf8Like | None = None,
+        color: encodings.Rgba32Like | None = None,
     ) -> None:
         """
         Create a new instance of the TextLog archetype.
@@ -115,9 +115,9 @@ class TextLog(Archetype, VisualizableArchetype):
         cls,
         *,
         clear_unset: bool = False,
-        text: datatypes.Utf8Like | None = None,
-        level: datatypes.Utf8Like | None = None,
-        color: datatypes.Rgba32Like | None = None,
+        text: encodings.Utf8Like | None = None,
+        level: encodings.Utf8Like | None = None,
+        color: encodings.Rgba32Like | None = None,
     ) -> TextLog:
         """
         Update only some specific fields of a `TextLog`.
@@ -187,9 +187,9 @@ class TextLog(Archetype, VisualizableArchetype):
     def columns(
         cls,
         *,
-        text: datatypes.Utf8ArrayLike | None = None,
-        level: datatypes.Utf8ArrayLike | None = None,
-        color: datatypes.Rgba32ArrayLike | None = None,
+        text: encodings.Utf8ArrayLike | None = None,
+        level: encodings.Utf8ArrayLike | None = None,
+        color: encodings.Rgba32ArrayLike | None = None,
     ) -> ComponentColumnList:
         """
         Construct a new column-oriented component bundle.

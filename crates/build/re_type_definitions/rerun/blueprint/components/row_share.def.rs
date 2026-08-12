@@ -10,5 +10,5 @@
 #[rerun(state = "unstable")]
 pub struct RowShare {
     /// The layout share of a row in the container.
-    pub share: rerun::datatypes::Float32,
+    pub share: rerun::encodings::Float32,
 }

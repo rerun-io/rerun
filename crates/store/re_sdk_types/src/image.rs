@@ -6,8 +6,8 @@ use smallvec::{SmallVec, smallvec};
 
 use crate::archetypes;
 #[cfg(feature = "image")]
-use crate::datatypes::ImageFormat;
-use crate::datatypes::{Blob, ChannelDatatype, TensorBuffer, TensorData};
+use crate::encodings::ImageFormat;
+use crate::encodings::{Blob, ChannelDatatype, TensorBuffer, TensorData};
 
 // ----------------------------------------------------------------------------
 

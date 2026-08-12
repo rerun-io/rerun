@@ -4,7 +4,7 @@
 #pragma once
 
 #include "../collection.hpp"
-#include "../datatypes/channel_count_pair.hpp"
+#include "../encodings/channel_count_pair.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -26,16 +26,16 @@ namespace rerun::components {
     ///
     struct ChannelMessageCounts {
         /// The channel ID to message count pairs.
-        rerun::Collection<rerun::datatypes::ChannelCountPair> counts;
+        rerun::Collection<rerun::encodings::ChannelCountPair> counts;
 
       public:
         ChannelMessageCounts() = default;
 
-        ChannelMessageCounts(rerun::Collection<rerun::datatypes::ChannelCountPair> counts_)
+        ChannelMessageCounts(rerun::Collection<rerun::encodings::ChannelCountPair> counts_)
             : counts(std::move(counts_)) {}
 
         ChannelMessageCounts& operator=(
-            rerun::Collection<rerun::datatypes::ChannelCountPair> counts_
+            rerun::Collection<rerun::encodings::ChannelCountPair> counts_
         ) {
             counts = std::move(counts_);
             return *this;

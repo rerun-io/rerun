@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from ... import datatypes
+from ... import encodings
 from ..._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,7 +14,7 @@ from ..._baseclasses import (
 __all__ = ["VisualizerType", "VisualizerTypeBatch"]
 
 
-class VisualizerType(datatypes.Utf8, ComponentMixin):
+class VisualizerType(encodings.Utf8, ComponentMixin):
     """
     **Component**: The type of the visualizer.
 
@@ -24,10 +24,10 @@ class VisualizerType(datatypes.Utf8, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of VisualizerTypeExt in visualizer_type_ext.py
 
-    # Note: there are no fields here because VisualizerType delegates to datatypes.Utf8
+    # Note: there are no fields here because VisualizerType delegates to encodings.Utf8
 
 
-class VisualizerTypeBatch(datatypes.Utf8Batch, ComponentBatchMixin):
+class VisualizerTypeBatch(encodings.Utf8Batch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.blueprint.components.VisualizerType"
 
 

@@ -8,5 +8,5 @@
 #[rust(repr = "transparent")]
 #[rerun(state = "unstable")]
 pub struct FilterIsNotNull {
-    pub filter_is_not_null: rerun::blueprint::datatypes::FilterIsNotNull,
+    pub filter_is_not_null: rerun::blueprint::encodings::FilterIsNotNull,
 }

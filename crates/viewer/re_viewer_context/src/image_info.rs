@@ -4,7 +4,7 @@ use std::ops::RangeInclusive;
 use re_chunk::RowId;
 use re_log_types::hash::Hash64;
 use re_sdk_types::components::{self, Colormap};
-use re_sdk_types::datatypes::{Blob, ChannelDatatype, ColorModel, ImageFormat};
+use re_sdk_types::encodings::{Blob, ChannelDatatype, ColorModel, ImageFormat};
 use re_sdk_types::image::{ImageKind, rgb_from_yuv};
 use re_sdk_types::tensor_data::TensorElement;
 use re_sdk_types::{ComponentIdentifier, archetypes};
@@ -557,7 +557,7 @@ fn get<T: bytemuck::Pod>(blob: &[u8], element_offset: usize) -> Option<T> {
 #[cfg(test)]
 mod tests {
     use re_log_types::hash::Hash64;
-    use re_sdk_types::datatypes::ColorModel;
+    use re_sdk_types::encodings::ColorModel;
     use re_sdk_types::image::ImageChannelType;
 
     use super::ImageInfo;
@@ -570,8 +570,8 @@ mod tests {
         assert_eq!(elements.len(), 2 * 2);
         ImageInfo {
             buffer_content_hash: StoredBlobCacheKey(Hash64::ZERO), // unused
-            buffer: re_sdk_types::datatypes::Blob::from(bytemuck::cast_slice::<_, u8>(elements)),
-            format: re_sdk_types::datatypes::ImageFormat::from_color_model(
+            buffer: re_sdk_types::encodings::Blob::from(bytemuck::cast_slice::<_, u8>(elements)),
+            format: re_sdk_types::encodings::ImageFormat::from_color_model(
                 [2, 2],
                 color_model,
                 T::CHANNEL_TYPE,

@@ -9,7 +9,7 @@ from typing import ClassVar
 
 from attrs import define, field
 
-from ... import components, datatypes
+from ... import components, encodings
 from ..._baseclasses import (
     Archetype,
     ComponentDescriptor,
@@ -53,7 +53,7 @@ class Background(BackgroundExt, Archetype):
         *,
         clear_unset: bool = False,
         kind: blueprint_components.BackgroundKindLike | None = None,
-        color: datatypes.Rgba32Like | None = None,
+        color: encodings.Rgba32Like | None = None,
     ) -> Background:
         """
         Update only some specific fields of a `Background`.

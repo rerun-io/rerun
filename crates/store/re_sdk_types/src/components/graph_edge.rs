@@ -25,10 +25,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Component**: An edge in a graph connecting two nodes.
 #[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, ::re_byte_size::SizeBytes)]
 #[repr(transparent)]
-pub struct GraphEdge(pub crate::datatypes::Utf8Pair);
+pub struct GraphEdge(pub crate::encodings::Utf8Pair);
 
 impl ::re_types_core::WrapperComponent for GraphEdge {
-    type Datatype = crate::datatypes::Utf8Pair;
+    type Encoding = crate::encodings::Utf8Pair;
 
     #[inline]
     fn name() -> ComponentType {
@@ -36,38 +36,38 @@ impl ::re_types_core::WrapperComponent for GraphEdge {
     }
 
     #[inline]
-    fn into_inner(self) -> Self::Datatype {
+    fn into_inner(self) -> Self::Encoding {
         self.0
     }
 }
 
 ::re_types_core::macros::impl_into_cow!(GraphEdge);
 
-impl<T: Into<crate::datatypes::Utf8Pair>> From<T> for GraphEdge {
+impl<T: Into<crate::encodings::Utf8Pair>> From<T> for GraphEdge {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl std::borrow::Borrow<crate::datatypes::Utf8Pair> for GraphEdge {
+impl std::borrow::Borrow<crate::encodings::Utf8Pair> for GraphEdge {
     #[inline]
-    fn borrow(&self) -> &crate::datatypes::Utf8Pair {
+    fn borrow(&self) -> &crate::encodings::Utf8Pair {
         &self.0
     }
 }
 
 impl std::ops::Deref for GraphEdge {
-    type Target = crate::datatypes::Utf8Pair;
+    type Target = crate::encodings::Utf8Pair;
 
     #[inline]
-    fn deref(&self) -> &crate::datatypes::Utf8Pair {
+    fn deref(&self) -> &crate::encodings::Utf8Pair {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for GraphEdge {
     #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Utf8Pair {
+    fn deref_mut(&mut self) -> &mut crate::encodings::Utf8Pair {
         &mut self.0
     }
 }

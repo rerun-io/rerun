@@ -29,11 +29,11 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct TextLogColumn(
     /// The text log column.
-    pub crate::blueprint::datatypes::TextLogColumn,
+    pub crate::blueprint::encodings::TextLogColumn,
 );
 
 impl ::re_types_core::WrapperComponent for TextLogColumn {
-    type Datatype = crate::blueprint::datatypes::TextLogColumn;
+    type Encoding = crate::blueprint::encodings::TextLogColumn;
 
     #[inline]
     fn name() -> ComponentType {
@@ -41,38 +41,38 @@ impl ::re_types_core::WrapperComponent for TextLogColumn {
     }
 
     #[inline]
-    fn into_inner(self) -> Self::Datatype {
+    fn into_inner(self) -> Self::Encoding {
         self.0
     }
 }
 
 ::re_types_core::macros::impl_into_cow!(TextLogColumn);
 
-impl<T: Into<crate::blueprint::datatypes::TextLogColumn>> From<T> for TextLogColumn {
+impl<T: Into<crate::blueprint::encodings::TextLogColumn>> From<T> for TextLogColumn {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl std::borrow::Borrow<crate::blueprint::datatypes::TextLogColumn> for TextLogColumn {
+impl std::borrow::Borrow<crate::blueprint::encodings::TextLogColumn> for TextLogColumn {
     #[inline]
-    fn borrow(&self) -> &crate::blueprint::datatypes::TextLogColumn {
+    fn borrow(&self) -> &crate::blueprint::encodings::TextLogColumn {
         &self.0
     }
 }
 
 impl std::ops::Deref for TextLogColumn {
-    type Target = crate::blueprint::datatypes::TextLogColumn;
+    type Target = crate::blueprint::encodings::TextLogColumn;
 
     #[inline]
-    fn deref(&self) -> &crate::blueprint::datatypes::TextLogColumn {
+    fn deref(&self) -> &crate::blueprint::encodings::TextLogColumn {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for TextLogColumn {
     #[inline]
-    fn deref_mut(&mut self) -> &mut crate::blueprint::datatypes::TextLogColumn {
+    fn deref_mut(&mut self) -> &mut crate::blueprint::encodings::TextLogColumn {
         &mut self.0
     }
 }

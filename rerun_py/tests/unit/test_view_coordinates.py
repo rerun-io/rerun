@@ -3,13 +3,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 import rerun.components as rrc
-import rerun.datatypes as rrd
+import rerun.encodings as rrd
 from rerun.archetypes import ViewCoordinates
 
 from .common_arrays import none_empty_or_value
 
 if TYPE_CHECKING:
-    from rerun.datatypes.view_coordinates import ViewCoordinatesArrayLike
+    from rerun.encodings.view_coordinates import ViewCoordinatesArrayLike
 
 
 def view_coordinates_expected(obj: Any) -> rrc.ViewCoordinatesBatch:

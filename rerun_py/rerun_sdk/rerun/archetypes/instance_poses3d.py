@@ -11,7 +11,7 @@ import numpy as np
 import pyarrow as pa
 from attrs import define, field
 
-from .. import components, datatypes
+from .. import components, encodings
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
@@ -101,11 +101,11 @@ class InstancePoses3D(Archetype):
     def __init__(
         self: Any,
         *,
-        translations: datatypes.Vec3DArrayLike | None = None,
-        rotation_axis_angles: datatypes.RotationAxisAngleArrayLike | None = None,
-        quaternions: datatypes.QuaternionArrayLike | None = None,
-        scales: datatypes.Vec3DArrayLike | None = None,
-        mat3x3: datatypes.Mat3x3ArrayLike | None = None,
+        translations: encodings.Vec3DArrayLike | None = None,
+        rotation_axis_angles: encodings.RotationAxisAngleArrayLike | None = None,
+        quaternions: encodings.QuaternionArrayLike | None = None,
+        scales: encodings.Vec3DArrayLike | None = None,
+        mat3x3: encodings.Mat3x3ArrayLike | None = None,
     ) -> None:
         """
         Create a new instance of the InstancePoses3D archetype.
@@ -159,11 +159,11 @@ class InstancePoses3D(Archetype):
         cls,
         *,
         clear_unset: bool = False,
-        translations: datatypes.Vec3DArrayLike | None = None,
-        rotation_axis_angles: datatypes.RotationAxisAngleArrayLike | None = None,
-        quaternions: datatypes.QuaternionArrayLike | None = None,
-        scales: datatypes.Vec3DArrayLike | None = None,
-        mat3x3: datatypes.Mat3x3ArrayLike | None = None,
+        translations: encodings.Vec3DArrayLike | None = None,
+        rotation_axis_angles: encodings.RotationAxisAngleArrayLike | None = None,
+        quaternions: encodings.QuaternionArrayLike | None = None,
+        scales: encodings.Vec3DArrayLike | None = None,
+        mat3x3: encodings.Mat3x3ArrayLike | None = None,
     ) -> InstancePoses3D:
         """
         Update only some specific fields of a `InstancePoses3D`.
@@ -253,11 +253,11 @@ class InstancePoses3D(Archetype):
     def columns(
         cls,
         *,
-        translations: datatypes.Vec3DArrayLike | None = None,
-        rotation_axis_angles: datatypes.RotationAxisAngleArrayLike | None = None,
-        quaternions: datatypes.QuaternionArrayLike | None = None,
-        scales: datatypes.Vec3DArrayLike | None = None,
-        mat3x3: datatypes.Mat3x3ArrayLike | None = None,
+        translations: encodings.Vec3DArrayLike | None = None,
+        rotation_axis_angles: encodings.RotationAxisAngleArrayLike | None = None,
+        quaternions: encodings.QuaternionArrayLike | None = None,
+        scales: encodings.Vec3DArrayLike | None = None,
+        mat3x3: encodings.Mat3x3ArrayLike | None = None,
     ) -> ComponentColumnList:
         """
         Construct a new column-oriented component bundle.

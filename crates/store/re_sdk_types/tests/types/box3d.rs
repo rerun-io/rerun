@@ -1,5 +1,5 @@
 use re_sdk_types::archetypes::Boxes3D;
-use re_sdk_types::{Archetype as _, AsComponents as _, ComponentBatch as _, components, datatypes};
+use re_sdk_types::{Archetype as _, AsComponents as _, ComponentBatch as _, components, encodings};
 
 #[test]
 fn roundtrip() {
@@ -15,12 +15,12 @@ fn roundtrip() {
         ]
         .serialized(Boxes3D::descriptor_centers()),
         quaternions: vec![components::RotationQuat::from(
-            datatypes::Quaternion::from_xyzw([1.0, 2.0, 3.0, 4.0]),
+            encodings::Quaternion::from_xyzw([1.0, 2.0, 3.0, 4.0]),
         )]
         .serialized(Boxes3D::descriptor_quaternions()),
         rotation_axis_angles: vec![components::RotationAxisAngle::new(
             [1.0, 2.0, 3.0],
-            datatypes::Angle::from_radians(4.0),
+            encodings::Angle::from_radians(4.0),
         )]
         .serialized(Boxes3D::descriptor_rotation_axis_angles()),
         colors: vec![
@@ -50,10 +50,10 @@ fn roundtrip() {
 
     let arch = Boxes3D::from_half_sizes([(1.0, 2.0, 3.0), (4.0, 5.0, 6.0)])
         .with_centers([(1.0, 2.0, 3.0), (4.0, 5.0, 6.0)])
-        .with_quaternions([datatypes::Quaternion::from_xyzw([1.0, 2.0, 3.0, 4.0])])
-        .with_rotation_axis_angles([datatypes::RotationAxisAngle::new(
+        .with_quaternions([encodings::Quaternion::from_xyzw([1.0, 2.0, 3.0, 4.0])])
+        .with_rotation_axis_angles([encodings::RotationAxisAngle::new(
             [1.0, 2.0, 3.0],
-            datatypes::Angle::from_radians(4.0),
+            encodings::Angle::from_radians(4.0),
         )])
         .with_colors([0xAA0000CC, 0x00BB00DD])
         .with_radii([42.0, 43.0])

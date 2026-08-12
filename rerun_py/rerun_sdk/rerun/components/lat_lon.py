@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from .. import datatypes
+from .. import encodings
 from .._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,16 +14,16 @@ from .._baseclasses import (
 __all__ = ["LatLon", "LatLonBatch"]
 
 
-class LatLon(datatypes.DVec2D, ComponentMixin):
+class LatLon(encodings.DVec2D, ComponentMixin):
     """**Component**: A geospatial position expressed in [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees)."""
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of LatLonExt in lat_lon_ext.py
 
-    # Note: there are no fields here because LatLon delegates to datatypes.DVec2D
+    # Note: there are no fields here because LatLon delegates to encodings.DVec2D
 
 
-class LatLonBatch(datatypes.DVec2DBatch, ComponentBatchMixin):
+class LatLonBatch(encodings.DVec2DBatch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.components.LatLon"
 
 

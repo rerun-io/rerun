@@ -5,8 +5,8 @@ title: "AxisLength"
 
 The length of an axis in local units of the space.
 
-## Rerun datatype
-[`Float32`](../datatypes/float32.md)
+## Rerun encoding
+[`Float32`](../encodings/float32.md)
 
 
 ## Arrow datatype

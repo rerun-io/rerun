@@ -1,5 +1,5 @@
 use re_sdk_types::archetypes::Tensor;
-use re_sdk_types::datatypes::{TensorBuffer, TensorData};
+use re_sdk_types::encodings::{TensorBuffer, TensorData};
 use re_sdk_types::tensor_data::TensorCastError;
 use re_sdk_types::{Archetype as _, AsComponents as _, Loggable as _};
 

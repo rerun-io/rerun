@@ -27,10 +27,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Debug, Hash, PartialEq, Eq, Default, ::re_byte_size::SizeBytes)]
 #[repr(transparent)]
-pub struct TensorDimensionIndexSlider(pub crate::blueprint::datatypes::TensorDimensionIndexSlider);
+pub struct TensorDimensionIndexSlider(pub crate::blueprint::encodings::TensorDimensionIndexSlider);
 
 impl ::re_types_core::WrapperComponent for TensorDimensionIndexSlider {
-    type Datatype = crate::blueprint::datatypes::TensorDimensionIndexSlider;
+    type Encoding = crate::blueprint::encodings::TensorDimensionIndexSlider;
 
     #[inline]
     fn name() -> ComponentType {
@@ -38,14 +38,14 @@ impl ::re_types_core::WrapperComponent for TensorDimensionIndexSlider {
     }
 
     #[inline]
-    fn into_inner(self) -> Self::Datatype {
+    fn into_inner(self) -> Self::Encoding {
         self.0
     }
 }
 
 ::re_types_core::macros::impl_into_cow!(TensorDimensionIndexSlider);
 
-impl<T: Into<crate::blueprint::datatypes::TensorDimensionIndexSlider>> From<T>
+impl<T: Into<crate::blueprint::encodings::TensorDimensionIndexSlider>> From<T>
     for TensorDimensionIndexSlider
 {
     fn from(v: T) -> Self {
@@ -53,27 +53,27 @@ impl<T: Into<crate::blueprint::datatypes::TensorDimensionIndexSlider>> From<T>
     }
 }
 
-impl std::borrow::Borrow<crate::blueprint::datatypes::TensorDimensionIndexSlider>
+impl std::borrow::Borrow<crate::blueprint::encodings::TensorDimensionIndexSlider>
     for TensorDimensionIndexSlider
 {
     #[inline]
-    fn borrow(&self) -> &crate::blueprint::datatypes::TensorDimensionIndexSlider {
+    fn borrow(&self) -> &crate::blueprint::encodings::TensorDimensionIndexSlider {
         &self.0
     }
 }
 
 impl std::ops::Deref for TensorDimensionIndexSlider {
-    type Target = crate::blueprint::datatypes::TensorDimensionIndexSlider;
+    type Target = crate::blueprint::encodings::TensorDimensionIndexSlider;
 
     #[inline]
-    fn deref(&self) -> &crate::blueprint::datatypes::TensorDimensionIndexSlider {
+    fn deref(&self) -> &crate::blueprint::encodings::TensorDimensionIndexSlider {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for TensorDimensionIndexSlider {
     #[inline]
-    fn deref_mut(&mut self) -> &mut crate::blueprint::datatypes::TensorDimensionIndexSlider {
+    fn deref_mut(&mut self) -> &mut crate::blueprint::encodings::TensorDimensionIndexSlider {
         &mut self.0
     }
 }

@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from .. import datatypes
+from .. import encodings
 from .._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,16 +14,16 @@ from .._baseclasses import (
 __all__ = ["ImageFormat", "ImageFormatBatch"]
 
 
-class ImageFormat(datatypes.ImageFormat, ComponentMixin):
+class ImageFormat(encodings.ImageFormat, ComponentMixin):
     """**Component**: The metadata describing the contents of a [`components.ImageBuffer`][rerun.components.ImageBuffer]."""
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of ImageFormatExt in image_format_ext.py
 
-    # Note: there are no fields here because ImageFormat delegates to datatypes.ImageFormat
+    # Note: there are no fields here because ImageFormat delegates to encodings.ImageFormat
 
 
-class ImageFormatBatch(datatypes.ImageFormatBatch, ComponentBatchMixin):
+class ImageFormatBatch(encodings.ImageFormatBatch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.components.ImageFormat"
 
 

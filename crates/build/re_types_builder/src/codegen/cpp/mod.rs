@@ -412,7 +412,7 @@ impl QuotedObject {
     ) -> Result<Self> {
         match obj.class {
             ObjectClass::Struct => match obj.kind {
-                ObjectKind::Datatype | ObjectKind::Component => Ok(Self::from_struct(
+                ObjectKind::Encoding | ObjectKind::Component => Ok(Self::from_struct(
                     reporter,
                     objects,
                     obj,
@@ -904,20 +904,20 @@ impl QuotedObject {
             ));
         }
 
-        // If we're a component with a single datatype field, add an implicit casting operator for convenience.
+        // If we're a component with a single encoding field, add an implicit casting operator for convenience.
         if obj.kind == ObjectKind::Component
             && obj.fields.len() == 1
             && matches!(obj.fields[0].typ, Type::Object { .. })
             && let Type::Object {
-                fqname: datatype_fqname,
+                fqname: encoding_fqname,
             } = &obj.fields[0].typ
         {
             let data_type = quote_field_type(&mut hpp_includes, &obj.fields[0]);
-            let type_name = datatype_fqname.split('.').next_back().unwrap();
+            let type_name = encoding_fqname.split('.').next_back().unwrap();
             let field_name = format_ident!("{}", obj.fields[0].name);
 
             methods.push(Method {
-                docs: format!("Cast to the underlying {type_name} datatype").into(),
+                docs: format!("Cast to the underlying {type_name} encoding").into(),
                 declaration: MethodDeclaration {
                     name_and_parameters: quote! { operator #data_type() const },
                     is_static: false,

@@ -11,7 +11,7 @@ import numpy as np
 import pyarrow as pa
 from attrs import define, field
 
-from .. import components, datatypes
+from .. import components, encodings
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
@@ -43,9 +43,9 @@ class McapChannel(Archetype):
     def __init__(
         self: Any,
         *,
-        id: datatypes.UInt16Like,
-        topic: datatypes.Utf8Like,
-        message_encoding: datatypes.Utf8Like,
+        id: encodings.UInt16Like,
+        topic: encodings.Utf8Like,
+        message_encoding: encodings.Utf8Like,
         metadata: components.KeyValuePairsLike | None = None,
     ) -> None:
         """
@@ -107,9 +107,9 @@ class McapChannel(Archetype):
         cls,
         *,
         clear_unset: bool = False,
-        id: datatypes.UInt16Like | None = None,
-        topic: datatypes.Utf8Like | None = None,
-        message_encoding: datatypes.Utf8Like | None = None,
+        id: encodings.UInt16Like | None = None,
+        topic: encodings.Utf8Like | None = None,
+        message_encoding: encodings.Utf8Like | None = None,
         metadata: components.KeyValuePairsLike | None = None,
     ) -> McapChannel:
         """
@@ -205,9 +205,9 @@ class McapChannel(Archetype):
     def columns(
         cls,
         *,
-        id: datatypes.UInt16ArrayLike | None = None,
-        topic: datatypes.Utf8ArrayLike | None = None,
-        message_encoding: datatypes.Utf8ArrayLike | None = None,
+        id: encodings.UInt16ArrayLike | None = None,
+        topic: encodings.Utf8ArrayLike | None = None,
+        message_encoding: encodings.Utf8ArrayLike | None = None,
         metadata: components.KeyValuePairsArrayLike | None = None,
     ) -> ComponentColumnList:
         """

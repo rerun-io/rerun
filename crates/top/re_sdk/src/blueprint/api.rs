@@ -3,7 +3,7 @@
 use re_log_types::{BlueprintActivationCommand, LogMsg};
 use re_sdk_types::blueprint::archetypes::ViewportBlueprint;
 use re_sdk_types::blueprint::components::{AutoLayout, AutoViews, RootContainer};
-use re_sdk_types::datatypes::Bool;
+use re_sdk_types::encodings::Bool;
 
 use crate::{RecordingStream, RecordingStreamBuilder, RecordingStreamResult};
 

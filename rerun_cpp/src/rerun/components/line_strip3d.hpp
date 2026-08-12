@@ -4,7 +4,7 @@
 #pragma once
 
 #include "../collection.hpp"
-#include "../datatypes/vec3d.hpp"
+#include "../encodings/vec3d.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -31,15 +31,15 @@ namespace rerun::components {
     ///                  4
     /// ```
     struct LineStrip3D {
-        rerun::Collection<rerun::datatypes::Vec3D> points;
+        rerun::Collection<rerun::encodings::Vec3D> points;
 
       public:
         LineStrip3D() = default;
 
-        LineStrip3D(rerun::Collection<rerun::datatypes::Vec3D> points_)
+        LineStrip3D(rerun::Collection<rerun::encodings::Vec3D> points_)
             : points(std::move(points_)) {}
 
-        LineStrip3D& operator=(rerun::Collection<rerun::datatypes::Vec3D> points_) {
+        LineStrip3D& operator=(rerun::Collection<rerun::encodings::Vec3D> points_) {
             points = std::move(points_);
             return *this;
         }

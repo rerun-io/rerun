@@ -10,5 +10,5 @@ pub struct ActiveTab {
     /// Which tab is currently active.
     ///
     /// This should always correspond to a tab in the container.
-    pub tab: rerun::datatypes::EntityPath,
+    pub tab: rerun::encodings::EntityPath,
 }

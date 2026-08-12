@@ -41,5 +41,5 @@
 #[rust(repr = "transparent")]
 #[rerun(state = "stable")]
 pub struct TransformMat3x3 {
-    pub matrix: rerun::datatypes::Mat3x3,
+    pub matrix: rerun::encodings::Mat3x3,
 }

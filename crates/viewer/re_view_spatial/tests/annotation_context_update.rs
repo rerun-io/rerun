@@ -49,12 +49,12 @@ pub fn test_annotation_context_update_on_points3d() {
                 (
                     0,
                     "red",
-                    re_sdk_types::datatypes::Rgba32::from_rgb(255, 0, 0),
+                    re_sdk_types::encodings::Rgba32::from_rgb(255, 0, 0),
                 ),
                 (
                     1,
                     "green",
-                    re_sdk_types::datatypes::Rgba32::from_rgb(0, 255, 0),
+                    re_sdk_types::encodings::Rgba32::from_rgb(0, 255, 0),
                 ),
             ]),
         )
@@ -68,12 +68,12 @@ pub fn test_annotation_context_update_on_points3d() {
                 (
                     0,
                     "blue",
-                    re_sdk_types::datatypes::Rgba32::from_rgb(0, 0, 255),
+                    re_sdk_types::encodings::Rgba32::from_rgb(0, 0, 255),
                 ),
                 (
                     1,
                     "yellow",
-                    re_sdk_types::datatypes::Rgba32::from_rgb(255, 255, 0),
+                    re_sdk_types::encodings::Rgba32::from_rgb(255, 255, 0),
                 ),
             ]),
         )

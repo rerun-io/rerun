@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from .. import datatypes
+from .. import encodings
 from .._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,7 +14,7 @@ from .._baseclasses import (
 __all__ = ["CellSize", "CellSizeBatch"]
 
 
-class CellSize(datatypes.Float32, ComponentMixin):
+class CellSize(encodings.Float32, ComponentMixin):
     """
     **Component**: The metric size of one grid cell in local scene units.
 
@@ -24,10 +24,10 @@ class CellSize(datatypes.Float32, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of CellSizeExt in cell_size_ext.py
 
-    # Note: there are no fields here because CellSize delegates to datatypes.Float32
+    # Note: there are no fields here because CellSize delegates to encodings.Float32
 
 
-class CellSizeBatch(datatypes.Float32Batch, ComponentBatchMixin):
+class CellSizeBatch(encodings.Float32Batch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.components.CellSize"
 
 

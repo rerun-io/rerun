@@ -2,7 +2,7 @@
 // It is parsed by `re_types_builder` to generate the Rust, Python and C++ bindings.
 
 // The "type zoo": a hand-authored menagerie of exotic type combinations
-// (nullable fields, arrays, unions, enums, transparent/nested datatypes,
+// (nullable fields, arrays, unions, enums, transparent/nested encodings,
 // fixed-size arrays, …) used to exercise every corner of the codegen.
 // Despite the `AffixFuzzer*` names, nothing here is randomly fuzzed.
 

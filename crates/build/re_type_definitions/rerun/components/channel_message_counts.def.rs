@@ -11,5 +11,5 @@
 #[rust(derive(Default, PartialEq, Eq))]
 pub struct ChannelMessageCounts {
     /// The channel ID to message count pairs.
-    pub counts: Vec<rerun::datatypes::ChannelCountPair>,
+    pub counts: Vec<rerun::encodings::ChannelCountPair>,
 }

@@ -16,12 +16,12 @@ from ..api import View, ViewContentsLike, VisualizerLike
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping, Sequence
 
-    from ... import datatypes
+    from ... import encodings
     from ..._baseclasses import (
         AsComponents,
         DescribedComponentBatch,
     )
-    from ...datatypes import EntityPathLike, Utf8Like
+    from ...encodings import EntityPathLike, Utf8Like
 
 
 class Spatial2DView(View):
@@ -92,18 +92,18 @@ class Spatial2DView(View):
         origin: EntityPathLike = "/",
         contents: ViewContentsLike = "$origin/**",
         name: Utf8Like | None = None,
-        visible: datatypes.BoolLike | None = None,
+        visible: encodings.BoolLike | None = None,
         defaults: Iterable[AsComponents | Iterable[DescribedComponentBatch]] | None = None,
         overrides: Mapping[EntityPathLike, VisualizerLike | Iterable[VisualizerLike]] | None = None,
         background: blueprint_archetypes.Background
-        | datatypes.Rgba32Like
+        | encodings.Rgba32Like
         | blueprint_components.BackgroundKindLike
         | None = None,
         visual_bounds: blueprint_archetypes.VisualBounds2D | None = None,
         spatial_information: blueprint_archetypes.SpatialInformation | None = None,
         time_ranges: blueprint_archetypes.VisibleTimeRanges
-        | datatypes.VisibleTimeRangeLike
-        | Sequence[datatypes.VisibleTimeRangeLike]
+        | encodings.VisibleTimeRangeLike
+        | Sequence[encodings.VisibleTimeRangeLike]
         | None = None,
     ) -> None:
         """

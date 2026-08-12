@@ -11,5 +11,5 @@
 #[rust(repr = "transparent")]
 #[rerun(state = "stable")]
 pub struct Scale3D {
-    pub scale: rerun::datatypes::Vec3D,
+    pub scale: rerun::encodings::Vec3D,
 }

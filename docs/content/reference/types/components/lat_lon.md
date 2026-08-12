@@ -5,8 +5,8 @@ title: "LatLon"
 
 A geospatial position expressed in [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees).
 
-## Rerun datatype
-[`DVec2D`](../datatypes/dvec2d.md)
+## Rerun encoding
+[`DVec2D`](../encodings/dvec2d.md)
 
 
 ## Arrow datatype

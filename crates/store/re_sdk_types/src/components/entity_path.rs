@@ -25,10 +25,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Component**: A path to an entity, usually to reference some data that is part of the target entity.
 #[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, ::re_byte_size::SizeBytes)]
 #[repr(transparent)]
-pub struct EntityPath(pub crate::datatypes::EntityPath);
+pub struct EntityPath(pub crate::encodings::EntityPath);
 
 impl ::re_types_core::WrapperComponent for EntityPath {
-    type Datatype = crate::datatypes::EntityPath;
+    type Encoding = crate::encodings::EntityPath;
 
     #[inline]
     fn name() -> ComponentType {
@@ -36,38 +36,38 @@ impl ::re_types_core::WrapperComponent for EntityPath {
     }
 
     #[inline]
-    fn into_inner(self) -> Self::Datatype {
+    fn into_inner(self) -> Self::Encoding {
         self.0
     }
 }
 
 ::re_types_core::macros::impl_into_cow!(EntityPath);
 
-impl<T: Into<crate::datatypes::EntityPath>> From<T> for EntityPath {
+impl<T: Into<crate::encodings::EntityPath>> From<T> for EntityPath {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl std::borrow::Borrow<crate::datatypes::EntityPath> for EntityPath {
+impl std::borrow::Borrow<crate::encodings::EntityPath> for EntityPath {
     #[inline]
-    fn borrow(&self) -> &crate::datatypes::EntityPath {
+    fn borrow(&self) -> &crate::encodings::EntityPath {
         &self.0
     }
 }
 
 impl std::ops::Deref for EntityPath {
-    type Target = crate::datatypes::EntityPath;
+    type Target = crate::encodings::EntityPath;
 
     #[inline]
-    fn deref(&self) -> &crate::datatypes::EntityPath {
+    fn deref(&self) -> &crate::encodings::EntityPath {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for EntityPath {
     #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::EntityPath {
+    fn deref_mut(&mut self) -> &mut crate::encodings::EntityPath {
         &mut self.0
     }
 }

@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from ... import datatypes
+from ... import encodings
 from ..._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,7 +14,7 @@ from ..._baseclasses import (
 __all__ = ["AutoViews", "AutoViewsBatch"]
 
 
-class AutoViews(datatypes.Bool, ComponentMixin):
+class AutoViews(encodings.Bool, ComponentMixin):
     """
     **Component**: Whether or not views should be created automatically.
 
@@ -24,10 +24,10 @@ class AutoViews(datatypes.Bool, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of AutoViewsExt in auto_views_ext.py
 
-    # Note: there are no fields here because AutoViews delegates to datatypes.Bool
+    # Note: there are no fields here because AutoViews delegates to encodings.Bool
 
 
-class AutoViewsBatch(datatypes.BoolBatch, ComponentBatchMixin):
+class AutoViewsBatch(encodings.BoolBatch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.blueprint.components.AutoViews"
 
 

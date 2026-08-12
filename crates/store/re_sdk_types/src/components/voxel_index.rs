@@ -37,10 +37,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
     ::re_byte_size::SizeBytes,
 )]
 #[repr(transparent)]
-pub struct VoxelIndex(pub crate::datatypes::IVec3D);
+pub struct VoxelIndex(pub crate::encodings::IVec3D);
 
 impl ::re_types_core::WrapperComponent for VoxelIndex {
-    type Datatype = crate::datatypes::IVec3D;
+    type Encoding = crate::encodings::IVec3D;
 
     #[inline]
     fn name() -> ComponentType {
@@ -48,38 +48,38 @@ impl ::re_types_core::WrapperComponent for VoxelIndex {
     }
 
     #[inline]
-    fn into_inner(self) -> Self::Datatype {
+    fn into_inner(self) -> Self::Encoding {
         self.0
     }
 }
 
 ::re_types_core::macros::impl_into_cow!(VoxelIndex);
 
-impl<T: Into<crate::datatypes::IVec3D>> From<T> for VoxelIndex {
+impl<T: Into<crate::encodings::IVec3D>> From<T> for VoxelIndex {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl std::borrow::Borrow<crate::datatypes::IVec3D> for VoxelIndex {
+impl std::borrow::Borrow<crate::encodings::IVec3D> for VoxelIndex {
     #[inline]
-    fn borrow(&self) -> &crate::datatypes::IVec3D {
+    fn borrow(&self) -> &crate::encodings::IVec3D {
         &self.0
     }
 }
 
 impl std::ops::Deref for VoxelIndex {
-    type Target = crate::datatypes::IVec3D;
+    type Target = crate::encodings::IVec3D;
 
     #[inline]
-    fn deref(&self) -> &crate::datatypes::IVec3D {
+    fn deref(&self) -> &crate::encodings::IVec3D {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for VoxelIndex {
     #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::IVec3D {
+    fn deref_mut(&mut self) -> &mut crate::encodings::IVec3D {
         &mut self.0
     }
 }

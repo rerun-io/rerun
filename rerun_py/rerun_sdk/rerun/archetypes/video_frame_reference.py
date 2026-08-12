@@ -11,7 +11,7 @@ import numpy as np
 import pyarrow as pa
 from attrs import define, field
 
-from .. import components, datatypes
+from .. import components, encodings
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
@@ -22,7 +22,7 @@ from ..error_utils import catch_and_log_exceptions
 from .video_frame_reference_ext import VideoFrameReferenceExt
 
 if TYPE_CHECKING:
-    from ..blueprint.datatypes import VisualizerComponentMappingLike
+    from ..blueprint.encodings import VisualizerComponentMappingLike
 
 __all__ = ["VideoFrameReference"]
 
@@ -149,10 +149,10 @@ class VideoFrameReference(VideoFrameReferenceExt, Archetype, VisualizableArchety
         cls,
         *,
         clear_unset: bool = False,
-        timestamp: datatypes.VideoTimestampLike | None = None,
-        video_reference: datatypes.EntityPathLike | None = None,
-        opacity: datatypes.Float32Like | None = None,
-        draw_order: datatypes.Float32Like | None = None,
+        timestamp: encodings.VideoTimestampLike | None = None,
+        video_reference: encodings.EntityPathLike | None = None,
+        opacity: encodings.Float32Like | None = None,
+        draw_order: encodings.Float32Like | None = None,
     ) -> VideoFrameReference:
         """
         Update only some specific fields of a `VideoFrameReference`.
@@ -251,10 +251,10 @@ class VideoFrameReference(VideoFrameReferenceExt, Archetype, VisualizableArchety
     def columns(
         cls,
         *,
-        timestamp: datatypes.VideoTimestampArrayLike | None = None,
-        video_reference: datatypes.EntityPathArrayLike | None = None,
-        opacity: datatypes.Float32ArrayLike | None = None,
-        draw_order: datatypes.Float32ArrayLike | None = None,
+        timestamp: encodings.VideoTimestampArrayLike | None = None,
+        video_reference: encodings.EntityPathArrayLike | None = None,
+        opacity: encodings.Float32ArrayLike | None = None,
+        draw_order: encodings.Float32ArrayLike | None = None,
     ) -> ComponentColumnList:
         """
         Construct a new column-oriented component bundle.

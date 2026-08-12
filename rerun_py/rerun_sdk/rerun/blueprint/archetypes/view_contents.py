@@ -17,7 +17,7 @@ from ...blueprint import components as blueprint_components
 from ...error_utils import catch_and_log_exceptions
 
 if TYPE_CHECKING:
-    from ... import datatypes
+    from ... import encodings
 
 __all__ = ["ViewContents"]
 
@@ -69,7 +69,7 @@ class ViewContents(Archetype):
 
     NAME: ClassVar[str] = "rerun.blueprint.archetypes.ViewContents"
 
-    def __init__(self: Any, query: datatypes.Utf8ArrayLike) -> None:
+    def __init__(self: Any, query: encodings.Utf8ArrayLike) -> None:
         """
         Create a new instance of the ViewContents archetype.
 
@@ -106,7 +106,7 @@ class ViewContents(Archetype):
         cls,
         *,
         clear_unset: bool = False,
-        query: datatypes.Utf8ArrayLike | None = None,
+        query: encodings.Utf8ArrayLike | None = None,
     ) -> ViewContents:
         """
         Update only some specific fields of a `ViewContents`.

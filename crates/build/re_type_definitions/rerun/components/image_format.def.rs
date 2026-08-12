@@ -7,5 +7,5 @@
 #[rust(repr = "transparent")]
 #[rerun(state = "stable")]
 pub struct ImageFormat {
-    pub image_format: rerun::datatypes::ImageFormat,
+    pub image_format: rerun::encodings::ImageFormat,
 }

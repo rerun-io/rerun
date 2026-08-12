@@ -1,4 +1,4 @@
-use re_types_core::datatypes::Bool;
+use re_types_core::encodings::Bool;
 
 use super::Visible;
 

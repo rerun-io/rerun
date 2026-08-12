@@ -6,11 +6,11 @@ from typing import TYPE_CHECKING
 import pyarrow as pa
 
 if TYPE_CHECKING:
-    from ..datatypes import Utf8PairLike
+    from ..encodings import Utf8PairLike
     from . import KeyValuePairsArrayLike
 
 
-from ..datatypes.utf8pair_ext import _utf8_pair_converter
+from ..encodings.utf8pair_ext import _utf8_pair_converter
 
 
 class KeyValuePairsExt:
@@ -36,7 +36,7 @@ class KeyValuePairsExt:
 
     @staticmethod
     def native_to_pa_array_override(data: KeyValuePairsArrayLike, data_type: pa.DataType) -> pa.Array:
-        from ..datatypes import Utf8PairBatch
+        from ..encodings import Utf8PairBatch
         from . import KeyValuePairs
 
         # Handle single dict case - convert to KeyValuePairs

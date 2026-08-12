@@ -3,7 +3,7 @@
 
 /// Configuration for the 3D line grid.
 #[rerun::rerun_type]
-#[python(aliases = "datatypes.BoolLike")]
+#[python(aliases = "encodings.BoolLike")]
 #[rerun(scope = "blueprint")]
 #[rerun(state = "unstable")]
 pub struct LineGrid3D {

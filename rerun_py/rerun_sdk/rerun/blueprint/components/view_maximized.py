@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from ... import datatypes
+from ... import encodings
 from ..._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,7 +14,7 @@ from ..._baseclasses import (
 __all__ = ["ViewMaximized", "ViewMaximizedBatch"]
 
 
-class ViewMaximized(datatypes.Uuid, ComponentMixin):
+class ViewMaximized(encodings.Uuid, ComponentMixin):
     """
     **Component**: Whether a view is maximized.
 
@@ -24,10 +24,10 @@ class ViewMaximized(datatypes.Uuid, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of ViewMaximizedExt in view_maximized_ext.py
 
-    # Note: there are no fields here because ViewMaximized delegates to datatypes.Uuid
+    # Note: there are no fields here because ViewMaximized delegates to encodings.Uuid
 
 
-class ViewMaximizedBatch(datatypes.UuidBatch, ComponentBatchMixin):
+class ViewMaximizedBatch(encodings.UuidBatch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.blueprint.components.ViewMaximized"
 
 

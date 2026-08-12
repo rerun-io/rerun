@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "../datatypes/primitive_and_string.hpp"
+#include "../encodings/primitive_and_string.hpp"
 
 #include <cstdint>
 #include <memory>
@@ -12,21 +12,21 @@
 
 namespace rerun::components {
     struct AffixFuzzer20 {
-        rerun::datatypes::PrimitiveAndString nested_transparent;
+        rerun::encodings::PrimitiveAndString nested_transparent;
 
       public:
         AffixFuzzer20() = default;
 
-        AffixFuzzer20(rerun::datatypes::PrimitiveAndString nested_transparent_)
+        AffixFuzzer20(rerun::encodings::PrimitiveAndString nested_transparent_)
             : nested_transparent(std::move(nested_transparent_)) {}
 
-        AffixFuzzer20& operator=(rerun::datatypes::PrimitiveAndString nested_transparent_) {
+        AffixFuzzer20& operator=(rerun::encodings::PrimitiveAndString nested_transparent_) {
             nested_transparent = std::move(nested_transparent_);
             return *this;
         }
 
-        /// Cast to the underlying PrimitiveAndString datatype
-        operator rerun::datatypes::PrimitiveAndString() const {
+        /// Cast to the underlying PrimitiveAndString encoding
+        operator rerun::encodings::PrimitiveAndString() const {
             return nested_transparent;
         }
     };
@@ -34,7 +34,7 @@ namespace rerun::components {
 
 namespace rerun {
     static_assert(
-        sizeof(rerun::datatypes::PrimitiveAndString) == sizeof(components::AffixFuzzer20)
+        sizeof(rerun::encodings::PrimitiveAndString) == sizeof(components::AffixFuzzer20)
     );
 
     /// \private
@@ -44,7 +44,7 @@ namespace rerun {
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
-            return Loggable<rerun::datatypes::PrimitiveAndString>::arrow_datatype();
+            return Loggable<rerun::encodings::PrimitiveAndString>::arrow_datatype();
         }
 
         /// Serializes an array of `rerun::components::AffixFuzzer20` into an arrow array.
@@ -52,14 +52,14 @@ namespace rerun {
             const components::AffixFuzzer20* instances, size_t num_instances
         ) {
             if (num_instances == 0) {
-                return Loggable<rerun::datatypes::PrimitiveAndString>::to_arrow(nullptr, 0);
+                return Loggable<rerun::encodings::PrimitiveAndString>::to_arrow(nullptr, 0);
             } else if (instances == nullptr) {
                 return rerun::Error(
                     ErrorCode::UnexpectedNullArgument,
                     "Passed array instances is null when num_elements> 0."
                 );
             } else {
-                return Loggable<rerun::datatypes::PrimitiveAndString>::to_arrow(
+                return Loggable<rerun::encodings::PrimitiveAndString>::to_arrow(
                     &instances->nested_transparent,
                     num_instances
                 );

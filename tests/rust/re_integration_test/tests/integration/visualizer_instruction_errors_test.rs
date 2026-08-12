@@ -6,7 +6,7 @@ use re_test_context::VisualizerBlueprintContext as _;
 use re_view_time_series::TimeSeriesView;
 use re_viewer::external::re_sdk_types::VisualizableArchetype as _;
 use re_viewer::external::re_sdk_types::archetypes::{Scalars, SeriesLines, SeriesPoints};
-use re_viewer::external::re_sdk_types::blueprint::datatypes::{
+use re_viewer::external::re_sdk_types::blueprint::encodings::{
     ComponentSourceKind, VisualizerComponentMapping,
 };
 use re_viewer::external::re_viewer_context::{RecommendedView, ViewClass as _};

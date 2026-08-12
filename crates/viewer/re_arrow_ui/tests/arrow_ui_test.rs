@@ -26,7 +26,7 @@ fn arrow_list_ui(ui: &mut egui::Ui) {
 
     use re_sdk_types::ComponentBatch as _;
     use re_sdk_types::components::Blob;
-    use re_sdk_types::datatypes::{Utf8, Vec3D};
+    use re_sdk_types::encodings::{Utf8, Vec3D};
 
     let tests = [
         ("Empty string", Utf8::from("").to_arrow()),

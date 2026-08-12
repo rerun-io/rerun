@@ -750,7 +750,7 @@ const ALL_TIME_UNITS: &[TimeUnit] = &[
 
 #[tokio::test]
 async fn test_timestamps() {
-    // Note: this test intends to cover all column datatypes. It does not intend to cover all kinds
+    // Note: this test intends to cover all column encodings. It does not intend to cover all kinds
     // of timestamp filtering, which is already covered by unit tests.
 
     let some_date = jiff::Timestamp::from_str(SOME_TIMESTAMP).expect("valid");
@@ -790,7 +790,7 @@ async fn test_timestamps() {
 
 #[tokio::test]
 async fn test_timestamps_list() {
-    // Note: this test intends to cover all column datatypes. It does not intend to cover all kinds
+    // Note: this test intends to cover all column encodings. It does not intend to cover all kinds
     // of timestamp filtering, which is already covered by unit tests.
 
     let some_date = jiff::Timestamp::from_str(SOME_TIMESTAMP).expect("valid");

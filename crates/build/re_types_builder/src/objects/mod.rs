@@ -29,16 +29,16 @@ impl Objects {
     ///
     /// Every frontend must call this once it has produced the raw [`Object`] map.
     pub(crate) fn validate(&self, reporter: &Reporter) {
-        // Validate field types: archetypes consist of components, Views (aka SuperArchetypes) consist of archetypes, everything else consists of datatypes.
+        // Validate field types: archetypes consist of components, Views (aka SuperArchetypes) consist of archetypes, everything else consists of encodings.
         for obj in self.objects.values() {
             for field in &obj.fields {
                 let virtpath = &field.virtpath;
                 if let Some(field_type_fqname) = field.typ.fqname() {
                     let field_obj = &self[field_type_fqname];
                     match obj.kind {
-                        ObjectKind::Datatype | ObjectKind::Component => {
-                            if field_obj.kind != ObjectKind::Datatype {
-                                reporter.error(virtpath, field_type_fqname, "Is part of a Component or Datatype but is itself not a Datatype. Only archetype fields can be components, all other fields have to be primitive or be a datatypes.");
+                        ObjectKind::Encoding | ObjectKind::Component => {
+                            if field_obj.kind != ObjectKind::Encoding {
+                                reporter.error(virtpath, field_type_fqname, "Is part of a Component or Encoding but is itself not an Encoding. Only archetype fields can be components, all other fields have to be primitive or be an encoding.");
                             }
                         }
                         ObjectKind::Archetype => {
@@ -54,11 +54,11 @@ impl Objects {
                             }
                         }
                     }
-                } else if obj.kind != ObjectKind::Datatype {
+                } else if obj.kind != ObjectKind::Encoding {
                     let is_enum_component = obj.kind == ObjectKind::Component && obj.is_enum(); // Enum components are allowed to have no datatype.
-                    let is_test_component = obj.kind == ObjectKind::Component && obj.is_testing(); // Test components are allowed to have datatypes for the moment. TODO(andreas): Should clean this up as well!
+                    let is_test_component = obj.kind == ObjectKind::Component && obj.is_testing(); // Test components are allowed to have encodings for the moment. TODO(andreas): Should clean this up as well!
                     if !is_enum_component && !is_test_component {
-                        reporter.error(virtpath, &obj.fqname, format!("Field {:?} s a primitive field of type {:?}. Primitive types are only allowed on DataTypes.", field.fqname, field.typ));
+                        reporter.error(virtpath, &obj.fqname, format!("Field {:?} s a primitive field of type {:?}. Primitive types are only allowed on encodings.", field.fqname, field.typ));
                     }
                 }
 
@@ -72,7 +72,7 @@ impl Objects {
 
                 // Validate whether someone is using a type we use for non-nullable arrays to describe some nullable field.
                 if field.is_nullable
-                    && (obj.kind == ObjectKind::Datatype || obj.kind == ObjectKind::Component)
+                    && (obj.kind == ObjectKind::Encoding || obj.kind == ObjectKind::Component)
                     && let Some(field_type_fqname) = field.typ.fqname()
                     // TODO(andreas): This is a hack, here because introducing this warning, I really don't want to touch annotation info right now.
                     && obj.name != "AnnotationInfo"
@@ -80,7 +80,7 @@ impl Objects {
                     let field_obj = &self[field_type_fqname];
                     if field_obj.is_arrow_transparent() {
                         let suggestion = if field_obj.name == "Utf8" {
-                            "Use `string (nullable)` instead of `rerun.datatypes.Utf8 (nullable)`."
+                            "Use `string (nullable)` instead of `rerun.encodings.Utf8 (nullable)`."
                                 .to_owned()
                         } else {
                             format!(
@@ -155,8 +155,8 @@ impl Objects {
 /// E.g.:
 /// ```ignore
 /// # let objects = Objects::default();
-/// let obj = &objects["rerun.datatypes.Vec3D"];
-/// let obj = &objects["rerun.datatypes.Angle"];
+/// let obj = &objects["rerun.encodings.Vec3D"];
+/// let obj = &objects["rerun.encodings.Angle"];
 /// let obj = &objects["rerun.components.Text"];
 /// let obj = &objects["rerun.archetypes.Position2D"];
 /// ```
@@ -175,7 +175,7 @@ impl std::ops::Index<&str> for Objects {
 /// The kind of the object, as determined by its package root (e.g. `rerun.components`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ObjectKind {
-    Datatype,
+    Encoding,
     Component,
     Archetype,
 
@@ -252,7 +252,7 @@ impl State {
 }
 
 impl ObjectKind {
-    pub const ALL: [Self; 4] = [Self::Datatype, Self::Component, Self::Archetype, Self::View];
+    pub const ALL: [Self; 4] = [Self::Encoding, Self::Component, Self::Archetype, Self::View];
 
     // TODO(#2364): use an attr instead of the path
     pub fn from_pkg_name(pkg_name: &str, attrs: &Attributes) -> Self {
@@ -264,8 +264,8 @@ impl ObjectKind {
         };
 
         let pkg_name = pkg_name.replace(".testing", "");
-        if pkg_name.starts_with(format!("rerun{scope}.datatypes").as_str()) {
-            Self::Datatype
+        if pkg_name.starts_with(format!("rerun{scope}.encodings").as_str()) {
+            Self::Encoding
         } else if pkg_name.starts_with(format!("rerun{scope}.components").as_str()) {
             Self::Component
         } else if pkg_name.starts_with(format!("rerun{scope}.archetypes").as_str()) {
@@ -280,7 +280,7 @@ impl ObjectKind {
 
     pub fn plural_snake_case(&self) -> &'static str {
         match self {
-            Self::Datatype => "datatypes",
+            Self::Encoding => "encodings",
             Self::Component => "components",
             Self::Archetype => "archetypes",
             Self::View => "views",
@@ -289,7 +289,7 @@ impl ObjectKind {
 
     pub fn singular_name(&self) -> &'static str {
         match self {
-            Self::Datatype => "Datatype",
+            Self::Encoding => "Encoding",
             Self::Component => "Component",
             Self::Archetype => "Archetype",
             Self::View => "View",
@@ -298,10 +298,36 @@ impl ObjectKind {
 
     pub fn plural_name(&self) -> &'static str {
         match self {
-            Self::Datatype => "Datatypes",
+            Self::Encoding => "Encodings",
             Self::Component => "Components",
             Self::Archetype => "Archetypes",
             Self::View => "Views",
+        }
+    }
+
+    /// Are the docs pages for this kind still missing from the live site, so that any link to
+    /// one of them would 404?
+    ///
+    /// True for [`Self::Encoding`] until 0.37: `datatypes` was renamed to `encodings`, which
+    /// moves every `reference/types/encodings/…` page, and every `encodings` anchor in the
+    /// per-language API docs, to a URL that is only published when 0.37 is released.
+    ///
+    /// TODO(RR-5430): remove once 0.37 is released.
+    pub fn has_unpublished_docs(&self) -> bool {
+        match self {
+            Self::Encoding => {
+                // E.g. `CARGO_PKG_VERSION` = "0.37.0-alpha.1+dev",
+                // `CARGO_PKG_VERSION_MINOR` = "37", `CARGO_PKG_VERSION_PRE` = "alpha.1".
+                // A non-empty pre-release means 0.37 is still cooking.
+                let Ok(minor) = env!("CARGO_PKG_VERSION_MINOR").parse::<u32>() else {
+                    // Assume published rather than littering every link with a marker.
+                    return false;
+                };
+                let is_pre_release = !env!("CARGO_PKG_VERSION_PRE").is_empty();
+
+                minor < 37 || (minor == 37 && is_pre_release)
+            }
+            Self::Component | Self::Archetype | Self::View => false,
         }
     }
 }
@@ -336,7 +362,7 @@ pub struct Object {
     /// The object's multiple layers of documentation.
     pub docs: Docs,
 
-    /// The object's kind: datatype, component or archetype.
+    /// The object's kind: encoding, component or archetype.
     pub kind: ObjectKind,
 
     /// The object's attributes.

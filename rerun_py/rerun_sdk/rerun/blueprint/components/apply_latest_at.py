@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from ... import datatypes
+from ... import encodings
 from ..._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,7 +14,7 @@ from ..._baseclasses import (
 __all__ = ["ApplyLatestAt", "ApplyLatestAtBatch"]
 
 
-class ApplyLatestAt(datatypes.Bool, ComponentMixin):
+class ApplyLatestAt(encodings.Bool, ComponentMixin):
     """
     **Component**: Whether empty cells in a dataframe should be filled with a latest-at query.
 
@@ -24,10 +24,10 @@ class ApplyLatestAt(datatypes.Bool, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of ApplyLatestAtExt in apply_latest_at_ext.py
 
-    # Note: there are no fields here because ApplyLatestAt delegates to datatypes.Bool
+    # Note: there are no fields here because ApplyLatestAt delegates to encodings.Bool
 
 
-class ApplyLatestAtBatch(datatypes.BoolBatch, ComponentBatchMixin):
+class ApplyLatestAtBatch(encodings.BoolBatch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.blueprint.components.ApplyLatestAt"
 
 

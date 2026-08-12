@@ -19,7 +19,7 @@ from .._baseclasses import (
 from .key_value_pairs_ext import KeyValuePairsExt
 
 if TYPE_CHECKING:
-    from .. import datatypes
+    from .. import encodings
 
 __all__ = ["KeyValuePairs", "KeyValuePairsArrayLike", "KeyValuePairsBatch", "KeyValuePairsLike"]
 
@@ -51,7 +51,7 @@ class KeyValuePairs(KeyValuePairsExt, ComponentMixin):
         # You can define your own __init__ function as a member of KeyValuePairsExt in key_value_pairs_ext.py
         self.__attrs_init__(pairs=pairs)
 
-    pairs: list[datatypes.Utf8Pair] = field(
+    pairs: list[encodings.Utf8Pair] = field(
         converter=KeyValuePairsExt.pairs__field_converter_override,  # type: ignore[misc]
     )
     # The key-value pairs that make up this string map.

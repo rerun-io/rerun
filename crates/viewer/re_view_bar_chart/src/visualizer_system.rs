@@ -5,7 +5,7 @@ use re_sdk_types::{
     Archetype as _,
     archetypes::BarChart,
     components::{self, Length},
-    datatypes,
+    encodings,
 };
 use re_view::{
     BlueprintResolvedResults, DataResultQuery as _, VisualizerInstructionQueryResults,
@@ -18,9 +18,9 @@ use re_viewer_context::{
 
 #[derive(Default, Clone)]
 pub struct BarChartData {
-    pub abscissa: datatypes::TensorData,
+    pub abscissa: encodings::TensorData,
     pub widths: Vec<f32>,
-    pub values: datatypes::TensorData,
+    pub values: encodings::TensorData,
     pub color: components::Color,
 }
 

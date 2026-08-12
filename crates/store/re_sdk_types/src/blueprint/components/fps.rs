@@ -27,10 +27,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Debug, Copy, PartialEq, PartialOrd, ::re_byte_size::SizeBytes)]
 #[repr(transparent)]
-pub struct Fps(pub crate::datatypes::Float64);
+pub struct Fps(pub crate::encodings::Float64);
 
 impl ::re_types_core::WrapperComponent for Fps {
-    type Datatype = crate::datatypes::Float64;
+    type Encoding = crate::encodings::Float64;
 
     #[inline]
     fn name() -> ComponentType {
@@ -38,38 +38,38 @@ impl ::re_types_core::WrapperComponent for Fps {
     }
 
     #[inline]
-    fn into_inner(self) -> Self::Datatype {
+    fn into_inner(self) -> Self::Encoding {
         self.0
     }
 }
 
 ::re_types_core::macros::impl_into_cow!(Fps);
 
-impl<T: Into<crate::datatypes::Float64>> From<T> for Fps {
+impl<T: Into<crate::encodings::Float64>> From<T> for Fps {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl std::borrow::Borrow<crate::datatypes::Float64> for Fps {
+impl std::borrow::Borrow<crate::encodings::Float64> for Fps {
     #[inline]
-    fn borrow(&self) -> &crate::datatypes::Float64 {
+    fn borrow(&self) -> &crate::encodings::Float64 {
         &self.0
     }
 }
 
 impl std::ops::Deref for Fps {
-    type Target = crate::datatypes::Float64;
+    type Target = crate::encodings::Float64;
 
     #[inline]
-    fn deref(&self) -> &crate::datatypes::Float64 {
+    fn deref(&self) -> &crate::encodings::Float64 {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for Fps {
     #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Float64 {
+    fn deref_mut(&mut self) -> &mut crate::encodings::Float64 {
         &mut self.0
     }
 }

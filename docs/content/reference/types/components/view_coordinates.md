@@ -15,8 +15,8 @@ For example, [Right, Down, Forward] means that +X points right, +Y points down, 
 
 ⚠ [Rerun does not yet support left-handed coordinate systems](https://github.com/rerun-io/rerun/issues/5032).
 
-## Rerun datatype
-[`ViewCoordinates`](../datatypes/view_coordinates.md)
+## Rerun encoding
+[`ViewCoordinates`](../encodings/view_coordinates.md)
 
 
 ## Arrow datatype

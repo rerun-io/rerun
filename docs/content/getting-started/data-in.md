@@ -233,7 +233,7 @@ The Rust SDK can host the Viewer directly inside your application via [`rerun::n
 
 This closes our whirlwind tour of logging with Rerun. We've barely scratched the surface of what's possible, but this should have hopefully given you plenty of pointers to start experimenting.
 
-As a next step, browse through our [example gallery](https://rerun.io/examples) for some more realistic example use-cases, browse the [Types](../reference/types.md) section for more simple examples of how to use the main datatypes, or dig deeper into [querying your logged data](data-out.md).
+As a next step, browse through our [example gallery](https://rerun.io/examples) for some more realistic example use-cases, browse the [Types](../reference/types.md) section for more simple examples of how to use the main encodings, or dig deeper into [querying your logged data](data-out.md).
 
 ## Opening files
 

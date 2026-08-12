@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from ... import datatypes
+from ... import encodings
 from ..._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,7 +14,7 @@ from ..._baseclasses import (
 __all__ = ["ForceIterations", "ForceIterationsBatch"]
 
 
-class ForceIterations(datatypes.UInt64, ComponentMixin):
+class ForceIterations(encodings.UInt64, ComponentMixin):
     """
     **Component**: Specifies how often this force should be applied per iteration.
 
@@ -26,10 +26,10 @@ class ForceIterations(datatypes.UInt64, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of ForceIterationsExt in force_iterations_ext.py
 
-    # Note: there are no fields here because ForceIterations delegates to datatypes.UInt64
+    # Note: there are no fields here because ForceIterations delegates to encodings.UInt64
 
 
-class ForceIterationsBatch(datatypes.UInt64Batch, ComponentBatchMixin):
+class ForceIterationsBatch(encodings.UInt64Batch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.blueprint.components.ForceIterations"
 
 

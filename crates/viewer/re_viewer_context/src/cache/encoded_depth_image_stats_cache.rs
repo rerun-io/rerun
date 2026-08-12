@@ -79,9 +79,9 @@ fn decode_depth_image(
         let depths = re_rvl::decode_rvl_with_quantization(image_bytes, &metadata)
             .map_err(|err| ImageLoadError::DecodeError(err.to_string()))?;
 
-        let format = re_sdk_types::datatypes::ImageFormat::depth(
+        let format = re_sdk_types::encodings::ImageFormat::depth(
             [metadata.width, metadata.height],
-            re_sdk_types::datatypes::ChannelDatatype::F32,
+            re_sdk_types::encodings::ChannelDatatype::F32,
         );
 
         return Ok(ImageInfo::from_stored_blob(

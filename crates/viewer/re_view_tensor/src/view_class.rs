@@ -9,7 +9,7 @@ use re_sdk_types::blueprint::components::ViewFit;
 use re_sdk_types::components::{
     Colormap, GammaCorrection, MagnificationFilter, TensorDimensionIndexSelection,
 };
-use re_sdk_types::datatypes::TensorData;
+use re_sdk_types::encodings::TensorData;
 use re_sdk_types::{View as _, ViewClassIdentifier};
 use re_ui::{Help, UiExt as _, list_item};
 use re_view::view_property_ui;

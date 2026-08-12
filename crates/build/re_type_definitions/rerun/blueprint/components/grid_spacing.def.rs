@@ -9,5 +9,5 @@
 #[rerun(state = "unstable")]
 pub struct GridSpacing {
     /// Space between grid lines of one line to the next in scene units.
-    pub distance: rerun::datatypes::Float32,
+    pub distance: rerun::encodings::Float32,
 }

@@ -15,5 +15,5 @@
 #[rust(repr = "transparent")]
 #[rerun(state = "stable")]
 pub struct GammaCorrection {
-    pub gamma: rerun::datatypes::Float32,
+    pub gamma: rerun::encodings::Float32,
 }

@@ -9,7 +9,7 @@ from typing import Any, ClassVar
 
 from attrs import define, field
 
-from ... import components, datatypes
+from ... import components, encodings
 from ..._baseclasses import (
     Archetype,
     ComponentDescriptor,
@@ -29,7 +29,7 @@ class TextLogRows(Archetype):
 
     NAME: ClassVar[str] = "rerun.blueprint.archetypes.TextLogRows"
 
-    def __init__(self: Any, *, filter_by_log_level: datatypes.Utf8ArrayLike | None = None) -> None:
+    def __init__(self: Any, *, filter_by_log_level: encodings.Utf8ArrayLike | None = None) -> None:
         """
         Create a new instance of the TextLogRows archetype.
 
@@ -66,7 +66,7 @@ class TextLogRows(Archetype):
         cls,
         *,
         clear_unset: bool = False,
-        filter_by_log_level: datatypes.Utf8ArrayLike | None = None,
+        filter_by_log_level: encodings.Utf8ArrayLike | None = None,
     ) -> TextLogRows:
         """
         Update only some specific fields of a `TextLogRows`.

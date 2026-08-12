@@ -6,7 +6,7 @@ use arrow::array::{
 use re_lenses_core::combinators::Error;
 use re_sdk_types::Loggable as _;
 use re_sdk_types::components::{Colormap, ImageFormat};
-use re_sdk_types::datatypes::{ChannelDatatype, ColorModel};
+use re_sdk_types::encodings::{ChannelDatatype, ColorModel};
 
 use crate::semantic::helpers::get_field_as;
 

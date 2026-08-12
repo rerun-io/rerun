@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from ... import datatypes
+from ... import encodings
 from ..._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,7 +14,7 @@ from ..._baseclasses import (
 __all__ = ["ZoomLevel", "ZoomLevelBatch"]
 
 
-class ZoomLevel(datatypes.Float64, ComponentMixin):
+class ZoomLevel(encodings.Float64, ComponentMixin):
     """
     **Component**: A zoom level determines how much of the world is visible on a map.
 
@@ -24,10 +24,10 @@ class ZoomLevel(datatypes.Float64, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of ZoomLevelExt in zoom_level_ext.py
 
-    # Note: there are no fields here because ZoomLevel delegates to datatypes.Float64
+    # Note: there are no fields here because ZoomLevel delegates to encodings.Float64
 
 
-class ZoomLevelBatch(datatypes.Float64Batch, ComponentBatchMixin):
+class ZoomLevelBatch(encodings.Float64Batch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.blueprint.components.ZoomLevel"
 
 

@@ -37,10 +37,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
     ::re_byte_size::SizeBytes,
 )]
 #[repr(transparent)]
-pub struct AlbedoFactor(pub crate::datatypes::Rgba32);
+pub struct AlbedoFactor(pub crate::encodings::Rgba32);
 
 impl ::re_types_core::WrapperComponent for AlbedoFactor {
-    type Datatype = crate::datatypes::Rgba32;
+    type Encoding = crate::encodings::Rgba32;
 
     #[inline]
     fn name() -> ComponentType {
@@ -48,38 +48,38 @@ impl ::re_types_core::WrapperComponent for AlbedoFactor {
     }
 
     #[inline]
-    fn into_inner(self) -> Self::Datatype {
+    fn into_inner(self) -> Self::Encoding {
         self.0
     }
 }
 
 ::re_types_core::macros::impl_into_cow!(AlbedoFactor);
 
-impl<T: Into<crate::datatypes::Rgba32>> From<T> for AlbedoFactor {
+impl<T: Into<crate::encodings::Rgba32>> From<T> for AlbedoFactor {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl std::borrow::Borrow<crate::datatypes::Rgba32> for AlbedoFactor {
+impl std::borrow::Borrow<crate::encodings::Rgba32> for AlbedoFactor {
     #[inline]
-    fn borrow(&self) -> &crate::datatypes::Rgba32 {
+    fn borrow(&self) -> &crate::encodings::Rgba32 {
         &self.0
     }
 }
 
 impl std::ops::Deref for AlbedoFactor {
-    type Target = crate::datatypes::Rgba32;
+    type Target = crate::encodings::Rgba32;
 
     #[inline]
-    fn deref(&self) -> &crate::datatypes::Rgba32 {
+    fn deref(&self) -> &crate::encodings::Rgba32 {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for AlbedoFactor {
     #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Rgba32 {
+    fn deref_mut(&mut self) -> &mut crate::encodings::Rgba32 {
         &mut self.0
     }
 }

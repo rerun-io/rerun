@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from .. import datatypes
+from .. import encodings
 from .._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -15,7 +15,7 @@ from .color_ext import ColorExt
 __all__ = ["Color", "ColorBatch"]
 
 
-class Color(ColorExt, datatypes.Rgba32, ComponentMixin):
+class Color(ColorExt, encodings.Rgba32, ComponentMixin):
     """
     **Component**: An RGBA color with unmultiplied/separate alpha, in sRGB gamma space with linear alpha.
 
@@ -30,10 +30,10 @@ class Color(ColorExt, datatypes.Rgba32, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of ColorExt in color_ext.py
 
-    # Note: there are no fields here because Color delegates to datatypes.Rgba32
+    # Note: there are no fields here because Color delegates to encodings.Rgba32
 
 
-class ColorBatch(datatypes.Rgba32Batch, ComponentBatchMixin):
+class ColorBatch(encodings.Rgba32Batch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.components.Color"
 
 

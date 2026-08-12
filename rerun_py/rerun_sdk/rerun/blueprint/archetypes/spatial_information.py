@@ -9,7 +9,7 @@ from typing import Any, ClassVar
 
 from attrs import define, field
 
-from ... import components, datatypes
+from ... import components, encodings
 from ..._baseclasses import (
     Archetype,
     ComponentDescriptor,
@@ -32,11 +32,11 @@ class SpatialInformation(Archetype):
 
     def __init__(
         self: Any,
-        target_frame: datatypes.Utf8Like,
+        target_frame: encodings.Utf8Like,
         *,
-        show_bounding_box: datatypes.BoolLike | None = None,
-        show_axes: datatypes.BoolLike | None = None,
-        axes: datatypes.ViewCoordinatesLike | None = None,
+        show_bounding_box: encodings.BoolLike | None = None,
+        show_axes: encodings.BoolLike | None = None,
+        axes: encodings.ViewCoordinatesLike | None = None,
     ) -> None:
         """
         Create a new instance of the SpatialInformation archetype.
@@ -98,10 +98,10 @@ class SpatialInformation(Archetype):
         cls,
         *,
         clear_unset: bool = False,
-        target_frame: datatypes.Utf8Like | None = None,
-        show_bounding_box: datatypes.BoolLike | None = None,
-        show_axes: datatypes.BoolLike | None = None,
-        axes: datatypes.ViewCoordinatesLike | None = None,
+        target_frame: encodings.Utf8Like | None = None,
+        show_bounding_box: encodings.BoolLike | None = None,
+        show_axes: encodings.BoolLike | None = None,
+        axes: encodings.ViewCoordinatesLike | None = None,
     ) -> SpatialInformation:
         """
         Update only some specific fields of a `SpatialInformation`.

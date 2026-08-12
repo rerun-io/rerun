@@ -24,9 +24,9 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: A 16-bit ID representing a type of semantic keypoint within a class.
 ///
-/// `KeypointId`s are only meaningful within the context of a [`datatypes::ClassDescription`][crate::datatypes::ClassDescription].
+/// `KeypointId`s are only meaningful within the context of a [`encodings::ClassDescription`][crate::encodings::ClassDescription].
 ///
-/// Used to look up an [`datatypes::AnnotationInfo`][crate::datatypes::AnnotationInfo] for a Keypoint within the [`components::AnnotationContext`][crate::components::AnnotationContext].
+/// Used to look up an [`encodings::AnnotationInfo`][crate::encodings::AnnotationInfo] for a Keypoint within the [`components::AnnotationContext`][crate::components::AnnotationContext].
 #[derive(
     Clone,
     Debug,
@@ -44,10 +44,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
     ::re_byte_size::SizeBytes,
 )]
 #[repr(transparent)]
-pub struct KeypointId(pub crate::datatypes::KeypointId);
+pub struct KeypointId(pub crate::encodings::KeypointId);
 
 impl ::re_types_core::WrapperComponent for KeypointId {
-    type Datatype = crate::datatypes::KeypointId;
+    type Encoding = crate::encodings::KeypointId;
 
     #[inline]
     fn name() -> ComponentType {
@@ -55,38 +55,38 @@ impl ::re_types_core::WrapperComponent for KeypointId {
     }
 
     #[inline]
-    fn into_inner(self) -> Self::Datatype {
+    fn into_inner(self) -> Self::Encoding {
         self.0
     }
 }
 
 ::re_types_core::macros::impl_into_cow!(KeypointId);
 
-impl<T: Into<crate::datatypes::KeypointId>> From<T> for KeypointId {
+impl<T: Into<crate::encodings::KeypointId>> From<T> for KeypointId {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl std::borrow::Borrow<crate::datatypes::KeypointId> for KeypointId {
+impl std::borrow::Borrow<crate::encodings::KeypointId> for KeypointId {
     #[inline]
-    fn borrow(&self) -> &crate::datatypes::KeypointId {
+    fn borrow(&self) -> &crate::encodings::KeypointId {
         &self.0
     }
 }
 
 impl std::ops::Deref for KeypointId {
-    type Target = crate::datatypes::KeypointId;
+    type Target = crate::encodings::KeypointId;
 
     #[inline]
-    fn deref(&self) -> &crate::datatypes::KeypointId {
+    fn deref(&self) -> &crate::encodings::KeypointId {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for KeypointId {
     #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::KeypointId {
+    fn deref_mut(&mut self) -> &mut crate::encodings::KeypointId {
         &mut self.0
     }
 }

@@ -119,7 +119,7 @@ fn setup_scene(test_context: &mut TestContext) {
                 &archetypes::Image::from_elements(
                     &[255u8, 0, 0],
                     [1, 1],
-                    re_sdk_types::datatypes::ColorModel::RGB,
+                    re_sdk_types::encodings::ColorModel::RGB,
                 ),
             )
             .with_archetype_auto_row(
@@ -131,9 +131,9 @@ fn setup_scene(test_context: &mut TestContext) {
         builder
             .with_archetype_auto_row(
                 TimePoint::STATIC,
-                &archetypes::DepthImage::try_from(re_sdk_types::datatypes::TensorData::new(
+                &archetypes::DepthImage::try_from(re_sdk_types::encodings::TensorData::new(
                     vec![1u64, 1u64],
-                    re_sdk_types::datatypes::TensorBuffer::U16(vec![1u16].into()),
+                    re_sdk_types::encodings::TensorBuffer::U16(vec![1u16].into()),
                 ))
                 .expect("Failed to create depth image from tensor data"),
             )

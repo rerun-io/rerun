@@ -15,5 +15,5 @@
 #[rust(repr = "transparent")]
 #[rerun(state = "stable")]
 pub struct Plane3D {
-    pub xyzd: rerun::datatypes::Plane3D,
+    pub xyzd: rerun::encodings::Plane3D,
 }

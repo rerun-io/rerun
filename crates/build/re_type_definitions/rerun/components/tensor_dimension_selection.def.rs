@@ -7,7 +7,7 @@
 #[rust(repr = "transparent")]
 #[rerun(state = "stable")]
 pub struct TensorDimensionIndexSelection {
-    pub selection: rerun::datatypes::TensorDimensionIndexSelection,
+    pub selection: rerun::encodings::TensorDimensionIndexSelection,
 }
 
 /// Specifies which dimension to use for height.
@@ -16,7 +16,7 @@ pub struct TensorDimensionIndexSelection {
 #[rust(repr = "transparent")]
 #[rerun(state = "stable")]
 pub struct TensorHeightDimension {
-    pub dimension: rerun::datatypes::TensorDimensionSelection,
+    pub dimension: rerun::encodings::TensorDimensionSelection,
 }
 
 /// Specifies which dimension to use for width.
@@ -25,5 +25,5 @@ pub struct TensorHeightDimension {
 #[rust(repr = "transparent")]
 #[rerun(state = "stable")]
 pub struct TensorWidthDimension {
-    pub dimension: rerun::datatypes::TensorDimensionSelection,
+    pub dimension: rerun::encodings::TensorDimensionSelection,
 }

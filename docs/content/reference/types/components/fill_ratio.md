@@ -10,8 +10,8 @@ Valid range is from 0 to max float although typically values above 1.0 are not u
 
 Defaults to 1.0.
 
-## Rerun datatype
-[`Float32`](../datatypes/float32.md)
+## Rerun encoding
+[`Float32`](../encodings/float32.md)
 
 
 ## Arrow datatype

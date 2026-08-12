@@ -23,10 +23,10 @@ use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 #[derive(Clone, Debug, Default, PartialEq, ::re_byte_size::SizeBytes)]
-pub struct AffixFuzzer19(pub crate::testing::datatypes::OptionalUnionTable);
+pub struct AffixFuzzer19(pub crate::testing::encodings::OptionalUnionTable);
 
 impl ::re_types_core::WrapperComponent for AffixFuzzer19 {
-    type Datatype = crate::testing::datatypes::OptionalUnionTable;
+    type Encoding = crate::testing::encodings::OptionalUnionTable;
 
     #[inline]
     fn name() -> ComponentType {
@@ -34,38 +34,38 @@ impl ::re_types_core::WrapperComponent for AffixFuzzer19 {
     }
 
     #[inline]
-    fn into_inner(self) -> Self::Datatype {
+    fn into_inner(self) -> Self::Encoding {
         self.0
     }
 }
 
 ::re_types_core::macros::impl_into_cow!(AffixFuzzer19);
 
-impl<T: Into<crate::testing::datatypes::OptionalUnionTable>> From<T> for AffixFuzzer19 {
+impl<T: Into<crate::testing::encodings::OptionalUnionTable>> From<T> for AffixFuzzer19 {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl std::borrow::Borrow<crate::testing::datatypes::OptionalUnionTable> for AffixFuzzer19 {
+impl std::borrow::Borrow<crate::testing::encodings::OptionalUnionTable> for AffixFuzzer19 {
     #[inline]
-    fn borrow(&self) -> &crate::testing::datatypes::OptionalUnionTable {
+    fn borrow(&self) -> &crate::testing::encodings::OptionalUnionTable {
         &self.0
     }
 }
 
 impl std::ops::Deref for AffixFuzzer19 {
-    type Target = crate::testing::datatypes::OptionalUnionTable;
+    type Target = crate::testing::encodings::OptionalUnionTable;
 
     #[inline]
-    fn deref(&self) -> &crate::testing::datatypes::OptionalUnionTable {
+    fn deref(&self) -> &crate::testing::encodings::OptionalUnionTable {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for AffixFuzzer19 {
     #[inline]
-    fn deref_mut(&mut self) -> &mut crate::testing::datatypes::OptionalUnionTable {
+    fn deref_mut(&mut self) -> &mut crate::testing::encodings::OptionalUnionTable {
         &mut self.0
     }
 }

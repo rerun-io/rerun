@@ -14,5 +14,5 @@
 #[rust(repr = "transparent")]
 #[rerun(state = "stable")]
 pub struct VideoSample {
-    pub buffer: rerun::datatypes::Blob,
+    pub buffer: rerun::encodings::Blob,
 }

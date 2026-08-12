@@ -29,7 +29,7 @@ namespace rerun {
         ///
         /// TODO(#3285): Does *not* preserve data as-is and instead creates half-sizes from the
         /// input data.
-        static Boxes2D from_sizes(const std::vector<datatypes::Vec2D>& sizes);
+        static Boxes2D from_sizes(const std::vector<encodings::Vec2D>& sizes);
 
         /// Creates new `Boxes2D` with `centers` and `half_sizes` created from centers and (full)
         /// sizes.
@@ -37,7 +37,7 @@ namespace rerun {
         /// TODO(#3285): Does *not* preserve data as-is and instead creates centers and half-sizes
         /// from the input data.
         static Boxes2D from_centers_and_sizes(
-            Collection<components::Position2D> centers, const std::vector<datatypes::Vec2D>& sizes
+            Collection<components::Position2D> centers, const std::vector<encodings::Vec2D>& sizes
         ) {
             return from_sizes(std::move(sizes)).with_centers(std::move(centers));
         }
@@ -48,12 +48,12 @@ namespace rerun {
         /// TODO(#3285): Does *not* preserve data as-is and instead creates centers and half-sizes
         /// from the input data.
         static Boxes2D from_mins_and_sizes(
-            const std::vector<datatypes::Vec2D>& mins, const std::vector<datatypes::Vec2D>& sizes
+            const std::vector<encodings::Vec2D>& mins, const std::vector<encodings::Vec2D>& sizes
         );
 
         // </CODEGEN_COPY_TO_HEADER>
 #endif
-        Boxes2D Boxes2D::from_sizes(const std::vector<datatypes::Vec2D>& sizes) {
+        Boxes2D Boxes2D::from_sizes(const std::vector<encodings::Vec2D>& sizes) {
             std::vector<components::HalfSize2D> half_sizes;
             half_sizes.reserve(sizes.size());
             for (const auto& size : sizes) {
@@ -65,7 +65,7 @@ namespace rerun {
         }
 
         Boxes2D Boxes2D::from_mins_and_sizes(
-            const std::vector<datatypes::Vec2D>& mins, const std::vector<datatypes::Vec2D>& sizes
+            const std::vector<encodings::Vec2D>& mins, const std::vector<encodings::Vec2D>& sizes
         ) {
             auto num_components = std::min(mins.size(), sizes.size());
 

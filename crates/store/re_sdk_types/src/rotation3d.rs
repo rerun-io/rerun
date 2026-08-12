@@ -1,4 +1,4 @@
-use crate::{components, datatypes};
+use crate::{components, encodings};
 
 /// A 3D rotation.
 ///
@@ -24,9 +24,9 @@ impl From<components::RotationQuat> for Rotation3D {
     }
 }
 
-impl From<datatypes::Quaternion> for Rotation3D {
+impl From<encodings::Quaternion> for Rotation3D {
     #[inline]
-    fn from(quat: datatypes::Quaternion) -> Self {
+    fn from(quat: encodings::Quaternion) -> Self {
         Self::Quaternion(quat.into())
     }
 }
@@ -46,9 +46,9 @@ impl From<components::RotationAxisAngle> for Rotation3D {
     }
 }
 
-impl From<datatypes::RotationAxisAngle> for Rotation3D {
+impl From<encodings::RotationAxisAngle> for Rotation3D {
     #[inline]
-    fn from(axis_angle: datatypes::RotationAxisAngle) -> Self {
+    fn from(axis_angle: encodings::RotationAxisAngle) -> Self {
         Self::AxisAngle(axis_angle.into())
     }
 }

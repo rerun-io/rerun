@@ -14,10 +14,10 @@
 ///                  4
 /// ```
 #[rerun::rerun_type]
-#[python(aliases = "datatypes.Vec3DArrayLike | npt.NDArray[np.float32]")]
+#[python(aliases = "encodings.Vec3DArrayLike | npt.NDArray[np.float32]")]
 #[python(array_aliases = "npt.NDArray[np.float32]")]
 #[rust(derive(Default, PartialEq))]
 #[rerun(state = "stable")]
 pub struct LineStrip3D {
-    pub points: Vec<rerun::datatypes::Vec3D>,
+    pub points: Vec<rerun::encodings::Vec3D>,
 }

@@ -9,12 +9,12 @@ from ..._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
 )
-from ...blueprint import datatypes as blueprint_datatypes
+from ...blueprint import encodings as blueprint_encodings
 
 __all__ = ["FilterByRange", "FilterByRangeBatch"]
 
 
-class FilterByRange(blueprint_datatypes.FilterByRange, ComponentMixin):
+class FilterByRange(blueprint_encodings.FilterByRange, ComponentMixin):
     """
     **Component**: Configuration for a filter-by-range feature of the dataframe view.
 
@@ -24,10 +24,10 @@ class FilterByRange(blueprint_datatypes.FilterByRange, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of FilterByRangeExt in filter_by_range_ext.py
 
-    # Note: there are no fields here because FilterByRange delegates to datatypes.FilterByRange
+    # Note: there are no fields here because FilterByRange delegates to encodings.FilterByRange
 
 
-class FilterByRangeBatch(blueprint_datatypes.FilterByRangeBatch, ComponentBatchMixin):
+class FilterByRangeBatch(blueprint_encodings.FilterByRangeBatch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.blueprint.components.FilterByRange"
 
 

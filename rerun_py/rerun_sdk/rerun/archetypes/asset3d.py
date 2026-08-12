@@ -11,7 +11,7 @@ import numpy as np
 import pyarrow as pa
 from attrs import define, field
 
-from .. import components, datatypes
+from .. import components, encodings
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
@@ -22,7 +22,7 @@ from ..error_utils import catch_and_log_exceptions
 from .asset3d_ext import Asset3DExt
 
 if TYPE_CHECKING:
-    from ..blueprint.datatypes import VisualizerComponentMappingLike
+    from ..blueprint.encodings import VisualizerComponentMappingLike
 
 __all__ = ["Asset3D"]
 
@@ -92,9 +92,9 @@ class Asset3D(Asset3DExt, Archetype, VisualizableArchetype):
         cls,
         *,
         clear_unset: bool = False,
-        blob: datatypes.BlobLike | None = None,
-        media_type: datatypes.Utf8Like | None = None,
-        albedo_factor: datatypes.Rgba32Like | None = None,
+        blob: encodings.BlobLike | None = None,
+        media_type: encodings.Utf8Like | None = None,
+        albedo_factor: encodings.Rgba32Like | None = None,
     ) -> Asset3D:
         """
         Update only some specific fields of a `Asset3D`.
@@ -174,9 +174,9 @@ class Asset3D(Asset3DExt, Archetype, VisualizableArchetype):
     def columns(
         cls,
         *,
-        blob: datatypes.BlobArrayLike | None = None,
-        media_type: datatypes.Utf8ArrayLike | None = None,
-        albedo_factor: datatypes.Rgba32ArrayLike | None = None,
+        blob: encodings.BlobArrayLike | None = None,
+        media_type: encodings.Utf8ArrayLike | None = None,
+        albedo_factor: encodings.Rgba32ArrayLike | None = None,
     ) -> ComponentColumnList:
         """
         Construct a new column-oriented component bundle.

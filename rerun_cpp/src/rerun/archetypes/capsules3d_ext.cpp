@@ -26,8 +26,8 @@ namespace rerun::archetypes {
         // TODO(andreas): This should not take an std::vector.
         //
         static Capsules3D from_endpoints_and_radii(
-            const std::vector<datatypes::Vec3D>& start_points,
-            const std::vector<datatypes::Vec3D>& end_points,
+            const std::vector<encodings::Vec3D>& start_points,
+            const std::vector<encodings::Vec3D>& end_points,
             const std::vector<float>& radii
         );
         */

@@ -11,7 +11,7 @@ import numpy as np
 import pyarrow as pa
 from attrs import define, field
 
-from .. import components, datatypes
+from .. import components, encodings
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
@@ -21,7 +21,7 @@ from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
 
 if TYPE_CHECKING:
-    from ..blueprint.datatypes import VisualizerComponentMappingLike
+    from ..blueprint.encodings import VisualizerComponentMappingLike
 
 __all__ = ["SeriesLines"]
 
@@ -88,10 +88,10 @@ class SeriesLines(Archetype, VisualizableArchetype):
     def __init__(
         self: Any,
         *,
-        colors: datatypes.Rgba32ArrayLike | None = None,
-        widths: datatypes.Float32ArrayLike | None = None,
-        names: datatypes.Utf8ArrayLike | None = None,
-        visible_series: datatypes.BoolArrayLike | None = None,
+        colors: encodings.Rgba32ArrayLike | None = None,
+        widths: encodings.Float32ArrayLike | None = None,
+        names: encodings.Utf8ArrayLike | None = None,
+        visible_series: encodings.BoolArrayLike | None = None,
         aggregation_policy: components.AggregationPolicyLike | None = None,
         interpolation_mode: components.InterpolationModeLike | None = None,
     ) -> None:
@@ -173,10 +173,10 @@ class SeriesLines(Archetype, VisualizableArchetype):
         cls,
         *,
         clear_unset: bool = False,
-        colors: datatypes.Rgba32ArrayLike | None = None,
-        widths: datatypes.Float32ArrayLike | None = None,
-        names: datatypes.Utf8ArrayLike | None = None,
-        visible_series: datatypes.BoolArrayLike | None = None,
+        colors: encodings.Rgba32ArrayLike | None = None,
+        widths: encodings.Float32ArrayLike | None = None,
+        names: encodings.Utf8ArrayLike | None = None,
+        visible_series: encodings.BoolArrayLike | None = None,
         aggregation_policy: components.AggregationPolicyLike | None = None,
         interpolation_mode: components.InterpolationModeLike | None = None,
     ) -> SeriesLines:
@@ -301,10 +301,10 @@ class SeriesLines(Archetype, VisualizableArchetype):
     def columns(
         cls,
         *,
-        colors: datatypes.Rgba32ArrayLike | None = None,
-        widths: datatypes.Float32ArrayLike | None = None,
-        names: datatypes.Utf8ArrayLike | None = None,
-        visible_series: datatypes.BoolArrayLike | None = None,
+        colors: encodings.Rgba32ArrayLike | None = None,
+        widths: encodings.Float32ArrayLike | None = None,
+        names: encodings.Utf8ArrayLike | None = None,
+        visible_series: encodings.BoolArrayLike | None = None,
         aggregation_policy: components.AggregationPolicyArrayLike | None = None,
         interpolation_mode: components.InterpolationModeArrayLike | None = None,
     ) -> ComponentColumnList:

@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from .. import datatypes
+from .. import encodings
 from .._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,7 +14,7 @@ from .._baseclasses import (
 __all__ = ["Count", "CountBatch"]
 
 
-class Count(datatypes.UInt64, ComponentMixin):
+class Count(encodings.UInt64, ComponentMixin):
     """
     **Component**: A generic count value.
 
@@ -26,10 +26,10 @@ class Count(datatypes.UInt64, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of CountExt in count_ext.py
 
-    # Note: there are no fields here because Count delegates to datatypes.UInt64
+    # Note: there are no fields here because Count delegates to encodings.UInt64
 
 
-class CountBatch(datatypes.UInt64Batch, ComponentBatchMixin):
+class CountBatch(encodings.UInt64Batch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.components.Count"
 
 

@@ -9,5 +9,5 @@
 #[rust(derive(Default, PartialEq, Eq, PartialOrd, Ord))]
 #[rust(repr = "transparent")]
 pub struct EntityPath {
-    pub value: rerun::datatypes::EntityPath,
+    pub value: rerun::encodings::EntityPath,
 }

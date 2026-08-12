@@ -9,7 +9,7 @@ from typing import ClassVar
 
 from attrs import define, field
 
-from ... import components, datatypes
+from ... import components, encodings
 from ..._baseclasses import (
     Archetype,
     ComponentDescriptor,
@@ -53,7 +53,7 @@ class PlotLegend(PlotLegendExt, Archetype):
         *,
         clear_unset: bool = False,
         corner: blueprint_components.Corner2DLike | None = None,
-        visible: datatypes.BoolLike | None = None,
+        visible: encodings.BoolLike | None = None,
     ) -> PlotLegend:
         """
         Update only some specific fields of a `PlotLegend`.

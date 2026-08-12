@@ -12,5 +12,5 @@
 #[rust(repr = "transparent")]
 #[rerun(state = "stable")]
 pub struct Opacity {
-    pub opacity: rerun::datatypes::Float32,
+    pub opacity: rerun::encodings::Float32,
 }

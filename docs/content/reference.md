@@ -6,7 +6,7 @@ cards: true
 
 The reference docs detail how to use the logging APIs and the viewer.
 
--   [Types](./reference/types.md) - Archetypes, components, and datatypes
+-   [Types](./reference/types.md) - Archetypes, components, and encodings
 -   [Viewer](./reference/viewer/overview.md) - The Rerun Viewer UI
 -   [CLI manual](./reference/cli.md) - Command-line interface reference
 -   [Python APIs](https://ref.rerun.io/docs/python) - Python SDK reference

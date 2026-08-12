@@ -9,12 +9,12 @@ from ..._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
 )
-from ...blueprint import datatypes as blueprint_datatypes
+from ...blueprint import encodings as blueprint_encodings
 
 __all__ = ["TimelineColumn", "TimelineColumnBatch"]
 
 
-class TimelineColumn(blueprint_datatypes.TimelineColumn, ComponentMixin):
+class TimelineColumn(blueprint_encodings.TimelineColumn, ComponentMixin):
     """
     **Component**: A timeline column in a text log table.
 
@@ -24,10 +24,10 @@ class TimelineColumn(blueprint_datatypes.TimelineColumn, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of TimelineColumnExt in timeline_column_ext.py
 
-    # Note: there are no fields here because TimelineColumn delegates to datatypes.TimelineColumn
+    # Note: there are no fields here because TimelineColumn delegates to encodings.TimelineColumn
 
 
-class TimelineColumnBatch(blueprint_datatypes.TimelineColumnBatch, ComponentBatchMixin):
+class TimelineColumnBatch(blueprint_encodings.TimelineColumnBatch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.blueprint.components.TimelineColumn"
 
 

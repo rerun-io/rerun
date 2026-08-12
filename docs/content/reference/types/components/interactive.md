@@ -7,8 +7,8 @@ Whether the entity can be interacted with.
 
 Non interactive components are still visible, but mouse interactions in the view are disabled.
 
-## Rerun datatype
-[`Bool`](../datatypes/bool.md)
+## Rerun encoding
+[`Bool`](../encodings/bool.md)
 
 
 ## Arrow datatype

@@ -3,7 +3,7 @@
 
 #include "key_value_pairs.hpp"
 
-#include "../datatypes/utf8pair.hpp"
+#include "../encodings/utf8pair.hpp"
 
 #include <arrow/builder.h>
 #include <arrow/type_fwd.h>
@@ -13,7 +13,7 @@ namespace rerun::components {}
 namespace rerun {
     const std::shared_ptr<arrow::DataType>& Loggable<components::KeyValuePairs>::arrow_datatype() {
         static const auto datatype = arrow::list(
-            arrow::field("item", Loggable<rerun::datatypes::Utf8Pair>::arrow_datatype(), false)
+            arrow::field("item", Loggable<rerun::encodings::Utf8Pair>::arrow_datatype(), false)
         );
         return datatype;
     }
@@ -59,7 +59,7 @@ namespace rerun {
             const auto& element = elements[elem_idx];
             ARROW_RETURN_NOT_OK(builder->Append());
             if (element.pairs.data()) {
-                RR_RETURN_NOT_OK(Loggable<rerun::datatypes::Utf8Pair>::fill_arrow_array_builder(
+                RR_RETURN_NOT_OK(Loggable<rerun::encodings::Utf8Pair>::fill_arrow_array_builder(
                     value_builder,
                     element.pairs.data(),
                     element.pairs.size()

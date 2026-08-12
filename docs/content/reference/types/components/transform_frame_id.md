@@ -13,8 +13,8 @@ Note that any [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/a
 describes a relationship between these parent and child transform frames, **not** the transform frame
 that the entity path may be using (defined by an [`archetypes.CoordinateFrame`](https://rerun.io/docs/reference/types/archetypes/coordinate_frame)).
 
-## Rerun datatype
-[`Utf8`](../datatypes/utf8.md)
+## Rerun encoding
+[`Utf8`](../encodings/utf8.md)
 
 
 ## Arrow datatype

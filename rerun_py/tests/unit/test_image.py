@@ -7,7 +7,7 @@ import pytest
 import rerun as rr
 import torch
 from rerun.archetypes.image import Image
-from rerun.datatypes.tensor_data import TensorData
+from rerun.encodings.tensor_data import TensorData
 from rerun.error_utils import RerunWarning
 
 rng = np.random.default_rng(12345)
@@ -18,7 +18,7 @@ IMAGE_INPUTS: list[Any] = [
     {"image": RANDOM_IMAGE_SOURCE},
     {"image": RANDOM_IMAGE_SOURCE, "width": 20, "height": 10},
     {"image": RANDOM_IMAGE_SOURCE, "color_model": "RGB", "width": 20, "height": 10},
-    {"image": RANDOM_IMAGE_SOURCE, "color_model": rr.datatypes.ColorModel.RGB, "width": 20, "height": 10},
+    {"image": RANDOM_IMAGE_SOURCE, "color_model": rr.encodings.ColorModel.RGB, "width": 20, "height": 10},
     {
         "bytes": RANDOM_IMAGE_SOURCE.tobytes(),
         "color_model": "RGB",
@@ -29,7 +29,7 @@ IMAGE_INPUTS: list[Any] = [
     {
         "bytes": RANDOM_IMAGE_SOURCE.tobytes(),
         "color_model": "RGB",
-        "datatype": rr.datatypes.ChannelDatatype.F64,
+        "datatype": rr.encodings.ChannelDatatype.F64,
         "width": 20,
         "height": 10,
     },

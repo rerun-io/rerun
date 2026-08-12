@@ -9,5 +9,5 @@
 #[rust(repr = "transparent")]
 #[rerun(state = "unstable")]
 pub struct AutoLayout {
-    pub auto_layout: rerun::datatypes::Bool,
+    pub auto_layout: rerun::encodings::Bool,
 }

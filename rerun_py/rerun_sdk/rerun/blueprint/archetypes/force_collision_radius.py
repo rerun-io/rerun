@@ -17,7 +17,7 @@ from ...blueprint import components as blueprint_components
 from ...error_utils import catch_and_log_exceptions
 
 if TYPE_CHECKING:
-    from ... import datatypes
+    from ... import encodings
 
 __all__ = ["ForceCollisionRadius"]
 
@@ -35,9 +35,9 @@ class ForceCollisionRadius(Archetype):
     def __init__(
         self: Any,
         *,
-        enabled: datatypes.BoolLike | None = None,
-        strength: datatypes.Float64Like | None = None,
-        iterations: datatypes.UInt64Like | None = None,
+        enabled: encodings.BoolLike | None = None,
+        strength: encodings.Float64Like | None = None,
+        iterations: encodings.UInt64Like | None = None,
     ) -> None:
         """
         Create a new instance of the ForceCollisionRadius archetype.
@@ -83,9 +83,9 @@ class ForceCollisionRadius(Archetype):
         cls,
         *,
         clear_unset: bool = False,
-        enabled: datatypes.BoolLike | None = None,
-        strength: datatypes.Float64Like | None = None,
-        iterations: datatypes.UInt64Like | None = None,
+        enabled: encodings.BoolLike | None = None,
+        strength: encodings.Float64Like | None = None,
+        iterations: encodings.UInt64Like | None = None,
     ) -> ForceCollisionRadius:
         """
         Update only some specific fields of a `ForceCollisionRadius`.

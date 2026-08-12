@@ -6,7 +6,7 @@ from ...error_utils import catch_and_log_exceptions
 from .. import components as blueprint_components
 
 if TYPE_CHECKING:
-    from ... import datatypes
+    from ... import encodings
 
 
 class VisualBounds2DExt:
@@ -15,8 +15,8 @@ class VisualBounds2DExt:
     def __init__(
         self: Any,
         *,
-        x_range: datatypes.Range1DLike | None = None,
-        y_range: datatypes.Range1DLike | None = None,
+        x_range: encodings.Range1DLike | None = None,
+        y_range: encodings.Range1DLike | None = None,
     ) -> None:
         """
         Create a new instance of the VisualBounds2D archetype.

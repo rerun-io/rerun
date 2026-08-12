@@ -15,12 +15,12 @@ from ..api import View, ViewContentsLike, VisualizerLike
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
 
-    from ... import datatypes
+    from ... import encodings
     from ..._baseclasses import (
         AsComponents,
         DescribedComponentBatch,
     )
-    from ...datatypes import EntityPathLike, Utf8Like
+    from ...encodings import EntityPathLike, Utf8Like
 
 
 class DataframeView(View):
@@ -95,7 +95,7 @@ class DataframeView(View):
         origin: EntityPathLike = "/",
         contents: ViewContentsLike = "$origin/**",
         name: Utf8Like | None = None,
-        visible: datatypes.BoolLike | None = None,
+        visible: encodings.BoolLike | None = None,
         defaults: Iterable[AsComponents | Iterable[DescribedComponentBatch]] | None = None,
         overrides: Mapping[EntityPathLike, VisualizerLike | Iterable[VisualizerLike]] | None = None,
         query: blueprint_archetypes.DataframeQuery | None = None,

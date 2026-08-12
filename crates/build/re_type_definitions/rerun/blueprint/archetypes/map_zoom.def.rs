@@ -4,7 +4,7 @@
 /// Configuration of the map view zoom level.
 //TODO(ab): Turn this archetype into `MapArea` and include a `center: LatLon` component or similar
 #[rerun::rerun_type]
-#[python(aliases = "datatypes.Float64Like")]
+#[python(aliases = "encodings.Float64Like")]
 #[rerun(scope = "blueprint")]
 #[rerun(state = "unstable")]
 pub struct MapZoom {

@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from ... import datatypes
+from ... import encodings
 from ..._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,7 +14,7 @@ from ..._baseclasses import (
 __all__ = ["ViewOrigin", "ViewOriginBatch"]
 
 
-class ViewOrigin(datatypes.EntityPath, ComponentMixin):
+class ViewOrigin(encodings.EntityPath, ComponentMixin):
     """
     **Component**: The origin of a view.
 
@@ -24,10 +24,10 @@ class ViewOrigin(datatypes.EntityPath, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of ViewOriginExt in view_origin_ext.py
 
-    # Note: there are no fields here because ViewOrigin delegates to datatypes.EntityPath
+    # Note: there are no fields here because ViewOrigin delegates to encodings.EntityPath
 
 
-class ViewOriginBatch(datatypes.EntityPathBatch, ComponentBatchMixin):
+class ViewOriginBatch(encodings.EntityPathBatch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.blueprint.components.ViewOrigin"
 
 

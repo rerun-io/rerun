@@ -47,7 +47,7 @@ impl AssetVideo {
     pub fn read_frame_timestamps_nanos(&self) -> Result<Vec<i64>, re_video::VideoLoadError> {
         use re_types_core::Loggable as _;
 
-        use crate::datatypes::Blob;
+        use crate::encodings::Blob;
 
         re_tracing::profile_function!();
 

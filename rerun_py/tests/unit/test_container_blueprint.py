@@ -12,17 +12,17 @@ from rerun.blueprint.components.included_content import IncludedContentBatch
 from rerun.blueprint.components.row_share import RowShare, RowShareBatch
 from rerun.components.name import Name, NameBatch
 from rerun.components.visible import Visible, VisibleBatch
-from rerun.datatypes.entity_path import EntityPath, EntityPathArrayLike, EntityPathLike
+from rerun.encodings.entity_path import EntityPath, EntityPathArrayLike, EntityPathLike
 
 from .common_arrays import none_empty_or_value
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from rerun.datatypes.bool import BoolLike
-    from rerun.datatypes.float32 import Float32ArrayLike
-    from rerun.datatypes.uint32 import UInt32Like
-    from rerun.datatypes.utf8 import Utf8Like
+    from rerun.encodings.bool import BoolLike
+    from rerun.encodings.float32 import Float32ArrayLike
+    from rerun.encodings.uint32 import UInt32Like
+    from rerun.encodings.utf8 import Utf8Like
 
 
 def test_container_blueprint() -> None:

@@ -11,7 +11,7 @@ import numpy as np
 import pyarrow as pa
 from attrs import define, field
 
-from .. import components, datatypes
+from .. import components, encodings
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
@@ -101,7 +101,7 @@ class Clear(ClearExt, Archetype):
         cls,
         *,
         clear_unset: bool = False,
-        is_recursive: datatypes.BoolLike | None = None,
+        is_recursive: encodings.BoolLike | None = None,
     ) -> Clear:
         """Update only some specific fields of a `Clear`."""
 
@@ -137,7 +137,7 @@ class Clear(ClearExt, Archetype):
     def columns(
         cls,
         *,
-        is_recursive: datatypes.BoolArrayLike | None = None,
+        is_recursive: encodings.BoolArrayLike | None = None,
     ) -> ComponentColumnList:
         """
         Construct a new column-oriented component bundle.

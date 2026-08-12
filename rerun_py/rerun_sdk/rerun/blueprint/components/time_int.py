@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from ... import datatypes
+from ... import encodings
 from ..._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,7 +14,7 @@ from ..._baseclasses import (
 __all__ = ["TimeInt", "TimeIntBatch"]
 
 
-class TimeInt(datatypes.TimeInt, ComponentMixin):
+class TimeInt(encodings.TimeInt, ComponentMixin):
     """
     **Component**: A reference to a time.
 
@@ -24,10 +24,10 @@ class TimeInt(datatypes.TimeInt, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of TimeIntExt in time_int_ext.py
 
-    # Note: there are no fields here because TimeInt delegates to datatypes.TimeInt
+    # Note: there are no fields here because TimeInt delegates to encodings.TimeInt
 
 
-class TimeIntBatch(datatypes.TimeIntBatch, ComponentBatchMixin):
+class TimeIntBatch(encodings.TimeIntBatch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.blueprint.components.TimeInt"
 
 

@@ -3,7 +3,7 @@
 
 /// Configuration for the background of a spatial view.
 #[rerun::rerun_type]
-#[python(aliases = "datatypes.Rgba32Like | blueprint_components.BackgroundKindLike")]
+#[python(aliases = "encodings.Rgba32Like | blueprint_components.BackgroundKindLike")]
 #[rerun(scope = "blueprint")]
 #[rerun(state = "unstable")]
 pub struct Background {

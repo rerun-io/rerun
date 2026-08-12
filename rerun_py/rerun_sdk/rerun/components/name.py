@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from .. import datatypes
+from .. import encodings
 from .._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,16 +14,16 @@ from .._baseclasses import (
 __all__ = ["Name", "NameBatch"]
 
 
-class Name(datatypes.Utf8, ComponentMixin):
+class Name(encodings.Utf8, ComponentMixin):
     """**Component**: A display name, typically for an entity or a item like a plot series."""
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of NameExt in name_ext.py
 
-    # Note: there are no fields here because Name delegates to datatypes.Utf8
+    # Note: there are no fields here because Name delegates to encodings.Utf8
 
 
-class NameBatch(datatypes.Utf8Batch, ComponentBatchMixin):
+class NameBatch(encodings.Utf8Batch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.components.Name"
 
 

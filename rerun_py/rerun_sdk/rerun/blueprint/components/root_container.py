@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from ... import datatypes
+from ... import encodings
 from ..._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,7 +14,7 @@ from ..._baseclasses import (
 __all__ = ["RootContainer", "RootContainerBatch"]
 
 
-class RootContainer(datatypes.Uuid, ComponentMixin):
+class RootContainer(encodings.Uuid, ComponentMixin):
     """
     **Component**: The container that sits at the root of a viewport.
 
@@ -24,10 +24,10 @@ class RootContainer(datatypes.Uuid, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of RootContainerExt in root_container_ext.py
 
-    # Note: there are no fields here because RootContainer delegates to datatypes.Uuid
+    # Note: there are no fields here because RootContainer delegates to encodings.Uuid
 
 
-class RootContainerBatch(datatypes.UuidBatch, ComponentBatchMixin):
+class RootContainerBatch(encodings.UuidBatch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.blueprint.components.RootContainer"
 
 

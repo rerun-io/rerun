@@ -180,7 +180,7 @@ impl ViewClass for StateTimelineView {
     }
 
     fn default_query_range(&self, _view_state: &dyn ViewState) -> QueryRange {
-        QueryRange::TimeRange(re_sdk_types::datatypes::TimeRange::EVERYTHING)
+        QueryRange::TimeRange(re_sdk_types::encodings::TimeRange::EVERYTHING)
     }
 
     fn spawn_heuristics(
@@ -871,7 +871,7 @@ fn resolve_linked_time_view(
         .ok()
         .flatten()
         .unwrap_or(re_sdk_types::blueprint::components::TimeRange(
-            re_sdk_types::datatypes::TimeRange::EVERYTHING,
+            re_sdk_types::encodings::TimeRange::EVERYTHING,
         ));
 
     // Infinite boundaries resolve to the full timeline range — or, when that is unknown, to the
@@ -881,7 +881,7 @@ fn resolve_linked_time_view(
     let range = re_view::resolve_time_axis_range(
         &view_range,
         timeline_range,
-        re_sdk_types::datatypes::TimeInt(latest_at.as_i64()),
+        re_sdk_types::encodings::TimeInt(latest_at.as_i64()),
     );
 
     let span = ((range.max.as_i64() - range.min.as_i64()) as f64).max(1.0);

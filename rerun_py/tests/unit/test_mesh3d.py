@@ -6,7 +6,7 @@ from typing import Any, cast
 import rerun as rr
 from rerun.components import AlbedoFactorBatch, Position3DBatch, TriangleIndicesBatch, Vector3DBatch
 from rerun.components.texcoord2d import Texcoord2DBatch
-from rerun.datatypes import (
+from rerun.encodings import (
     ClassIdArrayLike,
     Rgba32,
     Rgba32ArrayLike,

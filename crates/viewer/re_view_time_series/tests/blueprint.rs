@@ -8,7 +8,7 @@ use re_log_types::{EntityPath, TimePoint, Timeline, TimelineName};
 use re_sdk_types::archetypes::{self, Scalars, SeriesLines, SeriesPoints, Transform3D};
 use re_sdk_types::blueprint;
 use re_sdk_types::blueprint::archetypes::VisibleTimeRanges;
-use re_sdk_types::datatypes::{self, TimeRange};
+use re_sdk_types::encodings::{self, TimeRange};
 use re_sdk_types::{DynamicArchetype, Loggable as _, VisualizableArchetype as _, components};
 use re_test_context::TestContext;
 use re_test_context::VisualizerBlueprintContext as _;
@@ -43,29 +43,29 @@ pub fn test_blueprint_overrides_and_defaults_with_time_series() {
         (TimeRange::AT_CURSOR, "at_cursor"),
         (
             TimeRange {
-                start: datatypes::TimeRangeBoundary::CursorRelative(datatypes::TimeInt(-10)),
-                end: datatypes::TimeRangeBoundary::CursorRelative(datatypes::TimeInt(10)),
+                start: encodings::TimeRangeBoundary::CursorRelative(encodings::TimeInt(-10)),
+                end: encodings::TimeRangeBoundary::CursorRelative(encodings::TimeInt(10)),
             },
             "around_cursor",
         ),
         (
             TimeRange {
-                start: datatypes::TimeRangeBoundary::Absolute(datatypes::TimeInt(10)),
-                end: datatypes::TimeRangeBoundary::Absolute(datatypes::TimeInt(20)),
+                start: encodings::TimeRangeBoundary::Absolute(encodings::TimeInt(10)),
+                end: encodings::TimeRangeBoundary::Absolute(encodings::TimeInt(20)),
             },
             "absolute",
         ),
         (
             TimeRange {
-                start: datatypes::TimeRangeBoundary::Absolute(datatypes::TimeInt(10)),
-                end: datatypes::TimeRangeBoundary::Infinite,
+                start: encodings::TimeRangeBoundary::Absolute(encodings::TimeInt(10)),
+                end: encodings::TimeRangeBoundary::Infinite,
             },
             "absolute_until_end",
         ),
         (
             TimeRange {
-                start: datatypes::TimeRangeBoundary::Infinite,
-                end: datatypes::TimeRangeBoundary::Absolute(datatypes::TimeInt(15)),
+                start: encodings::TimeRangeBoundary::Infinite,
+                end: encodings::TimeRangeBoundary::Absolute(encodings::TimeInt(15)),
             },
             "start_until_absolute",
         ),
@@ -96,29 +96,29 @@ pub fn test_custom_visible_time_range() {
         (TimeRange::EVERYTHING, "everything"),
         (
             TimeRange {
-                start: datatypes::TimeRangeBoundary::CursorRelative(datatypes::TimeInt(-10)),
-                end: datatypes::TimeRangeBoundary::CursorRelative(datatypes::TimeInt(10)),
+                start: encodings::TimeRangeBoundary::CursorRelative(encodings::TimeInt(-10)),
+                end: encodings::TimeRangeBoundary::CursorRelative(encodings::TimeInt(10)),
             },
             "around_cursor",
         ),
         (
             TimeRange {
-                start: datatypes::TimeRangeBoundary::Absolute(datatypes::TimeInt(10)),
-                end: datatypes::TimeRangeBoundary::Absolute(datatypes::TimeInt(20)),
+                start: encodings::TimeRangeBoundary::Absolute(encodings::TimeInt(10)),
+                end: encodings::TimeRangeBoundary::Absolute(encodings::TimeInt(20)),
             },
             "absolute",
         ),
         (
             TimeRange {
-                start: datatypes::TimeRangeBoundary::Absolute(datatypes::TimeInt(10)),
-                end: datatypes::TimeRangeBoundary::Infinite,
+                start: encodings::TimeRangeBoundary::Absolute(encodings::TimeInt(10)),
+                end: encodings::TimeRangeBoundary::Infinite,
             },
             "absolute_until_end",
         ),
         (
             TimeRange {
-                start: datatypes::TimeRangeBoundary::Infinite,
-                end: datatypes::TimeRangeBoundary::Absolute(datatypes::TimeInt(15)),
+                start: encodings::TimeRangeBoundary::Infinite,
+                end: encodings::TimeRangeBoundary::Absolute(encodings::TimeInt(15)),
             },
             "start_until_absolute",
         ),
@@ -130,8 +130,8 @@ pub fn test_custom_visible_time_range() {
         (
             "timeline",
             Some(TimeRange {
-                start: datatypes::TimeRangeBoundary::Absolute(datatypes::TimeInt(0)),
-                end: datatypes::TimeRangeBoundary::Absolute(datatypes::TimeInt(MAX_TIME)),
+                start: encodings::TimeRangeBoundary::Absolute(encodings::TimeInt(0)),
+                end: encodings::TimeRangeBoundary::Absolute(encodings::TimeInt(MAX_TIME)),
             }),
         ),
     ] {
@@ -237,7 +237,7 @@ fn setup_blueprint(
             property.save_blueprint_component(
                 ctx,
                 &VisibleTimeRanges::descriptor_ranges(),
-                &blueprint::components::VisibleTimeRange(datatypes::VisibleTimeRange {
+                &blueprint::components::VisibleTimeRange(encodings::VisibleTimeRange {
                     timeline: timeline.as_str().into(),
                     range: visible_time_range,
                 }),
@@ -270,7 +270,7 @@ pub fn test_explicit_component_mapping() {
 
 fn setup_blueprint_with_explicit_mapping(test_context: &mut TestContext) -> ViewId {
     test_context.setup_viewport_blueprint(|ctx, blueprint| {
-        use re_sdk_types::blueprint::datatypes::{ComponentSourceKind, VisualizerComponentMapping};
+        use re_sdk_types::blueprint::encodings::{ComponentSourceKind, VisualizerComponentMapping};
 
         let view = ViewBlueprint::new_with_root_wildcard(TimeSeriesView::identifier());
 
@@ -420,7 +420,7 @@ fn log_data_nested(test_context: &mut TestContext, timeline: re_log_types::Timel
         let color = components::Color::from_rgb(r, g, b);
 
         // Serialize Color to Arrow using the Loggable trait
-        let color_arrow = datatypes::Rgba32::to_arrow([color.0]).expect("could not convert color");
+        let color_arrow = encodings::Rgba32::to_arrow([color.0]).expect("could not convert color");
         let color_offsets = arrow::buffer::OffsetBuffer::from_lengths([1]);
         let color_list_array = ListArray::new(
             Arc::new(Field::new_list_field(DataType::UInt32, false)),
@@ -535,7 +535,7 @@ pub fn test_builtin_enum_not_visualizable_as_scalar() {
 
     // Explicitly set up a SeriesLines visualizer that maps the MarkerShape component to scalar.
     let view_id = test_context.setup_viewport_blueprint(|ctx, blueprint| {
-        use re_sdk_types::blueprint::datatypes::{ComponentSourceKind, VisualizerComponentMapping};
+        use re_sdk_types::blueprint::encodings::{ComponentSourceKind, VisualizerComponentMapping};
 
         let view = ViewBlueprint::new_with_root_wildcard(TimeSeriesView::identifier());
 
@@ -575,7 +575,7 @@ pub fn test_builtin_enum_not_visualizable_as_scalar() {
 
 fn setup_blueprint_with_explicit_mapping_nested(test_context: &mut TestContext) -> ViewId {
     test_context.setup_viewport_blueprint(|ctx, blueprint| {
-        use re_sdk_types::blueprint::datatypes::{ComponentSourceKind, VisualizerComponentMapping};
+        use re_sdk_types::blueprint::encodings::{ComponentSourceKind, VisualizerComponentMapping};
 
         let view = ViewBlueprint::new_with_root_wildcard(TimeSeriesView::identifier());
 
@@ -712,7 +712,7 @@ fn log_data_transform3d(test_context: &mut TestContext, timeline: re_log_types::
                 timepoint,
                 &Transform3D::from_translation_rotation(
                     translation,
-                    datatypes::Quaternion::from_xyzw([
+                    encodings::Quaternion::from_xyzw([
                         ax * half.sin(),
                         ay * half.sin(),
                         az * half.sin(),
@@ -726,7 +726,7 @@ fn log_data_transform3d(test_context: &mut TestContext, timeline: re_log_types::
 
 fn setup_blueprint_transform3d(test_context: &mut TestContext) -> ViewId {
     test_context.setup_viewport_blueprint(|ctx, blueprint| {
-        use re_sdk_types::blueprint::datatypes::{ComponentSourceKind, VisualizerComponentMapping};
+        use re_sdk_types::blueprint::encodings::{ComponentSourceKind, VisualizerComponentMapping};
 
         let view = ViewBlueprint::new_with_root_wildcard(TimeSeriesView::identifier());
 

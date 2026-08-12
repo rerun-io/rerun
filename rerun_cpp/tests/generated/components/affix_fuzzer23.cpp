@@ -3,7 +3,7 @@
 
 #include "affix_fuzzer23.hpp"
 
-#include "../datatypes/multi_enum.hpp"
+#include "../encodings/multi_enum.hpp"
 
 #include <arrow/builder.h>
 #include <arrow/type_fwd.h>
@@ -12,7 +12,7 @@ namespace rerun::components {}
 
 namespace rerun {
     const std::shared_ptr<arrow::DataType>& Loggable<components::AffixFuzzer23>::arrow_datatype() {
-        static const auto datatype = Loggable<rerun::datatypes::MultiEnum>::arrow_datatype();
+        static const auto datatype = Loggable<rerun::encodings::MultiEnum>::arrow_datatype();
         return datatype;
     }
 

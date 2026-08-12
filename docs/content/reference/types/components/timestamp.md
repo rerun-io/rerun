@@ -7,8 +7,8 @@ When the recording started.
 
 Should be an absolute time, i.e. relative to Unix Epoch.
 
-## Rerun datatype
-[`TimeInt`](../datatypes/time_int.md)
+## Rerun encoding
+[`TimeInt`](../encodings/time_int.md)
 
 
 ## Arrow datatype

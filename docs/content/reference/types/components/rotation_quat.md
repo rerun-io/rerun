@@ -9,8 +9,8 @@ Note: although the x,y,z,w components of the quaternion will be passed through t
 datastore as provided, when used in the Viewer, quaternions will always be normalized.
 If normalization fails the rotation is treated as an invalid transform.
 
-## Rerun datatype
-[`Quaternion`](../datatypes/quaternion.md)
+## Rerun encoding
+[`Quaternion`](../encodings/quaternion.md)
 
 
 ## Arrow datatype

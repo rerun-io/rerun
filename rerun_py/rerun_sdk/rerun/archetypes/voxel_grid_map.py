@@ -11,7 +11,7 @@ import numpy as np
 import pyarrow as pa
 from attrs import define, field
 
-from .. import components, datatypes
+from .. import components, encodings
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
@@ -21,7 +21,7 @@ from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
 
 if TYPE_CHECKING:
-    from ..blueprint.datatypes import VisualizerComponentMappingLike
+    from ..blueprint.encodings import VisualizerComponentMappingLike
 
 __all__ = ["VoxelGridMap"]
 
@@ -83,16 +83,16 @@ class VoxelGridMap(Archetype, VisualizableArchetype):
 
     def __init__(
         self: Any,
-        voxel_indices: datatypes.IVec3DArrayLike,
-        voxel_size: datatypes.Vec3DLike,
+        voxel_indices: encodings.IVec3DArrayLike,
+        voxel_size: encodings.Vec3DLike,
         *,
-        values: datatypes.Float32ArrayLike | None = None,
-        colors: datatypes.Rgba32ArrayLike | None = None,
-        translation: datatypes.Vec3DLike | None = None,
-        rotation_axis_angle: datatypes.RotationAxisAngleLike | None = None,
-        quaternion: datatypes.QuaternionLike | None = None,
-        opacity: datatypes.Float32Like | None = None,
-        value_range: datatypes.Range1DLike | None = None,
+        values: encodings.Float32ArrayLike | None = None,
+        colors: encodings.Rgba32ArrayLike | None = None,
+        translation: encodings.Vec3DLike | None = None,
+        rotation_axis_angle: encodings.RotationAxisAngleLike | None = None,
+        quaternion: encodings.QuaternionLike | None = None,
+        opacity: encodings.Float32Like | None = None,
+        value_range: encodings.Range1DLike | None = None,
         colormap: components.ColormapLike | None = None,
     ) -> None:
         """
@@ -194,15 +194,15 @@ class VoxelGridMap(Archetype, VisualizableArchetype):
         cls,
         *,
         clear_unset: bool = False,
-        voxel_indices: datatypes.IVec3DArrayLike | None = None,
-        voxel_size: datatypes.Vec3DLike | None = None,
-        values: datatypes.Float32ArrayLike | None = None,
-        colors: datatypes.Rgba32ArrayLike | None = None,
-        translation: datatypes.Vec3DLike | None = None,
-        rotation_axis_angle: datatypes.RotationAxisAngleLike | None = None,
-        quaternion: datatypes.QuaternionLike | None = None,
-        opacity: datatypes.Float32Like | None = None,
-        value_range: datatypes.Range1DLike | None = None,
+        voxel_indices: encodings.IVec3DArrayLike | None = None,
+        voxel_size: encodings.Vec3DLike | None = None,
+        values: encodings.Float32ArrayLike | None = None,
+        colors: encodings.Rgba32ArrayLike | None = None,
+        translation: encodings.Vec3DLike | None = None,
+        rotation_axis_angle: encodings.RotationAxisAngleLike | None = None,
+        quaternion: encodings.QuaternionLike | None = None,
+        opacity: encodings.Float32Like | None = None,
+        value_range: encodings.Range1DLike | None = None,
         colormap: components.ColormapLike | None = None,
     ) -> VoxelGridMap:
         """
@@ -375,15 +375,15 @@ class VoxelGridMap(Archetype, VisualizableArchetype):
     def columns(
         cls,
         *,
-        voxel_indices: datatypes.IVec3DArrayLike | None = None,
-        voxel_size: datatypes.Vec3DArrayLike | None = None,
-        values: datatypes.Float32ArrayLike | None = None,
-        colors: datatypes.Rgba32ArrayLike | None = None,
-        translation: datatypes.Vec3DArrayLike | None = None,
-        rotation_axis_angle: datatypes.RotationAxisAngleArrayLike | None = None,
-        quaternion: datatypes.QuaternionArrayLike | None = None,
-        opacity: datatypes.Float32ArrayLike | None = None,
-        value_range: datatypes.Range1DArrayLike | None = None,
+        voxel_indices: encodings.IVec3DArrayLike | None = None,
+        voxel_size: encodings.Vec3DArrayLike | None = None,
+        values: encodings.Float32ArrayLike | None = None,
+        colors: encodings.Rgba32ArrayLike | None = None,
+        translation: encodings.Vec3DArrayLike | None = None,
+        rotation_axis_angle: encodings.RotationAxisAngleArrayLike | None = None,
+        quaternion: encodings.QuaternionArrayLike | None = None,
+        opacity: encodings.Float32ArrayLike | None = None,
+        value_range: encodings.Range1DArrayLike | None = None,
         colormap: components.ColormapArrayLike | None = None,
     ) -> ComponentColumnList:
         """

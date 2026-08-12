@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from .. import datatypes
+from .. import encodings
 from .._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,16 +14,16 @@ from .._baseclasses import (
 __all__ = ["TensorDimensionIndexSelection", "TensorDimensionIndexSelectionBatch"]
 
 
-class TensorDimensionIndexSelection(datatypes.TensorDimensionIndexSelection, ComponentMixin):
+class TensorDimensionIndexSelection(encodings.TensorDimensionIndexSelection, ComponentMixin):
     """**Component**: Specifies a concrete index on a tensor dimension."""
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of TensorDimensionIndexSelectionExt in tensor_dimension_index_selection_ext.py
 
-    # Note: there are no fields here because TensorDimensionIndexSelection delegates to datatypes.TensorDimensionIndexSelection
+    # Note: there are no fields here because TensorDimensionIndexSelection delegates to encodings.TensorDimensionIndexSelection
 
 
-class TensorDimensionIndexSelectionBatch(datatypes.TensorDimensionIndexSelectionBatch, ComponentBatchMixin):
+class TensorDimensionIndexSelectionBatch(encodings.TensorDimensionIndexSelectionBatch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.components.TensorDimensionIndexSelection"
 
 

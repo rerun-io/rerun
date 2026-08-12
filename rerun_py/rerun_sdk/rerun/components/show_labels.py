@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from .. import datatypes
+from .. import encodings
 from .._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,7 +14,7 @@ from .._baseclasses import (
 __all__ = ["ShowLabels", "ShowLabelsBatch"]
 
 
-class ShowLabels(datatypes.Bool, ComponentMixin):
+class ShowLabels(encodings.Bool, ComponentMixin):
     """
     **Component**: Whether the entity's [`components.Text`][rerun.components.Text] label is shown.
 
@@ -26,10 +26,10 @@ class ShowLabels(datatypes.Bool, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of ShowLabelsExt in show_labels_ext.py
 
-    # Note: there are no fields here because ShowLabels delegates to datatypes.Bool
+    # Note: there are no fields here because ShowLabels delegates to encodings.Bool
 
 
-class ShowLabelsBatch(datatypes.BoolBatch, ComponentBatchMixin):
+class ShowLabelsBatch(encodings.BoolBatch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.components.ShowLabels"
 
 

@@ -25,10 +25,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Component**: A string of text, e.g. for labels and text documents.
 #[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, ::re_byte_size::SizeBytes)]
 #[repr(transparent)]
-pub struct Text(pub crate::datatypes::Utf8);
+pub struct Text(pub crate::encodings::Utf8);
 
 impl ::re_types_core::WrapperComponent for Text {
-    type Datatype = crate::datatypes::Utf8;
+    type Encoding = crate::encodings::Utf8;
 
     #[inline]
     fn name() -> ComponentType {
@@ -36,38 +36,38 @@ impl ::re_types_core::WrapperComponent for Text {
     }
 
     #[inline]
-    fn into_inner(self) -> Self::Datatype {
+    fn into_inner(self) -> Self::Encoding {
         self.0
     }
 }
 
 ::re_types_core::macros::impl_into_cow!(Text);
 
-impl<T: Into<crate::datatypes::Utf8>> From<T> for Text {
+impl<T: Into<crate::encodings::Utf8>> From<T> for Text {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl std::borrow::Borrow<crate::datatypes::Utf8> for Text {
+impl std::borrow::Borrow<crate::encodings::Utf8> for Text {
     #[inline]
-    fn borrow(&self) -> &crate::datatypes::Utf8 {
+    fn borrow(&self) -> &crate::encodings::Utf8 {
         &self.0
     }
 }
 
 impl std::ops::Deref for Text {
-    type Target = crate::datatypes::Utf8;
+    type Target = crate::encodings::Utf8;
 
     #[inline]
-    fn deref(&self) -> &crate::datatypes::Utf8 {
+    fn deref(&self) -> &crate::encodings::Utf8 {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for Text {
     #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Utf8 {
+    fn deref_mut(&mut self) -> &mut crate::encodings::Utf8 {
         &mut self.0
     }
 }

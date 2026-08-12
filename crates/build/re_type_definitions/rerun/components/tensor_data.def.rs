@@ -14,5 +14,5 @@
 #[rust(repr = "transparent")]
 #[rerun(state = "stable")]
 pub struct TensorData {
-    pub data: rerun::datatypes::TensorData,
+    pub data: rerun::encodings::TensorData,
 }

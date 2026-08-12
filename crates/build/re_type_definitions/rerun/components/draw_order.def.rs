@@ -14,5 +14,5 @@
 #[rust(repr = "transparent")]
 #[rerun(state = "stable")]
 pub struct DrawOrder {
-    pub value: rerun::datatypes::Float32,
+    pub value: rerun::encodings::Float32,
 }

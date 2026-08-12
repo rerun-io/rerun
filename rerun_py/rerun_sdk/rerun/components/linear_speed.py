@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from .. import datatypes
+from .. import encodings
 from .._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,16 +14,16 @@ from .._baseclasses import (
 __all__ = ["LinearSpeed", "LinearSpeedBatch"]
 
 
-class LinearSpeed(datatypes.Float64, ComponentMixin):
+class LinearSpeed(encodings.Float64, ComponentMixin):
     """**Component**: Linear speed, used for translation speed for example."""
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of LinearSpeedExt in linear_speed_ext.py
 
-    # Note: there are no fields here because LinearSpeed delegates to datatypes.Float64
+    # Note: there are no fields here because LinearSpeed delegates to encodings.Float64
 
 
-class LinearSpeedBatch(datatypes.Float64Batch, ComponentBatchMixin):
+class LinearSpeedBatch(encodings.Float64Batch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.components.LinearSpeed"
 
 

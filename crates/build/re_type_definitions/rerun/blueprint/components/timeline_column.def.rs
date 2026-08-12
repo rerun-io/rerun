@@ -9,5 +9,5 @@
 #[rerun(state = "unstable")]
 pub struct TimelineColumn {
     /// The timeline column.
-    pub timeline_column: rerun::blueprint::datatypes::TimelineColumn,
+    pub timeline_column: rerun::blueprint::encodings::TimelineColumn,
 }

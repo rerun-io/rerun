@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 import rerun as rr
 from rerun.components import TensorData, TensorDataBatch
-from rerun.datatypes import TensorBuffer, TensorDataLike
+from rerun.encodings import TensorBuffer, TensorDataLike
 
 rng = np.random.default_rng(12345)
 RANDOM_TENSOR_SOURCE = rng.uniform(0.0, 1.0, (8, 6, 3, 5))
@@ -29,7 +29,7 @@ TENSOR_DATA_INPUTS: list[TensorDataLike] = [
     TensorData(array=RANDOM_TENSOR_SOURCE, dim_names=["a", "b", "c", "d"]),
 ]
 
-# Based on re_type_definitions/rerun/datatypes/tensor_data.def.rs
+# Based on re_type_definitions/rerun/encodings/tensor_data.def.rs
 SHAPE = 0
 NAMES = 1
 BUFFER = 2

@@ -9,5 +9,5 @@
 #[rust(repr = "transparent")]
 #[rerun(state = "stable")]
 pub struct Position2D {
-    pub xy: rerun::datatypes::Vec2D,
+    pub xy: rerun::encodings::Vec2D,
 }

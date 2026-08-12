@@ -6,7 +6,7 @@ from ..error_utils import _send_warning_or_raise, catch_and_log_exceptions
 
 if TYPE_CHECKING:
     from ..components import TensorDataBatch
-    from ..datatypes import TensorDataArrayLike
+    from ..encodings import TensorDataArrayLike
 
 
 class BarChartExt:

@@ -5,8 +5,8 @@ title: "GraphEdge"
 
 An edge in a graph connecting two nodes.
 
-## Rerun datatype
-[`Utf8Pair`](../datatypes/utf8pair.md)
+## Rerun encoding
+[`Utf8Pair`](../encodings/utf8pair.md)
 
 
 ## Arrow datatype

@@ -28,10 +28,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// angle is zero in which case it is treated as an identity.
 #[derive(Clone, Debug, Default, Copy, PartialEq, ::re_byte_size::SizeBytes)]
 #[repr(transparent)]
-pub struct RotationAxisAngle(pub crate::datatypes::RotationAxisAngle);
+pub struct RotationAxisAngle(pub crate::encodings::RotationAxisAngle);
 
 impl ::re_types_core::WrapperComponent for RotationAxisAngle {
-    type Datatype = crate::datatypes::RotationAxisAngle;
+    type Encoding = crate::encodings::RotationAxisAngle;
 
     #[inline]
     fn name() -> ComponentType {
@@ -39,38 +39,38 @@ impl ::re_types_core::WrapperComponent for RotationAxisAngle {
     }
 
     #[inline]
-    fn into_inner(self) -> Self::Datatype {
+    fn into_inner(self) -> Self::Encoding {
         self.0
     }
 }
 
 ::re_types_core::macros::impl_into_cow!(RotationAxisAngle);
 
-impl<T: Into<crate::datatypes::RotationAxisAngle>> From<T> for RotationAxisAngle {
+impl<T: Into<crate::encodings::RotationAxisAngle>> From<T> for RotationAxisAngle {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl std::borrow::Borrow<crate::datatypes::RotationAxisAngle> for RotationAxisAngle {
+impl std::borrow::Borrow<crate::encodings::RotationAxisAngle> for RotationAxisAngle {
     #[inline]
-    fn borrow(&self) -> &crate::datatypes::RotationAxisAngle {
+    fn borrow(&self) -> &crate::encodings::RotationAxisAngle {
         &self.0
     }
 }
 
 impl std::ops::Deref for RotationAxisAngle {
-    type Target = crate::datatypes::RotationAxisAngle;
+    type Target = crate::encodings::RotationAxisAngle;
 
     #[inline]
-    fn deref(&self) -> &crate::datatypes::RotationAxisAngle {
+    fn deref(&self) -> &crate::encodings::RotationAxisAngle {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for RotationAxisAngle {
     #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::RotationAxisAngle {
+    fn deref_mut(&mut self) -> &mut crate::encodings::RotationAxisAngle {
         &mut self.0
     }
 }

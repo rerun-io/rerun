@@ -57,7 +57,7 @@ fn from_channel(channel: &Arc<::mcap::Channel<'_>>) -> McapChannel {
 
     let metadata_pairs: Vec<_> = metadata
         .iter()
-        .map(|(key, val)| re_sdk_types::datatypes::Utf8Pair {
+        .map(|(key, val)| re_sdk_types::encodings::Utf8Pair {
             first: key.clone().into(),
             second: val.clone().into(),
         })

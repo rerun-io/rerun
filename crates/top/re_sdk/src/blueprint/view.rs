@@ -11,7 +11,7 @@ use re_sdk_types::blueprint::archetypes::{
 };
 use re_sdk_types::blueprint::components::{QueryExpression, ViewClass};
 use re_sdk_types::components::{Name, Visible};
-use re_sdk_types::datatypes::Bool;
+use re_sdk_types::encodings::Bool;
 use re_sdk_types::{AsComponents, SerializedComponentBatch, Visualizer};
 
 /// A view in the blueprint.

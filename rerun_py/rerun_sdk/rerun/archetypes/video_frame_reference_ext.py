@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 import numpy.typing as npt
 
-from .. import components, datatypes
+from .. import components, encodings
 from ..error_utils import _send_warning_or_raise, catch_and_log_exceptions
 
 if TYPE_CHECKING:
@@ -17,13 +17,13 @@ class VideoFrameReferenceExt:
 
     def __init__(
         self: Any,
-        timestamp: datatypes.VideoTimestampLike | None = None,
+        timestamp: encodings.VideoTimestampLike | None = None,
         *,
         seconds: float | None = None,
         nanoseconds: int | None = None,
-        video_reference: datatypes.EntityPathLike | None = None,
-        opacity: datatypes.Float32Like | None = None,
-        draw_order: datatypes.Float32Like | None = None,
+        video_reference: encodings.EntityPathLike | None = None,
+        opacity: encodings.Float32Like | None = None,
+        draw_order: encodings.Float32Like | None = None,
     ) -> None:
         """
         Create a new instance of the VideoFrameReference archetype.

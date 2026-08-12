@@ -24,10 +24,10 @@ pub fn code_for_view(
         "
 from ...blueprint import archetypes as blueprint_archetypes
 from ...blueprint import components as blueprint_components
-from ... import datatypes
+from ... import encodings
 from ... import components
 from ..._baseclasses import AsComponents, ComponentBatchLike
-from ...datatypes import EntityPathLike, Utf8Like
+from ...encodings import EntityPathLike, Utf8Like
 from ..api import View, ViewContentsLike, VisualizerLike
 ",
         1,
@@ -57,7 +57,7 @@ fn init_method(reporter: &Reporter, objects: &Objects, obj: &Object) -> String {
     origin: EntityPathLike = "/",
     contents: ViewContentsLike = "$origin/**",
     name: Utf8Like | None = None,
-    visible: datatypes.BoolLike | None = None,
+    visible: encodings.BoolLike | None = None,
     defaults: Iterable[AsComponents | Iterable[DescribedComponentBatch]] | None = None,
     overrides: Mapping[EntityPathLike, VisualizerLike | Iterable[VisualizerLike]] | None = None,
     "#

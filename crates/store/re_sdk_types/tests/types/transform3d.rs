@@ -4,7 +4,7 @@ use re_sdk_types::archetypes::Transform3D;
 use re_sdk_types::components::{
     RotationAxisAngle, Scale3D, TransformMat3x3, TransformRelation, Translation3D,
 };
-use re_sdk_types::datatypes::Angle;
+use re_sdk_types::encodings::Angle;
 use re_sdk_types::{Archetype as _, AsComponents as _, ComponentBatch as _};
 
 #[test]

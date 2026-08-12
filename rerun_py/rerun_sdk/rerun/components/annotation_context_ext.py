@@ -7,13 +7,13 @@ import pyarrow as pa
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from ..datatypes import (
+    from ..encodings import (
         ClassDescriptionMapElem,
         ClassDescriptionMapElemLike,
     )
     from . import AnnotationContextArrayLike
 
-from ..datatypes.class_description_map_elem_ext import _class_description_map_elem_converter
+from ..encodings.class_description_map_elem_ext import _class_description_map_elem_converter
 
 
 class AnnotationContextExt:
@@ -27,7 +27,7 @@ class AnnotationContextExt:
 
     @staticmethod
     def native_to_pa_array_override(data: AnnotationContextArrayLike, data_type: pa.DataType) -> pa.Array:
-        from ..datatypes import ClassDescription, ClassDescriptionMapElemBatch
+        from ..encodings import ClassDescription, ClassDescriptionMapElemBatch
         from . import AnnotationContext
 
         if isinstance(data, ClassDescription):

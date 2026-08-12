@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "../datatypes/scalar_union.hpp"
+#include "../encodings/scalar_union.hpp"
 
 #include <cstdint>
 #include <memory>
@@ -20,18 +20,18 @@ namespace arrow {
 
 namespace rerun::components {
     struct AffixFuzzer17 {
-        std::optional<rerun::Collection<rerun::datatypes::ScalarUnion>> many_optional_unions;
+        std::optional<rerun::Collection<rerun::encodings::ScalarUnion>> many_optional_unions;
 
       public:
         AffixFuzzer17() = default;
 
         AffixFuzzer17(
-            std::optional<rerun::Collection<rerun::datatypes::ScalarUnion>> many_optional_unions_
+            std::optional<rerun::Collection<rerun::encodings::ScalarUnion>> many_optional_unions_
         )
             : many_optional_unions(std::move(many_optional_unions_)) {}
 
         AffixFuzzer17& operator=(
-            std::optional<rerun::Collection<rerun::datatypes::ScalarUnion>> many_optional_unions_
+            std::optional<rerun::Collection<rerun::encodings::ScalarUnion>> many_optional_unions_
         ) {
             many_optional_unions = std::move(many_optional_unions_);
             return *this;

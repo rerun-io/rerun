@@ -59,7 +59,7 @@ re_type_definitions → pixi run codegen → Generated code (Rust/Python/C++) + 
 ```
 
 - Type definitions in `crates/build/re_type_definitions/rerun/`
-  - `datatypes/*.def.rs` - Low-level types (Vec3D, Mat4x4, etc.)
+  - `encodings/*.def.rs` - Low-level types (Vec3D, Mat4x4, etc.)
   - `components/*.def.rs` - Component types (Position3D, Color, etc.)
   - `archetypes/*.def.rs` - Archetypes (Points3D, Image, etc.)
   - `blueprint/*.def.rs` - Blueprint system types
@@ -106,7 +106,7 @@ add the crate to the appropriate crate table, and flag for the author that the c
 
 Three levels (generated from `re_type_definitions`):
 
-1. **Datatypes** (`rerun.datatypes.*`) - Basic types like Vec3D, Color
+1. **Encodings** (`rerun.encodings.*`) - Basic types like Vec3D, Color
 2. **Components** (`rerun.components.*`) - Named semantic wrappers (Position3D, Radius)
 3. **Archetypes** (`rerun.archetypes.*`) - Collections of components (Points3D, Image)
 

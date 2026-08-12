@@ -48,7 +48,7 @@ class LineStrip3D(LineStrip3DExt, ComponentMixin):
         # You can define your own __init__ function as a member of LineStrip3DExt in line_strip3d_ext.py
         self.__attrs_init__(points=points)
 
-    points: list[datatypes.Vec3D] = field()
+    points: list[encodings.Vec3D] = field()
 
     def __len__(self) -> int:
         # You can define your own __len__ function as a member of LineStrip3DExt in line_strip3d_ext.py
@@ -56,9 +56,9 @@ class LineStrip3D(LineStrip3DExt, ComponentMixin):
 
 
 if TYPE_CHECKING:
-    from .. import datatypes
+    from .. import encodings
 
-    LineStrip3DLike = LineStrip3D | datatypes.Vec3DArrayLike | npt.NDArray[np.float32]
+    LineStrip3DLike = LineStrip3D | encodings.Vec3DArrayLike | npt.NDArray[np.float32]
     """A type alias for any LineStrip3D-like object."""
 else:
     LineStrip3DLike = Any

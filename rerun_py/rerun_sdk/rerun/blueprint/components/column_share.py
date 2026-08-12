@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from ... import datatypes
+from ... import encodings
 from ..._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,7 +14,7 @@ from ..._baseclasses import (
 __all__ = ["ColumnShare", "ColumnShareBatch"]
 
 
-class ColumnShare(datatypes.Float32, ComponentMixin):
+class ColumnShare(encodings.Float32, ComponentMixin):
     """
     **Component**: The layout share of a column in the container.
 
@@ -24,10 +24,10 @@ class ColumnShare(datatypes.Float32, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of ColumnShareExt in column_share_ext.py
 
-    # Note: there are no fields here because ColumnShare delegates to datatypes.Float32
+    # Note: there are no fields here because ColumnShare delegates to encodings.Float32
 
 
-class ColumnShareBatch(datatypes.Float32Batch, ComponentBatchMixin):
+class ColumnShareBatch(encodings.Float32Batch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.blueprint.components.ColumnShare"
 
 

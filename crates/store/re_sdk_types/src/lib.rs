@@ -3,7 +3,7 @@
 //! This crate contains the code generated from the type definitions in `re_type_definitions`,
 //! using `re_types_builder`.
 //!
-//! All builtin archetypes, components, datatypes and view definitions can be found in their
+//! All builtin archetypes, components, encodings and view definitions can be found in their
 //! respective top-level modules.
 //!
 //! ## Contributing
@@ -209,7 +209,7 @@ pub mod archetypes {
 ///
 /// They all implement the [`Component`] trait.
 ///
-/// Each component is a wrapper around a [`datatype`][datatypes].
+/// Each component is a wrapper around a [`encoding`][encodings].
 pub mod components {
 
     // Some components are so fundamental and used everywhere that we want them to be exposed
@@ -226,24 +226,27 @@ pub mod components {
     pub use self::_components::*;
 }
 
-/// The low-level datatypes that [`components`] are built from.
+/// The low-level encodings that [`components`] are built from.
 ///
 /// They all implement the [`Loggable`] trait.
-pub mod datatypes {
+pub mod encodings {
 
-    // Some datatypes are so fundamental and used everywhere that we want them to be exposed
+    // Some encodings are so fundamental and used everywhere that we want them to be exposed
     // by `re_types_core` directly; that way we don't force a dependency on the `re_sdk_types`
     // behemoth just so one can use one of these fundamental types.
     //
-    // To do so, re-inject `re_types_core`'s datatypes into our own module.
+    // To do so, re-inject `re_types_core`'s encodings into our own module.
 
-    #[path = "../datatypes/mod.rs"]
-    mod _datatypes;
+    #[path = "../encodings/mod.rs"]
+    mod _encodings;
 
-    pub use re_types_core::datatypes::*;
+    pub use re_types_core::encodings::*;
 
-    pub use self::_datatypes::*;
+    pub use self::_encodings::*;
 }
+
+#[deprecated(since = "0.37.0", note = "renamed to `encodings`")]
+pub use self::encodings as datatypes;
 
 /// The blueprint-specific components.
 pub mod blueprint;
@@ -255,7 +258,7 @@ pub mod reflection {
     // exposed by `re_types_core` directly; that way we don't force a dependency on the `re_sdk_types`
     // behemoth just so one can use one of these fundamental reflection types.
     //
-    // To do so, re-inject `re_types_core`'s datatypes into our own module.
+    // To do so, re-inject `re_types_core`'s encodings into our own module.
 
     #[path = "../reflection/mod.rs"]
     mod _reflection;

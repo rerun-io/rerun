@@ -1223,7 +1223,7 @@ fn quote_buffer_slice_element_type(datatype: &DataType) -> TokenStream {
 ///
 /// Note that nullabillity is kind of weird since it's technically a property of the field
 /// rather than the datatype.
-/// Components can only be used by archetypes so they should never be nullable, but for datatypes
+/// Components can only be used by archetypes so they should never be nullable, but for encodings
 /// we might need both.
 ///
 /// This should always be checked before using [`quote_arrow_deserializer_buffer_slice`].

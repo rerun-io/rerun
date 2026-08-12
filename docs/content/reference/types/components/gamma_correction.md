@@ -11,8 +11,8 @@ Used to adjust the gamma of a color or scalar value between 0 and 1 before rende
 Must be a positive number.
 Defaults to 1.0 unless otherwise specified.
 
-## Rerun datatype
-[`Float32`](../datatypes/float32.md)
+## Rerun encoding
+[`Float32`](../encodings/float32.md)
 
 
 ## Arrow datatype

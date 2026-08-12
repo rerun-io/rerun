@@ -30,11 +30,11 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug, Copy, PartialEq, Eq, ::re_byte_size::SizeBytes)]
 pub struct ShowLabels(
     /// Whether the entity's [`components::Text`][crate::components::Text] label is shown.
-    pub crate::datatypes::Bool,
+    pub crate::encodings::Bool,
 );
 
 impl ::re_types_core::WrapperComponent for ShowLabels {
-    type Datatype = crate::datatypes::Bool;
+    type Encoding = crate::encodings::Bool;
 
     #[inline]
     fn name() -> ComponentType {
@@ -42,38 +42,38 @@ impl ::re_types_core::WrapperComponent for ShowLabels {
     }
 
     #[inline]
-    fn into_inner(self) -> Self::Datatype {
+    fn into_inner(self) -> Self::Encoding {
         self.0
     }
 }
 
 ::re_types_core::macros::impl_into_cow!(ShowLabels);
 
-impl<T: Into<crate::datatypes::Bool>> From<T> for ShowLabels {
+impl<T: Into<crate::encodings::Bool>> From<T> for ShowLabels {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl std::borrow::Borrow<crate::datatypes::Bool> for ShowLabels {
+impl std::borrow::Borrow<crate::encodings::Bool> for ShowLabels {
     #[inline]
-    fn borrow(&self) -> &crate::datatypes::Bool {
+    fn borrow(&self) -> &crate::encodings::Bool {
         &self.0
     }
 }
 
 impl std::ops::Deref for ShowLabels {
-    type Target = crate::datatypes::Bool;
+    type Target = crate::encodings::Bool;
 
     #[inline]
-    fn deref(&self) -> &crate::datatypes::Bool {
+    fn deref(&self) -> &crate::encodings::Bool {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for ShowLabels {
     #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Bool {
+    fn deref_mut(&mut self) -> &mut crate::encodings::Bool {
         &mut self.0
     }
 }

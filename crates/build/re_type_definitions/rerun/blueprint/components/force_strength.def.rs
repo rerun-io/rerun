@@ -10,5 +10,5 @@
 #[rust(repr = "transparent")]
 #[rerun(state = "unstable")]
 pub struct ForceStrength {
-    pub distance: rerun::datatypes::Float64,
+    pub distance: rerun::encodings::Float64,
 }

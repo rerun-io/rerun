@@ -23,7 +23,7 @@ use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 #[derive(Clone, Debug, Default, PartialEq, ::re_byte_size::SizeBytes)]
-pub struct AffixFuzzer5(pub Option<crate::testing::datatypes::MixedFields>);
+pub struct AffixFuzzer5(pub Option<crate::testing::encodings::MixedFields>);
 
 impl ::re_types_core::Component for AffixFuzzer5 {
     #[inline]
@@ -72,7 +72,7 @@ impl ::re_types_core::Loggable for AffixFuzzer5 {
             Field::new("flattened_scalar", DataType::Float32, false),
             Field::new(
                 "almost_flattened_scalar",
-                <crate::testing::datatypes::FlattenedScalar>::arrow_datatype(),
+                <crate::testing::encodings::FlattenedScalar>::arrow_datatype(),
                 false,
             ),
             Field::new("from_parent", DataType::Boolean, true),
@@ -103,7 +103,7 @@ impl ::re_types_core::Loggable for AffixFuzzer5 {
             };
             {
                 _ = data0_validity;
-                crate::testing::datatypes::MixedFields::to_arrow_opt(data0)?
+                crate::testing::encodings::MixedFields::to_arrow_opt(data0)?
             }
         })
     }
@@ -117,7 +117,7 @@ impl ::re_types_core::Loggable for AffixFuzzer5 {
         use ::re_types_core::{Loggable as _, ResultExt as _, arrow_zip_validity::ZipValidity};
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok(
-            crate::testing::datatypes::MixedFields::from_arrow_opt(arrow_data)
+            crate::testing::encodings::MixedFields::from_arrow_opt(arrow_data)
                 .with_context("rerun.testing.components.AffixFuzzer5#single_optional")?
                 .into_iter()
                 .map(Ok)
@@ -129,31 +129,31 @@ impl ::re_types_core::Loggable for AffixFuzzer5 {
     }
 }
 
-impl<T: Into<Option<crate::testing::datatypes::MixedFields>>> From<T> for AffixFuzzer5 {
+impl<T: Into<Option<crate::testing::encodings::MixedFields>>> From<T> for AffixFuzzer5 {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl std::borrow::Borrow<Option<crate::testing::datatypes::MixedFields>> for AffixFuzzer5 {
+impl std::borrow::Borrow<Option<crate::testing::encodings::MixedFields>> for AffixFuzzer5 {
     #[inline]
-    fn borrow(&self) -> &Option<crate::testing::datatypes::MixedFields> {
+    fn borrow(&self) -> &Option<crate::testing::encodings::MixedFields> {
         &self.0
     }
 }
 
 impl std::ops::Deref for AffixFuzzer5 {
-    type Target = Option<crate::testing::datatypes::MixedFields>;
+    type Target = Option<crate::testing::encodings::MixedFields>;
 
     #[inline]
-    fn deref(&self) -> &Option<crate::testing::datatypes::MixedFields> {
+    fn deref(&self) -> &Option<crate::testing::encodings::MixedFields> {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for AffixFuzzer5 {
     #[inline]
-    fn deref_mut(&mut self) -> &mut Option<crate::testing::datatypes::MixedFields> {
+    fn deref_mut(&mut self) -> &mut Option<crate::testing::encodings::MixedFields> {
         &mut self.0
     }
 }

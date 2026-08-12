@@ -27,10 +27,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash, ::re_byte_size::SizeBytes)]
 #[repr(transparent)]
-pub struct ComponentColumnSelector(pub crate::blueprint::datatypes::ComponentColumnSelector);
+pub struct ComponentColumnSelector(pub crate::blueprint::encodings::ComponentColumnSelector);
 
 impl ::re_types_core::WrapperComponent for ComponentColumnSelector {
-    type Datatype = crate::blueprint::datatypes::ComponentColumnSelector;
+    type Encoding = crate::blueprint::encodings::ComponentColumnSelector;
 
     #[inline]
     fn name() -> ComponentType {
@@ -38,14 +38,14 @@ impl ::re_types_core::WrapperComponent for ComponentColumnSelector {
     }
 
     #[inline]
-    fn into_inner(self) -> Self::Datatype {
+    fn into_inner(self) -> Self::Encoding {
         self.0
     }
 }
 
 ::re_types_core::macros::impl_into_cow!(ComponentColumnSelector);
 
-impl<T: Into<crate::blueprint::datatypes::ComponentColumnSelector>> From<T>
+impl<T: Into<crate::blueprint::encodings::ComponentColumnSelector>> From<T>
     for ComponentColumnSelector
 {
     fn from(v: T) -> Self {
@@ -53,27 +53,27 @@ impl<T: Into<crate::blueprint::datatypes::ComponentColumnSelector>> From<T>
     }
 }
 
-impl std::borrow::Borrow<crate::blueprint::datatypes::ComponentColumnSelector>
+impl std::borrow::Borrow<crate::blueprint::encodings::ComponentColumnSelector>
     for ComponentColumnSelector
 {
     #[inline]
-    fn borrow(&self) -> &crate::blueprint::datatypes::ComponentColumnSelector {
+    fn borrow(&self) -> &crate::blueprint::encodings::ComponentColumnSelector {
         &self.0
     }
 }
 
 impl std::ops::Deref for ComponentColumnSelector {
-    type Target = crate::blueprint::datatypes::ComponentColumnSelector;
+    type Target = crate::blueprint::encodings::ComponentColumnSelector;
 
     #[inline]
-    fn deref(&self) -> &crate::blueprint::datatypes::ComponentColumnSelector {
+    fn deref(&self) -> &crate::blueprint::encodings::ComponentColumnSelector {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for ComponentColumnSelector {
     #[inline]
-    fn deref_mut(&mut self) -> &mut crate::blueprint::datatypes::ComponentColumnSelector {
+    fn deref_mut(&mut self) -> &mut crate::blueprint::encodings::ComponentColumnSelector {
         &mut self.0
     }
 }

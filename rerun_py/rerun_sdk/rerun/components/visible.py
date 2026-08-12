@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from .. import datatypes
+from .. import encodings
 from .._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,16 +14,16 @@ from .._baseclasses import (
 __all__ = ["Visible", "VisibleBatch"]
 
 
-class Visible(datatypes.Bool, ComponentMixin):
+class Visible(encodings.Bool, ComponentMixin):
     """**Component**: Whether the container, view, entity or instance is currently visible."""
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of VisibleExt in visible_ext.py
 
-    # Note: there are no fields here because Visible delegates to datatypes.Bool
+    # Note: there are no fields here because Visible delegates to encodings.Bool
 
 
-class VisibleBatch(datatypes.BoolBatch, ComponentBatchMixin):
+class VisibleBatch(encodings.BoolBatch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.components.Visible"
 
 

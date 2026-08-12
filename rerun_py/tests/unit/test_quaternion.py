@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-from rerun.datatypes import (
+from rerun.encodings import (
     QuaternionArrayLike,
     QuaternionBatch,
 )

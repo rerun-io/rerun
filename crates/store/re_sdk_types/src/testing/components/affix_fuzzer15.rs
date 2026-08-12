@@ -23,7 +23,7 @@ use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 #[derive(Clone, Debug, Default, PartialEq, ::re_byte_size::SizeBytes)]
-pub struct AffixFuzzer15(pub Option<crate::testing::datatypes::ScalarUnion>);
+pub struct AffixFuzzer15(pub Option<crate::testing::encodings::ScalarUnion>);
 
 impl ::re_types_core::Component for AffixFuzzer15 {
     #[inline]
@@ -48,7 +48,7 @@ impl ::re_types_core::Loggable for AffixFuzzer15 {
                         "craziness",
                         DataType::List(std::sync::Arc::new(Field::new(
                             "item",
-                            <crate::testing::datatypes::MixedFields>::arrow_datatype(),
+                            <crate::testing::encodings::MixedFields>::arrow_datatype(),
                             false,
                         ))),
                         false,
@@ -93,7 +93,7 @@ impl ::re_types_core::Loggable for AffixFuzzer15 {
             };
             {
                 _ = data0_validity;
-                crate::testing::datatypes::ScalarUnion::to_arrow_opt(data0)?
+                crate::testing::encodings::ScalarUnion::to_arrow_opt(data0)?
             }
         })
     }
@@ -107,7 +107,7 @@ impl ::re_types_core::Loggable for AffixFuzzer15 {
         use ::re_types_core::{Loggable as _, ResultExt as _, arrow_zip_validity::ZipValidity};
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok(
-            crate::testing::datatypes::ScalarUnion::from_arrow_opt(arrow_data)
+            crate::testing::encodings::ScalarUnion::from_arrow_opt(arrow_data)
                 .with_context("rerun.testing.components.AffixFuzzer15#single_optional_union")?
                 .into_iter()
                 .map(Ok)
@@ -119,31 +119,31 @@ impl ::re_types_core::Loggable for AffixFuzzer15 {
     }
 }
 
-impl<T: Into<Option<crate::testing::datatypes::ScalarUnion>>> From<T> for AffixFuzzer15 {
+impl<T: Into<Option<crate::testing::encodings::ScalarUnion>>> From<T> for AffixFuzzer15 {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl std::borrow::Borrow<Option<crate::testing::datatypes::ScalarUnion>> for AffixFuzzer15 {
+impl std::borrow::Borrow<Option<crate::testing::encodings::ScalarUnion>> for AffixFuzzer15 {
     #[inline]
-    fn borrow(&self) -> &Option<crate::testing::datatypes::ScalarUnion> {
+    fn borrow(&self) -> &Option<crate::testing::encodings::ScalarUnion> {
         &self.0
     }
 }
 
 impl std::ops::Deref for AffixFuzzer15 {
-    type Target = Option<crate::testing::datatypes::ScalarUnion>;
+    type Target = Option<crate::testing::encodings::ScalarUnion>;
 
     #[inline]
-    fn deref(&self) -> &Option<crate::testing::datatypes::ScalarUnion> {
+    fn deref(&self) -> &Option<crate::testing::encodings::ScalarUnion> {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for AffixFuzzer15 {
     #[inline]
-    fn deref_mut(&mut self) -> &mut Option<crate::testing::datatypes::ScalarUnion> {
+    fn deref_mut(&mut self) -> &mut Option<crate::testing::encodings::ScalarUnion> {
         &mut self.0
     }
 }

@@ -8,7 +8,7 @@ Rerun has 3 levels of types that can be used in all SDK languages:
 
 -   [Archetypes](types/archetypes.md) - High level bundles of components
 -   [Components](types/components.md) - The base unit of logging data
--   [Data types](types/datatypes.md) - The primitive types that components are built from
+-   [Data types](types/encodings.md) - The primitive types that components are built from
 
 To get an overview of what the Rerun [Viewer](./viewer/overview.md) can show, start at [**Archetypes**](types/archetypes.md).
 

@@ -17,7 +17,7 @@ from ...blueprint import components as blueprint_components
 from ...error_utils import catch_and_log_exceptions
 
 if TYPE_CHECKING:
-    from ... import datatypes
+    from ... import encodings
 
 __all__ = ["TextLogFormat"]
 
@@ -32,7 +32,7 @@ class TextLogFormat(Archetype):
 
     NAME: ClassVar[str] = "rerun.blueprint.archetypes.TextLogFormat"
 
-    def __init__(self: Any, *, monospace_body: datatypes.BoolLike | None = None) -> None:
+    def __init__(self: Any, *, monospace_body: encodings.BoolLike | None = None) -> None:
         """
         Create a new instance of the TextLogFormat archetype.
 
@@ -69,7 +69,7 @@ class TextLogFormat(Archetype):
         cls,
         *,
         clear_unset: bool = False,
-        monospace_body: datatypes.BoolLike | None = None,
+        monospace_body: encodings.BoolLike | None = None,
     ) -> TextLogFormat:
         """
         Update only some specific fields of a `TextLogFormat`.

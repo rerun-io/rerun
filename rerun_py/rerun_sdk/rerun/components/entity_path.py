@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from .. import datatypes
+from .. import encodings
 from .._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,16 +14,16 @@ from .._baseclasses import (
 __all__ = ["EntityPath", "EntityPathBatch"]
 
 
-class EntityPath(datatypes.EntityPath, ComponentMixin):
+class EntityPath(encodings.EntityPath, ComponentMixin):
     """**Component**: A path to an entity, usually to reference some data that is part of the target entity."""
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of EntityPathExt in entity_path_ext.py
 
-    # Note: there are no fields here because EntityPath delegates to datatypes.EntityPath
+    # Note: there are no fields here because EntityPath delegates to encodings.EntityPath
 
 
-class EntityPathBatch(datatypes.EntityPathBatch, ComponentBatchMixin):
+class EntityPathBatch(encodings.EntityPathBatch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.components.EntityPath"
 
 

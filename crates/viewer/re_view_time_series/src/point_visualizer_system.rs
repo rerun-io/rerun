@@ -46,7 +46,7 @@ impl VisualizerSystem for SeriesPointsSystem {
             constraints: SingleRequiredComponentConstraint::new::<components::Scalar>(
                 &archetypes::Scalars::descriptor_scalars(),
             )
-            .with_additional_physical_types(util::series_supported_datatypes())
+            .with_additional_physical_types(util::series_supported_encodings())
             .with_allow_static_data(false)
             .into(),
             queried: std::iter::chain(

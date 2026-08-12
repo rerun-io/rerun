@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from ... import datatypes
+from ... import encodings
 from ..._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,7 +14,7 @@ from ..._baseclasses import (
 __all__ = ["TimeRange", "TimeRangeBatch"]
 
 
-class TimeRange(datatypes.TimeRange, ComponentMixin):
+class TimeRange(encodings.TimeRange, ComponentMixin):
     """
     **Component**: A time range on an unspecified timeline using either relative or absolute boundaries.
 
@@ -24,10 +24,10 @@ class TimeRange(datatypes.TimeRange, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of TimeRangeExt in time_range_ext.py
 
-    # Note: there are no fields here because TimeRange delegates to datatypes.TimeRange
+    # Note: there are no fields here because TimeRange delegates to encodings.TimeRange
 
 
-class TimeRangeBatch(datatypes.TimeRangeBatch, ComponentBatchMixin):
+class TimeRangeBatch(encodings.TimeRangeBatch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.blueprint.components.TimeRange"
 
 

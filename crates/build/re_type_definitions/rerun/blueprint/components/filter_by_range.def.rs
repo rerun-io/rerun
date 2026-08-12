@@ -9,5 +9,5 @@
 #[rust(repr = "transparent")]
 #[rerun(state = "unstable")]
 pub struct FilterByRange {
-    pub range: rerun::blueprint::datatypes::FilterByRange,
+    pub range: rerun::blueprint::encodings::FilterByRange,
 }

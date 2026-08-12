@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from .. import datatypes
+from .. import encodings
 from .._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,7 +14,7 @@ from .._baseclasses import (
 __all__ = ["SphericalHarmonicsDegree", "SphericalHarmonicsDegreeBatch"]
 
 
-class SphericalHarmonicsDegree(datatypes.UInt32, ComponentMixin):
+class SphericalHarmonicsDegree(encodings.UInt32, ComponentMixin):
     """
     **Component**: The highest spherical harmonics degree to evaluate when rendering, 0-3.
 
@@ -33,10 +33,10 @@ class SphericalHarmonicsDegree(datatypes.UInt32, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of SphericalHarmonicsDegreeExt in spherical_harmonics_degree_ext.py
 
-    # Note: there are no fields here because SphericalHarmonicsDegree delegates to datatypes.UInt32
+    # Note: there are no fields here because SphericalHarmonicsDegree delegates to encodings.UInt32
 
 
-class SphericalHarmonicsDegreeBatch(datatypes.UInt32Batch, ComponentBatchMixin):
+class SphericalHarmonicsDegreeBatch(encodings.UInt32Batch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.components.SphericalHarmonicsDegree"
 
 

@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from .. import datatypes
+from .. import encodings
 from .._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -15,16 +15,16 @@ from .video_timestamp_ext import VideoTimestampExt
 __all__ = ["VideoTimestamp", "VideoTimestampBatch"]
 
 
-class VideoTimestamp(VideoTimestampExt, datatypes.VideoTimestamp, ComponentMixin):
+class VideoTimestamp(VideoTimestampExt, encodings.VideoTimestamp, ComponentMixin):
     """**Component**: Timestamp inside a [`archetypes.AssetVideo`][rerun.archetypes.AssetVideo]."""
 
     _BATCH_TYPE = None
     # __init__ can be found in video_timestamp_ext.py
 
-    # Note: there are no fields here because VideoTimestamp delegates to datatypes.VideoTimestamp
+    # Note: there are no fields here because VideoTimestamp delegates to encodings.VideoTimestamp
 
 
-class VideoTimestampBatch(datatypes.VideoTimestampBatch, ComponentBatchMixin):
+class VideoTimestampBatch(encodings.VideoTimestampBatch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.components.VideoTimestamp"
 
 

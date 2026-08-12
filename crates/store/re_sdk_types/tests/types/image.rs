@@ -1,4 +1,4 @@
-use re_sdk_types::{Archetype as _, AsComponents as _, archetypes::Image, datatypes::ColorModel};
+use re_sdk_types::{Archetype as _, AsComponents as _, archetypes::Image, encodings::ColorModel};
 
 #[test]
 fn image_roundtrip() {

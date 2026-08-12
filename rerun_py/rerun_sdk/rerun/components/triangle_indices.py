@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from .. import datatypes
+from .. import encodings
 from .._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,16 +14,16 @@ from .._baseclasses import (
 __all__ = ["TriangleIndices", "TriangleIndicesBatch"]
 
 
-class TriangleIndices(datatypes.UVec3D, ComponentMixin):
+class TriangleIndices(encodings.UVec3D, ComponentMixin):
     """**Component**: The three indices of a triangle in a triangle mesh."""
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of TriangleIndicesExt in triangle_indices_ext.py
 
-    # Note: there are no fields here because TriangleIndices delegates to datatypes.UVec3D
+    # Note: there are no fields here because TriangleIndices delegates to encodings.UVec3D
 
 
-class TriangleIndicesBatch(datatypes.UVec3DBatch, ComponentBatchMixin):
+class TriangleIndicesBatch(encodings.UVec3DBatch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.components.TriangleIndices"
 
 

@@ -9,5 +9,5 @@
 #[rust(repr = "transparent")]
 #[rerun(state = "stable")]
 pub struct Position3D {
-    pub xyz: rerun::datatypes::Vec3D,
+    pub xyz: rerun::encodings::Vec3D,
 }

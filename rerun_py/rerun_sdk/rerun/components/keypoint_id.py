@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from .. import datatypes
+from .. import encodings
 from .._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,23 +14,23 @@ from .._baseclasses import (
 __all__ = ["KeypointId", "KeypointIdBatch"]
 
 
-class KeypointId(datatypes.KeypointId, ComponentMixin):
+class KeypointId(encodings.KeypointId, ComponentMixin):
     """
     **Component**: A 16-bit ID representing a type of semantic keypoint within a class.
 
-    `KeypointId`s are only meaningful within the context of a [`datatypes.ClassDescription`][rerun.datatypes.ClassDescription].
+    `KeypointId`s are only meaningful within the context of a [`encodings.ClassDescription`][rerun.encodings.ClassDescription].
 
-    Used to look up an [`datatypes.AnnotationInfo`][rerun.datatypes.AnnotationInfo] for a Keypoint within the
+    Used to look up an [`encodings.AnnotationInfo`][rerun.encodings.AnnotationInfo] for a Keypoint within the
     [`components.AnnotationContext`][rerun.components.AnnotationContext].
     """
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of KeypointIdExt in keypoint_id_ext.py
 
-    # Note: there are no fields here because KeypointId delegates to datatypes.KeypointId
+    # Note: there are no fields here because KeypointId delegates to encodings.KeypointId
 
 
-class KeypointIdBatch(datatypes.KeypointIdBatch, ComponentBatchMixin):
+class KeypointIdBatch(encodings.KeypointIdBatch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.components.KeypointId"
 
 

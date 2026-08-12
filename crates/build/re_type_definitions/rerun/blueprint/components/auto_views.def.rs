@@ -9,5 +9,5 @@
 #[rust(repr = "transparent")]
 #[rerun(state = "unstable")]
 pub struct AutoViews {
-    pub auto_views: rerun::datatypes::Bool,
+    pub auto_views: rerun::encodings::Bool,
 }

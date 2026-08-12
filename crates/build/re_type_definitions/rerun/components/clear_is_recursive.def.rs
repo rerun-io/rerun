@@ -10,5 +10,5 @@
 #[rerun(state = "stable")]
 pub struct ClearIsRecursive {
     /// If true, also clears all recursive children entities.
-    pub recursive: rerun::datatypes::Bool,
+    pub recursive: rerun::encodings::Bool,
 }

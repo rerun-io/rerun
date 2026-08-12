@@ -4,7 +4,7 @@
 use re_chunk_store::RowId;
 use re_log_types::{EntityPath, TimePoint, Timeline, TimelineName};
 use re_sdk_types::blueprint::archetypes::VisibleTimeRanges;
-use re_sdk_types::{blueprint, datatypes};
+use re_sdk_types::{blueprint, encodings};
 use re_test_context::TestContext;
 use re_test_context::external::egui_kittest::SnapshotResults;
 use re_test_viewport::TestContextExt as _;
@@ -46,9 +46,9 @@ fn log_data(test_context: &mut TestContext, timeline: Timeline) {
 
 fn visible_time_range(
     timeline: &TimelineName,
-    range: datatypes::TimeRange,
+    range: encodings::TimeRange,
 ) -> blueprint::components::VisibleTimeRange {
-    blueprint::components::VisibleTimeRange(datatypes::VisibleTimeRange {
+    blueprint::components::VisibleTimeRange(encodings::VisibleTimeRange {
         timeline: timeline.as_str().into(),
         range,
     })
@@ -57,8 +57,8 @@ fn visible_time_range(
 fn setup_blueprint(
     test_context: &mut TestContext,
     timeline: &TimelineName,
-    view_range: Option<datatypes::TimeRange>,
-    entity_range: Option<&(EntityPath, datatypes::TimeRange)>,
+    view_range: Option<encodings::TimeRange>,
+    entity_range: Option<&(EntityPath, encodings::TimeRange)>,
 ) -> ViewId {
     test_context.setup_viewport_blueprint(|ctx, blueprint| {
         let view = ViewBlueprint::new_with_root_wildcard(StateTimelineView::identifier());
@@ -85,10 +85,10 @@ fn setup_blueprint(
     })
 }
 
-fn absolute(start: i64, end: i64) -> datatypes::TimeRange {
-    datatypes::TimeRange {
-        start: datatypes::TimeRangeBoundary::Absolute(datatypes::TimeInt(start)),
-        end: datatypes::TimeRangeBoundary::Absolute(datatypes::TimeInt(end)),
+fn absolute(start: i64, end: i64) -> encodings::TimeRange {
+    encodings::TimeRange {
+        start: encodings::TimeRangeBoundary::Absolute(encodings::TimeInt(start)),
+        end: encodings::TimeRangeBoundary::Absolute(encodings::TimeInt(end)),
     }
 }
 
@@ -99,26 +99,26 @@ fn test_visible_time_range_for_view() {
     let timeline = Timeline::log_tick();
 
     let ranges = [
-        (datatypes::TimeRange::EVERYTHING, "everything"),
+        (encodings::TimeRange::EVERYTHING, "everything"),
         (absolute(10, 25), "absolute"),
         (
-            datatypes::TimeRange {
-                start: datatypes::TimeRangeBoundary::CursorRelative(datatypes::TimeInt(-5)),
-                end: datatypes::TimeRangeBoundary::CursorRelative(datatypes::TimeInt(5)),
+            encodings::TimeRange {
+                start: encodings::TimeRangeBoundary::CursorRelative(encodings::TimeInt(-5)),
+                end: encodings::TimeRangeBoundary::CursorRelative(encodings::TimeInt(5)),
             },
             "around_cursor",
         ),
         (
-            datatypes::TimeRange {
-                start: datatypes::TimeRangeBoundary::Absolute(datatypes::TimeInt(15)),
-                end: datatypes::TimeRangeBoundary::Infinite,
+            encodings::TimeRange {
+                start: encodings::TimeRangeBoundary::Absolute(encodings::TimeInt(15)),
+                end: encodings::TimeRangeBoundary::Infinite,
             },
             "absolute_until_end",
         ),
         (
-            datatypes::TimeRange {
-                start: datatypes::TimeRangeBoundary::Infinite,
-                end: datatypes::TimeRangeBoundary::Absolute(datatypes::TimeInt(15)),
+            encodings::TimeRange {
+                start: encodings::TimeRangeBoundary::Infinite,
+                end: encodings::TimeRangeBoundary::Absolute(encodings::TimeInt(15)),
             },
             "start_until_absolute",
         ),

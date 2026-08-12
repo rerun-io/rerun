@@ -27,7 +27,7 @@ class GeoLineStringExt:
 
     @staticmethod
     def native_to_pa_array_override(data: GeoLineStringArrayLike, data_type: pa.DataType) -> pa.Array:
-        from ..datatypes import DVec2DBatch
+        from ..encodings import DVec2DBatch
         from . import GeoLineString
 
         # pure-numpy fast path

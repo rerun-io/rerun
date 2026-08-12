@@ -27,10 +27,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// Non interactive components are still visible, but mouse interactions in the view are disabled.
 #[derive(Clone, Debug, Copy, PartialEq, Eq, PartialOrd, Ord, ::re_byte_size::SizeBytes)]
 #[repr(transparent)]
-pub struct Interactive(pub crate::datatypes::Bool);
+pub struct Interactive(pub crate::encodings::Bool);
 
 impl ::re_types_core::WrapperComponent for Interactive {
-    type Datatype = crate::datatypes::Bool;
+    type Encoding = crate::encodings::Bool;
 
     #[inline]
     fn name() -> ComponentType {
@@ -38,38 +38,38 @@ impl ::re_types_core::WrapperComponent for Interactive {
     }
 
     #[inline]
-    fn into_inner(self) -> Self::Datatype {
+    fn into_inner(self) -> Self::Encoding {
         self.0
     }
 }
 
 ::re_types_core::macros::impl_into_cow!(Interactive);
 
-impl<T: Into<crate::datatypes::Bool>> From<T> for Interactive {
+impl<T: Into<crate::encodings::Bool>> From<T> for Interactive {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl std::borrow::Borrow<crate::datatypes::Bool> for Interactive {
+impl std::borrow::Borrow<crate::encodings::Bool> for Interactive {
     #[inline]
-    fn borrow(&self) -> &crate::datatypes::Bool {
+    fn borrow(&self) -> &crate::encodings::Bool {
         &self.0
     }
 }
 
 impl std::ops::Deref for Interactive {
-    type Target = crate::datatypes::Bool;
+    type Target = crate::encodings::Bool;
 
     #[inline]
-    fn deref(&self) -> &crate::datatypes::Bool {
+    fn deref(&self) -> &crate::encodings::Bool {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for Interactive {
     #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Bool {
+    fn deref_mut(&mut self) -> &mut crate::encodings::Bool {
         &mut self.0
     }
 }

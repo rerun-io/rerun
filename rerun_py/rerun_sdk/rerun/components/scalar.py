@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from .. import datatypes
+from .. import encodings
 from .._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,7 +14,7 @@ from .._baseclasses import (
 __all__ = ["Scalar", "ScalarBatch"]
 
 
-class Scalar(datatypes.Float64, ComponentMixin):
+class Scalar(encodings.Float64, ComponentMixin):
     """
     **Component**: A scalar value, encoded as a 64-bit floating point.
 
@@ -24,10 +24,10 @@ class Scalar(datatypes.Float64, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of ScalarExt in scalar_ext.py
 
-    # Note: there are no fields here because Scalar delegates to datatypes.Float64
+    # Note: there are no fields here because Scalar delegates to encodings.Float64
 
 
-class ScalarBatch(datatypes.Float64Batch, ComponentBatchMixin):
+class ScalarBatch(encodings.Float64Batch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.components.Scalar"
 
 

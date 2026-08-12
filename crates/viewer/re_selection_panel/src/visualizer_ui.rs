@@ -10,7 +10,7 @@ use re_sdk_types::Archetype as _;
 use re_sdk_types::ViewClassIdentifier;
 use re_sdk_types::blueprint::archetypes::ActiveVisualizers;
 use re_sdk_types::blueprint::components::VisualizerInstructionId;
-use re_sdk_types::blueprint::datatypes::ComponentSourceKind;
+use re_sdk_types::blueprint::encodings::ComponentSourceKind;
 use re_sdk_types::reflection::ComponentDescriptorExt as _;
 use re_types_core::ComponentDescriptor;
 use re_types_core::external::arrow::array::ArrayRef;
@@ -1344,7 +1344,7 @@ fn pick_best_mappings(
             // with the semantics the visualizer natively works with:
             // e.g. `Points3D:positions` should map from `GaussianSplats3D:centers` (`Position3D`),
             // not from `GaussianSplats3D:scales` (`Scale3D`), despite both sharing the
-            // `rerun.datatypes.Vec3D` encoding.
+            // `rerun.encodings.Vec3D` encoding.
             let has_physical_only_source = visualizable_reason.is_some_and(|reason| {
                 recommended_mappings.mappings().values().any(|source| {
                     matches!(
@@ -1499,7 +1499,7 @@ mod tests {
     }
 
     fn vec3d() -> DataType {
-        <re_sdk_types::datatypes::Vec3D as re_types_core::Loggable>::arrow_datatype()
+        <re_sdk_types::encodings::Vec3D as re_types_core::Loggable>::arrow_datatype()
     }
 
     fn native(component: ComponentIdentifier) -> (ComponentIdentifier, DatatypeMatch) {

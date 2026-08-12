@@ -56,7 +56,7 @@ pub struct LoadingIndicator {
 
 use ahash::HashMap;
 use re_entity_db::EntityPath;
-use re_sdk_types::datatypes::{KeypointId, KeypointPair};
+use re_sdk_types::encodings::{KeypointId, KeypointPair};
 use re_view::clamped_or_else;
 use re_viewer_context::{
     Annotations, IdentifiedViewSystem as _, QueryContext, SystemExecutionOutput,

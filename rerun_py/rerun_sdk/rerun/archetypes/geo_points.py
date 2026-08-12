@@ -11,7 +11,7 @@ import numpy as np
 import pyarrow as pa
 from attrs import define, field
 
-from .. import components, datatypes
+from .. import components, encodings
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
@@ -22,7 +22,7 @@ from ..error_utils import catch_and_log_exceptions
 from .geo_points_ext import GeoPointsExt
 
 if TYPE_CHECKING:
-    from ..blueprint.datatypes import VisualizerComponentMappingLike
+    from ..blueprint.encodings import VisualizerComponentMappingLike
 
 __all__ = ["GeoPoints"]
 
@@ -86,10 +86,10 @@ class GeoPoints(GeoPointsExt, Archetype, VisualizableArchetype):
         cls,
         *,
         clear_unset: bool = False,
-        positions: datatypes.DVec2DArrayLike | None = None,
-        radii: datatypes.Float32ArrayLike | None = None,
-        colors: datatypes.Rgba32ArrayLike | None = None,
-        class_ids: datatypes.ClassIdArrayLike | None = None,
+        positions: encodings.DVec2DArrayLike | None = None,
+        radii: encodings.Float32ArrayLike | None = None,
+        colors: encodings.Rgba32ArrayLike | None = None,
+        class_ids: encodings.ClassIdArrayLike | None = None,
     ) -> GeoPoints:
         """
         Update only some specific fields of a `GeoPoints`.
@@ -175,10 +175,10 @@ class GeoPoints(GeoPointsExt, Archetype, VisualizableArchetype):
     def columns(
         cls,
         *,
-        positions: datatypes.DVec2DArrayLike | None = None,
-        radii: datatypes.Float32ArrayLike | None = None,
-        colors: datatypes.Rgba32ArrayLike | None = None,
-        class_ids: datatypes.ClassIdArrayLike | None = None,
+        positions: encodings.DVec2DArrayLike | None = None,
+        radii: encodings.Float32ArrayLike | None = None,
+        colors: encodings.Rgba32ArrayLike | None = None,
+        class_ids: encodings.ClassIdArrayLike | None = None,
     ) -> ComponentColumnList:
         """
         Construct a new column-oriented component bundle.

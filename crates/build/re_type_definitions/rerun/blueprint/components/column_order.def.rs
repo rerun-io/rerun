@@ -6,10 +6,10 @@
 /// Entities not in this list are appended at the end in their default order.
 /// Entities in this list that are not present in the view are ignored.
 #[rerun::rerun_type]
-#[python(aliases = "Sequence[datatypes.EntityPathLike]")]
+#[python(aliases = "Sequence[encodings.EntityPathLike]")]
 #[rerun(scope = "blueprint")]
 #[rust(derive(Default, PartialEq, Eq))]
 #[rerun(state = "unstable")]
 pub struct ColumnOrder {
-    pub entity_paths: Vec<rerun::datatypes::EntityPath>,
+    pub entity_paths: Vec<rerun::encodings::EntityPath>,
 }

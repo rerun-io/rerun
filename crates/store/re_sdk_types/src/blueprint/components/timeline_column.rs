@@ -29,11 +29,11 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct TimelineColumn(
     /// The timeline column.
-    pub crate::blueprint::datatypes::TimelineColumn,
+    pub crate::blueprint::encodings::TimelineColumn,
 );
 
 impl ::re_types_core::WrapperComponent for TimelineColumn {
-    type Datatype = crate::blueprint::datatypes::TimelineColumn;
+    type Encoding = crate::blueprint::encodings::TimelineColumn;
 
     #[inline]
     fn name() -> ComponentType {
@@ -41,38 +41,38 @@ impl ::re_types_core::WrapperComponent for TimelineColumn {
     }
 
     #[inline]
-    fn into_inner(self) -> Self::Datatype {
+    fn into_inner(self) -> Self::Encoding {
         self.0
     }
 }
 
 ::re_types_core::macros::impl_into_cow!(TimelineColumn);
 
-impl<T: Into<crate::blueprint::datatypes::TimelineColumn>> From<T> for TimelineColumn {
+impl<T: Into<crate::blueprint::encodings::TimelineColumn>> From<T> for TimelineColumn {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl std::borrow::Borrow<crate::blueprint::datatypes::TimelineColumn> for TimelineColumn {
+impl std::borrow::Borrow<crate::blueprint::encodings::TimelineColumn> for TimelineColumn {
     #[inline]
-    fn borrow(&self) -> &crate::blueprint::datatypes::TimelineColumn {
+    fn borrow(&self) -> &crate::blueprint::encodings::TimelineColumn {
         &self.0
     }
 }
 
 impl std::ops::Deref for TimelineColumn {
-    type Target = crate::blueprint::datatypes::TimelineColumn;
+    type Target = crate::blueprint::encodings::TimelineColumn;
 
     #[inline]
-    fn deref(&self) -> &crate::blueprint::datatypes::TimelineColumn {
+    fn deref(&self) -> &crate::blueprint::encodings::TimelineColumn {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for TimelineColumn {
     #[inline]
-    fn deref_mut(&mut self) -> &mut crate::blueprint::datatypes::TimelineColumn {
+    fn deref_mut(&mut self) -> &mut crate::blueprint::encodings::TimelineColumn {
         &mut self.0
     }
 }

@@ -1,7 +1,7 @@
 use ndarray::{Array, ShapeBuilder as _, s};
 use re_chunk_store::RowId;
 use re_log_types::TimePoint;
-use re_sdk_types::datatypes::Rgba32;
+use re_sdk_types::encodings::Rgba32;
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
 use re_viewer_context::{ViewClass as _, ViewId};
@@ -38,7 +38,7 @@ pub fn test_segmentation_image_transparency() {
             RowId::new(),
             TimePoint::default(),
             &re_sdk_types::archetypes::Image::from_color_model_and_tensor(
-                re_sdk_types::datatypes::ColorModel::RGB,
+                re_sdk_types::encodings::ColorModel::RGB,
                 image,
             )
             .unwrap(),

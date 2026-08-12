@@ -11,5 +11,5 @@
 #[rust(repr = "transparent")]
 #[rerun(state = "stable")]
 pub struct Scalar {
-    pub value: rerun::datatypes::Float64,
+    pub value: rerun::encodings::Float64,
 }

@@ -9,7 +9,7 @@ from typing import Any, ClassVar
 
 from attrs import define, field
 
-from ... import components, datatypes
+from ... import components, encodings
 from ..._baseclasses import (
     Archetype,
     ComponentDescriptor,
@@ -36,12 +36,12 @@ class EyeControls3D(Archetype):
         self: Any,
         *,
         kind: blueprint_components.Eye3DKindLike | None = None,
-        position: datatypes.Vec3DLike | None = None,
-        look_target: datatypes.Vec3DLike | None = None,
-        eye_up: datatypes.Vec3DLike | None = None,
-        speed: datatypes.Float64Like | None = None,
-        tracking_entity: datatypes.EntityPathLike | None = None,
-        spin_speed: datatypes.Float64Like | None = None,
+        position: encodings.Vec3DLike | None = None,
+        look_target: encodings.Vec3DLike | None = None,
+        eye_up: encodings.Vec3DLike | None = None,
+        speed: encodings.Float64Like | None = None,
+        tracking_entity: encodings.EntityPathLike | None = None,
+        spin_speed: encodings.Float64Like | None = None,
     ) -> None:
         """
         Create a new instance of the EyeControls3D archetype.
@@ -122,12 +122,12 @@ class EyeControls3D(Archetype):
         *,
         clear_unset: bool = False,
         kind: blueprint_components.Eye3DKindLike | None = None,
-        position: datatypes.Vec3DLike | None = None,
-        look_target: datatypes.Vec3DLike | None = None,
-        eye_up: datatypes.Vec3DLike | None = None,
-        speed: datatypes.Float64Like | None = None,
-        tracking_entity: datatypes.EntityPathLike | None = None,
-        spin_speed: datatypes.Float64Like | None = None,
+        position: encodings.Vec3DLike | None = None,
+        look_target: encodings.Vec3DLike | None = None,
+        eye_up: encodings.Vec3DLike | None = None,
+        speed: encodings.Float64Like | None = None,
+        tracking_entity: encodings.EntityPathLike | None = None,
+        spin_speed: encodings.Float64Like | None = None,
     ) -> EyeControls3D:
         """
         Update only some specific fields of a `EyeControls3D`.

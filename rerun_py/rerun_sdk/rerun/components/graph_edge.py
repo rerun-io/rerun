@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from .. import datatypes
+from .. import encodings
 from .._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,16 +14,16 @@ from .._baseclasses import (
 __all__ = ["GraphEdge", "GraphEdgeBatch"]
 
 
-class GraphEdge(datatypes.Utf8Pair, ComponentMixin):
+class GraphEdge(encodings.Utf8Pair, ComponentMixin):
     """**Component**: An edge in a graph connecting two nodes."""
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of GraphEdgeExt in graph_edge_ext.py
 
-    # Note: there are no fields here because GraphEdge delegates to datatypes.Utf8Pair
+    # Note: there are no fields here because GraphEdge delegates to encodings.Utf8Pair
 
 
-class GraphEdgeBatch(datatypes.Utf8PairBatch, ComponentBatchMixin):
+class GraphEdgeBatch(encodings.Utf8PairBatch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.components.GraphEdge"
 
 

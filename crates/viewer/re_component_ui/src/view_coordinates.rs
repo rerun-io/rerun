@@ -1,12 +1,12 @@
 use re_sdk_types::components::ViewCoordinates;
-use re_sdk_types::datatypes::ViewDir;
+use re_sdk_types::encodings::ViewDir;
 use re_types_core::reflection::Enum as _;
 use re_ui::UiExt as _;
 use re_ui::list_item::PropertyContent;
 use re_viewer_context::{AppContext, MaybeMutRef};
 
 use crate::{
-    datatype_uis::{VariantAvailable, enum_variant_ui},
+    encoding_uis::{VariantAvailable, enum_variant_ui},
     response_utils::response_with_changes_of_inner,
 };
 

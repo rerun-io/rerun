@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "../datatypes/ivec3d.hpp"
+#include "../encodings/ivec3d.hpp"
 #include "../result.hpp"
 
 #include <array>
@@ -15,7 +15,7 @@ namespace rerun::components {
     ///
     /// The voxel center in local grid coordinates is `(index + 0.5) * voxel_size`.
     struct VoxelIndex {
-        rerun::datatypes::IVec3D index;
+        rerun::encodings::IVec3D index;
 
       public: // START of extensions from voxel_index_ext.cpp:
         /// Construct VoxelIndex from x/y/z values.
@@ -26,9 +26,9 @@ namespace rerun::components {
       public:
         VoxelIndex() = default;
 
-        VoxelIndex(rerun::datatypes::IVec3D index_) : index(index_) {}
+        VoxelIndex(rerun::encodings::IVec3D index_) : index(index_) {}
 
-        VoxelIndex& operator=(rerun::datatypes::IVec3D index_) {
+        VoxelIndex& operator=(rerun::encodings::IVec3D index_) {
             index = index_;
             return *this;
         }
@@ -40,15 +40,15 @@ namespace rerun::components {
             return *this;
         }
 
-        /// Cast to the underlying IVec3D datatype
-        operator rerun::datatypes::IVec3D() const {
+        /// Cast to the underlying IVec3D encoding
+        operator rerun::encodings::IVec3D() const {
             return index;
         }
     };
 } // namespace rerun::components
 
 namespace rerun {
-    static_assert(sizeof(rerun::datatypes::IVec3D) == sizeof(components::VoxelIndex));
+    static_assert(sizeof(rerun::encodings::IVec3D) == sizeof(components::VoxelIndex));
 
     /// \private
     template <>
@@ -57,7 +57,7 @@ namespace rerun {
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
-            return Loggable<rerun::datatypes::IVec3D>::arrow_datatype();
+            return Loggable<rerun::encodings::IVec3D>::arrow_datatype();
         }
 
         /// Serializes an array of `rerun::components::VoxelIndex` into an arrow array.
@@ -65,14 +65,14 @@ namespace rerun {
             const components::VoxelIndex* instances, size_t num_instances
         ) {
             if (num_instances == 0) {
-                return Loggable<rerun::datatypes::IVec3D>::to_arrow(nullptr, 0);
+                return Loggable<rerun::encodings::IVec3D>::to_arrow(nullptr, 0);
             } else if (instances == nullptr) {
                 return rerun::Error(
                     ErrorCode::UnexpectedNullArgument,
                     "Passed array instances is null when num_elements> 0."
                 );
             } else {
-                return Loggable<rerun::datatypes::IVec3D>::to_arrow(
+                return Loggable<rerun::encodings::IVec3D>::to_arrow(
                     &instances->index,
                     num_instances
                 );

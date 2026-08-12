@@ -10,7 +10,7 @@
 ///
 /// Use [`rerun::archetypes::AnnotationContext`] to associate each class with a color and a label.
 ///
-/// \cpp Since the underlying `rerun::datatypes::TensorData` uses `rerun::Collection` internally,
+/// \cpp Since the underlying `rerun::encodings::TensorData` uses `rerun::Collection` internally,
 /// \cpp data can be passed in without a copy from raw pointers or by reference from `std::vector`/`std::array`/c-arrays.
 /// \cpp If needed, this "borrow-behavior" can be extended by defining your own `rerun::CollectionAdapter`.
 ///

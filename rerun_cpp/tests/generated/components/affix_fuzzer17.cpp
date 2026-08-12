@@ -3,7 +3,7 @@
 
 #include "affix_fuzzer17.hpp"
 
-#include "../datatypes/scalar_union.hpp"
+#include "../encodings/scalar_union.hpp"
 
 #include <arrow/builder.h>
 #include <arrow/type_fwd.h>
@@ -13,7 +13,7 @@ namespace rerun::components {}
 namespace rerun {
     const std::shared_ptr<arrow::DataType>& Loggable<components::AffixFuzzer17>::arrow_datatype() {
         static const auto datatype = arrow::list(
-            arrow::field("item", Loggable<rerun::datatypes::ScalarUnion>::arrow_datatype(), true)
+            arrow::field("item", Loggable<rerun::encodings::ScalarUnion>::arrow_datatype(), true)
         );
         return datatype;
     }
@@ -61,7 +61,7 @@ namespace rerun {
                 ARROW_RETURN_NOT_OK(builder->Append());
                 if (element.many_optional_unions.value().data()) {
                     RR_RETURN_NOT_OK(
-                        Loggable<rerun::datatypes::ScalarUnion>::fill_arrow_array_builder(
+                        Loggable<rerun::encodings::ScalarUnion>::fill_arrow_array_builder(
                             value_builder,
                             element.many_optional_unions.value().data(),
                             element.many_optional_unions.value().size()

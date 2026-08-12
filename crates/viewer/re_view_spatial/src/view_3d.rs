@@ -11,7 +11,7 @@ use re_sdk_types::blueprint::archetypes::{
 };
 use re_sdk_types::blueprint::components::Eye3DKind;
 use re_sdk_types::components::{LinearSpeed, Plane3D, Position3D, Vector3D, ViewCoordinates};
-use re_sdk_types::datatypes::Vec3D;
+use re_sdk_types::encodings::Vec3D;
 use re_sdk_types::view_coordinates::SignedAxis3;
 use re_sdk_types::{Archetype as _, Component as _, View as _, ViewClassIdentifier, archetypes};
 use re_tf::query_view_coordinates_at_closest_ancestor;

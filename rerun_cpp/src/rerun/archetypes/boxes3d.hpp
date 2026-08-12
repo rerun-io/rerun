@@ -181,7 +181,7 @@ namespace rerun::archetypes {
         /// TODO(#3285): Does *not* preserve data as-is and instead creates half-sizes from the
         /// input data.
         /// TODO(andreas): This should not take an std::vector.
-        static Boxes3D from_sizes(const std::vector<datatypes::Vec3D>& sizes);
+        static Boxes3D from_sizes(const std::vector<encodings::Vec3D>& sizes);
 
         /// Creates new `Boxes3D` with `centers` and `half_sizes` created from centers and (full)
         /// sizes.
@@ -191,7 +191,7 @@ namespace rerun::archetypes {
         /// TODO(andreas): This should not take an std::vector.
         static Boxes3D from_centers_and_sizes(
             Collection<components::Translation3D> centers,
-            const std::vector<datatypes::Vec3D>& sizes
+            const std::vector<encodings::Vec3D>& sizes
         ) {
             return from_sizes(std::move(sizes)).with_centers(std::move(centers));
         }
@@ -203,7 +203,7 @@ namespace rerun::archetypes {
         /// from the input data.
         /// TODO(andreas): This should not take an std::vector.
         static Boxes3D from_mins_and_sizes(
-            const std::vector<datatypes::Vec3D>& mins, const std::vector<datatypes::Vec3D>& sizes
+            const std::vector<encodings::Vec3D>& mins, const std::vector<encodings::Vec3D>& sizes
         );
 
         // END of extensions from boxes3d_ext.cpp, start of generated code:

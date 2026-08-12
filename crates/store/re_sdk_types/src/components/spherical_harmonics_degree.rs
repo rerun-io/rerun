@@ -36,10 +36,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Debug, Copy, PartialEq, Eq, PartialOrd, Ord, ::re_byte_size::SizeBytes)]
 #[repr(transparent)]
-pub struct SphericalHarmonicsDegree(pub crate::datatypes::UInt32);
+pub struct SphericalHarmonicsDegree(pub crate::encodings::UInt32);
 
 impl ::re_types_core::WrapperComponent for SphericalHarmonicsDegree {
-    type Datatype = crate::datatypes::UInt32;
+    type Encoding = crate::encodings::UInt32;
 
     #[inline]
     fn name() -> ComponentType {
@@ -47,38 +47,38 @@ impl ::re_types_core::WrapperComponent for SphericalHarmonicsDegree {
     }
 
     #[inline]
-    fn into_inner(self) -> Self::Datatype {
+    fn into_inner(self) -> Self::Encoding {
         self.0
     }
 }
 
 ::re_types_core::macros::impl_into_cow!(SphericalHarmonicsDegree);
 
-impl<T: Into<crate::datatypes::UInt32>> From<T> for SphericalHarmonicsDegree {
+impl<T: Into<crate::encodings::UInt32>> From<T> for SphericalHarmonicsDegree {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl std::borrow::Borrow<crate::datatypes::UInt32> for SphericalHarmonicsDegree {
+impl std::borrow::Borrow<crate::encodings::UInt32> for SphericalHarmonicsDegree {
     #[inline]
-    fn borrow(&self) -> &crate::datatypes::UInt32 {
+    fn borrow(&self) -> &crate::encodings::UInt32 {
         &self.0
     }
 }
 
 impl std::ops::Deref for SphericalHarmonicsDegree {
-    type Target = crate::datatypes::UInt32;
+    type Target = crate::encodings::UInt32;
 
     #[inline]
-    fn deref(&self) -> &crate::datatypes::UInt32 {
+    fn deref(&self) -> &crate::encodings::UInt32 {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for SphericalHarmonicsDegree {
     #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::UInt32 {
+    fn deref_mut(&mut self) -> &mut crate::encodings::UInt32 {
         &mut self.0
     }
 }

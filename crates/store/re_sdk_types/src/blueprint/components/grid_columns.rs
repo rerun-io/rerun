@@ -28,11 +28,11 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, ::re_byte_size::SizeBytes)]
 pub struct GridColumns(
     /// The number of columns.
-    pub crate::datatypes::UInt32,
+    pub crate::encodings::UInt32,
 );
 
 impl ::re_types_core::WrapperComponent for GridColumns {
-    type Datatype = crate::datatypes::UInt32;
+    type Encoding = crate::encodings::UInt32;
 
     #[inline]
     fn name() -> ComponentType {
@@ -40,38 +40,38 @@ impl ::re_types_core::WrapperComponent for GridColumns {
     }
 
     #[inline]
-    fn into_inner(self) -> Self::Datatype {
+    fn into_inner(self) -> Self::Encoding {
         self.0
     }
 }
 
 ::re_types_core::macros::impl_into_cow!(GridColumns);
 
-impl<T: Into<crate::datatypes::UInt32>> From<T> for GridColumns {
+impl<T: Into<crate::encodings::UInt32>> From<T> for GridColumns {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl std::borrow::Borrow<crate::datatypes::UInt32> for GridColumns {
+impl std::borrow::Borrow<crate::encodings::UInt32> for GridColumns {
     #[inline]
-    fn borrow(&self) -> &crate::datatypes::UInt32 {
+    fn borrow(&self) -> &crate::encodings::UInt32 {
         &self.0
     }
 }
 
 impl std::ops::Deref for GridColumns {
-    type Target = crate::datatypes::UInt32;
+    type Target = crate::encodings::UInt32;
 
     #[inline]
-    fn deref(&self) -> &crate::datatypes::UInt32 {
+    fn deref(&self) -> &crate::encodings::UInt32 {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for GridColumns {
     #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::UInt32 {
+    fn deref_mut(&mut self) -> &mut crate::encodings::UInt32 {
         &mut self.0
     }
 }

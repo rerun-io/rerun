@@ -1,5 +1,5 @@
 //! Roundtrip tests for the "type zoo": a hand-authored menagerie of exotic type
-//! combinations (nullable fields, arrays, unions, enums, transparent/nested datatypes,
+//! combinations (nullable fields, arrays, unions, enums, transparent/nested encodings,
 //! fixed-size arrays, …) used to exercise every corner of the codegen across languages.
 //!
 //! Despite the historical `AffixFuzzer*` type names, nothing here is randomly fuzzed —
@@ -9,12 +9,12 @@
 
 use half::f16;
 use re_sdk_types::testing::archetypes::{AffixFuzzer1, AffixFuzzer2, AffixFuzzer3, AffixFuzzer4};
-use re_sdk_types::testing::{components, datatypes};
+use re_sdk_types::testing::{components, encodings};
 use re_sdk_types::{Archetype as _, AsComponents as _};
 
 #[test]
 fn roundtrip() {
-    let fuzzy1 = components::AffixFuzzer1(datatypes::MixedFields {
+    let fuzzy1 = components::AffixFuzzer1(encodings::MixedFields {
         single_float_optional: Some(1.0),
         single_string_required: "a".into(),
         single_string_optional: Some("a".into()),
@@ -22,11 +22,11 @@ fn roundtrip() {
         many_strings_required: vec!["1".into(), "2".into()],
         many_strings_optional: Some(vec!["10".into(), "20".into()]),
         flattened_scalar: 42.0,
-        almost_flattened_scalar: datatypes::FlattenedScalar { value: 42.0 },
+        almost_flattened_scalar: encodings::FlattenedScalar { value: 42.0 },
         from_parent: Some(true),
     });
 
-    let fuzzy2 = components::AffixFuzzer2(datatypes::MixedFields {
+    let fuzzy2 = components::AffixFuzzer2(encodings::MixedFields {
         single_float_optional: None,
         single_string_required: "b".into(),
         single_string_optional: None,
@@ -34,11 +34,11 @@ fn roundtrip() {
         many_strings_required: vec!["3".into(), "4".into()],
         many_strings_optional: None,
         flattened_scalar: 43.0,
-        almost_flattened_scalar: datatypes::FlattenedScalar { value: 43.0 },
+        almost_flattened_scalar: encodings::FlattenedScalar { value: 43.0 },
         from_parent: Some(false),
     });
 
-    let fuzzy3 = components::AffixFuzzer3(datatypes::MixedFields {
+    let fuzzy3 = components::AffixFuzzer3(encodings::MixedFields {
         single_float_optional: Some(3.0),
         single_string_required: "c".into(),
         single_string_optional: Some("c".into()),
@@ -46,11 +46,11 @@ fn roundtrip() {
         many_strings_required: vec!["5".into(), "6".into()],
         many_strings_optional: Some(vec!["50".into(), "60".into()]),
         flattened_scalar: 44.0,
-        almost_flattened_scalar: datatypes::FlattenedScalar { value: 44.0 },
+        almost_flattened_scalar: encodings::FlattenedScalar { value: 44.0 },
         from_parent: None,
     });
 
-    let fuzzy4 = components::AffixFuzzer4(Some(datatypes::MixedFields {
+    let fuzzy4 = components::AffixFuzzer4(Some(encodings::MixedFields {
         single_float_optional: None,
         single_string_required: "d".into(),
         single_string_optional: None,
@@ -58,12 +58,12 @@ fn roundtrip() {
         many_strings_required: vec!["7".into(), "8".into()],
         many_strings_optional: None,
         flattened_scalar: 45.0,
-        almost_flattened_scalar: datatypes::FlattenedScalar { value: 45.0 },
+        almost_flattened_scalar: encodings::FlattenedScalar { value: 45.0 },
         from_parent: None,
     }));
 
     let fuzzy5 = components::AffixFuzzer5(None);
-    // let fuzzy5 = components::AffixFuzzer5(Some(datatypes::MixedFields {
+    // let fuzzy5 = components::AffixFuzzer5(Some(encodings::MixedFields {
     //     single_float_optional: None,
     //     single_string_required: "d".into(),
     //     single_string_optional: None,
@@ -74,7 +74,7 @@ fn roundtrip() {
 
     let fuzzy6 = components::AffixFuzzer6(None);
     // let fuzzy6 = components::AffixFuzzer6 {
-    //     single_optional: Some(datatypes::MixedFields {
+    //     single_optional: Some(encodings::MixedFields {
     //         // single_float_optional: None,
     //         single_string_required: "d".into(),
     //         // single_string_optional: None,
@@ -85,7 +85,7 @@ fn roundtrip() {
     // };
 
     let fuzzy7_1 = components::AffixFuzzer7(None);
-    let fuzzy7_2 = components::AffixFuzzer7(Some(vec![datatypes::MixedFields {
+    let fuzzy7_2 = components::AffixFuzzer7(Some(vec![encodings::MixedFields {
         single_float_optional: None,
         single_string_required: "d".into(),
         single_string_optional: None,
@@ -93,7 +93,7 @@ fn roundtrip() {
         many_strings_required: vec!["7".into(), "8".into()],
         many_strings_optional: None,
         flattened_scalar: 46.0,
-        almost_flattened_scalar: datatypes::FlattenedScalar { value: 46.0 },
+        almost_flattened_scalar: encodings::FlattenedScalar { value: 46.0 },
         from_parent: Some(false),
     }]));
 
@@ -120,31 +120,31 @@ fn roundtrip() {
         "30000".into(),
     ]));
 
-    let fuzzy14_1 = components::AffixFuzzer14(datatypes::ScalarUnion::Degrees(90.0));
-    let fuzzy14_2 = components::AffixFuzzer14(datatypes::ScalarUnion::EmptyVariant);
+    let fuzzy14_1 = components::AffixFuzzer14(encodings::ScalarUnion::Degrees(90.0));
+    let fuzzy14_2 = components::AffixFuzzer14(encodings::ScalarUnion::EmptyVariant);
 
     let fuzzy15_1 = components::AffixFuzzer15(None);
-    let fuzzy15_2 = components::AffixFuzzer15(Some(datatypes::ScalarUnion::Degrees(90.0)));
+    let fuzzy15_2 = components::AffixFuzzer15(Some(encodings::ScalarUnion::Degrees(90.0)));
 
     let fuzzy16_1 = components::AffixFuzzer16(vec![
-        datatypes::ScalarUnion::Degrees(45.0), //
+        encodings::ScalarUnion::Degrees(45.0), //
     ]);
     let fuzzy16_2 = components::AffixFuzzer16(vec![
-        datatypes::ScalarUnion::Degrees(20.0), //
-        datatypes::ScalarUnion::EmptyVariant,  //
-        datatypes::ScalarUnion::Degrees(30.0), //
+        encodings::ScalarUnion::Degrees(20.0), //
+        encodings::ScalarUnion::EmptyVariant,  //
+        encodings::ScalarUnion::Degrees(30.0), //
     ]);
 
     let fuzzy17_1 = components::AffixFuzzer17(None);
     let fuzzy17_2 = components::AffixFuzzer17(Some(vec![
-        datatypes::ScalarUnion::Degrees(20.0), //
-        datatypes::ScalarUnion::Degrees(30.0), //
+        encodings::ScalarUnion::Degrees(20.0), //
+        encodings::ScalarUnion::Degrees(30.0), //
     ]));
 
     let fuzzy18_1 = components::AffixFuzzer18(None);
     let fuzzy18_2 = components::AffixFuzzer18(Some(vec![
-        datatypes::NestedUnion::SingleRequired(datatypes::ScalarUnion::Craziness(vec![
-            datatypes::MixedFields {
+        encodings::NestedUnion::SingleRequired(encodings::ScalarUnion::Craziness(vec![
+            encodings::MixedFields {
                 single_float_optional: None,
                 single_string_required: "d".into(),
                 single_string_optional: None,
@@ -152,16 +152,16 @@ fn roundtrip() {
                 many_strings_required: vec!["7".into(), "8".into()],
                 many_strings_optional: None,
                 flattened_scalar: 46.0,
-                almost_flattened_scalar: datatypes::FlattenedScalar { value: 46.0 },
+                almost_flattened_scalar: encodings::FlattenedScalar { value: 46.0 },
                 from_parent: Some(true),
             },
         ])), //
-        datatypes::NestedUnion::SingleRequired(datatypes::ScalarUnion::Degrees(30.0)), //
+        encodings::NestedUnion::SingleRequired(encodings::ScalarUnion::Degrees(30.0)), //
     ]));
     let fuzzy18_3 = components::AffixFuzzer18(Some(vec![
-        datatypes::NestedUnion::ManyRequired(vec![
-            datatypes::ScalarUnion::Degrees(45.0), //
-            datatypes::ScalarUnion::Craziness(vec![datatypes::MixedFields {
+        encodings::NestedUnion::ManyRequired(vec![
+            encodings::ScalarUnion::Degrees(45.0), //
+            encodings::ScalarUnion::Craziness(vec![encodings::MixedFields {
                 single_float_optional: Some(3.0),
                 single_string_required: "c".into(),
                 single_string_optional: Some("c".into()),
@@ -169,16 +169,16 @@ fn roundtrip() {
                 many_strings_required: vec!["5".into(), "6".into()],
                 many_strings_optional: Some(vec!["50".into(), "60".into()]),
                 flattened_scalar: 44.0,
-                almost_flattened_scalar: datatypes::FlattenedScalar { value: 44.0 },
+                almost_flattened_scalar: encodings::FlattenedScalar { value: 44.0 },
                 from_parent: None,
             }]),
         ]), //
     ]));
 
-    let fuzzy19_1 = components::AffixFuzzer19(datatypes::OptionalUnionTable {
-        single_optional_union: Some(datatypes::NestedUnion::ManyRequired(vec![
-            datatypes::ScalarUnion::Degrees(45.0), //
-            datatypes::ScalarUnion::Craziness(vec![datatypes::MixedFields {
+    let fuzzy19_1 = components::AffixFuzzer19(encodings::OptionalUnionTable {
+        single_optional_union: Some(encodings::NestedUnion::ManyRequired(vec![
+            encodings::ScalarUnion::Degrees(45.0), //
+            encodings::ScalarUnion::Craziness(vec![encodings::MixedFields {
                 single_float_optional: Some(3.0),
                 single_string_required: "c".into(),
                 single_string_optional: Some("c".into()),
@@ -186,23 +186,23 @@ fn roundtrip() {
                 many_strings_required: vec!["5".into(), "6".into()],
                 many_strings_optional: Some(vec!["50".into(), "60".into()]),
                 flattened_scalar: 44.0,
-                almost_flattened_scalar: datatypes::FlattenedScalar { value: 44.0 },
+                almost_flattened_scalar: encodings::FlattenedScalar { value: 44.0 },
                 from_parent: None,
             }]),
         ])), //
     });
 
-    let fuzzy20 = components::AffixFuzzer20(datatypes::PrimitiveAndString {
-        p: datatypes::PrimitiveComponent(17),
-        s: datatypes::StringComponent("fuzz".to_owned().into()),
+    let fuzzy20 = components::AffixFuzzer20(encodings::PrimitiveAndString {
+        p: encodings::PrimitiveComponent(17),
+        s: encodings::StringComponent("fuzz".to_owned().into()),
     });
 
-    let fuzzy21 = components::AffixFuzzer21(datatypes::Float16Fields {
+    let fuzzy21 = components::AffixFuzzer21(encodings::Float16Fields {
         single_half: f16::from_f32(123.4),
         many_halves: vec![f16::from_f32(123.4), f16::from_f32(567.8)].into(),
     });
 
-    let fuzzy22_1 = components::AffixFuzzer22(Some(datatypes::FixedSizeBytes {
+    let fuzzy22_1 = components::AffixFuzzer22(Some(encodings::FixedSizeBytes {
         fixed_sized_native: [1, 2, 3, 4],
     }));
 
@@ -363,11 +363,11 @@ fn roundtrip_fixed_size_array_of_structs() {
         expected_datatype.to_string(),
         "FixedSizeList(2 x non-null FixedSizeList(3 x non-null Float32))",
     );
-    assert_eq!(datatypes::ManyVec3::arrow_datatype(), expected_datatype);
+    assert_eq!(encodings::ManyVec3::arrow_datatype(), expected_datatype);
 
     let data = vec![
-        components::ManyVec3(datatypes::ManyVec3([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])),
-        components::ManyVec3(datatypes::ManyVec3([[7.0, 8.0, 9.0], [10.0, 11.0, 12.0]])),
+        components::ManyVec3(encodings::ManyVec3([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])),
+        components::ManyVec3(encodings::ManyVec3([[7.0, 8.0, 9.0], [10.0, 11.0, 12.0]])),
     ];
 
     let serialized = components::ManyVec3::to_arrow(data.clone()).unwrap();

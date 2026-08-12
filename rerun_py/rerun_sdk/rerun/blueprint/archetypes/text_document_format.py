@@ -17,7 +17,7 @@ from ...blueprint import components as blueprint_components
 from ...error_utils import catch_and_log_exceptions
 
 if TYPE_CHECKING:
-    from ... import datatypes
+    from ... import encodings
 
 __all__ = ["TextDocumentFormat"]
 
@@ -35,7 +35,7 @@ class TextDocumentFormat(Archetype):
     NAME: ClassVar[str] = "rerun.blueprint.archetypes.TextDocumentFormat"
 
     def __init__(
-        self: Any, *, monospace: datatypes.BoolLike | None = None, word_wrap: datatypes.BoolLike | None = None
+        self: Any, *, monospace: encodings.BoolLike | None = None, word_wrap: encodings.BoolLike | None = None
     ) -> None:
         """
         Create a new instance of the TextDocumentFormat archetype.
@@ -78,8 +78,8 @@ class TextDocumentFormat(Archetype):
         cls,
         *,
         clear_unset: bool = False,
-        monospace: datatypes.BoolLike | None = None,
-        word_wrap: datatypes.BoolLike | None = None,
+        monospace: encodings.BoolLike | None = None,
+        word_wrap: encodings.BoolLike | None = None,
     ) -> TextDocumentFormat:
         """
         Update only some specific fields of a `TextDocumentFormat`.

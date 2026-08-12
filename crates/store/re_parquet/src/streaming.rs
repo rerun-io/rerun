@@ -16,7 +16,7 @@ use re_log::ResultExt as _;
 // Component: for KeyValuePairs::name(), ComponentBatch: for .try_serialized()
 use re_sdk_types::{
     Component as _, ComponentBatch as _, ComponentDescriptor, ComponentIdentifier,
-    InvalidComponentIdentifierError, datatypes,
+    InvalidComponentIdentifierError, encodings,
 };
 
 use crate::config::{ColumnGrouping, ParquetConfig};
@@ -418,9 +418,9 @@ fn build_metadata_chunk(metadata: &parquet::file::metadata::ParquetMetaData) -> 
         return None;
     }
 
-    let pairs: Vec<datatypes::Utf8Pair> = kv_metadata
+    let pairs: Vec<encodings::Utf8Pair> = kv_metadata
         .iter()
-        .map(|kv| datatypes::Utf8Pair {
+        .map(|kv| encodings::Utf8Pair {
             first: kv.key.clone().into(),
             second: kv.value.clone().unwrap_or_default().into(),
         })

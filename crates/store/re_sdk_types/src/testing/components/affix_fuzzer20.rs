@@ -23,10 +23,10 @@ use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 #[derive(Clone, Debug, Default, Eq, PartialEq, ::re_byte_size::SizeBytes)]
-pub struct AffixFuzzer20(pub crate::testing::datatypes::PrimitiveAndString);
+pub struct AffixFuzzer20(pub crate::testing::encodings::PrimitiveAndString);
 
 impl ::re_types_core::WrapperComponent for AffixFuzzer20 {
-    type Datatype = crate::testing::datatypes::PrimitiveAndString;
+    type Encoding = crate::testing::encodings::PrimitiveAndString;
 
     #[inline]
     fn name() -> ComponentType {
@@ -34,38 +34,38 @@ impl ::re_types_core::WrapperComponent for AffixFuzzer20 {
     }
 
     #[inline]
-    fn into_inner(self) -> Self::Datatype {
+    fn into_inner(self) -> Self::Encoding {
         self.0
     }
 }
 
 ::re_types_core::macros::impl_into_cow!(AffixFuzzer20);
 
-impl<T: Into<crate::testing::datatypes::PrimitiveAndString>> From<T> for AffixFuzzer20 {
+impl<T: Into<crate::testing::encodings::PrimitiveAndString>> From<T> for AffixFuzzer20 {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl std::borrow::Borrow<crate::testing::datatypes::PrimitiveAndString> for AffixFuzzer20 {
+impl std::borrow::Borrow<crate::testing::encodings::PrimitiveAndString> for AffixFuzzer20 {
     #[inline]
-    fn borrow(&self) -> &crate::testing::datatypes::PrimitiveAndString {
+    fn borrow(&self) -> &crate::testing::encodings::PrimitiveAndString {
         &self.0
     }
 }
 
 impl std::ops::Deref for AffixFuzzer20 {
-    type Target = crate::testing::datatypes::PrimitiveAndString;
+    type Target = crate::testing::encodings::PrimitiveAndString;
 
     #[inline]
-    fn deref(&self) -> &crate::testing::datatypes::PrimitiveAndString {
+    fn deref(&self) -> &crate::testing::encodings::PrimitiveAndString {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for AffixFuzzer20 {
     #[inline]
-    fn deref_mut(&mut self) -> &mut crate::testing::datatypes::PrimitiveAndString {
+    fn deref_mut(&mut self) -> &mut crate::testing::encodings::PrimitiveAndString {
         &mut self.0
     }
 }

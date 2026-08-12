@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from .. import datatypes
+from .. import encodings
 from .._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,16 +14,16 @@ from .._baseclasses import (
 __all__ = ["Blob", "BlobBatch"]
 
 
-class Blob(datatypes.Blob, ComponentMixin):
+class Blob(encodings.Blob, ComponentMixin):
     """**Component**: A binary blob of data."""
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of BlobExt in blob_ext.py
 
-    # Note: there are no fields here because Blob delegates to datatypes.Blob
+    # Note: there are no fields here because Blob delegates to encodings.Blob
 
 
-class BlobBatch(datatypes.BlobBatch, ComponentBatchMixin):
+class BlobBatch(encodings.BlobBatch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.components.Blob"
 
 

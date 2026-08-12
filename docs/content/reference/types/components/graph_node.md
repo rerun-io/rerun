@@ -5,8 +5,8 @@ title: "GraphNode"
 
 A string-based ID representing a node in a graph.
 
-## Rerun datatype
-[`Utf8`](../datatypes/utf8.md)
+## Rerun encoding
+[`Utf8`](../encodings/utf8.md)
 
 
 ## Arrow datatype

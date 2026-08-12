@@ -8,5 +8,5 @@
 #[rerun(state = "stable")]
 pub struct LinearSpeed {
     /// Speed value in units of length per unit of time.
-    pub speed: rerun::datatypes::Float64,
+    pub speed: rerun::encodings::Float64,
 }

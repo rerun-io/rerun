@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any
 from ..error_utils import catch_and_log_exceptions
 
 if TYPE_CHECKING:
-    from .. import components, datatypes
+    from .. import components, encodings
 
 
 class GeoLineStringsExt:
@@ -16,8 +16,8 @@ class GeoLineStringsExt:
         self: Any,
         *,
         lat_lon: components.GeoLineStringArrayLike,
-        radii: datatypes.Float32ArrayLike | None = None,
-        colors: datatypes.Rgba32ArrayLike | None = None,
+        radii: encodings.Float32ArrayLike | None = None,
+        colors: encodings.Rgba32ArrayLike | None = None,
     ) -> None:
         """
         Create a new instance of the GeoLineStrings archetype.

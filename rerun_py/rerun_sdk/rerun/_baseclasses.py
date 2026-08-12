@@ -236,7 +236,7 @@ class BaseBatch(Generic[T]):
 
         Subclasses must provide an implementation of this method (via an override) if they are to be used as either
         an archetype's field (which should be the case for all components), or a (delegating) component's field (for
-        datatypes). Datatypes which are used only within other datatypes may omit implementing this method, provided
+        encodings). Encodings which are used only within other encodings may omit implementing this method, provided
         that the top-level datatype implements it.
 
         A hand-coded override must be provided for the code generator to implement this method. The override must be

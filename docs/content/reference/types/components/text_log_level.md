@@ -13,8 +13,8 @@ Recommended to be one of:
 * `"DEBUG"`
 * `"TRACE"`
 
-## Rerun datatype
-[`Utf8`](../datatypes/utf8.md)
+## Rerun encoding
+[`Utf8`](../encodings/utf8.md)
 
 
 ## Arrow datatype

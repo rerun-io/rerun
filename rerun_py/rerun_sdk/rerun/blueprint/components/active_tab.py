@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from ... import datatypes
+from ... import encodings
 from ..._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,7 +14,7 @@ from ..._baseclasses import (
 __all__ = ["ActiveTab", "ActiveTabBatch"]
 
 
-class ActiveTab(datatypes.EntityPath, ComponentMixin):
+class ActiveTab(encodings.EntityPath, ComponentMixin):
     """
     **Component**: The active tab in a tabbed container.
 
@@ -24,10 +24,10 @@ class ActiveTab(datatypes.EntityPath, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of ActiveTabExt in active_tab_ext.py
 
-    # Note: there are no fields here because ActiveTab delegates to datatypes.EntityPath
+    # Note: there are no fields here because ActiveTab delegates to encodings.EntityPath
 
 
-class ActiveTabBatch(datatypes.EntityPathBatch, ComponentBatchMixin):
+class ActiveTabBatch(encodings.EntityPathBatch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.blueprint.components.ActiveTab"
 
 

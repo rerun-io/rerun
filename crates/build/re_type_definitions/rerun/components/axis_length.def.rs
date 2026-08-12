@@ -9,5 +9,5 @@
 #[rust(repr = "transparent")]
 #[rerun(state = "stable")]
 pub struct AxisLength {
-    pub length: rerun::datatypes::Float32,
+    pub length: rerun::encodings::Float32,
 }

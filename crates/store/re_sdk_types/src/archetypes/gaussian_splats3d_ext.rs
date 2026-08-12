@@ -3,7 +3,7 @@ use ply_rs_bw::ply::{Addable as _, ElementDef, Property, PropertyAccess, Propert
 
 use super::GaussianSplats3D;
 use crate::components::{Color, Position3D, RotationQuat, Scale3D, SphericalHarmonics3Rgb};
-use crate::datatypes::Quaternion;
+use crate::encodings::Quaternion;
 
 /// The names of the PLY properties used by 3D Gaussian Splatting (3DGS) training checkpoints,
 /// as produced by the reference INRIA implementation and most tools that followed it.
@@ -34,7 +34,7 @@ mod prop {
 }
 
 /// The number of spherical harmonics coefficients (RGB triples) we keep, i.e. degrees 1 through 3.
-const NUM_SH_COEFFICIENTS: usize = crate::datatypes::SphericalHarmonics3Rgb::NUM_COEFFICIENTS;
+const NUM_SH_COEFFICIENTS: usize = crate::encodings::SphericalHarmonics3Rgb::NUM_COEFFICIENTS;
 
 /// Where each value we read lands in [`Splat::values`].
 mod slot {
@@ -292,7 +292,7 @@ impl Splat {
                 f16::from_f32(self.values[slot::SH + 3 * coefficient + channel])
             })
         });
-        crate::datatypes::SphericalHarmonics3Rgb(coefficients).into()
+        crate::encodings::SphericalHarmonics3Rgb(coefficients).into()
     }
 }
 
@@ -447,7 +447,7 @@ mod tests {
 
     use super::{GaussianSplats3D, NUM_SH_COEFFICIENTS};
     use crate::components::{Color, Position3D, RotationQuat, Scale3D, SphericalHarmonics3Rgb};
-    use crate::datatypes::Quaternion;
+    use crate::encodings::Quaternion;
 
     fn centers(g: &GaussianSplats3D) -> Vec<Position3D> {
         g.centers

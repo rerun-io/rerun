@@ -1,6 +1,6 @@
 use re_sdk_types::archetypes::Arrows3D;
 use re_sdk_types::components::{ClassId, Color, Position3D, Radius, ShowLabels, Text, Vector3D};
-use re_sdk_types::datatypes::Vec3D;
+use re_sdk_types::encodings::Vec3D;
 use re_sdk_types::{Archetype as _, AsComponents as _, ComponentBatch as _};
 
 #[test]

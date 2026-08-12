@@ -1,5 +1,5 @@
 use re_sdk_types::archetypes::VoxelGridMap;
-use re_sdk_types::{Archetype as _, AsComponents as _, ComponentBatch as _, components, datatypes};
+use re_sdk_types::{Archetype as _, AsComponents as _, ComponentBatch as _, components, encodings};
 
 #[test]
 fn roundtrip() {
@@ -25,11 +25,11 @@ fn roundtrip() {
             .serialized(VoxelGridMap::descriptor_translation()),
         rotation_axis_angle: vec![components::RotationAxisAngle::new(
             [1.0, 0.0, 0.0],
-            datatypes::Angle::from_radians(0.5),
+            encodings::Angle::from_radians(0.5),
         )]
         .serialized(VoxelGridMap::descriptor_rotation_axis_angle()),
         quaternion: vec![components::RotationQuat::from(
-            datatypes::Quaternion::from_xyzw([0.0, 0.0, 0.0, 1.0]),
+            encodings::Quaternion::from_xyzw([0.0, 0.0, 0.0, 1.0]),
         )]
         .serialized(VoxelGridMap::descriptor_quaternion()),
         opacity: components::Opacity::from(0.5).serialized(VoxelGridMap::descriptor_opacity()),
@@ -42,11 +42,11 @@ fn roundtrip() {
         .with_values([0.1, 0.9])
         .with_colors([0xAA0000CC, 0x00BB00DD])
         .with_translation([1.0, 2.0, 3.0])
-        .with_rotation_axis_angle(datatypes::RotationAxisAngle::new(
+        .with_rotation_axis_angle(encodings::RotationAxisAngle::new(
             [1.0, 0.0, 0.0],
-            datatypes::Angle::from_radians(0.5),
+            encodings::Angle::from_radians(0.5),
         ))
-        .with_quaternion(datatypes::Quaternion::from_xyzw([0.0, 0.0, 0.0, 1.0]))
+        .with_quaternion(encodings::Quaternion::from_xyzw([0.0, 0.0, 0.0, 1.0]))
         .with_opacity(0.5)
         .with_value_range([0.0, 1.0])
         .with_colormap(components::Colormap::Turbo);

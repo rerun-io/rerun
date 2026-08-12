@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from ... import datatypes
+from ... import encodings
 from ..._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,7 +14,7 @@ from ..._baseclasses import (
 __all__ = ["Fps", "FpsBatch"]
 
 
-class Fps(datatypes.Float64, ComponentMixin):
+class Fps(encodings.Float64, ComponentMixin):
     """
     **Component**: Frames per second for a sequence timeline.
 
@@ -24,10 +24,10 @@ class Fps(datatypes.Float64, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of FpsExt in fps_ext.py
 
-    # Note: there are no fields here because Fps delegates to datatypes.Float64
+    # Note: there are no fields here because Fps delegates to encodings.Float64
 
 
-class FpsBatch(datatypes.Float64Batch, ComponentBatchMixin):
+class FpsBatch(encodings.Float64Batch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.blueprint.components.Fps"
 
 

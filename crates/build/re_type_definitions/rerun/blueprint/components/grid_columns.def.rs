@@ -9,5 +9,5 @@
 #[rerun(state = "unstable")]
 pub struct GridColumns {
     /// The number of columns.
-    pub columns: rerun::datatypes::UInt32,
+    pub columns: rerun::encodings::UInt32,
 }

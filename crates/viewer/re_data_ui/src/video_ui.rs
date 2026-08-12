@@ -764,7 +764,7 @@ pub enum VideoUi {
     Asset(
         Arc<Result<re_renderer::video::Video, VideoLoadError>>,
         Option<VideoTimestamp>,
-        re_sdk_types::datatypes::Blob,
+        re_sdk_types::encodings::Blob,
     ),
 }
 
@@ -774,7 +774,7 @@ impl VideoUi {
         entity_path: &re_log_types::EntityPath,
         blob_row_id: RowId,
         blob_component_descriptor: &ComponentDescriptor,
-        blob: &re_sdk_types::datatypes::Blob,
+        blob: &re_sdk_types::encodings::Blob,
         media_type: Option<&MediaType>,
         video_timestamp: Option<VideoTimestamp>,
     ) -> Option<Self> {

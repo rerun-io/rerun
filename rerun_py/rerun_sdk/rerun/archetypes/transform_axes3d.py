@@ -11,7 +11,7 @@ import numpy as np
 import pyarrow as pa
 from attrs import define, field
 
-from .. import components, datatypes
+from .. import components, encodings
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
@@ -21,7 +21,7 @@ from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
 
 if TYPE_CHECKING:
-    from ..blueprint.datatypes import VisualizerComponentMappingLike
+    from ..blueprint.encodings import VisualizerComponentMappingLike
 
 __all__ = ["TransformAxes3D"]
 
@@ -80,7 +80,7 @@ class TransformAxes3D(Archetype, VisualizableArchetype):
     NAME: ClassVar[str] = "rerun.archetypes.TransformAxes3D"
 
     def __init__(
-        self: Any, axis_length: datatypes.Float32Like, *, show_frame: datatypes.BoolLike | None = None
+        self: Any, axis_length: encodings.Float32Like, *, show_frame: encodings.BoolLike | None = None
     ) -> None:
         """
         Create a new instance of the TransformAxes3D archetype.
@@ -122,8 +122,8 @@ class TransformAxes3D(Archetype, VisualizableArchetype):
         cls,
         *,
         clear_unset: bool = False,
-        axis_length: datatypes.Float32Like | None = None,
-        show_frame: datatypes.BoolLike | None = None,
+        axis_length: encodings.Float32Like | None = None,
+        show_frame: encodings.BoolLike | None = None,
     ) -> TransformAxes3D:
         """
         Update only some specific fields of a `TransformAxes3D`.
@@ -183,8 +183,8 @@ class TransformAxes3D(Archetype, VisualizableArchetype):
     def columns(
         cls,
         *,
-        axis_length: datatypes.Float32ArrayLike | None = None,
-        show_frame: datatypes.BoolArrayLike | None = None,
+        axis_length: encodings.Float32ArrayLike | None = None,
+        show_frame: encodings.BoolArrayLike | None = None,
     ) -> ComponentColumnList:
         """
         Construct a new column-oriented component bundle.

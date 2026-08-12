@@ -4,7 +4,7 @@
 
 #include <rerun/archetypes/transform3d.hpp>
 
-namespace rrd = rerun::datatypes;
+namespace rrd = rerun::encodings;
 namespace rrc = rerun::components;
 using namespace rerun::archetypes;
 using ComponentBatch = rerun::ComponentBatch;

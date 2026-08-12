@@ -18,7 +18,7 @@ from .._baseclasses import (
 )
 
 if TYPE_CHECKING:
-    from .. import datatypes
+    from .. import encodings
 
 __all__ = [
     "ChannelMessageCounts",
@@ -54,7 +54,7 @@ class ChannelMessageCounts(ComponentMixin):
         # You can define your own __init__ function as a member of ChannelMessageCountsExt in channel_message_counts_ext.py
         self.__attrs_init__(counts=counts)
 
-    counts: list[datatypes.ChannelCountPair] = field()
+    counts: list[encodings.ChannelCountPair] = field()
     # The channel ID to message count pairs.
     #
     # (Docstring intentionally commented out to hide this field from the docs)

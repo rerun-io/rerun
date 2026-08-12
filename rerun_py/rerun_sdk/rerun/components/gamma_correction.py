@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from .. import datatypes
+from .. import encodings
 from .._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,7 +14,7 @@ from .._baseclasses import (
 __all__ = ["GammaCorrection", "GammaCorrectionBatch"]
 
 
-class GammaCorrection(datatypes.Float32, ComponentMixin):
+class GammaCorrection(encodings.Float32, ComponentMixin):
     """
     **Component**: A gamma correction value to be used with a scalar value or color.
 
@@ -28,10 +28,10 @@ class GammaCorrection(datatypes.Float32, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of GammaCorrectionExt in gamma_correction_ext.py
 
-    # Note: there are no fields here because GammaCorrection delegates to datatypes.Float32
+    # Note: there are no fields here because GammaCorrection delegates to encodings.Float32
 
 
-class GammaCorrectionBatch(datatypes.Float32Batch, ComponentBatchMixin):
+class GammaCorrectionBatch(encodings.Float32Batch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.components.GammaCorrection"
 
 

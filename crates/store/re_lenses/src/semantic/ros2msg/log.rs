@@ -6,7 +6,7 @@ use re_lenses_core::Selector;
 use re_lenses_core::combinators::Error;
 use re_sdk_types::ComponentDescriptor;
 use re_sdk_types::archetypes::TextLog;
-use re_sdk_types::datatypes::Rgba32;
+use re_sdk_types::encodings::Rgba32;
 
 use crate::semantic::helpers::get_field_as;
 

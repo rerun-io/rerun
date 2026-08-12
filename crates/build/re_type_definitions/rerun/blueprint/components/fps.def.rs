@@ -10,5 +10,5 @@
 #[rust(repr = "transparent")]
 #[rerun(state = "unstable")]
 pub struct Fps {
-    pub fps: rerun::datatypes::Float64,
+    pub fps: rerun::encodings::Float64,
 }

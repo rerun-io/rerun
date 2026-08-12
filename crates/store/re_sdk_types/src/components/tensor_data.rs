@@ -32,10 +32,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// which stores a contiguous array of typed values.
 #[derive(Clone, Debug, Default, PartialEq, ::re_byte_size::SizeBytes)]
 #[repr(transparent)]
-pub struct TensorData(pub crate::datatypes::TensorData);
+pub struct TensorData(pub crate::encodings::TensorData);
 
 impl ::re_types_core::WrapperComponent for TensorData {
-    type Datatype = crate::datatypes::TensorData;
+    type Encoding = crate::encodings::TensorData;
 
     #[inline]
     fn name() -> ComponentType {
@@ -43,38 +43,38 @@ impl ::re_types_core::WrapperComponent for TensorData {
     }
 
     #[inline]
-    fn into_inner(self) -> Self::Datatype {
+    fn into_inner(self) -> Self::Encoding {
         self.0
     }
 }
 
 ::re_types_core::macros::impl_into_cow!(TensorData);
 
-impl<T: Into<crate::datatypes::TensorData>> From<T> for TensorData {
+impl<T: Into<crate::encodings::TensorData>> From<T> for TensorData {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl std::borrow::Borrow<crate::datatypes::TensorData> for TensorData {
+impl std::borrow::Borrow<crate::encodings::TensorData> for TensorData {
     #[inline]
-    fn borrow(&self) -> &crate::datatypes::TensorData {
+    fn borrow(&self) -> &crate::encodings::TensorData {
         &self.0
     }
 }
 
 impl std::ops::Deref for TensorData {
-    type Target = crate::datatypes::TensorData;
+    type Target = crate::encodings::TensorData;
 
     #[inline]
-    fn deref(&self) -> &crate::datatypes::TensorData {
+    fn deref(&self) -> &crate::encodings::TensorData {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for TensorData {
     #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::TensorData {
+    fn deref_mut(&mut self) -> &mut crate::encodings::TensorData {
         &mut self.0
     }
 }

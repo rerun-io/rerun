@@ -20,5 +20,5 @@
 #[rust(repr = "transparent")]
 pub struct ViewCoordinates {
     /// The directions of the [x, y, z] axes.
-    pub coordinates: rerun::datatypes::ViewCoordinates,
+    pub coordinates: rerun::encodings::ViewCoordinates,
 }

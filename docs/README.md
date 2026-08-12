@@ -46,7 +46,7 @@ docs/content/
     types/                        # Auto-generated type docs (pixi run codegen)
       archetypes/                 #   e.g. points3d.md
       components/                 #   e.g. position3d.md
-      datatypes/                  #   e.g. vec3d.md
+      encodings/                  #   e.g. vec3d.md
       views/                      #   e.g. spatial3d_view.md
     viewer/                       # Viewer reference
   development/                    # Contributor docs

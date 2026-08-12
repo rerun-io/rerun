@@ -11,7 +11,7 @@ import numpy as np
 import pyarrow as pa
 from attrs import define, field
 
-from .. import components, datatypes
+from .. import components, encodings
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
@@ -21,7 +21,7 @@ from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
 
 if TYPE_CHECKING:
-    from ..blueprint.datatypes import VisualizerComponentMappingLike
+    from ..blueprint.encodings import VisualizerComponentMappingLike
 
 __all__ = ["LineStrips3D"]
 
@@ -185,11 +185,11 @@ class LineStrips3D(Archetype, VisualizableArchetype):
         self: Any,
         strips: components.LineStrip3DArrayLike,
         *,
-        radii: datatypes.Float32ArrayLike | None = None,
-        colors: datatypes.Rgba32ArrayLike | None = None,
-        labels: datatypes.Utf8ArrayLike | None = None,
-        show_labels: datatypes.BoolLike | None = None,
-        class_ids: datatypes.ClassIdArrayLike | None = None,
+        radii: encodings.Float32ArrayLike | None = None,
+        colors: encodings.Rgba32ArrayLike | None = None,
+        labels: encodings.Utf8ArrayLike | None = None,
+        show_labels: encodings.BoolLike | None = None,
+        class_ids: encodings.ClassIdArrayLike | None = None,
     ) -> None:
         """
         Create a new instance of the LineStrips3D archetype.
@@ -253,11 +253,11 @@ class LineStrips3D(Archetype, VisualizableArchetype):
         *,
         clear_unset: bool = False,
         strips: components.LineStrip3DArrayLike | None = None,
-        radii: datatypes.Float32ArrayLike | None = None,
-        colors: datatypes.Rgba32ArrayLike | None = None,
-        labels: datatypes.Utf8ArrayLike | None = None,
-        show_labels: datatypes.BoolLike | None = None,
-        class_ids: datatypes.ClassIdArrayLike | None = None,
+        radii: encodings.Float32ArrayLike | None = None,
+        colors: encodings.Rgba32ArrayLike | None = None,
+        labels: encodings.Utf8ArrayLike | None = None,
+        show_labels: encodings.BoolLike | None = None,
+        class_ids: encodings.ClassIdArrayLike | None = None,
     ) -> LineStrips3D:
         """
         Update only some specific fields of a `LineStrips3D`.
@@ -369,11 +369,11 @@ class LineStrips3D(Archetype, VisualizableArchetype):
         cls,
         *,
         strips: components.LineStrip3DArrayLike | None = None,
-        radii: datatypes.Float32ArrayLike | None = None,
-        colors: datatypes.Rgba32ArrayLike | None = None,
-        labels: datatypes.Utf8ArrayLike | None = None,
-        show_labels: datatypes.BoolArrayLike | None = None,
-        class_ids: datatypes.ClassIdArrayLike | None = None,
+        radii: encodings.Float32ArrayLike | None = None,
+        colors: encodings.Rgba32ArrayLike | None = None,
+        labels: encodings.Utf8ArrayLike | None = None,
+        show_labels: encodings.BoolArrayLike | None = None,
+        class_ids: encodings.ClassIdArrayLike | None = None,
     ) -> ComponentColumnList:
         """
         Construct a new column-oriented component bundle.

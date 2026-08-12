@@ -9,5 +9,5 @@
 #[rust(repr = "transparent")]
 #[rerun(state = "stable")]
 pub struct LatLon {
-    pub lat_lon: rerun::datatypes::DVec2D,
+    pub lat_lon: rerun::encodings::DVec2D,
 }

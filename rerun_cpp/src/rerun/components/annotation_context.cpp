@@ -3,7 +3,7 @@
 
 #include "annotation_context.hpp"
 
-#include "../datatypes/class_description_map_elem.hpp"
+#include "../encodings/class_description_map_elem.hpp"
 
 #include <arrow/builder.h>
 #include <arrow/type_fwd.h>
@@ -15,7 +15,7 @@ namespace rerun {
     ) {
         static const auto datatype = arrow::list(arrow::field(
             "item",
-            Loggable<rerun::datatypes::ClassDescriptionMapElem>::arrow_datatype(),
+            Loggable<rerun::encodings::ClassDescriptionMapElem>::arrow_datatype(),
             false
         ));
         return datatype;
@@ -64,7 +64,7 @@ namespace rerun {
             ARROW_RETURN_NOT_OK(builder->Append());
             if (element.class_map.data()) {
                 RR_RETURN_NOT_OK(
-                    Loggable<rerun::datatypes::ClassDescriptionMapElem>::fill_arrow_array_builder(
+                    Loggable<rerun::encodings::ClassDescriptionMapElem>::fill_arrow_array_builder(
                         value_builder,
                         element.class_map.data(),
                         element.class_map.size()

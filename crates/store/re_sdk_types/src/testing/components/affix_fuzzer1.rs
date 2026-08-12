@@ -23,10 +23,10 @@ use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 #[derive(Clone, Debug, Default, PartialEq, ::re_byte_size::SizeBytes)]
-pub struct AffixFuzzer1(pub crate::testing::datatypes::MixedFields);
+pub struct AffixFuzzer1(pub crate::testing::encodings::MixedFields);
 
 impl ::re_types_core::WrapperComponent for AffixFuzzer1 {
-    type Datatype = crate::testing::datatypes::MixedFields;
+    type Encoding = crate::testing::encodings::MixedFields;
 
     #[inline]
     fn name() -> ComponentType {
@@ -34,38 +34,38 @@ impl ::re_types_core::WrapperComponent for AffixFuzzer1 {
     }
 
     #[inline]
-    fn into_inner(self) -> Self::Datatype {
+    fn into_inner(self) -> Self::Encoding {
         self.0
     }
 }
 
 ::re_types_core::macros::impl_into_cow!(AffixFuzzer1);
 
-impl<T: Into<crate::testing::datatypes::MixedFields>> From<T> for AffixFuzzer1 {
+impl<T: Into<crate::testing::encodings::MixedFields>> From<T> for AffixFuzzer1 {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl std::borrow::Borrow<crate::testing::datatypes::MixedFields> for AffixFuzzer1 {
+impl std::borrow::Borrow<crate::testing::encodings::MixedFields> for AffixFuzzer1 {
     #[inline]
-    fn borrow(&self) -> &crate::testing::datatypes::MixedFields {
+    fn borrow(&self) -> &crate::testing::encodings::MixedFields {
         &self.0
     }
 }
 
 impl std::ops::Deref for AffixFuzzer1 {
-    type Target = crate::testing::datatypes::MixedFields;
+    type Target = crate::testing::encodings::MixedFields;
 
     #[inline]
-    fn deref(&self) -> &crate::testing::datatypes::MixedFields {
+    fn deref(&self) -> &crate::testing::encodings::MixedFields {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for AffixFuzzer1 {
     #[inline]
-    fn deref_mut(&mut self) -> &mut crate::testing::datatypes::MixedFields {
+    fn deref_mut(&mut self) -> &mut crate::testing::encodings::MixedFields {
         &mut self.0
     }
 }

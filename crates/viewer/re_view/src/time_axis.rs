@@ -6,7 +6,7 @@
 //! component maps to a window and back.
 
 use re_log_types::{AbsoluteTimeRange, TimeReal};
-use re_sdk_types::datatypes::{TimeInt, TimeRange, TimeRangeBoundary};
+use re_sdk_types::encodings::{TimeInt, TimeRange, TimeRangeBoundary};
 
 /// Resolve a `TimeAxis:view_range` into the absolute pan/zoom window it denotes.
 ///

@@ -11,5 +11,5 @@
 #[rust(repr = "transparent")]
 #[rerun(state = "unstable")]
 pub struct ViewerRecommendationHash {
-    pub value: rerun::datatypes::UInt64,
+    pub value: rerun::encodings::UInt64,
 }

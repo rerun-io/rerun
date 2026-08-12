@@ -9,5 +9,5 @@
 #[rust(repr = "transparent")]
 #[rerun(state = "stable")]
 pub struct VoxelValue {
-    pub value: rerun::datatypes::Float32,
+    pub value: rerun::encodings::Float32,
 }

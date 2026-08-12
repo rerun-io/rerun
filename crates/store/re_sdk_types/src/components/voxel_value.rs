@@ -34,10 +34,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
     ::re_byte_size::SizeBytes,
 )]
 #[repr(transparent)]
-pub struct VoxelValue(pub crate::datatypes::Float32);
+pub struct VoxelValue(pub crate::encodings::Float32);
 
 impl ::re_types_core::WrapperComponent for VoxelValue {
-    type Datatype = crate::datatypes::Float32;
+    type Encoding = crate::encodings::Float32;
 
     #[inline]
     fn name() -> ComponentType {
@@ -45,38 +45,38 @@ impl ::re_types_core::WrapperComponent for VoxelValue {
     }
 
     #[inline]
-    fn into_inner(self) -> Self::Datatype {
+    fn into_inner(self) -> Self::Encoding {
         self.0
     }
 }
 
 ::re_types_core::macros::impl_into_cow!(VoxelValue);
 
-impl<T: Into<crate::datatypes::Float32>> From<T> for VoxelValue {
+impl<T: Into<crate::encodings::Float32>> From<T> for VoxelValue {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl std::borrow::Borrow<crate::datatypes::Float32> for VoxelValue {
+impl std::borrow::Borrow<crate::encodings::Float32> for VoxelValue {
     #[inline]
-    fn borrow(&self) -> &crate::datatypes::Float32 {
+    fn borrow(&self) -> &crate::encodings::Float32 {
         &self.0
     }
 }
 
 impl std::ops::Deref for VoxelValue {
-    type Target = crate::datatypes::Float32;
+    type Target = crate::encodings::Float32;
 
     #[inline]
-    fn deref(&self) -> &crate::datatypes::Float32 {
+    fn deref(&self) -> &crate::encodings::Float32 {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for VoxelValue {
     #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Float32 {
+    fn deref_mut(&mut self) -> &mut crate::encodings::Float32 {
         &mut self.0
     }
 }

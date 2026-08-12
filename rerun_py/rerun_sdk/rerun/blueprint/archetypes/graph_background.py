@@ -9,7 +9,7 @@ from typing import Any, ClassVar
 
 from attrs import define, field
 
-from ... import components, datatypes
+from ... import components, encodings
 from ..._baseclasses import (
     Archetype,
     ComponentDescriptor,
@@ -29,7 +29,7 @@ class GraphBackground(Archetype):
 
     NAME: ClassVar[str] = "rerun.blueprint.archetypes.GraphBackground"
 
-    def __init__(self: Any, *, color: datatypes.Rgba32Like | None = None) -> None:
+    def __init__(self: Any, *, color: encodings.Rgba32Like | None = None) -> None:
         """
         Create a new instance of the GraphBackground archetype.
 
@@ -64,7 +64,7 @@ class GraphBackground(Archetype):
         cls,
         *,
         clear_unset: bool = False,
-        color: datatypes.Rgba32Like | None = None,
+        color: encodings.Rgba32Like | None = None,
     ) -> GraphBackground:
         """
         Update only some specific fields of a `GraphBackground`.

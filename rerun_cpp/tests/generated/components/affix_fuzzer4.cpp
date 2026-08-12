@@ -3,7 +3,7 @@
 
 #include "affix_fuzzer4.hpp"
 
-#include "../datatypes/mixed_fields.hpp"
+#include "../encodings/mixed_fields.hpp"
 
 #include <arrow/builder.h>
 #include <arrow/type_fwd.h>
@@ -12,7 +12,7 @@ namespace rerun::components {}
 
 namespace rerun {
     const std::shared_ptr<arrow::DataType>& Loggable<components::AffixFuzzer4>::arrow_datatype() {
-        static const auto datatype = Loggable<rerun::datatypes::MixedFields>::arrow_datatype();
+        static const auto datatype = Loggable<rerun::encodings::MixedFields>::arrow_datatype();
         return datatype;
     }
 

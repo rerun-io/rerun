@@ -30,7 +30,7 @@ from .common_arrays import (
 )
 
 if TYPE_CHECKING:
-    from rerun.datatypes import (
+    from rerun.encodings import (
         ClassIdArrayLike,
         Float32ArrayLike,
         KeypointIdArrayLike,

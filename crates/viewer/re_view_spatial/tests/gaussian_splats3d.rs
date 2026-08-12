@@ -5,11 +5,11 @@
 
 use re_log_types::TimePoint;
 use re_sdk_types::components::RotationAxisAngle;
-use re_sdk_types::datatypes::Angle;
+use re_sdk_types::encodings::Angle;
 use re_sdk_types::{
     RowId,
     archetypes::{GaussianSplats3D, InstancePoses3D},
-    datatypes::Quaternion,
+    encodings::Quaternion,
 };
 use re_test_context::TestContext;
 use re_test_context::external::egui_kittest::OsThreshold;

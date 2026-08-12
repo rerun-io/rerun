@@ -90,7 +90,7 @@ impl Chunk {
                         .map(|timeline| format!("{}: {}", timeline.name(), timeline.typ()))
                         .format(", "),
                 )
-            } else if !cl.same_datatypes(cr) {
+            } else if !cl.same_encodings(cr) {
                 format!(
                     "cannot concatenate chunks with different datatypes for shared components:\n{}\n{}",
                     cl.component_descriptors().format(", "),
@@ -325,7 +325,7 @@ impl Chunk {
     ///
     /// Ignores potential differences in component descriptors.
     #[inline]
-    pub fn same_datatypes(&self, rhs: &Self) -> bool {
+    pub fn same_encodings(&self, rhs: &Self) -> bool {
         self.components.values().all(|lhs_column| {
             if let Some(rhs_column) = rhs.components.get(lhs_column.descriptor.component) {
                 lhs_column.list_array.data_type() == rhs_column.list_array.data_type()
@@ -343,7 +343,7 @@ impl Chunk {
     /// * Use the same datatypes for the components they have in common.
     #[inline]
     pub fn concatenable(&self, rhs: &Self) -> bool {
-        self.same_entity_paths(rhs) && self.same_timelines(rhs) && self.same_datatypes(rhs)
+        self.same_entity_paths(rhs) && self.same_timelines(rhs) && self.same_encodings(rhs)
     }
 }
 

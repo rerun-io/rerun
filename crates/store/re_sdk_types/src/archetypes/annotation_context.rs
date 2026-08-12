@@ -30,7 +30,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// path-hierarchy when searching up through the ancestors of a given entity
 /// path.
 ///
-/// See also [`datatypes::ClassDescription`][crate::datatypes::ClassDescription].
+/// See also [`encodings::ClassDescription`][crate::encodings::ClassDescription].
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 ///

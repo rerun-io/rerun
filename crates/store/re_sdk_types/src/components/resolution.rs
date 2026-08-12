@@ -26,10 +26,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// Typically in integer units, but for some use cases floating point may be used.
 #[derive(Clone, Debug, Copy, PartialEq, ::re_byte_size::SizeBytes)]
-pub struct Resolution(pub crate::datatypes::Vec2D);
+pub struct Resolution(pub crate::encodings::Vec2D);
 
 impl ::re_types_core::WrapperComponent for Resolution {
-    type Datatype = crate::datatypes::Vec2D;
+    type Encoding = crate::encodings::Vec2D;
 
     #[inline]
     fn name() -> ComponentType {
@@ -37,38 +37,38 @@ impl ::re_types_core::WrapperComponent for Resolution {
     }
 
     #[inline]
-    fn into_inner(self) -> Self::Datatype {
+    fn into_inner(self) -> Self::Encoding {
         self.0
     }
 }
 
 ::re_types_core::macros::impl_into_cow!(Resolution);
 
-impl<T: Into<crate::datatypes::Vec2D>> From<T> for Resolution {
+impl<T: Into<crate::encodings::Vec2D>> From<T> for Resolution {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl std::borrow::Borrow<crate::datatypes::Vec2D> for Resolution {
+impl std::borrow::Borrow<crate::encodings::Vec2D> for Resolution {
     #[inline]
-    fn borrow(&self) -> &crate::datatypes::Vec2D {
+    fn borrow(&self) -> &crate::encodings::Vec2D {
         &self.0
     }
 }
 
 impl std::ops::Deref for Resolution {
-    type Target = crate::datatypes::Vec2D;
+    type Target = crate::encodings::Vec2D;
 
     #[inline]
-    fn deref(&self) -> &crate::datatypes::Vec2D {
+    fn deref(&self) -> &crate::encodings::Vec2D {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for Resolution {
     #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Vec2D {
+    fn deref_mut(&mut self) -> &mut crate::encodings::Vec2D {
         &mut self.0
     }
 }

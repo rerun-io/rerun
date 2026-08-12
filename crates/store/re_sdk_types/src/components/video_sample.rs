@@ -30,10 +30,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// Keyframes may require additional data, for details see [`components::VideoCodec`][crate::components::VideoCodec].
 #[derive(Clone, Debug, PartialEq, Eq, ::re_byte_size::SizeBytes)]
 #[repr(transparent)]
-pub struct VideoSample(pub crate::datatypes::Blob);
+pub struct VideoSample(pub crate::encodings::Blob);
 
 impl ::re_types_core::WrapperComponent for VideoSample {
-    type Datatype = crate::datatypes::Blob;
+    type Encoding = crate::encodings::Blob;
 
     #[inline]
     fn name() -> ComponentType {
@@ -41,38 +41,38 @@ impl ::re_types_core::WrapperComponent for VideoSample {
     }
 
     #[inline]
-    fn into_inner(self) -> Self::Datatype {
+    fn into_inner(self) -> Self::Encoding {
         self.0
     }
 }
 
 ::re_types_core::macros::impl_into_cow!(VideoSample);
 
-impl<T: Into<crate::datatypes::Blob>> From<T> for VideoSample {
+impl<T: Into<crate::encodings::Blob>> From<T> for VideoSample {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl std::borrow::Borrow<crate::datatypes::Blob> for VideoSample {
+impl std::borrow::Borrow<crate::encodings::Blob> for VideoSample {
     #[inline]
-    fn borrow(&self) -> &crate::datatypes::Blob {
+    fn borrow(&self) -> &crate::encodings::Blob {
         &self.0
     }
 }
 
 impl std::ops::Deref for VideoSample {
-    type Target = crate::datatypes::Blob;
+    type Target = crate::encodings::Blob;
 
     #[inline]
-    fn deref(&self) -> &crate::datatypes::Blob {
+    fn deref(&self) -> &crate::encodings::Blob {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for VideoSample {
     #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Blob {
+    fn deref_mut(&mut self) -> &mut crate::encodings::Blob {
         &mut self.0
     }
 }

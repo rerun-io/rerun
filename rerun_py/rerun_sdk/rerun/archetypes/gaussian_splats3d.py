@@ -11,7 +11,7 @@ import numpy as np
 import pyarrow as pa
 from attrs import define, field
 
-from .. import components, datatypes
+from .. import components, encodings
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
@@ -21,7 +21,7 @@ from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
 
 if TYPE_CHECKING:
-    from ..blueprint.datatypes import VisualizerComponentMappingLike
+    from ..blueprint.encodings import VisualizerComponentMappingLike
 
 __all__ = ["GaussianSplats3D"]
 
@@ -92,13 +92,13 @@ class GaussianSplats3D(Archetype, VisualizableArchetype):
 
     def __init__(
         self: Any,
-        centers: datatypes.Vec3DArrayLike,
+        centers: encodings.Vec3DArrayLike,
         *,
-        scales: datatypes.Vec3DArrayLike | None = None,
-        quaternions: datatypes.QuaternionArrayLike | None = None,
-        colors: datatypes.Rgba32ArrayLike | None = None,
-        sh_coefficients: datatypes.SphericalHarmonics3RgbArrayLike | None = None,
-        spherical_harmonics_degree: datatypes.UInt32Like | None = None,
+        scales: encodings.Vec3DArrayLike | None = None,
+        quaternions: encodings.QuaternionArrayLike | None = None,
+        colors: encodings.Rgba32ArrayLike | None = None,
+        sh_coefficients: encodings.SphericalHarmonics3RgbArrayLike | None = None,
+        spherical_harmonics_degree: encodings.UInt32Like | None = None,
     ) -> None:
         """
         Create a new instance of the GaussianSplats3D archetype.
@@ -162,12 +162,12 @@ class GaussianSplats3D(Archetype, VisualizableArchetype):
         cls,
         *,
         clear_unset: bool = False,
-        centers: datatypes.Vec3DArrayLike | None = None,
-        scales: datatypes.Vec3DArrayLike | None = None,
-        quaternions: datatypes.QuaternionArrayLike | None = None,
-        colors: datatypes.Rgba32ArrayLike | None = None,
-        sh_coefficients: datatypes.SphericalHarmonics3RgbArrayLike | None = None,
-        spherical_harmonics_degree: datatypes.UInt32Like | None = None,
+        centers: encodings.Vec3DArrayLike | None = None,
+        scales: encodings.Vec3DArrayLike | None = None,
+        quaternions: encodings.QuaternionArrayLike | None = None,
+        colors: encodings.Rgba32ArrayLike | None = None,
+        sh_coefficients: encodings.SphericalHarmonics3RgbArrayLike | None = None,
+        spherical_harmonics_degree: encodings.UInt32Like | None = None,
     ) -> GaussianSplats3D:
         """
         Update only some specific fields of a `GaussianSplats3D`.
@@ -274,12 +274,12 @@ class GaussianSplats3D(Archetype, VisualizableArchetype):
     def columns(
         cls,
         *,
-        centers: datatypes.Vec3DArrayLike | None = None,
-        scales: datatypes.Vec3DArrayLike | None = None,
-        quaternions: datatypes.QuaternionArrayLike | None = None,
-        colors: datatypes.Rgba32ArrayLike | None = None,
-        sh_coefficients: datatypes.SphericalHarmonics3RgbArrayLike | None = None,
-        spherical_harmonics_degree: datatypes.UInt32ArrayLike | None = None,
+        centers: encodings.Vec3DArrayLike | None = None,
+        scales: encodings.Vec3DArrayLike | None = None,
+        quaternions: encodings.QuaternionArrayLike | None = None,
+        colors: encodings.Rgba32ArrayLike | None = None,
+        sh_coefficients: encodings.SphericalHarmonics3RgbArrayLike | None = None,
+        spherical_harmonics_degree: encodings.UInt32ArrayLike | None = None,
     ) -> ComponentColumnList:
         """
         Construct a new column-oriented component bundle.

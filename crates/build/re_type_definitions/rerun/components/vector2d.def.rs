@@ -7,5 +7,5 @@
 #[rust(derive(Default, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable))]
 #[rust(repr = "transparent")]
 pub struct Vector2D {
-    pub vector: rerun::datatypes::Vec2D,
+    pub vector: rerun::encodings::Vec2D,
 }

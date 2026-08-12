@@ -3,7 +3,7 @@
 use re_log_types::{EntityPath, TimePoint, Timeline};
 use re_sdk_types::blueprint::archetypes::EyeControls3D;
 use re_sdk_types::components::Position3D;
-use re_sdk_types::datatypes::Angle;
+use re_sdk_types::encodings::Angle;
 use re_sdk_types::{archetypes, components};
 use re_test_context::TestContext;
 use re_test_context::VisualizerBlueprintContext as _;

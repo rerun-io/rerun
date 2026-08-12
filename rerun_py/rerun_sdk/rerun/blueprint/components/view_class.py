@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from ... import datatypes
+from ... import encodings
 from ..._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,7 +14,7 @@ from ..._baseclasses import (
 __all__ = ["ViewClass", "ViewClassBatch"]
 
 
-class ViewClass(datatypes.Utf8, ComponentMixin):
+class ViewClass(encodings.Utf8, ComponentMixin):
     """
     **Component**: The class identifier of view, e.g. `"2D"`, `"TextLog"`, ….
 
@@ -24,10 +24,10 @@ class ViewClass(datatypes.Utf8, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of ViewClassExt in view_class_ext.py
 
-    # Note: there are no fields here because ViewClass delegates to datatypes.Utf8
+    # Note: there are no fields here because ViewClass delegates to encodings.Utf8
 
 
-class ViewClassBatch(datatypes.Utf8Batch, ComponentBatchMixin):
+class ViewClassBatch(encodings.Utf8Batch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.blueprint.components.ViewClass"
 
 

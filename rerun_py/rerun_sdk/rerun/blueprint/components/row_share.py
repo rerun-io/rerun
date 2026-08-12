@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from ... import datatypes
+from ... import encodings
 from ..._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
@@ -14,7 +14,7 @@ from ..._baseclasses import (
 __all__ = ["RowShare", "RowShareBatch"]
 
 
-class RowShare(datatypes.Float32, ComponentMixin):
+class RowShare(encodings.Float32, ComponentMixin):
     """
     **Component**: The layout share of a row in the container.
 
@@ -24,10 +24,10 @@ class RowShare(datatypes.Float32, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of RowShareExt in row_share_ext.py
 
-    # Note: there are no fields here because RowShare delegates to datatypes.Float32
+    # Note: there are no fields here because RowShare delegates to encodings.Float32
 
 
-class RowShareBatch(datatypes.Float32Batch, ComponentBatchMixin):
+class RowShareBatch(encodings.Float32Batch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.blueprint.components.RowShare"
 
 

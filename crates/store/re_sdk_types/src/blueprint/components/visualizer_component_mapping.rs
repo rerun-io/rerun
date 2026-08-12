@@ -28,11 +28,11 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug, PartialEq, Eq, ::re_byte_size::SizeBytes)]
 pub struct VisualizerComponentMapping(
     /// The component mapping pairs.
-    pub crate::blueprint::datatypes::VisualizerComponentMapping,
+    pub crate::blueprint::encodings::VisualizerComponentMapping,
 );
 
 impl ::re_types_core::WrapperComponent for VisualizerComponentMapping {
-    type Datatype = crate::blueprint::datatypes::VisualizerComponentMapping;
+    type Encoding = crate::blueprint::encodings::VisualizerComponentMapping;
 
     #[inline]
     fn name() -> ComponentType {
@@ -40,14 +40,14 @@ impl ::re_types_core::WrapperComponent for VisualizerComponentMapping {
     }
 
     #[inline]
-    fn into_inner(self) -> Self::Datatype {
+    fn into_inner(self) -> Self::Encoding {
         self.0
     }
 }
 
 ::re_types_core::macros::impl_into_cow!(VisualizerComponentMapping);
 
-impl<T: Into<crate::blueprint::datatypes::VisualizerComponentMapping>> From<T>
+impl<T: Into<crate::blueprint::encodings::VisualizerComponentMapping>> From<T>
     for VisualizerComponentMapping
 {
     fn from(v: T) -> Self {
@@ -55,27 +55,27 @@ impl<T: Into<crate::blueprint::datatypes::VisualizerComponentMapping>> From<T>
     }
 }
 
-impl std::borrow::Borrow<crate::blueprint::datatypes::VisualizerComponentMapping>
+impl std::borrow::Borrow<crate::blueprint::encodings::VisualizerComponentMapping>
     for VisualizerComponentMapping
 {
     #[inline]
-    fn borrow(&self) -> &crate::blueprint::datatypes::VisualizerComponentMapping {
+    fn borrow(&self) -> &crate::blueprint::encodings::VisualizerComponentMapping {
         &self.0
     }
 }
 
 impl std::ops::Deref for VisualizerComponentMapping {
-    type Target = crate::blueprint::datatypes::VisualizerComponentMapping;
+    type Target = crate::blueprint::encodings::VisualizerComponentMapping;
 
     #[inline]
-    fn deref(&self) -> &crate::blueprint::datatypes::VisualizerComponentMapping {
+    fn deref(&self) -> &crate::blueprint::encodings::VisualizerComponentMapping {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for VisualizerComponentMapping {
     #[inline]
-    fn deref_mut(&mut self) -> &mut crate::blueprint::datatypes::VisualizerComponentMapping {
+    fn deref_mut(&mut self) -> &mut crate::blueprint::encodings::VisualizerComponentMapping {
         &mut self.0
     }
 }

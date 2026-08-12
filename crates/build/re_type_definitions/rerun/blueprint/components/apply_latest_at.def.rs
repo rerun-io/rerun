@@ -9,5 +9,5 @@
 #[rust(repr = "transparent")]
 #[rerun(state = "unstable")]
 pub struct ApplyLatestAt {
-    pub apply_latest_at: rerun::datatypes::Bool,
+    pub apply_latest_at: rerun::encodings::Bool,
 }

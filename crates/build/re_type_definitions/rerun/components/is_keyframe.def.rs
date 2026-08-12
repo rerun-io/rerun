@@ -15,5 +15,5 @@
 #[rust(repr = "transparent")]
 #[rerun(state = "stable")]
 pub struct IsKeyframe {
-    pub is_keyframe: rerun::datatypes::Bool,
+    pub is_keyframe: rerun::encodings::Bool,
 }

@@ -26,5 +26,5 @@
 #[rust(repr = "transparent")]
 #[rerun(state = "stable")]
 pub struct Color {
-    pub rgba: rerun::datatypes::Rgba32,
+    pub rgba: rerun::encodings::Rgba32,
 }

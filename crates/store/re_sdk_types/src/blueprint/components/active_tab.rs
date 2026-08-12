@@ -30,11 +30,11 @@ pub struct ActiveTab(
     /// Which tab is currently active.
     ///
     /// This should always correspond to a tab in the container.
-    pub crate::datatypes::EntityPath,
+    pub crate::encodings::EntityPath,
 );
 
 impl ::re_types_core::WrapperComponent for ActiveTab {
-    type Datatype = crate::datatypes::EntityPath;
+    type Encoding = crate::encodings::EntityPath;
 
     #[inline]
     fn name() -> ComponentType {
@@ -42,38 +42,38 @@ impl ::re_types_core::WrapperComponent for ActiveTab {
     }
 
     #[inline]
-    fn into_inner(self) -> Self::Datatype {
+    fn into_inner(self) -> Self::Encoding {
         self.0
     }
 }
 
 ::re_types_core::macros::impl_into_cow!(ActiveTab);
 
-impl<T: Into<crate::datatypes::EntityPath>> From<T> for ActiveTab {
+impl<T: Into<crate::encodings::EntityPath>> From<T> for ActiveTab {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl std::borrow::Borrow<crate::datatypes::EntityPath> for ActiveTab {
+impl std::borrow::Borrow<crate::encodings::EntityPath> for ActiveTab {
     #[inline]
-    fn borrow(&self) -> &crate::datatypes::EntityPath {
+    fn borrow(&self) -> &crate::encodings::EntityPath {
         &self.0
     }
 }
 
 impl std::ops::Deref for ActiveTab {
-    type Target = crate::datatypes::EntityPath;
+    type Target = crate::encodings::EntityPath;
 
     #[inline]
-    fn deref(&self) -> &crate::datatypes::EntityPath {
+    fn deref(&self) -> &crate::encodings::EntityPath {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for ActiveTab {
     #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::EntityPath {
+    fn deref_mut(&mut self) -> &mut crate::encodings::EntityPath {
         &mut self.0
     }
 }

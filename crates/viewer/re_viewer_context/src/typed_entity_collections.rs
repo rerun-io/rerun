@@ -14,7 +14,7 @@ use crate::ViewSystemIdentifier;
 ///
 /// Two components can be related on three different levels:
 /// * the *semantic* component type (e.g. `rerun.components.Position3D`),
-/// * the *encoding*, i.e. the Rerun datatype the component is built from (e.g. `rerun.datatypes.Vec3D`),
+/// * the *encoding*, i.e. the Rerun datatype the component is built from (e.g. `rerun.encodings.Vec3D`),
 /// * the *physical* Arrow datatype (e.g. `FixedSizeList(3 x non-null Float32)`).
 ///
 /// Only the semantic type and the Arrow datatype are known at runtime — the encoding isn't tracked
@@ -147,7 +147,7 @@ impl VisualizableReason {
     /// i.e. its semantics are *not* the ones the visualizer natively works with.
     ///
     /// For example, `GaussianSplats3D:scales` (`Scale3D`) matches the `Points3D:positions`
-    /// (`Position3D`) slot only physically, since both share the `rerun.datatypes.Vec3D` encoding.
+    /// (`Position3D`) slot only physically, since both share the `rerun.encodings.Vec3D` encoding.
     ///
     /// Unlike the negation of [`Self::full_native_match`], components that aren't part of this
     /// match at all are *not* reported as physical-only.

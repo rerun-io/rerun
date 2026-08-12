@@ -11,5 +11,5 @@
 #[rerun(state = "unstable")]
 pub struct PlaybackSpeed {
     /// 1.0 is default speed.
-    pub speed: rerun::datatypes::Float64,
+    pub speed: rerun::encodings::Float64,
 }

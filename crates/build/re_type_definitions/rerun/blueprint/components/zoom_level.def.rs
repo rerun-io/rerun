@@ -10,5 +10,5 @@
 #[rerun(state = "unstable")]
 pub struct ZoomLevel {
     /// Zoom level: 0 being the lowest zoom level (fully zoomed out) and 22 being the highest (fully zoomed in).
-    pub zoom: rerun::datatypes::Float64,
+    pub zoom: rerun::encodings::Float64,
 }

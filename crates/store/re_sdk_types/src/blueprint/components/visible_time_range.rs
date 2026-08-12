@@ -29,10 +29,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Debug, Default, PartialEq, Eq, ::re_byte_size::SizeBytes)]
 #[repr(transparent)]
-pub struct VisibleTimeRange(pub crate::datatypes::VisibleTimeRange);
+pub struct VisibleTimeRange(pub crate::encodings::VisibleTimeRange);
 
 impl ::re_types_core::WrapperComponent for VisibleTimeRange {
-    type Datatype = crate::datatypes::VisibleTimeRange;
+    type Encoding = crate::encodings::VisibleTimeRange;
 
     #[inline]
     fn name() -> ComponentType {
@@ -40,38 +40,38 @@ impl ::re_types_core::WrapperComponent for VisibleTimeRange {
     }
 
     #[inline]
-    fn into_inner(self) -> Self::Datatype {
+    fn into_inner(self) -> Self::Encoding {
         self.0
     }
 }
 
 ::re_types_core::macros::impl_into_cow!(VisibleTimeRange);
 
-impl<T: Into<crate::datatypes::VisibleTimeRange>> From<T> for VisibleTimeRange {
+impl<T: Into<crate::encodings::VisibleTimeRange>> From<T> for VisibleTimeRange {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl std::borrow::Borrow<crate::datatypes::VisibleTimeRange> for VisibleTimeRange {
+impl std::borrow::Borrow<crate::encodings::VisibleTimeRange> for VisibleTimeRange {
     #[inline]
-    fn borrow(&self) -> &crate::datatypes::VisibleTimeRange {
+    fn borrow(&self) -> &crate::encodings::VisibleTimeRange {
         &self.0
     }
 }
 
 impl std::ops::Deref for VisibleTimeRange {
-    type Target = crate::datatypes::VisibleTimeRange;
+    type Target = crate::encodings::VisibleTimeRange;
 
     #[inline]
-    fn deref(&self) -> &crate::datatypes::VisibleTimeRange {
+    fn deref(&self) -> &crate::encodings::VisibleTimeRange {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for VisibleTimeRange {
     #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::VisibleTimeRange {
+    fn deref_mut(&mut self) -> &mut crate::encodings::VisibleTimeRange {
         &mut self.0
     }
 }

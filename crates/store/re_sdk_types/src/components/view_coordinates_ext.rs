@@ -3,13 +3,13 @@
 // ----------------------------------------------------------------------------
 
 use super::ViewCoordinates;
-use crate::datatypes::{self, ViewDir};
+use crate::encodings::{self, ViewDir};
 use crate::view_coordinates::{Axis3, Handedness, Sign, SignedAxis3};
 
 impl ViewCoordinates {
     /// Construct a new `ViewCoordinates` from an array of [`ViewDir`]s.
     pub const fn new(x: ViewDir, y: ViewDir, z: ViewDir) -> Self {
-        Self(datatypes::ViewCoordinates([x, y, z]))
+        Self(encodings::ViewCoordinates([x, y, z]))
     }
 
     /// Chooses a coordinate system based on just an up-axis.
@@ -273,7 +273,7 @@ impl Default for ViewCoordinates {
 macro_rules! define_coordinates {
     ($docstring:literal, $name:ident => ($x:ident, $y:ident, $z:ident) ) => {
         #[doc = $docstring]
-        pub const $name: Self = Self(datatypes::ViewCoordinates([
+        pub const $name: Self = Self(encodings::ViewCoordinates([
             ViewDir::$x,
             ViewDir::$y,
             ViewDir::$z,

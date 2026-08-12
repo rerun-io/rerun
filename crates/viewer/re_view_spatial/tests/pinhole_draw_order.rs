@@ -230,7 +230,7 @@ fn solid_rgb_image(width: usize, height: usize, color: [u8; 3]) -> Image {
         image.index_axis_mut(ndarray::Axis(2), channel).fill(*value);
     }
 
-    Image::from_color_model_and_tensor(re_sdk_types::datatypes::ColorModel::RGB, image)
+    Image::from_color_model_and_tensor(re_sdk_types::encodings::ColorModel::RGB, image)
         .expect("failed to create test image")
 }
 

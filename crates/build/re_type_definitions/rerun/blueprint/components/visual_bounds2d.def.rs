@@ -9,5 +9,5 @@
 #[rerun(state = "unstable")]
 pub struct VisualBounds2D {
     /// X and y ranges that should be visible.
-    pub range2d: rerun::datatypes::Range2D,
+    pub range2d: rerun::encodings::Range2D,
 }

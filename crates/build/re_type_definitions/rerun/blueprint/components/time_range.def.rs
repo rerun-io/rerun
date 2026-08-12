@@ -8,5 +8,5 @@
 #[rust(repr = "transparent")]
 #[rerun(state = "unstable")]
 pub struct TimeRange {
-    pub time_range: rerun::datatypes::TimeRange,
+    pub time_range: rerun::encodings::TimeRange,
 }

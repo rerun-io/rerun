@@ -14,5 +14,5 @@
 #[rerun(state = "unstable")]
 pub struct VisualizerInstructionId {
     /// IDs of a single visualizer instruction.
-    pub visualizer: rerun::datatypes::Uuid,
+    pub visualizer: rerun::encodings::Uuid,
 }

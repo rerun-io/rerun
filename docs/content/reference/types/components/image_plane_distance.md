@@ -7,8 +7,8 @@ The distance from the camera origin to the image plane when the projection is sh
 
 This is only used for visualization purposes, and does not affect the projection itself.
 
-## Rerun datatype
-[`Float32`](../datatypes/float32.md)
+## Rerun encoding
+[`Float32`](../encodings/float32.md)
 
 
 ## Arrow datatype

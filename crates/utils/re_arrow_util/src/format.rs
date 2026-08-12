@@ -152,10 +152,14 @@ fn trim_name(name: &str) -> &str {
     name.trim()
         .trim_start_matches("rerun.archetypes.")
         .trim_start_matches("rerun.components.")
+        .trim_start_matches("rerun.encodings.")
+        // TODO(RR-5430): the `datatypes` spelling is still written to the wire; see `Tuid::ARROW_EXTENSION_NAME`.
         .trim_start_matches("rerun.datatypes.")
         .trim_start_matches("rerun.controls.")
         .trim_start_matches("rerun.blueprint.archetypes.")
         .trim_start_matches("rerun.blueprint.components.")
+        .trim_start_matches("rerun.blueprint.encodings.")
+        // TODO(RR-5430): the `datatypes` spelling is still written to the wire; see `Tuid::ARROW_EXTENSION_NAME`.
         .trim_start_matches("rerun.blueprint.datatypes.")
         .trim_start_matches("rerun.field.")
         .trim_start_matches("rerun.chunk.")

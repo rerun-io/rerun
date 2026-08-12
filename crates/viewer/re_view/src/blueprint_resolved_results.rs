@@ -8,7 +8,7 @@ use re_chunk_store::{LatestAtQuery, RangeQuery, UnitChunkShared};
 use re_log_types::hash::Hash64;
 use re_query::{LatestAtResults, RangeResults};
 use re_sdk_types::ComponentIdentifier;
-use re_sdk_types::blueprint::datatypes::ComponentSourceKind;
+use re_sdk_types::blueprint::encodings::ComponentSourceKind;
 use re_viewer_context::{QueryContext, typed_fallback_for};
 
 use crate::{
