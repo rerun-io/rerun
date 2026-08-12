@@ -268,7 +268,11 @@ impl Server {
 
                 blueprint
             })
-            .generate_entry_links(ENTRY_LINK_COLUMN_NAME, "id", self.origin.clone())
+            .generate_entry_links(
+                ENTRY_LINK_COLUMN_NAME.into(),
+                "id".into(),
+                self.origin.clone(),
+            )
             .prefilter(
                 col("entry_kind")
                     .in_list(
@@ -399,8 +403,8 @@ impl Server {
             blueprint
         })
         .generate_segment_links(
-            RECORDING_LINK_COLUMN_NAME,
-            ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
+            RECORDING_LINK_COLUMN_NAME.into(),
+            ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME.into(),
             self.origin.clone(),
             dataset.id(),
         )

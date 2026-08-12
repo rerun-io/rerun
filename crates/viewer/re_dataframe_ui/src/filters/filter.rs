@@ -55,9 +55,9 @@ pub trait Filter {
     fn on_commit(&mut self) {}
 }
 
-/// Concrete implementation of a [`Filter`] with static dispatch.
+/// Concrete implementation of a `Filter` with static dispatch.
 ///
-/// ## Why does this exists?
+/// ## Why does this exist?
 ///
 /// The obvious alternative would be some kind of `Box<dyn FilterTrait>` instead. After trying quite
 /// a bit, I decided that the complexity of this is not worth the advantages, which are non-obvious

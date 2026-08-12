@@ -2,6 +2,7 @@ use std::str::FromStr as _;
 
 use egui::{Frame, RichText, Ui};
 
+use re_sdk_types::blueprint::components::ColumnName;
 use re_ui::egui_ext::card_layout::CardLayout;
 use re_ui::{UiExt as _, UiLayout};
 use re_viewer_context::{AppContext, ViewStates};
@@ -12,7 +13,7 @@ use crate::datafusion_table_widget::{
 };
 use crate::display_record_batch::DisplayColumn;
 use crate::preview_renderer::RecordingPreviewRenderer;
-use crate::re_table_utils::TableConfig;
+use crate::re_table_utils::UiTableConfig;
 use crate::table_blueprint::TableBlueprint;
 
 /// Height of the segment preview area inside each card.
@@ -25,9 +26,10 @@ pub struct FlagChangeEvent {
 
 /// Shared parameters that are the same for every card in the grid.
 struct CardConfig<'a> {
-    table_config: &'a TableConfig,
+    table_config: &'a UiTableConfig,
     title_col_index: Option<usize>,
     url_col_index: Option<usize>,
+    segment_preview_column: Option<&'a ColumnName>,
     table_blueprint: &'a TableBlueprint,
     flagging_enabled: bool,
 }
@@ -40,7 +42,7 @@ pub fn cards_ui(
     ui: &mut Ui,
     columns: &Columns<'_>,
     display_record_batches: &[DisplayRecordBatch],
-    table_config: &TableConfig,
+    table_config: &UiTableConfig,
     table_blueprint: &TableBlueprint,
     view_renderer: Option<&RecordingPreviewRenderer<'_>>,
     view_states: &mut ViewStates,
@@ -53,12 +55,16 @@ pub fn cards_ui(
     // so we only need a direct name lookup here.
     let title_col_index = table_blueprint
         .grid_view_card_title
-        .as_deref()
+        .as_ref()
         .and_then(|name| lookup_column(columns, name, "Title"));
     let url_col_index = table_blueprint
         .url_column
-        .as_deref()
+        .as_ref()
         .and_then(|name| lookup_column(columns, name, "URL"));
+    let segment_preview_column = table_blueprint
+        .segment_preview_column
+        .as_ref()
+        .filter(|name| columns.index_by_physical_name(name).is_some());
 
     let tokens = ui.tokens();
     let card_spacing = tokens.table_grid_view_card_spacing;
@@ -78,6 +84,7 @@ pub fn cards_ui(
         table_config,
         title_col_index,
         url_col_index,
+        segment_preview_column,
         table_blueprint,
         flagging_enabled,
     };
@@ -113,9 +120,9 @@ pub fn cards_ui(
     flag_changes
 }
 
-/// Look up a column by its display name, warning once if it is missing.
-fn lookup_column(columns: &Columns<'_>, name: &str, kind: &str) -> Option<usize> {
-    let found = columns.find_index_by_display_name(name);
+/// Look up a column by its physical name, warning once if it is missing.
+fn lookup_column(columns: &Columns<'_>, name: &ColumnName, kind: &str) -> Option<usize> {
+    let found = columns.index_by_physical_name(name);
     if found.is_none() {
         re_log::warn_once!("{kind} column {name:?} was not found in the table.");
     }
@@ -142,6 +149,7 @@ fn card_content_ui(
         table_config,
         title_col_index,
         url_col_index,
+        segment_preview_column,
         table_blueprint,
         flagging_enabled,
     } = config;
@@ -206,7 +214,7 @@ fn card_content_ui(
         // Segment preview if any.
         // TODO(RR-4510): loading indication if we're not ready to draw
         if let Some(renderer) = view_renderer
-            && let Some(preview_column) = table_blueprint.segment_preview_column.as_deref()
+            && let Some(preview_column) = segment_preview_column
         {
             let preview_state = view_states.preview_state.get_or_insert_default();
             let (rect, _response) = ui.allocate_exact_size(
@@ -240,14 +248,14 @@ fn card_content_ui(
         }
 
         ui.horizontal_wrapped(|ui| {
-            for col_idx in table_config.visible_column_indexes() {
+            for column_name in table_config.visible_column_names() {
+                let Some(col_idx) = columns.index_by_physical_name(column_name) else {
+                    continue;
+                };
                 if Some(col_idx) == title_col_index {
                     continue; // already shown as the title
                 }
-                let col_name = columns
-                    .columns
-                    .get(col_idx)
-                    .map_or_else(String::new, |c| c.display_name());
+                let col_name = columns.columns[col_idx].display_name();
 
                 if let Some(column) = display_record_batch.columns().get(col_idx) {
                     ui.spacing_mut().item_spacing.x = 8.0;

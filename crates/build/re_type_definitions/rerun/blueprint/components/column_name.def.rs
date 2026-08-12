@@ -6,7 +6,15 @@
 #[python(aliases = "str")]
 #[python(array_aliases = "str | Sequence[str]")]
 #[rerun(scope = "blueprint")]
-#[rust(derive(PartialEq, Eq, PartialOrd, Ord, Hash))]
+#[rust(derive(
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    ::serde::Serialize,
+    ::serde::Deserialize
+))]
 #[rust(repr = "transparent")]
 #[rerun(state = "unstable")]
 pub struct ColumnName {

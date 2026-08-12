@@ -51,7 +51,7 @@ async fn test_ascending() {
                 DataFusionTableWidget::new(Arc::clone(&session_context), table_ref)
                     .title("Ascending")
                     .initial_blueprint(TableBlueprint {
-                        sort_by: Some(SortBy::ascending("col")),
+                        sort_by: Some(SortBy::ascending("col".into())),
                         ..Default::default()
                     })
                     .show(
@@ -80,7 +80,7 @@ async fn test_descending() {
                 DataFusionTableWidget::new(Arc::clone(&session_context), table_ref)
                     .title("Descending")
                     .initial_blueprint(TableBlueprint {
-                        sort_by: Some(SortBy::descending("col")),
+                        sort_by: Some(SortBy::descending("col".into())),
                         ..Default::default()
                     })
                     .show(

@@ -23,8 +23,8 @@ use re_async::AsyncRuntimeHandle;
 use re_mutex::Mutex;
 
 /// State of the streaming cache.
-#[derive(Debug, Clone)]
-pub enum CacheState {
+#[derive(Debug)]
+enum CacheState {
     NotStarted,
     Streaming,
     Complete(Arc<MemTable>),
@@ -146,11 +146,6 @@ impl StreamingCacheTableProvider {
     /// Get the current number of cached batches.
     pub fn cached_batch_count(&self) -> usize {
         self.cache.lock().lock().cached_batches.len()
-    }
-
-    /// Get the current cache state.
-    pub fn state(&self) -> CacheState {
-        self.cache.lock().lock().state.clone()
     }
 
     /// Background task: stream from [`TableProvider`] to cache.
@@ -357,7 +352,7 @@ impl ExecutionPlan for CachedStreamingExec {
 }
 
 /// A stream that yields cached batches, waiting for new ones as needed.
-pub struct CachedRecordBatchStream {
+struct CachedRecordBatchStream {
     cache: Arc<Mutex<StreamingCacheInner>>,
 
     /// Current read position in the cache.

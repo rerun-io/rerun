@@ -8,7 +8,7 @@ mod filters;
 mod header_tooltip;
 mod preview_renderer;
 mod re_table;
-pub mod re_table_utils;
+mod re_table_utils;
 mod requested_object;
 mod streaming_cache;
 mod table_blueprint;
@@ -18,12 +18,15 @@ pub use self::datafusion_table_widget::{DataFusionTableWidget, TableStatus};
 pub use self::display_record_batch::{DisplayRecordBatch, DisplayRecordBatchError};
 // for testing purposes
 pub use self::filters::{
-    ColumnFilter, ComparisonOperator, Filter, FloatFilter, IntFilter, NonNullableBooleanFilter,
+    ColumnFilter, ComparisonOperator, FloatFilter, IntFilter, NonNullableBooleanFilter,
     Nullability, NullableBooleanFilter, StringFilter, StringOperator, TimestampFilter, TypedFilter,
 };
 pub use self::header_tooltip::column_header_tooltip_ui;
+pub use self::re_table_utils::{
+    CELL_SEPARATOR_STROKE_OFFSET, apply_table_style_fixes, cell_ui, header_title, header_ui,
+};
 pub use self::requested_object::RequestedObject;
-pub use self::streaming_cache::{CacheState, StreamingCacheTableProvider};
+pub use self::streaming_cache::StreamingCacheTableProvider;
 pub use self::table_blueprint::{
     ColumnBlueprint, SortBy, SortDirection, TableBlueprint, default_display_name_for_column,
 };

@@ -25,7 +25,18 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Component**: The name of a column in a table.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, ::re_byte_size::SizeBytes)]
+#[derive(
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    ::serde::Serialize,
+    ::serde::Deserialize,
+    ::re_byte_size::SizeBytes,
+)]
 #[repr(transparent)]
 pub struct ColumnName(pub crate::encodings::Utf8);
 
