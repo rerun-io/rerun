@@ -208,10 +208,11 @@ class McapReader:
             Whether to recover a missing or invalid MCAP summary in memory. Our reader normally
             requires the summary + chunk index that live at the end of the file, so an interrupted
             recording (valid start, truncated tail, no footer/summary) fails to read. When `recover`
-            is set, the summary is reconstructed from a front-to-back scan instead: the incomplete
-            tail chunk/record is dropped with a warning, and any channel declared only in the
-            dropped tail is lost. The recovered statistics only count the channels and messages that
-            could be recovered. Healthy files are unaffected.
+            is set, the summary is reconstructed from a front-to-back scan instead. A chunk is
+            recovered in full even if the recording stopped part-way through the index records that
+            follow it, but a chunk or record whose own body is incomplete is dropped with a warning,
+            and any channel declared only inside it is lost. The recovered statistics only count the
+            channels and messages that could be recovered. Healthy files are unaffected.
 
         """
         self._internal = McapReaderInternal(

@@ -31,12 +31,6 @@ pub struct ScanResult {
     /// The set of channel ids referenced by any `MessageIndex` record.
     pub referenced_channels: BTreeSet<u16>,
 
-    /// Per-channel message count, summed from the entry counts of every scanned `MessageIndex`
-    /// record. Used to synthesize a `Statistics` record so downstream passes (notably
-    /// [`crate::util::collect_empty_channels`]) can short-circuit instead of re-scanning every
-    /// chunk on every read.
-    pub(crate) channel_message_counts: BTreeMap<u16, u64>,
-
     /// Whether any `Message` record was found in the data section outside a chunk. Recovery only
     /// rebuilds the chunk index, so such messages cannot be recovered.
     pub has_unchunked_messages: bool,
@@ -142,20 +136,20 @@ pub fn build_chunk_index(mcap: &[u8]) -> Result<ScanResult, Error> {
             }
 
             op::MESSAGE_INDEX => {
-                // Record the offset so `Summary::read_message_indexes` can find this index, and
-                // sum its entry count into the per-channel statistics.
-                if let Ok(records::Record::MessageIndex(index)) =
+                // Record the offset so `Summary::read_message_indexes` can find this index.
+                let Ok(records::Record::MessageIndex(index)) =
                     parse_record(op::MESSAGE_INDEX, body)
-                    && let Some(idx) = current_chunk
-                {
+                else {
+                    // Carrying on would leave this chunk short an index record, with nothing later
+                    // to tell us which one, so treat it as corruption and drop the tail.
+                    re_log::warn!("Failed to parse an MCAP message index; dropping the tail");
+                    break;
+                };
+                if let Some(idx) = current_chunk {
                     scan.chunk_indexes[idx]
                         .message_index_offsets
                         .insert(index.channel_id, off as u64);
                     scan.referenced_channels.insert(index.channel_id);
-                    *scan
-                        .channel_message_counts
-                        .entry(index.channel_id)
-                        .or_insert(0) += index.records.len() as u64;
                 }
             }
 
@@ -209,11 +203,12 @@ pub fn build_chunk_index(mcap: &[u8]) -> Result<ScanResult, Error> {
 /// definitions — which live *inside* chunks — via a [`RawMessageStream`] that decompresses chunks
 /// front-to-back only until every referenced channel is resolved (typically the first few chunks).
 ///
-/// The reconstruction is conservative: any chunk missing its message indexes (e.g. the truncated
-/// final chunk) is dropped, and any channel that could not be resolved (declared only inside a
-/// dropped chunk) is stripped from the remaining chunks. This guarantees the invariants the decode
-/// path relies on — every kept chunk has a non-empty `message_index_offsets`, and every referenced
-/// channel has a definition.
+/// The reconstruction is conservative: a chunk with no message indexes at all is dropped, and any
+/// channel that could not be resolved (declared only inside a dropped chunk) is stripped from the
+/// remaining chunks. This guarantees the invariants the decode path relies on — every kept chunk has
+/// a non-empty `message_index_offsets`, and every referenced channel has a definition.
+///
+/// The recovered statistics count the decodable messages — see [`channel_message_counts`].
 pub(crate) fn reconstruct_summary(mcap: &[u8]) -> Result<Summary, Error> {
     re_tracing::profile_function!();
 
@@ -295,16 +290,20 @@ pub(crate) fn reconstruct_summary(mcap: &[u8]) -> Result<Summary, Error> {
         chunk_indexes.retain(|chunk| !chunk.message_index_offsets.is_empty());
     }
 
-    // Recover a `Statistics` record from the scan. Prune the per-channel counts to the
-    // recovered channels: any channel we dropped is absent from `channels`, so its messages are not
-    // decodable and must not be reported in the recovered statistics.
-    let channel_message_counts: BTreeMap<u16, u64> = scan
-        .channel_message_counts
-        .into_iter()
-        .filter(|(id, _)| channels.contains_key(id))
-        .collect();
+    // Counting needs the resolved channels, so build the summary first and fill in its statistics.
+    let summary = Summary {
+        stats: None,
+        channels,
+        schemas,
+        chunk_indexes,
+        attachment_indexes: Vec::new(),
+        metadata_indexes: scan.metadata_indexes,
+    };
+
+    let channel_message_counts = channel_message_counts(mcap, &summary);
     let (message_start_time, message_end_time) =
-        chunk_indexes
+        summary
+            .chunk_indexes
             .iter()
             .fold((u64::MAX, 0_u64), |(lo, hi), chunk| {
                 (
@@ -314,13 +313,13 @@ pub(crate) fn reconstruct_summary(mcap: &[u8]) -> Result<Summary, Error> {
             });
     let stats = records::Statistics {
         message_count: channel_message_counts.values().copied().sum(),
-        schema_count: schemas.len() as u16,
-        channel_count: channels.len() as u32,
+        schema_count: summary.schemas.len() as u16,
+        channel_count: summary.channels.len() as u32,
         attachment_count: 0,
-        metadata_count: scan.metadata_indexes.len() as u32,
-        chunk_count: chunk_indexes.len() as u32,
+        metadata_count: summary.metadata_indexes.len() as u32,
+        chunk_count: summary.chunk_indexes.len() as u32,
         // If every chunk was dropped, the fold leaves `lo > hi`; normalize to zeroes.
-        message_start_time: if chunk_indexes.is_empty() {
+        message_start_time: if summary.chunk_indexes.is_empty() {
             0
         } else {
             message_start_time
@@ -331,12 +330,76 @@ pub(crate) fn reconstruct_summary(mcap: &[u8]) -> Result<Summary, Error> {
 
     Ok(Summary {
         stats: Some(stats),
-        channels,
-        schemas,
-        chunk_indexes,
-        attachment_indexes: Vec::new(),
-        metadata_indexes: scan.metadata_indexes,
+        ..summary
     })
+}
+
+/// Per-channel message counts for a reconstructed [`Summary`].
+///
+/// Messages on a channel we could not resolve are left out, since they are not decodable either.
+fn channel_message_counts(mcap: &[u8], summary: &Summary) -> BTreeMap<u16, u64> {
+    re_tracing::profile_function!();
+
+    let Some((last, rest)) = summary.chunk_indexes.split_last() else {
+        return BTreeMap::new();
+    };
+
+    // Only the final chunk can be short a `MessageIndex` record, so it is counted from its body.
+    let mut counts = counts_from_body(mcap, summary, last)
+        .or_else(|| counts_from_indexes(mcap, summary, last))
+        .unwrap_or_default();
+
+    for chunk in rest {
+        for (channel_id, count) in counts_from_indexes(mcap, summary, chunk).unwrap_or_default() {
+            *counts.entry(channel_id).or_default() += count;
+        }
+    }
+
+    counts
+}
+
+/// Counts the messages of one chunk from its `MessageIndex` entries, which needs no decompression.
+fn counts_from_indexes(
+    mcap: &[u8],
+    summary: &Summary,
+    chunk: &records::ChunkIndex,
+) -> Option<BTreeMap<u16, u64>> {
+    match summary.read_message_indexes(mcap, chunk) {
+        Ok(indexes) => Some(
+            indexes
+                .into_iter()
+                .map(|(channel, entries)| (channel.id, entries.len() as u64))
+                .collect(),
+        ),
+        Err(err) => {
+            re_log::warn_once!("Failed to read the message indexes of an MCAP chunk: {err}");
+            None
+        }
+    }
+}
+
+/// Counts the messages of one chunk from its body, decompressing it if necessary.
+///
+/// Use this only if the chunk's `MessageIndex` block is missing or incomplete
+/// (otherwise: [`counts_from_indexes`]).
+fn counts_from_body(
+    mcap: &[u8],
+    summary: &Summary,
+    chunk: &records::ChunkIndex,
+) -> Option<BTreeMap<u16, u64>> {
+    let messages = match summary.stream_chunk(mcap, chunk) {
+        Ok(messages) => messages,
+        Err(err) => {
+            re_log::warn_once!("Failed to read the messages of an MCAP chunk: {err}");
+            return None;
+        }
+    };
+
+    let mut counts = BTreeMap::new();
+    for msg in messages.flatten() {
+        *counts.entry(msg.channel.id).or_default() += 1;
+    }
+    Some(counts)
 }
 
 /// Reads an MCAP [`Summary`], falling back to `reconstruct_summary` when `recover` is set and the
@@ -505,32 +568,128 @@ mod tests {
         );
     }
 
-    #[test]
-    fn decode_parity_between_reconstructed_and_real_summary() {
+    /// Runs the per-message decode path with the given summary.
+    ///
+    /// Static chunks (e.g. the file-level statistics) are dropped, so callers only see that path.
+    fn decode(mcap: &[u8], summary: &mcap::Summary) -> Vec<re_chunk::Chunk> {
         use crate::decoders::{DecoderRegistry, TestEmitter, TopicFilter};
         use re_log_types::TimeType;
 
-        let (buffer, _ids) = healthy_mcap();
+        let plan = DecoderRegistry::all_with_raw_fallback()
+            .plan(mcap, summary, &TopicFilter::default())
+            .expect("plan");
+        let emitter = TestEmitter::default();
+        plan.run(mcap, summary, TimeType::TimestampNs, &*emitter)
+            .expect("run");
+        emitter
+            .finish()
+            .into_iter()
+            .filter(|chunk| !chunk.is_static())
+            .collect()
+    }
 
-        // Compare the per-message decode path (`read_message_indexes` + `stream_chunk`), which the
-        // reconstructed summary must drive identically to the real one. Static chunks (e.g. the
-        // file-level statistics) are filtered out so the comparison isolates the per-message path.
-        let run = |summary: &mcap::Summary| -> usize {
-            let plan = DecoderRegistry::all_with_raw_fallback()
-                .plan(&buffer, summary, &TopicFilter::default())
-                .expect("plan");
-            let emitter = TestEmitter::default();
-            plan.run(&buffer, summary, TimeType::TimestampNs, &*emitter)
-                .expect("run");
-            emitter.finish().iter().filter(|c| !c.is_static()).count()
-        };
+    #[test]
+    fn decode_parity_between_reconstructed_and_real_summary() {
+        let (buffer, _ids) = healthy_mcap();
 
         let real = crate::read_summary(io::Cursor::new(&buffer))
             .expect("read summary")
             .expect("summary present");
         let recovered = reconstruct_summary(&buffer).expect("reconstruct");
 
-        assert_eq!(run(&recovered), run(&real));
+        assert_eq!(
+            decode(&buffer, &recovered).len(),
+            decode(&buffer, &real).len()
+        );
+    }
+
+    /// Builds a healthy MCAP where both channels appear in all three chunks, so the final chunk has
+    /// two message indexes to cut between.
+    fn two_channels_per_chunk_mcap() -> Vec<u8> {
+        let cursor = io::Cursor::new(Vec::new());
+        let mut writer = mcap::Writer::new(cursor).expect("failed to create writer");
+        let id_a = writer
+            .add_channel(0, "/a", "raw", &Default::default())
+            .expect("add channel a");
+        let id_b = writer
+            .add_channel(0, "/b", "raw", &Default::default())
+            .expect("add channel b");
+
+        for chunk in 0..3 {
+            for (offset, channel_id) in [id_a, id_b].into_iter().enumerate() {
+                let log_time = chunk * 10 + offset as u64;
+                writer
+                    .write_to_known_channel(
+                        &mcap::records::MessageHeader {
+                            channel_id,
+                            sequence: 0,
+                            log_time,
+                            publish_time: log_time,
+                        },
+                        &[1, 2, 3],
+                    )
+                    .expect("write message");
+            }
+            writer.flush().expect("flush chunk");
+        }
+
+        writer.finish().expect("finish writer");
+        writer.into_inner().into_inner()
+    }
+
+    /// A recording interrupted while the final chunk's `MessageIndex` records were being written
+    /// still decodes every message of that chunk, because the chunk body itself is complete.
+    ///
+    // TODO(isaac): a channel whose *only* index record is the truncated one is still stripped from
+    // the reconstructed summary, and its messages are lost.
+    #[test]
+    fn truncated_mid_index_block_keeps_every_message_of_the_complete_chunk() {
+        let buffer = two_channels_per_chunk_mcap();
+
+        let real = crate::read_summary(io::Cursor::new(&buffer))
+            .expect("read summary")
+            .expect("summary present");
+        let last = real.chunk_indexes.last().expect("a chunk");
+
+        // Cut one byte into the second `MessageIndex` record of the final chunk, so that the chunk
+        // body and the first index record survive.
+        let mut index_offsets: Vec<u64> = last.message_index_offsets.values().copied().collect();
+        index_offsets.sort_unstable();
+        let [first_index, second_index, ..] = index_offsets.as_slice() else {
+            panic!("the final chunk needs at least two message indexes to cut between");
+        };
+        assert!(
+            *first_index >= last.chunk_start_offset + last.chunk_length,
+            "the index block must follow the chunk body"
+        );
+        let truncated = &buffer[..*second_index as usize + 1];
+
+        let recovered = reconstruct_summary(truncated).expect("reconstruct");
+        assert_eq!(
+            recovered.chunk_indexes.len(),
+            real.chunk_indexes.len(),
+            "every chunk body is complete, so none may be dropped"
+        );
+
+        let num_rows = |chunks: Vec<re_chunk::Chunk>| -> u64 {
+            chunks.iter().map(|chunk| chunk.num_rows() as u64).sum()
+        };
+        assert_eq!(
+            num_rows(decode(truncated, &recovered)),
+            num_rows(decode(&buffer, &real)),
+            "no message may be lost just because its `MessageIndex` record was not written"
+        );
+
+        // The statistics must agree with what the decode path produced.
+        let stats = recovered.stats.as_ref().expect("recovered stats");
+        assert_eq!(stats.message_count, num_rows(decode(truncated, &recovered)));
+        assert_eq!(
+            stats.channel_message_counts,
+            real.stats
+                .as_ref()
+                .expect("real stats")
+                .channel_message_counts
+        );
     }
 
     #[test]
