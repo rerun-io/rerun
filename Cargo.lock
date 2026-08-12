@@ -10104,6 +10104,7 @@ dependencies = [
  "serde",
  "serde_json",
  "similar-asserts",
+ "tempfile",
  "thiserror 2.0.19",
  "tokio",
  "uuid",

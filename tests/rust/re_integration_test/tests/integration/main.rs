@@ -3,6 +3,7 @@ mod add_visualizer_test;
 mod assets;
 mod basic_tests;
 mod blueprint_context_menu_test;
+mod blueprint_import_test;
 mod cards_view_flagging;
 mod check_focus_test;
 mod container_context_menu_test;
