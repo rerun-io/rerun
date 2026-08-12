@@ -1,5 +1,6 @@
 mod add_entity_to_view_test;
 mod add_visualizer_test;
+mod assets;
 mod basic_tests;
 mod blueprint_context_menu_test;
 mod cards_view_flagging;

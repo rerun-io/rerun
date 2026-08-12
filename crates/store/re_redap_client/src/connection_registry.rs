@@ -6,6 +6,7 @@ use std::sync::{Arc, OnceLock};
 
 use re_auth::Jwt;
 use re_auth::credentials::CredentialsProviderError;
+use re_byte_size::SizeBytes as _;
 use re_protos::cloud::v1alpha1::{EntryFilter, FindEntriesRequest, WhoAmIRequest};
 use re_uri::Origin;
 use tokio::sync::RwLock;
@@ -111,6 +112,30 @@ impl ConnectionRegistry {
     }
 }
 
+impl re_byte_size::MemUsageTreeCapture for ConnectionRegistry {
+    fn capture_mem_usage_tree(&self) -> re_byte_size::MemUsageTree {
+        let Self {
+            saved_credentials,
+            fallback_token,
+            remote_connections,
+            uri_errors,
+        } = self;
+
+        re_byte_size::MemUsageNode::default()
+            .with_child("saved_credentials", saved_credentials.total_size_bytes())
+            .with_child("fallback_token", fallback_token.total_size_bytes())
+            .with_child("remote_connections", remote_connections.total_size_bytes())
+            .with_child("uri_errors", uri_errors.total_size_bytes())
+            .into_tree()
+    }
+}
+
+impl re_byte_size::MemUsageTreeCapture for ConnectionRegistryHandle {
+    fn capture_mem_usage_tree(&self) -> re_byte_size::MemUsageTree {
+        wrap_blocking_lock(|| self.inner.blocking_read().capture_mem_usage_tree())
+    }
+}
+
 /// Possible errors when creating a connection.
 #[derive(Debug, thiserror::Error)]
 pub enum ClientCredentialsError {
@@ -155,7 +180,7 @@ pub struct ConnectionRegistryHandle {
     use_stored_credentials: bool,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, re_byte_size::SizeBytes)]
 pub enum Credentials {
     /// Explicit token
     Token(Jwt),
@@ -363,22 +388,26 @@ impl ConnectionRegistryHandle {
         let (client_stack, successful_credentials) =
             Self::try_connect_client_stack(origin.clone(), credentials_to_try.into_iter()).await?;
 
-        let connection = Connection {
-            client: RedapClient::new(crate::grpc::boxed_redap_grpc_client(client_stack.clone())),
-            analytics: Some(crate::ConnectionAnalyticsExporter::from_remote_service(
-                origin.clone(),
-                client_stack,
-            )),
-        };
-
         // We have a successful connection, so we cache it and remember about the successful token.
         //
         // Note: because we only acquire the lock now, a race is possible where two threads
         // concurrently attempt to create the connection and would override each-other's results. This
         // is acceptable since both should reach the same conclusion, and preferable that holding
         // the lock for the entire time, as the connection process can take a while.
-        {
+        let connection = {
             let mut inner = self.inner.write().await;
+
+            let connection = Connection {
+                client: RedapClient::new(
+                    crate::grpc::boxed_redap_grpc_client(client_stack.clone()),
+                    Some(crate::ChunkCacheHandle::default()),
+                ),
+                analytics: Some(crate::ConnectionAnalyticsExporter::from_remote_service(
+                    origin.clone(),
+                    client_stack,
+                )),
+            };
+
             inner
                 .remote_connections
                 .insert(origin.clone(), connection.clone());
@@ -394,7 +423,9 @@ impl ConnectionRegistryHandle {
                     inner.saved_credentials.remove(&origin);
                 }
             }
-        }
+
+            connection
+        };
 
         Ok(connection)
     }
@@ -722,6 +753,22 @@ impl ConnectionRegistryHandle {
                 && inner.fallback_token.is_none()
             {
                 inner.fallback_token = Some(fallback_token);
+            }
+        });
+    }
+
+    /// Clears all chunk caches.
+    pub fn purge_memory(&self) {
+        wrap_blocking_lock(|| {
+            // Each cache has its own lock, so purging them only needs a read lock on the registry.
+            let inner = self.inner.blocking_read();
+
+            #[expect(clippy::iter_over_hash_type)]
+            // Every cache is purged, so order isn't important.
+            for connection in inner.remote_connections.values() {
+                if let Some(cache) = connection.client.chunk_cache() {
+                    cache.write().purge_memory();
+                }
             }
         });
     }

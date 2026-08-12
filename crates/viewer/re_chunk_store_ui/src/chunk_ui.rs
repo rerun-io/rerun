@@ -9,6 +9,7 @@ use re_chunk_store::{Chunk, ChunkId};
 use re_log_types::{TimeInt, Timeline, TimestampFormat};
 use re_ui::{UiExt as _, list_item};
 
+use crate::chunk_store_ui::source_segments_ui;
 use crate::sort::{SortColumn, SortDirection, sortable_column_header_ui};
 use crate::toolbar_ui::{close_button_right_ui, copy_button_ui, info_toggle_button_ui};
 
@@ -284,6 +285,11 @@ impl ChunkUi {
             ui.list_item_flat_noninteractive(
                 list_item::PropertyContent::new("Entity")
                     .value_text(self.chunk.entity_path().to_string()),
+            );
+
+            ui.list_item_flat_noninteractive(
+                list_item::PropertyContent::new("Segment")
+                    .value_fn(|ui, _| source_segments_ui(ui, store, &self.chunk.id())),
             );
 
             ui.list_item_flat_noninteractive(

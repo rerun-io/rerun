@@ -497,6 +497,16 @@ impl RrdManifest {
         ChunkId::try_slice_from_arrow(&self.chunk_ids).unwrap()
     }
 
+    /// Returns all the chunk ids of a batch that has a [`Self::FIELD_CHUNK_ID`] column.
+    pub fn col_chunk_ids_of(batch: &RecordBatch) -> Option<&[ChunkId]> {
+        use re_arrow_util::ArrowArrayDowncastRef as _;
+
+        let array = batch
+            .column_by_name(Self::FIELD_CHUNK_ID)
+            .and_then(|array| array.downcast_array_ref::<FixedSizeBinaryArray>())?;
+        ChunkId::try_slice_from_arrow(array).ok()
+    }
+
     /// Returns the raw Arrow array for entity paths.
     #[inline]
     pub fn col_chunk_entity_path_raw(&self) -> &StringArray {

@@ -26,12 +26,12 @@ use re_protos::cloud::v1alpha1::rerun_cloud_service_server::{
 };
 use re_protos::cloud::v1alpha1::{
     CancelTasksRequest, CreateDatasetEntryRequest, DeleteEntryRequest, EntryFilter, EntryKind,
-    FetchChunksRequest, FindEntriesRequest, GetDatasetManifestSchemaRequest,
-    GetDatasetManifestSchemaResponse, GetDatasetSchemaRequest, GetRrdManifestResponse,
-    GetSegmentTableSchemaRequest, GetSegmentTableSchemaResponse, QueryDatasetResponse,
-    QueryTasksOnCompletionResponse, QueryTasksResponse, ReadDatasetEntryRequest,
-    ReadTableEntryRequest, RegisterWithDatasetResponse, RrdManifestKey, ScanSegmentTableRequest,
-    VersionRequest, WriteTableRequest,
+    FetchChunksRequest, FindEntriesRequest, GetAssetsForSegmentResponse,
+    GetDatasetManifestSchemaRequest, GetDatasetManifestSchemaResponse, GetDatasetSchemaRequest,
+    GetRrdManifestResponse, GetSegmentTableSchemaRequest, GetSegmentTableSchemaResponse,
+    QueryDatasetResponse, QueryTasksOnCompletionResponse, QueryTasksResponse,
+    ReadDatasetEntryRequest, ReadTableEntryRequest, RegisterWithDatasetResponse, RrdManifestKey,
+    ScanSegmentTableRequest, VersionRequest, WriteTableRequest,
 };
 use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, ScanParameters, SegmentId};
 use re_protos::common::v1alpha1::{DataframePart, TaskId};
@@ -39,6 +39,7 @@ use re_protos::external::prost::bytes::Bytes;
 use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_protos::{TypeConversionError, missing_field};
 use re_types_core::LayerName;
+use std::borrow::Cow;
 use std::sync::Arc;
 use tokio::sync::OnceCell;
 use tokio_stream::{Stream, StreamExt as _};
@@ -316,17 +317,41 @@ pub struct RedapClient<T> {
     /// with a different feature set, callers reconnect and get a fresh
     /// client (and a fresh cache).
     features: Arc<OnceCell<Vec<String>>>,
+
+    /// Cache of certain chunks, like asset chunks.
+    ///
+    /// `None` disables chunk caching.
+    chunk_cache: Option<crate::ChunkCacheHandle>,
+}
+
+impl<T> re_byte_size::SizeBytes for RedapClient<T> {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            inner: _,
+            features,
+            chunk_cache,
+        } = self;
+
+        features.get().map(|v| v.heap_size_bytes()).unwrap_or(0) + chunk_cache.heap_size_bytes()
+    }
 }
 
 impl<T> RedapClient<T> {
     /// Create a new [`Self`].
     ///
+    /// The `chunk_cache` is used to cache certain chunks, like from assets. Passing `None`
+    /// disables chunk caching.
+    ///
     /// This should not be used in the viewer, use [`crate::ConnectionRegistryHandle::client`]
     /// instead.
-    pub fn new(client: RerunCloudServiceClient<T>) -> Self {
+    pub fn new(
+        client: RerunCloudServiceClient<T>,
+        chunk_cache: Option<crate::ChunkCacheHandle>,
+    ) -> Self {
         Self {
             inner: client,
             features: Arc::new(OnceCell::new()),
+            chunk_cache,
         }
     }
 
@@ -335,6 +360,13 @@ impl<T> RedapClient<T> {
     //is using them.
     pub fn inner(&mut self) -> &mut RerunCloudServiceClient<T> {
         &mut self.inner
+    }
+
+    /// Marks this chunks for caching.
+    pub fn mark_asset_chunks(&self, chunk_ids: &[re_chunk::ChunkId]) {
+        if let Some(chunk_cache) = &self.chunk_cache {
+            chunk_cache.write().mark_chunks_cacheable(chunk_ids);
+        }
     }
 }
 
@@ -356,7 +388,7 @@ impl<T> std::fmt::Debug for RedapClient<T> {
 pub type ConnectionClient = RedapClient<BoxedRedapClientStack>;
 
 /// Connection capabilities for a redap origin.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, re_byte_size::SizeBytes)]
 pub struct Connection {
     pub client: ConnectionClient,
     pub analytics: Option<crate::ConnectionAnalyticsExporter>,
@@ -377,7 +409,7 @@ impl Connection {
             .max_decoding_message_size(crate::MAX_DECODING_MESSAGE_SIZE);
 
         Self {
-            client: RedapClient::new(client),
+            client: RedapClient::new(client, None),
             analytics: None,
         }
     }
@@ -392,6 +424,10 @@ where
     T::ResponseBody: Body<Data = Bytes> + std::marker::Send + 'static,
     <T::ResponseBody as Body>::Error: Into<StdError> + std::marker::Send,
 {
+    pub fn chunk_cache(&self) -> Option<&crate::ChunkCacheHandle> {
+        self.chunk_cache.as_ref()
+    }
+
     /// Uses the `/Version` endpoint for testing roundtrip time.
     #[tracing::instrument(level = "info", skip_all)]
     pub async fn ping(&mut self) -> ApiResult<()> {
@@ -926,6 +962,74 @@ where
             })
     }
 
+    /// Get the asset dataset that applies to a dataset, and the asset segments within it.
+    ///
+    /// Returns `None` if the dataset has no asset dataset, which means no assets were ever
+    /// registered for it.
+    #[tracing::instrument(level = "info", skip_all)]
+    pub async fn get_assets_for_segment(
+        &mut self,
+        dataset_id: EntryId,
+    ) -> ApiResult<Option<(EntryId, Vec<SegmentId>)>> {
+        let response = self
+            .inner()
+            .get_assets_for_segment(
+                tonic::Request::new(re_protos::cloud::v1alpha1::GetAssetsForSegmentRequest {})
+                    .with_entry_id(dataset_id),
+            )
+            .await
+            .map_err(|err| ApiError::tonic(err, "/GetAssetsForSegment failed"))?;
+
+        let stream = ApiResponseStream::from_tonic_response(response, "/GetAssetsForSegment");
+        let trace_id = stream.trace_id();
+
+        let mut stream = std::pin::pin!(stream);
+
+        let mut assets_entry = None;
+        let mut asset_segment_ids = Vec::new();
+
+        while let Some(response) = stream.next().await {
+            let response = response?;
+
+            // The asset dataset is repeated on every response, the segment ids are concatenated.
+            assets_entry = Some(
+                response
+                    .assets_entry
+                    .ok_or_else(|| {
+                        ApiError::deserialization_with_source(
+                            trace_id,
+                            missing_field!(GetAssetsForSegmentResponse, "assets_entry"),
+                            "missing field in /GetAssetsForSegment response",
+                        )
+                    })?
+                    .try_into()
+                    .map_err(|err| {
+                        ApiError::deserialization_with_source(
+                            trace_id,
+                            err,
+                            "failed parsing /GetAssetsForSegment response",
+                        )
+                    })?,
+            );
+
+            let segment_ids: Vec<SegmentId> = response
+                .asset_segment_ids
+                .into_iter()
+                .map(TryInto::try_into)
+                .try_collect()
+                .map_err(|err| {
+                    ApiError::deserialization_with_source(
+                        trace_id,
+                        err,
+                        "failed parsing /GetAssetsForSegment response",
+                    )
+                })?;
+            asset_segment_ids.extend(segment_ids);
+        }
+
+        Ok(assets_entry.map(|assets_entry| (assets_entry, asset_segment_ids)))
+    }
+
     /// Stream the [`RawRrdManifest`] parts of a recording as they arrive from the server.
     ///
     /// Each item in the returned stream is a manifest part (a slice of the full manifest).
@@ -1175,8 +1279,24 @@ where
         &mut self,
         record_batch: &RecordBatch,
     ) -> ApiResult<FetchChunksResponseStream> {
+        let (cached_chunks, to_fetch) = match &self.chunk_cache {
+            Some(chunk_cache) => chunk_cache.split_cached(record_batch),
+            None => (Vec::new(), Cow::Borrowed(record_batch)),
+        };
+
+        let cached = (!cached_chunks.is_empty()).then(|| {
+            Ok(re_protos::cloud::v1alpha1::FetchChunksResponse {
+                chunks: cached_chunks,
+            })
+        });
+        let cached_stream = tokio_stream::iter(cached);
+
+        if to_fetch.num_rows() == 0 {
+            return Ok(ApiResponseStream::new(cached_stream, None));
+        }
+
         let fetch_chunks_request = FetchChunksRequest {
-            chunk_infos: vec![DataframePart::from(record_batch)],
+            chunk_infos: vec![DataframePart::from(&*to_fetch)],
         };
 
         let mut req = tonic::Request::new(fetch_chunks_request);
@@ -1188,9 +1308,24 @@ where
             // NOTE: `ApiError::tonic` already extracts the trace-id from the error metadata.
             .map_err(|err| ApiError::tonic(err, "/FetchChunks failed"))?;
 
-        Ok(ApiResponseStream::from_tonic_response(
-            response,
-            "/FetchChunks",
+        let response = ApiResponseStream::from_tonic_response(response, "/FetchChunks");
+        let trace_id = response.trace_id();
+
+        let chunk_cache_handle = self.chunk_cache.clone();
+        let response = response.map(move |msg| {
+            if let Some(chunk_cache) = &chunk_cache_handle
+                && let Ok(msg) = &msg
+            {
+                chunk_cache.insert_cacheable(&msg.chunks);
+            }
+
+            msg
+        });
+
+        // Order does not have to be preserved, so fine to send cached first.
+        Ok(ApiResponseStream::new(
+            cached_stream.merge(response),
+            trace_id,
         ))
     }
 
@@ -1898,7 +2033,7 @@ mod tests {
         // `connect_lazy` succeeds without doing any I/O; the failure
         // would only surface when an RPC actually flows through.
         let channel = tonic::transport::Channel::from_static("http://127.0.0.1:1").connect_lazy();
-        let mut client = RedapClient::new(RerunCloudServiceClient::new(channel));
+        let mut client = RedapClient::new(RerunCloudServiceClient::new(channel), None);
 
         // Prime the cache exactly as a successful first-call would.
         client
@@ -1926,7 +2061,7 @@ mod tests {
     #[tokio::test]
     async fn features_cache_is_shared_across_clones() {
         let channel = tonic::transport::Channel::from_static("http://127.0.0.1:1").connect_lazy();
-        let client_a = RedapClient::new(RerunCloudServiceClient::new(channel));
+        let client_a = RedapClient::new(RerunCloudServiceClient::new(channel), None);
         let mut client_b = client_a.clone();
 
         client_a
@@ -1951,7 +2086,7 @@ mod tests {
     #[tokio::test]
     async fn supports_feature_returns_false_for_empty_features_list() {
         let channel = tonic::transport::Channel::from_static("http://127.0.0.1:1").connect_lazy();
-        let mut client = RedapClient::new(RerunCloudServiceClient::new(channel));
+        let mut client = RedapClient::new(RerunCloudServiceClient::new(channel), None);
 
         client
             .features

@@ -11,7 +11,7 @@ use re_redap_client::{ApiResult, ConnectionClient, ConnectionRegistry};
 use re_sdk_types::SegmentId;
 use re_server::ServerHandle;
 use re_uri::external::url::Host;
-pub use test_data::register_table_blueprint;
+pub use test_data::{register_asset, register_table_blueprint};
 // pub use viewer_section::GetSection;
 pub use viewer_section::ViewerSection;
 
@@ -96,6 +96,15 @@ impl TestServer {
 
     pub fn port(&self) -> u16 {
         self.port
+    }
+
+    /// For testing: get a reference to the injected errors, which can be used to make specific
+    /// gRPC endpoints fail.
+    pub fn injected_errors(&self) -> &re_server::InjectedErrors {
+        self.server_handle
+            .as_ref()
+            .expect("Server handle not initialized")
+            .injected_errors()
     }
 
     pub async fn client(&self) -> ApiResult<ConnectionClient> {

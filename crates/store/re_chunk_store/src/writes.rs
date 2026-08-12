@@ -78,6 +78,11 @@ impl ChunkStore {
             event_id: _,
         } = self;
 
+        // Every chunk of this manifest comes from the same segment, so they all share one id.
+        let segment_id = Arc::new(re_sdk_types::SegmentId::from(
+            rrd_manifest.store_id().recording_id(),
+        ));
+
         let native_static_map = rrd_manifest.static_map();
         chunks_lineage.extend(
             native_static_map
@@ -87,7 +92,10 @@ impl ChunkStore {
                     (
                         *chunk_id,
                         TrackedDirectChunkLineage {
-                            lineage: ChunkDirectLineage::RootFromManifest { is_static: true },
+                            lineage: ChunkDirectLineage::RootFromManifest {
+                                is_static: true,
+                                segment_id: segment_id.clone(),
+                            },
                             ref_count: 0,
                             descends_from_manifest: true,
                         },
@@ -112,7 +120,10 @@ impl ChunkStore {
                     (
                         *chunk_id,
                         TrackedDirectChunkLineage {
-                            lineage: ChunkDirectLineage::RootFromManifest { is_static: false },
+                            lineage: ChunkDirectLineage::RootFromManifest {
+                                is_static: false,
+                                segment_id: segment_id.clone(),
+                            },
                             ref_count: 0,
                             descends_from_manifest: true,
                         },
@@ -1910,6 +1921,110 @@ mod tests {
         Ok(())
     }
 
+    /// A manifest describing the store's own segment carries the same recording id as the store,
+    /// while a manifest for another segment describes an asset that was pulled into this store.
+    /// In both cases the lineage of the virtual chunks names the segment their manifest came from,
+    /// so inserted data can be traced back to the segment that holds it.
+    #[test]
+    fn manifest_marks_lineage_with_its_source_segment() -> anyhow::Result<()> {
+        re_log::setup_logging();
+
+        let own_segment = "segment_of_this_store";
+        let asset_segment = "segment_of_the_asset";
+
+        let store_id = re_log_types::StoreId::new(
+            re_log_types::StoreKind::Recording,
+            "dataset_entry_id",
+            own_segment,
+        );
+        let mut store = ChunkStore::new(store_id.clone(), Default::default());
+
+        let entity_path = EntityPath::from("this/that");
+        let tl = Timeline::new_sequence("frame");
+        let point = MyPoint::new(1.0, 1.0);
+
+        // A temporal and a static chunk, so both lineage paths of `insert_rrd_manifest` are covered.
+        let chunks = |timepoint: TimePoint| -> anyhow::Result<Vec<Arc<Chunk>>> {
+            Ok(vec![
+                Arc::new(
+                    Chunk::builder(entity_path.clone())
+                        .with_component_batch(
+                            RowId::new(),
+                            timepoint,
+                            (MyPoints::descriptor_points(), &[point] as _),
+                        )
+                        .build()?,
+                ),
+                Arc::new(
+                    Chunk::builder(entity_path.clone())
+                        .with_component_batch(
+                            RowId::new(),
+                            TimePoint::STATIC,
+                            (MyPoints::descriptor_points(), &[point] as _),
+                        )
+                        .build()?,
+                ),
+            ])
+        };
+
+        let own_chunks = chunks(TimePoint::from_iter([(tl, 10)]))?;
+        let asset_chunks = chunks(TimePoint::from_iter([(tl, 20)]))?;
+
+        // Both manifests were written by the recording SDK, so they name the logging application
+        // rather than the dataset the store was opened from.
+        let own_manifest_store_id = re_log_types::StoreId::new(
+            re_log_types::StoreKind::Recording,
+            "recorded_app",
+            own_segment,
+        );
+        let asset_store_id = re_log_types::StoreId::new(
+            re_log_types::StoreKind::Recording,
+            "recorded_app",
+            asset_segment,
+        );
+        let expected_own_segment =
+            re_sdk_types::SegmentId::from(own_manifest_store_id.recording_id());
+        let expected_asset_segment = re_sdk_types::SegmentId::from(asset_store_id.recording_id());
+
+        _ = store.insert_rrd_manifest(re_log_encoding::RrdManifest::build_in_memory_from_chunks(
+            own_manifest_store_id,
+            own_chunks.iter().map(|chunk| &**chunk),
+        )?);
+        _ = store.insert_rrd_manifest(re_log_encoding::RrdManifest::build_in_memory_from_chunks(
+            asset_store_id,
+            asset_chunks.iter().map(|chunk| &**chunk),
+        )?);
+
+        let segment_of = |chunk: &Chunk| match &store
+            .chunks_lineage
+            .get(&chunk.id())
+            .expect("every chunk in a manifest gets a lineage")
+            .lineage
+        {
+            ChunkDirectLineage::RootFromManifest { segment_id, .. } => (**segment_id).clone(),
+            other => panic!("expected a manifest root, got {other:?}"),
+        };
+
+        for chunk in &own_chunks {
+            assert_eq!(segment_of(chunk), expected_own_segment);
+            assert_eq!(
+                store.find_source_segments(&chunk.id()),
+                std::iter::once(expected_own_segment.clone()).collect(),
+                "a manifest for the store's own segment names that segment"
+            );
+        }
+        for chunk in &asset_chunks {
+            assert_eq!(segment_of(chunk), expected_asset_segment);
+            assert_eq!(
+                store.find_source_segments(&chunk.id()),
+                std::iter::once(expected_asset_segment.clone()).collect(),
+                "a manifest for another segment is an asset, named after that segment"
+            );
+        }
+
+        Ok(())
+    }
+
     #[test]
     fn row_id_min_overwrites() -> anyhow::Result<()> {
         re_log::setup_logging();
@@ -2283,7 +2398,10 @@ mod tests {
             (
                 manifest_root,
                 TrackedDirectChunkLineage {
-                    lineage: ChunkDirectLineage::RootFromManifest { is_static: false },
+                    lineage: ChunkDirectLineage::RootFromManifest {
+                        is_static: false,
+                        segment_id: Arc::new("some_segment".into()),
+                    },
                     ref_count: 1,
                     descends_from_manifest: true,
                 },
