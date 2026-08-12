@@ -57,7 +57,8 @@ fn setup_scene(test_context: &mut TestContext, use_explicit_frames: bool) {
         [(0.2, 0.4, 0.2), (0.2, 0.2, 0.4), (0.4, 0.2, 0.2)],
     )
     .with_colors([0xFF0000FF, 0x00FF00FF, 0x0000FFFF])
-    .with_fill_mode(components::FillMode::Solid);
+    .with_fill_mode(components::FillMode::Solid)
+    .with_labels(["red", "green", "blue"]);
 
     let origin_transform = archetypes::Transform3D::from_rotation(RotationAxisAngle::new(
         glam::Vec3::Z,

@@ -3,8 +3,8 @@ use egui::{Align2, Pos2, Rect, Shape, Vec2, pos2, vec2};
 use macaw::IsoTransform;
 use re_chunk_store::MissingChunkReporter;
 use re_log::ResultExt as _;
-use re_renderer::view_builder::{Projection, TargetConfiguration, ViewBuilder};
-use re_renderer::{LineDrawableBuilder, ViewPickingConfiguration};
+use re_renderer::LineDrawableBuilder;
+use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
 use re_sdk_types::blueprint::archetypes::{
     Background, NearClipPlane, SpatialInformation, VisualBounds2D,
 };
@@ -289,7 +289,6 @@ impl SpatialView2D {
             &query.space_origin.to_string(),
             query.highlights.any_outlines(),
             state.pinhole_at_origin.as_ref(),
-            None,
         ) else {
             return Ok(Default::default());
         };
@@ -299,6 +298,7 @@ impl SpatialView2D {
             &collect_ui_labels(&system_output),
             ui_from_scene,
             ui2d_from_world(&target_config, ui_rect),
+            target_config.view_from_world,
             ui,
             &query.highlights,
             SpaceKind::TwoD,
@@ -421,7 +421,6 @@ fn setup_target_config(
     space_name: &str,
     any_outlines: bool,
     scene_pinhole: Option<&Pinhole>,
-    picking_config: Option<ViewPickingConfiguration>,
 ) -> anyhow::Result<TargetConfiguration> {
     // ⚠️ When changing this code, make sure to run `tests/rust/test_pinhole_projection`.
 
@@ -469,7 +468,7 @@ fn setup_target_config(
     let focal_length = pinhole.focal_length_in_pixels();
     let focal_length = 2.0 / (1.0 / focal_length.x + 1.0 / focal_length.y); // harmonic mean (lack of anamorphic support)
 
-    let projection_from_view = Projection::Perspective {
+    let projection_from_view = re_renderer::view_builder::Projection::Perspective {
         vertical_fov: pinhole.fov_y(),
         near_plane_distance: near_clip_plane * focal_length / 500.0, // TODO(#8373): The need to scale this by 500 is quite hacky.
         aspect_ratio: pinhole.aspect_ratio(),
@@ -513,7 +512,7 @@ fn setup_target_config(
             pixels_per_point,
             outline_config: any_outlines.then(|| re_view::outline_config(egui_painter.ctx())),
             blend_with_background: re_renderer::BlendWithBackground::No,
-            picking_config,
+            picking_config: None,
         }
     })
 }

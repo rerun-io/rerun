@@ -200,14 +200,20 @@ pub fn create_labels(
     labels: &[UiLabel],
     ui_from_scene: egui::emath::RectTransform,
     ui_from_world_3d: glam::Mat4,
+    view_from_world_3d: macaw::IsoTransform,
     parent_ui: &egui::Ui,
     highlights: &ViewHighlights,
     spatial_kind: SpaceKind,
 ) -> (Vec<egui::Shape>, Vec<PickableUiRect>) {
     re_tracing::profile_function!();
 
-    let resolved_labels =
-        resolve_label_positions(labels, &ui_from_scene, &ui_from_world_3d, spatial_kind);
+    let resolved_labels = resolve_label_positions(
+        labels,
+        &ui_from_scene,
+        &ui_from_world_3d,
+        view_from_world_3d,
+        spatial_kind,
+    );
 
     // When there are many visible multi-line labels, collapse them to their
     // first line to reduce visual clutter.
@@ -359,6 +365,7 @@ fn resolve_label_positions(
     labels: &[UiLabel],
     ui_from_scene: &egui::emath::RectTransform,
     ui_from_world_3d: &glam::Mat4,
+    view_from_world_3d: macaw::IsoTransform,
     spatial_kind: SpaceKind,
 ) -> Vec<(UiLabel, f32, egui::Pos2)> {
     let viewport = ui_from_scene.to().expand(100.0);
@@ -400,10 +407,10 @@ fn resolve_label_positions(
         resolved.push((label.clone(), wrap_width, text_anchor_pos));
     }
 
-    // clip space, w = -z_view
+    // Closest last (painters algorithm)
     resolved.sort_by_key(|(label, _, _)| {
         if let UiLabelTarget::Position3D(pos) = label.target {
-            OrderedFloat::from(-(*ui_from_world_3d * pos.extend(1.0)).w)
+            OrderedFloat::from(view_from_world_3d.transform_point3(pos).z)
         } else {
             OrderedFloat::from(0.0)
         }

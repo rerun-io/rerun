@@ -227,6 +227,7 @@ impl SpatialView3D {
             &collect_ui_labels(&system_output),
             RectTransform::from_to(ui_rect, ui_rect),
             eye.ui_from_world(ui_rect),
+            eye.world_from_rub_view.inverse(),
             ui,
             highlights,
             SpaceKind::ThreeD,
