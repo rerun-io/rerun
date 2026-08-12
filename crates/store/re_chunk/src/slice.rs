@@ -4,6 +4,7 @@ use arrow::array::{
 };
 use itertools::Itertools as _;
 use nohash_hasher::IntSet;
+use re_arrow_util::ListArrayExt as _;
 use re_log_types::TimelineName;
 use re_types_core::{ComponentIdentifier, SerializedComponentColumn};
 
@@ -535,12 +536,8 @@ impl Chunk {
             components: components
                 .values()
                 .map(|column| {
-                    let field = match column.list_array.data_type() {
-                        arrow::datatypes::DataType::List(field) => field.clone(),
-                        _ => unreachable!("This is always s list array"),
-                    };
                     SerializedComponentColumn::new(
-                        ArrowListArray::new_null(field, 0),
+                        ArrowListArray::new_null(column.list_array.field().clone(), 0),
                         column.descriptor.clone(),
                     )
                 })
