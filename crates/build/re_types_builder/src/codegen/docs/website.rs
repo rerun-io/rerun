@@ -10,7 +10,8 @@ use crate::codegen::common::ExampleInfo;
 use crate::codegen::{Target, autogen_warning};
 use crate::objects::{FieldKind, ViewReference};
 use crate::{
-    CodeGenerator, GeneratedFiles, Object, ObjectField, ObjectKind, Objects, Reporter, Type,
+    AtomicDataType, CodeGenerator, GeneratedFiles, Object, ObjectField, ObjectKind, Objects,
+    Reporter, Type,
 };
 
 pub const DATAFRAME_VIEW_FQNAME: &str = "rerun.blueprint.views.DataframeView";
@@ -412,31 +413,31 @@ fn write_fields(reporter: &Reporter, objects: &Objects, o: &mut String, object: 
         }
 
         match ty {
-            Type::Unit => unreachable!("Should be handled elsewhere"),
+            Type::Atomic(AtomicDataType::Null) => unreachable!("Should be handled elsewhere"),
 
             // We use explicit, arrow-like names:
-            Type::UInt8 => atomic("UInt8"),
-            Type::UInt16 => atomic("UInt16"),
-            Type::UInt32 => atomic("UInt32"),
-            Type::UInt64 => atomic("UInt64"),
-            Type::Int8 => atomic("Int8"),
-            Type::Int16 => atomic("Int16"),
-            Type::Int32 => atomic("Int32"),
-            Type::Int64 => atomic("Int64"),
-            Type::Bool => atomic("Boolean"),
-            Type::Float16 => atomic("Float16"),
-            Type::Float32 => atomic("Float32"),
-            Type::Float64 => atomic("Float64"),
+            Type::Atomic(AtomicDataType::UInt8) => atomic("UInt8"),
+            Type::Atomic(AtomicDataType::UInt16) => atomic("UInt16"),
+            Type::Atomic(AtomicDataType::UInt32) => atomic("UInt32"),
+            Type::Atomic(AtomicDataType::UInt64) => atomic("UInt64"),
+            Type::Atomic(AtomicDataType::Int8) => atomic("Int8"),
+            Type::Atomic(AtomicDataType::Int16) => atomic("Int16"),
+            Type::Atomic(AtomicDataType::Int32) => atomic("Int32"),
+            Type::Atomic(AtomicDataType::Int64) => atomic("Int64"),
+            Type::Atomic(AtomicDataType::Boolean) => atomic("Boolean"),
+            Type::Atomic(AtomicDataType::Float16) => atomic("Float16"),
+            Type::Atomic(AtomicDataType::Float32) => atomic("Float32"),
+            Type::Atomic(AtomicDataType::Float64) => atomic("Float64"),
             Type::Binary => atomic("Binary"),
-            Type::String => atomic("Utf8"),
+            Type::Utf8 => atomic("Utf8"),
 
-            Type::Array { elem_type, length } => {
+            Type::FixedSizeList { elem_type, length } => {
                 format!(
                     "{length}x {}",
                     type_info(objects, &Type::from(elem_type.clone()))
                 )
             }
-            Type::Vector { elem_type } => {
+            Type::List { elem_type } => {
                 format!(
                     "List of {}",
                     type_info(objects, &Type::from(elem_type.clone()))
@@ -488,7 +489,7 @@ fn write_fields(reporter: &Reporter, objects: &Objects, o: &mut String, object: 
 
         if !object.is_enum() {
             field_string.push_str("Type: ");
-            if field.typ == Type::Unit {
+            if field.typ.is_unit() {
                 field_string.push_str("`null`");
             } else {
                 if !field.is_nullable {

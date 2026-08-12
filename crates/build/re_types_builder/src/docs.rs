@@ -456,7 +456,6 @@ mod tests {
                     state: State::Stable,
                     fields: Vec::new(),
                     class: crate::ObjectClass::Struct,
-                    datatype: None,
                 },
             ))
             .collect(),

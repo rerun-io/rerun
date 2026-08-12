@@ -136,10 +136,12 @@ pub use self::codegen::{
     CodeGenerator, CppCodeGenerator, DefinitionsCodeGenerator, DocsCodeGenerator,
     PythonCodeGenerator, RustCodeGenerator, SnippetsRefCodeGenerator,
 };
+pub use self::data_type::AtomicDataType;
 pub use self::docs::Docs;
 pub use self::format::{CodeFormatter, CppCodeFormatter, PythonCodeFormatter, RustCodeFormatter};
 pub use self::objects::{
-    Attributes, ElementType, Object, ObjectClass, ObjectField, ObjectKind, Objects, Type,
+    Attributes, ElementType, EnumIntegerType, Object, ObjectClass, ObjectField, ObjectKind,
+    Objects, Type,
 };
 pub use self::report::{Report, Reporter};
 pub use self::type_registry::TypeRegistry;
@@ -161,12 +163,8 @@ pub fn generate_lang_agnostic(
 ) -> (Objects, TypeRegistry) {
     re_tracing::profile_function!();
 
-    let mut objects = Objects::from_rust_definitions(reporter, definitions_dir);
-
-    let mut type_registry = TypeRegistry::default();
-    for obj in objects.objects.values_mut() {
-        type_registry.register(obj);
-    }
+    let objects = Objects::from_rust_definitions(reporter, definitions_dir);
+    let type_registry = TypeRegistry::from_objects(&objects);
 
     (objects, type_registry)
 }

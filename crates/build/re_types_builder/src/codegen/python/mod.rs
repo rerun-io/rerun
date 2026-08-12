@@ -901,7 +901,7 @@ fn code_for_struct(
     }
 
     // Generate __bool__ operator if this is a single field struct with a bool field.
-    if fields.len() == 1 && fields[0].typ == Type::Bool {
+    if fields.len() == 1 && fields[0].typ == Type::Atomic(AtomicDataType::Boolean) {
         code.push_indented(
             1,
             format!(
@@ -1819,11 +1819,11 @@ fn quote_import_clauses_from_field(
     field: &ObjectField,
 ) -> Option<String> {
     let fqname = match &field.typ {
-        Type::Array {
+        Type::FixedSizeList {
             elem_type,
             length: _,
         }
-        | Type::Vector { elem_type } => match elem_type {
+        | Type::List { elem_type } => match elem_type {
             ElementType::Object { fqname } => Some(fqname),
             _ => None,
         },
@@ -1892,32 +1892,22 @@ fn quote_field_type_from_field(
 ) -> (String, bool) {
     let mut unwrapped = false;
     let typ = match &field.typ {
-        Type::Unit => "None".to_owned(),
-
-        Type::UInt8
-        | Type::UInt16
-        | Type::UInt32
-        | Type::UInt64
-        | Type::Int8
-        | Type::Int16
-        | Type::Int32
-        | Type::Int64 => "int".to_owned(),
-        Type::Bool => "bool".to_owned(),
-        Type::Float16 | Type::Float32 | Type::Float64 => "float".to_owned(),
+        Type::Atomic(AtomicDataType::Null) => "None".to_owned(),
+        Type::Atomic(atomic) => python_scalar_name(*atomic).to_owned(),
         Type::Binary => "bytes".to_owned(),
-        Type::String => "str".to_owned(),
-        Type::Array {
+        Type::Utf8 => "str".to_owned(),
+        Type::FixedSizeList {
             elem_type,
             length: _,
         } => match elem_type {
-            ElementType::Binary | ElementType::String => unimplemented!(
+            ElementType::Binary | ElementType::Utf8 => unimplemented!(
                 "fixed-size arrays of {elem_type:?} are not supported by the Python codegen"
             ),
             _ => quote_plural_field_type_from_element_type(elem_type, unwrap, &mut unwrapped),
         },
-        Type::Vector { elem_type } => match elem_type {
+        Type::List { elem_type } => match elem_type {
             ElementType::Binary => "list[bytes]".to_owned(),
-            ElementType::String => "list[str]".to_owned(),
+            ElementType::Utf8 => "list[str]".to_owned(),
             _ => quote_plural_field_type_from_element_type(elem_type, unwrap, &mut unwrapped),
         },
         Type::Object { fqname } => quote_type_from_element_type(&ElementType::Object {
@@ -1929,46 +1919,37 @@ fn quote_field_type_from_field(
 }
 
 /// The Python type of an array/vector field over the given element type
-/// (excluding `Binary`/`String` elements, whose spelling differs between the two).
+/// (excluding `Binary`/`Utf8` elements, whose spelling differs between the two).
 fn quote_plural_field_type_from_element_type(
     elem_type: &ElementType,
     unwrap: bool,
     unwrapped: &mut bool,
 ) -> String {
-    match elem_type {
-        ElementType::Object { .. } => {
-            let typ = quote_type_from_element_type(elem_type);
-            if unwrap {
-                *unwrapped = true;
-                typ
-            } else {
-                format!("list[{typ}]")
-            }
+    if let ElementType::Object { .. } = elem_type {
+        let typ = quote_type_from_element_type(elem_type);
+        if unwrap {
+            *unwrapped = true;
+            typ
+        } else {
+            format!("list[{typ}]")
         }
-
+    } else {
         // Scalars and nested fixed-size arrays map to a (multi-dimensional)
         // numpy array of the innermost element type.
-        _ => match elem_type.innermost_element_type() {
-            ElementType::UInt8 => "npt.NDArray[np.uint8]".to_owned(),
-            ElementType::UInt16 => "npt.NDArray[np.uint16]".to_owned(),
-            ElementType::UInt32 => "npt.NDArray[np.uint32]".to_owned(),
-            ElementType::UInt64 => "npt.NDArray[np.uint64]".to_owned(),
-            ElementType::Int8 => "npt.NDArray[np.int8]".to_owned(),
-            ElementType::Int16 => "npt.NDArray[np.int16]".to_owned(),
-            ElementType::Int32 => "npt.NDArray[np.int32]".to_owned(),
-            ElementType::Int64 => "npt.NDArray[np.int64]".to_owned(),
-            ElementType::Bool => "npt.NDArray[np.bool_]".to_owned(),
-            ElementType::Float16 => "npt.NDArray[np.float16]".to_owned(),
-            ElementType::Float32 => "npt.NDArray[np.float32]".to_owned(),
-            ElementType::Float64 => "npt.NDArray[np.float64]".to_owned(),
-            innermost
-            @ (ElementType::Binary | ElementType::String | ElementType::Object { .. }) => {
+        let innermost = elem_type.innermost_element_type();
+        match innermost {
+            ElementType::Atomic(atomic) => {
+                let np_dtype = np_dtype_from_atomic(*atomic)
+                    .unwrap_or_else(|| unimplemented!("the unit type cannot be an array element"));
+                format!("npt.NDArray[{np_dtype}]")
+            }
+            ElementType::Binary | ElementType::Utf8 | ElementType::Object { .. } => {
                 unimplemented!(
                     "nested fixed-size arrays over {innermost:?} are not supported by the Python codegen"
                 )
             }
-            ElementType::Array { .. } => unreachable!("innermost cannot be an array"),
-        },
+            ElementType::FixedSizeList { .. } => unreachable!("innermost cannot be an array"),
+        }
     }
 }
 
@@ -1984,35 +1965,12 @@ fn quote_field_converter_from_field(
     let mut function = String::new();
 
     let converter = match &field.typ {
-        Type::Unit => {
-            panic!("Unit type should only occur for enum variants");
-        }
-        Type::UInt8
-        | Type::UInt16
-        | Type::UInt32
-        | Type::UInt64
-        | Type::Int8
-        | Type::Int16
-        | Type::Int32
-        | Type::Int64 => {
+        Type::Atomic(atomic) => {
+            let name = python_scalar_name(*atomic);
             if field.is_nullable {
-                "int_or_none".to_owned()
+                format!("{name}_or_none")
             } else {
-                "int".to_owned()
-            }
-        }
-        Type::Bool => {
-            if field.is_nullable {
-                "bool_or_none".to_owned()
-            } else {
-                "bool".to_owned()
-            }
-        }
-        Type::Float16 | Type::Float32 | Type::Float64 => {
-            if field.is_nullable {
-                "float_or_none".to_owned()
-            } else {
-                "float".to_owned()
+                name.to_owned()
             }
         }
         Type::Binary => {
@@ -2022,21 +1980,21 @@ fn quote_field_converter_from_field(
                 "bytes".to_owned()
             }
         }
-        Type::String => {
+        Type::Utf8 => {
             if field.is_nullable {
                 "str_or_none".to_owned()
             } else {
                 "str".to_owned()
             }
         }
-        Type::Array { elem_type, length } => {
+        Type::FixedSizeList { elem_type, length } => {
             if let Some(enum_obj) = elem_type.enum_obj(objects) {
                 quote_enum_array_field_converter(obj, field, enum_obj, Some(*length), &mut function)
             } else {
                 lookup_np_array_conversion_method(elem_type)
             }
         }
-        Type::Vector { elem_type } => {
+        Type::List { elem_type } => {
             if let Some(enum_obj) = elem_type.enum_obj(objects) {
                 quote_enum_array_field_converter(obj, field, enum_obj, None, &mut function)
             } else {
@@ -2109,23 +2067,17 @@ fn lookup_np_array_conversion_method(elem_type: &ElementType) -> String {
     // Nested fixed-size arrays convert like their innermost element type:
     // the numpy conversion preserves the multi-dimensional shape.
     match elem_type.innermost_element_type() {
-        ElementType::UInt8 => "to_np_uint8".to_owned(),
-        ElementType::UInt16 => "to_np_uint16".to_owned(),
-        ElementType::UInt32 => "to_np_uint32".to_owned(),
-        ElementType::UInt64 => "to_np_uint64".to_owned(),
-        ElementType::Int8 => "to_np_int8".to_owned(),
-        ElementType::Int16 => "to_np_int16".to_owned(),
-        ElementType::Int32 => "to_np_int32".to_owned(),
-        ElementType::Int64 => "to_np_int64".to_owned(),
-        ElementType::Bool => "to_np_bool".to_owned(),
-        ElementType::Float16 => "to_np_float16".to_owned(),
-        ElementType::Float32 => "to_np_float32".to_owned(),
-        ElementType::Float64 => "to_np_float64".to_owned(),
+        // `np.bool_` is spelled `bool` here, and the rest are spelled as they are.
+        ElementType::Atomic(AtomicDataType::Boolean) => "to_np_bool".to_owned(),
+        ElementType::Atomic(atomic) => match np_dtype_from_atomic(*atomic) {
+            Some(np_dtype) => format!("to_np_{}", np_dtype.trim_start_matches("np.")),
+            None => unreachable!("the unit type cannot be an array element"),
+        },
 
         // No numpy conversion for these; the field keeps its native representation.
-        ElementType::Binary | ElementType::String | ElementType::Object { .. } => String::new(),
+        ElementType::Binary | ElementType::Utf8 | ElementType::Object { .. } => String::new(),
 
-        ElementType::Array { .. } => unreachable!("innermost cannot be an array"),
+        ElementType::FixedSizeList { .. } => unreachable!("innermost cannot be an array"),
     }
 }
 
@@ -2219,26 +2171,30 @@ fn fqname_to_type(fqname: &str) -> String {
     }
 }
 
+/// The Python type of a number or a bool, e.g. `int` for a `u8`.
+fn python_scalar_name(atomic: AtomicDataType) -> &'static str {
+    match atomic {
+        AtomicDataType::Null => panic!("Unit type should only occur for enum variants"),
+        AtomicDataType::Boolean => "bool",
+        AtomicDataType::UInt8
+        | AtomicDataType::UInt16
+        | AtomicDataType::UInt32
+        | AtomicDataType::UInt64
+        | AtomicDataType::Int8
+        | AtomicDataType::Int16
+        | AtomicDataType::Int32
+        | AtomicDataType::Int64 => "int",
+        AtomicDataType::Float16 | AtomicDataType::Float32 | AtomicDataType::Float64 => "float",
+    }
+}
+
 fn quote_type_from_type(typ: &Type) -> String {
     match typ {
-        Type::Unit => {
-            panic!("Unit type should only occur for enum variants");
-        }
-
-        Type::UInt8
-        | Type::UInt16
-        | Type::UInt32
-        | Type::UInt64
-        | Type::Int8
-        | Type::Int16
-        | Type::Int32
-        | Type::Int64 => "int".to_owned(),
-        Type::Bool => "bool".to_owned(),
-        Type::Float16 | Type::Float32 | Type::Float64 => "float".to_owned(),
+        Type::Atomic(atomic) => python_scalar_name(*atomic).to_owned(),
         Type::Binary => "bytes".to_owned(),
-        Type::String => "str".to_owned(),
+        Type::Utf8 => "str".to_owned(),
         Type::Object { fqname } => fqname_to_type(fqname),
-        Type::Array { elem_type, .. } | Type::Vector { elem_type } => {
+        Type::FixedSizeList { elem_type, .. } | Type::List { elem_type } => {
             format!(
                 "list[{}]",
                 quote_type_from_type(&Type::from(elem_type.clone()))
@@ -2380,25 +2336,32 @@ fn quote_arrow_support_from_obj(
     }
 }
 
+/// The numpy dtype for a primitive, if it is a number or a bool.
+fn np_dtype_from_atomic(atomic: AtomicDataType) -> Option<&'static str> {
+    match atomic {
+        AtomicDataType::Null => None,
+        AtomicDataType::Boolean => Some("np.bool_"),
+        AtomicDataType::UInt8 => Some("np.uint8"),
+        AtomicDataType::UInt16 => Some("np.uint16"),
+        AtomicDataType::UInt32 => Some("np.uint32"),
+        AtomicDataType::UInt64 => Some("np.uint64"),
+        AtomicDataType::Int8 => Some("np.int8"),
+        AtomicDataType::Int16 => Some("np.int16"),
+        AtomicDataType::Int32 => Some("np.int32"),
+        AtomicDataType::Int64 => Some("np.int64"),
+        AtomicDataType::Float16 => Some("np.float16"),
+        AtomicDataType::Float32 => Some("np.float32"),
+        AtomicDataType::Float64 => Some("np.float64"),
+    }
+}
+
 fn np_dtype_from_type(t: &Type) -> Option<&'static str> {
     match t {
-        Type::UInt8 => Some("np.uint8"),
-        Type::UInt16 => Some("np.uint16"),
-        Type::UInt32 => Some("np.uint32"),
-        Type::UInt64 => Some("np.uint64"),
-        Type::Int8 => Some("np.int8"),
-        Type::Int16 => Some("np.int16"),
-        Type::Int32 => Some("np.int32"),
-        Type::Int64 => Some("np.int64"),
-        Type::Bool => Some("np.bool_"),
-        Type::Float16 => Some("np.float16"),
-        Type::Float32 => Some("np.float32"),
-        Type::Float64 => Some("np.float64"),
-        Type::Unit
-        | Type::Binary
-        | Type::String
-        | Type::Array { .. }
-        | Type::Vector { .. }
+        Type::Atomic(atomic) => np_dtype_from_atomic(*atomic),
+        Type::Binary
+        | Type::Utf8
+        | Type::FixedSizeList { .. }
+        | Type::List { .. }
         | Type::Object { .. } => None,
     }
 }
@@ -2406,22 +2369,11 @@ fn np_dtype_from_type(t: &Type) -> Option<&'static str> {
 /// The numpy dtype for a scalar [`ElementType`], if it is a numeric/bool scalar.
 fn np_dtype_from_element_type(t: &ElementType) -> Option<&'static str> {
     match t {
-        ElementType::UInt8 => Some("np.uint8"),
-        ElementType::UInt16 => Some("np.uint16"),
-        ElementType::UInt32 => Some("np.uint32"),
-        ElementType::UInt64 => Some("np.uint64"),
-        ElementType::Int8 => Some("np.int8"),
-        ElementType::Int16 => Some("np.int16"),
-        ElementType::Int32 => Some("np.int32"),
-        ElementType::Int64 => Some("np.int64"),
-        ElementType::Bool => Some("np.bool_"),
-        ElementType::Float16 => Some("np.float16"),
-        ElementType::Float32 => Some("np.float32"),
-        ElementType::Float64 => Some("np.float64"),
+        ElementType::Atomic(atomic) => np_dtype_from_atomic(*atomic),
         ElementType::Binary
-        | ElementType::String
+        | ElementType::Utf8
         | ElementType::Object { .. }
-        | ElementType::Array { .. } => None,
+        | ElementType::FixedSizeList { .. } => None,
     }
 }
 
@@ -2429,12 +2381,12 @@ fn np_dtype_from_element_type(t: &ElementType) -> Option<&'static str> {
 /// `(numpy_dtype, nesting_depth)`, where depth counts the array levels: `1` for `[f16; N]`,
 /// `2` for `[[f16; 3]; N]`, and so on. Returns `None` for anything else.
 fn fixed_size_array_scalar_dtype(typ: &Type) -> Option<(&'static str, usize)> {
-    let Type::Array { elem_type, .. } = typ else {
+    let Type::FixedSizeList { elem_type, .. } = typ else {
         return None;
     };
     let mut depth = 1;
     let mut elem = elem_type;
-    while let ElementType::Array { elem_type, .. } = elem {
+    while let ElementType::FixedSizeList { elem_type, .. } = elem {
         depth += 1;
         elem = elem_type;
     }
@@ -2460,7 +2412,7 @@ fn quote_arrow_serialization(
                         &obj.fqname,
                         "Arrow-transparent structs must have exactly one field",
                     );
-                } else if obj.fields[0].typ == Type::String {
+                } else if obj.fields[0].typ == Type::Utf8 {
                     return Ok(unindent(
                         r##"
                             if isinstance(data, str):
@@ -2490,7 +2442,7 @@ fn quote_arrow_serialization(
                             format!("Expected this to have {} set", PythonAttr::Aliases),
                         );
                     }
-                } else if let Type::Array {
+                } else if let Type::FixedSizeList {
                     elem_type,
                     length: _,
                 } = &obj.fields[0].typ
@@ -2589,29 +2541,18 @@ fn quote_arrow_serialization(
                 let field_array = format!("[x.{field_name} for x in typed_data]");
 
                 match &field.typ {
-                    Type::UInt8
-                    | Type::UInt16
-                    | Type::UInt32
-                    | Type::UInt64
-                    | Type::Int8
-                    | Type::Int16
-                    | Type::Int32
-                    | Type::Int64
-                    | Type::Bool
-                    | Type::Float16
-                    | Type::Float32
-                    | Type::Float64 => {
-                        let np_dtype = np_dtype_from_type(&field.typ).unwrap();
+                    Type::Atomic(atomic) if !atomic.is_null() => {
+                        let np_dtype = np_dtype_from_atomic(*atomic).unwrap();
                         let field_fwd =
                             format!("pa.array(np.asarray({field_array}, dtype={np_dtype})),");
                         code.push_indented(2, &field_fwd, 1);
                     }
 
-                    Type::Unit
+                    Type::Atomic(_)
                     | Type::Binary
-                    | Type::String
-                    | Type::Array { .. }
-                    | Type::Vector { .. } => {
+                    | Type::Utf8
+                    | Type::FixedSizeList { .. }
+                    | Type::List { .. } => {
                         return Err(
                             "We lack codegen for arrow-serialization of general structs".to_owned()
                         );
@@ -2679,7 +2620,7 @@ return pa.array(pa_data, type=data_type)
                 possible_singular_types.insert(field_type.clone());
 
                 // Build lists of variants.
-                let variant_list_decl = if field.typ == Type::Unit {
+                let variant_list_decl = if field.typ.is_unit() {
                     format!("{variant_kind_list}: int = 0")
                 } else {
                     format!("{variant_kind_list}: list[{field_type}] = []")
@@ -2695,8 +2636,7 @@ return pa.array(pa_data, type=data_type)
                 };
                 variant_list_push_arms.push_indented(2, format!("{if_or_elif} {kind_check}:"), 1);
 
-                let (value_offset_update, append_to_variant_kind_list) = if field.typ == Type::Unit
-                {
+                let (value_offset_update, append_to_variant_kind_list) = if field.typ.is_unit() {
                     (
                         format!("value_offsets.append({variant_kind_list})"),
                         format!("{variant_kind_list} += 1"),
@@ -2723,27 +2663,14 @@ return pa.array(pa_data, type=data_type)
                         let field_type_name = &objects[fqname].name;
                         format!("{field_type_name}Batch({variant_kind_list}).as_arrow_array()")
                     }
-                    Type::Unit => {
+                    Type::Atomic(AtomicDataType::Null) => {
                         format!("pa.nulls({variant_kind_list})")
                     }
-                    Type::UInt8
-                    | Type::UInt16
-                    | Type::UInt32
-                    | Type::UInt64
-                    | Type::Int8
-                    | Type::Int16
-                    | Type::Int32
-                    | Type::Int64
-                    | Type::Bool
-                    | Type::Float16
-                    | Type::Float32
-                    | Type::Float64
-                    | Type::Binary
-                    | Type::String => {
+                    Type::Atomic(_) | Type::Binary | Type::Utf8 => {
                         let datatype = quote_arrow_datatype(&type_registry.get(&field.fqname));
                         format!("pa.array({variant_kind_list}, type={datatype})")
                     }
-                    Type::Array { .. } | Type::Vector { .. } => {
+                    Type::FixedSizeList { .. } | Type::List { .. } => {
                         return Err(format!(
                             "We lack codegen for arrow-serialization of unions containing lists. Can't handle type {}",
                             field.fqname
@@ -3374,22 +3301,10 @@ fn quote_arrow_field(field: &Field) -> String {
         name,
         data_type,
         is_nullable,
-        metadata,
     } = field;
 
     let datatype = quote_arrow_datatype(data_type);
     let is_nullable = *is_nullable || matches!(data_type.to_logical_type(), DataType::Union { .. }); // Rerun unions always has a `_null_marker: null` variant, so they are always nullable
     let is_nullable = if is_nullable { "True" } else { "False" };
-    let metadata = quote_metadata_map(metadata);
-
-    format!(r#"pa.field("{name}", {datatype}, nullable={is_nullable}, metadata={metadata})"#)
-}
-
-fn quote_metadata_map(metadata: &BTreeMap<String, String>) -> String {
-    let kvs = metadata
-        .iter()
-        .map(|(k, v)| format!("{k:?}, {v:?}"))
-        .collect::<Vec<_>>()
-        .join(", ");
-    format!("{{{kvs}}}")
+    format!(r#"pa.field("{name}", {datatype}, nullable={is_nullable}, metadata={{}})"#)
 }

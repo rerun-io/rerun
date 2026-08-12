@@ -42,8 +42,8 @@ use camino::{Utf8Path, Utf8PathBuf};
 use syn::spanned::Spanned;
 
 use crate::{
-    Attribute, Docs, ElementType, Object, ObjectClass, ObjectField, ObjectKind, Objects, Reporter,
-    RerunAttr, Type,
+    AtomicDataType, Attribute, Docs, ElementType, Object, ObjectClass, ObjectField, ObjectKind,
+    Objects, Reporter, RerunAttr, Type,
 };
 
 use super::{Attributes, EnumIntegerType, State};
@@ -66,7 +66,7 @@ type Result<T, E = Fail> = std::result::Result<T, E>;
 // --- Entry point ---
 
 impl Objects {
-    /// Runs the semantic pass on a tree of Rust type definitions.
+    /// Parses a tree of Rust type definitions, and validates what comes out.
     ///
     /// `definitions_dir` is the root of the definition tree; a type's package name is its path
     /// relative to that root, so `rerun/components/position3d.def.rs` declares `rerun.components`.
@@ -409,7 +409,6 @@ impl Parser<'_> {
             attrs,
             fields,
             class,
-            datatype: None,
         }
     }
 
@@ -480,7 +479,6 @@ impl Parser<'_> {
             typ,
             attrs,
             is_nullable: nullable,
-            datatype: None,
         })
     }
 
@@ -497,7 +495,7 @@ impl Parser<'_> {
 
         let payload = match &variant.fields {
             syn::Fields::Unit => MaybeNullable {
-                typ: Type::Unit,
+                typ: Type::UNIT,
                 nullable: class.is_enum(),
             },
 
@@ -558,7 +556,6 @@ impl Parser<'_> {
             typ: payload.typ,
             attrs,
             is_nullable: payload.nullable,
-            datatype: None,
         })
     }
 
@@ -607,7 +604,7 @@ impl Parser<'_> {
         match ty {
             syn::Type::Path(path) => {
                 if let Some(inner) = as_generic(ty, "Vec") {
-                    return Ok(Type::Vector {
+                    return Ok(Type::List {
                         elem_type: self.parse_element_type(inner)?,
                     });
                 }
@@ -621,12 +618,12 @@ impl Parser<'_> {
                 self.parse_named_type(path)
             }
 
-            syn::Type::Array(array) => Ok(Type::Array {
+            syn::Type::Array(array) => Ok(Type::FixedSizeList {
                 elem_type: self.parse_element_type(&array.elem)?,
                 length: self.parse_array_length(&array.len)?,
             }),
 
-            syn::Type::Tuple(tuple) if tuple.elems.is_empty() => Ok(Type::Unit),
+            syn::Type::Tuple(tuple) if tuple.elems.is_empty() => Ok(Type::UNIT),
 
             other => {
                 self.error(
@@ -696,18 +693,18 @@ impl Parser<'_> {
 
         if segments.len() == 1 {
             return match segments[0].as_str() {
-                "bool" => Ok(Type::Bool),
-                "u8" => Ok(Type::UInt8),
-                "u16" => Ok(Type::UInt16),
-                "u32" => Ok(Type::UInt32),
-                "u64" => Ok(Type::UInt64),
-                "i8" => Ok(Type::Int8),
-                "i16" => Ok(Type::Int16),
-                "i32" => Ok(Type::Int32),
-                "i64" => Ok(Type::Int64),
-                "f32" => Ok(Type::Float32),
-                "f64" => Ok(Type::Float64),
-                "String" => Ok(Type::String),
+                "bool" => Ok(Type::Atomic(AtomicDataType::Boolean)),
+                "u8" => Ok(Type::Atomic(AtomicDataType::UInt8)),
+                "u16" => Ok(Type::Atomic(AtomicDataType::UInt16)),
+                "u32" => Ok(Type::Atomic(AtomicDataType::UInt32)),
+                "u64" => Ok(Type::Atomic(AtomicDataType::UInt64)),
+                "i8" => Ok(Type::Atomic(AtomicDataType::Int8)),
+                "i16" => Ok(Type::Atomic(AtomicDataType::Int16)),
+                "i32" => Ok(Type::Atomic(AtomicDataType::Int32)),
+                "i64" => Ok(Type::Atomic(AtomicDataType::Int64)),
+                "f32" => Ok(Type::Atomic(AtomicDataType::Float32)),
+                "f64" => Ok(Type::Atomic(AtomicDataType::Float64)),
+                "String" => Ok(Type::Utf8),
 
                 other => {
                     self.error(
@@ -738,7 +735,7 @@ impl Parser<'_> {
         // See `re_types_builder_prelude`.
         if segments.len() == 2 {
             match segments[1].as_str() {
-                "f16" => return Ok(Type::Float16),
+                "f16" => return Ok(Type::Atomic(AtomicDataType::Float16)),
                 "Binary" => return Ok(Type::Binary),
                 _ => {}
             }
@@ -1168,8 +1165,8 @@ mod tests {
         assert_eq!(
             field_types(object),
             vec![
-                ("id", &Type::UInt16, false),
-                ("label", &Type::String, true),
+                ("id", &Type::Atomic(AtomicDataType::UInt16), false),
+                ("label", &Type::Utf8, true),
                 (
                     "color",
                     &Type::Object {
@@ -1196,7 +1193,7 @@ mod tests {
 
         assert_eq!(
             field_types(&objects[0]),
-            vec![("value", &Type::Float32, false)]
+            vec![("value", &Type::Atomic(AtomicDataType::Float32), false)]
         );
     }
 
@@ -1226,34 +1223,34 @@ mod tests {
         assert_eq!(
             field_types(&objects[0]),
             vec![
-                ("boolean", &Type::Bool, false),
-                ("unsigned", &Type::UInt64, false),
-                ("signed", &Type::Int8, false),
-                ("half", &Type::Float16, false),
-                ("single", &Type::Float32, false),
-                ("double", &Type::Float64, false),
-                ("text", &Type::String, false),
+                ("boolean", &Type::Atomic(AtomicDataType::Boolean), false),
+                ("unsigned", &Type::Atomic(AtomicDataType::UInt64), false),
+                ("signed", &Type::Atomic(AtomicDataType::Int8), false),
+                ("half", &Type::Atomic(AtomicDataType::Float16), false),
+                ("single", &Type::Atomic(AtomicDataType::Float32), false),
+                ("double", &Type::Atomic(AtomicDataType::Float64), false),
+                ("text", &Type::Utf8, false),
                 ("bytes", &Type::Binary, false),
                 (
                     "fixed",
-                    &Type::Array {
-                        elem_type: ElementType::Float32,
+                    &Type::FixedSizeList {
+                        elem_type: ElementType::Atomic(AtomicDataType::Float32),
                         length: 3
                     },
                     false
                 ),
                 (
                     "list",
-                    &Type::Vector {
-                        elem_type: ElementType::UInt8
+                    &Type::List {
+                        elem_type: ElementType::Atomic(AtomicDataType::UInt8)
                     },
                     false
                 ),
                 (
                     "nested",
-                    &Type::Array {
-                        elem_type: ElementType::Array {
-                            elem_type: Box::new(ElementType::Float32),
+                    &Type::FixedSizeList {
+                        elem_type: ElementType::FixedSizeList {
+                            elem_type: Box::new(ElementType::Atomic(AtomicDataType::Float32)),
                             length: 4
                         },
                         length: 4
@@ -1262,7 +1259,7 @@ mod tests {
                 ),
                 (
                     "objects",
-                    &Type::Vector {
+                    &Type::List {
                         elem_type: ElementType::Object {
                             fqname: "rerun.datatypes.Vec3D".to_owned()
                         }
@@ -1319,7 +1316,7 @@ mod tests {
             object
                 .fields
                 .iter()
-                .all(|f| f.typ == Type::Unit && f.is_nullable)
+                .all(|f| f.typ.is_unit() && f.is_nullable)
         );
     }
 
@@ -1362,7 +1359,7 @@ mod tests {
                     false
                 ),
                 // A unit variant of a union is `Null`, and not nullable — unlike in an enum.
-                ("Infinite", &Type::Unit, false),
+                ("Infinite", &Type::UNIT, false),
             ]
         );
     }

@@ -11,7 +11,7 @@ use quote::{format_ident, quote};
 use super::arrow::quote_fqname_as_type_path;
 use super::reflection::generate_reflection;
 use super::util::{append_tokens, doc_as_lines, quote_doc_lines};
-use crate::codegen::rust::arrow::ArrowDataTypeTokenizer;
+use crate::codegen::rust::arrow::{ArrowDataTypeTokenizer, quote_atomic_rust_type};
 use crate::codegen::rust::deserializer::{
     quote_arrow_deserializer, quote_arrow_deserializer_buffer_slice,
     should_optimize_buffer_slice_deserialize,
@@ -357,7 +357,7 @@ fn quote_union(
         let quoted_doc = quote_field_docs(reporter, objects, obj_field);
         let quoted_type = quote_field_type_from_object_field(obj, obj_field);
 
-        if obj_field.typ == Type::Unit {
+        if obj_field.typ.is_unit() {
             quote! {
                 #quoted_doc
                 #name
@@ -671,7 +671,7 @@ fn quote_obj_docs(reporter: &Reporter, objects: &Objects, obj: &Object) -> Token
 /// The returned boolean indicates whether there was anything to unwrap at all.
 fn quote_field_type_from_typ(typ: &Type, unwrap: bool) -> (TokenStream, bool) {
     let obj_field_type = TypeTokenizer { typ, unwrap };
-    let unwrapped = unwrap && matches!(typ, Type::Array { .. } | Type::Vector { .. });
+    let unwrapped = unwrap && matches!(typ, Type::FixedSizeList { .. } | Type::List { .. });
     (quote!(#obj_field_type), unwrapped)
 }
 
@@ -697,29 +697,17 @@ impl quote::ToTokens for TypeTokenizer<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let Self { typ, unwrap } = self;
         match typ {
-            Type::Unit => quote!(()),
-            Type::UInt8 => quote!(u8),
-            Type::UInt16 => quote!(u16),
-            Type::UInt32 => quote!(u32),
-            Type::UInt64 => quote!(u64),
-            Type::Int8 => quote!(i8),
-            Type::Int16 => quote!(i16),
-            Type::Int32 => quote!(i32),
-            Type::Int64 => quote!(i64),
-            Type::Bool => quote!(bool),
-            Type::Float16 => quote!(half::f16),
-            Type::Float32 => quote!(f32),
-            Type::Float64 => quote!(f64),
+            Type::Atomic(atomic) => quote_atomic_rust_type(*atomic),
             Type::Binary => quote!(::arrow::buffer::Buffer),
-            Type::String => quote!(::re_types_core::ArrowString),
-            Type::Array { elem_type, length } => {
+            Type::Utf8 => quote!(::re_types_core::ArrowString),
+            Type::FixedSizeList { elem_type, length } => {
                 if *unwrap {
                     quote!(#elem_type)
                 } else {
                     quote!([#elem_type; #length])
                 }
             }
-            Type::Vector { elem_type } => {
+            Type::List { elem_type } => {
                 if *unwrap {
                     quote!(#elem_type)
                 } else if elem_type.backed_by_scalar_buffer() {
@@ -737,22 +725,11 @@ impl quote::ToTokens for TypeTokenizer<'_> {
 impl quote::ToTokens for &ElementType {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         match self {
-            ElementType::UInt8 => quote!(u8),
-            ElementType::UInt16 => quote!(u16),
-            ElementType::UInt32 => quote!(u32),
-            ElementType::UInt64 => quote!(u64),
-            ElementType::Int8 => quote!(i8),
-            ElementType::Int16 => quote!(i16),
-            ElementType::Int32 => quote!(i32),
-            ElementType::Int64 => quote!(i64),
-            ElementType::Bool => quote!(bool),
-            ElementType::Float16 => quote!(half::f16),
-            ElementType::Float32 => quote!(f32),
-            ElementType::Float64 => quote!(f64),
+            ElementType::Atomic(atomic) => quote_atomic_rust_type(*atomic),
             ElementType::Binary => quote!(::arrow::buffer::Buffer),
-            ElementType::String => quote!(::re_types_core::ArrowString),
+            ElementType::Utf8 => quote!(::re_types_core::ArrowString),
             ElementType::Object { fqname } => quote_fqname_as_type_path(fqname),
-            ElementType::Array { elem_type, length } => {
+            ElementType::FixedSizeList { elem_type, length } => {
                 let elem_type = &**elem_type;
                 quote!([#elem_type; #length])
             }
@@ -1283,7 +1260,7 @@ fn quote_from_impl_from_obj(obj: &Object) -> TokenStream {
     };
 
     if obj_field.typ.fqname().is_some() {
-        if let Some(inner) = obj_field.typ.vector_inner() {
+        if let Some(inner) = obj_field.typ.list_inner() {
             if obj_field.is_nullable {
                 let quoted_binding = if obj_is_tuple_struct {
                     quote!(Self(v.map(|v| v.into_iter().map(|v| v.into()).collect())))

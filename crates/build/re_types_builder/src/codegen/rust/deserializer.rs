@@ -3,7 +3,7 @@ use quote::{format_ident, quote};
 use re_log::debug_assert;
 
 use crate::codegen::rust::arrow::{
-    ArrowDataTypeTokenizer, is_backed_by_scalar_buffer, quote_fqname_as_type_path,
+    ArrowDataTypeTokenizer, quote_atomic_rust_type, quote_fqname_as_type_path,
 };
 use crate::codegen::rust::util::{
     is_tuple_struct_from_obj, quote_comment, quote_default_value_for_datatype,
@@ -65,7 +65,7 @@ pub fn quote_arrow_deserializer(
 
     let obj_fqname = obj.fqname.as_str();
     let is_enum = obj.is_enum();
-    let is_arrow_transparent = obj.datatype.is_none();
+    let is_arrow_transparent = obj.is_arrow_transparent();
     let is_tuple_struct = is_tuple_struct_from_obj(obj);
 
     if is_enum {
@@ -113,7 +113,7 @@ pub fn quote_arrow_deserializer(
         }
     } else if is_arrow_transparent {
         // NOTE: Arrow transparent objects must have a single field, no more no less.
-        // The semantic pass would have failed already if this wasn't the case.
+        // The type registry asserts as much when it computes the datatype.
         let obj_field = &obj.fields[0];
         let obj_field_fqname = obj_field.fqname.as_str();
 
@@ -317,7 +317,7 @@ pub fn quote_arrow_deserializer(
                     .enumerate()
                     .filter(|(_, obj_field)| {
                         // For unit fields we don't have to collect any data.
-                        obj_field.typ != crate::Type::Unit
+                        !obj_field.typ.is_unit()
                     })
                     .map(|(type_id, obj_field)| {
                         let data_dst = format_ident!("{}", obj_field.snake_case_name());
@@ -360,7 +360,7 @@ pub fn quote_arrow_deserializer(
                     let quoted_obj_field_name = format_ident!("{}", obj_field.snake_case_name());
                     let quoted_obj_field_type = format_ident!("{}", obj_field.pascal_case_name());
 
-                    if obj_field.typ == crate::Type::Unit {
+                    if obj_field.typ.is_unit() {
                         // TODO(andreas): Should we check there's enough nulls on the null array?
                         return quote! {
                             #typ => Self::#quoted_obj_field_type
@@ -773,7 +773,7 @@ fn quote_arrow_field_deserializer(
         DataType::List(inner) => {
             let data_src_inner = format_ident!("{data_src}_inner");
 
-            let inner_repr = if is_backed_by_scalar_buffer(inner.data_type()) {
+            let inner_repr = if inner.data_type().backed_by_scalar_buffer() {
                 InnerRepr::ScalarBuffer
             } else {
                 InnerRepr::NativeIterable
@@ -975,7 +975,7 @@ fn quote_iterator_transparency(
         None
     };
 
-    let inner_is_arrow_transparent = inner_obj.is_some_and(|obj| obj.datatype.is_none());
+    let inner_is_arrow_transparent = inner_obj.is_some_and(|obj| obj.is_arrow_transparent());
 
     if inner_is_arrow_transparent {
         let inner_obj = inner_obj.as_ref().unwrap();
@@ -1057,12 +1057,12 @@ pub fn quote_arrow_deserializer_buffer_slice(
 
     let datatype = &type_registry.get(&obj.fqname);
 
-    let is_arrow_transparent = obj.datatype.is_none();
+    let is_arrow_transparent = obj.is_arrow_transparent();
     let is_tuple_struct = is_tuple_struct_from_obj(obj);
 
     if is_arrow_transparent {
         // NOTE: Arrow transparent objects must have a single field, no more no less.
-        // The semantic pass would have failed already if this wasn't the case.
+        // The type registry asserts as much when it computes the datatype.
         debug_assert!(obj.fields.len() == 1);
         let obj_field = &obj.fields[0];
         let obj_field_fqname = obj_field.fqname.as_str();
@@ -1201,22 +1201,13 @@ fn quote_arrow_field_deserializer_buffer_slice(
 /// to rely on type inference.
 fn quote_buffer_slice_element_type(datatype: &DataType) -> TokenStream {
     match datatype.to_logical_type() {
-        DataType::Atomic(atomic) => match atomic {
-            AtomicDataType::UInt8 => quote!(u8),
-            AtomicDataType::UInt16 => quote!(u16),
-            AtomicDataType::UInt32 => quote!(u32),
-            AtomicDataType::UInt64 => quote!(u64),
-            AtomicDataType::Int8 => quote!(i8),
-            AtomicDataType::Int16 => quote!(i16),
-            AtomicDataType::Int32 => quote!(i32),
-            AtomicDataType::Int64 => quote!(i64),
-            AtomicDataType::Float16 => quote!(half::f16),
-            AtomicDataType::Float32 => quote!(f32),
-            AtomicDataType::Float64 => quote!(f64),
-            AtomicDataType::Null | AtomicDataType::Boolean => {
-                unimplemented!("{atomic:#?} not supported by the buffer-slice fast path")
-            }
-        },
+        DataType::Atomic(atomic) => {
+            assert!(
+                atomic.backed_by_scalar_buffer(),
+                "{atomic:#?} not supported by the buffer-slice fast path"
+            );
+            quote_atomic_rust_type(*atomic)
+        }
         DataType::FixedSizeList(inner, length) => {
             let quoted_inner = quote_buffer_slice_element_type(inner.data_type());
             quote!([#quoted_inner; #length])
@@ -1241,7 +1232,7 @@ pub fn should_optimize_buffer_slice_deserialize(
     obj: &Object,
     type_registry: &TypeRegistry,
 ) -> bool {
-    let is_arrow_transparent = obj.datatype.is_none();
+    let is_arrow_transparent = obj.is_arrow_transparent();
     if is_arrow_transparent {
         let typ = type_registry.get(&obj.fqname);
         let obj_field = &obj.fields[0];
