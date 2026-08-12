@@ -30,7 +30,7 @@ pub struct StateLaneGroup {
     pub entity_path: re_log_types::EntityPath,
 
     /// The canonical post-cast type of the values in this group.
-    pub value_kind: StateValueKind,
+    pub value_kind: Option<StateValueKind>,
 
     /// The visible time range configured for this group.
     pub visible_time_range: re_log_types::AbsoluteTimeRange,

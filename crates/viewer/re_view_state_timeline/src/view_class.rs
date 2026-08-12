@@ -320,7 +320,6 @@ impl ViewClass for StateTimelineView {
 
         // Compute data time range.
         let timeline_range = ctx.recording().time_range_for(&query.timeline);
-        let timeline_end: Option<i64> = timeline_range.map(|r| r.max.as_i64());
         let (data_min, data_max) = data_time_range(&all_groups, timeline_range);
 
         // How is the time (X) axis linked? When linked to global, the pan/zoom window is
@@ -388,7 +387,7 @@ impl ViewClass for StateTimelineView {
         // segment, i.e. right up to the zig-zag "end of timeline" band (same as in the time
         // panel). Using the timeline end itself would leave a bare strip the width of the
         // segment expansion between the last phase and the band.
-        let open_end_time: Option<f64> = timeline_end
+        let open_end_time: Option<f64> = timeline_range
             .and_then(|_| time_ranges_ui.segments.last())
             .map(|segment| segment.time.max.as_f64());
 
@@ -845,6 +844,8 @@ fn data_time_range(
         }
         (min, max)
     };
+
+    // A range spanning a single instant has no width to map to screen space, so give it some.
     if (max - min).abs() < f64::EPSILON {
         (min - 0.5, max + 0.5)
     } else {
@@ -1686,7 +1687,7 @@ mod tests {
         StateLaneGroup {
             label: String::new(),
             entity_path: EntityPath::root(),
-            value_kind: crate::data::StateValueKind::String,
+            value_kind: Some(crate::data::StateValueKind::String),
             visible_time_range,
             lanes: vec![crate::data::StateLane {
                 phases: lane(phases),

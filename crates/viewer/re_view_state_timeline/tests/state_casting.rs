@@ -197,7 +197,9 @@ fn value_kind(lanes_data: &StateLanesOutput, entity: &str) -> StateValueKind {
         .iter()
         .find(|g| g.entity_path == EntityPath::from(entity))
         .unwrap_or_else(|| panic!("no lane group for entity {entity}"));
-    group.value_kind
+    group
+        .value_kind
+        .unwrap_or_else(|| panic!("lane group for entity {entity} has no value kind"))
 }
 
 /// Log a `DynamicArchetype` with one field at three ticks, then install an explicit visualizer
@@ -661,7 +663,7 @@ fn test_dynamic_archetype_multiple_same_type() {
     assert_eq!(groups_on_entity.len(), 2);
 
     for group in &groups_on_entity {
-        assert_eq!(group.value_kind, StateValueKind::String);
+        assert_eq!(group.value_kind, Some(StateValueKind::String));
         assert_eq!(group.lanes.len(), 1);
     }
 
@@ -744,6 +746,7 @@ fn test_dynamic_archetype_multiple_different_types() {
             .find(|g| g.label.contains(source))
             .unwrap_or_else(|| panic!("no lane group labelled with {source}"))
             .value_kind
+            .unwrap_or_else(|| panic!("lane group labelled with {source} has no value kind"))
     };
     assert_eq!(kind_of("multi_mix:label"), StateValueKind::String);
     assert_eq!(kind_of("multi_mix:speed"), StateValueKind::Scalar);

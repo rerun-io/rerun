@@ -2,6 +2,7 @@ use re_chunk_store::RowId;
 use re_log_types::{TimePoint, Timeline};
 use re_test_context::TestContext;
 use re_test_context::external::egui_kittest::SnapshotResults;
+use re_test_context::external::egui_kittest::kittest::Queryable as _;
 use re_test_viewport::TestContextExt as _;
 use re_view_state_timeline::StateTimelineView;
 use re_viewer_context::{GLOBAL_VIEW_ID, TimeControlCommand, ViewClass as _, ViewId};
@@ -841,6 +842,75 @@ fn test_state_timeline_pan_before_data() {
     }
 
     snapshot_results.add(harness.try_snapshot("state_timeline_pan_before_data"));
+}
+
+/// Same as [`test_state_timeline_pan_before_data`], but every lane's last event is a `Clear`.
+#[test]
+fn test_state_timeline_pan_before_data_ending_in_clear() {
+    let mut snapshot_results = SnapshotResults::new();
+    let mut test_context = TestContext::new_with_view_class::<StateTimelineView>();
+
+    let timeline = Timeline::new_sequence("tick");
+
+    for (tick, entity, state) in [
+        (0, "state/robot_mode", "Idle"),
+        (10, "state/robot_mode", "Moving"),
+        (0, "state/power", "On"),
+        (15, "state/power", "Low"),
+    ] {
+        test_context.log_entity(entity, |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                TimePoint::from([(timeline, tick)]),
+                &re_sdk_types::archetypes::StateChange::single(state),
+            )
+        });
+    }
+
+    // Each lane ends with a `Clear`, i.e. the last event on the entity is not a state.
+    for (tick, entity) in [(20, "state/robot_mode"), (25, "state/power")] {
+        test_context.log_entity(entity, |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                TimePoint::from([(timeline, tick)]),
+                &re_sdk_types::archetypes::Clear::new(false),
+            )
+        });
+    }
+
+    test_context.set_active_timeline(*timeline.name());
+
+    let view_id = setup_blueprint(&mut test_context);
+
+    let size = egui::vec2(800.0, 150.0);
+    let mut harness = test_context
+        .setup_kittest_for_rendering_ui(size)
+        .build_ui(|ui| {
+            test_context.run_with_single_view(ui, view_id);
+        });
+
+    // Let the view auto-fit to the data.
+    harness.run();
+
+    // Pan far to the left, leaving the window entirely before the data.
+    let center = egui::pos2(size.x * 0.5, size.y * 0.5);
+    harness.hover_at(center);
+    for _ in 0..8 {
+        harness.event(egui::Event::MouseWheel {
+            unit: egui::MouseWheelUnit::Point,
+            delta: egui::vec2(2000.0, 0.0),
+            phase: egui::TouchPhase::Move,
+            modifiers: egui::Modifiers::NONE,
+        });
+        harness.step();
+    }
+
+    assert!(
+        harness.query_by_label_contains("No state data").is_none(),
+        "the view fell back to its empty-state message after panning before the data"
+    );
+
+    snapshot_results.add(harness.try_snapshot("state_timeline_pan_before_data_ending_in_clear"));
 }
 
 /// Exercises every awkward shape the state slot can take in one lane:

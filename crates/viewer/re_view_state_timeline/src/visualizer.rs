@@ -356,11 +356,24 @@ impl VisualizerSystem for StateVisualizer {
             let Some(source) = builder.lane_source(data_result, instruction, store_range) else {
                 continue;
             };
-            let Some(value_kind) = state_value_kind_from_datatype(&source.element_type) else {
-                continue;
+
+            let value_kind = match source
+                .element_type
+                .as_ref()
+                .map(state_value_kind_from_datatype)
+            {
+                Some(Some(value_kind)) => Some(value_kind),
+
+                // A type the cast cannot turn into a lane: nothing to render.
+                // TODO(RR-5426): show the lane and report an error.
+                Some(None) => continue,
+
+                // An entity with no state data at all on this timeline still gets an empty
+                // lane, and then there is no value kind to report for it.
+                None => None,
             };
 
-            groups.push(builder.build_group(
+            groups.push(build_group(
                 data_result,
                 instruction,
                 visible_time_range,
@@ -376,7 +389,13 @@ impl VisualizerSystem for StateVisualizer {
 /// Everything one visualizer instruction contributes to its lane group, as pulled from the store.
 struct LaneSource {
     /// Post-cast element type of the state column, shared by all its lanes.
-    element_type: DataType,
+    ///
+    /// `None` when the entity has no state data at all on this timeline — the group is still shown,
+    /// as a single empty lane.
+    element_type: Option<DataType>,
+
+    /// How many lanes the group has, i.e. the length of the state arrays.
+    instance_count: usize,
 
     /// State changes, earliest first: the state active before the window, then the in-window ones.
     rows: Vec<StateRow>,
@@ -391,7 +410,7 @@ struct LaneSource {
 /// Builds the lane groups of one [`StateVisualizer::execute`], holding what they all share.
 ///
 /// One group is built per visualizer instruction, in two steps: [`Self::lane_source`] gathers the
-/// data from the store, [`Self::build_group`] turns it into lanes.
+/// data from the store, [`build_group`] turns it into lanes.
 struct LaneGroupBuilder<'a> {
     ctx: &'a ViewContext<'a>,
     view_query: &'a ViewQuery<'a>,
@@ -438,9 +457,29 @@ impl<'a> LaneGroupBuilder<'a> {
     ) -> Option<LaneSource> {
         let state_component = StateChange::descriptor_state().component;
 
+        // The window can be entirely off the data (panned before or after it, or cut away by the
+        // configured visible range), in which case no query says anything about the lane. The shape
+        // probe reads it straight from the store, ignoring both the window and `Clear`s — lanes
+        // vanishing is what leaves the view with nothing to pan back with.
+        let probed_shape = std::cell::OnceCell::new();
+        let probe = || {
+            probed_shape
+                .get_or_init(|| {
+                    probe_state_shape(
+                        self.ctx,
+                        self.view_query.timeline,
+                        &data_result.entity_path,
+                        instruction,
+                        state_component,
+                    )
+                })
+                .as_ref()
+        };
+
         let Some(store_range) = store_range else {
             return Some(LaneSource {
-                element_type: self.probe_element_type(data_result, instruction)?,
+                element_type: probe().map(|shape| shape.value_type.clone()),
+                instance_count: probe().map_or(1, |shape| shape.instance_count),
                 rows: Vec::new(),
                 state_config: Vec::new(),
                 clear_events: Vec::new(),
@@ -519,7 +558,7 @@ impl<'a> LaneGroupBuilder<'a> {
         let element_type = element_types
             .into_iter()
             .next()
-            .or_else(|| self.probe_element_type(data_result, instruction))?;
+            .or_else(|| probe().map(|shape| shape.value_type.clone()));
 
         // Prefer the in-window `StateConfiguration`; fall back to the bootstrapped one so the
         // colors/labels/visibility stay correct when the config was set before the window.
@@ -530,11 +569,24 @@ impl<'a> LaneGroupBuilder<'a> {
 
         // The bootstrapped state-before-the-window comes first (it has the earliest time),
         // followed by the in-window changes.
-        let mut rows = collect_state_rows(&bootstrap_values, &element_type);
-        rows.extend(collect_state_rows(&range_values, &element_type));
+        let mut rows = Vec::new();
+        if let Some(element_type) = &element_type {
+            rows = collect_state_rows(&bootstrap_values, element_type);
+            rows.extend(collect_state_rows(&range_values, element_type));
+        }
+
+        // With no rows on screen, fall back to the shape probed from the store, and finally to a
+        // single empty lane.
+        let instance_count = rows
+            .iter()
+            .map(|row| row.labels.len())
+            .max()
+            .or_else(|| probe().map(|shape| shape.instance_count))
+            .unwrap_or(1);
 
         Some(LaneSource {
             element_type,
+            instance_count,
             rows,
             state_config,
             // `Clear` archetypes logged on this entity (or on an ancestor with
@@ -542,82 +594,44 @@ impl<'a> LaneGroupBuilder<'a> {
             clear_events: collect_recursive_clears(self.ctx, &query, &data_result.entity_path),
         })
     }
+}
 
-    /// Assemble one lane group: a lane per state instance, under a shared label.
-    fn build_group(
-        &self,
-        data_result: &re_viewer_context::DataResult,
-        instruction: &re_viewer_context::VisualizerInstruction,
-        visible_time_range: AbsoluteTimeRange,
-        value_kind: StateValueKind,
-        source: &LaneSource,
-    ) -> StateLaneGroup {
-        let state_component = StateChange::descriptor_state().component;
+/// Assemble one lane group: a lane per state instance, under a shared label.
+fn build_group(
+    data_result: &re_viewer_context::DataResult,
+    instruction: &re_viewer_context::VisualizerInstruction,
+    visible_time_range: AbsoluteTimeRange,
+    value_kind: Option<StateValueKind>,
+    source: &LaneSource,
+) -> StateLaneGroup {
+    let instance_count = source.instance_count;
 
-        let instance_count = calculate_instance_count(
-            self.ctx,
-            &source.rows,
-            self.view_query.timeline,
-            &data_result.entity_path,
-            instruction,
-            state_component,
-        );
-
-        let lanes = (0..instance_count)
-            .map(|instance| StateLane {
-                phases: build_lane_phases(
-                    source
-                        .rows
-                        .iter()
-                        .map(|row| {
-                            (
-                                row.time,
-                                row.row_id,
-                                row.labels.get(instance).cloned().flatten(),
-                            )
-                        })
-                        .collect(),
-                    &source.clear_events,
-                    &source.state_config,
-                ),
-            })
-            .collect();
-
-        StateLaneGroup {
-            label: lane_group_label(data_result, instruction, instance_count),
-            visible_time_range,
-            entity_path: data_result.entity_path.clone(),
-            value_kind,
-            lanes,
-        }
-    }
-
-    /// Probe the entity's state type at the end of time.
-    fn probe_element_type(
-        &self,
-        data_result: &re_viewer_context::DataResult,
-        instruction: &re_viewer_context::VisualizerInstruction,
-    ) -> Option<DataType> {
-        let state_component = StateChange::descriptor_state().component;
-        let latest_query =
-            re_chunk_store::LatestAtQuery::new(self.view_query.timeline, TimeInt::MAX);
-        let probe = re_view::BlueprintResolvedResults::from((
-            latest_query.clone(),
-            re_view::latest_at_with_blueprint_resolved_data_polymorphic(
-                self.ctx,
-                None,
-                &latest_query,
-                data_result,
-                [state_component],
-                Some(instruction),
-                &self.cast_rules,
+    let lanes = (0..instance_count)
+        .map(|instance| StateLane {
+            phases: build_lane_phases(
+                source
+                    .rows
+                    .iter()
+                    .map(|row| {
+                        (
+                            row.time,
+                            row.row_id,
+                            row.labels.get(instance).cloned().flatten(),
+                        )
+                    })
+                    .collect(),
+                &source.clear_events,
+                &source.state_config,
             ),
-        ));
-        let probe =
-            re_view::VisualizerInstructionQueryResults::new(instruction, &probe, self.output);
-        state_chunk_element_types(&probe.iter_required(state_component))
-            .into_iter()
-            .next()
+        })
+        .collect();
+
+    StateLaneGroup {
+        label: lane_group_label(data_result, instruction, instance_count),
+        visible_time_range,
+        entity_path: data_result.entity_path.clone(),
+        value_kind,
+        lanes,
     }
 }
 
@@ -828,22 +842,27 @@ fn state_chunk_element_types(
         .collect()
 }
 
-/// The length (instance count) of the state arrays logged for `entity_path` on `timeline`.
-fn calculate_instance_count(
+/// The shape of the state data logged for a lane, read straight from the store. Used as a fallback
+/// when no rows are on screen.
+struct ProbedStateShape {
+    /// Post-cast element type of the state values, as [`state_chunk_element_types`] reports it.
+    value_type: DataType,
+
+    /// Length of the state arrays, i.e. how many lanes the group has.
+    instance_count: usize,
+}
+
+/// Probe the shape of the state data logged for `entity_path` on `timeline`. Ignores the visible
+/// window and `Clear`s.
+fn probe_state_shape(
     ctx: &ViewContext<'_>,
-    rows: &[StateRow],
     timeline: re_log_types::TimelineName,
     entity_path: &re_log_types::EntityPath,
     instruction: &re_viewer_context::VisualizerInstruction,
     state_component: re_sdk_types::ComponentIdentifier,
-) -> usize {
+) -> Option<ProbedStateShape> {
     use re_chunk_store::external::arrow::array::Array as _;
 
-    if let Some(max) = rows.iter().map(|row| row.labels.len()).max() {
-        return max;
-    }
-
-    // No on-screen data, fallback to probing the store.
     // Component remappings redirect the state slot to another source component.
     let source_component = match instruction.component_mappings.get(&state_component) {
         Some(re_viewer_context::VisualizerComponentSource::SourceComponent {
@@ -867,15 +886,17 @@ fn calculate_instance_count(
         if let Some(array) = chunk.components().get_array(source_component) {
             for i in 0..array.len() {
                 if array.is_valid(i) {
-                    // The length of the first valid array.
-                    return (array.value_length(i) as usize).max(1);
+                    let value_type = array.value_type();
+                    return Some(ProbedStateShape {
+                        value_type: state_cast_rule(&value_type).unwrap_or(value_type),
+                        instance_count: (array.value_length(i) as usize).max(1),
+                    });
                 }
             }
         }
     }
 
-    // No data found in store, display a single empty lane.
-    1
+    None
 }
 
 #[cfg(test)]
