@@ -25,7 +25,9 @@ The agent has full control over the Viewer, meaning it can see and click any wid
 Here's an example where Claude Sonnet was asked to create a fancy particle animation of the Rerun logo and verify its
 work using the mcp in the open Viewer (sped up by a lot, except when showing the end result):
 
-https://github.com/user-attachments/assets/14ffe7ed-6000-4193-900c-627784682125
+<video width="100%" autoplay loop muted controls>
+    <source src="https://static.rerun.io/904d1652045806da3058f525188e17603bbc4017_viewer_mcp_teaser.mp4" type="video/mp4" />
+</video>
 
 Once it wrote the script, it logged the recording to the Viewer, and then iterated until the result looked as requested.
 It adjusted the camera position, improved the particle rendering by looking at different frames in the animation,
@@ -72,8 +74,9 @@ Rerun's MCAP importer now also converts the *dense* ROS `nav2_msgs/VoxelGrid` an
 
 And if you wonder how the smooth 3D navigation through the [voxel scene](https://github.com/ephtracy/voxel-model) in this video was done, see below!
 
-<!-- https://static.rerun.io/7724132292eb25c643530304c6699270aeaa68e1_voxel_grid_teaser.mp4 -->
-https://github.com/user-attachments/assets/87fb80da-66dd-4fcd-8b35-ab553696f536
+<video width="100%" autoplay loop muted controls>
+    <source src="https://static.rerun.io/7724132292eb25c643530304c6699270aeaa68e1_voxel_grid_teaser.mp4" type="video/mp4" />
+</video>
 
 ### 🎮 Gamepad support in 3D views
 
@@ -89,9 +92,9 @@ Under the hood, we use the [`gilrs`](https://crates.io/crates/gilrs) crate that 
 
 You can now drag & drop a component right from the streams panel to visualize it in a Time series view or Status timeline.
 
-<!-- https://static.rerun.io/95f484cd8a2e937acd2eafa424bc778fe3ef5d7b_615146790-591024b9-57e7-4864-98f6-0b15ffb7ca2b-1782828747052.mp4 -->
-
-https://github.com/user-attachments/assets/d70587a9-2020-4ae8-9cf3-0fef54dcf896
+<video width="100%" autoplay loop muted controls>
+    <source src="https://static.rerun.io/95f484cd8a2e937acd2eafa424bc778fe3ef5d7b_drag_and_drop_components.mp4" type="video/mp4" />
+</video>
 
 ### Transform debugging tool
 
@@ -102,8 +105,9 @@ The UI supports horizontal and vertical tree layout and you can filter by transf
 **Note:** this UI is currently a tab in the dev panel (accessible via "Toggle dev panel" in the menu or ctrl/cmd+shift+m).
 But we are open to making this a dedicated view in the future - let us know if you have any feedback!
 
-<!-- https://static.rerun.io/cc6c41138eeeabb31fb2ec988eefdcd8da446c86_transform_dev_panel_teaser.mp4 -->
-https://github.com/user-attachments/assets/b4b1ea6e-bce9-4e88-9ede-262f545e3b47
+<video width="100%" autoplay loop muted controls>
+    <source src="https://static.rerun.io/cc6c41138eeeabb31fb2ec988eefdcd8da446c86_transform_dev_panel_teaser.mp4" type="video/mp4" />
+</video>
 
 ## Breaking changes
 

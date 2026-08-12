@@ -16,7 +16,9 @@ there is no separate "New features" section.
 
 The Viewer's command palette (`Cmd+k`/`Ctrl+k`) now lets you find & select entities & components!
 
-https://github.com/user-attachments/assets/1d609f61-cde4-4baa-a250-0e020591dea3
+<video width="100%" autoplay loop muted controls>
+    <source src="https://static.rerun.io/3fe204ec89c84c82f7c14660265c7b5d3ce7cfab_improved_command_palette.mp4" type="video/mp4" />
+</video>
 
 It also adds context dependent commands like, like refreshing the currently selected
 catalog or dataset.
@@ -37,12 +39,16 @@ about consuming live versus server data.
 
 Rerun now detects links known url formats (links to rrds, hub datasets, etc.) and shows them as a compact link button:
 
-<img width="453" height="166" alt="grafik" src="https://github.com/user-attachments/assets/742ecbb8-bbff-439c-9288-8851bf5297b1" />
+<picture>
+  <img src="https://static.rerun.io/built_in_url_types/64ba024b791f56986f6e2637580d8ab51a6d0aef/full.png" alt="">
+</picture>
 
 Previously these all would all be shown as a plain link.
 The Rerun Hub dataset open button has been reworked as well:
 
-<img width="477" height="163" alt="grafik" src="https://github.com/user-attachments/assets/ef245d43-14b4-4a3b-8d4c-88f5c8afdb7d" />
+<picture>
+  <img src="https://static.rerun.io/hub_dataset_open_button/071a7a84e68f25ce1392af1fda2b79437782f96f/full.png" alt="">
+</picture>
 
 ### Import HDF5 data using the chunk processing API
 
