@@ -4,7 +4,7 @@ use re_sdk_types::blueprint::archetypes::EyeControls3D;
 use re_sdk_types::components::Position3D;
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
-use re_viewer_context::{BlueprintContext as _, TimeControlCommand, ViewClass as _, ViewId};
+use re_viewer_context::{TimeControlCommand, ViewClass as _, ViewId};
 use re_viewport_blueprint::{ViewBlueprint, ViewProperty};
 
 #[test]
@@ -205,11 +205,7 @@ fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
         let view_id = view_blueprint.id;
         blueprint.add_views(std::iter::once(view_blueprint), None, None);
 
-        let property = ViewProperty::from_archetype::<EyeControls3D>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query(),
-            view_id,
-        );
+        let property = ViewProperty::from_archetype_for_view::<EyeControls3D>(ctx, view_id);
         property.save_blueprint_component(
             ctx,
             &EyeControls3D::descriptor_position(),

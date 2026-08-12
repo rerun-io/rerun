@@ -36,10 +36,10 @@ jobs:
       protobuf_changes: ${{ steps.filter.outputs.protobuf_changes }}
       web_changes: ${{ steps.filter.outputs.web_changes }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
-      - uses: dorny/paths-filter@v3
+      - uses: dorny/paths-filter@0e4a8c6effa4802afeda77dc8d303f8176d7dfad # v3.0.4
         id: filter
         with:
           filters: |
@@ -49,6 +49,7 @@ jobs:
               - pixi.lock # maybe our build commands have changed
               - pixi.toml # maybe our build commands have changed
               - scripts/ci/**/*
+              - rerun_cpp/.clang-tidy
               - '**/*.cpp'
               - '**/*.hpp'
               - '**/*cmake'
@@ -73,6 +74,8 @@ jobs:
               - '**/*.pyi'
               - '**/requirements.txt'
               - '**/pyproject.toml'
+              # `uv.lock` pins the versions we actually install, and is not matched by `**/*.toml`.
+              - '**/uv.lock'
 
             rust_changes:
               # - .github/**/*.yml  -  this is tempting, but leads to constant rebuilds
@@ -201,6 +204,15 @@ jobs:
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
       CHANNEL: main
+    secrets: inherit
+
+  web-test:
+    name: "Web tests"
+    needs: [paths-filter]
+    if: github.event.pull_request.head.repo.owner.login == 'rerun-io' && needs.paths-filter.outputs.web_changes == 'true'
+    uses: ./.github/workflows/reusable_web_test.yml
+    with:
+      CONCURRENCY: pr-${{ github.event.pull_request.number }}
     secrets: inherit
 
   upload-web:

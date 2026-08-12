@@ -93,6 +93,6 @@ impl From<glam::IVec3> for IVec3D {
 
 impl std::fmt::Display for IVec3D {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "[{}, {}, {}]", self.x(), self.y(), self.z(),)
+        write!(f, "[{}, {}, {}]", self.x(), self.y(), self.z())
     }
 }

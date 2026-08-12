@@ -50,14 +50,18 @@ pub trait Cache: std::any::Any + Send + Sync + re_byte_size::MemUsageTreeCapture
 /// and can be trivially returned without holding the lock.
 ///
 /// Implementing this is required for [`crate::Memoizers::read_or_compute`].
+///
+/// If computing a value needs data beyond the persistent cache key, use an accessor type for
+/// `Key` that contains both the stable key and borrowed inputs for the miss path.
+/// [`Self::read`] should only use the stable key, while [`Self::compute`] may use the additional
+/// inputs.
 pub trait CacheEntryAccess<Key, Value>: Cache {
     /// Reads the cache entry for the given key, if it exists.
     fn read(&self, key: &Key) -> Option<Value>;
 
     /// Computes the cache entry for the given key and returns it.
     ///
-    /// While we generally expect this to be called only ever once for a given key,
-    /// in high contended situations it may be called repeatedly for the same key.
-    /// Implementations *have* to handle this gracefully.
+    /// [`crate::Memoizers::read_or_compute`] calls this while holding the cache's write lock after
+    /// checking the key a second time, so concurrent misses are guaranteed not to repeat the computation.
     fn compute(&mut self, key: &Key) -> Value;
 }

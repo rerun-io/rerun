@@ -27,3 +27,8 @@ re_video.workspace = true
 arrow.workspace = true
 itertools.workspace = true
 thiserror.workspace = true
+
+# Native only: stream mode transcodes B-frame mp4s with the `ffmpeg` CLI.
+# re_video is native-only and ffmpeg-sidecar isn't needed on web.
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+re_video = { workspace = true, features = ["ffmpeg"] }

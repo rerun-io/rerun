@@ -18,7 +18,7 @@ pub fn mobile_warning_ui(ui: &mut egui::Ui, custom_window_decorations: bool) {
         egui::Panel::bottom("warning_panel")
             .resizable(false)
             .frame(frame)
-            .show_inside(ui, |ui| {
+            .show(ui, |ui| {
                 ui.centered_and_justified(|ui| {
                     let text = ui
                         .ctx()

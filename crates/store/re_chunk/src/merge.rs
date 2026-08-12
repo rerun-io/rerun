@@ -1,6 +1,6 @@
 use arrow::array::{Array as _, FixedSizeBinaryArray, ListArray as ArrowListArray};
 use arrow::buffer::ScalarBuffer as ArrowScalarBuffer;
-use itertools::{Itertools as _, izip};
+use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_types_core::SerializedComponentColumn;
@@ -12,48 +12,51 @@ use crate::{Chunk, ChunkError, ChunkId, ChunkResult, TimeColumn};
 
 impl Chunk {
     /// Picks the order intelligently, and sorts the result.
+    ///
+    /// This will return an error if the chunks are not [concatenable].
+    ///
+    /// [concatenable]: [`Chunk::concatenable`]
     pub fn concat_and_sort(left: &Self, right: &Self) -> ChunkResult<Self> {
         re_tracing::profile_function!();
 
         let left_rowid_min = right.row_id_range().map(|(min, _)| min);
         let right_rowid_min = left.row_id_range().map(|(min, _)| min);
         let mut compacted = if right_rowid_min < left_rowid_min {
-            left.concatenated(right)?
+            left.concatenated_unsorted(right)?
         } else {
-            right.concatenated(left)?
+            right.concatenated_unsorted(left)?
         };
 
         compacted.sort_by_row_ids_if_needed();
+        compacted.sanity_check()?;
 
         // Sanity check that timelines haven't become unsorted.
         // If they have, we have an unsorted timeline, which is good to know about.
+        for name in compacted.unsorted_timelines() {
+            let left_was_sorted = left.timelines().get(&name).is_none_or(|c| c.is_sorted());
+            let right_was_sorted = right.timelines().get(&name).is_none_or(|c| c.is_sorted());
 
-        for (name, column) in compacted.timelines() {
-            if !column.is_sorted() {
-                let left_was_sorted = left.timelines().get(name).is_none_or(|c| c.is_sorted());
-                let right_was_sorted = right.timelines().get(name).is_none_or(|c| c.is_sorted());
-
-                if left_was_sorted && right_was_sorted {
-                    let entity_path = compacted.entity_path();
-                    re_log::debug_warn_once!(
-                        "Timeline '{name}' BECAME unsorted after concatenating overlapping, sorted chunks for entity '{entity_path}'. This may cause performance issues."
-                    );
-                }
+            if left_was_sorted && right_was_sorted {
+                let entity_path = compacted.entity_path();
+                re_log::debug_warn_once!(
+                    "Timeline '{name}' BECAME unsorted after concatenating overlapping, sorted chunks for entity '{entity_path}'. This may cause performance issues."
+                );
             }
         }
 
         Ok(compacted)
     }
 
-    /// Concatenates two `Chunk`s into a new one.
+    /// Concatenates two `Chunk`s into a new one without sorting the result.
     ///
-    /// The order of the arguments matter: `self`'s contents will precede `rhs`' contents in the
+    /// The order of the arguments matters: `self`'s contents will precede `rhs`'s contents in the
     /// returned `Chunk`.
+    /// Use [`Self::concat_and_sort`] when the result must uphold [`crate::RowId`] order.
     ///
     /// This will return an error if the chunks are not [concatenable].
     ///
     /// [concatenable]: [`Chunk::concatenable`]
-    pub fn concatenated(&self, rhs: &Self) -> ChunkResult<Self> {
+    fn concatenated_unsorted(&self, rhs: &Self) -> ChunkResult<Self> {
         re_tracing::profile_function!(format!(
             "lhs={} rhs={}",
             re_format::format_uint(self.num_rows()),
@@ -64,9 +67,39 @@ impl Chunk {
         let cr = rhs;
 
         if !cl.concatenable(cr) {
-            return Err(ChunkError::Malformed {
-                reason: format!("cannot concatenate incompatible Chunks:\n{cl}\n{cr}"),
-            });
+            // Make sure we provide good errors:
+            let reason = if cl.entity_path() != cr.entity_path() {
+                format!(
+                    "cannot concatenate chunks with different entity paths: {:?} != {:?}",
+                    cl.entity_path(),
+                    cr.entity_path()
+                )
+            } else if !cl.same_timelines(cr) {
+                format!(
+                    "cannot concatenate chunks with different timelines (timelines are dense within a chunk):\n{:?}\n{:?}",
+                    cl.timelines()
+                        .values()
+                        .map(|column| column.timeline())
+                        .sorted()
+                        .map(|timeline| format!("{}: {}", timeline.name(), timeline.typ()))
+                        .format(", "),
+                    cr.timelines()
+                        .values()
+                        .map(|column| column.timeline())
+                        .sorted()
+                        .map(|timeline| format!("{}: {}", timeline.name(), timeline.typ()))
+                        .format(", "),
+                )
+            } else if !cl.same_datatypes(cr) {
+                format!(
+                    "cannot concatenate chunks with different datatypes for shared components:\n{}\n{}",
+                    cl.component_descriptors().format(", "),
+                    cr.component_descriptors().format(", "),
+                )
+            } else {
+                format!("cannot concatenate incompatible chunks:\n{cl}\n{cr}")
+            };
+            return Err(ChunkError::Malformed { reason });
         }
 
         let Some((_cl0, cl1)) = cl.row_id_range() else {
@@ -90,20 +123,38 @@ impl Chunk {
                 .clone()
         };
 
-        // NOTE: We know they are the same set, and they are in a btree => we can zip them.
-        let timelines = {
-            re_tracing::profile_scope!("timelines");
-            izip!(&self.timelines, &rhs.timelines)
-                .filter_map(
-                    |((lhs_timeline, lhs_time_chunk), (rhs_timeline, rhs_time_chunk))| {
-                        re_log::debug_assert_eq!(lhs_timeline, rhs_timeline);
-                        lhs_time_chunk
-                            .concatenated(rhs_time_chunk)
-                            .map(|time_column| (*lhs_timeline, time_column))
-                    },
-                )
-                .collect()
-        };
+        // Pair time columns by name — the maps' iteration orders may differ.
+        // Both error arms are unreachable behind the `concatenable` check above; hard-error
+        // rather than silently drop a column if that ever changes.
+        let timelines: IntMap<_, _> =
+            {
+                re_tracing::profile_scope!("timelines");
+                cl.timelines
+                    .iter()
+                    .map(|(timeline_name, lhs_time_column)| {
+                        let rhs_time_column = cr.timelines.get(timeline_name).ok_or_else(|| {
+                            ChunkError::Malformed {
+                                reason: format!(
+                                    "cannot concatenate chunks: timeline `{timeline_name}` is \
+                                     missing from rhs (concatenability should have been checked \
+                                     before this point)"
+                                ),
+                            }
+                        })?;
+                        let time_column = lhs_time_column
+                            .concatenated(rhs_time_column)
+                            .ok_or_else(|| ChunkError::Malformed {
+                                reason: format!(
+                                    "cannot concatenate chunks: timeline `{timeline_name}` differs \
+                                     between chunks: {:?} != {:?}",
+                                    lhs_time_column.timeline(),
+                                    rhs_time_column.timeline(),
+                                ),
+                            })?;
+                        Ok((*timeline_name, time_column))
+                    })
+                    .collect::<ChunkResult<_>>()?
+            };
 
         let lhs_per_component: IntMap<_, _> = cl
             .components
@@ -214,8 +265,6 @@ impl Chunk {
             components,
         };
 
-        chunk.sanity_check()?;
-
         Ok(chunk)
     }
 
@@ -257,11 +306,18 @@ impl Chunk {
         self.entity_path() == rhs.entity_path()
     }
 
-    /// Returns `true` if both chunks contains the same set of timelines.
+    /// Returns `true` if both chunks contain the same set of timelines (both name and type).
+    ///
+    /// Compared by key lookup — hash-map iteration order differs between maps and means
+    /// nothing. Types matter because [`TimeColumn::concatenated`] refuses mismatched types.
     #[inline]
     pub fn same_timelines(&self, rhs: &Self) -> bool {
         self.timelines.len() == rhs.timelines.len()
-            && self.timelines.keys().collect_vec() == rhs.timelines.keys().collect_vec()
+            && self.timelines.iter().all(|(name, lhs_column)| {
+                rhs.timelines
+                    .get(name)
+                    .is_some_and(|rhs_column| lhs_column.timeline() == rhs_column.timeline())
+            })
     }
 
     /// Returns `true` if both chunks share the same datatypes for the components that
@@ -329,6 +385,70 @@ mod tests {
 
     use super::*;
     use crate::{Chunk, RowId, Timeline};
+
+    #[test]
+    fn concat_and_sort_sorts_and_doesnt_warn_about_intermediate_steps() -> anyhow::Result<()> {
+        re_log::setup_logging();
+        let log_rx = re_log::add_log_msg_receiver(re_log::LevelFilter::WARN);
+
+        let entity_path = "/concat_and_sort/overlapping_rows";
+        let timeline = Timeline::new_sequence("frame");
+        let row_id1 = RowId::new();
+        let row_id2 = RowId::new();
+        let row_id3 = RowId::new();
+        let row_id4 = RowId::new();
+        let points = &[MyPoint::new(1.0, 2.0)];
+
+        let left = Chunk::builder(entity_path)
+            .with_component_batch(
+                row_id1,
+                [(timeline, 1)],
+                (MyPoints::descriptor_points(), points),
+            )
+            .with_component_batch(
+                row_id3,
+                [(timeline, 3)],
+                (MyPoints::descriptor_points(), points),
+            )
+            .build()?;
+        let right = Chunk::builder(entity_path)
+            .with_component_batch(
+                row_id2,
+                [(timeline, 2)],
+                (MyPoints::descriptor_points(), points),
+            )
+            .with_component_batch(
+                row_id4,
+                [(timeline, 4)],
+                (MyPoints::descriptor_points(), points),
+            )
+            .build()?;
+
+        assert!(left.overlaps_on_row_id(&right));
+        let concatenated = left.concatenated_unsorted(&right)?;
+        assert!(!concatenated.is_row_ids_sorted());
+        assert!(!concatenated.all_timelines_sorted());
+
+        let got = Chunk::concat_and_sort(&left, &right)?;
+        assert!(got.is_row_ids_sorted());
+        assert!(got.all_timelines_sorted());
+
+        let ordering_warnings = log_rx
+            .try_iter()
+            .map(|msg| msg.message)
+            .filter(|message| {
+                message.contains("Found chunk that wasn't sorted by RowId")
+                    || (message.contains("Found out-of-order timelines")
+                        && message.contains(entity_path))
+            })
+            .collect_vec();
+        assert!(
+            ordering_warnings.is_empty(),
+            "temporary concatenation order produced warnings: {ordering_warnings:?}"
+        );
+
+        Ok(())
+    }
 
     #[test]
     fn homogeneous() -> anyhow::Result<()> {
@@ -422,7 +542,7 @@ mod tests {
         {
             assert!(chunk1.concatenable(&chunk2));
 
-            let got = chunk1.concatenated(&chunk2).unwrap();
+            let got = chunk1.concatenated_unsorted(&chunk2).unwrap();
             let expected = Chunk::builder_with_id(got.id(), entity_path)
                 .with_sparse_component_batches(
                     row_id1,
@@ -492,7 +612,7 @@ mod tests {
         {
             assert!(chunk2.concatenable(&chunk1));
 
-            let got = chunk2.concatenated(&chunk1).unwrap();
+            let got = chunk2.concatenated_unsorted(&chunk1).unwrap();
             let expected = Chunk::builder_with_id(got.id(), entity_path)
                 .with_sparse_component_batches(
                     row_id4,
@@ -655,7 +775,7 @@ mod tests {
         {
             assert!(chunk1.concatenable(&chunk2));
 
-            let got = chunk1.concatenated(&chunk2).unwrap();
+            let got = chunk1.concatenated_unsorted(&chunk2).unwrap();
             let expected = Chunk::builder_with_id(got.id(), entity_path)
                 .with_sparse_component_batches(
                     row_id1,
@@ -725,7 +845,7 @@ mod tests {
         {
             assert!(chunk2.concatenable(&chunk1));
 
-            let got = chunk2.concatenated(&chunk1).unwrap();
+            let got = chunk2.concatenated_unsorted(&chunk1).unwrap();
             let expected = Chunk::builder_with_id(got.id(), entity_path)
                 .with_sparse_component_batches(
                     row_id4,
@@ -835,11 +955,11 @@ mod tests {
                 .build()?;
 
             assert!(matches!(
-                chunk1.concatenated(&chunk2),
+                chunk1.concatenated_unsorted(&chunk2),
                 Err(ChunkError::Malformed { .. })
             ));
             assert!(matches!(
-                chunk2.concatenated(&chunk1),
+                chunk2.concatenated_unsorted(&chunk1),
                 Err(ChunkError::Malformed { .. })
             ));
         }
@@ -874,11 +994,11 @@ mod tests {
                 .build()?;
 
             assert!(matches!(
-                chunk1.concatenated(&chunk2),
+                chunk1.concatenated_unsorted(&chunk2),
                 Err(ChunkError::Malformed { .. })
             ));
             assert!(matches!(
-                chunk2.concatenated(&chunk1),
+                chunk2.concatenated_unsorted(&chunk1),
                 Err(ChunkError::Malformed { .. })
             ));
         }
@@ -919,14 +1039,127 @@ mod tests {
                 .build()?;
 
             assert!(matches!(
-                chunk1.concatenated(&chunk2),
+                chunk1.concatenated_unsorted(&chunk2),
                 Err(ChunkError::Malformed { .. })
             ));
             assert!(matches!(
-                chunk2.concatenated(&chunk1),
+                chunk2.concatenated_unsorted(&chunk1),
                 Err(ChunkError::Malformed { .. })
             ));
         }
+
+        Ok(())
+    }
+
+    /// Rebuild `chunk`'s timeline map by inserting the timelines in `order`.
+    ///
+    /// Insertion order affects iteration order when keys collide, giving equal key sets that
+    /// iterate differently.
+    fn with_reinserted_timelines(chunk: &Chunk, order: &[re_log_types::TimelineName]) -> Chunk {
+        let mut timelines = IntMap::default();
+        for name in order {
+            timelines.insert(*name, chunk.timelines[name].clone());
+        }
+        let mut chunk = chunk.clone();
+        chunk.timelines = timelines;
+        chunk
+    }
+
+    /// Equal timeline sets must concatenate no matter how the maps iterate, pairing time
+    /// columns by name.
+    ///
+    /// Regression test for order-sensitive `same_timelines` and positional pairing in
+    /// `concatenated`.
+    #[test]
+    fn concatenation_is_insensitive_to_timeline_map_iteration_order() -> anyhow::Result<()> {
+        use re_log_types::TimelineName;
+
+        // Find names whose map iteration order depends on insertion order. Deterministic
+        // (fixed-seed hashes); panics if map internals change and nothing diverges anymore.
+        let iteration_order = |insertion_order: &[TimelineName]| {
+            let mut set = nohash_hasher::IntSet::<TimelineName>::default();
+            for name in insertion_order {
+                set.insert(*name);
+            }
+            set.iter().copied().collect_vec()
+        };
+        let (order1, order2) = 'search: {
+            for i in 0..100 {
+                let names = ["a", "b", "c"]
+                    .map(|s| TimelineName::try_new(format!("timeline_{s}_{i}")).unwrap());
+                let reference = iteration_order(&names);
+                for perm in names.iter().copied().permutations(names.len()) {
+                    if iteration_order(&perm) != reference {
+                        break 'search (names.to_vec(), perm);
+                    }
+                }
+            }
+            panic!(
+                "no timeline-name set found whose IntMap iteration order depends on insertion \
+                 order; did the hasher or hash-map internals change?"
+            );
+        };
+
+        // Distinct time values per timeline per chunk, so wrongly paired columns can't match by
+        // accident.
+        let entity_path = "my/entity";
+        let timepoint = |chunk_index: i64, row: i64| -> [(Timeline, i64); 3] {
+            std::array::from_fn(|k| {
+                let timeline_index = i64::try_from(k).expect("tiny index");
+                (
+                    Timeline::new_sequence(order1[k]),
+                    1000 * (timeline_index + 1) + 10 * chunk_index + row,
+                )
+            })
+        };
+        let points1 = &[MyPoint::new(1.0, 1.0)];
+        let points2 = &[MyPoint::new(2.0, 2.0)];
+        let build_chunk = |chunk_index: i64, points: &dyn re_types_core::ComponentBatch| {
+            Chunk::builder(entity_path)
+                .with_component_batches(
+                    RowId::new(),
+                    timepoint(chunk_index, 0),
+                    [(MyPoints::descriptor_points(), points)],
+                )
+                .with_component_batches(
+                    RowId::new(),
+                    timepoint(chunk_index, 1),
+                    [(MyPoints::descriptor_points(), points)],
+                )
+                .build()
+        };
+        let chunk1 = build_chunk(0, points1 as _)?;
+        let chunk2 = build_chunk(1, points2 as _)?;
+
+        // Force divergent map layouts; assert the precondition actually holds.
+        let chunk1 = with_reinserted_timelines(&chunk1, &order1);
+        let chunk2 = with_reinserted_timelines(&chunk2, &order2);
+        assert_ne!(
+            chunk1.timelines.keys().collect_vec(),
+            chunk2.timelines.keys().collect_vec(),
+            "test precondition: the two timeline maps must iterate in different orders"
+        );
+
+        assert!(chunk1.same_timelines(&chunk2));
+        assert!(chunk1.concatenable(&chunk2));
+
+        let got = chunk1.concatenated_unsorted(&chunk2)?;
+
+        // Paired by name, not map position.
+        for name in &order1 {
+            let expected: Vec<i64> = std::iter::chain(
+                chunk1.timelines[name].times_raw(),
+                chunk2.timelines[name].times_raw(),
+            )
+            .copied()
+            .collect();
+            assert_eq!(
+                got.timelines()[name].times_raw(),
+                expected.as_slice(),
+                "timeline {name}"
+            );
+        }
+        got.sanity_check()?;
 
         Ok(())
     }

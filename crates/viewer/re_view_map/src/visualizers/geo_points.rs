@@ -5,7 +5,7 @@ use re_sdk_types::Archetype as _;
 use re_sdk_types::archetypes::GeoPoints;
 use re_sdk_types::components::{LatLon, Radius};
 use re_view::{
-    AnnotationSceneContext, DataResultQuery as _, VisualizerInstructionQueryResults,
+    AnnotationMapCache, DataResultQuery as _, VisualizerInstructionQueryResults,
     process_annotation_slices, process_color_slice,
 };
 use re_viewer_context::{
@@ -56,11 +56,11 @@ impl VisualizerSystem for GeoPointsVisualizer {
         &self,
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
-        context_systems: &ViewContextCollection,
+        _context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         let output = VisualizerExecutionOutput::default();
-        let annotation_scene_context = context_systems.get::<AnnotationSceneContext>(&output)?;
         let latest_at_query = view_query.latest_at_query();
+        let annotations = AnnotationMapCache::for_query(ctx.viewer_ctx, &latest_at_query);
         let mut batches = Vec::new();
 
         for (data_result, instruction) in
@@ -70,7 +70,7 @@ impl VisualizerSystem for GeoPointsVisualizer {
                 data_result.query_archetype_with_history::<GeoPoints>(ctx, view_query, instruction);
             let results = VisualizerInstructionQueryResults::new(instruction, &results, &output);
 
-            let annotation_context = annotation_scene_context.0.find(&data_result.entity_path);
+            let annotation_context = annotations.find(&data_result.entity_path);
 
             let mut batch_data = GeoPointBatch::default();
 
@@ -188,6 +188,7 @@ impl GeoPointsOutput {
 
             //TODO(ab, andreas): boilerplate copy-pasted from points2d
             let num_instances = positions.len() as u64;
+            #[expect(clippy::iter_over_hash_type)] // Non-overlapping per-instance mask ranges.
             for (highlighted_key, instance_mask_ids) in &outline.instances {
                 let highlighted_point_index =
                     (highlighted_key.get() < num_instances).then_some(highlighted_key.get());

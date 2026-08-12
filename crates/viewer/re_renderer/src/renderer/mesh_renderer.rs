@@ -825,6 +825,7 @@ mod tests {
 
     fn test_view_info() -> DrawableCollectionViewInfo {
         DrawableCollectionViewInfo {
+            view_id: crate::ViewBuilderId::new(0),
             camera_world_position: glam::Vec3A::ZERO,
         }
     }

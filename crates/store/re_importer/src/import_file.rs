@@ -36,14 +36,13 @@ pub fn import_from_path(
     re_log::info!("Loading {path:?}…");
 
     // If no application ID was specified, we derive one from the filename.
-    let application_id = settings.application_id.clone().or_else(|| {
-        path.file_name()
-            .map(|f| f.to_string_lossy().to_string())
-            .map(ApplicationId::from)
-    });
+    let application_id = settings
+        .application_id
+        .clone()
+        .or_else(|| application_id_from_path(path));
     let settings = crate::ImporterSettings {
         // When importing a LeRobot dataset, avoid sending a `SetStoreInfo` message since the LeRobot importer handles this automatically.
-        force_store_info: !crate::lerobot::is_lerobot_dataset(path),
+        force_store_info: !re_lerobot::is_lerobot_dataset(path),
         application_id,
         ..settings.clone()
     };
@@ -75,13 +74,10 @@ pub fn import_from_file_contents(
 
     re_log::info!("Loading {filepath:?}…");
 
-    // If no application ID was specified, we derive one from the filename.
-    let application_id = settings.application_id.clone().or_else(|| {
-        filepath
-            .file_name()
-            .map(|f| f.to_string_lossy().to_string())
-            .map(ApplicationId::from)
-    });
+    let application_id = settings
+        .application_id
+        .clone()
+        .or_else(|| application_id_from_path(filepath));
 
     let settings = crate::ImporterSettings {
         application_id,
@@ -96,6 +92,16 @@ pub fn import_from_file_contents(
 }
 
 // ---
+
+fn application_id_from_path(path: &std::path::Path) -> Option<ApplicationId> {
+    // `.` is not a valid application ID, so ignore line ending.
+    let file_stem = path.file_stem()?;
+
+    // Any remaining . are replaced with `_`
+    let name = file_stem.to_string_lossy().replace('.', "_");
+
+    ApplicationId::try_new(name).ok()
+}
 
 /// Prepares an adequate [`re_log_types::StoreInfo`] [`LogMsg`] given the input.
 pub fn prepare_store_info(store_id: &re_log_types::StoreId, file_source: FileSource) -> LogMsg {
@@ -383,4 +389,21 @@ where
     F: FnOnce(),
 {
     f();
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_application_id_from_path() {
+        use super::*;
+
+        assert_eq!(
+            application_id_from_path(std::path::Path::new("foo/bar/baz.rrd")),
+            Some(ApplicationId::try_new("baz").unwrap())
+        );
+        assert_eq!(
+            application_id_from_path(std::path::Path::new("foo/bar/baz.thing.jpg")),
+            Some(ApplicationId::try_new("baz_thing").unwrap())
+        );
+    }
 }

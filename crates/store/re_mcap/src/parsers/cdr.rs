@@ -74,6 +74,6 @@ pub enum CdrError {
     #[error("Message is not encoded using a CDR representation: `{0:?}`")]
     UnsupportedRepresentation(RepresentationIdentifier),
 
-    #[error("{0}")]
+    #[error("{0:#}")]
     Other(#[from] anyhow::Error),
 }

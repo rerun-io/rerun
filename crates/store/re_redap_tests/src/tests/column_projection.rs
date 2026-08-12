@@ -120,10 +120,8 @@ async fn test_column_projections<T>(
 
     let result = service
         .scan_segment_table(
-            tonic::Request::new(ScanSegmentTableRequest {
-                columns: vec!["unknown_column".to_owned()],
-            })
-            .with_entry_name(entry_name(dataset_name)),
+            tonic::Request::new(ScanSegmentTableRequest::with_columns(["unknown_column"]))
+                .with_entry_name(entry_name(dataset_name)),
         )
         .await;
 
@@ -142,12 +140,10 @@ async fn test_column_projections<T>(
 
     let result = service
         .scan_segment_table(
-            tonic::Request::new(ScanSegmentTableRequest {
-                columns: vec![
-                    ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME.to_owned(),
-                    ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME.to_owned(),
-                ],
-            })
+            tonic::Request::new(ScanSegmentTableRequest::with_columns([
+                ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
+                ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
+            ]))
             .with_entry_name(entry_name(dataset_name)),
         )
         .await;
@@ -172,10 +168,8 @@ async fn projected_segment_table_batch(
 ) -> Vec<String> {
     let responses: Vec<_> = service
         .scan_segment_table(
-            tonic::Request::new(ScanSegmentTableRequest {
-                columns: column_projection,
-            })
-            .with_entry_name(entry_name(dataset_name)),
+            tonic::Request::new(ScanSegmentTableRequest::with_columns(column_projection))
+                .with_entry_name(entry_name(dataset_name)),
         )
         .await
         .unwrap()
@@ -213,10 +207,8 @@ async fn projected_dataset_manifest_batch(
 ) -> Vec<String> {
     let responses: Vec<_> = service
         .scan_dataset_manifest(
-            tonic::Request::new(ScanDatasetManifestRequest {
-                columns: column_projection,
-            })
-            .with_entry_name(entry_name(dataset_name)),
+            tonic::Request::new(ScanDatasetManifestRequest::with_columns(column_projection))
+                .with_entry_name(entry_name(dataset_name)),
         )
         .await
         .unwrap()

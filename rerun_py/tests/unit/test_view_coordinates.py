@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 import rerun.components as rrc
+import rerun.datatypes as rrd
 from rerun.archetypes import ViewCoordinates
 
 from .common_arrays import none_empty_or_value
@@ -14,22 +15,25 @@ if TYPE_CHECKING:
 def view_coordinates_expected(obj: Any) -> rrc.ViewCoordinatesBatch:
     expected = none_empty_or_value(
         obj,
-        [rrc.ViewCoordinates.ViewDir.Right, rrc.ViewCoordinates.ViewDir.Down, rrc.ViewCoordinates.ViewDir.Forward],
+        [rrd.ViewDir.Right, rrd.ViewDir.Down, rrd.ViewDir.Forward],
     )
 
     return rrc.ViewCoordinatesBatch(expected)
 
 
+assert rrc.ViewCoordinates.ViewDir is rrd.ViewDir
+
+
 VIEW_COORDINATES_INPUTS: list[ViewCoordinatesArrayLike] = [
     rrc.ViewCoordinates([
-        rrc.ViewCoordinates.ViewDir.Right,
-        rrc.ViewCoordinates.ViewDir.Down,
-        rrc.ViewCoordinates.ViewDir.Forward,
+        rrd.ViewDir.Right,
+        rrd.ViewDir.Down,
+        rrd.ViewDir.Forward,
     ]),
     [
-        rrc.ViewCoordinates.ViewDir.Right,
-        rrc.ViewCoordinates.ViewDir.Down,
-        rrc.ViewCoordinates.ViewDir.Forward,
+        rrd.ViewDir.Right,
+        rrd.ViewDir.Down,
+        rrd.ViewDir.Forward,
     ],
     rrc.ViewCoordinates.RDF,
     [rrc.ViewCoordinates.RDF],

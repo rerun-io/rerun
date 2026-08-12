@@ -294,6 +294,69 @@ mod tests {
         Ok(())
     }
 
+    /// Regression lock for the `OBJECT_STORE` default: the profile must carry a
+    /// `split_size_ratio` that actually separates thick columns from thin ones when
+    /// wired through `compacted`, and no rows may be lost in the process.
+    #[test]
+    fn object_store_profile_splits_thick_from_thin() -> anyhow::Result<()> {
+        re_log::setup_logging();
+
+        let entity = EntityPath::from("camera");
+        let blob_bytes = 128 * 1024; // well above the scalar payload
+
+        let mut store = ChunkStore::new(
+            StoreId::random(StoreKind::Recording, "test_app"),
+            ChunkStoreConfig::ALL_DISABLED,
+        );
+        for frame in 0..4 {
+            store.insert_chunk(&mixed_chunk(&entity, frame, blob_bytes))?;
+        }
+
+        // Wire exactly as the `rrd optimize` / catalog ingestion paths do: the ratio
+        // comes from the profile, not a hard-coded literal. If someone resets
+        // `OBJECT_STORE.split_size_ratio` to `None`, this test fails.
+        let profile = crate::OptimizationProfile::OBJECT_STORE;
+        let options = CompactionOptions {
+            config: profile.to_chunk_store_config(),
+            num_extra_passes: Some(3),
+            is_start_of_gop: None,
+            split_size_ratio: profile.split_size_ratio,
+            fix_keyframe: false,
+        };
+        let compacted = store.compacted(&options)?;
+
+        // No output chunk may mix the two archetypes.
+        for chunk in compacted.iter_physical_chunks() {
+            let archetypes: std::collections::BTreeSet<_> = chunk
+                .components()
+                .values()
+                .map(|c| c.descriptor.archetype)
+                .collect();
+            assert_eq!(
+                archetypes.len(),
+                1,
+                "OBJECT_STORE profile left a chunk mixing archetypes: {archetypes:?}",
+            );
+        }
+
+        // Every row of every archetype must survive the split: 4 frames each.
+        let rows_for = |archetype: ArchetypeName| -> u64 {
+            compacted
+                .iter_physical_chunks()
+                .filter(|c| {
+                    c.components()
+                        .values()
+                        .any(|c| c.descriptor.archetype == Some(archetype))
+                })
+                .map(|c| c.num_rows() as u64)
+                .sum()
+        };
+        assert_eq!(rows_for(ArchetypeName::from("my.Video")), 4);
+        assert_eq!(rows_for(ArchetypeName::from("my.Points")), 4);
+
+        Ok(())
+    }
+
     #[test]
     fn compacted_leaves_mixed_chunk_alone_without_ratio() -> anyhow::Result<()> {
         re_log::setup_logging();

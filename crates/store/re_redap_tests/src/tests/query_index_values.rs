@@ -793,7 +793,7 @@ pub async fn query_dataset_per_segment_values_validation_rejected(service: impl 
 ///
 /// * the OSS server's per-row filter (`requested_chunk_ids.contains(…)`)
 ///   in `rerun_cloud.rs` honors the intersection, and
-/// * the Rerun Hub's set-intersection in `manifest_registry.rs` does too.
+/// * the Rerun Hub's set-intersection in `manifest_writer` does too.
 ///
 /// **Backend-conditional**: the OSS server currently returns
 /// `Unimplemented` whenever `chunk_ids` is non-empty (see

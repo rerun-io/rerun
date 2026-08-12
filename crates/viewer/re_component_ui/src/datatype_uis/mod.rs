@@ -12,14 +12,14 @@ mod view_uuid;
 pub use bool_toggle::edit_bool;
 pub use enum_ui::{
     VariantAvailable, VariantAvailableProvider, edit_view_enum,
-    edit_view_enum_with_variant_available,
+    edit_view_enum_with_variant_available, enum_variant_ui,
 };
 pub use float_drag::{
     edit_f32_float_raw, edit_f32_min_to_max_float, edit_f32_zero_to_max, edit_f32_zero_to_one,
     edit_f64_float_raw_with_speed_impl, edit_f64_min_to_max_float, edit_f64_zero_to_max,
     edit_ui_points,
 };
-pub use int_drag::edit_u64_range;
+pub use int_drag::{edit_u32_range, edit_u64_range};
 pub use range1d::edit_view_range1d;
 pub use singleline_string::{edit_multiline_string, edit_singleline_string};
 pub use vec::{

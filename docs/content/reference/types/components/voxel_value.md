@@ -15,11 +15,11 @@ Float32
 ```
 
 ## API reference links
- * 🌊 [C++ API docs for `VoxelValue`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1VoxelValue.html?speculative-link)
- * 🐍 [Python API docs for `VoxelValue`](https://ref.rerun.io/docs/python/stable/common/components?speculative-link#rerun.components.VoxelValue)
- * 🦀 [Rust API docs for `VoxelValue`](https://docs.rs/rerun/latest/rerun/components/struct.VoxelValue.html?speculative-link)
+ * 🌊 [C++ API docs for `VoxelValue`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1VoxelValue.html)
+ * 🐍 [Python API docs for `VoxelValue`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.VoxelValue)
+ * 🦀 [Rust API docs for `VoxelValue`](https://docs.rs/rerun/latest/rerun/components/struct.VoxelValue.html)
 
 
 ## Used by
 
-* [`VoxelGridMap`](../archetypes/voxel_grid_map.md?speculative-link)
+* [`VoxelGridMap`](../archetypes/voxel_grid_map.md)

@@ -1,4 +1,3 @@
-use std::any::Any;
 use std::sync::Arc;
 
 use ahash::{HashMap, HashSet};
@@ -7,10 +6,10 @@ use datafusion::catalog::{CatalogProvider, CatalogProviderList, SchemaProvider, 
 use datafusion::common::{DataFusionError, Result as DataFusionResult, TableReference, exec_err};
 use datafusion::logical_expr::TableType;
 use parking_lot::Mutex;
+use re_async::AsyncRuntimeHandle;
 use re_log_types::EntryName;
 use re_protos::cloud::v1alpha1::EntryKind;
-use re_redap_client::ConnectionClient;
-use re_uri::Origin;
+use re_redap_client::{ConnectionAnalyticsExporter, ConnectionClient};
 use tokio::runtime::Handle as RuntimeHandle;
 
 use crate::IntoDfError as _;
@@ -37,7 +36,7 @@ const DEFAULT_SCHEMA_NAME: &str = "public";
 pub struct RedapCatalogProviderList {
     client: ConnectionClient,
     runtime: RuntimeHandle,
-    analytics_origin: Option<Origin>,
+    analytics: Option<ConnectionAnalyticsExporter>,
 
     /// Catalogs explicitly added via [`CatalogProviderList::register_catalog`]. Listed in
     /// `catalog_names()`.
@@ -54,12 +53,12 @@ impl RedapCatalogProviderList {
     pub fn new(
         client: ConnectionClient,
         runtime: RuntimeHandle,
-        analytics_origin: Option<Origin>,
+        analytics_exporter: Option<ConnectionAnalyticsExporter>,
     ) -> Self {
         Self {
             client,
             runtime,
-            analytics_origin,
+            analytics: analytics_exporter,
             registered: Mutex::new(HashMap::default()),
             lazy_cache: Mutex::new(HashMap::default()),
         }
@@ -67,10 +66,6 @@ impl RedapCatalogProviderList {
 }
 
 impl CatalogProviderList for RedapCatalogProviderList {
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
     fn register_catalog(
         &self,
         name: String,
@@ -116,7 +111,7 @@ impl CatalogProviderList for RedapCatalogProviderList {
                 Some(name),
                 self.client.clone(),
                 self.runtime.clone(),
-                self.analytics_origin.clone(),
+                self.analytics.clone(),
             )) as Arc<dyn CatalogProvider>
         });
         Some(Arc::clone(provider))
@@ -148,9 +143,8 @@ pub(crate) struct RedapCatalogProvider {
     schemas: Mutex<HashMap<Option<String>, Arc<RedapSchemaProvider>>>,
     runtime: RuntimeHandle,
 
-    /// When set, table-scan analytics are emitted to this cloud origin for any
-    /// table resolved through this catalog. `None` ⇒ no analytics.
-    analytics_origin: Option<Origin>,
+    /// When set, table-scan analytics are emitted for any table resolved through this catalog.
+    analytics: Option<ConnectionAnalyticsExporter>,
 }
 
 #[tracing::instrument(skip_all)]
@@ -177,7 +171,7 @@ impl RedapCatalogProvider {
         name: Option<&str>,
         client: ConnectionClient,
         runtime: RuntimeHandle,
-        analytics_origin: Option<Origin>,
+        analytics: Option<ConnectionAnalyticsExporter>,
     ) -> Self {
         let catalog_name = name
             .filter(|n| *n != DEFAULT_CATALOG_NAME)
@@ -188,16 +182,12 @@ impl RedapCatalogProvider {
             client,
             schemas: Mutex::new(HashMap::default()),
             runtime,
-            analytics_origin,
+            analytics,
         }
     }
 }
 
 impl CatalogProvider for RedapCatalogProvider {
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
     fn schema_names(&self) -> Vec<String> {
         // Enumerates server entries (a wildcard `FindEntries`) and projects them to distinct
         // schema names. Only used by `SHOW SCHEMAS` / `INFORMATION_SCHEMA.schemata`; the SELECT
@@ -237,7 +227,7 @@ impl CatalogProvider for RedapCatalogProvider {
                 client: self.client.clone(),
                 runtime: self.runtime.clone(),
                 in_memory_tables: Default::default(),
-                analytics_origin: self.analytics_origin.clone(),
+                analytics: self.analytics.clone(),
             })
         });
         Some(Arc::clone(provider) as Arc<dyn SchemaProvider>)
@@ -265,7 +255,7 @@ struct RedapSchemaProvider {
 
     /// Inherited from `RedapCatalogProvider`. `Some` ⇒ enable analytics for
     /// providers constructed by `table()`.
-    analytics_origin: Option<Origin>,
+    analytics: Option<ConnectionAnalyticsExporter>,
 }
 
 /// Reconstruct the dotted entry name as stored on the server from a provider's catalog/schema
@@ -321,10 +311,6 @@ impl SchemaProvider for RedapSchemaProvider {
         self.catalog_name.as_deref()
     }
 
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
     fn table_names(&self) -> Vec<String> {
         let table_refs = get_table_refs(&self.client, &self.runtime).unwrap_or_else(|err| {
             re_log::error!("Error getting table references: {err}");
@@ -359,8 +345,12 @@ impl SchemaProvider for RedapSchemaProvider {
             Some(self.runtime.clone()),
         )
         .with_caller(TableQueryCaller::CatalogResolver);
-        if let Some(origin) = self.analytics_origin.clone() {
-            provider = provider.with_analytics(origin);
+        if let Some(exporter) = self.analytics.clone() {
+            let async_runtime = cfg_select! {
+                target_arch = "wasm32" => { AsyncRuntimeHandle::new_web() }
+                _ => { AsyncRuntimeHandle::new_native(self.runtime.clone()) }
+            };
+            provider = provider.with_analytics(exporter, async_runtime);
         }
         provider.into_provider().await.map(Some)
     }

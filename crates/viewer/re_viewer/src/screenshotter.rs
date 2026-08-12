@@ -1,6 +1,12 @@
 //! Screenshotting not implemented on web yet because we
 //! haven't implemented "copy image to clipboard" there.
 
+/// Marker attached as [`egui::UserData`] to the full-app screenshot request, so we can identify
+/// the resulting [`egui::Event::Screenshot`] as ours.
+#[cfg(not(target_arch = "wasm32"))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct FullAppScreenshot;
+
 /// Helper for screenshotting the entire app
 #[cfg(not(target_arch = "wasm32"))]
 #[derive(Default)]
@@ -57,7 +63,9 @@ impl Screenshotter {
                 // is done and transferred to ram.
                 // Obviously we want to send the command this command only once, so we keep counting down
                 // to negatives until we get a call to `save` which then disables the counter.
-                egui_ctx.send_viewport_cmd(egui::ViewportCommand::Screenshot(Default::default()));
+                egui_ctx.send_viewport_cmd(egui::ViewportCommand::Screenshot(egui::UserData::new(
+                    FullAppScreenshot,
+                )));
             }
             *countdown -= 1;
 

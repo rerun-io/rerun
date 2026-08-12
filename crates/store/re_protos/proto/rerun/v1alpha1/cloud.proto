@@ -76,11 +76,8 @@ service RerunCloudService {
 
   // Unregisters segments and layers from the Dataset.
   //
-  // Excluding IO errors, this will always succeed as long the target dataset exists.
-  // Corollary: unregistering data that doesn't exist is a no-op.
-  //
-  // This always returns a subset of the data from `ScanDatasetManifest`, and therefore the data will
-  // also follow the schema returned by `GetDatasetManifestSchema`.
+  // This is an asynchronous operation, and returns a list of task ids.
+  // The response is a stream only for historical reasons.
   //
   // This endpoint requires the standard dataset headers.
   rpc UnregisterFromDataset(UnregisterFromDatasetRequest) returns (stream UnregisterFromDatasetResponse) {}
@@ -142,7 +139,20 @@ service RerunCloudService {
   // When that happens, it is guaranteed that all parts have the same exact Sorbet schemas (and therefore
   // identical Sorbet schema hashes too).
   // That means it is always semantically valid to concatenate the data from these RRD manifests.
+  //
+  // If the client sets `generate_direct_urls`, the server may instead return keys pointing at
+  // encoded `rerun.log_msg.v1alpha1.RrdFooter` payloads for the client to fetch and decode.
+  // This is best-effort: the response may still inline the manifests: clients must handle both forms.
+  // However, all the items in a stream will either send inline manifest or urls, uniformly.
   rpc GetRrdManifest(GetRrdManifestRequest) returns (stream GetRrdManifestResponse) {}
+
+  // Get the assets that apply to this dataset.
+  //
+  // Returns the dataset's asset dataset and the asset segments within it.
+  // The asset segment ids may be spread over multiple responses, at the discretion of the server.
+  //
+  // This endpoint requires the standard dataset headers.
+  rpc GetAssetsForSegment(GetAssetsForSegmentRequest) returns (stream GetAssetsForSegmentResponse) {}
 
   /* Indexing */
 
@@ -367,29 +377,14 @@ message DataSource {
   // What kind of data is it (e.g. rrd, mcap, Lance, etc)?
   DataSourceKind typ = 2;
 
-  // ⚠️ UNSTABLE: Is this an asset layer (shared across all segments) or a segment layer (one recording per segment)?
-  // Defaults to LAYER_CLASS_SEGMENT if unspecified.
-  //
-  // TODO(RR-4797): remove unstable-warning
-  LayerClass layer_class = 5;
+  // Removed experimental field.
+  reserved 5;
+  reserved "layer_class";
 }
 
 enum DataSourceKind {
   DATA_SOURCE_KIND_UNSPECIFIED = 0;
   DATA_SOURCE_KIND_RRD = 1;
-}
-
-// ⚠️ UNSTABLE: Describes the class of a dataset layer.
-//
-// TODO(RR-4797): remove unstable-warning.
-enum LayerClass {
-  LAYER_CLASS_UNSPECIFIED = 0;
-
-  // Asset layer: a single source (recording) shared across all segments in the layer.
-  LAYER_CLASS_ASSET = 1;
-
-  // Segment layer: one (or zero) sources (recordings) per segment in the layer.
-  LAYER_CLASS_SEGMENT = 2;
 }
 
 message RegisterWithDatasetRequest {
@@ -430,11 +425,11 @@ message UnregisterFromDatasetRequest {
 }
 
 message UnregisterFromDatasetResponse {
-  // This contains all the information about the segments and layers that were actually removed.
-  //
-  // This dataframe is always guaranteed to be a subset of the one found in `ScanDatasetManifestResponse`.
-  // They share the same semantics, schemas, etc.
+  // This dataframe is always empty. It remains here for format compatibility with older SDKs.
+  // TODO(ilya): remove this once the clients are all new enough
   rerun.common.v1alpha1.DataframePart data = 1;
+  // Id of the task that performs the unregistration. The data is not deleted until the task completes.
+  rerun.common.v1alpha1.TaskId task_id = 2;
 }
 
 message WriteChunksRequest {
@@ -451,7 +446,26 @@ message GetSegmentTableSchemaResponse {
   rerun.common.v1alpha1.Schema schema = 1;
 }
 
+message SegmentIdList {
+  repeated string segment_ids = 1;
+}
+
+message SegmentIdFilter {
+  oneof strategy {
+    // Scan only manifest rows belonging to these segment IDs.
+    // An empty list scans no segment rows.
+    SegmentIdList scan_only = 1;
+
+    // Scan all manifest rows except those belonging to these segment IDs.
+    // An empty list skips no segment rows.
+    SegmentIdList skip = 2;
+  }
+}
+
 message ScanSegmentTableRequest {
+  reserved 2;
+  reserved "sql_filter";
+
   // A list of column names to be projected server-side.
   //
   // If empty, all columns are returned.
@@ -462,6 +476,12 @@ message ScanSegmentTableRequest {
   // If a projected column does not exist, or is projected more than once, the `ScanSegmentTable` call will fail with
   // an `InvalidArgument` error.
   repeated string columns = 1;
+
+  // An optional best-effort hint for pruning segment IDs from the server-side scan.
+  //
+  // Servers may apply or ignore this filter.
+  // Clients must re-apply filters locally if correctness depends on them.
+  SegmentIdFilter segment_id_filter = 3;
 }
 
 message ScanSegmentTableResponse {
@@ -476,6 +496,9 @@ message GetDatasetManifestSchemaResponse {
 }
 
 message ScanDatasetManifestRequest {
+  reserved 4;
+  reserved "sql_filter";
+
   // A list of column names to be projected server-side.
   //
   // If empty, all columns are returned.
@@ -486,6 +509,12 @@ message ScanDatasetManifestRequest {
   // If a projected column does not exist, or is projected more than once, the `ScanDatasetManifest` call will fail with
   // an `InvalidArgument` error.
   repeated string columns = 3;
+
+  // An optional best-effort hint for pruning segment IDs from the server-side scan.
+  //
+  // Servers may apply or ignore this filter.
+  // Clients must re-apply filters locally if correctness depends on them.
+  SegmentIdFilter segment_id_filter = 5;
 }
 
 message ScanDatasetManifestResponse {
@@ -504,10 +533,32 @@ message GetDatasetSchemaResponse {
 
 message GetRrdManifestRequest {
   rerun.common.v1alpha1.SegmentId segment_id = 1;
+
+  // Asks the server to return direct URLs pointing at encoded
+  // `rerun.log_msg.v1alpha1.RrdFooter` payloads instead of inlining manifests.
+  //
+  // It is not guaranteed that the server will honor this.
+  bool generate_direct_urls = 2;
 }
 
 message GetRrdManifestResponse {
+  // Exactly one of `rrd_manifest` and `manifest_key` is set per response.
+
+  // The manifest, inlined.
   rerun.log_msg.v1alpha1.RrdManifest rrd_manifest = 1;
+
+  // Points at an encoded `rerun.log_msg.v1alpha1.RrdFooter` payload for the client to fetch and decode.
+  RrdManifestKey manifest_key = 2;
+}
+
+message GetAssetsForSegmentRequest {}
+
+message GetAssetsForSegmentResponse {
+  // The asset dataset. Set on every response in the stream.
+  rerun.common.v1alpha1.EntryId assets_entry = 1;
+
+  // The segments of the asset dataset. Concatenate across all responses in the stream.
+  repeated rerun.common.v1alpha1.SegmentId asset_segment_ids = 2;
 }
 
 /* Indexing */
@@ -793,6 +844,12 @@ message DoMaintenanceRequest {
   // and https://docs.rs/lance/latest/lance/dataset/cleanup/fn.cleanup_old_versions.html
   google.protobuf.Timestamp cleanup_before = 4;
 
+  // List the replicated dataset in its object store, such as S3, and remove objects that are no
+  // longer present in the local dataset.
+  // This performs a full remote reconciliation, unlike normal cleanup, which only removes replica
+  // objects corresponding to local files deleted during that cleanup.
+  bool gc_object_store = 7;
+
   // Override default platform behavior and allow cleanup of recent files. This will respect
   // the value of `cleanup_before` timestamp even if it's more recent than 1 hour.
   //
@@ -1026,7 +1083,18 @@ message UpdateTableEntryResponse {
 message EntryFilter {
   optional rerun.common.v1alpha1.EntryId id = 1;
   optional string name = 2;
+
+  // Deprecated: use `entry_kinds` instead. Ignored by servers when `entry_kinds` is non-empty.
   optional EntryKind entry_kind = 3;
+
+  // The entry kinds to include. If non-empty, the server returns exactly entries of these kinds
+  // (ENTRY_KIND_UNSPECIFIED is rejected with an `invalid_argument` error).
+  //
+  // It is recommended to always explicitly ask for a set of entry kinds.
+  // When unset the server returns a default set of kinds to ensure backwards compatibility with
+  // old clients that did not set this. This behavior may be dropped in future releases.
+  // (condition: after rerun-sdk 0.34 is out of its support cycle)
+  repeated EntryKind entry_kinds = 4;
 }
 
 // What type of entry. This has strong implication on which APIs are available for this entry.
@@ -1044,6 +1112,8 @@ enum EntryKind {
   ENTRY_KIND_TABLE_VIEW = 4;
 
   ENTRY_KIND_BLUEPRINT_DATASET = 5;
+
+  ENTRY_KIND_ASSET_DATASET = 6;
 }
 
 // Minimal info about an Entry for high-level catalog summary
@@ -1078,6 +1148,10 @@ message DatasetDetails {
   // The segment of the blueprint dataset corresponding to the default blueprint for this dataset's
   // segment table (if any).
   optional rerun.common.v1alpha1.SegmentId default_segment_table_blueprint_segment = 6;
+
+  // The asset dataset associated with this dataset (if any).
+  // This association is owned for lifecycle purposes: deleting this dataset also deletes the associated asset dataset.
+  optional rerun.common.v1alpha1.EntryId asset_dataset = 7;
 
   reserved 4;
   reserved "default_blueprint";
@@ -1188,4 +1262,25 @@ message RrdChunkLocation {
 
   // Chunk length in bytes.
   optional uint64 length = 3;
+}
+
+// `RrdManifestKey` points at an encoded `rerun.log_msg.v1alpha1.RrdFooter` payload in the object store.
+message RrdManifestKey {
+  // The canonical location of the footer payload (e.g. s3://bucket/file).
+  RrdChunkLocation location = 1;
+
+  // The segment layer whose manifest is stored in this footer.
+  optional string layer = 2;
+
+  // ETag of the source object (the layer's RRD file) as observed at registration time.
+  //
+  // Clients should pass this as an `If-Match` precondition when fetching, so that a concurrent
+  // re-registration results in a clean failure (HTTP 412) instead of decoding garbage from a
+  // mismatched byte range.
+  //
+  // Optional: legacy registrations and stores that do not return an ETag leave this unset.
+  optional string etag = 3;
+
+  // Presigned URL the client fetches the manifest's byte range from.
+  optional string direct_url = 4;
 }

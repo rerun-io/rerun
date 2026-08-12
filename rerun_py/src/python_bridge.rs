@@ -9,20 +9,27 @@ use std::time::Duration;
 
 use arrow::array::RecordBatch as ArrowRecordBatch;
 use itertools::Itertools as _;
-use pyo3::exceptions::{PyKeyboardInterrupt, PyRuntimeError, PyStopIteration, PyTypeError};
+use pyo3::exceptions::{
+    PyKeyboardInterrupt, PyRuntimeError, PyStopIteration, PyTypeError, PyValueError,
+};
 use pyo3::prelude::*;
 use pyo3::types::{PyBytes, PyDict};
 use re_auth::oauth::Credentials;
 use re_auth::oauth::login_flow::{DeviceCodeFlow, DeviceCodeFlowState};
 //use crate::reflection::ComponentDescriptorExt as _;
-use re_chunk::ChunkBatcherConfig;
+use re_chunk::{ChunkBatcherConfig, TimelineName};
 use re_log::ResultExt as _;
 use re_log_types::external::re_types_core::reflection::ComponentDescriptorExt as _;
-use re_log_types::{BlueprintActivationCommand, EntityPathPart, LogMsg, RecordingId};
+use re_log_types::{
+    ApplicationId, BlueprintActivationCommand, EntityPathPart, LogMsg, RecordingId,
+};
 use re_sdk::external::re_log_encoding::Encoder;
 use re_sdk::sink::{BinaryStreamStorage, CallbackSink, MemorySinkStorage, SinkFlushError};
 use re_sdk::time::TimePoint;
-use re_sdk::{ComponentDescriptor, EntityPath, RecordingStream, RecordingStreamBuilder, TimeCell};
+use re_sdk::{
+    ArchetypeName, ComponentDescriptor, ComponentIdentifier, ComponentType, EntityPath,
+    RecordingStream, RecordingStreamBuilder, TimeCell,
+};
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
 
@@ -209,6 +216,7 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyBinarySinkStorage>()?;
     m.add_class::<PyFileSink>()?;
     m.add_class::<PyGrpcSink>()?;
+    m.add_class::<PyGrpcServerSink>()?;
     m.add_class::<PyComponentDescriptor>()?;
     m.add_class::<PyChunkBatcherConfig>()?;
     m.add_class::<PyDeviceCodeFlow>()?;
@@ -301,6 +309,13 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     use crate::video::asset_video_read_frame_timestamps_nanos;
     m.add_function(wrap_pyfunction!(
         asset_video_read_frame_timestamps_nanos,
+        m
+    )?)?;
+
+    // video stream utilities
+    m.add_function(wrap_pyfunction!(crate::video::video_detect_gop_start, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        crate::video::video_length_prefixed_to_annex_b,
         m
     )?)?;
 
@@ -648,10 +663,13 @@ fn new_recording(
     send_properties: bool,
     batcher_config: Option<PyChunkBatcherConfig>,
 ) -> PyResult<PyRecordingStream> {
+    let application_id = ApplicationId::try_new(application_id)
+        .map_err(|err| PyValueError::new_err(err.to_string()))?;
+
     let recording_id = if let Some(recording_id) = recording_id {
         RecordingId::from(recording_id)
     } else {
-        default_recording_id(py, &application_id)
+        default_recording_id(py, application_id.as_str())
     };
 
     let mut hooks = re_chunk::BatcherHooks::NONE;
@@ -715,6 +733,9 @@ fn new_blueprint(
         re_quota_channel::send_crossbeam(&GARBAGE_QUEUE.0, chunk).ok();
     };
     hooks.on_release = Some(on_release.into());
+
+    let application_id = ApplicationId::try_new(application_id)
+        .map_err(|err| PyValueError::new_err(err.to_string()))?;
 
     let blueprint = RecordingStreamBuilder::new(application_id)
         // We don't currently support additive blueprints, so we should always be generating a new,
@@ -1104,6 +1125,109 @@ impl PyGrpcSink {
     }
 }
 
+#[cfg(feature = "server")]
+#[pyclass(
+    frozen,
+    eq,
+    hash,
+    name = "GrpcServerSink",
+    module = "rerun_bindings.rerun_bindings"
+)]
+#[derive(PartialEq, Hash)]
+struct PyGrpcServerSink {
+    bind_ip: String,
+    port: u16,
+    server_memory_limit: String,
+    newest_first: bool,
+    cors_allow_origin: Vec<String>,
+}
+
+#[cfg(feature = "server")]
+#[pymethods]
+impl PyGrpcServerSink {
+    #[new]
+    #[pyo3(signature = (bind_ip="0.0.0.0".to_owned(), port=9876, *, server_memory_limit="1GiB".to_owned(), newest_first=false, cors_allow_origin=None))]
+    #[pyo3(
+        text_signature = "(self, bind_ip='0.0.0.0', port=9876, *, server_memory_limit='1GiB', newest_first=False, cors_allow_origin=None)"
+    )]
+    fn new(
+        bind_ip: String,
+        port: u16,
+        server_memory_limit: String,
+        newest_first: bool,
+        cors_allow_origin: Option<Vec<String>>,
+    ) -> Self {
+        Self {
+            bind_ip,
+            port,
+            server_memory_limit,
+            newest_first,
+            cors_allow_origin: cors_allow_origin.unwrap_or_default(),
+        }
+    }
+
+    #[getter]
+    fn uri(&self) -> String {
+        format!("rerun+http://{}:{}/proxy", self.bind_ip, self.port)
+    }
+
+    fn __repr__(&self) -> String {
+        let Self {
+            bind_ip,
+            port,
+            server_memory_limit,
+            newest_first,
+            cors_allow_origin,
+        } = self;
+
+        format!(
+            "GrpcServerSink(bind_ip={bind_ip:?}, port={port}, server_memory_limit={server_memory_limit:?}, newest_first={newest_first}, cors_allow_origin={cors_allow_origin:?})"
+        )
+    }
+}
+
+#[cfg(not(feature = "server"))]
+#[pyclass(name = "GrpcServerSink", module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] stub that always fails to construct
+struct PyGrpcServerSink;
+
+#[cfg(not(feature = "server"))]
+#[pymethods] // NOLINT: ignore[py-mthd-str] stub that always fails to construct
+impl PyGrpcServerSink {
+    /// Create a hosted gRPC server sink.
+    #[new]
+    #[pyo3(signature = (bind_ip="0.0.0.0".to_owned(), port=9876, *, server_memory_limit="1GiB".to_owned(), newest_first=false, cors_allow_origin=None))]
+    #[pyo3(
+        text_signature = "(self, bind_ip='0.0.0.0', port=9876, *, server_memory_limit='1GiB', newest_first=False, cors_allow_origin=None)"
+    )]
+    fn new(
+        bind_ip: String,
+        port: u16,
+        server_memory_limit: String,
+        newest_first: bool,
+        cors_allow_origin: Option<Vec<String>>,
+    ) -> PyResult<Self> {
+        let _ = (
+            bind_ip,
+            port,
+            server_memory_limit,
+            newest_first,
+            cors_allow_origin,
+        );
+        Err(PyRuntimeError::new_err(
+            "The Rerun SDK was not compiled with the 'server' feature",
+        ))
+    }
+
+    /// URI that a Rerun Viewer can use to connect to this server.
+    #[getter]
+    fn uri(&self) -> PyResult<String> {
+        let _ = self;
+        Err(PyRuntimeError::new_err(
+            "The Rerun SDK was not compiled with the 'server' feature",
+        ))
+    }
+}
+
 #[pyclass(
     frozen,
     eq,
@@ -1158,6 +1282,30 @@ fn set_sinks<'py>(
             let sink = sink.get();
             let sink = re_sdk::sink::GrpcSink::new(sink.uri.clone());
             resolved_sinks.push(Box::new(sink));
+        } else if let Ok(sink) = sink.cast::<PyGrpcServerSink>() {
+            cfg_select! {
+                feature = "server" => {
+                    let sink = sink.get();
+                    let server_options = server_options(
+                        &sink.server_memory_limit,
+                        sink.newest_first,
+                        &sink.cors_allow_origin,
+                    )?;
+                    let sink = re_sdk::grpc_server::GrpcServerSink::new(
+                        &sink.bind_ip,
+                        sink.port,
+                        server_options,
+                    )
+                    .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+                    resolved_sinks.push(Box::new(sink));
+                }
+                _ => {
+                    let _unused = sink;
+                    return Err(PyRuntimeError::new_err(
+                        "The Rerun SDK was not compiled with the 'server' feature",
+                    ));
+                }
+            }
         } else if let Ok(sink) = sink.cast::<PyFileSink>() {
             let sink = sink.get();
             let sink = re_sdk::sink::FileSink::with_options(
@@ -1184,7 +1332,7 @@ fn set_sinks<'py>(
         } else {
             let type_name = sink.get_type().name()?;
             return Err(PyRuntimeError::new_err(format!(
-                "{type_name} is not a valid LogSink, must be one of: GrpcSink, FileSink, BinaryStream"
+                "{type_name} is not a valid LogSink, must be one of: GrpcSink, GrpcServerSink, FileSink, BinaryStream"
             )));
         }
     }
@@ -1665,6 +1813,20 @@ fn duration_from_sec(seconds: f64) -> PyResult<Duration> {
     }
 }
 
+#[cfg(feature = "server")]
+fn server_options(
+    server_memory_limit: &str,
+    newest_first: bool,
+    cors_allow_origin: &[String],
+) -> PyResult<re_sdk::ServerOptions> {
+    Ok(re_sdk::ServerOptions {
+        playback_behavior: re_sdk::PlaybackBehavior::from_newest_first(newest_first),
+        memory_limit: re_memory::MemoryLimit::parse(server_memory_limit)
+            .map_err(|err| PyRuntimeError::new_err(format!("Bad server_memory_limit: {err}")))?,
+        cors_allowed_origins: cors_allow_origin.to_vec(),
+    })
+}
+
 /// Spawn a gRPC server which an SDK or Viewer can connect to.
 ///
 /// Returns the URI of the server so you can connect the viewer to it.
@@ -1678,59 +1840,51 @@ fn serve_grpc(
     recording: Option<&PyRecordingStream>,
     cors_allow_origin: Vec<String>,
 ) -> PyResult<String> {
-    #[cfg(feature = "server")]
-    {
-        let Some(recording) = get_data_recording(recording) else {
-            return Ok("[no active recording]".to_owned());
-        };
+    cfg_select! {
+        feature = "server" => {
+            let Some(recording) = get_data_recording(recording) else {
+                return Ok("[no active recording]".to_owned());
+            };
 
-        if re_sdk::forced_sink_path().is_some() {
-            re_log::debug!("Ignored call to `serve_grpc()` since _RERUN_TEST_FORCE_SAVE is set");
-            return Ok("[_RERUN_TEST_FORCE_SAVE is set]".to_owned());
+            if re_sdk::forced_sink_path().is_some() {
+                re_log::debug!("Ignored call to `serve_grpc()` since _RERUN_TEST_FORCE_SAVE is set");
+                return Ok("[_RERUN_TEST_FORCE_SAVE is set]".to_owned());
+            }
+
+            let server_options =
+                server_options(&server_memory_limit, newest_first, &cors_allow_origin)?;
+
+            let sink = re_sdk::grpc_server::GrpcServerSink::new(
+                "0.0.0.0",
+                grpc_port.unwrap_or(re_grpc_server::DEFAULT_SERVER_PORT),
+                server_options,
+            )
+            .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+
+            if let Some(default_blueprint) = default_blueprint {
+                send_mem_sink_as_default_blueprint(&sink, default_blueprint);
+            }
+
+            let uri = sink.uri().to_string();
+
+            recording.set_sink(Box::new(sink));
+
+            Ok(uri)
         }
+        _ => {
+            let _ = (
+                grpc_port,
+                server_memory_limit,
+                newest_first,
+                default_blueprint,
+                recording,
+                cors_allow_origin,
+            );
 
-        let server_options = re_sdk::ServerOptions {
-            playback_behavior: re_sdk::PlaybackBehavior::from_newest_first(newest_first),
-
-            memory_limit: re_memory::MemoryLimit::parse(&server_memory_limit).map_err(|err| {
-                PyRuntimeError::new_err(format!("Bad server_memory_limit: {err}:"))
-            })?,
-
-            cors_allowed_origins: cors_allow_origin,
-        };
-
-        let sink = re_sdk::grpc_server::GrpcServerSink::new(
-            "0.0.0.0",
-            grpc_port.unwrap_or(re_grpc_server::DEFAULT_SERVER_PORT),
-            server_options,
-        )
-        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
-
-        if let Some(default_blueprint) = default_blueprint {
-            send_mem_sink_as_default_blueprint(&sink, default_blueprint);
+            Err(PyRuntimeError::new_err(
+                "The Rerun SDK was not compiled with the 'server' feature",
+            ))
         }
-
-        let uri = sink.uri().to_string();
-
-        recording.set_sink(Box::new(sink));
-
-        Ok(uri)
-    }
-
-    #[cfg(not(feature = "server"))]
-    {
-        let _ = (
-            grpc_port,
-            server_memory_limit,
-            newest_first,
-            default_blueprint,
-            recording,
-            cors_allow_origin,
-        );
-
-        Err(PyRuntimeError::new_err(
-            "The Rerun SDK was not compiled with the 'server' feature",
-        ))
     }
 }
 
@@ -1739,35 +1893,37 @@ fn serve_grpc(
 /// This only serves HTML+JS+Wasm, but does NOT host a gRPC server.
 #[allow(clippy::allow_attributes, clippy::unnecessary_wraps)] // False positive
 #[pyfunction]
-#[pyo3(signature = (web_port = None, open_browser = true, connect_to = None))]
+#[pyo3(signature = (web_port = None, open_browser = true, connect_to = None, assets_archive_path = None))]
 fn serve_web_viewer(
     web_port: Option<u16>,
     open_browser: bool,
     connect_to: Option<String>,
+    assets_archive_path: Option<std::path::PathBuf>,
 ) -> PyResult<()> {
-    #[cfg(feature = "web_viewer")]
-    {
-        re_sdk::web_viewer::WebViewerConfig {
-            open_browser,
-            connect_to: connect_to.into_iter().collect(),
-            web_port: web_port.map(WebViewerServerPort).unwrap_or_default(),
-            ..Default::default()
+    cfg_select! {
+        feature = "web_viewer" => {
+            re_sdk::web_viewer::WebViewerConfig {
+                open_browser,
+                connect_to: connect_to.into_iter().collect(),
+                web_port: web_port.map(WebViewerServerPort).unwrap_or_default(),
+                assets_archive_path,
+                ..Default::default()
+            }
+            .host_web_viewer()
+            .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
+            .detach();
+
+            Ok(())
         }
-        .host_web_viewer()
-        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
-        .detach();
-
-        Ok(())
-    }
-
-    #[cfg(not(feature = "web_viewer"))]
-    {
-        _ = web_port;
-        _ = open_browser;
-        _ = connect_to;
-        Err(PyRuntimeError::new_err(
-            "The Rerun SDK was not compiled with the 'web_viewer' feature",
-        ))
+        _ => {
+            _ = web_port;
+            _ = open_browser;
+            _ = connect_to;
+            _ = assets_archive_path;
+            Err(PyRuntimeError::new_err(
+                "The Rerun SDK was not compiled with the 'web_viewer' feature",
+            ))
+        }
     }
 }
 
@@ -1775,7 +1931,7 @@ fn serve_web_viewer(
 // NOTE: DEPRECATED
 #[allow(clippy::allow_attributes, clippy::unnecessary_wraps)] // False positive
 #[pyfunction]
-#[pyo3(signature = (open_browser, web_port, grpc_port, server_memory_limit, default_blueprint = None, recording = None, cors_allow_origin = vec![]))]
+#[pyo3(signature = (open_browser, web_port, grpc_port, server_memory_limit, default_blueprint = None, recording = None, cors_allow_origin = vec![], assets_archive_path = None))]
 fn serve_web(
     open_browser: bool,
     web_port: Option<u16>,
@@ -1784,56 +1940,58 @@ fn serve_web(
     default_blueprint: Option<&PyMemorySinkStorage>,
     recording: Option<&PyRecordingStream>,
     cors_allow_origin: Vec<String>,
+    assets_archive_path: Option<std::path::PathBuf>,
 ) -> PyResult<()> {
-    #[cfg(feature = "web_viewer")]
-    {
-        let Some(recording) = get_data_recording(recording) else {
-            return Ok(());
-        };
+    cfg_select! {
+        feature = "web_viewer" => {
+            let Some(recording) = get_data_recording(recording) else {
+                return Ok(());
+            };
 
-        if re_sdk::forced_sink_path().is_some() {
-            re_log::debug!("Ignored call to `serve()` since _RERUN_TEST_FORCE_SAVE is set");
-            return Ok(());
+            if re_sdk::forced_sink_path().is_some() {
+                re_log::debug!("Ignored call to `serve()` since _RERUN_TEST_FORCE_SAVE is set");
+                return Ok(());
+            }
+
+            let server_options = re_sdk::ServerOptions {
+                memory_limit: re_memory::MemoryLimit::parse(&server_memory_limit).map_err(|err| {
+                    PyRuntimeError::new_err(format!("Bad server_memory_limit: {err}:"))
+                })?,
+                playback_behavior: re_grpc_server::PlaybackBehavior::OldestFirst,
+                cors_allowed_origins: cors_allow_origin,
+            };
+
+            let sink = re_sdk::web_viewer::new_sink(
+                open_browser,
+                "0.0.0.0",
+                web_port.map(WebViewerServerPort).unwrap_or_default(),
+                assets_archive_path.as_deref(),
+                grpc_port.unwrap_or(re_grpc_server::DEFAULT_SERVER_PORT),
+                server_options,
+            )
+            .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+
+            if let Some(default_blueprint) = default_blueprint {
+                send_mem_sink_as_default_blueprint(sink.as_ref(), default_blueprint);
+            }
+
+            recording.set_sink(sink);
+
+            Ok(())
         }
-
-        let server_options = re_sdk::ServerOptions {
-            memory_limit: re_memory::MemoryLimit::parse(&server_memory_limit).map_err(|err| {
-                PyRuntimeError::new_err(format!("Bad server_memory_limit: {err}:"))
-            })?,
-            playback_behavior: re_grpc_server::PlaybackBehavior::OldestFirst,
-            cors_allowed_origins: cors_allow_origin,
-        };
-
-        let sink = re_sdk::web_viewer::new_sink(
-            open_browser,
-            "0.0.0.0",
-            web_port.map(WebViewerServerPort).unwrap_or_default(),
-            grpc_port.unwrap_or(re_grpc_server::DEFAULT_SERVER_PORT),
-            server_options,
-        )
-        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
-
-        if let Some(default_blueprint) = default_blueprint {
-            send_mem_sink_as_default_blueprint(sink.as_ref(), default_blueprint);
+        _ => {
+            _ = default_blueprint;
+            _ = recording;
+            _ = web_port;
+            _ = grpc_port;
+            _ = open_browser;
+            _ = server_memory_limit;
+            _ = cors_allow_origin;
+            _ = assets_archive_path;
+            Err(PyRuntimeError::new_err(
+                "The Rerun SDK was not compiled with the 'web_viewer' feature",
+            ))
         }
-
-        recording.set_sink(sink);
-
-        Ok(())
-    }
-
-    #[cfg(not(feature = "web_viewer"))]
-    {
-        _ = default_blueprint;
-        _ = recording;
-        _ = web_port;
-        _ = grpc_port;
-        _ = open_browser;
-        _ = server_memory_limit;
-        _ = cors_allow_origin;
-        Err(PyRuntimeError::new_err(
-            "The Rerun SDK was not compiled with the 'web_viewer' feature",
-        ))
     }
 }
 
@@ -1920,14 +2078,19 @@ impl PyComponentDescriptor {
     #[new]
     #[pyo3(signature = (component, archetype=None, component_type=None))]
     #[pyo3(text_signature = "(self, component, archetype=None, component_type=None)")]
-    fn new(component: &str, archetype: Option<&str>, component_type: Option<&str>) -> Self {
+    fn new(
+        component: &str,
+        archetype: Option<&str>,
+        component_type: Option<&str>,
+    ) -> PyResult<Self> {
         let descr = ComponentDescriptor {
-            archetype: archetype.map(Into::into),
-            component: component.into(),
-            component_type: component_type.map(Into::into),
+            archetype: archetype.and_then(|s| ArchetypeName::try_new(s).ok()),
+            component: ComponentIdentifier::try_new(component)
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
+            component_type: component_type.and_then(|s| ComponentType::try_new(s).ok()),
         };
 
-        Self(descr)
+        Ok(Self(descr))
     }
 
     fn __hash__(&self) -> u64 {
@@ -1975,11 +2138,11 @@ impl PyComponentDescriptor {
     #[pyo3(signature = (archetype=None, component_type=None))]
     fn with_overrides(&mut self, archetype: Option<&str>, component_type: Option<&str>) -> Self {
         let mut cloned = self.0.clone();
-        if let Some(archetype) = archetype {
-            cloned = cloned.with_archetype(archetype.into());
+        if let Some(archetype) = archetype.and_then(|s| ArchetypeName::try_new(s).ok()) {
+            cloned = cloned.with_archetype(archetype);
         }
-        if let Some(component_type) = component_type {
-            cloned = cloned.with_component_type(component_type.into());
+        if let Some(component_type) = component_type.and_then(|s| ComponentType::try_new(s).ok()) {
+            cloned = cloned.with_component_type(component_type);
         }
         Self(cloned)
     }
@@ -1988,18 +2151,22 @@ impl PyComponentDescriptor {
     #[pyo3(signature = (archetype=None, component_type=None))]
     fn or_with_overrides(&mut self, archetype: Option<&str>, component_type: Option<&str>) -> Self {
         let mut cloned = self.0.clone();
-        if let Some(archetype) = archetype {
-            cloned = cloned.or_with_archetype(|| archetype.into());
+        if let Some(archetype) = archetype.and_then(|s| ArchetypeName::try_new(s).ok()) {
+            cloned = cloned.or_with_archetype(|| archetype);
         }
-        if let Some(component_type) = component_type {
-            cloned = cloned.or_with_component_type(|| component_type.into());
+        if let Some(component_type) = component_type.and_then(|s| ComponentType::try_new(s).ok()) {
+            cloned = cloned.or_with_component_type(|| component_type);
         }
         Self(cloned)
     }
 
     /// Sets `archetype` in a format similar to built-in archetypes.
     fn with_builtin_archetype(&mut self, archetype: &str) -> Self {
-        Self(self.0.clone().with_builtin_archetype(archetype))
+        if let Ok(archetype) = ArchetypeName::try_new(archetype) {
+            Self(self.0.clone().with_builtin_archetype(archetype))
+        } else {
+            Self(self.0.clone())
+        }
     }
 }
 
@@ -2008,21 +2175,35 @@ impl PyComponentDescriptor {
 /// Set the current time for this thread as an integer sequence.
 #[pyfunction]
 #[pyo3(signature = (timeline, sequence, recording=None))]
-fn set_time_sequence(timeline: &str, sequence: i64, recording: Option<&PyRecordingStream>) {
+fn set_time_sequence(
+    timeline: &str,
+    sequence: i64,
+    recording: Option<&PyRecordingStream>,
+) -> PyResult<()> {
+    let timeline =
+        TimelineName::try_new(timeline).map_err(|err| PyValueError::new_err(err.to_string()))?;
     let Some(recording) = get_data_recording(recording) else {
-        return;
+        return Ok(());
     };
     recording.set_time(timeline, TimeCell::from_sequence(sequence));
+    Ok(())
 }
 
 /// Set the current duration for this thread in nanoseconds.
 #[pyfunction]
 #[pyo3(signature = (timeline, nanos, recording=None))]
-fn set_time_duration_nanos(timeline: &str, nanos: i64, recording: Option<&PyRecordingStream>) {
+fn set_time_duration_nanos(
+    timeline: &str,
+    nanos: i64,
+    recording: Option<&PyRecordingStream>,
+) -> PyResult<()> {
+    let timeline =
+        TimelineName::try_new(timeline).map_err(|err| PyValueError::new_err(err.to_string()))?;
     let Some(recording) = get_data_recording(recording) else {
-        return;
+        return Ok(());
     };
     recording.set_time(timeline, TimeCell::from_duration_nanos(nanos));
+    Ok(())
 }
 
 /// Set the current time for this thread in nanoseconds.
@@ -2032,21 +2213,27 @@ fn set_time_timestamp_nanos_since_epoch(
     timeline: &str,
     nanos: i64,
     recording: Option<&PyRecordingStream>,
-) {
+) -> PyResult<()> {
+    let timeline =
+        TimelineName::try_new(timeline).map_err(|err| PyValueError::new_err(err.to_string()))?;
     let Some(recording) = get_data_recording(recording) else {
-        return;
+        return Ok(());
     };
     recording.set_time(timeline, TimeCell::from_timestamp_nanos_since_epoch(nanos));
+    Ok(())
 }
 
 /// Clear time information for the specified timeline on this thread.
 #[pyfunction]
 #[pyo3(signature = (timeline, recording=None))]
-fn disable_timeline(timeline: &str, recording: Option<&PyRecordingStream>) {
+fn disable_timeline(timeline: &str, recording: Option<&PyRecordingStream>) -> PyResult<()> {
+    let timeline =
+        TimelineName::try_new(timeline).map_err(|err| PyValueError::new_err(err.to_string()))?;
     let Some(recording) = get_data_recording(recording) else {
-        return;
+        return Ok(());
     };
     recording.disable_timeline(timeline);
+    Ok(())
 }
 
 /// Clear all timeline information on this thread.
@@ -2371,29 +2558,37 @@ fn get_app_url() -> String {
 /// Start a web server to host the run web-assets.
 #[allow(clippy::allow_attributes, clippy::unnecessary_wraps)] // false positive
 #[pyfunction]
-fn start_web_viewer_server(port: u16) -> PyResult<()> {
-    #[cfg(feature = "web_viewer")]
-    {
-        let mut web_handle = global_web_viewer_server();
+#[pyo3(signature = (port, assets_archive_path = None))]
+fn start_web_viewer_server(
+    port: u16,
+    assets_archive_path: Option<std::path::PathBuf>,
+) -> PyResult<()> {
+    cfg_select! {
+        feature = "web_viewer" => {
+            let mut web_handle = global_web_viewer_server();
 
-        *web_handle = Some(
-            re_web_viewer_server::WebViewerServer::new("0.0.0.0", WebViewerServerPort(port))
+            *web_handle = Some(
+                re_web_viewer_server::WebViewerServer::with_archive(
+                    "0.0.0.0",
+                    WebViewerServerPort(port),
+                    assets_archive_path.as_deref(),
+                )
                 .map_err(|err| {
                     PyRuntimeError::new_err(format!(
                         "Failed to start web viewer server on port {port}: {err}",
                     ))
                 })?,
-        );
+            );
 
-        Ok(())
-    }
-
-    #[cfg(not(feature = "web_viewer"))]
-    {
-        _ = port;
-        Err(PyRuntimeError::new_err(
-            "The Rerun SDK was not compiled with the 'web_viewer' feature",
-        ))
+            Ok(())
+        }
+        _ => {
+            _ = port;
+            _ = assets_archive_path;
+            Err(PyRuntimeError::new_err(
+                "The Rerun SDK was not compiled with the 'web_viewer' feature",
+            ))
+        }
     }
 }
 
@@ -2422,13 +2617,11 @@ fn new_entity_path(parts: Vec<Bound<'_, pyo3::types::PyString>>) -> PyResult<Str
 #[pyfunction]
 fn new_property_entity_path(parts: Vec<Bound<'_, pyo3::types::PyString>>) -> PyResult<String> {
     let parts: PyResult<Vec<_>> = parts.iter().map(|part| part.to_cow()).collect();
-    let path = EntityPath::from(
-        parts?
-            .into_iter()
-            .map(|part| EntityPathPart::from(part.borrow()))
-            .collect_vec(),
-    );
-    Ok(EntityPath::properties().join(&path).to_string())
+    let parts = parts?
+        .into_iter()
+        .map(|part| EntityPathPart::from(part.borrow()))
+        .collect_vec();
+    Ok(crate::utils::property_entity_path(parts).to_string())
 }
 
 /// Send the name of the recording.

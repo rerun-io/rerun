@@ -1,6 +1,7 @@
 ---
 title: Events and Timelines
 order: 500
+description: Events, timelines, and how Rerun tracks time
 ---
 
 ## Timelines

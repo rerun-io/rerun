@@ -21,7 +21,9 @@ namespace rerun::datatypes {
     /// and then forwards the argument as-is to the appropriate `rerun::Container` constructor.
     /// \see rerun::ContainerAdapter, rerun::Container
     template <typename TContainer, typename value_type = traits::value_type_of_t<TContainer>>
-    TensorBuffer(TContainer&& container)
+    // Substitution fails for `TensorBuffer`, which has no `value_type`, so this cannot hide
+    // copy or move construction.
+    TensorBuffer(TContainer&& container) // NOLINT(bugprone-forwarding-reference-overload)
         : TensorBuffer(Collection<value_type>(std::forward<TContainer>(container))) {}
 
     /// Number of elements in the buffer.
@@ -70,9 +72,11 @@ namespace rerun::datatypes {
             case detail::TensorBufferTag::F64: {
                 return _data.f64.size();
             }
+            default: {
+                assert(false && "Unknown TensorBuffer tag");
+                return 0;
+            }
         }
-        assert(false && "Unknown TensorBuffer tag");
-        return 0;
     }
 
 } // namespace rerun::datatypes

@@ -4,7 +4,7 @@ use super::ExtensionClass;
 use crate::codegen::Target;
 use crate::codegen::common::StringExt as _;
 use crate::codegen::python::{quote_doc_lines, quote_obj_docs};
-use crate::{ATTR_PYTHON_ALIASES, ATTR_RERUN_VIEW_IDENTIFIER, Object, Objects, Reporter};
+use crate::{Object, Objects, PythonAttr, Reporter, RerunAttr};
 
 pub fn code_for_view(
     reporter: &Reporter,
@@ -16,11 +16,14 @@ pub fn code_for_view(
 
     let mut code = String::new();
 
+    // NOTE: the `blueprint` imports must be spelled exactly like
+    // `quote_import_clauses_from_fqname` spells them, or `ruff` will see two different import
+    // statements binding the same name and fail with F811.
     code.push_indented(
         0,
         "
-from .. import archetypes as blueprint_archetypes
-from .. import components as blueprint_components
+from ...blueprint import archetypes as blueprint_archetypes
+from ...blueprint import components as blueprint_components
 from ... import datatypes
 from ... import components
 from ..._baseclasses import AsComponents, ComponentBatchLike
@@ -77,7 +80,7 @@ fn init_method(reporter: &Reporter, objects: &Objects, obj: &Object) -> String {
         // For archetypes in general this would only be confusing, but for View properties it
         // could be useful to make the annotation here shorter.
         let additional_type_annotations = property_type
-            .try_get_attr::<String>(ATTR_PYTHON_ALIASES)
+            .try_get_attr::<String>(PythonAttr::Aliases)
             .map_or(String::new(), |aliases| {
                 let mut types = String::new();
                 for alias in aliases.split(',') {
@@ -168,11 +171,11 @@ This will be addressed in <https://github.com/rerun-io/rerun/issues/6673>.
     }
     code.push_indented(1, quote_doc_lines(init_docs), 1);
 
-    let Some(identifier): Option<String> = obj.try_get_attr(ATTR_RERUN_VIEW_IDENTIFIER) else {
+    let Some(identifier): Option<String> = obj.try_get_attr(RerunAttr::ViewIdentifier) else {
         reporter.error(
             &obj.virtpath,
             &obj.fqname,
-            format!("Missing {ATTR_RERUN_VIEW_IDENTIFIER} attribute for view"),
+            format!("Missing {} attribute for view", RerunAttr::ViewIdentifier),
         );
         return code;
     };

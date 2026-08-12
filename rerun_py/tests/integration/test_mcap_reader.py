@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import re
+from collections import Counter
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pyarrow as pa
 import pytest
-from rerun.experimental import Chunk, McapReader, StreamingReader
+from rerun.experimental import Chunk, McapInfo, McapReader, StreamingReader
 
 if TYPE_CHECKING:
     from syrupy import SnapshotAssertion
@@ -65,6 +66,28 @@ def test_load_log(snapshot: SnapshotAssertion) -> None:
     """Default load of log MCAP: TextLog with 6 rows."""
     chunks = McapReader(LOG_MCAP).stream().to_chunks()
     assert chunk_summary(chunks) == snapshot
+
+
+def test_info_is_structured_and_independent_of_filters() -> None:
+    baseline = McapReader(LOG_MCAP).info()
+    filtered = McapReader(
+        LOG_MCAP,
+        decoders=[],
+        include_topic_regex=["^__nothing__$"],
+        start_time_ns=0,
+        end_time_ns=1,
+    ).info()
+
+    assert isinstance(baseline, McapInfo)
+    assert filtered == baseline
+    assert baseline.summary_source == "embedded"
+    assert baseline.statistics_present
+    assert baseline.message_count == 6
+    assert baseline.message_start_time_ns is not None
+    assert baseline.message_end_time_ns is not None
+    assert baseline.duration_ns == baseline.message_end_time_ns - baseline.message_start_time_ns
+    assert baseline.channel_count == len(baseline.channels)
+    assert [channel.id for channel in baseline.channels] == sorted(channel.id for channel in baseline.channels)
 
 
 # ---------------------------------------------------------------------------
@@ -189,6 +212,90 @@ def test_topic_filter_invalid_regex() -> None:
         McapReader(POINT_CLOUD_MCAP, include_topic_regex=["["])
     with pytest.raises(ValueError, match="exclude topic regex"):
         McapReader(POINT_CLOUD_MCAP, exclude_topic_regex=["["])
+
+
+# ---------------------------------------------------------------------------
+# Time-range filter
+# ---------------------------------------------------------------------------
+
+
+def _temporal_rows_by_entity(chunks: list[Chunk]) -> Counter[str]:
+    """Total non-static rows per entity — invariant under chunking and RowId regeneration."""
+    counts: Counter[str] = Counter()
+    for chunk in chunks:
+        if not chunk.is_static:
+            counts[chunk.entity_path] += chunk.num_rows
+    return counts
+
+
+def test_stream_time_range_override_matches_constructor() -> None:
+    """`stream(start/end)` restricts the scan identically to the constructor bounds."""
+    lo, hi = McapReader(LOG_MCAP).time_bounds()
+    half = lo + (hi - lo) // 2 + 1  # exclusive end below `hi`, so at least the last message drops
+
+    by_ctor = _temporal_rows_by_entity(McapReader(LOG_MCAP, start_time_ns=lo, end_time_ns=half).stream().to_chunks())
+    by_override = _temporal_rows_by_entity(McapReader(LOG_MCAP).stream(start_time_ns=lo, end_time_ns=half).to_chunks())
+    full = _temporal_rows_by_entity(McapReader(LOG_MCAP).stream().to_chunks())
+
+    assert by_override == by_ctor
+    assert 0 < sum(by_override.values()) < sum(full.values())
+
+
+def test_empty_time_range_rejected() -> None:
+    """A half-open `[t, t)` range is empty and rejected, on both the constructor and `stream`."""
+    lo, _ = McapReader(LOG_MCAP).time_bounds()
+    with pytest.raises(ValueError, match="must be less than"):
+        McapReader(LOG_MCAP, start_time_ns=lo, end_time_ns=lo)
+    with pytest.raises(ValueError, match="must be less than"):
+        McapReader(LOG_MCAP).stream(start_time_ns=lo, end_time_ns=lo)
+
+
+# ---------------------------------------------------------------------------
+# Summary recovery (truncated / summary-less files)
+# ---------------------------------------------------------------------------
+
+
+def _truncate_before_summary(src: Path, dst: Path) -> None:
+    """
+    Write `dst` as a copy of `src` with its summary section, footer, and end magic removed.
+
+    The MCAP footer is a fixed record at the very end of the file: an 8-byte end magic
+    preceded by a 20-byte footer body whose first `u64` is `summary_start`. Cutting the
+    file at `summary_start` keeps the entire data section (all chunks and their message
+    indexes) but leaves no summary for the normal reader to find — the same shape as a
+    recording interrupted mid-write.
+    """
+    data = src.read_bytes()
+    summary_start = int.from_bytes(data[-28:-20], "little")
+    assert 0 < summary_start < len(data), "unexpected footer layout in test asset"
+    dst.write_bytes(data[:summary_start])
+
+
+def test_recover_truncated_matches_healthy(tmp_path: Path) -> None:
+    """Truncated-before-summary file recovers to the same messages and time bounds as the intact file."""
+    truncated = tmp_path / "truncated.mcap"
+    _truncate_before_summary(POINT_CLOUD_MCAP, truncated)
+
+    healthy = McapReader(POINT_CLOUD_MCAP).stream().to_chunks()
+    recovered = McapReader(truncated, recover=True).stream().to_chunks()
+
+    # Every message on every topic is recovered (invariant under chunking / RowId regeneration).
+    assert _temporal_rows_by_entity(recovered) == _temporal_rows_by_entity(healthy)
+    assert sum(_temporal_rows_by_entity(recovered).values()) > 0
+
+    # Time bounds come from a decompression-free chunk-index scan and must match the intact file.
+    assert McapReader(truncated, recover=True).time_bounds() == McapReader(POINT_CLOUD_MCAP).time_bounds()
+
+
+def test_truncated_without_recover_raises(tmp_path: Path) -> None:
+    """Without `recover`, a missing summary is a hard error on both `stream` and `time_bounds`."""
+    truncated = tmp_path / "truncated.mcap"
+    _truncate_before_summary(POINT_CLOUD_MCAP, truncated)
+
+    with pytest.raises(ValueError):
+        McapReader(truncated).stream().to_chunks()
+    with pytest.raises(ValueError):
+        McapReader(truncated).time_bounds()
 
 
 # ---------------------------------------------------------------------------

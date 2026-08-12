@@ -5,8 +5,14 @@ use rerun::{demo_util::grid, external::glam};
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let rec = rerun::RecordingStreamBuilder::new("rerun_example_attach_sinks")
         .set_sinks((
-            // Connect to a local viewer using the default URL.
+            // Connect to an existing local Viewer or gRPC server.
             rerun::sink::GrpcSink::default(),
+            // To host a gRPC server instead, replace the sink above with:
+            // rerun::grpc_server::GrpcServerSink::new(
+            //     "0.0.0.0",
+            //     rerun::DEFAULT_SERVER_PORT,
+            //     rerun::ServerOptions::default(),
+            // )?,
             // Write data to a `data.rrd` file in the current directory.
             rerun::sink::FileSink::new("data.rrd")?,
         ))?;

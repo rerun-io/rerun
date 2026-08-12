@@ -28,7 +28,7 @@ use crate::{ChunkId, RowId};
 /// the use of a [`crate::ChunkBatcher`].
 #[derive(thiserror::Error, Debug)]
 pub enum ChunkError {
-    #[error("Detected malformed Chunk: {reason}")]
+    #[error("Detected malformed chunk: {reason}")]
     Malformed { reason: String },
 
     #[error("Arrow: {0}")]
@@ -48,7 +48,7 @@ pub enum ChunkError {
     Deserialization(#[from] DeserializationError),
 
     #[error(transparent)]
-    UnsupportedTimeType(#[from] re_sorbet::UnsupportedTimeType),
+    IndexColumn(#[from] re_sorbet::IndexColumnError),
 
     #[error(transparent)]
     WrongDatatypeError(#[from] re_arrow_util::WrongDatatypeError),
@@ -1777,19 +1777,18 @@ impl Chunk {
             }
         }
 
-        let unsorted_timelines = self.unsorted_timelines();
+        let unsorted_timelines: Vec<_> = self.unsorted_timelines().collect();
         if !unsorted_timelines.is_empty() {
             if re_log::is_rerun_very_strict() {
                 panic!(
                     "Found out-of-order timelines for entity '{}': {:?}. Out-of-order timelines are sometimes unavoidable, but they may cause performance problems",
-                    self.entity_path,
-                    self.unsorted_timelines()
+                    self.entity_path, unsorted_timelines
                 );
             } else {
                 re_log::debug_warn_once!(
                     "Found out-of-order timelines for entity '{}': {:?}. Out-of-order timelines are sometimes unavoidable, but they may cause performance problems",
                     self.entity_path,
-                    self.unsorted_timelines()
+                    unsorted_timelines
                 );
             }
         }

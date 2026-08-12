@@ -9,6 +9,8 @@ pub mod time;
 use std::cmp::PartialOrd;
 use std::fmt::Display;
 
+use re_int::UnsignedAbs;
+
 pub use self::duration::DurationFormatOptions;
 pub use self::plural::{format_plural_s, format_plural_signed_s};
 
@@ -32,69 +34,6 @@ pub fn strip_whitespace_and_normalize(text: &str) -> String {
         // Replace special minus character with normal minus (hyphen):
         .map(|c| if c == MINUS { '-' } else { c })
         .collect()
-}
-
-// TODO(rust-num/num-traits#315): waiting for https://github.com/rust-num/num-traits/issues/315 to land
-pub trait UnsignedAbs {
-    /// An unsigned type which is large enough to hold the absolute value of `Self`.
-    type Unsigned;
-
-    /// Computes the absolute value of `self` without any wrapping or panicking.
-    fn unsigned_abs(self) -> Self::Unsigned;
-}
-
-impl UnsignedAbs for i8 {
-    type Unsigned = u8;
-
-    #[inline]
-    fn unsigned_abs(self) -> Self::Unsigned {
-        self.unsigned_abs()
-    }
-}
-
-impl UnsignedAbs for i16 {
-    type Unsigned = u16;
-
-    #[inline]
-    fn unsigned_abs(self) -> Self::Unsigned {
-        self.unsigned_abs()
-    }
-}
-
-impl UnsignedAbs for i32 {
-    type Unsigned = u32;
-
-    #[inline]
-    fn unsigned_abs(self) -> Self::Unsigned {
-        self.unsigned_abs()
-    }
-}
-
-impl UnsignedAbs for i64 {
-    type Unsigned = u64;
-
-    #[inline]
-    fn unsigned_abs(self) -> Self::Unsigned {
-        self.unsigned_abs()
-    }
-}
-
-impl UnsignedAbs for i128 {
-    type Unsigned = u128;
-
-    #[inline]
-    fn unsigned_abs(self) -> Self::Unsigned {
-        self.unsigned_abs()
-    }
-}
-
-impl UnsignedAbs for isize {
-    type Unsigned = usize;
-
-    #[inline]
-    fn unsigned_abs(self) -> Self::Unsigned {
-        self.unsigned_abs()
-    }
 }
 
 /// Pretty format a signed number by using thousands separators for readability.
@@ -573,6 +512,40 @@ pub fn format_bytes(number_of_bytes: f64) -> String {
     } else {
         let decimals = (10.0 * number_of_bytes < 40.0_f64.exp2()) as usize;
         format!("{:.*} GiB", decimals, number_of_bytes / 30.0_f64.exp2())
+    }
+}
+
+/// Pretty format a bitrate (bits per second) using decimal SI notation (base 10).
+///
+/// Note: bitrate is conventionally given in decimal (base 1000) units, not binary (base 1024) units.
+///
+/// ```
+/// # use re_format::format_bits_per_second;
+/// assert_eq!(format_bits_per_second(123.0), "123 bit/s");
+/// assert_eq!(format_bits_per_second(12_345.0), "12.3 kbit/s");
+/// assert_eq!(format_bits_per_second(1_234_567.0), "1.2 Mbit/s");
+/// assert_eq!(format_bits_per_second(1_234_567_890.0), "1.2 Gbit/s");
+/// ```
+pub fn format_bits_per_second(bits_per_second: f64) -> String {
+    if bits_per_second < 0.0 {
+        return format!("{MINUS}{}", format_bits_per_second(-bits_per_second));
+    }
+
+    // Bitrate is conventionally given in decimal (base 1000) units.
+    let (value, unit) = if bits_per_second < 1e3 {
+        (bits_per_second, "bit/s")
+    } else if bits_per_second < 1e6 {
+        (bits_per_second / 1e3, "kbit/s")
+    } else if bits_per_second < 1e9 {
+        (bits_per_second / 1e6, "Mbit/s")
+    } else {
+        (bits_per_second / 1e9, "Gbit/s")
+    };
+
+    if unit == "bit/s" {
+        format!("{value:.0} {unit}")
+    } else {
+        format!("{value:.1} {unit}")
     }
 }
 

@@ -1,6 +1,7 @@
 ---
 title: Transforms & Coordinate Frames
 order: 400
+description: Coordinate frames and how transforms relate them
 ---
 
 <!-- Figma file for diagrams in this article: https://www.figma.com/board/PTwJKgi9kQOqG7ZgzdhrDL/Transforms-doc-page-graphs?t=fWkOGxxn6mZkkCON-1 -->
@@ -162,16 +163,19 @@ snippet: archetypes/pinhole_projections
 
 ### View coordinates
 
-You can use the [`ViewCoordinates`](https://rerun.io/docs/reference/types/archetypes/view_coordinates) archetype to set your preferred view coordinate systems, giving semantic meaning to the XYZ axes of the space.
+[`ViewCoordinates`](https://rerun.io/docs/reference/types/archetypes/view_coordinates) describes an orientation convention by specifying the directions in which the positive X, Y, and Z axes point.
+It controls camera and view orientation.
 
-For 3D spaces it can be used to log what the up-axis is in your coordinate system. This will help Rerun set a good default view of your 3D scene, as well as make the virtual eye interactions more natural. In Python this can be done with `rr.log("/", rr.ViewCoordinates.RIGHT_HAND_Z_UP, static=True)`.
-Note that in this example the archetype is logged at the root path, this will make it apply to all 3D views. Generally, a 3D view picks up view coordinates at or above its origin entity path.
+For a 3D view, [`SpatialInformation.axes`](https://rerun.io/docs/reference/types/views/spatial3d_view) controls the eye orientation, navigation, and default grid plane.
+A logged `ViewCoordinates` archetype provides the default value for 3D views whose origin is at or below that entity.
+The view uses the value at its origin or the closest ancestor, so logging `rr.log("/", rr.ViewCoordinates.RIGHT_HAND_Z_UP, static=True)` applies to all 3D views unless a view overrides it in its blueprint.
+If no archetype value is found, the view uses `camera_xyz` from the closest ancestor pinhole, followed by `RFU` as the final fallback.
+This orientation does not change logged transforms.
 
-[Pinholes](https://rerun.io/docs/reference/types/archetypes/view_coordinates) have a view coordinates field integrated as a shortcut.
-The default coordinate system for pinhole entities is `RDF` (X=Right, Y=Down, Z=Forward).
-
-> [!WARNING]
-> Unlike in 3D views where `rr.ViewCoordinates` only impacts how the rendered scene is oriented, applying `rr.ViewCoordinates` to a pinhole-camera will actually influence the projection transform chain. Under the hood this value inserts a hidden transform that re-orients the axis of projection. Different world-content will be projected into your camera with different orientations depending on how you choose this value. See for instance the [`open_photogrammetry_format`](https://rerun.io/examples/3d-reconstruction/open_photogrammetry_format) example.
+For a [`Pinhole`](https://rerun.io/docs/reference/types/archetypes/pinhole), `camera_xyz` controls the camera orientation and projection direction.
+The default is `RDF`: +X is right, +Y is down, and +Z is forward.
+Changing `camera_xyz` reorients the camera frustum, projected depth data, and the projection of 3D content into the camera view.
+See the [`open_photogrammetry_format`](https://rerun.io/examples/3d-reconstruction/open_photogrammetry_format) example for a non-default camera orientation.
 
 For 2D spaces and other entities, view coordinates currently have currently no effect ([#1387](https://github.com/rerun-io/rerun/issues/1387)).
 
@@ -206,6 +210,21 @@ snippet: archetypes/mesh3d_instancing
 
 In this example, the mesh at `"shape"` is instantiated four times with different translations and rotations.
 The box at `"shape/box"` is not affected by its parent's instance poses and appears only once.
+
+## Debugging transform trees
+
+The Rerun viewer features a debugging UI for visual introspection of the 3D transform cache.
+This allows to view the tree structure of the transforms, including potentially disconnected trees, and inspect the latest stored values of each frame node or transform edge.
+The UI supports horizontal and vertical tree layout and you can filter by transform type (e.g. static or temporal).
+
+> [!NOTE]
+> This UI is currently a tab in the dev panel (accessible via "Toggle dev panel" in the menu or ctrl/cmd+shift+m).
+> We are open to making this a dedicated view in the future - let us know if you have any [feedback](https://rerun.io/docs/development)!
+
+<video width="100%" autoplay loop muted controls>
+    <source src="https://static.rerun.io/cc6c41138eeeabb31fb2ec988eefdcd8da446c86_transform_dev_panel_teaser.mp4" type="video/mp4" />
+</video>
+
 
 <!--
 

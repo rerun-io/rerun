@@ -263,7 +263,7 @@ impl PyDatasetViewInternal {
             using_index_values,
         )?;
 
-        let table = PyTableProviderAdapterInternal::new(provider, true);
+        let table = PyTableProviderAdapterInternal::new(provider);
 
         let dataset = self_.dataset.borrow(py);
         let client = dataset.client().borrow(py);
@@ -380,7 +380,12 @@ fn build_dataframe_query_table_provider(
         } else {
             re_chunk_store::StaticColumnSelection::Both
         },
-        filtered_index: index.map(Into::into),
+        filtered_index: index
+            .map(|index| {
+                re_chunk::TimelineName::try_new(index)
+                    .map_err(|err| PyValueError::new_err(err.to_string()))
+            })
+            .transpose()?,
         filtered_index_range: None,
         filtered_index_values: None,
         using_index_values: None,
@@ -394,17 +399,19 @@ fn build_dataframe_query_table_provider(
     };
 
     // Capture trace context to propagate into async query execution
-    #[cfg(all(feature = "perf_telemetry", not(target_arch = "wasm32")))]
-    let trace_headers_opt = {
-        let trace_headers = extract_trace_context_from_contextvar(py);
-        if trace_headers.traceparent.is_empty() {
-            None
-        } else {
-            Some(trace_headers)
+    cfg_select! {
+        all(feature = "perf_telemetry", not(target_arch = "wasm32")) => {
+            let trace_headers = extract_trace_context_from_contextvar(py);
+            let trace_headers_opt = if trace_headers.traceparent.is_empty() {
+                None
+            } else {
+                Some(trace_headers)
+            };
         }
-    };
-    #[cfg(not(all(feature = "perf_telemetry", not(target_arch = "wasm32"))))]
-    let trace_headers_opt = None;
+        _ => {
+            let trace_headers_opt = None;
+        }
+    }
 
     let index_values = using_index_values.map(Arc::new);
     // Reuse the already-fetched schema so the provider skips its own `GetDatasetSchema` RPC.

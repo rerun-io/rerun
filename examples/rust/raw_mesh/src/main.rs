@@ -1,15 +1,9 @@
-//! This example demonstrates how to use the Rerun Rust SDK to log raw 3D meshes (so-called
-//! "triangle soups") and their transform hierarchy.
+//! Shows how to log a 3D scene as raw mesh data or as a prepacked asset.
 //!
-//! Note that while this example loads GLTF meshes to illustrate
-//! [`Mesh3D`](https://rerun.io/docs/reference/types/archetypes/mesh3d)'s abilitites,
-//! you can also send various kinds of mesh assets
-//! directly via [`Asset3D`](https://rerun.io/docs/reference/types/archetypes/asset3d).
-//!
-//! Usage:
-//! ```
-//! cargo run -p raw_mesh <path_to_gltf_scene>
-//! ```
+//! By default, the example parses the scene and logs its geometry and transform hierarchy with
+//! [`Mesh3D`](https://rerun.io/docs/reference/types/archetypes/mesh3d).
+//! Pass `--asset3d` to log the original file directly with
+//! [`Asset3D`](https://rerun.io/docs/reference/types/archetypes/asset3d).
 
 use std::path::PathBuf;
 
@@ -118,6 +112,10 @@ struct Args {
     /// Specifies the path of an arbitrary glTF scene to load.
     #[clap(long)]
     scene_path: Option<PathBuf>,
+
+    /// Logs the scene as a prepacked Asset3D instead of converting it into Mesh3D archetypes.
+    #[clap(long)]
+    asset3d: bool,
 }
 
 // TODO(cmc): move all rerun args handling to helpers
@@ -150,8 +148,16 @@ impl Args {
 }
 
 fn run(rec: &RecordingStream, args: &Args) -> anyhow::Result<()> {
+    let scene_path = args.scene_path()?;
+
+    if args.asset3d {
+        rec.log_static("world", &rerun::ViewCoordinates::RIGHT_HAND_Y_UP())?;
+        rec.log("world/asset", &rerun::Asset3D::from_file_path(scene_path)?)?;
+        return Ok(());
+    }
+
     // Read glTF scene
-    let (doc, buffers, _) = gltf::import_slice(Bytes::from(std::fs::read(args.scene_path()?)?))?;
+    let (doc, buffers, _) = gltf::import_slice(Bytes::from(std::fs::read(scene_path)?))?;
     let nodes = load_gltf(&doc, &buffers);
 
     // Log raw glTF nodes and their transforms with Rerun

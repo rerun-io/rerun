@@ -3,7 +3,8 @@
 use std::sync::Arc;
 
 use arrow::array::{
-    Array as _, ArrayRef, AsArray as _, BooleanBufferBuilder, ListArray, OffsetSizeTrait,
+    Array as _, ArrayRef, AsArray as _, BooleanBufferBuilder, FixedSizeListArray, ListArray,
+    OffsetSizeTrait,
 };
 use arrow::buffer::{NullBuffer, OffsetBuffer, ScalarBuffer};
 use arrow::datatypes::{DataType, Field};
@@ -12,7 +13,7 @@ use arrow::error::ArrowError;
 use crate::combinators::{GetField, GetIndexList, Transform as _};
 
 use super::DynExpr;
-use super::parser::Expr;
+use super::parser::{Expr, PathExpr};
 use super::runtime::Runtime;
 
 /// Internal trait for expression types that can be evaluated against Arrow arrays.
@@ -142,6 +143,222 @@ fn combine_null_buffers(a: Option<&NullBuffer>, b: Option<&NullBuffer>) -> Optio
             Some(NullBuffer::new(combined))
         }
     }
+}
+
+/// Type-level facts about a `pack` path, resolved against the input schema.
+struct PathExprType {
+    data_type: DataType,
+
+    /// `true` if the path can produce nulls according to the schema.
+    nullable: bool,
+
+    /// `true` if the path promotes its nulls to the entry-null channel via `!`.
+    acknowledged: bool,
+}
+
+/// Resolve the output type, nullability, and `!`-acknowledgment of a [`PathExpr`]
+/// against the `input` datatype.
+///
+/// `root` is the full path, carried through for error messages. Because [`PathExpr`] only
+/// models scalar navigation, this match is exhaustive — non-1:1 and dynamically-typed
+/// forms were already rejected at parse time, so there is no catch-all branch.
+fn resolve_path(
+    path: &PathExpr,
+    input: &DataType,
+    input_nullable: bool,
+    root: &PathExpr,
+) -> Result<PathExprType, crate::combinators::Error> {
+    use crate::combinators::Error;
+
+    match path {
+        PathExpr::Identity => Ok(PathExprType {
+            data_type: input.clone(),
+            nullable: input_nullable,
+            acknowledged: false,
+        }),
+
+        PathExpr::Field(name) => {
+            let DataType::Struct(fields) = input else {
+                return Err(Error::TypeMismatch {
+                    expected: "Struct".to_owned(),
+                    actual: input.clone(),
+                    context: format!("`pack` path `{root}` accesses field `.{name}`"),
+                });
+            };
+            let field =
+                fields
+                    .iter()
+                    .find(|f| f.name() == name)
+                    .ok_or_else(|| Error::FieldNotFound {
+                        field_name: name.clone(),
+                        available_fields: fields.iter().map(|f| f.name().clone()).collect(),
+                    })?;
+            Ok(PathExprType {
+                data_type: field.data_type().clone(),
+                // Presence propagation: `.a.b` is nullable if `a` (the input) or `b` is.
+                nullable: input_nullable || field.is_nullable(),
+                acknowledged: false,
+            })
+        }
+
+        PathExpr::Index(_) => {
+            let child = match input {
+                DataType::List(field) | DataType::FixedSizeList(field, _) => {
+                    field.data_type().clone()
+                }
+                _ => {
+                    return Err(Error::TypeMismatch {
+                        expected: "List or FixedSizeList".to_owned(),
+                        actual: input.clone(),
+                        context: format!("`pack` path `{root}` indexes into a list"),
+                    });
+                }
+            };
+            Ok(PathExprType {
+                data_type: child,
+                // Indexing can be out of bounds, so the result is always potentially null.
+                nullable: true,
+                acknowledged: false,
+            })
+        }
+
+        PathExpr::NonNull(inner) => Ok(PathExprType {
+            acknowledged: true,
+            ..resolve_path(inner, input, input_nullable, root)?
+        }),
+
+        // `?` suppresses absence, not nulls, so it does not acknowledge nullability.
+        PathExpr::Try(inner) => resolve_path(inner, input, input_nullable, root),
+
+        PathExpr::Pipe {
+            left,
+            right,
+            implicit: _,
+        } => {
+            let left = resolve_path(left, input, input_nullable, root)?;
+            resolve_path(right, &left.data_type, left.nullable, root)
+        }
+    }
+}
+
+/// Evaluate a `pack(path, …, path)` expression into a [`FixedSizeListArray`].
+///
+/// Each path is evaluated against `source`, and the per-row results are packed into a
+/// fixed-size list of size `paths.len()`. See the [module docs](crate::selector) for the full
+/// nullability contract (the `!` gate and entry-level AND semantics).
+fn eval_pack(
+    paths: &[PathExpr],
+    source: &ArrayRef,
+    runtime: &Runtime,
+) -> Result<Option<EvalResult>, crate::combinators::Error> {
+    use crate::combinators::Error;
+
+    re_log::debug_assert!(
+        !paths.is_empty(),
+        "the parser guarantees `pack` has at least one path"
+    );
+
+    // --- Type-driven validation (schema-level, before touching any data) ---
+
+    let input_dt = source.data_type();
+    // The root input is a bare array with no `Field`, so we can only seed its nullability
+    // from the array itself. Field accesses below use the struct's exact field nullability.
+    let input_nullable = source.logical_nulls().is_some();
+
+    let mut expected_dt: Option<DataType> = None;
+    let mut any_nullable = false;
+
+    for path in paths {
+        let resolved = resolve_path(path, input_dt, input_nullable, path)?;
+
+        // The `!` gate: a nullable path must acknowledge its nulls with `!`, since a null
+        // shadows the whole entry (AND semantics).
+        if resolved.nullable && !resolved.acknowledged {
+            return Err(Error::PackPathNullable {
+                path: format!("{path}"),
+            });
+        }
+        any_nullable |= resolved.nullable;
+
+        match &expected_dt {
+            None => expected_dt = Some(resolved.data_type),
+            Some(expected) if *expected != resolved.data_type => {
+                return Err(Error::PackPathTypeMismatch {
+                    path: format!("{path}"),
+                    actual_type: resolved.data_type,
+                    expected_type: expected.clone(),
+                });
+            }
+            Some(_) => {}
+        }
+    }
+
+    // --- Evaluate paths and assemble the FixedSizeList ---
+
+    let mut path_arrays = Vec::with_capacity(paths.len());
+    let mut entry_validity: Option<NullBuffer> = None;
+    let mut num_rows: Option<usize> = None;
+
+    for path in paths {
+        let Some(result) = Expr::from(path).eval(source.clone(), runtime)? else {
+            // A path whose error was suppressed (`?`) makes the whole `pack` absent.
+            return Ok(None);
+        };
+
+        // A path is pure navigation (`PathExpr` excludes iteration), so it is always
+        // 1:1 and never introduces offsets.
+        re_log::debug_assert!(
+            result.offsets.is_none(),
+            "`pack` path `{path}` unexpectedly produced offsets despite being a scalar path"
+        );
+
+        // The path's promoted nulls (populated by `!`) feed the entry-level AND.
+        entry_validity = combine_null_buffers(entry_validity.as_ref(), result.nulls.as_ref());
+
+        match num_rows {
+            None => num_rows = Some(result.array.len()),
+            Some(n) => re_log::debug_assert_eq!(
+                n,
+                result.array.len(),
+                "all `pack` paths must produce the same number of rows"
+            ),
+        }
+
+        path_arrays.push(result.array);
+    }
+
+    let num_rows = num_rows.unwrap_or(0);
+    let num_paths = path_arrays.len();
+    let element_type = path_arrays[0].data_type().clone();
+
+    // Build the row-major child buffer `[r0p0, r0p1, …, r1p0, …]` by slicing each path
+    // per row and concatenating. This mirrors `StructToFixedList` and avoids needing a
+    // dedicated interleave kernel.
+    let child = if num_rows == 0 {
+        path_arrays[0].slice(0, 0)
+    } else {
+        let mut slices = Vec::with_capacity(num_rows * num_paths);
+        for row in 0..num_rows {
+            for path_array in &path_arrays {
+                slices.push(path_array.slice(row, 1));
+            }
+        }
+        let refs: Vec<&dyn arrow::array::Array> = slices.iter().map(|a| a.as_ref()).collect();
+        re_arrow_util::concat_arrays(&refs)?
+    };
+
+    let size = i32::try_from(num_paths).map_err(|err| Error::InvalidNumberOfFields {
+        actual: num_paths,
+        err,
+    })?;
+
+    // The child field is nullable iff any path is nullable. By the AND semantics, an
+    // element-level null only ever occurs under a null entry, so consumers that check
+    // entry validity never observe element-level nulls.
+    let field = Arc::new(Field::new_list_field(element_type, any_nullable));
+    let fixed = FixedSizeListArray::new(field, size, child, entry_validity);
+
+    Ok(Some(EvalResult::flat(Arc::new(fixed))))
 }
 
 /// Executes the given expression against a raw array.
@@ -342,6 +559,8 @@ impl Eval for Expr {
                     "cannot call `.map()` on unexpected type {dt}"
                 )))?,
             },
+
+            Self::Pack(paths) => eval_pack(paths, &source, runtime),
         }
     }
 }

@@ -22,6 +22,7 @@ fn test_all_component_fallbacks() {
         };
 
         // We do snapshot tests for all archetype field fallbacks.
+        #[expect(clippy::iter_over_hash_type)] // Snapshot order is irrelevant.
         for (arch_name, arch) in &test_context.reflection.archetypes {
             let ctx = QueryContext {
                 view_ctx: &view_context,

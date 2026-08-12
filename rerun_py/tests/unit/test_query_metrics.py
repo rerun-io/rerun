@@ -63,6 +63,26 @@ def _fake_query_metrics(**overrides: Any) -> SimpleNamespace:
         "fetch_direct_max_attempt": 0,
         "fetch_direct_original_ranges": 0,
         "fetch_direct_merged_ranges": 0,
+        "planned_fetch_batches": 1,
+        "planned_segment_waves": 1,
+        "segment_admission_limit": 3,
+        "segment_admission_candidate_limit": 16,
+        "segment_admission_source": "metrics_only",
+        "segment_admission_candidate_reason": "eligible",
+        "segment_admission_adaptive_enabled": False,
+        "segment_admission_profile_segment_count": 32,
+        "segment_admission_profile_complete": True,
+        "segment_admission_p95_segment_bytes": 1024,
+        "segment_admission_max_segment_bytes": 2048,
+        "segment_admission_largest_window_bytes": 16_384,
+        "max_segments_per_fetch_batch": 1,
+        "max_segments_per_wave": 1,
+        "peak_active_segments": 1,
+        "pipeline_budget_bytes": 4 * 1024 * 1024 * 1024,
+        "pipeline_peak_decoded_bytes": 64 * 1024 * 1024,
+        "pipeline_byte_waits": 0,
+        "segment_admission_waits": 0,
+        "pipeline_stall_breaker_activations": 0,
     }
     defaults.update(overrides)
     return SimpleNamespace(**defaults)
@@ -141,7 +161,23 @@ def test_empty_scope_yields_empty_collector(install_fake_handles: list[_FakeHand
 def test_fake_handle_populates_collector(install_fake_handles: list[_FakeHandle]) -> None:
     with query_metrics() as m:
         handle = install_fake_handles[-1]
-        handle.pending.append(_fake_query_metrics(query_chunks=7, fetch_grpc_bytes=9_000))
+        handle.pending.append(
+            _fake_query_metrics(
+                query_chunks=7,
+                fetch_grpc_bytes=9_000,
+                planned_fetch_batches=16,
+                planned_segment_waves=1_332,
+                segment_admission_limit=3,
+                max_segments_per_fetch_batch=2,
+                max_segments_per_wave=3,
+                peak_active_segments=3,
+                pipeline_budget_bytes=8 * 1024 * 1024 * 1024,
+                pipeline_peak_decoded_bytes=96 * 1024 * 1024,
+                pipeline_byte_waits=4,
+                segment_admission_waits=20,
+                pipeline_stall_breaker_activations=1,
+            )
+        )
         qs = m.queries
 
     assert len(qs) == 1
@@ -149,6 +185,26 @@ def test_fake_handle_populates_collector(install_fake_handles: list[_FakeHandle]
     assert qs[0].query_chunks == 7
     assert qs[0].fetch_grpc_bytes == 9_000
     assert qs[0].entity_path_narrowing_applied is True
+    assert qs[0].planned_fetch_batches == 16
+    assert qs[0].planned_segment_waves == 1_332
+    assert qs[0].segment_admission_limit == 3
+    assert qs[0].segment_admission_candidate_limit == 16
+    assert qs[0].segment_admission_source == "metrics_only"
+    assert qs[0].segment_admission_candidate_reason == "eligible"
+    assert qs[0].segment_admission_adaptive_enabled is False
+    assert qs[0].segment_admission_profile_segment_count == 32
+    assert qs[0].segment_admission_profile_complete is True
+    assert qs[0].segment_admission_p95_segment_bytes == 1024
+    assert qs[0].segment_admission_max_segment_bytes == 2048
+    assert qs[0].segment_admission_largest_window_bytes == 16_384
+    assert qs[0].max_segments_per_fetch_batch == 2
+    assert qs[0].max_segments_per_wave == 3
+    assert qs[0].peak_active_segments == 3
+    assert qs[0].pipeline_budget_bytes == 8 * 1024 * 1024 * 1024
+    assert qs[0].pipeline_peak_decoded_bytes == 96 * 1024 * 1024
+    assert qs[0].pipeline_byte_waits == 4
+    assert qs[0].segment_admission_waits == 20
+    assert qs[0].pipeline_stall_breaker_activations == 1
     assert m.last_query() == qs[0]
 
 

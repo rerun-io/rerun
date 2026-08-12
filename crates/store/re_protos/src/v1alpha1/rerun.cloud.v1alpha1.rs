@@ -272,12 +272,6 @@ pub struct DataSource {
     /// What kind of data is it (e.g. rrd, mcap, Lance, etc)?
     #[prost(enumeration = "DataSourceKind", tag = "2")]
     pub typ: i32,
-    /// ⚠️ UNSTABLE: Is this an asset layer (shared across all segments) or a segment layer (one recording per segment)?
-    /// Defaults to LAYER_CLASS_SEGMENT if unspecified.
-    ///
-    /// TODO(RR-4797): remove unstable-warning
-    #[prost(enumeration = "LayerClass", tag = "5")]
-    pub layer_class: i32,
 }
 impl ::prost::Name for DataSource {
     const NAME: &'static str = "DataSource";
@@ -362,12 +356,13 @@ impl ::prost::Name for UnregisterFromDatasetRequest {
 }
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct UnregisterFromDatasetResponse {
-    /// This contains all the information about the segments and layers that were actually removed.
-    ///
-    /// This dataframe is always guaranteed to be a subset of the one found in `ScanDatasetManifestResponse`.
-    /// They share the same semantics, schemas, etc.
+    /// This dataframe is always empty. It remains here for format compatibility with older SDKs.
+    /// TODO(ilya): remove this once the clients are all new enough
     #[prost(message, optional, tag = "1")]
     pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
+    /// Id of the task that performs the unregistration. The data is not deleted until the task completes.
+    #[prost(message, optional, tag = "2")]
+    pub task_id: ::core::option::Option<super::super::common::v1alpha1::TaskId>,
 }
 impl ::prost::Name for UnregisterFromDatasetResponse {
     const NAME: &'static str = "UnregisterFromDatasetResponse";
@@ -434,6 +429,50 @@ impl ::prost::Name for GetSegmentTableSchemaResponse {
     }
 }
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SegmentIdList {
+    #[prost(string, repeated, tag = "1")]
+    pub segment_ids: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+}
+impl ::prost::Name for SegmentIdList {
+    const NAME: &'static str = "SegmentIdList";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.SegmentIdList".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.SegmentIdList".into()
+    }
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SegmentIdFilter {
+    #[prost(oneof = "segment_id_filter::Strategy", tags = "1, 2")]
+    pub strategy: ::core::option::Option<segment_id_filter::Strategy>,
+}
+/// Nested message and enum types in `SegmentIdFilter`.
+pub mod segment_id_filter {
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
+    pub enum Strategy {
+        /// Scan only manifest rows belonging to these segment IDs.
+        /// An empty list scans no segment rows.
+        #[prost(message, tag = "1")]
+        ScanOnly(super::SegmentIdList),
+        /// Scan all manifest rows except those belonging to these segment IDs.
+        /// An empty list skips no segment rows.
+        #[prost(message, tag = "2")]
+        Skip(super::SegmentIdList),
+    }
+}
+impl ::prost::Name for SegmentIdFilter {
+    const NAME: &'static str = "SegmentIdFilter";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.SegmentIdFilter".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.SegmentIdFilter".into()
+    }
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ScanSegmentTableRequest {
     /// A list of column names to be projected server-side.
     ///
@@ -446,6 +485,12 @@ pub struct ScanSegmentTableRequest {
     /// an `InvalidArgument` error.
     #[prost(string, repeated, tag = "1")]
     pub columns: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    /// An optional best-effort hint for pruning segment IDs from the server-side scan.
+    ///
+    /// Servers may apply or ignore this filter.
+    /// Clients must re-apply filters locally if correctness depends on them.
+    #[prost(message, optional, tag = "3")]
+    pub segment_id_filter: ::core::option::Option<SegmentIdFilter>,
 }
 impl ::prost::Name for ScanSegmentTableRequest {
     const NAME: &'static str = "ScanSegmentTableRequest";
@@ -513,6 +558,12 @@ pub struct ScanDatasetManifestRequest {
     /// an `InvalidArgument` error.
     #[prost(string, repeated, tag = "3")]
     pub columns: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    /// An optional best-effort hint for pruning segment IDs from the server-side scan.
+    ///
+    /// Servers may apply or ignore this filter.
+    /// Clients must re-apply filters locally if correctness depends on them.
+    #[prost(message, optional, tag = "5")]
+    pub segment_id_filter: ::core::option::Option<SegmentIdFilter>,
 }
 impl ::prost::Name for ScanDatasetManifestRequest {
     const NAME: &'static str = "ScanDatasetManifestRequest";
@@ -571,6 +622,12 @@ impl ::prost::Name for GetDatasetSchemaResponse {
 pub struct GetRrdManifestRequest {
     #[prost(message, optional, tag = "1")]
     pub segment_id: ::core::option::Option<super::super::common::v1alpha1::SegmentId>,
+    /// Asks the server to return direct URLs pointing at encoded
+    /// `rerun.log_msg.v1alpha1.RrdFooter` payloads instead of inlining manifests.
+    ///
+    /// It is not guaranteed that the server will honor this.
+    #[prost(bool, tag = "2")]
+    pub generate_direct_urls: bool,
 }
 impl ::prost::Name for GetRrdManifestRequest {
     const NAME: &'static str = "GetRrdManifestRequest";
@@ -582,10 +639,15 @@ impl ::prost::Name for GetRrdManifestRequest {
         "/rerun.cloud.v1alpha1.GetRrdManifestRequest".into()
     }
 }
+/// Exactly one of `rrd_manifest` and `manifest_key` is set per response.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetRrdManifestResponse {
+    /// The manifest, inlined.
     #[prost(message, optional, tag = "1")]
     pub rrd_manifest: ::core::option::Option<super::super::log_msg::v1alpha1::RrdManifest>,
+    /// Points at an encoded `rerun.log_msg.v1alpha1.RrdFooter` payload for the client to fetch and decode.
+    #[prost(message, optional, tag = "2")]
+    pub manifest_key: ::core::option::Option<RrdManifestKey>,
 }
 impl ::prost::Name for GetRrdManifestResponse {
     const NAME: &'static str = "GetRrdManifestResponse";
@@ -595,6 +657,37 @@ impl ::prost::Name for GetRrdManifestResponse {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.cloud.v1alpha1.GetRrdManifestResponse".into()
+    }
+}
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct GetAssetsForSegmentRequest {}
+impl ::prost::Name for GetAssetsForSegmentRequest {
+    const NAME: &'static str = "GetAssetsForSegmentRequest";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.GetAssetsForSegmentRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.GetAssetsForSegmentRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetAssetsForSegmentResponse {
+    /// The asset dataset. Set on every response in the stream.
+    #[prost(message, optional, tag = "1")]
+    pub assets_entry: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
+    /// The segments of the asset dataset. Concatenate across all responses in the stream.
+    #[prost(message, repeated, tag = "2")]
+    pub asset_segment_ids: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::SegmentId>,
+}
+impl ::prost::Name for GetAssetsForSegmentResponse {
+    const NAME: &'static str = "GetAssetsForSegmentResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.GetAssetsForSegmentResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.GetAssetsForSegmentResponse".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -977,6 +1070,12 @@ pub struct DoMaintenanceRequest {
     /// and <https://docs.rs/lance/latest/lance/dataset/cleanup/fn.cleanup_old_versions.html>
     #[prost(message, optional, tag = "4")]
     pub cleanup_before: ::core::option::Option<::prost_types::Timestamp>,
+    /// List the replicated dataset in its object store, such as S3, and remove objects that are no
+    /// longer present in the local dataset.
+    /// This performs a full remote reconciliation, unlike normal cleanup, which only removes replica
+    /// objects corresponding to local files deleted during that cleanup.
+    #[prost(bool, tag = "7")]
+    pub gc_object_store: bool,
     /// Override default platform behavior and allow cleanup of recent files. This will respect
     /// the value of `cleanup_before` timestamp even if it's more recent than 1 hour.
     ///
@@ -1512,8 +1611,18 @@ pub struct EntryFilter {
     pub id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
     #[prost(string, optional, tag = "2")]
     pub name: ::core::option::Option<::prost::alloc::string::String>,
+    /// Deprecated: use `entry_kinds` instead. Ignored by servers when `entry_kinds` is non-empty.
     #[prost(enumeration = "EntryKind", optional, tag = "3")]
     pub entry_kind: ::core::option::Option<i32>,
+    /// The entry kinds to include. If non-empty, the server returns exactly entries of these kinds
+    /// (ENTRY_KIND_UNSPECIFIED is rejected with an `invalid_argument` error).
+    ///
+    /// It is recommended to always explicitly ask for a set of entry kinds.
+    /// When unset the server returns a default set of kinds to ensure backwards compatibility with
+    /// old clients that did not set this. This behavior may be dropped in future releases.
+    /// (condition: after rerun-sdk 0.34 is out of its support cycle)
+    #[prost(enumeration = "EntryKind", repeated, tag = "4")]
+    pub entry_kinds: ::prost::alloc::vec::Vec<i32>,
 }
 impl ::prost::Name for EntryFilter {
     const NAME: &'static str = "EntryFilter";
@@ -1584,6 +1693,10 @@ pub struct DatasetDetails {
     #[prost(message, optional, tag = "6")]
     pub default_segment_table_blueprint_segment:
         ::core::option::Option<super::super::common::v1alpha1::SegmentId>,
+    /// The asset dataset associated with this dataset (if any).
+    /// This association is owned for lifecycle purposes: deleting this dataset also deletes the associated asset dataset.
+    #[prost(message, optional, tag = "7")]
+    pub asset_dataset: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
 }
 impl ::prost::Name for DatasetDetails {
     const NAME: &'static str = "DatasetDetails";
@@ -1776,6 +1889,38 @@ impl ::prost::Name for RrdChunkLocation {
         "/rerun.cloud.v1alpha1.RrdChunkLocation".into()
     }
 }
+/// `RrdManifestKey` points at an encoded `rerun.log_msg.v1alpha1.RrdFooter` payload in the object store.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct RrdManifestKey {
+    /// The canonical location of the footer payload (e.g. s3://bucket/file).
+    #[prost(message, optional, tag = "1")]
+    pub location: ::core::option::Option<RrdChunkLocation>,
+    /// The segment layer whose manifest is stored in this footer.
+    #[prost(string, optional, tag = "2")]
+    pub layer: ::core::option::Option<::prost::alloc::string::String>,
+    /// ETag of the source object (the layer's RRD file) as observed at registration time.
+    ///
+    /// Clients should pass this as an `If-Match` precondition when fetching, so that a concurrent
+    /// re-registration results in a clean failure (HTTP 412) instead of decoding garbage from a
+    /// mismatched byte range.
+    ///
+    /// Optional: legacy registrations and stores that do not return an ETag leave this unset.
+    #[prost(string, optional, tag = "3")]
+    pub etag: ::core::option::Option<::prost::alloc::string::String>,
+    /// Presigned URL the client fetches the manifest's byte range from.
+    #[prost(string, optional, tag = "4")]
+    pub direct_url: ::core::option::Option<::prost::alloc::string::String>,
+}
+impl ::prost::Name for RrdManifestKey {
+    const NAME: &'static str = "RrdManifestKey";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.RrdManifestKey".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.RrdManifestKey".into()
+    }
+}
 /// Error codes for application level errors
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
@@ -1839,40 +1984,6 @@ impl DataSourceKind {
         }
     }
 }
-/// ⚠️ UNSTABLE: Describes the class of a dataset layer.
-///
-/// TODO(RR-4797): remove unstable-warning.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
-#[repr(i32)]
-pub enum LayerClass {
-    Unspecified = 0,
-    /// Asset layer: a single source (recording) shared across all segments in the layer.
-    Asset = 1,
-    /// Segment layer: one (or zero) sources (recordings) per segment in the layer.
-    Segment = 2,
-}
-impl LayerClass {
-    /// String value of the enum field names used in the ProtoBuf definition.
-    ///
-    /// The values are not transformed in any way and thus are considered stable
-    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
-    pub fn as_str_name(&self) -> &'static str {
-        match self {
-            Self::Unspecified => "LAYER_CLASS_UNSPECIFIED",
-            Self::Asset => "LAYER_CLASS_ASSET",
-            Self::Segment => "LAYER_CLASS_SEGMENT",
-        }
-    }
-    /// Creates an enum from field names used in the ProtoBuf definition.
-    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
-        match value {
-            "LAYER_CLASS_UNSPECIFIED" => Some(Self::Unspecified),
-            "LAYER_CLASS_ASSET" => Some(Self::Asset),
-            "LAYER_CLASS_SEGMENT" => Some(Self::Segment),
-            _ => None,
-        }
-    }
-}
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum TableInsertMode {
@@ -1928,6 +2039,7 @@ pub enum EntryKind {
     Table = 3,
     TableView = 4,
     BlueprintDataset = 5,
+    AssetDataset = 6,
 }
 impl EntryKind {
     /// String value of the enum field names used in the ProtoBuf definition.
@@ -1942,6 +2054,7 @@ impl EntryKind {
             Self::Table => "ENTRY_KIND_TABLE",
             Self::TableView => "ENTRY_KIND_TABLE_VIEW",
             Self::BlueprintDataset => "ENTRY_KIND_BLUEPRINT_DATASET",
+            Self::AssetDataset => "ENTRY_KIND_ASSET_DATASET",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
@@ -1953,6 +2066,7 @@ impl EntryKind {
             "ENTRY_KIND_TABLE" => Some(Self::Table),
             "ENTRY_KIND_TABLE_VIEW" => Some(Self::TableView),
             "ENTRY_KIND_BLUEPRINT_DATASET" => Some(Self::BlueprintDataset),
+            "ENTRY_KIND_ASSET_DATASET" => Some(Self::AssetDataset),
             _ => None,
         }
     }
@@ -2369,11 +2483,8 @@ pub mod rerun_cloud_service_client {
         }
         /// Unregisters segments and layers from the Dataset.
         ///
-        /// Excluding IO errors, this will always succeed as long the target dataset exists.
-        /// Corollary: unregistering data that doesn't exist is a no-op.
-        ///
-        /// This always returns a subset of the data from `ScanDatasetManifest`, and therefore the data will
-        /// also follow the schema returned by `GetDatasetManifestSchema`.
+        /// This is an asynchronous operation, and returns a list of task ids.
+        /// The response is a stream only for historical reasons.
         ///
         /// This endpoint requires the standard dataset headers.
         pub async fn unregister_from_dataset(
@@ -2560,6 +2671,11 @@ pub mod rerun_cloud_service_client {
         /// When that happens, it is guaranteed that all parts have the same exact Sorbet schemas (and therefore
         /// identical Sorbet schema hashes too).
         /// That means it is always semantically valid to concatenate the data from these RRD manifests.
+        ///
+        /// If the client sets `generate_direct_urls`, the server may instead return keys pointing at
+        /// encoded `rerun.log_msg.v1alpha1.RrdFooter` payloads for the client to fetch and decode.
+        /// This is best-effort: the response may still inline the manifests: clients must handle both forms.
+        /// However, all the items in a stream will either send inline manifest or urls, uniformly.
         pub async fn get_rrd_manifest(
             &mut self,
             request: impl tonic::IntoRequest<super::GetRrdManifestRequest>,
@@ -2578,6 +2694,33 @@ pub mod rerun_cloud_service_client {
             req.extensions_mut().insert(GrpcMethod::new(
                 "rerun.cloud.v1alpha1.RerunCloudService",
                 "GetRrdManifest",
+            ));
+            self.inner.server_streaming(req, path, codec).await
+        }
+        /// Get the assets that apply to this dataset.
+        ///
+        /// Returns the dataset's asset dataset and the asset segments within it.
+        /// The asset segment ids may be spread over multiple responses, at the discretion of the server.
+        ///
+        /// This endpoint requires the standard dataset headers.
+        pub async fn get_assets_for_segment(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetAssetsForSegmentRequest>,
+        ) -> std::result::Result<
+            tonic::Response<tonic::codec::Streaming<super::GetAssetsForSegmentResponse>>,
+            tonic::Status,
+        > {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic_prost::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.cloud.v1alpha1.RerunCloudService/GetAssetsForSegment",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.cloud.v1alpha1.RerunCloudService",
+                "GetAssetsForSegment",
             ));
             self.inner.server_streaming(req, path, codec).await
         }
@@ -2948,11 +3091,8 @@ pub mod rerun_cloud_service_server {
             + 'static;
         /// Unregisters segments and layers from the Dataset.
         ///
-        /// Excluding IO errors, this will always succeed as long the target dataset exists.
-        /// Corollary: unregistering data that doesn't exist is a no-op.
-        ///
-        /// This always returns a subset of the data from `ScanDatasetManifest`, and therefore the data will
-        /// also follow the schema returned by `GetDatasetManifestSchema`.
+        /// This is an asynchronous operation, and returns a list of task ids.
+        /// The response is a stream only for historical reasons.
         ///
         /// This endpoint requires the standard dataset headers.
         async fn unregister_from_dataset(
@@ -3044,10 +3184,30 @@ pub mod rerun_cloud_service_server {
         /// When that happens, it is guaranteed that all parts have the same exact Sorbet schemas (and therefore
         /// identical Sorbet schema hashes too).
         /// That means it is always semantically valid to concatenate the data from these RRD manifests.
+        ///
+        /// If the client sets `generate_direct_urls`, the server may instead return keys pointing at
+        /// encoded `rerun.log_msg.v1alpha1.RrdFooter` payloads for the client to fetch and decode.
+        /// This is best-effort: the response may still inline the manifests: clients must handle both forms.
+        /// However, all the items in a stream will either send inline manifest or urls, uniformly.
         async fn get_rrd_manifest(
             &self,
             request: tonic::Request<super::GetRrdManifestRequest>,
         ) -> std::result::Result<tonic::Response<Self::GetRrdManifestStream>, tonic::Status>;
+        /// Server streaming response type for the GetAssetsForSegment method.
+        type GetAssetsForSegmentStream: tonic::codegen::tokio_stream::Stream<
+                Item = std::result::Result<super::GetAssetsForSegmentResponse, tonic::Status>,
+            > + std::marker::Send
+            + 'static;
+        /// Get the assets that apply to this dataset.
+        ///
+        /// Returns the dataset's asset dataset and the asset segments within it.
+        /// The asset segment ids may be spread over multiple responses, at the discretion of the server.
+        ///
+        /// This endpoint requires the standard dataset headers.
+        async fn get_assets_for_segment(
+            &self,
+            request: tonic::Request<super::GetAssetsForSegmentRequest>,
+        ) -> std::result::Result<tonic::Response<Self::GetAssetsForSegmentStream>, tonic::Status>;
         /// Server streaming response type for the QueryDataset method.
         type QueryDatasetStream: tonic::codegen::tokio_stream::Stream<
                 Item = std::result::Result<super::QueryDatasetResponse, tonic::Status>,
@@ -4165,6 +4325,51 @@ pub mod rerun_cloud_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = GetRrdManifestSvc(inner);
+                        let codec = tonic_prost::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.server_streaming(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.cloud.v1alpha1.RerunCloudService/GetAssetsForSegment" => {
+                    #[allow(non_camel_case_types)]
+                    struct GetAssetsForSegmentSvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
+                        tonic::server::ServerStreamingService<super::GetAssetsForSegmentRequest>
+                        for GetAssetsForSegmentSvc<T>
+                    {
+                        type Response = super::GetAssetsForSegmentResponse;
+                        type ResponseStream = T::GetAssetsForSegmentStream;
+                        type Future =
+                            BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::GetAssetsForSegmentRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as RerunCloudService>::get_assets_for_segment(&inner, request)
+                                    .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = GetAssetsForSegmentSvc(inner);
                         let codec = tonic_prost::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

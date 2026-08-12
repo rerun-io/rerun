@@ -8,10 +8,7 @@ use quote::{format_ident, quote};
 
 use super::util::{append_tokens, doc_as_lines};
 use crate::codegen::{Target, autogen_warning};
-use crate::{
-    ATTR_RERUN_COMPONENT_NO_UI_EDIT, ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RUST_DERIVE,
-    ATTR_RUST_DERIVE_ONLY, ObjectKind, Objects, Reporter,
-};
+use crate::{ObjectKind, Objects, Reporter, RerunAttr, RustAttr};
 
 /// Generate reflection about components and archetypes.
 pub fn generate_reflection(
@@ -117,7 +114,7 @@ fn generate_component_reflection(
         } else {
             // Works too
             let fqname = &obj.fqname;
-            quote!( ComponentType::new(#fqname) )
+            quote!( ComponentType::from(#fqname) )
         };
 
         let docstring_md = doc_as_lines(
@@ -138,8 +135,8 @@ fn generate_component_reflection(
                 .iter()
                 .any(|field| field.attrs.has(crate::ATTR_DEFAULT));
         let has_default_attr = obj
-            .try_get_attr::<String>(ATTR_RUST_DERIVE_ONLY)
-            .or_else(|| obj.try_get_attr::<String>(ATTR_RUST_DERIVE))
+            .try_get_attr::<String>(RustAttr::DeriveOnly)
+            .or_else(|| obj.try_get_attr::<String>(RustAttr::Derive))
             .is_some_and(|derives| derives.contains("Default"));
         let auto_derive_default = is_enum_with_default || has_default_attr;
         let has_custom_default_impl =
@@ -218,8 +215,8 @@ fn generate_archetype_reflection(reporter: &Reporter, objects: &Objects) -> Toke
                 Target::WebDocsMarkdown,
             )
             .join("\n");
-            let required = field.attrs.has(ATTR_RERUN_COMPONENT_REQUIRED);
-            let ui_editable = !field.attrs.has(ATTR_RERUN_COMPONENT_NO_UI_EDIT);
+            let required = field.attrs.has(RerunAttr::Required);
+            let ui_editable = !field.attrs.has(RerunAttr::NoUiEdit);
 
             let mut flag_tokens: Vec<TokenStream> = Vec::new();
             if required {
@@ -249,7 +246,7 @@ fn generate_archetype_reflection(reporter: &Reporter, objects: &Objects) -> Toke
         });
 
         let fqname = &obj.fqname;
-        let quoted_name = quote!( ArchetypeName::new(#fqname) );
+        let quoted_name = quote!( ArchetypeName::from(#fqname) );
         let display_name = re_case::to_human_case(&obj.name);
         if false {
             // We currently skip the docstring for the archetype itself,

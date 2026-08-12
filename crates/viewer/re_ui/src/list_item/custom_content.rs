@@ -1,6 +1,5 @@
 use egui::{NumExt as _, Ui, Widget};
 
-use crate::egui_ext::boxed_widget::{BoxedWidgetLocal, BoxedWidgetLocalExt as _};
 use crate::list_item::{ContentContext, DesiredWidth, ListItemContent};
 use crate::{OnResponseExt as _, UiExt as _};
 
@@ -28,7 +27,7 @@ pub struct CustomContent<'a> {
     desired_width: CustomContentDesiredWidth,
 
     //TODO(ab): in the future, that should be a `Vec`, with some auto expanding mini-toolbar
-    button: Option<BoxedWidgetLocal<'a>>,
+    button: Option<egui::BoxedWidget<'a>>,
 }
 
 impl<'a> CustomContent<'a> {
@@ -72,7 +71,7 @@ impl<'a> CustomContent<'a> {
             "Only one action button is supported right now"
         );
 
-        self.button = Some(button.boxed_local());
+        self.button = Some(button.boxed());
         self
     }
 

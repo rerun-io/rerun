@@ -1,12 +1,12 @@
 use re_sdk_types::blueprint::components::MapProvider;
-use re_viewer_context::StoreViewContext;
+use re_viewer_context::AppContext;
 
 use crate::datatype_uis::{VariantAvailable, VariantAvailableProvider};
 
 pub struct MapProviderVariantAvailable;
 
 impl VariantAvailableProvider<MapProvider> for MapProviderVariantAvailable {
-    fn is_variant_enabled(ctx: &StoreViewContext<'_>, variant: MapProvider) -> VariantAvailable {
+    fn is_variant_enabled(ctx: &AppContext<'_>, variant: MapProvider) -> VariantAvailable {
         let map_box_available = if ctx
             .app_options
             .mapbox_access_token()

@@ -9,8 +9,8 @@ from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 import numpy as np
 
-__version__ = "0.34.0-alpha.1+dev"
-__version_info__ = (0, 34, 0, "alpha.1")
+__version__ = "0.37.0-alpha.1+dev"
+__version_info__ = (0, 37, 0, "alpha.1")
 
 if sys.version_info < (3, 10):  # noqa: UP036
     raise RuntimeError("Rerun SDK requires Python 3.10 or later.")
@@ -116,6 +116,7 @@ from .archetypes import (
     Ellipsoids3D as Ellipsoids3D,
     EncodedDepthImage as EncodedDepthImage,
     EncodedImage as EncodedImage,
+    GaussianSplats3D as GaussianSplats3D,
     GeoLineStrings as GeoLineStrings,
     GeoPoints as GeoPoints,
     GraphEdges as GraphEdges,
@@ -209,6 +210,7 @@ from .recording_stream import (
 )
 from .sinks import (
     FileSink as FileSink,
+    GrpcServerSink as GrpcServerSink,
     GrpcSink as GrpcSink,
     connect_grpc as connect_grpc,
     disconnect as disconnect,
@@ -485,7 +487,9 @@ def start_web_viewer_server(port: int = 0) -> None:
 
     """
 
-    bindings.start_web_viewer_server(port)
+    from .web import _packaged_assets_archive_path
+
+    bindings.start_web_viewer_server(port, assets_archive_path=_packaged_assets_archive_path())
 
 
 def notebook_show(

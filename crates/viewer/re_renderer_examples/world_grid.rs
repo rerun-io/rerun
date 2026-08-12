@@ -83,6 +83,7 @@ impl framework::Example for Outlines {
                 outline_config: None,
                 ..Default::default()
             },
+            re_renderer::ViewBuilderId::new(0),
         )?;
 
         view_builder.queue_draw(

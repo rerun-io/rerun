@@ -1,6 +1,7 @@
 ---
 title: Common Dataframe Operations
 order: 50
+description: Joins, filters, and aggregations on Rerun data
 ---
 
 Dataframes are core to modern analytics workflows.

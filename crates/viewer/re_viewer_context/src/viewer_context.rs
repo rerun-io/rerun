@@ -139,7 +139,7 @@ impl<'a> ViewerContext<'a> {
             app_ctx: &self.app_ctx,
             db: self.store_context.blueprint,
             time_ctrl: self.blueprint_time_ctrl,
-            caches: self.store_context.caches, // TODO(RR-3033): what cache to use here?
+            caches: self.store_context.caches,
         }
     }
 
@@ -272,29 +272,6 @@ impl<'a> ViewerContext<'a> {
     ) {
         self.app_ctx
             .handle_select_focus_sync(response, interacted_items);
-    }
-
-    /// Are we running inside the Safari browser?
-    pub fn is_safari_browser(&self) -> bool {
-        #![expect(clippy::unused_self)]
-
-        #[cfg(target_arch = "wasm32")]
-        fn is_safari_browser_inner() -> Option<bool> {
-            use web_sys::wasm_bindgen::JsCast as _;
-            use web_sys::wasm_bindgen::JsValue;
-            let window = web_sys::window()?;
-            Some(web_sys::js_sys::Object::has_own(
-                window.unchecked_ref::<web_sys::js_sys::Object>(),
-                &JsValue::from("safari"),
-            ))
-        }
-
-        #[cfg(not(target_arch = "wasm32"))]
-        fn is_safari_browser_inner() -> Option<bool> {
-            None
-        }
-
-        is_safari_browser_inner().unwrap_or(false)
     }
 
     /// This returns `true` if we have an active recording.

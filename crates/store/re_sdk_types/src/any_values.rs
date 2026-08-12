@@ -1,6 +1,6 @@
 //! Utilities to log arbitrary data to Rerun.
 
-use re_types_core::{AsComponents, ComponentType, DynamicArchetype, Loggable};
+use re_types_core::{AsComponents, ComponentIdentifier, ComponentType, DynamicArchetype, Loggable};
 
 use crate::{Component, SerializedComponentBatch};
 
@@ -25,7 +25,7 @@ impl AnyValues {
     #[inline]
     pub fn with_component_from_data(
         self,
-        field: impl AsRef<str>,
+        field: impl Into<ComponentIdentifier>,
         array: arrow::array::ArrayRef,
     ) -> Self {
         Self {
@@ -37,7 +37,7 @@ impl AnyValues {
     #[inline]
     pub fn with_component<C: Component>(
         self,
-        field: impl AsRef<str>,
+        field: impl Into<ComponentIdentifier>,
         loggable: impl IntoIterator<Item = impl Into<C>>,
     ) -> Self {
         Self {
@@ -51,7 +51,7 @@ impl AnyValues {
     #[inline]
     pub fn with_component_override<L: Loggable>(
         self,
-        field: impl AsRef<str>,
+        field: impl Into<ComponentIdentifier>,
         component_type: impl Into<ComponentType>,
         loggable: impl IntoIterator<Item = impl Into<L>>,
     ) -> Self {

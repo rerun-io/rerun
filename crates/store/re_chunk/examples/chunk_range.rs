@@ -9,7 +9,7 @@ fn main() -> anyhow::Result<()> {
 
     eprintln!("Data:\n{chunk}");
 
-    let query = RangeQuery::new(TimelineName::new("frame"), AbsoluteTimeRange::EVERYTHING);
+    let query = RangeQuery::new(TimelineName::from("frame"), AbsoluteTimeRange::EVERYTHING);
 
     // Find all relevant data for a query:
     let chunk = chunk.range(&query, MyPoints::descriptor_points().component);

@@ -17,10 +17,8 @@ impl Query {
     /// See the `blueprint_io` module for more related accessors.
     pub fn from_blueprint(ctx: &ViewerContext<'_>, view_id: ViewId) -> Self {
         Self {
-            query_property: ViewProperty::from_archetype::<archetypes::DataframeQuery>(
-                ctx.blueprint_db(),
-                ctx.blueprint_query,
-                view_id,
+            query_property: ViewProperty::from_archetype_for_view::<archetypes::DataframeQuery>(
+                ctx, view_id,
             ),
         }
     }

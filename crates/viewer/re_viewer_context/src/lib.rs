@@ -10,13 +10,11 @@
 //     VideoLoadError: Send + Sync,
 // but that slows compilation down by a ton
 #![recursion_limit = "256"]
-#![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
 
 mod active_store_context;
 mod annotations;
 mod app_context;
 mod app_options;
-mod async_runtime_handle;
 mod blueprint_helpers;
 mod blueprint_id;
 mod cache;
@@ -32,6 +30,7 @@ mod heuristics;
 mod image_info;
 mod item;
 mod item_collection;
+mod link_button;
 mod maybe_mut_ref;
 pub mod open_url;
 mod query_context;
@@ -64,7 +63,6 @@ pub use self::annotations::{
 };
 pub use self::app_context::{AppContext, AuthContext};
 pub use self::app_options::{AppOptions, ExperimentalAppOptions, VideoOptions};
-pub use self::async_runtime_handle::{AsyncRuntimeError, AsyncRuntimeHandle, WasmNotSend};
 pub use self::blueprint_helpers::{
     AppBlueprintCtx, BlueprintContext, blueprint_timeline, blueprint_timepoint_for_writes,
 };
@@ -72,9 +70,10 @@ pub use self::blueprint_id::{
     BlueprintId, BlueprintIdRegistry, ContainerId, GLOBAL_VIEW_ID, ViewId,
 };
 pub use self::cache::{
-    Cache, CacheEntryAccess, ImageDecodeCache, ImageHistogramCache, ImageStatsCache, Memoizers,
-    Rgb8Histogram, SharablePlayableVideoStream, StoreCache, TensorStatsAccessor, TensorStatsCache,
-    TransformDatabaseStoreCache, VideoAssetCache, VideoStreamCache, VideoStreamProcessingError,
+    AppCaches, Cache, CacheEntryAccess, EncodedDepthImageStatsCache, ImageDecodeCache,
+    ImageHistogramCache, ImageStatsCache, Memoizers, Rgb8Histogram, SharablePlayableVideoStream,
+    StoreCache, TensorStatsAccessor, TensorStatsCache, TransformDatabaseStoreCache,
+    VideoAssetCache, VideoStoreSource, VideoStreamCache, VideoStreamProcessingError,
 };
 pub use self::collapsed_id::{CollapseItem, CollapseScope, CollapsedId};
 pub use self::command_sender::{
@@ -100,6 +99,9 @@ pub use self::item::{
     resolve_mono_instance_path_item,
 };
 pub use self::item_collection::{ItemCollection, ItemContext};
+pub use self::link_button::{
+    LinkKind, ResolvedEntry, UrlNameLookup, make_url_decorator, segment_button_atoms, url_atoms,
+};
 pub use self::maybe_mut_ref::MaybeMutRef;
 pub use self::query_context::{
     DataQueryResult, DataResultHandle, DataResultNode, DataResultTree, QueryContext,
@@ -136,14 +138,15 @@ pub use self::view::{
     PerSystemEntities, PreviewState, RecommendedMappings, RecommendedView, RecommendedVisualizers,
     SingleRequiredComponentConstraint, SystemExecutionOutput, ViewClass, ViewClassExt,
     ViewClassLayoutPriority, ViewClassPlaceholder, ViewClassRegistry, ViewClassRegistryError,
-    ViewContext, ViewContextCollection, ViewContextSystem, ViewContextSystemOncePerFrameResult,
-    ViewEntityHighlight, ViewHighlights, ViewOutlineMasks, ViewQuery, ViewSpawnHeuristics,
-    ViewState, ViewStateExt, ViewStates, ViewSystemExecutionError, ViewSystemIdentifier,
-    ViewSystemRegistrator, ViewSystemState, VisualizabilityConstraints, VisualizerCollection,
+    ViewClassUiOutput, ViewContext, ViewContextCollection, ViewContextSystem,
+    ViewContextSystemOncePerFrameResult, ViewEntityHighlight, ViewHighlights, ViewOutlineMasks,
+    ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt, ViewStates, ViewSystemExecutionError,
+    ViewSystemIdentifier, ViewSystemRegistrator, ViewSystemState, ViewerDiagnostic,
+    ViewerReportSeverity, VisualizabilityConstraints, VisualizerCollection,
     VisualizerComponentMappings, VisualizerComponentSource, VisualizerExecutionOutput,
     VisualizerInstruction, VisualizerInstructionReport, VisualizerInstructionsPerType,
-    VisualizerQueryInfo, VisualizerReportContext, VisualizerReportSeverity, VisualizerSystem,
-    VisualizerTypeReport, VisualizerViewReport, VisualizersSectionOutput, VisualizersSectionUi,
+    VisualizerQueryInfo, VisualizerReportContext, VisualizerSystem, VisualizerTypeReport,
+    VisualizerViewReport, VisualizersSectionOutput, VisualizersSectionUi,
 };
 pub use self::viewer_context::ViewerContext;
 pub use self::visitor_flow_control::VisitorControlFlow; // Historical reasons
@@ -153,7 +156,7 @@ pub mod external {
     pub use tokio;
     pub use {
         nohash_hasher, re_chunk_store, re_entity_db, re_log_types, re_query, re_string_interner,
-        re_ui,
+        re_tf, re_ui,
     };
 }
 
@@ -214,6 +217,9 @@ pub struct ScreenshotInfo {
 
     /// Where to put the screenshot.
     pub target: ScreenshotTarget,
+
+    /// Whether to show a user-facing notification (info toast) when the screenshot is done.
+    pub notify: bool,
 }
 
 /// Where to put the screenshot.

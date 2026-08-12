@@ -6,8 +6,10 @@ use quote::quote;
 
 use crate::codegen::Target;
 use crate::codegen::common::{ExampleInfo, collect_snippets_for_api_docs};
+use crate::codegen::rust::arrow::quote_fqname_as_type_path;
+use crate::data_type::DataType;
 use crate::objects::State;
-use crate::{ATTR_RUST_TUPLE_STRUCT, Docs, Object, ObjectKind, Objects, Reporter};
+use crate::{Docs, Object, ObjectKind, Objects, Reporter, RustAttr};
 
 // ---
 
@@ -27,18 +29,28 @@ pub fn quote_comment(comment: &str) -> TokenStream {
     quote!(#(#lines)*)
 }
 
+pub fn quote_default_value_for_datatype(objects: &Objects, datatype: &DataType) -> TokenStream {
+    if let Some(obj) = datatype.enum_obj(objects) {
+        let fqname_use = quote_fqname_as_type_path(&obj.fqname);
+        quote!(<#fqname_use as ::re_types_core::reflection::Enum>::variants()[0])
+    } else {
+        quote!(Default::default())
+    }
+}
+
 pub fn is_tuple_struct_from_obj(obj: &Object) -> bool {
     if !obj.is_struct() {
         return false;
     }
 
-    let is_tuple_struct = obj.kind == ObjectKind::Component
-        || obj.try_get_attr::<String>(ATTR_RUST_TUPLE_STRUCT).is_some();
+    let is_tuple_struct =
+        obj.kind == ObjectKind::Component || obj.is_attr_set(RustAttr::TupleStruct);
 
     if is_tuple_struct {
         assert!(
             obj.fields.len() == 1,
-            "`{ATTR_RUST_TUPLE_STRUCT}` is only supported for objects with a single field, but {} has {}",
+            "`{}` is only supported for objects with a single field, but {} has {}",
+            RustAttr::TupleStruct,
             obj.fqname,
             obj.fields.len(),
         );

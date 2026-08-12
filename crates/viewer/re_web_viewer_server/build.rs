@@ -3,6 +3,7 @@ fn main() {
     // See `Cargo.toml` docs for info about `__disable_server` and `RERUN_DISABLE_WEB_VIEWER_SERVER`.
     println!("cargo::rustc-check-cfg=cfg(disable_web_viewer_server)");
     println!("cargo::rustc-check-cfg=cfg(trailing_web_viewer)");
+    println!("cargo::rustc-check-cfg=cfg(external_web_viewer)");
 
     let disable_web_viewer_server =
         re_build_tools::is_tracked_env_var_set("RERUN_DISABLE_WEB_VIEWER_SERVER")
@@ -21,7 +22,22 @@ fn main() {
         println!("cargo::rustc-cfg=trailing_web_viewer");
     }
 
-    let needs_wasm = !disable_web_viewer_server && !trailing_web_viewer;
+    // When using external_web_viewer, we don't need the wasm at build time
+    // because it will be loaded at runtime from a zip archive on disk
+    // (e.g. one shipped inside a Python wheel).
+    let external_web_viewer = re_build_tools::is_tracked_env_var_set("RERUN_EXTERNAL_WEB_VIEWER")
+        || cfg!(feature = "__external_web_viewer");
+
+    if external_web_viewer {
+        println!("cargo::rustc-cfg=external_web_viewer");
+    }
+
+    assert!(
+        disable_web_viewer_server || !(trailing_web_viewer && external_web_viewer),
+        "RERUN_TRAILING_WEB_VIEWER and RERUN_EXTERNAL_WEB_VIEWER are mutually exclusive"
+    );
+
+    let needs_wasm = !disable_web_viewer_server && !trailing_web_viewer && !external_web_viewer;
 
     if needs_wasm {
         let viewer_js_path = std::path::Path::new("./web_viewer/re_viewer.js");

@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event.pull_request.head.repo.owner.login == 'rerun-io' && contains(github.event.pull_request.labels.*.name, 'deploy docs')
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           # ref - not set, because we want to end up on the merge commit
           fetch-depth: 0 # don't perform a shallow clone
@@ -59,7 +59,7 @@ jobs:
 
       - name: Add success comment
         # https://github.com/mshick/add-pr-comment
-        uses: mshick/add-pr-comment@v3.9.1
+        uses: mshick/add-pr-comment@f102bb3ebc97eedd4e2a98a9e71e462cc257fe80 # v3.9.1
         # GitHub API is very unreliable. We don't want to fail the entire workflow just because we couldn't post a comment on success.
         continue-on-error: true
         if: success()
@@ -72,7 +72,7 @@ jobs:
 
       - name: Add failure comment
         # https://github.com/mshick/add-pr-comment
-        uses: mshick/add-pr-comment@v3.9.1
+        uses: mshick/add-pr-comment@f102bb3ebc97eedd4e2a98a9e71e462cc257fe80 # v3.9.1
         if: failure()
         with:
           message-id: "cherry-pick-check"

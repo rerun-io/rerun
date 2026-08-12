@@ -1,6 +1,7 @@
 ---
 title: Entities and Components
 order: 200
+description: How entities and components form Rerun's data model
 ---
 
 ## Data model

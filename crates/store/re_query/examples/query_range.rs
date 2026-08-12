@@ -23,6 +23,7 @@ fn main() -> anyhow::Result<()> {
 
     // First, get the (potentially cached) results for this query.
     let results: RangeResults = caches.range(
+        re_chunk_store::ChunkTrackingMode::Report,
         &query,
         &entity_path.into(),
         MyPoints::all_component_identifiers(),

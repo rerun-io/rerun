@@ -1,5 +1,6 @@
 <!--[metadata]
 title = "OpenStreetMap data"
+description = "Query OpenStreetMap data via the Overpass API and render it on Rerun's geospatial map view. A starting point for ad-hoc world-map context."
 tags = ["Map", "Blueprint"]
 thumbnail_dimensions = [480, 480]
 thumbnail = "https://static.rerun.io/osm_data/0be94071469c49f98326d85456ed2a3af8d1733a/480w.png"

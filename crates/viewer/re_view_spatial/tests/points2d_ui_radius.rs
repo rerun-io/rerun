@@ -69,7 +69,7 @@ fn test_points2d_ui_radius_constant_across_positions() {
     });
 
     test_context
-        .run_view_ui_and_save_snapshot(
+        .run_view_ui_and_save_renderer_snapshot(
             view_id,
             "points2d_ui_radius_constant_across_positions",
             SNAPSHOT_SIZE,

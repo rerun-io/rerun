@@ -7,6 +7,8 @@ Rust `OptimizationProfile::{LIVE,OBJECT_STORE}` constants byte-for-byte.
 
 from __future__ import annotations
 
+import math
+
 import pytest
 from rerun.experimental import OptimizationProfile
 
@@ -44,14 +46,11 @@ def test_profile_parity(name: str, profile: OptimizationProfile) -> None:
     assert set(rust.keys()) == set(py.keys()), f"key set diverged: rust={set(rust.keys())} py={set(py.keys())}"
 
     for key in sorted(rust):
-        # All current parity values are int/bool/None. Float comparison would
-        # need tolerance; if a future field uses non-integer floats, this test
-        # must switch to math.isclose. Asserted defensively below.
         rv, pv = rust[key], py[key]
-        assert not (isinstance(rv, float) or isinstance(pv, float)), (
-            f"{name}.{key}: float values require tolerance-aware comparison; update this test"
-        )
-        assert rv == pv, f"{name}.{key}: rust={rv!r} py={pv!r}"
+        if isinstance(rv, float) or isinstance(pv, float):
+            assert math.isclose(rv, pv, rel_tol=1e-9), f"{name}.{key}: rust={rv!r} py={pv!r}"  # type: ignore[arg-type]
+        else:
+            assert rv == pv, f"{name}.{key}: rust={rv!r} py={pv!r}"
 
 
 def test_unknown_profile_name_raises() -> None:

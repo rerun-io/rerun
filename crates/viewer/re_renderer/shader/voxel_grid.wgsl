@@ -85,7 +85,6 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32, @builtin(instance_index) inst
 
     out.position = apply_depth_offset(frame.projection_from_world * world_position, batch.depth_offset);
     out.normal_world_space = normal_world_space;
-    out.normal_world_space = vec3f(0.0, 0.0, 1.0);
     out.instance_id = vec2u(instance_idx, 0u);
 
     return out;

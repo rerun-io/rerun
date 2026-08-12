@@ -1,8 +1,9 @@
 use std::fmt::Display;
 
+use re_int::UnsignedAbs;
 use re_log::debug_assert;
 
-use crate::{UnsignedAbs, format_int, format_uint};
+use crate::{format_int, format_uint};
 
 /// Returns either "1 $NOUN" (if `count` is one), otherwise returns `$N $NOUNs`.
 pub fn format_plural_s(count: impl num_traits::Unsigned + Display, noun: &'static str) -> String {

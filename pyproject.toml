@@ -25,7 +25,7 @@ dev = [
   # with editable installs by adding rerun_py/rerun_sdk to the Python path.
   "rerun-dev-fixup",
   "opentelemetry-exporter-otlp-proto-grpc==1.39.0",
-  "maturin>=1.0.0",
+  "maturin>=1.14.1",
   "ruff==0.15.7",
   "mypy==1.19.1",
   "nbqa==1.9.1",
@@ -39,7 +39,7 @@ dev = [
   "types-tqdm==4.67.0.20250809",
   "colorama>=0.4",
   "types-colorama>=0.4.15",
-  "Pillow>=12.2.0,<13", # has py.typed, no stubs needed
+  "Pillow>=12.3.0,<13", # has py.typed, no stubs needed
   "types-psutil>=7.0", # Stubs for `psutil`, used by `rerun.tracing_session()`.
   # Typed packages needed for linting scripts/examples
   "attrs>=23.1.0",
@@ -66,18 +66,20 @@ dev = [
   "pyyaml>=6.0",
   "types-pyyaml>=6.0",
   "wheel>=0.46",
-  # Needed by lerobot importer example
-  "huggingface-hub<1.0",
+  # Needed by lerobot importer example. `<1.0` held `transformers` on 4.x, which is why the
+  # bound is now `<2.0` — `snapshot_download`, the only API we call, is unchanged in 1.x.
+  "huggingface-hub<2.0",
   # Typed packages for dataframe/arrow operations (needed for linting examples/tests)
   "polars>=1.0",
-  "datafusion>=53.0",
+  "datafusion>=54.0",
   "jupyter>=1.0",
-  "types-protobuf", # Needed by mcap-protobuf-support
+  # >=2.20.0 fixes the nbconvert stored-XSS (missing CSP sandbox directive)
+  "jupyter-server>=2.20.0",
   # Needed for pretty-printing tables in `fetch_patch_candidates.py`
   "tabulate>=0.9.0",
   "types-tabulate>=0.9.0",
 ]
-snippets = ["rerun-sdk[dataloader]", "av", "pandas", "mcap-protobuf-support"]
+snippets = ["rerun-sdk[dataloader]", "av", "pandas"]
 examples = [
   # External deps used by examples
   "polars>=0.12.0",
@@ -85,9 +87,9 @@ examples = [
   "segment-anything @ git+https://github.com/facebookresearch/segment-anything.git",
   "torch>=2.5.1", # require at least 2.5.1 for some examples
   "torchvision>=0.20.1", # require at least 0.20.1 for some examples
-  # lerobot and rerun_export are not listed here to avoid override-dependencies
-  # conflicts during normal uv sync. Use `uv sync --package rerun_export` to
-  # install rerun_export with its lerobot dependency.
+  # lerobot (used by the dataloader example) is not listed here because it
+  # requires Python >=3.12 while this workspace supports 3.10+. The dataloader
+  # is an isolated uv project — sync it from its own directory.
   # Example packages from workspace
   "air_traffic_data",
   "animated_urdf",
@@ -146,7 +148,8 @@ docs = [
   "mkdocs-gen-files==0.5.0",
   "mkdocs-literate-nav==0.6.1",
   "mkdocs-redirects==1.2.2",
-  "mkdocs-material==9.4.7",
+  # 9.7.0 relaxed `pymdown-extensions~=10.2` to `>=10.2`, which is what lets us take 11.x below.
+  "mkdocs-material==9.7.7",
   "mkdocs-material-extensions==1.3",
   "mkdocstrings>=0.28.2,<0.29",
   "mkdocstrings-python>=1.16.2,<2",
@@ -160,11 +163,9 @@ package = false
 
 # pyarrow 24.0.0 ships an incomplete `py.typed` that breaks mypy on `pyarrow.compute.*`.
 # 23.x has no type stubs (so mypy leaves it untyped) and clears RUSTSEC/GHSA pyarrow alert >= 23.0.1.
-constraint-dependencies = ["pyarrow>=23.0.1,<24"]
-
-# Override lerobot's dependency on rerun-sdk to use the workspace version
-# TODO(RR-3548): Figure out how to have lerobot as a workspace member without causing dependency issues.
-# override-dependencies = ["rerun-sdk"]
+#
+# `pymdown-extensions` is transitive (mkdocs-material, mkdocstrings); pinned only to hold a security floor.
+constraint-dependencies = ["pyarrow>=23.0.1,<24", "pymdown-extensions>=11.0.0"]
 
 [tool.uv.sources]
 rerun-sdk = { workspace = true }
@@ -207,8 +208,7 @@ objectron = { workspace = true }
 open_photogrammetry_format = { workspace = true }
 openstreetmap_data = { workspace = true }
 # TODO(RR-3548): Figure out a way to include this, without lerobot causing dependency issues.
-# rerun_export = { workspace = true }
-# dataloader = { workspace = true }  # Excluded: same RR-3548 reason (lerobot pins old rerun-sdk).
+# dataloader = { workspace = true }  # Excluded: lerobot requires Python >=3.12.
 plots = { workspace = true }
 raw_mesh = { workspace = true }
 rgbd = { workspace = true }
@@ -217,6 +217,7 @@ rrt_star = { workspace = true }
 segment_anything_model = { workspace = true }
 server_tables = { workspace = true }
 shared_recording = { workspace = true }
+state_timeline = { workspace = true }
 stdio = { workspace = true }
 structure_from_motion = { workspace = true }
 using_index_values = { workspace = true }
@@ -265,8 +266,7 @@ members = [
   # "examples/python/ocr",  # Excluded: paddleclas has incompatible opencv requirements
   "examples/python/open_photogrammetry_format",
   "examples/python/openstreetmap_data",
-  # "examples/python/rerun_export" # Excluded: causes dependency issues,
-  # "examples/python/dataloader" # Excluded: same RR-3548 reason (lerobot).
+  # "examples/python/dataloader" # Excluded: RR-3548 (lerobot requires Python >=3.12).
   "examples/python/plots",
   "examples/python/raw_mesh",
   "examples/python/rgbd",
@@ -275,6 +275,7 @@ members = [
   "examples/python/segment_anything_model",
   "examples/python/server_tables",
   "examples/python/shared_recording",
+  "examples/python/state_timeline",
   "examples/python/stdio",
   "examples/python/structure_from_motion",
   "examples/python/table_blueprints",
@@ -324,7 +325,22 @@ extend-exclude = [
 ]
 
 [tool.ruff.lint]
+extend-select = [
+  "S", # flake8-bandit: security lints
+]
 ignore = [
+  # flake8-bandit (`S`). This tree is an SDK plus its examples, docs snippets, tests and
+  # build scripts, so the rules below cannot produce a security finding anywhere in it.
+  # Everything scoped to a subdirectory instead is under `per-file-ignores`.
+  "S101", # `assert` — 2,011 of the 2,236 raw findings, nearly all in tests
+  "S311", # Non-cryptographic random; nothing here generates secrets
+  "S404", # Flags importing `subprocess` at all
+  "S603", # Every `subprocess` call whose arguments are not a literal list
+  "S606", # Starting a process without a shell
+  "S607", # Running `git`, `cargo`, `curl` etc. from `PATH`, which is deliberate
+  "S105", # Matches identifier *names*, not values
+  "S106", # Same, for keyword arguments — both hits are `token="alpha"` in a version bump
+
   # Rules that became active with the ruff upgrade to 0.15:
   # TODO(emilk): enable more of these
   "B005", # Using `.strip()` with multi-character strings
@@ -350,6 +366,8 @@ ignore = [
 "docs/snippets/all/*" = [
   # Missing required import: `from __future__ import annotations`
   "I002",
+  # A fixed `/tmp` path, shown for brevity in a documentation snippet:
+  "S108",
 ]
 
 "crates/viewer/re_viewer/data/quick_start_guides/*" = [
@@ -370,10 +388,19 @@ ignore = [
 "examples/*" = [
   # We don't care about nice APIs in our examples:
   "PLR0917",
+  # Demos that fetch public datasets and serve locally. Not a security surface,
+  # and each of these would make the example noisier without making it safer:
+  "S113", # `requests` without a timeout
+  "S108", # fixed `/tmp` paths
+  "S104", # binding all interfaces
 ]
 "scripts/*" = [
   # We don't care about nice APIs in our scripts:
   "PLR0917",
+  # Build tooling that runs on inputs we control:
+  "S314", # parsing SVG that `d2` just produced
+  "S405", # importing `xml.etree` to do it
+  "S605", # `os.popen` on a `cargo tree` pipeline built from our own CLI args
 ]
 
 ######################

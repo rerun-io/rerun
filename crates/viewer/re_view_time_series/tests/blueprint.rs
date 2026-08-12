@@ -218,9 +218,9 @@ fn setup_blueprint(
         );
 
         if let Some(time_axis_view) = time_axis_view {
-            let time_axis = re_viewport_blueprint::ViewProperty::from_archetype::<
+            let time_axis = re_viewport_blueprint::ViewProperty::from_archetype_for_view::<
                 blueprint::archetypes::TimeAxis,
-            >(ctx.blueprint_db(), ctx.blueprint_query, view.id);
+            >(ctx, view.id);
 
             time_axis.save_blueprint_component(
                 ctx,
@@ -230,11 +230,9 @@ fn setup_blueprint(
         }
 
         if let Some(visible_time_range) = visible_time_range {
-            let property = re_viewport_blueprint::ViewProperty::from_archetype::<VisibleTimeRanges>(
-                ctx.blueprint_db(),
-                ctx.blueprint_query,
-                view.id,
-            );
+            let property = re_viewport_blueprint::ViewProperty::from_archetype_for_view::<
+                VisibleTimeRanges,
+            >(ctx, view.id);
 
             property.save_blueprint_component(
                 ctx,
@@ -422,8 +420,7 @@ fn log_data_nested(test_context: &mut TestContext, timeline: re_log_types::Timel
         let color = components::Color::from_rgb(r, g, b);
 
         // Serialize Color to Arrow using the Loggable trait
-        let color_arrow =
-            datatypes::Rgba32::to_arrow_opt([Some(color.0)]).expect("could not convert color");
+        let color_arrow = datatypes::Rgba32::to_arrow([color.0]).expect("could not convert color");
         let color_offsets = arrow::buffer::OffsetBuffer::from_lengths([1]);
         let color_list_array = ListArray::new(
             Arc::new(Field::new_list_field(DataType::UInt32, false)),

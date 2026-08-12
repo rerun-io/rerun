@@ -60,7 +60,7 @@ fn three_component_chunk() -> Chunk {
     Chunk::from_auto_row_ids(
         ChunkId::new(),
         "test/entity".into(),
-        std::iter::once((TimelineName::new("tick"), time_column)).collect(),
+        std::iter::once((TimelineName::from("tick"), time_column)).collect(),
         components.collect(),
     )
     .unwrap()
@@ -161,7 +161,7 @@ fn forward_unmatched_no_prefix_when_all_consumed() {
     let chunk = three_component_chunk();
     let original_row_ids = chunk.row_ids_slice();
 
-    let make_lens = |input: &str, output: &str| {
+    let make_lens = |input: &'static str, output: &'static str| {
         Lens::derive(input)
             .output_entity(input)
             .to_component(

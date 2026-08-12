@@ -78,6 +78,11 @@ impl ChunkStore {
             event_id: _,
         } = self;
 
+        // Every chunk of this manifest comes from the same segment, so they all share one id.
+        let segment_id = Arc::new(re_sdk_types::SegmentId::from(
+            rrd_manifest.store_id().recording_id(),
+        ));
+
         let native_static_map = rrd_manifest.static_map();
         chunks_lineage.extend(
             native_static_map
@@ -87,7 +92,10 @@ impl ChunkStore {
                     (
                         *chunk_id,
                         TrackedDirectChunkLineage {
-                            lineage: ChunkDirectLineage::RootFromManifest { is_static: true },
+                            lineage: ChunkDirectLineage::RootFromManifest {
+                                is_static: true,
+                                segment_id: segment_id.clone(),
+                            },
                             ref_count: 0,
                             descends_from_manifest: true,
                         },
@@ -112,7 +120,10 @@ impl ChunkStore {
                     (
                         *chunk_id,
                         TrackedDirectChunkLineage {
-                            lineage: ChunkDirectLineage::RootFromManifest { is_static: false },
+                            lineage: ChunkDirectLineage::RootFromManifest {
+                                is_static: false,
+                                segment_id: segment_id.clone(),
+                            },
                             ref_count: 0,
                             descends_from_manifest: true,
                         },
@@ -838,50 +849,70 @@ impl ChunkStore {
         Ok(all_diffs)
     }
 
-    fn remove_lineage_and_decrement_referenced_chunks(
-        ctx: &mut LineageDroppingCtx<'_>,
-        chunk_id: &ChunkId,
-    ) {
-        if let Some(lineage) = ctx.chunks_lineage.remove(chunk_id) {
-            ctx.leaky_compactions.remove(chunk_id);
-            ctx.split_on_ingest.remove(chunk_id);
-            ctx.dangling_splits.remove(chunk_id);
-
-            for chunk_id in lineage.iter_referenced_chunks() {
-                Self::drop_lineage_reference(ctx, chunk_id);
-            }
-        }
-    }
-
+    /// Drops one lineage reference on `chunk_id`, cascading removals through the lineage graph.
+    ///
+    /// Implemented iteratively with an explicit worklist: compaction chains grow one link per
+    /// compaction event and can therefore be arbitrarily deep, which would overflow the stack
+    /// if this was implemented recursively (RR-5146).
     pub(crate) fn drop_lineage_reference(ctx: &mut LineageDroppingCtx<'_>, chunk_id: &ChunkId) {
-        let Some(lineage) = ctx.chunks_lineage.get_mut(chunk_id) else {
-            return;
-        };
+        re_tracing::profile_function!();
 
-        lineage.ref_count = lineage.ref_count.saturating_sub(1);
+        enum Op {
+            /// Decrement the ref-count, scheduling a `Remove` if it reaches zero.
+            DropRef(ChunkId),
 
-        if lineage.descends_from_manifest || lineage.ref_count > 0 {
-            return;
+            /// Remove the lineage entry and drop one reference on each chunk it references.
+            Remove(ChunkId),
         }
 
-        // Only remove splits if all siblings aren't referenced.
-        if let ChunkDirectLineage::SplitFrom(_, siblings) = &lineage.lineage {
-            let siblings = siblings.clone();
+        let mut ops = vec![Op::DropRef(*chunk_id)];
 
-            if siblings.iter().any(|chunk_id| {
-                ctx.chunks_lineage
-                    .get(chunk_id)
-                    .is_some_and(|l| l.ref_count > 0)
-            }) {
-                return;
-            }
+        while let Some(op) = ops.pop() {
+            match op {
+                Op::DropRef(chunk_id) => {
+                    let Some(lineage) = ctx.chunks_lineage.get_mut(&chunk_id) else {
+                        continue;
+                    };
 
-            for chunk_id in siblings {
-                Self::remove_lineage_and_decrement_referenced_chunks(ctx, &chunk_id);
+                    lineage.ref_count = lineage.ref_count.saturating_sub(1);
+
+                    if lineage.descends_from_manifest || 0 < lineage.ref_count {
+                        continue;
+                    }
+
+                    // Only remove splits if all siblings aren't referenced.
+                    if let ChunkDirectLineage::SplitFrom(_, siblings) = &lineage.lineage {
+                        let siblings = siblings.clone();
+
+                        if siblings.iter().any(|chunk_id| {
+                            ctx.chunks_lineage
+                                .get(chunk_id)
+                                .is_some_and(|l| 0 < l.ref_count)
+                        }) {
+                            continue;
+                        }
+
+                        ops.extend(siblings.iter().map(|chunk_id| Op::Remove(*chunk_id)));
+                    }
+
+                    ops.push(Op::Remove(chunk_id));
+                }
+
+                Op::Remove(chunk_id) => {
+                    if let Some(lineage) = ctx.chunks_lineage.remove(&chunk_id) {
+                        ctx.leaky_compactions.remove(&chunk_id);
+                        ctx.split_on_ingest.remove(&chunk_id);
+                        ctx.dangling_splits.remove(&chunk_id);
+
+                        ops.extend(
+                            lineage
+                                .iter_referenced_chunks()
+                                .map(|chunk_id| Op::DropRef(*chunk_id)),
+                        );
+                    }
+                }
             }
         }
-
-        Self::remove_lineage_and_decrement_referenced_chunks(ctx, chunk_id);
     }
 
     /// Finds the most appropriate candidate for compaction.
@@ -1890,6 +1921,110 @@ mod tests {
         Ok(())
     }
 
+    /// A manifest describing the store's own segment carries the same recording id as the store,
+    /// while a manifest for another segment describes an asset that was pulled into this store.
+    /// In both cases the lineage of the virtual chunks names the segment their manifest came from,
+    /// so inserted data can be traced back to the segment that holds it.
+    #[test]
+    fn manifest_marks_lineage_with_its_source_segment() -> anyhow::Result<()> {
+        re_log::setup_logging();
+
+        let own_segment = "segment_of_this_store";
+        let asset_segment = "segment_of_the_asset";
+
+        let store_id = re_log_types::StoreId::new(
+            re_log_types::StoreKind::Recording,
+            "dataset_entry_id",
+            own_segment,
+        );
+        let mut store = ChunkStore::new(store_id.clone(), Default::default());
+
+        let entity_path = EntityPath::from("this/that");
+        let tl = Timeline::new_sequence("frame");
+        let point = MyPoint::new(1.0, 1.0);
+
+        // A temporal and a static chunk, so both lineage paths of `insert_rrd_manifest` are covered.
+        let chunks = |timepoint: TimePoint| -> anyhow::Result<Vec<Arc<Chunk>>> {
+            Ok(vec![
+                Arc::new(
+                    Chunk::builder(entity_path.clone())
+                        .with_component_batch(
+                            RowId::new(),
+                            timepoint,
+                            (MyPoints::descriptor_points(), &[point] as _),
+                        )
+                        .build()?,
+                ),
+                Arc::new(
+                    Chunk::builder(entity_path.clone())
+                        .with_component_batch(
+                            RowId::new(),
+                            TimePoint::STATIC,
+                            (MyPoints::descriptor_points(), &[point] as _),
+                        )
+                        .build()?,
+                ),
+            ])
+        };
+
+        let own_chunks = chunks(TimePoint::from_iter([(tl, 10)]))?;
+        let asset_chunks = chunks(TimePoint::from_iter([(tl, 20)]))?;
+
+        // Both manifests were written by the recording SDK, so they name the logging application
+        // rather than the dataset the store was opened from.
+        let own_manifest_store_id = re_log_types::StoreId::new(
+            re_log_types::StoreKind::Recording,
+            "recorded_app",
+            own_segment,
+        );
+        let asset_store_id = re_log_types::StoreId::new(
+            re_log_types::StoreKind::Recording,
+            "recorded_app",
+            asset_segment,
+        );
+        let expected_own_segment =
+            re_sdk_types::SegmentId::from(own_manifest_store_id.recording_id());
+        let expected_asset_segment = re_sdk_types::SegmentId::from(asset_store_id.recording_id());
+
+        _ = store.insert_rrd_manifest(re_log_encoding::RrdManifest::build_in_memory_from_chunks(
+            own_manifest_store_id,
+            own_chunks.iter().map(|chunk| &**chunk),
+        )?);
+        _ = store.insert_rrd_manifest(re_log_encoding::RrdManifest::build_in_memory_from_chunks(
+            asset_store_id,
+            asset_chunks.iter().map(|chunk| &**chunk),
+        )?);
+
+        let segment_of = |chunk: &Chunk| match &store
+            .chunks_lineage
+            .get(&chunk.id())
+            .expect("every chunk in a manifest gets a lineage")
+            .lineage
+        {
+            ChunkDirectLineage::RootFromManifest { segment_id, .. } => (**segment_id).clone(),
+            other => panic!("expected a manifest root, got {other:?}"),
+        };
+
+        for chunk in &own_chunks {
+            assert_eq!(segment_of(chunk), expected_own_segment);
+            assert_eq!(
+                store.find_source_segments(&chunk.id()),
+                std::iter::once(expected_own_segment.clone()).collect(),
+                "a manifest for the store's own segment names that segment"
+            );
+        }
+        for chunk in &asset_chunks {
+            assert_eq!(segment_of(chunk), expected_asset_segment);
+            assert_eq!(
+                store.find_source_segments(&chunk.id()),
+                std::iter::once(expected_asset_segment.clone()).collect(),
+                "a manifest for another segment is an asset, named after that segment"
+            );
+        }
+
+        Ok(())
+    }
+
     #[test]
     fn row_id_min_overwrites() -> anyhow::Result<()> {
         re_log::setup_logging();
@@ -2189,5 +2324,169 @@ mod tests {
         }
 
         Ok(())
+    }
+
+    fn lineage_dropping_test(
+        chunks_lineage: &mut HashMap<ChunkId, TrackedDirectChunkLineage>,
+        chunk_id: &ChunkId,
+    ) {
+        let mut leaky_compactions = HashMap::default();
+        let mut split_on_ingest = HashSet::default();
+        let mut dangling_splits = HashMap::default();
+
+        ChunkStore::drop_lineage_reference(
+            &mut LineageDroppingCtx {
+                chunks_lineage,
+                leaky_compactions: &mut leaky_compactions,
+                split_on_ingest: &mut split_on_ingest,
+                dangling_splits: &mut dangling_splits,
+            },
+            chunk_id,
+        );
+    }
+
+    /// Regression test for RR-5146: compaction chains grow one lineage link per compaction
+    /// event, so they can get arbitrarily deep. Dropping the final chunk used to unwind the
+    /// whole chain recursively, overflowing the stack.
+    #[test]
+    fn drop_lineage_reference_deep_compaction_chain() {
+        const DEPTH: usize = 1_000_000;
+
+        let mut chunks_lineage = HashMap::default();
+
+        let root = ChunkId::new();
+        chunks_lineage.insert(
+            root,
+            TrackedDirectChunkLineage {
+                lineage: ChunkDirectLineage::Volatile,
+                ref_count: 1,
+                descends_from_manifest: false,
+            },
+        );
+
+        let mut newest = root;
+        for _ in 0..DEPTH {
+            let chunk_id = ChunkId::new();
+            chunks_lineage.insert(
+                chunk_id,
+                TrackedDirectChunkLineage {
+                    lineage: ChunkDirectLineage::CompactedFrom(vec![newest].into_boxed_slice()),
+                    ref_count: 1,
+                    descends_from_manifest: false,
+                },
+            );
+            newest = chunk_id;
+        }
+
+        lineage_dropping_test(&mut chunks_lineage, &newest);
+
+        assert!(
+            chunks_lineage.is_empty(),
+            "The whole unreferenced chain should have been removed",
+        );
+    }
+
+    /// The cascade must stop at entries that descend from a manifest or are still referenced.
+    #[test]
+    fn drop_lineage_reference_stops_at_manifest_and_referenced() {
+        let manifest_root = ChunkId::new();
+        let referenced = ChunkId::new();
+        let middle = ChunkId::new();
+        let top = ChunkId::new();
+
+        let mut chunks_lineage: HashMap<ChunkId, TrackedDirectChunkLineage> = [
+            (
+                manifest_root,
+                TrackedDirectChunkLineage {
+                    lineage: ChunkDirectLineage::RootFromManifest {
+                        is_static: false,
+                        segment_id: Arc::new("some_segment".into()),
+                    },
+                    ref_count: 1,
+                    descends_from_manifest: true,
+                },
+            ),
+            (
+                referenced,
+                TrackedDirectChunkLineage {
+                    lineage: ChunkDirectLineage::Volatile,
+                    ref_count: 2, // referenced by `middle` and by something external
+                    descends_from_manifest: false,
+                },
+            ),
+            (
+                middle,
+                TrackedDirectChunkLineage {
+                    lineage: ChunkDirectLineage::CompactedFrom(
+                        vec![manifest_root, referenced].into_boxed_slice(),
+                    ),
+                    ref_count: 1,
+                    descends_from_manifest: false,
+                },
+            ),
+            (
+                top,
+                TrackedDirectChunkLineage {
+                    lineage: ChunkDirectLineage::CompactedFrom(vec![middle].into_boxed_slice()),
+                    ref_count: 1,
+                    descends_from_manifest: false,
+                },
+            ),
+        ]
+        .into_iter()
+        .collect();
+
+        lineage_dropping_test(&mut chunks_lineage, &top);
+
+        assert!(!chunks_lineage.contains_key(&top));
+        assert!(!chunks_lineage.contains_key(&middle));
+        assert!(
+            chunks_lineage.contains_key(&manifest_root),
+            "Manifest-backed entries must never be removed",
+        );
+        assert_eq!(chunks_lineage[&referenced].ref_count, 1);
+    }
+
+    /// Split chunks are only removed once all their siblings are unreferenced.
+    #[test]
+    fn drop_lineage_reference_split_siblings() {
+        let parent = ChunkId::new();
+        let split_a = ChunkId::new();
+        let split_b = ChunkId::new();
+
+        let make_lineage = |sibling: ChunkId, ref_count: u32| TrackedDirectChunkLineage {
+            lineage: ChunkDirectLineage::SplitFrom(parent, vec![sibling].into_boxed_slice()),
+            ref_count,
+            descends_from_manifest: false,
+        };
+
+        let mut chunks_lineage: HashMap<ChunkId, TrackedDirectChunkLineage> = [
+            (
+                parent,
+                TrackedDirectChunkLineage {
+                    lineage: ChunkDirectLineage::Volatile,
+                    ref_count: 2,
+                    descends_from_manifest: false,
+                },
+            ),
+            (split_a, make_lineage(split_b, 1)),
+            (split_b, make_lineage(split_a, 1)),
+        ]
+        .into_iter()
+        .collect();
+
+        // Dropping `split_a` while `split_b` is still referenced must keep everything around.
+        lineage_dropping_test(&mut chunks_lineage, &split_a);
+
+        assert_eq!(chunks_lineage.len(), 3);
+        assert_eq!(chunks_lineage[&split_a].ref_count, 0);
+
+        // Dropping `split_b` releases both splits (and, transitively, the parent).
+        lineage_dropping_test(&mut chunks_lineage, &split_b);
+
+        assert!(
+            chunks_lineage.is_empty(),
+            "Both splits and their parent should have been removed",
+        );
     }
 }

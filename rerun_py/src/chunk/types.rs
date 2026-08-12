@@ -7,8 +7,9 @@ use pyo3::types::PyDict;
 
 use arrow::array::RecordBatch as ArrowRecordBatch;
 use arrow::pyarrow::{PyArrowType, ToPyArrow as _};
-use re_chunk::Chunk;
-use re_log_types::EntityPath;
+use re_chunk::{Chunk, RowId};
+use re_log_types::{EntityPath, TimePoint};
+use re_sdk::EntityPathPart;
 
 /// A single chunk of data from a recording.
 #[pyclass(
@@ -113,8 +114,11 @@ impl PyChunkInternal {
             "columns" => DataframeIndex::Columns(
                 index_columns
                     .iter()
-                    .map(|s| TimelineName::new(s.as_str()))
-                    .collect(),
+                    .map(|s| {
+                        TimelineName::try_new(s.as_str())
+                            .map_err(|err| PyValueError::new_err(err.to_string()))
+                    })
+                    .collect::<PyResult<Vec<_>>>()?,
             ),
             _ => {
                 return Err(PyValueError::new_err(format!(
@@ -124,9 +128,8 @@ impl PyChunkInternal {
         };
         let entity_path = entity_path.map(|p| EntityPath::parse_forgiving(&p));
 
-        let chunks =
-            Chunk::from_dataframe_record_batch(&record_batch.0, &index, entity_path.as_ref())
-                .map_err(|err| PyValueError::new_err(err.to_string()))?;
+        let chunks = Chunk::from_record_batch(&record_batch.0, &index, entity_path.as_ref())
+            .map_err(|err| PyValueError::new_err(err.to_string()))?;
 
         Ok(chunks
             .into_iter()
@@ -155,6 +158,30 @@ impl PyChunkInternal {
     ) -> PyResult<Self> {
         let entity_path = EntityPath::parse_forgiving(entity_path);
         let chunk = crate::arrow::build_chunk_from_components(entity_path, timelines, components)?;
+        Ok(Self::new(Arc::new(chunk)))
+    }
+
+    /// Create a Chunk from a property name, with the entity path `/__properties/{name}` and no timelines (static).
+    #[staticmethod]
+    fn from_property(name: &str, components: &Bound<'_, PyDict>) -> PyResult<Self> {
+        let entity_path = crate::utils::property_entity_path([EntityPathPart::from(name)]);
+
+        let components = components
+            .iter()
+            .map(|(descr, array)| {
+                Ok((
+                    crate::arrow::descriptor_to_rust(&descr)?,
+                    crate::arrow::array_to_rust(&array)?,
+                ))
+            })
+            .collect::<PyResult<Vec<_>>>()?;
+
+        // One static row (empty timepoint) holding all component data — the same
+        // semantics as `send_property` / `RecordingStream::log_static`.
+        let chunk = Chunk::builder(entity_path)
+            .with_row(RowId::new(), TimePoint::default(), components)
+            .build()
+            .map_err(|err| PyValueError::new_err(err.to_string()))?;
         Ok(Self::new(Arc::new(chunk)))
     }
 
@@ -203,7 +230,8 @@ impl PyChunkInternal {
         use re_lenses_core::ChunkExt as _;
         use re_types_core::ComponentIdentifier;
 
-        let source_id = ComponentIdentifier::from(source);
+        let source_id = ComponentIdentifier::try_new(source)
+            .map_err(|err| PyValueError::new_err(err.to_string()))?;
 
         let new_chunk = self
             .chunk

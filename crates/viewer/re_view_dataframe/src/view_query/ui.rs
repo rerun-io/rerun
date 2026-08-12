@@ -18,7 +18,7 @@ use re_viewer_context::{
 use crate::view_query::Query;
 
 /// A group of component columns belonging to the same entity path, used for drag-and-drop reordering.
-#[derive(Hash)]
+#[derive(Hash, Debug)]
 struct EntityGroup {
     entity_path: EntityPath,
     columns: Vec<ColumnDescriptor>,
@@ -264,8 +264,7 @@ impl Query {
                 all_components
                     .iter()
                     .copied()
-                    .any(|component| component.as_str() == component_sel.component)
-                    .then_some(component_sel.component.into())
+                    .find(|component| component.as_str() == component_sel.component)
             })
             .or_else(|| all_components.iter().next().copied());
 
@@ -615,7 +614,7 @@ fn all_pov_entities_for_view(
             let comp_for_entity = ctx
                 .recording_engine()
                 .store()
-                .all_components_on_timeline(timeline, &node.data_result.entity_path);
+                .all_components_on_timeline(Some(timeline), &node.data_result.entity_path);
             if comp_for_entity.is_some_and(|components| !components.is_empty()) {
                 all_entities.insert(node.data_result.entity_path.clone());
             }

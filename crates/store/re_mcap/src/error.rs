@@ -12,7 +12,7 @@ pub enum Error {
     #[error("Channel {0} does not define a schema")]
     NoSchema(String),
 
-    #[error("Invalid schema {schema}: {source}")]
+    #[error("Invalid schema {schema}: {source:#}")]
     InvalidSchema {
         schema: String,
         source: anyhow::Error,
@@ -30,6 +30,14 @@ pub enum Error {
     #[error(transparent)]
     Chunk(#[from] re_chunk::ChunkError),
 
-    #[error(transparent)]
+    #[error("{0:#}")]
     Other(#[from] anyhow::Error),
+}
+
+impl Error {
+    /// Wrap an arbitrary error in the [`Error::Other`] variant.
+    #[inline]
+    pub fn other(err: impl Into<anyhow::Error>) -> Self {
+        Self::Other(err.into())
+    }
 }

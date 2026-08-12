@@ -39,7 +39,7 @@ impl Cache for ImageStatsCache {
     }
 
     fn purge_memory(&mut self) {
-        // Purging the image stats is not worth it - these are very small objects!
+        self.0.clear();
     }
 
     fn on_store_events(&mut self, events: &[&ChunkStoreEvent], _entity_db: &EntityDb) {

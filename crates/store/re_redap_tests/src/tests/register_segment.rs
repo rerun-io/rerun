@@ -926,10 +926,8 @@ async fn scan_dataset_manifest(
 ) -> RecordBatch {
     let responses: Vec<_> = service
         .scan_dataset_manifest(
-            tonic::Request::new(ScanDatasetManifestRequest {
-                columns: vec![], // all of them
-            })
-            .with_entry_name(entry_name(dataset_name)),
+            tonic::Request::new(ScanDatasetManifestRequest::all())
+                .with_entry_name(entry_name(dataset_name)),
         )
         .await
         .unwrap()
@@ -1283,10 +1281,8 @@ fn assert_task_failed(task_results: &[RecordBatch], expected_message_substring: 
 async fn scan_segment_table(service: &impl RerunCloudService, dataset_name: &str) -> RecordBatch {
     let responses: Vec<_> = service
         .scan_segment_table(
-            tonic::Request::new(ScanSegmentTableRequest {
-                columns: vec![], // all of them
-            })
-            .with_entry_name(entry_name(dataset_name)),
+            tonic::Request::new(ScanSegmentTableRequest::all())
+                .with_entry_name(entry_name(dataset_name)),
         )
         .await
         .unwrap()
@@ -1364,9 +1360,11 @@ async fn register_and_wait_for_task_result(
 
     // Group (segment_id, layer) by task_id
     let mut task_layers: HashMap<TaskId, Vec<(SegmentId, LayerName)>> = HashMap::default();
-    for (task_id, segment_id, layer_name) in
-        izip!(rerun_task_id, rerun_segment_id, rerun_segment_layer)
-    {
+    for (task_id, segment_id, layer_name) in izip!(
+        rerun_task_id.into_iter_owned(),
+        rerun_segment_id.into_iter_owned(),
+        rerun_segment_layer.into_iter_owned()
+    ) {
         task_layers
             .entry(task_id)
             .or_default()
@@ -1409,7 +1407,11 @@ async fn register_and_wait_for_task_result(
             ..
         } = cloud_ext::QueryTasksDataframe::try_from(batch).expect("valid QueryTasks dataframe");
 
-        for (task_id, status, message) in izip!(task_id, exec_status, msgs) {
+        for (task_id, status, message) in izip!(
+            task_id.into_iter_owned(),
+            exec_status.into_iter_owned(),
+            msgs.into_iter_owned()
+        ) {
             let message = message.unwrap_or_default();
             let layers = task_layers.remove(&task_id).unwrap_or_default();
 
@@ -1434,10 +1436,8 @@ async fn scan_segment_table_and_snapshot(
 ) -> RecordBatch {
     let responses: Vec<_> = service
         .scan_segment_table(
-            tonic::Request::new(ScanSegmentTableRequest {
-                columns: vec![], // all of them
-            })
-            .with_entry_name(entry_name(dataset_name)),
+            tonic::Request::new(ScanSegmentTableRequest::all())
+                .with_entry_name(entry_name(dataset_name)),
         )
         .await
         .unwrap()
@@ -1522,10 +1522,8 @@ async fn scan_dataset_manifest_and_snapshot(
 ) -> RecordBatch {
     let responses: Vec<_> = service
         .scan_dataset_manifest(
-            tonic::Request::new(ScanDatasetManifestRequest {
-                columns: vec![], // all of them
-            })
-            .with_entry_name(entry_name(dataset_name)),
+            tonic::Request::new(ScanDatasetManifestRequest::all())
+                .with_entry_name(entry_name(dataset_name)),
         )
         .await
         .unwrap()

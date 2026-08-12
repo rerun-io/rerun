@@ -61,7 +61,7 @@ pub fn new_rerun_headers_layer(
 /// This is the `(name, version, is_client)` triple every Rerun gRPC client should use
 /// unless it has a specific reason not to (e.g. the `redap_cli` binary, which advertises
 /// its own `CARGO_PKG_VERSION`). It is the single source of truth for client-side header
-/// configuration, so any path that opens a sibling channel (the main `RedapClient`, the
+/// configuration, so any path that opens a sibling channel (the main redap RPC stack, the
 /// per-connection analytics OTLP exports, etc.) presents the same
 /// `x-rerun-client-version` value to the server.
 ///
@@ -177,7 +177,7 @@ impl tonic::service::Interceptor for RerunVersionInterceptor {
 //
 // It exists to prevent never-ending chains of generics when propagating multiple headers, e.g.:
 // ```
-// pub type RedapClientInner =
+// pub type RedapClientStack =
 //     re_perf_telemetry::external::tower_http::propagate_header::PropagateHeader<
 //         re_perf_telemetry::external::tower_http::propagate_header::PropagateHeader<
 //             re_perf_telemetry::external::tower_http::propagate_header::PropagateHeader<
@@ -202,7 +202,7 @@ impl tonic::service::Interceptor for RerunVersionInterceptor {
 // ```
 // which instead becomes this:
 // ```
-// pub type RedapClientInner =
+// pub type RedapClientStack =
 //     PropagateHeaders<
 //         re_perf_telemetry::external::tower_http::trace::Trace<
 //             tonic::service::interceptor::InterceptedService<

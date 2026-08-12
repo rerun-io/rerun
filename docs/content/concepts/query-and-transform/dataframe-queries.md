@@ -1,6 +1,7 @@
 ---
 title: Dataframe queries
 order: 300
+description: Query Rerun data and produce aligned dataframes as output
 ---
 
 Robotic and sensor data is inherently messy:

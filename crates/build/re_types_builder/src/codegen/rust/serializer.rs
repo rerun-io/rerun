@@ -1,11 +1,8 @@
 use proc_macro2::{Literal, TokenStream};
 use quote::{format_ident, quote};
 
-use super::arrow::{
-    ArrowFieldTokenizer, is_backed_by_scalar_buffer, quote_fqname_as_type_path,
-    quoted_arrow_primitive_type,
-};
-use super::util::{is_tuple_struct_from_obj, quote_comment};
+use super::arrow::{ArrowFieldTokenizer, quote_fqname_as_type_path, quoted_arrow_primitive_type};
+use super::util::{is_tuple_struct_from_obj, quote_comment, quote_default_value_for_datatype};
 use crate::data_type::{AtomicDataType, DataType, UnionMode};
 use crate::objects::EnumIntegerType;
 use crate::{Object, Objects, TypeRegistry};
@@ -21,7 +18,7 @@ pub fn quote_arrow_serializer(
     let datatype = &type_registry.get(&obj.fqname);
 
     let is_enum = obj.is_enum();
-    let is_arrow_transparent = obj.datatype.is_none();
+    let is_arrow_transparent = obj.is_arrow_transparent();
     let is_tuple_struct = is_tuple_struct_from_obj(obj);
 
     let quoted_flatten = |obj_field_is_nullable| {
@@ -95,7 +92,7 @@ pub fn quote_arrow_serializer(
         }}
     } else if is_arrow_transparent {
         // NOTE: Arrow transparent objects must have a single field, no more no less.
-        // The semantic pass would have failed already if this wasn't the case.
+        // The type registry asserts as much when it computes the datatype.
         let obj_field = &obj.fields[0];
 
         let quoted_data_src = data_src.clone();
@@ -296,7 +293,7 @@ pub fn quote_arrow_serializer(
                     let quoted_obj_field_name = format_ident!("{}", obj_field.pascal_case_name());
 
                     // Short circuit for empty variants since they're trivial to solve at this level:
-                    if obj_field.typ == crate::Type::Unit {
+                    if obj_field.typ.is_unit() {
                         return quote! {
                             as_array_ref(NullArray::new(
                                 #data_src
@@ -349,8 +346,8 @@ pub fn quote_arrow_serializer(
                     ]
                 };
 
-                let get_match_case_for_field = |typ, quoted_obj_field_name| {
-                    if typ == &crate::Type::Unit {
+                let get_match_case_for_field = |typ: &crate::Type, quoted_obj_field_name| {
+                    if typ.is_unit() {
                         quote!(Some(Self::#quoted_obj_field_name))
                     } else {
                         quote!(Some(Self::#quoted_obj_field_name(_)))
@@ -484,9 +481,7 @@ fn quote_arrow_field_serializer(
     };
 
     // If the inner object is an enum, then dispatch to its serializer.
-    if let Some(obj) = inner_obj
-        && obj.is_enum()
-    {
+    if let Some(obj) = datatype.enum_obj(objects) {
         let fqname_use = quote_fqname_as_type_path(&obj.fqname);
         let option_wrapper = if elements_are_nullable {
             quote! {}
@@ -500,7 +495,7 @@ fn quote_arrow_field_serializer(
         }};
     }
 
-    let inner_is_arrow_transparent = inner_obj.is_some_and(|obj| obj.datatype.is_none());
+    let inner_is_arrow_transparent = inner_obj.is_some_and(|obj| obj.is_arrow_transparent());
 
     match datatype.to_logical_type() {
         DataType::Atomic(AtomicDataType::Null) => {
@@ -688,7 +683,7 @@ fn quote_arrow_field_serializer(
             //
             // TODO(jleibs): If we need to support large FixedSizeList types where the `ScalarBuffer`
             // optimization would be significant, we can introduce a new attribute to force this.
-            let inner_repr = if is_backed_by_scalar_buffer(inner_field.data_type())
+            let inner_repr = if inner_field.data_type().backed_by_scalar_buffer()
                 && matches!(datatype, DataType::List(_))
             {
                 InnerRepr::ScalarBuffer
@@ -814,13 +809,15 @@ fn quote_arrow_field_serializer(
                     InnerRepr::NativeIterable => {
                         if let DataType::FixedSizeList(_, count) = datatype.to_logical_type() {
                             if elements_are_nullable {
+                                let placeholder =
+                                    quote_default_value_for_datatype(objects, inner_datatype);
                                 quote! {
                                     #data_src
                                     .into_iter()
                                     .flat_map(|v| match v {
                                         Some(v) => itertools::Either::Left(v.into_iter()),
                                         None => itertools::Either::Right(
-                                            std::iter::repeat_n(Default::default(), #count),
+                                            std::iter::repeat_n(#placeholder, #count),
                                         ),
                                     })
                                 }

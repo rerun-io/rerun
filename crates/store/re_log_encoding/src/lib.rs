@@ -1,3 +1,5 @@
+#![allow(clippy::iter_over_hash_type)]
+
 //! This crate covers two equally important but orthogonal matters:
 //! * Converting between transport-level and application-level Rerun types.
 //! * Encoding and decoding Rerun RRD streams.
@@ -80,7 +82,6 @@ pub use self::app_id_injector::{
     ApplicationIdInjector, CachingApplicationIdInjector, DummyApplicationIdInjector,
 };
 #[cfg(feature = "decoder")]
-#[cfg(not(target_arch = "wasm32"))]
 pub use self::chunk_provider::RrdChunkProvider;
 pub use self::chunk_provider::{ChunkProvider, ChunkProviderError};
 pub use self::rrd::*;

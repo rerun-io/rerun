@@ -1,5 +1,6 @@
 <!--[metadata]
 title = "Helix"
+description = "Tiny example that logs points and lines to draw a 3D helix. A friendly starting point for entity paths and primitive archetypes."
 tags = ["3D", "API example"]
 thumbnail = "https://static.rerun.io/dna/40d9744af3f0e21d3b174054f0a935662a574ce0/480w.png"
 thumbnail_dimensions = [480, 480]

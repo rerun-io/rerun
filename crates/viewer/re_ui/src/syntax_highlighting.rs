@@ -1,4 +1,4 @@
-use egui::text::LayoutJob;
+use egui::text::{ByteIndex, LayoutJob};
 use egui::{Color32, Style, TextFormat, TextStyle};
 use re_entity_db::InstancePath;
 use re_log_types::external::re_types_core::{
@@ -78,9 +78,9 @@ impl SyntaxHighlightedBuilder {
     }
 
     fn append_kind(&mut self, style: SyntaxHighlightedStyle, portion: &str) -> &mut Self {
-        let start = self.text.len();
+        let start = ByteIndex(self.text.len());
         self.text.push_str(portion);
-        let end = self.text.len();
+        let end = ByteIndex(self.text.len());
         self.parts.push(SyntaxHighlightedPart {
             byte_range: start..end,
             style,
@@ -320,7 +320,7 @@ impl std::fmt::Debug for SyntaxHighlightedStyle {
 
 #[derive(Debug)]
 struct SyntaxHighlightedPart {
-    byte_range: std::ops::Range<usize>,
+    byte_range: egui::text::ByteRange,
     style: SyntaxHighlightedStyle,
 }
 

@@ -8,17 +8,29 @@
 //! Simplified jq-like grammar with implicit piping:
 //!
 //! ```text
-//! Expr    → Term ( '|' Term )*
-//! Term    → Segment ( '?' | '!' )*  ( Segment ( '?' | '!' )* )*
-//! Segment → '.' FIELD
-//!         | '[' INTEGER ']'
-//!         | '[' ']'
-//!         | '.'                          (identity)
-//!         | 'map' '(' Expr ')'           (map)
-//!         | IDENT ( '(' ArgList? ')' )?  (function)
-//! ArgList → Literal ( ';' Literal )*
-//! Literal → STRING_LITERAL
+//! Expr        → Term ( '|' Term )*
+//! Term        → Segment ( '?' | '!' )*  ( Segment ( '?' | '!' )* )*
+//! Segment     → '.' FIELD
+//!             | '[' INTEGER ']'
+//!             | '[' ']'
+//!             | '.'                          (identity)
+//!             | 'map' '(' Expr ')'           (map)
+//!             | 'pack' '(' PathExpr ( ',' PathExpr )* ')'  (pack into FixedSizeList)
+//!             | IDENT ( '(' ArgList? ')' )?  (function)
+//! ArgList     → Literal ( ';' Literal )*
+//! Literal     → STRING_LITERAL
+//!
+//! PathExpr    → PathTerm ( '|' PathTerm )*
+//! PathTerm    → PathSegment ( '?' | '!' )*  ( PathSegment ( '?' | '!' )* )*
+//! PathSegment → '.' FIELD
+//!             | '[' INTEGER ']'
+//!             | '.'                          (identity)
 //! ```
+//!
+//! `PathExpr` is the scalar-navigation subset accepted as a `pack` path: it deliberately
+//! omits iteration (`[]`), `map`, functions, and nested `pack`, so those can never appear
+//! as a path. The restriction is enforced directly by the `path_expr` production rather
+//! than by parsing a full `Expr` and narrowing it afterwards.
 
 // NOTE: Please keep the grammar above up-to-date.
 
@@ -77,6 +89,82 @@ pub enum Expr {
     // correct modeling would be to add the `map` function to the registry,
     // and defining it in terms of collect (`[ .[] | f]`).
     Map(Box<Self>),
+
+    /// Packs the results of several 1:1 path expressions into a `FixedSizeList`.
+    ///
+    /// Written `pack(pathexpr, pathexpr, …)`, with at least one path. Each path is
+    /// a [`PathExpr`] — a scalar navigation path that produces exactly one value
+    /// per row — and all paths must share the same datatype. The resulting
+    /// `FixedSizeList` has a size equal to the number of paths.
+    ///
+    /// The scalar-navigation restriction is enforced at parse time by the
+    /// dedicated [`path_expr`](Parser::path_expr) production, so iteration (`[]`),
+    /// `map`, functions, and nested `pack` can never appear as paths here.
+    ///
+    /// See the [module docs](super) for the nullability rules (the `!` gate and
+    /// the entry-level AND semantics).
+    Pack(Vec<PathExpr>),
+}
+
+/// A scalar navigation path: the restricted subset of [`Expr`] allowed as a
+/// [`pack`](Expr::Pack) path.
+///
+/// A path produces **exactly one value per row**, so it can fill a fixed-size
+/// slot. It mirrors the navigation-only fragment of [`Expr`]: identity (`.`),
+/// field access (`.foo`), indexing (`[N]`), the `?`/`!` modifiers, and pipes of
+/// those. The non-1:1 or dynamically-typed forms — iteration (`[]`), `map`,
+/// functions, and nested `pack` — are simply not representable here.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, re_byte_size::SizeBytes)]
+pub enum PathExpr {
+    /// See [`Expr::Identity`].
+    Identity,
+
+    /// See [`Expr::Field`].
+    Field(String),
+
+    /// See [`Expr::Index`].
+    Index(u64),
+
+    /// See [`Expr::Try`].
+    Try(Box<Self>),
+
+    /// See [`Expr::NonNull`].
+    NonNull(Box<Self>),
+
+    /// See [`Expr::Pipe`].
+    Pipe {
+        left: Box<Self>,
+        right: Box<Self>,
+        implicit: bool,
+    },
+}
+
+/// Widen a path back into the full [`Expr`] grammar, for evaluation and display.
+impl From<&PathExpr> for Expr {
+    fn from(path: &PathExpr) -> Self {
+        match path {
+            PathExpr::Identity => Self::Identity,
+            PathExpr::Field(name) => Self::Field(name.clone()),
+            PathExpr::Index(index) => Self::Index(*index),
+            PathExpr::Try(inner) => Self::Try(Box::new(Self::from(&**inner))),
+            PathExpr::NonNull(inner) => Self::NonNull(Box::new(Self::from(&**inner))),
+            PathExpr::Pipe {
+                left,
+                right,
+                implicit,
+            } => Self::Pipe {
+                left: Box::new(Self::from(&**left)),
+                right: Box::new(Self::from(&**right)),
+                implicit: *implicit,
+            },
+        }
+    }
+}
+
+impl std::fmt::Display for PathExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", Expr::from(self))
+    }
 }
 
 impl std::fmt::Display for Expr {
@@ -116,6 +204,16 @@ impl std::fmt::Display for Expr {
                 Ok(())
             }
             Self::Map(body) => write!(f, "map({body})"),
+            Self::Pack(paths) => {
+                write!(f, "pack(")?;
+                for (idx, path) in paths.iter().enumerate() {
+                    if idx > 0 {
+                        write!(f, ", ")?;
+                    }
+                    write!(f, "{path}")?;
+                }
+                write!(f, ")")
+            }
         }
     }
 }
@@ -134,6 +232,11 @@ pub enum Error {
 
     #[error("unexpected end of input")]
     UnexpectedEof,
+
+    #[error(
+        "`pack` paths must be scalar navigation paths — identity (`.`), field access (`.foo`), or indexing (`[N]`), optionally with `?`/`!` and pipes; iteration (`[]`), `map`, functions, and nested `pack` are not allowed (found `{symbol}`)"
+    )]
+    PackPathNotScalar { symbol: TokenType },
 }
 
 type Result<T> = std::result::Result<T, Error>;
@@ -191,6 +294,10 @@ where
 
             if name == "map" {
                 return self.map_expr();
+            }
+
+            if name == "pack" {
+                return self.pack_expr();
             }
 
             return self.function_args(name);
@@ -252,6 +359,162 @@ where
         let body = self.expr()?;
         self.consume(TokenType::RParen)?;
         Ok(Expr::Map(Box::new(body)))
+    }
+
+    /// Parse a `pack(path, path, …)` expression.
+    /// The `pack` identifier has already been consumed.
+    ///
+    /// At least one path is required; an empty `pack()` is a parse error.
+    fn pack_expr(&mut self) -> Result<Expr> {
+        self.consume(TokenType::LParen)?;
+
+        // Reject the empty `pack()` form: a `FixedSizeList` needs at least one element.
+        if let Some(token) = self.tokens.peek()
+            && token.typ == TokenType::RParen
+        {
+            return Err(Error::UnexpectedSymbol {
+                symbol: TokenType::RParen,
+            });
+        }
+
+        let mut paths = vec![self.path_expr()?];
+
+        while let Some(token) = self.tokens.peek()
+            && token.typ == TokenType::Comma
+        {
+            self.tokens.next();
+            paths.push(self.path_expr()?);
+        }
+
+        self.consume(TokenType::RParen)?;
+
+        Ok(Expr::Pack(paths))
+    }
+
+    /// Parse a [`PathExpr`]: the scalar-navigation subset accepted as a `pack` path.
+    ///
+    /// Mirrors [`expr`](Self::expr), but each piped section is a [`path_term`](Self::path_term)
+    /// rather than a full [`term`](Self::term), so the navigation-only restriction is baked
+    /// into the grammar instead of being checked after the fact.
+    fn path_expr(&mut self) -> Result<PathExpr> {
+        let mut left = self.path_term()?;
+
+        while let Some(token) = self.tokens.peek() {
+            if token.typ == TokenType::Pipe {
+                self.tokens.next(); // Consume explicit pipe
+                let right = self.path_term()?;
+                left = PathExpr::Pipe {
+                    left: Box::new(left),
+                    right: Box::new(right),
+                    implicit: false,
+                };
+            } else {
+                break;
+            }
+        }
+
+        Ok(left)
+    }
+
+    /// Parse a single path term: a chain of [`path_primary`](Self::path_primary) segments
+    /// joined by implicit pipes, each with optional `?`/`!`.
+    ///
+    /// The counterpart of [`term`](Self::term), minus the `map`/`pack`/function dispatch:
+    /// a path can only begin with `.` (identity, field, or index), never a bare identifier.
+    fn path_term(&mut self) -> Result<PathExpr> {
+        // A bare identifier here would be `map`, `pack`, or a function — none are paths.
+        if let Some(token) = self.tokens.peek()
+            && let TokenType::Ident(_) = &token.typ
+        {
+            return Err(Error::PackPathNotScalar {
+                symbol: token.typ.clone(),
+            });
+        }
+
+        // Leading `.`: bare identity, or the root of a `.[…]` index.
+        if let Some(token) = self.tokens.peek() {
+            if token.typ == TokenType::Dot {
+                self.tokens.next();
+                if !self.is_segment_start() {
+                    return Ok(PathExpr::Identity);
+                }
+            }
+        } else {
+            return Err(Error::UnexpectedEof);
+        }
+
+        let mut left = self.path_primary()?;
+        left = self.path_postfix(left);
+
+        while self.is_segment_start() {
+            let mut right = self.path_primary()?;
+            right = self.path_postfix(right);
+            left = PathExpr::Pipe {
+                left: Box::new(left),
+                right: Box::new(right),
+                implicit: true,
+            };
+        }
+
+        Ok(left)
+    }
+
+    /// Apply any postfix `?` or `!` operators to a path. Path counterpart of [`postfix`](Self::postfix).
+    fn path_postfix(&mut self, mut path: PathExpr) -> PathExpr {
+        while let Some(token) = self.tokens.peek() {
+            match token.typ {
+                TokenType::QuestionMark => {
+                    self.tokens.next();
+                    path = PathExpr::Try(Box::new(path));
+                }
+                TokenType::ExclamationMark => {
+                    self.tokens.next();
+                    path = PathExpr::NonNull(Box::new(path));
+                }
+                _ => break,
+            }
+        }
+        path
+    }
+
+    /// Parse a single path segment: a field access or `[N]` index. Path counterpart of
+    /// [`primary`](Self::primary), but `[]` (iteration) is rejected since a path must be 1:1.
+    fn path_primary(&mut self) -> Result<PathExpr> {
+        match self.tokens.peek() {
+            Some(token) => match &token.typ {
+                TokenType::Field(s) => {
+                    let result = s.clone();
+                    self.tokens.next();
+                    Ok(PathExpr::Field(result))
+                }
+                TokenType::LBracket => {
+                    self.tokens.next(); // Consume `[`
+
+                    match self.tokens.peek() {
+                        Some(token) => match &token.typ {
+                            // `[]` is iteration — not a 1:1 path.
+                            TokenType::RBracket => Err(Error::PackPathNotScalar {
+                                symbol: TokenType::RBracket,
+                            }),
+                            TokenType::Integer(n) => {
+                                let index = *n;
+                                self.tokens.next();
+                                self.consume(TokenType::RBracket)?;
+                                Ok(PathExpr::Index(index))
+                            }
+                            unexpected => Err(Error::UnexpectedSymbol {
+                                symbol: unexpected.clone(),
+                            }),
+                        },
+                        None => Err(Error::UnexpectedEof),
+                    }
+                }
+                unexpected => Err(Error::UnexpectedSymbol {
+                    symbol: unexpected.clone(),
+                }),
+            },
+            None => Err(Error::UnexpectedEof),
+        }
     }
 
     /// Parse function arguments: `(arg1; arg2; …)`.
@@ -714,5 +977,114 @@ mod test {
 
         let expr = parse(".items | map(.name)").unwrap();
         assert_eq!(expr.to_string(), ".items | map(.name)");
+    }
+
+    fn pack(paths: Vec<PathExpr>) -> Expr {
+        Expr::Pack(paths)
+    }
+
+    fn p_field(name: &str) -> PathExpr {
+        PathExpr::Field(name.into())
+    }
+
+    fn p_non_null(inner: PathExpr) -> PathExpr {
+        PathExpr::NonNull(Box::new(inner))
+    }
+
+    fn p_implicit_pipe(left: PathExpr, right: PathExpr) -> PathExpr {
+        PathExpr::Pipe {
+            left: Box::new(left),
+            right: Box::new(right),
+            implicit: true,
+        }
+    }
+
+    #[test]
+    fn pack_simple() {
+        assert_eq!(
+            parse("pack(.x, .y, .z)"),
+            Ok(pack(vec![p_field("x"), p_field("y"), p_field("z")]))
+        );
+    }
+
+    #[test]
+    fn pack_single_path() {
+        assert_eq!(parse("pack(.x)"), Ok(pack(vec![p_field("x")])));
+    }
+
+    #[test]
+    fn pack_with_non_null_path() {
+        assert_eq!(
+            parse("pack(.x, .y!)"),
+            Ok(pack(vec![p_field("x"), p_non_null(p_field("y"))]))
+        );
+    }
+
+    #[test]
+    fn pack_with_nested_path() {
+        assert_eq!(
+            parse("pack(.a.b, .c)"),
+            Ok(pack(vec![
+                p_implicit_pipe(p_field("a"), p_field("b")),
+                p_field("c")
+            ]))
+        );
+    }
+
+    #[test]
+    fn pack_empty_is_error() {
+        assert_eq!(
+            parse("pack()"),
+            Err(Error::UnexpectedSymbol {
+                symbol: TokenType::RParen
+            })
+        );
+    }
+
+    #[test]
+    fn pack_non_scalar_path_is_parse_error() {
+        // Each of these paths is non-1:1 or dynamically-typed, and is rejected by the
+        // `path_expr` production at the offending token.
+        for (query, symbol) in [
+            ("pack(map(.x), .y)", TokenType::Ident("map".into())),
+            ("pack(.x[], .y)", TokenType::RBracket),
+            ("pack(.x, foo())", TokenType::Ident("foo".into())),
+            ("pack(.x, pack(.y))", TokenType::Ident("pack".into())),
+            // The offending token can follow a `?`/`!` segment or appear across a pipe.
+            ("pack(.x[]!, .y)", TokenType::RBracket),
+            ("pack(.x | foo, .y)", TokenType::Ident("foo".into())),
+        ] {
+            assert_eq!(
+                parse(query),
+                Err(Error::PackPathNotScalar { symbol }),
+                "query: {query}"
+            );
+        }
+    }
+
+    #[test]
+    fn pack_in_pipe() {
+        assert_eq!(
+            parse(".pose | pack(.x, .y)"),
+            Ok(pipe(field("pose"), pack(vec![p_field("x"), p_field("y")])))
+        );
+    }
+
+    #[test]
+    fn pack_display_roundtrip() {
+        let expr = parse("pack(.x, .y, .z)").unwrap();
+        assert_eq!(expr.to_string(), "pack(.x, .y, .z)");
+
+        let expr = parse("pack(.x, .y!)").unwrap();
+        assert_eq!(expr.to_string(), "pack(.x, .y!)");
+
+        let expr = parse(".pose | pack(.x, .y)").unwrap();
+        assert_eq!(expr.to_string(), ".pose | pack(.x, .y)");
+
+        let expr = parse("pack(.a.b, .c)").unwrap();
+        assert_eq!(expr.to_string(), "pack(.a.b, .c)");
+
+        let expr = parse("pack(.a | .b, .c)").unwrap();
+        assert_eq!(expr.to_string(), "pack(.a | .b, .c)");
     }
 }

@@ -3,6 +3,7 @@
 
 use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs as _};
 
+use re_async::AsyncRuntimeHandle;
 use tokio::net::TcpListener;
 use tokio::sync::oneshot::Sender;
 use tokio::sync::{mpsc, oneshot};
@@ -10,7 +11,7 @@ use tokio_stream::StreamExt as _;
 use tonic::service::{Routes, RoutesBuilder};
 use tracing::{error, info};
 
-use crate::error_layer::InjectedErrors;
+use crate::layers::{BandwidthLayer, ErrorInjectionLayer, InjectedErrors, LatencyLayer};
 
 // ---
 
@@ -36,7 +37,6 @@ pub struct Server {
 pub struct ServerHandle {
     shutdown: Option<Sender<()>>,
     failed: mpsc::Receiver<String>,
-    _task: tokio::task::JoinHandle<()>,
 
     /// The address clients should connect to.
     connect_addr: SocketAddr,
@@ -74,7 +74,10 @@ impl ServerHandle {
 
 impl Server {
     /// Starts the server, waits for it to be ready, and returns a [`ServerHandle`].
-    pub async fn start(self) -> Result<ServerHandle, ServerError> {
+    pub async fn start(
+        self,
+        async_runtime: &AsyncRuntimeHandle,
+    ) -> Result<ServerHandle, ServerError> {
         let Self {
             addr,
             routes,
@@ -90,7 +93,7 @@ impl Server {
         let injected_errors = InjectedErrors::new();
 
         let injected_errors_for_handle = injected_errors.clone();
-        let task = tokio::spawn(async move {
+        async_runtime.spawn_future(async move {
             let listener = if let Ok(listener) = TcpListener::bind(addr).await {
                 #[expect(clippy::unwrap_used)]
                 let bind_addr = listener.local_addr().unwrap();
@@ -141,8 +144,8 @@ impl Server {
                     re_protos::headers::new_rerun_headers_layer(name, version, is_client)
                 })
                 .layer(re_grpc_server::cors_layer(&cors_allowed_origins))
-                .layer(crate::latency_layer::LatencyLayer::new(artificial_latency))
-                .layer(crate::bandwidth_layer::BandwidthLayer::new(bandwidth_limit))
+                .layer(LatencyLayer::new(artificial_latency))
+                .layer(BandwidthLayer::new(bandwidth_limit))
                 .layer(re_protos::trace_id_layer::TraceIdLayer::new(
                     std::sync::Arc::new(|| {
                         // We inject a dummy trace-id here so that our e2e integration tests
@@ -152,9 +155,7 @@ impl Server {
                         Some(opentelemetry::TraceId::from(DUMMY_TRACE_ID))
                     }),
                 ))
-                .layer(crate::error_layer::ErrorInjectionLayer::new(
-                    injected_errors.clone(),
-                ))
+                .layer(ErrorInjectionLayer::new(injected_errors.clone()))
                 // NOTE: GrpcWebLayer is applied directly to gRPC routes in ServerBuilder::build()
                 // to avoid rejecting regular HTTP requests
                 .into_inner();
@@ -209,7 +210,6 @@ impl Server {
         Ok(ServerHandle {
             shutdown: Some(shutdown_tx),
             failed: failed_rx_for_select,
-            _task: task,
             connect_addr,
             injected_errors: injected_errors_for_handle,
         })

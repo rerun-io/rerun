@@ -2,6 +2,7 @@
 #include "image_format.hpp"
 
 // <CODEGEN_COPY_TO_HEADER>
+#include "../compiler_utils.hpp"
 #include "../image_utils.hpp"
 
 // </CODEGEN_COPY_TO_HEADER>
@@ -41,6 +42,9 @@ namespace rerun {
                   color_model(color_model_),
                   channel_datatype(datatype_) {}
 
+            // GCC 14.4 incorrectly reports disengaged std::optional payloads as maybe-uninitialized.
+            RR_DISABLE_MAYBE_UNINITIALIZED_PUSH
+
             /// How many bytes will this image occupy?
             size_t num_bytes() const {
                 if (pixel_format) {
@@ -49,9 +53,14 @@ namespace rerun {
                     auto cm = color_model.value_or(datatypes::ColorModel::L);
                     auto dt = channel_datatype.value_or(datatypes::ChannelDatatype::U8);
                     auto bits_per_pixel = color_model_channel_count(cm) * datatype_bits(dt);
-                    return (width * height * bits_per_pixel + 7) / 8; // Rounding up
+                    // Widen first: `uint32_t` overflows here, and the result is a buffer length.
+                    const auto num_pixels =
+                        static_cast<size_t>(width) * static_cast<size_t>(height);
+                    return (num_pixels * bits_per_pixel + 7) / 8; // Rounding up
                 }
             }
+
+            RR_DISABLE_MAYBE_UNINITIALIZED_POP
 
             // </CODEGEN_COPY_TO_HEADER>
         };

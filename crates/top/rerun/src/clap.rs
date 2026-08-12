@@ -112,7 +112,10 @@ impl Drop for ServeGuard {
 impl RerunArgs {
     /// Creates a new [`RecordingStream`] according to the CLI parameters.
     #[track_caller] // track_caller so that we can see if we are being called from an official example.
-    pub fn init(&self, application_id: &str) -> anyhow::Result<(RecordingStream, ServeGuard)> {
+    pub fn init(
+        &self,
+        application_id: impl Into<re_sdk::ApplicationId>,
+    ) -> anyhow::Result<(RecordingStream, ServeGuard)> {
         self.init_with_blueprint_opts(application_id, None)
     }
 
@@ -122,7 +125,7 @@ impl RerunArgs {
     #[track_caller]
     pub fn init_with_blueprint(
         &self,
-        application_id: &str,
+        application_id: impl Into<re_sdk::ApplicationId>,
         blueprint: re_sdk::blueprint::Blueprint,
     ) -> anyhow::Result<(RecordingStream, ServeGuard)> {
         let activation = re_sdk::blueprint::BlueprintActivation {
@@ -144,7 +147,7 @@ impl RerunArgs {
     #[track_caller]
     pub fn init_with_default_blueprint(
         &self,
-        application_id: &str,
+        application_id: impl Into<re_sdk::ApplicationId>,
         blueprint: re_sdk::blueprint::Blueprint,
     ) -> anyhow::Result<(RecordingStream, ServeGuard)> {
         let activation = re_sdk::blueprint::BlueprintActivation {
@@ -164,7 +167,7 @@ impl RerunArgs {
     #[track_caller]
     fn init_with_blueprint_opts(
         &self,
-        application_id: &str,
+        application_id: impl Into<re_sdk::ApplicationId>,
         blueprint_opts: Option<re_sdk::blueprint::BlueprintOpts>,
     ) -> anyhow::Result<(RecordingStream, ServeGuard)> {
         let mut builder = RecordingStreamBuilder::new(application_id);

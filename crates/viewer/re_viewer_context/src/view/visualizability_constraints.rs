@@ -147,13 +147,21 @@ impl SingleRequiredComponentConstraint {
                 component_type: incoming_component_type,
             }),
 
-            (false, true) => {
+            (false, true) => extract_nested_fields(incoming_arrow_datatype, |dt| {
+                self.physical_types.contains(dt)
+            })
+            .map(|selectors| DatatypeMatch::PhysicalDatatypeOnly {
+                arrow_datatype: incoming_arrow_datatype.clone(),
+                component_type: incoming_component_type,
+                selectors: selectors.into(),
+            })
+            .or_else(|| {
                 re_log::warn_once!(
                     "Component {incoming_component:?} matched semantic type {:?} but none of the expected physical arrow types {incoming_arrow_datatype:?} for this semantic type.",
                     self.semantic_type,
                 );
                 None
-            }
+            }),
         }
     }
 }

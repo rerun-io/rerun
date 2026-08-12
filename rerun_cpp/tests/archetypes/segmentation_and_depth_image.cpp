@@ -27,17 +27,15 @@ void run_image_tests() {
                                      .value_or_throw();
 
         THEN("no error occurs on image construction from a pointer") {
-            auto image_from_ptr = check_logged_error([&] {
-                return ImageType(data.data(), {10, 10});
-            });
+            auto image_from_ptr =
+                check_logged_error([&] { return ImageType(data.data(), {10, 10}); });
             AND_THEN("serialization succeeds") {
                 test_compare_archetype_serialization(image_from_ptr, reference_image);
             }
         }
         THEN("no error occurs on image construction from a collection") {
-            auto image_from_collection = check_logged_error([&] {
-                return ImageType(rerun::borrow(data), {10, 10});
-            });
+            auto image_from_collection =
+                check_logged_error([&] { return ImageType(rerun::borrow(data), {10, 10}); });
             AND_THEN("serialization succeeds") {
                 test_compare_archetype_serialization(image_from_collection, reference_image);
             }
@@ -45,9 +43,8 @@ void run_image_tests() {
 
         THEN("no error occurs on image construction from an untyped pointer") {
             const void* ptr = reinterpret_cast<const void*>(data.data());
-            auto image_from_ptr = check_logged_error([&] {
-                return ImageType(ptr, {10, 10}, ChannelDatatype::U8);
-            });
+            auto image_from_ptr =
+                check_logged_error([&] { return ImageType(ptr, {10, 10}, ChannelDatatype::U8); });
             AND_THEN("serialization succeeds") {
                 test_compare_archetype_serialization(image_from_ptr, reference_image);
             }

@@ -98,6 +98,6 @@ impl From<mint::Vector2<f64>> for DVec2D {
 impl std::fmt::Display for DVec2D {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let prec = f.precision().unwrap_or(crate::DEFAULT_DISPLAY_DECIMALS);
-        write!(f, "[{:.prec$}, {:.prec$}]", self.x(), self.y(),)
+        write!(f, "[{:.prec$}, {:.prec$}]", self.x(), self.y())
     }
 }

@@ -6,7 +6,7 @@ Generate comparison between examples and their related screenshots.
 This script builds/gather RRDs and corresponding screenshots and displays
 them side-by-side. It pulls from the following sources:
 
-- The screenshots listed in .fbs files (crates/store/re_sdk_types/definitions/rerun/**/*.fbs),
+- The screenshots listed in the type definitions (crates/build/re_type_definitions/rerun/**/*.rs),
   and the corresponding snippets in the docs (docs/snippets/*.rs)
 - The `rerun.io/viewer` examples, as built by the `re_dev_tools`/`build_examples` script.
 
@@ -51,7 +51,7 @@ SNIPPETS_DIR = RERUN_DIR / "docs" / "snippets"
 
 def measure_thumbnail(url: str) -> Any:
     """Downloads `url` and returns its width and height."""
-    response = requests.get(url)
+    response = requests.get(url, timeout=30)
     response.raise_for_status()
     image = Image.open(BytesIO(response.content))
     return image.size
@@ -104,16 +104,16 @@ def build_python_sdk() -> None:
 # ====================================================================================================
 # SNIPPETS
 #
-# We scrape FBS for screenshot URL and generate the corresponding snippets RRD with compare_snippet_output.py
+# We scrape the type definitions for screenshot URLs and generate the corresponding snippets RRD with compare_snippet_output.py
 # ====================================================================================================
 
 
-def extract_snippet_urls_from_fbs() -> dict[str, str]:
-    fbs_path = SCRIPT_DIR_PATH.parent.parent / "crates" / "store" / "re_sdk_types" / "definitions" / "rerun"
+def extract_snippet_urls_from_definitions() -> dict[str, str]:
+    definitions_path = SCRIPT_DIR_PATH.parent.parent / "crates" / "store" / "re_type_definitions" / "rerun"
 
     urls = {}
-    for fbs in fbs_path.glob("**/*.fbs"):
-        for line in fbs.read_text().splitlines():
+    for definition in definitions_path.glob("**/*.rs"):
+        for line in definition.read_text().splitlines():
             if line.startswith(r"/// \example"):
                 name = line.split()[2]
 
@@ -127,7 +127,7 @@ def extract_snippet_urls_from_fbs() -> dict[str, str]:
     return urls
 
 
-SNIPPET_URLS = extract_snippet_urls_from_fbs()
+SNIPPET_URLS = extract_snippet_urls_from_definitions()
 
 
 def build_snippets() -> None:

@@ -219,7 +219,7 @@ pub async fn query_dataset_should_fail(service: impl RerunCloudService) {
 
         match response {
             Ok(_) => {
-                panic!("expected failure with code {expected_code}, but got success ({descr})",);
+                panic!("expected failure with code {expected_code}, but got success ({descr})");
             }
             Err(err) => {
                 assert_eq!(
@@ -247,10 +247,12 @@ fn create_recording_for_query_testing() -> anyhow::Result<TempPath> {
     let tmp_dir = tempfile::tempdir()?;
     let tmp_path = tmp_dir.path().join(format!("{segment_id}.rrd"));
 
-    let rec = RecordingStreamBuilder::new(format!("rerun_example_{segment_id}"))
-        .recording_id(segment_id)
-        .send_properties(false)
-        .save(tmp_path.clone())?;
+    let rec = RecordingStreamBuilder::new(
+        re_log_types::ApplicationId::try_new(format!("rerun_example_{segment_id}")).unwrap(),
+    )
+    .recording_id(segment_id)
+    .send_properties(false)
+    .save(tmp_path.clone())?;
 
     let mut next_chunk_id = next_chunk_id_generator(tuid_prefix);
     let mut next_row_id = next_row_id_generator(tuid_prefix);

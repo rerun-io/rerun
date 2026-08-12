@@ -5,12 +5,14 @@ mod create_table;
 mod dataset_schema;
 mod entries_table;
 mod fetch_chunks;
+mod find_entries_filters;
 mod query_dataset;
 mod query_filter;
 mod query_index_values;
-mod register_asset_layer;
+mod register_asset;
 mod register_segment;
 mod rrd_manifest;
+mod scan_filter;
 mod unregister_segment;
 mod update_entry;
 mod watch_events;
@@ -108,6 +110,16 @@ define_redap_tests! {
     entries_table::list_entries_table,
     fetch_chunks::multi_dataset_fetch_chunk_completeness,
     fetch_chunks::simple_dataset_fetch_chunk_snapshot,
+    find_entries_filters::find_entries_asset_by_id_requires_explicit_kind,
+    find_entries_filters::find_entries_asset_by_name_requires_explicit_kind,
+    find_entries_filters::find_entries_default_excludes_asset_datasets,
+    find_entries_filters::find_entries_entry_kinds_exact,
+    find_entries_filters::find_entries_entry_kinds_multi_kind_name_lookup,
+    find_entries_filters::find_entries_entry_kinds_rejects_unspecified,
+    find_entries_filters::find_entries_ignores_unknown_entry_kinds,
+    find_entries_filters::find_entries_legacy_entry_kind_miss_returns_empty,
+    find_entries_filters::find_entries_legacy_entry_kind_still_works,
+    find_entries_filters::find_entries_rejects_legacy_unspecified,
     query_dataset::query_dataset_should_fail,
     query_dataset::query_dataset_unknown_segment_id_returns_empty,
     query_dataset::query_dataset_consistent_schema_across_timelines,
@@ -116,6 +128,8 @@ define_redap_tests! {
     query_dataset::query_empty_dataset,
     query_dataset::query_simple_dataset,
     query_dataset::query_simple_dataset_with_layers,
+    query_filter::query_dataset_or_of_ranges_fans_out,
+    query_filter::query_dataset_or_with_empty_branch_and_projection,
     query_filter::query_dataset_range_filter_with_and_without_latest_at_fill,
     query_filter::query_dataset_simple_filter,
     query_filter::query_dataset_with_limit,
@@ -126,6 +140,13 @@ define_redap_tests! {
     query_index_values::query_dataset_per_segment_values_validation_rejected,
     query_index_values::query_dataset_per_segment_values_with_chunk_ids_intersects,
     query_index_values::query_dataset_per_segment_values_empty_entity_paths_short_circuits,
+    register_asset::asset_dataset_enforces_segment_limit,
+    register_asset::asset_dataset_enforces_segment_size_limit,
+    register_asset::asset_dataset_rejects_temporal_recording,
+    register_asset::blueprint_dataset_enforces_segment_size_limit,
+    register_asset::deleting_dataset_deletes_asset_dataset,
+    register_asset::get_assets_for_segment_rejects_non_recording_dataset,
+    register_asset::get_assets_for_segment_returns_registered_assets,
     register_segment::register_and_attach_table_blueprint_dataset,
     register_segment::register_and_scan_blueprint_dataset,
     register_segment::register_and_scan_empty_dataset,
@@ -147,6 +168,8 @@ define_redap_tests! {
     register_segment::register_with_dataset_if_duplicate_behavior_overwrite,
     register_segment::register_with_dataset_if_duplicate_behavior_skip,
     register_segment::register_with_prefix,
+    scan_filter::scan_segment_table_filter,
+    scan_filter::scan_dataset_manifest_filter,
     rrd_manifest::segment_id_not_found,
     rrd_manifest::simple_dataset_rrd_manifest,
     rrd_manifest::unregistered_segment,
@@ -158,24 +181,17 @@ define_redap_tests! {
     unregister_segment::unregister_products,
     unregister_segment::unregister_simple,
     unregister_segment::unregister_then_query,
+    update_entry::update_dataset_entry_keeps_asset_dataset,
+    update_entry::update_dataset_entry_rejects_invalid_asset_details,
     update_entry::update_dataset_entry_rejects_invalid_blueprint_details,
+    update_entry::update_dataset_entry_replaces_deleted_asset_dataset,
     update_entry::update_entry_bumps_timestamp,
     update_entry::update_entry_tests,
     update_entry::update_table_entry_blueprint_details,
     update_entry::update_table_entry_rejects_invalid_blueprint_details,
     write_table::write_table,
     ; // Tests that return `anyhow::Result<()>`:
-    ; // OSS-only tests (TODO(RR-4761): implement asset layers on the cloud server):
-    register_asset_layer::asset_layer_name_collision_with_segment_layer_errors,
-    register_asset_layer::query_dataset_asset_chunk_ids_duplicated_across_segments,
-    register_asset_layer::query_dataset_asset_layer_included_in_all_segments,
-    register_asset_layer::register_asset_layer_appears_in_manifest,
-    register_asset_layer::register_asset_layer_coexists_with_segment_layers,
-    register_asset_layer::register_asset_layer_duplicate_error,
-    register_asset_layer::register_asset_layer_duplicate_overwrite,
-    register_asset_layer::reregister_layer_change_class,
-    register_asset_layer::segment_layer_name_collision_with_asset_layer_errors,
-    register_asset_layer::unregister_asset_and_segment_layers,
+    ; // OSS-only tests:
     // TODO(RR-4859): the cloud server returns `Unimplemented` for `WatchEvents`.
     watch_events::watch_events_entry_created,
     watch_events::watch_events_entry_deleted,

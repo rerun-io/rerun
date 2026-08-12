@@ -1,6 +1,7 @@
 ---
 title: Generate segment URLs in dataframes
 order: 80
+description: Generate clickable URLs that open segments in the Viewer
 ---
 
 The [`segment_url`](https://ref.rerun.io/docs/python/stable/common/utilities/#rerun.utilities.datafusion.functions.url_generation.segment_url) DataFusion utility can be used to generate Rerun URLs that are clickable within the viewer.

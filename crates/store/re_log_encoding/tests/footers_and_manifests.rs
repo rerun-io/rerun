@@ -385,7 +385,6 @@ fn footer_interleaved_stores_without_set_store_info() {
             row_id: *RowId::ZERO,
             info: re_log_types::StoreInfo {
                 store_id: store_id_recording.clone(),
-                cloned_from: None,
                 store_source: re_log_types::StoreSource::Unknown,
                 store_version: Some(re_build_info::CrateVersion::new(1, 2, 3)),
             },
@@ -399,6 +398,14 @@ fn footer_interleaved_stores_without_set_store_info() {
     );
 
     let msgs_encoded = Encoder::encode(msgs.map(Ok)).unwrap();
+
+    let store_ids = futures::executor::block_on(re_log_encoding::enumerate_rrd_stores(
+        &bytes::Bytes::from(msgs_encoded.clone()),
+    ))
+    .unwrap();
+    let mut expected_store_ids = vec![store_id_recording.clone(), store_id_blueprint.clone()];
+    expected_store_ids.sort();
+    assert_eq!(store_ids, expected_store_ids);
 
     // Decode the footer and check that we got two separate manifests, each holding the chunks
     // that genuinely belong to it. Pre-fix, the blueprint chunks were merged into the recording's
@@ -466,7 +473,6 @@ fn footer_empty() {
             row_id: *RowId::ZERO,
             info: re_log_types::StoreInfo {
                 store_id: store_id.clone(),
-                cloned_from: None,
                 store_source: re_log_types::StoreSource::Unknown,
                 store_version: Some(re_build_info::CrateVersion::new(1, 2, 3)),
             },
@@ -532,7 +538,6 @@ fn generate_recording(
             row_id: *RowId::ZERO,
             info: re_log_types::StoreInfo {
                 store_id: store_id.clone(),
-                cloned_from: None,
                 store_source: re_log_types::StoreSource::Unknown,
                 store_version: Some(re_build_info::CrateVersion::new(1, 2, 3)),
             },
@@ -670,7 +675,6 @@ fn generate_blueprint(
             row_id: *RowId::ZERO,
             info: re_log_types::StoreInfo {
                 store_id: store_id.clone(),
-                cloned_from: None,
                 store_source: re_log_types::StoreSource::Unknown,
                 store_version: Some(re_build_info::CrateVersion::new(4, 5, 6)),
             },

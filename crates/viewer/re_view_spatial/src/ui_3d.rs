@@ -3,7 +3,6 @@ use egui::{Modifiers, NumExt as _};
 use glam::Vec3;
 use macaw::BoundingBox;
 use re_chunk_store::MissingChunkReporter;
-use re_log_types::Instance;
 use re_renderer::view_builder::{Projection, TargetConfiguration, ViewBuilder};
 use re_renderer::{LineDrawableBuilder, Size};
 use re_sdk_types::blueprint::archetypes::{
@@ -11,7 +10,7 @@ use re_sdk_types::blueprint::archetypes::{
 };
 use re_sdk_types::blueprint::components::{Enabled, GridSpacing};
 use re_sdk_types::components::{ViewCoordinates, Visible};
-use re_tf::{image_view_coordinates, query_view_coordinates_at_closest_ancestor};
+use re_tf::image_view_coordinates;
 use re_ui::{ContextExt as _, Help, IconText, MouseButtonText, UiExt as _, icons};
 use re_view::controls::{
     DRAG_PAN3D_BUTTON, ROLL_MOUSE_ALT, ROLL_MOUSE_MODIFIER, ROTATE3D_BUTTON, RuntimeModifiers,
@@ -19,17 +18,17 @@ use re_view::controls::{
 };
 use re_viewer_context::{
     IdentifiedViewSystem as _, Item, ItemContext, ViewClassExt as _, ViewContext, ViewQuery,
-    ViewSystemExecutionError, ViewerContext, gpu_bridge,
+    ViewSystemExecutionError, ViewerContext, ViewerDiagnostic, ViewerReportSeverity, gpu_bridge,
 };
 use re_viewport_blueprint::ViewProperty;
 
 use super::eye::{Eye, EyeState};
+use crate::SpaceKind;
 use crate::SpatialView3D;
 use crate::eye::find_camera;
 use crate::pinhole_wrapper::PinholeWrapper;
-use crate::ui::{SpatialViewState, create_labels};
-use crate::view_kind::SpatialViewKind;
-use crate::visualizers::{CamerasVisualizerOutput, collect_ui_labels};
+use crate::ui::{SpatialViewState, create_labels, draw_bounding_boxes, draw_origin_axes};
+use crate::visualizers::{Axes, CamerasVisualizerOutput, collect_ui_labels};
 
 // ---
 
@@ -39,24 +38,23 @@ pub struct View3DState {
 
     /// Last known view coordinates.
     /// Used to detect changes in view coordinates, in which case we reset the camera eye.
-    pub scene_view_coordinates: Option<ViewCoordinates>,
+    pub scene_view_coordinates: ViewCoordinates,
+
+    /// Whether this is the first frame. If true don't interpolate camera to anything that seems to have changed.
+    is_first_frame: bool,
 
     eye_interact_fade_in: bool,
     eye_interact_fade_change_time: f64,
-
-    pub show_smoothed_bbox: bool,
-    pub show_per_entity_bbox: bool,
 }
 
 impl Default for View3DState {
     fn default() -> Self {
         Self {
             eye_state: Default::default(),
-            scene_view_coordinates: None,
+            scene_view_coordinates: Default::default(),
+            is_first_frame: true,
             eye_interact_fade_in: false,
             eye_interact_fade_change_time: f64::NEG_INFINITY,
-            show_smoothed_bbox: false,
-            show_per_entity_bbox: false,
         }
     }
 }
@@ -72,11 +70,14 @@ impl View3DState {
         self.eye_state.start_interpolation();
     }
 
-    fn update(&mut self, scene_view_coordinates: Option<ViewCoordinates>) {
+    fn update(&mut self, scene_view_coordinates: ViewCoordinates) {
         // Detect live changes to view coordinates, and interpolate to the new up axis as needed.
-        if scene_view_coordinates != self.scene_view_coordinates {
+        // Don't interpolate on the first frame though: when the view first appears the camera
+        // should start at the right orientation rather than animating into it.
+        if !self.is_first_frame && scene_view_coordinates != self.scene_view_coordinates {
             self.eye_state.start_interpolation();
         }
+        self.is_first_frame = false;
         self.scene_view_coordinates = scene_view_coordinates;
     }
 }
@@ -128,8 +129,10 @@ impl SpatialView3D {
         state: &mut SpatialViewState,
         query: &ViewQuery<'_>,
         mut system_output: re_viewer_context::SystemExecutionOutput,
-    ) -> Result<(), ViewSystemExecutionError> {
+    ) -> Result<re_viewer_context::ViewClassUiOutput, ViewSystemExecutionError> {
         re_tracing::profile_function!();
+
+        let mut view_ui_output = re_viewer_context::ViewClassUiOutput::default();
 
         let highlights = &query.highlights;
         let cameras = system_output.visualizer_data_or_default::<CamerasVisualizerOutput>(
@@ -137,38 +140,42 @@ impl SpatialView3D {
         )?;
         let space_cameras = &cameras.pinhole_cameras;
 
-        let scene_view_coordinates = query_view_coordinates_at_closest_ancestor(
-            query.space_origin,
-            ctx.recording(),
-            &ctx.current_query(),
-        );
-
         let (ui_rect, response) =
             ui.allocate_at_least(ui.available_size(), egui::Sense::click_and_drag());
 
         if !ui_rect.is_positive() {
-            return Ok(()); // protect against problems with zero-sized views
+            return Ok(view_ui_output); // protect against problems with zero-sized views
         }
 
-        let mut state_3d = state.state_3d.clone();
+        let (show_axes, show_bounding_box, view_coordinates) = {
+            let view_context = self.view_context(ctx, query.view_id, state, query.space_origin);
 
-        let view_context = self.view_context(ctx, query.view_id, state, query.space_origin);
+            let spatial_info_property =
+                ViewProperty::from_archetype::<SpatialInformation>(&view_context);
+            let show_axes = **spatial_info_property.component_or_fallback::<Enabled>(
+                &view_context,
+                SpatialInformation::descriptor_show_axes().component,
+            )?;
+            let show_bounding_box = **spatial_info_property.component_or_fallback::<Enabled>(
+                &view_context,
+                SpatialInformation::descriptor_show_bounding_box().component,
+            )?;
+            let mut view_coordinates = spatial_info_property
+                .component_or_fallback::<ViewCoordinates>(
+                    &view_context,
+                    SpatialInformation::descriptor_axes().component,
+                )?;
 
-        let information_property = ViewProperty::from_archetype::<SpatialInformation>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query,
-            query.view_id,
-        );
+            // Validate the view coordinates: gracefully fall back to the default for invalid
+            // (degenerate) ones, and surface warnings/errors to the view's report button.
+            if let Some(report) = validate_view_coordinates(&mut view_coordinates) {
+                view_ui_output = view_ui_output.with_report(report);
+            }
 
-        let show_axes = **information_property.component_or_fallback::<Enabled>(
-            &view_context,
-            SpatialInformation::descriptor_show_axes().component,
-        )?;
-        let show_bounding_box = **information_property.component_or_fallback::<Enabled>(
-            &view_context,
-            SpatialInformation::descriptor_show_bounding_box().component,
-        )?;
-        state_3d.update(scene_view_coordinates);
+            (show_axes, show_bounding_box, view_coordinates)
+        };
+
+        state.state_3d.update(view_coordinates);
 
         let is_selected_view = ctx
             .selection_state()
@@ -179,21 +186,26 @@ impl SpatialView3D {
         let enable_gamepad_navigation =
             ctx.app_options().experimental.gamepad_navigation && is_selected_view;
 
-        let eye = state_3d.eye_state.update(
-            &view_context,
-            &response,
-            space_cameras,
-            &state.bounding_boxes,
-            enable_gamepad_navigation,
-        )?;
-
-        state.state_3d = state_3d;
+        let eye = {
+            let mut state_3d = state.state_3d.clone();
+            let view_context = self.view_context(ctx, query.view_id, state, query.space_origin);
+            let eye = state_3d.eye_state.update(
+                &view_context,
+                &response,
+                space_cameras,
+                &state.bounding_boxes,
+                enable_gamepad_navigation,
+            )?;
+            state.state_3d = state_3d;
+            state.show_bounding_box = show_bounding_box;
+            eye
+        };
 
         // Determine view port resolution and position.
         let resolution_in_pixel =
             gpu_bridge::viewport_resolution_in_pixels(ui_rect, ui.pixels_per_point());
         if resolution_in_pixel[0] == 0 || resolution_in_pixel[1] == 0 {
-            return Ok(());
+            return Ok(view_ui_output);
         }
 
         // Various ui interactions draw additional lines.
@@ -205,27 +217,10 @@ impl SpatialView3D {
         line_builder.reserve_strips(32)?;
         line_builder.reserve_vertices(64)?;
 
-        // Origin gizmo if requested.
-        // TODO(andreas): Move this to the transform3d_arrow scene part.
-        //              As of #2522 state is now longer accessible there, move the property to a context?
         if show_axes {
-            let axis_length = 1.0; // The axes are also a measuring stick
-            crate::visualizers::add_axis_arrows(
-                ctx.tokens(),
-                &mut line_builder,
-                glam::Affine3A::IDENTITY,
-                None,
-                axis_length,
-                re_renderer::OutlineMaskPreference::NONE,
-                Instance::ALL.get(),
-            );
-
-            // If we are showing the axes for the space, then add the space origin to the region of interest, but not the scene bounding box.
-            state
-                .bounding_boxes
-                .region_of_interest_current
-                .extend(glam::Vec3::ZERO);
+            draw_origin_axes(ctx.tokens(), &mut line_builder, state, Axes::Xyz);
         }
+        draw_bounding_boxes(ctx.tokens(), &mut line_builder, state);
 
         // Create labels now since their shapes participate are added to scene.ui for picking.
         let (label_shapes, ui_rects) = create_labels(
@@ -234,7 +229,7 @@ impl SpatialView3D {
             &eye,
             ui,
             highlights,
-            SpatialViewKind::ThreeD,
+            SpaceKind::ThreeD,
         );
 
         let (response, picking_config) = if let Some(pointer_pos_ui) = response.hover_pos() {
@@ -257,7 +252,7 @@ impl SpatialView3D {
                 &system_output,
                 &ui_rects,
                 query,
-                SpatialViewKind::ThreeD,
+                SpaceKind::ThreeD,
             )?
         } else {
             state.previous_picking_result = None;
@@ -288,13 +283,14 @@ impl SpatialView3D {
             picking_config,
         };
 
-        let mut view_builder = ViewBuilder::new(ctx.render_ctx(), target_config)?;
+        let mut view_builder = ViewBuilder::new(
+            ctx.render_ctx(),
+            target_config,
+            query.view_id.render_view_id(),
+        )?;
 
-        let eye_property = ViewProperty::from_archetype::<EyeControls3D>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query,
-            query.view_id,
-        );
+        let eye_property =
+            ViewProperty::from_archetype_for_view::<EyeControls3D>(ctx, query.view_id);
 
         // Track focused entity if any.
         if let Some(focused_item) = ctx.focused_item() {
@@ -394,45 +390,11 @@ impl SpatialView3D {
             );
         }
 
-        // TODO(andreas): Make configurable. Could pick up default radius for this view?
-        let box_line_radius = Size(*re_sdk_types::components::Radius::default().0);
-
-        // TODO(andreas): Make this an enum so the user can choose between showing
-        // the bounding box (all entities), the region of interest, or per-entity bounding boxes.
-        if show_bounding_box {
-            line_builder
-                .batch("scene_bbox_current")
-                .add_box_outline(&state.bounding_boxes.current)
-                .map(|lines| {
-                    lines
-                        .radius(box_line_radius)
-                        .color(ui.tokens().frustum_color)
-                });
-        }
-        if state.state_3d.show_smoothed_bbox {
-            line_builder
-                .batch("scene_region_of_interest_smoothed")
-                .add_box_outline(&state.bounding_boxes.region_of_interest_smoothed)
-                .map(|lines| {
-                    lines
-                        .radius(box_line_radius)
-                        .color(ctx.tokens().frustum_color)
-                });
-        }
-        if state.state_3d.show_per_entity_bbox {
-            let mut batch = line_builder.batch("per_entity_regions_of_interest");
-            for region_of_interest in state.bounding_boxes.region_of_interest_per_entity.values() {
-                batch
-                    .add_box_outline(region_of_interest)
-                    .map(|lines| lines.radius(box_line_radius).color(egui::Color32::YELLOW));
-            }
-        }
-
         show_orbit_eye_center(
             ui.ctx(),
             &mut state.state_3d,
             &mut line_builder,
-            scene_view_coordinates,
+            view_coordinates,
         );
 
         for draw_data in system_output.drain_draw_data() {
@@ -442,11 +404,7 @@ impl SpatialView3D {
         let view_ctx = self.view_context(ctx, query.view_id, state, query.space_origin);
 
         // Optional 3D line grid.
-        let grid_config = ViewProperty::from_archetype::<LineGrid3D>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query,
-            query.view_id,
-        );
+        let grid_config = ViewProperty::from_archetype::<LineGrid3D>(&view_ctx);
         if let Some(draw_data) = Self::setup_grid_3d(&view_ctx, &grid_config)? {
             view_builder.queue_draw(ctx.render_ctx(), draw_data);
         }
@@ -454,11 +412,7 @@ impl SpatialView3D {
         // Commit ui induced lines.
         view_builder.queue_draw(ctx.render_ctx(), line_builder.into_draw_data()?);
 
-        let background = ViewProperty::from_archetype::<Background>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query,
-            query.view_id,
-        );
+        let background = ViewProperty::from_archetype::<Background>(&view_ctx);
         let (background_drawable, clear_color) =
             crate::configure_background(&view_ctx, &background)?;
         if let Some(background_drawable) = background_drawable {
@@ -483,7 +437,7 @@ impl SpatialView3D {
         let painter = ui.painter().with_clip_rect(ui.max_rect());
         painter.extend(label_shapes);
 
-        Ok(())
+        Ok(view_ui_output)
     }
 
     fn setup_grid_3d(
@@ -526,12 +480,42 @@ impl SpatialView3D {
     }
 }
 
+/// Validates the view coordinates of a 3D view, overwrites it if not valid at all.
+pub fn validate_view_coordinates(coordinates: &mut ViewCoordinates) -> Option<ViewerDiagnostic> {
+    match coordinates.handedness() {
+        Ok(re_sdk_types::view_coordinates::Handedness::Right) => None,
+
+        Ok(re_sdk_types::view_coordinates::Handedness::Left) => Some(ViewerDiagnostic {
+            severity: ViewerReportSeverity::Warning,
+            summary: "Unsupported left-handed coordinates".to_owned(),
+            details: Some(format!(
+                "Rerun does not yet support left-handed coordinate systems (found {}). \
+                    See https://github.com/rerun-io/rerun/issues/5032.",
+                coordinates.describe()
+            )),
+        }),
+
+        Err(err) => {
+            *coordinates = ViewCoordinates::default();
+
+            Some(ViewerDiagnostic {
+                severity: ViewerReportSeverity::Error,
+                summary: "Invalid view coordinates".to_owned(),
+                details: Some(format!(
+                    "{err}\nFalling back to the default ({}).",
+                    coordinates.describe()
+                )),
+            })
+        }
+    }
+}
+
 /// Show center of orbit camera when interacting with camera (it's quite helpful).
 fn show_orbit_eye_center(
     egui_ctx: &egui::Context,
     state_3d: &mut View3DState,
     line_builder: &mut LineDrawableBuilder<'_>,
-    scene_view_coordinates: Option<ViewCoordinates>,
+    scene_view_coordinates: ViewCoordinates,
 ) {
     // These are only none at the start or just as the view resets so can
     // skip displaying anything then.
@@ -590,7 +574,7 @@ fn show_orbit_eye_center(
 
         // For the other two axes, try to use the scene view coordinates if available:
         let right = scene_view_coordinates
-            .and_then(|vc| vc.right())
+            .right()
             .map_or(glam::Vec3::X, Vec3::from);
         let forward = up
             .cross(right)
@@ -635,8 +619,14 @@ fn show_projections_from_2d_space(
     ray_color: egui::Color32,
 ) {
     match item_context {
-        ItemContext::TwoD { space_2d, pos } => {
-            if let Some(cam) = cameras.iter().find(|cam| &cam.ent_path == space_2d) {
+        ItemContext::TwoD {
+            space_2d_target_frame,
+            pos,
+        } => {
+            if let Some(cam) = cameras
+                .iter()
+                .find(|cam| &cam.pinhole_child_frame_id == space_2d_target_frame)
+            {
                 // Render a thick line to the actual z value if any and a weaker one as an extension
                 // If we don't have a z value, we only render the thick one.
                 let depth = if 0.0 < pos.z && pos.z.is_finite() {

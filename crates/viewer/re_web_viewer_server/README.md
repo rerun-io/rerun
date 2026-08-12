@@ -16,4 +16,8 @@ This is done automatically with `pixi run rerun-web`.
 
 By default, web viewer assets are embedded at compile time using `include_bytes!`.
 
-When built with `RERUN_TRAILING_WEB_VIEWER=1`, the assets are expected to be appended to the binary via a post-processing step using `scripts/append_web_viewer.py`. This allows parallel building of CLI and web viewer in CI. Binaries built this way will panic if used before the post-processing step completes.
+When built with `RERUN_TRAILING_WEB_VIEWER=1`, the assets are expected to be appended to the binary via a post-processing step using `scripts/append_web_viewer.py`. This allows parallel building of CLI and web viewer in CI. Binaries built this way will fail to create a `WebViewerServer` before the post-processing step completes.
+
+When built with `RERUN_EXTERNAL_WEB_VIEWER=1`, there are no built-in assets at all: they must be loaded at runtime from a zip archive on disk. This is used by Python wheels that ship the assets as `rerun_sdk/web_viewer.zip` instead of embedding them in the extension module.
+
+Independently of how the binary was built, the assets can also be loaded at runtime from a zip archive on disk, via `WebViewerServer::with_archive`.

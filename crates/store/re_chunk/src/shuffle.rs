@@ -74,17 +74,10 @@ impl Chunk {
     }
 
     /// Return all timelines that are not sorted relative to [`crate::RowId`].
-    pub fn unsorted_timelines(&self) -> Vec<TimelineName> {
+    pub fn unsorted_timelines(&self) -> impl Iterator<Item = TimelineName> {
         self.timelines
             .iter()
-            .filter_map(|(name, time_column)| {
-                if time_column.is_sorted() {
-                    None
-                } else {
-                    Some(*name)
-                }
-            })
-            .collect()
+            .filter_map(|(name, time_column)| (!time_column.is_sorted()).then_some(*name))
     }
 
     /// Sort the chunk by [`crate::RowId`], if needed.

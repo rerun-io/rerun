@@ -446,7 +446,10 @@ impl SplitCommand {
                 }
             }
 
-            let Some(cutoff_timeline) = known_timelines.remove(&timeline.as_str().into()) else {
+            let Some(cutoff_timeline) = TimelineName::try_new(timeline)
+                .ok()
+                .and_then(|name| known_timelines.remove(&name))
+            else {
                 anyhow::bail!(
                     "timeline '{timeline}' does not exist in the input recording, available timelines are {}",
                     known_timelines.keys().map(|name| name.as_str()).join(", ")
@@ -677,21 +680,21 @@ impl SplitCommand {
                 // Special cases: transforms and/or pinholes with multiplexed coordinate frames
                 let entity_has_multiplexed_transforms_on_timeline =
                     store.entity_has_component_on_timeline(
-                        cutoff_timeline.name(),
+                        Some(cutoff_timeline.name()),
                         entity,
                         transform_parent_frame_identifier,
                     ) || store.entity_has_component_on_timeline(
-                        cutoff_timeline.name(),
+                        Some(cutoff_timeline.name()),
                         entity,
                         transform_child_frame_identifier,
                     );
                 let entity_has_multiplexed_pinholes_on_timeline =
                     store.entity_has_component_on_timeline(
-                        cutoff_timeline.name(),
+                        Some(cutoff_timeline.name()),
                         entity,
                         pinhole_parent_frame_identifier,
                     ) || store.entity_has_component_on_timeline(
-                        cutoff_timeline.name(),
+                        Some(cutoff_timeline.name()),
                         entity,
                         pinhole_child_frame_identifier,
                     );

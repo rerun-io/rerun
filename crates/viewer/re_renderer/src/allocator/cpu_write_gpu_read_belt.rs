@@ -377,7 +377,11 @@ impl Chunk {
         debug_assert!(end_offset <= self.buffer.size());
 
         let buffer_slice = self.buffer.slice(byte_offset_in_chunk_buffer..end_offset);
-        let write_view = buffer_slice.get_mapped_range_mut();
+        // The chunk buffer is mapped for its entire lifetime and sub-allocated into non-overlapping
+        // ranges, so mapping this range cannot fail.
+        let write_view = buffer_slice
+            .get_mapped_range_mut()
+            .expect("Chunk range is mapped");
         self.unused_offset = end_offset;
 
         CpuWriteGpuReadBuffer {

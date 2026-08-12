@@ -1,11 +1,13 @@
 use std::sync::Arc;
 
+use re_chunk_store::ChunkTrackingMode;
 use re_log_types::EntityPath;
 use re_renderer::external::re_video::VideoLoadError;
 use re_renderer::video::Video;
 use re_sdk_types::Archetype as _;
 use re_sdk_types::archetypes::{AssetVideo, VideoFrameReference};
 use re_sdk_types::components::{Blob, MediaType, Opacity, VideoTimestamp};
+use re_video::player::VideoSliceSource;
 use re_viewer_context::{
     IdentifiedViewSystem, VideoAssetCache, ViewClass as _, ViewContext, ViewContextCollection,
     ViewQuery, ViewSystemExecutionError, ViewerContext, VisualizerExecutionOutput,
@@ -196,15 +198,12 @@ impl VideoFrameReferenceVisualizer {
                         video.data_descr().timescale,
                     );
 
-                    let frame_output =
-                        video.frame_at(ctx.render_ctx(), player_stream_id, video_time, &|source| {
-                            match source {
-                                re_video::VideoSource::Span(span) => {
-                                    &video_buffer[span.range_usize()]
-                                }
-                                re_video::VideoSource::Id { .. } => &[],
-                            }
-                        });
+                    let frame_output = video.frame_at(
+                        ctx.render_ctx(),
+                        player_stream_id,
+                        video_time,
+                        &VideoSliceSource(&video_buffer),
+                    );
 
                     #[expect(clippy::disallowed_methods)] // This is not a hard-coded color.
                     let multiplicative_tint =
@@ -272,6 +271,7 @@ fn latest_at_query_video_from_datastore(
     let query = ctx.current_query();
 
     let results = ctx.recording_engine().cache().latest_at(
+        ChunkTrackingMode::Report,
         &query,
         entity_path,
         AssetVideo::all_component_identifiers(),

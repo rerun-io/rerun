@@ -84,6 +84,9 @@ enum ExternalError {
 
     #[error(transparent)]
     TokenError(#[from] re_auth::TokenError),
+
+    #[error(transparent)]
+    InvalidLayerNameError(#[from] re_types_core::InvalidLayerNameError),
 }
 
 const _: () = assert!(
@@ -219,6 +222,8 @@ impl From<ExternalError> for PyErr {
             ExternalError::TokenError(err) => {
                 PyPermissionError::new_err(format!("Invalid token: {err}"))
             }
+
+            ExternalError::InvalidLayerNameError(err) => PyValueError::new_err(err.to_string()),
         }
     }
 }

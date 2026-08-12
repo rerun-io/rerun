@@ -429,7 +429,7 @@ impl IntoRequest for AuthenticateWithDeviceCode<'_> {
 
     fn into_request(self) -> Result<ehttp::Request, Error> {
         ehttp::Request::post_json(
-            format_args!("{base}/user_management/authenticate", base = *WORKOS_API,),
+            format_args!("{base}/user_management/authenticate", base = *WORKOS_API),
             &self,
         )
         .map_err(Error::Serialize)

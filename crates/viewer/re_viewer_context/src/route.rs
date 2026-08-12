@@ -4,7 +4,6 @@ use re_log_types::{ApplicationId, StoreId, TableId};
 use crate::{Item, RedapEntryKind, open_url::EXAMPLES_ORIGIN};
 
 /// What are we currently showing in the viewer?
-// TODO(RR-3033): This needs to be further cleaned up
 #[derive(Clone, PartialEq, Eq)]
 pub enum Route {
     /// The settings dialog for application-wide configuration.
@@ -23,7 +22,6 @@ pub enum Route {
     /// This includes recordings we're streaming from a Redap server.
     LocalRecording {
         recording_id: StoreId,
-        // TODO(RR-3033): add blueprint id
     },
 
     LocalTable(TableId),
@@ -96,7 +94,8 @@ impl Route {
         }
     }
 
-    // TODO(RR-3033): remove this app-id centric world
+    // TODO(andreas): remove this app-id centric world.
+    // We use this mostly for blueprint association which is very brittle and not very well defined right now. See also RR-3033.
     pub fn app_id(&self) -> Option<&ApplicationId> {
         match self {
             Self::LocalRecording { recording_id } => Some(recording_id.application_id()),

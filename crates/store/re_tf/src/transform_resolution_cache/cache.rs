@@ -132,12 +132,17 @@ impl TransformResolutionCache {
     }
 
     /// Accesses the transform component tracking data for a given timeline.
+    ///
+    /// A `None` timeline (a static-only query) yields the static transforms.
     #[inline]
     pub fn transforms_for_timeline(
         &self,
-        timeline: TimelineName,
+        timeline: impl Into<Option<TimelineName>>,
     ) -> ArcRwLockReadGuard<RawRwLock, CachedTransformsForTimeline> {
-        if let Some(per_timeline) = self.per_timeline.get(&timeline) {
+        if let Some(per_timeline) = timeline
+            .into()
+            .and_then(|timeline| self.per_timeline.get(&timeline))
+        {
             per_timeline.read_arc()
         } else {
             self.static_timeline.read_arc()
@@ -279,7 +284,7 @@ impl TransformResolutionCache {
         debug_assert!(chunk.is_static());
 
         let entity_path = chunk.entity_path();
-        let place_holder_timeline = TimelineName::new("ignored for static chunk");
+        let place_holder_timeline = TimelineName::from("ignored for static chunk");
 
         let transform_child_frame_component =
             archetypes::Transform3D::descriptor_child_frame().component;

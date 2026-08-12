@@ -125,6 +125,7 @@ pub const RERUN_LOGO: Icon = icon_from_path!("../data/icons/rerun_logo.png");
 pub const HELP: Icon = icon_from_path!("../data/icons/help.svg");
 
 pub const PLAY: Icon = icon_from_path!("../data/icons/play.svg");
+pub const PLAYHEAD_NAV: Icon = icon_from_path!("../data/icons/playhead_nav.svg");
 pub const FOLLOW: Icon = icon_from_path!("../data/icons/follow.svg");
 pub const PAUSE: Icon = icon_from_path!("../data/icons/pause.svg");
 pub const CHEVRON: Icon = icon_from_path!("../data/icons/chevron.svg");
@@ -217,6 +218,19 @@ pub const DATASET: Icon = icon_from_path!("../data/icons/dataset.svg");
 pub const RECORDING: Icon = icon_from_path!("../data/icons/recording.svg");
 pub const OPEN_RECORDING: Icon = icon_from_path!("../data/icons/open_recording.svg");
 pub const BLUEPRINT: Icon = icon_from_path!("../data/icons/blueprint.svg");
+
+// These link icons have a blue arrow that wouldn't work with the usual tint we do for light/dark,
+// so we have separate icons for the themes:
+pub const LINK_RECORDING_LIGHT: Icon = icon_from_path!("../data/icons/link_recording_light.svg");
+pub const LINK_RECORDING_DARK: Icon = icon_from_path!("../data/icons/link_recording_dark.svg");
+pub const LINK_DATASET_LIGHT: Icon = icon_from_path!("../data/icons/link_dataset_light.svg");
+pub const LINK_DATASET_DARK: Icon = icon_from_path!("../data/icons/link_dataset_dark.svg");
+pub const LINK_TABLE_LIGHT: Icon = icon_from_path!("../data/icons/link_table_light.svg");
+pub const LINK_TABLE_DARK: Icon = icon_from_path!("../data/icons/link_table_dark.svg");
+pub const LINK_FOLDER_LIGHT: Icon = icon_from_path!("../data/icons/link_folder_light.svg");
+pub const LINK_FOLDER_DARK: Icon = icon_from_path!("../data/icons/link_folder_dark.svg");
+pub const LINK_PROXY_LIGHT: Icon = icon_from_path!("../data/icons/link_proxy_light.svg");
+pub const LINK_PROXY_DARK: Icon = icon_from_path!("../data/icons/link_proxy_dark.svg");
 
 pub const GITHUB: Icon = icon_from_path!("../data/icons/github.svg");
 

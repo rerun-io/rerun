@@ -18,52 +18,21 @@ Example:
 from __future__ import annotations
 
 import argparse
-import io
 import struct
 import sys
-import zipfile
 from pathlib import Path
+
+from create_web_viewer_zip import create_web_viewer_zip
 
 MAGIC = b"RERUNWEB"
 MAGIC_LEN = 8
 OFFSET_LEN = 8
 
 
-def create_web_viewer_zip(web_viewer_dir: Path) -> bytes:
-    """Create a zip archive of the web viewer assets."""
-    required_files = [
-        "index.html",
-        "favicon.ico",
-        "apple-touch-icon.png",
-        "sw.js",
-        "re_viewer.js",
-        "re_viewer_bg.wasm",
-        "signed-in.html",
-    ]
-
-    # Check that all required files exist
-    for filename in required_files:
-        file_path = web_viewer_dir / filename
-        if not file_path.exists():
-            raise FileNotFoundError(f"Required file not found: {file_path}")
-
-    # Create the zip archive in memory
-    zip_buffer = io.BytesIO()
-    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
-        for filename in required_files:
-            file_path = web_viewer_dir / filename
-            zip_file.write(file_path, arcname=filename)
-
-    return zip_buffer.getvalue()
-
-
 def append_web_viewer_to_binary(binary_path: Path, web_viewer_dir: Path) -> None:
     """Append web viewer assets to a binary."""
     if not binary_path.exists():
         raise FileNotFoundError(f"Binary not found: {binary_path}")
-
-    if not web_viewer_dir.is_dir():
-        raise NotADirectoryError(f"Web viewer directory not found: {web_viewer_dir}")
 
     print(f"Creating zip archive from {web_viewer_dir}…")
     zip_data = create_web_viewer_zip(web_viewer_dir)

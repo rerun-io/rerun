@@ -15,9 +15,18 @@ pub fn view_property_ui<A: Archetype + ArchetypeReflectionMarker>(
     ctx: &ViewContext<'_>,
     ui: &mut egui::Ui,
 ) {
-    let view_property =
-        ViewProperty::from_archetype::<A>(ctx.blueprint_db(), ctx.blueprint_query(), ctx.view_id);
-    view_property_ui_impl(ctx, ui, &view_property, None);
+    let view_property = ViewProperty::from_archetype::<A>(ctx);
+    view_property_ui_impl(ctx, ui, &view_property, None, &[]);
+}
+
+/// Display the UI for all components except those listed in `hidden_components`.
+pub fn view_property_ui_with_hidden_components<A: Archetype + ArchetypeReflectionMarker>(
+    ctx: &ViewContext<'_>,
+    ui: &mut egui::Ui,
+    hidden_components: &[ComponentIdentifier],
+) {
+    let view_property = ViewProperty::from_archetype::<A>(ctx);
+    view_property_ui_impl(ctx, ui, &view_property, None, hidden_components);
 }
 
 /// See [`view_property_ui`].
@@ -30,28 +39,20 @@ pub fn view_property_ui_with_redirect<A: Archetype + ArchetypeReflectionMarker>(
     redirect_component: ComponentIdentifier,
     redirect_with_view_id: re_viewer_context::ViewId,
 ) {
-    let view_property =
-        ViewProperty::from_archetype::<A>(ctx.blueprint_db(), ctx.blueprint_query(), ctx.view_id);
+    let view_property = ViewProperty::from_archetype::<A>(ctx);
     view_property_ui_impl(
         ctx,
         ui,
         &view_property,
         Some(&RedirectComponentView {
             component: redirect_component,
-            ctx: ViewContext {
-                viewer_ctx: ctx.viewer_ctx,
-                view_id: redirect_with_view_id,
-                view_class_identifier: ctx.view_class_identifier,
-                space_origin: ctx.space_origin,
-                view_state: ctx.view_state,
-                query_result: &re_viewer_context::DataQueryResult::default(),
-            },
-            view_property: ViewProperty::from_archetype::<A>(
-                ctx.blueprint_db(),
-                ctx.blueprint_query(),
+            ctx: ctx.with_view_id(redirect_with_view_id),
+            view_property: ViewProperty::from_archetype_for_view::<A>(
+                ctx.viewer_ctx,
                 redirect_with_view_id,
             ),
         }),
+        &[],
     );
 }
 
@@ -66,6 +67,7 @@ fn view_property_ui_impl(
     ui: &mut egui::Ui,
     property: &ViewProperty,
     override_component_view: Option<&RedirectComponentView<'_>>,
+    hidden_components: &[ComponentIdentifier],
 ) {
     let reflection = ctx.viewer_ctx.reflection();
     let Some(archetype) = reflection.archetypes.get(&property.archetype_name) else {
@@ -86,19 +88,22 @@ fn view_property_ui_impl(
     // Happens in some cases, like for the `NearClipPlane` archetype that
     // only has one component which is also called `NearClipPlane`.
     if archetype.fields.len() == 1 && archetype_display_name == archetype.fields[0].display_name {
-        view_property_component_ui(
-            &query_ctx,
-            ui,
-            property,
-            archetype_display_name,
-            &archetype.fields[0],
-        );
+        let field = &archetype.fields[0];
+        let component = field
+            .component_descriptor(property.archetype_name)
+            .component;
+        if !hidden_components.contains(&component) {
+            view_property_component_ui(&query_ctx, ui, property, archetype_display_name, field);
+        }
     } else {
         let sub_prop_ui = |ui: &mut egui::Ui| {
             for field in &archetype.fields {
                 let component = field
                     .component_descriptor(property.archetype_name)
                     .component;
+                if hidden_components.contains(&component) {
+                    continue;
+                }
 
                 let (query_ctx, property) = if let Some(override_component_view) =
                     &override_component_view

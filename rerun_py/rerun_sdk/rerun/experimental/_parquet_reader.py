@@ -11,6 +11,8 @@ from ._lazy_chunk_stream import LazyChunkStream
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from ._index_column import IndexColumn
+
 
 class ParquetReader:
     """
@@ -25,26 +27,42 @@ class ParquetReader:
     Example
     -------
     ```python
-    import rerun as rr
-    from rerun.experimental import ParquetReader, DeriveLens, Selector
-        store = (
-        ParquetReader(path, index_columns=[("frame_index", "sequence")])
-        .stream()
+    from rerun.experimental import ParquetReader, DeriveLens, IndexColumn
+
+    store = (
+        ParquetReader(path)
+        .stream(index_columns=[IndexColumn.sequence("frame_index")])
         .lenses(
-            [DeriveLens("data").to_component(rr.Scalars.descriptor_scalars(), Selector(".x"))],
-            content="/obs",
+            [
+                DeriveLens("data", output_entity="/pose")
+                .to_translation("pos_x", "pos_y", "pos_z")
+                .to_quaternion("quat_x", "quat_y", "quat_z", "quat_w")
+            ],
+            content="/transform",
         )
         .collect()
     )
     ```
 
+    Parameters
+    ----------
+    path:
+        Path to the `.parquet` file.
+
+    Raises
+    ------
+    FileNotFoundError
+        If `path` does not exist.
+
     """
 
     _internal: ParquetReaderInternal
 
-    def __init__(
+    def __init__(self, path: str | Path) -> None:
+        self._internal = ParquetReaderInternal(str(path))
+
+    def stream(
         self,
-        path: str | Path,
         *,
         entity_path_prefix: str | None = None,
         column_grouping: str = "prefix",
@@ -52,15 +70,13 @@ class ParquetReader:
         prefixes: list[str] | None = None,
         use_structs: bool = True,
         static_columns: list[str] | None = None,
-        index_columns: list[tuple[str, str] | tuple[str, str, str]] | None = None,
-    ) -> None:
+        index_columns: list[IndexColumn] | None = None,
+    ) -> LazyChunkStream:
         """
-        Load a parquet file with configurable column grouping.
+        Return a lazy stream over all chunks in the Parquet file.
 
         Parameters
         ----------
-        path:
-            Path to the `.parquet` file.
         entity_path_prefix:
             Optional prefix for all entity paths (e.g. `"/world"`).
         column_grouping:
@@ -87,44 +103,28 @@ class ParquetReader:
             emitted once as timeless/static data. An error is raised if a
             listed column contains varying values.
         index_columns:
-            List of columns to use as timeline indices. Each entry is a tuple:
-            `(name, type)` or `(name, type, unit)`.
-
-            The `type` specifies the timeline kind:
-
-            - `"timestamp"`: time since epoch
-            - `"duration"`: elapsed time
-            - `"sequence"`: ordinal integer index
-
-            The `unit` describes what the raw integer values in the column
-            represent (not a desired output unit). Rerun stores all timestamps
-            in nanoseconds internally, so values are scaled accordingly.
-            Supported: `"ns"` (default), `"us"`, `"ms"`, `"s"`.
-            Ignored for `"sequence"` type.
+            Columns to use as timeline indices, each built with
+            [`IndexColumn`][rerun.experimental.IndexColumn], e.g.
+            `IndexColumn.timestamp("ts", input_unit="ms")` or
+            `IndexColumn.sequence("frame_index")`.
 
             When omitted, a synthetic `row_index` sequence timeline is
             generated automatically (one entry per row).
 
         """
-        # Normalize index_columns: pad 2-tuples to 3-tuples with None for the unit
-        normalized_index = (
-            [(t[0], t[1], t[2] if len(t) > 2 else None) for t in index_columns] if index_columns is not None else None
+        return LazyChunkStream(
+            self._internal.stream(
+                entity_path_prefix=entity_path_prefix,
+                column_grouping=column_grouping,
+                delimiter=delimiter,
+                prefixes=prefixes,
+                use_structs=use_structs,
+                static_columns=static_columns,
+                index_columns=(
+                    [ic._as_internal_tuple() for ic in index_columns] if index_columns is not None else None
+                ),
+            )
         )
-
-        self._internal = ParquetReaderInternal(
-            str(path),
-            entity_path_prefix=entity_path_prefix,
-            column_grouping=column_grouping,
-            delimiter=delimiter,
-            prefixes=prefixes,
-            use_structs=use_structs,
-            static_columns=static_columns,
-            index_columns=normalized_index,
-        )
-
-    def stream(self) -> LazyChunkStream:
-        """Return a lazy stream over all chunks in the Parquet file."""
-        return LazyChunkStream(self._internal.stream())
 
     @property
     def path(self) -> Path:

@@ -8,6 +8,7 @@ use re_sdk_types::datatypes;
 use re_test_context::TestContext;
 use re_test_context::external::egui_kittest::SnapshotOptions;
 use re_test_viewport::TestContextExt as _;
+use re_video::player::VideoSliceSource;
 use re_video::{VideoCodec, VideoDataDescription};
 use re_viewer_context::{TimeControlCommand, ViewClass as _};
 use re_viewport_blueprint::{ViewBlueprint, ViewProperty};
@@ -110,15 +111,16 @@ fn snapshot_options_for_codec(codec: &VideoCodec, viewport_size: egui::Vec2) -> 
     match codec {
         // Despite version pinning, ffmpeg's results are quite different depending on the platform
         // and seemingly even between runs!
+        // These are nondeterministic even on CI, so we don't use `strict_on_ci` here.
         VideoCodec::H264 | VideoCodec::H265 | VideoCodec::VP8 | VideoCodec::VP9 => {
-            SnapshotOptions::new()
+            re_ui::testing::default_snapshot_options_for_3d(viewport_size)
                 .threshold(2.2)
-                .failed_pixel_count_threshold(300)
+                .max_failed_pixels(300)
         }
         // AV1 has this problem as well but to a lesser extent.
-        VideoCodec::AV1 => SnapshotOptions::new()
+        VideoCodec::AV1 => re_ui::testing::default_snapshot_options_for_3d(viewport_size)
             .threshold(1.2)
-            .failed_pixel_count_threshold(100),
+            .max_failed_pixels(100),
 
         VideoCodec::ImageSequence(_) => {
             re_ui::testing::default_snapshot_options_for_3d(viewport_size)
@@ -219,15 +221,7 @@ fn test_video(video_type: VideoType, codec: &VideoCodec) {
                             &sample
                                 .sample()
                                 .unwrap()
-                                .get(
-                                    &|source| match source {
-                                        re_video::VideoSource::Span(span) => {
-                                            &blob_bytes[span.range_usize()]
-                                        }
-                                        re_video::VideoSource::Id { .. } => &[],
-                                    },
-                                    sample_idx,
-                                )
+                                .get(&VideoSliceSource(blob_bytes), sample_idx)
                                 .unwrap(),
                             &mut annexb_stream_state,
                         )
@@ -254,15 +248,7 @@ fn test_video(video_type: VideoType, codec: &VideoCodec) {
                             &sample
                                 .sample()
                                 .unwrap()
-                                .get(
-                                    &|source| match source {
-                                        re_video::VideoSource::Span(span) => {
-                                            &blob_bytes[span.range_usize()]
-                                        }
-                                        re_video::VideoSource::Id { .. } => &[],
-                                    },
-                                    sample_idx,
-                                )
+                                .get(&VideoSliceSource(blob_bytes), sample_idx)
                                 .unwrap(),
                             &mut annexb_stream_state,
                         )
@@ -274,15 +260,7 @@ fn test_video(video_type: VideoType, codec: &VideoCodec) {
                         let chunk = sample
                             .sample()
                             .unwrap()
-                            .get(
-                                &|source| match source {
-                                    re_video::VideoSource::Span(span) => {
-                                        &blob_bytes[span.range_usize()]
-                                    }
-                                    re_video::VideoSource::Id { .. } => &[],
-                                },
-                                sample_idx,
-                            )
+                            .get(&VideoSliceSource(blob_bytes), sample_idx)
                             .unwrap();
                         let sample_bytes = video_data_description
                             .sample_data_in_stream_format(&chunk)
@@ -318,9 +296,9 @@ fn test_video(video_type: VideoType, codec: &VideoCodec) {
         ));
 
         // Set a background color other than black so we can see the effect of transparency on errors & lack thereof on the video.
-        let property = ViewProperty::from_archetype::<
+        let property = ViewProperty::from_archetype_for_view::<
             re_sdk_types::blueprint::archetypes::Background,
-        >(ctx.blueprint_db(), ctx.blueprint_query, view_id);
+        >(ctx, view_id);
         property.save_blueprint_component(
             ctx,
             &re_sdk_types::blueprint::archetypes::Background::descriptor_kind(),

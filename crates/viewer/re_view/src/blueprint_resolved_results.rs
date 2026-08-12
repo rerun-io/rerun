@@ -16,7 +16,8 @@ use crate::{
     chunks_with_component::{ChunksWithComponent, MaybeChunksWithComponent},
 };
 
-// ---
+pub type ComponentSourcesMap =
+    IntMap<ComponentIdentifier, Result<ComponentSourceKind, ComponentMappingError>>;
 
 /// Wrapper that contains the results of a latest-at query with possible overrides.
 ///
@@ -31,8 +32,7 @@ pub struct BlueprintResolvedLatestAtResults<'a> {
 
     pub(crate) query_context: QueryContext<'a>,
 
-    pub(crate) component_sources:
-        IntMap<ComponentIdentifier, Result<ComponentSourceKind, ComponentMappingError>>,
+    pub(crate) component_sources: ComponentSourcesMap,
 
     /// Hash of mappings applied to [`Self::store_results`].
     pub(crate) component_indices_hash: Hash64,
@@ -110,8 +110,7 @@ pub struct BlueprintResolvedRangeResults<'a> {
 
     pub(crate) query_context: QueryContext<'a>,
 
-    pub(crate) component_sources:
-        IntMap<ComponentIdentifier, Result<ComponentSourceKind, ComponentMappingError>>,
+    pub(crate) component_sources: ComponentSourcesMap,
 
     /// Hash of mappings applied to [`Self::store_results`].
     pub(crate) component_mappings_hash: Hash64,
@@ -310,7 +309,10 @@ pub enum BlueprintResolvedResults<'a> {
 impl BlueprintResolvedResults<'_> {
     pub fn timeline(&self) -> re_log_types::TimelineName {
         match self {
-            Self::LatestAt(query, _) => query.timeline(),
+            Self::LatestAt(query, _) => query.timeline().unwrap_or_else(|| {
+                re_log::error_once!("Blueprint latest-at query unexpectedly missing a timeline");
+                re_log_types::TimelineName::log_time()
+            }),
             Self::Range(query, _) => *query.timeline(),
         }
     }

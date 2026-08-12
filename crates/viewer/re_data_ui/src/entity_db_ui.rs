@@ -90,8 +90,10 @@ impl crate::AppUi for EntityDb {
             }
         }
 
-        if cfg!(debug_assertions) && !ctx.is_test {
-            ui.collapsing_header("Debug info", true, |ui| {
+        #[cfg(debug_assertions)]
+        if !ctx.is_test {
+            let title = re_ui::debug_only::with_debug_only_badge(ui.style(), "Debug info");
+            ui.collapsing_header(title, true, |ui| {
                 debug_ui(ui, self);
             });
         }
@@ -122,12 +124,11 @@ fn grid_content_ui(ctx: &AppContext<'_>, db: &EntityDb, ui: &mut egui::Ui, ui_la
     {
         let re_log_types::StoreInfo {
             store_id,
-            cloned_from,
             store_source,
             store_version,
         } = store_info;
 
-        if let Some(cloned_from) = cloned_from {
+        if let Some(cloned_from) = db.cloned_from() {
             ui.grid_left_hand_label("Clone of");
             crate::item_ui::store_id_button_ui(ctx, ui, cloned_from, ui_layout);
             ui.end_row();
@@ -305,7 +306,7 @@ fn grid_content_ui(ctx: &AppContext<'_>, db: &EntityDb, ui: &mut egui::Ui, ui_la
             chunk_max_rows_if_unsorted,
         } = db.storage_engine().store().config();
 
-        ui.grid_left_hand_label("Compaction");
+        ui.grid_left_hand_label("Compaction config");
         ui.label(format!(
             "{} rows ({} if unsorted) or {}",
             re_format::format_uint(chunk_max_rows),
@@ -359,8 +360,8 @@ fn grid_content_ui(ctx: &AppContext<'_>, db: &EntityDb, ui: &mut egui::Ui, ui_la
     }
 }
 
+#[cfg(debug_assertions)]
 fn debug_ui(ui: &mut egui::Ui, db: &EntityDb) {
-    ui.weak("(only visible in debug builds)");
     egui::Grid::new("debug-info").show(ui, |ui| {
         if let Some(manifest) = db.rrd_manifest_index().manifest() {
             ui.label("Entities");
@@ -375,7 +376,7 @@ fn debug_ui(ui: &mut egui::Ui, db: &EntityDb) {
         ui.end_row();
 
         ui.label("Connection");
-        ui.label(format!("{:?}", db.redap_connection_state()));
+        ui.label(format!("{:?}", db.redap_connection_state())); // NOLINT: debug-only UI
         ui.end_row();
 
         ui.label("Physical chunks");

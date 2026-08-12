@@ -8,14 +8,13 @@ use std::str::FromStr as _;
 use ahash::HashMap;
 use arrow::array::RecordBatch;
 use itertools::Itertools as _;
+use re_async::AsyncRuntimeHandle;
 use re_log::ResultExt as _;
 use re_log_channel::{LogSender, RecordingOpenBehavior};
-use re_log_types::{TableId, TableMsg};
+use re_log_types::{TableId, TableMsg, TimelineName};
 use re_memory::AccountingAllocator;
 use re_sdk_types::blueprint::components::PlayState;
-use re_viewer_context::{
-    AsyncRuntimeHandle, SystemCommand, SystemCommandSender as _, TimeControlCommand, open_url,
-};
+use re_viewer_context::{SystemCommand, SystemCommandSender as _, TimeControlCommand, open_url};
 use serde::Deserialize;
 use wasm_bindgen::prelude::*;
 
@@ -192,15 +191,11 @@ impl WebHandle {
 
     /// Add a new receiver streaming data from the given url.
     ///
-    /// If `follow` is `true`, and the url is an HTTP source or file path,
-    /// the viewer will open the stream
-    /// in `Following` mode rather than `Playing` mode.
-    ///
     /// Websocket streams are always opened in `Following` mode.
     ///
     /// It is an error to open a channel twice with the same id.
     #[wasm_bindgen]
-    pub fn add_receiver(&self, url: &str, follow: Option<bool>) {
+    pub fn add_receiver(&self, url: &str) {
         let Some(app) = self.runner.app_mut::<crate::App>() else {
             return;
         };
@@ -210,8 +205,6 @@ impl WebHandle {
                 url.open(
                     &app.egui_ctx,
                     &open_url::OpenUrlOptions {
-                        // TODO(andreas): should follow be part of the fragments?
-                        follow: follow.unwrap_or(false),
                         recording_open_behavior: RecordingOpenBehavior::OpenAndSelect,
                         show_loader: true,
                     },
@@ -448,10 +441,15 @@ impl WebHandle {
             return;
         };
 
+        let Some(timeline_name) = TimelineName::try_new(timeline_name).ok_or_log_error_once()
+        else {
+            return;
+        };
+
         app.command_sender
             .send_system(SystemCommand::TimeControlCommands {
                 store_id: recording_id,
-                time_commands: vec![TimeControlCommand::SetActiveTimeline(timeline_name.into())],
+                time_commands: vec![TimeControlCommand::SetActiveTimeline(timeline_name)],
             });
 
         app.egui_ctx.request_repaint();
@@ -466,8 +464,10 @@ impl WebHandle {
         let store_id = store_id_from_recording_id(hub, recording_id)?;
         let time_ctrl = app.state.time_control(&store_id)?;
 
+        let timeline_name = TimelineName::try_new(timeline_name).ok_or_log_error_once()?;
+
         time_ctrl
-            .time_for_timeline(timeline_name.into())
+            .time_for_timeline(timeline_name)
             .map(|v| v.as_f64())
     }
 
@@ -486,11 +486,16 @@ impl WebHandle {
             return;
         };
 
+        let Some(timeline_name) = TimelineName::try_new(timeline_name).ok_or_log_error_once()
+        else {
+            return;
+        };
+
         app.command_sender
             .send_system(SystemCommand::TimeControlCommands {
                 store_id: recording_id,
                 time_commands: vec![
-                    TimeControlCommand::SetActiveTimeline(timeline_name.into()),
+                    TimeControlCommand::SetActiveTimeline(timeline_name),
                     TimeControlCommand::SetTime(time.into()),
                 ],
             });
@@ -519,7 +524,11 @@ impl WebHandle {
             return JsValue::null();
         };
 
-        let Some(time_range) = recording.time_range_for(&timeline_name.into()) else {
+        let Some(timeline_name) = TimelineName::try_new(timeline_name).ok_or_log_error_once()
+        else {
+            return JsValue::null();
+        };
+        let Some(time_range) = recording.time_range_for(&timeline_name) else {
             return JsValue::null();
         };
 
@@ -762,9 +771,7 @@ fn create_app(
                 let Some(event) = serde_json::to_string(&event).ok_or_log_error() else {
                     return;
                 };
-                on_event
-                    .call1(&JsValue::from_str(&event))
-                    .ok_or_log_js_error();
+                on_event.call1(&JsValue::from_str(&event)).ok_or_log_error();
             }) as crate::event::ViewerEventCallback
         }),
 
@@ -807,7 +814,7 @@ fn create_app(
     );
 
     if enable_history {
-        install_popstate_listener(&mut app).ok_or_log_js_error();
+        install_popstate_listener(&mut app).ok_or_log_error();
     }
 
     if let Some(manifest_url) = manifest_url {
@@ -821,7 +828,6 @@ fn create_app(
                     url.open(
                         &app.egui_ctx,
                         &open_url::OpenUrlOptions {
-                            follow: false,
                             recording_open_behavior: RecordingOpenBehavior::OpenAndSelect,
                             show_loader: true,
                         },

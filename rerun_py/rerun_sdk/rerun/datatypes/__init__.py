@@ -45,6 +45,12 @@ from .rotation_axis_angle import (
     RotationAxisAngleBatch,
     RotationAxisAngleLike,
 )
+from .spherical_harmonics3rgb import (
+    SphericalHarmonics3Rgb,
+    SphericalHarmonics3RgbArrayLike,
+    SphericalHarmonics3RgbBatch,
+    SphericalHarmonics3RgbLike,
+)
 from .tensor_buffer import TensorBuffer, TensorBufferArrayLike, TensorBufferBatch, TensorBufferLike
 from .tensor_data import TensorData, TensorDataArrayLike, TensorDataBatch, TensorDataLike
 from .tensor_dimension_index_selection import (
@@ -81,6 +87,7 @@ from .vec3d import Vec3D, Vec3DArrayLike, Vec3DBatch, Vec3DLike
 from .vec4d import Vec4D, Vec4DArrayLike, Vec4DBatch, Vec4DLike
 from .video_timestamp import VideoTimestamp, VideoTimestampArrayLike, VideoTimestampBatch, VideoTimestampLike
 from .view_coordinates import ViewCoordinates, ViewCoordinatesArrayLike, ViewCoordinatesBatch, ViewCoordinatesLike
+from .view_dir import ViewDir, ViewDirArrayLike, ViewDirBatch, ViewDirLike
 from .visible_time_range import VisibleTimeRange, VisibleTimeRangeArrayLike, VisibleTimeRangeBatch, VisibleTimeRangeLike
 
 __all__ = [
@@ -196,6 +203,10 @@ __all__ = [
     "RotationAxisAngleArrayLike",
     "RotationAxisAngleBatch",
     "RotationAxisAngleLike",
+    "SphericalHarmonics3Rgb",
+    "SphericalHarmonics3RgbArrayLike",
+    "SphericalHarmonics3RgbBatch",
+    "SphericalHarmonics3RgbLike",
     "TensorBuffer",
     "TensorBufferArrayLike",
     "TensorBufferBatch",
@@ -280,6 +291,10 @@ __all__ = [
     "ViewCoordinatesArrayLike",
     "ViewCoordinatesBatch",
     "ViewCoordinatesLike",
+    "ViewDir",
+    "ViewDirArrayLike",
+    "ViewDirBatch",
+    "ViewDirLike",
     "VisibleTimeRange",
     "VisibleTimeRangeArrayLike",
     "VisibleTimeRangeBatch",

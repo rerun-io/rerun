@@ -88,6 +88,9 @@ pub enum CodecError {
 
     #[error("Chunk {chunk_id} not found in manifest")]
     ChunkNotInManifest { chunk_id: re_chunk::ChunkId },
+
+    #[error("Invalid timeline name: {0}")]
+    InvalidTimelineName(#[from] re_log_types::InvalidTimelineNameError),
 }
 
 const _: () = assert!(
@@ -112,6 +115,17 @@ impl From<ext::StoreIdMissingApplicationIdError> for CodecError {
         Self::StoreIdMissingApplicationId {
             store_kind: value.store_kind,
             recording_id: value.recording_id,
+        }
+    }
+}
+
+impl From<ext::StoreIdFromProtoError> for CodecError {
+    fn from(value: ext::StoreIdFromProtoError) -> Self {
+        match value {
+            ext::StoreIdFromProtoError::MissingApplicationId(err) => err.into(),
+            ext::StoreIdFromProtoError::InvalidApplicationId(err) => {
+                re_protos::TypeConversionError::from(err).into()
+            }
         }
     }
 }

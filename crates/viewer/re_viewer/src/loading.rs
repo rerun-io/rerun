@@ -19,10 +19,7 @@ pub fn load_blueprint_file(path: &std::path::Path) -> Option<StoreBundle> {
 
         let file = std::fs::File::open(path)?;
         let reader = std::io::BufReader::new(file);
-        let data_source = re_log_channel::LogSource::File {
-            path: path.into(),
-            follow: false,
-        };
+        let data_source = re_log_channel::LogSource::File { path: path.into() };
 
         Ok(StoreBundle::from_rrd(reader, &data_source)?)
     }

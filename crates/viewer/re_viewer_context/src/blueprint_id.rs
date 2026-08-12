@@ -192,6 +192,13 @@ macro_rules! define_blueprint_id_type {
 define_blueprint_id_type!(ViewId, ViewIdRegistry, "view");
 define_blueprint_id_type!(ContainerId, ContainerIdRegistry, "container");
 
+impl ViewId {
+    /// Returns the renderer identity corresponding to this blueprint view.
+    pub fn render_view_id(self) -> re_renderer::ViewBuilderId {
+        re_renderer::ViewBuilderId::new(re_log_types::hash::Hash64::hash(self.id).hash64())
+    }
+}
+
 // ----------------------------------------------------------------------------
 // Builtin `ViewId`s.
 

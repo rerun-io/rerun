@@ -1,6 +1,7 @@
 ---
 title: Set up a Rust project
 order: 300
+description: Bootstrap a Cargo project with the rerun crate
 ---
 
 You should have already [installed the Rust SDK](../install-rerun/rust.md).

@@ -1,4 +1,4 @@
-use re_chunk_store::{LatestAtQuery, RangeQuery, RowId};
+use re_chunk_store::{ChunkTrackingMode, LatestAtQuery, RangeQuery, RowId};
 use re_log_types::{EntityPath, TimeInt};
 use re_sdk_types::archetypes::Clear;
 use re_viewer_context::ViewContext;
@@ -27,6 +27,7 @@ pub fn collect_recursive_clears(
     // Bootstrap: pick up any `Clear` in effect at the start of the visible range.
     {
         let results = ctx.recording_engine().cache().latest_at(
+            ChunkTrackingMode::Report,
             &LatestAtQuery::new(query.timeline, query.range.min()),
             &clear_entity_path,
             [clear_descriptor.component],
@@ -52,6 +53,7 @@ pub fn collect_recursive_clears(
 
     loop {
         let results = ctx.recording_engine().cache().range(
+            re_chunk_store::ChunkTrackingMode::Report,
             query,
             &clear_entity_path,
             [clear_descriptor.component],

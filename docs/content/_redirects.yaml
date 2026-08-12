@@ -81,6 +81,8 @@ reference/mcap/layers-explained: concepts/logging-and-ingestion/mcap/decoders-ex
 reference/mcap/decoders-explained: concepts/logging-and-ingestion/mcap/decoders-explained
 reference/mcap/message-formats: concepts/logging-and-ingestion/mcap/message-formats
 reference/migration-0-9: reference/migration/migration-0-9
+reference/migration/migration-0-34: changelog/changeset-0-34
+reference/migration/migration-0-35: changelog/changeset-0-35
 reference/sdk-micro-batching: reference/sdk/micro-batching
 reference/sdk-operating-modes: reference/sdk/operating-modes
 reference/video: concepts/logging-and-ingestion/video
@@ -89,6 +91,7 @@ reference/video: concepts/logging-and-ingestion/video
 howto/build-a-blueprint-programmatically: howto/visualization/build-a-blueprint-programmatically
 howto/callbacks: howto/visualization/callbacks
 howto/configure-viewer-through-code: getting-started/configure-the-viewer/navigating-the-viewer#programmatic-blueprints
+howto/logging-and-ingestion/convert-existing-data: concepts/logging-and-ingestion/chunk-processing-api
 howto/dataframe-api: howto/query-and-transform/get-data-out
 howto/embed-rerun-viewer: howto/integrations/embed-web
 howto/fixed-window-plot: howto/visualization/fixed-window-plot
@@ -120,3 +123,13 @@ howto/extend/extend-ui: howto/visualization/extend-ui
 # Howto - train section moves
 howto/integrations/dataloader: howto/train/dataloader
 howto/query-and-transform/lerobot_export: howto/train/lerobot_export
+
+# Changelog - 0.36 upcoming entries merged into the release changeset
+changelog/upcoming/application-id-entry-name-restrictions: changelog/changeset-0-36#entry-name-restrictions-now-apply-to-application-ids
+changelog/upcoming/configurable-3d-view-axes: changelog/changeset-0-36#configurable-axes-for-3d-views
+changelog/upcoming/experimental-gaussian-splats-3d: changelog/changeset-0-36#experimental-3d-gaussian-splat-support
+changelog/upcoming/experimental-viewer-catalog-large-web-files: changelog/changeset-0-36#experimental-viewer-catalog-larger-than-ram-files-on-the-web
+changelog/upcoming/grpc-server-sink-multi-sink: changelog/changeset-0-36#multi-sink-support-for-grpcserversink
+changelog/upcoming/improved-viewer-timeline-navigation: changelog/changeset-0-36#improved-viewer-timeline-navigation
+changelog/upcoming/mcap-info-and-check: changelog/changeset-0-36#better-mcap-file-introspection-via-cli-and-python
+changelog/upcoming/parquet-reader-stream-options: changelog/changeset-0-36#parquetreader-loading-options-moved-to-stream

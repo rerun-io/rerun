@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use re_chunk::RowId;
 use re_chunk_store::external::re_chunk::Chunk;
-use re_chunk_store::{ChunkStore, ChunkStoreSubscriber as _, LatestAtQuery};
+use re_chunk_store::{ChunkStore, ChunkStoreSubscriber as _, ChunkTrackingMode, LatestAtQuery};
 use re_log_types::EntityPath;
 use re_log_types::build_frame_nr;
 use re_log_types::example_components::{MyColor, MyPoint, MyPoints};
@@ -36,7 +36,12 @@ fn simple_query() {
     let query = LatestAtQuery::new(*timepoint[0].0.name(), timepoint[0].1);
     let component_points = MyPoints::descriptor_points().component;
 
-    let latest_all_results = caches.latest_all(&query, &entity_path.into(), [component_points]);
+    let latest_all_results = caches.latest_all(
+        ChunkTrackingMode::PanicOnMissing,
+        &query,
+        &entity_path.into(),
+        [component_points],
+    );
     assert!(latest_all_results.missing_virtual.is_empty());
 
     // With exactly one row per component, try_as_latest_at should succeed
@@ -45,7 +50,12 @@ fn simple_query() {
     similar_asserts::assert_eq!(points1, points);
 
     re_log::debug_assert_eq!(
-        caches.latest_at(&query, &entity_path.into(), [component_points]),
+        caches.latest_at(
+            ChunkTrackingMode::PanicOnMissing,
+            &query,
+            &entity_path.into(),
+            [component_points]
+        ),
         latest_at_results,
     );
 }
@@ -104,13 +114,23 @@ fn multiple_rows_same_timestamp() {
     let component_colors = MyPoints::descriptor_colors().component;
 
     // latest_at should only return the last one
-    let latest_at_results = caches.latest_at(&query, &entity_path.into(), [component_colors]);
+    let latest_at_results = caches.latest_at(
+        ChunkTrackingMode::PanicOnMissing,
+        &query,
+        &entity_path.into(),
+        [component_colors],
+    );
     let latest_at_colors: Vec<MyColor> =
         latest_at_results.component_batch(component_colors).unwrap();
     assert_eq!(latest_at_colors.len(), 1);
 
     // latest_all should return all three
-    let latest_all_results = caches.latest_all(&query, &entity_path.into(), [component_colors]);
+    let latest_all_results = caches.latest_all(
+        ChunkTrackingMode::PanicOnMissing,
+        &query,
+        &entity_path.into(),
+        [component_colors],
+    );
     assert!(latest_all_results.missing_virtual.is_empty());
 
     // With multiple rows, try_as_latest_at should return None
@@ -140,7 +160,12 @@ fn empty_query() {
     let query = LatestAtQuery::new(*timepoint[0].0.name(), timepoint[0].1);
     let component_points = MyPoints::descriptor_points().component;
 
-    let results = caches.latest_all(&query, &entity_path, [component_points]);
+    let results = caches.latest_all(
+        ChunkTrackingMode::PanicOnMissing,
+        &query,
+        &entity_path,
+        [component_points],
+    );
 
     assert!(results.missing_virtual.is_empty());
     assert!(results.components.is_empty());
@@ -171,7 +196,12 @@ fn query_before_data() {
     let query = LatestAtQuery::new(*query_time[0].0.name(), query_time[0].1);
     let component_points = MyPoints::descriptor_points().component;
 
-    let results = caches.latest_all(&query, &entity_path.into(), [component_points]);
+    let results = caches.latest_all(
+        ChunkTrackingMode::PanicOnMissing,
+        &query,
+        &entity_path.into(),
+        [component_points],
+    );
 
     assert!(results.missing_virtual.is_empty());
     assert!(results.components.is_empty());
@@ -230,7 +260,12 @@ fn into_latest_at() {
     let component_colors = MyPoints::descriptor_colors().component;
 
     // latest_all returns all three rows
-    let latest_all_results = caches.latest_all(&query, &entity_path.into(), [component_colors]);
+    let latest_all_results = caches.latest_all(
+        ChunkTrackingMode::PanicOnMissing,
+        &query,
+        &entity_path.into(),
+        [component_colors],
+    );
     assert!(latest_all_results.missing_virtual.is_empty());
     assert!(latest_all_results.try_as_latest_at().is_none()); // Multiple rows
 

@@ -1,10 +1,11 @@
+use re_sdk_types::archetypes::Scalars;
 use re_sdk_types::blueprint::archetypes::{PlotLegend, ScalarAxis, TimeAxis};
 use re_sdk_types::datatypes::TimeRange;
 use re_sdk_types::{
     archetypes::{SeriesLines, SeriesPoints},
     datatypes::TimeRangeBoundary,
 };
-use re_viewer_context::ViewStateExt as _;
+use re_viewer_context::{ViewStateExt as _, VisualizerComponentSource};
 
 use crate::view_class::{TimeSeriesViewState, add_margin_to_range, make_range_sane};
 
@@ -84,10 +85,40 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
                     .and_then(|id| state.num_time_series_last_frame_per_instruction.get(&id))
                     .map_or(1, |set| set.len());
 
+                // There can be several visualizer instructions on the same entity
+                // and for the same component so we additionally look at the
+                // `(source_component, selector)` pair.
+                let source_selector = ctx.instruction_id.and_then(|id| {
+                    let data_result = ctx
+                        .view_ctx
+                        .query_result
+                        .tree
+                        .lookup_result_by_visualizer_instruction(id)?;
+                    let instruction = data_result
+                        .visualizer_instructions
+                        .iter()
+                        .find(|instr| instr.id == id)?;
+                    match instruction
+                        .component_mappings
+                        .get(&Scalars::descriptor_scalars().component)?
+                    {
+                        VisualizerComponentSource::SourceComponent {
+                            source_component,
+                            selector,
+                        } => Some((*source_component, selector.as_str())),
+                        VisualizerComponentSource::Override
+                        | VisualizerComponentSource::Default => None,
+                    }
+                });
+
                 (0..num_series)
                     .map(|i| {
-                        let hash = re_log_types::hash::Hash64::hash((ctx.target_entity_path, i))
-                            .hash64()
+                        let hash = re_log_types::hash::Hash64::hash((
+                            ctx.target_entity_path,
+                            source_selector,
+                            i,
+                        ))
+                        .hash64()
                             % u16::MAX as u64;
                         re_viewer_context::auto_color_egui(hash as u16).into()
                     })

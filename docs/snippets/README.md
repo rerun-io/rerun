@@ -6,8 +6,8 @@ Small, self-contained examples in `all/`, organized by category (`archetypes/`, 
 
 Rust and C++ snippets compile into a single dispatcher binary that takes the snippet name (without path/extension) as first argument.
 
-- **C++**: `pixi run -e cpp cpp-build-snippets`, then `./build/debug/docs/snippets/all/<name>`
-- **Python**: `pixi run py-build && pixi run uvpy <name>.py`
+- **C++**: `pixi run -e cpp cpp-build-snippets`, then `./build/debug/docs/snippets/snippets <name>`
+- **Python**: `pixi run py-build && pixi run uvpy <path>`
 - **Rust**: `cargo run -p snippets -- <name> [args]`
 
 ## Build system

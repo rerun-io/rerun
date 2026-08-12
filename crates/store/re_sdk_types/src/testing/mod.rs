@@ -17,7 +17,7 @@ pub type LargeStruct = components::AffixFuzzer1;
 pub fn build_some_large_structs(len: usize) -> Vec<LargeStruct> {
     (0..len)
         .map(|i| {
-            components::AffixFuzzer1(datatypes::AffixFuzzer1 {
+            components::AffixFuzzer1(datatypes::MixedFields {
                 single_float_optional: Some(i as f32),
                 single_string_required: format!("label{i}").into(),
                 single_string_optional: Some(format!("label{i}").into()),

@@ -1,6 +1,7 @@
 ---
 title: Use multiple native viewers
 order: 100
+description: Run several Viewer windows on different gRPC ports
 ---
 
 You can run multiple Native Viewer windows simultaneously, each displaying different data or views of the same data.

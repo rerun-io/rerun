@@ -24,16 +24,16 @@ int main(int argc, char* argv[]) {
     // the previous state implicitly ends. The `/door` lane uses the `StateConfiguration`
     // above, while `/window` gets default styling (raw value as label, hashed color).
     rec.set_time_sequence("step", 0);
-    rec.log("door", rerun::StateChange().with_state("open"));
-    rec.log("window", rerun::StateChange().with_state("closed"));
+    rec.log("door", rerun::StateChange().with_state({"open"}));
+    rec.log("window", rerun::StateChange().with_state({"closed"}));
 
     rec.set_time_sequence("step", 1);
-    rec.log("door", rerun::StateChange().with_state("closed"));
+    rec.log("door", rerun::StateChange().with_state({"closed"}));
 
     rec.set_time_sequence("step", 3);
-    rec.log("window", rerun::StateChange().with_state("open"));
+    rec.log("window", rerun::StateChange().with_state({"open"}));
 
     rec.set_time_sequence("step", 4);
-    rec.log("door", rerun::StateChange().with_state("open"));
+    rec.log("door", rerun::StateChange().with_state({"open"}));
     // endregion: log_changes
 }

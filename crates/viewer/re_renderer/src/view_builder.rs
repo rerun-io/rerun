@@ -36,8 +36,22 @@ pub struct ViewBuilder {
     picking_processor: Option<PickingLayerProcessor>,
 }
 
+/// Stable identity of a rendered view.
+///
+/// Reuse the same id when draw data is shared across frames so per-view renderer caches remain
+/// associated with the correct camera.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, re_byte_size::SizeBytes)]
+pub struct ViewBuilderId(u64);
+
+impl ViewBuilderId {
+    pub const fn new(id: u64) -> Self {
+        Self(id)
+    }
+}
+
 struct ViewTargetSetup {
     name: Label,
+    view_id: ViewBuilderId,
 
     camera_position: glam::Vec3A,
 
@@ -423,7 +437,12 @@ impl ViewBuilder {
             ..Self::MAIN_TARGET_DEFAULT_DEPTH_STATE
         };
 
-    pub fn new(ctx: &RenderContext, config: TargetConfiguration) -> Result<Self, ViewBuilderError> {
+    /// Creates a view with an identity that can remain stable across builder instances.
+    pub fn new(
+        ctx: &RenderContext,
+        config: TargetConfiguration,
+        view_id: ViewBuilderId,
+    ) -> Result<Self, ViewBuilderError> {
         re_tracing::profile_function!();
 
         // Can't handle 0 size resolution since this would imply creating zero sized textures.
@@ -556,6 +575,10 @@ impl ViewBuilder {
         let camera_position = config.view_from_world.inverse().translation();
         let camera_forward = -view_from_world.row(2).truncate();
         let projection_from_world = projection_from_view * view_from_world;
+        let framebuffer_resolution = glam::vec2(
+            config.resolution_in_pixel[0] as _,
+            config.resolution_in_pixel[1] as _,
+        );
 
         // Setup frame uniform buffer
         let frame_uniform_buffer_content = FrameUniformBuffer {
@@ -572,11 +595,8 @@ impl ViewBuilder {
                 RenderMode::Beautiful => 0,
                 RenderMode::Deterministic => 1,
             },
-            framebuffer_resolution: glam::vec2(
-                config.resolution_in_pixel[0] as _,
-                config.resolution_in_pixel[1] as _,
-            )
-            .into(),
+            framebuffer_resolution,
+            focal_length_in_pixels: framebuffer_resolution / (2.0 * tan_half_fov),
         };
         let frame_uniform_buffer = create_and_fill_uniform_buffer(
             ctx,
@@ -652,6 +672,7 @@ impl ViewBuilder {
 
         let setup = ViewTargetSetup {
             name: config.name,
+            view_id,
             camera_position: camera_position.into(),
             bind_group_0,
             main_target_msaa,
@@ -704,6 +725,7 @@ impl ViewBuilder {
         draw_data: impl Into<QueueableDrawData>,
     ) -> &mut Self {
         let view_info = DrawableCollectionViewInfo {
+            view_id: self.setup.view_id,
             camera_world_position: self.setup.camera_position,
         };
         self.draw_phase_manager

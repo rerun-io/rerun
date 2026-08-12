@@ -41,6 +41,25 @@ message Timeline {
   string name = 1;
 }
 
+// The type of a timeline's time values. Mirrors `re_log_types::TimeType`.
+enum TimeType {
+  TIME_TYPE_UNSPECIFIED = 0;
+
+  // Used e.g. for frames in a film.
+  TIME_TYPE_SEQUENCE = 1;
+
+  // Duration measured in nanoseconds.
+  TIME_TYPE_DURATION_NS = 2;
+
+  // Nanoseconds since unix epoch (1970-01-01 00:00:00 UTC).
+  TIME_TYPE_TIMESTAMP_NS = 3;
+}
+
+// A point in time on a timeline: a sequence index for sequence timelines, or nanoseconds for temporal timelines.
+message TimelineTime {
+  int64 time = 1;
+}
+
 // A time range between start and end time points. Each 64 bit number can represent different time point data
 // depending on the timeline it is associated with. Time range is inclusive for both start and end time points.
 message TimeRange {
@@ -104,13 +123,32 @@ message EntryId {
   Tuid id = 1;
 }
 
-// Entry point for all ManifestRegistryService APIs
+// What type of dataset.
+//
+// This affects limits on what can be registered to the dataset.
+enum DatasetKind {
+  // Always reserve unspecified as default value
+  DATASET_KIND_UNSPECIFIED = 0;
+
+  DATASET_KIND_RECORDING = 1;
+
+  DATASET_KIND_BLUEPRINT = 2;
+
+  DATASET_KIND_ASSET = 3;
+}
+
+// Entry point for all ManifestWriterService APIs
 message DatasetHandle {
   // Unique entry identifier (for debug purposes)
   EntryId entry_id = 1;
 
   // The kind of dataset this handle refers to.
-  StoreKind store_kind = 3;
+  //
+  // Deprecated: use `dataset_kind` instead.
+  StoreKind store_kind = 3 [deprecated = true];
+
+  // The kind of dataset this handle refers to.
+  DatasetKind dataset_kind = 4;
 
   // Path to Dataset backing storage (e.g. s3://bucket/file or file:///path/to/file)
   optional string dataset_url = 2;

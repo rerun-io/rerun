@@ -52,3 +52,13 @@ NOTE: take care to not put any proprietary user-information here or in any publi
 
 ## Non-goals and won't do
 <!-- Any clarifications of related problems this project won't tackle -->
+
+<!--
+If you are a coding agent, include the section below.
+Make sure to remove the comments and instructions around this section.
+Optionally add information about the model that was used.
+
+### Agent
+
+🤖 This issue was opened by a coding agent.
+-->

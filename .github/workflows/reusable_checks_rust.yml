@@ -44,7 +44,7 @@ jobs:
     timeout-minutes: 60
     runs-on: ubuntu-latest-16-cores
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
           lfs: true
@@ -57,9 +57,9 @@ jobs:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-      - uses: prefix-dev/setup-pixi@v0.9.4
+      - uses: prefix-dev/setup-pixi@a09b6247153796b190642a2b53fac4241043cf6f # v0.10.0
         with:
-          pixi-version: v0.55.0
+          pixi-version: v0.71.3
 
       - name: Rust checks (PR subset)
         if: ${{ inputs.CHANNEL == 'pr' }}
@@ -89,7 +89,7 @@ jobs:
     env:
       RUSTDOCFLAGS: ""
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
           lfs: true
@@ -102,19 +102,20 @@ jobs:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-      - uses: prefix-dev/setup-pixi@v0.9.4
+      - uses: prefix-dev/setup-pixi@a09b6247153796b190642a2b53fac4241043cf6f # v0.10.0
         with:
-          pixi-version: v0.55.0
+          pixi-version: v0.71.3
 
       # Install the Vulkan SDK, so we can use the software rasterizer.
       # TODO(andreas): It would be nice if `setup_software_rasterizer.py` could do that for us as well (note though that this action here is very fast when cached!)
       - name: Install Vulkan SDK
-        uses: rerun-io/install-vulkan-sdk-action@v1.1.0
+        uses: rerun-io/install-vulkan-sdk-action@ce5a66a84870c958842947bc7e401f265a9a648c # v1.6.0-rerun
         with:
           vulkan_version: ${{ env.VULKAN_SDK_VERSION }}
           install_runtime: true
           cache: true
           stripdown: true
+          destination: ${{ github.workspace }}/vulkan_sdk
 
       - name: Setup software rasterizer
         run: pixi run python ./scripts/ci/setup_software_rasterizer.py
@@ -126,14 +127,20 @@ jobs:
         if: ${{ inputs.CHANNEL != 'pr' }}
         run: pixi run rs-check --only tests_without_all_features
 
+      # Only upload snapshots that failed or are new, instead of all ~80 MB of them.
+      - name: Prune unchanged snapshots
+        if: always()
+        run: bash scripts/ci/prune_snapshots_for_upload.sh
+
       - name: Upload test results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
           name: test-results-linux
           path: |
             **/tests/snapshots
             **/tests/failures
+          if-no-files-found: ignore
 
   # Run tests on Mac and Windows (main channel)
   mac-windows-tests-main:
@@ -149,8 +156,12 @@ jobs:
 
     if: ${{ inputs.CHANNEL == 'main' }}
     runs-on: ${{ matrix.runs_on }}
+    env:
+      # Windows runners have 64 GB of RAM, which is enough to OOM the build process
+      # if there are too many in parallel.
+      CARGO_BUILD_JOBS: ${{ matrix.name == 'windows' && '16' || 'default' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           lfs: true
 
@@ -163,19 +174,20 @@ jobs:
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
       # Building with `--all-features` requires extra build tools like `nasm`.
-      - uses: prefix-dev/setup-pixi@v0.9.4
+      - uses: prefix-dev/setup-pixi@a09b6247153796b190642a2b53fac4241043cf6f # v0.10.0
         with:
-          pixi-version: v0.55.0
+          pixi-version: v0.71.3
 
       # Install the Vulkan SDK, so we can use the software rasterizer.
       # TODO(andreas): It would be nice if `setup_software_rasterizer.py` could do that for us as well (note though that this action here is very fast when cached!)
       - name: Install Vulkan SDK
-        uses: rerun-io/install-vulkan-sdk-action@v1.1.0
+        uses: rerun-io/install-vulkan-sdk-action@ce5a66a84870c958842947bc7e401f265a9a648c # v1.6.0-rerun
         with:
           vulkan_version: ${{ env.VULKAN_SDK_VERSION }}
           install_runtime: true
           cache: true
           stripdown: true
+          destination: ${{ github.workspace }}/vulkan_sdk
 
       - name: Setup software rasterizer
         run: pixi run python ./scripts/ci/setup_software_rasterizer.py
@@ -183,14 +195,20 @@ jobs:
       - name: Rust tests
         run: pixi run rs-check --only tests
 
+      # Only upload snapshots that failed or are new, instead of all ~80 MB of them.
+      - name: Prune unchanged snapshots
+        if: always()
+        run: bash scripts/ci/prune_snapshots_for_upload.sh
+
       - name: Upload test results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
           name: test-results-${{ matrix.name }}
           path: |
             **/tests/snapshots
             **/tests/failures
+          if-no-files-found: ignore
 
   # Run all checks on Mac and Windows (nightly channel, split across multiple jobs)
   mac-windows-checks-nightly:
@@ -227,8 +245,12 @@ jobs:
 
     if: ${{ inputs.CHANNEL == 'nightly' }}
     runs-on: ${{ matrix.platform.runs_on }}
+    env:
+      # Windows runners have 64 GB of RAM, which is enough to OOM the build process
+      # if there are too many in parallel.
+      CARGO_BUILD_JOBS: ${{ matrix.platform.name == 'windows' && '16' || 'default' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           lfs: true
 
@@ -241,19 +263,20 @@ jobs:
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
       # Building with `--all-features` requires extra build tools like `nasm`.
-      - uses: prefix-dev/setup-pixi@v0.9.4
+      - uses: prefix-dev/setup-pixi@a09b6247153796b190642a2b53fac4241043cf6f # v0.10.0
         with:
-          pixi-version: v0.55.0
+          pixi-version: v0.71.3
 
       # Install the Vulkan SDK, so we can use the software rasterizer.
       # TODO(andreas): It would be nice if `setup_software_rasterizer.py` could do that for us as well (note though that this action here is very fast when cached!)
       - name: Install Vulkan SDK
-        uses: rerun-io/install-vulkan-sdk-action@v1.1.0
+        uses: rerun-io/install-vulkan-sdk-action@ce5a66a84870c958842947bc7e401f265a9a648c # v1.6.0-rerun
         with:
           vulkan_version: ${{ env.VULKAN_SDK_VERSION }}
           install_runtime: true
           cache: true
           stripdown: true
+          destination: ${{ github.workspace }}/vulkan_sdk
 
       - name: Setup software rasterizer
         run: pixi run python ./scripts/ci/setup_software_rasterizer.py
@@ -261,11 +284,17 @@ jobs:
       - name: Rust checks
         run: pixi run rs-check --only ${{ matrix.checks_group.checks }}
 
+      # Only upload snapshots that failed or are new, instead of all ~80 MB of them.
+      - name: Prune unchanged snapshots
+        if: always()
+        run: bash scripts/ci/prune_snapshots_for_upload.sh
+
       - name: Upload test results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
           name: test-results-${{ matrix.platform.name }}-${{ matrix.checks_group.name }}
           path: |
             **/tests/snapshots
             **/tests/failures
+          if-no-files-found: ignore

@@ -2,11 +2,14 @@ use arrow::array::RecordBatch;
 use arrow::datatypes::{Schema as ArrowSchema, SchemaRef};
 use itertools::Itertools as _;
 
-use re_log_encoding::{RawRrdManifest, ToApplication as _};
+use re_log_encoding::{Decodable as _, RawRrdManifest, ToApplication as _};
 use re_log_types::EntryId;
 use re_protos::EntryName;
 use re_protos::cloud::v1alpha1::ext::ScanSegmentTableDataframe;
-use re_protos::cloud::v1alpha1::ext::{self as cloud_ext, WatchEventsResponse};
+use re_protos::cloud::v1alpha1::ext::{
+    self as cloud_ext, ETag, RrdManifestKey as RrdManifestKeyExt, SOURCE_CHANGED_MESSAGE,
+    WatchEventsResponse, url_strip_query,
+};
 use re_protos::cloud::v1alpha1::ext::{
     CreateDatasetEntryResponse, CreateTableEntryRequest, DataSource, DataSourceKind,
     DatasetDetails, DatasetEntry, EntryDetails, EntryDetailsUpdate, LanceTable, ProviderDetails,
@@ -18,14 +21,17 @@ use re_protos::cloud::v1alpha1::ext::{
     UpdateTableEntryRequest, UpdateTableEntryResponse, VersionResponse,
 };
 use re_protos::cloud::v1alpha1::rerun_cloud_service_client::RerunCloudServiceClient;
+use re_protos::cloud::v1alpha1::rerun_cloud_service_server::{
+    RerunCloudService, RerunCloudServiceServer,
+};
 use re_protos::cloud::v1alpha1::{
     CancelTasksRequest, CreateDatasetEntryRequest, DeleteEntryRequest, EntryFilter, EntryKind,
-    FetchChunksRequest, FindEntriesRequest, GetDatasetManifestSchemaRequest,
-    GetDatasetManifestSchemaResponse, GetDatasetSchemaRequest, GetRrdManifestResponse,
-    GetSegmentTableSchemaRequest, GetSegmentTableSchemaResponse, QueryDatasetResponse,
-    QueryTasksOnCompletionResponse, QueryTasksResponse, ReadDatasetEntryRequest,
-    ReadTableEntryRequest, RegisterWithDatasetResponse, ScanSegmentTableRequest,
-    UnregisterFromDatasetResponse, VersionRequest, WriteTableRequest,
+    FetchChunksRequest, FindEntriesRequest, GetAssetsForSegmentResponse,
+    GetDatasetManifestSchemaRequest, GetDatasetManifestSchemaResponse, GetDatasetSchemaRequest,
+    GetRrdManifestResponse, GetSegmentTableSchemaRequest, GetSegmentTableSchemaResponse,
+    QueryDatasetResponse, QueryTasksOnCompletionResponse, QueryTasksResponse,
+    ReadDatasetEntryRequest, ReadTableEntryRequest, RegisterWithDatasetResponse, RrdManifestKey,
+    ScanSegmentTableRequest, VersionRequest, WriteTableRequest,
 };
 use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, ScanParameters, SegmentId};
 use re_protos::common::v1alpha1::{DataframePart, TaskId};
@@ -33,6 +39,7 @@ use re_protos::external::prost::bytes::Bytes;
 use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_protos::{TypeConversionError, missing_field};
 use re_types_core::LayerName;
+use std::borrow::Cow;
 use std::sync::Arc;
 use tokio::sync::OnceCell;
 use tokio_stream::{Stream, StreamExt as _};
@@ -61,6 +68,226 @@ pub type FetchChunksResponseStream =
 pub type QueryDatasetResponseStream =
     ApiResponseStream<re_protos::cloud::v1alpha1::QueryDatasetResponse>;
 
+type RedapHttpRequest = tonic::codegen::http::Request<tonic::body::Body>;
+type RedapHttpResponse = tonic::codegen::http::Response<tonic::body::Body>;
+
+pub type BoxedRedapClientStack =
+    tower::util::BoxCloneSyncService<RedapHttpRequest, RedapHttpResponse, tonic::Status>;
+
+/// Checks that a `Content-Range` value describes the exact inclusive byte range expected by the
+/// request and, when present, a complete object length greater than the range end.
+fn content_range_matches(value: &str, expected_start: u64, expected_end: u64) -> bool {
+    let Some((unit, value)) = value.split_once(' ') else {
+        return false;
+    };
+    let Some((range, complete_length)) = value.split_once('/') else {
+        return false;
+    };
+    let Some((start, end)) = range.split_once('-') else {
+        return false;
+    };
+
+    unit.eq_ignore_ascii_case("bytes")
+        && start.parse::<u64>() == Ok(expected_start)
+        && end.parse::<u64>() == Ok(expected_end)
+        && (complete_length == "*"
+            || complete_length
+                .parse::<u64>()
+                .is_ok_and(|complete_length| expected_end < complete_length))
+}
+
+async fn fetch_rrd_manifest_via_key(
+    manifest_key: RrdManifestKey,
+    segment_id: &SegmentId,
+    trace_id: Option<TraceId>,
+) -> ApiResult<RawRrdManifest> {
+    let RrdManifestKeyExt {
+        location,
+        layer,
+        etag,
+        direct_url,
+    } = manifest_key.try_into().map_err(|err| {
+        ApiError::deserialization_with_source(trace_id, err, "invalid /GetRrdManifest manifest key")
+    })?;
+
+    let Some(direct_url) = direct_url else {
+        return Err(ApiError::deserialization(
+            trace_id,
+            "direct manifest key carries no direct_url to fetch",
+        ));
+    };
+
+    let Some(range_end) = location
+        .length
+        .checked_sub(1)
+        .and_then(|length_minus_one| location.offset.checked_add(length_minus_one))
+    else {
+        return Err(ApiError::deserialization(
+            trace_id,
+            "direct manifest byte range is empty or overflows u64",
+        ));
+    };
+
+    let mut request = ehttp::Request::get(direct_url.as_str()).with_timeout(None);
+    request.headers.insert(
+        http::header::RANGE.as_str(),
+        format!("bytes={}-{}", location.offset, range_end),
+    );
+    let expected_etag = etag.filter(|etag| !etag.is_empty());
+    if let Some(etag) = expected_etag.as_ref().and_then(ETag::as_if_match) {
+        request
+            .headers
+            .insert(http::header::IF_MATCH.as_str(), etag);
+    }
+
+    cfg_select! {
+            target_family = "wasm" => {
+                let response = re_async::spawn_local_with_result(ehttp::fetch_async(request))
+                .await
+                .unwrap_or_else(|_| Err("HTTP request was canceled".to_owned()));
+        }
+        _ => {
+            let response = ehttp::fetch_async(request).await;
+        }
+    }
+
+    let redacted_url = url_strip_query(direct_url.as_str());
+
+    let response = response.map_err(|err| {
+        let err = err.replace(direct_url.as_str(), redacted_url);
+        ApiError::connection_with_source(
+            trace_id,
+            std::io::Error::other(err),
+            format!("failed to fetch RRD manifest directly\nURL: {redacted_url}"),
+        )
+    })?;
+
+    let source_changed_error = || {
+        ApiError::http_status_with_source(
+            trace_id,
+            http::StatusCode::PRECONDITION_FAILED.as_u16(),
+            std::io::Error::other(SOURCE_CHANGED_MESSAGE),
+            format!("failed to fetch RRD manifest directly\nURL: {redacted_url}"),
+        )
+    };
+
+    // HTTP permits servers to ignore `Range` and return `200 OK`, but this path requires the
+    // requested range to be honored to avoid downloading or decoding the full RRD object.
+    if response.status != http::StatusCode::PARTIAL_CONTENT.as_u16() {
+        if response.status == http::StatusCode::PRECONDITION_FAILED.as_u16() {
+            return Err(source_changed_error());
+        } else {
+            let layer = layer
+                .as_deref()
+                .map_or_else(String::new, |layer| format!("\nLayer: {layer}"));
+            return Err(ApiError::http_status(
+                trace_id,
+                response.status,
+                format!("failed to fetch RRD manifest directly{layer}\nURL: {redacted_url}"),
+            ));
+        }
+    }
+
+    let content_range = response.headers.get(http::header::CONTENT_RANGE.as_str());
+    if !content_range.is_some_and(|content_range| {
+        content_range_matches(content_range, location.offset, range_end)
+    }) {
+        return Err(ApiError::with_kind_and_source(
+            ApiErrorKind::InvalidServer,
+            trace_id,
+            std::io::Error::other(format!(
+                "invalid Content-Range: {}",
+                content_range.unwrap_or("missing")
+            )),
+            format!("failed to fetch RRD manifest directly\nURL: {redacted_url}"),
+        ));
+    }
+
+    let expected_length = usize::try_from(location.length).map_err(|err| {
+        ApiError::deserialization_with_source(
+            trace_id,
+            err,
+            "direct RRD manifest is too large for this client",
+        )
+    })?;
+    if response.bytes.len() != expected_length {
+        return Err(ApiError::deserialization(
+            trace_id,
+            format!(
+                "direct RRD manifest response had {} bytes, expected {expected_length}\nURL: {redacted_url}",
+                response.bytes.len()
+            ),
+        ));
+    }
+
+    let rrd_footer = re_protos::log_msg::v1alpha1::RrdFooter::from_rrd_bytes(&response.bytes)
+        .map_err(|err| {
+            ApiError::deserialization_with_source(
+                trace_id,
+                err,
+                format!("failed decoding direct RRD footer\nURL: {redacted_url}"),
+            )
+        })?;
+
+    // A footer may in theory contain manifests for several stores.
+    // So we pick out the one that matches the requested segment_id!
+    let rrd_manifest = rrd_footer
+        .manifests
+        .into_iter()
+        .find(|manifest| {
+            manifest
+                .store_id
+                .as_ref()
+                .is_some_and(|store_id| store_id.recording_id == segment_id.as_str())
+        })
+        .ok_or_else(|| {
+            ApiError::deserialization(
+                trace_id,
+                format!(
+                    "direct RRD footer did not contain a manifest for segment {segment_id}\nURL: {redacted_url}"
+                ),
+            )
+        })?;
+
+    let raw = rrd_manifest.to_application(()).map_err(|err| {
+        ApiError::deserialization_with_source(
+            trace_id,
+            err,
+            format!("failed parsing direct RRD manifest\nURL: {redacted_url}"),
+        )
+    })?;
+
+    let Some(layer) = layer else {
+        return Err(ApiError::deserialization(
+            trace_id,
+            "direct manifest key carries no layer",
+        ));
+    };
+
+    // `FetchChunks` needs the same `chunk_partition_id`/`rerun_partition_layer`/`chunk_key`
+    // columns the inline `GetRrdManifest` path serves; the raw manifest alone doesn't carry them.
+    // [`re_log_encoding::HubRrdManifest::try_from_raw`] handles this.
+    let hub = re_log_encoding::HubRrdManifest::try_from_raw(
+        &raw,
+        segment_id,
+        &layer,
+        &location.url,
+        expected_etag.as_ref(),
+        None,
+    )
+    .map_err(|err| {
+        ApiError::deserialization_with_source(
+            trace_id,
+            err,
+            format!("failed hub-extending direct RRD manifest\nURL: {redacted_url}"),
+        )
+    })?;
+
+    // convert back to raw manifest so it can be interpreted
+    // with no changes by downstream users
+    Ok(hub.into_raw())
+}
+
 #[derive(Clone)]
 pub struct SegmentQueryParams {
     pub dataset_id: EntryId,
@@ -78,8 +305,8 @@ pub struct SegmentQueryParams {
 /// For the viewer, use [`crate::ConnectionClient`].
 //TODO(ab): this should NOT be `Clone`, to discourage callsites from holding on to a client for too
 //long. However we have a bunch of places that needs to be fixed before we can do that.
-#[derive(Debug, Clone)]
-pub struct GenericConnectionClient<T> {
+#[derive(Clone)]
+pub struct RedapClient<T> {
     inner: RerunCloudServiceClient<T>,
 
     /// Cached `VersionResponse.features` list. Populated lazily on the first
@@ -90,99 +317,117 @@ pub struct GenericConnectionClient<T> {
     /// with a different feature set, callers reconnect and get a fresh
     /// client (and a fresh cache).
     features: Arc<OnceCell<Vec<String>>>,
+
+    /// Cache of certain chunks, like asset chunks.
+    ///
+    /// `None` disables chunk caching.
+    chunk_cache: Option<crate::ChunkCacheHandle>,
 }
 
-impl<T> GenericConnectionClient<T> {
+impl<T> re_byte_size::SizeBytes for RedapClient<T> {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            inner: _,
+            features,
+            chunk_cache,
+        } = self;
+
+        features.get().map(|v| v.heap_size_bytes()).unwrap_or(0) + chunk_cache.heap_size_bytes()
+    }
+}
+
+impl<T> RedapClient<T> {
     /// Create a new [`Self`].
+    ///
+    /// The `chunk_cache` is used to cache certain chunks, like from assets. Passing `None`
+    /// disables chunk caching.
     ///
     /// This should not be used in the viewer, use [`crate::ConnectionRegistryHandle::client`]
     /// instead.
-    pub fn new(client: RerunCloudServiceClient<T>) -> Self {
+    pub fn new(
+        client: RerunCloudServiceClient<T>,
+        chunk_cache: Option<crate::ChunkCacheHandle>,
+    ) -> Self {
         Self {
             inner: client,
             features: Arc::new(OnceCell::new()),
+            chunk_cache,
         }
     }
 
-    /// Get a mutable reference to the underlying `RedapClient`.
+    /// Get a mutable reference to the underlying generated gRPC client.
     //TODO(#10188): this should disappear once we have wrapper for all endpoints and the client code
     //is using them.
     pub fn inner(&mut self) -> &mut RerunCloudServiceClient<T> {
         &mut self.inner
     }
+
+    /// Marks this chunks for caching.
+    pub fn mark_asset_chunks(&self, chunk_ids: &[re_chunk::ChunkId]) {
+        if let Some(chunk_cache) = &self.chunk_cache {
+            chunk_cache.write().mark_chunks_cacheable(chunk_ids);
+        }
+    }
+}
+
+// `RerunCloudServiceClient<T>`'s derived `Debug` requires `T: Debug`, which doesn't hold for the
+// type-erased `BoxedRedapClientStack`. Print only the cached features instead.
+impl<T> std::fmt::Debug for RedapClient<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RedapClient")
+            .field("features", &self.features)
+            .finish_non_exhaustive()
+    }
 }
 
 // ---
 
-/// Thin wrapper around [`GenericConnectionClient<crate::grpc::RedapClientInner>`] that
-/// additionally exposes the underlying layered tower service.
+/// Type alias for the boxed-transport [`RedapClient`] used in the viewer.
 ///
-/// Sibling channels to the same origin (e.g. the per-connection analytics OTLP client)
-/// can clone the service and call non-`RerunCloudService` RPCs through it without
-/// rebuilding the auth/version/propagate-headers stack.
-///
-/// Use [`crate::ConnectionRegistryHandle::client`] to construct.
-#[derive(Debug, Clone)]
-pub struct ConnectionClient {
-    inner: GenericConnectionClient<crate::grpc::RedapClientInner>,
-    service: crate::grpc::RedapClientInner,
+/// Use [`crate::ConnectionRegistryHandle::connection`] to construct.
+pub type ConnectionClient = RedapClient<BoxedRedapClientStack>;
+
+/// Connection capabilities for a redap origin.
+#[derive(Clone, Debug, re_byte_size::SizeBytes)]
+pub struct Connection {
+    pub client: ConnectionClient,
+    pub analytics: Option<crate::ConnectionAnalyticsExporter>,
 }
 
-impl ConnectionClient {
-    pub(crate) fn new(
-        inner: GenericConnectionClient<crate::grpc::RedapClientInner>,
-        service: crate::grpc::RedapClientInner,
-    ) -> Self {
-        Self { inner, service }
-    }
-
-    /// Returns a clone of the underlying layered tower service.
-    pub fn service(&self) -> crate::grpc::RedapClientInner {
-        self.service.clone()
-    }
-
-    /// Build a [`ConnectionClient`] backed by a never-connecting localhost channel.
-    ///
-    /// Available only under `cfg(test)` or with the `test_utils` feature, this is
-    /// intended for unit tests that need a fully-typed `ConnectionClient` without
-    /// going through the registry / network.
-    #[cfg(any(test, feature = "test_utils"))]
-    #[cfg(not(target_arch = "wasm32"))]
-    pub fn new_disconnected() -> Self {
-        let channel = tonic::transport::Channel::from_static("http://127.0.0.1:1").connect_lazy();
-        let (raw_client, service) = crate::grpc::assemble_client(
-            crate::grpc::PoolChannel::single(channel),
-            /* credentials */ None,
+impl Connection {
+    /// Create a connection backed by an in-process Rerun catalog implementation.
+    pub fn from_service<T>(handler: Arc<T>) -> Self
+    where
+        T: RerunCloudService,
+    {
+        let service = <RerunCloudServiceServer<T> as tower::ServiceExt<RedapHttpRequest>>::map_err(
+            RerunCloudServiceServer::from_arc(handler)
+                .max_decoding_message_size(crate::MAX_DECODING_MESSAGE_SIZE),
+            |err: std::convert::Infallible| match err {},
         );
-        Self::new(GenericConnectionClient::new(raw_client), service)
-    }
-}
+        let client = RerunCloudServiceClient::new(tower::util::BoxCloneSyncService::new(service))
+            .max_decoding_message_size(crate::MAX_DECODING_MESSAGE_SIZE);
 
-impl std::ops::Deref for ConnectionClient {
-    type Target = GenericConnectionClient<crate::grpc::RedapClientInner>;
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        &self.inner
-    }
-}
-
-impl std::ops::DerefMut for ConnectionClient {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.inner
+        Self {
+            client: RedapClient::new(client, None),
+            analytics: None,
+        }
     }
 }
 
 // ---
 
-impl<T> GenericConnectionClient<T>
+impl<T> RedapClient<T>
 where
     T: tonic::client::GrpcService<tonic::body::Body>,
     T::Error: Into<StdError>,
     T::ResponseBody: Body<Data = Bytes> + std::marker::Send + 'static,
     <T::ResponseBody as Body>::Error: Into<StdError> + std::marker::Send,
 {
+    pub fn chunk_cache(&self) -> Option<&crate::ChunkCacheHandle> {
+        self.chunk_cache.as_ref()
+    }
+
     /// Uses the `/Version` endpoint for testing roundtrip time.
     #[tracing::instrument(level = "info", skip_all)]
     pub async fn ping(&mut self) -> ApiResult<()> {
@@ -455,13 +700,13 @@ where
     #[tracing::instrument(level = "info", skip_all)]
     pub async fn create_dataset_entry(
         &mut self,
-        name: String,
+        name: EntryName,
         entry_id: Option<EntryId>,
     ) -> ApiResult<DatasetEntry> {
         let (inner, trace_id) = TonicResponseExt::into_inner_and_trace_id(
             self.inner()
                 .create_dataset_entry(CreateDatasetEntryRequest {
-                    name: Some(name),
+                    name: Some(name.to_string()),
                     id: entry_id.map(Into::into),
                 })
                 .await
@@ -638,10 +883,8 @@ where
                 client
                     .inner()
                     .scan_segment_table(
-                        tonic::Request::new(ScanSegmentTableRequest {
-                            columns: vec![COLUMN_NAME.to_owned()],
-                        })
-                        .with_entry_id(entry_id),
+                        tonic::Request::new(ScanSegmentTableRequest::with_columns([COLUMN_NAME]))
+                            .with_entry_id(entry_id),
                     )
                     .await
                     .map_err(|err| ApiError::tonic(err, "/ScanSegmentTable failed"))
@@ -679,7 +922,7 @@ where
                     ApiError::deserialization_quiver_from(trace_id, err, "/ScanSegmentTable stream")
                 })?;
 
-            segment_ids.extend(segment_id_column);
+            segment_ids.extend(segment_id_column.into_iter_owned());
         }
 
         Ok(segment_ids)
@@ -719,21 +962,136 @@ where
             })
     }
 
+    /// Get the asset dataset that applies to a dataset, and the asset segments within it.
+    ///
+    /// Returns `None` if the dataset has no asset dataset, which means no assets were ever
+    /// registered for it.
+    #[tracing::instrument(level = "info", skip_all)]
+    pub async fn get_assets_for_segment(
+        &mut self,
+        dataset_id: EntryId,
+    ) -> ApiResult<Option<(EntryId, Vec<SegmentId>)>> {
+        let response = self
+            .inner()
+            .get_assets_for_segment(
+                tonic::Request::new(re_protos::cloud::v1alpha1::GetAssetsForSegmentRequest {})
+                    .with_entry_id(dataset_id),
+            )
+            .await
+            .map_err(|err| ApiError::tonic(err, "/GetAssetsForSegment failed"))?;
+
+        let stream = ApiResponseStream::from_tonic_response(response, "/GetAssetsForSegment");
+        let trace_id = stream.trace_id();
+
+        let mut stream = std::pin::pin!(stream);
+
+        let mut assets_entry = None;
+        let mut asset_segment_ids = Vec::new();
+
+        while let Some(response) = stream.next().await {
+            let response = response?;
+
+            // The asset dataset is repeated on every response, the segment ids are concatenated.
+            assets_entry = Some(
+                response
+                    .assets_entry
+                    .ok_or_else(|| {
+                        ApiError::deserialization_with_source(
+                            trace_id,
+                            missing_field!(GetAssetsForSegmentResponse, "assets_entry"),
+                            "missing field in /GetAssetsForSegment response",
+                        )
+                    })?
+                    .try_into()
+                    .map_err(|err| {
+                        ApiError::deserialization_with_source(
+                            trace_id,
+                            err,
+                            "failed parsing /GetAssetsForSegment response",
+                        )
+                    })?,
+            );
+
+            let segment_ids: Vec<SegmentId> = response
+                .asset_segment_ids
+                .into_iter()
+                .map(TryInto::try_into)
+                .try_collect()
+                .map_err(|err| {
+                    ApiError::deserialization_with_source(
+                        trace_id,
+                        err,
+                        "failed parsing /GetAssetsForSegment response",
+                    )
+                })?;
+            asset_segment_ids.extend(segment_ids);
+        }
+
+        Ok(assets_entry.map(|assets_entry| (assets_entry, asset_segment_ids)))
+    }
+
     /// Stream the [`RawRrdManifest`] parts of a recording as they arrive from the server.
     ///
     /// Each item in the returned stream is a manifest part (a slice of the full manifest).
-    /// Use [`RawRrdManifest::concat`] to combine parts if needed.
+    /// Use [`RawRrdManifest::merge`] to combine parts because they may have different, overlapping schemas.
+    ///
+    /// The server may answer with manifest keys instead of inline manifests, in which case each
+    /// part is fetched directly from the object store. In a browser that direct fetch only works
+    /// when the bucket has a CORS configuration that allows it, so wasm clients fall back to
+    /// server-provided manifests when the first part fails.
     #[tracing::instrument(level = "info", skip_all)]
     pub async fn get_rrd_manifest_stream(
         &mut self,
         dataset_id: EntryId,
         segment_id: SegmentId,
     ) -> ApiResult<ApiResponseStream<RawRrdManifest>> {
+        if !cfg!(target_family = "wasm") {
+            return self
+                .get_rrd_manifest_stream_impl(dataset_id, segment_id, true)
+                .await;
+        }
+
+        // In a browser, direct object-store reads only work when the bucket's CORS
+        // configuration allows them, which cannot be assumed: if it fails,
+        // ask for server-provided manifests instead.
+        let mut stream = self
+            .get_rrd_manifest_stream_impl(dataset_id, segment_id.clone(), true)
+            .await?;
+        let trace_id = stream.trace_id();
+        match stream.next().await {
+            Some(Ok(first)) => Ok(ApiResponseStream::new(
+                futures::stream::iter([Ok(first)]).chain(stream), // NOLINT: Stream::chain, not Iterator::chain
+                trace_id,
+            )),
+            // Browsers report a CORS block as an opaque network failure, so `Connection` is
+            // the narrowest kind that covers it. This costs a fallback even on other
+            // types of network failures.
+            Some(Err(err)) if err.kind == ApiErrorKind::Connection => {
+                re_log::warn_once!(
+                    "Failed to fetch an RRD footer directly from the object store, \
+                        falling back to slower server-provided manifests. This may be caused by CORS issues. \
+                        \nDetails: {err}."
+                );
+                self.get_rrd_manifest_stream_impl(dataset_id, segment_id, false)
+                    .await
+            }
+            Some(Err(err)) => Err(err),
+            None => Ok(stream),
+        }
+    }
+
+    async fn get_rrd_manifest_stream_impl(
+        &mut self,
+        dataset_id: EntryId,
+        segment_id: SegmentId,
+        generate_direct_urls: bool,
+    ) -> ApiResult<ApiResponseStream<RawRrdManifest>> {
         let response = self
             .inner()
             .get_rrd_manifest(
                 tonic::Request::new(re_protos::cloud::v1alpha1::GetRrdManifestRequest {
                     segment_id: Some(segment_id.clone().into()),
+                    generate_direct_urls,
                 })
                 .with_entry_id(dataset_id),
             )
@@ -742,30 +1100,40 @@ where
 
         let stream = ApiResponseStream::from_tonic_response(response, "/GetRrdManifest");
         let trace_id = stream.trace_id();
-        let stream = stream.map(move |resp| {
-            resp?
-                .rrd_manifest
-                .ok_or_else(|| {
-                    let err = missing_field!(GetRrdManifestResponse, "rrd_manifest");
-                    ApiError::deserialization_with_source(
+        let stream = stream.then(move |resp| {
+            let segment_id = segment_id.clone();
+            async move {
+                let GetRrdManifestResponse {
+                    rrd_manifest,
+                    manifest_key,
+                } = resp?;
+
+                match (rrd_manifest, manifest_key) {
+                    (Some(rrd_manifest), None) => rrd_manifest.to_application(()).map_err(|err| {
+                        ApiError::deserialization_with_source(
+                            trace_id,
+                            err,
+                            "failed parsing inline /GetRrdManifest response",
+                        )
+                    }),
+                    (None, Some(manifest_key)) => {
+                        fetch_rrd_manifest_via_key(manifest_key, &segment_id, trace_id).await
+                    }
+                    (None, None) => Err(ApiError::deserialization(
                         trace_id,
-                        err,
-                        "missing field in /GetRrdManifest response",
-                    )
-                })?
-                .to_application(())
-                .map_err(|err| {
-                    ApiError::deserialization_with_source(
+                        "/GetRrdManifest response contained neither a manifest nor a manifest key",
+                    )),
+                    (Some(_), Some(_)) => Err(ApiError::deserialization(
                         trace_id,
-                        err,
-                        "failed parsing /GetRrdManifest response",
-                    )
-                })
+                        "/GetRrdManifest response contained both a manifest and a manifest key",
+                    )),
+                }
+            }
         });
         Ok(ApiResponseStream::new(stream, trace_id))
     }
 
-    /// Get the full [`RawRrdManifest`] of a recording, concatenated from all stream parts.
+    /// Get the full [`RawRrdManifest`] of a recording, combined from all stream parts.
     #[tracing::instrument(level = "info", skip_all)]
     pub async fn get_rrd_manifest(
         &mut self,
@@ -782,24 +1150,23 @@ where
             rrd_manifest_parts.push(part?);
         }
 
-        let Some(mut rrd_manifest) = rrd_manifest_parts.first().cloned() else {
+        let Some(first) = rrd_manifest_parts.first() else {
             return Err(ApiError::deserialization(
                 trace_id,
                 "failed to parse the response for /GetRrdManifest (no data)",
             ));
         };
+        if rrd_manifest_parts.len() == 1 {
+            return Ok(rrd_manifest_parts.pop().expect("length was checked"));
+        }
 
-        let data_parts = rrd_manifest_parts.into_iter().map(|p| p.data).collect_vec();
-        rrd_manifest.data =
-            re_arrow_util::concat_polymorphic_batches(&data_parts).map_err(|err| {
-                ApiError::deserialization_with_source(
-                    trace_id,
-                    err,
-                    "failed concatenating /GetRrdManifest response parts",
-                )
-            })?;
-
-        Ok(rrd_manifest)
+        RawRrdManifest::merge(first.store_id.clone(), rrd_manifest_parts).map_err(|err| {
+            ApiError::deserialization_with_source(
+                trace_id,
+                err,
+                "failed merging /GetRrdManifest response parts",
+            )
+        })
     }
 
     /// Fetches all chunks ids for a specified segment.
@@ -912,8 +1279,24 @@ where
         &mut self,
         record_batch: &RecordBatch,
     ) -> ApiResult<FetchChunksResponseStream> {
+        let (cached_chunks, to_fetch) = match &self.chunk_cache {
+            Some(chunk_cache) => chunk_cache.split_cached(record_batch),
+            None => (Vec::new(), Cow::Borrowed(record_batch)),
+        };
+
+        let cached = (!cached_chunks.is_empty()).then(|| {
+            Ok(re_protos::cloud::v1alpha1::FetchChunksResponse {
+                chunks: cached_chunks,
+            })
+        });
+        let cached_stream = tokio_stream::iter(cached);
+
+        if to_fetch.num_rows() == 0 {
+            return Ok(ApiResponseStream::new(cached_stream, None));
+        }
+
         let fetch_chunks_request = FetchChunksRequest {
-            chunk_infos: vec![DataframePart::from(record_batch)],
+            chunk_infos: vec![DataframePart::from(&*to_fetch)],
         };
 
         let mut req = tonic::Request::new(fetch_chunks_request);
@@ -925,9 +1308,24 @@ where
             // NOTE: `ApiError::tonic` already extracts the trace-id from the error metadata.
             .map_err(|err| ApiError::tonic(err, "/FetchChunks failed"))?;
 
-        Ok(ApiResponseStream::from_tonic_response(
-            response,
-            "/FetchChunks",
+        let response = ApiResponseStream::from_tonic_response(response, "/FetchChunks");
+        let trace_id = response.trace_id();
+
+        let chunk_cache_handle = self.chunk_cache.clone();
+        let response = response.map(move |msg| {
+            if let Some(chunk_cache) = &chunk_cache_handle
+                && let Ok(msg) = &msg
+            {
+                chunk_cache.insert_cacheable(&msg.chunks);
+            }
+
+            msg
+        });
+
+        // Order does not have to be preserved, so fine to send cached first.
+        Ok(ApiResponseStream::new(
+            cached_stream.merge(response),
+            trace_id,
         ))
     }
 
@@ -1048,11 +1446,11 @@ where
             })?;
 
         let descriptors = itertools::izip!(
-            rerun_segment_layer,
-            rerun_segment_id,
+            rerun_segment_layer.into_iter_owned(),
+            rerun_segment_id.into_iter_owned(),
             segment_types,
-            rerun_storage_url,
-            rerun_task_id
+            rerun_storage_url.into_iter_owned(),
+            rerun_task_id.into_iter_owned()
         )
         .map(
             |(layer_name, segment_id, segment_type, storage_url, task_id)| {
@@ -1078,11 +1476,7 @@ where
 
     /// Unregisters segments and layers from the dataset.
     ///
-    /// Excluding IO errors, this will always succeed as long the target dataset exists.
-    /// Corollary: unregistering data that doesn't exist is a no-op.
-    ///
-    /// This always returns a subset of the data from `ScanDatasetManifest`, and therefore the data will
-    /// also follow the schema returned by [`Self::get_dataset_manifest_schema`].
+    /// This is an asynchronous operation, and returns a list of task ids.
     ///
     /// This method acts as a *product* filter:
     /// * empty `segments_to_drop` + empty `layers_to_drop`: invalid argument error
@@ -1101,7 +1495,7 @@ where
         segments_to_drop: Vec<SegmentId>,
         layers_to_drop: Vec<LayerName>,
         force: bool,
-    ) -> ApiResult<Vec<RecordBatch>> {
+    ) -> ApiResult<(Option<TraceId>, Vec<TaskId>)> {
         let req = tonic::Request::new(
             UnregisterFromDatasetRequest {
                 segments_to_drop,
@@ -1119,34 +1513,17 @@ where
             .await
             .map_err(|err| ApiError::tonic(err, "/UnregisterFromDataset failed"))?;
 
+        let trace_id = extract_trace_id(response.metadata());
+
         let stream = ApiResponseStream::from_tonic_response(response, "/UnregisterFromDataset");
-        let trace_id = stream.trace_id();
         let responses: Vec<_> = stream.try_collect().await?;
 
-        let batches: ApiResult<Vec<RecordBatch>> = responses
+        let tasks = responses
             .into_iter()
-            .map(|resp| {
-                resp.data
-                    .ok_or_else(|| {
-                        let err = missing_field!(UnregisterFromDatasetResponse, "data");
-                        ApiError::deserialization_with_source(
-                            trace_id,
-                            err,
-                            "missing field in /UnregisterFromDataset response",
-                        )
-                    })?
-                    .try_into()
-                    .map_err(|err| {
-                        ApiError::deserialization_with_source(
-                            trace_id,
-                            err,
-                            "failed decoding /UnregisterFromDataset response",
-                        )
-                    })
-            })
+            .filter_map(|resp| resp.task_id)
             .collect();
 
-        batches
+        Ok((trace_id, tasks))
     }
 
     /// Register a foreign Lance table to a new table entry in the catalog.
@@ -1203,6 +1580,7 @@ where
                         retrain_indexes,
                         compact_fragments,
                         cleanup_before,
+                        gc_object_store: false,
                         unsafe_allow_recent_cleanup,
                     }
                     .into(),
@@ -1231,7 +1609,12 @@ where
     pub async fn get_table_names(&mut self) -> ApiResult<Vec<EntryName>> {
         Ok(self
             .find_entries(re_protos::cloud::v1alpha1::EntryFilter {
+                // Pass both `entry_kind` (deprecated) and `entry_kinds`
+                // to be compatible with old Hub versions.
+                // Drop `entry_kind` when no customer has a 0.14 deployment
+                // or older of Rerun Hub.
                 entry_kind: Some(EntryKind::Table.into()),
+                entry_kinds: vec![EntryKind::Table.into()],
                 ..Default::default()
             })
             .await?
@@ -1300,7 +1683,12 @@ where
                     filter: Some(EntryFilter {
                         id: None,
                         name: Some(entry_name.to_string()),
+                        // Pass both `entry_kind` (deprecated) and `entry_kinds`
+                        // to be compatible with old Hub versions.
+                        // Drop `entry_kind` when no customer has a 0.14 deployment
+                        // or older of Rerun Hub.
                         entry_kind: entry_kind.map(|kind| kind.into()),
+                        entry_kinds: entry_kind.into_iter().map(|k| k as i32).collect(),
                     }),
                 })
                 .await
@@ -1381,11 +1769,16 @@ where
 
     /// Look up a dataset entry by name, returning its id if it exists.
     #[tracing::instrument(level = "info", skip_all)]
-    pub async fn find_dataset_by_name(&mut self, name: &str) -> ApiResult<Option<EntryId>> {
+    pub async fn find_dataset_by_name(&mut self, name: &EntryName) -> ApiResult<Option<EntryId>> {
         let entries = match self
             .find_entries(EntryFilter {
-                name: Some(name.to_owned()),
+                name: Some(name.to_string()),
+                // Pass both `entry_kind` (deprecated) and `entry_kinds`
+                // to be compatible with old Hub versions.
+                // Drop `entry_kind` when no customer has a 0.14 deployment
+                // or older of Rerun Hub.
                 entry_kind: Some(EntryKind::Dataset.into()),
+                entry_kinds: vec![EntryKind::Dataset.into()],
                 ..Default::default()
             })
             .await
@@ -1399,19 +1792,19 @@ where
 
     /// Find the dataset named `name`, creating it if it doesn't exist yet.
     #[tracing::instrument(level = "info", skip_all)]
-    pub async fn find_or_create_dataset(&mut self, name: &str) -> ApiResult<EntryId> {
+    pub async fn find_or_create_dataset(&mut self, name: &EntryName) -> ApiResult<EntryId> {
         if let Some(id) = self.find_dataset_by_name(name).await? {
             return Ok(id);
         }
 
-        match self.create_dataset_entry(name.to_owned(), None).await {
+        match self.create_dataset_entry(name.clone(), None).await {
             Ok(dataset) => Ok(dataset.details.id),
 
             // Created concurrently between our lookup and our create.
             Err(err) if err.kind == ApiErrorKind::AlreadyExists => {
                 self.find_dataset_by_name(name).await?.ok_or_else(|| {
                     ApiError::invalid_arguments(format!(
-                        "dataset {name:?} disappeared while registering"
+                        "dataset '{name}' disappeared while registering"
                     ))
                 })
             }
@@ -1424,7 +1817,7 @@ where
     #[tracing::instrument(level = "info", skip_all)]
     pub async fn ensure_dataset_and_register(
         &mut self,
-        dataset_name: &str,
+        dataset_name: &EntryName,
         data_sources: Vec<DataSource>,
         on_duplicate: IfDuplicateBehavior,
     ) -> ApiResult<(EntryId, SegmentId)> {
@@ -1446,14 +1839,190 @@ where
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(target_arch = "wasm32")))]
 mod tests {
     use super::*;
+
+    #[test]
+    fn direct_rrd_manifest_response_metadata_is_validated() {
+        assert!(content_range_matches("bytes 10-19/100", 10, 19));
+        assert!(content_range_matches("BYTES 10-19/*", 10, 19));
+        assert!(!content_range_matches("bytes 11-20/100", 10, 19));
+        assert!(!content_range_matches("bytes 10-19/19", 10, 19));
+        assert!(!content_range_matches("invalid", 10, 19));
+    }
+
+    #[tokio::test]
+    async fn direct_rrd_manifest_fetch_uses_range_and_etag() {
+        use re_log_encoding::{Encodable as _, ToTransport as _};
+
+        let raw_manifest = RawRrdManifest::build_in_memory_from_chunks(
+            re_log_types::StoreId::recording("test", "recording"),
+            std::iter::empty::<&re_chunk::Chunk>(),
+        )
+        .unwrap();
+        let other_manifest = RawRrdManifest::build_in_memory_from_chunks(
+            re_log_types::StoreId::recording("test", "other"),
+            std::iter::empty::<&re_chunk::Chunk>(),
+        )
+        .unwrap();
+        let rrd_footer = re_log_encoding::RrdFooter {
+            manifests: std::collections::HashMap::from([
+                // Add a second manifest to ensure we pick out the right one.
+                (other_manifest.store_id.clone(), other_manifest),
+                (raw_manifest.store_id.clone(), raw_manifest.clone()),
+            ]),
+        };
+        let mut manifest_bytes = Vec::new();
+        rrd_footer
+            .to_transport(())
+            .unwrap()
+            .to_rrd_bytes(&mut manifest_bytes)
+            .unwrap();
+
+        let server = tiny_http::Server::http("127.0.0.1:0").unwrap();
+        let address = server.server_addr().to_ip().unwrap();
+        let offset = 123;
+        let range_end = offset + manifest_bytes.len() as u64 - 1;
+        let response_bytes = manifest_bytes.clone();
+        let server_thread = std::thread::Builder::new()
+            .name("direct-manifest-test-server".to_owned())
+            .spawn(move || {
+                let request = server.recv().unwrap();
+                let header = |name| {
+                    request
+                        .headers()
+                        .iter()
+                        .find(|header| header.field.equiv(name))
+                        .map(|header| header.value.as_str().to_owned())
+                };
+                let range = header(http::header::RANGE.as_str());
+                let if_match = header(http::header::IF_MATCH.as_str());
+                request
+                    .respond(
+                        tiny_http::Response::from_data(response_bytes)
+                            .with_status_code(tiny_http::StatusCode(
+                                http::StatusCode::PARTIAL_CONTENT.as_u16(),
+                            ))
+                            .with_header(
+                                tiny_http::Header::from_bytes(
+                                    http::header::CONTENT_RANGE.as_str(),
+                                    format!("bytes {offset}-{range_end}/{}", range_end + 1),
+                                )
+                                .unwrap(),
+                            )
+                            .with_header(
+                                tiny_http::Header::from_bytes(
+                                    http::header::ETAG.as_str(),
+                                    "\"different-etag\"",
+                                )
+                                .unwrap(),
+                            ),
+                    )
+                    .unwrap();
+                (range, if_match)
+            })
+            .unwrap();
+
+        let manifest_key = RrdManifestKey {
+            location: Some(re_protos::cloud::v1alpha1::RrdChunkLocation {
+                url: Some("s3://bucket/recording.rrd".to_owned()),
+                offset: Some(offset),
+                length: Some(manifest_bytes.len() as u64),
+            }),
+            layer: Some("base".to_owned()),
+            etag: Some("\"registered-etag\"".to_owned()),
+            direct_url: Some(format!(
+                "http://{address}/recording.rrd?X-Amz-Signature=secret"
+            )),
+        };
+
+        let segment_id = SegmentId::new("recording".to_owned());
+        let layer = LayerName::base();
+        let canonical_url = url::Url::parse("s3://bucket/recording.rrd").expect("valid s3 url");
+        let etag = ETag::new("\"registered-etag\"");
+
+        let fetched = fetch_rrd_manifest_via_key(manifest_key, &segment_id, None)
+            .await
+            .expect("direct manifest fetch succeeds");
+        assert_eq!(fetched.store_id, raw_manifest.store_id);
+        assert_eq!(
+            fetched.sorbet_schema_sha256,
+            raw_manifest.sorbet_schema_sha256
+        );
+
+        let expected = re_log_encoding::HubRrdManifest::try_from_raw(
+            &raw_manifest,
+            &segment_id,
+            &layer,
+            &canonical_url,
+            Some(&etag),
+            None,
+        )
+        .expect("hub-extending a zero-row in-memory manifest cannot fail")
+        .into_raw();
+        assert_eq!(fetched.data, expected.data);
+        for hub_column in [
+            re_log_encoding::HubRrdManifest::FIELD_CHUNK_PARTITION_ID,
+            re_log_encoding::HubRrdManifest::FIELD_RERUN_PARTITION_LAYER,
+            re_log_encoding::HubRrdManifest::FIELD_CHUNK_KEY,
+        ] {
+            assert!(
+                fetched.data.column_by_name(hub_column).is_some(),
+                "fetched manifest is missing hub column '{hub_column}'"
+            );
+        }
+
+        let (range, if_match) = server_thread.join().unwrap();
+        assert_eq!(
+            range.as_deref(),
+            Some(format!("bytes={offset}-{range_end}").as_str())
+        );
+        assert_eq!(if_match.as_deref(), Some("\"registered-etag\""));
+    }
+
+    #[tokio::test]
+    async fn direct_rrd_manifest_fetch_maps_precondition_failure_without_leaking_query() {
+        let server = tiny_http::Server::http("127.0.0.1:0").unwrap();
+        let address = server.server_addr().to_ip().unwrap();
+        let server_thread = std::thread::Builder::new()
+            .name("direct-manifest-test-server".to_owned())
+            .spawn(move || {
+                let request = server.recv().unwrap();
+                request
+                    .respond(tiny_http::Response::empty(tiny_http::StatusCode(
+                        http::StatusCode::PRECONDITION_FAILED.as_u16(),
+                    )))
+                    .unwrap();
+            })
+            .unwrap();
+
+        let manifest_key = RrdManifestKey {
+            location: Some(re_protos::cloud::v1alpha1::RrdChunkLocation {
+                url: Some("s3://bucket/manifest".to_owned()),
+                offset: Some(0),
+                length: Some(1),
+            }),
+            layer: None,
+            etag: Some("\"old-etag\"".to_owned()),
+            direct_url: Some(format!("http://{address}/manifest?secret=credential")),
+        };
+
+        let err =
+            fetch_rrd_manifest_via_key(manifest_key, &SegmentId::new("recording".to_owned()), None)
+                .await
+                .unwrap_err();
+        server_thread.join().unwrap();
+
+        assert_eq!(err.kind, ApiErrorKind::FailedPrecondition);
+        assert!(err.to_string().contains(SOURCE_CHANGED_MESSAGE));
+        assert!(!err.to_string().contains("credential"));
+    }
 
     /// When the `features` cell is already populated, `supports_feature`
     /// must answer from the cache without going through the gRPC transport.
     ///
-    /// We construct a `GenericConnectionClient` against a lazy channel
+    /// We construct a `RedapClient` against a lazy channel
     /// pointing at an unrouteable address: any RPC against it would error
     /// (or hang past our test timeout). The test pre-populates the cell
     /// and then issues three `supports_feature` calls. If the cache is
@@ -1464,7 +2033,7 @@ mod tests {
         // `connect_lazy` succeeds without doing any I/O; the failure
         // would only surface when an RPC actually flows through.
         let channel = tonic::transport::Channel::from_static("http://127.0.0.1:1").connect_lazy();
-        let mut client = GenericConnectionClient::new(RerunCloudServiceClient::new(channel));
+        let mut client = RedapClient::new(RerunCloudServiceClient::new(channel), None);
 
         // Prime the cache exactly as a successful first-call would.
         client
@@ -1492,7 +2061,7 @@ mod tests {
     #[tokio::test]
     async fn features_cache_is_shared_across_clones() {
         let channel = tonic::transport::Channel::from_static("http://127.0.0.1:1").connect_lazy();
-        let client_a = GenericConnectionClient::new(RerunCloudServiceClient::new(channel));
+        let client_a = RedapClient::new(RerunCloudServiceClient::new(channel), None);
         let mut client_b = client_a.clone();
 
         client_a
@@ -1517,7 +2086,7 @@ mod tests {
     #[tokio::test]
     async fn supports_feature_returns_false_for_empty_features_list() {
         let channel = tonic::transport::Channel::from_static("http://127.0.0.1:1").connect_lazy();
-        let mut client = GenericConnectionClient::new(RerunCloudServiceClient::new(channel));
+        let mut client = RedapClient::new(RerunCloudServiceClient::new(channel), None);
 
         client
             .features

@@ -23,7 +23,7 @@ def setup_camera_input(video_device: str | None = None) -> av.container.InputCon
         return av.open(
             video_device,
             format="avfoundation",
-            container_options={"framerate": "30"},  # `avfoundation` fails if the framerate is not set.
+            container_options={"framerate": "30"},  # `avfoundation` fails if the frame rate is not set.
         )
     elif platform.system() == "Windows":
         if video_device is None:

@@ -7,7 +7,7 @@ use datafusion_ffi::catalog_provider_list::FFI_CatalogProviderList;
 use pyo3::types::PyCapsule;
 use pyo3::{Bound, PyAny, PyResult, pyclass, pymethods};
 use re_datafusion::RedapCatalogProviderList;
-use re_redap_client::ConnectionClient;
+use re_redap_client::{ConnectionAnalyticsExporter, ConnectionClient};
 
 /// PyO3 wrapper exposing a [`RedapCatalogProviderList`] to a Python `datafusion.SessionContext`
 /// via `register_catalog_provider_list(...)`.
@@ -28,9 +28,9 @@ impl PartialEq for PyDataFusionCatalogProviderList {
 }
 
 impl PyDataFusionCatalogProviderList {
-    pub fn new(client: ConnectionClient, origin: re_uri::Origin) -> Self {
+    pub fn new(client: ConnectionClient, analytics: Option<ConnectionAnalyticsExporter>) -> Self {
         let runtime = get_tokio_runtime().handle().clone();
-        let provider = Arc::new(RedapCatalogProviderList::new(client, runtime, Some(origin)));
+        let provider = Arc::new(RedapCatalogProviderList::new(client, runtime, analytics));
         Self { provider }
     }
 }

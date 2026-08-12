@@ -43,19 +43,19 @@ jobs:
     name: Upload Examples to Google Cloud
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
       - name: Download assets
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: example_data
           path: example_data
 
       # Upload the wasm, html etc to a Google cloud bucket:
       - id: "auth"
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
         with:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
@@ -68,7 +68,7 @@ jobs:
 
       - name: "Upload examples (commit)"
         if: ${{ !inputs.NIGHTLY }}
-        uses: google-github-actions/upload-cloud-storage@v3
+        uses: google-github-actions/upload-cloud-storage@6397bd7208e18d13ba2619ee21b9873edc94427a # v3.0.0
         with:
           path: "example_data"
           destination: "rerun-web-viewer/commit/${{ steps.get-sha.outputs.sha }}/examples"
@@ -77,7 +77,7 @@ jobs:
 
       - name: "Upload examples (tagged)"
         if: inputs.MARK_TAGGED_VERSION
-        uses: google-github-actions/upload-cloud-storage@v3
+        uses: google-github-actions/upload-cloud-storage@6397bd7208e18d13ba2619ee21b9873edc94427a # v3.0.0
         with:
           path: "example_data"
           destination: "rerun-web-viewer/version/${{ inputs.RELEASE_VERSION }}/examples"
@@ -86,7 +86,7 @@ jobs:
 
       - name: "Upload examples (adhoc)"
         if: ${{ inputs.ADHOC_NAME != '' }}
-        uses: google-github-actions/upload-cloud-storage@v3
+        uses: google-github-actions/upload-cloud-storage@6397bd7208e18d13ba2619ee21b9873edc94427a # v3.0.0
         with:
           path: "example_data"
           destination: "rerun-web-viewer/adhoc/${{ inputs.ADHOC_NAME }}/examples"
@@ -95,7 +95,7 @@ jobs:
 
       - name: "Upload examples (prerelease)"
         if: github.ref == 'refs/heads/main'
-        uses: google-github-actions/upload-cloud-storage@v3
+        uses: google-github-actions/upload-cloud-storage@6397bd7208e18d13ba2619ee21b9873edc94427a # v3.0.0
         with:
           path: "example_data"
           destination: "rerun-web-viewer/prerelease/examples"
@@ -106,7 +106,7 @@ jobs:
 
       - name: "Upload examples (main)"
         if: github.ref == 'refs/heads/main'
-        uses: google-github-actions/upload-cloud-storage@v3
+        uses: google-github-actions/upload-cloud-storage@6397bd7208e18d13ba2619ee21b9873edc94427a # v3.0.0
         with:
           path: "example_data"
           destination: "rerun-web-viewer/version/main/examples"
@@ -117,7 +117,7 @@ jobs:
 
       - name: "Upload examples (pr)"
         if: ${{ inputs.PR_NUMBER != '' }}
-        uses: google-github-actions/upload-cloud-storage@v3
+        uses: google-github-actions/upload-cloud-storage@6397bd7208e18d13ba2619ee21b9873edc94427a # v3.0.0
         with:
           path: "example_data"
           destination: "rerun-web-viewer/pr/${{ inputs.PR_NUMBER }}/examples"
@@ -128,7 +128,7 @@ jobs:
 
       - name: "Upload examples (nightly)"
         if: ${{ inputs.NIGHTLY }}
-        uses: google-github-actions/upload-cloud-storage@v3
+        uses: google-github-actions/upload-cloud-storage@6397bd7208e18d13ba2619ee21b9873edc94427a # v3.0.0
         with:
           path: "example_data"
           destination: "rerun-web-viewer/version/nightly/examples"

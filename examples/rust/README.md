@@ -61,10 +61,11 @@ Demonstrates how to log:
 
 `cargo run -p raw_mesh`
 
-Reads a GLTF mesh file and logs it to Rerun, preserving the transform hierarchy of the GLTF file.
+Reads a GLTF mesh file and logs it as either raw triangle data or a prepacked asset.
 
 Demonstrates how to log:
 * Triangle meshes
+* Prepacked 3D assets
 * Rigid transforms
 
 ### [`dna`](dna)

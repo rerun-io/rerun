@@ -26,8 +26,8 @@ use re_sdk::external::re_log_types::TimelineName;
 use re_sdk::log::{Chunk, ChunkId, PendingRow, TimeColumn};
 use re_sdk::time::TimeType;
 use re_sdk::{
-    ComponentDescriptor, EntityPath, RecordingStream, RecordingStreamBuilder, StoreKind, TimeCell,
-    TimePoint, Timeline,
+    ArchetypeName, ComponentDescriptor, ComponentIdentifier, ComponentType, EntityPath,
+    RecordingStream, RecordingStreamBuilder, StoreKind, TimeCell, TimePoint, Timeline,
 };
 use recording_streams::{RECORDING_STREAMS, recording_stream};
 
@@ -308,7 +308,8 @@ impl TryFrom<CTimeline> for Timeline {
     type Error = CError;
 
     fn try_from(timeline: CTimeline) -> Result<Self, CError> {
-        let name = timeline.name.as_nonempty_str("timeline.name")?;
+        let name = TimelineName::try_new(timeline.name.as_nonempty_str("timeline.name")?)
+            .map_err(|err| CError::new(CErrorCode::InvalidStringArgument, &err.to_string()))?;
         let typ = match timeline.typ {
             CTimeType::Sequence => TimeType::Sequence,
             CTimeType::Duration => TimeType::DurationNs,
@@ -355,10 +356,23 @@ pub struct CFileSink {
     pub path: CStringView,
 }
 
+/// Log sink which hosts a gRPC server.
+#[derive(Debug)]
+#[repr(C)]
+pub struct CGrpcServerSink {
+    pub bind_ip: CStringView,
+    pub port: u16,
+    pub server_memory_limit: CStringView,
+    pub newest_first: bool,
+    pub cors_allow_origins: *const CStringView,
+    pub num_cors_allow_origins: u32,
+}
+
 /// A sink for log messages.
 ///
 /// See specific log sink types for more information:
 /// * [`CGrpcSink`]
+/// * [`CGrpcServerSink`]
 /// * [`CFileSink`]
 ///
 /// See `rr_log_sink` and `RR_LOG_SINK_KIND` enum values in the C header.
@@ -366,9 +380,11 @@ pub struct CFileSink {
 /// Layout is defined in [the Rust reference](https://doc.rust-lang.org/stable/reference/type-layout.html#reprc-enums-with-fields).
 #[derive(Debug)]
 #[repr(C, u8)]
+#[expect(clippy::enum_variant_names)] // Variant names mirror the C `rr_log_sink` union field names.
 pub enum CLogSink {
     GrpcSink { grpc: CGrpcSink } = 0,
     FileSink { file: CFileSink } = 1,
+    GrpcServerSink { grpc_server: CGrpcServerSink } = 2,
 }
 
 // ⚠️ Remember to also update `uint32_t rr_error_code` AND `enum class ErrorCode` !
@@ -448,6 +464,15 @@ pub extern "C" fn rr_version_string() -> *const c_char {
     VERSION.as_ptr()
 }
 
+/// Converts a 32-bit float to the bits of an IEEE 754 16-bit half-precision float.
+// SAFETY: the unsafety comes from #[no_mangle], because we can declare multiple
+// functions with the same symbol names, and the linker behavior in this case i undefined.
+#[expect(unsafe_code)]
+#[unsafe(no_mangle)]
+pub extern "C" fn rr_f16_from_f32(value: f32) -> u16 {
+    half::f16::from_f32(value).to_bits()
+}
+
 #[expect(clippy::result_large_err)]
 fn rr_spawn_impl(spawn_opts: *const CSpawnOptions) -> Result<(), CError> {
     let spawn_opts = if spawn_opts.is_null() {
@@ -493,9 +518,10 @@ fn rr_register_component_type_impl(
         component_type_descr.as_optional_str("component_type.descriptor.component_type")?;
 
     let component_descr = ComponentDescriptor {
-        archetype: archetype_name.map(Into::into),
-        component: component.into(),
-        component_type: component_type_descr.map(Into::into),
+        archetype: archetype_name.and_then(|s| ArchetypeName::try_new(s).ok()),
+        component: ComponentIdentifier::try_new(component)
+            .map_err(|err| CError::new(CErrorCode::InvalidStringArgument, &err.to_string()))?,
+        component_type: component_type_descr.and_then(|s| ComponentType::try_new(s).ok()),
     };
 
     let field = arrow::datatypes::Field::try_from(&component_type.schema).map_err(|err| {
@@ -563,7 +589,10 @@ fn rr_recording_stream_new_impl(
         store_kind,
     } = *store_info;
 
-    let application_id = application_id.as_nonempty_str("store_info.application_id")?;
+    let application_id = re_sdk::ApplicationId::try_new(
+        application_id.as_nonempty_str("store_info.application_id")?,
+    )
+    .map_err(|err| CError::new(CErrorCode::InvalidStringArgument, &err.to_string()))?;
 
     let mut rec_builder = RecordingStreamBuilder::new(application_id)
         //.store_id(recording_id.clone()) // TODO(andreas): Expose store id.
@@ -760,6 +789,49 @@ fn rr_recording_stream_set_sinks_impl(
                         )
                     },
                 )?));
+            }
+            CLogSink::GrpcServerSink { grpc_server } => {
+                let bind_ip = grpc_server.bind_ip.as_nonempty_str("bind_ip")?;
+                let cors_allow_origins = if grpc_server.cors_allow_origins.is_null()
+                    || grpc_server.num_cors_allow_origins == 0
+                {
+                    &[]
+                } else {
+                    unsafe {
+                        std::slice::from_raw_parts(
+                            grpc_server.cors_allow_origins,
+                            grpc_server.num_cors_allow_origins as usize,
+                        )
+                    }
+                };
+                let cors_allowed_origins = cors_allow_origins
+                    .iter()
+                    .map(|origin| Ok(origin.as_nonempty_str("cors_allow_origin")?.to_owned()))
+                    .try_collect()?;
+                let server_options = re_sdk::ServerOptions {
+                    playback_behavior: re_sdk::PlaybackBehavior::from_newest_first(
+                        grpc_server.newest_first,
+                    ),
+                    memory_limit: grpc_server
+                        .server_memory_limit
+                        .as_maybe_empty_str("server_memory_limit")?
+                        .parse::<re_sdk::MemoryLimit>()
+                        .map_err(|err| CError::new(CErrorCode::InvalidMemoryLimit, &err))?,
+                    cors_allowed_origins,
+                };
+                sinks.push(Box::new(
+                    re_sdk::grpc_server::GrpcServerSink::new(
+                        bind_ip,
+                        grpc_server.port,
+                        server_options,
+                    )
+                    .map_err(|err| {
+                        CError::new(
+                            CErrorCode::RecordingStreamServeGrpcFailure,
+                            &err.to_string(),
+                        )
+                    })?,
+                ));
             }
         }
     }
@@ -964,7 +1036,8 @@ fn rr_recording_stream_set_time_impl(
     time_type: CTimeType,
     value: i64,
 ) -> Result<(), CError> {
-    let timeline = timeline_name.as_nonempty_str("timeline_name")?;
+    let timeline = TimelineName::try_new(timeline_name.as_nonempty_str("timeline_name")?)
+        .map_err(|err| CError::new(CErrorCode::InvalidStringArgument, &err.to_string()))?;
     let stream = recording_stream(stream)?;
     let time_type = match time_type {
         CTimeType::Sequence => TimeType::Sequence,
@@ -994,7 +1067,8 @@ fn rr_recording_stream_disable_timeline_impl(
     stream: CRecordingStream,
     timeline_name: CStringView,
 ) -> Result<(), CError> {
-    let timeline = timeline_name.as_nonempty_str("timeline_name")?;
+    let timeline = TimelineName::try_new(timeline_name.as_nonempty_str("timeline_name")?)
+        .map_err(|err| CError::new(CErrorCode::InvalidStringArgument, &err.to_string()))?;
     recording_stream(stream)?.disable_timeline(timeline);
     Ok(())
 }

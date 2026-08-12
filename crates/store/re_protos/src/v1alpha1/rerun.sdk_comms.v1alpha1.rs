@@ -111,38 +111,6 @@ impl ::prost::Name for ReadTablesResponse {
         "/rerun.sdk_comms.v1alpha1.ReadTablesResponse".into()
     }
 }
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
-pub struct SaveScreenshotRequest {
-    /// Optional view ID to screenshot. If omitted, screenshots the entire viewer.
-    #[prost(string, optional, tag = "1")]
-    pub view_id: ::core::option::Option<::prost::alloc::string::String>,
-    /// Path at which the screenshot will be saved.
-    /// This path is relative to the current working directory of the viewer process.
-    #[prost(string, tag = "2")]
-    pub file_path: ::prost::alloc::string::String,
-}
-impl ::prost::Name for SaveScreenshotRequest {
-    const NAME: &'static str = "SaveScreenshotRequest";
-    const PACKAGE: &'static str = "rerun.sdk_comms.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.sdk_comms.v1alpha1.SaveScreenshotRequest".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.sdk_comms.v1alpha1.SaveScreenshotRequest".into()
-    }
-}
-#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
-pub struct SaveScreenshotResponse {}
-impl ::prost::Name for SaveScreenshotResponse {
-    const NAME: &'static str = "SaveScreenshotResponse";
-    const PACKAGE: &'static str = "rerun.sdk_comms.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.sdk_comms.v1alpha1.SaveScreenshotResponse".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.sdk_comms.v1alpha1.SaveScreenshotResponse".into()
-    }
-}
 /// Generated client implementations.
 pub mod message_proxy_service_client {
     #![allow(
@@ -313,25 +281,6 @@ pub mod message_proxy_service_client {
             ));
             self.inner.server_streaming(req, path, codec).await
         }
-        pub async fn save_screenshot(
-            &mut self,
-            request: impl tonic::IntoRequest<super::SaveScreenshotRequest>,
-        ) -> std::result::Result<tonic::Response<super::SaveScreenshotResponse>, tonic::Status>
-        {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic_prost::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/rerun.sdk_comms.v1alpha1.MessageProxyService/SaveScreenshot",
-            );
-            let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.sdk_comms.v1alpha1.MessageProxyService",
-                "SaveScreenshot",
-            ));
-            self.inner.unary(req, path, codec).await
-        }
     }
 }
 /// Generated server implementations.
@@ -375,10 +324,6 @@ pub mod message_proxy_service_server {
             &self,
             request: tonic::Request<super::ReadTablesRequest>,
         ) -> std::result::Result<tonic::Response<Self::ReadTablesStream>, tonic::Status>;
-        async fn save_screenshot(
-            &self,
-            request: tonic::Request<super::SaveScreenshotRequest>,
-        ) -> std::result::Result<tonic::Response<super::SaveScreenshotResponse>, tonic::Status>;
     }
     /// Simple buffer for messages between SDKs and viewers.
     ///
@@ -633,48 +578,6 @@ pub mod message_proxy_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.sdk_comms.v1alpha1.MessageProxyService/SaveScreenshot" => {
-                    #[allow(non_camel_case_types)]
-                    struct SaveScreenshotSvc<T: MessageProxyService>(pub Arc<T>);
-                    impl<T: MessageProxyService>
-                        tonic::server::UnaryService<super::SaveScreenshotRequest>
-                        for SaveScreenshotSvc<T>
-                    {
-                        type Response = super::SaveScreenshotResponse;
-                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::SaveScreenshotRequest>,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as MessageProxyService>::save_screenshot(&inner, request).await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let method = SaveScreenshotSvc(inner);
-                        let codec = tonic_prost::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
                 _ => Box::pin(async move {
                     let mut response = http::Response::new(tonic::body::Body::default());
                     let headers = response.headers_mut();
@@ -706,6 +609,784 @@ pub mod message_proxy_service_server {
     /// Generated gRPC service name
     pub const SERVICE_NAME: &str = "rerun.sdk_comms.v1alpha1.MessageProxyService";
     impl<T> tonic::server::NamedService for MessageProxyServiceServer<T> {
+        const NAME: &'static str = SERVICE_NAME;
+    }
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SaveScreenshotRequest {
+    /// Optional view ID to screenshot. If omitted, screenshots the entire viewer.
+    #[prost(string, optional, tag = "1")]
+    pub view_id: ::core::option::Option<::prost::alloc::string::String>,
+    /// Path at which the screenshot will be saved.
+    /// This path is relative to the current working directory of the viewer process.
+    #[prost(string, tag = "2")]
+    pub file_path: ::prost::alloc::string::String,
+}
+impl ::prost::Name for SaveScreenshotRequest {
+    const NAME: &'static str = "SaveScreenshotRequest";
+    const PACKAGE: &'static str = "rerun.sdk_comms.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.sdk_comms.v1alpha1.SaveScreenshotRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.sdk_comms.v1alpha1.SaveScreenshotRequest".into()
+    }
+}
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SaveScreenshotResponse {}
+impl ::prost::Name for SaveScreenshotResponse {
+    const NAME: &'static str = "SaveScreenshotResponse";
+    const PACKAGE: &'static str = "rerun.sdk_comms.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.sdk_comms.v1alpha1.SaveScreenshotResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.sdk_comms.v1alpha1.SaveScreenshotResponse".into()
+    }
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SetTimeCursorRequest {
+    /// Recording to seek. If omitted, the active recording is used.
+    #[prost(message, optional, tag = "1")]
+    pub store_id: ::core::option::Option<super::super::common::v1alpha1::StoreId>,
+    /// Timeline to seek on. If omitted, the active timeline is used.
+    #[prost(message, optional, tag = "2")]
+    pub timeline: ::core::option::Option<super::super::common::v1alpha1::Timeline>,
+    /// Time value to seek to: a sequence index for sequence timelines, or nanoseconds for
+    /// temporal timelines (see `GetViewerState` for each timeline's type and range).
+    #[prost(message, optional, tag = "3")]
+    pub time: ::core::option::Option<super::super::common::v1alpha1::TimelineTime>,
+    /// If true, start playing the recording from the new position. If false, pause the recording.
+    #[prost(bool, tag = "4")]
+    pub play: bool,
+}
+impl ::prost::Name for SetTimeCursorRequest {
+    const NAME: &'static str = "SetTimeCursorRequest";
+    const PACKAGE: &'static str = "rerun.sdk_comms.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.sdk_comms.v1alpha1.SetTimeCursorRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.sdk_comms.v1alpha1.SetTimeCursorRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SetTimeCursorResponse {
+    /// The recording the cursor was moved in (resolved from the request, or the active recording).
+    #[prost(message, optional, tag = "1")]
+    pub store_id: ::core::option::Option<super::super::common::v1alpha1::StoreId>,
+    /// The timeline the cursor was moved on (resolved from the request, or the active/first timeline).
+    #[prost(message, optional, tag = "2")]
+    pub timeline: ::core::option::Option<super::super::common::v1alpha1::Timeline>,
+    /// Timeline type, e.g. `"timestamp"`, `"duration"`, or `"sequence"`.
+    #[prost(enumeration = "super::super::common::v1alpha1::TimeType", tag = "3")]
+    pub time_type: i32,
+    /// The time the cursor was moved to.
+    #[prost(message, optional, tag = "4")]
+    pub time: ::core::option::Option<super::super::common::v1alpha1::TimelineTime>,
+}
+impl ::prost::Name for SetTimeCursorResponse {
+    const NAME: &'static str = "SetTimeCursorResponse";
+    const PACKAGE: &'static str = "rerun.sdk_comms.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.sdk_comms.v1alpha1.SetTimeCursorResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.sdk_comms.v1alpha1.SetTimeCursorResponse".into()
+    }
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct OpenUrlRequest {
+    /// The URL to open in the viewer. This can be a recording/blueprint file URL, a `rerun://`
+    /// dataset URI, a redap server/catalog URL, or an intra-recording link.
+    #[prost(string, tag = "1")]
+    pub url: ::prost::alloc::string::String,
+}
+impl ::prost::Name for OpenUrlRequest {
+    const NAME: &'static str = "OpenUrlRequest";
+    const PACKAGE: &'static str = "rerun.sdk_comms.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.sdk_comms.v1alpha1.OpenUrlRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.sdk_comms.v1alpha1.OpenUrlRequest".into()
+    }
+}
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct OpenUrlResponse {}
+impl ::prost::Name for OpenUrlResponse {
+    const NAME: &'static str = "OpenUrlResponse";
+    const PACKAGE: &'static str = "rerun.sdk_comms.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.sdk_comms.v1alpha1.OpenUrlResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.sdk_comms.v1alpha1.OpenUrlResponse".into()
+    }
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct InspectRequest {
+    /// `egui_inspection` request.
+    #[prost(bytes = "vec", tag = "1")]
+    pub request: ::prost::alloc::vec::Vec<u8>,
+}
+impl ::prost::Name for InspectRequest {
+    const NAME: &'static str = "InspectRequest";
+    const PACKAGE: &'static str = "rerun.sdk_comms.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.sdk_comms.v1alpha1.InspectRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.sdk_comms.v1alpha1.InspectRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct InspectResponse {
+    /// `egui_inspection` response.
+    #[prost(bytes = "vec", tag = "1")]
+    pub response: ::prost::alloc::vec::Vec<u8>,
+}
+impl ::prost::Name for InspectResponse {
+    const NAME: &'static str = "InspectResponse";
+    const PACKAGE: &'static str = "rerun.sdk_comms.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.sdk_comms.v1alpha1.InspectResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.sdk_comms.v1alpha1.InspectResponse".into()
+    }
+}
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct GetViewerStateRequest {}
+impl ::prost::Name for GetViewerStateRequest {
+    const NAME: &'static str = "GetViewerStateRequest";
+    const PACKAGE: &'static str = "rerun.sdk_comms.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.sdk_comms.v1alpha1.GetViewerStateRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.sdk_comms.v1alpha1.GetViewerStateRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetViewerStateResponse {
+    /// The current viewer page/route (e.g. which recording or hub page is shown).
+    #[prost(string, tag = "1")]
+    pub url: ::prost::alloc::string::String,
+    /// The active recording, if any.
+    #[prost(message, optional, tag = "2")]
+    pub active_store_id: ::core::option::Option<super::super::common::v1alpha1::StoreId>,
+    /// Every open recording.
+    #[prost(message, repeated, tag = "3")]
+    pub recordings: ::prost::alloc::vec::Vec<ViewerRecording>,
+}
+impl ::prost::Name for GetViewerStateResponse {
+    const NAME: &'static str = "GetViewerStateResponse";
+    const PACKAGE: &'static str = "rerun.sdk_comms.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.sdk_comms.v1alpha1.GetViewerStateResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.sdk_comms.v1alpha1.GetViewerStateResponse".into()
+    }
+}
+/// One open recording in the viewer.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ViewerRecording {
+    /// Store id of the recording.
+    #[prost(message, optional, tag = "1")]
+    pub store_id: ::core::option::Option<super::super::common::v1alpha1::StoreId>,
+    /// The recording's timelines with their time ranges.
+    #[prost(message, repeated, tag = "2")]
+    pub timelines: ::prost::alloc::vec::Vec<ViewerTimeline>,
+    /// The recording's current time cursor.
+    #[prost(message, optional, tag = "3")]
+    pub current_time: ::core::option::Option<TimeCursor>,
+}
+impl ::prost::Name for ViewerRecording {
+    const NAME: &'static str = "ViewerRecording";
+    const PACKAGE: &'static str = "rerun.sdk_comms.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.sdk_comms.v1alpha1.ViewerRecording".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.sdk_comms.v1alpha1.ViewerRecording".into()
+    }
+}
+/// A timeline of a recording, with its time range.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct ViewerTimeline {
+    #[prost(message, optional, tag = "1")]
+    pub timeline: ::core::option::Option<super::super::common::v1alpha1::Timeline>,
+    /// Timeline type, e.g. `"timestamp"`, `"duration"`, or `"sequence"`.
+    #[prost(enumeration = "super::super::common::v1alpha1::TimeType", tag = "2")]
+    pub time_type: i32,
+    /// The inclusive range of time values present on this timeline. Absent if the timeline has no data yet.
+    #[prost(message, optional, tag = "3")]
+    pub time_range: ::core::option::Option<super::super::common::v1alpha1::TimeRange>,
+}
+impl ::prost::Name for ViewerTimeline {
+    const NAME: &'static str = "ViewerTimeline";
+    const PACKAGE: &'static str = "rerun.sdk_comms.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.sdk_comms.v1alpha1.ViewerTimeline".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.sdk_comms.v1alpha1.ViewerTimeline".into()
+    }
+}
+/// A position on a timeline.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct TimeCursor {
+    #[prost(message, optional, tag = "1")]
+    pub timeline: ::core::option::Option<super::super::common::v1alpha1::Timeline>,
+    /// Timeline type. May be absent if the recording is still loading.
+    #[prost(
+        enumeration = "super::super::common::v1alpha1::TimeType",
+        optional,
+        tag = "2"
+    )]
+    pub time_type: ::core::option::Option<i32>,
+    /// Current time on the timeline. Absent if the cursor is not set.
+    #[prost(message, optional, tag = "3")]
+    pub time: ::core::option::Option<super::super::common::v1alpha1::TimelineTime>,
+}
+impl ::prost::Name for TimeCursor {
+    const NAME: &'static str = "TimeCursor";
+    const PACKAGE: &'static str = "rerun.sdk_comms.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.sdk_comms.v1alpha1.TimeCursor".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.sdk_comms.v1alpha1.TimeCursor".into()
+    }
+}
+/// Generated client implementations.
+pub mod viewer_control_service_client {
+    #![allow(
+        unused_variables,
+        dead_code,
+        missing_docs,
+        clippy::wildcard_imports,
+        clippy::let_unit_value
+    )]
+    use tonic::codegen::http::Uri;
+    use tonic::codegen::*;
+    #[derive(Debug, Clone)]
+    pub struct ViewerControlServiceClient<T> {
+        inner: tonic::client::Grpc<T>,
+    }
+    impl<T> ViewerControlServiceClient<T>
+    where
+        T: tonic::client::GrpcService<tonic::body::Body>,
+        T::Error: Into<StdError>,
+        T::ResponseBody: Body<Data = Bytes> + std::marker::Send + 'static,
+        <T::ResponseBody as Body>::Error: Into<StdError> + std::marker::Send,
+    {
+        pub fn new(inner: T) -> Self {
+            let inner = tonic::client::Grpc::new(inner);
+            Self { inner }
+        }
+        pub fn with_origin(inner: T, origin: Uri) -> Self {
+            let inner = tonic::client::Grpc::with_origin(inner, origin);
+            Self { inner }
+        }
+        pub fn with_interceptor<F>(
+            inner: T,
+            interceptor: F,
+        ) -> ViewerControlServiceClient<InterceptedService<T, F>>
+        where
+            F: tonic::service::Interceptor,
+            T::ResponseBody: Default,
+            T: tonic::codegen::Service<
+                    http::Request<tonic::body::Body>,
+                    Response = http::Response<
+                        <T as tonic::client::GrpcService<tonic::body::Body>>::ResponseBody,
+                    >,
+                >,
+            <T as tonic::codegen::Service<http::Request<tonic::body::Body>>>::Error:
+                Into<StdError> + std::marker::Send + std::marker::Sync,
+        {
+            ViewerControlServiceClient::new(InterceptedService::new(inner, interceptor))
+        }
+        /// Compress requests with the given encoding.
+        ///
+        /// This requires the server to support it otherwise it might respond with an
+        /// error.
+        #[must_use]
+        pub fn send_compressed(mut self, encoding: CompressionEncoding) -> Self {
+            self.inner = self.inner.send_compressed(encoding);
+            self
+        }
+        /// Enable decompressing responses.
+        #[must_use]
+        pub fn accept_compressed(mut self, encoding: CompressionEncoding) -> Self {
+            self.inner = self.inner.accept_compressed(encoding);
+            self
+        }
+        /// Limits the maximum size of a decoded message.
+        ///
+        /// Default: `4MB`
+        #[must_use]
+        pub fn max_decoding_message_size(mut self, limit: usize) -> Self {
+            self.inner = self.inner.max_decoding_message_size(limit);
+            self
+        }
+        /// Limits the maximum size of an encoded message.
+        ///
+        /// Default: `usize::MAX`
+        #[must_use]
+        pub fn max_encoding_message_size(mut self, limit: usize) -> Self {
+            self.inner = self.inner.max_encoding_message_size(limit);
+            self
+        }
+        pub async fn save_screenshot(
+            &mut self,
+            request: impl tonic::IntoRequest<super::SaveScreenshotRequest>,
+        ) -> std::result::Result<tonic::Response<super::SaveScreenshotResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic_prost::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.sdk_comms.v1alpha1.ViewerControlService/SaveScreenshot",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.sdk_comms.v1alpha1.ViewerControlService",
+                "SaveScreenshot",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+        /// Move the time cursor (timeline position) of a recording in the viewer.
+        pub async fn set_time_cursor(
+            &mut self,
+            request: impl tonic::IntoRequest<super::SetTimeCursorRequest>,
+        ) -> std::result::Result<tonic::Response<super::SetTimeCursorResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic_prost::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.sdk_comms.v1alpha1.ViewerControlService/SetTimeCursor",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.sdk_comms.v1alpha1.ViewerControlService",
+                "SetTimeCursor",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+        /// Open a URL in the viewer (a recording/blueprint file, a `rerun://` dataset URI, a redap
+        /// server/catalog URL, or an intra-recording link).
+        pub async fn open_url(
+            &mut self,
+            request: impl tonic::IntoRequest<super::OpenUrlRequest>,
+        ) -> std::result::Result<tonic::Response<super::OpenUrlResponse>, tonic::Status> {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic_prost::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.sdk_comms.v1alpha1.ViewerControlService/OpenUrl",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.sdk_comms.v1alpha1.ViewerControlService",
+                "OpenUrl",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+        /// One `egui_inspection` request/response exchange, used by `re_viewer_mcp` to control the viewer ui.
+        pub async fn inspect(
+            &mut self,
+            request: impl tonic::IntoRequest<super::InspectRequest>,
+        ) -> std::result::Result<tonic::Response<super::InspectResponse>, tonic::Status> {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic_prost::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.sdk_comms.v1alpha1.ViewerControlService/Inspect",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.sdk_comms.v1alpha1.ViewerControlService",
+                "Inspect",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+        /// Returns info about what the viewer is currently showing, so the agent can orient itself via `re_viewer_mcp`
+        pub async fn get_viewer_state(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetViewerStateRequest>,
+        ) -> std::result::Result<tonic::Response<super::GetViewerStateResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic_prost::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.sdk_comms.v1alpha1.ViewerControlService/GetViewerState",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.sdk_comms.v1alpha1.ViewerControlService",
+                "GetViewerState",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+    }
+}
+/// Generated server implementations.
+pub mod viewer_control_service_server {
+    #![allow(
+        unused_variables,
+        dead_code,
+        missing_docs,
+        clippy::wildcard_imports,
+        clippy::let_unit_value
+    )]
+    use tonic::codegen::*;
+    /// Generated trait containing gRPC methods that should be implemented for use with ViewerControlServiceServer.
+    #[async_trait]
+    pub trait ViewerControlService: std::marker::Send + std::marker::Sync + 'static {
+        async fn save_screenshot(
+            &self,
+            request: tonic::Request<super::SaveScreenshotRequest>,
+        ) -> std::result::Result<tonic::Response<super::SaveScreenshotResponse>, tonic::Status>;
+        /// Move the time cursor (timeline position) of a recording in the viewer.
+        async fn set_time_cursor(
+            &self,
+            request: tonic::Request<super::SetTimeCursorRequest>,
+        ) -> std::result::Result<tonic::Response<super::SetTimeCursorResponse>, tonic::Status>;
+        /// Open a URL in the viewer (a recording/blueprint file, a `rerun://` dataset URI, a redap
+        /// server/catalog URL, or an intra-recording link).
+        async fn open_url(
+            &self,
+            request: tonic::Request<super::OpenUrlRequest>,
+        ) -> std::result::Result<tonic::Response<super::OpenUrlResponse>, tonic::Status>;
+        /// One `egui_inspection` request/response exchange, used by `re_viewer_mcp` to control the viewer ui.
+        async fn inspect(
+            &self,
+            request: tonic::Request<super::InspectRequest>,
+        ) -> std::result::Result<tonic::Response<super::InspectResponse>, tonic::Status>;
+        /// Returns info about what the viewer is currently showing, so the agent can orient itself via `re_viewer_mcp`
+        async fn get_viewer_state(
+            &self,
+            request: tonic::Request<super::GetViewerStateRequest>,
+        ) -> std::result::Result<tonic::Response<super::GetViewerStateResponse>, tonic::Status>;
+    }
+    #[derive(Debug)]
+    pub struct ViewerControlServiceServer<T> {
+        inner: Arc<T>,
+        accept_compression_encodings: EnabledCompressionEncodings,
+        send_compression_encodings: EnabledCompressionEncodings,
+        max_decoding_message_size: Option<usize>,
+        max_encoding_message_size: Option<usize>,
+    }
+    impl<T> ViewerControlServiceServer<T> {
+        pub fn new(inner: T) -> Self {
+            Self::from_arc(Arc::new(inner))
+        }
+        pub fn from_arc(inner: Arc<T>) -> Self {
+            Self {
+                inner,
+                accept_compression_encodings: Default::default(),
+                send_compression_encodings: Default::default(),
+                max_decoding_message_size: None,
+                max_encoding_message_size: None,
+            }
+        }
+        pub fn with_interceptor<F>(inner: T, interceptor: F) -> InterceptedService<Self, F>
+        where
+            F: tonic::service::Interceptor,
+        {
+            InterceptedService::new(Self::new(inner), interceptor)
+        }
+        /// Enable decompressing requests with the given encoding.
+        #[must_use]
+        pub fn accept_compressed(mut self, encoding: CompressionEncoding) -> Self {
+            self.accept_compression_encodings.enable(encoding);
+            self
+        }
+        /// Compress responses with the given encoding, if the client supports it.
+        #[must_use]
+        pub fn send_compressed(mut self, encoding: CompressionEncoding) -> Self {
+            self.send_compression_encodings.enable(encoding);
+            self
+        }
+        /// Limits the maximum size of a decoded message.
+        ///
+        /// Default: `4MB`
+        #[must_use]
+        pub fn max_decoding_message_size(mut self, limit: usize) -> Self {
+            self.max_decoding_message_size = Some(limit);
+            self
+        }
+        /// Limits the maximum size of an encoded message.
+        ///
+        /// Default: `usize::MAX`
+        #[must_use]
+        pub fn max_encoding_message_size(mut self, limit: usize) -> Self {
+            self.max_encoding_message_size = Some(limit);
+            self
+        }
+    }
+    impl<T, B> tonic::codegen::Service<http::Request<B>> for ViewerControlServiceServer<T>
+    where
+        T: ViewerControlService,
+        B: Body + std::marker::Send + 'static,
+        B::Error: Into<StdError> + std::marker::Send + 'static,
+    {
+        type Response = http::Response<tonic::body::Body>;
+        type Error = std::convert::Infallible;
+        type Future = BoxFuture<Self::Response, Self::Error>;
+        fn poll_ready(
+            &mut self,
+            _cx: &mut Context<'_>,
+        ) -> Poll<std::result::Result<(), Self::Error>> {
+            Poll::Ready(Ok(()))
+        }
+        fn call(&mut self, req: http::Request<B>) -> Self::Future {
+            match req.uri().path() {
+                "/rerun.sdk_comms.v1alpha1.ViewerControlService/SaveScreenshot" => {
+                    #[allow(non_camel_case_types)]
+                    struct SaveScreenshotSvc<T: ViewerControlService>(pub Arc<T>);
+                    impl<T: ViewerControlService>
+                        tonic::server::UnaryService<super::SaveScreenshotRequest>
+                        for SaveScreenshotSvc<T>
+                    {
+                        type Response = super::SaveScreenshotResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::SaveScreenshotRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as ViewerControlService>::save_screenshot(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = SaveScreenshotSvc(inner);
+                        let codec = tonic_prost::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.sdk_comms.v1alpha1.ViewerControlService/SetTimeCursor" => {
+                    #[allow(non_camel_case_types)]
+                    struct SetTimeCursorSvc<T: ViewerControlService>(pub Arc<T>);
+                    impl<T: ViewerControlService>
+                        tonic::server::UnaryService<super::SetTimeCursorRequest>
+                        for SetTimeCursorSvc<T>
+                    {
+                        type Response = super::SetTimeCursorResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::SetTimeCursorRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as ViewerControlService>::set_time_cursor(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = SetTimeCursorSvc(inner);
+                        let codec = tonic_prost::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.sdk_comms.v1alpha1.ViewerControlService/OpenUrl" => {
+                    #[allow(non_camel_case_types)]
+                    struct OpenUrlSvc<T: ViewerControlService>(pub Arc<T>);
+                    impl<T: ViewerControlService> tonic::server::UnaryService<super::OpenUrlRequest> for OpenUrlSvc<T> {
+                        type Response = super::OpenUrlResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::OpenUrlRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as ViewerControlService>::open_url(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = OpenUrlSvc(inner);
+                        let codec = tonic_prost::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.sdk_comms.v1alpha1.ViewerControlService/Inspect" => {
+                    #[allow(non_camel_case_types)]
+                    struct InspectSvc<T: ViewerControlService>(pub Arc<T>);
+                    impl<T: ViewerControlService> tonic::server::UnaryService<super::InspectRequest> for InspectSvc<T> {
+                        type Response = super::InspectResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::InspectRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as ViewerControlService>::inspect(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = InspectSvc(inner);
+                        let codec = tonic_prost::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.sdk_comms.v1alpha1.ViewerControlService/GetViewerState" => {
+                    #[allow(non_camel_case_types)]
+                    struct GetViewerStateSvc<T: ViewerControlService>(pub Arc<T>);
+                    impl<T: ViewerControlService>
+                        tonic::server::UnaryService<super::GetViewerStateRequest>
+                        for GetViewerStateSvc<T>
+                    {
+                        type Response = super::GetViewerStateResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::GetViewerStateRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as ViewerControlService>::get_viewer_state(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = GetViewerStateSvc(inner);
+                        let codec = tonic_prost::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                _ => Box::pin(async move {
+                    let mut response = http::Response::new(tonic::body::Body::default());
+                    let headers = response.headers_mut();
+                    headers.insert(
+                        tonic::Status::GRPC_STATUS,
+                        (tonic::Code::Unimplemented as i32).into(),
+                    );
+                    headers.insert(
+                        http::header::CONTENT_TYPE,
+                        tonic::metadata::GRPC_CONTENT_TYPE,
+                    );
+                    Ok(response)
+                }),
+            }
+        }
+    }
+    impl<T> Clone for ViewerControlServiceServer<T> {
+        fn clone(&self) -> Self {
+            let inner = self.inner.clone();
+            Self {
+                inner,
+                accept_compression_encodings: self.accept_compression_encodings,
+                send_compression_encodings: self.send_compression_encodings,
+                max_decoding_message_size: self.max_decoding_message_size,
+                max_encoding_message_size: self.max_encoding_message_size,
+            }
+        }
+    }
+    /// Generated gRPC service name
+    pub const SERVICE_NAME: &str = "rerun.sdk_comms.v1alpha1.ViewerControlService";
+    impl<T> tonic::server::NamedService for ViewerControlServiceServer<T> {
         const NAME: &'static str = SERVICE_NAME;
     }
 }

@@ -25,6 +25,7 @@ from .affix_fuzzer20 import AffixFuzzer20, AffixFuzzer20Batch
 from .affix_fuzzer21 import AffixFuzzer21, AffixFuzzer21Batch
 from .affix_fuzzer22 import AffixFuzzer22, AffixFuzzer22Batch
 from .affix_fuzzer23 import AffixFuzzer23, AffixFuzzer23Batch
+from .many_vec3 import ManyVec3, ManyVec3Batch
 
 __all__ = [
     "AffixFuzzer1",
@@ -93,4 +94,6 @@ __all__ = [
     "AffixFuzzer22Batch",
     "AffixFuzzer23",
     "AffixFuzzer23Batch",
+    "ManyVec3",
+    "ManyVec3Batch",
 ]

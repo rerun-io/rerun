@@ -115,7 +115,7 @@ pub fn new_view_query<'a>(ctx: &'a ViewerContext<'a>, view: &'a ViewBlueprint) -
         view_id: view.id,
         space_origin: &view.space_origin,
         active_visualizer_instructions_per_type,
-        timeline: current_query.timeline(),
+        timeline: *ctx.time_ctrl.timeline_name(),
         latest_at: current_query.at(),
         highlights,
     }

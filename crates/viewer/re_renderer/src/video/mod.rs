@@ -5,7 +5,7 @@ use std::collections::hash_map::Entry;
 use ahash::HashMap;
 use re_log::ResultExt as _;
 use re_mutex::Mutex;
-use re_video::player::{DecoderDelayState, VideoPlayerError, VideoPlayerStreamId};
+use re_video::player::{DecoderDelayState, GetVideoSource, VideoPlayerError, VideoPlayerStreamId};
 use re_video::{DecodeSettings, VideoDataDescription};
 
 use crate::RenderContext;
@@ -144,6 +144,7 @@ impl Video {
     /// This is useful when the video description has changed since the decoders were created.
     pub fn reset_all_decoders(&self) {
         let mut players = self.players.lock();
+        #[expect(clippy::iter_over_hash_type)] // Each player is reset independently.
         for player in players.values_mut() {
             player
                 .player
@@ -173,12 +174,12 @@ impl Video {
     ///
     /// `get_video_chunk` is used both to read data for frames internally, and as a way to request
     /// what data should be loaded.
-    pub fn frame_at<'a>(
+    pub fn frame_at(
         &self,
         render_context: &RenderContext,
         player_stream_id: VideoPlayerStreamId,
         video_time: re_video::Time,
-        get_video_chunk: &dyn Fn(re_video::VideoSource) -> &'a [u8],
+        video_source: &dyn GetVideoSource,
     ) -> FrameDecodingOutput {
         re_tracing::profile_function!();
 
@@ -213,7 +214,7 @@ impl Video {
             &mut |texture, frame| {
                 chunk_decoder::update_video_texture_with_frame(render_context, texture, frame)
             },
-            get_video_chunk,
+            video_source,
         );
 
         let output = decoder_entry.player.output();
@@ -248,6 +249,7 @@ impl Video {
         size_delta: isize,
     ) {
         let mut players = self.players.lock();
+        #[expect(clippy::iter_over_hash_type)] // Each player is updated based on its own state.
         for entry in players.values_mut() {
             let player = &mut entry.player;
 
@@ -292,6 +294,7 @@ impl Video {
         players.retain(|_id, entry| entry.used_last_frame);
 
         // Reset for the next frame:
+        #[expect(clippy::iter_over_hash_type)] // All entries receive the same value.
         for entry in players.values_mut() {
             entry.used_last_frame = false;
         }

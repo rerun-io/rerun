@@ -7,14 +7,15 @@
 //!
 //! The selector syntax is a subset of `jq`:
 //!
-//! | Syntax      | Meaning                                                    | Example        |
-//! |-------------|------------------------------------------------------------|----------------|
-//! | `.field`    | Access a named field in a struct                           | `.location`    |
-//! | `[]`        | Iterate over every element of a list                       | `.poses[]`     |
-//! | `[N]`       | Index into a list by position                              | `.[0]`         |
-//! | `?`         | Error suppression / optional operator                      | `.field?`      |
-//! | `!`         | Assert non-null (promotes all-null rows to outer nulls)    | `.field!`      |
-//! | `\|`        | Pipe the output of one expression to another               | `.foo \| .bar` |
+//! | Syntax    | Meaning                                                 | Example            |
+//! |-----------|---------------------------------------------------------|--------------------|
+//! | `.field`  | Access a named field in a struct                        | `.location`        |
+//! | `[]`      | Iterate over every element of a list                    | `.poses[]`         |
+//! | `[N]`     | Index into a list by position                           | `.[0]`             |
+//! | `?`       | Error suppression / optional operator                   | `.field?`          |
+//! | `!`       | Assert non-null (promotes all-null rows to outer nulls) | `.field!`          |
+//! | `\|`      | Pipe the output of one expression to another            | `.foo \| .bar`     |
+//! | `pack(…)` | Pack 1:1 paths into a `FixedSizeList` (see below)        | `pack(.x, .y, .z)` |
 //!
 //! Segments can be chained without an explicit pipe: `.poses[].x` is equivalent to `.poses[] | .x`.
 //!
@@ -37,6 +38,30 @@
 //!   during schema evolution or when optional columns are omitted.
 //! * `!` promotes rows where **all** inner values are null to an outer null, collapsing
 //!   `[null]` → `null` so downstream consumers see clean nullability.
+//!
+//! # Packing into fixed-size lists
+//!
+//! `pack(path, path, …)` packs several path expressions into a [`FixedSizeList`](arrow::array::FixedSizeListArray)
+//! of size equal to the number of paths. This is the canonical way to build component-style
+//! columns such as `Position3D` (`FixedSizeList<f32>[3]`) from separate scalar fields:
+//! `pack(.x, .y, .z)`.
+//!
+//! Each path is evaluated against `pack`'s input and must produce **exactly one value per row**
+//! with the **same datatype** (nullability may differ). The paths are zipped per row, so the
+//! result has the same number of rows as the input.
+//!
+//! Nullability follows an **entry-level AND** model: an entry is null if **any** of its paths is
+//! null (a missing component nulls the whole entry). Because a null in one path therefore shadows
+//! the valid values of its siblings, this must be acknowledged:
+//!
+//! * A **non-nullable** path needs no annotation.
+//! * A **nullable** path must be marked with `!` (e.g. `pack(.x, .y!, .z)`), otherwise `pack` errors.
+//!   This requirement is **type-driven** — it depends on whether the path is nullable in the schema,
+//!   not on whether a particular batch happens to contain nulls — so a given `pack` either always
+//!   validates or always errors, regardless of data.
+//!
+//! The resulting `FixedSizeList` (and its element field) is nullable iff any path is nullable, and
+//! an element-level null only ever occurs under a null entry.
 //!
 //! # Anonymous functions
 //!

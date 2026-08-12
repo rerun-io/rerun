@@ -345,7 +345,7 @@ impl ServerModal {
                     AuthKind::None => Ok(None),
                 };
 
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Max), |ui| {
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     let enabled = origin.is_ok() && credentials.is_ok();
                     let save_button_response =
                         ui.add_enabled(enabled, ReButton::new(save_text).primary().small());

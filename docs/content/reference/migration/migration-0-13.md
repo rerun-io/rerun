@@ -1,6 +1,7 @@
 ---
 title: Migrating from 0.12 to 0.13
 order: 996
+hidden: true
 ---
 
 ## `TimeSeriesScalar` deprecated in favor of `Scalar` & `SeriesLine`/`SeriesPoint`

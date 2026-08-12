@@ -10,6 +10,7 @@ use egui::{Frame, Id, Margin, OpenUrl, Panel, RichText, Ui};
 use egui_table::{CellInfo, HeaderCellInfo};
 use itertools::Itertools as _;
 use re_arrow_util::ArrowArrayDowncastRef as _;
+use re_async::AsyncRuntimeHandle;
 use re_format::{format_plural_s, format_uint};
 use re_log::error;
 use re_log_types::{EntryId, Timestamp};
@@ -18,15 +19,13 @@ use re_sorbet::{ColumnDescriptorRef, SorbetSchema};
 use re_ui::egui_ext::response_ext::ResponseExt as _;
 use re_ui::menu::menu_style;
 use re_ui::{UiExt as _, UiLayout, icons};
-use re_viewer_context::{
-    AsyncRuntimeHandle, StoreViewContext, SystemCommand, SystemCommandSender as _,
-};
+use re_viewer_context::{AppContext, SystemCommand, SystemCommandSender as _};
 
 use crate::StreamingCacheTableProvider;
+use crate::cards_view::FlagChangeEvent;
 use crate::datafusion_adapter::{DataFusionAdapter, DataFusionQueryResult};
 use crate::display_record_batch::DisplayColumn;
 use crate::filters::{ColumnFilter, FilterState};
-use crate::grid_view::FlagChangeEvent;
 use crate::header_tooltip::column_header_tooltip_ui;
 use crate::preview_renderer::PreviewRecording;
 use crate::re_table::ReTable;
@@ -40,12 +39,12 @@ use crate::{DisplayRecordBatch, default_display_name_for_column};
 /// Minimum row height (in points) when segment preview views are shown.
 const SEGMENT_PREVIEW_SIZE: f32 = 200.0;
 
-/// Whether the table is shown as a traditional table or as a card-based grid.
+/// Whether the table is shown as a traditional table or as cards.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub(crate) enum TableViewMode {
     #[default]
     Table,
-    Grid,
+    Cards,
 }
 
 /// Output produced by [`DataFusionTableWidget::table_ui`].
@@ -56,7 +55,7 @@ struct TableUiOutput {
     /// Original Arrow field for the configured flag column.
     flag_column_field: Option<Field>,
 
-    /// Flag toggle changes from the grid view.
+    /// Flag toggle changes from the card layout.
     flag_changes: Vec<FlagChangeEvent>,
 }
 
@@ -204,9 +203,7 @@ impl<'a> DataFusionTableWidget<'a> {
     /// query results remain visible until a new query completes.
     async fn invalidate_streaming_cache(session_ctx: &SessionContext, table_ref: &TableReference) {
         if let Ok(provider) = session_ctx.table_provider(table_ref.clone()).await
-            && let Some(cache_provider) = provider
-                .as_any()
-                .downcast_ref::<StreamingCacheTableProvider>()
+            && let Some(cache_provider) = provider.downcast_ref::<StreamingCacheTableProvider>()
         {
             cache_provider.refresh();
         }
@@ -376,7 +373,7 @@ impl<'a> DataFusionTableWidget<'a> {
     /// Display the table.
     pub fn show(
         self,
-        viewer_ctx: &StoreViewContext<'_>,
+        app_ctx: &AppContext<'_>,
         runtime: &AsyncRuntimeHandle,
         ui: &mut egui::Ui,
         view_states: &mut re_viewer_context::ViewStates,
@@ -460,7 +457,7 @@ impl<'a> DataFusionTableWidget<'a> {
         };
 
         let output = self.table_ui(
-            viewer_ctx,
+            app_ctx,
             runtime,
             ui,
             table_state.blueprint(),
@@ -485,7 +482,7 @@ impl<'a> DataFusionTableWidget<'a> {
                 && let Some(flag_column_field) = &output.flag_column_field
             {
                 upsert_flag_changes(
-                    viewer_ctx,
+                    app_ctx,
                     runtime,
                     entry_uri.clone(),
                     results,
@@ -517,7 +514,7 @@ impl<'a> DataFusionTableWidget<'a> {
     /// Actual UI code to render a table.
     fn table_ui(
         &self,
-        ctx: &StoreViewContext<'_>,
+        ctx: &AppContext<'_>,
         runtime: &AsyncRuntimeHandle,
         ui: &mut egui::Ui,
         table_blueprint: &TableBlueprint,
@@ -583,7 +580,7 @@ impl<'a> DataFusionTableWidget<'a> {
         let redap_uri = self.readp_uri();
 
         let table_cards_and_blueprints_enabled =
-            ctx.app_options().experimental.table_cards_and_blueprints;
+            ctx.app_options.experimental.table_cards_and_blueprints;
 
         let view_renderer = if table_cards_and_blueprints_enabled {
             let blueprint_db = self.registered_table_blueprint.or_else(|| {
@@ -635,7 +632,7 @@ impl<'a> DataFusionTableWidget<'a> {
             );
         }
 
-        filter_state.filter_bar_ui(ui, ctx.app_options().timestamp_format, &mut new_blueprint);
+        filter_state.filter_bar_ui(ui, ctx.app_options.timestamp_format, &mut new_blueprint);
 
         let table_style = re_ui::TableStyle::Spacious;
 
@@ -671,7 +668,7 @@ impl<'a> DataFusionTableWidget<'a> {
             &columns,
             &query_result.original_schema,
             entry_uri,
-            ctx.app_ctx.connection_registry,
+            ctx.connection_registry,
         );
         if show_segment_previews {
             // Ensure rows are tall enough for the segment preview.
@@ -736,8 +733,8 @@ impl<'a> DataFusionTableWidget<'a> {
                 .preview_column(num_preview_views)
                 .show(ui);
             }
-            TableViewMode::Grid => {
-                flag_changes = crate::grid_view::grid_ui(
+            TableViewMode::Cards => {
+                flag_changes = crate::cards_view::cards_ui(
                     ctx,
                     ui,
                     &columns,
@@ -766,7 +763,7 @@ impl<'a> DataFusionTableWidget<'a> {
 
     fn bottom_bar_ui(
         ui: &mut Ui,
-        ctx: &StoreViewContext<'_>,
+        ctx: &AppContext<'_>,
         session_id: Id,
         total_rows: u64,
         visible_columns: usize,
@@ -781,7 +778,7 @@ impl<'a> DataFusionTableWidget<'a> {
         Panel::bottom(session_id.with("bottom_bar"))
             .frame(frame)
             .show_separator_line(false)
-            .show_inside(ui, |ui| {
+            .show(ui, |ui| {
                 let height = 24.0;
                 ui.set_height(height);
                 ui.horizontal_centered(|ui| {
@@ -808,8 +805,15 @@ impl<'a> DataFusionTableWidget<'a> {
                         },
                         |ui| {
                             ui.set_height(height);
+                            let refresh_tooltip = match re_ui::TableCommandKind::Refresh
+                                .formatted_kb_shortcut(ui.ctx())
+                            {
+                                Some(shortcut) => format!("Refresh table ({shortcut})"),
+                                None => "Refresh table".to_owned(),
+                            };
                             if ui
                                 .small_icon_button(&icons::RESET, "Refresh table")
+                                .on_hover_text(refresh_tooltip)
                                 .clicked()
                             {
                                 action = Some(BottomBarAction::Refresh);
@@ -818,7 +822,7 @@ impl<'a> DataFusionTableWidget<'a> {
                             re_ui::time::short_duration_ui(
                                 ui,
                                 queried_at,
-                                ctx.app_options().timestamp_format,
+                                ctx.app_options.timestamp_format,
                                 Ui::strong,
                             );
                             ui.label("Last updated:");
@@ -840,7 +844,7 @@ fn id_from_session_context_and_table(
 
 fn title_ui(
     ui: &mut egui::Ui,
-    ctx: &StoreViewContext<'_>,
+    ctx: &AppContext<'_>,
     table_config: Option<&mut TableConfig>,
     title: &str,
     url: Option<&str>,
@@ -885,9 +889,9 @@ fn title_ui(
                                 );
                                 ui.icon_selectable_value(
                                     &icons::TABLE_GRID_VIEW,
-                                    "Grid view",
+                                    "Cards view",
                                     view_mode,
-                                    TableViewMode::Grid,
+                                    TableViewMode::Cards,
                                 );
                             });
                         }
@@ -966,9 +970,9 @@ pub fn bool_value_at(
 
 /// Resolve the recording for a row's segment URI, triggering async loading if needed.
 ///
-/// Shared between the table view's `cell_ui` and the grid view.
+/// Shared between the regular table and card layouts.
 pub fn resolve_recording_for_row<'a>(
-    ctx: &'a StoreViewContext<'a>,
+    ctx: &'a AppContext<'a>,
     segment_preview_column: &str,
     columns: &Columns<'_>,
     display_record_batches: &[DisplayRecordBatch],
@@ -1028,12 +1032,12 @@ fn table_index_column_index(schema: &arrow::datatypes::Schema) -> Option<usize> 
 ///
 /// This is fire-and-forget: errors are logged but don't block the UI.
 fn upsert_flag_changes(
-    ctx: &StoreViewContext<'_>,
+    ctx: &AppContext<'_>,
     runtime: &AsyncRuntimeHandle,
     remote: re_uri::EntryUri,
     results: &crate::datafusion_adapter::DataFusionQueryResult,
     flag_column_field: &Field,
-    changes: &[crate::grid_view::FlagChangeEvent],
+    changes: &[crate::cards_view::FlagChangeEvent],
 ) {
     // Find the table index column (needed as merge-key for upsert).
     let Some(index_col_idx) = table_index_column_index(&results.original_schema) else {
@@ -1083,7 +1087,7 @@ fn upsert_flag_changes(
         return;
     };
 
-    let connection_registry = ctx.app_ctx.connection_registry.clone();
+    let connection_registry = ctx.connection_registry.clone();
     runtime.spawn_future(async move {
         let result = async {
             let mut client = connection_registry.client(remote.origin).await?;
@@ -1114,7 +1118,7 @@ enum BottomBarAction {
 
 struct DataFusionTableDelegate<'a> {
     session_id: Id,
-    ctx: &'a StoreViewContext<'a>,
+    ctx: &'a AppContext<'a>,
     table_style: re_ui::TableStyle,
     query_result: &'a DataFusionQueryResult,
     migrated_fields: &'a Vec<Field>,
@@ -1311,7 +1315,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                 == Some(cell.row_nr);
 
             renderer.show_preview(
-                self.ctx.app_ctx,
+                self.ctx,
                 ui,
                 cell.row_nr,
                 row_hovered,

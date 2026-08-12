@@ -92,6 +92,6 @@ OptimizationProfile.OBJECT_STORE = OptimizationProfile(
     max_rows_if_unsorted=8_192,
     extra_passes=50,
     gop_batching=True,
-    split_size_ratio=None,
+    split_size_ratio=10.0,
     fix_keyframe=False,
 )

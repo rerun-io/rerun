@@ -1,19 +1,26 @@
 use std::str::FromStr as _;
 
 use ahash::HashMap;
+use re_chunk::TimelineName;
 use re_entity_db::LogSource;
 use re_log_channel::{
-    DataSourceMessage, DataSourceUiCommand, RecordingOpenBehavior, SaveScreenshotError,
+    DataSourceMessage, DataSourceUiCommand, InspectError, RecordingOpenBehavior,
+    SaveScreenshotError,
 };
-use re_log_types::{LogMsg, StoreId, StoreKind, TableMsg};
+use re_log_types::{LogMsg, StoreId, StoreKind, TableMsg, TimeReal, TimeType};
+use re_protos::common::v1alpha1::TimeType as ProtoTimeType;
+use re_protos::sdk_comms::v1alpha1::{
+    GetViewerStateResponse, SetTimeCursorResponse, TimeCursor, ViewerRecording, ViewerTimeline,
+};
 use re_sdk_types::external::uuid;
 use re_viewer_context::{
-    Item, Route, StoreHub, SystemCommand, SystemCommandSender as _, TableStore,
+    Item, Route, StoreHub, SystemCommand, SystemCommandSender as _, TableStore, TimeControlCommand,
+    open_url::{OpenUrlOptions, ViewerOpenUrl},
 };
 
 use crate::app_blueprint::AppBlueprint;
 
-use super::App;
+use super::{App, WindowDecorationsRequest};
 
 impl App {
     /// Called before each call to `ui`, but ALSO when the app is
@@ -84,8 +91,59 @@ impl App {
 
         self.state.cleanup(&store_hub);
 
+        self.sync_native_window_theme(egui_ctx);
+        self.sync_native_window_decorations(egui_ctx);
+
         // Return the `StoreHub` to the Viewer so we have it on the next frame
         self.store_hub = Some(store_hub);
+    }
+
+    /// Keep the OS window's appearance in sync with our egui theme.
+    ///
+    /// This affects the way the macOS traffic light buttons are painted. Without this,
+    /// they look wrong when the themes mismatch and the window isn't focused.
+    // TODO(emilk/egui#8299): Remove once the egui fix lands
+    fn sync_native_window_theme(&mut self, egui_ctx: &egui::Context) {
+        let window_theme = match egui_ctx.options(|o| o.theme_preference) {
+            egui::ThemePreference::System => egui::SystemTheme::SystemDefault,
+            egui::ThemePreference::Dark => egui::SystemTheme::Dark,
+            egui::ThemePreference::Light => egui::SystemTheme::Light,
+        };
+
+        if self.last_window_theme != Some(window_theme) {
+            self.last_window_theme = Some(window_theme);
+            egui_ctx.send_viewport_cmd(egui::ViewportCommand::SetTheme(window_theme));
+        }
+    }
+
+    /// Hand the window decorations over to the OS, or take them over ourselves.
+    ///
+    /// Only this may act on [`re_viewer_context::AppOptions::custom_window_decorations`];
+    /// everything that paints must use [`Self::custom_window_decorations`] instead, so
+    /// that a mid-frame toggle takes effect on the next frame rather than halfway through
+    /// this one.
+    fn sync_native_window_decorations(&mut self, egui_ctx: &egui::Context) {
+        if !re_ui::supports_custom_decorations(egui_ctx.os()) {
+            return;
+        }
+
+        let desired = self.app_options().custom_window_decorations;
+        let request = if desired {
+            WindowDecorationsRequest::Custom
+        } else {
+            WindowDecorationsRequest::Native
+        };
+        if self.window_decorations_request == request {
+            return;
+        }
+        self.window_decorations_request = request;
+
+        egui_ctx.send_viewport_cmd(egui::ViewportCommand::Decorations(!desired));
+
+        // The window always has an alpha-capable surface where custom decorations are
+        // possible (see `eframe_options`), because that cannot be changed after creation.
+        // Send this even when `desired` is false, or the window may stay transparent.
+        egui_ctx.send_viewport_cmd(egui::ViewportCommand::Transparent(desired));
     }
 
     fn receive_messages(&mut self, store_hub: &mut StoreHub, egui_ctx: &egui::Context) {
@@ -111,10 +169,7 @@ impl App {
 
                 re_log_channel::SmartMessagePayload::Quit(err) => {
                     if let Some(err) = err {
-                        re_log::warn!(
-                            "Data source has left unexpectedly: {err}, source: {}",
-                            msg.source
-                        );
+                        re_log::error!("Data source failed: {err}\nSource: {}", msg.source);
                         if let Some(re_uri::RedapUri::DatasetData(uri)) = channel_source.redap_uri()
                         {
                             self.connection_registry.set_uri_error(uri, err.to_string());
@@ -184,7 +239,12 @@ impl App {
                 }
 
                 DataSourceMessage::UiCommand(ui_command) => {
-                    self.receive_data_source_ui_command(ui_command, &channel_source);
+                    self.receive_data_source_ui_command(
+                        ui_command,
+                        &channel_source,
+                        store_hub,
+                        egui_ctx,
+                    );
                 }
             }
 
@@ -482,6 +542,8 @@ impl App {
         &mut self,
         ui_command: DataSourceUiCommand,
         channel_source: &LogSource,
+        store_hub: &StoreHub,
+        egui_ctx: &egui::Context,
     ) {
         re_tracing::profile_function!();
         match ui_command {
@@ -532,9 +594,202 @@ impl App {
                     .send_system(SystemCommand::SaveScreenshot {
                         target: re_viewer_context::ScreenshotTarget::SaveToPath(file_path),
                         view_id,
+                        notify: false,
                     });
             }
+
+            // Handle a `egui_inspection` request.
+            DataSourceUiCommand::Inspect { request, on_done } => {
+                serve_inspect_request(egui_ctx, &request, on_done);
+            }
+
+            // Report current viewer state (re_viewer_mcp's `GetViewerState`).
+            DataSourceUiCommand::GetViewerState { on_done } => {
+                let state = self.collect_viewer_state(store_hub);
+                on_done.unbounded_send(state).ok();
+            }
+
+            // Open a URL in the viewer (re_viewer_mcp's `OpenUrl`).
+            DataSourceUiCommand::OpenUrl { url, on_done } => {
+                let result = ViewerOpenUrl::parse_with_options(
+                    &url,
+                    &re_data_source::FromUriOptions {
+                        accept_extensionless_http: true,
+                    },
+                );
+                match result {
+                    Ok(open_url) => {
+                        open_url.open(egui_ctx, &OpenUrlOptions::default(), &self.command_sender);
+                        on_done.unbounded_send(Ok(())).ok();
+                    }
+                    Err(err) => {
+                        on_done
+                            .unbounded_send(Err(format!("Failed to open URL {url:?}: {err}")))
+                            .ok();
+                    }
+                }
+            }
+
+            // Move the time cursor of a recording (re_viewer_mcp's `SetTimeCursor`).
+            DataSourceUiCommand::SetTimeCursor {
+                store_id,
+                timeline,
+                time,
+                play,
+                on_done,
+            } => {
+                let result = self.apply_set_time_cursor(
+                    store_hub,
+                    store_id,
+                    timeline.as_deref(),
+                    time,
+                    play,
+                    egui_ctx,
+                );
+                on_done.unbounded_send(result).ok();
+            }
         }
+    }
+
+    /// Snapshot the current viewer state for `re_viewer_mcp`'s `GetViewerState`:
+    /// the active recording, the current page as a sharable URL, and every open recording's
+    /// timelines with their time ranges and current time cursor.
+    fn collect_viewer_state(&self, store_hub: &StoreHub) -> GetViewerStateResponse {
+        let active_id = self.state.active_recording_id().cloned();
+        let route = self.state.navigation.current();
+
+        // Best-effort sharable URL for the current page; some routes (e.g. local tables) can't be
+        // turned into a URL, in which case we leave it empty.
+        let url = ViewerOpenUrl::from_route(store_hub, route)
+            .and_then(|open_url| open_url.sharable_url(None))
+            .unwrap_or_default();
+
+        let recordings = store_hub
+            .store_bundle()
+            .recordings()
+            .map(|db| {
+                let store_id = db.store_id();
+                let timelines = db
+                    .timelines()
+                    .values()
+                    .map(|timeline| {
+                        let name = timeline.name();
+                        let range = db.time_range_for(name);
+                        ViewerTimeline {
+                            timeline: Some((*name).into()),
+                            time_type: ProtoTimeType::from(timeline.typ()) as i32,
+                            time_range: range.map(Into::into),
+                        }
+                    })
+                    .collect();
+
+                let current_time = self
+                    .state
+                    .time_control(store_id)
+                    .map(|time_ctrl| TimeCursor {
+                        timeline: Some((*time_ctrl.timeline_name()).into()),
+                        time_type: time_ctrl.time_type().map(|t| ProtoTimeType::from(t) as i32),
+                        time: time_ctrl.time_int().map(|t| t.as_i64().into()),
+                    });
+
+                ViewerRecording {
+                    store_id: Some(store_id.clone().into()),
+                    timelines,
+                    current_time,
+                }
+            })
+            .collect();
+
+        GetViewerStateResponse {
+            url,
+            active_store_id: active_id.map(Into::into),
+            recordings,
+        }
+    }
+
+    /// Resolve and apply a time-cursor move for `re_viewer_mcp`'s `SetTimeCursor`.
+    ///
+    /// Returns what was applied, or an error string if the recording or timeline could not
+    /// be resolved.
+    fn apply_set_time_cursor(
+        &self,
+        store_hub: &StoreHub,
+        store_id: Option<StoreId>,
+        timeline: Option<&str>,
+        time: i64,
+        play: bool,
+        egui_ctx: &egui::Context,
+    ) -> Result<SetTimeCursorResponse, String> {
+        use re_sdk_types::blueprint::components::PlayState;
+
+        let store_id = store_id
+            .or_else(|| self.state.active_recording_id().cloned())
+            .ok_or_else(|| "no active recording to set the time for".to_owned())?;
+
+        let db = store_hub
+            .entity_db(&store_id)
+            .ok_or_else(|| format!("recording {} is not open", store_id.recording_id().as_str()))?;
+
+        let timelines = db.timelines();
+        if timelines.is_empty() {
+            return Err(format!(
+                "recording {} has no timelines yet",
+                store_id.recording_id().as_str()
+            ));
+        }
+
+        // Resolve the target timeline: explicit, else the active one, else the first.
+        let timeline_name = if let Some(tl) = timeline {
+            let name = TimelineName::try_new(tl).map_err(|err| err.to_string())?;
+            if !timelines.contains_key(&name) {
+                let available: Vec<&str> = timelines.keys().map(|n| n.as_str()).collect();
+                return Err(format!(
+                    "recording {} has no timeline {tl:?}; available: {available:?}",
+                    store_id.recording_id().as_str()
+                ));
+            }
+            name
+        } else {
+            let active = self
+                .state
+                .time_control(&store_id)
+                .map(|tc| *tc.timeline_name());
+            match active {
+                Some(name) if timelines.contains_key(&name) => name,
+                _ => *timelines.keys().next().expect("non-empty checked above"),
+            }
+        };
+
+        let time_type = timelines
+            .get(&timeline_name)
+            .map_or(TimeType::Sequence, |t| t.typ());
+
+        let play_state = if play {
+            PlayState::Playing
+        } else {
+            PlayState::Paused
+        };
+
+        // The order of these commands matters.
+        let time_commands = vec![
+            TimeControlCommand::SetActiveTimeline(timeline_name),
+            TimeControlCommand::SetPlayState(play_state),
+            TimeControlCommand::SetTime(TimeReal::from(time)),
+        ];
+
+        self.command_sender
+            .send_system(SystemCommand::TimeControlCommands {
+                store_id: store_id.clone(),
+                time_commands,
+            });
+        egui_ctx.request_repaint();
+
+        Ok(SetTimeCursorResponse {
+            store_id: Some(store_id.into()),
+            timeline: Some(timeline_name.into()),
+            time_type: ProtoTimeType::from(time_type) as i32,
+            time: Some(time.into()),
+        })
     }
 
     /// Receive in-transit chunks (previously prefetched):
@@ -690,48 +945,68 @@ impl App {
         use re_memory::MemoryUse;
 
         let limit = self.app_options().memory_limit;
-        let mut mem_use_before = MemoryUse::capture();
-
         let default_limit = re_memory::MemoryLimit::default_for_current_platform();
 
         // If we are at the default limit, which is derived from system memory,
-        // we actually do want to count external to OOM.
+        // we actually do want to count external to avoid OOM.
         let external_mem = if limit.as_bytes() >= default_limit.as_bytes()
-            || default_limit.is_exceeded_by(&mem_use_before).is_some()
+            || default_limit
+                .is_exceeded_by(&MemoryUse::capture())
+                .is_some()
         {
             0
         } else {
-            let external_mem = self.external_memory_users.total_external_memory();
-
-            if let Some(counted) = &mut mem_use_before.counted {
-                *counted -= external_mem;
-            }
-
-            if let Some(resident) = &mut mem_use_before.resident {
-                *resident -= external_mem;
-            }
-
-            external_mem
+            self.external_memory_users.total_external_memory()
         };
 
-        if let Some(minimum_fraction_to_purge) = limit.is_exceeded_by(&mem_use_before) {
-            re_log::info_once!("Reached memory limit of {limit}. Freeing up data…");
+        // Memory use as the limit sees it. We measure again between the steps of a purge, so that
+        // each step only has to deal with what the previous ones left behind.
+        let memory_use = || {
+            let mut mem_use = MemoryUse::capture();
 
+            if let Some(counted) = &mut mem_use.counted {
+                *counted = counted.saturating_sub(external_mem);
+            }
+
+            if let Some(resident) = &mut mem_use.resident {
+                *resident = resident.saturating_sub(external_mem);
+            }
+
+            mem_use
+        };
+
+        let mem_use_before = memory_use();
+
+        if limit.is_exceeded_by(&mem_use_before).is_none() {
+            return;
+        }
+
+        re_log::info_once!("Reached memory limit of {limit}. Freeing up data…");
+
+        re_log::trace!("RAM limit: {limit}");
+        if let Some(resident) = mem_use_before.resident {
+            re_log::trace!("Resident: {}", format_bytes(resident as _),);
+        }
+        if let Some(counted) = mem_use_before.counted {
+            re_log::trace!("Counted: {}", format_bytes(counted as _));
+        }
+        if external_mem > 0 {
+            re_log::trace!("External: {}", format_bytes(external_mem as _));
+        }
+
+        re_tracing::profile_scope!("pruning");
+
+        // Free data in order of how expensive it is to get back, and re-check the limit between
+        // each step, so that we never drop more than we have to.
+
+        // The app caches hold data the viewer derives locally, so they are the cheapest to rebuild.
+        self.state.app_caches.purge_memory();
+
+        let mem_use_after_app_caches = memory_use();
+        if let Some(minimum_fraction_to_purge) = limit.is_exceeded_by(&mem_use_after_app_caches) {
             let fraction_to_purge = (minimum_fraction_to_purge + 0.2).clamp(0.25, 1.0);
 
-            re_log::trace!("RAM limit: {limit}");
-            if let Some(resident) = mem_use_before.resident {
-                re_log::trace!("Resident: {}", format_bytes(resident as _),);
-            }
-            if let Some(counted) = mem_use_before.counted {
-                re_log::trace!("Counted: {}", format_bytes(counted as _));
-            }
-            if external_mem > 0 {
-                re_log::trace!("External: {}", format_bytes(external_mem as _));
-            }
-
-            re_tracing::profile_scope!("pruning");
-            if let Some(counted) = mem_use_before.counted {
+            if let Some(counted) = mem_use_after_app_caches.counted {
                 re_log::trace!(
                     "Attempting to purge {:.1}% of used RAM ({})…",
                     100.0 * fraction_to_purge,
@@ -744,36 +1019,43 @@ impl App {
                 self.active_recording_id(),
                 &|store_id| self.state.time_cursor_for(store_id).map(|t| t.time_cursor),
             );
-
-            let mem_use_after = MemoryUse::capture();
-
-            let freed_memory = mem_use_before - mem_use_after;
-
-            if let (Some(counted_before), Some(counted_diff)) =
-                (mem_use_before.counted, freed_memory.counted)
-                && 0 < counted_diff
-            {
-                re_log::debug!(
-                    "GC result: -{} (-{:.1}%).",
-                    format_bytes(counted_diff as _),
-                    100.0 * counted_diff as f32 / counted_before as f32
-                );
-            }
-
-            // Cache app overhead = total memory use minus all recording chunk data.
-            // This captures fonts, UI state, indices, and other unevictable memory.
-            if let Some(current_mem_use) = mem_use_after.counted.or(mem_use_after.resident) {
-                let total_chunk_bytes: u64 = store_hub
-                    .store_bundle()
-                    .recordings()
-                    .map(|r| r.byte_size_of_physical_chunks())
-                    .sum();
-                self.cached_app_overhead_bytes =
-                    Some(current_mem_use.saturating_sub(total_chunk_bytes));
-            }
-
-            self.dev_panel.note_memory_purge();
         }
+
+        // The network-level chunk cache goes last. Its chunks are shared between segments, so
+        // dropping them means downloading the same asset again for the next segment that wants it,
+        // which is exactly what the cache exists to avoid.
+        if limit.is_exceeded_by(&memory_use()).is_some() {
+            self.connection_registry.purge_memory();
+        }
+
+        let mem_use_after = MemoryUse::capture();
+
+        let freed_memory = mem_use_before - mem_use_after;
+
+        if let (Some(counted_before), Some(counted_diff)) =
+            (mem_use_before.counted, freed_memory.counted)
+            && 0 < counted_diff
+        {
+            re_log::debug!(
+                "GC result: -{} (-{:.1}%).",
+                format_bytes(counted_diff as _),
+                100.0 * counted_diff as f32 / counted_before as f32
+            );
+        }
+
+        // Cache app overhead = total memory use minus all recording chunk data.
+        // This captures fonts, UI state, indices, and other unevictable memory.
+        if let Some(current_mem_use) = mem_use_after.counted.or(mem_use_after.resident) {
+            let total_chunk_bytes: u64 = store_hub
+                .store_bundle()
+                .recordings()
+                .map(|r| r.byte_size_of_physical_chunks())
+                .sum();
+            self.cached_app_overhead_bytes =
+                Some(current_mem_use.saturating_sub(total_chunk_bytes));
+        }
+
+        self.dev_panel.note_memory_purge();
     }
 
     /// Prefetch chunks for the open recording (stream from server)
@@ -896,4 +1178,37 @@ impl App {
             },
         );
     }
+}
+
+/// Handle a `egui_inspection` request.
+fn serve_inspect_request(
+    egui_ctx: &egui::Context,
+    request: &[u8],
+    on_done: futures::channel::mpsc::UnboundedSender<Result<Vec<u8>, InspectError>>,
+) {
+    use egui_inspection::{InspectionPlugin, Request, protocol};
+
+    let req: Request = match protocol::decode_body(request) {
+        Ok(req) => req,
+        Err(err) => {
+            on_done
+                .unbounded_send(Err(InspectError::DecodeRequest(err.to_string())))
+                .ok();
+            return;
+        }
+    };
+
+    if egui_ctx.plugin_opt::<InspectionPlugin>().is_none() {
+        egui_ctx.add_plugin(InspectionPlugin::new(Some("rerun viewer".to_owned())));
+    }
+
+    egui_ctx.with_plugin::<InspectionPlugin, _>(|plugin| {
+        plugin.submit(req, move |resp| {
+            let encoded = protocol::encode_body(&resp)
+                .map_err(|err| InspectError::EncodeResponse(err.to_string()));
+            on_done.unbounded_send(encoded).ok();
+        });
+    });
+
+    egui_ctx.request_repaint();
 }

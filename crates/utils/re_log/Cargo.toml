@@ -33,7 +33,6 @@ setup = ["dep:tracing-log", "dep:tracing-web"]
 [dependencies]
 log = { workspace = true, features = ["std"] }
 crossbeam.workspace = true
-log-once.workspace = true
 parking_lot.workspace = true
 
 tracing.workspace = true

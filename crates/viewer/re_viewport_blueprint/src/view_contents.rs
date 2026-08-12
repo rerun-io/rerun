@@ -4,6 +4,7 @@ use arrow::array::AsArray as _;
 use nohash_hasher::{IntMap, IntSet};
 use re_entity_db::external::re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, EntityTree};
+use re_log::ResultExt as _;
 use re_log_types::path::RuleEffect;
 use re_log_types::{
     EntityPath, EntityPathFilter, EntityPathHash, EntityPathSubs, ResolvedEntityPathFilter,
@@ -119,7 +120,7 @@ impl ViewContents {
         view_class_identifier: ViewClassIdentifier,
         subst_env: &EntityPathSubs,
     ) -> Self {
-        let property = ViewProperty::from_archetype::<blueprint_archetypes::ViewContents>(
+        let property = ViewProperty::from_archetype_with_db::<blueprint_archetypes::ViewContents>(
             blueprint_db,
             query,
             view_id,
@@ -238,9 +239,8 @@ impl ViewContents {
 
     /// Save the entity path filter.
     fn save_entity_path_filter_to_blueprint(&self, ctx: &ViewerContext<'_>) {
-        ViewProperty::from_archetype::<blueprint_archetypes::ViewContents>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query,
+        ViewProperty::from_archetype_for_view::<blueprint_archetypes::ViewContents>(
+            ctx,
             self.view_id,
         )
         .save_blueprint_component(
@@ -286,12 +286,14 @@ impl ViewContents {
             re_tracing::profile_scope!("visualizable_entities_per_visualizer_in_view");
 
             let mut visualizable_entities_per_visualizer_in_view = IntMap::default();
+            #[expect(clippy::iter_over_hash_type)] // Filling another hash map.
             for (visualizer, visualizable_entities) in visualizable_entities_per_visualizer.iter() {
                 // Skip over visualizers that aren't used in this view.
                 if !visualizer_collection.contains_visualizer_type(*visualizer) {
                     continue;
                 }
 
+                #[expect(clippy::iter_over_hash_type)] // Filling another hash map.
                 for (entity_path, reason) in visualizable_entities.iter() {
                     visualizable_entities_per_visualizer_in_view
                         .entry(entity_path.hash())
@@ -327,6 +329,7 @@ impl ViewContents {
 
             // Figure out which components are relevant.
             let mut components_for_defaults = IntSet::default();
+            #[expect(clippy::iter_over_hash_type)] // Set union is order-independent.
             for (visualizer, entities) in visualizable_entities_per_visualizer.iter() {
                 if entities.is_empty() {
                     continue;
@@ -523,7 +526,10 @@ impl DataQueryPropertyResolver<'_> {
                             .component_mono_quiet::<blueprint_components::VisualizerType>(
                                 type_component,
                             )
-                            .map_or_else(|| "No type specified".into(), |vt| vt.as_str().into());
+                            .and_then(|vt| {
+                                ViewSystemIdentifier::try_new(vt.as_str()).ok_or_log_error_once()
+                            })
+                            .unwrap_or_else(|| "No type specified".into());
 
                         VisualizerInstruction::new(
                             instruction_id,
@@ -635,7 +641,7 @@ impl DataQueryPropertyResolver<'_> {
         {
             if let Some(component_data) = blueprint_engine
                     .cache()
-                    .latest_at(blueprint_query, override_base_path, [component])
+                    .latest_at(re_chunk_store::ChunkTrackingMode::Report, blueprint_query, override_base_path, [component])
                     .component_batch_raw(component)
                 &&
                     // We regard empty overrides as non-existent. This is important because there is no other way of doing component-clears.
@@ -688,7 +694,7 @@ impl DataQueryPropertyResolver<'_> {
             {
                 if let Some(component_data) = blueprint_engine
                         .cache()
-                        .latest_at(blueprint_query, &instruction.override_path, [component])
+                        .latest_at(re_chunk_store::ChunkTrackingMode::Report, blueprint_query, &instruction.override_path, [component])
                         .component_batch_raw(component) &&
                     // We regard empty overrides as non-existent. This is important because there is no other way of doing component-clears.
                      !component_data.is_empty()
@@ -710,13 +716,14 @@ impl DataQueryPropertyResolver<'_> {
             {
                 instruction
                     .component_mappings
-                    .extend(mappings_from_store.into_iter().map(|mapping| {
-                        (
-                            mapping.target.as_str().into(),
+                    .extend(mappings_from_store.into_iter().filter_map(|mapping| {
+                        let target = mapping.0.target_component().ok_or_log_error_once()?;
+                        let source =
                             re_viewer_context::VisualizerComponentSource::from_blueprint_mapping(
                                 &mapping.0,
-                            ),
-                        )
+                            )
+                            .ok_or_log_error()?;
+                        Some((target, source))
                     }));
             }
         }

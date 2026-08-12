@@ -191,6 +191,7 @@ fn scatter_existing_timelines(
 ) -> ChunkTimelines {
     let mut chunk_times: ChunkTimelines = Default::default();
 
+    #[expect(clippy::iter_over_hash_type)] // Timeline insertion order does not affect the chunk.
     for (timeline_name, time_column) in original_timelines {
         let time_values = time_column.times_raw();
         let time_values_array = Int64Array::from(time_values.to_vec());

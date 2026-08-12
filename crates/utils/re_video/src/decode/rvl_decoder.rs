@@ -38,11 +38,10 @@ impl SyncDecoder for RvlDecoder {
             format: super::PixelFormat::R32Float,
         };
 
-        #[cfg(not(target_arch = "wasm32"))]
-        let content = decoded;
-
-        #[cfg(target_arch = "wasm32")]
-        let content = super::FrameContent::Decoded(decoded);
+        let content = cfg_select! {
+            target_arch = "wasm32" => { super::FrameContent::Decoded(decoded) }
+            _ => { decoded }
+        };
 
         let _send_error = output_sender.send(Ok(super::Frame {
             content,

@@ -460,11 +460,12 @@ impl ListItem {
         } = self;
 
         let tokens = ui.tokens();
+        let is_first_item = LayoutInfoStack::take_is_first_item(ui.ctx());
 
-        if y_offset != 0.0 {
+        if y_offset != 0.0 && !is_first_item {
             ui.add_space(y_offset);
-            height -= y_offset;
         }
+        height -= y_offset;
 
         let collapsing_triangle_size = tokens.collapsing_triangle_size();
 
@@ -571,7 +572,12 @@ impl ListItem {
             style_response.flags |= egui::response::Flags::HOVERED;
         }
 
-        let hovered = (style_response.hovered() || style_response.contains_pointer())
+        // `contains_pointer` is needed in addition to `hovered` so the highlight doesn't
+        // flicker off while the user is pressing one of the item's buttons. Unlike `hovered`
+        // though, it stays true while some *other* widget (e.g. a panel resize handle) is
+        // being dragged past us, so we must exclude that case ourselves.
+        let hovered = (style_response.hovered()
+            || (style_response.contains_pointer() && ui.ctx().dragged_id().is_none()))
             && interactive
             && !drag_target
             && !egui::DragAndDrop::has_any_payload(ui.ctx());

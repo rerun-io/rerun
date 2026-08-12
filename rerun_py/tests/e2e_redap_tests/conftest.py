@@ -15,14 +15,16 @@ from typing import TYPE_CHECKING
 
 import pyarrow as pa
 import pytest
+import rerun as rr
 from rerun.catalog import CatalogClient, TableEntry
 from rerun.server import Server
 from syrupy.extensions.amber import AmberSnapshotExtension
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import Callable, Generator, Sequence
+    from pathlib import Path
 
-    from rerun.catalog import DatasetEntry
+    from rerun.catalog import DatasetEntry, VersionInfo
     from syrupy import SnapshotAssertion
 
 # Marker expressions for test profiles. Each profile defines a `-m`-style expression
@@ -85,6 +87,18 @@ def pytest_configure(config: pytest.Config) -> None:
     config.addinivalue_line(
         "markers",
         "aws_only: mark test as requiring AWS (e.g., uses S3 buckets directly)",
+    )
+
+    config.addinivalue_line(
+        "markers",
+        "requires_server_feature(name, …): skip unless the server advertises all named features "
+        "in its version info (see `VersionResponse.features` in the protocol)",
+    )
+
+    config.addinivalue_line(
+        "markers",
+        "min_hub_version(version): skip when running against a Rerun Hub older than `version`. "
+        "Ignored under the 'local' profile (the OSS server is versioned on a different scheme).",
     )
 
 
@@ -203,6 +217,79 @@ def catalog_client(request: pytest.FixtureRequest) -> Generator[CatalogClient, N
         server.shutdown()
 
 
+def _major_minor_patch(version: str) -> tuple[int, int, int]:
+    """
+    Parse the first `major.minor.patch` in a version string, ignoring pre-release/build suffixes.
+
+    Deployed servers report a bare semver or a commit hash (whatever the deployment sets as
+    `EXPOSED_VERSION` — see `re_build_info::exposed_version`). Legacy servers built before the
+    version was runtime-injected report a `build:0.16.0-alpha.1[ branch:… hash:…]` string, which
+    this parses too — the oldest-supported-hub CI leg still runs such servers.
+
+    Raises `ValueError` if there is no version to find. Use `_server_major_minor_patch` for
+    server-reported strings, which have unparsable forms.
+    """
+    match = re.search(r"(\d+)\.(\d+)\.(\d+)", version)
+    if match is None:
+        raise ValueError(f"Cannot parse version string: {version!r}")
+    return int(match.group(1)), int(match.group(2)), int(match.group(3))
+
+
+def _server_major_minor_patch(version: str) -> tuple[int, int, int] | None:
+    """
+    As `_major_minor_patch`, but returns `None` for a server that reports no version.
+
+    A server built from a pull request reports a bare commit hash, and a server whose deployment
+    never set `EXPOSED_VERSION` reports the `exposed-version-unset` sentinel; in both cases the
+    version is genuinely unknown. That is not the same as a parse failure on a `min_hub_version`
+    argument, which is a typo in the marker and should still raise.
+    """
+    try:
+        return _major_minor_patch(version)
+    except ValueError:
+        return None
+
+
+@pytest.fixture(scope="session")
+def server_version_info(catalog_client: CatalogClient) -> VersionInfo:
+    """Version and feature information from the server under test (a single RPC, shared across the session)."""
+    return catalog_client.version_info()
+
+
+@pytest.fixture(autouse=True)
+def _server_compat_gate(request: pytest.FixtureRequest) -> None:
+    """
+    Skip tests whose server-side requirements (features, hub version) aren't met.
+
+    This is what makes the suite runnable against older servers (e.g. the oldest-supported-hub
+    compatibility leg in CI): tests exercising newer server behavior declare it via
+    `@pytest.mark.requires_server_feature(…)` (preferred, mirrors the Rust client's
+    `supports_feature` contract) or `@pytest.mark.min_hub_version(…)` (for behavior changes
+    without a feature flag). Servers that predate feature advertising return an empty feature
+    list, so `requires_server_feature` degrades to a skip against them.
+    """
+    feature_marker = request.node.get_closest_marker("requires_server_feature")
+    version_marker = request.node.get_closest_marker("min_hub_version")
+    if feature_marker is None and version_marker is None:
+        return
+
+    # Lazy lookup: only marked tests pay for the version RPC (and the server spin-up it implies).
+    info: VersionInfo = request.getfixturevalue("server_version_info")
+
+    if feature_marker is not None:
+        missing = [feature for feature in feature_marker.args if feature not in info.features]
+        if missing:
+            pytest.skip(f"server does not advertise feature(s): {missing}")
+
+    # The OSS server reports rerun versions (e.g. 0.36.x) while the hub has its own versioning
+    # scheme (e.g. 0.16.x), so a version bound is only meaningful when targeting a hub.
+    if version_marker is not None and request.config.getoption("--profile") != "local":
+        min_version = version_marker.args[0]
+        server_version = _server_major_minor_patch(info.version)
+        if server_version is not None and server_version < _major_minor_patch(min_version):
+            pytest.skip(f"hub version {info.version} < required {min_version}")
+
+
 class EntryFactory:
     """
     Factory for creating catalog entries with automatic cleanup.
@@ -283,6 +370,46 @@ def entry_factory(catalog_client: CatalogClient, request: pytest.FixtureRequest)
     factory = EntryFactory(catalog_client, prefix)
     yield factory
     factory.cleanup()
+
+
+@pytest.fixture(scope="function")
+def recording_factory(tmp_path: Path) -> Callable[[Sequence[str]], list[str]]:
+    def create_recordings(recording_ids: Sequence[str]) -> list[str]:
+        uris = []
+        for i, recording_id in enumerate(recording_ids):
+            rrd_path = tmp_path / f"recording_{i}.rrd"
+            with rr.RecordingStream(f"test_recording_{i}", recording_id=recording_id) as rec:
+                # log_tick is opt-in; enable it for a deterministic index column.
+                rec.set_log_tick_enabled(True)
+                rec.save(rrd_path)
+                rec.log("points", rr.Points2D([[i, i]]))
+                rec.flush()
+            uris.append(rrd_path.absolute().as_uri())
+        return uris
+
+    return create_recordings
+
+
+@pytest.fixture(scope="function")
+def static_recording_factory(tmp_path: Path) -> Callable[[Sequence[str]], list[str]]:
+    """
+    Like `recording_factory`, but logs only static data.
+
+    Asset datasets reject temporal chunks, so assets must be registered from static-only recordings.
+    """
+
+    def create_recordings(recording_ids: Sequence[str]) -> list[str]:
+        uris = []
+        for i, recording_id in enumerate(recording_ids):
+            rrd_path = tmp_path / f"static_recording_{i}.rrd"
+            with rr.RecordingStream(f"test_recording_{i}", recording_id=recording_id) as rec:
+                rec.save(rrd_path)
+                rec.log("points", rr.Points2D([[i, i]]), static=True)
+                rec.flush()
+            uris.append(rrd_path.absolute().as_uri())
+        return uris
+
+    return create_recordings
 
 
 @pytest.fixture(scope="session")

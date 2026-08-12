@@ -2,8 +2,8 @@ use std::collections::BTreeMap;
 
 use re_chunk::{Chunk, EntityPath, RowId, TimePoint};
 use re_sdk_types::{
-    Component as _, ComponentBatch as _, ComponentDescriptor, SerializedComponentBatch, components,
-    datatypes,
+    Component as _, ComponentBatch as _, ComponentDescriptor, ComponentIdentifier,
+    SerializedComponentBatch, components, datatypes,
 };
 
 use super::{Decoder, DecoderContext, DecoderIdentifier};
@@ -78,7 +78,7 @@ impl Decoder for McapMetadataDecoder {
             let kv = components::KeyValuePairs(pairs);
             batches.push(kv.try_serialized(ComponentDescriptor {
                 archetype: Some(ARCHETYPE_NAME.into()),
-                component: name.into(),
+                component: ComponentIdentifier::try_new(name).map_err(Error::other)?,
                 component_type: Some(components::KeyValuePairs::name()),
             })?);
         }

@@ -1,4 +1,3 @@
-#![expect(clippy::tuple_array_conversions)]
 #![expect(clippy::unwrap_used)]
 
 use ndarray::{Array, ShapeBuilder as _};

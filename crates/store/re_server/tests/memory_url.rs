@@ -167,7 +167,7 @@ async fn scan_manifest(
 ) -> arrow::array::RecordBatch {
     let responses: Vec<_> = service
         .scan_dataset_manifest(
-            tonic::Request::new(ScanDatasetManifestRequest { columns: vec![] })
+            tonic::Request::new(ScanDatasetManifestRequest::all())
                 .with_entry_name(entry_name(dataset_name)),
         )
         .await

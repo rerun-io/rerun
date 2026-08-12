@@ -1,6 +1,7 @@
 ---
 title: View Operations
 order: 65
+description: Filter by episode, time, and column to focus a dataframe
 ---
 
 Robotics data has many sensors and many columns.

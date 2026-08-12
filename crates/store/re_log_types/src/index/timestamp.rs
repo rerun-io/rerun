@@ -229,7 +229,7 @@ impl Timestamp {
                     }
                 };
 
-                format!("{formatted}{nanos}{suffix}",)
+                format!("{formatted}{nanos}{suffix}")
             }
         }
     }

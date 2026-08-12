@@ -24,7 +24,7 @@ impl ContextMenuAction for ScreenshotAction {
 
     /// Do we have a context menu for this item?
     fn supports_item(&self, ctx: &ContextMenuContext<'_>, item: &Item) -> bool {
-        if *self == Self::CopyScreenshot && ctx.viewer_context.is_safari_browser() {
+        if *self == Self::CopyScreenshot && re_web::browser::is_safari() {
             // Safari only allows access to clipboard on user action (e.g. on-click).
             // However, the screenshot capture results arrives a frame later.
             re_log::debug_once!("Copying screenshots not supported on Safari");
@@ -60,6 +60,7 @@ impl ContextMenuAction for ScreenshotAction {
             .send_system(SystemCommand::SaveScreenshot {
                 target,
                 view_id: Some(*view_id),
+                notify: true,
             });
     }
 }

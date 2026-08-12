@@ -1,4 +1,4 @@
-"""Tests for `SampleIndex.global_to_local` in `rerun.experimental.dataloader._sample_index`."""
+"""Tests for `SampleIndex` in `rerun.experimental.dataloader._sample_index`."""
 
 from __future__ import annotations
 
@@ -68,9 +68,11 @@ def test_global_to_local_fixed_rate_timestamp() -> None:
     ns_per_sample = 10_000_000  # 100 Hz
     seg_a = _fixed_rate_segment("seg-a", index_start=1_000_000_000, num_samples=3, ns_per_sample=ns_per_sample)
     seg_b = _fixed_rate_segment("seg-b", index_start=2_000_000_000, num_samples=2, ns_per_sample=ns_per_sample)
-    sample_index = SampleIndex([seg_a, seg_b], ns_per_sample=ns_per_sample, is_timestamp=True)
+    sample_index = SampleIndex([seg_a, seg_b], ns_per_sample=ns_per_sample, ns_dtype="datetime64[ns]")
 
     assert sample_index.total_samples == 5
+    assert sample_index.is_timestamp
+    assert not sample_index.is_duration
 
     expected = [
         (seg_a, np.datetime64(1_000_000_000, "ns")),
@@ -83,6 +85,30 @@ def test_global_to_local_fixed_rate_timestamp() -> None:
         resolved_seg, value = sample_index.global_to_local(global_idx)
         assert resolved_seg is expected_seg
         assert isinstance(value, np.datetime64)
+        assert value == expected_value
+
+
+def test_global_to_local_fixed_rate_duration() -> None:
+    ns_per_sample = 10_000_000  # 100 Hz
+    seg_a = _fixed_rate_segment("seg-a", index_start=0, num_samples=3, ns_per_sample=ns_per_sample)
+    seg_b = _fixed_rate_segment("seg-b", index_start=500_000_000, num_samples=2, ns_per_sample=ns_per_sample)
+    sample_index = SampleIndex([seg_a, seg_b], ns_per_sample=ns_per_sample, ns_dtype="timedelta64[ns]")
+
+    assert sample_index.total_samples == 5
+    assert sample_index.is_duration
+    assert not sample_index.is_timestamp
+
+    expected = [
+        (seg_a, np.timedelta64(0, "ns")),
+        (seg_a, np.timedelta64(10_000_000, "ns")),
+        (seg_a, np.timedelta64(20_000_000, "ns")),
+        (seg_b, np.timedelta64(500_000_000, "ns")),
+        (seg_b, np.timedelta64(510_000_000, "ns")),
+    ]
+    for global_idx, (expected_seg, expected_value) in enumerate(expected):
+        resolved_seg, value = sample_index.global_to_local(global_idx)
+        assert resolved_seg is expected_seg
+        assert isinstance(value, np.timedelta64)
         assert value == expected_value
 
 

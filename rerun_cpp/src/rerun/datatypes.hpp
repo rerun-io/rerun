@@ -30,6 +30,7 @@
 #include "datatypes/range2d.hpp"
 #include "datatypes/rgba32.hpp"
 #include "datatypes/rotation_axis_angle.hpp"
+#include "datatypes/spherical_harmonics3rgb.hpp"
 #include "datatypes/tensor_buffer.hpp"
 #include "datatypes/tensor_data.hpp"
 #include "datatypes/tensor_dimension_index_selection.hpp"
@@ -51,4 +52,5 @@
 #include "datatypes/vec4d.hpp"
 #include "datatypes/video_timestamp.hpp"
 #include "datatypes/view_coordinates.hpp"
+#include "datatypes/view_dir.hpp"
 #include "datatypes/visible_time_range.hpp"

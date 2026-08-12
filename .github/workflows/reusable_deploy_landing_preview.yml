@@ -30,7 +30,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           ref: ${{ (github.event_name == 'pull_request' && github.event.pull_request.head.ref) || '' }}
 
@@ -40,12 +40,12 @@ jobs:
           full_commit="${{ (github.event_name == 'pull_request' && github.event.pull_request.head.sha) || github.sha }}"
           echo "sha=$full_commit" >> "$GITHUB_OUTPUT"
 
-      - uses: prefix-dev/setup-pixi@v0.9.4
+      - uses: prefix-dev/setup-pixi@a09b6247153796b190642a2b53fac4241043cf6f # v0.10.0
         with:
-          pixi-version: v0.55.0
+          pixi-version: v0.71.3
 
       - id: "auth"
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
         with:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
@@ -66,7 +66,7 @@ jobs:
             --purge-token "$ISR_BYPASS_TOKEN"
 
       - name: Create PR comment
-        uses: mshick/add-pr-comment@v2.8.2
+        uses: mshick/add-pr-comment@f102bb3ebc97eedd4e2a98a9e71e462cc257fe80 # v3.9.1
         # GitHub API is very unreliable. We don't want to fail the entire workflow just because we couldn't post a comment.
         continue-on-error: true
         if: success()
@@ -83,7 +83,7 @@ jobs:
             <sup>Note: This comment is updated whenever you push a commit.</sup>
 
       - name: Create PR comment
-        uses: mshick/add-pr-comment@v2.8.2
+        uses: mshick/add-pr-comment@f102bb3ebc97eedd4e2a98a9e71e462cc257fe80 # v3.9.1
         # GitHub API is very unreliable. We don't want to fail the entire workflow just because we couldn't post a comment.
         continue-on-error: true
         if: failure()

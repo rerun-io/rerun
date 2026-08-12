@@ -73,7 +73,8 @@ int main(int argc, char* argv[]) {
         "data",
         CustomPoints3D{
             CustomPosition3D{{1.0f, 2.0f, 3.0f}},
-            rerun::Color(0xFF00FFFF)}
+            rerun::Color(0xFF00FFFF)
+        }
     );
 
     // The tags are indirectly checked by the Rust version (have a look over there for more info).

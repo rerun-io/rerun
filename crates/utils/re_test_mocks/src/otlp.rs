@@ -294,6 +294,7 @@ mod tests {
                         value: Some(AnyValue {
                             value: Some(Value::StringValue("test".into())),
                         }),
+                        key_strindex: 0,
                     }],
                     dropped_attributes_count: 0,
                     entity_refs: vec![],

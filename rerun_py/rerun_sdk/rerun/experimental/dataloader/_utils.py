@@ -9,7 +9,9 @@ import sys
 import warnings
 from collections import defaultdict
 from concurrent.futures import Future, ThreadPoolExecutor
+from contextlib import contextmanager
 from dataclasses import dataclass
+from functools import partial
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
@@ -17,19 +19,26 @@ import pyarrow as pa
 import pyarrow.compute as pc
 from datafusion import col
 
-from rerun._tracing import attach_parent_carrier, current_trace_carrier, tracing_scope, with_tracing
+from rerun._tracing import (
+    attach_parent_carrier,
+    current_trace_carrier,
+    set_current_span_attributes,
+    tracing_scope,
+    with_tracing,
+)
 from rerun.catalog import CatalogClient
 
-from ._sample_index import _ns_to_datetime64
+from ._sample_index import _ns_to_datetime64, _ns_to_timedelta64
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Callable, Generator, Iterator, Sequence
 
     import torch
 
+    from rerun.catalog._entry import DatasetEntry
     from rerun.experimental._selector import Selector
 
-    from ._config import Field
+    from ._config import DataSource, Field
     from ._decoders import ColumnDecoder
     from ._sample_index import SampleIndex, SegmentMetadata
 
@@ -39,7 +48,7 @@ class Target:
     """One sample to produce."""
 
     segment: SegmentMetadata
-    index_value: int | np.datetime64
+    index_value: int | np.datetime64 | np.timedelta64
     anchors: dict[str, int]
 
 
@@ -85,14 +94,20 @@ class _WorkerConnection:
         self._fields = fields
         self._initialized: bool = False
         self._init_pid: int = -1
-        self._view: Any = None
+        self._view: DatasetEntry | None = None
         self._decoders: dict[str, ColumnDecoder] = {}
 
+    @classmethod
+    def from_source(cls, source: DataSource, fields: dict[str, Field]) -> _WorkerConnection:
+        """Build a connection for a [`DataSource`][rerun.experimental.dataloader.DataSource]'s catalog."""
+        return cls(catalog_url=source.dataset.catalog.url, dataset_name=source.dataset.name, fields=fields)
+
     @with_tracing("RerunDataset._ensure_initialized")
-    def ensure(self) -> tuple[Any, dict[str, ColumnDecoder]]:
+    def ensure(self) -> tuple[DatasetEntry, dict[str, ColumnDecoder]]:
         """Return `(view, decoders)`, building them once per worker process."""
         pid = os.getpid()
         if self._initialized and self._init_pid == pid:
+            assert self._view is not None  # always set once `_initialized`
             return self._view, self._decoders
 
         client = CatalogClient(self._catalog_url)
@@ -123,13 +138,13 @@ class _WorkerConnection:
 
 @with_tracing("RerunDataset._fetch_arrow")
 def _fetch_arrow(
+    indices: np.ndarray | list[int],
     *,
-    view: Any,
+    view: DatasetEntry,
     index: str,
     fields: dict[str, Field],
     decoders: dict[str, ColumnDecoder],
     sample_index: SampleIndex,
-    indices: np.ndarray | list[int],
 ) -> tuple[list[Target], dict[str, dict[str, pa.Table]]]:
     """
     Run the server queries for `indices` and return `(targets, per-field tables)`.
@@ -140,6 +155,13 @@ def _fetch_arrow(
     window. The returned mapping is `field_key -> {segment_id -> table}`.
     """
     located = [sample_index.global_to_local(int(idx)) for idx in indices]
+    set_current_span_attributes({
+        "rerun.dataloader.fetch.num_requested_indices": len(indices),
+        "rerun.dataloader.fetch.num_located_targets": len(located),
+        "rerun.dataloader.fetch.num_fields": len(fields),
+        "rerun.dataloader.fetch.num_segments": len({seg.segment_id for seg, _ in located}),
+        "rerun.dataloader.fetch.index_values_bytes_estimate": len(indices) * 8,
+    })
     keyframes = _fetch_prior_keyframes(
         view=view,
         index=index,
@@ -158,6 +180,19 @@ def _fetch_arrow(
                 anchors[key] = kf
         targets.append(Target(segment=seg, index_value=idx_val, anchors=anchors))
 
+    return _fetch_targets(targets, view=view, index=index, fields=fields, decoders=decoders, sample_index=sample_index)
+
+
+def _fetch_targets(
+    targets: list[Target],
+    *,
+    view: DatasetEntry,
+    index: str,
+    fields: dict[str, Field],
+    decoders: dict[str, ColumnDecoder],
+    sample_index: SampleIndex,
+) -> tuple[list[Target], dict[str, dict[str, pa.Table]]]:
+    """Run each read group's server query for already-resolved `targets`, split per segment and field."""
     groups = _read_groups(fields, decoders)
     group_results = _fetch_groups_parallel(
         groups,
@@ -176,27 +211,96 @@ def _fetch_arrow(
     return targets, seg_tables
 
 
+def _interleave_fetch_and_decode(
+    chunks: list[np.ndarray],
+    *,
+    fetch: Callable[[np.ndarray], Any],
+    decode: Callable[[Any], Iterator[dict[str, torch.Tensor | None]]],
+) -> Generator[dict[str, torch.Tensor | None], None, None]:
+    """Yield decoded samples, fetching chunk N+1 on a background thread while chunk N is decoded."""
+    if not chunks:
+        return
+
+    executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="rerun-fetch")
+
+    def submit(chunk: np.ndarray) -> Future[Any]:
+        # Copy the caller's contextvars so the fetch's span nests under the current OTel
+        # context instead of appearing as a root trace.
+        ctx = contextvars.copy_context()
+        return executor.submit(lambda: ctx.run(fetch, chunk))
+
+    try:
+        pending: Future[Any] | None = submit(chunks[0])
+        for i in range(len(chunks)):
+            assert pending is not None
+            fetched = pending.result()
+            pending = submit(chunks[i + 1]) if i + 1 < len(chunks) else None
+            yield from decode(fetched)
+    finally:
+        with tracing_scope("executor.shutdown"):
+            executor.shutdown(wait=False)
+
+
+def _replay(
+    samples: Generator[dict[str, torch.Tensor | None], None, None],
+    order: np.ndarray,
+) -> Generator[dict[str, torch.Tensor | None], None, None]:
+    """
+    Re-emit a fetch-order sample stream in a known pull `order` (a deterministic queue).
+
+    `order[k]` is the fetch position to emit `k`-th. Decode still runs in fetch order;
+    this only buffers decoded samples until their turn, so the buffer never exceeds what
+    the manifest's buffer held at build time (the order came from that buffer).
+
+    Closes `samples` on exit, so an early teardown reaches the fetch executor's
+    shutdown promptly.
+    """
+    buffer: dict[int, dict[str, torch.Tensor | None]] = {}
+    fetched = enumerate(samples)
+    try:
+        for fetch_idx in order:
+            fetch_idx = int(fetch_idx)
+            while fetch_idx not in buffer:
+                i, sample = next(fetched)
+                buffer[i] = sample
+            yield buffer.pop(fetch_idx)
+    finally:
+        samples.close()
+
+
+def _run_parallel(tasks: list[Callable[[], Any]], *, max_workers: int | None = None) -> list[Any]:
+    """
+    Run independent, GIL-releasing tasks concurrently, returning results in task order.
+
+    Each task runs under a copy of the caller's context so its tracing spans stay
+    nested under the current span, and runs inline when there is a single task.
+    Intended for catalog queries, which release the GIL while waiting on the server.
+    `max_workers` caps the pool so a large task list runs in bounded waves rather
+    than one thread per task (defaults to one thread per task).
+    """
+    if not tasks:
+        return []
+    if len(tasks) == 1:
+        return [tasks[0]()]
+    workers = min(len(tasks), max_workers) if max_workers else len(tasks)
+    with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="rerun-parallel") as executor:
+        futures = [executor.submit(contextvars.copy_context().run, task) for task in tasks]
+        return [future.result() for future in futures]
+
+
 def _fetch_groups_parallel(
     groups: list[tuple[bool, dict[str, Field]]],
     *,
-    view: Any,
+    view: DatasetEntry,
     index: str,
     decoders: dict[str, ColumnDecoder],
     sample_index: SampleIndex,
     targets: list[Target],
 ) -> list[tuple[dict[str, Field], dict[str, pa.Table]]]:
-    """
-    Fetch every read group, overlapping them when there is more than one.
+    """Fetch every read group, overlapping the independent server round-trips."""
 
-    Each group is an independent server round-trip, so a thread per group lets
-    them run concurrently instead of back-to-back: the catalog query releases the
-    GIL while it waits on the server. Each thread runs under a copy of the
-    caller's context so its `_fetch_group` tracing spans stay nested under
-    `_fetch_arrow`.
-    """
-
-    def fetch(fill_latest_at: bool, group_fields: dict[str, Field]) -> dict[str, pa.Table]:
-        return _fetch_group(
+    def fetch(fill_latest_at: bool, group_fields: dict[str, Field]) -> tuple[dict[str, Field], dict[str, pa.Table]]:
+        return group_fields, _fetch_group(
             view=view,
             index=index,
             fields=group_fields,
@@ -206,16 +310,12 @@ def _fetch_groups_parallel(
             fill_latest_at=fill_latest_at,
         )
 
-    if len(groups) == 1:
-        fill_latest_at, group_fields = groups[0]
-        return [(group_fields, fetch(fill_latest_at, group_fields))]
+    return _run_parallel([partial(fetch, fill_latest_at, group_fields) for fill_latest_at, group_fields in groups])
 
-    with ThreadPoolExecutor(max_workers=len(groups), thread_name_prefix="rerun-fetch-group") as executor:
-        futures: list[tuple[dict[str, Field], Future[dict[str, pa.Table]]]] = [
-            (group_fields, executor.submit(contextvars.copy_context().run, fetch, fill_latest_at, group_fields))
-            for fill_latest_at, group_fields in groups
-        ]
-        return [(group_fields, future.result()) for group_fields, future in futures]
+
+def is_video_field(field: Field, decoder: ColumnDecoder) -> bool:
+    """Whether a field is keyframe-anchored (compressed video), i.e. its decode window starts at a prior keyframe."""
+    return decoder.prior_keyframe_path(field.path) is not None
 
 
 def _read_groups(
@@ -225,22 +325,32 @@ def _read_groups(
     """
     Partition `fields` into read groups, each fetched by one server query.
 
-    Grouped by `(ColumnDecoder.fill_latest_at, is keyframe-anchored)`, since
-    `fill_latest_at` is a per-query argument and anchored fields need their own
-    `[keyframe, target]` index values rather than the shared window union.
+    A group's query fetches every field at the union of the group's index
+    values, so fields may only share a group when they need the same rows.
+    Fields are split on three properties:
+
+    - `fill_latest_at`: a per-query argument, not a per-column one.
+    - keyframe-anchored: anchored fields (video) fetch a `[keyframe, target]`
+      range per sample; no other field wants those rows.
+    - `Field.window`: a windowed field fetches its whole window per sample. An
+      unwindowed field (e.g. an image) sharing its query would be shipped at
+      every index value in that window instead of once per sample.
+
     Returns `(fill_latest_at, group_fields)` pairs.
     """
-    groups: dict[tuple[bool, bool], dict[str, Field]] = defaultdict(dict)
+    groups: dict[tuple[bool, bool, tuple[int, int] | None], dict[str, Field]] = defaultdict(dict)
     for key, field in fields.items():
         decoder = decoders[key]
-        anchored = decoder.prior_keyframe_path(field.path) is not None
-        groups[(decoder.fill_latest_at, anchored)][key] = field
-    return [(fill_latest_at, group_fields) for (fill_latest_at, _anchored), group_fields in groups.items()]
+        # A field with an explicit window is never anchored, even when its
+        # decoder wants keyframes (`_fetch_prior_keyframes` skips it).
+        anchored = field.window is None and decoder.prior_keyframe_path(field.path) is not None
+        groups[(decoder.fill_latest_at, anchored, field.window)][key] = field
+    return [(fill_latest_at, group_fields) for (fill_latest_at, _anchored, _window), group_fields in groups.items()]
 
 
 def _fetch_group(
     *,
-    view: Any,
+    view: DatasetEntry,
     index: str,
     fields: dict[str, Field],
     decoders: dict[str, ColumnDecoder],
@@ -249,10 +359,18 @@ def _fetch_group(
     fill_latest_at: bool,
 ) -> dict[str, pa.Table]:
     """Run one server query over the index values one read group needs, split per segment."""
-    anchored = any(decoders[key].prior_keyframe_path(field.path) is not None for key, field in fields.items())
+    anchored = any(is_video_field(field, decoders[key]) for key, field in fields.items())
     group = f"{'anchored' if anchored else 'windowed'},{'fill' if fill_latest_at else 'exact'}"
     with tracing_scope(f"RerunDataset._fetch_group[{group}]"):
         query_indices = _build_query_indices(targets, fields, decoders, sample_index=sample_index)
+        num_query_indices = sum(len(values) for values in query_indices.values())
+        set_current_span_attributes({
+            "rerun.dataloader.group.num_fields": len(fields),
+            "rerun.dataloader.group.num_segments": len(query_indices),
+            "rerun.dataloader.group.num_query_indices": num_query_indices,
+            "rerun.dataloader.group.fill_latest_at": fill_latest_at,
+            "rerun.dataloader.group.anchored": anchored,
+        })
 
         # Scope the query to just this group's entities. Otherwise it fetches (then
         # discards at projection) chunks for every other group's entities too: a scalar
@@ -277,8 +395,73 @@ def _fetch_group(
 
         with tracing_scope(f"RerunDataset._fetch_group.to_arrow_table[{group}]"):
             arrow_table = df.select(*select_exprs).to_arrow_table()
+            set_current_span_attributes({
+                "rerun.dataloader.group.arrow_rows": arrow_table.num_rows,
+                "rerun.dataloader.group.arrow_columns": arrow_table.num_columns,
+                "rerun.dataloader.group.arrow_nbytes": arrow_table.nbytes,
+            })
 
         return _split_by_segment(arrow_table)
+
+
+def _resolve_decode_threads(decode_threads: int | None, fields: dict[str, Field]) -> int:
+    """The per-worker decode fan-out, defaulting to one thread per video field."""
+    if decode_threads is None:
+        return max(1, sum(1 for field in fields.values() if is_video_field(field, field.decode)))
+    if decode_threads < 1:
+        raise ValueError(f"decode_threads must be at least 1, got {decode_threads}")
+    return decode_threads
+
+
+@contextmanager
+def _decode_pool(decode_threads: int, num_fields: int) -> Generator[ThreadPoolExecutor | None, None, None]:
+    """
+    A decode pool for one iteration pass, or `None` when fields are decoded sequentially.
+
+    Sized to `min(decode_threads, num_fields)`: a sample's fields are joined before
+    it is yielded, so threads beyond the field count would never be scheduled.
+    """
+    workers = min(decode_threads, num_fields)
+    if workers <= 1:
+        yield None
+        return
+    executor = ThreadPoolExecutor(max_workers=workers, thread_name_prefix="rerun-decode")
+    try:
+        yield executor
+    finally:
+        executor.shutdown(wait=False)
+
+
+@with_tracing("RerunDataset._decode_field")
+def _decode_field(
+    *,
+    target: Target,
+    key: str,
+    field: Field,
+    decoder: ColumnDecoder,
+    seg_tables: dict[str, dict[str, pa.Table]],
+    index: str,
+) -> torch.Tensor | None:
+    """Decode one field of one sample out of the pre-fetched arrow chunks."""
+    segment_id = target.segment.segment_id
+    seg_table = seg_tables[key].get(segment_id)
+    if seg_table is None:
+        raise RuntimeError(
+            f"No rows returned for field {key!r} in segment {segment_id!r} at index {target.index_value!r}"
+        )
+    index_array = seg_table[index]
+    lo, hi = _field_index_range(target.index_value, field, decoder, prior_keyframe=target.anchors.get(key)) or (
+        target.index_value,
+        target.index_value,
+    )
+    mask = pc.and_(
+        pc.greater_equal(index_array, lo),
+        pc.less_equal(index_array, hi),
+    )
+    raw = seg_table.filter(mask).column(key)
+    if field.select is not None:
+        raw = _apply_selector(field.select, raw)
+    return decoder.decode(raw, target.index_value, segment_id)
 
 
 def _decode_iter(
@@ -288,37 +471,43 @@ def _decode_iter(
     index: str,
     fields: dict[str, Field],
     decoders: dict[str, ColumnDecoder],
+    executor: ThreadPoolExecutor | None = None,
 ) -> Iterator[dict[str, torch.Tensor | None]]:
-    """Yield decoded samples one at a time from the pre-fetched per-field arrow chunks."""
+    """
+    Yield decoded samples one at a time from the pre-fetched per-field arrow chunks.
+
+    Without `executor`, a sample's fields are decoded one after another on this
+    thread. With one, they are decoded concurrently and joined before the sample
+    is yielded: fields are independent streams, each with its own decoder and its
+    own session cache, and the per-sample join keeps a given field's calls in
+    sample order — which its incremental GOP reuse depends on. Decoding releases
+    the GIL, so the overlap is real.
+    """
     with tracing_scope("RerunDataset._decode_chunk"):
+        set_current_span_attributes({"rerun.dataloader.iter.chunk.num_targets": len(targets)})
         for target in targets:
             with tracing_scope("RerunDataset._decode_sample"):
-                segment_id = target.segment.segment_id
-                sample: dict[str, torch.Tensor | None] = {}
-                for key, field in fields.items():
-                    decoder = decoders[key]
-                    seg_table = seg_tables[key].get(segment_id)
-                    if seg_table is None:
-                        raise RuntimeError(
-                            f"No rows returned for field {key!r} in segment {segment_id!r} at index {target.index_value!r}"
+                decode_one = partial(_decode_field, target=target, seg_tables=seg_tables, index=index)
+                if executor is None:
+                    sample: dict[str, torch.Tensor | None] = {
+                        key: decode_one(key=key, field=field, decoder=decoders[key]) for key, field in fields.items()
+                    }
+                else:
+                    # Copy the caller's contextvars so each field's spans nest under this
+                    # sample's span instead of appearing as roots.
+                    futures: dict[str, Future[torch.Tensor | None]] = {
+                        key: executor.submit(
+                            contextvars.copy_context().run,
+                            partial(decode_one, key=key, field=field, decoder=decoders[key]),
                         )
-                    index_array = seg_table[index]
-                    lo, hi = _field_index_range(
-                        target.index_value, field, decoder, prior_keyframe=target.anchors.get(key)
-                    ) or (target.index_value, target.index_value)
-                    mask = pc.and_(
-                        pc.greater_equal(index_array, lo),
-                        pc.less_equal(index_array, hi),
-                    )
-                    raw = seg_table.filter(mask).column(key)
-                    if field.select is not None:
-                        raw = _apply_selector(field.select, raw)
-                    sample[key] = decoder.decode(raw, target.index_value, segment_id)
+                        for key, field in fields.items()
+                    }
+                    sample = {key: future.result() for key, future in futures.items()}
             yield sample
 
 
 def _field_index_range(
-    idx_val: int | np.datetime64,
+    idx_val: int | np.datetime64 | np.timedelta64,
     field: Field,
     decoder: ColumnDecoder,
     *,
@@ -332,7 +521,14 @@ def _field_index_range(
     if field.window is not None:
         return idx_val + field.window[0], idx_val + field.window[1]
     if prior_keyframe is not None:
-        lo: Any = _ns_to_datetime64(prior_keyframe) if isinstance(idx_val, np.datetime64) else prior_keyframe
+        # `lo` must match `idx_val`'s type, or the pyarrow window mask in
+        # `_decode_iter` has no kernel (e.g. `greater_equal(duration, int64)`).
+        if isinstance(idx_val, np.datetime64):
+            lo: Any = _ns_to_datetime64(prior_keyframe)
+        elif isinstance(idx_val, np.timedelta64):
+            lo = _ns_to_timedelta64(prior_keyframe)
+        else:
+            lo = prior_keyframe
         return lo, idx_val
     return decoder.context_range(idx_val)
 
@@ -343,15 +539,20 @@ def _build_query_indices(
     decoders: dict[str, ColumnDecoder],
     *,
     sample_index: SampleIndex,
-) -> dict[str, np.ndarray]:
+) -> dict[str, np.ndarray | pa.Array]:
     """
     Group `targets` by segment, expanded with each field's window and decoder context.
 
     Returns a `{segment_id: index_values}` dict ready for
-    `reader(using_index_values=...)`. Values are `int64` for integer
-    indices and `datetime64[ns]` for timestamp timelines.
+    `reader(using_index_values=...)`. Values are an `int64` ndarray for
+    integer indices, a `pa.timestamp("ns")` array for timestamp
+    timelines, and a `pa.duration("ns")` array for duration timelines.
+    The Rust `IndexValuesLike` binding only accepts `datetime64`
+    ndarrays among the temporal numpy dtypes, so temporal values cross
+    the binding as pyarrow arrays — matching the convention used by
+    `TimeColumn` in `_send_columns.py`.
     """
-    is_timestamp = sample_index.is_timestamp
+    ns_dtype = sample_index.ns_dtype
     groups: dict[str, set[int]] = defaultdict(set)
 
     for target in targets:
@@ -372,23 +573,26 @@ def _build_query_indices(
             if anchor is not None:
                 groups[segment_id].add(anchor)
 
-    result: dict[str, np.ndarray] = {}
+    result: dict[str, np.ndarray | pa.Array] = {}
     for segment_id, vals in groups.items():
         arr = np.array(sorted(vals), dtype=np.int64)
-        if is_timestamp:
-            arr = arr.view("datetime64[ns]")
-        result[segment_id] = arr
+        if ns_dtype == "datetime64[ns]":
+            result[segment_id] = pa.array(arr, type=pa.timestamp("ns"))
+        elif ns_dtype == "timedelta64[ns]":
+            result[segment_id] = pa.array(arr, type=pa.duration("ns"))
+        else:
+            result[segment_id] = arr
     return result
 
 
 @with_tracing("RerunDataset._fetch_prior_keyframes")
 def _fetch_prior_keyframes(
     *,
-    view: Any,
+    view: DatasetEntry,
     index: str,
     fields: dict[str, Field],
     decoders: dict[str, ColumnDecoder],
-    located: list[tuple[SegmentMetadata, int | np.datetime64]],
+    located: Sequence[tuple[SegmentMetadata, int | np.datetime64 | np.timedelta64]],
     sample_index: SampleIndex,
 ) -> dict[str, dict[str, np.ndarray]]:
     """
@@ -402,7 +606,8 @@ def _fetch_prior_keyframes(
     Works whether `is_keyframe` is logged sparsely (only `true` on keyframes)
     or densely (`true`/`false` on every row). The result maps
     `field_key -> {segment_id: sorted_int64_keyframes}`; values are `int`
-    (ns-since-epoch for timestamp timelines). The caller bisects via
+    (ns-since-epoch for timestamp timelines, ns count for duration timelines).
+    The caller bisects via
     [`_prior_keyframe`][rerun.experimental.dataloader._utils._prior_keyframe].
     """
     keyframe_fields: dict[str, str] = {}
@@ -422,8 +627,6 @@ def _fetch_prior_keyframes(
     if not keyframe_fields:
         return {}
 
-    is_timestamp = sample_index.is_timestamp
-
     # Per-segment max target across all anchor-using fields.
     max_per_segment: dict[str, int] = {}
     for seg, idx_val in located:
@@ -434,7 +637,13 @@ def _fetch_prior_keyframes(
     unique_paths = list(dict.fromkeys(keyframe_fields.values()))
 
     def idx_lit(value: int) -> Any:
-        return np.datetime64(value, "ns") if is_timestamp else value
+        # The literal must match the index column type, or DataFusion fails to
+        # coerce the comparison (`Duration(ns) <= Int64`).
+        if sample_index.is_timestamp:
+            return np.datetime64(value, "ns")
+        if sample_index.is_duration:
+            return np.timedelta64(value, "ns")
+        return value
 
     # Filter to keyframes at or before the largest target across all segments, in a
     # single predicate. A per-segment OR (`(seg==A & idx<=tA) | (seg==B & idx<=tB) | …`)

@@ -199,30 +199,18 @@ pub fn generic_placeholder_for_datatype(
 
         DataType::FixedSizeList(field, size) => {
             let size = *size as usize;
-            let value_data: ArrayRef = {
-                match field.data_type() {
-                    DataType::Boolean => Arc::new(array::BooleanArray::from(vec![false; size])),
-
-                    DataType::Int8 => Arc::new(array::Int8Array::from(vec![0; size])),
-                    DataType::Int16 => Arc::new(array::Int16Array::from(vec![0; size])),
-                    DataType::Int32 => Arc::new(array::Int32Array::from(vec![0; size])),
-                    DataType::Int64 => Arc::new(array::Int64Array::from(vec![0; size])),
-
-                    DataType::UInt8 => Arc::new(array::UInt8Array::from(vec![0; size])),
-                    DataType::UInt16 => Arc::new(array::UInt16Array::from(vec![0; size])),
-                    DataType::UInt32 => Arc::new(array::UInt32Array::from(vec![0; size])),
-                    DataType::UInt64 => Arc::new(array::UInt64Array::from(vec![0; size])),
-
-                    DataType::Float16 => {
-                        Arc::new(array::Float16Array::from(vec![half::f16::ZERO; size]))
-                    }
-                    DataType::Float32 => Arc::new(array::Float32Array::from(vec![0.0; size])),
-                    DataType::Float64 => Arc::new(array::Float64Array::from(vec![0.0; size])),
-
-                    _ => {
-                        // TODO(emilk)
-                        re_log::debug_once!(
-                            "Unimplemented: placeholder value for FixedSizeListArray of {:?}",
+            // Build the `size` inner values by repeating a single placeholder element.
+            // Recursing into `field.data_type()` handles any inner type, including nested
+            // fixed-size lists (e.g. `FixedSizeList<FixedSizeList<Float16, 3>, 15>`).
+            let value_data: ArrayRef = if size == 0 {
+                array::new_empty_array(field.data_type())
+            } else {
+                let element = generic_placeholder_for_datatype(field.data_type());
+                match re_arrow_util::concat_arrays(&vec![element.as_ref(); size]) {
+                    Ok(value_data) => value_data,
+                    Err(err) => {
+                        re_log::warn_once!(
+                            "Failed to build placeholder for FixedSizeListArray of {}: {err}",
                             field.data_type()
                         );
                         return array::new_empty_array(datatype);
@@ -448,7 +436,7 @@ impl ArchetypeFieldReflection {
     /// Returns the component identifier for this field.
     #[inline]
     pub fn component(&self, archetype_name: ArchetypeName) -> ComponentIdentifier {
-        format!("{}:{}", archetype_name.short_name(), self.name).into()
+        ComponentIdentifier::from_archetype_field(archetype_name, self.name)
     }
 }
 
@@ -480,16 +468,6 @@ pub trait ComponentDescriptorExt {
     fn or_with_builtin_archetype(self, archetype: impl Fn() -> ArchetypeName) -> Self;
 }
 
-/// Constructs a [`ComponentIdentifier`] from this archetype by supplying a field name.
-///
-/// Mainly used as a convenience function to create [`ComponentDescriptor`]s for
-/// Rerun-builtin types. In general, the [`ArchetypeName`] does not place any restrictions
-/// on the contents of [`ComponentIdentifier`].
-#[inline]
-fn with_field(archetype: ArchetypeName, field_name: impl AsRef<str>) -> ComponentIdentifier {
-    format!("{}:{}", archetype.short_name(), field_name.as_ref()).into()
-}
-
 impl ComponentDescriptorExt for ComponentDescriptor {
     fn archetype_field_name(&self) -> &str {
         self.archetype
@@ -505,7 +483,7 @@ impl ComponentDescriptorExt for ComponentDescriptor {
         let archetype = archetype.into();
         {
             let field_name = self.archetype_field_name();
-            self.component = with_field(archetype, field_name);
+            self.component = ComponentIdentifier::from_archetype_field(archetype, field_name);
         }
         self.archetype = Some(archetype);
         self
@@ -515,7 +493,8 @@ impl ComponentDescriptorExt for ComponentDescriptor {
     fn or_with_builtin_archetype(mut self, archetype: impl Fn() -> ArchetypeName) -> Self {
         if self.archetype.is_none() {
             let archetype = archetype();
-            self.component = with_field(archetype, self.component);
+            self.component =
+                ComponentIdentifier::from_archetype_field(archetype, self.component.as_str());
             self.archetype = Some(archetype);
         }
         self
@@ -524,15 +503,15 @@ impl ComponentDescriptorExt for ComponentDescriptor {
 
 #[cfg(test)]
 mod test {
-    use super::{ComponentDescriptor, ComponentDescriptorExt as _, with_field};
-    use crate::ArchetypeName;
+    use super::{ComponentDescriptor, ComponentDescriptorExt as _};
+    use crate::{ArchetypeName, ComponentIdentifier};
 
     #[test]
     fn component_descriptor_manipulation() {
         let archetype_name: ArchetypeName = "rerun.archetypes.MyExample".into();
         let descr = ComponentDescriptor {
             archetype: Some(archetype_name),
-            component: with_field(archetype_name, "test"),
+            component: ComponentIdentifier::from_archetype_field(archetype_name, "test"),
             component_type: Some("user.Whatever".into()),
         };
         assert_eq!(descr.archetype_field_name(), "test");

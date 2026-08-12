@@ -16,7 +16,7 @@ use re_protos::common::v1alpha1::TaskId;
 use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
 use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_protos::{EntryName, common::v1alpha1::ext::SegmentId};
-use re_types_core::AsComponents;
+use re_types_core::{AsComponents, LayerName};
 use tonic::async_trait;
 use url::Url;
 
@@ -85,7 +85,7 @@ pub trait RerunCloudServiceExt: RerunCloudService {
 
     async fn register_table_with_name(&self, table_name: &str, path: &std::path::Path);
 
-    async fn unregister_from_dataset_name(
+    async fn unregister_from_dataset_name_blocking(
         &self,
         dataset_name: &str,
         segments_to_drop: &[&str],
@@ -144,7 +144,7 @@ impl<T: RerunCloudService> RerunCloudServiceExt for T {
     /// Refer to [`UnregisterFromDatasetRequest`]'s to learn more about the semantics.
     ///
     /// [`UnregisterFromDatasetRequest`]: re_protos::cloud::v1alpha1::ext::UnregisterFromDatasetRequest
-    async fn unregister_from_dataset_name(
+    async fn unregister_from_dataset_name_blocking(
         &self,
         dataset_name: &str,
         segments_to_drop: &[&str],
@@ -155,7 +155,11 @@ impl<T: RerunCloudService> RerunCloudServiceExt for T {
                 .iter()
                 .map(|id| (*id).to_owned().into())
                 .collect(),
-            layers_to_drop: layers_to_drop.iter().copied().map(Into::into).collect(),
+            layers_to_drop: layers_to_drop
+                .iter()
+                .copied()
+                .map(|layer| LayerName::try_new(layer).unwrap())
+                .collect(),
             force: false,
         };
 
@@ -170,15 +174,55 @@ impl<T: RerunCloudService> RerunCloudServiceExt for T {
             .await
             .expect("could not collect responses");
 
+        let task_ids: Vec<TaskId> = responses
+            .iter()
+            .map(|resp| resp.task_id.clone().expect("missing task_id in response"))
+            .collect_vec();
+
         let batches: Vec<RecordBatch> = responses
             .into_iter()
             .map(|resp| {
                 resp.data
-                    .expect("missing data in response")
+                    .expect("Expected response data")
                     .try_into()
-                    .expect("could not convert response data to record batch")
+                    .expect("Failed to decode response data")
             })
-            .collect_vec();
+            .collect();
+
+        let task_results: Vec<RecordBatch> = self
+            .query_tasks_on_completion(tonic::Request::new(QueryTasksOnCompletionRequest {
+                ids: task_ids,
+                timeout: Some(prost_types::Duration {
+                    seconds: 20,
+                    nanos: 0,
+                }),
+            }))
+            .await
+            .expect("should get query results")
+            .into_inner()
+            .collect::<Vec<_>>()
+            .await
+            .into_iter()
+            .map(|resp| {
+                resp.expect("Failed to get task completion response")
+                    .data
+                    .expect("Expected response data")
+                    .try_into()
+                    .expect("Failed to decode response data")
+            })
+            .collect();
+
+        for batch in &task_results {
+            let statuses = cloud_ext::QueryTasksDataframe::COLUMN_EXEC_STATUS
+                .extract(batch)
+                .expect("valid exec_status column");
+            for status in &statuses {
+                assert_eq!(
+                    status, "success",
+                    "Expected unregistration task to succeed, got status: {status}"
+                );
+            }
+        }
 
         Ok(arrow::compute::concat_batches(
             batches
@@ -228,7 +272,7 @@ pub async fn register_and_wait(
     let task_ids: Vec<TaskId> = cloud_ext::RegisterWithDatasetDataframe::COLUMN_RERUN_TASK_ID
         .extract(&resp)
         .expect("valid task id column")
-        .into_iter()
+        .into_iter_owned()
         .unique() // dups are possible because of batching partitions per task
         .collect();
 
@@ -657,9 +701,11 @@ impl DataSourcesDefinition {
                 let url = Url::from_file_path(path.as_path()).unwrap();
                 match layer_name {
                     None => cloud_ext::DataSource::new_rrd_url(url),
-                    Some(layer) => {
-                        cloud_ext::DataSource::new_rrd_layer(layer, url.as_str()).unwrap()
-                    }
+                    Some(layer) => cloud_ext::DataSource::new_rrd_layer(
+                        LayerName::try_new(layer).unwrap(),
+                        url.as_str(),
+                    )
+                    .unwrap(),
                 }
             })
             .collect()

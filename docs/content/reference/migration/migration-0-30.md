@@ -1,6 +1,7 @@
 ---
 title: Migrating from 0.29 to 0.30
 order: 980
+hidden: true
 ---
 
 ## 🐍 Python API

@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 
 use re_chunk_store::ColumnDescriptor;
+use re_log::ResultExt as _;
 use re_log_types::{AbsoluteTimeRange, EntityPath, Timeline, TimelineName};
 use re_sdk_types::blueprint::archetypes::DataframeQuery;
 use re_sdk_types::blueprint::{components, datatypes};
@@ -25,9 +26,12 @@ impl Query {
                 DataframeQuery::descriptor_timeline().component,
             )?;
 
-        // if the timeline is unset, we "freeze" it to the current time panel timeline
-        if let Some(timeline_name) = timeline_name {
-            Ok(timeline_name.into())
+        // if the timeline is unset (or invalid), we "freeze" it to the current time panel timeline
+        if let Some(timeline_name) = timeline_name
+            .as_ref()
+            .and_then(|timeline_name| timeline_name.try_into().ok_or_log_error_once())
+        {
+            Ok(timeline_name)
         } else {
             let timeline_name = *ctx.time_ctrl.timeline_name();
             self.save_timeline_name(ctx, &timeline_name);
@@ -245,7 +249,9 @@ impl Query {
 
         let selected_time_columns: HashSet<TimelineName> = time_columns
             .iter()
-            .map(|timeline_name| timeline_name.as_str().into())
+            .filter_map(|timeline_name| {
+                TimelineName::try_new(timeline_name.as_str()).ok_or_log_error_once()
+            })
             .collect();
         let selected_component_columns = component_columns
             .iter()
@@ -435,7 +441,7 @@ mod test {
 
     use super::{Query, reorder_columns_by_entity};
 
-    fn make_component_column(entity: &str, component: &str) -> ColumnDescriptor {
+    fn make_component_column(entity: &str, component: &'static str) -> ColumnDescriptor {
         ColumnDescriptor::Component(ComponentColumnDescriptor {
             entity_path: entity.into(),
             component: ComponentIdentifier::from(component),

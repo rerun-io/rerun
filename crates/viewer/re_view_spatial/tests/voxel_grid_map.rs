@@ -8,7 +8,7 @@ use re_sdk_types::{
 };
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
-use re_viewer_context::{BlueprintContext as _, Item, ViewClass as _};
+use re_viewer_context::{Item, ViewClass as _};
 use re_viewport_blueprint::{ViewBlueprint, ViewProperty};
 
 #[test]
@@ -80,22 +80,14 @@ fn test_voxel_grid_map_snapshot_and_instance_selection() {
         });
 
     test_context.with_blueprint_ctx(|ctx, _| {
-        let grid_property = ViewProperty::from_archetype::<LineGrid3D>(
-            ctx.current_blueprint(),
-            ctx.blueprint_query(),
-            view_id,
-        );
+        let grid_property = ViewProperty::from_archetype_for_view::<LineGrid3D>(&ctx, view_id);
         grid_property.save_blueprint_component(
             &ctx,
             &LineGrid3D::descriptor_spacing(),
             &GridSpacing::from(0.5),
         );
 
-        let eye_property = ViewProperty::from_archetype::<EyeControls3D>(
-            ctx.current_blueprint(),
-            ctx.blueprint_query(),
-            view_id,
-        );
+        let eye_property = ViewProperty::from_archetype_for_view::<EyeControls3D>(&ctx, view_id);
         eye_property.save_blueprint_component(
             &ctx,
             &EyeControls3D::descriptor_position(),
@@ -107,11 +99,8 @@ fn test_voxel_grid_map_snapshot_and_instance_selection() {
             &Position3D::new(2.0, 0.8, 0.4),
         );
 
-        let spatial_info_property = ViewProperty::from_archetype::<SpatialInformation>(
-            ctx.current_blueprint(),
-            ctx.blueprint_query(),
-            view_id,
-        );
+        let spatial_info_property =
+            ViewProperty::from_archetype_for_view::<SpatialInformation>(&ctx, view_id);
         spatial_info_property.save_blueprint_component(
             &ctx,
             &SpatialInformation::descriptor_show_axes(),
@@ -161,11 +150,7 @@ fn test_voxel_grid_map_transparent_opacity_snapshot() {
         });
 
     test_context.with_blueprint_ctx(|ctx, _| {
-        let eye_property = ViewProperty::from_archetype::<EyeControls3D>(
-            ctx.current_blueprint(),
-            ctx.blueprint_query(),
-            view_id,
-        );
+        let eye_property = ViewProperty::from_archetype_for_view::<EyeControls3D>(&ctx, view_id);
         eye_property.save_blueprint_component(
             &ctx,
             &EyeControls3D::descriptor_position(),

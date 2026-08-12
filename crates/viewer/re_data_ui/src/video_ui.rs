@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use egui::NumExt as _;
 use egui_extras::Column;
+use re_chunk_store::ChunkTrackingMode;
 use re_format::time::format_relative_timestamp_secs;
 use re_renderer::external::re_video::VideoLoadError;
 use re_renderer::resource_managers::SourceImageDataFormat;
@@ -11,10 +12,11 @@ use re_sdk_types::{Archetype as _, archetypes};
 use re_types_core::{ComponentDescriptor, ComponentIdentifier, RowId};
 use re_ui::UiExt as _;
 use re_ui::list_item::{self, PropertyContent};
+use re_video::player::{GetVideoSource, VideoSliceSource};
 use re_video::{FrameInfo, VideoDataDescription};
 use re_viewer_context::{
     SharablePlayableVideoStream, StoreViewContext, SystemCommandSender as _, UiLayout,
-    VideoStreamCache, VideoStreamProcessingError, video_stream_time_from_query,
+    VideoStoreSource, VideoStreamCache, VideoStreamProcessingError, video_stream_time_from_query,
 };
 
 use crate::image_ui::texture_preview_size;
@@ -161,6 +163,32 @@ fn video_data_ui(
         ));
     }
 
+    if let Some(bitrate_bps) = video_descr.average_bitrate() {
+        // We only know the byte size of loaded samples, so for a not-fully-loaded video
+        // this is the average bitrate over the portion that has arrived so far.
+        let fully_loaded = video_descr
+            .samples
+            .iter()
+            .all(|s| matches!(s.source(), re_video::VideoSource::Span(_)));
+
+        ui.list_item_flat_noninteractive(
+            PropertyContent::new("Average bitrate")
+                .value_text(re_format::format_bits_per_second(bitrate_bps)),
+        )
+        .on_hover_text(if fully_loaded {
+            format!(
+                "Average bitrate of the {}",
+                match stream_kind {
+                    StreamKind::Video => "video",
+                    StreamKind::Image => "image stream",
+                }
+            )
+        } else {
+            "Average bitrate over the downloaded portion (the full data is not yet available)"
+                .to_owned()
+        });
+    }
+
     ui.list_item_flat_noninteractive(
         PropertyContent::new("Codec").value_text(video_descr.human_readable_codec_string()),
     );
@@ -195,11 +223,17 @@ fn video_data_ui(
                 gop_sizes,
             } = &video_descr.samples_statistics;
 
+            #[cfg(not(debug_assertions))]
+            let _ = gop_sizes; // only used by the debug-only UI below
+
             ui.list_item_flat_noninteractive(
                 PropertyContent::new("All PTS equal DTS").value_bool(*dts_always_equal_pts)
             ).on_hover_text("Whether all decode timestamps are equal to presentation timestamps. If true, the video typically has no B-frames.");
 
-            if cfg!(debug_assertions) && gop_sizes.smallest > 0 {
+            #[cfg(debug_assertions)]
+            if gop_sizes.smallest > 0 {
+                ui.debug_only_badge();
+
                 if gop_sizes.smallest == gop_sizes.largest {
                     ui.list_item_flat_noninteractive(
                         PropertyContent::new("GOP size").value_uint(gop_sizes.smallest)
@@ -353,25 +387,20 @@ fn timestamp_ui(
     }
 }
 
-fn decoded_frame_ui<'a>(
+fn decoded_frame_ui(
     ctx: &re_viewer_context::AppContext<'_>,
     ui: &mut egui::Ui,
     ui_layout: UiLayout,
     video: &re_renderer::video::Video,
     video_time: re_video::Time,
     stream_kind: StreamKind,
-    get_video_chunk: &dyn Fn(re_video::VideoSource) -> &'a [u8],
+    video_source: &dyn GetVideoSource,
 ) {
     let player_stream_id = re_video::player::VideoPlayerStreamId(
         ui.id().with(format!("{stream_kind}_player")).value(),
     );
 
-    let frame_output = video.frame_at(
-        ctx.render_ctx,
-        player_stream_id,
-        video_time,
-        get_video_chunk,
-    );
+    let frame_output = video.frame_at(ctx.render_ctx, player_stream_id, video_time, video_source);
 
     if let Some(VideoFrameTexture {
         texture,
@@ -610,6 +639,7 @@ fn frame_info_ui(
             && let Ok(sample_idx) =
                 video_descr.latest_sample_index_at_presentation_timestamp(presentation_timestamp)
         {
+            ui.debug_only_badge();
             ui.list_item_flat_noninteractive(
                 PropertyContent::new("Highest PTS so far").value_bool(has_sample_highest_pts_so_far[sample_idx])
             ).on_hover_text(format!("Whether the presentation timestamp (PTS) at the this {} is the highest encountered so far. If false there are lower PTS values prior in the list.", stream_kind.frame_word()));
@@ -792,6 +822,7 @@ impl VideoUi {
                     entity_path,
                     ctx.timeline_name(),
                     ctx.app_ctx.app_options.video_decoder_settings(),
+                    ChunkTrackingMode::ReportTransient,
                 )
             });
 
@@ -800,6 +831,7 @@ impl VideoUi {
             let res = ctx.memoizer(|c: &mut VideoStreamCache| {
                 let codec_component = archetypes::EncodedImage::descriptor_media_type().component;
                 let query_result = ctx.db.storage_engine().cache().latest_at(
+                    ChunkTrackingMode::ReportTransient,
                     // Get the last logged codec. Should be unchanging so if correctly
                     // logged it doesn't matter which one we get.
                     &re_chunk_store::LatestAtQuery::new(
@@ -835,6 +867,7 @@ impl VideoUi {
                 let codec_component =
                     archetypes::EncodedDepthImage::descriptor_media_type().component;
                 let query_result = ctx.db.storage_engine().cache().latest_at(
+                    ChunkTrackingMode::ReportTransient,
                     &re_chunk_store::LatestAtQuery::new(
                         ctx.timeline_name(),
                         re_log_types::TimeInt::MAX,
@@ -878,24 +911,6 @@ impl VideoUi {
                 video_stream_result_ui(ui, ui_layout, video_stream_result, *stream_kind);
 
                 let storage_engine = ctx.db.storage_engine();
-                // Both real fetches and "mark in use" calls go through here:
-                // the `use_chunk_or_report_missing` call marks the chunk in use
-                // either way; if `sub_id` is `None` we stop there.
-                let lookup = |id: re_log_types::external::re_tuid::Tuid,
-                              sub_id: Option<re_log_types::external::re_tuid::Tuid>|
-                 -> Option<&[u8]> {
-                    let chunk = storage_engine
-                        .store()
-                        .use_chunk_or_report_missing(&re_sdk_types::ChunkId::from_tuid(id))?;
-                    let sub_id = sub_id?;
-                    let (offsets, buffer) = re_arrow_util::blob_arrays_offsets_and_buffer(
-                        chunk.raw_component_array(*sample_component)?,
-                    )?;
-                    let row_idx = chunk.row_index_of(re_sdk_types::RowId::from_tuid(sub_id))?;
-                    let start = offsets[row_idx] as usize;
-                    let end = offsets[row_idx + 1] as usize;
-                    Some(&buffer.as_slice()[start..end])
-                };
 
                 if let Ok(video) = video_stream_result {
                     let video = video.read();
@@ -907,11 +922,10 @@ impl VideoUi {
                         &video.video_renderer,
                         time,
                         *stream_kind,
-                        &|source| match source {
-                            re_video::VideoSource::Id { id, sub_id } => {
-                                lookup(id, sub_id).unwrap_or(&[])
-                            }
-                            re_video::VideoSource::Span(_) => &[],
+                        &VideoStoreSource {
+                            store: storage_engine.store(),
+                            sample_component: *sample_component,
+                            indicate: false,
                         },
                     );
                 }
@@ -948,10 +962,7 @@ impl VideoUi {
                         video,
                         video_time,
                         StreamKind::Video,
-                        &|source| match source {
-                            re_video::VideoSource::Span(span) => &blob[span.range_usize()],
-                            re_video::VideoSource::Id { .. } => &[],
-                        },
+                        &VideoSliceSource(blob),
                     );
                 }
             }

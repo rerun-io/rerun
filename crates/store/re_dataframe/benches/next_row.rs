@@ -42,17 +42,16 @@ use re_types_core::ComponentDescriptor;
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 // Keep `cargo test` quick when not optimized.
-#[cfg(debug_assertions)]
-const ROW_COUNTS: &[usize] = &[1_000];
-
-#[cfg(not(debug_assertions))]
-const ROW_COUNTS: &[usize] = &[1_000, 10_000, 30_000];
-
-#[cfg(not(debug_assertions))]
-const NEXT_N_ROWS_BATCHES: &[usize] = &[256, 2048];
-
-#[cfg(debug_assertions)]
-const NEXT_N_ROWS_BATCHES: &[usize] = &[256];
+cfg_select! {
+    debug_assertions => {
+        const ROW_COUNTS: &[usize] = &[1_000];
+        const NEXT_N_ROWS_BATCHES: &[usize] = &[256];
+    }
+    _ => {
+        const ROW_COUNTS: &[usize] = &[1_000, 10_000, 30_000];
+        const NEXT_N_ROWS_BATCHES: &[usize] = &[256, 2048];
+    }
+}
 
 const VECTOR_WIDTH: usize = 8;
 const TIMELINE: &str = "log_time";
@@ -73,11 +72,14 @@ criterion_group!(
 );
 criterion_main!(benches);
 
-#[cfg(not(debug_assertions))]
-const N_CHUNKS_SWEEP: &[usize] = &[1, 8, 32, 128, 512];
-
-#[cfg(debug_assertions)]
-const N_CHUNKS_SWEEP: &[usize] = &[1, 32];
+cfg_select! {
+    debug_assertions => {
+        const N_CHUNKS_SWEEP: &[usize] = &[1, 32];
+    }
+    _ => {
+        const N_CHUNKS_SWEEP: &[usize] = &[1, 8, 32, 128, 512];
+    }
+}
 
 const CHUNKED_BENCH_ROWS: usize = 30_720;
 const CHUNKED_BENCH_BATCH: usize = 2048;
@@ -179,7 +181,7 @@ fn make_engine(
 
 fn bench_query() -> QueryExpression {
     QueryExpression {
-        filtered_index: Some(TimelineName::new(TIMELINE)),
+        filtered_index: Some(TimelineName::from(TIMELINE)),
         ..Default::default()
     }
 }
@@ -238,7 +240,7 @@ fn bench_next_row_list(c: &mut Criterion) {
                 while handle.next_row().is_some() {
                     count += 1;
                 }
-                criterion::black_box(count)
+                std::hint::black_box(count)
             });
         });
     }
@@ -256,7 +258,7 @@ fn bench_next_row_batch_list(c: &mut Criterion) {
                 while let Some(rb) = handle.next_row_batch() {
                     total_rows += rb.num_rows();
                 }
-                criterion::black_box(total_rows)
+                std::hint::black_box(total_rows)
             });
         });
     }
@@ -294,7 +296,7 @@ fn bench_next_n_rows_list(c: &mut Criterion) {
                         }
                         total_rows += out.num_rows;
                     }
-                    criterion::black_box(total_rows)
+                    std::hint::black_box(total_rows)
                 });
             });
         }
@@ -316,7 +318,7 @@ fn bench_next_row_struct(c: &mut Criterion) {
                 while handle.next_row().is_some() {
                     count += 1;
                 }
-                criterion::black_box(count)
+                std::hint::black_box(count)
             });
         });
     }
@@ -334,7 +336,7 @@ fn bench_next_row_batch_struct(c: &mut Criterion) {
                 while let Some(rb) = handle.next_row_batch() {
                     total_rows += rb.num_rows();
                 }
-                criterion::black_box(total_rows)
+                std::hint::black_box(total_rows)
             });
         });
     }
@@ -417,7 +419,7 @@ fn bench_next_n_rows_struct_chunks(c: &mut Criterion) {
                     }
                     total_rows += out.num_rows;
                 }
-                criterion::black_box(total_rows)
+                std::hint::black_box(total_rows)
             });
         });
     }
@@ -436,7 +438,7 @@ fn bench_next_row_struct_chunks(c: &mut Criterion) {
                 while handle.next_row().is_some() {
                     count += 1;
                 }
-                criterion::black_box(count)
+                std::hint::black_box(count)
             });
         });
     }
@@ -459,7 +461,7 @@ fn bench_next_n_rows_struct(c: &mut Criterion) {
                         }
                         total_rows += out.num_rows;
                     }
-                    criterion::black_box(total_rows)
+                    std::hint::black_box(total_rows)
                 });
             });
         }

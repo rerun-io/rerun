@@ -1,6 +1,7 @@
 ---
 title: Migrating from 0.26 to 0.27
 order: 983
+hidden: true
 ---
 
 <!--   ^^^ this number must be _decremented_ when you copy/paste this file -->

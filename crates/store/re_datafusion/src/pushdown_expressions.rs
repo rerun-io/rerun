@@ -2,11 +2,160 @@ use arrow::datatypes::SchemaRef;
 use datafusion::common::{DataFusionError, ScalarValue, exec_err};
 use datafusion::logical_expr::{BinaryExpr, Expr, Operator, TableProviderFilterPushDown};
 use itertools::Itertools as _;
+use re_int::SaturatingCast as _;
 use re_log_types::{AbsoluteTimeRange, TimeInt, TimelineName};
 use re_protos::cloud::v1alpha1::ext::{Query, QueryDatasetRequest, QueryLatestAt, QueryRange};
+use re_protos::cloud::v1alpha1::{SegmentIdFilter, SegmentIdList, segment_id_filter};
 use re_sorbet::metadata::RERUN_KIND;
 use re_types_core::SegmentId;
+use std::collections::HashSet;
 use std::ops::Not as _;
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum SegmentIdSelection {
+    ScanOnly(HashSet<String>),
+    Skip(HashSet<String>),
+}
+
+impl SegmentIdSelection {
+    fn and(self, other: Self) -> Self {
+        match (self, other) {
+            (Self::ScanOnly(left), Self::ScanOnly(right)) => Self::ScanOnly(&left & &right),
+            (Self::ScanOnly(left), Self::Skip(right))
+            | (Self::Skip(right), Self::ScanOnly(left)) => Self::ScanOnly(&left - &right),
+            (Self::Skip(left), Self::Skip(right)) => Self::Skip(&left | &right),
+        }
+    }
+
+    fn or(self, other: Self) -> Self {
+        match (self, other) {
+            (Self::ScanOnly(left), Self::ScanOnly(right)) => Self::ScanOnly(&left | &right),
+            (Self::ScanOnly(left), Self::Skip(right)) => Self::Skip(&right - &left),
+            (Self::Skip(left), Self::ScanOnly(right)) => Self::Skip(&left - &right),
+            (Self::Skip(left), Self::Skip(right)) => Self::Skip(&left & &right),
+        }
+    }
+
+    fn negate(self) -> Self {
+        match self {
+            Self::ScanOnly(ids) => Self::Skip(ids),
+            Self::Skip(ids) => Self::ScanOnly(ids),
+        }
+    }
+
+    fn into_proto(self) -> SegmentIdFilter {
+        let strategy = match self {
+            Self::ScanOnly(ids) => segment_id_filter::Strategy::ScanOnly(SegmentIdList {
+                segment_ids: sorted(ids),
+            }),
+            Self::Skip(ids) => segment_id_filter::Strategy::Skip(SegmentIdList {
+                segment_ids: sorted(ids),
+            }),
+        };
+        SegmentIdFilter {
+            strategy: Some(strategy),
+        }
+    }
+}
+
+fn sorted(ids: HashSet<String>) -> Vec<String> {
+    ids.into_iter().sorted().collect()
+}
+
+fn segment_id_literal(expr: &Expr) -> Option<String> {
+    match expr {
+        Expr::Literal(
+            ScalarValue::Utf8(Some(value))
+            | ScalarValue::Utf8View(Some(value))
+            | ScalarValue::LargeUtf8(Some(value)),
+            _,
+        ) => Some(value.clone()),
+        _ => None,
+    }
+}
+
+fn is_segment_id_column(expr: &Expr, column_name: &str) -> bool {
+    matches!(expr, Expr::Column(column) if column.name == column_name)
+}
+
+fn segment_id_selection(expr: &Expr, column_name: &str) -> Option<SegmentIdSelection> {
+    match expr {
+        Expr::BinaryExpr(binary) if matches!(binary.op, Operator::Eq | Operator::NotEq) => {
+            let value = if is_segment_id_column(&binary.left, column_name) {
+                segment_id_literal(&binary.right)
+            } else if is_segment_id_column(&binary.right, column_name) {
+                segment_id_literal(&binary.left)
+            } else {
+                None
+            }?;
+            let ids = HashSet::from([value]);
+            Some(if binary.op == Operator::Eq {
+                SegmentIdSelection::ScanOnly(ids)
+            } else {
+                SegmentIdSelection::Skip(ids)
+            })
+        }
+
+        Expr::BinaryExpr(binary) if matches!(binary.op, Operator::And | Operator::Or) => {
+            let left = segment_id_selection(&binary.left, column_name)?;
+            let right = segment_id_selection(&binary.right, column_name)?;
+            Some(if binary.op == Operator::And {
+                left.and(right)
+            } else {
+                left.or(right)
+            })
+        }
+
+        Expr::InList(in_list) if is_segment_id_column(&in_list.expr, column_name) => {
+            let ids = in_list
+                .list
+                .iter()
+                .map(segment_id_literal)
+                .collect::<Option<HashSet<_>>>()?;
+            Some(if in_list.negated {
+                SegmentIdSelection::Skip(ids)
+            } else {
+                SegmentIdSelection::ScanOnly(ids)
+            })
+        }
+
+        Expr::Not(inner) => Some(segment_id_selection(inner, column_name)?.negate()),
+
+        _ => None,
+    }
+}
+
+/// Convert all representable segment-ID filters into one best-effort server-side scan hint.
+pub(crate) fn segment_id_filter_from_filters(
+    filters: &[Expr],
+    column_name: &str,
+) -> Option<SegmentIdFilter> {
+    filters
+        .iter()
+        .filter_map(|filter| segment_id_selection(filter, column_name))
+        .reduce(SegmentIdSelection::and)
+        .map(SegmentIdSelection::into_proto)
+}
+
+/// Classify filters that can be represented by [`SegmentIdFilter`].
+pub(crate) fn classify_segment_id_filters_for_pushdown(
+    filters: &[&Expr],
+    column_name: &str,
+) -> Vec<TableProviderFilterPushDown> {
+    filters
+        .iter()
+        .map(|filter| {
+            if segment_id_selection(filter, column_name).is_some() {
+                // Keep this Inexact while clients can connect to servers that predate
+                // `SegmentIdFilter` and silently ignore its unknown protobuf field. This can become
+                // Exact after capability negotiation or the compatibility window ends.
+                TableProviderFilterPushDown::Inexact
+            } else {
+                TableProviderFilterPushDown::Unsupported
+            }
+        })
+        .collect()
+}
 
 fn arrange_binary_expr_as_col_on_left(expr: &BinaryExpr) -> BinaryExpr {
     if let Expr::Column(_) = expr.left.as_ref() {
@@ -88,6 +237,10 @@ pub(crate) fn filter_expr_is_supported(
 }
 
 /// Apply a filter expression to a dataset query.
+///
+/// An `OR` (or `IN`) of index ranges expands into several queries — one per
+/// disjoint branch — which the scan issues as separate, concurrent
+/// `query_dataset` requests; `AND` intersects branches rather than adding them.
 ///
 /// `synthesize_latest_at` controls whether time-index pushdown pairs each
 /// `range` with a synthesized `latest_at`. Pass `true` when the caller wants
@@ -306,7 +459,7 @@ fn known_filter_column(
                 ScalarValue::UInt8(Some(v)) => *v as i64,
                 ScalarValue::UInt16(Some(v)) => *v as i64,
                 ScalarValue::UInt32(Some(v)) => *v as i64,
-                ScalarValue::UInt64(Some(v)) => i64::try_from(*v).unwrap_or(i64::MAX),
+                ScalarValue::UInt64(Some(v)) => v.saturating_cast::<i64>(),
                 ScalarValue::Int8(Some(v)) => *v as i64,
                 ScalarValue::Int16(Some(v)) => *v as i64,
                 ScalarValue::Int32(Some(v)) => *v as i64,
@@ -428,7 +581,8 @@ fn replace_time_in_query(
     synthesize_latest_at: bool,
 ) -> Result<QueryDatasetRequest, DataFusionError> {
     let mut query_clone = dataset_query.clone();
-    let timeline: TimelineName = index.into();
+    let timeline =
+        TimelineName::try_new(index).map_err(|err| DataFusionError::External(Box::new(err)))?;
     // `latest_at` is only meaningful to the server when the caller requested
     // sparse-fill semantics. When `synthesize_latest_at` is false, the caller
     // has opted out of fill and any `latest_at` we paired with the range
@@ -523,6 +677,97 @@ mod tests {
     use datafusion::logical_expr::{col, lit};
     use std::collections::HashMap;
     use std::sync::Arc;
+
+    const SEGMENT_ID: &str = "rerun_segment_id";
+
+    fn strategy(expr: Expr) -> segment_id_filter::Strategy {
+        segment_id_filter_from_filters(&[expr], SEGMENT_ID)
+            .unwrap()
+            .strategy
+            .unwrap()
+    }
+
+    #[test]
+    fn segment_id_equality_becomes_scan_only() {
+        for expr in [col(SEGMENT_ID).eq(lit("a")), lit("a").eq(col(SEGMENT_ID))] {
+            assert_eq!(
+                strategy(expr),
+                segment_id_filter::Strategy::ScanOnly(SegmentIdList {
+                    segment_ids: vec!["a".to_owned()],
+                })
+            );
+        }
+        assert_eq!(
+            strategy(col(SEGMENT_ID).in_list(vec![lit("a"), lit("b")], false)),
+            segment_id_filter::Strategy::ScanOnly(SegmentIdList {
+                segment_ids: vec!["a".to_owned(), "b".to_owned()],
+            })
+        );
+    }
+
+    #[test]
+    fn segment_id_exclusion_becomes_skip() {
+        assert_eq!(
+            strategy(col(SEGMENT_ID).not_eq(lit("a"))),
+            segment_id_filter::Strategy::Skip(SegmentIdList {
+                segment_ids: vec!["a".to_owned()],
+            })
+        );
+        assert_eq!(
+            strategy(col(SEGMENT_ID).in_list(vec![lit("a"), lit("b")], true)),
+            segment_id_filter::Strategy::Skip(SegmentIdList {
+                segment_ids: vec!["a".to_owned(), "b".to_owned()],
+            })
+        );
+    }
+
+    #[test]
+    fn segment_id_boolean_expressions_are_normalized() {
+        let expr = col(SEGMENT_ID)
+            .in_list(vec![lit("a"), lit("b"), lit("c")], false)
+            .and(col(SEGMENT_ID).not_eq(lit("b")));
+        assert_eq!(
+            strategy(expr),
+            segment_id_filter::Strategy::ScanOnly(SegmentIdList {
+                segment_ids: vec!["a".to_owned(), "c".to_owned()],
+            })
+        );
+
+        let expr = col(SEGMENT_ID)
+            .eq(lit("a"))
+            .or(col(SEGMENT_ID).eq(lit("b")));
+        assert_eq!(
+            strategy(expr),
+            segment_id_filter::Strategy::ScanOnly(SegmentIdList {
+                segment_ids: vec!["a".to_owned(), "b".to_owned()],
+            })
+        );
+    }
+
+    #[test]
+    fn unsupported_segment_id_expressions_stay_client_side() {
+        for expr in [
+            col("rerun_num_chunks").gt(lit(5i64)),
+            col(SEGMENT_ID).gt(lit("a")),
+            datafusion::functions::expr_fn::lower(col(SEGMENT_ID)).eq(lit("a")),
+            col(SEGMENT_ID).eq(Expr::Literal(ScalarValue::Utf8(None), None)),
+        ] {
+            assert!(segment_id_filter_from_filters(&[expr], SEGMENT_ID).is_none());
+        }
+    }
+
+    #[test]
+    fn classify_segment_id_filters_as_inexact() {
+        let pushable = col(SEGMENT_ID).eq(lit("a"));
+        let unsupported = col("rerun_num_chunks").gt(lit(5i64));
+        assert_eq!(
+            classify_segment_id_filters_for_pushdown(&[&pushable, &unsupported], SEGMENT_ID),
+            vec![
+                TableProviderFilterPushDown::Inexact,
+                TableProviderFilterPushDown::Unsupported,
+            ]
+        );
+    }
 
     fn make_schema_with_index(index_name: &str) -> SchemaRef {
         let mut metadata = HashMap::new();

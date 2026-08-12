@@ -31,7 +31,7 @@ pub fn typed_fallback_for<C: Component>(
         .ok()
         .and_then(|v| v.into_iter().next())
     else {
-        panic!("Invalid fallback provider for `{component}`, failed deserializing result.",);
+        panic!("Invalid fallback provider for `{component}`, failed deserializing result.");
     };
 
     v

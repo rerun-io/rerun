@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use re_chunk::{Chunk, RowId, TimeInt, Timeline};
+use re_chunk_store::ChunkTrackingMode;
 use re_entity_db::EntityDb;
 use re_log_types::StoreId;
 use re_sdk_types::archetypes::EncodedDepthImage;
@@ -54,6 +55,7 @@ fn playable_stream(cache: &mut VideoStreamCache, store: &EntityDb) -> SharablePl
     let blob_component = EncodedDepthImage::descriptor_blob().component;
     let media_type_component = EncodedDepthImage::descriptor_media_type().component;
     let query_result = store.storage_engine().cache().latest_at(
+        ChunkTrackingMode::Report,
         &re_chunk::LatestAtQuery::new(TIMELINE_NAME.into(), re_chunk::TimeInt::MAX),
         &re_chunk::EntityPath::from(STREAM_ENTITY),
         [media_type_component],

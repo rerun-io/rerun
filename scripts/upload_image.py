@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-Upload an image to Google Cloud.
+Upload an image or video to Google Cloud.
 
 Installation
 ------------
@@ -34,10 +34,14 @@ or the pixi command:
     pixi run upload-image --help
 
 All info/debug output occurs on stderr. If stdout is not a tty (e.g. piping to `pbcopy`), the resulting HTML tag is also
-printed to stdout. For example, this upload the image from the clipboard and copies the resulting HTML tag back to the
+printed to stdout. For example, this uploads the image from the clipboard and copies the resulting HTML tag back to the
 clipboard:
 
     pixi run upload-image --name some_name | pbcopy
+
+Videos can use the same command. They are uploaded without resizing or re-encoding:
+
+    pixi run upload-image path/to/video.mp4 | pbcopy
 """
 
 from __future__ import annotations
@@ -82,6 +86,21 @@ def build_image_stack(image: Image) -> list[tuple[int | None, Image]]:
             image_stack.append((size, new_image))
 
     return image_stack
+
+
+def video_content_type(path: Path) -> str | None:
+    """Return the content type if the path identifies a supported video file."""
+    content_type, _ = mimetypes.guess_type(path)
+    if content_type is not None and content_type.startswith("video/"):
+        return content_type
+    return None
+
+
+def video_html(url: str, content_type: str) -> str:
+    """Create the video tag used in the documentation."""
+    return (
+        f'<video width="100%" autoplay loop muted controls>\n    <source src="{url}" type="{content_type}" />\n</video>'
+    )
 
 
 def image_from_clipboard() -> Image | None:
@@ -149,6 +168,28 @@ class Uploader:
         self.upload_data(data, object_name, content_type, content_encoding)
 
         return object_name
+
+    def upload_video_from_file(self, video_path: Path) -> str:
+        """
+        Upload a video file without modifying it.
+
+        Parameters
+        ----------
+        video_path : Path
+            The path to the video file.
+
+        Returns
+        -------
+        str
+            The `<video>` tag for the video.
+
+        """
+        content_type = video_content_type(video_path)
+        if content_type is None:
+            raise RuntimeError(f"Unsupported video file type: {video_path.suffix or '(none)'}")
+
+        object_name = self.upload_file(video_path)
+        return video_html(f"https://static.rerun.io/{object_name}", content_type)
 
     def upload_stack_from_file(self, image_path: Path, name: str | None = None) -> str:
         """
@@ -313,13 +354,14 @@ class Uploader:
 
 def data_hash(data: bytes) -> str:
     """Compute a sha1 hash digest of some data."""
-    return hashlib.sha1(data).hexdigest()
+    # Content digest for upload deduplication, not a security primitive.
+    return hashlib.sha1(data, usedforsecurity=False).hexdigest()
 
 
 def download_file(url: str, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     logging.info("Downloading %s to %s", url, path)
-    response = requests.get(url, stream=True)
+    response = requests.get(url, stream=True, timeout=30)
     with tqdm.tqdm.wrapattr(
         open(path, "wb"),
         "write",
@@ -336,7 +378,9 @@ def run(args: argparse.Namespace) -> None:
     try:
         uploader = Uploader()
 
-        if args.single:
+        if args.path is not None and video_content_type(args.path) is not None:
+            html_str = uploader.upload_video_from_file(args.path)
+        elif args.single:
             if args.path is None:
                 raise RuntimeError("Path is required when uploading a single image")
 
@@ -361,7 +405,7 @@ def run(args: argparse.Namespace) -> None:
         print(html_str)
 
 
-DESCRIPTION = """Upload an image to static.rerun.io.
+DESCRIPTION = """Upload an image or video to static.rerun.io.
 
 Example screenshots
 -------------------
@@ -381,6 +425,10 @@ Other uses
 Download an image, optimize it and create a multi-resolution stack:
 
     pixi run upload-image --name <name_of_stack> https://example.com/path/to/image.png
+
+Upload a video without resizing or re-encoding:
+
+    pixi run upload-image path/to/video.mp4
 """
 
 
@@ -390,12 +438,12 @@ def main() -> None:
         "path",
         type=str,
         nargs="?",
-        help="Image file URL or path. If not provided, use the clipboard's content.",
+        help="Image or video file URL or path. If not provided, use the clipboard's image content.",
     )
     parser.add_argument(
         "--single",
         action="store_true",
-        help="Upload a single image instead of creating a multi-resolution stack.",
+        help="Upload a single image instead of creating a multi-resolution stack. Videos are always uploaded as-is.",
     )
     parser.add_argument("--name", type=str, help="Image name (required when uploading from clipboard).")
     parser.add_argument("--debug", action="store_true", help="Enable debug logging.")

@@ -81,7 +81,7 @@ def _download_dataset(root: Path, dataset_url: str = DATASET_URL) -> None:
 
     print("Extracting dataset…")
     with tarfile.open(tar_path, "r:") as tar:
-        tar.extractall(path=root)
+        tar.extractall(path=root, filter="data")
     os.remove(tar_path)
 
 

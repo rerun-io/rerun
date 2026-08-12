@@ -3,9 +3,11 @@ use quote::{format_ident, quote};
 use re_log::debug_assert;
 
 use crate::codegen::rust::arrow::{
-    ArrowDataTypeTokenizer, is_backed_by_scalar_buffer, quote_fqname_as_type_path,
+    ArrowDataTypeTokenizer, quote_atomic_rust_type, quote_fqname_as_type_path,
 };
-use crate::codegen::rust::util::{is_tuple_struct_from_obj, quote_comment};
+use crate::codegen::rust::util::{
+    is_tuple_struct_from_obj, quote_comment, quote_default_value_for_datatype,
+};
 use crate::data_type::{AtomicDataType, DataType, UnionMode};
 use crate::{Object, Objects, TypeRegistry};
 
@@ -63,7 +65,7 @@ pub fn quote_arrow_deserializer(
 
     let obj_fqname = obj.fqname.as_str();
     let is_enum = obj.is_enum();
-    let is_arrow_transparent = obj.datatype.is_none();
+    let is_arrow_transparent = obj.is_arrow_transparent();
     let is_tuple_struct = is_tuple_struct_from_obj(obj);
 
     if is_enum {
@@ -111,7 +113,7 @@ pub fn quote_arrow_deserializer(
         }
     } else if is_arrow_transparent {
         // NOTE: Arrow transparent objects must have a single field, no more no less.
-        // The semantic pass would have failed already if this wasn't the case.
+        // The type registry asserts as much when it computes the datatype.
         let obj_field = &obj.fields[0];
         let obj_field_fqname = obj_field.fqname.as_str();
 
@@ -315,7 +317,7 @@ pub fn quote_arrow_deserializer(
                     .enumerate()
                     .filter(|(_, obj_field)| {
                         // For unit fields we don't have to collect any data.
-                        obj_field.typ != crate::Type::Unit
+                        !obj_field.typ.is_unit()
                     })
                     .map(|(type_id, obj_field)| {
                         let data_dst = format_ident!("{}", obj_field.snake_case_name());
@@ -358,7 +360,7 @@ pub fn quote_arrow_deserializer(
                     let quoted_obj_field_name = format_ident!("{}", obj_field.snake_case_name());
                     let quoted_obj_field_type = format_ident!("{}", obj_field.pascal_case_name());
 
-                    if obj_field.typ == crate::Type::Unit {
+                    if obj_field.typ.is_unit() {
                         // TODO(andreas): Should we check there's enough nulls on the null array?
                         return quote! {
                             #typ => Self::#quoted_obj_field_type
@@ -492,10 +494,8 @@ fn quote_arrow_field_deserializer(
     _ = is_nullable; // not yet used, will be needed very soon
 
     // If the inner object is an enum, then dispatch to its deserializer.
-    if let DataType::Object { fqname, .. } = datatype
-        && objects.get(fqname).is_some_and(|obj| obj.is_enum())
-    {
-        let fqname_use = quote_fqname_as_type_path(fqname);
+    if let Some(obj) = datatype.enum_obj(objects) {
+        let fqname_use = quote_fqname_as_type_path(&obj.fqname);
         return quote!(#fqname_use::from_arrow_opt(#data_src).with_context(#obj_field_fqname)?.into_iter());
     }
 
@@ -662,6 +662,26 @@ fn quote_arrow_field_deserializer(
                 None,
             );
 
+            let is_enum = inner.data_type().enum_obj(objects).is_some();
+            let quoted_enum_missing_check = if is_enum {
+                quote! {
+                    if data.iter().any(Option::is_none) {
+                        return Err(DeserializationError::missing_data());
+                    }
+                }
+            } else {
+                quote! {}
+            };
+            // Enums have no `Default` impl, so fall back to their first variant instead.
+            // (See the note below on why we need to fill in _something_ here.)
+            let quoted_unwrap = if is_enum {
+                let quoted_default_value =
+                    quote_default_value_for_datatype(objects, inner.data_type());
+                quote!(.map(|opt| opt.unwrap_or_else(|| #quoted_default_value)))
+            } else {
+                quote!(.map(Option::unwrap_or_default))
+            };
+
             let comment_note_unwrap =
                 quote_comment("NOTE: Unwrapping cannot fail: the length must be correct.");
 
@@ -705,6 +725,8 @@ fn quote_arrow_field_deserializer(
                                 #[expect(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                 let data = unsafe { #data_src_inner.get_unchecked(start..end) };
 
+                                #quoted_enum_missing_check
+
                                 // NOTE: The call to `Option::unwrap_or_default` is very important here.
                                 //
                                 // Since we can only get here if the outer entry is marked as
@@ -725,7 +747,7 @@ fn quote_arrow_field_deserializer(
                                 // is null.
                                 //
                                 // TODO(#2875): use MaybeUninit rather than requiring a default impl
-                                let data = data.iter().cloned().map(Option::unwrap_or_default);
+                                let data = data.iter().cloned() #quoted_unwrap;
                                 // The following would be the correct thing to do, but costs us way
                                 // too much performance-wise for something that only applies to
                                 // malformed inputs.
@@ -751,7 +773,7 @@ fn quote_arrow_field_deserializer(
         DataType::List(inner) => {
             let data_src_inner = format_ident!("{data_src}_inner");
 
-            let inner_repr = if is_backed_by_scalar_buffer(inner.data_type()) {
+            let inner_repr = if inner.data_type().backed_by_scalar_buffer() {
                 InnerRepr::ScalarBuffer
             } else {
                 InnerRepr::NativeIterable
@@ -952,7 +974,8 @@ fn quote_iterator_transparency(
     } else {
         None
     };
-    let inner_is_arrow_transparent = inner_obj.is_some_and(|obj| obj.datatype.is_none());
+
+    let inner_is_arrow_transparent = inner_obj.is_some_and(|obj| obj.is_arrow_transparent());
 
     if inner_is_arrow_transparent {
         let inner_obj = inner_obj.as_ref().unwrap();
@@ -1034,12 +1057,12 @@ pub fn quote_arrow_deserializer_buffer_slice(
 
     let datatype = &type_registry.get(&obj.fqname);
 
-    let is_arrow_transparent = obj.datatype.is_none();
+    let is_arrow_transparent = obj.is_arrow_transparent();
     let is_tuple_struct = is_tuple_struct_from_obj(obj);
 
     if is_arrow_transparent {
         // NOTE: Arrow transparent objects must have a single field, no more no less.
-        // The semantic pass would have failed already if this wasn't the case.
+        // The type registry asserts as much when it computes the datatype.
         debug_assert!(obj.fields.len() == 1);
         let obj_field = &obj.fields[0];
         let obj_field_fqname = obj_field.fqname.as_str();
@@ -1134,24 +1157,61 @@ fn quote_arrow_field_deserializer_buffer_slice(
                 &data_src_inner,
             );
 
+            let quoted_datatype = quote_datatype(datatype);
+            let quoted_length = proc_macro2::Literal::i32_suffixed(
+                i32::try_from(*length).expect("fixed-size-list length must fit in an i32"),
+            );
             let quoted_downcast = {
                 let cast_as = quote!(arrow::array::FixedSizeListArray);
-                quote_array_downcast(
-                    obj_field_fqname,
-                    data_src,
-                    cast_as,
-                    &quote_datatype(datatype),
-                )
+                quote_array_downcast(obj_field_fqname, data_src, cast_as, &quoted_datatype)
             };
+
+            // Fully spell out the target type of the cast: type inference fails for
+            // nested fixed-size lists, where only the outermost type is pinned down.
+            let quoted_elem_type = quote_buffer_slice_element_type(datatype);
 
             quote! {{
                 let #data_src = #quoted_downcast?;
 
+                // Downcasting to `FixedSizeListArray` succeeds for _any_ list width,
+                // so check the width explicitly rather than let the cast below trip over it.
+                if #data_src.value_length() != #quoted_length {
+                    return Err(DeserializationError::datatype_mismatch(
+                        #quoted_datatype, #data_src.data_type().clone(),
+                    )).with_context(#obj_field_fqname);
+                }
+
                 let #data_src_inner = &**#data_src.values();
-                bytemuck::cast_slice::<_, [_; #length]>(#quoted_inner)
+
+                // NOTE: `try_cast_slice` rather than `cast_slice`: the child buffer of a
+                // `FixedSizeListArray` may be longer than `len * width`, and deserializers
+                // must never panic on malformed data.
+                bytemuck::try_cast_slice::<_, #quoted_elem_type>(#quoted_inner)
+                    .map_err(|err| DeserializationError::ValidationError(err.to_string()))
+                    .with_context(#obj_field_fqname)?
             }}
         }
 
+        _ => unimplemented!("{datatype:#?}"),
+    }
+}
+
+/// The native Rust type of a buffer-slice-deserialized element, fully spelled out
+/// (e.g. `[[half::f16; 3]; 15]`), so that the generated `bytemuck` casts don't have
+/// to rely on type inference.
+fn quote_buffer_slice_element_type(datatype: &DataType) -> TokenStream {
+    match datatype.to_logical_type() {
+        DataType::Atomic(atomic) => {
+            assert!(
+                atomic.backed_by_scalar_buffer(),
+                "{atomic:#?} not supported by the buffer-slice fast path"
+            );
+            quote_atomic_rust_type(*atomic)
+        }
+        DataType::FixedSizeList(inner, length) => {
+            let quoted_inner = quote_buffer_slice_element_type(inner.data_type());
+            quote!([#quoted_inner; #length])
+        }
         _ => unimplemented!("{datatype:#?}"),
     }
 }
@@ -1168,30 +1228,35 @@ fn quote_arrow_field_deserializer_buffer_slice(
 ///
 /// This should always be checked before using [`quote_arrow_deserializer_buffer_slice`].
 pub fn should_optimize_buffer_slice_deserialize(
+    objects: &Objects,
     obj: &Object,
     type_registry: &TypeRegistry,
 ) -> bool {
-    let is_arrow_transparent = obj.datatype.is_none();
+    let is_arrow_transparent = obj.is_arrow_transparent();
     if is_arrow_transparent {
         let typ = type_registry.get(&obj.fqname);
         let obj_field = &obj.fields[0];
-        !obj_field.is_nullable && should_optimize_buffer_slice_deserialize_datatype(&typ)
+        !obj_field.is_nullable && should_optimize_buffer_slice_deserialize_datatype(objects, &typ)
     } else {
         false
     }
 }
 
 /// Whether or not this datatype allows for the buffer slice optimizations.
-fn should_optimize_buffer_slice_deserialize_datatype(typ: &DataType) -> bool {
+fn should_optimize_buffer_slice_deserialize_datatype(objects: &Objects, typ: &DataType) -> bool {
     match typ {
         DataType::Atomic(atomic) => {
             !matches!(atomic, AtomicDataType::Null | AtomicDataType::Boolean)
         }
         DataType::Object { datatype, .. } => {
-            should_optimize_buffer_slice_deserialize_datatype(datatype)
+            typ.enum_obj(objects).is_none()
+                && should_optimize_buffer_slice_deserialize_datatype(objects, datatype)
         }
         DataType::FixedSizeList(field, _) => {
-            should_optimize_buffer_slice_deserialize_datatype(field.data_type())
+            // A wrapper-object element would break the generated `bytemuck` casts, which
+            // produce bare nested arrays rather than wrapper structs.
+            !matches!(field.data_type(), DataType::Object { .. })
+                && should_optimize_buffer_slice_deserialize_datatype(objects, field.data_type())
         }
         _ => false,
     }

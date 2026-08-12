@@ -1,6 +1,7 @@
 #pragma once
 
 #include <chrono>
+#include <cmath>
 #include <cstdint> // uint32_t etc.
 #include <filesystem>
 #include <limits>
@@ -22,17 +23,6 @@ namespace rerun {
     enum class StoreKind {
         Recording,
         Blueprint,
-    };
-
-    /// What happens when a client connects to a gRPC server?
-    enum class PlaybackBehavior {
-        /// Start playing back all the old data first,
-        /// and only after start sending anything that happened since.
-        OldestFirst,
-
-        /// Prioritize the newest arriving messages,
-        /// replaying the history later, starting with the newest.
-        NewestFirst,
     };
 
     /// A `RecordingStream` handles everything related to logging data into Rerun.
@@ -156,6 +146,10 @@ namespace rerun {
         /// See specific sink types for more information:
         /// * `FileSink`
         /// * `GrpcSink`
+        /// * `GrpcServerSink`
+        ///
+        /// Sink descriptors are copied and may be destroyed after this call.
+        /// Replacing the sinks or destroying the recording shuts hosted servers down.
         template <typename... Ts>
         Error set_sinks(const Ts&... sinks) const {
             LogSink out_sinks[] = {sinks...};
@@ -287,7 +281,7 @@ namespace rerun {
         /// You can remove a timeline from subsequent log calls again using `rec.disable_timeline`.
         /// @see set_time_sequence, set_time_duration, set_time_duration_secs, set_time_duration_nanos, set_time_timestamp, set_time_timestamp_secs_since_epoch, set_time_timestamp_nanos_since_epoch
         void set_time_duration_secs(std::string_view timeline_name, double secs) const {
-            set_time_duration_nanos(timeline_name, static_cast<int64_t>(1e9 * secs + 0.5));
+            set_time_duration_nanos(timeline_name, std::llround(1e9 * secs));
         }
 
         /// Set the index value of the given timeline as a duration in nanoseconds, for the current calling thread.

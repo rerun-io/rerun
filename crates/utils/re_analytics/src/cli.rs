@@ -23,7 +23,7 @@ pub fn clear() -> Result<(), CliError> {
     let config = Config::load_or_default()?;
 
     fn delete_dir(dir: &Path) -> Result<(), CliError> {
-        eprint!("Are you sure you want to delete directory {dir:?}? [y/N]: ",);
+        eprint!("Are you sure you want to delete directory {dir:?}? [y/N]: ");
 
         let mut input = String::new();
         std::io::stdin().read_line(&mut input)?;

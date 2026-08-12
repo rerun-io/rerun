@@ -68,6 +68,13 @@ jobs:
       CHANNEL: main
     secrets: inherit
 
+  web-test:
+    name: "Web tests"
+    uses: ./.github/workflows/reusable_web_test.yml
+    with:
+      CONCURRENCY: push-${{ github.ref_name }}-${{ inputs.CONCURRENCY }}
+    secrets: inherit
+
   upload-web:
     name: "Upload Web"
     needs: [build-web]

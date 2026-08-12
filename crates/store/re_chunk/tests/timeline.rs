@@ -20,7 +20,7 @@ fn out_of_order_timeline() {
         .build()
         .unwrap();
 
-    let timeline_frame_nr = TimelineName::new("frame_nr");
+    let timeline_frame_nr = TimelineName::from("frame_nr");
     let timeline = chunk.timelines().get(&timeline_frame_nr).unwrap();
     assert!(!timeline.is_sorted());
     assert_eq!(timeline.time_range(), AbsoluteTimeRange::new(10, 30));
@@ -59,7 +59,7 @@ fn in_order_forwards_timeline() {
         .build()
         .unwrap();
 
-    let timeline_frame_nr = TimelineName::new("frame_nr");
+    let timeline_frame_nr = TimelineName::from("frame_nr");
     let timeline = chunk.timelines().get(&timeline_frame_nr).unwrap();
     assert!(timeline.is_sorted());
     assert_eq!(timeline.time_range(), AbsoluteTimeRange::new(10, 30));
@@ -98,7 +98,7 @@ fn in_order_backwards_timeline() {
         .build()
         .unwrap();
 
-    let timeline_frame_nr = TimelineName::new("frame_nr");
+    let timeline_frame_nr = TimelineName::from("frame_nr");
     let timeline = chunk.timelines().get(&timeline_frame_nr).unwrap();
     assert!(!timeline.is_sorted());
     assert_eq!(timeline.time_range(), AbsoluteTimeRange::new(10, 30));

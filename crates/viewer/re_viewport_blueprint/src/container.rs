@@ -71,6 +71,7 @@ impl ContainerBlueprint {
         // ----
 
         let results = blueprint_db.storage_engine().cache().latest_at(
+            re_chunk_store::ChunkTrackingMode::Report,
             query,
             &id.as_entity_path(),
             blueprint_archetypes::ContainerBlueprint::all_component_identifiers(),

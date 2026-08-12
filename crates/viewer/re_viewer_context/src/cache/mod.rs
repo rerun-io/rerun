@@ -3,7 +3,9 @@
 //! Caches are registered lazily upon first use, see [`Memoizers::entry`].
 //! The concrete caches exposed here are always available for all viewer crates.
 
+mod app_caches;
 mod cache_trait;
+mod encoded_depth_image_stats_cache;
 mod image_decode_cache;
 mod image_histogram_cache;
 mod image_stats_cache;
@@ -14,6 +16,7 @@ mod transform_database_store;
 mod video_asset_cache;
 mod video_stream_cache;
 
+pub use app_caches::AppCaches;
 pub use cache_trait::{Cache, CacheEntryAccess};
 pub use memoizers::Memoizers;
 pub use store_cache::StoreCache;
@@ -21,6 +24,7 @@ pub use store_cache::StoreCache;
 // Caches are fully dynamic and registration based, so they can be added at runtime by any crate.
 // The reason this happens it that various viewer crates wants to access these, mostly for ui purposes.
 // Ideally, they would only depend on the ones needed.
+pub use encoded_depth_image_stats_cache::EncodedDepthImageStatsCache;
 pub use image_decode_cache::ImageDecodeCache;
 pub use image_histogram_cache::{ImageHistogramCache, Rgb8Histogram};
 pub use image_stats_cache::ImageStatsCache;
@@ -28,7 +32,7 @@ pub use tensor_stats_cache::{TensorStatsAccessor, TensorStatsCache};
 pub use transform_database_store::TransformDatabaseStoreCache;
 pub use video_asset_cache::VideoAssetCache;
 pub use video_stream_cache::{
-    SharablePlayableVideoStream, VideoStreamCache, VideoStreamProcessingError,
+    SharablePlayableVideoStream, VideoStoreSource, VideoStreamCache, VideoStreamProcessingError,
 };
 
 // ----

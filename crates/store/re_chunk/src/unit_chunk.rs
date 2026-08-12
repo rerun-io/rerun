@@ -268,15 +268,17 @@ impl UnitChunkShared {
     /// Returns the index (`(TimeInt, RowId)` pair) of the single row within, on the given timeline.
     ///
     /// Returns the single static index if the chunk is static.
+    ///
+    /// A `None` timeline (a static-only query) only ever yields the static index.
     #[inline]
-    pub fn index(&self, timeline: &TimelineName) -> Option<(TimeInt, RowId)> {
+    pub fn index(&self, timeline: Option<&TimelineName>) -> Option<(TimeInt, RowId)> {
         debug_assert!(self.num_rows() == 1);
         if self.is_static() {
             self.row_ids()
                 .next()
                 .map(|row_id| (TimeInt::STATIC, row_id))
         } else {
-            let time_column = self.timelines.get(timeline)?;
+            let time_column = self.timelines.get(timeline?)?;
             let time = time_column.times().next()?;
             self.row_ids().next().map(|row_id| (time, row_id))
         }

@@ -30,15 +30,17 @@ impl LoginFlow {
     pub fn open(egui_ctx: &egui::Context, signed_in_url: Option<&str>) -> Result<Self, String> {
         let _ = &signed_in_url; // only used on web
 
-        #[cfg(target_arch = "wasm32")]
-        let state = State::open(
-            egui_ctx,
-            signed_in_url
-                .ok_or("signed_in_url is required for web login")?
-                .to_owned(),
-        )?;
-        #[cfg(not(target_arch = "wasm32"))]
-        let state = State::open(egui_ctx)?;
+        let state = cfg_select! {
+            target_arch = "wasm32" => {
+                State::open(
+                    egui_ctx,
+                    signed_in_url
+                        .ok_or("signed_in_url is required for web login")?
+                        .to_owned(),
+                )?
+            }
+            _ => { State::open(egui_ctx)? }
+        };
         Ok(Self {
             state,
             #[cfg(target_arch = "wasm32")]
@@ -73,32 +75,32 @@ impl LoginFlow {
     }
 
     pub fn ui(&mut self, ui: &mut egui::Ui, cmd: &CommandSender) -> Option<LoginFlowResult> {
-        #[cfg(target_arch = "wasm32")]
-        {
-            if !self.started {
-                // Show button to start the flow
-                if ActionButton::new(&re_ui::icons::EXTERNAL_LINK, "Log in", "Log in")
-                    .variant(re_ui::Variant::Outlined)
-                    .show(ui, &mut false)
-                    .clicked()
-                {
-                    if let Err(err) = self.state.start() {
-                        return Some(LoginFlowResult::Failure(err));
+        cfg_select! {
+            target_arch = "wasm32" => {
+                if !self.started {
+                    // Show button to start the flow
+                    if ActionButton::new(&re_ui::icons::EXTERNAL_LINK, "Log in", "Log in")
+                        .variant(re_ui::Variant::Outlined)
+                        .show(ui, &mut false)
+                        .clicked()
+                    {
+                        if let Err(err) = self.state.start() {
+                            return Some(LoginFlowResult::Failure(err));
+                        }
+                        self.started = true;
                     }
-                    self.started = true;
+                    None
+                } else {
+                    // Show loading indicator while waiting
+                    self.state.ui(ui);
+                    self.done(ui, cmd)
                 }
-                None
-            } else {
-                // Show loading indicator while waiting
+            }
+            _ => {
+                // On native, always show the buttons
                 self.state.ui(ui);
                 self.done(ui, cmd)
             }
-        }
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            // On native, always show the buttons
-            self.state.ui(ui);
-            self.done(ui, cmd)
         }
     }
 

@@ -1,6 +1,7 @@
 use std::collections::BTreeSet;
 
 use re_data_ui::item_ui::{self, timeline_button};
+use re_log::ResultExt as _;
 use re_log_types::{EntityPath, TimelineName};
 use re_sdk_types::blueprint::archetypes::{TextLogColumns, TextLogFormat, TextLogRows};
 use re_sdk_types::blueprint::components::{Enabled, TextLogColumn, TimelineColumn};
@@ -195,7 +196,7 @@ Filter message types and toggle column visibility in a selection panel.",
         state: &mut dyn ViewState,
         query: &ViewQuery<'_>,
         system_output: re_viewer_context::SystemExecutionOutput,
-    ) -> Result<(), ViewSystemExecutionError> {
+    ) -> Result<re_viewer_context::ViewClassUiOutput, ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
         let tokens = ui.tokens();
@@ -203,23 +204,10 @@ Filter message types and toggle column visibility in a selection panel.",
         let text =
             system_output.visualizer_data_or_default::<Vec<Entry>>(TextLogSystem::identifier())?;
 
-        let columns_property = ViewProperty::from_archetype::<TextLogColumns>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query,
-            query.view_id,
-        );
-        let rows_property = ViewProperty::from_archetype::<TextLogRows>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query,
-            query.view_id,
-        );
-        let format_property = ViewProperty::from_archetype::<TextLogFormat>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query,
-            query.view_id,
-        );
-
         let view_ctx = self.view_context(ctx, query.view_id, state, query.space_origin);
+        let columns_property = ViewProperty::from_archetype::<TextLogColumns>(&view_ctx);
+        let rows_property = ViewProperty::from_archetype::<TextLogRows>(&view_ctx);
+        let format_property = ViewProperty::from_archetype::<TextLogFormat>(&view_ctx);
 
         let monospace_body = format_property.component_or_fallback::<Enabled>(
             &view_ctx,
@@ -296,7 +284,7 @@ Filter message types and toggle column visibility in a selection panel.",
         });
         state.latest_time = time;
 
-        Ok(())
+        Ok(Default::default())
     }
 }
 
@@ -384,7 +372,11 @@ fn table_ui(
                 }
 
                 header.col(|ui| {
-                    timeline_button(&ctx.app_ctx, ui, &TimelineName::new(&col.timeline));
+                    if let Some(timeline) =
+                        TimelineName::try_new(col.timeline.as_str()).ok_or_log_error_once()
+                    {
+                        timeline_button(&ctx.app_ctx, ui, &timeline);
+                    }
                 });
             }
             for col in columns {
@@ -412,7 +404,11 @@ fn table_ui(
                         continue;
                     }
 
-                    let timeline = TimelineName::new(&col.timeline);
+                    let Some(timeline) =
+                        TimelineName::try_new(col.timeline.as_str()).ok_or_log_error_once()
+                    else {
+                        continue;
+                    };
 
                     row.col(|ui| {
                         let row_time = entry
@@ -497,16 +493,12 @@ fn column_name_ui(ui: &mut egui::Ui, column: &bp_datatypes::TextLogColumnKind) -
 ///
 /// This could potentially be avoided if we could add component ui's from this crate.
 fn view_property_ui_rows(ctx: &ViewContext<'_>, ui: &mut egui::Ui) {
-    let property = ViewProperty::from_archetype::<TextLogRows>(
-        ctx.blueprint_db(),
-        ctx.blueprint_query(),
-        ctx.view_id,
-    );
+    let property = ViewProperty::from_archetype::<TextLogRows>(ctx);
 
     let reflection = ctx.viewer_ctx.reflection();
     let Some(reflection) = reflection.archetypes.get(&property.archetype_name) else {
         ui.error_label(format!(
-            "Missing reflection data for archetype {:?}.",
+            "Missing reflection data for archetype {}.",
             property.archetype_name
         ));
         return;

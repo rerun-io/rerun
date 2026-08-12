@@ -1,9 +1,10 @@
 //! Web-specific tools used by various parts of the application.
 
+// TODO(grtlr): Move the remaining generic JS helpers to `re_web`.
+
 use re_log::ResultExt as _;
 use serde::Deserialize;
-use wasm_bindgen::{JsCast as _, JsError, JsValue};
-use web_sys::Window;
+use wasm_bindgen::{JsCast as _, JsValue};
 
 pub trait JsResultExt<T> {
     /// Logs an error if the result is an error and returns the result.
@@ -24,65 +25,21 @@ pub trait JsResultExt<T> {
 
 impl<T> JsResultExt<T> for Result<T, JsValue> {
     fn ok_or_log_js_error(self) -> Option<T> {
-        self.map_err(string_from_js_value).ok_or_log_error()
+        self.map_err(re_web::Error::from).ok_or_log_error()
     }
 
     fn ok_or_log_js_error_once(self) -> Option<T> {
-        self.map_err(string_from_js_value).ok_or_log_error_once()
+        self.map_err(re_web::Error::from).ok_or_log_error_once()
     }
 
     fn warn_on_js_err_once(self, msg: impl std::fmt::Display) -> Option<T> {
-        self.map_err(string_from_js_value).warn_on_err_once(msg)
+        self.map_err(re_web::Error::from).warn_on_err_once(msg)
     }
 
     fn unwrap_debug_or_log_js_error(self) -> Option<T> {
-        self.map_err(string_from_js_value)
+        self.map_err(re_web::Error::from)
             .unwrap_debug_or_log_error()
     }
-}
-
-/// Useful in error handlers
-#[expect(clippy::needless_pass_by_value)]
-pub fn string_from_js_value(s: wasm_bindgen::JsValue) -> String {
-    // it's already a string
-    if let Some(s) = s.as_string() {
-        return s;
-    }
-
-    // it's an Error, call `toString` instead
-    if let Some(s) = s.dyn_ref::<js_sys::Error>() {
-        return format!("{}", s.to_string());
-    }
-
-    format!("{s:#?}")
-}
-
-pub fn js_error(msg: impl std::fmt::Display) -> JsValue {
-    JsError::new(&msg.to_string()).into()
-}
-
-pub fn set_url_parameter_and_refresh(key: &str, value: &str) -> Result<(), wasm_bindgen::JsValue> {
-    let window = window()?;
-    let location = window.location();
-
-    let url = web_sys::Url::new(&location.href()?)?;
-    url.search_params().set(key, value);
-
-    location.assign(&url.href())
-}
-
-pub fn window() -> Result<Window, JsValue> {
-    web_sys::window().ok_or_else(|| js_error("failed to get window object"))
-}
-
-/// Returns the base URL of the current page.
-///
-/// E.g. if the current URL is `https://rerun.io/viewer?url=https://example.com/recording.rrd`,
-/// this will return `https://rerun.io/viewer`.
-pub fn current_base_url() -> Result<url::Url, JsValue> {
-    let location = window()?.location().href()?;
-    let location = url::Url::parse(&location).map_err(JsError::from)?;
-    Ok(re_viewer_context::open_url::base_url(&location))
 }
 
 // Can't deserialize `Option<js_sys::Function>` directly, so newtype it is.
@@ -92,21 +49,21 @@ pub struct Callback(#[serde(with = "serde_wasm_bindgen::preserve")] js_sys::Func
 
 impl Callback {
     #[inline]
-    pub fn call0(&self) -> Result<JsValue, JsValue> {
-        let window: JsValue = window()?.into();
-        self.0.call0(&window)
+    pub fn call0(&self) -> Result<JsValue, re_web::Error> {
+        let window: JsValue = re_web::browser::window()?.into();
+        self.0.call0(&window).map_err(Into::into)
     }
 
     #[inline]
-    pub fn call1(&self, arg0: &JsValue) -> Result<JsValue, JsValue> {
-        let window: JsValue = window()?.into();
-        self.0.call1(&window, arg0)
+    pub fn call1(&self, arg0: &JsValue) -> Result<JsValue, re_web::Error> {
+        let window: JsValue = re_web::browser::window()?.into();
+        self.0.call1(&window, arg0).map_err(Into::into)
     }
 
     #[inline]
-    pub fn call2(&self, arg0: &JsValue, arg1: &JsValue) -> Result<JsValue, JsValue> {
-        let window: JsValue = window()?.into();
-        self.0.call2(&window, arg0, arg1)
+    pub fn call2(&self, arg0: &JsValue, arg1: &JsValue) -> Result<JsValue, re_web::Error> {
+        let window: JsValue = re_web::browser::window()?.into();
+        self.0.call2(&window, arg0, arg1).map_err(Into::into)
     }
 }
 

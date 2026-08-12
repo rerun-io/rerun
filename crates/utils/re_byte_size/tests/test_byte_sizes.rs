@@ -67,6 +67,7 @@ fn test_sizes() {
     assert_accurate_size(|| String::from("Hello there!"));
     assert_accurate_size(|| Box::new(String::from("Hello there!")));
     assert_accurate_size(|| Arc::new(String::from("Hello there!")));
+    assert_accurate_size(|| Arc::<str>::from("0123456789abcdef"));
     assert_accurate_size(|| vec![0u8; 1024 * 1024]);
     assert_accurate_size(|| Vec::<String>::with_capacity(100));
 

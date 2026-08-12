@@ -25,5 +25,6 @@ re_byte_size.workspace = true
 ahash.workspace = true
 nohash-hasher.workspace = true
 parking_lot.workspace = true
+paste.workspace = true
 serde = { workspace = true, features = ["serde_derive"] }
 static_assertions.workspace = true

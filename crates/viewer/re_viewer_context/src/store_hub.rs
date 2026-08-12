@@ -389,6 +389,14 @@ impl StoreHub {
                 break 'ctx None;
             };
 
+            // The welcome/example screen has an app-id and a blueprint, but no
+            // real recording. It must never surface as an active store context,
+            // or downstream UI (menus, panels, …) will treat it as if a
+            // recording is active.
+            if app_id == Self::welcome_screen_app_id() {
+                break 'ctx None;
+            }
+
             self.ensure_active_blueprint_for_app(app_id);
             let should_enable_heuristics = self.should_enable_heuristics_by_app_id.remove(app_id);
 
@@ -641,8 +649,7 @@ impl StoreHub {
     ///
     /// Ignores any blueprint stores.
     ///
-    /// If the data source is a grpc uri, it will ignore any fragments.
-    /// If the data source is a http url, it will ignore the follow flag.
+    /// If the data source is a grpc or HTTP URI, it will ignore any fragments.
     pub fn find_recording_store_by_source(
         &self,
         data_source: &re_log_channel::LogSource,
@@ -751,7 +758,6 @@ impl StoreHub {
     /// Ensure caches and blueprints are set up for the given recording.
     ///
     /// Call this when a recording becomes active (e.g. via [`Route::LocalRecording`]).
-    // TODO(RR-3033): get rid of this?
     pub fn load_blueprint_and_caches(
         &mut self,
         recording_id: &StoreId,

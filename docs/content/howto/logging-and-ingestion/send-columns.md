@@ -1,7 +1,7 @@
 ---
 title: Send entire columns at once
 order: 100
-description: How to use the Rerun SDK to log big chunks of data in one call
+description: Log many rows of data in a single call
 ---
 
 The [`log` API](../../getting-started/data-in.md#logging-our-first-points) is designed to extract data from your running code as it's being generated. It is, by nature, *row-oriented*.

@@ -7,8 +7,9 @@
 //! - [`Mode::Asset`] — emit an [`re_sdk_types::archetypes::AssetVideo`] blob
 //!   chunk plus a [`re_sdk_types::archetypes::VideoFrameReference`] index chunk.
 //! - [`Mode::Stream`] — demux the mp4 with [`re_video`] and emit a static
-//!   [`re_sdk_types::archetypes::VideoStream`] codec chunk followed by per-GOP
-//!   (or per-sample) `VideoSample` / `IsKeyframe` chunks.
+//!   [`re_sdk_types::archetypes::VideoStream`] codec chunk, per-GOP (or
+//!   per-sample) `VideoSample` chunks, and finally one dedicated `IsKeyframe`
+//!   marker chunk holding a sparse `true` row per keyframe.
 //!
 //! The entry point is [`load_mp4_from_bytes`], with a native-only `load_mp4`
 //! convenience wrapper that reads the bytes from a path on disk.
@@ -20,6 +21,7 @@ mod stream;
 
 pub use config::{Mode, Mp4Config};
 pub use error::Mp4Error;
+pub use re_video::{HwAccel, Mp4TranscodeOptions, VideoCodec};
 
 use itertools::Either;
 
@@ -52,18 +54,15 @@ pub fn load_mp4(
 
         Mode::Stream {
             chunk_by_gop,
-            allow_b_frames,
+            transcode,
         } => {
-            let file = std::fs::File::open(path)?;
-            let size = file.metadata()?.len();
             let iter = stream::iter_chunks(
-                std::io::BufReader::new(file),
-                size,
+                stream::StreamInput::Path(path.to_path_buf()),
                 entity_path,
-                &config.timeline_name,
+                config.timeline_name,
                 *chunk_by_gop,
                 config.timeline_type,
-                *allow_b_frames,
+                transcode,
                 &debug_name,
             )?;
             Ok(Either::Right(iter))
@@ -103,17 +102,15 @@ pub fn load_mp4_from_bytes(
 
         Mode::Stream {
             chunk_by_gop,
-            allow_b_frames,
+            transcode,
         } => {
-            let size = bytes.len() as u64;
             let iter = stream::iter_chunks(
-                std::io::Cursor::new(bytes),
-                size,
+                stream::StreamInput::Bytes(bytes),
                 entity_path,
-                &config.timeline_name,
+                config.timeline_name,
                 *chunk_by_gop,
                 config.timeline_type,
-                *allow_b_frames,
+                transcode,
                 debug_name,
             )?;
             Ok(Either::Right(iter))

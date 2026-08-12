@@ -25,12 +25,11 @@
 //!
 //! See [`re_viewer_context::VisualizerInstructionReport`] for how these break down further.
 
-#![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
-
 mod app;
 mod app_blueprint;
 mod app_state;
 mod background_tasks;
+mod command_palette;
 mod default_views;
 mod docker_detection;
 pub mod env_vars;
@@ -54,6 +53,8 @@ mod viewer_analytics;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod viewer_test_utils;
 
+pub mod internal_catalog;
+
 #[cfg(not(target_arch = "wasm32"))]
 mod loading;
 
@@ -68,10 +69,10 @@ pub use app::App;
 pub(crate) use app_state::AppState;
 pub use event::{SelectionChangeItem, ViewerEvent, ViewerEventKind};
 pub use external_memory::ExternalMemoryUser;
+pub use re_async::AsyncRuntimeHandle;
 pub use re_capabilities::MainThreadToken;
 pub use re_viewer_context::{
-    AsyncRuntimeHandle, CommandReceiver, CommandSender, SystemCommand, SystemCommandSender,
-    command_channel,
+    CommandReceiver, CommandSender, SystemCommand, SystemCommandSender, command_channel,
 };
 pub use startup_options::{LoginOptions, StartupOptions};
 pub use ui::about_rerun_ui;
@@ -238,9 +239,13 @@ pub(crate) fn wgpu_options(force_wgpu_backend: Option<&str>) -> egui_wgpu::WgpuC
             ..egui_wgpu::WgpuSetupCreateNew::without_display_handle()
         }),
 
-        // Explicitly stick with wgpu's latency default which is more optimized for high throughput than
-        // what egui may have in mind.
-        desired_maximum_frame_latency: None,
+        surface: egui_wgpu::SurfaceConfig {
+            // Explicitly stick with wgpu's latency default which is more optimized for high throughput than
+            // what egui may have in mind.
+            desired_maximum_frame_latency: None,
+
+            ..egui_wgpu::SurfaceConfig::HIGH_THROUGHPUT
+        },
 
         ..Default::default()
     }
@@ -278,57 +283,57 @@ pub fn customize_eframe_and_setup_renderer(
 /// keeping only the analytics state.
 #[allow(clippy::allow_attributes, clippy::unnecessary_wraps)] // wasm only
 pub fn reset_viewer_persistence() -> anyhow::Result<()> {
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        let Some(data_dir) = eframe::storage_dir(native::APP_ID) else {
-            anyhow::bail!("Failed to figure out where Rerun stores its data.")
-        };
-
-        // Note: `remove_dir_all` fails if the directory doesn't exist.
-        if data_dir.exists() {
-            // Keep analytics, because it is used to uniquely identify users over time.
-            let analytics_file_path = data_dir.join("analytics.json");
-            let analytics = std::fs::read(&analytics_file_path);
-
-            if let Err(err) = std::fs::remove_dir_all(&data_dir) {
-                anyhow::bail!("Failed to remove {data_dir:?}: {err}");
-            } else {
-                re_log::info!("Cleared {data_dir:?}.");
+    cfg_select! {
+        target_arch = "wasm32" => {
+            // TODO(emilk): eframe should have an API for this.
+            if let Some(storage) = web_sys::window()
+                .and_then(|w| w.local_storage().ok())
+                .flatten()
+            {
+                storage.delete("egui_memory_ron").ok();
+                storage.delete(eframe::APP_KEY).ok();
             }
 
-            if let Ok(analytics) = analytics {
-                // Restore analytics.json:
-                std::fs::create_dir(&data_dir).ok();
-                std::fs::write(&analytics_file_path, analytics).ok();
-            }
-        } else {
-            re_log::info!("Rerun state was already cleared.");
+            // TODO(#2579): implement web-storage for blueprints as well, and clear it here
         }
+        _ => {
+            let Some(data_dir) = eframe::storage_dir(native::APP_ID) else {
+                anyhow::bail!("Failed to figure out where Rerun stores its data.")
+            };
 
-        // Clear the default cache directory if it exists
-        //TODO(#8064): should clear the _actual_ cache directory, not the default one
-        if let Some(cache_dir) = re_viewer_context::AppOptions::default_cache_directory() {
-            if let Err(err) = std::fs::remove_dir_all(&cache_dir) {
-                if err.kind() != std::io::ErrorKind::NotFound {
-                    anyhow::bail!("Failed to remove {cache_dir:?}: {err}");
+            // Note: `remove_dir_all` fails if the directory doesn't exist.
+            if data_dir.exists() {
+                // Keep analytics, because it is used to uniquely identify users over time.
+                let analytics_file_path = data_dir.join("analytics.json");
+                let analytics = std::fs::read(&analytics_file_path);
+
+                if let Err(err) = std::fs::remove_dir_all(&data_dir) {
+                    anyhow::bail!("Failed to remove {data_dir:?}: {err}");
+                } else {
+                    re_log::info!("Cleared {data_dir:?}.");
+                }
+
+                if let Ok(analytics) = analytics {
+                    // Restore analytics.json:
+                    std::fs::create_dir(&data_dir).ok();
+                    std::fs::write(&analytics_file_path, analytics).ok();
                 }
             } else {
-                re_log::info!("Cleared {cache_dir:?}.");
+                re_log::info!("Rerun state was already cleared.");
+            }
+
+            // Clear the default cache directory if it exists
+            //TODO(#8064): should clear the _actual_ cache directory, not the default one
+            if let Some(cache_dir) = re_viewer_context::AppOptions::default_cache_directory() {
+                if let Err(err) = std::fs::remove_dir_all(&cache_dir) {
+                    if err.kind() != std::io::ErrorKind::NotFound {
+                        anyhow::bail!("Failed to remove {cache_dir:?}: {err}");
+                    }
+                } else {
+                    re_log::info!("Cleared {cache_dir:?}.");
+                }
             }
         }
-    }
-    #[cfg(target_arch = "wasm32")]
-    {
-        // TODO(emilk): eframe should have an API for this.
-        if let Some(storage) = web_sys::window()
-            .and_then(|w| w.local_storage().ok())
-            .flatten()
-        {
-            storage.delete("egui_memory_ron").ok();
-            storage.delete(eframe::APP_KEY).ok();
-        }
-
-        // TODO(#2579): implement web-storage for blueprints as well, and clear it here
     }
 
     Ok(())

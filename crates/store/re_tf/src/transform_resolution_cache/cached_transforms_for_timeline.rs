@@ -2,7 +2,8 @@ use std::collections::BTreeSet;
 
 use nohash_hasher::IntMap;
 use re_byte_size::SizeBytes as _;
-use re_chunk_store::ChunkStore;
+use re_chunk_store::{ChunkStore, LatestAtQuery, MissingChunkReporter};
+use re_entity_db::EntityDb;
 use re_log_types::{EntityPath, EntityPathHash, TimeInt, TimelineName};
 use re_sdk_types::ChunkId;
 
@@ -17,6 +18,7 @@ use crate::transform_resolution_cache::iter_relevant_rows_in_chunk;
 
 use super::iter_relevant_rows_in_chunk_with_child_frames;
 use super::pose_transform_for_entity::PoseTransformForEntity;
+use super::transform_cache_snapshot;
 use super::tree_transforms_for_child_frame::TreeTransformsForChildFrame;
 
 /// Cached transforms for a single timeline.
@@ -503,6 +505,25 @@ impl CachedTransformsForTimeline {
     /// All child frames for which we have connections to a parent.
     pub fn all_child_frames(&self) -> impl Iterator<Item = TransformFrameIdHash> {
         self.per_child_frame_transforms.keys().copied()
+    }
+
+    /// Returns a snapshot of this timeline's transform cache for a single latest-at time.
+    pub fn latest_at_transform_cache_snapshot(
+        &self,
+        frame_id_registry: &FrameIdRegistry,
+        entity_db: &EntityDb,
+        missing_chunk_reporter: &MissingChunkReporter,
+        query: &LatestAtQuery,
+        filter: transform_cache_snapshot::SnapshotFilter,
+    ) -> transform_cache_snapshot::Snapshot {
+        transform_cache_snapshot::latest_at(
+            self,
+            frame_id_registry,
+            entity_db,
+            missing_chunk_reporter,
+            query,
+            filter,
+        )
     }
 }
 

@@ -17,11 +17,26 @@ pub enum Mp4Error {
     Demux(#[from] re_video::VideoLoadError),
 
     #[error(
-        "MP4 contains B-frames; the `VideoStream` archetype does not yet model differing \
-         DTS/PTS (see https://github.com/rerun-io/rerun/issues/10090). \
-         Use `Mode::Asset` or pass `allow_b_frames = true` and transcode downstream."
+        "Transcoding this MP4 stream (B-frame stripping or a requested transform) requires \
+         FFmpeg, which is not available in this build. Use `Mode::Asset` instead."
     )]
-    BFramesInStreamMode,
+    TranscodeRequiresFfmpeg,
+
+    #[error(
+        "Transcoding this MP4 stream with FFmpeg requires a seekable file, but this stream was \
+         provided as in-memory bytes. Load it from a file path (`load_mp4`), or use `Mode::Asset`."
+    )]
+    TranscodeRequiresSeekableFile,
+
+    #[error("Failed to transcode MP4 stream via FFmpeg: {0}")]
+    Transcode(String),
+
+    #[error(
+        "This FFmpeg build has no encoder for output codec {codec:?}. Install a build with the \
+         matching encoder (e.g. libvpx for VP8/VP9, libsvtav1/libaom for AV1), or choose a \
+         different `output_codec`."
+    )]
+    NoEncoderAvailable { codec: re_video::VideoCodec },
 
     #[error("MP4 with image-sequence codec is not supported by `Mode::Stream`; use `Mode::Asset`")]
     ImageSequenceInStreamMode,

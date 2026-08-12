@@ -45,19 +45,19 @@ jobs:
     name: Upload rerun_js to google cloud
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
       - name: Download rerun_js package
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: rerun_js
           path: rerun_js_package
 
       # Upload the wasm, html etc to a Google cloud bucket:
       - id: "auth"
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
         with:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
@@ -70,7 +70,7 @@ jobs:
 
       - name: "Upload rerun_js (commit)"
         if: ${{ !inputs.NIGHTLY }}
-        uses: google-github-actions/upload-cloud-storage@v3
+        uses: google-github-actions/upload-cloud-storage@6397bd7208e18d13ba2619ee21b9873edc94427a # v3.0.0
         with:
           path: "rerun_js_package"
           destination: "rerun-builds/commit/${{ steps.get-sha.outputs.sha }}/rerun_js"
@@ -80,7 +80,7 @@ jobs:
 
       - name: "Upload rerun_js (tagged)"
         if: inputs.MARK_TAGGED_VERSION
-        uses: google-github-actions/upload-cloud-storage@v3
+        uses: google-github-actions/upload-cloud-storage@6397bd7208e18d13ba2619ee21b9873edc94427a # v3.0.0
         with:
           path: "rerun_js_package"
           destination: "rerun-builds/version/${{inputs.RELEASE_VERSION}}/rerun_js"
@@ -90,7 +90,7 @@ jobs:
 
       - name: "Upload rerun_js (adhoc)"
         if: ${{ inputs.ADHOC_NAME != '' }}
-        uses: google-github-actions/upload-cloud-storage@v3
+        uses: google-github-actions/upload-cloud-storage@6397bd7208e18d13ba2619ee21b9873edc94427a # v3.0.0
         with:
           path: "rerun_js_package"
           destination: "rerun-builds/adhoc/${{inputs.ADHOC_NAME}}/rerun_js"
@@ -100,7 +100,7 @@ jobs:
 
       - name: "Upload rerun_js (prerelease)"
         if: github.ref == 'refs/heads/main'
-        uses: google-github-actions/upload-cloud-storage@v3
+        uses: google-github-actions/upload-cloud-storage@6397bd7208e18d13ba2619ee21b9873edc94427a # v3.0.0
         with:
           path: "rerun_js_package"
           destination: "rerun-builds/prerelease/rerun_js"
@@ -112,7 +112,7 @@ jobs:
 
       - name: "Upload rerun_js (main)"
         if: github.ref == 'refs/heads/main'
-        uses: google-github-actions/upload-cloud-storage@v3
+        uses: google-github-actions/upload-cloud-storage@6397bd7208e18d13ba2619ee21b9873edc94427a # v3.0.0
         with:
           path: "rerun_js_package"
           destination: "rerun-builds/version/main/rerun_js"
@@ -124,7 +124,7 @@ jobs:
 
       - name: "Upload rerun_js (pr)"
         if: ${{ inputs.PR_NUMBER != '' }}
-        uses: google-github-actions/upload-cloud-storage@v3
+        uses: google-github-actions/upload-cloud-storage@6397bd7208e18d13ba2619ee21b9873edc94427a # v3.0.0
         with:
           path: "rerun_js_package"
           destination: "rerun-builds/pr/${{ inputs.PR_NUMBER }}/rerun_js"
@@ -136,7 +136,7 @@ jobs:
 
       - name: "Upload rerun_js (nightly)"
         if: ${{ inputs.NIGHTLY }}
-        uses: google-github-actions/upload-cloud-storage@v3
+        uses: google-github-actions/upload-cloud-storage@6397bd7208e18d13ba2619ee21b9873edc94427a # v3.0.0
         with:
           path: "rerun_js_package"
           destination: "rerun-builds/version/nightly/rerun_js"

@@ -95,9 +95,8 @@ pub type UnorderedComponentSet = IntSet<ComponentIdentifier>;
 
 pub type ComponentSet = std::collections::BTreeSet<ComponentIdentifier>;
 
-re_string_interner::declare_new_type!(
+re_string_interner::declare_new_type_nonempty!(
     /// The fully-qualified name of a [`Component`], e.g. `rerun.components.Position2D`.
-    #[derive(::serde::Deserialize, ::serde::Serialize)]
     pub struct ComponentType;
 );
 
@@ -186,43 +185,5 @@ impl ComponentType {
     #[inline]
     pub fn is_rerun_type(&self) -> bool {
         self.0.as_str().starts_with("rerun.")
-    }
-}
-
-// ---
-
-re_string_interner::declare_new_type!(
-    /// The fully-qualified name of a [`Datatype`], e.g. `rerun.datatypes.Vec2D`.
-    #[derive(::serde::Deserialize, ::serde::Serialize)]
-    pub struct DatatypeName;
-);
-
-impl DatatypeName {
-    /// Returns the fully-qualified name, e.g. `rerun.datatypes.Vec2D`.
-    ///
-    /// This is the default `Display` implementation for [`DatatypeName`].
-    #[inline]
-    pub fn full_name(&self) -> &'static str {
-        self.0.as_str()
-    }
-
-    /// Returns the unqualified name, e.g. `Vec2D`.
-    ///
-    /// Used for most UI elements.
-    ///
-    /// ```
-    /// # use re_types_core::DatatypeName;
-    /// assert_eq!(DatatypeName::from("rerun.datatypes.Vec2D").short_name(), "Vec2D");
-    /// ```
-    #[inline]
-    pub fn short_name(&self) -> &'static str {
-        let full_name = self.0.as_str();
-        if let Some(short_name) = full_name.strip_prefix("rerun.datatypes.") {
-            short_name
-        } else if let Some(short_name) = full_name.strip_prefix("rerun.") {
-            short_name
-        } else {
-            full_name
-        }
     }
 }

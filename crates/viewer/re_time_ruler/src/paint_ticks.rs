@@ -17,30 +17,30 @@ pub fn paint_time_ranges_and_ticks(
     let clip_right = clip_rect.right() as f64;
 
     for segment in &time_ranges_ui.segments {
-        let mut x_range = segment.x.clone();
+        let mut x_range = segment.x;
         let mut time_range = segment.time;
 
         // Cull:
-        if *x_range.end() < clip_left {
+        if x_range.last < clip_left {
             continue;
         }
-        if clip_right < *x_range.start() {
+        if clip_right < x_range.start {
             continue;
         }
 
         // Clamp segment to the visible portion to save CPU when zoomed in:
-        let left_t = egui::emath::inverse_lerp(x_range.clone(), clip_left).unwrap_or(0.5);
+        let left_t = egui::emath::inverse_lerp(x_range.into(), clip_left).unwrap_or(0.5);
         if 0.0 < left_t && left_t < 1.0 {
-            x_range = clip_left..=*x_range.end();
+            x_range.start = clip_left;
             time_range = AbsoluteTimeRangeF::new(time_range.lerp(left_t), time_range.max);
         }
-        let right_t = egui::emath::inverse_lerp(x_range.clone(), clip_right).unwrap_or(0.5);
+        let right_t = egui::emath::inverse_lerp(x_range.into(), clip_right).unwrap_or(0.5);
         if 0.0 < right_t && right_t < 1.0 {
-            x_range = *x_range.start()..=clip_right;
+            x_range.last = clip_right;
             time_range = AbsoluteTimeRangeF::new(time_range.min, time_range.lerp(right_t));
         }
 
-        let x_range = (*x_range.start() as f32)..=(*x_range.end() as f32);
+        let x_range = (x_range.start as f32)..=(x_range.last as f32);
         let rect = Rect::from_x_y_ranges(x_range, line_y_range);
         time_area_painter
             .with_clip_rect(rect)

@@ -234,6 +234,28 @@ impl<'a, T: Pod + Send + Sync> DataTextureSource<'a, T> {
         }
     }
 
+    /// Append `len` elements, using `slice` as source,
+    /// clamping to the last value (or default) if `slice` is too short.
+    // TODO(RR-3840): make sure the default comes from a proper default-provider!
+    pub fn extend_from_slice_clamped(
+        &mut self,
+        slice: &[T],
+        default: T,
+        len: usize,
+    ) -> Result<(), DataTextureSourceWriteError> {
+        re_tracing::profile_function_if!(10_000 < len);
+
+        if len <= slice.len() {
+            self.extend_from_slice(&slice[..len])
+        } else {
+            self.extend_from_slice(slice)?;
+
+            let last_value = slice.last().copied();
+            let clamp_value = last_value.unwrap_or(default);
+            self.add_n(clamp_value, len - slice.len())
+        }
+    }
+
     /// Fills the data texture with n instances of an element.
     pub fn add_n(
         &mut self,

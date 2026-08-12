@@ -1,6 +1,7 @@
 ---
 title: Migrating from 0.18 to 0.19
 order: 991
+hidden: true
 ---
 
 Blueprint files (.rbl) from previous Rerun versions will no longer load _automatically_.

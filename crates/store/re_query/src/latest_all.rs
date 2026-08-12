@@ -5,7 +5,7 @@ use re_chunk::{
     Chunk, ChunkId, ComponentIdentifier, EntityPath, LatestAtQuery, RangeQuery, RowId,
     UnitChunkShared,
 };
-use re_chunk_store::TimeInt;
+use re_chunk_store::{ChunkTrackingMode, TimeInt};
 use re_log_types::AbsoluteTimeRange;
 
 use crate::{LatestAtResults, QueryCache};
@@ -73,7 +73,7 @@ impl LatestAllResults {
             let chunk = component_results.chunks.first()?;
             let unit = chunk.to_unit()?;
 
-            let index = unit.index(&self.query.timeline())?;
+            let index = unit.index(self.query.timeline().as_ref())?;
             results.min_index = results.min_index.min(index);
             results.max_index = results.max_index.max(index);
             results.components.insert(component, unit);
@@ -232,6 +232,7 @@ impl QueryCache {
     /// as one static image after the other.
     pub fn latest_all(
         &self,
+        tracking_mode: ChunkTrackingMode,
         query: &LatestAllQuery,
         entity_path: &EntityPath,
         components: impl IntoIterator<Item = ComponentIdentifier>,
@@ -242,7 +243,7 @@ impl QueryCache {
             components,
             missing_virtual,
             ..
-        } = self.latest_at(query, entity_path, components);
+        } = self.latest_at(tracking_mode, query, entity_path, components);
 
         let mut latest_all_results = LatestAllResults {
             entity_path: entity_path.clone(),
@@ -252,17 +253,21 @@ impl QueryCache {
         };
 
         for (component, latest_unit) in components {
-            if let Some((time, _row_id)) = latest_unit.index(&query.timeline()) {
+            if let Some((time, _row_id)) = latest_unit.index(query.timeline().as_ref()) {
                 if time.is_static() {
                     latest_all_results.components.insert(
                         component,
                         LatestAllComponentResults::from_unit(time, latest_unit),
                     );
-                } else {
-                    let range_query =
-                        RangeQuery::new(query.timeline(), AbsoluteTimeRange::new(time, time));
-                    let mut component_range_result =
-                        self.range(&range_query, entity_path, std::iter::once(component));
+                } else if let Some(timeline) = query.timeline() {
+                    // NOTE: A non-static `time` implies the query has a timeline.
+                    let range_query = RangeQuery::new(timeline, AbsoluteTimeRange::new(time, time));
+                    let mut component_range_result = self.range(
+                        tracking_mode,
+                        &range_query,
+                        entity_path,
+                        std::iter::once(component),
+                    );
 
                     latest_all_results
                         .missing_virtual

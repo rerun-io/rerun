@@ -1,7 +1,7 @@
 """CI helpers for isolated Python example projects.
 
 An "isolated" example is one that has its own uv project (separate pyproject.toml and uv.lock)
-because its dependency closure conflicts with the workspace .venv (e.g. LeRobot pinning an incompatible rerun-sdk).
+because its dependency closure conflicts with the workspace .venv (e.g. LeRobot requiring Python >=3.12).
 Each such example opts in by setting `[tool.rerun-example] isolated = true` in its pyproject.toml.
 
 Fails on the first non-zero exit.
@@ -68,7 +68,7 @@ def cmd_lint(examples_dir: Path, repo_root: Path) -> int:
 
     for project in projects:
         print(f"\n=== {project.relative_to(repo_root)} ===", flush=True)
-        subprocess.run(["uv", "sync"], cwd=project, check=True)
+        subprocess.run(["uv", "sync", "--frozen"], cwd=project, check=True)
         # rerun-dev-fixup is not in pyproject.toml (uv 0.7.x resolves all groups
         # unconditionally — a path-only package would block standalone --no-sources).
         # Install it explicitly here when running inside the monorepo.

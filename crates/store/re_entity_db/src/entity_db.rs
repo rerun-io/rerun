@@ -126,6 +126,9 @@ pub struct EntityDb {
     /// Clones of an [`EntityDb`] gets a `None` source.
     pub data_source: Option<re_log_channel::LogSource>,
 
+    /// If this database is a clone, the ID of the source database.
+    cloned_from: Option<StoreId>,
+
     rrd_manifest_index: RrdManifestIndex,
 
     /// Comes in a special message, [`LogMsg::SetStoreInfo`].
@@ -213,6 +216,7 @@ impl EntityDb {
             store_id,
             enable_viewer_indexes,
             data_source: None,
+            cloned_from: None,
             rrd_manifest_index: Default::default(),
             set_store_info: None,
             last_modified_at: web_time::Instant::now(),
@@ -542,10 +546,12 @@ impl EntityDb {
         entity_path: &EntityPath,
         components: impl IntoIterator<Item = ComponentIdentifier>,
     ) -> re_query::LatestAtResults {
-        self.storage_engine
-            .read()
-            .cache()
-            .latest_at(query, entity_path, components)
+        self.storage_engine.read().cache().latest_at(
+            re_chunk_store::ChunkTrackingMode::Report,
+            query,
+            entity_path,
+            components,
+        )
     }
 
     /// Get the latest index and value for a given dense [`re_types_core::Component`].
@@ -626,9 +632,13 @@ impl EntityDb {
         component: ComponentIdentifier,
         query: &LatestAtQuery,
     ) -> bool {
+        let Some(timeline) = query.timeline() else {
+            return true; // Static-only query: there are no temporal chunks to load.
+        };
+
         !self
             .rrd_manifest_index()
-            .unloaded_temporal_entries_for(&query.timeline(), entity_path, Some(component))
+            .unloaded_temporal_entries_for(&timeline, entity_path, Some(component))
             .any(|chunk| chunk.time_range.contains(query.at()))
     }
 
@@ -642,8 +652,7 @@ impl EntityDb {
     /// This means all active blueprints are clones.
     #[inline]
     pub fn cloned_from(&self) -> Option<&StoreId> {
-        let info = self.store_info()?;
-        info.cloned_from.as_ref()
+        self.cloned_from.as_ref()
     }
 
     pub fn timelines(&self) -> std::collections::BTreeMap<TimelineName, Timeline> {
@@ -1113,13 +1122,14 @@ impl EntityDb {
         if let Some(store_info) = self.store_info() {
             let mut new_info = store_info.clone();
             new_info.store_id = new_id;
-            new_info.cloned_from = Some(self.store_id().clone());
 
             new_db.set_store_info(SetStoreInfo {
                 row_id: *RowId::new(),
                 info: new_info,
             });
         }
+
+        new_db.cloned_from = Some(self.store_id().clone());
 
         let engine = self.storage_engine.read();
         for chunk in engine.store().iter_physical_chunks() {
@@ -1285,6 +1295,7 @@ impl re_byte_size::SizeBytes for EntityDb {
             store_id,
             enable_viewer_indexes,
             data_source: _,
+            cloned_from,
             rrd_manifest_index,
             set_store_info,
             last_modified_at: _,
@@ -1310,6 +1321,7 @@ impl re_byte_size::SizeBytes for EntityDb {
 
         store_id.heap_size_bytes()
             + enable_viewer_indexes.heap_size_bytes()
+            + cloned_from.heap_size_bytes()
             + rrd_manifest_index.heap_size_bytes()
             + set_store_info.heap_size_bytes()
             + entity_paths.heap_size_bytes()
@@ -1334,6 +1346,7 @@ impl MemUsageTreeCapture for EntityDb {
             store_id: _,
             enable_viewer_indexes: _,
             data_source: _,
+            cloned_from: _,
             set_store_info: _,
             last_modified_at: _,
             latest_row_id: _,

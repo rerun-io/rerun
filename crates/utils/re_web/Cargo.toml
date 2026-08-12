@@ -1,0 +1,55 @@
+[package]
+name = "re_web"
+authors.workspace = true
+description = "Utilities for interacting with Web APIs"
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+license.workspace = true
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+targets = ["wasm32-unknown-unknown"]
+
+[package.metadata.cargo-shear]
+ignored = ["getrandom"] # enables the wasm backend used by re_tuid in tests
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+async-trait.workspace = true
+bytes.workspace = true
+js-sys.workspace = true
+re_async.workspace = true
+wasm-bindgen.workspace = true
+web-sys = { workspace = true, features = [
+  "Blob",
+  "DomException",
+  "File",
+  "FileSystemDirectoryHandle",
+  "FileSystemFileHandle",
+  "FileSystemGetDirectoryOptions",
+  "FileSystemGetFileOptions",
+  "FileSystemRemoveOptions",
+  "FileSystemWritableFileStream",
+  "History",
+  "Location",
+  "Navigator",
+  "ReadableStream",
+  "StorageManager",
+  "Url",
+  "UrlSearchParams",
+  "Window",
+  "WritableStream",
+] }
+
+[target.'cfg(target_arch = "wasm32")'.dev-dependencies]
+getrandom = { workspace = true, features = ["wasm_js"] }
+re_tuid.workspace = true
+wasm-bindgen-test.workspace = true

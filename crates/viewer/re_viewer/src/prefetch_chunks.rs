@@ -213,19 +213,16 @@ fn make_load_fn<'a>(
 
         let fut = async move {
             let mut client = connection_registry.client(origin).await.map_err(|err| {
-                re_log::warn_once!("Failed to connect to remote: {err}");
+                re_log::warn_once!("Failed to connect to server: {err}");
             })?;
             load_chunks(&mut client, &rb).await.map_err(|err| {
                 re_log::warn_once!("{err}");
             })
         };
 
-        cfg_if::cfg_if! {
-            if #[cfg(target_arch = "wasm32")] {
-                poll_promise::Promise::spawn_local(fut)
-            } else {
-                poll_promise::Promise::spawn_async(fut)
-            }
+        cfg_select! {
+            target_arch = "wasm32" => poll_promise::Promise::spawn_local(fut),
+            _ => poll_promise::Promise::spawn_async(fut),
         }
     }
 }

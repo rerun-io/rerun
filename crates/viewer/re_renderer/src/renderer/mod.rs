@@ -1,6 +1,7 @@
 mod compositor;
 mod debug_overlay;
 mod depth_cloud;
+mod gaussian_splat;
 mod generic_skybox;
 mod lines;
 mod mesh_renderer;
@@ -12,6 +13,10 @@ mod voxel_grid;
 mod world_grid;
 
 pub use debug_overlay::{DebugOverlayDrawData, DebugOverlayError, DebugOverlayRenderer};
+pub use gaussian_splat::{
+    GaussianSplatBatchFlags, GaussianSplatBatchInfo, GaussianSplatDrawData,
+    GaussianSplatDrawDataError, GaussianSplatRenderer, SH_TEXELS_PER_GAUSSIAN,
+};
 pub use generic_skybox::{GenericSkyboxDrawData, GenericSkyboxType};
 pub use lines::{LineBatchInfo, LineDrawData, LineDrawDataError, LineStripFlags};
 pub use mesh_renderer::{GpuMeshInstance, MeshDrawData};
@@ -29,6 +34,9 @@ pub use world_grid::{WorldGridConfiguration, WorldGridDrawData, WorldGridRendere
 pub use self::depth_cloud::{DepthCloud, DepthCloudDrawData, DepthCloudRenderer, DepthClouds};
 
 pub mod gpu_data {
+    pub use super::gaussian_splat::gpu_data::{
+        GaussianPositionScaleX, GaussianRotation, GaussianScaleYZ, GaussianShCoefficient,
+    };
     pub use super::lines::gpu_data::{LineStripInfo, LineVertex};
     pub use super::point_cloud::gpu_data::PositionRadius;
 }
@@ -108,6 +116,9 @@ impl DrawDataDrawable {
 
 /// Information about the view for which can be taken into account when collecting drawables.
 pub struct DrawableCollectionViewInfo {
+    /// Stable identity of the view collecting the drawables.
+    pub view_id: crate::ViewBuilderId,
+
     /// The position of the camera in world space.
     pub camera_world_position: glam::Vec3A,
 }

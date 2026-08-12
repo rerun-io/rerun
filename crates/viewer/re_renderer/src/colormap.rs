@@ -34,10 +34,11 @@ pub enum Colormap {
     Twilight = 9,
     RvizMap = 10,
     RvizCostmap = 11,
+    Costmap = 12,
 }
 
 impl Colormap {
-    pub const ALL: [Self; 11] = [
+    pub const ALL: [Self; 12] = [
         Self::Grayscale,
         Self::Inferno,
         Self::Magma,
@@ -49,6 +50,7 @@ impl Colormap {
         Self::Twilight,
         Self::RvizMap,
         Self::RvizCostmap,
+        Self::Costmap,
     ];
 }
 
@@ -66,6 +68,7 @@ impl std::fmt::Display for Colormap {
             Self::Twilight => write!(f, "Twilight"),
             Self::RvizMap => write!(f, "RViz Map"),
             Self::RvizCostmap => write!(f, "RViz Costmap"),
+            Self::Costmap => write!(f, "Costmap"),
         }
     }
 }
@@ -83,51 +86,131 @@ pub fn colormap_srgba(which: Colormap, t: f32) -> [u8; 4] {
         Colormap::Twilight => colormap_twilight_srgba(t),
         Colormap::RvizMap => colormap_rviz_map_srgba(t),
         Colormap::RvizCostmap => colormap_rviz_costmap_srgba(t),
+        Colormap::Costmap => colormap_costmap_srgba(t),
     }
 }
 
 /// Reimplements the "Map" color palette from `RViz`.
+///
+/// An occupancy grid stores signed-char cell values that `RViz` interprets as:
+/// - `0..=100`: occupancy probability in percent. This palette maps it to grayscale,
+///   `0` (free) -> white and `100` (occupied) -> black.
+/// - `101..=127`: illegal positive values, drawn bright green to flag bad data.
+/// - `128..=254`: illegal values (a signed `-128..=-2` reinterpreted as `u8`), drawn on a
+///   red -> yellow ramp to flag bad data.
+/// - `255`: the legal `-1` value ("unknown"), drawn teal-gray.
+///
+/// `t` is the normalized cell value, i.e. `raw_value / 255`.
 ///
 /// Reference: <https://github.com/ros-visualization/rviz/blob/26bbf0a1819253d7515c096a71f1f5cd58f88748/src/rviz/default_plugin/map_display.cpp#L285>
 pub fn colormap_rviz_map_srgba(t: f32) -> [u8; 4] {
     let value = ((t.clamp(0.0, 1.0) * 255.0) + 0.5) as u8;
 
     if value <= 100 {
+        // Occupancy probability: white (free) -> black (occupied).
         let x = (255.0 - (value as f32 * 255.0) / 100.0) as u8;
         [x, x, x, 255]
     } else if value < 128 {
+        // 101..=127: illegal positive values.
         [0, 255, 0, 255]
     } else if value < 255 {
+        // 128..=254: illegal (negative) values, on a red -> yellow ramp.
         let x = ((255.0 * (value as f32 - 128.0)) / (254.0 - 128.0)) as u8;
         [255, x, 0, 255]
     } else {
+        // 255 == -1: unknown.
         [112, 137, 134, 255]
     }
 }
 
 /// Reimplements the "Costmap" color palette from `RViz`.
 ///
+/// A costmap stores signed-char cell values that `RViz` interprets as:
+/// - `0`: free space (zero cost), drawn fully transparent.
+/// - `1..=98`: increasing cost, on a blue (low) -> red (high) ramp.
+/// - `99`: inscribed obstacle (the robot's footprint would collide), drawn cyan.
+/// - `100`: lethal obstacle (definitely occupied), drawn magenta.
+/// - `101..=127`: illegal positive values, drawn bright green to flag bad data.
+/// - `128..=254`: illegal values (a signed `-128..=-2` reinterpreted as `u8`), drawn on a
+///   red -> yellow ramp to flag bad data.
+/// - `255`: the legal `-1` value ("unknown"), drawn teal-gray.
+///
+/// `t` is the normalized cell value, i.e. `raw_value / 255`.
+///
 /// Reference: <https://github.com/ros-visualization/rviz/blob/26bbf0a1819253d7515c096a71f1f5cd58f88748/src/rviz/default_plugin/map_display.cpp#L323>
 pub fn colormap_rviz_costmap_srgba(t: f32) -> [u8; 4] {
     let value = ((t.clamp(0.0, 1.0) * 255.0) + 0.5) as u8;
 
     if value == 0 {
+        // Free space (zero cost).
         [0, 0, 0, 0]
     } else if value < 99 {
+        // 1..=98: cost ramp from blue (low) to red (high).
         let x = (value as f32 * 255.0 / 100.0) as u8;
         [x, 0, 255 - x, 255]
     } else if value == 99 {
+        // Inscribed obstacle.
         [0, 255, 255, 255]
     } else if value == 100 {
+        // Lethal obstacle.
         [255, 0, 255, 255]
     } else if value < 128 {
+        // 101..=127: illegal positive values.
         [0, 255, 0, 255]
     } else if value < 255 {
+        // 128..=254: illegal (negative) values, on a red -> yellow ramp.
         let x = ((255.0 * (value as f32 - 128.0)) / (254.0 - 128.0)) as u8;
         [255, x, 0, 255]
     } else {
+        // 255 == -1: unknown.
         [112, 137, 134, 255]
     }
+}
+
+const RERUN_RED: [u8; 4] = [215, 47, 33, 255]; // #D72F21
+const RERUN_BLUE: [u8; 4] = [24, 106, 221, 255]; // #186ADD
+const RERUN_GREEN: [u8; 4] = [134, 217, 166, 255]; // #86D9A6
+const RERUN_YELLOW: [u8; 4] = [246, 218, 117, 255]; // #F6DA75
+
+/// Semantically equivalent to the `RViz` cost map but with a more pleasing color palette.
+///
+/// See [`colormap_rviz_costmap_srgba`] for the meaning of each value range.
+///
+/// We use selected colors from the Rerun gradient palette here, see also: `<https://rerun.io/media>`
+pub fn colormap_costmap_srgba(t: f32) -> [u8; 4] {
+    let value = ((t.clamp(0.0, 1.0) * 255.0) + 0.5) as u8;
+
+    // Values 101+ are illegal/unknown and rare in practice, but we still map them to match RViz semantics.
+    if value == 0 {
+        [0, 0, 0, 0] // free space (zero cost)
+    } else if value < 99 {
+        interpolate_srgba(RERUN_GREEN, RERUN_YELLOW, value as f32 / 98.0) // 1-98: cost ramp
+    } else if value == 99 {
+        RERUN_RED // inscribed obstacle
+    } else if value == 100 {
+        RERUN_BLUE // lethal obstacle
+    } else if value < 128 {
+        RERUN_GREEN // 101-127 (illegal positive)
+    } else if value < 255 {
+        // 128-254 (illegal negative): red -> ramp yellow
+        interpolate_srgba(
+            RERUN_RED,
+            RERUN_YELLOW,
+            (value as f32 - 128.0) / (254.0 - 128.0),
+        )
+    } else {
+        [112, 137, 134, 255] // 255 == -1: teal-gray (unknown, matches RViz)
+    }
+}
+
+fn interpolate_srgba(a: [u8; 4], b: [u8; 4], t: f32) -> [u8; 4] {
+    let t = t.clamp(0.0, 1.0);
+    [
+        (a[0] as f32 + (b[0] as f32 - a[0] as f32) * t) as u8,
+        (a[1] as f32 + (b[1] as f32 - a[1] as f32) * t) as u8,
+        (a[2] as f32 + (b[2] as f32 - a[2] as f32) * t) as u8,
+        (a[3] as f32 + (b[3] as f32 - a[3] as f32) * t) as u8,
+    ]
 }
 
 /// Returns an sRGBA gray value, assuming `t` is normalized.

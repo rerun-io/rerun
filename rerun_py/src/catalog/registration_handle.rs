@@ -274,7 +274,7 @@ fn prepend_request_trace_id(err: PyErr, request_trace_id: Option<&TraceId>) -> P
 /// list of failed segments — so they stay visible even when the rest is truncated.
 /// Returns an empty string when no trace-ids are known, so callers can splice it
 /// in unconditionally.
-fn format_trace_ids(
+pub(super) fn format_trace_ids(
     request_trace_id: Option<&TraceId>,
     query_trace_id: Option<&TraceId>,
 ) -> String {

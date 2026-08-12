@@ -1,4 +1,3 @@
-use re_ui::CommandPaletteUrl;
 use re_viewer_context::open_url::ViewerOpenUrl;
 
 /// A description of what happens when opening a [`ViewerOpenUrl`].
@@ -35,7 +34,7 @@ impl ViewerOpenUrlDescription {
                 let rrd_file_name = path.split('/').next_back().map(|s| s.to_owned());
 
                 Self {
-                    category: "From http link",
+                    category: "HTTP url",
                     target_short: rrd_file_name,
                 }
             }
@@ -62,7 +61,7 @@ impl ViewerOpenUrlDescription {
             },
 
             ViewerOpenUrl::RedapEntry(uri) => Self {
-                category: "Redap Entry",
+                category: "Redap entry",
                 target_short: Some(uri.entry_id.to_string()),
             },
 
@@ -98,20 +97,4 @@ impl ViewerOpenUrlDescription {
             },
         }
     }
-}
-
-pub fn command_palette_parse_url(url: &str) -> Option<CommandPaletteUrl> {
-    let open_url = ViewerOpenUrl::parse_with_options(
-        url,
-        &re_data_source::FromUriOptions {
-            accept_extensionless_http: true,
-            ..Default::default()
-        },
-    )
-    .ok()?;
-
-    Some(CommandPaletteUrl {
-        url: url.to_owned(),
-        command_text: format!("Open {}", ViewerOpenUrlDescription::from_url(&open_url)),
-    })
 }

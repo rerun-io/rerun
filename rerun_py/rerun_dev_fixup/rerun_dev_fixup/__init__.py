@@ -14,11 +14,13 @@ def _find_repo_root() -> Path | None:
     if pixi_root:
         return Path(pixi_root)
 
-    # Try to find repo root from the venv location using sys.prefix
-    # sys.prefix points to the venv root (e.g., /path/to/repo/.venv)
-    venv_path = Path(sys.prefix)
-    if venv_path.name == ".venv":
-        return venv_path.parent
+    # Otherwise walk up from the venv (sys.prefix) to find the repo root. For the
+    # workspace .venv this is the immediate parent; for an isolated example's .venv
+    # (examples/python/<name>/.venv) it is several levels up. The repo root is the
+    # first ancestor that holds both `pixi.toml` and the `rerun_py` source tree.
+    for parent in Path(sys.prefix).parents:
+        if (parent / "pixi.toml").is_file() and (parent / "rerun_py").is_dir():
+            return parent
 
     return None
 

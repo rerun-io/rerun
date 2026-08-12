@@ -12,6 +12,17 @@ impl RotationQuat {
 }
 
 #[cfg(feature = "glam")]
+impl TryFrom<RotationQuat> for glam::Quat {
+    type Error = ();
+
+    /// Normalizes the quaternion, failing for invalid (e.g. zero) rotations.
+    #[inline]
+    fn try_from(val: RotationQuat) -> Result<Self, Self::Error> {
+        Self::try_from(val.0)
+    }
+}
+
+#[cfg(feature = "glam")]
 impl TryFrom<RotationQuat> for glam::Affine3A {
     type Error = ();
 

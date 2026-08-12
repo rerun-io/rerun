@@ -19,6 +19,7 @@
 #include "archetypes/ellipsoids3d.hpp"
 #include "archetypes/encoded_depth_image.hpp"
 #include "archetypes/encoded_image.hpp"
+#include "archetypes/gaussian_splats3d.hpp"
 #include "archetypes/geo_line_strings.hpp"
 #include "archetypes/geo_points.hpp"
 #include "archetypes/graph_edges.hpp"

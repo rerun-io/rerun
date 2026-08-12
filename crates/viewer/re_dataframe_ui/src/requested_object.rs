@@ -1,5 +1,5 @@
 use crossbeam::channel::Receiver;
-use re_viewer_context::{AsyncRuntimeHandle, WasmNotSend};
+use re_async::{AsyncRuntimeHandle, WasmNotSend};
 
 /// A handle to an object that is requested asynchronously.
 ///

@@ -7,8 +7,8 @@ use re_view::{ChunksWithComponent, clamped_or_nothing, range_with_blueprint_reso
 use re_viewer_context::external::re_entity_db::InstancePath;
 use re_viewer_context::{
     IdentifiedViewSystem, SingleRequiredComponentConstraint, ViewContext, ViewQuery,
-    ViewStateExt as _, ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo,
-    VisualizerReportSeverity, VisualizerSystem, typed_fallback_for,
+    ViewStateExt as _, ViewSystemExecutionError, ViewerReportSeverity, VisualizerExecutionOutput,
+    VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
 };
 
 use crate::series_query::{
@@ -205,7 +205,7 @@ impl SeriesPointsSystem {
             Err(err) => {
                 output.report_unspecified_source(
                     instruction.id,
-                    VisualizerReportSeverity::Error,
+                    ViewerReportSeverity::Error,
                     format!("Failed to determine query range: {err}"),
                 );
                 return Vec::new();
@@ -263,7 +263,7 @@ impl SeriesPointsSystem {
         let all_scalar_chunks = if let Some(chunk) = all_scalar_chunks.chunks.first()
             && chunk.is_static()
         {
-            results.report_for_component(scalar_component, VisualizerReportSeverity::Error, "Can't plot data that was logged statically in a time series since there's no temporal dimension");
+            results.report_for_component(scalar_component, ViewerReportSeverity::Error, "Can't plot data that was logged statically in a time series since there's no temporal dimension");
             empty_chunks = ChunksWithComponent::empty(scalar_component);
             &empty_chunks // Proceed with empty data so we catch other errors as well.
         } else {
@@ -296,7 +296,7 @@ impl SeriesPointsSystem {
         let mut points_per_series =
             allocate_plot_points(&query, &default_point, all_scalar_chunks, num_series);
 
-        collect_scalars(all_scalar_chunks, &mut points_per_series);
+        collect_scalars(all_scalar_chunks, &results, &mut points_per_series);
         collect_colors(
             &query,
             &results,

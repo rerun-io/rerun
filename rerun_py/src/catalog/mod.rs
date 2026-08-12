@@ -16,6 +16,7 @@ mod segment_url_udf;
 mod table_entry;
 mod table_provider_adapter;
 mod type_aliases;
+mod unregistration_handle;
 
 use errors::{AlreadyExistsError, NotFoundError};
 use pyo3::prelude::*;
@@ -36,6 +37,7 @@ pub use self::segment_url_udf::PySegmentUrlUdfInternal;
 pub use self::table_entry::{PyTableEntryInternal, PyTableInsertModeInternal};
 pub use self::table_provider_adapter::PyTableProviderAdapterInternal;
 pub use self::type_aliases::{AnyComponentColumn, IndexValuesLike, PyIndexValuesLikeInternal};
+pub use self::unregistration_handle::PyUnregistrationHandleInternal;
 
 /// Register the `rerun.catalog` module.
 pub(crate) fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -48,6 +50,7 @@ pub(crate) fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()>
     m.add_class::<PyTableEntryInternal>()?;
     m.add_class::<PyTableInsertModeInternal>()?;
     m.add_class::<PyRegistrationHandleInternal>()?;
+    m.add_class::<PyUnregistrationHandleInternal>()?;
     m.add_class::<PyRegistrationIterator>()?;
     m.add_class::<PyTableProviderAdapterInternal>()?;
     m.add_class::<PySegmentUrlUdfInternal>()?;

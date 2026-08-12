@@ -849,8 +849,8 @@ impl Renderer for LineRenderer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Rgba;
     use crate::view_builder::TargetConfiguration;
+    use crate::{Rgba, ViewBuilderId};
 
     // Regression test for https://github.com/rerun-io/rerun/issues/8639
     #[test]
@@ -859,7 +859,9 @@ mod tests {
         re_log::PanicOnWarnScope::new();
 
         RenderContext::new_test().execute_test_frame(|ctx| {
-            let mut view = ViewBuilder::new(ctx, TargetConfiguration::default()).unwrap();
+            let mut view =
+                ViewBuilder::new(ctx, TargetConfiguration::default(), ViewBuilderId::new(0))
+                    .unwrap();
 
             let empty = LineDrawableBuilder::new(ctx);
             view.queue_draw(ctx, empty.into_draw_data().unwrap());

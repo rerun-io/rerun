@@ -14,6 +14,14 @@ pub use streaming::ParquetError;
 
 use re_chunk::{Chunk, EntityPath};
 
+/// Validate `config` against the parquet file's schema without reading any row data.
+///
+/// Cheap (only the file footer is decoded), so can be called eagerly — e.g. when a
+/// stream is configured rather than when it is first polled.
+pub fn validate_config(path: &std::path::Path, config: &ParquetConfig) -> Result<(), ParquetError> {
+    streaming::validate_from_path(path, config)
+}
+
 /// Load a parquet file and return an iterator of chunks.
 ///
 /// The first chunk (if any) contains file-level metadata at `EntityPath::properties()`.

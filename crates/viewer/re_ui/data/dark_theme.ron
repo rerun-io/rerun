@@ -36,10 +36,6 @@
     "bottom_bar_color": {
       "color": "{Gray.150}"
     },
-    "bottom_bar_stroke": {
-      "color": "{Gray.250}",
-      "width": 1
-    },
     "shadow_gradient_dark_start": {
       "color": "{Gray.0}",
       "alpha": 77
@@ -224,27 +220,6 @@
     },
     "widget_hovered_color": {
       "color": "{Gray.300}"
-    },
-    "widget_hovered_weak_bg_fill": {
-      "color": "{Gray.300}"
-    },
-    "widget_hovered_bg_fill": {
-      "color": "{Gray.300}"
-    },
-    "widget_active_weak_bg_fill": {
-      "color": "{Gray.300}"
-    },
-    "widget_active_bg_fill": {
-      "color": "{Gray.300}"
-    },
-    "widget_open_weak_bg_fill": {
-      "color": "{Gray.300}"
-    },
-    "widget_noninteractive_weak_bg_fill": {
-      "color": "{Gray.150}"
-    },
-    "widget_noninteractive_bg_fill": {
-      "color": "{Gray.150}"
     },
     "widget_noninteractive_bg_stroke": {
       "color": "{Gray.250}"
@@ -483,6 +458,38 @@
     "text": {
        "color": "{Red.900}"
     },
+  },
+
+  "button_primary": {
+    "fill": { "color": "{Gray.800}" },
+    "fill_hovered": { "color": "{Gray.850}" },
+    "fill_pressed": { "color": "{Gray.900}" },
+    "text": { "color": "{Gray.250}" },
+  },
+  "button_secondary": {
+    "fill": { "color": "{Gray.300}" },
+    "fill_hovered": { "color": "{Gray.200}" },
+    "fill_pressed": { "color": "{Gray.100}" },
+    "text": { "color": "{Gray.750}" },
+  },
+  "button_ghost": {
+    "fill": { "color": "{Gray.300}", "alpha": 0 },
+    "fill_hovered": { "color": "{Gray.300}" },
+    "fill_pressed": { "color": "{Gray.400}" },
+    "text": { "color": "{Gray.750}" },
+  },
+  "button_outlined": {
+    "fill": { "color": "{Gray.300}", "alpha": 0 },
+    "fill_hovered": { "color": "{Gray.300}" },
+    "fill_pressed": { "color": "{Gray.400}" },
+    "text": { "color": "{Gray.750}" },
+    "stroke": { "color": "{Gray.750}", "width": 1 },
+  },
+  "button_opened": {
+    "fill": { "color": "{Blue.500}", "alpha": 100 },
+    "fill_hovered": { "color": "{Blue.500}", "alpha": 150 },
+    "fill_pressed": { "color": "{Blue.500}", "alpha": 200 },
+    "text": { "color": "{Gray.850}" },
   },
 
   "Global": {

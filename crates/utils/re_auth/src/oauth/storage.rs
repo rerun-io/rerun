@@ -101,8 +101,6 @@ mod file {
 
 #[cfg(target_arch = "wasm32")]
 mod web {
-    use wasm_bindgen::JsCast as _;
-
     use super::{ClearError, Credentials, LoadError, StoreError};
 
     const STORAGE_KEY: &str = "rerun_auth";
@@ -127,21 +125,6 @@ mod web {
         }
     }
 
-    #[expect(clippy::needless_pass_by_value)]
-    pub fn string_from_js_value(s: wasm_bindgen::JsValue) -> String {
-        // it's already a string
-        if let Some(s) = s.as_string() {
-            return s;
-        }
-
-        // it's an Error, call `toString` instead
-        if let Some(s) = s.dyn_ref::<js_sys::Error>() {
-            return format!("{}", s.to_string());
-        }
-
-        format!("{s:#?}")
-    }
-
     fn get_local_storage() -> Result<web_sys::Storage, NoLocalStorage> {
         web_sys::window()
             .ok_or(NoLocalStorage)?
@@ -154,7 +137,7 @@ mod web {
         let local_storage = get_local_storage()?;
         let data = local_storage
             .get_item(STORAGE_KEY)
-            .map_err(|err| std::io::Error::other(string_from_js_value(err)))?;
+            .map_err(|err| std::io::Error::other(re_web::Error::from(err)))?;
 
         let Some(data) = data else {
             return Ok(None);
@@ -169,7 +152,7 @@ mod web {
         let data = serde_json::to_string(credentials)?;
         local_storage
             .set_item(STORAGE_KEY, &data)
-            .map_err(|err| std::io::Error::other(string_from_js_value(err)))?;
+            .map_err(|err| std::io::Error::other(re_web::Error::from(err)))?;
         Ok(())
     }
 
@@ -177,7 +160,7 @@ mod web {
         let local_storage = get_local_storage()?;
         local_storage
             .remove_item(STORAGE_KEY)
-            .map_err(|err| std::io::Error::other(string_from_js_value(err)))?;
+            .map_err(|err| std::io::Error::other(re_web::Error::from(err)))?;
         Ok(())
     }
 }

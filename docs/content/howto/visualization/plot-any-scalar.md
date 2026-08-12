@@ -1,6 +1,7 @@
 ---
 title: Plot any scalar
 order: 600
+description: Plot numerical data that wasn't logged with Rerun semantics
 ---
 
 Rerun can plot numerical data as a time series, even data that wasn't logged with Rerun semantics.
@@ -47,6 +48,10 @@ Optional components like `Names` and `Colors` can be sourced similarly from arbi
 The following remaps the `Scalars:scalars` input to read from `custom:my_custom_scalar` instead:
 
 snippet: howto/component_mapping[source_mapping]
+
+### Add data by dragging components
+
+You can set up this mapping interactively instead of via the blueprint API: drag a component from the streams tree onto a time series view. If the component has a compatible (numeric) datatype, a new `SeriesLines` visualizer is added that remaps `Scalars:scalars` from it. Non-numeric components (e.g. a string) are rejected, as is dropping a component that the view already plots.
 
 ## Selectors for nested data
 

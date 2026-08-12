@@ -25,7 +25,6 @@ nasm = ["re_video/nasm"]
 
 [dependencies]
 
-re_arrow_util.workspace = true
 re_byte_size = { workspace = true, features = ["ecolor", "egui", "glam", "macaw"] }
 re_chunk_store.workspace = true
 re_data_ui.workspace = true
@@ -33,6 +32,7 @@ re_entity_db.workspace = true
 re_error.workspace = true
 re_format.workspace = true
 re_gamepad.workspace = true
+re_int.workspace = true
 re_log.workspace = true
 re_log_types.workspace = true
 re_query.workspace = true
@@ -59,6 +59,7 @@ bitflags.workspace = true
 bytemuck.workspace = true
 egui = { workspace = true, features = ["serde"] }
 glam.workspace = true
+half.workspace = true
 hexasphere.workspace = true
 image = { workspace = true, features = [
   "png",
@@ -67,7 +68,7 @@ itertools.workspace = true
 macaw = { workspace = true, features = ["serde"] }
 nohash-hasher.workspace = true
 ordered-float.workspace = true
-saturating_cast.workspace = true
+parking_lot.workspace = true
 serde.workspace = true
 smallvec = { workspace = true, features = ["serde"] }
 thiserror.workspace = true

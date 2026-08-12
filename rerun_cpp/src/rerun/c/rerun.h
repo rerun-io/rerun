@@ -317,7 +317,10 @@ typedef struct rr_time_column {
     rr_sorting_status sorting_status;
 } rr_time_column;
 
-/// Log sink which streams messages to a gRPC server.
+/// Log sink which streams messages to an existing Rerun gRPC server.
+///
+/// This is a gRPC client: it connects to a server but does not host one.
+/// Use `rr_grpc_server_sink` to host a server that SDKs and Viewers can connect to.
 ///
 /// The behavior of this sink is the same as the one set by `rr_recording_stream_connect_grpc`.
 typedef struct rr_grpc_sink {
@@ -336,9 +339,42 @@ typedef struct rr_file_sink {
     rr_string path;
 } rr_file_sink;
 
+/// Log sink which hosts a Rerun gRPC server.
+///
+/// This is a gRPC server: SDKs and Viewers connect to it.
+/// Use `rr_grpc_sink` to connect as a client to an existing server.
+/// Replacing the recording's sinks or freeing the recording shuts down the server.
+typedef struct rr_grpc_server_sink {
+    /// IP address on which to listen, such as `0.0.0.0` to listen on all interfaces.
+    rr_string bind_ip;
+
+    /// TCP port on which to listen.
+    uint16_t port;
+
+    /// Maximum amount of log data to retain for late-connecting clients, such as `1GiB`.
+    ///
+    /// Once this limit is reached, the earliest temporal data is dropped.
+    /// Static data is never dropped.
+    rr_string server_memory_limit;
+
+    /// Whether each new client should receive the newest retained messages first.
+    bool newest_first;
+
+    /// Optional origin patterns allowed to make cross-origin requests to the server.
+    ///
+    /// The array and its strings only need to remain valid for the
+    /// `rr_recording_stream_set_sinks` call.
+    /// Set this to `NULL` when `num_cors_allow_origins` is zero.
+    const rr_string* cors_allow_origins;
+
+    /// Number of entries in `cors_allow_origins`.
+    uint32_t num_cors_allow_origins;
+} rr_grpc_server_sink;
+
 enum {
     RR_LOG_SINK_KIND_GRPC = 0,
     RR_LOG_SINK_KIND_FILE = 1,
+    RR_LOG_SINK_KIND_GRPC_SERVER = 2,
 };
 
 /// Used to tag the kind of `rr_log_sink`.
@@ -349,12 +385,14 @@ typedef uint8_t rr_log_sink_kind;
 /// See specific log sink types for more information:
 /// * `rr_grpc_sink`
 /// * `rr_file_sink`
+/// * `rr_grpc_server_sink`
 typedef struct rr_log_sink {
     rr_log_sink_kind kind;
 
     union {
         rr_grpc_sink grpc;
         rr_file_sink file;
+        rr_grpc_server_sink grpc_server;
     };
 } rr_log_sink;
 
@@ -440,6 +478,12 @@ typedef struct rr_error {
 /// This should match the string in `RERUN_SDK_HEADER_VERSION`.
 /// If not, the SDK's binary and the C header are out of sync.
 extern const char* rr_version_string(void);
+
+/// Converts a 32-bit `float` to the bits of an IEEE 754 16-bit half-precision float.
+///
+/// Rounds to nearest, ties to even. Values too large to represent become infinity,
+/// and `NaN` stays `NaN`.
+extern uint16_t rr_f16_from_f32(float value);
 
 /// Spawns a new Rerun Viewer process from an executable available in PATH, ready to
 /// listen for incoming gRPC connections.

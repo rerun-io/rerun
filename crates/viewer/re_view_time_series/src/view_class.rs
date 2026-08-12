@@ -6,7 +6,7 @@ use nohash_hasher::{IntMap, IntSet};
 use re_chunk_store::TimeType;
 use re_format::time::next_grid_tick_magnitude_nanos;
 use re_log_types::external::arrow::datatypes::DataType;
-use re_log_types::{AbsoluteTimeRange, EntityPath};
+use re_log_types::{AbsoluteTimeRange, ComponentPath, EntityPath};
 use re_sdk_types::archetypes::{Scalars, SeriesLines, SeriesPoints};
 use re_sdk_types::blueprint::archetypes::{PlotBackground, PlotLegend, ScalarAxis, TimeAxis};
 use re_sdk_types::blueprint::components::{
@@ -19,12 +19,13 @@ use re_ui::{Help, IconText, MouseButtonText, UiExt as _, icons, list_item};
 use re_view::controls::{MOVE_TIME_CURSOR_BUTTON, SELECTION_RECT_ZOOM_BUTTON};
 use re_view::view_property_ui;
 use re_viewer_context::{
-    BlueprintContext as _, DataResultInteractionAddress, DatatypeMatch, IdentifiedViewSystem as _,
-    IndicatedEntities, PerVisualizerType, QueryRange, RecommendedMappings, RecommendedView,
-    RecommendedVisualizers, SingleRequiredComponentMatch, SystemExecutionOutput,
-    TimeControlCommand, ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewId, ViewQuery,
-    ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
-    ViewSystemIdentifier, ViewerContext, VisualizableReason, VisualizerComponentSource,
+    BlueprintContext as _, DataResultInteractionAddress, DatatypeMatch, DragAndDropFeedback,
+    IdentifiedViewSystem as _, IndicatedEntities, PerVisualizerType, QueryRange,
+    RecommendedMappings, RecommendedView, RecommendedVisualizers, SingleRequiredComponentMatch,
+    SystemExecutionOutput, TimeControlCommand, ViewClass, ViewClassExt as _,
+    ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _,
+    ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext, VisualizableReason,
+    VisualizerComponentSource,
 };
 use re_viewport_blueprint::ViewProperty;
 use smallvec::SmallVec;
@@ -229,12 +230,8 @@ impl ViewClass for TimeSeriesView {
             view_property_ui::<PlotBackground>(&ctx, ui);
             view_property_ui::<PlotLegend>(&ctx, ui);
 
-            let link_x_axis = ViewProperty::from_archetype::<TimeAxis>(
-                ctx.blueprint_db(),
-                ctx.blueprint_query(),
-                view_id,
-            )
-            .component_or_fallback::<LinkAxis>(&ctx, TimeAxis::descriptor_link().component)?;
+            let link_x_axis = ViewProperty::from_archetype::<TimeAxis>(&ctx)
+                .component_or_fallback::<LinkAxis>(&ctx, TimeAxis::descriptor_link().component)?;
 
             match link_x_axis {
                 LinkAxis::Independent => {
@@ -281,9 +278,7 @@ impl ViewClass for TimeSeriesView {
                     if !include_entity(entity_path) {
                         return None;
                     }
-                    reason
-                        .full_native_match(Scalars::descriptor_scalars().component)
-                        .then_some(entity_path)
+                    should_auto_spawn_time_series(reason).then_some(entity_path)
                 });
 
         ViewSpawnHeuristics::new_with_order_preserved(
@@ -415,6 +410,33 @@ impl ViewClass for TimeSeriesView {
         })
     }
 
+    /// Accept drops of scalar components onto the time series view. For each dropped component, a
+    /// new `SeriesLines` visualizer is added that remaps `Scalars.scalars` from it.
+    fn handle_component_drop(
+        &self,
+        ctx: &ViewerContext<'_>,
+        view_id: ViewId,
+        component_paths: &[ComponentPath],
+        released: bool,
+    ) -> DragAndDropFeedback {
+        match re_view::handle_component_drop(
+            ctx,
+            view_id,
+            component_paths,
+            released,
+            SeriesLinesSystem::identifier(),
+            Scalars::descriptor_scalars().component,
+        ) {
+            re_view::ComponentDropResult::Accept => DragAndDropFeedback::Accept,
+            re_view::ComponentDropResult::CompatibleButAlreadyVisualized => {
+                DragAndDropFeedback::Reject(Some("Already visualized"))
+            }
+            re_view::ComponentDropResult::Incompatible => {
+                DragAndDropFeedback::Reject(Some("Not a scalar component"))
+            }
+        }
+    }
+
     fn ui(
         &self,
         ctx: &ViewerContext<'_>,
@@ -423,7 +445,7 @@ impl ViewClass for TimeSeriesView {
         state: &mut dyn ViewState,
         query: &ViewQuery<'_>,
         mut system_output: SystemExecutionOutput,
-    ) -> Result<(), ViewSystemExecutionError> {
+    ) -> Result<re_viewer_context::ViewClassUiOutput, ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
         let state = state.downcast_mut::<TimeSeriesViewState>()?;
@@ -509,7 +531,7 @@ impl ViewClass for TimeSeriesView {
 
         let current_time = ctx.time_ctrl.time_i64();
         let Some(timeline) = ctx.time_ctrl.timeline() else {
-            return Ok(());
+            return Ok(Default::default());
         };
         let time_type = timeline.typ();
 
@@ -556,15 +578,10 @@ impl ViewClass for TimeSeriesView {
             }
         }
 
-        let blueprint_db = ctx.blueprint_db();
         let view_id = query.view_id;
 
         let view_ctx = self.view_context(ctx, view_id, state, query.space_origin);
-        let background = ViewProperty::from_archetype::<PlotBackground>(
-            blueprint_db,
-            ctx.blueprint_query,
-            view_id,
-        );
+        let background = ViewProperty::from_archetype::<PlotBackground>(&view_ctx);
         let background_color = background.component_or_fallback::<Color>(
             &view_ctx,
             PlotBackground::descriptor_color().component,
@@ -574,8 +591,7 @@ impl ViewClass for TimeSeriesView {
             PlotBackground::descriptor_show_grid().component,
         )?;
 
-        let plot_legend =
-            ViewProperty::from_archetype::<PlotLegend>(blueprint_db, ctx.blueprint_query, view_id);
+        let plot_legend = ViewProperty::from_archetype::<PlotLegend>(&view_ctx);
         let legend_visible = plot_legend.component_or_fallback::<Visible>(
             &view_ctx,
             PlotLegend::descriptor_visible().component,
@@ -585,8 +601,7 @@ impl ViewClass for TimeSeriesView {
             PlotLegend::descriptor_corner().component,
         )?;
 
-        let time_axis =
-            ViewProperty::from_archetype::<TimeAxis>(blueprint_db, ctx.blueprint_query, view_id);
+        let time_axis = ViewProperty::from_archetype::<TimeAxis>(&view_ctx);
 
         let link_x_axis = time_axis
             .component_or_fallback::<LinkAxis>(&view_ctx, TimeAxis::descriptor_link().component)?;
@@ -597,30 +612,17 @@ impl ViewClass for TimeSeriesView {
                 .at_least(timeline_range.min.as_i64()),
         );
 
-        let query_result;
         // If we globally link the x-axis it will ignore this view's time range property and use
         // `GLOBAL_VIEW_ID's` time range property instead.
         let (time_range_property, time_range_ctx) = match link_x_axis {
             LinkAxis::Independent => (&time_axis, &view_ctx),
-            LinkAxis::LinkToGlobal => {
-                query_result = re_viewer_context::DataQueryResult::default();
-
-                (
-                    &ViewProperty::from_archetype::<TimeAxis>(
-                        ctx.blueprint_db(),
-                        ctx.blueprint_query,
-                        re_viewer_context::GLOBAL_VIEW_ID,
-                    ),
-                    &re_viewer_context::ViewContext {
-                        viewer_ctx: ctx,
-                        view_id: re_viewer_context::GLOBAL_VIEW_ID,
-                        view_class_identifier: Self::identifier(),
-                        space_origin: query.space_origin,
-                        view_state: state,
-                        query_result: &query_result,
-                    },
-                )
-            }
+            LinkAxis::LinkToGlobal => (
+                &ViewProperty::from_archetype_for_view::<TimeAxis>(
+                    ctx,
+                    re_viewer_context::GLOBAL_VIEW_ID,
+                ),
+                &view_ctx.with_view_id(re_viewer_context::GLOBAL_VIEW_ID),
+            ),
         };
 
         let view_time_range = time_range_property
@@ -631,33 +633,22 @@ impl ViewClass for TimeSeriesView {
 
         let resolve_time_range =
             |view_time_range: &re_sdk_types::blueprint::components::TimeRange| {
+                let range = re_view::resolve_time_axis_range(
+                    view_time_range,
+                    timeline_range,
+                    view_current_time,
+                );
+
+                // Into plot space, where `f64` coordinates still have enough precision.
                 make_range_sane(Range1D::new(
-                    match view_time_range.start {
-                        re_sdk_types::datatypes::TimeRangeBoundary::Infinite => {
-                            timeline_range.min.as_i64()
-                        }
-                        _ => {
-                            view_time_range
-                                .start
-                                .start_boundary_time(view_current_time)
-                                .0
-                        }
-                    }
-                    .saturating_sub(time_offset) as f64,
-                    match view_time_range.end {
-                        re_sdk_types::datatypes::TimeRangeBoundary::Infinite => {
-                            timeline_range.max.as_i64()
-                        }
-                        _ => view_time_range.end.end_boundary_time(view_current_time).0,
-                    }
-                    .saturating_sub(time_offset) as f64,
+                    range.min.as_i64().saturating_sub(time_offset) as f64,
+                    range.max.as_i64().saturating_sub(time_offset) as f64,
                 ))
             };
 
         let x_range = resolve_time_range(&view_time_range);
 
-        let scalar_axis =
-            ViewProperty::from_archetype::<ScalarAxis>(blueprint_db, ctx.blueprint_query, view_id);
+        let scalar_axis = ViewProperty::from_archetype::<ScalarAxis>(&view_ctx);
         let y_range = scalar_axis.component_or_fallback::<Range1D>(
             &view_ctx,
             ScalarAxis::descriptor_range().component,
@@ -816,7 +807,13 @@ impl ViewClass for TimeSeriesView {
             }
 
             // Render re_renderer draw data (already in screen space) via ViewBuilder.
-            render_re_renderer_draw_data(ctx, ui, &response, re_renderer_draw_data);
+            render_re_renderer_draw_data(
+                ctx,
+                ui,
+                &response,
+                query.view_id.render_view_id(),
+                re_renderer_draw_data,
+            );
 
             // Custom hover detection: find nearest actual data point and show tooltip.
             let hovered_data_result = (!legend_hovered)
@@ -877,27 +874,11 @@ impl ViewClass for TimeSeriesView {
                                 return None;
                             }
 
-                            let new_x_range_rounded = Range1D::new(
-                                new_x_range.start().round(),
-                                new_x_range.end().round(),
-                            );
-
-                            let new_view_time_range = TimeRange {
-                                start: re_sdk_types::datatypes::TimeRangeBoundary::Absolute(
-                                    re_sdk_types::datatypes::TimeInt(
-                                        (new_x_range_rounded.start() as i64)
-                                            .saturating_add(time_offset),
-                                    ),
-                                ),
-                                end: re_sdk_types::datatypes::TimeRangeBoundary::Absolute(
-                                    re_sdk_types::datatypes::TimeInt(
-                                        (new_x_range_rounded.end() as i64)
-                                            .saturating_add(time_offset),
-                                    ),
-                                ),
-                            };
-
-                            Some(new_view_time_range)
+                            Some(re_view::time_axis_range_from_window(
+                                re_log_types::TimeReal::from(new_x_range.start()),
+                                re_log_types::TimeReal::from(new_x_range.end()),
+                                time_offset,
+                            ))
                         })
                         .map(re_sdk_types::blueprint::components::TimeRange)
                         && view_time_range != new_view_time_range
@@ -992,9 +973,11 @@ impl ViewClass for TimeSeriesView {
                 update_series_visibility_from_legend(ctx, query, &all_plot_series, &hidden_items);
             }
 
-            Ok(())
+            Ok::<(), ViewSystemExecutionError>(())
         })
-        .inner
+        .inner?;
+
+        Ok(Default::default())
     }
 }
 
@@ -1134,6 +1117,30 @@ fn scalar_datatype_priority(datatype: &re_log_types::external::arrow::datatypes:
 const RECOMMENDED_DATATYPES: &[DataType] =
     &[DataType::Float64, DataType::Float32, DataType::Float16];
 
+fn should_auto_spawn_time_series(reason: &VisualizableReason) -> bool {
+    has_native_scalar_semantics(reason) && all_scalar_mappings(reason).next().is_some()
+}
+
+fn has_native_scalar_semantics(reason: &VisualizableReason) -> bool {
+    // This is always going to be `Some`, but nicer than writing `expect`.
+    let Some(scalar_type) = Scalars::descriptor_scalars().component_type else {
+        return false;
+    };
+
+    let VisualizableReason::SingleRequiredComponentMatch(m) = reason else {
+        return reason.full_native_match(Scalars::descriptor_scalars().component);
+    };
+
+    m.matches.values().any(|match_info| {
+        matches!(
+            match_info,
+            DatatypeMatch::NativeSemantics { component_type, .. }
+            | DatatypeMatch::PhysicalDatatypeOnly { component_type, .. }
+                if component_type.as_ref() == Some(&scalar_type)
+        )
+    })
+}
+
 fn all_scalar_mappings(
     reason: &VisualizableReason,
 ) -> impl Iterator<Item = (ComponentIdentifier, VisualizerComponentSource)> {
@@ -1189,7 +1196,9 @@ fn all_scalar_mappings(
                 ..
             } => {
                 if selectors.is_empty() {
-                    if RECOMMENDED_DATATYPES.contains(match_info.arrow_datatype()) {
+                    if is_rerun_native_type
+                        || RECOMMENDED_DATATYPES.contains(match_info.arrow_datatype())
+                    {
                         Either::Left(Either::Left(std::iter::once((
                             primary_match_order,
                             is_rerun_native_type,
@@ -1205,14 +1214,15 @@ fn all_scalar_mappings(
                     // Nested field access: selector_index preserves field definition order.
                     Either::Right(selectors.iter().enumerate().filter_map(
                         move |(selector_index, (selector, datatype))| {
-                            RECOMMENDED_DATATYPES.contains(datatype).then_some((
-                                primary_match_order,
-                                is_rerun_native_type,
-                                scalar_datatype_priority(datatype),
-                                *source_component,
-                                selector_index,
-                                selector.to_string(),
-                            ))
+                            (is_rerun_native_type || RECOMMENDED_DATATYPES.contains(datatype))
+                                .then_some((
+                                    primary_match_order,
+                                    is_rerun_native_type,
+                                    scalar_datatype_priority(datatype),
+                                    *source_component,
+                                    selector_index,
+                                    selector.to_string(),
+                                ))
                         },
                     ))
                 }
@@ -1732,6 +1742,7 @@ fn render_re_renderer_draw_data(
     ctx: &ViewerContext<'_>,
     ui: &egui::Ui,
     response: &egui::Response,
+    view_id: re_renderer::ViewBuilderId,
     draw_data: Vec<re_renderer::QueueableDrawData>,
 ) {
     if draw_data.is_empty() {
@@ -1776,7 +1787,8 @@ fn render_re_renderer_draw_data(
         ..Default::default()
     };
 
-    let Ok(mut view_builder) = re_renderer::ViewBuilder::new(render_ctx, target_config) else {
+    let Ok(mut view_builder) = re_renderer::ViewBuilder::new(render_ctx, target_config, view_id)
+    else {
         return;
     };
 

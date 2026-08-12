@@ -1,4 +1,3 @@
-use std::any::Any;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
@@ -16,6 +15,7 @@ use datafusion::physical_plan::execution_plan::{Boundedness, EmissionType};
 use datafusion::physical_plan::{DisplayAs, DisplayFormatType, ExecutionPlan, PlanProperties};
 use futures::Stream;
 use parking_lot::Mutex;
+use re_async::AsyncRuntimeHandle;
 use re_log_types::{EntryId, EntryIdOrName};
 use re_protos::cloud::v1alpha1::ext::{EntryDetails, TableInsertMode};
 use re_protos::cloud::v1alpha1::{
@@ -23,16 +23,15 @@ use re_protos::cloud::v1alpha1::{
     ScanTableResponse,
 };
 use re_protos::headers::RerunHeadersInjectorExt as _;
-use re_redap_client::{ApiError, ApiResult, ConnectionClient};
+use re_redap_client::{ApiError, ApiResult, ConnectionAnalyticsExporter, ConnectionClient};
 use tokio::runtime::Handle;
 use tracing::instrument;
 
 use crate::IntoDfError as _;
 use crate::analytics::{TableQueryInfo, expr_filter_signature};
-use crate::grpc_streaming_provider::{GrpcStreamProvider, GrpcStreamToTable};
+use crate::grpc_streaming_provider::{GrpcStreamProvider, GrpcStreamToTable, ScanParams};
 use crate::wasm_compat::make_future_send;
 use crate::{ConnectionAnalytics, PendingTableQueryAnalytics, TableKind, TableQueryCaller};
-use re_uri::Origin;
 
 #[derive(Clone)]
 pub struct TableEntryTableProvider {
@@ -102,14 +101,13 @@ impl TableEntryTableProvider {
 
     /// Enable per-scan analytics for this provider.
     ///
-    /// `origin` identifies the cloud the analytics should be sent to. The
-    /// caller already holds it (via `ConnectionRegistryHandle::client(origin)`
-    /// or similar), so we take it directly to avoid exposing the internal
-    /// `ConnectionAnalytics` type.
-    ///
     /// Without this call no `cloud_scan_table` span will be emitted.
-    pub fn with_analytics(mut self, origin: Origin) -> Self {
-        self.analytics = Some(ConnectionAnalytics::new(origin, &self.client));
+    pub fn with_analytics(
+        mut self,
+        exporter: ConnectionAnalyticsExporter,
+        async_runtime: AsyncRuntimeHandle,
+    ) -> Self {
+        self.analytics = Some(ConnectionAnalytics::new(exporter, async_runtime));
         self
     }
 
@@ -152,7 +150,12 @@ impl TableEntryTableProvider {
                             filter: Some(EntryFilter {
                                 id: None,
                                 name: Some(table_name_copy),
+                                // Pass both `entry_kind` (deprecated) and `entry_kinds`
+                                // to be compatible with old Hub versions.
+                                // Drop `entry_kind` when no customer has a 0.14 deployment
+                                // or older of Rerun Hub.
                                 entry_kind: Some(EntryKind::Table as i32),
+                                entry_kinds: vec![EntryKind::Table as i32],
                             }),
                         })
                         .await
@@ -235,9 +238,10 @@ impl GrpcStreamToTable for TableEntryTableProvider {
         ))
     }
 
-    #[instrument(skip(self), err, parent = &self.parent_span)]
+    #[instrument(skip(self, _params), err, parent = &self.parent_span)]
     async fn send_streaming_request(
         &mut self,
+        _params: &ScanParams,
     ) -> ApiResult<re_redap_client::ApiResponseStream<Self::GrpcStreamData>> {
         let table_id = self.table_id().await?;
         let request = tonic::Request::new(ScanTableRequest {
@@ -262,7 +266,11 @@ impl GrpcStreamToTable for TableEntryTableProvider {
         ))
     }
 
-    fn process_response(&mut self, response: Self::GrpcStreamData) -> ApiResult<RecordBatch> {
+    fn process_response(
+        &mut self,
+        response: Self::GrpcStreamData,
+        _params: &ScanParams,
+    ) -> ApiResult<RecordBatch> {
         response
             .dataframe_part
             .ok_or_else(|| {
@@ -417,10 +425,6 @@ impl TableEntryWriterExec {
 impl ExecutionPlan for TableEntryWriterExec {
     fn name(&self) -> &'static str {
         "TableEntryWriterExec"
-    }
-
-    fn as_any(&self) -> &dyn Any {
-        self
     }
 
     fn properties(&self) -> &Arc<PlanProperties> {

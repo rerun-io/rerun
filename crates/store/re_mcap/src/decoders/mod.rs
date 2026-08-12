@@ -355,6 +355,7 @@ impl MessageDecoderRunner {
         mcap_bytes: &[u8],
         summary: &mcap::Summary,
         time_type: TimeType,
+        time_range: Option<(u64, u64)>,
         emit: &(dyn Fn(Chunk) + Send + Sync),
     ) -> Result<(), Error> {
         self.inner.init(summary)?;
@@ -384,6 +385,12 @@ impl MessageDecoderRunner {
             for msg in summary.stream_chunk(mcap_bytes, chunk)? {
                 match msg {
                     Ok(message) => {
+                        // Skip messages outside the `[start, end)` `log_time` range.
+                        if let Some((start, end)) = time_range
+                            && (message.log_time < start || message.log_time >= end)
+                        {
+                            continue;
+                        }
                         if let Err(err) = decoder.decode_next(&message) {
                             re_log::error_once!(
                                 "Failed to decode message on channel {}: {err}",
@@ -416,14 +423,26 @@ impl MessageDecoderRunner {
             Ok(batch)
         };
 
-        #[cfg(target_arch = "wasm32")]
-        let workers = 1;
-        #[cfg(not(target_arch = "wasm32"))]
-        let workers = rayon::current_num_threads().max(1);
+        // Drop out-of-range chunks here, *before* `stream_chunk` decompresses them.
+        // Collected into a `Vec` so the parallel path can index a contiguous `0..total`:
+        // its reorder buffer keys on gap-free indices, so skipping inside the worker loop would stall it.
+        let selected: Vec<&::mcap::records::ChunkIndex> = match time_range {
+            Some((start, end)) => summary
+                .chunk_indexes
+                .iter()
+                .filter(|c| c.message_end_time >= start && c.message_start_time < end)
+                .collect(),
+            None => summary.chunk_indexes.iter().collect(),
+        };
+
+        let workers = cfg_select! {
+            target_arch = "wasm32" => { 1 }
+            _ => { rayon::current_num_threads().max(1) }
+        };
 
         if workers <= 2 {
             // Serial path. Used on wasm32 and on small worker counts.
-            for chunk in &summary.chunk_indexes {
+            for chunk in selected.iter().copied() {
                 for c in decode_chunk(chunk)? {
                     emit(c);
                 }
@@ -448,8 +467,8 @@ impl MessageDecoderRunner {
             let (producer_result, ()) = rayon::join(
                 || {
                     let next_idx = std::sync::atomic::AtomicUsize::new(0);
-                    let total = summary.chunk_indexes.len();
-                    let chunk_indexes = &summary.chunk_indexes;
+                    let total = selected.len();
+                    let chunk_indexes = &selected;
 
                     let result: Result<(), Error> = std::thread::scope(|scope| {
                         let handles: Vec<_> = (0..workers)
@@ -464,7 +483,7 @@ impl MessageDecoderRunner {
                                         if idx >= total {
                                             return Ok(());
                                         }
-                                        let batch = decode_chunk(&chunk_indexes[idx])?;
+                                        let batch = decode_chunk(chunk_indexes[idx])?;
                                         // Blocks once `max_in_flight` batches are queued.
                                         re_quota_channel::send_crossbeam(&batch_tx, (idx, batch))
                                             .map_err(|err| {
@@ -545,9 +564,24 @@ pub struct ExecutionPlan {
     pub runners: Vec<MessageDecoderRunner>,
     pub assignments: Vec<DecoderAssignment>,
     pub topic_filter: TopicFilter,
+
+    /// Optional `[start, end)` `log_time` range (nanoseconds). When set, chunks and messages
+    /// whose `log_time` falls outside the range are skipped; chunks that fall entirely outside
+    /// are never decompressed, so this bounds peak memory and not just output.
+    pub time_range: Option<(u64, u64)>,
 }
 
 impl ExecutionPlan {
+    /// Restrict decoding to messages whose MCAP `log_time` falls in `[start, end)` (nanoseconds).
+    ///
+    /// Chunks whose index bounds fall entirely outside the range are skipped before decompression.
+    /// `None` clears the filter (decode everything).
+    #[inline]
+    pub fn with_time_range(mut self, time_range: Option<(u64, u64)>) -> Self {
+        self.time_range = time_range;
+        self
+    }
+
     pub fn run(
         mut self,
         mcap_bytes: &[u8],
@@ -562,8 +596,14 @@ impl ExecutionPlan {
             decoder.process(&ctx, emit)?;
         }
 
+        let time_range = self.time_range;
+        if let Some((start, end)) = time_range {
+            re_log::info!(
+                "Filtering MCAP messages to log_time range [{start}, {end}) (nanoseconds)"
+            );
+        }
         for runner in &mut self.runners {
-            runner.process(mcap_bytes, summary, time_type, emit)?;
+            runner.process(mcap_bytes, summary, time_type, time_range, emit)?;
         }
         Ok(())
     }
@@ -827,6 +867,7 @@ impl DecoderRegistry {
             runners,
             assignments,
             topic_filter: topic_filter.clone(),
+            time_range: None,
         })
     }
 }
@@ -900,9 +941,177 @@ mod tests {
         );
     }
 
+    /// Writes one raw-channel message per entry in `log_times`. When `chunk_per_message` is set,
+    /// each message is flushed into its own MCAP chunk (distinct chunk-index time bounds); otherwise
+    /// all messages share a single chunk (used to exercise per-message, within-chunk filtering).
+    fn raw_summary_with_log_times(
+        log_times: &[u64],
+        chunk_per_message: bool,
+    ) -> (mcap::Summary, Vec<u8>) {
+        let cursor = io::Cursor::new(Vec::new());
+        let mut writer = mcap::Writer::new(cursor).expect("failed to create writer");
+        let channel_id = writer
+            .add_channel(0, "topic", "raw", &Default::default())
+            .expect("failed to add channel");
+
+        for (seq, &log_time) in log_times.iter().enumerate() {
+            writer
+                .write_to_known_channel(
+                    &mcap::records::MessageHeader {
+                        channel_id,
+                        sequence: seq as u32,
+                        log_time,
+                        publish_time: log_time,
+                    },
+                    &[1, 2, 3],
+                )
+                .expect("failed to write message");
+            if chunk_per_message {
+                writer.flush().expect("failed to flush chunk");
+            }
+        }
+
+        let summary = writer.finish().expect("failed to finish writer");
+        let buffer = writer.into_inner().into_inner();
+        (summary, buffer)
+    }
+
+    /// Collects the `message_log_time` values from `chunks`, in emission order.
+    fn emitted_log_times(chunks: &[Chunk]) -> Vec<i64> {
+        let mut times = Vec::new();
+        for chunk in chunks {
+            for (name, time_column) in chunk.timelines() {
+                if name.as_str() == "message_log_time" {
+                    times.extend_from_slice(time_column.times_raw());
+                }
+            }
+        }
+        times
+    }
+
+    fn run_with_time_range(
+        buffer: &[u8],
+        summary: &mcap::Summary,
+        time_range: Option<(u64, u64)>,
+    ) -> Vec<i64> {
+        let plan = DecoderRegistry::all_with_raw_fallback()
+            .plan(buffer, summary, &TopicFilter::default())
+            .expect("failed to plan")
+            .with_time_range(time_range);
+        let emitter = TestEmitter::default();
+        plan.run(buffer, summary, TimeType::TimestampNs, &*emitter)
+            .expect("failed to run plan");
+        emitted_log_times(&emitter.finish())
+    }
+
+    #[test]
+    fn time_range_skips_out_of_range_chunks() {
+        let (summary, buffer) = raw_summary_with_log_times(&[10, 20, 30], true);
+        // Sanity: each message landed in its own chunk, so filtering happens at the chunk level.
+        assert_eq!(summary.chunk_indexes.len(), 3);
+
+        // No range and a fully-covering range are equivalent to decoding everything.
+        assert_eq!(
+            run_with_time_range(&buffer, &summary, None),
+            vec![10, 20, 30]
+        );
+        assert_eq!(
+            run_with_time_range(&buffer, &summary, Some((0, u64::MAX))),
+            vec![10, 20, 30]
+        );
+        // Half-open `[start, end)`: 15..25 keeps only 20.
+        assert_eq!(
+            run_with_time_range(&buffer, &summary, Some((15, 25))),
+            vec![20]
+        );
+        // Inclusive start, exclusive end: [20, 30) keeps 20 but not 30.
+        assert_eq!(
+            run_with_time_range(&buffer, &summary, Some((20, 30))),
+            vec![20]
+        );
+        // A range that overlaps no chunk yields nothing.
+        assert_eq!(
+            run_with_time_range(&buffer, &summary, Some((100, 200))),
+            Vec::<i64>::new()
+        );
+    }
+
+    #[test]
+    fn time_range_drops_messages_within_a_straddling_chunk() {
+        let (summary, buffer) = raw_summary_with_log_times(&[10, 20, 30], false);
+        // Sanity: a single chunk straddles the requested range, so the per-message check runs.
+        assert_eq!(summary.chunk_indexes.len(), 1);
+
+        assert_eq!(
+            run_with_time_range(&buffer, &summary, Some((15, 25))),
+            vec![20]
+        );
+    }
+
+    #[test]
+    fn time_range_serial_and_parallel_paths_agree() {
+        // Enough single-message chunks to exercise the parallel reorder buffer.
+        let log_times: Vec<u64> = (0..64).map(|i| i * 10).collect();
+        let (summary, buffer) = raw_summary_with_log_times(&log_times, true);
+        assert_eq!(summary.chunk_indexes.len(), 64);
+
+        // `workers = current_num_threads()`, so a 1-thread pool forces the serial path and a
+        // larger pool forces the parallel reorder path. Both must emit the same in-range messages
+        // in the same order (RowId is regenerated on the parallel path, so we compare times only).
+        let run_in_pool = |threads: usize, time_range: Option<(u64, u64)>| -> Vec<i64> {
+            let pool = rayon::ThreadPoolBuilder::new()
+                .num_threads(threads)
+                .build()
+                .expect("failed to build thread pool");
+            pool.install(|| run_with_time_range(&buffer, &summary, time_range))
+        };
+
+        let filter = Some((100, 500));
+        let expected: Vec<i64> = (100..500).step_by(10).collect();
+
+        let serial = run_in_pool(1, filter);
+        let parallel = run_in_pool(4, filter);
+
+        assert_eq!(serial, expected);
+        assert_eq!(parallel, expected);
+        assert_eq!(serial, parallel);
+    }
+
+    #[test]
+    fn emits_file_level_and_message_content() {
+        let (summary, buffer) = raw_summary_with_log_times(&[10, 20, 30], false);
+
+        let plan = DecoderRegistry::all_with_raw_fallback()
+            .plan(&buffer, &summary, &TopicFilter::default())
+            .expect("failed to plan");
+        let emitter = TestEmitter::default();
+        plan.run(&buffer, &summary, TimeType::TimestampNs, &*emitter)
+            .expect("failed to run plan");
+        let chunks = emitter.finish();
+
+        // Per-message data is emitted.
+        assert!(
+            chunks
+                .iter()
+                .any(|c| c.entity_path().to_string().ends_with("topic")),
+            "per-message data should be emitted"
+        );
+
+        // File-level (static, whole-file) content — e.g. the MCAP-properties entity — is emitted.
+        assert!(
+            chunks.iter().any(|c| {
+                c.entity_path()
+                    .to_string()
+                    .contains(MCAP_PROPERTIES_ENTITY_PATH)
+            }),
+            "file-level content should be emitted"
+        );
+    }
+
     /// Test helper for creating an MCAP summary & blob with a ros2msg-schema channel.
-    fn ros2_summary_with_message_encoding(
+    fn ros2_summary(
         schema_name: &str,
+        schema_content: &[u8],
         topic: &str,
         message_encoding: &str,
         payload: &[u8],
@@ -910,7 +1119,7 @@ mod tests {
         let cursor = io::Cursor::new(Vec::new());
         let mut writer = mcap::Writer::new(cursor).expect("failed to create writer");
         let schema_id = writer
-            .add_schema(schema_name, "ros2msg", b"string data")
+            .add_schema(schema_name, "ros2msg", schema_content)
             .expect("failed to add schema");
         let channel_id = writer
             .add_channel(schema_id, topic, message_encoding, &Default::default())
@@ -933,13 +1142,49 @@ mod tests {
         (summary, buffer)
     }
 
+    /// Checks that a schema which parses but references a missing message definition falls back
+    /// to the raw decoder, instead of failing the whole file.
+    #[test]
+    fn ros2msg_channel_with_unresolvable_schema_is_forwarded_as_raw_blob() {
+        let (summary, buffer) = ros2_summary(
+            "custom_msgs/msg/Foo",
+            b"custom_msgs/Missing missing\n",
+            "unresolvable_topic",
+            "cdr",
+            &[0, 1, 0, 0],
+        );
+
+        let plan = DecoderRegistry::all_with_raw_fallback()
+            .plan(&buffer, &summary, &TopicFilter::default())
+            .expect("an unresolvable ROS 2 schema must not fail the whole file");
+
+        let assignment = plan
+            .assignments
+            .iter()
+            .find(|assignment| assignment.topic == "unresolvable_topic")
+            .expect("missing assignment");
+        assert_eq!(assignment.decoder.to_string(), "raw");
+
+        let emitter = TestEmitter::default();
+        plan.run(&buffer, &summary, TimeType::TimestampNs, &*emitter)
+            .expect("failed to run plan");
+        assert!(emitter.finish().iter().any(|chunk| {
+            chunk
+                .entity_path()
+                .to_string()
+                .ends_with("unresolvable_topic")
+                && chunk.num_rows() == 1
+        }));
+    }
+
     /// We expect CDR as encoding for ros2msg-schema messages.
     /// Test that a non-CDR channel that claims to have ros2msg
     /// falls back to raw forwarding instead of message reflection.
     #[test]
     fn non_cdr_ros2msg_channel_is_forwarded_as_raw_blob() {
-        let (summary, buffer) = ros2_summary_with_message_encoding(
+        let (summary, buffer) = ros2_summary(
             "custom_msgs/msg/Foo",
+            b"string data",
             "non_cdr_topic",
             "json",
             br#"{"data":"hello"}"#,
@@ -1038,8 +1283,9 @@ mod tests {
     /// Tests that semantic ROS 2 parsers also reject non-CDR channels.
     #[test]
     fn semantic_ros2_decoder_does_not_claim_non_cdr_channels() {
-        let (summary, buffer) = ros2_summary_with_message_encoding(
+        let (summary, buffer) = ros2_summary(
             "std_msgs/msg/String",
+            b"string data",
             "non_cdr_string_topic",
             "json",
             br#"{"data":"hello"}"#,
@@ -1055,6 +1301,37 @@ mod tests {
             .find(|assignment| assignment.topic == "non_cdr_string_topic")
             .expect("missing assignment");
         assert_eq!(assignment.decoder.to_string(), "raw");
+    }
+
+    /// Tests that standard ROS 2 schemas prefer semantic decoding by default and support reflection-only selection.
+    #[test]
+    fn standard_ros2_schema_respects_decoder_selection() {
+        let (summary, buffer) = ros2_summary(
+            "sensor_msgs/msg/Imu",
+            b"string data",
+            "imu_topic",
+            "cdr",
+            &[0, 1, 0, 0],
+        );
+
+        // In the default set of decoders, `sensor_msgs/msgs/Imu` is assigned to the semantic `ros2msg`.
+        let default_plan = DecoderRegistry::all_with_raw_fallback()
+            .plan(&buffer, &summary, &TopicFilter::default())
+            .expect("failed to plan");
+        assert_eq!(default_plan.assignments[0].decoder.to_string(), "ros2msg");
+
+        // If only `ros2_reflection` is selected, it shall run reflection for _all_ ROS messages including
+        // ones supported by `ros2msg` (i.e. also the IMU message here), and not fall back to `raw`.
+        let selected =
+            SelectedDecoders::Subset(BTreeSet::from([DecoderIdentifier::from("ros2_reflection")]));
+        let reflection_plan = DecoderRegistry::all_with_raw_fallback()
+            .select(&selected)
+            .plan(&buffer, &summary, &TopicFilter::default())
+            .expect("failed to plan");
+        assert_eq!(
+            reflection_plan.assignments[0].decoder.to_string(),
+            "ros2_reflection"
+        );
     }
 
     #[test]

@@ -1,7 +1,9 @@
 //! Official gRPC client for the Rerun Data Protocol.
 
+mod analytics_exporter;
 mod api_error;
 mod api_response_stream;
+mod chunk_cache;
 mod connection_client;
 mod connection_registry;
 mod grpc;
@@ -12,18 +14,21 @@ mod segment_chunk_provider;
 #[cfg(not(target_arch = "wasm32"))]
 pub use self::segment_chunk_provider::SegmentChunkProvider;
 
+pub use self::analytics_exporter::ConnectionAnalyticsExporter;
 pub use self::api_error::{ApiError, ApiErrorKind, ApiResult};
 
 pub use self::api_response_stream::ApiResponseStream;
+pub use self::chunk_cache::{ChunkCache, ChunkCacheHandle};
 pub use self::connection_client::{
-    ConnectionClient, FetchChunksResponseStream, GenericConnectionClient, SegmentQueryParams,
+    BoxedRedapClientStack, Connection, ConnectionClient, FetchChunksResponseStream, RedapClient,
+    SegmentQueryParams,
 };
 pub use self::connection_registry::{
     ClientCredentialsError, ConnectionRegistry, ConnectionRegistryHandle, CredentialSource,
     Credentials, SourcedCredentials,
 };
 pub use self::grpc::{
-    ChunksWithSegment, RedapClient, RedapClientInner, SegmentDownload, StreamingOptions, channel,
+    ChunksWithSegment, RedapClientStack, SegmentDownload, StreamingOptions, channel,
     fetch_chunks_response_to_chunk_and_segment_id, stream_blueprint_and_segment_from_server,
     stream_table_blueprint_segment_from_server, table_blueprint_log_channel,
 };
@@ -35,7 +40,7 @@ pub use self::grpc::PoolChannel;
 /// [`ApiError`]s without taking a direct dependency on `opentelemetry`.
 pub use opentelemetry::TraceId;
 
-const MAX_DECODING_MESSAGE_SIZE: usize = u32::MAX as usize;
+pub const MAX_DECODING_MESSAGE_SIZE: usize = u32::MAX as usize;
 
 /// Per-call deadline for `FetchChunks` requests sent via this client.
 ///
@@ -76,7 +81,7 @@ const MAX_DECODING_MESSAGE_SIZE: usize = u32::MAX as usize;
 /// The value is sized to be a hard cap above observed real `FetchChunks` p95
 /// (≈ 250s for large queries on production traffic), so it kills stuck calls
 /// without truncating legitimate large fetches.
-pub const FETCH_CHUNKS_DEADLINE: std::time::Duration = std::time::Duration::from_secs(300);
+pub const FETCH_CHUNKS_DEADLINE: std::time::Duration = std::time::Duration::from_mins(5);
 
 /// Responses from the catalog server can optionally include this header to communicate back the trace id of the request.
 const GRPC_RESPONSE_TRACEID_HEADER: &str = "x-request-trace-id";
@@ -329,7 +334,7 @@ where
     Err(last_retryable_err.expect("bug: this should not be None if we reach here"))
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(target_arch = "wasm32")))]
 mod retry_tests {
     use super::*;
     use std::sync::atomic::{AtomicUsize, Ordering};

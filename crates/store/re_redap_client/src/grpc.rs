@@ -19,8 +19,8 @@ use re_uri::Origin;
 use tokio_stream::StreamExt as _;
 
 use crate::{
-    ApiError, ApiErrorKind, ApiResult, ConnectionClient, MAX_DECODING_MESSAGE_SIZE,
-    SegmentQueryParams,
+    ApiError, ApiErrorKind, ApiResult, BoxedRedapClientStack, ConnectionClient,
+    MAX_DECODING_MESSAGE_SIZE, SegmentQueryParams,
 };
 
 #[cfg(target_arch = "wasm32")]
@@ -200,12 +200,6 @@ impl PoolChannel {
         }
     }
 
-    /// Wrap a single connection, with no load-balancing.
-    #[cfg(any(test, feature = "test_utils"))]
-    pub(crate) fn single(channel: tonic::transport::Channel) -> Self {
-        Self::new(vec![channel])
-    }
-
     /// Index of the connection with the fewest requests in flight.
     fn least_loaded(&self) -> usize {
         use std::sync::atomic::Ordering;
@@ -309,7 +303,7 @@ impl tower::Service<tonic::codegen::http::Request<tonic::body::Body>> for PoolCh
 }
 
 #[cfg(target_arch = "wasm32")]
-pub type RedapClientInner = re_auth::client::AuthService<
+pub type RedapClientStack = re_auth::client::AuthService<
     tonic::service::interceptor::InterceptedService<
         re_protos::headers::PropagateHeaders<tonic_web_wasm_client::Client>,
         re_protos::headers::RerunVersionInterceptor,
@@ -317,43 +311,38 @@ pub type RedapClientInner = re_auth::client::AuthService<
 >;
 
 /// Apply the standard SDK-side layer stack on top of an already-built channel
-/// and return the high-level `RedapClient` plus the layered service backing it.
-///
-/// Pulled out of [`client`] so [`crate::ConnectionClient::new_disconnected`]
-/// (and any future test fixture) can build a fully-typed client over a
-/// never-connecting channel without going through `with_retry`.
+/// and return the generated [`RawRedapClient`] plus the layered service backing it.
 #[cfg(target_arch = "wasm32")]
-pub(crate) fn assemble_client(
+pub(crate) fn assemble_grpc_client(
     channel: tonic_web_wasm_client::Client,
     credentials: Option<Arc<dyn re_auth::credentials::CredentialsProvider + Send + Sync + 'static>>,
-) -> (RedapClient, RedapClientInner) {
+) -> (RawRedapClient, RedapClientStack) {
     let middlewares = tower::ServiceBuilder::new()
         .layer(AuthDecorator::new(credentials))
         .layer(re_protos::headers::new_rerun_client_headers_layer());
 
-    let svc: RedapClientInner = tower::ServiceBuilder::new()
+    let client_stack: RedapClientStack = tower::ServiceBuilder::new()
         .layer(middlewares.into_inner())
         .service(channel);
 
-    let client = RerunCloudServiceClient::new(svc.clone())
-        .max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE);
-    (client, svc)
+    let client = redap_grpc_client(client_stack.clone());
+    (client, client_stack)
 }
 
 #[cfg(target_arch = "wasm32")]
-pub(crate) async fn client(
+pub(crate) async fn connect_grpc_client(
     origin: Origin,
     credentials: Option<Arc<dyn re_auth::credentials::CredentialsProvider + Send + Sync + 'static>>,
-) -> ApiResult<(RedapClient, RedapClientInner)> {
+) -> ApiResult<(RawRedapClient, RedapClientStack)> {
     let channel = crate::with_retry("redap_connection", || async {
         channel(origin.clone()).await
     })
     .await?;
-    Ok(assemble_client(channel, credentials))
+    Ok(assemble_grpc_client(channel, credentials))
 }
 
 #[cfg(all(not(target_arch = "wasm32"), feature = "perf_telemetry"))]
-pub type RedapClientInner = re_auth::client::AuthService<
+pub type RedapClientStack = re_auth::client::AuthService<
     tonic::service::interceptor::InterceptedService<
         re_protos::headers::PropagateHeaders<
             re_perf_telemetry::external::tower_http::trace::Trace<
@@ -374,26 +363,44 @@ pub type RedapClientInner = re_auth::client::AuthService<
 >;
 
 #[cfg(all(not(target_arch = "wasm32"), not(feature = "perf_telemetry")))]
-pub type RedapClientInner = re_auth::client::AuthService<
+pub type RedapClientStack = re_auth::client::AuthService<
     tonic::service::interceptor::InterceptedService<
         re_protos::headers::PropagateHeaders<PoolChannel>,
         re_protos::headers::RerunVersionInterceptor,
     >,
 >;
 
-pub type RedapClient = RerunCloudServiceClient<RedapClientInner>;
+pub(crate) type RawRedapClient = RerunCloudServiceClient<RedapClientStack>;
+
+fn redap_grpc_client(client_stack: RedapClientStack) -> RawRedapClient {
+    RerunCloudServiceClient::new(client_stack).max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE)
+}
+
+pub(crate) fn boxed_redap_grpc_client(
+    client_stack: RedapClientStack,
+) -> RerunCloudServiceClient<BoxedRedapClientStack> {
+    use tower::ServiceExt as _;
+
+    // Map the layered stack's `Box<dyn Error + Send + Sync>` error to a concrete `tonic::Status`
+    // before boxing. Keeping the boxed service's error type concrete avoids HRTB lifetime variance
+    // issues that otherwise prevent `Send` futures from being inferred at consumer sites (e.g.
+    // `re_datafusion`'s `make_future_send`).
+    let client_stack = tower::util::BoxCloneSyncService::new(
+        client_stack
+            .map_response(|response| response.map(tonic::body::Body::new))
+            .map_err(tonic::Status::from_error),
+    );
+
+    RerunCloudServiceClient::new(client_stack).max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE)
+}
 
 /// Apply the standard SDK-side layer stack on top of an already-built channel
-/// and return the high-level `RedapClient` plus the layered service backing it.
-///
-/// Pulled out of [`client`] so [`crate::ConnectionClient::new_disconnected`]
-/// (and any future test fixture) can build a fully-typed client over a
-/// never-connecting channel without going through `with_retry`.
+/// and return the generated [`RawRedapClient`] plus the layered service backing it.
 #[cfg(not(target_arch = "wasm32"))]
-pub(crate) fn assemble_client(
+pub(crate) fn assemble_grpc_client(
     channel: PoolChannel,
     credentials: Option<Arc<dyn re_auth::credentials::CredentialsProvider + Send + Sync + 'static>>,
-) -> (RedapClient, RedapClientInner) {
+) -> (RawRedapClient, RedapClientStack) {
     let middlewares = tower::ServiceBuilder::new()
         .layer(AuthDecorator::new(credentials))
         .layer(re_protos::headers::new_rerun_client_headers_layer());
@@ -401,25 +408,24 @@ pub(crate) fn assemble_client(
     #[cfg(feature = "perf_telemetry")]
     let middlewares = middlewares.layer(re_perf_telemetry::new_client_telemetry_layer());
 
-    let svc: RedapClientInner = tower::ServiceBuilder::new()
+    let client_stack: RedapClientStack = tower::ServiceBuilder::new()
         .layer(middlewares.into_inner())
         .service(channel);
 
-    let client = RerunCloudServiceClient::new(svc.clone())
-        .max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE);
-    (client, svc)
+    let client = redap_grpc_client(client_stack.clone());
+    (client, client_stack)
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-pub(crate) async fn client(
+pub(crate) async fn connect_grpc_client(
     origin: Origin,
     credentials: Option<Arc<dyn re_auth::credentials::CredentialsProvider + Send + Sync + 'static>>,
-) -> ApiResult<(RedapClient, RedapClientInner)> {
+) -> ApiResult<(RawRedapClient, RedapClientStack)> {
     let channel = crate::with_retry("redap_connection", || async {
         channel(origin.clone()).await
     })
     .await?;
-    Ok(assemble_client(channel, credentials))
+    Ok(assemble_grpc_client(channel, credentials))
 }
 
 /// Converts a `FetchChunksStream` stream into a stream of `Chunk`s.
@@ -475,15 +481,14 @@ pub fn fetch_chunks_response_to_chunk_and_segment_id(
                             )
                         })?;
 
-                        let chunk = re_chunk::Chunk::from_record_batch(&arrow_msg.batch).map_err(
-                            |err| {
+                        let chunk = re_chunk::Chunk::from_chunk_record_batch(&arrow_msg.batch)
+                            .map_err(|err| {
                                 ApiError::deserialization_with_source(
                                     trace_id,
                                     err,
                                     "failed to parse item in /FetchChunks response stream",
                                 )
-                            },
-                        )?;
+                            })?;
 
                         Ok((chunk, segment_id))
                     })
@@ -534,7 +539,7 @@ pub fn fetch_chunks_response_to_chunk_and_segment_id(
                 })?;
 
                 let chunk =
-                    re_chunk::Chunk::from_record_batch(&arrow_msg.batch).map_err(|err| {
+                    re_chunk::Chunk::from_chunk_record_batch(&arrow_msg.batch).map_err(|err| {
                         ApiError::deserialization_with_source(
                             trace_id,
                             err,
@@ -610,7 +615,6 @@ async fn stream_blueprint_segment(
 ) -> Result<ControlFlow<()>, ApiError> {
     let blueprint_store_info = StoreInfo {
         store_id: blueprint_store_id,
-        cloned_from: None,
         store_source: StoreSource::Unknown,
         store_version: None,
     };
@@ -768,7 +772,6 @@ pub async fn stream_blueprint_and_segment_from_server(
     if options.download.contains(SegmentDownload::SEGMENT) {
         let store_info = StoreInfo {
             store_id: recording_store_id,
-            cloned_from: None,
             store_source: StoreSource::Unknown,
             store_version: None,
         };
@@ -838,117 +841,76 @@ async fn stream_segment_from_server(
         }
     }
 
+    // Only recording datasets have assets, so a blueprint store has none to look up.
+    if store_id.is_recording() {
+        match client.get_assets_for_segment(dataset_id).await {
+            Ok(Some((asset_dataset_id, asset_segment_ids))) => {
+                // Every segment of the asset dataset is returned, so all of the dataset's assets
+                // are streamed for each segment that is opened.
+                for asset_segment_id in asset_segment_ids {
+                    // TODO(RR-5399): Cache asset manifests?
+                    // We don't support assets without manifests.
+                    match stream_manifest(
+                        client,
+                        tx,
+                        asset_dataset_id,
+                        &asset_segment_id,
+                        options,
+                        &store_id,
+                        ManifestKind::Asset,
+                    )
+                    .await
+                    {
+                        Ok(ManifestOutcome::Loaded) => {}
+
+                        Ok(ManifestOutcome::ReceiverDisconnected) => {
+                            return Ok(ControlFlow::Break(()));
+                        }
+
+                        Ok(ManifestOutcome::NoManifest { .. }) => {
+                            re_log::warn_once!(
+                                "The server has no manifest for this asset, skipping it\nAsset segment id: {asset_segment_id}"
+                            );
+                        }
+
+                        Err(err) => {
+                            re_log::warn!(
+                                "Failed to stream asset manifest, skipping it: {err}\nAsset segment id: {asset_segment_id}"
+                            );
+                        }
+                    }
+                }
+            }
+            Ok(None) => {}
+            Err(err) => match err.kind {
+                ApiErrorKind::NotFound | ApiErrorKind::Unimplemented => {}
+                _ => {
+                    re_log::warn!("Failed to fetch assets: {err}");
+                }
+            },
+        }
+    }
+
     // TODO(RR-2976): Do not, under any circumstances, try to chain gRPC streams
     // together. Interlaced streams are a giant footgun that will invariably lead to the exhaustion
     // of client's HTTP2 connection window, and ultimately to a complete stall of the entire system.
     // See the attached issues for more information.
 
-    let start_time = web_time::Instant::now();
-    let manifest_stream_result = client
-        .get_rrd_manifest_stream(dataset_id, segment_id.clone())
-        .await;
-    let trace_id = manifest_stream_result
-        .as_ref()
-        .ok()
-        .and_then(|s| s.trace_id());
-    match manifest_stream_result {
-        Ok(manifest_stream) => {
-            let mut manifest_stream = std::pin::pin!(manifest_stream);
-
-            let mut rrd_manifest_parts: Vec<Arc<re_log_encoding::RrdManifest>> = Vec::new();
-
-            while let Some(part_result) = manifest_stream.next().await {
-                let raw_rrd_manifest_part = part_result?;
-
-                let part_nr = rrd_manifest_parts.len() + 1;
-                re_log::debug!(
-                    "Received RRD manifest part #{part_nr}/? ({} deflated, {:.1}s elapsed)",
-                    re_format::format_bytes(raw_rrd_manifest_part.total_size_bytes() as _),
-                    start_time.elapsed().as_secs_f32(),
-                );
-
-                let rrd_manifest = re_log_encoding::RrdManifest::try_new(&raw_rrd_manifest_part)
-                    .map_err(|err| {
-                        ApiError::invalid_arguments_with_source(
-                            trace_id,
-                            err,
-                            "Invalid RRD manifest part",
-                        )
-                    })?;
-
-                let rrd_manifest = Arc::new(rrd_manifest);
-
-                if tx
-                    .send(DataSourceMessage::RrdManifest(
-                        store_id.clone(),
-                        rrd_manifest.clone(),
-                    ))
-                    .is_err()
-                {
-                    re_log::debug!("Receiver disconnected");
-                    return Ok(ControlFlow::Break(()));
-                }
-
-                rrd_manifest_parts.push(rrd_manifest);
-            }
-
-            if rrd_manifest_parts.is_empty() {
-                return Err(ApiError::deserialization(
-                    trace_id,
-                    "failed to parse the response for /GetRrdManifest (no data)",
-                ));
-            }
-
-            let part_nr = rrd_manifest_parts.len();
-            re_log::debug!(
-                "Full RRD manifest loaded in {:.1}s in {}",
-                start_time.elapsed().as_secs_f32(),
-                re_format::format_plural_s(part_nr, "part")
-            );
-
-            if tx
-                .send(DataSourceMessage::RrdManifestComplete(store_id.clone()))
-                .is_err()
-            {
-                re_log::debug!("Receiver disconnected");
-                return Ok(ControlFlow::Break(()));
-            }
-
-            match store_id.kind() {
-                StoreKind::Recording if !options.force_full_download => {
-                    re_log::debug!("Letting the viewer load chunks on-demand");
-                    return Ok(ControlFlow::Continue(()));
-                }
-                StoreKind::Recording | StoreKind::Blueprint => {
-                    re_log::debug!("Loading all of the chunks in one go; most important first");
-                    let refs: Vec<&re_log_encoding::RrdManifest> =
-                        rrd_manifest_parts.iter().map(|m| m.as_ref()).collect();
-                    let combined = re_log_encoding::RrdManifest::concat(&refs).map_err(|err| {
-                        ApiError::invalid_arguments_with_source(
-                            trace_id,
-                            err,
-                            "Failed to concatenate RRD manifest parts",
-                        )
-                    })?;
-                    let batch = sort_batch(combined.chunk_fetcher_rb()).map_err(|err| {
-                        ApiError::invalid_arguments_with_source(
-                            trace_id,
-                            err,
-                            "Failed to sort chunk index",
-                        )
-                    })?;
-                    return load_chunks(client, tx, &store_id, batch, options).await;
-                }
-            }
-        }
-        Err(err) => {
-            if err.kind == ApiErrorKind::Unimplemented {
-                re_log::debug_once!("The server does not support on-demand streaming"); // Legacy server
-            } else {
-                re_log::warn!("Failed to load RRD manifest: {err}");
-            }
-        }
-    }
+    let trace_id = match stream_manifest(
+        client,
+        tx,
+        dataset_id,
+        &segment_id,
+        options,
+        &store_id,
+        ManifestKind::Segment,
+    )
+    .await?
+    {
+        ManifestOutcome::Loaded => return Ok(ControlFlow::Continue(())),
+        ManifestOutcome::ReceiverDisconnected => return Ok(ControlFlow::Break(())),
+        ManifestOutcome::NoManifest { trace_id } => trace_id,
+    };
 
     // Fallback for servers that does not support the RRD manifests:
 
@@ -997,7 +959,7 @@ async fn stream_segment_from_server(
                 ApiError::invalid_arguments_with_source(trace_id, err, "Failed to sort chunk index")
             })?;
 
-            if let Some(chunk_ids) = chunk_id_column(&batch) {
+            if let Some(chunk_ids) = re_log_encoding::RrdManifest::col_chunk_ids_of(&batch) {
                 already_loaded_chunk_ids = chunk_ids.iter().copied().collect();
             } else {
                 re_log::warn_once!(
@@ -1046,7 +1008,7 @@ async fn stream_segment_from_server(
         ApiError::invalid_arguments_with_source(trace_id, err, "Failed to sort chunk index")
     })?;
 
-    if let Some(chunk_ids) = chunk_id_column(&batch)
+    if let Some(chunk_ids) = re_log_encoding::RrdManifest::col_chunk_ids_of(&batch)
         && !already_loaded_chunk_ids.is_empty()
     {
         // Filter out already loaded chunk IDs:
@@ -1073,11 +1035,175 @@ async fn stream_segment_from_server(
     }
 }
 
-fn chunk_id_column(batch: &RecordBatch) -> Option<&[ChunkId]> {
-    let array = batch
-        .column_by_name(re_log_encoding::RawRrdManifest::FIELD_CHUNK_ID)
-        .and_then(|array| array.as_fixed_size_binary_opt())?;
-    ChunkId::try_slice_from_arrow(array).ok()
+/// Whether a manifest describes a segment's own data, or an asset that segment references.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum ManifestKind {
+    /// The manifest of the segment being loaded.
+    Segment,
+
+    /// The manifest of an asset, which lives in the asset dataset and is shared by many segments.
+    Asset,
+}
+
+/// What came out of streaming a single manifest.
+enum ManifestOutcome {
+    /// The manifest was streamed, and any chunks it covers have been handled.
+    Loaded,
+
+    /// The server has no manifest for this segment, so the caller should fall back to listing
+    /// chunks itself.
+    NoManifest {
+        trace_id: Option<opentelemetry::TraceId>,
+    },
+
+    /// The log channel receiver went away, so there is nobody left to stream to.
+    ReceiverDisconnected,
+}
+
+async fn stream_manifest(
+    client: &mut ConnectionClient,
+    tx: &re_log_channel::LogSender,
+    dataset_id: EntryId,
+    segment_id: &SegmentId,
+    options: &StreamingOptions,
+    store_id: &StoreId,
+    manifest_kind: ManifestKind,
+) -> ApiResult<ManifestOutcome> {
+    let start_time = web_time::Instant::now();
+    let manifest_stream_result = client
+        .get_rrd_manifest_stream(dataset_id, segment_id.clone())
+        .await;
+    let trace_id = manifest_stream_result
+        .as_ref()
+        .ok()
+        .and_then(|s| s.trace_id());
+    match manifest_stream_result {
+        Ok(manifest_stream) => {
+            let mut manifest_stream = std::pin::pin!(manifest_stream);
+
+            let mut raw_rrd_manifest_parts = Vec::new();
+            let mut rrd_manifest_parts: Vec<Arc<re_log_encoding::RrdManifest>> = Vec::new();
+
+            while let Some(part_result) = manifest_stream.next().await {
+                let raw_rrd_manifest_part = part_result?;
+
+                let part_nr = rrd_manifest_parts.len() + 1;
+                re_log::debug!(
+                    "Received RRD manifest part #{part_nr}/? ({} deflated, {:.1}s elapsed)",
+                    re_format::format_bytes(raw_rrd_manifest_part.total_size_bytes() as _),
+                    start_time.elapsed().as_secs_f32(),
+                );
+
+                let rrd_manifest = re_log_encoding::RrdManifest::try_new(&raw_rrd_manifest_part)
+                    .map_err(|err| {
+                        ApiError::invalid_arguments_with_source(
+                            trace_id,
+                            err,
+                            "Invalid RRD manifest part",
+                        )
+                    })?;
+
+                let rrd_manifest = Arc::new(rrd_manifest);
+
+                // Mark the asset's chunks as cacheable before the client sees the manifest, so that
+                // any chunk it goes on to request is already known to be worth keeping.
+                if manifest_kind == ManifestKind::Asset {
+                    client.mark_asset_chunks(rrd_manifest.col_chunk_ids());
+                }
+
+                if tx
+                    .send(DataSourceMessage::RrdManifest(
+                        store_id.clone(),
+                        rrd_manifest.clone(),
+                    ))
+                    .is_err()
+                {
+                    re_log::debug!("Receiver disconnected");
+                    return Ok(ManifestOutcome::ReceiverDisconnected);
+                }
+
+                raw_rrd_manifest_parts.push(raw_rrd_manifest_part);
+                rrd_manifest_parts.push(rrd_manifest);
+            }
+
+            if rrd_manifest_parts.is_empty() {
+                return Err(ApiError::deserialization(
+                    trace_id,
+                    "failed to parse the response for /GetRrdManifest (no data)",
+                ));
+            }
+
+            let part_nr = rrd_manifest_parts.len();
+            re_log::debug!(
+                "Full RRD manifest loaded in {:.1}s in {}",
+                start_time.elapsed().as_secs_f32(),
+                re_format::format_plural_s(part_nr, "part")
+            );
+
+            // An asset manifest is only a part of what the store will receive, so the store is not
+            // done until its own manifest has arrived.
+            if manifest_kind == ManifestKind::Segment
+                && tx
+                    .send(DataSourceMessage::RrdManifestComplete(store_id.clone()))
+                    .is_err()
+            {
+                re_log::debug!("Receiver disconnected");
+                return Ok(ManifestOutcome::ReceiverDisconnected);
+            }
+
+            match store_id.kind() {
+                StoreKind::Recording if !options.force_full_download => {
+                    re_log::debug!("Letting the viewer load chunks on-demand");
+                    return Ok(ManifestOutcome::Loaded);
+                }
+                StoreKind::Recording | StoreKind::Blueprint => {
+                    re_log::debug!("Loading all of the chunks in one go; most important first");
+                    let combined = re_log_encoding::RawRrdManifest::merge(
+                        store_id.clone(),
+                        raw_rrd_manifest_parts,
+                    )
+                    .map_err(|err| {
+                        ApiError::invalid_arguments_with_source(
+                            trace_id,
+                            err,
+                            "Failed to merge RRD manifest parts",
+                        )
+                    })?;
+                    let combined =
+                        re_log_encoding::RrdManifest::try_new(&combined).map_err(|err| {
+                            ApiError::invalid_arguments_with_source(
+                                trace_id,
+                                err,
+                                "Invalid merged RRD manifest",
+                            )
+                        })?;
+                    let batch = sort_batch(combined.chunk_fetcher_rb()).map_err(|err| {
+                        ApiError::invalid_arguments_with_source(
+                            trace_id,
+                            err,
+                            "Failed to sort chunk index",
+                        )
+                    })?;
+
+                    // TODO(isse): Make sure full download works for assets.
+                    return load_chunks(client, tx, store_id, batch, options)
+                        .await
+                        .map(|flow| match flow {
+                            ControlFlow::Continue(()) => ManifestOutcome::Loaded,
+                            ControlFlow::Break(()) => ManifestOutcome::ReceiverDisconnected,
+                        });
+                }
+            }
+        }
+        Err(err) => {
+            if err.kind == ApiErrorKind::Unimplemented {
+                re_log::debug_once!("The server does not support on-demand streaming"); // Legacy server
+            } else {
+                re_log::warn!("Failed to load RRD manifest: {err}");
+            }
+        }
+    }
+    Ok(ManifestOutcome::NoManifest { trace_id })
 }
 
 /// Takes a dataframe that looks like an [`re_log_encoding::RrdManifest`] (has a `chunk_key` column).

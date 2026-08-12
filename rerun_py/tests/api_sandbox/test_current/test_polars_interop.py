@@ -36,7 +36,12 @@ Schema([('id', Binary),
 """
         )
 
-        df = df.drop(["id", "created_at", "updated_at"]).filter(pl.col("entry_kind") != 5).sort("name")
+        df = (
+            df
+            .drop(["id", "created_at", "updated_at"])
+            .filter((pl.col("entry_kind") != 5) & (pl.col("entry_kind") != 6))
+            .sort("name")
+        )
         assert str(df) == inline_snapshot("""\
 shape: (3, 2)
 ┌────────────┬────────────┐

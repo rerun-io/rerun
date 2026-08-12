@@ -3,7 +3,7 @@ use std::{borrow::Cow, collections::BTreeMap};
 use re_sdk_types::blueprint::components::VisualizerInstructionId;
 use vec1::Vec1;
 
-use super::{VisualizerInstructionReport, VisualizerReportSeverity};
+use super::{ViewerDiagnostic, ViewerReportSeverity, VisualizerInstructionReport};
 use crate::{
     PerVisualizerTypeInViewClass, ViewContextCollection, ViewSystemExecutionError,
     ViewSystemIdentifier, VisualizerExecutionOutput, VisualizerReportContext,
@@ -128,13 +128,15 @@ impl VisualizerTypeReport {
             }
 
             Err(err) => Some(Self::OverallError(VisualizerInstructionReport {
-                severity: VisualizerReportSeverity::Error,
+                diagnostic: ViewerDiagnostic {
+                    severity: ViewerReportSeverity::Error,
+                    summary: re_error::format_ref(err),
+                    details: None,
+                },
                 context: VisualizerReportContext {
                     component: None,
                     extra: None,
                 },
-                summary: re_error::format_ref(err),
-                details: None,
             })),
         }
     }
@@ -180,13 +182,13 @@ impl VisualizerTypeReport {
     pub fn highest_severity_for(
         &self,
         instruction_id: &VisualizerInstructionId,
-    ) -> Option<VisualizerReportSeverity> {
+    ) -> Option<ViewerReportSeverity> {
         match self {
-            Self::OverallError(_) => Some(VisualizerReportSeverity::Error),
+            Self::OverallError(_) => Some(ViewerReportSeverity::Error),
             Self::PerInstructionReport(reports) => reports
                 .get(instruction_id)?
                 .iter()
-                .map(|r| r.severity)
+                .map(|r| r.diagnostic.severity)
                 .max(),
         }
     }

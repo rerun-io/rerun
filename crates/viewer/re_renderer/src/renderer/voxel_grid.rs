@@ -487,6 +487,7 @@ mod tests {
             &ctx,
             draw_data.into(),
             &DrawableCollectionViewInfo {
+                view_id: crate::ViewBuilderId::new(0),
                 camera_world_position: glam::Vec3A::ZERO,
             },
         );
@@ -545,6 +546,7 @@ mod tests {
             &ctx,
             draw_data.into(),
             &DrawableCollectionViewInfo {
+                view_id: crate::ViewBuilderId::new(0),
                 camera_world_position: glam::Vec3A::ZERO,
             },
         );
@@ -614,6 +616,7 @@ mod tests {
             &ctx,
             draw_data.into(),
             &DrawableCollectionViewInfo {
+                view_id: crate::ViewBuilderId::new(0),
                 camera_world_position: glam::Vec3A::ZERO,
             },
         );

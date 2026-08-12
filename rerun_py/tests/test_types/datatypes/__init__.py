@@ -2,81 +2,126 @@
 
 from __future__ import annotations
 
-from .affix_fuzzer1 import AffixFuzzer1, AffixFuzzer1ArrayLike, AffixFuzzer1Batch, AffixFuzzer1Like
-from .affix_fuzzer2 import AffixFuzzer2, AffixFuzzer2ArrayLike, AffixFuzzer2Batch, AffixFuzzer2Like
-from .affix_fuzzer3 import AffixFuzzer3, AffixFuzzer3ArrayLike, AffixFuzzer3Batch, AffixFuzzer3Like
-from .affix_fuzzer4 import AffixFuzzer4, AffixFuzzer4ArrayLike, AffixFuzzer4Batch, AffixFuzzer4Like
-from .affix_fuzzer5 import AffixFuzzer5, AffixFuzzer5ArrayLike, AffixFuzzer5Batch, AffixFuzzer5Like
-from .affix_fuzzer20 import AffixFuzzer20, AffixFuzzer20ArrayLike, AffixFuzzer20Batch, AffixFuzzer20Like
-from .affix_fuzzer21 import AffixFuzzer21, AffixFuzzer21ArrayLike, AffixFuzzer21Batch, AffixFuzzer21Like
-from .affix_fuzzer22 import AffixFuzzer22, AffixFuzzer22ArrayLike, AffixFuzzer22Batch, AffixFuzzer22Like
 from .enum_test import EnumTest, EnumTestArrayLike, EnumTestBatch, EnumTestLike
+from .fixed_size_bytes import FixedSizeBytes, FixedSizeBytesArrayLike, FixedSizeBytesBatch, FixedSizeBytesLike
+from .fixed_size_enum_array import (
+    FixedSizeEnumArray,
+    FixedSizeEnumArrayArrayLike,
+    FixedSizeEnumArrayBatch,
+    FixedSizeEnumArrayLike,
+)
+from .fixed_size_wide_enum_array import (
+    FixedSizeWideEnumArray,
+    FixedSizeWideEnumArrayArrayLike,
+    FixedSizeWideEnumArrayBatch,
+    FixedSizeWideEnumArrayLike,
+)
 from .flattened_scalar import FlattenedScalar, FlattenedScalarArrayLike, FlattenedScalarBatch, FlattenedScalarLike
+from .float16fields import Float16Fields, Float16FieldsArrayLike, Float16FieldsBatch, Float16FieldsLike
+from .many_vec3 import ManyVec3, ManyVec3ArrayLike, ManyVec3Batch, ManyVec3Like
+from .mixed_fields import MixedFields, MixedFieldsArrayLike, MixedFieldsBatch, MixedFieldsLike
 from .multi_enum import MultiEnum, MultiEnumArrayLike, MultiEnumBatch, MultiEnumLike
+from .nested_union import NestedUnion, NestedUnionArrayLike, NestedUnionBatch, NestedUnionLike
+from .optional_union_table import (
+    OptionalUnionTable,
+    OptionalUnionTableArrayLike,
+    OptionalUnionTableBatch,
+    OptionalUnionTableLike,
+)
+from .primitive_and_string import (
+    PrimitiveAndString,
+    PrimitiveAndStringArrayLike,
+    PrimitiveAndStringBatch,
+    PrimitiveAndStringLike,
+)
 from .primitive_component import (
     PrimitiveComponent,
     PrimitiveComponentArrayLike,
     PrimitiveComponentBatch,
     PrimitiveComponentLike,
 )
+from .scalar_union import ScalarUnion, ScalarUnionArrayLike, ScalarUnionBatch, ScalarUnionLike
 from .string_component import StringComponent, StringComponentArrayLike, StringComponentBatch, StringComponentLike
+from .transparent_optional_float import (
+    TransparentOptionalFloat,
+    TransparentOptionalFloatArrayLike,
+    TransparentOptionalFloatBatch,
+    TransparentOptionalFloatLike,
+)
 from .valued_enum import ValuedEnum, ValuedEnumArrayLike, ValuedEnumBatch, ValuedEnumLike
+from .wide_enum import WideEnum, WideEnumArrayLike, WideEnumBatch, WideEnumLike
 
 __all__ = [
-    "AffixFuzzer1",
-    "AffixFuzzer1ArrayLike",
-    "AffixFuzzer1Batch",
-    "AffixFuzzer1Like",
-    "AffixFuzzer2",
-    "AffixFuzzer2ArrayLike",
-    "AffixFuzzer2Batch",
-    "AffixFuzzer2Like",
-    "AffixFuzzer3",
-    "AffixFuzzer3ArrayLike",
-    "AffixFuzzer3Batch",
-    "AffixFuzzer3Like",
-    "AffixFuzzer4",
-    "AffixFuzzer4ArrayLike",
-    "AffixFuzzer4Batch",
-    "AffixFuzzer4Like",
-    "AffixFuzzer5",
-    "AffixFuzzer5ArrayLike",
-    "AffixFuzzer5Batch",
-    "AffixFuzzer5Like",
-    "AffixFuzzer20",
-    "AffixFuzzer20ArrayLike",
-    "AffixFuzzer20Batch",
-    "AffixFuzzer20Like",
-    "AffixFuzzer21",
-    "AffixFuzzer21ArrayLike",
-    "AffixFuzzer21Batch",
-    "AffixFuzzer21Like",
-    "AffixFuzzer22",
-    "AffixFuzzer22ArrayLike",
-    "AffixFuzzer22Batch",
-    "AffixFuzzer22Like",
     "EnumTest",
     "EnumTestArrayLike",
     "EnumTestBatch",
     "EnumTestLike",
+    "FixedSizeBytes",
+    "FixedSizeBytesArrayLike",
+    "FixedSizeBytesBatch",
+    "FixedSizeBytesLike",
+    "FixedSizeEnumArray",
+    "FixedSizeEnumArrayArrayLike",
+    "FixedSizeEnumArrayBatch",
+    "FixedSizeEnumArrayLike",
+    "FixedSizeWideEnumArray",
+    "FixedSizeWideEnumArrayArrayLike",
+    "FixedSizeWideEnumArrayBatch",
+    "FixedSizeWideEnumArrayLike",
     "FlattenedScalar",
     "FlattenedScalarArrayLike",
     "FlattenedScalarBatch",
     "FlattenedScalarLike",
+    "Float16Fields",
+    "Float16FieldsArrayLike",
+    "Float16FieldsBatch",
+    "Float16FieldsLike",
+    "ManyVec3",
+    "ManyVec3ArrayLike",
+    "ManyVec3Batch",
+    "ManyVec3Like",
+    "MixedFields",
+    "MixedFieldsArrayLike",
+    "MixedFieldsBatch",
+    "MixedFieldsLike",
     "MultiEnum",
     "MultiEnumArrayLike",
     "MultiEnumBatch",
     "MultiEnumLike",
+    "NestedUnion",
+    "NestedUnionArrayLike",
+    "NestedUnionBatch",
+    "NestedUnionLike",
+    "OptionalUnionTable",
+    "OptionalUnionTableArrayLike",
+    "OptionalUnionTableBatch",
+    "OptionalUnionTableLike",
+    "PrimitiveAndString",
+    "PrimitiveAndStringArrayLike",
+    "PrimitiveAndStringBatch",
+    "PrimitiveAndStringLike",
     "PrimitiveComponent",
     "PrimitiveComponentArrayLike",
     "PrimitiveComponentBatch",
     "PrimitiveComponentLike",
+    "ScalarUnion",
+    "ScalarUnionArrayLike",
+    "ScalarUnionBatch",
+    "ScalarUnionLike",
     "StringComponent",
     "StringComponentArrayLike",
     "StringComponentBatch",
     "StringComponentLike",
+    "TransparentOptionalFloat",
+    "TransparentOptionalFloatArrayLike",
+    "TransparentOptionalFloatBatch",
+    "TransparentOptionalFloatLike",
     "ValuedEnum",
     "ValuedEnumArrayLike",
     "ValuedEnumBatch",
     "ValuedEnumLike",
+    "WideEnum",
+    "WideEnumArrayLike",
+    "WideEnumBatch",
+    "WideEnumLike",
 ]

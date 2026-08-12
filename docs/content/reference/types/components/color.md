@@ -34,6 +34,7 @@ UInt32
 * [`Cylinders3D`](../archetypes/cylinders3d.md)
 * [`Ellipses2D`](../archetypes/ellipses2d.md)
 * [`Ellipsoids3D`](../archetypes/ellipsoids3d.md)
+* [`GaussianSplats3D`](../archetypes/gaussian_splats3d.md)
 * [`GeoLineStrings`](../archetypes/geo_line_strings.md)
 * [`GeoPoints`](../archetypes/geo_points.md)
 * [`GraphNodes`](../archetypes/graph_nodes.md)
@@ -47,4 +48,4 @@ UInt32
 * [`SeriesPoints`](../archetypes/series_points.md)
 * [`StateConfiguration`](../archetypes/state_configuration.md)
 * [`TextLog`](../archetypes/text_log.md)
-* [`VoxelGridMap`](../archetypes/voxel_grid_map.md?speculative-link)
+* [`VoxelGridMap`](../archetypes/voxel_grid_map.md)

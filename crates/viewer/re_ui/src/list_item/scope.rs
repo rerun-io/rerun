@@ -135,6 +135,9 @@ pub struct LayoutInfo {
     ///
     /// This value is measured from `left_x`.
     pub(crate) property_content_max_width: Option<f32>,
+
+    /// Whether the next list item is the first item in this scope.
+    is_first_item: bool,
 }
 
 impl Default for LayoutInfo {
@@ -144,6 +147,7 @@ impl Default for LayoutInfo {
             left_column_width: None,
             scope_id: egui::Id::NULL,
             property_content_max_width: None,
+            is_first_item: true,
         }
     }
 }
@@ -238,6 +242,19 @@ impl LayoutInfoStack {
             state.cloned().unwrap_or_default()
         })
     }
+
+    /// Returns whether the next list item is the first item in the current scope.
+    pub(crate) fn take_is_first_item(ctx: &egui::Context) -> bool {
+        ctx.data_mut(|writer| {
+            let stack: &mut Self = writer.get_temp_mut_or_default(egui::Id::NULL);
+            let Some(layout_info) = stack.0.last_mut() else {
+                re_log::debug_assert!(false, "ListItem was not wrapped in list_item_scope()");
+                return false;
+            };
+
+            std::mem::replace(&mut layout_info.is_first_item, false)
+        })
+    }
 }
 
 /// Create a scope in which `[ListItem]`s can be created.
@@ -261,7 +278,7 @@ impl LayoutInfoStack {
 ///   list items.
 pub fn list_item_scope<R>(
     ui: &mut egui::Ui,
-    id_salt: impl std::hash::Hash,
+    id_salt: impl egui::AsId,
     content: impl FnOnce(&mut egui::Ui) -> R,
 ) -> InnerResponse<R> {
     ui.sanity_check();
@@ -290,6 +307,7 @@ pub fn list_item_scope<R>(
         left_column_width,
         scope_id,
         property_content_max_width: layout_stats.property_content_max_width,
+        is_first_item: true,
     };
 
     let is_root = ListItemNavigation::init_if_root(ui.ctx());

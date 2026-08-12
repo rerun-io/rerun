@@ -31,6 +31,19 @@ pub mod external {
     pub use egui_kittest;
 }
 
+/// Resolve a path under the workspace-root `tests/assets/` directory.
+///
+/// e.g. `asset_path("gaussian_splats/cactus.ply")`.
+pub fn asset_path(relative_path: impl AsRef<std::path::Path>) -> std::path::PathBuf {
+    // `crates/viewer/re_test_context` → `crates/viewer` → `crates` → repo-root.
+    std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .ancestors()
+        .nth(3)
+        .expect("workspace root is three ancestors up from crates/viewer/re_test_context")
+        .join("tests/assets")
+        .join(relative_path)
+}
+
 /// Harness to execute code that rely on [`crate::ViewerContext`].
 ///
 /// Example:
@@ -59,6 +72,11 @@ pub struct TestContext {
     /// Store hub prepopulated with a single recording & a blueprint recording.
     pub store_hub: Mutex<StoreHub>,
     pub view_class_registry: ViewClassRegistry,
+
+    /// App-level caches for data that is not tied to any particular store.
+    ///
+    /// See [`AppContext::app_caches`].
+    pub app_caches: re_viewer_context::AppCaches,
 
     // Mutex is needed, so we can update these from the `run` method
     pub selection_state: Mutex<ApplicationSelectionState>,
@@ -317,6 +335,7 @@ impl TestContext {
             called_setup_kittest_for_rendering: AtomicBool::new(false),
 
             store_hub: Mutex::new(store_hub),
+            app_caches: Default::default(),
         }
     }
 
@@ -350,8 +369,10 @@ fn create_egui_renderstate() -> egui_wgpu::RenderState {
         .into(),
 
         // None of these matter for tests as we're not going to draw to a surfaces.
-        present_mode: wgpu::PresentMode::Immediate,
-        desired_maximum_frame_latency: None,
+        surface: egui_wgpu::SurfaceConfig {
+            present_mode: wgpu::PresentMode::Immediate,
+            desired_maximum_frame_latency: None,
+        },
         on_surface_status: Arc::new(|_| {
             unreachable!("tests aren't expected to draw to surfaces");
         }),
@@ -608,6 +629,7 @@ impl TestContext {
 
         let mut store_hub = self.store_hub.lock();
         store_hub.begin_frame_caches(Some(&self.recording_store_id));
+        self.app_caches.begin_frame();
 
         let db = store_hub.entity_db_mut(&self.recording_store_id).unwrap();
         if db.can_fetch_chunks_from_redap() {
@@ -673,6 +695,7 @@ impl TestContext {
 
                 storage_context: &storage_context,
                 active_store_context: Some(&store_context),
+                app_caches: &self.app_caches,
 
                 component_ui_registry: &self.component_ui_registry,
                 view_class_registry: &self.view_class_registry,
@@ -736,7 +759,7 @@ impl TestContext {
         mut func: impl FnMut(&ViewerContext<'_>, &mut egui::Ui),
     ) {
         egui::__run_test_ui(|ui| {
-            egui::CentralPanel::default().show_inside(ui, |ui| {
+            egui::CentralPanel::default().show(ui, |ui| {
                 let egui_ctx = ui.ctx().clone();
 
                 self.run(&egui_ctx, |ctx| {
@@ -772,7 +795,7 @@ impl TestContext {
         let mut result = None;
 
         egui::__run_test_ui(|ui| {
-            egui::CentralPanel::default().show_inside(ui, |ui| {
+            egui::CentralPanel::default().show(ui, |ui| {
                 let egui_ctx = ui.ctx().clone();
 
                 self.run(&egui_ctx, |ctx| {
@@ -923,8 +946,12 @@ impl TestContext {
                 | SystemCommand::ClearActiveBlueprint
                 | SystemCommand::ClearActiveBlueprintAndEnableHeuristics
                 | SystemCommand::AddRedapServer { .. }
+                | SystemCommand::RefreshRedapServer(_)
+                | SystemCommand::RefreshRedapEntry { .. }
                 | SystemCommand::RemoveRedapServer(_)
                 | SystemCommand::EditRedapServerModal { .. }
+                | SystemCommand::RedapServer(_)
+                | SystemCommand::Table(_)
                 | SystemCommand::UndoBlueprint { .. }
                 | SystemCommand::RedoBlueprint { .. }
                 | SystemCommand::CloseAllEntries
@@ -943,7 +970,7 @@ impl TestContext {
             }
 
             if !handled {
-                eprintln!("Ignored system command: {command_name:?}",);
+                eprintln!("Ignored system command: {command_name:?}");
             }
         }
     }

@@ -62,10 +62,10 @@ jobs:
           [ubuntu-latest-16-cores, macos-26-xlarge, windows-latest-8-cores]
     runs-on: ${{ matrix.runs_on }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
       - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: 1.92.0
+          toolchain: 1.95.0
 
       - run: cargo build -p rerun # Intentionally NOT using pixi, because we wanna check that we can build outside of pixi
 
@@ -368,7 +368,7 @@ jobs:
       # First delete the old prerelease. If we don't do this, we don't get things like
       # proper source-archives and changelog info.
       # https://github.com/dev-drprasad/delete-tag-and-release
-      - uses: dev-drprasad/delete-tag-and-release@v0.2.1
+      - uses: dev-drprasad/delete-tag-and-release@5eafd8668311bf3e4d6c1e9898f32a317103de68 # v0.2.1
         with:
           tag_name: prerelease
           delete_release: true
@@ -378,7 +378,7 @@ jobs:
       # Create the actual prerelease
       # https://github.com/ncipollo/release-action
       - name: GitHub Release
-        uses: ncipollo/release-action@v1.12.0
+        uses: ncipollo/release-action@a2e71bdd4e7dab70ca26a852f29600c98b33153e # v1.12.0
         with:
           body: |
             This is a prerelease. It is not intended for production use.

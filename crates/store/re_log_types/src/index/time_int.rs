@@ -161,7 +161,8 @@ impl TimeInt {
         match self.0 {
             Some(t) => {
                 let v = t.get();
-                let snapped = (v + snap_interval / 2).div_euclid(snap_interval) * snap_interval;
+                let snapped =
+                    (v.saturating_add(snap_interval / 2)).div_euclid(snap_interval) * snap_interval;
                 Self::new_temporal(snapped)
             }
             None => Self::STATIC,

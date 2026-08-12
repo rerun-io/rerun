@@ -1,14 +1,12 @@
 use crate::analytics::{QueryInfo, QueryType, expr_filter_signature};
 use crate::batch_coalescer::coalesce_exec::SizedCoalesceBatchesExec;
 use crate::batch_coalescer::coalescer::CoalescerOptions;
-use crate::metrics_capture::QueryMetrics;
 use crate::pushdown_expressions::{apply_filter_expr_to_queries, filter_expr_is_supported};
 use ahash::{HashMap, HashMapExt as _, HashSet};
 use arrow::array::{
     ArrayRef, DurationNanosecondArray, Int64Array, RecordBatch, TimestampMicrosecondArray,
     TimestampMillisecondArray, TimestampNanosecondArray, TimestampSecondArray, UInt32Array,
 };
-use arrow::compute::concat_batches;
 use arrow::datatypes::{DataType, Field, Int64Type, Schema, SchemaRef, TimeUnit};
 use arrow::record_batch::RecordBatchOptions;
 use async_trait::async_trait;
@@ -20,6 +18,7 @@ use datafusion::physical_plan::ExecutionPlan;
 use futures::StreamExt as _;
 use itertools::Itertools as _;
 use parking_lot::Mutex;
+use re_async::AsyncRuntimeHandle;
 use re_dataframe::external::re_chunk_store::ChunkStore;
 use re_dataframe::{Index, IndexValue, QueryExpression, SparseFillStrategy};
 use re_log_types::{EntityPath, EntryId};
@@ -41,7 +40,6 @@ use re_sorbet::{
     BatchType, ChunkColumnDescriptors, ColumnDescriptor, ColumnKind, ComponentColumnSelector,
 };
 use re_uri::Origin;
-use std::any::Any;
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 use std::str::FromStr as _;
@@ -71,6 +69,28 @@ pub(crate) fn force_grpc() -> bool {
 #[cfg(target_arch = "wasm32")]
 pub(crate) fn force_grpc() -> bool {
     false
+}
+
+/// How many of a scan's `query_dataset` requests run concurrently.
+///
+/// A scan may issue several; this bounds how many are in flight at
+/// once. On native the width is `pipeline_budget::query_dataset_max_concurrency`,
+/// and each request also takes a permit from the process-wide
+/// `pipeline_budget::query_dataset_semaphore` so co-tenant scans share one
+/// ceiling. On wasm `pipeline_budget` isn't compiled in and there's no env, so
+/// the width is a small fixed constant.
+fn query_dataset_fanout() -> usize {
+    cfg_select! {
+        target_arch = "wasm32" => {
+            /// gRPC-web requests overlap usefully even though wasm is single-threaded;
+            /// kept modest since there's no process-wide limiter to back it up.
+            const WASM_QUERY_DATASET_FANOUT: usize = 8;
+            WASM_QUERY_DATASET_FANOUT
+        }
+        _ => {
+            crate::pipeline_budget::query_dataset_max_concurrency()
+        }
+    }
 }
 
 /// Sets the size for output record batches in rows. The last batch will likely be smaller.
@@ -199,7 +219,7 @@ impl DataframeQueryTableProvider<ConnectionClient> {
     #[tracing::instrument(level = "info", skip_all)]
     pub async fn new(
         origin: Origin,
-        connection: ConnectionRegistryHandle,
+        connection_registry: ConnectionRegistryHandle,
         dataset_id: EntryId,
         query_expression: &QueryExpression,
         segment_ids: &[impl AsRef<str> + Sync],
@@ -208,10 +228,10 @@ impl DataframeQueryTableProvider<ConnectionClient> {
         #[cfg(not(target_arch = "wasm32"))] trace_headers: Option<crate::TraceHeaders>,
         metrics_collectors: Vec<crate::MetricsCollector>,
     ) -> ApiResult<Self> {
-        let client = connection.client(origin.clone()).await?;
+        let connection = connection_registry.connection(origin.clone()).await?;
 
         let mut provider = Self::new_from_client(
-            client,
+            connection.client,
             dataset_id,
             query_expression,
             segment_ids,
@@ -223,8 +243,17 @@ impl DataframeQueryTableProvider<ConnectionClient> {
         )
         .await?;
 
-        let analytics = crate::ConnectionAnalytics::new(origin, &provider.client);
-        provider.analytics = Some(analytics);
+        if let Some(exporter) = connection.analytics {
+            let async_runtime = AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen()
+                .map_err(|err| {
+                    ApiError::internal_with_source(
+                        None,
+                        err,
+                        "failed to capture the async runtime for query analytics",
+                    )
+                })?;
+            provider.analytics = Some(crate::ConnectionAnalytics::new(exporter, async_runtime));
+        }
 
         Ok(provider)
     }
@@ -405,10 +434,6 @@ impl<T: DataframeClientAPI> DataframeQueryTableProvider<T> {
 
 #[async_trait]
 impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
     fn schema(&self) -> SchemaRef {
         Arc::clone(&self.schema)
     }
@@ -537,63 +562,100 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
 
             let mut trace_id: Option<opentelemetry::TraceId> = None;
 
-            for dataset_query in dataset_queries {
-                let query_start = Instant::now();
+            // These are independent read-only queries, so fan them out with
+            // bounded concurrency (`query_dataset_fanout`). Order doesn't
+            // matter: the batches are concatenated and deduplicated by chunk id
+            // below.
+            let queries_start = Instant::now();
+            let mut response_futures = futures::stream::iter(dataset_queries)
+                .map(|dataset_query| {
+                    let client = self.client.clone();
+                    let dataset_id = self.dataset_id;
+                    async move {
+                        // Hold a process-wide permit for the whole open+drain so
+                        // co-tenant queries share one ceiling on concurrent
+                        // `query_dataset` streams (the fan-out width alone only
+                        // bounds a single scan). Dropped when this task ends.
+                        #[cfg(not(target_arch = "wasm32"))]
+                        let _permit = crate::pipeline_budget::query_dataset_semaphore()
+                            .acquire()
+                            .await
+                            .expect("query_dataset semaphore is never closed");
 
-                // Build the proto request once, then clone it per retry attempt (`tonic::Request`
-                // isn't `Clone`). The server rejects `QueryDataset` with `ResourceExhausted`
-                // fail-fast (before any work) when its stream-concurrency limiter is saturated, so
-                // retrying the open is idempotent. Map tonic → `ApiError` *inside* the retry so the
-                // predicate sees `ResourcesExhausted`, and to `DataFusionError` *outside*.
-                let proto_request: re_protos::cloud::v1alpha1::QueryDatasetRequest =
-                    dataset_query.into();
-                let dataset_id = self.dataset_id;
-                let response =
-                    re_redap_client::with_retry_resource_exhausted("query_dataset", || {
-                        let mut client = self.client.clone();
-                        let request =
-                            tonic::Request::new(proto_request.clone()).with_entry_id(dataset_id);
-                        async move {
-                            client
-                                .query_dataset(request)
-                                .await
-                                .map_err(|err| ApiError::tonic(err, "query_dataset"))
+                        // Build the proto request once, then clone it per retry attempt
+                        // (`tonic::Request` isn't `Clone`). The server rejects `QueryDataset`
+                        // with `ResourceExhausted` fail-fast (before any work) when its
+                        // stream-concurrency limiter is saturated, so retrying the open is
+                        // idempotent. Map tonic → `ApiError` *inside* the retry so the predicate
+                        // sees `ResourcesExhausted`, and to `DataFusionError` *outside*.
+                        let proto_request: re_protos::cloud::v1alpha1::QueryDatasetRequest =
+                            dataset_query.into();
+                        let response =
+                            re_redap_client::with_retry_resource_exhausted("query_dataset", || {
+                                let mut client = client.clone();
+                                let request = tonic::Request::new(proto_request.clone())
+                                    .with_entry_id(dataset_id);
+                                async move {
+                                    client
+                                        .query_dataset(request)
+                                        .await
+                                        .map_err(|err| ApiError::tonic(err, "query_dataset"))
+                                }
+                            })
+                            .await
+                            .map_err(|err| err.into_df_error())?;
+
+                        // Capture the server-side trace-id from response metadata.
+                        let trace_id = re_redap_client::extract_trace_id(response.metadata());
+
+                        let mut response_stream = response.into_inner();
+                        let mut batches = Vec::new();
+                        let mut time_to_first: Option<Duration> = None;
+
+                        while let Some(response) = response_stream.next().await {
+                            if time_to_first.is_none() {
+                                time_to_first = Some(queries_start.elapsed());
+                            }
+
+                            let response = response.map_err(|err| {
+                                ApiError::tonic(err, "query_dataset response stream")
+                                    .with_trace_id(trace_id)
+                                    .into_df_error()
+                            })?;
+                            let Some(dataframe_part) = response.data else {
+                                continue;
+                            };
+                            let batch: RecordBatch = dataframe_part.try_into().map_err(|err| {
+                                ApiError::deserialization_with_source(
+                                    trace_id,
+                                    err,
+                                    "decoding query_dataset response batch",
+                                )
+                                .into_df_error()
+                            })?;
+
+                            batches.push(batch);
                         }
-                    })
-                    .await
-                    .map_err(|err| err.into_df_error())?;
 
-                // Capture the server-side trace-id from response metadata.
-                if trace_id.is_none() {
-                    trace_id = re_redap_client::extract_trace_id(response.metadata());
-                }
-
-                let mut response_stream = response.into_inner();
-
-                while let Some(response) = response_stream.next().await {
-                    if time_to_first_chunk_info.is_none() {
-                        time_to_first_chunk_info = Some(query_start.elapsed());
+                        Ok::<_, DataFusionError>((batches, time_to_first, trace_id))
                     }
+                })
+                .buffer_unordered(query_dataset_fanout());
 
-                    let response = response.map_err(|err| {
-                        ApiError::tonic(err, "query_dataset response stream")
-                            .with_trace_id(trace_id)
-                            .into_df_error()
-                    })?;
-                    let Some(dataframe_part) = response.data else {
-                        continue;
-                    };
-                    let batch: RecordBatch = dataframe_part.try_into().map_err(|err| {
-                        ApiError::deserialization_with_source(
-                            trace_id,
-                            err,
-                            "decoding query_dataset response batch",
-                        )
-                        .into_df_error()
-                    })?;
+            while let Some(result) = response_futures.next().await {
+                let (batches, time_to_first, response_trace_id) = result?;
 
-                    chunk_info_batches.push(batch);
+                if trace_id.is_none() {
+                    trace_id = response_trace_id;
                 }
+                // Time to first chunk info is the earliest first-response across
+                // all concurrent queries, measured from the shared fan-out start.
+                time_to_first_chunk_info = match (time_to_first_chunk_info, time_to_first) {
+                    (Some(current), Some(candidate)) => Some(current.min(candidate)),
+                    (existing, candidate) => existing.or(candidate),
+                };
+
+                chunk_info_batches.extend(batches);
             }
             let chunk_info_batches = compute_unique_chunk_info_ids(chunk_info_batches)?;
 
@@ -632,20 +694,17 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
                 filters_signatures_unsupported,
             };
 
-            // Construct the plan's `QueryMetrics` here so it can be shared by
-            // both the analytics struct (for PostHog Drop-time span building)
-            // and `SegmentStreamExec` (for fetch counters + ad-hoc
-            // `EXPLAIN ANALYZE` MetricsSet). Single source of truth: there is
-            // no parallel `MetricsSet` accumulator.
-            let metrics = Arc::new(QueryMetrics::new(query_info));
-
-            // Begin analytics tracking. The PostHog OTLP send is gated by
-            // `self.analytics.is_some()`; the resulting struct is always
+            // Begin analytics tracking. This also constructs the plan's
+            // `QueryMetrics` (fetch counters + ad-hoc `EXPLAIN ANALYZE`
+            // MetricsSet), owned by the analytics struct as the single source
+            // of truth — `SegmentStreamExec` reads it through
+            // `PendingQueryAnalytics::metrics`. The PostHog OTLP send is gated
+            // by `self.analytics.is_some()`; the resulting struct is always
             // returned so the `metrics_capture` subscribers and DataFusion
             // `metrics()` see the same data.
             let pending_analytics = crate::analytics::begin_query(
                 self.analytics.clone(),
-                Arc::clone(&metrics),
+                query_info,
                 scan_start,
                 scan_start_wall,
             );
@@ -683,7 +742,6 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
                 #[cfg(not(target_arch = "wasm32"))]
                 trace_id,
                 pending_analytics,
-                metrics,
                 self.metrics_collectors.clone(),
             )
             .map(Arc::new)
@@ -950,12 +1008,13 @@ pub(crate) fn prepend_string_column_schema(schema: &Schema, column_name: &str) -
 ///
 /// Hashes the underlying string with DataFusion's `HashValue` so the result
 /// matches `RepartitionExec`'s hashing of the segment-id string column.
-pub(crate) fn segment_partition_hash(
-    segment_id: &SegmentId,
-    random_state: &ahash::RandomState,
-) -> u64 {
+pub(crate) fn segment_partition_hash(segment_id: &SegmentId) -> u64 {
     use datafusion::common::hash_utils::HashValue as _;
-    segment_id.as_str().hash_one(random_state)
+    use datafusion::physical_plan::repartition::REPARTITION_RANDOM_STATE;
+
+    segment_id
+        .as_str()
+        .hash_one(REPARTITION_RANDOM_STATE.random_state())
 }
 
 /// We need to create `num_partitions` of DataFusion partition stream outputs, each of
@@ -980,7 +1039,7 @@ pub(crate) fn group_chunk_infos_by_segment_id(
 
         // group rows by segment ID
         let mut segment_rows: BTreeMap<SegmentId, Vec<usize>> = BTreeMap::new();
-        for (row_idx, segment_id) in segment_ids.into_iter().enumerate() {
+        for (row_idx, segment_id) in segment_ids.into_iter_owned().enumerate() {
             segment_rows.entry(segment_id).or_default().push(row_idx);
         }
 
@@ -1216,7 +1275,7 @@ pub fn query_from_query_expression(
     } else if synthesize_latest_at {
         query_expression
             .min_latest_at()
-            .map(|latest_at| QueryLatestAt::global(Some(latest_at.timeline()), latest_at.at()))
+            .map(|latest_at| QueryLatestAt::global(latest_at.timeline(), latest_at.at()))
     } else {
         None
     };
@@ -1243,8 +1302,18 @@ fn compute_unique_chunk_info_ids(
         return Ok(None);
     }
 
-    let schema = chunk_info_batches[0].schema();
-    let combined = concat_batches(&schema, &chunk_info_batches)?;
+    // Merge by column *name*, not by position: a `query_dataset` response schema is only
+    // pinned by name (that is what `QueryDatasetDataframe::COLUMN_*` extraction relies on),
+    // and the batches we get here come from several independent responses — one per fan-out
+    // branch, each free to carry a different column order and a different set of optional
+    // columns (`chunk_byte_offset`, `{timeline}:start`, …). A branch that selected nothing
+    // typically answers with the server's fallback empty batch, whose columns are neither
+    // ordered nor shaped like the populated branches'. Concatenating those positionally
+    // either fails outright (`It is not possible to concatenate arrays of different data
+    // types (Utf8, Boolean)`) or, worse, silently pairs up same-typed but unrelated columns.
+    let combined = re_arrow_util::concat_polymorphic_batches(&chunk_info_batches)
+        .map_err(|err| exec_datafusion_err!("merging chunk-info batches: {err}"))?;
+    let schema = combined.schema();
     drop(chunk_info_batches);
 
     let chunk_ids = QueryDatasetDataframe::COLUMN_CHUNK_ID
@@ -1323,7 +1392,7 @@ mod tests {
 
         let seg = |s: &str| SegmentId::from(s);
         let at = IndexValue::new_temporal;
-        let timeline = Index::new("my_index");
+        let timeline = Index::from("my_index");
 
         // Three scoped segments, each sampled at specific index values, as set by
         // `filter_segments([…]).reader(using_index_values={…})`.
@@ -1409,7 +1478,7 @@ mod tests {
     #[test]
     fn pushdown_is_noop_unless_scoped_temporal() {
         let seg = |s: &str| SegmentId::from(s);
-        let timeline = Index::new("my_index");
+        let timeline = Index::from("my_index");
         let values: IndexValuesMap = Some(Arc::new(
             once((seg("a"), BTreeSet::from([IndexValue::new_temporal(10)]))).collect(),
         ));

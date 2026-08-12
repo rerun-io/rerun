@@ -1,6 +1,7 @@
 ---
 title: Static data
 order: 600
+description: Logging data that holds across every timeline
 ---
 
 

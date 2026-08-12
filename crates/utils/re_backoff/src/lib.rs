@@ -39,67 +39,11 @@ pub struct Backoff {
     jittered: Duration,
 }
 
-#[cfg(not(target_arch = "wasm32"))]
-async fn sleep(duration: Duration) {
-    tokio::time::sleep(duration).await;
-}
-
-/// Run a (possibly `!Send`) wasm future to completion on the local executor, exposing the wait as a
-/// `Send` future.
-///
-/// `spawn_local` confines the `!Send` future to the single-threaded wasm executor; the future this
-/// returns is just the oneshot `Receiver`, which *is* `Send` and never captures `f`. This lets
-/// JS-backed futures be awaited from `Send`-bounded contexts (e.g. a backoff sleep threaded through
-/// a DataFusion stream in `re_datafusion`).
-///
-/// This must be a plain `fn` returning `impl Future + Send` (not an `async fn`): an `async fn`
-/// would keep `f` in its own generator state and so be `!Send`. Same technique as
-/// `re_datafusion::wasm_compat::make_future_send`, duplicated here to avoid a new crate just for it.
-#[cfg(target_arch = "wasm32")]
-fn run_local<F>(f: F) -> impl std::future::Future<Output = ()> + Send
-where
-    F: std::future::Future<Output = ()> + 'static,
-{
-    use futures::FutureExt as _;
-
-    let (tx, rx) = futures::channel::oneshot::channel::<()>();
-
-    wasm_bindgen_futures::spawn_local(async move {
-        f.await;
-        // The receiver is gone if the caller stopped waiting; nothing to do then.
-        tx.send(()).ok();
-    });
-
-    // If the spawned task is dropped before it signals, `rx` resolves to `Err`; either way we're
-    // done waiting.
-    rx.map(|_result| ())
-}
-
-#[cfg(target_arch = "wasm32")]
-async fn sleep(duration: Duration) {
-    let millis = duration.as_millis() as i32;
-
-    // The `setTimeout` + `JsFuture` dance is `!Send`; `run_local` bridges it to a `Send` future.
-    run_local(async move {
-        let mut cb = |resolve: js_sys::Function, _reject: js_sys::Function| {
-            web_sys::window()
-                .expect("Failed to get window")
-                .set_timeout_with_callback_and_timeout_and_arguments_0(&resolve, millis)
-                .expect("Failed to call set_timeout");
-        };
-        let p = js_sys::Promise::new(&mut cb);
-        wasm_bindgen_futures::JsFuture::from(p)
-            .await
-            .expect("Failed to await sleep promise");
-    })
-    .await;
-}
-
 impl Backoff {
     /// Sleep for the amount of time specified by this backoff instance.
     #[inline]
     pub async fn sleep(&self) {
-        sleep(self.jittered).await;
+        re_async::sleep(self.jittered).await;
     }
 
     /// The base duration for the backoff.

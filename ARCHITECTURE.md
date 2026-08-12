@@ -99,11 +99,11 @@ Of course, this will only take us so far. In the future we plan on caching queri
 Here is an overview of the crates included in the project:
 
 <picture>
-  <img src="https://static.rerun.io/architecture_diagram/04173a9eadc959975e0d7969869ef40e8daf75b2/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/architecture_diagram/04173a9eadc959975e0d7969869ef40e8daf75b2/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/architecture_diagram/04173a9eadc959975e0d7969869ef40e8daf75b2/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/architecture_diagram/04173a9eadc959975e0d7969869ef40e8daf75b2/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/architecture_diagram/04173a9eadc959975e0d7969869ef40e8daf75b2/1200w.png">
+  <img src="https://static.rerun.io/architecture_diagram/807ecfb097e8f550e63c7d9c87b0eb98d1619711/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/architecture_diagram/807ecfb097e8f550e63c7d9c87b0eb98d1619711/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/architecture_diagram/807ecfb097e8f550e63c7d9c87b0eb98d1619711/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/architecture_diagram/807ecfb097e8f550e63c7d9c87b0eb98d1619711/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/architecture_diagram/807ecfb097e8f550e63c7d9c87b0eb98d1619711/1200w.png">
 </picture>
 
 <!-- !!! IMPORTANT!!!
@@ -134,14 +134,14 @@ Update instructions:
 ##### UI crates
 
 | Crate                  | Description                                                                                                |
-| ---------------------- | ---------------------------------------------------------------------------------------------------------- |
+| ---------------------- |------------------------------------------------------------------------------------------------------------|
 | re_arrow_ui            | Show arrow data in a tree of rerun list_items and format arrow with syntax highlighting.                   |
 | re_blueprint_tree      | The UI for the blueprint tree in the left panel.                                                           |
 | re_chunk_store_ui      | A chunk store browser UI.                                                                                  |
 | re_component_fallbacks | Provides default fallbacks for Rerun components in the fallback provider registry.                         |
 | re_component_ui        | Provides UI editors for Rerun component data for registration with the Rerun Viewer component UI registry. |
 | re_dataframe_ui        | Rich table widget over DataFusion.                                                                         |
-| re_gamepad             | Gamepad input handling for the Rerun viewer.                                                              |
+| re_gamepad             | Gamepad input handling for the Rerun viewer.                                                               |
 | re_memory_view         | Flamegraph visualization for memory usage trees                                                            |
 | re_plot                | Plot ui components shared between time series and bar chart view.                                          |
 | re_recording_panel     | The UI for the recording panel.                                                                            |
@@ -161,6 +161,7 @@ Update instructions:
 | re_view_text_log       | A View that shows text entries in a table and scrolls with the active time.                                |
 | re_view_time_series    | A View that shows plots over Rerun timelines.                                                              |
 | re_viewer              | The Rerun Viewer                                                                                           |
+| re_viewer_mcp          | MCP server that allows agents to interact with the viewer.                                                 |
 | re_viewport            | The central viewport panel of the Rerun viewer.                                                            |
 
 ##### UI support crates
@@ -177,17 +178,17 @@ Update instructions:
 
 ### Application-level store
 
-| Crate           | Description                                                     |
-| --------------- | --------------------------------------------------------------- |
-| re_dataframe    | The Rerun public data APIs.                                     |
-| re_datafusion   | DataFusion interfaces to Rerun gRPC queries                     |
-| re_entity_db    | In-memory storage of Rerun entities                             |
-| re_log_encoding | Helpers for encoding and transporting Rerun log messages        |
-| re_protos       | Rerun remote store gRPC API types                               |
-| re_query        | Querying data in the re_chunk_store                             |
-| re_server       | In-memory data server                                           |
-| re_tf           | Dealing with spatial transforms & transform frames              |
-| re_sdk_types    | The built-in Rerun data types, component types, and archetypes. |
+| Crate                | Description                                                     |
+| -------------------- | --------------------------------------------------------------- |
+| re_dataframe         | The Rerun public data APIs.                                     |
+| re_datafusion        | DataFusion interfaces to Rerun gRPC queries                     |
+| re_entity_db         | In-memory storage of Rerun entities                             |
+| re_log_encoding      | Helpers for encoding and transporting Rerun log messages        |
+| re_protos            | Rerun remote store gRPC API types                               |
+| re_query             | Querying data in the re_chunk_store                             |
+| re_sdk_types         | The built-in Rerun data types, component types, and archetypes. |
+| re_server            | In-memory data server                                           |
+| re_tf                | Dealing with spatial transforms & transform frames              |
 
 ### Low-level store
 
@@ -207,7 +208,9 @@ Update instructions:
 | re_redap_tests       | Official test suite for the Rerun Data Protocol                   |
 | re_importer          | Handles importing of Rerun data from file using importer plugins  |
 | re_parquet           | Parquet file loading with configurable column grouping            |
+| re_hdf5              | HDF5 file loading into Rerun chunks                               |
 | re_mp4_reader        | Mp4 video file loading into Rerun chunks                          |
+| re_lerobot           | LeRobot dataset loading into Rerun chunks                         |
 | re_data_source       | Handles loading of Rerun data from different sources              |
 | re_grpc_client       | Client for the legacy StoreHub API                                |
 | re_grpc_server       | Server for the legacy StoreHub API                                |
@@ -215,19 +218,24 @@ Update instructions:
 
 ### Build support
 
-| Crate             | Description                                                      |
-| ----------------- | ---------------------------------------------------------------- |
-| re_build_info     | Information about the build. Use together with re_build_tools    |
-| re_build_tools    | build.rs helpers for generating build info                       |
-| re_dev_tools      | Various tools for Rerun development. Each tool has a subcommand. |
-| re_protos_builder | Generates code for Rerun remote store gRPC API                   |
-| re_types_builder  | Generates code for Rerun's SDKs from flatbuffers definitions.    |
+| Crate                    | Description                                                          |
+| ------------------------ | -------------------------------------------------------------------- |
+| re_build_info            | Information about the build. Use together with re_build_tools        |
+| re_build_tools           | build.rs helpers for generating build info                           |
+| re_dev_tools             | Various tools for Rerun development. Each tool has a subcommand.     |
+| re_protos_builder        | Generates code for Rerun remote store gRPC API                       |
+| re_type_definitions      | The type definitions the SDKs are generated from. Never linked.      |
+| re_types_builder         | Generates code for Rerun's SDKs from `re_type_definitions`.          |
+| re_types_builder_macros  | The `#[rerun_type]` attribute macro used by Rerun's IDL definitions. |
+| re_types_builder_prelude | The vocabulary that Rerun's IDL definitions are written against.     |
+| re_web_tests             | Discovers and runs browser-based Wasm tests.                         |
 
 ### Utilities
 
 | Crate                | Description                                                                                   |
 | -------------------- | --------------------------------------------------------------------------------------------- |
 | re_analytics         | Rerun's analytics SDK                                                                         |
+| re_async             | Async runtime abstractions for native and WebAssembly targets.                                |
 | re_arrow_util        | Helpers for working with arrow                                                                |
 | re_auth              | Authentication and authorization helpers                                                      |
 | re_backoff           | Simple backoff logic used for retries.                                                        |
@@ -239,6 +247,7 @@ Update instructions:
 | re_error             | Helpers for handling errors.                                                                  |
 | re_format            | Miscellaneous tools to format and parse numbers, durations, etc.                              |
 | re_grpc_headers      | Rerun gRPC header conventions (`x-rerun-*` consts, version interceptor, tower layers).        |
+| re_int               | Small numeric helper traits: saturating integer casts and unsigned absolute value.            |
 | re_lenses            | A collection of lenses for mapping component data to Rerun semantic types.                    |
 | re_lenses_core       | Core lens types and composable Arrow array transformations                                    |
 | re_log               | Helpers for setting up and doing text logging in the Rerun crates.                            |
@@ -257,6 +266,7 @@ Update instructions:
 | re_tuid              | 128-bit Time-based Unique Identifier                                                          |
 | re_uri               | Parsing and constructing of Rerun URIs                                                        |
 | re_video             | Video decoding library                                                                        |
+| re_web               | Utilities for interacting with Web APIs                                                       |
 
 ### Test crates
 

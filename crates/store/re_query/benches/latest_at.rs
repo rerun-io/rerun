@@ -6,7 +6,9 @@ use std::sync::Arc;
 use criterion::{Criterion, criterion_group, criterion_main};
 use itertools::Itertools as _;
 use re_chunk::{Chunk, RowId, TimelineName};
-use re_chunk_store::{ChunkStore, ChunkStoreHandle, ChunkStoreSubscriber as _, LatestAtQuery};
+use re_chunk_store::{
+    ChunkStore, ChunkStoreHandle, ChunkStoreSubscriber as _, ChunkTrackingMode, LatestAtQuery,
+};
 use re_log_types::{EntityPath, TimeInt, TimeType, Timeline, entity_path};
 use re_query::{LatestAtResults, QueryCache, clamped_zip_1x1};
 use re_sdk_types::Archetype as _;
@@ -258,15 +260,19 @@ struct SavePoint {
 }
 
 fn query_and_visit_points(caches: &QueryCache, paths: &[EntityPath]) -> Vec<SavePoint> {
-    let timeline_frame_nr = TimelineName::new("frame_nr");
+    let timeline_frame_nr = TimelineName::from("frame_nr");
     let query = LatestAtQuery::new(timeline_frame_nr, NUM_FRAMES_POINTS as i64 / 2);
 
     let mut ret = Vec::with_capacity(NUM_POINTS as _);
 
     // TODO(jleibs): Add Radius once we have support for it in field_types
     for entity_path in paths {
-        let results: LatestAtResults =
-            caches.latest_at(&query, entity_path, Points2D::all_component_identifiers());
+        let results: LatestAtResults = caches.latest_at(
+            ChunkTrackingMode::Report,
+            &query,
+            entity_path,
+            Points2D::all_component_identifiers(),
+        );
 
         let points = results
             .component_batch_quiet::<Position2D>(Points2D::descriptor_positions().component)
@@ -292,7 +298,7 @@ struct SaveString {
 }
 
 fn query_and_visit_strings(caches: &QueryCache, paths: &[EntityPath]) -> Vec<SaveString> {
-    let timeline_frame_nr = TimelineName::new("frame_nr");
+    let timeline_frame_nr = TimelineName::from("frame_nr");
     let query = LatestAtQuery::new(timeline_frame_nr, NUM_FRAMES_STRINGS as i64 / 2);
 
     let mut strings = Vec::with_capacity(NUM_STRINGS as _);
@@ -301,8 +307,12 @@ fn query_and_visit_strings(caches: &QueryCache, paths: &[EntityPath]) -> Vec<Sav
     let component_labels = Points2D::descriptor_labels().component;
 
     for entity_path in paths {
-        let results: LatestAtResults =
-            caches.latest_at(&query, entity_path, [component_points, component_labels]);
+        let results: LatestAtResults = caches.latest_at(
+            ChunkTrackingMode::Report,
+            &query,
+            entity_path,
+            [component_points, component_labels],
+        );
 
         let points = results
             .component_batch_quiet::<Position2D>(component_points)
@@ -319,5 +329,5 @@ fn query_and_visit_strings(caches: &QueryCache, paths: &[EntityPath]) -> Vec<Sav
         }
     }
     assert_eq!(NUM_STRINGS as usize, strings.len());
-    criterion::black_box(strings)
+    std::hint::black_box(strings)
 }

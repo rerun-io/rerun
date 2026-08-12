@@ -88,6 +88,9 @@ EXCLUDED_FROM_TRACK_A: Final[set[str]] = {
     # No aggregated surface to document at the namespace level.
     "rerun.utilities.datafusion",
     "rerun.utilities.datafusion.functions",
+    # Sampling-manifest internals; its only public symbol (`Manifest`) is
+    # re-exported flat into `rerun.experimental.dataloader` and documented there.
+    "rerun.experimental.dataloader.manifest",
 }
 
 # Per-package, per-symbol allow-list of public symbols that should NOT be
@@ -543,6 +546,10 @@ of Python, you can use the table below to make sure you choose the proper Rerun 
 
 | **Rerun Version** | **Release Date** | **Supported Python Version** |
 |-------------------|------------------|------------------------------|
+| 0.36              | Aug. 10, 2026    | 3.10+                        |
+| 0.35              | Jul. 23, 2026    | 3.10+                        |
+| 0.34              | Jul.  6, 2026    | 3.10+                        |
+| 0.33              | May. 29, 2026    | 3.10+                        |
 | 0.32              | May. 13, 2026    | 3.10+                        |
 | 0.31              | Mar. 31, 2026    | 3.10+                        |
 | 0.30              | Feb. 25, 2026    | 3.10+                        |

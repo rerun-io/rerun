@@ -1,4 +1,3 @@
-use std::any::Any;
 use std::collections::BTreeMap;
 use std::fmt::Debug;
 use std::pin::Pin;
@@ -27,7 +26,6 @@ use datafusion::physical_plan::execution_plan::{Boundedness, EmissionType};
 use datafusion::physical_plan::metrics::MetricsSet;
 
 use crate::analytics::build_metrics_set_for_explain;
-use crate::metrics_capture::QueryMetrics;
 use datafusion::physical_plan::{DisplayAs, DisplayFormatType, ExecutionPlan, PlanProperties};
 use futures_util::{Stream, StreamExt as _};
 use re_dataframe::external::re_chunk_store::ChunkStore;
@@ -61,12 +59,6 @@ pub(crate) struct SegmentStreamExec<T: DataframeClientAPI> {
     /// gated internally by whether the per-process telemetry stack is active.
     pending_analytics: crate::PendingQueryAnalytics,
 
-    /// Per-query counters + embedded plan-time `QueryInfo`. The wasm path
-    /// doesn't run a per-partition IO loop with `TaskFetchStats`, so the
-    /// fetch counters stay at zero; the embedded `query_info` is what feeds
-    /// the snapshot path and `EXPLAIN ANALYZE`.
-    metrics: Arc<QueryMetrics>,
-
     /// Plan-time summary used by `DisplayAs::Verbose`.
     plan_summary: PlanSummary,
 
@@ -93,9 +85,6 @@ pub struct DataframeSegmentStream<T: DataframeClientAPI> {
 
     /// Shared latch — see `SegmentStreamExec::snapshot_sent`.
     snapshot_sent: Arc<AtomicBool>,
-
-    /// Shared metrics handle used by the snapshot path.
-    metrics: Arc<QueryMetrics>,
 }
 
 impl<T: DataframeClientAPI> DataframeSegmentStream<T> {
@@ -124,7 +113,8 @@ impl<T: DataframeClientAPI> DataframeSegmentStream<T> {
 
         // Note: using segment id as the store id, shouldn't really
         // matter since this is just a temporary store.
-        let store_id = StoreId::random(StoreKind::Recording, segment_id);
+        let application_id = re_log_types::ApplicationId::new_or_unknown(segment_id);
+        let store_id = StoreId::random(StoreKind::Recording, application_id);
         let store = ChunkStore::new_handle(store_id, Default::default());
 
         while let Some(chunks_and_segment_ids) = chunk_stream.next().await {
@@ -192,7 +182,7 @@ impl<T: DataframeClientAPI> DataframeSegmentStream<T> {
             return;
         }
         let snapshot = crate::metrics_capture::build_query_snapshot(
-            &self.metrics,
+            self.pending_analytics.metrics(),
             self.pending_analytics.total_duration(),
             self.pending_analytics.time_to_first_chunk(),
             self.pending_analytics.error_kind(),
@@ -285,7 +275,6 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
         client: T,
         _limit: Option<usize>,
         pending_analytics: crate::PendingQueryAnalytics,
-        metrics: Arc<QueryMetrics>,
         captured_collectors: Vec<crate::MetricsCollector>,
     ) -> datafusion::common::Result<Self> {
         let projected_schema = match projection {
@@ -353,7 +342,7 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
         let chunk_info = group_chunk_infos_by_segment_id(chunk_info_batches.as_slice())?;
         drop(chunk_info_batches);
 
-        let plan_summary = PlanSummary::from_query_info(&metrics.query_info);
+        let plan_summary = PlanSummary::from_query_info(&pending_analytics.metrics().query_info);
 
         let snapshot_sent = Arc::new(AtomicBool::new(false));
 
@@ -365,7 +354,6 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
             target_partitions: num_partitions,
             client,
             pending_analytics,
-            metrics,
             plan_summary,
             captured_collectors,
             snapshot_sent,
@@ -434,10 +422,6 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
         "SegmentStreamExec"
     }
 
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
     fn properties(&self) -> &Arc<PlanProperties> {
         &self.props
     }
@@ -474,7 +458,6 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
             target_partitions,
             client: self.client.clone(),
             pending_analytics: self.pending_analytics.clone(),
-            metrics: Arc::clone(&self.metrics),
             plan_summary: self.plan_summary.clone(),
             captured_collectors: self.captured_collectors.clone(),
             snapshot_sent: Arc::clone(&self.snapshot_sent),
@@ -503,12 +486,11 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
         partition: usize,
         _context: Arc<TaskContext>,
     ) -> datafusion::common::Result<SendableRecordBatchStream> {
-        let random_state = ahash::RandomState::with_seeds(0, 0, 0, 0);
         let mut remaining_segment_ids = self
             .chunk_info
             .keys()
             .filter(|segment_id| {
-                let hash_value = segment_partition_hash(segment_id, &random_state) as usize;
+                let hash_value = segment_partition_hash(segment_id) as usize;
                 hash_value % self.target_partitions == partition
             })
             .cloned()
@@ -537,7 +519,6 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
             pending_analytics: self.pending_analytics.clone(),
             captured_collectors: self.captured_collectors.clone(),
             snapshot_sent: Arc::clone(&self.snapshot_sent),
-            metrics: Arc::clone(&self.metrics),
         };
 
         Ok(Box::pin(stream))
@@ -545,7 +526,7 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
 
     fn metrics(&self) -> Option<MetricsSet> {
         Some(build_metrics_set_for_explain(
-            &self.metrics,
+            self.pending_analytics.metrics(),
             self.target_partitions,
             self.pending_analytics.time_to_first_chunk(),
         ))

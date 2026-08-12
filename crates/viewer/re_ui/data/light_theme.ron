@@ -36,10 +36,6 @@
     "bottom_bar_color": {
       "color": "{Gray.1000}"
     },
-    "bottom_bar_stroke": {
-      "color": "{Gray.800}",
-      "width": 1
-    },
     "shadow_gradient_dark_start": {
       "color": "{Gray.0}",
       "alpha": 10
@@ -173,7 +169,7 @@
     "table_grid_view_card_fill": {
       "color": "{Gray.900}"
     },
-    
+
     "table_grid_view_card_hover_fill": {
       "color": "{Gray.850}"
     },
@@ -219,30 +215,6 @@
     "extreme_fg_color": {
       "color": "{Gray.0}"
     },
-    "widget_noninteractive_weak_bg_fill": {
-      "color": "{Gray.550}"
-    },
-    "widget_noninteractive_bg_fill": {
-      "color": "{Gray.800}"
-    },
-    "widget_inactive_bg_fill": {
-      "color": "{Gray.800}"
-    },
-    "widget_hovered_weak_bg_fill": {
-      "color": "{Gray.800}"
-    },
-    "widget_hovered_bg_fill": {
-      "color": "{Gray.700}"
-    },
-    "widget_active_weak_bg_fill": {
-      "color": "{Gray.750}"
-    },
-    "widget_active_bg_fill": {
-      "color": "{Gray.650}"
-    },
-    "widget_open_weak_bg_fill": {
-      "color": "{Gray.650}"
-    },
     "widget_noninteractive_bg_stroke": {
       "color": "{Gray.800}"
     },
@@ -262,7 +234,7 @@
       "color": "#FF7A0C"
     },
     "widget_hovered_color": {
-      "color": "{Gray.900}"
+      "color": "{Gray.750}"
     },
     "popup_shadow_color": {
       "color": "#00000020"
@@ -476,6 +448,38 @@
     "text": {
        "color": "{Red.100}"
     },
+  },
+
+  "button_primary": {
+    "fill": { "color": "{Gray.250}" },
+    "fill_hovered": { "color": "{Gray.150}" },
+    "fill_pressed": { "color": "{Gray.100}" },
+    "text": { "color": "{Gray.1000}" },
+  },
+  "button_secondary": {
+    "fill": { "color": "{Gray.800}" },
+    "fill_hovered": { "color": "{Gray.700}" },
+    "fill_pressed": { "color": "{Gray.650}" },
+    "text": { "color": "{Gray.250}" },
+  },
+  "button_ghost": {
+    "fill": { "color": "{Gray.900}", "alpha": 0 },
+    "fill_hovered": { "color": "{Gray.800}" },
+    "fill_pressed": { "color": "{Gray.700}" },
+    "text": { "color": "{Gray.250}" },
+  },
+  "button_outlined": {
+    "fill": { "color": "{Gray.900}", "alpha": 0 },
+    "fill_hovered": { "color": "{Gray.900}" },
+    "fill_pressed": { "color": "{Gray.800}" },
+    "text": { "color": "{Gray.250}" },
+    "stroke": { "color": "{Gray.250}", "width": 1 },
+  },
+  "button_opened": {
+    "fill": { "color": "{Blue.500}", "alpha": 40 },
+    "fill_hovered": { "color": "{Blue.500}", "alpha": 70 },
+    "fill_pressed": { "color": "{Blue.500}", "alpha": 100 },
+    "text": { "color": "{Gray.250}" },
   },
 
   "Global": {

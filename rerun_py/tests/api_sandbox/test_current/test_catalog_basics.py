@@ -46,7 +46,10 @@ sorbet:version: '0.1.3'\
 """)
 
         assert str(
-            df.drop("id", "created_at", "updated_at").filter(col("entry_kind") != 5).sort("name")
+            df
+            .drop("id", "created_at", "updated_at")
+            .filter((col("entry_kind") != 5) & (col("entry_kind") != 6))
+            .sort("name")
         ) == inline_snapshot(
             """\
 ┌────────────────────────────────────────────────┐

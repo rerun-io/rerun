@@ -433,7 +433,8 @@ impl RecordingStreamBuilder {
 
     /// Creates a new [`RecordingStream`] pre-configured to stream data to multiple sinks.
     ///
-    /// Currently only supports [`GrpcSink`][grpc_sink] and [`FileSink`][file_sink].
+    /// Supports [`GrpcSink`][grpc_sink], [`FileSink`][file_sink], and, with the `server` feature,
+    /// [`GrpcServerSink`][grpc_server_sink].
     ///
     /// If the batcher configuration has not been set explicitly or by environment variables,
     /// this will change the batcher configuration to a conservative (less often flushing) mix of
@@ -441,6 +442,7 @@ impl RecordingStreamBuilder {
     ///
     /// [grpc_sink]: crate::sink::GrpcSink
     /// [file_sink]: crate::sink::FileSink
+    /// [grpc_server_sink]: crate::grpc_server::GrpcServerSink
     pub fn set_sinks(
         self,
         sinks: impl crate::sink::IntoMultiSink,
@@ -1501,7 +1503,6 @@ impl RecordingStream {
 
         let (tx, rx) = re_log_channel::log_channel(re_log_channel::LogSource::File {
             path: filepath.into(),
-            follow: false,
         });
 
         let mut settings = crate::ImporterSettings {
@@ -1510,7 +1511,6 @@ impl RecordingStream {
             opened_store_id: None,
             force_store_info: false,
             entity_path_prefix,
-            follow: false,
             timepoint: (!static_).then(|| {
                 self.with(|inner| {
                     // Get the current time on all timelines, for the current recording, on the current
@@ -2116,6 +2116,7 @@ impl RecordingStream {
     ///
     /// [grpc_sink]: crate::sink::GrpcSink
     /// [file_sink]: crate::sink::FileSink
+    /// [grpc_server_sink]: crate::grpc_server::GrpcServerSink
     pub fn set_sinks(&self, sinks: impl crate::log_sink::IntoMultiSink) {
         if forced_sink_path().is_some() {
             re_log::debug!("Ignored setting new MultiSink since {ENV_FORCE_SAVE} is set");

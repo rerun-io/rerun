@@ -1,7 +1,7 @@
 /// Paint the standard loading indicator for views whose required data is still being fetched.
 pub fn paint_view_loading_indicator(
     ui: &mut egui::Ui,
-    id_salt: impl std::hash::Hash,
+    id_salt: impl egui::AsIdSalt,
     view_rect: egui::Rect,
     any_missing_chunks: bool,
     recording: &re_entity_db::EntityDb,

@@ -32,13 +32,13 @@ fn bench_bounding_boxes(c: &mut Criterion) {
         group.throughput(criterion::Throughput::Elements(points.len() as u64));
         group.bench_function(format!("naive/{n}"), |b| {
             b.iter(|| {
-                criterion::black_box(re_renderer::util::bounding_box_from_points(
+                std::hint::black_box(re_renderer::util::bounding_box_from_points(
                     points.iter().copied(),
                 ))
             });
         });
         group.bench_function(format!("point_cloud_bounds/{n}"), |b| {
-            b.iter(|| criterion::black_box(re_renderer::util::point_cloud_bounds(&points)));
+            b.iter(|| std::hint::black_box(re_renderer::util::point_cloud_bounds(&points)));
         });
     }
 

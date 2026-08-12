@@ -81,9 +81,10 @@ fn check_tags(rec: &rerun::RecordingStream) {
     if let Ok(path_to_rrd) = std::env::var("_RERUN_TEST_FORCE_SAVE") {
         rec.flush_blocking().unwrap();
 
-        let stores = ChunkStore::from_rrd_filepath(
+        let mut rrd_file = std::fs::File::open(&path_to_rrd).unwrap();
+        let stores = ChunkStore::from_rrd_reader(
             &ChunkStoreConfig::ALL_DISABLED,
-            path_to_rrd,
+            &mut rrd_file,
         )
         .unwrap();
         assert_eq!(1, stores.len());

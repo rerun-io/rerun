@@ -269,6 +269,11 @@ pub struct ServerData<'a> {
     /// What is selected is a subset of this thing
     pub is_active: bool,
 
+    // TODO(RR-5031): Depending on how much customizations we need to do,
+    // we should consider moving this out of here and creating a dedicated
+    // `InternalCatalogData` struct that mirrors `ServerData`.
+    pub is_internal: bool,
+
     pub entries_data: ServerEntriesData<'a>,
 }
 
@@ -294,6 +299,7 @@ impl<'a> ServerData<'a> {
             origin: origin.clone(),
             is_active,
             is_selected,
+            is_internal: server.is_internal(),
             entries_data,
         }
     }

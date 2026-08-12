@@ -42,7 +42,7 @@ pub enum DataframeIndex {
 #[derive(thiserror::Error, Debug)]
 pub enum DataframeToChunksError {
     /// An underlying sorbet-level failure: classification, list-wrapping, assembly, or an
-    /// unsupported index datatype ([`SorbetError::UnsupportedTimeType`]).
+    /// unsupported index datatype ([`crate::IndexColumnError::UnsupportedTimeType`]).
     #[error(transparent)]
     Sorbet(#[from] SorbetError),
 
@@ -643,7 +643,7 @@ mod tests {
         assert_eq!(chunk.index_columns().count(), 1);
         assert_eq!(
             chunk.index_columns().next().unwrap().0.timeline_name(),
-            TimelineName::new("frame")
+            TimelineName::from("frame")
         );
     }
 
@@ -745,7 +745,7 @@ mod tests {
             );
             let chunks = chunk_batches_from_dataframe_record_batch(
                 &rb,
-                &DataframeIndex::Columns(vec![TimelineName::new("t")]),
+                &DataframeIndex::Columns(vec![TimelineName::from("t")]),
                 None,
             )
             .unwrap();
@@ -778,14 +778,14 @@ mod tests {
         );
         let err = chunk_batches_from_dataframe_record_batch(
             &rb,
-            &DataframeIndex::Columns(vec![TimelineName::new("t")]),
+            &DataframeIndex::Columns(vec![TimelineName::from("t")]),
             None,
         )
         .unwrap_err();
         assert!(
             matches!(
                 err,
-                DataframeToChunksError::Sorbet(SorbetError::UnsupportedTimeType(_))
+                DataframeToChunksError::Sorbet(SorbetError::IndexColumn(_))
             ),
             "got {err}"
         );
@@ -805,7 +805,7 @@ mod tests {
         );
         let err = chunk_batches_from_dataframe_record_batch(
             &rb,
-            &DataframeIndex::Columns(vec![TimelineName::new("nope")]),
+            &DataframeIndex::Columns(vec![TimelineName::from("nope")]),
             None,
         )
         .unwrap_err();
@@ -908,7 +908,7 @@ mod tests {
             assert_eq!(chunk.index_columns().count(), 1);
             assert_eq!(
                 chunk.index_columns().next().unwrap().0.timeline_name(),
-                TimelineName::new("frame")
+                TimelineName::from("frame")
             );
         }
     }

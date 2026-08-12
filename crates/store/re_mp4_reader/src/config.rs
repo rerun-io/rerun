@@ -1,5 +1,6 @@
 use re_chunk::TimePoint;
 use re_log_types::{TimeType, TimelineName};
+use re_video::Mp4TranscodeOptions;
 
 /// Configuration for [`crate::load_mp4_from_bytes`].
 #[derive(Clone, Debug)]
@@ -29,7 +30,7 @@ impl Default for Mp4Config {
         Self {
             mode: Mode::Stream {
                 chunk_by_gop: true,
-                allow_b_frames: false,
+                transcode: Mp4TranscodeOptions::default(),
             },
             timeline_name: "video".into(),
             timeline_type: TimeType::DurationNs,
@@ -48,24 +49,30 @@ pub enum Mode {
     /// timeline plus any `created_at` / `modified_at` cells.
     Asset { timepoint: TimePoint },
 
-    /// Emit a static `VideoStream(codec=…)` chunk followed by per-sample
-    /// `VideoSample` chunks at PTS.
+    /// Emit a static `VideoStream(codec=…)` chunk, per-sample (or per-GOP)
+    /// `VideoSample` chunks at PTS, and a trailing dedicated `IsKeyframe` chunk
+    /// holding one sparse `true` row per keyframe.
     ///
     /// The timeline used for the samples is named [`Mp4Config::timeline_name`]
     /// and typed [`Mp4Config::timeline_type`].
+    ///
+    /// A source containing h264/h265 B-frames — or any source for which [`Mp4TranscodeOptions`]
+    /// requests a transform (a different output codec, a GOP size) — is transcoded
+    /// with ffmpeg into an equivalent B-frame-free stream before emission, because
+    /// the `VideoStream` archetype cannot yet model differing DTS/PTS. Transcoding
+    /// requires an `ffmpeg` executable.
+    // TODO(#10090): emit B-frames directly once `VideoStream` can model DTS != PTS.
     Stream {
-        /// Should the sampls be grouped into one Rerun chunk per GOP?
+        /// Should the samples be grouped into one Rerun chunk per GOP?
         ///
         /// If `true`, groups samples into one Rerun chunk per GOP (keyframe through the sample just
         /// before the next keyframe). Otherwise, emits one Rerun chunk per sample.
         chunk_by_gop: bool,
 
-        /// Opts in to mp4s with B-frames, which the `VideoStream` archetype does not yet model
-        /// (DTS != PTS — see issue #10090).
+        /// How to transcode the stream (output codec, GOP size, GPU acceleration).
         ///
-        /// When `true`, the emitted time column is marked unsorted because PTS values in decode
-        /// order may not be monotonic. Intended to be combined with a downstream transcode step
-        /// that drops the B-frames.
-        allow_b_frames: bool,
+        /// The default is a no-op: a B-frame-free source is read directly without
+        /// invoking ffmpeg.
+        transcode: Mp4TranscodeOptions,
     },
 }

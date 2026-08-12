@@ -41,13 +41,15 @@ impl<'a> ItemButtons<'a> {
     fn should_show_buttons(&self, context: &ContentContext<'_>) -> bool {
         // We can't use `.hovered()` or the buttons disappear just as the user clicks,
         // so we use `contains_pointer` instead. That also means we need to check
-        // that we aren't dragging anything.
+        // that we aren't dragging anything (a drag-and-drop payload, or some other
+        // widget like a panel resize handle).
         // By showing the buttons when selected, we allow users to find them on touch screens.
         (context
             .response
             .ctx
             .rect_contains_pointer(context.response.layer_id, context.bg_rect)
-            && !egui::DragAndDrop::has_any_payload(&context.response.ctx))
+            && !egui::DragAndDrop::has_any_payload(&context.response.ctx)
+            && context.response.ctx.dragged_id().is_none())
             || context.list_item.selected
             || self.always_show_buttons
     }

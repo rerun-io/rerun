@@ -50,13 +50,15 @@ pub(crate) mod common;
 use self::common::StringExt;
 
 mod cpp;
+mod definitions;
 mod docs;
-mod fbs;
+
 mod python;
 mod rust;
 
 pub use self::cpp::CppCodeGenerator;
+pub use self::definitions::DefinitionsCodeGenerator;
 pub use self::docs::{DocsCodeGenerator, SnippetsRefCodeGenerator};
-pub use self::fbs::FbsCodeGenerator;
+
 pub use self::python::PythonCodeGenerator;
 pub use self::rust::RustCodeGenerator;

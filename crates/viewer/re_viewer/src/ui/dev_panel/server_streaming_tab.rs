@@ -1,5 +1,4 @@
-use std::collections::BTreeSet;
-
+use egui_plot::HoverPosition;
 use re_byte_size::SizeBytes as _;
 use re_chunk_store::Chunk;
 use re_format::{format_bytes, format_uint};
@@ -7,6 +6,7 @@ use re_log_types::EntityPath;
 use re_ui::UiExt as _;
 use re_ui::list_item;
 use re_viewer_context::StorageContext;
+use std::collections::BTreeSet;
 
 use super::plot_utils::history_to_plot;
 use super::streaming_history::StreamingHistory;
@@ -529,7 +529,14 @@ fn streaming_plots(ui: &mut egui::Ui, history: &StreamingHistory) {
         columns[0].label("Progress");
         show_plot(
             base_plot("streaming_progress", axis_group, cursor_group)
-                .label_formatter(|name, value| format!("{name}: {}", format_bytes(value.y)))
+                .label_formatter(|hover_position| match hover_position {
+                    HoverPosition::NearDataPoint {
+                        plot_name,
+                        position,
+                        ..
+                    } => Some(format!("{plot_name}: {}", format_bytes(position.y))),
+                    HoverPosition::Elsewhere { position } => Some(format_bytes(position.y)),
+                })
                 .y_axis_formatter(|bytes, _| format_bytes(bytes.value)),
             &mut columns[0],
             &mut following,
@@ -547,7 +554,14 @@ fn streaming_plots(ui: &mut egui::Ui, history: &StreamingHistory) {
         columns[1].label("Throughput");
         show_plot(
             base_plot("streaming_throughput", axis_group, cursor_group)
-                .label_formatter(|name, value| format!("{name}: {}", format_bytes(value.y)))
+                .label_formatter(|hover_position| match hover_position {
+                    HoverPosition::NearDataPoint {
+                        plot_name,
+                        position,
+                        ..
+                    } => Some(format!("{plot_name}: {}", format_bytes(position.y))),
+                    HoverPosition::Elsewhere { position } => Some(format_bytes(position.y)),
+                })
                 .y_axis_formatter(|bytes, _| format_bytes(bytes.value)),
             &mut columns[1],
             &mut following,
@@ -562,8 +576,16 @@ fn streaming_plots(ui: &mut egui::Ui, history: &StreamingHistory) {
 
         columns[2].label("Counts");
         show_plot(
-            base_plot("streaming_counts", axis_group, cursor_group)
-                .label_formatter(|name, value| format!("{name}: {:.0}", value.y)),
+            base_plot("streaming_counts", axis_group, cursor_group).label_formatter(
+                |hover_position| match hover_position {
+                    HoverPosition::NearDataPoint {
+                        plot_name,
+                        position,
+                        ..
+                    } => Some(format!("{plot_name}: {:.0}", position.y)),
+                    HoverPosition::Elsewhere { position } => Some(format!("{:.0}", position.y)),
+                },
+            ),
             &mut columns[2],
             &mut following,
             now,

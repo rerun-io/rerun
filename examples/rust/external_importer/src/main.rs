@@ -81,11 +81,11 @@ fn main() -> anyhow::Result<()> {
     let text = format!("## Some Rust code\n```rust\n{body}\n```\n");
 
     let rec = {
-        let mut rec = rerun::RecordingStreamBuilder::new(
-            args.application_id
-                .as_deref()
-                .unwrap_or("rerun_example_external_importer"),
-        );
+        let application_id = match &args.application_id {
+            Some(application_id) => rerun::ApplicationId::try_new(application_id.clone())?,
+            None => rerun::ApplicationId::from("rerun_example_external_importer"),
+        };
+        let mut rec = rerun::RecordingStreamBuilder::new(application_id);
         if let Some(recording_id) = args.recording_id.as_deref() {
             rec = rec.recording_id(recording_id);
         };
@@ -119,7 +119,7 @@ fn timepoint_from_args(args: &Args) -> anyhow::Result<rerun::TimePoint> {
             continue;
         };
         timepoint.insert_cell(
-            seqline_name,
+            rerun::TimelineName::try_new(seqline_name)?,
             rerun::TimeCell::from_sequence(seq.parse::<i64>()?),
         );
     }
@@ -129,7 +129,7 @@ fn timepoint_from_args(args: &Args) -> anyhow::Result<rerun::TimePoint> {
             continue;
         };
         timepoint.insert_cell(
-            seqline_name,
+            rerun::TimelineName::try_new(seqline_name)?,
             rerun::TimeCell::from_duration_nanos(duration_nd.parse::<i64>()?),
         );
     }
@@ -139,7 +139,7 @@ fn timepoint_from_args(args: &Args) -> anyhow::Result<rerun::TimePoint> {
             continue;
         };
         timepoint.insert_cell(
-            seqline_name,
+            rerun::TimelineName::try_new(seqline_name)?,
             rerun::TimeCell::from_timestamp_nanos_since_epoch(timestamp_nd.parse::<i64>()?),
         );
     }

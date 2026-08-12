@@ -63,6 +63,11 @@ pub enum Error {
     #[error("Bad video data: {0}")]
     BadVideoData(String),
 
+    #[error(
+        "This FFmpeg build has no usable encoder for {codec:?}. Install a build with the matching encoder (e.g. libvpx for VP8/VP9, libsvtav1/libaom for AV1) or choose a different output codec."
+    )]
+    NoEncoderForCodec { codec: crate::VideoCodec },
+
     #[error("FFmpeg error: {0}")]
     Ffmpeg(String),
 
@@ -125,7 +130,7 @@ struct FFmpegFrameInfo {
     ///
     /// This is the order of which the samples appear in the container,
     /// which is usually ordered by [`Self::decode_timestamp`].
-    sample_idx: usize,
+    sample_idx: crate::SampleIndex,
 
     /// Which frame is this?
     ///
@@ -133,7 +138,7 @@ struct FFmpegFrameInfo {
     /// which is true for MP4.
     ///
     /// This is the index of frames ordered by [`Self::presentation_timestamp`].
-    frame_nr: u32,
+    frame_nr: crate::FrameNumber,
 
     presentation_timestamp: Time,
     duration: Option<Time>,
@@ -303,8 +308,8 @@ impl FFmpegProcessAndListener {
             .format(codec_str) // TODO(andreas): should we check ahead of time whether this is available?
             //.fps_mode("0")
             .input("-") // stdin is our input!
-            // h264 bitstreams doesn't have timestamp information. Whatever ffmpeg tries to make up about timing & framerates is wrong!
-            // If we don't tell it to just pass the frames through, variable framerate (VFR) video will just not play at all.
+            // h264 bitstreams doesn't have timestamp information. Whatever ffmpeg tries to make up about timing & frame rates is wrong!
+            // If we don't tell it to just pass the frames through, variable frame rate (VFR) video will just not play at all.
             .fps_mode("passthrough")
             .pix_fmt(ffmpeg_pix_fmt)
             // ffmpeg-sidecar's .rawvideo() sets pix_fmt to rgb24, we don't want that.
@@ -543,12 +548,12 @@ struct FrameBuffer {
     /// Received frame-infos, waiting to be matched to output frames.
     ///
     /// Key is the frame number, making this list sorted in presentation order.
-    pending: BTreeMap<u32, FFmpegFrameInfo>,
+    pending: BTreeMap<crate::FrameNumber, FFmpegFrameInfo>,
 
     /// The frame number of the next frame if we had any so far.
     ///
     /// `None` if we haven't received any frames yet since the last decoder reset.
-    next_frame_nr: Option<u32>,
+    next_frame_nr: Option<crate::FrameNumber>,
 }
 
 impl FrameBuffer {
@@ -902,7 +907,7 @@ impl FFmpegCliDecoder {
     }
 }
 
-fn check_ffmpeg_version(
+pub(super) fn check_ffmpeg_version(
     ffmpeg_version_result: Result<FFmpegVersion, FFmpegVersionParseError>,
 ) -> Result<(), Error> {
     match ffmpeg_version_result {
@@ -997,7 +1002,7 @@ fn should_ignore_log_msg(msg: &str) -> bool {
         // This is supported by experimentation yielding that it shows only up when using the `-colorspace` parameter.
         // (color range and yuvj formats are fine though!)
         "No accelerated colorspace conversion found from yuv420p to bgr24",
-        // We actually don't even want it to estimate a framerate!
+        // We actually don't even want it to estimate a frame rate!
         "not enough frames to estimate rate",
         // Similar: we don't want it to be able to estimate any of these things and we set those values explicitly, see invocation.
         // Observed on Windows FFmpeg 7.1, but not with the same version on Mac with the same video.

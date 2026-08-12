@@ -10,11 +10,11 @@ use re_sdk_types::blueprint::archetypes::{
     Background, EyeControls3D, LineGrid3D, SpatialInformation,
 };
 use re_sdk_types::blueprint::components::Eye3DKind;
-use re_sdk_types::components::{LinearSpeed, Plane3D, Position3D, Vector3D};
+use re_sdk_types::components::{LinearSpeed, Plane3D, Position3D, Vector3D, ViewCoordinates};
 use re_sdk_types::datatypes::Vec3D;
 use re_sdk_types::view_coordinates::SignedAxis3;
 use re_sdk_types::{Archetype as _, Component as _, View as _, ViewClassIdentifier, archetypes};
-use re_tf::query_view_coordinates;
+use re_tf::query_view_coordinates_at_closest_ancestor;
 use re_ui::{Help, UiExt as _, list_item};
 use re_view::view_property_ui;
 use re_viewer_context::{
@@ -25,12 +25,14 @@ use re_viewer_context::{
 };
 use re_viewport_blueprint::ViewProperty;
 
+use crate::SpaceKind;
 use crate::contexts::register_spatial_contexts;
 use crate::heuristics::IndicatedVisualizableEntities;
 use crate::shared_fallbacks;
 use crate::spatial_topology::{HeuristicHints, SpatialTopology, SubSpaceConnectionFlags};
 use crate::ui::SpatialViewState;
-use crate::view_kind::SpatialViewKind;
+#[cfg(debug_assertions)]
+use crate::ui::bbox_debug_ui;
 use crate::visualizers::{
     CamerasVisualizer, TransformAxes3DVisualizer, register_3d_spatial_visualizers,
 };
@@ -65,6 +67,18 @@ impl ViewClass for SpatialView3D {
         &self,
         system_registry: &mut re_viewer_context::ViewSystemRegistrator<'_>,
     ) -> Result<(), ViewClassRegistryError> {
+        system_registry.register_fallback_provider(
+            SpatialInformation::descriptor_axes().component,
+            |ctx| {
+                query_view_coordinates_at_closest_ancestor(
+                    ctx.view_ctx.space_origin,
+                    ctx.recording(),
+                    &ctx.query,
+                )
+                .unwrap_or_default()
+            },
+        );
+
         system_registry
             .register_fallback_provider(LineGrid3D::descriptor_color().component, |_| {
                 re_sdk_types::components::Color::from_unmultiplied_rgba(128, 128, 128, 60)
@@ -82,7 +96,7 @@ impl ViewClass for SpatialView3D {
                 view_state
                     .state_3d
                     .scene_view_coordinates
-                    .and_then(|view_coordinates| view_coordinates.up())
+                    .up()
                     .map_or(DEFAULT_PLANE, |up| Plane3D::new(up.as_vec3(), 0.0))
             },
         );
@@ -105,11 +119,7 @@ impl ViewClass for SpatialView3D {
         );
 
         fn eye_property(ctx: &QueryContext<'_>) -> ViewProperty {
-            ViewProperty::from_archetype::<EyeControls3D>(
-                ctx.view_ctx.blueprint_db(),
-                ctx.view_ctx.blueprint_query(),
-                ctx.view_ctx.view_id,
-            )
+            ViewProperty::from_archetype::<EyeControls3D>(ctx.view_ctx)
         }
 
         system_registry.register_fallback_provider(
@@ -201,9 +211,7 @@ impl ViewClass for SpatialView3D {
                 radius = radius.at_least(crate::eye::EyeController::MIN_ORBIT_DISTANCE);
 
 
-                let scene_view_coordinates =
-                    view_state.state_3d.scene_view_coordinates.unwrap_or_default();
-
+                let scene_view_coordinates = view_state.state_3d.scene_view_coordinates;
                 let scene_right = scene_view_coordinates
                     .right()
                     .unwrap_or(SignedAxis3::POSITIVE_X);
@@ -242,8 +250,7 @@ impl ViewClass for SpatialView3D {
                     return Vector3D(Vec3D::new(0.0, 0.0, 1.0));
                 };
 
-                let scene_view_coordinates =
-                    view_state.state_3d.scene_view_coordinates.unwrap_or_default();
+                let scene_view_coordinates = view_state.state_3d.scene_view_coordinates;
 
                 let scene_up = scene_view_coordinates
                     .up()
@@ -489,9 +496,6 @@ impl ViewClass for SpatialView3D {
     ) -> Result<(), ViewSystemExecutionError> {
         let state = state.downcast_mut::<SpatialViewState>()?;
 
-        let scene_view_coordinates =
-            query_view_coordinates(space_origin, ctx.recording(), &ctx.current_query());
-
         // TODO(andreas): list_item'ify the rest
         ui.selection_grid("spatial_settings_ui").show(ui, |ui| {
             ui.grid_left_hand_label("Camera")
@@ -501,36 +505,18 @@ impl ViewClass for SpatialView3D {
             });
             ui.end_row();
 
-            ui.grid_left_hand_label("Coordinates")
-                .on_hover_text("The world coordinate system used for this view");
-            ui.vertical(|ui| {
-                let up_description =
-                    if let Some(scene_up) = scene_view_coordinates.and_then(|vc| vc.up()) {
-                        format!("Scene up is {scene_up}")
-                    } else {
-                        "Scene up is unspecified".to_owned()
-                    };
-                ui.label(up_description).on_hover_ui(|ui| {
-                    ui.markdown_ui("Set with `rerun.ViewCoordinates`.");
-                });
-            });
-            ui.end_row();
-
-            state.bounding_box_ui(ui, SpatialViewKind::ThreeD);
+            state.bounding_box_ui(ui, SpaceKind::ThreeD);
 
             #[cfg(debug_assertions)]
-            {
-                ui.re_checkbox(&mut state.state_3d.show_smoothed_bbox, "Smoothed bbox");
-                ui.re_checkbox(
-                    &mut state.state_3d.show_per_entity_bbox,
-                    "Per-entity bboxes",
-                );
-            }
+            bbox_debug_ui(ui, state);
         });
 
         re_ui::list_item::list_item_scope(ui, "spatial_view3d_selection_ui", |ui| {
             let view_ctx = self.view_context(ctx, view_id, state, space_origin);
+
             view_property_ui::<SpatialInformation>(&view_ctx, ui);
+            view_coordinates_ui(&view_ctx, ui);
+
             view_property_ui::<EyeControls3D>(&view_ctx, ui);
             view_property_ui::<Background>(&view_ctx, ui);
             view_property_ui_grid3d(&view_ctx, ui);
@@ -547,13 +533,47 @@ impl ViewClass for SpatialView3D {
         state: &mut dyn ViewState,
         query: &ViewQuery<'_>,
         system_output: re_viewer_context::SystemExecutionOutput,
-    ) -> Result<(), ViewSystemExecutionError> {
+    ) -> Result<re_viewer_context::ViewClassUiOutput, ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
         let state = state.downcast_mut::<SpatialViewState>()?;
-        state.update_frame_statistics(ui, &system_output, SpatialViewKind::ThreeD);
+        state.update_frame_statistics(ui, &system_output, SpaceKind::ThreeD);
 
         self.view_3d(ctx, missing_chunk_reporter, ui, state, query, system_output)
+    }
+}
+
+/// Shows a warning for left-handed and an error for invalid (degenerate) view coordinates.
+///
+/// Reuses the exact same reports that are surfaced in the view's warning/error button (see
+/// [`crate::ui_3d::validate_view_coordinates`]), rendered here as inline labels.
+fn view_coordinates_ui(ctx: &ViewContext<'_>, ui: &mut egui::Ui) {
+    let property = ViewProperty::from_archetype::<SpatialInformation>(ctx);
+    let Ok(mut coordinates) = property.component_or_fallback::<ViewCoordinates>(
+        ctx,
+        SpatialInformation::descriptor_axes().component,
+    ) else {
+        return;
+    };
+
+    if let Some(report) = crate::ui_3d::validate_view_coordinates(&mut coordinates) {
+        let text = match &report.details {
+            Some(details) => re_error::format_with_details(report.summary.clone(), details.clone()),
+            None => report.summary.clone(),
+        };
+        // Wrap in a list item so the label aligns with the property rows above instead of
+        // being drawn at the very left edge of the list item scope.
+        ui.list_item().interactive(false).show_flat(
+            ui,
+            re_ui::list_item::CustomContent::new(|ui, _| match report.severity {
+                re_viewer_context::ViewerReportSeverity::Warning => {
+                    ui.warning_label(text);
+                }
+                _ => {
+                    ui.error_label(text);
+                }
+            }),
+        );
     }
 }
 
@@ -561,15 +581,11 @@ impl ViewClass for SpatialView3D {
 // is suitable for the most part. However, as of writing the alpha color picker doesn't handle alpha
 // which we need here.
 fn view_property_ui_grid3d(ctx: &ViewContext<'_>, ui: &mut egui::Ui) {
-    let property = ViewProperty::from_archetype::<LineGrid3D>(
-        ctx.blueprint_db(),
-        ctx.blueprint_query(),
-        ctx.view_id,
-    );
+    let property = ViewProperty::from_archetype::<LineGrid3D>(ctx);
     let reflection = ctx.viewer_ctx.reflection();
     let Some(reflection) = reflection.archetypes.get(&property.archetype_name) else {
         ui.error_label(format!(
-            "Missing reflection data for archetype {:?}.",
+            "Missing reflection data for archetype {}.",
             property.archetype_name
         ));
         return;

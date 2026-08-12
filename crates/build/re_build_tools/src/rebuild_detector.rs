@@ -52,6 +52,7 @@ pub fn rebuild_if_crate_changed(pkg_name: &str) {
     let pkgs = Packages::from_metadata(&metadata);
     pkgs.track_implicit_dep(pkg_name, &mut files_to_watch);
 
+    #[expect(clippy::iter_over_hash_type)] // Cargo rerun directives are order-independent.
     for path in &files_to_watch {
         rerun_if_changed(path);
     }

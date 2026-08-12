@@ -58,17 +58,16 @@ pub fn update_video_texture_with_frame(
 
 /// Picks the GPU texture format for the allocated video frame texture.
 fn gpu_texture_format_for_frame_content(content: &FrameContent) -> wgpu::TextureFormat {
-    #[cfg(target_arch = "wasm32")]
-    {
-        match content {
-            FrameContent::WebVideoFrame(_) => wgpu::TextureFormat::Rgba8Unorm,
-            FrameContent::Decoded(content) => gpu_texture_format_for_decoded_frame_content(content),
+    cfg_select! {
+        target_arch = "wasm32" => {
+            match content {
+                FrameContent::WebVideoFrame(_) => wgpu::TextureFormat::Rgba8Unorm,
+                FrameContent::Decoded(content) => gpu_texture_format_for_decoded_frame_content(content),
+            }
         }
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        gpu_texture_format_for_decoded_frame_content(content)
+        _ => {
+            gpu_texture_format_for_decoded_frame_content(content)
+        }
     }
 }
 
@@ -131,20 +130,20 @@ pub fn copy_frame_to_texture(
     frame: &FrameContent,
     target_texture: &GpuTexture,
 ) -> Result<SourceImageDataFormat, VideoPlayerError> {
-    #[cfg(target_arch = "wasm32")]
-    {
-        match frame {
-            FrameContent::WebVideoFrame(frame) => {
-                copy_web_video_frame_to_texture(ctx, frame, target_texture)
-            }
-            FrameContent::Decoded(frame) => {
-                copy_decoded_video_frame_to_texture(ctx, frame, target_texture)
+    cfg_select! {
+        target_arch = "wasm32" => {
+            match frame {
+                FrameContent::WebVideoFrame(frame) => {
+                    copy_web_video_frame_to_texture(ctx, frame, target_texture)
+                }
+                FrameContent::Decoded(frame) => {
+                    copy_decoded_video_frame_to_texture(ctx, frame, target_texture)
+                }
             }
         }
-    }
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        copy_decoded_video_frame_to_texture(ctx, frame, target_texture)
+        _ => {
+            copy_decoded_video_frame_to_texture(ctx, frame, target_texture)
+        }
     }
 }
 

@@ -5,7 +5,7 @@ use arrow::array::{
 };
 use arrow::datatypes::{DataType, Field};
 use rerun::external::re_log;
-use rerun::lenses::{Lens, Lenses, LensesSink, OutputMode, Selector, op};
+use rerun::lenses::{CastTo, Lens, Lenses, LensesSink, OutputMode, Selector};
 use rerun::sink::GrpcSink;
 use rerun::{
     ComponentDescriptor, DynamicArchetype, RecordingStream, Scalars, SerializedComponentColumn,
@@ -21,9 +21,10 @@ fn main() -> anyhow::Result<()> {
 
     let destructure_a = Lens::derive("example:Nested:payload")
         .output_entity("nested/a")
-        .to_component(
+        .to_component_with_cast(
             Scalars::descriptor_scalars(),
-            Selector::parse(".a")?.pipe(op::cast(DataType::Float64)),
+            Selector::parse(".a")?,
+            CastTo::Auto,
         )
         .build()?;
 

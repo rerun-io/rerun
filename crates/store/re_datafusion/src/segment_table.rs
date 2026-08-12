@@ -5,13 +5,19 @@ use arrow::datatypes::SchemaRef;
 use async_trait::async_trait;
 use datafusion::catalog::TableProvider;
 use datafusion::error::Result as DataFusionResult;
+use datafusion::logical_expr::TableProviderFilterPushDown;
+use datafusion::prelude::Expr;
 use re_log_types::EntryId;
+use re_protos::cloud::v1alpha1::ext::ScanSegmentTableDataframe;
 use re_protos::cloud::v1alpha1::{ScanSegmentTableRequest, ScanSegmentTableResponse};
 use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_redap_client::{ApiError, ApiResult, ConnectionClient};
 use tracing::instrument;
 
-use crate::grpc_streaming_provider::{GrpcStreamProvider, GrpcStreamToTable};
+use crate::grpc_streaming_provider::{GrpcStreamProvider, GrpcStreamToTable, ScanParams};
+use crate::pushdown_expressions::{
+    classify_segment_id_filters_for_pushdown, segment_id_filter_from_filters,
+};
 use crate::wasm_compat::make_future_send;
 
 //TODO(ab): deduplicate from DatasetManifestProvider
@@ -65,12 +71,23 @@ impl GrpcStreamToTable for SegmentTableProvider {
 
     // TODO(ab): what `GrpcStreamToTable` attempts to simplify should probably be handled by
     // `ConnectionClient`
-    #[instrument(skip(self), err, parent = &self.parent_span)]
+    #[instrument(skip(self, params), err, parent = &self.parent_span)]
     async fn send_streaming_request(
         &mut self,
+        params: &ScanParams,
     ) -> ApiResult<re_redap_client::ApiResponseStream<Self::GrpcStreamData>> {
+        let segment_id_filter = segment_id_filter_from_filters(
+            &params.filters,
+            ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
+        );
+
         let request = tonic::Request::new(ScanSegmentTableRequest {
-            columns: vec![], // all of them
+            columns: params
+                .projected_columns
+                .as_deref()
+                .unwrap_or_default()
+                .to_vec(),
+            segment_id_filter,
         })
         .with_entry_id(self.dataset_id);
 
@@ -91,7 +108,21 @@ impl GrpcStreamToTable for SegmentTableProvider {
         ))
     }
 
-    fn process_response(&mut self, response: Self::GrpcStreamData) -> ApiResult<RecordBatch> {
+    fn supports_filters_pushdown(
+        &self,
+        filters: &[&Expr],
+    ) -> DataFusionResult<Vec<TableProviderFilterPushDown>> {
+        Ok(classify_segment_id_filters_for_pushdown(
+            filters,
+            ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
+        ))
+    }
+
+    fn process_response(
+        &mut self,
+        response: Self::GrpcStreamData,
+        _params: &ScanParams,
+    ) -> ApiResult<RecordBatch> {
         response
             .data
             .ok_or_else(|| {

@@ -2,11 +2,11 @@ use std::error::Error;
 
 use re_protos::cloud::v1alpha1::EntryKind;
 use re_types_core::{ComponentIdentifier, RowId};
-use re_viewer_context::StoreViewContext;
+use re_viewer_context::AppContext;
 
 /// Parse an `Int32Array` as an `EntryKind` and display it.
 pub fn redap_entry_kind(
-    _ctx: &StoreViewContext<'_>,
+    _ctx: &AppContext<'_>,
     ui: &mut egui::Ui,
     _component: ComponentIdentifier,
     _row_id: Option<RowId>,

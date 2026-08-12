@@ -6,7 +6,6 @@
 //! `ExecutionPlan`. There is no IO source, no segment fan-out, no
 //! `rerun_segment_id` prepend, no pipeline budget, and no analytics.
 
-use std::any::Any;
 use std::sync::Arc;
 
 use arrow::array::{RecordBatch, RecordBatchOptions};
@@ -92,10 +91,6 @@ impl LocalChunkStoreTableProvider {
 
 #[async_trait]
 impl TableProvider for LocalChunkStoreTableProvider {
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
     fn schema(&self) -> SchemaRef {
         Arc::clone(&self.schema)
     }
@@ -180,10 +175,6 @@ impl DisplayAs for LocalChunkStoreExec {
 impl ExecutionPlan for LocalChunkStoreExec {
     fn name(&self) -> &'static str {
         "LocalChunkStoreExec"
-    }
-
-    fn as_any(&self) -> &dyn Any {
-        self
     }
 
     fn properties(&self) -> &Arc<PlanProperties> {
@@ -317,6 +308,7 @@ mod tests {
     };
     use re_dataframe::external::re_log_types::example_components::{MyPoint, MyPoints};
     use re_dataframe::external::re_log_types::{EntityPath, StoreId, StoreKind, TimeInt, Timeline};
+    use re_log_types::TimelineName;
 
     fn new_store() -> ChunkStoreHandle {
         let store_id = StoreId::random(StoreKind::Recording, "test-app");
@@ -474,7 +466,9 @@ mod tests {
         let query = QueryExpression {
             filtered_index: Some("t".into()),
             include_static_columns: StaticColumnSelection::Both,
-            selection: Some(vec![ColumnSelector::Time(TimeColumnSelector::from("t"))]),
+            selection: Some(vec![ColumnSelector::Time(TimeColumnSelector::from(
+                TimelineName::from("t"),
+            ))]),
             ..Default::default()
         };
         let provider = LocalChunkStoreTableProvider::try_new(store, query).unwrap();

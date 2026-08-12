@@ -29,8 +29,7 @@ impl MessageParser for JoyMessageParser {
             header,
             axes,
             buttons,
-        } = cdr::try_decode_message::<sensor_msgs::Joy>(msg.data.as_ref())
-            .map_err(|err| Error::Other(anyhow::anyhow!(err)))?;
+        } = cdr::try_decode_message::<sensor_msgs::Joy>(msg.data.as_ref()).map_err(Error::other)?;
 
         // add the sensor timestamp to the context, `log_time` and `publish_time` are added automatically
         ctx.add_timestamp_cell(crate::util::TimestampCell::from_nanos_ros2(

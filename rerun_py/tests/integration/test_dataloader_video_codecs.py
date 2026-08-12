@@ -342,39 +342,58 @@ def test_duplicate_window_matches_clean_decode(tmp_path: Path) -> None:
     assert torch.equal(duplicated, clean), "duplicate samples in the window must not change the decoded frame"
 
 
-def _build_timestamped_video_rrd(
+TimelineKind = Literal["timestamp", "duration"]
+
+
+def _build_temporal_video_rrd(
     rrd_path: Path,
     config: CodecConfig,
     samples: list[bytes],
     keyframe_indices: list[int],
-    timestamps_ns: list[int],
+    index_ns: list[int],
+    *,
+    timeline: str,
+    kind: TimelineKind,
 ) -> None:
-    """Log the VideoStream on a timestamp timeline at explicit per-frame timestamps, with sparse `is_keyframe`."""
-    timestamps = np.array(timestamps_ns, dtype="datetime64[ns]")
-    keyframe_timestamps = timestamps[keyframe_indices]
+    """Log the VideoStream on a timestamp or duration timeline at explicit per-frame index values, with sparse `is_keyframe`."""
+    dtype = "datetime64[ns]" if kind == "timestamp" else "timedelta64[ns]"
+    index_values = np.array(index_ns, dtype=dtype)
+    keyframe_values = index_values[keyframe_indices]
+
+    def _time_column(values: np.ndarray) -> rr.TimeColumn:
+        if kind == "timestamp":
+            return rr.TimeColumn(timeline, timestamp=values)
+        return rr.TimeColumn(timeline, duration=values)
 
     with rr.RecordingStream("rerun_example_test_dataloader_video_dropped", recording_id="dropped-frames") as rec:
         rec.save(rrd_path)
         rec.log("/video", rr.VideoStream(codec=config.sdk_codec), static=True)
         rec.send_columns(
             "/video",
-            indexes=[rr.TimeColumn("real_time", timestamp=timestamps)],
+            indexes=[_time_column(index_values)],
             columns=rr.VideoStream.columns(sample=samples),
         )
         rec.send_columns(
             "/video",
-            indexes=[rr.TimeColumn("real_time", timestamp=keyframe_timestamps)],
+            indexes=[_time_column(keyframe_values)],
             columns=rr.VideoStream.columns(is_keyframe=[True] * len(keyframe_indices)),
         )
 
 
-def test_fixed_rate_sampling_duplicates_decode_correctly(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    ("timeline", "kind"),
+    [("real_time", "timestamp"), ("elapsed", "duration")],
+    ids=["timestamp", "duration"],
+)
+def test_fixed_rate_sampling_duplicates_decode_correctly(tmp_path: Path, timeline: str, kind: TimelineKind) -> None:
     """
     Exercise the deployment path: dropped frames + `FixedRateSampling` + `fill_latest_at`.
 
     Real frames sit on a sparse subset of a 30 Hz grid, so the fixed-rate decode
     window for a mid-GOP target is backfilled with duplicate samples. The served
-    decode matches a clean decode of the de-duplicated real frames.
+    decode matches a clean decode of the de-duplicated real frames. Run on both a
+    timestamp and a duration timeline, since `FixedRateSampling` and
+    `VideoFrameDecoder.context_range` handle `datetime64`/`timedelta64` indices.
     """
     config = CODEC_CONFIGS["h264"]
     samples, keyframe_indices = _generate_stream(tmp_path / "gen", config, DEDUP_GOP_SIZE)
@@ -397,7 +416,9 @@ def test_fixed_rate_sampling_duplicates_decode_correctly(tmp_path: Path) -> None
     rrd_dir = tmp_path / "recording"
     rrd_dir.mkdir()
     timestamps_ns = [slot * ns_per_slot for slot in slot_of_frame]
-    _build_timestamped_video_rrd(rrd_dir / "recording.rrd", config, samples, keyframe_indices, timestamps_ns)
+    _build_temporal_video_rrd(
+        rrd_dir / "recording.rrd", config, samples, keyframe_indices, timestamps_ns, timeline=timeline, kind=kind
+    )
 
     # The real frames the grid maps to across the window, with the duplicate at the empty slot.
     keyframe_slot = slot_of_frame[keyframe_real]
@@ -419,7 +440,7 @@ def test_fixed_rate_sampling_duplicates_decode_correctly(tmp_path: Path) -> None
         ds = server.client().get_dataset("video")
         dataset = RerunMapDataset(
             DataSource(ds),
-            "real_time",
+            timeline,
             {
                 "image": Field(
                     "/video:VideoStream:sample",
@@ -462,7 +483,15 @@ def test_off_grid_capture_rate_decodes_correctly(tmp_path: Path) -> None:
 
     rrd_dir = tmp_path / "recording"
     rrd_dir.mkdir()
-    _build_timestamped_video_rrd(rrd_dir / "recording.rrd", config, samples, keyframe_indices, timestamps_ns)
+    _build_temporal_video_rrd(
+        rrd_dir / "recording.rrd",
+        config,
+        samples,
+        keyframe_indices,
+        timestamps_ns,
+        timeline="real_time",
+        kind="timestamp",
+    )
 
     # Resolve each grid slot to the real frame `fill_latest_at` backfills it with
     # (latest real frame at or before the slot) and that frame's prior keyframe.

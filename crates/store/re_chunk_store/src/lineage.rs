@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
 use itertools::{Either, Itertools as _};
@@ -85,7 +85,15 @@ pub enum ChunkDirectLineage {
     ///
     /// Even if it gets garbage collected, it can be re-fetched as needed (as long as the backing
     /// Redap server is still available).
-    RootFromManifest { is_static: bool },
+    RootFromManifest {
+        is_static: bool,
+
+        /// The segment whose manifest this chunk came from.
+        ///
+        /// This is the store's own segment for ordinary data, or some other segment
+        /// if it came from an asset. See [`ChunkStore::find_source_segments`].
+        segment_id: Arc<re_sdk_types::SegmentId>,
+    },
 
     /// This chunk's data was originally logged from volatile memory.
     ///
@@ -106,8 +114,11 @@ impl std::fmt::Debug for ChunkDirectLineage {
                 chunk_ids.iter().join(", ")
             )),
 
-            Self::RootFromManifest { is_static } => {
-                write!(f, "origin:(static: {is_static})")
+            Self::RootFromManifest {
+                is_static,
+                segment_id,
+            } => {
+                write!(f, "origin:(static: {is_static}, segment: {segment_id})")
             }
 
             Self::Volatile => f.write_str("origin:<volatile> (cannot be re-fetched)"),
@@ -133,8 +144,12 @@ impl From<&ChunkDirectLineageReport> for ChunkDirectLineage {
                 Self::CompactedFrom(chunks.keys().copied().collect())
             }
 
-            ChunkDirectLineageReport::RootFromManifest { is_static } => Self::RootFromManifest {
+            ChunkDirectLineageReport::RootFromManifest {
+                is_static,
+                segment_id,
+            } => Self::RootFromManifest {
                 is_static: *is_static,
+                segment_id: segment_id.clone(),
             },
 
             ChunkDirectLineageReport::Volatile => Self::Volatile,
@@ -176,11 +191,13 @@ impl ChunkDirectLineage {
                 Some(ChunkDirectLineageReport::CompactedFrom(chunks))
             }
 
-            Self::RootFromManifest { is_static } => {
-                Some(ChunkDirectLineageReport::RootFromManifest {
-                    is_static: *is_static,
-                })
-            }
+            Self::RootFromManifest {
+                is_static,
+                segment_id,
+            } => Some(ChunkDirectLineageReport::RootFromManifest {
+                is_static: *is_static,
+                segment_id: segment_id.clone(),
+            }),
 
             Self::Volatile => Some(ChunkDirectLineageReport::Volatile),
         }
@@ -246,7 +263,14 @@ pub enum ChunkDirectLineageReport {
     ///
     /// Even if it gets garbage collected, it can be re-fetched as needed (as long as the backing
     /// Redap server is still available).
-    RootFromManifest { is_static: bool },
+    RootFromManifest {
+        is_static: bool,
+
+        /// The segment whose manifest this chunk came from.
+        ///
+        /// See [`ChunkDirectLineage::RootFromManifest`].
+        segment_id: Arc<re_sdk_types::SegmentId>,
+    },
 
     /// This chunk's data was originally logged from volatile memory.
     ///
@@ -266,8 +290,14 @@ impl std::fmt::Debug for ChunkDirectLineageReport {
                 .debug_map()
                 .entries(map.iter().map(|(k, v)| (k, v.id())))
                 .finish(),
-            Self::RootFromManifest { is_static } => {
-                write!(f, "RootFromManifest(static: {is_static})")
+            Self::RootFromManifest {
+                is_static,
+                segment_id,
+            } => {
+                write!(
+                    f,
+                    "RootFromManifest(static: {is_static}, segment: {segment_id})"
+                )
             }
             Self::Volatile => write!(f, "Volatile"),
         }
@@ -288,7 +318,7 @@ impl ChunkStore {
             // OTOH, if it has been offloaded, now we need to track down its roots and determine
             // whether it is static or not from the lineage info.
             for root_id in store.find_root_manifest_chunks(chunk_id) {
-                if let Some(ChunkDirectLineage::RootFromManifest { is_static }) =
+                if let Some(ChunkDirectLineage::RootFromManifest { is_static, .. }) =
                     store.chunks_lineage.get(&root_id).map(|l| &l.lineage)
                 {
                     return if *is_static { "yes" } else { "no" };
@@ -443,6 +473,21 @@ impl ChunkStore {
 
             _ => {}
         }
+    }
+
+    /// Returns the segments that the given chunk's data is from, if any.
+    ///
+    /// An empty result means the data doesn't come from a manifest.
+    pub fn find_source_segments(&self, chunk_id: &ChunkId) -> BTreeSet<re_sdk_types::SegmentId> {
+        self.find_root_manifest_chunks(chunk_id)
+            .into_iter()
+            .filter_map(|root_id| match self.direct_lineage(&root_id) {
+                Some(ChunkDirectLineage::RootFromManifest { segment_id, .. }) => {
+                    Some((**segment_id).clone())
+                }
+                _ => None,
+            })
+            .collect()
     }
 
     /// Collects all physical chunks that descend from the given chunk in some way.

@@ -3,7 +3,7 @@
 # -----------------------------------------------------------------------------
 # Section identical to the main scripts/clippy_wasm/clippy.toml:
 
-msrv = "1.92"
+msrv = "1.95"
 
 allow-unwrap-in-tests = true
 
@@ -29,6 +29,7 @@ too-many-lines-threshold = 600 # TODO(emilk): decrease this
 disallowed-macros = [
   'std::dbg',
 
+  { path = "cfg_if::cfg_if", reason = "Use the standard library's `cfg_select!` instead" },
   { path = "egui::hex_color", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
 
   { path = "std::debug_assert", reason = "Use `re_log::debug_assert` instead" },
@@ -45,6 +46,8 @@ disallowed-macros = [
 
 # https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_methods
 disallowed-methods = [
+  { path = "js_sys::futures::spawn_local", reason = "Use `re_async::spawn_local` or an explicit `re_async::AsyncRuntimeHandle`." },
+  { path = "wasm_bindgen_futures::spawn_local", reason = "Use `re_async::spawn_local` or an explicit `re_async::AsyncRuntimeHandle`." },
   { path = "arrow_array::record_batch::RecordBatch::try_new", reason = "Use `arrow_array::record_batch::RecordBatch::try_new_with_options` instead. There is a corner case for empty batches that require the length specified." },
   { path = "arrow::compute::concat", reason = "Use `re_arrow_util::arrow_util::concat_arrays` instead, which has better memory management" },
   { path = "arrow::compute::filter", reason = "Use `re_arrow_util::arrow_util::filter_array` instead" },
@@ -70,10 +73,19 @@ disallowed-methods = [
   { path = "egui::Ui::checkbox", reason = "Use `re_checkbox` from `re_ui::UiEx" },
   { path = "egui::Ui::radio_value", reason = "Use `re_radio_value` from `re_ui::UiEx" },
   { path = "egui::Ui::spinner", reason = "Use `ui.loading_indicator` from `re_ui::UiEx" },
+  # `SnapshotOptions::default` cannot be listed here (clippy can't refer to trait methods),
+  # so `scripts/lint.py` forbids that one instead.
+  { path = "egui_kittest::SnapshotOptions::new", reason = "Use `re_ui::testing::default_snapshot_options_for_ui/_3d` instead, so that snapshot tests get strict thresholds on CI" },
   { path = "glam::Vec2::normalize", reason = "normalize() can create NaNs. Use try_normalize or normalize_or_zero" },
   { path = "glam::Vec3::normalize", reason = "normalize() can create NaNs. Use try_normalize or normalize_or_zero" },
+  { path = "lock_api::RwLock::try_upgradable_read_for", reason = "See `lock_api::RwLock::upgradable_read`" },
+  { path = "lock_api::RwLock::try_upgradable_read_until", reason = "See `lock_api::RwLock::upgradable_read`" },
+  { path = "lock_api::RwLock::try_upgradable_read", reason = "See `lock_api::RwLock::upgradable_read`" },
+  { path = "lock_api::RwLock::upgradable_read", reason = "An upgradable read excludes both writers and other upgradable readers, so unless there are plain `read`s to run alongside it, it is as serializing as a `write` from the start. Instead take a plain `read`, drop it, then take a `write` and re-check what you read." },
   { path = "macaw::BoundingBox::from_points", reason = "from_points propagates NaN/inf. Use re_renderer::util::bounding_box_from_points instead" },
   { path = "opentelemetry::metrics::HistogramBuilder::with_boundaries", reason = "We have automatic bucketing - with_boundaries has no effect" },
+  { path = "re_mutex::RwLock::read_upgradable", reason = "See `lock_api::RwLock::upgradable_read`" },
+  { path = "re_mutex::RwLock::upgradable_read", reason = "See `lock_api::RwLock::upgradable_read`" },
   { path = "sha1::Digest::new", reason = "SHA1 is cryptographically broken" },
   { path = "std::env::temp_dir", reason = "Use the tempdir crate instead" },
   { path = "std::panic::catch_unwind", reason = "We compile with `panic = 'abort'`" },

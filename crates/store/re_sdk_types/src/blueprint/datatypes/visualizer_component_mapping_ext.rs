@@ -1,9 +1,16 @@
-use re_types_core::ArrowString;
 use re_types_core::datatypes::Utf8;
+use re_types_core::{ArrowString, ComponentIdentifier, InvalidComponentIdentifierError};
 
 use crate::blueprint::datatypes::{ComponentSourceKind, VisualizerComponentMapping};
 
 impl VisualizerComponentMapping {
+    /// The [`ComponentIdentifier`] this mapping targets.
+    ///
+    /// Fails if `target` is invalid (e.g. empty).
+    pub fn target_component(&self) -> Result<ComponentIdentifier, InvalidComponentIdentifierError> {
+        ComponentIdentifier::try_new(self.target.as_str())
+    }
+
     /// Create a new visualizer component mapping.
     ///
     /// This is the most general constructor. For common cases, prefer the more specific constructors like

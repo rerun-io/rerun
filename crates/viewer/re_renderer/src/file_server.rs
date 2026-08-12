@@ -276,6 +276,8 @@ mod file_server_impl {
             // On the other hand, we don't care whether a file has dropped one of its imported
             // dependencies: worst case we'll watch a file that's not used anymore, that's
             // not an issue.
+            #[expect(clippy::iter_over_hash_type)]
+            // Each path is re-watched independently; errors are logged, not propagated.
             for path in &paths {
                 if let Err(err) = self.watch(resolver, path, false) {
                     re_log::error!(err=%re_error::format(err), "couldn't watch imported dependency");

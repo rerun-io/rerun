@@ -132,7 +132,7 @@ impl FileSystem for &'static MemFileSystem {
         let path = path.as_ref().clean();
         let files = self.files.read();
         let files = files.as_ref().unwrap();
-        ensure!(files.contains_key(&path), "file does not exist at {path:?}",);
+        ensure!(files.contains_key(&path), "file does not exist at {path:?}");
         Ok(path)
     }
 

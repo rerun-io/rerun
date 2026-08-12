@@ -1,4 +1,4 @@
-use std::ops::RangeInclusive;
+use core::range::RangeInclusive;
 
 use egui::{NumExt as _, Response};
 use re_log_types::{TimeInt, TimeType, TimestampFormat};
@@ -32,22 +32,31 @@ pub struct TimeDragValue {
 
 impl TimeDragValue {
     pub fn from_abs_time_range(times: re_log_types::AbsoluteTimeRange) -> Self {
-        Self::from_time_range(times.min.as_i64()..=times.max.as_i64())
+        Self::from_time_range(RangeInclusive {
+            start: times.min.as_i64(),
+            last: times.max.as_i64(),
+        })
     }
 
-    pub fn from_time_range(range: RangeInclusive<i64>) -> Self {
-        let span = range.end() - range.start();
-        let base_time = time_range_base_time(*range.start(), span);
+    pub fn from_time_range(range: impl Into<RangeInclusive<i64>>) -> Self {
+        let range = range.into();
+        let span = range.last - range.start;
+        let base_time = time_range_base_time(range.start, span);
         let (unit_symbol, unit_factor) = unit_from_span(span);
 
         // `abs_range` is used by the DragValue when editing an absolute time, its bound expanded to
         // the nearest unit to minimize glitches.
-        let abs_range =
-            round_down(*range.start(), unit_factor)..=round_up(*range.end(), unit_factor);
+        let abs_range = RangeInclusive {
+            start: round_down(range.start, unit_factor),
+            last: round_up(range.last, unit_factor),
+        };
 
         // `rel_range` is used by the DragValue when editing a relative time offset. It must have
         // enough margins either side to accommodate for all possible values of current time.
-        let rel_range = round_down(-span, unit_factor)..=round_up(2 * span, unit_factor);
+        let rel_range = RangeInclusive {
+            start: round_down(-span, unit_factor),
+            last: round_up(2 * span, unit_factor),
+        };
 
         Self {
             range,
@@ -61,12 +70,12 @@ impl TimeDragValue {
 
     /// Return the minimum time set for this drag value.
     pub fn min_time(&self) -> TimeInt {
-        TimeInt::new_temporal(*self.range.start())
+        TimeInt::new_temporal(self.range.start)
     }
 
     /// Return the maximum time set for this drag value.
     pub fn max_time(&self) -> TimeInt {
-        TimeInt::new_temporal(*self.range.end())
+        TimeInt::new_temporal(self.range.last)
     }
 
     /// Show a drag value widget, taking into account the time type.
@@ -107,25 +116,24 @@ impl TimeDragValue {
         low_bound_override: Option<TimeInt>,
     ) -> Response {
         let mut time_range = if absolute {
-            self.abs_range.clone()
+            self.abs_range
         } else {
-            self.rel_range.clone()
+            self.rel_range
         };
 
         // speed must be computed before messing with time_range for consistency
-        let span = time_range.end() - time_range.start();
+        let span = time_range.last - time_range.start;
         let speed = (span as f32 * 0.005).at_least(1.0);
 
         if let Some(low_bound_override) = low_bound_override {
-            time_range =
-                low_bound_override.as_i64().at_least(*time_range.start())..=*time_range.end();
+            time_range.start = low_bound_override.as_i64().at_least(time_range.start);
         }
 
         let mut value_i64 = value.as_i64();
         let response = ui.add(
             egui::DragValue::new(&mut value_i64)
                 .clamp_existing_to_range(false)
-                .range(time_range)
+                .range(time_range.into())
                 .speed(speed),
         );
         *value = TimeInt::new_temporal(value_i64);
@@ -151,9 +159,9 @@ impl TimeDragValue {
         timestamp_format: TimestampFormat,
     ) -> (Response, Option<Response>) {
         let mut time_range = if absolute {
-            self.abs_range.clone()
+            self.abs_range
         } else {
-            self.rel_range.clone()
+            self.rel_range
         };
 
         let factor = self.unit_factor as f32;
@@ -164,17 +172,18 @@ impl TimeDragValue {
         };
 
         // speed must be computed before messing with time_range for consistency
-        let speed = (time_range.end() - time_range.start()) as f32 / factor * 0.005;
+        let speed = (time_range.last - time_range.start) as f32 / factor * 0.005;
 
         if let Some(low_bound_override) = low_bound_override {
-            time_range =
-                low_bound_override.as_i64().at_least(*time_range.start())..=*time_range.end();
+            time_range.start = low_bound_override.as_i64().at_least(time_range.start);
         }
 
         let mut time_unit = (value.as_i64().saturating_sub(offset)) as f32 / factor;
 
-        let time_range = (*time_range.start() - offset) as f32 / factor
-            ..=(*time_range.end() - offset) as f32 / factor;
+        let time_range = RangeInclusive {
+            start: (time_range.start - offset) as f32 / factor,
+            last: (time_range.last - offset) as f32 / factor,
+        };
 
         let base_time_response = if absolute {
             self.base_time.map(|base_time| {
@@ -191,7 +200,7 @@ impl TimeDragValue {
         let drag_value_response = ui.add(
             egui::DragValue::new(&mut time_unit)
                 .clamp_existing_to_range(false)
-                .range(time_range)
+                .range(time_range.into())
                 .speed(speed)
                 .suffix(self.unit_symbol),
         );

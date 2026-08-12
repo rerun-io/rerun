@@ -223,10 +223,8 @@ fn test_3d_in_2d(use_explicit_frames: bool) {
         // TODO(RR-3076): We don't correctly pick up the target frame from a pinhole origin without coordinate frame.
         // But we also want to remove origin in the future. Either way it's a matter of better target frame heuristic.
         if use_explicit_frames {
-            ViewProperty::from_archetype::<blueprint_archetypes::SpatialInformation>(
-                ctx.blueprint_db(),
-                ctx.blueprint_query,
-                view.id,
+            ViewProperty::from_archetype_for_view::<blueprint_archetypes::SpatialInformation>(
+                ctx, view.id,
             )
             .save_blueprint_component(
                 ctx,

@@ -4,13 +4,16 @@ use std::sync::OnceLock;
 
 use glam::DAffine3;
 use itertools::Either;
+use re_chunk_store::external::re_chunk::ChunkError;
 use re_chunk_store::{ChunkShared, LatestAtQuery, MissingChunkReporter};
 use re_entity_db::EntityDb;
 use re_entity_db::external::re_query::StorageEngineReadGuard;
 use re_log_types::EntityPath;
 use re_sdk_types::archetypes::{self, InstancePoses3D};
 use re_sdk_types::external::arrow::array::Array as _;
-use re_sdk_types::{ChunkId, ComponentIdentifier, RowId, TransformFrameIdHash, components};
+use re_sdk_types::{
+    ChunkId, Component, ComponentIdentifier, RowId, TransformFrameIdHash, components,
+};
 
 use crate::convert;
 use crate::transform_resolution_cache::{
@@ -27,6 +30,21 @@ pub enum TransformError {
 
     #[error("missing transform on entity `{entity_path}`")]
     MissingTransform { entity_path: EntityPath },
+
+    #[error(
+        "Entity `{entity_path}` has multiple values for component `{component}` per row. Only one per row is supported."
+    )]
+    MultipleComponentsPerRow {
+        entity_path: EntityPath,
+        component: ComponentIdentifier,
+    },
+
+    #[error("Couldn't read component `{component}` on entity `{entity_path}`: {source}")]
+    ReadComponent {
+        entity_path: EntityPath,
+        component: ComponentIdentifier,
+        source: ChunkError,
+    },
 
     #[error(
         "Ignoring transform due to empty parent frame name for component `{component}` on entity `{entity_path}`."
@@ -110,6 +128,31 @@ pub fn atomic_component_set_for_pinhole_projection() -> &'static [ComponentIdent
     })
 }
 
+/// Reads one `Transform3D` component value and reports non-mono rows as transform errors.
+fn mono_transform3d_component<C: Component>(
+    chunk: &ChunkShared,
+    component: ComponentIdentifier,
+    row_index: usize,
+    entity_path: &EntityPath,
+) -> Result<Option<C>, TransformError> {
+    match chunk.component_mono::<C>(component, row_index) {
+        None => Ok(None),
+        Some(Ok(value)) => Ok(Some(value)),
+        Some(Err(ChunkError::IndexOutOfBounds { kind, len: 0, .. })) if kind == "mono" => Ok(None),
+        Some(Err(ChunkError::IndexOutOfBounds { kind, .. })) if kind == "mono" => {
+            Err(TransformError::MultipleComponentsPerRow {
+                entity_path: entity_path.clone(),
+                component,
+            })
+        }
+        Some(Err(source)) => Err(TransformError::ReadComponent {
+            entity_path: entity_path.clone(),
+            component,
+            source,
+        }),
+    }
+}
+
 /// Queries & processes all components that are part of a transform, returning the transform from child to parent.
 ///
 /// If any of the components yields an invalid transform, returns `None`.
@@ -152,24 +195,32 @@ pub fn query_and_resolve_tree_transform_at_entity(
         });
     };
 
-    // TODO(andreas): silently ignores deserialization error right now.
-
-    let parent = get_parent_frame(chunk, row_index, entity_path, identifier_parent_frame)?;
+    let parent_frame = mono_transform3d_component::<components::TransformFrameId>(
+        chunk,
+        identifier_parent_frame,
+        row_index,
+        entity_path,
+    )?;
+    let parent = resolve_parent_frame(parent_frame, entity_path, identifier_parent_frame)?;
 
     #[expect(clippy::useless_let_if_seq)]
     let mut transform = DAffine3::IDENTITY;
 
     // The order of the components here is important.
-    if let Some(translation) = chunk
-        .component_mono::<components::Translation3D>(identifier_translations, row_index)
-        .and_then(|v| v.ok())
-    {
+    if let Some(translation) = mono_transform3d_component::<components::Translation3D>(
+        chunk,
+        identifier_translations,
+        row_index,
+        entity_path,
+    )? {
         transform = convert::translation_3d_to_daffine3(translation);
     }
-    if let Some(axis_angle) = chunk
-        .component_mono::<components::RotationAxisAngle>(identifier_rotation_axis_angles, row_index)
-        .and_then(|v| v.ok())
-    {
+    if let Some(axis_angle) = mono_transform3d_component::<components::RotationAxisAngle>(
+        chunk,
+        identifier_rotation_axis_angles,
+        row_index,
+        entity_path,
+    )? {
         let axis_angle = convert::rotation_axis_angle_to_daffine3(axis_angle).map_err(|_err| {
             TransformError::InvalidTransform {
                 entity_path: entity_path.clone(),
@@ -178,10 +229,12 @@ pub fn query_and_resolve_tree_transform_at_entity(
         })?;
         transform *= axis_angle;
     }
-    if let Some(quaternion) = chunk
-        .component_mono::<components::RotationQuat>(identifier_quaternions, row_index)
-        .and_then(|v| v.ok())
-    {
+    if let Some(quaternion) = mono_transform3d_component::<components::RotationQuat>(
+        chunk,
+        identifier_quaternions,
+        row_index,
+        entity_path,
+    )? {
         let quaternion = convert::rotation_quat_to_daffine3(quaternion).map_err(|_err| {
             TransformError::InvalidTransform {
                 entity_path: entity_path.clone(),
@@ -190,10 +243,12 @@ pub fn query_and_resolve_tree_transform_at_entity(
         })?;
         transform *= quaternion;
     }
-    if let Some(scale) = chunk
-        .component_mono::<components::Scale3D>(identifier_scales, row_index)
-        .and_then(|v| v.ok())
-    {
+    if let Some(scale) = mono_transform3d_component::<components::Scale3D>(
+        chunk,
+        identifier_scales,
+        row_index,
+        entity_path,
+    )? {
         if scale.x() == 0.0 && scale.y() == 0.0 && scale.z() == 0.0 {
             return Err(TransformError::InvalidTransform {
                 entity_path: entity_path.clone(),
@@ -202,10 +257,12 @@ pub fn query_and_resolve_tree_transform_at_entity(
         }
         transform *= convert::scale_3d_to_daffine3(scale);
     }
-    if let Some(mat3x3) = chunk
-        .component_mono::<components::TransformMat3x3>(identifier_mat3x3, row_index)
-        .and_then(|v| v.ok())
-    {
+    if let Some(mat3x3) = mono_transform3d_component::<components::TransformMat3x3>(
+        chunk,
+        identifier_mat3x3,
+        row_index,
+        entity_path,
+    )? {
         let affine_transform = convert::transform_mat3x3_to_daffine3(mat3x3);
         if affine_transform.matrix3.determinant() == 0.0 {
             return Err(TransformError::InvalidTransform {
@@ -216,10 +273,12 @@ pub fn query_and_resolve_tree_transform_at_entity(
         transform *= affine_transform;
     }
 
-    if chunk
-        .component_mono::<components::TransformRelation>(identifier_relation, row_index)
-        .and_then(|v| v.ok())
-        == Some(components::TransformRelation::ChildFromParent)
+    if mono_transform3d_component::<components::TransformRelation>(
+        chunk,
+        identifier_relation,
+        row_index,
+        entity_path,
+    )? == Some(components::TransformRelation::ChildFromParent)
     {
         let determinant = transform.matrix3.determinant();
         if determinant != 0.0 && determinant.is_finite() {
@@ -440,27 +499,35 @@ fn get_parent_frame(
     entity_path: &EntityPath,
     identifier_parent_frame: ComponentIdentifier,
 ) -> Result<TransformFrameIdHash, TransformError> {
-    chunk
+    let parent_frame = chunk
         .component_mono::<components::TransformFrameId>(identifier_parent_frame, row_index)
-        .and_then(|v| v.ok())
-        .map_or_else(
-            || {
-                entity_path
-                    .parent()
-                    .ok_or(TransformError::ImplicitRootParentFrame)
-                    .map(|parent| TransformFrameIdHash::from_entity_path(&parent))
-            },
-            |frame_id| {
-                if frame_id.as_str().is_empty() {
-                    Err(TransformError::EmptyParentFrame {
-                        entity_path: entity_path.clone(),
-                        component: identifier_parent_frame,
-                    })
-                } else {
-                    Ok(TransformFrameIdHash::new(&frame_id))
-                }
-            },
-        )
+        .and_then(|v| v.ok());
+    resolve_parent_frame(parent_frame, entity_path, identifier_parent_frame)
+}
+
+fn resolve_parent_frame(
+    parent_frame: Option<components::TransformFrameId>,
+    entity_path: &EntityPath,
+    identifier_parent_frame: ComponentIdentifier,
+) -> Result<TransformFrameIdHash, TransformError> {
+    parent_frame.map_or_else(
+        || {
+            entity_path
+                .parent()
+                .ok_or(TransformError::ImplicitRootParentFrame)
+                .map(|parent| TransformFrameIdHash::from_entity_path(&parent))
+        },
+        |frame_id| {
+            if frame_id.as_str().is_empty() {
+                Err(TransformError::EmptyParentFrame {
+                    entity_path: entity_path.clone(),
+                    component: identifier_parent_frame,
+                })
+            } else {
+                Ok(TransformFrameIdHash::new(&frame_id))
+            }
+        },
+    )
 }
 
 /// Queries view coordinates from either the [`archetypes::Pinhole`] or [`archetypes::ViewCoordinates`] archetype.
@@ -488,11 +555,11 @@ pub fn query_view_coordinates(
         .map(|(_index, view_coordinates)| view_coordinates)
 }
 
-/// Queries view coordinates from either the [`archetypes::Pinhole`] or [`archetypes::ViewCoordinates`] archetype
-/// at the closest ancestor of the given entity path.
+/// Queries view coordinates at the closest ancestor of the given entity path.
 ///
-/// Gives precedence to the `Pinhole` archetype.
-// TODO(#2663): This is confusing and should be cleaned up.
+/// Scene-level [`archetypes::ViewCoordinates`] take precedence so that a pinhole camera cannot
+/// override the orientation chosen for a 3D view. A [`archetypes::Pinhole`] is used only as a
+/// fallback when no scene-level view coordinates are present.
 pub fn query_view_coordinates_at_closest_ancestor(
     entity_path: &EntityPath,
     entity_db: &EntityDb,
@@ -502,13 +569,13 @@ pub fn query_view_coordinates_at_closest_ancestor(
         .latest_at_component_at_closest_ancestor::<components::ViewCoordinates>(
             entity_path,
             query,
-            archetypes::Pinhole::descriptor_camera_xyz().component,
+            archetypes::ViewCoordinates::descriptor_xyz().component,
         )
         .or_else(|| {
             entity_db.latest_at_component_at_closest_ancestor::<components::ViewCoordinates>(
                 entity_path,
                 query,
-                archetypes::ViewCoordinates::descriptor_xyz().component,
+                archetypes::Pinhole::descriptor_camera_xyz().component,
             )
         })
         .map(|(_path, _index, view_coordinates)| view_coordinates)
@@ -521,9 +588,53 @@ mod tests {
     use re_chunk_store::Chunk;
     use re_entity_db::{EntityDb, EntityPath};
     use re_log_types::Timeline;
-    use re_sdk_types::{archetypes::InstancePoses3D, components::RotationQuat};
+    use re_sdk_types::{
+        archetypes::{self, InstancePoses3D, Pinhole, Transform3D},
+        components::{PinholeProjection, RotationQuat, ViewCoordinates},
+    };
 
     use super::*;
+
+    #[test]
+    fn scene_view_coordinates_take_precedence_over_pinhole_fallback()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let mut entity_db = EntityDb::new(re_log_types::StoreInfo::testing().store_id);
+        let timeline = Timeline::new_sequence("t");
+        let query = LatestAtQuery::new(*timeline.name(), 1);
+
+        let camera_path = EntityPath::from("world/camera");
+        let camera_chunk = Chunk::builder(camera_path.clone())
+            .with_archetype_auto_row(
+                [(timeline, 1)],
+                &Pinhole::new(PinholeProjection::from_focal_length_and_principal_point(
+                    [1.0, 1.0],
+                    [0.0, 0.0],
+                ))
+                .with_camera_xyz(ViewCoordinates::RDF),
+            )
+            .build()?;
+        entity_db.add_chunk(&Arc::new(camera_chunk))?;
+
+        assert_eq!(
+            query_view_coordinates_at_closest_ancestor(&camera_path, &entity_db, &query),
+            Some(ViewCoordinates::RDF)
+        );
+
+        let scene_chunk = Chunk::builder(EntityPath::from("world"))
+            .with_archetype_auto_row(
+                [(timeline, 1)],
+                &archetypes::ViewCoordinates::RIGHT_HAND_Z_UP(),
+            )
+            .build()?;
+        entity_db.add_chunk(&Arc::new(scene_chunk))?;
+
+        assert_eq!(
+            query_view_coordinates_at_closest_ancestor(&camera_path, &entity_db, &query),
+            Some(ViewCoordinates::RIGHT_HAND_Z_UP)
+        );
+
+        Ok(())
+    }
 
     /// Test that an invalid instance pose quaternion is ignored while still keeping the translation.
     #[test]
@@ -557,6 +668,46 @@ mod tests {
             poses,
             vec![DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0))]
         );
+
+        Ok(())
+    }
+
+    /// Tests that `Transform3D` with multiple transform components per row are treated as error.
+    #[test]
+    fn non_mono_transform3d_component_errors() -> Result<(), Box<dyn std::error::Error>> {
+        let mut entity_db = EntityDb::new(re_log_types::StoreInfo::testing().store_id);
+
+        let timeline = Timeline::new_sequence("t");
+        let entity_path = EntityPath::from("my_entity");
+        let chunk = Chunk::builder(entity_path.clone())
+            .with_archetype_auto_row(
+                [(timeline, 1)],
+                &Transform3D::new().with_many_translation([[1.0, 0.0, 0.0], [2.0, 0.0, 0.0]]),
+            )
+            .build()?;
+        let chunk_id = chunk.id();
+        let row_id = chunk.row_ids_slice()[0];
+        entity_db.add_chunk(&Arc::new(chunk))?;
+
+        let err = query_and_resolve_tree_transform_at_entity(
+            &entity_db,
+            &MissingChunkReporter::default(),
+            &entity_path,
+            chunk_id,
+            row_id,
+        )
+        .expect_err("Transform3D with multiple transform components per row should fail");
+
+        let TransformError::MultipleComponentsPerRow {
+            entity_path: err_entity_path,
+            component,
+        } = err
+        else {
+            panic!("unexpected error: {err}");
+        };
+
+        assert_eq!(err_entity_path, entity_path);
+        assert_eq!(component, Transform3D::descriptor_translation().component);
 
         Ok(())
     }

@@ -86,7 +86,6 @@ fn opening_url_with_temporal_anchor_pauses_playing_recording() {
         url.open(
             ui.ctx(),
             &OpenUrlOptions {
-                follow: false,
                 recording_open_behavior: RecordingOpenBehavior::OpenAndSelect,
                 show_loader: false,
             },

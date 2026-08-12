@@ -10,33 +10,47 @@ use re_test_context::TestContext;
 use re_test_context::external::egui_kittest::OsThreshold;
 use re_test_viewport::TestContextExt as _;
 use re_view_spatial::SpatialView3D;
-use re_viewer_context::{BlueprintContext as _, RecommendedView, ViewClass as _};
+use re_viewer_context::{RecommendedView, ViewClass as _};
 use re_viewport_blueprint::{ViewBlueprint, ViewProperty};
 
 fn test_transparent_geometry<A: AsComponents>(
     name: &str,
     archetype_builder: impl Fn(f32, Color32) -> A,
 ) {
+    run_transparency_snapshot_test(name, |test_context| {
+        // Log a bunch of transparent geometry.
+        for (i, color) in [
+            Color32::from_rgba_unmultiplied(255, 128, 128, 20),
+            Color32::from_rgba_unmultiplied(128, 255, 128, 20),
+            Color32::from_rgba_unmultiplied(128, 128, 255, 20),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let y = i as f32 * 2.0 - 2.0;
+            test_context.log_entity(format!("geom_{i}"), |builder| {
+                builder.with_archetype(
+                    RowId::new(),
+                    TimePoint::default(),
+                    &archetype_builder(y, color),
+                )
+            });
+        }
+    });
+}
+
+/// Logs transparent geometry via `log`, then snapshots the scene from two opposite camera
+/// orientations to make sure back-to-front sorting works regardless of view direction.
+fn run_transparency_snapshot_test(name: &str, log: impl Fn(&mut TestContext)) {
     let mut test_context = TestContext::new_with_view_class::<SpatialView3D>();
 
-    // Log a bunch of transparent meshes.
-    for (i, color) in [
-        Color32::from_rgba_unmultiplied(255, 128, 128, 20),
-        Color32::from_rgba_unmultiplied(128, 255, 128, 20),
-        Color32::from_rgba_unmultiplied(128, 128, 255, 20),
-    ]
-    .into_iter()
-    .enumerate()
-    {
-        let y = i as f32 * 2.0 - 2.0;
-        test_context.log_entity(format!("geom_{i}"), |builder| {
-            builder.with_archetype(
-                RowId::new(),
-                TimePoint::default(),
-                &archetype_builder(y, color),
-            )
-        });
-    }
+    // Point cloud transparency is opt-in; enable it so the points test exercises it.
+    test_context
+        .app_options
+        .experimental
+        .point_cloud_transparency = true;
+
+    log(&mut test_context);
 
     let view_id = test_context.setup_viewport_blueprint(|ctx, blueprint| {
         let view_blueprint =
@@ -44,11 +58,7 @@ fn test_transparent_geometry<A: AsComponents>(
         let view_id = view_blueprint.id;
         blueprint.add_views(std::iter::once(view_blueprint), None, None);
 
-        let eye_property = ViewProperty::from_archetype::<EyeControls3D>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query,
-            view_id,
-        );
+        let eye_property = ViewProperty::from_archetype_for_view::<EyeControls3D>(ctx, view_id);
 
         eye_property.save_blueprint_component(
             ctx,
@@ -65,13 +75,12 @@ fn test_transparent_geometry<A: AsComponents>(
     let mut harness = test_context
         .setup_kittest_for_rendering_3d(size)
         .with_options(
-            re_ui::testing::default_snapshot_options_for_3d(size)
+            default_options
+                .clone()
                 // Transparency rendering on MacOS diverges significantly from the other platforms.
                 // (not just on CI but also locally)
                 .threshold(OsThreshold::new(default_options.threshold).macos(2.5))
-                .failed_pixel_count_threshold(
-                    OsThreshold::new(default_options.failed_pixel_count_threshold).macos(150),
-                ),
+                .max_failed_pixels(OsThreshold::new(default_options.max_failed_pixels).macos(150)),
         )
         .build_ui(|ui| {
             test_context.run_with_single_view(ui, view_id);
@@ -81,11 +90,8 @@ fn test_transparent_geometry<A: AsComponents>(
         // Flip the camera orientation to ensure sorting works as expected.
 
         test_context.with_blueprint_ctx(|ctx, _| {
-            let eye_property = ViewProperty::from_archetype::<EyeControls3D>(
-                ctx.current_blueprint(),
-                ctx.blueprint_query(),
-                view_id,
-            );
+            let eye_property =
+                ViewProperty::from_archetype_for_view::<EyeControls3D>(&ctx, view_id);
 
             let len = 3.5;
             let dir = Vec3::new(0.25, orientation_y, 0.25).normalize();
@@ -157,5 +163,38 @@ pub fn test_transparent_capsules3d() {
             .with_translations([[0.0, y, 0.0]])
             .with_fill_mode(FillMode::Solid)
             .with_colors([color])
+    });
+}
+
+#[test]
+pub fn test_transparent_points3d() {
+    // A single point cloud (one batch) with several large, heavily-overlapping transparent points
+    // stacked along the axis the camera flips around. This exercises the per-cloud back-to-front
+    // sorting: which color ends up on top must depend on the view direction.
+    run_transparency_snapshot_test("points3d", |test_context| {
+        let positions = [
+            [0.0, -1.0, 0.0],
+            [0.0, -0.5, 0.0],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.5, 0.0],
+            [0.0, 1.0, 0.0],
+        ];
+        let colors = [
+            Color32::from_rgba_unmultiplied(255, 64, 64, 80),
+            Color32::from_rgba_unmultiplied(64, 255, 64, 80),
+            Color32::from_rgba_unmultiplied(64, 64, 255, 80),
+            Color32::from_rgba_unmultiplied(255, 255, 64, 80),
+            Color32::from_rgba_unmultiplied(64, 255, 255, 80),
+        ];
+
+        test_context.log_entity("points", |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                TimePoint::default(),
+                &archetypes::Points3D::new(positions)
+                    .with_colors(colors)
+                    .with_radii([0.8]),
+            )
+        });
     });
 }

@@ -208,7 +208,7 @@ fn run_test_2d(
     add_data(&mut test_context);
 
     let view_id = setup_blueprint_2d(&mut test_context, view_time_range, override_time_range);
-    snapshot_results.add(test_context.run_view_ui_and_save_snapshot(
+    snapshot_results.add(test_context.run_view_ui_and_save_renderer_snapshot(
         view_id,
         name,
         egui::vec2(200.0, 200.0),
@@ -540,11 +540,7 @@ fn run_test_3d(
         });
 
     test_context.with_blueprint_ctx(|ctx, _| {
-        let eye_property = ViewProperty::from_archetype::<EyeControls3D>(
-            ctx.current_blueprint(),
-            ctx.blueprint_query(),
-            view_id,
-        );
+        let eye_property = ViewProperty::from_archetype_for_view::<EyeControls3D>(&ctx, view_id);
         eye_property.save_blueprint_component(
             &ctx,
             &EyeControls3D::descriptor_position(),
@@ -594,11 +590,8 @@ fn test_sliding_window_3d() {
 
     let setup_eye = |test_context: &TestContext, view_id: ViewId| {
         test_context.with_blueprint_ctx(|ctx, _| {
-            let eye_property = ViewProperty::from_archetype::<EyeControls3D>(
-                ctx.current_blueprint(),
-                ctx.blueprint_query(),
-                view_id,
-            );
+            let eye_property =
+                ViewProperty::from_archetype_for_view::<EyeControls3D>(&ctx, view_id);
             eye_property.save_blueprint_component(
                 &ctx,
                 &EyeControls3D::descriptor_position(),

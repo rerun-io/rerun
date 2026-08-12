@@ -8,7 +8,7 @@ use re_sdk_types::blueprint::archetypes::EyeControls3D;
 use re_sdk_types::components::Position3D;
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
-use re_viewer_context::{BlueprintContext as _, Item, ViewClass as _, ViewId};
+use re_viewer_context::{Item, ViewClass as _, ViewId};
 use re_viewport_blueprint::{ViewBlueprint, ViewProperty};
 
 /// Helper struct to specify the properties of a pinhole image to be rendered in the test scene.
@@ -255,11 +255,7 @@ fn run_view_ui_and_save_snapshot(
         });
 
     test_context.with_blueprint_ctx(|ctx, _| {
-        let property = ViewProperty::from_archetype::<EyeControls3D>(
-            ctx.current_blueprint(),
-            ctx.blueprint_query(),
-            view_id,
-        );
+        let property = ViewProperty::from_archetype_for_view::<EyeControls3D>(&ctx, view_id);
 
         property.save_blueprint_component(
             &ctx,

@@ -1,5 +1,6 @@
 <!--[metadata]
 title = "Decoupling human and camera motion from videos in the wild"
+description = "Visual walkthrough of SLAHMR, which chains ViTPose, PHALP, DROID-SLAM, HuMoR, and SMPL across three optimization stages."
 source = "https://github.com/rerun-io/slahmr"
 tags = ["3D", "SLAM", "Keypoint detection", "Mesh", "Time series", "Paper walkthrough"]
 thumbnail = "https://static.rerun.io/decoupling-human/2f1c7f027668a6fb15865c51197d2ea98b5725a6/480w.png"

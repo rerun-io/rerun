@@ -5,8 +5,8 @@ use cros_codecs::codec::h265::parser::{
 };
 use h264_reader::nal::{self, Nal as _};
 use itertools::Itertools as _;
+use re_int::SaturatingCast as _;
 use re_span::Span;
-use saturating_cast::SaturatingCast as _;
 
 use super::{SampleMetadata, VideoDataDescription, VideoLoadError};
 use crate::demux::{
@@ -16,7 +16,7 @@ use crate::demux::{
 use crate::h264::encoding_details_from_h264_sps;
 use crate::h265::encoding_details_from_h265_sps;
 use crate::nalu::ANNEXB_NAL_START_CODE;
-use crate::{StableIndexDeque, Time, Timescale};
+use crate::{FrameNumber, StableIndexDeque, Time, Timescale};
 
 impl VideoDataDescription {
     pub fn load_mp4(bytes: &[u8], debug_name: &str) -> Result<Self, VideoLoadError> {
@@ -46,11 +46,26 @@ impl VideoDataDescription {
 
         let mp4_tracks = mp4.tracks().iter().map(|(k, t)| (*k, t.kind)).collect();
 
-        let track = mp4
+        let Some(track) = mp4
             .tracks()
             .values()
             .find(|t| t.kind == Some(re_mp4::TrackKind::Video))
-            .ok_or(VideoLoadError::NoVideoTrack)?;
+        else {
+            // No track has a codec we recognize as video. An unsupported video codec such as
+            // MPEG-4 Part 2, which uses the `mp4v` fourcc, is left as `Unknown` by `re_mp4` and
+            // so never tagged as a video track. Fall back to the media handler type so we can
+            // report the actual unsupported codec instead of the misleading "no video tracks".
+            let video_track = mp4.tracks().values().find(|t| {
+                matches!(
+                    re_mp4::TrackKind::try_from(&t.trak(&mp4).mdia.hdlr.handler_type),
+                    Ok(re_mp4::TrackKind::Video)
+                )
+            });
+            return Err(match video_track {
+                Some(track) => VideoLoadError::UnsupportedCodec(unknown_codec_fourcc(&mp4, track)),
+                None => VideoLoadError::NoVideoTrack,
+            });
+        };
 
         let stsd = track.trak(&mp4).mdia.minf.stbl.stsd.clone();
 
@@ -87,7 +102,7 @@ impl VideoDataDescription {
                 let presentation_timestamp = Time::new(sample.composition_timestamp);
                 let duration = Time::new(sample.duration.saturating_cast());
 
-                let byte_span = Span::from_start_len(sample.offset as u32, sample.size as u32);
+                let byte_span = Span::from_start_len(sample.offset, sample.size);
 
                 samples.push_back(SampleMetadataState::Present(SampleMetadata {
                     is_sync: sample.is_sync,
@@ -107,15 +122,18 @@ impl VideoDataDescription {
             re_tracing::profile_scope!("fix vp8/vp9 sync flags");
             keyframe_indices.clear();
             let mut data = Vec::new();
-            for (idx, sample_state) in samples.iter_mut().enumerate() {
+            for (idx, sample_state) in samples.iter_indexed_mut() {
                 if let Some(sample) = sample_state.sample_mut() {
-                    let span = match sample.source {
+                    let byte_range = match sample.source {
                         crate::VideoSource::Span(span) => span,
                         crate::VideoSource::Id { .. } => unreachable!(),
                     };
-                    let byte_range = span.range_usize();
-                    reader.seek(std::io::SeekFrom::Start(byte_range.start as u64))?;
-                    data.resize(byte_range.len(), 0);
+                    reader.seek(std::io::SeekFrom::Start(byte_range.start))?;
+                    data.resize(
+                        usize::try_from(byte_range.len)
+                            .map_err(|_err| VideoLoadError::InvalidSamples)?,
+                        0,
+                    );
                     reader.read_exact(&mut data)?;
                     let bitstream_is_sync = match codec {
                         crate::VideoCodec::VP8 => crate::vp8::vp8_is_keyframe(&data),
@@ -175,7 +193,7 @@ impl VideoDataDescription {
                 .collect::<Vec<_>>();
             samples_sorted_by_pts.sort_by_key(|s| s.presentation_timestamp);
             for (frame_nr, sample) in samples_sorted_by_pts.into_iter().enumerate() {
-                sample.frame_nr = frame_nr as u32;
+                sample.frame_nr = frame_nr as FrameNumber;
             }
         }
 

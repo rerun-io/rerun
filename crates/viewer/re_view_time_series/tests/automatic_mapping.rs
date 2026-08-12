@@ -6,12 +6,15 @@
 use std::sync::Arc;
 
 use re_log_types::external::arrow::array::{
-    Array, Float64Array, Int16Array, Int32Array, StructArray, UInt32Array,
+    Array, Float32Array, Float64Array, Int16Array, Int32Array, StringArray, StructArray,
+    UInt32Array,
 };
 use re_log_types::external::arrow::datatypes::{DataType, Field};
 use re_log_types::{EntityPath, TimePoint, Timeline};
-use re_sdk_types::components;
-use re_sdk_types::{DynamicArchetype, archetypes};
+use re_sdk_types::{
+    Component as _, ComponentDescriptor, DynamicArchetype, RowId, SerializedComponentBatch,
+    archetypes, components,
+};
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
 use re_view_time_series::TimeSeriesView;
@@ -373,6 +376,80 @@ fn setup_store(test_context: &mut TestContext) {
         });
     }
 
+    // Scenario 15: Entity with a Scalar component type under a custom component identifier
+    // Expected: Should be treated like native scalar semantics and map that custom component
+    for i in 0..10 {
+        test_context.log_entity("entity_custom_scalar_identifier", |builder| {
+            builder.with_archetype_auto_row(
+                [(timeline, i)],
+                &DynamicArchetype::new("custom")
+                    .with_component::<components::Scalar>("custom_scalar", [i as f64 * 9.0]),
+            )
+        });
+    }
+
+    // Scenario 16: Entity with a Scalar component type stored as a struct array
+    // Expected: Should map the Float64 fields and ignore non-scalar fields
+    for i in 0..10 {
+        let struct_array = StructArray::from(vec![
+            (
+                Arc::new(Field::new("a", DataType::Float64, false)),
+                Arc::new(Float64Array::from(vec![(i as f64 / 5.0).sin()])) as Arc<dyn Array>,
+            ),
+            (
+                Arc::new(Field::new("b", DataType::Float32, false)),
+                Arc::new(Float32Array::from(vec![(i as f32 / 5.0).cos()])) as Arc<dyn Array>,
+            ),
+            (
+                Arc::new(Field::new("c", DataType::Utf8, false)),
+                Arc::new(StringArray::from(vec!["not plottable"])) as Arc<dyn Array>,
+            ),
+        ]);
+
+        test_context.log_entity("entity_custom_struct_scalar", |builder| {
+            builder.with_serialized_batch(
+                RowId::new(),
+                [(timeline, i)],
+                SerializedComponentBatch {
+                    descriptor: ComponentDescriptor::partial("custom_struct")
+                        .with_component_type(components::Scalar::name()),
+                    array: Arc::new(struct_array),
+                },
+            )
+        });
+    }
+
+    // Scenario 17: Entity with Scalar semantics stored as non-recommended Int32 data
+    // Expected: Should map both semantic components despite the non-recommended physical datatype
+    for i in 0..10 {
+        let struct_array = StructArray::from(vec![(
+            Arc::new(Field::new("value", DataType::Int32, false)),
+            Arc::new(Int32Array::from(vec![i as i32 * 2])) as Arc<dyn Array>,
+        )]);
+
+        test_context.log_entity("entity_scalar_semantics_int32", |builder| {
+            builder
+                .with_serialized_batch(
+                    RowId::new(),
+                    [(timeline, i)],
+                    SerializedComponentBatch {
+                        descriptor: ComponentDescriptor::partial("semantic_int32")
+                            .with_component_type(components::Scalar::name()),
+                        array: Arc::new(Int32Array::from(vec![i as i32])),
+                    },
+                )
+                .with_serialized_batch(
+                    RowId::new(),
+                    [(timeline, i)],
+                    SerializedComponentBatch {
+                        descriptor: ComponentDescriptor::partial("nested_semantic_int32")
+                            .with_component_type(components::Scalar::name()),
+                        array: Arc::new(struct_array),
+                    },
+                )
+        });
+    }
+
     test_context.set_active_timeline(*timeline.name());
 }
 
@@ -665,5 +742,52 @@ fn check_visualizer_instructions(test_context: &TestContext, view_id: ViewId) {
                 "Expected custom component mapping, got: {component}"
             );
         }
+    }
+
+    // Scenario 15: Entity with a Scalar component type under a custom component identifier
+    // Expected: Should map the custom identifier as native scalar semantics.
+    {
+        let instructions = visualizers_for(data_result_tree, "entity_custom_scalar_identifier");
+        assert_eq!(instructions.len(), 1);
+
+        let (component, selector) = source_component_for(&instructions[0]);
+        assert_eq!(component, "custom:custom_scalar");
+        assert!(
+            selector.is_empty(),
+            "Expected empty selector for direct component mapping"
+        );
+    }
+
+    // Scenario 16: Entity with a Scalar component type stored as a struct array
+    // Expected: Should map both Float64 fields and ignore the Utf8 field.
+    {
+        let instructions = visualizers_for(data_result_tree, "entity_custom_struct_scalar");
+        assert_eq!(instructions.len(), 2);
+
+        let (component, selector) = source_component_for(&instructions[0]);
+        assert_eq!(component, "custom_struct");
+        assert_eq!(selector, ".a");
+
+        let (component, selector) = source_component_for(&instructions[1]);
+        assert_eq!(component, "custom_struct");
+        assert_eq!(selector, ".b");
+    }
+
+    // Scenario 17: Entity with Scalar semantics stored as non-recommended Int32 data
+    // Expected: Should map both semantic components despite the non-recommended physical datatype.
+    {
+        let instructions = visualizers_for(data_result_tree, "entity_scalar_semantics_int32");
+        assert_eq!(instructions.len(), 2);
+
+        let (component, selector) = source_component_for(&instructions[0]);
+        assert_eq!(component, "semantic_int32");
+        assert!(
+            selector.is_empty(),
+            "Expected empty selector for direct component mapping"
+        );
+
+        let (component, selector) = source_component_for(&instructions[1]);
+        assert_eq!(component, "nested_semantic_int32");
+        assert_eq!(selector, ".value");
     }
 }

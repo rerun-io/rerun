@@ -24,6 +24,7 @@ pub enum TokenType {
     Dot,
     Pipe,
     Semicolon,
+    Comma,
     QuestionMark,
     ExclamationMark,
 }
@@ -69,6 +70,7 @@ impl std::fmt::Display for TokenType {
             Self::Dot => write!(f, "."),
             Self::Pipe => write!(f, "|"),
             Self::Semicolon => write!(f, ";"),
+            Self::Comma => write!(f, ","),
             Self::QuestionMark => write!(f, "?"),
             Self::ExclamationMark => write!(f, "!"),
         }
@@ -243,6 +245,7 @@ impl<'a> Lexer<'a> {
             '(' => Ok(Some(self.make_token(TokenType::LParen))),
             ')' => Ok(Some(self.make_token(TokenType::RParen))),
             ';' => Ok(Some(self.make_token(TokenType::Semicolon))),
+            ',' => Ok(Some(self.make_token(TokenType::Comma))),
 
             // String literals
             '"' => self.make_string().map(Some),
@@ -369,6 +372,21 @@ mod test {
                 TokenType::Field("foo".into()),
                 TokenType::QuestionMark,
                 TokenType::ExclamationMark,
+            ]
+        );
+    }
+
+    #[test]
+    fn comma() {
+        assert_eq!(
+            extract_inner(Lexer::new("pack(.x, .y)").scan_tokens().unwrap()),
+            vec![
+                TokenType::Ident("pack".into()),
+                TokenType::LParen,
+                TokenType::Field("x".into()),
+                TokenType::Comma,
+                TokenType::Field("y".into()),
+                TokenType::RParen,
             ]
         );
     }

@@ -64,12 +64,18 @@ class BuildMode(Enum):
 
 
 def build_and_upload(
-    bucket: Bucket | None, mode: BuildMode, gcs_dir: str, target: str, compatibility: str | None
+    bucket: Bucket | None,
+    mode: BuildMode,
+    gcs_dir: str,
+    target: str,
+    compatibility: str | None,
+    use_zig: bool,
 ) -> None:
     # pypi / extra builds require a web build
     if mode in (BuildMode.PYPI, BuildMode.EXTRA):
         run("pixi run rerun-build-web-release")
 
+    # Grep for these feature names before changing them.
     if mode is BuildMode.PYPI:
         maturin_feature_flags = "--no-default-features --features perf_telemetry,pypi"
     elif mode is BuildMode.PR:
@@ -80,10 +86,12 @@ def build_and_upload(
     dist = f"dist/{target}"
 
     compatibility = f"--compatibility {compatibility}" if compatibility is not None else ""
+    zig = "--zig" if use_zig else ""
 
     run(
         "maturin build "
         f"{compatibility} "
+        f"{zig} "
         "--manifest-path rerun_py/Cargo.toml "
         "--release "
         f"--target {target} "
@@ -128,6 +136,7 @@ def main() -> None:
         type=str,
         help='The platform tag for linux, e.g. "manylinux_2_28"',
     )
+    parser.add_argument("--zig", action="store_true", help="Use Zig to target the requested manylinux version")
     parser.add_argument("--upload-gcs", action="store_true", default=False, help="Upload the wheel to GCS")
     parser.add_argument(
         "--upload-only",
@@ -152,6 +161,7 @@ def main() -> None:
             args.dir,
             args.target or detect_target(),
             args.compat,
+            args.zig,
         )
 
 

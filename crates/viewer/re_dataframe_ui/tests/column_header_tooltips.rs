@@ -82,9 +82,9 @@ fn test_column_header_tooltips() {
 fn test_fields() -> Vec<(Field, &'static str)> {
     let component_column_desc = ComponentColumnDescriptor {
         store_datatype: DataType::Int64,
-        component_type: Some(ComponentType::new("rerun.components.Null")),
+        component_type: Some(ComponentType::from("rerun.components.Null")),
         entity_path: EntityPath::from("/some/path"),
-        archetype: Some(ArchetypeName::new("ArchetypeName")),
+        archetype: Some(ArchetypeName::from("ArchetypeName")),
         component: ComponentIdentifier::from("component_identifier"),
         is_static: false,
         is_tombstone: false,

@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import io
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, cast
+from collections import OrderedDict
+from typing import Any, cast
 
 import av
 import numpy as np
@@ -11,12 +12,11 @@ import torch
 from PIL import Image
 from torchvision.transforms.functional import pil_to_tensor  # type: ignore[import-untyped]
 
-from rerun._tracing import with_tracing
+from rerun._tracing import set_current_span_attributes, with_tracing
 
-from ._sample_index import _ns_to_datetime64
-
-if TYPE_CHECKING:
-    from collections.abc import Iterator
+from ...components import VideoCodec
+from ..video import detect_gop_start, is_annex_b, length_prefixed_to_annex_b
+from ._sample_index import _ns_to_datetime64, _ns_to_timedelta64
 
 # AV1 through ``libdav1d`` is faster.
 _CODEC_TO_DECODER = {
@@ -26,8 +26,18 @@ _CODEC_TO_DECODER = {
     "hevc": "hevc",
 }
 
-_ANNEX_B_START_CODE = b"\x00\x00\x00\x01"
-_ANNEX_B_START_CODE_SHORT = b"\x00\x00\x01"
+_CODEC_NAME_ALIASES = {"avc": "h264", "hevc": "h265"}
+
+
+def _to_video_codec(codec: str) -> VideoCodec | None:
+    """
+    Map a codec string to [`VideoCodec`][rerun.components.VideoCodec].
+
+    Returns `None` for codecs Rerun doesn't know; every known codec has a
+    keyframe detector in `rerun.experimental.video.detect_gop_start`.
+    """
+    name = _CODEC_NAME_ALIASES.get(codec.lower(), codec.lower())
+    return getattr(VideoCodec, name.upper(), None)
 
 
 class ColumnDecoder(ABC):
@@ -44,7 +54,7 @@ class ColumnDecoder(ABC):
     def decode(
         self,
         raw: pa.ChunkedArray,
-        index_value: int | np.datetime64,
+        index_value: int | np.datetime64 | np.timedelta64,
         segment_id: str,
     ) -> torch.Tensor | None:
         """Decode *raw* Arrow data into a tensor, or return `None` to signal data missing."""
@@ -52,8 +62,8 @@ class ColumnDecoder(ABC):
 
     def context_range(
         self,
-        index_value: int | np.datetime64,
-    ) -> tuple[int | np.datetime64, int | np.datetime64] | None:
+        index_value: int | np.datetime64 | np.timedelta64,
+    ) -> tuple[int | np.datetime64 | np.timedelta64, int | np.datetime64 | np.timedelta64] | None:
         """
         Extra index-value range needed to decode *index_value*.
 
@@ -96,7 +106,12 @@ class ImageDecoder(ColumnDecoder):
     """Decode a single encoded-image blob (JPEG/PNG) to a `[C, H, W]` uint8 tensor."""
 
     @with_tracing("ImageDecoder.decode")
-    def decode(self, raw: pa.ChunkedArray, index_value: int | np.datetime64, segment_id: str) -> torch.Tensor:
+    def decode(
+        self,
+        raw: pa.ChunkedArray,
+        index_value: int | np.datetime64 | np.timedelta64,
+        segment_id: str,
+    ) -> torch.Tensor:
         del index_value, segment_id
         combined = raw.combine_chunks()
         blob_bytes = bytes(_flatten_blob(combined, 0))
@@ -108,7 +123,12 @@ class NumericDecoder(ColumnDecoder):
     """Decode Arrow numeric / list-of-numeric columns to a tensor."""
 
     @with_tracing("NumericDecoder.decode")
-    def decode(self, raw: pa.ChunkedArray, index_value: int | np.datetime64, segment_id: str) -> torch.Tensor:
+    def decode(
+        self,
+        raw: pa.ChunkedArray,
+        index_value: int | np.datetime64 | np.timedelta64,
+        segment_id: str,
+    ) -> torch.Tensor:
         del index_value, segment_id
         return torch.as_tensor(_unwrap_to_numpy(raw.combine_chunks()))
 
@@ -155,65 +175,21 @@ def _flatten_blob(arr: pa.Array, row: int) -> np.ndarray:
     return np.frombuffer(inner.buffers()[2], dtype=np.uint8, offset=start, count=end - start)
 
 
-def _avcc_to_annex_b(data: bytes, nal_length_size: int = 4) -> bytes:
-    """Convert AVCC/AVC1 (length-prefixed) NAL units to Annex B (start-code-prefixed)."""
-    result = bytearray()
-    pos = 0
-    while pos + nal_length_size <= len(data):
-        nal_length = int.from_bytes(data[pos : pos + nal_length_size], "big")
-        pos += nal_length_size
-        if nal_length <= 0 or pos + nal_length > len(data):
-            break
-        result.extend(_ANNEX_B_START_CODE)
-        result.extend(data[pos : pos + nal_length])
-        pos += nal_length
-    return bytes(result)
+class _DecoderSession:
+    """An open codec context reused across `decode` calls that extend the same GOP."""
+
+    __slots__ = ("context", "fed_samples", "frames_emitted", "last_frame")
+
+    def __init__(self, context: av.VideoCodecContext) -> None:
+        self.context = context
+        self.fed_samples: list[bytes] = []
+        self.frames_emitted = 0
+        self.last_frame: av.VideoFrame | None = None
 
 
-def _is_annex_b(data: bytes) -> bool:
-    """Check if data starts with an Annex B start code."""
-    return data[:4] == _ANNEX_B_START_CODE or data[:3] == _ANNEX_B_START_CODE_SHORT
-
-
-def _is_av1_keyframe_packet(sample: bytes) -> bool:
-    """
-    Heuristic: True if *sample*'s first OBU is `OBU_SEQUENCE_HEADER` (type 1) or `OBU_TEMPORAL_DELIMITER` (type 2).
-
-    libdav1d rejects a non-keyframe as the first packet, so we use this to skip leading non-keyframe
-    samples until something keyframe-like appears.
-
-    Assumes the upstream encoder emits TDs only at random-access points,
-    for streams where every TU starts with a TD this check is a no-op and the first sample is always treated as a keyframe.
-    """
-    if not sample:
-        return False
-    obu_type = (sample[0] >> 3) & 0xF
-    return obu_type in (1, 2)
-
-
-def _h264_annex_b_has_idr(sample: bytes) -> bool:
-    """True if *sample* (Annex-B H.264) contains an IDR slice NAL (type 5)."""
-    pos = 0
-    while True:
-        idx = sample.find(b"\x00\x00\x01", pos)
-        if idx < 0 or idx + 3 >= len(sample):
-            return False
-        if (sample[idx + 3] & 0x1F) == 5:
-            return True
-        pos = idx + 3
-
-
-def _hevc_annex_b_has_irap(sample: bytes) -> bool:
-    """True if *sample* (Annex-B HEVC) contains an IRAP NAL (type 16-23)."""
-    pos = 0
-    while True:
-        idx = sample.find(b"\x00\x00\x01", pos)
-        if idx < 0 or idx + 3 >= len(sample):
-            return False
-        nal_type = (sample[idx + 3] >> 1) & 0x3F
-        if 16 <= nal_type <= 23:
-            return True
-        pos = idx + 3
+def _starts_with(samples: list[bytes], prefix: list[bytes]) -> bool:
+    """True if *samples* begins with *prefix*."""
+    return len(samples) >= len(prefix) and samples[: len(prefix)] == prefix
 
 
 class VideoFrameDecoder(ColumnDecoder):
@@ -237,6 +213,9 @@ class VideoFrameDecoder(ColumnDecoder):
     Samples may be raw H.264 AVC1/AVCC (length-prefixed NAL units) or Annex B;
     the format is detected automatically per sample.
 
+    A call whose window extends the previous call's (same GOP) reuses an open
+    codec context and decodes only the new packets.
+
     Returns `None` when the resolved window contains no decodable keyframe:
     the target precedes the entity's first frame in a multi-modal segment,
     the fallback `keyframe_interval` under-estimates the true GOP length, or
@@ -252,14 +231,54 @@ class VideoFrameDecoder(ColumnDecoder):
         keyframe_interval: int = 30,
         fps_estimate: float = 30.0,
         codec: str = "h264",
+        max_decoder_sessions: int = 8,
+        thread_count: int = 1,
     ) -> None:
+        """
+        Construct a decoder for a compressed video column.
+
+        Parameters
+        ----------
+        keyframe_interval:
+            Fallback GOP length (in frames) used to estimate how far back the
+            prior keyframe sits when the stream has no explicit markers.
+        fps_estimate:
+            Fallback frame rate used to turn `keyframe_interval` into a time window.
+        codec:
+            Video codec of the encoded samples (e.g. `"h264"`).
+        max_decoder_sessions:
+            Upper bound on the number of live codec contexts kept in the LRU cache.
+        thread_count:
+            ffmpeg decode thread count. Usually 1 for low resolution, larger for
+            large resolutions; 1 is preferred over auto, so we do not propose auto.
+
+        """
         self.codec = codec
-        self._decoder_name = _CODEC_TO_DECODER.get(codec, codec)
+        # Cached: read per sample in the decode loop.
+        self._video_codec = _to_video_codec(codec)
         self._keyframe_interval = keyframe_interval
-        self._keyframe_duration_ns = int(keyframe_interval / fps_estimate * 1e9)
+        self._fps_estimate = fps_estimate
+        self._max_decoder_sessions = max_decoder_sessions
+        # TODO(guillaume): expose `thread_count` as a user-facing parameter
+        # if some customers do want to decode large images.
+        self.thread_count = thread_count
+
+        # LRU of live decode sessions, keyed by `(segment_id, keyframe sample)`.
+        self._sessions: OrderedDict[tuple[str, bytes], _DecoderSession] = OrderedDict()
+        # Lifetime session-cache stats, surfaced as span attributes on every decode.
+        self._cache_hits = 0
+        self._cache_misses = 0
 
     def __repr__(self) -> str:
         return f"VideoFrameDecoder(codec={self.codec!r})"
+
+    def __getstate__(self) -> dict[str, Any]:
+        """Drop the sessions: open codec contexts cannot be pickled. Cache stats restart per process."""
+        state = self.__dict__.copy()
+        state["_sessions"] = OrderedDict()
+        state["_cache_hits"] = 0
+        state["_cache_misses"] = 0
+        return state
 
     def prior_keyframe_path(self, field_path: str) -> str | None:
         prefix, sep, _ = field_path.rpartition(":")
@@ -269,13 +288,16 @@ class VideoFrameDecoder(ColumnDecoder):
 
     def context_range(
         self,
-        index_value: int | np.datetime64,
-    ) -> tuple[int | np.datetime64, int | np.datetime64] | None:
+        index_value: int | np.datetime64 | np.timedelta64,
+    ) -> tuple[int | np.datetime64 | np.timedelta64, int | np.datetime64 | np.timedelta64] | None:
         """Need frames from estimated keyframe position to target."""
+        keyframe_duration_ns = int(self._keyframe_interval / self._fps_estimate * 1e9)
         if isinstance(index_value, np.datetime64):
             iv = int(np.int64(index_value))
-            lo = _ns_to_datetime64(iv - self._keyframe_duration_ns)
-            return (lo, index_value)
+            return (_ns_to_datetime64(iv - keyframe_duration_ns), index_value)
+        if isinstance(index_value, np.timedelta64):
+            iv = int(np.int64(index_value))
+            return (_ns_to_timedelta64(iv - keyframe_duration_ns), index_value)
         iv = int(index_value)
         return (max(0, iv - self._keyframe_interval), iv)
 
@@ -283,7 +305,7 @@ class VideoFrameDecoder(ColumnDecoder):
     def decode(
         self,
         raw: pa.ChunkedArray,
-        index_value: int | np.datetime64,
+        index_value: int | np.datetime64 | np.timedelta64,
         segment_id: str,
     ) -> torch.Tensor | None:
         """Decode the target frame from the context samples in *raw*, or `None` if no keyframe is available."""
@@ -292,18 +314,16 @@ class VideoFrameDecoder(ColumnDecoder):
     def _decode_to_target(
         self,
         raw_context: pa.ChunkedArray,
-        target_idx: int | np.datetime64,
+        target_idx: int | np.datetime64 | np.timedelta64,
         segment_id: str,
     ) -> torch.Tensor | None:
         """
         Decode context through *target_idx* and return the final frame.
 
-        `context_range` ends exactly at *target_idx*, so the target is
-        always the last decoded frame. Earlier frames (prior to the
-        target) are not cached: for sequence indices we'd need to know
-        how many encoded samples were dropped by the codec before the
-        first keyframe, and for timestamp indices we'd need per-sample
-        timestamps we don't have here.
+        `context_range` ends exactly at *target_idx*, so the target is always
+        the last decoded frame. For delay-free streams (one frame out per
+        packet in) the codec context is kept open, and a later call whose
+        window extends this one decodes only the new packets.
         """
         combined = raw_context.combine_chunks()
         num_rows = len(combined)
@@ -313,8 +333,8 @@ class VideoFrameDecoder(ColumnDecoder):
             sample_bytes = bytes(_flatten_blob(combined, i))
             if not sample_bytes:
                 continue
-            if self.codec == "h264" and not _is_annex_b(sample_bytes):
-                sample_bytes = _avcc_to_annex_b(sample_bytes)
+            if self._video_codec is VideoCodec.H264 and not is_annex_b(sample_bytes):
+                sample_bytes = length_prefixed_to_annex_b(sample_bytes)
             # `fill_latest_at` repeats the previous frame's bytes for grid slots
             # with no source frame, so the window can hold consecutive duplicate
             # samples. Re-feeding a duplicate packet corrupts the decoder's
@@ -341,28 +361,77 @@ class VideoFrameDecoder(ColumnDecoder):
             drop += 1
         samples = samples[drop:]
 
-        target_tensor = None
-        for frame in self._decode_packets(samples):
-            target_tensor = self._frame_to_tensor(frame)
+        # `samples[0]` is the window's keyframe, distinguishing GOPs within a segment.
+        session_key = (segment_id, samples[0])
+        session = self._sessions.pop(session_key, None)
+        if session is None or not _starts_with(samples, session.fed_samples):
+            # Either no session for this GOP, or the new window doesn't extend
+            # what the session already decoded (e.g. shuffled access).
+            self._cache_misses += 1
+            session = _DecoderSession(self._create_context())
+        else:
+            self._cache_hits += 1
 
-        if target_tensor is None:
+        total = self._cache_hits + self._cache_misses
+        set_current_span_attributes({
+            "rerun.dataloader.video.session_cache_hits": self._cache_hits,
+            "rerun.dataloader.video.session_cache_misses": self._cache_misses,
+            "rerun.dataloader.video.session_cache_hit_rate": self._cache_hits / total,
+            "rerun.dataloader.video.session_cache_miss_rate": self._cache_misses / total,
+            "rerun.dataloader.video.window_samples": len(samples),
+            "rerun.dataloader.video.packets_fed": len(samples) - len(session.fed_samples),
+        })
+
+        # The session stays popped while feeding, so a raising packet can't
+        # leave a corrupt context behind.
+        for sample in samples[len(session.fed_samples) :]:
+            for frame in session.context.decode(av.Packet(sample)):
+                session.frames_emitted += 1
+                session.last_frame = frame
+        session.fed_samples = samples
+
+        if session.frames_emitted == len(samples) and session.last_frame is not None:
+            # Delay-free stream: the last emitted frame is the target; keep the context open.
+            self._sessions[session_key] = session
+            evicted = 0
+            while len(self._sessions) > self._max_decoder_sessions:
+                self._sessions.popitem(last=False)
+                evicted += 1
+            set_current_span_attributes({
+                "rerun.dataloader.video.session_kept": True,
+                "rerun.dataloader.video.sessions_evicted": evicted,
+                "rerun.dataloader.video.live_sessions": len(self._sessions),
+            })
+            return self._frame_to_tensor(session.last_frame)
+
+        # Delayed frames (B-frames or pipelining): flush. A flushed context
+        # cannot be re-fed, so no session is kept.
+        set_current_span_attributes({
+            "rerun.dataloader.video.session_kept": False,
+            "rerun.dataloader.video.live_sessions": len(self._sessions),
+        })
+        target_frame = session.last_frame
+        for frame in session.context.decode(None):
+            target_frame = frame
+
+        if target_frame is None:
             raise RuntimeError(
                 f"Failed to decode target frame {target_idx} for segment {segment_id}: "
                 f"{len(samples)} context samples included a keyframe but the decoder "
                 "produced no frame."
             )
 
-        return target_tensor
+        return self._frame_to_tensor(target_frame)
 
     def _is_keyframe(self, sample: bytes) -> bool | None:
         """Whether *sample* can boot the decoder, or `None` if we have no detector for this codec."""
-        if self.codec == "av1":
-            return _is_av1_keyframe_packet(sample)
-        if self.codec == "h264":
-            return _h264_annex_b_has_idr(sample)
-        if self.codec in ("h265", "hevc"):
-            return _hevc_annex_b_has_irap(sample)
-        return None
+        if self._video_codec is None:
+            return None
+        try:
+            return detect_gop_start(sample, self._video_codec)
+        except ValueError:
+            # Malformed GOP-start candidate (e.g. unparsable SPS): can't bootstrap from it.
+            return False
 
     def _has_keyframe(self, samples: list[bytes]) -> bool:
         """True if *samples* has a known-codec keyframe, or this codec has no detector (then we trust the decoder)."""
@@ -374,14 +443,17 @@ class VideoFrameDecoder(ColumnDecoder):
                 return True
         return False
 
-    def _decode_packets(self, samples: list[bytes]) -> Iterator[av.VideoFrame]:
-        """Decode raw packet bytes via a per-call CodecContext (no container)."""
-        ctx = cast("av.VideoCodecContext", av.CodecContext.create(self._decoder_name, "r"))
-        for sample in samples:
-            for frame in ctx.decode(av.Packet(sample)):
-                yield frame
-        for frame in ctx.decode(None):
-            yield frame
+    def _create_context(self) -> av.VideoCodecContext:
+        """A fresh raw-packet CodecContext (no container)."""
+        decoder_name = _CODEC_TO_DECODER.get(self.codec, self.codec)
+        context = cast("av.VideoCodecContext", av.CodecContext.create(decoder_name, "r"))
+        if self.thread_count:
+            context.thread_count = self.thread_count
+        if decoder_name == "libdav1d":
+            # dav1d delays output for pipelining by default; the session fast
+            # path needs one frame out per packet in.
+            context.options = {"max_frame_delay": "1"}
+        return context
 
     def _frame_to_tensor(self, frame: av.VideoFrame) -> torch.Tensor:
         """Convert a PyAV VideoFrame to a `(3, H, W)` uint8 tensor."""

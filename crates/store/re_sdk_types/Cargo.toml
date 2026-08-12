@@ -63,11 +63,10 @@ re_video = { workspace = true, optional = true }
 # External
 array-init.workspace = true
 arrow.workspace = true
-bytemuck = { workspace = true, features = ["derive", "extern_crate_alloc"] }
+bytemuck = { workspace = true, features = ["derive", "extern_crate_alloc", "min_const_generics"] }
 document-features.workspace = true
 emath.workspace = true
 half = { workspace = true, features = ["bytemuck"] }
-indexmap.workspace = true
 infer.workspace = true
 itertools.workspace = true
 mime_guess2.workspace = true
@@ -93,6 +92,7 @@ macaw = { workspace = true, optional = true }
 
 # External
 glam.workspace = true
+insta.workspace = true
 itertools.workspace = true
 mint.workspace = true
 rand = { workspace = true, features = ["std", "std_rng"] }

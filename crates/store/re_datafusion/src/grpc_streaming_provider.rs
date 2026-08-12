@@ -1,4 +1,4 @@
-use std::any::Any;
+use std::collections::HashSet;
 use std::pin::Pin;
 use std::sync::Arc;
 
@@ -7,7 +7,7 @@ use crate::PendingTableQueryAnalytics;
 use crate::analytics::QueryErrorKind;
 use crate::batch_coalescer::coalesce_exec::SizedCoalesceBatchesExec;
 use crate::batch_coalescer::coalescer::CoalescerOptions;
-use arrow::array::{Array as _, RecordBatch};
+use arrow::array::{Array as _, RecordBatch, RecordBatchOptions};
 use arrow::datatypes::SchemaRef;
 use async_trait::async_trait;
 use datafusion::catalog::{Session, TableProvider};
@@ -23,6 +23,33 @@ use futures_util::StreamExt as _;
 use re_redap_client::{ApiResponseStream, ApiResult};
 use tokio_stream::Stream;
 
+/// The projection, filters, and row limit offered to a scan.
+///
+/// Threaded from [`TableProvider::scan`] down to [`GrpcStreamToTable::send_streaming_request`]
+/// (so an implementor can build a narrower request) and [`GrpcStreamToTable::process_response`].
+/// Cheap to clone — the projection and filters are shared.
+#[derive(Debug, Clone, Default)]
+pub struct ScanParams {
+    /// Unique column names required from the source, in scan order.
+    ///
+    /// `None` requests every column. `Some([])` is a zero-column DataFusion projection; protocols
+    /// where an empty projection means "all columns" must request all columns and rely on the
+    /// stream normalizer to remove them while preserving the row count.
+    pub projected_columns: Option<Arc<[String]>>,
+
+    /// Filters offered by DataFusion, combined with a logical AND.
+    ///
+    /// No filters = everything passes.
+    pub filters: Arc<[Expr]>,
+
+    /// Maximum number of rows the scan will consume, if bounded.
+    ///
+    /// Plumbed through so implementors can push it into their request once the backends grow
+    /// server-side limit support; the coalescer already enforces it downstream in the meantime.
+    #[expect(dead_code, reason = "plumbed for future server-side limit pushdown")]
+    pub limit: Option<usize>,
+}
+
 #[async_trait]
 pub trait GrpcStreamToTable:
     std::fmt::Debug + 'static + Send + Sync + Clone + std::marker::Unpin
@@ -31,10 +58,15 @@ pub trait GrpcStreamToTable:
 
     async fn fetch_schema(&mut self) -> ApiResult<SchemaRef>;
 
-    fn process_response(&mut self, response: Self::GrpcStreamData) -> ApiResult<RecordBatch>;
+    fn process_response(
+        &mut self,
+        response: Self::GrpcStreamData,
+        params: &ScanParams,
+    ) -> ApiResult<RecordBatch>;
 
     async fn send_streaming_request(
         &mut self,
+        params: &ScanParams,
     ) -> ApiResult<ApiResponseStream<Self::GrpcStreamData>>;
 
     fn supports_filters_pushdown(
@@ -92,10 +124,6 @@ where
     T: GrpcStreamToTable + Send + 'static,
     T::GrpcStreamData: Send + 'static,
 {
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
     fn schema(&self) -> SchemaRef {
         Arc::clone(&self.schema)
     }
@@ -108,21 +136,42 @@ where
         &self,
         _state: &dyn Session,
         projection: Option<&Vec<usize>>,
-        _filters: &[Expr],
+        filters: &[Expr],
         limit: Option<usize>,
     ) -> DataFusionResult<Arc<dyn ExecutionPlan>> {
         let analytics = self
             .client
             .begin_scan_analytics(&self.schema, projection, limit);
 
+        let projected_schema = match projection {
+            Some(indices) => Arc::new(self.schema.project(indices)?),
+            None => Arc::clone(&self.schema),
+        };
+        let projected_columns = projection.map(|indices| {
+            let mut seen = HashSet::new();
+            indices
+                .iter()
+                .filter_map(|index| {
+                    let name = self.schema.field(*index).name();
+                    seen.insert(name).then(|| name.clone())
+                })
+                .collect::<Arc<[_]>>()
+        });
+        let params = ScanParams {
+            projected_columns,
+            filters: Arc::from(filters),
+            limit,
+        };
+
         StreamingTableExec::try_new(
-            self.schema.clone(),
+            Arc::clone(&projected_schema),
             vec![Arc::new(GrpcStreamPartitionStream::new(
-                &self.schema,
+                &projected_schema,
                 self.client.clone(),
                 analytics,
+                params,
             ))],
-            projection,
+            None,
             Vec::default(),
             false,
             None,
@@ -162,14 +211,21 @@ pub struct GrpcStreamPartitionStream<T: GrpcStreamToTable> {
     schema: SchemaRef,
     client: T,
     analytics: Option<PendingTableQueryAnalytics>,
+    params: ScanParams,
 }
 
 impl<T: GrpcStreamToTable> GrpcStreamPartitionStream<T> {
-    fn new(schema: &SchemaRef, client: T, analytics: Option<PendingTableQueryAnalytics>) -> Self {
+    fn new(
+        schema: &SchemaRef,
+        client: T,
+        analytics: Option<PendingTableQueryAnalytics>,
+        params: ScanParams,
+    ) -> Self {
         Self {
             schema: Arc::clone(schema),
             client,
             analytics,
+            params,
         }
     }
 }
@@ -188,6 +244,7 @@ where
             &self.schema,
             self.client.clone(),
             self.analytics.clone(),
+            self.params.clone(),
         ))
     }
 }
@@ -202,11 +259,13 @@ impl GrpcStream {
         schema: &SchemaRef,
         mut client: T,
         analytics: Option<PendingTableQueryAnalytics>,
+        params: ScanParams,
     ) -> Self
     where
         T::GrpcStreamData: Send + 'static,
         T: GrpcStreamToTable + Send + 'static,
     {
+        let expected_schema = Arc::clone(schema);
         let adapted_stream = Box::pin(async_stream::try_stream! {
             // Retry only the *opening* of the stream, never the consume loop below.
             //
@@ -217,7 +276,8 @@ impl GrpcStream {
             // rebuilt fresh.
             let mut stream = re_redap_client::with_retry_resource_exhausted("grpc_stream_open", || {
                     let mut client = client.clone();
-                    async move { client.send_streaming_request().await }
+                    let params = &params;
+                    async move { client.send_streaming_request(params).await }
                 })
                 .await
                 .map_err(|err| {
@@ -242,7 +302,9 @@ impl GrpcStream {
                 if let Some(analytics) = analytics.as_ref() {
                     analytics.record_first_response();
                 }
-                let processed = client.process_response(msg)
+                let processed = client
+                    .process_response(msg, &params)
+                    .and_then(|batch| normalize_batch(batch, &expected_schema))
                     .map_err(|err| {
                         if let Some(analytics) = analytics.as_ref() {
                             analytics.record_error(QueryErrorKind::Decode);
@@ -268,6 +330,68 @@ impl GrpcStream {
             adapted_stream,
         }
     }
+}
+
+fn normalize_batch(batch: RecordBatch, expected_schema: &SchemaRef) -> ApiResult<RecordBatch> {
+    if batch.schema_ref() == expected_schema {
+        return Ok(batch);
+    }
+
+    let actual_schema = batch.schema();
+    let columns = expected_schema
+        .fields()
+        .iter()
+        .map(|expected_field| {
+            let mut matching_columns = actual_schema
+                .fields()
+                .iter()
+                .enumerate()
+                .filter(|(_, field)| field.name() == expected_field.name());
+            let (index, actual_field) = matching_columns.next().ok_or_else(|| {
+                re_redap_client::ApiError::deserialization(
+                    None,
+                    format!(
+                        "response batch is missing projected column '{}'",
+                        expected_field.name()
+                    ),
+                )
+            })?;
+            if matching_columns.next().is_some() {
+                return Err(re_redap_client::ApiError::deserialization(
+                    None,
+                    format!(
+                        "response batch contains projected column '{}' more than once",
+                        expected_field.name()
+                    ),
+                ));
+            }
+            if actual_field.data_type() != expected_field.data_type() {
+                return Err(re_redap_client::ApiError::deserialization(
+                    None,
+                    format!(
+                        "response column '{}' has datatype {}, expected {}",
+                        expected_field.name(),
+                        actual_field.data_type(),
+                        expected_field.data_type()
+                    ),
+                ));
+            }
+            Ok(Arc::clone(batch.column(index)))
+        })
+        .collect::<ApiResult<Vec<_>>>()?;
+
+    RecordBatch::try_new_with_options(
+        Arc::clone(expected_schema),
+        columns,
+        &RecordBatchOptions::new().with_row_count(Some(batch.num_rows())),
+    )
+    .map_err(|err| {
+        re_redap_client::ApiError::deserialization_with_source(
+            None,
+            err,
+            "failed to normalize projected response batch",
+        )
+    })
 }
 
 impl RecordBatchStream for GrpcStream {
@@ -296,7 +420,7 @@ mod table_query_pipeline_tests {
     use std::collections::HashMap;
     use std::sync::Arc;
 
-    use arrow::array::{RecordBatchOptions, UInt32Array};
+    use arrow::array::{RecordBatchOptions, StringArray, UInt32Array};
     use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
     use async_trait::async_trait;
     use futures_util::StreamExt as _;
@@ -387,6 +511,187 @@ mod table_query_pipeline_tests {
         ))
     }
 
+    fn projection_test_batch() -> RecordBatch {
+        RecordBatch::try_new_with_options(
+            Arc::new(Schema::new_with_metadata(
+                vec![
+                    Field::new("number", DataType::UInt32, false),
+                    Field::new("label", DataType::Utf8, false),
+                ],
+                HashMap::default(),
+            )),
+            vec![
+                Arc::new(UInt32Array::from(vec![1, 2])),
+                Arc::new(StringArray::from(vec!["one", "two"])),
+            ],
+            &RecordBatchOptions::new().with_row_count(Some(2)),
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn normalize_batch_projects_reorders_and_uses_expected_schema() {
+        let expected_schema = Arc::new(Schema::new_with_metadata(
+            vec![
+                Field::new("label", DataType::Utf8, false),
+                Field::new("number", DataType::UInt32, false),
+            ],
+            HashMap::from([("source".to_owned(), "catalog".to_owned())]),
+        ));
+
+        let normalized = normalize_batch(projection_test_batch(), &expected_schema).unwrap();
+
+        assert_eq!(normalized.schema_ref(), &expected_schema);
+        assert_eq!(normalized.num_rows(), 2);
+        assert_eq!(
+            normalized
+                .column(0)
+                .as_any()
+                .downcast_ref::<StringArray>()
+                .unwrap()
+                .value(1),
+            "two"
+        );
+        assert_eq!(
+            normalized
+                .column(1)
+                .as_any()
+                .downcast_ref::<UInt32Array>()
+                .unwrap()
+                .value(0),
+            1
+        );
+    }
+
+    #[test]
+    fn normalize_batch_preserves_row_count_for_zero_column_projection() {
+        let expected_schema = Arc::new(Schema::empty());
+
+        let normalized = normalize_batch(projection_test_batch(), &expected_schema).unwrap();
+
+        assert_eq!(normalized.num_columns(), 0);
+        assert_eq!(normalized.num_rows(), 2);
+    }
+
+    #[test]
+    fn normalize_batch_rejects_missing_projected_column() {
+        let expected_schema = Arc::new(Schema::new_with_metadata(
+            vec![Field::new("missing", DataType::Utf8, false)],
+            HashMap::default(),
+        ));
+
+        let err = normalize_batch(projection_test_batch(), &expected_schema).unwrap_err();
+
+        assert!(
+            err.to_string()
+                .contains("missing projected column 'missing'")
+        );
+    }
+
+    #[test]
+    fn normalize_batch_rejects_incompatible_datatype() {
+        let expected_schema = Arc::new(Schema::new_with_metadata(
+            vec![Field::new("number", DataType::Utf8, false)],
+            HashMap::default(),
+        ));
+
+        let err = normalize_batch(projection_test_batch(), &expected_schema).unwrap_err();
+
+        assert!(
+            err.to_string()
+                .contains("has datatype UInt32, expected Utf8")
+        );
+    }
+
+    #[derive(Debug, Clone)]
+    struct ProjectionProvider {
+        requested_columns: Arc<Mutex<Vec<Option<Vec<String>>>>>,
+    }
+
+    #[async_trait]
+    impl GrpcStreamToTable for ProjectionProvider {
+        type GrpcStreamData = RecordBatch;
+
+        async fn fetch_schema(&mut self) -> ApiResult<SchemaRef> {
+            Ok(projection_test_batch().schema())
+        }
+
+        fn process_response(
+            &mut self,
+            response: RecordBatch,
+            _params: &ScanParams,
+        ) -> ApiResult<RecordBatch> {
+            Ok(response)
+        }
+
+        async fn send_streaming_request(
+            &mut self,
+            params: &ScanParams,
+        ) -> ApiResult<ApiResponseStream<Self::GrpcStreamData>> {
+            self.requested_columns
+                .lock()
+                .push(params.projected_columns.as_deref().map(<[String]>::to_vec));
+            Ok(ApiResponseStream::new(
+                futures_util::stream::once(async { Ok(projection_test_batch()) }),
+                None,
+            ))
+        }
+    }
+
+    #[tokio::test]
+    async fn scan_pushes_projection_and_normalizes_full_response() {
+        let requested_columns = Arc::new(Mutex::new(Vec::new()));
+        let provider = GrpcStreamProvider::prepare(ProjectionProvider {
+            requested_columns: Arc::clone(&requested_columns),
+        })
+        .await
+        .unwrap();
+        let context = datafusion::execution::context::SessionContext::new();
+        let projection = vec![1];
+
+        let plan = provider
+            .scan(&context.state(), Some(&projection), &[], None)
+            .await
+            .unwrap();
+        let batches = datafusion::physical_plan::collect(plan, context.task_ctx())
+            .await
+            .unwrap();
+
+        assert_eq!(
+            *requested_columns.lock(),
+            vec![Some(vec!["label".to_owned()])]
+        );
+        assert_eq!(batches.len(), 1);
+        assert_eq!(batches[0].schema().field(0).name(), "label");
+        assert_eq!(batches[0].num_columns(), 1);
+        assert_eq!(batches[0].num_rows(), 2);
+    }
+
+    #[tokio::test]
+    async fn scan_preserves_rows_for_zero_column_projection() {
+        let requested_columns = Arc::new(Mutex::new(Vec::new()));
+        let provider = GrpcStreamProvider::prepare(ProjectionProvider {
+            requested_columns: Arc::clone(&requested_columns),
+        })
+        .await
+        .unwrap();
+        let context = datafusion::execution::context::SessionContext::new();
+        let projection = Vec::new();
+
+        let plan = provider
+            .scan(&context.state(), Some(&projection), &[], None)
+            .await
+            .unwrap();
+        let batches = datafusion::physical_plan::collect(plan, context.task_ctx())
+            .await
+            .unwrap();
+
+        assert_eq!(*requested_columns.lock(), vec![Some(Vec::new())]);
+        assert_eq!(batches.len(), 1);
+        assert_eq!(batches[0].num_columns(), 0);
+        assert_eq!(batches[0].num_rows(), 2);
+    }
+
     #[async_trait]
     impl GrpcStreamToTable for FakeProvider {
         type GrpcStreamData = u32;
@@ -395,7 +700,11 @@ mod table_query_pipeline_tests {
             Ok(fake_schema())
         }
 
-        fn process_response(&mut self, response: u32) -> ApiResult<RecordBatch> {
+        fn process_response(
+            &mut self,
+            response: u32,
+            _params: &ScanParams,
+        ) -> ApiResult<RecordBatch> {
             if self.fail_decode {
                 return Err(ApiError::deserialization(None, "fake decode error"));
             }
@@ -410,6 +719,7 @@ mod table_query_pipeline_tests {
 
         async fn send_streaming_request(
             &mut self,
+            _params: &ScanParams,
         ) -> ApiResult<ApiResponseStream<Self::GrpcStreamData>> {
             // Simulate fail-fast admission control: reject the first `n` opens with
             // ResourceExhausted (shared across the retry wrapper's per-attempt clones). The branch
@@ -437,8 +747,7 @@ mod table_query_pipeline_tests {
 
     fn make_pending() -> PendingTableQueryAnalytics {
         let origin: Origin = "rerun+http://localhost:51234".parse().unwrap();
-        let client = re_redap_client::ConnectionClient::new_disconnected();
-        let analytics = ConnectionAnalytics::new(origin, &client);
+        let analytics = ConnectionAnalytics::disabled_for_test(origin);
         analytics.begin_table_query(
             TableQueryInfo {
                 table_id: "tbl-pipeline".to_owned(),
@@ -512,7 +821,12 @@ mod table_query_pipeline_tests {
     async fn pipeline_records_per_batch_stats_and_first_response() {
         let provider = FakeProvider::new(vec![Ok(1), Ok(2), Ok(3)]);
         let pending = make_pending();
-        let stream = GrpcStream::execute(&fake_schema(), provider, Some(pending.clone()));
+        let stream = GrpcStream::execute(
+            &fake_schema(),
+            provider,
+            Some(pending.clone()),
+            ScanParams::default(),
+        );
 
         let items = drain(stream).await;
         assert_eq!(items.len(), 3);
@@ -536,7 +850,12 @@ mod table_query_pipeline_tests {
     async fn pipeline_records_grpc_fetch_error_when_send_request_fails() {
         let provider = FakeProvider::fail_send_request();
         let pending = make_pending();
-        let stream = GrpcStream::execute(&fake_schema(), provider, Some(pending.clone()));
+        let stream = GrpcStream::execute(
+            &fake_schema(),
+            provider,
+            Some(pending.clone()),
+            ScanParams::default(),
+        );
 
         let items = drain(stream).await;
         assert_eq!(items.len(), 1);
@@ -559,7 +878,12 @@ mod table_query_pipeline_tests {
             Err(ApiError::deserialization(None, "fake mid-stream err")),
         ]);
         let pending = make_pending();
-        let stream = GrpcStream::execute(&fake_schema(), provider, Some(pending.clone()));
+        let stream = GrpcStream::execute(
+            &fake_schema(),
+            provider,
+            Some(pending.clone()),
+            ScanParams::default(),
+        );
 
         let items = drain(stream).await;
         // First batch decoded successfully, second iteration surfaces the error.
@@ -579,7 +903,12 @@ mod table_query_pipeline_tests {
     async fn pipeline_records_decode_error() {
         let provider = FakeProvider::fail_decode(vec![1, 2]);
         let pending = make_pending();
-        let stream = GrpcStream::execute(&fake_schema(), provider, Some(pending.clone()));
+        let stream = GrpcStream::execute(
+            &fake_schema(),
+            provider,
+            Some(pending.clone()),
+            ScanParams::default(),
+        );
 
         let items = drain(stream).await;
         assert_eq!(items.len(), 1);
@@ -599,13 +928,19 @@ mod table_query_pipeline_tests {
         let trace_id = opentelemetry::TraceId::from_bytes([9u8; 16]);
         let provider = FakeProvider::new(vec![Ok(1)]).with_trace_id(trace_id);
         let pending = make_pending();
-        let stream = GrpcStream::execute(&fake_schema(), provider, Some(pending.clone()));
+        let stream = GrpcStream::execute(
+            &fake_schema(),
+            provider,
+            Some(pending.clone()),
+            ScanParams::default(),
+        );
 
         let _ = drain(stream).await;
 
         let span = pending.build_span_for_test();
-        assert_eq!(span.links.len(), 1);
-        assert_eq!(span.links[0].trace_id, trace_id.to_bytes().to_vec());
+        assert_eq!(span.trace_id, trace_id.to_bytes());
+        assert_eq!(span.span_id.len(), 8);
+        assert!(span.span_id.iter().any(|byte| *byte != 0));
     }
 
     #[tokio::test]
@@ -614,7 +949,7 @@ mod table_query_pipeline_tests {
         // stream still produces correct output. Smoke test for the
         // `if let Some(analytics) = analytics.as_ref()` branches.
         let provider = FakeProvider::new(vec![Ok(1), Ok(2)]);
-        let stream = GrpcStream::execute(&fake_schema(), provider, None);
+        let stream = GrpcStream::execute(&fake_schema(), provider, None, ScanParams::default());
 
         let items = drain(stream).await;
         assert_eq!(items.len(), 2);
@@ -626,7 +961,7 @@ mod table_query_pipeline_tests {
         // The first two stream-opens are rejected with `ResourceExhausted`; the retry wrapper in
         // `GrpcStream::execute` should ride them out and then stream all three rows.
         let provider = FakeProvider::resource_exhausted_then(2, vec![1, 2, 3]);
-        let stream = GrpcStream::execute(&fake_schema(), provider, None);
+        let stream = GrpcStream::execute(&fake_schema(), provider, None, ScanParams::default());
 
         let items = drain(stream).await;
         assert_eq!(items.len(), 3);

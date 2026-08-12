@@ -4,7 +4,7 @@ use itertools::Itertools as _;
 use re_arrow_util::format_record_batch;
 use re_dataframe::{
     AbsoluteTimeRange, ChunkStoreConfig, EntityPathFilter, QueryEngine, QueryExpression,
-    SparseFillStrategy, TimeInt,
+    SparseFillStrategy, TimeInt, TimelineName,
 };
 
 fn main() -> anyhow::Result<()> {
@@ -22,7 +22,9 @@ fn main() -> anyhow::Result<()> {
     };
 
     let path_to_rrd = get_arg(1);
-    let timeline_name = args.get(2).map_or("log_time", |s| s.as_str());
+    let timeline_name = args.get(2).map_or_else(TimelineName::log_time, |s| {
+        TimelineName::try_new(s).expect("invalid timeline name")
+    });
     let time_from = args.get(3).map_or(TimeInt::MIN, |s| {
         TimeInt::new_temporal(s.parse::<i64>().unwrap())
     });
@@ -40,7 +42,7 @@ fn main() -> anyhow::Result<()> {
         }
 
         let query = QueryExpression {
-            filtered_index: Some(timeline_name.into()),
+            filtered_index: Some(timeline_name),
             view_contents: Some(
                 engine
                     .iter_entity_paths_sorted(&entity_path_filter)

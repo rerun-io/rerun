@@ -227,7 +227,7 @@ pub fn test_list_items_should_match_snapshot() {
 
     let mut harness = re_ui::testing::new_harness(re_ui::testing::TestOptions::Gui, [700.0, 700.0])
         .build_ui(|ctx| {
-            egui::Panel::right("right_panel").show_inside(ctx, |ui| {
+            egui::Panel::right("right_panel").show(ctx, |ui| {
                 ui.set_width(650.0);
                 ui.set_max_width(650.0);
                 re_ui::apply_style_and_install_loaders(ui.ctx());

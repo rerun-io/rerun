@@ -395,6 +395,49 @@ fn missing_index_column_is_error() {
 }
 
 #[test]
+fn validate_config_checks_schema() {
+    let batch = RecordBatch::try_new(
+        Arc::new(Schema::new(vec![
+            Field::new("frame_index", DataType::Int64, false),
+            Field::new("x", DataType::Float64, false),
+        ])),
+        vec![
+            Arc::new(Int64Array::from(vec![0, 1])),
+            Arc::new(Float64Array::from(vec![1.0, 2.0])),
+        ],
+    )
+    .unwrap();
+    let path = write_parquet_tmp(&batch);
+
+    let valid = ParquetConfig {
+        index_columns: vec![IndexColumn {
+            name: "frame_index".into(),
+            index_type: IndexType::Sequence,
+        }],
+        static_columns: vec!["x".into()],
+        ..Default::default()
+    };
+    assert!(re_parquet::validate_config(&path, &valid).is_ok());
+
+    let missing_index = ParquetConfig {
+        index_columns: vec![IndexColumn {
+            name: "nonexistent".into(),
+            index_type: IndexType::Sequence,
+        }],
+        ..Default::default()
+    };
+    let err = re_parquet::validate_config(&path, &missing_index).unwrap_err();
+    assert!(err.to_string().contains("Index column"), "{err}");
+
+    let missing_static = ParquetConfig {
+        static_columns: vec!["nonexistent".into()],
+        ..Default::default()
+    };
+    let err = re_parquet::validate_config(&path, &missing_static).unwrap_err();
+    assert!(err.to_string().contains("Static column"), "{err}");
+}
+
+#[test]
 fn static_columns() {
     // Uniform static columns -> timeless chunk
     let batch = RecordBatch::try_new(
@@ -757,8 +800,7 @@ fn explicit_prefixes_underscore_stripping() {
 /// table using lenses.
 #[test]
 fn transform3d_from_struct_via_lens() {
-    use re_lenses::op::basic::struct_to_fixed_size_list_f32;
-    use re_lenses::{ChunkExt as _, Lens};
+    use re_lenses::{CastTo, ChunkExt as _, Lens};
     use re_lenses_core::Selector;
     use re_sdk_types::archetypes::Transform3D;
 
@@ -809,23 +851,18 @@ fn transform3d_from_struct_via_lens() {
         .expect("should have /A entity");
 
     // Map the struct fields into a `Transform3D` archetype with a derive lens: read the
-    // `pos_*` / `quat_*` fields off the `data` struct and interleave them into the
-    // `FixedSizeList<f32>` arrays the components expect.
-    //TODO(RR-4935): use selector function when available
+    // `pos_*` / `quat_*` fields off the `data` struct, pack them into `FixedSizeList`s, and
+    // cast to the `f32` element type the components expect.
     let lens: Lens = Lens::derive("data")
-        .to_component(
+        .to_component_with_cast(
             Transform3D::descriptor_translation(),
-            Selector::parse(".")
-                .unwrap()
-                .pipe(struct_to_fixed_size_list_f32(["pos_x", "pos_y", "pos_z"])),
+            Selector::parse("pack(.pos_x!, .pos_y!, .pos_z!)").unwrap(),
+            CastTo::Auto,
         )
-        .to_component(
+        .to_component_with_cast(
             Transform3D::descriptor_quaternion(),
-            Selector::parse(".")
-                .unwrap()
-                .pipe(struct_to_fixed_size_list_f32([
-                    "quat_x", "quat_y", "quat_z", "quat_w",
-                ])),
+            Selector::parse("pack(.quat_x!, .quat_y!, .quat_z!, .quat_w!)").unwrap(),
+            CastTo::Auto,
         )
         .build()
         .unwrap();

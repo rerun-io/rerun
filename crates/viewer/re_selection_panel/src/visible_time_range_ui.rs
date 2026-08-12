@@ -213,7 +213,7 @@ Notes:
                 time_ctrl
                     .time_i64()
                     .unwrap_or_default()
-                    .at_least(*time_drag_value.range.start()),
+                    .at_least(time_drag_value.range.start),
             ); // accounts for static time (TimeInt::MIN)
 
             if *has_individual_time_range {

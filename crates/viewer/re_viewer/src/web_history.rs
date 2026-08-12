@@ -14,6 +14,7 @@
 use std::sync::{Arc, OnceLock};
 
 use js_sys::wasm_bindgen;
+use re_log::ResultExt as _;
 use re_log_channel::RecordingOpenBehavior;
 use re_mutex::Mutex;
 use re_viewer_context::{CommandSender, open_url};
@@ -22,7 +23,7 @@ use wasm_bindgen::prelude::wasm_bindgen;
 use wasm_bindgen::{JsCast as _, JsError, JsValue};
 use web_sys::{History, UrlSearchParams};
 
-use crate::web_tools::{JsResultExt as _, window};
+use crate::web_tools::JsResultExt as _;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct HistoryEntry {
@@ -81,7 +82,7 @@ type EventListener<Event> = dyn FnMut(Event) -> Result<(), JsValue>;
 /// Listen for `popstate` event, which comes when the user hits the back/forward buttons.
 ///
 /// <https://developer.mozilla.org/en-US/docs/Web/API/Window/popstate_event>
-pub fn install_popstate_listener(app: &mut crate::App) -> Result<(), JsValue> {
+pub fn install_popstate_listener(app: &mut crate::App) -> Result<(), re_web::Error> {
     let egui_ctx = app.egui_ctx.clone();
     let command_sender = app.command_sender.clone();
 
@@ -93,9 +94,13 @@ pub fn install_popstate_listener(app: &mut crate::App) -> Result<(), JsValue> {
         }
     }) as Box<EventListener<_>>);
 
-    set_stored_history_entry(history()?.current_entry()?);
+    set_stored_history_entry(
+        re_web::browser::history()?
+            .current_entry()
+            .map_err(re_web::Error::from)?,
+    );
 
-    window()?
+    re_web::browser::window()?
         .add_event_listener_with_callback("popstate", closure.as_ref().unchecked_ref())
         .ok_or_log_js_error();
 
@@ -114,7 +119,7 @@ impl PopstateListener {
 
 impl Drop for PopstateListener {
     fn drop(&mut self) {
-        let Some(window) = window().ok_or_log_js_error() else {
+        let Some(window) = re_web::browser::window().ok_or_log_error() else {
             return;
         };
 
@@ -163,7 +168,6 @@ fn handle_popstate(
             url.open(
                 egui_ctx,
                 &open_url::OpenUrlOptions {
-                    follow: false,
                     recording_open_behavior: RecordingOpenBehavior::OpenAndSelect,
                     show_loader: true,
                 },
@@ -180,17 +184,13 @@ fn handle_popstate(
 }
 
 pub fn go_back() -> Option<()> {
-    let history = history().ok_or_log_js_error()?;
+    let history = re_web::browser::history().ok_or_log_error()?;
     history.back().ok_or_log_js_error()
 }
 
 pub fn go_forward() -> Option<()> {
-    let history = history().ok_or_log_js_error()?;
+    let history = re_web::browser::history().ok_or_log_error()?;
     history.forward().ok_or_log_js_error()
-}
-
-pub fn history() -> Result<History, JsValue> {
-    window()?.history()
 }
 
 #[wasm_bindgen]

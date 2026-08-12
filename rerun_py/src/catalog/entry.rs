@@ -77,6 +77,9 @@ pub enum PyEntryKind {
 
     #[pyo3(name = "BLUEPRINT_DATASET")]
     BlueprintDataset = 5,
+
+    #[pyo3(name = "ASSET_DATASET")]
+    AssetDataset = 6,
 }
 
 // Enums don't need str
@@ -104,6 +107,7 @@ impl TryFrom<EntryKind> for PyEntryKind {
             EntryKind::Table => Ok(Self::Table),
             EntryKind::TableView => Ok(Self::TableView),
             EntryKind::BlueprintDataset => Ok(Self::BlueprintDataset),
+            EntryKind::AssetDataset => Ok(Self::AssetDataset),
         }
     }
 }
@@ -116,6 +120,7 @@ impl From<PyEntryKind> for EntryKind {
             PyEntryKind::Table => Self::Table,
             PyEntryKind::TableView => Self::TableView,
             PyEntryKind::BlueprintDataset => Self::BlueprintDataset,
+            PyEntryKind::AssetDataset => Self::AssetDataset,
         }
     }
 }

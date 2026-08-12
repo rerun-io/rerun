@@ -45,25 +45,25 @@ jobs:
     name: Upload web build to google cloud (wasm32 + wasm-bindgen)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
       - name: Download Web Viewer
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: web_viewer
           path: "crates/viewer/re_web_viewer_server/web_viewer"
 
       # Upload the wasm, html etc to a Google cloud bucket:
       - id: "auth"
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
         with:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
       - name: "Set up Cloud SDK"
-        uses: "google-github-actions/setup-gcloud@v2"
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
         with:
           version: ">= 363.0.0"
 
@@ -75,7 +75,7 @@ jobs:
 
       - name: "Upload web-viewer (commit)"
         if: ${{ !inputs.NIGHTLY }}
-        uses: google-github-actions/upload-cloud-storage@v3
+        uses: google-github-actions/upload-cloud-storage@6397bd7208e18d13ba2619ee21b9873edc94427a # v3.0.0
         with:
           path: "crates/viewer/re_web_viewer_server/web_viewer"
           destination: "rerun-web-viewer/commit/${{ steps.get-sha.outputs.sha }}"
@@ -84,7 +84,7 @@ jobs:
 
       - name: "Upload web-viewer (tagged)"
         if: inputs.MARK_TAGGED_VERSION
-        uses: google-github-actions/upload-cloud-storage@v3
+        uses: google-github-actions/upload-cloud-storage@6397bd7208e18d13ba2619ee21b9873edc94427a # v3.0.0
         with:
           path: "crates/viewer/re_web_viewer_server/web_viewer"
           destination: "rerun-web-viewer/version/${{inputs.RELEASE_VERSION}}"
@@ -93,7 +93,7 @@ jobs:
 
       - name: "Upload web-viewer (adhoc)"
         if: ${{ inputs.ADHOC_NAME != '' }}
-        uses: google-github-actions/upload-cloud-storage@v3
+        uses: google-github-actions/upload-cloud-storage@6397bd7208e18d13ba2619ee21b9873edc94427a # v3.0.0
         with:
           path: "crates/viewer/re_web_viewer_server/web_viewer"
           destination: "rerun-web-viewer/adhoc/${{inputs.ADHOC_NAME}}"
@@ -102,7 +102,7 @@ jobs:
 
       - name: "Upload web-viewer (prerelease)"
         if: github.ref == 'refs/heads/main'
-        uses: google-github-actions/upload-cloud-storage@v3
+        uses: google-github-actions/upload-cloud-storage@6397bd7208e18d13ba2619ee21b9873edc94427a # v3.0.0
         with:
           path: "crates/viewer/re_web_viewer_server/web_viewer"
           destination: "rerun-web-viewer/prerelease"
@@ -113,7 +113,7 @@ jobs:
 
       - name: "Upload web-viewer (main)"
         if: github.ref == 'refs/heads/main'
-        uses: google-github-actions/upload-cloud-storage@v3
+        uses: google-github-actions/upload-cloud-storage@6397bd7208e18d13ba2619ee21b9873edc94427a # v3.0.0
         with:
           path: "crates/viewer/re_web_viewer_server/web_viewer"
           destination: "rerun-web-viewer/version/main"
@@ -124,7 +124,7 @@ jobs:
 
       - name: "Upload web-viewer (pr)"
         if: ${{ inputs.PR_NUMBER != '' }}
-        uses: google-github-actions/upload-cloud-storage@v3
+        uses: google-github-actions/upload-cloud-storage@6397bd7208e18d13ba2619ee21b9873edc94427a # v3.0.0
         with:
           path: "crates/viewer/re_web_viewer_server/web_viewer"
           destination: "rerun-web-viewer/pr/${{ inputs.PR_NUMBER }}"
@@ -135,7 +135,7 @@ jobs:
 
       - name: "Upload web-viewer (nightly)"
         if: ${{ inputs.NIGHTLY }}
-        uses: google-github-actions/upload-cloud-storage@v3
+        uses: google-github-actions/upload-cloud-storage@6397bd7208e18d13ba2619ee21b9873edc94427a # v3.0.0
         with:
           path: "crates/viewer/re_web_viewer_server/web_viewer"
           destination: "rerun-web-viewer/version/nightly"
@@ -160,7 +160,7 @@ jobs:
       - name: Status comment
         if: success() && github.event_name == 'pull_request'
         # https://github.com/mshick/add-pr-comment
-        uses: mshick/add-pr-comment@v3.9.1
+        uses: mshick/add-pr-comment@f102bb3ebc97eedd4e2a98a9e71e462cc257fe80 # v3.9.1
         # GitHub API is very unreliable. We don't want to fail the entire workflow just because we couldn't post a comment.
         continue-on-error: true
         with:
@@ -180,7 +180,7 @@ jobs:
       - name: Status comment
         if: failure() && github.event_name == 'pull_request'
         # https://github.com/mshick/add-pr-comment
-        uses: mshick/add-pr-comment@v3.9.1
+        uses: mshick/add-pr-comment@f102bb3ebc97eedd4e2a98a9e71e462cc257fe80 # v3.9.1
         # GitHub API is very unreliable. We don't want to fail the entire workflow just because we couldn't post a comment.
         continue-on-error: true
         with:

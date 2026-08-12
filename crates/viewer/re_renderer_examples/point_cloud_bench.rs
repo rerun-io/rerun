@@ -555,6 +555,7 @@ impl framework::Example for PointCloudBench {
                 pixels_per_point,
                 ..Default::default()
             },
+            re_renderer::ViewBuilderId::new(0),
         )?;
 
         view_builder.queue_draw(

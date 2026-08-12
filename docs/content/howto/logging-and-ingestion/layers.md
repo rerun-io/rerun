@@ -1,6 +1,7 @@
 ---
 title: Using layers to append data to segments
 order: 150
+description: Append data to existing segments via named layers
 ---
 
 

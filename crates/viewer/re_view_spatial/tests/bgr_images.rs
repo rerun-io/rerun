@@ -60,7 +60,7 @@ fn run_bgr_test<T: ImageChannelType>(
         color_model.to_string().to_lowercase(),
     );
 
-    snapshot_results.add(test_context.run_view_ui_and_save_snapshot(
+    snapshot_results.add(test_context.run_view_ui_and_save_renderer_snapshot(
         view_id,
         &snapshot_name,
         egui::vec2(300.0, 200.0),

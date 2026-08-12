@@ -1,3 +1,5 @@
+#![allow(clippy::iter_over_hash_type)]
+
 //! Caching datastructures for `re_query`.
 
 mod cache;

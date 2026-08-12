@@ -413,6 +413,7 @@ pub fn blob_and_format_from_tiff(bytes: &[u8]) -> Result<(Blob, ImageFormat), Im
         DecodingResult::U16(data) => (bytemuck::cast_slice(data), ChannelDatatype::U16),
         DecodingResult::U32(data) => (bytemuck::cast_slice(data), ChannelDatatype::U32),
         DecodingResult::U64(data) => (bytemuck::cast_slice(data), ChannelDatatype::U64),
+        DecodingResult::F16(data) => (bytemuck::cast_slice(data), ChannelDatatype::F16),
         DecodingResult::F32(data) => (bytemuck::cast_slice(data), ChannelDatatype::F32),
         DecodingResult::F64(data) => (bytemuck::cast_slice(data), ChannelDatatype::F64),
         DecodingResult::I8(data) => (bytemuck::cast_slice(data), ChannelDatatype::I8),

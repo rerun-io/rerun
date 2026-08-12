@@ -5,7 +5,7 @@ use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_viewer_context::MaybeMutRef;
 
 pub fn view_timestamp(
-    ctx: &re_viewer_context::StoreViewContext<'_>,
+    ctx: &re_viewer_context::AppContext<'_>,
     ui: &mut egui::Ui,
     value: &mut MaybeMutRef<'_, impl std::ops::DerefMut<Target = datatypes::TimeInt>>,
 ) -> egui::Response {

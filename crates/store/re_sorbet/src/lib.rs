@@ -45,7 +45,7 @@ pub use self::dataframe_to_chunks::{
     DataframeIndex, DataframeToChunksError, chunk_batches_from_dataframe_record_batch,
 };
 pub use self::error::SorbetError;
-pub use self::index_column_descriptor::{IndexColumnDescriptor, UnsupportedTimeType};
+pub use self::index_column_descriptor::{IndexColumnDescriptor, IndexColumnError};
 pub use self::ipc::{ipc_from_schema, migrated_schema_from_ipc, raw_schema_from_ipc};
 pub use self::metadata::{
     ArrowBatchMetadata, ArrowFieldMetadata, MetadataExt, MissingFieldMetadata, MissingMetadataKey,

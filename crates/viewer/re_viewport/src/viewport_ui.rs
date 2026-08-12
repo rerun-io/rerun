@@ -24,9 +24,19 @@ use re_viewport_blueprint::{
 
 use crate::system_execution::{execute_systems_for_all_views, execute_systems_for_view};
 
-/// Toggle the currently selected view to be maximized or not.
+/// Shortcut for maximizing a view.
+///
+/// Use [`is_toggle_maximize_view_pressed`] to check for this shortcut!
 // NOTE: we use CTRL and not COMMAND, because ⌘+M minimizes the whole window on macOS.
 const TOGGLE_MAXIMIZE_VIEW: KeyboardShortcut = KeyboardShortcut::new(Modifiers::CTRL, Key::M);
+
+/// Checks if the keyboard shortcut for maximizing a view is pressed,
+/// avoiding clashes with other similar shortcuts.
+fn is_toggle_maximize_view_pressed(input: &mut egui::InputState) -> bool {
+    // Check if CTRL+SHIFT+M is pressed instead, which is used to open the dev panel.
+    // `consume_shortcut` intentionally ignores extra Shift and Alt modifiers.
+    !input.modifiers.shift && input.consume_shortcut(&TOGGLE_MAXIMIZE_VIEW)
+}
 
 /// Defines the UI and layout of the Viewport.
 pub struct ViewportUi {
@@ -250,6 +260,7 @@ impl ViewportUi {
                             prune_single_child_containers: false,
                             all_panes_must_have_tabs: true,
                             join_nested_linear_containers: false,
+                            flatten_tabs_in_tabs: false,
                         });
                     }
 
@@ -408,7 +419,7 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
         let missing_chunk_reporter = MissingChunkReporter::new(system_output.any_missing_chunks());
 
         let response = ui.scope(|ui| {
-            class
+            let view_ui_output = class
                 .ui(
                     self.ctx,
                     &missing_chunk_reporter,
@@ -423,6 +434,7 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
                         view_blueprint.class_identifier(),
                         class.display_name(),
                     );
+                    Default::default()
                 });
 
             ui.memory_mut(|mem| {
@@ -436,7 +448,12 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
                         },
                     );
             });
+
+            view_ui_output
         });
+
+        self.view_states
+            .set_view_reports(self.ctx.store_id(), *view_id, response.inner.reports);
 
         crate::paint_view_loading_indicator(
             ui,
@@ -481,10 +498,14 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
             .on_hover_cursor(egui::CursorIcon::Grab);
 
         let label = tab_widget.label.take();
+        let active = tab_state.active;
         response.widget_info(|| {
-            let mut info = egui::WidgetInfo::new(egui::WidgetType::Label);
-            info.label = label.clone();
-            info
+            egui::WidgetInfo::selected(
+                egui::WidgetType::SelectableLabel,
+                true,
+                active,
+                label.clone().unwrap_or_default(),
+            )
         });
 
         // Show a gap when dragged
@@ -587,7 +608,7 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
                         .ui(ui);
                 })
                 .clicked()
-                || ui.input_mut(|input| input.consume_shortcut(&TOGGLE_MAXIMIZE_VIEW))
+                || ui.input_mut(is_toggle_maximize_view_pressed)
             {
                 *self.maximized = None;
                 MaximizeAnimationState::restore_view(ui.ctx(), view_id);
@@ -596,8 +617,7 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
             // Show maximize-button:
             let is_view_the_only_selected =
                 self.ctx.selection().is_view_the_only_selected(&view_id);
-            let toggle = is_view_the_only_selected
-                && ui.input_mut(|input| input.consume_shortcut(&TOGGLE_MAXIMIZE_VIEW));
+            let toggle = is_view_the_only_selected && ui.input_mut(is_toggle_maximize_view_pressed);
             if ui
                 .small_icon_button(&re_ui::icons::MAXIMIZE, "Maximize view")
                 .on_hover_ui(|ui| {
@@ -664,7 +684,7 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
             view_class.help(ui.os()).ui(ui);
         });
 
-        self.visualizer_errors_button(ui, view_id);
+        self.reports_button(ui, view_id);
     }
 
     // Styling:
@@ -726,25 +746,33 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
 }
 
 impl TilesDelegate<'_, '_> {
-    fn visualizer_errors_button(&self, ui: &mut egui::Ui, view_id: ViewId) {
-        let Some(per_visualizer_type_reports) = self
-            .view_states
-            .per_visualizer_type_reports(self.ctx.store_id(), view_id)
-        else {
-            return;
-        };
-
+    fn reports_button(&self, ui: &mut egui::Ui, view_id: ViewId) {
         let data_result_tree = &self.ctx.lookup_query_result(view_id).tree;
 
         let mut grouped_reports: BTreeMap<Item, Vec<_>> = BTreeMap::new();
 
-        for report in per_visualizer_type_reports.values() {
+        for report in self.view_states.view_reports(self.ctx.store_id(), view_id) {
+            if report.severity != re_viewer_context::ViewerReportSeverity::Info {
+                grouped_reports
+                    .entry(Item::View(view_id))
+                    .or_default()
+                    .push(report);
+            }
+        }
+
+        let per_visualizer_type_reports = self
+            .view_states
+            .per_visualizer_type_reports(self.ctx.store_id(), view_id)
+            .into_iter()
+            .flatten();
+
+        for (_id, report) in per_visualizer_type_reports {
             match report {
                 re_viewer_context::VisualizerTypeReport::OverallError(error) => {
                     grouped_reports
                         .entry(Item::View(view_id))
                         .or_default()
-                        .push(error.clone());
+                        .push(&error.diagnostic);
                 }
                 re_viewer_context::VisualizerTypeReport::PerInstructionReport(reports_map) => {
                     for instruction_id in reports_map.keys() {
@@ -758,13 +786,13 @@ impl TilesDelegate<'_, '_> {
                             });
                             for instruction_report in report.reports_for(instruction_id) {
                                 // Only show a button for errors and warnings.
-                                if instruction_report.severity
-                                    != re_viewer_context::VisualizerReportSeverity::Info
+                                if instruction_report.diagnostic.severity
+                                    != re_viewer_context::ViewerReportSeverity::Info
                                 {
                                     grouped_reports
                                         .entry(item.clone())
                                         .or_default()
-                                        .push(instruction_report.clone());
+                                        .push(&instruction_report.diagnostic);
                                 }
                             }
                         }
@@ -786,7 +814,7 @@ impl TilesDelegate<'_, '_> {
 
         ui.scope(|ui| {
             let report_image =
-                if max_severity == Some(re_viewer_context::VisualizerReportSeverity::Warning) {
+                if max_severity == Some(re_viewer_context::ViewerReportSeverity::Warning) {
                     icons::WARNING
                         .as_image()
                         .fit_to_exact_size(ui.tokens().small_icon_size)
@@ -804,7 +832,7 @@ impl TilesDelegate<'_, '_> {
                 .add(egui::Button::image(report_image))
                 .on_hover_text(format!(
                     "Show {}",
-                    re_format::format_plural_s(report_count, "visualizer report")
+                    re_format::format_plural_s(report_count, "report")
                 ));
 
             egui::Popup::menu(&response)
@@ -826,7 +854,7 @@ impl TilesDelegate<'_, '_> {
         &self,
         ui: &mut egui::Ui,
         item: Item,
-        reports: &[re_viewer_context::VisualizerInstructionReport],
+        reports: &[&re_viewer_context::ViewerDiagnostic],
     ) {
         let item_entity = match &item {
             Item::View(blueprint_id) => blueprint_id.as_entity_path().to_string(),
@@ -860,14 +888,13 @@ impl TilesDelegate<'_, '_> {
                     // Show all reports for this item
                     for report in reports {
                         let (icon, color) = match report.severity {
-                            re_viewer_context::VisualizerReportSeverity::Error
-                            | re_viewer_context::VisualizerReportSeverity::OverallVisualizerError => {
+                            re_viewer_context::ViewerReportSeverity::Error => {
                                 (&icons::ERROR, ui.tokens().alert_error.icon)
                             }
-                            re_viewer_context::VisualizerReportSeverity::Warning => {
+                            re_viewer_context::ViewerReportSeverity::Warning => {
                                 (&icons::WARNING, ui.tokens().alert_warning.icon)
                             }
-                            re_viewer_context::VisualizerReportSeverity::Info => continue,
+                            re_viewer_context::ViewerReportSeverity::Info => continue,
                         };
 
                         ui.horizontal_top(|ui| {

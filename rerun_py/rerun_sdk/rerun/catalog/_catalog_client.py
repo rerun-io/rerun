@@ -65,6 +65,13 @@ class VersionInfo:
     cloud_region: str | None
     """The cloud region (e.g. "us-west-2", "eastus"). None if not deployed on cloud."""
 
+    features: list[str]
+    """
+    Feature flags advertised by the server.
+
+    Servers too old to advertise features return an empty list, which means "no optional features supported".
+    """
+
 
 @dataclass(frozen=True)
 class BenchmarkResult:
@@ -183,11 +190,11 @@ class CatalogClient:
         """
         Returns version and deployment information from the server.
 
-        Returns a `VersionInfo` object with `version`, `cloud_provider`, and `cloud_region` fields.
+        Returns a `VersionInfo` object with `version`, `cloud_provider`, `cloud_region`, and `features` fields.
         Cloud fields are `None` if the server is not deployed on a cloud provider.
         """
-        version, cloud_provider, cloud_region = self._internal.version_info()
-        return VersionInfo(version=version, cloud_provider=cloud_provider, cloud_region=cloud_region)
+        version, cloud_provider, cloud_region, features = self._internal.version_info()
+        return VersionInfo(version=version, cloud_provider=cloud_provider, cloud_region=cloud_region, features=features)
 
     @with_tracing("CatalogClient.benchmark")
     def benchmark(self, *, num_bytes: int = 16 * 1024 * 1024, num_pings: int = 5) -> BenchmarkResult:
@@ -226,7 +233,7 @@ class CatalogClient:
         Parameters
         ----------
         include_hidden
-            If True, include hidden entries (blueprint datasets and system tables like `__entries`).
+            If True, include hidden entries (blueprint and asset datasets, and system tables like `__entries`).
 
         """
         return self.datasets(include_hidden=include_hidden) + self.tables(include_hidden=include_hidden)
@@ -238,7 +245,7 @@ class CatalogClient:
         Parameters
         ----------
         include_hidden
-            If True, include blueprint datasets.
+            If True, include hidden datasets (blueprint and asset datasets).
 
         """
         from . import DatasetEntry
@@ -353,8 +360,8 @@ class CatalogClient:
         """
         Creates a new dataset with the given name.
 
-        Entry names may only contain ASCII alphanumeric characters, underscores, hyphens, dots, colons and spaces,
-        and must be at most 180 characters long.
+        Entry names must be non-empty ASCII strings of at most 180 characters.
+        They may contain alphanumeric characters, underscores, hyphens, dots, colons, spaces, and brackets.
 
         Parameters
         ----------
@@ -391,8 +398,8 @@ class CatalogClient:
             The name of the table entry to create. It must be unique within all entries in the catalog. An exception
             will be raised if an entry with the same name already exists.
 
-            Entry names may only contain ASCII alphanumeric characters, underscores, hyphens, dots, colons and spaces,
-            and must be at most 180 characters long.
+            Entry names must be non-empty ASCII strings of at most 180 characters.
+            They may contain alphanumeric characters, underscores, hyphens, dots, colons, spaces, and brackets.
 
         url
             The URL of the Lance table to register.
@@ -412,8 +419,8 @@ class CatalogClient:
             The name of the table entry to create. It must be unique within all entries in the catalog. An exception
             will be raised if an entry with the same name already exists.
 
-            Entry names may only contain ASCII alphanumeric characters, underscores, hyphens, dots, colons and spaces,
-            and must be at most 180 characters long.
+            Entry names must be non-empty ASCII strings of at most 180 characters.
+            They may contain alphanumeric characters, underscores, hyphens, dots, colons, spaces, and brackets.
 
         schema
             The schema of the table to create.

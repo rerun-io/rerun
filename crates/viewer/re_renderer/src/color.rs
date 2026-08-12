@@ -2,7 +2,17 @@
 ///
 /// This is the most common input color, e.g. specified using CSS colors.
 #[repr(transparent)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    Hash,
+    bytemuck::Pod,
+    bytemuck::Zeroable,
+    re_byte_size::SizeBytes,
+)]
 pub struct Rgba32Unmul(pub [u8; 4]);
 
 impl Rgba32Unmul {

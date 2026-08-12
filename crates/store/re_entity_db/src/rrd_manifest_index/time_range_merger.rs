@@ -3,8 +3,10 @@
 
 use std::{
     collections::BinaryHeap,
-    ops::{Deref, DerefMut, RangeInclusive},
+    ops::{Deref, DerefMut},
 };
+
+use core::range::RangeInclusive;
 
 use ahash::{HashMap, HashSet};
 use re_chunk::{ChunkId, TimeInt};
@@ -283,8 +285,11 @@ impl MergedRanges {
                 for chunk in range.depends_on {
                     ranges_from_chunk
                         .entry(chunk)
-                        .and_modify(|range| *range = *range.start()..=idx)
-                        .or_insert(idx..=idx);
+                        .and_modify(|range| range.last = idx)
+                        .or_insert(RangeInclusive {
+                            start: idx,
+                            last: idx,
+                        });
                 }
                 start_time = start_time.min(range.range.min);
                 ResolvedRange {
@@ -347,7 +352,7 @@ impl MergedRanges {
             }
 
             let is_unloaded = is_unloaded(*chunk);
-            for idx in range.clone() {
+            for idx in *range {
                 let unloaded_count = self.ranges[idx].unloaded_count.get_or_insert(0);
 
                 if is_unloaded {
@@ -406,7 +411,7 @@ impl MergedRanges {
             return;
         };
 
-        for idx in range.clone() {
+        for idx in *range {
             let Some(unloaded_count) = &mut self.ranges[idx].unloaded_count else {
                 continue;
             };
@@ -428,7 +433,7 @@ impl MergedRanges {
             return;
         };
 
-        for idx in range.clone() {
+        for idx in *range {
             let Some(unloaded_count) = &mut self.ranges[idx].unloaded_count else {
                 continue;
             };

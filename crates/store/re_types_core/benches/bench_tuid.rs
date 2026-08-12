@@ -16,7 +16,7 @@ fn bench_arrow(c: &mut Criterion) {
             group.bench_function("arrow", |b| {
                 b.iter(|| {
                     let data = re_tuid::Tuid::to_arrow(tuids.clone()).unwrap();
-                    criterion::black_box(data)
+                    std::hint::black_box(data)
                 });
             });
         }
@@ -31,7 +31,7 @@ fn bench_arrow(c: &mut Criterion) {
             group.bench_function("arrow", |b| {
                 b.iter(|| {
                     let tuids = re_tuid::Tuid::from_arrow(data.as_ref()).unwrap();
-                    criterion::black_box(tuids)
+                    std::hint::black_box(tuids)
                 });
             });
         }

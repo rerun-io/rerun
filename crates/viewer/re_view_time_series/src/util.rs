@@ -3,13 +3,12 @@ use re_log_types::external::arrow;
 use re_sdk_types::blueprint::archetypes::TimeAxis;
 use re_sdk_types::blueprint::components::{LinkAxis, VisualizerInstructionId};
 use re_sdk_types::components::AggregationPolicy;
-use re_sdk_types::datatypes::TimeRange;
 use re_viewer_context::external::re_entity_db::InstancePath;
 use re_viewer_context::{ViewContext, ViewQuery, ViewerContext};
 use re_viewport_blueprint::{ViewProperty, ViewPropertyQueryError};
 
 use crate::aggregation::{AverageAggregator, MinMaxAggregator};
-use crate::{PlotPoint, PlotSeries, PlotSeriesKind, ScatterAttrs};
+use crate::{PlotPoint, PlotSeries, PlotSeriesKind};
 
 pub fn series_supported_datatypes() -> impl IntoIterator<Item = arrow::datatypes::DataType> {
     [
@@ -33,13 +32,10 @@ pub fn data_result_time_range(
     data_result: &re_viewer_context::DataResult,
     timeline: re_log_types::TimelineName,
 ) -> AbsoluteTimeRange {
-    let current_time = ctx
-        .time_ctrl
-        .time_int()
-        .unwrap_or(re_log_types::TimeInt::ZERO);
-
     let query_range = match data_result.query_range() {
-        re_viewer_context::QueryRange::TimeRange(time_range) => *time_range,
+        re_viewer_context::QueryRange::TimeRange(time_range) => {
+            re_view::resolve_visible_time_range(ctx, time_range)
+        }
 
         re_viewer_context::QueryRange::LatestAt => {
             // Latest-at doesn't make sense for time series and should also never happen.
@@ -47,7 +43,7 @@ pub fn data_result_time_range(
                 "Unexpected LatestAt query for time series data result at path {:?}",
                 data_result.entity_path
             );
-            TimeRange::EVERYTHING
+            AbsoluteTimeRange::EVERYTHING
         }
     };
 
@@ -57,7 +53,7 @@ pub fn data_result_time_range(
         .store()
         .entity_time_range(&timeline, &data_result.entity_path);
 
-    AbsoluteTimeRange::from_relative_time_range(&query_range, current_time)
+    query_range
         .intersection(data_range.unwrap_or(AbsoluteTimeRange::EMPTY))
         .unwrap_or(AbsoluteTimeRange::EMPTY)
 }
@@ -75,20 +71,15 @@ pub fn determine_query_range(
         .time_int()
         .unwrap_or(re_log_types::TimeInt::ZERO);
 
-    let time_axis = ViewProperty::from_archetype::<TimeAxis>(
-        ctx.viewer_ctx.blueprint_db(),
-        ctx.viewer_ctx.blueprint_query,
-        ctx.view_id,
-    );
+    let time_axis = ViewProperty::from_archetype::<TimeAxis>(ctx);
 
     let link_x_axis =
         time_axis.component_or_fallback::<LinkAxis>(ctx, TimeAxis::descriptor_link().component)?;
 
     let time_range_property = match link_x_axis {
         LinkAxis::Independent => &time_axis,
-        LinkAxis::LinkToGlobal => &ViewProperty::from_archetype::<TimeAxis>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query(),
+        LinkAxis::LinkToGlobal => &ViewProperty::from_archetype_for_view::<TimeAxis>(
+            ctx.viewer_ctx,
             re_viewer_context::GLOBAL_VIEW_ID,
         ),
     };
@@ -137,45 +128,17 @@ pub fn points_to_series(
             |time| time.as_i64(),
         );
 
-    if points.len() == 1 {
-        // Can't draw a single point as a continuous line, so fall back on scatter
-        let mut kind = points[0].attrs.kind;
-        if matches!(
-            kind,
-            PlotSeriesKind::Continuous | PlotSeriesKind::Stepped(_)
-        ) {
-            kind = PlotSeriesKind::Scatter(ScatterAttrs::default());
-        }
-
-        let mut series = PlotSeries {
-            instance_path,
-            visible,
-            label: series_label,
-            color: points[0].attrs.color,
-            radius_ui: points[0].attrs.radius_ui,
-            kind,
-            points: Vec::with_capacity(1),
-            value_range: None,
-            aggregator,
-            aggregation_factor,
-            min_time,
-            visualizer_instruction_id,
-        };
-        series.push_point(points[0].time, points[0].value);
-        all_series.push(series);
-    } else {
-        add_series_runs(
-            instance_path,
-            visible,
-            series_label,
-            points,
-            aggregator,
-            aggregation_factor,
-            min_time,
-            all_series,
-            visualizer_instruction_id,
-        );
-    }
+    add_series_runs(
+        instance_path,
+        visible,
+        series_label,
+        points,
+        aggregator,
+        aggregation_factor,
+        min_time,
+        all_series,
+        visualizer_instruction_id,
+    );
 }
 
 /// Apply the given aggregation to the provided points.

@@ -1,6 +1,7 @@
 ---
 title: Migrating from 0.31 to 0.32
 order: 978
+hidden: true
 ---
 
 ## "Data loaders" renamed to "importers"

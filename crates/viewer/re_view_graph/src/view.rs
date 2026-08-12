@@ -28,7 +28,7 @@ impl ViewClass for GraphView {
     // State type as described above.
 
     fn identifier() -> ViewClassIdentifier {
-        re_viewer_context::external::re_string_interner::intern_static!(
+        re_viewer_context::external::re_string_interner::intern_static_nonempty!(
             ViewClassIdentifier,
             "Graph"
         )
@@ -194,7 +194,7 @@ impl ViewClass for GraphView {
         state: &mut dyn ViewState,
         query: &ViewQuery<'_>,
         system_output: SystemExecutionOutput,
-    ) -> Result<(), ViewSystemExecutionError> {
+    ) -> Result<re_viewer_context::ViewClassUiOutput, ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
         let node_data = system_output
@@ -215,21 +215,13 @@ impl ViewClass for GraphView {
         let view_ctx = self.view_context(ctx, query.view_id, state, query.space_origin);
         let params = ForceLayoutParams::get(&view_ctx)?;
 
-        let background = ViewProperty::from_archetype::<GraphBackground>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query,
-            query.view_id,
-        );
+        let background = ViewProperty::from_archetype::<GraphBackground>(&view_ctx);
         let background_color = background.component_or_fallback::<Color>(
             &view_ctx,
             GraphBackground::descriptor_color().component,
         )?;
 
-        let bounds_property = ViewProperty::from_archetype::<VisualBounds2D>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query,
-            query.view_id,
-        );
+        let bounds_property = ViewProperty::from_archetype::<VisualBounds2D>(&view_ctx);
         let rect_in_scene: blueprint::components::VisualBounds2D = bounds_property
             .component_or_fallback(&view_ctx, VisualBounds2D::descriptor_range().component)?;
 
@@ -300,7 +292,7 @@ impl ViewClass for GraphView {
             ui.request_repaint();
         }
 
-        Ok(())
+        Ok(Default::default())
     }
 }
 

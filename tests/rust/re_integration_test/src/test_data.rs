@@ -4,6 +4,7 @@ use std::time::Duration;
 
 use futures::StreamExt as _;
 
+use re_protos::EntryName;
 use re_protos::cloud::v1alpha1::ext as cloud_ext;
 use re_protos::cloud::v1alpha1::ext::{
     DataSource, QueryTasksOnCompletionResponse, TableDetails, TableEntry,
@@ -11,6 +12,7 @@ use re_protos::cloud::v1alpha1::ext::{
 use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind};
 use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
 use re_redap_client::ConnectionClient;
+use re_sdk::external::re_log_types::EntryId;
 use re_sdk::external::re_tuid;
 use re_sdk::time::TimeType;
 use re_sdk::{RecordingStreamBuilder, TimeCell};
@@ -47,7 +49,7 @@ pub async fn load_test_data_with_name(
 
     // Make sure that we have an entries table.
     let entries_table = client
-        .find_entries(EntryFilter::default().with_entry_kind(EntryKind::Table))
+        .find_entries(EntryFilter::default().with_entry_kinds([EntryKind::Table]))
         .await?;
     assert_eq!(entries_table.len(), 1);
     assert_eq!(entries_table[0].name, re_protos::EntryName::entries_table());
@@ -124,7 +126,7 @@ fn recording_rrd(
 
     log_data(&stream);
 
-    stream.flush_with_timeout(Duration::from_secs(60))?;
+    stream.flush_with_timeout(Duration::from_mins(1))?;
 
     Ok(path)
 }
@@ -141,7 +143,7 @@ async fn register_rrds(
     let dataset_id = re_tuid::Tuid::from_str(dataset_id_str).expect("Failed to parse TUID");
 
     let entry = client
-        .create_dataset_entry(dataset_name.to_owned(), Some(dataset_id.into()))
+        .create_dataset_entry(EntryName::new(dataset_name)?, Some(dataset_id.into()))
         .await?;
 
     let mut data_sources = Vec::with_capacity(paths.len());
@@ -175,6 +177,48 @@ async fn register_rrds(
     wait_for_tasks(client, task_ids).await?;
 
     Ok(segment_ids)
+}
+
+/// Log a static-only recording and register it with `asset_dataset`, returning its segment id.
+///
+/// Asset datasets only accept static chunks, so the recording logs its points statically.
+pub async fn register_asset(
+    client: &mut ConnectionClient,
+    asset_dataset: EntryId,
+    recording_id: &str,
+) -> Result<SegmentId, Box<dyn Error>> {
+    let path = recording_rrd(recording_id, |stream| {
+        stream
+            .log_static(
+                "asset_entity",
+                &archetypes::Points3D::new([(0.0, 0.0, 0.0), (1.0, 1.0, 1.0)]),
+            )
+            .expect("Failed to log static points 3D");
+    })?;
+
+    let data_source = DataSource::new_rrd(format!(
+        "file://{}",
+        path.path()
+            .to_str()
+            .ok_or_else(|| "Failed to convert path to str".to_owned())?
+    ))?;
+
+    let items = client
+        .register_with_dataset(asset_dataset, vec![data_source], IfDuplicateBehavior::Error)
+        .await?
+        .1;
+
+    let mut segment_id = None;
+    let mut task_ids = Vec::with_capacity(items.len());
+    for item in items {
+        segment_id = Some(item.segment_id);
+        task_ids.push(item.task_id);
+    }
+    let segment_id = segment_id.ok_or("Asset registration returned no segment")?;
+
+    wait_for_tasks(client, task_ids).await?;
+
+    Ok(segment_id)
 }
 
 /// Register a `.rbl` blueprint file with `table`'s implicit blueprint dataset and set it as the

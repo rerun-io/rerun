@@ -1,6 +1,6 @@
 use std::str::FromStr as _;
 
-use re_chunk_store::LatestAtQuery;
+use re_chunk_store::{ChunkTrackingMode, LatestAtQuery};
 use re_entity_db::EntityDb;
 use re_log_types::{EntityPath, EntryId};
 use re_sdk_types::blueprint::{
@@ -104,7 +104,7 @@ pub struct EntryLinksSpec {
 /// The "blueprint" for a table, a.k.a the specification of how it should look.
 ///
 /// This is the single source of truth for table configuration. Fields can be populated
-/// from the registered `.fbs` `TableBlueprint` archetype or set programmatically.
+/// from the registered `TableBlueprint` archetype or set programmatically.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct TableBlueprint {
     pub sort_by: Option<SortBy>,
@@ -126,14 +126,14 @@ pub struct TableBlueprint {
     ///
     /// The column must exist in the table and be of boolean type.
     /// Populated from schema metadata ([`crate::experimental_field_metadata::IS_FLAG_COLUMN`])
-    /// or the registered `.fbs` `TableBlueprint` archetype.
+    /// or the registered `TableBlueprint` archetype.
     pub flag_column: Option<String>,
 
     /// The name of the column to use as the card title in grid view.
     ///
     /// If unset, the first visible string column is used.
     /// Populated from schema metadata ([`crate::experimental_field_metadata::IS_GRID_VIEW_CARD_TITLE`])
-    /// or the registered `.fbs` `TableBlueprint` archetype.
+    /// or the registered `TableBlueprint` archetype.
     pub grid_view_card_title: Option<String>,
 
     /// The name of the column containing URLs to open when a card is clicked in grid view.
@@ -141,17 +141,18 @@ pub struct TableBlueprint {
     /// If unset, the first column whose values parse as a Rerun URI pointing to the same
     /// Rerun server is used (resolved ad-hoc in the grid view). If no such column exists,
     /// clicking a card does not navigate anywhere.
-    /// Populated from the registered `.fbs` `TableBlueprint` archetype.
+    /// Populated from the registered `TableBlueprint` archetype.
     pub url_column: Option<String>,
 }
 
 impl TableBlueprint {
-    /// Populate fields from a registered `.fbs` `TableBlueprint` archetype stored in a blueprint
+    /// Populate fields from a registered `TableBlueprint` archetype stored in a blueprint
     /// [`EntityDb`].
     pub fn populate_from_registered_blueprint(&mut self, blueprint_db: &EntityDb) {
         let blueprint_query = LatestAtQuery::latest(blueprint_timeline());
         let engine = blueprint_db.storage_engine();
         let results = engine.cache().latest_at(
+            ChunkTrackingMode::Report,
             &blueprint_query,
             &"/table".into(),
             TableBlueprintArchetype::all_component_identifiers(),
@@ -322,6 +323,9 @@ impl ColumnBlueprint {
     }
 
     /// Set the alternate UI to use for this column
+    ///
+    /// `variant_ui` must be a valid [`VariantName`] (i.e. non-empty); passing an empty
+    /// string literal/const will panic.
     pub fn variant_ui(self, variant_ui: impl Into<VariantName>) -> Self {
         Self {
             variant_ui: Some(variant_ui.into()),

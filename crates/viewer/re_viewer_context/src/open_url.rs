@@ -53,7 +53,7 @@ pub enum ViewerOpenUrl {
 
     /// A path to a local file.
     ///
-    /// See also [`LogDataSource::FilePath`].
+    /// See also [`LogDataSource::File`].
     #[cfg(not(target_arch = "wasm32"))]
     FilePath(std::path::PathBuf),
 
@@ -197,10 +197,11 @@ impl ViewerOpenUrl {
                 LogDataSource::HttpUrl { url, .. } => Ok(Self::HttpUrl(url)),
 
                 #[cfg(not(target_arch = "wasm32"))]
-                LogDataSource::FilePath { path, .. } => Ok(Self::FilePath(path)),
+                LogDataSource::File { path, .. } => Ok(Self::FilePath(path)),
 
-                LogDataSource::FileContents(..) => {
-                    unreachable!("FileContents can not be shared as a URL");
+                #[cfg(target_arch = "wasm32")]
+                LogDataSource::File { .. } => {
+                    unreachable!("A browser file cannot be shared as a URL")
                 }
 
                 #[cfg(not(target_arch = "wasm32"))]
@@ -250,11 +251,6 @@ pub fn base_url(url: &Url) -> Url {
 
 #[derive(Debug, Clone, Copy)]
 pub struct OpenUrlOptions {
-    /// Follow live HTTP or file paths.
-    //
-    // TODO(emilk): consider making this part of `ViewerOpenUrl::RrdHttpUrl/FilePath` instead
-    pub follow: bool,
-
     pub recording_open_behavior: RecordingOpenBehavior,
 
     /// Shows the loading screen.
@@ -264,7 +260,6 @@ pub struct OpenUrlOptions {
 impl Default for OpenUrlOptions {
     fn default() -> Self {
         Self {
-            follow: false,
             recording_open_behavior: RecordingOpenBehavior::Open,
             show_loader: false,
         }
@@ -325,16 +320,16 @@ impl ViewerOpenUrl {
             LogSource::HttpStream { url, .. } => Ok(Self::HttpUrl(url.parse::<Url>()?)),
 
             LogSource::File { path, .. } => {
-                #[cfg(not(target_arch = "wasm32"))]
-                {
-                    Ok(Self::FilePath(path.clone()))
-                }
-                #[cfg(target_arch = "wasm32")]
-                {
-                    _ = path;
-                    Err(anyhow::anyhow!(
-                        "Can't share links to local files on the web."
-                    ))
+                cfg_select! {
+                    target_arch = "wasm32" => {
+                        _ = path;
+                        Err(anyhow::anyhow!(
+                            "Can't share links to local files on the web."
+                        ))
+                    }
+                    _ => {
+                        Ok(Self::FilePath(path.clone()))
+                    }
                 }
             }
 
@@ -544,13 +539,9 @@ impl ViewerOpenUrl {
 
             Self::HttpUrl(url) => Some(LogSource::HttpStream {
                 url: url.to_string(),
-                follow: false,
             }),
             #[cfg(not(target_arch = "wasm32"))]
-            Self::FilePath(path) => Some(LogSource::File {
-                path: path.clone(),
-                follow: false,
-            }),
+            Self::FilePath(path) => Some(LogSource::File { path: path.clone() }),
             Self::RedapDatasetSegment(uri) => Some(LogSource::RedapGrpcStream {
                 uri: uri.clone(),
                 open_behavior: RecordingOpenBehavior::Background,
@@ -601,18 +592,14 @@ impl ViewerOpenUrl {
             Self::HttpUrl(url) => {
                 command_sender.send_system(SystemCommand::LoadDataSource(LogDataSource::HttpUrl {
                     url,
-                    follow: options.follow,
                 }));
             }
             #[cfg(not(target_arch = "wasm32"))]
             Self::FilePath(path) => {
-                command_sender.send_system(SystemCommand::LoadDataSource(
-                    LogDataSource::FilePath {
-                        file_source: re_log_types::FileSource::Uri,
-                        path,
-                        follow: options.follow,
-                    },
-                ));
+                command_sender.send_system(SystemCommand::LoadDataSource(LogDataSource::File {
+                    file_source: re_log_types::FileSource::Uri,
+                    path,
+                }));
             }
             Self::RedapDatasetSegment(uri) => {
                 command_sender.send_system(SystemCommand::LoadDataSource(
@@ -633,18 +620,24 @@ impl ViewerOpenUrl {
             }
             Self::RedapCatalog(uri) => {
                 command_sender.send_system(SystemCommand::AddRedapServer(uri.origin.clone()));
+                command_sender.send_system(SystemCommand::RefreshRedapServer(uri.origin.clone()));
                 let item = Item::RedapServer(uri.origin);
                 command_sender.send_system(SystemCommand::set_selection(item.clone()));
                 command_sender.send_system(SystemCommand::SetFocus(item.into()));
             }
             Self::RedapEntry(uri) => {
                 command_sender.send_system(SystemCommand::AddRedapServer(uri.origin.clone()));
+                command_sender.send_system(SystemCommand::RefreshRedapEntry {
+                    origin: uri.origin.clone(),
+                    entry_id: uri.entry_id,
+                });
                 let item = Item::from(uri);
                 command_sender.send_system(SystemCommand::set_selection(item.clone()));
                 command_sender.send_system(SystemCommand::SetFocus(item.into()));
             }
             Self::RedapFolder(uri) => {
                 command_sender.send_system(SystemCommand::AddRedapServer(uri.origin.clone()));
+                command_sender.send_system(SystemCommand::RefreshRedapServer(uri.origin.clone()));
                 let item = Item::RedapEntry {
                     origin: uri.origin,
                     kind: crate::RedapEntryKind::Folder(uri.path),
@@ -664,8 +657,7 @@ impl ViewerOpenUrl {
                     // We _are_ a web viewer.
                     // If the base URL doesn't match our own then that's reason for concern (==warn),
                     // because this URL was probably meant to be opened in a different Rerun version.
-                    if let Some(window) = web_sys::window()
-                        && let Ok(location) = window.location().href()
+                    if let Ok(location) = re_web::browser::current_page_url()
                         && let Ok(location) = Url::parse(&location)
                     {
                         let current_webpage_base_url = base_url(&location);
@@ -798,9 +790,10 @@ fn parse_chunk_store_browser_url(url: &str) -> anyhow::Result<Option<ViewerOpenU
     }
 
     let recording_id = match (application_id, recording_name) {
-        (Some(application_id), Some(recording_id)) => {
-            Some(StoreId::recording(application_id, recording_id))
-        }
+        (Some(application_id), Some(recording_id)) => Some(StoreId::recording(
+            re_log_types::ApplicationId::try_new(application_id)?,
+            recording_id,
+        )),
         (None, None) => None,
         _ => anyhow::bail!("Chunk store browser URL must include both app_id and recording_id"),
     };
@@ -1048,6 +1041,9 @@ mod tests {
             "",
             "   ",
             "aaaaaaaaaaa",
+            // The filesystem root exists, but should not be treated as an openable path
+            // (a leading `/` is how the user searches for an entity path in the command palette):
+            "/",
         ];
 
         for url in invalid_urls {
@@ -1151,7 +1147,6 @@ mod tests {
             &mut store_hub,
             Some(LogSource::File {
                 path: std::path::PathBuf::from("/path/to/test.rrd"),
-                follow: false,
             }),
         );
         assert_eq!(
@@ -1165,7 +1160,6 @@ mod tests {
             &mut store_hub,
             Some(LogSource::HttpStream {
                 url: "https://example.com/recording.rrd".to_owned(),
-                follow: false,
             }),
         );
         assert_eq!(
@@ -1240,7 +1234,7 @@ mod tests {
                 component: None,
             }),
             when: Some((
-                re_chunk::TimelineName::new("test"),
+                re_chunk::TimelineName::from("test"),
                 re_log_types::TimeCell {
                     typ: re_log_types::TimeType::DurationNs,
                     value: re_log_types::NonMinI64::ONE,

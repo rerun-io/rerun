@@ -1,6 +1,7 @@
 ---
 title: Visualize geospatial data
 order: 300
+description: Use the map view with GPS-style latitudes and longitudes
 ---
 
 Rerun 0.20 introduced a new [map view](../../reference/types/views/map_view.md).

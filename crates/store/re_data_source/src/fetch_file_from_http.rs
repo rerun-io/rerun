@@ -21,7 +21,6 @@ pub fn fetch_and_load(url: &url::Url) -> LogReceiver {
 
     let (tx, rx) = re_log_channel::log_channel(LogSource::HttpStream {
         url: url_string.clone(),
-        follow: false,
     });
 
     re_log::debug!("Fetching file from {:?}…", url_display_name(&url_string));

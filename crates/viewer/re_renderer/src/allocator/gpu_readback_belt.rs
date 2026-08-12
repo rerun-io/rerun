@@ -469,7 +469,11 @@ impl GpuReadbackBelt {
                 let (result, scheduled_frame_index) = {
                     let range = chunk.ranges_in_use.swap_remove(range_index);
                     let slice = chunk.buffer.slice(range.buffer_range.clone());
-                    let data = slice.get_mapped_range();
+                    // A chunk is only sent to `self.receiver` after its `map_async` succeeded, and
+                    // ranges within a chunk never overlap, so mapping this range cannot fail.
+                    let data = slice
+                        .get_mapped_range()
+                        .expect("Readback chunk range is mapped");
                     (
                         callback(&data, range.user_data.downcast::<UserDataType>().unwrap()),
                         range.scheduled_frame_index,
