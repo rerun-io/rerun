@@ -1,15 +1,20 @@
 use std::collections::BTreeSet;
+use std::ops::Range;
 
+use egui::emath::GuiRounding as _;
+use re_chunk_store::TimeInt;
 use re_data_ui::item_ui::{self, timeline_button};
+use re_dataframe_ui::re_table_utils::apply_table_style_fixes;
 use re_log::ResultExt as _;
 use re_log_types::{EntityPath, TimelineName};
+use re_sdk_types::archetypes::TextLog;
 use re_sdk_types::blueprint::archetypes::{TextLogColumns, TextLogFormat, TextLogRows};
 use re_sdk_types::blueprint::components::{Enabled, TextLogColumn, TimelineColumn};
 use re_sdk_types::blueprint::datatypes as bp_datatypes;
 use re_sdk_types::components::TextLogLevel;
 use re_sdk_types::{View as _, ViewClassIdentifier, datatypes};
 use re_ui::list_item::LabelContent;
-use re_ui::{DesignTokens, Help, UiExt as _};
+use re_ui::{Help, TableStyle, UiExt as _};
 use re_viewer_context::{
     IdentifiedViewSystem as _, ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewContext,
     ViewId, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
@@ -17,7 +22,8 @@ use re_viewer_context::{
 };
 use re_viewport_blueprint::ViewProperty;
 
-use super::visualizer_system::{Entry, TextLogSystem};
+use super::visualizer_system::{Entry, FetchWindow, TextLogOutput, TextLogSystem};
+use crate::row_layout::{LevelCountCache, LevelFilter, RowLayout};
 
 // TODO(andreas): This should be a blueprint component.
 #[derive(Clone, PartialEq, Eq, Default, re_byte_size::SizeBytes)]
@@ -28,18 +34,26 @@ pub struct TextViewState {
     /// text entry window however they please when the time cursor isn't moving.
     latest_time: i64,
 
-    /// Time of the latest entry at or before the cursor on the previous render.
+    /// Row just below the time cursor on the previous render.
     ///
     /// We auto-scroll whenever this changes so the view tracks the latest-at
     /// row as new (possibly out-of-order) data streams in. This handles both
     /// the initial catch-up to a programmatic `SetTime` (e.g. a `#when` URL
     /// anchor pointing past the data loaded so far) and any later arrival
-    /// that lands closer to the cursor.
-    last_anchor_time: Option<i64>,
+    /// that lands at or before the cursor.
+    last_anchor_row: Option<u64>,
 
     seen_levels: BTreeSet<String>,
 
-    last_columns_min_sizes: Vec<u32>,
+    /// Time window that the visualizer should query on the next frame.
+    ///
+    /// Written at the end of `ui()` based on the visible rows, read by
+    /// [`TextLogSystem`]'s `execute()` one frame later.
+    pub(crate) fetch_window: Option<FetchWindow>,
+
+    /// Cached per-chunk log level counts, used to lay out the table when a level filter is
+    /// active (see [`RowLayout`]).
+    level_counts: LevelCountCache,
 }
 
 impl ViewState for TextViewState {
@@ -191,7 +205,7 @@ Filter message types and toggle column visibility in a selection panel.",
     fn ui(
         &self,
         ctx: &ViewerContext<'_>,
-        _missing_chunk_reporter: &re_viewer_context::MissingChunkReporter,
+        missing_chunk_reporter: &re_viewer_context::MissingChunkReporter,
         ui: &mut egui::Ui,
         state: &mut dyn ViewState,
         query: &ViewQuery<'_>,
@@ -200,9 +214,11 @@ Filter message types and toggle column visibility in a selection panel.",
         re_tracing::profile_function!();
 
         let tokens = ui.tokens();
+        let table_style = TableStyle::Dense;
         let state = state.downcast_mut::<TextViewState>()?;
-        let text =
-            system_output.visualizer_data_or_default::<Vec<Entry>>(TextLogSystem::identifier())?;
+        let output = system_output
+            .visualizer_data_or_default::<TextLogOutput>(TextLogSystem::identifier())?;
+        let output: &TextLogOutput = &output;
 
         let view_ctx = self.view_context(ctx, query.view_id, state, query.space_origin);
         let columns_property = ViewProperty::from_archetype::<TextLogColumns>(&view_ctx);
@@ -223,66 +239,161 @@ Filter message types and toggle column visibility in a selection panel.",
             TextLogColumns::descriptor_timeline_columns().component,
         )?;
 
-        let levels = rows_property.component_array_or_fallback::<TextLogLevel>(
-            &view_ctx,
-            TextLogRows::descriptor_filter_by_log_level().component,
-        )?;
-
-        for te in text.iter() {
-            if let Some(lvl) = &te.level {
-                state.seen_levels.insert(lvl.to_string());
-            }
-        }
-
-        // TODO(andreas): Should filter text entries in the part-system instead.
-        // this likely requires a way to pass state into a context.
-        let entries = text
-            .iter()
-            .filter(|te| {
-                te.level
-                    .as_ref()
-                    .is_none_or(|lvl| levels.iter().any(|l| l.as_str() == lvl.as_str()))
-            })
-            .collect::<Vec<_>>();
+        // An *explicit* level filter (i.e. one set in the blueprint, not the show-everything
+        // fallback) changes which rows are shown; the row layout then comes from cached
+        // per-chunk level counts instead of plain chunk row counts.
+        let filter = rows_property
+            .component_array::<TextLogLevel>(
+                TextLogRows::descriptor_filter_by_log_level().component,
+            )?
+            .map(|levels| LevelFilter(levels.iter().map(|lvl| lvl.as_str().to_owned()).collect()));
 
         let time = ctx.time_ctrl.time_i64().unwrap_or(state.latest_time);
+
+        // Only the fetched window's entries are materialized; the rest of the row layout comes
+        // from chunk-level metadata (time ranges + row counts), so we never have to touch the
+        // full data. See <https://github.com/rerun-io/rerun/issues/7562>.
+        let layout = {
+            let engine = ctx.recording_engine();
+            RowLayout::build(
+                engine.store(),
+                &query.timeline,
+                TextLog::descriptor_text().component,
+                TextLog::descriptor_level().component,
+                query
+                    .iter_visualizer_instruction_for(TextLogSystem::identifier())
+                    .map(|(data_result, _)| &data_result.entity_path),
+                filter.as_ref(),
+                &mut state.level_counts,
+            )
+        };
+
+        state.seen_levels.extend(layout.levels().iter().cloned());
+
+        if layout.any_missing {
+            missing_chunk_reporter.report_missing_chunk();
+        }
+
+        // The fetched window contains *all* rows in its time range; apply the level filter
+        // here so the entries line up with the (filtered) row layout.
+        let visible_entries: Vec<&Entry> = match &filter {
+            Some(filter) => output
+                .entries
+                .iter()
+                .filter(|te| filter.matches(te.level.as_ref().map(|lvl| lvl.as_str())))
+                .collect(),
+            None => output.entries.iter().collect(),
+        };
+
+        let num_rows = layout.num_rows();
+        let scroll_row = layout.rows_before(TimeInt::new_temporal(time));
+        let anchor_row = layout.rows_before(TimeInt::new_temporal(time).inc());
+
+        let rows = RowLookup {
+            num_static: layout.num_static_rows(),
+            fetched_static: visible_entries.partition_point(|entry| entry.time.is_static()) as u64,
+            temporal_offset: output.window.map_or_else(
+                || layout.num_static_rows(),
+                |window| layout.rows_before(window.min),
+            ),
+            entries: visible_entries,
+        };
+
+        // Auto-scroll when the time cursor moves, or whenever the row below the cursor shifts
+        // because new (possibly out-of-order) data landed at or before the cursor.
+        let time_cursor_moved = state.latest_time != time;
+        let anchor_moved = state.last_anchor_row != Some(anchor_row);
+        let scroll_to = (time_cursor_moved || anchor_moved).then_some(scroll_row);
+        state.last_anchor_row = Some(anchor_row);
+        state.latest_time = time;
+
+        // Draw the current time indicator when the active timeline is shown as a column.
+        let marker_row = (ctx.time_ctrl.time_int().is_some()
+            && timeline_columns
+                .iter()
+                .any(|col| *col.visible && col.timeline.as_str() == query.timeline.as_str()))
+        .then_some(anchor_row);
+
+        let mut column_kinds = Vec::new();
+        let mut table_columns = Vec::new();
+        for col in &timeline_columns {
+            if !*col.visible {
+                continue;
+            }
+            if let Some(timeline) =
+                TimelineName::try_new(col.timeline.as_str()).ok_or_log_error_once()
+            {
+                column_kinds.push(ColumnKind::Timeline(timeline));
+                table_columns.push(text_log_column(110.0, 60.0));
+            }
+        }
+        for col in &columns {
+            if !*col.visible {
+                continue;
+            }
+            let (width, min_width) = match col.kind {
+                bp_datatypes::TextLogColumnKind::EntityPath => (120.0, 60.0),
+                bp_datatypes::TextLogColumnKind::LogLevel => (50.0, 44.0),
+                bp_datatypes::TextLogColumnKind::Body => (400.0, 100.0),
+            };
+            column_kinds.push(ColumnKind::Kind(col.kind));
+            table_columns.push(text_log_column(width, min_width));
+        }
+
+        let mut delegate = TextLogTableDelegate {
+            ctx,
+            table_style,
+            row_height: tokens.table_row_height(table_style),
+            column_kinds: &column_kinds,
+            monospace_body: **monospace_body,
+            rows,
+            num_rows,
+            marker_row,
+            visible_rows: 0..0,
+        };
+
         egui::Frame {
             inner_margin: tokens.view_padding().into(),
             ..egui::Frame::default()
         }
         .show(ui, |ui| {
-            // Auto-scroll when the time cursor moves, or whenever the
-            // latest-at row shifts because new (possibly out-of-order) data
-            // landed closer to the cursor.
-            let anchor_time = entries
-                .partition_point(|te| te.time.as_i64() <= time)
-                .checked_sub(1)
-                .map(|i| entries[i].time.as_i64());
-            let anchor_moved = anchor_time != state.last_anchor_time;
-            let time_cursor_moved = state.latest_time != time;
-            let scroll_to_row = (time_cursor_moved || anchor_moved).then(|| {
-                re_tracing::profile_scope!("search scroll time");
-                entries.partition_point(|te| te.time.as_i64() < time)
-            });
-            state.last_anchor_time = anchor_time;
+            apply_table_style_fixes(ui.style_mut());
 
-            ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
-                egui::ScrollArea::horizontal().show(ui, |ui| {
-                    re_tracing::profile_scope!("render table");
-                    table_ui(
-                        ctx,
-                        ui,
-                        state,
-                        &timeline_columns,
-                        &columns,
-                        **monospace_body,
-                        &entries,
-                        scroll_to_row,
-                    );
-                })
-            })
+            let mut table = egui_table::Table::new()
+                .id_salt(egui::Id::new("text_log").with(query.view_id))
+                .columns(table_columns)
+                .auto_size_mode(egui_table::AutoSizeMode::Always)
+                .headers(vec![egui_table::HeaderRow::new(
+                    tokens.table_header_height(),
+                )])
+                .num_rows(num_rows);
+
+            if let Some(scroll_to) = scroll_to {
+                table = table.scroll_to_row(scroll_to, Some(egui::Align::Center));
+            }
+
+            re_tracing::profile_scope!("render table");
+            table.show(ui, &mut delegate);
         });
-        state.latest_time = time;
+
+        // Tell the visualizer which time window to fetch next frame: the visible rows,
+        // padded by one page on each side for scroll responsiveness.
+        let visible_rows = delegate.visible_rows.clone();
+        let page = (visible_rows.end - visible_rows.start).max(1);
+        let prefetch_rows =
+            visible_rows.start.saturating_sub(page)..(visible_rows.end + page).min(num_rows);
+        let new_window = layout
+            .time_window_for_rows(prefetch_rows)
+            .map(|(min, max)| FetchWindow {
+                timeline: query.timeline,
+                min,
+                max,
+            });
+
+        if state.fetch_window != new_window {
+            state.fetch_window = new_window;
+            ui.ctx().request_repaint();
+        }
 
         Ok(Default::default())
     }
@@ -290,203 +401,197 @@ Filter message types and toggle column visibility in a selection panel.",
 
 // ---
 
-/// `scroll_to_row` indicates how far down we want to scroll in terms of logical rows,
-/// as opposed to `scroll_to_offset` (computed below) which is how far down we want to
-/// scroll in terms of actual points.
-fn table_ui(
-    ctx: &ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    state: &mut TextViewState,
-    timeline_columns: &[TimelineColumn],
-    columns: &[TextLogColumn],
-    monospace_body: bool,
-    entries: &[&Entry],
-    scroll_to_row: Option<usize>,
-) {
-    let tokens = ui.tokens();
-    let table_style = re_ui::TableStyle::Dense;
+enum ColumnKind {
+    Timeline(TimelineName),
+    Kind(bp_datatypes::TextLogColumnKind),
+}
 
-    use egui_extras::Column;
-
-    let (global_timeline, global_time) = (*ctx.time_ctrl.timeline_name(), ctx.time_ctrl.time_int());
-
-    let mut table_builder = egui_extras::TableBuilder::new(ui)
+/// A resizable column that starts out `width` wide but may be squeezed down to `min_width`
+/// when the view is too narrow to fit every column at its preferred width.
+fn text_log_column(width: f32, min_width: f32) -> egui_table::Column {
+    egui_table::Column::new(width)
+        .range(egui::Rangef::new(min_width, f32::INFINITY))
         .resizable(true)
-        .vscroll(true)
-        .auto_shrink([false; 2]) // expand to take up the whole View
-        .min_scrolled_height(0.0) // we can go as small as we need to be in order to fit within the view!
-        .max_scroll_height(f32::INFINITY) // Fill up whole height
-        .cell_layout(egui::Layout::left_to_right(egui::Align::Center));
+}
 
-    if let Some(scroll_to_row) = scroll_to_row {
-        table_builder = table_builder.scroll_to_row(scroll_to_row, Some(egui::Align::Center));
-    }
+/// Maps a global row index to a (possibly not-yet-fetched) [`Entry`].
+///
+/// Only the fetched time window is materialized.
+struct RowLookup<'a> {
+    /// Fetched entries that pass the level filter, sorted by time, static entries first.
+    entries: Vec<&'a Entry>,
 
-    let mut body_clip_rect = None;
-    let mut current_time_y = None; // where to draw the current time indicator cursor
+    /// Total number of static rows according to chunk metadata.
+    num_static: u64,
 
-    let mut new_column_sizes = Vec::new();
-    let mut last_columns = state.last_columns_min_sizes.iter();
+    /// Number of static entries at the front of `entries`.
+    fetched_static: u64,
 
-    let mut size_column = |column: Column, min_size: u32| {
-        // If this isn't the same min size as before the order changed.
-        let auto_resize = last_columns.next().is_some_and(|c| *c != min_size);
+    /// Global row index of the first fetched temporal entry.
+    temporal_offset: u64,
+}
 
-        new_column_sizes.push(min_size);
-
-        column
-            .at_least(min_size as f32)
-            .auto_size_this_frame(auto_resize)
-    };
-
-    for col in timeline_columns {
-        if *col.visible {
-            table_builder = table_builder.column(size_column(Column::auto().clip(true), 32));
+impl RowLookup<'_> {
+    fn entry(&self, row_nr: u64) -> Option<&Entry> {
+        if row_nr < self.num_static {
+            (row_nr < self.fetched_static).then(|| self.entries[row_nr as usize])
+        } else {
+            let idx = self.fetched_static + row_nr.checked_sub(self.temporal_offset)?;
+            self.entries.get(idx as usize).copied()
         }
-    }
-
-    for col in columns {
-        if !*col.visible {
-            continue;
-        }
-
-        let col = match col.kind {
-            bp_datatypes::TextLogColumnKind::EntityPath => {
-                size_column(Column::auto().clip(true), 32)
-            }
-            bp_datatypes::TextLogColumnKind::LogLevel => size_column(Column::auto(), 30),
-            bp_datatypes::TextLogColumnKind::Body => size_column(Column::remainder(), 100),
-        };
-
-        table_builder = table_builder.column(col);
-    }
-
-    state.last_columns_min_sizes = new_column_sizes;
-
-    table_builder
-        .header(tokens.deprecated_table_header_height(), |mut header| {
-            re_ui::DesignTokens::setup_table_header(&mut header);
-            for col in timeline_columns {
-                if !*col.visible {
-                    continue;
-                }
-
-                header.col(|ui| {
-                    if let Some(timeline) =
-                        TimelineName::try_new(col.timeline.as_str()).ok_or_log_error_once()
-                    {
-                        timeline_button(&ctx.app_ctx, ui, &timeline);
-                    }
-                });
-            }
-            for col in columns {
-                if !*col.visible {
-                    continue;
-                }
-                header.col(|ui| {
-                    column_name_ui(ui, &col.kind);
-                });
-            }
-        })
-        .body(|mut body| {
-            tokens.setup_table_body(&mut body, table_style);
-
-            body_clip_rect = Some(body.max_rect());
-
-            let row_heights = entries
-                .iter()
-                .map(|te| calc_row_height(tokens, table_style, te));
-            body.heterogeneous_rows(row_heights, |mut row| {
-                let entry = &entries[row.index()];
-
-                for col in timeline_columns {
-                    if !*col.visible {
-                        continue;
-                    }
-
-                    let Some(timeline) =
-                        TimelineName::try_new(col.timeline.as_str()).ok_or_log_error_once()
-                    else {
-                        continue;
-                    };
-
-                    row.col(|ui| {
-                        let row_time = entry
-                            .timepoint
-                            .get(&timeline)
-                            .map(re_log_types::TimeInt::from)
-                            .unwrap_or(re_log_types::TimeInt::STATIC);
-                        item_ui::time_button(ctx, ui, &timeline, row_time);
-
-                        if let Some(global_time) = global_time
-                            && timeline == global_timeline
-                        {
-                            if global_time < row_time {
-                                // We've past the global time - it is thus above this row.
-                                if current_time_y.is_none() {
-                                    current_time_y = Some(ui.max_rect().top());
-                                }
-                            } else if global_time == row_time {
-                                // This row is exactly at the current time.
-                                // We could draw the current time exactly onto this row, but that would look bad,
-                                // so let's draw it under instead. It looks better in the "following" mode.
-                                current_time_y = Some(ui.max_rect().bottom());
-                            }
-                        }
-                    });
-                }
-
-                for col in columns {
-                    if !*col.visible {
-                        continue;
-                    }
-
-                    row.col(|ui| match col.kind {
-                        bp_datatypes::TextLogColumnKind::EntityPath => {
-                            item_ui::entity_path_button(
-                                &ctx.active_recording_store_view_context(),
-                                ui,
-                                None,
-                                &entry.entity_path,
-                            );
-                        }
-                        bp_datatypes::TextLogColumnKind::LogLevel => {
-                            if let Some(lvl) = &entry.level {
-                                ui.label(level_to_rich_text(ui, lvl));
-                            } else {
-                                ui.label("-");
-                            }
-                        }
-                        bp_datatypes::TextLogColumnKind::Body => {
-                            let mut text = egui::RichText::new(entry.body.as_str());
-
-                            if monospace_body {
-                                text = text.monospace();
-                            }
-                            if let Some(color) = entry.color {
-                                text = text.color(color);
-                            }
-
-                            ui.label(text);
-                        }
-                    });
-                }
-            });
-        });
-
-    // TODO(cmc): this draws on top of the headers :(
-    if let (Some(body_clip_rect), Some(current_time_y)) = (body_clip_rect, current_time_y) {
-        // Show that the current time is here:
-        ui.painter().with_clip_rect(body_clip_rect).hline(
-            ui.max_rect().x_range(),
-            current_time_y,
-            (1.0, ui.tokens().strong_fg_color),
-        );
     }
 }
 
-fn column_name_ui(ui: &mut egui::Ui, column: &bp_datatypes::TextLogColumnKind) -> egui::Response {
-    ui.strong(column.name())
+struct TextLogTableDelegate<'a> {
+    ctx: &'a ViewerContext<'a>,
+    table_style: TableStyle,
+    row_height: f32,
+    column_kinds: &'a [ColumnKind],
+    monospace_body: bool,
+    rows: RowLookup<'a>,
+    num_rows: u64,
+
+    /// Paint the current time indicator at the top of this row
+    /// (or at the bottom of the last row if this is one past the end).
+    marker_row: Option<u64>,
+
+    /// Rows that were visible this frame, captured from the prefetch info.
+    visible_rows: Range<u64>,
+}
+
+impl egui_table::TableDelegate for TextLogTableDelegate<'_> {
+    fn prepare(&mut self, info: &egui_table::PrefetchInfo) {
+        self.visible_rows = info.visible_rows.clone();
+    }
+
+    fn default_row_height(&self) -> f32 {
+        self.row_height
+    }
+
+    fn header_cell_ui(&mut self, ui: &mut egui::Ui, cell: &egui_table::HeaderCellInfo) {
+        let col_nr = cell.col_range.start;
+
+        egui::Frame::new()
+            .inner_margin(ui.tokens().header_cell_margin(self.table_style))
+            .show(ui, |ui| match &self.column_kinds[col_nr] {
+                ColumnKind::Timeline(timeline) => {
+                    timeline_button(&self.ctx.app_ctx, ui, timeline);
+                }
+                ColumnKind::Kind(kind) => {
+                    ui.strong(kind.name());
+                }
+            });
+
+        let rect = ui.max_rect().round_to_pixels(ui.pixels_per_point());
+        self.paint_column_separator(ui, col_nr, rect);
+
+        // A single subtle line under the header, tiled across the columns.
+        // Note: `apply_table_style_fixes` blanks `noninteractive.bg_stroke`, so use the token.
+        ui.painter().hline(
+            rect.x_range(),
+            rect.max.y - re_dataframe_ui::re_table_utils::CELL_SEPARATOR_STROKE_OFFSET,
+            egui::Stroke::new(1.0, ui.tokens().table_interaction_noninteractive_bg_stroke),
+        );
+    }
+
+    fn row_ui(&mut self, ui: &mut egui::Ui, row_nr: u64) {
+        let paint_marker_at = if self.marker_row == Some(row_nr) {
+            Some(ui.max_rect().top())
+        } else if row_nr + 1 == self.num_rows && self.marker_row == Some(self.num_rows) {
+            // The time cursor is past all rows: draw the marker below the last one.
+            Some(ui.max_rect().bottom())
+        } else {
+            None
+        };
+
+        if let Some(y) = paint_marker_at {
+            ui.painter().hline(
+                ui.max_rect().x_range(),
+                y,
+                (1.0, ui.tokens().strong_fg_color),
+            );
+        }
+    }
+
+    fn cell_ui(&mut self, ui: &mut egui::Ui, cell: &egui_table::CellInfo) {
+        let col_nr = cell.col_nr;
+
+        egui::Frame::new()
+            .inner_margin(ui.tokens().table_cell_margin(self.table_style))
+            .show(ui, |ui| {
+                let Some(entry) = self.rows.entry(cell.row_nr) else {
+                    // This row's time window hasn't been fetched yet; it arrives next frame.
+                    ui.weak("…");
+                    return;
+                };
+
+                match &self.column_kinds[col_nr] {
+                    ColumnKind::Timeline(timeline) => {
+                        let row_time = entry
+                            .timepoint
+                            .get(timeline)
+                            .map(re_log_types::TimeInt::from)
+                            .unwrap_or(re_log_types::TimeInt::STATIC);
+                        item_ui::time_button(self.ctx, ui, timeline, row_time);
+                    }
+                    ColumnKind::Kind(bp_datatypes::TextLogColumnKind::EntityPath) => {
+                        item_ui::entity_path_button(
+                            &self.ctx.active_recording_store_view_context(),
+                            ui,
+                            None,
+                            &entry.entity_path,
+                        );
+                    }
+                    ColumnKind::Kind(bp_datatypes::TextLogColumnKind::LogLevel) => {
+                        if let Some(lvl) = &entry.level {
+                            ui.label(level_to_rich_text(ui, lvl));
+                        } else {
+                            ui.label("-");
+                        }
+                    }
+                    ColumnKind::Kind(bp_datatypes::TextLogColumnKind::Body) => {
+                        // Rows have a fixed height; show only the first line of multi-line bodies.
+                        let body = entry.body.as_str();
+                        let (first_line, truncated) = match body.split_once('\n') {
+                            Some((first_line, _)) => (first_line, true),
+                            None => (body, false),
+                        };
+
+                        let mut text = if truncated {
+                            egui::RichText::new(format!("{first_line} …"))
+                        } else {
+                            egui::RichText::new(first_line)
+                        };
+
+                        if self.monospace_body {
+                            text = text.monospace();
+                        }
+                        if let Some(color) = entry.color {
+                            text = text.color(color);
+                        }
+
+                        ui.label(text).on_hover_text(body);
+                    }
+                }
+            });
+
+        let rect = ui.max_rect().round_to_pixels(ui.pixels_per_point());
+        self.paint_column_separator(ui, col_nr, rect);
+    }
+}
+
+impl TextLogTableDelegate<'_> {
+    /// A vertical line between columns (but not after the last one), like the old
+    /// `egui_extras`-based renderer had.
+    fn paint_column_separator(&self, ui: &egui::Ui, col_nr: usize, rect: egui::Rect) {
+        if col_nr + 1 < self.column_kinds.len() {
+            ui.painter().vline(
+                rect.max.x - re_dataframe_ui::re_table_utils::CELL_SEPARATOR_STROKE_OFFSET,
+                rect.y_range(),
+                egui::Stroke::new(1.0, ui.tokens().table_interaction_noninteractive_bg_stroke),
+            );
+        }
+    }
 }
 
 /// We need this to be a custom ui to be able to use the view state to get seen text log levels.
@@ -554,17 +659,27 @@ fn view_property_ui_rows(ctx: &ViewContext<'_>, ui: &mut egui::Ui) {
                         }
 
                         if any_change {
-                            let log_levels: Vec<_> = new_levels
-                                .into_iter()
-                                .filter(|(_, active)| *active)
-                                .map(|(lvl, _)| TextLogLevel(lvl.into()))
-                                .collect();
+                            if new_levels.iter().all(|(_, active)| *active) {
+                                // Nothing is filtered out: remove the filter entirely, so that
+                                // levels showing up later stay visible and the view stays on
+                                // the cheaper unfiltered path.
+                                property.reset_blueprint_component(
+                                    ctx.viewer_ctx,
+                                    TextLogRows::descriptor_filter_by_log_level(),
+                                );
+                            } else {
+                                let log_levels: Vec<_> = new_levels
+                                    .into_iter()
+                                    .filter(|(_, active)| *active)
+                                    .map(|(lvl, _)| TextLogLevel(lvl.into()))
+                                    .collect();
 
-                            property.save_blueprint_component(
-                                ctx.viewer_ctx,
-                                &TextLogRows::descriptor_filter_by_log_level(),
-                                &log_levels,
-                            );
+                                property.save_blueprint_component(
+                                    ctx.viewer_ctx,
+                                    &TextLogRows::descriptor_filter_by_log_level(),
+                                    &log_levels,
+                                );
+                            }
                         }
                     }),
                 );
@@ -593,13 +708,6 @@ fn view_property_ui_rows(ctx: &ViewContext<'_>, ui: &mut egui::Ui) {
                 sub_prop_ui,
             );
     }
-}
-
-fn calc_row_height(tokens: &DesignTokens, table_style: re_ui::TableStyle, entry: &Entry) -> f32 {
-    // Simple, fast, ugly, and functional
-    let num_newlines = entry.body.bytes().filter(|&c| c == b'\n').count();
-    let num_rows = 1 + num_newlines;
-    num_rows as f32 * tokens.table_row_height(table_style)
 }
 
 #[test]

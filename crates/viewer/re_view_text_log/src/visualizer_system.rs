@@ -1,16 +1,19 @@
+use std::collections::HashMap;
+
 use itertools::izip;
-use re_chunk_store::AbsoluteTimeRange;
+use re_chunk_store::{AbsoluteTimeRange, RowId};
 use re_entity_db::EntityPath;
-use re_log_types::{TimeInt, TimePoint};
-use re_query::{clamped_zip_1x2, range_zip_1x2};
+use re_log_types::{TimeInt, TimePoint, TimelineName};
 use re_sdk_types::Archetype as _;
 use re_sdk_types::archetypes::TextLog;
 use re_sdk_types::components::{Color, Text, TextLogLevel};
 use re_view::range_with_blueprint_resolved_data;
 use re_viewer_context::{
-    IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError,
-    VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery, ViewStateExt as _,
+    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
 };
+
+use crate::view_class::TextViewState;
 
 #[derive(Debug, Clone)]
 pub struct Entry {
@@ -20,6 +23,34 @@ pub struct Entry {
     pub color: Option<Color>,
     pub body: Text,
     pub level: Option<TextLogLevel>,
+}
+
+/// Time window on a timeline that the visualizer should query.
+///
+/// Written by the view's `ui()` each frame, and read here on the next frame.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FetchWindow {
+    pub timeline: TimelineName,
+    pub min: TimeInt,
+    pub max: TimeInt,
+}
+
+impl re_byte_size::SizeBytes for FetchWindow {
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+}
+
+/// Result of executing [`TextLogSystem`] for one frame.
+#[derive(Clone, Default)]
+pub struct TextLogOutput {
+    /// Entries sorted by time on the active timeline, static entries first.
+    ///
+    /// This only covers [`Self::window`] plus all static entries.
+    pub entries: Vec<Entry>,
+
+    /// The time window that was queried, if any.
+    pub window: Option<FetchWindow>,
 }
 
 /// A text scene, with everything needed to render it.
@@ -55,9 +86,22 @@ impl VisualizerSystem for TextLogSystem {
         re_tracing::profile_function!();
 
         let output = VisualizerExecutionOutput::default();
-        let query =
-            re_chunk_store::RangeQuery::new(view_query.timeline, AbsoluteTimeRange::EVERYTHING)
-                .keep_extra_timelines(true);
+
+        // The view knows which time window is actually visible, so we only need query that window.
+        let state = ctx.view_state.downcast_ref::<TextViewState>().ok();
+        let window = state
+            .and_then(|state| state.fetch_window)
+            .filter(|window| window.timeline == view_query.timeline);
+
+        let time_range = if let Some(window) = window {
+            AbsoluteTimeRange::new(window.min, window.max)
+        } else {
+            // We don't know the visible window yet, query everything.
+            AbsoluteTimeRange::new(TimeInt::MAX, TimeInt::MAX)
+        };
+
+        let query = re_chunk_store::RangeQuery::new(view_query.timeline, time_range)
+            .keep_extra_timelines(true);
 
         let mut entries = Vec::new();
 
@@ -75,12 +119,12 @@ impl VisualizerSystem for TextLogSystem {
         }
 
         {
-            // Sort by currently selected timeline
+            // Sort by currently selected timeline.
             re_tracing::profile_scope!("sort");
             entries.sort_by_key(|e| e.time);
         }
 
-        Ok(output.with_visualizer_data(entries))
+        Ok(output.with_visualizer_data(TextLogOutput { entries, window }))
     }
 }
 
@@ -114,50 +158,39 @@ impl TextLogSystem {
             return;
         }
 
-        // TODO(cmc): It would be more efficient (both space and compute) to do this lazily as
-        // we're rendering the table by indexing back into the original chunk etc.
-        // Let's keep it simple for now, until we have data suggested we need the extra perf.
         let all_timepoints = all_texts
             .chunks()
             .iter()
             .flat_map(|chunk| chunk.iter_component_timepoints());
 
-        let all_levels = results.iter_optional(TextLog::descriptor_level().component);
-        let all_colors = results.iter_optional(TextLog::descriptor_color().component);
+        // A text log entry is one row, and its level/color are read from that same row only.
+        // This is different from the usual latest-at semantics, but keeps the levels and row counts in sync
+        // with the chunk-level metadata which we use to layout the table.
+        // However, this does mean that if a level/color is overridden in a blueprint, it won't be applied here.
+        let all_levels: HashMap<(TimeInt, RowId), _> = results
+            .iter_optional(TextLog::descriptor_level().component)
+            .slice::<String>()
+            .filter_map(|(index, levels)| levels.first().map(|level| (index, level.clone())))
+            .collect();
+        let all_colors: HashMap<(TimeInt, RowId), u32> = results
+            .iter_optional(TextLog::descriptor_color().component)
+            .slice::<u32>()
+            .filter_map(|(index, colors)| colors.first().map(|color| (index, *color)))
+            .collect();
 
-        let all_frames = range_zip_1x2(
-            all_texts.slice::<String>(),
-            all_levels.slice::<String>(),
-            all_colors.slice::<u32>(),
-        );
+        let all_frames = izip!(all_timepoints, all_texts.slice::<String>());
 
-        let all_frames = izip!(all_timepoints, all_frames);
+        for (timepoint, (index, bodies)) in all_frames {
+            let (data_time, _row_id) = index;
 
-        for (timepoint, ((data_time, _row_id), bodies, levels, colors)) in all_frames {
-            let levels = levels.as_deref().unwrap_or(&[]).iter().cloned().map(Some);
-            let colors = colors
-                .unwrap_or(&[])
-                .iter()
-                .copied()
-                .map(Into::into)
-                .map(Some);
-
-            let level_default_fn = || None;
-            let color_default_fn = || None;
-
-            let results =
-                clamped_zip_1x2(bodies, levels, level_default_fn, colors, color_default_fn);
-
-            for (text, level, color) in results {
-                entries.push(Entry {
-                    entity_path: data_result.entity_path.clone(),
-                    time: data_time,
-                    timepoint: timepoint.clone(),
-                    color,
-                    body: text.clone().into(),
-                    level: level.clone().map(Into::into),
-                });
-            }
+            entries.push(Entry {
+                entity_path: data_result.entity_path.clone(),
+                time: data_time,
+                timepoint,
+                color: all_colors.get(&index).copied().map(Into::into),
+                body: bodies.first().cloned().map(Into::into).unwrap_or_default(),
+                level: all_levels.get(&index).cloned().map(Into::into),
+            });
         }
     }
 }
