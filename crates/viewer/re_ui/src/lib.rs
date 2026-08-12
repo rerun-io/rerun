@@ -26,6 +26,7 @@ pub mod notifications;
 mod relative_time_range;
 mod section_collapsing_header;
 pub mod syntax_highlighting;
+mod tab_bar;
 pub mod text_edit;
 pub mod time;
 mod time_drag_value;
@@ -75,6 +76,7 @@ pub use self::relative_time_range::{
 };
 pub use self::section_collapsing_header::SectionCollapsingHeader;
 pub use self::syntax_highlighting::SyntaxHighlighting;
+pub use self::tab_bar::TabBar;
 pub use self::time_drag_value::TimeDragValue;
 pub use self::ui_ext::UiExt;
 pub use self::ui_layout::UiLayout;
