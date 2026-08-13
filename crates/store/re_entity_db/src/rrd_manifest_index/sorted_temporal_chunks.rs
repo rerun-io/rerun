@@ -47,16 +47,16 @@ pub(super) struct SortedEntityTemporalChunks {
     /// - All chunks from `Self.per_component`.
     /// - All chunks from descendant entities.
     ///
-    /// Chunks are unique and sorted by `time_range.min`.
+    /// Sorted by `time_range.min`. Each chunk appears once, as long as the deltas fed to
+    /// [`SortedTemporalChunks::update`] hold to the uniqueness precondition documented there.
     per_entity: Vec<ChunkCountInfo>,
 
     /// Chunks organized by component for this specific entity.
     ///
-    /// Each component's chunks are unique and sorted by `time_range.min`.
+    /// Sorted by `time_range.min`, with the same uniqueness caveat as `Self::per_entity`.
     ///
     /// This does NOT include data from child entities.
     per_component: IntMap<re_chunk::ComponentIdentifier, Vec<ChunkCountInfo>>,
-
 }
 
 impl SortedEntityTemporalChunks {
@@ -87,17 +87,7 @@ pub struct SortedTemporalChunks {
 }
 
 impl SortedTemporalChunks {
-    pub fn new(
-        entity_tree: &EntityTree,
-        native_temporal_map: &re_log_encoding::RrdManifestTemporalMap,
-    ) -> Self {
-        re_tracing::profile_function!();
-        let mut slf = Self::default();
-        slf.update(entity_tree, native_temporal_map);
-        slf
-    }
-
-    /// Update the cache incrementally from a manifest delta.
+    /// Insert a manifest delta into the cache.
     pub(super) fn update(
         &mut self,
         entity_tree: &EntityTree,
@@ -106,7 +96,6 @@ impl SortedTemporalChunks {
         re_tracing::profile_function!();
 
         // Scratch space for tracking which chunks were added by this delta.
-        // timeline → entity_hash → chunks
         let mut new_chunks: BTreeMap<TimelineName, IntMap<EntityPathHash, Vec<ChunkCountInfo>>> =
             Default::default();
 
@@ -118,23 +107,23 @@ impl SortedTemporalChunks {
                 let track = new_chunks.entry(*timeline.name()).or_default();
 
                 for (component, chunks) in per_component {
-                    let new: Vec<_> = chunks
-                        .iter()
-                        .map(|(id, entry)| ChunkCountInfo {
-                            id: *id,
-                            time_range: entry.time_range,
-                            num_rows: entry.num_rows,
-                        })
-                        .collect();
-
                     let component_chunks =
                         entity_chunks.per_component.entry(*component).or_default();
-                    component_chunks.extend(new.iter().cloned());
+
+                    let first_new = component_chunks.len();
+                    component_chunks.extend(chunks.iter().map(|(id, entry)| ChunkCountInfo {
+                        id: *id,
+                        time_range: entry.time_range,
+                        num_rows: entry.num_rows,
+                    }));
+
+                    track
+                        .entry(entity.hash())
+                        .or_default()
+                        .extend_from_slice(&component_chunks[first_new..]);
 
                     // Then sort by start time
                     component_chunks.sort_by_key(|info| info.time_range.min);
-
-                    track.entry(entity.hash()).or_default().extend(new);
                 }
             }
         }
@@ -150,8 +139,9 @@ impl SortedTemporalChunks {
         }
 
         visit(entity_tree, &mut |node: &EntityTree| {
-            for (timeline_name, per_entity) in self.per_timeline.iter_mut() {
-                let Some(scratch) = new_chunks.get_mut(timeline_name) else {
+            // Only the timelines this delta touched can have gained chunks.
+            for (timeline_name, scratch) in &mut new_chunks {
+                let Some(per_entity) = self.per_timeline.get_mut(timeline_name) else {
                     continue;
                 };
 
@@ -165,8 +155,9 @@ impl SortedTemporalChunks {
                 }
 
                 // Collect this entity's own new component chunks
-                let entry = scratch.entry(node.path.hash()).or_default();
-                new_entity_chunks.append(entry);
+                if let Some(mut own) = scratch.remove(&node.path.hash()) {
+                    new_entity_chunks.append(&mut own);
+                }
 
                 if new_entity_chunks.is_empty() {
                     continue;
@@ -189,13 +180,14 @@ impl SortedTemporalChunks {
                     }
                 });
 
-                // Then sort by time range
-
                 let chunks = per_entity.entry(node.path.hash()).or_default();
                 chunks.per_entity.extend(new_entity_chunks.iter().cloned());
+
+                // Then sort by time range
                 chunks.per_entity.sort_by_key(|info| info.time_range.min);
 
-                *entry = new_entity_chunks;
+                // Hand this subtree's new chunks to our parent, which is visited after us.
+                scratch.insert(node.path.hash(), new_entity_chunks);
             }
         });
     }

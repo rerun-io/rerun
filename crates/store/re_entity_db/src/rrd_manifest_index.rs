@@ -210,16 +210,16 @@ impl RrdManifestIndex {
             }
         }
 
-        self.sorted_chunks
-            .update(entity_tree, delta.temporal_map());
-
-        let new_full_manifest = if let Some(existing) = self.manifest.take() {
-            Arc::new(RrdManifest::concat(&[&existing, &delta])?)
-        } else {
-            delta
+        // Concatenate before touching the cache, so a failure here leaves both the
+        // manifest and the cache as they were rather than half-applying the delta.
+        let concatenated = match &self.manifest {
+            Some(existing) => Some(Arc::new(RrdManifest::concat(&[existing, &delta])?)),
+            None => None,
         };
 
-        self.manifest = Some(new_full_manifest);
+        self.sorted_chunks.update(entity_tree, delta.temporal_map());
+
+        self.manifest = Some(concatenated.unwrap_or(delta));
 
         Ok(())
     }
