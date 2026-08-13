@@ -16,6 +16,7 @@ use arrow::array::{Int64Array, RecordBatch, RecordBatchOptions, StringArray};
 use arrow::datatypes::{DataType, Field, Schema};
 use egui_kittest::kittest::Queryable as _;
 
+use re_integration_test::ViewerHarnessExt as _;
 use re_integration_test::{HarnessExt as _, TestServer};
 use re_sdk::RecordingStreamBuilder;
 use re_sdk::external::{re_log_types, re_tuid};

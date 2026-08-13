@@ -1,6 +1,7 @@
 //! Test that pressing the Escape key will back out of dialogs etc.
 
 use re_integration_test::HarnessExt as _;
+use re_integration_test::ViewerHarnessExt as _;
 use re_sdk::TimePoint;
 use re_sdk::log::RowId;
 use re_viewer::external::re_viewer_context::ViewClass as _;

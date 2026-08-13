@@ -320,6 +320,20 @@ If no arguments are given, a server will be hosted which a Rerun SDK can connect
     #[clap(long)]
     headless: bool,
 
+    /// Run the viewer in the context of an integration test.
+    ///
+    /// This isolates the viewer from the developer's environment so tests are reproducible:
+    /// it does not read or write persisted viewer state (blueprints, panel layout, recent
+    /// servers), does not use stored redap credentials, and does not record analytics.
+    ///
+    /// Intended to be used together with `--headless` when driving the viewer over
+    /// `egui_inspection` from an integration test.
+    ///
+    /// Hidden from `--help` and the generated CLI manual: it's a testing-only flag, not part of
+    /// the public interface.
+    #[clap(long, hide = true)]
+    integration_test: bool,
+
     /// Set the screen resolution (in logical points), e.g. "1920x1080".
     /// Useful together with `--screenshot-to`.
     #[clap(long)]
@@ -722,7 +736,9 @@ where
     }
 
     #[cfg(feature = "analytics")]
-    record_cli_command_analytics(&args);
+    if !args.integration_test {
+        record_cli_command_analytics(&args);
+    }
 
     initialize_thread_pool(args.threads);
 
@@ -866,6 +882,7 @@ fn should_relaunch_detached(args: &Args) -> bool {
         version,
 
         headless: _,
+        integration_test: _,
         bind: _,
         memory_limit: _,
         server_memory_limit: _,
@@ -968,7 +985,11 @@ fn run_impl(
     #[cfg(feature = "native_viewer")] profiler: re_tracing::Profiler,
 ) -> anyhow::Result<()> {
     //TODO(#10068): populate token passed with `--token`
-    let connection_registry = re_redap_client::ConnectionRegistry::new_with_stored_credentials();
+    let connection_registry = if args.integration_test {
+        re_redap_client::ConnectionRegistry::new_without_stored_credentials()
+    } else {
+        re_redap_client::ConnectionRegistry::new_with_stored_credentials()
+    };
     let async_runtime = re_async::AsyncRuntimeHandle::new_native(tokio_runtime_handle.clone());
 
     let wants_new = args.new || args.port.is_auto();
@@ -1139,6 +1160,7 @@ fn start_native_viewer(
 
     let startup_options = native_startup_options_from_args(args)?;
 
+    let integration_test = args.integration_test;
     let connect = args.connect.is_some();
     let renderer = args.renderer.as_deref();
     let memory_limit = args
@@ -1192,10 +1214,15 @@ fn start_native_viewer(
                 }
             });
         }
+        let app_env = if integration_test {
+            re_viewer::AppEnvironment::Test
+        } else {
+            call_source.app_env()
+        };
         let mut app = re_viewer::App::with_commands(
             _main_thread_token,
             _build_info,
-            call_source.app_env(),
+            app_env,
             startup_options,
             cc,
             Some(connection_registry.clone()),
@@ -1305,7 +1332,7 @@ fn native_startup_options_from_args(args: &Args) -> anyhow::Result<re_viewer::St
     Ok(re_viewer::StartupOptions {
         hide_welcome_screen: args.hide_welcome_screen,
         detach_process: args.detach_process,
-        persist_state: args.persist_state,
+        persist_state: args.persist_state && !args.integration_test,
         is_in_notebook: false,
         screenshot_to_path_then_quit: args.screenshot_to.clone(),
 
@@ -1954,6 +1981,7 @@ fn record_cli_command_analytics(args: &Args) {
         port: _,
         new: _,
         headless: _,
+        integration_test: _,
     } = args;
 
     let (command, subcommand) = match command {

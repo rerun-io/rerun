@@ -4,6 +4,7 @@
 //! for views based on the data in the log.
 
 use re_integration_test::HarnessExt as _;
+use re_integration_test::ViewerHarnessExt as _;
 use re_sdk::TimePoint;
 use re_sdk::log::RowId;
 use re_viewer::external::re_viewer_context::ViewClass as _;

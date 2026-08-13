@@ -287,6 +287,7 @@ gltf = "1.4"
 h264-reader = "0.8.0"
 half = { version = "2.7", features = ["bytemuck"] }
 hdf5-pure = "=0.33.0" # Very young crate (first release 2026-06) — pin exactly, bump deliberately.
+headless_chrome = "1.0.22"
 hexasphere = "16.0" # Update in tandem with glam
 hmac = "0.12.1" # pinned by `jsonwebtoken` (RustCrypto family); bump once jsonwebtoken moves to hmac 0.13/sha2 0.11/signature 3.
 http = "1.5"

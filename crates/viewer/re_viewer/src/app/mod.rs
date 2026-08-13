@@ -36,6 +36,10 @@ mod command_handling;
 mod logic;
 mod ui;
 
+/// Only `web.rs` needs this by name; on native, `logic` calls it directly.
+#[cfg(target_arch = "wasm32")]
+pub(crate) use logic::serve_inspect_request;
+
 // ----------------------------------------------------------------------------
 
 /// Storage key used to store the last run Rerun version.
@@ -306,6 +310,14 @@ impl App {
         if is_test {
             creation_context.egui_ctx.mark_as_test();
             state.app_options = AppOptions::test();
+
+            // Disable animations and override the theme to ensure consistent snapshot tests.
+            creation_context.egui_ctx.set_theme(egui::Theme::Dark);
+            creation_context.egui_ctx.all_styles_mut(|style| {
+                style.visuals.text_cursor.blink = false;
+                style.scroll_animation = egui::style::ScrollAnimation::none();
+                style.animation_time = 0.0;
+            });
         }
 
         let connection_registry = {
@@ -1191,6 +1203,10 @@ impl eframe::App for App {
         } else {
             [1., 1., 1., 1.]
         }
+    }
+
+    fn persist_egui_memory(&self) -> bool {
+        self.startup_options.persist_state
     }
 
     fn save(&mut self, storage: &mut dyn eframe::Storage) {

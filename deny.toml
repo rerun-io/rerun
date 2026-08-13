@@ -70,6 +70,14 @@ ignore = [
 multiple-versions = "deny"
 wildcards = "allow" # We use them for examples
 deny = [
+  # Deny `auto_generate_cdp` for anything but integration tests, since it's GPL.
+  { name = "auto_generate_cdp", wrappers = [
+    "headless_chrome",
+  ], reason = "May only ever be used in tests since it's GPL-3.0" },
+  { name = "headless_chrome", wrappers = [
+    "re_integration_test",
+  ], reason = "Pulls in a GPL-3.0 crate so may only ever be used in tests." },
+
   { name = "cgmath", reason = "We use glam" },
   { name = "cmake", reason = "Never again" },
   { name = "derive_more", reason = "Is very slow to compile; see https://github.com/rerun-io/rerun/issues/1316" },
@@ -116,6 +124,13 @@ skip = [
   { name = "rustix" }, # tantivy uses an old version.
   { name = "sha2" }, # DataFusion 54 uses 0.11 while the rest of the ecosystem uses 0.10.
   { name = "unicode-width" }, # walkers depends on 0.1 via http-cache-request / cacache
+
+  # Duplicated by `headless_chrome`, pulled in only by the `browser` feature of the
+  # `re_integration_test` browser integration-test harness.
+  { name = "convert_case" },
+  { name = "cpufeatures" },
+  { name = "rand" },
+  { name = "rand_core" },
 ]
 skip-tree = [
   # PREFER `skip` (above): `skip-tree` exempts the crate AND its whole transitive subtree from the
@@ -152,7 +167,12 @@ allow = [
   "Unicode-3.0", # https://www.unicode.org/license.txt
   "Zlib", # https://tldrlegal.com/license/zlib-libpng-license-(zlib)
 ]
-exceptions = []
+exceptions = [
+  # Pulled in via headless-chrome. Only used during testing and never linked to any released binaries.
+  { name = "auto_generate_cdp", allow = [
+    "GPL-3.0-or-later",
+  ] },
+]
 
 [[licenses.clarify]]
 name = "webpki"

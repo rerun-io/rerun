@@ -218,6 +218,13 @@ rerun-web-release = { cmd = "cargo run --package rerun-cli --no-default-features
 # Compile the web-viewer wasm in release mode.
 rerun-build-web-release = "cargo run -p re_dev_tools -- build-web-viewer --no-default-features --features analytics,map_view --release"
 
+# Run the `re_integration_test` suite against the real wasm web viewer in headless Chrome.
+# Builds the web viewer first, then runs the tests against the `browser` inspection target.
+# Requires a Chrome/Chromium binary on the machine.
+rerun-test-web = { cmd = "cargo nextest run -p re_integration_test --features browser --profile inspection --no-fail-fast", env = { RERUN_INTEGRATION_TEST_TARGET = "browser" }, depends-on = [
+  "rerun-build-web",
+] }
+
 rs-check = "python scripts/ci/rust_checks.py"
 
 # Check that old .rrd files can still be read and understood.

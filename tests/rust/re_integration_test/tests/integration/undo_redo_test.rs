@@ -7,6 +7,7 @@
 //! - After undo, performing a new action clears the redo history
 
 use re_integration_test::HarnessExt as _;
+use re_integration_test::ViewerHarnessExt as _;
 use re_sdk::TimePoint;
 use re_sdk::log::RowId;
 use re_viewer::external::re_ui::{

@@ -4,6 +4,7 @@
 //! band.
 
 use re_integration_test::HarnessExt as _;
+use re_integration_test::ViewerHarnessExt as _;
 use re_sdk::Timeline;
 use re_sdk::log::RowId;
 use re_view_state_timeline::StateTimelineView;

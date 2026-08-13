@@ -6,6 +6,7 @@
 //! - Double-click on the leaf "boxes3d" entity in the streams view, check both views expand (manual scrolling might be needed).
 
 use re_integration_test::HarnessExt as _;
+use re_integration_test::ViewerHarnessExt as _;
 use re_sdk::TimePoint;
 use re_sdk::log::RowId;
 use re_viewer::external::re_viewer_context::ViewClass as _;

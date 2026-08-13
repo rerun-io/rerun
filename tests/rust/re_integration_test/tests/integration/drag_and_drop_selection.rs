@@ -6,6 +6,7 @@
 use std::f64::consts::TAU;
 
 use re_integration_test::HarnessExt as _;
+use re_integration_test::ViewerHarnessExt as _;
 use re_sdk::external::re_log_types::EntityPathFilter;
 use re_sdk::log::RowId;
 use re_viewer::external::re_sdk_types;

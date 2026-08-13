@@ -8,6 +8,7 @@ use egui_kittest::SnapshotResults;
 use egui_kittest::kittest::Queryable as _;
 use futures::StreamExt as _;
 use re_integration_test::HarnessExt as _;
+use re_integration_test::ViewerHarnessExt as _;
 use re_viewer::external::re_log_types::TimelineName;
 use re_viewer::external::re_ui::notifications::NotificationLevel;
 use re_viewer::viewer_test_utils::{self, AppTestingExt as _, HarnessOptions, step_until};

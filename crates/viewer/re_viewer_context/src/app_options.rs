@@ -126,6 +126,12 @@ impl AppOptions {
         Self {
             memory_limit: MemoryLimit::UNLIMITED,
             show_metrics: false, // flaky in snapshot tests
+            #[cfg(any(target_os = "windows", target_os = "linux"))]
+            custom_window_decorations: false,
+            experimental: ExperimentalAppOptions {
+                table_cards_and_blueprints: true,
+                ..Default::default()
+            },
             // Ensure to not probe the Wayland compositor, because tests run without one.
             ..Self::default_with_custom_window_decorations(false)
         }

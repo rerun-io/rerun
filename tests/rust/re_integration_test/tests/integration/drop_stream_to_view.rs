@@ -6,6 +6,7 @@ use std::f64::consts::TAU;
 
 use egui::Modifiers;
 use re_integration_test::HarnessExt as _;
+use re_integration_test::ViewerHarnessExt as _;
 use re_sdk::log::RowId;
 use re_viewer::external::re_sdk_types;
 use re_viewer::external::re_viewer_context::{Item, RecommendedView, ViewClass as _, ViewId};

@@ -4,6 +4,7 @@ use std::f64::consts::TAU;
 use std::sync::Arc;
 
 use re_integration_test::HarnessExt as _;
+use re_integration_test::ViewerHarnessExt as _;
 use re_sdk::TimePoint;
 use re_sdk::external::arrow::array::Float64Array;
 use re_sdk::log::RowId;

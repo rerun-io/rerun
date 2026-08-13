@@ -1,17 +1,21 @@
 //! Integration tests for rerun and the in memory server.
 
+mod inspection;
 mod kittest_harness_ext;
 mod test_data;
+mod viewer_harness_ext;
 mod viewer_section;
 
 use std::net::TcpListener;
 
+pub use inspection::{HarnessConfig, InspectionHarness, TargetViewer};
 pub use kittest_harness_ext::HarnessExt;
 use re_redap_client::{ApiResult, ConnectionClient, ConnectionRegistry};
 use re_sdk_types::SegmentId;
 use re_server::ServerHandle;
 use re_uri::external::url::Host;
 pub use test_data::{register_asset, register_table_blueprint};
+pub use viewer_harness_ext::ViewerHarnessExt;
 // pub use viewer_section::GetSection;
 pub use viewer_section::ViewerSection;
 
@@ -141,7 +145,7 @@ impl Drop for TestServer {
 }
 
 /// Get a free port from the OS.
-fn get_free_port() -> u16 {
+pub(crate) fn get_free_port() -> u16 {
     let listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind to a random port");
     let addr = listener.local_addr().expect("Failed to get local address");
     addr.port()

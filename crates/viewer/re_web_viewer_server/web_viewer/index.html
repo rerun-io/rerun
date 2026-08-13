@@ -433,7 +433,7 @@
 
         handle
           .start(document.getElementById("the_canvas_id"))
-          .then(on_app_started)
+          .then(() => on_app_started(handle))
           .catch(on_wasm_error);
       }
 

@@ -6,6 +6,7 @@
 //! 3. The changes are correctly persisted in the blueprint
 
 use re_integration_test::HarnessExt as _;
+use re_integration_test::ViewerHarnessExt as _;
 use re_sdk::TimePoint;
 use re_viewer::external::re_viewer_context::ViewClass as _;
 use re_viewer::external::{re_sdk_types, re_view_spatial};

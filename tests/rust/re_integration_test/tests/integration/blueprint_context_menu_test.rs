@@ -1,4 +1,5 @@
 use re_integration_test::HarnessExt as _;
+use re_integration_test::ViewerHarnessExt as _;
 use re_sdk::TimePoint;
 use re_sdk::external::re_log_types::EntityPathFilter;
 use re_sdk::log::RowId;

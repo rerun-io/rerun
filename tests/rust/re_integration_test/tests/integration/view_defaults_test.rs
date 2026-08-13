@@ -1,6 +1,7 @@
 //! Test that view component defaults can be written and read back from the blueprint store.
 
 use re_integration_test::HarnessExt as _;
+use re_integration_test::ViewerHarnessExt as _;
 use re_view_time_series::TimeSeriesView;
 use re_viewer::external::re_chunk::LatestAtQuery;
 use re_viewer::external::re_sdk_types;

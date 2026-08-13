@@ -2,6 +2,7 @@
 //! for both entity-path-derived and named transforms.
 
 use re_integration_test::HarnessExt as _;
+use re_integration_test::ViewerHarnessExt as _;
 use re_sdk::{EntityPathFilter, TimePoint};
 use re_viewer::external::re_sdk_types::{
     archetypes::{CoordinateFrame, Image, Pinhole, Points3D, Transform3D},

@@ -9,6 +9,7 @@ use std::time::Duration;
 use egui_kittest::SnapshotResults;
 use egui_kittest::kittest::Queryable as _;
 use re_integration_test::HarnessExt as _;
+use re_integration_test::ViewerHarnessExt as _;
 use re_log_types::{EntityPath, EntryName, TimelineName};
 use re_sdk::RecordingStreamBuilder;
 use re_sdk::blueprint::{Blueprint, Spatial2DView};

@@ -1,6 +1,7 @@
 //! Test that per-visualizer instruction errors are correctly reported and displayed.
 
 use re_integration_test::HarnessExt as _;
+use re_integration_test::ViewerHarnessExt as _;
 use re_sdk::Timeline;
 use re_test_context::VisualizerBlueprintContext as _;
 use re_view_time_series::TimeSeriesView;

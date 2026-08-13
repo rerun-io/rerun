@@ -1,3 +1,8 @@
+//! In-process integration tests driven through the `egui_kittest` viewer harness (`HarnessExt`).
+//!
+//! The out-of-process `InspectionHarness` suite lives in a separate test binary (`inspection/`) so
+//! the two harnesses don't get mixed in one test.
+
 mod add_entity_to_view_test;
 mod add_visualizer_test;
 mod assets;
@@ -9,7 +14,6 @@ mod check_focus_test;
 mod container_context_menu_test;
 mod context_menu_test;
 mod dataset_folders;
-mod datasets;
 mod deselect_on_escape;
 mod drag_and_drop_selection;
 mod drop_component_to_state_timeline_view;

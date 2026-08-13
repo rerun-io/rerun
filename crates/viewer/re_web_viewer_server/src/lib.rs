@@ -57,6 +57,12 @@ pub enum WebViewerDataError {
         source: std::io::Error,
     },
 
+    #[error("Failed to read web viewer asset: {source}, path: {path}")]
+    ReadAssetFile {
+        path: std::path::PathBuf,
+        source: std::io::Error,
+    },
+
     #[error(
         "This build contains no built-in web viewer assets (RERUN_EXTERNAL_WEB_VIEWER=1). The assets must be loaded from a zip archive on disk, but no archive path was provided."
     )]
@@ -97,8 +103,9 @@ pub enum WebViewerDataError {
 
 /// The contents of the files that make up the web viewer application.
 ///
-/// Loaded once per [`WebViewerServer`] via `WebViewerData::load`,
-/// which does not exist in `disable_web_viewer_server` builds.
+/// Loaded once per [`WebViewerServer`], via `WebViewerData::load` for the built-in assets
+/// (which does not exist in `disable_web_viewer_server` builds) or via [`WebViewerData::from_dir`]
+/// / [`WebViewerData::from_archive`] for assets on disk.
 pub struct WebViewerData {
     index_html: Cow<'static, [u8]>,
     favicon: Cow<'static, [u8]>,
@@ -141,24 +148,7 @@ impl std::fmt::Debug for WebViewerData {
     }
 }
 
-#[cfg(not(disable_web_viewer_server))]
 impl WebViewerData {
-    /// Load the web viewer assets.
-    ///
-    /// If `assets_archive_path` is set, the assets are read from the given zip archive.
-    /// Otherwise, the built-in assets are used:
-    /// by default these are embedded into the binary at compile time,
-    /// while `trailing_web_viewer` builds read them from a zip archive
-    /// appended to the executable by `scripts/append_web_viewer.py`.
-    /// `external_web_viewer` builds have no built-in assets at all,
-    /// and fail if no archive path is given.
-    pub fn load(assets_archive_path: Option<&Path>) -> Result<Self, WebViewerDataError> {
-        match assets_archive_path {
-            Some(path) => Self::from_archive(path),
-            None => Self::builtin(),
-        }
-    }
-
     /// Load the web viewer assets from a zip archive on disk.
     ///
     /// The archive must contain the files produced by the web viewer build
@@ -171,6 +161,30 @@ impl WebViewerData {
         let mut zip = zip::ZipArchive::new(std::io::BufReader::new(file))
             .map_err(WebViewerDataError::ParseZip)?;
         Self::from_zip(&mut zip)
+    }
+
+    /// Load the web viewer assets from a directory on disk.
+    ///
+    /// The directory must contain the files produced by the web viewer build
+    /// (`pixi run rerun-build-web`), i.e. `<workspace>/crates/viewer/re_web_viewer_server/web_viewer`.
+    pub fn from_dir(dir: &Path) -> Result<Self, WebViewerDataError> {
+        fn read_file(dir: &Path, name: &str) -> Result<Cow<'static, [u8]>, WebViewerDataError> {
+            let path = dir.join(name);
+            std::fs::read(&path)
+                .map(Cow::Owned)
+                .map_err(|source| WebViewerDataError::ReadAssetFile { path, source })
+        }
+
+        Ok(Self {
+            index_html: read_file(dir, "index.html")?,
+            favicon: read_file(dir, "favicon.ico")?,
+            apple_touch_icon: read_file(dir, "apple-touch-icon.png")?,
+            sw_js: read_file(dir, "sw.js")?,
+            viewer_js: read_file(dir, "re_viewer.js")?,
+            viewer_wasm: read_file(dir, "re_viewer_bg.wasm")?,
+            signed_in_html: read_file(dir, "signed-in.html")?,
+            signed_out_html: read_file(dir, "signed-out.html")?,
+        })
     }
 
     /// Extract the assets from a zip archive.
@@ -211,6 +225,43 @@ impl WebViewerData {
             signed_in_html: extract_file(zip, "signed-in.html")?,
             signed_out_html: extract_file(zip, "signed-out.html")?,
         })
+    }
+
+    /// No assets at all.
+    ///
+    /// `disable_web_viewer_server` builds serve nothing, but still accept a [`WebViewerData`]
+    /// so the public API has the same shape in every build.
+    #[cfg(disable_web_viewer_server)]
+    fn empty() -> Self {
+        Self {
+            index_html: Cow::Borrowed(b""),
+            favicon: Cow::Borrowed(b""),
+            apple_touch_icon: Cow::Borrowed(b""),
+            sw_js: Cow::Borrowed(b""),
+            viewer_js: Cow::Borrowed(b""),
+            viewer_wasm: Cow::Borrowed(b""),
+            signed_in_html: Cow::Borrowed(b""),
+            signed_out_html: Cow::Borrowed(b""),
+        }
+    }
+}
+
+#[cfg(not(disable_web_viewer_server))]
+impl WebViewerData {
+    /// Load the web viewer assets.
+    ///
+    /// If `assets_archive_path` is set, the assets are read from the given zip archive.
+    /// Otherwise, the built-in assets are used:
+    /// by default these are embedded into the binary at compile time,
+    /// while `trailing_web_viewer` builds read them from a zip archive
+    /// appended to the executable by `scripts/append_web_viewer.py`.
+    /// `external_web_viewer` builds have no built-in assets at all,
+    /// and fail if no archive path is given.
+    pub fn load(assets_archive_path: Option<&Path>) -> Result<Self, WebViewerDataError> {
+        match assets_archive_path {
+            Some(path) => Self::from_archive(path),
+            None => Self::builtin(),
+        }
     }
 
     /// The assets embedded into the binary at compile time.
@@ -385,11 +436,24 @@ impl WebViewerServer {
         cfg_select! {
             disable_web_viewer_server => {
                 let _ = assets_archive_path;
+                Self::with_data(bind_ip, port, WebViewerData::empty())
             }
             _ => {
-                let data = WebViewerData::load(assets_archive_path)?;
+                Self::with_data(bind_ip, port, WebViewerData::load(assets_archive_path)?)
             }
         }
+    }
+
+    /// Like [`WebViewerServer::new`], but serving already-loaded assets,
+    /// e.g. from [`WebViewerData::from_dir`].
+    pub fn with_data(
+        bind_ip: &str,
+        port: WebViewerServerPort,
+        data: WebViewerData,
+    ) -> Result<Self, WebViewerServerError> {
+        // `disable_web_viewer_server` builds serve nothing, so drop the assets right away.
+        #[cfg(disable_web_viewer_server)]
+        let _data = data;
 
         let bind_addr = std::net::SocketAddr::new(bind_ip.parse()?, port.0);
 

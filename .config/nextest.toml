@@ -9,3 +9,10 @@ slow-timeout = { period = "30s", terminate-after = 4 }
 [profile.ci]
 slow-timeout = { period = "30s", terminate-after = 4 }
 retries = 1
+
+# Special profile that only runs the inspection-based tests.
+# Used for all inspection targets: in-process, native `rerun-cli`, and the web viewer in a browser.
+[profile.inspection]
+slow-timeout = { period = "30s", terminate-after = 4 }
+retries = 1
+default-filter = "binary(=inspection)"

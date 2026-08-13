@@ -1181,7 +1181,7 @@ impl App {
 }
 
 /// Handle a `egui_inspection` request.
-fn serve_inspect_request(
+pub(crate) fn serve_inspect_request(
     egui_ctx: &egui::Context,
     request: &[u8],
     on_done: futures::channel::mpsc::UnboundedSender<Result<Vec<u8>, InspectError>>,
