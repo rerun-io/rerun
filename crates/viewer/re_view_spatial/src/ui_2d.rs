@@ -3,8 +3,8 @@ use egui::{Align2, Pos2, Rect, Shape, Vec2, pos2, vec2};
 use macaw::IsoTransform;
 use re_chunk_store::MissingChunkReporter;
 use re_log::ResultExt as _;
+use re_renderer::LineDrawableBuilder;
 use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
-use re_renderer::{LineDrawableBuilder, ViewPickingConfiguration};
 use re_sdk_types::blueprint::archetypes::{
     Background, NearClipPlane, SpatialInformation, VisualBounds2D,
 };
@@ -279,11 +279,26 @@ impl SpatialView2D {
         // Don't let clipping plane become zero
         let near_clip_plane = f32::max(f32::MIN_POSITIVE, *near_clip_plane.0);
 
+        let scene_bounds = *scene_from_ui.to();
+        let Ok(mut target_config) = setup_target_config(
+            ctx.render_mode(),
+            &painter,
+            ui_rect,
+            scene_bounds,
+            near_clip_plane,
+            &query.space_origin.to_string(),
+            query.highlights.any_outlines(),
+            state.pinhole_at_origin.as_ref(),
+        ) else {
+            return Ok(Default::default());
+        };
+
         // Create labels now since their shapes participate are added to scene.ui for picking.
         let (label_shapes, label_ui_rects) = create_labels(
             &collect_ui_labels(&system_output),
             ui_from_scene,
-            &eye,
+            ui2d_from_world(&target_config, ui_rect),
+            target_config.view_from_world,
             ui,
             &query.highlights,
             SpaceKind::TwoD,
@@ -313,21 +328,8 @@ impl SpatialView2D {
             state.previous_picking_result = None;
             None
         };
+        target_config.picking_config = picking_config;
 
-        let scene_bounds = *scene_from_ui.to();
-        let Ok(target_config) = setup_target_config(
-            ctx.render_mode(),
-            &painter,
-            ui_rect,
-            scene_bounds,
-            near_clip_plane,
-            &query.space_origin.to_string(),
-            query.highlights.any_outlines(),
-            state.pinhole_at_origin.as_ref(),
-            picking_config,
-        ) else {
-            return Ok(Default::default());
-        };
         let mut view_builder = ViewBuilder::new(
             ctx.render_ctx(),
             target_config,
@@ -419,7 +421,6 @@ fn setup_target_config(
     space_name: &str,
     any_outlines: bool,
     scene_pinhole: Option<&Pinhole>,
-    picking_config: Option<ViewPickingConfiguration>,
 ) -> anyhow::Result<TargetConfiguration> {
     // ⚠️ When changing this code, make sure to run `tests/rust/test_pinhole_projection`.
 
@@ -511,9 +512,25 @@ fn setup_target_config(
             pixels_per_point,
             outline_config: any_outlines.then(|| re_view::outline_config(egui_painter.ctx())),
             blend_with_background: re_renderer::BlendWithBackground::No,
-            picking_config,
+            picking_config: None,
         }
     })
+}
+
+fn ui2d_from_world(config: &TargetConfiguration, ui_rect: Rect) -> glam::Mat4 {
+    let projection_from_view = config
+        .projection_from_view
+        .projection_from_view(config.resolution_in_pixel);
+    let ndc_scale_and_translation = config
+        .viewport_transformation
+        .to_ndc_scale_and_translation();
+    let projection_from_view = ndc_scale_and_translation * projection_from_view;
+
+    // Map NDC to ui coordinates (y axis points down in ui space).
+    glam::Mat4::from_translation(glam::vec3(ui_rect.center().x, ui_rect.center().y, 0.0))
+        * glam::Mat4::from_scale(0.5 * glam::vec3(ui_rect.width(), -ui_rect.height(), 1.0))
+        * projection_from_view
+        * config.view_from_world.to_mat4()
 }
 
 fn re_render_rect_from_egui_rect(rect: egui::Rect) -> re_renderer::RectF32 {

@@ -226,7 +226,8 @@ impl SpatialView3D {
         let (label_shapes, ui_rects) = create_labels(
             &collect_ui_labels(&system_output),
             RectTransform::from_to(ui_rect, ui_rect),
-            &eye,
+            eye.ui_from_world(ui_rect),
+            eye.world_from_rub_view.inverse(),
             ui,
             highlights,
             SpaceKind::ThreeD,
