@@ -141,6 +141,49 @@ pub fn arrays_to_list_array(
     Some(ListArray::new(field.into(), offsets, data, nulls.into()))
 }
 
+/// The canonical field for the outer list of a component column: named `item`, nullable, and
+/// without metadata.
+///
+/// Every component column in a chunk is a [`ListArray`] whose items are one row's worth of
+/// component instances. A row can be missing, so the item field is nullable — which is what
+/// [`arrays_to_list_array`] and the code generator both produce. Anything reading a chunk's
+/// schema back out is entitled to assume this shape; see
+/// [`canonicalized_component_list_array`].
+#[inline]
+pub fn canonical_component_list_field(value_type: DataType) -> Field {
+    let nullable = true;
+    Field::new_list_field(value_type, nullable)
+}
+
+/// Rewrites `list_array`'s outer field into [`canonical_component_list_field`], leaving the
+/// values, offsets and nulls untouched. Returns `None` if the field is already canonical.
+///
+/// External producers are free to describe the outer list differently — declaring the item
+/// non-nullable, or naming it something other than `item` — and nothing downstream re-derives
+/// that field from the data. `ChunkStore`, meanwhile, always reports the canonical shape in the
+/// `ComponentColumnDescriptor`s it hands out. To avoid such disagreements, this normalization
+/// ensures that `list_array` follows the canonical form, rewriting its outer list field if needed.
+///
+/// This only touches the *outer* list. The value type is the component's own datatype and is
+/// left exactly as the producer declared it — `Blob`, for instance, is legitimately a
+/// `List(non-null UInt8)`.
+///
+/// Cheap: the common already-canonical case does no work at all, and the rewrite moves buffers
+/// rather than copying them.
+pub fn canonicalized_component_list_array(list_array: &ListArray) -> Option<ListArray> {
+    let field = list_array.field();
+
+    let canonical = canonical_component_list_field(field.data_type().clone());
+    if field.as_ref() == &canonical {
+        return None;
+    }
+
+    let (_field, offsets, values, nulls) = list_array.clone().into_parts();
+
+    // Only the field changed, so the parts still line up: this cannot fail.
+    Some(ListArray::new(canonical.into(), offsets, values, nulls))
+}
+
 /// Given a sparse [`ListArray`] (i.e. an array with a nulls bitmap that contains at least
 /// one falsy value), returns a dense [`ListArray`] that only contains the non-null values from
 /// the original list.
@@ -571,6 +614,41 @@ mod tests {
     use std::sync::Arc;
 
     use super::*;
+
+    /// A `Blob`-shaped column as an external producer might build it: the outer item declared
+    /// non-nullable. Canonicalization must flip that, keep the inner `List(non-null UInt8)` —
+    /// which is `Blob`'s own datatype — and preserve the values.
+    #[test]
+    fn canonicalize_component_list_array_normalizes_outer_field_only() {
+        let bytes = Arc::new(UInt8Array::from(vec![1u8, 2, 3]));
+        let blob = Arc::new(ListArray::new(
+            Arc::new(Field::new_list_field(DataType::UInt8, false)),
+            OffsetBuffer::from_lengths([2, 1]),
+            bytes,
+            None,
+        ));
+        let column = ListArray::new(
+            Arc::new(Field::new("blob", blob.data_type().clone(), false)),
+            OffsetBuffer::from_lengths([1, 1]),
+            blob,
+            None,
+        );
+
+        let canonicalized = canonicalized_component_list_array(&column).expect("not canonical");
+
+        assert_eq!(
+            canonicalized.data_type(),
+            &DataType::List(Arc::new(Field::new_list_field(
+                DataType::List(Arc::new(Field::new_list_field(DataType::UInt8, false))),
+                true,
+            ))),
+        );
+        assert_eq!(canonicalized.values(), column.values());
+        assert_eq!(canonicalized.offsets(), column.offsets());
+
+        // Already canonical: no work, no new array.
+        assert!(canonicalized_component_list_array(&canonicalized).is_none());
+    }
 
     #[test]
     fn deep_slice() {

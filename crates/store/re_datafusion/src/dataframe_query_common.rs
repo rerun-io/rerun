@@ -1004,6 +1004,37 @@ pub(crate) fn prepend_string_column_schema(schema: &Schema, column_name: &str) -
     Schema::new_with_metadata(fields, schema.metadata.clone())
 }
 
+/// Takes each field's data type from the corresponding array in `columns`, keeping the
+/// field name, nullability and metadata from `schema`.
+///
+/// A `QueryHandle`'s schema is built from the `ChunkStore`'s
+/// `ComponentColumnDescriptor`s, and `ChunkStore` rewrites the outer list field of every
+/// component column to `Field::new("item", value_type, true)` — discarding the name and
+/// nullability the producer actually used (see `re_chunk_store::store_schema`). The row
+/// data, on the other hand, is sliced straight out of the chunks, so it keeps the
+/// original field. For a producer that emits a non-nullable outer list field the two
+/// disagree, and `RecordBatch::try_new` rejects the batch: arrow's `equals_datatype`
+/// compares child-field nullability. See <https://github.com/rerun-io/rerun/issues/12887>.
+///
+/// Building the intermediate batch against the *actual* data types side-steps that
+/// mismatch; the following `align_record_batch_to_schema` then widens the columns to the
+/// DataFusion output schema, which is what resolves the nullability difference for real.
+pub(crate) fn schema_with_array_datatypes(schema: &Schema, columns: &[ArrayRef]) -> Schema {
+    re_log::debug_assert_eq!(schema.fields().len(), columns.len());
+
+    let fields = std::iter::zip(schema.fields(), columns)
+        .map(|(field, column)| {
+            if field.data_type() == column.data_type() {
+                (**field).clone()
+            } else {
+                Field::clone(field).with_data_type(column.data_type().clone())
+            }
+        })
+        .collect::<Vec<_>>();
+
+    Schema::new_with_metadata(fields, schema.metadata.clone())
+}
+
 /// Hash a segment id for DataFusion partition routing.
 ///
 /// Hashes the underlying string with DataFusion's `HashValue` so the result
@@ -1348,6 +1379,52 @@ mod tests {
     use re_protos::cloud::v1alpha1::ext;
 
     use super::*;
+
+    /// A `RecordBatch` can only be built from a schema whose data types match the arrays
+    /// exactly — arrow's `equals_datatype` compares child-field nullability. Fields keep their
+    /// name, nullability and metadata; only the data type follows the array.
+    #[test]
+    fn schema_with_array_datatypes_follows_the_arrays() {
+        use arrow::array::{ListArray, UInt8Array};
+        use arrow::buffer::OffsetBuffer;
+
+        let column = Arc::new(ListArray::new(
+            Arc::new(Field::new_list_field(DataType::UInt8, false)),
+            OffsetBuffer::from_lengths([2]),
+            Arc::new(UInt8Array::from(vec![1u8, 2])),
+            None,
+        )) as ArrayRef;
+
+        // The schema disagrees with the data about the item field's nullability, as a
+        // `ChunkStore`-derived query schema does for an externally-produced column.
+        let declared =
+            Field::new("blob", DataType::new_list(DataType::UInt8, true), true).with_metadata(
+                HashMap::from([("rerun:kind".to_owned(), "data".to_owned())]),
+            );
+        let schema = Schema::new_with_metadata(vec![declared.clone()], HashMap::default());
+
+        let adjusted = schema_with_array_datatypes(&schema, &[Arc::clone(&column)]);
+        let field = adjusted.field(0);
+
+        assert_eq!(field.data_type(), column.data_type());
+        assert_eq!(field.name(), declared.name());
+        assert_eq!(field.is_nullable(), declared.is_nullable());
+        assert_eq!(field.metadata(), declared.metadata());
+
+        RecordBatch::try_new_with_options(
+            Arc::new(adjusted),
+            vec![Arc::clone(&column)],
+            &RecordBatchOptions::default().with_row_count(Some(1)),
+        )
+        .expect("batch must build against the adjusted schema");
+
+        // Matching data types are left alone.
+        let matching = Schema::new_with_metadata(
+            vec![Field::new("blob", column.data_type().clone(), true)],
+            HashMap::default(),
+        );
+        assert_eq!(schema_with_array_datatypes(&matching, &[column]), matching);
+    }
 
     #[test]
     fn per_segment_values_align_to_segment_ids_order() {
