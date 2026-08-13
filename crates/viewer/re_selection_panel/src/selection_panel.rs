@@ -793,8 +793,8 @@ fn coordinate_frame_ui(ui: &mut egui::Ui, ctx: &ViewContext<'_>, data_result: &D
             );
         })
         .with_menu_button(&re_ui::icons::MORE, "More options", |ui: &mut egui::Ui| {
-            crate::visualizer_ui::reset_override_button(
-                ctx,
+            reset_override_button(
+                ctx.viewer_ctx,
                 ui,
                 component_descr.clone(),
                 data_result.override_base_path(),
@@ -824,6 +824,31 @@ To learn more about coordinate frames, see the [Spaces & Transforms](https://rer
             &component_descr,
             &TransformFrameId::new(&frame_id),
         );
+    }
+}
+
+pub fn reset_override_button(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    component_descr: ComponentDescriptor,
+    override_path: &EntityPath,
+) {
+    let component = component_descr.component;
+    let raw_override = ctx.raw_latest_at_in_current_blueprint(override_path, component);
+    let raw_override_default_blueprint =
+        ctx.raw_latest_at_in_default_blueprint(override_path, component);
+
+    if ui
+        .add_enabled(
+            raw_override != raw_override_default_blueprint,
+            egui::Button::new("Reset override to default blueprint"),
+        )
+        .on_hover_text("Resets the override to what is specified in the default blueprint")
+        .on_disabled_hover_text("Current override is the same as the override specified in the default blueprint (if any)")
+        .clicked()
+    {
+        ctx.reset_blueprint_component(override_path.clone(), component_descr);
+        ui.close();
     }
 }
 

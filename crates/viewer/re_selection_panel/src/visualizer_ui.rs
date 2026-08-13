@@ -425,7 +425,6 @@ fn visualizer_components(
                         ctx,
                         ui,
                         target_component_descr.clone(),
-                        &instruction.override_path,
                         raw_current_value_array.clone(),
                     );
                 },
@@ -1121,45 +1120,14 @@ fn menu_more(
     ctx: &ViewContext<'_>,
     ui: &mut egui::Ui,
     component_descr: ComponentDescriptor,
-    override_path: &EntityPath,
     raw_current_value: ArrayRef,
 ) {
-    reset_override_button(ctx, ui, component_descr.clone(), override_path);
-
     if ui.button("Make default for current view").clicked() {
         ctx.save_blueprint_array(
             ViewBlueprint::defaults_path(ctx.view_id),
             component_descr,
             raw_current_value,
         );
-        ui.close();
-    }
-}
-
-pub fn reset_override_button(
-    ctx: &ViewContext<'_>,
-    ui: &mut egui::Ui,
-    component_descr: ComponentDescriptor,
-    override_path: &EntityPath,
-) {
-    let component = component_descr.component;
-    let raw_override = ctx
-        .viewer_ctx
-        .raw_latest_at_in_current_blueprint(override_path, component);
-    let raw_override_default_blueprint = ctx
-        .viewer_ctx
-        .raw_latest_at_in_default_blueprint(override_path, component);
-
-    if ui
-        .add_enabled(
-            raw_override != raw_override_default_blueprint,
-            egui::Button::new("Reset override to default blueprint"),
-        )
-        .on_hover_text("Resets the override to what is specified in the default blueprint")
-        .on_disabled_hover_text("Current override is the same as the override specified in the default blueprint (if any)")
-        .clicked()
-    {
-        ctx.reset_blueprint_component(override_path.clone(), component_descr);
         ui.close();
     }
 }
