@@ -1,16 +1,17 @@
-use re_data_source::LogDataSource;
+use re_data_source::{LogDataSource, LogDataSourceAnalytics};
 use re_entity_db::LogSource;
 use re_log_channel::{LogReceiver, RecordingOpenBehavior};
+use re_log_encoding::RrdMetadata;
 use re_log_types::StoreId;
 use re_viewer_context::{StoreHub, SystemCommand, SystemCommandSender as _};
 
 use super::App;
 
-#[cfg(all(feature = "internal_catalog", not(target_arch = "wasm32")))]
-use {
-    anyhow::Context as _, re_protos::cloud::v1alpha1::ext::DataSource,
-    re_protos::common::v1alpha1::ext::IfDuplicateBehavior, std::path::Path,
-};
+use std::path::Path;
+
+use anyhow::Context as _;
+use re_protos::cloud::v1alpha1::ext::DataSource;
+use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, SegmentId};
 
 impl App {
     #[expect(clippy::needless_pass_by_ref_mut)]
@@ -98,55 +99,67 @@ impl App {
                 }
             }
 
-            #[cfg(not(target_arch = "wasm32"))]
-            LogDataSource::FilePath { path, .. } => {
-                #[cfg(all(feature = "internal_catalog", not(target_arch = "wasm32")))]
-                {
-                    // If the internal catalog is enabled, route `.rrd` files through it.
-                    if path.extension().is_some_and(|ext| ext == "rrd")
-                        && self.app_options().experimental.use_internal_catalog
-                        && self.connection_registry.internal_origin().is_some()
+            LogDataSource::File {
+                path,
+                #[cfg(target_arch = "wasm32")]
+                file,
+                ..
+            } => {
+                if self.should_register_via_internal_catalog(path) {
+                    self.register_via_internal_catalog(
+                        path,
+                        data_source.analytics(),
+                        #[cfg(target_arch = "wasm32")]
+                        file.clone(),
+                    );
+                    return;
+                }
+
+                #[cfg(target_arch = "wasm32")]
+                if file.size() > f64::from(u32::MAX) {
+                    if path
+                        .extension()
+                        .and_then(|ext| ext.to_str())
+                        .is_some_and(|ext| ext.eq_ignore_ascii_case("rrd"))
                     {
-                        let path = path.clone();
-                        let connection_registry = self.connection_registry.clone();
-                        let sender = self.command_sender.clone();
-                        self.async_runtime.spawn_future(async move {
-                            match register_local_file(&connection_registry, &path).await {
-                                Ok(uri) => {
-                                    // Refresh the dataset if its open
-                                    sender.send_system(SystemCommand::RefreshRedapEntry {
-                                        origin: uri.origin.clone(),
-                                        entry_id: uri.dataset_id.into(),
-                                    });
-                                    sender.send_system(SystemCommand::LoadDataSource(
-                                        LogDataSource::RedapDatasetSegment {
-                                            uri,
-                                            open_behavior: RecordingOpenBehavior::OpenAndSelect,
-                                        },
-                                    ));
-                                }
-                                Err(err) => {
-                                    re_log::error!(
-                                        "Failed to load file via the Viewer catalog: {err}\nFile path: {}",
-                                        path.display(),
-                                    );
-                                }
-                            }
-                        });
+                        // TODO(RR-5258): Remove this hint when the Viewer catalog is enabled by default.
+                        re_log::error!(
+                            "Failed to load file: this file is larger than the web Viewer's 4 GiB direct-load limit. Enable \"Load files via Viewer catalog\" in Settings, then open the file again.\nFile path: {}",
+                            path.display()
+                        );
+                    } else {
+                        re_log::error!(
+                            "Failed to load file: this file is larger than the web Viewer's 4 GiB direct-load limit.\nFile path: {}",
+                            path.display()
+                        );
+                    }
+                    return;
+                }
+
+                // We use the file identity to check if we need to load a recording, or if we have
+                // loaded it already. In the latter case, we do not load it again, and instead
+                // switch to it instead.
+                //
+                // On web, `path` is only a display name, which is not a reliable file identity.
+                //
+                // TODO(grtlr): Maybe we can use the fingerprinting mechanism for this? It would
+                // work on the web, and be a more reliable source for making a decision, i.e.
+                // we can't know from the file path alone that a file is the same, it could have
+                // changed in the meantime.
+                #[cfg(not(target_arch = "wasm32"))]
+                {
+                    let new_source = LogSource::File { path: path.clone() };
+                    if all_sources.any(|source| source.is_same_ignoring_uri_fragments(&new_source))
+                    {
+                        drop(all_sources);
+                        self.try_make_recording_from_source_active(
+                            egui_ctx,
+                            store_hub,
+                            &new_source,
+                        );
                         return;
                     }
                 }
-
-                let new_source = LogSource::File { path: path.clone() };
-                if all_sources.any(|source| source.is_same_ignoring_uri_fragments(&new_source)) {
-                    drop(all_sources);
-                    self.try_make_recording_from_source_active(egui_ctx, store_hub, &new_source);
-                    return;
-                }
-            }
-
-            LogDataSource::FileContents(_file_source, _file_contents) => {
-                // For raw file contents we currently can't determine whether we're already receiving them.
             }
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -207,6 +220,7 @@ impl App {
         }
 
         let stream = data_source.clone().stream_with_options(
+            &self.async_runtime,
             Self::auth_error_handler(self.command_sender.clone()),
             &self.connection_registry,
             if let LogDataSource::RedapDatasetSegment { open_behavior, .. } = &data_source
@@ -222,15 +236,12 @@ impl App {
             },
         );
 
-        #[cfg(feature = "analytics")]
-        if let Some(analytics) = re_analytics::Analytics::global_or_init() {
-            let data_source_analytics = data_source.analytics();
-            analytics.record(re_analytics::event::LoadDataSource {
-                source_type: data_source_analytics.source_type,
-                file_extension: data_source_analytics.file_extension,
-                file_source: data_source_analytics.file_source,
-                started_successfully: stream.is_ok(),
-            });
+        if !matches!(
+            data_source,
+            LogDataSource::RedapDatasetSegment { uri, .. }
+                if self.connection_registry.is_internal_origin(&uri.origin)
+        ) {
+            record_catalog_load_analytics(data_source.analytics(), None, stream.is_ok());
         }
 
         match stream {
@@ -260,6 +271,7 @@ impl App {
             open_behavior: RecordingOpenBehavior::Background,
         };
         match data_source.stream_with_options(
+            &self.async_runtime,
             Self::auth_error_handler(self.command_sender.clone()),
             &self.connection_registry,
             re_redap_client::StreamingOptions {
@@ -290,79 +302,260 @@ impl App {
             self.make_store_active_and_highlight(store_hub, egui_ctx, &store_id);
         }
     }
+
+    fn should_register_via_internal_catalog(&self, path: &Path) -> bool {
+        // TODO(RR-5309): Keep `.rbl` files on the legacy importer until the server supports
+        // blueprint management and catalog registration can preserve `ApplicationId` retargeting.
+        path.extension()
+            .and_then(|ext| ext.to_str())
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("rrd"))
+            && self.app_options().experimental.use_internal_catalog
+            && self.connection_registry.internal_origin().is_some()
+    }
+
+    /// Registers a file with the internal catalog, then opens the segment it produced.
+    fn register_via_internal_catalog(
+        &self,
+        path: &Path,
+        data_source_analytics: LogDataSourceAnalytics,
+        #[cfg(target_arch = "wasm32")] file: web_sys::File,
+    ) {
+        let connection_registry = self.connection_registry.clone();
+        let sender = self.command_sender.clone();
+        let path = path.to_owned();
+        self.async_runtime.spawn_future(async move {
+            let registration = register_file(
+                &connection_registry,
+                &path,
+                #[cfg(target_arch = "wasm32")]
+                file,
+            )
+            .await;
+            match registration {
+                Ok(uri) => {
+                    record_catalog_load_analytics(data_source_analytics, Some("internal"), true);
+                    // Refresh the dataset if it is open.
+                    sender.send_system(SystemCommand::RefreshRedapEntry {
+                        origin: uri.origin.clone(),
+                        entry_id: uri.dataset_id.into(),
+                    });
+                    sender.send_system(SystemCommand::LoadDataSource(
+                        LogDataSource::RedapDatasetSegment {
+                            uri,
+                            open_behavior: RecordingOpenBehavior::OpenAndSelect,
+                        },
+                    ));
+                }
+                Err(err) => {
+                    record_catalog_load_analytics(data_source_analytics, Some("internal"), false);
+                    re_log::error!(
+                        "Failed to load file via the Viewer catalog: {}\nFile path: {}",
+                        re_error::format(err),
+                        path.display(),
+                    );
+                }
+            }
+        });
+    }
 }
 
-/// Register a local `.rrd` file with the catalog server.
-#[cfg(all(feature = "internal_catalog", not(target_arch = "wasm32")))]
-async fn register_local_file(
+fn record_catalog_load_analytics(
+    data_source: LogDataSourceAnalytics,
+    catalog_kind: Option<&'static str>,
+    started_successfully: bool,
+) {
+    #[cfg(feature = "analytics")]
+    if let Some(analytics) = re_analytics::Analytics::global_or_init() {
+        analytics.record(re_analytics::event::LoadDataSource {
+            source_type: data_source.source_type,
+            file_extension: data_source.file_extension,
+            file_source: data_source.file_source,
+            catalog_kind,
+            started_successfully,
+        });
+    }
+
+    #[cfg(not(feature = "analytics"))]
+    let _ = (data_source, catalog_kind, started_successfully);
+}
+
+/// Register an `.rrd` file the user picked with the internal catalog.
+///
+/// The server reads the file itself, so we only read what we need to name the dataset and to hand
+/// the server a `file://` URL for the same bytes.
+async fn register_file(
     connection_registry: &re_redap_client::ConnectionRegistryHandle,
     path: &Path,
+    #[cfg(target_arch = "wasm32")] file: web_sys::File,
 ) -> anyhow::Result<re_uri::DatasetSegmentUri> {
-    let origin = connection_registry
-        .internal_origin()
-        .context("internal catalog is not running")?;
-    let mut client = connection_registry.client(origin.clone()).await?;
+    #[cfg(not(target_arch = "wasm32"))]
+    let (reader, abs_path) = {
+        let abs_path = std::path::absolute(path).with_context(|| {
+            format!(
+                "failed to resolve absolute path\nFile path: {}",
+                path.display()
+            )
+        })?;
+        // TODO(tokio-rs/tokio#1529): positional reads block the reactor; use `std::fs::File` until
+        // an async positional file API lands (or push reads to `spawn_blocking`).
+        let reader = std::fs::File::open(&abs_path)
+            .with_context(|| format!("failed to open RRD\nFile path: {}", abs_path.display()))?;
+        (reader, abs_path)
+    };
+    #[cfg(target_arch = "wasm32")]
+    let reader = re_web::fs::File::from(file.clone());
 
-    let abs_path = std::path::absolute(path).with_context(|| {
+    let rrd_metadata = read_rrd_metadata(&reader)
+        .await
+        .with_context(|| format!("failed to read RRD metadata\nFile path: {}", path.display()))?;
+    rrd_metadata.store_ids.first().with_context(|| {
         format!(
-            "failed to resolve absolute path\nFile path: {}",
+            "no application id found in RRD\nFile path: {}",
             path.display()
         )
     })?;
+
+    #[cfg(not(target_arch = "wasm32"))]
     let file_url = url::Url::from_file_path(&abs_path).map_err(|()| {
         anyhow::anyhow!(
             "not an absolute file path\nFile path: {}",
             abs_path.display()
         )
     })?;
+    #[cfg(target_arch = "wasm32")]
+    let file_url = copy_to_opfs(&reader, path, file).await?;
 
-    let dataset_name = std::fs::File::open(&abs_path)
-        .with_context(|| {
-            format!(
-                "failed to open RRD for application id extraction\nFile path: {}",
-                abs_path.display(),
-            )
-        })
-        .and_then(|mut file| {
-            let file: &mut std::fs::File = &mut file;
-            let store_ids = re_log_encoding::enumerate_rrd_stores(file)?;
-            let first_application_id = store_ids
-                .first()
-                .map(re_log_types::StoreId::application_id)
-                .context("no application id found in RRD")?;
+    register_rrd_file_url(connection_registry, file_url, rrd_metadata).await
+}
 
-            if store_ids
-                .iter()
-                .any(|store_id| store_id.application_id() != first_application_id)
-            {
-                re_log::warn!(
-                    "RRD contains multiple application ids; using the first as the dataset name: {first_application_id}"
-                );
-            }
+/// Copy a browser file into OPFS and return the `file://` URL the server can read it from.
+///
+/// The OPFS path is content-addressed, so re-opening the same file reuses the existing copy.
+#[cfg(target_arch = "wasm32")]
+async fn copy_to_opfs(
+    reader: &impl re_async::AsyncReadAt,
+    path: &Path,
+    file: web_sys::File,
+) -> anyhow::Result<url::Url> {
+    let file_size = reader.size().await.with_context(|| {
+        format!(
+            "failed to read RRD file size\nFile path: {}",
+            path.display(),
+        )
+    })?;
+    let fingerprint = re_log_encoding::RrdFingerprint::compute_for_rrd(reader)
+        .await
+        .with_context(|| format!("failed to fingerprint RRD\nFile path: {}", path.display()))?
+        .as_bytes()
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect::<String>();
+    let file_name = path
+        .file_name()
+        .filter(|file_name| !file_name.is_empty())
+        .context("OPFS upload path has no file name")?
+        .to_str()
+        .context("OPFS upload file name is not UTF-8")?;
 
-            Ok(first_application_id.to_string())
-        })
-        .unwrap_or_else(|err| {
-            re_log::warn!(
-                "Failed to read application id from RRD: {err}\nFile path: {}",
-                abs_path.display(),
+    let opfs_path = std::path::PathBuf::from("/uploads")
+        .join(&fingerprint)
+        .join(file_name);
+    if !opfs_upload_matches(&opfs_path, file_size).await?
+        && let Err(err) = re_web::fs::write_file(&opfs_path, file).await
+    {
+        if err.kind() == std::io::ErrorKind::StorageFull {
+            anyhow::bail!(
+                "Viewer catalog storage quota exceeded. In Settings, under Origin private filesystem, select \"Request persistence\", then try again."
             );
-            let path: &Path = &abs_path;
-            path.file_stem()
-                .and_then(|s| s.to_str())
-                .unwrap_or("recording")
-                .to_owned()
-        });
+        }
+        return Err(err).context("failed to copy file to Viewer catalog storage");
+    }
 
-    let data_source = DataSource::new_rrd(file_url.as_str())?;
+    // `Url::from_file_path` is unavailable on `wasm32-unknown-unknown`.
+    let mut file_url = url::Url::parse("file:///").expect("`file:///` is a valid base URL");
+    file_url
+        .path_segments_mut()
+        .expect("`file:///` is a base URL")
+        .extend(["uploads", &fingerprint, file_name]);
+    Ok(file_url)
+}
 
+/// Makes use of the fact that we don't need to scan for `default_blueprint_by_app_id`,
+/// if we don't have blueprints in the RRD.
+async fn read_rrd_metadata(reader: &impl re_async::AsyncReadAt) -> anyhow::Result<RrdMetadata> {
+    if let Some(footer) = re_log_encoding::read_rrd_footer(reader).await?
+        && footer
+            .manifests
+            .keys()
+            .all(|store_id| !store_id.is_blueprint())
+    {
+        Ok(RrdMetadata {
+            store_ids: footer.manifests.into_keys().collect(),
+            default_blueprint_by_app_id: Default::default(),
+        })
+    } else {
+        Ok(re_log_encoding::enumerate_legacy_metadata(reader).await?)
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+async fn opfs_upload_matches(path: &Path, expected_size: u64) -> anyhow::Result<bool> {
+    match re_web::fs::metadata(path).await {
+        Ok(metadata) => Ok(metadata.is_file() && metadata.len() == expected_size),
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(false),
+        Err(err) => Err(err).context("failed to inspect Viewer catalog storage"),
+    }
+}
+
+/// Register a `file://` URL the server can read with the internal catalog.
+async fn register_rrd_file_url(
+    connection_registry: &re_redap_client::ConnectionRegistryHandle,
+    file_url: url::Url,
+    rrd_metadata: re_log_encoding::RrdMetadata,
+) -> anyhow::Result<re_uri::DatasetSegmentUri> {
+    let application_id = rrd_metadata
+        .store_ids
+        .first()
+        .map(StoreId::application_id)
+        .context("no application id found in RRD")?;
+
+    if rrd_metadata
+        .store_ids
+        .iter()
+        .any(|store_id| store_id.application_id() != application_id)
+    {
+        re_log::warn!(
+            "RRD contains multiple application ids; using the first as the dataset name: {application_id}"
+        );
+    }
+
+    let origin = connection_registry
+        .internal_origin()
+        .context("internal catalog is not running")?;
+    let mut client = connection_registry.client(origin.clone()).await?;
+    let data_source = DataSource::new_rrd_url(file_url);
+    let dataset_name = re_log_types::EntryName::from(application_id.clone());
+
+    // TODO(RR-5309): Handle RRDs without recording stores as standalone blueprints.
     let (dataset_id, segment_id) = client
         .ensure_dataset_and_register(
             &dataset_name,
-            vec![data_source],
+            vec![data_source.clone()],
             IfDuplicateBehavior::Overwrite,
         )
         .await?;
+
+    if let Err(err) = update_default_blueprint(
+        &mut client,
+        dataset_id,
+        &segment_id,
+        data_source,
+        &rrd_metadata,
+    )
+    .await
+    {
+        re_log::warn!("Failed to update default blueprint for catalog RRD load: {err:#}");
+    }
 
     Ok(re_uri::DatasetSegmentUri {
         origin,
@@ -370,4 +563,73 @@ async fn register_local_file(
         segment_id,
         fragment: Default::default(),
     })
+}
+
+/// Registers the recording's embedded default blueprint (if any) into the dataset's hidden
+/// blueprint dataset and records it as the dataset's default blueprint segment.
+///
+/// The blueprint lives in the same RRD, so we register the same `file://` URL into the blueprint
+/// dataset; the server picks out the blueprint store and serves it lazily.
+async fn update_default_blueprint(
+    client: &mut re_redap_client::ConnectionClient,
+    dataset_id: re_log_types::EntryId,
+    segment_id: &SegmentId,
+    data_source: DataSource,
+    rrd_metadata: &re_log_encoding::RrdMetadata,
+) -> anyhow::Result<()> {
+    // TODO(RR-5309): Register embedded blueprints that lack a `make_default` command once the
+    // server supports blueprint management.
+    if rrd_metadata.default_blueprint_by_app_id.is_empty() {
+        return Ok(());
+    }
+
+    let Some(recording_store_id) = rrd_metadata.store_ids.iter().find(|store_id| {
+        store_id.is_recording() && SegmentId::from(store_id.recording_id()) == *segment_id
+    }) else {
+        re_log::warn!("Could not match registered segment {segment_id} to an RRD recording store");
+        return Ok(());
+    };
+
+    let Some(default_blueprint_store_id) = rrd_metadata
+        .default_blueprint_by_app_id
+        .get(recording_store_id.application_id())
+    else {
+        return Ok(());
+    };
+
+    let mut dataset_details = client.read_dataset_entry(dataset_id).await?.dataset_details;
+    let Some(blueprint_dataset_id) = dataset_details.blueprint_dataset else {
+        re_log::warn!(
+            "Dataset {dataset_id} has no hidden blueprint dataset; cannot set default blueprint"
+        );
+        return Ok(());
+    };
+
+    let expected_blueprint_segment_id = SegmentId::from(default_blueprint_store_id.recording_id());
+    let (_trace_id, tasks) = client
+        .register_with_dataset(
+            blueprint_dataset_id,
+            vec![data_source],
+            IfDuplicateBehavior::Overwrite,
+        )
+        .await?;
+
+    if !tasks
+        .iter()
+        .any(|task| task.segment_id == expected_blueprint_segment_id)
+    {
+        re_log::warn!(
+            "Registered RRD into the blueprint dataset, but default blueprint segment \
+             {expected_blueprint_segment_id} was not returned; keeping the existing default blueprint"
+        );
+        return Ok(());
+    }
+
+    dataset_details.default_blueprint_segment = Some(expected_blueprint_segment_id);
+
+    client
+        .update_dataset_entry(dataset_id, dataset_details)
+        .await?;
+
+    Ok(())
 }

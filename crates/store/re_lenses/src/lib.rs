@@ -5,6 +5,7 @@
 
 pub mod op;
 mod runtime;
+pub mod semantic;
 
 pub use self::runtime::default_runtime;
 

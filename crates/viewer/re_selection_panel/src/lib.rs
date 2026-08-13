@@ -1,7 +1,5 @@
 //! The UI for the selection panel.
 
-#![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
-
 mod defaults_ui;
 mod item_heading_no_breadcrumbs;
 mod item_heading_with_breadcrumbs;

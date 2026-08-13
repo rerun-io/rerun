@@ -1,5 +1,5 @@
 use super::HalfSize2D;
-use crate::datatypes::Vec2D;
+use crate::encodings::Vec2D;
 
 impl HalfSize2D {
     /// Create a new half-extent from half-width and half-height.

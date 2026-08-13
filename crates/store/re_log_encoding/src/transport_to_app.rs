@@ -234,6 +234,7 @@ fn log_msg_transport_to_app<I: ApplicationIdInjector + ?Sized>(
 ) -> Result<re_log_types::LogMsg, CodecError> {
     re_tracing::profile_function!();
 
+    use re_protos::common::v1alpha1::ext::StoreIdFromProtoError;
     use re_protos::log_msg::v1alpha1::log_msg::Msg;
     use re_protos::missing_field;
 
@@ -256,13 +257,16 @@ fn log_msg_transport_to_app<I: ApplicationIdInjector + ?Sized>(
                 .try_into()
             {
                 Ok(store_id) => store_id,
-                Err(err) => {
+                // A *missing* app id can be recovered from an earlier `SetStoreInfo`; a *present
+                // but invalid* one is a hard error.
+                Err(StoreIdFromProtoError::MissingApplicationId(err)) => {
                     let Some(store_id) = app_id_injector.recover_store_id(err.clone()) else {
                         return Err(err.into());
                     };
 
                     store_id
                 }
+                Err(err @ StoreIdFromProtoError::InvalidApplicationId(_)) => return Err(err.into()),
             };
 
             Ok(re_log_types::LogMsg::ArrowMsg(store_id, encoded))
@@ -283,13 +287,16 @@ fn log_msg_transport_to_app<I: ApplicationIdInjector + ?Sized>(
                 .try_into()
             {
                 Ok(store_id) => store_id,
-                Err(err) => {
+                // A *missing* app id can be recovered from an earlier `SetStoreInfo`; a *present
+                // but invalid* one is a hard error.
+                Err(StoreIdFromProtoError::MissingApplicationId(err)) => {
                     let Some(store_id) = app_id_injector.recover_store_id(err.clone()) else {
                         return Err(err.into());
                     };
 
                     store_id
                 }
+                Err(err @ StoreIdFromProtoError::InvalidApplicationId(_)) => return Err(err.into()),
             };
 
             Ok(re_log_types::LogMsg::BlueprintActivationCommand(

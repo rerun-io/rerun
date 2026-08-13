@@ -1162,7 +1162,7 @@ fn read_samples_from_known_chunk(
             is_sync,
 
             // TODO(#10090): No b-frames for now. Therefore sample_idx == frame_nr.
-            frame_nr: sample_idx as u32,
+            frame_nr: sample_idx as re_video::FrameNumber,
             decode_timestamp,
             presentation_timestamp: decode_timestamp,
 
@@ -1437,7 +1437,7 @@ fn read_samples_from_new_chunk(
                     is_sync,
 
                     // TODO(#10090): No b-frames for now. Therefore sample_idx == frame_nr.
-                    frame_nr: sample_idx as u32,
+                    frame_nr: sample_idx as re_video::FrameNumber,
                     decode_timestamp,
                     presentation_timestamp: decode_timestamp,
 
@@ -2142,15 +2142,13 @@ fn handle_out_of_order_chunk(
     }
 
     // Correct frame_nr for all samples after `start_sample`:
-    let min_index = video_descr.samples.min_index();
-
+    let samples_end = video_descr.samples.next_index();
     for (idx, sample) in video_descr
         .samples
-        .iter_indexed_mut()
-        .skip(sample_range.start().saturating_sub(min_index))
+        .iter_index_range_clamped_mut(&(*sample_range.start()..samples_end))
     {
         if let SampleMetadataState::Present(meta) = sample {
-            meta.frame_nr = idx as u32;
+            meta.frame_nr = idx as re_video::FrameNumber;
         }
     }
 

@@ -104,7 +104,10 @@ elseif(WIN32)
     )
 endif()
 
-target_link_libraries(rerun_sdk PRIVATE rerun_c)
+# `rerun_c` is a public dependency, meaning that all symbols from rerun_c are available to consumers of `rerun_sdk`.
+# If we don't do that, then we can't have any inline functions using `rerun_c` and users or `rerun_sdk`
+# can't call any `rerun_c` methods directly.
+target_link_libraries(rerun_sdk PUBLIC rerun_c)
 
 # -----------------------------------------------------------------------------
 # Arrow dependency.

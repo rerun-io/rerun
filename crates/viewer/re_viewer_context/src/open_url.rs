@@ -53,7 +53,7 @@ pub enum ViewerOpenUrl {
 
     /// A path to a local file.
     ///
-    /// See also [`LogDataSource::FilePath`].
+    /// See also [`LogDataSource::File`].
     #[cfg(not(target_arch = "wasm32"))]
     FilePath(std::path::PathBuf),
 
@@ -197,10 +197,11 @@ impl ViewerOpenUrl {
                 LogDataSource::HttpUrl { url, .. } => Ok(Self::HttpUrl(url)),
 
                 #[cfg(not(target_arch = "wasm32"))]
-                LogDataSource::FilePath { path, .. } => Ok(Self::FilePath(path)),
+                LogDataSource::File { path, .. } => Ok(Self::FilePath(path)),
 
-                LogDataSource::FileContents(..) => {
-                    unreachable!("FileContents can not be shared as a URL");
+                #[cfg(target_arch = "wasm32")]
+                LogDataSource::File { .. } => {
+                    unreachable!("A browser file cannot be shared as a URL")
                 }
 
                 #[cfg(not(target_arch = "wasm32"))]
@@ -319,16 +320,16 @@ impl ViewerOpenUrl {
             LogSource::HttpStream { url, .. } => Ok(Self::HttpUrl(url.parse::<Url>()?)),
 
             LogSource::File { path, .. } => {
-                #[cfg(not(target_arch = "wasm32"))]
-                {
-                    Ok(Self::FilePath(path.clone()))
-                }
-                #[cfg(target_arch = "wasm32")]
-                {
-                    _ = path;
-                    Err(anyhow::anyhow!(
-                        "Can't share links to local files on the web."
-                    ))
+                cfg_select! {
+                    target_arch = "wasm32" => {
+                        _ = path;
+                        Err(anyhow::anyhow!(
+                            "Can't share links to local files on the web."
+                        ))
+                    }
+                    _ => {
+                        Ok(Self::FilePath(path.clone()))
+                    }
                 }
             }
 
@@ -595,12 +596,10 @@ impl ViewerOpenUrl {
             }
             #[cfg(not(target_arch = "wasm32"))]
             Self::FilePath(path) => {
-                command_sender.send_system(SystemCommand::LoadDataSource(
-                    LogDataSource::FilePath {
-                        file_source: re_log_types::FileSource::Uri,
-                        path,
-                    },
-                ));
+                command_sender.send_system(SystemCommand::LoadDataSource(LogDataSource::File {
+                    file_source: re_log_types::FileSource::Uri,
+                    path,
+                }));
             }
             Self::RedapDatasetSegment(uri) => {
                 command_sender.send_system(SystemCommand::LoadDataSource(
@@ -658,8 +657,7 @@ impl ViewerOpenUrl {
                     // We _are_ a web viewer.
                     // If the base URL doesn't match our own then that's reason for concern (==warn),
                     // because this URL was probably meant to be opened in a different Rerun version.
-                    if let Some(window) = web_sys::window()
-                        && let Ok(location) = window.location().href()
+                    if let Ok(location) = re_web::browser::current_page_url()
                         && let Ok(location) = Url::parse(&location)
                     {
                         let current_webpage_base_url = base_url(&location);
@@ -792,9 +790,10 @@ fn parse_chunk_store_browser_url(url: &str) -> anyhow::Result<Option<ViewerOpenU
     }
 
     let recording_id = match (application_id, recording_name) {
-        (Some(application_id), Some(recording_id)) => {
-            Some(StoreId::recording(application_id, recording_id))
-        }
+        (Some(application_id), Some(recording_id)) => Some(StoreId::recording(
+            re_log_types::ApplicationId::try_new(application_id)?,
+            recording_id,
+        )),
         (None, None) => None,
         _ => anyhow::bail!("Chunk store browser URL must include both app_id and recording_id"),
     };

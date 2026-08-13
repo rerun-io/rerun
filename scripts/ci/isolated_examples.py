@@ -68,7 +68,7 @@ def cmd_lint(examples_dir: Path, repo_root: Path) -> int:
 
     for project in projects:
         print(f"\n=== {project.relative_to(repo_root)} ===", flush=True)
-        subprocess.run(["uv", "sync"], cwd=project, check=True)
+        subprocess.run(["uv", "sync", "--frozen"], cwd=project, check=True)
         # rerun-dev-fixup is not in pyproject.toml (uv 0.7.x resolves all groups
         # unconditionally — a path-only package would block standalone --no-sources).
         # Install it explicitly here when running inside the monorepo.

@@ -20,7 +20,7 @@ class LineStrip2DExt:
 
     @staticmethod
     def native_to_pa_array_override(data: LineStrip2DArrayLike, data_type: pa.DataType) -> pa.Array:
-        from ..datatypes import Vec2DBatch
+        from ..encodings import Vec2DBatch
         from . import LineStrip2D
 
         # pure-numpy fast path

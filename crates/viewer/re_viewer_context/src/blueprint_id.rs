@@ -129,9 +129,9 @@ impl<T: BlueprintIdRegistry> From<uuid::Uuid> for BlueprintId<T> {
     }
 }
 
-impl<T: BlueprintIdRegistry> From<re_sdk_types::datatypes::Uuid> for BlueprintId<T> {
+impl<T: BlueprintIdRegistry> From<re_sdk_types::encodings::Uuid> for BlueprintId<T> {
     #[inline]
-    fn from(id: re_sdk_types::datatypes::Uuid) -> Self {
+    fn from(id: re_sdk_types::encodings::Uuid) -> Self {
         Self {
             id: id.into(),
             _registry: std::marker::PhantomData,
@@ -139,7 +139,7 @@ impl<T: BlueprintIdRegistry> From<re_sdk_types::datatypes::Uuid> for BlueprintId
     }
 }
 
-impl<T: BlueprintIdRegistry> From<BlueprintId<T>> for re_sdk_types::datatypes::Uuid {
+impl<T: BlueprintIdRegistry> From<BlueprintId<T>> for re_sdk_types::encodings::Uuid {
     #[inline]
     fn from(id: BlueprintId<T>) -> Self {
         id.id.into()

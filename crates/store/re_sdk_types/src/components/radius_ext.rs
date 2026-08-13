@@ -1,5 +1,5 @@
 use re_log::debug_assert;
-use re_types_core::datatypes::Float32;
+use re_types_core::encodings::Float32;
 
 use super::Radius;
 
@@ -60,7 +60,7 @@ impl Radius {
 
 #[cfg(test)]
 mod tests {
-    use re_types_core::datatypes::Float32;
+    use re_types_core::encodings::Float32;
 
     use super::Radius;
 

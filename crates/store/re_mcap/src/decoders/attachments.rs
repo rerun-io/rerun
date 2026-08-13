@@ -1,7 +1,7 @@
 use re_chunk::{Chunk, RowId, TimePoint};
 use re_sdk_types::{
     Component as _, ComponentBatch as _, ComponentDescriptor, SerializedComponentBatch, components,
-    datatypes,
+    encodings,
 };
 
 use super::{Decoder, DecoderContext, DecoderIdentifier};
@@ -84,27 +84,27 @@ fn attachments_batches(
         .iter()
         .map(|(index, attachment)| {
             components::KeyValuePairs(vec![
-                datatypes::Utf8Pair {
+                encodings::Utf8Pair {
                     first: "name".into(),
                     second: attachment.name.clone().into(),
                 },
-                datatypes::Utf8Pair {
+                encodings::Utf8Pair {
                     first: "media_type".into(),
                     second: attachment.media_type.clone().into(),
                 },
-                datatypes::Utf8Pair {
+                encodings::Utf8Pair {
                     first: "log_time".into(),
                     second: attachment.log_time.to_string().into(),
                 },
-                datatypes::Utf8Pair {
+                encodings::Utf8Pair {
                     first: "create_time".into(),
                     second: attachment.create_time.to_string().into(),
                 },
-                datatypes::Utf8Pair {
+                encodings::Utf8Pair {
                     first: "data_size".into(),
                     second: attachment.data.len().to_string().into(),
                 },
-                datatypes::Utf8Pair {
+                encodings::Utf8Pair {
                     first: "offset".into(),
                     second: index.offset.to_string().into(),
                 },

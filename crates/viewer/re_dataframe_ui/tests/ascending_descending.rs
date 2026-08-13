@@ -7,9 +7,9 @@ use arrow::datatypes::{Field, Schema};
 use datafusion::prelude::SessionContext;
 use egui::accesskit::Role;
 use egui_kittest::kittest::Queryable as _;
+use re_async::AsyncRuntimeHandle;
 use re_dataframe_ui::{DataFusionTableWidget, SortBy, TableBlueprint};
 use re_test_context::TestContext;
-use re_viewer_context::AsyncRuntimeHandle;
 
 use common::run_async_harness;
 
@@ -51,7 +51,7 @@ async fn test_ascending() {
                 DataFusionTableWidget::new(Arc::clone(&session_context), table_ref)
                     .title("Ascending")
                     .initial_blueprint(TableBlueprint {
-                        sort_by: Some(SortBy::ascending("col")),
+                        sort_by: Some(SortBy::ascending("col".into())),
                         ..Default::default()
                     })
                     .show(
@@ -80,7 +80,7 @@ async fn test_descending() {
                 DataFusionTableWidget::new(Arc::clone(&session_context), table_ref)
                     .title("Descending")
                     .initial_blueprint(TableBlueprint {
-                        sort_by: Some(SortBy::descending("col")),
+                        sort_by: Some(SortBy::descending("col".into())),
                         ..Default::default()
                     })
                     .show(

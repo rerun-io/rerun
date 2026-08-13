@@ -42,6 +42,7 @@ pub fn concat_polymorphic_batches(batches: &[RecordBatch]) -> arrow::error::Resu
             }
 
             let md_merged = schema_builder.metadata_mut();
+            #[expect(clippy::iter_over_hash_type)] // Metadata order is irrelevant.
             for (k, v) in batch.schema_ref().metadata() {
                 if let Some(previous) = md_merged.insert(k.clone(), v.clone())
                     && previous != *v

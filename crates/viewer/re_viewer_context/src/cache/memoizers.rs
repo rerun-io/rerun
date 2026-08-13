@@ -146,24 +146,26 @@ impl Memoizers {
 
     /// Gets or creates a shared cache for the given type.
     fn shared_cache_entry<C: Cache + Default>(&self) -> Arc<SharedCache> {
-        let caches = {
-            re_tracing::profile_wait!("master-cache-read-lock");
-            self.caches.upgradable_read()
-        };
-
         let type_id = TypeId::of::<C>();
-        if let Some(cache) = caches.get(&type_id) {
-            cache.clone()
-        } else {
-            let mut caches = {
-                re_tracing::profile_wait!("master-cache-upgrade-lock");
-                caches.upgrade()
-            };
-            caches
-                .entry(type_id)
-                .or_insert_with(|| Arc::new(SharedCache::new::<C>()))
-                .clone()
+
+        if let Some(cache) = {
+            re_tracing::profile_wait!("master-cache-read-lock");
+            // Do NOT use an upgradable read lock here, because `parking_lot` permits only one upgradable reader at a time (see https://docs.rs/lock_api/latest/lock_api/struct.RwLock.html#method.upgradable_read).
+            // The drawback is that multiple concurrent misses may go to the `write` path, but we expect this to be much less common.
+            // (and the only reason the write path is worse is that it breaks concurrent access)
+            self.caches.read().get(&type_id).cloned()
+        } {
+            return cache;
         }
+
+        let mut caches = {
+            re_tracing::profile_wait!("master-cache-write-lock");
+            self.caches.write()
+        };
+        caches
+            .entry(type_id)
+            .or_insert_with(|| Arc::new(SharedCache::new::<C>()))
+            .clone()
     }
 
     /// Accesses a cache for reading and writing.
@@ -208,8 +210,9 @@ impl Memoizers {
     /// Tries to read an existing memoization cache entry, then computes it through mutable access on miss.
     ///
     /// Use this if you're working with init-only cache entries, expect your cache entry to be usually present
-    /// and want to avoid the overhead of a write lock.
-    /// Note that this _adds_ overhead for the miss path compared to `memoizer`, so don't use this if you expect many misses!
+    /// and want cache hits to share a read lock.
+    /// The miss path releases the read lock, takes a write lock, and checks the entry again before computing.
+    /// This adds overhead compared to `memoizer`, so don't use this if you expect many misses!
     /// (UI code typically doesn't need to care about this optimization, since it's usually single-threaded already.)
     pub fn read_or_compute<C: CacheEntryAccess<Key, Value> + Default, Key, Value>(
         &self,
@@ -217,27 +220,39 @@ impl Memoizers {
     ) -> Value {
         let cache_entry = self.shared_cache_entry::<C>();
 
-        let cache = {
-            re_tracing::profile_wait!("cache-read-lock");
-            cache_entry.cache.upgradable_read()
-        };
+        // Cache hits should remain concurrent, which rules out an upgradable read lock here!
+        // (`parking_lot` permits only one upgradable reader at a time see https://docs.rs/lock_api/latest/lock_api/struct.RwLock.html#method.upgradable_read)
+        {
+            let cache = {
+                re_tracing::profile_wait!("cache-read-lock");
+                cache_entry.read()
+            };
 
-        let cache_accessor = (cache.as_ref() as &dyn std::any::Any)
-            .downcast_ref::<C>()
+            let cache_accessor = (cache.as_ref() as &dyn std::any::Any)
+                .downcast_ref::<C>()
+                .expect(
+                    "Downcast failed, this indicates a bug in how `Memoizers` adds new cache types.",
+                );
+
+            if let Some(value) = cache_accessor.read(key) {
+                return value;
+            }
+        }
+
+        let mut cache = {
+            re_tracing::profile_wait!("cache-write-lock");
+            cache_entry.write()
+        };
+        let cache_accessor = (cache.as_mut() as &mut dyn std::any::Any)
+            .downcast_mut::<C>()
             .expect(
                 "Downcast failed, this indicates a bug in how `Memoizers` adds new cache types.",
             );
 
+        // Another thread may have populated the entry between releasing the read lock and taking the write lock.
         if let Some(value) = cache_accessor.read(key) {
             value
         } else {
-            let mut cache = {
-                re_tracing::profile_wait!("cache-upgrade-lock");
-                cache.upgrade()
-            };
-            let cache_accessor = (cache.as_mut() as &mut dyn std::any::Any).downcast_mut::<C>().expect(
-                "Downcast failed, this indicates a bug in how `Memoizers` adds new cache types.",
-            );
             cache_accessor.compute(key)
         }
     }

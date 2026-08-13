@@ -143,10 +143,7 @@ fn add_button_ui(
                 #[cfg(debug_assertions)]
                 {
                     ui.separator();
-                    ui.add_enabled(
-                        false,
-                        egui::Button::new(egui::RichText::new("Debug-only tools").italics()),
-                    );
+                    ui.debug_only_badge();
 
                     if ui.button("Print recording entity DBs").clicked() {
                         let recording_entity_dbs = ctx
@@ -306,6 +303,12 @@ fn server_section_ui(ctx: &AppContext<'_>, ui: &mut egui::Ui, server_data: &Serv
         is_internal,
         entries_data,
     } = server_data;
+
+    // We hide the section for the internal catalog, until we actually have data.
+    // This mirrors the behavior of "Local" in the recording panel.
+    if *is_internal && entries_data.iter_datasets().is_empty() {
+        return;
+    }
 
     let content = list_item::LabelContent::header(server_title(ctx, origin, *is_internal))
         .with_menu_button(&icons::MORE, "Actions", move |ui| {
@@ -507,7 +510,7 @@ fn dataset_entry_ui(ctx: &AppContext<'_>, ui: &mut egui::Ui, dataset_entry_data:
     };
 
     let item_response = item_response.on_hover_ui(|ui| {
-        ui.label(format!("Dataset: {name:?}"));
+        ui.label(format!("Dataset: {name}"));
     });
 
     let new_route = Route::from(re_uri::EntryUri::new(origin.clone(), *entry_id));

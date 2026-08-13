@@ -1189,11 +1189,7 @@ impl EyeState {
         bounding_boxes: &SceneBoundingBoxes,
         enable_gamepad_navigation: bool,
     ) -> Result<Eye, ViewPropertyQueryError> {
-        let eye_property = ViewProperty::from_archetype::<EyeControls3D>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query(),
-            ctx.view_id,
-        );
+        let eye_property = ViewProperty::from_archetype::<EyeControls3D>(ctx);
 
         let target_eye = self.control_and_sync_with_blueprint(
             ctx,

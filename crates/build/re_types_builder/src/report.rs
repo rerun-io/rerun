@@ -8,8 +8,14 @@ use re_quota_channel::send_crossbeam;
 ///
 /// The [`Report`] should not be sent to other threads.
 pub fn init() -> (Report, Reporter) {
-    let (errors_tx, errors_rx) = crossbeam::channel::bounded(1024);
-    let (warnings_tx, warnings_rx) = crossbeam::channel::bounded(1024);
+    // Nothing drains these until `Report::finalize`, at the very end of the run, so backpressure
+    // has nobody to push back on: a bounded channel is a deadlock waiting for a definition file
+    // bad enough to fill it. Codegen is short-lived and one message is one diagnostic, so the
+    // memory this can grow to is bounded by how wrong the definitions are.
+    #[expect(clippy::disallowed_methods)]
+    let (errors_tx, errors_rx) = crossbeam::channel::unbounded();
+    #[expect(clippy::disallowed_methods)]
+    let (warnings_tx, warnings_rx) = crossbeam::channel::unbounded();
     (
         Report::new(errors_rx, warnings_rx),
         Reporter::new(errors_tx, warnings_tx),
@@ -72,13 +78,12 @@ impl Reporter {
         send_crossbeam(&self.errors, text.to_string()).ok();
     }
 
-    // Tries to format a virtual fbs path such that it can be clicked in the CLI.
+    // Tries to format a virtual path such that it can be clicked in the CLI.
     fn format_virtpath(virtpath: &str) -> String {
         if let Ok(path) = Utf8Path::new(virtpath).canonicalize() {
             path.display().to_string()
         } else if let Ok(path) =
-            Utf8Path::new(&format!("crates/store/re_sdk_types/definitions/{virtpath}"))
-                .canonicalize()
+            Utf8Path::new(&format!("crates/build/re_type_definitions/{virtpath}")).canonicalize()
         {
             path.display().to_string()
         } else {
@@ -133,6 +138,22 @@ impl Report {
             println!("Some errors occurred.");
             std::process::exit(1);
         }
+    }
+
+    /// Drains and returns all errors accumulated so far.
+    ///
+    /// Production code goes through [`Self::finalize`], which exits the process.
+    #[cfg(test)]
+    pub fn drain_errors(&self) -> Vec<String> {
+        self.errors.try_iter().collect()
+    }
+
+    /// Drains and returns all warnings accumulated so far.
+    ///
+    /// Production code goes through [`Self::finalize`], which prints them.
+    #[cfg(test)]
+    pub fn drain_warnings(&self) -> Vec<String> {
+        self.warnings.try_iter().collect()
     }
 }
 

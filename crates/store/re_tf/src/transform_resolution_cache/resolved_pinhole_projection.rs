@@ -11,8 +11,7 @@ pub struct ResolvedPinholeProjection {
 
     /// View coordinates at this pinhole camera.
     ///
-    /// This is needed to orient 2D in 3D and 3D in 2D the right way around
-    /// (answering questions like which axis is distance to viewer increasing).
+    /// This orients embedded 2D data in 3D and projected 3D data in 2D.
     /// If no view coordinates were logged, this is set to [`re_sdk_types::archetypes::Pinhole::DEFAULT_CAMERA_XYZ`].
     pub view_coordinates: components::ViewCoordinates,
 }

@@ -12,7 +12,8 @@ fn main() -> eframe::Result {
     re_log::setup_logging();
 
     let main_thread_token = re_viewer::MainThreadToken::i_promise_i_am_on_the_main_thread();
-    let runtime = tokio::runtime::Runtime::new().expect("failed to create tokio runtime");
+    let runtime = tokio::runtime::Runtime::new() // NOLINT: the standalone development viewer owns this runtime
+        .expect("failed to create tokio runtime");
     let _tokio_guard = runtime.enter();
     let runtime_handle = re_viewer::AsyncRuntimeHandle::new_native(runtime.handle().clone());
     let startup_options = re_viewer::StartupOptions::default();

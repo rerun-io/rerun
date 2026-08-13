@@ -8,14 +8,13 @@ use std::str::FromStr as _;
 use ahash::HashMap;
 use arrow::array::RecordBatch;
 use itertools::Itertools as _;
+use re_async::AsyncRuntimeHandle;
 use re_log::ResultExt as _;
 use re_log_channel::{LogSender, RecordingOpenBehavior};
 use re_log_types::{TableId, TableMsg, TimelineName};
 use re_memory::AccountingAllocator;
 use re_sdk_types::blueprint::components::PlayState;
-use re_viewer_context::{
-    AsyncRuntimeHandle, SystemCommand, SystemCommandSender as _, TimeControlCommand, open_url,
-};
+use re_viewer_context::{SystemCommand, SystemCommandSender as _, TimeControlCommand, open_url};
 use serde::Deserialize;
 use wasm_bindgen::prelude::*;
 
@@ -772,9 +771,7 @@ fn create_app(
                 let Some(event) = serde_json::to_string(&event).ok_or_log_error() else {
                     return;
                 };
-                on_event
-                    .call1(&JsValue::from_str(&event))
-                    .ok_or_log_js_error();
+                on_event.call1(&JsValue::from_str(&event)).ok_or_log_error();
             }) as crate::event::ViewerEventCallback
         }),
 
@@ -817,7 +814,7 @@ fn create_app(
     );
 
     if enable_history {
-        install_popstate_listener(&mut app).ok_or_log_js_error();
+        install_popstate_listener(&mut app).ok_or_log_error();
     }
 
     if let Some(manifest_url) = manifest_url {

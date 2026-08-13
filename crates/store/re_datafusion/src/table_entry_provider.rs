@@ -1,4 +1,3 @@
-use std::any::Any;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
@@ -16,6 +15,7 @@ use datafusion::physical_plan::execution_plan::{Boundedness, EmissionType};
 use datafusion::physical_plan::{DisplayAs, DisplayFormatType, ExecutionPlan, PlanProperties};
 use futures::Stream;
 use parking_lot::Mutex;
+use re_async::AsyncRuntimeHandle;
 use re_log_types::{EntryId, EntryIdOrName};
 use re_protos::cloud::v1alpha1::ext::{EntryDetails, TableInsertMode};
 use re_protos::cloud::v1alpha1::{
@@ -102,8 +102,12 @@ impl TableEntryTableProvider {
     /// Enable per-scan analytics for this provider.
     ///
     /// Without this call no `cloud_scan_table` span will be emitted.
-    pub fn with_analytics(mut self, exporter: ConnectionAnalyticsExporter) -> Self {
-        self.analytics = Some(ConnectionAnalytics::new(exporter));
+    pub fn with_analytics(
+        mut self,
+        exporter: ConnectionAnalyticsExporter,
+        async_runtime: AsyncRuntimeHandle,
+    ) -> Self {
+        self.analytics = Some(ConnectionAnalytics::new(exporter, async_runtime));
         self
     }
 
@@ -146,7 +150,12 @@ impl TableEntryTableProvider {
                             filter: Some(EntryFilter {
                                 id: None,
                                 name: Some(table_name_copy),
+                                // Pass both `entry_kind` (deprecated) and `entry_kinds`
+                                // to be compatible with old Hub versions.
+                                // Drop `entry_kind` when no customer has a 0.14 deployment
+                                // or older of Rerun Hub.
                                 entry_kind: Some(EntryKind::Table as i32),
+                                entry_kinds: vec![EntryKind::Table as i32],
                             }),
                         })
                         .await
@@ -416,10 +425,6 @@ impl TableEntryWriterExec {
 impl ExecutionPlan for TableEntryWriterExec {
     fn name(&self) -> &'static str {
         "TableEntryWriterExec"
-    }
-
-    fn as_any(&self) -> &dyn Any {
-        self
     }
 
     fn properties(&self) -> &Arc<PlanProperties> {

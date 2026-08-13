@@ -1,6 +1,4 @@
 mod foxglove;
-mod helpers;
-mod image_helpers;
 mod ros2msg;
 
 pub use crate::FOXGLOVE_LENSES_IDENTIFIER;
@@ -20,7 +18,7 @@ pub fn mcap_lenses(
     let has_foxglove_lenses = if selected_decoders
         .contains(&DecoderIdentifier::from(crate::FOXGLOVE_LENSES_IDENTIFIER))
     {
-        foxglove::add_foxglove_lenses(&mut lenses, time_type)?;
+        lenses = foxglove::add_foxglove_lenses(lenses, time_type)?;
         true
     } else {
         false
@@ -28,7 +26,7 @@ pub fn mcap_lenses(
 
     let has_ros2msg_lenses =
         if selected_decoders.contains(&DecoderIdentifier::from(ROS2MSG_DECODER_IDENTIFIER)) {
-            ros2msg::add_ros2msg_lenses(&mut lenses, time_type)?;
+            lenses = ros2msg::add_ros2msg_lenses(lenses)?;
             true
         } else {
             false

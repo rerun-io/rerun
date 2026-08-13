@@ -1,6 +1,7 @@
 ---
 title: Entity Queries
 order: 400
+description: Control which entities appear in a given view
 ---
 
 Many views are made up of visualizations that include more than one

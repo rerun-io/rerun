@@ -46,7 +46,7 @@ def test_expected_warnings() -> None:
         "cannot reshape array of size 5 into shape (3,3))",
     )
     expect_warning(
-        lambda: rr.log("test_transform", rr.datatypes.Vec3D([1, 0, 0])),  # type: ignore[arg-type]
+        lambda: rr.log("test_transform", rr.encodings.Vec3D([1, 0, 0])),  # type: ignore[arg-type]
         "Expected an object implementing rerun.AsComponents or an iterable of rerun.DescribedComponentBatch, but got",
     )
     expect_warning(

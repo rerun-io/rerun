@@ -11,13 +11,13 @@ use re_entity_db::EntityPath;
 use re_log_types::StoreId;
 use re_sdk_types::archetypes;
 use re_sdk_types::components::AnnotationContext;
-use re_sdk_types::datatypes::{AnnotationInfo, ClassDescription, ClassId, KeypointId, Utf8};
+use re_sdk_types::encodings::{AnnotationInfo, ClassDescription, ClassId, KeypointId, Utf8};
 
 use super::auto_color_egui;
 
 const MISSING_ROW_ID: RowId = RowId::ZERO;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, re_byte_size::SizeBytes)]
 pub struct Annotations {
     row_id: RowId,
     class_map: HashMap<ClassId, CachedClassDescription>,
@@ -61,7 +61,7 @@ impl Annotations {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, re_byte_size::SizeBytes)]
 struct CachedClassDescription {
     class_description: ClassDescription,
     keypoint_map: HashMap<KeypointId, AnnotationInfo>,
@@ -100,7 +100,7 @@ impl ResolvedClassDescription<'_> {
     /// Merges class annotation info with keypoint annotation info (if existing respectively).
     pub fn annotation_info_with_keypoint(
         &self,
-        keypoint_id: re_sdk_types::datatypes::KeypointId,
+        keypoint_id: re_sdk_types::encodings::KeypointId,
     ) -> ResolvedAnnotationInfo {
         if let (Some(desc), Some(keypoint_map)) = (self.class_description, self.keypoint_map) {
             // Assuming that keypoint annotation is the rarer case, merging the entire annotation ahead of time
@@ -221,7 +221,7 @@ impl ResolvedAnnotationInfos {
 
 // ----------------------------------------------------------------------------
 
-#[derive(Default, Clone, Debug)]
+#[derive(Default, Clone, Debug, re_byte_size::SizeBytes)]
 pub struct AnnotationMap(pub BTreeMap<EntityPath, Arc<Annotations>>);
 
 impl AnnotationMap {

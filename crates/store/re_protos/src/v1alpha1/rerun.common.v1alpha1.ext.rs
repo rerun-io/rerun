@@ -590,10 +590,12 @@ impl From<re_log_types::TimelineName> for crate::common::v1alpha1::IndexColumnSe
     }
 }
 
-impl From<crate::common::v1alpha1::ApplicationId> for re_log_types::ApplicationId {
+impl TryFrom<crate::common::v1alpha1::ApplicationId> for re_log_types::ApplicationId {
+    type Error = re_log_types::InvalidApplicationIdError;
+
     #[inline]
-    fn from(value: crate::common::v1alpha1::ApplicationId) -> Self {
-        Self::from(value.id)
+    fn try_from(value: crate::common::v1alpha1::ApplicationId) -> Result<Self, Self::Error> {
+        Self::try_new(value.id)
     }
 }
 
@@ -655,26 +657,61 @@ impl StoreIdMissingApplicationIdError {
     }
 }
 
+/// Error converting a proto [`StoreId`](crate::common::v1alpha1::StoreId) into a
+/// [`re_log_types::StoreId`].
+#[derive(Debug, Clone, thiserror::Error)]
+pub enum StoreIdFromProtoError {
+    /// No application id was present.
+    ///
+    /// This is recoverable via 0.24 back compat: the id may arrive later in a `SetStoreInfo`,
+    /// or be carried in the deprecated `StoreInfo.application_id` field.
+    #[error("`StoreId` is missing an application id (kind: {}, recording_id: {})", .0.store_kind, .0.recording_id)]
+    MissingApplicationId(StoreIdMissingApplicationIdError),
+
+    /// An application id was present, but invalid (e.g. empty). This is not recoverable.
+    #[error("invalid application id: {0}")]
+    InvalidApplicationId(re_log_types::InvalidApplicationIdError),
+}
+
+impl From<StoreIdFromProtoError> for TypeConversionError {
+    fn from(value: StoreIdFromProtoError) -> Self {
+        match value {
+            StoreIdFromProtoError::MissingApplicationId(err) => {
+                err.into_type_conversion_error("`StoreId` is missing an application id")
+            }
+            StoreIdFromProtoError::InvalidApplicationId(err) => err.into(),
+        }
+    }
+}
+
 /// Convert a store id
 impl TryFrom<crate::common::v1alpha1::StoreId> for re_log_types::StoreId {
-    type Error = StoreIdMissingApplicationIdError;
+    type Error = StoreIdFromProtoError;
 
     #[inline]
     fn try_from(value: crate::common::v1alpha1::StoreId) -> Result<Self, Self::Error> {
         let store_kind = value.kind().into();
         let recording_id = RecordingId::from(value.recording_id);
 
-        //TODO(#10730): switch to `TypeConversionError` when cleaning up 0.24 back compat
+        //TODO(#10730): drop the recoverable `MissingApplicationId` path when removing 0.24 back compat
+        // An absent application id (`None`) is recoverable (0.24 back compat); a *present* but
+        // invalid one (e.g. empty) is a hard error — we don't second-guess `ApplicationId::try_new`.
         match value.application_id {
-            None => Err(StoreIdMissingApplicationIdError {
-                store_kind,
-                recording_id,
-            }),
-            Some(application_id) => Ok(re_log_types::StoreId::new(
-                store_kind,
-                application_id,
-                recording_id,
+            None => Err(StoreIdFromProtoError::MissingApplicationId(
+                StoreIdMissingApplicationIdError {
+                    store_kind,
+                    recording_id,
+                },
             )),
+            Some(application_id) => {
+                let application_id = re_log_types::ApplicationId::try_new(application_id.id)
+                    .map_err(StoreIdFromProtoError::InvalidApplicationId)?;
+                Ok(re_log_types::StoreId::new(
+                    store_kind,
+                    application_id,
+                    recording_id,
+                ))
+            }
         }
     }
 }
@@ -1259,7 +1296,7 @@ mod tests {
         let application_id = re_log_types::ApplicationId::from("test");
         let proto_application_id: crate::common::v1alpha1::ApplicationId =
             application_id.clone().into();
-        let application_id2: re_log_types::ApplicationId = proto_application_id.into();
+        let application_id2: re_log_types::ApplicationId = proto_application_id.try_into().unwrap();
         assert_eq!(application_id, application_id2);
     }
 

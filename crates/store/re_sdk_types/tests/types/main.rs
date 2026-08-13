@@ -1,6 +1,6 @@
 //! Tests mainly, but not exclusively, of [`re_sdk_types::archetypes`].
 
-// Tests of archetypes and their related components and datatypes
+// Tests of archetypes and their related components and encodings
 
 mod annotation_context;
 mod arrows3d;
@@ -10,6 +10,8 @@ mod box3d;
 mod clear;
 mod depth_image;
 mod dynamic_archetype;
+#[cfg(feature = "testing")]
+mod fixed_size_enum_array;
 mod image;
 mod line_strips2d;
 mod line_strips3d;
@@ -20,13 +22,14 @@ mod segmentation_image;
 mod tensor;
 mod text_document;
 mod transform3d;
+mod union_tags;
 mod view_coordinates;
 mod voxel_grid_map;
 
 // Tests of other things
 
-#[cfg(feature = "testing")]
-mod fuzzy;
 #[cfg(feature = "mint")]
 mod mint_conversions;
+#[cfg(feature = "testing")]
+mod type_zoo;
 mod validity;

@@ -6,11 +6,68 @@ use pyo3::prelude::*;
 use re_chunk::{Chunk, EntityPath};
 use re_log_types::{TimeType, TimelineName};
 use re_mp4_reader::{Mode, Mp4Config};
+use re_sdk_types::components::VideoCodec;
+use re_video::{HwAccel, Mp4TranscodeOptions};
 
 use super::error::ChunkPipelineError;
 use super::py_stream::PyLazyChunkStreamInternal;
 use super::stream::LazyChunkStream;
 use super::{ChunkStream, ChunkStreamFactory};
+
+/// Internal transcode-options binding, wrapping [`Mp4TranscodeOptions`].
+///
+/// Constructed by the Python `Mp4TranscodeOptions` wrapper, which owns the
+/// user-facing enum and validation; this just carries already-validated values so
+/// [`PyMp4ReaderInternal`] takes a single options object rather than growing a
+/// keyword argument per transcode knob.
+#[pyclass(
+    frozen,
+    name = "Mp4TranscodeOptionsInternal",
+    module = "rerun_bindings.rerun_bindings"
+)]
+pub struct PyMp4TranscodeOptions {
+    inner: Mp4TranscodeOptions,
+}
+
+#[pymethods]
+impl PyMp4TranscodeOptions {
+    #[new]
+    #[pyo3(
+        signature = (gop_size = None, output_codec = None, try_gpu = false, ffmpeg_override = None),
+        text_signature = "(self, gop_size=None, output_codec=None, try_gpu=False, ffmpeg_override=None)"
+    )]
+    fn new(
+        gop_size: Option<u32>,
+        output_codec: Option<u32>,
+        try_gpu: bool,
+        ffmpeg_override: Option<PathBuf>,
+    ) -> PyResult<Self> {
+        let mut inner = Mp4TranscodeOptions::default().with_hardware_acceleration(if try_gpu {
+            HwAccel::Auto
+        } else {
+            HwAccel::Off
+        });
+        if let Some(gop_size) = gop_size {
+            inner = inner.with_gop_size(gop_size);
+        }
+        if let Some(fourcc) = output_codec {
+            // `fourcc` is a `rerun.components.VideoCodec` enum value from Python;
+            // reuse the canonical fourcc→codec conversion rather than re-mapping here.
+            let codec = VideoCodec::try_from_u32(fourcc).ok_or_else(|| {
+                PyValueError::new_err(format!("Unknown video codec fourcc: {fourcc:#010x}"))
+            })?;
+            inner = inner.with_output_codec(codec.into());
+        }
+        if let Some(ffmpeg_override) = ffmpeg_override {
+            inner = inner.with_ffmpeg_override(ffmpeg_override);
+        }
+        Ok(Self { inner })
+    }
+
+    fn __repr__(&self) -> String {
+        format!("Mp4TranscodeOptionsInternal({:?})", self.inner)
+    }
+}
 
 /// Internal MP4 reader binding.
 #[pyclass(
@@ -34,10 +91,10 @@ impl PyMp4ReaderInternal {
             chunk_by_gop = true,
             timeline_name = "video",
             timeline_type = "duration",
-            ffmpeg_override = None,
+            transcode = None,
             entity_path = None,
         ),
-        text_signature = "(self, path, mode='stream', chunk_by_gop=True, timeline_name='video', timeline_type='duration', ffmpeg_override=None, entity_path=None)"
+        text_signature = "(self, path, mode='stream', chunk_by_gop=True, timeline_name='video', timeline_type='duration', transcode=None, entity_path=None)"
     )]
     fn new(
         path: PathBuf,
@@ -45,7 +102,7 @@ impl PyMp4ReaderInternal {
         chunk_by_gop: bool,
         timeline_name: &str,
         timeline_type: &str,
-        ffmpeg_override: Option<PathBuf>,
+        transcode: Option<PyRef<'_, PyMp4TranscodeOptions>>,
         entity_path: Option<String>,
     ) -> PyResult<Self> {
         if !path.exists() {
@@ -72,11 +129,16 @@ impl PyMp4ReaderInternal {
                         "`chunk_by_gop=False` is only valid with `mode=\"stream\"`",
                     ));
                 }
+                // `transcode` is validated and rejected for asset mode on the Python
+                // side, so it's simply ignored here.
                 Mode::Asset {
                     timepoint: re_chunk::TimePoint::default(),
                 }
             }
-            "stream" => Mode::Stream { chunk_by_gop },
+            "stream" => Mode::Stream {
+                chunk_by_gop,
+                transcode: transcode.map(|t| t.inner.clone()).unwrap_or_default(),
+            },
             other => {
                 return Err(PyValueError::new_err(format!(
                     "Invalid mode: {other:?}. Expected \"asset\" or \"stream\""
@@ -89,7 +151,6 @@ impl PyMp4ReaderInternal {
             timeline_name: TimelineName::try_new(timeline_name)
                 .map_err(|err| PyValueError::new_err(err.to_string()))?,
             timeline_type,
-            ffmpeg_override,
         };
 
         let entity_path = match entity_path {

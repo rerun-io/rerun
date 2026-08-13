@@ -1,6 +1,6 @@
 use super::Boxes3D;
 use crate::components::{HalfSize3D, Translation3D};
-use crate::datatypes::Vec3D;
+use crate::encodings::Vec3D;
 
 impl Boxes3D {
     /// Creates new [`Boxes3D`] with [`Self::half_sizes`] centered around the local origin.

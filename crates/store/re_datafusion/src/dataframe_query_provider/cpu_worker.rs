@@ -305,10 +305,9 @@ impl CurrentStores {
         index_values: &IndexValuesMap,
         pipeline_budget: Arc<PipelineBudget>,
     ) -> Self {
-        let store_id = StoreId::random(
-            StoreKind::Recording,
-            ApplicationId::from(segment_id.as_ref()),
-        );
+        // The application id of this throwaway store is only used for debugging.
+        let application_id = ApplicationId::new_or_unknown(segment_id.as_ref());
+        let store_id = StoreId::random(StoreKind::Recording, application_id);
         let config = ChunkStoreConfig::ALL_DISABLED; // Don't spend CPU time splitting and joining chunks. Trust the input.
         let store = ChunkStore::new_handle(store_id.clone(), config);
         let query_cache = QueryCache::new_handle(store.clone());

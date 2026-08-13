@@ -3,4 +3,4 @@
 .gitattributes linguist-generated=true
 archetypes.hpp linguist-generated=true
 components.hpp linguist-generated=true
-datatypes.hpp linguist-generated=true
+encodings.hpp linguist-generated=true

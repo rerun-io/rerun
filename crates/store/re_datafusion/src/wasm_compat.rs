@@ -25,34 +25,13 @@ where
     F: std::future::Future<Output = ApiResult<T>> + 'static,
     T: Send + 'static,
 {
-    use futures::{FutureExt as _, pin_mut};
-    use futures_util::future::{Either, select};
+    let task = re_async::spawn_local_with_result(f);
 
-    let (mut tx, rx) = futures::channel::oneshot::channel();
-
-    wasm_bindgen_futures::spawn_local(async {
-        let cancellation = tx.cancellation();
-
-        // needed by `select`
-        pin_mut!(f, cancellation);
-
-        match select(f, cancellation).await {
-            Either::Left((result, _)) => {
-                tx.send(result).ok();
-            }
-
-            Either::Right(_) => {
-                // If cancellation is triggered, it means that the future holding on `rx` was
-                // dropped. So we don't need to do anything.
-            }
-        }
-    });
-
-    rx.map(|result| {
-        result.unwrap_or_else(|_cancelled| {
+    async move {
+        task.await.unwrap_or_else(|_cancelled| {
             Err(re_redap_client::ApiError::internal(
                 "wasm task cancelled unexpectedly",
             ))
         })
-    })
+    }
 }

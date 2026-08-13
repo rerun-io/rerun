@@ -1,5 +1,5 @@
 use super::LineStrip2D;
-use crate::datatypes::Vec2D;
+use crate::encodings::Vec2D;
 
 // ---
 

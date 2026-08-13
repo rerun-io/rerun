@@ -12,7 +12,7 @@ annotation context. We use the *first* annotation context we find in the
 path-hierarchy when searching up through the ancestors of a given entity
 path.
 
-See also [`datatypes.ClassDescription`](https://rerun.io/docs/reference/types/datatypes/class_description).
+See also [`encodings.ClassDescription`](https://rerun.io/docs/reference/types/encodings/class_description?speculative-link).
 
 ## Fields
 ### Required

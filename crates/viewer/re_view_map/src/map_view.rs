@@ -10,7 +10,6 @@ use re_sdk_types::blueprint::archetypes::{MapBackground, MapZoom};
 use re_sdk_types::blueprint::components::{MapProvider, ZoomLevel};
 use re_sdk_types::{View as _, ViewClassIdentifier};
 use re_ui::{Help, IconText, icons, list_item};
-use re_view::AnnotationSceneContext;
 use re_viewer_context::{
     DataResultInteractionAddress, IdentifiedViewSystem as _, Item, StoreViewContext, SystemCommand,
     SystemCommandSender as _, SystemExecutionOutput, UiLayout, ViewClass, ViewClassExt as _,
@@ -155,8 +154,7 @@ impl ViewClass for MapView {
         system_registry.register_visualizer::<GeoPointsVisualizer>()?;
         system_registry.register_visualizer::<GeoLineStringsVisualizer>()?;
 
-        system_registry.register_context_system::<AnnotationSceneContext>()?;
-        re_viewer_context::AnnotationContextStoreSubscriber::subscription_handle(); // Needed by `AnnotationSceneContext`
+        re_viewer_context::AnnotationContextStoreSubscriber::subscription_handle();
 
         Ok(())
     }
@@ -230,19 +228,11 @@ impl ViewClass for MapView {
         state: &mut dyn ViewState,
         query: &ViewQuery<'_>,
         system_output: SystemExecutionOutput,
-    ) -> Result<(), ViewSystemExecutionError> {
+    ) -> Result<re_viewer_context::ViewClassUiOutput, ViewSystemExecutionError> {
         let state = state.downcast_mut::<MapViewState>()?;
-        let map_background = ViewProperty::from_archetype::<MapBackground>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query,
-            query.view_id,
-        );
-
-        let map_zoom = ViewProperty::from_archetype::<MapZoom>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query,
-            query.view_id,
-        );
+        let view_ctx = self.view_context(ctx, query.view_id, state, query.space_origin);
+        let map_background = ViewProperty::from_archetype::<MapBackground>(&view_ctx);
+        let map_zoom = ViewProperty::from_archetype::<MapZoom>(&view_ctx);
 
         let geo_points_visualizer = system_output
             .visualizer_data_or_default::<GeoPointsOutput>(GeoPointsVisualizer::identifier())?;
@@ -255,7 +245,6 @@ impl ViewClass for MapView {
         // Map Provider
         //
 
-        let view_ctx = self.view_context(ctx, query.view_id, state, query.space_origin);
         let map_provider = map_background
             .component_or_fallback(&view_ctx, MapBackground::descriptor_provider().component)?;
         if state.selected_provider != map_provider {
@@ -338,7 +327,7 @@ impl ViewClass for MapView {
             map_zoom.save_blueprint_component(
                 ctx,
                 &MapZoom::descriptor_zoom(),
-                &ZoomLevel(re_sdk_types::datatypes::Float64(map_memory.zoom())),
+                &ZoomLevel(re_sdk_types::encodings::Float64(map_memory.zoom())),
             );
         }
 
@@ -389,7 +378,7 @@ impl ViewClass for MapView {
 
         map_overlays::acknowledgement_overlay(ui, &map_rect, &attribution);
 
-        Ok(())
+        Ok(Default::default())
     }
 }
 
@@ -554,16 +543,15 @@ fn handle_ui_interactions(
 ///
 /// On native targets, it configures a cache directory.
 fn http_options(_ctx: &ViewerContext<'_>) -> walkers::HttpOptions {
-    #[cfg(not(target_arch = "wasm32"))]
-    let options = walkers::HttpOptions {
-        cache: _ctx.app_options().cache_subdirectory("map_view"),
-        ..Default::default()
-    };
-
-    #[cfg(target_arch = "wasm32")]
-    let options = Default::default();
-
-    options
+    cfg_select! {
+        target_arch = "wasm32" => { Default::default() }
+        _ => {
+            walkers::HttpOptions {
+                cache: _ctx.app_options().cache_subdirectory("map_view"),
+                ..Default::default()
+            }
+        }
+    }
 }
 
 fn get_tile_manager(

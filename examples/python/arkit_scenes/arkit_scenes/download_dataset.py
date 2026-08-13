@@ -108,10 +108,10 @@ def download_file(url: str, file_name: str, dst: Path) -> bool:
     filepath = os.path.join(dst, file_name)
 
     if not os.path.isfile(filepath):
-        command = f"curl {url} -o {file_name}.tmp --fail"
+        command = ["curl", url, "-o", f"{file_name}.tmp", "--fail"]
         print(f"Downloading file {filepath}")
         try:
-            subprocess.check_call(command, shell=True, cwd=dst)
+            subprocess.check_call(command, cwd=dst)
         except Exception as error:
             error_msg = f"Error downloading {url}, error: {error}"
             print(error_msg)

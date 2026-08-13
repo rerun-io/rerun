@@ -1,4 +1,4 @@
-use crate::{ButtonVisuals, DesignTokens, UiExt as _};
+use crate::{ButtonVisuals, DesignTokens, UiExt as _, icons};
 use eframe::emath::Vec2;
 use egui::style::WidgetVisuals;
 use egui::{
@@ -22,14 +22,20 @@ pub enum Size {
     Normal,
     Small,
     Tiny,
+    Custom { height: f32 },
 }
 
 impl Size {
+    pub const fn custom(height: f32) -> Self {
+        Self::Custom { height }
+    }
+
     pub fn height(&self) -> f32 {
         match self {
             Self::Normal => 34.0,
             Self::Small => 26.0,
             Self::Tiny => 20.0,
+            Self::Custom { height } => *height,
         }
     }
 
@@ -39,21 +45,29 @@ impl Size {
     }
 
     pub fn padding(&self) -> Vec2 {
+        let padding_normal = 8.0;
+        let padding_small = 4.0;
         let x = match self {
-            Self::Normal | Self::Small => 8.0,
-            Self::Tiny => 4.0,
+            Self::Normal | Self::Small => padding_normal,
+            Self::Tiny => padding_small,
+            Self::Custom { height } => {
+                if *height >= Self::Small.height() {
+                    padding_normal
+                } else {
+                    padding_small
+                }
+            }
         };
         egui::vec2(x, 0.0)
     }
 
     pub fn apply(&self, style: &mut Style, icon: bool) {
         style.spacing.button_padding = if icon { Vec2::ZERO } else { self.padding() };
-        let corner_radius = match self {
-            Self::Normal => 6,
-            Self::Small | Self::Tiny => 3,
-        };
+        // Default interact size is larger than tiny button size, so override it.
+        // We are always at least as wide as we are high:
+        style.spacing.interact_size = self.icon_button_size();
         all_visuals(style, |vis| {
-            vis.corner_radius = CornerRadius::same(corner_radius);
+            vis.corner_radius = CornerRadius::same(6);
         });
     }
 }
@@ -106,11 +120,23 @@ pub struct ReButton<'a> {
 
     /// If set, the button will be as wide as it is high.
     pub icon: bool,
+
+    /// Render the button with its hovered fill even when it isn't hovered.
+    ///
+    /// Useful to show that the button is engaged, e.g. while its menu popup is open.
+    pub highlighted: bool,
 }
 
 impl<'a> ReButton<'a> {
     pub fn new(atoms: impl IntoAtoms<'a>) -> Self {
         Self::from_button(Button::new(atoms))
+    }
+
+    pub fn dropdown(atoms: impl IntoAtoms<'a>) -> Self
+    where
+        'a: 'static,
+    {
+        Self::from_button(Button::new((atoms, icons::DROPDOWN_ARROW)))
     }
 
     pub fn icon(icon: crate::icons::Icon) -> ReButton<'static> {
@@ -125,6 +151,7 @@ impl<'a> ReButton<'a> {
             size: Size::Normal,
             variant: Variant::Ghost,
             icon: false,
+            highlighted: false,
         }
     }
 
@@ -140,6 +167,11 @@ impl<'a> ReButton<'a> {
 
     pub fn secondary(mut self) -> Self {
         self.variant = Variant::Secondary;
+        self
+    }
+
+    pub fn selected(mut self, selected: bool) -> Self {
+        self.inner = self.inner.selected(selected);
         self
     }
 
@@ -180,6 +212,14 @@ impl<'a> ReButton<'a> {
 
     pub fn size(mut self, size: Size) -> Self {
         self.size = size;
+        self
+    }
+
+    /// Render the button with its hovered fill even when it isn't hovered.
+    ///
+    /// Useful to show that the button is engaged, e.g. while its menu popup is open.
+    pub fn highlighted(mut self, highlighted: bool) -> Self {
+        self.highlighted = highlighted;
         self
     }
 
@@ -278,15 +318,41 @@ impl<'a> ReButton<'a> {
     }
 
     pub fn atom_ui(self, ui: &mut egui::Ui) -> AtomLayoutResponse {
+        let Self {
+            variant,
+            size,
+            inner,
+            icon,
+            highlighted,
+        } = self;
+
+        Self::wrap_widget(ui, variant, size, icon, |ui| {
+            // We can override here without reverting, since it will be reverted by wrap_widget
+            let style = ui.style_mut();
+            if highlighted {
+                // Make the resting button look hovered by borrowing the hovered visuals.
+                style.visuals.widgets.inactive = style.visuals.widgets.hovered;
+            }
+            inner.min_size(self.size.icon_button_size()).atom_ui(ui)
+        })
+    }
+
+    /// Helper to get a non-button egui widget in style of a `ReButton` (e.g. `DragValue` or `ComboBox`).
+    ///
+    /// `icon` ensures the button will be square. `highlighted` forces hover style.
+    pub fn wrap_widget<R>(
+        ui: &mut egui::Ui,
+        variant: Variant,
+        size: Size,
+        icon: bool,
+        inner: impl FnOnce(&mut egui::Ui) -> R,
+    ) -> R {
         let previous_style = ui.style().clone();
         let tokens = ui.tokens();
         let style = ui.style_mut();
-        self.size.apply(style, self.icon);
-        self.variant.apply(style, tokens);
-        let response = self
-            .inner
-            .min_size(self.size.icon_button_size())
-            .atom_ui(ui);
+        size.apply(style, icon);
+        variant.apply(style, tokens);
+        let response = inner(ui);
         ui.set_style(previous_style);
         response
     }

@@ -1,5 +1,6 @@
 <!--[metadata]
 title = "ARKit scenes"
+description = "Visualize the ARKitScenes dataset: color images, depth, the reconstructed mesh, and labeled 3D boxes around indoor furniture."
 tags = ["2D", "3D", "Depth", "Mesh", "Object detection", "Pinhole camera", "Blueprint"]
 thumbnail = "https://static.rerun.io/arkit-scenes/6d920eaa42fb86cfd264d47180ecbecbb6dd3e09/480w.png"
 thumbnail_dimensions = [480, 480]

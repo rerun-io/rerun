@@ -101,6 +101,12 @@ pub type SampleIndex = usize;
 /// An index into [`VideoDataDescription::keyframe_indices`], not stable between mutations.
 pub type KeyframeIndex = usize;
 
+/// A frame's index in presentation order.
+///
+/// This is intentionally `u32` because we do not expect to handle videos with more than
+/// [`u32::MAX`] frames.
+pub type FrameNumber = u32;
+
 /// Distinguishes static videos from potentially ongoing video streams.
 #[derive(Clone, Debug)]
 pub enum VideoDeliveryMethod {
@@ -747,7 +753,7 @@ impl VideoDataDescription {
             let Some(duration) = sample.duration else {
                 continue;
             };
-            total_bytes += span.len as u64;
+            total_bytes += span.len;
             total_secs += duration.into_secs(timescale);
         }
 
@@ -1090,7 +1096,7 @@ impl SampleMetadataState {
 pub enum VideoSource {
     /// The bytes occupy this byte range within a single source buffer the user
     /// already knows about. Used for e.g. mp4 assets.
-    Span(#[size_bytes(ignore)] /* pod without size bytes impl */ Span<u32>),
+    Span(#[size_bytes(ignore)] /* pod without size bytes impl */ Span<u64>),
 
     /// An identifier pair the host resolves to the sample's bytes.
     ///
@@ -1155,7 +1161,7 @@ pub struct SampleMetadata {
     /// This is the index of samples ordered by [`Self::presentation_timestamp`].
     ///
     /// Do **not** ever use this for indexing into the array of samples.
-    pub frame_nr: u32,
+    pub frame_nr: FrameNumber,
 
     /// Time at which this sample appears in the decoded bitstream, in time units.
     ///

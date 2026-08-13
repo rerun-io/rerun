@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from typing import Any, overload
 
-from rerun.datatypes.visible_time_range import VisibleTimeRange
+from rerun.encodings.visible_time_range import VisibleTimeRange
 
-from ... import datatypes
+from ... import encodings
 from ...error_utils import _send_warning_or_raise, catch_and_log_exceptions
 
 
@@ -12,33 +12,33 @@ class VisibleTimeRangesExt:
     """Extension for [VisibleTimeRanges][rerun.blueprint.archetypes.VisibleTimeRanges]."""
 
     @overload
-    def __init__(self: Any, ranges: datatypes.VisibleTimeRangeArrayLike) -> None: ...
+    def __init__(self: Any, ranges: encodings.VisibleTimeRangeArrayLike) -> None: ...
 
     @overload
     def __init__(
         self: Any,
         *,
-        timeline: datatypes.Utf8Like,
-        range: datatypes.TimeRangeLike,
+        timeline: encodings.Utf8Like,
+        range: encodings.TimeRangeLike,
     ) -> None: ...
 
     @overload
     def __init__(
         self: Any,
         *,
-        timeline: datatypes.Utf8Like,
-        start: datatypes.TimeRangeBoundary,
-        end: datatypes.TimeRangeBoundary,
+        timeline: encodings.Utf8Like,
+        start: encodings.TimeRangeBoundary,
+        end: encodings.TimeRangeBoundary,
     ) -> None: ...
 
     def __init__(
         self: Any,
-        ranges: datatypes.VisibleTimeRangeArrayLike | None = None,
+        ranges: encodings.VisibleTimeRangeArrayLike | None = None,
         *,
-        timeline: datatypes.Utf8Like | None = None,
-        range: datatypes.TimeRangeLike | None = None,
-        start: datatypes.TimeRangeBoundary | None = None,
-        end: datatypes.TimeRangeBoundary | None = None,
+        timeline: encodings.Utf8Like | None = None,
+        range: encodings.TimeRangeLike | None = None,
+        start: encodings.TimeRangeBoundary | None = None,
+        end: encodings.TimeRangeBoundary | None = None,
     ) -> None:
         """
         Create a new instance of the VisibleTimeRanges archetype.
@@ -75,7 +75,7 @@ class VisibleTimeRangesExt:
             elif ranges is None:
                 raise ValueError("Either `ranges` or `timeline` must be set.")
 
-            if isinstance(ranges, datatypes.VisibleTimeRange):
+            if isinstance(ranges, encodings.VisibleTimeRange):
                 ranges = [ranges]
 
             timelines = set()

@@ -120,7 +120,7 @@ impl ViewContents {
         view_class_identifier: ViewClassIdentifier,
         subst_env: &EntityPathSubs,
     ) -> Self {
-        let property = ViewProperty::from_archetype::<blueprint_archetypes::ViewContents>(
+        let property = ViewProperty::from_archetype_with_db::<blueprint_archetypes::ViewContents>(
             blueprint_db,
             query,
             view_id,
@@ -239,9 +239,8 @@ impl ViewContents {
 
     /// Save the entity path filter.
     fn save_entity_path_filter_to_blueprint(&self, ctx: &ViewerContext<'_>) {
-        ViewProperty::from_archetype::<blueprint_archetypes::ViewContents>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query,
+        ViewProperty::from_archetype_for_view::<blueprint_archetypes::ViewContents>(
+            ctx,
             self.view_id,
         )
         .save_blueprint_component(
@@ -287,12 +286,14 @@ impl ViewContents {
             re_tracing::profile_scope!("visualizable_entities_per_visualizer_in_view");
 
             let mut visualizable_entities_per_visualizer_in_view = IntMap::default();
+            #[expect(clippy::iter_over_hash_type)] // Filling another hash map.
             for (visualizer, visualizable_entities) in visualizable_entities_per_visualizer.iter() {
                 // Skip over visualizers that aren't used in this view.
                 if !visualizer_collection.contains_visualizer_type(*visualizer) {
                     continue;
                 }
 
+                #[expect(clippy::iter_over_hash_type)] // Filling another hash map.
                 for (entity_path, reason) in visualizable_entities.iter() {
                     visualizable_entities_per_visualizer_in_view
                         .entry(entity_path.hash())
@@ -328,6 +329,7 @@ impl ViewContents {
 
             // Figure out which components are relevant.
             let mut components_for_defaults = IntSet::default();
+            #[expect(clippy::iter_over_hash_type)] // Set union is order-independent.
             for (visualizer, entities) in visualizable_entities_per_visualizer.iter() {
                 if entities.is_empty() {
                     continue;
@@ -572,7 +574,7 @@ impl DataQueryPropertyResolver<'_> {
 
                         let (_high, low) = uuid.as_u64_pair();
                         let id = VisualizerInstructionId::from(
-                            re_sdk_types::datatypes::Uuid::from(uuid),
+                            re_sdk_types::encodings::Uuid::from(uuid),
                         );
                         known_ids.insert(low, id);
                     }

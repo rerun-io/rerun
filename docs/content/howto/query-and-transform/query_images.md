@@ -1,6 +1,7 @@
 ---
 title: Query images
 order: 60
+description: Query and decode image frames from a catalog
 ---
 
 Images are incredibly useful, however there are many ways to store and manipulate them.

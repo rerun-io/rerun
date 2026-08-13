@@ -19,7 +19,7 @@ re_sdk.workspace = true
 re_sdk_types.workspace = true
 re_server = { workspace = true, features = ["lance"] }
 re_uri.workspace = true
-re_viewer = { workspace = true, features = ["testing", "map_view", "internal_catalog"] }
+re_viewer = { workspace = true, features = ["testing", "map_view"] }
 re_viewer_context.workspace = true
 re_viewport_blueprint.workspace = true
 
@@ -34,8 +34,10 @@ tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
 [dev-dependencies]
 re_dataframe_ui.workspace = true
 re_datafusion.workspace = true
+re_log_channel.workspace = true
 re_log_types.workspace = true
 re_test_context.workspace = true
+re_ui = { workspace = true, features = ["testing"] }
 re_view_bar_chart.workspace = true
 re_view_tensor.workspace = true
 re_view_text_document.workspace = true

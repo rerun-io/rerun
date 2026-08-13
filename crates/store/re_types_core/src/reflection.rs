@@ -199,30 +199,18 @@ pub fn generic_placeholder_for_datatype(
 
         DataType::FixedSizeList(field, size) => {
             let size = *size as usize;
-            let value_data: ArrayRef = {
-                match field.data_type() {
-                    DataType::Boolean => Arc::new(array::BooleanArray::from(vec![false; size])),
-
-                    DataType::Int8 => Arc::new(array::Int8Array::from(vec![0; size])),
-                    DataType::Int16 => Arc::new(array::Int16Array::from(vec![0; size])),
-                    DataType::Int32 => Arc::new(array::Int32Array::from(vec![0; size])),
-                    DataType::Int64 => Arc::new(array::Int64Array::from(vec![0; size])),
-
-                    DataType::UInt8 => Arc::new(array::UInt8Array::from(vec![0; size])),
-                    DataType::UInt16 => Arc::new(array::UInt16Array::from(vec![0; size])),
-                    DataType::UInt32 => Arc::new(array::UInt32Array::from(vec![0; size])),
-                    DataType::UInt64 => Arc::new(array::UInt64Array::from(vec![0; size])),
-
-                    DataType::Float16 => {
-                        Arc::new(array::Float16Array::from(vec![half::f16::ZERO; size]))
-                    }
-                    DataType::Float32 => Arc::new(array::Float32Array::from(vec![0.0; size])),
-                    DataType::Float64 => Arc::new(array::Float64Array::from(vec![0.0; size])),
-
-                    _ => {
-                        // TODO(emilk)
-                        re_log::debug_once!(
-                            "Unimplemented: placeholder value for FixedSizeListArray of {:?}",
+            // Build the `size` inner values by repeating a single placeholder element.
+            // Recursing into `field.data_type()` handles any inner type, including nested
+            // fixed-size lists (e.g. `FixedSizeList<FixedSizeList<Float16, 3>, 15>`).
+            let value_data: ArrayRef = if size == 0 {
+                array::new_empty_array(field.data_type())
+            } else {
+                let element = generic_placeholder_for_datatype(field.data_type());
+                match re_arrow_util::concat_arrays(&vec![element.as_ref(); size]) {
+                    Ok(value_data) => value_data,
+                    Err(err) => {
+                        re_log::warn_once!(
+                            "Failed to build placeholder for FixedSizeListArray of {}: {err}",
                             field.data_type()
                         );
                         return array::new_empty_array(datatype);

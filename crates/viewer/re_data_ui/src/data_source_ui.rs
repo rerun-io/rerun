@@ -25,12 +25,6 @@ impl crate::AppUi for re_log_channel::LogSource {
             .entity_dbs()
             .filter(|db| db.data_source.as_ref() == Some(self))
         {
-            let is_clone = other.cloned_from().is_some();
-            if is_clone {
-                // Clones are not really from this data source (e.g. a cloned blueprint
-                continue;
-            }
-
             match other.store_kind() {
                 StoreKind::Recording => {
                     recordings.push(other);

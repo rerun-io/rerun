@@ -1,6 +1,7 @@
 ---
 title: Train
 order: 400
+description: Feed catalog recordings into training pipelines via export or PyTorch
 ---
 
 A Rerun [catalog](query-and-transform/catalog-object-model.md) can feed training pipelines two ways: export recordings to a standard format, or stream them directly into a PyTorch `DataLoader`.

@@ -895,6 +895,7 @@ impl ViewportBlueprint {
         }
 
         // Now save any contents that are a container back to the blueprint
+        #[expect(clippy::iter_over_hash_type)] // Each container saves to its own unique path.
         for (tile_id, contents) in &contents_from_tile_id {
             if let Contents::Container(container_id) = contents
                 && let Some(egui_tiles::Tile::Container(container)) = self.tree.tiles.get(*tile_id)
@@ -976,6 +977,7 @@ pub fn tree_simplification_options() -> egui_tiles::SimplificationOptions {
         prune_single_child_tabs: false,
         prune_single_child_containers: false,
         join_nested_linear_containers: true,
+        flatten_tabs_in_tabs: false,
     }
 }
 

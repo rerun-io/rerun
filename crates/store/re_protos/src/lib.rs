@@ -142,8 +142,14 @@ pub enum TypeConversionError {
         type_name: &'static str,
     },
 
+    #[error("invalid application id: {0}")]
+    InvalidApplicationId(#[from] re_log_types::InvalidApplicationIdError),
+
     #[error("invalid entry name: {0}")]
     InvalidEntryName(#[from] InvalidEntryNameError),
+
+    #[error("invalid layer name: {0}")]
+    InvalidLayerName(#[from] re_types_core::InvalidLayerNameError),
 
     #[error("invalid timeline name: {0}")]
     InvalidTimelineName(#[from] re_types_core::InvalidTimelineNameError),

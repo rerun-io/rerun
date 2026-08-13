@@ -2,8 +2,8 @@ use std::iter::repeat_n;
 use std::sync::Arc;
 
 use arrow::array::{
-    Array, ArrayData, ArrayRef, ArrowPrimitiveType, BooleanArray, FixedSizeListArray, ListArray,
-    PrimitiveArray, UInt32Array, new_empty_array,
+    Array, ArrayData, ArrayRef, ArrowPrimitiveType, BooleanArray, FixedSizeListArray,
+    GenericListArray, ListArray, OffsetSizeTrait, PrimitiveArray, UInt32Array, new_empty_array,
 };
 use arrow::buffer::{Buffer, NullBuffer, OffsetBuffer};
 use arrow::datatypes::{DataType, Field, UInt8Type};
@@ -158,17 +158,24 @@ pub fn sparse_list_array_to_dense_list_array(list_array: &ListArray) -> ListArra
 
     let offsets = OffsetBuffer::from_lengths(list_array.iter().flatten().map(|array| array.len()));
 
-    let fields = list_array_fields(list_array);
+    let field = list_array.field().clone();
 
-    ListArray::new(fields, offsets, list_array.values().clone(), None)
+    ListArray::new(field, offsets, list_array.values().clone(), None)
 }
 
-fn list_array_fields(list_array: &arrow::array::GenericListArray<i32>) -> std::sync::Arc<Field> {
-    match list_array.data_type() {
-        DataType::List(fields) | DataType::LargeList(fields) => fields,
-        _ => unreachable!("The GenericListArray constructor guaranteed we can't get here"),
+/// Extensions for [`GenericListArray`].
+pub trait ListArrayExt {
+    /// The field describing the items of this list-array.
+    fn field(&self) -> &Arc<Field>;
+}
+
+impl<O: OffsetSizeTrait> ListArrayExt for GenericListArray<O> {
+    fn field(&self) -> &Arc<Field> {
+        match self.data_type() {
+            DataType::List(field) | DataType::LargeList(field) => field,
+            _ => unreachable!("The GenericListArray constructor guaranteed we can't get here"),
+        }
     }
-    .clone()
 }
 
 /// Create a new [`ListArray`] of target length by appending null values to its back.
@@ -180,7 +187,7 @@ pub fn pad_list_array_back(list_array: &ListArray, target_len: usize) -> ListArr
         return list_array.clone();
     }
 
-    let fields = list_array_fields(list_array);
+    let field = list_array.field().clone();
 
     let offsets = {
         OffsetBuffer::from_lengths(std::iter::chain(
@@ -206,7 +213,7 @@ pub fn pad_list_array_back(list_array: &ListArray, target_len: usize) -> ListArr
         }
     };
 
-    ListArray::new(fields, offsets, values, Some(nulls))
+    ListArray::new(field, offsets, values, Some(nulls))
 }
 
 /// Create a new [`ListArray`] of target length by appending null values to its front.
@@ -218,7 +225,7 @@ pub fn pad_list_array_front(list_array: &ListArray, target_len: usize) -> ListAr
         return list_array.clone();
     }
 
-    let fields = list_array_fields(list_array);
+    let field = list_array.field().clone();
 
     let offsets = {
         OffsetBuffer::from_lengths(std::iter::chain(
@@ -244,7 +251,7 @@ pub fn pad_list_array_front(list_array: &ListArray, target_len: usize) -> ListAr
         }
     };
 
-    ListArray::new(fields, offsets, values, Some(nulls))
+    ListArray::new(field, offsets, values, Some(nulls))
 }
 
 /// Returns a new [[`ListArray`]] with len `entries`.

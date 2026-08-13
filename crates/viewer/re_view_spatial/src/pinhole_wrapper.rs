@@ -2,16 +2,17 @@ use glam::Vec3;
 use macaw::IsoTransform;
 use re_log_types::EntityPath;
 use re_sdk_types::components::ViewCoordinates;
-use re_tf::image_view_coordinates;
+use re_tf::{TransformFrameIdHash, image_view_coordinates};
 
 use crate::Pinhole;
 
 /// A logged pinhole camera with some extra information.
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct PinholeWrapper {
-    /// Path to the entity which has the projection (pinhole, ortho or otherwise) transforms.
-    ///
-    /// We expect the camera transform to apply to this instance and every path below it.
+    /// The child frame of the pinhole camera, i.e. the 2D frame into which the pinhole transforms into.
+    pub pinhole_child_frame_id: TransformFrameIdHash,
+
+    /// Path to the entity which has the pinhole projection.
     pub ent_path: EntityPath,
 
     /// The coordinate system of the pinhole entity ("view-space").

@@ -9,11 +9,13 @@
 # For finding duplicate dependencies:  cargo deny check bans --hide-inclusion-graph
 
 
-# Note: running just `cargo deny check` without a `--target` can result in
-# false positives due to https://github.com/EmbarkStudios/cargo-deny/issues/324
+# Note: `cargo deny check` is run without `--target` so that all of the triples below are
+# evaluated in one pass. Checking them one at a time makes a platform-conditional `ignore`
+# unused on every other triple, which `unused-ignored-advisory = "deny"` rejects.
 [graph]
 targets = [
   { triple = "aarch64-apple-darwin" },
+  { triple = "aarch64-unknown-linux-gnu" },
   { triple = "i686-pc-windows-gnu" },
   { triple = "i686-pc-windows-msvc" },
   { triple = "i686-unknown-linux-gnu" },
@@ -31,14 +33,36 @@ all-features = true
 [advisories]
 version = 2
 unused-ignored-advisory = "deny"
+# `unsound` defaults to `workspace` scope, which silently skips transitive deps;
+# `unmaintained` already defaults to `all`.
+unsound = "all"
 ignore = [
-  { id = "RUSTSEC-2024-0436", reason = "paste is unmaintained — https://github.com/dtolnay/paste" },
-  { id = "RUSTSEC-2024-0014", reason = "generational-arena is unmaintained" },
-  { id = "RUSTSEC-2025-0141", reason = "bincode is unmaintained — https://git.sr.ht/~stygianentity/bincode/tree/v3.0/item/README.md" },
-  { id = "RUSTSEC-2026-0176", reason = "RR-4865 can't update to pyo3 0.29 until numpy crate is updated" },
-  { id = "RUSTSEC-2026-0177", reason = "RR-4865 can't update to pyo3 0.29 until numpy crate is updated" },
-  { id = "RUSTSEC-2026-0194", reason = "quick-xml is pulled in by upstream crates that do not yet allow 0.41" },
-  { id = "RUSTSEC-2026-0195", reason = "quick-xml is pulled in by upstream crates that do not yet allow 0.41" },
+  # `paste` is a proc-macro: it expands at compile time and contributes no runtime code, so being
+  # unmaintained is a supply-chain concern rather than a reachability one.
+  # Direct parents include DataFusion 54 crates, `lance-bitpacking`, `mcap`, `parquet`, `re_rav1d`,
+  # and our own `re_query` and `re_string_interner`.
+  { id = "RUSTSEC-2024-0436", reason = "paste 1.0.15 unmaintained — proc-macro only, no runtime code (see comment above). Remove when the upstream crates move to `pastey` and `re_query`/`re_string_interner` follow. No ticket yet." },
+  { id = "RUSTSEC-2025-0141", reason = "bincode 1.3.3 unmaintained, via http-cache → http-cache-reqwest → walkers → re_view_map and via puffin, plus direct use by re_server and the custom_callback example. Remove when `walkers` drops the http-cache stack (same exit as RUSTSEC-2026-0186) and our own uses move to bincode 2. No ticket yet." },
+  # pyo3 0.28.3 is reached by `rerun_py`, `re_protos`, `arrow-pyarrow` 58.3.0 and `numpy` 0.28.0,
+  # so both advisories sit in the shipped Python SDK rather than in dev tooling.
+  # The `numpy` half of RR-4865 is done: `numpy` 0.29.0 (2026-06-13) requires `pyo3 ^0.29.0`.
+  # What remains is the Arrow half. `arrow-pyarrow` only moved to `pyo3 ^0.29.0` in 59.1.0, while
+  # DataFusion 54 and Lance 9 still use Arrow 58.3.
+  { id = "RUSTSEC-2026-0176", reason = "pyo3 0.28.3 out-of-bounds read in `nth`/`nth_back` for PyList and PyTuple iterators; blocked by arrow-pyarrow 58.3.0 requiring pyo3 ^0.28 (see comment above). Remove when arrow-rs 59.1+ and compatible DataFusion and Lance versions are adopted. RR-4865" },
+  { id = "RUSTSEC-2026-0177", reason = "pyo3 0.28.3 missing `Sync` bound on `PyCFunction::new_closure` closures; blocked by arrow-pyarrow 58.3.0 requiring pyo3 ^0.28 (see comment above). Remove when arrow-rs 59.1+ and compatible DataFusion and Lance versions are adopted. RR-4865" },
+  # Two independent quick-xml paths, both below the 0.41 fix:
+  #  - 0.36.2 via `minidom-14` 0.17 → `dae-parser` 0.11 → `re_renderer`. This one is exercised — it parses
+  #    COLLADA files the user opens. Both advisories are parser denial-of-service, so the exposure is a
+  #    malformed `.dae` stalling or ballooning the Viewer, not memory unsafety.
+  #  - 0.39.4 via `wayland-scanner` 0.31.10, a proc-macro reached through eframe on Linux/Wayland. Build
+  #    time only, and its input is the Wayland protocol XML shipped inside the crate.
+  { id = "RUSTSEC-2026-0194", reason = "quick-xml <0.41 quadratic parse on duplicate attributes, reachable through dae-parser in re_renderer (see comment above). Remove when `minidom-14` and `wayland-scanner` allow 0.41. No ticket yet." },
+  { id = "RUSTSEC-2026-0195", reason = "quick-xml <0.41 unbounded namespace-decl allocation, reachable through dae-parser in re_renderer (see comment above). Remove when `minidom-14` and `wayland-scanner` allow 0.41. No ticket yet." },
+  # memmap2 0.5.10 via cacache -> http-cache -> http-cache-reqwest -> walkers -> re_view_map.
+  # The advisory is scoped to `advise_range`/`unchecked_advise_range`/`flush_range`/`flush_async_range`;
+  # cacache only ever calls `MmapMut::map_mut` (content/write.rs), so none of the affected functions run.
+  # Remove when `cacache` bumps memmap2 to >= 0.9.11, or when `walkers` drops the http-cache stack.
+  { id = "RUSTSEC-2026-0186", reason = "memmap2 0.5.10 unsound in advise/flush range fns, which cacache never calls (see comment above)" },
 ]
 
 
@@ -53,7 +77,7 @@ deny = [
   { name = "openssl-sys", reason = "We prefer rustls" },
   { name = "openssl", reason = "We prefer rustls" },
   { name = "protobuf_src", reason = "We don't want to force users to compile protoc" },
-  # { name = "protoc-prebuilt", reason = "It would be better if 3rd party crates shipped their pre-compiled proto sources" }, # unfortunately, we use this for our objectron example. TODO(emilk): avoid protoc-prebuilt
+  { name = "protoc-prebuilt", reason = "Downloads protoc at build time without checksum verification; objectron uses protoc-bin-vendored instead" },
 
   # We have to allow egui_kittest since we use it behind a `testing` feature flag, rather than just as a dev-dependency.
   #{ name = "egui_kittest", reason = "Only allowed as a dev-dependency for testing." },
@@ -65,30 +89,33 @@ skip = [
   { name = "accesskit_consumer" }, # `egui_mcp` uses a newer version than the viewer's `eframe`/`accesskit_winit`.
   { name = "base64" }, # Too popular
   { name = "bitflags" }, # core-graphics & png uses an older version.
+  { name = "block-buffer" }, # DataFusion 54 uses the sha2 0.11 stack while the rest of the ecosystem uses 0.10.
   { name = "block2" }, # Old version via rfd
   { name = "console" }, # smallish
   { name = "core-foundation" }, # Currently, e.g. `webbrowser` and `winit` use different versions.
+  { name = "cpufeatures" }, # DataFusion 54 uses the sha2 0.11 stack while the rest of the ecosystem uses 0.10.
+  { name = "crypto-common" }, # DataFusion 54 uses the sha2 0.11 stack while the rest of the ecosystem uses 0.10.
+  { name = "digest" }, # DataFusion 54 uses the sha2 0.11 stack while the rest of the ecosystem uses 0.10.
   { name = "getrandom" }, # ring uses 0.2, ahash/arrow/datafusion use 0.3
   { name = "hashbrown" }, # Old version used by polar-rs
-  { name = "itertools" }, # Too popular
+  { name = "itertools" }, # Too popular; `datafusion` requires 0.14, we use 0.15
   { name = "kurbo" }, # Different versions in egui_extras/resvg and epaint/vello_cpu
   { name = "libloading" }, # datafusion-ffi needs an older version than wgpu
   { name = "linux-raw-sys" }, # because of two rustix versions.
-  { name = "lz4_flex" }, # the Arrow ecosystem is a bit behind, but it's fine, this is a very tiny, flat dependency
   { name = "memmap2" }, # because of walkers
   { name = "objc2-app-kit" }, # `accesskit_macos` uses a different version than `arboard`
   { name = "objc2-foundation" }, # `accesskit_macos` uses a different version than `arboard`
   { name = "objc2" }, # `accesskit_macos` uses a different version than `arboard`
   { name = "ordered-float" }, # Old version being used by parquet, but super small!
+  { name = "png" }, # `resvg` (via egui_extras) still uses 0.17, `walkers` forces us on 0.18 via `image`.
+  { name = "pollster" }, # `rfd` still uses 0.4, we use 1.0
+  { name = "prettyplease" }, # `prost-build`/`tonic-build` use 0.2; `re_types_builder` uses 0.3, which takes the `syn` 3 AST. Build-time only.
   { name = "quick-xml" }, # because of urdf-rs
   { name = "redox_syscall" }, # Plenty of versions in the wild
   { name = "rustc-hash" }, # numpy with compatible pyo3 requires different version than wgpu
   { name = "rustix" }, # tantivy uses an old version.
-  { name = "socket2" }, # `egui_mcp` pulls `tokio` (→ socket2 0.6) into the non-dev graph; the viewer otherwise uses 0.5 via `hyper-util`.
+  { name = "sha2" }, # DataFusion 54 uses 0.11 while the rest of the ecosystem uses 0.10.
   { name = "unicode-width" }, # walkers depends on 0.1 via http-cache-request / cacache
-  { name = "ureq" }, # duplicated by `protoc-prebuilt`, which uses an outdated version.
-  { name = "webpki-roots" }, # need to update ureq
-  { name = "zip" }, # duplicated by `protoc-prebuilt`, which uses an ancient version.
 ]
 skip-tree = [
   # PREFER `skip` (above): `skip-tree` exempts the crate AND its whole transitive subtree from the
@@ -140,6 +167,15 @@ license-files = [{ path = "LICENSE", hash = 0xbd0eed23 }]
 [sources]
 unknown-registry = "deny"
 unknown-git = "deny"
+# The `walkers` entry that used to live here is gone: it carried the exit condition
+# "remove once upstream releases an egui 0.36 version", and #3076 met it.
+allow-git = []
 
+# There are currently no git dependencies at all, so `cargo deny` reports the two
+# organizations below as unmatched. They are kept anyway, and the warning accepted,
+# because `Cargo.toml` carries a commented-out block of `emilk/egui`, `rerun-io/kittest`
+# and `rerun-io/arrow-datafusion` git dependencies that is uncommented whenever we need
+# to track an upstream branch. Deleting these would make that a two-file change and the
+# failure would arrive as an unrelated `unknown-git` CI error.
 [sources.allow-org]
 github = ["emilk", "rerun-io"]

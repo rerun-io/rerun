@@ -8,7 +8,7 @@ import pytest
 import rerun as rr
 import torch
 from rerun.components.line_strip3d import LineStrip3DArrayLike, LineStrip3DBatch
-from rerun.datatypes import Float32ArrayLike, Vec3D
+from rerun.encodings import Float32ArrayLike, Vec3D
 
 from .common_arrays import (
     class_ids_arrays,
@@ -23,9 +23,9 @@ from .common_arrays import (
 )
 
 if TYPE_CHECKING:
-    from rerun.datatypes.class_id import ClassIdArrayLike
-    from rerun.datatypes.rgba32 import Rgba32ArrayLike
-    from rerun.datatypes.utf8 import Utf8ArrayLike
+    from rerun.encodings.class_id import ClassIdArrayLike
+    from rerun.encodings.rgba32 import Rgba32ArrayLike
+    from rerun.encodings.utf8 import Utf8ArrayLike
 
 # fmt: off
 strips_arrays: list[LineStrip3DArrayLike] = [

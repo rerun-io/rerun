@@ -10,8 +10,8 @@ Measured in its local coordinate system.
 The box extends both in negative and positive direction along each axis.
 Negative sizes indicate that the box is flipped along the respective axis, but this has no effect on how it is displayed.
 
-## Rerun datatype
-[`Vec3D`](../datatypes/vec3d.md)
+## Rerun encoding
+[`Vec3D`](../encodings/vec3d.md)
 
 
 ## Arrow datatype

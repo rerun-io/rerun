@@ -19,7 +19,7 @@ struct TensorDimension {
 }
 
 impl TensorDimension {
-    pub fn from_tensor_data(tensor_data: &re_sdk_types::datatypes::TensorData) -> Vec<Self> {
+    pub fn from_tensor_data(tensor_data: &re_sdk_types::encodings::TensorData) -> Vec<Self> {
         tensor_data
             .shape
             .iter()

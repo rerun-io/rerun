@@ -6,6 +6,13 @@ title: "StateTimelineView"
 ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 A view for displaying state transitions over time, for use with [`archetypes.StateChange`](https://rerun.io/docs/reference/types/archetypes/state_change).
 
+## Properties
+
+### `time_ranges`
+Configures which range on each timeline is shown by this view (unless specified differently per entity).
+
+If not specified, the default is to show the entire timeline.
+If a timeline is specified more than once, the first entry will be used.
 
 ## API reference links
  * 🐍 [Python API docs for `StateTimelineView`](https://ref.rerun.io/docs/python/stable/common/blueprint_views#rerun.blueprint.views.StateTimelineView)

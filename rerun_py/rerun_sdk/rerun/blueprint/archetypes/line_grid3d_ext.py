@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any
 from ...error_utils import catch_and_log_exceptions
 
 if TYPE_CHECKING:
-    from ... import datatypes
+    from ... import encodings
 
 
 class LineGrid3DExt:
@@ -13,12 +13,12 @@ class LineGrid3DExt:
 
     def __init__(
         self: Any,
-        visible: datatypes.BoolLike | None = None,
+        visible: encodings.BoolLike | None = None,
         *,
-        spacing: datatypes.Float32Like | None = None,
-        plane: datatypes.Plane3DLike | None = None,
-        stroke_width: datatypes.Float32Like | None = None,
-        color: datatypes.Rgba32Like | None = None,
+        spacing: encodings.Float32Like | None = None,
+        plane: encodings.Plane3DLike | None = None,
+        stroke_width: encodings.Float32Like | None = None,
+        color: encodings.Rgba32Like | None = None,
     ) -> None:
         """
         Create a new instance of the LineGrid3D archetype.

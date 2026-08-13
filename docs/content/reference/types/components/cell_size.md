@@ -7,8 +7,8 @@ The metric size of one grid cell in local scene units.
 
 E.g. for 2D grid maps, this is the physical size represented by a single pixel or cell.
 
-## Rerun datatype
-[`Float32`](../datatypes/float32.md)
+## Rerun encoding
+[`Float32`](../encodings/float32.md)
 
 
 ## Arrow datatype

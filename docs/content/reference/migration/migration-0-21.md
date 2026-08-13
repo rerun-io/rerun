@@ -1,6 +1,7 @@
 ---
 title: Migrating from 0.20 to 0.21
 order: 989
+hidden: true
 ---
 
 ### File compatibility

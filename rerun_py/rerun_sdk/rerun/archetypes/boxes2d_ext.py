@@ -9,7 +9,7 @@ import numpy.typing as npt
 from ..error_utils import catch_and_log_exceptions
 
 if TYPE_CHECKING:
-    from .. import datatypes
+    from .. import encodings
 
 
 class Box2DFormat(Enum):
@@ -40,18 +40,18 @@ class Boxes2DExt:
     def __init__(
         self: Any,
         *,
-        sizes: datatypes.Vec2DArrayLike | None = None,
-        mins: datatypes.Vec2DArrayLike | None = None,
-        half_sizes: datatypes.Vec2DArrayLike | None = None,
-        centers: datatypes.Vec2DArrayLike | None = None,
+        sizes: encodings.Vec2DArrayLike | None = None,
+        mins: encodings.Vec2DArrayLike | None = None,
+        half_sizes: encodings.Vec2DArrayLike | None = None,
+        centers: encodings.Vec2DArrayLike | None = None,
         array: npt.ArrayLike | None = None,
         array_format: Box2DFormat | None = None,
-        radii: datatypes.Float32ArrayLike | None = None,
-        colors: datatypes.Rgba32ArrayLike | None = None,
-        labels: datatypes.Utf8ArrayLike | None = None,
-        show_labels: datatypes.BoolLike | None = None,
-        draw_order: datatypes.Float32ArrayLike | None = None,
-        class_ids: datatypes.ClassIdArrayLike | None = None,
+        radii: encodings.Float32ArrayLike | None = None,
+        colors: encodings.Rgba32ArrayLike | None = None,
+        labels: encodings.Utf8ArrayLike | None = None,
+        show_labels: encodings.BoolLike | None = None,
+        draw_order: encodings.Float32ArrayLike | None = None,
+        class_ids: encodings.ClassIdArrayLike | None = None,
     ) -> None:
         """
         Create a new instance of the Boxes2D archetype.

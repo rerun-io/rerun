@@ -1,6 +1,6 @@
 [package]
 name = "objectron"
-version = "0.35.0-alpha.1+dev"
+version = "0.37.0-alpha.1+dev"
 edition = "2024"
 rust-version = "1.95"
 license = "MIT OR Apache-2.0"
@@ -19,4 +19,4 @@ prost.workspace = true
 [build-dependencies]
 re_build_tools = { path = "../../../crates/build/re_build_tools" }
 prost-build.workspace = true
-protoc-prebuilt.workspace = true
+protoc-bin-vendored.workspace = true

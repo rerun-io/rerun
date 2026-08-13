@@ -915,7 +915,7 @@ fn test_tree_transforms() -> Result<(), Box<dyn std::error::Error>> {
             // This involves casting f32 components to f64 and renormalizing, which produces
             // slightly different values than directly computing in f64.
             Some(DAffine3::from_quat(
-                convert::quaternion_to_dquat(re_sdk_types::datatypes::Quaternion::from(
+                convert::quaternion_to_dquat(re_sdk_types::encodings::Quaternion::from(
                     glam::Quat::from_rotation_x(1.0),
                 ))
                 .unwrap(),
@@ -1244,7 +1244,7 @@ fn test_clear_non_recursive() -> Result<(), Box<dyn std::error::Error>> {
             // And only now add the data chunk.
             entity_db.add_chunk(&Arc::new(data_chunk))?;
         } else {
-            let chunk = data_chunk.concatenated(&clear_chunk)?;
+            let chunk = Chunk::concat_and_sort(&data_chunk, &clear_chunk)?;
             entity_db.add_chunk(&Arc::new(chunk))?;
         }
 

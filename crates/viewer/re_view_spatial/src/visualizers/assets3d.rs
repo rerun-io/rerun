@@ -23,7 +23,7 @@ struct Asset3DComponentData<'a> {
     index: (TimeInt, RowId),
     query_result_hash: Hash64,
 
-    blob: re_sdk_types::datatypes::Blob,
+    blob: re_sdk_types::encodings::Blob,
     media_type: Option<ArrowString>,
     albedo_factor: Option<&'a AlbedoFactor>,
 }
@@ -92,7 +92,7 @@ impl Asset3DVisualizer {
                         }
                     }));
 
-                    data.add_bounding_box(entity_path.hash(), mesh.bbox(), world_from_pose);
+                    data.add_bounding_box_3d(entity_path.hash(), mesh.bbox(), world_from_pose);
                 }
             }
         }

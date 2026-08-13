@@ -1,5 +1,5 @@
 use super::GeoLineString;
-use crate::datatypes::DVec2D;
+use crate::encodings::DVec2D;
 
 // ---
 

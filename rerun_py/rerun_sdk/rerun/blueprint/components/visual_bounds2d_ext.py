@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from ...datatypes import Range1DLike
+    from ...encodings import Range1DLike
 
 
 class VisualBounds2DExt:

@@ -14,7 +14,7 @@ namespace rerun {
 
             /// Construct a new 3x3 pinhole matrix from a pointer to 9 floats (in column major order).
             static PinholeProjection from_mat3x3(const float* elements) {
-                return PinholeProjection(rerun::datatypes::Mat3x3(elements));
+                return PinholeProjection(rerun::encodings::Mat3x3(elements));
             }
 
             // </CODEGEN_COPY_TO_HEADER>

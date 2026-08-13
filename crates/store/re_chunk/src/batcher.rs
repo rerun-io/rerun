@@ -913,7 +913,7 @@ impl PendingRow {
         per_timeline_set.into_values().flat_map(move |rows| {
             re_tracing::profile_scope!("iterate per timeline set");
 
-            // Then we split the micro batches even further -- one sub-batch per unique set of datatypes.
+            // Then we split the micro batches even further -- one sub-batch per unique set of encodings.
             let mut per_datatype_set: IntMap<u64 /* ArrowDatatype set */, Vec<Self>> =
                 Default::default();
             {
@@ -1663,7 +1663,7 @@ mod tests {
 
     /// A bunch of rows with different datatypes will end up in different batches.
     #[test]
-    fn different_datatypes() -> anyhow::Result<()> {
+    fn different_encodings() -> anyhow::Result<()> {
         let batcher = ChunkBatcher::new(ChunkBatcherConfig::NEVER, BatcherHooks::NONE)?;
 
         let timeline1 = Timeline::new_duration("log_time");

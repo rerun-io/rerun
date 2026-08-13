@@ -17,7 +17,7 @@ track hands and recognize gestures in images, video, and camera stream.
 </picture>
 
 ## Used Rerun types
-[`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`Points2D`](https://www.rerun.io/docs/reference/types/archetypes/points2d), [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d), [`LineStrips2D`](https://www.rerun.io/docs/reference/types/archetypes/line_strips2d), [`ClassDescription`](https://www.rerun.io/docs/reference/types/datatypes/class_description), [`AnnotationContext`](https://www.rerun.io/docs/reference/types/archetypes/annotation_context), [`TextDocument`](https://www.rerun.io/docs/reference/types/archetypes/text_document)
+[`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`Points2D`](https://www.rerun.io/docs/reference/types/archetypes/points2d), [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d), [`LineStrips2D`](https://www.rerun.io/docs/reference/types/archetypes/line_strips2d), [`ClassDescription`](https://www.rerun.io/docs/reference/types/encodings/class_description?speculative-link), [`AnnotationContext`](https://www.rerun.io/docs/reference/types/archetypes/annotation_context), [`TextDocument`](https://www.rerun.io/docs/reference/types/archetypes/text_document)
 
 ## Background
 The hand tracking and gesture recognition technology aims to give the ability of the devices to interpret hand movements and gestures as commands or inputs.
@@ -53,7 +53,7 @@ Meanwhile, the 3D points allows the creation of a 3D model of the hand for a mor
 
 The 2D and 3D points are logged through a combination of two archetypes.
 For the 2D points, the Points2D and LineStrips2D archetypes are utilized. These archetypes help visualize the points and connect them with lines, respectively.
-As for the 3D points, the logging process involves two steps. First, a static [`ClassDescription`](https://www.rerun.io/docs/reference/types/datatypes/class_description) is logged, that contains the information which maps keypoint ids to labels and how to connect
+As for the 3D points, the logging process involves two steps. First, a static [`ClassDescription`](https://www.rerun.io/docs/reference/types/encodings/class_description?speculative-link) is logged, that contains the information which maps keypoint ids to labels and how to connect
 the keypoints. Defining these connections automatically renders lines between them. Mediapipe provides the `HAND_CONNECTIONS` variable which contains the list of `(from, to)` landmark indices that define the connections.
 Second, the actual keypoint positions are logged in 3D [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d) archetype.
 

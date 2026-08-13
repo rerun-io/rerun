@@ -4,6 +4,7 @@ use ahash::HashMap;
 use egui::Ui;
 use egui::text_edit::TextEditState;
 use egui::text_selection::LabelSelectionState;
+use re_async::AsyncRuntimeHandle;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_log_channel::{LogReceiverSet, LogSource, RecordingOpenBehavior};
@@ -15,11 +16,10 @@ use re_ui::{ContextExt as _, UiExt as _, WindowFrameConfig};
 use re_viewer_context::open_url::{self, ViewerOpenUrl};
 use re_viewer_context::{
     ActiveStoreContext, AppBlueprintCtx, AppContext, AppOptions, ApplicationSelectionState,
-    AsyncRuntimeHandle, AuthContext, BlueprintContext, BlueprintUndoState, CommandSender,
-    ComponentUiRegistry, DragAndDropManager, FallbackProviderRegistry, FocusTarget, Item,
-    ItemCollection, Route, SelectionChange, StorageContext, StoreHub, SystemCommand,
-    SystemCommandSender as _, TableStore, TimeControl, TimeControlCommand, ViewClassRegistry,
-    ViewStates, ViewerContext,
+    AuthContext, BlueprintContext, BlueprintUndoState, CommandSender, ComponentUiRegistry,
+    DragAndDropManager, FallbackProviderRegistry, FocusTarget, Item, ItemCollection, Route,
+    SelectionChange, StorageContext, StoreHub, SystemCommand, SystemCommandSender as _, TableStore,
+    TimeControl, TimeControlCommand, ViewClassRegistry, ViewStates, ViewerContext,
 };
 use re_viewport::ViewportUi;
 use re_viewport_blueprint::ViewportBlueprint;
@@ -956,7 +956,6 @@ impl AppState {
                             egui::Panel::top("recording_panel")
                                 .frame(egui::Frame::new())
                                 .resizable(resizable)
-                                .show_separator_line(false)
                                 .min_size(recordings_min_height)
                                 .max_size(max_recordings_height)
                                 .default_size(160.0_f32.max(recordings_min_height))

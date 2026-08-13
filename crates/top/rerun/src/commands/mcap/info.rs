@@ -1,311 +1,244 @@
-//! `rerun mcap info` — inspect timeline structure of an MCAP file.
+//! `rerun mcap info` — inspect the structure of an MCAP file.
 //!
-//! Each MCAP chunk holds messages from many topics interleaved together. When loaded
-//! into Rerun, an MCAP chunk is split per topic into one rerun chunk per (topic, mcap chunk),
-//! and each rerun chunk gets its timelines reordered via [`re_chunk::Chunk::from_auto_row_ids`]
-//! (stable lex sort across all timelines). A rerun chunk's secondary timelines stay sorted
-//! only if every timeline agrees on the row order; otherwise the chunk ends up with some
-//! `TimeColumn::is_sorted() == false`.
-//!
-//! This command groups messages by topic and runs that same check both per chunk and
-//! across the entire topic.
-//!
-//! By default only the timelines available at the raw MCAP level
-//! (`message_log_time`, `message_publish_time`) are inspected. With `--full`, the
-//! `re_mcap` decoder pipeline runs so that timelines extracted from message bodies
-//! (e.g. `ros2_timestamp` from a ROS 2 message `Header.stamp`, `timestamp` from custom
-//! decoders) are inspected too.
+//! The report is derived from the MCAP header and summary without decompressing message chunks.
 
-use std::cmp::Ordering;
-use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 use anyhow::Context as _;
-use parking_lot::Mutex;
-
-use re_log_types::{TimeType, TimelineName};
-use re_mcap::decoders::{DecoderRegistry, TopicFilter};
-use re_mcap::read_summary;
+use comfy_table::{CellAlignment, ContentArrangement, Table, TableComponent, presets};
 
 #[derive(Debug, Clone, clap::Parser)]
 pub struct InfoCommand {
     /// Path to the .mcap file to inspect.
     path: PathBuf,
 
-    /// Run the full `re_mcap` decoder pipeline.
-    ///
-    /// Surfaces timelines added by per-message decoders (e.g. `ros2_timestamp` from
-    /// a ROS 2 `Header.stamp`). Without this flag only the raw MCAP-level timelines
-    /// `message_log_time` / `message_publish_time` are inspected.
+    /// Reconstruct a missing or invalid summary from the readable portion of the file.
     #[clap(long)]
-    full: bool,
+    recover: bool,
 }
 
 impl InfoCommand {
     pub fn run(&self) -> anyhow::Result<()> {
-        let Self { path, full } = self;
+        let Self { path, recover } = self;
 
-        let bytes = std::fs::read(path).with_context(|| format!("reading {}", path.display()))?;
+        let file = std::fs::File::open(path)
+            .with_context(|| format!("Failed to open MCAP file\nFile path: {}", path.display()))?;
+        // SAFETY: The map is read-only and remains alive for the duration of the command.
+        #[expect(unsafe_code)]
+        let mmap = unsafe { memmap2::Mmap::map(&file) }.with_context(|| {
+            format!(
+                "Failed to memory-map MCAP file\nFile path: {}",
+                path.display()
+            )
+        })?;
+        let mcap_file = re_mcap::McapFile::new(mmap, *recover);
+        let info = mcap_file.info().with_context(|| {
+            format!("Failed to inspect MCAP file\nFile path: {}", path.display())
+        })?;
 
-        let summary = read_summary(std::io::Cursor::new(&bytes[..]))?
-            .context("MCAP file has no summary section")?;
-
-        let by_topic = if *full {
-            collect_by_topic_full(&bytes, &summary)?
-        } else {
-            collect_by_topic_raw(&bytes, &summary)?
-        };
-
-        let timeline_names = timeline_names(&by_topic);
-
-        println!("File:        {}", path.display());
-        println!("Channels:    {}", summary.channels.len());
-        println!("MCAP chunks: {}", summary.chunk_indexes.len());
-        println!(
-            "Mode:        {}",
-            if *full {
-                "full (decoder pipeline)"
-            } else {
-                "raw"
-            }
-        );
-        println!(
-            "Timelines:   {}",
-            timeline_names
-                .iter()
-                .map(TimelineName::to_string)
-                .collect::<Vec<_>>()
-                .join(", ")
-        );
-        println!();
-        println!("Per-topic line format:");
-        println!("  <status>  id=<N>  topic=<…>  chunks=<N>  [issues…]");
-        println!();
-        println!("Possible issues:");
-        println!("  - N chunks with row-order conflicts: timelines within a chunk disagree on row");
-        println!("    order, so no row permutation keeps every TimeColumn sorted simultaneously.");
-        println!("  - whole-topic row-order conflict: the same conflict when all messages on the");
-        println!("    topic are concatenated together.");
-        println!(
-            "  - N unordered chunks on <timeline>: chunks (in mcap arrival order) whose min time"
-        );
-        println!(
-            "    falls below the running max on this timeline, i.e. chunks not sorted by time."
-        );
-        println!(
-            "    Independent of row-order conflicts: a chunk can be internally consistent and"
-        );
-        println!("    still arrive out of order relative to its predecessors.");
-        println!();
-
-        let channel_id_by_topic: BTreeMap<&str, u16> = summary
-            .channels
-            .iter()
-            .map(|(id, ch)| (ch.topic.as_str(), *id))
-            .collect();
-
-        for (topic, chunks) in &by_topic {
-            let num_chunks = chunks.len();
-            let num_conflicting_chunks = chunks.iter().filter(|t| !t.timelines_agree()).count();
-
-            let mut whole_topic = TimeColumns::default();
-            for tc in chunks {
-                whole_topic.append(tc);
-            }
-            let whole_topic_conflict = !whole_topic.timelines_agree();
-
-            let unordered = unordered_chunk_counts(chunks, &timeline_names);
-
-            let mut issues: Vec<String> = Vec::new();
-            if num_conflicting_chunks > 0 {
-                issues.push(format!(
-                    "{num_conflicting_chunks} chunks with row-order conflicts"
-                ));
-            }
-            if whole_topic_conflict {
-                issues.push("whole-topic row-order conflict".to_owned());
-            }
-            for (tl, n) in &unordered {
-                if *n > 0 {
-                    issues.push(format!("{n} unordered chunks on {tl}"));
-                }
-            }
-
-            let status = if issues.is_empty() { "ok" } else { "PROBLEM" };
-            let issues_str = issues.join(", ");
-
-            let channel_id = channel_id_by_topic
-                .get(topic.as_str())
-                .map_or_else(|| "?".to_owned(), u16::to_string);
-
-            println!(
-                "{status:<7} id={channel_id:<3} topic={topic:<48} \
-                 chunks={num_chunks:<4} {issues_str}"
-            );
-        }
-
+        print_info(path, &info);
         Ok(())
     }
 }
 
-/// Times for a set of messages on one topic, keyed by timeline name.
-///
-/// Row `i` across all column vectors refers to the same message.
-#[derive(Default)]
-struct TimeColumns {
-    columns: BTreeMap<TimelineName, Vec<i64>>,
-}
+fn print_info(path: &std::path::Path, info: &re_mcap::McapInfo) {
+    println!("{}", path.display());
+    println!();
+    println!("Recording");
+    print_property("Profile", value_or_dash(&info.profile));
+    print_property("Library", value_or_dash(&info.library));
+    print_property("Messages", format_optional_uint(info.message_count));
+    print_property("Duration", format_duration(info.duration_ns));
+    print_property("Start", format_timestamp(info.message_start_time_ns));
+    print_property("End", format_timestamp(info.message_end_time_ns));
+    print_property("Schemas", info.schema_count);
+    print_property("Channels", info.channel_count);
+    print_property("Attachments", info.attachment_count);
+    print_property("Metadata", info.metadata_count);
+    print_property(
+        "Summary",
+        match info.summary_source {
+            re_mcap::McapSummarySource::Embedded => "embedded".to_owned(),
+            re_mcap::McapSummarySource::Reconstructed => "reconstructed".to_owned(),
+        },
+    );
 
-impl TimeColumns {
-    fn push_pairs(&mut self, pairs: impl IntoIterator<Item = (TimelineName, i64)>) {
-        for (name, v) in pairs {
-            self.columns.entry(name).or_default().push(v);
+    println!();
+    println!("Chunks");
+    print_property("Count", info.chunks.count);
+    print_property(
+        "Max uncompressed size",
+        format_optional_bytes(info.chunks.max_uncompressed_size_bytes),
+    );
+    print_property(
+        "Max compressed size",
+        format_optional_bytes(info.chunks.max_compressed_size_bytes),
+    );
+    print_property(
+        "Overlapping time ranges",
+        if info.chunks.has_overlapping_time_ranges {
+            "yes"
+        } else {
+            "no"
         }
+        .to_owned(),
+    );
+
+    if !info.compression.is_empty() {
+        println!();
+        println!("Compression");
+        let rows = info
+            .compression
+            .iter()
+            .map(|compression| {
+                vec![
+                    if compression.codec.is_empty() {
+                        "none".to_owned()
+                    } else {
+                        compression.codec.clone()
+                    },
+                    compression.chunk_count.to_string(),
+                    re_format::format_bytes(compression.compressed_size_bytes as f64),
+                    re_format::format_bytes(compression.uncompressed_size_bytes as f64),
+                    compression
+                        .savings_ratio()
+                        .map_or_else(|| "—".to_owned(), |ratio| format!("{:.1}%", ratio * 100.0)),
+                    info.duration_ns
+                        .filter(|duration| *duration > 0)
+                        .map_or_else(
+                            || "—".to_owned(),
+                            |duration| {
+                                let bytes_per_second = compression.compressed_size_bytes as f64
+                                    / (duration as f64 / 1_000_000_000.0);
+                                format!("{}/s", re_format::format_bytes(bytes_per_second))
+                            },
+                        ),
+                ]
+            })
+            .collect::<Vec<_>>();
+        print_table(
+            &[
+                "Codec",
+                "Chunks",
+                "Compressed",
+                "Uncompressed",
+                "Savings",
+                "Rate",
+            ],
+            &rows,
+            &[1, 2, 3, 4, 5],
+        );
     }
 
-    fn append(&mut self, other: &Self) {
-        for (k, vs) in &other.columns {
-            self.columns.entry(*k).or_default().extend_from_slice(vs);
-        }
-    }
-
-    fn len(&self) -> usize {
-        self.columns.values().next().map_or(0, Vec::len)
-    }
-
-    /// Stable lex sort permutation across all timelines (matching
-    /// [`re_chunk::Chunk::from_auto_row_ids`]).
-    fn sorted_permutation(&self) -> Vec<usize> {
-        let count = self.len();
-        let cols: Vec<&Vec<i64>> = self.columns.values().collect();
-        let mut perm: Vec<usize> = (0..count).collect();
-        perm.sort_by(|&a, &b| {
-            for col in &cols {
-                let ord = col[a].cmp(&col[b]);
-                if ord != Ordering::Equal {
-                    return ord;
-                }
-            }
-            Ordering::Equal
-        });
-        perm
-    }
-
-    /// Do all timelines agree on a single row order?
-    ///
-    /// Equivalent to: after lex-sorting rows by all timelines, is every individual
-    /// timeline non-decreasing? If false, no row permutation can keep all
-    /// [`re_chunk::TimeColumn`]s sorted simultaneously: they conflict.
-    fn timelines_agree(&self) -> bool {
-        if self.len() < 2 {
-            return true;
-        }
-        let perm = self.sorted_permutation();
-        self.columns
-            .values()
-            .all(|col| perm.windows(2).all(|w| col[w[0]] <= col[w[1]]))
-    }
-}
-
-type ByTopic = BTreeMap<String, Vec<TimeColumns>>;
-
-/// Raw mode: walk MCAP messages directly; only `message_log_time`/`message_publish_time`
-/// are available. Grouped by (topic, mcap chunk).
-fn collect_by_topic_raw(bytes: &[u8], summary: &mcap::Summary) -> anyhow::Result<ByTopic> {
-    let mut by_topic_chunk: BTreeMap<String, BTreeMap<usize, TimeColumns>> = BTreeMap::new();
-    for (mcap_idx, chunk) in summary.chunk_indexes.iter().enumerate() {
-        for msg in summary.stream_chunk(bytes, chunk)? {
-            let msg = msg?;
-            by_topic_chunk
-                .entry(msg.channel.topic.clone())
-                .or_default()
-                .entry(mcap_idx)
-                .or_default()
-                .push_pairs([
-                    (
-                        TimelineName::from("message_log_time"),
-                        msg.log_time.cast_signed(),
-                    ),
-                    (
-                        TimelineName::from("message_publish_time"),
-                        msg.publish_time.cast_signed(),
-                    ),
-                ]);
-        }
-    }
-    Ok(by_topic_chunk
-        .into_iter()
-        .map(|(topic, chunks)| (topic, chunks.into_values().collect()))
-        .collect())
-}
-
-/// Full mode: run the decoder pipeline and inspect every rerun chunk it emits.
-/// Picks up extra timelines added by decoders (e.g. `ros2_timestamp`).
-fn collect_by_topic_full(bytes: &[u8], summary: &mcap::Summary) -> anyhow::Result<ByTopic> {
-    let plan =
-        DecoderRegistry::all_with_raw_fallback().plan(bytes, summary, &TopicFilter::default())?;
-
-    let chunks: Mutex<Vec<re_chunk::Chunk>> = Mutex::new(Vec::new());
-    plan.run(bytes, summary, TimeType::TimestampNs, &|chunk| {
-        chunks.lock().push(chunk);
-    })?;
-    let chunks = chunks.into_inner();
-
-    let mut by_topic: ByTopic = BTreeMap::new();
-    for chunk in chunks {
-        if chunk.timelines().is_empty() {
-            // Static chunk — no timelines to analyze.
-            continue;
-        }
-        let topic = chunk.entity_path().to_string();
-        let mut times = TimeColumns::default();
-        for (name, time_col) in chunk.timelines() {
-            let column = times.columns.entry(*name).or_default();
-            column.extend_from_slice(time_col.times_raw());
-        }
-        by_topic.entry(topic).or_default().push(times);
-    }
-    Ok(by_topic)
-}
-
-/// Per timeline, count chunks (in mcap arrival order) whose min time falls below the
-/// running max of all preceding chunks, i.e. chunks that are not in monotone time order
-/// on that timeline.
-fn unordered_chunk_counts(
-    chunks: &[TimeColumns],
-    timelines: &[TimelineName],
-) -> Vec<(TimelineName, usize)> {
-    timelines
+    println!();
+    println!("Channels");
+    let rows = info
+        .channels
         .iter()
-        .map(|tl| {
-            let mut prev_max: Option<i64> = None;
-            let mut unordered = 0usize;
-            for tc in chunks {
-                let Some(col) = tc.columns.get(tl) else {
-                    continue;
-                };
-                let Some(&min) = col.iter().min() else {
-                    continue;
-                };
-                let max = *col.iter().max().expect("col non-empty");
-                if let Some(p) = prev_max
-                    && min < p
-                {
-                    unordered += 1;
+        .map(|channel| {
+            let schema = channel.schema.as_ref();
+            let encoding = match schema {
+                Some(schema) if schema.encoding == channel.message_encoding => {
+                    schema.encoding.clone()
                 }
-                prev_max = Some(prev_max.map_or(max, |p| p.max(max)));
-            }
-            (*tl, unordered)
+                Some(schema) => format!("{} / {}", schema.encoding, channel.message_encoding),
+                None => channel.message_encoding.clone(),
+            };
+            vec![
+                channel.id.to_string(),
+                channel.topic.clone(),
+                format_optional_uint(channel.message_count),
+                channel.frequency_hz.map_or_else(
+                    || "—".to_owned(),
+                    |(min, max)| format!("{min:.2}–{max:.2} Hz"),
+                ),
+                schema.map_or_else(|| "—".to_owned(), |schema| schema.name.clone()),
+                value_or_dash(&encoding),
+            ]
         })
-        .collect()
+        .collect::<Vec<_>>();
+    print_table(
+        &["ID", "Topic", "Messages", "Rate", "Schema", "Encoding"],
+        &rows,
+        &[0, 2, 3],
+    );
 }
 
-fn timeline_names(by_topic: &ByTopic) -> Vec<TimelineName> {
-    let mut names: std::collections::BTreeSet<TimelineName> = std::collections::BTreeSet::new();
-    for chunks in by_topic.values() {
-        for tc in chunks {
-            names.extend(tc.columns.keys().copied());
-        }
+fn print_property(label: &str, value: impl std::fmt::Display) {
+    println!("  {label:<24} {value}");
+}
+
+fn value_or_dash(value: &str) -> String {
+    if value.is_empty() {
+        "—".to_owned()
+    } else {
+        value.to_owned()
     }
-    names.into_iter().collect()
+}
+
+fn format_optional_uint(value: Option<u64>) -> String {
+    value.map_or_else(|| "—".to_owned(), |value| value.to_string())
+}
+
+fn format_optional_bytes(value: Option<u64>) -> String {
+    value.map_or_else(
+        || "—".to_owned(),
+        |bytes| re_format::format_bytes(bytes as f64),
+    )
+}
+
+fn format_duration(duration_ns: Option<u64>) -> String {
+    duration_ns
+        .and_then(|duration| i64::try_from(duration).ok())
+        .map_or_else(
+            || "—".to_owned(),
+            |duration| {
+                re_format::DurationFormatOptions::default()
+                    .with_max_decimals(3)
+                    .format_nanos(duration)
+            },
+        )
+}
+
+fn format_timestamp(timestamp_ns: Option<u64>) -> String {
+    timestamp_ns
+        .and_then(|timestamp| i64::try_from(timestamp).ok())
+        .map_or_else(
+            || "—".to_owned(),
+            |timestamp| re_log_types::Timestamp::from_nanos_since_epoch(timestamp).format_iso(),
+        )
+}
+
+pub(super) fn print_table(headers: &[&str], rows: &[Vec<String>], right_aligned: &[usize]) {
+    if headers.is_empty()
+        || rows.iter().any(|row| row.len() != headers.len())
+        || right_aligned.iter().any(|&column| column >= headers.len())
+    {
+        return;
+    }
+
+    let mut table = Table::new();
+    table
+        .load_preset(presets::NOTHING)
+        .set_content_arrangement(ContentArrangement::Disabled)
+        .set_style(TableComponent::HeaderLines, '─')
+        .set_header(headers);
+
+    for row in rows {
+        table.add_row(row);
+    }
+
+    for &column in right_aligned {
+        let Some(column) = table.column_mut(column) else {
+            return;
+        };
+        column.set_cell_alignment(CellAlignment::Right);
+    }
+
+    for (index, column) in table.column_iter_mut().enumerate() {
+        let right_padding = if index + 1 == headers.len() { 0 } else { 2 };
+        column.set_padding((0, right_padding));
+    }
+
+    println!("{}", table.trim_fmt());
 }

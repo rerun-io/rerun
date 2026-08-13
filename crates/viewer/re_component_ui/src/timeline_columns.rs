@@ -56,7 +56,7 @@ pub fn edit_or_view_columns_multiline(
                             .all(|col| col.timeline.as_str() != timeline.name().as_str())
                     })
                     .map(|timeline| {
-                        TimelineColumn(re_sdk_types::blueprint::datatypes::TimelineColumn {
+                        TimelineColumn(re_sdk_types::blueprint::encodings::TimelineColumn {
                             visible: false.into(),
                             timeline: timeline.name().as_str().into(),
                         })

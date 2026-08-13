@@ -1,0 +1,44 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from .. import encodings
+
+
+class VisibleTimeRangeExt:
+    """Extension for [VisibleTimeRange][rerun.encodings.VisibleTimeRange]."""
+
+    def __init__(
+        self: Any,
+        timeline: encodings.Utf8Like,
+        range: encodings.TimeRangeLike | None = None,
+        *,
+        start: encodings.TimeRangeBoundary | None = None,
+        end: encodings.TimeRangeBoundary | None = None,
+    ) -> None:
+        """
+        Create a new instance of the VisibleTimeRange datatype.
+
+        Parameters
+        ----------
+        timeline:
+            Name of the timeline this applies to.
+        range:
+            Time range to use for this timeline.
+        start:
+            Low time boundary for sequence timeline. Specify this instead of `range`.
+        end:
+            High time boundary for sequence timeline. Specify this instead of `range`.
+
+        """
+        from . import TimeRange
+
+        if range is None:
+            if start is None or end is None:
+                raise ValueError("Specify either start_and_end or both start & end")
+            range = TimeRange(start=start, end=end)
+        elif start is not None or end is not None:
+            raise ValueError("Specify either start_and_end or both start & end, not both")
+
+        self.__attrs_init__(timeline=timeline, range=range)

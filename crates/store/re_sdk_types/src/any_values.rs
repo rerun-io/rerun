@@ -74,7 +74,7 @@ mod test {
 
     use std::collections::BTreeSet;
 
-    use re_types_core::datatypes::Utf8;
+    use re_types_core::encodings::Utf8;
 
     use super::*;
     use crate::{ComponentDescriptor, components};

@@ -1,5 +1,6 @@
 <!--[metadata]
 title = "Segment anything model"
+description = "Run Meta AI's Segment Anything on an image and log every mask as a transparent overlay via Rerun's `Tensor` archetype."
 tags = ["2D", "SAM", "Segmentation"]
 thumbnail = "https://static.rerun.io/segment-anything-model/36438df27a287e5eff3a673e2464af071e665fdf/480w.png"
 thumbnail_dimensions = [480, 480]

@@ -1,6 +1,7 @@
 ---
 title: Chunks
 order: 700
+description: The Arrow-backed storage unit Rerun uses internally
 ---
 
 A *Chunk* is the core datastructure at the heart of Rerun: it dictates how data gets logged, injected, stored, and queried.

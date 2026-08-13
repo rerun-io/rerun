@@ -1,12 +1,7 @@
 ---
 title: How-to
 order: 3
+index: true
 ---
 
 Guides for using Rerun in more advanced ways.
-
--   [Logging and ingestion](./howto/logging-and-ingestion.md) - sending data to Rerun
--   [Visualization](./howto/visualization.md) - displaying data in the Viewer
--   [Query and transform](./howto/query-and-transform.md) - querying and transforming data
--   [Train](./howto/train.md) - using Rerun data for training
--   [Integrations](./howto/integrations.md) - integrating Rerun with other tools

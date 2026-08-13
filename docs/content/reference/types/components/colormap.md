@@ -81,6 +81,14 @@ The classic `RViz` "Costmap" grid-map colormap for robot navigation cost maps.
 Cost values are mapped to blue to red spectrum, and special cost values
 (e.g. lethal obstacles) have highlight colors. Zero values are fully transparent.
 
+#### `Costmap` = 12
+A grid-map colormap for robot navigation cost maps.
+
+Semantically equivalent to the `RViz` cost map but with a more pleasing color palette.
+
+Cost values are mapped to a green to yellow spectrum, and special cost values
+(e.g. lethal obstacles) have highlight colors. Zero values are fully transparent.
+
 
 ## Arrow datatype
 ```

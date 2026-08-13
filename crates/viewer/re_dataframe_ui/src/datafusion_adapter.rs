@@ -9,15 +9,15 @@ use datafusion::functions::expr_fn::concat;
 use datafusion::logical_expr::{binary_expr, col as datafusion_col, lit};
 use datafusion::prelude::{SessionContext, cast, encode};
 use futures::{StreamExt as _, TryStreamExt as _};
+use re_async::AsyncRuntimeHandle;
 use re_log::{error, warn};
 use re_log_types::Timestamp;
 use re_mutex::Mutex;
 use re_quota_channel::send_crossbeam;
 use re_sorbet::{BatchType, SorbetBatch, SorbetSchema};
-use re_viewer_context::AsyncRuntimeHandle;
 
 use crate::ColumnFilter;
-use crate::grid_view::FlagChangeEvent;
+use crate::cards_view::FlagChangeEvent;
 use crate::table_blueprint::{EntryLinksSpec, SegmentLinksSpec, SortBy, TableBlueprint};
 use crate::table_selection::TableSelectionState;
 
@@ -219,9 +219,8 @@ impl DataFusionQuery {
 
         if let Some(sort_by) = sort_by {
             let ascending = sort_by.direction.is_ascending();
-            dataframe = dataframe.sort(vec![
-                col(&sort_by.column_physical_name).sort(ascending, ascending),
-            ])?;
+            dataframe =
+                dataframe.sort(vec![col(&sort_by.column_name).sort(ascending, ascending)])?;
         }
 
         //
@@ -512,20 +511,14 @@ impl DataFusionAdapter {
     pub fn apply_flag_changes(
         &mut self,
         ui: &egui::Ui,
-        flag_column_name: &str,
+        display_column_index: usize,
         changes: &[FlagChangeEvent],
     ) {
         let Some(Ok(results)) = &mut self.results else {
             return;
         };
 
-        let Some(col_idx) = results.sorbet_schema.columns.iter().position(|desc| {
-            matches!(desc, re_sorbet::ColumnDescriptor::Component(c) if c.component.as_str() == flag_column_name)
-        }) else {
-            return;
-        };
-
-        update_existing_flag_column(results, col_idx, changes);
+        update_existing_flag_column(results, display_column_index, changes);
 
         ui.data_mut(|data| {
             data.insert_temp(self.id, self.clone());

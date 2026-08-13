@@ -16,10 +16,7 @@ use re_protos::cloud::v1alpha1::{
 };
 use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_server::RerunCloudHandlerBuilder;
-use wasm_bindgen::JsCast as _;
-use wasm_bindgen_futures::JsFuture;
 use wasm_bindgen_test::wasm_bindgen_test;
-use web_sys::{FileSystemDirectoryHandle, FileSystemFileHandle, FileSystemWritableFileStream};
 
 wasm_bindgen_test::wasm_bindgen_test_configure!(run_in_browser);
 
@@ -33,18 +30,35 @@ async fn version() {
         .expect("version request should succeed")
         .into_inner();
 
-    assert_eq!(response.version, re_build_info::exposed_version!());
+    assert_eq!(response.version, re_build_info::exposed_version());
     assert!(response.build_info.is_some());
 }
 
 #[wasm_bindgen_test]
-async fn register_rrd_from_file_url_in_opfs() {
+async fn register_rrd_with_footer_from_file_url_in_opfs() {
+    register_rrd_from_file_url_in_opfs(true).await;
+}
+
+#[wasm_bindgen_test]
+async fn register_rrd_without_footer_from_file_url_in_opfs() {
+    register_rrd_from_file_url_in_opfs(false).await;
+}
+
+async fn register_rrd_from_file_url_in_opfs(with_footer: bool) {
     let service = RerunCloudHandlerBuilder::new().build();
-    let dataset_name = EntryName::new("opfs_dataset").expect("valid dataset name");
+    let footer_suffix = if with_footer {
+        "with_footer"
+    } else {
+        "without_footer"
+    };
+    let dataset_name =
+        EntryName::new(format!("opfs_dataset_{footer_suffix}")).expect("valid dataset name");
     let file_name = format!("{}.rrd", re_tuid::Tuid::new());
     let url = format!("file:///{file_name}");
 
-    write_opfs_file(&file_name, &encode_rrd()).await;
+    re_web::fs::write(&file_name, encode_rrd(with_footer).into())
+        .await
+        .expect("failed to write OPFS file");
 
     service
         .create_dataset_entry(tonic::Request::new(CreateDatasetEntryRequest {
@@ -114,7 +128,7 @@ async fn register_rrd_from_file_url_in_opfs() {
     }));
 }
 
-fn encode_rrd() -> Vec<u8> {
+fn encode_rrd(with_footer: bool) -> Vec<u8> {
     let store_id = StoreId::random(StoreKind::Recording, "opfs_test");
     let timeline = Timeline::new_sequence("frame");
     let points = MyPoint::from_iter(0..1);
@@ -134,6 +148,9 @@ fn encode_rrd() -> Vec<u8> {
         &mut bytes,
     )
     .expect("failed to create test RRD encoder");
+    if !with_footer {
+        encoder.do_not_emit_footer();
+    }
     encoder
         .append(&LogMsg::SetStoreInfo(SetStoreInfo {
             row_id: *RowId::ZERO,
@@ -151,35 +168,4 @@ fn encode_rrd() -> Vec<u8> {
     encoder.finish().expect("failed to finish test RRD");
     drop(encoder);
     bytes
-}
-
-async fn write_opfs_file(name: &str, bytes: &[u8]) {
-    write_opfs_file_main(name, bytes)
-        .await
-        .expect("failed to write OPFS file");
-}
-
-async fn write_opfs_file_main(name: &str, bytes: &[u8]) -> Result<(), wasm_bindgen::JsValue> {
-    let nav = web_sys::window()
-        .ok_or_else(|| wasm_bindgen::JsValue::from_str("OPFS requires a browser Window"))?
-        .navigator();
-    let root: FileSystemDirectoryHandle = JsFuture::from(nav.storage().get_directory())
-        .await?
-        .dyn_into()?;
-
-    let options = web_sys::FileSystemGetFileOptions::new();
-    options.set_create(true);
-    let file: FileSystemFileHandle =
-        JsFuture::from(root.get_file_handle_with_options(name, &options))
-            .await?
-            .dyn_into()?;
-    let writer: FileSystemWritableFileStream =
-        JsFuture::from(file.create_writable()).await?.dyn_into()?;
-
-    JsFuture::from(writer.write_with_u8_array(bytes)?).await?;
-
-    let stream: &web_sys::WritableStream = writer.as_ref();
-    JsFuture::from(stream.close()).await?;
-
-    Ok(())
 }

@@ -1,5 +1,6 @@
 <!--[metadata]
 title = "Notebook: viewer"
+description = "Embed a pre-recorded RRD inside a Jupyter notebook with the Rerun viewer widget. Great for demos and docs."
 tags = ["Notebook", "Widget", "3D"]
 thumbnail = "https://static.rerun.io/notebook_viewer/3e3bc9c7eede26db837fb317b7e2b2de77dfc777/480w.png"
 thumbnail_dimensions = [480, 272]

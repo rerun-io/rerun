@@ -1,5 +1,6 @@
 <!--[metadata]
 title = "ARFlow: a framework for simplifying AR experimentation workflow"
+description = "External AR research framework that uses Rerun to visualize multi-modal sensor data from a mobile client in real time."
 source = "https://github.com/cake-lab/ARFlow"
 tags = ["3D", "Augmented reality", "Spatial computing", "Integration"]
 thumbnail = "https://static.rerun.io/arflow/a6b509af10a42b3c7ad3909d44e972a3cb1a9c41/480w.png"

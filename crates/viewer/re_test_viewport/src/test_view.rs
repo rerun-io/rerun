@@ -115,8 +115,9 @@ impl ViewClass for TestView {
         _state: &mut dyn re_viewer_context::ViewState,
         _query: &re_viewer_context::ViewQuery<'_>,
         _system_output: re_viewer_context::SystemExecutionOutput,
-    ) -> Result<(), re_viewer_context::ViewSystemExecutionError> {
+    ) -> Result<re_viewer_context::ViewClassUiOutput, re_viewer_context::ViewSystemExecutionError>
+    {
         ui.label("Test view");
-        Ok(())
+        Ok(Default::default())
     }
 }

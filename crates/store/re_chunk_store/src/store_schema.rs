@@ -147,26 +147,19 @@ impl StoreSchema {
             .map(|entry| &entry.metadata_state)
     }
 
-    /// Checks whether any column in the store with the given [`re_types_core::ComponentType`] has a datatype
-    /// that differs from `expected_datatype`.
+    /// The metadata of every component column in the store, together with the entity it belongs to.
     ///
     /// This iterates over all entities, so it should not be called in a hot path.
-    pub fn has_mismatched_datatype_for_component_type(
+    pub fn all_column_metadata(
         &self,
-        component_type: &ComponentType,
-        expected_datatype: &ArrowDataType,
-    ) -> Option<&ArrowDataType> {
-        re_tracing::profile_function!();
-        for per_component in self.per_column_metadata.values() {
-            for entry in per_component.values() {
-                if entry.descriptor.component_type.as_ref() == Some(component_type)
-                    && entry.datatype != *expected_datatype
-                {
-                    return Some(&entry.datatype);
-                }
-            }
-        }
-        None
+    ) -> impl Iterator<Item = (&EntityPath, &ColumnMetadataEntry)> + '_ {
+        self.per_column_metadata
+            .iter()
+            .flat_map(|(entity_path, per_component)| {
+                per_component
+                    .values()
+                    .map(move |entry| (entity_path, entry))
+            })
     }
 
     /// Access the per-column metadata for a given entity.

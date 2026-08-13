@@ -17,7 +17,7 @@ expression: "format_chunk(&chunks[0])"
 │ │ is_sorted: true                               ┆ kind: index                   ┆ kind: index                      ┆ "rerun.datatypes.ProtobufEnum"}, "address":              │ │
 │ │ kind: control                                 ┆                               ┆                                  ┆ Struct("street": Utf8, "city": Utf8), "tags":            │ │
 │ │                                               ┆                               ┆                                  ┆ Map("entries": non-null Struct("key": non-null Utf8,     │ │
-│ │                                               ┆                               ┆                                  ┆ "value": Utf8), unsorted)))                              │ │
+│ │                                               ┆                               ┆                                  ┆ "value": non-null Utf8), unsorted)))                     │ │
 │ │                                               ┆                               ┆                                  ┆ archetype: com.example.Person                            │ │
 │ │                                               ┆                               ┆                                  ┆ component: com.example.Person:message                    │ │
 │ │                                               ┆                               ┆                                  ┆ kind: data                                               │ │

@@ -99,9 +99,9 @@ fn add_data(
         let components = (0..num_rows_per_chunk).map(|i| {
             let angle_deg = i as f32 % 360.0;
             re_sdk_types::archetypes::Transform3D::from_rotation(
-                re_sdk_types::datatypes::RotationAxisAngle {
+                re_sdk_types::encodings::RotationAxisAngle {
                     axis: (0.0, 0.0, 1.0).into(),
-                    angle: re_sdk_types::datatypes::Angle::from_degrees(angle_deg),
+                    angle: re_sdk_types::encodings::Angle::from_degrees(angle_deg),
                 },
             )
         });

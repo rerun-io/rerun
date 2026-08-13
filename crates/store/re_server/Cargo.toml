@@ -37,6 +37,7 @@ lance = ["dep:lance"]
 [dependencies]
 
 # Rerun
+re_async.workspace = true
 re_arrow_util.workspace = true
 re_build_info.workspace = true
 re_byte_size.workspace = true
@@ -65,6 +66,7 @@ parking_lot.workspace = true
 serde.workspace = true
 thiserror.workspace = true
 tokio = { workspace = true, features = ["sync"] }
+tokio-util = { workspace = true, features = ["compat"] }
 tonic.workspace = true
 url.workspace = true
 
@@ -96,25 +98,11 @@ tower-service.workspace = true
 tracing.workspace = true
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
+bytes.workspace = true
 chrono = { workspace = true, features = ["wasmbind"] }
 getrandom = { workspace = true, features = ["wasm_js"] }
-js-sys.workspace = true
 percent-encoding.workspace = true
-wasm-bindgen.workspace = true
-wasm-bindgen-futures.workspace = true
-web-sys = { workspace = true, features = [
-  "Blob",
-  "DomException",
-  "File",
-  "FileSystemDirectoryHandle",
-  "FileSystemFileHandle",
-  "FileSystemGetFileOptions",
-  "FileSystemWritableFileStream",
-  "Navigator",
-  "StorageManager",
-  "Window",
-  "WritableStream",
-] }
+re_web.workspace = true
 
 [dev-dependencies]
 re_chunk.workspace = true

@@ -1,6 +1,7 @@
 ---
 title: Viewer
 order: 400
+description: Install the standalone Viewer
 ---
 
 The [Viewer](../../reference/viewer/overview.md) can be installed independent of the library language you're using.

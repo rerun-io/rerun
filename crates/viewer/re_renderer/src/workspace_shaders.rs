@@ -50,6 +50,12 @@ pub fn init() {
     }
 
     {
+        let virtpath = Path::new("shader/gaussian_splat.wgsl");
+        let content = include_str!("../shader/gaussian_splat.wgsl").into();
+        fs.create_file(virtpath, content).unwrap();
+    }
+
+    {
         let virtpath = Path::new("shader/generic_skybox.wgsl");
         let content = include_str!("../shader/generic_skybox.wgsl").into();
         fs.create_file(virtpath, content).unwrap();

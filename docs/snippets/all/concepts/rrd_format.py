@@ -3,16 +3,14 @@
 from __future__ import annotations
 
 import atexit
-import os
 import tempfile
 from pathlib import Path
 
 import rerun as rr
 
-output_path = Path(tempfile.mktemp(suffix=".rrd"))
-atexit.register(
-    lambda: os.unlink(output_path) if output_path.exists() else None
-)
+_tmp_dir = tempfile.TemporaryDirectory()
+atexit.register(_tmp_dir.cleanup)
+output_path = Path(_tmp_dir.name) / "output.rrd"
 
 # region: write
 with rr.RecordingStream(

@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any
 from ..error_utils import catch_and_log_exceptions
 
 if TYPE_CHECKING:
-    from .. import components, datatypes
+    from .. import components, encodings
 
 
 class Cylinders3DExt:
@@ -14,17 +14,17 @@ class Cylinders3DExt:
     def __init__(
         self: Any,
         *,
-        lengths: datatypes.Float32ArrayLike | None = None,
-        radii: datatypes.Float32ArrayLike | None = None,
-        centers: datatypes.Vec3DArrayLike | None = None,
-        rotation_axis_angles: datatypes.RotationAxisAngleArrayLike | None = None,
-        quaternions: datatypes.QuaternionArrayLike | None = None,
-        colors: datatypes.Rgba32ArrayLike | None = None,
-        line_radii: datatypes.Float32ArrayLike | None = None,
+        lengths: encodings.Float32ArrayLike | None = None,
+        radii: encodings.Float32ArrayLike | None = None,
+        centers: encodings.Vec3DArrayLike | None = None,
+        rotation_axis_angles: encodings.RotationAxisAngleArrayLike | None = None,
+        quaternions: encodings.QuaternionArrayLike | None = None,
+        colors: encodings.Rgba32ArrayLike | None = None,
+        line_radii: encodings.Float32ArrayLike | None = None,
         fill_mode: components.FillModeLike | None = None,
-        labels: datatypes.Utf8ArrayLike | None = None,
-        show_labels: datatypes.BoolLike | None = None,
-        class_ids: datatypes.ClassIdArrayLike | None = None,
+        labels: encodings.Utf8ArrayLike | None = None,
+        show_labels: encodings.BoolLike | None = None,
+        class_ids: encodings.ClassIdArrayLike | None = None,
     ) -> None:
         """
         Create a new instance of the Cylinders3D archetype.

@@ -1,7 +1,7 @@
 #[cfg(feature = "image")]
 use super::{ImageBuffer, ImageFormat};
 #[cfg(feature = "image")]
-use crate::{datatypes::ColorModel, image::ImageChannelType};
+use crate::{encodings::ColorModel, image::ImageChannelType};
 
 #[cfg(feature = "image")]
 impl ImageBuffer {

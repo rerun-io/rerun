@@ -5,7 +5,7 @@ from typing import cast
 import numpy as np
 import pytest
 import torch
-from rerun.datatypes import (
+from rerun.encodings import (
     Mat3x3,
     Mat3x3ArrayLike,
     Mat3x3Batch,

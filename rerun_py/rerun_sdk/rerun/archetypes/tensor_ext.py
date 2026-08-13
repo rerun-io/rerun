@@ -7,10 +7,10 @@ from ..error_utils import catch_and_log_exceptions
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from rerun.datatypes.range1d import Range1DLike
+    from rerun.encodings.range1d import Range1DLike
 
-    from ..datatypes import TensorDataLike
-    from ..datatypes.tensor_data_ext import TensorLike
+    from ..encodings import TensorDataLike
+    from ..encodings.tensor_data_ext import TensorLike
 
 
 class TensorExt:
@@ -48,7 +48,7 @@ class TensorExt:
             If not specified, the range will be estimated from the data.
 
         """
-        from ..datatypes import TensorData
+        from ..encodings import TensorData
 
         with catch_and_log_exceptions(context=self.__class__.__name__):
             if not isinstance(data, TensorData):

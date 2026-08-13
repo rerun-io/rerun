@@ -1,5 +1,5 @@
 use super::PinholeProjection;
-use crate::datatypes::Vec2D;
+use crate::encodings::Vec2D;
 
 impl PinholeProjection {
     /// Create a new pinhole projection matrix from a focal length and principal point.

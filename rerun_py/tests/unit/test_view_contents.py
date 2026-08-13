@@ -7,7 +7,7 @@ from rerun.blueprint.archetypes.view_contents import ViewContents
 from rerun.blueprint.components.query_expression import QueryExpression, QueryExpressionBatch
 
 if TYPE_CHECKING:
-    from rerun.datatypes.utf8 import Utf8ArrayLike
+    from rerun.encodings.utf8 import Utf8ArrayLike
 
 
 def test_view_contents() -> None:

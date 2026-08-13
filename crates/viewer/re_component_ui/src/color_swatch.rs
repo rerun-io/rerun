@@ -2,7 +2,7 @@ use egui::{
     Color32, Popup, PopupCloseBehavior, Response, Ui, Vec2, Widget,
     color_picker::{Alpha, color_picker_color32},
 };
-use re_sdk_types::datatypes::Rgba32;
+use re_sdk_types::encodings::Rgba32;
 use re_ui::UiExt as _;
 use re_viewer_context::MaybeMutRef;
 

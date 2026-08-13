@@ -1,6 +1,7 @@
 <!--[metadata]
 title = "Depth compare"
-tags = ["2D", "3D", "HuggingFace", "Depth", "Pinhole camera"]
+description = "Side-by-side comparison of monocular depth estimation networks, with 3D back-projection into world space for richer inspection."
+tags = ["2D", "3D", "Hugging Face", "Depth", "Pinhole camera"]
 source = "https://github.com/pablovela5620/monoprior"
 thumbnail = "https://static.rerun.io/depth-compare-thumbnail/270fdb11a2b6e85c69d83d52d475a5ec644de9df/480w.png"
 thumbnail_dimensions = [480, 258]

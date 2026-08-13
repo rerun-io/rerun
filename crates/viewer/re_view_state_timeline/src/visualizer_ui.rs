@@ -5,7 +5,7 @@
 use re_component_ui::color_swatch::ColorSwatch;
 use re_sdk_types::archetypes::StateConfiguration;
 use re_sdk_types::components::{Color, Text, Visible};
-use re_sdk_types::datatypes::{Bool, Rgba32};
+use re_sdk_types::encodings::{Bool, Rgba32};
 use re_sdk_types::{ComponentDescriptor, Loggable as _};
 use re_ui::UiExt as _;
 use re_viewer_context::external::re_entity_db::InstancePath;

@@ -3,7 +3,7 @@ pub use re_sdk::*;
 
 /// Transform helpers, for use with [`archetypes::Transform3D`].
 pub mod transform {
-    pub use re_sdk_types::datatypes::{Angle, Quaternion, RotationAxisAngle};
+    pub use re_sdk_types::encodings::{Angle, Quaternion, RotationAxisAngle};
 }
 
 /// Coordinate system helpers, for use with [`components::ViewCoordinates`].
@@ -11,7 +11,10 @@ pub mod coordinates {
     pub use re_sdk_types::view_coordinates::{Axis3, Handedness, Sign, SignedAxis3};
 }
 
-pub use re_sdk_types::{archetypes, components, datatypes};
+pub use re_sdk_types::{archetypes, components, encodings};
+
+#[deprecated(since = "0.37.0", note = "renamed to `encodings`")]
+pub use re_sdk_types::encodings as datatypes;
 
 mod prelude {
     // Import all archetypes into the global namespace to minimize
@@ -24,7 +27,7 @@ mod prelude {
         LineStrip3D, MediaType, Position2D, Position3D, Radius, Scale3D, Text, TextLogLevel,
         TransformRelation, TriangleIndices, Vector2D, Vector3D,
     };
-    pub use re_sdk_types::datatypes::{
+    pub use re_sdk_types::encodings::{
         Angle, AnnotationInfo, ChannelDatatype, ClassDescription, ColorModel, Float32,
         KeypointPair, Mat3x3, PixelFormat, Quaternion, Rgba32, RotationAxisAngle, TensorBuffer,
         TensorData, Vec2D, Vec3D, Vec4D,

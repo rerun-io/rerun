@@ -6,7 +6,6 @@
 //! `ExecutionPlan`. There is no IO source, no segment fan-out, no
 //! `rerun_segment_id` prepend, no pipeline budget, and no analytics.
 
-use std::any::Any;
 use std::sync::Arc;
 
 use arrow::array::{RecordBatch, RecordBatchOptions};
@@ -92,10 +91,6 @@ impl LocalChunkStoreTableProvider {
 
 #[async_trait]
 impl TableProvider for LocalChunkStoreTableProvider {
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
     fn schema(&self) -> SchemaRef {
         Arc::clone(&self.schema)
     }
@@ -180,10 +175,6 @@ impl DisplayAs for LocalChunkStoreExec {
 impl ExecutionPlan for LocalChunkStoreExec {
     fn name(&self) -> &'static str {
         "LocalChunkStoreExec"
-    }
-
-    fn as_any(&self) -> &dyn Any {
-        self
     }
 
     fn properties(&self) -> &Arc<PlanProperties> {

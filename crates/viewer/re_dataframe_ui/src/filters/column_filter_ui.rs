@@ -340,8 +340,8 @@ mod tests {
     use arrow::datatypes::{DataType, Field, FieldRef};
     use egui::accesskit::Role;
     use egui::{Key, Modifiers};
+    use egui_kittest::SnapshotResults;
     use egui_kittest::kittest::Queryable as _;
-    use egui_kittest::{OsThreshold, SnapshotOptions, SnapshotResults};
 
     use super::super::{
         ComparisonOperator, FloatFilter, IntFilter, NonNullableBooleanFilter,
@@ -607,9 +607,7 @@ mod tests {
         node.click();
         harness.run();
 
-        let options = SnapshotOptions::new()
-            .threshold(OsThreshold::default().macos(2.5))
-            .failed_pixel_count_threshold(OsThreshold::default().macos(2));
+        let options = re_ui::testing::default_snapshot_options_for_ui();
         harness.snapshot_options("timestamp_filter_on_commit", &options);
     }
 }

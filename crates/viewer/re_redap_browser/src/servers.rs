@@ -5,6 +5,7 @@ use std::task::Poll;
 use datafusion::prelude::{SessionConfig, SessionContext, col, lit};
 use datafusion::sql::TableReference;
 use egui::{Frame, Margin, RichText};
+use re_async::AsyncRuntimeHandle;
 use re_dataframe_ui::{ColumnBlueprint, default_display_name_for_column};
 use re_log_types::{EntityPathPart, EntryId, TableId};
 use re_protos::cloud::v1alpha1::EntryKind;
@@ -18,8 +19,7 @@ use re_ui::alert::Alert;
 use re_ui::{UiExt as _, icons};
 use re_uri::DATASET_HIERARCHY_SEPARATOR;
 use re_viewer_context::{
-    AppContext, AsyncRuntimeHandle, CommandSender as ViewerCommandSender,
-    EditRedapServerModalCommand, ViewStates,
+    AppContext, CommandSender as ViewerCommandSender, EditRedapServerModalCommand, ViewStates,
 };
 
 use crate::context::Context;
@@ -256,13 +256,23 @@ impl Server {
 
                 blueprint = blueprint.sort_key(column_sort_key);
 
+                // The link column renders a button with the resolved entry name, so the raw
+                // `name` column is redundant — hide it by default.
+                if desc.display_name().as_str() == "name" {
+                    blueprint = blueprint.default_visibility(false);
+                }
+
                 if desc.display_name().as_str() == ENTRY_LINK_COLUMN_NAME {
                     blueprint = blueprint.variant_ui(re_component_ui::REDAP_URI_BUTTON_VARIANT);
                 }
 
                 blueprint
             })
-            .generate_entry_links(ENTRY_LINK_COLUMN_NAME, "id", self.origin.clone())
+            .generate_entry_links(
+                ENTRY_LINK_COLUMN_NAME.into(),
+                "id".into(),
+                self.origin.clone(),
+            )
             .prefilter(
                 col("entry_kind")
                     .in_list(
@@ -372,11 +382,7 @@ impl Server {
                 // Property columns are visible by default
                 true
             } else {
-                matches!(
-                    desc.display_name().as_str(),
-                    RECORDING_LINK_COLUMN_NAME
-                        | ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME
-                )
+                desc.display_name().as_str() == RECORDING_LINK_COLUMN_NAME
             };
 
             let column_sort_key = match desc.display_name().as_str() {
@@ -397,8 +403,8 @@ impl Server {
             blueprint
         })
         .generate_segment_links(
-            RECORDING_LINK_COLUMN_NAME,
-            ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
+            RECORDING_LINK_COLUMN_NAME.into(),
+            ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME.into(),
             self.origin.clone(),
             dataset.id(),
         )
@@ -617,6 +623,12 @@ fn warning_with_edit_button(
 pub struct RedapServers {
     servers: BTreeMap<re_uri::Origin, Server>,
 
+    /// Whether the built-in internal catalog server is shown in the UI.
+    ///
+    /// It starts hidden and is revealed for the rest of the session once the user enables the
+    /// internal catalog or a catalog event arrives. Remote servers are always shown.
+    internal_catalog_revealed: bool,
+
     /// When deserializing we can't construct the [`Server`]s right away
     /// so they get queued here.
     pending_servers: Vec<re_uri::Origin>,
@@ -672,6 +684,7 @@ impl Default for RedapServers {
 
         Self {
             servers: Default::default(),
+            internal_catalog_revealed: false,
             pending_servers: Default::default(),
             command_sender,
             command_receiver,
@@ -751,7 +764,7 @@ impl std::fmt::Debug for Command {
 
 impl RedapServers {
     pub fn is_empty(&self) -> bool {
-        self.servers.is_empty() && self.pending_servers.is_empty()
+        self.iter_servers().next().is_none() && self.pending_servers.is_empty()
     }
 
     /// Whether we already know about a given server (or have it queued to be added).
@@ -823,8 +836,16 @@ impl RedapServers {
         );
     }
 
+    /// Reveal the internal catalog for the rest of the session.
+    pub fn reveal_internal_catalog(&mut self) {
+        self.internal_catalog_revealed = true;
+    }
+
     pub fn iter_servers(&self) -> impl Iterator<Item = &Server> {
-        self.servers.values()
+        let revealed = self.internal_catalog_revealed;
+        self.servers
+            .values()
+            .filter(move |server| revealed || !server.is_internal())
     }
 
     /// Refresh the dataframe contents of a single entry (dataset or table).
@@ -847,6 +868,29 @@ impl RedapServers {
                 TableReference::bare(entry.name().to_string()),
             );
         }
+    }
+
+    /// Snapshot of `(origin, entry_id) → name + icon` for all currently-loaded catalog entries.
+    ///
+    /// Used to resolve built-in Rerun URLs to rich `LinkButtons` (see
+    /// [`re_viewer_context::make_url_decorator`]). Entries that haven't finished loading yet are
+    /// simply absent, so callers fall back to a placeholder.
+    pub fn build_url_lookup(&self) -> re_viewer_context::UrlNameLookup {
+        let mut lookup = re_viewer_context::UrlNameLookup::default();
+        // Resolve names for every known server, including a hidden internal one: this is a
+        // reachability lookup, not a listing, so it must not use the visibility-filtered iterator.
+        for server in self.servers.values() {
+            for entry in server.entries().iter_loaded() {
+                lookup.insert(
+                    (server.origin().clone(), entry.id()),
+                    re_viewer_context::ResolvedEntry {
+                        name: entry.name().clone(),
+                        kind: entry.link_kind(),
+                    },
+                );
+            }
+        }
+        lookup
     }
 
     pub fn is_authenticated(&self, origin: &re_uri::Origin) -> bool {
@@ -993,6 +1037,10 @@ impl RedapServers {
             }
 
             Command::RefreshCollection(origin) => {
+                // A catalog event on the internal server means it has content worth showing.
+                if self.is_internal_server(&origin) {
+                    self.reveal_internal_catalog();
+                }
                 if let Some(server) = self.servers.remove(&origin) {
                     self.servers.insert(
                         origin,

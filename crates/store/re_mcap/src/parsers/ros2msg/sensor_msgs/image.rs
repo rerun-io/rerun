@@ -1,7 +1,7 @@
 use anyhow::Context as _;
 use re_chunk::{Chunk, ChunkId};
 use re_sdk_types::archetypes::{CoordinateFrame, DepthImage, Image};
-use re_sdk_types::datatypes::{ChannelDatatype, ColorModel, ImageFormat, PixelFormat};
+use re_sdk_types::encodings::{ChannelDatatype, ColorModel, ImageFormat, PixelFormat};
 
 use super::super::Ros2MessageParser;
 use super::super::util::suffix_image_plane_frame_ids;

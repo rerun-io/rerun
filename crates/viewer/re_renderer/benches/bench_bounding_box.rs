@@ -37,8 +37,8 @@ fn bench_bounding_boxes(c: &mut Criterion) {
                 ))
             });
         });
-        group.bench_function(format!("point_cloud_bounds/{n}"), |b| {
-            b.iter(|| std::hint::black_box(re_renderer::util::point_cloud_bounds(&points)));
+        group.bench_function(format!("robust_bounds/{n}"), |b| {
+            b.iter(|| std::hint::black_box(re_renderer::RobustBounds::from_points(&points)));
         });
     }
 

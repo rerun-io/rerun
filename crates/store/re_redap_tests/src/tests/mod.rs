@@ -5,12 +5,14 @@ mod create_table;
 mod dataset_schema;
 mod entries_table;
 mod fetch_chunks;
+mod find_entries_filters;
 mod query_dataset;
 mod query_filter;
 mod query_index_values;
 mod register_asset;
 mod register_segment;
 mod rrd_manifest;
+mod scan_filter;
 mod unregister_segment;
 mod update_entry;
 mod watch_events;
@@ -108,6 +110,16 @@ define_redap_tests! {
     entries_table::list_entries_table,
     fetch_chunks::multi_dataset_fetch_chunk_completeness,
     fetch_chunks::simple_dataset_fetch_chunk_snapshot,
+    find_entries_filters::find_entries_asset_by_id_requires_explicit_kind,
+    find_entries_filters::find_entries_asset_by_name_requires_explicit_kind,
+    find_entries_filters::find_entries_default_excludes_asset_datasets,
+    find_entries_filters::find_entries_entry_kinds_exact,
+    find_entries_filters::find_entries_entry_kinds_multi_kind_name_lookup,
+    find_entries_filters::find_entries_entry_kinds_rejects_unspecified,
+    find_entries_filters::find_entries_ignores_unknown_entry_kinds,
+    find_entries_filters::find_entries_legacy_entry_kind_miss_returns_empty,
+    find_entries_filters::find_entries_legacy_entry_kind_still_works,
+    find_entries_filters::find_entries_rejects_legacy_unspecified,
     query_dataset::query_dataset_should_fail,
     query_dataset::query_dataset_unknown_segment_id_returns_empty,
     query_dataset::query_dataset_consistent_schema_across_timelines,
@@ -116,6 +128,8 @@ define_redap_tests! {
     query_dataset::query_empty_dataset,
     query_dataset::query_simple_dataset,
     query_dataset::query_simple_dataset_with_layers,
+    query_filter::query_dataset_or_of_ranges_fans_out,
+    query_filter::query_dataset_or_with_empty_branch_and_projection,
     query_filter::query_dataset_range_filter_with_and_without_latest_at_fill,
     query_filter::query_dataset_simple_filter,
     query_filter::query_dataset_with_limit,
@@ -154,6 +168,8 @@ define_redap_tests! {
     register_segment::register_with_dataset_if_duplicate_behavior_overwrite,
     register_segment::register_with_dataset_if_duplicate_behavior_skip,
     register_segment::register_with_prefix,
+    scan_filter::scan_segment_table_filter,
+    scan_filter::scan_dataset_manifest_filter,
     rrd_manifest::segment_id_not_found,
     rrd_manifest::simple_dataset_rrd_manifest,
     rrd_manifest::unregistered_segment,

@@ -4,8 +4,9 @@ use re_sdk_types::ViewClassIdentifier;
 use re_ui::{Help, UiExt as _};
 
 use crate::{
-    SystemExecutionOutput, ViewClass, ViewClassRegistryError, ViewQuery, ViewSpawnHeuristics,
-    ViewState, ViewSystemExecutionError, ViewSystemRegistrator, ViewerContext,
+    SystemExecutionOutput, ViewClass, ViewClassRegistryError, ViewClassUiOutput, ViewQuery,
+    ViewSpawnHeuristics, ViewState, ViewSystemExecutionError, ViewSystemRegistrator, ViewerContext,
+    ViewerDiagnostic, ViewerReportSeverity,
 };
 
 /// A placeholder view class that can be used when the actual class is not registered.
@@ -60,24 +61,28 @@ impl ViewClass for ViewClassPlaceholder {
         _state: &mut dyn ViewState,
         _query: &ViewQuery<'_>,
         _system_output: SystemExecutionOutput,
-    ) -> Result<(), ViewSystemExecutionError> {
+    ) -> Result<ViewClassUiOutput, ViewSystemExecutionError> {
         let tokens = ui.tokens();
+
+        let error_details = "This happens if either the blueprint specifies an invalid view class or \
+                this version of the viewer does not know about this type.\n\n\
+                \
+                **Note**: some views may require a specific Cargo feature to be enabled. In \
+                particular, the map view requires the `map_view` feature.";
+
         egui::Frame {
             inner_margin: egui::Margin::same(tokens.view_padding()),
             ..Default::default()
         }
         .show(ui, |ui| {
-            ui.warning_label("Unknown view class");
-
-            ui.markdown_ui(
-                "This happens if either the blueprint specifies an invalid view class or \
-                this version of the viewer does not know about this type.\n\n\
-                \
-                **Note**: some views may require a specific Cargo feature to be enabled. In \
-                particular, the map view requires the `map_view` feature.",
-            );
+            ui.error_label("Unknown view class");
+            ui.markdown_ui(error_details);
         });
 
-        Ok(())
+        Ok(ViewClassUiOutput::default().with_report(ViewerDiagnostic {
+            severity: ViewerReportSeverity::Error,
+            summary: "Unknown view class".into(),
+            details: Some(error_details.to_owned()),
+        }))
     }
 }

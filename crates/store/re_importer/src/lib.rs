@@ -1,3 +1,5 @@
+#![allow(clippy::iter_over_hash_type)]
+
 //! Handles importing of Rerun data from file using importer plugins.
 
 use std::collections::BTreeSet;
@@ -14,9 +16,6 @@ mod importer_archetype;
 mod importer_directory;
 mod importer_rrd;
 mod importer_urdf;
-
-#[cfg(not(target_arch = "wasm32"))]
-pub mod lerobot;
 
 // This importer currently only works when loading the entire dataset directory, and we cannot do that on web yet.
 #[cfg(not(target_arch = "wasm32"))]
@@ -408,21 +407,46 @@ pub enum ImporterError {
 
     #[error("{}", re_error::format(.0))]
     Other(#[from] anyhow::Error),
+
+    #[error("{source}\nFile path: {path}")]
+    File {
+        path: String,
+        #[source]
+        source: Box<Self>,
+    },
 }
 
 impl ImporterError {
+    /// Attaches the file being imported, so that individual loaders don't each have to
+    /// thread the path through just to produce a useful error message.
+    pub fn with_path(self, path: &std::path::Path) -> Self {
+        match self {
+            // These already name the file.
+            Self::Incompatible { .. } | Self::Mp4 { .. } | Self::File { .. } => self,
+            err => Self::File {
+                path: path.display().to_string(),
+                source: Box::new(err),
+            },
+        }
+    }
+
     #[inline]
     pub fn is_path_not_found(&self) -> bool {
         match self {
             #[cfg(not(target_arch = "wasm32"))]
             Self::IO(err) => err.kind() == std::io::ErrorKind::NotFound,
+            Self::File { source, .. } => source.is_path_not_found(),
             _ => false,
         }
     }
 
     #[inline]
     pub fn is_incompatible(&self) -> bool {
-        matches!(self, Self::Incompatible { .. })
+        match self {
+            Self::Incompatible { .. } => true,
+            Self::File { source, .. } => source.is_incompatible(),
+            _ => false,
+        }
     }
 }
 

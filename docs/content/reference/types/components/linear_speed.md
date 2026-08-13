@@ -5,8 +5,8 @@ title: "LinearSpeed"
 
 Linear speed, used for translation speed for example.
 
-## Rerun datatype
-[`Float64`](../datatypes/float64.md)
+## Rerun encoding
+[`Float64`](../encodings/float64.md)
 
 
 ## Arrow datatype

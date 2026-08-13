@@ -1,6 +1,5 @@
 # Contributing to Rerun
-This guide is for anyone who wants to contribute to the Rerun repository.
-
+This guide is for anyone who wants to contribute to the Rerun repository, for employees and outside contributors alike.
 
 ## See also
 * [`ARCHITECTURE.md`](ARCHITECTURE.md)
@@ -30,15 +29,49 @@ You can discuss these changes by:
 
 > [!NOTE]
 > PRs containing large undiscussed changes may be closed without comment.
+> The same applies to issues and PRs opened by bot accounts (e.g. OpenClaw) or that are clearly agent-generated without human review — see [Agents](#agents).
 
 ## Pull requests
 We use [Trunk Based Development](https://trunkbaseddevelopment.com/), which means we encourage small, short-lived branches.
 
-* Open draft PRs early to get feedback before a full review.
 * Don't PR from your own `main` branch — it makes it hard for reviewers to add fixes.
-* Add improvements as new commits rather than rebasing, so reviewers can follow progress (add images if possible!).
+* Add improvements as new commits rather than rebasing, so reviewers can follow progress.
 * All PRs are merged with [`Squash and Merge`](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/incorporating-changes-from-a-pull-request/about-pull-request-merges#squash-and-merge-your-commits), so you don't need a clean commit history on feature branches. Prefer new commits over rebasing — force-pushing discourages collaboration.
 
+### PR draft
+It can be useful to open a PR in _draft_ mode first. On reason is to get CI to run on it.
+
+Another reason is to ask for early feedback on e.g. the user interaction or the overall design of the PR.
+This can be a great way to discuss architectural ideas before doing the full work of implementing it.
+If you want such early feedback, ask for it explicitly (e.g. ping someone relevant).
+
+Do not un-draft until you have read all your code and _you_ think it is ready to merge.
+
+An un-drafted PR means "ready for review".
+
+### PR description
+- Make sure the PR description is _inviting_ - not too long, not too short
+- Write it yourself
+- Describe _why_ you made this change (and link to any relevant issue/PR)
+- If it makes sense, include an image or a video
+- Describe what you want reviewed, e.g.
+  - The UX — does this feature feel nice to use?
+  - The architecture / design — explain the proposed design in the PR description, and keep the PR in draft mode
+  - The code
+- Express your own confidence in your work
+  - Is this a simple fix for something you understand well, or maybe something well outside your domain that an agent wrote for you?
+
+### Agents
+Coding agents are powerful tools, but like any tool should be used wisely.
+
+If you use an agent to prototype some feature, then the PR should be in draft mode, and you should ask for feedback on the _effect_ of the PR, rather than its contents.
+
+If you use an agent to implement a solution, then you should be able to understand that solution.
+Asking the agent to walk you through the code can help, but doesn't replace reading it yourself.
+LLMs make it easy to produce code quickly, while understanding takes longer.
+Please disclose the level of confidence that you have in your solution.
+
+### Other
 Our CI will [record binary sizes](https://build.rerun.io/graphs/sizes.html) and run [benchmarks](https://build.rerun.io/graphs/crates.html) on each merged PR.
 
 Pull requests from external contributors require approval for CI runs. Click the `Approve and run` button:
@@ -52,19 +85,29 @@ Members of the `rerun-io` organization can enable auto-approval for a single PR 
 
 ### Labeling of PRs & changelog generation
 
-Org members _must_ label their PRs — labels are how we generate [changelogs](https://github.com/rerun-io/rerun/blob/main/CHANGELOG.md).
+Org members _must_ label their PRs — labels drive both the [changelog](https://github.com/rerun-io/rerun/blob/main/CHANGELOG.md) and the per-release changeset.
 
-* `include in changelog`: The PR **title** will be used as a changelog entry. Keep it informative and concise.
-* `exclude from changelog`: Required if the PR shouldn't appear in the changelog.
-* At least one category label is required. See the [CI job](./.github/workflows/labels.yml) for the current list.
+Every PR needs **exactly one** of these four changelog categories:
+
+* `exclude from changelog`: not user-facing — kept out of the changelog entirely.
+* `🪳 bug`: a bug fix — auto-added to `CHANGELOG.md` from the PR **title**. Keep the title informative and concise.
+* `📉 performance`: a performance improvement — auto-added to `CHANGELOG.md` from the PR **title**. Keep the title informative and concise.
+* `include in changelog`: a user-facing feature or breaking change. You **must** add a hand-written entry by copying [`docs/content/changelog/upcoming/_template.md`](./docs/content/changelog/upcoming/_template.md) to `upcoming/<short-slug>.md` and filling it in. One file per PR keeps PRs conflict-free; at release the entries are merged into the release's changeset. It is the reviewer's job to point out a missing changeset entry.
+
+In addition:
+
+* Add at least one category label (e.g. `📺 re_viewer`, `sdk-python`, …) to help with search.
 * When in doubt, add more labels rather than fewer — they help with search.
 
-#### What should go to the changelog?
+#### What goes in the changeset?
+
+A changeset entry should link to docs and/or an example, and include a migration guide (breaking changes) or screenshot/GIF (visual features).
+Set `type: highlight|breaking|feature` in the entry's frontmatter so the release merge knows which section it belongs in.
+A `TODO(name): add link` placeholder is fine while iterating, but the release is **blocked** until it is resolved.
+If a user-facing change is not in the changeset, it should stay behind a feature flag.
 
 Err on the side of including entries — if it adds value for a user browsing the changelog, add it.
 Be generous with external contributions — credit where credit is due!
-
-We typically don't include: pure refactors, testing, CI fixes, fixes for bugs introduced since last release, minor doc changes (typos, etc.).
 
 #### Other special labels
 

@@ -1,7 +1,7 @@
 """Log annotation context with connections between keypoints."""
 
 import rerun as rr
-from rerun.datatypes import ClassDescription
+from rerun.encodings import ClassDescription
 
 rr.init("rerun_example_annotation_context_connections", spawn=True)
 

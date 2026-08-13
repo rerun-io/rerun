@@ -13,21 +13,21 @@ SCENARIO(
 ) {
     GIVEN("A annotation context created with various utilities and one manual step by step") {
         rerun::archetypes::AnnotationContext from_utilities({
-            rerun::datatypes::ClassDescription(1, "hello"),
-            rerun::datatypes::ClassDescription(rerun::datatypes::AnnotationInfo(1, "hello")),
-            rerun::datatypes::ClassDescription(
-                {2, "world", rerun::datatypes::Rgba32(3, 4, 5)},
+            rerun::encodings::ClassDescription(1, "hello"),
+            rerun::encodings::ClassDescription(rerun::encodings::AnnotationInfo(1, "hello")),
+            rerun::encodings::ClassDescription(
+                {2, "world", rerun::encodings::Rgba32(3, 4, 5)},
                 {{17, "head"}, {42, "shoulders"}},
                 {
                     {1, 2},
                     {3, 4},
                 }
             ),
-            rerun::datatypes::ClassDescription(
-                rerun::datatypes::AnnotationInfo(2, "world", rerun::datatypes::Rgba32(3, 4, 5)),
+            rerun::encodings::ClassDescription(
+                rerun::encodings::AnnotationInfo(2, "world", rerun::encodings::Rgba32(3, 4, 5)),
                 {
-                    rerun::datatypes::AnnotationInfo(17, "head"),
-                    rerun::datatypes::AnnotationInfo(42, "shoulders"),
+                    rerun::encodings::AnnotationInfo(17, "head"),
+                    rerun::encodings::AnnotationInfo(42, "shoulders"),
                 },
                 {
                     std::pair<uint16_t, uint16_t>(1, 2),
@@ -37,11 +37,11 @@ SCENARIO(
         });
 
         AnnotationContext manual_archetype;
-        std::vector<rerun::datatypes::ClassDescriptionMapElem> class_map;
+        std::vector<rerun::encodings::ClassDescriptionMapElem> class_map;
         {
-            rerun::datatypes::ClassDescriptionMapElem element;
-            rerun::datatypes::KeypointPair pair;
-            rerun::datatypes::AnnotationInfo keypoint_annotation;
+            rerun::encodings::ClassDescriptionMapElem element;
+            rerun::encodings::KeypointPair pair;
+            rerun::encodings::AnnotationInfo keypoint_annotation;
 
             {
                 element.class_id = 1;
@@ -52,12 +52,12 @@ SCENARIO(
                 class_map.push_back(element);
             }
             {
-                std::vector<rerun::datatypes::AnnotationInfo> keypoint_annotations;
-                std::vector<rerun::datatypes::KeypointPair> keypoint_connections;
+                std::vector<rerun::encodings::AnnotationInfo> keypoint_annotations;
+                std::vector<rerun::encodings::KeypointPair> keypoint_connections;
 
                 element.class_id = 2;
                 element.class_description.info.id = 2;
-                element.class_description.info.color = rerun::datatypes::Rgba32(3, 4, 5);
+                element.class_description.info.color = rerun::encodings::Rgba32(3, 4, 5);
                 element.class_description.info.label = "world";
 
                 keypoint_annotation.id = 17;

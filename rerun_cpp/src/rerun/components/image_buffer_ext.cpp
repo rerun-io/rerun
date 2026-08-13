@@ -8,7 +8,7 @@ namespace rerun {
 
 #ifdef EDIT_EXTENSION
         struct ImageBufferExt {
-            rerun::datatypes::Blob buffer;
+            rerun::encodings::Blob buffer;
 #define ImageBuffer ImageBufferExt
 
             // <CODEGEN_COPY_TO_HEADER>

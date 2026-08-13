@@ -382,7 +382,7 @@ impl Loggable for MyColor {
     where
         Self: 'a,
     {
-        use re_types_core::datatypes::UInt32;
+        use re_types_core::encodings::UInt32;
         UInt32::to_arrow_opt(
             data.into_iter()
                 .map(|opt| opt.map(Into::into).map(|c| UInt32(c.0))),
@@ -392,7 +392,7 @@ impl Loggable for MyColor {
     fn from_arrow_opt(
         data: &dyn arrow::array::Array,
     ) -> re_types_core::DeserializationResult<Vec<Option<Self>>> {
-        use re_types_core::datatypes::UInt32;
+        use re_types_core::encodings::UInt32;
         Ok(UInt32::from_arrow_opt(data)?
             .into_iter()
             .map(|opt| opt.map(|v| Self(v.0)))
@@ -417,7 +417,7 @@ re_types_core::macros::impl_into_cow!(MyLabel);
 
 impl Loggable for MyLabel {
     fn arrow_datatype() -> arrow::datatypes::DataType {
-        re_types_core::datatypes::Utf8::arrow_datatype()
+        re_types_core::encodings::Utf8::arrow_datatype()
     }
 
     fn to_arrow_opt<'a>(
@@ -426,7 +426,7 @@ impl Loggable for MyLabel {
     where
         Self: 'a,
     {
-        use re_types_core::datatypes::Utf8;
+        use re_types_core::encodings::Utf8;
         Utf8::to_arrow_opt(
             data.into_iter()
                 .map(|opt| opt.map(Into::into).map(|l| Utf8(l.0.clone().into()))),
@@ -436,7 +436,7 @@ impl Loggable for MyLabel {
     fn from_arrow_opt(
         data: &dyn arrow::array::Array,
     ) -> re_types_core::DeserializationResult<Vec<Option<Self>>> {
-        use re_types_core::datatypes::Utf8;
+        use re_types_core::encodings::Utf8;
         Ok(Utf8::from_arrow_opt(data)?
             .into_iter()
             .map(|opt| opt.map(|v| Self(v.0.to_string())))
@@ -497,7 +497,7 @@ impl Loggable for MyIndex {
     where
         Self: 'a,
     {
-        use re_types_core::datatypes::UInt64;
+        use re_types_core::encodings::UInt64;
         UInt64::to_arrow_opt(
             data.into_iter()
                 .map(|opt| opt.map(Into::into).map(|c| UInt64(c.0))),
@@ -507,7 +507,7 @@ impl Loggable for MyIndex {
     fn from_arrow_opt(
         data: &dyn arrow::array::Array,
     ) -> re_types_core::DeserializationResult<Vec<Option<Self>>> {
-        use re_types_core::datatypes::UInt64;
+        use re_types_core::encodings::UInt64;
         Ok(UInt64::from_arrow_opt(data)?
             .into_iter()
             .map(|opt| opt.map(|v| Self(v.0)))

@@ -1,6 +1,7 @@
 use arrow::array::{Array as ArrowArray, ListArray as ArrowListArray};
 use arrow::buffer::{OffsetBuffer as ArrowOffsets, ScalarBuffer as ArrowScalarBuffer};
 use itertools::Itertools as _;
+use re_arrow_util::ListArrayExt as _;
 use re_log_types::TimelineName;
 
 use crate::{Chunk, ChunkId, TimeColumn};
@@ -74,17 +75,10 @@ impl Chunk {
     }
 
     /// Return all timelines that are not sorted relative to [`crate::RowId`].
-    pub fn unsorted_timelines(&self) -> Vec<TimelineName> {
+    pub fn unsorted_timelines(&self) -> impl Iterator<Item = TimelineName> {
         self.timelines
             .iter()
-            .filter_map(|(name, time_column)| {
-                if time_column.is_sorted() {
-                    None
-                } else {
-                    Some(*name)
-                }
-            })
-            .collect()
+            .filter_map(|(name, time_column)| (!time_column.is_sorted()).then_some(*name))
     }
 
     /// Sort the chunk by [`crate::RowId`], if needed.
@@ -294,7 +288,7 @@ impl Chunk {
                     .map(|array| &**array as &dyn ArrowArray)
                     .collect_vec();
 
-                let datatype = original.data_type().clone();
+                let field = original.field().clone();
                 let offsets =
                     ArrowOffsets::from_lengths(sorted_arrays.iter().map(|array| array.len()));
                 #[expect(clippy::unwrap_used)] // these are slices of the same outer array
@@ -303,10 +297,6 @@ impl Chunk {
                     .nulls()
                     .map(|validity| swaps.iter().map(|&from| validity.is_valid(from)).collect());
 
-                let field = match datatype {
-                    arrow::datatypes::DataType::List(field) => field.clone(),
-                    _ => unreachable!("This is always s list array"),
-                };
                 *original = ArrowListArray::new(field, offsets, values, validity);
             }
         }

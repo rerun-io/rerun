@@ -55,7 +55,7 @@ pub use self::component_descriptor::{
     FIELD_METADATA_KEY_COMPONENT_TYPE,
 };
 pub use self::dynamic_archetype::DynamicArchetype;
-pub use self::layer_name::LayerName;
+pub use self::layer_name::{InvalidLayerNameError, LayerName};
 pub use self::loggable::{Component, ComponentSet, ComponentType, Loggable, UnorderedComponentSet};
 pub use self::result::{
     _Backtrace, DeserializationError, DeserializationResult, ResultExt, SerializationError,
@@ -80,11 +80,14 @@ pub mod archetypes;
 /// There are also re-exported by `re_sdk_types`.
 pub mod components;
 
-/// Fundamental datatypes that are implemented in `re_types_core` directly for convenience and
+/// Fundamental encodings that are implemented in `re_types_core` directly for convenience and
 /// dependency optimization.
 ///
 /// There are also re-exported by `re_sdk_types`.
-pub mod datatypes;
+pub mod encodings;
+
+#[deprecated(since = "0.37.0", note = "renamed to `encodings`")]
+pub use self::encodings as datatypes;
 
 // ---
 

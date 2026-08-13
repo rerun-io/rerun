@@ -116,61 +116,44 @@ impl Importer for ArchetypeImporter {
         // We stream chunks to `tx` as each loader produces them, rather than
         // collecting into a `Vec` first: that way the bounded channel's
         // backpressure actually limits how much is held in memory at once.
-        let num_chunks = if crate::SUPPORTED_IMAGE_EXTENSIONS.contains(&extension.as_str()) {
+        let chunks_sent = if crate::SUPPORTED_IMAGE_EXTENSIONS.contains(&extension.as_str()) {
             re_log::debug!(?filepath, importer = self.name(), "Loading image…",);
-            self.send_chunks(
-                &tx,
-                &store_id,
-                load_image(&filepath, timepoint, entity_path, contents.into_owned())?,
-            )
+            load_image(&filepath, timepoint, entity_path, contents.into_owned())
+                .map(|chunks| self.send_chunks(&tx, &store_id, chunks))
         } else if crate::SUPPORTED_DEPTH_IMAGE_EXTENSIONS.contains(&extension.as_str()) {
             re_log::debug!(?filepath, importer = self.name(), "Loading depth image…",);
-            self.send_chunks(
-                &tx,
-                &store_id,
-                load_depth_image(&filepath, timepoint, entity_path, contents.into_owned())?,
-            )
+            load_depth_image(&filepath, timepoint, entity_path, contents.into_owned())
+                .map(|chunks| self.send_chunks(&tx, &store_id, chunks))
         } else if crate::SUPPORTED_VIDEO_EXTENSIONS.contains(&extension.as_str()) {
             re_log::debug!(?filepath, importer = self.name(), "Loading video…",);
-            self.send_chunks(
-                &tx,
-                &store_id,
-                load_video(&filepath, timepoint, &entity_path, contents.into_owned())?,
-            )
+            load_video(&filepath, timepoint, &entity_path, contents.into_owned())
+                .map(|chunks| self.send_chunks(&tx, &store_id, chunks))
         } else if crate::SUPPORTED_MESH_EXTENSIONS.contains(&extension.as_str()) {
             re_log::debug!(?filepath, importer = self.name(), "Loading 3D model…",);
-            self.send_chunks(
-                &tx,
-                &store_id,
-                load_mesh(
-                    filepath.clone(),
-                    timepoint,
-                    entity_path,
-                    contents.into_owned(),
-                )?,
+            load_mesh(
+                filepath.clone(),
+                timepoint,
+                entity_path,
+                contents.into_owned(),
             )
+            .map(|chunks| self.send_chunks(&tx, &store_id, chunks))
         } else if crate::SUPPORTED_POINT_CLOUD_EXTENSIONS.contains(&extension.as_str()) {
             re_log::debug!(?filepath, importer = self.name(), "Loading 3D point cloud…",);
-            self.send_chunks(
-                &tx,
-                &store_id,
-                load_point_cloud(timepoint, entity_path, &contents)?,
-            )
+            load_point_cloud(&filepath, timepoint, entity_path, &contents)
+                .map(|chunks| self.send_chunks(&tx, &store_id, chunks))
         } else if crate::SUPPORTED_TEXT_EXTENSIONS.contains(&extension.as_str()) {
             re_log::debug!(?filepath, importer = self.name(), "Loading text document…",);
-            self.send_chunks(
-                &tx,
-                &store_id,
-                load_text_document(
-                    filepath.clone(),
-                    timepoint,
-                    entity_path,
-                    contents.into_owned(),
-                )?,
+            load_text_document(
+                filepath.clone(),
+                timepoint,
+                entity_path,
+                contents.into_owned(),
             )
+            .map(|chunks| self.send_chunks(&tx, &store_id, chunks))
         } else {
             return Err(crate::ImporterError::Incompatible(filepath.clone()));
         };
+        let num_chunks = chunks_sent.map_err(|err| err.with_path(&filepath))?;
 
         if num_chunks == 0 {
             re_log::warn!("{} is empty", filepath.display());
@@ -278,7 +261,6 @@ fn load_video(
         mode: re_mp4_reader::Mode::Asset { timepoint },
         timeline_name: "video".into(),
         timeline_type: re_log_types::TimeType::DurationNs,
-        ffmpeg_override: None,
     };
 
     // An up-front failure (e.g. the asset being too large) aborts the import.
@@ -329,6 +311,7 @@ fn load_mesh(
 }
 
 fn load_point_cloud(
+    filepath: &std::path::Path,
     timepoint: TimePoint,
     entity_path: EntityPath,
     contents: &[u8],
@@ -337,12 +320,21 @@ fn load_point_cloud(
 
     let rows = [
         {
-            // TODO(#4532): `.ply` importer should support 2D point cloud & meshes
-            let points3d = re_sdk_types::archetypes::Points3D::from_file_contents(contents)
+            let mut builder = Chunk::builder(entity_path);
+            if re_sdk_types::archetypes::GaussianSplats3D::is_gaussian_splat_ply(contents) {
+                let gaussians = re_sdk_types::archetypes::GaussianSplats3D::from_ply_file_contents(
+                    contents,
+                    Some(filepath),
+                )
                 .map_err(anyhow::Error::from)?;
-            Chunk::builder(entity_path)
-                .with_archetype(RowId::new(), timepoint, &points3d)
-                .build()?
+                builder = builder.with_archetype(RowId::new(), timepoint, &gaussians);
+            } else {
+                // TODO(#4532): `.ply` importer should support 2D point cloud & meshes
+                let points3d = re_sdk_types::archetypes::Points3D::from_file_contents(contents)
+                    .map_err(anyhow::Error::from)?;
+                builder = builder.with_archetype(RowId::new(), timepoint, &points3d);
+            }
+            builder.build()?
         },
         //
     ];

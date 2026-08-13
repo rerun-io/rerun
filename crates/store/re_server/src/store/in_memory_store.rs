@@ -115,7 +115,7 @@ impl InMemoryStore {
     /// For Lazy stores, chunks are loaded in a single batched call per distinct store,
     /// amortizing the provider and IPC-parse overhead that per-key loading would pay N times.
     /// The returned chunks are owned by the caller — no caching happens in the Lazy store.
-    pub fn chunks_from_chunk_keys(
+    pub async fn chunks_from_chunk_keys(
         &self,
         chunk_keys: &[ChunkKey],
     ) -> Result<Vec<(StoreId, Arc<Chunk>)>, Error> {
@@ -161,6 +161,7 @@ impl InMemoryStore {
             ids.dedup();
             let chunks = lazy
                 .load_chunks(&ids)
+                .await
                 .map_err(|err| Error::InvalidChunkKey(format!("lazy load failed: {err:#}")))?;
             for chunk in chunks {
                 loaded.insert((slot_id, chunk.id()), chunk);

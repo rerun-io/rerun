@@ -13,8 +13,7 @@ use re_viewer_context::{
     SystemCommand, open_url::combine_with_base_url,
 };
 use re_viewer_context::{
-    MoveDirection, MoveSpeed, RecordingOrTable, SystemCommandSender as _, TimeControlCommand,
-    sanitize_file_name,
+    RecordingOrTable, SystemCommandSender as _, TimeControlCommand, sanitize_file_name,
 };
 use std::sync::Arc;
 
@@ -825,7 +824,7 @@ impl App {
                 use re_log_types::FileSource;
                 for file_path in open_file_dialog_native(self.main_thread_token) {
                     self.command_sender
-                        .send_system(SystemCommand::LoadDataSource(LogDataSource::FilePath {
+                        .send_system(SystemCommand::LoadDataSource(LogDataSource::File {
                             file_source: FileSource::FileDialog {
                                 recommended_store_id: None,
                                 force_store_info,
@@ -839,9 +838,9 @@ impl App {
                 let egui_ctx = egui_ctx.clone();
 
                 let promise = poll_promise::Promise::spawn_local(async move {
-                    let file = async_open_rrd_dialog().await;
+                    let files = async_open_rrd_dialog().await;
                     egui_ctx.request_repaint(); // Wake ui thread
-                    file
+                    files
                 });
 
                 self.open_files_promise = Some(super::PendingFilePromise {
@@ -857,7 +856,7 @@ impl App {
                 use re_log_types::FileSource;
                 for file_path in open_file_dialog_native(self.main_thread_token) {
                     self.command_sender
-                        .send_system(SystemCommand::LoadDataSource(LogDataSource::FilePath {
+                        .send_system(SystemCommand::LoadDataSource(LogDataSource::File {
                             file_source: FileSource::FileDialog {
                                 recommended_store_id: Some(active_store_id.clone()),
                                 force_store_info,
@@ -871,9 +870,9 @@ impl App {
                 let egui_ctx = egui_ctx.clone();
 
                 let promise = poll_promise::Promise::spawn_local(async move {
-                    let file = async_open_rrd_dialog().await;
+                    let files = async_open_rrd_dialog().await;
                     egui_ctx.request_repaint(); // Wake ui thread
-                    file
+                    files
                 });
 
                 self.open_files_promise = Some(super::PendingFilePromise {
@@ -1094,15 +1093,23 @@ impl App {
 
             #[cfg(target_arch = "wasm32")]
             UICommand::RestartWithWebGl => {
-                if crate::web_tools::set_url_parameter_and_refresh("renderer", "webgl").is_err() {
-                    re_log::error!("Failed to set URL parameter `renderer=webgl` & refresh page.");
+                if let Err(err) =
+                    re_web::browser::set_url_parameter_and_refresh("renderer", "webgl")
+                {
+                    re_log::error!(
+                        "Failed to set URL parameter `renderer=webgl` and refresh page: {err}"
+                    );
                 }
             }
 
             #[cfg(target_arch = "wasm32")]
             UICommand::RestartWithWebGpu => {
-                if crate::web_tools::set_url_parameter_and_refresh("renderer", "webgpu").is_err() {
-                    re_log::error!("Failed to set URL parameter `renderer=webgpu` & refresh page.");
+                if let Err(err) =
+                    re_web::browser::set_url_parameter_and_refresh("renderer", "webgpu")
+                {
+                    re_log::error!(
+                        "Failed to set URL parameter `renderer=webgpu` and refresh page: {err}"
+                    );
                 }
             }
 
@@ -1297,7 +1304,6 @@ impl App {
             }
 
             RecordingCommandKind::PlaybackTogglePlayPause
-            | RecordingCommandKind::PlaybackFollow
             | RecordingCommandKind::PlaybackStepBack
             | RecordingCommandKind::PlaybackStepForward
             | RecordingCommandKind::PlaybackBack
@@ -1305,10 +1311,9 @@ impl App {
             | RecordingCommandKind::PlaybackBackFast
             | RecordingCommandKind::PlaybackForwardFast
             | RecordingCommandKind::PlaybackBeginning
-            | RecordingCommandKind::PlaybackEnd
-            | RecordingCommandKind::PlaybackRestart
+            | RecordingCommandKind::PlaybackEndAndFollow
             | RecordingCommandKind::PlaybackSpeed(_) => {
-                if let Some(time_command) = playback_time_command(kind) {
+                if let Some(time_command) = TimeControlCommand::from_recording_command(kind) {
                     self.command_sender
                         .send_system(SystemCommand::TimeControlCommands {
                             store_id: recording_id,
@@ -1480,22 +1485,21 @@ impl App {
     }
 
     pub(crate) fn toggle_fullscreen(&self) {
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            let fullscreen = self
-                .egui_ctx
-                .input(|i| i.viewport().fullscreen.unwrap_or(false));
-            self.egui_ctx
-                .send_viewport_cmd(egui::ViewportCommand::Fullscreen(!fullscreen));
-        }
-
-        #[cfg(target_arch = "wasm32")]
-        {
-            if let Some(options) = &self.startup_options.fullscreen_options {
-                // Tell JS to toggle fullscreen.
-                if let Err(err) = options.on_toggle.call0() {
-                    re_log::error!("{}", crate::web_tools::string_from_js_value(err));
+        cfg_select! {
+            target_arch = "wasm32" => {
+                if let Some(options) = &self.startup_options.fullscreen_options {
+                    // Tell JS to toggle fullscreen.
+                    if let Err(err) = options.on_toggle.call0() {
+                        re_log::error!("{err}");
+                    }
                 }
+            }
+            _ => {
+                let fullscreen = self
+                    .egui_ctx
+                    .input(|i| i.viewport().fullscreen.unwrap_or(false));
+                self.egui_ctx
+                    .send_viewport_cmd(egui::ViewportCommand::Fullscreen(!fullscreen));
             }
         }
     }
@@ -1511,7 +1515,7 @@ impl App {
             // Ask JS if fullscreen is on or not.
             match options.get_state.call0() {
                 Ok(v) => return v.is_truthy(),
-                Err(err) => re_log::error_once!("{}", crate::web_tools::string_from_js_value(err)),
+                Err(err) => re_log::error_once!("{err}"),
             }
         }
 
@@ -1728,68 +1732,17 @@ fn open_file_dialog_native(_: crate::MainThreadToken) -> Vec<std::path::PathBuf>
 }
 
 #[cfg(target_arch = "wasm32")]
-async fn async_open_rrd_dialog() -> Vec<re_data_source::FileContents> {
+async fn async_open_rrd_dialog() -> Vec<web_sys::File> {
     let supported: Vec<_> = re_importer::supported_extensions().collect();
 
-    let files = rfd::AsyncFileDialog::new()
+    rfd::AsyncFileDialog::new()
         .add_filter("Supported files", &supported)
         .pick_files()
         .await
-        .unwrap_or_default();
-
-    let mut file_contents = Vec::with_capacity(files.len());
-
-    for file in files {
-        let file_name = file.file_name();
-        re_log::debug!("Reading {file_name}…");
-        let bytes = file.read().await;
-        re_log::debug!(
-            "{file_name} was {}",
-            re_format::format_bytes(bytes.len() as _)
-        );
-        file_contents.push(re_data_source::FileContents {
-            name: file_name,
-            bytes: bytes.into(),
-        });
-    }
-
-    file_contents
-}
-
-/// The time-control command a playback [`re_ui::RecordingCommandKind`] maps to.
-///
-/// Returns `None` for non-playback kinds.
-fn playback_time_command(kind: re_ui::RecordingCommandKind) -> Option<TimeControlCommand> {
-    use re_ui::RecordingCommandKind;
-    Some(match kind {
-        RecordingCommandKind::PlaybackTogglePlayPause => TimeControlCommand::TogglePlayPause,
-        RecordingCommandKind::PlaybackFollow => {
-            TimeControlCommand::SetPlayState(PlayState::Following)
-        }
-        RecordingCommandKind::PlaybackStepBack => TimeControlCommand::StepTimeBack,
-        RecordingCommandKind::PlaybackStepForward => TimeControlCommand::StepTimeForward,
-        RecordingCommandKind::PlaybackBack => TimeControlCommand::Move {
-            direction: MoveDirection::Back,
-            speed: MoveSpeed::Normal,
-        },
-        RecordingCommandKind::PlaybackForward => TimeControlCommand::Move {
-            direction: MoveDirection::Forward,
-            speed: MoveSpeed::Normal,
-        },
-        RecordingCommandKind::PlaybackBackFast => TimeControlCommand::Move {
-            direction: MoveDirection::Back,
-            speed: MoveSpeed::Fast,
-        },
-        RecordingCommandKind::PlaybackForwardFast => TimeControlCommand::Move {
-            direction: MoveDirection::Forward,
-            speed: MoveSpeed::Fast,
-        },
-        RecordingCommandKind::PlaybackBeginning => TimeControlCommand::MoveBeginning,
-        RecordingCommandKind::PlaybackEnd => TimeControlCommand::MoveEnd,
-        RecordingCommandKind::PlaybackRestart => TimeControlCommand::Restart,
-        RecordingCommandKind::PlaybackSpeed(speed) => TimeControlCommand::SetSpeed(speed.0.0),
-        _ => return None,
-    })
+        .unwrap_or_default()
+        .into_iter()
+        .map(|file_handle| file_handle.inner().clone())
+        .collect()
 }
 
 fn save_active_recording(
@@ -1912,33 +1865,32 @@ fn save_entity_db(
     // It just sucks latency-wise.
     let messages = messages.collect::<Vec<_>>();
 
-    // Web
-    #[cfg(target_arch = "wasm32")]
-    {
-        wasm_bindgen_futures::spawn_local(async move {
-            if let Err(err) =
-                async_save_dialog(rrd_version, &file_name, &title, messages.into_iter()).await
-            {
-                re_log::error!("File saving failed: {err}");
+    cfg_select! {
+        target_arch = "wasm32" => {
+            // Web
+            re_async::spawn_local(async move {
+                if let Err(err) =
+                    async_save_dialog(rrd_version, &file_name, &title, messages.into_iter()).await
+                {
+                    re_log::error!("File saving failed: {err}");
+                }
+            });
+        }
+        _ => {
+            // Native
+            let path = {
+                re_tracing::profile_scope!("file_dialog");
+                rfd::FileDialog::new()
+                    .set_file_name(file_name)
+                    .set_title(title)
+                    .save_file()
+            };
+            if let Some(path) = path {
+                app.background_tasks.spawn_file_saver(move || {
+                    crate::saving::encode_to_file(rrd_version, &path, messages.into_iter())?;
+                    Ok(path)
+                })?;
             }
-        });
-    }
-
-    // Native
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        let path = {
-            re_tracing::profile_scope!("file_dialog");
-            rfd::FileDialog::new()
-                .set_file_name(file_name)
-                .set_title(title)
-                .save_file()
-        };
-        if let Some(path) = path {
-            app.background_tasks.spawn_file_saver(move || {
-                crate::saving::encode_to_file(rrd_version, &path, messages.into_iter())?;
-                Ok(path)
-            })?;
         }
     }
 

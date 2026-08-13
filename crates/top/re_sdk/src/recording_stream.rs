@@ -433,7 +433,8 @@ impl RecordingStreamBuilder {
 
     /// Creates a new [`RecordingStream`] pre-configured to stream data to multiple sinks.
     ///
-    /// Currently only supports [`GrpcSink`][grpc_sink] and [`FileSink`][file_sink].
+    /// Supports [`GrpcSink`][grpc_sink], [`FileSink`][file_sink], and, with the `server` feature,
+    /// [`GrpcServerSink`][grpc_server_sink].
     ///
     /// If the batcher configuration has not been set explicitly or by environment variables,
     /// this will change the batcher configuration to a conservative (less often flushing) mix of
@@ -441,6 +442,7 @@ impl RecordingStreamBuilder {
     ///
     /// [grpc_sink]: crate::sink::GrpcSink
     /// [file_sink]: crate::sink::FileSink
+    /// [grpc_server_sink]: crate::grpc_server::GrpcServerSink
     pub fn set_sinks(
         self,
         sinks: impl crate::sink::IntoMultiSink,
@@ -2114,6 +2116,7 @@ impl RecordingStream {
     ///
     /// [grpc_sink]: crate::sink::GrpcSink
     /// [file_sink]: crate::sink::FileSink
+    /// [grpc_server_sink]: crate::grpc_server::GrpcServerSink
     pub fn set_sinks(&self, sinks: impl crate::log_sink::IntoMultiSink) {
         if forced_sink_path().is_some() {
             re_log::debug!("Ignored setting new MultiSink since {ENV_FORCE_SAVE} is set");

@@ -200,7 +200,8 @@ async fn entry_details_from_name(
             filter: Some(EntryFilter {
                 id: None,
                 name: Some(name.to_owned()),
-                entry_kind: Some(entry_kind as i32),
+                entry_kind: None,
+                entry_kinds: vec![entry_kind as i32],
             }),
         }))
         .await?
@@ -227,7 +228,8 @@ async fn entry_details_from_id(
             filter: Some(EntryFilter {
                 id: Some(entry_id.into()),
                 name: None,
-                entry_kind: Some(entry_kind as i32),
+                entry_kind: None,
+                entry_kinds: vec![entry_kind as i32],
             }),
         }))
         .await?

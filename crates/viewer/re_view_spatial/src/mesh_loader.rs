@@ -2,7 +2,7 @@ use itertools::Itertools as _;
 use re_renderer::RenderContext;
 use re_renderer::mesh::GpuMesh;
 use re_sdk_types::components::MediaType;
-use re_sdk_types::datatypes;
+use re_sdk_types::encodings;
 use re_view::clamped_vec_or;
 use re_viewer_context::gpu_bridge::texture_creation_desc_from_color_image;
 use re_viewer_context::{ImageInfo, StoredBlobCacheKey};
@@ -20,15 +20,15 @@ pub struct NativeAsset3D<'a> {
 pub struct NativeMesh3D<'a> {
     pub vertex_positions: &'a [glam::Vec3],
     pub vertex_normals: Option<&'a [glam::Vec3]>,
-    pub vertex_colors: Option<&'a [datatypes::Rgba32]>,
+    pub vertex_colors: Option<&'a [encodings::Rgba32]>,
     pub vertex_texcoords: Option<&'a [glam::Vec2]>,
 
     pub triangle_indices: Option<&'a [glam::UVec3]>,
 
-    pub albedo_factor: Option<datatypes::Rgba32>,
+    pub albedo_factor: Option<encodings::Rgba32>,
 
-    pub albedo_texture_buffer: Option<datatypes::Blob>,
-    pub albedo_texture_format: Option<datatypes::ImageFormat>,
+    pub albedo_texture_buffer: Option<encodings::Blob>,
+    pub albedo_texture_format: Option<encodings::ImageFormat>,
 }
 
 // Mostly VRAM, not counted here.
@@ -195,7 +195,7 @@ impl LoadedMesh {
                 label: name.clone().into(),
                 index_range: 0..num_indices as _,
                 albedo,
-                albedo_factor: albedo_factor.unwrap_or(datatypes::Rgba32::WHITE).into(),
+                albedo_factor: albedo_factor.unwrap_or(encodings::Rgba32::WHITE).into(),
             }],
             bbox,
         };
@@ -222,8 +222,8 @@ impl LoadedMesh {
 }
 
 fn try_get_or_create_albedo_texture(
-    albedo_texture_buffer: Option<&datatypes::Blob>,
-    albedo_texture_format: Option<&datatypes::ImageFormat>,
+    albedo_texture_buffer: Option<&encodings::Blob>,
+    albedo_texture_format: Option<&encodings::ImageFormat>,
     render_ctx: &RenderContext,
     texture_key: u64,
     name: &str,

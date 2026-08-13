@@ -2,7 +2,7 @@ use re_types_core::{ArrowString, Loggable as _, try_serialize_field};
 
 use super::Tensor;
 use crate::components;
-use crate::datatypes::TensorData;
+use crate::encodings::TensorData;
 
 impl Tensor {
     /// Try to construct a [`Tensor`] from anything that can be converted into [`TensorData`]

@@ -10,7 +10,6 @@ use re_log_types::hash::Hash64;
 use re_log_types::{EntityPath, EntityPathHash};
 use re_renderer::renderer;
 use re_renderer::resource_managers::{GpuTexture2D, ImageDataDesc};
-use re_sdk_types::ViewClassIdentifier;
 use re_sdk_types::blueprint::components::VisualizerInstructionId;
 use re_sdk_types::components::Opacity;
 use re_ui::ContextExt as _;
@@ -26,8 +25,8 @@ pub use video_frame_reference::VideoFrameReferenceVisualizer;
 pub use video_stream::VideoStreamVisualizer;
 
 use super::{LoadingIndicator, SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget};
+use crate::SpaceKind;
 use crate::contexts::EntityDepthOffsets;
-use crate::view_kind::SpatialViewKind;
 use crate::visualizers::DepthImageProcessResult;
 use crate::visualizers::utilities::{
     spatial_view_kind_from_view_class, transform_info_for_archetype_or_report_error,
@@ -187,7 +186,7 @@ fn execute_video_stream_like(
         let Some(transform_info) = transform_info_for_archetype_or_report_error(
             entity_path,
             transforms,
-            Some(SpatialViewKind::TwoD),
+            Some(SpaceKind::TwoD),
             view_kind,
             &instruction.id,
             &output,
@@ -353,7 +352,7 @@ fn execute_video_stream_like(
         });
 
         // In 3D views, depth images should render as point clouds when a pinhole camera is available.
-        let rendered_as_depth_cloud = if view_kind == SpatialViewKind::ThreeD
+        let rendered_as_depth_cloud = if view_kind == SpaceKind::ThreeD
             && let Some(depth_config) = &depth_config
             && let Some(frame_texture) = frame_output
                 .output
@@ -401,7 +400,7 @@ fn execute_video_stream_like(
                         picking_object_id: re_renderer::PickingLayerObjectId(entity_path.hash64()),
                     };
 
-                    ctx.data.add_bounding_box(
+                    ctx.data.add_bounding_box_3d(
                         entity_path.hash(),
                         cloud.world_space_bbox(),
                         glam::Affine3A::IDENTITY,
@@ -451,7 +450,7 @@ fn execute_video_stream_like(
                     video_resolution.extend(0.0),
                 );
                 ctx.data
-                    .add_bounding_box(entity_path.hash(), bounding_box, world_from_entity);
+                    .add_bounding_box_2d(entity_path.hash(), bounding_box, world_from_entity);
             }
         }
     }
@@ -650,7 +649,7 @@ fn show_video_frame(
                         depth_meter: depth_config.map(|c| c.depth_meter),
                     },
                 },
-                ctx.view_class_identifier,
+                SpaceKind::TwoD,
             );
         }
     }
@@ -663,7 +662,6 @@ fn show_video_frame(
             visualizer_data,
             world_from_entity,
             video_size,
-            ctx.view_class_identifier,
         );
     }
 
@@ -781,7 +779,7 @@ fn show_video_frame(
             textured_rect: error_rect,
             source_data: PickableRectSourceData::Placeholder,
         },
-        ctx.view_class_identifier,
+        SpaceKind::TwoD,
     );
 }
 
@@ -790,19 +788,10 @@ fn register_video_bounds_with_bounding_box(
     visualizer_data: &mut SpatialViewVisualizerData,
     world_from_entity: glam::Affine3A,
     video_size: glam::Vec2,
-    class_identifier: ViewClassIdentifier,
 ) {
-    // Only update the bounding box if this is a 2D view.
-    // This is avoids a cyclic relationship where the image plane grows
-    // the bounds which in turn influence the size of the image plane.
-    // See: https://github.com/rerun-io/rerun/issues/3728
-    if class_identifier != SpatialView2D::identifier() {
-        return;
-    }
-
     let top_left = glam::Vec3::from(world_from_entity.translation);
 
-    visualizer_data.add_bounding_box(
+    visualizer_data.add_bounding_box_2d(
         entity_path,
         macaw::BoundingBox {
             min: top_left,

@@ -55,7 +55,7 @@ def fetch_issue(issue_json: dict[str, Any]) -> dict[str, Any]:
     url = issue_json["url"]
     gh_access_token = get_github_token()
     headers = {"Authorization": f"Token {gh_access_token}"}
-    response = requests.get(url, headers=headers)
+    response = requests.get(url, headers=headers, timeout=30)
     json: dict[str, Any] = response.json()
     if response.status_code != 200:
         print(f"ERROR {url}: {response.status_code} - {json['message']}")
@@ -80,7 +80,7 @@ def main() -> None:
         url = urls.pop()
 
         print(f"Fetching {url}…")
-        response = requests.get(url, headers=headers)
+        response = requests.get(url, headers=headers, timeout=30)
         json = response.json()
         if response.status_code != 200:
             print(f"ERROR {url}: {response.status_code} - {json['message']}")

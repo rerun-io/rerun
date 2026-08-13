@@ -125,9 +125,13 @@ impl DatasetSegmentUri {
     }
 
     pub fn store_id(&self) -> StoreId {
+        #[expect(deprecated)]
+        let application_id = re_log_types::ApplicationId::from_entry_id(
+            re_log_types::EntryId::from(self.dataset_id),
+        );
         StoreId::new(
             re_log_types::StoreKind::Recording,
-            self.dataset_id.to_string(),
+            application_id,
             self.segment_id.clone(),
         )
     }

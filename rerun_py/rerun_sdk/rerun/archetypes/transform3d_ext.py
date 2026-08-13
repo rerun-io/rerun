@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from rerun.components import Scale3D, TransformRelation, TransformRelationLike
-from rerun.datatypes import (
+from rerun.encodings import (
     Float32Like,
     Mat3x3Like,
     Quaternion,

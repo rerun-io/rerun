@@ -8,7 +8,7 @@ use re_chunk::{ChunkId, EntityPath};
 use re_log_types::StoreId;
 use re_sorbet::SorbetSchema;
 
-use super::{RawRrdManifest, RrdManifestStaticMap, RrdManifestTemporalMap};
+use super::{HubRrdManifest, RawRrdManifest, RrdManifestStaticMap, RrdManifestTemporalMap};
 use crate::{CodecError, CodecResult};
 
 /// A pre-validated and parsed [`RawRrdManifest`].
@@ -130,8 +130,8 @@ impl RrdManifest {
     pub const FIELD_CHUNK_KEY: &str = RawRrdManifest::FIELD_CHUNK_KEY;
     pub const FIELD_CHUNK_IS_STATIC: &str = RawRrdManifest::FIELD_CHUNK_IS_STATIC;
     pub const FIELD_CHUNK_BYTE_OFFSET: &str = RawRrdManifest::FIELD_CHUNK_BYTE_OFFSET;
-    pub const FIELD_CHUNK_PARTITION_ID: &str = "chunk_partition_id";
-    pub const FIELD_RERUN_PARTITION_LAYER: &str = "rerun_partition_layer";
+    pub const FIELD_CHUNK_PARTITION_ID: &str = HubRrdManifest::FIELD_CHUNK_PARTITION_ID;
+    pub const FIELD_RERUN_PARTITION_LAYER: &str = HubRrdManifest::FIELD_RERUN_PARTITION_LAYER;
 
     /// All columns present in the pruned batch returned by [`Self::chunk_fetcher_rb()`].
     pub const CHUNK_FETCHER_COLUMNS: &[&str] = &[
@@ -495,6 +495,16 @@ impl RrdManifest {
     pub fn col_chunk_ids(&self) -> &[ChunkId] {
         #[expect(clippy::unwrap_used)] // Validated in constructor
         ChunkId::try_slice_from_arrow(&self.chunk_ids).unwrap()
+    }
+
+    /// Returns all the chunk ids of a batch that has a [`Self::FIELD_CHUNK_ID`] column.
+    pub fn col_chunk_ids_of(batch: &RecordBatch) -> Option<&[ChunkId]> {
+        use re_arrow_util::ArrowArrayDowncastRef as _;
+
+        let array = batch
+            .column_by_name(Self::FIELD_CHUNK_ID)
+            .and_then(|array| array.downcast_array_ref::<FixedSizeBinaryArray>())?;
+        ChunkId::try_slice_from_arrow(array).ok()
     }
 
     /// Returns the raw Arrow array for entity paths.

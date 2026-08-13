@@ -185,6 +185,7 @@ impl HeightFieldDrawData {
         vertex_buffer
             .slice(..)
             .get_mapped_range_mut()
+            .expect("Buffer was mapped at creation")
             .copy_from_slice(vertex_data);
         vertex_buffer.unmap();
 
@@ -229,6 +230,7 @@ impl HeightFieldDrawData {
         index_buffer
             .slice(..)
             .get_mapped_range_mut()
+            .expect("Buffer was mapped at creation")
             .copy_from_slice(index_data);
         index_buffer.unmap();
 

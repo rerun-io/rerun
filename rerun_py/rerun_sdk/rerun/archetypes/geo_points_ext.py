@@ -7,7 +7,7 @@ import numpy as np
 from ..error_utils import catch_and_log_exceptions
 
 if TYPE_CHECKING:
-    from .. import datatypes
+    from .. import encodings
 
 NUMPY_VERSION = tuple(map(int, np.version.version.split(".")[:2]))
 
@@ -19,10 +19,10 @@ class GeoPointsExt:
     def __init__(
         self: Any,
         *,
-        lat_lon: datatypes.DVec2DArrayLike,
-        radii: datatypes.Float32ArrayLike | None = None,
-        colors: datatypes.Rgba32ArrayLike | None = None,
-        class_ids: datatypes.ClassIdArrayLike | None = None,
+        lat_lon: encodings.DVec2DArrayLike,
+        radii: encodings.Float32ArrayLike | None = None,
+        colors: encodings.Rgba32ArrayLike | None = None,
+        class_ids: encodings.ClassIdArrayLike | None = None,
     ) -> None:
         """
         Create a new instance of the GeoPoints archetype.

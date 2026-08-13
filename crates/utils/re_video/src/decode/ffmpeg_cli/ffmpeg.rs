@@ -63,6 +63,11 @@ pub enum Error {
     #[error("Bad video data: {0}")]
     BadVideoData(String),
 
+    #[error(
+        "This FFmpeg build has no usable encoder for {codec:?}. Install a build with the matching encoder (e.g. libvpx for VP8/VP9, libsvtav1/libaom for AV1) or choose a different output codec."
+    )]
+    NoEncoderForCodec { codec: crate::VideoCodec },
+
     #[error("FFmpeg error: {0}")]
     Ffmpeg(String),
 
@@ -125,7 +130,7 @@ struct FFmpegFrameInfo {
     ///
     /// This is the order of which the samples appear in the container,
     /// which is usually ordered by [`Self::decode_timestamp`].
-    sample_idx: usize,
+    sample_idx: crate::SampleIndex,
 
     /// Which frame is this?
     ///
@@ -133,7 +138,7 @@ struct FFmpegFrameInfo {
     /// which is true for MP4.
     ///
     /// This is the index of frames ordered by [`Self::presentation_timestamp`].
-    frame_nr: u32,
+    frame_nr: crate::FrameNumber,
 
     presentation_timestamp: Time,
     duration: Option<Time>,
@@ -543,12 +548,12 @@ struct FrameBuffer {
     /// Received frame-infos, waiting to be matched to output frames.
     ///
     /// Key is the frame number, making this list sorted in presentation order.
-    pending: BTreeMap<u32, FFmpegFrameInfo>,
+    pending: BTreeMap<crate::FrameNumber, FFmpegFrameInfo>,
 
     /// The frame number of the next frame if we had any so far.
     ///
     /// `None` if we haven't received any frames yet since the last decoder reset.
-    next_frame_nr: Option<u32>,
+    next_frame_nr: Option<crate::FrameNumber>,
 }
 
 impl FrameBuffer {

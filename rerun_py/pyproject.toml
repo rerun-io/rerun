@@ -49,17 +49,17 @@ tests = [
   "tomli==2.0.1",
   "torch>=2.5", # Needs numpy 2 support
   "torchvision", # Imported at top of `rerun.experimental.dataloader._decoders`, so needed to import the dataloader module at all
-  "datafusion==53.0.0",
+  "datafusion==54.0.0",
 ]
-notebook = ["rerun-notebook==0.35.0-alpha.1+dev"]
+notebook = ["rerun-notebook==0.37.0-alpha.1+dev"]
 # TODO(RR-3786): when pyarrow is fixed, we should remove the pandas dependency
-datafusion = ["datafusion==53.0.0", "pandas>=2"] # deprecated, replaced by `catalog`
+datafusion = ["datafusion==54.0.0", "pandas>=2"] # deprecated, replaced by `catalog`
 dataplatform = [ # deprecated, replaced by `catalog` (NOLINT)
-  "datafusion==53.0.0",
+  "datafusion==54.0.0",
   "pandas>=2",
 ]
 catalog = [
-  "datafusion==53.0.0",
+  "datafusion==54.0.0",
   "pandas>=2",
 ] # pandas is needed so pyarrow properly converts nanoseconds (RR-3532)
 
@@ -74,7 +74,7 @@ tracing = ["opentelemetry-api", "opentelemetry-sdk", "opentelemetry-exporter-otl
 # Note: We avoid self-referential extras like "rerun-sdk[notebook]" because they cause
 # uv to fetch rerun-sdk from PyPI when the local package isn't built yet.
 # TODO(RR-3786): when pyarrow is fixed, we should remove the pandas dependency
-all = ["datafusion==53.0.0", "pandas>=2", "rerun-notebook==0.35.0-alpha.1+dev"]
+all = ["datafusion==54.0.0", "pandas>=2", "rerun-notebook==0.37.0-alpha.1+dev"]
 
 [project.urls]
 documentation = "https://www.rerun.io/docs"
@@ -103,6 +103,13 @@ preview = true
 # But we only want to opt-in to certain preview rules!
 
 lint.ignore = [
+  # flake8-bandit (`S`). Rules that cannot produce a security finding in the SDK tree.
+  # Anything scoped to a subdirectory is under `per-file-ignores` instead.
+  "S101", # `assert` — 1,906 of the 1,937 raw findings, nearly all in tests
+  "S110", # `try`-`except`-`pass`
+  "S603", # Every `subprocess` call whose arguments are not a literal list
+  "S607", # Running tools from `PATH`, which is deliberate
+
   # It's pretty hard to always avoid variable/argument shadowing of built-in
   "A001",
   "A002",
@@ -173,6 +180,8 @@ extend-exclude = [
 
 line-length = 120
 lint.select = [
+  "S", # flake8-bandit: security lints
+
   "A", # Avoid shadowing built-ins
   "ANN", # Ensure all code is properly annotated.
   "ARG", # Detect unused arguments
@@ -220,6 +229,11 @@ max-positional-args = 3
 "tests/*" = [
   # We don't care about nice APIs in our tests:
   "PLR0917",
+  # Test fixtures, not a security surface:
+  "S301", # `pickle` round-trip fixtures
+  "S608", # SQL built from literals in the e2e catalog tests
+  "S104", # A test server binding all interfaces inside its own container
+  "S108", # A fixed `/tmp` path in a filter test
 ]
 
 "rerun_sdk/*" = [

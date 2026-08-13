@@ -1,13 +1,20 @@
-//! This is a limited subset of arrow datatypes.
+//! The arrow half of the type system: what a definition's data looks like once serialized.
+//!
+//! Nothing in here is written by hand. [`TypeRegistry`](crate::TypeRegistry) derives it all from
+//! the definition half — [`Type`](crate::Type) — and the backends write each SDK's
+//! (de)serializers against it.
 
-use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use crate::TypeRegistry;
+use strum::Display;
 
-/// Mode of [`DataType::Union`]
+use crate::objects::enum_obj_of;
+use crate::{Object, Objects};
+
+/// Whether the arms of a [`DataType::Union`] each get their own slots, or share one set.
 ///
-/// See arrow docs for explanations.
+/// See the arrow docs for what that means for the layout. Ours are dense unless a definition says
+/// otherwise with `#[arrow(sparse_union)]`.
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum UnionMode {
     /// Dense union
@@ -17,33 +24,22 @@ pub enum UnionMode {
     Sparse,
 }
 
-/// A named datatype, e.g. for a struct or a union.
+/// A named [`DataType`]: a member of a struct or a union, or the `item` of a list.
 ///
 /// Corresponds to an arrow field.
-pub type Field = GenericField<DataType>;
-
-/// A yet-to-be-resolved [`Field`].
-///
-/// Type resolution is a two-pass process as we first need to register all existing types before we
-/// can denormalize their definitions into their parents.
-pub type LazyField = GenericField<LazyDatatype>;
-
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
-pub struct GenericField<DT> {
+pub struct Field {
     /// Its name
     pub name: String,
 
     /// Its logical [`DataType`]
-    pub data_type: DT,
+    pub data_type: DataType,
 
     /// Its nullability
     pub is_nullable: bool,
-
-    /// Additional custom (opaque) metadata.
-    pub metadata: BTreeMap<String, String>,
 }
 
-impl<DT> GenericField<DT> {
+impl Field {
     pub fn name(&self) -> &str {
         &self.name
     }
@@ -52,24 +48,20 @@ impl<DT> GenericField<DT> {
         self.is_nullable
     }
 
-    pub fn data_type(&self) -> &DT {
+    pub fn data_type(&self) -> &DataType {
         &self.data_type
     }
 }
 
-impl LazyField {
-    pub fn resolve(&self, registry: &TypeRegistry) -> Field {
-        Field {
-            name: self.name.clone(),
-            data_type: self.data_type.resolve(registry),
-            is_nullable: self.is_nullable,
-            metadata: self.metadata.clone(),
-        }
-    }
-}
-
-/// Simple fixed-size types
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+/// A fixed-size scalar: a number, a boolean, or nothing.
+///
+/// Shared by both halves of the type system — [`DataType::Atomic`] and
+/// [`Type::Atomic`](crate::Type::Atomic) — because the two agree exactly on which scalars exist.
+/// It is the one place their variants are spelled out.
+///
+/// [`Self::Null`] doubles as the unit type of an `enum` variant with no payload; see
+/// [`Type::UNIT`](crate::Type::UNIT).
+#[derive(Debug, Clone, Copy, Display, Hash, PartialEq, Eq)]
 pub enum AtomicDataType {
     Null,
     Boolean,
@@ -86,36 +78,36 @@ pub enum AtomicDataType {
     Float64,
 }
 
-impl std::fmt::Display for AtomicDataType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Null => "Null".fmt(f),
-            Self::Boolean => "Boolean".fmt(f),
-            Self::Int8 => "Int8".fmt(f),
-            Self::Int16 => "Int16".fmt(f),
-            Self::Int32 => "Int32".fmt(f),
-            Self::Int64 => "Int64".fmt(f),
-            Self::UInt8 => "UInt8".fmt(f),
-            Self::UInt16 => "UInt16".fmt(f),
-            Self::UInt32 => "UInt32".fmt(f),
-            Self::UInt64 => "UInt64".fmt(f),
-            Self::Float16 => "Float16".fmt(f),
-            Self::Float32 => "Float32".fmt(f),
-            Self::Float64 => "Float64".fmt(f),
-        }
+impl AtomicDataType {
+    /// Is this the `null` type, i.e. our unit type?
+    pub fn is_null(self) -> bool {
+        self == Self::Null
+    }
+
+    /// Is this type directly backed by a native arrow `Buffer`, i.e. can it be used with
+    /// `arrow::ScalarBuffer`?
+    ///
+    /// That gives zero-copy access to a slice of the data.
+    pub fn backed_by_scalar_buffer(self) -> bool {
+        !matches!(self, Self::Null | Self::Boolean)
     }
 }
 
-/// The datatypes we support.
+/// An arrow datatype, limited to what our definitions can express.
 ///
-/// Maps directly to arrow datatypes.
+/// Every variant but [`Self::Object`] is an arrow datatype as arrow means it, so this is mostly a
+/// mirror of `arrow::datatypes::DataType`. `Object` is ours, and is why we do not use arrow's type
+/// directly: it remembers which definition a datatype came from, at every level of nesting, which
+/// is what lets generated code say `<Vec3D>::arrow_datatype()` instead of spelling out the whole
+/// nested struct. Look through it with [`Self::to_logical_type`].
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum DataType {
     Atomic(AtomicDataType),
 
-    // 32-bit or 64-bit
+    /// A list of bytes of arbitrary length, generated as arrow's `LargeBinary`.
     Binary,
 
+    /// A string of arbitrary length.
     Utf8,
 
     List(Arc<Field>),
@@ -127,18 +119,21 @@ pub enum DataType {
     /// The placement in the list is also its identifier.
     Union(Vec<Field>, UnionMode),
 
-    /// A named type.
+    /// A datatype together with the name of the definition it came from.
     Object {
-        //// It's fully qualified name
+        /// Its fully-qualified name, e.g. `rerun.datatypes.Vec3D`.
         fqname: String,
 
-        /// It's type (e.g. a [`DataType::Struct`].
+        /// What it actually is, e.g. a [`DataType::Struct`].
         datatype: Arc<Self>,
     },
 }
 
 impl DataType {
-    /// Resolved [`Self::Object`] to its concrete type.
+    /// Strips any [`Self::Object`] wrappers, leaving the datatype they name.
+    ///
+    /// Anything that cares about the *shape* of the data has to go through here first, since an
+    /// `Object` can wrap any of the other variants.
     // TODO(emilk) make this type-safe instead, i.e. return a different type.
     pub fn to_logical_type(&self) -> &Self {
         if let Self::Object { datatype, .. } = self {
@@ -147,72 +142,28 @@ impl DataType {
             self
         }
     }
-}
 
-/// Like [`DataType`], but with an extra [`Self::Unresolved`] variant
-/// which need to be resolved to a concrete type.
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
-pub enum LazyDatatype {
-    Atomic(AtomicDataType),
-
-    /// A list of bytes of arbitrary length.
+    /// Can this type be used with `arrow::ScalarBuffer`?
     ///
-    /// 32-bit or 64-bit
-    Binary,
+    /// That gives zero-copy access to a slice of the data.
+    pub fn backed_by_scalar_buffer(&self) -> bool {
+        match self {
+            Self::Atomic(atomic) => atomic.backed_by_scalar_buffer(),
+            _ => false,
+        }
+    }
 
-    /// Utf8
-    Utf8,
-
-    /// Elements are non-nullable
-    List(Arc<LazyField>),
-
-    /// Elements are non-nullable
-    FixedSizeList(Arc<LazyField>, usize),
-
-    Struct(Vec<GenericField<Self>>),
-
-    /// The placement in the list is also its identifier.
-    Union(Vec<GenericField<Self>>, UnionMode),
-
-    Object {
-        fqname: String,
-        datatype: Arc<Self>,
-    },
-
-    Unresolved {
-        fqname: String,
-    },
-}
-
-impl From<AtomicDataType> for LazyDatatype {
-    fn from(atomic: AtomicDataType) -> Self {
-        Self::Atomic(atomic)
+    /// `Some(Object)` if this is an enum object.
+    pub fn enum_obj<'a>(&self, objects: &'a Objects) -> Option<&'a Object> {
+        match self {
+            Self::Object { fqname, .. } => enum_obj_of(objects, fqname),
+            _ => None,
+        }
     }
 }
 
-impl LazyDatatype {
-    /// Recursively resolves the datatype using the specified `registry`.
-    pub fn resolve(&self, registry: &TypeRegistry) -> DataType {
-        match self {
-            Self::Atomic(atomic) => DataType::Atomic(*atomic),
-            Self::Binary => DataType::Binary,
-            Self::Utf8 => DataType::Utf8,
-            Self::List(data_type) => DataType::List(data_type.resolve(registry).into()),
-            Self::FixedSizeList(datatype, length) => {
-                DataType::FixedSizeList(datatype.resolve(registry).into(), *length)
-            }
-            Self::Struct(fields) => {
-                DataType::Struct(fields.iter().map(|field| field.resolve(registry)).collect())
-            }
-            Self::Union(fields, mode) => DataType::Union(
-                fields.iter().map(|field| field.resolve(registry)).collect(),
-                *mode,
-            ),
-            Self::Object { fqname, datatype } => DataType::Object {
-                fqname: fqname.clone(),
-                datatype: Arc::new(datatype.resolve(registry)),
-            },
-            Self::Unresolved { fqname } => registry.get(fqname),
-        }
+impl From<AtomicDataType> for DataType {
+    fn from(atomic: AtomicDataType) -> Self {
+        Self::Atomic(atomic)
     }
 }

@@ -8,7 +8,7 @@ use re_chunk_store::{LatestAtQuery, RangeQuery, UnitChunkShared};
 use re_log_types::hash::Hash64;
 use re_query::{LatestAtResults, RangeResults};
 use re_sdk_types::ComponentIdentifier;
-use re_sdk_types::blueprint::datatypes::ComponentSourceKind;
+use re_sdk_types::blueprint::encodings::ComponentSourceKind;
 use re_viewer_context::{QueryContext, typed_fallback_for};
 
 use crate::{
@@ -16,7 +16,8 @@ use crate::{
     chunks_with_component::{ChunksWithComponent, MaybeChunksWithComponent},
 };
 
-// ---
+pub type ComponentSourcesMap =
+    IntMap<ComponentIdentifier, Result<ComponentSourceKind, ComponentMappingError>>;
 
 /// Wrapper that contains the results of a latest-at query with possible overrides.
 ///
@@ -31,8 +32,7 @@ pub struct BlueprintResolvedLatestAtResults<'a> {
 
     pub(crate) query_context: QueryContext<'a>,
 
-    pub(crate) component_sources:
-        IntMap<ComponentIdentifier, Result<ComponentSourceKind, ComponentMappingError>>,
+    pub(crate) component_sources: ComponentSourcesMap,
 
     /// Hash of mappings applied to [`Self::store_results`].
     pub(crate) component_indices_hash: Hash64,
@@ -110,8 +110,7 @@ pub struct BlueprintResolvedRangeResults<'a> {
 
     pub(crate) query_context: QueryContext<'a>,
 
-    pub(crate) component_sources:
-        IntMap<ComponentIdentifier, Result<ComponentSourceKind, ComponentMappingError>>,
+    pub(crate) component_sources: ComponentSourcesMap,
 
     /// Hash of mappings applied to [`Self::store_results`].
     pub(crate) component_mappings_hash: Hash64,

@@ -151,7 +151,7 @@ impl<T: BlueprintContext> TimeBlueprintExt for T {
             time_panel_blueprint_entity_path(),
             &TimePanelBlueprint::descriptor_time_selection(),
             &re_sdk_types::blueprint::components::AbsoluteTimeRange(
-                re_sdk_types::datatypes::AbsoluteTimeRange {
+                re_sdk_types::encodings::AbsoluteTimeRange {
                     min: time_range.min.as_i64().into(),
                     max: time_range.max.as_i64().into(),
                 },

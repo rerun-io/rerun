@@ -15,7 +15,7 @@ use crate::DisplayRecordBatch;
 use crate::datafusion_table_widget::Columns;
 use crate::display_record_batch::DisplayColumn;
 use crate::filters::ColumnFilter;
-use crate::re_table_utils::TableConfig;
+use crate::re_table_utils::UiTableConfig;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SortDirection {
@@ -52,21 +52,21 @@ impl SortDirection {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SortBy {
-    pub column_physical_name: String,
+    pub column_name: ColumnName,
     pub direction: SortDirection,
 }
 
 impl SortBy {
-    pub fn ascending(col_name: impl Into<String>) -> Self {
+    pub fn ascending(column_name: ColumnName) -> Self {
         Self {
-            column_physical_name: col_name.into(),
+            column_name,
             direction: SortDirection::Ascending,
         }
     }
 
-    pub fn descending(col_name: impl Into<String>) -> Self {
+    pub fn descending(column_name: ColumnName) -> Self {
         Self {
-            column_physical_name: col_name.into(),
+            column_name,
             direction: SortDirection::Descending,
         }
     }
@@ -76,10 +76,10 @@ impl SortBy {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SegmentLinksSpec {
     /// Name of the column to generate.
-    pub column_name: String,
+    pub column_name: ColumnName,
 
     /// Name of the existing column containing the segment id.
-    pub segment_id_column_name: String,
+    pub segment_id_column_name: ColumnName,
 
     /// Origin to use for the links.
     pub origin: re_uri::Origin,
@@ -92,10 +92,10 @@ pub struct SegmentLinksSpec {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct EntryLinksSpec {
     /// Name of the column to generate.
-    pub column_name: String,
+    pub column_name: ColumnName,
 
     /// Name of the existing column containing the entry id.
-    pub entry_id_column_name: String,
+    pub entry_id_column_name: ColumnName,
 
     /// Origin to use for the links.
     pub origin: re_uri::Origin,
@@ -104,7 +104,7 @@ pub struct EntryLinksSpec {
 /// The "blueprint" for a table, a.k.a the specification of how it should look.
 ///
 /// This is the single source of truth for table configuration. Fields can be populated
-/// from the registered `.fbs` `TableBlueprint` archetype or set programmatically.
+/// from the registered `TableBlueprint` archetype or set programmatically.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct TableBlueprint {
     pub sort_by: Option<SortBy>,
@@ -120,21 +120,21 @@ pub struct TableBlueprint {
     pub column_filters: Vec<ColumnFilter>,
 
     /// The name of the column containing recording URIs for segment previews.
-    pub segment_preview_column: Option<String>,
+    pub segment_preview_column: Option<ColumnName>,
 
     /// The name of the boolean column used for flag annotations.
     ///
     /// The column must exist in the table and be of boolean type.
     /// Populated from schema metadata ([`crate::experimental_field_metadata::IS_FLAG_COLUMN`])
     /// or the registered `.fbs` `TableBlueprint` archetype.
-    pub flag_column: Option<String>,
+    pub flag_column: Option<ColumnName>,
 
     /// The name of the column to use as the card title in grid view.
     ///
     /// If unset, the first visible string column is used.
     /// Populated from schema metadata ([`crate::experimental_field_metadata::IS_GRID_VIEW_CARD_TITLE`])
     /// or the registered `.fbs` `TableBlueprint` archetype.
-    pub grid_view_card_title: Option<String>,
+    pub grid_view_card_title: Option<ColumnName>,
 
     /// The name of the column containing URLs to open when a card is clicked in grid view.
     ///
@@ -142,11 +142,11 @@ pub struct TableBlueprint {
     /// Rerun server is used (resolved ad-hoc in the grid view). If no such column exists,
     /// clicking a card does not navigate anywhere.
     /// Populated from the registered `.fbs` `TableBlueprint` archetype.
-    pub url_column: Option<String>,
+    pub url_column: Option<ColumnName>,
 }
 
 impl TableBlueprint {
-    /// Populate fields from a registered `.fbs` `TableBlueprint` archetype stored in a blueprint
+    /// Populate fields from a registered `TableBlueprint` archetype stored in a blueprint
     /// [`EntityDb`].
     pub fn populate_from_registered_blueprint(&mut self, blueprint_db: &EntityDb) {
         let blueprint_query = LatestAtQuery::latest(blueprint_timeline());
@@ -158,29 +158,21 @@ impl TableBlueprint {
             TableBlueprintArchetype::all_component_identifiers(),
         );
 
-        self.segment_preview_column = results
-            .component_mono::<ColumnName>(
-                TableBlueprintArchetype::descriptor_segment_preview_column().component,
-            )
-            .map(|name| name.0.to_string());
+        self.segment_preview_column = results.component_mono::<ColumnName>(
+            TableBlueprintArchetype::descriptor_segment_preview_column().component,
+        );
 
-        self.flag_column = results
-            .component_mono::<ColumnName>(
-                TableBlueprintArchetype::descriptor_flag_column().component,
-            )
-            .map(|name| name.0.to_string());
+        self.flag_column = results.component_mono::<ColumnName>(
+            TableBlueprintArchetype::descriptor_flag_column().component,
+        );
 
-        self.grid_view_card_title = results
-            .component_mono::<ColumnName>(
-                TableBlueprintArchetype::descriptor_grid_view_card_title().component,
-            )
-            .map(|name| name.0.to_string());
+        self.grid_view_card_title = results.component_mono::<ColumnName>(
+            TableBlueprintArchetype::descriptor_grid_view_card_title().component,
+        );
 
-        self.url_column = results
-            .component_mono::<ColumnName>(
-                TableBlueprintArchetype::descriptor_url_column().component,
-            )
-            .map(|name| name.0.to_string());
+        self.url_column = results.component_mono::<ColumnName>(
+            TableBlueprintArchetype::descriptor_url_column().component,
+        );
     }
 
     /// Fill in unset fields with defaults inferred from the table's runtime state.
@@ -196,13 +188,13 @@ impl TableBlueprint {
         schema: &arrow::datatypes::Schema,
         columns: &Columns<'_>,
         display_record_batches: &[DisplayRecordBatch],
-        table_config: &TableConfig,
+        table_config: &UiTableConfig,
         current_server_origin: Option<&re_uri::Origin>,
     ) -> Self {
         if self.flag_column.is_none() {
             self.flag_column =
                 find_field_with_flag(schema, crate::experimental_field_metadata::IS_FLAG_COLUMN)
-                    .map(str::to_owned);
+                    .map(Into::into);
         }
 
         if self.grid_view_card_title.is_none() {
@@ -210,16 +202,16 @@ impl TableBlueprint {
                 schema,
                 crate::experimental_field_metadata::IS_GRID_VIEW_CARD_TITLE,
             )
-            .map(str::to_owned)
+            .map(Into::into)
             .or_else(|| {
-                table_config.visible_column_indexes().find_map(|col_idx| {
-                    let col = columns.columns.get(col_idx)?;
+                table_config.visible_column_names().find_map(|name| {
+                    let (_, column) = columns.find_by_physical_name(name)?;
                     matches!(
-                        &col.desc,
-                        ColumnDescriptorRef::Component(c)
-                            if c.store_datatype == arrow::datatypes::DataType::Utf8
+                        &column.desc,
+                        ColumnDescriptorRef::Component(component)
+                            if component.store_datatype == arrow::datatypes::DataType::Utf8
                     )
-                    .then(|| col.display_name())
+                    .then(|| column.physical_name().clone())
                 })
             });
         }
@@ -244,7 +236,7 @@ impl TableBlueprint {
 
                 current_server_origin
                     .is_none_or(|origin| uri.origin() == origin)
-                    .then(|| col.display_name())
+                    .then(|| col.physical_name().clone())
             });
             self.url_column = first_url.clone();
             self.segment_preview_column = first_url;

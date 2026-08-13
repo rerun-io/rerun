@@ -4,13 +4,13 @@ use re_sdk_types::components::{ImageBuffer, ImageFormat, MagnificationFilter, Op
 use re_sdk_types::image::ImageKind;
 use re_viewer_context::{
     IdentifiedViewSystem, ImageInfo, ViewClass as _, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo,
-    VisualizerReportSeverity, VisualizerSystem, typed_fallback_for,
+    ViewSystemExecutionError, ViewerReportSeverity, VisualizerExecutionOutput, VisualizerQueryInfo,
+    VisualizerSystem, typed_fallback_for,
 };
 
 use super::SpatialViewVisualizerData;
 use crate::visualizers::textured_rect_from_image;
-use crate::{PickableRectSourceData, PickableTexturedRect};
+use crate::{PickableRectSourceData, PickableTexturedRect, SpaceKind};
 
 #[derive(Default)]
 pub struct SegmentationImageVisualizer;
@@ -127,13 +127,13 @@ impl VisualizerSystem for SegmentationImageVisualizer {
                                         depth_meter: None,
                                     },
                                 },
-                                spatial_ctx.view_class_identifier,
+                                SpaceKind::TwoD,
                             );
                         }
                         Err(err) => {
                             results.report_for_component(
                                 SegmentationImage::descriptor_buffer().component,
-                                VisualizerReportSeverity::Error,
+                                ViewerReportSeverity::Error,
                                 re_error::format(err),
                             );
                         }

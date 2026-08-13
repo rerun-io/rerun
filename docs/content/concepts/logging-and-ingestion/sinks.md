@@ -1,6 +1,7 @@
 ---
 title: Sinks
 order: 1000
+description: The destinations logged data can be sent to
 ---
 
 Sinks control where your Rerun data goes. They are the output destinations for your logged data.

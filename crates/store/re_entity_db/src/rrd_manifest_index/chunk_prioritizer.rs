@@ -8,6 +8,7 @@ use itertools::chain;
 use re_byte_size::SizeBytes as _;
 use re_chunk::{Chunk, ChunkId, ComponentIdentifier, TimeInt, Timeline, TimelineName};
 use re_chunk_store::{ChunkStore, QueriedChunkIdTracker};
+use re_int::SaturatingCast as _;
 use re_log::debug_assert;
 use re_log_encoding::RrdManifest;
 use re_log_types::{AbsoluteTimeRange, EntityPathHash, TimelinePoint};
@@ -259,7 +260,7 @@ impl RemainingByteBudget {
         Self {
             total_bytes_in_memory,
             remaining_bytes_in_memory: total_bytes_in_memory,
-            remaining_bytes_on_wire: i64::try_from(max_bytes_on_wire).unwrap_or(i64::MAX),
+            remaining_bytes_on_wire: max_bytes_on_wire.saturating_cast::<i64>(),
         }
     }
 

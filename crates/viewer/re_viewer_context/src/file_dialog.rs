@@ -25,34 +25,33 @@ impl CommandSender {
 
         let file_name = sanitize_file_name(file_name);
 
-        #[cfg(target_arch = "wasm32")]
-        {
-            // Web
-            wasm_bindgen_futures::spawn_local(async move {
-                if let Err(err) = async_save_dialog(&file_name, &title, data).await {
-                    re_log::error!("File saving failed: {err}");
-                } else {
-                    re_log::info!("{file_name} saved.");
+        cfg_select! {
+            target_arch = "wasm32" => {
+                // Web
+                re_async::spawn_local(async move {
+                    if let Err(err) = async_save_dialog(&file_name, &title, data).await {
+                        re_log::error!("File saving failed: {err}");
+                    } else {
+                        re_log::info!("{file_name} saved.");
+                    }
+                });
+            }
+            _ => {
+                // Native
+                let path = {
+                    re_tracing::profile_scope!("file_dialog");
+                    rfd::FileDialog::new()
+                        .set_file_name(file_name)
+                        .set_title(title)
+                        .save_file()
+                };
+                if let Some(path) = path {
+                    use crate::SystemCommandSender as _;
+                    self.send_system(crate::SystemCommand::FileSaver(Box::new(move || {
+                        std::fs::write(&path, &data)?;
+                        Ok(path)
+                    })));
                 }
-            });
-        }
-
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            // Native
-            let path = {
-                re_tracing::profile_scope!("file_dialog");
-                rfd::FileDialog::new()
-                    .set_file_name(file_name)
-                    .set_title(title)
-                    .save_file()
-            };
-            if let Some(path) = path {
-                use crate::SystemCommandSender as _;
-                self.send_system(crate::SystemCommand::FileSaver(Box::new(move || {
-                    std::fs::write(&path, &data)?;
-                    Ok(path)
-                })));
             }
         }
     }

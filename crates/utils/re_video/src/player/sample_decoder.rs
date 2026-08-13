@@ -47,7 +47,7 @@ pub struct VideoSampleDecoder {
     decoder_output: DecoderOutput,
 
     /// The [`Chunk::sample_idx`] of the latest submitted sample.
-    latest_sample_idx: Option<usize>,
+    latest_sample_idx: Option<crate::SampleIndex>,
 }
 
 impl VideoSampleDecoder {

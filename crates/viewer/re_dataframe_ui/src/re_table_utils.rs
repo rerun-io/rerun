@@ -2,7 +2,10 @@ use ahash::HashSet;
 use egui::containers::menu::{MenuButton, MenuConfig};
 use egui::emath::GuiRounding as _;
 use egui::{Color32, Frame, Id, PopupCloseBehavior, RichText, Stroke, Style};
+use re_sdk_types::blueprint::components::ColumnName;
 use re_ui::{UiExt as _, design_tokens_of, icons};
+
+use crate::datafusion_table_widget::Columns;
 
 pub const CELL_SEPARATOR_STROKE_OFFSET: f32 = 0.5;
 
@@ -104,33 +107,25 @@ pub fn cell_ui<R>(
     response
 }
 
+fn default_column_name() -> ColumnName {
+    "".into()
+}
+
+/// Column configuration stored in egui state.
 #[derive(Debug, Clone, Hash, serde::Serialize, serde::Deserialize)]
-pub struct ColumnConfig {
-    /// The index of the column in the source data, without being reordered by the user.
-    /// This will be assigned once the column config is set via [`TableConfig::get_with_columns`].
-    original_index: usize,
-    id: Id,
-    name: String,
+pub struct UiColumnConfig {
+    /// The original Arrow field name used by DataFusion.
+    #[serde(alias = "column_name", default = "default_column_name")]
+    physical_name: ColumnName,
+
     visible: bool,
     sort_key: i64,
 }
 
-impl ColumnConfig {
-    pub fn new(id: Id, name: String) -> Self {
+impl UiColumnConfig {
+    fn new(physical_name: ColumnName, visible: bool) -> Self {
         Self {
-            original_index: 0,
-            id,
-            name,
-            visible: true,
-            sort_key: 0,
-        }
-    }
-
-    pub fn new_with_visible(id: Id, name: String, visible: bool) -> Self {
-        Self {
-            original_index: 0,
-            id,
-            name,
+            physical_name,
             visible,
             sort_key: 0,
         }
@@ -139,17 +134,13 @@ impl ColumnConfig {
     /// Set a sort key. This will affect the order of new columns added to the table.
     ///
     /// Default is 0.
-    pub fn with_sort_key(mut self, sort_key: i64) -> Self {
+    fn with_sort_key(mut self, sort_key: i64) -> Self {
         self.sort_key = sort_key;
         self
     }
 
-    pub fn id(&self) -> Id {
-        self.id
-    }
-
-    pub fn original_index(&self) -> usize {
-        self.original_index
+    pub(crate) fn column_name(&self) -> &ColumnName {
+        &self.physical_name
     }
 }
 
@@ -157,12 +148,12 @@ impl ColumnConfig {
 // of showing / hiding columns based on the config.
 // https://github.com/rerun-io/egui_table/issues/27
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct TableConfig {
+pub struct UiTableConfig {
     id: Id,
-    columns: Vec<ColumnConfig>,
+    columns: Vec<UiColumnConfig>,
 }
 
-impl TableConfig {
+impl UiTableConfig {
     fn new(id: Id) -> Self {
         Self {
             id,
@@ -170,52 +161,47 @@ impl TableConfig {
         }
     }
 
-    /// Remove the table config from the cache.
-    pub fn clear_state(egui_ctx: &egui::Context, persisted_id: Id) {
-        egui_ctx.data_mut(|data| {
-            data.remove::<Self>(persisted_id);
-        });
-    }
-
     /// Get a table config, creating it if it doesn't exist.
     ///
-    /// Columns is an iterator of default [`ColumnConfig`]s that will be added to the table config.
-    /// Any columns that are not in the iterator will be removed from the table config.
-    /// New columns will be added in order at the end.
+    /// Loads the config from egui state and merges it with the provided columns and their blueprints.
+    /// This preserves existing state and adds missing columns from the provided list.
     ///
     /// Don't forget to call [`Self::store`] to persist the changes.
-    pub fn get_with_columns(
+    pub fn from_egui_state_merged_with_data_columns(
         egui_ctx: &egui::Context,
         persisted_id: Id,
-        columns: impl Iterator<Item = ColumnConfig>,
+        columns: &Columns<'_>,
     ) -> Self {
         egui_ctx.data_mut(|data| {
             let config: &mut Self =
                 data.get_persisted_mut_or_insert_with(persisted_id, || Self::new(persisted_id));
 
-            let mut has_cols = HashSet::default();
-            let mut new_cols = Vec::new();
+            let mut present_columns = HashSet::default();
+            let mut new_columns = Vec::new();
 
-            for (index, mut new_config) in columns.enumerate() {
-                new_config.original_index = index;
-                has_cols.insert(new_config.id);
-                if let Some(existing_config) = config
+            for column in columns.iter() {
+                present_columns.insert(column.physical_name());
+                if config
                     .columns
-                    .iter_mut()
-                    .find(|existing| existing.name == new_config.name)
+                    .iter()
+                    .all(|c| &c.physical_name != column.physical_name())
                 {
-                    // Update existing column name and original index in case they changed.
-                    existing_config.id = new_config.id;
-                    existing_config.original_index = index;
-                } else {
-                    new_cols.push(new_config);
+                    new_columns.push(
+                        UiColumnConfig::new(
+                            column.physical_name().clone(),
+                            column.blueprint.default_visibility,
+                        )
+                        .with_sort_key(column.blueprint.sort_key),
+                    );
                 }
             }
 
-            new_cols.sort_by_key(|c| c.sort_key);
-            config.columns.extend(new_cols);
+            new_columns.sort_by_key(|column| column.sort_key);
+            config.columns.extend(new_columns);
 
-            config.columns.retain(|col| has_cols.contains(&col.id));
+            config
+                .columns
+                .retain(|column| present_columns.contains(&column.physical_name));
 
             config.clone()
         })
@@ -227,35 +213,32 @@ impl TableConfig {
         });
     }
 
-    pub fn visible_columns(&self) -> impl Iterator<Item = &ColumnConfig> {
+    pub fn visible_columns(&self) -> impl Iterator<Item = &UiColumnConfig> {
         self.columns.iter().filter(|col| col.visible)
     }
 
-    pub fn visible_column_names(&self) -> impl Iterator<Item = &str> {
-        self.visible_columns().map(|col| col.name.as_str())
+    pub fn visible_column_names(&self) -> impl Iterator<Item = &ColumnName> {
+        self.visible_columns().map(|column| column.column_name())
     }
 
-    pub fn visible_column_ids(&self) -> impl Iterator<Item = Id> + use<'_> {
-        self.visible_columns().map(|col| col.id)
-    }
-
-    pub fn visible_column_indexes(&self) -> impl Iterator<Item = usize> + use<'_> {
-        self.visible_columns().map(|col| col.original_index)
-    }
-
-    pub fn ui(&mut self, ui: &mut egui::Ui) {
+    fn ui(&mut self, ui: &mut egui::Ui, columns: &Columns<'_>) {
         egui::ScrollArea::vertical().show(ui, |ui| {
             let response = egui_dnd::dnd(ui, "Columns").show(
                 self.columns.iter_mut(),
-                |ui, column, handle, _state| {
-                    let visible = column.visible;
+                |ui, ui_column, handle, _state| {
+                    let visible = ui_column.visible;
                     egui::Sides::new().show(
                         ui,
                         |ui| {
                             handle.ui(ui, |ui| {
                                 ui.small_icon(&icons::DND_HANDLE, Some(ui.visuals().text_color()));
                             });
-                            let mut label = RichText::new(&column.name);
+                            let mut label = RichText::new(
+                                columns
+                                    .find_by_physical_name(&ui_column.physical_name)
+                                    .map(|(_, column)| column.display_name())
+                                    .unwrap_or_else(|| ui_column.physical_name.as_str().to_owned()),
+                            );
                             if visible {
                                 label = label.strong();
                             } else {
@@ -264,13 +247,13 @@ impl TableConfig {
                             ui.label(label);
                         },
                         |ui| {
-                            let (icon, alt_text) = if column.visible {
+                            let (icon, alt_text) = if ui_column.visible {
                                 (&icons::VISIBLE, "Hide column")
                             } else {
                                 (&icons::INVISIBLE, "Show column")
                             };
                             if ui.small_icon_button(icon, alt_text).clicked() {
-                                column.visible = !column.visible;
+                                ui_column.visible = !ui_column.visible;
                             }
                         },
                     );
@@ -282,11 +265,11 @@ impl TableConfig {
         });
     }
 
-    pub fn button_ui(&mut self, ui: &mut egui::Ui) {
+    pub fn button_ui(&mut self, ui: &mut egui::Ui, columns: &Columns<'_>) {
         MenuButton::from_button(icons::TABLE_COLUMNS.as_button_with_label(ui.tokens(), "Columns"))
             .config(MenuConfig::new().close_behavior(PopupCloseBehavior::CloseOnClickOutside))
             .ui(ui, |ui| {
-                self.ui(ui);
+                self.ui(ui, columns);
             });
     }
 }

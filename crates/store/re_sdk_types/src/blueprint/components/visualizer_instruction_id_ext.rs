@@ -1,7 +1,7 @@
 use re_log_types::EntityPath;
 
 use super::VisualizerInstructionId;
-use crate::datatypes::Uuid;
+use crate::encodings::Uuid;
 
 impl VisualizerInstructionId {
     /// Create an invalid visualizer instruction ID (nil UUID).

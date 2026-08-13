@@ -31,7 +31,7 @@ from .common_arrays import (
 )
 
 if TYPE_CHECKING:
-    from rerun.datatypes import ClassIdArrayLike, Float32ArrayLike, Rgba32ArrayLike, Utf8ArrayLike, Vec2DArrayLike
+    from rerun.encodings import ClassIdArrayLike, Float32ArrayLike, Rgba32ArrayLike, Utf8ArrayLike, Vec2DArrayLike
 
 
 def test_boxes2d() -> None:

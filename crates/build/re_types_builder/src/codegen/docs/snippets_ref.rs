@@ -159,7 +159,7 @@ impl SnippetsRefCodeGenerator {
             let obj_name = &obj.name;
             let obj_name_snake = obj.snake_case_name();
             let obj_kind = match obj.kind {
-                ObjectKind::Datatype => "datatypes",
+                ObjectKind::Encoding => "encodings",
                 ObjectKind::Component => "components",
                 ObjectKind::Archetype => "archetypes",
                 ObjectKind::View => "views",
@@ -628,7 +628,7 @@ impl<'o> KnownObjects<'o> {
                     views.insert(object);
                 }
 
-                ObjectKind::Datatype => {}
+                ObjectKind::Encoding => {}
             }
         }
 

@@ -6,7 +6,7 @@ import numpy as np
 from rerun.archetypes import Scalars
 
 if TYPE_CHECKING:
-    from rerun.datatypes import Float64ArrayLike
+    from rerun.encodings import Float64ArrayLike
 
 CASES: list[tuple[Float64ArrayLike, Float64ArrayLike]] = [
     (

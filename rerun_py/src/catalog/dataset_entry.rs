@@ -21,7 +21,7 @@ use crate::catalog::entry::set_entry_name;
 use crate::catalog::unregistration_handle::PyUnregistrationHandleInternal;
 use crate::chunk_stream::lazy_store::PyLazyStoreInternal;
 use crate::trace_context::read_trace_context_from_python;
-use crate::utils::{get_tokio_runtime, wait_for_future};
+use crate::utils::wait_for_future;
 
 /// A dataset entry in the catalog.
 #[pyclass(
@@ -248,7 +248,7 @@ impl PyDatasetEntryInternal {
                 .map_err(to_py_err)
         })?;
 
-        let table = PyTableProviderAdapterInternal::new(provider, false);
+        let table = PyTableProviderAdapterInternal::new(provider);
 
         let client = self_.client.borrow(py);
         let ctx = client.ctx(py)?;
@@ -272,7 +272,7 @@ impl PyDatasetEntryInternal {
                 .map_err(to_py_err)
         })?;
 
-        let table = PyTableProviderAdapterInternal::new(provider, false);
+        let table = PyTableProviderAdapterInternal::new(provider);
 
         let client = self_.client.borrow(py);
         let ctx = client.ctx(py)?;
@@ -410,7 +410,11 @@ impl PyDatasetEntryInternal {
         let on_duplicate = parse_on_duplicate(on_duplicate)?;
         let _span = read_trace_context_from_python(py, "DatasetEntry.register").entered();
 
-        let recording_layers = recording_layers.into_iter().map(LayerName::new).collect();
+        let recording_layers = recording_layers
+            .into_iter()
+            .map(LayerName::try_new)
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(to_py_err)?;
         let (request_trace_id, results) = connection.register_with_dataset(
             py,
             self_.entry_details.id,
@@ -467,7 +471,11 @@ impl PyDatasetEntryInternal {
         let connection = self_.client.borrow(py).connection().clone();
 
         let segments_to_drop = segments_to_drop.into_iter().map(SegmentId::new).collect();
-        let layers_to_drop = layers_to_drop.into_iter().map(LayerName::new).collect();
+        let layers_to_drop = layers_to_drop
+            .into_iter()
+            .map(LayerName::try_new)
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(to_py_err)?;
         let (request_trace_id, task_ids) = connection.unregister_from_dataset(
             py,
             self_.entry_details.id,
@@ -519,7 +527,7 @@ impl PyDatasetEntryInternal {
             py,
             self_.entry_details.id,
             recordings_prefix,
-            LayerName::new(layer_name),
+            LayerName::try_new(layer_name).map_err(to_py_err)?,
             on_duplicate,
         )?;
 
@@ -543,7 +551,6 @@ impl PyDatasetEntryInternal {
 
         let provider = wait_for_future(py, async {
             SegmentChunkProvider::try_new(
-                get_tokio_runtime().handle().clone(),
                 connection.connection_registry().clone(),
                 connection.origin().clone(),
                 dataset_id,

@@ -7,8 +7,8 @@ Pixel resolution width & height, e.g. of a camera sensor.
 
 Typically in integer units, but for some use cases floating point may be used.
 
-## Rerun datatype
-[`Vec2D`](../datatypes/vec2d.md)
+## Rerun encoding
+[`Vec2D`](../encodings/vec2d.md)
 
 
 ## Arrow datatype

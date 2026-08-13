@@ -1,6 +1,7 @@
-use std::io::{Read, Seek, SeekFrom};
+use std::collections::BTreeMap;
 
-use re_log_types::{LogMsg, StoreId};
+use re_async::AsyncReadAt;
+use re_log_types::{ApplicationId, LogMsg, StoreId};
 
 use crate::rrd::{
     CodecError, Decodable as _, DecoderEntrypoint as _, MessageHeader, MessageKind, StreamFooter,
@@ -8,17 +9,26 @@ use crate::rrd::{
 };
 use crate::{CachingApplicationIdInjector, RrdFooter, ToApplication as _};
 
-/// Read the full RRD footer from a seekable reader using seek-based I/O.
-///
-/// The reader position is moved during reading (seeks to header, footer, payload).
+/// Read the full RRD footer using positional I/O.
 ///
 /// Returns `Ok(None)` if the data is a valid RRD but has no footer (legacy RRD).
 /// Returns `Err` if the data is not a valid RRD or is corrupted.
 ///
 /// The returned [`RrdFooter`] contains manifests for ALL stores in the file.
 /// Caller is responsible for selecting the desired store.
-pub fn read_rrd_footer<R: Read + Seek>(reader: &mut R) -> Result<Option<RrdFooter>, CodecError> {
-    let file_len = reader.seek(SeekFrom::End(0))?;
+pub async fn read_rrd_footer<R: AsyncReadAt>(reader: &R) -> Result<Option<RrdFooter>, CodecError> {
+    let Some(payload) = read_rrd_footer_payload(reader).await? else {
+        return Ok(None);
+    };
+
+    let transport_footer = re_protos::log_msg::v1alpha1::RrdFooter::from_rrd_bytes(&payload)?;
+    Ok(Some(transport_footer.to_application(())?))
+}
+
+pub(super) async fn read_rrd_footer_payload<R: AsyncReadAt>(
+    reader: &R,
+) -> Result<Option<bytes::Bytes>, CodecError> {
+    let file_len = reader.size().await?;
 
     // 1. Validate the StreamHeader to confirm this is actually an RRD file.
     if file_len < StreamHeader::ENCODED_SIZE_BYTES as u64 {
@@ -26,20 +36,22 @@ pub fn read_rrd_footer<R: Read + Seek>(reader: &mut R) -> Result<Option<RrdFoote
             "file too small to be an RRD".to_owned(),
         ));
     }
-    reader.seek(SeekFrom::Start(0))?;
-    let mut header_buf = [0u8; StreamHeader::ENCODED_SIZE_BYTES];
-    reader.read_exact(&mut header_buf)?;
+    let header_buf = reader
+        .read_exact_at(0, StreamHeader::ENCODED_SIZE_BYTES)
+        .await?;
     StreamHeader::from_rrd_bytes(&header_buf)?; // validates FourCC + version
 
     // 2. Read the StreamFooter from the end of the file.
     if file_len < StreamFooter::ENCODED_SIZE_BYTES as u64 {
         return Ok(None); // File too small to have a footer.
     }
-    // SAFETY: ENCODED_SIZE_BYTES is a small constant (32), fits in i64.
-    #[expect(clippy::cast_possible_wrap)]
-    reader.seek(SeekFrom::End(-(StreamFooter::ENCODED_SIZE_BYTES as i64)))?;
-    let mut footer_buf = [0u8; StreamFooter::ENCODED_SIZE_BYTES];
-    reader.read_exact(&mut footer_buf)?;
+    // SAFETY: The preceding size check prevents the subtraction from underflowing.
+    let footer_buf = reader
+        .read_exact_at(
+            file_len - StreamFooter::ENCODED_SIZE_BYTES as u64,
+            StreamFooter::ENCODED_SIZE_BYTES,
+        )
+        .await?;
 
     let Ok(stream_footer) = StreamFooter::from_rrd_bytes(&footer_buf) else {
         return Ok(None); // Valid RRD, but no footer (legacy).
@@ -63,10 +75,8 @@ pub fn read_rrd_footer<R: Read + Seek>(reader: &mut R) -> Result<Option<RrdFoote
         )));
     }
 
-    // 3. Seek to the RrdFooter payload and read it.
-    reader.seek(SeekFrom::Start(span.start))?;
-    let mut payload_buf = vec![0u8; payload_len];
-    reader.read_exact(&mut payload_buf)?;
+    // 3. Read the RrdFooter payload.
+    let payload_buf = reader.read_exact_at(span.start, payload_len).await?;
 
     // 4. Validate CRC.
     let actual_crc = StreamFooter::compute_crc(&payload_buf);
@@ -77,95 +87,126 @@ pub fn read_rrd_footer<R: Read + Seek>(reader: &mut R) -> Result<Option<RrdFoote
         });
     }
 
-    // 5. Decode protobuf RrdFooter → application-level RrdFooter.
-    let transport_footer = re_protos::log_msg::v1alpha1::RrdFooter::from_rrd_bytes(&payload_buf)?;
-    let rrd_footer = transport_footer.to_application(())?;
-
-    Ok(Some(rrd_footer))
+    Ok(Some(payload_buf))
 }
 
 /// Enumerate all [`StoreId`]s present in an RRD file, without reading chunk data.
 ///
 /// - **With footer** (modern RRDs): reads the footer and returns the keys of its manifests map.
-///   Cheap: 3 seeks, no chunk data read. All stores are visible regardless of message ordering.
+///   Cheap: a few small reads, no chunk data read. All stores are visible regardless of message ordering.
 /// - **Without footer** (legacy RRDs): walks message frames, decoding only `SetStoreInfo`
-///   payloads and seeking past everything else. All `SetStoreInfo`s are discovered regardless
+///   payloads and skipping past everything else. All `SetStoreInfo`s are discovered regardless
 ///   of how they interleave with `ArrowMsg`s.
 ///
-/// The reader position is moved during reading. The returned list is sorted by [`StoreId`]'s
-/// natural order for determinism.
-pub fn enumerate_rrd_stores<R: Read + Seek>(reader: &mut R) -> Result<Vec<StoreId>, CodecError> {
-    // Try footer first (cheap: 3 seeks, no chunk data read).
-    if let Some(footer) = read_rrd_footer(reader)? {
+/// The returned list is sorted by [`StoreId`]'s natural order for determinism.
+pub async fn enumerate_rrd_stores<R: AsyncReadAt>(reader: &R) -> Result<Vec<StoreId>, CodecError> {
+    // Try footer first (cheap: a few small reads, no chunk data read).
+    if let Some(footer) = read_rrd_footer(reader).await? {
         let mut store_ids: Vec<StoreId> = footer.manifests.into_keys().collect();
         store_ids.sort();
         return Ok(store_ids);
     }
 
-    enumerate_legacy_stores(reader)
+    enumerate_legacy_metadata(reader)
+        .await
+        .map(|metadata| metadata.store_ids)
 }
 
-/// Legacy (no-footer) enumeration: walk message frames without decoding chunk data.
+/// Metadata collected from RRD message frames without decoding chunk data.
+pub struct RrdMetadata {
+    /// All store ids announced by `SetStoreInfo` messages, sorted and deduplicated.
+    pub store_ids: Vec<StoreId>,
+
+    /// The last default-blueprint activation for each application id.
+    pub default_blueprint_by_app_id: BTreeMap<ApplicationId, StoreId>,
+}
+
+/// Enumerate the metadata available through legacy RRD message frames.
 ///
-/// We read each 16-byte [`MessageHeader`], decode only `SetStoreInfo` payloads, and
-/// `seek()` past `ArrowMsg` / `BlueprintActivationCommand` payloads. Cost is
-/// `O(num_messages * 16 bytes)` of frame reads + small `SetStoreInfo` payload decodes.
-/// No Arrow IPC decoding ever happens.
+/// Reads each 16-byte [`MessageHeader`], decodes only `SetStoreInfo` and
+/// `BlueprintActivationCommand` payloads, and skips past `ArrowMsg` payloads. No Arrow IPC decoding
+/// happens.
 ///
-/// The same `StoreId` can appear in multiple `SetStoreInfo` messages (e.g. after a
-/// flush/reconnect); the returned list is deduplicated.
-fn enumerate_legacy_stores<R: Read + Seek>(reader: &mut R) -> Result<Vec<StoreId>, CodecError> {
-    // `read_rrd_footer` already moved the reader position — seek back to start.
-    reader.seek(SeekFrom::Start(0))?;
+/// This does not inspect the footer. Store ids therefore come only from `SetStoreInfo` messages and
+/// may be incomplete for footer-backed RRDs. The same `StoreId` can appear in multiple
+/// `SetStoreInfo` messages, so the returned list is sorted and deduplicated.
+pub async fn enumerate_legacy_metadata<R: AsyncReadAt>(
+    reader: &R,
+) -> Result<RrdMetadata, CodecError> {
+    // TODO(grtlr): Profile this scan without holding a Puffin scope across `.await` points.
+    // `ProfilerScope` must end on its starting thread and therefore makes the future non-`Send`.
 
     // Read and validate the StreamHeader; it also carries the crate version we need when
     // decoding individual message payloads (for version-dependent migrations).
-    let mut stream_header_buf = [0u8; StreamHeader::ENCODED_SIZE_BYTES];
-    reader.read_exact(&mut stream_header_buf)?;
+    let stream_header_buf = reader
+        .read_exact_at(0, StreamHeader::ENCODED_SIZE_BYTES)
+        .await?;
     let stream_header = StreamHeader::from_rrd_bytes(&stream_header_buf)?;
     let (version, _options) = stream_header.to_version_and_options()?;
 
     let mut store_ids = Vec::new();
+    let mut default_blueprint_by_app_id = BTreeMap::new();
     let mut app_id_cache = CachingApplicationIdInjector::default();
 
+    let mut offset = StreamHeader::ENCODED_SIZE_BYTES as u64;
     loop {
-        let mut msg_header_buf = [0u8; MessageHeader::ENCODED_SIZE_BYTES];
-        match reader.read_exact(&mut msg_header_buf) {
-            Ok(()) => {}
+        let msg_header_buf = match reader
+            .read_exact_at(offset, MessageHeader::ENCODED_SIZE_BYTES)
+            .await
+        {
+            Ok(buf) => buf,
             Err(err) if err.kind() == std::io::ErrorKind::UnexpectedEof => break,
             Err(err) => return Err(CodecError::Io(err)),
-        }
+        };
+        offset += MessageHeader::ENCODED_SIZE_BYTES as u64;
         let header = MessageHeader::from_rrd_bytes(&msg_header_buf)?;
 
         match header.kind {
             MessageKind::End => break,
 
-            MessageKind::SetStoreInfo => {
+            MessageKind::SetStoreInfo | MessageKind::BlueprintActivationCommand => {
                 let payload_len = usize::try_from(header.len).map_err(CodecError::Overflow)?;
-                let mut payload = vec![0u8; payload_len];
-                reader.read_exact(&mut payload)?;
+                let payload = reader.read_exact_at(offset, payload_len).await?;
+                offset += header.len;
                 let byte_span = re_chunk::Span::from_start_len(0, header.len);
-                if let Some(LogMsg::SetStoreInfo(set_store_info)) = LogMsg::decode(
-                    bytes::Bytes::from(payload),
+                match LogMsg::decode(
+                    payload,
                     byte_span,
-                    MessageKind::SetStoreInfo,
+                    header.kind,
                     &mut app_id_cache,
                     Some(version),
                 )? {
-                    store_ids.push(set_store_info.info.store_id);
+                    Some(LogMsg::SetStoreInfo(set_store_info)) => {
+                        store_ids.push(set_store_info.info.store_id);
+                    }
+                    Some(LogMsg::BlueprintActivationCommand(command)) if command.make_default => {
+                        default_blueprint_by_app_id.insert(
+                            command.blueprint_id.application_id().clone(),
+                            command.blueprint_id,
+                        );
+                    }
+                    _ => {}
                 }
             }
 
-            MessageKind::ArrowMsg | MessageKind::BlueprintActivationCommand => {
-                let offset = i64::try_from(header.len).map_err(CodecError::Overflow)?;
-                reader.seek(SeekFrom::Current(offset))?;
+            MessageKind::ArrowMsg => {
+                offset += header.len;
             }
         }
     }
 
     store_ids.sort();
     store_ids.dedup();
-    Ok(store_ids)
+
+    // From a server-perspective, it does not make sense to keep
+    // former blueprint activation commands, if they are not part
+    // of this RRD.
+    default_blueprint_by_app_id.retain(|_, store_id| store_ids.contains(store_id));
+
+    Ok(RrdMetadata {
+        store_ids,
+        default_blueprint_by_app_id,
+    })
 }
 
 #[cfg(test)]
@@ -176,12 +217,20 @@ mod tests {
     use super::*;
     use crate::rrd::test_util::{encode_test_rrd, encode_test_rrd_to_file, make_test_chunks};
 
+    fn set_store_info(store_id: StoreId) -> LogMsg {
+        LogMsg::SetStoreInfo(re_log_types::SetStoreInfo {
+            row_id: *re_chunk::RowId::ZERO,
+            info: re_log_types::StoreInfo::new(store_id, re_log_types::StoreSource::Unknown),
+        })
+    }
+
     #[test]
     fn test_read_footer_roundtrip() {
         let chunks = make_test_chunks(5);
         let (file, _store_id) = encode_test_rrd(&chunks);
 
-        let footer = read_rrd_footer(&mut File::open(file.path()).unwrap()).unwrap();
+        let file = File::open(file.path()).unwrap();
+        let footer = futures::executor::block_on(read_rrd_footer(&file)).unwrap();
         assert!(footer.is_some(), "Footer should be present");
         let footer = footer.unwrap();
         assert!(
@@ -197,7 +246,8 @@ mod tests {
         let chunks = make_test_chunks(3);
         encode_test_rrd_to_file(file.path(), &chunks, false);
 
-        let footer = read_rrd_footer(&mut File::open(file.path()).unwrap()).unwrap();
+        let file = File::open(file.path()).unwrap();
+        let footer = futures::executor::block_on(read_rrd_footer(&file)).unwrap();
         assert!(footer.is_none(), "Legacy RRD should have no footer");
     }
 
@@ -206,7 +256,8 @@ mod tests {
         let chunks = make_test_chunks(5);
         let (file, store_id) = encode_test_rrd(&chunks);
 
-        let ids = enumerate_rrd_stores(&mut File::open(file.path()).unwrap()).unwrap();
+        let file = File::open(file.path()).unwrap();
+        let ids = futures::executor::block_on(enumerate_rrd_stores(&file)).unwrap();
         assert_eq!(ids, vec![store_id]);
     }
 
@@ -216,7 +267,8 @@ mod tests {
         let chunks = make_test_chunks(3);
         encode_test_rrd_to_file(file.path(), &chunks, false);
 
-        let ids = enumerate_rrd_stores(&mut File::open(file.path()).unwrap()).unwrap();
+        let file = File::open(file.path()).unwrap();
+        let ids = futures::executor::block_on(enumerate_rrd_stores(&file)).unwrap();
         assert_eq!(
             ids.len(),
             1,
@@ -249,10 +301,12 @@ mod tests {
             crate::EncodingOptions::PROTOBUF_COMPRESSED,
         );
 
+        let with_footer_file = File::open(with_footer.path()).unwrap();
         let ids_footer =
-            enumerate_rrd_stores(&mut File::open(with_footer.path()).unwrap()).unwrap();
+            futures::executor::block_on(enumerate_rrd_stores(&with_footer_file)).unwrap();
+        let without_footer_file = File::open(without_footer.path()).unwrap();
         let ids_legacy =
-            enumerate_rrd_stores(&mut File::open(without_footer.path()).unwrap()).unwrap();
+            futures::executor::block_on(enumerate_rrd_stores(&without_footer_file)).unwrap();
 
         assert_eq!(ids_footer, vec![store_id]);
         assert_eq!(
@@ -312,7 +366,8 @@ mod tests {
             encoder.finish().unwrap();
         }
 
-        let ids = enumerate_rrd_stores(&mut File::open(file.path()).unwrap()).unwrap();
+        let file = File::open(file.path()).unwrap();
+        let ids = futures::executor::block_on(enumerate_rrd_stores(&file)).unwrap();
         assert_eq!(
             ids,
             vec![store_id],
@@ -379,10 +434,12 @@ mod tests {
         write_interleaved(with_footer.path(), true);
         write_interleaved(without_footer.path(), false);
 
+        let with_footer_file = File::open(with_footer.path()).unwrap();
         let ids_footer =
-            enumerate_rrd_stores(&mut File::open(with_footer.path()).unwrap()).unwrap();
+            futures::executor::block_on(enumerate_rrd_stores(&with_footer_file)).unwrap();
+        let without_footer_file = File::open(without_footer.path()).unwrap();
         let ids_legacy =
-            enumerate_rrd_stores(&mut File::open(without_footer.path()).unwrap()).unwrap();
+            futures::executor::block_on(enumerate_rrd_stores(&without_footer_file)).unwrap();
 
         let mut expected = vec![store_a, store_b];
         expected.sort();
@@ -398,11 +455,129 @@ mod tests {
     }
 
     #[test]
+    fn test_enumerate_legacy_metadata_default_blueprint_last_wins() {
+        use re_log_types::{BlueprintActivationCommand, LogMsg, StoreId, StoreKind};
+
+        let app_id = re_log_types::ApplicationId::from("metadata_app");
+        let recording = StoreId::random(StoreKind::Recording, app_id.clone());
+        let blueprint_a = StoreId::random(StoreKind::Blueprint, app_id.clone());
+        let blueprint_b = StoreId::random(StoreKind::Blueprint, app_id);
+        let file = tempfile::NamedTempFile::new().unwrap();
+        {
+            let mut out = std::fs::File::create(file.path()).unwrap();
+            let mut encoder = crate::Encoder::new_eager(
+                re_build_info::CrateVersion::LOCAL,
+                crate::EncodingOptions::PROTOBUF_COMPRESSED,
+                &mut out,
+            )
+            .unwrap();
+            encoder.append(&set_store_info(recording.clone())).unwrap();
+            encoder
+                .append(&set_store_info(blueprint_a.clone()))
+                .unwrap();
+            encoder
+                .append(&LogMsg::BlueprintActivationCommand(
+                    BlueprintActivationCommand::make_default(blueprint_a),
+                ))
+                .unwrap();
+            encoder
+                .append(&set_store_info(blueprint_b.clone()))
+                .unwrap();
+            encoder
+                .append(&LogMsg::BlueprintActivationCommand(
+                    BlueprintActivationCommand::make_default(blueprint_b.clone()),
+                ))
+                .unwrap();
+            encoder.finish().unwrap();
+        }
+
+        let file = File::open(file.path()).unwrap();
+        let default_blueprints = futures::executor::block_on(enumerate_legacy_metadata(&file))
+            .unwrap()
+            .default_blueprint_by_app_id;
+        assert_eq!(default_blueprints.len(), 1);
+        assert_eq!(
+            default_blueprints.get(recording.application_id()),
+            Some(&blueprint_b)
+        );
+    }
+
+    #[test]
+    fn test_enumerate_legacy_metadata_ignores_non_default_blueprint_activation() {
+        use re_log_types::{BlueprintActivationCommand, LogMsg, StoreId, StoreKind};
+
+        let app_id = re_log_types::ApplicationId::from("metadata_app");
+        let recording = StoreId::random(StoreKind::Recording, app_id.clone());
+        let blueprint = StoreId::random(StoreKind::Blueprint, app_id);
+        let file = tempfile::NamedTempFile::new().unwrap();
+        {
+            let mut out = std::fs::File::create(file.path()).unwrap();
+            let mut encoder = crate::Encoder::new_eager(
+                re_build_info::CrateVersion::LOCAL,
+                crate::EncodingOptions::PROTOBUF_COMPRESSED,
+                &mut out,
+            )
+            .unwrap();
+            encoder.append(&set_store_info(recording)).unwrap();
+            encoder.append(&set_store_info(blueprint.clone())).unwrap();
+            encoder
+                .append(&LogMsg::BlueprintActivationCommand(
+                    BlueprintActivationCommand {
+                        blueprint_id: blueprint,
+                        make_active: false,
+                        make_default: false,
+                    },
+                ))
+                .unwrap();
+            encoder.finish().unwrap();
+        }
+
+        let file = File::open(file.path()).unwrap();
+        let default_blueprints = futures::executor::block_on(enumerate_legacy_metadata(&file))
+            .unwrap()
+            .default_blueprint_by_app_id;
+        assert!(default_blueprints.is_empty());
+    }
+
+    #[test]
+    fn test_enumerate_legacy_metadata_omits_missing_default_blueprint() {
+        use re_log_types::{BlueprintActivationCommand, LogMsg, StoreId, StoreKind};
+
+        let app_id = re_log_types::ApplicationId::from("metadata_app");
+        let recording = StoreId::random(StoreKind::Recording, app_id.clone());
+        let dangling_blueprint = StoreId::random(StoreKind::Blueprint, app_id);
+        let file = tempfile::NamedTempFile::new().unwrap();
+        {
+            let mut out = std::fs::File::create(file.path()).unwrap();
+            let mut encoder = crate::Encoder::new_eager(
+                re_build_info::CrateVersion::LOCAL,
+                crate::EncodingOptions::PROTOBUF_COMPRESSED,
+                &mut out,
+            )
+            .unwrap();
+            encoder.append(&set_store_info(recording.clone())).unwrap();
+            encoder
+                .append(&LogMsg::BlueprintActivationCommand(
+                    BlueprintActivationCommand::make_default(dangling_blueprint.clone()),
+                ))
+                .unwrap();
+            encoder.finish().unwrap();
+        }
+
+        let file = File::open(file.path()).unwrap();
+        let default_blueprints = futures::executor::block_on(enumerate_legacy_metadata(&file))
+            .unwrap()
+            .default_blueprint_by_app_id;
+        assert!(!default_blueprints.contains_key(recording.application_id()));
+    }
+
+    #[test]
     fn test_read_footer_not_an_rrd() {
         let file = tempfile::NamedTempFile::new().unwrap();
         std::fs::write(file.path(), b"this is not an rrd file at all").unwrap();
 
-        let result = read_rrd_footer(&mut File::open(file.path()).unwrap());
+        let file = File::open(file.path()).unwrap();
+        let result = futures::executor::block_on(read_rrd_footer(&file));
         assert!(result.is_err(), "Non-RRD file should return an error");
     }
 
@@ -411,7 +586,8 @@ mod tests {
         let file = tempfile::NamedTempFile::new().unwrap();
         std::fs::write(file.path(), b"tiny").unwrap();
 
-        let result = read_rrd_footer(&mut File::open(file.path()).unwrap());
+        let file = File::open(file.path()).unwrap();
+        let result = futures::executor::block_on(read_rrd_footer(&file));
         assert!(
             result.is_err(),
             "File too small for StreamHeader should error"
@@ -435,7 +611,8 @@ mod tests {
         data[payload_start] ^= 0xFF;
         std::fs::write(file.path(), &data).unwrap();
 
-        let result = read_rrd_footer(&mut File::open(file.path()).unwrap());
+        let file = File::open(file.path()).unwrap();
+        let result = futures::executor::block_on(read_rrd_footer(&file));
         assert!(
             matches!(result, Err(CodecError::CrcMismatch { .. })),
             "Expected CRC mismatch, got: {result:?}"

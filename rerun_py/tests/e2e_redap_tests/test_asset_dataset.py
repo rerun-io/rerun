@@ -87,6 +87,7 @@ def test_unregister_unknown_asset_is_noop(entry_factory: EntryFactory) -> None:
     assert asset_dataset.segment_ids() == []
 
 
+@pytest.mark.min_hub_version("0.15.0")  # asset datasets shipped in hub 0.15
 def test_deleting_dataset_deletes_asset_dataset(catalog_client: CatalogClient) -> None:
     """Creating a dataset creates an asset dataset of the right kind, and deleting the dataset deletes it too."""
     dataset_name = f"dataset_with_asset_{uuid.uuid4().hex}"

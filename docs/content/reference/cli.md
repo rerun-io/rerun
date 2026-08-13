@@ -175,7 +175,9 @@ The Rerun command-line interface:
 > [Default: `false`]
 
 * `--detach-process <DETACH_PROCESS>`
-> Detach Rerun Viewer process from the application process.
+> Detach the native Rerun Viewer process from the invoking process.
+>
+> Ignored for any command that doesn't spawn a viewer.
 >
 > [Default: `false`]
 
@@ -363,7 +365,8 @@ Manipulate the contents of .mcap files.
 **Commands**
 
 * `convert`: Convert an .mcap file to an .rrd.
-* `info`: Print timeline / sortedness diagnostics for an .mcap file.
+* `info`: Print recording, channel, and compression information for an .mcap file.
+* `check`: Check an .mcap file for structural and timeline issues.
 
 ## rerun mcap convert
 
@@ -423,9 +426,30 @@ Convert an .mcap file to an .rrd.
 >
 > Applied after includes: a topic is kept only if it matches an include (or no includes are set) AND matches no exclude.
 
+* `--start-time <TIME>`
+> Inclusive lower bound on the raw MCAP `log_time`.
+>
+> Accepts Unix timestamps with a unit suffix (`ns`, `ms`, `s`, …), or an RFC 3339 timestamp. Bare integers are interpreted as nanoseconds.
+>
+> If set, only data within this time range gets converted.
+
+* `--end-time <TIME>`
+> Exclusive upper bound on the raw MCAP `log_time`.
+>
+> Accepts Unix timestamps with a unit suffix (`ns`, `ms`, `s`, …), or an RFC 3339 timestamp. Bare integers are interpreted as nanoseconds.
+>
+> If set, only data within this time range gets converted.
+
+* `--recover <RECOVER>`
+> Recover a missing or invalid MCAP summary in memory.
+>
+> This allows conversion of MCAP files that lack a footer (e.g. corrupted recordings).
+>
+> [Default: `false`]
+
 ## rerun mcap info
 
-Print timeline / sortedness diagnostics for an .mcap file.
+Print recording, channel, and compression information for an .mcap file.
 
 **Usage**: `rerun mcap info [OPTIONS] <PATH>`
 
@@ -436,10 +460,35 @@ Print timeline / sortedness diagnostics for an .mcap file.
 
 **Options**
 
-* `--full <FULL>`
-> Run the full `re_mcap` decoder pipeline.
+* `--recover <RECOVER>`
+> Reconstruct a missing or invalid summary from the readable portion of the file.
 >
-> Surfaces timelines added by per-message decoders (e.g. `ros2_timestamp` from a ROS 2 `Header.stamp`). Without this flag only the raw MCAP-level timelines `message_log_time` / `message_publish_time` are inspected.
+> [Default: `false`]
+
+## rerun mcap check
+
+Check an .mcap file for structural and timeline issues.
+
+Reports timelines that disagree on row ordering, whole-topic ordering conflicts, and chunks that arrive out of order on a timeline.
+
+**Usage**: `rerun mcap check [OPTIONS] <PATH>`
+
+**Arguments**
+
+* `<PATH>`
+> Path to the .mcap file to check.
+
+**Options**
+
+* `--full <FULL>`
+> Check timelines produced by the full `re_mcap` decoder pipeline.
+>
+> This decodes message payloads to include derived timelines, such as `ros2_timestamp` for ROS 2 data, and increases processing time.
+>
+> [Default: `false`]
+
+* `--recover <RECOVER>`
+> Reconstruct a missing or invalid summary from the readable portion of the file.
 >
 > [Default: `false`]
 

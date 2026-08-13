@@ -9,8 +9,8 @@ use re_sdk_types::components::{AxisLength, ShowLabels};
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
     IdentifiedViewSystem, ViewClass as _, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemExecutionError, VisualizabilityConstraints, VisualizerExecutionOutput,
-    VisualizerQueryInfo, VisualizerReportSeverity, VisualizerSystem,
+    ViewSystemExecutionError, ViewerReportSeverity, VisualizabilityConstraints,
+    VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use super::{SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget};
@@ -158,7 +158,7 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
                     ) {
                         output.report_unspecified_source(
                             instruction.id,
-                            VisualizerReportSeverity::Error,
+                            ViewerReportSeverity::Error,
                             err_msg,
                         );
                     }
@@ -221,14 +221,14 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
                         re_log::debug_panic!("unable to resolve frame id hash {label_id_hash:?}");
                         output.report_unspecified_source(
                             instruction.id,
-                            VisualizerReportSeverity::Error,
+                            ViewerReportSeverity::Error,
                             format!("Could not resolve frame id hash {label_id_hash:?}"),
                         );
                     }
                 }
 
                 // Only add the center to the bounding box - the lines may be dependent on the bounding box, causing a feedback loop otherwise.
-                data.add_bounding_box(
+                data.add_bounding_box_3d(
                     data_result.entity_path.hash(),
                     macaw::BoundingBox::ZERO,
                     *world_from_obj,
@@ -285,8 +285,6 @@ pub fn add_axis_arrows(
     instance_index: u64,
 ) {
     use re_renderer::renderer::LineStripFlags;
-
-    // TODO(andreas): It would be nice if could display the ViewCoordinates axis names (left/right/up) as a tooltip on hover.
 
     let line_radius = re_renderer::Size::new_ui_points(1.0);
 

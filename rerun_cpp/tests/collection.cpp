@@ -121,8 +121,7 @@ struct CheckElementMoveAndCopyCount {
     int copy_convertible_count_before, move_convertible_count_before;
 };
 
-#define EXPECTED_ELEMENT_LIST \
-    { 1337, 42 }
+#define EXPECTED_ELEMENT_LIST {1337, 42}
 
 // Checks if the collection contains the elements defined in `EXPECTED_ELEMENT_LIST`.
 void check_for_expected_list(const rerun::Collection<Element>& collection) {
@@ -438,6 +437,9 @@ SCENARIO("Collection creation via a custom adapter for a datalayout compatible t
     }
 }
 
+// These tests intentionally inspect moved-from Collections, which remain valid because moves swap state.
+// Catch2 also runs each section independently, but clang-tidy analyzes them as one path.
+// NOLINTBEGIN(bugprone-use-after-move,clang-analyzer-cplusplus.Move)
 SCENARIO("Move construction/assignment of collections", TEST_TAG) {
     std::vector<Position2D> components = {
         Position2D(0.0f, 1.0f),
@@ -654,6 +656,8 @@ SCENARIO("Conversion to vector using `to_vector`", TEST_TAG) {
         }
     }
 }
+
+// NOLINTEND(bugprone-use-after-move,clang-analyzer-cplusplus.Move)
 
 SCENARIO("Borrow and take ownership if easy with the free utility functions") {
     GIVEN("A vector") {

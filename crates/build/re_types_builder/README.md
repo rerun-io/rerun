@@ -9,17 +9,14 @@ Part of the [`rerun`](https://github.com/rerun-io/rerun) family of crates.
 
 This crate implements Rerun's code generation tools.
 
-These tools translate language-agnostic IDL definitions (flatbuffers) into code.
+These tools translate the type definitions in `re_type_definitions` — a subset of Rust — into code.
 
 You can generate the code with `pixi run codegen`.
 
 ### Doclinks
 
-The `.fbs` files can contain docstring (`///`) which in turn can contain doclinks.
-They are to be written on the form `[archetypes.Image]`.
+The definitions can contain rustdoc links (`///`) to Rerun types and their fields or enum variants.
+Use fully-qualified paths, such as [`rerun::archetypes::Image`] or [`rerun::components::FillMode::DenseWireframe`].
 
-Only links to types are currently supported.
-
-Link checking is not done by the codegen, but the output is checked implicitly by `cargo doc`, `lychee` etc.
-
-We only support doclinks to the default `rerun.scope`.
+Rustdoc checks the links in the definitions.
+Codegen translates them into links for each target language.

@@ -7,8 +7,8 @@ Integer index of a voxel in a sparse 3D voxel grid.
 
 The voxel center in local grid coordinates is `(index + 0.5) * voxel_size`.
 
-## Rerun datatype
-[`IVec3D`](../datatypes/ivec3d.md)
+## Rerun encoding
+[`IVec3D`](../encodings/ivec3d.md)
 
 
 ## Arrow datatype

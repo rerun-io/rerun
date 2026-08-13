@@ -16,10 +16,10 @@ use re_viewport_blueprint::ViewProperty;
 use super::eye::Eye;
 use super::ui_3d::View3DState;
 use crate::Pinhole;
+use crate::SpaceKind;
 use crate::pickable_textured_rect::PickableRectSourceData;
 use crate::picking::{PickableUiRect, PickingResult};
 use crate::scene_bounding_boxes::SceneBoundingBoxes;
-use crate::view_kind::SpatialViewKind;
 use crate::visualizers::{Axes, UiLabel, UiLabelStyle, UiLabelTarget, iter_spatial_data};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -90,7 +90,7 @@ impl SpatialViewState {
         &mut self,
         ui: &egui::Ui,
         system_output: &re_viewer_context::SystemExecutionOutput,
-        space_kind: SpatialViewKind,
+        space_kind: SpaceKind,
     ) {
         re_tracing::profile_function!();
 
@@ -99,7 +99,7 @@ impl SpatialViewState {
         // Reset the counts and start over.
         self.image_counts_last_frame = Default::default();
 
-        for (_affinity, data) in iter_spatial_data(system_output) {
+        for data in iter_spatial_data(system_output) {
             for pickable_rect in &data.pickable_rects {
                 match &pickable_rect.source_data {
                     PickableRectSourceData::Image {
@@ -119,7 +119,7 @@ impl SpatialViewState {
         }
     }
 
-    pub fn bounding_box_ui(&self, ui: &mut egui::Ui, spatial_kind: SpatialViewKind) {
+    pub fn bounding_box_ui(&self, ui: &mut egui::Ui, spatial_kind: SpaceKind) {
         ui.grid_left_hand_label("Bounding box")
             .on_hover_text("The bounding box encompassing all Entities in the view right now");
         ui.vertical(|ui| {
@@ -131,7 +131,7 @@ impl SpatialViewState {
             } else {
                 ui.label(format!("x [{} - {}]", format_f32(min.x), format_f32(max.x)));
                 ui.label(format!("y [{} - {}]", format_f32(min.y), format_f32(max.y)));
-                if spatial_kind == SpatialViewKind::ThreeD {
+                if spatial_kind == SpaceKind::ThreeD {
                     ui.label(format!("z [{} - {}]", format_f32(min.z), format_f32(max.z)));
                 }
             }
@@ -141,11 +141,7 @@ impl SpatialViewState {
 
     // Say the name out loud. It is fun!
     pub fn view_eye_ui(&mut self, ui: &mut egui::Ui, ctx: &ViewerContext<'_>, view_id: ViewId) {
-        let eye_property = ViewProperty::from_archetype::<EyeControls3D>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query,
-            view_id,
-        );
+        let eye_property = ViewProperty::from_archetype_for_view::<EyeControls3D>(ctx, view_id);
 
         if ui
             .button("Reset")
@@ -206,7 +202,7 @@ pub fn create_labels(
     eye3d: &Eye,
     parent_ui: &egui::Ui,
     highlights: &ViewHighlights,
-    spatial_kind: SpatialViewKind,
+    spatial_kind: SpaceKind,
 ) -> (Vec<egui::Shape>, Vec<PickableUiRect>) {
     re_tracing::profile_function!();
 
@@ -365,7 +361,7 @@ fn resolve_label_positions(
     labels: &[UiLabel],
     ui_from_scene: &egui::emath::RectTransform,
     ui_from_world_3d: &glam::Mat4,
-    spatial_kind: SpatialViewKind,
+    spatial_kind: SpaceKind,
 ) -> Vec<(UiLabel, f32, egui::Pos2)> {
     let viewport = ui_from_scene.to().expand(100.0);
 
@@ -373,7 +369,7 @@ fn resolve_label_positions(
     for label in labels {
         let (wrap_width, text_anchor_pos) = match label.target {
             UiLabelTarget::Rect(rect) => {
-                if spatial_kind == SpatialViewKind::ThreeD {
+                if spatial_kind == SpaceKind::ThreeD {
                     continue; // TODO(#1640): 2D labels are not visible in 3D for now.
                 }
                 let rect_in_ui = ui_from_scene.transform_rect(rect);
@@ -383,14 +379,14 @@ fn resolve_label_positions(
                 )
             }
             UiLabelTarget::Point2D(pos) => {
-                if spatial_kind == SpatialViewKind::ThreeD {
+                if spatial_kind == SpaceKind::ThreeD {
                     continue; // TODO(#1640): 2D labels are not visible in 3D for now.
                 }
                 let pos_in_ui = ui_from_scene.transform_pos(pos);
                 (f32::INFINITY, pos_in_ui)
             }
             UiLabelTarget::Position3D(pos) => {
-                if spatial_kind == SpatialViewKind::TwoD {
+                if spatial_kind == SpaceKind::TwoD {
                     continue; // TODO(#1640): 3D labels are not visible in 2D for now.
                 }
                 let pos_in_ui = *ui_from_world_3d * pos.extend(1.0);
@@ -462,7 +458,7 @@ pub fn paint_loading_indicators(
 
     let ui_from_world_3d = eye3d.ui_from_world(*ui_from_scene.to());
 
-    for (_affinity, data) in iter_spatial_data(system_output) {
+    for data in iter_spatial_data(system_output) {
         for crate::visualizers::LoadingIndicator {
             center,
             half_extent_u,
@@ -520,6 +516,7 @@ pub fn paint_loading_indicators(
 pub fn bbox_debug_ui(ui: &mut egui::Ui, state: &mut SpatialViewState) {
     ui.re_checkbox(&mut state.show_smoothed_bbox, "Smoothed bbox");
     ui.re_checkbox(&mut state.show_per_entity_bbox, "Per-entity bboxes");
+    ui.debug_only_badge();
 }
 
 /// Draws the origin axes gizmo of a spatial view.
@@ -575,6 +572,7 @@ pub fn draw_bounding_boxes(
 
     if state.show_per_entity_bbox {
         let mut batch = line_builder.batch("per_entity_regions_of_interest");
+        #[expect(clippy::iter_over_hash_type)] // Draw order of lines isn't important.
         for region_of_interest in state.bounding_boxes.region_of_interest_per_entity.values() {
             batch
                 .add_box_outline(region_of_interest)

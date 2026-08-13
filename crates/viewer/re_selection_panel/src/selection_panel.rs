@@ -65,12 +65,6 @@ impl SelectionPanel {
             .resizable(true)
             .frame(egui::Frame {
                 fill: ui.style().visuals.panel_fill,
-                inner_margin: egui::Margin {
-                    // TODO(emilk/egui#7749): This is a workaround to prevent flicker between
-                    // the time panel resize handle and our scroll bar.
-                    bottom: 4,
-                    ..Default::default()
-                },
                 ..Default::default()
             });
 
@@ -817,9 +811,10 @@ To learn more about coordinate frames, see the [Spaces & Transforms](https://rer
         });
 
     if frame_id_before.is_empty() {
-        ui.warning_label(
-            "Transform relation can't be resolved due to empty coordinate frame name.",
-        );
+        ui.warning_label(format!(
+            "CoordinateFrame has an empty frame ID; falling back to the implicit frame {}.",
+            TransformFrameId::from_entity_path(&data_result.entity_path).as_str(),
+        ));
     }
 
     if frame_id_before != frame_id {
@@ -1266,6 +1261,7 @@ fn container_top_level_properties(
                         prune_single_child_containers: false,
                         all_panes_must_have_tabs: true,
                         join_nested_linear_containers: true,
+                        flatten_tabs_in_tabs: false,
                     },
                 );
             })

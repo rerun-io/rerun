@@ -4,6 +4,8 @@
 #include <arrow/status.h>
 
 #include <algorithm> // For std::transform
+#include <cctype>    // For std::tolower
+#include <cstdio>    // For fprintf & stderr
 #include <cstdlib>   // For getenv & std::exit
 #include <string>
 

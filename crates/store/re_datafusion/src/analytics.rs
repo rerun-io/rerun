@@ -32,8 +32,9 @@ use opentelemetry_proto::tonic::{
     common::v1::any_value::Value,
     common::v1::{AnyValue, KeyValue},
     resource::v1::Resource,
-    trace::v1::{ResourceSpans, ScopeSpans, Span, span::Link, span::SpanKind},
+    trace::v1::{ResourceSpans, ScopeSpans, Span, span::SpanKind},
 };
+use re_async::AsyncRuntimeHandle;
 use re_dataframe::QueryExpression;
 use re_protos::cloud::v1alpha1::SystemTableKind;
 use re_protos::cloud::v1alpha1::ext::ProviderDetails;
@@ -66,6 +67,7 @@ impl fmt::Debug for ConnectionAnalytics {
 
 struct Inner {
     origin: Origin,
+    async_runtime: Option<AsyncRuntimeHandle>,
 
     /// Analytics OTLP exporter sharing the layered tower service of the sibling
     /// [`re_redap_client::ConnectionClient`] (same HTTP/2 transport, same auth /
@@ -78,11 +80,12 @@ impl ConnectionAnalytics {
     ///
     /// The analytics OTLP exports go through the same authenticated and
     /// version-tagged HTTP/2 connection as regular REDAP RPCs.
-    pub fn new(exporter: ConnectionAnalyticsExporter) -> Self {
+    pub fn new(exporter: ConnectionAnalyticsExporter, async_runtime: AsyncRuntimeHandle) -> Self {
         let origin = exporter.origin().clone();
         Self {
             inner: Arc::new(Inner {
                 origin,
+                async_runtime: Some(async_runtime),
                 exporter: Some(exporter),
             }),
         }
@@ -93,6 +96,7 @@ impl ConnectionAnalytics {
         Self {
             inner: Arc::new(Inner {
                 origin,
+                async_runtime: None,
                 exporter: None,
             }),
         }
@@ -135,40 +139,21 @@ impl ConnectionAnalytics {
             }
         };
 
-        #[cfg(target_arch = "wasm32")]
-        wasm_bindgen_futures::spawn_local(fut);
-
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            if let Ok(handle) = tokio::runtime::Handle::try_current() {
-                handle.spawn(fut);
-            } else {
-                // Prefer spawning on the current tokio runtime if available.
-                // When called from Python via FFI, the polling thread may not have a
-                // tokio runtime entered, so fall back to a detached thread.
-                std::thread::Builder::new()
-                    .name("query-analytics-sender".to_owned())
-                    .spawn(move || {
-                        let rt = tokio::runtime::Builder::new_current_thread()
-                            .enable_all()
-                            .build();
-                        match rt {
-                            Ok(rt) => rt.block_on(fut),
-                            Err(err) => {
-                                re_log::debug_once!("Failed to create analytics runtime: {err}");
-                            }
-                        }
-                    })
-                    .ok();
-            }
+        if let Some(async_runtime) = &self.inner.async_runtime {
+            async_runtime.spawn_future(fut);
         }
     }
 
     async fn send_span_impl(
         &self,
-        span: Span,
+        mut span: Span,
         trace_id: Option<opentelemetry::TraceId>,
     ) -> tonic::Result<()> {
+        let Some(exporter) = &self.inner.exporter else {
+            return Ok(());
+        };
+        assign_span_identity(&mut span, trace_id)?;
+
         // `service.name` is the OTel resource attribute that identifies the
         // sending service in the trace store (Grafana/Tempo etc.). We
         // hard-code it to `"rerun-viewer"` here because this piggy-back is
@@ -202,11 +187,34 @@ impl ConnectionAnalytics {
             }],
         };
 
-        let Some(exporter) = &self.inner.exporter else {
-            return Ok(());
-        };
-
         exporter.export_trace(export_request, trace_id).await
+    }
+}
+
+fn assign_span_identity(
+    span: &mut Span,
+    correlated_trace_id: Option<opentelemetry::TraceId>,
+) -> tonic::Result<()> {
+    span.trace_id = if let Some(trace_id) =
+        correlated_trace_id.filter(|trace_id| *trace_id != opentelemetry::TraceId::INVALID)
+    {
+        trace_id.to_bytes().to_vec()
+    } else {
+        random_nonzero_id::<16>()?
+    };
+    span.span_id = random_nonzero_id::<8>()?;
+    Ok(())
+}
+
+fn random_nonzero_id<const N: usize>() -> tonic::Result<Vec<u8>> {
+    loop {
+        let mut id = [0; N];
+        getrandom::fill(&mut id).map_err(|err| {
+            tonic::Status::internal(format!("failed to generate OTLP span ID: {err}"))
+        })?;
+        if id.iter().any(|byte| *byte != 0) {
+            return Ok(id.to_vec());
+        }
     }
 }
 
@@ -563,18 +571,16 @@ impl PendingQueryAnalytics {
 ///
 /// Each outer fetch task owns one of these and mutates it without
 /// synchronization. At the end of the task it is folded into the plan's
-/// shared [`QueryMetrics`] via [`TaskFetchStats::flush_into`], which is the
-/// only place the shared cache line is touched.
+/// shared [`QueryMetrics`] via [`TaskFetchStats::flush_into`]. Issued-request
+/// counters are updated directly at the transport boundary so cancellation
+/// cannot discard calls that already reached the network.
 ///
-/// This avoids cross-core cache-line ping-pong on the shared atomics during the
-/// hot fetch/retry loops, where worst-case contention would otherwise be
-/// `inner_concurrency × outer_concurrency × num_partitions`.
+/// Buffering the remaining counters avoids cross-core cache-line ping-pong
+/// during retry-heavy fetch loops.
 #[derive(Default)]
 #[must_use]
 pub(crate) struct TaskFetchStats {
-    grpc_requests: u64,
     grpc_bytes: u64,
-    direct_requests: u64,
     direct_bytes: u64,
     direct_retries_total: u64,
     direct_requests_retried: u64,
@@ -586,15 +592,11 @@ pub(crate) struct TaskFetchStats {
 
 #[cfg_attr(target_arch = "wasm32", expect(dead_code))]
 impl TaskFetchStats {
-    /// Record a gRPC fetch.
-    pub fn record_grpc_fetch(&mut self, bytes: u64) {
-        self.grpc_requests += 1;
+    pub fn record_grpc_bytes(&mut self, bytes: u64) {
         self.grpc_bytes += bytes;
     }
 
-    /// Record a direct (HTTP) fetch.
-    pub fn record_direct_fetch(&mut self, bytes: u64) {
-        self.direct_requests += 1;
+    pub fn record_direct_bytes(&mut self, bytes: u64) {
         self.direct_bytes += bytes;
     }
 
@@ -627,9 +629,7 @@ impl TaskFetchStats {
     )]
     pub fn merge_from(&mut self, other: Self) {
         let Self {
-            grpc_requests,
             grpc_bytes,
-            direct_requests,
             direct_bytes,
             direct_retries_total,
             direct_requests_retried,
@@ -638,9 +638,7 @@ impl TaskFetchStats {
             direct_original_ranges,
             direct_merged_ranges,
         } = other;
-        self.grpc_requests += grpc_requests;
         self.grpc_bytes += grpc_bytes;
-        self.direct_requests += direct_requests;
         self.direct_bytes += direct_bytes;
         self.direct_retries_total += direct_retries_total;
         self.direct_requests_retried += direct_requests_retried;
@@ -657,9 +655,7 @@ impl TaskFetchStats {
     /// max rather than a sum.
     pub fn flush_into(self, metrics: &QueryMetrics) {
         let Self {
-            grpc_requests,
             grpc_bytes,
-            direct_requests,
             direct_bytes,
             direct_retries_total,
             direct_requests_retried,
@@ -671,20 +667,10 @@ impl TaskFetchStats {
 
         // Zero-valued fields are skipped so totally-idle tasks don't touch the
         // shared cache line at all.
-        if grpc_requests != 0 {
-            metrics
-                .fetch_grpc_requests
-                .fetch_add(grpc_requests, Ordering::Relaxed);
-        }
         if grpc_bytes != 0 {
             metrics
                 .fetch_grpc_bytes
                 .fetch_add(grpc_bytes, Ordering::Relaxed);
-        }
-        if direct_requests != 0 {
-            metrics
-                .fetch_direct_requests
-                .fetch_add(direct_requests, Ordering::Relaxed);
         }
         if direct_bytes != 0 {
             metrics
@@ -792,6 +778,35 @@ pub(crate) fn build_metrics_set_for_explain(
     global("fetch_direct_max_attempt").add(load(&metrics.fetch_direct_max_attempt));
     global("fetch_direct_original_ranges").add(load(&metrics.fetch_direct_original_ranges));
     global("fetch_direct_merged_ranges").add(load(&metrics.fetch_direct_merged_ranges));
+    global("planned_fetch_batches").add(load(&metrics.planned_fetch_batches));
+    global("planned_segment_waves").add(load(&metrics.planned_segment_waves));
+    global("segment_admission_limit").add(load(&metrics.segment_admission_limit));
+    global("segment_admission_candidate_limit")
+        .add(load(&metrics.segment_admission_candidate_limit));
+    global("segment_admission_source_code").add(load(&metrics.segment_admission_source));
+    global("segment_admission_candidate_reason_code")
+        .add(load(&metrics.segment_admission_candidate_reason));
+    global("segment_admission_adaptive_enabled")
+        .add(load(&metrics.segment_admission_adaptive_enabled));
+    global("segment_admission_profile_segment_count")
+        .add(load(&metrics.segment_admission_profile_segment_count));
+    global("segment_admission_profile_complete")
+        .add(load(&metrics.segment_admission_profile_complete));
+    global("segment_admission_p95_segment_bytes")
+        .add(load(&metrics.segment_admission_p95_segment_bytes));
+    global("segment_admission_max_segment_bytes")
+        .add(load(&metrics.segment_admission_max_segment_bytes));
+    global("segment_admission_largest_window_bytes")
+        .add(load(&metrics.segment_admission_largest_window_bytes));
+    global("max_segments_per_fetch_batch").add(load(&metrics.max_segments_per_fetch_batch));
+    global("max_segments_per_wave").add(load(&metrics.max_segments_per_wave));
+    global("peak_active_segments").add(load(&metrics.peak_active_segments));
+    global("pipeline_budget_bytes").add(load(&metrics.pipeline_budget_bytes));
+    global("pipeline_peak_decoded_bytes").add(load(&metrics.pipeline_peak_decoded_bytes));
+    global("pipeline_byte_waits").add(load(&metrics.pipeline_byte_waits));
+    global("segment_admission_waits").add(load(&metrics.segment_admission_waits));
+    global("pipeline_stall_breaker_activations")
+        .add(load(&metrics.pipeline_stall_breaker_activations));
 
     if let Some(ttfr) = time_to_first_chunk {
         MetricBuilder::new(&set)
@@ -858,7 +873,7 @@ fn build_query_span(snap: &QuerySnapshot, wall_clock_range: Range<SystemTime>) -
                 query_type,
                 primary_index_name,
                 time_to_first_chunk_info,
-                trace_id,
+                trace_id: _,
                 filters_pushed_down,
                 filters_applied_client_side,
                 entity_path_narrowing_applied,
@@ -882,6 +897,26 @@ fn build_query_span(snap: &QuerySnapshot, wall_clock_range: Range<SystemTime>) -
         fetch_direct_max_attempt,
         fetch_direct_original_ranges,
         fetch_direct_merged_ranges,
+        planned_fetch_batches,
+        planned_segment_waves,
+        segment_admission_limit,
+        segment_admission_candidate_limit,
+        segment_admission_source,
+        segment_admission_candidate_reason,
+        segment_admission_adaptive_enabled,
+        segment_admission_profile_segment_count,
+        segment_admission_profile_complete,
+        segment_admission_p95_segment_bytes,
+        segment_admission_max_segment_bytes,
+        segment_admission_largest_window_bytes,
+        max_segments_per_fetch_batch,
+        max_segments_per_wave,
+        peak_active_segments,
+        pipeline_budget_bytes,
+        pipeline_peak_decoded_bytes,
+        pipeline_byte_waits,
+        segment_admission_waits,
+        pipeline_stall_breaker_activations,
     } = snap;
 
     #[expect(
@@ -935,6 +970,59 @@ fn build_query_span(snap: &QuerySnapshot, wall_clock_range: Range<SystemTime>) -
         kv_int(
             "fetch_direct_merged_ranges",
             *fetch_direct_merged_ranges as i64,
+        ),
+        kv_int("planned_fetch_batches", *planned_fetch_batches as i64),
+        kv_int("planned_segment_waves", *planned_segment_waves as i64),
+        kv_int("segment_admission_limit", *segment_admission_limit as i64),
+        kv_int(
+            "segment_admission_candidate_limit",
+            *segment_admission_candidate_limit as i64,
+        ),
+        kv_string("segment_admission_source", segment_admission_source),
+        kv_string(
+            "segment_admission_candidate_reason",
+            segment_admission_candidate_reason,
+        ),
+        kv_bool(
+            "segment_admission_adaptive_enabled",
+            *segment_admission_adaptive_enabled,
+        ),
+        kv_int(
+            "segment_admission_profile_segment_count",
+            *segment_admission_profile_segment_count as i64,
+        ),
+        kv_bool(
+            "segment_admission_profile_complete",
+            *segment_admission_profile_complete,
+        ),
+        kv_int(
+            "segment_admission_p95_segment_bytes",
+            *segment_admission_p95_segment_bytes as i64,
+        ),
+        kv_int(
+            "segment_admission_max_segment_bytes",
+            *segment_admission_max_segment_bytes as i64,
+        ),
+        kv_int(
+            "segment_admission_largest_window_bytes",
+            *segment_admission_largest_window_bytes as i64,
+        ),
+        kv_int(
+            "max_segments_per_fetch_batch",
+            *max_segments_per_fetch_batch as i64,
+        ),
+        kv_int("max_segments_per_wave", *max_segments_per_wave as i64),
+        kv_int("peak_active_segments", *peak_active_segments as i64),
+        kv_int("pipeline_budget_bytes", *pipeline_budget_bytes as i64),
+        kv_int(
+            "pipeline_peak_decoded_bytes",
+            *pipeline_peak_decoded_bytes as i64,
+        ),
+        kv_int("pipeline_byte_waits", *pipeline_byte_waits as i64),
+        kv_int("segment_admission_waits", *segment_admission_waits as i64),
+        kv_int(
+            "pipeline_stall_breaker_activations",
+            *pipeline_stall_breaker_activations as i64,
         ),
         kv_int("filters_pushed_down", *filters_pushed_down as i64),
         kv_int(
@@ -995,22 +1083,12 @@ fn build_query_span(snap: &QuerySnapshot, wall_clock_range: Range<SystemTime>) -
         attributes.push(kv_string("error_kind", kind));
     }
 
-    let links = trace_id
-        .map(|id| {
-            vec![Link {
-                trace_id: id.to_bytes().to_vec(),
-                ..Default::default()
-            }]
-        })
-        .unwrap_or_default();
-
     Span {
         name: "cloud_query_dataset".to_owned(),
         kind: SpanKind::Client.into(),
         start_time_unix_nano,
         end_time_unix_nano,
         attributes,
-        links,
         ..Default::default()
     }
 }
@@ -1285,7 +1363,9 @@ impl PendingTableQueryAnalytics {
     /// span before the [`Drop`] impl runs.
     #[cfg(test)]
     pub(crate) fn build_span_for_test(&self) -> Span {
-        self.inner.build_span()
+        let mut span = self.inner.build_span();
+        assign_span_identity(&mut span, self.inner.trace_id.get().copied()).unwrap();
+        span
     }
 }
 
@@ -1334,7 +1414,7 @@ pub(crate) fn build_table_query_span(
     total_duration: Duration,
     time_to_first_response: Option<Duration>,
     time_to_first_batch: Option<Duration>,
-    trace_id: Option<opentelemetry::TraceId>,
+    _trace_id: Option<opentelemetry::TraceId>,
     error_kind: Option<&'static str>,
 ) -> Span {
     let TableQueryInfo {
@@ -1406,22 +1486,12 @@ pub(crate) fn build_table_query_span(
         attributes.push(kv_string("filters_signatures", filters_signatures));
     }
 
-    let links = trace_id
-        .map(|id| {
-            vec![Link {
-                trace_id: id.to_bytes().to_vec(),
-                ..Default::default()
-            }]
-        })
-        .unwrap_or_default();
-
     Span {
         name: "cloud_scan_table".to_owned(),
         kind: SpanKind::Client.into(),
         start_time_unix_nano,
         end_time_unix_nano,
         attributes,
-        links,
         ..Default::default()
     }
 }
@@ -1507,6 +1577,30 @@ mod tests {
         }
     }
 
+    #[test]
+    fn assign_span_identity_uses_correlated_trace_id() {
+        let trace_id = opentelemetry::TraceId::from_bytes([7; 16]);
+        let mut span = Span::default();
+
+        assign_span_identity(&mut span, Some(trace_id)).unwrap();
+
+        assert_eq!(span.trace_id, trace_id.to_bytes());
+        assert_eq!(span.span_id.len(), 8);
+        assert!(span.span_id.iter().any(|byte| *byte != 0));
+    }
+
+    #[test]
+    fn assign_span_identity_generates_trace_id_without_correlation() {
+        let mut span = Span::default();
+
+        assign_span_identity(&mut span, None).unwrap();
+
+        assert_eq!(span.trace_id.len(), 16);
+        assert!(span.trace_id.iter().any(|byte| *byte != 0));
+        assert_eq!(span.span_id.len(), 8);
+        assert!(span.span_id.iter().any(|byte| *byte != 0));
+    }
+
     fn attribute_keys(span: &Span) -> HashSet<&str> {
         let keys: HashSet<_> = span.attributes.iter().map(|kv| kv.key.as_str()).collect();
         re_log::debug_assert_eq!(
@@ -1583,6 +1677,26 @@ mod tests {
         "fetch_direct_max_attempt",
         "fetch_direct_original_ranges",
         "fetch_direct_merged_ranges",
+        "planned_fetch_batches",
+        "planned_segment_waves",
+        "segment_admission_limit",
+        "segment_admission_candidate_limit",
+        "segment_admission_source",
+        "segment_admission_candidate_reason",
+        "segment_admission_adaptive_enabled",
+        "segment_admission_profile_segment_count",
+        "segment_admission_profile_complete",
+        "segment_admission_p95_segment_bytes",
+        "segment_admission_max_segment_bytes",
+        "segment_admission_largest_window_bytes",
+        "max_segments_per_fetch_batch",
+        "max_segments_per_wave",
+        "peak_active_segments",
+        "pipeline_budget_bytes",
+        "pipeline_peak_decoded_bytes",
+        "pipeline_byte_waits",
+        "segment_admission_waits",
+        "pipeline_stall_breaker_activations",
         "filters_pushed_down",
         "filters_applied_client_side",
         "entity_path_narrowing_applied",
@@ -1608,6 +1722,26 @@ mod tests {
             fetch_direct_max_attempt: 0,
             fetch_direct_original_ranges: 0,
             fetch_direct_merged_ranges: 0,
+            planned_fetch_batches: 0,
+            planned_segment_waves: 0,
+            segment_admission_limit: 0,
+            segment_admission_candidate_limit: 0,
+            segment_admission_source: "metrics_only",
+            segment_admission_candidate_reason: "eligible",
+            segment_admission_adaptive_enabled: false,
+            segment_admission_profile_segment_count: 0,
+            segment_admission_profile_complete: false,
+            segment_admission_p95_segment_bytes: 0,
+            segment_admission_max_segment_bytes: 0,
+            segment_admission_largest_window_bytes: 0,
+            max_segments_per_fetch_batch: 0,
+            max_segments_per_wave: 0,
+            peak_active_segments: 0,
+            pipeline_budget_bytes: 0,
+            pipeline_peak_decoded_bytes: 0,
+            pipeline_byte_waits: 0,
+            segment_admission_waits: 0,
+            pipeline_stall_breaker_activations: 0,
         }
     }
 
@@ -1666,6 +1800,26 @@ mod tests {
         snap.fetch_direct_max_attempt = 3;
         snap.fetch_direct_original_ranges = 8;
         snap.fetch_direct_merged_ranges = 4;
+        snap.planned_fetch_batches = 16;
+        snap.planned_segment_waves = 1_332;
+        snap.segment_admission_limit = 3;
+        snap.segment_admission_candidate_limit = 16;
+        snap.segment_admission_source = "metrics_only";
+        snap.segment_admission_candidate_reason = "eligible";
+        snap.segment_admission_adaptive_enabled = true;
+        snap.segment_admission_profile_segment_count = 32;
+        snap.segment_admission_profile_complete = true;
+        snap.segment_admission_p95_segment_bytes = 1024;
+        snap.segment_admission_max_segment_bytes = 2048;
+        snap.segment_admission_largest_window_bytes = 16_384;
+        snap.max_segments_per_fetch_batch = 3;
+        snap.max_segments_per_wave = 3;
+        snap.peak_active_segments = 3;
+        snap.pipeline_budget_bytes = 4 * 1024 * 1024 * 1024;
+        snap.pipeline_peak_decoded_bytes = 96 * 1024 * 1024;
+        snap.pipeline_byte_waits = 2;
+        snap.segment_admission_waits = 1_329;
+        snap.pipeline_stall_breaker_activations = 1;
 
         let span = build_query_span(
             &snap,
@@ -1682,6 +1836,62 @@ mod tests {
         assert_eq!(find_int(&span, "fetch_direct_max_attempt"), Some(3));
         assert_eq!(find_int(&span, "fetch_direct_original_ranges"), Some(8));
         assert_eq!(find_int(&span, "fetch_direct_merged_ranges"), Some(4));
+        assert_eq!(find_int(&span, "planned_fetch_batches"), Some(16));
+        assert_eq!(find_int(&span, "planned_segment_waves"), Some(1_332));
+        assert_eq!(find_int(&span, "segment_admission_limit"), Some(3));
+        assert_eq!(
+            find_int(&span, "segment_admission_candidate_limit"),
+            Some(16)
+        );
+        assert_eq!(
+            find_string(&span, "segment_admission_source"),
+            Some("metrics_only")
+        );
+        assert_eq!(
+            find_string(&span, "segment_admission_candidate_reason"),
+            Some("eligible")
+        );
+        assert_eq!(
+            find_bool(&span, "segment_admission_adaptive_enabled"),
+            Some(true)
+        );
+        assert_eq!(
+            find_int(&span, "segment_admission_profile_segment_count"),
+            Some(32)
+        );
+        assert_eq!(
+            find_bool(&span, "segment_admission_profile_complete"),
+            Some(true)
+        );
+        assert_eq!(
+            find_int(&span, "segment_admission_p95_segment_bytes"),
+            Some(1024)
+        );
+        assert_eq!(
+            find_int(&span, "segment_admission_max_segment_bytes"),
+            Some(2048)
+        );
+        assert_eq!(
+            find_int(&span, "segment_admission_largest_window_bytes"),
+            Some(16_384)
+        );
+        assert_eq!(find_int(&span, "max_segments_per_fetch_batch"), Some(3));
+        assert_eq!(find_int(&span, "max_segments_per_wave"), Some(3));
+        assert_eq!(find_int(&span, "peak_active_segments"), Some(3));
+        assert_eq!(
+            find_int(&span, "pipeline_budget_bytes"),
+            Some(4 * 1024 * 1024 * 1024)
+        );
+        assert_eq!(
+            find_int(&span, "pipeline_peak_decoded_bytes"),
+            Some(96 * 1024 * 1024)
+        );
+        assert_eq!(find_int(&span, "pipeline_byte_waits"), Some(2));
+        assert_eq!(find_int(&span, "segment_admission_waits"), Some(1_329));
+        assert_eq!(
+            find_int(&span, "pipeline_stall_breaker_activations"),
+            Some(1)
+        );
     }
 
     #[test]
@@ -1727,10 +1937,7 @@ mod tests {
             Some("http_5xx")
         );
         assert_eq!(find_string(&span, "error_kind"), Some("direct_fetch"));
-
-        // Trace id flows into span.links.
-        assert_eq!(span.links.len(), 1);
-        assert_eq!(span.links[0].trace_id, trace_id.to_bytes().to_vec());
+        assert!(span.links.is_empty());
     }
 
     /// Confirms the planning-phase metrics that `EXPLAIN ANALYZE` reads are
@@ -1980,10 +2187,7 @@ mod table_query_tests {
         assert_eq!(find_int(&span, "time_to_first_response_us"), Some(50));
         assert_eq!(find_int(&span, "time_to_first_batch_us"), Some(75));
         assert_eq!(find_string(&span, "error_kind"), Some("decode"));
-
-        // Trace id flows into span.links.
-        assert_eq!(span.links.len(), 1);
-        assert_eq!(span.links[0].trace_id, trace_id.to_bytes().to_vec());
+        assert!(span.links.is_empty());
     }
 
     #[test]
@@ -2286,6 +2490,43 @@ mod explain_metrics_set_tests {
         metrics
             .fetch_direct_max_attempt
             .fetch_max(2, Ordering::Relaxed);
+        metrics
+            .planned_fetch_batches
+            .fetch_add(16, Ordering::Relaxed);
+        metrics
+            .planned_segment_waves
+            .fetch_add(1_332, Ordering::Relaxed);
+        metrics
+            .segment_admission_limit
+            .fetch_max(3, Ordering::Relaxed);
+        metrics.segment_admission_source.store(
+            crate::metrics_capture::SegmentAdmissionSource::MetricsOnly as u64,
+            Ordering::Relaxed,
+        );
+        metrics.segment_admission_candidate_reason.store(
+            crate::metrics_capture::SegmentAdmissionCandidateReason::Eligible as u64,
+            Ordering::Relaxed,
+        );
+        metrics
+            .max_segments_per_fetch_batch
+            .fetch_max(2, Ordering::Relaxed);
+        metrics
+            .max_segments_per_wave
+            .fetch_max(3, Ordering::Relaxed);
+        metrics.peak_active_segments.fetch_max(3, Ordering::Relaxed);
+        metrics
+            .pipeline_budget_bytes
+            .store(4 * 1024 * 1024 * 1024, Ordering::Relaxed);
+        metrics
+            .pipeline_peak_decoded_bytes
+            .fetch_max(96 * 1024 * 1024, Ordering::Relaxed);
+        metrics.pipeline_byte_waits.fetch_add(4, Ordering::Relaxed);
+        metrics
+            .segment_admission_waits
+            .fetch_add(20, Ordering::Relaxed);
+        metrics
+            .pipeline_stall_breaker_activations
+            .fetch_add(1, Ordering::Relaxed);
 
         let set = build_metrics_set_for_explain(&metrics, 4, None);
 
@@ -2296,6 +2537,49 @@ mod explain_metrics_set_tests {
             Some(5),
         );
         assert_eq!(metric_value_by_name(&set, "num_partitions"), Some(4));
+        assert_eq!(
+            metric_value_by_name(&set, "planned_fetch_batches"),
+            Some(16)
+        );
+        assert_eq!(
+            metric_value_by_name(&set, "planned_segment_waves"),
+            Some(1_332)
+        );
+        assert_eq!(
+            metric_value_by_name(&set, "segment_admission_limit"),
+            Some(3)
+        );
+        assert_eq!(
+            metric_value_by_name(&set, "segment_admission_source_code"),
+            Some(crate::metrics_capture::SegmentAdmissionSource::MetricsOnly as usize)
+        );
+        assert_eq!(
+            metric_value_by_name(&set, "segment_admission_candidate_reason_code"),
+            Some(crate::metrics_capture::SegmentAdmissionCandidateReason::Eligible as usize)
+        );
+        assert_eq!(
+            metric_value_by_name(&set, "max_segments_per_fetch_batch"),
+            Some(2)
+        );
+        assert_eq!(metric_value_by_name(&set, "max_segments_per_wave"), Some(3));
+        assert_eq!(metric_value_by_name(&set, "peak_active_segments"), Some(3));
+        assert_eq!(
+            metric_value_by_name(&set, "pipeline_budget_bytes"),
+            Some(4 * 1024 * 1024 * 1024)
+        );
+        assert_eq!(
+            metric_value_by_name(&set, "pipeline_peak_decoded_bytes"),
+            Some(96 * 1024 * 1024)
+        );
+        assert_eq!(metric_value_by_name(&set, "pipeline_byte_waits"), Some(4));
+        assert_eq!(
+            metric_value_by_name(&set, "segment_admission_waits"),
+            Some(20)
+        );
+        assert_eq!(
+            metric_value_by_name(&set, "pipeline_stall_breaker_activations"),
+            Some(1)
+        );
     }
 }
 

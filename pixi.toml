@@ -119,6 +119,11 @@ default = ["base"]
 # in which you want to do viewer builds.
 cpp = ["base", "cpp"]
 
+# Test coverage tooling (cargo-llvm-cov + cargo-nextest). Kept out of the default
+# environment so normal dev/CI installs don't pull these tools, and so CI's own pinned
+# nextest (installed via taiki-e/install-action) isn't shadowed. Used by `rs-coverage`.
+coverage = ["base", "coverage"]
+
 ################################################################################
 # TASKS
 ################################################################################
@@ -193,40 +198,25 @@ rerun-build-native-and-pending-web-release-zig = { cmd = "cargo zigbuild --locke
 # Compile and run the web-viewer via rerun-cli.
 #
 # You can also give an argument for what to view (e.g. an .rrd file).
-#
-# This installs the `wasm32-unknown-unknown` rust target if it's not already installed.
-# (this looks heavy but takes typically below 0.1s!)
 rerun-web = { cmd = "cargo run --package rerun-cli --no-default-features --features web_viewer -- --web-viewer", depends-on = [
   "rerun-build-web",
 ] }
 
 # Compile the web-viewer wasm, does not include the cli.
-#
-# This installs the `wasm32-unknown-unknown` rust target if it's not already installed.
-# (this looks heavy but takes typically below 0.1s!)
-rerun-build-web = "rustup target add wasm32-unknown-unknown && cargo run -p re_dev_tools -- build-web-viewer --no-default-features --features analytics,map_view --debug"
+rerun-build-web = "cargo run -p re_dev_tools -- build-web-viewer --no-default-features --features analytics,map_view --debug"
 
 # Compile the web-viewer wasm and the cli.
-#
-# This installs the `wasm32-unknown-unknown` rust target if it's not already installed.
-# (this looks heavy but takes typically below 0.1s!)
-rerun-build-web-cli = "rustup target add wasm32-unknown-unknown && cargo run -p re_dev_tools -- build-web-viewer --no-default-features --features analytics,map_view --debug && cargo build --package rerun-cli --no-default-features --features web_viewer"
+rerun-build-web-cli = "cargo run -p re_dev_tools -- build-web-viewer --no-default-features --features analytics,map_view --debug && cargo build --package rerun-cli --no-default-features --features web_viewer"
 
 # Compile and run the web-viewer in release mode via rerun-cli.
 #
 # You can also give an argument for what to view (e.g. an .rrd file).
-#
-# This installs the `wasm32-unknown-unknown` rust target if it's not already installed.
-# (this looks heavy but takes typically below 0.1s!)
 rerun-web-release = { cmd = "cargo run --package rerun-cli --no-default-features --features map_view,web_viewer --release -- --web-viewer", depends-on = [
   "rerun-build-web-release",
 ] }
 
 # Compile the web-viewer wasm in release mode.
-#
-# This installs the `wasm32-unknown-unknown` rust target if it's not already installed.
-# (this looks heavy but takes typically below 0.1s!)
-rerun-build-web-release = "rustup target add wasm32-unknown-unknown && cargo run -p re_dev_tools -- build-web-viewer --no-default-features --features analytics,map_view --release"
+rerun-build-web-release = "cargo run -p re_dev_tools -- build-web-viewer --no-default-features --features analytics,map_view --release"
 
 rs-check = "python scripts/ci/rust_checks.py"
 
@@ -234,9 +224,7 @@ rs-check = "python scripts/ci/rust_checks.py"
 # See tests/assets/rrd/README.md for more.
 # Note that we run with `--check-footers=false`: it is expected that these RRDs do not have proper footers (they predate them).
 check-backwards-compatibility = { cmd = "find tests/assets/rrd -name '*.rrd' -type f -print0 | xargs -0 cargo run --package rerun-cli --no-default-features rrd verify --check-footers=false" }
-web-test = { cmd = "wasm-pack test --headless --{{ browser }} crates/store/re_server", args = [
-  { arg = "browser", default = "firefox" },
-] }
+web-test = "cargo run --package re_web_tests --"
 
 # `cargo fmt --all` only sees files reachable from each crate's lib.rs/main.rs.
 # Snippets in `docs/snippets/all/*.rs` are copied into the crate by `build.rs`,
@@ -259,7 +247,10 @@ link-check = 'lychee --cache --max-cache-age 1d . --root-dir "$PIXI_PROJECT_ROOT
 # Assorted linting tasks
 fast-lint = "python scripts/fast_lint.py"
 lint-codegen = "cargo run --package re_types_builder -- --check"
-# TODO(jleibs): implement lint-cpp-files
+lint-clang-tidy-config = "clang-tidy --config-file rerun_cpp/.clang-tidy --verify-config"
+lint-cpp-files = { cmd = "run-clang-tidy -p build/debug -config-file rerun_cpp/.clang-tidy -quiet -use-color -warnings-as-errors '*' 'rerun_cpp/.*'", depends-on = [
+  "lint-clang-tidy-config",
+] }
 lint-rerun = "python scripts/lint.py"
 lint-rs-files = "rustfmt --edition 2024 --check"
 lint-rs-all = "cargo fmt --check"
@@ -524,6 +515,23 @@ RUSTFLAGS = "-Z threads=0"
 cmd = "target/dev-fast/viewer"
 depends-on = ["rerun-build-fast"]
 
+# ------------------------------------------------------------------------------------------
+# Test coverage (cargo-llvm-cov + nextest) — see scripts/rs_coverage.sh for details.
+#
+# Lives in the dedicated `coverage` environment (see [environments]) so the default env
+# and CI stay lean. `pixi run rs-coverage` auto-selects that environment since the task
+# exists only there.
+#
+# Runs the test suite under source-based coverage instrumentation and writes lcov.info
+# (for the "Coverage Gutters" VS Code extension), a browsable HTML report, and a per-file
+# summary table in the terminal.
+#
+# With no argument it covers the whole workspace; pass a crate to scope it, e.g.
+#   pixi run rs-coverage re_dataframe
+[feature.coverage.tasks.rs-coverage]
+args = [{ arg = "crate", default = "--workspace" }]
+cmd = "bash scripts/rs_coverage.sh {{ crate }}"
+
 [feature.cpp.tasks]
 # All the cpp-* tasks can be configured with environment variables, e.g.: RERUN_WERROR=ON CXX=clang++
 # We export a compilation database (compile_commands.json) in the CMake configure step (-DCMAKE_EXPORT_COMPILE_COMMANDS=ON),
@@ -590,16 +598,14 @@ cpp-prepare-msvc = "cmake -G 'Visual Studio 17 2022' -B build-msvc -S ."
 #   `meilisearch`).
 # - Last resort, use a feature to conditionally include a dependency (e.g. `taplo`).
 
-aiohttp = ">=3.9.3,<3.10" # For `zombie_todos.py`
 attrs = ">=23.1.0"
-clang = "16.0.6.*"
-clang-tools = "16.0.6.*" # clang-format
+clang = "19.1.7.*"
+clang-tools = "19.1.7.*" # clang-format
 cmake = "3.27.6.*"
 colorama = ">=0.4.6,<0.5"
 doxygen = "1.9.7.*" # Make sure to use a version that is compatible with the theme we're using, see https://github.com/jothepro/doxygen-awesome-css/blob/v2.2.1/README.md
 fd-find = ">=10.1.0" # Used by `cpp-fmt` to find C++ files
 ffmpeg = ">=7.1.0,<8" # Needed for consistent results on tests that use ffmpeg to render video.
-flatbuffers = ">=23"
 gitignore-parser = ">=0.1.9"
 gitpython = ">=3.1.40"
 jinja2 = ">=3.1.3,<3.2" # For `build_screenshot_compare.py` and other utilities that build websites.
@@ -633,7 +639,7 @@ pip = ">=23"
 wheel = ">=0.38,<0.39"
 
 [feature.base.pypi-dependencies]
-cryptography = "==38.0.4" # For `upload_image.py` -- note: version is constrained by hatch dependency
+cryptography = ">=49" # Transitive need of `google-auth` (via `google-cloud-storage`) for `upload_image.py`.
 google-cloud-storage = "==2.9.0" # For `upload_image.py`
 hatch = "*" # For `rerun_notebook`
 pillow = ">=12.2.0,<13" # For `upload_image.py`
@@ -641,7 +647,15 @@ py-spy = ">=0.4" # For profiling Python benchmarks
 pygithub = "==2.6.1" # Among others for `sync_release_assets.py`.
 requests = ">=2.31,<3" # For `thumbnails.py` & `upload_image.py`
 rerun-pixi-env = { path = "rerun_pixi_env", editable = true }
-uv = "==0.9.17"
+uv = "==0.11.32"
+
+# Test coverage tooling, isolated in the `coverage` environment (see [environments]).
+# Available on all supported platforms. `cargo-nextest` lives here rather than in `base`
+# on purpose: CI installs its own pinned nextest, and a second copy in the default env
+# would shadow it. Used only by the `rs-coverage` task.
+[feature.coverage.dependencies]
+cargo-nextest = ">=0.9.140" # Test runner driven by cargo-llvm-cov
+cargo-llvm-cov = ">=0.8.7" # Source-based Rust test coverage
 
 [target.linux-64.dependencies]
 cargo-zigbuild = "0.20.*"
@@ -662,11 +676,11 @@ zig = "0.13.0.*"
 buf = "1.*" # not available for linux-aarch64
 libgfortran5 = ">=14" # Fixes issues with OpenCV
 meilisearch = "1.5.1.*" # not available for linux-aarch64
-llvm-tools = "16.0.6.*" # Various Wasm targets fail on mac without llvm-ar
+llvm-tools = "19.1.7.*" # Various Wasm targets fail on mac without llvm-ar
 
 [target.win-64.dependencies]
 buf = "1.*" # not available for linux-aarch64
-llvm-tools = "16.0.6.*" # Wasm targets need llvm-ar for cc-rs (same as osx-arm64)
+llvm-tools = "19.1.7.*" # Wasm targets need llvm-ar for cc-rs (same as osx-arm64)
 
 [feature.cpp.target.linux-64.dependencies]
 sysroot_linux-64 = ">=2.17,<3" # rustc 1.64+ requires glibc 2.17+, see https://blog.rust-lang.org/2022/08/01/Increasing-glibc-kernel-requirements.html
@@ -684,8 +698,8 @@ ninja = "1.11.1.*"
 #
 # Note however, that as of writing, our web viewer build needs to use a newer compiler than what MacOS ships with,
 # so we have to make sure that anything building the web viewer does **not** use these packages.
-c-compiler = "1.6.0.*"
-cxx-compiler = "1.6.0.*"
+c-compiler = "1.11.0.*"
+cxx-compiler = "1.11.0.*"
 
 [feature.cpp.target.win-64.dependencies]
 vs2022_win-64 = "19.37.32822.*"

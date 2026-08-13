@@ -115,7 +115,6 @@ pub struct DesignTokens {
     // All these colors can be found in dark_theme.ron and light_theme.ron:
     pub top_bar_color: Color32,
     pub bottom_bar_color: Color32,
-    pub bottom_bar_stroke: Stroke,
     pub shadow_gradient_dark_start: Color32,
     pub tab_bar_color: Color32,
     pub native_frame_stroke: Stroke,
@@ -242,7 +241,6 @@ pub struct DesignTokens {
     pub plot_grid_fade: f32,
     pub extreme_bg_color: Color32,
     pub extreme_fg_color: Color32,
-    pub widget_inactive_bg_fill: Color32,
     pub widget_hovered_color: Color32,
     pub widget_noninteractive_bg_stroke: Color32,
     pub text_subdued: Color32,
@@ -309,7 +307,7 @@ pub struct DesignTokens {
     // Table filter UI
     pub table_filter_frame_stroke: Stroke,
 
-    // Grid view cards
+    // Table cards
     pub table_grid_view_card_min_width: f32,
     pub table_grid_view_card_spacing: f32,
     pub table_grid_view_card_inner_margin: f32,
@@ -343,10 +341,23 @@ pub struct DesignTokens {
 impl DesignTokens {
     /// Load design tokens from `data/design_tokens_*.ron`.
     pub fn load(theme: Theme, tokens_ron: &str) -> anyhow::Result<Self> {
+        Self::load_with_color_table(theme, tokens_ron, include_str!("../data/color_table.ron"))
+    }
+
+    /// Load design tokens, supplying a custom color-table RON instead of the embedded one.
+    ///
+    /// Useful for downstream crates that want to ship their own color palette without forking
+    /// `re_ui`. The provided `color_table_ron` must have the same shape as the bundled
+    /// `data/color_table.ron`.
+    pub fn load_with_color_table(
+        theme: Theme,
+        tokens_ron: &str,
+        color_table_ron: &str,
+    ) -> anyhow::Result<Self> {
         anyhow::ensure!(!tokens_ron.trim().is_empty(), "Empty theme file");
 
-        let color_table_ron: ron::Value = ron::from_str(include_str!("../data/color_table.ron"))
-            .expect("Failed to parse data/color_table.ron");
+        let color_table_ron: ron::Value =
+            ron::from_str(color_table_ron).context("Failed to parse color-table .ron")?;
         let colors = load_color_table(&color_table_ron);
 
         let theme_value: ron::Value = ron::from_str(tokens_ron)
@@ -378,7 +389,6 @@ impl DesignTokens {
 
             top_bar_color: get_color("top_bar_color"),
             bottom_bar_color: get_color("bottom_bar_color"),
-            bottom_bar_stroke: get_stroke("bottom_bar_stroke"),
             shadow_gradient_dark_start: get_color("shadow_gradient_dark_start"),
             tab_bar_color: get_color("tab_bar_color"),
             native_frame_stroke: get_stroke("native_frame_stroke"),
@@ -454,7 +464,6 @@ impl DesignTokens {
             plot_grid_fade: get_scalar("plot_grid_fade")?,
             extreme_bg_color: get_color("extreme_bg_color"),
             extreme_fg_color: get_color("extreme_fg_color"),
-            widget_inactive_bg_fill: get_color("widget_inactive_bg_fill"),
             widget_hovered_color: get_color("widget_hovered_color"),
             widget_noninteractive_bg_stroke: get_color("widget_noninteractive_bg_stroke"),
             text_subdued: get_color("text_subdued"),
@@ -655,9 +664,6 @@ impl DesignTokens {
         egui_style.spacing.menu_margin = self.view_padding().into();
         egui_style.spacing.menu_spacing = 1.0;
 
-        // avoid some visual glitches with the default non-zero value
-        egui_style.visuals.clip_rect_margin = 0.0;
-
         // Add stripes to grids and tables?
         egui_style.visuals.striped = false;
         egui_style.visuals.indent_has_left_vline = false;
@@ -666,9 +672,8 @@ impl DesignTokens {
 
         egui_style.spacing.combo_width = 8.0; // minimum width of ComboBox - keep them small, with the down-arrow close.
 
-        egui_style.spacing.scroll.bar_inner_margin = 2.0;
         egui_style.spacing.scroll.bar_width = 6.0;
-        egui_style.spacing.scroll.bar_outer_margin = 2.0;
+        egui_style.spacing.scroll.bar_outer_margin = 0.0; // Keep scroll bars flush to the right side; having the background visible through a gap is ugly
 
         match self.theme {
             Theme::Dark => {
@@ -701,15 +706,18 @@ impl DesignTokens {
         egui_style.visuals.widgets.inactive.weak_bg_fill = Default::default(); // Buttons have no background color when inactive
 
         // Fill of unchecked radio buttons, checkboxes, etc. Must be brighter than the background floating_color.
-        egui_style.visuals.widgets.inactive.bg_fill = self.widget_inactive_bg_fill;
+        egui_style.visuals.widgets.inactive.bg_fill = self.button_secondary.fill;
 
         {
-            // Background colors for buttons (menu buttons, blueprint buttons, etc) when hovered or clicked:
+            // Background colors for buttons (menu buttons, blueprint buttons, etc)
+            // when hovered or pressed. The pressed color is a step stronger, so
+            // clicking gives visual feedback (reusing the `button_ghost` pressed fill).
             let hovered_color = self.widget_hovered_color;
+            let pressed_color = self.button_ghost.fill_pressed;
             egui_style.visuals.widgets.hovered.weak_bg_fill = hovered_color;
             egui_style.visuals.widgets.hovered.bg_fill = hovered_color;
-            egui_style.visuals.widgets.active.weak_bg_fill = hovered_color;
-            egui_style.visuals.widgets.active.bg_fill = hovered_color;
+            egui_style.visuals.widgets.active.weak_bg_fill = pressed_color;
+            egui_style.visuals.widgets.active.bg_fill = pressed_color;
             egui_style.visuals.widgets.open.weak_bg_fill = hovered_color;
             egui_style.visuals.widgets.open.bg_fill = hovered_color;
         }
@@ -919,23 +927,11 @@ impl DesignTokens {
 
     /// For the streams view (time panel)
     pub fn bottom_panel_frame(&self, window_frame: WindowFrameConfig) -> egui::Frame {
-        // Show a stroke only on the top. To achieve this, we add a negative outer margin.
-        // (on the inner margin we counteract this again)
-        let margin_offset = (self.bottom_bar_stroke.width * 0.5) as i8;
-
         let margin = self.bottom_panel_margin();
 
         let mut frame = egui::Frame {
             fill: self.bottom_bar_color,
-            inner_margin: margin + margin_offset,
-            outer_margin: egui::Margin {
-                left: -margin_offset,
-                right: -margin_offset,
-                // Add a proper stoke width thick margin on the top.
-                top: self.bottom_bar_stroke.width as i8,
-                bottom: -margin_offset,
-            },
-            stroke: self.bottom_bar_stroke,
+            inner_margin: margin,
             corner_radius: 0.0.into(),
             ..Default::default()
         };
@@ -1182,7 +1178,8 @@ fn test_design_tokens() {
     crate::apply_style_and_install_loaders(&ctx);
 
     // Make sure it works:
-    let _ignored = ctx.run_ui(Default::default(), |ui| {
+    let mut output = ctx.run_ui(Default::default(), |ui| {
         ui.label("Hello Test!");
     });
+    output.textures_delta.clear();
 }

@@ -4,7 +4,7 @@ use re_chunk_store::RowId;
 use re_log_types::TimePoint;
 use re_sdk_types::archetypes::{AssetVideo, TextLog, VideoFrameReference, VideoStream};
 use re_sdk_types::components::{self, MediaType, VideoTimestamp};
-use re_sdk_types::datatypes;
+use re_sdk_types::encodings;
 use re_test_context::TestContext;
 use re_test_context::external::egui_kittest::SnapshotOptions;
 use re_test_viewport::TestContextExt as _;
@@ -111,15 +111,16 @@ fn snapshot_options_for_codec(codec: &VideoCodec, viewport_size: egui::Vec2) -> 
     match codec {
         // Despite version pinning, ffmpeg's results are quite different depending on the platform
         // and seemingly even between runs!
+        // These are nondeterministic even on CI, so we don't use `strict_on_ci` here.
         VideoCodec::H264 | VideoCodec::H265 | VideoCodec::VP8 | VideoCodec::VP9 => {
-            SnapshotOptions::new()
+            re_ui::testing::default_snapshot_options_for_3d(viewport_size)
                 .threshold(2.2)
-                .failed_pixel_count_threshold(300)
+                .max_failed_pixels(300)
         }
         // AV1 has this problem as well but to a lesser extent.
-        VideoCodec::AV1 => SnapshotOptions::new()
+        VideoCodec::AV1 => re_ui::testing::default_snapshot_options_for_3d(viewport_size)
             .threshold(1.2)
-            .failed_pixel_count_threshold(100),
+            .max_failed_pixels(100),
 
         VideoCodec::ImageSequence(_) => {
             re_ui::testing::default_snapshot_options_for_3d(viewport_size)
@@ -182,7 +183,7 @@ fn test_video(video_type: VideoType, codec: &VideoCodec) {
         VideoType::VideoStream => {
             // Pretend the file is a video stream.
             let blob_bytes =
-                datatypes::Blob::serialized_blob_as_slice(video_asset.blob.as_ref().unwrap())
+                encodings::Blob::serialized_blob_as_slice(video_asset.blob.as_ref().unwrap())
                     .unwrap();
             let video_data_description = VideoDataDescription::load_from_bytes(
                 blob_bytes,
@@ -295,9 +296,9 @@ fn test_video(video_type: VideoType, codec: &VideoCodec) {
         ));
 
         // Set a background color other than black so we can see the effect of transparency on errors & lack thereof on the video.
-        let property = ViewProperty::from_archetype::<
+        let property = ViewProperty::from_archetype_for_view::<
             re_sdk_types::blueprint::archetypes::Background,
-        >(ctx.blueprint_db(), ctx.blueprint_query, view_id);
+        >(ctx, view_id);
         property.save_blueprint_component(
             ctx,
             &re_sdk_types::blueprint::archetypes::Background::descriptor_kind(),

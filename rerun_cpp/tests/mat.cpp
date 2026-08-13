@@ -1,9 +1,9 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include <rerun/datatypes/mat3x3.hpp>
-#include <rerun/datatypes/mat4x4.hpp>
+#include <rerun/encodings/mat3x3.hpp>
+#include <rerun/encodings/mat4x4.hpp>
 
-using namespace rerun::datatypes;
+using namespace rerun::encodings;
 
 #define TEST_TAG "[matrix_types]"
 
@@ -82,7 +82,8 @@ TEST_CASE("Construct Mat4x4 in different ways", TEST_TAG) {
             12.0f,
             13.0f,
             14.f,
-            15.0f};
+            15.0f
+        };
         Mat4x4 m4x4(carray);
         ctor_checks(m4x4);
     }
@@ -104,7 +105,8 @@ TEST_CASE("Construct Mat4x4 in different ways", TEST_TAG) {
             12.0f,
             13.0f,
             14.f,
-            15.0f};
+            15.0f
+        };
         Mat4x4 m4x4(elements.data());
         ctor_checks(m4x4);
     }

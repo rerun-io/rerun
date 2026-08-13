@@ -50,6 +50,13 @@ const CHANNEL_SIZE_MESSAGES: usize = 1024; // TODO(emilk): move into `ServerOpti
 /// even if the server has a [`ServerOptions::memory_limit`] of zero.
 const CHANNEL_SIZE_BYTES: u64 = 128 * 1024 * 1024; // TODO(emilk): move into `ServerOptions` after the patch release.
 
+/// How often the server sends HTTP/2 keepalive pings to idle clients.
+const HTTP2_KEEPALIVE_INTERVAL: std::time::Duration = std::time::Duration::from_secs(10);
+
+/// How long the server waits for a keepalive ping response before
+/// considering the connection dead and closing it.
+const HTTP2_KEEPALIVE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(20);
+
 /// Options for the gRPC Proxy Server
 #[derive(Clone, Debug)]
 pub struct ServerOptions {
@@ -339,6 +346,10 @@ async fn serve_impl(
 
     Server::builder()
         .accept_http1(true) // Support `grpc-web` clients
+        // Ping clients so silently dropped connections (no TCP RST, e.g. cable pull
+        // or dead NAT entry) are detected and torn down instead of lingering forever:
+        .http2_keepalive_interval(Some(HTTP2_KEEPALIVE_INTERVAL))
+        .http2_keepalive_timeout(Some(HTTP2_KEEPALIVE_TIMEOUT))
         .layer(cors) // Allow CORS requests from web clients
         .layer(grpc_web) // Support `grpc-web` clients
         .add_routes(routes)
@@ -804,7 +815,7 @@ impl MessageBuffer {
                     .collect()
             }
             PlaybackBehavior::NewestFirst => itertools::chain!(
-                persistent.iter().rev(),
+                persistent.iter(),
                 static_.iter().rev(),
                 disposable.iter().rev()
             )
@@ -1413,11 +1424,9 @@ mod tests {
 
     /// Generates `n` log messages wrapped in a `SetStoreInfo` at the start and `BlueprintActivationCommand` at the end,
     /// to exercise message ordering.
-    fn fake_log_stream_blueprint(n: usize) -> Vec<LogMsg> {
-        let store_id = StoreId::random(StoreKind::Blueprint, "test_app");
-
+    fn fake_log_stream_blueprint(store_id: &StoreId, n: usize) -> Vec<LogMsg> {
         let mut messages = Vec::new();
-        messages.push(set_store_info_msg(&store_id));
+        messages.push(set_store_info_msg(store_id));
         for _ in 0..n {
             messages.push(LogMsg::ArrowMsg(
                 store_id.clone(),
@@ -1441,7 +1450,7 @@ mod tests {
         }
         messages.push(LogMsg::BlueprintActivationCommand(
             re_log_types::BlueprintActivationCommand {
-                blueprint_id: store_id,
+                blueprint_id: store_id.clone(),
                 make_active: true,
                 make_default: true,
             },
@@ -1604,7 +1613,9 @@ mod tests {
     async fn pubsub_basic() {
         let (completion, addr) = setup().await;
         let mut client = make_client(addr).await; // We use the same client for both producing and consuming
-        let messages = fake_log_stream_blueprint(3);
+
+        let blueprint_id = StoreId::random(StoreKind::Blueprint, "test_app");
+        let messages = fake_log_stream_blueprint(&blueprint_id, 3);
 
         // start reading
         let mut log_stream = client.read_messages(ReadMessagesRequest {}).await.unwrap();
@@ -1629,7 +1640,8 @@ mod tests {
     async fn pubsub_history() {
         let (completion, addr) = setup().await;
         let mut client = make_client(addr).await; // We use the same client for both producing and consuming
-        let messages = fake_log_stream_blueprint(3);
+        let blueprint_id = StoreId::random(StoreKind::Blueprint, "test_app");
+        let messages = fake_log_stream_blueprint(&blueprint_id, 3);
 
         // don't read anything yet - these messages should be sent to us as part of history when we call `read_messages` later
 
@@ -1649,7 +1661,8 @@ mod tests {
         let (completion, addr) = setup().await;
         let mut producer = make_client(addr).await; // We use separate clients for producing and consuming
         let mut consumers = vec![make_client(addr).await, make_client(addr).await];
-        let messages = fake_log_stream_blueprint(3);
+        let blueprint_id = StoreId::random(StoreKind::Blueprint, "test_app");
+        let messages = fake_log_stream_blueprint(&blueprint_id, 3);
 
         // Initialize multiple read streams:
         let mut log_streams = vec![];
@@ -1678,7 +1691,8 @@ mod tests {
         let (completion, addr) = setup().await;
         let mut producers = vec![make_client(addr).await, make_client(addr).await];
         let mut consumers = vec![make_client(addr).await, make_client(addr).await];
-        let messages = fake_log_stream_blueprint(3);
+        let blueprint_id = StoreId::random(StoreKind::Blueprint, "test_app");
+        let messages = fake_log_stream_blueprint(&blueprint_id, 3);
 
         // Initialize multiple read streams:
         let mut log_streams = vec![];
@@ -1751,7 +1765,8 @@ mod tests {
         // Use an absurdly low memory limit to force all messages to be dropped immediately from history
         let (completion, addr) = setup_with_memory_limit(MemoryLimit::from_bytes(1)).await;
         let mut client = make_client(addr).await;
-        let messages = fake_log_stream_blueprint(3);
+        let blueprint_id = StoreId::random(StoreKind::Blueprint, "test_app");
+        let messages = fake_log_stream_blueprint(&blueprint_id, 3);
 
         // Write some messages
         write_messages(&mut client, messages.clone()).await;
@@ -1793,7 +1808,8 @@ mod tests {
             let (completion, addr) =
                 setup_with_memory_limit(MemoryLimit::from_bytes(memory_limit)).await;
             let mut client = make_client(addr).await; // We use the same client for both producing and consuming
-            let messages = fake_log_stream_blueprint(3);
+            let blueprint_id = StoreId::random(StoreKind::Blueprint, "test_app");
+            let messages = fake_log_stream_blueprint(&blueprint_id, 3);
 
             // Start reading
             let mut log_stream = client.read_messages(ReadMessagesRequest {}).await.unwrap();
@@ -1848,13 +1864,17 @@ mod tests {
         .await;
         let mut client = make_client(addr).await;
 
-        let store_id = StoreId::random(StoreKind::Recording, "test_app");
+        let application_id = "test_app";
+        let store_id = StoreId::random(StoreKind::Recording, application_id);
+        let blueprint_id = StoreId::random(StoreKind::Blueprint, application_id);
 
+        let blueprints = fake_log_stream_blueprint(&blueprint_id, 3);
         let set_store_info = vec![set_store_info_msg(&store_id)];
         let first_statics = generate_log_messages(&store_id, 3, Temporalness::Static);
         let temporals = generate_log_messages(&store_id, 3, Temporalness::Temporal);
         let second_statics = generate_log_messages(&store_id, 3, Temporalness::Static);
 
+        write_messages(&mut client, blueprints.clone()).await;
         write_messages(&mut client, set_store_info.clone()).await;
         write_messages(&mut client, first_statics.clone()).await;
         write_messages(&mut client, temporals.clone()).await;
@@ -1862,6 +1882,9 @@ mod tests {
 
         // All static data should always come before temporal data:
         let expected = itertools::chain!(
+            // `BlueprintActivationCommand` has to follow the blueprint data,
+            // so it's crucial that these are not reversed, in contrast to the others:
+            blueprints.into_iter(),
             set_store_info.into_iter().rev(),
             second_statics.into_iter().rev(),
             first_statics.into_iter().rev(),

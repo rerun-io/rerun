@@ -8,7 +8,7 @@ use crate::{
     app_blueprint::AppBlueprint, app_state::WelcomeScreenState, background_tasks::BackgroundTasks,
 };
 
-use super::App;
+use super::{App, WindowDecorationsRequest};
 
 impl App {
     /// Top-level ui function.
@@ -26,35 +26,6 @@ impl App {
         store_stats: Option<&StoreHubStats>,
     ) {
         let custom_window_decorations = self.custom_window_decorations();
-        #[cfg(any(target_os = "windows", target_os = "linux"))]
-        {
-            let id = egui::Id::new("custom_window_decorations_applied");
-            let was_applied = ui.ctx().data_mut(|data| {
-                let was_applied = data.get_temp::<bool>(id);
-                data.insert_temp(id, custom_window_decorations);
-                was_applied
-            });
-
-            if let Some(was_applied) = was_applied
-                && was_applied != custom_window_decorations
-            {
-                ui.send_viewport_cmd(egui::ViewportCommand::Decorations(
-                    !custom_window_decorations,
-                ));
-                ui.send_viewport_cmd(egui::ViewportCommand::Transparent(
-                    custom_window_decorations,
-                ));
-            }
-
-            // Apply windows undecorated shadow both on change and the first frame.
-            #[cfg(target_os = "windows")]
-            if was_applied != Some(custom_window_decorations)
-                && let Some(window) = frame.winit_window()
-            {
-                use winit::platform::windows::WindowExtWindows as _;
-                window.set_undecorated_shadow(custom_window_decorations);
-            }
-        }
 
         let mut main_panel_frame = egui::Frame::default();
         if self.custom_window_frame() {
@@ -113,17 +84,17 @@ impl App {
                     let is_start_of_new_frame = ui.current_pass_index() == 0;
 
                     if is_start_of_new_frame {
-                        #[cfg(all(feature = "internal_catalog", not(target_arch = "wasm32")))]
-                        if self.app_options().experimental.use_internal_catalog
-                            && let Some(origin) = self.connection_registry.internal_origin()
-                        {
+                        if let Some(origin) = self.connection_registry.internal_origin() {
                             self.state.redap_servers.add_internal_server(
-                                origin,
+                                origin.clone(),
                                 &self.connection_registry,
                                 &self.async_runtime,
                                 &self.egui_ctx,
                                 self.command_sender.clone(),
                             );
+                            if self.app_options().experimental.use_internal_catalog {
+                                self.state.redap_servers.reveal_internal_catalog();
+                            }
                         }
 
                         self.state.redap_servers.on_frame_start(
@@ -132,6 +103,18 @@ impl App {
                             &self.egui_ctx,
                             self.startup_options.login_enabled(),
                             &self.command_sender,
+                        );
+
+                        // Install our url decorator so links render nicely. This is done every frame
+                        // so the data stays up-to-date.
+                        let url_name_lookup =
+                            std::sync::Arc::new(self.state.redap_servers.build_url_lookup());
+                        re_ui::UrlDecorator::set(
+                            &self.egui_ctx,
+                            re_viewer_context::make_url_decorator(
+                                url_name_lookup,
+                                self.egui_ctx.theme(),
+                            ),
                         );
                     }
 
@@ -330,17 +313,24 @@ impl App {
         }
     }
 
-    #[cfg(any(target_os = "windows", target_os = "linux"))]
+    /// Whether we — rather than the OS — draw the window decorations this frame.
+    ///
+    /// Everything that paints must use this, and never
+    /// [`re_viewer_context::AppOptions::custom_window_decorations`]: it is the state the
+    /// window is actually in, so the whole frame agrees even when the user flips the
+    /// setting mid-frame.
     pub(crate) fn custom_window_decorations(&self) -> bool {
-        self.app_options().custom_window_decorations
+        let custom = match self.window_decorations_request {
+            WindowDecorationsRequest::NotSent => re_ui::custom_window_decorations_default(),
+            WindowDecorationsRequest::Native => false,
+            WindowDecorationsRequest::Custom => true,
+        };
+
+        custom
+            // A screenshot should show the app, not the frame around it. We leave the
+            // window itself alone: the capture is of our surface, not of the OS chrome.
             && !self.is_screenshotting()
             && !self.app_env().is_test()
-    }
-
-    #[cfg(not(any(target_os = "windows", target_os = "linux")))]
-    pub(crate) fn custom_window_decorations(&self) -> bool {
-        let _ = self;
-        false
     }
 
     pub(crate) fn window_frame_config(&self, ctx: &egui::Context) -> WindowFrameConfig {

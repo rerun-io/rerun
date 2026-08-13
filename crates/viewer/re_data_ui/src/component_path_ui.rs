@@ -45,9 +45,7 @@ impl DataUi for ComponentPath {
             ) {
                 ui.label("<unset>");
             } else {
-                ui.warning_label(format!(
-                    "Entity {entity_path:?} has no component {component:?}"
-                ));
+                ui.warning_label(format!("Entity {entity_path} has no component {component}"));
             }
         } else {
             ui.error_label(format!("Unknown component path: {self}"));

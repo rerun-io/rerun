@@ -1,9 +1,9 @@
 use re_sdk_types::archetypes::Scalars;
 use re_sdk_types::blueprint::archetypes::{PlotLegend, ScalarAxis, TimeAxis};
-use re_sdk_types::datatypes::TimeRange;
+use re_sdk_types::encodings::TimeRange;
 use re_sdk_types::{
     archetypes::{SeriesLines, SeriesPoints},
-    datatypes::TimeRangeBoundary,
+    encodings::TimeRangeBoundary,
 };
 use re_viewer_context::{ViewStateExt as _, VisualizerComponentSource};
 

@@ -12,9 +12,9 @@ from rerun.components.visible import Visible, VisibleBatch
 from .common_arrays import none_empty_or_value
 
 if TYPE_CHECKING:
-    from rerun.datatypes.bool import BoolLike
-    from rerun.datatypes.entity_path import EntityPathLike
-    from rerun.datatypes.utf8 import Utf8Like
+    from rerun.encodings.bool import BoolLike
+    from rerun.encodings.entity_path import EntityPathLike
+    from rerun.encodings.utf8 import Utf8Like
 
 
 def test_view_blueprint() -> None:

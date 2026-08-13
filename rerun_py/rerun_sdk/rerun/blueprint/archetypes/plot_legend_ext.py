@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any
 from ...error_utils import catch_and_log_exceptions
 
 if TYPE_CHECKING:
-    from rerun.datatypes.bool import BoolLike
+    from rerun.encodings.bool import BoolLike
 
     from ...blueprint import components as blueprint_components
 

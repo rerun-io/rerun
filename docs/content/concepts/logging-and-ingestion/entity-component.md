@@ -1,6 +1,7 @@
 ---
 title: Entities and Components
 order: 200
+description: How entities and components form Rerun's data model
 ---
 
 ## Data model
@@ -18,7 +19,7 @@ Entities are like folders, and components are like files.
 
 Additionally, the Rerun SDKs expose two additional concepts:
  * *Archetypes* are coherent set of components corresponding to primitive such as 2D points or 3D boxes. In the Rerun SDKs, archetypes take the form of builder objects that assist with the creation of such component sets. They are meant as high-level, convenience helpers that can be bypassed entirely if/when required by advanced use-cases.
- * *Datatypes* are regular data structures that components occasionally rely on when fundamental data types (`float`, `uint32`, etc.) are not sufficient.
+ * *Encodings* are regular data structures that components occasionally rely on when fundamental data types (`float`, `uint32`, etc.) are not sufficient.
 
 ### Logging and viewing data
 
@@ -40,7 +41,7 @@ In this case it would find the "my_point" entity. This query additionally return
 component is associated with the same entity. These two components are recognized as corresponding to the `Points2D` archetype (via metadata attached to the components), which informs the Viewer on how to display the corresponding entity.
 
 See the [Types](../../reference/types.md) reference for a list of [archetypes](../../reference/types/archetypes.md),
-[components](../../reference/types/components.md), and [datatypes](../../reference/types/datatypes.md).
+[components](../../reference/types/components.md), and [encodings](../../reference/types/encodings.md).
 
 ### Adding custom data
 

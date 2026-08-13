@@ -141,9 +141,8 @@ impl Chunk {
     /// Convert a chunk record batch to a chunk.
     ///
     /// This is for well-formed chunk batches. For generic record-batch-to-chunks conversion, see
-    /// [`Self::from_dataframe_record_batch`].
-    //TODO(RR-4700): rename to `from_chunk_record_batch`
-    pub fn from_record_batch(batch: &ArrowRecordBatch) -> ChunkResult<Self> {
+    /// [`Self::from_record_batch`].
+    pub fn from_chunk_record_batch(batch: &ArrowRecordBatch) -> ChunkResult<Self> {
         re_tracing::profile_function!(format!(
             "num_columns={} num_rows={}",
             batch.num_columns(),
@@ -155,8 +154,7 @@ impl Chunk {
     /// Convert an arbitrary record batch to one or more [`Chunk`]s.
     ///
     /// See [`re_sorbet::chunk_batches_from_dataframe_record_batch`] for details.
-    //TODO(RR-4700): rename to `from_record_batch`
-    pub fn from_dataframe_record_batch(
+    pub fn from_record_batch(
         batch: &ArrowRecordBatch,
         index: &re_sorbet::DataframeIndex,
         entity_path: Option<&re_log_types::EntityPath>,
@@ -279,7 +277,7 @@ impl Chunk {
             on_release: _,
         } = msg;
 
-        Self::from_record_batch(batch)
+        Self::from_chunk_record_batch(batch)
     }
 
     #[inline]
@@ -437,8 +435,7 @@ mod tests {
     fn from_dataframe_record_batch_temporal() {
         let batch = dataframe_batch(Arc::new(Int64Array::from(vec![0_i64, 1])));
         let chunks =
-            Chunk::from_dataframe_record_batch(&batch, &re_sorbet::DataframeIndex::Auto, None)
-                .unwrap();
+            Chunk::from_record_batch(&batch, &re_sorbet::DataframeIndex::Auto, None).unwrap();
         assert_eq!(chunks.len(), 1);
         assert_eq!(chunks[0].entity_path(), &EntityPath::from("/e"));
         assert!(!chunks[0].is_static());
@@ -448,7 +445,7 @@ mod tests {
     fn from_dataframe_record_batch_bad_index_dtype() {
         // `timestamp(us)` is not a supported time type; this fails at classification.
         let batch = dataframe_batch(Arc::new(TimestampMicrosecondArray::from(vec![0_i64, 1])));
-        let err = Chunk::from_dataframe_record_batch(
+        let err = Chunk::from_record_batch(
             &batch,
             &re_sorbet::DataframeIndex::Columns(vec![TimelineName::from("frame")]),
             None,
@@ -469,8 +466,7 @@ mod tests {
         let index = Arc::new(Int64Array::from(vec![Some(0_i64), None]));
         let batch = dataframe_batch(index);
         let err =
-            Chunk::from_dataframe_record_batch(&batch, &re_sorbet::DataframeIndex::Auto, None)
-                .unwrap_err();
+            Chunk::from_record_batch(&batch, &re_sorbet::DataframeIndex::Auto, None).unwrap_err();
         assert!(
             matches!(
                 err,

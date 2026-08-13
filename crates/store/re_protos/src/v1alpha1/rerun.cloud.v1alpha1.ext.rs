@@ -180,7 +180,10 @@ impl TryFrom<crate::cloud::v1alpha1::UnregisterFromDatasetRequest>
                 .into_iter()
                 .map(TryInto::try_into)
                 .try_collect()?,
-            layers_to_drop: layers_to_drop.into_iter().map(LayerName::from).collect(),
+            layers_to_drop: layers_to_drop
+                .into_iter()
+                .map(LayerName::try_new)
+                .try_collect()?,
             force,
         })
     }
@@ -473,7 +476,7 @@ impl ScanSegmentTableRequest {
     pub fn all() -> Self {
         Self {
             columns: Vec::new(),
-            sql_filter: String::new(),
+            segment_id_filter: None,
         }
     }
 
@@ -481,7 +484,7 @@ impl ScanSegmentTableRequest {
     pub fn with_columns(columns: impl IntoIterator<Item = impl Into<String>>) -> Self {
         Self {
             columns: columns.into_iter().map(Into::into).collect(),
-            sql_filter: String::new(),
+            segment_id_filter: None,
         }
     }
 }
@@ -491,7 +494,7 @@ impl ScanDatasetManifestRequest {
     pub fn all() -> Self {
         Self {
             columns: Vec::new(),
-            sql_filter: String::new(),
+            segment_id_filter: None,
         }
     }
 
@@ -499,7 +502,7 @@ impl ScanDatasetManifestRequest {
     pub fn with_columns(columns: impl IntoIterator<Item = impl Into<String>>) -> Self {
         Self {
             columns: columns.into_iter().map(Into::into).collect(),
-            sql_filter: String::new(),
+            segment_id_filter: None,
         }
     }
 }
@@ -534,6 +537,7 @@ pub struct DoMaintenanceRequest {
     pub retrain_indexes: bool,
     pub compact_fragments: bool,
     pub cleanup_before: Option<jiff::Timestamp>,
+    pub gc_object_store: bool,
     pub unsafe_allow_recent_cleanup: bool,
 }
 
@@ -551,6 +555,7 @@ impl TryFrom<crate::cloud::v1alpha1::DoMaintenanceRequest> for DoMaintenanceRequ
             retrain_indexes: value.retrain_indexes,
             compact_fragments: value.compact_fragments,
             cleanup_before,
+            gc_object_store: value.gc_object_store,
             unsafe_allow_recent_cleanup: value.unsafe_allow_recent_cleanup,
         })
     }
@@ -566,6 +571,7 @@ impl From<DoMaintenanceRequest> for crate::cloud::v1alpha1::DoMaintenanceRequest
                 seconds: ts.as_second(),
                 nanos: ts.subsec_nanosecond(),
             }),
+            gc_object_store: value.gc_object_store,
             unsafe_allow_recent_cleanup: value.unsafe_allow_recent_cleanup,
         }
     }
@@ -660,8 +666,42 @@ impl crate::cloud::v1alpha1::EntryFilter {
         self
     }
 
+    // deprecated: use `with_entry_kinds` instead.
+    //
+    // Exception: use this for backwards compatibility with 0.14 Hub or earlier.
+    #[deprecated]
     pub fn with_entry_kind(mut self, kind: EntryKind) -> Self {
         self.entry_kind = Some(kind as i32);
+        self
+    }
+
+    pub fn with_entry_kinds(mut self, kinds: impl IntoIterator<Item = EntryKind>) -> Self {
+        self.entry_kinds = kinds.into_iter().map(|k| k as i32).collect();
+        self
+    }
+
+    /// Requests every entry kind known to the client.
+    pub fn with_all_kinds(mut self) -> Self {
+        // Exhaustive match with no logic of its own: if a new `EntryKind` variant is added, this
+        // fails to compile as a reminder to add it to the vector below.
+        let _ = |kind: EntryKind| match kind {
+            EntryKind::Unspecified
+            | EntryKind::Dataset
+            | EntryKind::DatasetView
+            | EntryKind::Table
+            | EntryKind::TableView
+            | EntryKind::BlueprintDataset
+            | EntryKind::AssetDataset => {}
+        };
+
+        self.entry_kinds = vec![
+            EntryKind::Dataset as i32,
+            EntryKind::DatasetView as i32,
+            EntryKind::Table as i32,
+            EntryKind::TableView as i32,
+            EntryKind::BlueprintDataset as i32,
+            EntryKind::AssetDataset as i32,
+        ];
         self
     }
 }
@@ -1759,6 +1799,25 @@ impl EntryKind {
             EntryKind::AssetDataset => "Asset Dataset",
         }
     }
+
+    /// Was this EntryKind a kind that legacy clients expected to get by default
+    /// in /FindEntries calls?
+    ///
+    /// 0.34 clients and older expected to get those kinds on `entry_kind: None`
+    /// find requests. This helper method is used to maintain backwards
+    /// compatibility with such clients.
+    ///
+    /// See RR-5186 for more details.
+    pub fn is_legacy_default_kind(self) -> bool {
+        matches!(
+            self,
+            EntryKind::Dataset
+                | EntryKind::Table
+                | EntryKind::DatasetView
+                | EntryKind::TableView
+                | EntryKind::BlueprintDataset
+        )
+    }
 }
 
 impl std::fmt::Display for EntryKind {
@@ -2228,25 +2287,25 @@ impl DataSource {
     }
 
     pub fn new_rrd_layer(
-        layer: impl AsRef<str>,
+        layer: impl Into<LayerName>,
         storage_url: impl AsRef<str>,
     ) -> Result<Self, url::ParseError> {
         Ok(Self {
             storage_url: storage_url.as_ref().parse()?,
             is_prefix: false,
-            layer: LayerName::new(layer.as_ref()),
+            layer: layer.into(),
             kind: DataSourceKind::Rrd,
         })
     }
 
     pub fn new_rrd_layer_prefix(
-        layer: impl AsRef<str>,
+        layer: impl Into<LayerName>,
         storage_url: impl AsRef<str>,
     ) -> Result<Self, url::ParseError> {
         Ok(Self {
             storage_url: storage_url.as_ref().parse()?,
             is_prefix: true,
-            layer: LayerName::new(layer.as_ref()),
+            layer: layer.into(),
             kind: DataSourceKind::Rrd,
         })
     }
@@ -2290,9 +2349,12 @@ impl TryFrom<crate::cloud::v1alpha1::DataSource> for DataSource {
             .ok_or_else(|| missing_field!(crate::cloud::v1alpha1::DataSource, "storage_url"))?
             .parse()?;
 
+        // An empty layer name is treated as absent, for backwards compatibility.
         let layer = data_source
             .layer
-            .map(LayerName::from)
+            .filter(|layer| !layer.is_empty())
+            .map(LayerName::try_new)
+            .transpose()?
             .unwrap_or_else(LayerName::base);
 
         let kind = DataSourceKind::try_from(data_source.typ)?;
@@ -2306,6 +2368,26 @@ impl TryFrom<crate::cloud::v1alpha1::DataSource> for DataSource {
             kind,
         })
     }
+}
+
+#[test]
+fn datasource_layer_from_proto() {
+    let proto = |layer: Option<&str>| crate::cloud::v1alpha1::DataSource {
+        storage_url: Some("s3://bucket/file.rrd".to_owned()),
+        prefix: false,
+        layer: layer.map(ToOwned::to_owned),
+        typ: crate::cloud::v1alpha1::DataSourceKind::Rrd as i32,
+    };
+
+    let data_source = DataSource::try_from(proto(None)).unwrap();
+    assert_eq!(data_source.layer, LayerName::base());
+
+    // An empty layer name is treated as absent, for backwards compatibility.
+    let data_source = DataSource::try_from(proto(Some(""))).unwrap();
+    assert_eq!(data_source.layer, LayerName::base());
+
+    let data_source = DataSource::try_from(proto(Some("my_layer"))).unwrap();
+    assert_eq!(data_source.layer, "my_layer");
 }
 
 // --- Tasks ---

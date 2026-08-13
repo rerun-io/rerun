@@ -1,7 +1,7 @@
 use re_chunk::{Chunk, EntityPath, RowId, TimePoint};
+use re_int::SaturatingCast as _;
 use re_sdk_types::archetypes::McapStatistics;
-use re_sdk_types::{components, datatypes};
-use saturating_cast::SaturatingCast as _;
+use re_sdk_types::{components, encodings};
 
 use super::{Decoder, DecoderContext, DecoderIdentifier, MCAP_PROPERTIES_ENTITY_PATH};
 use crate::Error;
@@ -54,7 +54,7 @@ fn from_statistics(stats: &::mcap::records::Statistics) -> McapStatistics {
 
     let channel_count_pairs: Vec<_> = channel_message_counts
         .iter()
-        .map(|(&channel_id, &count)| datatypes::ChannelCountPair {
+        .map(|(&channel_id, &count)| encodings::ChannelCountPair {
             channel_id: channel_id.into(),
             message_count: count.into(),
         })

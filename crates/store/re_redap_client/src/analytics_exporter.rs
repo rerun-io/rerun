@@ -18,9 +18,10 @@ const EXPORT_PATH: &str = "/opentelemetry.proto.collector.trace.v1.TraceService/
 /// Wraps a clone of the layered tower service shared with
 /// [`crate::ConnectionClient`] — same auth / version / propagate-headers
 /// stack — without requiring downstream crates to expose [`crate::RedapClientStack`].
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, re_byte_size::SizeBytes)]
 pub struct ConnectionAnalyticsExporter {
     origin: Origin,
+    #[size_bytes(ignore)]
     service: crate::grpc::RedapClientStack,
 }
 

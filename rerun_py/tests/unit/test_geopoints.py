@@ -22,7 +22,7 @@ from .common_arrays import (
 )
 
 if TYPE_CHECKING:
-    from rerun.datatypes import (
+    from rerun.encodings import (
         DVec2DArrayLike,
         Float32ArrayLike,
         Rgba32ArrayLike,

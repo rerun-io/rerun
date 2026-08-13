@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 
 import rerun as rr
-from rerun.datatypes import ClassDescription
+from rerun.encodings import ClassDescription
 
 parser = argparse.ArgumentParser()
 rr.script_add_args(parser)

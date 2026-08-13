@@ -9,11 +9,11 @@ use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, SegmentId};
 use re_types_core::LayerName;
 use url::Url;
 
-#[cfg(target_arch = "wasm32")]
-use crate::opfs as fs;
 use crate::store::{
     Error, InMemoryStore, LayerInfo, ResolvedStore, StoreSlotId, TASK_ID_SUCCESS, TaskResult,
 };
+#[cfg(target_arch = "wasm32")]
+use re_web::fs;
 #[cfg(not(target_arch = "wasm32"))]
 use tokio::fs;
 
@@ -229,28 +229,29 @@ async fn validate_file_source(
 }
 
 fn rrd_path_from_url(storage_url: &url::Url) -> tonic::Result<PathBuf> {
-    #[cfg(not(target_arch = "wasm32"))]
-    let rrd_path = storage_url.to_file_path();
+    let rrd_path = cfg_select! {
+        target_arch = "wasm32" => {
+            // NOTE: `Url::to_file_path` is not available on browser Wasm targets, so keep the
+            // Wasm conversion here in sync with native file-URL semantics.
+            if storage_url.scheme() == "file" && storage_url.host().is_none() {
+                let path = storage_url.path().strip_prefix('/').ok_or(());
+                path.and_then(|path| {
+                    use percent_encoding::percent_decode;
+                    let mut bytes = Vec::with_capacity(storage_url.path().len());
+                    for segment in path.split('/') {
+                        bytes.push(b'/');
+                        bytes.extend(percent_decode(segment.as_bytes()));
+                    }
 
-    #[cfg(target_arch = "wasm32")]
-    let rrd_path = {
-        // NOTE: `Url::to_file_path` is not available on browser Wasm targets, so keep the
-        // Wasm conversion here in sync with native file-URL semantics.
-        if storage_url.scheme() == "file" && storage_url.host().is_none() {
-            let path = storage_url.path().strip_prefix('/').ok_or(());
-            path.and_then(|path| {
-                use percent_encoding::percent_decode;
-                let mut bytes = Vec::with_capacity(storage_url.path().len());
-                for segment in path.split('/') {
-                    bytes.push(b'/');
-                    bytes.extend(percent_decode(segment.as_bytes()));
-                }
-
-                String::from_utf8(bytes).map(PathBuf::from).map_err(|_| ())
-            })
-        } else {
-            Err(())
+                    String::from_utf8(bytes)
+                        .map(PathBuf::from)
+                        .map_err(|_err| ())
+                })
+            } else {
+                Err(())
+            }
         }
+        _ => { storage_url.to_file_path() }
     };
 
     let Ok(rrd_path) = rrd_path else {
@@ -427,31 +428,30 @@ async fn register_sources(
 /// Returns a deduplicated set because a single RRD can contain duplicate
 /// `SetStoreInfo` messages for the same store.
 async fn load_store_ids(rrd_path: &Path) -> tonic::Result<BTreeSet<StoreId>> {
-    #[cfg(not(target_arch = "wasm32"))]
-    let mut file = fs::File::open(rrd_path)
-        .await
-        .map_err(|err| {
-            tonic::Status::internal(format!(
-                "Failed to open RRD file: {err:#}\nFile path: {rrd_path:?}"
-            ))
-        })?
-        .into_std()
-        .await;
-
-    #[cfg(target_arch = "wasm32")]
-    let mut file = {
-        let bytes = fs::read(rrd_path).await.map_err(|err| {
-            tonic::Status::internal(format!(
-                "Failed to open RRD file: {err:#}\nFile path: {rrd_path:?}"
-            ))
-        })?;
-        // TODO(RR-5154): Avoid buffering the full OPFS file once footer enumeration can use range reads.
-        std::io::Cursor::new(bytes)
+    let file = cfg_select! {
+        target_arch = "wasm32" => {
+            re_web::fs::File::open(rrd_path).await.map_err(|err| {
+                tonic::Status::internal(format!(
+                    "Failed to open RRD file: {err:#}\nFile path: {rrd_path:?}"
+                ))
+            })?
+        }
+        _ => {
+            // TODO(tokio-rs/tokio#1529): positional reads block the reactor; use `std::fs::File`
+            // until an async positional file API lands (or push reads to `spawn_blocking`).
+            std::fs::File::open(rrd_path).map_err(|err| {
+                tonic::Status::internal(format!(
+                    "Failed to open RRD file: {err:#}\nFile path: {rrd_path:?}"
+                ))
+            })?
+        }
     };
 
-    let store_ids = re_log_encoding::enumerate_rrd_stores(&mut file).map_err(|err| {
-        tonic::Status::internal(format!("Failed to enumerate RRD stores: {err:#}"))
-    })?;
+    let store_ids = re_log_encoding::enumerate_rrd_stores(&file)
+        .await
+        .map_err(|err| {
+            tonic::Status::internal(format!("Failed to enumerate RRD stores: {err:#}"))
+        })?;
 
     Ok(store_ids.into_iter().collect())
 }

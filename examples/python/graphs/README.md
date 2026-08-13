@@ -1,5 +1,6 @@
 <!--[metadata]
 title = "Graphs"
+description = "Different graph types and layouts visualized with Rerun's built-in force-directed engine Fjädra: trees, lattices, and random graphs."
 tags = ["Graph", "Layout", "Node-link diagrams", "Bubble charts"]
 thumbnail = "https://static.rerun.io/graphs/c1070214bed5e50c9e7d452835f32759b991383e/480w.png"
 thumbnail_dimensions = [480, 480]

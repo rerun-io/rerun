@@ -1,7 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <rerun/components/color.hpp>
-#include <rerun/datatypes/rgba32.hpp>
+#include <rerun/encodings/rgba32.hpp>
 
 #define TEST_TAG "[color][archetypes]"
 
@@ -69,8 +69,8 @@ void test() {
 }
 
 TEST_CASE("Construct Color in different ways", TEST_TAG) {
-    SECTION("datatypes::Rgba32") {
-        test<rerun::datatypes::Rgba32>();
+    SECTION("encodings::Rgba32") {
+        test<rerun::encodings::Rgba32>();
     }
     SECTION("components::Color") {
         test<rerun::components::Color>();

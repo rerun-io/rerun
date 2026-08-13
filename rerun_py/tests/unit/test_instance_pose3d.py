@@ -5,7 +5,7 @@ from fractions import Fraction
 from typing import cast
 
 import rerun as rr
-from rerun.datatypes import (
+from rerun.encodings import (
     Quaternion,
     RotationAxisAngle,
 )
@@ -53,11 +53,11 @@ def test_instance_poses3d() -> None:
         scale,
         mat3x3,
     ) in all_arrays:
-        translations = cast("rr.datatypes.Vec3DArrayLike | None", translation)
-        rotation_axis_angles = cast("rr.datatypes.RotationAxisAngleArrayLike | None", rotation_axis_angle)
-        quaternions = cast("rr.datatypes.QuaternionArrayLike | None", quaternion)
-        scales = cast("rr.datatypes.Vec3DArrayLike | rr.datatypes.Float32Like | None", scale)
-        mat3x3 = cast("rr.datatypes.Mat3x3ArrayLike | None", mat3x3)
+        translations = cast("rr.encodings.Vec3DArrayLike | None", translation)
+        rotation_axis_angles = cast("rr.encodings.RotationAxisAngleArrayLike | None", rotation_axis_angle)
+        quaternions = cast("rr.encodings.QuaternionArrayLike | None", quaternion)
+        scales = cast("rr.encodings.Vec3DArrayLike | rr.encodings.Float32Like | None", scale)
+        mat3x3 = cast("rr.encodings.Mat3x3ArrayLike | None", mat3x3)
 
         print(
             f"rr.InstancePoses3D(\n"

@@ -5,9 +5,9 @@ use super::FilterIsNotNull;
 impl FilterIsNotNull {
     /// Create a new [`Self`].
     pub fn new(active: bool, entity_path: &EntityPath, column_name: String) -> Self {
-        let datatype = crate::blueprint::datatypes::FilterIsNotNull {
+        let datatype = crate::blueprint::encodings::FilterIsNotNull {
             active: active.into(),
-            column: crate::blueprint::datatypes::ComponentColumnSelector::new(
+            column: crate::blueprint::encodings::ComponentColumnSelector::new(
                 entity_path,
                 column_name,
             ),

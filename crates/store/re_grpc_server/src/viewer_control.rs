@@ -67,12 +67,7 @@ impl viewer_control_service_server::ViewerControlService for ViewerControl {
         let store_id = recording
             .map(re_log_types::StoreId::try_from)
             .transpose()
-            .map_err(|err| {
-                tonic::Status::invalid_argument(format!(
-                    "invalid store_id: missing application id (kind: {}, recording_id: {})",
-                    err.store_kind, err.recording_id
-                ))
-            })?;
+            .map_err(|err| tonic::Status::invalid_argument(format!("invalid store_id: {err}")))?;
         let (done_tx, mut done_rx) =
             futures::channel::mpsc::unbounded::<Result<SetTimeCursorResponse, String>>();
         self.push_ui_command(DataSourceUiCommand::SetTimeCursor {

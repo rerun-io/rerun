@@ -1,4 +1,4 @@
-use re_types_core::datatypes::EntityPath;
+use re_types_core::encodings::EntityPath;
 
 use super::ViewOrigin;
 

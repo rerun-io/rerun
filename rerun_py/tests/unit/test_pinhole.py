@@ -8,7 +8,7 @@ import rerun as rr
 from rerun.components import PinholeProjectionBatch, ResolutionBatch, ViewCoordinatesBatch
 
 if TYPE_CHECKING:
-    from rerun.datatypes import Mat3x3Like, Vec2DLike, ViewCoordinatesLike
+    from rerun.encodings import Mat3x3Like, Vec2DLike, ViewCoordinatesLike
 
 
 def test_pinhole() -> None:

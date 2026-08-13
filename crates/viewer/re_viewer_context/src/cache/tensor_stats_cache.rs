@@ -5,7 +5,7 @@ use re_chunk_store::ChunkStoreEvent;
 use re_entity_db::EntityDb;
 use re_log_types::hash::Hash64;
 use re_sdk_types::archetypes::Tensor;
-use re_sdk_types::datatypes::TensorData;
+use re_sdk_types::encodings::TensorData;
 
 use crate::{Cache, CacheEntryAccess, TensorStats};
 

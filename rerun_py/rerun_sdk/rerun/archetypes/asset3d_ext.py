@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any
 from ..error_utils import catch_and_log_exceptions
 
 if TYPE_CHECKING:
-    from .. import datatypes
+    from .. import encodings
 
 
 class Asset3DExt:
@@ -16,9 +16,9 @@ class Asset3DExt:
         self: Any,
         *,
         path: str | pathlib.Path | None = None,
-        contents: datatypes.BlobLike | None = None,
-        media_type: datatypes.Utf8Like | None = None,
-        albedo_factor: datatypes.Rgba32Like | None = None,
+        contents: encodings.BlobLike | None = None,
+        media_type: encodings.Utf8Like | None = None,
+        albedo_factor: encodings.Rgba32Like | None = None,
     ) -> None:
         """
         Create a new instance of the Asset3D archetype.

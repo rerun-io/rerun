@@ -706,6 +706,7 @@ pub fn adapter_info_summary(info: &wgpu::AdapterInfo) -> String {
         subgroup_min_size: _,
         subgroup_max_size: _,
         transient_saves_memory: _,
+        limit_bucket: _,
     } = &info;
 
     // Example values:

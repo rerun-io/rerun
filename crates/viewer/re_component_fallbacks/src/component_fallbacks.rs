@@ -1,4 +1,4 @@
-use re_sdk_types::{archetypes, components, datatypes};
+use re_sdk_types::{archetypes, components, encodings};
 use re_viewer_context::{
     ColormapWithRange, EncodedDepthImageStatsCache, FallbackProviderRegistry, ImageInfo,
     ImageStatsCache, QueryContext, TensorStats, TensorStatsAccessor, TensorStatsCache,
@@ -50,9 +50,9 @@ pub fn archetype_field_fallbacks(registry: &mut FallbackProviderRegistry) {
                     // Create a sequence from 0 to length-1
                     #[expect(clippy::cast_possible_wrap)]
                     let indices: Vec<i64> = (0..length as i64).collect();
-                    let tensor_data = datatypes::TensorData::new(
+                    let tensor_data = encodings::TensorData::new(
                         vec![length],
-                        datatypes::TensorBuffer::I64(indices.into()),
+                        encodings::TensorBuffer::I64(indices.into()),
                     );
                     return components::TensorData(tensor_data);
                 }
@@ -60,7 +60,7 @@ pub fn archetype_field_fallbacks(registry: &mut FallbackProviderRegistry) {
 
             // Fallback to empty tensor if we can't determine the values length
             let tensor_data =
-                datatypes::TensorData::new(vec![0u64], datatypes::TensorBuffer::I64(vec![].into()));
+                encodings::TensorData::new(vec![0u64], encodings::TensorBuffer::I64(vec![].into()));
             components::TensorData(tensor_data)
         },
     );
@@ -174,6 +174,7 @@ pub fn archetype_field_fallbacks(registry: &mut FallbackProviderRegistry) {
             )
         },
     );
+
     // Boxes2D
     registry.register_component_fallback_provider(
         archetypes::Boxes2D::descriptor_draw_order().component,

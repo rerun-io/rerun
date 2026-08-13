@@ -6,8 +6,8 @@ title: "ValueRange"
 ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 Range of expected or valid values, specifying a lower and upper bound.
 
-## Rerun datatype
-[`Range1D`](../datatypes/range1d.md)
+## Rerun encoding
+[`Range1D`](../encodings/range1d.md)
 
 
 ## Arrow datatype

@@ -1,6 +1,7 @@
 ---
 title: Blueprints
 order: 100
+description: Define view layouts and visualization defaults programmatically
 ---
 
 ## What are Blueprints?

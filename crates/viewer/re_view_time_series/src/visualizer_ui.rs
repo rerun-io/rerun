@@ -263,7 +263,7 @@ impl TimeSeriesColors {
 
         // Draw color boxes from right to left
         for color in self.colors[..num_boxes].iter().rev() {
-            let rgba = re_sdk_types::datatypes::Rgba32::from(*color);
+            let rgba = re_sdk_types::encodings::Rgba32::from(*color);
             let mut color_ref = re_viewer_context::MaybeMutRef::Ref(&rgba);
             ui.add(ColorSwatch::new(&mut color_ref));
         }

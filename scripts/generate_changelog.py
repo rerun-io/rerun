@@ -1,12 +1,26 @@
 #!/usr/bin/env python3
 
 """
-Summarizes PRs since `latest` branch, grouping them based on their GitHub labels.
+Summarizes PRs since the last release, grouping them based on their GitHub labels.
+
+Every PR carries one of four changelog categories:
+  - `exclude from changelog`: skipped here entirely.
+  - `🪳 bug`: auto-added to the detailed sections below from the PR title.
+  - `📉 performance`: auto-added to the detailed sections below from the PR title.
+  - `include in changelog`: a user-facing change. It is auto-listed in the detailed
+    sections too, but its headline treatment (highlights / breaking change & migration /
+    new feature with docs & example links) is hand-written, one file per PR, in
+    `docs/content/changelog/upcoming/`. At release those files are merged into the
+    release's changeset at `docs/content/changelog/changeset-0-xx.md`.
 
 If the result is not satisfactory, you can edit the original PR titles and labels.
-You can add the `exclude from changelog` label to minor PRs that are not of interest to our users.
 
-Finally, copy-paste the output into `CHANGELOG.md` and add a high-level summary to the top.
+Finally, copy-paste the output into `CHANGELOG.md`.
+
+The curated changeset is *not* inlined here: it is published on the website, and this script
+only lists its headings and links to it. That keeps `CHANGELOG.md` skimmable and keeps the full
+prose in exactly one place — the same reason it has always linked to the migration guide rather
+than inlining it.
 """
 
 from __future__ import annotations
@@ -18,6 +32,7 @@ import re
 import subprocess
 import sys
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 from git import Repo  # pip install GitPython
@@ -301,6 +316,64 @@ def get_commit_info(commit: Any) -> CommitInfo:
     )
 
 
+def changeset_path(new_version: str) -> Path:
+    major, minor, _ = new_version.split(".")
+    return Path("docs") / "content" / "changelog" / f"changeset-{major}-{minor}.md"
+
+
+def changeset_url(new_version: str) -> str:
+    major, minor, _ = new_version.split(".")
+    return f"https://rerun.io/docs/changelog/changeset-{major}-{minor}"
+
+
+def changeset_headings(path: Path, section: str) -> list[str]:
+    """The `### ` headings under a `## <section>` heading of a release changeset."""
+    text = path.read_text(encoding="utf8")
+    match = re.search(rf"^## {re.escape(section)}$(.*?)(?=^## |\Z)", text, re.MULTILINE | re.DOTALL)
+    if match is None:
+        return []
+    return re.findall(r"^### (.+)$", match.group(1), re.MULTILINE)
+
+
+def print_changeset_summary(new_version: str) -> None:
+    """
+    Summarize the release changeset, linking to it rather than duplicating it.
+
+    The changeset at `docs/content/changelog/changeset-0-xx.md` is published on the website and
+    is the single source for the full prose. `CHANGELOG.md` only lists the headings and links out,
+    the same way it has always linked to the migration guide instead of inlining it.
+    """
+    path = changeset_path(new_version)
+    if not path.is_file():
+        print(f"TODO: assemble {path} and re-run this script")  # NOLINT
+        print()
+        return
+
+    url = changeset_url(new_version)
+
+    # `CHANGELOG.md` has no separate "New features" section — features live under the
+    # overview, so both changeset sections are listed together here.
+    overview = changeset_headings(path, "Highlights") + changeset_headings(path, "New features")
+    if overview:
+        print("### ✨ Overview & highlights")
+        print()
+        for heading in overview:
+            print(f"- {heading}")
+        print()
+        print(f"📖 Release notes: {url}#highlights")
+        print()
+
+    breaking = changeset_headings(path, "Breaking changes")
+    if breaking:
+        print("### ⚠️ Breaking changes")
+        print()
+        for heading in breaking:
+            print(f"- {heading}")
+        print()
+        print(f"🧳 Migration guide: {url}#breaking-changes")
+        print()
+
+
 def print_section(title: str, items: list[str]) -> None:
     if 0 < len(items):
         print(f"#### {title}")
@@ -405,7 +478,10 @@ def main() -> None:
 
             labels = pr_info.labels if pr_info else []
 
-            if "include in changelog" not in labels and "include in OSS changelog" not in labels:
+            # The label CI guarantees every PR has exactly one changelog category, so
+            # "not excluded" means it is an auto category (`🪳 bug` / `📉 performance`)
+            # or `include in changelog`.
+            if "exclude from changelog" in labels:
                 continue
 
             # Generate summary - prefer PR number, fallback to commit hash
@@ -506,15 +582,7 @@ def main() -> None:
     print()
     print("📖 Release blogpost: TODO: add link")  # NOLINT
     print()
-    print("🧳 Migration guide: TODO: add link")  # NOLINT
-    print()
-    print("### ✨ Overview & highlights")
-    print("TODO: fill in")  # NOLINT
-    print()
-    print("### ⚠️ Breaking changes")
-    print("TODO: fill in")  # NOLINT
-    print("🧳 Migration guide: TODO: add link (yes, again)")  # NOLINT
-    print()
+    print_changeset_summary(args.version)
     print("### 🔎 Details")
     print()
 

@@ -1,6 +1,6 @@
 //! Custom blueprint configuration for the color coordinates view.
 //!
-//! Built-in views get this from `.fbs` + codegen. This example does it manually:
+//! Built-in views get this from `re_type_definitions` + codegen. This example does it manually:
 //! define a component, make it [`rerun::Loggable`], group it in an [`rerun::Archetype`], provide
 //! reflection, and register an editor UI.
 
@@ -110,7 +110,7 @@ impl ColorCoordinatesMode {
 impl rerun::Loggable for ColorCoordinatesMode {
     // Components are stored as Arrow arrays; encode the enum as stable `UInt32` values.
     fn arrow_datatype() -> rerun::external::arrow::datatypes::DataType {
-        <rerun::datatypes::UInt32 as rerun::Loggable>::arrow_datatype()
+        <rerun::encodings::UInt32 as rerun::Loggable>::arrow_datatype()
     }
 
     fn to_arrow_opt<'a>(
@@ -119,16 +119,16 @@ impl rerun::Loggable for ColorCoordinatesMode {
     where
         Self: 'a,
     {
-        <rerun::datatypes::UInt32 as rerun::Loggable>::to_arrow_opt(
+        <rerun::encodings::UInt32 as rerun::Loggable>::to_arrow_opt(
             data.into_iter()
-                .map(|mode| mode.map(|mode| rerun::datatypes::UInt32(mode.into().as_u32()))),
+                .map(|mode| mode.map(|mode| rerun::encodings::UInt32(mode.into().as_u32()))),
         )
     }
 
     fn from_arrow_opt(
         data: &dyn rerun::external::arrow::array::Array,
     ) -> rerun::DeserializationResult<Vec<Option<Self>>> {
-        <rerun::datatypes::UInt32 as rerun::Loggable>::from_arrow_opt(data)?
+        <rerun::encodings::UInt32 as rerun::Loggable>::from_arrow_opt(data)?
             .into_iter()
             .map(|mode| mode.map(|mode| Self::from_u32(mode.0)).transpose())
             .collect()

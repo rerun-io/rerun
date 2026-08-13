@@ -8,8 +8,8 @@ A generic count value.
 
 Used for counting various entities like messages, schemas, channels, etc.
 
-## Rerun datatype
-[`UInt64`](../datatypes/uint64.md)
+## Rerun encoding
+[`UInt64`](../encodings/uint64.md)
 
 
 ## Arrow datatype

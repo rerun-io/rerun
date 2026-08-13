@@ -2,21 +2,33 @@ use std::sync::Arc;
 
 use nohash_hasher::{IntMap, IntSet};
 use re_chunk_store::{LatestAtQuery, RangeQuery, RowId};
-use re_log_types::external::arrow;
-use re_log_types::external::arrow::array::Array as _;
-use re_log_types::hash::Hash64;
-use re_log_types::{TimeInt, TimelineName};
-use re_query::LatestAtResults;
-use re_sdk_types::blueprint::datatypes::ComponentSourceKind;
-use re_types_core::{Archetype, ComponentIdentifier};
-use re_viewer_context::{
-    DataResult, QueryContext, QueryRange, ViewContext, ViewQuery, ViewerContext,
+use re_log_types::{
+    TimeInt,
+    external::arrow::{self, array::Array as _},
+    hash::Hash64,
 };
+use re_query::LatestAtResults;
+use re_sdk_types::blueprint::encodings::ComponentSourceKind;
+use re_types_core::{Archetype, ComponentIdentifier};
+use re_viewer_context::{DataResult, QueryRange, ViewContext, ViewQuery, ViewerContext};
 
 use crate::blueprint_resolved_results::{
-    BlueprintResolvedLatestAtResults, BlueprintResolvedRangeResults,
+    BlueprintResolvedLatestAtResults, BlueprintResolvedRangeResults, ComponentSourcesMap,
 };
 use crate::{BlueprintResolvedResults, ComponentMappingError};
+
+/// Resolve a visible time range — the range of a [`QueryRange::TimeRange`] — into absolute times.
+///
+/// Cursor-relative boundaries resolve against the current time cursor, falling back to
+/// [`TimeInt::ZERO`] when there is none. Every view that queries a time range must resolve it this
+/// way, or two views given the same range would end up showing different data.
+pub fn resolve_visible_time_range(
+    ctx: &ViewerContext<'_>,
+    time_range: &re_sdk_types::encodings::TimeRange,
+) -> re_log_types::AbsoluteTimeRange {
+    let cursor = ctx.time_ctrl.time_int().unwrap_or(TimeInt::ZERO);
+    re_log_types::AbsoluteTimeRange::from_relative_time_range(time_range, cursor)
+}
 
 /// A rule that decides the cast destination for a polymorphic target slot based on the
 /// source's element datatype.
@@ -251,12 +263,12 @@ pub fn range_with_blueprint_resolved_data_polymorphic<'a>(
     // TODO(andreas): It would be great to avoid querying for overrides & store values that aren't used due to explicit source components.
     // Logic gets surprisingly complicated quickly though.
 
-    let mut components = components.into_iter().collect::<IntSet<_>>();
+    let mut queried_components = components.into_iter().collect::<IntSet<_>>();
 
     let overrides = query_overrides(
         ctx.viewer_ctx,
         visualizer_instruction,
-        components.iter().copied(),
+        queried_components.iter().copied(),
     );
 
     // Apply component mappings when querying the recording.
@@ -269,9 +281,9 @@ pub fn range_with_blueprint_resolved_data_polymorphic<'a>(
                 source_component,
                 selector,
             } = source
-                && components.remove(target_component)
+                && queried_components.remove(target_component)
             {
-                components.insert(*source_component);
+                queried_components.insert(*source_component);
 
                 if selector.is_empty() {
                     active_remappings.push(ActiveRemapping {
@@ -305,7 +317,7 @@ pub fn range_with_blueprint_resolved_data_polymorphic<'a>(
             re_chunk_store::ChunkTrackingMode::Report,
             range_query,
             &data_result.entity_path,
-            components.iter().copied(),
+            queried_components.iter().copied(),
         );
 
         // Apply mapping to the results.
@@ -356,32 +368,19 @@ pub fn range_with_blueprint_resolved_data_polymorphic<'a>(
     };
 
     // Auto-determine remaining mapping sources.
-    #[expect(clippy::iter_over_hash_type)] // Doing that to fill another hashmap.
-    for component in &components {
-        match component_sources.entry(*component) {
-            std::collections::hash_map::Entry::Occupied(_) => {}
-            std::collections::hash_map::Entry::Vacant(entry) => {
-                let source = if has_non_empty_override(&overrides, *component) {
-                    ComponentSourceKind::Override
-                } else if store_results.components.contains_key(component) {
-                    ComponentSourceKind::SourceComponent
-                } else {
-                    ComponentSourceKind::Default
-                };
+    auto_determine_remaining_sources(
+        &mut component_sources,
+        queried_components,
+        |component| store_results.components.contains_key(&component),
+        &overrides,
+    );
 
-                entry.insert(Ok(source));
-            }
-        }
-    }
-
-    let query_context = QueryContext {
-        view_ctx: ctx,
-        target_entity_path: &data_result.entity_path,
-        instruction_id: Some(visualizer_instruction.id),
-        archetype_name: None,
-        // TODO(andreas): Rather strange to a have a latest-at query in here.
-        query: LatestAtQuery::new(range_query.timeline, range_query.range.min),
-    };
+    // TODO(andreas): Rather strange to have a latest-at query in here.
+    let query_context = ctx.query_context(
+        data_result,
+        LatestAtQuery::new(range_query.timeline, range_query.range.min),
+        visualizer_instruction.id,
+    );
 
     BlueprintResolvedRangeResults {
         overrides,
@@ -440,18 +439,18 @@ pub fn latest_at_with_blueprint_resolved_data_polymorphic<'a>(
     // TODO(andreas): It would be great to avoid querying for overrides & store values that aren't used due to explicit source components.
     // Logic gets surprisingly complicated quickly though.
 
-    let mut components = components.into_iter().collect::<IntSet<_>>();
+    let mut queried_components = components.into_iter().collect::<IntSet<_>>();
     let overrides = if let Some(visualizer_instruction) = visualizer_instruction {
         query_overrides(
             ctx.viewer_ctx,
             visualizer_instruction,
-            components.iter().copied(),
+            queried_components.iter().copied(),
         )
     } else {
         query_overrides_at_path(
             ctx.viewer_ctx,
             data_result.override_base_path(),
-            components.iter().copied(),
+            queried_components.iter().copied(),
         )
     };
 
@@ -465,9 +464,9 @@ pub fn latest_at_with_blueprint_resolved_data_polymorphic<'a>(
                     source_component,
                     selector,
                 } = source
-                    && components.remove(target_component)
+                    && queried_components.remove(target_component)
                 {
-                    components.insert(*source_component);
+                    queried_components.insert(*source_component);
 
                     if selector.is_empty() {
                         active_remappings.push(ActiveRemapping {
@@ -502,7 +501,7 @@ pub fn latest_at_with_blueprint_resolved_data_polymorphic<'a>(
         re_chunk_store::ChunkTrackingMode::Report,
         latest_at_query,
         &data_result.entity_path,
-        components.iter().copied(),
+        queried_components.iter().copied(),
     );
 
     // Apply mapping to the results.
@@ -545,32 +544,18 @@ pub fn latest_at_with_blueprint_resolved_data_polymorphic<'a>(
         }
     }
 
-    // Auto-determine remaining mapping sources.
-    #[expect(clippy::iter_over_hash_type)] // Doing that to fill another hashmap.
-    for component in &components {
-        match component_sources.entry(*component) {
-            std::collections::hash_map::Entry::Occupied(_) => {}
-            std::collections::hash_map::Entry::Vacant(entry) => {
-                let source = if has_non_empty_override(&overrides, *component) {
-                    ComponentSourceKind::Override
-                } else if store_results.components.contains_key(component) {
-                    ComponentSourceKind::SourceComponent
-                } else {
-                    ComponentSourceKind::Default
-                };
+    auto_determine_remaining_sources(
+        &mut component_sources,
+        queried_components,
+        |component| store_results.components.contains_key(&component),
+        &overrides,
+    );
 
-                entry.insert(Ok(source));
-            }
-        }
-    }
-
-    let query_context = QueryContext {
-        view_ctx: ctx,
-        target_entity_path: &data_result.entity_path,
-        instruction_id: visualizer_instruction.map(|instruction| instruction.id),
-        archetype_name: None,
-        query: latest_at_query.clone(),
-    };
+    let query_context = ctx.query_context(
+        data_result,
+        latest_at_query.clone(),
+        visualizer_instruction.map(|instruction| instruction.id),
+    );
 
     BlueprintResolvedLatestAtResults {
         overrides,
@@ -582,46 +567,29 @@ pub fn latest_at_with_blueprint_resolved_data_polymorphic<'a>(
     }
 }
 
-pub fn query_archetype_with_history<'a>(
-    ctx: &'a ViewContext<'a>,
-    timeline: &TimelineName,
-    timeline_cursor: TimeInt,
-    query_range: &QueryRange,
-    components: impl IntoIterator<Item = ComponentIdentifier>,
-    data_result: &'a re_viewer_context::DataResult,
-    visualizer_instruction: &re_viewer_context::VisualizerInstruction,
-) -> BlueprintResolvedResults<'a> {
-    match query_range {
-        QueryRange::TimeRange(time_range) => {
-            let range_query = RangeQuery::new(
-                *timeline,
-                re_log_types::AbsoluteTimeRange::from_relative_time_range(
-                    time_range,
-                    timeline_cursor,
-                ),
-            );
-            let results = range_with_blueprint_resolved_data(
-                ctx,
-                None,
-                &range_query,
-                data_result,
-                components,
-                visualizer_instruction,
-            );
-            (range_query, results).into()
-        }
-        QueryRange::LatestAt => {
-            let latest_query = LatestAtQuery::new(*timeline, timeline_cursor);
-            let results = latest_at_with_blueprint_resolved_data(
-                ctx,
-                None,
-                &latest_query,
-                data_result,
-                components,
-                Some(visualizer_instruction),
-            );
-            (latest_query, results).into()
-        }
+/// Computes the component sources for all components not yet present in `component_sources` by checking for overrides and store results.
+fn auto_determine_remaining_sources(
+    component_sources: &mut ComponentSourcesMap,
+    queried_components: IntSet<ComponentIdentifier>,
+    has_store_result: impl Fn(ComponentIdentifier) -> bool,
+    overrides: &LatestAtResults,
+) {
+    #[expect(clippy::iter_over_hash_type)] // Doing that to fill another hashmap.
+    for component in queried_components {
+        let std::collections::hash_map::Entry::Vacant(entry) = component_sources.entry(component)
+        else {
+            continue;
+        };
+
+        let source = if has_non_empty_override(overrides, component) {
+            ComponentSourceKind::Override
+        } else if has_store_result(component) {
+            ComponentSourceKind::SourceComponent
+        } else {
+            ComponentSourceKind::Default
+        };
+
+        entry.insert(Ok(source));
     }
 }
 
@@ -775,14 +743,37 @@ impl DataResultQuery for DataResult {
         components: impl IntoIterator<Item = ComponentIdentifier>,
         visualizer_instruction: &re_viewer_context::VisualizerInstruction,
     ) -> BlueprintResolvedResults<'a> {
-        query_archetype_with_history(
-            ctx,
-            &view_query.timeline,
-            view_query.latest_at,
-            self.query_range(),
-            components,
-            self,
-            visualizer_instruction,
-        )
+        match self.query_range() {
+            QueryRange::TimeRange(time_range) => {
+                let range_query = RangeQuery::new(
+                    view_query.timeline,
+                    re_log_types::AbsoluteTimeRange::from_relative_time_range(
+                        time_range,
+                        view_query.latest_at,
+                    ),
+                );
+                let results = range_with_blueprint_resolved_data(
+                    ctx,
+                    None,
+                    &range_query,
+                    self,
+                    components,
+                    visualizer_instruction,
+                );
+                (range_query, results).into()
+            }
+            QueryRange::LatestAt => {
+                let latest_query = LatestAtQuery::new(view_query.timeline, view_query.latest_at);
+                let results = latest_at_with_blueprint_resolved_data(
+                    ctx,
+                    None,
+                    &latest_query,
+                    self,
+                    components,
+                    Some(visualizer_instruction),
+                );
+                (latest_query, results).into()
+            }
+        }
     }
 }

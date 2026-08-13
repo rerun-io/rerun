@@ -42,7 +42,7 @@ image = ["dep:ecolor", "dep:image", "dep:tiff"]
 ## Inspecting video data.
 video = ["dep:re_video"]
 
-## Include testing archetypes/components/datatypes into the crate.
+## Include testing archetypes/components/encodings into the crate.
 ## Only useful for testing purposes.
 testing = []
 
@@ -63,7 +63,7 @@ re_video = { workspace = true, optional = true }
 # External
 array-init.workspace = true
 arrow.workspace = true
-bytemuck = { workspace = true, features = ["derive", "extern_crate_alloc"] }
+bytemuck = { workspace = true, features = ["derive", "extern_crate_alloc", "min_const_generics"] }
 document-features.workspace = true
 emath.workspace = true
 half = { workspace = true, features = ["bytemuck"] }
@@ -92,6 +92,7 @@ macaw = { workspace = true, optional = true }
 
 # External
 glam.workspace = true
+insta.workspace = true
 itertools.workspace = true
 mint.workspace = true
 rand = { workspace = true, features = ["std", "std_rng"] }

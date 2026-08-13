@@ -398,11 +398,9 @@ impl ViewBlueprint {
         // * can't be specified in the chunk store
         // Here, we query the visual time range that serves as the default for all entities in this space.
 
-        let property = ViewProperty::from_archetype::<blueprint_archetypes::VisibleTimeRanges>(
-            blueprint,
-            blueprint_query,
-            self.id,
-        );
+        let property = ViewProperty::from_archetype_with_db::<
+            blueprint_archetypes::VisibleTimeRanges,
+        >(blueprint, blueprint_query, self.id);
         let ranges = property.component_array::<blueprint_components::VisibleTimeRange>(
             blueprint_archetypes::VisibleTimeRanges::descriptor_ranges().component,
         );

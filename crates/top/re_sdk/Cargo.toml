@@ -86,11 +86,16 @@ webbrowser = { workspace = true, optional = true }
 libc.workspace = true
 
 [dev-dependencies]
+re_async.workspace = true
+re_log = { workspace = true, features = ["setup"] }
+
 arrow.workspace = true
 insta.workspace = true
 similar-asserts.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+tempfile.workspace = true
+tokio = { workspace = true, features = ["rt-multi-thread"] }
 
 
 [build-dependencies]

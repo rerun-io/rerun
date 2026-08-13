@@ -13,11 +13,13 @@ extend-exclude = [
   "rerun_cpp/src/rerun/third_party/cxxopts.hpp",
   "*.png",
   "*.mp4",
+  "*.ply",
   "*.rrd",
 ]
 
 [default.extend-words]
 FUL = "FUL" # forward-up-left coordinate system
+NED = "NED" # north-east-down coordinate system
 Isse = "Isse" # It's a name
 lod = "lod" # level-of-detail
 ND = "ND" # np.NDArray

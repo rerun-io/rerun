@@ -1,5 +1,6 @@
 <!--[metadata]
 title = "Minimal example"
+description = "The quick-start example: generate a 3D colored cube and log it as a point cloud. The shortest path to a working visualization."
 thumbnail = "https://static.rerun.io/minimal-example/9e694c0689f20323ed0053506a7a099f7391afca/480w.png"
 thumbnail_dimensions = [480, 480]
 tags = ["3D", "API example"]

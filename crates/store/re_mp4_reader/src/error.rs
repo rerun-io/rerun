@@ -1,5 +1,3 @@
-use re_sdk_types::components::VideoCodec;
-
 /// Errors produced by the mp4 reader.
 #[derive(Debug, thiserror::Error)]
 pub enum Mp4Error {
@@ -19,27 +17,26 @@ pub enum Mp4Error {
     Demux(#[from] re_video::VideoLoadError),
 
     #[error(
-        "MP4 contains B-frames; stripping them requires FFmpeg, which is not \
-         available in this build. Use `Mode::Asset` instead."
+        "Transcoding this MP4 stream (B-frame stripping or a requested transform) requires \
+         FFmpeg, which is not available in this build. Use `Mode::Asset` instead."
     )]
-    BFramesRequireFfmpeg,
+    TranscodeRequiresFfmpeg,
 
     #[error(
-        "MP4 contains B-frames; stripping them with FFmpeg requires a seekable file, but this \
-         stream was provided as in-memory bytes. Load it from a file path (`load_mp4`), or use \
-         `Mode::Asset`."
+        "Transcoding this MP4 stream with FFmpeg requires a seekable file, but this stream was \
+         provided as in-memory bytes. Load it from a file path (`load_mp4`), or use `Mode::Asset`."
     )]
-    BFramesFromInMemoryBytes,
+    TranscodeRequiresSeekableFile,
 
-    #[error("Failed to strip B-frames from MP4 stream via FFmpeg: {0}")]
+    #[error("Failed to transcode MP4 stream via FFmpeg: {0}")]
     Transcode(String),
 
     #[error(
-        "MP4 stream uses codec {codec:?}, whose B-frames (DTS != PTS) the `VideoStream` \
-         archetype cannot yet model (see https://github.com/rerun-io/rerun/issues/10090). \
-         Only H.264 and H.265 B-frame sources can be transcoded; use `Mode::Asset` instead."
+        "This FFmpeg build has no encoder for output codec {codec:?}. Install a build with the \
+         matching encoder (e.g. libvpx for VP8/VP9, libsvtav1/libaom for AV1), or choose a \
+         different `output_codec`."
     )]
-    BFramesUnsupportedCodec { codec: VideoCodec },
+    NoEncoderAvailable { codec: re_video::VideoCodec },
 
     #[error("MP4 with image-sequence codec is not supported by `Mode::Stream`; use `Mode::Asset`")]
     ImageSequenceInStreamMode,

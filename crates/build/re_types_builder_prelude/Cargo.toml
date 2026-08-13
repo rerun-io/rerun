@@ -1,0 +1,27 @@
+[package]
+name = "re_types_builder_prelude"
+authors.workspace = true
+description = "The vocabulary that Rerun's IDL definitions are written against."
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+license.workspace = true
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+
+[package.metadata.docs.rs]
+all-features = true
+
+
+[dependencies]
+re_types_builder_macros.workspace = true
+
+# External
+half.workspace = true

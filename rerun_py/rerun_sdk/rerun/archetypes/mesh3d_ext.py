@@ -6,13 +6,13 @@ import numpy as np
 import numpy.typing as npt
 
 from rerun.components.image_format import ImageFormat
-from rerun.datatypes.channel_datatype import ChannelDatatype
-from rerun.datatypes.color_model import ColorModel
+from rerun.encodings.channel_datatype import ChannelDatatype
+from rerun.encodings.color_model import ColorModel
 
 from ..error_utils import _send_warning_or_raise, catch_and_log_exceptions
 
 if TYPE_CHECKING:
-    from .. import components, datatypes
+    from .. import components, encodings
 
     ImageLike = (
         npt.NDArray[np.float16]
@@ -47,15 +47,15 @@ class Mesh3DExt:
     def __init__(
         self: Any,
         *,
-        vertex_positions: datatypes.Vec3DArrayLike,
-        triangle_indices: datatypes.UVec3DArrayLike | None = None,
-        vertex_normals: datatypes.Vec3DArrayLike | None = None,
-        vertex_colors: datatypes.Rgba32ArrayLike | None = None,
-        vertex_texcoords: datatypes.Vec2DArrayLike | None = None,
+        vertex_positions: encodings.Vec3DArrayLike,
+        triangle_indices: encodings.UVec3DArrayLike | None = None,
+        vertex_normals: encodings.Vec3DArrayLike | None = None,
+        vertex_colors: encodings.Rgba32ArrayLike | None = None,
+        vertex_texcoords: encodings.Vec2DArrayLike | None = None,
         albedo_texture: ImageLike | None = None,
-        albedo_factor: datatypes.Rgba32Like | None = None,
+        albedo_factor: encodings.Rgba32Like | None = None,
         face_rendering: components.MeshFaceRenderingLike | None = None,
-        class_ids: datatypes.ClassIdArrayLike | None = None,
+        class_ids: encodings.ClassIdArrayLike | None = None,
     ) -> None:
         """
         Create a new instance of the Mesh3D archetype.

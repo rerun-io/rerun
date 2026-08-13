@@ -16,16 +16,12 @@ use crate::utils::get_tokio_runtime;
     module = "rerun_bindings.rerun_bindings"
 )]
 pub struct PyTableProviderAdapterInternal {
-    provider: Arc<dyn TableProvider + Send>,
-    streaming: bool,
+    provider: Arc<dyn TableProvider>,
 }
 
 impl PyTableProviderAdapterInternal {
-    pub fn new(provider: Arc<dyn TableProvider + Send>, streaming: bool) -> Self {
-        Self {
-            provider,
-            streaming,
-        }
+    pub fn new(provider: Arc<dyn TableProvider>) -> Self {
+        Self { provider }
     }
 }
 
@@ -41,7 +37,7 @@ impl PyTableProviderAdapterInternal {
         let codec = ffi_logical_codec_from_pycapsule(session)?;
         let provider = FFI_TableProvider::new_with_ffi_codec(
             Arc::clone(&self.provider),
-            self.streaming,
+            true,
             Some(runtime),
             codec,
         );

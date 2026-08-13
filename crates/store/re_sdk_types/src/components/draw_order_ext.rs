@@ -1,8 +1,8 @@
-use re_types_core::datatypes::Float32;
+use re_types_core::encodings::Float32;
 
 use super::DrawOrder;
 
-// TODO(cmc): come up with some DSL in our flatbuffers definitions so that we can declare these
+// TODO(cmc): come up with some DSL in `re_type_definitions` so that we can declare these
 // constants directly in there.
 impl DrawOrder {
     /// Draw order used for depth image when they're not shown as a 3D point cloud and no draw order was specified.

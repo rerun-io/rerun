@@ -328,9 +328,8 @@ impl TreeTransformsForChildFrame {
                         ResolvedPinholeProjection {
                             cached: value,
 
-                            // TODO(andreas): view coordinates are in a weird limbo state in more than one way.
-                            // Not only are they only _partially_ relevant for the camera's transform (they both name axis & orient cameras),
-                            // we also rely on them too much being latest-at driven and to make matters worse query them from two different archetypes.
+                            // Camera orientation is latest-at data and may be logged through either
+                            // `Pinhole::camera_xyz` or the `ViewCoordinates` archetype descriptor.
                             view_coordinates: query_view_coordinates(entity_path, entity_db, query)
                                 .unwrap_or(re_sdk_types::archetypes::Pinhole::DEFAULT_CAMERA_XYZ),
                         },

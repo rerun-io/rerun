@@ -203,7 +203,7 @@ class AnyBatchValue(ComponentBatchLike):
         Construct a new AnyBatchValue.
 
         The value will be attempted to be converted into an arrow array by first calling
-        the `as_arrow_array()` method if it's defined. All Rerun Batch datatypes implement
+        the `as_arrow_array()` method if it's defined. All Rerun Batch encodings implement
         this function so it's possible to pass them directly to AnyValues.
 
         If the object doesn't implement `as_arrow_array()`, it will be passed as an argument
@@ -293,7 +293,7 @@ class AnyBatchValue(ComponentBatchLike):
         Use `ComponentColumn.partition` to repartition the data as needed.
 
         The value will be attempted to be converted into an arrow array by first calling
-        the `as_arrow_array()` method if it's defined. All Rerun Batch datatypes implement
+        the `as_arrow_array()` method if it's defined. All Rerun Batch encodings implement
         this function so it's possible to pass them directly to AnyValues.
 
         If the object doesn't implement `as_arrow_array()`, it will be passed as an argument

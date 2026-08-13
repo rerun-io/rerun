@@ -2,15 +2,16 @@ use re_data_ui::item_ui;
 use re_renderer::external::wgpu;
 use re_renderer::renderer::ColormappedTexture;
 use re_renderer::resource_managers::GpuTexture2D;
-use re_sdk_types::datatypes::ColorModel;
+use re_sdk_types::encodings::ColorModel;
 use re_sdk_types::image::ImageKind;
 use re_sdk_types::tensor_data::TensorElement;
 use re_ui::UiExt as _;
-use re_view::AnnotationSceneContext;
-use re_viewer_context::{Annotations, ImageInfo, StoreViewContext, ViewQuery, gpu_bridge};
+use re_viewer_context::{
+    AnnotationMap, Annotations, ImageInfo, StoreViewContext, ViewQuery, gpu_bridge,
+};
 
 use crate::PickableRectSourceData;
-use crate::view_kind::SpatialViewKind;
+use crate::SpaceKind;
 
 pub struct PickedPixelInfo {
     pub source_data: PickableRectSourceData,
@@ -23,9 +24,9 @@ pub fn textured_rect_hover_ui(
     ui: &mut egui::Ui,
     instance_path: &re_entity_db::InstancePath,
     query: &ViewQuery<'_>,
-    spatial_kind: SpatialViewKind,
+    spatial_kind: SpaceKind,
     ui_pan_and_zoom_from_ui: egui::emath::RectTransform,
-    annotations: &AnnotationSceneContext,
+    annotations: &AnnotationMap,
     picked_pixel_info: PickedPixelInfo,
     hover_overlay_index: u32,
 ) {
@@ -54,7 +55,7 @@ pub fn textured_rect_hover_ui(
         let [w, h] = texture.width_height();
         let (w, h) = (w as f32, h as f32);
 
-        if spatial_kind == SpatialViewKind::TwoD {
+        if spatial_kind == SpaceKind::TwoD {
             let rect = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(w, h));
 
             show_zoomed_image_region_area_outline(
@@ -72,7 +73,7 @@ pub fn textured_rect_hover_ui(
             None
         };
 
-        let annotations = annotations.0.find(&instance_path.entity_path);
+        let annotations = annotations.find(&instance_path.entity_path);
 
         show_zoomed_image_region(
             ctx.render_ctx(),

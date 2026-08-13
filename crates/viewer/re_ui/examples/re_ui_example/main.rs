@@ -5,7 +5,7 @@ mod hierarchical_drag_and_drop;
 mod right_panel;
 
 use crossbeam::channel::Receiver;
-use egui::{ComboBox, Modifiers, Rect, ScrollArea, Widget as _, os};
+use egui::{ComboBox, Modifiers, Rect, ScrollArea, Widget as _};
 use re_ui::filter_widget::{FilterState, format_matching_text};
 use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::menu::menu_style;
@@ -48,18 +48,13 @@ fn command_channel() -> (CommandSender, CommandReceiver) {
 fn main() -> eframe::Result {
     re_log::setup_logging();
 
-    let fullsize_content = re_ui::fullsize_content(os::OperatingSystem::default());
-    let custom_decorations = re_ui::supports_custom_decorations(os::OperatingSystem::default());
     let native_options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default()
-            .with_app_id("re_ui_example")
-            .with_decorations(!custom_decorations) // Maybe hide the OS-specific "chrome" around the window
-            .with_fullsize_content_view(fullsize_content)
-            .with_inner_size([1200.0, 800.0])
-            .with_title_shown(!fullsize_content)
-            .with_titlebar_buttons_shown(!custom_decorations)
-            .with_titlebar_shown(!fullsize_content)
-            .with_transparent(custom_decorations), // To have rounded corners without decorations we need transparency
+        viewport: re_ui::viewport_with_window_chrome(
+            egui::ViewportBuilder::default()
+                .with_app_id("re_ui_example")
+                .with_inner_size([1200.0, 800.0]),
+            re_ui::custom_window_decorations_default(),
+        ),
 
         ..Default::default()
     };
@@ -136,9 +131,7 @@ impl ExampleApp {
             command_receiver,
             latest_cmd: Default::default(),
 
-            use_custom_decorations: re_ui::supports_custom_decorations(
-                os::OperatingSystem::default(),
-            ),
+            use_custom_decorations: re_ui::custom_window_decorations_default(),
         }
     }
 

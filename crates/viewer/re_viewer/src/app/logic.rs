@@ -20,7 +20,7 @@ use re_viewer_context::{
 
 use crate::app_blueprint::AppBlueprint;
 
-use super::App;
+use super::{App, WindowDecorationsRequest};
 
 impl App {
     /// Called before each call to `ui`, but ALSO when the app is
@@ -92,6 +92,7 @@ impl App {
         self.state.cleanup(&store_hub);
 
         self.sync_native_window_theme(egui_ctx);
+        self.sync_native_window_decorations(egui_ctx);
 
         // Return the `StoreHub` to the Viewer so we have it on the next frame
         self.store_hub = Some(store_hub);
@@ -113,6 +114,36 @@ impl App {
             self.last_window_theme = Some(window_theme);
             egui_ctx.send_viewport_cmd(egui::ViewportCommand::SetTheme(window_theme));
         }
+    }
+
+    /// Hand the window decorations over to the OS, or take them over ourselves.
+    ///
+    /// Only this may act on [`re_viewer_context::AppOptions::custom_window_decorations`];
+    /// everything that paints must use [`Self::custom_window_decorations`] instead, so
+    /// that a mid-frame toggle takes effect on the next frame rather than halfway through
+    /// this one.
+    fn sync_native_window_decorations(&mut self, egui_ctx: &egui::Context) {
+        if !re_ui::supports_custom_decorations(egui_ctx.os()) {
+            return;
+        }
+
+        let desired = self.app_options().custom_window_decorations;
+        let request = if desired {
+            WindowDecorationsRequest::Custom
+        } else {
+            WindowDecorationsRequest::Native
+        };
+        if self.window_decorations_request == request {
+            return;
+        }
+        self.window_decorations_request = request;
+
+        egui_ctx.send_viewport_cmd(egui::ViewportCommand::Decorations(!desired));
+
+        // The window always has an alpha-capable surface where custom decorations are
+        // possible (see `eframe_options`), because that cannot be changed after creation.
+        // Send this even when `desired` is false, or the window may stay transparent.
+        egui_ctx.send_viewport_cmd(egui::ViewportCommand::Transparent(desired));
     }
 
     fn receive_messages(&mut self, store_hub: &mut StoreHub, egui_ctx: &egui::Context) {
@@ -138,10 +169,7 @@ impl App {
 
                 re_log_channel::SmartMessagePayload::Quit(err) => {
                     if let Some(err) = err {
-                        re_log::warn!(
-                            "Data source has left unexpectedly: {err}, source: {}",
-                            msg.source
-                        );
+                        re_log::error!("Data source failed: {err}\nSource: {}", msg.source);
                         if let Some(re_uri::RedapUri::DatasetData(uri)) = channel_source.redap_uri()
                         {
                             self.connection_registry.set_uri_error(uri, err.to_string());
@@ -917,48 +945,68 @@ impl App {
         use re_memory::MemoryUse;
 
         let limit = self.app_options().memory_limit;
-        let mut mem_use_before = MemoryUse::capture();
-
         let default_limit = re_memory::MemoryLimit::default_for_current_platform();
 
         // If we are at the default limit, which is derived from system memory,
-        // we actually do want to count external to OOM.
+        // we actually do want to count external to avoid OOM.
         let external_mem = if limit.as_bytes() >= default_limit.as_bytes()
-            || default_limit.is_exceeded_by(&mem_use_before).is_some()
+            || default_limit
+                .is_exceeded_by(&MemoryUse::capture())
+                .is_some()
         {
             0
         } else {
-            let external_mem = self.external_memory_users.total_external_memory();
-
-            if let Some(counted) = &mut mem_use_before.counted {
-                *counted -= external_mem;
-            }
-
-            if let Some(resident) = &mut mem_use_before.resident {
-                *resident -= external_mem;
-            }
-
-            external_mem
+            self.external_memory_users.total_external_memory()
         };
 
-        if let Some(minimum_fraction_to_purge) = limit.is_exceeded_by(&mem_use_before) {
-            re_log::info_once!("Reached memory limit of {limit}. Freeing up data…");
+        // Memory use as the limit sees it. We measure again between the steps of a purge, so that
+        // each step only has to deal with what the previous ones left behind.
+        let memory_use = || {
+            let mut mem_use = MemoryUse::capture();
 
+            if let Some(counted) = &mut mem_use.counted {
+                *counted = counted.saturating_sub(external_mem);
+            }
+
+            if let Some(resident) = &mut mem_use.resident {
+                *resident = resident.saturating_sub(external_mem);
+            }
+
+            mem_use
+        };
+
+        let mem_use_before = memory_use();
+
+        if limit.is_exceeded_by(&mem_use_before).is_none() {
+            return;
+        }
+
+        re_log::info_once!("Reached memory limit of {limit}. Freeing up data…");
+
+        re_log::trace!("RAM limit: {limit}");
+        if let Some(resident) = mem_use_before.resident {
+            re_log::trace!("Resident: {}", format_bytes(resident as _),);
+        }
+        if let Some(counted) = mem_use_before.counted {
+            re_log::trace!("Counted: {}", format_bytes(counted as _));
+        }
+        if external_mem > 0 {
+            re_log::trace!("External: {}", format_bytes(external_mem as _));
+        }
+
+        re_tracing::profile_scope!("pruning");
+
+        // Free data in order of how expensive it is to get back, and re-check the limit between
+        // each step, so that we never drop more than we have to.
+
+        // The app caches hold data the viewer derives locally, so they are the cheapest to rebuild.
+        self.state.app_caches.purge_memory();
+
+        let mem_use_after_app_caches = memory_use();
+        if let Some(minimum_fraction_to_purge) = limit.is_exceeded_by(&mem_use_after_app_caches) {
             let fraction_to_purge = (minimum_fraction_to_purge + 0.2).clamp(0.25, 1.0);
 
-            re_log::trace!("RAM limit: {limit}");
-            if let Some(resident) = mem_use_before.resident {
-                re_log::trace!("Resident: {}", format_bytes(resident as _),);
-            }
-            if let Some(counted) = mem_use_before.counted {
-                re_log::trace!("Counted: {}", format_bytes(counted as _));
-            }
-            if external_mem > 0 {
-                re_log::trace!("External: {}", format_bytes(external_mem as _));
-            }
-
-            re_tracing::profile_scope!("pruning");
-            if let Some(counted) = mem_use_before.counted {
+            if let Some(counted) = mem_use_after_app_caches.counted {
                 re_log::trace!(
                     "Attempting to purge {:.1}% of used RAM ({})…",
                     100.0 * fraction_to_purge,
@@ -971,37 +1019,43 @@ impl App {
                 self.active_recording_id(),
                 &|store_id| self.state.time_cursor_for(store_id).map(|t| t.time_cursor),
             );
-            self.state.app_caches.purge_memory();
-
-            let mem_use_after = MemoryUse::capture();
-
-            let freed_memory = mem_use_before - mem_use_after;
-
-            if let (Some(counted_before), Some(counted_diff)) =
-                (mem_use_before.counted, freed_memory.counted)
-                && 0 < counted_diff
-            {
-                re_log::debug!(
-                    "GC result: -{} (-{:.1}%).",
-                    format_bytes(counted_diff as _),
-                    100.0 * counted_diff as f32 / counted_before as f32
-                );
-            }
-
-            // Cache app overhead = total memory use minus all recording chunk data.
-            // This captures fonts, UI state, indices, and other unevictable memory.
-            if let Some(current_mem_use) = mem_use_after.counted.or(mem_use_after.resident) {
-                let total_chunk_bytes: u64 = store_hub
-                    .store_bundle()
-                    .recordings()
-                    .map(|r| r.byte_size_of_physical_chunks())
-                    .sum();
-                self.cached_app_overhead_bytes =
-                    Some(current_mem_use.saturating_sub(total_chunk_bytes));
-            }
-
-            self.dev_panel.note_memory_purge();
         }
+
+        // The network-level chunk cache goes last. Its chunks are shared between segments, so
+        // dropping them means downloading the same asset again for the next segment that wants it,
+        // which is exactly what the cache exists to avoid.
+        if limit.is_exceeded_by(&memory_use()).is_some() {
+            self.connection_registry.purge_memory();
+        }
+
+        let mem_use_after = MemoryUse::capture();
+
+        let freed_memory = mem_use_before - mem_use_after;
+
+        if let (Some(counted_before), Some(counted_diff)) =
+            (mem_use_before.counted, freed_memory.counted)
+            && 0 < counted_diff
+        {
+            re_log::debug!(
+                "GC result: -{} (-{:.1}%).",
+                format_bytes(counted_diff as _),
+                100.0 * counted_diff as f32 / counted_before as f32
+            );
+        }
+
+        // Cache app overhead = total memory use minus all recording chunk data.
+        // This captures fonts, UI state, indices, and other unevictable memory.
+        if let Some(current_mem_use) = mem_use_after.counted.or(mem_use_after.resident) {
+            let total_chunk_bytes: u64 = store_hub
+                .store_bundle()
+                .recordings()
+                .map(|r| r.byte_size_of_physical_chunks())
+                .sum();
+            self.cached_app_overhead_bytes =
+                Some(current_mem_use.saturating_sub(total_chunk_bytes));
+        }
+
+        self.dev_panel.note_memory_purge();
     }
 
     /// Prefetch chunks for the open recording (stream from server)

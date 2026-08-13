@@ -14,7 +14,7 @@ use re_renderer::resource_managers::{
 };
 use re_renderer::{RenderContext, pad_rgb_to_rgba};
 use re_sdk_types::components::ClassId;
-use re_sdk_types::datatypes::{ChannelDatatype, ColorModel, ImageFormat, PixelFormat};
+use re_sdk_types::encodings::{ChannelDatatype, ColorModel, ImageFormat, PixelFormat};
 use re_sdk_types::image::ImageKind;
 use wgpu::TextureFormat;
 

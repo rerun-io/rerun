@@ -1777,7 +1777,7 @@ impl Chunk {
             }
         }
 
-        let unsorted_timelines = self.unsorted_timelines();
+        let unsorted_timelines: Vec<_> = self.unsorted_timelines().collect();
         if !unsorted_timelines.is_empty() {
             if re_log::is_rerun_very_strict() {
                 panic!(

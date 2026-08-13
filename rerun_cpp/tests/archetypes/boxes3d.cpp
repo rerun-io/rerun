@@ -4,7 +4,7 @@
 
 using namespace rerun;
 using namespace rerun::archetypes;
-using namespace rerun::datatypes;
+using namespace rerun::encodings;
 
 #define TEST_TAG "[boxes3d][archetypes]"
 

@@ -80,6 +80,12 @@ pub struct AppOptions {
 
 impl Default for AppOptions {
     fn default() -> Self {
+        Self::default_with_custom_window_decorations(re_ui::custom_window_decorations_default())
+    }
+}
+
+impl AppOptions {
+    fn default_with_custom_window_decorations(custom_window_decorations: bool) -> Self {
         Self {
             experimental: Default::default(),
 
@@ -89,7 +95,7 @@ impl Default for AppOptions {
 
             show_notification_toasts: true,
 
-            custom_window_decorations: re_ui::custom_window_decorations_default(),
+            custom_window_decorations,
 
             include_rerun_examples_button_in_recordings_panel: true,
 
@@ -115,16 +121,13 @@ impl Default for AppOptions {
             cache_directory: Self::default_cache_directory(),
         }
     }
-}
 
-impl AppOptions {
     pub fn test() -> Self {
         Self {
             memory_limit: MemoryLimit::UNLIMITED,
             show_metrics: false, // flaky in snapshot tests
-            #[cfg(any(target_os = "windows", target_os = "linux"))]
-            custom_window_decorations: false,
-            ..Default::default()
+            // Ensure to not probe the Wayland compositor, because tests run without one.
+            ..Self::default_with_custom_window_decorations(false)
         }
     }
 
@@ -195,7 +198,7 @@ pub struct ExperimentalAppOptions {
     /// Enable table cards and blueprints.
     ///
     /// This enables registered table blueprints,
-    /// plus the table/grid view toggle for card-based table layouts.
+    /// plus the table/card layout toggle for server-supplied tables.
     pub table_cards_and_blueprints: bool,
 
     /// Enable gamepad navigation in 3D spatial views.
@@ -207,15 +210,11 @@ pub struct ExperimentalAppOptions {
     /// slow for large clouds. Opaque point clouds render much faster.
     pub point_cloud_transparency: bool,
 
-    /// Host an in-process "internal catalog" `re_server` and load `.rrd` files through it instead
-    /// of importing them directly into the viewer.
+    /// Load `.rrd` files through the Viewer's in-process catalog instead of importing them
+    /// as a live recording.
     ///
-    /// Read from persisted state at app startup; changes to this setting require a restart to
-    /// take effect. When enabled, opened `.rrd` files are registered with the catalog and surfaced
-    /// as redap datasets under an internal server in the recording panel. When disabled, files are
-    /// imported directly into the viewer as plain recordings.
-    ///
-    /// Native-only; ignored unless the viewer was built with internal catalog support.
-    #[cfg(not(target_arch = "wasm32"))]
+    /// When enabled, opened `.rrd` files are registered with the catalog and surfaced as redap
+    /// datasets under an internal server in the recording panel. When disabled, files are imported
+    /// directly into the viewer as plain recordings.
     pub use_internal_catalog: bool,
 }

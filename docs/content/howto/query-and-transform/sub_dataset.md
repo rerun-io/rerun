@@ -1,6 +1,7 @@
 ---
 title: Creating sub-datasets
 order: 115
+description: Reference a subset of an existing dataset without copying
 ---
 
 When experimenting with new features it's often practical to work with a subset of data without modifying the original.

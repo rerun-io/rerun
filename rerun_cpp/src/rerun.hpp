@@ -3,6 +3,9 @@
 // Built-in Rerun types (largely generated from an interface definition language)
 #include "rerun/archetypes.hpp"
 #include "rerun/components.hpp"
+#include "rerun/encodings.hpp"
+
+// Deprecated alias: `rerun::datatypes` is now `rerun::encodings`.
 #include "rerun/datatypes.hpp"
 
 // Rerun API.
@@ -62,24 +65,24 @@ namespace rerun {
     using components::Vector2D;
     using components::Vector3D;
 
-    using datatypes::Angle;
-    using datatypes::AnnotationInfo;
-    using datatypes::ChannelDatatype;
-    using datatypes::ClassDescription;
-    using datatypes::ColorModel;
-    using datatypes::DVec2D;
-    using datatypes::Float32;
-    using datatypes::KeypointPair;
-    using datatypes::Mat3x3;
-    using datatypes::PixelFormat;
-    using datatypes::Quaternion;
-    using datatypes::Rgba32;
-    using datatypes::RotationAxisAngle;
-    using datatypes::TensorBuffer;
-    using datatypes::TensorData;
-    using datatypes::Vec2D;
-    using datatypes::Vec3D;
-    using datatypes::Vec4D;
+    using encodings::Angle;
+    using encodings::AnnotationInfo;
+    using encodings::ChannelDatatype;
+    using encodings::ClassDescription;
+    using encodings::ColorModel;
+    using encodings::DVec2D;
+    using encodings::Float32;
+    using encodings::KeypointPair;
+    using encodings::Mat3x3;
+    using encodings::PixelFormat;
+    using encodings::Quaternion;
+    using encodings::Rgba32;
+    using encodings::RotationAxisAngle;
+    using encodings::TensorBuffer;
+    using encodings::TensorData;
+    using encodings::Vec2D;
+    using encodings::Vec3D;
+    using encodings::Vec4D;
 
     // Document namespaces that span several files:
 
@@ -89,8 +92,8 @@ namespace rerun {
     /// All built-in components. See [Types](https://www.rerun.io/docs/reference/types) in the Rerun manual.
     namespace components {}
 
-    /// All built-in datatypes. See [Types](https://www.rerun.io/docs/reference/types) in the Rerun manual.
-    namespace datatypes {}
+    /// All built-in encodings. See [Types](https://www.rerun.io/docs/reference/types) in the Rerun manual.
+    namespace encodings {}
 
     /// All blueprint types. This is still experimental and subject to change!
     namespace blueprint {}

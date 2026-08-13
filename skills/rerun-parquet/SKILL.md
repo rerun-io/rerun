@@ -14,9 +14,8 @@ become a single struct component, designated columns become timelines. The
 reader does **not** assemble archetypes anymore — mapping struct fields into
 typed Rerun components (Transform3D, Scalars, Points3D) is done with lenses on
 the reader's `.stream()`. The whole reader job is configuration; fill in the
-`rerun-data-model` mapping table first, then express it through the
-constructor. Stream mechanics after `.stream()` are in
-`rerun-chunk-processing`.
+`rerun-data-model` mapping table first, then express it through `stream()`.
+Stream mechanics after `.stream()` are in `rerun-chunk-processing`.
 
 **The whole table is configuration, not code.** If you find yourself building
 `Chunk.from_columns` from a parquet, or munging it in pandas first, stop —
@@ -28,23 +27,24 @@ columnar.
 ## The API
 
 ```python
-from rerun.experimental import ParquetReader, DeriveLens
+from rerun.experimental import ParquetReader, DeriveLens, IndexColumn
 
-reader = ParquetReader(
-    table_path,
+reader = ParquetReader(table_path)  # a lightweight handle over the file
+stream = reader.stream(
     entity_path_prefix="/world",  # prepended to every entity path
     column_grouping="prefix",  # "prefix" | "individual" | "explicit_prefixes"
     delimiter="_",  # split for column_grouping="prefix"
     prefixes=None,  # required for "explicit_prefixes"
     use_structs=True,  # pack grouped columns into one struct component
     static_columns=["robot_type"],  # constant-per-file values, logged static
-    index_columns=[("timestamp", "timestamp", "us"), ("frame_index", "sequence")],
+    index_columns=[IndexColumn.timestamp("timestamp", input_unit="us"), IndexColumn.sequence("frame_index")],
 )
-stream = reader.stream()
 ```
 
-Every parameter after `path` is keyword-only. There is no `column_rules`
-kwarg — typed-component assembly moved to lenses (below).
+The constructor takes only `path`; all loading options live on `stream()`, and every one is keyword-only.
+Each `stream()` call is independent, so one reader can drive several differently-configured streams over the same file.
+The config is validated against the file's schema at `stream()` (missing index/static columns raise `ValueError` there, not mid-iteration).
+There is no `column_rules` kwarg — typed-component assembly moved to lenses (below).
 
 ## What the reader emits
 
@@ -90,13 +90,10 @@ queries see as separate columns).
 
 ## Timelines: `index_columns`
 
-Each entry is `(name, type)` or `(name, type, unit)`:
+Each entry is built with `IndexColumn`: `IndexColumn.timestamp(name, input_unit=...)` (since epoch), `IndexColumn.duration(name, input_unit=...)` (elapsed), or `IndexColumn.sequence(name)` (ordinal int).
 
-- `type`: `"timestamp"` (since epoch), `"duration"` (elapsed), `"sequence"`
-  (ordinal int).
-- `unit` describes what the raw integers in the column *are* (`"ns"` default,
-  `"us"`, `"ms"`, `"s"`); Rerun rescales to ns internally. Ignored for
-  `"sequence"`.
+- `input_unit` describes what the raw integers in the column *are* (`"ns"` default,
+  `"us"`, `"ms"`, `"s"`); Rerun rescales to ns internally. Sequences take no unit.
 
 **If omitted, a synthetic `row_index` sequence timeline is generated.** That
 is almost never the timeline you want to query or align against; always name
@@ -158,7 +155,7 @@ struct at `/A`; the lens reads the prefix-stripped field names (`pos_x`,
 `quat_w`), packs and casts them, and writes a full `Transform3D` to `/pose`:
 
 ```python
-from rerun.experimental import DeriveLens, ParquetReader
+from rerun.experimental import DeriveLens, IndexColumn, ParquetReader
 
 lens = (
     DeriveLens("data", output_entity="/pose")
@@ -167,8 +164,8 @@ lens = (
 )
 
 chunks = (
-    ParquetReader(table_path, index_columns=[("frame_index", "sequence")])
-    .stream()
+    ParquetReader(table_path)
+    .stream(index_columns=[IndexColumn.sequence("frame_index")])
     .lenses([lens], content="/A", output_mode="drop_unmatched")
     .to_chunks()
 )
@@ -206,8 +203,9 @@ when you need a custom field path. Field paths reference the
 2. The `unit` is the raw column's unit, not a desired output unit; a
    microsecond column declared `"ns"` lands 1000x in the past.
 3. `static_columns` raises if a listed column actually varies; that error is a
-   data-quality signal, not a reason to drop the static declaration. It is
-   raised lazily when the stream runs, not at construction.
+   data-quality signal, not a reason to drop the static declaration.
+   Uniformity is data-dependent, so it is raised lazily when the stream runs;
+   a listed column that doesn't *exist* raises eagerly at `stream()`.
 4. A grouped prefix's struct component is named **`data`** — that is the
    `input_component` string a `DeriveLens` matches against. A lone or
    `"individual"` column is instead a raw component named after the column.

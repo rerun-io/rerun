@@ -21,17 +21,17 @@ pub fn test_annotations() {
                     (
                         0,
                         "black",
-                        re_sdk_types::datatypes::Rgba32::from_rgb(0, 0, 0),
+                        re_sdk_types::encodings::Rgba32::from_rgb(0, 0, 0),
                     ),
                     (
                         1,
                         "red",
-                        re_sdk_types::datatypes::Rgba32::from_rgb(255, 0, 0),
+                        re_sdk_types::encodings::Rgba32::from_rgb(255, 0, 0),
                     ),
                     (
                         2,
                         "green",
-                        re_sdk_types::datatypes::Rgba32::from_rgb(0, 255, 0),
+                        re_sdk_types::encodings::Rgba32::from_rgb(0, 255, 0),
                     ),
                 ]),
             )

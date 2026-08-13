@@ -1,6 +1,6 @@
 //! Send a `.rrd` to a new recording stream.
 
-use rerun::external::re_chunk_store::{ChunkStore, ChunkStoreConfig};
+use rerun::{ChunkStore, ChunkStoreConfig};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Get the filename from the command-line args.
@@ -8,8 +8,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         std::env::args().nth(2).ok_or("Missing filename argument")?;
 
     // Load the chunk store from the file.
+    let mut rrd_file = std::fs::File::open(&filename)?;
     let (store_id, store) =
-        ChunkStore::from_rrd_filepath(&ChunkStoreConfig::DEFAULT, filename)?
+        ChunkStore::from_rrd_reader(&ChunkStoreConfig::DEFAULT, &mut rrd_file)?
             .into_iter()
             .next()
             .ok_or("Expected exactly one recording in the archive")?;

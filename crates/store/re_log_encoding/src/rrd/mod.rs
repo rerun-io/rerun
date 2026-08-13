@@ -34,6 +34,9 @@ pub(crate) mod test_util;
 mod chunk_reader;
 
 #[cfg(feature = "decoder")]
+mod fingerprint;
+
+#[cfg(feature = "decoder")]
 mod footer_reader;
 
 #[cfg(feature = "encoder")]
@@ -56,12 +59,16 @@ pub use self::errors::{CodecError, CodecResult, NotAnRrdError, OptionsError};
 #[cfg(feature = "encoder")]
 #[cfg(not(target_arch = "wasm32"))]
 pub use self::file_sink::{FileFlushError, FileSink, FileSinkError, FileSinkOptions};
+#[cfg(feature = "decoder")]
+pub use self::fingerprint::RrdFingerprint;
 pub use self::footer::{
-    RawRrdManifest, RrdFooter, RrdManifest, RrdManifestBuilder, RrdManifestSha256,
+    HubRrdManifest, RawRrdManifest, RrdFooter, RrdManifest, RrdManifestBuilder, RrdManifestSha256,
     RrdManifestStaticMap, RrdManifestTemporalMap, RrdManifestTemporalMapEntry,
 };
 #[cfg(feature = "decoder")]
-pub use self::footer_reader::{enumerate_rrd_stores, read_rrd_footer};
+pub use self::footer_reader::{
+    RrdMetadata, enumerate_legacy_metadata, enumerate_rrd_stores, read_rrd_footer,
+};
 pub use self::frames::{
     Compression, CrateVersion, EncodingOptions, MessageHeader, MessageKind, Serializer,
     StreamFooter, StreamFooterEntry, StreamHeader,

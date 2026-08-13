@@ -4,8 +4,8 @@
 
 #include "components/rotation_axis_angle.hpp"
 #include "components/rotation_quat.hpp"
-#include "datatypes/quaternion.hpp"
-#include "datatypes/rotation_axis_angle.hpp"
+#include "encodings/quaternion.hpp"
+#include "encodings/rotation_axis_angle.hpp"
 
 namespace rerun {
     /// Utility for representing a single 3D rotation, agnostic to the underlying representation.
@@ -25,9 +25,9 @@ namespace rerun {
         Rotation3D(rerun::components::RotationQuat quaternion_) : quaternion(quaternion_) {}
 
         /// Construct a `Rotation3D` from a rotation axis and angle datatype.
-        Rotation3D(rerun::datatypes::RotationAxisAngle axis_angle_) : axis_angle(axis_angle_) {}
+        Rotation3D(rerun::encodings::RotationAxisAngle axis_angle_) : axis_angle(axis_angle_) {}
 
         /// Construct a `Rotation3D` from a quaternion datatype.
-        Rotation3D(rerun::datatypes::Quaternion quaternion_) : quaternion(quaternion_) {}
+        Rotation3D(rerun::encodings::Quaternion quaternion_) : quaternion(quaternion_) {}
     };
 } // namespace rerun

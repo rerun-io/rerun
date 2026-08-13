@@ -473,7 +473,7 @@ class RecordingStream:
         sinks:
             A list of sinks to wrap.
 
-            See [`rerun.GrpcSink`][], [`rerun.FileSink`][].
+            See [`rerun.GrpcSink`][], [`rerun.GrpcServerSink`][], [`rerun.FileSink`][].
         default_blueprint:
             Optionally set a default blueprint to use for this application. If the application
             already has an active blueprint, the new blueprint won't become active until the user

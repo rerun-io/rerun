@@ -1,4 +1,3 @@
-mod camera_info;
 mod compressed_image;
 mod image;
 mod imu;
@@ -8,7 +7,6 @@ mod nav_sat_fix;
 mod point_cloud_2;
 mod scalar_msgs;
 
-pub use camera_info::*;
 pub use compressed_image::*;
 pub use image::*;
 pub use imu::*;

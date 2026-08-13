@@ -11,13 +11,13 @@ expression: "format_chunk(&chunks[0])"
 │ ┌───────────────────────────────────────────────┬───────────────────────────────┬──────────────────────────────────┬──────────────────────────────────────────────────────────┐ │
 │ │ RowId                                         ┆ message_log_time              ┆ message_publish_time             ┆ com.example.Person:message                               │ │
 │ │ ---                                           ┆ ---                           ┆ ---                              ┆ ---                                                      │ │
-│ │ type: non-null FixedSizeBinary(16)            ┆ type: Timestamp(ns)           ┆ type: Timestamp(ns)              ┆ type: List(Struct("name": Utf8, "id": Int32, "status":   │ │
-│ │ ARROW:extension:metadata: {"namespace":"row"} ┆ index_name: message_log_time  ┆ index_name: message_publish_time ┆ Struct("name": Utf8, "value": Int32), metadata:          │ │
-│ │ ARROW:extension:name: TUID                    ┆ is_sorted: true               ┆ is_sorted: true                  ┆ {"ARROW:extension:name":                                 │ │
+│ │ type: non-null FixedSizeBinary(16)            ┆ type: Timestamp(ns)           ┆ type: Timestamp(ns)              ┆ type: List(Struct("name": non-null Utf8, "id": non-null  │ │
+│ │ ARROW:extension:metadata: {"namespace":"row"} ┆ index_name: message_log_time  ┆ index_name: message_publish_time ┆ Int32, "status": non-null Struct("name": Utf8, "value":  │ │
+│ │ ARROW:extension:name: TUID                    ┆ is_sorted: true               ┆ is_sorted: true                  ┆ Int32), metadata: {"ARROW:extension:name":               │ │
 │ │ is_sorted: true                               ┆ kind: index                   ┆ kind: index                      ┆ "rerun.datatypes.ProtobufEnum"}, "address":              │ │
-│ │ kind: control                                 ┆                               ┆                                  ┆ Struct("street": Utf8, "city": Utf8), "tags":            │ │
-│ │                                               ┆                               ┆                                  ┆ Map("entries": non-null Struct("key": non-null Utf8,     │ │
-│ │                                               ┆                               ┆                                  ┆ "value": Utf8), unsorted)))                              │ │
+│ │ kind: control                                 ┆                               ┆                                  ┆ Struct("street": non-null Utf8, "city": non-null Utf8),  │ │
+│ │                                               ┆                               ┆                                  ┆ "tags": Map("entries": non-null Struct("key": non-null   │ │
+│ │                                               ┆                               ┆                                  ┆ Utf8, "value": non-null Utf8), unsorted)))               │ │
 │ │                                               ┆                               ┆                                  ┆ archetype: com.example.Person                            │ │
 │ │                                               ┆                               ┆                                  ┆ component: com.example.Person:message                    │ │
 │ │                                               ┆                               ┆                                  ┆ kind: data                                               │ │

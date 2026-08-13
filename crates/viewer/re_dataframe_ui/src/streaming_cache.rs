@@ -1,4 +1,3 @@
-use std::any::Any;
 use std::fmt;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -20,12 +19,12 @@ use datafusion::physical_plan::{
 use datafusion::prelude::Expr;
 use datafusion::{catalog::TableProvider, datasource::MemTable};
 use futures::{Stream, StreamExt as _};
+use re_async::AsyncRuntimeHandle;
 use re_mutex::Mutex;
-use re_viewer_context::AsyncRuntimeHandle;
 
 /// State of the streaming cache.
-#[derive(Debug, Clone)]
-pub enum CacheState {
+#[derive(Debug)]
+enum CacheState {
     NotStarted,
     Streaming,
     Complete(Arc<MemTable>),
@@ -149,11 +148,6 @@ impl StreamingCacheTableProvider {
         self.cache.lock().lock().cached_batches.len()
     }
 
-    /// Get the current cache state.
-    pub fn state(&self) -> CacheState {
-        self.cache.lock().lock().state.clone()
-    }
-
     /// Background task: stream from [`TableProvider`] to cache.
     ///
     /// Stops early if no consumers remain (detected via `Arc` strong count).
@@ -196,10 +190,6 @@ impl StreamingCacheTableProvider {
 
 #[async_trait]
 impl TableProvider for StreamingCacheTableProvider {
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
     fn schema(&self) -> SchemaRef {
         Arc::clone(&self.schema)
     }
@@ -320,10 +310,6 @@ impl ExecutionPlan for CachedStreamingExec {
         "CachedStreamingExec"
     }
 
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
     fn schema(&self) -> SchemaRef {
         Arc::clone(&self.cache.lock().schema)
     }
@@ -366,7 +352,7 @@ impl ExecutionPlan for CachedStreamingExec {
 }
 
 /// A stream that yields cached batches, waiting for new ones as needed.
-pub struct CachedRecordBatchStream {
+struct CachedRecordBatchStream {
     cache: Arc<Mutex<StreamingCacheInner>>,
 
     /// Current read position in the cache.

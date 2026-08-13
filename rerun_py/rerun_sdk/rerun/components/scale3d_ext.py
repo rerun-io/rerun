@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from rerun.datatypes import Float32Like, Vec3DLike
+    from rerun.encodings import Float32Like, Vec3DLike
 
 
 class Scale3DExt:

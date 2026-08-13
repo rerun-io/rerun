@@ -17,7 +17,7 @@ import pyarrow as pa
 
 import rerun as rr
 import rerun.blueprint as rrb
-from rerun.blueprint.datatypes import ComponentSourceKind, VisualizerComponentMapping
+from rerun.blueprint.encodings import ComponentSourceKind, VisualizerComponentMapping
 
 DESCRIPTION = """
 # State timeline

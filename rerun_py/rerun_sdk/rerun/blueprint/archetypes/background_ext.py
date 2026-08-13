@@ -6,7 +6,7 @@ from ...error_utils import catch_and_log_exceptions
 from .. import components as blueprint_components
 
 if TYPE_CHECKING:
-    from ... import datatypes
+    from ... import encodings
 
 
 class BackgroundExt:
@@ -14,9 +14,9 @@ class BackgroundExt:
 
     def __init__(
         self: Any,
-        color_or_kind: datatypes.Rgba32Like | blueprint_components.BackgroundKindLike | None = None,
+        color_or_kind: encodings.Rgba32Like | blueprint_components.BackgroundKindLike | None = None,
         *,
-        color: datatypes.Rgba32Like | None = None,
+        color: encodings.Rgba32Like | None = None,
         kind: blueprint_components.BackgroundKindLike | None = None,
     ) -> None:
         """

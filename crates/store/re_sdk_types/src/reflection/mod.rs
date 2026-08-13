@@ -406,7 +406,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <QueryExpression as Component>::name(),
             ComponentReflection {
-                docstring_md: "An individual query expression used to filter a set of [`datatypes.EntityPath`](https://rerun.io/docs/reference/types/datatypes/entity_path)s.\n\nEach expression is either an inclusion or an exclusion expression.\nInclusions start with an optional `+` and exclusions must start with a `-`.\n\nMultiple expressions are combined together as part of archetypes.ViewContents.\n\nThe `/**` suffix matches the whole subtree, i.e. self and any child, recursively\n(`/world/**` matches both `/world` and `/world/car/driver`).\nOther uses of `*` are not (yet) supported.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                docstring_md: "An individual query expression used to filter a set of [`encodings.EntityPath`](https://rerun.io/docs/reference/types/encodings/entity_path?speculative-link)s.\n\nEach expression is either an inclusion or an exclusion expression.\nInclusions start with an optional `+` and exclusions must start with a `-`.\n\nMultiple expressions are combined together as part of archetypes.ViewContents.\n\nThe `/**` suffix matches the whole subtree, i.e. self and any child, recursively\n(`/world/**` matches both `/world` and `/world/car/driver`).\nOther uses of `*` are not (yet) supported.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(QueryExpression::default().to_arrow()?),
                 datatype: QueryExpression::arrow_datatype(),
@@ -659,7 +659,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <AnnotationContext as Component>::name(),
             ComponentReflection {
-                docstring_md: "The annotation context provides additional information on how to display entities.\n\nEntities can use [`datatypes.ClassId`](https://rerun.io/docs/reference/types/datatypes/class_id)s and [`datatypes.KeypointId`](https://rerun.io/docs/reference/types/datatypes/keypoint_id)s to provide annotations, and\nthe labels and colors will be looked up in the appropriate\nannotation context. We use the *first* annotation context we find in the\npath-hierarchy when searching up through the ancestors of a given entity\npath.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                docstring_md: "The annotation context provides additional information on how to display entities.\n\nEntities can use [`encodings.ClassId`](https://rerun.io/docs/reference/types/encodings/class_id?speculative-link)s and [`encodings.KeypointId`](https://rerun.io/docs/reference/types/encodings/keypoint_id?speculative-link)s to provide annotations, and\nthe labels and colors will be looked up in the appropriate\nannotation context. We use the *first* annotation context we find in the\npath-hierarchy when searching up through the ancestors of a given entity\npath.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(AnnotationContext::default().to_arrow()?),
                 datatype: AnnotationContext::arrow_datatype(),
@@ -1284,6 +1284,28 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <SphericalHarmonics3Rgb as Component>::name(),
+            ComponentReflection {
+                docstring_md: "View-dependent color, expressed as spherical harmonics coefficients of degrees 1 through 3.\n\nThe view-independent (degree-0) base color is represented as a separate [`components.Color`](https://rerun.io/docs/reference/types/components/color).\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: None,
+                datatype: SphericalHarmonics3Rgb::arrow_datatype(),
+                is_enum: false,
+                verify_arrow_array: SphericalHarmonics3Rgb::verify_arrow_array,
+            },
+        ),
+        (
+            <SphericalHarmonicsDegree as Component>::name(),
+            ComponentReflection {
+                docstring_md: "The highest spherical harmonics degree to evaluate when rendering, 0-3.\n\n`0` renders the view-independent base color only, and is the fastest.\nEach higher degree brings in more view-dependent detail, at the cost of fetching and\nevaluating more coefficients ([`components.SphericalHarmonics3Rgb`](https://rerun.io/docs/reference/types/components/spherical_harmonics3rgb)):\n3 of them for degree 1, 8 for degree 2, and all 15 for degree 3.\n\nLowering this in the blueprint can make the rendering a lot faster.\n\nDefaults to 3, i.e. every coefficient the data has.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: Some(SphericalHarmonicsDegree::default().to_arrow()?),
+                datatype: SphericalHarmonicsDegree::arrow_datatype(),
+                is_enum: false,
+                verify_arrow_array: SphericalHarmonicsDegree::verify_arrow_array,
+            },
+        ),
+        (
             <StrokeWidth as Component>::name(),
             ComponentReflection {
                 docstring_md: "The width of a stroke specified in UI points.",
@@ -1506,7 +1528,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <ViewCoordinates as Component>::name(),
             ComponentReflection {
-                docstring_md: "How we interpret the coordinate system of an entity/space.\n\nFor instance: What is \"up\"? What does the Z axis mean?\n\nThe three coordinates are always ordered as [x, y, z].\n\nFor example [Right, Down, Forward] means that the X axis points to the right, the Y axis points\ndown, and the Z axis points forward.\n\n⚠ [Rerun does not yet support left-handed coordinate systems](https://github.com/rerun-io/rerun/issues/5032).\n\nThe following constants are used to represent the different directions:\n * Up = 1\n * Down = 2\n * Right = 3\n * Left = 4\n * Forward = 5\n * Back = 6\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                docstring_md: "An orientation convention for a camera or 3D view.\n\nOn [`archetypes.Pinhole`](https://rerun.io/docs/reference/types/archetypes/pinhole), this component controls the camera orientation and projection direction.\nOn [SpatialInformation](https://rerun.io/docs/reference/types/views/spatial3d_view), it controls the 3D view's eye orientation, navigation, and default grid plane.\nA logged [`archetypes.ViewCoordinates`](https://rerun.io/docs/reference/types/archetypes/view_coordinates) provides the default for [SpatialInformation](https://rerun.io/docs/reference/types/views/spatial3d_view).\n\nThe three directions are always ordered as [x, y, z] and specify where each positive axis points.\nFor example, [Right, Down, Forward] means that +X points right, +Y points down, and +Z points forward.\n\n⚠ [Rerun does not yet support left-handed coordinate systems](https://github.com/rerun-io/rerun/issues/5032).\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(ViewCoordinates::default().to_arrow()?),
                 datatype: ViewCoordinates::arrow_datatype(),
@@ -2493,6 +2515,59 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
+            ArchetypeName::from("rerun.archetypes.GaussianSplats3D"),
+            ArchetypeReflection {
+                display_name: "Gaussian splats 3D",
+                deprecation_summary: None,
+                scope: None,
+                view_types: &["Spatial3DView"],
+                fields: vec![
+                    ArchetypeFieldReflection {
+                        name: "centers",
+                        display_name: "Centers",
+                        component_type: "rerun.components.Position3D".into(),
+                        docstring_md: "The centers (means) of the gaussians.",
+                        flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "scales",
+                        display_name: "Scales",
+                        component_type: "rerun.components.Scale3D".into(),
+                        docstring_md: "Per-axis standard deviations of the gaussians, in scene units.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "quaternions",
+                        display_name: "Quaternions",
+                        component_type: "rerun.components.RotationQuat".into(),
+                        docstring_md: "The orientations of the gaussians.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "colors",
+                        display_name: "Colors",
+                        component_type: "rerun.components.Color".into(),
+                        docstring_md: "The base colors and opacities of the gaussians.\n\nThe RGB part is the view-independent base color, i.e. the degree-0 (DC) term of the spherical harmonics.\nThe alpha part is the peak opacity of the gaussian; the gaussian falloff further modulates it spatially.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "sh_coefficients",
+                        display_name: "Sh coefficients",
+                        component_type: "rerun.components.SphericalHarmonics3Rgb".into(),
+                        docstring_md: "Higher-order spherical harmonics coefficients for view-dependent color.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "spherical_harmonics_degree",
+                        display_name: "Spherical harmonics degree",
+                        component_type: "rerun.components.SphericalHarmonicsDegree".into(),
+                        docstring_md: "The highest spherical harmonics degree to evaluate when rendering, 0-3.\n\nLower values render faster; `0` disables view-dependent color entirely.\nIf not set, defaults to 3, i.e. all coefficients present in the data are used.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                ],
+            },
+        ),
+        (
             ArchetypeName::from("rerun.archetypes.GeoLineStrings"),
             ArchetypeReflection {
                 display_name: "Geo line strings",
@@ -2893,7 +2968,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         name: "colors",
                         display_name: "Colors",
                         component_type: "rerun.components.Color".into(),
-                        docstring_md: "Optional colors for the line strips.",
+                        docstring_md: "Optional colors for the line strips.\n\nThe alpha channel is ignored.",
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
@@ -3195,7 +3270,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         name: "camera_xyz",
                         display_name: "Camera xyz",
                         component_type: "rerun.components.ViewCoordinates".into(),
-                        docstring_md: "Sets the view coordinates for the camera.\n\nAll common values are available as constants on the [`components.ViewCoordinates`](https://rerun.io/docs/reference/types/components/view_coordinates) class.\n\nThe default is `ViewCoordinates::RDF`, i.e. X=Right, Y=Down, Z=Forward, and this is also the recommended setting.\nThis means that the camera frustum will point along the positive Z axis of the parent space,\nand the cameras \"up\" direction will be along the negative Y axis of the parent space.\n\nThe camera frustum will point whichever axis is set to `F` (or the opposite of `B`).\nWhen logging a depth image under this entity, this is the direction the point cloud will be projected.\nWith `RDF`, the default forward is +Z.\n\nThe frustum's \"up\" direction will be whichever axis is set to `U` (or the opposite of `D`).\nThis will match the negative Y direction of pixel space (all images are assumed to have xyz=RDF).\nWith `RDF`, the default is up is -Y.\n\nThe frustum's \"right\" direction will be whichever axis is set to `R` (or the opposite of `L`).\nThis will match the positive X direction of pixel space (all images are assumed to have xyz=RDF).\nWith `RDF`, the default right is +x.\n\nOther common formats are `RUB` (X=Right, Y=Up, Z=Back) and `FLU` (X=Forward, Y=Left, Z=Up).\n\nNOTE: setting this to something else than `RDF` (the default) will change the orientation of the camera frustum,\nand make the pinhole matrix not match up with the coordinate system of the pinhole entity.\n\nThe pinhole matrix (the `image_from_camera` argument) always project along the third (Z) axis,\nbut will be re-oriented to project along the forward axis of the `camera_xyz` argument.",
+                        docstring_md: "Sets the camera orientation convention.\n\nAll common values are available as constants on the [`components.ViewCoordinates`](https://rerun.io/docs/reference/types/components/view_coordinates) class.\n\nThe default is `ViewCoordinates::RDF`: +X is right, +Y is down, and +Z is forward.\nThis makes the camera frustum point along +Z in the parent space, with its up direction along -Y.\n\nThe camera frustum points along the axis set to `F`, or opposite the axis set to `B`.\nWhen logging a depth image under this entity, this is the direction in which the point cloud is projected.\n\nThe frustum's up direction is the axis set to `U`, or opposite the axis set to `D`.\nThis matches the -Y direction of pixel space, where all images use RDF coordinates.\n\nThe frustum's right direction is the axis set to `R`, or opposite the axis set to `L`.\nThis matches the +X direction of pixel space.\n\nOther common formats are `RUB` (X=Right, Y=Up, Z=Back) and `FLU` (X=Forward, Y=Left, Z=Up).\n\n`image_from_camera` is always defined to project along +Z in camera coordinates.\n`camera_xyz` reorients that projection to the forward axis of the pinhole entity.",
                         flags: ArchetypeFieldFlags::empty(),
                     },
                     ArchetypeFieldReflection {
@@ -3329,7 +3404,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         name: "colors",
                         display_name: "Colors",
                         component_type: "rerun.components.Color".into(),
-                        docstring_md: "Optional colors for the points.",
+                        docstring_md: "Optional colors for the points.\n\nBy default, the alpha channel affects brightness rather than transparency.\nTODO(#1611): To use the alpha channel for transparency, enable the experimental \"Transparent point clouds\" feature flag.",
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
@@ -4401,7 +4476,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         name: "plane",
                         display_name: "Plane",
                         component_type: "rerun.components.Plane3D".into(),
-                        docstring_md: "In what plane the grid is drawn.\n\nDefaults to whatever plane is determined as the plane at zero units up/down as defined by [`components.ViewCoordinates`](https://rerun.io/docs/reference/types/components/view_coordinates) if present.",
+                        docstring_md: "In what plane the grid is drawn.\n\nDefaults to the plane at zero units along the up/down axis defined by archetypes.SpatialInformation's axes property.",
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
@@ -4576,6 +4651,13 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
+                        name: "show_bounding_box",
+                        display_name: "Show bounding box",
+                        component_type: "rerun.blueprint.components.Enabled".into(),
+                        docstring_md: "Whether the bounding box should be shown.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
                         name: "show_axes",
                         display_name: "Show axes",
                         component_type: "rerun.blueprint.components.Enabled".into(),
@@ -4583,10 +4665,10 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
-                        name: "show_bounding_box",
-                        display_name: "Show bounding box",
-                        component_type: "rerun.blueprint.components.Enabled".into(),
-                        docstring_md: "Whether the bounding box should be shown.",
+                        name: "axes",
+                        display_name: "Axes",
+                        component_type: "rerun.components.ViewCoordinates".into(),
+                        docstring_md: "Controls the orientation of the axes in a 3D view; it has no effect in a 2D view.\n\nThis determines the 3D eye orientation, navigation, and default grid plane.\n\nThe three directions are always ordered as [x, y, z] and specify where each positive axis points.\nFor example, [Right, Down, Forward] means that +X points right, +Y points down, and +Z points forward.\n\nWhen this property is unset, a 3D view first uses [`archetypes.ViewCoordinates`](https://rerun.io/docs/reference/types/archetypes/view_coordinates) logged at its origin entity or the closest ancestor.\nIf none is found, it uses the camera orientation from the closest ancestor [`archetypes.Pinhole`](https://rerun.io/docs/reference/types/archetypes/pinhole).\nIf neither is found, the fallback is RFU.\n\nThis property is hidden from the selection panel for 2D views.\n\n⚠ [Rerun does not yet support left-handed coordinate systems](https://github.com/rerun-io/rerun/issues/5032).",
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                 ],

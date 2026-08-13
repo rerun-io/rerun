@@ -20,6 +20,7 @@ all-features = true
 
 
 [dependencies]
+re_async.workspace = true
 re_auth.workspace = true
 re_backoff.workspace = true
 re_component_ui.workspace = true
@@ -48,14 +49,15 @@ url.workspace = true
 webbrowser.workspace = true
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-js-sys.workspace = true
+re_web.workspace = true
 # TODO(#8766): `rerun_js/web-viewer/build-wasm.mjs` is HIGHLY sensitive to changes in `wasm-bindgen`.
-#     Whenever updating `wasm-bindgen`, update this and the narrower dependency specifications in
+#     Whenever updating `wasm-bindgen`, update all three dependency specifications in
+#     `Cargo.toml`, `crates/viewer/re_redap_browser/Cargo.toml`, and
 #     `crates/viewer/re_viewer/Cargo.toml`, and make sure that notebooks still work:
 #         See `rerun_notebook/README.md` for how to run notebooks.
 #         Try running a cell which starts a viewer, and then running it again.
 #         There should be no errors in the browser console.
 #     For details see https://github.com/rerun-io/rerun/issues/8766
-wasm-bindgen = "=0.2.117" # ⚠️ read above notice before touching this!
+wasm-bindgen = "=0.2.126" # ⚠️ read above notice before touching this!
 web-sys = { workspace = true, features = ["Storage", "Window"] }
 uuid.workspace = true

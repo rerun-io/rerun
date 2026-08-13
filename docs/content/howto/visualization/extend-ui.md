@@ -1,7 +1,7 @@
 ---
 title: Implement custom visualizations (Rust only)
 order: 200
-description: How to extend the Rerun Viewer UI using Rust and egui
+description: Extend the Rerun Viewer UI using Rust and egui
 ---
 
 There are three ways to extend the Rerun Viewer with custom Rust code, depending on how deep you need to go:

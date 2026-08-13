@@ -167,8 +167,13 @@ impl<T: ?Sized> RwLock<T> {
     /// Try to acquire upgradable read-access to the lock.
     ///
     /// Will log a warning in debug builds if the lock can't be acquired within 10 seconds.
+    ///
+    /// Upgradable reads exclude each other, so this only pays off if plain [`Self::read`]s
+    /// are expected to run alongside it. Otherwise prefer a plain [`Self::read`], dropping it,
+    /// and then taking a [`Self::write`] — see the `clippy.toml` entry for this method.
     #[inline(always)]
     #[cfg_attr(debug_assertions, track_caller)]
+    #[expect(clippy::disallowed_methods, reason = "This is the wrapper")]
     pub fn read_upgradable(&self) -> RwLockUpgradableReadGuard<'_, T> {
         let guard = if cfg!(debug_assertions) {
             let loc = Location::caller();
@@ -191,6 +196,7 @@ impl<T: ?Sized> RwLock<T> {
     /// Alias for [`Self::read_upgradable`].
     #[inline(always)]
     #[cfg_attr(debug_assertions, track_caller)]
+    #[expect(clippy::disallowed_methods, reason = "This is the wrapper")]
     pub fn upgradable_read(&self) -> RwLockUpgradableReadGuard<'_, T> {
         self.read_upgradable()
     }

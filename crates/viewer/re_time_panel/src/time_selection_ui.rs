@@ -1,6 +1,6 @@
-use egui::{Color32, CursorIcon, Id, NumExt as _, Rangef, Rect};
+use egui::{Color32, CursorIcon, Id, Rangef, Rect};
 use re_log_types::{
-    AbsoluteTimeRange, AbsoluteTimeRangeF, Duration, TimeInt, TimeReal, TimeType, TimestampFormat,
+    AbsoluteTimeRange, AbsoluteTimeRangeF, Duration, TimeReal, TimeType, TimestampFormat,
 };
 use re_sdk_types::blueprint::components::LoopMode;
 use re_ui::{HasDesignTokens as _, UiExt as _, list_item};
@@ -77,10 +77,12 @@ pub fn loop_selection_ui(
     );
 
     if time_ctrl.time_selection().is_none() && time_ctrl.loop_mode() == LoopMode::Selection {
-        // Helpfully select a time slice
-        if let Some(selection) = initial_time_selection(time_ranges_ui, time_type) {
+        // There's no time selection but we're in the time selection loop mode.
+        // Ideally we never get here! But if we do, just select everything.
+        // Any attempt to heuristically select something smaller may accidentally be so small that the user doesn't notice it, causing confusion down the line.
+        if !timeline_range.is_empty() {
             time_commands.push(TimeControlCommand::SetTimeSelectionClamped(
-                selection.to_int(),
+                timeline_range.to_int(),
             ));
         }
     }
@@ -441,54 +443,6 @@ impl TimeLoopPart {
                     .value_text(format_duration(time_type, length.into())),
             );
         });
-    }
-}
-
-fn initial_time_selection(
-    time_ranges_ui: &TimeRangesUi,
-    time_type: TimeType,
-) -> Option<AbsoluteTimeRangeF> {
-    let ranges = &time_ranges_ui.segments;
-
-    // Try to find a long duration first, then fall back to shorter
-    for min_duration in [2.0, 0.5, 0.0] {
-        for segment in ranges {
-            let range = &segment.tight_time;
-            if range.min() < range.max() {
-                match time_type {
-                    TimeType::DurationNs | TimeType::TimestampNs => {
-                        let seconds = Duration::from(range.max() - range.min()).as_secs_f64();
-                        if seconds > min_duration {
-                            let one_sec =
-                                TimeInt::new_temporal(Duration::from_secs(1.0).as_nanos());
-                            return Some(AbsoluteTimeRangeF::new(
-                                range.min(),
-                                range.min() + one_sec,
-                            ));
-                        }
-                    }
-                    TimeType::Sequence => {
-                        return Some(AbsoluteTimeRangeF::new(
-                            range.min(),
-                            TimeReal::from(range.min())
-                                + TimeReal::from((range.max() - range.min()).as_f64() / 2.0),
-                        ));
-                    }
-                }
-            }
-        }
-    }
-
-    // all ranges have just a single data point in it. sight
-
-    if ranges.len() < 2 {
-        None // not enough to show anything meaningful
-    } else {
-        let end = (ranges.len() / 2).at_least(1);
-        Some(AbsoluteTimeRangeF::new(
-            ranges[0].tight_time.min(),
-            ranges[end].tight_time.max(),
-        ))
     }
 }
 

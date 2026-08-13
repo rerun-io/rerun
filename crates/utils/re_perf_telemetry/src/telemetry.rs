@@ -561,18 +561,17 @@ impl Telemetry {
         let result: anyhow::Result<Self> = (move || -> anyhow::Result<Self> {
             if !enabled {
                 if tracy_enabled {
-                    #[cfg(feature = "tracy")]
-                    {
-                        tracing_subscriber::registry()
-                            .with(self::tracy::tracy_layer())
-                            .try_init()?;
-                    }
-
-                    #[cfg(not(feature = "tracy"))]
-                    {
-                        anyhow::bail!(
-                            "`TRACY_ENABLED=true` but the 'tracy' feature flag is not toggled"
-                        );
+                    cfg_select! {
+                        feature = "tracy" => {
+                            tracing_subscriber::registry()
+                                .with(self::tracy::tracy_layer())
+                                .try_init()?;
+                        }
+                        _ => {
+                            anyhow::bail!(
+                                "`TRACY_ENABLED=true` but the 'tracy' feature flag is not toggled"
+                            );
+                        }
                     }
                 }
 
@@ -952,22 +951,21 @@ impl Telemetry {
             };
 
             if tracy_enabled {
-                #[cfg(feature = "tracy")]
-                {
-                    tracing_subscriber::registry()
-                        .with(layer_logs_otlp)
-                        .with(layer_logs_and_traces_stdio)
-                        .with(layer_traces_otlp)
-                        .with(SpanMetadataCleanupLayer::default())
-                        .with(self::tracy::tracy_layer())
-                        .try_init()?;
-                }
-
-                #[cfg(not(feature = "tracy"))]
-                {
-                    anyhow::bail!(
-                        "`TRACY_ENABLED=true` but the 'tracy' feature flag is not toggled"
-                    );
+                cfg_select! {
+                    feature = "tracy" => {
+                        tracing_subscriber::registry()
+                            .with(layer_logs_otlp)
+                            .with(layer_logs_and_traces_stdio)
+                            .with(layer_traces_otlp)
+                            .with(SpanMetadataCleanupLayer::default())
+                            .with(self::tracy::tracy_layer())
+                            .try_init()?;
+                    }
+                    _ => {
+                        anyhow::bail!(
+                            "`TRACY_ENABLED=true` but the 'tracy' feature flag is not toggled"
+                        );
+                    }
                 }
             } else {
                 tracing_subscriber::registry()

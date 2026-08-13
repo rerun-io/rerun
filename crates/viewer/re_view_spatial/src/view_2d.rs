@@ -7,12 +7,13 @@ use re_sdk_types::blueprint::archetypes::{
 };
 use re_sdk_types::{View as _, ViewClassIdentifier};
 use re_ui::{Help, UiExt as _};
-use re_view::view_property_ui;
+use re_view::{view_property_ui, view_property_ui_with_hidden_components};
 use re_viewer_context::{
     RecommendedView, ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewId, ViewQuery,
     ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext,
 };
 
+use crate::SpaceKind;
 use crate::contexts::register_spatial_contexts;
 use crate::heuristics::IndicatedVisualizableEntities;
 use crate::max_image_dimension_subscriber::{ImageTypes, MaxDimensions};
@@ -21,7 +22,6 @@ use crate::spatial_topology::{SpatialTopology, SubSpaceConnectionFlags};
 use crate::ui::SpatialViewState;
 #[cfg(debug_assertions)]
 use crate::ui::bbox_debug_ui;
-use crate::view_kind::SpatialViewKind;
 use crate::visualizers::register_2d_spatial_visualizers;
 
 #[derive(Default)]
@@ -241,7 +241,7 @@ impl ViewClass for SpatialView2D {
         let state = state.downcast_mut::<SpatialViewState>()?;
         // TODO(andreas): list_item'ify the rest
         ui.selection_grid("spatial_settings_ui").show(ui, |ui| {
-            state.bounding_box_ui(ui, SpatialViewKind::TwoD);
+            state.bounding_box_ui(ui, SpaceKind::TwoD);
 
             #[cfg(debug_assertions)]
             bbox_debug_ui(ui, state);
@@ -249,7 +249,11 @@ impl ViewClass for SpatialView2D {
 
         re_ui::list_item::list_item_scope(ui, "spatial_view2d_selection_ui", |ui| {
             let view_ctx = self.view_context(ctx, view_id, state, space_origin);
-            view_property_ui::<SpatialInformation>(&view_ctx, ui);
+            view_property_ui_with_hidden_components::<SpatialInformation>(
+                &view_ctx,
+                ui,
+                &[SpatialInformation::descriptor_axes().component],
+            );
             view_property_ui::<VisualBounds2D>(&view_ctx, ui);
             view_property_ui::<NearClipPlane>(&view_ctx, ui);
             view_property_ui::<Background>(&view_ctx, ui);
@@ -266,11 +270,11 @@ impl ViewClass for SpatialView2D {
         state: &mut dyn ViewState,
         query: &ViewQuery<'_>,
         system_output: re_viewer_context::SystemExecutionOutput,
-    ) -> Result<(), ViewSystemExecutionError> {
+    ) -> Result<re_viewer_context::ViewClassUiOutput, ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
         let state = state.downcast_mut::<SpatialViewState>()?;
-        state.update_frame_statistics(ui, &system_output, SpatialViewKind::TwoD);
+        state.update_frame_statistics(ui, &system_output, SpaceKind::TwoD);
 
         self.view_2d(ctx, missing_chunk_reporter, ui, state, query, system_output)
     }

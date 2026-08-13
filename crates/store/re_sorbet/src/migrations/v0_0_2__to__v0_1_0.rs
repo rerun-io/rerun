@@ -144,6 +144,7 @@ fn rewire_tagged_components(batch: &RecordBatch) -> RecordBatch {
                 }
             }
 
+            #[expect(clippy::iter_over_hash_type)] // Metadata migration validation is order-independent.
             for (key, value) in &metadata {
                 debug_assert!(!key.starts_with("rerun."), "Metadata `{key}` (with value `{value}`) was not migrated to colon syntax.");
             }
@@ -230,6 +231,7 @@ fn port_recording_info(batch: &mut RecordBatch) {
             }
 
             // Rename `RecordingProperties` to `RecordingInfo` in metadata keys:
+            #[expect(clippy::iter_over_hash_type)] // Each metadata value is updated independently.
             for value in field.metadata_mut().values_mut() {
                 *value = value.replace("RecordingProperties", "RecordingInfo");
             }

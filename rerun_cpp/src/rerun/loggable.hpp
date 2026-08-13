@@ -17,7 +17,7 @@ namespace rerun {
         static_assert(
             NoLoggableFor<T>::value,
             "Loggable is not implemented for this type. "
-            "It is implemented for all built-in datatypes and components. "
+            "It is implemented for all built-in encodings and components. "
             "To check ahead of template instantiation whether a type is loggable, use `is_loggable<T>`"
         );
 

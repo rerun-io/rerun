@@ -8,6 +8,7 @@ use datafusion::common::TableReference;
 use datafusion::prelude::SessionContext;
 use futures::stream::FuturesUnordered;
 use futures::{FutureExt as _, StreamExt as _, TryFutureExt as _};
+use re_async::AsyncRuntimeHandle;
 use re_dataframe_ui::{RequestedObject, StreamingCacheTableProvider};
 use re_datafusion::{SegmentTableProvider, TableEntryTableProvider, TableKind, TableQueryCaller};
 use re_log_types::{EntryId, EntryName, TableId};
@@ -19,9 +20,7 @@ use re_redap_client::{
     ApiError, ConnectionAnalyticsExporter, ConnectionClient, ConnectionRegistryHandle,
 };
 use re_ui::{Icon, icons};
-use re_viewer_context::{
-    AsyncRuntimeHandle, CommandSender, SystemCommand, SystemCommandSender as _,
-};
+use re_viewer_context::{CommandSender, SystemCommand, SystemCommandSender as _};
 
 pub type EntryResult<T = ()> = Result<T, ApiError>;
 
@@ -109,6 +108,18 @@ impl Entry {
         }
     }
 
+    /// Which icon this entry should use.
+    pub fn link_kind(&self) -> re_viewer_context::LinkKind {
+        match &self.details.kind {
+            EntryKind::Table | EntryKind::TableView => re_viewer_context::LinkKind::Table,
+            EntryKind::Dataset
+            | EntryKind::DatasetView
+            | EntryKind::BlueprintDataset
+            | EntryKind::AssetDataset
+            | EntryKind::Unspecified => re_viewer_context::LinkKind::Dataset,
+        }
+    }
+
     pub fn inner(&self) -> &EntryResult<EntryInner> {
         &self.inner
     }
@@ -177,6 +188,15 @@ impl Entries {
         self.entries.try_as_ref()?.as_ref().ok()?.get(&entry_id)
     }
 
+    /// Iterate over all loaded entries (empty while still loading or on error).
+    pub fn iter_loaded(&self) -> impl Iterator<Item = &Entry> {
+        self.entries
+            .try_as_ref()
+            .and_then(|result| result.as_ref().ok())
+            .into_iter()
+            .flat_map(|entries| entries.values())
+    }
+
     pub fn state(&self) -> Poll<Result<&HashMap<EntryId, Entry>, &ApiError>> {
         self.entries
             .try_as_ref()
@@ -199,11 +219,7 @@ async fn fetch_entries_and_register_tables(
     let analytics = connection.analytics;
 
     let entries = client
-        .find_entries(EntryFilter {
-            id: None,
-            name: None,
-            entry_kind: None,
-        })
+        .find_entries(EntryFilter::default().with_all_kinds())
         .await?;
 
     let origin_ref = &origin;
@@ -361,8 +377,10 @@ fn start_streaming_segment_table_blueprint(
         return;
     };
 
+    #[expect(deprecated)]
+    let application_id = re_log_types::ApplicationId::from_entry_id(dataset_id);
     let blueprint_store_id =
-        re_log_types::StoreId::random(re_log_types::StoreKind::Blueprint, dataset_id.to_string());
+        re_log_types::StoreId::random(re_log_types::StoreKind::Blueprint, application_id);
 
     let (tx, rx) = re_redap_client::table_blueprint_log_channel(
         origin.clone(),
@@ -403,10 +421,10 @@ fn start_registered_table_blueprint_stream(
         return;
     };
 
-    let blueprint_store_id = re_log_types::StoreId::random(
-        re_log_types::StoreKind::Blueprint,
-        table_entry.details.id.to_string(),
-    );
+    #[expect(deprecated)]
+    let application_id = re_log_types::ApplicationId::from_entry_id(table_id);
+    let blueprint_store_id =
+        re_log_types::StoreId::random(re_log_types::StoreKind::Blueprint, application_id);
 
     let (tx, rx) = re_redap_client::table_blueprint_log_channel(
         origin.clone(),
@@ -454,10 +472,10 @@ async fn fetch_table_details(
         command_sender,
     );
 
-    #[cfg(target_arch = "wasm32")]
-    let runtime = None;
-    #[cfg(not(target_arch = "wasm32"))]
-    let runtime = Some(runtime.inner().clone());
+    let tokio_runtime = cfg_select! {
+        target_arch = "wasm32" => { None }
+        _ => { Some(runtime.inner().clone()) }
+    };
 
     let table_kind = TableKind::from(&result.table_entry.provider_details);
     let caller = match table_kind {
@@ -465,11 +483,11 @@ async fn fetch_table_details(
         TableKind::Lance | TableKind::Unknown => TableQueryCaller::BrowserDetailView,
     };
 
-    let mut table_provider = TableEntryTableProvider::new(client, id, runtime)
+    let mut table_provider = TableEntryTableProvider::new(client, id, tokio_runtime)
         .with_caller(caller)
         .with_table_kind(table_kind);
     if let Some(exporter) = analytics {
-        table_provider = table_provider.with_analytics(exporter);
+        table_provider = table_provider.with_analytics(exporter, runtime.clone());
     }
     let table_provider = table_provider.into_provider().await.map_err(|err| {
         ApiError::internal_with_source(None, err, "failed creating table-entry table provider")

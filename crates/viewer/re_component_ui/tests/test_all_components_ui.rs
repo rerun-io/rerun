@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use arrow::array::ArrayRef;
 use arrow::datatypes::DataType;
-use egui_kittest::{OsThreshold, SnapshotError, SnapshotOptions};
+use egui_kittest::{SnapshotError, SnapshotOptions};
 use itertools::Itertools as _;
 use nohash_hasher::IntSet;
 use re_component_ui::create_component_ui_registry;
@@ -15,7 +15,7 @@ use re_log_types::EntityPath;
 use re_sdk_types::ComponentDescriptor;
 use re_sdk_types::blueprint::components::{ComponentColumnSelector, QueryExpression};
 use re_sdk_types::components::{self, GraphEdge, GraphNode, ImageFormat, Text};
-use re_sdk_types::datatypes::{ChannelDatatype, PixelFormat};
+use re_sdk_types::encodings::{ChannelDatatype, PixelFormat};
 use re_test_context::TestContext;
 use re_types_core::reflection::Reflection;
 use re_types_core::{Component, ComponentBatch, ComponentType};
@@ -229,9 +229,8 @@ pub fn test_all_components_ui_as_list_items() {
 fn run_all_component_tests(width: f32, theme: egui::Theme, output_dir: &str) {
     let test_context = get_test_context();
     let test_cases = test_cases(&test_context.reflection);
-    let snapshot_options = SnapshotOptions::new()
-        .output_path(output_dir)
-        .threshold(OsThreshold::default().macos(2.5));
+    let snapshot_options =
+        re_ui::testing::default_snapshot_options_for_ui().output_path(output_dir);
 
     let results = test_cases
         .iter()
@@ -259,23 +258,25 @@ fn test_single_component_ui_as_list_item(
 ) -> Result<(), SnapshotError> {
     let actual_ui = |ctx: &ViewerContext<'_>, ui: &mut egui::Ui| {
         ui.list_item_flat_noninteractive(
-            list_item::PropertyContent::new("ComponentName").value_fn(|ui, _| {
-                ctx.component_ui_registry().component_ui_raw(
-                    &ctx.active_recording_store_view_context(),
-                    ui,
-                    UiLayout::List,
-                    &EntityPath::root(),
-                    // As of writing, `ComponentDescriptor` the descriptor part is only used for
-                    // caching and actual lookup of uis is only done via `ComponentType`.
-                    &ComponentDescriptor {
-                        component: test_case.label.into(),
-                        archetype: None,
-                        component_type: Some(test_case.component_type),
-                    },
-                    None,
-                    &*test_case.component_data,
-                );
-            }),
+            list_item::PropertyContent::new(test_case.component_type.short_name()).value_fn(
+                |ui, _| {
+                    ctx.component_ui_registry().component_ui_raw(
+                        &ctx.active_recording_store_view_context(),
+                        ui,
+                        UiLayout::List,
+                        &EntityPath::root(),
+                        // As of writing, `ComponentDescriptor` the descriptor part is only used for
+                        // caching and actual lookup of uis is only done via `ComponentType`.
+                        &ComponentDescriptor {
+                            component: test_case.label.into(),
+                            archetype: None,
+                            component_type: Some(test_case.component_type),
+                        },
+                        None,
+                        &*test_case.component_data,
+                    );
+                },
+            ),
         );
     };
 

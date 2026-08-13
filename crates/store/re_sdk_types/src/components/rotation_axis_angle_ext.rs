@@ -1,14 +1,14 @@
 use super::RotationAxisAngle;
-use crate::datatypes;
+use crate::encodings;
 
 impl RotationAxisAngle {
     /// The identity rotation, representing no rotation.
-    pub const IDENTITY: Self = Self(datatypes::RotationAxisAngle::IDENTITY);
+    pub const IDENTITY: Self = Self(encodings::RotationAxisAngle::IDENTITY);
 
     /// Create a new rotation from an axis and an angle.
     #[inline]
-    pub fn new(axis: impl Into<datatypes::Vec3D>, angle: impl Into<datatypes::Angle>) -> Self {
-        Self(datatypes::RotationAxisAngle::new(axis, angle))
+    pub fn new(axis: impl Into<encodings::Vec3D>, angle: impl Into<encodings::Angle>) -> Self {
+        Self(encodings::RotationAxisAngle::new(axis, angle))
     }
 }
 

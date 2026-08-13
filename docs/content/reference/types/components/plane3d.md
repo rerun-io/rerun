@@ -13,8 +13,8 @@ Note: although the normal will be passed through to the
 datastore as provided, when used in the Viewer, planes will always be normalized.
 I.e. the plane with xyz = (2, 0, 0), d = 1 is equivalent to xyz = (1, 0, 0), d = 0.5
 
-## Rerun datatype
-[`Plane3D`](../datatypes/plane3d.md)
+## Rerun encoding
+[`Plane3D`](../encodings/plane3d.md)
 
 
 ## Arrow datatype

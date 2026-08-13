@@ -6,9 +6,7 @@ use nohash_hasher::IntSet;
 use re_chunk_store::{
     ChunkStoreHandle, ChunkStoreHandleWeak, ChunkTrackingMode, LazyStore, QueryResults, StoreSchema,
 };
-#[cfg(not(target_arch = "wasm32"))]
-use re_log_encoding::RrdChunkProvider;
-use re_log_encoding::RrdManifest;
+use re_log_encoding::{RrdChunkProvider, RrdManifest};
 use re_log_types::{EntityPath, StoreId, StoreKind};
 
 /// A store backend: either an in-memory eager store or a provider-backed lazy store.
@@ -98,10 +96,10 @@ impl ResolvedStore {
         }
     }
 
-    pub fn extract_properties(&self) -> Result<RecordBatch, super::Error> {
+    pub async fn extract_properties(&self) -> Result<RecordBatch, super::Error> {
         match self {
             Self::Eager(h) => h.read().extract_properties(),
-            Self::Lazy(l) => l.extract_properties(),
+            Self::Lazy(l) => l.extract_properties().await,
         }
         .map_err(super::Error::failed_to_extract_properties)
     }
@@ -113,78 +111,73 @@ impl ResolvedStore {
         }
     }
 
-    /// Load an RRD reader as one or more _eager_ [`ResolvedStore`]s, one per store found in the stream.
-    ///
-    /// Stores whose kind does not match `store_kind` are filtered out.
-    fn load_rrd_reader_eager(
-        reader: impl std::io::Read,
-        store_kind: StoreKind,
-        config: &re_chunk_store::ChunkStoreConfig,
-    ) -> Result<Vec<(StoreId, Self)>, super::Error> {
-        Ok(
-            re_chunk_store::ChunkStore::handle_from_rrd_reader(config, reader)
-                .map_err(super::Error::RrdLoadingError)?
-                .into_iter()
-                .filter(|(store_id, _)| store_id.kind() == store_kind)
-                .map(|(store_id, handle)| (store_id, Self::Eager(handle)))
-                .collect(),
-        )
-    }
-
     /// Load an RRD file as one or more [`ResolvedStore`]s, one per store found in the file.
     ///
-    /// Prefers the lazy path (chunks loaded on demand) when the RRD has a footer; falls back to
-    /// eager loading (whole file read into memory) when the footer is missing or unreadable.
+    /// Uses the lazy path (chunks loaded on demand) when the RRD has a footer and eager loading
+    /// (whole file read into memory) when the footer is missing.
     /// Stores whose kind does not match `store_kind` are filtered out.
     pub async fn load_rrd_file(
         path: &Path,
         store_kind: StoreKind,
     ) -> Result<Vec<(StoreId, Self)>, super::Error> {
-        #[cfg(target_arch = "wasm32")]
-        {
-            let bytes = crate::opfs::read(path).await?;
+        let file = cfg_select! {
+            target_arch = "wasm32" => { re_web::fs::File::open(path).await? }
+            _ => {
+                // TODO(tokio-rs/tokio#1529): Positional reads block the reactor; use `std::fs::File`
+                // until an async positional file API lands (or push reads to `spawn_blocking`).
+                std::fs::File::open(path)?
+            }
+        };
 
-            // TODO(RR-5086): Ultimately, we want to be able to load from an OPFS file into a lazy store too.
-            Self::load_rrd_reader_eager(
-                std::io::Cursor::new(bytes),
-                store_kind,
-                &super::InMemoryStore::default_eager_chunk_store_config(),
-            )
+        if let Some(footer) = re_log_encoding::read_rrd_footer(&file)
+            .await
+            .map_err(|err| super::Error::RrdLoadingError(err.into()))?
+        {
+            let mut out = Vec::with_capacity(footer.manifests.len());
+            for (store_id, raw_manifest) in footer.manifests {
+                if store_id.kind() != store_kind {
+                    continue;
+                }
+
+                let store_file = cfg_select! {
+                    target_arch = "wasm32" => { re_web::fs::File::open(path).await? }
+                    _ => { std::fs::File::open(path)? }
+                };
+
+                let provider = Arc::new(
+                    RrdChunkProvider::from_reader(
+                        store_file,
+                        path.display().to_string(),
+                        Arc::new(raw_manifest),
+                    )
+                    .map_err(|err| super::Error::RrdLoadingError(err.into()))?,
+                );
+                let lazy = Arc::new(LazyStore::new(provider));
+                out.push((store_id, Self::Lazy(lazy)));
+            }
+            return Ok(out);
         }
 
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            let mut file = tokio::fs::File::open(path).await?.into_std().await;
-
-            if let Ok(Some(footer)) = re_log_encoding::read_rrd_footer(&mut file) {
-                // The footer-reading handle is no longer needed — each `LazyStore` holds its own.
-                drop(file);
-
-                let mut out = Vec::with_capacity(footer.manifests.len());
-                for (store_id, raw_manifest) in footer.manifests {
-                    if store_id.kind() != store_kind {
-                        continue;
-                    }
-                    let store_file = tokio::fs::File::open(path).await?.into_std().await;
-                    let provider = Arc::new(
-                        RrdChunkProvider::try_from_file(store_file, path, Arc::new(raw_manifest))
-                            .map_err(|err| super::Error::RrdLoadingError(err.into()))?,
-                    );
-                    let lazy = Arc::new(LazyStore::new(provider));
-                    out.push((store_id, Self::Lazy(lazy)));
-                }
-                Ok(out)
-            } else {
-                // Legacy fallback: eager load (no footer, or footer read error).
-                use std::io::Seek as _;
-                file.seek(std::io::SeekFrom::Start(0))?;
-                Self::load_rrd_reader_eager(
-                    file,
-                    store_kind,
-                    &super::InMemoryStore::default_eager_chunk_store_config(),
-                )
+        cfg_select! {
+            target_arch = "wasm32" => {
+                let reader = futures::io::Cursor::new(re_web::fs::read(path).await?);
+            }
+            _ => {
+                use tokio_util::compat::TokioAsyncReadCompatExt as _;
+                let reader = tokio::fs::File::open(path).await?.compat();
             }
         }
+
+        Ok(re_chunk_store::ChunkStore::handle_from_rrd_reader_async(
+            &super::InMemoryStore::default_eager_chunk_store_config(),
+            reader,
+        )
+        .await
+        .map_err(super::Error::RrdLoadingError)?
+        .into_iter()
+        .filter(|(store_id, _)| store_id.kind() == store_kind)
+        .map(|(store_id, handle)| (store_id, Self::Eager(handle)))
+        .collect())
     }
 }
 
@@ -280,13 +273,13 @@ mod tests {
             let store_id = StoreId::random(StoreKind::Recording, "test");
             write_rrd(path, &store_id, with_footer);
 
-            let validated: BTreeSet<StoreId> = re_log_encoding::enumerate_rrd_stores(
-                &mut std::fs::File::open(path).expect("failed to open test RRD file"),
-            )
-            .expect("failed to enumerate test RRD stores")
-            .into_iter()
-            .filter(|id| id.kind() == StoreKind::Recording)
-            .collect();
+            let file = std::fs::File::open(path).expect("failed to open test RRD file");
+            let validated: BTreeSet<StoreId> = re_log_encoding::enumerate_rrd_stores(&file)
+                .await
+                .expect("failed to enumerate test RRD stores")
+                .into_iter()
+                .filter(|id| id.kind() == StoreKind::Recording)
+                .collect();
 
             let loaded: BTreeSet<StoreId> =
                 ResolvedStore::load_rrd_file(path, StoreKind::Recording)

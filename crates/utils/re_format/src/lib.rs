@@ -9,6 +9,8 @@ pub mod time;
 use std::cmp::PartialOrd;
 use std::fmt::Display;
 
+use re_int::UnsignedAbs;
+
 pub use self::duration::DurationFormatOptions;
 pub use self::plural::{format_plural_s, format_plural_signed_s};
 
@@ -32,69 +34,6 @@ pub fn strip_whitespace_and_normalize(text: &str) -> String {
         // Replace special minus character with normal minus (hyphen):
         .map(|c| if c == MINUS { '-' } else { c })
         .collect()
-}
-
-// TODO(rust-num/num-traits#315): waiting for https://github.com/rust-num/num-traits/issues/315 to land
-pub trait UnsignedAbs {
-    /// An unsigned type which is large enough to hold the absolute value of `Self`.
-    type Unsigned;
-
-    /// Computes the absolute value of `self` without any wrapping or panicking.
-    fn unsigned_abs(self) -> Self::Unsigned;
-}
-
-impl UnsignedAbs for i8 {
-    type Unsigned = u8;
-
-    #[inline]
-    fn unsigned_abs(self) -> Self::Unsigned {
-        self.unsigned_abs()
-    }
-}
-
-impl UnsignedAbs for i16 {
-    type Unsigned = u16;
-
-    #[inline]
-    fn unsigned_abs(self) -> Self::Unsigned {
-        self.unsigned_abs()
-    }
-}
-
-impl UnsignedAbs for i32 {
-    type Unsigned = u32;
-
-    #[inline]
-    fn unsigned_abs(self) -> Self::Unsigned {
-        self.unsigned_abs()
-    }
-}
-
-impl UnsignedAbs for i64 {
-    type Unsigned = u64;
-
-    #[inline]
-    fn unsigned_abs(self) -> Self::Unsigned {
-        self.unsigned_abs()
-    }
-}
-
-impl UnsignedAbs for i128 {
-    type Unsigned = u128;
-
-    #[inline]
-    fn unsigned_abs(self) -> Self::Unsigned {
-        self.unsigned_abs()
-    }
-}
-
-impl UnsignedAbs for isize {
-    type Unsigned = usize;
-
-    #[inline]
-    fn unsigned_abs(self) -> Self::Unsigned {
-        self.unsigned_abs()
-    }
 }
 
 /// Pretty format a signed number by using thousands separators for readability.

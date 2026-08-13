@@ -11,7 +11,7 @@ use re_sdk_types::blueprint::archetypes::{
 };
 use re_sdk_types::blueprint::components::{QueryExpression, ViewClass};
 use re_sdk_types::components::{Name, Visible};
-use re_sdk_types::datatypes::Bool;
+use re_sdk_types::encodings::Bool;
 use re_sdk_types::{AsComponents, SerializedComponentBatch, Visualizer};
 
 /// A view in the blueprint.
@@ -104,6 +104,7 @@ impl View {
         stream.log(self.blueprint_path(), &arch)?;
 
         // Log view-specific properties/settings
+        #[expect(clippy::iter_over_hash_type)] // Logging order is irrelevant.
         for (prop_name, prop_batches) in &self.properties {
             stream.log_serialized_batches(
                 format!("{}/{}", self.blueprint_path(), prop_name),
@@ -122,6 +123,7 @@ impl View {
         }
 
         // Log overrides
+        #[expect(clippy::iter_over_hash_type)] // Logging order is irrelevant.
         for (entity_path, visualizers) in &self.overrides {
             let base_visualizer_path =
                 ViewContents::blueprint_base_visualizer_path_for_entity(self.id, entity_path);

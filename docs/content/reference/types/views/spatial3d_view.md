@@ -25,8 +25,9 @@ Configuration for the 3D line grid.
 Configuration of debug drawing in the 3D view.
 
 * `target_frame`: The target reference frame for all transformations.
-* `show_axes`: Whether axes should be shown at the origin.
 * `show_bounding_box`: Whether the bounding box should be shown.
+* `show_axes`: Whether axes should be shown at the origin.
+* `axes`: Controls the orientation of the axes in a 3D view; it has no effect in a 2D view.
 ### `eye_controls`
 Configuration for the 3D eye
 
@@ -72,6 +73,7 @@ snippet: views/spatial3d
 * [`CoordinateFrame`](../archetypes/coordinate_frame.md)
 * [`Cylinders3D`](../archetypes/cylinders3d.md)
 * [`Ellipsoids3D`](../archetypes/ellipsoids3d.md)
+* [`GaussianSplats3D`](../archetypes/gaussian_splats3d.md)
 * [`GridMap`](../archetypes/grid_map.md)
 * [`InstancePoses3D`](../archetypes/instance_poses3d.md)
 * [`LineStrips3D`](../archetypes/line_strips3d.md)

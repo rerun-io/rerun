@@ -4,7 +4,7 @@
 #include <chrono>
 // </CODEGEN_COPY_TO_HEADER>
 
-#include "../datatypes/video_time_mode.hpp"
+#include "../encodings/video_time_mode.hpp"
 #include "video_timestamp.hpp"
 
 namespace rerun {

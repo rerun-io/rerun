@@ -88,13 +88,14 @@ vec1.workspace = true
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-home.workspace = true
 tokio.workspace = true
 
-# Web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-wasm-bindgen-futures.workspace = true
-web-sys = { workspace = true, features = ["Window"] }
+re_async.workspace = true
+re_web.workspace = true
 
 [dev-dependencies]
+re_ui = { workspace = true, features = ["testing"] }
+
+egui_kittest.workspace = true
 rand = { workspace = true, features = ["std_rng"] }

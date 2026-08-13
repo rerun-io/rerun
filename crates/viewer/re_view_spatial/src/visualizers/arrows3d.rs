@@ -106,7 +106,7 @@ impl Arrows3DVisualizer {
                 obj_space_bounding_box.extend(end);
             }
 
-            data.add_bounding_box(entity_path.hash(), obj_space_bounding_box, world_from_obj);
+            data.add_bounding_box_3d(entity_path.hash(), obj_space_bounding_box, world_from_obj);
 
             {
                 let instance_positions = {

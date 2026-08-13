@@ -9,10 +9,9 @@ use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
 use super::arrow::quote_fqname_as_type_path;
-use super::blueprint_validation::generate_blueprint_validation;
 use super::reflection::generate_reflection;
 use super::util::{append_tokens, doc_as_lines, quote_doc_lines};
-use crate::codegen::rust::arrow::ArrowDataTypeTokenizer;
+use crate::codegen::rust::arrow::{ArrowDataTypeTokenizer, quote_atomic_rust_type};
 use crate::codegen::rust::deserializer::{
     quote_arrow_deserializer, quote_arrow_deserializer_buffer_slice,
     should_optimize_buffer_slice_deserialize,
@@ -22,11 +21,8 @@ use crate::codegen::rust::util::{is_tuple_struct_from_obj, quote_doc_line};
 use crate::codegen::{Target, autogen_warning};
 use crate::objects::ObjectClass;
 use crate::{
-    ATTR_DEFAULT, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
-    ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RERUN_VIEW_IDENTIFIER, ATTR_RERUN_VISUALIZER,
-    ATTR_RUST_CUSTOM_CLAUSE, ATTR_RUST_DERIVE, ATTR_RUST_DERIVE_ONLY, ATTR_RUST_NEW_PUB_CRATE,
-    ATTR_RUST_REPR, CodeGenerator, ElementType, Object, ObjectField, ObjectKind, Objects, Reporter,
-    Type, TypeRegistry, format_path,
+    ATTR_DEFAULT, CodeGenerator, ElementType, Object, ObjectField, ObjectKind, Objects, Reporter,
+    RerunAttr, RustAttr, Type, TypeRegistry, format_path,
 };
 
 // ---
@@ -63,7 +59,6 @@ impl CodeGenerator for RustCodeGenerator {
             );
         }
 
-        generate_blueprint_validation(reporter, objects, &mut files_to_write);
         generate_reflection(
             reporter,
             objects,
@@ -134,7 +129,7 @@ impl RustCodeGenerator {
                 .filter(|obj| obj.module_name() == module_name)
                 .collect_vec();
 
-            // src/{testing/}{datatypes|components|archetypes}/mod.rs
+            // src/{testing/}{encodings|components|archetypes}/mod.rs
             generate_mod_file(&module_path, &relevant_objs, files_to_write);
         }
     }
@@ -264,19 +259,18 @@ fn quote_struct(
 
     let quoted_doc = quote_obj_docs(reporter, objects, obj);
 
-    let derive_only = obj.is_attr_set(ATTR_RUST_DERIVE_ONLY);
+    let derive_only = obj.is_attr_set(RustAttr::DeriveOnly);
     let quoted_derive_clone_debug = if derive_only {
         quote!()
     } else {
         quote_derive_clone_debug()
     };
     let quoted_derive_clause = if derive_only {
-        quote_meta_clause_from_obj(obj, ATTR_RUST_DERIVE_ONLY, "derive")
+        quote_meta_clause_from_obj(obj, RustAttr::DeriveOnly, "derive")
     } else {
-        quote_meta_clause_from_obj(obj, ATTR_RUST_DERIVE, "derive")
+        quote_meta_clause_from_obj(obj, RustAttr::Derive, "derive")
     };
-    let quoted_repr_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_REPR, "repr");
-    let quoted_custom_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_CUSTOM_CLAUSE, "");
+    let quoted_repr_clause = quote_meta_clause_from_obj(obj, RustAttr::Repr, "repr");
 
     // Archetypes must always derive Default.
     let quoted_derive_default_clause =
@@ -318,7 +312,6 @@ fn quote_struct(
         #quoted_derive_default_clause
         #quoted_derive_size_bytes
         #quoted_repr_clause
-        #quoted_custom_clause
         #quoted_deprecation_summary
         #quoted_struct
 
@@ -345,19 +338,18 @@ fn quote_union(
     let name = format_ident!("{name}");
 
     let quoted_doc = quote_obj_docs(reporter, objects, obj);
-    let derive_only = obj.try_get_attr::<String>(ATTR_RUST_DERIVE_ONLY).is_some();
+    let derive_only = obj.try_get_attr::<String>(RustAttr::DeriveOnly).is_some();
     let quoted_derive_clone_debug = if derive_only {
         quote!()
     } else {
         quote_derive_clone_debug()
     };
     let quoted_derive_clause = if derive_only {
-        quote_meta_clause_from_obj(obj, ATTR_RUST_DERIVE_ONLY, "derive")
+        quote_meta_clause_from_obj(obj, RustAttr::DeriveOnly, "derive")
     } else {
-        quote_meta_clause_from_obj(obj, ATTR_RUST_DERIVE, "derive")
+        quote_meta_clause_from_obj(obj, RustAttr::Derive, "derive")
     };
-    let quoted_repr_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_REPR, "repr");
-    let quoted_custom_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_CUSTOM_CLAUSE, "");
+    let quoted_repr_clause = quote_meta_clause_from_obj(obj, RustAttr::Repr, "repr");
 
     let quoted_fields = fields.iter().map(|obj_field| {
         let name = format_ident!("{}", re_case::to_pascal_case(&obj_field.name));
@@ -365,7 +357,7 @@ fn quote_union(
         let quoted_doc = quote_field_docs(reporter, objects, obj_field);
         let quoted_type = quote_field_type_from_object_field(obj, obj_field);
 
-        if obj_field.typ == Type::Unit {
+        if obj_field.typ.is_unit() {
             quote! {
                 #quoted_doc
                 #name
@@ -388,7 +380,6 @@ fn quote_union(
         #quoted_derive_clause
         #quoted_derive_size_bytes
         #quoted_repr_clause
-        #quoted_custom_clause
         pub enum #name {
             #(#quoted_fields,)*
         }
@@ -413,7 +404,6 @@ fn quote_enum(
     let name = format_ident!("{name}");
 
     let quoted_doc = quote_obj_docs(reporter, objects, obj);
-    let quoted_custom_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_CUSTOM_CLAUSE, "");
 
     let mut derives = vec!["Clone", "Copy", "Debug", "Hash", "PartialEq", "Eq"];
 
@@ -439,7 +429,7 @@ fn quote_enum(
         quote!(#derive)
     });
 
-    // NOTE: we keep the casing of the enum variants exactly as specified in the .fbs file,
+    // NOTE: we keep the casing of the enum variants exactly as written in `re_type_definitions`,
     // or else `RGBA` would become `Rgba` and so on.
     // Note that we want consistency across:
     // * all languages (C++, Python, Rust)
@@ -566,7 +556,6 @@ fn quote_enum(
         #quoted_doc
         #[derive( #(#derives,)* )]
         #[derive(::re_byte_size::SizeBytes)]
-        #quoted_custom_clause
         #[repr(#repr_type)]
         pub enum #name {
             #(#quoted_fields,)*
@@ -665,7 +654,7 @@ fn quote_obj_docs(reporter: &Reporter, objects: &Objects, obj: &Object) -> Token
         Target::Rust,
     );
 
-    // Prefix first line with `**Datatype**: ` etc:
+    // Prefix first line with `**Encoding**: ` etc:
     if let Some(first) = lines.first_mut() {
         *first = format!("**{}**: {}", obj.kind.singular_name(), first.trim());
     } else if !obj.is_testing() {
@@ -682,7 +671,7 @@ fn quote_obj_docs(reporter: &Reporter, objects: &Objects, obj: &Object) -> Token
 /// The returned boolean indicates whether there was anything to unwrap at all.
 fn quote_field_type_from_typ(typ: &Type, unwrap: bool) -> (TokenStream, bool) {
     let obj_field_type = TypeTokenizer { typ, unwrap };
-    let unwrapped = unwrap && matches!(typ, Type::Array { .. } | Type::Vector { .. });
+    let unwrapped = unwrap && matches!(typ, Type::FixedSizeList { .. } | Type::List { .. });
     (quote!(#obj_field_type), unwrapped)
 }
 
@@ -708,29 +697,17 @@ impl quote::ToTokens for TypeTokenizer<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let Self { typ, unwrap } = self;
         match typ {
-            Type::Unit => quote!(()),
-            Type::UInt8 => quote!(u8),
-            Type::UInt16 => quote!(u16),
-            Type::UInt32 => quote!(u32),
-            Type::UInt64 => quote!(u64),
-            Type::Int8 => quote!(i8),
-            Type::Int16 => quote!(i16),
-            Type::Int32 => quote!(i32),
-            Type::Int64 => quote!(i64),
-            Type::Bool => quote!(bool),
-            Type::Float16 => quote!(half::f16),
-            Type::Float32 => quote!(f32),
-            Type::Float64 => quote!(f64),
+            Type::Atomic(atomic) => quote_atomic_rust_type(*atomic),
             Type::Binary => quote!(::arrow::buffer::Buffer),
-            Type::String => quote!(::re_types_core::ArrowString),
-            Type::Array { elem_type, length } => {
+            Type::Utf8 => quote!(::re_types_core::ArrowString),
+            Type::FixedSizeList { elem_type, length } => {
                 if *unwrap {
                     quote!(#elem_type)
                 } else {
                     quote!([#elem_type; #length])
                 }
             }
-            Type::Vector { elem_type } => {
+            Type::List { elem_type } => {
                 if *unwrap {
                     quote!(#elem_type)
                 } else if elem_type.backed_by_scalar_buffer() {
@@ -748,21 +725,14 @@ impl quote::ToTokens for TypeTokenizer<'_> {
 impl quote::ToTokens for &ElementType {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         match self {
-            ElementType::UInt8 => quote!(u8),
-            ElementType::UInt16 => quote!(u16),
-            ElementType::UInt32 => quote!(u32),
-            ElementType::UInt64 => quote!(u64),
-            ElementType::Int8 => quote!(i8),
-            ElementType::Int16 => quote!(i16),
-            ElementType::Int32 => quote!(i32),
-            ElementType::Int64 => quote!(i64),
-            ElementType::Bool => quote!(bool),
-            ElementType::Float16 => quote!(half::f16),
-            ElementType::Float32 => quote!(f32),
-            ElementType::Float64 => quote!(f64),
+            ElementType::Atomic(atomic) => quote_atomic_rust_type(*atomic),
             ElementType::Binary => quote!(::arrow::buffer::Buffer),
-            ElementType::String => quote!(::re_types_core::ArrowString),
+            ElementType::Utf8 => quote!(::re_types_core::ArrowString),
             ElementType::Object { fqname } => quote_fqname_as_type_path(fqname),
+            ElementType::FixedSizeList { elem_type, length } => {
+                let elem_type = &**elem_type;
+                quote!([#elem_type; #length])
+            }
         }
         .to_tokens(tokens);
     }
@@ -772,7 +742,7 @@ fn quote_derive_clone_debug() -> TokenStream {
     quote!(#[derive(Clone, Debug)])
 }
 
-fn quote_meta_clause_from_obj(obj: &Object, attr: &str, clause: &str) -> TokenStream {
+fn quote_meta_clause_from_obj(obj: &Object, attr: RustAttr, clause: &str) -> TokenStream {
     let quoted = obj
         .try_get_attr::<String>(attr)
         .map(|contents| {
@@ -797,8 +767,8 @@ fn quote_trait_impls_from_obj(
     obj: &Object,
 ) -> TokenStream {
     match obj.kind {
-        ObjectKind::Datatype | ObjectKind::Component => {
-            quote_trait_impls_for_datatype_or_component(objects, type_registry, obj)
+        ObjectKind::Encoding | ObjectKind::Component => {
+            quote_trait_impls_for_encoding_or_component(objects, type_registry, obj)
         }
 
         ObjectKind::Archetype => quote_trait_impls_for_archetype(reporter, obj),
@@ -807,7 +777,7 @@ fn quote_trait_impls_from_obj(
     }
 }
 
-fn quote_trait_impls_for_datatype_or_component(
+fn quote_trait_impls_for_encoding_or_component(
     objects: &Objects,
     type_registry: &TypeRegistry,
     obj: &Object,
@@ -816,13 +786,14 @@ fn quote_trait_impls_for_datatype_or_component(
         fqname, name, kind, ..
     } = obj;
 
-    assert!(matches!(kind, ObjectKind::Datatype | ObjectKind::Component));
+    assert!(matches!(kind, ObjectKind::Encoding | ObjectKind::Component));
 
     let name = format_ident!("{name}");
 
     let datatype = type_registry.get(fqname);
 
-    let optimize_for_buffer_slice = should_optimize_buffer_slice_deserialize(obj, type_registry);
+    let optimize_for_buffer_slice =
+        should_optimize_buffer_slice_deserialize(objects, obj, type_registry);
 
     let is_forwarded_type = obj.is_arrow_transparent()
         && !obj.fields[0].is_nullable
@@ -834,7 +805,7 @@ fn quote_trait_impls_for_datatype_or_component(
         if let Some(forwarded_type) = forwarded_type.as_ref() {
             quote! {
                 impl ::re_types_core::WrapperComponent for #name {
-                    type Datatype = #forwarded_type;
+                    type Encoding = #forwarded_type;
 
                     #[inline]
                     fn name() -> ComponentType {
@@ -842,7 +813,7 @@ fn quote_trait_impls_for_datatype_or_component(
                     }
 
                     #[inline]
-                    fn into_inner(self) -> Self::Datatype {
+                    fn into_inner(self) -> Self::Encoding {
                         self.0
                     }
                 }
@@ -913,7 +884,7 @@ fn quote_trait_impls_for_datatype_or_component(
             quote!()
         };
 
-        // Forward deserialization to existing datatype if it's transparent.
+        // Forward deserialization to existing encoding if it's transparent.
         let quoted_deserializer = {
             let quoted_deserializer = quote_arrow_deserializer(type_registry, objects, obj);
             quote! {
@@ -997,21 +968,18 @@ fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenSt
 
     fn compute_component_descriptors(
         obj: &Object,
-        requirement_attr_value: &'static str,
+        requirement_attr_value: RerunAttr,
     ) -> (usize, TokenStream) {
         let descriptors = obj
             .fields
             .iter()
-            .filter_map(move |field| {
-                field
-                    .try_get_attr::<String>(requirement_attr_value)
-                    .map(|_| {
-                        let archetype_name = format_ident!("{}", obj.name);
-                        let component = field.snake_case_name();
-                        let fn_name = format_ident!("descriptor_{component}");
+            .filter(|field| field.has_attr(requirement_attr_value))
+            .map(move |field| {
+                let archetype_name = format_ident!("{}", obj.name);
+                let component = field.snake_case_name();
+                let fn_name = format_ident!("descriptor_{component}");
 
-                        quote!(#archetype_name::#fn_name())
-                    })
+                quote!(#archetype_name::#fn_name())
             })
             .collect_vec();
 
@@ -1069,7 +1037,7 @@ fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenSt
         })
         .collect_vec();
 
-    let visualizer_trait_impl = attrs.get_string(ATTR_RERUN_VISUALIZER).map(|visualizer| {
+    let visualizer_trait_impl = attrs.get_string(RerunAttr::Visualizer).map(|visualizer| {
         quote! {
             impl crate::VisualizableArchetype for #name {
                 #[inline]
@@ -1081,11 +1049,11 @@ fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenSt
     });
 
     let (num_required_descriptors, required_descriptors) =
-        compute_component_descriptors(obj, ATTR_RERUN_COMPONENT_REQUIRED);
+        compute_component_descriptors(obj, RerunAttr::Required);
     let (num_recommended_descriptors, recommended_descriptors) =
-        compute_component_descriptors(obj, ATTR_RERUN_COMPONENT_RECOMMENDED);
+        compute_component_descriptors(obj, RerunAttr::Recommended);
     let (num_optional_descriptors, optional_descriptors) =
-        compute_component_descriptors(obj, ATTR_RERUN_COMPONENT_OPTIONAL);
+        compute_component_descriptors(obj, RerunAttr::Optional);
 
     let num_components_docstring = quote_doc_line(&format!(
         "The total number of components in the archetype: {num_required_descriptors} required, {num_recommended_descriptors} recommended, {num_optional_descriptors} optional"
@@ -1230,11 +1198,11 @@ fn quote_trait_impls_for_view(reporter: &Reporter, obj: &Object) -> TokenStream 
 
     let name = format_ident!("{}", obj.name);
 
-    let Some(identifier): Option<String> = obj.try_get_attr(ATTR_RERUN_VIEW_IDENTIFIER) else {
+    let Some(identifier): Option<String> = obj.try_get_attr(RerunAttr::ViewIdentifier) else {
         reporter.error(
             &obj.virtpath,
             &obj.fqname,
-            format!("Missing {ATTR_RERUN_VIEW_IDENTIFIER} attribute for view"),
+            format!("Missing {} attribute for view", RerunAttr::ViewIdentifier),
         );
         return TokenStream::new();
     };
@@ -1252,7 +1220,7 @@ fn quote_trait_impls_for_view(reporter: &Reporter, obj: &Object) -> TokenStream 
     }
 }
 
-/// Only makes sense for components & datatypes.
+/// Only makes sense for components & encodings.
 fn quote_from_impl_from_obj(obj: &Object) -> TokenStream {
     if obj.kind == ObjectKind::Archetype {
         return TokenStream::new();
@@ -1292,7 +1260,7 @@ fn quote_from_impl_from_obj(obj: &Object) -> TokenStream {
     };
 
     if obj_field.typ.fqname().is_some() {
-        if let Some(inner) = obj_field.typ.vector_inner() {
+        if let Some(inner) = obj_field.typ.list_inner() {
             if obj_field.is_nullable {
                 let quoted_binding = if obj_is_tuple_struct {
                     quote!(Self(v.map(|v| v.into_iter().map(|v| v.into()).collect())))
@@ -1356,9 +1324,9 @@ fn quote_from_impl_from_obj(obj: &Object) -> TokenStream {
             )
         };
 
-        // If the field is not a custom datatype, emit `Deref`/`DerefMut` only for components.
+        // If the field is not a custom encoding, emit `Deref`/`DerefMut` only for components.
         // (in the long run all components are implemented with custom data types, making it so that we don't hit this path anymore)
-        // For ObjectKind::Datatype we sometimes have custom implementations for `Deref`, e.g. `Utf8String` derefs to `&str` instead of `ArrowString`.
+        // For ObjectKind::Encoding we sometimes have custom implementations for `Deref`, e.g. `Utf8String` derefs to `&str` instead of `ArrowString`.
         let deref_impl = if obj.kind == ObjectKind::Component {
             deref_impl
         } else {
@@ -1434,7 +1402,7 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
             quote!(#field_name: None)
         });
 
-        let fn_new_pub = if obj.is_attr_set(ATTR_RUST_NEW_PUB_CRATE) {
+        let fn_new_pub = if obj.is_attr_set(RustAttr::NewPubCrate) {
             quote!(pub(crate))
         } else {
             quote!(pub)

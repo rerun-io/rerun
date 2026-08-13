@@ -145,6 +145,7 @@ where
     fn capture_mem_usage_tree(&self) -> MemUsageTree {
         let mut node = MemUsageNode::new();
 
+        #[expect(clippy::iter_over_hash_type)] // Child order doesn't need to be stable.
         for (key, value) in self {
             // Assumes the keys are small enough
             node.add(key.to_string(), value.capture_mem_usage_tree());

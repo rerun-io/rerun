@@ -1,11 +1,11 @@
-//! Change the view coordinates for the scene.
+//! Set the default orientation for a 3D view.
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let rec =
         rerun::RecordingStreamBuilder::new("rerun_example_view_coordinates")
             .spawn()?;
 
-    rec.log_static("world", &rerun::ViewCoordinates::RIGHT_HAND_Z_UP())?; // Set an up-axis
+    rec.log_static("world", &rerun::ViewCoordinates::RIGHT_HAND_Z_UP())?; // Set the 3D view's up direction
     rec.log(
         "world/xyz",
         &rerun::Arrows3D::from_vectors(

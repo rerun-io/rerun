@@ -33,6 +33,7 @@ def approve(github_token: str, workflow_run: WorkflowRun) -> None:
             "Authorization": f"Bearer {github_token}",
             "X-GitHub-Api-Version": "2022-11-28",
         },
+        timeout=30,
     ).raise_for_status()
 
 

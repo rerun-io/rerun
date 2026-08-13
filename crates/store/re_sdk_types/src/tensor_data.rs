@@ -4,7 +4,7 @@
 use half::f16;
 
 #[expect(unused_imports)] // Used for docstring links
-use crate::datatypes::TensorData;
+use crate::encodings::TensorData;
 
 // ----------------------------------------------------------------------------
 
@@ -61,7 +61,7 @@ impl From<std::io::Error> for TensorImageLoadError {
 
 // ----------------------------------------------------------------------------
 
-/// The data types supported by a [`crate::datatypes::TensorData`].
+/// The data types supported by a [`crate::encodings::TensorData`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TensorDataType {
     /// Unsigned 8 bit integer.
@@ -259,7 +259,7 @@ impl TensorDataTypeTrait for f64 {
     const DTYPE: TensorDataType = TensorDataType::F64;
 }
 
-/// The data that can be stored in a [`crate::datatypes::TensorData`].
+/// The data that can be stored in a [`crate::encodings::TensorData`].
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum TensorElement {
     /// Unsigned 8 bit integer.

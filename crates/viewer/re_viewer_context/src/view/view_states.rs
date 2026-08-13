@@ -11,7 +11,7 @@ use re_log_types::StoreId;
 use crate::view::system_execution_output::VisualizerViewReport;
 use crate::{
     AppBlueprintCtx, NeedsRepaint, SystemExecutionOutput, TimeControl, TimeControlUpdateParams,
-    ViewClass, ViewId, ViewState, VisualizerTypeReport,
+    ViewClass, ViewId, ViewState, ViewerDiagnostic, VisualizerTypeReport,
 };
 
 /// Combined key of recording store id and view id.
@@ -128,6 +128,11 @@ pub struct ViewStates {
     // But at point of writing this causes too much needless churn.
     visualizer_reports: HashMap<ViewStateKey, VisualizerViewReport>,
 
+    /// Reports about each view as a whole.
+    ///
+    /// Each view replaces its reports after rendering, so title-bar UI reads the reports emitted during the preceding frame.
+    view_reports: HashMap<ViewStateKey, Vec<ViewerDiagnostic>>,
+
     // TODO(isse): Should we have one preview state per table/dataset?
     /// Playback state shared across all preview recordings shown in grid/table cards.
     pub preview_state: Option<PreviewState>,
@@ -138,6 +143,7 @@ impl re_byte_size::MemUsageTreeCapture for ViewStates {
         let Self {
             states,
             visualizer_reports,
+            view_reports,
             preview_state,
         } = self;
 
@@ -160,6 +166,7 @@ impl re_byte_size::MemUsageTreeCapture for ViewStates {
         let mut node = re_byte_size::MemUsageNode::default();
         node.add("states", states_node.into_tree());
         node.add("visualizer_reports", visualizer_reports.heap_size_bytes());
+        node.add("view_reports", view_reports.heap_size_bytes());
         node.add("preview", preview_state.heap_size_bytes());
         node.with_total_size_bytes(self.total_size_bytes())
     }
@@ -224,5 +231,27 @@ impl ViewStates {
         view_id: ViewId,
     ) -> Option<&VisualizerViewReport> {
         self.visualizer_reports.get(&(store_id.clone(), view_id))
+    }
+
+    /// Replaces the reports emitted by the view as a whole.
+    pub fn set_view_reports(
+        &mut self,
+        store_id: &StoreId,
+        view_id: ViewId,
+        reports: Vec<ViewerDiagnostic>,
+    ) {
+        let key = (store_id.clone(), view_id);
+        if reports.is_empty() {
+            self.view_reports.remove(&key);
+        } else {
+            self.view_reports.insert(key, reports);
+        }
+    }
+
+    /// Access the latest reports emitted by the view as a whole.
+    pub fn view_reports(&self, store_id: &StoreId, view_id: ViewId) -> &[ViewerDiagnostic] {
+        self.view_reports
+            .get(&(store_id.clone(), view_id))
+            .map_or(&[], Vec::as_slice)
     }
 }

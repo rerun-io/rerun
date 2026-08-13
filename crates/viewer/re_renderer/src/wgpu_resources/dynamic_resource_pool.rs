@@ -158,6 +158,7 @@ where
         };
 
         // Throw out any resources that we haven't reclaimed last frame.
+        #[expect(clippy::iter_over_hash_type)] // Resources destroyed via unique handles.
         for (desc, resources) in state.last_frame_deallocated.drain() {
             re_log::trace!(
                 count = resources.len(),
