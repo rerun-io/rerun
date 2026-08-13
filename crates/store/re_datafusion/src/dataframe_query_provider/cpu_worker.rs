@@ -26,6 +26,7 @@ use tracing::{Instrument as _, instrument};
 use crate::chunk_fetcher::SortedChunksWithSegment;
 use crate::dataframe_query_common::{
     DEFAULT_BATCH_BYTES, DEFAULT_BATCH_ROWS, IndexValuesMap, prepend_string_column_schema,
+    schema_with_array_datatypes,
 };
 use crate::pipeline_budget::PipelineBudget;
 use crate::segment_chunk_manifest::SegmentChunkManifest;
@@ -90,9 +91,12 @@ async fn send_next_row_batch(
 
     let output_batch = {
         re_tracing::profile_scope!("build_and_align_batch");
-        let batch_schema = Arc::new(prepend_string_column_schema(
-            &query_schema,
-            ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
+        let batch_schema = Arc::new(schema_with_array_datatypes(
+            &prepend_string_column_schema(
+                &query_schema,
+                ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
+            ),
+            &columns,
         ));
 
         let batch = RecordBatch::try_new_with_options(
@@ -1305,6 +1309,89 @@ mod tests {
         use re_dataframe::external::re_chunk::Chunk as ChunkBuilder;
         use re_log_types::EntityPath;
         ChunkBuilder::builder(EntityPath::root()).build().unwrap()
+    }
+
+    /// Helper: build a static `Chunk` from a `Blob`-shaped component column whose *outer* list
+    /// field is non-nullable, i.e. `List(non-null List(non-null UInt8))`.
+    ///
+    /// Rerun's own serializers always make that outer field nullable, but external producers
+    /// don't have to. `Chunk::new` canonicalizes it on the way in, so what lands in the store is
+    /// nullable again; this fixture is what an external producer hands us, not what the chunk
+    /// ends up holding.
+    fn chunk_with_non_nullable_outer_list() -> Chunk {
+        use arrow::array::{Array as _, ListArray, UInt8Array};
+        use arrow::buffer::OffsetBuffer;
+        use arrow::datatypes::{DataType, Field};
+        use re_dataframe::external::re_chunk::{ChunkComponents, ChunkId};
+        use re_log_types::EntityPath;
+        use re_types_core::ComponentDescriptor;
+
+        // One blob of two bytes: `[[1, 2]]`.
+        let bytes = Arc::new(UInt8Array::from(vec![1u8, 2]));
+        let blob = Arc::new(ListArray::new(
+            Arc::new(Field::new_list_field(DataType::UInt8, false)),
+            OffsetBuffer::from_lengths([2]),
+            bytes,
+            None,
+        ));
+        let column = ListArray::new(
+            Arc::new(Field::new_list_field(blob.data_type().clone(), false)),
+            OffsetBuffer::from_lengths([1]),
+            blob,
+            None,
+        );
+
+        let components: ChunkComponents =
+            std::iter::once((ComponentDescriptor::partial("blob"), column)).collect();
+
+        Chunk::from_auto_row_ids(
+            ChunkId::new(),
+            EntityPath::from("blobs"),
+            Default::default(), // static: no timelines
+            components,
+        )
+        .unwrap()
+    }
+
+    /// A column whose outer list field is non-nullable must survive the trip from producer to
+    /// emitted `RecordBatch`. Arrow rejects a batch whose data does not match its schema, and
+    /// `equals_datatype` compares child nullability:
+    /// `expected List(List(non-null UInt8)) but found List(non-null List(non-null UInt8))`.
+    ///
+    /// Two mechanisms keep this passing, and either one suffices: `Chunk::new` canonicalizes the
+    /// field, and this worker builds its intermediate batch from the actual column data types
+    /// rather than from `QueryHandle::schema()`. The latter is what keeps the worker honest
+    /// about whatever it is actually handed, and is covered directly by
+    /// `dataframe_query_common::tests::schema_with_array_datatypes_follows_the_arrays`.
+    ///
+    /// See <https://github.com/rerun-io/rerun/issues/12887>.
+    #[tokio::test]
+    async fn test_cpu_worker_accepts_non_nullable_outer_list_field() {
+        let (input_tx, input_rx) = tokio::sync::mpsc::channel::<ApiResult<CpuWorkerMsg>>(8);
+        let (output_tx, output_rx) = tokio::sync::mpsc::channel::<RecordBatch>(8);
+
+        input_tx
+            .send(Ok(CpuWorkerMsg::SegmentChunkCount {
+                segment_id: SegmentId::from("A"),
+                count: 1,
+            }))
+            .await
+            .unwrap();
+        input_tx
+            .send(Ok(CpuWorkerMsg::Chunks((
+                SegmentId::from("A"),
+                vec![chunk_with_non_nullable_outer_list()],
+            ))))
+            .await
+            .unwrap();
+        drop(input_tx);
+
+        let (result, n_batches) = drive_worker(input_rx, output_tx, output_rx).await;
+        assert!(
+            result.is_ok(),
+            "worker must not reject a non-nullable outer list field: {result:?}"
+        );
+        assert_eq!(n_batches, 1, "the chunk's single row must be emitted");
     }
 
     /// Drive the worker concurrently with a background drainer of the

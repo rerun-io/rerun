@@ -6,8 +6,8 @@
 
 use std::collections::BTreeMap;
 
-use arrow::array::ListArray as ArrowListArray;
-use arrow::datatypes::{DataType as ArrowDataType, Field as ArrowField};
+use arrow::array::Array as _;
+use arrow::datatypes::DataType as ArrowDataType;
 use nohash_hasher::IntMap;
 
 use re_chunk::ComponentIdentifier;
@@ -360,9 +360,12 @@ impl StoreSchema {
                 .any(|descr| descr.component == component);
 
             let col_descr = ComponentColumnDescriptor {
-                store_datatype: ArrowListArray::DATA_TYPE_CONSTRUCTOR(
-                    ArrowField::new("item", column.list_array.value_type().clone(), true).into(),
-                ),
+                // Take the datatype straight from the data. `Chunk::new` canonicalizes the outer
+                // list field of every component column, so this is already
+                // `List(item: value_type, nullable)` — but re-deriving it here instead would
+                // silently paper over any chunk that isn't, and hand out a descriptor that
+                // describes no actual data (see <https://github.com/rerun-io/rerun/issues/12887>).
+                store_datatype: column.list_array.data_type().clone(),
                 entity_path: entity_path.clone(),
                 archetype: descriptor.archetype,
                 component: descriptor.component,

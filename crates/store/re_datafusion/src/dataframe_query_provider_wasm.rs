@@ -6,7 +6,8 @@ use std::task::{Context, Poll};
 
 use crate::DataframeClientAPI;
 use crate::dataframe_query_common::{
-    IndexValuesMap, PlanSummary, group_chunk_infos_by_segment_id, segment_partition_hash,
+    IndexValuesMap, PlanSummary, group_chunk_infos_by_segment_id, schema_with_array_datatypes,
+    segment_partition_hash,
 };
 use arrow::array::{Array, RecordBatch, RecordBatchOptions, StringArray};
 use arrow::compute::SortOptions;
@@ -392,9 +393,12 @@ fn create_next_row(
     arrays.push(sid_array);
     arrays.extend(next_row);
 
-    let batch_schema = Arc::new(prepend_string_column_schema(
-        &query_schema,
-        ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
+    let batch_schema = Arc::new(schema_with_array_datatypes(
+        &prepend_string_column_schema(
+            &query_schema,
+            ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
+        ),
+        &arrays,
     ));
 
     let batch = RecordBatch::try_new_with_options(

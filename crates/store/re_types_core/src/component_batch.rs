@@ -30,8 +30,7 @@ pub trait ComponentBatch {
         let array = self.to_arrow()?;
         let offsets =
             arrow::buffer::OffsetBuffer::from_lengths(std::iter::repeat_n(1, array.len()));
-        let nullable = true;
-        let field = arrow::datatypes::Field::new("item", array.data_type().clone(), nullable);
+        let field = re_arrow_util::canonical_component_list_field(array.data_type().clone());
         ArrowListArray::try_new(field.into(), offsets, array, None).map_err(|err| err.into())
     }
 
