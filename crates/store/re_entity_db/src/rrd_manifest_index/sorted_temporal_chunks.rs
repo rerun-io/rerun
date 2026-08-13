@@ -47,13 +47,12 @@ pub(super) struct SortedEntityTemporalChunks {
     /// - All chunks from `Self.per_component`.
     /// - All chunks from descendant entities.
     ///
-    /// Sorted by `time_range.min`. Each chunk appears once, as long as the deltas fed to
-    /// [`SortedTemporalChunks::update`] hold to the uniqueness precondition documented there.
+    /// Chunks are unique and sorted by `time_range.min`.
     per_entity: Vec<ChunkCountInfo>,
 
     /// Chunks organized by component for this specific entity.
     ///
-    /// Sorted by `time_range.min`, with the same uniqueness caveat as `Self::per_entity`.
+    /// Each component's chunks are unique and sorted by `time_range.min`.
     ///
     /// This does NOT include data from child entities.
     per_component: IntMap<re_chunk::ComponentIdentifier, Vec<ChunkCountInfo>>,

@@ -163,6 +163,12 @@ impl RrdManifestIndex {
     ) -> CodecResult<()> {
         re_tracing::profile_function!();
 
+        // Concatenate before updating caches.
+        let concatenated = match &self.manifest {
+            Some(existing) => Some(Arc::new(RrdManifest::concat(&[existing, &delta])?)),
+            None => None,
+        };
+
         self.update_timeline_stats(&delta);
         self.update_entity_static_data(&delta);
         self.chunk_prioritizer.on_rrd_manifest(&delta);
@@ -209,13 +215,6 @@ impl RrdManifestIndex {
                 }
             }
         }
-
-        // Concatenate before touching the cache, so a failure here leaves both the
-        // manifest and the cache as they were rather than half-applying the delta.
-        let concatenated = match &self.manifest {
-            Some(existing) => Some(Arc::new(RrdManifest::concat(&[existing, &delta])?)),
-            None => None,
-        };
 
         self.sorted_chunks.update(entity_tree, delta.temporal_map());
 
