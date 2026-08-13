@@ -183,7 +183,8 @@ pub struct RecordingStreamBuilder {
     batcher_config: Option<ChunkBatcherConfig>,
 
     // Optional user-defined recording properties.
-    should_send_properties: bool,
+    // `None` if the user never made an explicit choice — resolved in `into_args`.
+    should_send_properties: Option<bool>,
     recording_info: RecordingInfo,
 
     /// Optional blueprint with activation settings.
@@ -218,7 +219,7 @@ impl RecordingStreamBuilder {
             batcher_config: None,
             batcher_hooks: BatcherHooks::NONE,
 
-            should_send_properties: true,
+            should_send_properties: None,
             recording_info: RecordingInfo::new()
                 .with_start_time(re_sdk_types::components::Timestamp::now()),
 
@@ -243,7 +244,7 @@ impl RecordingStreamBuilder {
             batcher_config: None,
             batcher_hooks: BatcherHooks::NONE,
 
-            should_send_properties: true,
+            should_send_properties: Some(true),
             recording_info: RecordingInfo::new()
                 .with_start_time(re_sdk_types::components::Timestamp::now()),
 
@@ -284,31 +285,42 @@ impl RecordingStreamBuilder {
     /// The default is to use a random `RecordingId`.
     ///
     /// When explicitly setting a `RecordingId`, the initial chunk that contains the recording
-    /// properties will not be sent.
+    /// properties will not be sent, so that concurrent writers to the same recording don't
+    /// overwrite each other's. It is still sent if any property is explicitly set via
+    /// [`Self::recording_name`] or [`Self::recording_started`], or if requested via
+    /// [`Self::send_properties`].
     #[inline]
     pub fn recording_id(mut self, recording_id: impl Into<RecordingId>) -> Self {
         self.recording_id = Some(recording_id.into());
-        self.send_properties(false)
-    }
-
-    /// Sets an optional name for the recording.
-    #[inline]
-    pub fn recording_name(mut self, name: impl Into<String>) -> Self {
-        self.recording_info = self.recording_info.with_name(name.into());
         self
     }
 
     /// Sets an optional name for the recording.
+    ///
+    /// Implies sending the recording properties, even if an explicit recording id is set.
+    #[inline]
+    pub fn recording_name(mut self, name: impl Into<String>) -> Self {
+        self.recording_info = self.recording_info.with_name(name.into());
+        self.should_send_properties.get_or_insert(true);
+        self
+    }
+
+    /// Sets the start time of the recording.
+    ///
+    /// Implies sending the recording properties, even if an explicit recording id is set.
     #[inline]
     pub fn recording_started(mut self, started: impl Into<Timestamp>) -> Self {
         self.recording_info = self.recording_info.with_start_time(started);
+        self.should_send_properties.get_or_insert(true);
         self
     }
 
     /// Whether the [`RecordingInfo`] chunk should be sent.
+    ///
+    /// This takes precedence over the defaults described in [`Self::recording_id`].
     #[inline]
     pub fn send_properties(mut self, should_send: bool) -> Self {
-        self.should_send_properties = should_send;
+        self.should_send_properties = Some(should_send);
         self
     }
 
@@ -682,6 +694,11 @@ impl RecordingStreamBuilder {
             recording_info,
             blueprint,
         } = self;
+
+        // Unless the user made an explicit choice, send the properties only for recordings we
+        // started ourselves (see `Self::recording_id`).
+        let should_send_properties =
+            should_send_properties.unwrap_or_else(|| recording_id.is_none());
 
         let store_id = StoreId::new(
             store_kind,
@@ -2930,6 +2947,75 @@ mod tests {
     fn impl_send_sync() {
         fn assert_send_sync<T: Send + Sync>() {}
         assert_send_sync::<RecordingStream>();
+    }
+
+    /// The `RecordingInfo` start time in `storage`, if a properties chunk was sent at all.
+    fn recorded_start_time(storage: &MemorySinkStorage) -> Option<Timestamp> {
+        storage.take().into_iter().find_map(|msg| {
+            let LogMsg::ArrowMsg(_, msg) = msg else {
+                return None;
+            };
+            let chunk = Chunk::from_arrow_msg(&msg).unwrap();
+            (chunk.entity_path() == &EntityPath::properties()).then(|| {
+                chunk
+                    .component_instance::<Timestamp>(
+                        RecordingInfo::descriptor_start_time().component,
+                        0,
+                        0,
+                    )
+                    .unwrap()
+                    .unwrap()
+            })
+        })
+    }
+
+    #[test]
+    fn explicit_properties_are_sent_despite_explicit_recording_id() {
+        let start_time = Timestamp(123.into());
+
+        let builders = [
+            RecordingStreamBuilder::new("rerun_example_recording_info")
+                .recording_id("recording")
+                .recording_started(start_time),
+            RecordingStreamBuilder::new("rerun_example_recording_info")
+                .recording_started(start_time)
+                .recording_id("recording"),
+        ];
+        for builder in builders {
+            let (rec, storage) = builder.memory().unwrap();
+            rec.flush_blocking().unwrap();
+            assert_eq!(recorded_start_time(&storage), Some(start_time));
+        }
+    }
+
+    #[test]
+    fn explicit_recording_id_alone_skips_recording_info() {
+        let (rec, storage) = RecordingStreamBuilder::new("rerun_example_recording_info")
+            .recording_id("recording")
+            .memory()
+            .unwrap();
+        rec.flush_blocking().unwrap();
+        assert_eq!(recorded_start_time(&storage), None);
+    }
+
+    #[test]
+    fn send_properties_overrides_the_defaults() {
+        let (rec, storage) = RecordingStreamBuilder::new("rerun_example_recording_info")
+            .recording_id("recording")
+            .recording_started(Timestamp(123.into()))
+            .send_properties(false)
+            .memory()
+            .unwrap();
+        rec.flush_blocking().unwrap();
+        assert_eq!(recorded_start_time(&storage), None);
+
+        let (rec, storage) = RecordingStreamBuilder::new("rerun_example_recording_info")
+            .send_properties(true)
+            .recording_id("recording")
+            .memory()
+            .unwrap();
+        rec.flush_blocking().unwrap();
+        assert!(recorded_start_time(&storage).is_some());
     }
 
     #[test]
