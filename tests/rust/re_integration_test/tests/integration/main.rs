@@ -11,6 +11,7 @@ mod context_menu_test;
 mod dataset_folders;
 mod datasets;
 mod deselect_on_escape;
+mod drag_and_drop_selection;
 mod drop_component_to_state_timeline_view;
 mod drop_stream_to_view;
 mod heuristics_mixed_2d_and_3d_test;
