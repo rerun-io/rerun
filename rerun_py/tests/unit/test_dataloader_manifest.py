@@ -23,8 +23,10 @@ from rerun.experimental.dataloader import (
     NoShuffle,
     NumericDecoder,
     RerunIterableDataset,
+    RerunMapDataset,
     SampleShuffle,
     _iterable_dataset as iterable_dataset,
+    _map_dataset as map_dataset,
 )
 from rerun.experimental.dataloader._sample_index import SampleIndex, SegmentMetadata
 from rerun.experimental.dataloader._utils import Target
@@ -268,6 +270,60 @@ def test_manifest_replays_live_order_across_ranks(monkeypatch: pytest.MonkeyPatc
         all_live += live_order
 
     assert sorted(all_live) == sorted(ANCHORS)  # the ranks partition the dataset: no sample dropped or duplicated
+
+
+def _stub_map_catalog(monkeypatch: pytest.MonkeyPatch, seg_tables: dict[str, dict[str, pa.Table]]) -> None:
+    """Skip the server for the map path: hand back `seg_tables` in place of the resolved fetch."""
+    monkeypatch.setattr(
+        map_dataset._WorkerConnection,
+        "ensure",
+        lambda self: (None, {k: f.decode for k, f in self._fields.items()}),
+    )
+    monkeypatch.setattr(map_dataset, "_fetch_targets", lambda targets, **_: (targets, seg_tables))
+
+
+@pytest.mark.filterwarnings("ignore::RuntimeWarning")
+@pytest.mark.parametrize("strategy", _STRATEGIES)
+def test_map_manifest_yields_full_sample_set(monkeypatch: pytest.MonkeyPatch, strategy: ShuffleStrategy) -> None:
+    """A map dataset over a manifest exposes every validated sample once, whatever strategy built it (order is the sampler's job, not the manifest's)."""
+    monkeypatch.setattr(
+        map_dataset, "_decode_iter", lambda *, targets, **_: ({"anchor": int(t.index_value)} for t in targets)
+    )
+    _stub_map_catalog(monkeypatch, seg_tables={"x": {}})
+
+    dataset = RerunMapDataset.from_manifest(_build_manifest(strategy), _SOURCE, _FIELDS)
+    assert len(dataset) == len(ANCHORS)
+
+    anchors = [cast("int", s["anchor"]) for s in dataset.__getitems__(list(range(len(dataset))))]
+    assert sorted(anchors) == sorted(ANCHORS)  # every validated sample, exactly once
+
+
+@pytest.mark.filterwarnings("ignore::RuntimeWarning")
+def test_map_manifest_decodes_frozen_ranges(monkeypatch: pytest.MonkeyPatch) -> None:
+    """`__getitems__` decodes each requested manifest row from its frozen range (real decode, catalog stubbed)."""
+    by_segment: dict[str, dict[str, list[object]]] = {}
+    for sid, anchor in zip(SEGMENT_IDS, ANCHORS, strict=True):
+        cols = by_segment.setdefault(sid, {"t": [], "rerun_segment_id": [], "x": []})
+        cols["t"].append(anchor)
+        cols["rerun_segment_id"].append(sid)
+        cols["x"].append(anchor * 1.5)
+    seg_tables = {
+        "x": {
+            sid: pa.table({
+                "t": pa.array(cols["t"], pa.int64()),
+                "rerun_segment_id": pa.array(cols["rerun_segment_id"], pa.string()),
+                "x": pa.array(cols["x"], pa.float32()),
+            })
+            for sid, cols in by_segment.items()
+        }
+    }
+    _stub_map_catalog(monkeypatch, seg_tables=seg_tables)
+
+    dataset = RerunMapDataset.from_manifest(_build_manifest(NoShuffle()), _SOURCE, _FIELDS)
+    samples = dataset.__getitems__(list(range(len(dataset))))
+
+    values = sorted(cast("torch.Tensor", s["x"]).item() for s in samples)
+    assert values == pytest.approx(sorted(a * 1.5 for a in ANCHORS))  # each row decoded from its own anchor
 
 
 @pytest.mark.filterwarnings("ignore::RuntimeWarning")
