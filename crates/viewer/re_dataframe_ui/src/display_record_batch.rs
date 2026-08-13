@@ -22,7 +22,7 @@ use re_types_core::{Component as _, DeserializationError, Loggable as _, RowId};
 use re_ui::UiExt as _;
 use re_viewer_context::{AppContext, UiLayout, VariantName};
 
-use crate::table_blueprint::ColumnBlueprint;
+use crate::column_blueprint::ColumnBlueprint;
 
 #[derive(thiserror::Error, Debug)]
 pub enum DisplayRecordBatchError {

@@ -6,7 +6,6 @@ use re_ui::UiExt as _;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 
 use super::{ColumnFilter, Filter as _, TimestampFormatted};
-use crate::TableBlueprint;
 
 /// Action to take based on the user interaction.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -37,7 +36,7 @@ impl FilterUiAction {
 /// Current state of the filter bar.
 ///
 /// Since this is dynamically changed, e.g. as the user types a query, the content of [`Self`] can
-/// differ from the content of [`TableBlueprint::column_filters`]. [`Self::filter_bar_ui`] returns a
+/// differ from the content of [`crate::datafusion_adapter::DataFusionQueryData::column_filters`]. [`Self::filter_bar_ui`] returns a
 /// flag to indicate when this content should be committed to the blueprint.
 #[derive(Clone, Debug)]
 pub struct FilterState {
@@ -49,14 +48,14 @@ impl FilterState {
     /// Restore the saved state, initializing it from the blueprint if needed.
     ///
     /// Call this at the beginning of the frame.
-    pub fn load_or_init_from_blueprint(
+    pub fn load_or_init_from_filters(
         egui_ctx: &egui::Context,
         persisted_id: egui::Id,
-        table_blueprint: &TableBlueprint,
+        query_filters: &[ColumnFilter],
     ) -> Self {
         egui_ctx.data_mut(|data| {
             data.get_temp_mut_or_insert_with(persisted_id, || Self {
-                column_filters: table_blueprint.column_filters.clone(),
+                column_filters: query_filters.to_vec(),
                 active_filter: None,
             })
             .clone()
@@ -85,7 +84,7 @@ impl FilterState {
         &mut self,
         ui: &mut egui::Ui,
         timestamp_format: TimestampFormat,
-        table_blueprint: &mut TableBlueprint,
+        query_filters: &mut Vec<ColumnFilter>,
     ) {
         // From there on, we always want to show the "today" date, because not doing so leads
         // to some very confusing display.
@@ -103,11 +102,11 @@ impl FilterState {
                 for column_filter in &mut self.column_filters {
                     column_filter.filter.on_commit();
                 }
-                table_blueprint.column_filters = self.column_filters.clone();
+                query_filters.clone_from(&self.column_filters);
             }
 
             FilterUiAction::CancelStateEdit => {
-                self.column_filters = table_blueprint.column_filters.clone();
+                self.column_filters.clone_from(query_filters);
                 self.active_filter = None;
             }
         }
@@ -551,7 +550,7 @@ mod tests {
             .build_ui(|ui| {
                 re_ui::apply_style_and_install_loaders(ui.ctx());
 
-                filters.filter_bar_ui(ui, TimestampFormat::utc(), &mut TableBlueprint::default());
+                filters.filter_bar_ui(ui, TimestampFormat::utc(), &mut Vec::new());
             });
 
         harness.run();
@@ -579,7 +578,7 @@ mod tests {
             .build_ui(|ui| {
                 re_ui::apply_style_and_install_loaders(ui.ctx());
 
-                filters.filter_bar_ui(ui, TimestampFormat::utc(), &mut TableBlueprint::default());
+                filters.filter_bar_ui(ui, TimestampFormat::utc(), &mut Vec::new());
             });
 
         // Open the popup for the timeststamp filter.

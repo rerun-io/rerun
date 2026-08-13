@@ -1,6 +1,8 @@
 //! Rich table widget over `datafusion`.
 
 mod cards_view;
+mod column_blueprint;
+mod column_sorting;
 mod datafusion_adapter;
 mod datafusion_table_widget;
 mod display_record_batch;
@@ -14,9 +16,11 @@ mod streaming_cache;
 mod table_blueprint;
 mod table_selection;
 
+pub use self::column_blueprint::{ColumnBlueprint, default_display_name_for_column};
 pub use self::datafusion_table_widget::{DataFusionTableWidget, TableStatus};
 pub use self::display_record_batch::{DisplayRecordBatch, DisplayRecordBatchError};
 // for testing purposes
+pub use self::column_sorting::{SortBy, SortDirection};
 pub use self::filters::{
     ColumnFilter, ComparisonOperator, FloatFilter, IntFilter, NonNullableBooleanFilter,
     Nullability, NullableBooleanFilter, StringFilter, StringOperator, TimestampFilter, TypedFilter,
@@ -27,13 +31,10 @@ pub use self::re_table_utils::{
 };
 pub use self::requested_object::RequestedObject;
 pub use self::streaming_cache::StreamingCacheTableProvider;
-pub use self::table_blueprint::{
-    ColumnBlueprint, SortBy, SortDirection, TableBlueprint, default_display_name_for_column,
-};
 
 /// Arrow field metadata keys for configuring card behavior.
 ///
-/// These are read from [`arrow::datatypes::Field::metadata`] and populate the corresponding [`TableBlueprint`] fields.
+/// These are read from [`arrow::datatypes::Field::metadata`] and populate the corresponding `TableBlueprint` fields.
 pub mod experimental_field_metadata {
     /// Mark a boolean column as the flag/annotation toggle column.
     ///

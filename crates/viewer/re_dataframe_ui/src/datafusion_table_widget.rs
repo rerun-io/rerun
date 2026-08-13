@@ -24,18 +24,17 @@ use re_viewer_context::{AppContext, SystemCommand, SystemCommandSender as _};
 
 use crate::StreamingCacheTableProvider;
 use crate::cards_view::FlagChangeEvent;
-use crate::datafusion_adapter::{DataFusionAdapter, DataFusionQueryResult};
+use crate::column_sorting::{SortBy, SortDirection};
+use crate::datafusion_adapter::{DataFusionAdapter, DataFusionQueryData, DataFusionQueryResult};
 use crate::display_record_batch::DisplayColumn;
 use crate::filters::{ColumnFilter, FilterState};
 use crate::header_tooltip::column_header_tooltip_ui;
 use crate::preview_renderer::PreviewRecording;
 use crate::re_table::ReTable;
 use crate::re_table_utils::UiTableConfig;
-use crate::table_blueprint::{
-    ColumnBlueprint, EntryLinksSpec, SegmentLinksSpec, SortBy, SortDirection, TableBlueprint,
-};
+use crate::table_blueprint::{EntryLinksSpec, SegmentLinksSpec, TableBlueprint};
 use crate::table_selection::TableSelectionState;
-use crate::{DisplayRecordBatch, default_display_name_for_column};
+use crate::{ColumnBlueprint, DisplayRecordBatch, default_display_name_for_column};
 
 /// Minimum row height (in points) when segment preview views are shown.
 const SEGMENT_PREVIEW_SIZE: f32 = 200.0;
@@ -50,8 +49,8 @@ pub(crate) enum TableViewMode {
 
 /// Output produced by [`DataFusionTableWidget::table_ui`].
 struct TableUiOutput {
-    /// The (potentially modified) blueprint.
-    blueprint: TableBlueprint,
+    /// The (potentially modified) query state.
+    query_data: DataFusionQueryData,
 
     /// Resolved source information for flag mutation and write-back.
     flag_column: Option<ResolvedFlagColumn>,
@@ -205,8 +204,8 @@ pub struct DataFusionTableWidget<'a> {
     /// User-provided closure to provide column blueprint.
     column_blueprint_fn: ColumnBlueprintFn<'a>,
 
-    /// The blueprint used the first time the table is queried.
-    initial_blueprint: TableBlueprint,
+    /// Query state used only when creating the egui-owned adapter for the first time.
+    initial_query_data: DataFusionQueryData,
 
     /// Registered table blueprint supplied by the caller.
     registered_table_blueprint: Option<&'a re_entity_db::EntityDb>,
@@ -252,7 +251,7 @@ impl<'a> DataFusionTableWidget<'a> {
             title: None,
             url: None,
             column_blueprint_fn: Box::new(|_| ColumnBlueprint::default()),
-            initial_blueprint: Default::default(),
+            initial_query_data: Default::default(),
             registered_table_blueprint: None,
         }
     }
@@ -285,8 +284,9 @@ impl<'a> DataFusionTableWidget<'a> {
         self
     }
 
-    pub fn initial_blueprint(mut self, initial_blueprint: TableBlueprint) -> Self {
-        self.initial_blueprint = initial_blueprint;
+    /// Set the initial sort used when no egui-owned adapter state exists yet.
+    pub fn sort_by(mut self, sort_by: SortBy) -> Self {
+        self.initial_query_data.sort_by = Some(sort_by);
         self
     }
 
@@ -305,7 +305,7 @@ impl<'a> DataFusionTableWidget<'a> {
         origin: re_uri::Origin,
         dataset_id: EntryId,
     ) -> Self {
-        self.initial_blueprint.segment_links = Some(SegmentLinksSpec {
+        self.initial_query_data.segment_links = Some(SegmentLinksSpec {
             column_name,
             segment_id_column_name,
             origin,
@@ -321,7 +321,7 @@ impl<'a> DataFusionTableWidget<'a> {
         entry_id_column_name: ColumnName,
         origin: re_uri::Origin,
     ) -> Self {
-        self.initial_blueprint.entry_links = Some(EntryLinksSpec {
+        self.initial_query_data.entry_links = Some(EntryLinksSpec {
             column_name,
             entry_id_column_name,
             origin,
@@ -331,7 +331,7 @@ impl<'a> DataFusionTableWidget<'a> {
     }
 
     pub fn prefilter(mut self, expression: datafusion::prelude::Expr) -> Self {
-        self.initial_blueprint.prefilter = Some(expression);
+        self.initial_query_data.prefilter = Some(expression);
         self
     }
 
@@ -447,7 +447,7 @@ impl<'a> DataFusionTableWidget<'a> {
             &self.session_ctx,
             self.table_ref.clone(),
             session_id,
-            self.initial_blueprint.clone(),
+            self.initial_query_data.clone(),
         );
 
         let requested_query_result = table_state.results.as_ref();
@@ -503,7 +503,7 @@ impl<'a> DataFusionTableWidget<'a> {
             app_ctx,
             runtime,
             ui,
-            table_state.blueprint(),
+            table_state.query_data(),
             session_id,
             table_state.queried_at,
             is_table_update_in_progress,
@@ -542,8 +542,8 @@ impl<'a> DataFusionTableWidget<'a> {
             });
         }
 
-        if table_state.blueprint() != &output.blueprint {
-            table_state.update_query(runtime, ui, output.blueprint);
+        if table_state.query_data() != &output.query_data {
+            table_state.update_query(runtime, ui, output.query_data);
         }
 
         if is_table_update_in_progress {
@@ -559,7 +559,7 @@ impl<'a> DataFusionTableWidget<'a> {
         ctx: &AppContext<'_>,
         runtime: &AsyncRuntimeHandle,
         ui: &mut egui::Ui,
-        table_blueprint: &TableBlueprint,
+        query_data: &DataFusionQueryData,
         session_id: egui::Id,
         queried_at: Timestamp,
         should_show_loading_indicator: bool,
@@ -568,10 +568,13 @@ impl<'a> DataFusionTableWidget<'a> {
     ) -> TableUiOutput {
         let static_id = Id::new(&self.table_ref);
 
-        let mut new_blueprint = table_blueprint.clone();
+        let mut query_data = query_data.clone();
 
-        let mut filter_state =
-            FilterState::load_or_init_from_blueprint(ui.ctx(), session_id, table_blueprint);
+        let mut filter_state = FilterState::load_or_init_from_filters(
+            ui.ctx(),
+            session_id,
+            &query_data.column_filters,
+        );
 
         let num_rows = query_result
             .sorbet_batches
@@ -603,7 +606,7 @@ impl<'a> DataFusionTableWidget<'a> {
                 //TODO(ab): better error handling?
                 ui.error_label(err.to_string());
                 return TableUiOutput {
-                    blueprint: new_blueprint,
+                    query_data,
                     flag_column: None,
                     flag_changes: Vec::new(),
                 };
@@ -618,30 +621,26 @@ impl<'a> DataFusionTableWidget<'a> {
         let table_cards_and_blueprints_enabled =
             ctx.app_options.experimental.table_cards_and_blueprints;
 
+        let blueprint_db = self.registered_table_blueprint.or_else(|| {
+            let id = self.table_id.as_ref()?;
+            ctx.storage_context.hub.table_blueprint(id)
+        });
+        let blueprint = blueprint_db
+            .map(TableBlueprint::load)
+            .unwrap_or_default()
+            .apply_heuristics(
+                &query_result.original_schema,
+                &columns,
+                &display_record_batches,
+                &table_config,
+                redap_uri.as_ref().map(|uri| uri.origin()),
+            );
+
         let view_renderer = if table_cards_and_blueprints_enabled {
-            let blueprint_db = self.registered_table_blueprint.or_else(|| {
-                let id = self.table_id.as_ref()?;
-                ctx.storage_context.hub.table_blueprint(id)
-            });
-
-            // Populate runtime blueprint fields from the registered table blueprint.
-            if let Some(db) = blueprint_db {
-                new_blueprint.populate_from_registered_blueprint(db);
-            }
-
             blueprint_db.and_then(crate::preview_renderer::RecordingPreviewRenderer::from_blueprint)
         } else {
             None
         };
-
-        // Fill remaining unset fields via schema field metadata + structural heuristics.
-        new_blueprint = new_blueprint.apply_heuristics(
-            &query_result.original_schema,
-            &columns,
-            &display_record_batches,
-            &table_config,
-            redap_uri.as_ref().map(|uri| uri.origin()),
-        );
 
         let view_mode_id = session_id.with("view_mode");
         let mut view_mode = if table_cards_and_blueprints_enabled {
@@ -669,7 +668,11 @@ impl<'a> DataFusionTableWidget<'a> {
             );
         }
 
-        filter_state.filter_bar_ui(ui, ctx.app_options.timestamp_format, &mut new_blueprint);
+        filter_state.filter_bar_ui(
+            ui,
+            ctx.app_options.timestamp_format,
+            &mut query_data.column_filters,
+        );
 
         let table_style = re_ui::TableStyle::Spacious;
 
@@ -695,7 +698,7 @@ impl<'a> DataFusionTableWidget<'a> {
 
         let show_segment_previews = view_mode == TableViewMode::Table
             && view_renderer.is_some()
-            && new_blueprint
+            && blueprint
                 .segment_preview_column
                 .as_ref()
                 .is_some_and(|name| columns.index_by_physical_name(name).is_some());
@@ -706,7 +709,7 @@ impl<'a> DataFusionTableWidget<'a> {
             None
         };
         let flag_column = Self::resolve_flag_column(
-            &new_blueprint,
+            &blueprint,
             &columns,
             &query_result.original_schema,
             entry_uri,
@@ -756,7 +759,8 @@ impl<'a> DataFusionTableWidget<'a> {
                     migrated_fields: &migrated_fields,
                     display_record_batches: &display_record_batches,
                     columns: &columns,
-                    new_blueprint: &mut new_blueprint,
+                    blueprint: &blueprint,
+                    query_data: &mut query_data,
                     filter_state: &mut filter_state,
                     row_height,
                     num_preview_views,
@@ -785,7 +789,7 @@ impl<'a> DataFusionTableWidget<'a> {
                     &columns,
                     &display_record_batches,
                     &table_config,
-                    &new_blueprint,
+                    &blueprint,
                     view_renderer.as_ref(),
                     view_states,
                     num_rows,
@@ -800,7 +804,7 @@ impl<'a> DataFusionTableWidget<'a> {
             .data_mut(|d| d.insert_temp(view_mode_id, view_mode));
 
         TableUiOutput {
-            blueprint: new_blueprint,
+            query_data,
             flag_column,
             flag_changes,
         }
@@ -1166,7 +1170,8 @@ struct DataFusionTableDelegate<'a> {
     migrated_fields: &'a Vec<Field>,
     display_record_batches: &'a Vec<DisplayRecordBatch>,
     columns: &'a Columns<'a>,
-    new_blueprint: &'a mut TableBlueprint,
+    blueprint: &'a TableBlueprint,
+    query_data: &'a mut DataFusionQueryData,
     filter_state: &'a mut FilterState,
     row_height: f32,
 
@@ -1192,7 +1197,7 @@ impl DataFusionTableDelegate<'_> {
     }
 
     pub fn row_context_menu(&self, ui: &Ui, _row_number: u64) {
-        let has_context_menu = self.new_blueprint.segment_links.is_some();
+        let has_context_menu = self.query_data.segment_links.is_some();
         if !has_context_menu {
             return;
         }
@@ -1203,7 +1208,7 @@ impl DataFusionTableDelegate<'_> {
             // re_table will ensure that the right-clicked row is always selected.
             let selected_rows = selection.selected_rows;
 
-            if let Some(segment_links_spec) = &self.new_blueprint.segment_links {
+            if let Some(segment_links_spec) = &self.query_data.segment_links {
                 let label = format!("Open {}", format_plural_s(selected_rows.len(), "segment"));
                 let response =
                     ui.add(icons::OPEN_RECORDING.as_button_with_label(ui.tokens(), label));
@@ -1250,7 +1255,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
             let column_physical_name = column.physical_name();
             let column_display_name = column.display_name();
 
-            let current_sort_direction = self.new_blueprint.sort_by.as_ref().and_then(|sort_by| {
+            let current_sort_direction = self.query_data.sort_by.as_ref().and_then(|sort_by| {
                 (&sort_by.column_name == column_physical_name).then_some(sort_by.direction)
             });
 
@@ -1292,8 +1297,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                                     .inner
                                     .clicked()
                                 {
-                                    self.new_blueprint.sort_by =
-                                        Some(column.sort_by(sort_direction));
+                                    self.query_data.sort_by = Some(column.sort_by(sort_direction));
                                     ui.close();
                                 }
                             }
@@ -1338,7 +1342,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
         if cell.col_nr == 0
             && has_preview_column
             && let Some(renderer) = &self.view_renderer
-            && let Some(segment_preview_column) = &self.new_blueprint.segment_preview_column
+            && let Some(segment_preview_column) = &self.blueprint.segment_preview_column
         {
             let preview_state = self.view_states.preview_state.get_or_insert_default();
             let recording = resolve_recording_for_row(
