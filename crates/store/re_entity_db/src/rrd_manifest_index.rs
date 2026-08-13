@@ -163,6 +163,12 @@ impl RrdManifestIndex {
     ) -> CodecResult<()> {
         re_tracing::profile_function!();
 
+        // Concatenate before updating caches.
+        let concatenated = match &self.manifest {
+            Some(existing) => Some(Arc::new(RrdManifest::concat(&[existing, &delta])?)),
+            None => None,
+        };
+
         self.update_timeline_stats(&delta);
         self.update_entity_static_data(&delta);
         self.chunk_prioritizer.on_rrd_manifest(&delta);
@@ -210,16 +216,9 @@ impl RrdManifestIndex {
             }
         }
 
-        let new_full_manifest = if let Some(existing) = self.manifest.take() {
-            Arc::new(RrdManifest::concat(&[&existing, &delta])?)
-        } else {
-            delta
-        };
+        self.sorted_chunks.update(entity_tree, delta.temporal_map());
 
-        self.sorted_chunks =
-            SortedTemporalChunks::new(entity_tree, new_full_manifest.temporal_map());
-
-        self.manifest = Some(new_full_manifest);
+        self.manifest = Some(concatenated.unwrap_or(delta));
 
         Ok(())
     }
