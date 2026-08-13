@@ -857,13 +857,10 @@ fn quote_trait_impls_for_encoding_or_component(
                     // re_tracing::profile_function!();
 
                     use arrow::{array::*, buffer::*, datatypes::*};
-                    use ::re_types_core::{arrow_zip_validity::ZipValidity, Loggable as _, ResultExt as _};
+                    use ::re_types_core::{arrow_helpers::*, arrow_zip_validity::ZipValidity, Loggable as _, ResultExt as _};
 
-                    // This code-path cannot have null fields.
-                    // If it does have a nulls-array, all bits must indicate valid data.
-                    if let Some(nulls) = arrow_data.nulls() && nulls.null_count() != 0 {
-                        return Err(DeserializationError::missing_data());
-                    }
+                    // This code-path cannot have null entries.
+                    err_on_nulls(arrow_data, #fqname)?;
 
                     Ok(#quoted_deserializer)
                 }
@@ -892,7 +889,7 @@ fn quote_trait_impls_for_encoding_or_component(
                 // re_tracing::profile_function!();
 
                 use arrow::{array::*, buffer::*, datatypes::*};
-                use ::re_types_core::{arrow_zip_validity::ZipValidity, Loggable as _, ResultExt as _};
+                use ::re_types_core::{arrow_helpers::*, arrow_zip_validity::ZipValidity, Loggable as _, ResultExt as _};
 
                 Ok(#quoted_deserializer)
             }

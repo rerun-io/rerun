@@ -75,16 +75,12 @@ impl crate::Loggable for TimeInt {
     where
         Self: Sized,
     {
-        use crate::{Loggable as _, ResultExt as _, arrow_zip_validity::ZipValidity};
+        use crate::{
+            Loggable as _, ResultExt as _, arrow_helpers::*, arrow_zip_validity::ZipValidity,
+        };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok(arrow_data
-            .as_any()
-            .downcast_ref::<Int64Array>()
-            .ok_or_else(|| {
-                let expected = Self::arrow_datatype();
-                let actual = arrow_data.data_type().clone();
-                DeserializationError::datatype_mismatch(expected, actual)
-            })
+            .try_cast::<Int64Array>(|| Self::arrow_datatype())
             .with_context("rerun.encodings.TimeInt#value")?
             .into_iter()
             .map(|v| v.ok_or_else(DeserializationError::missing_data))
@@ -99,22 +95,14 @@ impl crate::Loggable for TimeInt {
     where
         Self: Sized,
     {
-        use crate::{Loggable as _, ResultExt as _, arrow_zip_validity::ZipValidity};
+        use crate::{
+            Loggable as _, ResultExt as _, arrow_helpers::*, arrow_zip_validity::ZipValidity,
+        };
         use arrow::{array::*, buffer::*, datatypes::*};
-        if let Some(nulls) = arrow_data.nulls()
-            && nulls.null_count() != 0
-        {
-            return Err(DeserializationError::missing_data());
-        }
+        err_on_nulls(arrow_data, "rerun.encodings.TimeInt")?;
         Ok({
             let slice = arrow_data
-                .as_any()
-                .downcast_ref::<Int64Array>()
-                .ok_or_else(|| {
-                    let expected = DataType::Int64;
-                    let actual = arrow_data.data_type().clone();
-                    DeserializationError::datatype_mismatch(expected, actual)
-                })
+                .try_cast::<Int64Array>(|| DataType::Int64)
                 .with_context("rerun.encodings.TimeInt#value")?
                 .values()
                 .as_ref();

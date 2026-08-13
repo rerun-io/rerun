@@ -920,13 +920,7 @@ fn quote_array_downcast(
     let cast_as = cast_as.to_token_stream();
     quote! {
         #arr
-            .as_any()
-            .downcast_ref::<#cast_as>()
-            .ok_or_else(|| {
-                let expected = #quoted_expected_datatype;
-                let actual = #arr.data_type().clone();
-                DeserializationError::datatype_mismatch(expected, actual)
-            })
+            .try_cast::<#cast_as>(|| #quoted_expected_datatype)
             .with_context(#location)
     }
 }

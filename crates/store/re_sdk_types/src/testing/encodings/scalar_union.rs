@@ -256,17 +256,13 @@ impl ::re_types_core::Loggable for ScalarUnion {
     where
         Self: Sized,
     {
-        use ::re_types_core::{Loggable as _, ResultExt as _, arrow_zip_validity::ZipValidity};
+        use ::re_types_core::{
+            Loggable as _, ResultExt as _, arrow_helpers::*, arrow_zip_validity::ZipValidity,
+        };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let arrow_data = arrow_data
-                .as_any()
-                .downcast_ref::<arrow::array::UnionArray>()
-                .ok_or_else(|| {
-                    let expected = Self::arrow_datatype();
-                    let actual = arrow_data.data_type().clone();
-                    DeserializationError::datatype_mismatch(expected, actual)
-                })
+                .try_cast::<arrow::array::UnionArray>(|| Self::arrow_datatype())
                 .with_context("rerun.testing.encodings.ScalarUnion")?;
             if arrow_data.is_empty() {
                 Vec::new()
@@ -290,13 +286,7 @@ impl ::re_types_core::Loggable for ScalarUnion {
                 let degrees = {
                     let arrow_data = arrow_data.child(1).as_ref();
                     arrow_data
-                        .as_any()
-                        .downcast_ref::<Float32Array>()
-                        .ok_or_else(|| {
-                            let expected = DataType::Float32;
-                            let actual = arrow_data.data_type().clone();
-                            DeserializationError::datatype_mismatch(expected, actual)
-                        })
+                        .try_cast::<Float32Array>(|| DataType::Float32)
                         .with_context("rerun.testing.encodings.ScalarUnion#degrees")?
                         .into_iter()
                         .collect::<Vec<_>>()
@@ -305,16 +295,12 @@ impl ::re_types_core::Loggable for ScalarUnion {
                     let arrow_data = arrow_data.child(2).as_ref();
                     {
                         let arrow_data = arrow_data
-                            .as_any()
-                            .downcast_ref::<arrow::array::ListArray>()
-                            .ok_or_else(|| {
-                                let expected = DataType::List(std::sync::Arc::new(Field::new(
+                            .try_cast::<arrow::array::ListArray>(|| {
+                                DataType::List(std::sync::Arc::new(Field::new(
                                     "item",
                                     <crate::testing::encodings::MixedFields>::arrow_datatype(),
                                     false,
-                                )));
-                                let actual = arrow_data.data_type().clone();
-                                DeserializationError::datatype_mismatch(expected, actual)
+                                )))
                             })
                             .with_context("rerun.testing.encodings.ScalarUnion#craziness")?;
                         if arrow_data.is_empty() {
@@ -364,18 +350,14 @@ impl ::re_types_core::Loggable for ScalarUnion {
                     let arrow_data = arrow_data.child(3).as_ref();
                     {
                         let arrow_data = arrow_data
-                            .as_any()
-                            .downcast_ref::<arrow::array::FixedSizeListArray>()
-                            .ok_or_else(|| {
-                                let expected = DataType::FixedSizeList(
-                                    std::sync::Arc::new(
-                                        Field::new("item", DataType::Float32, false),
-                                    ),
-                                    3,
-                                );
-                                let actual = arrow_data.data_type().clone();
-                                DeserializationError::datatype_mismatch(expected, actual)
-                            })
+                            .try_cast::<
+                                arrow::array::FixedSizeListArray,
+                            >(|| DataType::FixedSizeList(
+                                std::sync::Arc::new(
+                                    Field::new("item", DataType::Float32, false),
+                                ),
+                                3,
+                            ))
                             .with_context(
                                 "rerun.testing.encodings.ScalarUnion#fixed_size_shenanigans",
                             )?;
@@ -389,13 +371,7 @@ impl ::re_types_core::Loggable for ScalarUnion {
                             let arrow_data_inner = {
                                 let arrow_data_inner = &**arrow_data.values();
                                 arrow_data_inner
-                                    .as_any()
-                                    .downcast_ref::<Float32Array>()
-                                    .ok_or_else(|| {
-                                        let expected = DataType::Float32;
-                                        let actual = arrow_data_inner.data_type().clone();
-                                        DeserializationError::datatype_mismatch(expected, actual)
-                                    })
+                                    .try_cast::<Float32Array>(|| DataType::Float32)
                                     .with_context(
                                         "rerun.testing.encodings.ScalarUnion#fixed_size_shenanigans",
                                     )?

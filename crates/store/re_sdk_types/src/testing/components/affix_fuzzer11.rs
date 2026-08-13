@@ -100,17 +100,13 @@ impl ::re_types_core::Loggable for AffixFuzzer11 {
     where
         Self: Sized,
     {
-        use ::re_types_core::{Loggable as _, ResultExt as _, arrow_zip_validity::ZipValidity};
+        use ::re_types_core::{
+            Loggable as _, ResultExt as _, arrow_helpers::*, arrow_zip_validity::ZipValidity,
+        };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let arrow_data = arrow_data
-                .as_any()
-                .downcast_ref::<arrow::array::ListArray>()
-                .ok_or_else(|| {
-                    let expected = Self::arrow_datatype();
-                    let actual = arrow_data.data_type().clone();
-                    DeserializationError::datatype_mismatch(expected, actual)
-                })
+                .try_cast::<arrow::array::ListArray>(|| Self::arrow_datatype())
                 .with_context("rerun.testing.components.AffixFuzzer11#many_floats_optional")?;
             if arrow_data.is_empty() {
                 Vec::new()
@@ -118,13 +114,7 @@ impl ::re_types_core::Loggable for AffixFuzzer11 {
                 let arrow_data_inner = {
                     let arrow_data_inner = &**arrow_data.values();
                     arrow_data_inner
-                        .as_any()
-                        .downcast_ref::<Float32Array>()
-                        .ok_or_else(|| {
-                            let expected = DataType::Float32;
-                            let actual = arrow_data_inner.data_type().clone();
-                            DeserializationError::datatype_mismatch(expected, actual)
-                        })
+                        .try_cast::<Float32Array>(|| DataType::Float32)
                         .with_context(
                             "rerun.testing.components.AffixFuzzer11#many_floats_optional",
                         )?

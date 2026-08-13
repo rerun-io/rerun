@@ -153,17 +153,13 @@ impl ::re_types_core::Loggable for SphericalHarmonics3Rgb {
     where
         Self: Sized,
     {
-        use ::re_types_core::{Loggable as _, ResultExt as _, arrow_zip_validity::ZipValidity};
+        use ::re_types_core::{
+            Loggable as _, ResultExt as _, arrow_helpers::*, arrow_zip_validity::ZipValidity,
+        };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let arrow_data = arrow_data
-                .as_any()
-                .downcast_ref::<arrow::array::FixedSizeListArray>()
-                .ok_or_else(|| {
-                    let expected = Self::arrow_datatype();
-                    let actual = arrow_data.data_type().clone();
-                    DeserializationError::datatype_mismatch(expected, actual)
-                })
+                .try_cast::<arrow::array::FixedSizeListArray>(|| Self::arrow_datatype())
                 .with_context("rerun.encodings.SphericalHarmonics3Rgb#coefficients")?;
             if arrow_data.is_empty() {
                 Vec::new()
@@ -176,19 +172,15 @@ impl ::re_types_core::Loggable for SphericalHarmonics3Rgb {
                     let arrow_data_inner = &**arrow_data.values();
                     {
                         let arrow_data_inner = arrow_data_inner
-                            .as_any()
-                            .downcast_ref::<arrow::array::FixedSizeListArray>()
-                            .ok_or_else(|| {
-                                let expected = DataType::FixedSizeList(
+                            .try_cast::<arrow::array::FixedSizeListArray>(|| {
+                                DataType::FixedSizeList(
                                     std::sync::Arc::new(Field::new(
                                         "item",
                                         DataType::Float16,
                                         false,
                                     )),
                                     3,
-                                );
-                                let actual = arrow_data_inner.data_type().clone();
-                                DeserializationError::datatype_mismatch(expected, actual)
+                                )
                             })
                             .with_context("rerun.encodings.SphericalHarmonics3Rgb#coefficients")?;
                         if arrow_data_inner.is_empty() {
@@ -201,13 +193,7 @@ impl ::re_types_core::Loggable for SphericalHarmonics3Rgb {
                             let arrow_data_inner_inner = {
                                 let arrow_data_inner_inner = &**arrow_data_inner.values();
                                 arrow_data_inner_inner
-                                    .as_any()
-                                    .downcast_ref::<Float16Array>()
-                                    .ok_or_else(|| {
-                                        let expected = DataType::Float16;
-                                        let actual = arrow_data_inner_inner.data_type().clone();
-                                        DeserializationError::datatype_mismatch(expected, actual)
-                                    })
+                                    .try_cast::<Float16Array>(|| DataType::Float16)
                                     .with_context(
                                         "rerun.encodings.SphericalHarmonics3Rgb#coefficients",
                                     )?
@@ -281,20 +267,16 @@ impl ::re_types_core::Loggable for SphericalHarmonics3Rgb {
     where
         Self: Sized,
     {
-        use ::re_types_core::{Loggable as _, ResultExt as _, arrow_zip_validity::ZipValidity};
+        use ::re_types_core::{
+            Loggable as _, ResultExt as _, arrow_helpers::*, arrow_zip_validity::ZipValidity,
+        };
         use arrow::{array::*, buffer::*, datatypes::*};
-        if let Some(nulls) = arrow_data.nulls()
-            && nulls.null_count() != 0
-        {
-            return Err(DeserializationError::missing_data());
-        }
+        err_on_nulls(arrow_data, "rerun.encodings.SphericalHarmonics3Rgb")?;
         Ok({
             let slice = {
                 let arrow_data = arrow_data
-                    .as_any()
-                    .downcast_ref::<arrow::array::FixedSizeListArray>()
-                    .ok_or_else(|| {
-                        let expected = DataType::FixedSizeList(
+                    .try_cast::<arrow::array::FixedSizeListArray>(|| {
+                        DataType::FixedSizeList(
                             std::sync::Arc::new(Field::new(
                                 "item",
                                 DataType::FixedSizeList(
@@ -308,9 +290,7 @@ impl ::re_types_core::Loggable for SphericalHarmonics3Rgb {
                                 false,
                             )),
                             15,
-                        );
-                        let actual = arrow_data.data_type().clone();
-                        DeserializationError::datatype_mismatch(expected, actual)
+                        )
                     })
                     .with_context("rerun.encodings.SphericalHarmonics3Rgb#coefficients")?;
                 if arrow_data.value_length() != 15i32 {
@@ -337,15 +317,11 @@ impl ::re_types_core::Loggable for SphericalHarmonics3Rgb {
                 let arrow_data_inner = &**arrow_data.values();
                 bytemuck::try_cast_slice::<_, [[half::f16; 3usize]; 15usize]>({
                     let arrow_data_inner = arrow_data_inner
-                        .as_any()
-                        .downcast_ref::<arrow::array::FixedSizeListArray>()
-                        .ok_or_else(|| {
-                            let expected = DataType::FixedSizeList(
+                        .try_cast::<arrow::array::FixedSizeListArray>(|| {
+                            DataType::FixedSizeList(
                                 std::sync::Arc::new(Field::new("item", DataType::Float16, false)),
                                 3,
-                            );
-                            let actual = arrow_data_inner.data_type().clone();
-                            DeserializationError::datatype_mismatch(expected, actual)
+                            )
                         })
                         .with_context("rerun.encodings.SphericalHarmonics3Rgb#coefficients")?;
                     if arrow_data_inner.value_length() != 3i32 {
@@ -361,13 +337,7 @@ impl ::re_types_core::Loggable for SphericalHarmonics3Rgb {
                     let arrow_data_inner_inner = &**arrow_data_inner.values();
                     bytemuck::try_cast_slice::<_, [half::f16; 3usize]>(
                         arrow_data_inner_inner
-                            .as_any()
-                            .downcast_ref::<Float16Array>()
-                            .ok_or_else(|| {
-                                let expected = DataType::Float16;
-                                let actual = arrow_data_inner_inner.data_type().clone();
-                                DeserializationError::datatype_mismatch(expected, actual)
-                            })
+                            .try_cast::<Float16Array>(|| DataType::Float16)
                             .with_context("rerun.encodings.SphericalHarmonics3Rgb#coefficients")?
                             .values()
                             .as_ref(),

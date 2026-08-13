@@ -92,17 +92,13 @@ impl ::re_types_core::Loggable for AffixFuzzer10 {
     where
         Self: Sized,
     {
-        use ::re_types_core::{Loggable as _, ResultExt as _, arrow_zip_validity::ZipValidity};
+        use ::re_types_core::{
+            Loggable as _, ResultExt as _, arrow_helpers::*, arrow_zip_validity::ZipValidity,
+        };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let arrow_data = arrow_data
-                .as_any()
-                .downcast_ref::<StringArray>()
-                .ok_or_else(|| {
-                    let expected = Self::arrow_datatype();
-                    let actual = arrow_data.data_type().clone();
-                    DeserializationError::datatype_mismatch(expected, actual)
-                })
+                .try_cast::<StringArray>(|| Self::arrow_datatype())
                 .with_context("rerun.testing.components.AffixFuzzer10#single_string_optional")?;
             let arrow_data_buf = arrow_data.values();
             let offsets = arrow_data.offsets();

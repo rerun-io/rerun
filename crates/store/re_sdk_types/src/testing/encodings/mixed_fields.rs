@@ -494,17 +494,13 @@ impl ::re_types_core::Loggable for MixedFields {
     where
         Self: Sized,
     {
-        use ::re_types_core::{Loggable as _, ResultExt as _, arrow_zip_validity::ZipValidity};
+        use ::re_types_core::{
+            Loggable as _, ResultExt as _, arrow_helpers::*, arrow_zip_validity::ZipValidity,
+        };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let arrow_data = arrow_data
-                .as_any()
-                .downcast_ref::<arrow::array::StructArray>()
-                .ok_or_else(|| {
-                    let expected = Self::arrow_datatype();
-                    let actual = arrow_data.data_type().clone();
-                    DeserializationError::datatype_mismatch(expected, actual)
-                })
+                .try_cast::<arrow::array::StructArray>(|| Self::arrow_datatype())
                 .with_context("rerun.testing.encodings.MixedFields")?;
             if arrow_data.is_empty() {
                 Vec::new()
@@ -526,13 +522,7 @@ impl ::re_types_core::Loggable for MixedFields {
                     }
                     let arrow_data = &**arrays_by_name["single_float_optional"];
                     arrow_data
-                        .as_any()
-                        .downcast_ref::<Float32Array>()
-                        .ok_or_else(|| {
-                            let expected = DataType::Float32;
-                            let actual = arrow_data.data_type().clone();
-                            DeserializationError::datatype_mismatch(expected, actual)
-                        })
+                        .try_cast::<Float32Array>(|| DataType::Float32)
                         .with_context("rerun.testing.encodings.MixedFields#single_float_optional")?
                         .into_iter()
                 };
@@ -547,13 +537,7 @@ impl ::re_types_core::Loggable for MixedFields {
                     let arrow_data = &**arrays_by_name["single_string_required"];
                     {
                         let arrow_data = arrow_data
-                            .as_any()
-                            .downcast_ref::<StringArray>()
-                            .ok_or_else(|| {
-                                let expected = DataType::Utf8;
-                                let actual = arrow_data.data_type().clone();
-                                DeserializationError::datatype_mismatch(expected, actual)
-                            })
+                            .try_cast::<StringArray>(|| DataType::Utf8)
                             .with_context(
                                 "rerun.testing.encodings.MixedFields#single_string_required",
                             )?;
@@ -599,13 +583,7 @@ impl ::re_types_core::Loggable for MixedFields {
                     let arrow_data = &**arrays_by_name["single_string_optional"];
                     {
                         let arrow_data = arrow_data
-                            .as_any()
-                            .downcast_ref::<StringArray>()
-                            .ok_or_else(|| {
-                                let expected = DataType::Utf8;
-                                let actual = arrow_data.data_type().clone();
-                                DeserializationError::datatype_mismatch(expected, actual)
-                            })
+                            .try_cast::<StringArray>(|| DataType::Utf8)
                             .with_context(
                                 "rerun.testing.encodings.MixedFields#single_string_optional",
                             )?;
@@ -651,16 +629,12 @@ impl ::re_types_core::Loggable for MixedFields {
                     let arrow_data = &**arrays_by_name["many_floats_optional"];
                     {
                         let arrow_data = arrow_data
-                            .as_any()
-                            .downcast_ref::<arrow::array::ListArray>()
-                            .ok_or_else(|| {
-                                let expected = DataType::List(std::sync::Arc::new(Field::new(
+                            .try_cast::<arrow::array::ListArray>(|| {
+                                DataType::List(std::sync::Arc::new(Field::new(
                                     "item",
                                     DataType::Float32,
                                     false,
-                                )));
-                                let actual = arrow_data.data_type().clone();
-                                DeserializationError::datatype_mismatch(expected, actual)
+                                )))
                             })
                             .with_context(
                                 "rerun.testing.encodings.MixedFields#many_floats_optional",
@@ -671,13 +645,7 @@ impl ::re_types_core::Loggable for MixedFields {
                             let arrow_data_inner = {
                                 let arrow_data_inner = &**arrow_data.values();
                                 arrow_data_inner
-                                    .as_any()
-                                    .downcast_ref::<Float32Array>()
-                                    .ok_or_else(|| {
-                                        let expected = DataType::Float32;
-                                        let actual = arrow_data_inner.data_type().clone();
-                                        DeserializationError::datatype_mismatch(expected, actual)
-                                    })
+                                    .try_cast::<Float32Array>(|| DataType::Float32)
                                     .with_context(
                                         "rerun.testing.encodings.MixedFields#many_floats_optional",
                                     )?
@@ -717,16 +685,12 @@ impl ::re_types_core::Loggable for MixedFields {
                     let arrow_data = &**arrays_by_name["many_strings_required"];
                     {
                         let arrow_data = arrow_data
-                            .as_any()
-                            .downcast_ref::<arrow::array::ListArray>()
-                            .ok_or_else(|| {
-                                let expected = DataType::List(std::sync::Arc::new(Field::new(
+                            .try_cast::<arrow::array::ListArray>(|| {
+                                DataType::List(std::sync::Arc::new(Field::new(
                                     "item",
                                     DataType::Utf8,
                                     false,
-                                )));
-                                let actual = arrow_data.data_type().clone();
-                                DeserializationError::datatype_mismatch(expected, actual)
+                                )))
                             })
                             .with_context(
                                 "rerun.testing.encodings.MixedFields#many_strings_required",
@@ -738,13 +702,7 @@ impl ::re_types_core::Loggable for MixedFields {
                                 let arrow_data_inner = &**arrow_data.values();
                                 {
                                     let arrow_data_inner = arrow_data_inner
-                                        .as_any()
-                                        .downcast_ref::<StringArray>()
-                                        .ok_or_else(|| {
-                                            let expected = DataType::Utf8;
-                                            let actual = arrow_data_inner.data_type().clone();
-                                            DeserializationError::datatype_mismatch(expected, actual)
-                                        })
+                                        .try_cast::<StringArray>(|| DataType::Utf8)
                                         .with_context(
                                             "rerun.testing.encodings.MixedFields#many_strings_required",
                                         )?;
@@ -836,16 +794,12 @@ impl ::re_types_core::Loggable for MixedFields {
                     let arrow_data = &**arrays_by_name["many_strings_optional"];
                     {
                         let arrow_data = arrow_data
-                            .as_any()
-                            .downcast_ref::<arrow::array::ListArray>()
-                            .ok_or_else(|| {
-                                let expected = DataType::List(std::sync::Arc::new(Field::new(
+                            .try_cast::<arrow::array::ListArray>(|| {
+                                DataType::List(std::sync::Arc::new(Field::new(
                                     "item",
                                     DataType::Utf8,
                                     false,
-                                )));
-                                let actual = arrow_data.data_type().clone();
-                                DeserializationError::datatype_mismatch(expected, actual)
+                                )))
                             })
                             .with_context(
                                 "rerun.testing.encodings.MixedFields#many_strings_optional",
@@ -857,13 +811,7 @@ impl ::re_types_core::Loggable for MixedFields {
                                 let arrow_data_inner = &**arrow_data.values();
                                 {
                                     let arrow_data_inner = arrow_data_inner
-                                        .as_any()
-                                        .downcast_ref::<StringArray>()
-                                        .ok_or_else(|| {
-                                            let expected = DataType::Utf8;
-                                            let actual = arrow_data_inner.data_type().clone();
-                                            DeserializationError::datatype_mismatch(expected, actual)
-                                        })
+                                        .try_cast::<StringArray>(|| DataType::Utf8)
                                         .with_context(
                                             "rerun.testing.encodings.MixedFields#many_strings_optional",
                                         )?;
@@ -954,13 +902,7 @@ impl ::re_types_core::Loggable for MixedFields {
                     }
                     let arrow_data = &**arrays_by_name["flattened_scalar"];
                     arrow_data
-                        .as_any()
-                        .downcast_ref::<Float32Array>()
-                        .ok_or_else(|| {
-                            let expected = DataType::Float32;
-                            let actual = arrow_data.data_type().clone();
-                            DeserializationError::datatype_mismatch(expected, actual)
-                        })
+                        .try_cast::<Float32Array>(|| DataType::Float32)
                         .with_context("rerun.testing.encodings.MixedFields#flattened_scalar")?
                         .into_iter()
                 };
@@ -989,13 +931,7 @@ impl ::re_types_core::Loggable for MixedFields {
                     }
                     let arrow_data = &**arrays_by_name["from_parent"];
                     arrow_data
-                        .as_any()
-                        .downcast_ref::<BooleanArray>()
-                        .ok_or_else(|| {
-                            let expected = DataType::Boolean;
-                            let actual = arrow_data.data_type().clone();
-                            DeserializationError::datatype_mismatch(expected, actual)
-                        })
+                        .try_cast::<BooleanArray>(|| DataType::Boolean)
                         .with_context("rerun.testing.encodings.MixedFields#from_parent")?
                         .into_iter()
                 };

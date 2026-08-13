@@ -150,17 +150,13 @@ impl ::re_types_core::Loggable for Utf8Pair {
     where
         Self: Sized,
     {
-        use ::re_types_core::{Loggable as _, ResultExt as _, arrow_zip_validity::ZipValidity};
+        use ::re_types_core::{
+            Loggable as _, ResultExt as _, arrow_helpers::*, arrow_zip_validity::ZipValidity,
+        };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let arrow_data = arrow_data
-                .as_any()
-                .downcast_ref::<arrow::array::StructArray>()
-                .ok_or_else(|| {
-                    let expected = Self::arrow_datatype();
-                    let actual = arrow_data.data_type().clone();
-                    DeserializationError::datatype_mismatch(expected, actual)
-                })
+                .try_cast::<arrow::array::StructArray>(|| Self::arrow_datatype())
                 .with_context("rerun.encodings.Utf8Pair")?;
             if arrow_data.is_empty() {
                 Vec::new()
@@ -183,13 +179,7 @@ impl ::re_types_core::Loggable for Utf8Pair {
                     let arrow_data = &**arrays_by_name["first"];
                     {
                         let arrow_data = arrow_data
-                            .as_any()
-                            .downcast_ref::<StringArray>()
-                            .ok_or_else(|| {
-                                let expected = DataType::Utf8;
-                                let actual = arrow_data.data_type().clone();
-                                DeserializationError::datatype_mismatch(expected, actual)
-                            })
+                            .try_cast::<StringArray>(|| DataType::Utf8)
                             .with_context("rerun.encodings.Utf8Pair#first")?;
                         let arrow_data_buf = arrow_data.values();
                         let offsets = arrow_data.offsets();
@@ -235,13 +225,7 @@ impl ::re_types_core::Loggable for Utf8Pair {
                     let arrow_data = &**arrays_by_name["second"];
                     {
                         let arrow_data = arrow_data
-                            .as_any()
-                            .downcast_ref::<StringArray>()
-                            .ok_or_else(|| {
-                                let expected = DataType::Utf8;
-                                let actual = arrow_data.data_type().clone();
-                                DeserializationError::datatype_mismatch(expected, actual)
-                            })
+                            .try_cast::<StringArray>(|| DataType::Utf8)
                             .with_context("rerun.encodings.Utf8Pair#second")?;
                         let arrow_data_buf = arrow_data.values();
                         let offsets = arrow_data.offsets();

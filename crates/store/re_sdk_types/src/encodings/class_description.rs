@@ -249,17 +249,13 @@ impl ::re_types_core::Loggable for ClassDescription {
     where
         Self: Sized,
     {
-        use ::re_types_core::{Loggable as _, ResultExt as _, arrow_zip_validity::ZipValidity};
+        use ::re_types_core::{
+            Loggable as _, ResultExt as _, arrow_helpers::*, arrow_zip_validity::ZipValidity,
+        };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let arrow_data = arrow_data
-                .as_any()
-                .downcast_ref::<arrow::array::StructArray>()
-                .ok_or_else(|| {
-                    let expected = Self::arrow_datatype();
-                    let actual = arrow_data.data_type().clone();
-                    DeserializationError::datatype_mismatch(expected, actual)
-                })
+                .try_cast::<arrow::array::StructArray>(|| Self::arrow_datatype())
                 .with_context("rerun.encodings.ClassDescription")?;
             if arrow_data.is_empty() {
                 Vec::new()
@@ -295,16 +291,12 @@ impl ::re_types_core::Loggable for ClassDescription {
                     let arrow_data = &**arrays_by_name["keypoint_annotations"];
                     {
                         let arrow_data = arrow_data
-                            .as_any()
-                            .downcast_ref::<arrow::array::ListArray>()
-                            .ok_or_else(|| {
-                                let expected = DataType::List(std::sync::Arc::new(Field::new(
+                            .try_cast::<arrow::array::ListArray>(|| {
+                                DataType::List(std::sync::Arc::new(Field::new(
                                     "item",
                                     <crate::encodings::AnnotationInfo>::arrow_datatype(),
                                     false,
-                                )));
-                                let actual = arrow_data.data_type().clone();
-                                DeserializationError::datatype_mismatch(expected, actual)
+                                )))
                             })
                             .with_context(
                                 "rerun.encodings.ClassDescription#keypoint_annotations",
@@ -362,16 +354,12 @@ impl ::re_types_core::Loggable for ClassDescription {
                     let arrow_data = &**arrays_by_name["keypoint_connections"];
                     {
                         let arrow_data = arrow_data
-                            .as_any()
-                            .downcast_ref::<arrow::array::ListArray>()
-                            .ok_or_else(|| {
-                                let expected = DataType::List(std::sync::Arc::new(Field::new(
+                            .try_cast::<arrow::array::ListArray>(|| {
+                                DataType::List(std::sync::Arc::new(Field::new(
                                     "item",
                                     <crate::encodings::KeypointPair>::arrow_datatype(),
                                     false,
-                                )));
-                                let actual = arrow_data.data_type().clone();
-                                DeserializationError::datatype_mismatch(expected, actual)
+                                )))
                             })
                             .with_context(
                                 "rerun.encodings.ClassDescription#keypoint_connections",

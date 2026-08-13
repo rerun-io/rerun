@@ -78,16 +78,12 @@ impl crate::Loggable for Bool {
     where
         Self: Sized,
     {
-        use crate::{Loggable as _, ResultExt as _, arrow_zip_validity::ZipValidity};
+        use crate::{
+            Loggable as _, ResultExt as _, arrow_helpers::*, arrow_zip_validity::ZipValidity,
+        };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok(arrow_data
-            .as_any()
-            .downcast_ref::<BooleanArray>()
-            .ok_or_else(|| {
-                let expected = Self::arrow_datatype();
-                let actual = arrow_data.data_type().clone();
-                DeserializationError::datatype_mismatch(expected, actual)
-            })
+            .try_cast::<BooleanArray>(|| Self::arrow_datatype())
             .with_context("rerun.encodings.Bool#value")?
             .into_iter()
             .map(|v| v.ok_or_else(DeserializationError::missing_data))

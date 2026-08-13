@@ -206,17 +206,13 @@ impl ::re_types_core::Loggable for SelectedColumns {
     where
         Self: Sized,
     {
-        use ::re_types_core::{Loggable as _, ResultExt as _, arrow_zip_validity::ZipValidity};
+        use ::re_types_core::{
+            Loggable as _, ResultExt as _, arrow_helpers::*, arrow_zip_validity::ZipValidity,
+        };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let arrow_data = arrow_data
-                .as_any()
-                .downcast_ref::<arrow::array::StructArray>()
-                .ok_or_else(|| {
-                    let expected = Self::arrow_datatype();
-                    let actual = arrow_data.data_type().clone();
-                    DeserializationError::datatype_mismatch(expected, actual)
-                })
+                .try_cast::<arrow::array::StructArray>(|| Self::arrow_datatype())
                 .with_context("rerun.blueprint.encodings.SelectedColumns")?;
             if arrow_data.is_empty() {
                 Vec::new()
@@ -239,16 +235,12 @@ impl ::re_types_core::Loggable for SelectedColumns {
                     let arrow_data = &**arrays_by_name["time_columns"];
                     {
                         let arrow_data = arrow_data
-                            .as_any()
-                            .downcast_ref::<arrow::array::ListArray>()
-                            .ok_or_else(|| {
-                                let expected = DataType::List(std::sync::Arc::new(Field::new(
+                            .try_cast::<arrow::array::ListArray>(|| {
+                                DataType::List(std::sync::Arc::new(Field::new(
                                     "item",
                                     <crate::encodings::Utf8>::arrow_datatype(),
                                     false,
-                                )));
-                                let actual = arrow_data.data_type().clone();
-                                DeserializationError::datatype_mismatch(expected, actual)
+                                )))
                             })
                             .with_context(
                                 "rerun.blueprint.encodings.SelectedColumns#time_columns",
@@ -260,13 +252,7 @@ impl ::re_types_core::Loggable for SelectedColumns {
                                 let arrow_data_inner = &**arrow_data.values();
                                 {
                                     let arrow_data_inner = arrow_data_inner
-                                        .as_any()
-                                        .downcast_ref::<StringArray>()
-                                        .ok_or_else(|| {
-                                            let expected = DataType::Utf8;
-                                            let actual = arrow_data_inner.data_type().clone();
-                                            DeserializationError::datatype_mismatch(expected, actual)
-                                        })
+                                        .try_cast::<StringArray>(|| DataType::Utf8)
                                         .with_context(
                                             "rerun.blueprint.encodings.SelectedColumns#time_columns",
                                         )?;
@@ -361,21 +347,17 @@ impl ::re_types_core::Loggable for SelectedColumns {
                     let arrow_data = &**arrays_by_name["component_columns"];
                     {
                         let arrow_data = arrow_data
-                            .as_any()
-                            .downcast_ref::<arrow::array::ListArray>()
-                            .ok_or_else(|| {
-                                let expected = DataType::List(
-                                    std::sync::Arc::new(
-                                        Field::new(
-                                            "item",
-                                            <crate::blueprint::encodings::ComponentColumnSelector>::arrow_datatype(),
-                                            false,
-                                        ),
+                            .try_cast::<
+                                arrow::array::ListArray,
+                            >(|| DataType::List(
+                                std::sync::Arc::new(
+                                    Field::new(
+                                        "item",
+                                        <crate::blueprint::encodings::ComponentColumnSelector>::arrow_datatype(),
+                                        false,
                                     ),
-                                );
-                                let actual = arrow_data.data_type().clone();
-                                DeserializationError::datatype_mismatch(expected, actual)
-                            })
+                                ),
+                            ))
                             .with_context(
                                 "rerun.blueprint.encodings.SelectedColumns#component_columns",
                             )?;

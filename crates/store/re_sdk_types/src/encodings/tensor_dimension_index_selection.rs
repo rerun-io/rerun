@@ -130,17 +130,13 @@ impl ::re_types_core::Loggable for TensorDimensionIndexSelection {
     where
         Self: Sized,
     {
-        use ::re_types_core::{Loggable as _, ResultExt as _, arrow_zip_validity::ZipValidity};
+        use ::re_types_core::{
+            Loggable as _, ResultExt as _, arrow_helpers::*, arrow_zip_validity::ZipValidity,
+        };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let arrow_data = arrow_data
-                .as_any()
-                .downcast_ref::<arrow::array::StructArray>()
-                .ok_or_else(|| {
-                    let expected = Self::arrow_datatype();
-                    let actual = arrow_data.data_type().clone();
-                    DeserializationError::datatype_mismatch(expected, actual)
-                })
+                .try_cast::<arrow::array::StructArray>(|| Self::arrow_datatype())
                 .with_context("rerun.encodings.TensorDimensionIndexSelection")?;
             if arrow_data.is_empty() {
                 Vec::new()
@@ -162,13 +158,7 @@ impl ::re_types_core::Loggable for TensorDimensionIndexSelection {
                     }
                     let arrow_data = &**arrays_by_name["dimension"];
                     arrow_data
-                        .as_any()
-                        .downcast_ref::<UInt32Array>()
-                        .ok_or_else(|| {
-                            let expected = DataType::UInt32;
-                            let actual = arrow_data.data_type().clone();
-                            DeserializationError::datatype_mismatch(expected, actual)
-                        })
+                        .try_cast::<UInt32Array>(|| DataType::UInt32)
                         .with_context("rerun.encodings.TensorDimensionIndexSelection#dimension")?
                         .into_iter()
                 };
@@ -182,13 +172,7 @@ impl ::re_types_core::Loggable for TensorDimensionIndexSelection {
                     }
                     let arrow_data = &**arrays_by_name["index"];
                     arrow_data
-                        .as_any()
-                        .downcast_ref::<UInt64Array>()
-                        .ok_or_else(|| {
-                            let expected = DataType::UInt64;
-                            let actual = arrow_data.data_type().clone();
-                            DeserializationError::datatype_mismatch(expected, actual)
-                        })
+                        .try_cast::<UInt64Array>(|| DataType::UInt64)
                         .with_context("rerun.encodings.TensorDimensionIndexSelection#index")?
                         .into_iter()
                 };

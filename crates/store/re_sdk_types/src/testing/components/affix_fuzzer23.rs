@@ -87,7 +87,9 @@ impl ::re_types_core::Loggable for AffixFuzzer23 {
     where
         Self: Sized,
     {
-        use ::re_types_core::{Loggable as _, ResultExt as _, arrow_zip_validity::ZipValidity};
+        use ::re_types_core::{
+            Loggable as _, ResultExt as _, arrow_helpers::*, arrow_zip_validity::ZipValidity,
+        };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok(
             crate::testing::encodings::MultiEnum::from_arrow_opt(arrow_data)

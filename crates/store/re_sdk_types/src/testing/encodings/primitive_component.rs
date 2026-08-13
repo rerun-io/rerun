@@ -75,16 +75,12 @@ impl ::re_types_core::Loggable for PrimitiveComponent {
     where
         Self: Sized,
     {
-        use ::re_types_core::{Loggable as _, ResultExt as _, arrow_zip_validity::ZipValidity};
+        use ::re_types_core::{
+            Loggable as _, ResultExt as _, arrow_helpers::*, arrow_zip_validity::ZipValidity,
+        };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok(arrow_data
-            .as_any()
-            .downcast_ref::<UInt32Array>()
-            .ok_or_else(|| {
-                let expected = Self::arrow_datatype();
-                let actual = arrow_data.data_type().clone();
-                DeserializationError::datatype_mismatch(expected, actual)
-            })
+            .try_cast::<UInt32Array>(|| Self::arrow_datatype())
             .with_context("rerun.testing.encodings.PrimitiveComponent#value")?
             .into_iter()
             .map(|v| v.ok_or_else(DeserializationError::missing_data))
@@ -99,22 +95,14 @@ impl ::re_types_core::Loggable for PrimitiveComponent {
     where
         Self: Sized,
     {
-        use ::re_types_core::{Loggable as _, ResultExt as _, arrow_zip_validity::ZipValidity};
+        use ::re_types_core::{
+            Loggable as _, ResultExt as _, arrow_helpers::*, arrow_zip_validity::ZipValidity,
+        };
         use arrow::{array::*, buffer::*, datatypes::*};
-        if let Some(nulls) = arrow_data.nulls()
-            && nulls.null_count() != 0
-        {
-            return Err(DeserializationError::missing_data());
-        }
+        err_on_nulls(arrow_data, "rerun.testing.encodings.PrimitiveComponent")?;
         Ok({
             let slice = arrow_data
-                .as_any()
-                .downcast_ref::<UInt32Array>()
-                .ok_or_else(|| {
-                    let expected = DataType::UInt32;
-                    let actual = arrow_data.data_type().clone();
-                    DeserializationError::datatype_mismatch(expected, actual)
-                })
+                .try_cast::<UInt32Array>(|| DataType::UInt32)
                 .with_context("rerun.testing.encodings.PrimitiveComponent#value")?
                 .values()
                 .as_ref();

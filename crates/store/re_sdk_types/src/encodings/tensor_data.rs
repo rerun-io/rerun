@@ -247,17 +247,13 @@ impl ::re_types_core::Loggable for TensorData {
     where
         Self: Sized,
     {
-        use ::re_types_core::{Loggable as _, ResultExt as _, arrow_zip_validity::ZipValidity};
+        use ::re_types_core::{
+            Loggable as _, ResultExt as _, arrow_helpers::*, arrow_zip_validity::ZipValidity,
+        };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let arrow_data = arrow_data
-                .as_any()
-                .downcast_ref::<arrow::array::StructArray>()
-                .ok_or_else(|| {
-                    let expected = Self::arrow_datatype();
-                    let actual = arrow_data.data_type().clone();
-                    DeserializationError::datatype_mismatch(expected, actual)
-                })
+                .try_cast::<arrow::array::StructArray>(|| Self::arrow_datatype())
                 .with_context("rerun.encodings.TensorData")?;
             if arrow_data.is_empty() {
                 Vec::new()
@@ -280,16 +276,12 @@ impl ::re_types_core::Loggable for TensorData {
                     let arrow_data = &**arrays_by_name["shape"];
                     {
                         let arrow_data = arrow_data
-                            .as_any()
-                            .downcast_ref::<arrow::array::ListArray>()
-                            .ok_or_else(|| {
-                                let expected = DataType::List(std::sync::Arc::new(Field::new(
+                            .try_cast::<arrow::array::ListArray>(|| {
+                                DataType::List(std::sync::Arc::new(Field::new(
                                     "item",
                                     DataType::UInt64,
                                     false,
-                                )));
-                                let actual = arrow_data.data_type().clone();
-                                DeserializationError::datatype_mismatch(expected, actual)
+                                )))
                             })
                             .with_context("rerun.encodings.TensorData#shape")?;
                         if arrow_data.is_empty() {
@@ -298,13 +290,7 @@ impl ::re_types_core::Loggable for TensorData {
                             let arrow_data_inner = {
                                 let arrow_data_inner = &**arrow_data.values();
                                 arrow_data_inner
-                                    .as_any()
-                                    .downcast_ref::<UInt64Array>()
-                                    .ok_or_else(|| {
-                                        let expected = DataType::UInt64;
-                                        let actual = arrow_data_inner.data_type().clone();
-                                        DeserializationError::datatype_mismatch(expected, actual)
-                                    })
+                                    .try_cast::<UInt64Array>(|| DataType::UInt64)
                                     .with_context("rerun.encodings.TensorData#shape")?
                                     .values()
                             };
@@ -342,16 +328,12 @@ impl ::re_types_core::Loggable for TensorData {
                     let arrow_data = &**arrays_by_name["names"];
                     {
                         let arrow_data = arrow_data
-                            .as_any()
-                            .downcast_ref::<arrow::array::ListArray>()
-                            .ok_or_else(|| {
-                                let expected = DataType::List(std::sync::Arc::new(Field::new(
+                            .try_cast::<arrow::array::ListArray>(|| {
+                                DataType::List(std::sync::Arc::new(Field::new(
                                     "item",
                                     DataType::Utf8,
                                     false,
-                                )));
-                                let actual = arrow_data.data_type().clone();
-                                DeserializationError::datatype_mismatch(expected, actual)
+                                )))
                             })
                             .with_context("rerun.encodings.TensorData#names")?;
                         if arrow_data.is_empty() {
@@ -361,15 +343,7 @@ impl ::re_types_core::Loggable for TensorData {
                                 let arrow_data_inner = &**arrow_data.values();
                                 {
                                     let arrow_data_inner = arrow_data_inner
-                                        .as_any()
-                                        .downcast_ref::<StringArray>()
-                                        .ok_or_else(|| {
-                                            let expected = DataType::Utf8;
-                                            let actual = arrow_data_inner.data_type().clone();
-                                            DeserializationError::datatype_mismatch(
-                                                expected, actual,
-                                            )
-                                        })
+                                        .try_cast::<StringArray>(|| DataType::Utf8)
                                         .with_context("rerun.encodings.TensorData#names")?;
                                     let arrow_data_inner_buf = arrow_data_inner.values();
                                     let offsets = arrow_data_inner.offsets();

@@ -77,16 +77,12 @@ impl crate::Loggable for UInt64 {
     where
         Self: Sized,
     {
-        use crate::{Loggable as _, ResultExt as _, arrow_zip_validity::ZipValidity};
+        use crate::{
+            Loggable as _, ResultExt as _, arrow_helpers::*, arrow_zip_validity::ZipValidity,
+        };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok(arrow_data
-            .as_any()
-            .downcast_ref::<UInt64Array>()
-            .ok_or_else(|| {
-                let expected = Self::arrow_datatype();
-                let actual = arrow_data.data_type().clone();
-                DeserializationError::datatype_mismatch(expected, actual)
-            })
+            .try_cast::<UInt64Array>(|| Self::arrow_datatype())
             .with_context("rerun.encodings.UInt64#value")?
             .into_iter()
             .map(|v| v.ok_or_else(DeserializationError::missing_data))
@@ -101,22 +97,14 @@ impl crate::Loggable for UInt64 {
     where
         Self: Sized,
     {
-        use crate::{Loggable as _, ResultExt as _, arrow_zip_validity::ZipValidity};
+        use crate::{
+            Loggable as _, ResultExt as _, arrow_helpers::*, arrow_zip_validity::ZipValidity,
+        };
         use arrow::{array::*, buffer::*, datatypes::*};
-        if let Some(nulls) = arrow_data.nulls()
-            && nulls.null_count() != 0
-        {
-            return Err(DeserializationError::missing_data());
-        }
+        err_on_nulls(arrow_data, "rerun.encodings.UInt64")?;
         Ok({
             let slice = arrow_data
-                .as_any()
-                .downcast_ref::<UInt64Array>()
-                .ok_or_else(|| {
-                    let expected = DataType::UInt64;
-                    let actual = arrow_data.data_type().clone();
-                    DeserializationError::datatype_mismatch(expected, actual)
-                })
+                .try_cast::<UInt64Array>(|| DataType::UInt64)
                 .with_context("rerun.encodings.UInt64#value")?
                 .values()
                 .as_ref();

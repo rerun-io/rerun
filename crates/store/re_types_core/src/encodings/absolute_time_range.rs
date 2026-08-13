@@ -126,17 +126,13 @@ impl crate::Loggable for AbsoluteTimeRange {
     where
         Self: Sized,
     {
-        use crate::{Loggable as _, ResultExt as _, arrow_zip_validity::ZipValidity};
+        use crate::{
+            Loggable as _, ResultExt as _, arrow_helpers::*, arrow_zip_validity::ZipValidity,
+        };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let arrow_data = arrow_data
-                .as_any()
-                .downcast_ref::<arrow::array::StructArray>()
-                .ok_or_else(|| {
-                    let expected = Self::arrow_datatype();
-                    let actual = arrow_data.data_type().clone();
-                    DeserializationError::datatype_mismatch(expected, actual)
-                })
+                .try_cast::<arrow::array::StructArray>(|| Self::arrow_datatype())
                 .with_context("rerun.encodings.AbsoluteTimeRange")?;
             if arrow_data.is_empty() {
                 Vec::new()
@@ -158,13 +154,7 @@ impl crate::Loggable for AbsoluteTimeRange {
                     }
                     let arrow_data = &**arrays_by_name["min"];
                     arrow_data
-                        .as_any()
-                        .downcast_ref::<Int64Array>()
-                        .ok_or_else(|| {
-                            let expected = DataType::Int64;
-                            let actual = arrow_data.data_type().clone();
-                            DeserializationError::datatype_mismatch(expected, actual)
-                        })
+                        .try_cast::<Int64Array>(|| DataType::Int64)
                         .with_context("rerun.encodings.AbsoluteTimeRange#min")?
                         .into_iter()
                         .map(|res_or_opt| res_or_opt.map(crate::encodings::TimeInt))
@@ -179,13 +169,7 @@ impl crate::Loggable for AbsoluteTimeRange {
                     }
                     let arrow_data = &**arrays_by_name["max"];
                     arrow_data
-                        .as_any()
-                        .downcast_ref::<Int64Array>()
-                        .ok_or_else(|| {
-                            let expected = DataType::Int64;
-                            let actual = arrow_data.data_type().clone();
-                            DeserializationError::datatype_mismatch(expected, actual)
-                        })
+                        .try_cast::<Int64Array>(|| DataType::Int64)
                         .with_context("rerun.encodings.AbsoluteTimeRange#max")?
                         .into_iter()
                         .map(|res_or_opt| res_or_opt.map(crate::encodings::TimeInt))

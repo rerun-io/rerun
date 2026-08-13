@@ -766,17 +766,13 @@ impl ::re_types_core::Loggable for TensorBuffer {
     where
         Self: Sized,
     {
-        use ::re_types_core::{Loggable as _, ResultExt as _, arrow_zip_validity::ZipValidity};
+        use ::re_types_core::{
+            Loggable as _, ResultExt as _, arrow_helpers::*, arrow_zip_validity::ZipValidity,
+        };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let arrow_data = arrow_data
-                .as_any()
-                .downcast_ref::<arrow::array::UnionArray>()
-                .ok_or_else(|| {
-                    let expected = Self::arrow_datatype();
-                    let actual = arrow_data.data_type().clone();
-                    DeserializationError::datatype_mismatch(expected, actual)
-                })
+                .try_cast::<arrow::array::UnionArray>(|| Self::arrow_datatype())
                 .with_context("rerun.encodings.TensorBuffer")?;
             if arrow_data.is_empty() {
                 Vec::new()
@@ -801,16 +797,12 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     let arrow_data = arrow_data.child(1).as_ref();
                     {
                         let arrow_data = arrow_data
-                            .as_any()
-                            .downcast_ref::<arrow::array::ListArray>()
-                            .ok_or_else(|| {
-                                let expected = DataType::List(std::sync::Arc::new(Field::new(
+                            .try_cast::<arrow::array::ListArray>(|| {
+                                DataType::List(std::sync::Arc::new(Field::new(
                                     "item",
                                     DataType::UInt8,
                                     false,
-                                )));
-                                let actual = arrow_data.data_type().clone();
-                                DeserializationError::datatype_mismatch(expected, actual)
+                                )))
                             })
                             .with_context("rerun.encodings.TensorBuffer#U8")?;
                         if arrow_data.is_empty() {
@@ -819,13 +811,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             let arrow_data_inner = {
                                 let arrow_data_inner = &**arrow_data.values();
                                 arrow_data_inner
-                                    .as_any()
-                                    .downcast_ref::<UInt8Array>()
-                                    .ok_or_else(|| {
-                                        let expected = DataType::UInt8;
-                                        let actual = arrow_data_inner.data_type().clone();
-                                        DeserializationError::datatype_mismatch(expected, actual)
-                                    })
+                                    .try_cast::<UInt8Array>(|| DataType::UInt8)
                                     .with_context("rerun.encodings.TensorBuffer#U8")?
                                     .values()
                             };
@@ -857,16 +843,12 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     let arrow_data = arrow_data.child(2).as_ref();
                     {
                         let arrow_data = arrow_data
-                            .as_any()
-                            .downcast_ref::<arrow::array::ListArray>()
-                            .ok_or_else(|| {
-                                let expected = DataType::List(std::sync::Arc::new(Field::new(
+                            .try_cast::<arrow::array::ListArray>(|| {
+                                DataType::List(std::sync::Arc::new(Field::new(
                                     "item",
                                     DataType::UInt16,
                                     false,
-                                )));
-                                let actual = arrow_data.data_type().clone();
-                                DeserializationError::datatype_mismatch(expected, actual)
+                                )))
                             })
                             .with_context("rerun.encodings.TensorBuffer#U16")?;
                         if arrow_data.is_empty() {
@@ -875,13 +857,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             let arrow_data_inner = {
                                 let arrow_data_inner = &**arrow_data.values();
                                 arrow_data_inner
-                                    .as_any()
-                                    .downcast_ref::<UInt16Array>()
-                                    .ok_or_else(|| {
-                                        let expected = DataType::UInt16;
-                                        let actual = arrow_data_inner.data_type().clone();
-                                        DeserializationError::datatype_mismatch(expected, actual)
-                                    })
+                                    .try_cast::<UInt16Array>(|| DataType::UInt16)
                                     .with_context("rerun.encodings.TensorBuffer#U16")?
                                     .values()
                             };
@@ -913,16 +889,12 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     let arrow_data = arrow_data.child(3).as_ref();
                     {
                         let arrow_data = arrow_data
-                            .as_any()
-                            .downcast_ref::<arrow::array::ListArray>()
-                            .ok_or_else(|| {
-                                let expected = DataType::List(std::sync::Arc::new(Field::new(
+                            .try_cast::<arrow::array::ListArray>(|| {
+                                DataType::List(std::sync::Arc::new(Field::new(
                                     "item",
                                     DataType::UInt32,
                                     false,
-                                )));
-                                let actual = arrow_data.data_type().clone();
-                                DeserializationError::datatype_mismatch(expected, actual)
+                                )))
                             })
                             .with_context("rerun.encodings.TensorBuffer#U32")?;
                         if arrow_data.is_empty() {
@@ -931,13 +903,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             let arrow_data_inner = {
                                 let arrow_data_inner = &**arrow_data.values();
                                 arrow_data_inner
-                                    .as_any()
-                                    .downcast_ref::<UInt32Array>()
-                                    .ok_or_else(|| {
-                                        let expected = DataType::UInt32;
-                                        let actual = arrow_data_inner.data_type().clone();
-                                        DeserializationError::datatype_mismatch(expected, actual)
-                                    })
+                                    .try_cast::<UInt32Array>(|| DataType::UInt32)
                                     .with_context("rerun.encodings.TensorBuffer#U32")?
                                     .values()
                             };
@@ -969,16 +935,12 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     let arrow_data = arrow_data.child(4).as_ref();
                     {
                         let arrow_data = arrow_data
-                            .as_any()
-                            .downcast_ref::<arrow::array::ListArray>()
-                            .ok_or_else(|| {
-                                let expected = DataType::List(std::sync::Arc::new(Field::new(
+                            .try_cast::<arrow::array::ListArray>(|| {
+                                DataType::List(std::sync::Arc::new(Field::new(
                                     "item",
                                     DataType::UInt64,
                                     false,
-                                )));
-                                let actual = arrow_data.data_type().clone();
-                                DeserializationError::datatype_mismatch(expected, actual)
+                                )))
                             })
                             .with_context("rerun.encodings.TensorBuffer#U64")?;
                         if arrow_data.is_empty() {
@@ -987,13 +949,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             let arrow_data_inner = {
                                 let arrow_data_inner = &**arrow_data.values();
                                 arrow_data_inner
-                                    .as_any()
-                                    .downcast_ref::<UInt64Array>()
-                                    .ok_or_else(|| {
-                                        let expected = DataType::UInt64;
-                                        let actual = arrow_data_inner.data_type().clone();
-                                        DeserializationError::datatype_mismatch(expected, actual)
-                                    })
+                                    .try_cast::<UInt64Array>(|| DataType::UInt64)
                                     .with_context("rerun.encodings.TensorBuffer#U64")?
                                     .values()
                             };
@@ -1025,16 +981,12 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     let arrow_data = arrow_data.child(5).as_ref();
                     {
                         let arrow_data = arrow_data
-                            .as_any()
-                            .downcast_ref::<arrow::array::ListArray>()
-                            .ok_or_else(|| {
-                                let expected = DataType::List(std::sync::Arc::new(Field::new(
+                            .try_cast::<arrow::array::ListArray>(|| {
+                                DataType::List(std::sync::Arc::new(Field::new(
                                     "item",
                                     DataType::Int8,
                                     false,
-                                )));
-                                let actual = arrow_data.data_type().clone();
-                                DeserializationError::datatype_mismatch(expected, actual)
+                                )))
                             })
                             .with_context("rerun.encodings.TensorBuffer#I8")?;
                         if arrow_data.is_empty() {
@@ -1043,13 +995,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             let arrow_data_inner = {
                                 let arrow_data_inner = &**arrow_data.values();
                                 arrow_data_inner
-                                    .as_any()
-                                    .downcast_ref::<Int8Array>()
-                                    .ok_or_else(|| {
-                                        let expected = DataType::Int8;
-                                        let actual = arrow_data_inner.data_type().clone();
-                                        DeserializationError::datatype_mismatch(expected, actual)
-                                    })
+                                    .try_cast::<Int8Array>(|| DataType::Int8)
                                     .with_context("rerun.encodings.TensorBuffer#I8")?
                                     .values()
                             };
@@ -1081,16 +1027,12 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     let arrow_data = arrow_data.child(6).as_ref();
                     {
                         let arrow_data = arrow_data
-                            .as_any()
-                            .downcast_ref::<arrow::array::ListArray>()
-                            .ok_or_else(|| {
-                                let expected = DataType::List(std::sync::Arc::new(Field::new(
+                            .try_cast::<arrow::array::ListArray>(|| {
+                                DataType::List(std::sync::Arc::new(Field::new(
                                     "item",
                                     DataType::Int16,
                                     false,
-                                )));
-                                let actual = arrow_data.data_type().clone();
-                                DeserializationError::datatype_mismatch(expected, actual)
+                                )))
                             })
                             .with_context("rerun.encodings.TensorBuffer#I16")?;
                         if arrow_data.is_empty() {
@@ -1099,13 +1041,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             let arrow_data_inner = {
                                 let arrow_data_inner = &**arrow_data.values();
                                 arrow_data_inner
-                                    .as_any()
-                                    .downcast_ref::<Int16Array>()
-                                    .ok_or_else(|| {
-                                        let expected = DataType::Int16;
-                                        let actual = arrow_data_inner.data_type().clone();
-                                        DeserializationError::datatype_mismatch(expected, actual)
-                                    })
+                                    .try_cast::<Int16Array>(|| DataType::Int16)
                                     .with_context("rerun.encodings.TensorBuffer#I16")?
                                     .values()
                             };
@@ -1137,16 +1073,12 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     let arrow_data = arrow_data.child(7).as_ref();
                     {
                         let arrow_data = arrow_data
-                            .as_any()
-                            .downcast_ref::<arrow::array::ListArray>()
-                            .ok_or_else(|| {
-                                let expected = DataType::List(std::sync::Arc::new(Field::new(
+                            .try_cast::<arrow::array::ListArray>(|| {
+                                DataType::List(std::sync::Arc::new(Field::new(
                                     "item",
                                     DataType::Int32,
                                     false,
-                                )));
-                                let actual = arrow_data.data_type().clone();
-                                DeserializationError::datatype_mismatch(expected, actual)
+                                )))
                             })
                             .with_context("rerun.encodings.TensorBuffer#I32")?;
                         if arrow_data.is_empty() {
@@ -1155,13 +1087,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             let arrow_data_inner = {
                                 let arrow_data_inner = &**arrow_data.values();
                                 arrow_data_inner
-                                    .as_any()
-                                    .downcast_ref::<Int32Array>()
-                                    .ok_or_else(|| {
-                                        let expected = DataType::Int32;
-                                        let actual = arrow_data_inner.data_type().clone();
-                                        DeserializationError::datatype_mismatch(expected, actual)
-                                    })
+                                    .try_cast::<Int32Array>(|| DataType::Int32)
                                     .with_context("rerun.encodings.TensorBuffer#I32")?
                                     .values()
                             };
@@ -1193,16 +1119,12 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     let arrow_data = arrow_data.child(8).as_ref();
                     {
                         let arrow_data = arrow_data
-                            .as_any()
-                            .downcast_ref::<arrow::array::ListArray>()
-                            .ok_or_else(|| {
-                                let expected = DataType::List(std::sync::Arc::new(Field::new(
+                            .try_cast::<arrow::array::ListArray>(|| {
+                                DataType::List(std::sync::Arc::new(Field::new(
                                     "item",
                                     DataType::Int64,
                                     false,
-                                )));
-                                let actual = arrow_data.data_type().clone();
-                                DeserializationError::datatype_mismatch(expected, actual)
+                                )))
                             })
                             .with_context("rerun.encodings.TensorBuffer#I64")?;
                         if arrow_data.is_empty() {
@@ -1211,13 +1133,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             let arrow_data_inner = {
                                 let arrow_data_inner = &**arrow_data.values();
                                 arrow_data_inner
-                                    .as_any()
-                                    .downcast_ref::<Int64Array>()
-                                    .ok_or_else(|| {
-                                        let expected = DataType::Int64;
-                                        let actual = arrow_data_inner.data_type().clone();
-                                        DeserializationError::datatype_mismatch(expected, actual)
-                                    })
+                                    .try_cast::<Int64Array>(|| DataType::Int64)
                                     .with_context("rerun.encodings.TensorBuffer#I64")?
                                     .values()
                             };
@@ -1249,16 +1165,12 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     let arrow_data = arrow_data.child(9).as_ref();
                     {
                         let arrow_data = arrow_data
-                            .as_any()
-                            .downcast_ref::<arrow::array::ListArray>()
-                            .ok_or_else(|| {
-                                let expected = DataType::List(std::sync::Arc::new(Field::new(
+                            .try_cast::<arrow::array::ListArray>(|| {
+                                DataType::List(std::sync::Arc::new(Field::new(
                                     "item",
                                     DataType::Float16,
                                     false,
-                                )));
-                                let actual = arrow_data.data_type().clone();
-                                DeserializationError::datatype_mismatch(expected, actual)
+                                )))
                             })
                             .with_context("rerun.encodings.TensorBuffer#F16")?;
                         if arrow_data.is_empty() {
@@ -1267,13 +1179,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             let arrow_data_inner = {
                                 let arrow_data_inner = &**arrow_data.values();
                                 arrow_data_inner
-                                    .as_any()
-                                    .downcast_ref::<Float16Array>()
-                                    .ok_or_else(|| {
-                                        let expected = DataType::Float16;
-                                        let actual = arrow_data_inner.data_type().clone();
-                                        DeserializationError::datatype_mismatch(expected, actual)
-                                    })
+                                    .try_cast::<Float16Array>(|| DataType::Float16)
                                     .with_context("rerun.encodings.TensorBuffer#F16")?
                                     .values()
                             };
@@ -1305,16 +1211,12 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     let arrow_data = arrow_data.child(10).as_ref();
                     {
                         let arrow_data = arrow_data
-                            .as_any()
-                            .downcast_ref::<arrow::array::ListArray>()
-                            .ok_or_else(|| {
-                                let expected = DataType::List(std::sync::Arc::new(Field::new(
+                            .try_cast::<arrow::array::ListArray>(|| {
+                                DataType::List(std::sync::Arc::new(Field::new(
                                     "item",
                                     DataType::Float32,
                                     false,
-                                )));
-                                let actual = arrow_data.data_type().clone();
-                                DeserializationError::datatype_mismatch(expected, actual)
+                                )))
                             })
                             .with_context("rerun.encodings.TensorBuffer#F32")?;
                         if arrow_data.is_empty() {
@@ -1323,13 +1225,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             let arrow_data_inner = {
                                 let arrow_data_inner = &**arrow_data.values();
                                 arrow_data_inner
-                                    .as_any()
-                                    .downcast_ref::<Float32Array>()
-                                    .ok_or_else(|| {
-                                        let expected = DataType::Float32;
-                                        let actual = arrow_data_inner.data_type().clone();
-                                        DeserializationError::datatype_mismatch(expected, actual)
-                                    })
+                                    .try_cast::<Float32Array>(|| DataType::Float32)
                                     .with_context("rerun.encodings.TensorBuffer#F32")?
                                     .values()
                             };
@@ -1361,16 +1257,12 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     let arrow_data = arrow_data.child(11).as_ref();
                     {
                         let arrow_data = arrow_data
-                            .as_any()
-                            .downcast_ref::<arrow::array::ListArray>()
-                            .ok_or_else(|| {
-                                let expected = DataType::List(std::sync::Arc::new(Field::new(
+                            .try_cast::<arrow::array::ListArray>(|| {
+                                DataType::List(std::sync::Arc::new(Field::new(
                                     "item",
                                     DataType::Float64,
                                     false,
-                                )));
-                                let actual = arrow_data.data_type().clone();
-                                DeserializationError::datatype_mismatch(expected, actual)
+                                )))
                             })
                             .with_context("rerun.encodings.TensorBuffer#F64")?;
                         if arrow_data.is_empty() {
@@ -1379,13 +1271,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             let arrow_data_inner = {
                                 let arrow_data_inner = &**arrow_data.values();
                                 arrow_data_inner
-                                    .as_any()
-                                    .downcast_ref::<Float64Array>()
-                                    .ok_or_else(|| {
-                                        let expected = DataType::Float64;
-                                        let actual = arrow_data_inner.data_type().clone();
-                                        DeserializationError::datatype_mismatch(expected, actual)
-                                    })
+                                    .try_cast::<Float64Array>(|| DataType::Float64)
                                     .with_context("rerun.encodings.TensorBuffer#F64")?
                                     .values()
                             };

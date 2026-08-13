@@ -121,17 +121,13 @@ impl ::re_types_core::Loggable for Mat3x3 {
     where
         Self: Sized,
     {
-        use ::re_types_core::{Loggable as _, ResultExt as _, arrow_zip_validity::ZipValidity};
+        use ::re_types_core::{
+            Loggable as _, ResultExt as _, arrow_helpers::*, arrow_zip_validity::ZipValidity,
+        };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let arrow_data = arrow_data
-                .as_any()
-                .downcast_ref::<arrow::array::FixedSizeListArray>()
-                .ok_or_else(|| {
-                    let expected = Self::arrow_datatype();
-                    let actual = arrow_data.data_type().clone();
-                    DeserializationError::datatype_mismatch(expected, actual)
-                })
+                .try_cast::<arrow::array::FixedSizeListArray>(|| Self::arrow_datatype())
                 .with_context("rerun.encodings.Mat3x3#flat_columns")?;
             if arrow_data.is_empty() {
                 Vec::new()
@@ -143,13 +139,7 @@ impl ::re_types_core::Loggable for Mat3x3 {
                 let arrow_data_inner = {
                     let arrow_data_inner = &**arrow_data.values();
                     arrow_data_inner
-                        .as_any()
-                        .downcast_ref::<Float32Array>()
-                        .ok_or_else(|| {
-                            let expected = DataType::Float32;
-                            let actual = arrow_data_inner.data_type().clone();
-                            DeserializationError::datatype_mismatch(expected, actual)
-                        })
+                        .try_cast::<Float32Array>(|| DataType::Float32)
                         .with_context("rerun.encodings.Mat3x3#flat_columns")?
                         .into_iter()
                         .collect::<Vec<_>>()
@@ -191,25 +181,19 @@ impl ::re_types_core::Loggable for Mat3x3 {
     where
         Self: Sized,
     {
-        use ::re_types_core::{Loggable as _, ResultExt as _, arrow_zip_validity::ZipValidity};
+        use ::re_types_core::{
+            Loggable as _, ResultExt as _, arrow_helpers::*, arrow_zip_validity::ZipValidity,
+        };
         use arrow::{array::*, buffer::*, datatypes::*};
-        if let Some(nulls) = arrow_data.nulls()
-            && nulls.null_count() != 0
-        {
-            return Err(DeserializationError::missing_data());
-        }
+        err_on_nulls(arrow_data, "rerun.encodings.Mat3x3")?;
         Ok({
             let slice = {
                 let arrow_data = arrow_data
-                    .as_any()
-                    .downcast_ref::<arrow::array::FixedSizeListArray>()
-                    .ok_or_else(|| {
-                        let expected = DataType::FixedSizeList(
+                    .try_cast::<arrow::array::FixedSizeListArray>(|| {
+                        DataType::FixedSizeList(
                             std::sync::Arc::new(Field::new("item", DataType::Float32, false)),
                             9,
-                        );
-                        let actual = arrow_data.data_type().clone();
-                        DeserializationError::datatype_mismatch(expected, actual)
+                        )
                     })
                     .with_context("rerun.encodings.Mat3x3#flat_columns")?;
                 if arrow_data.value_length() != 9i32 {
@@ -225,13 +209,7 @@ impl ::re_types_core::Loggable for Mat3x3 {
                 let arrow_data_inner = &**arrow_data.values();
                 bytemuck::try_cast_slice::<_, [f32; 9usize]>(
                     arrow_data_inner
-                        .as_any()
-                        .downcast_ref::<Float32Array>()
-                        .ok_or_else(|| {
-                            let expected = DataType::Float32;
-                            let actual = arrow_data_inner.data_type().clone();
-                            DeserializationError::datatype_mismatch(expected, actual)
-                        })
+                        .try_cast::<Float32Array>(|| DataType::Float32)
                         .with_context("rerun.encodings.Mat3x3#flat_columns")?
                         .values()
                         .as_ref(),

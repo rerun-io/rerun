@@ -144,17 +144,13 @@ impl ::re_types_core::Loggable for KeypointPair {
     where
         Self: Sized,
     {
-        use ::re_types_core::{Loggable as _, ResultExt as _, arrow_zip_validity::ZipValidity};
+        use ::re_types_core::{
+            Loggable as _, ResultExt as _, arrow_helpers::*, arrow_zip_validity::ZipValidity,
+        };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let arrow_data = arrow_data
-                .as_any()
-                .downcast_ref::<arrow::array::StructArray>()
-                .ok_or_else(|| {
-                    let expected = Self::arrow_datatype();
-                    let actual = arrow_data.data_type().clone();
-                    DeserializationError::datatype_mismatch(expected, actual)
-                })
+                .try_cast::<arrow::array::StructArray>(|| Self::arrow_datatype())
                 .with_context("rerun.encodings.KeypointPair")?;
             if arrow_data.is_empty() {
                 Vec::new()
@@ -176,13 +172,7 @@ impl ::re_types_core::Loggable for KeypointPair {
                     }
                     let arrow_data = &**arrays_by_name["keypoint0"];
                     arrow_data
-                        .as_any()
-                        .downcast_ref::<UInt16Array>()
-                        .ok_or_else(|| {
-                            let expected = DataType::UInt16;
-                            let actual = arrow_data.data_type().clone();
-                            DeserializationError::datatype_mismatch(expected, actual)
-                        })
+                        .try_cast::<UInt16Array>(|| DataType::UInt16)
                         .with_context("rerun.encodings.KeypointPair#keypoint0")?
                         .into_iter()
                         .map(|res_or_opt| res_or_opt.map(crate::encodings::KeypointId))
@@ -197,13 +187,7 @@ impl ::re_types_core::Loggable for KeypointPair {
                     }
                     let arrow_data = &**arrays_by_name["keypoint1"];
                     arrow_data
-                        .as_any()
-                        .downcast_ref::<UInt16Array>()
-                        .ok_or_else(|| {
-                            let expected = DataType::UInt16;
-                            let actual = arrow_data.data_type().clone();
-                            DeserializationError::datatype_mismatch(expected, actual)
-                        })
+                        .try_cast::<UInt16Array>(|| DataType::UInt16)
                         .with_context("rerun.encodings.KeypointPair#keypoint1")?
                         .into_iter()
                         .map(|res_or_opt| res_or_opt.map(crate::encodings::KeypointId))

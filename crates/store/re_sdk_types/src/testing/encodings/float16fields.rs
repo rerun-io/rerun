@@ -156,17 +156,13 @@ impl ::re_types_core::Loggable for Float16Fields {
     where
         Self: Sized,
     {
-        use ::re_types_core::{Loggable as _, ResultExt as _, arrow_zip_validity::ZipValidity};
+        use ::re_types_core::{
+            Loggable as _, ResultExt as _, arrow_helpers::*, arrow_zip_validity::ZipValidity,
+        };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let arrow_data = arrow_data
-                .as_any()
-                .downcast_ref::<arrow::array::StructArray>()
-                .ok_or_else(|| {
-                    let expected = Self::arrow_datatype();
-                    let actual = arrow_data.data_type().clone();
-                    DeserializationError::datatype_mismatch(expected, actual)
-                })
+                .try_cast::<arrow::array::StructArray>(|| Self::arrow_datatype())
                 .with_context("rerun.testing.encodings.Float16Fields")?;
             if arrow_data.is_empty() {
                 Vec::new()
@@ -188,13 +184,7 @@ impl ::re_types_core::Loggable for Float16Fields {
                     }
                     let arrow_data = &**arrays_by_name["single_half"];
                     arrow_data
-                        .as_any()
-                        .downcast_ref::<Float16Array>()
-                        .ok_or_else(|| {
-                            let expected = DataType::Float16;
-                            let actual = arrow_data.data_type().clone();
-                            DeserializationError::datatype_mismatch(expected, actual)
-                        })
+                        .try_cast::<Float16Array>(|| DataType::Float16)
                         .with_context("rerun.testing.encodings.Float16Fields#single_half")?
                         .into_iter()
                 };
@@ -209,16 +199,12 @@ impl ::re_types_core::Loggable for Float16Fields {
                     let arrow_data = &**arrays_by_name["many_halves"];
                     {
                         let arrow_data = arrow_data
-                            .as_any()
-                            .downcast_ref::<arrow::array::ListArray>()
-                            .ok_or_else(|| {
-                                let expected = DataType::List(std::sync::Arc::new(Field::new(
+                            .try_cast::<arrow::array::ListArray>(|| {
+                                DataType::List(std::sync::Arc::new(Field::new(
                                     "item",
                                     DataType::Float16,
                                     false,
-                                )));
-                                let actual = arrow_data.data_type().clone();
-                                DeserializationError::datatype_mismatch(expected, actual)
+                                )))
                             })
                             .with_context("rerun.testing.encodings.Float16Fields#many_halves")?;
                         if arrow_data.is_empty() {
@@ -227,13 +213,7 @@ impl ::re_types_core::Loggable for Float16Fields {
                             let arrow_data_inner = {
                                 let arrow_data_inner = &**arrow_data.values();
                                 arrow_data_inner
-                                    .as_any()
-                                    .downcast_ref::<Float16Array>()
-                                    .ok_or_else(|| {
-                                        let expected = DataType::Float16;
-                                        let actual = arrow_data_inner.data_type().clone();
-                                        DeserializationError::datatype_mismatch(expected, actual)
-                                    })
+                                    .try_cast::<Float16Array>(|| DataType::Float16)
                                     .with_context(
                                         "rerun.testing.encodings.Float16Fields#many_halves",
                                     )?

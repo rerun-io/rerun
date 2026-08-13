@@ -105,17 +105,13 @@ impl ::re_types_core::Loggable for Uuid {
     where
         Self: Sized,
     {
-        use ::re_types_core::{Loggable as _, ResultExt as _, arrow_zip_validity::ZipValidity};
+        use ::re_types_core::{
+            Loggable as _, ResultExt as _, arrow_helpers::*, arrow_zip_validity::ZipValidity,
+        };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let arrow_data = arrow_data
-                .as_any()
-                .downcast_ref::<arrow::array::FixedSizeListArray>()
-                .ok_or_else(|| {
-                    let expected = Self::arrow_datatype();
-                    let actual = arrow_data.data_type().clone();
-                    DeserializationError::datatype_mismatch(expected, actual)
-                })
+                .try_cast::<arrow::array::FixedSizeListArray>(|| Self::arrow_datatype())
                 .with_context("rerun.encodings.Uuid#bytes")?;
             if arrow_data.is_empty() {
                 Vec::new()
@@ -127,13 +123,7 @@ impl ::re_types_core::Loggable for Uuid {
                 let arrow_data_inner = {
                     let arrow_data_inner = &**arrow_data.values();
                     arrow_data_inner
-                        .as_any()
-                        .downcast_ref::<UInt8Array>()
-                        .ok_or_else(|| {
-                            let expected = DataType::UInt8;
-                            let actual = arrow_data_inner.data_type().clone();
-                            DeserializationError::datatype_mismatch(expected, actual)
-                        })
+                        .try_cast::<UInt8Array>(|| DataType::UInt8)
                         .with_context("rerun.encodings.Uuid#bytes")?
                         .into_iter()
                         .collect::<Vec<_>>()
@@ -175,25 +165,19 @@ impl ::re_types_core::Loggable for Uuid {
     where
         Self: Sized,
     {
-        use ::re_types_core::{Loggable as _, ResultExt as _, arrow_zip_validity::ZipValidity};
+        use ::re_types_core::{
+            Loggable as _, ResultExt as _, arrow_helpers::*, arrow_zip_validity::ZipValidity,
+        };
         use arrow::{array::*, buffer::*, datatypes::*};
-        if let Some(nulls) = arrow_data.nulls()
-            && nulls.null_count() != 0
-        {
-            return Err(DeserializationError::missing_data());
-        }
+        err_on_nulls(arrow_data, "rerun.encodings.Uuid")?;
         Ok({
             let slice = {
                 let arrow_data = arrow_data
-                    .as_any()
-                    .downcast_ref::<arrow::array::FixedSizeListArray>()
-                    .ok_or_else(|| {
-                        let expected = DataType::FixedSizeList(
+                    .try_cast::<arrow::array::FixedSizeListArray>(|| {
+                        DataType::FixedSizeList(
                             std::sync::Arc::new(Field::new("item", DataType::UInt8, false)),
                             16,
-                        );
-                        let actual = arrow_data.data_type().clone();
-                        DeserializationError::datatype_mismatch(expected, actual)
+                        )
                     })
                     .with_context("rerun.encodings.Uuid#bytes")?;
                 if arrow_data.value_length() != 16i32 {
@@ -209,13 +193,7 @@ impl ::re_types_core::Loggable for Uuid {
                 let arrow_data_inner = &**arrow_data.values();
                 bytemuck::try_cast_slice::<_, [u8; 16usize]>(
                     arrow_data_inner
-                        .as_any()
-                        .downcast_ref::<UInt8Array>()
-                        .ok_or_else(|| {
-                            let expected = DataType::UInt8;
-                            let actual = arrow_data_inner.data_type().clone();
-                            DeserializationError::datatype_mismatch(expected, actual)
-                        })
+                        .try_cast::<UInt8Array>(|| DataType::UInt8)
                         .with_context("rerun.encodings.Uuid#bytes")?
                         .values()
                         .as_ref(),

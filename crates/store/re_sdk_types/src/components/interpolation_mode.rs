@@ -103,16 +103,12 @@ impl ::re_types_core::Loggable for InterpolationMode {
     where
         Self: Sized,
     {
-        use ::re_types_core::{Loggable as _, ResultExt as _, arrow_zip_validity::ZipValidity};
+        use ::re_types_core::{
+            Loggable as _, ResultExt as _, arrow_helpers::*, arrow_zip_validity::ZipValidity,
+        };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok(arrow_data
-            .as_any()
-            .downcast_ref::<UInt8Array>()
-            .ok_or_else(|| {
-                let expected = Self::arrow_datatype();
-                let actual = arrow_data.data_type().clone();
-                DeserializationError::datatype_mismatch(expected, actual)
-            })
+            .try_cast::<UInt8Array>(|| Self::arrow_datatype())
             .with_context("rerun.components.InterpolationMode#enum")?
             .into_iter()
             .map(|typ| match typ {

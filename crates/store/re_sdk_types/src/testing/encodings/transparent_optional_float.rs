@@ -74,16 +74,12 @@ impl ::re_types_core::Loggable for TransparentOptionalFloat {
     where
         Self: Sized,
     {
-        use ::re_types_core::{Loggable as _, ResultExt as _, arrow_zip_validity::ZipValidity};
+        use ::re_types_core::{
+            Loggable as _, ResultExt as _, arrow_helpers::*, arrow_zip_validity::ZipValidity,
+        };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok(arrow_data
-            .as_any()
-            .downcast_ref::<Float32Array>()
-            .ok_or_else(|| {
-                let expected = Self::arrow_datatype();
-                let actual = arrow_data.data_type().clone();
-                DeserializationError::datatype_mismatch(expected, actual)
-            })
+            .try_cast::<Float32Array>(|| Self::arrow_datatype())
             .with_context("rerun.testing.encodings.TransparentOptionalFloat#single_float_optional")?
             .into_iter()
             .map(Ok)
