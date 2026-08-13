@@ -258,7 +258,7 @@ impl ConvertCommand {
             process_mcap(writer, &rx)?;
         }
 
-        re_log::info!("Processing took {}s", start_time.elapsed().as_secs());
+        re_log::info!("Processing took {:.3}s", start_time.elapsed().as_secs_f32());
 
         Ok(())
     }
