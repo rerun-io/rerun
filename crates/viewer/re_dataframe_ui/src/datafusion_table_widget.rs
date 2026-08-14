@@ -22,7 +22,6 @@ use re_ui::menu::menu_style;
 use re_ui::{UiExt as _, UiLayout, icons};
 use re_viewer_context::{AppContext, SystemCommand, SystemCommandSender as _};
 
-use crate::StreamingCacheTableProvider;
 use crate::cards_view::FlagChangeEvent;
 use crate::column_sorting::{SortBy, SortDirection};
 use crate::datafusion_adapter::{DataFusionAdapter, DataFusionQueryData, DataFusionQueryResult};
@@ -35,6 +34,7 @@ use crate::re_table_utils::UiTableConfig;
 use crate::table_blueprint::{EntryLinksSpec, SegmentLinksSpec, TableBlueprint};
 use crate::table_selection::TableSelectionState;
 use crate::{ColumnBlueprint, DisplayRecordBatch, default_display_name_for_column};
+use crate::{StreamingCacheTableProvider, TableBlueprints};
 
 /// Minimum row height (in points) when segment preview views are shown.
 const SEGMENT_PREVIEW_SIZE: f32 = 200.0;
@@ -184,11 +184,10 @@ type ColumnBlueprintFn<'a> = Box<dyn Fn(&ColumnDescriptorRef<'_>) -> ColumnBluep
 pub struct DataFusionTableWidget<'a> {
     session_ctx: Arc<SessionContext>,
 
-    /// Table ID used for looking up a cached table blueprint from the [`StoreHub`](re_viewer_context::StoreHub).
+    /// Stable identity used by table-scoped actions.
     ///
-    /// `None` for tables that are not backed by a [`TableStore`](re_viewer_context::TableStore)
-    /// (e.g. redap browser entries), in which case no hub lookup or registration is performed.
-    table_id: Option<re_log_types::TableId>,
+    /// `None` for widgets that are not tied to a stable table identity.
+    table_id: Option<re_log_types::TableId>, // TODO(andreas): make this mandatory to be around so we can always associate a blueprint.
 
     table_ref: TableReference,
 
@@ -206,9 +205,6 @@ pub struct DataFusionTableWidget<'a> {
 
     /// Query state used only when creating the egui-owned adapter for the first time.
     initial_query_data: DataFusionQueryData,
-
-    /// Registered table blueprint supplied by the caller.
-    registered_table_blueprint: Option<&'a re_entity_db::EntityDb>,
 }
 
 impl<'a> DataFusionTableWidget<'a> {
@@ -252,12 +248,10 @@ impl<'a> DataFusionTableWidget<'a> {
             url: None,
             column_blueprint_fn: Box::new(|_| ColumnBlueprint::default()),
             initial_query_data: Default::default(),
-            registered_table_blueprint: None,
         }
     }
 
-    /// Associate this widget with a [`TableId`](re_log_types::TableId) for blueprint caching
-    /// via the [`StoreHub`](re_viewer_context::StoreHub).
+    /// Associate this widget with a [`TableId`](re_log_types::TableId) for blueprint lookup.
     pub fn table_id(mut self, table_id: re_log_types::TableId) -> Self {
         self.table_id = Some(table_id);
         self
@@ -287,14 +281,6 @@ impl<'a> DataFusionTableWidget<'a> {
     /// Set the initial sort used when no egui-owned adapter state exists yet.
     pub fn sort_by(mut self, sort_by: SortBy) -> Self {
         self.initial_query_data.sort_by = Some(sort_by);
-        self
-    }
-
-    pub fn registered_table_blueprint(
-        mut self,
-        blueprint: Option<&'a re_entity_db::EntityDb>,
-    ) -> Self {
-        self.registered_table_blueprint = blueprint;
         self
     }
 
@@ -413,12 +399,13 @@ impl<'a> DataFusionTableWidget<'a> {
         })
     }
 
-    /// Display the table.
+    /// Displays the table.
     pub fn show(
         self,
         app_ctx: &AppContext<'_>,
         runtime: &AsyncRuntimeHandle,
         ui: &mut egui::Ui,
+        table_blueprints: &TableBlueprints,
         view_states: &mut re_viewer_context::ViewStates,
     ) -> TableStatus {
         match self.session_ctx.table_exist(self.table_ref.clone()) {
@@ -508,6 +495,7 @@ impl<'a> DataFusionTableWidget<'a> {
             table_state.queried_at,
             is_table_update_in_progress,
             query_result,
+            table_blueprints,
             view_states,
         );
 
@@ -564,6 +552,7 @@ impl<'a> DataFusionTableWidget<'a> {
         queried_at: Timestamp,
         should_show_loading_indicator: bool,
         query_result: &DataFusionQueryResult,
+        table_blueprints: &TableBlueprints,
         view_states: &mut re_viewer_context::ViewStates,
     ) -> TableUiOutput {
         let static_id = Id::new(&self.table_ref);
@@ -621,9 +610,9 @@ impl<'a> DataFusionTableWidget<'a> {
         let table_cards_and_blueprints_enabled =
             ctx.app_options.experimental.table_cards_and_blueprints;
 
-        let blueprint_db = self.registered_table_blueprint.or_else(|| {
-            let id = self.table_id.as_ref()?;
-            ctx.storage_context.hub.table_blueprint(id)
+        let blueprint_db = self.table_id.as_ref().and_then(|table_id| {
+            let store_id = table_blueprints.active_id(table_id)?;
+            ctx.storage_context.bundle.get(store_id)
         });
         let blueprint = blueprint_db
             .map(TableBlueprint::load)

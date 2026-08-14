@@ -25,7 +25,7 @@ const MIN_ZOOM_FACTOR: f32 = 0.2;
 #[cfg(not(target_arch = "wasm32"))]
 const MAX_ZOOM_FACTOR: f32 = 5.0;
 
-/// How [`App::close_recording`] should treat a recording that's still rendered as a preview.
+/// How [`App::close_recording_or_table`] should treat a recording that's still rendered as a preview.
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum CloseRecording {
     /// A recording still rendered as a preview stays loaded and streaming, just no longer in the
@@ -245,7 +245,7 @@ impl App {
                     })
                 });
 
-                self.close_recording(store_hub, &entry, CloseRecording::KeepPreview);
+                self.close_recording_or_table(store_hub, &entry, CloseRecording::KeepPreview);
 
                 if let Some(new_navigation) = new_navigation {
                     self.navigate_to(egui_ctx, &new_navigation);
@@ -256,6 +256,7 @@ impl App {
 
             SystemCommand::CloseAllEntries => {
                 self.state.navigation.reset();
+                self.table_blueprints.clear(store_hub.store_bundle_mut());
                 store_hub.clear_entries();
 
                 // Stop receiving into the old recordings.
@@ -415,7 +416,11 @@ impl App {
                 // `Force` because a recording rendered as a preview last frame would otherwise stay
                 // loaded and streaming even though its server is being removed.
                 for store_id in recordings_to_close {
-                    self.close_recording(store_hub, &store_id.into(), CloseRecording::Force);
+                    self.close_recording_or_table(
+                        store_hub,
+                        &store_id.into(),
+                        CloseRecording::Force,
+                    );
                 }
 
                 self.state
@@ -504,7 +509,18 @@ impl App {
                 // By clearing the blueprint the default blueprint will be restored
                 // at the beginning of the next frame.
                 re_log::debug!("Reset blueprint to default");
-                store_hub.clear_active_blueprint(self.state.navigation.current());
+
+                if let Some(table_id) = self.state.navigation.current().table_blueprint_id() {
+                    if let Err(err) = self
+                        .table_blueprints
+                        .reset(&table_id, store_hub.store_bundle_mut())
+                    {
+                        re_log::warn!("Failed to reset table blueprint: {err}");
+                    }
+                } else {
+                    store_hub.clear_active_blueprint(self.state.navigation.current());
+                }
+
                 egui_ctx.request_repaint(); // Many changes take a frame delay to show up.
             }
 
@@ -1472,6 +1488,8 @@ impl App {
         self.state = Default::default();
 
         store_hub.clear_all_cloned_blueprints();
+        self.table_blueprints
+            .clear_all_cloned_blueprints(store_hub.store_bundle_mut());
 
         // Reset egui:
         egui_ctx.memory_mut(|mem| *mem = Default::default());
@@ -1633,53 +1651,67 @@ impl App {
         }
     }
 
-    fn close_recording(
-        &self,
+    fn close_recording_or_table(
+        &mut self,
         store_hub: &mut StoreHub,
         entry: &RecordingOrTable,
         mode: CloseRecording,
     ) {
-        if let RecordingOrTable::Recording { store_id } = entry {
-            store_hub.set_opened(store_id, false);
-
-            // A recording that's still rendered as a preview should stay loaded and streaming, just
-            // no longer in the recording list. Removing it would make the preview re-download it.
-            // `Force` overrides this and removes it regardless.
-            if mode != CloseRecording::Force && store_hub.was_preview(store_id) {
-                return;
-            }
-        }
-
-        let data_source = match entry {
+        match entry {
             RecordingOrTable::Recording { store_id } => {
-                store_hub.entity_db_entry(store_id).data_source.clone()
+                store_hub.set_opened(store_id, false);
+
+                // A recording that's still rendered as a preview should stay loaded and streaming, just
+                // no longer in the recording list. Removing it would make the preview re-download it.
+                // `Force` overrides this and removes it regardless.
+                if mode != CloseRecording::Force && store_hub.was_preview(store_id) {
+                    return;
+                }
+
+                let data_source = store_hub.entity_db_entry(store_id).data_source.as_ref();
+
+                if let Some(data_source) = data_source {
+                    // Only certain sources should be closed.
+                    #[expect(clippy::match_same_arms)]
+                    let should_close = match &data_source {
+                        // Specific files should stop streaming when closing them.
+                        LogSource::File { .. } => true,
+
+                        // Specific HTTP streams should stop streaming when closing them.
+                        LogSource::HttpStream { .. } => true,
+
+                        // Specific GRPC streams should stop streaming when closing them.
+                        // TODO(#10967): We still stream in some data after that.
+                        LogSource::RedapGrpcStream { .. } => true,
+
+                        // Don't close generic connections (like to an SDK) that may feed in different recordings over time.
+                        LogSource::RrdWebEvent
+                        | LogSource::JsChannel { .. }
+                        | LogSource::Sdk
+                        | LogSource::Stdin
+                        | LogSource::MessageProxy(_) => false,
+                    };
+
+                    if should_close {
+                        self.rx_log.retain(|r| r.source() != data_source);
+                    }
+                }
             }
-            RecordingOrTable::Table { .. } => None,
-        };
-        if let Some(data_source) = data_source {
-            // Only certain sources should be closed.
-            #[expect(clippy::match_same_arms)]
-            let should_close = match &data_source {
-                // Specific files should stop streaming when closing them.
-                LogSource::File { .. } => true,
+            RecordingOrTable::Table { table_id } => {
+                // Cancel receiving blueprints for this table.
+                self.rx_log.retain(|receiver| !{
+                    matches!(
+                        receiver.source(),
+                        LogSource::RedapGrpcStream {
+                            table_blueprint: Some(table_blueprint),
+                            ..
+                        } if &table_blueprint.table_id == table_id
+                    )
+                });
 
-                // Specific HTTP streams should stop streaming when closing them.
-                LogSource::HttpStream { .. } => true,
-
-                // Specific GRPC streams should stop streaming when closing them.
-                // TODO(#10967): We still stream in some data after that.
-                LogSource::RedapGrpcStream { .. } => true,
-
-                // Don't close generic connections (like to an SDK) that may feed in different recordings over time.
-                LogSource::RrdWebEvent
-                | LogSource::JsChannel { .. }
-                | LogSource::Sdk
-                | LogSource::Stdin
-                | LogSource::MessageProxy(_) => false,
-            };
-
-            if should_close {
-                self.rx_log.retain(|r| r.source() != &data_source);
+                // Remove any existing table blueprints associated with this table.
+                self.table_blueprints
+                    .remove_table(table_id, store_hub.store_bundle_mut());
             }
         }
 

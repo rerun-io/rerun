@@ -14,6 +14,7 @@ mod re_table_utils;
 mod requested_object;
 mod streaming_cache;
 mod table_blueprint;
+mod table_blueprints;
 mod table_selection;
 
 pub use self::column_blueprint::{ColumnBlueprint, default_display_name_for_column};
@@ -31,6 +32,7 @@ pub use self::re_table_utils::{
 };
 pub use self::requested_object::RequestedObject;
 pub use self::streaming_cache::StreamingCacheTableProvider;
+pub use self::table_blueprints::{TableBlueprintError, TableBlueprints};
 
 /// Arrow field metadata keys for configuring card behavior.
 ///

@@ -133,6 +133,7 @@ impl App {
                         render_ctx,
                         active_store_context,
                         storage_context,
+                        &self.table_blueprints,
                         &self.reflection,
                         &self.component_ui_registry,
                         &self.component_fallback_registry,

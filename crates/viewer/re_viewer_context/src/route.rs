@@ -175,10 +175,30 @@ impl From<re_uri::EntryUri> for Route {
 }
 
 impl Route {
+    /// Returns the plain table ID, if any.
+    pub fn table_blueprint_id(&self) -> Option<TableId> {
+        match self {
+            Self::LocalTable(table_id) => Some(table_id.clone()),
+            Self::RedapEntry {
+                kind: RedapEntryKind::Entry(entry_id),
+                ..
+            } => Some(TableId::new(entry_id.to_string())), // TODO(andreas): if you think this looks wrong, then you're right. Will be addressed in https://github.com/rerun-io/reality/pull/3162
+
+            Self::Settings { .. }
+            | Self::Loading { .. }
+            | Self::LocalRecording { .. }
+            | Self::RedapEntry {
+                kind: RedapEntryKind::Folder(_),
+                ..
+            }
+            | Self::RedapServer(_)
+            | Self::ChunkStoreBrowser { .. } => None,
+        }
+    }
+
     /// Returns the redap origin for the current route, if any.
     ///
-    /// Proxy origins are excluded because they are local and don't represent
-    /// a remote server connection.
+    /// Proxy origins are excluded because they are local and do not represent a remote server connection.
     pub fn redap_origin(&self, store_hub: &crate::StoreHub) -> Option<re_uri::Origin> {
         match self {
             Self::LocalRecording { recording_id }

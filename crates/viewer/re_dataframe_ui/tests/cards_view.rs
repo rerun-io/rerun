@@ -11,7 +11,7 @@ use egui::accesskit::Role;
 use egui_kittest::SnapshotResults;
 use egui_kittest::kittest::Queryable as _;
 use re_async::AsyncRuntimeHandle;
-use re_dataframe_ui::DataFusionTableWidget;
+use re_dataframe_ui::{DataFusionTableWidget, TableBlueprints};
 use re_test_context::TestContext;
 
 use common::run_async_harness;
@@ -42,6 +42,7 @@ async fn test_cards_view() {
                             ctx.app_ctx,
                             &runtime_handle,
                             ui,
+                            &TableBlueprints::default(),
                             &mut test_context.view_states.lock(),
                         );
                 });
@@ -83,6 +84,7 @@ async fn test_cards_view_resize() {
                             ctx.app_ctx,
                             &runtime_handle,
                             ui,
+                            &TableBlueprints::default(),
                             &mut test_context.view_states.lock(),
                         );
                 });
@@ -136,6 +138,7 @@ async fn test_cards_view_flagging() {
                             ctx.app_ctx,
                             &runtime_handle,
                             ui,
+                            &TableBlueprints::default(),
                             &mut test_context.view_states.lock(),
                         );
                 });
@@ -183,6 +186,7 @@ async fn test_cards_view_non_uniform_cards() {
                         ctx.app_ctx,
                         &runtime_handle,
                         ui,
+                        &TableBlueprints::default(),
                         &mut test_context.view_states.lock(),
                     );
             });

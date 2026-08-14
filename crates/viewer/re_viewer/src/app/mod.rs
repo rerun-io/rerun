@@ -126,6 +126,8 @@ pub struct App {
     /// Interface for all recordings and blueprints
     pub(crate) store_hub: Option<StoreHub>,
 
+    pub(crate) table_blueprints: re_dataframe_ui::TableBlueprints,
+
     /// Notification panel.
     pub(crate) notifications: notifications::NotificationUi,
 
@@ -514,6 +516,7 @@ impl App {
                 },
                 &crate::app_blueprint::setup_welcome_screen_blueprint,
             )),
+            table_blueprints: Default::default(),
             notifications: notifications::NotificationUi::new(creation_context.egui_ctx.clone()),
 
             dev_panel: Default::default(),

@@ -8,7 +8,7 @@ use datafusion::prelude::SessionContext;
 use egui::accesskit::Role;
 use egui_kittest::kittest::Queryable as _;
 use re_async::AsyncRuntimeHandle;
-use re_dataframe_ui::{DataFusionTableWidget, SortBy};
+use re_dataframe_ui::{DataFusionTableWidget, SortBy, TableBlueprints};
 use re_test_context::TestContext;
 
 use common::run_async_harness;
@@ -29,6 +29,7 @@ async fn test_no_sort() {
                         ctx.app_ctx,
                         &runtime_handle,
                         ui,
+                        &TableBlueprints::default(),
                         &mut test_context.view_states.lock(),
                     );
             });
@@ -55,6 +56,7 @@ async fn test_ascending() {
                         ctx.app_ctx,
                         &runtime_handle,
                         ui,
+                        &TableBlueprints::default(),
                         &mut test_context.view_states.lock(),
                     );
             });
@@ -81,6 +83,7 @@ async fn test_descending() {
                         ctx.app_ctx,
                         &runtime_handle,
                         ui,
+                        &TableBlueprints::default(),
                         &mut test_context.view_states.lock(),
                     );
             });
@@ -106,6 +109,7 @@ async fn test_column_menu_button() {
                         ctx.app_ctx,
                         &runtime_handle,
                         ui,
+                        &TableBlueprints::default(),
                         &mut test_context.view_states.lock(),
                     );
             });

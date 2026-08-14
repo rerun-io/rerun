@@ -213,6 +213,7 @@ impl Server {
         ctx: &Context<'_>,
         ui: &mut egui::Ui,
         inline_login_flow: &mut Option<(re_uri::Origin, Box<LoginFlow>)>,
+        table_blueprints: &re_dataframe_ui::TableBlueprints,
         view_states: &mut ViewStates,
     ) {
         if let Poll::Ready(Err(err)) = self.entries.state() {
@@ -268,7 +269,7 @@ impl Server {
                     )
                     .and(col("name").not_eq(lit("__entries"))),
             )
-            .show(app_ctx, &self.runtime, ui, view_states);
+            .show(app_ctx, &self.runtime, ui, table_blueprints, view_states);
     }
 
     fn folder_ui(
@@ -342,6 +343,7 @@ impl Server {
         app_ctx: &AppContext<'_>,
         ui: &mut egui::Ui,
         dataset: &Dataset,
+        table_blueprints: &re_dataframe_ui::TableBlueprints,
         view_states: &mut ViewStates,
     ) {
         const RECORDING_LINK_COLUMN_NAME: &str = "recording link";
@@ -395,7 +397,7 @@ impl Server {
             self.origin().clone(),
             dataset.id(),
         )
-        .show(app_ctx, &self.runtime, ui, view_states);
+        .show(app_ctx, &self.runtime, ui, table_blueprints, view_states);
     }
 
     fn table_entry_ui(
@@ -403,6 +405,7 @@ impl Server {
         app_ctx: &AppContext<'_>,
         ui: &mut egui::Ui,
         table: &Table,
+        table_blueprints: &re_dataframe_ui::TableBlueprints,
         view_states: &mut ViewStates,
     ) {
         re_dataframe_ui::DataFusionTableWidget::new(
@@ -412,7 +415,7 @@ impl Server {
         .table_id(TableId::new(table.id().to_string()))
         .title(table.name().to_string())
         .url(re_uri::EntryUri::new(table.origin.clone(), table.id()).to_string())
-        .show(app_ctx, &self.runtime, ui, view_states);
+        .show(app_ctx, &self.runtime, ui, table_blueprints, view_states);
     }
 }
 
@@ -1045,13 +1048,21 @@ impl RedapServers {
         app_ctx: &AppContext<'_>,
         ui: &mut egui::Ui,
         origin: &re_uri::Origin,
+        table_blueprints: &re_dataframe_ui::TableBlueprints,
         view_states: &mut ViewStates,
     ) {
         if let Some(server) = self.servers.get(origin) {
             let ctx = Context {
                 command_sender: &self.command_sender,
             };
-            server.server_ui(app_ctx, &ctx, ui, &mut self.inline_login_flow, view_states);
+            server.server_ui(
+                app_ctx,
+                &ctx,
+                ui,
+                &mut self.inline_login_flow,
+                table_blueprints,
+                view_states,
+            );
         } else {
             app_ctx.revert_to_default_route();
         }
@@ -1084,20 +1095,21 @@ impl RedapServers {
         ctx: &AppContext<'_>,
         ui: &mut egui::Ui,
         active_entry: EntryId,
+        table_blueprints: &re_dataframe_ui::TableBlueprints,
         view_states: &mut ViewStates,
     ) {
         for server in self.servers.values() {
             if let Some(entry) = server.find_entry(active_entry) {
                 match entry.inner() {
                     Ok(crate::entries::EntryInner::Dataset(dataset)) => {
-                        server.dataset_entry_ui(ctx, ui, dataset, view_states);
+                        server.dataset_entry_ui(ctx, ui, dataset, table_blueprints, view_states);
 
                         // If we're connected twice to the same server, we will find this entry
                         // multiple times. We avoid it by returning here.
                         return;
                     }
                     Ok(crate::entries::EntryInner::Table(table)) => {
-                        server.table_entry_ui(ctx, ui, table, view_states);
+                        server.table_entry_ui(ctx, ui, table, table_blueprints, view_states);
 
                         // If we're connected twice to the same server, we will find this entry
                         // multiple times. We avoid it by returning here.

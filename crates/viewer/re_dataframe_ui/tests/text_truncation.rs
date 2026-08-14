@@ -6,7 +6,7 @@ use arrow::array::{Int32Array, RecordBatch, StringArray, StructArray};
 use arrow::datatypes::{DataType, Field, Fields, Schema};
 use datafusion::prelude::SessionContext;
 use re_async::AsyncRuntimeHandle;
-use re_dataframe_ui::DataFusionTableWidget;
+use re_dataframe_ui::{DataFusionTableWidget, TableBlueprints};
 use re_test_context::TestContext;
 
 use common::run_async_harness;
@@ -27,6 +27,7 @@ async fn test_text_truncation() {
                         ctx.app_ctx,
                         &runtime_handle,
                         ui,
+                        &TableBlueprints::default(),
                         &mut test_context.view_states.lock(),
                     );
             });

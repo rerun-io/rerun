@@ -204,7 +204,6 @@ impl AppState {
         &mut self.app_options
     }
 
-    // TODO(andreas): Large route-dispatch match, one arm per `Route`.
     pub fn show(
         &mut self,
         app_env: &crate::AppEnvironment,
@@ -214,6 +213,7 @@ impl AppState {
         render_ctx: &re_renderer::RenderContext,
         active_store_context: Option<&ActiveStoreContext<'_>>,
         storage_context: &StorageContext<'_>,
+        table_blueprints: &re_dataframe_ui::TableBlueprints,
         reflection: &re_types_core::reflection::Reflection,
         component_ui_registry: &ComponentUiRegistry,
         component_fallback_registry: &FallbackProviderRegistry,
@@ -664,6 +664,7 @@ impl AppState {
                                 &app_ctx,
                                 runtime,
                                 ui,
+                                table_blueprints,
                                 &mut self.view_states,
                             );
                         } else {
@@ -727,6 +728,7 @@ impl AppState {
                                 &app_ctx,
                                 ui,
                                 origin,
+                                table_blueprints,
                                 &mut self.view_states,
                             );
                         }
@@ -752,8 +754,13 @@ impl AppState {
                 egui::CentralPanel::default()
                     .frame(viewport_frame)
                     .show(ui, |ui| {
-                        self.redap_servers
-                            .entry_ui(&app_ctx, ui, *entry_id, &mut self.view_states);
+                        self.redap_servers.entry_ui(
+                            &app_ctx,
+                            ui,
+                            *entry_id,
+                            table_blueprints,
+                            &mut self.view_states,
+                        );
                     });
             }
 
