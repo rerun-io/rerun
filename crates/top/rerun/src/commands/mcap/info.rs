@@ -32,9 +32,7 @@ impl InfoCommand {
             )
         })?;
         let mcap_file = re_mcap::McapFile::new(mmap, *recover);
-        let info = mcap_file.info().with_context(|| {
-            format!("Failed to inspect MCAP file\nFile path: {}", path.display())
-        })?;
+        let info = mcap_file.info()?;
 
         print_info(path, &info);
         Ok(())

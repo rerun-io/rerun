@@ -18,6 +18,15 @@ pub enum Error {
         source: anyhow::Error,
     },
 
+    /// The embedded summary could not be read, but recovery may be able to reconstruct it.
+    #[error(
+        "MCAP summary is missing or corrupt; try reopening it with recovery enabled. Details: {details:#}"
+    )]
+    SummaryRequiresRecovery { details: anyhow::Error },
+
+    #[error("Not an MCAP file: missing start magic")]
+    MissingStartMagic,
+
     #[error(transparent)]
     Mcap(#[from] ::mcap::McapError),
 
@@ -30,7 +39,7 @@ pub enum Error {
     #[error(transparent)]
     Chunk(#[from] re_chunk::ChunkError),
 
-    #[error("{0:#}")]
+    #[error(transparent)]
     Other(#[from] anyhow::Error),
 }
 

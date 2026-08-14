@@ -56,9 +56,7 @@ impl CheckCommand {
             )
         })?;
         let mcap_file = re_mcap::McapFile::new(mmap, *recover);
-        let summary = mcap_file.summary().with_context(|| {
-            format!("Failed to inspect MCAP file\nFile path: {}", path.display())
-        })?;
+        let summary = mcap_file.summary()?;
         let by_topic = if *full {
             collect_by_topic_full(mcap_file.bytes(), &summary)?
         } else {

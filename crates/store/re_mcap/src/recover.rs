@@ -73,9 +73,7 @@ pub fn build_chunk_index(mcap: &[u8]) -> Result<ScanResult, Error> {
     re_tracing::profile_function!();
 
     if !mcap.starts_with(mcap::MAGIC) {
-        return Err(Error::Other(anyhow::anyhow!(
-            "Not an MCAP file: missing start magic"
-        )));
+        return Err(Error::MissingStartMagic);
     }
 
     let mut scan = ScanResult::default();
@@ -415,14 +413,18 @@ pub(crate) fn read_or_reconstruct_summary_with_source(
     mcap: &[u8],
     recover: bool,
 ) -> Result<(Summary, McapSummarySource), Error> {
+    if !mcap.starts_with(mcap::MAGIC) {
+        return Err(Error::MissingStartMagic);
+    }
+
     match crate::read_summary(std::io::Cursor::new(mcap)) {
         Ok(Some(summary)) => return Ok((summary, McapSummarySource::Embedded)),
         Ok(None) if !recover => {
-            return Err(Error::Other(anyhow::anyhow!(
-                "MCAP file does not contain a summary"
-            )));
+            return Err(Error::SummaryRequiresRecovery {
+                details: anyhow::anyhow!("MCAP file does not contain a summary"),
+            });
         }
-        Err(err) if !recover => return Err(Error::Other(err)),
+        Err(details) if !recover => return Err(Error::SummaryRequiresRecovery { details }),
         // Recover mode: a missing or unreadable summary falls through to reconstruction.
         Ok(None) => {
             re_log::warn!(
@@ -710,6 +712,29 @@ mod tests {
         for chunk in &recovered.chunk_indexes {
             assert!(!chunk.message_index_offsets.is_empty());
         }
+    }
+
+    #[test]
+    fn truncated_without_recovery_returns_dedicated_error() {
+        let (buffer, _ids) = healthy_mcap();
+        let footer = mcap::read::footer(&buffer).expect("footer");
+        let truncated = &buffer[..footer.summary_start as usize];
+
+        let err = read_or_reconstruct_summary(truncated, false).expect_err("summary must fail");
+        let Error::SummaryRequiresRecovery { details } = err else {
+            panic!("expected recovery error, got {err}");
+        };
+        assert_eq!(
+            details.to_string(),
+            "MCAP file does not end with the expected magic bytes"
+        );
+    }
+
+    #[test]
+    fn invalid_start_magic_returns_error() {
+        let err = read_or_reconstruct_summary(b"not an mcap file at all", false)
+            .expect_err("invalid start magic must fail");
+        assert!(matches!(err, Error::MissingStartMagic));
     }
 
     #[test]

@@ -150,7 +150,14 @@ impl PyMcapReaderInternal {
             )
         };
 
+        // Use the cached summary, if it was already read.
         if let Some(summary) = self.mcap_file.cached_summary() {
+            return bounds_from_summary(&summary);
+        }
+
+        // With recovery disabled, read and cache the embedded summary before computing its bounds.
+        if !self.mcap_file.recover() {
+            let summary = self.summary()?;
             return bounds_from_summary(&summary);
         }
 
@@ -171,24 +178,18 @@ impl PyMcapReaderInternal {
 
         match re_mcap::read_summary(std::io::Cursor::new(self.mcap_file.bytes())) {
             Ok(Some(summary)) => bounds_from_summary(&summary),
-            Ok(None) if self.mcap_file.recover() => {
+            Ok(None) => {
                 re_log::warn!(
                     "MCAP file has no summary; scanning the chunk index for time bounds. The file may be truncated"
                 );
                 bounds_from_scan()
             }
-            Err(err) if self.mcap_file.recover() => {
+            Err(err) => {
                 re_log::warn!(
                     "Failed to read the MCAP summary ({err}); scanning the chunk index for time bounds. The file may be truncated"
                 );
                 bounds_from_scan()
             }
-            Ok(None) => Err(PyValueError::new_err(
-                "MCAP file does not contain a summary",
-            )),
-            Err(err) => Err(PyValueError::new_err(format!(
-                "Failed to read MCAP summary: {err}"
-            ))),
         }
     }
 

@@ -14,7 +14,13 @@ use crate::parsers::ChannelId;
 pub fn read_summary<R: Read + Seek>(mut reader: R) -> anyhow::Result<Option<Summary>> {
     let mut summary_reader = SummaryReader::new();
     while let Some(event) = summary_reader.next_event() {
-        match event? {
+        let event = event.map_err(|err| match err {
+            mcap::McapError::BadMagic => {
+                anyhow::anyhow!("MCAP file does not end with the expected magic bytes")
+            }
+            err => anyhow::Error::from(err),
+        })?;
+        match event {
             SummaryReadEvent::SeekRequest(pos) => {
                 summary_reader.notify_seeked(reader.seek(pos)?);
             }

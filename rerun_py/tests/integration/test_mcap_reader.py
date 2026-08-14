@@ -288,14 +288,24 @@ def test_recover_truncated_matches_healthy(tmp_path: Path) -> None:
 
 
 def test_truncated_without_recover_raises(tmp_path: Path) -> None:
-    """Without `recover`, a missing summary is a hard error on both `stream` and `time_bounds`."""
+    """Without `recover`, a missing summary is a hard error on `stream`, `info`, and `time_bounds`."""
     truncated = tmp_path / "truncated.mcap"
     _truncate_before_summary(POINT_CLOUD_MCAP, truncated)
 
-    with pytest.raises(ValueError):
-        McapReader(truncated).stream().to_chunks()
-    with pytest.raises(ValueError):
-        McapReader(truncated).time_bounds()
+    reader = McapReader(truncated)
+    for read_summary in (reader.stream, reader.info, reader.time_bounds):
+        with pytest.raises(ValueError, match="try reopening it with recovery enabled"):
+            read_summary()
+
+
+def test_invalid_start_magic_does_not_suggest_recovery(tmp_path: Path) -> None:
+    """A file without MCAP start magic should not suggest recovery in its error message."""
+    invalid = tmp_path / "invalid.mcap"
+    invalid.write_bytes(b"not an mcap file at all")
+
+    with pytest.raises(ValueError, match="missing start magic") as exc_info:
+        McapReader(invalid).info()
+    assert "try reopening it with recovery enabled" not in str(exc_info.value)
 
 
 # ---------------------------------------------------------------------------
