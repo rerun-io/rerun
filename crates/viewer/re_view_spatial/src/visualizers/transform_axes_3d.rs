@@ -167,7 +167,7 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
 
             // Nothing to draw for *this* instruction (e.g. its transform frame can't be
             // resolved to the view's target frame).
-if transforms_to_draw.is_empty() {
+            if transforms_to_draw.is_empty() {
                 continue;
             }
 
