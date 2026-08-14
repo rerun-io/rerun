@@ -313,10 +313,7 @@ fn with_unloaded_chunks() {
         },
     );
 
-    test_context.send_time_commands(
-        test_context.active_store_id(),
-        [TimeControlCommand::SetTime(TimeReal::from(5))],
-    );
+    test_context.set_time(TimeReal::from(5));
 
     used_ids.push(chunks[0].id());
 

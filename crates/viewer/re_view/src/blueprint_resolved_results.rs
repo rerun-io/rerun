@@ -435,8 +435,8 @@ pub trait BlueprintResolvedResultsExt<'a> {
     ///
     /// `force_preserve_store_row_ids`: If true, preserves row IDs from store data in latest-at queries.
     /// If false, all results are re-indexed to ([`TimeInt::STATIC`], [`RowId::ZERO`])
-    /// in order to allow the same range zipping.
-    /// When false, you cannot rely on row ids for any hashing/identification purposes!
+    /// in order to allow the same range-zipping behavior as on range queries.
+    /// When false, you cannot rely on row IDs for any hashing/identification purposes!
     ///
     /// **WARNING:** Blueprint data (overrides/defaults) is **always** re-indexed to
     /// ([`TimeInt::STATIC`], [`RowId::ZERO`]) regardless of this setting.

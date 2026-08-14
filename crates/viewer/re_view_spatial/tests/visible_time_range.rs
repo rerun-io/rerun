@@ -607,10 +607,7 @@ fn test_sliding_window_3d() {
 
     // Cursor to 5s → window covers T=[4s, 6s]
     {
-        test_context.send_time_commands(
-            test_context.active_store_id(),
-            [TimeControlCommand::SetTime(TimeReal::from_secs(5.0))],
-        );
+        test_context.set_time(TimeReal::from_secs(5.0));
 
         let mut harness = test_context
             .setup_kittest_for_rendering_3d(size)
@@ -625,10 +622,7 @@ fn test_sliding_window_3d() {
 
     // Cursor at 3s → window covers T=[2s, 4s]
     {
-        test_context.send_time_commands(
-            test_context.active_store_id(),
-            [TimeControlCommand::SetTime(TimeReal::from_secs(3.0))],
-        );
+        test_context.set_time(TimeReal::from_secs(3.0));
 
         let mut harness = test_context
             .setup_kittest_for_rendering_3d(size)
@@ -643,10 +637,7 @@ fn test_sliding_window_3d() {
 
     // Cursor to 4s → window covers T=[3s, 5s]
     {
-        test_context.send_time_commands(
-            test_context.active_store_id(),
-            [TimeControlCommand::SetTime(TimeReal::from_secs(4.0))],
-        );
+        test_context.set_time(TimeReal::from_secs(4.0));
 
         let mut harness = test_context
             .setup_kittest_for_rendering_3d(size)

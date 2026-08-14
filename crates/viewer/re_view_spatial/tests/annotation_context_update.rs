@@ -7,7 +7,7 @@ use re_sdk_types::components::Position3D;
 use re_test_context::TestContext;
 use re_test_context::external::egui_kittest::SnapshotResults;
 use re_test_viewport::TestContextExt as _;
-use re_viewer_context::{TimeControlCommand, ViewClass as _, ViewId};
+use re_viewer_context::{ViewClass as _, ViewId};
 use re_viewport_blueprint::{ViewBlueprint, ViewProperty};
 
 /// Log a point cloud with `class_ids`, and an annotation context that changes color between two frames.
@@ -120,18 +120,12 @@ fn run_view_ui_and_save_snapshot(test_context: &TestContext, view_id: ViewId, na
         });
 
     // Frame 1: should show red + green points.
-    test_context.send_time_commands(
-        test_context.active_store_id(),
-        [TimeControlCommand::SetTime(1_i64.into())],
-    );
+    test_context.set_time(1);
     harness.run();
     snapshot_results.add(harness.try_snapshot(format!("{name}_frame1")));
 
     // Frame 2: should show blue + yellow points (not red + green).
-    test_context.send_time_commands(
-        test_context.active_store_id(),
-        [TimeControlCommand::SetTime(2_i64.into())],
-    );
+    test_context.set_time(2);
     harness.run();
     snapshot_results.add(harness.try_snapshot(format!("{name}_frame2")));
 }

@@ -14,6 +14,7 @@ use re_entity_db::{EntityDb, InstancePath};
 use re_log_types::external::re_tuid::Tuid;
 use re_log_types::{
     ApplicationId, EntityPath, EntityPathPart, SetStoreInfo, StoreId, StoreInfo, StoreKind,
+    TimeReal,
 };
 use re_sdk_types::archetypes::RecordingInfo;
 use re_sdk_types::{Component as _, ComponentDescriptor};
@@ -488,6 +489,12 @@ impl TestContext {
             store_id,
             [TimeControlCommand::SetActiveTimeline(timeline_name.into())],
         );
+        self.handle_system_commands(&egui::Context::default());
+    }
+
+    pub fn set_time(&self, time: impl Into<TimeReal>) {
+        let store_id = self.active_store_id();
+        self.send_time_commands(store_id, [TimeControlCommand::SetTime(time.into())]);
         self.handle_system_commands(&egui::Context::default());
     }
 

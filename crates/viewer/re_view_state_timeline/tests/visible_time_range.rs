@@ -9,7 +9,7 @@ use re_test_context::TestContext;
 use re_test_context::external::egui_kittest::SnapshotResults;
 use re_test_viewport::TestContextExt as _;
 use re_view_state_timeline::StateTimelineView;
-use re_viewer_context::{BlueprintContext as _, TimeControlCommand, ViewClass as _, ViewId};
+use re_viewer_context::{BlueprintContext as _, ViewClass as _, ViewId};
 use re_viewport_blueprint::{ViewBlueprint, ViewContents};
 
 const MAX_TIME: i64 = 40;
@@ -133,14 +133,7 @@ fn test_visible_time_range_for_view() {
         log_data(&mut test_context, timeline);
         test_context.set_active_timeline(*timeline.name());
 
-        let store_id = test_context.active_store_id();
-        test_context.send_time_commands(
-            store_id,
-            [TimeControlCommand::SetTime(
-                re_log_types::TimeInt::new_temporal(20).into(),
-            )],
-        );
-        test_context.handle_system_commands(&egui::Context::default());
+        test_context.set_time(re_log_types::TimeInt::new_temporal(20));
 
         let view_id = setup_blueprint(&mut test_context, timeline.name(), Some(range), None);
         snapshot_results.add(test_context.run_view_ui_and_save_snapshot(

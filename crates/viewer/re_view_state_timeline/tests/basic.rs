@@ -5,7 +5,7 @@ use re_test_context::external::egui_kittest::SnapshotResults;
 use re_test_context::external::egui_kittest::kittest::Queryable as _;
 use re_test_viewport::TestContextExt as _;
 use re_view_state_timeline::StateTimelineView;
-use re_viewer_context::{GLOBAL_VIEW_ID, TimeControlCommand, ViewClass as _, ViewId};
+use re_viewer_context::{GLOBAL_VIEW_ID, ViewClass as _, ViewId};
 use re_viewport_blueprint::{ViewBlueprint, ViewProperty};
 
 fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
@@ -259,14 +259,7 @@ fn test_state_timeline_basic() {
     test_context.set_active_timeline(*timeline.name());
 
     // Set time cursor to tick 20 (mid-range).
-    let store_id = test_context.active_store_id();
-    test_context.send_time_commands(
-        store_id,
-        [TimeControlCommand::SetTime(
-            re_log_types::TimeInt::new_temporal(20).into(),
-        )],
-    );
-    test_context.handle_system_commands(&egui::Context::default());
+    test_context.set_time(re_log_types::TimeInt::new_temporal(20));
 
     let view_id = setup_blueprint(&mut test_context);
     test_context
@@ -305,14 +298,7 @@ fn test_state_timeline_time_cursor() {
     test_context.set_active_timeline(*timeline.name());
 
     // Set time cursor to tick 30.
-    let store_id = test_context.active_store_id();
-    test_context.send_time_commands(
-        store_id,
-        [TimeControlCommand::SetTime(
-            re_log_types::TimeInt::new_temporal(30).into(),
-        )],
-    );
-    test_context.handle_system_commands(&egui::Context::default());
+    test_context.set_time(re_log_types::TimeInt::new_temporal(30));
 
     let view_id = setup_blueprint(&mut test_context);
     test_context
@@ -362,14 +348,7 @@ fn test_state_timeline_null_is_reset() {
     test_context.set_active_timeline(*timeline.name());
 
     // Place the cursor in the null region to confirm the gap left by the reset.
-    let store_id = test_context.active_store_id();
-    test_context.send_time_commands(
-        store_id,
-        [TimeControlCommand::SetTime(
-            re_log_types::TimeInt::new_temporal(30).into(),
-        )],
-    );
-    test_context.handle_system_commands(&egui::Context::default());
+    test_context.set_time(re_log_types::TimeInt::new_temporal(30));
 
     let view_id = setup_blueprint(&mut test_context);
     test_context
@@ -523,18 +502,10 @@ fn test_state_timeline_timeline_switch() {
     }
 
     let view_id = setup_blueprint(&mut test_context);
-    let egui_ctx = egui::Context::default();
 
     // Snapshot with the sequence timeline active.
     test_context.set_active_timeline(*seq_timeline.name());
-    let store_id = test_context.active_store_id();
-    test_context.send_time_commands(
-        store_id.clone(),
-        [TimeControlCommand::SetTime(
-            re_log_types::TimeInt::new_temporal(20).into(),
-        )],
-    );
-    test_context.handle_system_commands(&egui_ctx);
+    test_context.set_time(re_log_types::TimeInt::new_temporal(20));
     snapshot_results.add(test_context.run_view_ui_and_save_snapshot(
         view_id,
         "state_timeline_timeline_switch_sequence",
@@ -544,13 +515,7 @@ fn test_state_timeline_timeline_switch() {
 
     // Switch to the timestamp timeline and snapshot again.
     test_context.set_active_timeline(*ts_timeline.name());
-    test_context.send_time_commands(
-        store_id,
-        [TimeControlCommand::SetTime(
-            re_log_types::TimeInt::new_temporal(base_ns + 20 * step_ns).into(),
-        )],
-    );
-    test_context.handle_system_commands(&egui_ctx);
+    test_context.set_time(re_log_types::TimeInt::new_temporal(base_ns + 20 * step_ns));
     snapshot_results.add(test_context.run_view_ui_and_save_snapshot(
         view_id,
         "state_timeline_timeline_switch_timestamp",
