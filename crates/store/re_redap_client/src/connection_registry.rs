@@ -161,9 +161,10 @@ pub enum ClientCredentialsError {
     NotAuthorized,
 }
 
-/// Registry of all tokens and connections to the redap servers.
+/// Owns shared connection and credential state for redap origins.
 ///
-/// This registry is cheap to clone.
+/// Use [`ConnectionRegistryHandle::connection_handle`] to bind this state to one origin for
+/// application workflows. This registry is cheap to clone.
 #[derive(Clone)]
 pub struct ConnectionRegistryHandle {
     inner: Arc<RwLock<ConnectionRegistry>>,
@@ -285,6 +286,15 @@ impl ConnectionRegistryHandle {
         self.internal
             .get()
             .map(|(origin, _connection)| origin.clone())
+    }
+
+    pub fn connection_handle(&self, origin: re_uri::Origin) -> crate::ConnectionHandle {
+        crate::ConnectionHandle::new(self.clone(), origin)
+    }
+
+    pub fn internal_connection_handle(&self) -> Option<crate::ConnectionHandle> {
+        self.internal_origin()
+            .map(|origin| self.connection_handle(origin))
     }
 
     pub fn is_internal_origin(&self, origin: &re_uri::Origin) -> bool {

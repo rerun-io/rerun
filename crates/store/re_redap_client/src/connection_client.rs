@@ -1,7 +1,6 @@
 use arrow::array::RecordBatch;
 use arrow::datatypes::{Schema as ArrowSchema, SchemaRef};
 use itertools::Itertools as _;
-
 use re_log_encoding::{Decodable as _, RawRrdManifest, ToApplication as _};
 use re_log_types::EntryId;
 use re_protos::EntryName;
@@ -11,14 +10,13 @@ use re_protos::cloud::v1alpha1::ext::{
     WatchEventsResponse, url_strip_query,
 };
 use re_protos::cloud::v1alpha1::ext::{
-    CreateDatasetEntryResponse, CreateTableEntryRequest, DataSource, DataSourceKind,
-    DatasetDetails, DatasetEntry, EntryDetails, EntryDetailsUpdate, LanceTable, ProviderDetails,
-    QueryDatasetRequest, QueryTasksOnCompletionRequest, QueryTasksRequest,
-    ReadDatasetEntryResponse, ReadTableEntryResponse, RegisterTableResponse,
-    RegisterWithDatasetDataframe, RegisterWithDatasetRequest, RegisterWithDatasetTaskDescriptor,
-    TableDetails, TableEntry, TableInsertMode, UnregisterFromDatasetRequest,
-    UpdateDatasetEntryRequest, UpdateDatasetEntryResponse, UpdateEntryRequest, UpdateEntryResponse,
-    UpdateTableEntryRequest, UpdateTableEntryResponse, VersionResponse,
+    CreateDatasetEntryResponse, CreateTableEntryRequest, DatasetDetails, DatasetEntry,
+    EntryDetails, EntryDetailsUpdate, LanceTable, ProviderDetails, QueryDatasetRequest,
+    QueryTasksOnCompletionRequest, QueryTasksRequest, ReadDatasetEntryResponse,
+    ReadTableEntryResponse, RegisterTableResponse, TableDetails, TableEntry, TableInsertMode,
+    UnregisterFromDatasetRequest, UpdateDatasetEntryRequest, UpdateDatasetEntryResponse,
+    UpdateEntryRequest, UpdateEntryResponse, UpdateTableEntryRequest, UpdateTableEntryResponse,
+    VersionResponse,
 };
 use re_protos::cloud::v1alpha1::rerun_cloud_service_client::RerunCloudServiceClient;
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::{
@@ -30,14 +28,14 @@ use re_protos::cloud::v1alpha1::{
     GetDatasetManifestSchemaRequest, GetDatasetManifestSchemaResponse, GetDatasetSchemaRequest,
     GetRrdManifestResponse, GetSegmentTableSchemaRequest, GetSegmentTableSchemaResponse,
     QueryDatasetResponse, QueryTasksOnCompletionResponse, QueryTasksResponse,
-    ReadDatasetEntryRequest, ReadTableEntryRequest, RegisterWithDatasetResponse, RrdManifestKey,
-    ScanSegmentTableRequest, VersionRequest, WriteTableRequest,
+    ReadDatasetEntryRequest, ReadTableEntryRequest, RrdManifestKey, ScanSegmentTableRequest,
+    VersionRequest, WriteTableRequest,
 };
-use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, ScanParameters, SegmentId};
+use re_protos::common::v1alpha1::ext::{ScanParameters, SegmentId};
 use re_protos::common::v1alpha1::{DataframePart, TaskId};
 use re_protos::external::prost::bytes::Bytes;
 use re_protos::headers::RerunHeadersInjectorExt as _;
-use re_protos::{TypeConversionError, missing_field};
+use re_protos::missing_field;
 use re_types_core::LayerName;
 use std::borrow::Cow;
 use std::sync::Arc;
@@ -301,8 +299,9 @@ pub struct SegmentQueryParams {
 /// Expose an ergonomic API over the gRPC redap client.
 ///
 /// Implementation note: this type is generic so that it can be used with several client types. This
-/// is useful for other projects which might have different type (e.g. due to instrumentation).
-/// For the viewer, use [`crate::ConnectionClient`].
+/// is useful for other projects which might have a different type (e.g. due to instrumentation).
+/// Application code should use [`crate::ConnectionHandle`] to bind requests to an origin and
+/// acquire a short-lived [`crate::ConnectionClient`] for RPCs.
 //TODO(ab): this should NOT be `Clone`, to discourage callsites from holding on to a client for too
 //long. However we have a bunch of places that needs to be fixed before we can do that.
 #[derive(Clone)]
@@ -342,7 +341,7 @@ impl<T> RedapClient<T> {
     /// The `chunk_cache` is used to cache certain chunks, like from assets. Passing `None`
     /// disables chunk caching.
     ///
-    /// This should not be used in the viewer, use [`crate::ConnectionRegistryHandle::client`]
+    /// Application code should acquire clients through [`crate::ConnectionHandle::client`]
     /// instead.
     pub fn new(
         client: RerunCloudServiceClient<T>,
@@ -382,9 +381,9 @@ impl<T> std::fmt::Debug for RedapClient<T> {
 
 // ---
 
-/// Type alias for the boxed-transport [`RedapClient`] used in the viewer.
+/// Short-lived boxed-transport [`RedapClient`] for issuing RPCs.
 ///
-/// Use [`crate::ConnectionRegistryHandle::connection`] to construct.
+/// Application code should acquire this from [`crate::ConnectionHandle::client`].
 pub type ConnectionClient = RedapClient<BoxedRedapClientStack>;
 
 /// Connection capabilities for a redap origin.
@@ -1382,98 +1381,6 @@ where
         ))
     }
 
-    /// Initiate registration of the provided recording URIs with a dataset and return the
-    /// corresponding task descriptors.
-    ///
-    /// NOTE: The server may pool multiple registrations into a single task. The result always has
-    /// the same length as the output, so task ids may be duplicated.
-    #[tracing::instrument(level = "info", skip_all)]
-    pub async fn register_with_dataset(
-        &mut self,
-        dataset_id: EntryId,
-        data_sources: Vec<DataSource>,
-        on_duplicate: IfDuplicateBehavior,
-    ) -> ApiResult<(Option<TraceId>, Vec<RegisterWithDatasetTaskDescriptor>)> {
-        let req = tonic::Request::new(RegisterWithDatasetRequest {
-            data_sources,
-            on_duplicate,
-        })
-        .with_entry_id(dataset_id);
-
-        let (inner, trace_id) = TonicResponseExt::into_inner_and_trace_id(
-            self.inner()
-                .register_with_dataset(req.map(Into::into))
-                .await
-                .map_err(|err| ApiError::tonic(err, "/RegisterWithDataset failed"))?,
-        );
-        let response: RecordBatch = inner
-            .data
-            .ok_or_else(|| {
-                let err = missing_field!(RegisterWithDatasetResponse, "data");
-                ApiError::deserialization_with_source(
-                    trace_id,
-                    err,
-                    "missing field in /RegisterWithDataset response",
-                )
-            })?
-            .try_into()
-            .map_err(|err| {
-                ApiError::deserialization_with_source(
-                    trace_id,
-                    err,
-                    "failed decoding /RegisterWithDataset response",
-                )
-            })?;
-
-        // Validates the columns (existence, datatype, no nulls):
-        let RegisterWithDatasetDataframe {
-            rerun_segment_id,
-            rerun_segment_layer,
-            rerun_segment_type,
-            rerun_storage_url,
-            rerun_task_id,
-        } = RegisterWithDatasetDataframe::try_from(response).map_err(|err| {
-            ApiError::deserialization_quiver_from(trace_id, err, "/RegisterWithDataset response")
-        })?;
-
-        let segment_types = DataSourceKind::many_from_arrow(rerun_segment_type.as_arrow().as_ref())
-            .map_err(|err| {
-                ApiError::deserialization_with_source(
-                    trace_id,
-                    err,
-                    "failed parsing /RegisterWithDataset response",
-                )
-            })?;
-
-        let descriptors = itertools::izip!(
-            rerun_segment_layer.into_iter_owned(),
-            rerun_segment_id.into_iter_owned(),
-            segment_types,
-            rerun_storage_url.into_iter_owned(),
-            rerun_task_id.into_iter_owned()
-        )
-        .map(
-            |(layer_name, segment_id, segment_type, storage_url, task_id)| {
-                Ok(RegisterWithDatasetTaskDescriptor {
-                    layer_name,
-                    segment_id,
-                    segment_type,
-                    storage_url: url::Url::parse(&storage_url).map_err(|err| {
-                        ApiError::deserialization_with_source(
-                            trace_id,
-                            TypeConversionError::UrlParseError(err),
-                            "failed to parse /RegisterWithDataset response",
-                        )
-                    })?,
-                    task_id,
-                })
-            },
-        )
-        .try_collect()?;
-
-        Ok((trace_id, descriptors))
-    }
-
     /// Unregisters segments and layers from the dataset.
     ///
     /// This is an asynchronous operation, and returns a list of task ids.
@@ -1811,31 +1718,6 @@ where
 
             Err(err) => Err(err),
         }
-    }
-
-    /// Ensure a dataset exists, register `data_sources` with it
-    #[tracing::instrument(level = "info", skip_all)]
-    pub async fn ensure_dataset_and_register(
-        &mut self,
-        dataset_name: &EntryName,
-        data_sources: Vec<DataSource>,
-        on_duplicate: IfDuplicateBehavior,
-    ) -> ApiResult<(EntryId, SegmentId)> {
-        let dataset_id = self.find_or_create_dataset(dataset_name).await?;
-
-        let (_trace_id, tasks) = self
-            .register_with_dataset(dataset_id, data_sources, on_duplicate)
-            .await?;
-
-        let segment_id = tasks
-            .into_iter()
-            .next()
-            .map(|task| task.segment_id)
-            .ok_or_else(|| {
-                ApiError::invalid_arguments("server registered the file but returned no segments")
-            })?;
-
-        Ok((dataset_id, segment_id))
     }
 }
 

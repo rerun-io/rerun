@@ -123,14 +123,18 @@ async fn get_assets_for_segment_returns_the_registered_assets() {
         .await
         .with_named_test_data(DATASET_NAME, DATASET_ID, RECORDING_ID)
         .await;
-    let mut client = server.client().await.expect("Failed to connect to server");
+    let connection = server.connection_handle();
+    let mut client = connection
+        .client()
+        .await
+        .expect("Failed to connect to server");
 
     let asset_dataset = asset_dataset(&mut client).await;
 
     let mut expected_segments = Vec::new();
     for recording_id in ["robot_urdf", "warehouse_mesh"] {
         expected_segments.push(
-            register_asset(&mut client, asset_dataset, recording_id)
+            register_asset(&connection, asset_dataset, recording_id)
                 .await
                 .expect("Failed to register asset"),
         );
@@ -156,10 +160,14 @@ async fn streaming_a_segment_delivers_its_asset_manifests() {
         .await
         .with_named_test_data(DATASET_NAME, DATASET_ID, RECORDING_ID)
         .await;
-    let mut client = server.client().await.expect("Failed to connect to server");
+    let connection = server.connection_handle();
+    let mut client = connection
+        .client()
+        .await
+        .expect("Failed to connect to server");
 
     let asset_dataset = asset_dataset(&mut client).await;
-    let asset_segment_id = register_asset(&mut client, asset_dataset, "robot_urdf")
+    let asset_segment_id = register_asset(&connection, asset_dataset, "robot_urdf")
         .await
         .expect("Failed to register asset");
 
@@ -241,13 +249,14 @@ async fn asset_chunks_are_only_downloaded_once() {
 
     // Every client handed out by one registry shares a connection, and with it a chunk cache.
     let registry = ConnectionRegistry::new_without_stored_credentials();
-    let mut client = registry
-        .client(origin(&server))
+    let connection = registry.connection_handle(origin(&server));
+    let mut client = connection
+        .client()
         .await
         .expect("Failed to connect to server");
 
     let asset_dataset = asset_dataset(&mut client).await;
-    let asset_segment_id = register_asset(&mut client, asset_dataset, "robot_urdf")
+    let asset_segment_id = register_asset(&connection, asset_dataset, "robot_urdf")
         .await
         .expect("Failed to register asset");
 
@@ -314,9 +323,13 @@ async fn the_viewer_shares_asset_chunks_between_segments() {
         .try_into()
         .expect("two recordings were registered");
 
-    let mut client = server.client().await.expect("Failed to connect to server");
+    let connection = server.connection_handle();
+    let mut client = connection
+        .client()
+        .await
+        .expect("Failed to connect to server");
     let asset_dataset = asset_dataset(&mut client).await;
-    let asset_segment_id = register_asset(&mut client, asset_dataset, "robot_urdf")
+    let asset_segment_id = register_asset(&connection, asset_dataset, "robot_urdf")
         .await
         .expect("Failed to register asset");
 
@@ -343,7 +356,8 @@ async fn the_viewer_shares_asset_chunks_between_segments() {
     server.injected_errors().inject("FetchChunks");
 
     let mut client = registry
-        .client(origin(&server))
+        .connection_handle(origin(&server))
+        .client()
         .await
         .expect("Failed to connect to server");
     let asset_chunks = chunk_fetch_batch(&mut client, asset_dataset, &asset_segment_id).await;

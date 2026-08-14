@@ -17,7 +17,7 @@ def test_dataset_basics(complex_dataset_prefix: Path) -> None:
 
         ds = client.create_dataset("basic_dataset")
 
-        ds.register_prefix(complex_dataset_prefix.as_uri())
+        ds.register_prefix(complex_dataset_prefix.as_uri()).wait()
 
         partition_df = ds.segment_table()
 
@@ -77,7 +77,7 @@ def test_dataset_schema(complex_dataset_prefix: Path) -> None:
     with rr.server.Server() as server:
         client = server.client()
         ds = client.create_dataset("complex_dataset")
-        ds.register_prefix(complex_dataset_prefix.as_uri())
+        ds.register_prefix(complex_dataset_prefix.as_uri()).wait()
 
         assert str(ds.schema()) == inline_snapshot("""\
 Index(timeline:timeline)
@@ -110,7 +110,7 @@ def test_dataset_metadata(complex_dataset_prefix: Path, tmp_path: Path) -> None:
         client = server.client()
 
         ds = client.create_dataset("basic_dataset")
-        ds.register_prefix(complex_dataset_prefix.as_uri())
+        ds.register_prefix(complex_dataset_prefix.as_uri()).wait()
 
         # TODO(jleibs): Consider attaching this metadata table directly to the dataset
         # and automatically joining it by default
@@ -153,7 +153,7 @@ def test_schema_column_for_selector(complex_dataset_prefix: Path) -> None:
     with rr.server.Server() as server:
         client = server.client()
         ds = client.create_dataset("test_dataset")
-        ds.register_prefix(complex_dataset_prefix.as_uri())
+        ds.register_prefix(complex_dataset_prefix.as_uri()).wait()
 
         schema = ds.schema()
 

@@ -3,18 +3,19 @@
 // NOTE: The end-goal here should be to run the `wasm32` build of the server
 // against the `re_redap_tests` conformance suite.
 
+use std::sync::Arc;
+use std::time::Duration;
+
 use re_chunk::{Chunk, RowId, TimePoint, Timeline};
 use re_log_types::example_components::{MyPoint, MyPoints};
 use re_log_types::{
     EntityPath, EntryName, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource,
 };
-use re_protos::cloud::v1alpha1::ext::RegisterWithDatasetDataframe;
-use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService as _;
-use re_protos::cloud::v1alpha1::{
-    CreateDatasetEntryRequest, DataSource, DataSourceKind, GetDatasetSchemaRequest,
-    RegisterWithDatasetRequest, VersionRequest,
-};
-use re_protos::headers::RerunHeadersInjectorExt as _;
+use re_protos::cloud::v1alpha1::VersionRequest;
+use re_protos::cloud::v1alpha1::ext::DataSource;
+use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
+use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
+use re_redap_client::{Connection, ConnectionHandle, ConnectionRegistry};
 use re_server::RerunCloudHandlerBuilder;
 use wasm_bindgen_test::wasm_bindgen_test;
 
@@ -44,8 +45,24 @@ async fn register_rrd_without_footer_from_file_url_in_opfs() {
     register_rrd_from_file_url_in_opfs(false).await;
 }
 
+/// Serve `service` in-process as the internal origin of a fresh connection registry.
+///
+/// The placeholder origin is never dialed; requests go straight to `service`.
+fn in_process_connection<T: RerunCloudService>(service: Arc<T>) -> ConnectionHandle {
+    let registry = ConnectionRegistry::new_without_stored_credentials();
+    let origin = "rerun+http://127.0.0.1:1"
+        .parse()
+        .expect("test origin is valid");
+    registry.set_internal((origin, Connection::from_service(service)));
+    registry
+        .internal_connection_handle()
+        .expect("internal connection is configured")
+}
+
 async fn register_rrd_from_file_url_in_opfs(with_footer: bool) {
-    let service = RerunCloudHandlerBuilder::new().build();
+    let service = Arc::new(RerunCloudHandlerBuilder::new().build());
+    let connection = in_process_connection(service);
+    let mut client = connection.client().await.expect("failed to get client");
     let footer_suffix = if with_footer {
         "with_footer"
     } else {
@@ -60,62 +77,28 @@ async fn register_rrd_from_file_url_in_opfs(with_footer: bool) {
         .await
         .expect("failed to write OPFS file");
 
-    service
-        .create_dataset_entry(tonic::Request::new(CreateDatasetEntryRequest {
-            name: Some(dataset_name.as_str().to_owned()),
-            id: None,
-        }))
+    let dataset = client
+        .create_dataset_entry(dataset_name, None)
         .await
         .expect("failed to create dataset");
-
-    let response = service
+    let registration = connection
         .register_with_dataset(
-            tonic::Request::new(RegisterWithDatasetRequest {
-                data_sources: vec![DataSource {
-                    storage_url: Some(url.clone()),
-                    layer: None,
-                    prefix: false,
-                    typ: DataSourceKind::Rrd as i32,
-                }],
-                on_duplicate: Default::default(),
-            })
-            .with_entry_name(dataset_name.clone()),
+            dataset.details.id,
+            vec![DataSource::new_rrd(url).expect("valid OPFS URL")],
+            IfDuplicateBehavior::Error,
         )
         .await
-        .expect("failed to register OPFS RRD")
-        .into_inner();
-
-    let registered: arrow::array::RecordBatch = response
-        .data
-        .expect("registration response should contain data")
-        .try_into()
-        .expect("registration response should contain a record batch");
-    let registered = RegisterWithDatasetDataframe::try_from(registered)
-        .expect("registration response should match its declared schema");
-    assert_eq!(
-        registered
-            .rerun_storage_url
-            .into_iter_owned()
-            .collect::<Vec<_>>(),
-        [url]
-    );
-    assert_eq!(
-        registered
-            .rerun_segment_type
-            .into_iter_owned()
-            .collect::<Vec<_>>(),
-        ["rrd"]
-    );
-
-    let schema = service
-        .get_dataset_schema(
-            tonic::Request::new(GetDatasetSchemaRequest {}).with_entry_name(dataset_name),
-        )
+        .expect("failed to register OPFS RRD");
+    let segment_ids = registration
+        .wait(Duration::from_secs(10))
         .await
-        .expect("failed to get dataset schema")
-        .into_inner()
-        .schema()
-        .expect("dataset schema should decode");
+        .expect("failed to wait for OPFS RRD registration");
+    assert_eq!(segment_ids.len(), 1);
+
+    let schema = client
+        .get_dataset_schema(dataset.details.id)
+        .await
+        .expect("failed to get dataset schema");
 
     assert!(schema.fields().iter().any(|field| {
         let metadata = field.metadata();

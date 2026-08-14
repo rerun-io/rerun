@@ -415,7 +415,7 @@ impl PyDatasetEntryInternal {
             .map(LayerName::try_new)
             .collect::<Result<Vec<_>, _>>()
             .map_err(to_py_err)?;
-        let (request_trace_id, results) = connection.register_with_dataset(
+        let registration = connection.register_with_dataset(
             py,
             self_.entry_details.id,
             recording_uris,
@@ -423,11 +423,7 @@ impl PyDatasetEntryInternal {
             on_duplicate,
         )?;
 
-        Ok(PyRegistrationHandleInternal::new(
-            self_.client.clone_ref(py),
-            results,
-            request_trace_id,
-        ))
+        Ok(PyRegistrationHandleInternal::new(registration))
     }
 
     /// Unregisters segments and layers from the dataset.
@@ -523,7 +519,7 @@ impl PyDatasetEntryInternal {
         let connection = self_.client.borrow(py).connection().clone();
         let on_duplicate = parse_on_duplicate(on_duplicate)?;
 
-        let (request_trace_id, results) = connection.register_with_dataset_prefix(
+        let registration = connection.register_with_dataset_prefix(
             py,
             self_.entry_details.id,
             recordings_prefix,
@@ -531,11 +527,7 @@ impl PyDatasetEntryInternal {
             on_duplicate,
         )?;
 
-        Ok(PyRegistrationHandleInternal::new(
-            self_.client.clone_ref(py),
-            results,
-            request_trace_id,
-        ))
+        Ok(PyRegistrationHandleInternal::new(registration))
     }
 
     /// Open a remote segment as a [`LazyStore`][rerun.experimental.LazyStore].

@@ -78,12 +78,12 @@ async fn internal_catalog_revealed_by_catalog_api() {
             .is_none()
     );
 
-    let connection_registry = harness.state().connection_registry().clone();
-    let origin = connection_registry
-        .internal_origin()
-        .expect("internal catalog should be configured");
-    let mut client = connection_registry
-        .client(origin)
+    let mut client = harness
+        .state()
+        .connection_registry()
+        .internal_connection_handle()
+        .expect("internal catalog should be configured")
+        .client()
         .await
         .expect("failed to connect to internal catalog");
     client

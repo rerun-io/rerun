@@ -2,16 +2,11 @@ use std::error::Error;
 use std::str::FromStr as _;
 use std::time::Duration;
 
-use futures::StreamExt as _;
-
 use re_protos::EntryName;
-use re_protos::cloud::v1alpha1::ext as cloud_ext;
-use re_protos::cloud::v1alpha1::ext::{
-    DataSource, QueryTasksOnCompletionResponse, TableDetails, TableEntry,
-};
+use re_protos::cloud::v1alpha1::ext::{DataSource, TableDetails, TableEntry};
 use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind};
 use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
-use re_redap_client::ConnectionClient;
+use re_redap_client::ConnectionHandle;
 use re_sdk::external::re_log_types::EntryId;
 use re_sdk::external::re_tuid;
 use re_sdk::time::TimeType;
@@ -19,9 +14,9 @@ use re_sdk::{RecordingStreamBuilder, TimeCell};
 use re_sdk_types::SegmentId;
 use re_viewer::external::re_sdk_types::{archetypes, components::Color};
 
-pub async fn load_test_data(mut client: ConnectionClient) -> Result<SegmentId, Box<dyn Error>> {
+pub async fn load_test_data(connection: &ConnectionHandle) -> Result<SegmentId, Box<dyn Error>> {
     load_test_data_with_name(
-        &mut client,
+        connection,
         "my_dataset",
         "187b552b95a5c2f73f37894708825ba5",
         "new_recording_id",
@@ -30,11 +25,12 @@ pub async fn load_test_data(mut client: ConnectionClient) -> Result<SegmentId, B
 }
 
 pub async fn load_test_data_with_name(
-    client: &mut ConnectionClient,
+    connection: &ConnectionHandle,
     dataset_name: &str,
     dataset_id_str: &str,
     recording_id: &str,
 ) -> Result<SegmentId, Box<dyn Error>> {
+    let mut client = connection.client().await?;
     let path = recording_rrd(recording_id, |stream| {
         for x in 0..20 {
             stream.set_time("test_time", TimeCell::new(TimeType::Sequence, x));
@@ -55,7 +51,8 @@ pub async fn load_test_data_with_name(
     assert_eq!(entries_table[0].name, re_protos::EntryName::entries_table());
     assert_eq!(entries_table[0].kind, EntryKind::Table);
 
-    let segment_ids = register_rrds(client, dataset_name, dataset_id_str, &[path.path()]).await?;
+    let segment_ids =
+        register_rrds(connection, dataset_name, dataset_id_str, &[path.path()]).await?;
     Ok(segment_ids
         .into_iter()
         .next()
@@ -69,7 +66,7 @@ pub async fn load_test_data_with_name(
 /// is time-invariant, so a preview renders identically at every point on its looping preview
 /// timeline. That keeps preview snapshots stable.
 pub async fn load_static_preview_data(
-    client: &mut ConnectionClient,
+    connection: &ConnectionHandle,
     dataset_name: &str,
     dataset_id_str: &str,
     recording_id_prefix: &str,
@@ -97,7 +94,7 @@ pub async fn load_static_preview_data(
     }
 
     let path_refs: Vec<&std::path::Path> = paths.iter().map(|p| p.path()).collect();
-    register_rrds(client, dataset_name, dataset_id_str, &path_refs).await
+    register_rrds(connection, dataset_name, dataset_id_str, &path_refs).await
 }
 
 /// A distinct color for the segment at `index`, cycling through a small fixed palette.
@@ -138,14 +135,16 @@ fn recording_rrd(
 ///
 /// Returns the segment ids in the same order as `paths`.
 async fn register_rrds(
-    client: &mut ConnectionClient,
+    connection: &ConnectionHandle,
     dataset_name: &str,
     dataset_id_str: &str,
     paths: &[&std::path::Path],
 ) -> Result<Vec<SegmentId>, Box<dyn Error>> {
     let dataset_id = re_tuid::Tuid::from_str(dataset_id_str).expect("Failed to parse TUID");
 
-    let entry = client
+    let entry = connection
+        .client()
+        .await?
         .create_dataset_entry(EntryName::new(dataset_name)?, Some(dataset_id.into()))
         .await?;
 
@@ -158,35 +157,17 @@ async fn register_rrds(
         ))?);
     }
 
-    let items = client
+    let registration = connection
         .register_with_dataset(entry.details.id, data_sources, IfDuplicateBehavior::Error)
-        .await?
-        .1;
-
-    let mut segment_ids = Vec::with_capacity(items.len());
-    let mut task_ids = Vec::with_capacity(items.len());
-    for item in items {
-        let cloud_ext::RegisterWithDatasetTaskDescriptor {
-            layer_name: _,
-            segment_id,
-            segment_type: _,
-            storage_url: _,
-            task_id,
-        } = item;
-        segment_ids.push(segment_id);
-        task_ids.push(task_id);
-    }
-
-    wait_for_tasks(client, task_ids).await?;
-
-    Ok(segment_ids)
+        .await?;
+    Ok(registration.wait(Duration::from_secs(10)).await?)
 }
 
 /// Log a static-only recording and register it with `asset_dataset`, returning its segment id.
 ///
 /// Asset datasets only accept static chunks, so the recording logs its points statically.
 pub async fn register_asset(
-    client: &mut ConnectionClient,
+    connection: &ConnectionHandle,
     asset_dataset: EntryId,
     recording_id: &str,
 ) -> Result<SegmentId, Box<dyn Error>> {
@@ -206,22 +187,15 @@ pub async fn register_asset(
             .ok_or_else(|| "Failed to convert path to str".to_owned())?
     ))?;
 
-    let items = client
+    let registration = connection
         .register_with_dataset(asset_dataset, vec![data_source], IfDuplicateBehavior::Error)
+        .await?;
+    registration
+        .wait(Duration::from_secs(10))
         .await?
-        .1;
-
-    let mut segment_id = None;
-    let mut task_ids = Vec::with_capacity(items.len());
-    for item in items {
-        segment_id = Some(item.segment_id);
-        task_ids.push(item.task_id);
-    }
-    let segment_id = segment_id.ok_or("Asset registration returned no segment")?;
-
-    wait_for_tasks(client, task_ids).await?;
-
-    Ok(segment_id)
+        .into_iter()
+        .next()
+        .ok_or_else(|| "Asset registration returned no segment".into())
 }
 
 /// Register a `.rbl` blueprint file with `table`'s implicit blueprint dataset and set it as the
@@ -230,7 +204,7 @@ pub async fn register_asset(
 /// The viewer fetches this registered blueprint when the table entry is opened, which is what
 /// turns the preview column into inline 3D previews.
 pub async fn register_table_blueprint(
-    client: &mut ConnectionClient,
+    connection: &ConnectionHandle,
     table: &TableEntry,
     blueprint_rbl: &std::path::Path,
 ) -> Result<SegmentId, Box<dyn Error>> {
@@ -246,26 +220,23 @@ pub async fn register_table_blueprint(
             .ok_or_else(|| "Failed to convert blueprint path to str".to_owned())?
     ))?;
 
-    let items = client
+    let registration = connection
         .register_with_dataset(
             blueprint_dataset,
             vec![data_source],
             IfDuplicateBehavior::Overwrite,
         )
+        .await?;
+    let segment_id = registration
+        .wait(Duration::from_secs(10))
         .await?
-        .1;
+        .into_iter()
+        .next()
+        .ok_or("Blueprint registration returned no segment")?;
 
-    let mut segment_id = None;
-    let mut task_ids = Vec::with_capacity(items.len());
-    for item in items {
-        segment_id = Some(item.segment_id);
-        task_ids.push(item.task_id);
-    }
-    let segment_id = segment_id.ok_or("Blueprint registration returned no segment")?;
-
-    wait_for_tasks(client, task_ids).await?;
-
-    client
+    connection
+        .client()
+        .await?
         .update_table_entry(
             table.details.id,
             TableDetails {
@@ -276,29 +247,4 @@ pub async fn register_table_blueprint(
         .await?;
 
     Ok(segment_id)
-}
-
-/// Wait for the given registration tasks to complete, returning an error if any task failed.
-async fn wait_for_tasks(
-    client: &mut ConnectionClient,
-    task_ids: Vec<re_protos::common::v1alpha1::TaskId>,
-) -> Result<(), Box<dyn Error>> {
-    let timeout = Duration::from_secs(10);
-    let mut response_stream = client.query_tasks_on_completion(task_ids, timeout).await?;
-
-    while let Some(response) = response_stream.next().await {
-        let response: QueryTasksOnCompletionResponse = response?.try_into()?;
-        let batch = response.data;
-        let statuses = cloud_ext::QueryTasksDataframe::COLUMN_EXEC_STATUS.extract(&batch)?;
-        let msgs = cloud_ext::QueryTasksDataframe::COLUMN_MSGS.extract(&batch)?;
-
-        for (status, msg) in std::iter::zip(&statuses, &msgs) {
-            if status != "success" {
-                let msg = msg.unwrap_or_default();
-                return Err(format!("Registration task failed with status {status}: {msg}").into());
-            }
-        }
-    }
-
-    Ok(())
 }

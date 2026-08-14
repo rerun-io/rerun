@@ -8,10 +8,13 @@ use re_viewer_context::{StoreHub, SystemCommand, SystemCommandSender as _};
 use super::App;
 
 use std::path::Path;
+use std::time::Duration;
 
 use anyhow::Context as _;
 use re_protos::cloud::v1alpha1::ext::DataSource;
 use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, SegmentId};
+
+const REGISTRATION_TIMEOUT: Duration = Duration::from_mins(1);
 
 impl App {
     #[expect(clippy::needless_pass_by_ref_mut)]
@@ -529,24 +532,25 @@ async fn register_rrd_file_url(
         );
     }
 
-    let origin = connection_registry
-        .internal_origin()
+    let connection = connection_registry
+        .internal_connection_handle()
         .context("internal catalog is not running")?;
-    let mut client = connection_registry.client(origin.clone()).await?;
+    let origin = connection.origin().clone();
     let data_source = DataSource::new_rrd_url(file_url);
     let dataset_name = re_log_types::EntryName::from(application_id.clone());
 
     // TODO(RR-5309): Handle RRDs without recording stores as standalone blueprints.
-    let (dataset_id, segment_id) = client
+    let (dataset_id, segment_id) = connection
         .ensure_dataset_and_register(
             &dataset_name,
             vec![data_source.clone()],
             IfDuplicateBehavior::Overwrite,
+            REGISTRATION_TIMEOUT,
         )
         .await?;
 
     if let Err(err) = update_default_blueprint(
-        &mut client,
+        &connection,
         dataset_id,
         &segment_id,
         data_source,
@@ -571,7 +575,7 @@ async fn register_rrd_file_url(
 /// The blueprint lives in the same RRD, so we register the same `file://` URL into the blueprint
 /// dataset; the server picks out the blueprint store and serves it lazily.
 async fn update_default_blueprint(
-    client: &mut re_redap_client::ConnectionClient,
+    connection: &re_redap_client::ConnectionHandle,
     dataset_id: re_log_types::EntryId,
     segment_id: &SegmentId,
     data_source: DataSource,
@@ -597,6 +601,7 @@ async fn update_default_blueprint(
         return Ok(());
     };
 
+    let mut client = connection.client().await?;
     let mut dataset_details = client.read_dataset_entry(dataset_id).await?.dataset_details;
     let Some(blueprint_dataset_id) = dataset_details.blueprint_dataset else {
         re_log::warn!(
@@ -606,18 +611,16 @@ async fn update_default_blueprint(
     };
 
     let expected_blueprint_segment_id = SegmentId::from(default_blueprint_store_id.recording_id());
-    let (_trace_id, tasks) = client
+    let registration = connection
         .register_with_dataset(
             blueprint_dataset_id,
             vec![data_source],
             IfDuplicateBehavior::Overwrite,
         )
         .await?;
+    let segment_ids = registration.wait(REGISTRATION_TIMEOUT).await?;
 
-    if !tasks
-        .iter()
-        .any(|task| task.segment_id == expected_blueprint_segment_id)
-    {
+    if !segment_ids.contains(&expected_blueprint_segment_id) {
         re_log::warn!(
             "Registered RRD into the blueprint dataset, but default blueprint segment \
              {expected_blueprint_segment_id} was not returned; keeping the existing default blueprint"

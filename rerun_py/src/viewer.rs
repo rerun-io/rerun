@@ -69,7 +69,7 @@ impl PyViewerClientInternal {
 
 /// Connection handle to the message proxy service.
 ///
-/// This handle is modelled after [`crate::catalog::ConnectionHandle`] and only concerned with
+/// This handle is modelled after [`crate::catalog::PyConnectionHandle`] and only concerned with
 /// table-related operations, most importantly `WriteTable`.
 // TODO(grtlr): In the future, we probably want to merge this with the other APIs.
 #[derive(Clone)]

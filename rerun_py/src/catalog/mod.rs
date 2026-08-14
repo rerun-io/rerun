@@ -24,7 +24,7 @@ use pyo3::{Bound, PyResult};
 
 pub use self::catalog_client::PyCatalogClientInternal;
 pub use self::component_columns::{PyComponentColumnDescriptor, PyComponentColumnSelector};
-pub use self::connection_handle::ConnectionHandle;
+pub(crate) use self::connection_handle::PyConnectionHandle;
 pub use self::dataframe_rendering::PyRerunHtmlTable;
 pub use self::dataset_entry::PyDatasetEntryInternal;
 pub use self::dataset_view::PyDatasetViewInternal;

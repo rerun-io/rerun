@@ -107,6 +107,7 @@ re_web.workspace = true
 [dev-dependencies]
 re_chunk.workspace = true
 re_chunk_store.workspace = true
+re_redap_client.workspace = true
 # `encoder` (decoder comes transitively via re_chunk_store) lets tests author RRDs
 # with and without footers to cross-check store enumeration vs lazy loading.
 re_log_encoding = { workspace = true, features = ["encoder"] }

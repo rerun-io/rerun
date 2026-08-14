@@ -5,12 +5,12 @@ use re_protos::{
     cloud::v1alpha1::ext::{QueryTasksDataframe, QueryTasksOnCompletionResponse},
     common::v1alpha1::TaskId,
 };
-use re_redap_client::TraceId;
+use re_redap_client::{TraceId, format_trace_ids};
 use tokio_stream::StreamExt as _;
 use tracing::Instrument as _;
 
 use crate::{
-    catalog::{PyCatalogClientInternal, registration_handle::format_trace_ids, to_py_err},
+    catalog::{PyCatalogClientInternal, to_py_err},
     trace_context::read_trace_context_from_python,
     utils::wait_for_future,
 };
@@ -118,7 +118,7 @@ impl PyUnregistrationHandleInternal {
                 if !errors.is_empty() {
                     return Err(PyValueError::new_err(format!(
                         "Unregistration failed.{}\n\nThe following segments failed:\n{}",
-                        format_trace_ids(request_trace_id.as_ref(), query_trace_id.as_ref()),
+                        format_trace_ids(request_trace_id, query_trace_id),
                         errors.join("\n"),
                     )));
                 }

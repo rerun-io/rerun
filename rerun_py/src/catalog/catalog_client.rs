@@ -10,7 +10,7 @@ use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind};
 
 use crate::catalog::datafusion_catalog::PyDataFusionCatalogProviderList;
 use crate::catalog::{
-    ConnectionHandle, PyDatasetEntryInternal, PyEntryId, PyRerunHtmlTable, PyTableEntryInternal,
+    PyConnectionHandle, PyDatasetEntryInternal, PyEntryId, PyRerunHtmlTable, PyTableEntryInternal,
     to_py_err,
 };
 use crate::trace_context::read_trace_context_from_python;
@@ -26,16 +26,14 @@ type VersionInfoTuple = (String, Option<String>, Option<String>, Vec<String>);
 )]
 
 pub struct PyCatalogClientInternal {
-    origin: re_uri::Origin,
-
-    connection: ConnectionHandle,
+    connection: PyConnectionHandle,
 
     // If this isn't set, it means datafusion wasn't found
     datafusion_ctx: Option<Py<PyAny>>,
 }
 
 impl PyCatalogClientInternal {
-    pub fn connection(&self) -> &ConnectionHandle {
+    pub(crate) fn connection(&self) -> &PyConnectionHandle {
         &self.connection
     }
 }
@@ -100,12 +98,11 @@ impl PyCatalogClientInternal {
         };
         connection_registry.set_credentials(&origin, credentials);
 
-        let connection = ConnectionHandle::new(connection_registry, origin.clone());
+        let connection = PyConnectionHandle::new(connection_registry, origin);
 
         let datafusion_ctx = setup_datafusion_context(py).ok();
 
         let ret = Self {
-            origin,
             connection,
             datafusion_ctx,
         };
@@ -118,7 +115,7 @@ impl PyCatalogClientInternal {
     /// Get the URL of the catalog (a `rerun+http` URL).
     #[getter]
     pub fn url(&self) -> String {
-        self.origin.to_string()
+        self.connection.origin().to_string()
     }
 
     /// Returns version and deployment information as (version, cloud_provider, cloud_region, features).
@@ -384,7 +381,7 @@ impl PyCatalogClientInternal {
     }
 
     fn __repr__(&self) -> String {
-        format!("CatalogClient({})", self.origin)
+        format!("CatalogClient({})", self.connection.origin())
     }
 
     // ---

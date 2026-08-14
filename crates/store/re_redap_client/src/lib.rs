@@ -5,8 +5,10 @@ mod api_error;
 mod api_response_stream;
 mod chunk_cache;
 mod connection_client;
+mod connection_handle;
 mod connection_registry;
 mod grpc;
+mod registration_handle;
 
 #[cfg(not(target_arch = "wasm32"))]
 mod segment_chunk_provider;
@@ -23,6 +25,7 @@ pub use self::connection_client::{
     BoxedRedapClientStack, Connection, ConnectionClient, FetchChunksResponseStream, RedapClient,
     SegmentQueryParams,
 };
+pub use self::connection_handle::ConnectionHandle;
 pub use self::connection_registry::{
     ClientCredentialsError, ConnectionRegistry, ConnectionRegistryHandle, CredentialSource,
     Credentials, SourcedCredentials,
@@ -32,6 +35,7 @@ pub use self::grpc::{
     fetch_chunks_response_to_chunk_and_segment_id, stream_blueprint_and_segment_from_server,
     stream_table_blueprint_segment_from_server, table_blueprint_log_channel,
 };
+pub use self::registration_handle::{RegistrationHandle, SegmentRegistrationResult};
 
 #[cfg(not(target_arch = "wasm32"))]
 pub use self::grpc::PoolChannel;
@@ -90,6 +94,25 @@ const GRPC_RESPONSE_TRACEID_HEADER: &str = "x-request-trace-id";
 pub fn extract_trace_id(metadata: &tonic::metadata::MetadataMap) -> Option<opentelemetry::TraceId> {
     let s = metadata.get(GRPC_RESPONSE_TRACEID_HEADER)?.to_str().ok()?;
     opentelemetry::TraceId::from_hex(s).ok()
+}
+
+/// Format a leading trace-id section for a task error message.
+pub fn format_trace_ids(
+    request_trace_id: Option<TraceId>,
+    query_trace_id: Option<TraceId>,
+) -> String {
+    let mut lines = Vec::new();
+    if let Some(trace_id) = request_trace_id {
+        lines.push(format!("Registration request trace-id: {trace_id}"));
+    }
+    if let Some(trace_id) = query_trace_id {
+        lines.push(format!("Task-completion query trace-id: {trace_id}"));
+    }
+    if lines.is_empty() {
+        String::new()
+    } else {
+        format!("\n{}", lines.join("\n"))
+    }
 }
 
 /// Wrapper with a nicer error message

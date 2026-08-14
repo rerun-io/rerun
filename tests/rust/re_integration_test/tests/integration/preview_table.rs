@@ -73,7 +73,11 @@ pub async fn preview_table() {
         Default::default(),
     ));
 
-    let mut client = server.client().await.expect("Failed to connect to server");
+    let connection = server.connection_handle();
+    let mut client = connection
+        .client()
+        .await
+        .expect("Failed to connect to server");
     let table = client
         .create_table_entry(
             re_log_types::EntryName::new("preview_table").expect("valid entry name"),
@@ -112,7 +116,7 @@ pub async fn preview_table() {
 
     // Register the table blueprint with the table's implicit blueprint dataset and set it as the default.
     let blueprint_rbl = blueprint_rbl_file(PREVIEW_COLUMN, TITLE_COLUMN);
-    re_integration_test::register_table_blueprint(&mut client, &table, blueprint_rbl.path())
+    re_integration_test::register_table_blueprint(&connection, &table, blueprint_rbl.path())
         .await
         .expect("Failed to register table blueprint");
 
