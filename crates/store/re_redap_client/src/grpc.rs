@@ -1087,6 +1087,20 @@ async fn stream_manifest(
             while let Some(part_result) = manifest_stream.next().await {
                 let raw_rrd_manifest_part = part_result?;
 
+                let raw_rrd_manifest_part = if manifest_kind == ManifestKind::Asset {
+                    raw_rrd_manifest_part
+                        .without_recording_properties()
+                        .map_err(|err| {
+                            ApiError::invalid_arguments_with_source(
+                                trace_id,
+                                err,
+                                "Failed to drop the recording properties of an asset manifest",
+                            )
+                        })?
+                } else {
+                    raw_rrd_manifest_part
+                };
+
                 let part_nr = rrd_manifest_parts.len() + 1;
                 re_log::debug!(
                     "Received RRD manifest part #{part_nr}/? ({} deflated, {:.1}s elapsed)",

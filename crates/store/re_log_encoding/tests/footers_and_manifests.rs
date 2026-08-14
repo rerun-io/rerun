@@ -827,6 +827,61 @@ fn concat_with_mixed_chunk_keys() {
     assert!(combined_keys.is_null(3));
 }
 
+/// Filtering a manifest drops the chunk logged under `__properties` and keeps every other chunk.
+#[test]
+fn without_recording_properties_only_drops_the_properties_chunk() {
+    use re_log_types::example_components::{MyPoint, MyPoints};
+    use re_log_types::{EntityPath, TimeInt, build_frame_nr};
+
+    let store_id = generate_recording_store_id();
+
+    let mut next_chunk_id = next_chunk_id_generator(400);
+    let mut next_row_id = next_row_id_generator(400);
+
+    let mut make_chunk = |entity: EntityPath, timepoint: TimePoint| -> Chunk {
+        let points = MyPoint::from_iter(0..1);
+        Chunk::builder_with_id(next_chunk_id(), entity)
+            .with_sparse_component_batches(
+                next_row_id(),
+                timepoint,
+                [(MyPoints::descriptor_points(), Some(&points as _))],
+            )
+            .build()
+            .unwrap()
+    };
+
+    let data = make_chunk(
+        "entity_a".into(),
+        TimePoint::from([build_frame_nr(TimeInt::new_temporal(10))]),
+    );
+    let properties = make_chunk(EntityPath::properties(), TimePoint::STATIC);
+
+    let raw = RawRrdManifest::build_in_memory_from_chunks(
+        store_id.clone(),
+        [&data, &properties].into_iter(),
+    )
+    .unwrap();
+    assert_eq!(RrdManifest::try_new(&raw).unwrap().num_chunks(), 2);
+
+    let filtered = raw.without_recording_properties().unwrap();
+    let filtered = RrdManifest::try_new(&filtered).unwrap();
+
+    assert_eq!(filtered.col_chunk_ids().to_vec(), vec![data.id()]);
+    assert!(
+        filtered.static_map().is_empty(),
+        "the properties chunk was the only static one"
+    );
+
+    // A manifest that has nothing to drop comes back untouched.
+    let data_only =
+        RawRrdManifest::build_in_memory_from_chunks(store_id, std::iter::once(&data)).unwrap();
+    let before = data_only.data.clone();
+    assert_eq!(
+        data_only.without_recording_properties().unwrap().data,
+        before
+    );
+}
+
 /// Verifies that `heap_size_bytes` accounts for pre-extracted arrays that are NOT
 /// in the pruned `chunk_fetcher_rb`.
 #[test]

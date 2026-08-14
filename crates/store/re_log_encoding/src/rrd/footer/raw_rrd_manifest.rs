@@ -257,6 +257,34 @@ impl RawRrdManifest {
         })
     }
 
+    /// Returns this manifest without the chunks logged under `__properties`.
+    ///
+    /// An asset joins the store of the segment that references it, where its own recording
+    /// properties would take the place of that segment's.
+    pub fn without_recording_properties(self) -> CodecResult<Self> {
+        re_tracing::profile_function!();
+
+        let keep: BooleanArray = self
+            .col_chunk_entity_path_raw()?
+            .iter()
+            .map(|entity_path| {
+                let is_property = entity_path.is_some_and(|entity_path| {
+                    EntityPath::parse_forgiving(entity_path).is_property()
+                });
+                Some(!is_property)
+            })
+            .collect();
+
+        if keep.true_count() == keep.len() {
+            return Ok(self);
+        }
+
+        let data = arrow::compute::filter_record_batch(&self.data, &keep)
+            .map_err(CodecError::ArrowDeserialization)?;
+
+        Ok(Self { data, ..self })
+    }
+
     /// Merges multiple manifests into one, tolerating schema differences.
     ///
     /// Unlike [`Self::concat`] — which requires identical schemas and `store_id`s — this allows
