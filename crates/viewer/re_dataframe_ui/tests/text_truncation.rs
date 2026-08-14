@@ -8,6 +8,7 @@ use datafusion::prelude::SessionContext;
 use re_async::AsyncRuntimeHandle;
 use re_dataframe_ui::{DataFusionTableWidget, TableBlueprints};
 use re_test_context::TestContext;
+use re_viewer_context::TableReference;
 
 use common::run_async_harness;
 
@@ -21,15 +22,19 @@ async fn test_text_truncation() {
         .setup_kittest_for_rendering_ui([2500.0, 200.0])
         .build_ui(|ui| {
             test_context.run_recording(&ui.ctx().clone(), |ctx| {
-                DataFusionTableWidget::new(Arc::clone(&session_context), table_ref)
-                    .title("Text truncation")
-                    .show(
-                        ctx.app_ctx,
-                        &runtime_handle,
-                        ui,
-                        &TableBlueprints::default(),
-                        &mut test_context.view_states.lock(),
-                    );
+                DataFusionTableWidget::new(
+                    Arc::clone(&session_context),
+                    table_ref,
+                    TableReference::local("test_table"),
+                )
+                .title("Text truncation")
+                .show(
+                    ctx.app_ctx,
+                    &runtime_handle,
+                    ui,
+                    &TableBlueprints::default(),
+                    &mut test_context.view_states.lock(),
+                );
             });
         });
 

@@ -4,7 +4,6 @@ use std::sync::Arc;
 
 pub use crossbeam::channel::{RecvError, RecvTimeoutError, SendError, TryRecvError};
 use parking_lot::RwLock;
-use re_log_types::{StoreId, TableId};
 pub use re_quota_channel::sync::TrySendError;
 use re_uri::RedapUri;
 
@@ -14,7 +13,8 @@ mod receiver_set;
 mod sender;
 
 pub use self::data_source_message::{
-    DataSourceMessage, DataSourceUiCommand, InspectError, SaveScreenshotError,
+    BlueprintTarget, DataSourceMessage, DataSourceUiCommand, DefaultBlueprintRegistration,
+    InspectError, SaveScreenshotError,
 };
 pub use self::receiver::LogReceiver;
 pub use self::receiver_set::LogReceiverSet;
@@ -54,7 +54,6 @@ pub enum FlushError {
 #[derive(
     Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Deserialize, serde::Serialize,
 )]
-#[cfg_attr(not(target_arch = "wasm32"), expect(clippy::large_enum_variant))]
 pub enum LogSource {
     /// The sender is a background thread reading data from a file on disk
     /// (could be `.rrd` files, or `.glb`, `.png`, …).
@@ -92,23 +91,10 @@ pub enum LogSource {
         uri: re_uri::DatasetSegmentUri,
 
         open_behavior: RecordingOpenBehavior,
-
-        /// If set, this source is streaming a blueprint that should be associated with a table
-        /// once the stream completes successfully.
-        #[serde(default)]
-        table_blueprint: Option<TableBlueprintSource>,
     },
 
     /// The data is streaming in via a message proxy.
     MessageProxy(re_uri::ProxyUri),
-}
-
-#[derive(
-    Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Deserialize, serde::Serialize,
-)]
-pub struct TableBlueprintSource {
-    pub table_id: TableId,
-    pub blueprint_id: StoreId,
 }
 
 impl std::fmt::Display for LogSource {

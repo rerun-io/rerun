@@ -1,7 +1,7 @@
 use re_log_types::StoreId;
 use re_types_core::SegmentId;
 
-use crate::{Error, Fragment, Origin, RedapUri};
+use crate::{EntryUri, Error, Fragment, Origin, RedapUri};
 
 /// URI pointing at the data underlying a dataset.
 ///
@@ -134,6 +134,13 @@ impl DatasetSegmentUri {
             application_id,
             self.segment_id.clone(),
         )
+    }
+
+    pub fn dataset_url(&self) -> EntryUri {
+        EntryUri {
+            origin: self.origin.clone(),
+            entry_id: re_log_types::EntryId::from(self.dataset_id),
+        }
     }
 }
 

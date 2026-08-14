@@ -4,7 +4,7 @@
 use std::sync::Arc;
 
 use re_log_encoding::RrdManifest;
-use re_log_types::{LogMsg, StoreId, TableMsg, impl_into_enum};
+use re_log_types::{ApplicationId, LogMsg, StoreId, TableMsg, impl_into_enum};
 use re_protos::sdk_comms::v1alpha1::{GetViewerStateResponse, SetTimeCursorResponse};
 
 /// Message from a data source.
@@ -24,6 +24,12 @@ pub enum DataSourceMessage {
     /// See [`LogMsg`].
     LogMsg(LogMsg),
 
+    /// Associate a fully received blueprint with one of its consumers.
+    // TODO(andreas): Whenever we make the request for a blueprint we should just keep the information
+    // about why we pulled it in the first place and therefore should know upon arrival what to do with it?
+    // TODO(andreas): If needed, make this more flexible than just making a thing the default.
+    DefaultBlueprintRegistration(DefaultBlueprintRegistration),
+
     /// See [`TableMsg`].
     TableMsg(TableMsg),
 
@@ -35,6 +41,11 @@ pub enum DataSourceMessage {
 }
 
 impl_into_enum!(LogMsg, DataSourceMessage, LogMsg);
+impl_into_enum!(
+    DefaultBlueprintRegistration,
+    DataSourceMessage,
+    DefaultBlueprintRegistration
+);
 impl_into_enum!(TableMsg, DataSourceMessage, TableMsg);
 impl_into_enum!(DataSourceUiCommand, DataSourceMessage, UiCommand);
 
@@ -45,6 +56,7 @@ impl DataSourceMessage {
             Self::RrdManifest(..) => "RrdManifest",
             Self::RrdManifestComplete(_) => "RrdManifestComplete",
             Self::LogMsg(_) => "LogMsg",
+            Self::DefaultBlueprintRegistration(_) => "BlueprintRegistration",
             Self::TableMsg(_) => "TableMsg",
             Self::UiCommand(_) => "UiCommand",
         }
@@ -55,11 +67,28 @@ impl DataSourceMessage {
         match self {
             Self::LogMsg(log_msg) => log_msg.insert_arrow_record_batch_metadata(key, value),
             Self::TableMsg(table_msg) => table_msg.insert_arrow_record_batch_metadata(key, value),
-            Self::RrdManifest(..) | Self::RrdManifestComplete(_) | Self::UiCommand(_) => {
+            Self::RrdManifest(..)
+            | Self::RrdManifestComplete(_)
+            | Self::DefaultBlueprintRegistration(_)
+            | Self::UiCommand(_) => {
                 // Not everything needs latency tracking
             }
         }
     }
+}
+
+/// An ordered association command sent after all data for a blueprint store.
+#[derive(Clone, Debug, re_byte_size::SizeBytes)]
+pub struct DefaultBlueprintRegistration {
+    pub blueprint_id: StoreId,
+    pub target: BlueprintTarget,
+}
+
+/// The consumer of a blueprint.
+#[derive(Clone, Debug, re_byte_size::SizeBytes)]
+pub enum BlueprintTarget {
+    Application(ApplicationId),
+    Table(re_uri::TableReference),
 }
 
 /// UI commands issued when streaming in datasets.

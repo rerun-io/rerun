@@ -740,7 +740,7 @@ impl From<re_log_types::TableId> for crate::common::v1alpha1::TableId {
 impl From<crate::common::v1alpha1::TableId> for re_log_types::TableId {
     #[inline]
     fn from(value: crate::common::v1alpha1::TableId) -> Self {
-        TableId::from(value.id)
+        TableId::new(value.id)
     }
 }
 

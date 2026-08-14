@@ -1613,6 +1613,12 @@ fn assert_receive_into_entity_db(rx: &LogReceiverSet) -> anyhow::Result<re_entit
                             mut_db.add_log_msg(&msg)?;
                         }
 
+                        DataSourceMessage::DefaultBlueprintRegistration(_) => {
+                            anyhow::bail!(
+                                "Received a blueprint registration which can't be stored in an EntityDb"
+                            );
+                        }
+
                         DataSourceMessage::TableMsg(_) => {
                             anyhow::bail!(
                                 "Received a TableMsg which can't be stored in an EntityDb"

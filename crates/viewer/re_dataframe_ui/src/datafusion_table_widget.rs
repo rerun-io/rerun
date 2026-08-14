@@ -1,10 +1,10 @@
-use std::str::FromStr as _;
+use std::borrow::Cow;
 use std::sync::Arc;
 
 use arrow::array::{Array as _, BooleanArray};
 use arrow::datatypes::Field;
 use datafusion::prelude::SessionContext;
-use datafusion::sql::TableReference;
+use datafusion::sql::TableReference as DataFusionTableReference;
 use egui::containers::menu::MenuConfig;
 use egui::{Frame, Id, Margin, OpenUrl, Panel, RichText, Ui};
 use egui_table::{CellInfo, HeaderCellInfo};
@@ -20,7 +20,7 @@ use re_sorbet::{ColumnDescriptorRef, SorbetSchema};
 use re_ui::egui_ext::response_ext::ResponseExt as _;
 use re_ui::menu::menu_style;
 use re_ui::{UiExt as _, UiLayout, icons};
-use re_viewer_context::{AppContext, SystemCommand, SystemCommandSender as _};
+use re_viewer_context::{AppContext, SystemCommand, SystemCommandSender as _, TableReference};
 
 use crate::cards_view::FlagChangeEvent;
 use crate::column_sorting::{SortBy, SortDirection};
@@ -185,20 +185,13 @@ pub struct DataFusionTableWidget<'a> {
     session_ctx: Arc<SessionContext>,
 
     /// Stable identity used by table-scoped actions.
-    ///
-    /// `None` for widgets that are not tied to a stable table identity.
-    table_id: Option<re_log_types::TableId>, // TODO(andreas): make this mandatory to be around so we can always associate a blueprint.
-
     table_ref: TableReference,
+
+    datafusion_table_ref: DataFusionTableReference,
 
     /// If provided, add a title UI on top of the table.
     //TODO(ab): for now, this is the only way to have the column visibility/order menu
     title: Option<String>,
-
-    /// If provided, this will add a "copy URL" button next to the title (which must be provided).
-    ///
-    /// This is also the url used for flag upserts if enabled.
-    url: Option<String>,
 
     /// User-provided closure to provide column blueprint.
     column_blueprint_fn: ColumnBlueprintFn<'a>,
@@ -213,7 +206,7 @@ impl<'a> DataFusionTableWidget<'a> {
         runtime: &AsyncRuntimeHandle,
         egui_ctx: egui::Context,
         session_ctx: Arc<SessionContext>,
-        table_ref: impl Into<TableReference>,
+        table_ref: impl Into<DataFusionTableReference>,
     ) {
         let table_ref = table_ref.into();
 
@@ -230,7 +223,10 @@ impl<'a> DataFusionTableWidget<'a> {
     ///
     /// Unlike [`Self::refresh`], this does NOT clear the adapter state, so the current
     /// query results remain visible until a new query completes.
-    async fn invalidate_streaming_cache(session_ctx: &SessionContext, table_ref: &TableReference) {
+    async fn invalidate_streaming_cache(
+        session_ctx: &SessionContext,
+        table_ref: &DataFusionTableReference,
+    ) {
         if let Ok(provider) = session_ctx.table_provider(table_ref.clone()).await
             && let Some(cache_provider) = provider.downcast_ref::<StreamingCacheTableProvider>()
         {
@@ -238,33 +234,24 @@ impl<'a> DataFusionTableWidget<'a> {
         }
     }
 
-    pub fn new(session_ctx: Arc<SessionContext>, table_ref: impl Into<TableReference>) -> Self {
+    pub fn new(
+        session_ctx: Arc<SessionContext>,
+        datafusion_table_ref: impl Into<DataFusionTableReference>,
+        table_ref: TableReference,
+    ) -> Self {
         Self {
             session_ctx,
-            table_id: None,
-            table_ref: table_ref.into(),
+            table_ref,
+            datafusion_table_ref: datafusion_table_ref.into(),
 
             title: None,
-            url: None,
             column_blueprint_fn: Box::new(|_| ColumnBlueprint::default()),
             initial_query_data: Default::default(),
         }
     }
 
-    /// Associate this widget with a [`TableId`](re_log_types::TableId) for blueprint lookup.
-    pub fn table_id(mut self, table_id: re_log_types::TableId) -> Self {
-        self.table_id = Some(table_id);
-        self
-    }
-
     pub fn title(mut self, title: impl Into<String>) -> Self {
         self.title = Some(title.into());
-
-        self
-    }
-
-    pub fn url(mut self, url: impl Into<String>) -> Self {
-        self.url = Some(url.into());
 
         self
     }
@@ -321,9 +308,12 @@ impl<'a> DataFusionTableWidget<'a> {
         self
     }
 
-    /// Associated url as readp uri if any & correctly parsed.
-    fn readp_uri(&self) -> Option<re_uri::RedapUri> {
-        re_uri::RedapUri::from_str(self.url.as_ref()?).ok()
+    fn display_name(&self) -> Cow<'_, str> {
+        self.title
+            .as_deref()
+            .map(Cow::Borrowed)
+            .or_else(|| self.table_ref.url().map(|url| Cow::Owned(url.to_string())))
+            .unwrap_or_default()
     }
 
     /// Resolve the original Arrow field for the configured flag column if flagging is available.
@@ -408,13 +398,13 @@ impl<'a> DataFusionTableWidget<'a> {
         table_blueprints: &TableBlueprints,
         view_states: &mut re_viewer_context::ViewStates,
     ) -> TableStatus {
-        match self.session_ctx.table_exist(self.table_ref.clone()) {
+        match self
+            .session_ctx
+            .table_exist(self.datafusion_table_ref.clone())
+        {
             Ok(true) => {}
             Ok(false) => {
-                ui.loading_screen(
-                    "Loading table:",
-                    self.url.as_deref().or(self.title.as_deref()).unwrap_or(""),
-                );
+                ui.loading_screen("Loading table:", self.display_name().as_ref());
                 return TableStatus::InitialLoading;
             }
             Err(err) => {
@@ -427,12 +417,13 @@ impl<'a> DataFusionTableWidget<'a> {
         }
 
         // The TableConfig should be persisted across sessions, so we also need a static id.
-        let session_id = id_from_session_context_and_table(&self.session_ctx, &self.table_ref);
+        let session_id =
+            id_from_session_context_and_table(&self.session_ctx, &self.datafusion_table_ref);
         let mut table_state = DataFusionAdapter::get(
             runtime,
             ui,
             &self.session_ctx,
-            self.table_ref.clone(),
+            self.datafusion_table_ref.clone(),
             session_id,
             self.initial_query_data.clone(),
         );
@@ -461,7 +452,7 @@ impl<'a> DataFusionTableWidget<'a> {
                             runtime,
                             ui.ctx().clone(),
                             Arc::clone(&self.session_ctx),
-                            self.table_ref.clone(),
+                            self.datafusion_table_ref.clone(),
                         );
                     }
                 });
@@ -478,10 +469,7 @@ impl<'a> DataFusionTableWidget<'a> {
                 // still processing, nothing yet to show
                 //TODO(ab): it can happen that we're stuck in the state. We should detect it and
                 //produce an error
-                ui.loading_screen(
-                    "Loading table:",
-                    self.url.as_deref().or(self.title.as_deref()).unwrap_or(""),
-                );
+                ui.loading_screen("Loading table:", self.display_name().as_ref());
                 return TableStatus::InitialLoading;
             }
         };
@@ -499,8 +487,6 @@ impl<'a> DataFusionTableWidget<'a> {
             view_states,
         );
 
-        let redap_uri = self.readp_uri();
-
         // Flag changes are only produced when flagging_enabled was true in table_ui,
         // which already validated: flag_column is Some and column exists as boolean.
         if !output.flag_changes.is_empty()
@@ -508,7 +494,7 @@ impl<'a> DataFusionTableWidget<'a> {
         {
             table_state.apply_flag_changes(ui, flag_col.display_index, &output.flag_changes);
 
-            if let Some(re_uri::RedapUri::Entry(entry_uri)) = &redap_uri
+            if let Some(re_uri::RedapUri::Entry(entry_uri)) = &self.table_ref.url()
                 && let Some(Ok(results)) = &table_state.results
             {
                 upsert_flag_changes(
@@ -524,7 +510,7 @@ impl<'a> DataFusionTableWidget<'a> {
             // Invalidate the streaming cache so the next re-query (e.g. filter/sort change)
             // fetches fresh data from the server (which now has the upserted flags).
             let session_ctx = Arc::clone(&self.session_ctx);
-            let table_ref = self.table_ref.clone();
+            let table_ref = self.datafusion_table_ref.clone();
             runtime.spawn_future(async move {
                 Self::invalidate_streaming_cache(&session_ctx, &table_ref).await;
             });
@@ -555,7 +541,7 @@ impl<'a> DataFusionTableWidget<'a> {
         table_blueprints: &TableBlueprints,
         view_states: &mut re_viewer_context::ViewStates,
     ) -> TableUiOutput {
-        let static_id = Id::new(&self.table_ref);
+        let static_id = Id::new(&self.datafusion_table_ref);
 
         let mut query_data = query_data.clone();
 
@@ -605,15 +591,12 @@ impl<'a> DataFusionTableWidget<'a> {
         let mut table_config =
             UiTableConfig::from_egui_state_merged_with_data_columns(ui.ctx(), static_id, &columns);
 
-        let redap_uri = self.readp_uri();
-
         let table_cards_and_blueprints_enabled =
             ctx.app_options.experimental.table_cards_and_blueprints;
 
-        let blueprint_db = self.table_id.as_ref().and_then(|table_id| {
-            let store_id = table_blueprints.active_id(table_id)?;
-            ctx.storage_context.bundle.get(store_id)
-        });
+        let blueprint_db = table_blueprints
+            .active_id(&self.table_ref)
+            .and_then(|store_id| ctx.storage_context.bundle.get(store_id));
         let blueprint = blueprint_db
             .map(TableBlueprint::load)
             .unwrap_or_default()
@@ -622,7 +605,7 @@ impl<'a> DataFusionTableWidget<'a> {
                 &columns,
                 &display_record_batches,
                 &table_config,
-                redap_uri.as_ref().map(|uri| uri.origin()),
+                self.table_ref.url().as_ref().map(|uri| uri.origin()),
             );
 
         let view_renderer = if table_cards_and_blueprints_enabled {
@@ -647,7 +630,7 @@ impl<'a> DataFusionTableWidget<'a> {
                 &columns,
                 Some(&mut table_config),
                 title,
-                self.url.as_deref(),
+                self.table_ref.url().map(|url| url.to_string()).as_deref(),
                 should_show_loading_indicator,
                 if table_cards_and_blueprints_enabled {
                     Some(&mut view_mode)
@@ -692,7 +675,7 @@ impl<'a> DataFusionTableWidget<'a> {
                 .as_ref()
                 .is_some_and(|name| columns.index_by_physical_name(name).is_some());
 
-        let entry_uri = if let Some(re_uri::RedapUri::Entry(entry_uri)) = &redap_uri {
+        let entry_uri = if let Some(re_uri::RedapUri::Entry(entry_uri)) = self.table_ref.url() {
             Some(entry_uri)
         } else {
             None
@@ -701,7 +684,7 @@ impl<'a> DataFusionTableWidget<'a> {
             &blueprint,
             &columns,
             &query_result.original_schema,
-            entry_uri,
+            entry_uri.as_ref(),
             ctx.connection_registry,
         );
         if show_segment_previews {
@@ -728,7 +711,7 @@ impl<'a> DataFusionTableWidget<'a> {
                     runtime,
                     ui.ctx().clone(),
                     Arc::clone(&self.session_ctx),
-                    self.table_ref.clone(),
+                    self.datafusion_table_ref.clone(),
                 );
             }
             None => {}
@@ -875,7 +858,7 @@ impl<'a> DataFusionTableWidget<'a> {
 
 fn id_from_session_context_and_table(
     session_ctx: &SessionContext,
-    table_ref: &TableReference,
+    table_ref: &DataFusionTableReference,
 ) -> Id {
     egui::Id::new((session_ctx.session_id(), table_ref))
 }

@@ -12,7 +12,7 @@ use re_ui::{ContextExt as _, OnResponseExt as _, UiExt as _, UiLayout, icons, li
 use re_uri::dataset_hierarchy_leaf_name;
 use re_viewer_context::open_url::ViewerOpenUrl;
 use re_viewer_context::{
-    AppContext, Item, RecordingOrTable, RedapEntryKind, Route, SystemCommand,
+    AppContext, Item, RecordingOrLocalTable, RedapEntryKind, Route, SystemCommand,
     SystemCommandSender as _,
 };
 
@@ -471,7 +471,7 @@ fn dataset_entry_ui(ctx: &AppContext<'_>, ui: &mut egui::Ui, dataset_entry_data:
                 for db in displayed_segments.iter().filter_map(SegmentData::entity_db) {
                     ctx.command_sender()
                         .send_system(SystemCommand::CloseRecordingOrTable(
-                            RecordingOrTable::Recording {
+                            RecordingOrLocalTable::Recording {
                                 store_id: db.store_id().clone(),
                             },
                         ));

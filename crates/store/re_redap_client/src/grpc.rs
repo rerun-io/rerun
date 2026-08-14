@@ -7,7 +7,9 @@ use itertools::Itertools as _;
 use re_auth::client::AuthDecorator;
 use re_byte_size::SizeBytes as _;
 use re_chunk::{Chunk, ChunkId};
-use re_log_channel::{DataSourceMessage, DataSourceUiCommand};
+use re_log_channel::{
+    BlueprintTarget, DataSourceMessage, DataSourceUiCommand, DefaultBlueprintRegistration,
+};
 use re_log_types::{
     BlueprintActivationCommand, EntryId, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind,
     StoreSource,
@@ -643,8 +645,6 @@ pub fn table_blueprint_log_channel(
     origin: re_uri::Origin,
     blueprint_dataset: EntryId,
     blueprint_segment: &SegmentId,
-    table_id: re_log_types::TableId,
-    blueprint_store_id: StoreId,
 ) -> (re_log_channel::LogSender, re_log_channel::LogReceiver) {
     let source_uri = re_uri::DatasetSegmentUri {
         origin,
@@ -656,24 +656,20 @@ pub fn table_blueprint_log_channel(
     re_log_channel::log_channel(re_log_channel::LogSource::RedapGrpcStream {
         uri: source_uri,
         open_behavior: re_log_channel::RecordingOpenBehavior::Background,
-        table_blueprint: Some(re_log_channel::TableBlueprintSource {
-            table_id,
-            blueprint_id: blueprint_store_id,
-        }),
     })
 }
 
 /// Stream a registered `.rbl` blueprint segment into an existing log channel.
 ///
-/// This streams the blueprint data and then sends a successful quit marker on the same channel.
-/// The viewer uses the channel's [`re_log_channel::LogSource`] metadata to register the blueprint
-/// only after all blueprint messages have been processed.
+/// This streams the blueprint data, registers it with the target table, and then sends a successful
+/// quit marker on the same channel.
 /// It does not emit a [`LogMsg::BlueprintActivationCommand`], so the blueprint is not activated as
 /// an application default blueprint.
 pub async fn stream_table_blueprint_segment_from_server(
     mut client: ConnectionClient,
     tx: re_log_channel::LogSender,
     blueprint_store_id: StoreId,
+    table_ref: re_uri::TableReference,
     blueprint_dataset: EntryId,
     blueprint_segment: SegmentId,
 ) -> ApiResult {
@@ -687,6 +683,20 @@ pub async fn stream_table_blueprint_segment_from_server(
     .await?
     .is_break()
     {
+        return Ok(());
+    }
+
+    if tx
+        .send(
+            DefaultBlueprintRegistration {
+                blueprint_id: blueprint_store_id,
+                target: BlueprintTarget::Table(table_ref),
+            }
+            .into(),
+        )
+        .is_err()
+    {
+        re_log::debug!("Receiver disconnected");
         return Ok(());
     }
 

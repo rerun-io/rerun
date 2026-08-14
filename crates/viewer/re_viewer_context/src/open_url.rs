@@ -545,7 +545,6 @@ impl ViewerOpenUrl {
             Self::RedapDatasetSegment(uri) => Some(LogSource::RedapGrpcStream {
                 uri: uri.clone(),
                 open_behavior: RecordingOpenBehavior::Background,
-                table_blueprint: None,
             }),
             Self::RedapProxy(uri) => Some(LogSource::MessageProxy(uri.clone())),
             Self::WebEventListener => Some(LogSource::RrdWebEvent),
@@ -1210,7 +1209,6 @@ mod tests {
             Some(LogSource::RedapGrpcStream {
                 uri: uri.parse().unwrap(),
                 open_behavior: RecordingOpenBehavior::Background,
-                table_blueprint: None,
             }),
         );
 

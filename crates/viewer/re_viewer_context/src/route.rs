@@ -1,7 +1,7 @@
 use re_chunk::ChunkId;
 use re_log_types::{ApplicationId, StoreId, TableId};
 
-use crate::{Item, RedapEntryKind, open_url::EXAMPLES_ORIGIN};
+use crate::{Item, RedapEntryKind, TableReference, open_url::EXAMPLES_ORIGIN};
 
 /// What are we currently showing in the viewer?
 #[derive(Clone, PartialEq, Eq)]
@@ -175,14 +175,22 @@ impl From<re_uri::EntryUri> for Route {
 }
 
 impl Route {
-    /// Returns the plain table ID, if any.
-    pub fn table_blueprint_id(&self) -> Option<TableId> {
+    /// Returns the referenced table, if any.
+    pub fn table_reference(&self) -> Option<TableReference> {
         match self {
-            Self::LocalTable(table_id) => Some(table_id.clone()),
+            Self::LocalTable(table_id) => Some(table_id.clone().into()),
+
             Self::RedapEntry {
+                origin,
                 kind: RedapEntryKind::Entry(entry_id),
-                ..
-            } => Some(TableId::new(entry_id.to_string())), // TODO(andreas): if you think this looks wrong, then you're right. Will be addressed in https://github.com/rerun-io/reality/pull/3162
+            } => Some(TableReference::RedapEntry {
+                origin: origin.clone(),
+                entry_id: *entry_id,
+            }),
+
+            Self::RedapServer(origin) => Some(TableReference::RedapServerEntries {
+                origin: origin.clone(),
+            }),
 
             Self::Settings { .. }
             | Self::Loading { .. }
@@ -191,7 +199,6 @@ impl Route {
                 kind: RedapEntryKind::Folder(_),
                 ..
             }
-            | Self::RedapServer(_)
             | Self::ChunkStoreBrowser { .. } => None,
         }
     }

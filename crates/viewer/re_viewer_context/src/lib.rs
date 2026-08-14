@@ -107,7 +107,7 @@ pub use self::query_context::{
     DataQueryResult, DataResultHandle, DataResultNode, DataResultTree, QueryContext,
 };
 pub use self::query_range::QueryRange;
-pub use self::recording_or_table::RecordingOrTable;
+pub use self::recording_or_table::RecordingOrLocalTable;
 pub use self::route::Route;
 pub use self::selection_state::{
     ApplicationSelectionState, HoverHighlight, InteractionHighlight, SelectionChange,
@@ -151,6 +151,7 @@ pub use self::view::{
 };
 pub use self::viewer_context::ViewerContext;
 pub use self::visitor_flow_control::VisitorControlFlow; // Historical reasons
+pub use re_uri::TableReference;
 
 pub mod external {
     #[cfg(not(target_arch = "wasm32"))]

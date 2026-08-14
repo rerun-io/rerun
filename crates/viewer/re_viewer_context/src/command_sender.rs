@@ -9,7 +9,7 @@ use re_log_types::StoreId;
 use re_ui::{RecordingCommand, RecordingCommandSender, UICommand, UICommandSender};
 
 use crate::time_control::TimeControlCommand;
-use crate::{AuthContext, RecordingOrTable, Route, ScreenshotTarget, ViewId};
+use crate::{AuthContext, RecordingOrLocalTable, Route, ScreenshotTarget, ViewId};
 
 // ----------------------------------------------------------------------------
 
@@ -92,8 +92,8 @@ pub enum SystemCommand {
     /// does not affect the default blueprint if any was set.
     ClearActiveBlueprintAndEnableHeuristics,
 
-    /// Close an [`RecordingOrTable`] and free its memory.
-    CloseRecordingOrTable(RecordingOrTable),
+    /// Close a [`RecordingOrLocalTable`] and free its memory.
+    CloseRecordingOrTable(RecordingOrLocalTable),
 
     /// Close all stores and show the welcome screen again.
     CloseAllEntries,

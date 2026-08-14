@@ -18,8 +18,9 @@ use re_viewer_context::{
     ActiveStoreContext, AppBlueprintCtx, AppContext, AppOptions, ApplicationSelectionState,
     AuthContext, BlueprintContext, BlueprintUndoState, CommandSender, ComponentUiRegistry,
     DragAndDropManager, FallbackProviderRegistry, FocusTarget, Item, ItemCollection, Route,
-    SelectionChange, StorageContext, StoreHub, SystemCommand, SystemCommandSender as _, TableStore,
-    TimeControl, TimeControlCommand, ViewClassRegistry, ViewStates, ViewerContext,
+    SelectionChange, StorageContext, StoreHub, SystemCommand, SystemCommandSender as _,
+    TableReference, TableStore, TimeControl, TimeControlCommand, ViewClassRegistry, ViewStates,
+    ViewerContext,
 };
 use re_viewport::ViewportUi;
 use re_viewport_blueprint::ViewportBlueprint;
@@ -657,8 +658,8 @@ impl AppState {
                             re_dataframe_ui::DataFusionTableWidget::new(
                                 store.session_context(),
                                 TableStore::TABLE_NAME,
+                                TableReference::local(table_id.clone()),
                             )
-                            .table_id(table_id.clone())
                             .title(table_id.as_str())
                             .show(
                                 &app_ctx,

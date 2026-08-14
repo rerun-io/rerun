@@ -13,7 +13,7 @@ use re_viewer_context::{
     SystemCommand, open_url::combine_with_base_url,
 };
 use re_viewer_context::{
-    RecordingOrTable, SystemCommandSender as _, TimeControlCommand, sanitize_file_name,
+    RecordingOrLocalTable, SystemCommandSender as _, TimeControlCommand, sanitize_file_name,
 };
 use std::sync::Arc;
 
@@ -218,7 +218,7 @@ impl App {
                 // The active recording we're closing, if that's what this is. When set, we move off
                 // it after closing.
                 let active_being_closed = match &entry {
-                    RecordingOrTable::Recording { store_id }
+                    RecordingOrLocalTable::Recording { store_id }
                         if self.state.active_recording_id() == Some(store_id) =>
                     {
                         Some(store_id.clone())
@@ -510,10 +510,10 @@ impl App {
                 // at the beginning of the next frame.
                 re_log::debug!("Reset blueprint to default");
 
-                if let Some(table_id) = self.state.navigation.current().table_blueprint_id() {
+                if let Some(table_ref) = self.state.navigation.current().table_reference() {
                     if let Err(err) = self
                         .table_blueprints
-                        .reset(&table_id, store_hub.store_bundle_mut())
+                        .reset(&table_ref, store_hub.store_bundle_mut())
                     {
                         re_log::warn!("Failed to reset table blueprint: {err}");
                     }
@@ -1654,11 +1654,11 @@ impl App {
     fn close_recording_or_table(
         &mut self,
         store_hub: &mut StoreHub,
-        entry: &RecordingOrTable,
+        entry: &RecordingOrLocalTable,
         mode: CloseRecording,
     ) {
         match entry {
-            RecordingOrTable::Recording { store_id } => {
+            RecordingOrLocalTable::Recording { store_id } => {
                 store_hub.set_opened(store_id, false);
 
                 // A recording that's still rendered as a preview should stay loaded and streaming, just
@@ -1697,21 +1697,10 @@ impl App {
                     }
                 }
             }
-            RecordingOrTable::Table { table_id } => {
-                // Cancel receiving blueprints for this table.
-                self.rx_log.retain(|receiver| !{
-                    matches!(
-                        receiver.source(),
-                        LogSource::RedapGrpcStream {
-                            table_blueprint: Some(table_blueprint),
-                            ..
-                        } if &table_blueprint.table_id == table_id
-                    )
-                });
-
+            RecordingOrLocalTable::LocalTable { table_id } => {
                 // Remove any existing table blueprints associated with this table.
                 self.table_blueprints
-                    .remove_table(table_id, store_hub.store_bundle_mut());
+                    .remove_table(&table_id.clone().into(), store_hub.store_bundle_mut());
             }
         }
 

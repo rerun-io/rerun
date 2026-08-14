@@ -18,8 +18,8 @@ use re_sdk_types::archetypes;
 use re_sdk_types::components::Timestamp;
 
 use crate::{
-    ActiveStoreContext, BlueprintUndoState, RecordingOrTable, Route, StorageContext, StoreCache,
-    TableStore, TableStores, TimeControl, ViewClassRegistry,
+    ActiveStoreContext, BlueprintUndoState, RecordingOrLocalTable, Route, StorageContext,
+    StoreCache, TableStore, TableStores, TimeControl, ViewClassRegistry,
 };
 
 // ---
@@ -581,12 +581,12 @@ impl StoreHub {
             });
     }
 
-    pub fn remove(&mut self, entry: &RecordingOrTable) {
+    pub fn remove(&mut self, entry: &RecordingOrLocalTable) {
         match entry {
-            RecordingOrTable::Recording { store_id } => {
+            RecordingOrLocalTable::Recording { store_id } => {
                 self.remove_store(store_id);
             }
-            RecordingOrTable::Table { table_id } => {
+            RecordingOrLocalTable::LocalTable { table_id } => {
                 self.table_stores.remove(table_id);
             }
         }
@@ -605,7 +605,7 @@ impl StoreHub {
             })
             .collect();
         for store in stores_to_remove {
-            self.remove(&RecordingOrTable::Recording { store_id: store });
+            self.remove(&RecordingOrLocalTable::Recording { store_id: store });
         }
     }
 

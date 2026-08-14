@@ -11,7 +11,7 @@ use futures::{FutureExt as _, StreamExt as _, TryFutureExt as _};
 use re_async::AsyncRuntimeHandle;
 use re_dataframe_ui::{RequestedObject, StreamingCacheTableProvider};
 use re_datafusion::{SegmentTableProvider, TableEntryTableProvider, TableKind, TableQueryCaller};
-use re_log_types::{EntryId, EntryName, TableId};
+use re_log_types::{EntryId, EntryName};
 use re_protos::TypeConversionError;
 use re_protos::cloud::v1alpha1::ext::{DatasetEntry, EntryDetails, ProviderDetails, TableEntry};
 use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind};
@@ -375,13 +375,15 @@ fn start_streaming_segment_table_blueprint(
     let application_id = re_log_types::ApplicationId::from_entry_id(dataset_id);
     let blueprint_store_id =
         re_log_types::StoreId::random(re_log_types::StoreKind::Blueprint, application_id);
+    let table_ref = re_uri::TableReference::RedapEntry {
+        origin: origin.clone(),
+        entry_id: dataset_id,
+    };
 
     let (tx, rx) = re_redap_client::table_blueprint_log_channel(
         origin.clone(),
         blueprint_dataset,
         &blueprint_segment,
-        TableId::new(dataset_id.to_string()),
-        blueprint_store_id.clone(),
     );
 
     command_sender.send_system(SystemCommand::AddReceiver(rx));
@@ -391,6 +393,7 @@ fn start_streaming_segment_table_blueprint(
             client,
             tx,
             blueprint_store_id,
+            table_ref,
             blueprint_dataset,
             blueprint_segment,
         )
@@ -408,7 +411,7 @@ fn start_registered_table_blueprint_stream(
     runtime: &AsyncRuntimeHandle,
     command_sender: &CommandSender,
 ) {
-    let table_id = table_entry.details.id;
+    let table_entry_id = table_entry.details.id;
     let Some((blueprint_dataset, blueprint_segment)) =
         table_entry.table_details.default_blueprint()
     else {
@@ -416,16 +419,18 @@ fn start_registered_table_blueprint_stream(
     };
 
     #[expect(deprecated)]
-    let application_id = re_log_types::ApplicationId::from_entry_id(table_id);
+    let application_id = re_log_types::ApplicationId::from_entry_id(table_entry_id);
     let blueprint_store_id =
         re_log_types::StoreId::random(re_log_types::StoreKind::Blueprint, application_id);
+    let table_ref = re_uri::TableReference::RedapEntry {
+        origin: origin.clone(),
+        entry_id: table_entry_id,
+    };
 
     let (tx, rx) = re_redap_client::table_blueprint_log_channel(
         origin.clone(),
         blueprint_dataset,
         &blueprint_segment,
-        TableId::new(table_id.to_string()),
-        blueprint_store_id.clone(),
     );
 
     command_sender.send_system(SystemCommand::AddReceiver(rx));
@@ -435,6 +440,7 @@ fn start_registered_table_blueprint_stream(
             client,
             tx,
             blueprint_store_id,
+            table_ref,
             blueprint_dataset,
             blueprint_segment,
         )

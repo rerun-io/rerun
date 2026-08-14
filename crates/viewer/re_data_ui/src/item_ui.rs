@@ -641,7 +641,7 @@ pub fn entity_db_button_ui(
         ctx.selection_state().set_hovered(item.clone());
     }
 
-    let new_entry: re_viewer_context::RecordingOrTable = store_id.clone().into();
+    let new_entry: re_viewer_context::RecordingOrLocalTable = store_id.clone().into();
 
     response.context_menu(|ui| {
         let url = ViewerOpenUrl::from_route(ctx.store_hub(), &new_entry.route())

@@ -4,8 +4,8 @@ use ahash::HashMap;
 use re_chunk::TimelineName;
 use re_entity_db::LogSource;
 use re_log_channel::{
-    DataSourceMessage, DataSourceUiCommand, InspectError, RecordingOpenBehavior,
-    SaveScreenshotError,
+    BlueprintTarget, DataSourceMessage, DataSourceUiCommand, DefaultBlueprintRegistration,
+    InspectError, RecordingOpenBehavior, SaveScreenshotError,
 };
 use re_log_types::{LogMsg, StoreId, StoreKind, TableMsg, TimeReal, TimeType};
 use re_protos::common::v1alpha1::TimeType as ProtoTimeType;
@@ -176,21 +176,6 @@ impl App {
                         }
                     } else {
                         re_log::debug!("Data source {} has finished", msg.source);
-                        let LogSource::RedapGrpcStream {
-                            table_blueprint: Some(table_blueprint),
-                            ..
-                        } = channel_source.as_ref()
-                        else {
-                            continue;
-                        };
-
-                        if let Err(err) = self.table_blueprints.set_default_blueprint(
-                            &table_blueprint.table_id,
-                            &table_blueprint.blueprint_id,
-                            store_hub.store_bundle_mut(),
-                        ) {
-                            re_log::warn!("Failed to register table blueprint: {err}");
-                        }
                     }
                     continue;
                 }
@@ -203,7 +188,9 @@ impl App {
                 DataSourceMessage::RrdManifest(store_id, _)
                 | DataSourceMessage::RrdManifestComplete(store_id) => Some(store_id.clone()),
                 DataSourceMessage::LogMsg(log_msg) => Some(log_msg.store_id().clone()),
-                DataSourceMessage::TableMsg(_) | DataSourceMessage::UiCommand(_) => None,
+                DataSourceMessage::DefaultBlueprintRegistration(_)
+                | DataSourceMessage::TableMsg(_)
+                | DataSourceMessage::UiCommand(_) => None,
             };
 
             let maybe_new_store = msg_store_id
@@ -238,6 +225,10 @@ impl App {
                     self.receive_log_msg(&msg, store_hub, egui_ctx, &channel_source);
                 }
 
+                DataSourceMessage::DefaultBlueprintRegistration(registration) => {
+                    self.receive_default_blueprint_registration(registration, store_hub);
+                }
+
                 DataSourceMessage::TableMsg(table) => {
                     self.receive_table_msg(store_hub, egui_ctx, table);
                 }
@@ -267,6 +258,41 @@ impl App {
         // Run pending system commands in case any of the messages resulted in additional commands.
         // This avoid further frame delays on these commands.
         self.run_pending_system_commands(store_hub, egui_ctx);
+    }
+
+    fn receive_default_blueprint_registration(
+        &mut self,
+        registration: DefaultBlueprintRegistration,
+        store_hub: &mut StoreHub,
+    ) {
+        let DefaultBlueprintRegistration {
+            blueprint_id,
+            target,
+        } = registration;
+
+        match target {
+            BlueprintTarget::Application(app_id) => {
+                if blueprint_id.application_id() != &app_id {
+                    re_log::warn!(
+                        "Received a blueprint registration whose application target does not match its store ID"
+                    );
+                    return;
+                }
+                if let Err(err) = store_hub.set_default_blueprint_for_app(&blueprint_id) {
+                    re_log::warn!("Failed to register application blueprint: {err}");
+                }
+            }
+
+            BlueprintTarget::Table(table_ref) => {
+                if let Err(err) = self.table_blueprints.set_default_blueprint(
+                    &table_ref,
+                    &blueprint_id,
+                    store_hub.store_bundle_mut(),
+                ) {
+                    re_log::warn!("Failed to register table blueprint: {err}");
+                }
+            }
+        }
     }
 
     /// There is logic duplicated between this and [`Self::prefetch_chunks`].

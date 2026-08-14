@@ -177,7 +177,6 @@ async fn streaming_a_segment_delivers_its_asset_manifests() {
     let (tx, rx) = re_log_channel::log_channel(LogSource::RedapGrpcStream {
         uri: uri.clone(),
         open_behavior: RecordingOpenBehavior::Background,
-        table_blueprint: None,
     });
 
     re_redap_client::stream_blueprint_and_segment_from_server(
@@ -264,7 +263,6 @@ async fn asset_chunks_are_only_downloaded_once() {
     let (tx, _rx) = re_log_channel::log_channel(LogSource::RedapGrpcStream {
         uri: uri.clone(),
         open_behavior: RecordingOpenBehavior::Background,
-        table_blueprint: None,
     });
 
     // Streaming the segment delivers the asset's manifest, which is what marks the asset's chunks

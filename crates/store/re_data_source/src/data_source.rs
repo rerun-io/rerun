@@ -339,7 +339,6 @@ impl LogDataSource {
                     re_log_channel::log_channel(re_log_channel::LogSource::RedapGrpcStream {
                         uri: uri.clone(),
                         open_behavior,
-                        table_blueprint: None,
                     });
 
                 let connection = connection_registry.connection_handle(uri.origin.clone());

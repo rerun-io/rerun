@@ -10,6 +10,7 @@ use egui_kittest::kittest::Queryable as _;
 use re_async::AsyncRuntimeHandle;
 use re_dataframe_ui::{DataFusionTableWidget, SortBy, TableBlueprints};
 use re_test_context::TestContext;
+use re_viewer_context::TableReference;
 
 use common::run_async_harness;
 
@@ -23,15 +24,19 @@ async fn test_no_sort() {
         .setup_kittest_for_rendering_ui([600.0, 400.0])
         .build_ui(|ui| {
             test_context.run_recording(&ui.ctx().clone(), |ctx| {
-                DataFusionTableWidget::new(Arc::clone(&session_context), table_ref)
-                    .title("No sort")
-                    .show(
-                        ctx.app_ctx,
-                        &runtime_handle,
-                        ui,
-                        &TableBlueprints::default(),
-                        &mut test_context.view_states.lock(),
-                    );
+                DataFusionTableWidget::new(
+                    Arc::clone(&session_context),
+                    table_ref,
+                    TableReference::local("test_table"),
+                )
+                .title("No sort")
+                .show(
+                    ctx.app_ctx,
+                    &runtime_handle,
+                    ui,
+                    &TableBlueprints::default(),
+                    &mut test_context.view_states.lock(),
+                );
             });
         });
 
@@ -49,16 +54,20 @@ async fn test_ascending() {
         .setup_kittest_for_rendering_ui([600.0, 400.0])
         .build_ui(|ui| {
             test_context.run_recording(&ui.ctx().clone(), |ctx| {
-                DataFusionTableWidget::new(Arc::clone(&session_context), table_ref)
-                    .title("Ascending")
-                    .sort_by(SortBy::ascending("col".into()))
-                    .show(
-                        ctx.app_ctx,
-                        &runtime_handle,
-                        ui,
-                        &TableBlueprints::default(),
-                        &mut test_context.view_states.lock(),
-                    );
+                DataFusionTableWidget::new(
+                    Arc::clone(&session_context),
+                    table_ref,
+                    TableReference::local("test_table"),
+                )
+                .title("Ascending")
+                .sort_by(SortBy::ascending("col".into()))
+                .show(
+                    ctx.app_ctx,
+                    &runtime_handle,
+                    ui,
+                    &TableBlueprints::default(),
+                    &mut test_context.view_states.lock(),
+                );
             });
         });
 
@@ -76,16 +85,20 @@ async fn test_descending() {
         .setup_kittest_for_rendering_ui([600.0, 400.0])
         .build_ui(|ui| {
             test_context.run_recording(&ui.ctx().clone(), |ctx| {
-                DataFusionTableWidget::new(Arc::clone(&session_context), table_ref)
-                    .title("Descending")
-                    .sort_by(SortBy::descending("col".into()))
-                    .show(
-                        ctx.app_ctx,
-                        &runtime_handle,
-                        ui,
-                        &TableBlueprints::default(),
-                        &mut test_context.view_states.lock(),
-                    );
+                DataFusionTableWidget::new(
+                    Arc::clone(&session_context),
+                    table_ref,
+                    TableReference::local("test_table"),
+                )
+                .title("Descending")
+                .sort_by(SortBy::descending("col".into()))
+                .show(
+                    ctx.app_ctx,
+                    &runtime_handle,
+                    ui,
+                    &TableBlueprints::default(),
+                    &mut test_context.view_states.lock(),
+                );
             });
         });
 
@@ -103,15 +116,19 @@ async fn test_column_menu_button() {
         .setup_kittest_for_rendering_ui([600.0, 400.0])
         .build_ui(|ui| {
             test_context.run_recording(&ui.ctx().clone(), |ctx| {
-                DataFusionTableWidget::new(Arc::clone(&session_context), table_ref)
-                    .title("Column menu button")
-                    .show(
-                        ctx.app_ctx,
-                        &runtime_handle,
-                        ui,
-                        &TableBlueprints::default(),
-                        &mut test_context.view_states.lock(),
-                    );
+                DataFusionTableWidget::new(
+                    Arc::clone(&session_context),
+                    table_ref,
+                    TableReference::local("test_table"),
+                )
+                .title("Column menu button")
+                .show(
+                    ctx.app_ctx,
+                    &runtime_handle,
+                    ui,
+                    &TableBlueprints::default(),
+                    &mut test_context.view_states.lock(),
+                );
             });
         });
 

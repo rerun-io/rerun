@@ -43,6 +43,7 @@ mod fragment;
 mod origin;
 mod redap_uri;
 mod scheme;
+mod table_reference;
 mod time_selection;
 
 pub use self::dataset_hierarchy::{
@@ -58,6 +59,7 @@ pub use self::fragment::Fragment;
 pub use self::origin::Origin;
 pub use self::redap_uri::RedapUri;
 pub use self::scheme::Scheme;
+pub use self::table_reference::TableReference;
 pub use self::time_selection::TimeSelection;
 
 pub mod external {

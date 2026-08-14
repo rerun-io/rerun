@@ -7,7 +7,9 @@ use re_ui::loading_indicator::paint_loading_indicator_inside;
 use re_ui::{ReButton, Size, UiExt as _, Variant, icons};
 use re_uri::RedapUri;
 use re_viewer_context::open_url::ViewerOpenUrl;
-use re_viewer_context::{AppContext, RecordingOrTable, SystemCommand, SystemCommandSender as _};
+use re_viewer_context::{
+    AppContext, RecordingOrLocalTable, SystemCommand, SystemCommandSender as _,
+};
 
 /// Display an URL as an `Open` button (instead of spelling the full URL).
 ///
@@ -167,7 +169,7 @@ pub fn redap_uri_button(
                 // The recording is already loaded — close it and free its memory.
                 ctx.command_sender
                     .send_system(SystemCommand::CloseRecordingOrTable(
-                        RecordingOrTable::Recording { store_id },
+                        RecordingOrLocalTable::Recording { store_id },
                     ));
             } else {
                 // Still loading — cancel the connected receiver.

@@ -7,7 +7,7 @@ use datafusion::sql::TableReference;
 use egui::{Frame, Margin, RichText};
 use re_async::AsyncRuntimeHandle;
 use re_dataframe_ui::{ColumnBlueprint, default_display_name_for_column};
-use re_log_types::{EntityPathPart, EntryId, TableId};
+use re_log_types::{EntityPathPart, EntryId};
 use re_protos::cloud::v1alpha1::EntryKind;
 use re_protos::cloud::v1alpha1::ext::ScanSegmentTableDataframe;
 use re_quota_channel::send_crossbeam;
@@ -20,7 +20,8 @@ use re_ui::alert::Alert;
 use re_ui::{UiExt as _, icons};
 use re_uri::DATASET_HIERARCHY_SEPARATOR;
 use re_viewer_context::{
-    AppContext, CommandSender as ViewerCommandSender, EditRedapServerModalCommand, ViewStates,
+    AppContext, CommandSender as ViewerCommandSender, EditRedapServerModalCommand,
+    TableReference as ViewerTableReference, ViewStates,
 };
 
 use crate::context::Context;
@@ -225,51 +226,57 @@ impl Server {
 
         const ENTRY_LINK_COLUMN_NAME: &str = "link";
 
-        re_dataframe_ui::DataFusionTableWidget::new(self.tables_session_ctx.clone(), "__entries")
-            .title(self.origin().host.to_string())
-            .column_blueprint(|desc| {
-                let mut blueprint = ColumnBlueprint::default();
+        re_dataframe_ui::DataFusionTableWidget::new(
+            self.tables_session_ctx.clone(),
+            "__entries",
+            ViewerTableReference::RedapServerEntries {
+                origin: self.origin().clone(),
+            },
+        )
+        .title(self.origin().host.to_string())
+        .column_blueprint(|desc| {
+            let mut blueprint = ColumnBlueprint::default();
 
-                if let ColumnDescriptorRef::Component(component) = desc
-                    && component.component == "entry_kind"
-                {
-                    blueprint = blueprint.variant_ui(re_component_ui::REDAP_ENTRY_KIND_VARIANT);
-                }
+            if let ColumnDescriptorRef::Component(component) = desc
+                && component.component == "entry_kind"
+            {
+                blueprint = blueprint.variant_ui(re_component_ui::REDAP_ENTRY_KIND_VARIANT);
+            }
 
-                let column_sort_key = match desc.display_name().as_str() {
-                    "name" => 0,
-                    ENTRY_LINK_COLUMN_NAME => 1,
-                    _ => 2,
-                };
+            let column_sort_key = match desc.display_name().as_str() {
+                "name" => 0,
+                ENTRY_LINK_COLUMN_NAME => 1,
+                _ => 2,
+            };
 
-                blueprint = blueprint.sort_key(column_sort_key);
+            blueprint = blueprint.sort_key(column_sort_key);
 
-                // The link column renders a button with the resolved entry name, so the raw
-                // `name` column is redundant — hide it by default.
-                if desc.display_name().as_str() == "name" {
-                    blueprint = blueprint.default_visibility(false);
-                }
+            // The link column renders a button with the resolved entry name, so the raw
+            // `name` column is redundant — hide it by default.
+            if desc.display_name().as_str() == "name" {
+                blueprint = blueprint.default_visibility(false);
+            }
 
-                if desc.display_name().as_str() == ENTRY_LINK_COLUMN_NAME {
-                    blueprint = blueprint.variant_ui(re_component_ui::REDAP_URI_BUTTON_VARIANT);
-                }
+            if desc.display_name().as_str() == ENTRY_LINK_COLUMN_NAME {
+                blueprint = blueprint.variant_ui(re_component_ui::REDAP_URI_BUTTON_VARIANT);
+            }
 
-                blueprint
-            })
-            .generate_entry_links(
-                ENTRY_LINK_COLUMN_NAME.into(),
-                "id".into(),
-                self.origin().clone(),
-            )
-            .prefilter(
-                col("entry_kind")
-                    .in_list(
-                        vec![lit(EntryKind::Table as i32), lit(EntryKind::Dataset as i32)],
-                        false,
-                    )
-                    .and(col("name").not_eq(lit("__entries"))),
-            )
-            .show(app_ctx, &self.runtime, ui, table_blueprints, view_states);
+            blueprint
+        })
+        .generate_entry_links(
+            ENTRY_LINK_COLUMN_NAME.into(),
+            "id".into(),
+            self.origin().clone(),
+        )
+        .prefilter(
+            col("entry_kind")
+                .in_list(
+                    vec![lit(EntryKind::Table as i32), lit(EntryKind::Dataset as i32)],
+                    false,
+                )
+                .and(col("name").not_eq(lit("__entries"))),
+        )
+        .show(app_ctx, &self.runtime, ui, table_blueprints, view_states);
     }
 
     fn folder_ui(
@@ -351,10 +358,12 @@ impl Server {
         re_dataframe_ui::DataFusionTableWidget::new(
             self.tables_session_ctx.clone(),
             TableReference::bare(dataset.name().to_string()),
+            ViewerTableReference::RedapEntry {
+                origin: dataset.origin.clone(),
+                entry_id: dataset.id(),
+            },
         )
-        .table_id(TableId::new(dataset.id().to_string()))
         .title(dataset.name().to_string())
-        .url(re_uri::EntryUri::new(dataset.origin.clone(), dataset.id()).to_string())
         .column_blueprint(|desc| {
             let mut name = default_display_name_for_column(desc);
 
@@ -411,10 +420,12 @@ impl Server {
         re_dataframe_ui::DataFusionTableWidget::new(
             self.tables_session_ctx.clone(),
             TableReference::bare(table.name().to_string()),
+            ViewerTableReference::RedapEntry {
+                origin: table.origin.clone(),
+                entry_id: table.id(),
+            },
         )
-        .table_id(TableId::new(table.id().to_string()))
         .title(table.name().to_string())
-        .url(re_uri::EntryUri::new(table.origin.clone(), table.id()).to_string())
         .show(app_ctx, &self.runtime, ui, table_blueprints, view_states);
     }
 }

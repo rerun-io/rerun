@@ -13,6 +13,7 @@ use egui_kittest::kittest::Queryable as _;
 use re_async::AsyncRuntimeHandle;
 use re_dataframe_ui::{DataFusionTableWidget, TableBlueprints};
 use re_test_context::TestContext;
+use re_viewer_context::TableReference;
 
 use common::run_async_harness;
 
@@ -36,15 +37,19 @@ async fn test_cards_view() {
             .with_theme(theme)
             .build_ui(|ui| {
                 test_context.run_recording(&ui.ctx().clone(), |ctx| {
-                    DataFusionTableWidget::new(Arc::clone(&session_context), table_ref)
-                        .title("Cards view test")
-                        .show(
-                            ctx.app_ctx,
-                            &runtime_handle,
-                            ui,
-                            &TableBlueprints::default(),
-                            &mut test_context.view_states.lock(),
-                        );
+                    DataFusionTableWidget::new(
+                        Arc::clone(&session_context),
+                        table_ref,
+                        TableReference::local("test_table"),
+                    )
+                    .title("Cards view test")
+                    .show(
+                        ctx.app_ctx,
+                        &runtime_handle,
+                        ui,
+                        &TableBlueprints::default(),
+                        &mut test_context.view_states.lock(),
+                    );
                 });
             });
 
@@ -78,15 +83,19 @@ async fn test_cards_view_resize() {
             .setup_kittest_for_rendering_ui([width, 600.0])
             .build_ui(|ui| {
                 test_context.run_recording(&ui.ctx().clone(), |ctx| {
-                    DataFusionTableWidget::new(Arc::clone(&session_context), table_ref)
-                        .title("Cards resize test")
-                        .show(
-                            ctx.app_ctx,
-                            &runtime_handle,
-                            ui,
-                            &TableBlueprints::default(),
-                            &mut test_context.view_states.lock(),
-                        );
+                    DataFusionTableWidget::new(
+                        Arc::clone(&session_context),
+                        table_ref,
+                        TableReference::local("test_table"),
+                    )
+                    .title("Cards resize test")
+                    .show(
+                        ctx.app_ctx,
+                        &runtime_handle,
+                        ui,
+                        &TableBlueprints::default(),
+                        &mut test_context.view_states.lock(),
+                    );
                 });
             });
 
@@ -131,16 +140,19 @@ async fn test_cards_view_flagging() {
             .with_theme(theme)
             .build_ui(|ui| {
                 test_context.run_recording(&ui.ctx().clone(), |ctx| {
-                    DataFusionTableWidget::new(Arc::clone(&session_context), table_ref)
-                        .title("Flag test")
-                        .url(remote_uri.to_string())
-                        .show(
-                            ctx.app_ctx,
-                            &runtime_handle,
-                            ui,
-                            &TableBlueprints::default(),
-                            &mut test_context.view_states.lock(),
-                        );
+                    DataFusionTableWidget::new(
+                        Arc::clone(&session_context),
+                        table_ref,
+                        TableReference::from(remote_uri.clone()),
+                    )
+                    .title("Flag test")
+                    .show(
+                        ctx.app_ctx,
+                        &runtime_handle,
+                        ui,
+                        &TableBlueprints::default(),
+                        &mut test_context.view_states.lock(),
+                    );
                 });
             });
 
@@ -180,15 +192,19 @@ async fn test_cards_view_non_uniform_cards() {
         .setup_kittest_for_rendering_ui([800.0, 600.0])
         .build_ui(|ui| {
             test_context.run_recording(&ui.ctx().clone(), |ctx| {
-                DataFusionTableWidget::new(Arc::clone(&session_context), table_ref)
-                    .title("Non-uniform cards")
-                    .show(
-                        ctx.app_ctx,
-                        &runtime_handle,
-                        ui,
-                        &TableBlueprints::default(),
-                        &mut test_context.view_states.lock(),
-                    );
+                DataFusionTableWidget::new(
+                    Arc::clone(&session_context),
+                    table_ref,
+                    TableReference::local("test_table"),
+                )
+                .title("Non-uniform cards")
+                .show(
+                    ctx.app_ctx,
+                    &runtime_handle,
+                    ui,
+                    &TableBlueprints::default(),
+                    &mut test_context.view_states.lock(),
+                );
             });
         });
 

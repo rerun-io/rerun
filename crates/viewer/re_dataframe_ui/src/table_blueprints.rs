@@ -1,6 +1,7 @@
 use ahash::HashMap;
 use re_entity_db::StoreBundle;
-use re_log_types::{StoreId, StoreKind, TableId};
+use re_log_types::{StoreId, StoreKind};
+use re_viewer_context::TableReference;
 
 #[derive(Debug, thiserror::Error)]
 pub enum TableBlueprintError {
@@ -20,21 +21,21 @@ pub enum TableBlueprintError {
 /// An active blueprint is cloned from it before it is exposed to the table widget.
 #[derive(Default)]
 pub struct TableBlueprints {
-    default_by_table_id: HashMap<TableId, StoreId>,
-    active_by_table_id: HashMap<TableId, StoreId>,
+    default_by_table_ref: HashMap<TableReference, StoreId>,
+    active_by_table_ref: HashMap<TableReference, StoreId>,
 
     /// Latest row ID of each active blueprint when it was cloned from its default.
     ///
     /// A different latest row ID means the active blueprint has been edited and must not be
     /// replaced when a new default arrives.
-    active_baseline: HashMap<TableId, Option<re_chunk_store::external::re_chunk::RowId>>,
+    active_baseline: HashMap<TableReference, Option<re_chunk_store::external::re_chunk::RowId>>,
 }
 
 impl TableBlueprints {
     /// Register a table's default blueprint and update its active clone when it has not changed.
     pub fn set_default_blueprint(
         &mut self,
-        table_id: &TableId,
+        table_ref: &TableReference,
         store_id: &StoreId,
         stores: &mut StoreBundle,
     ) -> Result<(), TableBlueprintError> {
@@ -47,57 +48,57 @@ impl TableBlueprints {
 
         // Set the new default and remove the old one if it is different.
         if let Some(old_default) = self
-            .default_by_table_id
-            .insert(table_id.clone(), store_id.clone())
+            .default_by_table_ref
+            .insert(table_ref.clone(), store_id.clone())
             && old_default != *store_id
         {
             self.remove_if_orphaned(stores, &old_default);
         }
 
         // Replace the currently active blueprint unless we already have edits.
-        let replace_active = match self.active_by_table_id.get(table_id) {
-            Some(active_id) => !self.active_is_modified(table_id, active_id, stores),
+        let replace_active = match self.active_by_table_ref.get(table_ref) {
+            Some(active_id) => !self.active_is_modified(table_ref, active_id, stores),
             None => true,
         };
         if replace_active {
-            self.clone_default_as_active(table_id, stores)?;
+            self.clone_default_as_active(table_ref, stores)?;
         }
 
         Ok(())
     }
 
-    pub fn default_id(&self, table_id: &TableId) -> Option<&StoreId> {
-        self.default_by_table_id.get(table_id)
+    pub fn default_id(&self, table_ref: &TableReference) -> Option<&StoreId> {
+        self.default_by_table_ref.get(table_ref)
     }
 
-    pub fn active_id(&self, table_id: &TableId) -> Option<&StoreId> {
-        self.active_by_table_id.get(table_id)
+    pub fn active_id(&self, table_ref: &TableReference) -> Option<&StoreId> {
+        self.active_by_table_ref.get(table_ref)
     }
 
     /// Reset an active table blueprint to the current default.
     pub fn reset(
         &mut self,
-        table_id: &TableId,
+        table_ref: &TableReference,
         stores: &mut StoreBundle,
     ) -> Result<(), TableBlueprintError> {
-        if self.default_id(table_id).is_some() {
-            self.clone_default_as_active(table_id, stores)?;
+        if self.default_id(table_ref).is_some() {
+            self.clone_default_as_active(table_ref, stores)?;
         } else {
-            if let Some(old_active) = self.active_by_table_id.remove(table_id) {
+            if let Some(old_active) = self.active_by_table_ref.remove(table_ref) {
                 self.remove_if_orphaned(stores, &old_active);
             }
-            self.active_baseline.remove(table_id);
+            self.active_baseline.remove(table_ref);
         }
 
         Ok(())
     }
 
     /// Removes all associated blueprints for a given table.
-    pub fn remove_table(&mut self, table_id: &TableId, stores: &mut StoreBundle) {
-        self.active_baseline.remove(table_id);
+    pub fn remove_table(&mut self, table_ref: &TableReference, stores: &mut StoreBundle) {
+        self.active_baseline.remove(table_ref);
         let old_ids = [
-            self.default_by_table_id.remove(table_id),
-            self.active_by_table_id.remove(table_id),
+            self.default_by_table_ref.remove(table_ref),
+            self.active_by_table_ref.remove(table_ref),
         ];
         for id in old_ids.into_iter().flatten() {
             self.remove_if_orphaned(stores, &id);
@@ -108,8 +109,8 @@ impl TableBlueprints {
     pub fn clear(&mut self, stores: &mut StoreBundle) {
         self.active_baseline.clear();
         let old_ids: Vec<_> = std::iter::chain(
-            self.default_by_table_id.drain().map(|(_, id)| id),
-            self.active_by_table_id.drain().map(|(_, id)| id),
+            self.default_by_table_ref.drain().map(|(_, id)| id),
+            self.active_by_table_ref.drain().map(|(_, id)| id),
         )
         .collect();
 
@@ -120,24 +121,24 @@ impl TableBlueprints {
 
     /// Removes all active clones and replaces them with fresh clones of their defaults.
     pub fn clear_all_cloned_blueprints(&mut self, stores: &mut StoreBundle) {
-        let table_ids: Vec<_> = self.default_by_table_id.keys().cloned().collect();
-        let old_active_ids: Vec<_> = self.active_by_table_id.drain().map(|(_, id)| id).collect();
+        let table_refs: Vec<_> = self.default_by_table_ref.keys().cloned().collect();
+        let old_active_ids: Vec<_> = self.active_by_table_ref.drain().map(|(_, id)| id).collect();
         self.active_baseline.clear();
 
         for id in old_active_ids {
             self.remove_if_orphaned(stores, &id);
         }
 
-        for table_id in table_ids {
-            if let Err(err) = self.clone_default_as_active(&table_id, stores) {
+        for table_ref in table_refs {
+            if let Err(err) = self.clone_default_as_active(&table_ref, stores) {
                 re_log::warn!("Failed to reset table blueprint: {err}");
             }
         }
     }
 
     fn references_store(&self, store_id: &StoreId) -> bool {
-        self.default_by_table_id.values().any(|id| id == store_id)
-            || self.active_by_table_id.values().any(|id| id == store_id)
+        self.default_by_table_ref.values().any(|id| id == store_id)
+            || self.active_by_table_ref.values().any(|id| id == store_id)
     }
 
     /// Removes a store if it is not referenced by any table blueprint.
@@ -149,7 +150,7 @@ impl TableBlueprints {
 
     fn active_is_modified(
         &self,
-        table_id: &TableId,
+        table_ref: &TableReference,
         active_id: &StoreId,
         stores: &StoreBundle,
     ) -> bool {
@@ -157,7 +158,7 @@ impl TableBlueprints {
             return false;
         };
         self.active_baseline
-            .get(table_id)
+            .get(table_ref)
             .is_some_and(|row_id| active.latest_row_id() != *row_id)
     }
 
@@ -165,10 +166,10 @@ impl TableBlueprints {
     /// Does nothing if there is no default for the given table.
     fn clone_default_as_active(
         &mut self,
-        table_id: &TableId,
+        table_ref: &TableReference,
         stores: &mut StoreBundle,
     ) -> Result<(), TableBlueprintError> {
-        let Some(source_store_id) = self.default_id(table_id).cloned() else {
+        let Some(source_store_id) = self.default_id(table_ref).cloned() else {
             return Ok(());
         };
 
@@ -180,13 +181,14 @@ impl TableBlueprints {
         let new_blueprint = source.clone_with_new_id(new_store_id.clone())?;
         let latest_row_id = new_blueprint.latest_row_id();
         let old_active = self
-            .active_by_table_id
-            .insert(table_id.clone(), new_store_id.clone());
+            .active_by_table_ref
+            .insert(table_ref.clone(), new_store_id.clone());
         if let Some(old_active) = old_active {
             self.remove_if_orphaned(stores, &old_active);
         }
 
-        self.active_baseline.insert(table_id.clone(), latest_row_id);
+        self.active_baseline
+            .insert(table_ref.clone(), latest_row_id);
         stores.insert(new_blueprint);
 
         Ok(())
@@ -199,8 +201,9 @@ mod tests {
 
     use re_chunk_store::external::re_chunk::Chunk;
     use re_entity_db::StoreBundle;
-    use re_log_types::{ApplicationId, StoreId, StoreKind, TableId, TimePoint};
+    use re_log_types::{ApplicationId, StoreId, StoreKind, TimePoint};
     use re_sdk_types::archetypes::Points2D;
+    use re_viewer_context::TableReference;
 
     use super::TableBlueprints;
 
@@ -232,13 +235,13 @@ mod tests {
     fn registration_clones_default_and_reset_reclones() {
         let mut stores = StoreBundle::default();
         let default_id = default_store(&mut stores, "default");
-        let table_id = "table".into();
+        let table_ref = TableReference::local("test_table");
         let mut blueprints = TableBlueprints::default();
 
         blueprints
-            .set_default_blueprint(&table_id, &default_id, &mut stores)
+            .set_default_blueprint(&table_ref, &default_id, &mut stores)
             .unwrap();
-        let active_id = blueprints.active_id(&table_id).unwrap().clone();
+        let active_id = blueprints.active_id(&table_ref).unwrap().clone();
         assert_ne!(active_id, default_id);
         assert_eq!(
             stores.get(&active_id).unwrap().cloned_from(),
@@ -250,11 +253,11 @@ mod tests {
             .unwrap()
             .add_chunk(&dummy_chunk())
             .unwrap();
-        blueprints.reset(&table_id, &mut stores).unwrap();
+        blueprints.reset(&table_ref, &mut stores).unwrap();
         assert!(stores.get(&active_id).is_none());
         assert_eq!(
             stores
-                .get(blueprints.active_id(&table_id).unwrap())
+                .get(blueprints.active_id(&table_ref).unwrap())
                 .unwrap()
                 .cloned_from(),
             Some(&default_id)
@@ -267,8 +270,8 @@ mod tests {
         let mut stores = StoreBundle::default();
         let first_default = default_store(&mut stores, "first-default");
         let second_default = default_store(&mut stores, "second-default");
-        let first_table = TableId::from("first-table");
-        let second_table = TableId::from("second-table");
+        let first_table = TableReference::local("first-table");
+        let second_table = TableReference::local("second-table");
         let mut blueprints = TableBlueprints::default();
         blueprints
             .set_default_blueprint(&first_table, &first_default, &mut stores)
@@ -308,22 +311,22 @@ mod tests {
         let mut stores = StoreBundle::default();
         let first_default = default_store(&mut stores, "first");
         let second_default = default_store(&mut stores, "second");
-        let table_id = TableId::from("table");
+        let table_ref = TableReference::local("test_table");
         let mut blueprints = TableBlueprints::default();
         blueprints
-            .set_default_blueprint(&table_id, &first_default, &mut stores)
+            .set_default_blueprint(&table_ref, &first_default, &mut stores)
             .unwrap();
-        let active_id = blueprints.active_id(&table_id).unwrap().clone();
+        let active_id = blueprints.active_id(&table_ref).unwrap().clone();
         stores
             .get_mut(&active_id)
             .unwrap()
             .add_chunk(&dummy_chunk())
             .unwrap();
         blueprints
-            .set_default_blueprint(&table_id, &second_default, &mut stores)
+            .set_default_blueprint(&table_ref, &second_default, &mut stores)
             .unwrap();
         assert!(stores.get(&first_default).is_none());
-        assert_eq!(blueprints.active_id(&table_id), Some(&active_id));
+        assert_eq!(blueprints.active_id(&table_ref), Some(&active_id));
     }
 
     /// Removing one table must not delete a default store that another table still references.
@@ -332,8 +335,8 @@ mod tests {
         let mut stores = StoreBundle::default();
         let default_id = default_store(&mut stores, "shared");
         let mut blueprints = TableBlueprints::default();
-        let first = TableId::from("first");
-        let second = TableId::from("second");
+        let first = TableReference::local("first");
+        let second = TableReference::local("second");
 
         blueprints
             .set_default_blueprint(&first, &default_id, &mut stores)
