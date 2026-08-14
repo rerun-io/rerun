@@ -48,7 +48,7 @@ tests = [
   "syrupy==5.0.0",
   "tomli==2.0.1",
   "torch>=2.5", # Needs numpy 2 support
-  "torchvision", # Imported at top of `rerun.experimental.dataloader._decoders`, so needed to import the dataloader module at all
+  "torchvision", # Imported at top of `rerun.experimental.dataloader.decoders`, so needed to import the dataloader module at all
   "datafusion==54.0.0",
 ]
 notebook = ["rerun-notebook==0.37.0-alpha.1+dev"]

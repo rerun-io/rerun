@@ -1,4 +1,4 @@
-"""Reconstruct fetch chunks and decode targets from a manifest's frozen rows."""
+"""Reconstruct fetch blocks and decode targets from a manifest's frozen rows."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     import pyarrow as pa
 
     from .._config import Field
-    from .._decoders import ColumnDecoder
+    from ..decoders import ColumnDecoder
 
 
 def targets_from_rows(

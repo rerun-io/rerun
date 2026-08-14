@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from rerun.catalog._entry import DatasetEntry
     from rerun.experimental._selector import Selector
 
-    from ._decoders import ColumnDecoder
+    from .decoders import ColumnDecoder
 
 
 @dataclass(frozen=True)

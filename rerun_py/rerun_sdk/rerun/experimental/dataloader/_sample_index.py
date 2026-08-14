@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import warnings
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypeAlias
 
 import numpy as np
 import pyarrow as pa
@@ -15,6 +15,14 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
 
     from ._config import DataSource, Field
+
+IndexValue: TypeAlias = int | np.datetime64 | np.timedelta64
+"""
+A concrete index value on a timeline.
+
+A plain `int` for integer timelines, a `datetime64[ns]` for timestamp
+timelines, and a `timedelta64[ns]` for duration timelines.
+"""
 
 
 def _ns_to_datetime64(ns: int) -> np.datetime64:
@@ -27,7 +35,7 @@ def _ns_to_timedelta64(ns: int) -> np.timedelta64:
     return np.timedelta64(ns, "ns")
 
 
-def _ns_to_dtype(ns: int, ns_dtype: str | None) -> int | np.datetime64 | np.timedelta64:
+def _ns_to_dtype(ns: int, ns_dtype: str | None) -> IndexValue:
     """Convert a nanosecond count to the index-typed scalar (`int`, `datetime64`, or `timedelta64`)."""
     if ns_dtype == "datetime64[ns]":
         return _ns_to_datetime64(ns)
@@ -130,7 +138,7 @@ class SampleIndex:
         """Cumulative offsets: `segments[i]` covers global indices `[segment_offsets[i], segment_offsets[i + 1])`."""
         return self._cumulative_sizes
 
-    def global_to_local(self, idx: int) -> tuple[SegmentMetadata, int | np.datetime64 | np.timedelta64]:
+    def global_to_local(self, idx: int) -> tuple[SegmentMetadata, IndexValue]:
         """
         Map a global index `[0, total_samples)` to `(segment, concrete_idx_value)`.
 
@@ -146,7 +154,7 @@ class SampleIndex:
         seg = self._segments[seg_idx]
         return seg, self.resolve_local_index(seg, pos)
 
-    def resolve_local_index(self, seg: SegmentMetadata, pos: int) -> int | np.datetime64 | np.timedelta64:
+    def resolve_local_index(self, seg: SegmentMetadata, pos: int) -> IndexValue:
         """
         Convert a positional index within `seg` to a concrete index value.
 

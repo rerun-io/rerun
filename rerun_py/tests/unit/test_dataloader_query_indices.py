@@ -1,4 +1,4 @@
-"""Tests for the query-shaping helpers `_build_query_indices` and `_read_groups` in `rerun.experimental.dataloader._utils`."""
+"""Tests for the query-shaping helpers `_build_query_indices` and `_build_query_plans`."""
 
 from __future__ import annotations
 
@@ -6,9 +6,9 @@ import numpy as np
 import pyarrow as pa
 import pytest
 from rerun.experimental.dataloader import Field
-from rerun.experimental.dataloader._decoders import ImageDecoder, NumericDecoder, VideoFrameDecoder
 from rerun.experimental.dataloader._sample_index import SampleIndex, SegmentMetadata
-from rerun.experimental.dataloader._utils import Target, _build_query_indices, _read_groups
+from rerun.experimental.dataloader._utils import Target, _build_query_indices, _build_query_plans
+from rerun.experimental.dataloader.decoders import ImageDecoder, NumericDecoder, VideoFrameDecoder
 
 
 def _segment(segment_id: str, index_start: int, num_samples: int, ns_per_sample: int) -> SegmentMetadata:
@@ -70,12 +70,30 @@ def test_build_query_indices_integer_returns_ndarray() -> None:
 
 
 def _grouping(fields: dict[str, Field]) -> list[list[str]]:
-    """The field keys of each read group, sorted (inner and outer) for stable comparison."""
+    """The field keys of each query plan, sorted (inner and outer) for stable comparison."""
     decoders = {key: field.decode for key, field in fields.items()}
-    groups: list[list[str]] = []
-    for _fill_latest_at, group_fields in _read_groups(fields, decoders):
-        groups.append(sorted(group_fields))
-    return sorted(groups)
+    plans = _build_query_plans([], fields, decoders, sample_index=SampleIndex([]))
+    return sorted(sorted(plan.fields) for plan in plans)
+
+
+def test_query_plan_contains_resolved_indices() -> None:
+    sample_index = SampleIndex([SegmentMetadata(segment_id="seg-a", index_start=10, index_end=20, num_samples=11)])
+    targets = _targets(sample_index, 1)
+    fields = {
+        "action": Field(path="/action:Scalars:scalars", decode=NumericDecoder(), window=(0, 2)),
+    }
+
+    plans = _build_query_plans(
+        targets,
+        fields,
+        {"action": fields["action"].decode},
+        sample_index=sample_index,
+    )
+
+    assert len(plans) == 1
+    values = plans[0].query_indices["seg-a"]
+    assert isinstance(values, np.ndarray)
+    assert values.tolist() == [10, 11, 12]
 
 
 def test_windowed_field_does_not_share_group_with_unwindowed() -> None:

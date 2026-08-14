@@ -19,7 +19,9 @@ import torch
 from av.bitstream import BitStreamFilterContext
 from rerun.experimental.dataloader import (
     DataSource,
+    DecodeRequest,
     Field,
+    FieldBatch,
     FixedRateSampling,
     NumericDecoder,
     RerunMapDataset,
@@ -304,14 +306,18 @@ def test_decode_matrix(tmp_path: Path, codec: str, gop_size: int, keyframe_loggi
 DEDUP_GOP_SIZE = 5  # Multiple GOPs over NUM_FRAMES, so a mid-GOP target has P-frames.
 
 
-def _blob_column(samples: list[bytes]) -> pa.ChunkedArray:
-    """Wrap encoded samples as the `list<binary>` column shape the decoder expects."""
-    return pa.chunked_array([pa.array([[sample] for sample in samples], type=pa.list_(pa.binary()))])
-
-
 def _decode_window(decoder: VideoFrameDecoder, samples: list[bytes], target: int) -> torch.Tensor | None:
-    """Decode a window of encoded samples through the public `VideoFrameDecoder.decode`."""
-    return decoder.decode(_blob_column(samples), target, "segment")
+    """Decode a window of encoded samples through `VideoFrameDecoder.decode`, returning the last sample's frame."""
+    del target  # informational; the decoded frame is always the window's last sample
+    column = pa.array([[sample] for sample in samples], type=pa.list_(pa.binary()))
+    batch = FieldBatch(column=column)
+    request = DecodeRequest(
+        segment_id="segment",
+        index_value=len(samples) - 1,
+        rows=range(len(samples)),
+        starts_at_keyframe=True,
+    )
+    return decoder.decode(batch, [request])[0]
 
 
 def test_duplicate_window_matches_clean_decode(tmp_path: Path) -> None:

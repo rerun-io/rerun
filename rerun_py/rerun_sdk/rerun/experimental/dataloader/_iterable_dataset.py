@@ -12,9 +12,8 @@ import torch.utils.data
 from rerun._tracing import set_current_span_attributes, tracing_scope
 
 from ._sample_index import FixedRateSampling, SampleIndex
-from ._shuffle import SampleShuffle, ShuffleStrategy, _contiguous_shard, _fetch_chunks
+from ._shuffle import SampleShuffle, ShuffleStrategy, _contiguous_shard, _fetch_blocks
 from ._utils import (
-    Target,
     _decode_iter,
     _decode_pool,
     _fetch_arrow,
@@ -33,7 +32,8 @@ if TYPE_CHECKING:
     import pyarrow as pa
 
     from ._config import DataSource, Field
-    from ._decoders import ColumnDecoder
+    from ._utils import FetchedBlock
+    from .decoders import ColumnDecoder
     from .manifest._manifest import Manifest
 
 
@@ -63,7 +63,7 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tens
     """
     Iterable dataset backed by a catalog server.
 
-    Fetches `fetch_size` samples per server query and yields individual
+    Fetches `fetch_block_size` samples per server query and yields individual
     samples, so per-query overhead is amortized across many samples while
     the `DataLoader` controls the training batch size independently.
 
@@ -84,7 +84,7 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tens
         Required when `index` is a timestamp timeline; ignored for
         integer indices. Pass [`FixedRateSampling`][rerun.experimental.dataloader.FixedRateSampling]
         to sample on a fixed grid (e.g. 30 Hz).
-    fetch_size
+    fetch_block_size
         Number of samples to fetch per server query. Larger values
         amortize network overhead but use more memory. Defaults to 128.
     shuffle_strategy
@@ -106,7 +106,7 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tens
         fields: dict[str, Field],
         *,
         timeline_sampling: FixedRateSampling | None = None,
-        fetch_size: int = 128,
+        fetch_block_size: int = 128,
         shuffle_strategy: ShuffleStrategy | None = None,
         decode_threads: int | None = None,
     ) -> None:
@@ -116,7 +116,7 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tens
 
         self._fields = fields
         self._index = index
-        self._fetch_size = fetch_size
+        self._fetch_block_size = fetch_block_size
         self._decode_threads = _resolve_decode_threads(decode_threads, fields)
 
         self._shuffle_strategy = shuffle_strategy if shuffle_strategy is not None else SampleShuffle()
@@ -202,8 +202,8 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tens
         """
         Yield individual samples as they are decoded.
 
-        The arrow fetch for chunk N+1 runs on a background thread while
-        chunk N is being decoded, so samples stream out during decode.
+        The arrow fetch for block N+1 runs on a background thread while
+        block N is being decoded, so samples stream out during decode.
         When the strategy defines an emission buffer, decoded samples pass
         through that buffer before being yielded.
         """
@@ -214,10 +214,10 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tens
             view, decoders = self._connection.ensure()
 
             indices, block_bounds = self._worker_order()
-            chunks = _fetch_chunks(indices, block_bounds, fetch_size=self._fetch_size)
+            blocks = _fetch_blocks(indices, block_bounds, fetch_block_size=self._fetch_block_size)
 
             set_current_span_attributes({
-                "rerun.dataloader.iter.num_chunks": len(chunks),
+                "rerun.dataloader.iter.num_blocks": len(blocks),
                 "rerun.dataloader.shuffle_strategy": self._shuffle_strategy.RECIPE_TAG,
             })
 
@@ -231,7 +231,7 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tens
             )
 
             samples = _interleave_fetch_and_decode(
-                chunks, fetch=fetch, decode=functools.partial(self._decode, decoders, executor)
+                blocks, fetch=fetch, decode=functools.partial(self._decode, decoders, executor)
             )
             if self._shuffle_buffer is not None:
                 distributed = torch.distributed.is_available() and torch.distributed.is_initialized()
@@ -266,24 +266,24 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tens
             self._manifest.validate_topology(world_size, num_workers)
             # Read this worker's shard once (a disk hit for parquet-backed manifests) and
             # derive both the fetch schedule and the emission order from it.
-            chunks, emit_order = self._manifest.worker_plan(rank, worker)
-            if not chunks:
+            blocks, emit_order = self._manifest.worker_plan(rank, worker)
+            if not blocks:
                 set_current_span_attributes({
                     "rerun.dataloader.iter.num_samples_yielded": 0,
-                    "rerun.dataloader.iter.num_chunks": len(chunks),
+                    "rerun.dataloader.iter.num_blocks": len(blocks),
                 })
                 return
 
             set_current_span_attributes({
-                "rerun.dataloader.iter.num_chunks": len(chunks),
+                "rerun.dataloader.iter.num_blocks": len(blocks),
                 "rerun.dataloader.shuffle_strategy": self._manifest.metadata.shuffle_strategy,
             })
 
             # Query construction only needs the grid step / dtype, not the full sample space.
             sample_index = SampleIndex([], ns_per_sample=meta.ns_per_sample, ns_dtype=meta.ns_dtype)
 
-            def fetch(chunk: pa.Table) -> tuple[list[Target], dict[str, dict[str, pa.Table]]]:
-                targets = targets_from_rows(chunk, fields=self._fields, decoders=decoders, ns_dtype=meta.ns_dtype)
+            def fetch(block: pa.Table) -> FetchedBlock:
+                targets = targets_from_rows(block, fields=self._fields, decoders=decoders, ns_dtype=meta.ns_dtype)
                 return _fetch_targets(
                     targets,
                     view=view,
@@ -294,7 +294,7 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tens
                 )
 
             samples = _interleave_fetch_and_decode(
-                chunks, fetch=fetch, decode=functools.partial(self._decode, decoders, executor)
+                blocks, fetch=fetch, decode=functools.partial(self._decode, decoders, executor)
             )
             yield from _count_yields(_replay(samples, emit_order))
 
@@ -302,13 +302,11 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tens
         self,
         decoders: dict[str, ColumnDecoder],
         executor: ThreadPoolExecutor | None,
-        fetched: tuple[list[Target], dict[str, dict[str, pa.Table]]],
+        fetched: FetchedBlock,
     ) -> Iterator[dict[str, torch.Tensor | None]]:
-        """Decode one fetched chunk into samples (shared by the catalog and manifest paths)."""
-        targets, seg_tables = fetched
+        """Decode one fetched block into samples (shared by the catalog and manifest paths)."""
         return _decode_iter(
-            targets=targets,
-            seg_tables=seg_tables,
+            fetched=fetched,
             index=self._index,
             fields=self._fields,
             decoders=decoders,
@@ -319,7 +317,7 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tens
         """Return this worker's shard of the epoch's `(indices, block_bounds)`, in fetch order."""
         indices, block_bounds = self._shuffle_strategy.epoch_order(
             self._sample_index,
-            fetch_size=self._fetch_size,
+            fetch_block_size=self._fetch_block_size,
             seed=self._epoch,
         )
 

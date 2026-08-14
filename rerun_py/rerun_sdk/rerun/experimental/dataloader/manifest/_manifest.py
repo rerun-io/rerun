@@ -58,7 +58,7 @@ class ManifestMeta:
     ns_dtype: str | None
     recipe: dict[str, Any]
     required_fields: list[str]
-    fetch_size: int
+    fetch_block_size: int
     buffer_size: int | None
     min_fill: int | None
     num_ranks: int
@@ -84,7 +84,7 @@ def _metadata_from_schema(schema: pa.Schema) -> ManifestMeta:
         ns_dtype=(m.get("ns_dtype") if m.get("ns_dtype", "None") != "None" else None),
         recipe=json.loads(m.get("recipe", "{}")),
         required_fields=json.loads(m.get("required_fields", "[]")),
-        fetch_size=int(m.get("fetch_size", "0")),
+        fetch_block_size=int(m.get("fetch_block_size", "0")),
         buffer_size=_opt_int("buffer_size"),
         min_fill=_opt_int("min_fill"),
         num_ranks=int(m.get("num_ranks", "1")),
@@ -105,7 +105,7 @@ def _metadata_to_arrow(meta: ManifestMeta) -> dict[str, str]:
         "ns_dtype": meta.ns_dtype,
         "recipe": json.dumps(meta.recipe),
         "required_fields": json.dumps(meta.required_fields),
-        "fetch_size": meta.fetch_size,
+        "fetch_block_size": meta.fetch_block_size,
         "buffer_size": meta.buffer_size,
         "min_fill": meta.min_fill,
         "num_ranks": meta.num_ranks,
@@ -200,7 +200,7 @@ class Manifest:
         fields: dict[str, Field],
         *,
         timeline_sampling: FixedRateSampling | None = None,
-        fetch_size: int = 128,
+        fetch_block_size: int = 128,
         num_ranks: int = 1,
         num_workers_per_rank: int = 1,
         required_fields: list[str] | None = None,
@@ -217,7 +217,7 @@ class Manifest:
         [`write_parquet`][rerun.experimental.dataloader.Manifest.write_parquet].
 
         See [`RerunIterableDataset`][rerun.experimental.dataloader.RerunIterableDataset] for
-        `source` / `index` / `fields` / `timeline_sampling`. `fetch_size` is the co-fetch /
+        `source` / `index` / `fields` / `timeline_sampling`. `fetch_block_size` is the co-fetch /
         co-decode block size and `num_ranks` / `num_workers_per_rank` freeze the `(rank, worker)`
         assignment. `required_fields` are the field keys that must resolve to real data for a
         sample to be kept. `scan_max_workers` caps the concurrent scan queries against the
@@ -231,7 +231,7 @@ class Manifest:
             index,
             fields,
             timeline_sampling=timeline_sampling,
-            fetch_size=fetch_size,
+            fetch_block_size=fetch_block_size,
             num_ranks=num_ranks,
             num_workers_per_rank=num_workers_per_rank,
             required_fields=required_fields,
@@ -250,7 +250,7 @@ class Manifest:
 
         Keeps the manifest's validated sample set and per-field decode ranges (the
         expensive scan result) and only recomputes the `fetch_group` / `emit_rank`
-        schedule under a new `strategy` and `seed`. `fetch_size` and the
+        schedule under a new `strategy` and `seed`. `fetch_block_size` and the
         `(num_ranks, num_workers_per_rank)` topology are inherited from this manifest.
         Returns a new manifest; this one is unchanged.
 
@@ -281,7 +281,7 @@ class Manifest:
         table = schedule_samples(
             self._ensure_table(),
             strategy=strategy,
-            fetch_size=meta.fetch_size,
+            fetch_block_size=meta.fetch_block_size,
             num_ranks=meta.num_ranks,
             num_workers_per_rank=meta.num_workers_per_rank,
             seed=seed,
@@ -339,7 +339,7 @@ class Manifest:
         cuts = np.flatnonzero(np.diff(fetch_group)) + 1  # row indices where the id changes
         starts = [0, *cuts.tolist()]
         ends = [*cuts.tolist(), rows.num_rows]
-        chunks = [rows.slice(start, end - start) for start, end in zip(starts, ends, strict=True)]
+        blocks = [rows.slice(start, end - start) for start, end in zip(starts, ends, strict=True)]
 
         emit_order = np.argsort(rows.column(COL_EMIT_RANK).to_numpy())
-        return chunks, emit_order
+        return blocks, emit_order

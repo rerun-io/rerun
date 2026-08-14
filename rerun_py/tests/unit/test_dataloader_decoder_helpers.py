@@ -1,4 +1,4 @@
-"""Tests for the low-level helpers in `rerun.experimental.dataloader._decoders`."""
+"""Tests for the low-level helpers in `rerun.experimental.dataloader.decoders`."""
 
 from __future__ import annotations
 
@@ -12,13 +12,18 @@ import pyarrow as pa
 import pytest
 import torch
 from rerun.experimental.dataloader import Field
-from rerun.experimental.dataloader._decoders import (
-    VideoFrameDecoder,
-    _flatten_blob,
-    _starts_with,
-    _unwrap_to_numpy,
+from rerun.experimental.dataloader._sample_index import SegmentMetadata
+from rerun.experimental.dataloader._utils import (
+    Target,
+    _decode_order,
+    _field_index_range,
+    _find_segment_boundaries,
+    _prior_keyframe,
+    _resolve_decode_requests,
 )
-from rerun.experimental.dataloader._utils import _field_index_range, _prior_keyframe
+from rerun.experimental.dataloader.decoders import DecodeRequest, FieldBatch, NumericDecoder, VideoFrameDecoder
+from rerun.experimental.dataloader.decoders._arrow import _flatten_blob, _unwrap_to_numpy
+from rerun.experimental.dataloader.decoders._video import _starts_with
 
 
 def _encoder_available(name: str) -> bool:
@@ -109,13 +114,29 @@ def test_flatten_blob_binary_respects_offsets() -> None:
         np.testing.assert_array_equal(_flatten_blob(arr, row), np.frombuffer(expected, dtype=np.uint8))
 
 
+def test_numeric_decoder_ragged_windows_do_not_share_memory() -> None:
+    # Overlapping ragged windows: without a copy per sample, out[0] and out[1]
+    # would alias rows 2..3 of the flat buffer and mutating one would corrupt the other.
+    column = pa.array([0.0, 1.0, 2.0, 3.0, 4.0, 5.0], type=pa.float64())
+    requests = [
+        DecodeRequest(segment_id="seg", index_value=3, rows=range(4), starts_at_keyframe=False),
+        DecodeRequest(segment_id="seg", index_value=4, rows=range(2, 5), starts_at_keyframe=False),
+    ]
+
+    out = NumericDecoder().decode(FieldBatch(column=column), requests)
+
+    assert out[0] is not None and out[1] is not None
+    torch.testing.assert_close(out[1], torch.tensor([2.0, 3.0, 4.0], dtype=torch.float64))
+    out[0][2] = 999.0
+    torch.testing.assert_close(out[1], torch.tensor([2.0, 3.0, 4.0], dtype=torch.float64))
+
+
 def test_video_frame_decoder_returns_none_without_keyframe() -> None:
     """`decode` returns `None` when the prefetched window contains no keyframe."""
     p_slice_only = _h264_annex_b([(1, b"\xab\xcd\xef\x01\x02\x03")])
-    raw = pa.chunked_array([pa.array([[p_slice_only]], type=pa.list_(pa.binary()))])
 
     decoder = VideoFrameDecoder(codec="h264", keyframe_interval=2)
-    assert decoder.decode(raw, 0, "seg") is None
+    assert _decode_window(decoder, [p_slice_only], 0) is None
 
 
 def test_video_frame_decoder_is_keyframe_h264() -> None:
@@ -150,19 +171,19 @@ def test_video_frame_decoder_is_keyframe_vp9_classifies_garbage() -> None:
     assert VideoFrameDecoder(codec="vp9")._is_keyframe(b"\x00") is False
 
 
-def test_video_frame_decoder_has_keyframe_h264() -> None:
+def test_video_frame_decoder_trims_to_keyframe_h264() -> None:
     samples = _encode_h264(num_frames=4, gop=4)
     keyframe, p_slice = samples[0], samples[1]
     decoder = VideoFrameDecoder(codec="h264")
-    assert decoder._has_keyframe([]) is False
-    assert decoder._has_keyframe([p_slice]) is False
-    assert decoder._has_keyframe([p_slice, keyframe]) is True
+    assert decoder._num_leading_non_keyframes([]) == 0
+    assert decoder._num_leading_non_keyframes([p_slice]) == 1  # no keyframe: everything is dropped
+    assert decoder._num_leading_non_keyframes([p_slice, keyframe]) == 1  # trimmed to start at the keyframe
 
 
-def test_video_frame_decoder_has_keyframe_undetectable_codec_trusts_decoder() -> None:
-    # Undetectable codec: `_is_keyframe` returns None and `_has_keyframe` returns True so
+def test_video_frame_decoder_trim_undetectable_codec_trusts_decoder() -> None:
+    # Undetectable codec: `_is_keyframe` returns None and nothing is trimmed, so
     # failures surface from the decoder rather than being swallowed as cold-start.
-    assert VideoFrameDecoder(codec="mjpeg")._has_keyframe([b"\x00"]) is True
+    assert VideoFrameDecoder(codec="mjpeg")._num_leading_non_keyframes([b"\x00"]) == 0
 
 
 def test_video_frame_decoder_derives_keyframe_path() -> None:
@@ -292,8 +313,34 @@ def _encode_hevc(num_frames: int, gop: int) -> list[bytes]:
     return samples
 
 
-def _raw_window(samples: list[bytes]) -> pa.ChunkedArray:
-    return pa.chunked_array([pa.array([[s] for s in samples], type=pa.list_(pa.binary()))])
+def _sample_batch(samples: list[bytes]) -> FieldBatch:
+    """A `FieldBatch` over encoded samples, one row per sample."""
+    column = pa.array([[s] for s in samples], type=pa.list_(pa.binary()))
+    return FieldBatch(column=column)
+
+
+def _decode_one(
+    decoder: VideoFrameDecoder,
+    samples: list[bytes],
+    target: int,
+    segment_id: str = "seg",
+    *,
+    window_start: int = 0,
+) -> torch.Tensor | None:
+    """Decode the frame at row *target* from *samples*, with the decode window anchored at row *window_start*."""
+    request = DecodeRequest(
+        segment_id=segment_id,
+        index_value=target,
+        rows=range(window_start, target + 1),
+        starts_at_keyframe=True,
+    )
+    return decoder.decode(_sample_batch(samples), [request])[0]
+
+
+def _decode_window(decoder: VideoFrameDecoder, samples: list[bytes], target: int) -> torch.Tensor | None:
+    """Decode *samples* as one pre-sliced window whose last row holds the target frame."""
+    del target
+    return _decode_one(decoder, samples, len(samples) - 1)
 
 
 def _session_contexts(decoder: VideoFrameDecoder) -> list[av.VideoCodecContext]:
@@ -308,9 +355,10 @@ def test_video_frame_decoder_sequential_reads_reuse_session() -> None:
     contexts = []
     for target in range(12):
         keyframe = (target // gop) * gop
-        window = _raw_window(samples[keyframe : target + 1])
-        got = decoder.decode(window, target, "seg")
-        expected = VideoFrameDecoder(codec="h264", keyframe_interval=gop).decode(window, target, "seg")
+        got = _decode_one(decoder, samples, target, window_start=keyframe)
+        expected = _decode_one(
+            VideoFrameDecoder(codec="h264", keyframe_interval=gop), samples, target, window_start=keyframe
+        )
         assert got is not None and expected is not None
         assert torch.equal(got, expected)
         contexts.extend(_session_contexts(decoder))
@@ -323,10 +371,9 @@ def test_video_frame_decoder_repeated_target_hits_session() -> None:
     samples = _encode_h264(num_frames=4, gop=4)
     decoder = VideoFrameDecoder(codec="h264", keyframe_interval=4)
 
-    window = _raw_window(samples[:3])
-    first = decoder.decode(window, 2, "seg")
+    first = _decode_one(decoder, samples, 2)
     context = _session_contexts(decoder)[0]
-    second = decoder.decode(window, 2, "seg")
+    second = _decode_one(decoder, samples, 2)
     assert first is not None and second is not None
     assert torch.equal(first, second)
     assert _session_contexts(decoder) == [context]
@@ -337,11 +384,11 @@ def test_video_frame_decoder_backward_step_restarts_session() -> None:
     samples = _encode_h264(num_frames=6, gop=gop)
     decoder = VideoFrameDecoder(codec="h264", keyframe_interval=gop)
 
-    decoder.decode(_raw_window(samples[:5]), 4, "seg")
+    _decode_one(decoder, samples, 4)
     context = _session_contexts(decoder)[0]
-    # A shorter window is not an extension: a fresh context must replay it.
-    got = decoder.decode(_raw_window(samples[:3]), 2, "seg")
-    expected = VideoFrameDecoder(codec="h264", keyframe_interval=gop).decode(_raw_window(samples[:3]), 2, "seg")
+    # A target before the session's frontier was already discarded: a fresh context must replay it.
+    got = _decode_one(decoder, samples, 2)
+    expected = _decode_one(VideoFrameDecoder(codec="h264", keyframe_interval=gop), samples, 2)
     assert got is not None and expected is not None
     assert torch.equal(got, expected)
     assert _session_contexts(decoder) != [context]
@@ -351,8 +398,8 @@ def test_video_frame_decoder_segments_get_separate_sessions() -> None:
     samples = _encode_h264(num_frames=4, gop=4)
     decoder = VideoFrameDecoder(codec="h264", keyframe_interval=4)
 
-    a = decoder.decode(_raw_window(samples[:2]), 1, "seg_a")
-    b = decoder.decode(_raw_window(samples[:2]), 1, "seg_b")
+    a = _decode_one(decoder, samples, 1, segment_id="seg_a")
+    b = _decode_one(decoder, samples, 1, segment_id="seg_b")
     assert a is not None and b is not None
     assert torch.equal(a, b)
     assert len(decoder._sessions) == 2
@@ -363,16 +410,159 @@ def test_video_frame_decoder_delayed_stream_falls_back_to_flush() -> None:
     samples = _encode_h264(num_frames=8, gop=8, b_frames=2)
     decoder = VideoFrameDecoder(codec="h264", keyframe_interval=8)
 
-    assert decoder.decode(_raw_window(samples[:8]), 7, "seg") is not None
+    assert _decode_one(decoder, samples, 7) is not None
     assert len(decoder._sessions) == 0
 
 
 def test_video_frame_decoder_pickle_drops_sessions() -> None:
     samples = _encode_h264(num_frames=4, gop=4)
     decoder = VideoFrameDecoder(codec="h264", keyframe_interval=4)
-    assert decoder.decode(_raw_window(samples[:2]), 1, "seg") is not None
+    assert _decode_one(decoder, samples, 1) is not None
     assert len(decoder._sessions) == 1
 
     restored = pickle.loads(pickle.dumps(decoder))
     assert len(restored._sessions) == 0
-    assert restored.decode(_raw_window(samples[:2]), 1, "seg") is not None
+    assert _decode_one(restored, samples, 1) is not None
+
+
+def test_video_frame_decoder_duplicate_slots_do_not_share_memory() -> None:
+    # Two requests snapping to the same kept sample (a fixed-rate grid denser than
+    # the video fps): equal content, but mutating one must not corrupt the other.
+    samples = _encode_h264(num_frames=4, gop=4)
+    decoder = VideoFrameDecoder(codec="h264", keyframe_interval=4)
+    request = DecodeRequest(segment_id="seg", index_value=3, rows=range(4), starts_at_keyframe=True)
+
+    out = decoder.decode(_sample_batch(samples), [request, request])
+
+    assert out[0] is not None and out[1] is not None
+    assert torch.equal(out[0], out[1])
+    assert out[0].data_ptr() != out[1].data_ptr()
+
+
+def _group_table(segment_ids: list[str], index_values: list[int]) -> pa.Table:
+    """A read-group table with one `x` value per row, equal to that row's index value."""
+    return pa.table({
+        "t": pa.array(index_values, pa.int64()),
+        "rerun_segment_id": pa.array(segment_ids, pa.string()),
+        "x": pa.array([float(v) for v in index_values], pa.float64()),
+    })
+
+
+def _targets(pairs: list[tuple[str, int]]) -> list[Target]:
+    return [
+        Target(
+            segment=SegmentMetadata(segment_id=segment_id, index_start=0, index_end=0, num_samples=0),
+            index_value=index_value,
+            anchors={},
+        )
+        for segment_id, index_value in pairs
+    ]
+
+
+def test_find_segment_boundaries_leaves_ordered_rows_alone() -> None:
+    indexed_table = _find_segment_boundaries(_group_table(["a", "a", "b", "b", "b"], [0, 1, 100, 101, 102]), "t")
+
+    assert indexed_table.segment_spans == {"a": (0, 2), "b": (2, 5)}
+    np.testing.assert_array_equal(indexed_table.index_values, [0, 1, 100, 101, 102])
+    np.testing.assert_array_equal(indexed_table.table.column("x").to_numpy(), [0.0, 1.0, 100.0, 101.0, 102.0])
+
+
+def test_find_segment_boundaries_allows_index_values_to_restart_per_segment() -> None:
+    # `b`'s values are below `a`'s. Expected — they are different timelines — and not a reason to sort.
+    indexed_table = _find_segment_boundaries(_group_table(["a", "a", "b", "b"], [50, 60, 0, 10]), "t")
+
+    assert indexed_table.segment_spans == {"a": (0, 2), "b": (2, 4)}
+    np.testing.assert_array_equal(indexed_table.index_values, [50, 60, 0, 10])
+
+
+def test_find_segment_boundaries_sorts_a_descending_segment() -> None:
+    indexed_table = _find_segment_boundaries(_group_table(["a", "a", "a"], [2, 0, 1]), "t")
+
+    assert indexed_table.segment_spans == {"a": (0, 3)}
+    np.testing.assert_array_equal(indexed_table.index_values, [0, 1, 2])
+    np.testing.assert_array_equal(indexed_table.table.column("x").to_numpy(), [0.0, 1.0, 2.0])
+
+
+def test_find_segment_boundaries_gathers_a_split_segment() -> None:
+    indexed_table = _find_segment_boundaries(_group_table(["a", "b", "a"], [0, 5, 1]), "t")
+
+    assert set(indexed_table.segment_spans) == {"a", "b"}
+    for segment_id, (start, stop) in indexed_table.segment_spans.items():
+        assert indexed_table.table.column("rerun_segment_id").to_pylist()[start:stop] == [segment_id] * (stop - start)
+        assert np.all(np.diff(indexed_table.index_values[start:stop]) >= 0)
+    # The `x` values still travel with their rows.
+    np.testing.assert_array_equal(
+        indexed_table.table.column("x").to_numpy(), indexed_table.index_values.astype(np.float64)
+    )
+
+
+def test_find_segment_boundaries_empty() -> None:
+    indexed_table = _find_segment_boundaries(_group_table([], []), "t")
+
+    assert indexed_table.segment_spans == {}
+    assert indexed_table.index_values.size == 0
+
+
+def test_decode_order_is_row_order_not_sampler_order() -> None:
+    targets = _targets([("b", 7), ("a", 5), ("b", 3), ("a", 1)])
+
+    order = _decode_order(targets)
+
+    # One group per segment (first-seen order), ascending by index value within a group.
+    assert [[(targets[i].segment.segment_id, targets[i].index_value) for i in group] for group in order] == [
+        [("b", 3), ("b", 7)],
+        [("a", 1), ("a", 5)],
+    ]
+
+
+def test_resolve_decode_requests_resolve_rows_within_their_own_segment() -> None:
+    # Index value 5 exists in both segments; each request must resolve to its own segment's row.
+    indexed_table = _find_segment_boundaries(_group_table(["a", "a", "b", "b"], [5, 6, 4, 5]), "t")
+    targets = _targets([("b", 5), ("a", 5)])
+    field = Field(path="/x", decode=NumericDecoder())
+
+    requests = _resolve_decode_requests(
+        targets,
+        _decode_order(targets),
+        indexed_table=indexed_table,
+        key="x",
+        field=field,
+        decoder=field.decode,
+    )
+
+    assert [(r.segment_id, r.index_value, r.rows) for r in requests] == [("b", 5, range(3, 4)), ("a", 5, range(1))]
+    assert all(not r.starts_at_keyframe for r in requests)  # no anchors on these targets
+
+
+def test_resolve_decode_requests_resolve_a_window_to_a_row_range() -> None:
+    indexed_table = _find_segment_boundaries(_group_table(["a", "a", "a", "a"], [0, 1, 2, 3]), "t")
+    targets = _targets([("a", 1)])
+    field = Field(path="/x", decode=NumericDecoder(), window=(0, 2))
+
+    (request,) = _resolve_decode_requests(
+        targets,
+        _decode_order(targets),
+        indexed_table=indexed_table,
+        key="x",
+        field=field,
+        decoder=field.decode,
+    )
+
+    # The window `(0, 2)` around target 1 covers index values 1..=3, held by rows 1..4.
+    assert request.rows == range(1, 4)
+
+
+def test_resolve_decode_requests_rejects_a_segment_with_no_rows() -> None:
+    indexed_table = _find_segment_boundaries(_group_table(["a"], [0]), "t")
+    targets = _targets([("missing", 0)])
+    field = Field(path="/x", decode=NumericDecoder())
+
+    with pytest.raises(RuntimeError, match="No rows returned for field 'x' in segment 'missing'"):
+        _resolve_decode_requests(
+            targets,
+            _decode_order(targets),
+            indexed_table=indexed_table,
+            key="x",
+            field=field,
+            decoder=field.decode,
+        )

@@ -117,8 +117,8 @@ For video-heavy datasets, `BlockShuffle` can speed up epochs by an order of magn
 
 The trade-off of `BlockShuffle` is that consecutive samples now come from the same contiguous block, so batches are correlated.
 `BlockShuffle(buffer_size=…)` is the second half of that strategy: decoded samples pass through a shuffle buffer of that size and leave it in random order, mixing samples from many blocks (and thus many segments) into each batch without changing which data is fetched when.
-Randomization improves smoothly with buffer size: the residual chance that two samples in a batch come from the same block falls off roughly as `fetch_size / buffer_size`, so every doubling of the buffer halves the correlation.
-A buffer of a few times `fetch_size × batch_size` already gets batches close to what a full per-sample shuffle would produce, and returns diminish from there.
+Randomization improves smoothly with buffer size: the residual chance that two samples in a batch come from the same block falls off roughly as `fetch_block_size / buffer_size`, so every doubling of the buffer halves the correlation.
+A buffer of a few times `fetch_block_size × batch_size` already gets batches close to what a full per-sample shuffle would produce, and returns diminish from there.
 
 The buffer holds *decoded* samples, exactly as your decoders produce them — full-resolution frames for video fields, before any resizing you do in a `collate_fn`.
 Budget `buffer_size × bytes_per_sample × num_workers`, because every DataLoader worker fills its own buffer: a few thousand video samples per worker runs to tens of gigabytes.

@@ -56,7 +56,7 @@ EPOCHS = 5
 BATCH_SIZE = 8
 LR = 1e-5
 NUM_WORKERS = 4
-FETCH_SIZE = 256
+FETCH_BLOCK_SIZE = 256
 
 
 class CollateFn:
@@ -126,7 +126,9 @@ def parse_args() -> argparse.Namespace:
         parents=[common],
         help="RerunIterableDataset: streaming iteration with internal shuffling (default)",
     )
-    iterable.add_argument("--fetch-size", type=int, default=FETCH_SIZE, help="Samples fetched per server query")
+    iterable.add_argument(
+        "--fetch-block-size", type=int, default=FETCH_BLOCK_SIZE, help="Samples fetched per server query"
+    )
     iterable.add_argument(
         "--shuffle",
         choices=("block", "sample", "none"),
@@ -160,7 +162,7 @@ def parse_args() -> argparse.Namespace:
     # Bare `train.py` behaves like `train.py iterable` with its defaults.
     parser.set_defaults(
         dataset_style="iterable",
-        fetch_size=FETCH_SIZE,
+        fetch_block_size=FETCH_BLOCK_SIZE,
         shuffle="block",
         shuffle_buffer_size=None,
         shuffle_buffer_min_fill=None,
@@ -225,7 +227,7 @@ def main() -> None:
             source=source,
             index="frame_index",
             fields=fields,
-            fetch_size=args.fetch_size,
+            fetch_block_size=args.fetch_block_size,
             shuffle_strategy=shuffle_strategies[args.shuffle],
             decode_threads=args.decode_threads,
         )

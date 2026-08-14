@@ -28,7 +28,9 @@ class ShuffleStrategy(ABC):
     RECIPE_TAG: ClassVar[str]
 
     @abstractmethod
-    def epoch_order(self, sample_index: SampleIndex, *, fetch_size: int, seed: int) -> tuple[np.ndarray, np.ndarray]:
+    def epoch_order(
+        self, sample_index: SampleIndex, *, fetch_block_size: int, seed: int
+    ) -> tuple[np.ndarray, np.ndarray]:
         """
         Return `(indices, block_bounds)` for one epoch: every global sample index once, in emission order.
 
@@ -67,10 +69,16 @@ class SampleShuffle(ShuffleStrategy):
 
     RECIPE_TAG: ClassVar[str] = "sample"
 
-    def epoch_order(self, sample_index: SampleIndex, *, fetch_size: int, seed: int) -> tuple[np.ndarray, np.ndarray]:  # noqa: ARG002
+    def epoch_order(
+        self,
+        sample_index: SampleIndex,
+        *,
+        fetch_block_size: int,  # noqa: ARG002
+        seed: int,
+    ) -> tuple[np.ndarray, np.ndarray]:
         # A per-sample shuffle has no blocks: every sample is emitted independently, so the order is
         # a plain uniform permutation and each "block" is a single sample. It depends on neither a
-        # block size (there is none) nor `fetch_size` (fetching only batches the network I/O).
+        # block size (there is none) nor `fetch_block_size` (fetching only batches the network I/O).
         total = int(sample_index.segment_offsets[-1])
         rng = np.random.default_rng(seed=seed)
         indices = rng.permutation(total).astype(np.int64)
@@ -120,9 +128,11 @@ class BlockShuffle(ShuffleStrategy):
         if self.buffer_size is not None:
             self.emission_buffer()  # validates `buffer_size` / `min_fill` eagerly
 
-    def epoch_order(self, sample_index: SampleIndex, *, fetch_size: int, seed: int) -> tuple[np.ndarray, np.ndarray]:
+    def epoch_order(
+        self, sample_index: SampleIndex, *, fetch_block_size: int, seed: int
+    ) -> tuple[np.ndarray, np.ndarray]:
         # A block is one fetch wide: this is the sole place that policy is set.
-        return _block_order(sample_index, block_size=fetch_size, shuffle=True, seed=seed)
+        return _block_order(sample_index, block_size=fetch_block_size, shuffle=True, seed=seed)
 
     def emission_buffer(self) -> ShuffleBuffer | None:
         if self.buffer_size is None:
@@ -136,9 +146,11 @@ class NoShuffle(ShuffleStrategy):
 
     RECIPE_TAG: ClassVar[str] = "none"
 
-    def epoch_order(self, sample_index: SampleIndex, *, fetch_size: int, seed: int) -> tuple[np.ndarray, np.ndarray]:
+    def epoch_order(
+        self, sample_index: SampleIndex, *, fetch_block_size: int, seed: int
+    ) -> tuple[np.ndarray, np.ndarray]:
         # A block is one fetch wide; without a shuffle the block size only affects `block_bounds`.
-        return _block_order(sample_index, block_size=fetch_size, shuffle=False, seed=seed)
+        return _block_order(sample_index, block_size=fetch_block_size, shuffle=False, seed=seed)
 
 
 class ShuffleBuffer:
@@ -221,7 +233,7 @@ def _block_order(
 
     With `shuffle`, the block order is permuted; samples within a block keep their natural order
     (this preserves decoder cache locality). This is a generic block-cutting primitive; the
-    strategies always pass `fetch_size` as the block size, so in practice each block is one fetch wide.
+    strategies always pass `fetch_block_size` as the block size, so in practice each block is one fetch wide.
     """
     offsets = sample_index.segment_offsets
     total = int(offsets[-1])
@@ -266,7 +278,7 @@ def _contiguous_shard(
 
     Sample-granular cuts keep per-rank counts within `world_size - 1` of each
     other (uneven counts stall the DDP all-reduce); a block cut in two stays
-    contiguous on both sides, so fetches remain chunk-local.
+    contiguous on both sides, so fetches remain block-local.
     """
     per_shard = len(indices) // world_size
     start = rank * per_shard
@@ -275,28 +287,28 @@ def _contiguous_shard(
     return indices[start:end], np.append(inner_bounds, end - start)
 
 
-def _fetch_chunks(indices: np.ndarray, block_bounds: np.ndarray, *, fetch_size: int) -> list[np.ndarray]:
+def _fetch_blocks(indices: np.ndarray, block_bounds: np.ndarray, *, fetch_block_size: int) -> list[np.ndarray]:
     """
-    Split `indices` into fetch-sized chunks that respect block boundaries.
+    Split `indices` into fetch blocks that respect the strategy's block boundaries.
 
-    Whole blocks are packed greedily up to `fetch_size`; longer blocks are
-    split at `fetch_size` strides, so every fetch reads few contiguous spans.
+    Whole blocks are packed greedily up to `fetch_block_size`; longer blocks are
+    split at `fetch_block_size` strides, so every fetch reads few contiguous spans.
     """
-    chunks: list[np.ndarray] = []
-    chunk_start = 0
+    fetch_blocks: list[np.ndarray] = []
+    fetch_start = 0
     packed_end = 0
     for bound in block_bounds:
         bound = int(bound)
-        if bound - chunk_start <= fetch_size:
+        if bound - fetch_start <= fetch_block_size:
             packed_end = bound
             continue
-        if packed_end > chunk_start:
-            chunks.append(indices[chunk_start:packed_end])
-            chunk_start = packed_end
-        while bound - chunk_start > fetch_size:
-            chunks.append(indices[chunk_start : chunk_start + fetch_size])
-            chunk_start += fetch_size
+        if packed_end > fetch_start:
+            fetch_blocks.append(indices[fetch_start:packed_end])
+            fetch_start = packed_end
+        while bound - fetch_start > fetch_block_size:
+            fetch_blocks.append(indices[fetch_start : fetch_start + fetch_block_size])
+            fetch_start += fetch_block_size
         packed_end = bound
-    if chunk_start < len(indices):
-        chunks.append(indices[chunk_start:])
-    return chunks
+    if fetch_start < len(indices):
+        fetch_blocks.append(indices[fetch_start:])
+    return fetch_blocks

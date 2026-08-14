@@ -4,7 +4,7 @@
 # invalid samples, then unrolls one epoch of the blockwise sampling procedure —
 # the strategy's fetch order plus the buffer emission shuffle — into a single
 # parquet table. The unroll reuses the exact runtime primitives (`ShuffleStrategy`,
-# `_fetch_chunks`, `ShuffleBuffer`) over sample IDs, so build and runtime can
+# `_fetch_blocks`, `ShuffleBuffer`) over sample IDs, so build and runtime can
 # never diverge, and no decoding happens here.
 
 from __future__ import annotations
@@ -22,7 +22,7 @@ import pyarrow.compute as pc
 from rerun._tracing import tracing_scope, with_tracing
 
 from .._sample_index import SampleIndex, SegmentMetadata
-from .._shuffle import NoShuffle, ShuffleBuffer, ShuffleStrategy, _contiguous_shard, _fetch_chunks
+from .._shuffle import NoShuffle, ShuffleBuffer, ShuffleStrategy, _contiguous_shard, _fetch_blocks
 from .._utils import (
     _fetch_prior_keyframes,
     _field_index_range,
@@ -49,8 +49,8 @@ if TYPE_CHECKING:
     from rerun.catalog._entry import DatasetEntry
 
     from .._config import DataSource, Field
-    from .._decoders import ColumnDecoder
     from .._sample_index import FixedRateSampling
+    from ..decoders import ColumnDecoder
 
 # Sorted, unique index values (ns / step counts) per segment: `{segment_id: values}`.
 _SegmentIndices = dict[str, np.ndarray]
@@ -83,7 +83,7 @@ def build_manifest_table(
     fields: dict[str, Field],
     *,
     timeline_sampling: FixedRateSampling | None = None,
-    fetch_size: int = 128,
+    fetch_block_size: int = 128,
     num_ranks: int = 1,
     num_workers_per_rank: int = 1,
     required_fields: list[str] | None = None,
@@ -107,7 +107,7 @@ def build_manifest_table(
     source, index, fields, timeline_sampling
         Describe the sample space, exactly as for
         [`RerunIterableDataset`][rerun.experimental.dataloader.RerunIterableDataset].
-    fetch_size
+    fetch_block_size
         Samples per co-fetch / co-decode block (one `fetch_group`).
     num_ranks, num_workers_per_rank
         DataLoader topology the `(rank, worker)` assignment is frozen for.
@@ -166,7 +166,7 @@ def build_manifest_table(
     table = schedule_samples(
         _sample_table(rows, list(fields)),
         strategy=strategy,
-        fetch_size=fetch_size,
+        fetch_block_size=fetch_block_size,
         num_ranks=num_ranks,
         num_workers_per_rank=num_workers_per_rank,
         seed=0,
@@ -181,7 +181,7 @@ def build_manifest_table(
         ns_dtype=sample_index.ns_dtype,
         recipe={key: f.to_recipe() for key, f in fields.items()},
         required_fields=sorted(required),
-        fetch_size=fetch_size,
+        fetch_block_size=fetch_block_size,
         buffer_size=None,
         min_fill=None,
         num_ranks=num_ranks,
@@ -497,7 +497,7 @@ def schedule_samples(
     sample: pa.Table,
     *,
     strategy: ShuffleStrategy,
-    fetch_size: int,
+    fetch_block_size: int,
     num_ranks: int,
     num_workers_per_rank: int,
     seed: int,
@@ -518,7 +518,7 @@ def schedule_samples(
     """
     sample = _canonicalize(sample.select([c for c in sample.column_names if c not in _SCHEDULE_COLUMNS]))
     compact = _compact_index(sample[COL_SEGMENT_ID].to_pylist())
-    indices, bounds = strategy.epoch_order(compact, fetch_size=fetch_size, seed=seed)
+    indices, bounds = strategy.epoch_order(compact, fetch_block_size=fetch_block_size, seed=seed)
     buffer = strategy.emission_buffer()
 
     ranks: list[np.ndarray] = []
@@ -530,14 +530,14 @@ def schedule_samples(
         r_idx, r_bounds = _contiguous_shard(indices, bounds, rank=rank, world_size=num_ranks)
         for worker in range(num_workers_per_rank):
             w_idx, w_bounds = _contiguous_shard(r_idx, r_bounds, rank=worker, world_size=num_workers_per_rank)
-            chunks = _fetch_chunks(w_idx, w_bounds, fetch_size=fetch_size)
-            if not chunks:
+            blocks = _fetch_blocks(w_idx, w_bounds, fetch_block_size=fetch_block_size)
+            if not blocks:
                 continue
-            fetch_order = np.concatenate(chunks)
+            fetch_order = np.concatenate(blocks)
             n = int(fetch_order.shape[0])
             ranks.append(np.full(n, rank, dtype=np.int32))
             workers.append(np.full(n, worker, dtype=np.int32))
-            groups.append(np.repeat(np.arange(len(chunks), dtype=np.int64), [len(c) for c in chunks]))
+            groups.append(np.repeat(np.arange(len(blocks), dtype=np.int64), [len(c) for c in blocks]))
             emits.append(_emit_rank(n, buffer, seed=seed, rank=rank, worker=worker))
             sids.append(fetch_order)
 

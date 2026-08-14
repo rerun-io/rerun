@@ -21,13 +21,11 @@ from ._utils import (
 )
 
 if TYPE_CHECKING:
-    import pyarrow as pa
-
     from rerun.catalog._entry import DatasetEntry
 
     from ._config import DataSource, Field
-    from ._decoders import ColumnDecoder
-    from ._utils import Target
+    from ._utils import FetchedBlock
+    from .decoders import ColumnDecoder
     from .manifest._manifest import Manifest
 
 
@@ -177,9 +175,9 @@ class RerunMapDataset(torch.utils.data.Dataset[dict[str, torch.Tensor | None]]):
         """
         view, decoders = self._connection.ensure()
         if self._manifest is not None:
-            targets, seg_tables = self._fetch_manifest(view, decoders, indices)
+            fetched = self._fetch_manifest(view, decoders, indices)
         else:
-            targets, seg_tables = _fetch_arrow(
+            fetched = _fetch_arrow(
                 view=view,
                 index=self._index,
                 fields=self._fields,
@@ -190,8 +188,7 @@ class RerunMapDataset(torch.utils.data.Dataset[dict[str, torch.Tensor | None]]):
         with _decode_pool(self._decode_threads, len(self._fields)) as executor:
             return list(
                 _decode_iter(
-                    targets=targets,
-                    seg_tables=seg_tables,
+                    fetched=fetched,
                     index=self._index,
                     fields=self._fields,
                     decoders=decoders,
@@ -204,7 +201,7 @@ class RerunMapDataset(torch.utils.data.Dataset[dict[str, torch.Tensor | None]]):
         view: DatasetEntry,
         decoders: dict[str, ColumnDecoder],
         indices: list[int],
-    ) -> tuple[list[Target], dict[str, dict[str, pa.Table]]]:
+    ) -> FetchedBlock:
         """Fetch samples for the manifest rows at `indices`, using their frozen decode ranges."""
         from .manifest._manifest_read import targets_from_rows
 
