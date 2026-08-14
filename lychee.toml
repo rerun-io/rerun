@@ -125,6 +125,8 @@ exclude = [
   'https://github.com/rerun-io/rerun/issues/\.*', # Ignore links to our own issues.
 
   # Intentionally faked links.
+  'https?://(rerun|example)\.invalid/.*', # URL-rendering tests in re_ui notifications.
+  'mailto:help@example\.invalid', # URL-rendering tests in re_ui notifications.
   '^https://github/$',
   'file:///does/not/exist.rrd',
   'file:///path/to/file',

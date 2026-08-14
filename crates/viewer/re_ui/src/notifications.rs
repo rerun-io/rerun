@@ -6,6 +6,7 @@
 //! ## Special cased text
 //! - If a notifications text contains [`re_error::DETAILS_SEPARATOR`] the section after that
 //!   will be displayed inside a collapsible details header.
+//! - URLs in notification text are rendered as inline clickable links.
 
 use std::time::Duration;
 
@@ -234,6 +235,62 @@ impl Notification {
                 .is_some()
         })
     }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum TextSegment<'a> {
+    Text(&'a str),
+    Url(&'a str),
+}
+
+fn split_links(text: &str) -> Vec<TextSegment<'_>> {
+    let mut segments = Vec::new();
+    let mut plain_text_start = 0;
+    let mut token_start = 0;
+
+    for chunk in text.split_inclusive(char::is_whitespace) {
+        let token = chunk.trim_end_matches(char::is_whitespace);
+        let current_token_start = token_start;
+        token_start += chunk.len();
+
+        let candidate_with_suffix = token.trim_start_matches(['(', '[', '{', '<', '"', '\'']);
+        let candidate = candidate_with_suffix
+            .trim_end_matches(['.', ',', ':', ';', '!', '?', ')', ']', '}', '>', '"', '\'']);
+        if url::Url::parse(candidate).is_err() {
+            continue;
+        }
+
+        let url_start = current_token_start + (token.len() - candidate_with_suffix.len());
+        if plain_text_start < url_start {
+            segments.push(TextSegment::Text(&text[plain_text_start..url_start]));
+        }
+        segments.push(TextSegment::Url(candidate));
+        plain_text_start = url_start + candidate.len();
+    }
+
+    if plain_text_start < text.len() {
+        segments.push(TextSegment::Text(&text[plain_text_start..]));
+    }
+    segments
+}
+
+/// Show `text`, rendering embedded URLs as inline hyperlinks.
+fn label_with_inline_links(ui: &mut egui::Ui, text: &str) {
+    ui.horizontal_wrapped(|ui| {
+        ui.spacing_mut().item_spacing.x = 0.0;
+        for segment in split_links(text) {
+            match segment {
+                TextSegment::Text(text) => {
+                    ui.label(text);
+                }
+                TextSegment::Url(url) => {
+                    // Toasts render after the viewer's hyperlink interceptor, so navigating in the
+                    // same tab would replace the running Web Viewer.
+                    ui.add(egui::Hyperlink::from_label_and_url(url, url).open_in_new_tab(true));
+                }
+            }
+        }
+    });
 }
 
 /// Split a field value on [`re_error::DETAILS_SEPARATOR`], returning the value with the details
@@ -596,7 +653,7 @@ fn show_notification(
                             ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
                             ui.set_width(270.0);
                             if !text.is_empty() {
-                                ui.label(text);
+                                label_with_inline_links(ui, text);
                             }
 
                             for (key, value) in fields {
@@ -685,4 +742,32 @@ fn notification_age_label(ui: &mut egui::Ui, created_at: Timestamp) {
             .on_hover_text(created_at.to_string());
         });
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_split_links() {
+        use TextSegment::{Text, Url};
+
+        assert_eq!(
+            split_links("See https://rerun.invalid/docs and (http://example.invalid/help)."),
+            vec![
+                Text("See "),
+                Url("https://rerun.invalid/docs"),
+                Text(" and ("),
+                Url("http://example.invalid/help"),
+                Text(")."),
+            ]
+        );
+        assert_eq!(
+            split_links("Not a link: rerun.invalid/docs; this is: mailto:help@example.invalid"),
+            vec![
+                Text("Not a link: rerun.invalid/docs; this is: "),
+                Url("mailto:help@example.invalid"),
+            ]
+        );
+    }
 }

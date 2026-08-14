@@ -1036,7 +1036,8 @@ where
     ///
     /// The server may answer with manifest keys instead of inline manifests, in which case each
     /// part is fetched directly from the object store. In a browser that direct fetch only works
-    /// when the bucket has a CORS configuration that allows it, so wasm clients fall back to
+    /// when the bucket has a CORS configuration that allows it (see
+    /// <https://rerun.io/docs/hub/bucket-cors>), so wasm clients fall back to
     /// server-provided manifests when the first part fails.
     #[tracing::instrument(level = "info", skip_all)]
     pub async fn get_rrd_manifest_stream(
@@ -1068,7 +1069,10 @@ where
             Some(Err(err)) if err.kind == ApiErrorKind::Connection => {
                 re_log::warn_once!(
                     "Failed to fetch an RRD footer directly from the object store, \
-                        falling back to slower server-provided manifests. This may be caused by CORS issues. \
+                        falling back to slower server-provided manifests. \
+                        This usually means the bucket is missing a CORS configuration that \
+                        allows the Web Viewer to read it — see \
+                        https://rerun.io/docs/hub/bucket-cors for how to set it up. \
                         \nDetails: {err}."
                 );
                 self.get_rrd_manifest_stream_impl(dataset_id, segment_id, false)

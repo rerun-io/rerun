@@ -1,5 +1,5 @@
 use egui::Vec2;
-use re_ui::notifications::NotificationUi;
+use re_ui::notifications::{Notification, NotificationLevel, NotificationUi};
 
 /// End-to-end test: a single `re_log::warn!` call carrying a string field, an integer field
 /// and a message should turn into a toast with each `key: value` on its own line.
@@ -41,6 +41,31 @@ fn test_notification_with_fields() {
 
     harness.run();
     harness.snapshot("notification_with_fields");
+}
+
+#[test]
+fn test_notification_with_urls() {
+    let mut notifications: Option<NotificationUi> = None;
+
+    let mut harness =
+        re_ui::testing::new_harness(re_ui::testing::TestOptions::Gui, Vec2::new(400.0, 220.0))
+            .build_ui(move |ui| {
+                re_ui::apply_style_and_install_loaders(ui.ctx());
+
+                let notifications = notifications.get_or_insert_with(|| {
+                    let mut notifications = NotificationUi::new(ui.ctx().clone());
+                    notifications.add(Notification::new(
+                        NotificationLevel::Warning,
+                        "Failed to load https://rerun.invalid/docs. Check http://example.invalid/status or mailto:help@example.invalid for updates.",
+                    ));
+                    notifications
+                });
+
+                notifications.show_toasts(ui.ctx());
+            });
+
+    harness.run();
+    harness.snapshot("notification_with_urls");
 }
 
 /// A field value containing [`re_error::DETAILS_SEPARATOR`] should have the part after the
