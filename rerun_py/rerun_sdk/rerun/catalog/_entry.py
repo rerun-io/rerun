@@ -854,8 +854,28 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         cleanup_before: datetime | None = None,
         unsafe_allow_recent_cleanup: bool = False,
     ) -> None:
-        """Perform maintenance tasks on the datasets."""
+        """
+        Perform maintenance tasks on the datasets.
 
+        Parameters
+        ----------
+        optimize_indexes:
+            Incrementally update the dataset's indexes: newly ingested data is folded into each
+            index as the server's consolidation policy dictates.
+        retrain_indexes:
+            Fully consolidate every index, ignoring the server's segment-count threshold that
+            normally bounds how often indexes are merged — the manual drain lever for
+            accumulated index segments and deferred index-remap debt. Implies
+            `optimize_indexes`.
+        compact_fragments:
+            Rewrite small or fragmented storage fragments into denser ones.
+        cleanup_before:
+            If set, delete unreferenced storage versions older than this timestamp.
+        unsafe_allow_recent_cleanup:
+            Allow `cleanup_before` timestamps more recent than the server's safety margin.
+            ⚠️ Improper use will lead to data loss.
+
+        """
         return self._internal.do_maintenance(
             optimize_indexes, retrain_indexes, compact_fragments, cleanup_before, unsafe_allow_recent_cleanup
         )

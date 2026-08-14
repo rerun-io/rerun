@@ -1047,12 +1047,14 @@ pub struct DoMaintenanceRequest {
     /// of all indexes.
     #[prost(bool, tag = "2")]
     pub optimize_indexes: bool,
-    /// Retrain all builtin indexes on this dataset from scratch.
+    /// Fully consolidate every index on this dataset, ignoring the server's segment-count
+    /// threshold that normally bounds how often indexes are merged.
     ///
-    /// This retrains all builtin indexes from scratch for optimal runtime performance.
-    /// This is faster than re-creating the indexes, and automatically keeps track of their configurations.
+    /// This is the manual drain hammer for accumulated index segments and deferred index-remap
+    /// (fragment-reuse) debt. Implies `optimize_indexes`.
     ///
-    /// This implies `optimize_indexes`.
+    /// Historically this retrained user-defined vector indexes; those are gone, and the remaining
+    /// builtin scalar indexes have no trained state — a retrain is exactly a full consolidation.
     #[prost(bool, tag = "6")]
     pub retrain_indexes: bool,
     /// Compact the underlying Lance fragments, for all Rerun Manifests.
