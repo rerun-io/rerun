@@ -139,10 +139,7 @@ Registering a `.rrd` file with a `recording_id` and `layer_name` that already ex
 
 ### How can I replace an existing layer?
 
-<!-- TODO(RR-3451) update this when the python API is updated -->
-
-There is currently no way to replace an existing layer using the Python SDK.
-The current workaround consists of recreating the dataset.
+You can specify how duplicate segment layers should be handled by passing an [`OnDuplicateSegmentLayer`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.OnDuplicateSegmentLayer) value (ERROR, SKIP, REPLACE) to [`DatasetEntry.register()`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.DatasetEntry.register) or [`DatasetEntry.register_prefix()`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.DatasetEntry.register_prefix). To replace an existing layer, set `on_duplicate = OnDuplicateSegmentLayer.REPLACE`.
 
 ### Can I query a single layer with the dataframe query?
 
