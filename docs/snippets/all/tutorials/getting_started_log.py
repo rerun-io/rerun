@@ -3,7 +3,7 @@ import math
 import rerun as rr
 
 with rr.RecordingStream(
-    "rerun_example_getting_started", recording_id="run-1", send_properties=False
+    "rerun_example_getting_started", recording_id="run-1"
 ) as rec:
     rec.save("run-1.rrd")
     for t in range(10):

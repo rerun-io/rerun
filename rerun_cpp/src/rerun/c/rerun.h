@@ -509,9 +509,13 @@ extern rr_component_type_handle rr_register_component_type(
 /// `rr_recording_stream_set_global` afterwards once to make it available globally via
 /// `RR_REC_STREAM_CURRENT_RECORDING` and `RR_REC_STREAM_CURRENT_BLUEPRINT` respectively.
 ///
+/// If `send_properties` is false, the built-in recording properties are not sent when the
+/// recording is created. Processes that share a recording id each send their own properties,
+/// and the most recent one is selected if combined.
+///
 /// @return A handle to the recording stream, or null if an error occurred.
 extern rr_recording_stream rr_recording_stream_new(
-    const rr_store_info* store_info, bool default_enabled, rr_error* error
+    const rr_store_info* store_info, bool default_enabled, bool send_properties, rr_error* error
 );
 
 /// Free the given recording stream. The handle will be invalid after this.

@@ -122,6 +122,9 @@ fn recording_rrd(
     let path = tempfile::NamedTempFile::new()?;
     let stream = RecordingStreamBuilder::new("rerun_example_integration_test")
         .recording_id(recording_id)
+        // The built-in properties carry the recording start time, which the viewer would show as
+        // an ever-changing timestamp in snapshots.
+        .send_properties(false)
         .save(path.path())?;
 
     log_data(&stream);

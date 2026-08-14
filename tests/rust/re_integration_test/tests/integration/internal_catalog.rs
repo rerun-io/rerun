@@ -30,6 +30,9 @@ fn test_rrd() -> (tempfile::TempDir, PathBuf) {
 
     let rec = RecordingStreamBuilder::new(RRD_APP_ID)
         .recording_id(RRD_RECORDING_ID)
+        // The built-in properties carry the recording start time, which the selection panel would
+        // show as an ever-changing timestamp in snapshots.
+        .send_properties(false)
         .save(&path)
         .expect("failed to create .rrd recording stream");
     rec.set_time_sequence("frame", 0);

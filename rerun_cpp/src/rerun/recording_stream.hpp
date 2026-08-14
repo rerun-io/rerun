@@ -72,9 +72,12 @@ namespace rerun {
         /// \param app_id The user-chosen name of the application doing the logging.
         /// \param recording_id The user-chosen name of the recording being logged to.
         /// \param store_kind Whether to log to the recording store or the blueprint store.
+        /// \param send_properties Whether to send the built-in recording properties when the
+        /// recording is created. Processes that share a `recording_id` each send their own
+        /// properties, and the most recent one is selected if combined.
         RecordingStream(
             std::string_view app_id, std::string_view recording_id = std::string_view(),
-            StoreKind store_kind = StoreKind::Recording
+            StoreKind store_kind = StoreKind::Recording, bool send_properties = true
         );
         ~RecordingStream();
 

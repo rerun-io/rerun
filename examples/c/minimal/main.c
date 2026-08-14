@@ -10,7 +10,10 @@ int main(void) {
         .recording_id = rr_make_string(NULL),
         .store_kind = RR_STORE_KIND_RECORDING,
     };
-    rr_recording_stream rec = rr_recording_stream_new(&store_info, true, &error);
+    const bool default_enabled = true;
+    const bool send_properties = true;
+    rr_recording_stream rec =
+        rr_recording_stream_new(&store_info, default_enabled, send_properties, &error);
 
     // Connect to running viewer:
     //rr_recording_stream_connect_grpc(rec, rr_make_string("rerun+http://127.0.0.1:9876"), &error);

@@ -552,10 +552,12 @@ pub extern "C" fn rr_register_component_type(
     }
 }
 
-#[expect(clippy::result_large_err)]
+// The bools mirror the C signature.
+#[expect(clippy::result_large_err, clippy::fn_params_excessive_bools)]
 fn rr_recording_stream_new_impl(
     store_info: *const CStoreInfo,
     default_enabled: bool,
+    send_properties: bool,
 ) -> Result<CRecordingStream, CError> {
     {
         use std::sync::Once;
@@ -597,7 +599,8 @@ fn rr_recording_stream_new_impl(
     let mut rec_builder = RecordingStreamBuilder::new(application_id)
         //.store_id(recording_id.clone()) // TODO(andreas): Expose store id.
         .store_source(re_sdk::external::re_log_types::StoreSource::CSdk)
-        .default_enabled(default_enabled);
+        .default_enabled(default_enabled)
+        .send_properties(send_properties);
 
     if let Some(recording_id) = recording_id.as_optional_str("recording_id")? {
         rec_builder = rec_builder.recording_id(recording_id);
@@ -621,9 +624,10 @@ fn rr_recording_stream_new_impl(
 pub extern "C" fn rr_recording_stream_new(
     store_info: *const CStoreInfo,
     default_enabled: bool,
+    send_properties: bool,
     error: *mut CError,
 ) -> CRecordingStream {
-    match rr_recording_stream_new_impl(store_info, default_enabled) {
+    match rr_recording_stream_new_impl(store_info, default_enabled, send_properties) {
         Err(err) => {
             err.write_error(error);
             0

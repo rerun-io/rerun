@@ -283,12 +283,12 @@ impl RecordingStreamBuilder {
     ///
     /// The default is to use a random `RecordingId`.
     ///
-    /// When explicitly setting a `RecordingId`, the initial chunk that contains the recording
-    /// properties will not be sent.
+    /// Processes that share a `RecordingId` each send their own recording properties, and the most
+    /// recent one is selected if combined. Use [`Self::send_properties`] to opt out of that.
     #[inline]
     pub fn recording_id(mut self, recording_id: impl Into<RecordingId>) -> Self {
         self.recording_id = Some(recording_id.into());
-        self.send_properties(false)
+        self
     }
 
     /// Sets an optional name for the recording.
@@ -694,6 +694,9 @@ impl RecordingStreamBuilder {
         });
 
         let store_info = StoreInfo::new(store_id, store_source);
+
+        // `RecordingInfo` describes a recording, so blueprint stores never carry it.
+        let should_send_properties = should_send_properties && store_info.store_id.is_recording();
 
         (
             enabled,
