@@ -10,10 +10,6 @@ In the [catalog object model](../../concepts/query-and-transform/catalog-object-
 Layers are immutable, but data can be added to segments by registering other layers with the same recording id but a different layer name.
 This how-to page provides examples for two ways data can be added to existing datasets through layers.
 
-> [!NOTE]
-> Layers should not be confused with [MCAP decoders](../../concepts/logging-and-ingestion/mcap/decoders-explained.md), which serve a different purpose in the context of MCAP file ingestion.
-
-
 ## Adding data to existing segments using layers
 
 When registering recordings to a dataset, the recordings are assigned the `"base"` layer name by default.
