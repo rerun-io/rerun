@@ -27,6 +27,7 @@ use actions::add_entities_to_new_view::AddEntitiesToNewViewAction;
 use actions::add_view::AddViewAction;
 use actions::clone_view::CloneViewAction;
 use actions::collapse_expand_all::CollapseExpandAllAction;
+use actions::lock_unlock::{LockAction, UnlockAction};
 use actions::move_contents_to_new_container::MoveContentsToNewContainerAction;
 use actions::remove::RemoveAction;
 use actions::show_hide::{HideAction, ShowAction};
@@ -171,6 +172,8 @@ fn action_list(
                 Box::new(HideAction),
                 Box::new(ShowHideInAllViewsAction::Show),
                 Box::new(ShowHideInAllViewsAction::Hide),
+                Box::new(LockAction),
+                Box::new(UnlockAction),
                 Box::new(RemoveAction),
                 Box::new(CopyEntityPathToClipboard),
                 Box::new(TrackEntity),
