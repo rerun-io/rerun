@@ -85,6 +85,12 @@ pub enum Error {
         expected_type: &'static str,
     },
 
+    #[error("Unexpected null in '{field_name}' in {context}")]
+    UnexpectedNull {
+        field_name: &'static str,
+        context: &'static str,
+    },
+
     #[error(transparent)]
     Arrow(Arc<ArrowError>),
 

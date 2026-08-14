@@ -14,6 +14,8 @@ use re_sdk_types::encodings::ImageFormat;
 
 use crate::semantic::helpers::get_field_as;
 
+const ENCODING_FIELD: &str = "encoding";
+
 /// Returns a pipe-compatible function that converts a struct with `width`, `height`, and
 /// `encoding` fields into a Rerun [`ImageFormat`] struct array.
 pub(crate) fn encoding_to_image_format()
@@ -30,23 +32,31 @@ pub(crate) fn encoding_to_image_format()
 
         let width_array = get_field_as::<UInt32Array>(source, "width")?;
         let height_array = get_field_as::<UInt32Array>(source, "height")?;
-        let encoding_array = get_field_as::<StringArray>(source, "encoding")?;
+        let encoding_array = get_field_as::<StringArray>(source, ENCODING_FIELD)?;
 
-        let formats: Vec<Option<ImageFormat>> = (0..source.len())
+        // The MCAP decoders declare `encoding` non-nullable, so this should never fire.
+        // We also have defensive coding below to handle the case where it does, just in case.
+        re_log::debug_assert!(
+            !encoding_array.is_nullable(),
+            "`{ENCODING_FIELD}` must be declared non-nullable"
+        );
+
+        let formats: Vec<ImageFormat> = (0..source.len())
             .map(|i| -> Result<_, Error> {
                 if encoding_array.is_null(i) {
-                    return Ok(None);
+                    // Defensive coding (see above debug_assert).
+                    return Err(Error::UnexpectedNull {
+                        field_name: ENCODING_FIELD,
+                        context: "encoding_to_image_format",
+                    });
                 }
                 let encoding = parse_encoding(encoding_array.value(i))?;
-                Ok(Some(encoding.to_image_format([
-                    width_array.value(i),
-                    height_array.value(i),
-                ])))
+                Ok(encoding.to_image_format([width_array.value(i), height_array.value(i)]))
             })
             .try_collect()?;
 
-        let array_ref = ImageFormat::to_arrow_opt(formats.iter().map(|f| f.as_ref()))
-            .map_err(|err| Error::Other(err.to_string()))?;
+        let array_ref =
+            ImageFormat::to_arrow(formats.iter()).map_err(|err| Error::Other(err.to_string()))?;
 
         Ok(Some(array_ref))
     }
