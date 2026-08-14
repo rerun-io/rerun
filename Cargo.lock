@@ -11094,7 +11094,6 @@ version = "0.37.0-alpha.1+dev"
 dependencies = [
  "egui",
  "egui_table",
- "itertools 0.15.0",
  "re_byte_size",
  "re_chunk",
  "re_chunk_store",

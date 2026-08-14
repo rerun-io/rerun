@@ -1,5 +1,4 @@
 use std::collections::BTreeSet;
-use std::ops::Range;
 
 use egui::emath::GuiRounding as _;
 use re_chunk_store::TimeInt;
@@ -21,8 +20,8 @@ use re_viewer_context::{
 };
 use re_viewport_blueprint::ViewProperty;
 
-use super::visualizer_system::{Entry, FetchWindow, TextLogOutput, TextLogSystem};
-use crate::row_layout::RowLayout;
+use super::visualizer_system::{TextLogOutput, TextLogSystem};
+use crate::row_layout::{RowLayout, VisibleRows};
 
 // TODO(andreas): This should be a blueprint component.
 #[derive(Clone, PartialEq, Eq, Default, re_byte_size::SizeBytes)]
@@ -43,12 +42,6 @@ pub struct TextViewState {
     last_anchor_row: Option<u64>,
 
     seen_levels: BTreeSet<String>,
-
-    /// Time window that the visualizer should query on the next frame.
-    ///
-    /// Written at the end of `ui()` based on the visible rows, read by
-    /// [`TextLogSystem`]'s `execute()` one frame later.
-    pub(crate) fetch_window: Option<FetchWindow>,
 }
 
 impl ViewState for TextViewState {
@@ -235,8 +228,9 @@ Filter message types and toggle column visibility in a selection panel.",
 
         let time = ctx.time_ctrl.time_i64().unwrap_or(state.latest_time);
 
-        // Everything about *where* rows live comes from the visualizer, which derives it from
-        // chunk-level metadata rather than the row data itself.
+        // Everything about *where* rows live comes from the visualizer's row layout, derived
+        // from chunk-level metadata; only the rows that end up on screen are resolved from the
+        // actual row data (in `prepare()`).
         // `None` means the visualizer didn't run, i.e. the view has no active instructions.
         let layout = output.layout.as_ref();
 
@@ -245,22 +239,10 @@ Filter message types and toggle column visibility in a selection panel.",
         }
 
         let num_rows = layout.map_or(0, RowLayout::num_rows);
-        let num_static_rows = layout.map_or(0, RowLayout::num_static_rows);
         let rows_before = |t: TimeInt| layout.map_or(0, |layout| layout.rows_before(t));
 
         let scroll_row = rows_before(TimeInt::new_temporal(time));
         let anchor_row = rows_before(TimeInt::new_temporal(time).inc());
-
-        let rows = RowLookup {
-            num_static: num_static_rows,
-            fetched_static: output
-                .entries
-                .partition_point(|entry| entry.time.is_static()) as u64,
-            temporal_offset: output
-                .window
-                .map_or(num_static_rows, |window| rows_before(window.min)),
-            entries: &output.entries,
-        };
 
         // Auto-scroll when the time cursor moves, or whenever the row below the cursor shifts
         // because new (possibly out-of-order) data landed at or before the cursor.
@@ -309,10 +291,10 @@ Filter message types and toggle column visibility in a selection panel.",
             row_height: tokens.table_row_height(table_style),
             column_kinds: &column_kinds,
             monospace_body: **monospace_body,
-            rows,
+            layout,
+            visible: VisibleRows::default(),
             num_rows,
             marker_row,
-            visible_rows: 0..0,
         };
 
         egui::Frame {
@@ -339,25 +321,6 @@ Filter message types and toggle column visibility in a selection panel.",
             table.show(ui, &mut delegate);
         });
 
-        // Tell the visualizer which time window to fetch next frame: the visible rows,
-        // padded by one page on each side for scroll responsiveness.
-        let visible_rows = delegate.visible_rows.clone();
-        let page = (visible_rows.end - visible_rows.start).max(1);
-        let prefetch_rows =
-            visible_rows.start.saturating_sub(page)..(visible_rows.end + page).min(num_rows);
-        let new_window = layout
-            .and_then(|layout| layout.time_window_for_rows(prefetch_rows))
-            .map(|(min, max)| FetchWindow {
-                timeline: query.timeline,
-                min,
-                max,
-            });
-
-        if state.fetch_window != new_window {
-            state.fetch_window = new_window;
-            ui.ctx().request_repaint();
-        }
-
         Ok(Default::default())
     }
 }
@@ -377,54 +340,28 @@ fn text_log_column(width: f32, min_width: f32) -> egui_table::Column {
         .resizable(true)
 }
 
-/// Maps a global row index to a (possibly not-yet-fetched) [`Entry`].
-///
-/// Only the fetched time window is materialized.
-struct RowLookup<'a> {
-    /// Fetched entries that pass the level filter, sorted by time, static entries first.
-    entries: &'a [Entry],
-
-    /// Total number of static rows according to chunk metadata.
-    num_static: u64,
-
-    /// Number of static entries at the front of `entries`.
-    fetched_static: u64,
-
-    /// Global row index of the first fetched temporal entry.
-    temporal_offset: u64,
-}
-
-impl RowLookup<'_> {
-    fn entry(&self, row_nr: u64) -> Option<&Entry> {
-        if row_nr < self.num_static {
-            (row_nr < self.fetched_static).then(|| &self.entries[row_nr as usize])
-        } else {
-            let idx = self.fetched_static + row_nr.checked_sub(self.temporal_offset)?;
-            self.entries.get(idx as usize)
-        }
-    }
-}
-
 struct TextLogTableDelegate<'a> {
     ctx: &'a ViewerContext<'a>,
     table_style: TableStyle,
     row_height: f32,
     column_kinds: &'a [ColumnKind],
     monospace_body: bool,
-    rows: RowLookup<'a>,
+    layout: Option<&'a RowLayout>,
     num_rows: u64,
 
     /// Paint the current time indicator at the top of this row
     /// (or at the bottom of the last row if this is one past the end).
     marker_row: Option<u64>,
 
-    /// Rows that were visible this frame, captured from the prefetch info.
-    visible_rows: Range<u64>,
+    /// The rows on screen this frame, resolved from the layout in [`Self::prepare`].
+    visible: VisibleRows,
 }
 
 impl egui_table::TableDelegate for TextLogTableDelegate<'_> {
     fn prepare(&mut self, info: &egui_table::PrefetchInfo) {
-        self.visible_rows = info.visible_rows.clone();
+        self.visible = self.layout.map_or_else(VisibleRows::default, |layout| {
+            layout.visible_rows(info.visible_rows.clone())
+        });
     }
 
     fn default_row_height(&self) -> f32 {
@@ -482,19 +419,16 @@ impl egui_table::TableDelegate for TextLogTableDelegate<'_> {
         egui::Frame::new()
             .inner_margin(ui.tokens().table_cell_margin(self.table_style))
             .show(ui, |ui| {
-                let Some(entry) = self.rows.entry(cell.row_nr) else {
-                    // This row's time window hasn't been fetched yet; it arrives next frame.
+                let Some((layout, row)) = Option::zip(self.layout, self.visible.get(cell.row_nr))
+                else {
+                    // Can only happen if the table requests a row outside the prepared range.
                     ui.weak("…");
                     return;
                 };
 
                 match &self.column_kinds[col_nr] {
                     ColumnKind::Timeline(timeline) => {
-                        let row_time = entry
-                            .timepoint
-                            .get(timeline)
-                            .map(re_log_types::TimeInt::from)
-                            .unwrap_or(re_log_types::TimeInt::STATIC);
+                        let row_time = layout.row_time(row, timeline);
                         item_ui::time_button(self.ctx, ui, timeline, row_time);
                     }
                     ColumnKind::Kind(bp_encodings::TextLogColumnKind::EntityPath) => {
@@ -502,19 +436,21 @@ impl egui_table::TableDelegate for TextLogTableDelegate<'_> {
                             &self.ctx.active_recording_store_view_context(),
                             ui,
                             None,
-                            &entry.entity_path,
+                            layout.row_data(row).entity_path,
                         );
                     }
                     ColumnKind::Kind(bp_encodings::TextLogColumnKind::LogLevel) => {
-                        if let Some(lvl) = &entry.level {
+                        if let Some(lvl) = layout.row_data(row).level {
                             ui.label(level_to_rich_text(ui, lvl));
                         } else {
                             ui.label("-");
                         }
                     }
                     ColumnKind::Kind(bp_encodings::TextLogColumnKind::Body) => {
+                        let data = layout.row_data(row);
+
                         // Rows have a fixed height; show only the first line of multi-line bodies.
-                        let body = entry.body.as_str();
+                        let body = data.body.unwrap_or_default();
                         let (first_line, truncated) = match body.split_once('\n') {
                             Some((first_line, _)) => (first_line, true),
                             None => (body, false),
@@ -529,7 +465,7 @@ impl egui_table::TableDelegate for TextLogTableDelegate<'_> {
                         if self.monospace_body {
                             text = text.monospace();
                         }
-                        if let Some(color) = entry.color {
+                        if let Some(color) = data.color {
                             text = text.color(color);
                         }
 

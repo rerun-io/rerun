@@ -113,6 +113,64 @@ fn level_filter() {
     ));
 }
 
+/// A view default for the level follows the standard `Override > Store > Default` resolution:
+/// it applies to entities that never logged a level, while entities with their own levels
+/// are unaffected.
+#[test]
+fn view_default_level() {
+    let mut snapshot_results = SnapshotResults::new();
+    let mut test_context = TestContext::new_with_view_class::<TextView>();
+
+    let timeline = Timeline::log_tick();
+
+    // `logs/leveled` logs its own levels (on every other row): the view default must not apply.
+    let mut leveled = Chunk::builder("logs/leveled");
+    // `logs/plain` never logs a level: every row falls back to the view default.
+    let mut plain = Chunk::builder("logs/plain");
+    for tick in 0_i64..6 {
+        let mut row = TextLog::new(format!("Leveled at tick {tick}"));
+        if tick % 2 == 0 {
+            row = row.with_level("INFO");
+        }
+        leveled = leveled.with_archetype_auto_row([(timeline, tick)], &row);
+        plain = plain.with_archetype_auto_row(
+            [(timeline, tick)],
+            &TextLog::new(format!("Plain at tick {tick}")),
+        );
+    }
+    test_context.add_chunks(
+        [leveled, plain]
+            .map(|builder| builder.build().expect("failed to build chunk"))
+            .into_iter(),
+    );
+
+    test_context.set_active_timeline(*timeline.name());
+    test_context.send_time_commands(
+        test_context.active_store_id(),
+        [TimeControlCommand::SetTime(TimeInt::new_temporal(6).into())],
+    );
+    test_context.handle_system_commands(&egui::Context::default());
+
+    let view_id = test_context.setup_viewport_blueprint(|ctx, blueprint| {
+        let view_id = blueprint
+            .add_view_at_root(ViewBlueprint::new_with_root_wildcard(TextView::identifier()));
+
+        ctx.save_blueprint_archetype(
+            re_viewport_blueprint::ViewBlueprint::defaults_path(view_id),
+            &TextLog::update_fields().with_level("ERROR"),
+        );
+
+        view_id
+    });
+
+    snapshot_results.add(test_context.run_view_ui_and_save_snapshot(
+        view_id,
+        "text_log_view_default_level",
+        egui::vec2(500.0, 420.0),
+        None,
+    ));
+}
+
 fn text_log_chunks(timeline: Timeline) -> impl Iterator<Item = Chunk> {
     (0_i64..=200).step_by(10).map(move |tick| {
         Chunk::builder("logs")
