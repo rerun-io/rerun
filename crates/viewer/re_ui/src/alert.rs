@@ -119,18 +119,6 @@ impl Alert {
         })
         .response
     }
-
-    pub fn text_widget(
-        self,
-        visible_text: impl Into<String>,
-        full_text: Option<String>,
-    ) -> AlertText {
-        AlertText {
-            alert: self,
-            visible_text: visible_text.into(),
-            full_text,
-        }
-    }
 }
 
 #[cfg(test)]

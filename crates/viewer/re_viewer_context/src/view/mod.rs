@@ -27,7 +27,7 @@ pub use highlights::{
     OptionalViewEntityHighlight, ViewEntityHighlight, ViewHighlights, ViewOutlineMasks,
 };
 pub use named_system::{IdentifiedViewSystem, PerSystemEntities, ViewSystemIdentifier};
-pub use spawn_heuristics::{RecommendedView, ViewSpawnHeuristics};
+pub use spawn_heuristics::{MAX_VIEWS_SPAWNED, RecommendedView, ViewSpawnHeuristics};
 pub use system_execution_output::{
     SystemExecutionOutput, VisualizerTypeReport, VisualizerViewReport,
 };

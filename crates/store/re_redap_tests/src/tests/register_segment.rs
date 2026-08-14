@@ -8,6 +8,7 @@ use futures::TryStreamExt as _;
 use itertools::{Itertools as _, izip};
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_log_types::{EntityPath, TimeType};
+use re_protos::cloud::v1alpha1::ext as cloud_ext;
 use re_protos::cloud::v1alpha1::ext::{
     self, DatasetDetails, RegisterWithDatasetRequest, TableDetails, UpdateTableEntryRequest,
 };
@@ -20,8 +21,7 @@ use re_protos::cloud::v1alpha1::{
 };
 use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
 use re_protos::headers::RerunHeadersInjectorExt as _;
-use re_protos::{cloud::v1alpha1::ext as cloud_ext, common::v1alpha1::TaskId};
-use re_sdk_types::{AnyValues, LayerName};
+use re_sdk_types::AnyValues;
 use re_types_core::AsComponents;
 use re_types_core::SegmentId;
 use url::Url;
@@ -1309,12 +1309,8 @@ async fn scan_segment_table(service: &impl RerunCloudService, dataset_name: &str
 /// Result of a registered task, including which segments/layers were registered.
 #[derive(Debug)]
 struct TaskResult {
-    #[expect(dead_code)]
-    task_id: TaskId,
     status: String,
     message: String,
-    #[expect(dead_code)]
-    layers: Vec<(SegmentId, LayerName)>,
 }
 
 /// Helper to register data sources and wait for task completion.
@@ -1326,8 +1322,6 @@ async fn register_and_wait_for_task_result(
 ) -> Vec<TaskResult> {
     use futures::StreamExt as _;
     use re_protos::cloud::v1alpha1::QueryTasksOnCompletionRequest;
-    use re_protos::common::v1alpha1::TaskId;
-    use std::collections::HashMap;
 
     service.create_dataset_entry_with_name(dataset_name).await;
 
@@ -1349,29 +1343,10 @@ async fn register_and_wait_for_task_result(
         .try_into()
         .expect("record batch expected");
 
-    // Extract task IDs and group segments by task
-    let ext::RegisterWithDatasetDataframe {
-        rerun_segment_id,
-        rerun_segment_layer,
-        rerun_task_id,
-        ..
-    } = ext::RegisterWithDatasetDataframe::try_from(batch)
-        .expect("valid RegisterWithDataset response dataframe");
-
-    // Group (segment_id, layer) by task_id
-    let mut task_layers: HashMap<TaskId, Vec<(SegmentId, LayerName)>> = HashMap::default();
-    for (task_id, segment_id, layer_name) in izip!(
-        rerun_task_id.into_iter_owned(),
-        rerun_segment_id.into_iter_owned(),
-        rerun_segment_layer.into_iter_owned()
-    ) {
-        task_layers
-            .entry(task_id)
-            .or_default()
-            .push((segment_id, layer_name));
-    }
-
-    let task_ids: Vec<TaskId> = task_layers.keys().cloned().collect();
+    let ext::RegisterWithDatasetDataframe { rerun_task_id, .. } =
+        ext::RegisterWithDatasetDataframe::try_from(batch)
+            .expect("valid RegisterWithDataset response dataframe");
+    let task_ids = rerun_task_id.into_iter_owned().unique().collect();
 
     // Wait for task completion
     let query_results: Vec<RecordBatch> = service
@@ -1401,25 +1376,15 @@ async fn register_and_wait_for_task_result(
     let mut results = Vec::new();
     for batch in &query_results {
         let cloud_ext::QueryTasksDataframe {
-            task_id,
-            exec_status,
-            msgs,
-            ..
+            exec_status, msgs, ..
         } = cloud_ext::QueryTasksDataframe::try_from(batch).expect("valid QueryTasks dataframe");
 
-        for (task_id, status, message) in izip!(
-            task_id.into_iter_owned(),
-            exec_status.into_iter_owned(),
-            msgs.into_iter_owned()
-        ) {
-            let message = message.unwrap_or_default();
-            let layers = task_layers.remove(&task_id).unwrap_or_default();
-
+        for (status, message) in
+            std::iter::zip(exec_status.into_iter_owned(), msgs.into_iter_owned())
+        {
             results.push(TaskResult {
-                task_id,
                 status,
-                message,
-                layers,
+                message: message.unwrap_or_default(),
             });
         }
     }

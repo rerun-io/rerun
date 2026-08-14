@@ -441,7 +441,6 @@ impl DepthTexture {
 
 struct AlbedoTexture {
     dimensions: glam::UVec2,
-    rgba8: Vec<u8>,
     texture: GpuTexture2D,
 }
 
@@ -472,14 +471,7 @@ impl AlbedoTexture {
 
         Self {
             dimensions,
-            rgba8,
             texture,
         }
-    }
-
-    #[expect(dead_code)]
-    pub fn get(&self, x: u32, y: u32) -> [u8; 4] {
-        let p = &self.rgba8[(x + y * self.dimensions.x) as usize * 4..];
-        [p[0], p[1], p[2], p[3]]
     }
 }

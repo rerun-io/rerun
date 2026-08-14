@@ -230,52 +230,6 @@ fn instance_path_button_to_ex(
     cursor_interact_with_selectable(ctx, response, item)
 }
 
-/// Show the different parts of an instance path and make them selectable.
-pub fn instance_path_parts_buttons(
-    ctx: &StoreViewContext<'_>,
-    ui: &mut egui::Ui,
-    view_id: Option<ViewId>,
-    instance_path: &InstancePath,
-) -> egui::Response {
-    let with_icon = false; // too much noise with icons in a path
-
-    ui.horizontal(|ui| {
-        ui.spacing_mut().item_spacing.x = 2.0;
-
-        // Show one single icon up-front instead:
-        ui.add(instance_path_icon(ctx, instance_path).as_image());
-
-        let mut accumulated = Vec::new();
-        for part in instance_path.entity_path.iter() {
-            accumulated.push(part.clone());
-
-            ui.strong("/");
-            instance_path_button_to_ex(
-                ctx,
-                ui,
-                view_id,
-                &InstancePath::entity_all(accumulated.clone()),
-                part.syntax_highlighted(ui.style()),
-                with_icon,
-            );
-        }
-
-        if !instance_path.instance.is_all() {
-            ui.weak("[");
-            instance_path_button_to_ex(
-                ctx,
-                ui,
-                view_id,
-                instance_path,
-                instance_path.instance.syntax_highlighted(ui.style()),
-                with_icon,
-            );
-            ui.weak("]");
-        }
-    })
-    .response
-}
-
 /// If `include_subtree=true`, stats for the entire entity subtree will be shown.
 fn entity_tree_stats_ui(
     ui: &mut egui::Ui,
@@ -388,26 +342,6 @@ fn entity_tree_stats_ui(
             format_bytes(total_stats.total_size_bytes as f64)
         ));
     }
-}
-
-pub fn data_blueprint_button_to(
-    ctx: &StoreViewContext<'_>,
-    ui: &mut egui::Ui,
-    text: impl Into<egui::WidgetText>,
-    view_id: ViewId,
-    entity_path: &EntityPath,
-) -> egui::Response {
-    let item = Item::DataResult(DataResultInteractionAddress::from_entity_path(
-        view_id,
-        entity_path.clone(),
-    ));
-    let response = ui
-        .selectable_label(ctx.is_selected_or_loading(&item), text)
-        .on_hover_ui(|ui| {
-            let include_subtree = false;
-            entity_hover_card_ui(ui, ctx, entity_path, include_subtree);
-        });
-    cursor_interact_with_selectable(ctx, response, item)
 }
 
 pub fn time_button(

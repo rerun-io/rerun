@@ -930,16 +930,8 @@ enum IteratorKind {
     /// `Iterator<Item = DeserializationResult<Option<T>>>`.
     ResultOptionValue,
 
-    /// `Iterator<Item = Option<DeserializationResult<T>>>`.
-    #[expect(dead_code)] // currently unused
-    OptionResultValue,
-
     /// `Iterator<Item = Option<T>>`.
     OptionValue,
-
-    /// `Iterator<Item = DeserializationResult<T>>`.
-    #[expect(dead_code)] // currently unused
-    ResultValue,
 
     /// `Iterator<Item = T>`.
     Value,
@@ -1000,10 +992,10 @@ fn quote_iterator_transparency(
         };
 
         match iter_kind {
-            IteratorKind::ResultOptionValue | IteratorKind::OptionResultValue => {
+            IteratorKind::ResultOptionValue => {
                 quote!(.map(|res_or_opt| res_or_opt.map(|res_or_opt| res_or_opt.map(#quoted_binding))))
             }
-            IteratorKind::OptionValue | IteratorKind::ResultValue => {
+            IteratorKind::OptionValue => {
                 quote!(.map(|res_or_opt| res_or_opt.map(#quoted_binding)))
             }
             IteratorKind::Value => quote!(.map(#quoted_binding)),
@@ -1012,10 +1004,10 @@ fn quote_iterator_transparency(
         if let Some(extra_wrapper) = extra_wrapper {
             let quoted_binding = quote!(|v| #extra_wrapper(v));
             match iter_kind {
-                IteratorKind::ResultOptionValue | IteratorKind::OptionResultValue => {
+                IteratorKind::ResultOptionValue => {
                     quote!(.map(|res_or_opt| res_or_opt.map(|res_or_opt| res_or_opt.map(#quoted_binding))))
                 }
-                IteratorKind::OptionValue | IteratorKind::ResultValue => {
+                IteratorKind::OptionValue => {
                     quote!(.map(|res_or_opt| res_or_opt.map(#quoted_binding)))
                 }
                 IteratorKind::Value => quote!(.map(#quoted_binding)),

@@ -274,13 +274,6 @@ impl<'a> ViewerContext<'a> {
             .handle_select_focus_sync(response, interacted_items);
     }
 
-    /// This returns `true` if we have an active recording.
-    ///
-    /// It excludes the globally hardcoded welcome screen app ID.
-    pub fn has_active_recording(&self) -> bool {
-        self.recording().application_id() != StoreHub::welcome_screen_app_id()
-    }
-
     /// Reverts to the default route.
     pub fn revert_to_default_route(&self) {
         self.app_ctx.revert_to_default_route();

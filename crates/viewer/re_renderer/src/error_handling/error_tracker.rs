@@ -13,11 +13,6 @@ pub enum ContextError {
 pub struct ErrorEntry {
     /// Frame index for frame on which this error was last logged.
     last_occurred_frame_index: u64,
-
-    /// Description of the error.
-    // TODO(#4507): Expecting to need this once we use this in views. Also very useful for debugging.
-    #[expect(dead_code)]
-    description: String,
 }
 
 /// Keeps track of wgpu errors and de-duplicates messages across frames.
@@ -71,7 +66,6 @@ impl ErrorTracker {
             } => {
                 let entry = ErrorEntry {
                     last_occurred_frame_index: frame_index,
-                    description: description.clone(),
                 };
 
                 let should_log = match source.downcast::<wgpu::wgc::error::ContextError>() {

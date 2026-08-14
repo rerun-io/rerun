@@ -11,7 +11,7 @@ use re_entity_db::EntityPath;
 use re_log_types::StoreId;
 use re_sdk_types::archetypes;
 use re_sdk_types::components::AnnotationContext;
-use re_sdk_types::encodings::{AnnotationInfo, ClassDescription, ClassId, KeypointId, Utf8};
+use re_sdk_types::encodings::{AnnotationInfo, ClassDescription, ClassId, KeypointId};
 
 use super::auto_color_egui;
 
@@ -166,15 +166,6 @@ impl ResolvedAnnotationInfo {
                 .label
                 .as_ref()
                 .map(|label| label.to_string())
-        }
-    }
-
-    #[inline]
-    pub fn label_utf8(&self, label: Option<Utf8>) -> Option<Utf8> {
-        if let Some(label) = label {
-            Some(label)
-        } else {
-            self.annotation_info.as_ref()?.label.clone()
         }
     }
 }

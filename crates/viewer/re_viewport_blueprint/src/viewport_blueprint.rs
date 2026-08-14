@@ -16,8 +16,8 @@ use re_sdk_types::blueprint::components::{
 };
 use re_sdk_types::{Archetype as _, ViewClassIdentifier};
 use re_viewer_context::{
-    BlueprintContext as _, ContainerId, Contents, Item, ViewId, ViewerContext, VisitorControlFlow,
-    blueprint_id_to_tile_id,
+    BlueprintContext as _, ContainerId, Contents, Item, MAX_VIEWS_SPAWNED, ViewId, ViewerContext,
+    VisitorControlFlow, blueprint_id_to_tile_id,
 };
 use smallvec::SmallVec;
 
@@ -316,7 +316,6 @@ impl ViewportBlueprint {
             let include_entity = |ent: &EntityPath| !excluded_entities.matches(ent);
 
             let spawn_heuristics = entry.class.spawn_heuristics(ctx, &include_entity);
-            let max_views_spawned = spawn_heuristics.max_views_spawned();
             let mut recommended_views = spawn_heuristics.into_vec();
 
             re_tracing::profile_scope!("filter_recommendations_for", class_id);
@@ -328,9 +327,9 @@ impl ViewportBlueprint {
                 .filter(|view| view.class_identifier() == class_id)
                 .count();
 
-            // Limit recommendations based on max_views_spawned.
+            // Limit recommendations based on `MAX_VIEWS_SPAWNED`.
             // If we already have max or more views, don't spawn any more.
-            let max_new_views = max_views_spawned.saturating_sub(existing_view_count);
+            let max_new_views = MAX_VIEWS_SPAWNED.saturating_sub(existing_view_count);
             if max_new_views < recommended_views.len() {
                 recommended_views.truncate(max_new_views);
             }
@@ -513,12 +512,6 @@ impl ViewportBlueprint {
         }
 
         ControlFlow::Continue(())
-    }
-
-    /// Given a predicate, finds the (first) matching contents by recursively walking from the root
-    /// container.
-    pub fn find_contents_by(&self, predicate: &impl Fn(&Contents) -> bool) -> Option<Contents> {
-        self.find_contents_in_container_by(predicate, &self.root_container)
     }
 
     /// Given a predicate, finds the (first) matching contents by recursively walking from the given

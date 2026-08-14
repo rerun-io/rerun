@@ -3,15 +3,12 @@ use crate::batch_coalescer::coalesce_exec::SizedCoalesceBatchesExec;
 use crate::batch_coalescer::coalescer::CoalescerOptions;
 use crate::pushdown_expressions::{apply_filter_expr_to_queries, filter_expr_is_supported};
 use ahash::{HashMap, HashMapExt as _, HashSet};
-use arrow::array::{
-    ArrayRef, DurationNanosecondArray, Int64Array, RecordBatch, TimestampMicrosecondArray,
-    TimestampMillisecondArray, TimestampNanosecondArray, TimestampSecondArray, UInt32Array,
-};
-use arrow::datatypes::{DataType, Field, Int64Type, Schema, SchemaRef, TimeUnit};
+use arrow::array::{ArrayRef, RecordBatch, UInt32Array};
+use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
 use arrow::record_batch::RecordBatchOptions;
 use async_trait::async_trait;
 use datafusion::catalog::{Session, TableProvider};
-use datafusion::common::{Column, DataFusionError, downcast_value, exec_datafusion_err};
+use datafusion::common::{Column, DataFusionError, exec_datafusion_err};
 use datafusion::datasource::TableType;
 use datafusion::logical_expr::{Expr, Operator, TableProviderFilterPushDown};
 use datafusion::physical_plan::ExecutionPlan;
@@ -1084,40 +1081,6 @@ pub(crate) fn group_chunk_infos_by_segment_id(
     }
 
     Ok(Arc::new(results))
-}
-
-#[tracing::instrument(level = "trace", skip_all)]
-#[expect(dead_code)]
-pub(crate) fn time_array_ref_to_i64(time_array: &ArrayRef) -> Result<Int64Array, DataFusionError> {
-    Ok(match time_array.data_type() {
-        DataType::Int64 => downcast_value!(time_array, Int64Array).reinterpret_cast::<Int64Type>(),
-        DataType::Timestamp(TimeUnit::Second, _) => {
-            let nano_array = downcast_value!(time_array, TimestampSecondArray);
-            nano_array.reinterpret_cast::<Int64Type>()
-        }
-        DataType::Timestamp(TimeUnit::Millisecond, _) => {
-            let nano_array = downcast_value!(time_array, TimestampMillisecondArray);
-            nano_array.reinterpret_cast::<Int64Type>()
-        }
-        DataType::Timestamp(TimeUnit::Microsecond, _) => {
-            let nano_array = downcast_value!(time_array, TimestampMicrosecondArray);
-            nano_array.reinterpret_cast::<Int64Type>()
-        }
-        DataType::Timestamp(TimeUnit::Nanosecond, _) => {
-            let nano_array = downcast_value!(time_array, TimestampNanosecondArray);
-            nano_array.reinterpret_cast::<Int64Type>()
-        }
-        DataType::Duration(TimeUnit::Nanosecond) => {
-            let duration_array = downcast_value!(time_array, DurationNanosecondArray);
-            duration_array.reinterpret_cast::<Int64Type>()
-        }
-        _ => {
-            return Err(exec_datafusion_err!(
-                "Unexpected type for time column {}",
-                time_array.data_type()
-            ));
-        }
-    })
 }
 
 /// Compact, display-friendly snapshot of the plan-time decisions that drove a scan.

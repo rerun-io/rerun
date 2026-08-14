@@ -76,7 +76,7 @@ impl MeshCache {
                 let name = name.to_string();
                 re_log::trace!("Loading CPU mesh {name:?}…");
 
-                let result = LoadedMesh::load(name.clone(), mesh, render_ctx);
+                let result = LoadedMesh::load(&name, mesh, render_ctx);
 
                 match result {
                     Ok(cpu_mesh) => MeshEntry {

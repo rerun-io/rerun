@@ -143,11 +143,6 @@ impl StreamingCacheTableProvider {
         matches!(self.cache.lock().lock().state, CacheState::Complete(_))
     }
 
-    /// Get the current number of cached batches.
-    pub fn cached_batch_count(&self) -> usize {
-        self.cache.lock().lock().cached_batches.len()
-    }
-
     /// Background task: stream from [`TableProvider`] to cache.
     ///
     /// Stops early if no consumers remain (detected via `Arc` strong count).

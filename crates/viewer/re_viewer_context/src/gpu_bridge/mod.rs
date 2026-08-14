@@ -21,32 +21,6 @@ use re_renderer::{
 };
 pub use re_renderer_callback::new_renderer_callback;
 
-use crate::TensorStats;
-
-// ----------------------------------------------------------------------------
-
-/// Return whether a tensor should be assumed to be encoded in sRGB color space ("gamma space", no EOTF applied).
-pub fn tensor_decode_srgb_gamma_heuristic(
-    tensor_stats: &TensorStats,
-    data_type: re_sdk_types::tensor_data::TensorDataType,
-    channels: u32,
-) -> bool {
-    if matches!(channels, 1 | 3 | 4) {
-        let (min, max) = tensor_stats.finite_range;
-        if 0.0 <= min && max <= 255.0 {
-            // If the range is suspiciously reminding us of a "regular image", assume sRGB.
-            true
-        } else if data_type.is_float() && 0.0 <= min && max <= 1.0 {
-            // Floating point images between 0 and 1 are often sRGB as well.
-            true
-        } else {
-            false
-        }
-    } else {
-        false
-    }
-}
-
 // ----------------------------------------------------------------------------
 
 /// Get a valid, finite range for the gpu to use.

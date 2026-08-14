@@ -152,18 +152,6 @@ impl ItemCollection {
         self.0.iter().any(|(item, _)| item == needle)
     }
 
-    pub fn are_all_items_same_kind(&self) -> Option<&'static str> {
-        if let Some(first_item) = self.first_item()
-            && self
-                .iter_items()
-                .skip(1)
-                .all(|item| std::mem::discriminant(first_item) == std::mem::discriminant(item))
-        {
-            return Some(first_item.kind());
-        }
-        None
-    }
-
     /// Retains elements that fulfill a certain condition.
     pub fn retain(&mut self, f: impl FnMut(&Item, &mut Option<ItemContext>) -> bool) {
         self.0.retain(f);

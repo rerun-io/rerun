@@ -44,14 +44,6 @@ pub struct TextureDesc {
 }
 
 impl TextureDesc {
-    /// Copies the desc but changes the label.
-    pub fn with_label(&self, label: Label) -> Self {
-        Self {
-            label,
-            ..self.clone()
-        }
-    }
-
     /// Copies the desc but adds a string to the label.
     pub fn with_label_push(&self, append_this: &str) -> Self {
         let mut copy = self.clone();

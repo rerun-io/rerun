@@ -1,7 +1,3 @@
-use std::sync::Arc;
-
-use re_mutex::RwLock;
-
 use crate::allocator::{GpuReadbackIdentifier, create_and_fill_uniform_buffer};
 use crate::context::RenderContext;
 use crate::draw_phases::{
@@ -65,11 +61,6 @@ struct ViewTargetSetup {
 
     resolution_in_pixel: [u32; 2],
 }
-
-/// [`ViewBuilder`] that can be shared between threads.
-///
-/// Innermost field is an Option, so it can be consumed for `composite`.
-pub type SharedViewBuilder = Arc<RwLock<Option<ViewBuilder>>>;
 
 /// Configures the camera placement in the orthographic frustum,
 /// as well as the coordinate system convention.

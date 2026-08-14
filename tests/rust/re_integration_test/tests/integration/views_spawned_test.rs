@@ -75,7 +75,7 @@ pub async fn test_time_series_max_views_spawned() {
     assert_eq!(
         time_series_view_descriptions.len(),
         6,
-        "Expected exactly 6 TimeSeriesViews to be spawned (respecting DEFAULT_MAX_VIEWS_SPAWNED)"
+        "Expected exactly 6 TimeSeriesViews to be spawned (respecting MAX_VIEWS_SPAWNED)"
     );
     insta::assert_snapshot!(time_series_view_descriptions.join("\n"), @r#"
     origin: /native_0, filter: ResolvedEntityPathFilter("+ $origin\n- /__properties/**")

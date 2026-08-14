@@ -45,11 +45,6 @@ struct LayoutStatistics {
     /// The semantics are exactly the same as [`LayoutInfo`]'s `left_column_width`.
     max_desired_left_column_width: Option<f32>,
 
-    /// Track whether any item uses the action button.
-    ///
-    /// If so, space for a right-aligned gutter should be reserved.
-    is_action_button_used: bool,
-
     /// Max item width.
     ///
     /// The width is calculated from [`LayoutInfo::left_x`] to the right edge of the item.
@@ -163,13 +158,6 @@ impl LayoutInfo {
                 .max_desired_left_column_width
                 .map(|v| v.max(desired_width))
                 .or(Some(desired_width));
-        });
-    }
-
-    /// Indicate whether right-aligned space should be reserved for the action button.
-    pub fn reserve_action_button_space(&self, ui: &egui::Ui, reserve: bool) {
-        LayoutStatistics::update(ui, self.scope_id, |stats| {
-            stats.is_action_button_used |= reserve;
         });
     }
 

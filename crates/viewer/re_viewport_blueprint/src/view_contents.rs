@@ -59,32 +59,6 @@ pub struct ViewContents {
 }
 
 impl ViewContents {
-    pub fn is_equivalent(&self, other: &Self) -> bool {
-        self.view_class_identifier.eq(&other.view_class_identifier)
-            && self.entity_path_filter.eq(&other.entity_path_filter)
-    }
-
-    /// Checks whether the results of this query "fully contains" the results of another query.
-    ///
-    /// If this returns `true` then the [`DataQueryResult`] returned by this query should always
-    /// contain any [`EntityPath`] that would be included in the results of the other query.
-    ///
-    /// This is a conservative estimate, and may return `false` in situations where the
-    /// query does in fact cover the other query. However, it should never return `true`
-    /// in a case where the other query would not be fully covered.
-    pub fn entity_path_filter_is_superset_of(&self, other: &Self) -> bool {
-        // A query can't fully contain another if their view classes don't match
-        if self.view_class_identifier != other.view_class_identifier {
-            return false;
-        }
-
-        // Anything included by the other query is also included by this query
-        self.entity_path_filter
-            .is_superset_of(&other.entity_path_filter)
-    }
-}
-
-impl ViewContents {
     /// Creates a new [`ViewContents`].
     ///
     /// This [`ViewContents`] is ephemeral. It must be saved by calling

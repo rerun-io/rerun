@@ -126,7 +126,6 @@ pub const HELP: Icon = icon_from_path!("../data/icons/help.svg");
 
 pub const PLAY: Icon = icon_from_path!("../data/icons/play.svg");
 pub const PLAYHEAD_NAV: Icon = icon_from_path!("../data/icons/playhead_nav.svg");
-pub const FOLLOW: Icon = icon_from_path!("../data/icons/follow.svg");
 pub const PAUSE: Icon = icon_from_path!("../data/icons/pause.svg");
 pub const CHEVRON: Icon = icon_from_path!("../data/icons/chevron.svg");
 pub const ARROW_LEFT: Icon = icon_from_path!("../data/icons/arrow_left.svg");
@@ -145,7 +144,6 @@ pub const LEFT_PANEL_TOGGLE: Icon = icon_from_path!("../data/icons/left_panel_to
 pub const MINIMIZE: Icon = icon_from_path!("../data/icons/minimize.svg");
 pub const MAXIMIZE: Icon = icon_from_path!("../data/icons/maximize.svg");
 pub const EXPAND: Icon = icon_from_path!("../data/icons/expand.svg");
-pub const COLUMN_VISIBILITY: Icon = icon_from_path!("../data/icons/column_visibility.svg");
 
 pub const VISIBLE: Icon = icon_from_path!("../data/icons/visible.svg");
 pub const INVISIBLE: Icon = icon_from_path!("../data/icons/invisible.svg");
@@ -242,7 +240,6 @@ pub const SUCCESS: Icon = icon_from_path!("../data/icons/success.svg");
 pub const VIDEO_ERROR: Icon = icon_from_path!("../data/icons/video_error.svg");
 
 // Drag and drop:
-pub const DND_ADD_NEW: Icon = icon_from_path!("../data/icons/dnd_add_new.svg");
 pub const DND_ADD_TO_EXISTING: Icon = icon_from_path!("../data/icons/dnd_add_to_existing.svg");
 pub const DND_MOVE: Icon = icon_from_path!("../data/icons/dnd_move.svg");
 pub const DND_HANDLE: Icon = icon_from_path!("../data/icons/dnd_handle.svg");

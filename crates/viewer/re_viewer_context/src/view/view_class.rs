@@ -143,11 +143,6 @@ impl ViewClassUiOutput {
         self.reports.push(report);
         self
     }
-
-    pub fn with_reports(mut self, reports: impl IntoIterator<Item = ViewerDiagnostic>) -> Self {
-        self.reports.extend(reports);
-        self
-    }
 }
 
 /// Defines a class of view without any concrete types making it suitable for storage and interfacing.

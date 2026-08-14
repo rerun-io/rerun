@@ -2,8 +2,15 @@ use re_log_types::hash::Hash64;
 use re_log_types::{EntityPath, EntityPathFilter, EntityPathRule, EntityPathSubs};
 use re_sdk_types::ViewClassIdentifier;
 
-/// Default maximum number of views of a single class that should be spawned in total.
-pub const DEFAULT_MAX_VIEWS_SPAWNED: usize = 8;
+/// Maximum number of views of a single class that should be spawned in total.
+///
+/// This limit needs to be applied at the heuristics level (rather than just limiting the
+/// number of recommended views per class) because we need to take existing views into account when
+/// deciding whether to spawn new views.
+/// For example, if max is 5 and there are already 3 views of this type, we should only spawn up to 2 more.
+///
+/// This limit applies on a per view class basis.
+pub const MAX_VIEWS_SPAWNED: usize = 8;
 
 /// Properties of a view that as recommended to be spawned by default via view spawn heuristics.
 #[derive(Debug, Clone)]
@@ -20,16 +27,6 @@ pub struct RecommendedView {
 pub struct ViewSpawnHeuristics {
     /// The recommended views to spawn
     recommended_views: Vec<RecommendedView>,
-
-    /// Maximum number of views of this class that should be spawned in total.
-    ///
-    /// This limit needs to be specified at the heuristics level (rather than just limiting
-    /// number of elements in `recommended_views`) because we need to take existing views into account when deciding
-    /// whether to spawn new views.
-    /// For example, if max is 5 and there are already 3 views of this type, we should only spawn up to 2 more.
-    ///
-    /// This limit applies on a per view class basis.
-    max_views_spawned: usize,
 }
 
 impl ViewSpawnHeuristics {
@@ -37,7 +34,6 @@ impl ViewSpawnHeuristics {
     pub fn empty() -> Self {
         Self {
             recommended_views: Vec::new(),
-            max_views_spawned: DEFAULT_MAX_VIEWS_SPAWNED,
         }
     }
 
@@ -45,17 +41,13 @@ impl ViewSpawnHeuristics {
     pub fn root() -> Self {
         Self {
             recommended_views: vec![RecommendedView::root()],
-            max_views_spawned: DEFAULT_MAX_VIEWS_SPAWNED,
         }
     }
 
     pub fn new(iter: impl IntoIterator<Item = RecommendedView>) -> Self {
         let mut recommended_views: Vec<RecommendedView> = iter.into_iter().collect();
         recommended_views.sort_by(|a, b| a.origin.cmp(&b.origin));
-        Self {
-            recommended_views,
-            max_views_spawned: DEFAULT_MAX_VIEWS_SPAWNED,
-        }
+        Self { recommended_views }
     }
 
     /// Create new spawn heuristics preserving the input order.
@@ -66,23 +58,7 @@ impl ViewSpawnHeuristics {
     pub fn new_with_order_preserved(iter: impl IntoIterator<Item = RecommendedView>) -> Self {
         Self {
             recommended_views: iter.into_iter().collect(),
-            max_views_spawned: DEFAULT_MAX_VIEWS_SPAWNED,
         }
-    }
-
-    /// Set the maximum number of views of this class that should be spawned in total.
-    ///
-    /// This limit is applied per view class and takes existing views into account.
-    #[inline]
-    pub fn with_max_views_spawned(mut self, max: usize) -> Self {
-        self.max_views_spawned = max;
-        self
-    }
-
-    /// Get the maximum number of views of this class that should be spawned in total.
-    #[inline]
-    pub fn max_views_spawned(&self) -> usize {
-        self.max_views_spawned
     }
 
     #[inline]

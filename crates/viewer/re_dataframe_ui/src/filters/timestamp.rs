@@ -123,27 +123,6 @@ impl TimestampFilter {
         }
     }
 
-    pub fn last_24_hours() -> Self {
-        Self {
-            kind: TimestampFilterKind::Last24Hours,
-            ..Default::default()
-        }
-    }
-
-    pub fn this_week() -> Self {
-        Self {
-            kind: TimestampFilterKind::ThisWeek,
-            ..Default::default()
-        }
-    }
-
-    pub fn last_week() -> Self {
-        Self {
-            kind: TimestampFilterKind::LastWeek,
-            ..Default::default()
-        }
-    }
-
     pub fn before(high_bound: jiff::Timestamp) -> Self {
         Self {
             kind: TimestampFilterKind::Before,

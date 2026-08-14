@@ -127,21 +127,6 @@ impl CodeGenerator for PythonCodeGenerator {
             );
         }
 
-        {
-            // TODO(jleibs): Should we still be generating an equivalent to this?
-            /*
-            let archetype_names = objects
-                .objects_of_kind(ObjectKind::Archetype)
-                .iter()
-                .map(|o| o.name.clone())
-                .collect_vec();
-            files_to_write.insert(
-                self.pkg_path.join("__init__.py"),
-                lib_source_code(&archetype_names),
-            );
-            */
-        }
-
         files_to_write
     }
 }
@@ -742,29 +727,6 @@ fn write_init_file(
         code.push_unindented(format!("\n__all__ = [{manifest}]"), 0);
     }
     files_to_write.insert(path, code);
-}
-
-#[expect(dead_code)]
-fn lib_source_code(archetype_names: &[String]) -> String {
-    let manifest = quote_manifest(archetype_names);
-    let archetype_names = archetype_names.join(", ");
-
-    let mut code = String::new();
-
-    code += &unindent(&format!(
-        r#"
-        # {autogen_warning}
-
-        from __future__ import annotations
-
-        __all__ = [{manifest}]
-
-        from .archetypes import {archetype_names}
-        "#,
-        autogen_warning = autogen_warning!()
-    ));
-
-    code
 }
 
 // --- Codegen core loop ---

@@ -71,14 +71,6 @@ impl VisualizerComponentSource {
         }
     }
 
-    pub fn component_source_kind(&self) -> ComponentSourceKind {
-        match self {
-            Self::SourceComponent { .. } => ComponentSourceKind::SourceComponent,
-            Self::Override => ComponentSourceKind::Override,
-            Self::Default => ComponentSourceKind::Default,
-        }
-    }
-
     /// The identity mapping for the given target component.
     pub fn identity(target: ComponentIdentifier) -> Self {
         Self::SourceComponent {

@@ -321,19 +321,10 @@ impl From<AuthenticateWithCodeResponse> for RefreshResponse {
     }
 }
 
-#[expect(dead_code)] // maybe these fields are useful in the future
 #[derive(Debug, Clone, serde::Deserialize)]
 struct User {
     id: String,
     email: String,
-    email_verified: bool,
-    profile_picture_url: Option<String>,
-    first_name: Option<String>,
-    last_name: Option<String>,
-    last_sign_in_at: Option<String>,
-    created_at: String,
-    updated_at: String,
-    external_id: Option<String>,
 }
 
 impl From<User> for crate::oauth::User {

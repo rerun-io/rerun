@@ -43,10 +43,6 @@ impl Texture2DBufferInfo {
         }
     }
 
-    pub fn from_texture(texture: &wgpu::Texture) -> Self {
-        Self::new(texture.format(), texture.size())
-    }
-
     #[inline]
     pub fn num_rows(&self) -> u32 {
         self.buffer_size_padded as u32 / self.bytes_per_row_padded
@@ -119,13 +115,6 @@ impl Texture2DBufferInfo {
 
         unpadded_buffer
     }
-}
-
-pub fn is_float_filterable(format: wgpu::TextureFormat, device_features: wgpu::Features) -> bool {
-    format
-        .guaranteed_format_features(device_features)
-        .flags
-        .contains(wgpu::TextureFormatFeatureFlags::FILTERABLE)
 }
 
 /// The range of values a shader sees when sampling this format.

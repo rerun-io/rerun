@@ -732,14 +732,6 @@ impl DensityGraphBuilderConfig {
         max_events_in_sorted_chunk: 0,
     };
 
-    /// All sorted chunks will be rendered as individual events,
-    /// and all unsorted chunks will be rendered whole.
-    pub const ALWAYS_SPLIT_SORTED_CHUNKS: Self = Self {
-        max_total_chunk_events: u64::MAX,
-        max_events_in_unsorted_chunk: 0,
-        max_events_in_sorted_chunk: u64::MAX,
-    };
-
     /// All chunks will be rendered as individual events.
     pub const ALWAYS_SPLIT_ALL_CHUNKS: Self = Self {
         max_total_chunk_events: u64::MAX,

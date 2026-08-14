@@ -278,17 +278,6 @@ impl BlueprintResolvedLatestAtResults<'_> {
         &self.query_context.query
     }
 
-    /// Returns the fallback arrow array for the given component.
-    ///
-    /// This first tries the registered fallback provider and then falls back to
-    /// the placeholder value registered in the viewer context.
-    pub fn get_fallback_for(&self, descr: &re_types_core::ComponentDescriptor) -> ArrayRef {
-        self.query_context
-            .viewer_ctx()
-            .component_fallback_registry()
-            .fallback_for(descr, self.query_context())
-    }
-
     /// Returns the source of the given component, i.e. whether it came from an override, the store results, or defaults.
     ///
     /// Returns `None` if the component isn't in use at all.

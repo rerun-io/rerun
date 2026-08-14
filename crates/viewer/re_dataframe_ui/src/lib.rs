@@ -27,7 +27,7 @@ pub use self::filters::{
 };
 pub use self::header_tooltip::column_header_tooltip_ui;
 pub use self::re_table_utils::{
-    CELL_SEPARATOR_STROKE_OFFSET, apply_table_style_fixes, cell_ui, header_title, header_ui,
+    CELL_SEPARATOR_STROKE_OFFSET, apply_table_style_fixes, cell_ui, header_ui,
 };
 pub use self::requested_object::RequestedObject;
 pub use self::streaming_cache::StreamingCacheTableProvider;

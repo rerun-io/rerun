@@ -86,15 +86,6 @@ pub struct DrawDataDrawable {
 
 impl DrawDataDrawable {
     #[inline]
-    pub fn from_affine(
-        view_info: &DrawableCollectionViewInfo,
-        world_from_rdf: &glam::Affine3A,
-        draw_data_payload: DrawDataDrawablePayload,
-    ) -> Self {
-        Self::from_world_position(view_info, world_from_rdf.translation, draw_data_payload)
-    }
-
-    #[inline]
     pub fn from_world_position(
         view_info: &DrawableCollectionViewInfo,
         world_position: glam::Vec3A,

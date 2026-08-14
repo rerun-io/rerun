@@ -134,19 +134,20 @@ pub use self::utils::{
     video_timestamp_component_to_video_time,
 };
 pub use self::view::{
-    BufferAndFormatConstraint, DataResult, IdentifiedViewSystem, OptionalViewEntityHighlight,
-    PerSystemEntities, PreviewState, RecommendedMappings, RecommendedView, RecommendedVisualizers,
-    SingleRequiredComponentConstraint, SystemExecutionOutput, ViewClass, ViewClassExt,
-    ViewClassLayoutPriority, ViewClassPlaceholder, ViewClassRegistry, ViewClassRegistryError,
-    ViewClassUiOutput, ViewContext, ViewContextCollection, ViewContextSystem,
-    ViewContextSystemOncePerFrameResult, ViewEntityHighlight, ViewHighlights, ViewOutlineMasks,
-    ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt, ViewStates, ViewSystemExecutionError,
-    ViewSystemIdentifier, ViewSystemRegistrator, ViewSystemState, ViewerDiagnostic,
-    ViewerReportSeverity, VisualizabilityConstraints, VisualizerCollection,
-    VisualizerComponentMappings, VisualizerComponentSource, VisualizerExecutionOutput,
-    VisualizerInstruction, VisualizerInstructionReport, VisualizerInstructionsPerType,
-    VisualizerQueryInfo, VisualizerReportContext, VisualizerSystem, VisualizerTypeReport,
-    VisualizerViewReport, VisualizersSectionOutput, VisualizersSectionUi,
+    BufferAndFormatConstraint, DataResult, IdentifiedViewSystem, MAX_VIEWS_SPAWNED,
+    OptionalViewEntityHighlight, PerSystemEntities, PreviewState, RecommendedMappings,
+    RecommendedView, RecommendedVisualizers, SingleRequiredComponentConstraint,
+    SystemExecutionOutput, ViewClass, ViewClassExt, ViewClassLayoutPriority, ViewClassPlaceholder,
+    ViewClassRegistry, ViewClassRegistryError, ViewClassUiOutput, ViewContext,
+    ViewContextCollection, ViewContextSystem, ViewContextSystemOncePerFrameResult,
+    ViewEntityHighlight, ViewHighlights, ViewOutlineMasks, ViewQuery, ViewSpawnHeuristics,
+    ViewState, ViewStateExt, ViewStates, ViewSystemExecutionError, ViewSystemIdentifier,
+    ViewSystemRegistrator, ViewSystemState, ViewerDiagnostic, ViewerReportSeverity,
+    VisualizabilityConstraints, VisualizerCollection, VisualizerComponentMappings,
+    VisualizerComponentSource, VisualizerExecutionOutput, VisualizerInstruction,
+    VisualizerInstructionReport, VisualizerInstructionsPerType, VisualizerQueryInfo,
+    VisualizerReportContext, VisualizerSystem, VisualizerTypeReport, VisualizerViewReport,
+    VisualizersSectionOutput, VisualizersSectionUi,
 };
 pub use self::viewer_context::ViewerContext;
 pub use self::visitor_flow_control::VisitorControlFlow; // Historical reasons

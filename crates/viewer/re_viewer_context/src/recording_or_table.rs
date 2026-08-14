@@ -26,13 +26,6 @@ impl From<TableId> for RecordingOrTable {
 }
 
 impl RecordingOrTable {
-    pub fn recording_ref(&self) -> Option<&StoreId> {
-        match self {
-            Self::Recording { store_id } => Some(store_id),
-            Self::Table { .. } => None,
-        }
-    }
-
     pub fn table_ref(&self) -> Option<&TableId> {
         match self {
             Self::Table { table_id } => Some(table_id),

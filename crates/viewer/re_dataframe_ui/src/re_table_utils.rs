@@ -29,17 +29,6 @@ pub fn apply_table_style_fixes(style: &mut Style) {
     style.visuals.widgets.noninteractive.bg_stroke = Stroke::new(0.0, Color32::TRANSPARENT);
 }
 
-pub fn header_title(
-    ui: &mut egui::Ui,
-    table_style: re_ui::TableStyle,
-    title: impl Into<RichText>,
-) -> egui::Response {
-    header_ui(ui, table_style, false, |ui| {
-        ui.monospace(title.into().strong());
-    })
-    .response
-}
-
 pub fn header_ui<R>(
     ui: &mut egui::Ui,
     table_style: re_ui::TableStyle,
