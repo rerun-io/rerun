@@ -417,7 +417,8 @@ impl PyCatalogClientInternal {
             return Ok(());
         };
 
-        let connection = wait_for_future(py, self.connection.connection())?;
+        let connection =
+            wait_for_future(py, self.connection.inner().connection()).map_err(to_py_err)?;
         let provider_list =
             PyDataFusionCatalogProviderList::new(connection.client, connection.analytics);
 

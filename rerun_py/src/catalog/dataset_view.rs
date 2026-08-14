@@ -426,8 +426,7 @@ fn build_dataframe_query_table_provider(
 
     wait_for_future(py, async move {
         DataframeQueryTableProvider::new(
-            connection.origin().clone(),
-            connection.connection_registry().clone(),
+            connection.inner().clone(),
             dataset_id,
             &query_expression,
             &segment_ids,

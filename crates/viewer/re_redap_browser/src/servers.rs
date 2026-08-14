@@ -12,7 +12,8 @@ use re_protos::cloud::v1alpha1::EntryKind;
 use re_protos::cloud::v1alpha1::ext::ScanSegmentTableDataframe;
 use re_quota_channel::send_crossbeam;
 use re_redap_client::{
-    ClientCredentialsError, ConnectionRegistryHandle, CredentialSource, Credentials,
+    ClientCredentialsError, ConnectionHandle, ConnectionRegistryHandle, CredentialSource,
+    Credentials,
 };
 use re_sorbet::ColumnDescriptorRef;
 use re_ui::alert::Alert;
@@ -33,13 +34,12 @@ enum ServerKind {
 }
 
 pub struct Server {
-    origin: re_uri::Origin,
+    connection: ConnectionHandle,
     entries: Entries,
 
     /// Session context wrapper which holds all the table-like entries of the server.
     tables_session_ctx: Arc<SessionContext>,
 
-    connection_registry: ConnectionRegistryHandle,
     runtime: AsyncRuntimeHandle,
     kind: ServerKind,
 
@@ -49,80 +49,68 @@ pub struct Server {
 
 impl Server {
     fn new_remote(
-        connection_registry: ConnectionRegistryHandle,
+        connection: ConnectionHandle,
         runtime: AsyncRuntimeHandle,
         egui_ctx: &egui::Context,
-        origin: re_uri::Origin,
         command_sender: crossbeam::channel::Sender<Command>,
         viewer_command_sender: ViewerCommandSender,
     ) -> Self {
         Self::new(
-            connection_registry,
+            connection,
             ServerKind::Remote,
             runtime,
             egui_ctx,
-            origin,
             command_sender,
             viewer_command_sender,
         )
     }
 
     fn new_internal(
-        connection_registry: ConnectionRegistryHandle,
+        connection: ConnectionHandle,
         runtime: AsyncRuntimeHandle,
         egui_ctx: &egui::Context,
-        origin: re_uri::Origin,
         command_sender: crossbeam::channel::Sender<Command>,
         viewer_command_sender: ViewerCommandSender,
     ) -> Self {
         Self::new(
-            connection_registry,
+            connection,
             ServerKind::Internal,
             runtime,
             egui_ctx,
-            origin,
             command_sender,
             viewer_command_sender,
         )
     }
 
     fn new(
-        connection_registry: ConnectionRegistryHandle,
+        connection: ConnectionHandle,
         kind: ServerKind,
         runtime: AsyncRuntimeHandle,
         egui_ctx: &egui::Context,
-        origin: re_uri::Origin,
         command_sender: crossbeam::channel::Sender<Command>,
         viewer_command_sender: ViewerCommandSender,
     ) -> Self {
         let tables_session_ctx = Self::session_context();
 
         let entries = Entries::new(
-            connection_registry.clone(),
+            connection.clone(),
             &runtime,
             egui_ctx,
-            origin.clone(),
             tables_session_ctx.clone(),
             viewer_command_sender,
         );
 
         let (cancel_tx, cancel_rx) = futures::channel::oneshot::channel();
-        let listener = watch_events_loop(
-            connection_registry.clone(),
-            origin.clone(),
-            command_sender,
-            egui_ctx.clone(),
-        );
+        let listener = watch_events_loop(connection.clone(), command_sender, egui_ctx.clone());
         runtime.spawn_future(async move {
             futures::pin_mut!(listener);
             futures::future::select(listener, cancel_rx).await;
         });
 
         Self {
-            origin,
+            connection,
             entries,
             tables_session_ctx,
-            connection_registry,
             runtime,
             kind,
             _watch_events_guard: cancel_tx,
@@ -152,10 +140,9 @@ impl Server {
         self.tables_session_ctx = Self::session_context();
 
         self.entries = self.entries.refresh(
-            self.connection_registry.clone(),
+            self.connection.clone(),
             runtime,
             egui_ctx,
-            self.origin.clone(),
             self.tables_session_ctx.clone(),
             viewer_command_sender,
         );
@@ -165,7 +152,7 @@ impl Server {
 
     #[inline]
     pub fn origin(&self) -> &re_uri::Origin {
-        &self.origin
+        self.connection.origin()
     }
 
     #[inline]
@@ -207,7 +194,7 @@ impl Server {
                 {
                     send_crossbeam(
                         ctx.command_sender,
-                        Command::RefreshCollection(self.origin.clone()),
+                        Command::RefreshCollection(self.origin().clone()),
                     )
                     .ok();
                 }
@@ -229,8 +216,8 @@ impl Server {
         view_states: &mut ViewStates,
     ) {
         if let Poll::Ready(Err(err)) = self.entries.state() {
-            self.title_ui(self.origin.host.to_string(), ctx, ui, |ui| {
-                error_ui(app_ctx, ctx, ui, &self.origin, err, inline_login_flow);
+            self.title_ui(self.origin().host.to_string(), ctx, ui, |ui| {
+                error_ui(app_ctx, ctx, ui, self.origin(), err, inline_login_flow);
             });
             return;
         }
@@ -238,7 +225,7 @@ impl Server {
         const ENTRY_LINK_COLUMN_NAME: &str = "link";
 
         re_dataframe_ui::DataFusionTableWidget::new(self.tables_session_ctx.clone(), "__entries")
-            .title(self.origin.host.to_string())
+            .title(self.origin().host.to_string())
             .column_blueprint(|desc| {
                 let mut blueprint = ColumnBlueprint::default();
 
@@ -271,7 +258,7 @@ impl Server {
             .generate_entry_links(
                 ENTRY_LINK_COLUMN_NAME.into(),
                 "id".into(),
-                self.origin.clone(),
+                self.origin().clone(),
             )
             .prefilter(
                 col("entry_kind")
@@ -405,7 +392,7 @@ impl Server {
         .generate_segment_links(
             RECORDING_LINK_COLUMN_NAME.into(),
             ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME.into(),
-            self.origin.clone(),
+            self.origin().clone(),
             dataset.id(),
         )
         .show(app_ctx, &self.runtime, ui, view_states);
@@ -653,7 +640,7 @@ impl serde::Serialize for RedapServers {
         self.servers
             .values()
             .filter(|server| server.is_remote())
-            .map(|server| &server.origin)
+            .map(|server| server.origin())
             .collect::<Vec<_>>()
             .serialize(serializer)
     }
@@ -826,10 +813,9 @@ impl RedapServers {
         self.servers.insert(
             origin.clone(),
             Server::new_internal(
-                connection_registry.clone(),
+                connection_registry.connection_handle(origin),
                 runtime.clone(),
                 egui_ctx,
-                origin,
                 self.command_sender.clone(),
                 viewer_command_sender,
             ),
@@ -896,7 +882,7 @@ impl RedapServers {
     pub fn is_authenticated(&self, origin: &re_uri::Origin) -> bool {
         self.servers
             .get(origin)
-            .and_then(|server| server.connection_registry.credentials(origin))
+            .and_then(|server| server.connection.connection_registry().credentials(origin))
             .is_some()
     }
 
@@ -906,17 +892,16 @@ impl RedapServers {
         // Log out from the servers that used the accounts token.
         let mut origins = Vec::new();
         for server in self.servers.values() {
+            let registry = server.connection.connection_registry();
             if matches!(
-                server.connection_registry.credentials(&server.origin),
+                registry.credentials(server.origin()),
                 Some(Credentials::Stored)
             ) {
-                origins.push(server.origin.clone());
-                server
-                    .connection_registry
-                    .remove_credentials(&server.origin);
+                origins.push(server.origin().clone());
+                registry.remove_credentials(server.origin());
                 send_crossbeam(
                     &self.command_sender,
-                    Command::RefreshCollection(server.origin.clone()),
+                    Command::RefreshCollection(server.origin().clone()),
                 )
                 .ok();
             }
@@ -1022,10 +1007,9 @@ impl RedapServers {
                     self.servers.insert(
                         origin.clone(),
                         Server::new_remote(
-                            connection_registry.clone(),
+                            connection_registry.connection_handle(origin.clone()),
                             runtime.clone(),
                             egui_ctx,
-                            origin.clone(),
                             self.command_sender.clone(),
                             viewer_command_sender.clone(),
                         ),
@@ -1157,8 +1141,7 @@ impl RedapServers {
 /// not support event listening, and otherwise runs until cancelled, i.e. until the owning
 /// [`Server`] is dropped.
 async fn watch_events_loop(
-    connection_registry: ConnectionRegistryHandle,
-    origin: re_uri::Origin,
+    connection: ConnectionHandle,
     command_sender: crossbeam::channel::Sender<Command>,
     egui_ctx: egui::Context,
 ) {
@@ -1169,23 +1152,21 @@ async fn watch_events_loop(
     .expect("valid backoff range");
 
     loop {
-        match run_event_listener(
-            &connection_registry,
-            &origin,
-            &command_sender,
-            &egui_ctx,
-            &mut backoff,
-        )
-        .await
-        {
+        match run_event_listener(&connection, &command_sender, &egui_ctx, &mut backoff).await {
             Ok(()) => {}
             Err(err) if err.kind == re_redap_client::ApiErrorKind::Unimplemented => {
                 // Permanent condition (e.g. an older server), so don't keep reconnecting.
-                re_log::debug!("Server does not support event listening\nServer: {origin}");
+                re_log::debug!(
+                    "Server does not support event listening\nServer: {}",
+                    connection.origin()
+                );
                 return;
             }
             Err(err) => {
-                re_log::debug!("Event stream failed, will reconnect: {err}\nServer: {origin}");
+                re_log::debug!(
+                    "Event stream failed, will reconnect: {err}\nServer: {}",
+                    connection.origin()
+                );
             }
         }
         backoff.gen_next().sleep().await;
@@ -1196,15 +1177,14 @@ async fn watch_events_loop(
 ///
 /// Returns when the stream ends or errors so the caller can reconnect.
 async fn run_event_listener(
-    connection_registry: &ConnectionRegistryHandle,
-    origin: &re_uri::Origin,
+    connection: &ConnectionHandle,
     command_sender: &crossbeam::channel::Sender<Command>,
     egui_ctx: &egui::Context,
     backoff: &mut re_backoff::BackoffGenerator,
 ) -> re_redap_client::ApiResult<()> {
     use futures::StreamExt as _;
 
-    let mut client = connection_registry.client(origin.clone()).await?;
+    let mut client = connection.client().await?;
     let mut stream = client.watch_events().await?;
 
     // We connected successfully, so a later reconnect (if any) should start fast again.
@@ -1212,7 +1192,11 @@ async fn run_event_listener(
 
     while let Some(event) = stream.next().await {
         event?;
-        send_crossbeam(command_sender, Command::RefreshCollection(origin.clone())).ok();
+        send_crossbeam(
+            command_sender,
+            Command::RefreshCollection(connection.origin().clone()),
+        )
+        .ok();
         egui_ctx.request_repaint();
     }
 

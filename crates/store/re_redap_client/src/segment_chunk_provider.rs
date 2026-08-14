@@ -7,9 +7,8 @@ use re_chunk::{Chunk, ChunkId};
 use re_log_encoding::{ChunkProvider, ChunkProviderError, RawRrdManifest, RrdManifest};
 use re_log_types::EntryId;
 use re_types_core::SegmentId;
-use re_uri::Origin;
 
-use crate::{ApiError, ConnectionRegistryHandle, fetch_chunks_response_to_chunk_and_segment_id};
+use crate::{ApiError, ConnectionHandle, fetch_chunks_response_to_chunk_and_segment_id};
 
 /// gRPC-backed [`ChunkProvider`]: serves the manifest of a single dataset
 /// segment and fetches its chunks on demand via `FetchChunks`.
@@ -17,8 +16,7 @@ use crate::{ApiError, ConnectionRegistryHandle, fetch_chunks_response_to_chunk_a
 // (signed url, batching, etc.). The current streaming strategy is really poor, and only works
 // because of a workaround we have to mitigate RR-4545
 pub struct SegmentChunkProvider {
-    connection_registry: ConnectionRegistryHandle,
-    origin: Origin,
+    connection: ConnectionHandle,
     dataset_id: EntryId,
     segment_id: SegmentId,
 
@@ -33,12 +31,11 @@ pub struct SegmentChunkProvider {
 impl SegmentChunkProvider {
     /// Fetch the segment manifest from the server and build a provider.
     pub async fn try_new(
-        connection_registry: ConnectionRegistryHandle,
-        origin: Origin,
+        connection: ConnectionHandle,
         dataset_id: EntryId,
         segment_id: SegmentId,
     ) -> Result<Self, ApiError> {
-        let mut client = connection_registry.client(origin.clone()).await?;
+        let mut client = connection.client().await?;
         let raw_manifest = client
             .get_rrd_manifest(dataset_id, segment_id.clone())
             .await?;
@@ -60,8 +57,7 @@ impl SegmentChunkProvider {
             .collect();
 
         Ok(Self {
-            connection_registry,
-            origin,
+            connection,
             dataset_id,
             segment_id,
             raw_manifest,
@@ -112,8 +108,8 @@ impl ChunkProvider for SegmentChunkProvider {
             .map_err(SegmentProviderError::Arrow)?;
 
         let mut client = self
-            .connection_registry
-            .client(self.origin.clone())
+            .connection
+            .client()
             .await
             .map_err(SegmentProviderError::Api)?;
         let response = client

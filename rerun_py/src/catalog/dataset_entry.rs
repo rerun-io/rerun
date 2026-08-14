@@ -542,14 +542,9 @@ impl PyDatasetEntryInternal {
         let segment_id = SegmentId::from(segment_id);
 
         let provider = wait_for_future(py, async {
-            SegmentChunkProvider::try_new(
-                connection.connection_registry().clone(),
-                connection.origin().clone(),
-                dataset_id,
-                segment_id,
-            )
-            .await
-            .map_err(to_py_err)
+            SegmentChunkProvider::try_new(connection.inner().clone(), dataset_id, segment_id)
+                .await
+                .map_err(to_py_err)
         })?;
 
         let lazy = LazyStore::new(Arc::new(provider));

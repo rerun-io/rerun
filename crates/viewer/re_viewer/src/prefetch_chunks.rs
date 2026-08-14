@@ -177,7 +177,10 @@ pub fn prefetch_chunks_for_recordings(
     // Then finish fetching for all
     let results = chain!(active_states, preview_states, background_states)
         .map(|state| {
-            let load_fn = make_load_fn(egui_ctx, connection_registry, &state.origin);
+            let load_fn = make_load_fn(
+                egui_ctx,
+                connection_registry.connection_handle(state.origin.clone()),
+            );
 
             (state.store_id, state.fetcher.finish(&load_fn))
         })
@@ -201,18 +204,16 @@ pub fn prefetch_chunks_for_recordings(
     }
 }
 
-fn make_load_fn<'a>(
-    egui_ctx: &'a egui::Context,
-    connection_registry: &'a re_redap_client::ConnectionRegistryHandle,
-    origin: &'a re_uri::Origin,
-) -> impl Fn(RecordBatch) -> re_entity_db::ChunkPromise + 'a {
+fn make_load_fn(
+    egui_ctx: &egui::Context,
+    connection: re_redap_client::ConnectionHandle,
+) -> impl Fn(RecordBatch) -> re_entity_db::ChunkPromise + '_ {
     move |rb| {
         egui_ctx.request_repaint();
-        let connection_registry = connection_registry.clone();
-        let origin = origin.clone();
+        let connection = connection.clone();
 
         let fut = async move {
-            let mut client = connection_registry.client(origin).await.map_err(|err| {
+            let mut client = connection.client().await.map_err(|err| {
                 re_log::warn_once!("Failed to connect to server: {err}");
             })?;
             load_chunks(&mut client, &rb).await.map_err(|err| {

@@ -33,13 +33,12 @@ use re_protos::{
     cloud::v1alpha1::ext::{Query, QueryDatasetRequest, QueryLatestAt, QueryRange},
     common::v1alpha1::ext::SegmentId,
 };
-use re_redap_client::{ApiError, ApiResult, ConnectionClient, ConnectionRegistryHandle};
+use re_redap_client::{ApiError, ApiResult, ConnectionClient, ConnectionHandle};
 
 use crate::{IntoDfError as _, SegmentStreamExec};
 use re_sorbet::{
     BatchType, ChunkColumnDescriptors, ColumnDescriptor, ColumnKind, ComponentColumnSelector,
 };
-use re_uri::Origin;
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 use std::str::FromStr as _;
@@ -218,8 +217,7 @@ impl DataframeQueryTableProvider<ConnectionClient> {
     /// RPC is skipped — useful when the caller has already fetched the schema.
     #[tracing::instrument(level = "info", skip_all)]
     pub async fn new(
-        origin: Origin,
-        connection_registry: ConnectionRegistryHandle,
+        connection: ConnectionHandle,
         dataset_id: EntryId,
         query_expression: &QueryExpression,
         segment_ids: &[impl AsRef<str> + Sync],
@@ -228,7 +226,7 @@ impl DataframeQueryTableProvider<ConnectionClient> {
         #[cfg(not(target_arch = "wasm32"))] trace_headers: Option<crate::TraceHeaders>,
         metrics_collectors: Vec<crate::MetricsCollector>,
     ) -> ApiResult<Self> {
-        let connection = connection_registry.connection(origin.clone()).await?;
+        let connection = connection.connection().await?;
 
         let mut provider = Self::new_from_client(
             connection.client,

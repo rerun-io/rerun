@@ -12,7 +12,7 @@ use re_uri::Origin;
 use tokio::sync::RwLock;
 use tonic::Code;
 
-use crate::connection_client::{Connection, ConnectionClient, RedapClient};
+use crate::connection_client::{Connection, RedapClient};
 use crate::grpc::RedapClientStack;
 use crate::{ApiError, ApiResult, TonicStatusError};
 
@@ -37,7 +37,7 @@ pub struct ConnectionRegistry {
     /// be persisted.
     ///
     /// When no saved token is available for a given server, we fall back to the `REDAP_TOKEN`
-    /// envvar if set. See [`ConnectionRegistryHandle::client`].
+    /// envvar if set. See [`crate::ConnectionHandle::client`].
     saved_credentials: HashMap<re_uri::Origin, Credentials>,
 
     /// Fallback token.
@@ -341,7 +341,7 @@ impl ConnectionRegistryHandle {
     ///
     /// Failing that, no token will be used.
     #[tracing::instrument(level = "info", skip_all)]
-    pub async fn connection(&self, origin: re_uri::Origin) -> ApiResult<Connection> {
+    pub(crate) async fn connection(&self, origin: re_uri::Origin) -> ApiResult<Connection> {
         if let Some((internal_origin, connection)) = self.internal.get()
             && internal_origin == &origin
         {
@@ -438,12 +438,6 @@ impl ConnectionRegistryHandle {
         };
 
         Ok(connection)
-    }
-
-    /// Get a redap RPC client for the given origin, creating a connection if it doesn't exist yet.
-    #[tracing::instrument(level = "info", skip_all)]
-    pub async fn client(&self, origin: re_uri::Origin) -> ApiResult<ConnectionClient> {
-        Ok(self.connection(origin).await?.client)
     }
 
     /// Try connecting with whatever credentials we have available.

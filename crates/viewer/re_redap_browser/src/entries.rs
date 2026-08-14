@@ -16,9 +16,7 @@ use re_protos::TypeConversionError;
 use re_protos::cloud::v1alpha1::ext::{DatasetEntry, EntryDetails, ProviderDetails, TableEntry};
 use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind};
 use re_protos::external::prost;
-use re_redap_client::{
-    ApiError, ConnectionAnalyticsExporter, ConnectionClient, ConnectionRegistryHandle,
-};
+use re_redap_client::{ApiError, ConnectionAnalyticsExporter, ConnectionClient, ConnectionHandle};
 use re_ui::{Icon, icons};
 use re_viewer_context::{CommandSender, SystemCommand, SystemCommandSender as _};
 
@@ -134,16 +132,14 @@ pub struct Entries {
 
 impl Entries {
     pub(crate) fn new(
-        connection_registry: ConnectionRegistryHandle,
+        connection: ConnectionHandle,
         runtime: &AsyncRuntimeHandle,
         egui_ctx: &egui::Context,
-        origin: re_uri::Origin,
         session_context: Arc<SessionContext>,
         command_sender: CommandSender,
     ) -> Self {
         let entries_fut = fetch_entries_and_register_tables(
-            connection_registry,
-            origin,
+            connection,
             session_context,
             runtime.clone(),
             command_sender,
@@ -156,16 +152,14 @@ impl Entries {
 
     pub(crate) fn refresh(
         self,
-        connection_registry: ConnectionRegistryHandle,
+        connection: ConnectionHandle,
         runtime: &AsyncRuntimeHandle,
         egui_ctx: &egui::Context,
-        origin: re_uri::Origin,
         session_context: Arc<SessionContext>,
         command_sender: CommandSender,
     ) -> Self {
         let entries_fut = fetch_entries_and_register_tables(
-            connection_registry,
-            origin,
+            connection,
             session_context,
             runtime.clone(),
             command_sender,
@@ -208,13 +202,13 @@ impl Entries {
 }
 
 async fn fetch_entries_and_register_tables(
-    connection_registry: ConnectionRegistryHandle,
-    origin: re_uri::Origin,
+    connection: ConnectionHandle,
     session_ctx: Arc<SessionContext>,
     runtime: AsyncRuntimeHandle,
     command_sender: CommandSender,
 ) -> EntryResult<HashMap<EntryId, Entry>> {
-    let connection = connection_registry.connection(origin.clone()).await?;
+    let origin = connection.origin().clone();
+    let connection = connection.connection().await?;
     let mut client = connection.client;
     let analytics = connection.analytics;
 

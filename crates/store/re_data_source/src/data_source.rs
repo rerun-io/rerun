@@ -342,11 +342,11 @@ impl LogDataSource {
                         table_blueprint: None,
                     });
 
-                let connection_registry = connection_registry.clone();
+                let connection = connection_registry.connection_handle(uri.origin.clone());
                 let uri_clone = uri.clone();
                 let tx_err = tx.clone();
                 let stream_segment = async move {
-                    let client = connection_registry.client(uri_clone.origin.clone()).await?;
+                    let client = connection.client().await?;
                     re_redap_client::stream_blueprint_and_segment_from_server(
                         client,
                         tx,

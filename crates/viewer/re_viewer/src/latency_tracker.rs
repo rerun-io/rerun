@@ -104,12 +104,11 @@ impl ServerLatencyTrackers {
 
             let tracker = tracker.clone();
 
-            let origin = origin.clone();
-            let handle = connection_registry_handle.clone();
+            let connection = connection_registry_handle.connection_handle(origin.clone());
             async_runtime.spawn_future(async move {
                 tracker.inner.lock().last_update_time = Some(web_time::Instant::now());
 
-                let Ok(mut client) = handle.client(origin).await else {
+                let Ok(mut client) = connection.client().await else {
                     tracker.error();
                     return;
                 };

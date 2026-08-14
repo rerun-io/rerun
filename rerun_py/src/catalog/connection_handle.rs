@@ -14,8 +14,7 @@ use re_protos::cloud::v1alpha1::ext::{
 use re_protos::common::v1alpha1::TaskId;
 use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, SegmentId};
 use re_redap_client::{
-    Connection, ConnectionClient, ConnectionHandle, ConnectionRegistryHandle, RegistrationHandle,
-    TraceId,
+    ConnectionClient, ConnectionHandle, ConnectionRegistryHandle, RegistrationHandle, TraceId,
 };
 use re_types_core::LayerName;
 
@@ -36,20 +35,16 @@ impl PyConnectionHandle {
         }
     }
 
-    pub async fn connection(&self) -> PyResult<Connection> {
-        self.inner.connection().await.map_err(to_py_err)
-    }
-
     pub async fn client(&self) -> PyResult<ConnectionClient> {
         self.inner.client().await.map_err(to_py_err)
     }
 
-    pub fn origin(&self) -> &re_uri::Origin {
-        self.inner.origin()
+    pub fn inner(&self) -> &ConnectionHandle {
+        &self.inner
     }
 
-    pub fn connection_registry(&self) -> &ConnectionRegistryHandle {
-        self.inner.connection_registry()
+    pub fn origin(&self) -> &re_uri::Origin {
+        self.inner.origin()
     }
 }
 

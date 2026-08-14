@@ -526,7 +526,7 @@ impl<'a> DataFusionTableWidget<'a> {
                 upsert_flag_changes(
                     app_ctx,
                     runtime,
-                    entry_uri.clone(),
+                    entry_uri,
                     results,
                     flag_col,
                     &output.flag_changes,
@@ -1084,7 +1084,7 @@ fn table_index_column(schema: &arrow::datatypes::Schema) -> Option<(usize, &Arc<
 fn upsert_flag_changes(
     ctx: &AppContext<'_>,
     runtime: &AsyncRuntimeHandle,
-    remote: re_uri::EntryUri,
+    remote: &re_uri::EntryUri,
     results: &crate::datafusion_adapter::DataFusionQueryResult,
     flag_column: &ResolvedFlagColumn,
     changes: &[crate::cards_view::FlagChangeEvent],
@@ -1133,14 +1133,17 @@ fn upsert_flag_changes(
         return;
     };
 
-    let connection_registry = ctx.connection_registry.clone();
+    let connection = ctx
+        .connection_registry
+        .connection_handle(remote.origin.clone());
+    let entry_id = remote.entry_id;
     runtime.spawn_future(async move {
         let result = async {
-            let mut client = connection_registry.client(remote.origin).await?;
+            let mut client = connection.client().await?;
             client
                 .write_table(
                     futures::stream::once(async { upsert_batch }),
-                    remote.entry_id,
+                    entry_id,
                     // `Update`: match existing rows on the table index and update only the
                     // flag column. Unmatched source rows are dropped, which is correct here
                     // since we only ever edit flags on rows that already exist.
