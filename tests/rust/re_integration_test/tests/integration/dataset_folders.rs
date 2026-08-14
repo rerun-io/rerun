@@ -7,7 +7,7 @@ use arrow::datatypes::{DataType, Field, Schema};
 use egui::accesskit::Role;
 use egui_kittest::kittest::Queryable as _;
 use egui_kittest::{Harness, SnapshotResults};
-use re_integration_test::{HarnessExt as _, TestServer};
+use re_integration_test::{HarnessExt as _, TestServer, ViewerHarnessExt as _};
 use re_protos::cloud::v1alpha1::ext;
 use re_protos::cloud::v1alpha1::ext::TableInsertMode;
 use re_sdk::external::re_log_types::EntryId;
@@ -120,11 +120,11 @@ pub async fn dataset_folders() {
                 && harness.query_all_by_label_contains("tracking").count() == 2
                 && harness.query_all_by_label_contains("metrics").count() == 2
                 && harness.query_all_by_label_contains("summary").count() == 2
-                && harness.query_by_label("Loading entries…").is_none()
         },
         Duration::from_millis(100),
         Duration::from_secs(5),
     );
+    harness.step_until_no_loading_indicator();
     assert_route_and_selection(&mut harness, &folder_route("perception"));
     snapshot_results.add(harness.try_snapshot("dataset_folders_01_perception"));
 
@@ -145,11 +145,11 @@ pub async fn dataset_folders() {
                 && harness
                     .query_by_role_and_label(Role::Button, "pedestrians")
                     .is_some()
-                && harness.query_by_label("Loading entries…").is_none()
         },
         Duration::from_millis(100),
         Duration::from_secs(5),
     );
+    harness.step_until_no_loading_indicator();
     assert_route_and_selection(&mut harness, &folder_route("perception.detection"));
     snapshot_results.add(harness.try_snapshot("dataset_folders_02_perception_detection"));
 
@@ -163,11 +163,11 @@ pub async fn dataset_folders() {
                 && harness.query_all_by_label_contains("tracking").count() == 2
                 && harness.query_all_by_label_contains("metrics").count() == 2
                 && harness.query_all_by_label_contains("summary").count() == 2
-                && harness.query_by_label("Loading entries…").is_none()
         },
         Duration::from_millis(100),
         Duration::from_secs(5),
     );
+    harness.step_until_no_loading_indicator();
     assert_route_and_selection(&mut harness, &folder_route("perception"));
     snapshot_results.add(harness.try_snapshot("dataset_folders_03_perception_after_parent"));
 
@@ -186,11 +186,11 @@ pub async fn dataset_folders() {
                 && harness.query_all_by_label_contains("tracking").count() == 2
                 && harness.query_all_by_label_contains("metrics").count() == 2
                 && harness.query_all_by_label_contains("summary").count() == 2
-                && harness.query_by_label("Loading entries…").is_none()
         },
         Duration::from_millis(100),
         Duration::from_secs(5),
     );
+    table_harness.step_until_no_loading_indicator();
 
     // Click direct table card → navigates to table entry and selects it.
     table_harness
@@ -220,6 +220,7 @@ pub async fn dataset_folders() {
         Duration::from_millis(100),
         Duration::from_secs(5),
     );
+    harness.step_until_no_loading_indicator();
     assert_route_and_selection(&mut harness, &summary_route);
     snapshot_results.add(harness.try_snapshot("dataset_folders_04_summary_dataset"));
 }

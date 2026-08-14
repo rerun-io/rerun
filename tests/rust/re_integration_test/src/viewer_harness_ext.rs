@@ -1,5 +1,9 @@
+use std::time::Duration;
+
 use egui::accesskit::Toggled;
 use egui_kittest::kittest::{NodeT as _, Queryable as _};
+
+use crate::InspectionHarness;
 
 /// Convenience helpers shared by both test harnesses.
 pub trait ViewerHarnessExt {
@@ -78,6 +82,31 @@ pub trait ViewerHarnessExt {
             .query_all_by_role(egui::accesskit::Role::ProgressIndicator)
             .next()
             .is_some()
+    }
+
+    /// Repeatedly [`run`](Self::run) and evaluate `predicate` until it returns `true` or
+    /// `max_duration` elapses.
+    ///
+    /// Failing to settle is not an error here: we are waiting for something to happen, so the
+    /// viewer is expected to still be repainting. `max_duration` is the real deadline.
+    #[track_caller]
+    fn step_until(
+        &mut self,
+        description: &'static str,
+        predicate: impl FnMut(&Self) -> bool,
+        step_duration: Duration,
+        max_duration: Duration,
+    );
+
+    /// Wait until the viewer is no longer showing any loading indicator.
+    #[track_caller]
+    fn step_until_no_loading_indicator(&mut self) {
+        self.step_until(
+            "Wait until there's no more loading indicator",
+            |harness| !harness.is_loading(),
+            std::time::Duration::from_millis(5),
+            std::time::Duration::from_secs(5),
+        );
     }
 
     /// Click the only node with `label`, then settle.
@@ -164,6 +193,23 @@ impl ViewerHarnessExt for egui_kittest::Harness<'_, re_viewer::App> {
         }
     }
 
+    #[track_caller]
+    fn step_until(
+        &mut self,
+        description: &'static str,
+        mut predicate: impl FnMut(&Self) -> bool,
+        step_duration: Duration,
+        max_duration: Duration,
+    ) {
+        re_viewer::viewer_test_utils::step_until(
+            description,
+            self,
+            |harness| predicate(&*harness),
+            step_duration,
+            max_duration,
+        );
+    }
+
     // The in-process harness removes the cursor after toggling so it doesn't linger over the button
     // in the next snapshot, and settles fully via `run_ok`.
     fn set_panel_opened(&mut self, panel_label: &str, opened: bool) {
@@ -181,17 +227,17 @@ impl ViewerHarnessExt for egui_kittest::Harness<'_, re_viewer::App> {
     }
 }
 
-impl ViewerHarnessExt for crate::InspectionHarness {
+impl ViewerHarnessExt for InspectionHarness {
     // The explicit path calls `InspectionHarness`'s inherent `run` (not this trait method).
     #[expect(clippy::use_self)]
     fn run(&mut self) {
-        crate::InspectionHarness::run(self);
+        InspectionHarness::run(self);
     }
 
     // As with `run` above, the explicit path calls the inherent method, not this trait method.
     #[expect(clippy::use_self)]
     fn queue_event(&self, event: egui::Event) {
-        crate::InspectionHarness::queue_event(self, event);
+        InspectionHarness::queue_event(self, event);
     }
 
     fn section_node<'s>(&'s self, section_label: Option<&'s str>) -> egui_kittest::Node<'s> {
@@ -199,5 +245,16 @@ impl ViewerHarnessExt for crate::InspectionHarness {
             None => self.queryable_node(),
             Some(label) => self.get_by_label(label),
         }
+    }
+
+    #[track_caller]
+    fn step_until(
+        &mut self,
+        description: &'static str,
+        predicate: impl FnMut(&Self) -> bool,
+        step_duration: Duration,
+        max_duration: Duration,
+    ) {
+        Self::step_until(self, description, predicate, step_duration, max_duration);
     }
 }

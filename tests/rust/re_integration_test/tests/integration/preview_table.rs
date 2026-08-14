@@ -211,15 +211,14 @@ pub async fn preview_table() {
     );
 
     viewer_test_utils::step_until(
-        "Opened recording finished loading",
+        "Opened recording source tree populated",
         &mut harness,
-        |harness| {
-            harness.query_by_label_contains("Streams").is_some()
-                && harness.query_by_label("Loading entries…").is_none()
-        },
+        |harness| harness.query_by_label_contains("Streams").is_some(),
         Duration::from_millis(100),
         Duration::from_secs(15),
     );
+    harness.step_until_no_loading_indicator();
+
     // Close the selection panel rather than masking it: it shows the recording URI, which
     // embeds the server's random port.
     harness.set_selection_panel_opened(false);

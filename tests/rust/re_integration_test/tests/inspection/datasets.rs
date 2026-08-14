@@ -68,6 +68,8 @@ pub async fn dataset_ui_test() {
         Duration::from_millis(100),
         Duration::from_secs(5),
     );
+    harness.step_until_no_loading_indicator();
+
     snapshot_results.add(harness.try_snapshot("dataset_ui_table"));
 }
 
@@ -94,6 +96,7 @@ pub async fn start_with_dataset_url() {
         Duration::from_millis(100),
         Duration::from_secs(5),
     );
+    harness.step_until_no_loading_indicator();
 
     let mut snapshot_results = SnapshotResults::new();
     snapshot_results.add(harness.try_snapshot("start_with_dataset_url"));

@@ -132,6 +132,23 @@ impl AppOptions {
                 table_cards_and_blueprints: true,
                 ..Default::default()
             },
+
+            video: VideoOptions {
+                // Force the FFmpeg path to be wrong so we have a reproducible behavior.
+                ffmpeg_path: "/fake/ffmpeg/path".to_owned(),
+                override_ffmpeg_path: true,
+                ..Default::default()
+            },
+
+            // Always show the full date so timestamps render as `YYYY-MM-DD HH:MM:SS`
+            // regardless of when the test runs. The default `HideDateToday` would
+            // silently break snapshots once the calendar day rolls over.
+            timestamp_format: TimestampFormat::default()
+                .with_date_visibility(re_log_types::DateVisibility::ShowDate),
+
+            // Hide toast notifications by default in tests since they have a show-timeout and can cause flakiness in snapshot tests.
+            show_notification_toasts: false,
+
             // Ensure to not probe the Wayland compositor, because tests run without one.
             ..Self::default_with_custom_window_decorations(false)
         }
