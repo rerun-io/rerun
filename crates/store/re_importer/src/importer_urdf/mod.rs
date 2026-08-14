@@ -515,7 +515,13 @@ fn emit_geometry(
         Geometry::Mesh { filename, scale: _ } => {
             use re_sdk_types::components::MediaType;
 
-            let mesh_bytes = load_ros_resource(urdf_tree.urdf_dir.as_ref(), filename)?;
+            let mesh_bytes = match load_ros_resource(urdf_tree.urdf_dir.as_ref(), filename) {
+                Ok(bytes) => bytes,
+                Err(err) => {
+                    re_log::warn!(?filename, "Failed to load mesh: {err}");
+                    return Ok(());
+                }
+            };
             // Drop any URL query/fragment so extension detection works on presigned URLs.
             let media_type_hint = filename.split(['?', '#']).next().unwrap_or(filename);
             let mut asset3d = Asset3D::from_file_contents(
