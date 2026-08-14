@@ -13,6 +13,9 @@
 pub mod common;
 pub mod datasetv2;
 pub mod datasetv3;
+pub(crate) mod execute;
+pub(crate) mod plan;
+pub(crate) mod streaming;
 
 use std::{fmt, path::Path};
 

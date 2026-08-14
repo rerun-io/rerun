@@ -1,7 +1,6 @@
-use crate::common::{
-    LEROBOT_DATASET_IGNORED_COLUMNS, LeRobotDatasetOps, load_episode_depth_images,
-    load_episode_images, load_scalar,
-};
+use crate::common::{LEROBOT_DATASET_IGNORED_COLUMNS, LeRobotDatasetOps, derive_timeline};
+use crate::plan::{EpisodePlan, PlannedFeature, PlannedVideo, TextRows};
+use crate::streaming::EpisodeChunkIterator;
 use crate::{
     DType, EpisodeIndex, Feature, LeRobotDatasetSubtask, LeRobotDatasetTask, LeRobotError,
     SubtaskIndex, TaskIndex,
@@ -14,24 +13,19 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use ahash::HashMap;
-use anyhow::{Context as _, anyhow};
+use anyhow::Context as _;
 use arrow::array::{
     ArrayRef, Float64Array, Int64Array, ListArray, RecordBatch, StringArray, StructArray,
 };
-use arrow::buffer::ScalarBuffer;
 use arrow::compute::{cast, concat_batches};
 use arrow::datatypes::DataType;
 use itertools::Itertools as _;
 use parking_lot::RwLock;
 use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
-use re_chunk::{ArrowArray as _, ChunkId};
-use re_video::VideoDataDescription;
-use re_video::player::VideoSliceSource;
 use serde::{Deserialize, Serialize};
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
-use re_chunk::{Chunk, EntityPath, RowId, TimeColumn, TimePoint, Timeline};
-use re_sdk_types::archetypes::{TextDocument, VideoStream};
+use re_chunk::{ArrowArray as _, Chunk, TimeInt};
 
 /// A `LeRobot` dataset consists of structured metadata and recorded episode data stored in
 /// Parquet files.
@@ -123,6 +117,210 @@ fn tool_calls_to_text(elements: &dyn arrow::array::Array) -> Option<String> {
 }
 
 impl LeRobotDatasetV3 {
+    /// Plans a single episode without decoding any feature data.
+    ///
+    /// Resolves everything version-specific — video bytes (through the refcounted cache)
+    /// and timestamp bounds, task/subtask/language text — into a self-contained
+    /// [`EpisodePlan`]. Turning the plan into chunks happens in [`crate::execute`],
+    /// driven by [`EpisodeChunkIterator`].
+    pub(crate) fn build_plan(&self, episode: EpisodeIndex) -> Result<EpisodePlan, LeRobotError> {
+        let data = self.read_episode_data(episode)?;
+        let (timeline, time_column) = derive_timeline(&data)?;
+        let mut features = Vec::new();
+
+        for (key, feature) in self
+            .metadata
+            .info
+            .features
+            .iter()
+            .filter(|(key, _)| !LEROBOT_DATASET_IGNORED_COLUMNS.contains(&key.as_str()))
+        {
+            match feature.dtype {
+                DType::Image => match feature.channel_dim() {
+                    1 => features.push(PlannedFeature::DepthImage { key: key.clone() }),
+                    3 => features.push(PlannedFeature::Image { key: key.clone() }),
+                    num_channels => re_log::warn_once!(
+                        "Unsupported channel count {num_channels} (shape: {:?}) for LeRobot dataset; Only 1- and 3-channel images are supported",
+                        feature.shape
+                    ),
+                },
+                DType::Video => {
+                    let (from_ts, to_ts) = self.get_feature_timestamps(episode, key);
+                    features.push(PlannedFeature::Video {
+                        entity: key.clone(),
+                        video: PlannedVideo::Stream {
+                            // Resolved through the refcounted video cache, so a file shared
+                            // by several episodes is read from disk only once.
+                            bytes: self.read_episode_video_contents(key, episode)?,
+                            from_ts,
+                            to_ts,
+                        },
+                    });
+                }
+                DType::Language => features.extend(
+                    Self::resolve_language_tracks(key, &data)
+                        .into_iter()
+                        .map(|(entity, rows)| PlannedFeature::Text { entity, rows }),
+                ),
+                DType::Float32 | DType::Float64 => features.push(PlannedFeature::Scalar {
+                    key: key.clone(),
+                    feature: feature.clone(),
+                }),
+                DType::Int64 if key == "task_index" => {
+                    // special case int64 task_index columns
+                    // this always refers to the task description in the dataset metadata.
+                    features.push(PlannedFeature::Text {
+                        entity: "task".to_owned(),
+                        rows: self.resolve_task_rows(&data)?,
+                    });
+                }
+                DType::Int64 if key == "subtask_index" => {
+                    // special case int64 subtask_index columns
+                    // this always refers to the subtask description in the dataset metadata.
+                    features.push(PlannedFeature::Text {
+                        entity: "subtask".to_owned(),
+                        rows: self.resolve_subtask_rows(&data)?,
+                    });
+                }
+                DType::Int16 | DType::Int64 | DType::Bool | DType::String => {
+                    re_log::warn_once!(
+                        "Loading LeRobot feature ({key}) of dtype `{:?}` into Rerun is not yet implemented",
+                        feature.dtype
+                    );
+                }
+            }
+        }
+        Ok(EpisodePlan {
+            timeline,
+            time_column,
+            parquet_data: data,
+            features,
+        })
+    }
+
+    fn resolve_language_tracks(feature_key: &str, data: &RecordBatch) -> Vec<(String, TextRows)> {
+        let Some(list) = data
+            .column_by_name(feature_key)
+            .and_then(|c| c.downcast_array_ref::<ListArray>())
+        else {
+            return vec![];
+        };
+
+        let Some(representative_idx) = (0..list.len()).find(|&i| list.value_length(i) > 0) else {
+            return vec![];
+        };
+
+        let representative_rows = list.value(representative_idx);
+        let Some(representative_rows) = representative_rows.downcast_array_ref::<StructArray>()
+        else {
+            re_log::warn_once!(
+                "LeRobot language feature `{feature_key}` is not a list of annotation rows; skipping"
+            );
+            return vec![];
+        };
+
+        let is_persistent = feature_key == "language_persistent";
+
+        // Collect in i64 frame space first to match collect_language_rows, then convert to TimeInt.
+        let mut by_entity: HashMap<String, Vec<(i64, String)>> = HashMap::default();
+
+        if is_persistent {
+            let row_timestamps =
+                Self::timestamps_as_f64(representative_rows.column_by_name("timestamp"));
+            let frame_timestamps = Self::timestamps_as_f64(data.column_by_name("timestamp"));
+            let last_frame = i64::try_from(list.len().saturating_sub(1)).unwrap_or(0);
+            let frame_for_timestamp = |ts: f64| -> i64 {
+                frame_timestamps
+                    .as_ref()
+                    .and_then(|frames| frames.values().iter().position(|&t| t >= ts))
+                    .and_then(|frame| i64::try_from(frame).ok())
+                    .unwrap_or_else(|| {
+                        re_log::warn_once!(
+                            "No frame at or after language timestamp {ts}s in `{feature_key}`; placing on last frame"
+                        );
+                        last_frame
+                    })
+            };
+
+            Self::collect_language_rows(feature_key, representative_rows, &mut by_entity, |i| {
+                row_timestamps
+                    .as_ref()
+                    .filter(|ts| ts.is_valid(i))
+                    .map_or(0, |ts| frame_for_timestamp(ts.value(i)))
+            });
+        } else {
+            for frame in 0..list.len() {
+                if list.value_length(frame) == 0 {
+                    continue;
+                }
+                let rows = list.value(frame);
+                let Some(rows) = rows.downcast_array_ref::<StructArray>() else {
+                    continue;
+                };
+                let frame = i64::try_from(frame).unwrap_or(0);
+                Self::collect_language_rows(feature_key, rows, &mut by_entity, |_| frame);
+            }
+        }
+
+        let mut tracks = Vec::with_capacity(by_entity.len());
+        for (entity_path, mut annotations) in by_entity {
+            annotations.sort_by_key(|(frame, _)| *frame);
+            let rows = annotations
+                .into_iter()
+                .map(|(frame, content)| (TimeInt::new_temporal(frame), content))
+                .collect();
+            tracks.push((entity_path, rows));
+        }
+
+        tracks
+    }
+
+    fn resolve_task_rows(
+        &self,
+        data: &RecordBatch,
+    ) -> Result<Vec<(TimeInt, String)>, LeRobotError> {
+        let task_indices = data
+            .column_by_name("task_index")
+            .and_then(|c| c.downcast_array_ref::<Int64Array>())
+            .with_context(|| "Failed to get task_index field from dataset!")?;
+
+        let mut rows = Vec::new();
+        let mut time_int = TimeInt::ZERO;
+        for task_index in task_indices {
+            if let Some(task) = task_index
+                .and_then(|i| usize::try_from(i).ok())
+                .and_then(|i| self.task_by_index(TaskIndex(i)))
+            {
+                rows.push((time_int, task.task.clone()));
+            }
+            time_int = time_int.inc();
+        }
+        Ok(rows)
+    }
+
+    fn resolve_subtask_rows(
+        &self,
+        data: &RecordBatch,
+    ) -> Result<Vec<(TimeInt, String)>, LeRobotError> {
+        let subtask_indices = data
+            .column_by_name("subtask_index")
+            .and_then(|c| c.downcast_array_ref::<Int64Array>())
+            .with_context(|| "Failed to get subtask_index field from dataset!")?;
+
+        let mut rows = Vec::new();
+        let mut time_int = TimeInt::ZERO;
+        for subtask_index in subtask_indices {
+            if let Some(subtask) = subtask_index
+                .and_then(|i| usize::try_from(i).ok())
+                .and_then(|i| self.subtask_by_index(SubtaskIndex(i)))
+            {
+                rows.push((time_int, subtask.subtask.clone()));
+            }
+            time_int = time_int.inc();
+        }
+        Ok(rows)
+    }
+
     /// Loads a `LeRobotDataset` from a directory.
     ///
     /// This method initializes a dataset by reading its metadata from the `meta/` directory.
@@ -398,287 +596,6 @@ impl LeRobotDatasetV3 {
         self.metadata.subtasks.as_ref()?.subtasks.get(&subtask)
     }
 
-    /// Loads a single episode from a `LeRobot` dataset and converts it into a collection of Rerun chunks.
-    ///
-    /// This function processes an episode from the dataset by extracting the relevant data columns and
-    /// converting them into appropriate Rerun data structures. It handles different types of data
-    /// (videos, images, scalar values, etc.) based on their data type specifications in the dataset metadata.
-    fn load_episode(&self, episode: EpisodeIndex) -> Result<Vec<Chunk>, LeRobotError> {
-        let data = self
-            .read_episode_data(episode)
-            .map_err(|err| anyhow!("Reading data for episode {} failed: {err}", episode.0))?;
-
-        let (timeline, time_column) = if let Some(frame_indices) =
-            data.column_by_name("frame_index")
-        {
-            let timeline = re_log_types::Timeline::new_sequence("frame_index");
-            let times: &arrow::buffer::ScalarBuffer<i64> = frame_indices
-                .downcast_array_ref::<Int64Array>()
-                .ok_or_else(|| anyhow!("LeRobot dataset frame indices are of an unexpected type"))?
-                .values();
-            (
-                timeline,
-                re_chunk::TimeColumn::new(None, timeline, times.clone()),
-            )
-        } else if let Some(timestamps) = data.column_by_name("timestamp") {
-            let timeline = re_log_types::Timeline::new_duration("timestamp");
-            let times: arrow::buffer::ScalarBuffer<i64> = timestamps
-                .downcast_array_ref::<Float64Array>()
-                .ok_or_else(|| anyhow!("LeRobot dataset timestamps are of an unexpected type"))?
-                .values()
-                .iter()
-                .map(|t| re_log_types::Duration::from_secs(*t).as_nanos())
-                .collect();
-            (timeline, re_chunk::TimeColumn::new(None, timeline, times))
-        } else {
-            return Err(
-                anyhow!("LeRobot dataset has neither frame_index nor timestamp column").into(),
-            );
-        };
-        let timelines = std::iter::once((*timeline.name(), time_column.clone())).collect();
-
-        let mut chunks = Vec::new();
-
-        for (feature_key, feature) in self
-            .metadata
-            .info
-            .features
-            .iter()
-            .filter(|(key, _)| !LEROBOT_DATASET_IGNORED_COLUMNS.contains(&key.as_str()))
-        {
-            match feature.dtype {
-                DType::Video => {
-                    chunks.extend(self.load_episode_video(
-                        feature_key,
-                        episode,
-                        &timeline,
-                        &time_column,
-                    )?);
-                }
-
-                DType::Image => {
-                    let num_channels = feature.channel_dim();
-
-                    match num_channels {
-                        1 => {
-                            chunks.extend(load_episode_depth_images(
-                                feature_key,
-                                &timeline,
-                                &data,
-                            )?);
-                        }
-                        3 => chunks.extend(load_episode_images(feature_key, &timeline, &data)?),
-                        _ => re_log::warn_once!(
-                            "Unsupported channel count {num_channels} (shape: {:?}) for LeRobot dataset; Only 1- and 3-channel images are supported",
-                            feature.shape
-                        ),
-                    }
-                }
-                DType::Int64 if feature_key == "task_index" => {
-                    // special case int64 task_index columns
-                    // this always refers to the task description in the dataset metadata.
-                    chunks.extend(self.log_episode_task(&timeline, &data)?);
-                }
-                DType::Int64 if feature_key == "subtask_index" => {
-                    // special case int64 subtask_index columns
-                    // this always refers to the subtask description in the dataset metadata.
-                    chunks.extend(self.log_episode_subtask(&timeline, &data)?);
-                }
-                DType::Language => {
-                    chunks.extend(Self::log_episode_language(feature_key, &timeline, &data)?);
-                }
-                DType::Int16 | DType::Int64 | DType::Bool | DType::String => {
-                    re_log::warn_once!(
-                        "Loading LeRobot feature ({feature_key}) of dtype `{:?}` into Rerun is not yet implemented",
-                        feature.dtype
-                    );
-                }
-                DType::Float32 | DType::Float64 => {
-                    chunks.extend(load_scalar(feature_key, feature, &timelines, &data)?);
-                }
-            }
-        }
-
-        Ok(chunks)
-    }
-
-    fn log_episode_task(
-        &self,
-        timeline: &Timeline,
-        data: &RecordBatch,
-    ) -> Result<impl ExactSizeIterator<Item = Chunk> + use<>, LeRobotError> {
-        let task_indices = data
-            .column_by_name("task_index")
-            .and_then(|c| c.downcast_array_ref::<Int64Array>())
-            .with_context(|| "Failed to get task_index field from dataset!")?;
-
-        let mut chunk = Chunk::builder("task");
-        let mut row_id = RowId::new();
-
-        for (frame_idx, task_index_opt) in task_indices.iter().enumerate() {
-            let Some(task_idx) = task_index_opt
-                .and_then(|i| usize::try_from(i).ok())
-                .map(TaskIndex)
-            else {
-                continue;
-            };
-
-            if let Some(task) = self.task_by_index(task_idx) {
-                let frame_idx = i64::try_from(frame_idx)
-                    .map_err(|err| anyhow!("Frame index exceeds max value: {err}"))?;
-
-                let timepoint = TimePoint::default().with(*timeline, frame_idx);
-                let text = TextDocument::new(task.task.clone());
-                chunk = chunk.with_archetype(row_id, timepoint, &text);
-                row_id = row_id.next();
-            }
-        }
-
-        Ok(std::iter::once(chunk.build()?))
-    }
-
-    fn log_episode_subtask(
-        &self,
-        timeline: &Timeline,
-        data: &RecordBatch,
-    ) -> Result<impl ExactSizeIterator<Item = Chunk> + use<>, LeRobotError> {
-        let subtask_indices = data
-            .column_by_name("subtask_index")
-            .and_then(|c| c.downcast_array_ref::<Int64Array>())
-            .with_context(|| "Failed to get subtask_index field from dataset!")?;
-
-        let mut chunk = Chunk::builder("subtask");
-        let mut row_id = RowId::new();
-
-        for (frame_idx, subtask_index_opt) in subtask_indices.iter().enumerate() {
-            let Some(subtask_idx) = subtask_index_opt
-                .and_then(|i| usize::try_from(i).ok())
-                .map(SubtaskIndex)
-            else {
-                continue;
-            };
-
-            if let Some(subtask) = self.subtask_by_index(subtask_idx) {
-                let frame_idx = i64::try_from(frame_idx)
-                    .map_err(|err| anyhow!("Frame index exceeds max value: {err}"))?;
-
-                let timepoint = TimePoint::default().with(*timeline, frame_idx);
-                let text = TextDocument::new(subtask.subtask.clone());
-                chunk = chunk.with_archetype(row_id, timepoint, &text);
-                row_id = row_id.next();
-            }
-        }
-
-        Ok(std::iter::once(chunk.build()?))
-    }
-
-    /// Log a `LeRobot` v0.6.0+ language feature (`language_persistent` or `language_events`).
-    ///
-    /// The two columns follow different temporal conventions
-    /// ([spec](https://huggingface.co/docs/lerobot/en/language_and_recipes)):
-    /// - **Persistent** (`subtask`, `plan`, …): broadcast to every frame. Placed on the frame matching
-    ///   the row's `timestamp`; latest-at keeps them active until replaced.
-    /// - **Event** (`interjection`, `vqa`): placed on the exact frame they occur.
-    ///
-    /// Each row becomes a [`TextDocument`] at `{feature}/{style}[/{role}][/{camera}]`; `tool_calls`
-    /// go on a `…/tool_calls` sub-entity. Empty columns (e.g. an unused `language_events`) are skipped.
-    fn log_episode_language(
-        feature_key: &str,
-        timeline: &Timeline,
-        data: &RecordBatch,
-    ) -> Result<Vec<Chunk>, LeRobotError> {
-        let Some(list) = data
-            .column_by_name(feature_key)
-            .and_then(|c| c.downcast_array_ref::<ListArray>())
-        else {
-            return Ok(vec![]);
-        };
-
-        // First frame carrying rows: an all-empty column stops here, and for a persistent column
-        // this frame holds the full broadcast row set.
-        let Some(representative_idx) = (0..list.len()).find(|&i| list.value_length(i) > 0) else {
-            return Ok(vec![]);
-        };
-
-        let representative_rows = list.value(representative_idx);
-        let Some(representative_rows) = representative_rows.downcast_array_ref::<StructArray>()
-        else {
-            re_log::warn_once!(
-                "LeRobot language feature `{feature_key}` is not a list of annotation rows; skipping"
-            );
-            return Ok(vec![]);
-        };
-
-        // Per the spec there are exactly two language columns, so the column name fixes the
-        // convention: `language_persistent` broadcasts across every frame, `language_events` sits on
-        // the emitting frame. See https://huggingface.co/docs/lerobot/en/language_and_recipes
-        let is_persistent = feature_key == "language_persistent";
-
-        // Entity path -> (frame, content) pairs, collected across the relevant frames.
-        let mut by_entity: HashMap<String, Vec<(i64, String)>> = HashMap::default();
-
-        if is_persistent {
-            // Persistent rows are broadcast identically onto every frame, so the representative frame
-            // already holds the full set. Place each on the frame matching its emission `timestamp` —
-            // the first frame at or after it — so the text lands on the shared episode timeline.
-            let row_timestamps =
-                Self::timestamps_as_f64(representative_rows.column_by_name("timestamp"));
-            let frame_timestamps = Self::timestamps_as_f64(data.column_by_name("timestamp"));
-            // A timestamp past the episode's end (or a missing frame-`timestamp` column) falls back to
-            // the last frame rather than frame 0: latest-at would otherwise broadcast an end-of-episode
-            // annotation across the whole episode.
-            let last_frame = i64::try_from(list.len().saturating_sub(1)).unwrap_or(0);
-            let frame_for_timestamp = |ts: f64| -> i64 {
-                frame_timestamps
-                    .as_ref()
-                    .and_then(|frames| frames.values().iter().position(|&t| t >= ts))
-                    .and_then(|frame| i64::try_from(frame).ok())
-                    .unwrap_or_else(|| {
-                        re_log::warn_once!(
-                            "No frame at or after language timestamp {ts}s in `{feature_key}`; placing on last frame"
-                        );
-                        last_frame
-                    })
-            };
-            Self::collect_language_rows(feature_key, representative_rows, &mut by_entity, |i| {
-                // A persistent row without its own timestamp is anchored to frame 0.
-                row_timestamps
-                    .as_ref()
-                    .filter(|ts| ts.is_valid(i))
-                    .map_or(0, |ts| frame_for_timestamp(ts.value(i)))
-            });
-        } else {
-            // Events live on their exact frame, so place each row on the frame it occupies.
-            for frame in 0..list.len() {
-                if list.value_length(frame) == 0 {
-                    continue;
-                }
-                let rows = list.value(frame);
-                let Some(rows) = rows.downcast_array_ref::<StructArray>() else {
-                    continue;
-                };
-                let frame = i64::try_from(frame).unwrap_or(0);
-                Self::collect_language_rows(feature_key, rows, &mut by_entity, |_| frame);
-            }
-        }
-
-        let mut chunks = Vec::with_capacity(by_entity.len());
-        for (entity_path, mut annotations) in by_entity {
-            annotations.sort_by_key(|(frame, _)| *frame);
-
-            let mut chunk = Chunk::builder(EntityPath::parse_forgiving(&entity_path));
-            let mut row_id = RowId::new();
-            for (frame, content) in annotations {
-                let timepoint = TimePoint::default().with(*timeline, frame);
-                chunk = chunk.with_archetype(row_id, timepoint, &TextDocument::new(content));
-                row_id = row_id.next();
-            }
-            chunks.push(chunk.build()?);
-        }
-
-        Ok(chunks)
-    }
-
     /// Read a `timestamp` column as `f64`.
     ///
     /// `LeRobot` types both frame and language-row `timestamp`s as `float32`, but some datasets store
@@ -773,148 +690,6 @@ impl LeRobotDatasetV3 {
             })
             .unwrap_or((0.0, 0.0))
     }
-
-    fn load_episode_video(
-        &self,
-        observation: &str,
-        episode: EpisodeIndex,
-        timeline: &Timeline,
-        time_column: &TimeColumn,
-    ) -> Result<impl ExactSizeIterator<Item = Chunk> + use<>, LeRobotError> {
-        let contents = self
-            .read_episode_video_contents(observation, episode)
-            .with_context(|| format!("Reading video contents for episode {episode:?} failed!"))?;
-
-        let entity_path = observation;
-        let video_bytes: &[u8] = &contents;
-
-        // Parse the video to get its structure
-        let video = VideoDataDescription::load_from_bytes(video_bytes, "video/mp4", observation)
-            .map_err(|err| {
-                anyhow!("Failed to read video data description for feature '{observation}': {err}")
-            })?;
-
-        let (start_time, end_time) = self.get_feature_timestamps(episode, observation);
-
-        if video.samples.is_empty() {
-            return Err(LeRobotError::Other(anyhow!(
-                "Video feature '{observation}' for episode {episode:?} did not contain any samples"
-            )));
-        }
-
-        // Convert timestamps to video time
-        let timescale = video.timescale.ok_or_else(|| {
-            anyhow!("Video feature '{observation}' is missing timescale information")
-        })?;
-
-        let start_video_time = re_video::Time::from_secs(start_time, timescale);
-        let end_video_time = re_video::Time::from_secs(end_time, timescale);
-
-        // Find the GOPs that contain our time range
-        let start_keyframe = video
-            .presentation_time_keyframe_index(start_video_time)
-            .unwrap_or(0);
-
-        let end_keyframe = video
-            .presentation_time_keyframe_index(end_video_time)
-            .or_else(|| video.keyframe_indices.len().checked_sub(1))
-            .ok_or(LeRobotError::Other(anyhow!("No keyframes in the video")))?;
-
-        // Determine the sample range to extract from the video
-        let start_sample = video
-            .gop_sample_range_for_keyframe(start_keyframe)
-            .ok_or(LeRobotError::Other(anyhow!("Bad video data")))?
-            .start;
-
-        let end_sample = video
-            .gop_sample_range_for_keyframe(end_keyframe)
-            .ok_or(LeRobotError::Other(anyhow!("Bad video data")))?
-            .end;
-
-        let sample_range = start_sample..end_sample;
-
-        // Extract all video samples in this range
-        let mut samples = Vec::with_capacity(sample_range.len());
-
-        for (sample_idx, sample_meta) in video.samples.iter_index_range_clamped(&sample_range) {
-            let Some(sample_meta) = sample_meta.sample() else {
-                continue;
-            };
-
-            // make sure we absolutely do not leak any samples from outside the requested time range
-            if sample_meta.presentation_timestamp < start_video_time
-                || sample_meta.presentation_timestamp >= end_video_time
-            {
-                continue;
-            }
-
-            let chunk = sample_meta
-                .get(&VideoSliceSource(video_bytes), sample_idx)
-                .ok_or_else(|| {
-                    anyhow!("Sample {sample_idx} out of bounds for feature '{observation}'")
-                })?;
-
-            let sample_bytes = video
-            .sample_data_in_stream_format(&chunk)
-            .with_context(|| {
-                format!(
-                    "Failed to convert sample {sample_idx} for feature '{observation}' to the expected codec stream format"
-                )
-            })?;
-
-            samples.push((sample_meta.clone(), sample_bytes));
-        }
-
-        let (samples_meta, samples): (Vec<_>, Vec<_>) = samples.into_iter().unzip();
-
-        let samples_column = VideoStream::update_fields()
-            .with_many_sample(samples)
-            .columns_of_unit_batches()
-            .with_context(|| "Failed to create VideoStream")?;
-
-        // Map video samples to episode frame indices
-        //
-        // Video samples may not align 1:1 with episode frames. We distribute samples uniformly
-        // across the frame timeline. When there are more samples than frames, multiple samples
-        // map to the same frame index; when there are fewer samples, some frames have no samples.
-        let num_samples = samples_meta.len();
-        let frame_count = time_column.num_rows();
-
-        let uniform_times: Vec<i64> = (0..num_samples)
-            .map(|i| i64::try_from((i * frame_count) / num_samples).unwrap_or_default())
-            .collect();
-
-        let uniform_time_column = TimeColumn::new(
-            Some(true), // is_sorted
-            *timeline,
-            ScalarBuffer::from(uniform_times),
-        );
-
-        let codec =
-            re_sdk_types::components::VideoCodec::try_from(video.codec.clone()).map_err(|err| {
-                anyhow!(
-                    "Unsupported video codec {:?} for feature: '{observation}': {err}",
-                    video.codec
-                )
-            })?;
-
-        let codec_chunk = Chunk::builder(entity_path)
-            .with_archetype(
-                RowId::new(),
-                TimePoint::default(),
-                &VideoStream::update_fields().with_codec(codec),
-            )
-            .build()?;
-
-        let samples_chunk = Chunk::from_auto_row_ids(
-            ChunkId::new(),
-            entity_path.into(),
-            std::iter::once((timeline.name().to_owned(), uniform_time_column)).collect(),
-            samples_column.collect(),
-        )?;
-
-        Ok([samples_chunk, codec_chunk].into_iter())
-    }
 }
 
 impl LeRobotDatasetOps for LeRobotDatasetV3 {
@@ -923,9 +698,12 @@ impl LeRobotDatasetOps for LeRobotDatasetV3 {
     }
 
     fn load_episode_chunks(&self, episode: EpisodeIndex) -> Result<Vec<Chunk>, LeRobotError> {
-        let result = self.load_episode(episode);
+        let result = self
+            .build_plan(episode)
+            .and_then(|plan| EpisodeChunkIterator::new(plan).collect());
 
-        // Release video blob references for this episode regardless of success or failure to avoid leaking memory if we fail to load an episode after caching its video blobs.
+        // Release video blob references regardless of success or failure, so a failed
+        // episode doesn't leak cached blobs.
         self.release_episode_videos(episode);
 
         result
@@ -1433,6 +1211,7 @@ mod tests {
     use arrow::array::{Float32Array, ListArray, RecordBatchOptions};
     use arrow::buffer::OffsetBuffer;
     use arrow::datatypes::{DataType, Field, Fields, Schema};
+    use re_chunk::Timeline;
     use std::sync::Arc;
 
     /// Build a single `RecordBatch` from fields and columns, using the metadata/options-aware
@@ -1558,6 +1337,19 @@ mod tests {
         ListArray::new(Arc::new(item), offsets, Arc::new(values), None)
     }
 
+    /// Resolve a language column and emit its text chunks — the two halves the old
+    /// `log_episode_language` performed in one step.
+    fn language_chunks(
+        feature_key: &str,
+        timeline: &Timeline,
+        data: &RecordBatch,
+    ) -> Result<Vec<Chunk>, LeRobotError> {
+        LeRobotDatasetV3::resolve_language_tracks(feature_key, data)
+            .into_iter()
+            .map(|(entity, rows)| crate::common::build_text_chunk(&entity, &rows, timeline))
+            .collect()
+    }
+
     fn entity_paths(chunks: &[Chunk]) -> Vec<String> {
         let mut paths: Vec<_> = chunks.iter().map(|c| c.entity_path().to_string()).collect();
         paths.sort();
@@ -1640,9 +1432,7 @@ mod tests {
         );
 
         let timeline = Timeline::new_sequence("frame_index");
-        let chunks =
-            LeRobotDatasetV3::log_episode_language("language_persistent", &timeline, &batch)
-                .unwrap();
+        let chunks = language_chunks("language_persistent", &timeline, &batch).unwrap();
 
         assert_eq!(
             entity_paths(&chunks),
@@ -1700,8 +1490,7 @@ mod tests {
         );
 
         let timeline = Timeline::new_sequence("frame_index");
-        let chunks =
-            LeRobotDatasetV3::log_episode_language("language_events", &timeline, &batch).unwrap();
+        let chunks = language_chunks("language_events", &timeline, &batch).unwrap();
 
         assert_eq!(
             entity_paths(&chunks),
@@ -1745,8 +1534,7 @@ mod tests {
         );
 
         let timeline = Timeline::new_sequence("frame_index");
-        let chunks =
-            LeRobotDatasetV3::log_episode_language("language_events", &timeline, &batch).unwrap();
+        let chunks = language_chunks("language_events", &timeline, &batch).unwrap();
 
         // No content entity (content was null), only the tool-call sub-entity. Style is null (speech
         // rows carry none), so the path omits the style segment rather than inventing a placeholder.
@@ -1778,8 +1566,7 @@ mod tests {
         );
 
         let timeline = Timeline::new_sequence("frame_index");
-        let chunks =
-            LeRobotDatasetV3::log_episode_language("language_events", &timeline, &batch).unwrap();
+        let chunks = language_chunks("language_events", &timeline, &batch).unwrap();
         assert!(chunks.is_empty());
     }
 
@@ -1840,8 +1627,7 @@ mod tests {
 
         let timeline = Timeline::new_sequence("frame_index");
         // Must not panic on any of the awkward segments.
-        let chunks =
-            LeRobotDatasetV3::log_episode_language("language_events", &timeline, &batch).unwrap();
+        let chunks = language_chunks("language_events", &timeline, &batch).unwrap();
 
         let paths = entity_paths(&chunks);
         // Empty style drops the duplicate slash; the `/` in the camera nests deeper; the special
@@ -1880,8 +1666,7 @@ mod tests {
                 println!("\n===== {feature}: not present =====");
                 continue;
             }
-            let chunks =
-                LeRobotDatasetV3::log_episode_language(feature, &timeline, &batch).unwrap();
+            let chunks = language_chunks(feature, &timeline, &batch).unwrap();
             println!("\n===== {feature}: {} entities =====", chunks.len());
             for c in &chunks {
                 let preview: String = rendered_text(c)

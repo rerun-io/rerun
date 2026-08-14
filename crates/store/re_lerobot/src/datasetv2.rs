@@ -1,7 +1,6 @@
-use crate::common::{
-    LEROBOT_DATASET_IGNORED_COLUMNS, LeRobotDatasetOps, load_episode_depth_images,
-    load_episode_images, load_scalar,
-};
+use crate::common::{LEROBOT_DATASET_IGNORED_COLUMNS, LeRobotDatasetOps, derive_timeline};
+use crate::plan::{EpisodePlan, PlannedFeature, PlannedVideo};
+use crate::streaming::EpisodeChunkIterator;
 use crate::{DType, EpisodeIndex, Feature, LeRobotDatasetTask, LeRobotError, TaskIndex};
 
 use std::borrow::Cow;
@@ -12,18 +11,14 @@ use std::path::{Path, PathBuf};
 
 use ahash::HashMap;
 use anyhow::{Context as _, anyhow};
-use arrow::array::{Float64Array, Int64Array, RecordBatch};
-use itertools::{Either, Itertools as _};
+use arrow::array::{Int64Array, RecordBatch};
+use itertools::Itertools as _;
 use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
-use re_chunk::{Chunk, RowId, TimeColumn, TimeInt, TimePoint, Timeline};
-use re_sdk_types::{
-    archetypes::{AssetVideo, TextDocument, VideoFrameReference},
-    components::VideoTimestamp,
-};
+use re_chunk::{Chunk, TimeInt};
 
 /// A `LeRobot` dataset consists of structured metadata and recorded episode data stored in
 /// Parquet files.
@@ -72,6 +67,91 @@ pub struct LeRobotDatasetV2 {
 }
 
 impl LeRobotDatasetV2 {
+    /// Plans a single episode without decoding any feature data.
+    ///
+    /// Resolves everything version-specific — video file paths, task text — into a
+    /// self-contained [`EpisodePlan`]. Turning the plan into chunks happens in
+    /// [`crate::execute`], driven by [`EpisodeChunkIterator`].
+    pub(crate) fn build_plan(&self, episode: EpisodeIndex) -> Result<EpisodePlan, LeRobotError> {
+        let data = self.read_episode_data(episode)?;
+        let (timeline, time_column) = derive_timeline(&data)?;
+        let mut features = Vec::new();
+
+        for (key, feature) in self
+            .metadata
+            .info
+            .features
+            .iter()
+            .filter(|(key, _)| !LEROBOT_DATASET_IGNORED_COLUMNS.contains(&key.as_str()))
+        {
+            match feature.dtype {
+                // v2 reads the whole video file per episode
+                DType::Video => features.push(PlannedFeature::Video {
+                    entity: key.clone(),
+                    video: PlannedVideo::Asset {
+                        file: self.path.join(self.metadata.info.video_path(key, episode)?),
+                    },
+                }),
+                DType::Image => match feature.channel_dim() {
+                    1 => features.push(PlannedFeature::DepthImage { key: key.clone() }),
+                    3 => features.push(PlannedFeature::Image { key: key.clone() }),
+                    num_channels => re_log::warn_once!(
+                        "Unsupported channel count {num_channels} (shape: {:?}) for LeRobot dataset; Only 1- and 3-channel images are supported",
+                        feature.shape
+                    ),
+                },
+                DType::Int64 if key == "task_index" => features.push(PlannedFeature::Text {
+                    entity: "task".to_owned(),
+                    rows: self.resolve_task_rows(&data)?,
+                }),
+                DType::Float32 | DType::Float64 => features.push(PlannedFeature::Scalar {
+                    key: key.clone(),
+                    feature: feature.clone(),
+                }),
+                DType::Language => {
+                    return Err(anyhow!(
+                        "LeRobot dataset v2 importer does not support the `language` dtype (feature: {key})"
+                    ).into());
+                }
+                DType::Int16 | DType::Int64 | DType::Bool | DType::String => {
+                    re_log::warn_once!(
+                        "Loading LeRobot feature ({key}) of dtype `{:?}` into Rerun is not yet implemented",
+                        feature.dtype
+                    );
+                }
+            }
+        }
+        Ok(EpisodePlan {
+            timeline,
+            time_column,
+            parquet_data: data,
+            features,
+        })
+    }
+
+    fn resolve_task_rows(
+        &self,
+        data: &RecordBatch,
+    ) -> Result<Vec<(TimeInt, String)>, LeRobotError> {
+        let task_indices = data
+            .column_by_name("task_index")
+            .and_then(|c| c.downcast_array_ref::<Int64Array>())
+            .with_context(|| "Failed to get task_index field from dataset!")?;
+
+        let mut rows = Vec::new();
+        let mut time_int = TimeInt::ZERO;
+        for task_index in task_indices {
+            if let Some(task) = task_index
+                .and_then(|i| usize::try_from(i).ok())
+                .and_then(|i| self.task_by_index(TaskIndex(i)))
+            {
+                rows.push((time_int, task.task.clone()));
+            }
+            time_int = time_int.inc();
+        }
+        Ok(rows)
+    }
+
     /// Loads a `LeRobotDataset` from a directory.
     ///
     /// This method initializes a dataset by reading its metadata from the `meta/` directory.
@@ -342,211 +422,13 @@ pub struct LeRobotDatasetEpisode {
     pub length: u32,
 }
 
-/// Loads a single episode from a `LeRobot` dataset and converts it into a collection of Rerun chunks.
-///
-/// This function processes an episode from the dataset by extracting the relevant data columns and
-/// converting them into appropriate Rerun data structures. It handles different types of data
-/// (videos, images, scalar values, etc.) based on their data type specifications in the dataset metadata.
-fn load_episode(
-    dataset: &LeRobotDatasetV2,
-    episode: EpisodeIndex,
-) -> Result<Vec<Chunk>, LeRobotError> {
-    let data = dataset
-        .read_episode_data(episode)
-        .map_err(|err| anyhow!("Reading data for episode {} failed: {err}", episode.0))?;
-
-    let (timeline, time_column) = if let Some(frame_indices) = data.column_by_name("frame_index") {
-        let timeline = re_log_types::Timeline::new_sequence("frame_index");
-        let times: &arrow::buffer::ScalarBuffer<i64> = frame_indices
-            .downcast_array_ref::<Int64Array>()
-            .ok_or_else(|| anyhow!("LeRobot dataset frame indices are of an unexpected type"))?
-            .values();
-        (
-            timeline,
-            re_chunk::TimeColumn::new(None, timeline, times.clone()),
-        )
-    } else if let Some(timestamps) = data.column_by_name("timestamp") {
-        let timeline = re_log_types::Timeline::new_duration("timestamp");
-        let times: arrow::buffer::ScalarBuffer<i64> = timestamps
-            .downcast_array_ref::<Float64Array>()
-            .ok_or_else(|| anyhow!("LeRobot dataset timestamps are of an unexpected type"))?
-            .values()
-            .iter()
-            .map(|t| re_log_types::Duration::from_secs(*t).as_nanos())
-            .collect();
-        (timeline, re_chunk::TimeColumn::new(None, timeline, times))
-    } else {
-        return Err(anyhow!("LeRobot dataset has neither frame_index nor timestamp column").into());
-    };
-    let timelines = std::iter::once((*timeline.name(), time_column.clone())).collect();
-
-    let mut chunks = Vec::new();
-
-    for (feature_key, feature) in dataset
-        .metadata
-        .info
-        .features
-        .iter()
-        .filter(|(key, _)| !LEROBOT_DATASET_IGNORED_COLUMNS.contains(&key.as_str()))
-    {
-        match feature.dtype {
-            DType::Video => {
-                chunks.extend(load_episode_video(
-                    dataset,
-                    feature_key,
-                    episode,
-                    &timeline,
-                    time_column.clone(),
-                )?);
-            }
-
-            DType::Image => {
-                let num_channels = feature.channel_dim();
-
-                match num_channels {
-                    1 => chunks.extend(load_episode_depth_images(feature_key, &timeline, &data)?),
-                    3 => chunks.extend(load_episode_images(feature_key, &timeline, &data)?),
-                    _ => re_log::warn_once!(
-                        "Unsupported channel count {num_channels} (shape: {:?}) for LeRobot dataset; Only 1- and 3-channel images are supported",
-                        feature.shape
-                    ),
-                }
-            }
-            DType::Int64 if feature_key == "task_index" => {
-                // special case int64 task_index columns
-                // this always refers to the task description in the dataset metadata.
-                chunks.extend(log_episode_task(dataset, &timeline, &data)?);
-            }
-            DType::Int16 | DType::Int64 | DType::Bool | DType::String => {
-                re_log::warn_once!(
-                    "Loading LeRobot feature ({feature_key}) of dtype `{:?}` into Rerun is not yet implemented",
-                    feature.dtype
-                );
-            }
-            DType::Language => {
-                // The `language` dtype was introduced with the v3 dataset format; it has no
-                // meaning in a v2 dataset, so surface it as a hard error rather than a warning.
-                return Err(anyhow!(
-                    "LeRobot v2 datasets do not support the `language` dtype (feature `{feature_key}`)"
-                )
-                .into());
-            }
-            DType::Float32 | DType::Float64 => {
-                chunks.extend(load_scalar(feature_key, feature, &timelines, &data)?);
-            }
-        }
-    }
-
-    Ok(chunks)
-}
-
 impl LeRobotDatasetOps for LeRobotDatasetV2 {
     fn iter_episode_indices(&self) -> impl std::iter::Iterator<Item = EpisodeIndex> {
         self.metadata.iter_episode_indices()
     }
 
     fn load_episode_chunks(&self, episode: EpisodeIndex) -> Result<Vec<Chunk>, LeRobotError> {
-        load_episode(self, episode)
-    }
-}
-
-fn log_episode_task(
-    dataset: &LeRobotDatasetV2,
-    timeline: &Timeline,
-    data: &RecordBatch,
-) -> Result<impl ExactSizeIterator<Item = Chunk> + use<>, LeRobotError> {
-    let task_indices = data
-        .column_by_name("task_index")
-        .and_then(|c| c.downcast_array_ref::<Int64Array>())
-        .with_context(|| "Failed to get task_index field from dataset!")?;
-
-    let mut chunk = Chunk::builder("task");
-    let mut row_id = RowId::new();
-    let mut time_int = TimeInt::ZERO;
-
-    for task_index in task_indices {
-        let Some(task) = task_index
-            .and_then(|i| usize::try_from(i).ok())
-            .and_then(|i| dataset.task_by_index(TaskIndex(i)))
-        else {
-            // if there is no valid task for the current frame index, we skip it.
-            time_int = time_int.inc();
-            continue;
-        };
-
-        let timepoint = TimePoint::default().with(*timeline, time_int);
-        let text = TextDocument::new(task.task.clone());
-        chunk = chunk.with_archetype(row_id, timepoint, &text);
-
-        row_id = row_id.next();
-        time_int = time_int.inc();
-    }
-
-    Ok(std::iter::once(chunk.build()?))
-}
-
-fn load_episode_video(
-    dataset: &LeRobotDatasetV2,
-    observation: &str,
-    episode: EpisodeIndex,
-    timeline: &Timeline,
-    time_column: TimeColumn,
-) -> Result<impl ExactSizeIterator<Item = Chunk> + use<>, LeRobotError> {
-    let contents = dataset
-        .read_episode_video_contents(observation, episode)
-        .with_context(|| format!("Reading video contents for episode {episode:?} failed!"))?;
-
-    let video_asset = AssetVideo::new(contents.into_owned());
-    let entity_path = observation;
-
-    let video_frame_reference_chunk = match video_asset.read_frame_timestamps_nanos() {
-        Ok(frame_timestamps_nanos) => {
-            let frame_timestamps_nanos: arrow::buffer::ScalarBuffer<i64> =
-                frame_timestamps_nanos.into();
-
-            let video_timestamps = frame_timestamps_nanos
-                .iter()
-                .take(time_column.num_rows())
-                .copied()
-                .map(VideoTimestamp::from_nanos)
-                .collect::<Vec<_>>();
-
-            let video_frame_reference_column = VideoFrameReference::update_fields()
-                .with_many_timestamp(video_timestamps)
-                .columns_of_unit_batches()
-                .with_context(|| {
-                    format!(
-                        "Failed to create `VideoFrameReference` column for episode {episode:?}."
-                    )
-                })?;
-
-            Some(Chunk::from_auto_row_ids(
-                re_chunk::ChunkId::new(),
-                entity_path.into(),
-                std::iter::once((*timeline.name(), time_column)).collect(),
-                video_frame_reference_column.collect(),
-            )?)
-        }
-        Err(err) => {
-            re_log::warn_once!(
-                "Failed to read frame timestamps from episode {episode:?} video: {err}"
-            );
-            None
-        }
-    };
-
-    // Put video asset into its own (static) chunk since it can be fairly large.
-    let video_asset_chunk = Chunk::builder(entity_path)
-        .with_archetype(RowId::new(), TimePoint::default(), &video_asset)
-        .build()?;
-
-    if let Some(video_frame_reference_chunk) = video_frame_reference_chunk {
-        Ok(Either::Left(
-            [video_asset_chunk, video_frame_reference_chunk].into_iter(),
-        ))
-    } else {
-        // Still log the video asset, but don't include video frames.
-        Ok(Either::Right(std::iter::once(video_asset_chunk)))
+        EpisodeChunkIterator::new(self.build_plan(episode)?).collect()
     }
 }
 
@@ -635,7 +517,8 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let dataset = dataset_with_language_feature(dir.path());
 
-        let err = load_episode(&dataset, EpisodeIndex(0))
+        let err = dataset
+            .load_episode_chunks(EpisodeIndex(0))
             .expect_err("v2 importer must reject the `language` dtype");
 
         assert!(
