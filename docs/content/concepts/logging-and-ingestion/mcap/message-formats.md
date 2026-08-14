@@ -68,7 +68,7 @@ Pose messages are converted to [`InstancePoses3D`](../../../reference/types/arch
 Just like `Transform3D`, you can visualize these poses in the viewer by selecting the entity and adding a `TransformAxes3D` visualizer in the selection panel.
 Note that the visualization requires the parent coordinate frame of the pose to be known, i.e. part of the transform hierarchy of your data.
 
-[`CoordinateFrame`](../../../reference/types/archetypes/coordinate_frame.md)s are also used for other message types that are supported by the `ros2msg` layer, if they have an [`std_msgs/Header`](https://docs.ros2.org/foxy/api/std_msgs/msg/Header.html) with a `frame_id`.
+[`CoordinateFrame`](../../../reference/types/archetypes/coordinate_frame.md)s are also used for other message types that are supported by the `ros2msg` decoder, if they have an [`std_msgs/Header`](https://docs.ros2.org/foxy/api/std_msgs/msg/Header.html) with a `frame_id`.
 For data that can be visualized in 3D views (e.g. point clouds), this means that the viewer takes the respective coordinate frame's transform into account and renders the data relative to it.
 
 ## Schema reflection
