@@ -18,7 +18,7 @@ use re_viewer::external::re_sdk_types;
 use re_viewer::external::re_viewer_context::{self, AppContext, ViewerContext, blueprint_timeline};
 use re_viewer::viewer_test_utils::AppTestingExt as _;
 use re_viewer::{SystemCommand, SystemCommandSender as _};
-use re_viewer_context::{ContainerId, Route};
+use re_viewer_context::{ContainerId, Route, TimeControl, TimeControlCommand};
 use re_viewport_blueprint::ViewportBlueprint;
 
 use crate::ViewerHarnessExt;
@@ -75,6 +75,15 @@ pub trait HarnessExt<'h>: ViewerHarnessExt {
     fn run_with_app_context<R: 'static>(
         &mut self,
         func: impl FnOnce(&AppContext<'_>) -> R + 'static,
+    ) -> R;
+
+    // Sends time control commands to the active recording, then lets the app settle.
+    fn send_time_commands(&mut self, commands: impl IntoIterator<Item = TimeControlCommand>);
+
+    // Runs a function with the `TimeControl` of the active recording.
+    fn with_active_time_ctrl<R: 'static>(
+        &mut self,
+        func: impl FnOnce(&TimeControl) -> R + 'static,
     ) -> R;
 
     // Removes all views and containers from the current blueprint.
@@ -163,6 +172,26 @@ impl<'h> HarnessExt<'h> for egui_kittest::Harness<'h, re_viewer::App> {
 
     fn drop_nth_label(&mut self, label: &str, index: usize) {
         self.root_section().drop_nth_label(label, index);
+    }
+
+    fn send_time_commands(&mut self, commands: impl IntoIterator<Item = TimeControlCommand>) {
+        let commands: Vec<_> = commands.into_iter().collect();
+        self.run_with_app_context(move |ctx| {
+            ctx.send_time_commands_to_active_recording(commands);
+        });
+        self.run_ok();
+    }
+
+    fn with_active_time_ctrl<R: 'static>(
+        &mut self,
+        func: impl FnOnce(&TimeControl) -> R + 'static,
+    ) -> R {
+        self.run_with_app_context(move |ctx| {
+            func(
+                ctx.active_time_ctrl()
+                    .expect("active recording route should have a time control"),
+            )
+        })
     }
 
     fn clear_current_blueprint(&mut self) {

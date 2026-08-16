@@ -24,6 +24,7 @@ mod internal_catalog;
 mod multi_container_test;
 mod no_blueprint_test;
 mod origin_heuristics_test;
+mod parallelism_caching_reentrancy;
 mod preview_table;
 mod redap_catalog_select;
 mod rrd_bw_compat_test;
