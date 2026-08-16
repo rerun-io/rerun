@@ -11,7 +11,7 @@ use re_viewer::App;
 use re_viewer::event::{ViewerEvent, ViewerEventDispatcher, ViewerEventKind};
 use re_viewer::external::re_sdk_types::archetypes::TextLog;
 use re_viewer::external::re_sdk_types::blueprint::components::PlayState;
-use re_viewer::external::re_viewer_context::{AppContext, TimeControl, TimeControlCommand};
+use re_viewer::external::re_viewer_context::TimeControlCommand;
 use re_viewer::viewer_test_utils::{self, HarnessOptions};
 
 /// A simple event collector that records viewer events for later inspection.
@@ -55,26 +55,9 @@ fn log_time_data(harness: &mut Harness<'_, App>, timeline: Timeline) {
     }
 }
 
-fn send_time_commands(
-    harness: &mut Harness<'_, App>,
-    commands: impl IntoIterator<Item = TimeControlCommand>,
-) {
-    let commands: Vec<_> = commands.into_iter().collect();
-    harness.run_with_app_context(move |ctx| {
-        ctx.send_time_commands_to_active_recording(commands);
-    });
-
-    harness.run_ok();
-}
-
 fn assert_play_state(harness: &mut Harness<'_, App>, expected: PlayState) {
-    let actual = harness.run_with_app_context(|ctx| active_time_ctrl(ctx).play_state());
+    let actual = harness.with_active_time_ctrl(|time_ctrl| time_ctrl.play_state());
     assert_eq!(actual, expected, "play state mismatch");
-}
-
-fn active_time_ctrl<'a>(ctx: &'a AppContext<'_>) -> &'a TimeControl {
-    ctx.active_time_ctrl()
-        .expect("active recording route should have a time control")
 }
 
 /// Verifies that switching timelines emits the appropriate viewer event.
@@ -102,8 +85,7 @@ async fn time_control_emits_timeline_switch_event() {
         });
     }
 
-    let initial_timeline =
-        harness.run_with_app_context(move |ctx| *active_time_ctrl(ctx).timeline_name());
+    let initial_timeline = harness.with_active_time_ctrl(|time_ctrl| *time_ctrl.timeline_name());
     let alternate_timeline = if initial_timeline == *timeline_a.name() {
         timeline_b
     } else {
@@ -113,14 +95,11 @@ async fn time_control_emits_timeline_switch_event() {
     let events = EventCollector::init(&mut harness);
 
     // Switch timelines
-    send_time_commands(
-        &mut harness,
-        [TimeControlCommand::SetActiveTimeline(
-            *alternate_timeline.name(),
-        )],
-    );
+    harness.send_time_commands([TimeControlCommand::SetActiveTimeline(
+        *alternate_timeline.name(),
+    )]);
     let timeline_after_switch =
-        harness.run_with_app_context(|ctx| *active_time_ctrl(ctx).timeline_name());
+        harness.with_active_time_ctrl(|time_ctrl| *time_ctrl.timeline_name());
     assert_eq!(timeline_after_switch, *alternate_timeline.name());
 
     assert!(
@@ -150,15 +129,12 @@ async fn time_control_emits_expected_viewer_events() {
     log_time_data(&mut harness, Timeline::new_sequence("test_timeline"));
 
     // Since we start in following mode, we first need to switch to playing in order to disable following mode.
-    send_time_commands(
-        &mut harness,
-        [TimeControlCommand::SetPlayState(PlayState::Playing)],
-    );
+    harness.send_time_commands([TimeControlCommand::SetPlayState(PlayState::Playing)]);
 
     let events = EventCollector::init(&mut harness);
 
     // First, pause playback
-    send_time_commands(&mut harness, [TimeControlCommand::Pause]);
+    harness.send_time_commands([TimeControlCommand::Pause]);
     assert_play_state(&mut harness, PlayState::Paused);
     assert!(
         events.received_event(|kind| matches!(kind, ViewerEventKind::Pause)),
@@ -167,8 +143,8 @@ async fn time_control_emits_expected_viewer_events() {
 
     // Seek to a specific time
     let specific_time = TimeReal::from(4_i64);
-    send_time_commands(&mut harness, [TimeControlCommand::SetTime(specific_time)]);
-    let time_after_seek = harness.run_with_app_context(|ctx| active_time_ctrl(ctx).time().unwrap());
+    harness.send_time_commands([TimeControlCommand::SetTime(specific_time)]);
+    let time_after_seek = harness.with_active_time_ctrl(|time_ctrl| time_ctrl.time().unwrap());
     assert_eq!(time_after_seek, specific_time);
     assert!(
         events.received_event(
@@ -179,14 +155,14 @@ async fn time_control_emits_expected_viewer_events() {
 
     // Make sure toggling play/pause works as expected
     assert_play_state(&mut harness, PlayState::Paused);
-    send_time_commands(&mut harness, [TimeControlCommand::TogglePlayPause]);
+    harness.send_time_commands([TimeControlCommand::TogglePlayPause]);
     assert_play_state(&mut harness, PlayState::Playing);
     assert!(
         events.received_event(|kind| matches!(kind, ViewerEventKind::Play)),
         "expected play event when starting playback",
     );
 
-    send_time_commands(&mut harness, [TimeControlCommand::TogglePlayPause]);
+    harness.send_time_commands([TimeControlCommand::TogglePlayPause]);
     assert_play_state(&mut harness, PlayState::Paused);
     assert!(
         events.received_event(|kind| matches!(kind, ViewerEventKind::Pause)),
@@ -194,10 +170,7 @@ async fn time_control_emits_expected_viewer_events() {
     );
 
     // Finally, switch to following mode
-    send_time_commands(
-        &mut harness,
-        [TimeControlCommand::SetPlayState(PlayState::Following)],
-    );
+    harness.send_time_commands([TimeControlCommand::SetPlayState(PlayState::Following)]);
     assert_play_state(&mut harness, PlayState::Following);
     assert!(
         events.received_event(|kind| matches!(kind, ViewerEventKind::Play)),
@@ -233,23 +206,20 @@ async fn test_time_control_update_emits_time_update_events() {
     // Ensure that an initial timeline change event is sent out for the new timeline.
     events.received_event(|kind| matches!(kind, ViewerEventKind::TimelineChange { timeline_name, .. } if timeline_name == timeline.name()));
 
-    send_time_commands(
-        &mut harness,
-        [
-            // We need to force `PlayState::Playing`, because we start in `PlayState::Following`
-            TimeControlCommand::SetPlayState(PlayState::Playing),
-            TimeControlCommand::Pause,
-            TimeControlCommand::SetTime(TimeReal::from(0_i64)),
-        ],
-    );
+    harness.send_time_commands([
+        // We need to force `PlayState::Playing`, because we start in `PlayState::Following`
+        TimeControlCommand::SetPlayState(PlayState::Playing),
+        TimeControlCommand::Pause,
+        TimeControlCommand::SetTime(TimeReal::from(0_i64)),
+    ]);
 
     assert_eq!(
-        harness.run_with_app_context(|ctx| active_time_ctrl(ctx).time().unwrap()),
+        harness.with_active_time_ctrl(|time_ctrl| time_ctrl.time().unwrap()),
         TimeReal::from(0_i64)
     );
 
     // Clear events before playing
-    send_time_commands(&mut harness, [TimeControlCommand::TogglePlayPause]);
+    harness.send_time_commands([TimeControlCommand::TogglePlayPause]);
     events.take();
 
     // It is very important that no steps are taken before this loop, or the count will be off.
