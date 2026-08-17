@@ -87,7 +87,10 @@ impl Default for AppOptions {
 impl AppOptions {
     fn default_with_custom_window_decorations(custom_window_decorations: bool) -> Self {
         Self {
-            experimental: Default::default(),
+            experimental: ExperimentalAppOptions {
+                use_viewer_catalog: cfg!(debug_assertions),
+                ..Default::default()
+            },
 
             warn_e2e_latency: 1.0,
 
@@ -239,5 +242,5 @@ pub struct ExperimentalAppOptions {
     /// When enabled, opened `.rrd` files are registered with the catalog and surfaced as redap
     /// datasets under an internal server in the recording panel. When disabled, files are imported
     /// directly into the viewer as plain recordings.
-    pub use_internal_catalog: bool,
+    pub use_viewer_catalog: bool,
 }

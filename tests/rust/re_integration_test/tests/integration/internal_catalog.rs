@@ -215,7 +215,7 @@ async fn internal_catalog_load_rbl() {
 
     let mut harness = viewer_test_utils::viewer_harness(&viewer_test_utils::HarnessOptions {
         app_options_editor: Some(Box::new(|app_options| {
-            app_options.experimental.use_internal_catalog = true;
+            app_options.experimental.use_viewer_catalog = true;
         })),
         ..Default::default()
     });
@@ -332,11 +332,11 @@ async fn internal_catalog_load_rbl() {
 async fn internal_catalog_load_rrd() {
     let mut snapshot_results = SnapshotResults::new();
 
-    fn run_with_catalog(snapshot_results: &mut SnapshotResults, use_internal_catalog: bool) {
+    fn run_with_catalog(snapshot_results: &mut SnapshotResults, use_viewer_catalog: bool) {
         let (dir, rrd_path) = test_rrd(true);
         let mut harness = viewer_test_utils::viewer_harness(&viewer_test_utils::HarnessOptions {
             app_options_editor: Some(Box::new(move |app_options| {
-                app_options.experimental.use_internal_catalog = use_internal_catalog;
+                app_options.experimental.use_viewer_catalog = use_viewer_catalog;
             })),
             ..Default::default()
         });
@@ -366,7 +366,7 @@ async fn internal_catalog_load_rrd() {
                         .is_some_and(|db| {
                             db.data_source
                                 .as_ref()
-                                .is_some_and(|source| source.is_redap() == use_internal_catalog)
+                                .is_some_and(|source| source.is_redap() == use_viewer_catalog)
                                 && db
                                     .storage_engine()
                                     .store()
@@ -394,11 +394,11 @@ async fn internal_catalog_load_rrd() {
 
         harness.set_time_panel_opened(false);
 
-        if use_internal_catalog {
+        if use_viewer_catalog {
             mask_internal_catalog_app_id(&mut harness);
         }
 
-        if !use_internal_catalog {
+        if !use_viewer_catalog {
             // Mask the unstable temp-dir path wherever it appears.
             let temp_dir_path = dir.path().display().to_string();
             let unstable_path_rects: Vec<egui::Rect> = harness
@@ -435,7 +435,7 @@ async fn internal_catalog_load_rrd() {
             }
         }
 
-        let suffix = if use_internal_catalog {
+        let suffix = if use_viewer_catalog {
             "catalog"
         } else {
             "recording"

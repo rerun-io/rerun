@@ -310,7 +310,7 @@ impl App {
         path.extension()
             .and_then(|ext| ext.to_str())
             .is_some_and(|ext| ext.eq_ignore_ascii_case("rrd") || ext.eq_ignore_ascii_case("rbl"))
-            && self.app_options().experimental.use_internal_catalog
+            && self.app_options().experimental.use_viewer_catalog
             && self.connection_registry.internal_origin().is_some()
     }
 
