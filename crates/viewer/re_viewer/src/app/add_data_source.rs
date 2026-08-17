@@ -2,7 +2,8 @@ use re_data_source::{LogDataSource, LogDataSourceAnalytics};
 use re_entity_db::LogSource;
 use re_log_channel::{LogReceiver, RecordingOpenBehavior};
 use re_log_encoding::RrdMetadata;
-use re_log_types::StoreId;
+use re_log_types::{EntryId, StoreId};
+use re_uri::DatasetSegmentUri;
 use re_viewer_context::{StoreHub, SystemCommand, SystemCommandSender as _};
 
 use super::App;
@@ -306,12 +307,10 @@ impl App {
     }
 
     fn should_register_via_internal_catalog(&self, path: &Path) -> bool {
-        // TODO(RR-5309): Keep `.rbl` files on the legacy importer until the server supports
-        // blueprint management and catalog registration can preserve `ApplicationId` retargeting.
         path.extension()
             .and_then(|ext| ext.to_str())
-            .is_some_and(|ext| ext.eq_ignore_ascii_case("rrd"))
-            && self.app_options().experimental.use_internal_catalog
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("rrd") || ext.eq_ignore_ascii_case("rbl"))
+            && self.app_options().experimental.use_viewer_catalog
             && self.connection_registry.internal_origin().is_some()
     }
 
@@ -334,7 +333,7 @@ impl App {
             )
             .await;
             match registration {
-                Ok(uri) => {
+                Ok(RegistrationTarget::DatasetSegment(uri)) => {
                     record_catalog_load_analytics(data_source_analytics, Some("internal"), true);
                     // Refresh the dataset if it is open.
                     sender.send_system(SystemCommand::RefreshRedapEntry {
@@ -347,6 +346,20 @@ impl App {
                             open_behavior: RecordingOpenBehavior::OpenAndSelect,
                         },
                     ));
+                }
+                Ok(RegistrationTarget::Entry(entry_id)) => {
+                    record_catalog_load_analytics(data_source_analytics, Some("internal"), true);
+                    if let Some(origin) = connection_registry.internal_origin() {
+                        sender.send_system(SystemCommand::RefreshRedapEntry {
+                            origin: origin.clone(),
+                            entry_id,
+                        });
+                        let entry = re_uri::EntryUri::new(origin, entry_id);
+                        sender.send_system(SystemCommand::set_selection(
+                            re_viewer_context::Item::from(entry.clone()),
+                        ));
+                        sender.send_system(SystemCommand::SetRoute(entry.into()));
+                    }
                 }
                 Err(err) => {
                     record_catalog_load_analytics(data_source_analytics, Some("internal"), false);
@@ -389,7 +402,7 @@ async fn register_file(
     connection_registry: &re_redap_client::ConnectionRegistryHandle,
     path: &Path,
     #[cfg(target_arch = "wasm32")] file: web_sys::File,
-) -> anyhow::Result<re_uri::DatasetSegmentUri> {
+) -> anyhow::Result<RegistrationTarget> {
     #[cfg(not(target_arch = "wasm32"))]
     let (reader, abs_path) = {
         let abs_path = std::path::absolute(path).with_context(|| {
@@ -509,12 +522,21 @@ async fn opfs_upload_matches(path: &Path, expected_size: u64) -> anyhow::Result<
     }
 }
 
+/// Depending on the content of the file, we want to navigate to different parts of the catalog.
+enum RegistrationTarget {
+    /// Whenever there is a recording in the file.
+    DatasetSegment(re_uri::DatasetSegmentUri),
+
+    /// Used when there is no recording, e.g. in an `.rbl` file.
+    Entry(EntryId),
+}
+
 /// Register a `file://` URL the server can read with the internal catalog.
 async fn register_rrd_file_url(
     connection_registry: &re_redap_client::ConnectionRegistryHandle,
     file_url: url::Url,
     rrd_metadata: re_log_encoding::RrdMetadata,
-) -> anyhow::Result<re_uri::DatasetSegmentUri> {
+) -> anyhow::Result<RegistrationTarget> {
     let application_id = rrd_metadata
         .store_ids
         .first()
@@ -538,78 +560,77 @@ async fn register_rrd_file_url(
     let data_source = DataSource::new_rrd_url(file_url);
     let dataset_name = re_log_types::EntryName::from(application_id.clone());
 
-    // TODO(RR-5309): Handle RRDs without recording stores as standalone blueprints.
-    let (dataset_id, segment_id) = connection
-        .ensure_dataset_and_register(
-            &dataset_name,
-            vec![data_source.clone()],
-            IfDuplicateBehavior::Overwrite,
-            REGISTRATION_TIMEOUT,
-        )
+    // If there are recordings in the file, register them with the dataset.
+    // Otherwise, create the dataset so it can hold the blueprints.
+    let dataset_id = connection
+        .client()
+        .await?
+        .find_or_create_dataset(&dataset_name)
         .await?;
+    let segment_id = if rrd_metadata.store_ids.iter().any(StoreId::is_recording) {
+        connection
+            .register_with_dataset(
+                dataset_id,
+                vec![data_source.clone()],
+                IfDuplicateBehavior::Overwrite,
+            )
+            .await?
+            .wait(REGISTRATION_TIMEOUT)
+            .await?
+            .into_iter()
+            .next()
+            .context("server did not successfully register any recording segments")?
+            .into()
+    } else {
+        None
+    };
 
-    if let Err(err) = update_default_blueprint(
+    if let Err(err) = register_blueprints(
         &connection,
         dataset_id,
-        &segment_id,
         data_source,
         &rrd_metadata,
+        application_id,
     )
     .await
     {
-        re_log::warn!("Failed to update default blueprint for catalog RRD load: {err:#}");
+        re_log::warn!("Failed to register blueprints for catalog RRD load: {err:#}");
     }
 
-    Ok(re_uri::DatasetSegmentUri {
-        origin,
-        dataset_id: dataset_id.id,
-        segment_id,
-        fragment: Default::default(),
-    })
+    if let Some(segment_id) = segment_id {
+        Ok(RegistrationTarget::DatasetSegment(DatasetSegmentUri {
+            origin,
+            dataset_id: dataset_id.id,
+            segment_id,
+            fragment: Default::default(),
+        }))
+    } else {
+        Ok(RegistrationTarget::Entry(dataset_id))
+    }
 }
 
-/// Registers the recording's embedded default blueprint (if any) into the dataset's hidden
-/// blueprint dataset and records it as the dataset's default blueprint segment.
+/// Registers all embedded blueprints into the dataset's hidden blueprint dataset.
 ///
-/// The blueprint lives in the same RRD, so we register the same `file://` URL into the blueprint
-/// dataset; the server picks out the blueprint store and serves it lazily.
-async fn update_default_blueprint(
+/// The blueprint stores live in the same RRD, so the server can select and serve them lazily from
+/// the same data source.
+async fn register_blueprints(
     connection: &re_redap_client::ConnectionHandle,
-    dataset_id: re_log_types::EntryId,
-    segment_id: &SegmentId,
+    dataset_id: EntryId,
     data_source: DataSource,
-    rrd_metadata: &re_log_encoding::RrdMetadata,
+    rrd_metadata: &RrdMetadata,
+    application_id: &re_log_types::ApplicationId,
 ) -> anyhow::Result<()> {
-    // TODO(RR-5309): Register embedded blueprints that lack a `make_default` command once the
-    // server supports blueprint management.
-    if rrd_metadata.default_blueprint_by_app_id.is_empty() {
+    if !rrd_metadata.store_ids.iter().any(StoreId::is_blueprint) {
         return Ok(());
     }
-
-    let Some(recording_store_id) = rrd_metadata.store_ids.iter().find(|store_id| {
-        store_id.is_recording() && SegmentId::from(store_id.recording_id()) == *segment_id
-    }) else {
-        re_log::warn!("Could not match registered segment {segment_id} to an RRD recording store");
-        return Ok(());
-    };
-
-    let Some(default_blueprint_store_id) = rrd_metadata
-        .default_blueprint_by_app_id
-        .get(recording_store_id.application_id())
-    else {
-        return Ok(());
-    };
 
     let mut client = connection.client().await?;
     let mut dataset_details = client.read_dataset_entry(dataset_id).await?.dataset_details;
     let Some(blueprint_dataset_id) = dataset_details.blueprint_dataset else {
-        re_log::warn!(
-            "Dataset {dataset_id} has no hidden blueprint dataset; cannot set default blueprint"
-        );
+        re_log::warn!("Dataset {dataset_id} has no hidden blueprint dataset");
         return Ok(());
     };
 
-    let expected_blueprint_segment_id = SegmentId::from(default_blueprint_store_id.recording_id());
     let registration = connection
         .register_with_dataset(
             blueprint_dataset_id,
@@ -619,16 +640,34 @@ async fn update_default_blueprint(
         .await?;
     let segment_ids = registration.wait(REGISTRATION_TIMEOUT).await?;
 
-    if !segment_ids.contains(&expected_blueprint_segment_id) {
+    let Some(default_blueprint_store_id) =
+        rrd_metadata.default_blueprint_by_app_id.get(application_id)
+    else {
+        if !rrd_metadata.default_blueprint_by_app_id.is_empty() {
+            let blueprint_application_ids = rrd_metadata
+                .default_blueprint_by_app_id
+                .keys()
+                .map(ToString::to_string)
+                .collect::<Vec<_>>()
+                .join(", ");
+            re_log::warn!(
+                "RRD contains default blueprints for application ids [{blueprint_application_ids}], \
+                 but not for dataset application id {application_id}; keeping the existing default blueprint"
+            );
+        }
+        return Ok(());
+    };
+
+    let default_blueprint_segment_id = SegmentId::from(default_blueprint_store_id.recording_id());
+    if !segment_ids.contains(&default_blueprint_segment_id) {
         re_log::warn!(
             "Registered RRD into the blueprint dataset, but default blueprint segment \
-             {expected_blueprint_segment_id} was not returned; keeping the existing default blueprint"
+             {default_blueprint_segment_id} was not returned; keeping the existing default blueprint"
         );
         return Ok(());
     }
 
-    dataset_details.default_blueprint_segment = Some(expected_blueprint_segment_id);
-
+    dataset_details.default_blueprint_segment = Some(default_blueprint_segment_id);
     client
         .update_dataset_entry(dataset_id, dataset_details)
         .await?;

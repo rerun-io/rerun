@@ -85,9 +85,10 @@ impl Route {
     pub fn recording_id(&self) -> Option<&StoreId> {
         match self {
             Self::LocalRecording { recording_id } => Some(recording_id),
-            Self::ChunkStoreBrowser { store_id, .. } => store_id.as_ref(),
-            Self::Settings { return_route } => return_route.recording_id(),
-            Self::Loading { .. }
+
+            Self::ChunkStoreBrowser { .. } // `store_id` of the chunk store browser is just what it shows and may be a blueprint!
+            | Self::Settings { .. }
+            | Self::Loading { .. }
             | Self::LocalTable { .. }
             | Self::RedapEntry { .. }
             | Self::RedapServer { .. } => None,

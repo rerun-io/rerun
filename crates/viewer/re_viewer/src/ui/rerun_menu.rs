@@ -134,11 +134,7 @@ impl App {
             UICommand::OpenProfiler.menu_button_ui(ui, &self.command_sender);
 
             UICommand::ToggleDevPanel.menu_button_ui(ui, &self.command_sender);
-            RecordingCommandKind::ToggleChunkStoreBrowser.menu_button_ui(
-                ui,
-                recording_id,
-                &self.command_sender,
-            );
+            UICommand::ToggleChunkStoreBrowser.menu_button_ui(ui, &self.command_sender);
 
             #[cfg(debug_assertions)]
             UICommand::ToggleEguiDebugPanel.menu_button_ui(ui, &self.command_sender);

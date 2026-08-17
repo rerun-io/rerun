@@ -168,7 +168,7 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
     video_section_ui(ui, video);
 
     #[cfg(target_arch = "wasm32")]
-    if experimental.use_internal_catalog {
+    if experimental.use_viewer_catalog {
         separator_with_some_space(ui);
         ui.strong("Origin private filesystem");
         origin_private_filesystem_section_ui(ui);
@@ -179,7 +179,7 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
             table_cards_and_blueprints,
             gamepad_navigation,
             point_cloud_transparency,
-            use_internal_catalog,
+            use_viewer_catalog,
         } = experimental;
         separator_with_some_space(ui);
         ui.strong("Experimental");
@@ -193,7 +193,7 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
                 "Alpha-blend semi-transparent point clouds, sorting them back-to-front.\n\n\
                  Sorting happens on the CPU every frame, so this is very slow for large point clouds.",
             );
-        ui.re_checkbox(use_internal_catalog, "Load files via Viewer catalog")
+        ui.re_checkbox(use_viewer_catalog, "Load files via Viewer catalog")
             .on_hover_text(
                 "Load .rrd files through the Viewer catalog instead of importing them as a live \
                  recording. Takes effect for files opened after enabling.",

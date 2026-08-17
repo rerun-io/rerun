@@ -92,7 +92,7 @@ impl App {
                                 &self.egui_ctx,
                                 self.command_sender.clone(),
                             );
-                            if self.app_options().experimental.use_internal_catalog {
+                            if self.app_options().experimental.use_viewer_catalog {
                                 self.state.redap_servers.reveal_internal_catalog();
                             }
                         }
