@@ -46,6 +46,7 @@ pub enum UICommand {
 
     TogglePanelStateOverrides,
     ToggleDevPanel,
+    ToggleChunkStoreBrowser,
     ToggleTopPanel,
     ToggleBlueprintPanel,
     ExpandBlueprintPanel,
@@ -161,6 +162,10 @@ impl UICommand {
             Self::ToggleDevPanel => (
                 "Toggle dev panel",
                 "View developer stats like RAM usage inside Rerun Viewer",
+            ),
+            Self::ToggleChunkStoreBrowser => (
+                "Toggle chunk store browser",
+                "Toggle the chunk store browser",
             ),
 
             Self::TogglePanelStateOverrides => (
@@ -309,6 +314,7 @@ impl UICommand {
             #[cfg(not(target_arch = "wasm32"))]
             Self::CaptureProfileTrace => smallvec![],
             Self::ToggleDevPanel => smallvec![ctrl_shift(Key::M)],
+            Self::ToggleChunkStoreBrowser => smallvec![ctrl_shift(Key::D)],
             Self::TogglePanelStateOverrides => smallvec![],
             Self::ToggleTopPanel => smallvec![],
             Self::ToggleBlueprintPanel => smallvec![ctrl_shift(Key::B)],

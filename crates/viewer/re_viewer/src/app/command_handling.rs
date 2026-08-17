@@ -346,7 +346,7 @@ impl App {
                 }
                 current => {
                     self.state.navigation.replace(Route::ChunkStoreBrowser {
-                        store_id: store_id.or_else(|| current.recording_id().cloned()),
+                        store_id,
                         selected_chunk,
                         return_route: Box::new(current.clone()),
                     });
@@ -984,6 +984,22 @@ impl App {
             UICommand::ToggleDevPanel => {
                 self.dev_panel_open ^= true;
             }
+            UICommand::ToggleChunkStoreBrowser => match route {
+                Route::ChunkStoreBrowser { return_route, .. } => {
+                    self.state.navigation.replace((**return_route).clone());
+                }
+                current => {
+                    let store_id = current.recording_id().cloned().or_else(|| {
+                        let table_ref = current.table_reference()?;
+                        self.table_blueprints.active_id(&table_ref).cloned()
+                    });
+                    self.command_sender
+                        .send_system(SystemCommand::OpenChunkStoreBrowser {
+                            store_id,
+                            selected_chunk: None,
+                        });
+                }
+            },
             UICommand::TogglePanelStateOverrides => {
                 self.panel_state_overrides_active ^= true;
             }
@@ -1296,22 +1312,6 @@ impl App {
 
             RecordingCommandKind::ToggleTimePanel => {
                 app_blueprint.toggle_time_panel(&self.command_sender);
-            }
-
-            RecordingCommandKind::ToggleChunkStoreBrowser => {
-                match self.state.navigation.current() {
-                    Route::ChunkStoreBrowser { return_route, .. } => {
-                        self.state.navigation.replace((**return_route).clone());
-                    }
-
-                    current => {
-                        self.state.navigation.replace(Route::ChunkStoreBrowser {
-                            store_id: current.recording_id().cloned(),
-                            selected_chunk: None,
-                            return_route: Box::new(current.clone()),
-                        });
-                    }
-                }
             }
 
             #[cfg(debug_assertions)]

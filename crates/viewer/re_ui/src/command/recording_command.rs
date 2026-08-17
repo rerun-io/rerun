@@ -66,7 +66,6 @@ pub enum RecordingCommandKind {
     ClearActiveBlueprintAndEnableHeuristics,
 
     ToggleTimePanel,
-    ToggleChunkStoreBrowser,
 
     #[cfg(debug_assertions)]
     ToggleBlueprintInspectionPanel,
@@ -208,10 +207,6 @@ impl RecordingCommandKind {
             ),
 
             Self::ToggleTimePanel => ("Toggle time panel", "Toggle the bottom panel"),
-            Self::ToggleChunkStoreBrowser => (
-                "Toggle chunk store browser",
-                "Toggle the chunk store browser",
-            ),
 
             #[cfg(debug_assertions)]
             Self::ToggleBlueprintInspectionPanel => (
@@ -327,7 +322,6 @@ impl RecordingCommandKind {
             Self::ClearActiveBlueprintAndEnableHeuristics => smallvec![],
 
             Self::ToggleTimePanel => smallvec![ctrl_shift(Key::T)],
-            Self::ToggleChunkStoreBrowser => smallvec![ctrl_shift(Key::D)],
 
             #[cfg(debug_assertions)]
             Self::ToggleBlueprintInspectionPanel => smallvec![ctrl_shift(Key::I)],
