@@ -464,6 +464,9 @@ impl ViewClass for StateTimelineView {
         let mut hovered_phase: Option<HoveredPhase> = None;
         let mut group_label_anchors: Vec<(egui::Pos2, &StateLaneGroup)> =
             Vec::with_capacity(all_groups.len());
+        let interact_pos = (response.contains_pointer() && !response.dragged())
+            .then(|| ui.input(|i| i.pointer.interact_pos()))
+            .flatten();
         ui.scope_builder(egui::UiBuilder::new().max_rect(lanes_rect), |ui| {
             egui::ScrollArea::vertical()
                 .auto_shrink([false, false])
@@ -483,6 +486,7 @@ impl ViewClass for StateTimelineView {
                             time_type,
                             timestamp_format,
                             open_end_time,
+                            interact_pos,
                         );
                         group_label_anchors.push((result.label_pos, *group));
                         if result.is_hovered {
@@ -957,6 +961,7 @@ fn show_group(
     time_type: TimeType,
     timestamp_format: TimestampFormat,
     open_end_time: Option<f64>,
+    interact_pos: Option<egui::Pos2>,
 ) -> ShowGroupResult {
     let num_lanes = group.lanes.len();
     let bands_height =
@@ -970,7 +975,9 @@ fn show_group(
     );
     let rect = response.rect;
 
-    let hover_pos = response.hover_pos();
+    // The view owns the click sense. Hence we use the view's interaction position to make sure the logic
+    // is correct even when the user clicks: `response.hover_pos()` would be `None` in this case.
+    let hover_pos = interact_pos.filter(|pos| painter.clip_rect().contains(*pos));
     let merged_fill_inactive = ui.visuals().widgets.inactive.bg_fill;
     let merged_fill_hovered = ui.visuals().widgets.hovered.bg_fill;
     let merged_text_color = ui.visuals().text_color();
