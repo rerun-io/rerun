@@ -206,7 +206,7 @@ egui_dnd = { version = "0.17.0" }
 egui_mcp = { version = "0.2.0" }
 egui_plot = "0.37.0" # https://github.com/emilk/egui_plot
 egui_table = "0.10.0" # https://github.com/rerun-io/egui_table
-egui_tiles = "0.17.0" # https://github.com/rerun-io/egui_tiles
+egui_tiles = "0.17.1" # https://github.com/rerun-io/egui_tiles
 walkers = "0.58.0"
 
 # All of our direct external dependencies should be found here:
