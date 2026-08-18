@@ -9,10 +9,11 @@
 #![expect(clippy::unwrap_used)] // Okay to use unwrap in tests
 
 use std::path::PathBuf;
+use std::time::Duration;
 
 use re_chunk::{Chunk, EntityPath};
 use re_mp4_reader::{
-    Mode, Mp4Config, Mp4TranscodeOptions, VideoCodec, load_mp4, load_mp4_from_bytes,
+    Mode, Mp4Config, Mp4TranscodeOptions, TimeWindow, VideoCodec, load_mp4, load_mp4_from_bytes,
 };
 use re_sdk_types::archetypes::VideoStream;
 use re_sdk_types::components::IsKeyframe;
@@ -550,4 +551,76 @@ fn transcodes_across_codec_pairs() {
     if ran == 0 {
         eprintln!("skipping transcodes_across_codec_pairs: no output encoders available");
     }
+}
+
+/// A time window always routes through the transcode: slicing is ffmpeg's job,
+/// on every source — even one that streams directly when unwindowed.
+///
+/// Proven by pointing `ffmpeg_override` at a path that does not exist: the
+/// windowed read of a clean AV1 source fails reaching ffmpeg instead of reading
+/// directly. Needs no ffmpeg, so it runs anywhere.
+#[test]
+fn windowing_routes_through_the_transcode() {
+    let entity_path = EntityPath::from("video");
+    let path = fixture_path("Big_Buck_Bunny_1080_1s_av1.mp4");
+    let window = TimeWindow::new(Duration::ZERO, Duration::from_millis(500)).expect("valid window");
+    let config = Mp4Config {
+        mode: Mode::Stream {
+            chunk_by_gop: true,
+            transcode: Mp4TranscodeOptions::default()
+                .with_time_window(window)
+                .with_ffmpeg_override(PathBuf::from("/definitely/not/a/real/ffmpeg")),
+        },
+        ..Default::default()
+    };
+
+    let msg = match load_mp4(&path, &config, &entity_path) {
+        Ok(_) => panic!("a windowed read must transcode, so it must fail without ffmpeg"),
+        Err(err) => err.to_string(),
+    };
+    assert!(
+        msg.contains("Couldn't find an installation of the FFmpeg executable"),
+        "expected the FFmpeg-not-installed message, got: {msg}"
+    );
+}
+
+/// A windowed transcode emits fewer samples than a full one, with timestamps
+/// rebased to zero and bounded by the window's length. The exact boundary
+/// behavior at `end` is ffmpeg's (`-to` input seek).
+///
+/// Skipped (not failed) when ffmpeg isn't available.
+#[test]
+fn windowed_transcode_emits_only_the_window() {
+    // B-frames force the transcode on both loads, so the comparison is
+    // machinery-for-machinery.
+    let path = fixture_path("Big_Buck_Bunny_1080_1s_h264.mp4");
+    let Some(full) = transcode_or_skip(
+        &path,
+        Mp4TranscodeOptions::default(),
+        "windowed_transcode_full",
+    ) else {
+        return;
+    };
+
+    let window = TimeWindow::new(Duration::from_millis(200), Duration::from_millis(600))
+        .expect("valid window");
+    let Some(windowed) = transcode_or_skip(
+        &path,
+        Mp4TranscodeOptions::default().with_time_window(window),
+        "windowed_transcode",
+    ) else {
+        return;
+    };
+
+    let window_len_ns = 400_000_000;
+    let times = sample_times(&windowed);
+    assert!(!times.is_empty(), "the window must not be empty");
+    assert!(
+        times.iter().all(|&t| (0..=window_len_ns).contains(&t)),
+        "every emitted time must be rebased to zero and lie within the window's length, got {times:?}"
+    );
+    assert!(
+        times.len() < sample_times(&full).len(),
+        "a windowed transcode must emit fewer samples than the full file"
+    );
 }

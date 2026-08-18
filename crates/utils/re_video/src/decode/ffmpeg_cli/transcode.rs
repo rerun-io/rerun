@@ -124,6 +124,8 @@ impl Drop for TranscodedMp4 {
 /// The re-encode is done at a visually-lossless quality and preserves the source pixel format where
 /// possible, so the output is a faithful — not bit-exact — copy of the input.
 ///
+/// [`Mp4TranscodeOptions::time_window`] transcodes only that given time window.
+///
 /// Returns [`Error::FFmpegNotInstalled`] if no usable `ffmpeg` executable is
 /// found, or [`Error::NoEncoderForCodec`] if this ffmpeg build has no encoder for
 /// the requested output codec.
@@ -146,7 +148,40 @@ pub fn transcode_mp4(
     let available = available_encoders(ffmpeg_path);
     let spec = resolve_encoder(&target, options.hardware_acceleration, &available)?;
 
+    let mut command = build_transcode_command(ffmpeg_path, input_path, &spec, options);
+    let mut child = command.spawn().map_err(Error::FailedToStartFfmpeg)?;
+
+    // The same event iterator the decoder consumes: it spawns the stdout/stderr
+    // reader threads internally and delivers their output over a rendezvous
+    // channel, so we neither manage threads nor buffer the whole stream.
+    let events = child
+        .iter()
+        .map_err(|err| Error::NoIterator(err.to_string()))?;
+
+    Ok(TranscodedMp4 {
+        child,
+        events,
+        stderr_tail: VecDeque::with_capacity(STDERR_TAIL_LINES),
+        debug_name: debug_name.to_owned(),
+        done: false,
+    })
+}
+
+/// Builds a ffmpeg command for [`transcode_mp4`].
+fn build_transcode_command(
+    ffmpeg_path: Option<&Path>,
+    input_path: &Path,
+    spec: &EncoderSpec,
+    options: &Mp4TranscodeOptions,
+) -> FfmpegCommand {
     let mut command = ffmpeg_command(ffmpeg_path);
+
+    if let Some(window) = &options.time_window {
+        // Input-side seek (before `-i`): ffmpeg decodes only `[start, end)` instead
+        // of the whole file. Both values are positions on the source's timeline.
+        command.args(["-ss", &window.start().as_secs_f64().to_string()]);
+        command.args(["-to", &window.end().as_secs_f64().to_string()]);
+    }
 
     // ffmpeg seeks the source itself; no stdin piping (mp4 can't be demuxed from a pipe).
     command.input(input_path.to_string_lossy().as_ref());
@@ -167,7 +202,7 @@ pub fn transcode_mp4(
     }
     command.args(spec.extra_output_args.iter().map(String::as_str));
 
-    let mut child = command
+    command
         // Deliberately no `-pix_fmt`: ffmpeg then negotiates the encoder's format from
         // the decoded input, preserving the source bit depth / chroma subsampling
         // (10-bit, 4:2:2, 4:4:4) instead of forcing a downconvert to 8-bit 4:2:0.
@@ -178,24 +213,9 @@ pub fn transcode_mp4(
         // the output is streamable and splits cleanly into one GOP per fragment.
         .args(["-movflags", "frag_keyframe+empty_moov+default_base_moof"])
         .args(["-f", "mp4"])
-        .output("pipe:1")
-        .spawn()
-        .map_err(Error::FailedToStartFfmpeg)?;
+        .output("pipe:1");
 
-    // The same event iterator the decoder consumes: it spawns the stdout/stderr
-    // reader threads internally and delivers their output over a rendezvous
-    // channel, so we neither manage threads nor buffer the whole stream.
-    let events = child
-        .iter()
-        .map_err(|err| Error::NoIterator(err.to_string()))?;
-
-    Ok(TranscodedMp4 {
-        child,
-        events,
-        stderr_tail: VecDeque::with_capacity(STDERR_TAIL_LINES),
-        debug_name: debug_name.to_owned(),
-        done: false,
-    })
+    command
 }
 
 /// A resolved ffmpeg encoder plus the args needed to drive it for B-frame-free,
@@ -370,11 +390,59 @@ fn parse_encoder_names(stdout: &str) -> BTreeSet<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{parse_encoder_names, resolve_encoder};
-    use crate::{HwAccel, VideoCodec};
+    use std::path::Path;
+    use std::time::Duration;
+
+    use super::{build_transcode_command, parse_encoder_names, resolve_encoder};
+    use crate::{HwAccel, Mp4TranscodeOptions, TimeWindow, VideoCodec};
 
     fn available_set(names: &[&str]) -> std::collections::BTreeSet<String> {
         names.iter().map(|s| (*s).to_owned()).collect()
+    }
+
+    fn command_args(options: &Mp4TranscodeOptions) -> Vec<String> {
+        let spec = resolve_encoder(
+            &VideoCodec::H264,
+            HwAccel::Off,
+            &available_set(&["libx264"]),
+        )
+        .expect("libx264 available");
+        build_transcode_command(None, Path::new("in.mp4"), &spec, options)
+            .get_args()
+            .map(|arg| arg.to_string_lossy().into_owned())
+            .collect()
+    }
+
+    /// ffmpeg receives the window as an input-side `-ss`/`-to` seek (before `-i`),
+    /// so it decodes O(window), never the whole file.
+    #[test]
+    fn windowed_transcode_is_bounded() {
+        let window = TimeWindow::new(Duration::from_millis(1500), Duration::from_millis(2250))
+            .expect("valid window");
+        let args = command_args(&Mp4TranscodeOptions::default().with_time_window(window));
+
+        let position = |flag: &str| {
+            args.iter()
+                .position(|arg| arg == flag)
+                .unwrap_or_else(|| panic!("missing {flag} in {args:?}"))
+        };
+        assert_eq!(args[position("-ss") + 1], "1.5");
+        assert_eq!(args[position("-to") + 1], "2.25");
+
+        let input = position("-i");
+        assert!(
+            position("-ss") < input && position("-to") < input,
+            "the window must be input-side (before -i), or ffmpeg decodes the whole file: {args:?}"
+        );
+    }
+
+    #[test]
+    fn no_window_adds_no_seek_args() {
+        let args = command_args(&Mp4TranscodeOptions::default());
+        assert!(
+            !args.iter().any(|arg| arg == "-ss" || arg == "-to"),
+            "an unwindowed transcode must not seek: {args:?}"
+        );
     }
 
     #[test]

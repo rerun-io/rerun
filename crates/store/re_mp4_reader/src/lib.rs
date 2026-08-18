@@ -21,7 +21,7 @@ mod stream;
 
 pub use config::{Mode, Mp4Config};
 pub use error::Mp4Error;
-pub use re_video::{HwAccel, Mp4TranscodeOptions, VideoCodec};
+pub use re_video::{HwAccel, Mp4TranscodeOptions, TimeWindow, VideoCodec};
 
 use itertools::Either;
 

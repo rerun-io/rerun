@@ -10,6 +10,7 @@ mod nalu;
 pub mod player;
 mod stable_index_deque;
 mod time;
+mod time_window;
 mod transcode_options;
 mod vp8;
 mod vp9;
@@ -46,6 +47,7 @@ pub use {
     time::{Time, Timescale},
 };
 
+pub use self::time_window::TimeWindow;
 pub use self::transcode_options::{HwAccel, Mp4TranscodeOptions};
 
 #[cfg(with_ffmpeg)]
