@@ -9471,6 +9471,7 @@ dependencies = [
  "re_build_info",
  "re_dataframe_ui",
  "re_datafusion",
+ "re_entity_db",
  "re_log",
  "re_log_channel",
  "re_log_encoding",

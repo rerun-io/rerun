@@ -1,10 +1,8 @@
-use anyhow::Context as _;
 use itertools::Itertools as _;
-use re_build_info::CrateVersion;
 use re_chunk::TimelineName;
 use re_entity_db::{EntityDb, LogSource};
 use re_log_channel::RecordingOpenBehavior;
-use re_log_types::{ApplicationId, LogMsg, RecordingId, StoreId, StoreKind};
+use re_log_types::{ApplicationId, RecordingId, StoreId, StoreKind};
 use re_sdk_types::blueprint::components::PlayState;
 use re_ui::{RecordingCommand, UICommand, UICommandSender as _};
 use re_viewer_context::open_url::{OpenUrlOptions, ViewerOpenUrl};
@@ -18,6 +16,7 @@ use re_viewer_context::{
 use std::sync::Arc;
 
 use super::App;
+use crate::saving::RrdSnapshot;
 use crate::{app_blueprint::AppBlueprint, event::ViewerEventDispatcher};
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -1783,11 +1782,6 @@ fn save_recording(
     entity_db: &EntityDb,
     loop_selection: Option<(TimelineName, re_log_types::AbsoluteTimeRangeF)>,
 ) -> anyhow::Result<()> {
-    let rrd_version = entity_db
-        .store_info()
-        .and_then(|info| info.store_version)
-        .unwrap_or(re_build_info::CrateVersion::LOCAL);
-
     let file_name = if let Some(recording_name) = entity_db
         .recording_info_property::<re_sdk_types::components::Name>(
             re_sdk_types::archetypes::RecordingInfo::descriptor_name().component,
@@ -1796,19 +1790,16 @@ fn save_recording(
     } else {
         "data.rrd".to_owned()
     };
-
     let title = if loop_selection.is_some() {
         "Save loop selection"
     } else {
         "Save recording"
     };
-
     save_entity_db(
         app,
-        rrd_version,
+        RrdSnapshot::recording(entity_db, loop_selection),
         file_name,
         title.to_owned(),
-        entity_db.to_messages(loop_selection),
     )
 }
 
@@ -1820,49 +1811,18 @@ fn save_blueprint(
         anyhow::bail!("No blueprint to save");
     };
 
-    re_tracing::profile_function!();
-
-    let rrd_version = store_context
-        .blueprint
-        .store_info()
-        .and_then(|info| info.store_version)
-        .unwrap_or(re_build_info::CrateVersion::LOCAL);
-
-    // We change the recording id to a new random one,
-    // otherwise when saving and loading a blueprint file, we can end up
-    // in a situation where the store_id we're loading is the same as the currently active one,
-    // which mean they will merge in a strange way.
-    // This is also related to https://github.com/rerun-io/rerun/issues/5295
-    let new_store_id = store_context
-        .blueprint
-        .store_id()
-        .clone()
-        .with_recording_id(RecordingId::random());
-
-    let mut saved_blueprint = store_context
-        .blueprint
-        .clone_with_new_id(new_store_id)
-        .context("Cloning current blueprint")?;
-
-    if let Some(undo_state) = app
-        .state
-        .blueprint_undo_state
-        .get(store_context.blueprint.store_id())
-    {
-        // We don't actually want to edit the undo state when saving,
-        // just clear the redo-buffer section of what we save.
-        undo_state.clone().clear_redo_buffer(&mut saved_blueprint);
-    }
-
-    let messages = saved_blueprint.to_messages(None);
-
+    let snapshot = RrdSnapshot::blueprint(
+        store_context.blueprint,
+        app.state
+            .blueprint_undo_state
+            .get(store_context.blueprint.store_id()),
+    )?;
     let file_name = format!(
         "{}.rbl",
         crate::saving::sanitize_app_id(store_context.application_id())
     );
-    let title = "Save blueprint";
 
-    save_entity_db(app, rrd_version, file_name, title.to_owned(), messages)
+    save_entity_db(app, snapshot, file_name, "Save blueprint".to_owned())
 }
 
 // TODO(emilk): unify this with `ViewerContext::save_file_dialog`
@@ -1870,28 +1830,20 @@ fn save_blueprint(
 #[allow(clippy::unnecessary_wraps)] // cannot return error on web
 fn save_entity_db(
     #[allow(clippy::allow_attributes, unused_variables)] app: &mut App, // only used on native
-    rrd_version: CrateVersion,
+    snapshot: crate::saving::RrdSnapshot,
     file_name: String,
     title: String,
-    messages: impl Iterator<Item = re_chunk::ChunkResult<LogMsg>>,
 ) -> anyhow::Result<()> {
     re_tracing::profile_function!();
 
-    // TODO(#6984): Ideally we wouldn't collect at all and just stream straight to the
-    // encoder from the store.
-    //
-    // From a memory usage perspective this isn't too bad though: the data within is still
-    // refcounted straight from the store in any case.
-    //
-    // It just sucks latency-wise.
-    let messages = messages.collect::<Vec<_>>();
+    let RrdSnapshot { version, messages } = snapshot;
 
     cfg_select! {
         target_arch = "wasm32" => {
             // Web
             re_async::spawn_local(async move {
                 if let Err(err) =
-                    async_save_dialog(rrd_version, &file_name, &title, messages.into_iter()).await
+                    async_save_dialog(version, &file_name, &title, messages.into_iter()).await
                 {
                     re_log::error!("File saving failed: {err}");
                 }
@@ -1908,7 +1860,7 @@ fn save_entity_db(
             };
             if let Some(path) = path {
                 app.background_tasks.spawn_file_saver(move || {
-                    crate::saving::encode_to_file(rrd_version, &path, messages.into_iter())?;
+                    crate::saving::encode_to_file(version, &path, messages.into_iter())?;
                     Ok(path)
                 })?;
             }
@@ -1920,10 +1872,10 @@ fn save_entity_db(
 
 #[cfg(target_arch = "wasm32")]
 async fn async_save_dialog(
-    rrd_version: CrateVersion,
+    rrd_version: re_build_info::CrateVersion,
     file_name: &str,
     title: &str,
-    messages: impl Iterator<Item = re_chunk::ChunkResult<LogMsg>>,
+    messages: impl Iterator<Item = re_chunk::ChunkResult<re_log_types::LogMsg>>,
 ) -> anyhow::Result<()> {
     use anyhow::Context as _;
 

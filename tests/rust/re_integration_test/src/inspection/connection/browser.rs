@@ -129,15 +129,7 @@ impl BrowserConnection {
                 return response.toBase64();
             }})()"#
         );
-        let value = self
-            .tab
-            .evaluate(&script, true)
-            .unwrap_or_else(|err| panic!("Inspection eval failed: {err}"))
-            .value
-            .expect("Inspection eval did not return a value");
-        let response_base64 = value
-            .as_str()
-            .expect("Inspection eval did not return a string");
+        let response_base64 = self.evaluate_js(&script);
 
         let response = base64::engine::general_purpose::STANDARD
             .decode(response_base64)
@@ -146,6 +138,16 @@ impl BrowserConnection {
             Response::Error { message } => panic!("Viewer returned an error: {message}"),
             response => response,
         }
+    }
+
+    /// Evaluate an async `JavaScript` expression in the browser and return its string result.
+    pub(super) fn evaluate_js(&self, script: &str) -> String {
+        self.tab
+            .evaluate(script, true)
+            .unwrap_or_else(|err| panic!("Browser evaluation failed: {err}"))
+            .value
+            .and_then(|value| value.as_str().map(str::to_owned))
+            .expect("Browser evaluation did not return a string")
     }
 
     /// Capture the current frame as PNG bytes via the browser's native screenshot (the composited

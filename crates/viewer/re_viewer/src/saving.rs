@@ -1,4 +1,85 @@
-use re_log_types::ApplicationId;
+use anyhow::Context as _;
+use re_chunk::TimelineName;
+use re_entity_db::EntityDb;
+use re_log_types::{ApplicationId, LogMsg, RecordingId, StoreKind};
+use re_viewer_context::BlueprintUndoState;
+
+/// A stable snapshot of the messages and file-format version needed to encode RRD data.
+///
+/// Keeping the snapshot separate from its encoding lets native saves write it in a background task
+/// while web APIs can encode it into bytes for browser clients.
+pub struct RrdSnapshot {
+    pub version: re_build_info::CrateVersion,
+    pub messages: Vec<re_chunk::ChunkResult<LogMsg>>,
+}
+
+impl RrdSnapshot {
+    #[cfg(any(target_arch = "wasm32", test))]
+    pub fn encode(self) -> anyhow::Result<Vec<u8>> {
+        let mut bytes = Vec::new();
+        re_log_encoding::Encoder::encode_into(
+            self.version,
+            re_log_encoding::rrd::EncodingOptions::PROTOBUF_COMPRESSED,
+            self.messages,
+            &mut bytes,
+        )
+        .context("Encoding RRD snapshot")?;
+
+        Ok(bytes)
+    }
+
+    pub fn recording(
+        entity_db: &EntityDb,
+        time_selection: Option<(TimelineName, re_log_types::AbsoluteTimeRangeF)>,
+    ) -> Self {
+        re_tracing::profile_function!();
+
+        re_log::debug_assert_eq!(entity_db.store_kind(), StoreKind::Recording);
+
+        let version = entity_db
+            .store_info()
+            .and_then(|info| info.store_version)
+            .unwrap_or(re_build_info::CrateVersion::LOCAL);
+
+        Self {
+            version,
+            messages: entity_db.to_messages(time_selection).collect(),
+        }
+    }
+
+    pub fn blueprint(
+        blueprint: &EntityDb,
+        undo_state: Option<&BlueprintUndoState>,
+    ) -> anyhow::Result<Self> {
+        re_tracing::profile_function!();
+
+        re_log::debug_assert_eq!(blueprint.store_kind(), StoreKind::Blueprint);
+
+        let version = blueprint
+            .store_info()
+            .and_then(|info| info.store_version)
+            .unwrap_or(re_build_info::CrateVersion::LOCAL);
+
+        // A saved blueprint must not merge with its source when it is loaded again.
+        let new_store_id = blueprint
+            .store_id()
+            .clone()
+            .with_recording_id(RecordingId::random());
+        let mut saved_blueprint = blueprint
+            .clone_with_new_id(new_store_id)
+            .context("Cloning current blueprint")?;
+
+        if let Some(undo_state) = undo_state {
+            // Preserve live undo state while omitting redo entries from the saved copy.
+            undo_state.clone().clear_redo_buffer(&mut saved_blueprint);
+        }
+
+        Ok(Self {
+            version,
+            messages: saved_blueprint.to_messages(None).collect(),
+        })
+    }
+}
 
 /// Convert to lowercase and replace any character that is not a fairly common
 /// filename character with '-'
@@ -73,7 +154,6 @@ pub fn encode_to_file(
     messages: impl Iterator<Item = re_chunk::ChunkResult<re_log_types::LogMsg>>,
 ) -> anyhow::Result<()> {
     re_tracing::profile_function!();
-    use anyhow::Context as _;
 
     let mut file = std::fs::File::create(path)
         .with_context(|| format!("Failed to create file at {path:?}"))?;
@@ -82,4 +162,43 @@ pub fn encode_to_file(
     re_log_encoding::Encoder::encode_into(version, encoding_options, messages, &mut file)
         .map(|_| ())
         .context("Message encode")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn recording_snapshot_decodes_as_rrd() {
+        use re_chunk::{RowId, TimePoint};
+
+        let mut test_context = re_test_context::TestContext::new();
+        test_context.log_entity("test", |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                TimePoint::STATIC,
+                &re_sdk_types::archetypes::Scalars::single(42.0),
+            )
+        });
+
+        let bytes = {
+            let store_hub = test_context.store_hub.lock();
+            let recording = store_hub
+                .entity_db(&test_context.recording_store_id)
+                .expect("test recording should exist");
+            RrdSnapshot::recording(recording, None)
+                .encode()
+                .expect("recording should encode")
+        };
+
+        let bundle = re_entity_db::StoreBundle::from_rrd(
+            std::io::BufReader::new(std::io::Cursor::new(bytes)),
+            &re_log_channel::LogSource::Sdk,
+        )
+        .expect("saved recording should decode");
+
+        let recordings = bundle.recordings().collect::<Vec<_>>();
+        assert_eq!(recordings.len(), 1);
+        assert!(recordings[0].format_with_components().contains("test"));
+    }
 }

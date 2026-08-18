@@ -148,6 +148,17 @@ impl Connection {
         }
     }
 
+    /// Evaluate `JavaScript` in the browser and return its string result.
+    ///
+    /// Panics unless this connection targets a browser.
+    #[cfg(feature = "browser")]
+    pub(super) fn evaluate_js_in_browser(&self, script: &str) -> String {
+        match self {
+            Self::Browser(connection) => connection.evaluate_js(script),
+            _ => panic!("Browser evaluation requires the browser inspection target"),
+        }
+    }
+
     /// Capture the current frame as PNG bytes.
     pub(super) fn screenshot(&mut self) -> Vec<u8> {
         // Grab the screenshot via the chrome dev tools, which should be faster

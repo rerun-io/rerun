@@ -19,6 +19,7 @@ use re_viewer_context::{SystemCommand, SystemCommandSender as _, TimeControlComm
 use serde::Deserialize;
 use wasm_bindgen::prelude::*;
 
+use crate::saving::RrdSnapshot;
 use crate::web_history::install_popstate_listener;
 use crate::web_tools::{Callback, JsResultExt as _, StringOrStringArray};
 
@@ -200,6 +201,51 @@ impl WebHandle {
     #[wasm_bindgen]
     pub fn destroy(&self) {
         self.runner.destroy();
+    }
+
+    /// Encode the active recording as RRD data.
+    #[wasm_bindgen]
+    pub fn save_recording(&self) -> Result<Vec<u8>, JsValue> {
+        let app = self
+            .runner
+            .app_mut::<crate::App>()
+            .ok_or_else(|| JsValue::from_str("Viewer is not running"))?;
+        let recording_id = app
+            .active_recording_id()
+            .cloned()
+            .ok_or_else(|| JsValue::from_str("No active recording to save"))?;
+        let recording = app
+            .store_hub
+            .as_ref()
+            .and_then(|store_hub| store_hub.entity_db(&recording_id))
+            .ok_or_else(|| JsValue::from_str("Active recording is unavailable"))?;
+
+        RrdSnapshot::recording(recording, None)
+            .encode()
+            .map_err(|err| JsValue::from_str(&format!("Failed to save recording: {err}")))
+    }
+
+    /// Encode the active blueprint as RRD data.
+    #[wasm_bindgen]
+    pub fn save_blueprint(&self) -> Result<Vec<u8>, JsValue> {
+        let app = self
+            .runner
+            .app_mut::<crate::App>()
+            .ok_or_else(|| JsValue::from_str("Viewer is not running"))?;
+        let recording_id = app
+            .active_recording_id()
+            .cloned()
+            .ok_or_else(|| JsValue::from_str("No active recording for blueprint"))?;
+        let blueprint = app
+            .store_hub
+            .as_ref()
+            .and_then(|store_hub| store_hub.active_blueprint_for_app(recording_id.application_id()))
+            .ok_or_else(|| JsValue::from_str("No active blueprint to save"))?;
+        let undo_state = app.state.blueprint_undo_state.get(blueprint.store_id());
+
+        RrdSnapshot::blueprint(blueprint, undo_state)
+            .and_then(RrdSnapshot::encode)
+            .map_err(|err| JsValue::from_str(&format!("Failed to save blueprint: {err}")))
     }
 
     #[wasm_bindgen]

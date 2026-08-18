@@ -31,6 +31,17 @@ const UNSUPPORTED_BROWSER_MESSAGE =
   "Chrome 91+, Firefox 89+, Safari 16.4+, or any modern Chromium-based browser. " +
   "Please update your browser and try again.";
 
+// The public export API uses streams so the private Wasm API can switch to incremental encoding
+// without requiring a breaking JavaScript API change.
+function export_stream(bytes: Uint8Array): ReadableStream<Uint8Array> {
+  return new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(bytes);
+      controller.close();
+    },
+  });
+}
+
 async function fetch_viewer_js(base_url?: string): Promise<(() => typeof wasm_bindgen)> {
   // @ts-ignore
   return (await import("./re_viewer")).default;
@@ -802,6 +813,42 @@ export class WebViewer {
         throw e;
       }
     }
+  }
+
+  /**
+   * Save the active recording as an `.rrd` byte stream.
+   *
+   * The snapshot is selected when this method is called.
+   * Concatenate all stream byte sequences to obtain one valid file.
+   * An individual sequence is not independently accepted by {@link WebViewer.open_channel}.
+   *
+   * @throws If the viewer is stopped or has no active recording.
+   */
+  save_recording(): ReadableStream<Uint8Array> {
+    if (!this.#handle) {
+      throw new Error(`attempted to save recording in a stopped web viewer`);
+    }
+
+    const bytes = this.#handle.save_recording();
+    return export_stream(bytes);
+  }
+
+  /**
+   * Save the active blueprint as an `.rbl` byte stream.
+   *
+   * The snapshot is selected when this method is called.
+   * Concatenate all stream byte sequences to obtain one valid file.
+   * An individual sequence is not independently accepted by {@link WebViewer.open_channel}.
+   *
+   * @throws If the viewer is stopped or has no active blueprint.
+   */
+  save_blueprint(): ReadableStream<Uint8Array> {
+    if (!this.#handle) {
+      throw new Error(`attempted to save blueprint in a stopped web viewer`);
+    }
+
+    const bytes = this.#handle.save_blueprint();
+    return export_stream(bytes);
   }
 
   /**

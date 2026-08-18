@@ -32,6 +32,11 @@ where
 }
 
 impl InspectionHarness {
+    /// Whether the configured inspection target is the browser.
+    pub fn is_browser() -> bool {
+        TestEnv::get().target == TargetViewer::Browser
+    }
+
     /// Spawn a viewer and connect to it.
     ///
     /// Which viewer is driven is selected by the `RERUN_INTEGRATION_TEST_TARGET` environment
@@ -195,6 +200,12 @@ impl InspectionHarness {
         // The resize takes effect on the viewer's next frame, and relayout may take a few more.
         self.connection.settle(SETTLE_MAX_STEPS);
         self.refresh_tree();
+    }
+
+    /// Evaluate an async `JavaScript` expression in the browser target.
+    #[cfg(feature = "browser")]
+    pub fn evaluate_js_in_browser(&self, script: &str) -> String {
+        self.connection.evaluate_js_in_browser(script)
     }
 
     /// Capture the current frame as an image.
