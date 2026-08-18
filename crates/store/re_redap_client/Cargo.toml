@@ -85,6 +85,9 @@ tonic = { workspace = true, default-features = false, features = ["transport", "
 tonic-web-wasm-client.workspace = true
 tonic = { workspace = true, default-features = false }
 
+[dev-dependencies]
+re_uri.workspace = true
+
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 tiny_http.workspace = true
 

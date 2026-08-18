@@ -68,8 +68,8 @@ fn test_notification_with_urls() {
     harness.snapshot("notification_with_urls");
 }
 
-/// A field value containing [`re_error::DETAILS_SEPARATOR`] should have the part after the
-/// separator moved into the collapsible details section instead of being shown inline.
+/// A field value with a details section (see [`re_error::split_details`]) should have that
+/// section moved into the collapsible details section instead of being shown inline.
 ///
 /// This is the shape produced by `#[tracing::instrument(err)]`: an event with no message and
 /// the whole error — details and all — in an `error` field.

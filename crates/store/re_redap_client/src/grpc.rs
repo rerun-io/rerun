@@ -50,6 +50,7 @@ pub async fn channel(origin: Origin) -> ApiResult<PoolChannel> {
 
         let ca_cert = tokio::fs::read_to_string(&cert_path).await.map_err(|err| {
             ApiError::internal_with_source(
+                &origin,
                 None,
                 err,
                 format!("couldn't load local cert at {cert_path:?}"),
@@ -71,7 +72,9 @@ pub async fn channel(origin: Origin) -> ApiResult<PoolChannel> {
 
     let mut endpoint = Endpoint::new(http_url)
         .and_then(|ep| ep.tls_config(tls_config))
-        .map_err(|err| ApiError::connection_with_source(None, err, "connecting to server"))?
+        .map_err(|err| {
+            ApiError::connection_with_source(&origin, None, err, "connecting to server")
+        })?
         .http2_adaptive_window(true) // Optimize for throughput
         .connect_timeout(std::time::Duration::from_secs(10))
         // Send HTTP/2 PINGs every 30s to keep connections alive across NATs / cloud LBs
@@ -93,6 +96,7 @@ pub async fn channel(origin: Origin) -> ApiResult<PoolChannel> {
     // below can run on failure) and surfaces connection errors through the `with_retry` wrapper.
     let connect_result = endpoint.connect().await.map_err(|err| {
         ApiError::connection_with_source(
+            &origin,
             None,
             err,
             format!("failed to connect to server at {origin}"),
@@ -124,6 +128,7 @@ pub async fn channel(origin: Origin) -> ApiResult<PoolChannel> {
 
             if endpoint.connect().await.is_ok() {
                 Err(ApiError::connection(
+                    &origin,
                     "the server is expecting an unencrypted connection (try `rerun+http://` if you are sure)",
                 ))
             } else {
@@ -443,71 +448,85 @@ pub type ChunksWithSegment = Vec<(Chunk, Option<SegmentId>)>;
 pub fn fetch_chunks_response_to_chunk_and_segment_id(
     response: crate::FetchChunksResponseStream,
 ) -> crate::ApiResponseStream<ChunksWithSegment> {
+    let origin = response.origin().clone();
     let trace_id = response.trace_id();
+
     // `spawn_blocking` runs on the blocking thread pool with no tracing context.
     // Capture the caller's span here so the decode/migration spans nested inside
     // are parented under the SDK call instead of becoming orphan roots in Jaeger.
     let parent_span = tracing::Span::current();
     let stream = response
-        .then(move |resp| {
-            let trace_id = trace_id;
-            let parent_span = parent_span.clone();
-            // We want to make sure to offload that compute-heavy work to the compute worker pool: it's
-            // not going to make this one single pipeline any faster, but it will prevent starvation of
-            // the Tokio runtime (which would slow down every other futures currently scheduled!).
-            tokio::task::spawn_blocking(move || {
-                let _parent_guard = parent_span.enter();
-                let r = resp?;
-                let _span = tracing::trace_span!(
-                    parent: &parent_span,
-                    "fetch_chunks::batch_decode",
-                    num_chunks = r.chunks.len(),
-                )
-                .entered();
+        .then({
+            let origin = origin.clone();
+            move |resp| {
+                let trace_id = trace_id;
+                let origin = origin.clone();
+                let parent_span = parent_span.clone();
+                // We want to make sure to offload that compute-heavy work to the compute worker pool: it's
+                // not going to make this one single pipeline any faster, but it will prevent starvation of
+                // the Tokio runtime (which would slow down every other futures currently scheduled!).
+                tokio::task::spawn_blocking(move || {
+                    let _parent_guard = parent_span.enter();
+                    let r = resp?;
+                    let _span = tracing::trace_span!(
+                        parent: &parent_span,
+                        "fetch_chunks::batch_decode",
+                        num_chunks = r.chunks.len(),
+                    )
+                    .entered();
 
-                r.chunks
-                    .into_iter()
-                    .map(|arrow_msg| {
-                        re_tracing::profile_scope!("fetch_chunks_response_to_chunk_and_segment_id");
-                        let segment_id = arrow_msg
-                            .store_id
-                            .clone()
-                            .map(|id| SegmentId::from(id.recording_id));
+                    r.chunks
+                        .into_iter()
+                        .map(|arrow_msg| {
+                            re_tracing::profile_scope!(
+                                "fetch_chunks_response_to_chunk_and_segment_id"
+                            );
+                            let segment_id = arrow_msg
+                                .store_id
+                                .clone()
+                                .map(|id| SegmentId::from(id.recording_id));
 
-                        use re_log_encoding::ToApplication as _;
-                        let arrow_msg = arrow_msg.to_application(()).map_err(|err| {
+                            use re_log_encoding::ToApplication as _;
+                            let arrow_msg = arrow_msg.to_application(()).map_err(|err| {
                             ApiError::deserialization_with_source(
+                                &origin,
                                 trace_id,
                                 err,
                                 "failed to get arrow data for item in /FetchChunks response stream",
                             )
                         })?;
 
-                        let chunk = re_chunk::Chunk::from_chunk_record_batch(&arrow_msg.batch)
-                            .map_err(|err| {
-                                ApiError::deserialization_with_source(
-                                    trace_id,
-                                    err,
-                                    "failed to parse item in /FetchChunks response stream",
-                                )
-                            })?;
+                            let chunk = re_chunk::Chunk::from_chunk_record_batch(&arrow_msg.batch)
+                                .map_err(|err| {
+                                    ApiError::deserialization_with_source(
+                                        &origin,
+                                        trace_id,
+                                        err,
+                                        "failed to parse item in /FetchChunks response stream",
+                                    )
+                                })?;
 
-                        Ok((chunk, segment_id))
-                    })
-                    .try_collect()
-            })
+                            Ok((chunk, segment_id))
+                        })
+                        .try_collect()
+                })
+            }
         })
-        .map(move |res| {
-            res.map_err(|err| {
-                ApiError::internal_with_source(
-                    trace_id,
-                    err,
-                    "failed to sync on /FetchChunks response stream",
-                )
-            })
-            .flatten()
+        .map({
+            let origin = origin.clone();
+            move |res| {
+                res.map_err(|err| {
+                    ApiError::internal_with_source(
+                        &origin,
+                        trace_id,
+                        err,
+                        "failed to sync on /FetchChunks response stream",
+                    )
+                })
+                .flatten()
+            }
         });
-    crate::ApiResponseStream::new(stream, trace_id)
+    crate::ApiResponseStream::new(origin, stream, trace_id)
 }
 
 // This code path happens to be shared between native and web, but we don't have a Tokio runtime on web!
@@ -515,45 +534,52 @@ pub fn fetch_chunks_response_to_chunk_and_segment_id(
 pub fn fetch_chunks_response_to_chunk_and_segment_id(
     response: crate::FetchChunksResponseStream,
 ) -> crate::ApiResponseStream<ChunksWithSegment> {
+    let origin = response.origin().clone();
     let trace_id = response.trace_id();
-    let stream = response.map(move |resp| {
-        let resp = resp?;
+    let stream = response.map({
+        let origin = origin.clone();
+        move |resp| {
+            let origin = origin.clone();
+            let resp = resp?;
 
-        let _span =
-            tracing::trace_span!("fetch_chunks::batch_decode", num_chunks = resp.chunks.len())
-                .entered();
+            let _span =
+                tracing::trace_span!("fetch_chunks::batch_decode", num_chunks = resp.chunks.len())
+                    .entered();
 
-        resp.chunks
-            .into_iter()
-            .map(|arrow_msg| {
-                let segment_id = arrow_msg
-                    .store_id
-                    .clone()
-                    .map(|id| SegmentId::from(id.recording_id));
+            resp.chunks
+                .into_iter()
+                .map(|arrow_msg| {
+                    let segment_id = arrow_msg
+                        .store_id
+                        .clone()
+                        .map(|id| SegmentId::from(id.recording_id));
 
-                use re_log_encoding::ToApplication as _;
-                let arrow_msg = arrow_msg.to_application(()).map_err(|err| {
-                    ApiError::deserialization_with_source(
-                        trace_id,
-                        err,
-                        "failed to get arrow data for item in /FetchChunks response stream",
-                    )
-                })?;
-
-                let chunk =
-                    re_chunk::Chunk::from_chunk_record_batch(&arrow_msg.batch).map_err(|err| {
+                    use re_log_encoding::ToApplication as _;
+                    let arrow_msg = arrow_msg.to_application(()).map_err(|err| {
                         ApiError::deserialization_with_source(
+                            &origin,
                             trace_id,
                             err,
-                            "failed to parse item in /FetchChunks response stream",
+                            "failed to get arrow data for item in /FetchChunks response stream",
                         )
                     })?;
 
-                Ok((chunk, segment_id))
-            })
-            .try_collect()
+                    let chunk = re_chunk::Chunk::from_chunk_record_batch(&arrow_msg.batch)
+                        .map_err(|err| {
+                            ApiError::deserialization_with_source(
+                                &origin,
+                                trace_id,
+                                err,
+                                "failed to parse item in /FetchChunks response stream",
+                            )
+                        })?;
+
+                    Ok((chunk, segment_id))
+                })
+                .try_collect()
+        }
     });
-    crate::ApiResponseStream::new(stream, trace_id)
+    crate::ApiResponseStream::new(origin, stream, trace_id)
 }
 
 /// Callback invoked as chunks are downloaded.
@@ -885,7 +911,11 @@ async fn stream_segment_from_server(
 
                         Err(err) => {
                             re_log::warn!(
-                                "Failed to stream asset manifest, skipping it: {err}\nAsset segment id: {asset_segment_id}"
+                                "{}",
+                                re_error::format_with_details(
+                                    format!("Failed to stream asset manifest, skipping it: {err}"),
+                                    format!("Asset segment id: {asset_segment_id}"),
+                                )
                             );
                         }
                     }
@@ -958,6 +988,7 @@ async fn stream_segment_from_server(
             )
             .map_err(|err| {
                 ApiError::invalid_arguments_with_source(
+                    client.origin(),
                     None,
                     err,
                     "Failed to concat chunk index batches",
@@ -966,7 +997,12 @@ async fn stream_segment_from_server(
 
             // Prioritize the chunks:
             let batch = sort_batch(&batch).map_err(|err| {
-                ApiError::invalid_arguments_with_source(trace_id, err, "Failed to sort chunk index")
+                ApiError::invalid_arguments_with_source(
+                    client.origin(),
+                    trace_id,
+                    err,
+                    "Failed to sort chunk index",
+                )
             })?;
 
             if let Some(chunk_ids) = re_log_encoding::RrdManifest::col_chunk_ids_of(&batch) {
@@ -1007,6 +1043,7 @@ async fn stream_segment_from_server(
 
     let batch = arrow::compute::concat_batches(&batches[0].schema(), &batches).map_err(|err| {
         ApiError::invalid_arguments_with_source(
+            client.origin(),
             trace_id,
             err,
             "Failed to concat chunk index batches",
@@ -1015,7 +1052,12 @@ async fn stream_segment_from_server(
 
     // Prioritize the chunks:
     let batch = sort_batch(&batch).map_err(|err| {
-        ApiError::invalid_arguments_with_source(trace_id, err, "Failed to sort chunk index")
+        ApiError::invalid_arguments_with_source(
+            client.origin(),
+            trace_id,
+            err,
+            "Failed to sort chunk index",
+        )
     })?;
 
     if let Some(chunk_ids) = re_log_encoding::RrdManifest::col_chunk_ids_of(&batch)
@@ -1036,7 +1078,12 @@ async fn stream_segment_from_server(
 
         let filtered_batch =
             re_arrow_util::take_record_batch(&batch, &filtered_indices).map_err(|err| {
-                ApiError::invalid_arguments_with_source(trace_id, err, "take_record_batch")
+                ApiError::invalid_arguments_with_source(
+                    client.origin(),
+                    trace_id,
+                    err,
+                    "take_record_batch",
+                )
             })?;
 
         load_chunks(client, tx, &store_id, filtered_batch, options).await
@@ -1102,6 +1149,7 @@ async fn stream_manifest(
                         .without_recording_properties()
                         .map_err(|err| {
                             ApiError::invalid_arguments_with_source(
+                                client.origin(),
                                 trace_id,
                                 err,
                                 "Failed to drop the recording properties of an asset manifest",
@@ -1121,6 +1169,7 @@ async fn stream_manifest(
                 let rrd_manifest = re_log_encoding::RrdManifest::try_new(&raw_rrd_manifest_part)
                     .map_err(|err| {
                         ApiError::invalid_arguments_with_source(
+                            client.origin(),
                             trace_id,
                             err,
                             "Invalid RRD manifest part",
@@ -1152,6 +1201,7 @@ async fn stream_manifest(
 
             if rrd_manifest_parts.is_empty() {
                 return Err(ApiError::deserialization(
+                    client.origin(),
                     trace_id,
                     "failed to parse the response for /GetRrdManifest (no data)",
                 ));
@@ -1188,6 +1238,7 @@ async fn stream_manifest(
                     )
                     .map_err(|err| {
                         ApiError::invalid_arguments_with_source(
+                            client.origin(),
                             trace_id,
                             err,
                             "Failed to merge RRD manifest parts",
@@ -1196,6 +1247,7 @@ async fn stream_manifest(
                     let combined =
                         re_log_encoding::RrdManifest::try_new(&combined).map_err(|err| {
                             ApiError::invalid_arguments_with_source(
+                                client.origin(),
                                 trace_id,
                                 err,
                                 "Invalid merged RRD manifest",
@@ -1203,6 +1255,7 @@ async fn stream_manifest(
                         })?;
                     let batch = sort_batch(combined.chunk_fetcher_rb()).map_err(|err| {
                         ApiError::invalid_arguments_with_source(
+                            client.origin(),
                             trace_id,
                             err,
                             "Failed to sort chunk index",
@@ -1223,7 +1276,7 @@ async fn stream_manifest(
             if err.kind == ApiErrorKind::Unimplemented {
                 re_log::debug_once!("The server does not support on-demand streaming"); // Legacy server
             } else {
-                re_log::warn!("Failed to load RRD manifest: {err}");
+                re_log::warn!("{err}");
             }
         }
     }
@@ -1351,6 +1404,7 @@ async fn load_small_chunk_batch(
                         // TODO(#10229): this looks to be converting back and forth?
                         chunk.to_arrow_msg().map_err(|err| {
                             ApiError::deserialization_with_source(
+                                client.origin(),
                                 trace_id,
                                 err,
                                 "failed to parse chunk in /FetchChunks response stream",

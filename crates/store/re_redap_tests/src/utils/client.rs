@@ -12,6 +12,8 @@ use tonic::codec::DecodeBuf;
 use tonic::{Request, Response, Status};
 
 pub(crate) struct TestClient<T: RerunCloudService> {
+    pub(crate) origin: re_uri::Origin,
+
     pub(crate) service: Arc<T>,
 
     /// Every `query_dataset` request seen by this client, in order. Lets a test
@@ -24,6 +26,7 @@ pub(crate) struct TestClient<T: RerunCloudService> {
 impl<T: RerunCloudService> TestClient<T> {
     pub(crate) fn new(service: Arc<T>) -> Self {
         Self {
+            origin: re_uri::Origin::test(),
             service,
             query_dataset_requests: Arc::new(parking_lot::Mutex::new(Vec::new())),
         }
@@ -34,6 +37,7 @@ impl<T: RerunCloudService> TestClient<T> {
 impl<T: RerunCloudService> Clone for TestClient<T> {
     fn clone(&self) -> Self {
         Self {
+            origin: self.origin.clone(),
             service: Arc::clone(&self.service),
             query_dataset_requests: Arc::clone(&self.query_dataset_requests),
         }
@@ -87,6 +91,10 @@ where
 
 #[async_trait::async_trait]
 impl<T: RerunCloudService> DataframeClientAPI for TestClient<T> {
+    fn origin(&self) -> &re_uri::Origin {
+        &self.origin
+    }
+
     async fn get_dataset_schema(
         &mut self,
         request: Request<GetDatasetSchemaRequest>,

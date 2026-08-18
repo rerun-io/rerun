@@ -112,6 +112,7 @@ re_redap_client.workspace = true
 # with and without footers to cross-check store enumeration vs lazy loading.
 re_log_encoding = { workspace = true, features = ["encoder"] }
 re_tuid.workspace = true
+re_uri.workspace = true
 ehttp = { workspace = true, features = ["native-async"] }
 
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]

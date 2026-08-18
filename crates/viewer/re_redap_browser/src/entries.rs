@@ -314,6 +314,7 @@ fn fetch_entry_details(
             Some(Right(future::ready((
                 entry,
                 Err(ApiError::deserialization_with_source(
+                    origin,
                     None,
                     err,
                     "unknown entry kind",
@@ -349,7 +350,12 @@ async fn fetch_dataset_details(
         .into_provider()
         .await
         .map_err(|err| {
-            ApiError::internal_with_source(None, err, "failed creating segment table provider")
+            ApiError::internal_with_source(
+                origin,
+                None,
+                err,
+                "failed creating segment table provider",
+            )
         })?;
 
     Ok((result, table_provider))
@@ -490,7 +496,12 @@ async fn fetch_table_details(
         table_provider = table_provider.with_analytics(exporter, runtime.clone());
     }
     let table_provider = table_provider.into_provider().await.map_err(|err| {
-        ApiError::internal_with_source(None, err, "failed creating table-entry table provider")
+        ApiError::internal_with_source(
+            origin,
+            None,
+            err,
+            "failed creating table-entry table provider",
+        )
     })?;
 
     Ok((result, table_provider))

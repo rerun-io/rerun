@@ -140,31 +140,39 @@ impl TonicStatusError {
 
 impl std::fmt::Display for TonicStatusError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        // NOTE: duplicated in `re_grpc_server` and `re_grpc_client`
+        // NOTE: near-duplicate of the ones in `re_grpc_server` and `re_grpc_client`
         fmt_tonic_status(f, &self.0)
     }
 }
 
 fn fmt_tonic_status(f: &mut std::fmt::Formatter<'_>, status: &tonic::Status) -> std::fmt::Result {
-    if status.message().is_empty() {
-        write!(f, "gRPC error")?;
+    let code = status.code();
+
+    // The server message may come with details of its own, which must stay details.
+    let (summary, details) = re_error::split_details(status.message());
+
+    let mut summary = if summary.is_empty() {
+        "gRPC error".to_owned()
     } else {
-        write!(f, "{}", status.message())?;
+        summary.to_owned()
+    };
+
+    // `Unknown` says nothing, and is what a browser reports for any blocked `fetch`; the rest are
+    // worth naming. An `ApiError` wrapping this leaves out its own kind when it is just this code
+    // by another name, so the two don't say the same thing twice.
+    if code != tonic::Code::Unknown {
+        summary = format!("{summary} ({code:?})");
     }
 
-    if status.code() != tonic::Code::Unknown {
-        write!(f, " ({})", status.code())?;
-    }
-
+    let mut details = details
+        .into_iter()
+        .map(ToOwned::to_owned)
+        .collect::<Vec<_>>();
     if !status.metadata().is_empty() {
-        write!(
-            f,
-            "{} metadata: {:?}",
-            re_error::DETAILS_SEPARATOR,
-            status.metadata().as_ref()
-        )?;
+        details.push(format!("metadata: {:?}", status.metadata().as_ref()));
     }
-    Ok(())
+
+    f.write_str(&re_error::format_with_many_details(summary, details))
 }
 
 impl From<tonic::Status> for TonicStatusError {
@@ -365,7 +373,11 @@ mod retry_tests {
     /// Build an `ApiError` of kind `ResourcesExhausted`, exactly as the client would from a
     /// server `tonic::Status::resource_exhausted`.
     fn resource_exhausted_err() -> ApiError {
-        ApiError::tonic(tonic::Status::resource_exhausted("busy"), "test")
+        ApiError::tonic(
+            &re_uri::Origin::test(),
+            tonic::Status::resource_exhausted("busy"),
+            "test",
+        )
     }
 
     /// A fast policy (sub-ms sleeps) so the retry-logic tests don't actually wait. The public
@@ -409,7 +421,7 @@ mod retry_tests {
         let calls = AtomicUsize::new(0);
         let res: ApiResult<u32> = with_retry_resource_exhausted("test", || async {
             calls.fetch_add(1, Ordering::SeqCst);
-            Err(ApiError::internal("boom"))
+            Err(ApiError::internal(&re_uri::Origin::test(), "boom"))
         })
         .await;
 

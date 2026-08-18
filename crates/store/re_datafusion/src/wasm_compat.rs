@@ -4,7 +4,7 @@ use re_redap_client::ApiResult;
 /// version for information.
 #[cfg(not(target_arch = "wasm32"))]
 #[inline]
-pub async fn make_future_send<F, T>(f: F) -> ApiResult<T>
+pub async fn make_future_send<F, T>(_origin: re_uri::Origin, f: F) -> ApiResult<T>
 where
     F: std::future::Future<Output = ApiResult<T>> + Send + 'static,
     T: Send + 'static,
@@ -19,6 +19,7 @@ where
 /// ones.
 #[cfg(target_arch = "wasm32")]
 pub fn make_future_send<F, T>(
+    origin: re_uri::Origin,
     f: F,
 ) -> impl std::future::Future<Output = ApiResult<T>> + Send + 'static
 where
@@ -30,6 +31,7 @@ where
     async move {
         task.await.unwrap_or_else(|_cancelled| {
             Err(re_redap_client::ApiError::internal(
+                &origin,
                 "wasm task cancelled unexpectedly",
             ))
         })

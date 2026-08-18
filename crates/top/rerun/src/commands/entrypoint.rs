@@ -1243,10 +1243,7 @@ fn start_native_viewer(
             #[cfg(not(target_arch = "wasm32"))]
             let internal_catalog = re_viewer::internal_catalog::build(server_addr);
             #[cfg(not(target_arch = "wasm32"))]
-            connection_registry.set_internal((
-                internal_catalog.origin.clone(),
-                internal_catalog.connection.clone(),
-            ));
+            connection_registry.set_internal(internal_catalog.connection.clone());
 
             #[cfg_attr(target_arch = "wasm32", expect(unused_mut))]
             let mut extra_services = re_grpc_server::LoopbackServices::default();

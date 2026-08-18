@@ -276,6 +276,7 @@ pub fn batch_byte_size_uncompressed(batch: &RecordBatch) -> Option<u64> {
 /// recording the one-shot terminal failure reason on the shared state.
 #[tracing::instrument(level = "info", skip_all, fields(num_chunks, byte_size))]
 pub async fn fetch_batch_direct(
+    origin: &re_uri::Origin,
     batch: &RecordBatch,
     http_client: &reqwest::Client,
     request_counter: &AtomicU64,
@@ -302,6 +303,7 @@ pub async fn fetch_batch_direct(
             #[cfg(not(target_arch = "wasm32"))]
             metrics::record_direct_failure(reason.as_str());
             Err(re_redap_client::ApiError::connection_with_source(
+                origin,
                 None,
                 err,
                 "fetching chunks via direct URLs",
@@ -352,6 +354,7 @@ pub async fn fetch_batch_group_via_grpc<T: DataframeClientAPI>(
 ) -> ApiResult<Vec<ChunksWithSegment>> {
     let mut all_chunks = Vec::new();
 
+    let origin = client.origin().clone();
     let mut client = client.clone();
     for batch in batch_group {
         request_counter.fetch_add(1, Ordering::Relaxed);
@@ -367,10 +370,15 @@ pub async fn fetch_batch_group_via_grpc<T: DataframeClientAPI>(
             .fetch_chunks(req)
             .instrument(tracing::trace_span!("batched_fetch_chunks"))
             .await
-            .map_err(|err| re_redap_client::ApiError::tonic(err, "FetchChunks request failed"))?;
+            .map_err(|err| {
+                re_redap_client::ApiError::tonic(&origin, err, "FetchChunks request failed")
+            })?;
 
-        let response_stream =
-            re_redap_client::ApiResponseStream::from_tonic_response(response, "/FetchChunks");
+        let response_stream = re_redap_client::ApiResponseStream::from_tonic_response(
+            origin.clone(),
+            response,
+            "/FetchChunks",
+        );
 
         let chunk_stream =
             re_redap_client::fetch_chunks_response_to_chunk_and_segment_id(response_stream);
@@ -1045,10 +1053,21 @@ mod tests {
 
     use super::*;
 
-    #[derive(Clone, Debug, Default)]
+    #[derive(Clone, Debug)]
     struct TestFetchClient {
+        origin: re_uri::Origin,
         calls: Arc<AtomicU64>,
         fail_on_call: u64,
+    }
+
+    impl Default for TestFetchClient {
+        fn default() -> Self {
+            Self {
+                origin: re_uri::Origin::test(),
+                calls: Arc::default(),
+                fail_on_call: 0,
+            }
+        }
     }
 
     #[derive(Debug)]
@@ -1065,6 +1084,10 @@ mod tests {
 
     #[async_trait::async_trait]
     impl DataframeClientAPI for TestFetchClient {
+        fn origin(&self) -> &re_uri::Origin {
+            &self.origin
+        }
+
         async fn get_dataset_schema(
             &mut self,
             _request: Request<GetDatasetSchemaRequest>,

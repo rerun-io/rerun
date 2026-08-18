@@ -52,9 +52,10 @@ impl ConnectionHandle {
             .inner()
             .register_with_dataset(req.map(Into::into))
             .await
-            .map_err(|err| ApiError::tonic(err, "/RegisterWithDataset failed"))?;
+            .map_err(|err| ApiError::tonic(&self.origin, err, "/RegisterWithDataset failed"))?;
         let trace_id = extract_trace_id(response.metadata());
-        let descriptors = parse_task_descriptors(trace_id, response.into_inner().data)?;
+        let descriptors =
+            parse_task_descriptors(&self.origin, trace_id, response.into_inner().data)?;
 
         Ok(RegistrationHandle::new(self.clone(), trace_id, descriptors))
     }
@@ -83,7 +84,10 @@ impl ConnectionHandle {
             .into_iter()
             .next()
             .ok_or_else(|| {
-                ApiError::invalid_arguments("server registered the file but returned no segments")
+                ApiError::invalid_arguments(
+                    &self.origin,
+                    "server registered the file but returned no segments",
+                )
             })?;
 
         Ok((dataset_id, segment_id))

@@ -1180,15 +1180,21 @@ async fn watch_events_loop(
             Err(err) if err.kind == re_redap_client::ApiErrorKind::Unimplemented => {
                 // Permanent condition (e.g. an older server), so don't keep reconnecting.
                 re_log::debug!(
-                    "Server does not support event listening\nServer: {}",
-                    connection.origin()
+                    "{}",
+                    re_error::format_with_details(
+                        "Server does not support event listening",
+                        format!("Server: {}", connection.origin()),
+                    )
                 );
                 return;
             }
             Err(err) => {
                 re_log::debug!(
-                    "Event stream failed, will reconnect: {err}\nServer: {}",
-                    connection.origin()
+                    "{}",
+                    re_error::format_with_details(
+                        format!("Event stream failed, will reconnect: {err}"),
+                        format!("Server: {}", connection.origin()),
+                    )
                 );
             }
         }

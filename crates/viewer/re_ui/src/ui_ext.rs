@@ -62,36 +62,36 @@ pub trait UiExt {
 
     /// Shows a success label with a large border.
     ///
-    /// If the text contains [`re_error::DETAILS_SEPARATOR`], the details are
+    /// If the text has a details section (see [`re_error::split_details`]), the details are
     /// shown on hover instead of inline.
     ///
     /// If you don't want a border, use [`crate::ContextExt::success_text`].
     fn success_label(&mut self, success_text: impl Into<String>) -> egui::Response {
         let success_text = success_text.into();
-        let (summary, details) = re_error::split_details(&success_text);
-        Alert::success().show_text(self.ui_mut(), summary, details.map(str::to_owned))
+        let (summary, details) = re_error::split_details_joined(&success_text);
+        Alert::success().show_text(self.ui_mut(), summary, details)
     }
 
     /// Shows an info label with a large border.
     ///
-    /// If the text contains [`re_error::DETAILS_SEPARATOR`], the details are
+    /// If the text has a details section (see [`re_error::split_details`]), the details are
     /// shown on hover instead of inline.
     fn info_label(&mut self, info_text: impl Into<String>) -> egui::Response {
         let info_text = info_text.into();
-        let (summary, details) = re_error::split_details(&info_text);
-        Alert::info().show_text(self.ui_mut(), summary, details.map(str::to_owned))
+        let (summary, details) = re_error::split_details_joined(&info_text);
+        Alert::info().show_text(self.ui_mut(), summary, details)
     }
 
     /// Shows a warning label with a large border.
     ///
-    /// If the text contains [`re_error::DETAILS_SEPARATOR`], the details are
+    /// If the text has a details section (see [`re_error::split_details`]), the details are
     /// shown on hover instead of inline.
     ///
     /// If you don't want a border, use [`crate::ContextExt::warning_text`].
     fn warning_label(&mut self, warning_text: impl Into<String>) -> egui::Response {
         let warning_text = warning_text.into();
-        let (summary, details) = re_error::split_details(&warning_text);
-        Alert::warning().show_text(self.ui_mut(), summary, details.map(str::to_owned))
+        let (summary, details) = re_error::split_details_joined(&warning_text);
+        Alert::warning().show_text(self.ui_mut(), summary, details)
     }
 
     /// Shows a small error label with the given text on hover and copies the text to the clipboard on click with a large border.
@@ -107,7 +107,7 @@ pub trait UiExt {
 
     /// Shows an error label with the entire error text and copies the text to the clipboard on click.
     ///
-    /// If the text contains [`re_error::DETAILS_SEPARATOR`], the details are
+    /// If the text has a details section (see [`re_error::split_details`]), the details are
     /// shown on hover instead of inline.
     ///
     /// Use this only if the error message is short, or you have a lot of room.
@@ -116,8 +116,8 @@ pub trait UiExt {
     /// This has a large border! If you don't want a border, use [`crate::ContextExt::error_text`].
     fn error_label(&mut self, error_text: impl Into<String>) -> egui::Response {
         let error_text = error_text.into();
-        let (summary, details) = re_error::split_details(&error_text);
-        Alert::error().show_text(self.ui_mut(), summary, details.map(str::to_owned))
+        let (summary, details) = re_error::split_details_joined(&error_text);
+        Alert::error().show_text(self.ui_mut(), summary, details)
     }
 
     /// The `alt_text` will be used for accessibility (e.g. read by screen readers),

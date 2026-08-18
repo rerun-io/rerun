@@ -56,16 +56,23 @@ impl DatasetManifestProvider {
 
 #[async_trait]
 impl GrpcStreamToTable for DatasetManifestProvider {
+    fn origin(&self) -> &re_uri::Origin {
+        self.client.origin()
+    }
+
     type GrpcStreamData = ScanDatasetManifestResponse;
 
     #[instrument(skip(self), err, parent = &self.parent_span)]
     async fn fetch_schema(&mut self) -> ApiResult<SchemaRef> {
         let mut client = self.client.clone();
+        let origin = client.origin().clone();
         let dataset_id = self.dataset_id;
 
         Ok(Arc::new(
-            make_future_send(async move { client.get_dataset_manifest_schema(dataset_id).await })
-                .await?,
+            make_future_send(origin.clone(), async move {
+                client.get_dataset_manifest_schema(dataset_id).await
+            })
+            .await?,
         ))
     }
 
@@ -92,17 +99,19 @@ impl GrpcStreamToTable for DatasetManifestProvider {
         .with_entry_id(self.dataset_id);
 
         let mut client = self.client.clone();
+        let origin = client.origin().clone();
 
-        let response = make_future_send(async move {
+        let response = make_future_send(origin.clone(), async move {
             client
                 .inner()
                 .scan_dataset_manifest(request)
                 .await
-                .map_err(|err| ApiError::tonic(err, "/ScanDatasetManifest failed"))
+                .map_err(|err| ApiError::tonic(&origin, err, "/ScanDatasetManifest failed"))
         })
         .await?;
 
         Ok(re_redap_client::ApiResponseStream::from_tonic_response(
+            self.origin().clone(),
             response,
             "/ScanDatasetManifest",
         ))
@@ -126,11 +135,16 @@ impl GrpcStreamToTable for DatasetManifestProvider {
         response
             .data
             .ok_or_else(|| {
-                ApiError::deserialization(None, "DataFrame missing from DatasetManifest response")
+                ApiError::deserialization(
+                    self.origin(),
+                    None,
+                    "DataFrame missing from DatasetManifest response",
+                )
             })?
             .try_into()
             .map_err(|err: re_protos::TypeConversionError| {
                 ApiError::deserialization_with_source(
+                    self.origin(),
                     None,
                     err,
                     "failed decoding /ScanDatasetManifest response",

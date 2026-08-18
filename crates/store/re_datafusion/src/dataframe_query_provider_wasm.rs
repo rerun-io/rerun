@@ -89,10 +89,16 @@ pub struct DataframeSegmentStream<T: DataframeClientAPI> {
 }
 
 impl<T: DataframeClientAPI> DataframeSegmentStream<T> {
+    /// The server this stream is querying.
+    fn origin(&self) -> &re_uri::Origin {
+        self.client.origin()
+    }
+
     async fn get_chunk_store_for_single_rerun_segment(
         &mut self,
         segment_id: &str,
     ) -> ApiResult<ChunkStoreHandle> {
+        let origin = self.origin().clone();
         let chunk_infos = self.chunk_infos.iter().map(Into::into).collect::<Vec<_>>();
         let fetch_chunks_request = FetchChunksRequest { chunk_infos };
 
@@ -102,10 +108,13 @@ impl<T: DataframeClientAPI> DataframeSegmentStream<T> {
             .client
             .fetch_chunks(req)
             .await
-            .map_err(|err| ApiError::tonic(err, "fetch_chunks"))?;
+            .map_err(|err| ApiError::tonic(&origin, err, "fetch_chunks"))?;
 
-        let response_stream =
-            re_redap_client::ApiResponseStream::from_tonic_response(response, "/FetchChunks");
+        let response_stream = re_redap_client::ApiResponseStream::from_tonic_response(
+            origin.clone(),
+            response,
+            "/FetchChunks",
+        );
 
         // Then we need to fully decode these chunks, i.e. both the transport layer (Protobuf)
         // and the app layer (Arrow).
@@ -132,12 +141,14 @@ impl<T: DataframeClientAPI> DataframeSegmentStream<T> {
 
                 let received_segment_id = received_segment_id.ok_or_else(|| {
                     ApiError::deserialization(
+                        &origin,
                         None,
                         "server returned chunk without a segment id in fetch_chunks response",
                     )
                 })?;
                 if received_segment_id.as_ref() != segment_id {
                     return Err(ApiError::deserialization(
+                        &origin,
                         None,
                         format!(
                             "server returned chunk for unexpected segment id `{received_segment_id}` \
@@ -151,6 +162,7 @@ impl<T: DataframeClientAPI> DataframeSegmentStream<T> {
                     .insert_chunk(&Arc::new(chunk))
                     .map_err(|err| {
                         ApiError::internal_with_source(
+                            &origin,
                             None,
                             err,
                             "inserting chunk into in-memory store",
@@ -207,6 +219,7 @@ impl<T: DataframeClientAPI> Stream for DataframeSegmentStream<T> {
     #[tracing::instrument(level = "info", skip_all)]
     fn poll_next(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let this = self.get_mut();
+        let origin = this.origin().clone();
 
         loop {
             if this.remaining_segment_ids.is_empty() && this.current_query.is_none() {
@@ -240,7 +253,7 @@ impl<T: DataframeClientAPI> Stream for DataframeSegmentStream<T> {
                 .expect("current_query should be Some");
 
             // If the following returns none, we have exhausted that rerun segment id
-            match create_next_row(query, segment_id, &this.projected_schema)
+            match create_next_row(&origin, query, segment_id, &this.projected_schema)
                 .map_err(|err| err.into_df_error())?
             {
                 Some(rb) => return Poll::Ready(Some(Ok(rb))),
@@ -364,6 +377,7 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
 
 #[tracing::instrument(level = "trace", skip_all)]
 fn create_next_row(
+    origin: &re_uri::Origin,
     query_handle: &mut QueryHandle<StorageEngine>,
     segment_id: &SegmentId,
     target_schema: &Arc<Schema>,
@@ -381,6 +395,7 @@ fn create_next_row(
     }
     if num_fields != next_row.len() {
         return Err(ApiError::internal(
+            origin,
             "Unexpected number of columns returned from query",
         ));
     }
@@ -408,6 +423,7 @@ fn create_next_row(
     )
     .map_err(|err| {
         ApiError::deserialization_with_source(
+            origin,
             None,
             err,
             "building output record batch from chunk-store rows",
@@ -415,7 +431,7 @@ fn create_next_row(
     })?;
 
     let output_batch = align_record_batch_to_schema(&batch, target_schema).map_err(|err| {
-        ApiError::deserialization_with_source(None, err, "DataFusion schema mismatch error")
+        ApiError::deserialization_with_source(origin, None, err, "DataFusion schema mismatch error")
     })?;
 
     Ok(Some(output_batch))

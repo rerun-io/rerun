@@ -139,16 +139,16 @@ impl re_byte_size::MemUsageTreeCapture for ConnectionRegistryHandle {
 /// Possible errors when creating a connection.
 #[derive(Debug, thiserror::Error)]
 pub enum ClientCredentialsError {
-    #[error("error when refreshing credentials\nDetails: {0}")]
+    #[error("{}", re_error::format_with_details("error when refreshing credentials", .0.to_string()))]
     RefreshError(TonicStatusError),
 
     #[error("the credentials are expired")]
     SessionExpired,
 
-    #[error("the server requires an authentication token but none was provided\nDetails: {0}")]
+    #[error("{}", re_error::format_with_details("the server requires an authentication token but none was provided", .0.to_string()))]
     UnauthenticatedMissingToken(TonicStatusError),
 
-    #[error("the server rejected the provided authentication token\nDetails: {status}")]
+    #[error("{}", re_error::format_with_details("the server rejected the provided authentication token", .status.to_string()))]
     UnauthenticatedBadToken {
         status: TonicStatusError,
         credentials: SourcedCredentials,
@@ -173,7 +173,7 @@ pub struct ConnectionRegistryHandle {
     ///
     /// Shared across cloned handles and readable from sync code without taking the async registry
     /// lock.
-    internal: Arc<OnceLock<(re_uri::Origin, Connection)>>,
+    internal: Arc<OnceLock<Connection>>,
 
     /// Whether to use credentials stored on the host machine by default.
     /// Since some tests run on a single-threaded tokio runtime and this is never updated,
@@ -264,17 +264,17 @@ impl ConnectionRegistryHandle {
         self.use_stored_credentials
     }
 
-    pub fn with_internal(self, internal: (re_uri::Origin, Connection)) -> Self {
+    pub fn with_internal(self, internal: Connection) -> Self {
         self.set_internal(internal);
         self
     }
 
-    pub fn set_internal(&self, internal: (re_uri::Origin, Connection)) {
-        if let Err((new_origin, _connection)) = self.internal.set(internal) {
+    pub fn set_internal(&self, internal: Connection) {
+        if let Err(rejected) = self.internal.set(internal) {
+            let new_origin = rejected.origin();
             let existing_origin = self
-                .internal
-                .get()
-                .map(|(origin, _connection)| origin.to_string())
+                .internal_origin()
+                .map(|origin| origin.to_string())
                 .unwrap_or_else(|| "<missing>".to_owned());
             re_log::debug!(
                 "Ignoring duplicate internal connection for {new_origin}; already set for {existing_origin}"
@@ -285,7 +285,7 @@ impl ConnectionRegistryHandle {
     pub fn internal_origin(&self) -> Option<re_uri::Origin> {
         self.internal
             .get()
-            .map(|(origin, _connection)| origin.clone())
+            .map(|connection| connection.origin().clone())
     }
 
     pub fn connection_handle(&self, origin: re_uri::Origin) -> crate::ConnectionHandle {
@@ -300,7 +300,7 @@ impl ConnectionRegistryHandle {
     pub fn is_internal_origin(&self, origin: &re_uri::Origin) -> bool {
         self.internal
             .get()
-            .is_some_and(|(internal_origin, _connection)| internal_origin == origin)
+            .is_some_and(|connection| connection.origin() == origin)
     }
 
     /// Clear the latest error for this URI.
@@ -342,8 +342,8 @@ impl ConnectionRegistryHandle {
     /// Failing that, no token will be used.
     #[tracing::instrument(level = "info", skip_all)]
     pub(crate) async fn connection(&self, origin: re_uri::Origin) -> ApiResult<Connection> {
-        if let Some((internal_origin, connection)) = self.internal.get()
-            && internal_origin == &origin
+        if let Some(connection) = self.internal.get()
+            && connection.origin() == &origin
         {
             return Ok(connection.clone());
         }
@@ -409,6 +409,7 @@ impl ConnectionRegistryHandle {
 
             let connection = Connection {
                 client: RedapClient::new(
+                    origin.clone(),
                     crate::grpc::boxed_redap_grpc_client(client_stack.clone()),
                     Some(crate::ChunkCacheHandle::default()),
                 ),
@@ -504,7 +505,7 @@ impl ConnectionRegistryHandle {
                     if let Some(suggested) = suggest_api_prefix(origin) {
                         write!(msg, ". Did you mean '{suggested}'?").ok();
                     }
-                    ApiError::connection(msg)
+                    ApiError::connection(origin, msg)
                 })
         })
         .await?;
@@ -531,7 +532,7 @@ impl ConnectionRegistryHandle {
                 }
             });
         Err(ApiError::invalid_server_with_response(
-            origin.clone(),
+            origin,
             res.status,
             &res.status_text,
             body_snippet.as_deref(),
@@ -554,6 +555,7 @@ impl ConnectionRegistryHandle {
                 Some(Credentials::Token(token)) => {
                     token.for_host(&host).map_err(|err| {
                         ApiError::credentials_with_source(
+                            &origin,
                             None,
                             ClientCredentialsError::HostMismatch(err),
                             format!("token not allowed for host '{host}'"),
@@ -569,6 +571,7 @@ impl ConnectionRegistryHandle {
                     if let Ok(Some(c)) = re_auth::oauth::load_credentials() {
                         c.access_token().jwt().for_host(&host).map_err(|err| {
                             ApiError::credentials_with_source(
+                                &origin,
                                 None,
                                 ClientCredentialsError::HostMismatch(err),
                                 format!("stored token not allowed for host '{host}'"),
@@ -633,12 +636,14 @@ impl ConnectionRegistryHandle {
                         // Anonymous user without read access — treat as a credentials error
                         // so the auth flow is triggered.
                         return Err(ApiError::credentials_with_source(
+                            &origin,
                             trace_id,
                             ClientCredentialsError::NotAuthorized,
                             "the server requires authentication for read access",
                         ));
                     }
                     return Err(ApiError::permission_denied(
+                        &origin,
                         trace_id,
                         "the server reports that you do not have read access",
                     ));
@@ -656,6 +661,7 @@ impl ConnectionRegistryHandle {
                 let trace_id = crate::extract_trace_id(err.metadata());
                 if let Some(credentials) = credentials {
                     Err(ApiError::credentials_with_source(
+                        &origin,
                         trace_id,
                         ClientCredentialsError::UnauthenticatedBadToken {
                             status: err.into(),
@@ -665,6 +671,7 @@ impl ConnectionRegistryHandle {
                     ))
                 } else {
                     Err(ApiError::credentials_with_source(
+                        &origin,
                         trace_id,
                         ClientCredentialsError::UnauthenticatedMissingToken(err.into()),
                         "unauthenticated: missing token",
@@ -679,6 +686,7 @@ impl ConnectionRegistryHandle {
                     match cred_error {
                         CredentialsProviderError::SessionExpired => {
                             Err(ApiError::credentials_with_source(
+                                &origin,
                                 None,
                                 ClientCredentialsError::SessionExpired,
                                 "session expired",
@@ -686,6 +694,7 @@ impl ConnectionRegistryHandle {
                         }
                         CredentialsProviderError::Custom(_) => {
                             Err(ApiError::credentials_with_source(
+                                &origin,
                                 None,
                                 ClientCredentialsError::RefreshError(err.into()),
                                 "refreshing credentials",
@@ -693,7 +702,11 @@ impl ConnectionRegistryHandle {
                         }
                     }
                 } else {
-                    Err(ApiError::tonic(err, "verifying connection to server"))
+                    Err(ApiError::tonic(
+                        &origin,
+                        err,
+                        "verifying connection to server",
+                    ))
                 }
             }
         }

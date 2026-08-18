@@ -336,7 +336,7 @@ impl App {
                     }
                 };
 
-                connection_registry.with_internal((catalog.origin, catalog.connection))
+                connection_registry.with_internal(catalog.connection)
             } else {
                 connection_registry
             }

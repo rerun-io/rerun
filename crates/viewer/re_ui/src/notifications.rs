@@ -4,8 +4,8 @@
 //! they're first created and in the notification panel.
 //!
 //! ## Special cased text
-//! - If a notifications text contains [`re_error::DETAILS_SEPARATOR`] the section after that
-//!   will be displayed inside a collapsible details header.
+//! - If a notifications text has a details section (see [`re_error::split_details_joined`]), that
+//!   section will be displayed inside a collapsible details header.
 //! - URLs in notification text are rendered as inline clickable links.
 
 use std::time::Duration;
@@ -181,8 +181,8 @@ impl Notification {
 
     /// Set the structured key-value fields, shown one `key: value` per line.
     ///
-    /// Field values containing [`re_error::DETAILS_SEPARATOR`] are split: the part after the
-    /// separator is moved into the collapsible details section. This matters e.g. for
+    /// Field values with a details section (see [`re_error::split_details_joined`]) are split: that
+    /// section is moved into the collapsible details section. This matters e.g. for
     /// `#[tracing::instrument(err)]`, which reports the whole error — details and all — as an
     /// `error` field.
     pub fn with_fields(mut self, fields: Vec<(&'static str, re_log::FieldValue)>) -> Self {
@@ -293,14 +293,14 @@ fn label_with_inline_links(ui: &mut egui::Ui, text: &str) {
     });
 }
 
-/// Split a field value on [`re_error::DETAILS_SEPARATOR`], returning the value with the details
-/// removed, plus the details themselves (if any).
+/// Split a field value with [`re_error::split_details_joined`], returning the value with the
+/// details removed, plus the details themselves (if any).
 fn split_field_details(value: re_log::FieldValue) -> (re_log::FieldValue, Option<String>) {
     use re_log::FieldValue;
 
     fn split(text: &str) -> Option<(String, String)> {
-        let (summary, details) = re_error::split_details(text);
-        details.map(|details| (summary.trim_end().to_owned(), details.to_owned()))
+        let (summary, details) = re_error::split_details_joined(text);
+        details.map(|details| (summary.to_owned(), details))
     }
 
     let split = match &value {
@@ -365,8 +365,8 @@ impl NotificationUi {
     /// based on that log.
     ///
     /// ## Special cased text
-    /// - If a notifications text contains [`re_error::DETAILS_SEPARATOR`] the section after that
-    ///   will be displayed inside a collapsible details header.
+    /// - If a notifications text has a details section (see [`re_error::split_details_joined`]), that
+    ///   section will be displayed inside a collapsible details header.
     pub fn add_log(&mut self, log_msg: re_log::LogMsg) {
         let re_log::LogMsg {
             level,
@@ -376,7 +376,7 @@ impl NotificationUi {
         } = log_msg;
 
         if is_relevant(&target, level) {
-            let (summary, details) = re_error::split_details(&message);
+            let (summary, details) = re_error::split_details_joined(&message);
 
             let mut notification = Notification::new(level.into(), summary);
 

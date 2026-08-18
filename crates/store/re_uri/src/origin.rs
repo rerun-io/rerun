@@ -30,6 +30,25 @@ impl SizeBytes for Origin {
 }
 
 impl Origin {
+    /// `rerun+http://127.0.0.1:{port}`
+    pub fn http_local_host(port: u16) -> Self {
+        Self::from_scheme_and_socket_addr(
+            Scheme::RerunHttp,
+            SocketAddr::from((std::net::Ipv4Addr::LOCALHOST, port)),
+        )
+    }
+
+    /// A dummy origin, for tests that need one but don't connect to anything.
+    ///
+    /// Should only be used in tests and examples.
+    pub fn test() -> Self {
+        Self {
+            scheme: Scheme::RerunHttps,
+            host: url::Host::Domain("example.com".to_owned()),
+            port: 443,
+        }
+    }
+
     pub fn from_scheme_and_socket_addr(scheme: Scheme, socket_addr: SocketAddr) -> Self {
         Self {
             scheme,

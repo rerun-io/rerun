@@ -29,6 +29,7 @@ pub struct SegmentRegistrationResult {
 
 /// Decode a `/RegisterWithDataset` response payload into task descriptors.
 pub(crate) fn parse_task_descriptors(
+    origin: &re_uri::Origin,
     trace_id: Option<TraceId>,
     data: Option<DataframePart>,
 ) -> ApiResult<Vec<RegisterWithDatasetTaskDescriptor>> {
@@ -38,6 +39,7 @@ pub(crate) fn parse_task_descriptors(
         .ok_or_else(|| {
             let err = missing_field!(RegisterWithDatasetResponse, "data");
             ApiError::deserialization_with_source(
+                origin,
                 trace_id,
                 err,
                 "missing field in /RegisterWithDataset response",
@@ -46,6 +48,7 @@ pub(crate) fn parse_task_descriptors(
         .try_into()
         .map_err(|err| {
             ApiError::deserialization_with_source(
+                origin,
                 trace_id,
                 err,
                 "failed decoding /RegisterWithDataset response",
@@ -60,12 +63,18 @@ pub(crate) fn parse_task_descriptors(
         rerun_storage_url,
         rerun_task_id,
     } = RegisterWithDatasetDataframe::try_from(response).map_err(|err| {
-        ApiError::deserialization_quiver_from(trace_id, err, "/RegisterWithDataset response")
+        ApiError::deserialization_quiver_from(
+            origin,
+            trace_id,
+            err,
+            "/RegisterWithDataset response",
+        )
     })?;
 
     let segment_types = DataSourceKind::many_from_arrow(rerun_segment_type.as_arrow().as_ref())
         .map_err(|err| {
             ApiError::deserialization_with_source(
+                origin,
                 trace_id,
                 err,
                 "failed parsing /RegisterWithDataset response",
@@ -87,6 +96,7 @@ pub(crate) fn parse_task_descriptors(
                 segment_type,
                 storage_url: url::Url::parse(&storage_url).map_err(|err| {
                     ApiError::deserialization_with_source(
+                        origin,
                         trace_id,
                         TypeConversionError::UrlParseError(err),
                         "failed to parse /RegisterWithDataset response",
@@ -109,51 +119,58 @@ struct TaskCompletion {
 fn task_completion_stream(
     responses: ApiResponseStream<re_protos::cloud::v1alpha1::QueryTasksOnCompletionResponse>,
 ) -> ApiResponseStream<TaskCompletion> {
+    let origin = responses.origin().clone();
     let query_trace_id = responses.trace_id();
-    let stream = responses.flat_map(move |response| {
-        re_tracing::profile_scope!("decode_task_completions");
+    let stream = responses.flat_map({
+        let origin = origin.clone();
+        move |response| {
+            let origin = origin.clone();
+            re_tracing::profile_scope!("decode_task_completions");
 
-        let completions = (|| {
-            let response: re_protos::cloud::v1alpha1::ext::QueryTasksOnCompletionResponse =
-                response?.try_into().map_err(|err| {
-                    ApiError::deserialization_with_source(
+            let completions = (|| {
+                let response: re_protos::cloud::v1alpha1::ext::QueryTasksOnCompletionResponse =
+                    response?.try_into().map_err(|err| {
+                        ApiError::deserialization_with_source(
+                            &origin,
+                            query_trace_id,
+                            err,
+                            "failed decoding /QueryTasksOnCompletion response",
+                        )
+                    })?;
+                let on_err = |err| {
+                    ApiError::deserialization_quiver_from(
+                        &origin,
                         query_trace_id,
                         err,
-                        "failed decoding /QueryTasksOnCompletion response",
+                        "/QueryTasksOnCompletion response",
                     )
-                })?;
-            let on_err = |err| {
-                ApiError::deserialization_quiver_from(
-                    query_trace_id,
-                    err,
-                    "/QueryTasksOnCompletion response",
-                )
-            };
-            let task_ids = QueryTasksDataframe::COLUMN_TASK_ID
-                .extract(&response.data)
-                .map_err(&on_err)?;
-            let statuses = QueryTasksDataframe::COLUMN_EXEC_STATUS
-                .extract(&response.data)
-                .map_err(&on_err)?;
-            let messages = QueryTasksDataframe::COLUMN_MSGS
-                .extract(&response.data)
-                .map_err(on_err)?;
+                };
+                let task_ids = QueryTasksDataframe::COLUMN_TASK_ID
+                    .extract(&response.data)
+                    .map_err(&on_err)?;
+                let statuses = QueryTasksDataframe::COLUMN_EXEC_STATUS
+                    .extract(&response.data)
+                    .map_err(&on_err)?;
+                let messages = QueryTasksDataframe::COLUMN_MSGS
+                    .extract(&response.data)
+                    .map_err(on_err)?;
 
-            Ok(itertools::izip!(&task_ids, &statuses, &messages)
-                .map(|(task_id, status, message)| TaskCompletion {
-                    task_id: task_id.to_owned(),
-                    status: status.to_owned(),
-                    message: message.map(ToOwned::to_owned),
-                })
-                .map(Ok)
-                .collect())
-        })()
-        .unwrap_or_else(|err| vec![Err(err)]);
+                Ok(itertools::izip!(&task_ids, &statuses, &messages)
+                    .map(|(task_id, status, message)| TaskCompletion {
+                        task_id: task_id.to_owned(),
+                        status: status.to_owned(),
+                        message: message.map(ToOwned::to_owned),
+                    })
+                    .map(Ok)
+                    .collect())
+            })()
+            .unwrap_or_else(|err| vec![Err(err)]);
 
-        tokio_stream::iter(completions)
+            tokio_stream::iter(completions)
+        }
     });
 
-    ApiResponseStream::new(stream, query_trace_id)
+    ApiResponseStream::new(origin, stream, query_trace_id)
 }
 
 /// A segment result paired with its position in the original descriptor list.
@@ -241,7 +258,11 @@ impl RegistrationHandle {
     ) -> ApiResult<ApiResponseStream<IndexedRegistrationResult>> {
         if self.descriptors().is_empty() {
             // No tasks were run, so we also don't need a trace id.
-            return Ok(ApiResponseStream::new(tokio_stream::empty(), None));
+            return Ok(ApiResponseStream::new(
+                self.connection.origin().clone(),
+                tokio_stream::empty(),
+                None,
+            ));
         }
 
         let responses = self
@@ -251,15 +272,20 @@ impl RegistrationHandle {
             .query_tasks_on_completion(self.task_ids(), timeout)
             .await?;
         let query_trace_id = responses.trace_id();
+        let origin = self.connection.origin().clone();
         let registration = self.inner.clone();
         let stream = task_completion_stream(responses).flat_map(move |completion| {
-            let results = completion_results(&registration, completion)
+            let results = completion_results(&origin, &registration, completion)
                 .into_iter()
                 .map(move |result| result.map_err(|err| err.with_trace_id(query_trace_id)));
             tokio_stream::iter(results)
         });
 
-        Ok(ApiResponseStream::new(stream, query_trace_id))
+        Ok(ApiResponseStream::new(
+            self.connection.origin().clone(),
+            stream,
+            query_trace_id,
+        ))
     }
 
     /// Stream segment registration results as their tasks complete.
@@ -271,6 +297,7 @@ impl RegistrationHandle {
         let results = self.indexed_results(timeout).await?;
         let query_trace_id = results.trace_id();
         Ok(ApiResponseStream::new(
+            self.connection.origin().clone(),
             results.map(|result| result.map(|result| result.result)),
             query_trace_id,
         ))
@@ -348,15 +375,19 @@ impl RegistrationHandle {
             return Ok(segment_ids);
         }
 
-        Err(ApiError::invalid_arguments(format!(
-            "Registration failed.{}\n\nThe following segments failed:\n{}",
-            format_trace_ids(self.trace_id(), query_trace_id),
-            errors.join("\n")
-        )))
+        Err(ApiError::invalid_arguments(
+            &self.connection.origin().clone(),
+            format!(
+                "Registration failed.{}\n\nThe following segments failed:\n{}",
+                format_trace_ids(self.trace_id(), query_trace_id),
+                errors.join("\n")
+            ),
+        ))
     }
 }
 
 fn completion_results(
+    origin: &re_uri::Origin,
     registration: &Registration,
     completion: ApiResult<TaskCompletion>,
 ) -> Vec<ApiResult<IndexedRegistrationResult>> {
@@ -373,6 +404,7 @@ fn completion_results(
     let task_id = TaskId { id: task_id };
     let Some(indices) = registration.descriptor_indices_by_task_id.get(&task_id) else {
         return vec![Err(ApiError::with_kind_and_source(
+            origin,
             ApiErrorKind::InvalidServer,
             None,
             std::io::Error::other("server returned an unrequested registration task"),
@@ -439,9 +471,7 @@ mod tests {
     fn connection_handle() -> ConnectionHandle {
         ConnectionHandle::new(
             ConnectionRegistry::new_without_stored_credentials(),
-            "rerun+http://127.0.0.1:1"
-                .parse()
-                .expect("test origin is valid"),
+            re_uri::Origin::http_local_host(1),
         )
     }
 
@@ -477,7 +507,11 @@ mod tests {
             [0, 2]
         );
 
-        let results = completion_results(&handle.inner, Ok(completion("A", "success", None)));
+        let results = completion_results(
+            &re_uri::Origin::test(),
+            &handle.inner,
+            Ok(completion("A", "success", None)),
+        );
         let indices = results
             .into_iter()
             .map(|result| result.expect("completion is valid").descriptor_index)
@@ -489,12 +523,21 @@ mod tests {
     async fn wait_preserves_descriptor_order() {
         let handle = handle();
         let results = [
-            completion_results(&handle.inner, Ok(completion("B", "success", None))),
-            completion_results(&handle.inner, Ok(completion("A", "success", None))),
+            completion_results(
+                &re_uri::Origin::test(),
+                &handle.inner,
+                Ok(completion("B", "success", None)),
+            ),
+            completion_results(
+                &re_uri::Origin::test(),
+                &handle.inner,
+                Ok(completion("A", "success", None)),
+            ),
         ]
         .into_iter()
         .flatten();
-        let stream = ApiResponseStream::new(tokio_stream::iter(results), None);
+        let stream =
+            ApiResponseStream::new(re_uri::Origin::test(), tokio_stream::iter(results), None);
 
         assert_eq!(
             handle
@@ -538,7 +581,11 @@ mod tests {
     )]
     async fn debug_asserts_missing_completion() {
         handle()
-            .collect_results(ApiResponseStream::new(tokio_stream::empty(), None))
+            .collect_results(ApiResponseStream::new(
+                re_uri::Origin::test(),
+                tokio_stream::empty(),
+                None,
+            ))
             .await
             .expect("a cleanly exhausted stream succeeds");
     }
@@ -546,10 +593,14 @@ mod tests {
     #[test]
     fn rejects_unrequested_task_completion() {
         let handle = handle();
-        let err = completion_results(&handle.inner, Ok(completion("unknown", "success", None)))
-            .pop()
-            .expect("completion produces a result")
-            .expect_err("unrequested task must fail");
+        let err = completion_results(
+            &re_uri::Origin::test(),
+            &handle.inner,
+            Ok(completion("unknown", "success", None)),
+        )
+        .pop()
+        .expect("completion produces a result")
+        .expect_err("unrequested task must fail");
         assert!(err.message.contains("unrequested task ID 'unknown'"));
     }
 

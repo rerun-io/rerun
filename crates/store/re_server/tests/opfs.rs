@@ -50,10 +50,10 @@ async fn register_rrd_without_footer_from_file_url_in_opfs() {
 /// The placeholder origin is never dialed; requests go straight to `service`.
 fn in_process_connection<T: RerunCloudService>(service: Arc<T>) -> ConnectionHandle {
     let registry = ConnectionRegistry::new_without_stored_credentials();
-    let origin = "rerun+http://127.0.0.1:1"
-        .parse()
-        .expect("test origin is valid");
-    registry.set_internal((origin, Connection::from_service(service)));
+    registry.set_internal(Connection::from_service(
+        re_uri::Origin::http_local_host(1),
+        service,
+    ));
     registry
         .internal_connection_handle()
         .expect("internal connection is configured")

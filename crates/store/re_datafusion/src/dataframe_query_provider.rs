@@ -737,6 +737,7 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
                 .try_collect()
                 .map_err(|err| {
                     ApiError::deserialization_with_source(
+                        self.client.origin(),
                         None,
                         err,
                         "concatenating chunk-info batches per segment",
@@ -769,6 +770,7 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
         let cpu_join_handle = Some(
             CpuRuntime::try_get()?.handle().spawn(
                 chunk_store_cpu_worker_thread(
+                    client.origin().clone(),
                     chunk_rx,
                     batches_tx,
                     query_expression,

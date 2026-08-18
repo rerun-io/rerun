@@ -45,6 +45,7 @@ const FLUSH_BATCH_BYTES: usize = DEFAULT_BATCH_BYTES as usize;
 
 #[tracing::instrument(level = "trace", skip_all, fields(segment_id = %segment_id))]
 async fn send_next_row_batch(
+    origin: &re_uri::Origin,
     query_handle: &mut QueryHandle<StorageEngine>,
     segment_id: &SegmentId,
     target_schema: &Arc<Schema>,
@@ -78,6 +79,7 @@ async fn send_next_row_batch(
     }
     if num_fields != next.columns.len() {
         return Err(ApiError::internal(
+            origin,
             "Unexpected number of columns returned from query",
         ));
     }
@@ -106,6 +108,7 @@ async fn send_next_row_batch(
         )
         .map_err(|err| {
             ApiError::deserialization_with_source(
+                origin,
                 None,
                 err,
                 "building output record batch from chunk-store rows",
@@ -113,7 +116,7 @@ async fn send_next_row_batch(
         })?;
 
         align_record_batch_to_schema(&batch, target_schema).map_err(|err| {
-            ApiError::internal_with_source(None, err, "DataFusion schema mismatch error")
+            ApiError::internal_with_source(origin, None, err, "DataFusion schema mismatch error")
         })?
     };
 
@@ -136,10 +139,9 @@ async fn send_next_row_batch(
 
     *rows_sent += output_batch.num_rows();
 
-    output_channel
-        .send(output_batch)
-        .await
-        .map_err(|err| ApiError::internal_with_source(None, err, "output channel closed"))?;
+    output_channel.send(output_batch).await.map_err(|err| {
+        ApiError::internal_with_source(origin, None, err, "output channel closed")
+    })?;
 
     Ok(Some(()))
 }
@@ -216,6 +218,9 @@ pub(super) enum CpuWorkerMsg {
 /// build it once in [`Self::new`] and reuse it across every emit cycle,
 /// saving an `Arc::clone` pair per cycle.
 struct CurrentStores {
+    /// The server this query is running against, named in the errors we produce.
+    origin: re_uri::Origin,
+
     segment_id: SegmentId,
     store: ChunkStoreHandle,
 
@@ -304,6 +309,7 @@ struct CurrentStores {
 impl CurrentStores {
     #[tracing::instrument(level = "debug", skip_all, fields(segment_id = %segment_id))]
     fn new(
+        origin: re_uri::Origin,
         segment_id: SegmentId,
         query_expression: &QueryExpression,
         index_values: &IndexValuesMap,
@@ -327,6 +333,7 @@ impl CurrentStores {
         let filtered_index_timeline = individual_query.filtered_index;
 
         Self {
+            origin,
             segment_id,
             store,
             engine,
@@ -587,6 +594,7 @@ impl CurrentStores {
 
         let mut handle: QueryHandle<StorageEngine> = self.engine.query(q);
         while send_next_row_batch(
+            &self.origin,
             &mut handle,
             &self.segment_id,
             projected_schema,
@@ -730,6 +738,7 @@ impl Drop for CurrentStores {
 // TODO(#10781) - support for sending intermediate results/chunks
 #[instrument(level = "info", skip_all)]
 pub(super) async fn chunk_store_cpu_worker_thread(
+    origin: re_uri::Origin,
     mut input_channel: Receiver<ApiResult<CpuWorkerMsg>>,
     output_channel: Sender<RecordBatch>,
     query_expression: QueryExpression,
@@ -833,6 +842,7 @@ pub(super) async fn chunk_store_cpu_worker_thread(
                     std::collections::hash_map::Entry::Vacant(e) => {
                         emit_order.push_back(segment_id.clone());
                         e.insert(CurrentStores::new(
+                            origin.clone(),
                             segment_id.clone(),
                             &query_expression,
                             &index_values,
@@ -904,6 +914,7 @@ pub(super) async fn chunk_store_cpu_worker_thread(
                     std::collections::hash_map::Entry::Vacant(e) => {
                         emit_order.push_back(segment_id.clone());
                         e.insert(CurrentStores::new(
+                            origin.clone(),
                             segment_id.clone(),
                             &query_expression,
                             &index_values,
@@ -990,6 +1001,7 @@ pub(super) async fn chunk_store_cpu_worker_thread(
                     std::collections::hash_map::Entry::Vacant(e) => {
                         emit_order.push_back(segment_id.clone());
                         e.insert(CurrentStores::new(
+                            origin.clone(),
                             segment_id.clone(),
                             &query_expression,
                             &index_values,
@@ -1021,6 +1033,7 @@ pub(super) async fn chunk_store_cpu_worker_thread(
                         let chunk = Arc::new(chunk);
                         stores.store.write().insert_chunk(&chunk).map_err(|err| {
                             ApiError::internal_with_source(
+                                &origin,
                                 None,
                                 err,
                                 "inserting chunk into in-memory store",
@@ -1224,6 +1237,7 @@ mod tests {
         assert!(!parked.is_finished());
 
         let mut stores = CurrentStores::new(
+            re_uri::Origin::test(),
             ready_segment,
             &QueryExpression::default(),
             &None,
@@ -1245,6 +1259,7 @@ mod tests {
 
         {
             let _stores = CurrentStores::new(
+                re_uri::Origin::test(),
                 SegmentId::from("drop-refund-test"),
                 &QueryExpression::default(),
                 &None,
@@ -1268,6 +1283,7 @@ mod tests {
     async fn test_current_stores_is_complete_gates_on_expected_chunks() {
         let budget = Arc::new(PipelineBudget::new(1 << 30, 1));
         let mut stores = CurrentStores::new(
+            re_uri::Origin::test(),
             SegmentId::from("complete-gate-test"),
             &QueryExpression::default(),
             &None,
@@ -1289,6 +1305,7 @@ mod tests {
         // Announcement matches a count we haven't yet reached → not
         // complete; the missing chunks will land later.
         let mut other = CurrentStores::new(
+            re_uri::Origin::test(),
             SegmentId::from("complete-gate-other"),
             &QueryExpression::default(),
             &None,
@@ -1409,6 +1426,7 @@ mod tests {
         let budget = Arc::new(PipelineBudget::new(1 << 30, 4));
         let schema = Arc::new(Schema::empty());
         let worker = chunk_store_cpu_worker_thread(
+            re_uri::Origin::test(),
             input_rx,
             output_tx,
             QueryExpression::default(),
@@ -1561,6 +1579,7 @@ mod tests {
         ready_pending.insert(
             SegmentId::from("B"),
             CurrentStores::new(
+                re_uri::Origin::test(),
                 SegmentId::from("B"),
                 &QueryExpression::default(),
                 &None,
@@ -1570,6 +1589,7 @@ mod tests {
         ready_pending.insert(
             SegmentId::from("C"),
             CurrentStores::new(
+                re_uri::Origin::test(),
                 SegmentId::from("C"),
                 &QueryExpression::default(),
                 &None,
@@ -1601,6 +1621,7 @@ mod tests {
         ready_pending.insert(
             SegmentId::from("A"),
             CurrentStores::new(
+                re_uri::Origin::test(),
                 SegmentId::from("A"),
                 &QueryExpression::default(),
                 &None,
@@ -1704,6 +1725,7 @@ mod tests {
             ..Default::default()
         };
         let mut stores = CurrentStores::new(
+            re_uri::Origin::test(),
             SegmentId::from(segment_id),
             &query_expression,
             &None,
@@ -1858,6 +1880,7 @@ mod tests {
         let budget = Arc::new(PipelineBudget::new(1 << 30, 1));
         // Construct without a filtered_index timeline.
         let mut stores = CurrentStores::new(
+            re_uri::Origin::test(),
             SegmentId::from("seg"),
             &QueryExpression::default(),
             &None,
@@ -1894,6 +1917,7 @@ mod tests {
     async fn test_flush_incremental_fast_skip_without_manifest() {
         let budget = Arc::new(PipelineBudget::new(1 << 30, 1));
         let mut stores = CurrentStores::new(
+            re_uri::Origin::test(),
             SegmentId::from("seg"),
             &QueryExpression::default(),
             &None,
@@ -2072,6 +2096,7 @@ mod tests {
         use re_log_types::EntityPath;
         let budget = Arc::new(PipelineBudget::new(1 << 30, 1));
         let mut stores = CurrentStores::new(
+            re_uri::Origin::test(),
             SegmentId::from("seg"),
             &QueryExpression {
                 filtered_index: Some(TimelineName::from("frame")),
@@ -2106,6 +2131,7 @@ mod tests {
     fn test_record_arrival_tracks_time_max_without_manifest() {
         let budget = Arc::new(PipelineBudget::new(1 << 30, 1));
         let mut stores = CurrentStores::new(
+            re_uri::Origin::test(),
             SegmentId::from("seg"),
             &QueryExpression {
                 filtered_index: Some(TimelineName::from("frame")),
@@ -2139,6 +2165,7 @@ mod tests {
     ) -> (ApiResult<()>, usize) {
         let schema = Arc::new(Schema::empty());
         let worker = chunk_store_cpu_worker_thread(
+            re_uri::Origin::test(),
             input_rx,
             output_tx,
             QueryExpression::default(),
@@ -2285,6 +2312,7 @@ mod tests {
 
         let schema = Arc::new(Schema::empty());
         let result = chunk_store_cpu_worker_thread(
+            re_uri::Origin::test(),
             input_rx,
             output_tx,
             QueryExpression::default(),
@@ -2336,6 +2364,7 @@ mod tests {
 
         // Spawn the worker as a detached task; dropping the `JoinHandle` matches `execute`'s detach behavior.
         let join = tokio::spawn(chunk_store_cpu_worker_thread(
+            re_uri::Origin::test(),
             input_rx,
             output_tx,
             QueryExpression::default(),

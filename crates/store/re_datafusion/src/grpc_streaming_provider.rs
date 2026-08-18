@@ -56,6 +56,9 @@ pub trait GrpcStreamToTable:
 {
     type GrpcStreamData;
 
+    /// The server this provider talks to, named in the errors it produces.
+    fn origin(&self) -> &re_uri::Origin;
+
     async fn fetch_schema(&mut self) -> ApiResult<SchemaRef>;
 
     fn process_response(
@@ -266,6 +269,7 @@ impl GrpcStream {
         T: GrpcStreamToTable + Send + 'static,
     {
         let expected_schema = Arc::clone(schema);
+        let origin = client.origin().clone();
         let adapted_stream = Box::pin(async_stream::try_stream! {
             // Retry only the *opening* of the stream, never the consume loop below.
             //
@@ -304,7 +308,7 @@ impl GrpcStream {
                 }
                 let processed = client
                     .process_response(msg, &params)
-                    .and_then(|batch| normalize_batch(batch, &expected_schema))
+                    .and_then(|batch| normalize_batch(&origin, batch, &expected_schema))
                     .map_err(|err| {
                         if let Some(analytics) = analytics.as_ref() {
                             analytics.record_error(QueryErrorKind::Decode);
@@ -332,7 +336,11 @@ impl GrpcStream {
     }
 }
 
-fn normalize_batch(batch: RecordBatch, expected_schema: &SchemaRef) -> ApiResult<RecordBatch> {
+fn normalize_batch(
+    origin: &re_uri::Origin,
+    batch: RecordBatch,
+    expected_schema: &SchemaRef,
+) -> ApiResult<RecordBatch> {
     if batch.schema_ref() == expected_schema {
         return Ok(batch);
     }
@@ -349,6 +357,7 @@ fn normalize_batch(batch: RecordBatch, expected_schema: &SchemaRef) -> ApiResult
                 .filter(|(_, field)| field.name() == expected_field.name());
             let (index, actual_field) = matching_columns.next().ok_or_else(|| {
                 re_redap_client::ApiError::deserialization(
+                    origin,
                     None,
                     format!(
                         "response batch is missing projected column '{}'",
@@ -358,6 +367,7 @@ fn normalize_batch(batch: RecordBatch, expected_schema: &SchemaRef) -> ApiResult
             })?;
             if matching_columns.next().is_some() {
                 return Err(re_redap_client::ApiError::deserialization(
+                    origin,
                     None,
                     format!(
                         "response batch contains projected column '{}' more than once",
@@ -367,6 +377,7 @@ fn normalize_batch(batch: RecordBatch, expected_schema: &SchemaRef) -> ApiResult
             }
             if actual_field.data_type() != expected_field.data_type() {
                 return Err(re_redap_client::ApiError::deserialization(
+                    origin,
                     None,
                     format!(
                         "response column '{}' has datatype {}, expected {}",
@@ -387,6 +398,7 @@ fn normalize_batch(batch: RecordBatch, expected_schema: &SchemaRef) -> ApiResult
     )
     .map_err(|err| {
         re_redap_client::ApiError::deserialization_with_source(
+            origin,
             None,
             err,
             "failed to normalize projected response batch",
@@ -438,6 +450,8 @@ mod table_query_pipeline_tests {
     /// fail at each stage of the pipeline.
     #[derive(Debug, Clone)]
     struct FakeProvider {
+        origin: Origin,
+
         /// Items the stream yields, consumed on the first `send_streaming_request` call.
         /// `Ok(v)` ⇒ yields a message that decodes to a single-row batch with `v`.
         /// `Err(_)` ⇒ yields a stream-level error (simulates a mid-stream gRPC failure).
@@ -455,6 +469,7 @@ mod table_query_pipeline_tests {
     impl FakeProvider {
         fn new(items: Vec<ApiResult<u32>>) -> Self {
             Self {
+                origin: Origin::test(),
                 items: Arc::new(Mutex::new(Some(items))),
                 fail_send_request: false,
                 fail_decode: false,
@@ -470,6 +485,7 @@ mod table_query_pipeline_tests {
 
         fn fail_send_request() -> Self {
             Self {
+                origin: Origin::test(),
                 items: Arc::new(Mutex::new(Some(vec![]))),
                 fail_send_request: true,
                 fail_decode: false,
@@ -480,6 +496,7 @@ mod table_query_pipeline_tests {
 
         fn fail_decode(items: Vec<u32>) -> Self {
             Self {
+                origin: Origin::test(),
                 items: Arc::new(Mutex::new(Some(
                     items.into_iter().map(Ok).collect::<Vec<_>>(),
                 ))),
@@ -493,6 +510,7 @@ mod table_query_pipeline_tests {
         /// Reject the first `n` opens with `ResourceExhausted`, then stream `items`.
         fn resource_exhausted_then(n: usize, items: Vec<u32>) -> Self {
             Self {
+                origin: Origin::test(),
                 items: Arc::new(Mutex::new(Some(
                     items.into_iter().map(Ok).collect::<Vec<_>>(),
                 ))),
@@ -539,7 +557,8 @@ mod table_query_pipeline_tests {
             HashMap::from([("source".to_owned(), "catalog".to_owned())]),
         ));
 
-        let normalized = normalize_batch(projection_test_batch(), &expected_schema).unwrap();
+        let normalized =
+            normalize_batch(&Origin::test(), projection_test_batch(), &expected_schema).unwrap();
 
         assert_eq!(normalized.schema_ref(), &expected_schema);
         assert_eq!(normalized.num_rows(), 2);
@@ -567,7 +586,8 @@ mod table_query_pipeline_tests {
     fn normalize_batch_preserves_row_count_for_zero_column_projection() {
         let expected_schema = Arc::new(Schema::empty());
 
-        let normalized = normalize_batch(projection_test_batch(), &expected_schema).unwrap();
+        let normalized =
+            normalize_batch(&Origin::test(), projection_test_batch(), &expected_schema).unwrap();
 
         assert_eq!(normalized.num_columns(), 0);
         assert_eq!(normalized.num_rows(), 2);
@@ -580,7 +600,8 @@ mod table_query_pipeline_tests {
             HashMap::default(),
         ));
 
-        let err = normalize_batch(projection_test_batch(), &expected_schema).unwrap_err();
+        let err = normalize_batch(&Origin::test(), projection_test_batch(), &expected_schema)
+            .unwrap_err();
 
         assert!(
             err.to_string()
@@ -595,7 +616,8 @@ mod table_query_pipeline_tests {
             HashMap::default(),
         ));
 
-        let err = normalize_batch(projection_test_batch(), &expected_schema).unwrap_err();
+        let err = normalize_batch(&Origin::test(), projection_test_batch(), &expected_schema)
+            .unwrap_err();
 
         assert!(
             err.to_string()
@@ -605,12 +627,17 @@ mod table_query_pipeline_tests {
 
     #[derive(Debug, Clone)]
     struct ProjectionProvider {
+        origin: Origin,
         requested_columns: Arc<Mutex<Vec<Option<Vec<String>>>>>,
     }
 
     #[async_trait]
     impl GrpcStreamToTable for ProjectionProvider {
         type GrpcStreamData = RecordBatch;
+
+        fn origin(&self) -> &Origin {
+            &self.origin
+        }
 
         async fn fetch_schema(&mut self) -> ApiResult<SchemaRef> {
             Ok(projection_test_batch().schema())
@@ -632,6 +659,7 @@ mod table_query_pipeline_tests {
                 .lock()
                 .push(params.projected_columns.as_deref().map(<[String]>::to_vec));
             Ok(ApiResponseStream::new(
+                Origin::test(),
                 futures_util::stream::once(async { Ok(projection_test_batch()) }),
                 None,
             ))
@@ -642,6 +670,7 @@ mod table_query_pipeline_tests {
     async fn scan_pushes_projection_and_normalizes_full_response() {
         let requested_columns = Arc::new(Mutex::new(Vec::new()));
         let provider = GrpcStreamProvider::prepare(ProjectionProvider {
+            origin: Origin::test(),
             requested_columns: Arc::clone(&requested_columns),
         })
         .await
@@ -671,6 +700,7 @@ mod table_query_pipeline_tests {
     async fn scan_preserves_rows_for_zero_column_projection() {
         let requested_columns = Arc::new(Mutex::new(Vec::new()));
         let provider = GrpcStreamProvider::prepare(ProjectionProvider {
+            origin: Origin::test(),
             requested_columns: Arc::clone(&requested_columns),
         })
         .await
@@ -696,6 +726,10 @@ mod table_query_pipeline_tests {
     impl GrpcStreamToTable for FakeProvider {
         type GrpcStreamData = u32;
 
+        fn origin(&self) -> &Origin {
+            &self.origin
+        }
+
         async fn fetch_schema(&mut self) -> ApiResult<SchemaRef> {
             Ok(fake_schema())
         }
@@ -706,7 +740,11 @@ mod table_query_pipeline_tests {
             _params: &ScanParams,
         ) -> ApiResult<RecordBatch> {
             if self.fail_decode {
-                return Err(ApiError::deserialization(None, "fake decode error"));
+                return Err(ApiError::deserialization(
+                    &Origin::test(),
+                    None,
+                    "fake decode error",
+                ));
             }
             let arr = UInt32Array::from(vec![response]);
             RecordBatch::try_new_with_options(
@@ -714,7 +752,9 @@ mod table_query_pipeline_tests {
                 vec![Arc::new(arr)],
                 &RecordBatchOptions::new().with_row_count(Some(1)),
             )
-            .map_err(|err| ApiError::internal_with_source(None, err, "build batch"))
+            .map_err(|err| {
+                ApiError::internal_with_source(&Origin::test(), None, err, "build batch")
+            })
         }
 
         async fn send_streaming_request(
@@ -732,16 +772,25 @@ mod table_query_pipeline_tests {
                 self.resource_exhausted_remaining
                     .fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
                 return Err(ApiError::tonic(
+                    &Origin::test(),
                     tonic::Status::resource_exhausted("busy"),
                     "fake",
                 ));
             }
             if self.fail_send_request {
-                return Err(ApiError::deserialization(None, "fake send error"));
+                return Err(ApiError::deserialization(
+                    &Origin::test(),
+                    None,
+                    "fake send error",
+                ));
             }
             let items = self.items.lock().take().unwrap_or_default();
             let stream = futures_util::stream::iter(items);
-            Ok(ApiResponseStream::new(stream, self.trace_id))
+            Ok(ApiResponseStream::new(
+                self.origin.clone(),
+                stream,
+                self.trace_id,
+            ))
         }
     }
 
@@ -875,7 +924,11 @@ mod table_query_pipeline_tests {
     async fn pipeline_records_grpc_fetch_error_on_stream_item_error() {
         let provider = FakeProvider::new(vec![
             Ok(1),
-            Err(ApiError::deserialization(None, "fake mid-stream err")),
+            Err(ApiError::deserialization(
+                &Origin::test(),
+                None,
+                "fake mid-stream err",
+            )),
         ]);
         let pending = make_pending();
         let stream = GrpcStream::execute(

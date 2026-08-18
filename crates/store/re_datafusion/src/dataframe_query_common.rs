@@ -161,6 +161,9 @@ struct FilterCapture {
 /// responses more directly.
 #[async_trait]
 pub trait DataframeClientAPI: std::fmt::Debug + Clone + Send + Sync + Unpin + 'static {
+    /// The server this client talks to, named in the errors it produces.
+    fn origin(&self) -> &re_uri::Origin;
+
     async fn get_dataset_schema(
         &mut self,
         request: tonic::Request<GetDatasetSchemaRequest>,
@@ -181,6 +184,11 @@ pub trait DataframeClientAPI: std::fmt::Debug + Clone + Send + Sync + Unpin + 's
 
 #[async_trait]
 impl DataframeClientAPI for ConnectionClient {
+    fn origin(&self) -> &re_uri::Origin {
+        // The inherent `RedapClient::origin`, not this trait method.
+        Self::origin(self)
+    }
+
     async fn get_dataset_schema(
         &mut self,
         request: tonic::Request<GetDatasetSchemaRequest>,
@@ -223,6 +231,7 @@ impl DataframeQueryTableProvider<ConnectionClient> {
         #[cfg(not(target_arch = "wasm32"))] trace_headers: Option<crate::TraceHeaders>,
         metrics_collectors: Vec<crate::MetricsCollector>,
     ) -> ApiResult<Self> {
+        let origin = connection.origin().clone();
         let connection = connection.connection().await?;
 
         let mut provider = Self::new_from_client(
@@ -242,6 +251,7 @@ impl DataframeQueryTableProvider<ConnectionClient> {
             let async_runtime = AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen()
                 .map_err(|err| {
                     ApiError::internal_with_source(
+                        &origin,
                         None,
                         err,
                         "failed to capture the async runtime for query analytics",
@@ -266,6 +276,8 @@ impl<T: DataframeClientAPI> DataframeQueryTableProvider<T> {
         #[cfg(not(target_arch = "wasm32"))] trace_headers: Option<crate::TraceHeaders>,
         metrics_collectors: Vec<crate::MetricsCollector>,
     ) -> ApiResult<Self> {
+        let origin = client.origin().clone();
+
         // Either use the caller-provided schema or fetch it from the server.
         let (schema, trace_id) = if let Some(schema) = arrow_schema {
             (schema, None)
@@ -274,10 +286,15 @@ impl<T: DataframeClientAPI> DataframeQueryTableProvider<T> {
             let response = client
                 .get_dataset_schema(request)
                 .await
-                .map_err(|err| ApiError::tonic(err, "get_dataset_schema"))?;
+                .map_err(|err| ApiError::tonic(&origin, err, "get_dataset_schema"))?;
             let trace_id = re_redap_client::extract_trace_id(response.metadata());
             let schema = response.into_inner().schema().map_err(|err| {
-                ApiError::deserialization_with_source(trace_id, err, "decoding dataset schema")
+                ApiError::deserialization_with_source(
+                    &origin,
+                    trace_id,
+                    err,
+                    "decoding dataset schema",
+                )
             })?;
             (schema, trace_id)
         };
@@ -285,7 +302,12 @@ impl<T: DataframeClientAPI> DataframeQueryTableProvider<T> {
         let schema = compute_schema_for_query(&schema, query_expression).map_err(|err| {
             // `compute_schema_for_query` fails when the caller-provided query
             // references columns/entity-paths not present in the dataset schema
-            ApiError::invalid_arguments_with_source(trace_id, err, "computing schema for query")
+            ApiError::invalid_arguments_with_source(
+                &origin,
+                trace_id,
+                err,
+                "computing schema for query",
+            )
         })?;
 
         let entity_paths = query_expression
@@ -565,6 +587,7 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
             let mut response_futures = futures::stream::iter(dataset_queries)
                 .map(|dataset_query| {
                     let client = self.client.clone();
+                    let origin = client.origin().clone();
                     let dataset_id = self.dataset_id;
                     async move {
                         // Hold a process-wide permit for the whole open+drain so
@@ -588,13 +611,13 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
                         let response =
                             re_redap_client::with_retry_resource_exhausted("query_dataset", || {
                                 let mut client = client.clone();
+                                let origin = origin.clone();
                                 let request = tonic::Request::new(proto_request.clone())
                                     .with_entry_id(dataset_id);
                                 async move {
-                                    client
-                                        .query_dataset(request)
-                                        .await
-                                        .map_err(|err| ApiError::tonic(err, "query_dataset"))
+                                    client.query_dataset(request).await.map_err(|err| {
+                                        ApiError::tonic(&origin, err, "query_dataset")
+                                    })
                                 }
                             })
                             .await
@@ -613,7 +636,7 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
                             }
 
                             let response = response.map_err(|err| {
-                                ApiError::tonic(err, "query_dataset response stream")
+                                ApiError::tonic(&origin, err, "query_dataset response stream")
                                     .with_trace_id(trace_id)
                                     .into_df_error()
                             })?;
@@ -622,6 +645,7 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
                             };
                             let batch: RecordBatch = dataframe_part.try_into().map_err(|err| {
                                 ApiError::deserialization_with_source(
+                                    &origin,
                                     trace_id,
                                     err,
                                     "decoding query_dataset response batch",

@@ -43,6 +43,7 @@ impl SegmentChunkProvider {
 
         let manifest = Arc::new(RrdManifest::try_new(&raw_manifest).map_err(|err| {
             ApiError::deserialization_with_source(
+                &connection.origin().clone(),
                 None,
                 err,
                 "failed to validate RrdManifest from /GetRrdManifest",

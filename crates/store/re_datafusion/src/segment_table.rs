@@ -56,16 +56,23 @@ impl SegmentTableProvider {
 
 #[async_trait]
 impl GrpcStreamToTable for SegmentTableProvider {
+    fn origin(&self) -> &re_uri::Origin {
+        self.client.origin()
+    }
+
     type GrpcStreamData = ScanSegmentTableResponse;
 
     #[instrument(skip(self), err, parent = &self.parent_span)]
     async fn fetch_schema(&mut self) -> ApiResult<SchemaRef> {
         let mut client = self.client.clone();
+        let origin = client.origin().clone();
         let dataset_id = self.dataset_id;
 
         Ok(Arc::new(
-            make_future_send(async move { client.get_segment_table_schema(dataset_id).await })
-                .await?,
+            make_future_send(origin.clone(), async move {
+                client.get_segment_table_schema(dataset_id).await
+            })
+            .await?,
         ))
     }
 
@@ -92,17 +99,19 @@ impl GrpcStreamToTable for SegmentTableProvider {
         .with_entry_id(self.dataset_id);
 
         let mut client = self.client.clone();
+        let origin = client.origin().clone();
 
-        let response = make_future_send(async move {
+        let response = make_future_send(origin.clone(), async move {
             client
                 .inner()
                 .scan_segment_table(request)
                 .await
-                .map_err(|err| ApiError::tonic(err, "/ScanSegmentTable failed"))
+                .map_err(|err| ApiError::tonic(&origin, err, "/ScanSegmentTable failed"))
         })
         .await?;
 
         Ok(re_redap_client::ApiResponseStream::from_tonic_response(
+            self.origin().clone(),
             response,
             "/ScanSegmentTable",
         ))
@@ -126,11 +135,16 @@ impl GrpcStreamToTable for SegmentTableProvider {
         response
             .data
             .ok_or_else(|| {
-                ApiError::deserialization(None, "DataFrame missing from SegmentTable response")
+                ApiError::deserialization(
+                    self.origin(),
+                    None,
+                    "DataFrame missing from SegmentTable response",
+                )
             })?
             .try_into()
             .map_err(|err: re_protos::TypeConversionError| {
                 ApiError::deserialization_with_source(
+                    self.origin(),
                     None,
                     err,
                     "failed decoding /ScanSegmentTable response",

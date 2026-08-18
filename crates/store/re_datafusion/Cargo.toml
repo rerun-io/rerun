@@ -80,4 +80,5 @@ chrono = { workspace = true, features = ["wasmbind"] }
 
 
 [dev-dependencies]
+re_uri.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "signal"] }

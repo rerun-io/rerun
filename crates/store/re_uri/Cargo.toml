@@ -14,6 +14,9 @@ version.workspace = true
 [lints]
 workspace = true
 
+[features]
+default = []
+
 [dependencies]
 re_byte_size.workspace = true
 re_log.workspace = true
