@@ -1652,6 +1652,68 @@ mod tests {
         harness.snapshot("selection_panel_component_static_overwrite");
     }
 
+    /// Snapshot test for the selection panel when a static named transform component that was
+    /// logged multiple times is selected.
+    ///
+    /// Named transforms are the exception to static overwrite semantics: the store preserves all
+    /// of them, so the panel must not claim that data was overwritten.
+    /// See `re_chunk_store::preserves_static_transforms`, #12853 and RR-4887 for more info.
+    #[test]
+    fn selection_panel_component_static_transform_overwrite_snapshot() {
+        let mut test_context = get_test_context();
+
+        let entity_path = EntityPath::from("tf_static");
+
+        // A single static chunk with multiple transform rows, mirroring how a `/tf_static` MCAP
+        // topic is loaded: one entity carrying one transform per parent/child frame pair.
+        test_context.log_entity(entity_path.clone(), |builder| {
+            builder
+                .with_archetype(
+                    RowId::new(),
+                    TimePoint::STATIC,
+                    &archetypes::Transform3D::default()
+                        .with_parent_frame("world")
+                        .with_child_frame("camera"),
+                )
+                .with_archetype(
+                    RowId::new(),
+                    TimePoint::STATIC,
+                    &archetypes::Transform3D::default()
+                        .with_parent_frame("world")
+                        .with_child_frame("lidar"),
+                )
+                .with_archetype(
+                    RowId::new(),
+                    TimePoint::STATIC,
+                    &archetypes::Transform3D::default()
+                        .with_parent_frame("odom")
+                        .with_child_frame("base_link"),
+                )
+        });
+
+        test_context
+            .selection_state
+            .lock()
+            .set_selection(Item::ComponentPath(re_log_types::ComponentPath {
+                entity_path,
+                component: archetypes::Transform3D::descriptor_child_frame().component,
+            }));
+
+        let viewport_blueprint = ViewportBlueprint::from_db(
+            test_context.active_blueprint(),
+            &LatestAtQuery::latest(blueprint_timeline()),
+        );
+
+        let mut harness = test_context
+            .setup_kittest_for_rendering_ui([400.0, 350.0])
+            .build_ui(|ui| {
+                selection_panel_ui(&test_context, &viewport_blueprint, ui);
+            });
+
+        harness.run();
+        harness.snapshot("selection_panel_component_static_transform_overwrite");
+    }
+
     /// Snapshot test for the selection panel when a static component with additional time information is
     /// selected (which means a user error).
     #[test]

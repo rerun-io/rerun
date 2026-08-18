@@ -74,6 +74,7 @@ pub use self::store_schema::StoreSchema;
 pub use self::subscribers::{
     ChunkStoreSubscriber, ChunkStoreSubscriberHandle, PerStoreChunkSubscriber,
 };
+pub use self::writes::preserves_static_transforms;
 
 pub use self::lazy_store::LazyStore;
 

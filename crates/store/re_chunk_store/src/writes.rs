@@ -32,10 +32,10 @@ use crate::{
 /// transforms over its lifetime.
 ///
 /// See RR-4887 for more info.
-fn is_transform_archetype(archetype: Option<ArchetypeName>) -> bool {
+pub fn preserves_static_transforms(archetype_name: Option<ArchetypeName>) -> bool {
     // Note: these are "named transform" archetypes, aka those which have parent/child frame
     // references
-    archetype.is_some_and(|archetype| {
+    archetype_name.is_some_and(|archetype| {
         archetype == archetypes::Transform3D::name() || archetype == archetypes::Pinhole::name()
     })
 }
@@ -531,7 +531,7 @@ impl ChunkStore {
                     continue;
                 };
 
-                let is_transform = is_transform_archetype(column.descriptor.archetype);
+                let is_transform = preserves_static_transforms(column.descriptor.archetype);
 
                 self.static_chunk_ids_per_entity
                     .entry(chunk.entity_path().clone())
@@ -1637,8 +1637,8 @@ mod tests {
     /// Regression test for RR-4880: `rrd optimize` / `.collect(optimize=…)` lose static transforms.
     ///
     /// Both optimize paths route every chunk through `ChunkStore::insert_chunk`, which applies
-    /// auto-delete shadowed static chunk semantics. See [`is_transform_archetype`] and RR-4887 for
-    /// more info.
+    /// auto-delete shadowed static chunk semantics. See [`preserves_static_transforms`] and RR-4887
+    /// for more info.
     ///
     /// This test reproduces that loss with three static chunks on the same entity, each carrying a
     /// `Transform3D` for a distinct child frame. All three must be preserved.
