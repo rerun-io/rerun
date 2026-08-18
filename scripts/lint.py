@@ -403,7 +403,8 @@ def lint_line(
         if deprecated_data_platform.search(line):
             return f"'Data Platform' {deprecated_msg}"
         # Skip URL paths (`/dataplatform/`) and python package extras specifiers
-        # (`rerun-sdk[dataloader,dataplatform]`) — those reference the feature name, not prose.
+        # (`rerun-sdk[dataloader,dataplatform]`) — those name a directory or an extra, not prose.
+        # The `dataplatform` extra was removed in 0.37, but changelogs and migration guides still quote it.
         if deprecated_dataplatform.search(line):
             return f"'dataplatform' {deprecated_msg}"
 

@@ -150,7 +150,7 @@ class CatalogClient:
         from importlib.util import find_spec
 
         if find_spec("datafusion") is None:
-            raise RerunMissingDependencyError("datafusion", "datafusion")
+            raise RerunMissingDependencyError("datafusion", "catalog")
 
         # Check that we have a compatible version of datafusion.
         # We need a version match because the FFI is currently unstable, see:
@@ -162,7 +162,10 @@ class CatalogClient:
 
         if not _are_datafusion_versions_compatible(datafusion_major_version, expected_df_version):
             raise RerunIncompatibleDependencyVersionError(
-                "datafusion", datafusion_version, _compatible_datafusion_version(expected_df_version)
+                "datafusion",
+                datafusion_version,
+                _compatible_datafusion_version(expected_df_version),
+                optional_dep="catalog",
             )
 
         self._internal = CatalogClientInternal(url, token)

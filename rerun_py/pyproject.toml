@@ -53,11 +53,6 @@ tests = [
 ]
 notebook = ["rerun-notebook==0.37.0-alpha.1+dev"]
 # TODO(RR-3786): when pyarrow is fixed, we should remove the pandas dependency
-datafusion = ["datafusion==54.0.0", "pandas>=2"] # deprecated, replaced by `catalog`
-dataplatform = [ # deprecated, replaced by `catalog` (NOLINT)
-  "datafusion==54.0.0",
-  "pandas>=2",
-]
 catalog = [
   "datafusion==54.0.0",
   "pandas>=2",
