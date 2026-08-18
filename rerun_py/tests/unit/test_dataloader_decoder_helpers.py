@@ -14,6 +14,7 @@ import torch
 from rerun.experimental.dataloader import Field
 from rerun.experimental.dataloader._sample_index import SegmentMetadata
 from rerun.experimental.dataloader._utils import (
+    FieldFetchRequest,
     Target,
     _decode_order,
     _field_index_range,
@@ -453,9 +454,20 @@ def _targets(pairs: list[tuple[str, int]]) -> list[Target]:
         Target(
             segment=SegmentMetadata(segment_id=segment_id, index_start=0, index_end=0, num_samples=0),
             index_value=index_value,
-            anchors={},
+            fetch_requests={
+                "x": FieldFetchRequest(
+                    sample_position=position,
+                    segment_id=segment_id,
+                    index_value=index_value,
+                    decode_index_range=(index_value, index_value),
+                    output_index_values=(index_value,),
+                    fill_latest_at=False,
+                    keyframe_anchored=False,
+                    starts_at_keyframe=False,
+                )
+            },
         )
-        for segment_id, index_value in pairs
+        for position, (segment_id, index_value) in enumerate(pairs)
     ]
 
 
@@ -519,15 +531,10 @@ def test_resolve_decode_requests_resolve_rows_within_their_own_segment() -> None
     # Index value 5 exists in both segments; each request must resolve to its own segment's row.
     indexed_table = _find_segment_boundaries(_group_table(["a", "a", "b", "b"], [5, 6, 4, 5]), "t")
     targets = _targets([("b", 5), ("a", 5)])
-    field = Field(path="/x", decode=NumericDecoder())
-
     requests = _resolve_decode_requests(
-        targets,
-        _decode_order(targets),
+        [targets[position].fetch_requests["x"] for group in _decode_order(targets) for position in group],
         indexed_table=indexed_table,
         key="x",
-        field=field,
-        decoder=field.decode,
     )
 
     assert [(r.segment_id, r.index_value, r.rows) for r in requests] == [("b", 5, range(3, 4)), ("a", 5, range(1))]
@@ -536,16 +543,21 @@ def test_resolve_decode_requests_resolve_rows_within_their_own_segment() -> None
 
 def test_resolve_decode_requests_resolve_a_window_to_a_row_range() -> None:
     indexed_table = _find_segment_boundaries(_group_table(["a", "a", "a", "a"], [0, 1, 2, 3]), "t")
-    targets = _targets([("a", 1)])
-    field = Field(path="/x", decode=NumericDecoder(), window=(0, 2))
+    fetch_request = FieldFetchRequest(
+        sample_position=0,
+        segment_id="a",
+        index_value=1,
+        decode_index_range=(1, 3),
+        output_index_values=(1, 2, 3),
+        fill_latest_at=False,
+        keyframe_anchored=False,
+        starts_at_keyframe=False,
+    )
 
     (request,) = _resolve_decode_requests(
-        targets,
-        _decode_order(targets),
+        [fetch_request],
         indexed_table=indexed_table,
         key="x",
-        field=field,
-        decoder=field.decode,
     )
 
     # The window `(0, 2)` around target 1 covers index values 1..=3, held by rows 1..4.
@@ -555,14 +567,9 @@ def test_resolve_decode_requests_resolve_a_window_to_a_row_range() -> None:
 def test_resolve_decode_requests_rejects_a_segment_with_no_rows() -> None:
     indexed_table = _find_segment_boundaries(_group_table(["a"], [0]), "t")
     targets = _targets([("missing", 0)])
-    field = Field(path="/x", decode=NumericDecoder())
-
     with pytest.raises(RuntimeError, match="No rows returned for field 'x' in segment 'missing'"):
         _resolve_decode_requests(
-            targets,
-            _decode_order(targets),
+            [targets[0].fetch_requests["x"]],
             indexed_table=indexed_table,
             key="x",
-            field=field,
-            decoder=field.decode,
         )

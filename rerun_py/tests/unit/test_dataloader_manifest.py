@@ -29,7 +29,7 @@ from rerun.experimental.dataloader import (
     _map_dataset as map_dataset,
 )
 from rerun.experimental.dataloader._sample_index import SampleIndex, SegmentMetadata
-from rerun.experimental.dataloader._utils import FetchedBlock, FetchedGroup, Target
+from rerun.experimental.dataloader._utils import FetchedGroup, QueryPlan
 from rerun.experimental.dataloader.manifest._manifest import (
     MANIFEST_FORMAT_VERSION,
     ManifestMeta,
@@ -197,26 +197,27 @@ def _stub_catalog(monkeypatch: pytest.MonkeyPatch, fetched_groups: list[FetchedG
         "ensure",
         lambda self: (None, {k: f.decode for k, f in self._fields.items()}),
     )
-    # Manifest path: `targets_from_rows` already built the targets, so just hand back the tables.
     monkeypatch.setattr(
         iterable_dataset,
-        "_fetch_targets",
-        lambda targets, **_: FetchedBlock(targets=targets, fetched_groups=fetched_groups),
+        "_locate_samples",
+        lambda indices, **_: [
+            (
+                SegmentMetadata(segment_id=SEGMENT_IDS[int(i)], index_start=0, index_end=0, num_samples=0),
+                int(ANCHORS[int(i)]),
+            )
+            for i in indices
+        ],
     )
 
-    # Live path: turn each fetch block of global sample indices into targets tagged by anchor.
-    def fake_fetch_arrow(indices: np.ndarray, **_: object) -> FetchedBlock:
-        targets = [
-            Target(
-                segment=SegmentMetadata(segment_id=SEGMENT_IDS[int(g)], index_start=0, index_end=0, num_samples=0),
-                index_value=int(ANCHORS[int(g)]),
-                anchors={},
-            )
-            for g in indices
+    def fetch_queries(plans: list[QueryPlan], **_: object) -> list[FetchedGroup]:
+        if not fetched_groups:
+            return []
+        return [
+            FetchedGroup(fields=group.fields, fetch_requests=plan.fetch_requests, table=group.table)
+            for group, plan in zip(fetched_groups, plans, strict=True)
         ]
-        return FetchedBlock(targets=targets, fetched_groups=fetched_groups)
 
-    monkeypatch.setattr(iterable_dataset, "_fetch_arrow", fake_fetch_arrow)
+    monkeypatch.setattr(iterable_dataset, "_fetch_queries_parallel", fetch_queries)
 
 
 # Only `BlockShuffle` can carry an emission buffer; the other strategies emit in fetch order.
@@ -233,10 +234,11 @@ _STRATEGIES = [
 @pytest.mark.parametrize("strategy", _STRATEGIES)
 def test_manifest_replays_live_order_exactly(monkeypatch: pytest.MonkeyPatch, strategy: ShuffleStrategy) -> None:
     # Decode is irrelevant here: tag each sample with its anchor so we compare emission order only.
+    monkeypatch.setattr(iterable_dataset, "_resolve_decode_requests_in_block", lambda indexed, **_: indexed)
     monkeypatch.setattr(
         iterable_dataset,
         "_decode_iter",
-        lambda *, fetched, **_: ({"anchor": int(t.index_value)} for t in fetched.targets),
+        lambda *, prepared, **_: ({"anchor": int(t.index_value)} for t in prepared.targets),
     )
     _stub_catalog(monkeypatch, fetched_groups=[])
 
@@ -259,10 +261,11 @@ def test_manifest_replays_live_order_across_ranks(monkeypatch: pytest.MonkeyPatc
     # buffer seed drops `rank` (its emission order would no longer match the frozen manifest).
     strategy, world_size = BlockShuffle(buffer_size=6), 2
     manifest = _build_manifest(strategy, num_ranks=world_size)
+    monkeypatch.setattr(iterable_dataset, "_resolve_decode_requests_in_block", lambda indexed, **_: indexed)
     monkeypatch.setattr(
         iterable_dataset,
         "_decode_iter",
-        lambda *, fetched, **_: ({"anchor": int(t.index_value)} for t in fetched.targets),
+        lambda *, prepared, **_: ({"anchor": int(t.index_value)} for t in prepared.targets),
     )
     _stub_catalog(monkeypatch, fetched_groups=[])
 
@@ -287,21 +290,27 @@ def _stub_map_catalog(monkeypatch: pytest.MonkeyPatch, fetched_groups: list[Fetc
         "ensure",
         lambda self: (None, {k: f.decode for k, f in self._fields.items()}),
     )
-    monkeypatch.setattr(
-        map_dataset,
-        "_fetch_targets",
-        lambda targets, **_: FetchedBlock(targets=targets, fetched_groups=fetched_groups),
-    )
+
+    def fetch_queries(plans: list[QueryPlan], **_: object) -> list[FetchedGroup]:
+        if not fetched_groups:
+            return []
+        return [
+            FetchedGroup(fields=group.fields, fetch_requests=plan.fetch_requests, table=group.table)
+            for group, plan in zip(fetched_groups, plans, strict=True)
+        ]
+
+    monkeypatch.setattr(map_dataset, "_fetch_queries_parallel", fetch_queries)
 
 
 @pytest.mark.filterwarnings("ignore::RuntimeWarning")
 @pytest.mark.parametrize("strategy", _STRATEGIES)
 def test_map_manifest_yields_full_sample_set(monkeypatch: pytest.MonkeyPatch, strategy: ShuffleStrategy) -> None:
     """A map dataset over a manifest exposes every validated sample once, whatever strategy built it (order is the sampler's job, not the manifest's)."""
+    monkeypatch.setattr(map_dataset, "_resolve_decode_requests_in_block", lambda indexed, **_: indexed)
     monkeypatch.setattr(
         map_dataset,
         "_decode_iter",
-        lambda *, fetched, **_: ({"anchor": int(t.index_value)} for t in fetched.targets),
+        lambda *, prepared, **_: ({"anchor": int(t.index_value)} for t in prepared.targets),
     )
     _stub_map_catalog(monkeypatch, fetched_groups=[])
 
@@ -326,7 +335,7 @@ def test_map_manifest_decodes_frozen_ranges(monkeypatch: pytest.MonkeyPatch) -> 
         "rerun_segment_id": pa.array(segment_ids, pa.string()),
         "x": pa.array([anchor * 1.5 for anchor in anchors_flat], pa.float32()),
     })
-    _stub_map_catalog(monkeypatch, fetched_groups=[FetchedGroup(fields=_FIELDS, table=group_table)])
+    _stub_map_catalog(monkeypatch, fetched_groups=[FetchedGroup(fields=_FIELDS, fetch_requests={}, table=group_table)])
 
     dataset = RerunMapDataset.from_manifest(_build_manifest(NoShuffle()), _SOURCE, _FIELDS)
     samples = dataset.__getitems__(list(range(len(dataset))))
@@ -349,7 +358,7 @@ def test_manifest_and_live_decode_identical_content(monkeypatch: pytest.MonkeyPa
         "rerun_segment_id": pa.array(segment_ids, pa.string()),
         "x": pa.array([anchor * 1.5 for anchor in anchors_flat], pa.float32()),
     })
-    _stub_catalog(monkeypatch, fetched_groups=[FetchedGroup(fields=_FIELDS, table=group_table)])
+    _stub_catalog(monkeypatch, fetched_groups=[FetchedGroup(fields=_FIELDS, fetch_requests={}, table=group_table)])
 
     strategy = NoShuffle()
     manifest_samples = list(RerunIterableDataset.from_manifest(_build_manifest(strategy), _SOURCE, _FIELDS))

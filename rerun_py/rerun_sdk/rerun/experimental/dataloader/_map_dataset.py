@@ -11,21 +11,23 @@ from rerun._tracing import with_tracing
 
 from ._sample_index import FixedRateSampling, SampleIndex
 from ._utils import (
+    FetchedBlock,
+    _build_query_plans,
+    _build_targets,
     _decode_iter,
     _decode_pool,
-    _fetch_arrow,
-    _fetch_targets,
+    _fetch_prior_keyframes,
+    _fetch_queries_parallel,
+    _index_fetched_block,
+    _locate_samples,
+    _resolve_decode_requests_in_block,
     _resolve_decode_threads,
     _warn_if_fork_unsafe,
     _WorkerConnection,
 )
 
 if TYPE_CHECKING:
-    from rerun.catalog._entry import DatasetEntry
-
     from ._config import DataSource, Field
-    from ._utils import FetchedBlock
-    from .decoders import ColumnDecoder
     from .manifest._manifest import Manifest
 
 
@@ -175,46 +177,44 @@ class RerunMapDataset(torch.utils.data.Dataset[dict[str, torch.Tensor | None]]):
         """
         view, decoders = self._connection.ensure()
         if self._manifest is not None:
-            fetched = self._fetch_manifest(view, decoders, indices)
+            from .manifest._manifest_read import targets_from_rows
+
+            rows = self._manifest.to_arrow().take(indices)
+            targets = targets_from_rows(rows, fields=self._fields, sample_index=self._sample_index)
         else:
-            fetched = _fetch_arrow(
+            located = _locate_samples(
+                indices,
+                sample_index=self._sample_index,
+                num_fields=len(self._fields),
+            )
+            keyframes = _fetch_prior_keyframes(
                 view=view,
                 index=self._index,
                 fields=self._fields,
+                located=located,
+                sample_index=self._sample_index,
+            )
+            targets = _build_targets(
+                located,
+                keyframes,
+                fields=self._fields,
                 decoders=decoders,
                 sample_index=self._sample_index,
-                indices=indices,
             )
+
+        query_plans = _build_query_plans(targets, self._fields, sample_index=self._sample_index)
+        fetched_groups = _fetch_queries_parallel(query_plans, view=view, index=self._index)
+        fetched = FetchedBlock(targets=targets, fetched_groups=fetched_groups)
         with _decode_pool(self._decode_threads, len(self._fields)) as executor:
+            # 1. Group each fetched table into contiguous, index-ordered segment spans.
+            indexed = _index_fetched_block(fetched, self._index)
+            # 2. Map each requested timeline range to physical Arrow rows.
+            prepared = _resolve_decode_requests_in_block(indexed)
+            # 3. Decode field batches and scatter their results back into sample order.
             return list(
                 _decode_iter(
-                    fetched=fetched,
-                    index=self._index,
-                    fields=self._fields,
+                    prepared=prepared,
                     decoders=decoders,
                     executor=executor,
                 ),
             )
-
-    def _fetch_manifest(
-        self,
-        view: DatasetEntry,
-        decoders: dict[str, ColumnDecoder],
-        indices: list[int],
-    ) -> FetchedBlock:
-        """Fetch samples for the manifest rows at `indices`, using their frozen decode ranges."""
-        from .manifest._manifest_read import targets_from_rows
-
-        assert self._manifest is not None
-        rows = self._manifest.to_arrow().take(indices)
-        targets = targets_from_rows(
-            rows, fields=self._fields, decoders=decoders, ns_dtype=self._manifest.metadata.ns_dtype
-        )
-        return _fetch_targets(
-            targets,
-            view=view,
-            index=self._index,
-            fields=self._fields,
-            decoders=decoders,
-            sample_index=self._sample_index,
-        )

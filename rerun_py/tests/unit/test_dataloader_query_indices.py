@@ -7,7 +7,13 @@ import pyarrow as pa
 import pytest
 from rerun.experimental.dataloader import Field
 from rerun.experimental.dataloader._sample_index import SampleIndex, SegmentMetadata
-from rerun.experimental.dataloader._utils import Target, _build_query_indices, _build_query_plans
+from rerun.experimental.dataloader._utils import (
+    FieldFetchRequest,
+    Target,
+    _build_query_indices,
+    _build_query_plans,
+    _build_target,
+)
 from rerun.experimental.dataloader.decoders import ImageDecoder, NumericDecoder, VideoFrameDecoder
 
 
@@ -20,10 +26,26 @@ def _segment(segment_id: str, index_start: int, num_samples: int, ns_per_sample:
     )
 
 
-def _targets(sample_index: SampleIndex, count: int) -> list[Target]:
+def _targets(sample_index: SampleIndex, count: int, fields: dict[str, Field] | None = None) -> list[Target]:
     """`Target`s for the first `count` global indices, with no keyframe anchors."""
+    fields = fields or {"x": Field(path="/x", decode=NumericDecoder())}
+    decoders = {key: field.decode for key, field in fields.items()}
     located = (sample_index.global_to_local(i) for i in range(count))
-    return [Target(segment=segment, index_value=value, anchors={}) for segment, value in located]
+    return [
+        _build_target(
+            sample_position=position,
+            segment=segment,
+            index_value=value,
+            fields=fields,
+            decoders=decoders,
+            sample_index=sample_index,
+        )
+        for position, (segment, value) in enumerate(located)
+    ]
+
+
+def _requests(targets: list[Target]) -> dict[str, list[FieldFetchRequest]]:
+    return {key: [target.fetch_requests[key] for target in targets] for key in targets[0].fetch_requests}
 
 
 @pytest.mark.parametrize(
@@ -46,7 +68,7 @@ def test_build_query_indices_temporal_returns_pyarrow(ns_dtype: str, expected_ar
     sample_index = SampleIndex([segment], ns_per_sample=ns_per_sample, ns_dtype=ns_dtype)
 
     targets = _targets(sample_index, 3)
-    result = _build_query_indices(targets, fields={}, decoders={}, sample_index=sample_index)
+    result = _build_query_indices(_requests(targets), sample_index=sample_index)
 
     assert set(result.keys()) == {"seg-a"}
     values = result["seg-a"]
@@ -61,7 +83,7 @@ def test_build_query_indices_integer_returns_ndarray() -> None:
     sample_index = SampleIndex([segment])
 
     targets = _targets(sample_index, 3)
-    result = _build_query_indices(targets, fields={}, decoders={}, sample_index=sample_index)
+    result = _build_query_indices(_requests(targets), sample_index=sample_index)
 
     values = result["seg-a"]
     assert isinstance(values, np.ndarray)
@@ -71,22 +93,21 @@ def test_build_query_indices_integer_returns_ndarray() -> None:
 
 def _grouping(fields: dict[str, Field]) -> list[list[str]]:
     """The field keys of each query plan, sorted (inner and outer) for stable comparison."""
-    decoders = {key: field.decode for key, field in fields.items()}
-    plans = _build_query_plans([], fields, decoders, sample_index=SampleIndex([]))
+    sample_index = SampleIndex([SegmentMetadata(segment_id="seg", index_start=0, index_end=0, num_samples=1)])
+    plans = _build_query_plans(_targets(sample_index, 1, fields), fields, sample_index=sample_index)
     return sorted(sorted(plan.fields) for plan in plans)
 
 
 def test_query_plan_contains_resolved_indices() -> None:
     sample_index = SampleIndex([SegmentMetadata(segment_id="seg-a", index_start=10, index_end=20, num_samples=11)])
-    targets = _targets(sample_index, 1)
     fields = {
         "action": Field(path="/action:Scalars:scalars", decode=NumericDecoder(), window=(0, 2)),
     }
+    targets = _targets(sample_index, 1, fields)
 
     plans = _build_query_plans(
         targets,
         fields,
-        {"action": fields["action"].decode},
         sample_index=sample_index,
     )
 
@@ -94,6 +115,7 @@ def test_query_plan_contains_resolved_indices() -> None:
     values = plans[0].query_indices["seg-a"]
     assert isinstance(values, np.ndarray)
     assert values.tolist() == [10, 11, 12]
+    assert plans[0].fetch_requests["action"] == [targets[0].fetch_requests["action"]]
 
 
 def test_windowed_field_does_not_share_group_with_unwindowed() -> None:

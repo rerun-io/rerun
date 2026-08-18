@@ -5,22 +5,21 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from .._sample_index import SegmentMetadata, _ns_to_dtype
-from .._utils import Target, is_video_field
-from ._manifest import COL_ANCHOR, COL_SEGMENT_ID, RANGE_LO
+from .._utils import FieldFetchRequest, Target, _output_index_values, is_video_field
+from ._manifest import COL_ANCHOR, COL_SEGMENT_ID, RANGE_HI, RANGE_LO
 
 if TYPE_CHECKING:
     import pyarrow as pa
 
     from .._config import Field
-    from ..decoders import ColumnDecoder
+    from .._sample_index import SampleIndex
 
 
 def targets_from_rows(
     rows: pa.Table,
     *,
     fields: dict[str, Field],
-    decoders: dict[str, ColumnDecoder],
-    ns_dtype: str | None,
+    sample_index: SampleIndex,
 ) -> list[Target]:
     """
     Build decode targets from manifest rows, without a keyframe scan.
@@ -30,19 +29,37 @@ def targets_from_rows(
     """
     seg_ids = rows.column(COL_SEGMENT_ID).to_pylist()
     anchors = rows.column(COL_ANCHOR).to_pylist()
-    video_los = {
-        key: rows.column(key).combine_chunks().field(RANGE_LO).to_pylist()
-        for key, field in fields.items()
-        if is_video_field(field, decoders[key])
+    field_ranges = {
+        key: (
+            rows.column(key).combine_chunks().field(RANGE_LO).to_pylist(),
+            rows.column(key).combine_chunks().field(RANGE_HI).to_pylist(),
+        )
+        for key in fields
     }
     targets: list[Target] = []
     for i, (segment_id, anchor) in enumerate(zip(seg_ids, anchors, strict=True)):
-        prior_keyframes = {key: int(los[i]) for key, los in video_los.items()}
+        index_value = _ns_to_dtype(int(anchor), sample_index.ns_dtype)
+        fetch_requests = {
+            key: FieldFetchRequest(
+                sample_position=i,
+                segment_id=segment_id,
+                index_value=index_value,
+                decode_index_range=(
+                    _ns_to_dtype(int(ranges[0][i]), sample_index.ns_dtype),
+                    _ns_to_dtype(int(ranges[1][i]), sample_index.ns_dtype),
+                ),
+                output_index_values=_output_index_values(index_value, fields[key], sample_index=sample_index),
+                fill_latest_at=fields[key].fill_latest_at,
+                keyframe_anchored=fields[key].window is None and is_video_field(fields[key]),
+                starts_at_keyframe=is_video_field(fields[key]),
+            )
+            for key, ranges in field_ranges.items()
+        }
         targets.append(
             Target(
                 segment=SegmentMetadata(segment_id=segment_id, index_start=0, index_end=0, num_samples=0),
-                index_value=_ns_to_dtype(int(anchor), ns_dtype),
-                anchors=prior_keyframes,
+                index_value=index_value,
+                fetch_requests=fetch_requests,
             )
         )
     return targets

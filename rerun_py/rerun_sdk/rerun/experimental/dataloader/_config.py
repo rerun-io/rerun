@@ -66,6 +66,16 @@ class Field:
     window: tuple[int, int] | None = None
     max_staleness: int | None = None
 
+    @property
+    def prior_keyframe_path(self) -> str | None:
+        """Component path containing the keyframe markers required by this field's decoder."""
+        return self.decode.prior_keyframe_path(self.path)
+
+    @property
+    def fill_latest_at(self) -> bool:
+        """Whether server queries for this field use latest-at filling."""
+        return self.decode.fill_latest_at
+
     def to_recipe(self) -> dict[str, Any]:
         """
         A JSON-serializable snapshot of this field's spec, for a manifest's provenance header.

@@ -145,7 +145,6 @@ def build_manifest_table(
         view=view,
         index=index,
         fields=fields,
-        decoders=decoders,
         sample_index=sample_index,
         segment_maxes=segment_maxes,
         required=required,
@@ -197,7 +196,7 @@ def build_manifest_table(
 # --------------------------------------------------------------------------------------
 
 
-def _keyframe_covered(field: Field, decoder: ColumnDecoder) -> bool:
+def _keyframe_covered(field: Field) -> bool:
     """
     Whether a video field's validity is already decided by its prior-keyframe check.
 
@@ -205,7 +204,7 @@ def _keyframe_covered(field: Field, decoder: ColumnDecoder) -> bool:
     so `_too_far_back`'s existence test can never drop a sample the keyframe check
     keeps. Only holds without a window (staleness would need the nearest real row).
     """
-    return is_video_field(field, decoder) and field.window is None and field.max_staleness is None
+    return is_video_field(field) and field.window is None and field.max_staleness is None
 
 
 @with_tracing("build_manifest_table._scan")
@@ -214,7 +213,6 @@ def _scan(
     view: DatasetEntry,
     index: str,
     fields: dict[str, Field],
-    decoders: dict[str, ColumnDecoder],
     sample_index: SampleIndex,
     segment_maxes: list[tuple[SegmentMetadata, int]],
     required: set[str],
@@ -228,7 +226,7 @@ def _scan(
         sorted({
             field.path.split(":")[0]
             for key, field in fields.items()
-            if key in required and not _keyframe_covered(field, decoders[key])
+            if key in required and not _keyframe_covered(field)
         })
         if seg_ids
         else []
@@ -238,7 +236,7 @@ def _scan(
         # `_fetch_prior_keyframes` only reads each segment's largest target, so one
         # representative per segment reproduces the same per-segment maxima.
         return _fetch_prior_keyframes(
-            view=view, index=index, fields=fields, decoders=decoders, located=segment_maxes, sample_index=sample_index
+            view=view, index=index, fields=fields, located=segment_maxes, sample_index=sample_index
         )
 
     entity_segments = [(entity, seg_id) for entity in entities for seg_id in seg_ids]
@@ -296,8 +294,8 @@ def _resolve_rows(
     resident as Python objects.
     """
     keyframes, real_by_entity = scan.keyframes, scan.real_by_entity
-    video = {k: is_video_field(f, decoders[k]) for k, f in fields.items()}
-    covered = {k: _keyframe_covered(f, decoders[k]) for k, f in fields.items()}
+    video = {k: is_video_field(f) for k, f in fields.items()}
+    covered = {k: _keyframe_covered(f) for k, f in fields.items()}
     entity_of = {k: f.path.split(":")[0] for k, f in fields.items()}
     step = sample_index.ns_per_sample or 1
 

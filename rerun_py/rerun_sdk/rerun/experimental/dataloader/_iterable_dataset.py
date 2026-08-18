@@ -2,24 +2,30 @@
 
 from __future__ import annotations
 
-import functools
+import time
 from typing import TYPE_CHECKING
 
 import numpy as np
 import torch
 import torch.utils.data
 
-from rerun._tracing import set_current_span_attributes, tracing_scope
+from rerun._tracing import set_current_span_attributes, tracing_scope, with_tracing
 
 from ._sample_index import FixedRateSampling, SampleIndex
 from ._shuffle import SampleShuffle, ShuffleStrategy, _contiguous_shard, _fetch_blocks
 from ._utils import (
+    FetchedBlock,
+    _build_query_plans,
+    _build_targets,
     _decode_iter,
     _decode_pool,
-    _fetch_arrow,
-    _fetch_targets,
-    _interleave_fetch_and_decode,
+    _fetch_prior_keyframes,
+    _fetch_queries_parallel,
+    _index_fetched_block,
+    _locate_samples,
+    _pipeline_blocks,
     _replay,
+    _resolve_decode_requests_in_block,
     _resolve_decode_threads,
     _warn_if_fork_unsafe,
     _WorkerConnection,
@@ -27,13 +33,10 @@ from ._utils import (
 
 if TYPE_CHECKING:
     from collections.abc import Generator, Iterator
-    from concurrent.futures import ThreadPoolExecutor
 
     import pyarrow as pa
 
     from ._config import DataSource, Field
-    from ._utils import FetchedBlock
-    from .decoders import ColumnDecoder
     from .manifest._manifest import Manifest
 
 
@@ -41,19 +44,30 @@ def _count_yields(
     samples: Generator[dict[str, torch.Tensor | None], None, None],
 ) -> Generator[dict[str, torch.Tensor | None], None, None]:
     """
-    Yield `samples` through, recording how many were yielded as a span attribute.
+    Yield `samples` through, recording the yield count and downstream pull gaps on the current span.
 
-    The attribute is set when the stream ends — exhausted or closed early — so
-    this must run inside the `tracing_scope` whose span should carry the count.
+    A pull gap is the wall-clock time from yielding a sample until the consumer resumes the generator.
     Closes `samples` on exit: a plain `for` loop does not delegate `close()` to
     the source the way `yield from` does, and the fetch executor's shutdown
     hangs off that close.
     """
     count = 1
+    pull_gap_seconds_total = 0.0
+    pull_gap_seconds_max = 0.0
     try:
         for sample in samples:
             set_current_span_attributes({"rerun.dataloader.iter.num_samples_yielded": count})
-            yield sample
+            before_yield = time.perf_counter()
+            try:
+                yield sample
+            finally:
+                pull_gap_seconds = time.perf_counter() - before_yield
+                pull_gap_seconds_total += pull_gap_seconds
+                pull_gap_seconds_max = max(pull_gap_seconds_max, pull_gap_seconds)
+                set_current_span_attributes({
+                    "rerun.dataloader.iter.pull_gap_seconds_total": pull_gap_seconds_total,
+                    "rerun.dataloader.iter.pull_gap_seconds_max": pull_gap_seconds_max,
+                })
             count += 1
     finally:
         samples.close()
@@ -221,18 +235,50 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tens
                 "rerun.dataloader.shuffle_strategy": self._shuffle_strategy.RECIPE_TAG,
             })
 
-            fetch = functools.partial(
-                _fetch_arrow,
-                view=view,
-                index=self._index,
-                fields=self._fields,
-                decoders=decoders,
-                sample_index=self._sample_index,
-            )
+            @with_tracing("RerunDataset._fetch_block")
+            def fetch_block(block: np.ndarray) -> FetchedBlock:
+                # 1. Locate requested samples within their segments.
+                located = _locate_samples(
+                    block,
+                    sample_index=self._sample_index,
+                    num_fields=len(self._fields),
+                )
+                # 2. Fetch metadata needed to anchor compressed-video requests.
+                keyframes = _fetch_prior_keyframes(
+                    view=view,
+                    index=self._index,
+                    fields=self._fields,
+                    located=located,
+                    sample_index=self._sample_index,
+                )
+                # 3. Match samples with prior video keyframes and compute each field's index ranges.
+                targets = _build_targets(
+                    located,
+                    keyframes,
+                    fields=self._fields,
+                    decoders=decoders,
+                    sample_index=self._sample_index,
+                )
+                set_current_span_attributes({"rerun.dataloader.fetch.block_size": len(targets)})
+                # 4. Aggregate compatible field requests into server queries.
+                query_plans = _build_query_plans(targets, self._fields, sample_index=self._sample_index)
+                # 5. Execute independent server queries concurrently.
+                fetched_groups = _fetch_queries_parallel(query_plans, view=view, index=self._index)
+                return FetchedBlock(targets=targets, fetched_groups=fetched_groups)
 
-            samples = _interleave_fetch_and_decode(
-                blocks, fetch=fetch, decode=functools.partial(self._decode, decoders, executor)
-            )
+            def process(fetched: FetchedBlock) -> Iterator[dict[str, torch.Tensor | None]]:
+                # 1. Group each fetched table into contiguous, index-ordered segment spans.
+                indexed = _index_fetched_block(fetched, self._index)
+                # 2. Map each requested timeline range to physical Arrow rows.
+                prepared = _resolve_decode_requests_in_block(indexed)
+                # 3. Decode field batches and scatter their results back into sample order.
+                return _decode_iter(
+                    prepared=prepared,
+                    decoders=decoders,
+                    executor=executor,
+                )
+
+            samples = _pipeline_blocks(blocks, fetch=fetch_block, process=process)
             if self._shuffle_buffer is not None:
                 distributed = torch.distributed.is_available() and torch.distributed.is_initialized()
                 rank = torch.distributed.get_rank() if distributed else 0
@@ -282,36 +328,28 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tens
             # Query construction only needs the grid step / dtype, not the full sample space.
             sample_index = SampleIndex([], ns_per_sample=meta.ns_per_sample, ns_dtype=meta.ns_dtype)
 
-            def fetch(block: pa.Table) -> FetchedBlock:
-                targets = targets_from_rows(block, fields=self._fields, decoders=decoders, ns_dtype=meta.ns_dtype)
-                return _fetch_targets(
-                    targets,
-                    view=view,
-                    index=self._index,
-                    fields=self._fields,
+            @with_tracing("RerunDataset._fetch_block")
+            def fetch_block(block: pa.Table) -> FetchedBlock:
+                targets = targets_from_rows(block, fields=self._fields, sample_index=sample_index)
+                set_current_span_attributes({"rerun.dataloader.fetch.block_size": len(targets)})
+                query_plans = _build_query_plans(targets, self._fields, sample_index=sample_index)
+                fetched_groups = _fetch_queries_parallel(query_plans, view=view, index=self._index)
+                return FetchedBlock(targets=targets, fetched_groups=fetched_groups)
+
+            def process(fetched: FetchedBlock) -> Iterator[dict[str, torch.Tensor | None]]:
+                # 1. Group each fetched table into contiguous, index-ordered segment spans.
+                indexed = _index_fetched_block(fetched, self._index)
+                # 2. Map each requested timeline range to physical Arrow rows.
+                prepared = _resolve_decode_requests_in_block(indexed)
+                # 3. Decode field batches and scatter their results back into sample order.
+                return _decode_iter(
+                    prepared=prepared,
                     decoders=decoders,
-                    sample_index=sample_index,
+                    executor=executor,
                 )
 
-            samples = _interleave_fetch_and_decode(
-                blocks, fetch=fetch, decode=functools.partial(self._decode, decoders, executor)
-            )
+            samples = _pipeline_blocks(blocks, fetch=fetch_block, process=process)
             yield from _count_yields(_replay(samples, emit_order))
-
-    def _decode(
-        self,
-        decoders: dict[str, ColumnDecoder],
-        executor: ThreadPoolExecutor | None,
-        fetched: FetchedBlock,
-    ) -> Iterator[dict[str, torch.Tensor | None]]:
-        """Decode one fetched block into samples (shared by the catalog and manifest paths)."""
-        return _decode_iter(
-            fetched=fetched,
-            index=self._index,
-            fields=self._fields,
-            decoders=decoders,
-            executor=executor,
-        )
 
     def _worker_order(self) -> tuple[np.ndarray, np.ndarray]:
         """Return this worker's shard of the epoch's `(indices, block_bounds)`, in fetch order."""
