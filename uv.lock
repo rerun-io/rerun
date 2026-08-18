@@ -4829,19 +4829,11 @@ catalog = [
     { name = "datafusion" },
     { name = "pandas" },
 ]
-datafusion = [
-    { name = "datafusion" },
-    { name = "pandas" },
-]
 dataloader = [
     { name = "av" },
     { name = "pillow" },
     { name = "torch" },
     { name = "torchvision" },
-]
-dataplatform = [
-    { name = "datafusion" },
-    { name = "pandas" },
 ]
 notebook = [
     { name = "rerun-notebook" },
@@ -4873,8 +4865,6 @@ requires-dist = [
     { name = "av", marker = "extra == 'tests'", specifier = ">=14.2.0" },
     { name = "datafusion", marker = "extra == 'all'", specifier = "==54.0.0" },
     { name = "datafusion", marker = "extra == 'catalog'", specifier = "==54.0.0" },
-    { name = "datafusion", marker = "extra == 'datafusion'", specifier = "==54.0.0" },
-    { name = "datafusion", marker = "extra == 'dataplatform'", specifier = "==54.0.0" },
     { name = "datafusion", marker = "extra == 'tests'", specifier = "==54.0.0" },
     { name = "inline-snapshot", marker = "extra == 'tests'", specifier = "==0.31.1" },
     { name = "numpy", specifier = ">=2" },
@@ -4884,8 +4874,6 @@ requires-dist = [
     { name = "opentelemetry-sdk", marker = "extra == 'tracing'" },
     { name = "pandas", marker = "extra == 'all'", specifier = ">=2" },
     { name = "pandas", marker = "extra == 'catalog'", specifier = ">=2" },
-    { name = "pandas", marker = "extra == 'datafusion'", specifier = ">=2" },
-    { name = "pandas", marker = "extra == 'dataplatform'", specifier = ">=2" },
     { name = "pandas", marker = "extra == 'tests'", specifier = ">=2" },
     { name = "pillow", specifier = ">=8.0.0" },
     { name = "pillow", marker = "extra == 'dataloader'", specifier = ">=8.0.0" },
@@ -4904,7 +4892,7 @@ requires-dist = [
     { name = "torchvision", marker = "extra == 'tests'" },
     { name = "typing-extensions", specifier = ">=4.5" },
 ]
-provides-extras = ["all", "catalog", "datafusion", "dataloader", "dataplatform", "notebook", "tests", "tracing"]
+provides-extras = ["all", "catalog", "dataloader", "notebook", "tests", "tracing"]
 
 [[package]]
 name = "rerun-workspace"

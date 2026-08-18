@@ -13,5 +13,5 @@ The Python optional-dependency extra for catalog/query API tools has been rename
 | `pip install rerun-sdk[dataplatform]` | `pip install rerun-sdk[catalog]` |
 | `pip install rerun-sdk[datafusion]`   | `pip install rerun-sdk[catalog]` |
 
-The old `dataplatform` and `datafusion` extras still resolve to the same set of dependencies for backwards compatibility, but will be removed in a future release. <!-- NOLINT -->
+The old `dataplatform` and `datafusion` extras resolved to the same set of dependencies for backwards compatibility, and were removed in 0.37. <!-- NOLINT -->
 Update any `pyproject.toml`, `requirements.txt`, or install scripts to the new name.

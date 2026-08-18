@@ -7,7 +7,7 @@ Rerun helps robotics and Physical AI teams iterate faster: log from any sensor, 
 
 ## Installation
 
-`pip install rerun-sdk[dataplatform, dataloader]` bundles the **SDK** (log/query from code) and the **Viewer** (visualizer app). The optional dependencies support queries and training below.
+`pip install rerun-sdk[catalog,dataloader]` bundles the **SDK** (log/query from code) and the **Viewer** (visualizer app). The optional dependencies support queries and training below.
 For Rust, C++, see [Install Rerun](./getting-started/install-rerun.md) and [Set up a project](./getting-started/project-setup.md).
 
 ## Open the Viewer
