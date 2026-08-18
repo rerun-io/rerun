@@ -4,11 +4,36 @@ order: 150
 description: Append data to existing segments via named layers
 ---
 
+In the [catalog object model](../../concepts/query-and-transform/catalog-object-model.md#datasets), a dataset is a collection of segments, and each segment is a collection of named layers.
+Together, layers form one logical segment.
 
+See [Recordings on a catalog server](../../concepts/logging-and-ingestion/recordings.md#recordings-on-a-catalog-server) for how segments and layers relate to recordings.
 
-In the [catalog object model](../../concepts/query-and-transform/catalog-object-model.md), datasets are a collection of segments, which are a collection of layers identified by a name.
-Layers are immutable, but data can be added to segments by registering other layers with the same recording id but a different layer name.
-This how-to page provides examples for two ways data can be added to existing datasets through layers.
+## Why use layers?
+
+The initial recording is rarely the final form of a segment.
+For example, you may want to augment it with additional data like annotations or model predictions that weren't part of the live recording, or do incremental edits like resizing images.
+
+Layers provide a way to organize and maintain this progression in a structured and composable way.
+You can register the original recording as one base layer of a segment and augment it in a modular way through additional layers.
+
+Consider a simple scenario:
+
+- You record live camera images, robot joint states, and motion-tracking data.
+- Later, you compute a tracking-error metric for each segment so that you can query for high-quality segments.
+- You also have URDF files describing the robot and scene, along with camera calibration data.
+  Using these assets together with the recorded joint states, you can reconstruct the robot's full 3D trajectory.
+
+The outputs from each of these stages can be registered as separate layers — for example, `"base"`, `"tracking_error"`, and `"urdf"`.
+
+A layer is immutable once created, but a segment can be enriched over time by registering additional layers with the same recording ID and a different layer name.
+
+Importantly, layers are natively understood by Rerun's visualization and query systems.
+Viewing or querying a segment automatically includes all its layers, making it work as a single logical unit.
+
+---
+
+This how-to page provides examples of two ways to add data to existing datasets using layers.
 
 ## Adding data to existing segments using layers
 
@@ -100,7 +125,6 @@ The property now appears in the segment table:
 
 snippet: howto/layers[verify]
 
-
 Output:
 
 ```
@@ -156,7 +180,6 @@ Some segments may have additional layers that others do not.
 ### What is the default layer name?
 
 When you register a recording without specifying a `layer_name`, it is assigned to the `"base"` layer.
-
 
 ### Is it possible to obtain a dataframe with a list of all layers in a dataset?
 
