@@ -1,5 +1,16 @@
 # Rerun changelog
 
+## [0.36.1](https://github.com/rerun-io/rerun/compare/0.36.0...0.36.1) - 2026-08-19
+
+### 🔎 Details
+
+#### 🪳 Bug fixes
+- Fix recovery of MCAP messages with truncated index [86376f2](https://github.com/rerun-io/rerun/commit/86376f2041bd96d58f42c65241dc63a3f2108d7f)
+- Fix dataframe API rejecting non-nullable outer list fields on MCAP-converted recordings [fb02c71](https://github.com/rerun-io/rerun/commit/fb02c719bbc2bf2ccc1782ef51cc79f1c016ccd1)
+- Fix containers not re-layouting when views are hidden [08c544d](https://github.com/rerun-io/rerun/commit/08c544d8583bda8aa4a258d51dd559747e7db0fc)
+- Fix click on state lanes not selecting the entity [d26ed20](https://github.com/rerun-io/rerun/commit/d26ed203645609328d54f53e77d2af48f8e21d08)
+
+
 ## [0.36.0](https://github.com/rerun-io/rerun/compare/0.35.0...0.36.0) - 2026-08-10
 
 🧳 Migration guide: https://rerun.io/docs/changelog/changeset-0-36#breaking-changes
