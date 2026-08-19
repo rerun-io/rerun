@@ -261,6 +261,11 @@ pub struct DesignTokens {
     pub button_outlined: ButtonVisuals,
     pub button_opened: ButtonVisuals,
 
+    /// The accent (`Blue.500`) selection surface: selected items, the selection
+    /// badge, the play button, etc. Provides hover/press states so selected
+    /// widgets can give color-only interaction feedback (no growth).
+    pub selection: ButtonVisuals,
+
     pub density_graph_selected: Color32,
     pub density_graph_unselected: Color32,
 
@@ -482,6 +487,8 @@ impl DesignTokens {
             button_ghost: ButtonVisuals::get(&colors, &theme_value, "button_ghost"),
             button_outlined: ButtonVisuals::get(&colors, &theme_value, "button_outlined"),
             button_opened: ButtonVisuals::get(&colors, &theme_value, "button_opened"),
+
+            selection: ButtonVisuals::get(&colors, &theme_value, "selection"),
 
             popup_shadow_color: get_color("popup_shadow_color"),
 

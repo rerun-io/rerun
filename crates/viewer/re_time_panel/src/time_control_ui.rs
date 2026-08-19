@@ -241,6 +241,11 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
             .size(TIME_CONTROL_ROW_SIZE)
             .secondary();
 
+        // `selected` also switches the variant to `Variant::Selected`, which takes its fill
+        // straight from the theme tokens and would ignore the loop colors set below. Put the
+        // variant back with `secondary`, so the fill keeps coming from `visuals.selection`.
+        let selected_button = |button: ReButton<'static>| button.selected(true).secondary();
+
         ui.scope(|ui| {
             // Loop-button cycles between states:
             match time_ctrl.loop_mode() {
@@ -252,7 +257,7 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
                 LoopMode::All => {
                     ui.visuals_mut().selection.bg_fill = ui.tokens().loop_everything_color;
                     if ui
-                        .add(button.selected(true))
+                        .add(selected_button(button))
                         .on_hover_text("Looping is off")
                         .clicked()
                     {
@@ -271,7 +276,7 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
                     // ui.visuals_mut().selection.bg_fill = ui.tokens().loop_selection_color.to_opaque();
 
                     if ui
-                        .add(button.selected(true))
+                        .add(selected_button(button))
                         .on_hover_text("Looping is off")
                         .clicked()
                     {

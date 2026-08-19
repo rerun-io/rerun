@@ -491,6 +491,15 @@
     "fill_pressed": { "color": "{Blue.500}", "alpha": 200 },
     "text": { "color": "{Gray.850}" },
   },
+  // The accent selection surface. Currently only used for the selected item in the
+  // breadcrumbs. TODO(gavrelina): also use it for selected items and the play button.
+  "selection": {
+    "fill": { "color": "{Blue.500}", "alpha": 200 },
+    "fill_hovered": { "color": "{Blue.500}" },
+    "fill_pressed": { "color": "{Blue.500}", "alpha": 100 },
+    "text": { "color": "{Gray.1000}" },
+    // No stroke: the dark pill is a solid fill.
+  },
 
   "Global": {
     "Typography": {

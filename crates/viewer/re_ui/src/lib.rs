@@ -43,9 +43,6 @@ pub mod re_form;
 #[cfg(feature = "testing")]
 pub mod testing;
 
-use egui::NumExt as _;
-use re_log::debug_assert;
-
 pub use self::button::*;
 pub use self::combo_item::*;
 pub use self::command::{
@@ -81,6 +78,9 @@ pub use self::time_drag_value::TimeDragValue;
 pub use self::ui_ext::UiExt;
 pub use self::ui_layout::UiLayout;
 pub use self::url_decorator::{UrlDecorator, UrlDecoratorFn};
+use crate::egui_ext::garbage_collect::EguiMemoryGarbageCollector;
+use egui::NumExt as _;
+use re_log::debug_assert;
 
 // ---------------------------------------------------------------------------
 
@@ -272,6 +272,8 @@ pub fn apply_style_and_install_loaders(egui_ctx: &egui::Context) {
             egui_ctx.request_repaint();
         });
     }
+
+    egui_ctx.add_plugin(EguiMemoryGarbageCollector::default());
 }
 
 fn set_themes(egui_ctx: &egui::Context) {

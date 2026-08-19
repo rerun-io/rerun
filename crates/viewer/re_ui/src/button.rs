@@ -1,6 +1,7 @@
 use crate::{ButtonVisuals, DesignTokens, UiExt as _, icons};
 use eframe::emath::Vec2;
 use egui::style::WidgetVisuals;
+use egui::widget_style::WidgetState;
 use egui::{
     AtomLayoutResponse, Button, CornerRadius, IntoAtoms, NumExt as _, Rect, Response, Sense, Style,
 };
@@ -13,8 +14,11 @@ pub enum Variant {
     Ghost,
     Outlined,
 
-    /// Indicate that the thing this button represents is opened
+    /// Indicate that the thing this button represents is opened.
     Opened,
+
+    /// Show the button visually selected (blue background).
+    Selected,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -88,6 +92,7 @@ impl Variant {
             Self::Ghost => &tokens.button_ghost,
             Self::Outlined => &tokens.button_outlined,
             Self::Opened => &tokens.button_opened,
+            Self::Selected => &tokens.selection,
         }
     }
 
@@ -155,6 +160,12 @@ impl<'a> ReButton<'a> {
         }
     }
 
+    /// Cut the text with an ellipsis instead of wrapping it to a second line.
+    pub fn truncate(mut self) -> Self {
+        self.inner = self.inner.truncate();
+        self
+    }
+
     pub fn image_tint_follows_text_color(mut self, follows: bool) -> Self {
         self.inner = self.inner.image_tint_follows_text_color(follows);
         self
@@ -170,8 +181,13 @@ impl<'a> ReButton<'a> {
         self
     }
 
+    /// Show the button with the blue selected style and mark [`Button::selected`] for the
+    /// accesskit state.
     pub fn selected(mut self, selected: bool) -> Self {
         self.inner = self.inner.selected(selected);
+        if selected {
+            self.variant = Variant::Selected;
+        }
         self
     }
 
@@ -328,12 +344,26 @@ impl<'a> ReButton<'a> {
 
         Self::wrap_widget(ui, variant, size, icon, |ui| {
             // We can override here without reverting, since it will be reverted by wrap_widget
-            let style = ui.style_mut();
             if highlighted {
                 // Make the resting button look hovered by borrowing the hovered visuals.
+                let style = ui.style_mut();
                 style.visuals.widgets.inactive = style.visuals.widgets.hovered;
             }
-            inner.min_size(self.size.icon_button_size()).atom_ui(ui)
+
+            if matches!(variant, Variant::Selected) {
+                // Restore hover style for selected buttons (as eguis selection style doesn't have
+                // hover or pressed states).
+                let state = ui
+                    .ctx()
+                    .read_response(ui.next_auto_id())
+                    .map_or(WidgetState::Inactive, |r| r.widget_state());
+                let current = *ui.style().visuals.widgets.state(state);
+                let style = ui.style_mut();
+                style.visuals.selection.bg_fill = current.weak_bg_fill;
+                style.visuals.selection.stroke.color = current.fg_stroke.color;
+            }
+
+            inner.min_size(size.icon_button_size()).atom_ui(ui)
         })
     }
 

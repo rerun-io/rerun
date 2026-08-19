@@ -481,6 +481,14 @@
     "fill_pressed": { "color": "{Blue.500}", "alpha": 100 },
     "text": { "color": "{Gray.250}" },
   },
+  // The accent selection surface (selected items, selection badge, play button).
+  // Hover/press step away from the background, like "button_primary".
+  "selection": {
+    "fill": { "color": "{Blue.500}", "alpha": 25 }, // Subtle tint — the badge pill rests at ~10% blue.
+    "fill_hovered": { "color": "{Blue.500}", "alpha": 50 },
+    "fill_pressed": { "color": "{Blue.500}", "alpha": 100 },
+    "text": { "color": "{Blue.500}" },
+  },
 
   "Global": {
     "Typography": {

@@ -1,11 +1,11 @@
 //! Core list item functionality.
 
-use egui::emath::GuiRounding as _;
-use egui::{Color32, EventFilter, NumExt as _, Response, Sense, Shape, Ui};
-
+use crate::egui_ext::garbage_collect::EguiMemoryGarbageCollector;
 use crate::list_item::navigation::ListItemNavigation;
 use crate::list_item::{ContentContext, DesiredWidth, LayoutInfoStack, ListItemContent};
 use crate::{DesignTokens, UiExt as _, design_tokens_of};
+use egui::emath::GuiRounding as _;
+use egui::{Color32, EventFilter, NumExt as _, Response, Sense, Shape, Ui};
 
 struct ListItemResponse {
     /// Response of the whole [`ListItem`]
@@ -53,6 +53,8 @@ pub struct ListItem {
     height: f32,
     y_offset: f32,
     render_offscreen: bool,
+    corner_radius: egui::CornerRadius,
+    collapse_temporary: bool,
 }
 
 impl Default for ListItem {
@@ -69,6 +71,8 @@ impl Default for ListItem {
             height: DesignTokens::list_item_height(),
             y_offset: 0.0,
             render_offscreen: true,
+            corner_radius: egui::CornerRadius::ZERO,
+            collapse_temporary: false,
         }
     }
 }
@@ -248,6 +252,15 @@ impl ListItem {
         self
     }
 
+    /// Set the corner radius of the background highlight.
+    ///
+    /// The default is square, which fits the full-span highlight in panels.
+    #[inline]
+    pub fn with_corner_radius(mut self, corner_radius: impl Into<egui::CornerRadius>) -> Self {
+        self.corner_radius = corner_radius.into();
+        self
+    }
+
     /// Override the background color for the item.
     ///
     /// If set, this takes precedence over [`Self::force_hovered`] and any kind of selection/
@@ -295,6 +308,12 @@ impl ListItem {
     #[inline]
     pub fn render_offscreen(mut self, render_offscreen: bool) -> Self {
         self.render_offscreen = render_offscreen;
+        self
+    }
+
+    /// Forget this item's collapsed/expanded state as soon as it stops being shown.
+    pub fn collapse_temporary(mut self, temporary: bool) -> Self {
+        self.collapse_temporary = temporary;
         self
     }
 
@@ -389,6 +408,16 @@ impl ListItem {
             id,
             default_open,
         );
+        if self.collapse_temporary {
+            let clone = state.clone();
+            ui.plugin::<EguiMemoryGarbageCollector>()
+                .lock()
+                .add(id, move |ctx| {
+                    clone.remove(ctx);
+                    // "Clear" the animation
+                    ctx.animate_bool_with_time(id, default_open, 0.0);
+                });
+        }
 
         let tokens = ui.tokens();
 
@@ -457,6 +486,8 @@ impl ListItem {
             mut height,
             y_offset,
             render_offscreen,
+            corner_radius,
+            collapse_temporary: _,
         } = self;
 
         let tokens = ui.tokens();
@@ -666,7 +697,7 @@ impl ListItem {
             if let Some(bg_fill) = force_background.or_else(|| visuals.bg_color(ui.visuals())) {
                 ui.painter().set(
                     background_frame,
-                    Shape::rect_filled(bg_rect_to_paint, 0.0, bg_fill),
+                    Shape::rect_filled(bg_rect_to_paint, corner_radius, bg_fill),
                 );
             }
 

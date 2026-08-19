@@ -141,7 +141,7 @@ pub async fn start_with_segment_fragment_url() {
             harness.query_by_label_contains("Streams").is_some()
                 && !harness.is_loading()
                 && harness.query_by_label_contains("my_dataset").is_some()
-                && harness.query_all_by_label("new_recording_id").count() == 2
+                && harness.query_all_by_label("new_recording_id").count() == 3
         },
         Duration::from_millis(100),
         Duration::from_secs(5),

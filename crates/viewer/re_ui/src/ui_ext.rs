@@ -1,6 +1,6 @@
 use egui::{
     CollapsingResponse, Color32, IntoAtoms, Margin, NumExt as _, Rangef, Rect, StrokeKind,
-    Widget as _, WidgetInfo, WidgetText, pos2,
+    UiBuilder, Widget as _, WidgetInfo, WidgetText, pos2,
 };
 use egui::{CornerRadius, emath::GuiRounding as _};
 
@@ -1369,6 +1369,42 @@ pub trait UiExt {
             egui::Stroke::new(1.0, ui.visuals().error_fg_color);
         ui.visuals_mut().widgets.inactive.bg_stroke =
             egui::Stroke::new(1.0, ui.visuals().error_fg_color);
+    }
+
+    /// Show `contents` as one wrapping unit inside a [`egui::Ui::horizontal_wrapped`] layout.
+    ///
+    /// Don't use too many of these in the same layout, as it could take a frame per row and wrap
+    /// unit to settle.
+    fn wrap_unit<R>(
+        &mut self,
+        contents: impl FnOnce(&mut egui::Ui) -> R,
+    ) -> egui::InnerResponse<R> {
+        let ui = self.ui_mut();
+
+        let id = ui.next_auto_id();
+        let last_width = ui.read_response(id).map(|response| response.rect.width());
+        let available = ui.available_rect_before_wrap().width();
+
+        // Only break a row that already has something on it: `end_row` moves
+        // down by one row height even on an empty row, which would leave a
+        // blank row above the contents.
+        let row_has_content = available < ui.max_rect().width() - 0.5;
+
+        if row_has_content && last_width.is_some_and(|width| available < width) {
+            ui.end_row();
+        }
+
+        let layout = ui.layout().with_main_wrap(false);
+        let response = ui.scope_builder(UiBuilder::new().id(id).layout(layout), contents);
+
+        // The contents have a width we did not know about when we placed them.
+        // Ask for one more pass, so the next one puts them on the correct row.
+        let width = response.response.rect.width();
+        if last_width.is_none_or(|last_width| 0.5 < (last_width - width).abs()) {
+            ui.request_discard("wrap_unit width changed");
+        }
+
+        response
     }
 }
 

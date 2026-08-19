@@ -1,6 +1,7 @@
 //! Things that should be upstream moved to egui/eframe at some point
 
 pub mod card_layout;
+pub mod garbage_collect;
 mod group;
 mod kb_shortcut_ext;
 pub mod response_ext;
