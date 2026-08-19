@@ -1139,6 +1139,7 @@ impl StoreHub {
             db.redap_uri().is_some_and(|redap_uri| {
                 redap_uri.origin == uri.origin
                     && redap_uri.dataset_id == uri.dataset_id
+                    && redap_uri.kind == uri.kind
                     && redap_uri.segment_id == uri.segment_id
             })
         })

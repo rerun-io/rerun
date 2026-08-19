@@ -6,10 +6,9 @@ use datafusion::prelude::{SessionConfig, SessionContext, col, lit};
 use datafusion::sql::TableReference;
 use egui::{Frame, Margin, RichText};
 use re_async::AsyncRuntimeHandle;
-use re_dataframe_ui::{ColumnBlueprint, default_display_name_for_column};
-use re_log_types::{EntityPathPart, EntryId};
+use re_dataframe_ui::ColumnBlueprint;
+use re_log_types::EntryId;
 use re_protos::cloud::v1alpha1::EntryKind;
-use re_protos::cloud::v1alpha1::ext::ScanSegmentTableDataframe;
 use re_quota_channel::send_crossbeam;
 use re_redap_client::{
     ClientCredentialsError, ConnectionHandle, ConnectionRegistryHandle, CredentialSource,
@@ -25,8 +24,10 @@ use re_viewer_context::{
 };
 
 use crate::context::Context;
-use crate::entries::{Dataset, Entries, Entry, Table};
+use crate::entries::{Entries, Entry, Table};
 use crate::server_modal::{LoginFlow, LoginFlowResult, ServerModal, ServerModalMode};
+
+mod dataset;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum ServerKind {
@@ -54,7 +55,6 @@ impl Server {
         runtime: AsyncRuntimeHandle,
         egui_ctx: &egui::Context,
         command_sender: crossbeam::channel::Sender<Command>,
-        viewer_command_sender: ViewerCommandSender,
     ) -> Self {
         Self::new(
             connection,
@@ -62,7 +62,6 @@ impl Server {
             runtime,
             egui_ctx,
             command_sender,
-            viewer_command_sender,
         )
     }
 
@@ -71,7 +70,6 @@ impl Server {
         runtime: AsyncRuntimeHandle,
         egui_ctx: &egui::Context,
         command_sender: crossbeam::channel::Sender<Command>,
-        viewer_command_sender: ViewerCommandSender,
     ) -> Self {
         Self::new(
             connection,
@@ -79,7 +77,6 @@ impl Server {
             runtime,
             egui_ctx,
             command_sender,
-            viewer_command_sender,
         )
     }
 
@@ -89,17 +86,10 @@ impl Server {
         runtime: AsyncRuntimeHandle,
         egui_ctx: &egui::Context,
         command_sender: crossbeam::channel::Sender<Command>,
-        viewer_command_sender: ViewerCommandSender,
     ) -> Self {
         let tables_session_ctx = Self::session_context();
 
-        let entries = Entries::new(
-            connection.clone(),
-            &runtime,
-            egui_ctx,
-            tables_session_ctx.clone(),
-            viewer_command_sender,
-        );
+        let entries = Entries::default();
 
         let (cancel_tx, cancel_rx) = futures::channel::oneshot::channel();
         let listener = watch_events_loop(connection.clone(), command_sender, egui_ctx.clone());
@@ -129,26 +119,13 @@ impl Server {
         Arc::new(session_ctx)
     }
 
-    fn refresh_entries(
-        mut self,
-        runtime: &AsyncRuntimeHandle,
-        egui_ctx: &egui::Context,
-        viewer_command_sender: ViewerCommandSender,
-    ) -> Self {
+    fn refresh_entries(&mut self) {
         // TODO(RR-4874): this replaces the whole session context, dropping the DataFusionTableWidget
         // caches. As a result, a currently-displayed table reverts to "Loading…" on any catalog
         // refresh, even when that table itself is unchanged.
         self.tables_session_ctx = Self::session_context();
 
-        self.entries = self.entries.refresh(
-            self.connection.clone(),
-            runtime,
-            egui_ctx,
-            self.tables_session_ctx.clone(),
-            viewer_command_sender,
-        );
-
-        self
+        self.entries.refresh();
     }
 
     #[inline]
@@ -171,8 +148,18 @@ impl Server {
         self.kind == ServerKind::Remote
     }
 
-    fn on_frame_start(&mut self) {
-        self.entries.on_frame_start();
+    fn on_frame_start(
+        &mut self,
+        egui_ctx: &egui::Context,
+        viewer_command_sender: &ViewerCommandSender,
+    ) {
+        self.entries.on_frame_start(
+            &self.connection,
+            &self.tables_session_ctx,
+            &self.runtime,
+            egui_ctx,
+            viewer_command_sender,
+        );
     }
 
     fn find_entry(&self, entry_id: EntryId) -> Option<&Entry> {
@@ -304,6 +291,7 @@ impl Server {
                         Route::RedapEntry {
                             origin: origin.clone(),
                             kind: RedapEntryKind::Folder(parent.to_owned()),
+                            tab: Default::default(),
                         }
                     } else {
                         Route::RedapServer(origin.clone())
@@ -343,70 +331,6 @@ impl Server {
                 }
             }
         });
-    }
-
-    fn dataset_entry_ui(
-        &self,
-        app_ctx: &AppContext<'_>,
-        ui: &mut egui::Ui,
-        dataset: &Dataset,
-        table_blueprints: &re_dataframe_ui::TableBlueprints,
-        view_states: &mut ViewStates,
-    ) {
-        const RECORDING_LINK_COLUMN_NAME: &str = "recording link";
-
-        re_dataframe_ui::DataFusionTableWidget::new(
-            self.tables_session_ctx.clone(),
-            TableReference::bare(dataset.name().to_string()),
-            ViewerTableReference::RedapEntry {
-                origin: dataset.origin.clone(),
-                entry_id: dataset.id(),
-            },
-        )
-        .title(dataset.name().to_string())
-        .column_blueprint(|desc| {
-            let mut name = default_display_name_for_column(desc);
-
-            // strip prefix and remove underscores, _only_ for the base columns (aka not the
-            // properties)
-            name = name
-                .strip_prefix("rerun_")
-                .map(|name| name.replace('_', " "))
-                .unwrap_or(name);
-
-            let default_visible = if desc.entity_path().is_some_and(|entity_path| {
-                entity_path.starts_with(&std::iter::once(EntityPathPart::properties()).collect())
-            }) {
-                // Property columns are visible by default
-                true
-            } else {
-                desc.display_name().as_str() == RECORDING_LINK_COLUMN_NAME
-            };
-
-            let column_sort_key = match desc.display_name().as_str() {
-                ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME => 0,
-                RECORDING_LINK_COLUMN_NAME => 1,
-                _ => 2,
-            };
-
-            let mut blueprint = ColumnBlueprint::default()
-                .display_name(name)
-                .default_visibility(default_visible)
-                .sort_key(column_sort_key);
-
-            if desc.display_name().as_str() == RECORDING_LINK_COLUMN_NAME {
-                blueprint = blueprint.variant_ui(re_component_ui::REDAP_URI_BUTTON_VARIANT);
-            }
-
-            blueprint
-        })
-        .generate_segment_links(
-            RECORDING_LINK_COLUMN_NAME.into(),
-            ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME.into(),
-            self.origin().clone(),
-            dataset.id(),
-        )
-        .show(app_ctx, &self.runtime, ui, table_blueprints, view_states);
     }
 
     fn table_entry_ui(
@@ -681,7 +605,7 @@ impl<'de> serde::Deserialize<'de> for RedapServers {
 
 impl Default for RedapServers {
     fn default() -> Self {
-        let (command_sender, command_receiver) = create_channel(256);
+        let (command_sender, command_receiver) = re_quota_channel::create_crossbeam_channel(256);
 
         Self {
             servers: Default::default(),
@@ -692,22 +616,6 @@ impl Default for RedapServers {
             server_modal_ui: Default::default(),
             inline_login_flow: None,
         }
-    }
-}
-
-/// Create a blocking channel on native, and an unbounded channel on web.
-fn create_channel<T>(
-    size: usize,
-) -> (
-    crossbeam::channel::Sender<T>,
-    crossbeam::channel::Receiver<T>,
-) {
-    cfg_select! {
-        target_arch = "wasm32" => {
-            _ = size;
-            crossbeam::channel::unbounded() // we're not allowed to block on web
-        }
-        _ => crossbeam::channel::bounded(size),
     }
 }
 
@@ -814,7 +722,6 @@ impl RedapServers {
         connection_registry: &ConnectionRegistryHandle,
         runtime: &AsyncRuntimeHandle,
         egui_ctx: &egui::Context,
-        viewer_command_sender: ViewerCommandSender,
     ) {
         if self
             .servers
@@ -831,7 +738,6 @@ impl RedapServers {
                 runtime.clone(),
                 egui_ctx,
                 self.command_sender.clone(),
-                viewer_command_sender,
             ),
         );
     }
@@ -850,24 +756,31 @@ impl RedapServers {
 
     /// Refresh the dataframe contents of a single entry (dataset or table).
     ///
-    /// This clears the cached query results so the next frame re-fetches from the server —
-    /// the same effect as the "Refresh table" button in the entry view.
+    /// This clears the cached query results and the entry's metadata, so the next frame re-fetches
+    /// both from the server — the same effect as the "Refresh table" button in the entry view.
     pub fn refresh_entry(
         &self,
         origin: &re_uri::Origin,
         entry_id: EntryId,
         egui_ctx: &egui::Context,
     ) {
-        if let Some(server) = self.servers.get(origin)
-            && let Some(entry) = server.find_entry(entry_id)
-        {
-            re_dataframe_ui::DataFusionTableWidget::refresh(
-                &server.runtime,
-                egui_ctx.clone(),
-                server.tables_session_ctx.clone(),
-                TableReference::bare(entry.name().to_string()),
-            );
+        let Some(server) = self.servers.get(origin) else {
+            return;
+        };
+        let Some(entry) = server.find_entry(entry_id) else {
+            return;
+        };
+
+        if let Ok(crate::entries::EntryInner::Dataset(dataset)) = entry.inner() {
+            dataset.requests().refresh();
         }
+
+        re_dataframe_ui::DataFusionTableWidget::refresh(
+            &server.runtime,
+            egui_ctx.clone(),
+            server.tables_session_ctx.clone(),
+            TableReference::bare(entry.name().to_string()),
+        );
     }
 
     /// Snapshot of `(origin, entry_id) → name + icon` for all currently-loaded catalog entries.
@@ -953,7 +866,6 @@ impl RedapServers {
                 egui_ctx,
                 command,
                 login_enabled,
-                viewer_command_sender,
             );
         }
 
@@ -975,7 +887,7 @@ impl RedapServers {
         }
 
         for server in self.servers.values_mut() {
-            server.on_frame_start();
+            server.on_frame_start(egui_ctx, viewer_command_sender);
         }
     }
 
@@ -986,7 +898,6 @@ impl RedapServers {
         egui_ctx: &egui::Context,
         command: Command,
         login_enabled: bool,
-        viewer_command_sender: &ViewerCommandSender,
     ) {
         match command {
             Command::OpenAddServerModal => {
@@ -1025,7 +936,6 @@ impl RedapServers {
                             runtime.clone(),
                             egui_ctx,
                             self.command_sender.clone(),
-                            viewer_command_sender.clone(),
                         ),
                     );
                 }
@@ -1039,11 +949,8 @@ impl RedapServers {
                 if self.is_internal_server(&origin) {
                     self.reveal_internal_catalog();
                 }
-                if let Some(server) = self.servers.remove(&origin) {
-                    self.servers.insert(
-                        origin,
-                        server.refresh_entries(runtime, egui_ctx, viewer_command_sender.clone()),
-                    );
+                if let Some(server) = self.servers.get_mut(&origin) {
+                    server.refresh_entries();
                 }
             }
 
@@ -1106,6 +1013,7 @@ impl RedapServers {
         ctx: &AppContext<'_>,
         ui: &mut egui::Ui,
         active_entry: EntryId,
+        tab: re_uri::DatasetResource,
         table_blueprints: &re_dataframe_ui::TableBlueprints,
         view_states: &mut ViewStates,
     ) {
@@ -1113,7 +1021,14 @@ impl RedapServers {
             if let Some(entry) = server.find_entry(active_entry) {
                 match entry.inner() {
                     Ok(crate::entries::EntryInner::Dataset(dataset)) => {
-                        server.dataset_entry_ui(ctx, ui, dataset, table_blueprints, view_states);
+                        server.dataset_entry_ui(
+                            ctx,
+                            ui,
+                            dataset,
+                            table_blueprints,
+                            view_states,
+                            tab,
+                        );
 
                         // If we're connected twice to the same server, we will find this entry
                         // multiple times. We avoid it by returning here.

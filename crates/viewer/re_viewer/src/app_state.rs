@@ -738,6 +738,7 @@ impl AppState {
 
             Route::RedapEntry {
                 kind: re_viewer_context::RedapEntryKind::Entry(entry_id),
+                tab,
                 ..
             } => {
                 Self::left_panel_ui(
@@ -759,6 +760,7 @@ impl AppState {
                             &app_ctx,
                             ui,
                             *entry_id,
+                            *tab,
                             table_blueprints,
                             &mut self.view_states,
                         );
@@ -768,6 +770,8 @@ impl AppState {
             Route::RedapEntry {
                 origin,
                 kind: re_viewer_context::RedapEntryKind::Folder(path_prefix),
+                // Tab isn't used for folders.
+                tab: _,
             } => {
                 Self::left_panel_ui(
                     &mut self.recording_panel,

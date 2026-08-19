@@ -50,8 +50,8 @@ pub use self::dataset_hierarchy::{
     DATASET_HIERARCHY_SEPARATOR, dataset_hierarchy_leaf_name, split_dataset_hierarchy_path,
 };
 pub use self::endpoints::catalog::CatalogUri;
-pub use self::endpoints::dataset::DatasetSegmentUri;
-pub use self::endpoints::entry::EntryUri;
+pub use self::endpoints::dataset::{DatasetSegmentUri, SegmentKind};
+pub use self::endpoints::entry::{DatasetResource, EntryUri};
 pub use self::endpoints::folder::FolderUri;
 pub use self::endpoints::proxy::ProxyUri;
 pub use self::error::Error;

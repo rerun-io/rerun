@@ -56,6 +56,7 @@ pub async fn preview_table() {
                 port: server.port(),
             },
             dataset_id,
+            kind: re_uri::SegmentKind::Segments,
             segment_id: segment_id.clone(),
             fragment: Default::default(),
         })

@@ -419,6 +419,7 @@ mod tests {
             re_uri::DatasetSegmentUri {
                 origin: origin.clone(),
                 dataset_id,
+                kind: re_uri::SegmentKind::Segments,
                 segment_id: "segment_id".into(),
                 fragment: re_uri::Fragment::default(),
             },
@@ -444,6 +445,7 @@ mod tests {
             re_uri::DatasetSegmentUri {
                 origin: origin.clone(),
                 dataset_id,
+                kind: re_uri::SegmentKind::Segments,
                 segment_id: "segment_id".into(),
                 fragment: re_uri::Fragment {
                     selection: selection.to_data_path(),

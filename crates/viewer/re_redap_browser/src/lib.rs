@@ -3,6 +3,7 @@
 
 mod context;
 mod entries;
+mod entry_meta;
 mod folder_card_ui;
 mod server_modal;
 mod servers;

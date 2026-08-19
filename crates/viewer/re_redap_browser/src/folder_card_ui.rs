@@ -79,6 +79,7 @@ pub fn folder_cards_ui(
                             Route::RedapEntry {
                                 origin: origin.clone(),
                                 kind: RedapEntryKind::Folder(path_prefix.clone()),
+                                tab: Default::default(),
                             }
                         }
                         FolderChildCard::Entry {
@@ -99,7 +100,11 @@ pub fn folder_cards_ui(
                                 ui.strong(name);
                             });
 
-                            Route::from(re_uri::EntryUri::new(origin.clone(), *entry_id))
+                            Route::from(re_uri::EntryUri::new(
+                                origin.clone(),
+                                *entry_id,
+                                Default::default(),
+                            ))
                         }
                     };
 

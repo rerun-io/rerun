@@ -1,12 +1,47 @@
 use re_log_types::StoreId;
 use re_types_core::SegmentId;
 
-use crate::{EntryUri, Error, Fragment, Origin, RedapUri};
+use crate::{DatasetResource, EntryUri, Error, Fragment, Origin, RedapUri};
+
+/// Which of a dataset's segments a [`DatasetSegmentUri`] points at.
+#[derive(
+    Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, re_byte_size::SizeBytes,
+)]
+pub enum SegmentKind {
+    /// The segments of the dataset itself.
+    #[default]
+    Segments,
+
+    /// The assets of the dataset, which are segments of its hidden asset dataset.
+    Assets,
+}
+
+impl std::fmt::Display for SegmentKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Self::Segments => "segments",
+            Self::Assets => "assets",
+        })
+    }
+}
+
+impl std::str::FromStr for SegmentKind {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "segments" => Ok(Self::Segments),
+            "assets" => Ok(Self::Assets),
+            _ => Err(()),
+        }
+    }
+}
 
 /// URI pointing at the data underlying a dataset.
 ///
-/// Currently, the following format is supported:
-/// `<origin>/dataset/$DATASET_ID/data?segment_id=$SEGMENT_ID&time_range=$TIME_RANGE`
+/// Currently, the following formats are supported:
+/// `<origin>/dataset/$DATASET_ID?segment_id=$SEGMENT_ID&time_range=$TIME_RANGE`
+/// `<origin>/dataset/$DATASET_ID/assets?segment_id=$ASSET_ID`
 ///
 /// `segment_id` is currently mandatory, and `time_range` is optional.
 /// In the future we will add richer queries.
@@ -14,6 +49,7 @@ use crate::{EntryUri, Error, Fragment, Origin, RedapUri};
 pub struct DatasetSegmentUri {
     pub origin: Origin,
     pub dataset_id: re_tuid::Tuid,
+    pub kind: SegmentKind,
 
     // Query parameters: these affect what data is returned.
     /// Currently mandatory.
@@ -28,11 +64,16 @@ impl std::fmt::Display for DatasetSegmentUri {
         let Self {
             origin,
             dataset_id,
+            kind,
             segment_id,
             fragment,
         } = self;
 
         write!(f, "{origin}/dataset/{dataset_id}")?;
+
+        if *kind != SegmentKind::default() {
+            write!(f, "/{kind}")?;
+        }
 
         // ?query:
         {
@@ -50,7 +91,12 @@ impl std::fmt::Display for DatasetSegmentUri {
 }
 
 impl DatasetSegmentUri {
-    pub fn new(origin: Origin, dataset_id: re_tuid::Tuid, url: &url::Url) -> Result<Self, Error> {
+    pub fn new(
+        origin: Origin,
+        dataset_id: re_tuid::Tuid,
+        kind: SegmentKind,
+        url: &url::Url,
+    ) -> Result<Self, Error> {
         let mut segment_id = None;
         let mut legacy_partition_id = None;
 
@@ -91,6 +137,7 @@ impl DatasetSegmentUri {
         Ok(Self {
             origin,
             dataset_id,
+            kind,
             segment_id,
             fragment,
         })
@@ -101,6 +148,7 @@ impl DatasetSegmentUri {
         let Self {
             origin: _,     // Mandatory
             dataset_id: _, // Mandatory
+            kind: _,       // Mandatory
             segment_id: _, // Mandatory
             fragment,
         } = &mut self;
@@ -115,6 +163,7 @@ impl DatasetSegmentUri {
         let Self {
             origin: _,     // Mandatory
             dataset_id: _, // Mandatory
+            kind: _,       // Mandatory
             segment_id: _, // Mandatory
             fragment,
         } = &mut self;
@@ -125,10 +174,19 @@ impl DatasetSegmentUri {
     }
 
     pub fn store_id(&self) -> StoreId {
+        let dataset_id = re_log_types::EntryId::from(self.dataset_id);
+
         #[expect(deprecated)]
-        let application_id = re_log_types::ApplicationId::from_entry_id(
-            re_log_types::EntryId::from(self.dataset_id),
-        );
+        let application_id = match self.kind {
+            // The segments of a dataset all show the same kind of data, so they share a blueprint.
+            SegmentKind::Segments => re_log_types::ApplicationId::from_entry_id(dataset_id),
+
+            // The assets of a dataset have nothing in common, so each one gets its own blueprint.
+            SegmentKind::Assets => {
+                re_log_types::ApplicationId::from_asset(dataset_id, self.segment_id.as_str())
+            }
+        };
+
         StoreId::new(
             re_log_types::StoreKind::Recording,
             application_id,
@@ -140,6 +198,10 @@ impl DatasetSegmentUri {
         EntryUri {
             origin: self.origin.clone(),
             entry_id: re_log_types::EntryId::from(self.dataset_id),
+            resource: match self.kind {
+                SegmentKind::Segments => DatasetResource::Segments,
+                SegmentKind::Assets => DatasetResource::Assets,
+            },
         }
     }
 }
@@ -180,6 +242,43 @@ impl<'de> serde::Deserialize<'de> for DatasetSegmentUri {
 }
 
 // --------------------------------
+
+#[cfg(test)]
+fn test_uri(kind: SegmentKind, segment_id: &str) -> DatasetSegmentUri {
+    DatasetSegmentUri {
+        origin: "rerun://127.0.0.1:1234".parse().expect("valid origin"),
+        dataset_id: "1830B33B45B963E7774455beb91701ae"
+            .parse()
+            .expect("valid dataset id"),
+        kind,
+        segment_id: segment_id.into(),
+        fragment: Fragment::default(),
+    }
+}
+
+/// The segments of a dataset all show the same kind of data, so they share an application id and
+/// with it a blueprint.
+#[test]
+fn segments_of_a_dataset_share_an_application_id() {
+    let first = test_uri(SegmentKind::Segments, "first").store_id();
+    let second = test_uri(SegmentKind::Segments, "second").store_id();
+
+    assert_eq!(first.application_id(), second.application_id());
+    assert_ne!(first, second);
+}
+
+/// Each asset of a dataset gets its own application id, so that it shares a blueprint neither with
+/// the other assets nor with the dataset's segments.
+#[test]
+fn assets_of_a_dataset_do_not_share_an_application_id() {
+    let robot = test_uri(SegmentKind::Assets, "robot_mesh").store_id();
+    let gripper = test_uri(SegmentKind::Assets, "gripper_mesh").store_id();
+    let segment = test_uri(SegmentKind::Segments, "robot_mesh").store_id();
+
+    assert_ne!(robot.application_id(), gripper.application_id());
+    assert_ne!(robot.application_id(), segment.application_id());
+    assert_ne!(robot, segment);
+}
 
 #[test]
 fn test_url() {

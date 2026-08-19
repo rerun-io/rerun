@@ -115,6 +115,7 @@ pub async fn start_with_segment_fragment_url() {
             port: server.port(),
         },
         dataset_id,
+        kind: re_uri::SegmentKind::Segments,
         segment_id,
         fragment: re_uri::Fragment {
             selection: None,

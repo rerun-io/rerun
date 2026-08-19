@@ -513,7 +513,11 @@ fn dataset_entry_ui(ctx: &AppContext<'_>, ui: &mut egui::Ui, dataset_entry_data:
         ui.label(format!("Dataset: {name}"));
     });
 
-    let new_route = Route::from(re_uri::EntryUri::new(origin.clone(), *entry_id));
+    let new_route = Route::from(re_uri::EntryUri::new(
+        origin.clone(),
+        *entry_id,
+        Default::default(),
+    ));
 
     item_response.context_menu(|ui| {
         let url = ViewerOpenUrl::from_route(ctx.store_hub(), &new_route)
@@ -613,7 +617,7 @@ fn failed_entry_ui(ctx: &AppContext<'_>, ui: &mut egui::Ui, failed_entry_data: &
         ctx.command_sender()
             .send_system(SystemCommand::set_selection(item));
         ctx.command_sender().send_system(SystemCommand::SetRoute(
-            re_uri::EntryUri::new(origin.clone(), *entry_id).into(),
+            re_uri::EntryUri::new(origin.clone(), *entry_id, Default::default()).into(),
         ));
     }
 

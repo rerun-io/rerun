@@ -1640,6 +1640,7 @@ impl App {
             Some(re_uri::RedapUri::DatasetData(uri)) => Route::RedapEntry {
                 origin: uri.origin,
                 kind: re_viewer_context::RedapEntryKind::Entry(uri.dataset_id.into()),
+                tab: re_uri::DatasetResource::Segments,
             },
 
             Some(uri) if !matches!(uri, re_uri::RedapUri::Proxy(_)) => {

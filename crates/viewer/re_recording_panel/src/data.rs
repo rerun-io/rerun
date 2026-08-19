@@ -344,28 +344,27 @@ impl<'a> ServerEntriesData<'a> {
                         name: entry.name().clone(),
                         icon: entry.icon(),
                         is_selected: ctx.is_selected_or_loading(
-                            &re_uri::EntryUri::new(origin.clone(), entry.id()).into(),
+                            &re_uri::EntryUri::new(origin.clone(), entry.id(), Default::default())
+                                .into(),
                         ),
                         is_active: ctx.active_redap_entry() == Some(entry.id()),
                     };
 
                     match entry.inner() {
                         Ok(EntryInner::Dataset(_dataset)) => {
+                            // Assets live in a separate, hidden dataset, but their urls name the
+                            // dataset that owns them, so they are displayed under it.
                             let mut displayed_segments: Vec<SegmentData<'_>> = ctx
                                 .store_bundle()
                                 .entity_dbs()
                                 .filter_map(|entity_db| {
                                     if let EntityDbClass::DatasetSegment(uri) =
                                         entity_db.store_class()
+                                        && &uri.origin == origin
+                                        && ctx.store_hub().is_opened(entity_db.store_id())
+                                        && EntryId::from(uri.dataset_id) == entry.id()
                                     {
-                                        if &uri.origin == origin
-                                            && EntryId::from(uri.dataset_id) == entry.id()
-                                            && ctx.store_hub().is_opened(entity_db.store_id())
-                                        {
-                                            Some(SegmentData::Loaded { entity_db })
-                                        } else {
-                                            None
-                                        }
+                                        Some(SegmentData::Loaded { entity_db })
                                     } else {
                                         None
                                     }
@@ -618,7 +617,7 @@ pub struct EntryData {
 
 impl EntryData {
     pub fn item(&self) -> Item {
-        re_uri::EntryUri::new(self.origin.clone(), self.entry_id).into()
+        re_uri::EntryUri::new(self.origin.clone(), self.entry_id, Default::default()).into()
     }
 
     pub fn id(&self) -> egui::Id {

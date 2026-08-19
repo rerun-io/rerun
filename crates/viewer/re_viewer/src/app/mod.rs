@@ -1513,9 +1513,11 @@ impl eframe::App for App {
             // The Redap entry currently being viewed (if any), so its commands (e.g. refresh)
             // are offered in the command palette.
             let current_redap_entry = match self.state.navigation.current() {
-                Route::RedapEntry { origin, kind } => {
-                    kind.entry_id().map(|entry_id| (origin.clone(), entry_id))
-                }
+                Route::RedapEntry {
+                    origin,
+                    kind,
+                    tab: _,
+                } => kind.entry_id().map(|entry_id| (origin.clone(), entry_id)),
                 _ => None,
             };
 

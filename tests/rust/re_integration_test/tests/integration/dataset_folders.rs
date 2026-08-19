@@ -11,6 +11,7 @@ use re_integration_test::{HarnessExt as _, TestServer, ViewerHarnessExt as _};
 use re_protos::cloud::v1alpha1::ext;
 use re_protos::cloud::v1alpha1::ext::TableInsertMode;
 use re_sdk::external::re_log_types::EntryId;
+use re_uri::DatasetResource;
 use re_viewer::App;
 use re_viewer::external::re_viewer_context::{RedapEntryKind, Route};
 use re_viewer::viewer_test_utils::{self, AppTestingExt as _, HarnessOptions};
@@ -90,14 +91,17 @@ pub async fn dataset_folders() {
     let folder_route = |path: &str| Route::RedapEntry {
         origin: origin.clone(),
         kind: RedapEntryKind::Folder(path.to_owned()),
+        tab: DatasetResource::default(),
     };
     let summary_route = Route::from(re_uri::EntryUri::new(
         origin.clone(),
         EntryId::from_str(summary_id_str).expect("valid entry id"),
+        DatasetResource::default(),
     ));
     let metrics_route = Route::from(re_uri::EntryUri::new(
         origin.clone(),
         metrics_table.details.id,
+        DatasetResource::default(),
     ));
 
     // Jump directly into the `perception` folder via URL.

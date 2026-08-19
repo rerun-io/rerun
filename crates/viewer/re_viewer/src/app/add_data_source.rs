@@ -342,7 +342,7 @@ impl App {
                     });
                     sender.send_system(SystemCommand::LoadDataSource(
                         LogDataSource::RedapDatasetSegment {
-                            uri,
+                            uri: *uri,
                             open_behavior: RecordingOpenBehavior::OpenAndSelect,
                         },
                     ));
@@ -354,7 +354,7 @@ impl App {
                             origin: origin.clone(),
                             entry_id,
                         });
-                        let entry = re_uri::EntryUri::new(origin, entry_id);
+                        let entry = re_uri::EntryUri::new(origin, entry_id, Default::default());
                         sender.send_system(SystemCommand::set_selection(
                             re_viewer_context::Item::from(entry.clone()),
                         ));
@@ -522,7 +522,7 @@ async fn opfs_upload_matches(path: &Path, expected_size: u64) -> anyhow::Result<
 /// Depending on the content of the file, we want to navigate to different parts of the catalog.
 enum RegistrationTarget {
     /// Whenever there is a recording in the file.
-    DatasetSegment(re_uri::DatasetSegmentUri),
+    DatasetSegment(Box<re_uri::DatasetSegmentUri>),
 
     /// Used when there is no recording, e.g. in an `.rbl` file.
     Entry(EntryId),
@@ -595,12 +595,14 @@ async fn register_rrd_file_url(
     }
 
     if let Some(segment_id) = segment_id {
-        Ok(RegistrationTarget::DatasetSegment(DatasetSegmentUri {
+        let uri = DatasetSegmentUri {
             origin,
             dataset_id: dataset_id.id,
+            kind: re_uri::SegmentKind::Segments,
             segment_id,
             fragment: Default::default(),
-        }))
+        };
+        Ok(RegistrationTarget::DatasetSegment(Box::new(uri)))
     } else {
         Ok(RegistrationTarget::Entry(dataset_id))
     }

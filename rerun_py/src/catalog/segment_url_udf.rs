@@ -323,6 +323,7 @@ impl ScalarUDFImpl for SegmentUrlUdf {
             let uri = DatasetSegmentUri {
                 origin: origin.clone(),
                 dataset_id,
+                kind: re_uri::SegmentKind::Segments,
                 segment_id,
                 fragment: Fragment {
                     selection,

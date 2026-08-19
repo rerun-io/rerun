@@ -30,6 +30,7 @@ pub enum Route {
     RedapEntry {
         origin: re_uri::Origin,
         kind: RedapEntryKind,
+        tab: re_uri::DatasetResource,
     },
 
     /// The top-level view of a Redap Server.
@@ -57,8 +58,8 @@ impl std::fmt::Debug for Route {
             Self::Loading(source) => write!(f, "Loading({source})"),
             Self::LocalRecording { recording_id } => write!(f, "LocalRecording({recording_id:?})"),
             Self::LocalTable(table_id) => write!(f, "LocalTable({table_id})"),
-            Self::RedapEntry { origin, kind } => match kind {
-                RedapEntryKind::Entry(id) => write!(f, "RedapEntry({origin}, {id})"),
+            Self::RedapEntry { origin, kind, tab } => match kind {
+                RedapEntryKind::Entry(id) => write!(f, "RedapEntry({origin}, {id}, {tab})"),
                 RedapEntryKind::Folder(path_prefix) => {
                     write!(f, "RedapFolder({origin}, {path_prefix})")
                 }
@@ -134,7 +135,11 @@ impl Route {
                 store_id.as_ref().map(|id| Item::StoreId(id.clone()))
             }
             Self::LocalTable(table_id) => Some(Item::TableId(table_id.clone())),
-            Self::RedapEntry { origin, kind } => Some(Item::RedapEntry {
+            Self::RedapEntry {
+                origin,
+                kind,
+                tab: _,
+            } => Some(Item::RedapEntry {
                 origin: origin.clone(),
                 kind: kind.clone(),
             }),
@@ -152,6 +157,7 @@ impl Route {
             Item::RedapEntry { origin, kind } => Some(Self::RedapEntry {
                 origin: origin.clone(),
                 kind: kind.clone(),
+                tab: re_uri::DatasetResource::default(),
             }),
             Item::RedapServer(origin) => Some(Self::RedapServer(origin.clone())),
 
@@ -171,6 +177,7 @@ impl From<re_uri::EntryUri> for Route {
         Self::RedapEntry {
             origin: uri.origin,
             kind: RedapEntryKind::Entry(uri.entry_id),
+            tab: uri.resource,
         }
     }
 }
@@ -184,6 +191,8 @@ impl Route {
             Self::RedapEntry {
                 origin,
                 kind: RedapEntryKind::Entry(entry_id),
+                // The same table backs every tab of a dataset.
+                tab: _,
             } => Some(TableReference::RedapEntry {
                 origin: origin.clone(),
                 entry_id: *entry_id,

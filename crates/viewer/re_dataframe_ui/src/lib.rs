@@ -11,7 +11,6 @@ mod header_tooltip;
 mod preview_renderer;
 mod re_table;
 mod re_table_utils;
-mod requested_object;
 mod streaming_cache;
 mod table_blueprint;
 mod table_blueprints;
@@ -30,7 +29,6 @@ pub use self::header_tooltip::column_header_tooltip_ui;
 pub use self::re_table_utils::{
     CELL_SEPARATOR_STROKE_OFFSET, apply_table_style_fixes, cell_ui, header_ui,
 };
-pub use self::requested_object::RequestedObject;
 pub use self::streaming_cache::StreamingCacheTableProvider;
 pub use self::table_blueprints::{TableBlueprintError, TableBlueprints};
 
@@ -47,20 +45,4 @@ pub mod experimental_field_metadata {
     ///
     /// Set to `"true"` on a field's metadata. If no column is marked, the first visible string column is used.
     pub const IS_GRID_VIEW_CARD_TITLE: &str = "rerun:is_grid_view_card_title";
-}
-
-/// Create a blocking channel on native, and an unbounded channel on web.
-fn create_channel<T>(
-    size: usize,
-) -> (
-    crossbeam::channel::Sender<T>,
-    crossbeam::channel::Receiver<T>,
-) {
-    cfg_select! {
-        target_arch = "wasm32" => {
-            _ = size;
-            crossbeam::channel::unbounded() // we're not allowed to block on web
-        }
-        _ => crossbeam::channel::bounded(size),
-    }
 }

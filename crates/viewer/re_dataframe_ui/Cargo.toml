@@ -68,5 +68,4 @@ re_test_context.workspace = true
 egui_kittest.workspace = true
 insta.workspace = true
 itertools.workspace = true
-static_assertions.workspace = true
 tokio.workspace = true

@@ -54,6 +54,13 @@ pub trait UiExt {
         crate::loading_indicator::loading_indicator_ui(self.ui_mut(), reason)
     }
 
+    /// Like [`Self::loading_indicator`], but as tall as one line of text, so a label can take its
+    /// place without changing layout.
+    #[doc(alias = "spinner")]
+    fn inline_loading_indicator(&mut self, reason: &str) -> egui::Response {
+        crate::loading_indicator::inline_loading_indicator_ui(self.ui_mut(), reason)
+    }
+
     /// Small orange "debug only" pill, marking UI that is only present in debug builds.
     #[cfg(debug_assertions)]
     fn debug_only_badge(&mut self) -> egui::Response {

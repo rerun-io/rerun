@@ -9,7 +9,7 @@ use datafusion::prelude::SessionContext;
 use futures::stream::FuturesUnordered;
 use futures::{FutureExt as _, StreamExt as _, TryFutureExt as _};
 use re_async::AsyncRuntimeHandle;
-use re_dataframe_ui::{RequestedObject, StreamingCacheTableProvider};
+use re_dataframe_ui::StreamingCacheTableProvider;
 use re_datafusion::{SegmentTableProvider, TableEntryTableProvider, TableKind, TableQueryCaller};
 use re_log_types::{EntryId, EntryName};
 use re_protos::TypeConversionError;
@@ -17,14 +17,19 @@ use re_protos::cloud::v1alpha1::ext::{DatasetEntry, EntryDetails, ProviderDetail
 use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind};
 use re_protos::external::prost;
 use re_redap_client::{ApiError, ConnectionAnalyticsExporter, ConnectionClient, ConnectionHandle};
-use re_ui::{Icon, icons};
+use re_ui::{Icon, RequestedObject, ServerValue, icons};
 use re_viewer_context::{CommandSender, SystemCommand, SystemCommandSender as _};
+
+use crate::entry_meta::DatasetRequests;
 
 pub type EntryResult<T = ()> = Result<T, ApiError>;
 
 pub struct Dataset {
     pub dataset_entry: DatasetEntry,
     pub origin: re_uri::Origin,
+
+    /// What the server told us about this dataset beyond its entry, fetched on demand.
+    requests: Box<DatasetRequests>,
 }
 
 impl std::fmt::Debug for Dataset {
@@ -40,6 +45,14 @@ impl Dataset {
 
     pub fn name(&self) -> &EntryName {
         &self.dataset_entry.details.name
+    }
+
+    pub fn asset_dataset(&self) -> Option<EntryId> {
+        self.dataset_entry.dataset_details.asset_dataset
+    }
+
+    pub fn requests(&self) -> &DatasetRequests {
+        &self.requests
     }
 }
 
@@ -126,78 +139,58 @@ impl Entry {
 /// All the entries of a server.
 // TODO(ab): we currently load the ENTIRE list of datasets. We will need to be more granular
 // about this in the future.
+#[derive(Default)]
 pub struct Entries {
-    entries: RequestedObject<EntryResult<HashMap<EntryId, Entry>>>,
+    entries: RequestedObject<HashMap<EntryId, Entry>, ApiError>,
 }
 
 impl Entries {
-    pub(crate) fn new(
-        connection: ConnectionHandle,
-        runtime: &AsyncRuntimeHandle,
-        egui_ctx: &egui::Context,
-        session_context: Arc<SessionContext>,
-        command_sender: CommandSender,
-    ) -> Self {
-        let entries_fut = fetch_entries_and_register_tables(
-            connection,
-            session_context,
-            runtime.clone(),
-            command_sender,
-        );
-
-        Self {
-            entries: RequestedObject::new_with_repaint(runtime, egui_ctx.clone(), entries_fut),
-        }
+    /// Fetch the entries again, keeping the ones we have until the new ones arrive.
+    pub(crate) fn refresh(&mut self) {
+        self.entries.refresh();
     }
 
-    pub(crate) fn refresh(
-        self,
-        connection: ConnectionHandle,
+    /// Ask the server for the entries if nothing has yet, and take in whatever has arrived.
+    pub(crate) fn on_frame_start(
+        &mut self,
+        connection: &ConnectionHandle,
+        session_ctx: &Arc<SessionContext>,
         runtime: &AsyncRuntimeHandle,
         egui_ctx: &egui::Context,
-        session_context: Arc<SessionContext>,
-        command_sender: CommandSender,
-    ) -> Self {
-        let entries_fut = fetch_entries_and_register_tables(
-            connection,
-            session_context,
-            runtime.clone(),
-            command_sender,
-        );
+        command_sender: &CommandSender,
+    ) {
+        self.entries.request(runtime, egui_ctx, || {
+            fetch_entries_and_register_tables(
+                connection.clone(),
+                session_ctx.clone(),
+                runtime.clone(),
+                command_sender.clone(),
+            )
+        });
 
-        Self {
-            entries: self.entries.refresh_with_previous_and_repaint(
-                runtime,
-                egui_ctx.clone(),
-                entries_fut,
-            ),
-        }
-    }
-
-    pub(crate) fn on_frame_start(&mut self) {
-        self.entries.on_frame_start();
+        self.entries.poll();
     }
 
     pub fn find_entry(&self, entry_id: EntryId) -> Option<&Entry> {
-        self.entries.try_as_ref()?.as_ref().ok()?.get(&entry_id)
+        self.entries.get()?.get(&entry_id)
     }
 
     /// Iterate over all loaded entries (empty while still loading or on error).
     pub fn iter_loaded(&self) -> impl Iterator<Item = &Entry> {
         self.entries
-            .try_as_ref()
-            .and_then(|result| result.as_ref().ok())
+            .get()
             .into_iter()
             .flat_map(|entries| entries.values())
     }
 
     pub fn state(&self) -> Poll<Result<&HashMap<EntryId, Entry>, &ApiError>> {
-        self.entries
-            .try_as_ref()
-            .map_or(Poll::Pending, |r| match r {
-                Ok(entries) => Poll::Ready(Ok(entries)),
-                Err(err) => Poll::Ready(Err(err)),
-            })
+        match self.entries.value() {
+            ServerValue::Pending { previous } => {
+                previous.map_or(Poll::Pending, |entries| Poll::Ready(Ok(entries)))
+            }
+            ServerValue::Completed(entries) => Poll::Ready(Ok(entries)),
+            ServerValue::Unavailable { err, .. } => Poll::Ready(Err(err)),
+        }
     }
 }
 
@@ -344,6 +337,7 @@ async fn fetch_dataset_details(
     let result = Dataset {
         dataset_entry,
         origin: origin.clone(),
+        requests: Box::default(),
     };
 
     let table_provider = SegmentTableProvider::new(client, id)

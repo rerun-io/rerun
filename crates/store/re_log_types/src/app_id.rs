@@ -95,6 +95,19 @@ impl ApplicationId {
         Self::try_new(entry_id.to_string()).expect("entry IDs are valid application IDs")
     }
 
+    /// Create an application ID for one asset of a dataset.
+    ///
+    /// The assets of a dataset have nothing in common, so each one gets its own application ID,
+    /// and with it its own blueprint.
+    #[deprecated(
+        note = "TODO(RR-1358), TODO(RR-4857): Remove synthetic application IDs from catalog-backed data."
+    )]
+    #[inline]
+    pub fn from_asset(dataset_id: EntryId, asset_id: &str) -> Self {
+        Self::try_new(format!("{dataset_id}-{asset_id}"))
+            .expect("an entry ID and an asset ID make a valid application ID")
+    }
+
     /// Create from a trusted compile-time string literal.
     ///
     /// # Panics

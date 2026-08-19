@@ -3,6 +3,7 @@
 mod analytics_exporter;
 mod api_error;
 mod api_response_stream;
+mod asset;
 mod chunk_cache;
 mod connection_client;
 mod connection_handle;
@@ -20,6 +21,7 @@ pub use self::analytics_exporter::ConnectionAnalyticsExporter;
 pub use self::api_error::{ApiError, ApiErrorKind, ApiResult};
 
 pub use self::api_response_stream::ApiResponseStream;
+pub use self::asset::Asset;
 pub use self::chunk_cache::{ChunkCache, ChunkCacheHandle};
 pub use self::connection_client::{
     BoxedRedapClientStack, Connection, ConnectionClient, FetchChunksResponseStream, RedapClient,

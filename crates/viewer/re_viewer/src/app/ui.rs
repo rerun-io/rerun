@@ -90,7 +90,6 @@ impl App {
                                 &self.connection_registry,
                                 &self.async_runtime,
                                 &self.egui_ctx,
-                                self.command_sender.clone(),
                             );
                             if self.app_options().experimental.use_viewer_catalog {
                                 self.state.redap_servers.reveal_internal_catalog();

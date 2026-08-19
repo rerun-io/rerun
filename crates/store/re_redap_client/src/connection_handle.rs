@@ -5,7 +5,7 @@ use re_protos::headers::RerunHeadersInjectorExt as _;
 
 use crate::registration_handle::parse_task_descriptors;
 use crate::{
-    ApiError, ApiResult, Connection, ConnectionClient, ConnectionRegistryHandle,
+    ApiError, ApiResult, Asset, Connection, ConnectionClient, ConnectionRegistryHandle,
     RegistrationHandle, extract_trace_id,
 };
 
@@ -31,6 +31,17 @@ impl ConnectionHandle {
 
     pub async fn client(&self) -> ApiResult<ConnectionClient> {
         Ok(self.connection().await?.client)
+    }
+
+    /// Scan an asset dataset's manifest, one [`Asset`] per asset, sorted by asset id.
+    pub async fn scan_asset_dataset(&self, asset_dataset: EntryId) -> ApiResult<Vec<Asset>> {
+        let batches = self
+            .client()
+            .await?
+            .scan_dataset_manifest(asset_dataset, crate::asset::ASSET_COLUMNS)
+            .await?;
+
+        crate::asset::assets_from_manifest(&self.origin, &batches)
     }
 
     /// Initiate asynchronous registration of the provided data sources with a dataset.

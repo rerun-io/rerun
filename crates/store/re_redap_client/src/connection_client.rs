@@ -1033,6 +1033,63 @@ where
             })
     }
 
+    /// Scan a dataset's manifest, keeping only the given columns.
+    ///
+    /// One row per (layer, segment), spread over as many batches as the server sends; see
+    /// `ScanDatasetManifestDataframe` for the columns.
+    #[tracing::instrument(level = "info", skip_all)]
+    pub async fn scan_dataset_manifest(
+        &mut self,
+        entry_id: EntryId,
+        columns: impl IntoIterator<Item = impl Into<String>>,
+    ) -> ApiResult<Vec<RecordBatch>> {
+        let response = self
+            .inner()
+            .scan_dataset_manifest(
+                tonic::Request::new(
+                    re_protos::cloud::v1alpha1::ScanDatasetManifestRequest::with_columns(columns),
+                )
+                .with_entry_id(entry_id),
+            )
+            .await
+            .map_err(|err| ApiError::tonic(&self.origin, err, "/ScanDatasetManifest failed"))?;
+
+        let mut stream = ApiResponseStream::from_tonic_response(
+            self.origin.clone(),
+            response,
+            "/ScanDatasetManifest",
+        );
+        let trace_id = stream.trace_id();
+
+        let mut batches = Vec::new();
+
+        while let Some(response) = stream.next().await {
+            let batch: RecordBatch = response?
+                .data()
+                .map_err(|err| {
+                    ApiError::deserialization_with_source(
+                        &self.origin,
+                        trace_id,
+                        err,
+                        "failed parsing item from /ScanDatasetManifest stream",
+                    )
+                })?
+                .try_into()
+                .map_err(|err| {
+                    ApiError::deserialization_with_source(
+                        &self.origin,
+                        trace_id,
+                        err,
+                        "failed decoding item from /ScanDatasetManifest stream",
+                    )
+                })?;
+
+            batches.push(batch);
+        }
+
+        Ok(batches)
+    }
+
     /// Get the asset dataset that applies to a dataset, and the asset segments within it.
     ///
     /// Returns `None` if the dataset has no asset dataset, which means no assets were ever

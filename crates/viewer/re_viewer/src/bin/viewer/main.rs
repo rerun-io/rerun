@@ -18,6 +18,9 @@ fn main() -> eframe::Result {
     let runtime_handle = re_viewer::AsyncRuntimeHandle::new_native(runtime.handle().clone());
     let startup_options = re_viewer::StartupOptions::default();
 
+    // We don't parse any flags here, so every argument is a url or a file path.
+    let url_or_paths = std::env::args().skip(1).collect::<Vec<_>>();
+
     re_viewer::run_native_app(
         main_thread_token,
         Box::new(move |cc| {
@@ -30,6 +33,11 @@ fn main() -> eframe::Result {
                 None,
                 runtime_handle,
             );
+
+            for url_or_path in &url_or_paths {
+                app.open_url_or_file(url_or_path);
+            }
+
             Ok(Box::new(app))
         }),
         None,

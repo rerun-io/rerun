@@ -636,6 +636,7 @@ mod tests {
                 uri: re_uri::DatasetSegmentUri {
                     origin: "api.customer.cloud.rerun.io:443".parse().unwrap(),
                     dataset_id: "18A23D2FAC59F8572563b312ef21f53b".parse().unwrap(),
+                    kind: re_uri::SegmentKind::Segments,
                     segment_id: "the_segment_name".into(),
                     fragment: Default::default(),
                 },

@@ -231,6 +231,11 @@ impl<'a> ReButton<'a> {
         self
     }
 
+    pub fn stroke(mut self, stroke: egui::Stroke) -> Self {
+        self.inner = self.inner.stroke(stroke);
+        self
+    }
+
     /// Render the button with its hovered fill even when it isn't hovered.
     ///
     /// Useful to show that the button is engaged, e.g. while its menu popup is open.

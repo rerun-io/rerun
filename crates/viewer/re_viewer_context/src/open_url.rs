@@ -389,14 +389,16 @@ impl ViewerOpenUrl {
                 Err(anyhow::anyhow!("Can't share links to local tables."))
             }
 
-            Route::RedapEntry { origin, kind } => match kind {
-                crate::RedapEntryKind::Entry(id) => {
-                    Ok(Self::RedapEntry(re_uri::EntryUri::new(origin.clone(), *id)))
+            Route::RedapEntry { origin, kind, tab } => {
+                match kind {
+                    crate::RedapEntryKind::Entry(id) => Ok(Self::RedapEntry(
+                        re_uri::EntryUri::new(origin.clone(), *id, *tab),
+                    )),
+                    crate::RedapEntryKind::Folder(path) => Ok(Self::RedapFolder(
+                        re_uri::FolderUri::new(origin.clone(), path.clone()),
+                    )),
                 }
-                crate::RedapEntryKind::Folder(path) => Ok(Self::RedapFolder(
-                    re_uri::FolderUri::new(origin.clone(), path.clone()),
-                )),
-            },
+            }
 
             Route::RedapServer(server) => {
                 // `as_url` on the origin gives us an http link.
@@ -630,9 +632,13 @@ impl ViewerOpenUrl {
                     origin: uri.origin.clone(),
                     entry_id: uri.entry_id,
                 });
-                let item = Item::from(uri);
+                let item = Item::from(uri.clone());
                 command_sender.send_system(SystemCommand::set_selection(item.clone()));
                 command_sender.send_system(SystemCommand::SetFocus(item.into()));
+
+                // An `Item` carries no tab, so selecting one routes to the default tab.
+                // Send the tab the url asked for afterwards.
+                command_sender.send_system(SystemCommand::SetRoute(Route::from(uri)));
             }
             Self::RedapFolder(uri) => {
                 command_sender.send_system(SystemCommand::AddRedapServer(uri.origin.clone()));
@@ -898,8 +904,8 @@ mod tests {
         external::url::{self, Url},
     };
 
-    use super::{CHUNK_STORE_BROWSER_URL, ViewerOpenUrl};
-    use crate::{Item, Route, StoreHub};
+    use super::{CHUNK_STORE_BROWSER_URL, OpenUrlOptions, ViewerOpenUrl};
+    use crate::{Item, Route, StoreHub, SystemCommand, command_channel};
 
     #[test]
     fn test_viewer_open_url_from_str() {
@@ -1051,6 +1057,37 @@ mod tests {
         }
     }
 
+    /// An entry url that names a tab opens on that tab, rather than falling back to the default
+    /// one.
+    #[test]
+    fn test_open_entry_url_keeps_tab() {
+        let entry_id = EntryId::new();
+        let url = format!("rerun://localhost:51234/entry/{entry_id}/assets");
+
+        let (command_sender, command_receiver) = command_channel();
+        url.parse::<ViewerOpenUrl>().unwrap().open(
+            &egui::Context::default(),
+            &OpenUrlOptions::default(),
+            &command_sender,
+        );
+
+        let route = std::iter::from_fn(|| command_receiver.recv_system())
+            .filter_map(|(_, command)| match command {
+                SystemCommand::SetRoute(route) => Some(route),
+                _ => None,
+            })
+            .last()
+            .expect("opening an entry url should set a route");
+
+        assert!(matches!(
+            route,
+            Route::RedapEntry {
+                tab: re_uri::DatasetResource::Assets,
+                ..
+            }
+        ));
+    }
+
     #[test]
     fn test_viewer_open_url_from_route() {
         let store_hub = StoreHub::test_hub();
@@ -1076,7 +1113,7 @@ mod tests {
 
         // RedapEntry
         let origin: re_uri::Origin = "rerun://localhost:51234".parse().unwrap();
-        let entry_uri = re_uri::EntryUri::new(origin.clone(), EntryId::new());
+        let entry_uri = re_uri::EntryUri::new(origin.clone(), EntryId::new(), Default::default());
         assert_eq!(
             ViewerOpenUrl::from_route(&store_hub, &Route::from(entry_uri.clone())).unwrap(),
             ViewerOpenUrl::RedapEntry(entry_uri.clone())
@@ -1087,6 +1124,7 @@ mod tests {
         let folder_route = Route::RedapEntry {
             origin: origin.clone(),
             kind: crate::RedapEntryKind::Folder(folder_path.clone()),
+            tab: Default::default(),
         };
         let folder_url = ViewerOpenUrl::from_route(&store_hub, &folder_route).unwrap();
         assert_eq!(
@@ -1468,6 +1506,7 @@ mod tests {
                 ViewerOpenUrl::RedapDatasetSegment(DatasetSegmentUri {
                     origin: "rerun+http://localhost:51234".parse().unwrap(),
                     dataset_id: "187A3200CAE4DD795748a7ad187e21a3".parse().unwrap(),
+                    kind: re_uri::SegmentKind::Segments,
                     segment_id: "6977dcfd524a45b3b786c9a5a0bde4e1".into(),
                     fragment: Default::default(),
                 }),
@@ -1477,6 +1516,7 @@ mod tests {
                 ViewerOpenUrl::RedapDatasetSegment(DatasetSegmentUri {
                     origin: "rerun+http://localhost:51234".parse().unwrap(),
                     dataset_id: "187A3200CAE4DD795748a7ad187e21a3".parse().unwrap(),
+                    kind: re_uri::SegmentKind::Segments,
                     segment_id: "6977dcfd524a45b3b786c9a5a0bde4e1".into(),
                     fragment: re_uri::Fragment {
                         time_selection: Some("stable_time@+1.096s..+2.097s".parse().unwrap()),
@@ -1489,6 +1529,7 @@ mod tests {
                 ViewerOpenUrl::RedapDatasetSegment(DatasetSegmentUri {
                     origin: "rerun+http://localhost:51234".parse().unwrap(),
                     dataset_id: "187A3200CAE4DD795748a7ad187e21a3".parse().unwrap(),
+                    kind: re_uri::SegmentKind::Segments,
                     segment_id: "6977dcfd524a45b3b786c9a5a0bde4e1".into(),
                     fragment: re_uri::Fragment {
                         when: Some((

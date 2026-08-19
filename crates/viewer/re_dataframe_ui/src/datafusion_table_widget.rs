@@ -189,8 +189,7 @@ pub struct DataFusionTableWidget<'a> {
 
     datafusion_table_ref: DataFusionTableReference,
 
-    /// If provided, add a title UI on top of the table.
-    //TODO(ab): for now, this is the only way to have the column visibility/order menu
+    /// If provided, the toolbar on top of the table shows this as its title.
     title: Option<String>,
 
     /// User-provided closure to provide column blueprint.
@@ -623,22 +622,20 @@ impl<'a> DataFusionTableWidget<'a> {
             TableViewMode::Table
         };
 
-        if let Some(title) = &self.title {
-            title_ui(
-                ui,
-                ctx,
-                &columns,
-                Some(&mut table_config),
-                title,
-                self.table_ref.url().map(|url| url.to_string()).as_deref(),
-                should_show_loading_indicator,
-                if table_cards_and_blueprints_enabled {
-                    Some(&mut view_mode)
-                } else {
-                    None
-                },
-            );
-        }
+        toolbar_ui(
+            ui,
+            ctx,
+            &columns,
+            &mut table_config,
+            self.title.as_deref(),
+            self.table_ref.url().map(|url| url.to_string()).as_deref(),
+            should_show_loading_indicator,
+            if table_cards_and_blueprints_enabled {
+                Some(&mut view_mode)
+            } else {
+                None
+            },
+        );
 
         filter_state.filter_bar_ui(
             ui,
@@ -863,27 +860,36 @@ fn id_from_session_context_and_table(
     egui::Id::new((session_ctx.session_id(), table_ref))
 }
 
-fn title_ui(
+/// The row on top of the table, with the title, if any, and the controls for how it is displayed.
+///
+/// Callers that show the table's name themselves pass no title, and still get the controls.
+fn toolbar_ui(
     ui: &mut egui::Ui,
     ctx: &AppContext<'_>,
     columns: &Columns<'_>,
-    table_config: Option<&mut UiTableConfig>,
-    title: &str,
+    table_config: &mut UiTableConfig,
+    title: Option<&str>,
     url: Option<&str>,
     should_show_loading_indicator: bool,
     view_mode: Option<&mut TableViewMode>,
 ) {
-    Frame::new()
-        .inner_margin(Margin {
+    // A row of small buttons needs less room around it than a heading does.
+    let inner_margin = if title.is_some() {
+        Margin {
             top: 16,
             bottom: 12,
             left: 16,
             right: 16,
-        })
-        .show(ui, |ui| {
-            egui::Sides::new().show(
-                ui,
-                |ui| {
+        }
+    } else {
+        Margin::symmetric(16, 8)
+    };
+
+    Frame::new().inner_margin(inner_margin).show(ui, |ui| {
+        egui::Sides::new().show(
+            ui,
+            |ui| {
+                if let Some(title) = title {
                     ui.heading(RichText::new(title).strong());
                     if let Some(url) = url
                         && ui
@@ -894,37 +900,36 @@ fn title_ui(
                         ctx.command_sender()
                             .send_system(SystemCommand::CopyViewerUrl(url.to_owned()));
                     }
+                }
 
-                    if should_show_loading_indicator {
-                        ui.loading_indicator("Fetching table data");
+                if should_show_loading_indicator {
+                    ui.loading_indicator("Fetching table data");
+                }
+            },
+            |ui| {
+                ui.horizontal_centered(|ui| {
+                    if let Some(view_mode) = view_mode {
+                        ui.selectable_toggle(|ui| {
+                            ui.icon_selectable_value(
+                                &icons::TABLE_ROW_VIEW,
+                                "Table view",
+                                view_mode,
+                                TableViewMode::Table,
+                            );
+                            ui.icon_selectable_value(
+                                &icons::TABLE_GRID_VIEW,
+                                "Cards view",
+                                view_mode,
+                                TableViewMode::Cards,
+                            );
+                        });
                     }
-                },
-                |ui| {
-                    ui.horizontal_centered(|ui| {
-                        if let Some(view_mode) = view_mode {
-                            ui.selectable_toggle(|ui| {
-                                ui.icon_selectable_value(
-                                    &icons::TABLE_ROW_VIEW,
-                                    "Table view",
-                                    view_mode,
-                                    TableViewMode::Table,
-                                );
-                                ui.icon_selectable_value(
-                                    &icons::TABLE_GRID_VIEW,
-                                    "Cards view",
-                                    view_mode,
-                                    TableViewMode::Cards,
-                                );
-                            });
-                        }
 
-                        if let Some(table_config) = table_config {
-                            table_config.button_ui(ui, columns);
-                        }
-                    });
-                },
-            );
-        });
+                    table_config.button_ui(ui, columns);
+                });
+            },
+        );
+    });
 }
 
 /// Find the record batch and local row index for a global row index.

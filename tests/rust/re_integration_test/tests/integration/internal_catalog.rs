@@ -242,6 +242,7 @@ async fn internal_catalog_load_rbl() {
     let Route::RedapEntry {
         origin,
         kind: RedapEntryKind::Entry(entry_id),
+        ..
     } = harness.state().testonly_get_route()
     else {
         panic!("expected a catalog entry route");
@@ -280,6 +281,7 @@ async fn internal_catalog_load_rbl() {
     harness.set_time_panel_opened(false);
 
     // The blueprint-only entry appears as an empty dataset.
+    harness.step_until_no_loading_indicator();
     harness.snapshot("internal_catalog_load_rbl_1");
 
     let (_recording_dir, recording_path) = test_rrd(false);

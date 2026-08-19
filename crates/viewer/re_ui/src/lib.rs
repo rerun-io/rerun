@@ -24,6 +24,7 @@ pub mod menu;
 pub mod modal;
 pub mod notifications;
 mod relative_time_range;
+mod requested_object;
 mod section_collapsing_header;
 pub mod syntax_highlighting;
 mod tab_bar;
@@ -71,6 +72,7 @@ pub use self::notifications::Link;
 pub use self::relative_time_range::{
     RelativeTimeRange, relative_time_range_boundary_label_text, relative_time_range_label_text,
 };
+pub use self::requested_object::{RequestedObject, ServerValue};
 pub use self::section_collapsing_header::SectionCollapsingHeader;
 pub use self::syntax_highlighting::SyntaxHighlighting;
 pub use self::tab_bar::TabBar;

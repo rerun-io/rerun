@@ -16,6 +16,7 @@ use re_log_types::{
 };
 use re_protos::cloud::v1alpha1::ext;
 use re_protos::cloud::v1alpha1::rerun_cloud_service_client::RerunCloudServiceClient;
+use re_protos::common::v1alpha1::ext::DatasetKind;
 use re_types_core::SegmentId;
 use re_uri::Origin;
 use tokio_stream::StreamExt as _;
@@ -653,6 +654,7 @@ async fn stream_blueprint_segment(
         blueprint_store_info,
         tx,
         blueprint_dataset,
+        DatasetKind::Blueprint,
         blueprint_segment,
         re_uri::Fragment::default(),
         &StreamingOptions::default(),
@@ -675,6 +677,7 @@ pub fn table_blueprint_log_channel(
     let source_uri = re_uri::DatasetSegmentUri {
         origin,
         dataset_id: blueprint_dataset.id,
+        kind: re_uri::SegmentKind::Segments,
         segment_id: blueprint_segment.clone(),
         fragment: re_uri::Fragment::default(),
     };
@@ -752,9 +755,31 @@ pub async fn stream_blueprint_and_segment_from_server(
 
     let recording_store_id = uri.store_id();
 
-    if options.download.contains(SegmentDownload::BLUEPRINT) {
-        let dataset_entry = client.read_dataset_entry(uri.dataset_id.into()).await?;
+    // The entry tells us which default blueprint to stream, and which kind of dataset this is.
+    let dataset_entry = client.read_dataset_entry(uri.dataset_id.into()).await?;
 
+    // An asset is a segment of the dataset's hidden asset dataset, which the url does not name.
+    let (dataset_id, dataset_kind) = match uri.kind {
+        re_uri::SegmentKind::Segments => (
+            EntryId::from(uri.dataset_id),
+            dataset_entry.handle.dataset_kind,
+        ),
+
+        re_uri::SegmentKind::Assets => {
+            let Some(asset_dataset) = dataset_entry.dataset_details.asset_dataset else {
+                return Err(ApiError::invalid_arguments(
+                    client.origin(),
+                    format!("No assets are registered for this dataset\nUri: {uri}"),
+                ));
+            };
+
+            (asset_dataset, DatasetKind::Asset)
+        }
+    };
+
+    // An asset shows something else entirely than the dataset's own segments, so the dataset's
+    // blueprint does not apply to it.
+    if dataset_kind != DatasetKind::Asset && options.download.contains(SegmentDownload::BLUEPRINT) {
         if let Some((blueprint_dataset, blueprint_segment)) =
             dataset_entry.dataset_details.default_blueprint()
         {
@@ -800,7 +825,8 @@ pub async fn stream_blueprint_and_segment_from_server(
 
     let re_uri::DatasetSegmentUri {
         origin: _,
-        dataset_id,
+        dataset_id: _,
+        kind: _,
         segment_id,
         fragment,
     } = uri;
@@ -816,7 +842,8 @@ pub async fn stream_blueprint_and_segment_from_server(
             &mut client,
             store_info,
             &tx,
-            dataset_id.into(),
+            dataset_id,
+            dataset_kind,
             segment_id,
             fragment,
             &options,
@@ -837,6 +864,7 @@ async fn stream_segment_from_server(
     store_info: StoreInfo,
     tx: &re_log_channel::LogSender,
     dataset_id: EntryId,
+    dataset_kind: DatasetKind,
     segment_id: SegmentId,
     fragment: re_uri::Fragment,
     options: &StreamingOptions,
@@ -877,8 +905,8 @@ async fn stream_segment_from_server(
         }
     }
 
-    // Only recording datasets have assets, so a blueprint store has none to look up.
-    if store_id.is_recording() {
+    // Only recording datasets have assets, so a blueprint or asset dataset has none to look up.
+    if dataset_kind == DatasetKind::Recording {
         match client.get_assets_for_segment(dataset_id).await {
             Ok(Some((asset_dataset_id, asset_segment_ids))) => {
                 // Every segment of the asset dataset is returned, so all of the dataset's assets

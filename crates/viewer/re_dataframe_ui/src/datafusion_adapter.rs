@@ -214,7 +214,7 @@ impl DataFusionQuery {
     /// Note: the future returned by this function must be `'static`, so it takes `self`. Use
     /// `clone()` as required.
     fn execute_streaming(self, runtime: &AsyncRuntimeHandle) -> Receiver<QueryEvent> {
-        let (tx, rx) = crate::create_channel(1000);
+        let (tx, rx) = re_quota_channel::create_crossbeam_channel(1000);
         runtime.spawn_future(async move {
             if let Ok(stream) = self.batch_stream().await {
                 let schema = stream.schema();

@@ -36,6 +36,22 @@ pub struct SizedMessage<T> {
     pub size_bytes: u64,
 }
 
+/// Create a blocking crossbeam channel on native, and an unbounded one on web.
+pub fn create_crossbeam_channel<T>(
+    num_items: usize,
+) -> (
+    crossbeam::channel::Sender<T>,
+    crossbeam::channel::Receiver<T>,
+) {
+    cfg_select! {
+        target_arch = "wasm32" => {
+            _ = num_items;
+            crossbeam::channel::unbounded() // we're not allowed to block on web
+        }
+        _ => crossbeam::channel::bounded(num_items),
+    }
+}
+
 /// Send a message on a crossbeam channel, and warn if it is taking too long.
 #[track_caller]
 pub fn send_crossbeam<T: std::fmt::Debug>(
