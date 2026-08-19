@@ -9,6 +9,8 @@
 - Fix dataframe API rejecting non-nullable outer list fields on MCAP-converted recordings [fb02c71](https://github.com/rerun-io/rerun/commit/fb02c719bbc2bf2ccc1782ef51cc79f1c016ccd1)
 - Fix containers not re-layouting when views are hidden [08c544d](https://github.com/rerun-io/rerun/commit/08c544d8583bda8aa4a258d51dd559747e7db0fc)
 - Fix click on state lanes not selecting the entity [d26ed20](https://github.com/rerun-io/rerun/commit/d26ed203645609328d54f53e77d2af48f8e21d08)
+- Fix `TransformAxes3D` blanking the whole 3D view when one frame is unresolvable [d3d8a99](https://github.com/rerun-io/rerun/commit/d3d8a9960aac3ccbaf4a5d4c04ffa94fabab3669) (thanks [@lsy3](https://github.com/lsy3)!)
+- Skip unloadable meshes instead of failing import [525bd72](https://github.com/rerun-io/rerun/commit/525bd7255d6dcd6877b6f9c0c5f85c339b9d7e01)
 
 
 ## [0.36.0](https://github.com/rerun-io/rerun/compare/0.35.0...0.36.0) - 2026-08-10
