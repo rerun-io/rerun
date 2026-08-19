@@ -460,11 +460,8 @@ async fn copy_to_opfs(
     })?;
     let fingerprint = re_log_encoding::RrdFingerprint::compute_for_rrd(reader)
         .await
-        .with_context(|| format!("failed to fingerprint RRD\nFile path: {}", path.display()))?
-        .as_bytes()
-        .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect::<String>();
+        .with_context(|| format!("failed to fingerprint RRD\nFile path: {}", path.display()))?;
+    let fingerprint = re_log_encoding::sha256_to_hex(fingerprint.as_bytes());
     let file_name = path
         .file_name()
         .filter(|file_name| !file_name.is_empty())

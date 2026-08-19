@@ -4023,7 +4023,7 @@ mod tests {
             let mut builder = Chunk::builder(entity_path.clone());
             for t in lo..=hi {
                 #[expect(clippy::cast_sign_loss)]
-                let pt = MyPoint::from_iter((t as u32)..(t as u32 + 1));
+                let pt = MyPoint::from_iter((t as u32)..=(t as u32));
                 builder = builder.with_archetype(
                     RowId::new(),
                     [(timeline, TimeCell::from_sequence(t))],
@@ -4120,7 +4120,7 @@ mod tests {
             for t in lo..=hi {
                 #[expect(clippy::cast_sign_loss)]
                 let n = t as u32;
-                let archetype = MyPoints::new(MyPoint::from_iter(n..n + 1))
+                let archetype = MyPoints::new(MyPoint::from_iter(n..=n))
                     .with_colors([MyColor::from(0xFF000000_u32 | n)])
                     .with_labels([MyLabel(format!("L{n}"))]);
                 builder = builder.with_archetype(
@@ -4261,7 +4261,7 @@ mod tests {
         // for the other's half.
         let mut points_builder = Chunk::builder(entity_path.clone());
         for f in 0u32..5 {
-            let points = MyPoint::from_iter(f..f + 1);
+            let points = MyPoint::from_iter(f..=f);
             points_builder = points_builder.with_sparse_component_batches(
                 RowId::new(),
                 [build_frame_nr(TimeInt::new_temporal(i64::from(f)))],
@@ -4272,7 +4272,7 @@ mod tests {
 
         let mut colors_builder = Chunk::builder(entity_path.clone());
         for f in 10u32..15 {
-            let colors = MyColor::from_iter(f..f + 1);
+            let colors = MyColor::from_iter(f..=f);
             colors_builder = colors_builder.with_sparse_component_batches(
                 RowId::new(),
                 [build_frame_nr(TimeInt::new_temporal(i64::from(f)))],
@@ -4354,7 +4354,7 @@ mod tests {
             let mut builder = Chunk::builder(entity_path.clone());
             for t in lo..=hi {
                 #[expect(clippy::cast_sign_loss)]
-                let points = MyPoint::from_iter((t as u32)..(t as u32 + 1));
+                let points = MyPoint::from_iter((t as u32)..=(t as u32));
                 builder = builder.with_sparse_component_batches(
                     RowId::new(),
                     [build_frame_nr(TimeInt::new_temporal(t))],
@@ -4371,7 +4371,7 @@ mod tests {
             let base = k * B_STEP;
             let mut builder = Chunk::builder(entity_path.clone());
             for f in base..base + B_CHUNK_WIDTH {
-                let colors = MyColor::from_iter(f..f + 1);
+                let colors = MyColor::from_iter(f..=f);
                 builder = builder.with_sparse_component_batches(
                     RowId::new(),
                     [build_frame_nr(TimeInt::new_temporal(i64::from(f)))],
@@ -4427,8 +4427,8 @@ mod tests {
             for t in lo..=hi {
                 #[expect(clippy::cast_sign_loss)]
                 let n = t as u32;
-                let points = MyPoint::from_iter(n..n + 1);
-                let colors = MyColor::from_iter(n..n + 1);
+                let points = MyPoint::from_iter(n..=n);
+                let colors = MyColor::from_iter(n..=n);
                 builder = builder.with_sparse_component_batches(
                     RowId::new(),
                     [
@@ -4502,7 +4502,7 @@ mod tests {
         for (lo, hi) in chunk_ranges {
             let mut builder = Chunk::builder(entity_path.clone());
             for t in lo..=hi {
-                let points = MyPoint::from_iter(t..(t + 1));
+                let points = MyPoint::from_iter(t..=t);
                 builder = builder.with_sparse_component_batches(
                     RowId::new(),
                     [build_frame_nr(TimeInt::new_temporal(t as i64))],
@@ -4590,7 +4590,7 @@ mod tests {
             for t in 0..n_rows {
                 #[expect(clippy::cast_possible_wrap, clippy::cast_possible_truncation)]
                 let (frame, payload) = (t as i64, t as u32);
-                let points = MyPoint::from_iter(payload..payload + 1);
+                let points = MyPoint::from_iter(payload..=payload);
                 builder = builder.with_sparse_component_batches(
                     RowId::new(),
                     [build_frame_nr(TimeInt::new_temporal(frame))],
@@ -4961,7 +4961,7 @@ mod tests {
                 let global_row = chunk_idx * rows_per_chunk + local_row;
                 #[expect(clippy::cast_possible_wrap)]
                 let frame = TimeInt::new_temporal(global_row as i64);
-                let points = MyPoint::from_iter(global_row as u32..global_row as u32 + 1);
+                let points = MyPoint::from_iter((global_row as u32)..=(global_row as u32));
                 builder = builder.with_sparse_component_batches(
                     RowId::new(),
                     [build_frame_nr(frame)],
@@ -5016,7 +5016,7 @@ mod tests {
             #[expect(clippy::cast_possible_truncation)]
             let payload_offset = (k as u32) * 1_000;
             for f in base..base + chunk_width {
-                let points = MyPoint::from_iter((f + payload_offset)..(f + payload_offset + 1));
+                let points = MyPoint::from_iter((f + payload_offset)..=(f + payload_offset));
                 let frame = TimeInt::new_temporal(i64::from(f));
                 builder = builder.with_sparse_component_batches(
                     RowId::new(),
@@ -5321,7 +5321,7 @@ mod tests {
         // Temporal chunk: one `Points` value per frame, frames 0..5.
         let mut builder = Chunk::builder(entity_path.clone());
         for f in 0u32..5 {
-            let points = MyPoint::from_iter(f..f + 1);
+            let points = MyPoint::from_iter(f..=f);
             builder = builder.with_sparse_component_batches(
                 RowId::new(),
                 [build_frame_nr(TimeInt::new_temporal(i64::from(f)))],
@@ -5392,7 +5392,7 @@ mod tests {
         let build_chunk = |rows: &[(i64, u32)]| -> anyhow::Result<Arc<Chunk>> {
             let mut builder = Chunk::builder(entity_path.clone());
             for &(frame, payload) in rows {
-                let points = MyPoint::from_iter(payload..payload + 1);
+                let points = MyPoint::from_iter(payload..=payload);
                 builder = builder.with_sparse_component_batches(
                     RowId::new(),
                     [build_frame_nr(TimeInt::new_temporal(frame))],
@@ -5447,7 +5447,7 @@ mod tests {
                 let mut builder = Chunk::builder(entity_path.clone());
                 for f in range {
                     let payload = payload_offset + f;
-                    let points = MyPoint::from_iter(payload..payload + 1);
+                    let points = MyPoint::from_iter(payload..=payload);
                     builder = builder.with_sparse_component_batches(
                         RowId::new(),
                         [build_frame_nr(TimeInt::new_temporal(i64::from(f)))],

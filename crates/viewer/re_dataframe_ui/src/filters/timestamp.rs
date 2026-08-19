@@ -787,6 +787,7 @@ impl FilterUdf for ResolvedTimestampFilter {
 
 #[cfg(test)]
 mod tests {
+    #![expect(clippy::unreadable_literal)]
     use jiff::civil::date;
 
     use super::*;

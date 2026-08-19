@@ -21,7 +21,7 @@ pub enum VideoCodec {
     /// as keyframes since they may reference existing decoder state.
     ///
     /// Enum value is the fourcc for 'av01' (the WebCodec string assigned to this codec) in big endian.
-    AV1 = 1635135537,
+    AV1 = 0x61763031,
 
     /// Advanced Video Coding (AVC/H.264)
     ///
@@ -33,7 +33,7 @@ pub enum VideoCodec {
     /// Key frames (IDR) require inclusion of a SPS (Sequence Parameter Set)
     ///
     /// Enum value is the fourcc for 'avc1' (the WebCodec string assigned to this codec) in big endian.
-    H264 = 1635148593,
+    H264 = 0x61766331,
 
     /// High Efficiency Video Coding (HEVC/H.265)
     ///
@@ -45,19 +45,19 @@ pub enum VideoCodec {
     /// Key frames (IRAP) require inclusion of a SPS (Sequence Parameter Set)
     ///
     /// Enum value is the fourcc for 'hev1' (the WebCodec string assigned to this codec) in big endian.
-    H265 = 1751479857,
+    H265 = 0x68657631,
 
     /// VP8
     ///
     /// See <https://en.wikipedia.org/wiki/VP8>
     ///
     /// Enum value is the fourcc for 'vp08' (the WebCodec string assigned to this codec) in big endian.
-    VP8 = 1987063864,
+    VP8 = 0x76703038,
 
     /// VP9
     ///
     /// See <https://en.wikipedia.org/wiki/VP9>
     ///
     /// Enum value is the fourcc for 'vp09' (the WebCodec string assigned to this codec) in big endian.
-    VP9 = 1987063865,
+    VP9 = 0x76703039,
 }

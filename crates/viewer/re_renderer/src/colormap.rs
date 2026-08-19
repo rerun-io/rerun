@@ -1,4 +1,5 @@
 #![expect(clippy::excessive_precision)]
+#![expect(clippy::unreadable_literal)]
 
 use glam::{Vec2, Vec3A, Vec4, Vec4Swizzles as _};
 use re_log::debug_assert;

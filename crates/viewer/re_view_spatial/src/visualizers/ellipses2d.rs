@@ -100,6 +100,7 @@ impl Ellipses2DVisualizer {
                 obj_space_bounding_box.extend((bbox_center + padded_half).extend(0.0));
 
                 let delta = std::f32::consts::TAU / ELLIPSE_SEGMENTS as f32;
+                #[expect(clippy::range_plus_one)] // `RangeInclusive` is not an `ExactSizeIterator`
                 let points = (0..ELLIPSE_SEGMENTS + 1).map(|n| {
                     let theta = n as f32 * delta;
                     glam::vec2(cx + rx * theta.cos(), cy + ry * theta.sin())

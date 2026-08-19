@@ -726,9 +726,8 @@ fn merge_chunks(config: &ChunkStoreConfig, gop_chunks: Vec<Chunk>) -> anyhow::Re
                 accumulator_bytes += gop_bytes;
                 accumulator = Some(combined);
                 continue;
-            } else {
-                merged.push(acc);
             }
+            merged.push(acc);
         }
 
         accumulator_bytes = gop_bytes;

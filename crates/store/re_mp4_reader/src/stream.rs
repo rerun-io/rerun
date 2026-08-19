@@ -111,12 +111,7 @@ pub(crate) fn iter_chunks(
     let needs_decoder_reordering = !desc.samples_statistics.dts_always_equal_pts;
     let wants_transcode = needs_decoder_reordering || transcode.requests_transform(&desc.codec);
 
-    let segments: Box<dyn Iterator<Item = Result<Segment, Mp4Error>>> = if !wants_transcode {
-        // Direct path: no container reordering and no requested transform — read the
-        // source in place (sample bytes are fetched on demand, so the whole file is
-        // never resident).
-        Box::new(std::iter::once(Segment::new(reader, desc)))
-    } else {
+    let segments: Box<dyn Iterator<Item = Result<Segment, Mp4Error>>> = if wants_transcode {
         // ffmpeg re-encodes and streams back a fragmented mp4, one segment per GOP
         // fragment. Only one GOP is resident at a time.
         drop(reader);
@@ -134,6 +129,11 @@ pub(crate) fn iter_chunks(
                 )?)
             }
         }
+    } else {
+        // Direct path: no container reordering and no requested transform — read the
+        // source in place (sample bytes are fetched on demand, so the whole file is
+        // never resident).
+        Box::new(std::iter::once(Segment::new(reader, desc)))
     };
 
     let entity_path = entity_path.clone();

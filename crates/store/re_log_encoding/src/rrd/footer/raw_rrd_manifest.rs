@@ -200,14 +200,20 @@ pub struct RrdManifestSha256(pub [u8; 32]);
 
 impl std::fmt::Display for RrdManifestSha256 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!(
-            "RrdManifest#{}",
-            self.0
-                .iter()
-                .map(|b| format!("{b:02x}"))
-                .collect::<String>(),
-        ))
+        write!(f, "RrdManifest#{}", sha256_to_hex(&self.0))
     }
+}
+
+/// Format a SHA256 hash as a lowercase hex string.
+pub fn sha256_to_hex(sha256: &[u8; 32]) -> String {
+    use std::fmt::Write as _;
+
+    sha256
+        .iter()
+        .fold(String::with_capacity(2 * sha256.len()), |mut hex, byte| {
+            write!(hex, "{byte:02x}").ok();
+            hex
+        })
 }
 
 impl RawRrdManifest {
@@ -1326,14 +1332,8 @@ impl RawRrdManifest {
             return Err(CodecError::ArrowDeserialization(ArrowError::SchemaError(
                 format!(
                     "invalid schema hash: expected {} but got {}",
-                    expected_sorbet_schema_sha256
-                        .iter()
-                        .map(|b| format!("{b:02x}"))
-                        .collect::<String>(),
-                    self.sorbet_schema_sha256
-                        .iter()
-                        .map(|b| format!("{b:02x}"))
-                        .collect::<String>(),
+                    sha256_to_hex(&expected_sorbet_schema_sha256),
+                    sha256_to_hex(&self.sorbet_schema_sha256),
                 ),
             )));
         }

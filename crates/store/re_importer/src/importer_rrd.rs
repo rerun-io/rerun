@@ -30,15 +30,14 @@ impl crate::Importer for RrdImporter {
             if filepath.is_file() || filepath.is_dir() {
                 // NOTE: blueprints and recordings have the same file format
                 return Err(crate::ImporterError::Incompatible(filepath.clone()));
-            } else {
-                // NOTE(1): If this is some kind of virtual file (fifo, socket, pipe, etc), then we
-                // always assume it's an RRD stream by default.
-                //
-                // NOTE(2): Because waiting for an end-of-stream marker on a pipe doesn't make sense,
-                // we tag it as `rbl` instead of `rrd` (but really this just means: please don't block
-                // indefinitely).
-                extension = "rbl".to_owned();
             }
+            // NOTE(1): If this is some kind of virtual file (fifo, socket, pipe, etc), then we
+            // always assume it's an RRD stream by default.
+            //
+            // NOTE(2): Because waiting for an end-of-stream marker on a pipe doesn't make sense,
+            // we tag it as `rbl` instead of `rrd` (but really this just means: please don't block
+            // indefinitely).
+            extension = "rbl".to_owned();
         }
 
         re_log::debug!(

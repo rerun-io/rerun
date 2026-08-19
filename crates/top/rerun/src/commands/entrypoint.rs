@@ -1643,9 +1643,8 @@ fn assert_receive_into_entity_db(rx: &LogReceiverSet) -> anyhow::Result<re_entit
                         anyhow::ensure!(0 < num_messages, "No messages received");
                         re_log::info!("Successfully ingested {num_messages} messages.");
                         return Ok(db);
-                    } else {
-                        anyhow::bail!("EntityDb never initialized");
                     }
+                    anyhow::bail!("EntityDb never initialized");
                 }
             }
         } else {
@@ -1713,15 +1712,19 @@ fn initialize_tokio_runtime(threads_args: i32) -> std::io::Result<Runtime> {
     });
     builder.enable_all();
 
-    if threads_args < 0 {
-        if let Ok(cores) = std::thread::available_parallelism() {
-            let threads = cores.get().saturating_sub((-threads_args) as _).max(1);
-            builder.worker_threads(threads);
+    match threads_args.cmp(&0) {
+        std::cmp::Ordering::Less => {
+            if let Ok(cores) = std::thread::available_parallelism() {
+                let threads = cores.get().saturating_sub((-threads_args) as _).max(1);
+                builder.worker_threads(threads);
+            }
         }
-    } else if 0 < threads_args {
-        builder.worker_threads(threads_args as usize);
-    } else {
-        // 0 means "use default" (typically num CPUs)
+        std::cmp::Ordering::Equal => {
+            // 0 means "use default" (typically num CPUs)
+        }
+        std::cmp::Ordering::Greater => {
+            builder.worker_threads(threads_args as usize);
+        }
     }
 
     builder.build()

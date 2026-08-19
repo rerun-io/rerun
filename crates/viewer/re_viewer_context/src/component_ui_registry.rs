@@ -22,16 +22,16 @@ bitflags::bitflags! {
     #[derive(PartialEq, Eq, Debug, Copy, Clone)]
     pub struct ComponentUiTypes: u8 {
         /// Display the component in a read-only way.
-        const DisplayUi = 0b0000001;
+        const DisplayUi = 0b000_0001;
 
         /// Edit the component in a single [`re_ui::list_item::ListItem`] line.
-        const SingleLineEditor = 0b0000010;
+        const SingleLineEditor = 0b000_0010;
 
         /// Edit the component over multiple [`re_ui::list_item::ListItem`]s.
-        const MultiLineEditor = 0b0000100;
+        const MultiLineEditor = 0b000_0100;
 
         /// Edit multiple values (arrays) of this component at once.
-        const MultiValueEditor = 0b0001000;
+        const MultiValueEditor = 0b000_1000;
     }
 }
 
@@ -753,13 +753,10 @@ impl ComponentUiRegistry {
                 EditOrView::View,
             );
             return;
-        } else {
-            re_log::debug_once!(
-                "Variant name {variant_name} was not found, using fallback ui instead"
-            );
-
-            //TODO(ab): should we instead revert to using the component based ui?
         }
+        re_log::debug_once!("Variant name {variant_name} was not found, using fallback ui instead");
+
+        //TODO(ab): should we instead revert to using the component based ui?
 
         fallback_ui(
             ui,

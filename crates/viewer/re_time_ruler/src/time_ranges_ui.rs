@@ -278,10 +278,9 @@ impl TimeRangesUi {
             } else if needle_time <= segment.time.max {
                 let t = segment.time.inverse_lerp(needle_time);
                 return Some(lerp(segment.x, t));
-            } else {
-                last_x = segment.x.last;
-                last_time = segment.time.max;
             }
+            last_x = segment.x.last;
+            last_time = segment.time.max;
         }
 
         // extrapolate:
@@ -335,10 +334,9 @@ impl TimeRangesUi {
             } else if needle_x <= segment.x.last {
                 let t = remap(needle_x, segment.x, 0.0..=1.0);
                 return Some(segment.time.lerp(t));
-            } else {
-                last_x = segment.x.last;
-                last_time = segment.time.max;
             }
+            last_x = segment.x.last;
+            last_time = segment.time.max;
         }
 
         // extrapolate:

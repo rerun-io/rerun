@@ -144,11 +144,7 @@ impl PrintCommand {
                     // Just to be nice: this will display the sorbet schema hash in the header.
                     rrd_manifest.data.schema_metadata_mut().insert(
                         "schema_sha_256".to_owned(),
-                        rrd_manifest
-                            .sorbet_schema_sha256
-                            .iter()
-                            .map(|b| format!("{b:02x}"))
-                            .collect::<String>(),
+                        re_log_encoding::sha256_to_hex(&rrd_manifest.sorbet_schema_sha256),
                     );
 
                     let filter_lod_0 = |f: &arrow::datatypes::Field| f.name().starts_with("chunk_");

@@ -264,8 +264,12 @@ impl LogDataSource {
 
         match self {
             Self::HttpUrl { url } => {
-                let path = url.path();
-                let is_rrd = path.ends_with(".rrd") || path.ends_with(".rbl");
+                let extension = std::path::Path::new(url.path())
+                    .extension()
+                    .and_then(|extension| extension.to_str())
+                    .unwrap_or_default()
+                    .to_lowercase();
+                let is_rrd = matches!(extension.as_str(), "rrd" | "rbl");
                 if is_rrd {
                     Ok(stream_from_http_to_channel(url.to_string()))
                 } else {

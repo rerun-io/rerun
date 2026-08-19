@@ -9,7 +9,7 @@ use re_protos::cloud::v1alpha1::{
 };
 use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_sdk::AsComponents;
-use re_sdk::external::re_log_encoding::{RawRrdManifest, ToApplication as _};
+use re_sdk::external::re_log_encoding::{RawRrdManifest, ToApplication as _, sha256_to_hex};
 use re_sdk_types::AnyValues;
 use re_types_core::SegmentId;
 
@@ -365,11 +365,7 @@ async fn dataset_rrd_manifest_snapshot(
     );
     insta::assert_snapshot!(
         format!("{snapshot_name}_sorbet_schema_sha256"),
-        rrd_manifest
-            .sorbet_schema_sha256
-            .iter()
-            .map(|b| format!("{b:02x}"))
-            .collect::<String>(),
+        sha256_to_hex(&rrd_manifest.sorbet_schema_sha256),
     );
 
     Ok(rrd_manifest)

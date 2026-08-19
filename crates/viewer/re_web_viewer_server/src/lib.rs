@@ -453,7 +453,7 @@ impl WebViewerServer {
     ) -> Result<Self, WebViewerServerError> {
         // `disable_web_viewer_server` builds serve nothing, so drop the assets right away.
         #[cfg(disable_web_viewer_server)]
-        let _data = data;
+        drop(data);
 
         let bind_addr = std::net::SocketAddr::new(bind_ip.parse()?, port.0);
 

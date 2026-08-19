@@ -496,7 +496,7 @@ fn merge_queries_and(
     let mut merged = left.clone();
     if !right.segment_ids.is_empty() {
         if merged.segment_ids.is_empty() {
-            merged.segment_ids = right.segment_ids.clone();
+            merged.segment_ids.clone_from(&right.segment_ids);
         } else {
             merged
                 .segment_ids
@@ -561,12 +561,12 @@ fn merge_queries_and(
                     // Nothing to do
                 }
                 (None, None, _, _) => {
-                    left_query.range = right_query.range.clone();
-                    left_query.latest_at = right_query.latest_at.clone();
+                    left_query.range.clone_from(&right_query.range);
+                    left_query.latest_at.clone_from(&right_query.latest_at);
                 }
             }
         } else {
-            merged.query = right.query.clone();
+            merged.query.clone_from(&right.query);
         }
     }
 

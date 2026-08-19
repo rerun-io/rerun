@@ -343,7 +343,7 @@ impl AppContext<'_> {
 
                     for (item, ctx) in new_selection.iter_mut() {
                         if let Some(new_ctx) = toggle_items_set.get(item) {
-                            *ctx = new_ctx.clone();
+                            ctx.clone_from(new_ctx);
                             toggle_items_set.remove(item);
                         }
                     }

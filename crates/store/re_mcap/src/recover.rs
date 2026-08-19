@@ -664,7 +664,7 @@ mod tests {
             *first_index >= last.chunk_start_offset + last.chunk_length,
             "the index block must follow the chunk body"
         );
-        let truncated = &buffer[..*second_index as usize + 1];
+        let truncated = &buffer[..=(*second_index as usize)];
 
         let recovered = reconstruct_summary(truncated).expect("reconstruct");
         assert_eq!(

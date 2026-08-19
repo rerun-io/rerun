@@ -163,9 +163,9 @@ fn main() {
     fn is_wgsl_or_dir(entry: &DirEntry) -> bool {
         let is_dir = entry.file_type().is_dir();
         let is_wgsl = entry
-            .file_name()
-            .to_str()
-            .is_some_and(|s| s.ends_with(".wgsl"));
+            .path()
+            .extension()
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("wgsl"));
         is_dir || is_wgsl
     }
 

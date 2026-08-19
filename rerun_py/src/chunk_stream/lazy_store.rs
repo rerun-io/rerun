@@ -443,7 +443,7 @@ mod pushdown_tests {
                     builder = match spec.component {
                         TestComponent::Points => {
                             #[expect(clippy::cast_possible_truncation)]
-                            let points = MyPoint::from_iter(frame as u32..frame as u32 + 1);
+                            let points = MyPoint::from_iter((frame as u32)..=(frame as u32));
                             builder.with_sparse_component_batches(
                                 row_id,
                                 timepoint,

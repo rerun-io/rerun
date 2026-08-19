@@ -579,16 +579,16 @@ impl Stream for RecordBatchGrpcOutputStream {
                         Err(tokio::sync::mpsc::error::TrySendError::Closed(_)) => {
                             // Channel closed - the gRPC task may have failed
                             // Check if we have a stored error
-                            if let Some(err) = self.grpc_error.take() {
-                                return Poll::Ready(Some(Err(err.into_df_error())));
+                            return if let Some(err) = self.grpc_error.take() {
+                                Poll::Ready(Some(Err(err.into_df_error())))
                             } else {
                                 // Channel closed without error - treat as broken pipe
-                                return Poll::Ready(Some(Err(ApiError::connection(
+                                Poll::Ready(Some(Err(ApiError::connection(
                                     &self.origin,
                                     "/WriteTable gRPC stream closed unexpectedly",
                                 )
-                                .into_df_error())));
-                            }
+                                .into_df_error())))
+                            };
                         }
                     }
                 }

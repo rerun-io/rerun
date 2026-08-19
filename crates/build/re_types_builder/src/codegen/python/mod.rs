@@ -1533,10 +1533,9 @@ fn quote_doc_from_fields(
 
     if lines.is_empty() {
         return String::new();
-    } else {
-        // remove last empty line
-        lines.pop();
     }
+    // remove last empty line
+    lines.pop();
 
     // NOTE: Filter out docstrings within docstrings, it just gets crazy otherwise…
     let doc = lines
@@ -1569,10 +1568,9 @@ fn quote_union_kind_from_fields(
 
     if lines.is_empty() {
         return String::new();
-    } else {
-        // remove last empty line
-        lines.pop();
     }
+    // remove last empty line
+    lines.pop();
 
     // NOTE: Filter out docstrings within docstrings, it just gets crazy otherwise…
     let doc = lines

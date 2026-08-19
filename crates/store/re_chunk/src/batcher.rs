@@ -640,14 +640,14 @@ fn batching_thread(
             // NOTE: This can only fail if all receivers have been dropped, which simply cannot happen
             // as long the batching thread is alive… which is where we currently are.
 
-            if !chunk.components.is_empty() {
-                // make sure the chunk didn't contain *only* indicators!
-                tx_chunk.send(chunk).ok();
-            } else {
+            if chunk.components.is_empty() {
                 re_log::warn_once!(
                     "Dropping chunk without components. Entity path: {}",
                     chunk.entity_path()
                 );
+            } else {
+                // make sure the chunk didn't contain *only* indicators!
+                tx_chunk.send(chunk).ok();
             }
         }
 
@@ -687,14 +687,14 @@ fn batching_thread(
                         // NOTE: This can only fail if all receivers have been dropped, which simply cannot happen
                         // as long the batching thread is alive… which is where we currently are.
 
-                        if !chunk.components.is_empty() {
-                            // make sure the chunk didn't contain *only* indicators!
-                            tx_chunk.send(chunk).ok();
-                        } else {
+                        if chunk.components.is_empty() {
                             re_log::warn_once!(
                                 "Dropping chunk without components. Entity path: {}",
                                 chunk.entity_path()
                             );
+                        } else {
+                            // make sure the chunk didn't contain *only* indicators!
+                            tx_chunk.send(chunk).ok();
                         }
                     },
                     Command::AppendRow(entity_path, row) => {
@@ -1009,7 +1009,7 @@ impl PendingRow {
                                 },
                             ));
 
-                            components = all_components.clone();
+                            components.clone_from(&all_components);
                         }
                     }
 

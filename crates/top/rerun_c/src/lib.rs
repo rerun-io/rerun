@@ -1300,7 +1300,7 @@ fn rr_recording_stream_send_columns_impl(
         .map(|time_column| {
             let timeline: Timeline = time_column.timeline.clone().try_into()?;
             let datatype = arrow::datatypes::DataType::Int64;
-            let array = unsafe { FFI_ArrowArray::from_raw(&mut time_column.times) } ; // Move out of the array
+            let array = unsafe { FFI_ArrowArray::from_raw(&raw mut time_column.times) } ; // Move out of the array
             let time_values_untyped = unsafe { arrow_array_from_c_ffi(array, datatype) }?;
             let time_values = TimeColumn::read_array(&ArrowArrayRef::from(time_values_untyped)).map_err(|err| {
                 CError::new(

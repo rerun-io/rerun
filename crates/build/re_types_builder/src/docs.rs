@@ -422,7 +422,7 @@ mod doclink_translation {
                 if 0 < index {
                     tokens.push(&input[..index]);
                 }
-                tokens.push(&input[index..index + 1]);
+                tokens.push(&input[index..=index]);
                 input = &input[index + 1..];
             } else {
                 tokens.push(input);

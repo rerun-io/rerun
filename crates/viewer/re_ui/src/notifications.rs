@@ -495,10 +495,10 @@ impl NotificationUi {
         ui.set_max_height(panel_max_height);
 
         ui.horizontal_top(|ui| {
-            if !notifications.is_empty() {
-                ui.strong(format!("Notifications ({})", notifications.len()));
-            } else {
+            if notifications.is_empty() {
                 ui.strong("Notifications");
+            } else {
+                ui.strong(format!("Notifications ({})", notifications.len()));
             }
             ui.with_layout(egui::Layout::top_down(egui::Align::Max), |ui| {
                 if ui.small_icon_button(&icons::CLOSE, "Close").clicked() {

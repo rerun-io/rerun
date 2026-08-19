@@ -331,7 +331,7 @@ impl Credentials {
         let claims = RerunCloudClaims::try_from_unverified_jwt(&jwt)?;
         let access_token = AccessToken::try_from_unverified_jwt(jwt)?;
         let mut user: User = res.user;
-        user.org_name = claims.org_name.clone();
+        user.org_name.clone_from(&claims.org_name);
         Ok(InMemoryCredentials(Self {
             user,
             refresh_token: Some(RefreshToken(res.refresh_token)),

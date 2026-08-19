@@ -74,9 +74,8 @@ impl<'a> BlueprintResolvedLatestAtResults<'a> {
                         ))
                     };
                     return Ok(Some(unit_chunk));
-                } else {
-                    None
                 }
+                None
             }
             ComponentSourceKind::Override => self.overrides.get(component),
             ComponentSourceKind::Default => self.view_defaults.get(component),

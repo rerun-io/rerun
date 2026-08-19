@@ -200,9 +200,8 @@ pub fn build(
                 https://github.com/AlexEne/twiggy/blob/945e6241bf7b6d918fba17082d0b12eae1c56349/guide/src/usage/command-line-interface/paths.md
                 "
             );
-            } else {
-                return Err(err.context("Failed to run wasm-bindgen"));
             }
+            return Err(err.context("Failed to run wasm-bindgen"));
         }
 
         eprintln!(

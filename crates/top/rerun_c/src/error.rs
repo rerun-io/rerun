@@ -90,7 +90,6 @@ mod tests {
 
     #[test]
     fn write_error_handles_message_overflow() {
-        #![expect(clippy::ref_as_ptr)]
         #![expect(unsafe_code)]
 
         // With ASCII character.
@@ -98,7 +97,7 @@ mod tests {
         let error = CError::new(CErrorCode::Ok, &description);
         let num_expected_bytes = error.message.len() - 1;
         assert_eq!(
-            unsafe { CStr::from_ptr(&error.message as *const c_char) }.to_str(),
+            unsafe { CStr::from_ptr((&raw const error.message).cast::<c_char>()) }.to_str(),
             Ok(&description[..num_expected_bytes])
         );
 
@@ -107,7 +106,7 @@ mod tests {
         let error = CError::new(CErrorCode::Ok, &description);
         let num_expected_bytes = ((error.message.len() - 1) / 2) * 2;
         assert_eq!(
-            unsafe { CStr::from_ptr(&error.message as *const c_char) }.to_str(),
+            unsafe { CStr::from_ptr((&raw const error.message).cast::<c_char>()) }.to_str(),
             Ok(&description[..num_expected_bytes])
         );
 
@@ -116,7 +115,7 @@ mod tests {
         let error = CError::new(CErrorCode::Ok, &description);
         let num_expected_bytes = ((error.message.len() - 1) / 3) * 3;
         assert_eq!(
-            unsafe { CStr::from_ptr(&error.message as *const c_char) }.to_str(),
+            unsafe { CStr::from_ptr((&raw const error.message).cast::<c_char>()) }.to_str(),
             Ok(&description[..num_expected_bytes])
         );
 
@@ -125,7 +124,7 @@ mod tests {
         let error = CError::new(CErrorCode::Ok, &description);
         let num_expected_bytes = ((error.message.len() - 1) / 4) * 4;
         assert_eq!(
-            unsafe { CStr::from_ptr(&error.message as *const c_char) }.to_str(),
+            unsafe { CStr::from_ptr((&raw const error.message).cast::<c_char>()) }.to_str(),
             Ok(&description[..num_expected_bytes])
         );
     }

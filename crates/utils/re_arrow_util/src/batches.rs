@@ -269,9 +269,8 @@ impl RecordBatchExt for RecordBatch {
                     return Err(arrow::error::ArrowError::InvalidArgumentError(format!(
                         "projected column '{col_name}' was requested twice"
                     )));
-                } else {
-                    seen_columns.insert(col_name);
                 }
+                seen_columns.insert(col_name);
 
                 columns
                     .get(col_index)

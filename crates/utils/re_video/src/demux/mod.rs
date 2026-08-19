@@ -643,11 +643,11 @@ impl VideoDataDescription {
             VideoCodec::VP8 => "VP8",
             VideoCodec::VP9 => "VP9",
             VideoCodec::ImageSequence(_) => {
-                if let Some(codec) = self.image_codec_mime_type() {
-                    return codec.to_owned();
+                return if let Some(codec) = self.image_codec_mime_type() {
+                    codec.to_owned()
                 } else {
-                    return "unknown".to_owned();
-                }
+                    "unknown".to_owned()
+                };
             }
         }
         .to_owned();

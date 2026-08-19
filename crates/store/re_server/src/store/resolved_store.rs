@@ -216,7 +216,7 @@ mod tests {
         let timeline = Timeline::new_sequence("frame");
         let chunks: Vec<Arc<Chunk>> = (0..3)
             .map(|i| {
-                let points = MyPoint::from_iter(i as u32..i as u32 + 1);
+                let points = MyPoint::from_iter((i as u32)..=(i as u32));
                 Arc::new(
                     Chunk::builder(entity_path.clone())
                         .with_sparse_component_batches(

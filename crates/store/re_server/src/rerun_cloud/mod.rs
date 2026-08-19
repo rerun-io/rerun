@@ -269,97 +269,98 @@ impl RerunCloudHandler {
     async fn resolve_data_sources(data_sources: &[DataSource]) -> tonic::Result<Vec<DataSource>> {
         let mut resolved = Vec::<DataSource>::with_capacity(data_sources.len());
         for source in data_sources {
-            if source.is_prefix {
-                cfg_select! {
-                    target_arch = "wasm32" => {
-                        // TODO(RR-5155): Support enumerating OPFS directories for prefix registration.
+            if !source.is_prefix {
+                resolved.push(source.clone());
+                continue;
+            }
+
+            cfg_select! {
+                target_arch = "wasm32" => {
+                    // TODO(RR-5155): Support enumerating OPFS directories for prefix registration.
+                    return Err(tonic::Status::invalid_argument(
+                        "prefix data sources are not supported on wasm",
+                    ));
+                }
+                _ => {
+                    if source.storage_url.scheme() == "memory" {
                         return Err(tonic::Status::invalid_argument(
-                            "prefix data sources are not supported on wasm",
+                            "memory:// URLs cannot be used as prefix data sources",
                         ));
                     }
-                    _ => {
-                        if source.storage_url.scheme() == "memory" {
-                            return Err(tonic::Status::invalid_argument(
-                                "memory:// URLs cannot be used as prefix data sources",
-                            ));
-                        }
-                        let path = source.storage_url.to_file_path().map_err(|_err| {
-                            tonic::Status::invalid_argument(format!(
-                                "getting file path from {:?}",
-                                source.storage_url
-                            ))
-                        })?;
-                        let meta =
-                            tokio::fs::metadata(&path)
-                                .await
-                                .map_err(|err| match err.kind() {
-                                    std::io::ErrorKind::NotFound => tonic::Status::invalid_argument(
-                                        format!("Directory not found: {path:?}"),
-                                    ),
-                                    _ => tonic::Status::invalid_argument(format!(
-                                        "Failed to read directory metadata {path:?}: {err:#}"
-                                    )),
-                                })?;
-                        if !meta.is_dir() {
-                            return Err(tonic::Status::invalid_argument(format!(
-                                "expected prefix / directory but got an object ({path:?})"
-                            )));
-                        }
+                    let path = source.storage_url.to_file_path().map_err(|_err| {
+                        tonic::Status::invalid_argument(format!(
+                            "getting file path from {:?}",
+                            source.storage_url
+                        ))
+                    })?;
+                    let meta =
+                        tokio::fs::metadata(&path)
+                            .await
+                            .map_err(|err| match err.kind() {
+                                std::io::ErrorKind::NotFound => tonic::Status::invalid_argument(
+                                    format!("Directory not found: {path:?}"),
+                                ),
+                                _ => tonic::Status::invalid_argument(format!(
+                                    "Failed to read directory metadata {path:?}: {err:#}"
+                                )),
+                            })?;
+                    if !meta.is_dir() {
+                        return Err(tonic::Status::invalid_argument(format!(
+                            "expected prefix / directory but got an object ({path:?})"
+                        )));
+                    }
 
-                        // Recursively walk the directory and grab all '.rrd' files
-                        let mut dirs_to_visit = vec![path];
-                        let mut files = Vec::new();
+                    // Recursively walk the directory and grab all '.rrd' files
+                    let mut dirs_to_visit = vec![path];
+                    let mut files = Vec::new();
 
-                        while let Some(current_dir) = dirs_to_visit.pop() {
-                            let mut entries =
-                                tokio::fs::read_dir(&current_dir).await.map_err(|err| {
-                                    tonic::Status::internal(format!(
-                                        "Failed to read directory {current_dir:?}: {err:#}"
-                                    ))
-                                })?;
-
-                            while let Some(entry) = entries.next_entry().await.map_err(|err| {
+                    while let Some(current_dir) = dirs_to_visit.pop() {
+                        let mut entries =
+                            tokio::fs::read_dir(&current_dir).await.map_err(|err| {
                                 tonic::Status::internal(format!(
-                                    "Failed to read directory entry: {err:#}"
+                                    "Failed to read directory {current_dir:?}: {err:#}"
                                 ))
-                            })? {
-                                let entry_path = entry.path();
-                                let file_type = entry.file_type().await.map_err(|err| {
-                                    tonic::Status::internal(format!(
-                                        "Failed to read directory entry metadata: {err:#}"
-                                    ))
-                                })?;
+                            })?;
 
-                                if file_type.is_dir() {
-                                    dirs_to_visit.push(entry_path);
-                                } else if let Some(extension) = entry_path.extension()
-                                    && extension == "rrd"
-                                {
-                                    files.push(entry_path);
-                                }
+                        while let Some(entry) = entries.next_entry().await.map_err(|err| {
+                            tonic::Status::internal(format!(
+                                "Failed to read directory entry: {err:#}"
+                            ))
+                        })? {
+                            let entry_path = entry.path();
+                            let file_type = entry.file_type().await.map_err(|err| {
+                                tonic::Status::internal(format!(
+                                    "Failed to read directory entry metadata: {err:#}"
+                                ))
+                            })?;
+
+                            if file_type.is_dir() {
+                                dirs_to_visit.push(entry_path);
+                            } else if let Some(extension) = entry_path.extension()
+                                && extension == "rrd"
+                            {
+                                files.push(entry_path);
                             }
                         }
+                    }
 
-                        if files.is_empty() {
-                            return Err(tonic::Status::invalid_argument(format!(
-                                "no rrd files found in {:?}",
-                                source.storage_url
-                            )));
-                        }
+                    if files.is_empty() {
+                        return Err(tonic::Status::invalid_argument(format!(
+                            "no rrd files found in {:?}",
+                            source.storage_url
+                        )));
+                    }
 
-                        for file_path in files {
-                            let mut file_url = source.storage_url.clone();
-                            file_url.set_path(&file_path.to_string_lossy());
-                            resolved.push(DataSource {
-                                storage_url: file_url,
-                                is_prefix: false,
-                                ..source.clone()
-                            });
-                        }
+                    for file_path in files {
+                        let mut file_url = source.storage_url.clone();
+                        file_url.set_path(&file_path.to_string_lossy());
+                        resolved.push(DataSource {
+                            storage_url: file_url,
+                            is_prefix: false,
+                            ..source.clone()
+                        });
                     }
                 }
-            } else {
-                resolved.push(source.clone());
             }
         }
 

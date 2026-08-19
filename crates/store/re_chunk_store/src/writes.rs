@@ -2297,7 +2297,7 @@ mod tests {
             .values()
             .map(|chunk| <Chunk as SizeBytes>::total_size_bytes(chunk))
             .collect();
-        chunk_sizes.sort();
+        chunk_sizes.sort_unstable();
 
         eprintln!("Chunk sizes: {chunk_sizes:?}");
 

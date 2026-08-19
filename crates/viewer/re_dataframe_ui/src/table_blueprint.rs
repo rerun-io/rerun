@@ -162,7 +162,7 @@ impl TableBlueprint {
                     .is_none_or(|origin| uri.origin() == origin)
                     .then(|| col.physical_name().clone())
             });
-            self.url_column = first_url.clone();
+            self.url_column.clone_from(&first_url);
             self.segment_preview_column = first_url;
         } else if self.url_column.is_none() && self.segment_preview_column.is_some() {
             self.url_column = self.segment_preview_column.clone();

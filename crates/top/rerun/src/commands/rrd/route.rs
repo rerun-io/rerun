@@ -165,7 +165,7 @@ fn process_messages<W: std::io::Write>(
                     }) => {
                         if let Some(target_store_id) = store_id {
                             if let Some(recording_id) = &rewrites.recording_id {
-                                target_store_id.recording_id = recording_id.clone();
+                                target_store_id.recording_id.clone_from(recording_id);
                             }
 
                             if let Some(application_id) = &rewrites.application_id {

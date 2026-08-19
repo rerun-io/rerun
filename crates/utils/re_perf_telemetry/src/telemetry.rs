@@ -506,10 +506,10 @@ impl Telemetry {
             .ok()
             .filter(|s| !s.is_empty());
         let resolve_endpoint = |signal: String| -> String {
-            if !signal.is_empty() {
-                signal
-            } else {
+            if signal.is_empty() {
                 umbrella_endpoint.clone().unwrap_or_default()
+            } else {
+                signal
             }
         };
         let log_endpoint = resolve_endpoint(log_endpoint);
@@ -950,6 +950,9 @@ impl Telemetry {
                 (Some(provider), Some(reader_for_telemetry))
             };
 
+            // Without the `tracy` feature the `if` branch always bails, but the `else` is not
+            // redundant in a build that has it:
+            #[cfg_attr(not(feature = "tracy"), expect(clippy::redundant_else))]
             if tracy_enabled {
                 cfg_select! {
                     feature = "tracy" => {

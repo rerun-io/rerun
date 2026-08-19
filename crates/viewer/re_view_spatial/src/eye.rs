@@ -734,9 +734,8 @@ pub fn find_camera(cameras: &[PinholeWrapper], needle: &EntityPath) -> Option<Ey
         if &camera.ent_path == needle {
             if found_camera.is_some() {
                 return None; // More than one camera
-            } else {
-                found_camera = Some(camera);
             }
+            found_camera = Some(camera);
         }
     }
 

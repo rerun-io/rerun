@@ -236,8 +236,8 @@ pub fn create_simple_recording_one_chunk_per_frame_in(
             let frame = TimeInt::new_temporal(start_time + frame_offset);
             #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
             let i = (frame_offset / 10) as u32 - 1;
-            let points = MyPoint::from_iter(i..i + 1);
-            let colors = MyColor::from_iter(i..i + 1);
+            let points = MyPoint::from_iter(i..=i);
+            let colors = MyColor::from_iter(i..=i);
 
             let chunk = Chunk::builder_with_id(next_chunk_id(), entity_path.clone())
                 .with_sparse_component_batches(

@@ -208,10 +208,10 @@ impl TimeControl {
         match command {
             TimeControlCommand::HighlightRange(highlight) => {
                 self.highlighted_range_next_frame = Some(highlight.clone());
-                if self.highlighted_range_next_frame != self.highlighted_range {
-                    NeedsRepaint::Yes
-                } else {
+                if self.highlighted_range_next_frame == self.highlighted_range {
                     NeedsRepaint::No
+                } else {
+                    NeedsRepaint::Yes
                 }
             }
             TimeControlCommand::ResetActiveTimeline => {

@@ -1701,7 +1701,7 @@ fn forwarding_thread(
                     continue;
                 }
             };
-            msg.on_release = on_release.clone();
+            msg.on_release.clone_from(&on_release);
             sink.send(LogMsg::ArrowMsg(store_info.store_id.clone(), msg));
         }
 

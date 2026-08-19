@@ -480,7 +480,9 @@ fn dataset_entry_ui(ctx: &AppContext<'_>, ui: &mut egui::Ui, dataset_entry_data:
         });
     }
 
-    let item_response = if !displayed_segments.is_empty() {
+    let item_response = if displayed_segments.is_empty() {
+        list_item.show_hierarchical(ui, list_item_content)
+    } else {
         list_item
             .show_hierarchical_with_children(ui, id, true, list_item_content, |ui| {
                 for segment in displayed_segments {
@@ -505,8 +507,6 @@ fn dataset_entry_ui(ctx: &AppContext<'_>, ui: &mut egui::Ui, dataset_entry_data:
                 }
             })
             .item_response
-    } else {
-        list_item.show_hierarchical(ui, list_item_content)
     };
 
     let item_response = item_response.on_hover_ui(|ui| {
@@ -652,7 +652,9 @@ fn app_id_section_ui(ctx: &AppContext<'_>, ui: &mut egui::Ui, local_app_id: &App
         });
     }
 
-    let mut item_response = if !loaded_recordings.is_empty() {
+    let mut item_response = if loaded_recordings.is_empty() {
+        list_item.show_hierarchical(ui, list_item_content)
+    } else {
         list_item
             .show_hierarchical_with_children(ui, id, true, list_item_content, |ui| {
                 for recording_data in loaded_recordings {
@@ -671,8 +673,6 @@ fn app_id_section_ui(ctx: &AppContext<'_>, ui: &mut egui::Ui, local_app_id: &App
                 }
             })
             .item_response
-    } else {
-        list_item.show_hierarchical(ui, list_item_content)
     };
 
     item_response = item_response.on_hover_ui(|ui| {

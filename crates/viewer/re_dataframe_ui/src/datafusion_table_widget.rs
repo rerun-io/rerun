@@ -936,9 +936,8 @@ pub fn find_row_batch(
         let row_count = batch.num_rows();
         if row_index < row_count {
             return Some((batch, row_index));
-        } else {
-            row_index -= row_count;
         }
+        row_index -= row_count;
     }
     None
 }

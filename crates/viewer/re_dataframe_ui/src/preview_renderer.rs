@@ -153,18 +153,18 @@ impl<'a> RecordingPreviewRenderer<'a> {
                         ui.error_label(err);
                     });
                     return;
-                } else {
-                    // We don't have a recording yet
-                    let recording_store_id = StoreId::new(
-                        StoreKind::Recording,
-                        "___preview_renderer___",
-                        "empty_placeholder",
-                    );
-                    owned_recording = EntityDb::new(recording_store_id);
-                    owned_caches = StoreCache::new(view_class_registry, &owned_recording);
-
-                    (&owned_recording, &owned_caches)
                 }
+
+                // We don't have a recording yet
+                let recording_store_id = StoreId::new(
+                    StoreKind::Recording,
+                    "___preview_renderer___",
+                    "empty_placeholder",
+                );
+                owned_recording = EntityDb::new(recording_store_id);
+                owned_caches = StoreCache::new(view_class_registry, &owned_recording);
+
+                (&owned_recording, &owned_caches)
             }
             None => {
                 // We don't have a recording yet

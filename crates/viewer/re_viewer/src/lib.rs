@@ -309,9 +309,8 @@ pub fn reset_viewer_persistence() -> anyhow::Result<()> {
 
                 if let Err(err) = std::fs::remove_dir_all(&data_dir) {
                     anyhow::bail!("Failed to remove {data_dir:?}: {err}");
-                } else {
-                    re_log::info!("Cleared {data_dir:?}.");
                 }
+                re_log::info!("Cleared {data_dir:?}.");
 
                 if let Ok(analytics) = analytics {
                     // Restore analytics.json:

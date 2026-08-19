@@ -64,14 +64,17 @@ fn collect_unions(datatype: &DataType, found: &mut BTreeSet<String>) {
         DataType::Union(fields, _mode) => {
             let block = fields
                 .iter()
-                .map(|(type_id, field)| {
-                    format!(
-                        "{type_id} = {}: {}\n",
+                .fold(String::new(), |mut block, (type_id, field)| {
+                    use std::fmt::Write as _;
+                    writeln!(
+                        block,
+                        "{type_id} = {}: {}",
                         field.name(),
                         shape(field.data_type())
                     )
-                })
-                .collect::<String>();
+                    .ok();
+                    block
+                });
 
             // `insert` returns false if we have already walked this union, which also means we
             // have already walked its variants — so only recurse the first time.

@@ -182,19 +182,19 @@ async fn fetch_rrd_manifest_via_key(
     // HTTP permits servers to ignore `Range` and return `200 OK`, but this path requires the
     // requested range to be honored to avoid downloading or decoding the full RRD object.
     if response.status != http::StatusCode::PARTIAL_CONTENT.as_u16() {
-        if response.status == http::StatusCode::PRECONDITION_FAILED.as_u16() {
-            return Err(source_changed_error());
+        return if response.status == http::StatusCode::PRECONDITION_FAILED.as_u16() {
+            Err(source_changed_error())
         } else {
             let layer = layer
                 .as_deref()
                 .map_or_else(String::new, |layer| format!("\nLayer: {layer}"));
-            return Err(ApiError::http_status(
+            Err(ApiError::http_status(
                 origin,
                 trace_id,
                 response.status,
                 format!("failed to fetch RRD manifest directly{layer}\nURL: {redacted_url}"),
-            ));
-        }
+            ))
+        };
     }
 
     let content_range = response.headers.get(http::header::CONTENT_RANGE.as_str());

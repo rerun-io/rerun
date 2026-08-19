@@ -1,5 +1,6 @@
 //! Tests that visible time ranges work correctly for 2D and 3D spatial views.
 
+#![expect(clippy::unreadable_literal)]
 #![expect(clippy::unnecessary_fallible_conversions)]
 #![expect(clippy::unwrap_used)]
 

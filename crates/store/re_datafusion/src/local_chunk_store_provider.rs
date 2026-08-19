@@ -321,7 +321,7 @@ mod tests {
         for t in ts {
             let tp = TimePoint::default().with(timeline, TimeInt::new_temporal(*t));
             #[expect(clippy::cast_sign_loss)]
-            let pt = MyPoint::from_iter((*t as u32)..(*t as u32 + 1));
+            let pt = MyPoint::from_iter((*t as u32)..=(*t as u32));
             builder = builder.with_archetype(RowId::new(), tp, &MyPoints::new(pt));
         }
         builder.build().unwrap()

@@ -61,7 +61,10 @@ impl Icon {
 
     #[inline]
     pub fn as_image(&self) -> Image<'static> {
-        let scale = if self.uri.ends_with(".svg") {
+        let is_svg = std::path::Path::new(self.uri)
+            .extension()
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("svg"));
+        let scale = if is_svg {
             1.0
         } else {
             0.5 // Because we save all png icons as 2x

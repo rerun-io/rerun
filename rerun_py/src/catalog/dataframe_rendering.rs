@@ -90,11 +90,11 @@ impl PyRerunHtmlTable {
             let rows = table
                 .row_iter()
                 .map(|row| {
-                    let cells = row
-                        .cell_iter()
-                        .map(|cell| format!("<td>{}</td>", cell.content().replace('\n', "<br>")))
-                        .collect::<Vec<_>>()
-                        .join("");
+                    let cells = row.cell_iter().fold(String::new(), |mut cells, cell| {
+                        use std::fmt::Write as _;
+                        write!(cells, "<td>{}</td>", cell.content().replace('\n', "<br>")).ok();
+                        cells
+                    });
 
                     format!("<tr>{cells}</tr>\n")
                 })

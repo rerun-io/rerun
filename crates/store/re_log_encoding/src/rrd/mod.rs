@@ -63,7 +63,7 @@ pub use self::file_sink::{FileFlushError, FileSink, FileSinkError, FileSinkOptio
 pub use self::fingerprint::RrdFingerprint;
 pub use self::footer::{
     HubRrdManifest, RawRrdManifest, RrdFooter, RrdManifest, RrdManifestBuilder, RrdManifestSha256,
-    RrdManifestStaticMap, RrdManifestTemporalMap, RrdManifestTemporalMapEntry,
+    RrdManifestStaticMap, RrdManifestTemporalMap, RrdManifestTemporalMapEntry, sha256_to_hex,
 };
 #[cfg(feature = "decoder")]
 pub use self::footer_reader::{

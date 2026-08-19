@@ -1178,10 +1178,9 @@ fn check_for_clicked_hyperlinks(egui_ctx: &egui::Context, command_sender: &Comma
 
                     // We handled the URL, therefore egui shouldn't do anything anymore with it.
                     return false;
-                } else {
-                    // Open all links in a new tab (https://github.com/rerun-io/rerun/issues/4105)
-                    open_url.new_tab = true;
                 }
+                // Open all links in a new tab (https://github.com/rerun-io/rerun/issues/4105)
+                open_url.new_tab = true;
             }
             true
         });

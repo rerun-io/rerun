@@ -276,7 +276,7 @@ impl StatsCommand {
         }
 
         let print_ipc_size_bytes_stats = |mut ipc_size_bytes: Vec<u64>| {
-            ipc_size_bytes.sort();
+            ipc_size_bytes.sort_unstable();
 
             let ipc_size_bytes_total = ipc_size_bytes.iter().copied().sum::<u64>() as f64;
             let ipc_size_bytes_avg = ipc_size_bytes_total / ipc_size_bytes.len() as f64;
@@ -429,11 +429,7 @@ fn print_footer_stats(
         let byte_size_total: u64 = manifest.col_chunk_byte_size()?.sum();
         let byte_size_uncompressed_total: u64 = manifest.col_chunk_byte_size_uncompressed()?.sum();
 
-        let sha256 = manifest
-            .sorbet_schema_sha256
-            .iter()
-            .map(|b| format!("{b:02x}"))
-            .collect::<String>();
+        let sha256 = re_log_encoding::sha256_to_hex(&manifest.sorbet_schema_sha256);
 
         println!();
         println!("Footer manifest for {:?}", manifest.store_id);

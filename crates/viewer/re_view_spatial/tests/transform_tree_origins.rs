@@ -1,3 +1,5 @@
+#![expect(clippy::unreadable_literal)]
+
 use re_chunk_store::RowId;
 use re_log_types::TimePoint;
 use re_sdk_types::blueprint::archetypes::SpatialInformation;

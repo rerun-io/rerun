@@ -184,30 +184,30 @@ impl Verifier {
             anyhow::bail!(
                 "Indicators are deprecated and should be removed on ingestion in re_sorbet."
             );
-        } else {
-            // Verify data
-            let component_reflection = self
-                .reflection
-                .components
-                .get(&component_type)
-                .ok_or_else(|| anyhow::anyhow!("Unknown component"))?;
+        }
 
-            if let Some(deprecation_summary) = component_reflection.deprecation_summary {
-                anyhow::bail!(
-                    "Component is deprecated. Deprecated types should be migrated on ingestion in re_sorbet. Deprecation notice: {deprecation_summary:?}"
-                );
-            }
+        // Verify data
+        let component_reflection = self
+            .reflection
+            .components
+            .get(&component_type)
+            .ok_or_else(|| anyhow::anyhow!("Unknown component"))?;
 
-            let list_array = column.as_list_opt::<i32>().ok_or_else(|| {
-                anyhow::anyhow!("Expected list array, found {}", column.data_type())
-            })?;
+        if let Some(deprecation_summary) = component_reflection.deprecation_summary {
+            anyhow::bail!(
+                "Component is deprecated. Deprecated types should be migrated on ingestion in re_sorbet. Deprecation notice: {deprecation_summary:?}"
+            );
+        }
 
-            assert_eq!(column.len() + 1, list_array.offsets().len());
+        let list_array = column
+            .as_list_opt::<i32>()
+            .ok_or_else(|| anyhow::anyhow!("Expected list array, found {}", column.data_type()))?;
 
-            for i in 0..column.len() {
-                let cell = list_array.value(i);
-                (component_reflection.verify_arrow_array)(cell.as_ref())?;
-            }
+        assert_eq!(column.len() + 1, list_array.offsets().len());
+
+        for i in 0..column.len() {
+            let cell = list_array.value(i);
+            (component_reflection.verify_arrow_array)(cell.as_ref())?;
         }
 
         if let Some(archetype_name) = archetype_name {

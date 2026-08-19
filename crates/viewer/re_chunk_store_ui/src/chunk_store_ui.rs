@@ -271,9 +271,7 @@ impl DatastoreUi {
             self.focused_chunk = None;
         }
 
-        if !datastore_ui_active {
-            command_sender.send_system(SystemCommand::SetRoute(return_route.clone()));
-        } else {
+        if datastore_ui_active {
             let new_selected_store_id = match self.store_kind {
                 StoreKind::Recording => self.selected_recording_id.clone(),
                 StoreKind::Blueprint => self.selected_blueprint_id.clone(),
@@ -294,6 +292,8 @@ impl DatastoreUi {
                     return_route: Box::new(return_route.clone()),
                 }));
             }
+        } else {
+            command_sender.send_system(SystemCommand::SetRoute(return_route.clone()));
         }
     }
 

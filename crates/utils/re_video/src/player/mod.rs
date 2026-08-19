@@ -735,15 +735,14 @@ impl<T: Default> VideoPlayer<T> {
                         });
 
                         return Err(UnloadedSampleDataError::ExpectedSampleNotLoaded.into());
-                    } else {
-                        // So far we have only requested backwards from the requested
-                        // sample. This will request forward for when we're enqueueing
-                        // infront of a sample.
-                        video_source.indicate_video_source(crate::VideoSource::Id {
-                            id: *source_id,
-                            sub_id: None,
-                        });
                     }
+                    // So far we have only requested backwards from the requested
+                    // sample. This will request forward for when we're enqueueing
+                    // infront of a sample.
+                    video_source.indicate_video_source(crate::VideoSource::Id {
+                        id: *source_id,
+                        sub_id: None,
+                    });
 
                     break;
                 }

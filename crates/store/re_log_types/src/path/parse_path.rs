@@ -288,9 +288,8 @@ fn entity_path_parts_from_tokens_strict(mut tokens: &[&str]) -> Result<Vec<Entit
 
         if token == "/" {
             return Err(PathParseError::DoubleSlash);
-        } else {
-            parts.push(EntityPathPart::parse_strict(token)?);
         }
+        parts.push(EntityPathPart::parse_strict(token)?);
 
         if let Some(next_token) = tokens.first() {
             if *next_token == "/" {

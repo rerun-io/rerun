@@ -308,7 +308,7 @@ fn realtime_pipeline(
 
     loop {
         select! {
-            recv(ticker_rx) -> _elapsed => on_flush(&mut session_file),
+            recv(ticker_rx) -> _ => on_flush(&mut session_file),
             recv(event_rx) -> event => {
                 let Ok(event) = event else { break };
                 match event {

@@ -683,9 +683,8 @@ impl ResolvedEntityPathFilter {
                             // the subtree is explicitly excluded,
                             // and we've already checked that nothing in the subtree was included.
                             return false;
-                        } else {
-                            // the entity is excluded, but (maybe!) not thee entire subtree.
                         }
+                        // the entity is excluded, but (maybe!) not thee entire subtree.
                     }
                 }
             }

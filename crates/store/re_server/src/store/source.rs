@@ -308,7 +308,7 @@ mod tests {
                 let points = MyPoint::from_iter(
                     #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
                     {
-                        frame_idx as u32..frame_idx as u32 + 1
+                        (frame_idx as u32)..=(frame_idx as u32)
                     },
                 );
                 let chunk = Chunk::builder(entity_path)

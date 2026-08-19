@@ -846,8 +846,7 @@ impl<'a> ShowIndexState<'a> for &'a UnionArray {
         };
 
         let max_id = fields.iter().map(|(id, _)| id).max().unwrap_or_default() as usize;
-        let mut show_fields: Vec<Option<FieldDisplay<'_>>> =
-            (0..max_id + 1).map(|_| None).collect();
+        let mut show_fields: Vec<Option<FieldDisplay<'_>>> = (0..=max_id).map(|_| None).collect();
         for (i, field) in fields.iter() {
             let formatter = make_ui(self.child(i).as_ref(), options)?;
             show_fields[i as usize] = Some((field, formatter));

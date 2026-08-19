@@ -278,7 +278,7 @@ mod tests {
             for frame_idx in 0..num_frames {
                 let entity_path = EntityPath::from(format!("/entity_{entity_idx}"));
                 let row_id = RowId::new();
-                let points = MyPoint::from_iter(frame_idx as u32..frame_idx as u32 + 1);
+                let points = MyPoint::from_iter((frame_idx as u32)..=(frame_idx as u32));
                 let chunk = Chunk::builder(entity_path)
                     .with_sparse_component_batches(
                         row_id,
