@@ -15,6 +15,7 @@ version.workspace = true
 workspace = true
 
 [dependencies]
+re_arrow_util.workspace = true
 re_chunk.workspace = true
 re_int.workspace = true
 re_log_types.workspace = true
@@ -44,5 +45,4 @@ thiserror.workspace = true
 [dev-dependencies]
 insta = { workspace = true, features = ["filters", "redactions"] }
 prost-reflect = { workspace = true, features = ["text-format"] }
-re_arrow_util.workspace = true
 re_log = { workspace = true, features = ["setup"] }
