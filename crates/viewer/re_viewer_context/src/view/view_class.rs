@@ -324,6 +324,17 @@ pub trait ViewClass: Send + Sync {
         Ok(())
     }
 
+    /// By default, views accept any drag-and-dropped entity that a visualizer can show. That might
+    /// be too loose for some views. In that case, this method can be overridden to reject entities
+    /// before visualizability is checked.
+    fn reject_entity_drop_reason(
+        &self,
+        _ctx: &ViewerContext<'_>,
+        _entity_path: &EntityPath,
+    ) -> Option<&'static str> {
+        None
+    }
+
     /// Handle components being dragged over a view of this class.
     ///
     /// This is the component-drop counterpart to the generic entity-drop handling done by the

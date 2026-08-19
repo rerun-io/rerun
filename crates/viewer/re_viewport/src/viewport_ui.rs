@@ -19,7 +19,7 @@ use re_viewer_context::{
     SystemExecutionOutput, ViewId, ViewQuery, ViewStates, ViewerContext, icon_for_container_kind,
 };
 use re_viewport_blueprint::{
-    ViewBlueprint, ViewportBlueprint, ViewportCommand, create_entity_add_info,
+    CanAddToView, ViewBlueprint, ViewportBlueprint, ViewportCommand, create_entity_add_info,
 };
 
 use crate::system_execution::{execute_systems_for_all_views, execute_systems_for_view};
@@ -276,36 +276,77 @@ impl ViewportUi {
 
     /// Handle the entities being dragged over a view.
     ///
-    /// Design decisions:
-    /// - We accept the drop only if at least one of the entities is visualizable and not already
-    ///   included.
-    /// - When the drop happens, of all dropped entities, we only add those which are visualizable.
+    /// A dragged entity is added with an including-subtree rule, so it is worth dropping as soon
+    /// as one entity of its subtree, possibly itself, is:
+    /// - visualizable,
+    /// - not part of the view yet,
+    /// - and accepted by the view class.
     ///
-    fn handle_drop_entities_to_view(
+    /// All three must hold for the *same* entity: a subtree whose only additions would be
+    /// entities the view can't show has nothing to contribute.
+    ///
+    /// Design decisions:
+    /// - We accept the drop as soon as one of the dragged entities is worth dropping.
+    /// - When the drop happens, of all dragged entities, we only add those.
+    /// - If nothing is left to accept, we show the most specific reason we have.
+    ///
+    /// This is public so that view crates can test how their class handles entity drops.
+    pub fn handle_drop_entities_to_view(
         ctx: &ViewerContext<'_>,
         view_blueprint: &ViewBlueprint,
         entities: &[EntityPath],
         released: bool,
     ) -> DragAndDropFeedback {
         let recording_engine = ctx.recording_engine();
+        let entity_tree = recording_engine.store().entity_tree();
         let add_info = create_entity_add_info(
             ctx,
-            recording_engine.store().entity_tree(),
+            entity_tree,
             view_blueprint,
             ctx.lookup_query_result(view_blueprint.id),
         );
+        let view_class = view_blueprint.class(ctx.view_class_registry());
 
-        // check if any entity or its children are visualizable and not yet included in the view
-        let can_entity_be_added = |entity: &EntityPath| {
-            add_info
-                .get(entity)
-                .is_some_and(|info| info.can_add_self_or_descendant.is_compatible_and_missing())
-        };
+        let mut acceptable_entities = Vec::new();
 
-        let any_is_visualizable = entities.iter().any(can_entity_be_added);
+        // Why we had to turn an entity down, in decreasing order of specificity. Only shown if
+        // nothing is acceptable in the end.
+        let mut class_rejection = None;
+        let mut any_already_in_view = false;
 
-        if !any_is_visualizable {
-            return DragAndDropFeedback::Reject(None);
+        for entity in entities {
+            let Some(subtree) = entity_tree.subtree(entity) else {
+                continue;
+            };
+
+            let mut is_acceptable = false;
+            subtree.visit_children_recursively(|entity_path| {
+                // Entities no visualizer of this class can show are silently ignored: that is
+                // evident enough from the streams panel.
+                let Some(CanAddToView::Compatible { already_added }) =
+                    add_info.get(entity_path).map(|info| &info.can_add)
+                else {
+                    return;
+                };
+
+                if let Some(reason) = view_class.reject_entity_drop_reason(ctx, entity_path) {
+                    class_rejection.get_or_insert(reason);
+                } else if *already_added {
+                    any_already_in_view = true;
+                } else {
+                    is_acceptable = true;
+                }
+            });
+
+            if is_acceptable {
+                acceptable_entities.push(entity);
+            }
+        }
+
+        if acceptable_entities.is_empty() {
+            let reason =
+                class_rejection.or_else(|| any_already_in_view.then_some("Already in this view"));
+            return DragAndDropFeedback::Reject(reason);
         }
 
         // drop incoming!
@@ -315,13 +356,11 @@ impl ViewportUi {
             view_blueprint
                 .contents
                 .mutate_entity_path_filter(ctx, |filter| {
-                    for entity in entities {
-                        if can_entity_be_added(entity) {
-                            filter.add_rule(
-                                RuleEffect::Include,
-                                ResolvedEntityPathRule::including_subtree(entity),
-                            );
-                        }
+                    for entity in acceptable_entities {
+                        filter.add_rule(
+                            RuleEffect::Include,
+                            ResolvedEntityPathRule::including_subtree(entity),
+                        );
                     }
                 });
 

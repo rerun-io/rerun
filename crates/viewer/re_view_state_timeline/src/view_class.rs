@@ -259,6 +259,22 @@ impl ViewClass for StateTimelineView {
         .inner
     }
 
+    /// Only take dropped entities that log a `StateChange`. For any other archetype,
+    /// they should drop the component they are interested in instead.
+    fn reject_entity_drop_reason(
+        &self,
+        ctx: &ViewerContext<'_>,
+        entity_path: &EntityPath,
+    ) -> Option<&'static str> {
+        let has_state_change = ctx
+            .indicated_entities_per_visualizer
+            .get(&crate::StateVisualizer::identifier())
+            .is_some_and(|entities| entities.contains(entity_path));
+
+        (!has_state_change)
+            .then_some("No `StateChange` data on this entity, try dropping a component instead")
+    }
+
     /// Accept drops of components onto the state timeline view. For each dropped component, a new
     /// `StateVisualizer` is added that remaps `StateChange.state` from it.
     fn handle_component_drop(
@@ -311,7 +327,7 @@ impl ViewClass for StateTimelineView {
             ui.scope_builder(egui::UiBuilder::new().max_rect(rect), |ui| {
                 ui.centered_and_justified(|ui| {
                     ui.label(
-                        "No state data. Drag a string component from the streams tree into this view or add a new visualizer.",
+                        "No state data. Drag a state entity or a string component from the streams tree into this view or add a new visualizer.",
                     );
                 });
             });
