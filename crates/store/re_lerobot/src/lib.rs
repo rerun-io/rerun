@@ -10,12 +10,15 @@
 //! This module supports v2 and v3 `LeRobot` datasets!
 //!
 //! See [`datasetv2::LeRobotDatasetV2`] and [`datasetv3::LeRobotDatasetV3`] for more information on the dataset formats.
+mod bounded;
 pub mod common;
 pub mod datasetv2;
 pub mod datasetv3;
 pub(crate) mod execute;
 pub(crate) mod plan;
 pub(crate) mod streaming;
+
+pub use bounded::read_row_range;
 
 use std::{fmt, path::Path};
 
@@ -456,6 +459,16 @@ pub enum LeRobotError {
 
     #[error("Episode {0:?} data file does not contain any records")]
     EmptyEpisode(EpisodeIndex),
+
+    #[error(
+        "Row range {}..{} is empty or outside the file's {num_rows} rows\nFile path: {path}",
+        rows.start, rows.end
+    )]
+    InvalidRowRange {
+        rows: std::ops::Range<u64>,
+        num_rows: u64,
+        path: std::path::PathBuf,
+    },
 
     #[error(transparent)]
     Chunk(#[from] re_chunk::ChunkError),
