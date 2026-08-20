@@ -14,6 +14,7 @@ use re_log_types::{StoreId, StoreKind};
 pub use re_chunk_store::OptimizationProfile;
 
 /// The [`CompactionOptions::is_start_of_gop`] callback, backed by `re_video`.
+#[cfg(feature = "video")]
 pub(crate) fn gop_detector() -> re_chunk_store::IsStartOfGop {
     std::sync::Arc::new(|data, codec| {
         re_video::is_start_of_gop(data, codec.into()).map_err(|err| anyhow::anyhow!(err))
@@ -34,7 +35,10 @@ fn compaction_options(profile: &OptimizationProfile) -> CompactionOptions {
     CompactionOptions {
         config,
         num_extra_passes: Some(profile.num_extra_passes as usize),
-        is_start_of_gop: profile.gop_batching.then(gop_detector),
+        is_start_of_gop: cfg_select! {
+            feature = "video" => profile.gop_batching.then(gop_detector),
+            _ => None,
+        },
         split_size_ratio: profile.split_size_ratio,
         fix_keyframe: false,
     }

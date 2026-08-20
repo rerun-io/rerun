@@ -25,6 +25,7 @@ rerun = { path = "../../../crates/top/rerun", default-features = false, features
   "native_viewer",
   "run",
   "server",
+  "video",
 ] }
 
 bincode.workspace = true
