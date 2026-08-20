@@ -2,7 +2,9 @@
 
 use std::sync::Arc;
 
-use arrow::array::{Array, ArrayRef, Float32Array, Float64Array, ListArray, StructArray};
+use arrow::array::{
+    Array, ArrayRef, BinaryArray, Float32Array, Float64Array, ListArray, StructArray,
+};
 use re_lenses_core::combinators::{
     Error, GetField, ListToFixedSizeList, MapFixedSizeList, PrimitiveCast, RowMajorToColumnMajor,
     StructToFixedList, Transform as _,
@@ -53,6 +55,23 @@ pub fn get_field_as<T: Array + Clone + 'static>(
             actual: array_ref.data_type().clone(),
             context: name.to_owned(),
         })
+}
+
+/// Extracts a blob field represented as either `BinaryArray` or `ListArray<UInt8>`.
+// TODO(RR-1977): consistently use only `BinaryArray` for all blob types.
+pub fn get_blob_field_as_binary(source: &StructArray, name: &str) -> Result<BinaryArray, Error> {
+    let array_ref = GetField::new(name)
+        .transform(source)?
+        .ok_or_else(|| Error::FieldNotFound {
+            field_name: name.to_owned(),
+            available_fields: source.fields().iter().map(|f| f.name().clone()).collect(),
+        })?;
+
+    re_arrow_util::blob_array_to_binary(array_ref.as_ref()).ok_or_else(|| Error::TypeMismatch {
+        expected: "BinaryArray or ListArray<UInt8> without null byte values".to_owned(),
+        actual: array_ref.data_type().clone(),
+        context: name.to_owned(),
+    })
 }
 
 /// Converts a struct with `latitude`, `longitude` fields to a fixed-size list with two f64 values.

@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use arrow::array::{
-    Array as _, ArrayRef, BinaryArray, ListArray, StringArray, StructArray, UInt8Array, UInt32Array,
+    Array as _, ArrayRef, ListArray, StringArray, StructArray, UInt8Array, UInt32Array,
 };
 use arrow::buffer::OffsetBuffer;
 use arrow::datatypes::{DataType, Field};
@@ -12,7 +12,7 @@ use re_lenses_core::combinators::Error;
 use re_sdk_types::Loggable as _;
 use re_sdk_types::encodings::ImageFormat;
 
-use crate::semantic::helpers::get_field_as;
+use crate::semantic::helpers::{get_blob_field_as_binary, get_field_as};
 
 const ENCODING_FIELD: &str = "encoding";
 
@@ -82,7 +82,7 @@ pub(crate) fn extract_image_buffer()
         let height_array = get_field_as::<UInt32Array>(source, "height")?;
         let step_array = get_field_as::<UInt32Array>(source, "step")?;
         let encoding_array = get_field_as::<StringArray>(source, "encoding")?;
-        let data_array = get_field_as::<BinaryArray>(source, "data")?;
+        let data_array = get_blob_field_as_binary(source, "data")?;
 
         let len = source.len();
         let mut buffer: Vec<u8> = Vec::new();
