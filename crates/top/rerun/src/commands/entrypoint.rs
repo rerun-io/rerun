@@ -748,10 +748,13 @@ where
 
     if args.version {
         println!("{build_info}");
+        #[cfg(feature = "video")]
         println!(
             "Video features: {}",
             re_video::enabled_features().iter().join(" ")
         );
+        #[cfg(not(feature = "video"))]
+        println!("Video features: (video support disabled in this build)");
         return Ok(0);
     }
 

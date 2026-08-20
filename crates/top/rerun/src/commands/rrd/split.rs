@@ -200,7 +200,13 @@ impl SplitCommand {
         );
 
         re_log::info!("extracting keyframes…");
+        #[cfg(feature = "video")]
         let mut keyframes_per_entity: IntMap<_, Vec<_>> = IntMap::default();
+        #[cfg(not(feature = "video"))]
+        let keyframes_per_entity: IntMap<_, Vec<_>> = IntMap::default();
+        // Without the `video` feature there is no keyframe detection, so no entity ever
+        // gets keyframe-based rebatching.
+        #[cfg(feature = "video")]
         for store in stores.values() {
             for entity in store.all_entities() {
                 let keyframes = extract_keyframes(&entity, store, cutoff_timeline);
@@ -789,6 +795,7 @@ impl SplitCommand {
 }
 
 // TODO(RR-3810): For a virtual store implementation, we'd want this to load no more than 1 chunk at a time.
+#[cfg(feature = "video")]
 fn extract_keyframes(
     entity_path: &EntityPath,
     store: &ChunkStore,
