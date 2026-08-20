@@ -190,6 +190,7 @@ eframe = { version = "0.36.1", default-features = false, features = [
   "accesskit",
   "default_fonts",
   "inspection",
+  "links",
   "wayland",
   "x11",
 ] }
