@@ -69,7 +69,10 @@ impl<'a> RecordingPanelData<'a> {
                 }
 
                 LogSource::RedapGrpcStream { uri, .. } => {
-                    if ctx.store_hub().is_opened(&uri.store_id()) {
+                    if uri
+                        .store_id()
+                        .is_some_and(|store_id| ctx.store_hub().is_opened(&store_id))
+                    {
                         loading_segments
                             .entry(uri.origin.clone())
                             .or_default()
@@ -344,8 +347,7 @@ impl<'a> ServerEntriesData<'a> {
                         name: entry.name().clone(),
                         icon: entry.icon(),
                         is_selected: ctx.is_selected_or_loading(
-                            &re_uri::EntryUri::new(origin.clone(), entry.id(), Default::default())
-                                .into(),
+                            &re_uri::EntryUri::new(origin.clone(), entry.id()).into(),
                         ),
                         is_active: ctx.active_redap_entry() == Some(entry.id()),
                     };
@@ -617,7 +619,7 @@ pub struct EntryData {
 
 impl EntryData {
     pub fn item(&self) -> Item {
-        re_uri::EntryUri::new(self.origin.clone(), self.entry_id, Default::default()).into()
+        re_uri::EntryUri::new(self.origin.clone(), self.entry_id).into()
     }
 
     pub fn id(&self) -> egui::Id {

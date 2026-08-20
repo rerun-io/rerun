@@ -1,7 +1,16 @@
 use re_chunk::ChunkId;
-use re_log_types::{ApplicationId, StoreId, TableId};
+use re_log_types::{ApplicationId, EntryId, StoreId, TableId};
 
 use crate::{Item, RedapEntryKind, TableReference, open_url::EXAMPLES_ORIGIN};
+
+/// What a redap entry is, and for a dataset which of its resources we show.
+///
+/// The server is the authority on this, see `re_protos`' `EntryKind`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum EntryKind {
+    Table,
+    Dataset(re_uri::DatasetResource),
+}
 
 /// What are we currently showing in the viewer?
 #[derive(Clone, PartialEq, Eq)]
@@ -26,11 +35,21 @@ pub enum Route {
 
     LocalTable(TableId),
 
-    /// The Redap server/catalog/collection or folder browser.
+    /// A dataset or table entry on a Redap server.
     RedapEntry {
         origin: re_uri::Origin,
-        kind: RedapEntryKind,
-        tab: re_uri::DatasetResource,
+        entry_id: EntryId,
+
+        /// What the entry is, or `None` while we don't know.
+        ///
+        /// A route built from an entry url or an [`Item`] has nothing to go by.
+        kind: Option<EntryKind>,
+    },
+
+    /// A folder in a Redap server's dataset hierarchy, named by a dotted path prefix.
+    RedapFolder {
+        origin: re_uri::Origin,
+        path: String,
     },
 
     /// The top-level view of a Redap Server.
@@ -58,12 +77,12 @@ impl std::fmt::Debug for Route {
             Self::Loading(source) => write!(f, "Loading({source})"),
             Self::LocalRecording { recording_id } => write!(f, "LocalRecording({recording_id:?})"),
             Self::LocalTable(table_id) => write!(f, "LocalTable({table_id})"),
-            Self::RedapEntry { origin, kind, tab } => match kind {
-                RedapEntryKind::Entry(id) => write!(f, "RedapEntry({origin}, {id}, {tab})"),
-                RedapEntryKind::Folder(path_prefix) => {
-                    write!(f, "RedapFolder({origin}, {path_prefix})")
-                }
-            },
+            Self::RedapEntry {
+                origin,
+                entry_id,
+                kind,
+            } => write!(f, "RedapEntry({origin}, {entry_id}, {kind:?})"),
+            Self::RedapFolder { origin, path } => write!(f, "RedapFolder({origin}, {path})"),
             Self::RedapServer(server) => write!(f, "RedapServer({server})"),
             Self::ChunkStoreBrowser {
                 store_id,
@@ -92,6 +111,7 @@ impl Route {
             | Self::Loading { .. }
             | Self::LocalTable { .. }
             | Self::RedapEntry { .. }
+            | Self::RedapFolder { .. }
             | Self::RedapServer { .. } => None,
         }
     }
@@ -112,7 +132,10 @@ impl Route {
                     None
                 }
             }
-            Self::Loading { .. } | Self::LocalTable { .. } | Self::RedapEntry { .. } => None,
+            Self::Loading { .. }
+            | Self::LocalTable { .. }
+            | Self::RedapEntry { .. }
+            | Self::RedapFolder { .. } => None,
         }
     }
 
@@ -128,6 +151,21 @@ impl Route {
         matches!(self, Self::LocalRecording { .. })
     }
 
+    /// The entry this route shows, if any.
+    pub fn entry_id(&self) -> Option<EntryId> {
+        match self {
+            Self::RedapEntry { entry_id, .. } => Some(*entry_id),
+
+            Self::Settings { .. }
+            | Self::Loading { .. }
+            | Self::LocalRecording { .. }
+            | Self::LocalTable { .. }
+            | Self::RedapFolder { .. }
+            | Self::RedapServer { .. }
+            | Self::ChunkStoreBrowser { .. } => None,
+        }
+    }
+
     pub fn item(&self) -> Option<Item> {
         match self {
             Self::LocalRecording { recording_id } => Some(Item::StoreId(recording_id.clone())),
@@ -137,11 +175,15 @@ impl Route {
             Self::LocalTable(table_id) => Some(Item::TableId(table_id.clone())),
             Self::RedapEntry {
                 origin,
-                kind,
-                tab: _,
+                entry_id,
+                kind: _,
             } => Some(Item::RedapEntry {
                 origin: origin.clone(),
-                kind: kind.clone(),
+                kind: RedapEntryKind::Entry(*entry_id),
+            }),
+            Self::RedapFolder { origin, path } => Some(Item::RedapEntry {
+                origin: origin.clone(),
+                kind: RedapEntryKind::Folder(path.clone()),
             }),
             Self::RedapServer(origin) => Some(Item::RedapServer(origin.clone())),
             Self::Settings { .. } | Self::Loading { .. } => None,
@@ -154,11 +196,17 @@ impl Route {
                 recording_id: store_id.clone(),
             }),
             Item::TableId(table_id) => Some(Self::LocalTable(table_id.clone())),
-            Item::RedapEntry { origin, kind } => Some(Self::RedapEntry {
-                origin: origin.clone(),
-                kind: kind.clone(),
-                tab: re_uri::DatasetResource::default(),
-            }),
+            Item::RedapEntry { origin, kind } => match kind {
+                RedapEntryKind::Entry(entry_id) => Some(Self::RedapEntry {
+                    origin: origin.clone(),
+                    entry_id: *entry_id,
+                    kind: None,
+                }),
+                RedapEntryKind::Folder(path) => Some(Self::RedapFolder {
+                    origin: origin.clone(),
+                    path: path.clone(),
+                }),
+            },
             Item::RedapServer(origin) => Some(Self::RedapServer(origin.clone())),
 
             Item::AppId { .. }
@@ -176,8 +224,8 @@ impl From<re_uri::EntryUri> for Route {
     fn from(uri: re_uri::EntryUri) -> Self {
         Self::RedapEntry {
             origin: uri.origin,
-            kind: RedapEntryKind::Entry(uri.entry_id),
-            tab: uri.resource,
+            entry_id: uri.entry_id,
+            kind: None,
         }
     }
 }
@@ -188,11 +236,9 @@ impl Route {
         match self {
             Self::LocalTable(table_id) => Some(table_id.clone().into()),
 
+            // The same table backs every resource of a dataset.
             Self::RedapEntry {
-                origin,
-                kind: RedapEntryKind::Entry(entry_id),
-                // The same table backs every tab of a dataset.
-                tab: _,
+                origin, entry_id, ..
             } => Some(TableReference::RedapEntry {
                 origin: origin.clone(),
                 entry_id: *entry_id,
@@ -205,10 +251,7 @@ impl Route {
             Self::Settings { .. }
             | Self::Loading { .. }
             | Self::LocalRecording { .. }
-            | Self::RedapEntry {
-                kind: RedapEntryKind::Folder(_),
-                ..
-            }
+            | Self::RedapFolder { .. }
             | Self::ChunkStoreBrowser { .. } => None,
         }
     }
@@ -252,7 +295,9 @@ impl Route {
 
                 Some(uri.origin().clone())
             }
-            Self::RedapEntry { origin, .. } => Some(origin.clone()),
+            Self::RedapEntry { origin, .. } | Self::RedapFolder { origin, .. } => {
+                Some(origin.clone())
+            }
             Self::RedapServer(server) => Some(server.clone()),
 
             Self::LocalTable { .. } => None,

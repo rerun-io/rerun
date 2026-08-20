@@ -674,11 +674,11 @@ pub fn table_blueprint_log_channel(
     blueprint_dataset: EntryId,
     blueprint_segment: &SegmentId,
 ) -> (re_log_channel::LogSender, re_log_channel::LogReceiver) {
-    let source_uri = re_uri::DatasetSegmentUri {
+    let source_uri = re_uri::DatasetUri {
         origin,
         dataset_id: blueprint_dataset.id,
-        kind: re_uri::SegmentKind::Segments,
-        segment_id: blueprint_segment.clone(),
+        resource: re_uri::DatasetResource::Segments,
+        segment_id: Some(blueprint_segment.clone()),
         fragment: re_uri::Fragment::default(),
     };
 
@@ -748,24 +748,30 @@ pub async fn stream_table_blueprint_segment_from_server(
 pub async fn stream_blueprint_and_segment_from_server(
     mut client: ConnectionClient,
     tx: re_log_channel::LogSender,
-    uri: re_uri::DatasetSegmentUri,
+    uri: re_uri::DatasetUri,
     options: StreamingOptions,
 ) -> ApiResult {
     re_log::debug!("Loading {uri}…");
 
-    let recording_store_id = uri.store_id();
+    let (Some(segment_id), Some(recording_store_id)) = (uri.segment_id.clone(), uri.store_id())
+    else {
+        return Err(ApiError::invalid_arguments(
+            client.origin(),
+            format!("Cannot stream a dataset that names no segment\nUri: {uri}"),
+        ));
+    };
 
     // The entry tells us which default blueprint to stream, and which kind of dataset this is.
     let dataset_entry = client.read_dataset_entry(uri.dataset_id.into()).await?;
 
     // An asset is a segment of the dataset's hidden asset dataset, which the url does not name.
-    let (dataset_id, dataset_kind) = match uri.kind {
-        re_uri::SegmentKind::Segments => (
+    let (dataset_id, dataset_kind) = match uri.resource {
+        re_uri::DatasetResource::Segments => (
             EntryId::from(uri.dataset_id),
             dataset_entry.handle.dataset_kind,
         ),
 
-        re_uri::SegmentKind::Assets => {
+        re_uri::DatasetResource::Assets => {
             let Some(asset_dataset) = dataset_entry.dataset_details.asset_dataset else {
                 return Err(ApiError::invalid_arguments(
                     client.origin(),
@@ -823,11 +829,11 @@ pub async fn stream_blueprint_and_segment_from_server(
         }
     }
 
-    let re_uri::DatasetSegmentUri {
+    let re_uri::DatasetUri {
         origin: _,
         dataset_id: _,
-        kind: _,
-        segment_id,
+        resource: _,
+        segment_id: _, // Taken above
         fragment,
     } = uri;
 

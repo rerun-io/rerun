@@ -111,8 +111,10 @@ impl ItemTitle {
                 .recording_info_property::<Name>(RecordingInfo::descriptor_name().component)
             {
                 name.to_string()
-            } else if let EntityDbClass::DatasetSegment(url) = entity_db.store_class() {
-                url.segment_id.to_string()
+            } else if let EntityDbClass::DatasetSegment(url) = entity_db.store_class()
+                && let Some(segment_id) = &url.segment_id
+            {
+                segment_id.as_str().to_owned()
             } else if let Some(started) = entity_db.recording_info_property::<Timestamp>(
                 RecordingInfo::descriptor_start_time().component,
             ) {

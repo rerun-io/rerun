@@ -3360,6 +3360,7 @@ dependencies = [
  "serde",
  "smithay-clipboard",
  "web-time",
+ "webbrowser",
  "winit",
 ]
 
@@ -9545,6 +9546,7 @@ dependencies = [
  "ahash",
  "anyhow",
  "arrow",
+ "bytes",
  "itertools 0.15.0",
  "parking_lot",
  "parquet",

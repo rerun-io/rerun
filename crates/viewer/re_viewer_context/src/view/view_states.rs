@@ -42,7 +42,7 @@ pub struct PreviewState {
     active_previews: ahash::HashMap<StoreId, ActivePreview>,
 
     /// URIs that have already been requested.
-    pub requested_uris: ahash::HashSet<re_uri::DatasetSegmentUri>,
+    pub requested_uris: ahash::HashSet<re_uri::DatasetUri>,
 }
 
 impl PreviewState {

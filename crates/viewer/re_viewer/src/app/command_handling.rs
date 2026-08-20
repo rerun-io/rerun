@@ -289,11 +289,12 @@ impl App {
 
                 // Suppress loading screen if we're loading a recording that's already loaded, even if only partially.
                 if let Route::Loading(source) = &new_route
-                    && let Some(re_uri::RedapUri::DatasetData(dataset_uri)) = source.redap_uri()
+                    && let Some(re_uri::RedapUri::Dataset(dataset_uri)) = source.redap_uri()
+                    && let Some(dataset_store_id) = dataset_uri.store_id()
                     && store_hub
                         .store_bundle()
                         .entity_dbs()
-                        .any(|db| db.store_id() == &dataset_uri.store_id())
+                        .any(|db| db.store_id() == &dataset_store_id)
                 {
                     return;
                 }
@@ -645,7 +646,7 @@ impl App {
             SystemCommand::SetSelection(set) => {
                 if let Some(item) = set.selection.single_item() {
                     // If the selected item has its own page, switch to it.
-                    if let Some(route) = Route::from_item(item) {
+                    if let Some(route) = self.route_for_item(item) {
                         if let Route::LocalRecording { recording_id } = &route {
                             store_hub
                                 .load_blueprint_and_caches(recording_id, &self.view_class_registry);
@@ -1602,10 +1603,14 @@ impl App {
 
             // Resolves to a recording: it must still be loaded, and not be the one we're closing.
             // We don't re-stream a closed recording, that would land us on a blank, unloaded one.
-            ViewerOpenUrl::RedapDatasetSegment(uri) => {
-                let store_id = uri.store_id();
-                closing.is_none_or(|closing| &store_id != closing) && store_hub.is_opened(&store_id)
-            }
+            // Without a segment it resolves to the dataset, which stays reachable with its server.
+            ViewerOpenUrl::RedapDataset(uri) => match uri.store_id() {
+                Some(store_id) => {
+                    closing.is_none_or(|closing| &store_id != closing)
+                        && store_hub.is_opened(&store_id)
+                }
+                None => origin_reachable(&uri.origin),
+            },
 
             // Redap destinations are reachable while their server is still registered.
             ViewerOpenUrl::RedapProxy(uri) => origin_reachable(&uri.origin),
@@ -1637,10 +1642,10 @@ impl App {
             .and_then(|source| source.redap_uri());
 
         match redap_uri {
-            Some(re_uri::RedapUri::DatasetData(uri)) => Route::RedapEntry {
+            Some(re_uri::RedapUri::Dataset(uri)) => Route::RedapEntry {
                 origin: uri.origin,
-                kind: re_viewer_context::RedapEntryKind::Entry(uri.dataset_id.into()),
-                tab: re_uri::DatasetResource::Segments,
+                entry_id: uri.dataset_id.into(),
+                kind: Some(re_viewer_context::EntryKind::Dataset(uri.resource)),
             },
 
             Some(uri) if !matches!(uri, re_uri::RedapUri::Proxy(_)) => {

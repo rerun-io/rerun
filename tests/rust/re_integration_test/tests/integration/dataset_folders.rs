@@ -13,7 +13,7 @@ use re_protos::cloud::v1alpha1::ext::TableInsertMode;
 use re_sdk::external::re_log_types::EntryId;
 use re_uri::DatasetResource;
 use re_viewer::App;
-use re_viewer::external::re_viewer_context::{RedapEntryKind, Route};
+use re_viewer::external::re_viewer_context::{EntryKind, Route};
 use re_viewer::viewer_test_utils::{self, AppTestingExt as _, HarnessOptions};
 
 fn assert_route_and_selection(harness: &mut Harness<'static, App>, expected_route: &Route) {
@@ -88,21 +88,21 @@ pub async fn dataset_folders() {
         port: server.port(),
         scheme: re_uri::Scheme::RerunHttp,
     };
-    let folder_route = |path: &str| Route::RedapEntry {
+    let folder_route = |path: &str| Route::RedapFolder {
         origin: origin.clone(),
-        kind: RedapEntryKind::Folder(path.to_owned()),
-        tab: DatasetResource::default(),
+        path: path.to_owned(),
     };
-    let summary_route = Route::from(re_uri::EntryUri::new(
-        origin.clone(),
-        EntryId::from_str(summary_id_str).expect("valid entry id"),
-        DatasetResource::default(),
-    ));
-    let metrics_route = Route::from(re_uri::EntryUri::new(
-        origin.clone(),
-        metrics_table.details.id,
-        DatasetResource::default(),
-    ));
+    // A folder card knows what its entries are, so the routes it opens name the kind.
+    let summary_route = Route::RedapEntry {
+        origin: origin.clone(),
+        entry_id: EntryId::from_str(summary_id_str).expect("valid entry id"),
+        kind: Some(EntryKind::Dataset(DatasetResource::default())),
+    };
+    let metrics_route = Route::RedapEntry {
+        origin: origin.clone(),
+        entry_id: metrics_table.details.id,
+        kind: Some(EntryKind::Table),
+    };
 
     // Jump directly into the `perception` folder via URL.
     let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions {

@@ -273,7 +273,7 @@ impl Server {
         origin: &re_uri::Origin,
         path_prefix: &str,
     ) {
-        use re_viewer_context::{RedapEntryKind, Route, SystemCommand, SystemCommandSender as _};
+        use re_viewer_context::{Route, SystemCommand, SystemCommandSender as _};
 
         let command_sender = app_ctx.command_sender().clone();
 
@@ -288,10 +288,9 @@ impl Server {
                     let parent_route = if let Some((parent, _)) =
                         path_prefix.rsplit_once(DATASET_HIERARCHY_SEPARATOR)
                     {
-                        Route::RedapEntry {
+                        Route::RedapFolder {
                             origin: origin.clone(),
-                            kind: RedapEntryKind::Folder(parent.to_owned()),
-                            tab: Default::default(),
+                            path: parent.to_owned(),
                         }
                     } else {
                         Route::RedapServer(origin.clone())
@@ -783,6 +782,26 @@ impl RedapServers {
         );
     }
 
+    /// What the catalog says an entry is, or `None` if it isn't loaded yet.
+    pub fn entry_kind(
+        &self,
+        origin: &re_uri::Origin,
+        entry_id: EntryId,
+    ) -> Option<re_viewer_context::EntryKind> {
+        self.servers.get(origin)?.find_entry(entry_id)?.route_kind()
+    }
+
+    /// Whether the catalog of `origin` might still tell us what an entry is.
+    ///
+    /// A server we don't know about yet is pending too: adding one goes through the command queue,
+    /// so it only shows up here a frame after something asked for it, and its entries land later
+    /// still.
+    pub fn is_entry_kind_pending(&self, origin: &re_uri::Origin, entry_id: EntryId) -> bool {
+        self.servers
+            .get(origin)
+            .is_none_or(|server| server.entries().is_kind_pending(entry_id))
+    }
+
     /// Snapshot of `(origin, entry_id) → name + icon` for all currently-loaded catalog entries.
     ///
     /// Used to resolve built-in Rerun URLs to rich `LinkButtons` (see
@@ -1013,7 +1032,7 @@ impl RedapServers {
         ctx: &AppContext<'_>,
         ui: &mut egui::Ui,
         active_entry: EntryId,
-        tab: re_uri::DatasetResource,
+        kind: Option<re_viewer_context::EntryKind>,
         table_blueprints: &re_dataframe_ui::TableBlueprints,
         view_states: &mut ViewStates,
     ) {
@@ -1027,7 +1046,7 @@ impl RedapServers {
                             dataset,
                             table_blueprints,
                             view_states,
-                            tab,
+                            kind,
                         );
 
                         // If we're connected twice to the same server, we will find this entry
@@ -1145,4 +1164,21 @@ async fn run_event_listener(
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// An entry on a server we don't know about is pending: the server is on its way in, and
+    /// nothing it holds can have reached us before it does.
+    #[test]
+    fn entry_on_an_unknown_server_is_pending() {
+        let servers = RedapServers::default();
+        let origin = "rerun+http://localhost:51234"
+            .parse::<re_uri::Origin>()
+            .expect("valid origin");
+
+        assert!(servers.is_entry_kind_pending(&origin, EntryId::new()));
+    }
 }

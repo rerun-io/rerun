@@ -513,11 +513,13 @@ fn dataset_entry_ui(ctx: &AppContext<'_>, ui: &mut egui::Ui, dataset_entry_data:
         ui.label(format!("Dataset: {name}"));
     });
 
-    let new_route = Route::from(re_uri::EntryUri::new(
-        origin.clone(),
-        *entry_id,
-        Default::default(),
-    ));
+    let new_route = Route::RedapEntry {
+        origin: origin.clone(),
+        entry_id: *entry_id,
+        kind: Some(re_viewer_context::EntryKind::Dataset(
+            re_uri::DatasetResource::default(),
+        )),
+    };
 
     item_response.context_menu(|ui| {
         let url = ViewerOpenUrl::from_route(ctx.store_hub(), &new_route)
@@ -563,8 +565,8 @@ fn remote_table_entry_ui(
     let RemoteTableData {
         entry_data:
             EntryData {
-                origin: _,
-                entry_id: _,
+                origin,
+                entry_id,
                 name,
                 icon,
                 is_selected,
@@ -583,10 +585,12 @@ fn remote_table_entry_ui(
     ctx.handle_select_focus_sync(&item_response, item.clone());
 
     if item_response.clicked() {
-        if let Some(route) = Route::from_item(&item) {
-            ctx.command_sender()
-                .send_system(SystemCommand::SetRoute(route));
-        }
+        ctx.command_sender()
+            .send_system(SystemCommand::SetRoute(Route::RedapEntry {
+                origin: origin.clone(),
+                entry_id: *entry_id,
+                kind: Some(re_viewer_context::EntryKind::Table),
+            }));
         ctx.command_sender()
             .send_system(SystemCommand::set_selection(item));
     }
@@ -617,7 +621,7 @@ fn failed_entry_ui(ctx: &AppContext<'_>, ui: &mut egui::Ui, failed_entry_data: &
         ctx.command_sender()
             .send_system(SystemCommand::set_selection(item));
         ctx.command_sender().send_system(SystemCommand::SetRoute(
-            re_uri::EntryUri::new(origin.clone(), *entry_id, Default::default()).into(),
+            re_uri::EntryUri::new(origin.clone(), *entry_id).into(),
         ));
     }
 

@@ -602,11 +602,30 @@ impl App {
         self.state.active_recording_id()
     }
 
+    /// The route for `item`, filling in what the catalog knows about a redap entry.
+    ///
+    /// An [`Item`] names no entry kind, so [`Route::from_item`] leaves it unresolved.
+    pub(crate) fn route_for_item(&self, item: &Item) -> Option<Route> {
+        let mut route = Route::from_item(item)?;
+
+        if let Route::RedapEntry {
+            origin,
+            entry_id,
+            kind,
+        } = &mut route
+            && kind.is_none()
+        {
+            *kind = self.state.redap_servers.entry_kind(origin, *entry_id);
+        }
+
+        Some(route)
+    }
+
     /// Select `item` and navigate the viewer to it (if it maps to a route).
     fn select_and_navigate_to(&self, item: &Item) {
         self.command_sender
             .send_system(SystemCommand::set_selection(item.clone()));
-        if let Some(route) = Route::from_item(item) {
+        if let Some(route) = self.route_for_item(item) {
             self.command_sender
                 .send_system(SystemCommand::SetRoute(route));
         }
@@ -820,6 +839,10 @@ impl App {
     ///
     /// Otherwise this updates the viewer tracked history.
     fn update_history(&mut self, store_hub: &StoreHub) {
+        if self.state.is_resolving_route() {
+            return;
+        }
+
         if self.startup_options().web_history_enabled() {
             // We don't want to spam the web history API with changes, because
             // otherwise it will start complaining about it being an insecure
@@ -845,6 +868,7 @@ impl App {
     /// Updates the viewer tracked history
     fn update_viewer_history(&mut self, store_hub: &StoreHub) {
         let route = self.state.navigation.current();
+
         let time_ctrl = route
             .recording_id()
             .and_then(|id| self.state.time_control(id));
@@ -863,6 +887,7 @@ impl App {
     #[cfg(target_arch = "wasm32")]
     fn update_web_history(&self, store_hub: &StoreHub) {
         let route = self.state.navigation.current();
+
         let time_ctrl = route
             .recording_id()
             .and_then(|id| self.state.time_control(id));
@@ -1411,7 +1436,7 @@ impl eframe::App for App {
                     self.state.navigation.replace(Route::LocalRecording {
                         recording_id: store_id,
                     });
-                } else if let Some(re_uri::RedapUri::DatasetData(uri)) = source.redap_uri()
+                } else if let Some(re_uri::RedapUri::Dataset(uri)) = source.redap_uri()
                     && self.connection_registry.error_for_uri(uri).is_some()
                 {
                     // Do nothing, the loading screen will show the error and a button to go back to start screen.
@@ -1515,9 +1540,9 @@ impl eframe::App for App {
             let current_redap_entry = match self.state.navigation.current() {
                 Route::RedapEntry {
                     origin,
-                    kind,
-                    tab: _,
-                } => kind.entry_id().map(|entry_id| (origin.clone(), entry_id)),
+                    entry_id,
+                    kind: _,
+                } => Some((origin.clone(), *entry_id)),
                 _ => None,
             };
 

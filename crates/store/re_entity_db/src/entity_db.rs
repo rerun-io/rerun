@@ -53,7 +53,7 @@ pub enum EntityDbClass<'a> {
     ExampleRecording,
 
     /// This is a recording loaded from a remote dataset segment.
-    DatasetSegment(&'a re_uri::DatasetSegmentUri),
+    DatasetSegment(&'a re_uri::DatasetUri),
 
     /// This is a blueprint.
     Blueprint,
@@ -445,7 +445,7 @@ impl EntityDb {
     }
 
     /// What redap URI does this thing live on?
-    pub fn redap_uri(&self) -> Option<&re_uri::DatasetSegmentUri> {
+    pub fn redap_uri(&self) -> Option<&re_uri::DatasetUri> {
         if let Some(re_log_channel::LogSource::RedapGrpcStream { uri, .. }) = &self.data_source {
             Some(uri)
         } else {

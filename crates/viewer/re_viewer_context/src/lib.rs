@@ -108,7 +108,7 @@ pub use self::query_context::{
 };
 pub use self::query_range::QueryRange;
 pub use self::recording_or_table::RecordingOrLocalTable;
-pub use self::route::Route;
+pub use self::route::{EntryKind, Route};
 pub use self::selection_state::{
     ApplicationSelectionState, HoverHighlight, InteractionHighlight, SelectionChange,
     SelectionHighlight,

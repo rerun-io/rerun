@@ -19,7 +19,7 @@ use re_log_types::{
 };
 use re_tuid::Tuid;
 use re_types_core::{Loggable as _, SegmentId};
-use re_uri::{DatasetSegmentUri, Fragment, Origin, TimeSelection};
+use re_uri::{DatasetUri, Fragment, Origin, TimeSelection};
 
 #[derive(Debug)]
 struct SegmentUrlUdf {
@@ -320,11 +320,11 @@ impl ScalarUDFImpl for SegmentUrlUdf {
 
             // TODO(ab): this is an unfortunate lot of cloning just to format a URL string, but
             // chances are we'll run in other problems by the time this becomes a performance issue.
-            let uri = DatasetSegmentUri {
+            let uri = DatasetUri {
                 origin: origin.clone(),
                 dataset_id,
-                kind: re_uri::SegmentKind::Segments,
-                segment_id,
+                resource: re_uri::DatasetResource::Segments,
+                segment_id: Some(segment_id),
                 fragment: Fragment {
                     selection,
                     when,

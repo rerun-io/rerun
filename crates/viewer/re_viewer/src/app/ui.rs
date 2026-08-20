@@ -104,6 +104,10 @@ impl App {
                             &self.command_sender,
                         );
 
+                        // After `on_frame_start`, so a catalog answer that arrived this frame is
+                        // taken into account right away.
+                        self.state.resolve_route();
+
                         // Install our url decorator so links render nicely. This is done every frame
                         // so the data stays up-to-date.
                         let url_name_lookup =

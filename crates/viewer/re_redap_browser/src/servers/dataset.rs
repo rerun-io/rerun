@@ -42,8 +42,13 @@ impl Server {
         dataset: &Dataset,
         table_blueprints: &re_dataframe_ui::TableBlueprints,
         view_states: &mut ViewStates,
-        tab: re_uri::DatasetResource,
+        kind: Option<re_viewer_context::EntryKind>,
     ) {
+        let resource = match kind {
+            Some(re_viewer_context::EntryKind::Dataset(resource)) => resource,
+            Some(re_viewer_context::EntryKind::Table) | None => DatasetResource::default(),
+        };
+
         ui.push_id((&dataset.origin, dataset.id()), |ui| {
             let name = dataset.name();
 
@@ -81,24 +86,24 @@ impl Server {
                 });
             });
 
-            let mut new_tab = tab;
+            let mut new_resource = resource;
             TabBar::new(ui)
-                .selectable_value(&mut new_tab, DatasetResource::Segments, "Segments")
-                .selectable_value(&mut new_tab, DatasetResource::Assets, "Assets");
+                .selectable_value(&mut new_resource, DatasetResource::Segments, "Segments")
+                .selectable_value(&mut new_resource, DatasetResource::Assets, "Assets");
 
-            if new_tab != tab {
+            if new_resource != resource {
                 app_ctx
                     .command_sender()
                     .send_system(SystemCommand::SetRoute(
                         re_viewer_context::Route::RedapEntry {
                             origin: dataset.origin.clone(),
-                            kind: re_viewer_context::RedapEntryKind::Entry(dataset.id()),
-                            tab: new_tab,
+                            entry_id: dataset.id(),
+                            kind: Some(re_viewer_context::EntryKind::Dataset(new_resource)),
                         },
                     ));
             }
 
-            match new_tab {
+            match new_resource {
                 DatasetResource::Segments => {
                     self.segments_ui(app_ctx, ui, dataset, table_blueprints, view_states);
                 }
@@ -330,16 +335,15 @@ fn asset_ui(ui: &mut egui::Ui, ctx: &AppContext<'_>, dataset: &Dataset, asset: &
 
                 ui.add_space(8.0);
 
-                if let Ok(url) = re_viewer_context::open_url::ViewerOpenUrl::RedapDatasetSegment(
-                    re_uri::DatasetSegmentUri {
+                if let Ok(url) =
+                    re_viewer_context::open_url::ViewerOpenUrl::RedapDataset(re_uri::DatasetUri {
                         origin: dataset.origin.clone(),
                         dataset_id: dataset.id().id,
-                        kind: re_uri::SegmentKind::Assets,
-                        segment_id: asset.id.clone(),
+                        resource: re_uri::DatasetResource::Assets,
+                        segment_id: Some(asset.id.clone()),
                         fragment: Default::default(),
-                    },
-                )
-                .sharable_url(None)
+                    })
+                    .sharable_url(None)
                 {
                     if add_button.clicked() {
                         ui.open_url(egui::OpenUrl {

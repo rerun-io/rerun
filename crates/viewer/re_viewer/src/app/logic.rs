@@ -154,7 +154,7 @@ impl App {
         while let Some((channel_source, msg)) = self.rx_log.try_recv() {
             re_log::trace!("Received a message from {channel_source:?}"); // Used by `test_ui_wakeup` test app!
 
-            if let Some(re_uri::RedapUri::DatasetData(uri)) = channel_source.redap_uri() {
+            if let Some(re_uri::RedapUri::Dataset(uri)) = channel_source.redap_uri() {
                 self.connection_registry.clear_uri_error(uri);
             }
 
@@ -176,8 +176,7 @@ impl App {
                                 format!("Source: {}", msg.source),
                             )
                         );
-                        if let Some(re_uri::RedapUri::DatasetData(uri)) = channel_source.redap_uri()
-                        {
+                        if let Some(re_uri::RedapUri::Dataset(uri)) = channel_source.redap_uri() {
                             self.connection_registry.set_uri_error(uri, err.to_string());
                         }
                     } else {
@@ -352,9 +351,10 @@ impl App {
             // Now we _hopefully_ do. The `LogMsg` could also belong to the blueprint, so
             // we need to check for that as well.
             if let LogSource::RedapGrpcStream { uri, .. } = channel_source
-                && &uri.store_id() == store_id
+                && let Some(uri_store_id) = uri.store_id()
+                && &uri_store_id == store_id
             {
-                self.go_to_dataset_data(uri.store_id(), uri.fragment.clone());
+                self.go_to_dataset_data(uri_store_id, uri.fragment.clone());
             }
         }
 

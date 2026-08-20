@@ -38,7 +38,11 @@ impl ViewerEvent {
     fn from_db_and_kind(db: &EntityDb, kind: ViewerEventKind) -> Self {
         let segment_id = db.data_source.as_ref().and_then(|ds| {
             if let LogSource::RedapGrpcStream {
-                uri: re_uri::DatasetSegmentUri { segment_id, .. },
+                uri:
+                    re_uri::DatasetUri {
+                        segment_id: Some(segment_id),
+                        ..
+                    },
                 ..
             } = ds
             {

@@ -88,7 +88,7 @@ pub enum LogSource {
     /// The data is streaming in directly from a catalog server,
     /// over `rerun://` gRPC interface.
     RedapGrpcStream {
-        uri: re_uri::DatasetSegmentUri,
+        uri: re_uri::DatasetUri,
 
         open_behavior: RecordingOpenBehavior,
     },
@@ -143,7 +143,7 @@ impl LogSource {
 
     pub fn redap_uri(&self) -> Option<RedapUri> {
         match self {
-            Self::RedapGrpcStream { uri, .. } => Some(RedapUri::DatasetData(uri.clone())),
+            Self::RedapGrpcStream { uri, .. } => Some(RedapUri::Dataset(uri.clone())),
             Self::MessageProxy(uri) => Some(RedapUri::Proxy(uri.clone())),
 
             Self::File { .. }
@@ -155,14 +155,14 @@ impl LogSource {
         }
     }
 
-    /// Same as [`Self::redap_uri`], but strips any extra query or fragment from the uri.
+    /// Same as [`Self::redap_uri`], but strips any fragment from the uri.
     pub fn stripped_redap_uri(&self) -> Option<RedapUri> {
         self.redap_uri().map(|uri| match uri {
             RedapUri::Catalog(_)
             | RedapUri::Entry(_)
             | RedapUri::Folder(_)
             | RedapUri::Proxy(_) => uri,
-            RedapUri::DatasetData(uri) => RedapUri::DatasetData(uri.without_query_and_fragment()),
+            RedapUri::Dataset(uri) => RedapUri::Dataset(uri.without_fragment()),
         })
     }
 
@@ -175,7 +175,10 @@ impl LogSource {
             // We only show things we know are very-soon-to-be recordings:
             Self::File { path } => Some(path.to_string_lossy().into_owned()),
             Self::HttpStream { url } => Some(url_display_name(url)),
-            Self::RedapGrpcStream { uri, .. } => Some(uri.segment_id.to_string()),
+            Self::RedapGrpcStream { uri, .. } => uri
+                .segment_id
+                .as_ref()
+                .map(|segment_id| segment_id.as_str().to_owned()),
 
             Self::RrdWebEvent
             | Self::JsChannel { .. }
@@ -203,10 +206,7 @@ impl LogSource {
                 format!("Waiting for data on {uri}…")
             }
             Self::RedapGrpcStream { uri, .. } => {
-                format!(
-                    "Waiting for data on {}…",
-                    uri.clone().without_query_and_fragment()
-                )
+                format!("Waiting for data on {}…", uri.clone().without_fragment())
             }
             Self::RrdWebEvent | Self::JsChannel { .. } => "Waiting for logging data…".to_owned(),
             Self::Sdk => "Waiting for logging data from SDK".to_owned(),

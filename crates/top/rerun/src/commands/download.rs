@@ -213,7 +213,10 @@ fn ensure_credentials(
 /// Derive an output `.rrd` filename from the data source.
 fn output_filename(data_source: &LogDataSource, original_url: &str) -> std::path::PathBuf {
     match data_source {
-        LogDataSource::RedapDatasetSegment { uri, .. } => format!("{}.rrd", uri.segment_id).into(),
+        LogDataSource::RedapDatasetSegment { uri, .. } => match &uri.segment_id {
+            Some(segment_id) => format!("{segment_id}.rrd").into(),
+            None => "output.rrd".into(),
+        },
 
         #[cfg(not(target_arch = "wasm32"))]
         LogDataSource::File { path, .. } => path

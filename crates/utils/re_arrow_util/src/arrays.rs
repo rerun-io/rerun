@@ -2,7 +2,7 @@ use std::iter::repeat_n;
 use std::sync::Arc;
 
 use arrow::array::{
-    Array, ArrayData, ArrayRef, ArrowPrimitiveType, BooleanArray, FixedSizeListArray,
+    Array, ArrayData, ArrayRef, ArrowPrimitiveType, BinaryArray, BooleanArray, FixedSizeListArray,
     GenericListArray, ListArray, OffsetSizeTrait, PrimitiveArray, UInt32Array, new_empty_array,
 };
 use arrow::buffer::{Buffer, NullBuffer, OffsetBuffer};
@@ -499,6 +499,41 @@ pub fn blob_arrays_offsets_and_buffer(array: &dyn Array) -> Option<(&OffsetBuffe
     let values = values.values().inner();
 
     Some((inner_list_array.offsets(), values))
+}
+
+/// Returns a binary-array view of blob data represented as `BinaryArray` or `ListArray<UInt8>`.
+///
+/// The returned array reuses the input offsets and byte buffer.
+// TODO(RR-1977): consistently use only `BinaryArray` for all blob types.
+pub fn blob_array_to_binary(array: &dyn Array) -> Option<BinaryArray> {
+    if let Some(array) = array.downcast_array_ref::<BinaryArray>() {
+        return Some(array.clone());
+    }
+
+    let array = array.downcast_array_ref::<ListArray>()?;
+    let values = array
+        .values()
+        .downcast_array_ref::<PrimitiveArray<UInt8Type>>()?;
+    (values.null_count() == 0).then(|| BinaryArray::from(array.clone()))
+}
+
+#[test]
+fn blob_array_to_binary_reuses_buffers() {
+    let values = PrimitiveArray::<UInt8Type>::from(vec![b'a', b'b', b'c']);
+    let list = ListArray::new(
+        Arc::new(Field::new_list_field(DataType::UInt8, false)),
+        OffsetBuffer::new(vec![0, 2, 3].into()),
+        Arc::new(values.clone()),
+        None,
+    );
+
+    let binary = blob_array_to_binary(&list).unwrap();
+    assert_eq!(binary.value(0), b"ab");
+    assert_eq!(binary.value(1), b"c");
+    assert_eq!(binary.values().as_ptr(), values.values().as_ptr());
+
+    let cloned = blob_array_to_binary(&binary).unwrap();
+    assert_eq!(cloned.values().as_ptr(), binary.values().as_ptr());
 }
 
 #[test]
