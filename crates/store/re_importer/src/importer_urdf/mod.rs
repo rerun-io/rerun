@@ -1,8 +1,11 @@
 //! Rerun importer and utilities for URDF files.
 
 pub mod joint_transform;
+#[cfg(feature = "mcap")]
 mod robot_description_parser;
 mod urdf_tree;
+// Only consumed by importer_mcap's `robot_description` topic decoding.
+#[cfg(feature = "mcap")]
 pub(crate) use robot_description_parser::build_urdf_chunks_from_xml;
 pub use urdf_tree::UrdfTree;
 

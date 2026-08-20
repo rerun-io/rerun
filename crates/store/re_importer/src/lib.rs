@@ -2,6 +2,7 @@
 
 //! Handles importing of Rerun data from file using importer plugins.
 
+#[cfg(feature = "mcap")]
 use std::collections::BTreeSet;
 use std::sync::{Arc, LazyLock};
 
@@ -12,28 +13,34 @@ use re_log_types::{ArrowMsg, EntityPath, LogMsg, RecordingId, StoreId, TimePoint
 // ----------------------------------------------------------------------------
 
 mod import_file;
+#[cfg(feature = "archetype")]
 mod importer_archetype;
 mod importer_directory;
 mod importer_rrd;
+#[cfg(feature = "urdf")]
 mod importer_urdf;
 
 // This importer currently only works when loading the entire dataset directory, and we cannot do that on web yet.
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(feature = "lerobot", not(target_arch = "wasm32")))]
 pub mod importer_lerobot;
 
 // This importer currently uses native-only features under the hood, and we cannot do that on web yet.
+#[cfg(feature = "mcap")]
 pub mod importer_mcap;
 
 #[cfg(not(target_arch = "wasm32"))]
 mod importer_external;
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(feature = "parquet", not(target_arch = "wasm32")))]
 pub mod importer_parquet;
 
 pub use self::import_file::{import_from_file_contents, prepare_store_info};
+#[cfg(feature = "archetype")]
 pub use self::importer_archetype::ArchetypeImporter;
 pub use self::importer_directory::DirectoryImporter;
+#[cfg(feature = "mcap")]
 pub use self::importer_mcap::McapImporter;
 pub use self::importer_rrd::RrdImporter;
+#[cfg(feature = "urdf")]
 pub use self::importer_urdf::{UrdfImporter, UrdfTree, joint_transform as urdf_joint_transform};
 #[cfg(not(target_arch = "wasm32"))]
 pub use self::{
@@ -42,11 +49,14 @@ pub use self::{
         EXTERNAL_IMPORTER_INCOMPATIBLE_EXIT_CODE, EXTERNAL_IMPORTER_PREFIX, ExternalImporter,
         iter_external_importers,
     },
-    importer_lerobot::LeRobotDatasetImporter,
-    importer_parquet::ParquetImporter,
 };
+#[cfg(all(feature = "lerobot", not(target_arch = "wasm32")))]
+pub use self::importer_lerobot::LeRobotDatasetImporter;
+#[cfg(all(feature = "parquet", not(target_arch = "wasm32")))]
+pub use self::importer_parquet::ParquetImporter;
 
 pub mod external {
+    #[cfg(feature = "urdf")]
     pub use urdf_rs;
 }
 
@@ -61,6 +71,7 @@ pub const URDF_DECODER_IDENTIFIER: &str = "urdf";
 /// All decoder-like identifiers supported by [`McapImporter`].
 ///
 /// This merges the built-in MCAP decoders from [`re_mcap`] and the semantic interpretation (e.g. lenses) that are in this crate.
+#[cfg(feature = "mcap")]
 pub fn supported_mcap_decoder_identifiers(
     raw_fallback_enabled: bool,
 ) -> Vec<re_mcap::DecoderIdentifier> {
@@ -76,6 +87,12 @@ pub fn supported_mcap_decoder_identifiers(
     ]);
 
     identifiers.into_iter().collect()
+}
+
+/// Whether `path` looks like a `LeRobot` dataset.
+#[cfg(all(feature = "lerobot", not(target_arch = "wasm32")))]
+pub(crate) fn is_lerobot_dataset(path: &std::path::Path) -> bool {
+    re_lerobot::is_lerobot_dataset(path)
 }
 
 // ----------------------------------------------------------------------------
@@ -396,9 +413,11 @@ pub enum ImporterError {
     #[error("No importer support for {0:?}")]
     Incompatible(std::path::PathBuf),
 
+    #[cfg(feature = "mcap")]
     #[error(transparent)]
     Mcap(#[from] ::mcap::McapError),
 
+    #[cfg(feature = "archetype")]
     #[error("Failed to import mp4 video: {source}\nFile path: {path:?}")]
     Mp4 {
         path: std::path::PathBuf,
@@ -422,7 +441,9 @@ impl ImporterError {
     pub fn with_path(self, path: &std::path::Path) -> Self {
         match self {
             // These already name the file.
-            Self::Incompatible { .. } | Self::Mp4 { .. } | Self::File { .. } => self,
+            #[cfg(feature = "archetype")]
+            Self::Mp4 { .. } => self,
+            Self::Incompatible { .. } | Self::File { .. } => self,
             err => Self::File {
                 path: path.display().to_string(),
                 source: Box::new(err),
@@ -506,15 +527,18 @@ impl ImportedData {
 static BUILTIN_IMPORTERS: LazyLock<Vec<Arc<dyn Importer>>> = LazyLock::new(|| {
     vec![
         Arc::new(RrdImporter) as Arc<dyn Importer>,
+        #[cfg(feature = "archetype")]
         Arc::new(ArchetypeImporter),
         Arc::new(DirectoryImporter),
+        #[cfg(feature = "mcap")]
         Arc::new(McapImporter::default()),
-        #[cfg(not(target_arch = "wasm32"))]
+        #[cfg(all(feature = "parquet", not(target_arch = "wasm32")))]
         Arc::new(ParquetImporter::default()),
-        #[cfg(not(target_arch = "wasm32"))]
+        #[cfg(all(feature = "lerobot", not(target_arch = "wasm32")))]
         Arc::new(LeRobotDatasetImporter),
         #[cfg(not(target_arch = "wasm32"))]
         Arc::new(ExternalImporter),
+        #[cfg(feature = "urdf")]
         Arc::new(UrdfImporter),
     ]
 });
@@ -644,6 +668,7 @@ fn test_supported_extensions() {
 }
 
 #[test]
+#[cfg(feature = "mcap")]
 fn test_supported_mcap_decoder_identifiers() {
     let identifiers = supported_mcap_decoder_identifiers(true);
     let as_strings = identifiers

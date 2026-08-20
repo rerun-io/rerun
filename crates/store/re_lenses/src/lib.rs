@@ -5,6 +5,7 @@
 
 pub mod op;
 mod runtime;
+#[cfg(feature = "semantic")]
 pub mod semantic;
 
 pub use self::runtime::default_runtime;
