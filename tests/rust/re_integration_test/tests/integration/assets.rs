@@ -42,12 +42,12 @@ fn origin(server: &TestServer) -> re_uri::Origin {
     }
 }
 
-fn segment_uri(server: &TestServer, segment_id: SegmentId) -> re_uri::DatasetSegmentUri {
-    re_uri::DatasetSegmentUri {
+fn segment_uri(server: &TestServer, segment_id: SegmentId) -> re_uri::DatasetUri {
+    re_uri::DatasetUri {
         origin: origin(server),
         dataset_id: Tuid::from_str(DATASET_ID).expect("Failed to parse TUID"),
-        kind: re_uri::SegmentKind::Segments,
-        segment_id,
+        resource: re_uri::DatasetResource::Segments,
+        segment_id: Some(segment_id),
         fragment: re_uri::Fragment::default(),
     }
 }
@@ -177,7 +177,7 @@ async fn streaming_a_segment_delivers_its_asset_manifests() {
         .expect("Failed to register asset");
 
     let uri = segment_uri(&server, segment_id);
-    let recording_store_id = uri.store_id();
+    let recording_store_id = uri.store_id().expect("the uri names a segment");
 
     let (tx, rx) = re_log_channel::log_channel(LogSource::RedapGrpcStream {
         uri: uri.clone(),
@@ -395,10 +395,16 @@ async fn dataset_assets_tab() {
             .expect("Failed to register asset");
     }
 
-    // The tab is a resource of the dataset entry, so it has a url of its own.
-    let entry_uri = re_uri::EntryUri::new(origin(&server), dataset, DatasetResource::Assets);
+    // The assets are a resource of the dataset, so they have a url of their own.
+    let assets_uri = re_uri::DatasetUri {
+        origin: origin(&server),
+        dataset_id: dataset.id,
+        resource: DatasetResource::Assets,
+        segment_id: None,
+        fragment: re_uri::Fragment::default(),
+    };
     let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions {
-        startup_url: Some(entry_uri.to_string()),
+        startup_url: Some(assets_uri.to_string()),
         ..Default::default()
     });
 
@@ -464,14 +470,14 @@ async fn open_asset_lists_it_under_owning_dataset() {
         .expect("Failed to register asset");
 
     // An asset url names the dataset that owns the asset, not the hidden asset dataset it lives in.
-    let asset_uri = re_uri::DatasetSegmentUri {
+    let asset_uri = re_uri::DatasetUri {
         origin: origin(&server),
         dataset_id: Tuid::from_str(dataset_id_str).expect("Failed to parse TUID"),
-        kind: re_uri::SegmentKind::Assets,
-        segment_id: asset_segment_id.clone(),
+        resource: re_uri::DatasetResource::Assets,
+        segment_id: Some(asset_segment_id.clone()),
         fragment: re_uri::Fragment::default(),
     };
-    let url = ViewerOpenUrl::RedapDatasetSegment(asset_uri);
+    let url = ViewerOpenUrl::RedapDataset(asset_uri);
 
     let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions {
         startup_url: Some(url.sharable_url(None).expect("Should be a sharable url")),
@@ -546,11 +552,11 @@ async fn assets_of_a_dataset_do_not_share_a_blueprint() {
         .await
         .expect("Failed to register asset");
 
-    let asset_uri = |segment_id| re_uri::DatasetSegmentUri {
+    let asset_uri = |segment_id| re_uri::DatasetUri {
         origin: origin(&server),
         dataset_id: Tuid::from_str(dataset_id_str).expect("Failed to parse TUID"),
-        kind: re_uri::SegmentKind::Assets,
-        segment_id,
+        resource: re_uri::DatasetResource::Assets,
+        segment_id: Some(segment_id),
         fragment: re_uri::Fragment::default(),
     };
     let robot_uri = asset_uri(robot);
@@ -561,12 +567,15 @@ async fn assets_of_a_dataset_do_not_share_a_blueprint() {
         ..Default::default()
     });
 
-    step_until_active_recording(&mut harness, &robot_uri.store_id());
-    harness.state().open_url_or_file(&gripper_uri.to_string());
-    step_until_active_recording(&mut harness, &gripper_uri.store_id());
+    let robot_store_id = robot_uri.store_id().expect("the uri names an asset");
+    let gripper_store_id = gripper_uri.store_id().expect("the uri names an asset");
 
-    let robot_app_id = robot_uri.store_id().application_id().clone();
-    let gripper_app_id = gripper_uri.store_id().application_id().clone();
+    step_until_active_recording(&mut harness, &robot_store_id);
+    harness.state().open_url_or_file(&gripper_uri.to_string());
+    step_until_active_recording(&mut harness, &gripper_store_id);
+
+    let robot_app_id = robot_store_id.application_id().clone();
+    let gripper_app_id = gripper_store_id.application_id().clone();
 
     let app = harness.state_mut();
     let store_hub = app.testonly_get_store_hub();
@@ -598,7 +607,7 @@ fn step_until_active_recording(harness: &mut Harness<'static, re_viewer::App>, s
 /// Steps the viewer until the store behind `uri` holds chunks that came from `asset_segment_id`.
 fn step_until_asset_chunks_are_loaded(
     harness: &mut Harness<'static, re_viewer::App>,
-    uri: &re_uri::DatasetSegmentUri,
+    uri: &re_uri::DatasetUri,
     asset_segment_id: &SegmentId,
 ) {
     viewer_test_utils::step_until(

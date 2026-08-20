@@ -38,7 +38,7 @@ impl TableReference {
                 crate::CatalogUri::new(origin.clone()),
             )),
             Self::RedapEntry { origin, entry_id } => Some(crate::RedapUri::Entry(
-                crate::EntryUri::new(origin.clone(), *entry_id, crate::DatasetResource::Segments),
+                crate::EntryUri::new(origin.clone(), *entry_id),
             )),
         }
     }

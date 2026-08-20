@@ -10,7 +10,7 @@ use re_redap_client::ConnectionRegistryHandle;
 use crate::stream_rrd_from_http::stream_from_http_to_channel;
 
 pub type AuthErrorHandler =
-    Arc<dyn Fn(re_uri::DatasetSegmentUri, &re_redap_client::ClientCredentialsError) + Send + Sync>;
+    Arc<dyn Fn(re_uri::DatasetUri, &re_redap_client::ClientCredentialsError) + Send + Sync>;
 
 /// Somewhere we can get Rerun logging data from.
 // TODO(emilk): there is a lot of overlap between this and `ViewerOpenUrl`
@@ -46,7 +46,7 @@ pub enum LogDataSource {
 
     /// A `rerun://` URI pointing to a recording.
     RedapDatasetSegment {
-        uri: re_uri::DatasetSegmentUri,
+        uri: re_uri::DatasetUri,
 
         open_behavior: RecordingOpenBehavior,
     },
@@ -157,7 +157,10 @@ impl LogDataSource {
             }
         }
 
-        if let Ok(uri) = url.parse::<re_uri::DatasetSegmentUri>() {
+        // A dataset url without a segment names no data to load.
+        if let Ok(uri) = url.parse::<re_uri::DatasetUri>()
+            && uri.segment_id.is_some()
+        {
             Some(Self::RedapDatasetSegment {
                 uri,
                 open_behavior: RecordingOpenBehavior::OpenAndSelect,
@@ -209,7 +212,9 @@ impl LogDataSource {
                 // This is a web viewer URL with a `?url=` parameter.
                 // Extract the URL parameter and try to parse it as a redap URI.
                 let (_, value) = url.query_pairs().find(|(key, _)| key == "url")?;
-                if let Ok(uri) = value.parse::<re_uri::DatasetSegmentUri>() {
+                if let Ok(uri) = value.parse::<re_uri::DatasetUri>()
+                    && uri.segment_id.is_some()
+                {
                     Some(Self::RedapDatasetSegment {
                         uri,
                         open_behavior: RecordingOpenBehavior::OpenAndSelect,
@@ -633,11 +638,11 @@ mod tests {
         assert_eq!(
             data_source,
             Some(LogDataSource::RedapDatasetSegment {
-                uri: re_uri::DatasetSegmentUri {
+                uri: re_uri::DatasetUri {
                     origin: "api.customer.cloud.rerun.io:443".parse().unwrap(),
                     dataset_id: "18A23D2FAC59F8572563b312ef21f53b".parse().unwrap(),
-                    kind: re_uri::SegmentKind::Segments,
-                    segment_id: "the_segment_name".into(),
+                    resource: re_uri::DatasetResource::Segments,
+                    segment_id: Some("the_segment_name".into()),
                     fragment: Default::default(),
                 },
                 open_behavior: RecordingOpenBehavior::OpenAndSelect,

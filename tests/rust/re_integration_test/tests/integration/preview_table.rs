@@ -47,17 +47,17 @@ pub async fn preview_table() {
 
     // One row per segment, each pointing at its segment's recording URI.
     let dataset_id = re_tuid::Tuid::from_str(DATASET_ID).expect("Failed to parse TUID");
-    let segment_uris: Vec<re_uri::DatasetSegmentUri> = segment_ids
+    let segment_uris: Vec<re_uri::DatasetUri> = segment_ids
         .iter()
-        .map(|segment_id| re_uri::DatasetSegmentUri {
+        .map(|segment_id| re_uri::DatasetUri {
             origin: re_uri::Origin {
                 scheme: re_uri::Scheme::RerunHttp,
                 host: re_uri::external::url::Host::Domain("localhost".to_owned()),
                 port: server.port(),
             },
             dataset_id,
-            kind: re_uri::SegmentKind::Segments,
-            segment_id: segment_id.clone(),
+            resource: re_uri::DatasetResource::Segments,
+            segment_id: Some(segment_id.clone()),
             fragment: Default::default(),
         })
         .collect();
@@ -135,7 +135,7 @@ pub async fn preview_table() {
 
     // Step until every preview recording has actually streamed in its point data. Rendering the
     // preview column is what triggers the background loads, so this also exercises the column.
-    let preview_uris: Vec<re_uri::DatasetSegmentUri> = segment_uris
+    let preview_uris: Vec<re_uri::DatasetUri> = segment_uris
         .iter()
         .map(|uri| uri.clone().without_fragment())
         .collect();

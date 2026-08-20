@@ -1,13 +1,13 @@
 use re_log_types::StoreId;
 use re_types_core::SegmentId;
 
-use crate::{DatasetResource, EntryUri, Error, Fragment, Origin, RedapUri};
+use crate::{Error, Fragment, Origin, RedapUri};
 
-/// Which of a dataset's segments a [`DatasetSegmentUri`] points at.
+/// Which resource of a dataset a [`DatasetUri`] points at.
 #[derive(
     Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, re_byte_size::SizeBytes,
 )]
-pub enum SegmentKind {
+pub enum DatasetResource {
     /// The segments of the dataset itself.
     #[default]
     Segments,
@@ -16,7 +16,7 @@ pub enum SegmentKind {
     Assets,
 }
 
-impl std::fmt::Display for SegmentKind {
+impl std::fmt::Display for DatasetResource {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
             Self::Segments => "segments",
@@ -25,7 +25,7 @@ impl std::fmt::Display for SegmentKind {
     }
 }
 
-impl std::str::FromStr for SegmentKind {
+impl std::str::FromStr for DatasetResource {
     type Err = ();
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -37,46 +37,48 @@ impl std::str::FromStr for SegmentKind {
     }
 }
 
-/// URI pointing at the data underlying a dataset.
+/// URI pointing at a dataset, optionally at one of its segments.
 ///
 /// Currently, the following formats are supported:
+/// `<origin>/dataset/$DATASET_ID`
 /// `<origin>/dataset/$DATASET_ID?segment_id=$SEGMENT_ID&time_range=$TIME_RANGE`
+/// `<origin>/dataset/$DATASET_ID/assets`
 /// `<origin>/dataset/$DATASET_ID/assets?segment_id=$ASSET_ID`
 ///
-/// `segment_id` is currently mandatory, and `time_range` is optional.
-/// In the future we will add richer queries.
+/// Without `segment_id` the uri points at the dataset as a whole.
+/// `time_range` is optional. In the future we will add richer queries.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, re_byte_size::SizeBytes)]
-pub struct DatasetSegmentUri {
+pub struct DatasetUri {
     pub origin: Origin,
     pub dataset_id: re_tuid::Tuid,
-    pub kind: SegmentKind,
+    pub resource: DatasetResource,
 
     // Query parameters: these affect what data is returned.
-    /// Currently mandatory.
-    pub segment_id: SegmentId,
+    /// `None` points at the dataset itself.
+    pub segment_id: Option<SegmentId>,
 
     // Fragment parameters: these affect what the viewer focuses on:
     pub fragment: Fragment,
 }
 
-impl std::fmt::Display for DatasetSegmentUri {
+impl std::fmt::Display for DatasetUri {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
             origin,
             dataset_id,
-            kind,
+            resource,
             segment_id,
             fragment,
         } = self;
 
         write!(f, "{origin}/dataset/{dataset_id}")?;
 
-        if *kind != SegmentKind::default() {
-            write!(f, "/{kind}")?;
+        if *resource != DatasetResource::default() {
+            write!(f, "/{resource}")?;
         }
 
         // ?query:
-        {
+        if let Some(segment_id) = segment_id {
             write!(f, "?segment_id={segment_id}")?;
         }
 
@@ -90,11 +92,11 @@ impl std::fmt::Display for DatasetSegmentUri {
     }
 }
 
-impl DatasetSegmentUri {
+impl DatasetUri {
     pub fn new(
         origin: Origin,
         dataset_id: re_tuid::Tuid,
-        kind: SegmentKind,
+        resource: DatasetResource,
         url: &url::Url,
     ) -> Result<Self, Error> {
         let mut segment_id = None;
@@ -117,11 +119,9 @@ impl DatasetSegmentUri {
         }
 
         let segment_id = match (segment_id, legacy_partition_id) {
-            (Some(s), None) | (None, Some(s)) => s,
+            (Some(s), None) | (None, Some(s)) => Some(s),
 
-            (None, None) => {
-                return Err(Error::MissingSegmentId);
-            }
+            (None, None) => None,
 
             (Some(_), Some(_)) => {
                 return Err(Error::AmbiguousSegmentId);
@@ -137,25 +137,10 @@ impl DatasetSegmentUri {
         Ok(Self {
             origin,
             dataset_id,
-            kind,
+            resource,
             segment_id,
             fragment,
         })
-    }
-
-    /// Returns [`Self`] without any (optional) `?query` or `#fragment`.
-    pub fn without_query_and_fragment(mut self) -> Self {
-        let Self {
-            origin: _,     // Mandatory
-            dataset_id: _, // Mandatory
-            kind: _,       // Mandatory
-            segment_id: _, // Mandatory
-            fragment,
-        } = &mut self;
-
-        *fragment = Default::default();
-
-        self
     }
 
     /// Returns [`Self`] without any (optional) `#fragment`.
@@ -163,8 +148,8 @@ impl DatasetSegmentUri {
         let Self {
             origin: _,     // Mandatory
             dataset_id: _, // Mandatory
-            kind: _,       // Mandatory
-            segment_id: _, // Mandatory
+            resource: _,   // Mandatory
+            segment_id: _, // Selects which data to load
             fragment,
         } = &mut self;
 
@@ -173,44 +158,35 @@ impl DatasetSegmentUri {
         self
     }
 
-    pub fn store_id(&self) -> StoreId {
+    /// The store this segment is loaded into, or `None` without a segment.
+    pub fn store_id(&self) -> Option<StoreId> {
+        let segment_id = self.segment_id.clone()?;
         let dataset_id = re_log_types::EntryId::from(self.dataset_id);
 
         #[expect(deprecated)]
-        let application_id = match self.kind {
+        let application_id = match self.resource {
             // The segments of a dataset all show the same kind of data, so they share a blueprint.
-            SegmentKind::Segments => re_log_types::ApplicationId::from_entry_id(dataset_id),
+            DatasetResource::Segments => re_log_types::ApplicationId::from_entry_id(dataset_id),
 
             // The assets of a dataset have nothing in common, so each one gets its own blueprint.
-            SegmentKind::Assets => {
-                re_log_types::ApplicationId::from_asset(dataset_id, self.segment_id.as_str())
+            DatasetResource::Assets => {
+                re_log_types::ApplicationId::from_asset(dataset_id, segment_id.as_str())
             }
         };
 
-        StoreId::new(
+        Some(StoreId::new(
             re_log_types::StoreKind::Recording,
             application_id,
-            self.segment_id.clone(),
-        )
-    }
-
-    pub fn dataset_url(&self) -> EntryUri {
-        EntryUri {
-            origin: self.origin.clone(),
-            entry_id: re_log_types::EntryId::from(self.dataset_id),
-            resource: match self.kind {
-                SegmentKind::Segments => DatasetResource::Segments,
-                SegmentKind::Assets => DatasetResource::Assets,
-            },
-        }
+            segment_id,
+        ))
     }
 }
 
-impl std::str::FromStr for DatasetSegmentUri {
+impl std::str::FromStr for DatasetUri {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if let RedapUri::DatasetData(uri) = RedapUri::from_str(s)? {
+        if let RedapUri::Dataset(uri) = RedapUri::from_str(s)? {
             Ok(uri)
         } else {
             Err(Error::UnexpectedUri(s.to_owned()))
@@ -221,7 +197,7 @@ impl std::str::FromStr for DatasetSegmentUri {
 // --------------------------------
 
 // Serialize as string:
-impl serde::Serialize for DatasetSegmentUri {
+impl serde::Serialize for DatasetUri {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -230,7 +206,7 @@ impl serde::Serialize for DatasetSegmentUri {
     }
 }
 
-impl<'de> serde::Deserialize<'de> for DatasetSegmentUri {
+impl<'de> serde::Deserialize<'de> for DatasetUri {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
@@ -244,14 +220,14 @@ impl<'de> serde::Deserialize<'de> for DatasetSegmentUri {
 // --------------------------------
 
 #[cfg(test)]
-fn test_uri(kind: SegmentKind, segment_id: &str) -> DatasetSegmentUri {
-    DatasetSegmentUri {
+fn test_uri(resource: DatasetResource, segment_id: &str) -> DatasetUri {
+    DatasetUri {
         origin: "rerun://127.0.0.1:1234".parse().expect("valid origin"),
         dataset_id: "1830B33B45B963E7774455beb91701ae"
             .parse()
             .expect("valid dataset id"),
-        kind,
-        segment_id: segment_id.into(),
+        resource,
+        segment_id: Some(segment_id.into()),
         fragment: Fragment::default(),
     }
 }
@@ -260,8 +236,12 @@ fn test_uri(kind: SegmentKind, segment_id: &str) -> DatasetSegmentUri {
 /// with it a blueprint.
 #[test]
 fn segments_of_a_dataset_share_an_application_id() {
-    let first = test_uri(SegmentKind::Segments, "first").store_id();
-    let second = test_uri(SegmentKind::Segments, "second").store_id();
+    let first = test_uri(DatasetResource::Segments, "first")
+        .store_id()
+        .expect("names a segment");
+    let second = test_uri(DatasetResource::Segments, "second")
+        .store_id()
+        .expect("names a segment");
 
     assert_eq!(first.application_id(), second.application_id());
     assert_ne!(first, second);
@@ -271,13 +251,28 @@ fn segments_of_a_dataset_share_an_application_id() {
 /// the other assets nor with the dataset's segments.
 #[test]
 fn assets_of_a_dataset_do_not_share_an_application_id() {
-    let robot = test_uri(SegmentKind::Assets, "robot_mesh").store_id();
-    let gripper = test_uri(SegmentKind::Assets, "gripper_mesh").store_id();
-    let segment = test_uri(SegmentKind::Segments, "robot_mesh").store_id();
+    let robot = test_uri(DatasetResource::Assets, "robot_mesh")
+        .store_id()
+        .expect("names a segment");
+    let gripper = test_uri(DatasetResource::Assets, "gripper_mesh")
+        .store_id()
+        .expect("names a segment");
+    let segment = test_uri(DatasetResource::Segments, "robot_mesh")
+        .store_id()
+        .expect("names a segment");
 
     assert_ne!(robot.application_id(), gripper.application_id());
     assert_ne!(robot.application_id(), segment.application_id());
     assert_ne!(robot, segment);
+}
+
+/// A uri that names no segment points at the dataset itself, and so at no store.
+#[test]
+fn a_dataset_without_a_segment_has_no_store_id() {
+    let mut uri = test_uri(DatasetResource::Segments, "segment");
+    uri.segment_id = None;
+
+    assert_eq!(uri.store_id(), None);
 }
 
 #[test]

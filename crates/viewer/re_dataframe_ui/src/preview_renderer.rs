@@ -28,7 +28,7 @@ type OncePerFrameResults = IntMap<ViewSystemIdentifier, ViewContextSystemOncePer
 #[cfg_attr(not(target_arch = "wasm32"), expect(clippy::large_enum_variant))]
 pub(crate) enum PreviewRecording<'a> {
     Resolved(&'a EntityDb),
-    Unresolved(re_uri::DatasetSegmentUri),
+    Unresolved(re_uri::DatasetUri),
 }
 
 /// Renders views from a blueprint [`EntityDb`], independent of the main viewport.

@@ -866,11 +866,12 @@ impl TestContext {
                     // Ignore this trying to copy to the clipboard.
                 }
                 SystemCommand::LoadDataSource(data_source) => {
-                    if let Some(re_uri::RedapUri::DatasetData(uri)) = data_source
+                    if let Some(re_uri::RedapUri::Dataset(uri)) = data_source
                         .as_uri()
                         .and_then(|uri| uri.parse::<re_uri::RedapUri>().ok())
+                        && let Some(store_id) = uri.store_id()
                     {
-                        self.go_to_dataset_data(uri.store_id(), uri.fragment);
+                        self.go_to_dataset_data(store_id, uri.fragment);
                     } else {
                         handled = false;
                     }

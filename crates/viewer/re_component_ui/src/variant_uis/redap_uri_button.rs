@@ -69,17 +69,23 @@ pub fn redap_uri_button(
             (false, false, None, None)
         };
 
-    let mut atoms = match &uri {
-        RedapUri::DatasetData(dataset)
+    let segment_in_active_dataset = match &uri {
+        RedapUri::Dataset(dataset)
             if ctx.active_redap_entry() == Some(dataset.dataset_id.into()) =>
         {
-            // A segment is a recording within the active dataset; show just the segment button.
-            re_viewer_context::segment_button_atoms(dataset.segment_id.as_str(), ui.ctx().theme())
+            dataset.segment_id.as_ref()
         }
-        _ => re_ui::UrlDecorator::get(ui.ctx())
+        _ => None,
+    };
+
+    let mut atoms = if let Some(segment_id) = segment_in_active_dataset {
+        // A segment is a recording within the active dataset, so show just the segment button.
+        re_viewer_context::segment_button_atoms(segment_id.as_str(), ui.ctx().theme())
+    } else {
+        re_ui::UrlDecorator::get(ui.ctx())
             .and_then(|decorator| decorator(url_str))
             .map(|link| link.into_atoms())
-            .unwrap_or_else(|| url_str.into_atoms()),
+            .unwrap_or_else(|| url_str.into_atoms())
     };
 
     let spinner_id = Id::new("loading_spinner");

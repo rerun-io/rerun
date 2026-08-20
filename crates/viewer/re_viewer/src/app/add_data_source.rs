@@ -3,7 +3,7 @@ use re_entity_db::LogSource;
 use re_log_channel::{LogReceiver, RecordingOpenBehavior};
 use re_log_encoding::RrdMetadata;
 use re_log_types::{EntryId, StoreId};
-use re_uri::DatasetSegmentUri;
+use re_uri::DatasetUri;
 use re_viewer_context::{StoreHub, SystemCommand, SystemCommandSender as _};
 
 use super::App;
@@ -177,6 +177,11 @@ impl App {
             }
 
             LogDataSource::RedapDatasetSegment { uri, open_behavior } => {
+                let Some(store_id) = uri.store_id() else {
+                    re_log::error!(?uri, "Cannot load a dataset that names no segment");
+                    return;
+                };
+
                 let new_source = LogSource::RedapGrpcStream {
                     uri: uri.clone(),
                     open_behavior: *open_behavior,
@@ -188,7 +193,7 @@ impl App {
                     match *open_behavior {
                         RecordingOpenBehavior::Background => {}
                         RecordingOpenBehavior::Open => {
-                            store_hub.set_opened(&uri.store_id(), true);
+                            store_hub.set_opened(&store_id, true);
                         }
                         RecordingOpenBehavior::OpenAndSelect => {
                             // First make the recording itself active.
@@ -196,17 +201,13 @@ impl App {
                             // since `go_to_dataset_data` does not change the active recording.
                             // `make_store_active_and_highlight` also fetches the blueprint we skipped
                             // while this was a preview.
-                            self.make_store_active_and_highlight(
-                                store_hub,
-                                egui_ctx,
-                                &uri.store_id(),
-                            );
+                            self.make_store_active_and_highlight(store_hub, egui_ctx, &store_id);
                         }
                     }
 
                     // Note that applying the fragment changes the per-recording settings like the active time cursor.
                     // Therefore, we apply it even when open_behavior is Background.
-                    self.go_to_dataset_data(uri.store_id(), uri.fragment.clone());
+                    self.go_to_dataset_data(store_id, uri.fragment.clone());
 
                     return;
                 }
@@ -354,7 +355,7 @@ impl App {
                             origin: origin.clone(),
                             entry_id,
                         });
-                        let entry = re_uri::EntryUri::new(origin, entry_id, Default::default());
+                        let entry = re_uri::EntryUri::new(origin, entry_id);
                         sender.send_system(SystemCommand::set_selection(
                             re_viewer_context::Item::from(entry.clone()),
                         ));
@@ -522,7 +523,7 @@ async fn opfs_upload_matches(path: &Path, expected_size: u64) -> anyhow::Result<
 /// Depending on the content of the file, we want to navigate to different parts of the catalog.
 enum RegistrationTarget {
     /// Whenever there is a recording in the file.
-    DatasetSegment(Box<re_uri::DatasetSegmentUri>),
+    DatasetSegment(Box<re_uri::DatasetUri>),
 
     /// Used when there is no recording, e.g. in an `.rbl` file.
     Entry(EntryId),
@@ -595,11 +596,11 @@ async fn register_rrd_file_url(
     }
 
     if let Some(segment_id) = segment_id {
-        let uri = DatasetSegmentUri {
+        let uri = DatasetUri {
             origin,
             dataset_id: dataset_id.id,
-            kind: re_uri::SegmentKind::Segments,
-            segment_id,
+            resource: re_uri::DatasetResource::Segments,
+            segment_id: Some(segment_id),
             fragment: Default::default(),
         };
         Ok(RegistrationTarget::DatasetSegment(Box::new(uri)))

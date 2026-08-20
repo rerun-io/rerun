@@ -1134,12 +1134,12 @@ impl StoreHub {
     }
 
     /// Find a recording whose redap URI matches the given `uri`, ignoring fragments.
-    pub fn find_recording_by_uri(&self, uri: &re_uri::DatasetSegmentUri) -> Option<&EntityDb> {
+    pub fn find_recording_by_uri(&self, uri: &re_uri::DatasetUri) -> Option<&EntityDb> {
         self.store_bundle.recordings().find(|db| {
             db.redap_uri().is_some_and(|redap_uri| {
                 redap_uri.origin == uri.origin
                     && redap_uri.dataset_id == uri.dataset_id
-                    && redap_uri.kind == uri.kind
+                    && redap_uri.resource == uri.resource
                     && redap_uri.segment_id == uri.segment_id
             })
         })

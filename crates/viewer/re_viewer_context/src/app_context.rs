@@ -150,10 +150,7 @@ impl AppContext<'_> {
 
     /// The current active Redap entry id, if any.
     pub fn active_redap_entry(&self) -> Option<re_log_types::EntryId> {
-        match self.route {
-            Route::RedapEntry { kind, .. } => kind.entry_id(),
-            _ => None,
-        }
+        self.route.entry_id()
     }
 
     /// The current active local table, if any.

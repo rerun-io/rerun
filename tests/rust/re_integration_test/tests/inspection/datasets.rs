@@ -108,15 +108,15 @@ pub async fn start_with_segment_fragment_url() {
 
     let dataset_id =
         re_tuid::Tuid::from_str("187b552b95a5c2f73f37894708825ba5").expect("Failed to parse TUID");
-    let segment_uri = re_uri::DatasetSegmentUri {
+    let segment_uri = re_uri::DatasetUri {
         origin: re_uri::Origin {
             scheme: re_uri::Scheme::RerunHttp,
             host: re_uri::external::url::Host::Domain("localhost".to_owned()),
             port: server.port(),
         },
         dataset_id,
-        kind: re_uri::SegmentKind::Segments,
-        segment_id,
+        resource: re_uri::DatasetResource::Segments,
+        segment_id: Some(segment_id),
         fragment: re_uri::Fragment {
             selection: None,
             when: Some((
@@ -129,7 +129,7 @@ pub async fn start_with_segment_fragment_url() {
             }),
         },
     };
-    let url = ViewerOpenUrl::RedapDatasetSegment(segment_uri);
+    let url = ViewerOpenUrl::RedapDataset(segment_uri);
 
     let mut harness = InspectionHarness::spawn(HarnessConfig {
         startup_url: Some(url.sharable_url(None).expect("Should be a sharable url")),

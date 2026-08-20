@@ -52,7 +52,7 @@ pub struct ConnectionRegistry {
     remote_connections: HashMap<re_uri::Origin, Connection>,
 
     /// Latest errors received for specific redap URIs.
-    uri_errors: HashMap<re_uri::DatasetSegmentUri, String>,
+    uri_errors: HashMap<re_uri::DatasetUri, String>,
 }
 
 impl ConnectionRegistry {
@@ -95,17 +95,17 @@ impl ConnectionRegistry {
     // URI errors
 
     /// Clear the latest error for this URI.
-    pub fn clear_uri_error(&mut self, uri: re_uri::DatasetSegmentUri) {
+    pub fn clear_uri_error(&mut self, uri: re_uri::DatasetUri) {
         self.uri_errors.remove(&uri.without_fragment());
     }
 
     /// Set the latest error for this URI.
-    pub fn set_uri_error(&mut self, uri: re_uri::DatasetSegmentUri, error: String) {
+    pub fn set_uri_error(&mut self, uri: re_uri::DatasetUri, error: String) {
         self.uri_errors.insert(uri.without_fragment(), error);
     }
 
     /// Get the latest error for this URI.
-    pub fn error_for_uri(&self, uri: re_uri::DatasetSegmentUri) -> Option<&str> {
+    pub fn error_for_uri(&self, uri: re_uri::DatasetUri) -> Option<&str> {
         self.uri_errors
             .get(&uri.without_fragment())
             .map(|s| s.as_str())
@@ -304,21 +304,21 @@ impl ConnectionRegistryHandle {
     }
 
     /// Clear the latest error for this URI.
-    pub fn clear_uri_error(&self, uri: re_uri::DatasetSegmentUri) {
+    pub fn clear_uri_error(&self, uri: re_uri::DatasetUri) {
         wrap_blocking_lock(|| {
             self.inner.blocking_write().clear_uri_error(uri);
         });
     }
 
     /// Set the latest error for this URI.
-    pub fn set_uri_error(&self, uri: re_uri::DatasetSegmentUri, error: String) {
+    pub fn set_uri_error(&self, uri: re_uri::DatasetUri, error: String) {
         wrap_blocking_lock(|| {
             self.inner.blocking_write().set_uri_error(uri, error);
         });
     }
 
     /// Get the latest error for this URI.
-    pub fn error_for_uri(&self, uri: re_uri::DatasetSegmentUri) -> Option<String> {
+    pub fn error_for_uri(&self, uri: re_uri::DatasetUri) -> Option<String> {
         wrap_blocking_lock(|| {
             self.inner
                 .blocking_read()

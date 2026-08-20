@@ -352,11 +352,11 @@ impl PyDatasetEntryInternal {
             })
             .transpose()?;
 
-        Ok(re_uri::DatasetSegmentUri {
+        Ok(re_uri::DatasetUri {
             origin: connection.origin().clone(),
             dataset_id: self_.entry_details.id.id,
-            kind: re_uri::SegmentKind::Segments,
-            segment_id: SegmentId::from(segment_id),
+            resource: re_uri::DatasetResource::Segments,
+            segment_id: Some(SegmentId::from(segment_id)),
             fragment: re_uri::Fragment {
                 selection: None,
                 when: timeline.map(|timeline| {

@@ -20,7 +20,7 @@ use re_sdk_types::blueprint::components::AutoLayout;
 use re_sdk_types::components::{Color, Radius};
 use re_sdk_types::encodings::Bool;
 use re_viewer::viewer_test_utils::{self, AppTestingExt as _};
-use re_viewer_context::{RedapEntryKind, Route};
+use re_viewer_context::Route;
 
 // TODO(RR-4929): We should properly show the application id,
 // and maybe even the recording id.
@@ -229,10 +229,7 @@ async fn internal_catalog_load_rbl() {
         |harness| {
             matches!(
                 harness.state().testonly_get_route(),
-                Route::RedapEntry {
-                    kind: RedapEntryKind::Entry(_),
-                    ..
-                }
+                Route::RedapEntry { .. }
             )
         },
         Duration::from_millis(100),
@@ -240,9 +237,7 @@ async fn internal_catalog_load_rbl() {
     );
 
     let Route::RedapEntry {
-        origin,
-        kind: RedapEntryKind::Entry(entry_id),
-        ..
+        origin, entry_id, ..
     } = harness.state().testonly_get_route()
     else {
         panic!("expected a catalog entry route");

@@ -65,7 +65,9 @@ fn opening_url_with_temporal_anchor_pauses_playing_recording() {
     .parse()
     .expect("test URL should parse");
     let store_id = match &url {
-        ViewerOpenUrl::RedapDatasetSegment(uri) => uri.store_id(),
+        ViewerOpenUrl::RedapDataset(uri) => uri
+            .store_id()
+            .expect("test URL should name a segment of the dataset"),
         _ => unreachable!("test URL should be a dataset segment"),
     };
     test_context.store_hub.lock().entity_db_entry(&store_id);

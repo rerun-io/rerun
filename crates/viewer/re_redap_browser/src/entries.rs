@@ -119,6 +119,11 @@ impl Entry {
         }
     }
 
+    /// What the viewer shows for this entry, using a dataset's default resource.
+    pub fn route_kind(&self) -> Option<re_viewer_context::EntryKind> {
+        route_entry_kind(self.details.kind)
+    }
+
     /// Which icon this entry should use.
     pub fn link_kind(&self) -> re_viewer_context::LinkKind {
         match &self.details.kind {
@@ -133,6 +138,22 @@ impl Entry {
 
     pub fn inner(&self) -> &EntryResult<EntryInner> {
         &self.inner
+    }
+}
+
+/// Maps what the server says an entry is onto what the viewer shows for it.
+pub fn route_entry_kind(kind: EntryKind) -> Option<re_viewer_context::EntryKind> {
+    match kind {
+        EntryKind::Table | EntryKind::TableView => Some(re_viewer_context::EntryKind::Table),
+
+        EntryKind::Dataset
+        | EntryKind::DatasetView
+        | EntryKind::BlueprintDataset
+        | EntryKind::AssetDataset => Some(re_viewer_context::EntryKind::Dataset(
+            re_uri::DatasetResource::default(),
+        )),
+
+        EntryKind::Unspecified => None,
     }
 }
 
@@ -173,6 +194,14 @@ impl Entries {
 
     pub fn find_entry(&self, entry_id: EntryId) -> Option<&Entry> {
         self.entries.get()?.get(&entry_id)
+    }
+
+    /// Whether the request for the entries might still tell us what `entry_id` is.
+    ///
+    /// Once it has settled this is `false`, even if the entries we got back don't hold `entry_id`.
+    pub fn is_kind_pending(&self, entry_id: EntryId) -> bool {
+        self.find_entry(entry_id).is_none()
+            && matches!(self.entries.value(), ServerValue::Pending { .. })
     }
 
     /// Iterate over all loaded entries (empty while still loading or on error).
@@ -499,4 +528,24 @@ async fn fetch_table_details(
     })?;
 
     Ok((result, table_provider))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// An entry we haven't heard about is only pending while the request for the entries is in
+    /// flight. Once the entries have arrived without it, we know as much about it as we ever will.
+    #[test]
+    fn unknown_entry_is_pending_until_the_entries_arrive() {
+        let entry_id = EntryId::new();
+
+        let in_flight = Entries::default();
+        assert!(in_flight.is_kind_pending(entry_id));
+
+        let arrived = Entries {
+            entries: RequestedObject::Completed(HashMap::default()),
+        };
+        assert!(!arrived.is_kind_pending(entry_id));
+    }
 }

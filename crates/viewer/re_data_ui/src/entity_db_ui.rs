@@ -110,7 +110,10 @@ fn grid_content_ui(ctx: &AppContext<'_>, db: &EntityDb, ui: &mut egui::Ui, ui_la
     }
 
     if let Some(LogSource::RedapGrpcStream {
-        uri: re_uri::DatasetSegmentUri { segment_id, .. },
+        uri: re_uri::DatasetUri {
+            segment_id: Some(segment_id),
+            ..
+        },
         ..
     }) = &db.data_source
     {

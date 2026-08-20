@@ -77,9 +77,13 @@ pub fn make_url_decorator(
 /// placeholder on a miss.
 pub fn url_atoms(url: &str, lookup: &UrlNameLookup, theme: Theme) -> Option<LinkButton> {
     let button = match ViewerOpenUrl::from_str(url).ok()? {
-        ViewerOpenUrl::RedapDatasetSegment(uri) => {
-            let (_, dataset_label) = resolve(lookup, &uri.origin, EntryId::from(uri.dataset_id));
-            let atoms = dataset_segment_button(&dataset_label, uri.segment_id.as_str(), theme);
+        ViewerOpenUrl::RedapDataset(uri) => {
+            let (kind, dataset_label) = resolve(lookup, &uri.origin, EntryId::from(uri.dataset_id));
+            let atoms = if let Some(segment_id) = &uri.segment_id {
+                dataset_segment_button(&dataset_label, segment_id.as_str(), theme)
+            } else {
+                egui::Atoms::new((kind.icon(theme), dataset_label))
+            };
             Some(LinkButton::new(url, atoms))
         }
 

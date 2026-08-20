@@ -1003,7 +1003,7 @@ pub fn resolve_recording_for_row<'a>(
     columns: &Columns<'_>,
     display_record_batches: &[DisplayRecordBatch],
     row_idx: u64,
-    already_requested_uris: &mut ahash::HashSet<re_uri::DatasetSegmentUri>,
+    already_requested_uris: &mut ahash::HashSet<re_uri::DatasetUri>,
 ) -> Option<PreviewRecording<'a>> {
     let uri_str = string_value_at(
         columns,
@@ -1012,7 +1012,11 @@ pub fn resolve_recording_for_row<'a>(
         segment_preview_column,
     )?;
 
-    let uri = uri_str.parse::<re_uri::DatasetSegmentUri>().ok()?;
+    // A preview cell has to name the segment to load.
+    let uri = uri_str
+        .parse::<re_uri::DatasetUri>()
+        .ok()
+        .filter(|uri| uri.segment_id.is_some())?;
 
     if let Some(recording) = ctx.storage_context.hub.find_recording_by_uri(&uri) {
         // Keep this recording in the preview prefetch set so chunks get streamed in.
