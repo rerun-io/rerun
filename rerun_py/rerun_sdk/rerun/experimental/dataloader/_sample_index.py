@@ -186,6 +186,22 @@ class SampleIndex:
             return (hi - j * step for j in range(n + 1))
         return range(lo, hi + 1)
 
+    def offset_index(self, index_value: IndexValue, offset: int | float) -> IndexValue:
+        """Add an explicit field-window offset to an index value."""
+        if self._ns_dtype is not None:
+            base = int(np.asarray(index_value, dtype=self._ns_dtype).astype(np.int64).item())
+            value = base + round(float(offset) * 1e9)
+            return _ns_to_dtype(value, self._ns_dtype)
+        if int(offset) != offset:
+            raise ValueError(f"Integer timelines require integral window offsets, got {offset!r}")
+        return int(index_value) + int(offset)
+
+    def output_index_values(self, index_value: IndexValue, field: Field) -> tuple[IndexValue, ...]:
+        """Concrete index values requested by a field, preserving its explicit offset order."""
+        if field.window is None:
+            return (index_value,)
+        return tuple(self.offset_index(index_value, offset) for offset in field.window)
+
     @staticmethod
     @with_tracing("SampleIndex.build")
     def build(
@@ -256,18 +272,18 @@ def _find_range_columns(ranges_table: pa.Table, index: str) -> tuple[str, str]:
 
 def _window_trims_ns(fields: dict[str, Field]) -> tuple[int, int]:
     """
-    Largest `(-window[0], window[1])` across all fields, floored at 0.
+    Largest negative and positive explicit time offsets across all fields.
 
     Used to shrink the iterable range so windowed lookups stay inside
     each segment. Only called for timestamp or duration timelines, where
-    `field.window` is interpreted as nanoseconds (hence the `_ns` suffix).
+    `field.window` is interpreted as seconds and converted to nanoseconds.
     """
     trim_start = 0
     trim_end = 0
     for field in fields.values():
         if field.window is not None:
-            trim_start = max(trim_start, -field.window[0])
-            trim_end = max(trim_end, field.window[1])
+            trim_start = max(trim_start, -round(min(field.window) * 1e9))
+            trim_end = max(trim_end, round(max(field.window) * 1e9))
     return trim_start, trim_end
 
 
@@ -333,8 +349,10 @@ def _build_integer(ctx: _RangesCtx) -> SampleIndex:
     max_window_end = 0
     for field in ctx.fields.values():
         if field.window is not None:
-            min_window_start = min(min_window_start, field.window[0])
-            max_window_end = max(max_window_end, field.window[1])
+            if any(int(offset) != offset for offset in field.window):
+                raise ValueError(f"Integer timelines require integral window offsets, got {field.window!r}")
+            min_window_start = min(min_window_start, int(min(field.window)))
+            max_window_end = max(max_window_end, int(max(field.window)))
 
     seg_col = ctx.ranges_table.column("rerun_segment_id").to_pylist()
     min_vals = ctx.ranges_table.column(ctx.start_col).to_pylist()

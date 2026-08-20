@@ -41,6 +41,7 @@ from rerun.experimental.dataloader.manifest._manifest_build import (
     _ResolvedRows,
     _sample_table,
     _ScanResult,
+    _too_far_back,
     schedule_samples,
 )
 
@@ -155,7 +156,6 @@ def test_resolve_rows_walks_segments_and_drops_invalid() -> None:
 
     rows = _resolve_rows(
         fields=_FIELDS,
-        decoders={"x": _FIELDS["x"].decode},
         sample_index=sample_index,
         scan=scan,
         required={"x"},
@@ -166,6 +166,23 @@ def test_resolve_rows_walks_segments_and_drops_invalid() -> None:
     lo, hi = rows.field_ranges["x"]
     assert lo.tolist() == hi.tolist() == [2, 3, 4, 100, 101, 102]  # scalar field: range is just the anchor
     assert scan.real_by_entity["/e"] == {}  # each segment's scan data released as it was resolved
+
+
+def test_temporal_max_staleness_is_expressed_in_seconds() -> None:
+    sample_index = SampleIndex([], ns_dtype="datetime64[ns]")
+    field = Field("/e:Scalars:scalars", decode=NumericDecoder(), max_staleness=0.5)
+    real = np.array([1_000_000_000], dtype=np.int64)
+
+    assert not _too_far_back(real, 1_500_000_000, field=field, sample_index=sample_index)
+    assert _too_far_back(real, 1_500_000_001, field=field, sample_index=sample_index)
+
+
+def test_integer_max_staleness_must_be_integral() -> None:
+    sample_index = SampleIndex([])
+    field = Field("/e:Scalars:scalars", decode=NumericDecoder(), max_staleness=0.5)
+
+    with pytest.raises(ValueError, match="integral max_staleness"):
+        _too_far_back(np.array([0], dtype=np.int64), 1, field=field, sample_index=sample_index)
 
 
 def _patch_rank(monkeypatch: pytest.MonkeyPatch, rank: int, world_size: int) -> None:
@@ -333,7 +350,7 @@ def test_map_manifest_decodes_frozen_ranges(monkeypatch: pytest.MonkeyPatch) -> 
     group_table = pa.table({
         "t": pa.array(anchors_flat, pa.int64()),
         "rerun_segment_id": pa.array(segment_ids, pa.string()),
-        "x": pa.array([anchor * 1.5 for anchor in anchors_flat], pa.float32()),
+        "x": pa.array([[anchor * 1.5] for anchor in anchors_flat], pa.list_(pa.float32())),
     })
     _stub_map_catalog(monkeypatch, fetched_groups=[FetchedGroup(fields=_FIELDS, fetch_requests={}, table=group_table)])
 
@@ -356,7 +373,7 @@ def test_manifest_and_live_decode_identical_content(monkeypatch: pytest.MonkeyPa
     group_table = pa.table({
         "t": pa.array(anchors_flat, pa.int64()),
         "rerun_segment_id": pa.array(segment_ids, pa.string()),
-        "x": pa.array([anchor * 1.5 for anchor in anchors_flat], pa.float32()),
+        "x": pa.array([[anchor * 1.5] for anchor in anchors_flat], pa.list_(pa.float32())),
     })
     _stub_catalog(monkeypatch, fetched_groups=[FetchedGroup(fields=_FIELDS, fetch_requests={}, table=group_table)])
 

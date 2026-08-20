@@ -190,19 +190,20 @@ def main() -> None:
         "action": Field(
             "/action:Scalars:scalars",
             decode=NumericDecoder(),
-            window=(1, CHUNK_SIZE),
+            # `frame_index` is an integer timeline, so offsets are integral frame steps.
+            window=tuple(range(1, CHUNK_SIZE + 1)),
         ),
         "image_laptop": Field(
             "/observation.images.laptop:VideoStream:sample",
-            decode=VideoFrameDecoder(codec="av1", keyframe_interval=2),
+            decode=VideoFrameDecoder(codec="av1"),
         ),
         "image_phone": Field(
             "/observation.images.phone:VideoStream:sample",
-            decode=VideoFrameDecoder(codec="av1", keyframe_interval=2),
+            decode=VideoFrameDecoder(codec="av1"),
         ),
         "image_side": Field(
             "/observation.images.side:VideoStream:sample",
-            decode=VideoFrameDecoder(codec="av1", keyframe_interval=2),
+            decode=VideoFrameDecoder(codec="av1"),
         ),
     }
 

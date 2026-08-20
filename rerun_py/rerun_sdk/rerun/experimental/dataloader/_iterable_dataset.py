@@ -243,7 +243,7 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tens
                     sample_index=self._sample_index,
                     num_fields=len(self._fields),
                 )
-                # 2. Fetch metadata needed to anchor compressed-video requests.
+                # 2. Fetch the prior-keyframe metadata needed by compressed-video requests.
                 keyframes = _fetch_prior_keyframes(
                     view=view,
                     index=self._index,
@@ -256,10 +256,8 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tens
                     located,
                     keyframes,
                     fields=self._fields,
-                    decoders=decoders,
                     sample_index=self._sample_index,
                 )
-                set_current_span_attributes({"rerun.dataloader.fetch.block_size": len(targets)})
                 # 4. Aggregate compatible field requests into server queries.
                 query_plans = _build_query_plans(targets, self._fields, sample_index=self._sample_index)
                 # 5. Execute independent server queries concurrently.

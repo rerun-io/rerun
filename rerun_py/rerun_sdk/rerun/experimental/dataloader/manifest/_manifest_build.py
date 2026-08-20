@@ -25,8 +25,8 @@ from .._sample_index import SampleIndex, SegmentMetadata
 from .._shuffle import NoShuffle, ShuffleBuffer, ShuffleStrategy, _contiguous_shard, _fetch_blocks
 from .._utils import (
     _fetch_prior_keyframes,
-    _field_index_range,
     _prior_keyframe,
+    _resolve_decode_index_range,
     _run_parallel,
     _WorkerConnection,
     is_video_field,
@@ -50,7 +50,6 @@ if TYPE_CHECKING:
 
     from .._config import DataSource, Field
     from .._sample_index import FixedRateSampling
-    from ..decoders import ColumnDecoder
 
 # Sorted, unique index values (ns / step counts) per segment: `{segment_id: values}`.
 _SegmentIndices = dict[str, np.ndarray]
@@ -120,7 +119,6 @@ def build_manifest_table(
         and memory; defaults to `8`.
 
     """
-    decoders = {k: f.decode for k, f in fields.items()}
     required = set(required_fields) if required_fields is not None else set(fields)
 
     sample_index = SampleIndex.build(source, index, fields, timeline_sampling=timeline_sampling)
@@ -153,7 +151,6 @@ def build_manifest_table(
 
     rows = _resolve_rows(
         fields=fields,
-        decoders=decoders,
         sample_index=sample_index,
         scan=scan,
         required=required,
@@ -272,7 +269,6 @@ def _fetch_entity_index_values(
 def _resolve_rows(
     *,
     fields: dict[str, Field],
-    decoders: dict[str, ColumnDecoder],
     sample_index: SampleIndex,
     scan: _ScanResult,
     required: set[str],
@@ -327,14 +323,21 @@ def _resolve_rows(
                         keep = False
                         break
                     kf = None
-                    if video[key] and field.window is None:
+                    if video[key]:
                         # The prior keyframe may sit arbitrarily far back (exempt from
                         # staleness) but must exist, else the GOP can't be decoded.
-                        kf = _prior_keyframe(keyframe_positions_by_field[key], index_value)
+                        decode_start = min(int(value) for value in sample_index.output_index_values(index_value, field))
+                        kf = _prior_keyframe(keyframe_positions_by_field[key], decode_start)
                         if key in required and kf is None:
                             keep = False
                             break
-                    lo, hi = _field_index_range(index_value, field, decoders[key], prior_keyframe=kf) or (
+                    output_index_values = sample_index.output_index_values(index_value, field)
+                    lo, hi = _resolve_decode_index_range(
+                        index_value,
+                        field,
+                        output_index_values=output_index_values,
+                        prior_keyframe=kf,
+                    ) or (
                         index_value,
                         index_value,
                     )
@@ -373,22 +376,21 @@ def _resolve_rows(
 
 def _too_far_back(real: np.ndarray | None, index_value: int, *, field: Field, sample_index: SampleIndex) -> bool:
     """Whether any point in *field*'s window has no real row at or before it, or one older than `max_staleness`."""
-    for g in _grid_timestamps(index_value, field, sample_index):
+    max_staleness = field.max_staleness
+    if max_staleness is not None:
+        if sample_index.ns_dtype is not None:
+            max_staleness = round(float(max_staleness) * 1e9)
+        elif int(max_staleness) != max_staleness:
+            raise ValueError(f"Integer timelines require integral max_staleness, got {max_staleness!r}")
+
+    for value in sample_index.output_index_values(index_value, field):
+        g = int(value)
         prior = _prior_keyframe(real, g)
         if prior is None:
             return True
-        if field.max_staleness is not None and g - prior > field.max_staleness:
+        if max_staleness is not None and g - prior > max_staleness:
             return True
     return False
-
-
-def _grid_timestamps(index_value: int, field: Field, sample_index: SampleIndex) -> list[int]:
-    """Interpolate between lo and hi for a particular sample to construct a grid of queried timestamps."""
-    if field.window is None:
-        return [index_value]
-    lo = index_value + field.window[0]
-    hi = index_value + field.window[1]
-    return sorted(int(v) for v in sample_index.indices_in_range(lo, hi))
 
 
 # --------------------------------------------------------------------------------------

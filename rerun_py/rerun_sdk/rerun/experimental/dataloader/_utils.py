@@ -28,7 +28,7 @@ from rerun._tracing import (
 )
 from rerun.catalog import CatalogClient
 
-from ._sample_index import IndexValue, _ns_to_datetime64, _ns_to_dtype, _ns_to_timedelta64
+from ._sample_index import IndexValue, _ns_to_datetime64, _ns_to_timedelta64
 from .decoders import DecodeRequest, FieldBatch
 
 if TYPE_CHECKING:
@@ -45,13 +45,13 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True, slots=True)
 class QueryPlan:
-    """A complete description of one server query for one fetch block."""
+    """A complete description of one exact-index or contiguous-range server query."""
 
     fields: dict[str, Field]
     fetch_requests: dict[str, list[FieldFetchRequest]]
     query_indices: dict[str, np.ndarray | pa.Array]
+    query_ranges: dict[str, list[tuple[IndexValue, IndexValue]]]
     fill_latest_at: bool
-    anchored: bool
 
 
 @dataclass(frozen=True, slots=True)
@@ -73,7 +73,7 @@ class FieldFetchRequest:
     decode_index_range: tuple[IndexValue, IndexValue]
     output_index_values: tuple[IndexValue, ...]
     fill_latest_at: bool
-    keyframe_anchored: bool
+    requires_contiguous_fetch: bool
     starts_at_keyframe: bool
 
 
@@ -126,7 +126,6 @@ class PreparedField:
 
     batch: FieldBatch
     requests: list[DecodeRequest]
-    sample_positions: tuple[int, ...]
     num_segments: int
 
 
@@ -245,17 +244,18 @@ def _build_targets(
     keyframes: dict[str, dict[str, np.ndarray]],
     *,
     fields: dict[str, Field],
-    decoders: dict[str, ColumnDecoder],
     sample_index: SampleIndex,
 ) -> list[Target]:
     """Match samples with prior video keyframes and compute each field's index ranges."""
     targets: list[Target] = []
     for seg, idx_val in located:
-        iv = int(idx_val)
+        earliest_outputs = {
+            key: min(sample_index.output_index_values(idx_val, fields[key]), key=int) for key in keyframes
+        }
         prior_keyframes = {
             key: prior_keyframe
             for key, by_seg in keyframes.items()
-            if (prior_keyframe := _prior_keyframe(by_seg.get(seg.segment_id), iv)) is not None
+            if (prior_keyframe := _prior_keyframe(by_seg.get(seg.segment_id), int(earliest_outputs[key]))) is not None
         }
         targets.append(
             _build_target(
@@ -263,7 +263,6 @@ def _build_targets(
                 segment=seg,
                 index_value=idx_val,
                 fields=fields,
-                decoders=decoders,
                 sample_index=sample_index,
                 prior_keyframes=prior_keyframes,
             )
@@ -374,7 +373,7 @@ def _fetch_queries_parallel(
 
 
 def is_video_field(field: Field) -> bool:
-    """Whether a field is keyframe-anchored (compressed video), i.e. its decode window starts at a prior keyframe."""
+    """Whether a field's decoder requires explicit keyframe metadata."""
     return field.prior_keyframe_path is not None
 
 
@@ -387,18 +386,18 @@ def _build_query_plans(
     """
     Partition `fields` and fully resolve one server-query plan per partition.
 
-    A plan fetches every field at the union of the partition's index
-    values, so fields may only share a plan when they need the same rows.
+    A plan fetches every field at the union of the partition's indices or
+    ranges, so fields may only share a plan when they have compatible reads.
     Fields are split on three properties:
 
     - `fill_latest_at`: a per-query argument, not a per-column one.
-    - keyframe-anchored: anchored fields (video) fetch a `[keyframe, target]`
-      range per sample; no other field wants those rows.
+    - contiguous fetch: keyframe-aware decoders fetch every row in their decode
+      ranges, while stateless fields fetch only their explicit output indices.
     - `Field.window`: a windowed field fetches its whole window per sample. An
       unwindowed field (e.g. an image) sharing its query would be shipped at
       every index value in that window instead of once per sample.
     """
-    groups: dict[tuple[bool, bool, tuple[int, int] | None], dict[str, Field]] = defaultdict(dict)
+    groups: dict[tuple[bool, bool, tuple[int | float, ...] | None], dict[str, Field]] = defaultdict(dict)
     for key, field in fields.items():
         field_requests = [target.fetch_requests[key] for target in targets]
         if not field_requests:
@@ -406,13 +405,12 @@ def _build_query_plans(
         fill_latest_at = field_requests[0].fill_latest_at
         if any(request.fill_latest_at != fill_latest_at for request in field_requests):
             raise RuntimeError(f"Inconsistent fill_latest_at policy for field {key!r}")
-        anchored = field_requests[0].keyframe_anchored
-        if any(request.keyframe_anchored != anchored for request in field_requests):
-            raise RuntimeError(f"Inconsistent keyframe anchoring policy for field {key!r}")
-        groups[(fill_latest_at, anchored, field.window)][key] = field
+        contiguous = any(request.requires_contiguous_fetch for request in field_requests)
+        query_fill_latest_at = fill_latest_at if not contiguous else False
+        groups[(query_fill_latest_at, contiguous, field.window)][key] = field
     decode_order = _decode_order(targets)
     plans: list[QueryPlan] = []
-    for (fill_latest_at, anchored, _window), group_fields in groups.items():
+    for (fill_latest_at, contiguous, _window), group_fields in groups.items():
         group_fetch_requests = {
             key: [targets[position].fetch_requests[key] for positions in decode_order for position in positions]
             for key in group_fields
@@ -424,9 +422,11 @@ def _build_query_plans(
                 query_indices=_build_query_indices(
                     group_fetch_requests,
                     sample_index=sample_index,
-                ),
-                fill_latest_at=fill_latest_at,
-                anchored=anchored,
+                )
+                if not contiguous
+                else {},
+                query_ranges=_build_query_ranges(group_fetch_requests) if contiguous else {},
+                fill_latest_at=fill_latest_at if not contiguous else False,
             )
         )
     return plans
@@ -439,16 +439,20 @@ def _fetch_query(
     plan: QueryPlan,
 ) -> pa.Table:
     """Execute one fully resolved query plan and materialize its Arrow table."""
-    fields, query_indices, fill_latest_at = plan.fields, plan.query_indices, plan.fill_latest_at
-    label = f"{'anchored' if plan.anchored else 'windowed'},{'fill' if fill_latest_at else 'exact'}"
+    fields, query_indices, query_ranges = plan.fields, plan.query_indices, plan.query_ranges
+    is_range_query = bool(query_ranges)
+    label = f"{'range' if is_range_query else 'indices'},{'fill' if plan.fill_latest_at else 'exact'}"
     with tracing_scope(f"RerunDataset._fetch_query[{label}]"):
         num_query_indices = sum(len(values) for values in query_indices.values())
+        num_query_ranges = sum(len(ranges) for ranges in query_ranges.values())
+        segment_ids = list(query_ranges if is_range_query else query_indices)
         set_current_span_attributes({
             "rerun.dataloader.group.num_fields": len(fields),
-            "rerun.dataloader.group.num_segments": len(query_indices),
+            "rerun.dataloader.group.num_segments": len(segment_ids),
             "rerun.dataloader.group.num_query_indices": num_query_indices,
-            "rerun.dataloader.group.fill_latest_at": fill_latest_at,
-            "rerun.dataloader.group.anchored": plan.anchored,
+            "rerun.dataloader.group.num_index_ranges": num_query_ranges,
+            "rerun.dataloader.group.fill_latest_at": plan.fill_latest_at,
+            "rerun.dataloader.group.range_query": is_range_query,
         })
 
         # Scope the query to just this group's entities. Otherwise it fetches (then
@@ -457,16 +461,22 @@ def _fetch_query(
         # The server's projection-based entity narrowing is disabled under `fill_latest_at`,
         # so narrow explicitly here. `using_index_values` pins the row set, so restricting
         # entities cannot change the returned rows or their latest-at fills.
-        df = (
-            view
-            .filter_contents(_derive_content_filter(fields))
-            .filter_segments(list(query_indices.keys()))
-            .reader(
+        scoped = view.filter_contents(_derive_content_filter(fields)).filter_segments(segment_ids)
+        if is_range_query:
+            predicate = None
+            for segment_id, ranges in query_ranges.items():
+                segment = col("rerun_segment_id") == segment_id
+                for lo, hi in ranges:
+                    span = segment & (col(index) >= lo) & (col(index) <= hi)
+                    predicate = span if predicate is None else predicate | span
+            assert predicate is not None
+            df = scoped.reader(index=index).filter(predicate)
+        else:
+            df = scoped.reader(
                 index=index,
                 using_index_values=query_indices,
-                fill_latest_at=fill_latest_at,
+                fill_latest_at=plan.fill_latest_at,
             )
-        )
 
         # `index` and `rerun_segment_id` are preserved because `_find_segment_boundaries` reads them.
         select_exprs = [col(index), col("rerun_segment_id")]
@@ -612,27 +622,56 @@ def _resolve_decode_requests(
                 f"at index {segment_requests[0].index_value!r}"
             )
 
-        lo_values = np.empty(len(segment_requests), dtype=np.int64)
-        hi_values = np.empty(len(segment_requests), dtype=np.int64)
-        for i, fetch_request in enumerate(segment_requests):
-            lo, hi = fetch_request.decode_index_range
-            lo_values[i] = int(lo)
-            hi_values[i] = int(hi)
-
         span_start, span_stop = span
         rows = indexed_table.index_values[span_start:span_stop]
-        starts = span_start + np.searchsorted(rows, lo_values, side="left")
-        stops = span_start + np.searchsorted(rows, hi_values, side="right")
-        # `tolist()` once rather than unboxing numpy scalars per request.
-        requests.extend(
-            DecodeRequest(
-                segment_id=segment_id,
-                index_value=fetch_request.index_value,
-                rows=range(start, stop),
-                starts_at_keyframe=fetch_request.starts_at_keyframe,
+        contiguous_positions = [
+            position for position, request in enumerate(segment_requests) if request.requires_contiguous_fetch
+        ]
+        decode_spans: dict[int, tuple[int, int]] = {}
+        if contiguous_positions:
+            lo_values = np.fromiter(
+                (int(segment_requests[position].decode_index_range[0]) for position in contiguous_positions),
+                dtype=np.int64,
             )
-            for fetch_request, start, stop in zip(segment_requests, starts.tolist(), stops.tolist(), strict=True)
-        )
+            hi_values = np.fromiter(
+                (int(segment_requests[position].decode_index_range[1]) for position in contiguous_positions),
+                dtype=np.int64,
+            )
+            starts = span_start + np.searchsorted(rows, lo_values, side="left")
+            stops = span_start + np.searchsorted(rows, hi_values, side="right")
+            decode_spans = {
+                position: (start, stop)
+                for position, start, stop in zip(
+                    contiguous_positions,
+                    starts.tolist(),
+                    stops.tolist(),
+                    strict=True,
+                )
+            }
+
+        for position, fetch_request in enumerate(segment_requests):
+            output_values = np.fromiter(
+                (int(value) for value in fetch_request.output_index_values),
+                dtype=np.int64,
+            )
+            output_rows = span_start + np.searchsorted(rows, output_values, side="right") - 1
+            minimum_row = decode_spans[position][0] if fetch_request.requires_contiguous_fetch else span_start
+            if output_rows.size == 0 or np.any(output_rows < minimum_row):
+                continue
+            output_row_indices = tuple(output_rows.tolist())
+            decode_row_indices = (
+                tuple(range(*decode_spans[position])) if fetch_request.requires_contiguous_fetch else output_row_indices
+            )
+            requests.append(
+                DecodeRequest(
+                    sample_position=fetch_request.sample_position,
+                    segment_id=segment_id,
+                    index_value=fetch_request.index_value,
+                    decode_row_indices=decode_row_indices,
+                    output_row_indices=output_row_indices,
+                    starts_at_keyframe=fetch_request.starts_at_keyframe,
+                )
+            )
     return requests
 
 
@@ -643,13 +682,16 @@ def _resolve_decode_requests_in_block(indexed: IndexedBlock) -> PreparedBlock:
         for key, field in group.fields.items():
             fetch_requests = group.fetch_requests[key]
             prepared_fields[key] = PreparedField(
-                batch=FieldBatch(column=group.indexed_table.table.column(key).combine_chunks(), select=field.select),
+                batch=FieldBatch(
+                    column=group.indexed_table.table.column(key).combine_chunks(),
+                    select=field.select,
+                    is_windowed=field.window is not None,
+                ),
                 requests=_resolve_decode_requests(
                     fetch_requests,
                     indexed_table=group.indexed_table,
                     key=key,
                 ),
-                sample_positions=tuple(request.sample_position for request in fetch_requests),
                 num_segments=len(group.indexed_table.segment_spans),
             )
     return PreparedBlock(num_samples=len(indexed.targets), fields=prepared_fields)
@@ -684,8 +726,8 @@ def _decode_field_batch(
         )
 
     out: list[torch.Tensor | None] = [None] * num_samples
-    for sample_position, result in zip(prepared_field.sample_positions, results, strict=True):
-        out[sample_position] = result
+    for request, result in zip(prepared_field.requests, results, strict=True):
+        out[request.sample_position] = result
     return out
 
 
@@ -726,46 +768,35 @@ def _decode_iter(
         yield {key: values[i] for key, values in per_field.items()}
 
 
-def _field_index_range(
+def _resolve_decode_index_range(
     idx_val: IndexValue,
     field: Field,
-    decoder: ColumnDecoder,
     *,
+    output_index_values: tuple[IndexValue, ...],
     prior_keyframe: int | None = None,
-) -> tuple[Any, Any] | None:
+) -> tuple[IndexValue, IndexValue] | None:
     """
     Inclusive `(lo, hi)` range of index values needed for one field at `idx_val`, or `None` if only `idx_val` is needed.
 
-    Precedence: `Field.window` > `prior_keyframe` > `ColumnDecoder.context_range`.
+    The output bounds define the requested values; a prior keyframe may extend
+    the decode start farther back.
     """
-    if field.window is not None:
-        return idx_val + field.window[0], idx_val + field.window[1]
+    output_lo = min(output_index_values, key=lambda value: int(value))
+    output_hi = max(output_index_values, key=lambda value: int(value))
     if prior_keyframe is not None:
-        # `lo` must match `idx_val`'s type, so callers comparing or arithmetic-
-        # combining the pair (e.g. `_build_query_indices`) see one dtype.
-        if isinstance(idx_val, np.datetime64):
-            lo: Any = _ns_to_datetime64(prior_keyframe)
-        elif isinstance(idx_val, np.timedelta64):
-            lo = _ns_to_timedelta64(prior_keyframe)
-        else:
-            lo = prior_keyframe
-        return lo, idx_val
-    return decoder.context_range(idx_val)
+        return _index_value_like(prior_keyframe, idx_val), output_hi
+    if field.window is not None:
+        return output_lo, output_hi
+    return None
 
 
-def _output_index_values(
-    index_value: IndexValue,
-    field: Field,
-    *,
-    sample_index: SampleIndex,
-) -> tuple[IndexValue, ...]:
-    """Timeline values represented in one field's decoded sample output."""
-    if field.window is None:
-        return (index_value,)
-    lo, hi = index_value + field.window[0], index_value + field.window[1]
-    return tuple(
-        _ns_to_dtype(value, sample_index.ns_dtype) for value in sorted(sample_index.indices_in_range(int(lo), int(hi)))
-    )
+def _index_value_like(value: int, example: IndexValue) -> IndexValue:
+    """Represent an integer timeline value using `example`'s concrete scalar type."""
+    if isinstance(example, np.datetime64):
+        return _ns_to_datetime64(value)
+    if isinstance(example, np.timedelta64):
+        return _ns_to_timedelta64(value)
+    return value
 
 
 def _build_target(
@@ -774,7 +805,6 @@ def _build_target(
     segment: SegmentMetadata,
     index_value: IndexValue,
     fields: dict[str, Field],
-    decoders: dict[str, ColumnDecoder],
     sample_index: SampleIndex,
     prior_keyframes: dict[str, int] | None = None,
 ) -> Target:
@@ -783,7 +813,13 @@ def _build_target(
     fetch_requests: dict[str, FieldFetchRequest] = {}
     for key, field in fields.items():
         prior_keyframe = prior_keyframes.get(key)
-        decode_index_range = _field_index_range(index_value, field, decoders[key], prior_keyframe=prior_keyframe) or (
+        output_index_values = sample_index.output_index_values(index_value, field)
+        decode_index_range = _resolve_decode_index_range(
+            index_value,
+            field,
+            output_index_values=output_index_values,
+            prior_keyframe=prior_keyframe,
+        ) or (
             index_value,
             index_value,
         )
@@ -792,9 +828,9 @@ def _build_target(
             segment_id=segment.segment_id,
             index_value=index_value,
             decode_index_range=decode_index_range,
-            output_index_values=_output_index_values(index_value, field, sample_index=sample_index),
+            output_index_values=output_index_values,
             fill_latest_at=field.fill_latest_at,
-            keyframe_anchored=field.window is None and is_video_field(field),
+            requires_contiguous_fetch=prior_keyframe is not None,
             starts_at_keyframe=prior_keyframe is not None,
         )
     return Target(segment=segment, index_value=index_value, fetch_requests=fetch_requests)
@@ -806,7 +842,7 @@ def _build_query_indices(
     sample_index: SampleIndex,
 ) -> dict[str, np.ndarray | pa.Array]:
     """
-    Group planned field fetches by segment and expand their decode ranges onto the sampling grid.
+    Group each field's exact requested output indices by segment.
 
     Returns a `{segment_id: index_values}` dict ready for
     `reader(using_index_values=...)`. Values are an `int64` ndarray for
@@ -822,14 +858,8 @@ def _build_query_indices(
 
     for field_requests in fetch_requests.values():
         for fetch_request in field_requests:
-            lo, hi = fetch_request.decode_index_range
             segment_values = groups[fetch_request.segment_id]
-            for val in sample_index.indices_in_range(int(lo), int(hi)):
-                segment_values.add(int(val))
-            # The keyframe's exact index value is unlikely to land on a fixed-rate
-            # grid; ensure the main fetch returns its row regardless.
-            if fetch_request.starts_at_keyframe:
-                segment_values.add(int(lo))
+            segment_values.update(int(value) for value in fetch_request.output_index_values)
 
     result: dict[str, np.ndarray | pa.Array] = {}
     for segment_id, vals in groups.items():
@@ -840,6 +870,33 @@ def _build_query_indices(
             result[segment_id] = pa.array(arr, type=pa.duration("ns"))
         else:
             result[segment_id] = arr
+    return result
+
+
+def _build_query_ranges(
+    fetch_requests: dict[str, list[FieldFetchRequest]],
+) -> dict[str, list[tuple[IndexValue, IndexValue]]]:
+    """Merge inclusive decode ranges independently within each segment."""
+    ranges_by_segment: dict[str, list[tuple[int, int]]] = defaultdict(list)
+    examples: dict[str, IndexValue] = {}
+    for requests in fetch_requests.values():
+        for request in requests:
+            lo, hi = request.decode_index_range
+            ranges_by_segment[request.segment_id].append((int(lo), int(hi)))
+            examples.setdefault(request.segment_id, request.index_value)
+
+    result: dict[str, list[tuple[IndexValue, IndexValue]]] = {}
+    for segment_id, ranges in ranges_by_segment.items():
+        merged: list[list[int]] = []
+        for lo, hi in sorted(ranges):
+            if merged and lo <= merged[-1][1] + 1:
+                merged[-1][1] = max(merged[-1][1], hi)
+            else:
+                merged.append([lo, hi])
+
+        example = examples[segment_id]
+        result[segment_id] = [(_index_value_like(lo, example), _index_value_like(hi, example)) for lo, hi in merged]
+
     return result
 
 
@@ -855,9 +912,9 @@ def _fetch_prior_keyframes(
     """
     Per-field sorted keyframe index values, grouped by segment.
 
-    Skips fields with `Field.window` set, fields without a `prior_keyframe_path`,
-    and anchor paths absent from the live schema. Returns `{}`
-    when no field needs an anchor, so non-video datasets pay no query overhead.
+    Skips fields without a `prior_keyframe_path`. Fields that declare one must
+    have that keyframe column in the live schema. Returns `{}` when no field
+    needs keyframe metadata, so non-video datasets pay no query overhead.
 
     Queries `is_keyframe` rows at or before each segment's max target.
     Works whether `is_keyframe` is logged sparsely (only `true` on keyframes)
@@ -869,27 +926,28 @@ def _fetch_prior_keyframes(
     """
     keyframe_fields: dict[str, str] = {}
     for key, field in fields.items():
-        if field.window is not None:
-            continue
         path = field.prior_keyframe_path
         if path is not None:
             keyframe_fields[key] = path
-    if not keyframe_fields or not located:
-        return {}
-
-    # Anchor columns may not exist in the schema (e.g. pre-optimize data with no user-logged `is_keyframe`)
-    # drop those fields so the caller falls back to the decoder heuristic
-    schema_columns = set(view.schema().column_names())
-    keyframe_fields = {k: p for k, p in keyframe_fields.items() if p in schema_columns}
     if not keyframe_fields:
         return {}
 
-    # Per-segment max target across all anchor-using fields.
+    schema_columns = set(view.schema().column_names())
+    missing = {key: path for key, path in keyframe_fields.items() if path not in schema_columns}
+    if missing:
+        details = ", ".join(f"{key!r}: {path!r}" for key, path in sorted(missing.items()))
+        raise ValueError(f"Video fields require an is_keyframe column; missing {details}")
+    if not located:
+        return {}
+
+    # Per-segment max requested output across all keyframe-aware fields.
     max_per_segment: dict[str, int] = {}
     for seg, idx_val in located:
         sid = seg.segment_id
-        iv = int(idx_val)
-        max_per_segment[sid] = max(iv, max_per_segment.get(sid, iv))
+        requested_max = max(
+            int(value) for key in keyframe_fields for value in sample_index.output_index_values(idx_val, fields[key])
+        )
+        max_per_segment[sid] = max(requested_max, max_per_segment.get(sid, requested_max))
 
     unique_paths = list(dict.fromkeys(keyframe_fields.values()))
 
@@ -927,14 +985,14 @@ def _fetch_prior_keyframes(
     # `VideoStream:sample` sibling. Keep the select narrow and do not pass
     # `fill_latest_at=True`, or the push-down (gated on `SparseFillStrategy::None`)
     # falls back to fetching every component on the entity.
-    # Scope to just the anchor entities (the `is_keyframe` siblings live on the same
+    # Scope to just the keyframe entities (the `is_keyframe` siblings live on the same
     # entities as the video samples), so this query never touches unrelated entities.
-    anchor_contents = sorted({f"{p.split(':')[0]}/**" for p in unique_paths})
+    keyframe_contents = sorted({f"{p.split(':')[0]}/**" for p in unique_paths})
 
     with tracing_scope("RerunDataset._fetch_prior_keyframes.to_arrow_table"):
         table = (
             view
-            .filter_contents(anchor_contents)
+            .filter_contents(keyframe_contents)
             .filter_segments(list(max_per_segment.keys()))
             .reader(index=index)
             .filter(index_filter & path_filter)

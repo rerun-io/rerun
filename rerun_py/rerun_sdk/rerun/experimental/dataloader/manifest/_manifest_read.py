@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from .._sample_index import SegmentMetadata, _ns_to_dtype
-from .._utils import FieldFetchRequest, Target, _output_index_values, is_video_field
+from .._utils import FieldFetchRequest, Target, is_video_field
 from ._manifest import COL_ANCHOR, COL_SEGMENT_ID, RANGE_HI, RANGE_LO
 
 if TYPE_CHECKING:
@@ -39,8 +39,11 @@ def targets_from_rows(
     targets: list[Target] = []
     for i, (segment_id, anchor) in enumerate(zip(seg_ids, anchors, strict=True)):
         index_value = _ns_to_dtype(int(anchor), sample_index.ns_dtype)
-        fetch_requests = {
-            key: FieldFetchRequest(
+        fetch_requests: dict[str, FieldFetchRequest] = {}
+        for key, ranges in field_ranges.items():
+            output_index_values = sample_index.output_index_values(index_value, fields[key])
+            has_keyframe = is_video_field(fields[key])
+            fetch_requests[key] = FieldFetchRequest(
                 sample_position=i,
                 segment_id=segment_id,
                 index_value=index_value,
@@ -48,13 +51,11 @@ def targets_from_rows(
                     _ns_to_dtype(int(ranges[0][i]), sample_index.ns_dtype),
                     _ns_to_dtype(int(ranges[1][i]), sample_index.ns_dtype),
                 ),
-                output_index_values=_output_index_values(index_value, fields[key], sample_index=sample_index),
+                output_index_values=output_index_values,
                 fill_latest_at=fields[key].fill_latest_at,
-                keyframe_anchored=fields[key].window is None and is_video_field(fields[key]),
-                starts_at_keyframe=is_video_field(fields[key]),
+                requires_contiguous_fetch=has_keyframe,
+                starts_at_keyframe=has_keyframe,
             )
-            for key, ranges in field_ranges.items()
-        }
         targets.append(
             Target(
                 segment=SegmentMetadata(segment_id=segment_id, index_start=0, index_end=0, num_samples=0),

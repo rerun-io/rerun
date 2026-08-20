@@ -1,4 +1,4 @@
-"""Decoder for compressed video columns, with context-aware random access."""
+"""Decoder for compressed video columns, with keyframe-aware random access."""
 
 from __future__ import annotations
 
@@ -13,7 +13,6 @@ from rerun._tracing import set_current_span_attributes, with_tracing
 
 from ....components import VideoCodec
 from ...video import detect_gop_start, is_annex_b, length_prefixed_to_annex_b
-from .._sample_index import IndexValue, _ns_to_datetime64, _ns_to_timedelta64
 from ._arrow import _flatten_blob
 from ._base import ColumnDecoder, DecodeRequest, FieldBatch
 
@@ -63,19 +62,22 @@ def _starts_with(samples: list[bytes], prefix: list[bytes]) -> bool:
 
 def _decode_runs(requests: Sequence[DecodeRequest]) -> list[list[int]]:
     """
-    Group request positions into runs whose decode windows chain into one contiguous row window.
+    Group decodable request positions into contiguous row runs.
 
     A run never crosses a segment boundary: rows restart per segment, so two
     segments' windows may not be chained, and each segment's codec session is
-    keyed separately.
+    keyed separately. Requests without a prior keyframe are omitted and remain
+    unresolved in the decoder output.
     """
     runs: list[list[int]] = []
     for i, request in enumerate(requests):
+        if not request.starts_at_keyframe:
+            continue
         previous = requests[runs[-1][-1]] if runs else None
         if (
             previous is not None
             and request.segment_id == previous.segment_id
-            and request.rows.start <= previous.rows.stop
+            and request.decode_row_indices[0] <= previous.decode_row_indices[-1] + 1
         ):
             runs[-1].append(i)
         else:
@@ -90,34 +92,27 @@ def _extract_video_samples(
     video_codec: VideoCodec | None,
 ) -> tuple[list[bytes], list[int]]:
     """
-    Extract the encoded samples of `rows`, plus each kept sample's row.
+    Extract the encoded samples of `rows`, plus each non-empty sample's row.
 
-    Skips empty rows, converts length-prefixed H.264 to Annex B, and drops
-    consecutive duplicate samples: `fill_latest_at` repeats the previous
-    frame's bytes for grid slots with no source frame, and re-feeding a
-    duplicate packet corrupts the decoder's reference state. A dropped
-    duplicate's row is dropped with it, so a request landing on the duplicate
-    resolves to the kept sample holding the same bytes.
+    Empty rows do not contain codec packets. Length-prefixed H.264 packets are
+    converted to Annex B before being fed to the raw codec context.
     """
-    # TODO(RR-4751): we should measure whether we can optimize this by doing precise queries when `VideoStream::is_keyframe` is present.
     samples: list[bytes] = []
-    kept_rows: list[int] = []
+    sample_rows: list[int] = []
     for row in rows:
         sample_bytes = bytes(_flatten_blob(column, row))
         if not sample_bytes:
             continue
         if video_codec is VideoCodec.H264 and not is_annex_b(sample_bytes):
             sample_bytes = length_prefixed_to_annex_b(sample_bytes)
-        if samples and sample_bytes == samples[-1]:
-            continue
         samples.append(sample_bytes)
-        kept_rows.append(row)
-    return samples, kept_rows
+        sample_rows.append(row)
+    return samples, sample_rows
 
 
 class VideoFrameDecoder(ColumnDecoder):
     """
-    Compressed video random access via context-aware fetching.
+    Compressed video random access via keyframe-aware fetching.
 
     Anchors the decode window at the prior keyframe by consulting the sibling
     `is_keyframe` component on the `VideoStream` archetype, derived from
@@ -126,12 +121,8 @@ class VideoFrameDecoder(ColumnDecoder):
     `LazyChunkStream.collect(optimize=…)`, and lives in dedicated chunks
     separate from the video sample, so the lookup is cheap.
 
-    When the column is missing from the schema, or has no row at or before
-    the target, the decoder falls back to a fixed-size window: the previous
-    `keyframe_interval` samples (counted directly for integer indices,
-    converted to `keyframe_interval / fps_estimate` seconds for timestamp
-    indices). `keyframe_interval` must be at least the actual GOP length, and
-    for timestamp indices `fps_estimate` must be close to the true frame rate.
+    The sibling `is_keyframe` column is required. This makes every decode range
+    deterministic rather than relying on an estimated GOP length.
 
     Samples may be raw H.264 AVC1/AVCC (length-prefixed NAL units) or Annex B;
     the format is detected automatically per sample.
@@ -141,10 +132,12 @@ class VideoFrameDecoder(ColumnDecoder):
     it is emitted. A batch (or a later batch) whose window extends an earlier
     one reuses the open codec context and decodes only the new packets.
 
+    A [`Field.window`][rerun.experimental.dataloader.Field] returns one frame
+    per explicit offset as a `[T, 3, H, W]` tensor.
+
     Returns `None` when a request's resolved window contains no decodable
     keyframe: the target precedes the entity's first frame in a multi-modal
-    segment, the fallback `keyframe_interval` under-estimates the true GOP
-    length, or the anchored row was user-logged `is_keyframe=true` on a sample
+    segment, or the first row was user-logged `is_keyframe=true` on a sample
     that isn't actually a codec keyframe (run optimize with
     `fix_keyframe=True` to re-derive markers from the encoded samples).
     Consumers must filter these out in their collate function before stacking.
@@ -153,8 +146,6 @@ class VideoFrameDecoder(ColumnDecoder):
     def __init__(
         self,
         *,
-        keyframe_interval: int = 30,
-        fps_estimate: float = 30.0,
         codec: str = "h264",
         max_decoder_sessions: int = 8,
         thread_count: int = 1,
@@ -164,11 +155,6 @@ class VideoFrameDecoder(ColumnDecoder):
 
         Parameters
         ----------
-        keyframe_interval:
-            Fallback GOP length (in frames) used to estimate how far back the
-            prior keyframe sits when the stream has no explicit markers.
-        fps_estimate:
-            Fallback frame rate used to turn `keyframe_interval` into a time window.
         codec:
             Video codec of the encoded samples (e.g. `"h264"`).
         max_decoder_sessions:
@@ -181,8 +167,6 @@ class VideoFrameDecoder(ColumnDecoder):
         self.codec = codec
         # Cached: read per sample in the decode loop.
         self._video_codec = _to_video_codec(codec)
-        self._keyframe_interval = keyframe_interval
-        self._fps_estimate = fps_estimate
         self._max_decoder_sessions = max_decoder_sessions
         # TODO(guillaume): expose `thread_count` as a user-facing parameter
         # if some customers do want to decode large images.
@@ -211,34 +195,20 @@ class VideoFrameDecoder(ColumnDecoder):
             return None
         return f"{prefix}:is_keyframe"
 
-    def context_range(
-        self,
-        index_value: IndexValue,
-    ) -> tuple[IndexValue, IndexValue] | None:
-        """Need frames from estimated keyframe position to target."""
-        keyframe_duration_ns = int(self._keyframe_interval / self._fps_estimate * 1e9)
-        if isinstance(index_value, np.datetime64):
-            iv = int(np.int64(index_value))
-            return (_ns_to_datetime64(iv - keyframe_duration_ns), index_value)
-        if isinstance(index_value, np.timedelta64):
-            iv = int(np.int64(index_value))
-            return (_ns_to_timedelta64(iv - keyframe_duration_ns), index_value)
-        iv = int(index_value)
-        return (max(0, iv - self._keyframe_interval), iv)
-
     @with_tracing("VideoFrameDecoder.decode")
     def decode(
         self,
         batch: FieldBatch,
         requests: Sequence[DecodeRequest],
     ) -> list[torch.Tensor | None]:
-        """Decode every request's frame, feeding each GOP through the codec once."""
+        """Decode each request's frame or frame window, feeding every GOP once."""
         out: list[torch.Tensor | None] = [None] * len(requests)
         if batch.select is not None:
             # A selector may change row counts, which breaks the row <-> sample
             # mapping the GOP batching relies on; decode per request instead.
             for i, request in enumerate(requests):
-                out[i] = self._decode_selected(batch, request)
+                if request.starts_at_keyframe:
+                    out[i] = self._decode_selected(batch, request)
             return out
 
         runs = _decode_runs(requests)
@@ -247,88 +217,88 @@ class VideoFrameDecoder(ColumnDecoder):
             "rerun.dataloader.video.num_segments": len({request.segment_id for request in requests}),
             "rerun.dataloader.video.gop_runs": len(runs),
         })
-        for run in runs:
-            self._decode_run(batch, requests, run, out=out)
+        for request_positions in runs:
+            self._decode_run(batch, requests, request_positions, out=out)
         return out
 
     def _decode_run(
         self,
         batch: FieldBatch,
         requests: Sequence[DecodeRequest],
-        run: list[int],
+        request_positions: list[int],
         *,
         out: list[torch.Tensor | None],
     ) -> None:
         """Decode one run of requests whose windows form a single contiguous GOP walk."""
-        segment_id = requests[run[0]].segment_id
+        segment_id = requests[request_positions[0]].segment_id
+
+        # 1. Extract one continuous packet sequence for the run.
         # A run's windows chain into one contiguous row window, so its row
         # span is just the union of its requests' spans.
-        start = min(requests[i].rows.start for i in run)
-        stop = max(requests[i].rows.stop for i in run)
-        samples, kept_rows = _extract_video_samples(batch.column, range(start, stop), video_codec=self._video_codec)
+        run_start = min(requests[position].decode_row_indices[0] for position in request_positions)
+        run_stop = max(requests[position].decode_row_indices[-1] for position in request_positions) + 1
 
-        drop = self._num_leading_non_keyframes(samples)
-        samples = samples[drop:]
-        kept_rows = kept_rows[drop:]
+        # Parallel lists of codec-ready packets and their source Arrow row indices.
+        samples, sample_rows = _extract_video_samples(
+            batch.column,
+            range(run_start, run_stop),
+            video_codec=self._video_codec,
+        )
         if not samples:
-            # No bootstrap context anywhere in the run's window: every request in the run cold-starts.
+            return
+        # Explicit keyframe metadata guarantees that the range starts at a
+        # bootstrap packet. Validate the marker when this codec has a detector.
+        if self._is_keyframe(samples[0]) is False:
             return
 
-        # Per-sample keyframe positions, so each request can be checked against
-        # its *own* window: a heuristic run's window may span keyframes an
-        # individual request's window doesn't contain, and such a request must
-        # still return `None` exactly as a per-sample decode would. Anchored
-        # requests start their window at the prior keyframe, so the trimmed
-        # window already encodes decodability (`pos < 0` below) and the
-        # per-sample scan is skipped.
-        has_detector = self._is_keyframe(samples[0]) is not None
-        check_windows = has_detector and any(not requests[i].starts_at_keyframe for i in run)
-        prior_keyframe_pos: list[int] = [0] * len(samples)
-        if check_windows:
-            last_kf = -1
-            for pos, sample in enumerate(samples):
-                if self._is_keyframe(sample):
-                    last_kf = pos
-                prior_keyframe_pos[pos] = last_kf
-
-        # Map each request to the kept sample holding its frame: the last kept
-        # row inside its window (the target, unless the field is explicitly
-        # windowed).
-        kept = np.asarray(kept_rows, dtype=np.int64)
-        slots_by_pos: dict[int, list[int]] = {}
-        for i in run:
-            request = requests[i]
-            pos = int(np.searchsorted(kept, request.rows.stop, side="left")) - 1
-            if pos < 0:
-                continue
-            if check_windows:
-                kf_pos = prior_keyframe_pos[pos]
-                if kf_pos < 0 or int(kept[kf_pos]) < request.rows.start:
-                    # No keyframe inside this request's own window: cold start.
+        # 2. Map physical Arrow rows to positions in the non-empty packet sequence.
+        # Multiple output slots may resolve to the same latest packet.
+        packet_row_indices = np.asarray(sample_rows, dtype=np.int64)
+        output_slots_by_packet_position: dict[int, list[tuple[int, int]]] = {}
+        frames_by_request_position: dict[int, list[torch.Tensor | None]] = {}
+        for request_position in request_positions:
+            request = requests[request_position]
+            frames_by_request_position[request_position] = [None] * len(request.output_row_indices)
+            for output_slot, output_row in enumerate(request.output_row_indices):
+                packet_position = int(np.searchsorted(packet_row_indices, output_row, side="right")) - 1
+                if packet_position < 0 or int(packet_row_indices[packet_position]) < request.decode_row_indices[0]:
                     continue
-            slots_by_pos.setdefault(pos, []).append(i)
+                output_slots_by_packet_position.setdefault(packet_position, []).append((request_position, output_slot))
 
-        if not slots_by_pos:
+        if not output_slots_by_packet_position:
             return
 
-        wanted = sorted(slots_by_pos)
-        feed = samples[: wanted[-1] + 1]
-        captured = self._feed_run(segment_id, feed, wanted)
-        if captured is None:
+        # 3. Walk the GOP once, retaining only frames requested by at least one output slot.
+        wanted_packet_positions = sorted(output_slots_by_packet_position)
+        packets_to_decode = samples[: wanted_packet_positions[-1] + 1]
+        decoded_frames_by_packet_position = self._feed_run(
+            segment_id,
+            packets_to_decode,
+            wanted_packet_positions,
+        )
+        if decoded_frames_by_packet_position is None:
             # Delayed stream with multiple wanted frames: emission order didn't
             # map 1:1 to samples, so decode each wanted frame separately from
-            # its own prior keyframe (the pre-batch per-sample behavior).
-            captured = {}
-            for pos in wanted:
-                first = max(0, prior_keyframe_pos[pos]) if check_windows else 0
-                captured[pos] = self._feed_last(segment_id, samples[first : pos + 1])
+            # the run's keyframe.
+            decoded_frames_by_packet_position = {}
+            for packet_position in wanted_packet_positions:
+                decoded_frames_by_packet_position[packet_position] = self._feed_last(
+                    segment_id,
+                    samples[: packet_position + 1],
+                )
 
-        for pos, tensor in captured.items():
-            slots = slots_by_pos[pos]
-            out[slots[0]] = tensor
-            for slot in slots[1:]:
-                # Grid slots that snapped to the same source frame must not share storage.
-                out[slot] = tensor.clone()
+        # 4. Scatter captured frames back into each request's ordered output slots.
+        for packet_position, tensor in decoded_frames_by_packet_position.items():
+            for request_position, output_slot in output_slots_by_packet_position[packet_position]:
+                frames_by_request_position[request_position][output_slot] = (
+                    tensor if batch.is_windowed else tensor.clone()
+                )
+
+        for request_position, frames in frames_by_request_position.items():
+            if any(frame is None for frame in frames):
+                continue
+            resolved = cast("list[torch.Tensor]", frames)
+            out[request_position] = torch.stack(resolved) if batch.is_windowed else resolved[0]
 
     def _feed_run(
         self,
@@ -440,33 +410,26 @@ class VideoFrameDecoder(ColumnDecoder):
         return captured[len(feed) - 1]
 
     def _decode_selected(self, batch: FieldBatch, request: DecodeRequest) -> torch.Tensor | None:
-        """Decode one request whose window went through a selector."""
-        raw = batch.raw(request)
-        samples, _ = _extract_video_samples(raw, range(len(raw)), video_codec=self._video_codec)
-
-        samples = samples[self._num_leading_non_keyframes(samples) :]
-        if not samples:
-            # No bootstrap context anywhere in the window. See class docstring.
-            return None
-
-        return self._feed_last(request.segment_id, samples)
-
-    def _num_leading_non_keyframes(self, samples: list[bytes]) -> int:
-        """
-        Number of leading samples to drop so the decoder sees a bootstrap packet first.
-
-        libdav1d rejects a non-keyframe outright; H.264/HEVC need SPS/PPS, plus
-        VPS for HEVC, before any non-IDR/IRAP slice. For codecs without a
-        detector, `_is_keyframe` returns `None` and nothing is dropped (we
-        trust the decoder). `len(samples)` when no sample can bootstrap.
-        """
-        drop = 0
-        while drop < len(samples):
-            is_keyframe = self._is_keyframe(samples[drop])
-            if is_keyframe is None or is_keyframe:
-                break
-            drop += 1
-        return drop
+        """Decode one request whose context went through a row-preserving selector."""
+        decode_rows = batch.take_decode_rows(request)
+        if len(decode_rows) != len(request.decode_row_indices):
+            raise ValueError(
+                f"Selector returned {len(decode_rows)} rows for {len(request.decode_row_indices)} video context rows; "
+                "video decoding requires a selector that preserves row count"
+            )
+        row_positions = {row: position for position, row in enumerate(request.decode_row_indices)}
+        output_row_indices = tuple(row_positions[row] for row in request.output_row_indices)
+        adjusted = DecodeRequest(
+            sample_position=request.sample_position,
+            segment_id=request.segment_id,
+            index_value=request.index_value,
+            decode_row_indices=tuple(range(len(decode_rows))),
+            output_row_indices=output_row_indices,
+            starts_at_keyframe=request.starts_at_keyframe,
+        )
+        out: list[torch.Tensor | None] = [None]
+        self._decode_run(FieldBatch(column=decode_rows, is_windowed=batch.is_windowed), [adjusted], [0], out=out)
+        return out[0]
 
     def _is_keyframe(self, sample: bytes) -> bool | None:
         """Whether *sample* can boot the decoder, or `None` if we have no detector for this codec."""

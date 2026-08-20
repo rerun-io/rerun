@@ -2,9 +2,8 @@
 Integration tests for the keyframe-aware video dataloader.
 
 Exercises `RerunMapDataset` + `VideoFrameDecoder` end-to-end against a small
-H.264 stream served via `rr.server.Server`, covering both the anchor path
-(sibling `is_keyframe` column present) and the heuristic fallback (column
-absent from the schema).
+H.264 stream served via `rr.server.Server`, including validation of the
+required sibling `is_keyframe` column.
 """
 
 from __future__ import annotations
@@ -107,14 +106,8 @@ def rrd_without_keyframes(tmp_path: Path) -> tuple[Path, list[int]]:
 
 
 @pytest.mark.filterwarnings("ignore:The default multiprocessing start method is 'fork':RuntimeWarning")
-def test_anchor_path_decodes_mid_gop_target(rrd_with_keyframes: tuple[Path, list[int]]) -> None:
-    """
-    Decode a mid-GOP target with `keyframe_interval=1` — heuristic alone can't satisfy it.
-
-    For any non-keyframe target, the heuristic window collapses to a single
-    sample and decode fails. With the `is_keyframe` anchor, the prefetcher
-    expands the window back to the prior keyframe and the decode succeeds.
-    """
+def test_keyframe_path_decodes_mid_gop_target(rrd_with_keyframes: tuple[Path, list[int]]) -> None:
+    """The `is_keyframe` column expands a mid-GOP request back to its prior keyframe."""
     rrd_dir, keyframes = rrd_with_keyframes
     target = keyframes[0] + 5
     assert target not in keyframes, "target must sit strictly between keyframes"
@@ -128,7 +121,7 @@ def test_anchor_path_decodes_mid_gop_target(rrd_with_keyframes: tuple[Path, list
             {
                 "image": Field(
                     "/video:VideoStream:sample",
-                    decode=VideoFrameDecoder(codec="h264", keyframe_interval=1),
+                    decode=VideoFrameDecoder(codec="h264"),
                 ),
                 "state": Field("/state:Scalars:scalars", decode=NumericDecoder()),
             },
@@ -143,16 +136,45 @@ def test_anchor_path_decodes_mid_gop_target(rrd_with_keyframes: tuple[Path, list
 
 
 @pytest.mark.filterwarnings("ignore:The default multiprocessing start method is 'fork':RuntimeWarning")
-def test_heuristic_fallback_when_is_keyframe_column_absent(
+def test_windowed_video_returns_frame_stack(rrd_with_keyframes: tuple[Path, list[int]]) -> None:
+    import torch
+
+    rrd_dir, keyframes = rrd_with_keyframes
+    target = keyframes[0] + 5
+    window = (-3, -2, -1, 0)
+
+    with rr.server.Server(datasets={"video": rrd_dir}) as server:
+        source = DataSource(server.client().get_dataset("video"))
+        dataset = RerunMapDataset(
+            source,
+            "frame",
+            {
+                "clip": Field(
+                    "/video:VideoStream:sample",
+                    decode=VideoFrameDecoder(codec="h264"),
+                    window=window,
+                ),
+                "single": Field(
+                    "/video:VideoStream:sample",
+                    decode=VideoFrameDecoder(codec="h264"),
+                ),
+            },
+        )
+        sample = dataset[target]
+
+    clip = sample["clip"]
+    frame = sample["single"]
+    assert clip is not None and frame is not None
+    assert tuple(clip.shape[:2]) == (len(window), 3)
+    assert clip.shape[2:] == frame.shape[1:]
+    assert torch.equal(clip[-1], frame)
+
+
+@pytest.mark.filterwarnings("ignore:The default multiprocessing start method is 'fork':RuntimeWarning")
+def test_missing_is_keyframe_column_raises(
     rrd_without_keyframes: tuple[Path, list[int]],
 ) -> None:
-    """
-    Decode succeeds via the heuristic fallback when the anchor column is absent.
-
-    The fixture omits `is_keyframe` entirely. `_fetch_prior_keyframes` must
-    detect that the anchor column is missing from the schema and fall through
-    to the decoder's heuristic without raising a planner error.
-    """
+    """A video field without its sibling `is_keyframe` column is rejected before fetching samples."""
     rrd_dir, keyframes = rrd_without_keyframes
     target = keyframes[0] + 5
 
@@ -165,16 +187,10 @@ def test_heuristic_fallback_when_is_keyframe_column_absent(
             {
                 "image": Field(
                     "/video:VideoStream:sample",
-                    # Big enough to cover the whole single-GOP stream.
-                    decode=VideoFrameDecoder(codec="h264", keyframe_interval=64),
+                    decode=VideoFrameDecoder(codec="h264"),
                 ),
                 "state": Field("/state:Scalars:scalars", decode=NumericDecoder()),
             },
         )
-        sample = dataset[target]
-
-    assert sample["image"] is not None
-    assert sample["image"].ndim == 3
-    assert sample["image"].shape[0] == 3
-    assert sample["state"] is not None
-    assert float(sample["state"][0]) == float(target)
+        with pytest.raises(ValueError, match="require an is_keyframe column"):
+            dataset[target]

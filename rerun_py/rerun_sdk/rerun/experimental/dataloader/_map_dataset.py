@@ -198,7 +198,6 @@ class RerunMapDataset(torch.utils.data.Dataset[dict[str, torch.Tensor | None]]):
                 located,
                 keyframes,
                 fields=self._fields,
-                decoders=decoders,
                 sample_index=self._sample_index,
             )
 

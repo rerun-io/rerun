@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 import numpy as np
 import pyarrow as pa
 
@@ -14,8 +16,14 @@ def _flatten_to_numpy_with_offsets(arr: pa.Array) -> tuple[np.ndarray, np.ndarra
     or `(None, None)` when the layout doesn't support the mapping (null rows at any list level),
     in which case callers fall back to per-row decoding.
     """
-    offsets = np.arange(len(arr) + 1, dtype=np.int64)
-    inner = arr
+    # `FieldBatch` guarantees the outer Rerun component-instance list. Start
+    # from its explicit row offsets; only nested value layouts vary from here.
+    outer = cast("pa.ListArray", arr)
+    if outer.null_count != 0:
+        return None, None
+    outer_offsets = outer.offsets.to_numpy().astype(np.int64)
+    offsets = outer_offsets - outer_offsets[0]
+    inner = outer.flatten()
     while _is_list_type(inner.type):
         if inner.null_count != 0:
             return None, None

@@ -24,8 +24,11 @@ class DecodeRequest:
     One sample's decode request within a field's batch.
 
     The pipeline has already resolved the index-value window this sample needs
-    into batch rows, so a decoder slices `rows` rather than searching for them.
+    into batch rows, so a decoder consumes row indices rather than searching for them.
     """
+
+    sample_position: int
+    """Position where this request's result belongs in the decoded fetch block."""
 
     segment_id: str
     """Segment this sample comes from. Index values are only comparable within one segment."""
@@ -33,20 +36,27 @@ class DecodeRequest:
     index_value: IndexValue
     """The typed target index value of this sample."""
 
-    rows: range
+    decode_row_indices: tuple[int, ...]
     """
-    The batch rows holding this sample's decode window.
+    The batch rows holding all data needed to decode this sample.
 
-    The sample itself sits at the window's end; any earlier rows are context
-    (an explicit `Field.window`, or the prior GOP for compressed video).
+    For compressed video this includes the intermediate frames needed to decode
+    the requested output, even when the field has no explicit window.
+    """
+
+    output_row_indices: tuple[int, ...]
+    """
+    Physical batch rows whose decoded values form this request's output.
+
+    Always non-empty: preparation omits unresolved requests before invoking a decoder.
     """
 
     starts_at_keyframe: bool
     """
     Whether the window's first row is known to be a keyframe a decoder may start from.
 
-    True when the field is keyframe-anchored and the pipeline found the prior
-    keyframe; false for a plain window start, which carries no such guarantee.
+    True when the pipeline found a prior keyframe at the first decode row;
+    false when no prior keyframe exists for the requested output.
     """
 
 
@@ -65,15 +75,41 @@ class FieldBatch:
     segment, so a decoder walking requests in order walks the column forwards.
     Index values are only comparable inside a segment, which is why locating a
     sample's rows is the pipeline's job: see
-    [`DecodeRequest.rows`][rerun.experimental.dataloader.DecodeRequest].
+    [`DecodeRequest`][rerun.experimental.dataloader.DecodeRequest].
     """
 
     column: pa.Array
-    select: Selector | None = None
+    """A Rerun component column, with one outer Arrow list per timeline row."""
 
-    def raw(self, request: DecodeRequest) -> pa.Array:
-        """The request's rows as a zero-copy slice, with `select` applied."""
-        sliced = self.column.slice(request.rows.start, len(request.rows))
+    select: Selector | None = None
+    is_windowed: bool = False
+    """Whether decoded outputs keep a leading time axis, including a one-value window."""
+
+    def __post_init__(self) -> None:
+        if not pa.types.is_list(self.column.type):
+            raise TypeError(
+                "FieldBatch.column must be a Rerun component column with an outer Arrow List type, "
+                f"got {self.column.type}"
+            )
+
+    def take_decode_rows(self, request: DecodeRequest) -> pa.Array:
+        """The request's decode rows, with `select` applied."""
+        selected = self.column.take(pa.array(request.decode_row_indices, type=pa.int64()))
+        return self._select(selected)
+
+    def take_output_rows(self, request: DecodeRequest) -> pa.Array:
+        """The rows requested for output, preserving repeats and applying `select`."""
+        selected = self.column.take(pa.array(request.output_row_indices, type=pa.int64()))
+        out = self._select(selected)
+        if len(out) != len(request.output_row_indices):
+            raise ValueError(
+                f"Selector returned {len(out)} rows for {len(request.output_row_indices)} requested outputs; "
+                "a windowed field requires a selector that preserves row count"
+            )
+        return out
+
+    def _select(self, sliced: pa.Array) -> pa.Array:
+        """Apply this batch's selector to `sliced`."""
         if self.select is not None:
             out = self.select.execute(sliced)
             if out is None:
@@ -92,10 +128,8 @@ class ColumnDecoder(ABC):
     amortize work across samples (one vectorized gather for numeric data, one
     codec pass per GOP for video). Decoders that only care about one sample at a
     time can simply loop over the requests and decode each
-    [`FieldBatch.raw`][rerun.experimental.dataloader.FieldBatch.raw] window.
+    [`FieldBatch.take_decode_rows`][rerun.experimental.dataloader.FieldBatch.take_decode_rows] window.
 
-    Context-aware decoders (compressed video) should also override
-    [`context_range`][rerun.experimental.dataloader.ColumnDecoder.context_range] so the prefetcher fetches surrounding data.
     """
 
     @abstractmethod
@@ -115,19 +149,6 @@ class ColumnDecoder(ABC):
         """
         ...
 
-    def context_range(
-        self,
-        index_value: IndexValue,
-    ) -> tuple[IndexValue, IndexValue] | None:
-        """
-        Extra index-value range needed to decode *index_value*.
-
-        Returns `(start, end)` inclusive, or `None` when only the
-        exact index value is required (the default).
-        """
-        del index_value
-        return None
-
     def prior_keyframe_path(self, field_path: str) -> str | None:
         """
         Sibling column whose non-null rows mark a re-entrant keyframe, or `None`.
@@ -144,12 +165,10 @@ class ColumnDecoder(ABC):
         Whether this column's prefetch read latest-at-fills empty grid slots.
 
         `True` for stateless columns (images, scalars): each grid slot wants the
-        most recent value snapped from the real rows. Compressed video keeps it
-        `True` too (consecutive duplicates from a dense grid are dropped at
-        decode time), but a decoder reading frame-indexed data where the grid
-        lands 1:1 on real samples can override to `False` for exact, fill-free
-        packet reads. The read is partitioned by this flag so it stays a global
-        query argument per group rather than a per-column one.
+        most recent value snapped from the real rows. Keyframe-aware fields use
+        exact range queries instead, regardless of this value. The read is
+        partitioned by this flag so it stays a global query argument per group
+        rather than a per-column one.
         """
         return True
 

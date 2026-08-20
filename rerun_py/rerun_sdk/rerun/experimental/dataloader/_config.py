@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, Any
 
@@ -41,30 +42,44 @@ class Field:
         )
         ```
     window
-        Optional `(start_offset, end_offset)` range, inclusive on both
-        ends and added to the current index value. The field then yields
-        the slice of values across that window instead of a single
-        sample. Offsets are in the index timeline's native unit:
-        integer steps for integer-indexed timelines, nanoseconds for
-        timestamp timelines (use multiples of the
-        [`FixedRateSampling`][rerun.experimental.dataloader.FixedRateSampling]
-        period to align with the sampling grid). For example, `(1, 50)`
-        on an integer timeline fetches the next 50 values after the
-        current sample.
+        Optional explicit offsets of the values to return relative to the
+        current index value. Integer timelines require integral index-step
+        offsets. Timestamp and duration timelines use seconds, which are
+        converted to nanoseconds internally.
+        Unlike [`FixedRateSampling`][rerun.experimental.dataloader.FixedRateSampling],
+        these offsets do not define or interpolate a grid. For example,
+        `(-2.5, 0.0)` on a timestamp timeline requests exactly the values at
+        2.5 seconds before the current sample and at the current sample.
+
+        A compressed-video window yields a `[T, C, H, W]` frame stack,
+        bootstrapped from the keyframe preceding the earliest output.
     max_staleness
-        Optional maximum age, in the index timeline's native unit (same as
-        `window`), of the data backing a sample. When set, a required sample is
-        dropped if the nearest value at or before a queried point is older than
-        this. `None` (the default) applies no staleness limit. Enforced only
-        during manifest construction, not by the streaming dataloader.
+        Optional maximum age of the data backing a sample, using the same unit
+        convention as `window`: integral index steps for integer timelines and
+        seconds for timestamp or duration timelines. When set, a required
+        sample is dropped if the nearest value at or before a queried point is
+        older than this. `None` (the default) applies no staleness limit.
+        Enforced only during manifest construction, not by the streaming
+        dataloader.
 
     """
 
     path: str
     decode: ColumnDecoder
     select: Selector | None = None
-    window: tuple[int, int] | None = None
-    max_staleness: int | None = None
+    window: tuple[int | float, ...] | None = None
+    max_staleness: int | float | None = None
+
+    def __post_init__(self) -> None:
+        if self.window is not None and not self.window:
+            raise ValueError("Field.window must contain at least one offset")
+        if self.window is not None and any(not math.isfinite(offset) for offset in self.window):
+            raise ValueError(f"Field.window offsets must be finite, got {self.window!r}")
+        if self.max_staleness is not None:
+            if not math.isfinite(self.max_staleness):
+                raise ValueError(f"Field.max_staleness must be finite, got {self.max_staleness!r}")
+            if self.max_staleness < 0:
+                raise ValueError(f"Field.max_staleness must be non-negative, got {self.max_staleness!r}")
 
     @property
     def prior_keyframe_path(self) -> str | None:

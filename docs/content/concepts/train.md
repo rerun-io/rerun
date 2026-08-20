@@ -38,7 +38,8 @@ Each `Field` has a [`ColumnDecoder`](https://ref.rerun.io/docs/python/stable/exp
 
 ### Windows
 
-`Field(window=(start, end))` returns a slice of values across an inclusive range relative to the current sample rather than a single value.
+`Field(window=(offset, …))` returns one value per explicit relative offset rather than a single value.
+Offsets must use the unit of the dataset's selected index timeline: integral index units for integer timelines, and seconds for timestamp or duration timelines.
 This is how action chunks and observation history are expressed.
 
 ### Dataset styles

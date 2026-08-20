@@ -1,7 +1,7 @@
 """
 Integration tests for various video decoding scenarios seen in the video decoder.
 
-It tests each codec with a built-in keyframe detector (`h264`, `h265`, `av1`) at several GOP lengths, against both decode paths.
+It tests each codec with a built-in keyframe detector (`h264`, `h265`, `av1`) at several GOP lengths and keyframe-column layouts.
 """
 
 from __future__ import annotations
@@ -164,7 +164,7 @@ def _generate_stream(
     return samples, keyframe_indices
 
 
-KeyframeLogging = Literal["sparse", "dense", "none"]
+KeyframeLogging = Literal["sparse", "dense"]
 
 
 def _build_rrd(
@@ -176,13 +176,12 @@ def _build_rrd(
     keyframe_logging: KeyframeLogging,
 ) -> None:
     """
-    Log one `VideoStream` sample per frame, a companion scalar, and optionally the `is_keyframe` column.
+    Log one `VideoStream` sample per frame, a companion scalar, and the `is_keyframe` column.
 
     `keyframe_logging` controls how `is_keyframe` is populated:
-    - `"sparse"`: only `True` at keyframe indices (relies on latest-at fill for non-keyframes).
-    - `"dense"`: `True` at keyframes and `False` at every other frame (no latest-at fill needed,
-       but exposes any decoder code that mistakenly treats `False` as "unknown").
-    - `"none"`: don't log `is_keyframe`; decoder must fall back to the heuristic.
+    - `"sparse"`: only `True` at keyframe indices.
+    - `"dense"`: `True` at keyframes and `False` at every other frame, exposing
+      code that mistakenly treats `False` as an absent marker.
     """
     with rr.RecordingStream(
         "rerun_example_test_dataloader_video_codecs", recording_id="dataloader-video-codecs"
@@ -217,7 +216,7 @@ def _build_rrd(
 
 
 def _decode_targets(
-    rrd_dir: Path, config: CodecConfig, keyframe_interval: int, targets: list[int]
+    rrd_dir: Path, config: CodecConfig, targets: list[int]
 ) -> dict[int, dict[str, torch.Tensor | None]]:
     """Serve *rrd_dir* in-memory and decode each target index, returning `{target: sample}`."""
     results: dict[int, dict[str, torch.Tensor | None]] = {}
@@ -230,7 +229,7 @@ def _decode_targets(
             {
                 "image": Field(
                     "/video:VideoStream:sample",
-                    decode=VideoFrameDecoder(codec=config.decoder_codec, keyframe_interval=keyframe_interval),
+                    decode=VideoFrameDecoder(codec=config.decoder_codec),
                 ),
                 "state": Field("/state:Scalars:scalars", decode=NumericDecoder()),
             },
@@ -244,18 +243,16 @@ def _decode_targets(
 @pytest.mark.parametrize("gop_size", GOP_SIZES)
 @pytest.mark.parametrize(
     "keyframe_logging",
-    ["sparse", "dense", "none"],
-    ids=["anchor_sparse", "anchor_dense", "heuristic"],
+    ["sparse", "dense"],
+    ids=["keyframes_sparse", "keyframes_dense"],
 )
 def test_decode_matrix(tmp_path: Path, codec: str, gop_size: int, keyframe_logging: KeyframeLogging) -> None:
     """
     Decode the first frame, the last frame, and (when the GOP spans multiple frames) a mid-GOP frame for one (codec, gop, path) cell.
 
-    The anchor paths (`sparse`/`dense`) use `keyframe_interval=1` so any mid-GOP
-    target must consult the `is_keyframe` column. The `dense` variant logs an
-    explicit `False` at every non-keyframe, which exercises the path where
-    latest-at fill would otherwise propagate `False` into later rows. The
-    `heuristic` path drops `is_keyframe` entirely and uses `keyframe_interval=gop_size`.
+    Every mid-GOP target must consult the `is_keyframe` column. The `dense`
+    variant logs an explicit `False` at every non-keyframe, while the sparse
+    variant logs only the `True` markers.
     """
     config = CODEC_CONFIGS[codec]
     if not _encoder_available(config.encoder):
@@ -268,8 +265,7 @@ def test_decode_matrix(tmp_path: Path, codec: str, gop_size: int, keyframe_loggi
 
     targets = [0, len(samples) - 1]
     # Pick a mid-GOP target strictly between the first two real keyframes, at least two frames
-    # past keyframe[0] so the anchor case's window `[target - 1, target]` contains no keyframe
-    # and the decode must go through the `is_keyframe` anchor instead of the heuristic.
+    # past keyframe[0], ensuring the decode must use the explicit keyframe marker.
     if gop_size > 1:
         assert len(keyframe_indices) >= 2, "need at least two keyframes to pick a mid-GOP target"
         mid_gop_target = (keyframe_indices[0] + keyframe_indices[1]) // 2
@@ -277,8 +273,7 @@ def test_decode_matrix(tmp_path: Path, codec: str, gop_size: int, keyframe_loggi
         assert mid_gop_target < keyframe_indices[1]
         targets.append(mid_gop_target)
 
-    keyframe_interval = gop_size if keyframe_logging == "none" else 1
-    results = _decode_targets(rrd_dir, config, keyframe_interval, targets)
+    results = _decode_targets(rrd_dir, config, targets)
 
     for target in targets:
         sample = results[target]
@@ -294,16 +289,13 @@ def test_decode_matrix(tmp_path: Path, codec: str, gop_size: int, keyframe_loggi
 
 
 # ---------------------------------------------------------------------------
-# Duplicate-sample handling.
+# Exact range-query handling.
 #
-# When frames are dropped, `fill_latest_at` backfills the empty grid slots with
-# the previous frame's encoded bytes, so the decode window contains consecutive
-# duplicate samples. Re-feeding a duplicate packet corrupts the decoder's
-# reference state, so `VideoFrameDecoder` skips consecutive duplicates. The
-# tests below pin that behavior; they fail if the dedup is dropped.
+# Video decode windows fetch the real packets in their keyframe-to-output ranges.
+# Requested grid points are resolved to those packets after the exact query.
 # ---------------------------------------------------------------------------
 
-DEDUP_GOP_SIZE = 5  # Multiple GOPs over NUM_FRAMES, so a mid-GOP target has P-frames.
+SPARSE_GOP_SIZE = 5  # Multiple GOPs over NUM_FRAMES, so a mid-GOP target has P-frames.
 
 
 def _decode_window(decoder: VideoFrameDecoder, samples: list[bytes], target: int) -> torch.Tensor | None:
@@ -312,40 +304,14 @@ def _decode_window(decoder: VideoFrameDecoder, samples: list[bytes], target: int
     column = pa.array([[sample] for sample in samples], type=pa.list_(pa.binary()))
     batch = FieldBatch(column=column)
     request = DecodeRequest(
+        sample_position=0,
         segment_id="segment",
         index_value=len(samples) - 1,
-        rows=range(len(samples)),
+        decode_row_indices=tuple(range(len(samples))),
+        output_row_indices=(len(samples) - 1,),
         starts_at_keyframe=True,
     )
     return decoder.decode(batch, [request])[0]
-
-
-def test_duplicate_window_matches_clean_decode(tmp_path: Path) -> None:
-    """
-    A duplicated window decodes to the same frame as the clean window.
-
-    Repeats one sample (as `fill_latest_at` would on an empty grid slot) and
-    asserts the decode is unchanged, because the decoder drops the duplicate.
-    """
-    config = CODEC_CONFIGS["h264"]
-    samples, keyframe_indices = _generate_stream(tmp_path / "gen", config, DEDUP_GOP_SIZE)
-
-    keyframe = keyframe_indices[1]  # second GOP, so a P-frame references this keyframe
-    target = keyframe + 2
-    assert target not in keyframe_indices
-
-    decoder = VideoFrameDecoder(codec=config.decoder_codec, keyframe_interval=len(samples))
-
-    clean_window = samples[keyframe : target + 1]
-    # Repeat the frame just before the target, exactly as `fill_latest_at` backfills an empty slot.
-    duplicated_window = [*samples[keyframe:target], samples[target - 1], samples[target]]
-    assert duplicated_window != clean_window, "the duplicated window must actually contain a repeat"
-
-    clean = _decode_window(decoder, clean_window, target)
-    duplicated = _decode_window(decoder, duplicated_window, target)
-
-    assert clean is not None and duplicated is not None
-    assert torch.equal(duplicated, clean), "duplicate samples in the window must not change the decoded frame"
 
 
 TimelineKind = Literal["timestamp", "duration"]
@@ -391,25 +357,22 @@ def _build_temporal_video_rrd(
     [("real_time", "timestamp"), ("elapsed", "duration")],
     ids=["timestamp", "duration"],
 )
-def test_fixed_rate_sampling_duplicates_decode_correctly(tmp_path: Path, timeline: str, kind: TimelineKind) -> None:
+def test_fixed_rate_sampling_sparse_frames_decode_correctly(tmp_path: Path, timeline: str, kind: TimelineKind) -> None:
     """
-    Exercise the deployment path: dropped frames + `FixedRateSampling` + `fill_latest_at`.
+    Exercise dropped frames with `FixedRateSampling` and an exact video range query.
 
-    Real frames sit on a sparse subset of a 30 Hz grid, so the fixed-rate decode
-    window for a mid-GOP target is backfilled with duplicate samples. The served
-    decode matches a clean decode of the de-duplicated real frames. Run on both a
-    timestamp and a duration timeline, since `FixedRateSampling` and
-    `VideoFrameDecoder.context_range` handle `datetime64`/`timedelta64` indices.
+    Real frames sit on a sparse subset of a 30 Hz grid. The served decode must
+    match a clean decode of the real packets in the requested range. Run on
+    both a timestamp and a duration timeline.
     """
     config = CODEC_CONFIGS["h264"]
-    samples, keyframe_indices = _generate_stream(tmp_path / "gen", config, DEDUP_GOP_SIZE)
+    samples, keyframe_indices = _generate_stream(tmp_path / "gen", config, SPARSE_GOP_SIZE)
 
     rate_hz = 30.0
     ns_per_slot = round(1e9 / rate_hz)
 
     # Target the second P-frame of the second GOP (`keyframe + 2`).
-    # The grid slot just before it has no captured frame, so `fill_latest_at` backfills it with
-    # the previous P-frame's bytes, the duplicate that desyncs libav.
+    # The grid slot just before it has no captured frame.
     keyframe_real = keyframe_indices[1]
     target_real = keyframe_real + 2
     assert target_real not in keyframe_indices and target_real < keyframe_indices[2]
@@ -426,7 +389,7 @@ def test_fixed_rate_sampling_duplicates_decode_correctly(tmp_path: Path, timelin
         rrd_dir / "recording.rrd", config, samples, keyframe_indices, timestamps_ns, timeline=timeline, kind=kind
     )
 
-    # The real frames the grid maps to across the window, with the duplicate at the empty slot.
+    # The real frames represented by the grid across the requested range.
     keyframe_slot = slot_of_frame[keyframe_real]
     window_real_indices = [
         max(k for k, s in enumerate(slot_of_frame) if s <= grid_slot)
@@ -436,8 +399,8 @@ def test_fixed_rate_sampling_duplicates_decode_correctly(tmp_path: Path, timelin
         f"unexpected window layout {window_real_indices}"
     )
 
-    # Ground truth: a clean decode of the de-duplicated real frames in the window.
-    decoder = VideoFrameDecoder(codec=config.decoder_codec, keyframe_interval=len(samples), fps_estimate=rate_hz)
+    # Ground truth: a clean decode of the real packets in the range.
+    decoder = VideoFrameDecoder(codec=config.decoder_codec)
     clean_samples = samples[keyframe_real : target_real + 1]
     ground_truth = _decode_window(decoder, clean_samples, target_slot)
     assert ground_truth is not None
@@ -450,9 +413,7 @@ def test_fixed_rate_sampling_duplicates_decode_correctly(tmp_path: Path, timelin
             {
                 "image": Field(
                     "/video:VideoStream:sample",
-                    decode=VideoFrameDecoder(
-                        codec=config.decoder_codec, keyframe_interval=len(samples), fps_estimate=rate_hz
-                    ),
+                    decode=VideoFrameDecoder(codec=config.decoder_codec),
                 ),
             },
             timeline_sampling=FixedRateSampling(rate_hz=rate_hz),
@@ -460,7 +421,7 @@ def test_fixed_rate_sampling_duplicates_decode_correctly(tmp_path: Path, timelin
         served = dataset[target_slot]["image"]
 
     assert served is not None, "served decode unexpectedly returned None"
-    assert torch.equal(served, ground_truth), "fixed-rate duplicate samples must not change the decoded frame"
+    assert torch.equal(served, ground_truth), "fixed-rate sparse sampling changed the decoded frame"
 
 
 OFF_GRID_NUM_FRAMES = 96
@@ -471,10 +432,10 @@ OFF_GRID_GRID_RATE_HZ = 30.0
 
 def test_off_grid_capture_rate_decodes_correctly(tmp_path: Path) -> None:
     """
-    Every grid slot of a ~27 fps capture decodes to the de-duplicated real frames up to that slot.
+    Every grid slot of a ~27 fps capture resolves to the latest real frame at that slot.
 
-    A 30 fps camera dropping frames captures below nominal; ~27 fps served on the 30 Hz grid means every
-    slot is misaligned and the grid periodically laps the capture, backfilling duplicate samples.
+    A ~27 fps capture served on a 30 Hz grid leaves most slots misaligned and
+    periodically maps consecutive output slots to the same real frame.
     """
     config = CODEC_CONFIGS["h264"]
     if not _encoder_available(config.encoder):
@@ -499,8 +460,7 @@ def test_off_grid_capture_rate_decodes_correctly(tmp_path: Path) -> None:
         kind="timestamp",
     )
 
-    # Resolve each grid slot to the real frame `fill_latest_at` backfills it with
-    # (latest real frame at or before the slot) and that frame's prior keyframe.
+    # Resolve each grid slot to its latest real frame and that frame's prior keyframe.
     timestamps_array = np.array(timestamps_ns)
     keyframe_array = np.array(keyframe_indices)
     num_slots = (timestamps_ns[-1] - timestamps_ns[0]) // ns_per_slot + 1
@@ -512,13 +472,11 @@ def test_off_grid_capture_rate_decodes_correctly(tmp_path: Path) -> None:
         int(keyframe_array[np.searchsorted(keyframe_array, real, side="right") - 1]) for real in real_for_slot
     ]
 
-    duplicate_slots = [slot for slot in range(1, num_slots) if real_for_slot[slot] == real_for_slot[slot - 1]]
-    assert duplicate_slots, "off-grid capture must lap the grid and produce at least one duplicate slot"
+    repeated_frame_slots = [slot for slot in range(1, num_slots) if real_for_slot[slot] == real_for_slot[slot - 1]]
+    assert repeated_frame_slots, "off-grid capture must map at least two slots to the same frame"
 
-    # Ground truth: a clean decode of the de-duplicated real frames for each slot.
-    decoder = VideoFrameDecoder(
-        codec=config.decoder_codec, keyframe_interval=len(samples), fps_estimate=OFF_GRID_GRID_RATE_HZ
-    )
+    # Ground truth: a clean decode of the real packets needed for each slot.
+    decoder = VideoFrameDecoder(codec=config.decoder_codec)
     ground_truth = []
     for slot in range(num_slots):
         clean_samples = samples[prior_keyframe_real[slot] : real_for_slot[slot] + 1]
@@ -534,9 +492,7 @@ def test_off_grid_capture_rate_decodes_correctly(tmp_path: Path) -> None:
             {
                 "image": Field(
                     "/video:VideoStream:sample",
-                    decode=VideoFrameDecoder(
-                        codec=config.decoder_codec, keyframe_interval=len(samples), fps_estimate=OFF_GRID_GRID_RATE_HZ
-                    ),
+                    decode=VideoFrameDecoder(codec=config.decoder_codec),
                 ),
             },
             timeline_sampling=FixedRateSampling(rate_hz=OFF_GRID_GRID_RATE_HZ),
