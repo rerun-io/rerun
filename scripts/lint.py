@@ -387,31 +387,33 @@ def lint_line(
                 "(our Python API docs are built with MkDocs, not Sphinx)"
             )
 
-    if is_in_oss_rerun_repo:
-        # Deprecated brand names. Replacement is context-dependent:
-        #   - 'Rerun Hub'      → commercial managed offering
-        #   - 'catalog server' → generic OSS or managed
-        #   - or rephrase to avoid naming the product
-        # Matched case-insensitively so that lowercase variants (e.g. 'rerun cloud') are also caught.
-        deprecated_msg = "is a deprecated name. Use 'Rerun Hub' (commercial), 'catalog server' (generic), or rephrase."
-        if deprecated_rerun_cloud.search(line):
-            return f"'Rerun Cloud' {deprecated_msg}"
-        if deprecated_rerun_base.search(line):
-            return f"'Rerun Base' {deprecated_msg}"
-        if deprecated_rerun_data_platform.search(line):
-            return f"'Rerun Data Platform' {deprecated_msg}"
-        if deprecated_data_platform.search(line):
-            return f"'Data Platform' {deprecated_msg}"
-        # Skip URL paths (`/dataplatform/`) and python package extras specifiers
-        # (`rerun-sdk[dataloader,dataplatform]`) — those name a directory or an extra, not prose.
-        # The `dataplatform` extra was removed in 0.37, but changelogs and migration guides still quote it.
-        if deprecated_dataplatform.search(line):
-            return f"'dataplatform' {deprecated_msg}"
+    # Deprecated brand names. Replacement is context-dependent:
+    #   - 'Rerun Hub'      → commercial managed offering
+    #   - 'catalog server' → generic OSS or managed
+    #   - or rephrase to avoid naming the product
+    # Matched case-insensitively so that lowercase variants (e.g. 'rerun cloud') are also caught.
+    deprecated_msg = "is a deprecated name. Use 'Rerun Hub' (commercial), 'catalog server' (generic), or rephrase."
+    if deprecated_rerun_cloud.search(line):
+        return f"'Rerun Cloud' {deprecated_msg}"
+    if deprecated_rerun_base.search(line):
+        return f"'Rerun Base' {deprecated_msg}"
+    if deprecated_rerun_data_platform.search(line):
+        return f"'Rerun Data Platform' {deprecated_msg}"
+    if deprecated_data_platform.search(line):
+        return f"'Data Platform' {deprecated_msg}"
+    # The bare word `dataplatform` is only checked in the OSS rerun repo:
+    # in the monorepo it is the literal name of the workspace directory, docker image,
+    # pixi tasks, env vars, etc., so it is legitimate there.
+    # Skip URL paths (`/dataplatform/`) and python package extras specifiers
+    # (`rerun-sdk[dataloader,dataplatform]`) — those name a directory or an extra, not prose.
+    # The `dataplatform` extra was removed in 0.37, but changelogs and migration guides still quote it.
+    if is_in_oss_rerun_repo and deprecated_dataplatform.search(line):
+        return f"'dataplatform' {deprecated_msg}"
 
-        # Enforce 'Rerun Hub' capitalization: flag any case variant that isn't exactly 'Rerun Hub'.
-        for m in rerun_hub.finditer(line):
-            if m.group(0) != "Rerun Hub":
-                return "'Rerun Hub' must be properly capitalized."
+    # Enforce 'Rerun Hub' capitalization: flag any case variant that isn't exactly 'Rerun Hub'.
+    for m in rerun_hub.finditer(line):
+        if m.group(0) != "Rerun Hub":
+            return "'Rerun Hub' must be properly capitalized."
 
     if not is_in_docstring:
         if m := recording_stream_app_id.search(line) or script_setup_app_id.search(line):
@@ -731,6 +733,13 @@ def test_lint_line() -> None:
     runtime_creation = "tokio::runtime::Runtime::new()"
     assert lint_line(runtime_creation, None, is_in_oss_rerun_repo=True) is not None
     assert lint_line(runtime_creation, None, is_in_oss_rerun_repo=False) is None
+
+    # Deprecated brand names are checked everywhere in the monorepo…
+    assert lint_line("Connect via Rerun Cloud today.", None, is_in_oss_rerun_repo=False) is not None
+    assert lint_line("We use the Rerun Data Platform.", None, is_in_oss_rerun_repo=False) is not None
+    # …except the bare word 'dataplatform', which legitimately names the workspace directory there.
+    assert lint_line("The dataplatform is powerful", None, is_in_oss_rerun_repo=True) is not None
+    assert lint_line("The dataplatform is powerful", None, is_in_oss_rerun_repo=False) is None
 
     # rST (reStructuredText) is not rendered by MkDocs/mkdocstrings.
     # Flagged inside Python docstrings and Rust `///` doc comments only.
@@ -1923,6 +1932,9 @@ def main() -> None:
     repo = git.Repo(rerun_root, search_parent_directories=True)
     assert repo.working_tree_dir is not None, "Expected a non-bare git repository"
     repo_root = repo.working_tree_dir
+
+    # Resolve explicit file arguments against the invocation directory, before we chdir below.
+    args.files = [os.path.abspath(filepath) for filepath in args.files]
     os.chdir(repo_root)
 
     # Path prefix from git root to the rerun directory.
@@ -1940,6 +1952,9 @@ def main() -> None:
         return f"{rerun_prefix}{path}"
 
     exclude_paths = (
+        "./.claude/skills/investigate-puffin/dump-puffin/Cargo.toml",  # standalone helper crate, not part of a workspace
+        "./.github/ghat/actions/",  # auto-generated by `ghat generate`
+        "./.github/ghat/types/",  # auto-generated by `ghat generate`
         "./dataplatform/crates/redap_protos/Cargo.toml",  # intentional [lints.clippy] override (see file header)
         "./dataplatform/crates/redap_protos/src/v1alpha1",  # auto-generated
         rerun(".github/workflows/reusable_checks.yml"),  # zombie TODO hunting job
@@ -2002,15 +2017,12 @@ def main() -> None:
             filepath = "./" + filepath
             filepath = filepath.replace("\\", "/")
 
-            # Only lint files inside the rerun or dataplatform directories.
-            # In the standalone rerun repo `rerun_prefix` is "./" so everything matches.
-            # In the monorepo (reality) we explicitly include both top-level Rust
-            # workspaces (`./rerun/` and `./dataplatform/`) so they share the same
-            # custom lints, and skip everything else (`node_modules/`, `landing/`, …).
-            allowed_prefixes: tuple[str, ...] = (rerun_prefix,)
-            if rerun_prefix != "./":
-                allowed_prefixes += ("./dataplatform/",)
-            if not filepath.startswith(allowed_prefixes):
+            # In the standalone rerun repo `rerun_prefix` is "./" and we lint everything.
+            # In the monorepo (reality) we lint everything except a few directories
+            # with their own tooling (e.g. `./landing/`), so that all top-level
+            # directories and files share the same custom lints.
+            monorepo_skipped_prefixes = ("./landing/",)
+            if rerun_prefix != "./" and filepath.startswith(monorepo_skipped_prefixes):
                 continue
 
             extension = filepath.split(".")[-1]
