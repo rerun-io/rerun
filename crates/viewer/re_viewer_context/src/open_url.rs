@@ -945,6 +945,7 @@ fn handle_web_event_listener(egui_ctx: &egui::Context, command_sender: &CommandS
 
 #[cfg(test)]
 mod tests {
+    use std::assert_matches;
     use std::{
         net::{Ipv4Addr, SocketAddrV4},
         str::FromStr as _,
@@ -1142,7 +1143,7 @@ mod tests {
             .last()
             .expect("opening an entry url should set a route");
 
-        assert!(matches!(route, Route::RedapEntry { kind: None, .. }));
+        assert_matches!(route, Route::RedapEntry { kind: None, .. });
     }
 
     /// A dataset url that names a resource opens showing that resource, rather than falling back
@@ -1167,13 +1168,13 @@ mod tests {
             .last()
             .expect("opening a dataset url should set a route");
 
-        assert!(matches!(
+        assert_matches!(
             route,
             Route::RedapEntry {
                 kind: Some(crate::EntryKind::Dataset(re_uri::DatasetResource::Assets)),
                 ..
             }
-        ));
+        );
     }
 
     /// Sharing a route that knows it shows a dataset yields a dataset url naming the resource on

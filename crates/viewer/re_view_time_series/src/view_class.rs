@@ -1607,23 +1607,23 @@ pub(crate) fn to_stepped_points(points: &[[f64; 2]], mode: crate::StepMode) -> V
     let mut stepped = Vec::with_capacity(capacity);
     match mode {
         crate::StepMode::After => {
-            for pair in points.windows(2) {
-                stepped.push(pair[0]);
-                stepped.push([pair[1][0], pair[0][1]]);
+            for [a, b] in points.array_windows() {
+                stepped.push(*a);
+                stepped.push([b[0], a[1]]);
             }
         }
         crate::StepMode::Before => {
-            for pair in points.windows(2) {
-                stepped.push(pair[0]);
-                stepped.push([pair[0][0], pair[1][1]]);
+            for [a, b] in points.array_windows() {
+                stepped.push(*a);
+                stepped.push([a[0], b[1]]);
             }
         }
         crate::StepMode::Mid => {
-            for pair in points.windows(2) {
-                let mid_t = fast_midpoint(pair[0][0], pair[1][0]);
-                stepped.push(pair[0]);
-                stepped.push([mid_t, pair[0][1]]);
-                stepped.push([mid_t, pair[1][1]]);
+            for [a, b] in points.array_windows() {
+                let mid_t = fast_midpoint(a[0], b[0]);
+                stepped.push(*a);
+                stepped.push([mid_t, a[1]]);
+                stepped.push([mid_t, b[1]]);
             }
         }
     }

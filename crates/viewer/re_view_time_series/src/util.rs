@@ -161,7 +161,7 @@ pub fn apply_aggregation(
 
     // If the user logged multiples scalars per time stamp, we should aggregate them,
     // no matter what the aggregation duration (=zoom level) is.
-    let multiple_values_per_time_stamp = || points.windows(2).any(|w| w[0].time == w[1].time);
+    let multiple_values_per_time_stamp = || points.array_windows().any(|[a, b]| a.time == b.time);
 
     let should_aggregate = aggregator != AggregationPolicy::Off
         && (2.0 <= aggregation_duration || multiple_values_per_time_stamp());

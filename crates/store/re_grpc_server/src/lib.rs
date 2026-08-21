@@ -1331,6 +1331,7 @@ impl message_proxy_service_server::MessageProxyService for MessageProxy {
 
 #[cfg(test)]
 mod tests {
+    use std::assert_matches;
     use std::net::SocketAddr;
     use std::sync::Arc;
     use std::time::Duration;
@@ -1635,8 +1636,8 @@ mod tests {
         // While `SetStoreInfo` is sent first in `fake_log_stream`,
         // we can observe that it's also received first,
         // even though it is actually stored out of order in `persistent_message_queue`.
-        assert!(matches!(messages[0], LogMsg::SetStoreInfo(..)));
-        assert!(matches!(actual[0], LogMsg::SetStoreInfo(..)));
+        assert_matches!(messages[0], LogMsg::SetStoreInfo(..));
+        assert_matches!(actual[0], LogMsg::SetStoreInfo(..));
 
         completion.finish();
     }

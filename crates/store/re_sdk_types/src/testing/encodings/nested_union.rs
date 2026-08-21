@@ -256,31 +256,34 @@ impl ::re_types_core::Loggable for NestedUnion {
                                 .collect::<Vec<_>>()
                             };
                             let offsets = arrow_data.offsets();
-                            ZipValidity::new_with_validity(offsets.windows(2), arrow_data.nulls())
-                                .map(|elem| {
-                                    elem.map(|window| {
-                                        let start = window[0] as usize;
-                                        let end = window[1] as usize;
-                                        if arrow_data_inner.len() < end {
-                                            return Err(DeserializationError::offset_slice_oob(
-                                                (start, end),
-                                                arrow_data_inner.len(),
-                                            ));
-                                        }
+                            ZipValidity::new_with_validity(
+                                offsets.array_windows(),
+                                arrow_data.nulls(),
+                            )
+                            .map(|elem| {
+                                elem.map(|&[start, end]| {
+                                    let start = start as usize;
+                                    let end = end as usize;
+                                    if arrow_data_inner.len() < end {
+                                        return Err(DeserializationError::offset_slice_oob(
+                                            (start, end),
+                                            arrow_data_inner.len(),
+                                        ));
+                                    }
 
-                                        #[expect(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                        let data =
-                                            unsafe { arrow_data_inner.get_unchecked(start..end) };
-                                        let data = data
-                                            .iter()
-                                            .cloned()
-                                            .map(Option::unwrap_or_default)
-                                            .collect();
-                                        Ok(data)
-                                    })
-                                    .transpose()
+                                    #[expect(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                    let data =
+                                        unsafe { arrow_data_inner.get_unchecked(start..end) };
+                                    let data = data
+                                        .iter()
+                                        .cloned()
+                                        .map(Option::unwrap_or_default)
+                                        .collect();
+                                    Ok(data)
                                 })
-                                .collect::<DeserializationResult<Vec<Option<_>>>>()?
+                                .transpose()
+                            })
+                            .collect::<DeserializationResult<Vec<Option<_>>>>()?
                         }
                         .into_iter()
                     }

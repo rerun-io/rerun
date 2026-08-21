@@ -138,44 +138,47 @@ impl ::re_types_core::Loggable for ColumnOrder {
                             .with_context("rerun.blueprint.components.ColumnOrder#entity_paths")?;
                         let arrow_data_inner_buf = arrow_data_inner.values();
                         let offsets = arrow_data_inner.offsets();
-                        ZipValidity::new_with_validity(offsets.windows(2), arrow_data_inner.nulls())
-                            .map(|elem| {
-                                elem.map(|window| {
-                                    let start = window[0] as usize;
-                                    let end = window[1] as usize;
-                                    let len = end - start;
-                                    if arrow_data_inner_buf.len() < end {
-                                        return Err(DeserializationError::offset_slice_oob(
-                                            (start, end),
-                                            arrow_data_inner_buf.len(),
-                                        ));
-                                    }
-                                    let data = arrow_data_inner_buf.slice_with_length(start, len);
-                                    Ok(data)
-                                })
-                                .transpose()
+                        ZipValidity::new_with_validity(
+                            offsets.array_windows(),
+                            arrow_data_inner.nulls(),
+                        )
+                        .map(|elem| {
+                            elem.map(|&[start, end]| {
+                                let start = start as usize;
+                                let end = end as usize;
+                                let len = end - start;
+                                if arrow_data_inner_buf.len() < end {
+                                    return Err(DeserializationError::offset_slice_oob(
+                                        (start, end),
+                                        arrow_data_inner_buf.len(),
+                                    ));
+                                }
+                                let data = arrow_data_inner_buf.slice_with_length(start, len);
+                                Ok(data)
                             })
-                            .map(|res_or_opt| {
-                                res_or_opt.map(|res_or_opt| {
-                                    res_or_opt.map(|v| {
-                                        crate::encodings::EntityPath(
-                                            ::re_types_core::ArrowString::from(v),
-                                        )
-                                    })
+                            .transpose()
+                        })
+                        .map(|res_or_opt| {
+                            res_or_opt.map(|res_or_opt| {
+                                res_or_opt.map(|v| {
+                                    crate::encodings::EntityPath(
+                                        ::re_types_core::ArrowString::from(v),
+                                    )
                                 })
                             })
-                            .collect::<DeserializationResult<Vec<Option<_>>>>()
-                            .with_context("rerun.blueprint.components.ColumnOrder#entity_paths")?
-                            .into_iter()
+                        })
+                        .collect::<DeserializationResult<Vec<Option<_>>>>()
+                        .with_context("rerun.blueprint.components.ColumnOrder#entity_paths")?
+                        .into_iter()
                     }
                     .collect::<Vec<_>>()
                 };
                 let offsets = arrow_data.offsets();
-                ZipValidity::new_with_validity(offsets.windows(2), arrow_data.nulls())
+                ZipValidity::new_with_validity(offsets.array_windows(), arrow_data.nulls())
                     .map(|elem| {
-                        elem.map(|window| {
-                            let start = window[0] as usize;
-                            let end = window[1] as usize;
+                        elem.map(|&[start, end]| {
+                            let start = start as usize;
+                            let end = end as usize;
                             if arrow_data_inner.len() < end {
                                 return Err(DeserializationError::offset_slice_oob(
                                     (start, end),

@@ -2194,6 +2194,7 @@ fn adjust_keyframes_for_removed_samples(descr: &mut re_video::VideoDataDescripti
 #[cfg(test)]
 mod tests {
     #![expect(clippy::cast_possible_wrap)] // u64 -> i64 is fine
+    use std::assert_matches;
 
     use re_chunk::{ChunkBuilder, RowId, TimePoint, Timeline};
     use re_chunk_store::ChunkStoreDiff;
@@ -2264,10 +2265,10 @@ mod tests {
 
         assert_eq!(codec, re_video::VideoCodec::H264);
         assert_eq!(timescale, None); // Sequence timeline doesn't have a timescale.
-        assert!(matches!(
+        assert_matches!(
             delivery_method,
             re_video::VideoDeliveryMethod::Stream { .. }
-        ));
+        );
         assert!(samples_statistics.dts_always_equal_pts);
         assert!(samples_statistics.has_sample_highest_pts_so_far.is_none());
         assert!(mp4_tracks.is_empty());

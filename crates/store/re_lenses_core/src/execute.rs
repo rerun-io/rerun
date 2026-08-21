@@ -169,8 +169,8 @@ fn compute_scatter_indices(reference: &ListArray) -> UInt32Array {
     let offsets = reference.value_offsets();
     let mut indices = Vec::new();
 
-    for (row_idx, window) in offsets.windows(2).enumerate() {
-        let count = window[1] - window[0];
+    for (row_idx, [start, end]) in offsets.array_windows().enumerate() {
+        let count = end - start;
         if reference.is_null(row_idx) || count == 0 {
             indices.push(row_idx as u32);
         } else {

@@ -158,6 +158,7 @@ impl<'de> serde::Deserialize<'de> for RedapUri {
 #[cfg(test)]
 mod tests {
     use core::net::Ipv4Addr;
+    use std::assert_matches;
 
     use re_log_types::DataPath;
     use re_types_core::SegmentId;
@@ -409,7 +410,7 @@ mod tests {
     fn test_http_catalog_url_to_address() {
         let url = "rerun+http://127.0.0.1:50051/catalog";
         let address: RedapUri = url.parse().unwrap();
-        assert!(matches!(
+        assert_matches!(
             address,
             RedapUri::Catalog(CatalogUri {
                 origin: Origin {
@@ -418,7 +419,7 @@ mod tests {
                     port: 50051
                 },
             })
-        ));
+        );
     }
 
     #[test]
@@ -426,7 +427,7 @@ mod tests {
         let url = "rerun+https://127.0.0.1:50051/catalog";
         let address: RedapUri = url.parse().unwrap();
 
-        assert!(matches!(
+        assert_matches!(
             address,
             RedapUri::Catalog(CatalogUri {
                 origin: Origin {
@@ -435,7 +436,7 @@ mod tests {
                     port: 50051
                 }
             })
-        ));
+        );
     }
 
     #[test]
@@ -460,7 +461,7 @@ mod tests {
         let url = "http://wrong-scheme:1234/recording/12345";
         let address: Result<RedapUri, _> = url.parse();
 
-        assert!(matches!(address.unwrap_err(), super::Error::InvalidScheme));
+        assert_matches!(address.unwrap_err(), super::Error::InvalidScheme);
     }
 
     #[test]
@@ -468,10 +469,9 @@ mod tests {
         let url = "rerun://0.0.0.0:51234/redap/recordings/12345";
         let address: Result<RedapUri, _> = url.parse();
 
-        assert!(matches!(
+        assert_matches!(
             address.unwrap_err(),
-            super::Error::UnexpectedUri(unknown) if &unknown == "redap/"
-        ));
+            super::Error::UnexpectedUri(unknown) if &unknown == "redap/");
     }
 
     #[test]

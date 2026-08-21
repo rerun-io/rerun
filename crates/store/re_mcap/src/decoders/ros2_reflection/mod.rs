@@ -258,6 +258,7 @@ impl MessageDecoder for McapRos2ReflectionDecoder {
 
 #[cfg(test)]
 mod tests {
+    use std::assert_matches;
     use std::{borrow::Cow, collections::BTreeMap};
 
     use arrow::array::{
@@ -895,6 +896,6 @@ uint32 nanosec
         )
         .unwrap();
         let plan = MessageDecodePlan::from_schema(&schema).unwrap();
-        assert!(matches!(plan.timestamp_location(), TimestampLocation::None));
+        assert_matches!(plan.timestamp_location(), TimestampLocation::None);
     }
 }

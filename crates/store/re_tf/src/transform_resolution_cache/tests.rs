@@ -1,3 +1,4 @@
+use std::assert_matches;
 use std::sync::{Arc, OnceLock};
 
 use glam::DAffine3;
@@ -363,10 +364,10 @@ fn test_latest_at_transform_cache_snapshot() -> Result<(), Box<dyn std::error::E
         .expect("implicit hierarchy edge should be present");
 
     // Check that the implicit edge has no logged transform payload.
-    assert!(matches!(
+    assert_matches!(
         implicit_edge.source,
         transform_cache_snapshot::EdgeSource::ImplicitHierarchy
-    ));
+    );
 
     // Check that the logged transform shows up as such in the snapshot.
     let transform_edge = snapshot

@@ -30,7 +30,7 @@ include = [
 ]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/rerun-io/rerun"
-rust-version = "1.95"
+rust-version = "1.96"
 version = "0.37.0-alpha.1+dev"
 
 [workspace.metadata.cargo-shear]
@@ -720,7 +720,11 @@ missing_crate_level_docs = "warn"
 
 # See also clippy.toml
 [workspace.lints.clippy]
+# `all` = `correctness` + `suspicious` + `style` + `complexity` + `perf`.
+# The remaining groups are `nursery` and `restriction`,
+# which are not meant to be enabled wholesale - we cherry-pick from them below.
 all = { level = "warn", priority = -1 } # this is the default, but be explicit about it
+cargo = { level = "warn", priority = -1 }
 pedantic = { level = "warn", priority = -1 }
 
 allow_attributes = "warn"
@@ -756,7 +760,6 @@ mem_forget = "warn"
 mutex_integer = "warn"
 needless_pass_by_ref_mut = "warn"
 needless_type_cast = "warn"
-negative_feature_names = "warn"
 non_zero_suggestions = "warn"
 nonstandard_macro_braces = "warn"
 or_fun_call = "warn"
@@ -793,7 +796,6 @@ unwrap_used = "warn"
 use_self = "warn"
 useless_let_if_seq = "warn"
 verbose_file_reads = "warn"
-wildcard_dependencies = "warn"
 
 # Disabled waiting on https://github.com/rust-lang/rust-clippy/issues/9602
 #self_named_module_files = "warn"
@@ -826,7 +828,9 @@ unreadable_literal = "allow" # 474 hits
 used_underscore_binding = "allow" # 404 hits
 
 # These are meh:
+cargo_common_metadata = "allow" # TODO(emilk): add `keywords` and `categories` to all published crates
 manual_range_contains = "allow" # this one is just worse imho
+multiple_crate_versions = "allow" # we handle this with `cargo deny`
 ref_patterns = "allow" # It's nice to avoid ref pattern, but there are some situations that are hard (impossible?) to express without.
 too_many_arguments = "allow" # yes, we should avoid too many arguments, but enforcing it by lint is pointless.
 

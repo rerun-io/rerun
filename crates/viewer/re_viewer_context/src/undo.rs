@@ -329,11 +329,8 @@ mod tests {
         );
 
         let frame_nrs: Vec<u64> = undo.inflection_points.values().copied().collect();
-        for window in frame_nrs.windows(2) {
-            assert!(
-                window[0] <= window[1],
-                "Frame numbers must be monotonic, got {frame_nrs:?}"
-            );
+        for [a, b] in frame_nrs.array_windows() {
+            assert!(a <= b, "Frame numbers must be monotonic, got {frame_nrs:?}");
         }
     }
 

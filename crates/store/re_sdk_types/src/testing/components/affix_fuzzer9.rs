@@ -102,11 +102,11 @@ impl ::re_types_core::Loggable for AffixFuzzer9 {
                 .with_context("rerun.testing.components.AffixFuzzer9#single_string_required")?;
             let arrow_data_buf = arrow_data.values();
             let offsets = arrow_data.offsets();
-            ZipValidity::new_with_validity(offsets.windows(2), arrow_data.nulls())
+            ZipValidity::new_with_validity(offsets.array_windows(), arrow_data.nulls())
                 .map(|elem| {
-                    elem.map(|window| {
-                        let start = window[0] as usize;
-                        let end = window[1] as usize;
+                    elem.map(|&[start, end]| {
+                        let start = start as usize;
+                        let end = end as usize;
                         let len = end - start;
                         if arrow_data_buf.len() < end {
                             return Err(DeserializationError::offset_slice_oob(

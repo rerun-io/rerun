@@ -204,6 +204,7 @@ impl From<RepresentationIdentifier> for [u8; 2] {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::assert_matches;
 
     #[test]
     fn test_from_bytes() {
@@ -273,16 +274,13 @@ mod tests {
     #[test]
     fn test_invalid_first_byte() {
         let result = RepresentationIdentifier::from_bytes([0x01, 0x00]);
-        assert!(matches!(result, Err(DdsError::InvalidFirstByte(0x01))));
+        assert_matches!(result, Err(DdsError::InvalidFirstByte(0x01)));
     }
 
     #[test]
     fn test_unknown_identifier() {
         let result = RepresentationIdentifier::from_bytes([0x00, 0xFF]);
-        assert!(matches!(
-            result,
-            Err(DdsError::UnknownIdentifier([0x00, 0xFF]))
-        ));
+        assert_matches!(result, Err(DdsError::UnknownIdentifier([0x00, 0xFF])));
     }
 
     #[test]

@@ -1,6 +1,7 @@
 // https://github.com/rust-lang/rust-clippy/issues/10011
 #![cfg(test)]
 
+use std::assert_matches;
 use std::sync::Arc;
 
 use re_chunk::{Chunk, ChunkId, RowId, TimelineName};
@@ -293,10 +294,10 @@ fn write_errors() -> anyhow::Result<()> {
             )
             .build()?;
 
-        assert!(matches!(
+        assert_matches!(
             store.insert_chunk(&Arc::new(chunk)),
-            Err(ChunkStoreError::UnsortedChunk),
-        ));
+            Err(ChunkStoreError::UnsortedChunk)
+        );
 
         Ok(())
     }

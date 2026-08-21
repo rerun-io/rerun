@@ -273,6 +273,7 @@ impl<'a> RvlDecoder<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::assert_matches;
 
     #[test]
     fn detects_metadata() {
@@ -314,10 +315,10 @@ mod tests {
         // An absurd width must be rejected.
         let mut absurd = data.clone();
         absurd[resolution_offset..resolution_offset + 4].copy_from_slice(&u32::MAX.to_le_bytes());
-        assert!(matches!(
+        assert_matches!(
             RosRvlMetadata::parse(&absurd),
             Err(RvlDecodeError::ResolutionTooLarge { .. })
-        ));
+        );
 
         // A large-but-sane single axis is fine — the limit is on the total pixel count.
         // (The ROS codec stores rows/columns as uint32, so axes may exceed u16.)

@@ -470,6 +470,7 @@ fn channel_to_static(channel: &Channel<'_>) -> Channel<'static> {
 
 #[cfg(test)]
 mod tests {
+    use std::assert_matches;
     use std::io;
 
     use super::*;
@@ -734,7 +735,7 @@ mod tests {
     fn invalid_start_magic_returns_error() {
         let err = read_or_reconstruct_summary(b"not an mcap file at all", false)
             .expect_err("invalid start magic must fail");
-        assert!(matches!(err, Error::MissingStartMagic));
+        assert_matches!(err, Error::MissingStartMagic);
     }
 
     #[test]

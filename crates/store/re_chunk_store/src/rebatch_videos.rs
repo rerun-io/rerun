@@ -634,7 +634,9 @@ fn split_into_gop_groups<'a>(
     }
 
     std::iter::chain(
-        split_points.windows(2).map(|w| &sample_index[w[0]..w[1]]),
+        split_points
+            .array_windows()
+            .map(|&[a, b]| &sample_index[a..b]),
         std::iter::once(&sample_index[*split_points.last().unwrap_or(&0)..]),
     )
     .filter(|group| !group.is_empty())

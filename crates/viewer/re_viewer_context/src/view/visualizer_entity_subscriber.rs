@@ -403,6 +403,7 @@ mod tests {
     use re_log_types::{example_components::MyPoint, example_components::MyPoints};
     use re_sdk_types::ComponentDescriptor;
     use re_types_core::Loggable as _;
+    use std::assert_matches;
 
     const BUFFER_CTYPE: &str = "test.components.Buffer";
     const FORMAT_CTYPE: &str = "test.components.Format";
@@ -571,10 +572,10 @@ mod tests {
 
         let m = expect_buffer_and_format_visualizable(&sub, &entity);
         assert_eq!(m.buffer_matches.len(), 1);
-        assert!(matches!(
+        assert_matches!(
             m.buffer_matches.get(&"buf".into()),
             Some(DatatypeMatch::NativeSemantics { .. })
-        ));
+        );
         assert!(m.format_matches.contains(&ComponentIdentifier::from("fmt")));
     }
 
@@ -626,10 +627,10 @@ mod tests {
         sub.on_events(&[schema_addition_event(&store_id, &entity, &columns)]);
 
         let m = expect_buffer_and_format_visualizable(&sub, &entity);
-        assert!(matches!(
+        assert_matches!(
             m.buffer_matches.get(&"buf".into()),
             Some(DatatypeMatch::PhysicalDatatypeOnly { .. })
-        ));
+        );
     }
 
     #[test]
@@ -704,14 +705,14 @@ mod tests {
         // Both buffer matches should be visible.
         let m = expect_buffer_and_format_visualizable(&sub, &entity);
         assert_eq!(m.buffer_matches.len(), 2);
-        assert!(matches!(
+        assert_matches!(
             m.buffer_matches.get(&"buf1".into()),
             Some(DatatypeMatch::NativeSemantics { .. })
-        ));
-        assert!(matches!(
+        );
+        assert_matches!(
             m.buffer_matches.get(&"buf2".into()),
             Some(DatatypeMatch::PhysicalDatatypeOnly { .. })
-        ));
+        );
     }
 
     #[test]
@@ -753,14 +754,14 @@ mod tests {
         // Both buffers and both formats should be tracked in a single entry.
         let m = expect_buffer_and_format_visualizable(&sub, &entity);
         assert_eq!(m.buffer_matches.len(), 2);
-        assert!(matches!(
+        assert_matches!(
             m.buffer_matches.get(&"buf1".into()),
             Some(DatatypeMatch::NativeSemantics { .. })
-        ));
-        assert!(matches!(
+        );
+        assert_matches!(
             m.buffer_matches.get(&"buf2".into()),
             Some(DatatypeMatch::PhysicalDatatypeOnly { .. })
-        ));
+        );
         assert!(
             m.format_matches
                 .contains(&ComponentIdentifier::from("fmt1"))

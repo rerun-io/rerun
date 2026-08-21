@@ -14,6 +14,7 @@ use hdf5_pure::{
     AttrValue, CharacterSet, CompoundTypeBuilder, Datatype, FileBuilder, StringPadding,
 };
 use itertools::Itertools as _;
+use std::assert_matches;
 
 use re_chunk::{Chunk, EntityPath};
 use re_hdf5::{DatasetDtype, Hdf5Config, Hdf5Error, IndexColumn, IndexType, TimeUnit};
@@ -586,7 +587,7 @@ fn root_group_scopes_to_subtree() {
     let err = re_hdf5::load_hdf5(&path, &Hdf5Config::default())
         .err()
         .unwrap();
-    assert!(matches!(err, Hdf5Error::RowAlignment { .. }), "{err}");
+    assert_matches!(err, Hdf5Error::RowAlignment { .. }, "{err}");
 
     // Scoped to one episode it loads, with the index resolved *relative* to
     // the root group and entity paths relative to it as well.
@@ -661,20 +662,20 @@ fn root_group_validation_errors() {
     let err = re_hdf5::validate_layout(&path, &with_root("/nope"))
         .err()
         .unwrap();
-    assert!(matches!(err, Hdf5Error::RootGroupNotFound { .. }), "{err}");
+    assert_matches!(err, Hdf5Error::RootGroupNotFound { .. }, "{err}");
     assert!(err.is_config_error());
 
     let err = re_hdf5::validate_layout(&path, &with_root("/demo_0/t"))
         .err()
         .unwrap();
-    assert!(matches!(err, Hdf5Error::RootGroupNotAGroup { .. }), "{err}");
+    assert_matches!(err, Hdf5Error::RootGroupNotAGroup { .. }, "{err}");
     assert!(err.is_config_error());
 
     // An explicit `/` root group behaves exactly like `None`.
     let err = re_hdf5::validate_layout(&path, &with_root("/"))
         .err()
         .unwrap();
-    assert!(matches!(err, Hdf5Error::RowAlignment { .. }), "{err}");
+    assert_matches!(err, Hdf5Error::RowAlignment { .. }, "{err}");
 }
 
 // ---------------------------------------------------------------------------
@@ -692,7 +693,7 @@ fn misaligned_datasets_error_and_ignore_resolves() {
     let err = re_hdf5::load_hdf5(&path, &Hdf5Config::default())
         .err()
         .unwrap();
-    assert!(matches!(err, Hdf5Error::RowAlignment { .. }), "{err}");
+    assert_matches!(err, Hdf5Error::RowAlignment { .. }, "{err}");
     assert!(err.is_config_error());
     assert!(err.to_string().contains("/b (shape [6])"), "{err}");
 
@@ -700,7 +701,7 @@ fn misaligned_datasets_error_and_ignore_resolves() {
     let err = re_hdf5::validate_layout(&path, &Hdf5Config::default())
         .err()
         .unwrap();
-    assert!(matches!(err, Hdf5Error::RowAlignment { .. }), "{err}");
+    assert_matches!(err, Hdf5Error::RowAlignment { .. }, "{err}");
 
     // Explicitly ignoring the offender resolves the mismatch.
     let config = Hdf5Config {
@@ -1081,7 +1082,7 @@ fn validate_layout_index_errors() {
     let err = re_hdf5::validate_layout(&path, &config_with_index("/missing"))
         .err()
         .unwrap();
-    assert!(matches!(err, Hdf5Error::IndexNotFound { .. }), "{err}");
+    assert_matches!(err, Hdf5Error::IndexNotFound { .. }, "{err}");
     assert!(err.is_config_error());
 
     let err = re_hdf5::validate_layout(&path, &config_with_index("/matrix"))
@@ -1095,7 +1096,7 @@ fn validate_layout_index_errors() {
     let err = re_hdf5::validate_layout(&path, &config_with_index("/names"))
         .err()
         .unwrap();
-    assert!(matches!(err, Hdf5Error::IndexNotNumeric { .. }), "{err}");
+    assert_matches!(err, Hdf5Error::IndexNotNumeric { .. }, "{err}");
 
     assert!(re_hdf5::validate_layout(&path, &config_with_index("/value")).is_ok());
 }

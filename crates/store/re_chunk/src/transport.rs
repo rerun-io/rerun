@@ -295,6 +295,7 @@ impl Chunk {
 
 #[cfg(test)]
 mod tests {
+    use std::assert_matches;
     use std::sync::Arc;
 
     use arrow::array::{Float32Array, Int64Array, TimestampMicrosecondArray};
@@ -451,13 +452,12 @@ mod tests {
             None,
         )
         .unwrap_err();
-        assert!(matches!(
-            err,
-            ChunkError::DataframeToChunks(ref e)
-                if matches!(**e, re_sorbet::DataframeToChunksError::Sorbet(
-                    re_sorbet::SorbetError::IndexColumn(_)
-                ))
-        ));
+        assert_matches!(
+        err,
+        ChunkError::DataframeToChunks(ref e)
+            if matches!(**e, re_sorbet::DataframeToChunksError::Sorbet(
+                re_sorbet::SorbetError::IndexColumn(_)
+            )));
     }
 
     #[test]

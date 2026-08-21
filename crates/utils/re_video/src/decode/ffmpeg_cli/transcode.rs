@@ -220,6 +220,7 @@ fn build_transcode_command(
 
 /// A resolved ffmpeg encoder plus the args needed to drive it for B-frame-free,
 /// stream-friendly output.
+#[derive(Debug)]
 struct EncoderSpec {
     /// The ffmpeg `-c:v` encoder name.
     name: &'static str,
@@ -390,6 +391,7 @@ fn parse_encoder_names(stdout: &str) -> BTreeSet<String> {
 
 #[cfg(test)]
 mod tests {
+    use std::assert_matches;
     use std::path::Path;
     use std::time::Duration;
 
@@ -523,12 +525,12 @@ mod tests {
     #[test]
     fn no_encoder_available_is_an_error() {
         let err = resolve_encoder(&VideoCodec::VP9, HwAccel::Off, &available_set(&[]));
-        assert!(matches!(
+        assert_matches!(
             err,
             Err(super::Error::NoEncoderForCodec {
                 codec: VideoCodec::VP9
             })
-        ));
+        );
     }
 
     #[test]

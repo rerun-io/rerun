@@ -2,6 +2,7 @@
 
 mod views;
 
+use std::assert_matches;
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::fmt::Write as _;
 use std::iter;
@@ -1044,10 +1045,7 @@ fn code_for_enum(
     obj: &Object,
 ) -> String {
     assert!(obj.class.is_enum());
-    assert!(matches!(
-        obj.kind,
-        ObjectKind::Encoding | ObjectKind::Component
-    ));
+    assert_matches!(obj.kind, ObjectKind::Encoding | ObjectKind::Component);
 
     let Object {
         name: enum_name, ..

@@ -1,6 +1,9 @@
 use re_log_types::{EntityPath, Timeline, TimelineName};
 use re_types_core::{ComponentDescriptor, ComponentIdentifier};
 
+#[cfg(test)]
+use std::assert_matches;
+
 use crate::{ColumnDescriptor, ComponentColumnDescriptor, IndexColumnDescriptor};
 
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
@@ -203,14 +206,14 @@ fn parse_component_column_selector() {
 #[test]
 fn parse_component_column_selector_failures() {
     let column_name = "";
-    assert!(matches!(
+    assert_matches!(
         column_name.parse::<ComponentColumnSelector>(),
         Err(ColumnSelectorParseError::EmptyString)
-    ));
+    );
 
     let column_name = "/entity_path";
-    assert!(matches!(
+    assert_matches!(
         column_name.parse::<ComponentColumnSelector>(),
         Err(ColumnSelectorParseError::FormatError(..))
-    ));
+    );
 }

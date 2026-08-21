@@ -264,6 +264,7 @@ fn build_chunk_key_column(
 mod tests {
     use re_protos::cloud::v1alpha1::ext::{ChunkKey, ETag, RrdChunkLocation};
     use re_types_core::{LayerName, SegmentId};
+    use std::assert_matches;
 
     use super::HubRrdManifest;
     use crate::rrd::footer::RawRrdManifest;
@@ -410,6 +411,6 @@ mod tests {
                 "an in-memory manifest starts its first chunk at offset 0, which underflows \
                  when subtracting the message header",
             );
-        assert!(matches!(err, CodecError::FrameDecoding(_)));
+        assert_matches!(err, CodecError::FrameDecoding(_));
     }
 }

@@ -191,6 +191,7 @@ impl ValueLayout {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::assert_matches;
 
     #[test]
     fn resolves_relative_message_types_once() {
@@ -209,7 +210,7 @@ uint32 value
         let plan = MessageDecodePlan::from_schema(&schema).unwrap();
         let field = &plan.message(MessageDecodePlan::ROOT_ID).fields()[0];
 
-        assert!(matches!(field.value(), ValueLayout::Message(1)));
+        assert_matches!(field.value(), ValueLayout::Message(1));
     }
 
     #[test]
@@ -230,10 +231,7 @@ int8 ON=1
         let plan = MessageDecodePlan::from_schema(&schema).unwrap();
         let field = &plan.message(MessageDecodePlan::ROOT_ID).fields()[0];
 
-        assert!(matches!(
-            field.value(),
-            ValueLayout::BuiltIn(BuiltInType::Int8)
-        ));
+        assert_matches!(field.value(), ValueLayout::BuiltIn(BuiltInType::Int8));
     }
 
     #[test]

@@ -1,5 +1,6 @@
 mod util;
 
+use std::assert_matches;
 use std::sync::Arc;
 
 use arrow::{
@@ -260,7 +261,7 @@ fn execute_array_each() -> Result<(), Error> {
 fn execute_parse_error() {
     let result = ".poses[".parse::<Selector>();
 
-    assert!(matches!(result, Err(Error::Parse(_))));
+    assert_matches!(result, Err(Error::Parse(_)));
 }
 
 #[test]
@@ -332,7 +333,7 @@ fn execute_index_on_fixed_size_list() -> Result<(), Error> {
 
     let result = ".[0][1]".parse::<Selector>()?.execute_per_row(&array);
 
-    assert!(matches!(result, Err(Error::Runtime(..))));
+    assert_matches!(result, Err(Error::Runtime(..)));
 
     Ok(())
 }
@@ -398,11 +399,10 @@ fn execute_optional_each_suppressed() -> Result<(), Error> {
 
     // Without `?`, `[]` on a struct (non-list) inner type errors.
     let err = ".[]".parse::<Selector>()?.execute_per_row(&array);
-    assert!(matches!(
+    assert_matches!(
         err,
         Err(Error::Runtime(re_lenses_core::combinators::Error::Arrow(ref e)))
-            if matches!(e.as_ref(), ArrowError::InvalidArgumentError(..))
-    ));
+            if matches!(e.as_ref(), ArrowError::InvalidArgumentError(..)));
 
     // With `?`, the error is suppressed and we get `None`.
     let result = ".[]?".parse::<Selector>()?.execute_per_row(&array)?;

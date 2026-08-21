@@ -816,7 +816,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                     continue;
                 }
 
-                cc.times_unique = times.windows(2).all(|w| w[0] < w[1]);
+                cc.times_unique = times.array_windows().all(|[a, b]| a < b);
 
                 // Find the position of `times[0]` in `unique_index_values`,
                 // then verify that the chunk's rows align 1:1 with the next

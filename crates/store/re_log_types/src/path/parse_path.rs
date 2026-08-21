@@ -362,6 +362,7 @@ pub fn tokenize_by<'s>(path: &'s str, special_chars: &[u8]) -> Vec<&'s str> {
 
 #[cfg(test)]
 mod tests {
+    use std::assert_matches;
     use std::fmt::{Debug, Display};
     use std::str::FromStr;
 
@@ -420,14 +421,14 @@ mod tests {
         assert_eq!(parse("foo//bar"), Err(PathParseError::DoubleSlash));
 
         assert_eq!(parse("foo/bar/"), Err(PathParseError::TrailingSlash));
-        assert!(matches!(
+        assert_matches!(
             parse(r#"entity:component"#),
             Err(PathParseError::UnexpectedComponent { .. })
-        ));
-        assert!(matches!(
+        );
+        assert_matches!(
             parse(r#"entity[#123]"#),
             Err(PathParseError::UnexpectedInstance(Instance(123)))
-        ));
+        );
 
         assert_eq!(parse("hallådär"), Ok(entity_path_vec!("hallådär")));
     }
@@ -552,10 +553,10 @@ mod tests {
         parse_ok("/world/points", "/world/points", None, None);
 
         // Check that we catch invalid characters in identifiers/names:
-        assert!(matches!(
+        assert_matches!(
             DataPath::from_str(r#"hello there"#),
             Err(PathParseError::MissingEscape(' '))
-        ));
+        );
         assert!(DataPath::from_str(r#"hello_there"#).is_ok());
         assert!(DataPath::from_str(r#"hello-there"#).is_ok());
         assert!(DataPath::from_str(r#"hello.there"#).is_ok());

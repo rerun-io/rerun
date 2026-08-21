@@ -267,7 +267,7 @@ impl Chunk {
                     sorted[to] = times[from];
                 }
 
-                *is_sorted = sorted.windows(2).all(|times| times[0] <= times[1]);
+                *is_sorted = sorted.array_windows().all(|[a, b]| a <= b);
                 *times = ArrowScalarBuffer::from(sorted);
             }
         }
@@ -325,9 +325,7 @@ impl TimeColumn {
     #[inline]
     pub fn is_row_ids_sorted_uncached(&self) -> bool {
         re_tracing::profile_function!();
-        self.times_raw()
-            .windows(2)
-            .all(|times| times[0] <= times[1])
+        self.times_raw().array_windows().all(|[a, b]| a <= b)
     }
 }
 
@@ -693,8 +691,8 @@ mod tests {
 
         // RowIds must be sequential ascending.
         let row_ids: Vec<_> = chunk.row_ids().collect();
-        for w in row_ids.windows(2) {
-            assert!(w[0] < w[1], "row_ids must be strictly ascending");
+        for [a, b] in row_ids.array_windows() {
+            assert!(a < b, "row_ids must be strictly ascending");
         }
 
         Ok(())

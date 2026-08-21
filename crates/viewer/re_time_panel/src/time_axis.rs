@@ -73,13 +73,13 @@ fn gap_size_heuristic(time_type: TimeType, chunk_ranges: &[AbsoluteTimeRange]) -
 
     // Collect all gaps between consecutive chunk ranges that are larger than our minimum.
     let mut gap_sizes: Vec<u64> = chunk_ranges
-        .windows(2)
-        .inspect(|w| {
-            assert!(w[0].min <= w[0].max);
-            assert!(w[1].min <= w[1].max);
+        .array_windows()
+        .inspect(|[a, b]| {
+            assert!(a.min <= a.max);
+            assert!(b.min <= b.max);
         })
-        .inspect(|w| assert!(w[0].max < w[1].min, "{:?} < {:?}", w[0], w[1]))
-        .map(|w| w[0].max.as_i64().abs_diff(w[1].min.as_i64()))
+        .inspect(|[a, b]| assert!(a.max < b.min, "{a:?} < {b:?}"))
+        .map(|[a, b]| a.max.as_i64().abs_diff(b.min.as_i64()))
         .filter(|&gap| gap > min_gap_size)
         .collect();
     gap_sizes.sort_unstable();

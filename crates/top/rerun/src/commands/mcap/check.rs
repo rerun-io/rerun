@@ -194,7 +194,7 @@ impl TimeColumns {
         let perm = self.sorted_permutation();
         self.columns
             .values()
-            .all(|col| perm.windows(2).all(|w| col[w[0]] <= col[w[1]]))
+            .all(|col| perm.array_windows().all(|&[i, j]| col[i] <= col[j]))
     }
 }
 

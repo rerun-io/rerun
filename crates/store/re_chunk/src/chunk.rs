@@ -1183,7 +1183,7 @@ impl TimeColumn {
         let time_slice = times.as_ref();
 
         let is_sorted =
-            is_sorted.unwrap_or_else(|| time_slice.windows(2).all(|times| times[0] <= times[1]));
+            is_sorted.unwrap_or_else(|| time_slice.array_windows().all(|[a, b]| a <= b));
 
         let time_range = if is_sorted {
             // NOTE: The 'or' in 'map_or' is never hit, but better safe than sorry.
@@ -1977,9 +1977,7 @@ impl TimeColumn {
 
         let times = times.as_ref();
 
-        if cfg!(debug_assertions)
-            && *is_sorted != times.windows(2).all(|times| times[0] <= times[1])
-        {
+        if cfg!(debug_assertions) && *is_sorted != times.array_windows().all(|[a, b]| a <= b) {
             return Err(ChunkError::Malformed {
                 reason: format!(
                     "Time column is marked as {}sorted but isn't: {times:?}",

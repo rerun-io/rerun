@@ -134,6 +134,7 @@ fn has_parquet_extension(path: &std::path::Path) -> bool {
 #[cfg(test)]
 #[expect(clippy::disallowed_methods)]
 mod tests {
+    use std::assert_matches;
     use std::sync::Arc;
 
     use arrow::array::{Float64Array, RecordBatch};
@@ -166,7 +167,7 @@ mod tests {
         let settings = ImporterSettings::recommended("test");
 
         let result = loader.import_from_path(&settings, "data.csv".into(), tx);
-        assert!(matches!(result, Err(crate::ImporterError::Incompatible(_))));
+        assert_matches!(result, Err(crate::ImporterError::Incompatible(_)));
     }
 
     #[test]

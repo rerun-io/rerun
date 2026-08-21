@@ -141,6 +141,7 @@ impl<E: StorageEngineLike + Clone> QueryEngine<E> {
 
 #[cfg(test)]
 mod tests {
+    use std::assert_matches;
     use std::collections::BTreeSet;
     use std::sync::Arc;
 
@@ -293,8 +294,8 @@ mod tests {
         let selected = engine.selected_schema_for_query(&query);
         assert_eq!(selected.len(), 3);
 
-        assert!(matches!(selected[0], ColumnDescriptor::RowId(_)));
-        assert!(matches!(selected[1], ColumnDescriptor::Time(_)));
+        assert_matches!(selected[0], ColumnDescriptor::RowId(_));
+        assert_matches!(selected[1], ColumnDescriptor::Time(_));
         match &selected[2] {
             ColumnDescriptor::Component(c) => {
                 assert_eq!(c.store_datatype, arrow::datatypes::DataType::Null);

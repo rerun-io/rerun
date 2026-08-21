@@ -563,6 +563,7 @@ fn mint_row_ids(count: usize) -> arrow::array::FixedSizeBinaryArray {
 
 #[cfg(test)]
 mod tests {
+    use std::assert_matches;
     use std::sync::Arc;
 
     use arrow::array::{
@@ -713,7 +714,7 @@ mod tests {
         );
         let err = chunk_batches_from_dataframe_record_batch(&rb, &DataframeIndex::Auto, None)
             .unwrap_err();
-        assert!(matches!(err, DataframeToChunksError::AmbiguousStaticData));
+        assert_matches!(err, DataframeToChunksError::AmbiguousStaticData);
     }
 
     /// `Columns` promotes the named columns, with their time type taken from the Arrow dtype.

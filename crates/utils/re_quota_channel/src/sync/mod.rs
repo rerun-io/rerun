@@ -483,6 +483,7 @@ pub fn channel<T>(debug_name: impl Into<String>, capacity_bytes: u64) -> (Sender
 #[cfg(test)]
 mod tests {
     #![expect(clippy::disallowed_methods)] // It's only a test
+    use std::assert_matches;
 
     use super::*;
 
@@ -624,6 +625,6 @@ mod tests {
 
         let result = handle.join().unwrap();
 
-        assert!(matches!(result, Err(SendError(2))));
+        assert_matches!(result, Err(SendError(2)));
     }
 }

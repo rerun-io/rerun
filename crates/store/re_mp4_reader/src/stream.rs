@@ -744,6 +744,7 @@ fn build_keyframe_chunk(
 mod tests {
     use re_chunk::EntityPath;
     use re_log_types::{TimeType, TimelineName};
+    use std::assert_matches;
 
     use super::{FragmentScanner, WithKeyframeMarker};
     use crate::Mp4Error;
@@ -764,7 +765,7 @@ mod tests {
             done: false,
         };
 
-        assert!(matches!(iter.next(), Some(Err(_))));
+        assert_matches!(iter.next(), Some(Err(_)));
         assert!(iter.next().is_none(), "no marker chunk after an error");
     }
 

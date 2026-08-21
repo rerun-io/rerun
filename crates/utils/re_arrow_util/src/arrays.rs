@@ -399,8 +399,8 @@ where
         let starts_at_zero = || indices[0] == O::Native::ZERO;
         let is_consecutive = || {
             indices
-                .windows(2)
-                .all(|values| values[1] == values[0] + O::Native::ONE)
+                .array_windows()
+                .all(|&[a, b]| b == a + O::Native::ONE)
         };
 
         if starts_at_zero() && is_consecutive() {

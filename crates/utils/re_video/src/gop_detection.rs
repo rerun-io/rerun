@@ -282,16 +282,17 @@ fn rvl_meta(sample_data: &[u8]) -> Result<ImageMeta, ImageSizeError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::assert_matches;
 
     #[test]
     fn jpeg_rejects_segment_length_below_two() {
         let jpeg_with_zero_length_segment = [0xff, 0xd8, 0xff, 0xe0, 0, 1];
-        assert!(matches!(
+        assert_matches!(
             detect_gop_start(
                 &jpeg_with_zero_length_segment,
                 VideoCodec::ImageSequence(Some("image/jpeg".to_owned())),
             ),
             Err(DetectGopStartError::FailedToExtractEncodingDetails(_))
-        ));
+        );
     }
 }

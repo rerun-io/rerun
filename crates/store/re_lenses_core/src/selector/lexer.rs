@@ -296,6 +296,7 @@ impl<'a> Lexer<'a> {
 #[cfg(test)]
 mod test {
     use super::*;
+    use std::assert_matches;
 
     fn extract_inner(tokens: impl IntoIterator<Item = Token>) -> Vec<TokenType> {
         tokens.into_iter().map(|t| t.typ).collect()
@@ -475,12 +476,12 @@ mod test {
     #[test]
     fn unterminated_string() {
         let result = Lexer::new(r#""hello"#).scan_tokens();
-        assert!(matches!(result, Err(Error::UnterminatedString { .. })));
+        assert_matches!(result, Err(Error::UnterminatedString { .. }));
     }
 
     #[test]
     fn invalid_escape() {
         let result = Lexer::new(r#""he\xllo""#).scan_tokens();
-        assert!(matches!(result, Err(Error::InvalidEscape { ch: 'x', .. })));
+        assert_matches!(result, Err(Error::InvalidEscape { ch: 'x', .. }));
     }
 }

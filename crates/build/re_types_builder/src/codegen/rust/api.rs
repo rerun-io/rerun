@@ -1,3 +1,4 @@
+use std::assert_matches;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::Write as _;
 use std::str::FromStr as _;
@@ -786,7 +787,7 @@ fn quote_trait_impls_for_encoding_or_component(
         fqname, name, kind, ..
     } = obj;
 
-    assert!(matches!(kind, ObjectKind::Encoding | ObjectKind::Component));
+    assert_matches!(kind, ObjectKind::Encoding | ObjectKind::Component);
 
     let name = format_ident!("{name}");
 

@@ -151,6 +151,7 @@ impl TimestampCell {
 #[cfg(test)]
 mod tests {
     #![expect(clippy::cast_possible_wrap)] // ok in tests
+    use std::assert_matches;
 
     use re_log_types::TimeType;
 
@@ -161,7 +162,7 @@ mod tests {
         let ts: u64 = 1_672_531_200_000_000_000; // 2023-01-01
         let cell = TimestampCell::from_nanos_default(ts, TimeType::TimestampNs);
         assert_eq!(cell.timeline_name(), "timestamp");
-        assert!(matches!(cell.time.typ, TimeType::TimestampNs));
+        assert_matches!(cell.time.typ, TimeType::TimestampNs);
         assert_eq!(
             cell.time,
             TimeCell::from_timestamp_nanos_since_epoch(ts as i64)
@@ -169,7 +170,7 @@ mod tests {
 
         let cell = TimestampCell::from_nanos_default(ts, TimeType::DurationNs);
         assert_eq!(cell.timeline_name(), "timestamp");
-        assert!(matches!(cell.time.typ, TimeType::DurationNs));
+        assert_matches!(cell.time.typ, TimeType::DurationNs);
         assert_eq!(cell.time, TimeCell::from_duration_nanos(ts as i64));
     }
 
@@ -178,7 +179,7 @@ mod tests {
         let ts: u64 = 1_672_531_200_000_000_000;
         let cell = TimestampCell::from_nanos_ros2(ts, TimeType::TimestampNs);
         assert_eq!(cell.timeline_name(), "ros2_timestamp");
-        assert!(matches!(cell.time.typ, TimeType::TimestampNs));
+        assert_matches!(cell.time.typ, TimeType::TimestampNs);
     }
 
     #[test]

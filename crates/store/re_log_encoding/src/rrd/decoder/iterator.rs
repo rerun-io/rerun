@@ -128,6 +128,7 @@ impl<T: DecoderEntrypoint, R: std::io::BufRead> std::iter::Iterator for DecoderI
 #[cfg(all(test, feature = "encoder"))]
 mod tests {
     #![expect(unsafe_code, clippy::unwrap_used, clippy::undocumented_unsafe_blocks)] // tests
+    use std::assert_matches;
 
     use re_build_info::CrateVersion;
     use re_chunk::RowId;
@@ -352,12 +353,12 @@ mod tests {
         // ensure the test data is as we expect
         let orig_message_count = messages.len();
         assert_eq!(orig_message_count, 3);
-        assert!(matches!(messages[0], proto::log_msg::Msg::SetStoreInfo(..)));
-        assert!(matches!(messages[1], proto::log_msg::Msg::ArrowMsg(..)));
-        assert!(matches!(
+        assert_matches!(messages[0], proto::log_msg::Msg::SetStoreInfo(..));
+        assert_matches!(messages[1], proto::log_msg::Msg::ArrowMsg(..));
+        assert_matches!(
             messages[2],
             proto::log_msg::Msg::BlueprintActivationCommand(..)
-        ));
+        );
 
         // make out-of-order messages
         let mut out_of_order_messages = vec![messages[1].clone(), messages[2].clone()];
@@ -392,12 +393,9 @@ mod tests {
         // ensure the test data is as we expect
         let orig_message_count = messages.len();
         assert_eq!(orig_message_count, 3);
-        assert!(matches!(messages[0], LogMsg::SetStoreInfo { .. }));
-        assert!(matches!(messages[1], LogMsg::ArrowMsg { .. }));
-        assert!(matches!(
-            messages[2],
-            LogMsg::BlueprintActivationCommand { .. }
-        ));
+        assert_matches!(messages[0], LogMsg::SetStoreInfo { .. });
+        assert_matches!(messages[1], LogMsg::ArrowMsg { .. });
+        assert_matches!(messages[2], LogMsg::BlueprintActivationCommand { .. });
 
         let options = [
             EncodingOptions {

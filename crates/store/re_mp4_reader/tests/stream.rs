@@ -273,7 +273,7 @@ fn b_frames_are_transcoded_into_a_video_stream() {
         "transcoded sample count must match the source frame count"
     );
     assert!(
-        times.windows(2).all(|w| w[0] < w[1]),
+        times.array_windows().all(|[a, b]| a < b),
         "transcoded PTS must be strictly increasing (B-frames stripped): {times:?}"
     );
 
@@ -538,7 +538,7 @@ fn transcodes_across_codec_pairs() {
         let times = sample_times(&chunks);
         assert!(!times.is_empty(), "{label}: expected sample chunks");
         assert!(
-            times.windows(2).all(|w| w[0] < w[1]),
+            times.array_windows().all(|[a, b]| a < b),
             "{label}: transcoded PTS must be strictly increasing: {times:?}"
         );
         assert!(

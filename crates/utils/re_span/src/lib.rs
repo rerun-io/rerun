@@ -107,6 +107,14 @@ impl<Idx: Unsigned + Copy> From<Span<Idx>> for Range<Idx> {
     }
 }
 
+impl<Idx: Unsigned + Copy> From<Span<Idx>> for core::range::Range<Idx> {
+    #[inline]
+    fn from(value: Span<Idx>) -> Self {
+        let Range { start, end } = value.range();
+        Self { start, end }
+    }
+}
+
 /// span * scalar
 impl<Idx: Unsigned + Copy + Mul> Mul<Idx> for Span<Idx> {
     type Output = Self;

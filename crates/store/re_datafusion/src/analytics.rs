@@ -1986,6 +1986,7 @@ mod tests {
 
 #[cfg(test)]
 mod table_query_tests {
+    use std::assert_matches;
     use std::collections::HashSet;
 
     use re_protos::cloud::v1alpha1::ext::{LanceTable, ProviderDetails, SystemTable};
@@ -2281,10 +2282,7 @@ mod table_query_tests {
 
     #[test]
     fn table_kind_from_lance_provider() {
-        assert!(matches!(
-            TableKind::from(&lance_provider_details()),
-            TableKind::Lance
-        ));
+        assert_matches!(TableKind::from(&lance_provider_details()), TableKind::Lance);
     }
 
     #[test]
@@ -2292,7 +2290,7 @@ mod table_query_tests {
         let pd = ProviderDetails::SystemTable(SystemTable {
             kind: SystemTableKind::Entries,
         });
-        assert!(matches!(TableKind::from(&pd), TableKind::SystemEntries));
+        assert_matches!(TableKind::from(&pd), TableKind::SystemEntries);
     }
 
     #[test]
@@ -2300,7 +2298,7 @@ mod table_query_tests {
         let pd = ProviderDetails::SystemTable(SystemTable {
             kind: SystemTableKind::Namespaces,
         });
-        assert!(matches!(TableKind::from(&pd), TableKind::SystemNamespaces));
+        assert_matches!(TableKind::from(&pd), TableKind::SystemNamespaces);
     }
 
     #[test]
@@ -2308,7 +2306,7 @@ mod table_query_tests {
         let pd = ProviderDetails::SystemTable(SystemTable {
             kind: SystemTableKind::Unspecified,
         });
-        assert!(matches!(TableKind::from(&pd), TableKind::Unknown));
+        assert_matches!(TableKind::from(&pd), TableKind::Unknown);
     }
 
     // ---- record_* idempotence ----

@@ -269,8 +269,7 @@ mod tests {
             i64::MAX,
         ];
 
-        for w in ordered.windows(2) {
-            let (a, b) = (w[0], w[1]);
+        for &[a, b] in ordered.array_windows() {
             assert!(a < b);
             let a = NonMinI64::new(a).unwrap();
             let b = NonMinI64::new(b).unwrap();

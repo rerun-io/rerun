@@ -62,9 +62,9 @@ pub(crate) fn split_chunk(chunk: &Chunk, ratio: f64) -> Option<Vec<Chunk>> {
         .collect();
 
     let mut split_points = Vec::new();
-    for (i, window) in sorted.windows(2).enumerate() {
-        let heavier = window[0].bytes as f64;
-        let lighter = window[1].bytes.max(1) as f64;
+    for (i, [heavier, lighter]) in sorted.array_windows().enumerate() {
+        let heavier = heavier.bytes as f64;
+        let lighter = lighter.bytes.max(1) as f64;
         if heavier / lighter >= ratio {
             split_points.push(i + 1);
         }

@@ -613,6 +613,7 @@ mod tests {
     use re_log_types::StoreId;
     use re_log_types::example_components::{MyPoint, MyPoints};
     use re_log_types::external::re_tuid::Tuid;
+    use std::assert_matches;
 
     use crate::ChunkStoreConfig;
 
@@ -1234,7 +1235,7 @@ mod tests {
                 .expect("a physical chunk must always be tracked");
             assert_eq!(lineage.ref_count, 1, "a single physical reference");
             assert_eq!(lineage.descends_from_manifest, false);
-            assert!(matches!(lineage.lineage, ChunkDirectLineage::Volatile));
+            assert_matches!(lineage.lineage, ChunkDirectLineage::Volatile);
         }
         assert_eq!(true, store.is_root_chunk(&chunk.id()));
         assert_store_invariants(&store);
@@ -1427,10 +1428,7 @@ mod tests {
                 .expect("a manifest chunk must be tracked");
             assert_eq!(lineage.ref_count, 0, "no physical reference yet");
             assert_eq!(lineage.descends_from_manifest, true);
-            assert!(matches!(
-                lineage.lineage,
-                ChunkDirectLineage::RootFromManifest { .. }
-            ));
+            assert_matches!(lineage.lineage, ChunkDirectLineage::RootFromManifest { .. });
         }
         assert_eq!(
             false,

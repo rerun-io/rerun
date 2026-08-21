@@ -267,7 +267,7 @@ fn build_timeline(
         let timeline_name = re_chunk::TimelineName::try_new(leaf)
             .map_err(|source| Hdf5Error::invalid_timeline_name(leaf, source))?;
         let times = convert::read_index_to_ns(file, path, index.index_type)?;
-        let is_sorted = times.windows(2).all(|times| times[0] <= times[1]);
+        let is_sorted = times.array_windows().all(|[a, b]| a <= b);
         Ok(Some(PlannedTimeline {
             timeline: Timeline::new(timeline_name, time_type),
             times,

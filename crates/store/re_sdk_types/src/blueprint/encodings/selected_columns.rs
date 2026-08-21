@@ -259,14 +259,14 @@ impl ::re_types_core::Loggable for SelectedColumns {
                                     let arrow_data_inner_buf = arrow_data_inner.values();
                                     let offsets = arrow_data_inner.offsets();
                                     ZipValidity::new_with_validity(
-                                            offsets.windows(2),
+                                            offsets.array_windows(),
                                             arrow_data_inner.nulls(),
                                         )
                                         .map(|elem| {
                                             elem
-                                                .map(|window| {
-                                                    let start = window[0] as usize;
-                                                    let end = window[1] as usize;
+                                                .map(|&[start, end]| {
+                                                    let start = start as usize;
+                                                    let end = end as usize;
                                                     let len = end - start;
                                                     if arrow_data_inner_buf.len() < end {
                                                         return Err(
@@ -301,14 +301,14 @@ impl ::re_types_core::Loggable for SelectedColumns {
                             };
                             let offsets = arrow_data.offsets();
                             ZipValidity::new_with_validity(
-                                    offsets.windows(2),
+                                    offsets.array_windows(),
                                     arrow_data.nulls(),
                                 )
                                 .map(|elem| {
                                     elem
-                                        .map(|window| {
-                                            let start = window[0] as usize;
-                                            let end = window[1] as usize;
+                                        .map(|&[start, end]| {
+                                            let start = start as usize;
+                                            let end = end as usize;
                                             if arrow_data_inner.len() < end {
                                                 return Err(
                                                     DeserializationError::offset_slice_oob(
@@ -377,14 +377,14 @@ impl ::re_types_core::Loggable for SelectedColumns {
                             };
                             let offsets = arrow_data.offsets();
                             ZipValidity::new_with_validity(
-                                    offsets.windows(2),
+                                    offsets.array_windows(),
                                     arrow_data.nulls(),
                                 )
                                 .map(|elem| {
                                     elem
-                                        .map(|window| {
-                                            let start = window[0] as usize;
-                                            let end = window[1] as usize;
+                                        .map(|&[start, end]| {
+                                            let start = start as usize;
+                                            let end = end as usize;
                                             if arrow_data_inner.len() < end {
                                                 return Err(
                                                     DeserializationError::offset_slice_oob(

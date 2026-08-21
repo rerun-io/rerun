@@ -538,13 +538,13 @@ fn quote_arrow_field_deserializer(
                     let arrow_data_buf = arrow_data.values();
                     let offsets = arrow_data.offsets();
 
-                    ZipValidity::new_with_validity(offsets.windows(2), arrow_data.nulls())
+                    ZipValidity::new_with_validity(offsets.array_windows(), arrow_data.nulls())
                         .map(|elem| {
-                            elem.map(|window| {
+                            elem.map(|&[start, end]| {
                                 // NOTE: Do _not_ use `Buffer::sliced`, it panics on malformed inputs.
 
-                                let start = window[0].as_usize();
-                                let end = window[1].as_usize();
+                                let start = start.as_usize();
+                                let end = end.as_usize();
                                 let len = end - start;
 
                                 // NOTE: It is absolutely crucial we explicitly handle the
@@ -605,14 +605,14 @@ fn quote_arrow_field_deserializer(
 
                 let offsets = #data_src.offsets();
                 ZipValidity::new_with_validity(
-                    offsets.windows(2),
+                    offsets.array_windows(),
                     #data_src.nulls(),
                 )
-                .map(|elem| elem.map(|window| {
+                .map(|elem| elem.map(|&[start, end]| {
                         // NOTE: Do _not_ use `Buffer::sliced`, it panics on malformed inputs.
 
-                        let start = window[0] as usize;
-                        let end = window[1] as usize;
+                        let start = start as usize;
+                        let end = end as usize;
                         let len = end - start;
 
                         // NOTE: It is absolutely crucial we explicitly handle the
@@ -857,14 +857,14 @@ fn quote_arrow_field_deserializer(
 
                     let offsets = #data_src.offsets();
                     ZipValidity::new_with_validity(
-                        offsets.windows(2),
+                        offsets.array_windows(),
                         #data_src.nulls(),
                     )
-                    .map(|elem| elem.map(|window| {
+                    .map(|elem| elem.map(|&[start, end]| {
                             // NOTE: Do _not_ use `Buffer::sliced`, it panics on malformed inputs.
 
-                            let start = window[0] as usize;
-                            let end = window[1] as usize;
+                            let start = start as usize;
+                            let end = end as usize;
 
                             // NOTE: It is absolutely crucial we explicitly handle the
                             // boundchecks manually first, otherwise rustc completely chokes

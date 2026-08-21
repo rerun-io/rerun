@@ -382,6 +382,7 @@ impl TimeColumn {
 #[cfg(test)]
 mod tests {
     use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoint64, MyPoints};
+    use std::assert_matches;
 
     use super::*;
     use crate::{Chunk, RowId, Timeline};
@@ -954,14 +955,14 @@ mod tests {
                 )
                 .build()?;
 
-            assert!(matches!(
+            assert_matches!(
                 chunk1.concatenated_unsorted(&chunk2),
                 Err(ChunkError::Malformed { .. })
-            ));
-            assert!(matches!(
+            );
+            assert_matches!(
                 chunk2.concatenated_unsorted(&chunk1),
                 Err(ChunkError::Malformed { .. })
-            ));
+            );
         }
 
         // Different timelines
@@ -993,14 +994,14 @@ mod tests {
                 )
                 .build()?;
 
-            assert!(matches!(
+            assert_matches!(
                 chunk1.concatenated_unsorted(&chunk2),
                 Err(ChunkError::Malformed { .. })
-            ));
-            assert!(matches!(
+            );
+            assert_matches!(
                 chunk2.concatenated_unsorted(&chunk1),
                 Err(ChunkError::Malformed { .. })
-            ));
+            );
         }
 
         // Different datatypes
@@ -1038,14 +1039,14 @@ mod tests {
                 )
                 .build()?;
 
-            assert!(matches!(
+            assert_matches!(
                 chunk1.concatenated_unsorted(&chunk2),
                 Err(ChunkError::Malformed { .. })
-            ));
-            assert!(matches!(
+            );
+            assert_matches!(
                 chunk2.concatenated_unsorted(&chunk1),
                 Err(ChunkError::Malformed { .. })
-            ));
+            );
         }
 
         Ok(())
