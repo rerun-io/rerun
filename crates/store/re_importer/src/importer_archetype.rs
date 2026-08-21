@@ -118,16 +118,31 @@ impl Importer for ArchetypeImporter {
         // backpressure actually limits how much is held in memory at once.
         let chunks_sent = if crate::SUPPORTED_IMAGE_EXTENSIONS.contains(&extension.as_str()) {
             re_log::debug!(?filepath, importer = self.name(), "Loading image…",);
-            load_image(&filepath, timepoint, entity_path, contents.into_owned())
-                .map(|chunks| self.send_chunks(&tx, &store_id, chunks))
+            cfg_select! {
+                feature = "image" => {
+                    load_image(&filepath, timepoint, entity_path, contents.into_owned())
+                        .map(|chunks| self.send_chunks(&tx, &store_id, chunks))
+                }
+                _ => Err(crate::ImporterError::Incompatible(filepath.clone())),
+            }
         } else if crate::SUPPORTED_DEPTH_IMAGE_EXTENSIONS.contains(&extension.as_str()) {
             re_log::debug!(?filepath, importer = self.name(), "Loading depth image…",);
-            load_depth_image(&filepath, timepoint, entity_path, contents.into_owned())
-                .map(|chunks| self.send_chunks(&tx, &store_id, chunks))
+            cfg_select! {
+                feature = "image" => {
+                    load_depth_image(&filepath, timepoint, entity_path, contents.into_owned())
+                        .map(|chunks| self.send_chunks(&tx, &store_id, chunks))
+                }
+                _ => Err(crate::ImporterError::Incompatible(filepath.clone())),
+            }
         } else if crate::SUPPORTED_VIDEO_EXTENSIONS.contains(&extension.as_str()) {
             re_log::debug!(?filepath, importer = self.name(), "Loading video…",);
-            load_video(&filepath, timepoint, &entity_path, contents.into_owned())
-                .map(|chunks| self.send_chunks(&tx, &store_id, chunks))
+            cfg_select! {
+                feature = "video" => {
+                    load_video(&filepath, timepoint, &entity_path, contents.into_owned())
+                        .map(|chunks| self.send_chunks(&tx, &store_id, chunks))
+                }
+                _ => Err(crate::ImporterError::Incompatible(filepath.clone())),
+            }
         } else if crate::SUPPORTED_MESH_EXTENSIONS.contains(&extension.as_str()) {
             re_log::debug!(?filepath, importer = self.name(), "Loading 3D model…",);
             load_mesh(
@@ -188,6 +203,7 @@ impl ArchetypeImporter {
 
 // ---
 
+#[cfg(feature = "image")]
 fn load_image(
     filepath: &std::path::Path,
     timepoint: TimePoint,
@@ -214,6 +230,7 @@ fn load_image(
     Ok(rows.into_iter())
 }
 
+#[cfg(feature = "image")]
 fn load_depth_image(
     filepath: &std::path::Path,
     timepoint: TimePoint,
@@ -243,6 +260,7 @@ fn load_depth_image(
     Ok(rows.into_iter())
 }
 
+#[cfg(feature = "video")]
 fn load_video(
     filepath: &std::path::Path,
     mut timepoint: TimePoint,

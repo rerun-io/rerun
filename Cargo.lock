@@ -9412,6 +9412,7 @@ dependencies = [
  "anyhow",
  "arrow",
  "crossbeam",
+ "document-features",
  "image",
  "indexmap 2.14.0",
  "insta",
@@ -9508,6 +9509,7 @@ name = "re_lenses"
 version = "0.37.0-alpha.1+dev"
 dependencies = [
  "arrow",
+ "document-features",
  "insta",
  "itertools 0.15.0",
  "re_arrow_util",

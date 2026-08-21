@@ -20,7 +20,61 @@ all-features = true
 
 
 [features]
-default = []
+default = ["image", "video", "mcap", "lerobot", "parquet", "urdf"]
+
+## Every importer feature.
+all = ["image", "lerobot", "mcap", "parquet", "urdf", "video"]
+
+## Import of common image formats (PNG, JPEG, …) as `EncodedImage`/`EncodedDepthImage`.
+image = ["dep:image", "re_sdk_types/image"]
+
+## MCAP file import. Also pulls in `urdf` since `robot_description` topics are
+## decoded via the URDF importer's XML parser.
+mcap = [
+    "dep:mcap",
+    "dep:memmap2",
+    "dep:re_mcap",
+    "dep:re_lenses",
+    "urdf",
+]
+
+## LeRobot dataset import. Pulls in `parquet`/`arrow` transitively via `re_lerobot`
+## regardless of whether the `parquet` feature is also on.
+lerobot = ["dep:re_lerobot"]
+
+## Parquet file import.
+parquet = ["dep:parquet", "dep:re_parquet"]
+
+## URDF file import.
+urdf = ["dep:urdf-rs", "dep:ureq"]
+
+## Import of MP4 video as `AssetVideo`.
+video = ["dep:re_mp4_reader", "re_sdk_types/video"]
+
+
+[[test]]
+name = "test_lerobot_importer"
+path = "tests/test_lerobot_importer.rs"
+required-features = ["lerobot"]
+
+[[test]]
+name = "test_mcap_importer"
+path = "tests/test_mcap_importer.rs"
+required-features = ["mcap"]
+
+[[test]]
+name = "test_mp4_importer"
+path = "tests/test_mp4_importer.rs"
+required-features = ["video"]
+
+[[test]]
+name = "test_ply_importer"
+path = "tests/test_ply_importer.rs"
+
+[[test]]
+name = "test_urdf_importer"
+path = "tests/test_urdf_importer.rs"
+required-features = ["urdf"]
 
 
 [dependencies]
@@ -28,38 +82,40 @@ re_arrow_util.workspace = true
 re_chunk.workspace = true
 re_error.workspace = true
 re_format.workspace = true
-re_lenses.workspace = true
+re_lenses = { workspace = true, features = ["semantic"], optional = true }
 re_log_channel.workspace = true
 re_log_encoding = { workspace = true, features = ["decoder"] }
 re_log_types.workspace = true
 re_log.workspace = true
-re_mcap.workspace = true
-re_mp4_reader.workspace = true
+re_mcap = { workspace = true, optional = true }
+re_mp4_reader = { workspace = true, optional = true }
 re_quota_channel.workspace = true
-re_sdk_types = { workspace = true, features = ["ecolor", "glam", "image", "video"] }
+re_sdk_types = { workspace = true, features = ["ecolor", "glam"] }
 re_tracing.workspace = true
 
 ahash.workspace = true
 anyhow.workspace = true
 arrow.workspace = true
-memmap2.workspace = true
+document-features.workspace = true
+memmap2 = { workspace = true, optional = true }
 crossbeam.workspace = true
-image.workspace = true
+image = { workspace = true, optional = true }
 indexmap.workspace = true
 itertools.workspace = true
-mcap.workspace = true
+mcap = { workspace = true, optional = true }
 parking_lot.workspace = true
 rayon.workspace = true
 serde.workspace = true
 thiserror.workspace = true
-urdf-rs.workspace = true
+urdf-rs = { workspace = true, optional = true }
 walkdir.workspace = true
 
 [target.'cfg(not(any(target_arch = "wasm32")))'.dependencies]
-parquet = { workspace = true, features = ["arrow", "snap", "zstd"] }
-re_lerobot.workspace = true
-re_parquet.workspace = true
-ureq.workspace = true
+parquet = { workspace = true, features = ["arrow", "snap", "zstd"], optional = true }
+re_lerobot = { workspace = true, optional = true }
+re_parquet = { workspace = true, optional = true }
+# Used by importer_urdf for http(s):// mesh resource references.
+ureq = { workspace = true, optional = true }
 
 [dev-dependencies]
 re_chunk_store.workspace = true
