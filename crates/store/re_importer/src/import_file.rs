@@ -41,10 +41,10 @@ pub fn import_from_path(
         .clone()
         .or_else(|| application_id_from_path(path));
     // When importing a LeRobot dataset, avoid sending a `SetStoreInfo` message since the LeRobot importer handles this automatically.
-    #[cfg(feature = "lerobot")]
-    let force_store_info = !crate::is_lerobot_dataset(path);
-    #[cfg(not(feature = "lerobot"))]
-    let force_store_info = true;
+    let force_store_info = cfg_select! {
+        feature = "lerobot" => !crate::is_lerobot_dataset(path),
+        _ => true,
+    };
 
     let settings = crate::ImporterSettings {
         application_id,

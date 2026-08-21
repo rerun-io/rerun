@@ -254,15 +254,14 @@ impl OptimizeCommand {
 
         let split_size_ratio = split_size_ratio.or(profile.split_size_ratio);
 
-        #[cfg(feature = "video")]
-        let is_start_of_gop: Option<IsStartOfGop> = {
-            let is_start_of_gop: IsStartOfGop = std::sync::Arc::new(|data, codec| {
-                re_video::is_start_of_gop(data, codec.into()).map_err(|err| anyhow::anyhow!(err))
-            });
-            gop_batching.then_some(is_start_of_gop)
+        let is_start_of_gop: Option<IsStartOfGop> = cfg_select! {
+            feature = "video" => gop_batching.then(|| -> IsStartOfGop {
+                std::sync::Arc::new(|data, codec| {
+                    re_video::is_start_of_gop(data, codec.into()).map_err(|err| anyhow::anyhow!(err))
+                })
+            }),
+            _ => None,
         };
-        #[cfg(not(feature = "video"))]
-        let is_start_of_gop: Option<IsStartOfGop> = None;
 
         let compaction_options = CompactionOptions {
             config: store_config.clone(),

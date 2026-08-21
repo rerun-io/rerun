@@ -1,6 +1,10 @@
 #![allow(clippy::iter_over_hash_type)]
 
 //! Handles importing of Rerun data from file using importer plugins.
+//!
+//! ## Feature flags
+#![doc = document_features::document_features!()]
+//!
 
 #[cfg(feature = "mcap")]
 use std::collections::BTreeSet;
@@ -13,7 +17,6 @@ use re_log_types::{ArrowMsg, EntityPath, LogMsg, RecordingId, StoreId, TimePoint
 // ----------------------------------------------------------------------------
 
 mod import_file;
-#[cfg(feature = "archetype")]
 mod importer_archetype;
 mod importer_directory;
 mod importer_rrd;
@@ -34,11 +37,14 @@ mod importer_external;
 pub mod importer_parquet;
 
 pub use self::import_file::{import_from_file_contents, prepare_store_info};
-#[cfg(feature = "archetype")]
 pub use self::importer_archetype::ArchetypeImporter;
 pub use self::importer_directory::DirectoryImporter;
+#[cfg(all(feature = "lerobot", not(target_arch = "wasm32")))]
+pub use self::importer_lerobot::LeRobotDatasetImporter;
 #[cfg(feature = "mcap")]
 pub use self::importer_mcap::McapImporter;
+#[cfg(all(feature = "parquet", not(target_arch = "wasm32")))]
+pub use self::importer_parquet::ParquetImporter;
 pub use self::importer_rrd::RrdImporter;
 #[cfg(feature = "urdf")]
 pub use self::importer_urdf::{UrdfImporter, UrdfTree, joint_transform as urdf_joint_transform};
@@ -50,10 +56,6 @@ pub use self::{
         iter_external_importers,
     },
 };
-#[cfg(all(feature = "lerobot", not(target_arch = "wasm32")))]
-pub use self::importer_lerobot::LeRobotDatasetImporter;
-#[cfg(all(feature = "parquet", not(target_arch = "wasm32")))]
-pub use self::importer_parquet::ParquetImporter;
 
 pub mod external {
     #[cfg(feature = "urdf")]
@@ -417,7 +419,7 @@ pub enum ImporterError {
     #[error(transparent)]
     Mcap(#[from] ::mcap::McapError),
 
-    #[cfg(feature = "archetype")]
+    #[cfg(feature = "video")]
     #[error("Failed to import mp4 video: {source}\nFile path: {path:?}")]
     Mp4 {
         path: std::path::PathBuf,
@@ -441,7 +443,7 @@ impl ImporterError {
     pub fn with_path(self, path: &std::path::Path) -> Self {
         match self {
             // These already name the file.
-            #[cfg(feature = "archetype")]
+            #[cfg(feature = "video")]
             Self::Mp4 { .. } => self,
             Self::Incompatible { .. } | Self::File { .. } => self,
             err => Self::File {
@@ -527,7 +529,6 @@ impl ImportedData {
 static BUILTIN_IMPORTERS: LazyLock<Vec<Arc<dyn Importer>>> = LazyLock::new(|| {
     vec![
         Arc::new(RrdImporter) as Arc<dyn Importer>,
-        #[cfg(feature = "archetype")]
         Arc::new(ArchetypeImporter),
         Arc::new(DirectoryImporter),
         #[cfg(feature = "mcap")]
