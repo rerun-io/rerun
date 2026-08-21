@@ -70,6 +70,69 @@ impl ButtonVisuals {
     }
 }
 
+/// Colors for a single text edit [`crate::text_edit::TextEditVariant`].
+///
+/// This mirrors [`ButtonVisuals`], but a text edit is focused instead of pressed,
+/// and it has a placeholder text and a per-state outline.
+#[derive(Debug)]
+pub struct TextEditVisuals {
+    /// Background fill when resting.
+    pub fill: Color32,
+
+    /// Background fill when hovered.
+    pub fill_hovered: Color32,
+
+    /// Background fill while the field has keyboard focus.
+    pub fill_focused: Color32,
+
+    /// Color of the text the user types.
+    pub text: Color32,
+
+    /// Color of the hint text shown while the field is empty.
+    pub text_placeholder: Color32,
+
+    /// Outline when resting. [`Stroke::NONE`] when the variant has no outline.
+    pub stroke: Stroke,
+
+    /// Outline when hovered. Falls back to `stroke`.
+    pub stroke_hovered: Stroke,
+
+    /// Outline while the field has keyboard focus. Falls back to `stroke`.
+    pub stroke_focused: Stroke,
+}
+
+impl TextEditVisuals {
+    fn try_get(color_table: &ColorTable, ron: &ron::Value, name: &str) -> anyhow::Result<Self> {
+        let value = ron.get(name)?;
+
+        let stroke = match value.get("stroke") {
+            Ok(value) => stroke_from_value(color_table, value)?,
+            Err(_) => Stroke::NONE,
+        };
+
+        Ok(Self {
+            fill: color_from_value(color_table, value.get("fill")?)?,
+            fill_hovered: color_from_value(color_table, value.get("fill_hovered")?)?,
+            fill_focused: color_from_value(color_table, value.get("fill_focused")?)?,
+            text: color_from_value(color_table, value.get("text")?)?,
+            text_placeholder: color_from_value(color_table, value.get("text_placeholder")?)?,
+            stroke,
+            stroke_hovered: match value.get("stroke_hovered") {
+                Ok(value) => stroke_from_value(color_table, value)?,
+                Err(_) => stroke,
+            },
+            stroke_focused: match value.get("stroke_focused") {
+                Ok(value) => stroke_from_value(color_table, value)?,
+                Err(_) => stroke,
+            },
+        })
+    }
+
+    fn get(color_table: &ColorTable, ron: &ron::Value, name: &str) -> Self {
+        Self::try_get(color_table, ron, name).expect("Failed to parse TextEditVisuals")
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum WindowFrameConfig {
     Native,
@@ -265,6 +328,9 @@ pub struct DesignTokens {
     /// badge, the play button, etc. Provides hover/press states so selected
     /// widgets can give color-only interaction feedback (no growth).
     pub selection: ButtonVisuals,
+
+    pub text_edit_outlined: TextEditVisuals,
+    pub text_edit_filled: TextEditVisuals,
 
     pub density_graph_selected: Color32,
     pub density_graph_unselected: Color32,
@@ -489,6 +555,9 @@ impl DesignTokens {
             button_opened: ButtonVisuals::get(&colors, &theme_value, "button_opened"),
 
             selection: ButtonVisuals::get(&colors, &theme_value, "selection"),
+
+            text_edit_outlined: TextEditVisuals::get(&colors, &theme_value, "text_edit_outlined"),
+            text_edit_filled: TextEditVisuals::get(&colors, &theme_value, "text_edit_filled"),
 
             popup_shadow_color: get_color("popup_shadow_color"),
 

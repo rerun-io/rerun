@@ -44,6 +44,9 @@ pub mod re_form;
 #[cfg(feature = "testing")]
 pub mod testing;
 
+use egui::style::WidgetVisuals;
+use egui::{NumExt as _, Style};
+
 pub use self::button::*;
 pub use self::combo_item::*;
 pub use self::command::{
@@ -58,7 +61,7 @@ pub use self::command_palette::{
 };
 pub use self::context_ext::ContextExt;
 pub use self::design_tokens::{
-    AlertVisuals, ButtonVisuals, DesignTokens, TableStyle, WindowFrameConfig,
+    AlertVisuals, ButtonVisuals, DesignTokens, TableStyle, TextEditVisuals, WindowFrameConfig,
 };
 pub use self::egui_ext::widget_ext::*;
 pub use self::fuzzy::{FuzzyMatch, FuzzyQuery};
@@ -81,7 +84,6 @@ pub use self::ui_ext::UiExt;
 pub use self::ui_layout::UiLayout;
 pub use self::url_decorator::{UrlDecorator, UrlDecoratorFn};
 use crate::egui_ext::garbage_collect::EguiMemoryGarbageCollector;
-use egui::NumExt as _;
 use re_log::debug_assert;
 
 // ---------------------------------------------------------------------------
@@ -369,4 +371,12 @@ fn is_in_resizable_panel(ui: &egui::Ui) -> bool {
     } else {
         false // Safe fallback
     }
+}
+
+fn all_visuals(style: &mut Style, f: impl Fn(&mut WidgetVisuals)) {
+    f(&mut style.visuals.widgets.active);
+    f(&mut style.visuals.widgets.hovered);
+    f(&mut style.visuals.widgets.inactive);
+    f(&mut style.visuals.widgets.noninteractive);
+    f(&mut style.visuals.widgets.open);
 }

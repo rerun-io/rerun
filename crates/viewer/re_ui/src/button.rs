@@ -1,4 +1,4 @@
-use crate::{ButtonVisuals, DesignTokens, UiExt as _, icons};
+use crate::{ButtonVisuals, DesignTokens, UiExt as _, all_visuals, icons};
 use eframe::emath::Vec2;
 use egui::style::WidgetVisuals;
 use egui::widget_style::WidgetState;
@@ -74,14 +74,6 @@ impl Size {
             vis.corner_radius = CornerRadius::same(6);
         });
     }
-}
-
-fn all_visuals(style: &mut Style, f: impl Fn(&mut WidgetVisuals)) {
-    f(&mut style.visuals.widgets.active);
-    f(&mut style.visuals.widgets.hovered);
-    f(&mut style.visuals.widgets.inactive);
-    f(&mut style.visuals.widgets.noninteractive);
-    f(&mut style.visuals.widgets.open);
 }
 
 impl Variant {

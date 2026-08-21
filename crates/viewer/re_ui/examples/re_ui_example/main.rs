@@ -11,9 +11,10 @@ use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::menu::menu_style;
 use re_ui::notifications::NotificationUi;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
+use re_ui::text_edit::{ReTextEdit, TextEditVariant};
 use re_ui::{
     ComboItem, ComboItemHeader, ContextExt as _, DesignTokens, Help, IconText, OnResponseExt as _,
-    UICommand, UICommandSender, UiExt as _, WindowFrameConfig, icons, list_item,
+    Size, UICommand, UICommandSender, UiExt as _, WindowFrameConfig, icons, list_item,
 };
 
 /// Sender that queues up the execution of a command.
@@ -589,6 +590,21 @@ impl egui_tiles::Behavior<Tab> for MyTileTreeBehavior {
         ui.help_button(|ui| {
             ui.label("This some help text.");
         });
+
+        for variant in [TextEditVariant::Filled, TextEditVariant::Outlined] {
+            ui.horizontal_wrapped(|ui| {
+                ui.spacing_mut().text_edit_width = 200.0;
+                for size in [Size::Normal, Size::Small, Size::Tiny] {
+                    ui.add(
+                        ReTextEdit::singleline(&mut String::new())
+                            .size(size)
+                            .variant(variant)
+                            .hint_text("Focus me!")
+                            .prefix(icons::SEARCH),
+                    );
+                }
+            });
+        }
 
         Default::default()
     }
