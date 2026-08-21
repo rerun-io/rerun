@@ -9708,6 +9708,7 @@ dependencies = [
  "regex-lite",
  "serde",
  "serde_bytes",
+ "serde_json",
  "strum",
  "thiserror 2.0.19",
 ]

@@ -1,3 +1,5 @@
+// TODO(RR-5496): this file is too long, split it into a directory module.
+
 use std::sync::Arc;
 
 use arrow::array::{
@@ -6,6 +8,8 @@ use arrow::array::{
     StringBuilder, StructBuilder, UInt32Builder, UInt64Builder,
 };
 use arrow::datatypes::{DataType, Field, Fields};
+use prost_reflect::prost::Message as _;
+use prost_reflect::prost_types;
 use prost_reflect::{
     DescriptorPool, DynamicMessage, FieldDescriptor, Kind, MapKey, MessageDescriptor,
     OneofDescriptor, ReflectMessage as _, Value,
@@ -24,6 +28,28 @@ const LIST_ITEM_NULLABLE: bool = false;
 const MAP_ENTRY_NULLABLE: bool = false;
 
 const MAP_ENTRY_FIELD_NAME: &str = "entries";
+
+/// Dynamic protobuf value messages that are self-referential and cannot be expressed by Arrow.
+const KNOWN_DYNAMIC_VALUE_MESSAGES: [&str; 3] = [
+    "google.protobuf.Struct",
+    "google.protobuf.Value",
+    "google.protobuf.ListValue",
+];
+
+/// Protobuf semantics preserved as Arrow extension metadata.
+///
+/// Only used for fields that cannot be represented directly in Arrow.
+#[derive(Clone, Copy)]
+enum ProtobufArrowExtension {
+    /// An enum encoded as its protobuf name and number.
+    Enum,
+
+    /// A dynamic value encoded as JSON text.
+    Json,
+
+    /// A self-referential message encoded as protobuf bytes.
+    SelfReferential,
+}
 
 struct ProtobufMessageParser {
     message_descriptor: MessageDescriptor,
@@ -59,6 +85,9 @@ enum ProtobufError {
 
     #[error("unknown enum number {0}")]
     UnknownEnumNumber(i32),
+
+    #[error("failed to decode protobuf message: {0}")]
+    ProtobufDecoding(#[from] prost_reflect::prost::DecodeError),
 
     #[error("type {0} is not supported yet")]
     UnsupportedType(&'static str),
@@ -264,10 +293,20 @@ fn append_value(
             downcast_err::<BinaryBuilder>(builder, val)?.append_value(bytes);
         }
         Value::Message(dynamic_message) => {
-            let struct_builder = downcast_err::<StructBuilder>(builder, val)?;
-            // TODO(grtlr): Measure and consider caching the grouped fields for all messages.
-            let nested_grouped = grouped_fields(&dynamic_message.descriptor());
-            append_message_fields(dynamic_message, struct_builder, &nested_grouped)?;
+            if KNOWN_DYNAMIC_VALUE_MESSAGES.contains(&dynamic_message.descriptor().full_name()) {
+                downcast_err::<StringBuilder>(builder, val)?
+                    .append_value(dynamic_value_to_json(dynamic_message)?);
+            } else if let Some(bytes_builder) = builder.as_any_mut().downcast_mut::<BinaryBuilder>()
+            {
+                // The only way a message lands in a `BinaryBuilder` is `arrow_builder_from_field`
+                // having cut a cycle here — a protobuf `bytes` field arrives as `Value::Bytes`.
+                bytes_builder.append_value(dynamic_message.encode_to_vec());
+            } else {
+                let struct_builder = downcast_err::<StructBuilder>(builder, val)?;
+                // TODO(grtlr): Measure and consider caching the grouped fields for all messages.
+                let nested_grouped = grouped_fields(&dynamic_message.descriptor());
+                append_message_fields(dynamic_message, struct_builder, &nested_grouped)?;
+            }
         }
         Value::List(vec) => {
             re_log::trace!("Append called on a list with {} elements: {val}", vec.len(),);
@@ -438,51 +477,60 @@ fn struct_builder_from_message(message_descriptor: &MessageDescriptor) -> Struct
 }
 
 fn arrow_builder_from_field(descr: &FieldDescriptor) -> Box<dyn ArrayBuilder> {
-    let inner: Box<dyn ArrayBuilder> = match descr.kind() {
-        Kind::Double => Box::new(Float64Builder::new()),
-        Kind::Float => Box::new(Float32Builder::new()),
-        Kind::Int32 | Kind::Sfixed32 | Kind::Sint32 => Box::new(Int32Builder::new()),
-        Kind::Int64 | Kind::Sfixed64 | Kind::Sint64 => Box::new(Int64Builder::new()),
-        Kind::Uint32 | Kind::Fixed32 => Box::new(UInt32Builder::new()),
-        Kind::Uint64 | Kind::Fixed64 => Box::new(UInt64Builder::new()),
-        Kind::Bool => Box::new(BooleanBuilder::new()),
-        Kind::String => Box::new(StringBuilder::new()),
-        Kind::Bytes => Box::new(BinaryBuilder::new()),
-        Kind::Message(message_descriptor) if descr.is_map() => {
-            let proto_key_field = message_descriptor.map_entry_key_field();
-            let proto_val_field = message_descriptor.map_entry_value_field();
-            let field_names = MapFieldNames {
-                entry: MAP_ENTRY_FIELD_NAME.to_owned(),
-                key: proto_key_field.name().to_owned(),
-                value: proto_val_field.name().to_owned(),
-            };
-            let key_builder = arrow_builder_from_field(&proto_key_field);
-            let val_builder = arrow_builder_from_field(&proto_val_field);
-            let (key_field, val_field) = map_entry_fields(&message_descriptor);
-            // `MapBuilder` defaults to a nullable value field, so spell both out to keep the
-            // built array's datatype equal to the one `datatype_from` declares.
-            return Box::new(
-                MapBuilder::new(Some(field_names), key_builder, val_builder)
-                    .with_keys_field(key_field)
-                    .with_values_field(val_field),
-            );
-        }
-        Kind::Message(message_descriptor) => {
-            Box::new(struct_builder_from_message(&message_descriptor)) as Box<dyn ArrayBuilder>
-        }
-        Kind::Enum(_) => {
-            let field_builders: Vec<Box<dyn ArrayBuilder>> = vec![
-                Box::new(StringBuilder::new()),
-                Box::new(Int32Builder::new()),
-            ];
-            Box::new(StructBuilder::new(enum_fields(), field_builders))
-        }
+    let extension = protobuf_arrow_extension(descr);
+
+    let inner: Box<dyn ArrayBuilder> = match extension {
+        // These representations use storage types chosen by the extension rather than the schema.
+        Some(ProtobufArrowExtension::Json) => Box::new(StringBuilder::new()),
+        Some(ProtobufArrowExtension::SelfReferential) => Box::new(BinaryBuilder::new()),
+        // The remaining descriptor kinds map directly to Arrow.
+        _ => match descr.kind() {
+            Kind::Double => Box::new(Float64Builder::new()),
+            Kind::Float => Box::new(Float32Builder::new()),
+            Kind::Int32 | Kind::Sfixed32 | Kind::Sint32 => Box::new(Int32Builder::new()),
+            Kind::Int64 | Kind::Sfixed64 | Kind::Sint64 => Box::new(Int64Builder::new()),
+            Kind::Uint32 | Kind::Fixed32 => Box::new(UInt32Builder::new()),
+            Kind::Uint64 | Kind::Fixed64 => Box::new(UInt64Builder::new()),
+            Kind::Bool => Box::new(BooleanBuilder::new()),
+            Kind::String => Box::new(StringBuilder::new()),
+            Kind::Bytes => Box::new(BinaryBuilder::new()),
+            Kind::Message(message_descriptor) if descr.is_map() => {
+                let proto_key_field = message_descriptor.map_entry_key_field();
+                let proto_val_field = message_descriptor.map_entry_value_field();
+                let field_names = MapFieldNames {
+                    entry: MAP_ENTRY_FIELD_NAME.to_owned(),
+                    key: proto_key_field.name().to_owned(),
+                    value: proto_val_field.name().to_owned(),
+                };
+                let key_builder = arrow_builder_from_field(&proto_key_field);
+                let val_builder = arrow_builder_from_field(&proto_val_field);
+                let (key_field, val_field) = map_entry_fields(&message_descriptor);
+                // `MapBuilder` defaults to a nullable value field, so spell both out to keep the
+                // built array's datatype equal to the declared datatype.
+                return Box::new(
+                    MapBuilder::new(Some(field_names), key_builder, val_builder)
+                        .with_keys_field(key_field)
+                        .with_values_field(val_field),
+                );
+            }
+            Kind::Message(message_descriptor) => {
+                Box::new(struct_builder_from_message(&message_descriptor)) as Box<dyn ArrayBuilder>
+            }
+            Kind::Enum(_) => {
+                let field_builders: Vec<Box<dyn ArrayBuilder>> = vec![
+                    Box::new(StringBuilder::new()),
+                    Box::new(Int32Builder::new()),
+                ];
+                Box::new(StructBuilder::new(enum_fields(), field_builders))
+            }
+        },
     };
 
     if descr.is_list() {
-        let item_field = Field::new_list_field(singular_datatype_from(descr), LIST_ITEM_NULLABLE);
+        let item_field =
+            Field::new_list_field(singular_datatype_from(descr, extension), LIST_ITEM_NULLABLE);
         // `ListBuilder` defaults to a nullable item field, so spell ours out to keep the built
-        // array's datatype equal to the one `datatype_from` declares.
+        // array's datatype equal to the declared datatype.
         return Box::new(ListBuilder::new(inner).with_field(item_field));
     }
 
@@ -500,16 +548,27 @@ fn map_entry_fields(map_entry: &MessageDescriptor) -> (Arc<Field>, Arc<Field>) {
     let key_nullable = false;
     let value_nullable = false;
 
+    // Key and value extensions, `None` unless the field requires extension metadata
+    // (an enum, dynamic value, or self-referential message).
+    let key_extension = protobuf_arrow_extension(&proto_key_field);
+    let value_extension = protobuf_arrow_extension(&proto_val_field);
+
     (
-        Arc::new(Field::new(
-            proto_key_field.name(),
-            datatype_from(&proto_key_field),
-            key_nullable,
+        Arc::new(field_with_extension_metadata(
+            Field::new(
+                proto_key_field.name(),
+                datatype_from_with_extension(&proto_key_field, key_extension),
+                key_nullable,
+            ),
+            key_extension,
         )),
-        Arc::new(Field::new(
-            proto_val_field.name(),
-            datatype_from(&proto_val_field),
-            value_nullable,
+        Arc::new(field_with_extension_metadata(
+            Field::new(
+                proto_val_field.name(),
+                datatype_from_with_extension(&proto_val_field, value_extension),
+                value_nullable,
+            ),
+            value_extension,
         )),
     )
 }
@@ -530,32 +589,167 @@ fn enum_fields() -> Fields {
     ])
 }
 
+/// Returns whether `descriptor` is self-referential through its fields.
+fn participates_in_cycle(descriptor: &MessageDescriptor) -> bool {
+    fn nested_messages(descriptor: &MessageDescriptor) -> impl Iterator<Item = MessageDescriptor> {
+        descriptor.fields().filter_map(|field| match field.kind() {
+            // A map field's type is its synthetic entry message, so descending into
+            // `Kind::Message` reaches the key and value types without a special case.
+            Kind::Message(nested) => Some(nested),
+            _ => None,
+        })
+    }
+
+    // Iterative, so that a pathologically deep schema cannot overflow the stack in the very
+    // check meant to prevent that.
+    let target = descriptor.full_name();
+    let mut stack: Vec<MessageDescriptor> = nested_messages(descriptor).collect();
+    let mut visited: ahash::HashSet<String> = Default::default();
+
+    while let Some(descriptor) = stack.pop() {
+        if descriptor.full_name() == target {
+            return true;
+        }
+        if !visited.insert(descriptor.full_name().to_owned()) {
+            continue;
+        }
+        stack.extend(nested_messages(&descriptor));
+    }
+
+    false
+}
+
+/// Classifies fields that cannot be represented directly in Arrow and require extension metadata:
+/// enums, dynamic values, and self-referential messages.
+fn protobuf_arrow_extension(descr: &FieldDescriptor) -> Option<ProtobufArrowExtension> {
+    match descr.kind() {
+        Kind::Enum(_) => Some(ProtobufArrowExtension::Enum),
+        Kind::Message(message_descriptor)
+            if KNOWN_DYNAMIC_VALUE_MESSAGES.contains(&message_descriptor.full_name()) =>
+        {
+            Some(ProtobufArrowExtension::Json)
+        }
+        // Keep the map container; a self-referential map value is classified separately.
+        Kind::Message(message_descriptor)
+            if !descr.is_map() && participates_in_cycle(&message_descriptor) =>
+        {
+            Some(ProtobufArrowExtension::SelfReferential)
+        }
+        _ => None,
+    }
+}
+
+/// Serializes a `google.protobuf.Struct`, `Value`, or `ListValue` message into JSON text.
+fn dynamic_value_to_json(root: &DynamicMessage) -> Result<String, ProtobufError> {
+    let value = match root.descriptor().full_name() {
+        "google.protobuf.Struct" => prost_types::Value {
+            kind: Some(prost_types::value::Kind::StructValue(
+                root.transcode_to::<prost_types::Struct>()?,
+            )),
+        },
+        "google.protobuf.Value" => root.transcode_to::<prost_types::Value>()?,
+        "google.protobuf.ListValue" => prost_types::Value {
+            kind: Some(prost_types::value::Kind::ListValue(
+                root.transcode_to::<prost_types::ListValue>()?,
+            )),
+        },
+        _ => unreachable!("callers only invoke this for dynamic value messages"),
+    };
+
+    Ok(dynamic_value_to_json_value(&value).to_string())
+}
+
+/// Converts a `google.protobuf.Value` to JSON.
+///
+/// JSON has no numeric notation for `NaN` or infinity.
+/// We write them using the protobuf JSON notation: `"NaN"`, `"Infinity"`, and `"-Infinity"`.
+///
+/// Object fields are sorted so equal values always produce equal text, despite protobuf map
+/// iteration being nondeterministic.
+fn dynamic_value_to_json_value(value: &prost_types::Value) -> serde_json::Value {
+    use prost_types::value::Kind;
+
+    match &value.kind {
+        None | Some(Kind::NullValue(_)) => serde_json::Value::Null,
+        Some(Kind::NumberValue(number)) if number.is_nan() => {
+            serde_json::Value::String("NaN".to_owned())
+        }
+        Some(Kind::NumberValue(number)) if *number == f64::INFINITY => {
+            serde_json::Value::String("Infinity".to_owned())
+        }
+        Some(Kind::NumberValue(number)) if *number == f64::NEG_INFINITY => {
+            serde_json::Value::String("-Infinity".to_owned())
+        }
+        Some(Kind::NumberValue(number)) => serde_json::Value::Number(
+            serde_json::Number::from_f64(*number).expect("number is finite"),
+        ),
+        Some(Kind::StringValue(value)) => serde_json::Value::String(value.clone()),
+        Some(Kind::BoolValue(value)) => serde_json::Value::Bool(*value),
+        Some(Kind::StructValue(value)) => {
+            let mut fields: Vec<_> = value.fields.iter().collect();
+            fields.sort_unstable_by_key(|(key, _)| *key);
+
+            let mut object = serde_json::Map::with_capacity(fields.len());
+            for (key, value) in fields {
+                object.insert(key.clone(), dynamic_value_to_json_value(value));
+            }
+            serde_json::Value::Object(object)
+        }
+        Some(Kind::ListValue(value)) => serde_json::Value::Array(
+            value
+                .values
+                .iter()
+                .map(dynamic_value_to_json_value)
+                .collect(),
+        ),
+    }
+}
+
 fn arrow_field_from(descr: &FieldDescriptor) -> Field {
     // Keep this in lockstep with `append_message_fields`, which appends a null for an unset
     // field under exactly these conditions. Plain proto3 scalars have no presence tracking,
     // so an unset one gets its default value instead and is never null.
     let nullable = descr.supports_presence() || descr.is_map() || descr.is_list();
+    let extension = protobuf_arrow_extension(descr);
 
-    let mut field = Field::new(descr.name(), datatype_from(descr), nullable);
-
-    // Add extension metadata for enum types.
-    if matches!(descr.kind(), Kind::Enum(_)) {
-        field = field.with_metadata(
-            std::iter::once((
-                "ARROW:extension:name".to_owned(),
-                // TODO(RR-5430): rename to `rerun.encodings.ProtobufEnum`.
-                // Wire-format identifier, not a code-generated encoding; kept as-is.
-                "rerun.datatypes.ProtobufEnum".to_owned(),
-            ))
-            .collect(),
-        );
-    }
-
-    field
+    field_with_extension_metadata(
+        Field::new(
+            descr.name(),
+            datatype_from_with_extension(descr, extension),
+            nullable,
+        ),
+        extension,
+    )
 }
 
-fn datatype_from(descr: &FieldDescriptor) -> DataType {
-    let inner = singular_datatype_from(descr);
+/// Records protobuf semantics for types that Arrow cannot express as Arrow extension metadata.
+fn field_with_extension_metadata(field: Field, extension: Option<ProtobufArrowExtension>) -> Field {
+    let Some(extension) = extension else {
+        return field;
+    };
+
+    let extension_name = match extension {
+        // TODO(RR-5430): rename to `rerun.encodings.ProtobufEnum`.
+        // Wire-format identifier, not a code-generated encoding; kept as-is.
+        ProtobufArrowExtension::Enum => "rerun.datatypes.ProtobufEnum",
+        ProtobufArrowExtension::Json => "google.protobuf.Struct",
+        ProtobufArrowExtension::SelfReferential => {
+            // TODO(RR-5430): rename to `rerun.encodings.ProtobufSelfReferential`.
+            "rerun.datatypes.ProtobufSelfReferential"
+        }
+    };
+
+    field.with_metadata(
+        std::iter::once(("ARROW:extension:name".to_owned(), extension_name.to_owned())).collect(),
+    )
+}
+
+/// Builds an Arrow datatype using a precomputed protobuf extension classification.
+fn datatype_from_with_extension(
+    descr: &FieldDescriptor,
+    extension: Option<ProtobufArrowExtension>,
+) -> DataType {
+    let inner = singular_datatype_from(descr, extension);
 
     if descr.is_list() {
         return DataType::new_list(inner, LIST_ITEM_NULLABLE);
@@ -564,34 +758,58 @@ fn datatype_from(descr: &FieldDescriptor) -> DataType {
     inner
 }
 
-/// The datatype of a single element of `descr`, i.e. without the list wrapper that
-/// [`datatype_from`] adds for repeated fields.
-fn singular_datatype_from(descr: &FieldDescriptor) -> DataType {
-    match descr.kind() {
-        Kind::Double => DataType::Float64,
-        Kind::Float => DataType::Float32,
-        Kind::Int32 | Kind::Sfixed32 | Kind::Sint32 => DataType::Int32,
-        Kind::Int64 | Kind::Sfixed64 | Kind::Sint64 => DataType::Int64,
-        Kind::Uint32 | Kind::Fixed32 => DataType::UInt32,
-        Kind::Uint64 | Kind::Fixed64 => DataType::UInt64,
-        Kind::Bool => DataType::Boolean,
-        Kind::String => DataType::Utf8,
-        Kind::Bytes => DataType::Binary,
-        Kind::Message(message_descriptor) if descr.is_map() => {
-            let (key_field, val_field) = map_entry_fields(&message_descriptor);
-            let entry_field = Field::new(
-                MAP_ENTRY_FIELD_NAME,
-                DataType::Struct(Fields::from(vec![key_field, val_field])),
-                MAP_ENTRY_NULLABLE,
+/// Builds an Arrow datatype for one field element without its repeated-field list wrapper.
+fn singular_datatype_from(
+    descr: &FieldDescriptor,
+    extension: Option<ProtobufArrowExtension>,
+) -> DataType {
+    match extension {
+        Some(ProtobufArrowExtension::Json) => {
+            let Kind::Message(message_descriptor) = descr.kind() else {
+                unreachable!("only messages are stored as protobuf JSON");
+            };
+            re_log::warn_once!(
+                "'{}' is a dynamic type whose structure cannot be represented as an Arrow datatype — fields of this type are stored as JSON text.",
+                message_descriptor.full_name(),
             );
-            // TODO(grtlr): We actually store the data sorted, but `MapBuilder` does not allow that.
-            let keys_sorted = false;
-            DataType::Map(Arc::new(entry_field), keys_sorted)
+            DataType::Utf8
         }
-        Kind::Message(message_descriptor) => {
-            DataType::Struct(fields_from_message(&message_descriptor))
+        Some(ProtobufArrowExtension::SelfReferential) => {
+            let Kind::Message(message_descriptor) = descr.kind() else {
+                unreachable!("only messages are stored as raw protobuf bytes");
+            };
+            re_log::warn_once!(
+                "Protobuf message type '{}' refers to itself, which cannot be represented as an Arrow datatype — fields of this type are stored as raw protobuf bytes.",
+                message_descriptor.full_name(),
+            );
+            DataType::Binary
         }
-        Kind::Enum(_) => DataType::Struct(enum_fields()),
+        _ => match descr.kind() {
+            Kind::Double => DataType::Float64,
+            Kind::Float => DataType::Float32,
+            Kind::Int32 | Kind::Sfixed32 | Kind::Sint32 => DataType::Int32,
+            Kind::Int64 | Kind::Sfixed64 | Kind::Sint64 => DataType::Int64,
+            Kind::Uint32 | Kind::Fixed32 => DataType::UInt32,
+            Kind::Uint64 | Kind::Fixed64 => DataType::UInt64,
+            Kind::Bool => DataType::Boolean,
+            Kind::String => DataType::Utf8,
+            Kind::Bytes => DataType::Binary,
+            Kind::Message(message_descriptor) if descr.is_map() => {
+                let (key_field, val_field) = map_entry_fields(&message_descriptor);
+                let entry_field = Field::new(
+                    MAP_ENTRY_FIELD_NAME,
+                    DataType::Struct(Fields::from(vec![key_field, val_field])),
+                    MAP_ENTRY_NULLABLE,
+                );
+                // TODO(grtlr): We actually store the data sorted, but `MapBuilder` does not allow that.
+                let keys_sorted = false;
+                DataType::Map(Arc::new(entry_field), keys_sorted)
+            }
+            Kind::Message(message_descriptor) => {
+                DataType::Struct(fields_from_message(&message_descriptor))
+            }
+            Kind::Enum(_) => DataType::Struct(enum_fields()),
+        },
     }
 }
 
@@ -1057,6 +1275,379 @@ mod integration_tests {
             // Message 7: empty message (all fields missing).
             DynamicMessage::new(person_message.clone()),
         ]
+    }
+
+    /// Test helper that writes `messages` to a single-channel MCAP, runs the decoder, and
+    /// snapshots the result.
+    fn assert_decoded_snapshot(
+        message_descriptor: &MessageDescriptor,
+        messages: &[DynamicMessage],
+        snapshot_name: &str,
+    ) {
+        let buffer = Vec::new();
+        let cursor = io::Cursor::new(buffer);
+        let mut writer = mcap::Writer::new(cursor).expect("failed to create writer");
+
+        let channel_id = add_schema_and_channel(&mut writer, message_descriptor, "test_topic")
+            .expect("failed to add schema and channel");
+
+        for (idx, msg) in messages.iter().enumerate() {
+            write_message(&mut writer, channel_id, msg, 1 + idx as u64)
+                .expect("failed to write message");
+        }
+
+        let summary = writer.finish().expect("finishing writer failed");
+        let buffer = writer.into_inner().into_inner();
+
+        let chunks = run_decoder(&summary, buffer.as_slice());
+        assert_eq!(chunks.len(), 1);
+        insta::assert_snapshot!(snapshot_name, format_chunk(&chunks[0]));
+    }
+
+    /// Creates two mutually self-referential message types, structurally similar to
+    /// `google.protobuf.Struct` but *not* the well-known types:
+    ///
+    /// ```protobuf
+    /// message Config {
+    ///   string name = 1;
+    ///   map<string, Value> fields = 2;
+    /// }
+    ///
+    /// message Value {
+    ///   string string_value = 1;
+    ///   Config struct_value = 2;
+    /// }
+    /// ```
+    ///
+    /// Returns the `Config` descriptor; `Value` is reachable via its parent pool.
+    fn create_self_referential_descriptor() -> MessageDescriptor {
+        let fields_entry = DescriptorProto {
+            name: Some("FieldsEntry".into()),
+            field: vec![
+                FieldDescriptorProto {
+                    name: Some("key".into()),
+                    number: Some(1),
+                    label: Some(field_descriptor_proto::Label::Optional as i32),
+                    r#type: Some(field_descriptor_proto::Type::String as i32),
+                    ..Default::default()
+                },
+                FieldDescriptorProto {
+                    name: Some("value".into()),
+                    number: Some(2),
+                    label: Some(field_descriptor_proto::Label::Optional as i32),
+                    r#type: Some(field_descriptor_proto::Type::Message as i32),
+                    type_name: Some("Value".into()),
+                    ..Default::default()
+                },
+            ],
+            options: Some(MessageOptions {
+                map_entry: Some(true),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
+        let config = DescriptorProto {
+            name: Some("Config".into()),
+            field: vec![
+                FieldDescriptorProto {
+                    name: Some("name".into()),
+                    number: Some(1),
+                    r#type: Some(field_descriptor_proto::Type::String as i32),
+                    ..Default::default()
+                },
+                FieldDescriptorProto {
+                    name: Some("fields".into()),
+                    number: Some(2),
+                    label: Some(field_descriptor_proto::Label::Repeated as i32),
+                    r#type: Some(field_descriptor_proto::Type::Message as i32),
+                    type_name: Some("FieldsEntry".into()),
+                    ..Default::default()
+                },
+            ],
+            nested_type: vec![fields_entry],
+            ..Default::default()
+        };
+
+        let value = DescriptorProto {
+            name: Some("Value".into()),
+            field: vec![
+                FieldDescriptorProto {
+                    name: Some("string_value".into()),
+                    number: Some(1),
+                    r#type: Some(field_descriptor_proto::Type::String as i32),
+                    ..Default::default()
+                },
+                FieldDescriptorProto {
+                    name: Some("struct_value".into()),
+                    number: Some(2),
+                    r#type: Some(field_descriptor_proto::Type::Message as i32),
+                    type_name: Some("Config".into()),
+                    ..Default::default()
+                },
+            ],
+            ..Default::default()
+        };
+
+        create_message_descriptor(vec![config, value], "com.example.Config")
+    }
+
+    /// Checks that self-referential message types are detected.
+    #[test]
+    fn test_cycle_detection() {
+        let config = create_self_referential_descriptor();
+        let value = config
+            .parent_pool()
+            .get_message_by_name("com.example.Value")
+            .expect("failed to get Value descriptor");
+
+        // Both members of the cycle, entered at either point.
+        assert!(super::participates_in_cycle(&config));
+        assert!(super::participates_in_cycle(&value));
+
+        // `Person` nests a message and a map, but nothing refers back to it.
+        let (person_name, person_proto) = create_person_descriptor(true);
+        assert!(!super::participates_in_cycle(&create_message_descriptor(
+            vec![person_proto],
+            person_name
+        )));
+    }
+
+    /// Checks that self-referential message types fall back to being stored as bytes.
+    #[test]
+    fn test_recursive_message_fields_are_stored_as_bytes() {
+        let config = create_self_referential_descriptor();
+
+        let message = DynamicMessage::parse_text_format(
+            config.clone(),
+            r#"
+            name: "session"
+            fields { key: "child" value { struct_value {
+                fields { key: "leaf" value { string_value: "deep" } }
+            } } }
+            "#,
+        )
+        .expect("failed to parse text format");
+
+        assert_decoded_snapshot(
+            &config,
+            &[message, DynamicMessage::new(config.clone())],
+            "recursive_message_fields_are_stored_as_bytes",
+        );
+    }
+
+    /// Builds descriptors for the dynamic `google.protobuf` types.
+    fn well_known_dynamic_value_file() -> FileDescriptorProto {
+        let oneof_field =
+            |name: &str, number: i32, ty: field_descriptor_proto::Type| FieldDescriptorProto {
+                name: Some(name.into()),
+                number: Some(number),
+                r#type: Some(ty as i32),
+                oneof_index: Some(0),
+                ..Default::default()
+            };
+
+        let fields_entry = DescriptorProto {
+            name: Some("FieldsEntry".into()),
+            field: vec![
+                FieldDescriptorProto {
+                    name: Some("key".into()),
+                    number: Some(1),
+                    label: Some(field_descriptor_proto::Label::Optional as i32),
+                    r#type: Some(field_descriptor_proto::Type::String as i32),
+                    ..Default::default()
+                },
+                FieldDescriptorProto {
+                    name: Some("value".into()),
+                    number: Some(2),
+                    label: Some(field_descriptor_proto::Label::Optional as i32),
+                    r#type: Some(field_descriptor_proto::Type::Message as i32),
+                    type_name: Some(".google.protobuf.Value".into()),
+                    ..Default::default()
+                },
+            ],
+            options: Some(MessageOptions {
+                map_entry: Some(true),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
+        let struct_message = DescriptorProto {
+            name: Some("Struct".into()),
+            field: vec![FieldDescriptorProto {
+                name: Some("fields".into()),
+                number: Some(1),
+                label: Some(field_descriptor_proto::Label::Repeated as i32),
+                r#type: Some(field_descriptor_proto::Type::Message as i32),
+                type_name: Some(".google.protobuf.Struct.FieldsEntry".into()),
+                ..Default::default()
+            }],
+            nested_type: vec![fields_entry],
+            ..Default::default()
+        };
+
+        let value_message = DescriptorProto {
+            name: Some("Value".into()),
+            field: vec![
+                FieldDescriptorProto {
+                    type_name: Some(".google.protobuf.NullValue".into()),
+                    ..oneof_field("null_value", 1, field_descriptor_proto::Type::Enum)
+                },
+                oneof_field("number_value", 2, field_descriptor_proto::Type::Double),
+                oneof_field("string_value", 3, field_descriptor_proto::Type::String),
+                oneof_field("bool_value", 4, field_descriptor_proto::Type::Bool),
+                FieldDescriptorProto {
+                    type_name: Some(".google.protobuf.Struct".into()),
+                    ..oneof_field("struct_value", 5, field_descriptor_proto::Type::Message)
+                },
+                FieldDescriptorProto {
+                    type_name: Some(".google.protobuf.ListValue".into()),
+                    ..oneof_field("list_value", 6, field_descriptor_proto::Type::Message)
+                },
+            ],
+            oneof_decl: vec![OneofDescriptorProto {
+                name: Some("kind".into()),
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+
+        let list_value_message = DescriptorProto {
+            name: Some("ListValue".into()),
+            field: vec![FieldDescriptorProto {
+                name: Some("values".into()),
+                number: Some(1),
+                label: Some(field_descriptor_proto::Label::Repeated as i32),
+                r#type: Some(field_descriptor_proto::Type::Message as i32),
+                type_name: Some(".google.protobuf.Value".into()),
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+
+        FileDescriptorProto {
+            name: Some("google/protobuf/struct.proto".into()),
+            package: Some("google.protobuf".into()),
+            message_type: vec![struct_message, value_message, list_value_message],
+            enum_type: vec![EnumDescriptorProto {
+                name: Some("NullValue".into()),
+                value: vec![EnumValueDescriptorProto {
+                    name: Some("NULL_VALUE".into()),
+                    number: Some(0),
+                    options: None,
+                }],
+                ..Default::default()
+            }],
+            syntax: Some("proto3".into()),
+            ..Default::default()
+        }
+    }
+
+    /// Checks that non-finite doubles within a dynamic value message use the protobuf JSON strings.
+    #[test]
+    fn test_dynamic_value_messages_store_non_finite_numbers_as_json_strings() {
+        let pool = DescriptorPool::from_file_descriptor_set(FileDescriptorSet {
+            file: vec![well_known_dynamic_value_file()],
+        })
+        .expect("failed to create descriptor pool");
+        let descriptor = pool
+            .get_message_by_name("google.protobuf.Value")
+            .expect("failed to get Value descriptor");
+
+        for (number, expected_json) in [
+            (f64::NAN, r#""NaN""#),
+            (f64::INFINITY, r#""Infinity""#),
+            (f64::NEG_INFINITY, r#""-Infinity""#),
+        ] {
+            let message = DynamicMessage::decode(
+                descriptor.clone(),
+                prost_reflect::prost_types::Value {
+                    kind: Some(prost_reflect::prost_types::value::Kind::NumberValue(number)),
+                }
+                .encode_to_vec()
+                .as_slice(),
+            )
+            .expect("failed to decode dynamic value");
+
+            assert_eq!(
+                super::dynamic_value_to_json(&message).expect("failed to serialize dynamic value"),
+                expected_json,
+            );
+        }
+    }
+
+    /// A `google.protobuf.Struct` field is stored as JSON text (with sorted keys), because these
+    /// well-known types are mutually recursive and have no Arrow equivalent. The sibling `name`
+    /// field must stay an ordinary string column, and an unset `config` must become null.
+    #[test]
+    fn test_dynamic_value_messages_are_stored_as_json_text() {
+        let config_state = DescriptorProto {
+            name: Some("ConfigState".into()),
+            field: vec![
+                FieldDescriptorProto {
+                    name: Some("name".into()),
+                    number: Some(1),
+                    r#type: Some(field_descriptor_proto::Type::String as i32),
+                    ..Default::default()
+                },
+                FieldDescriptorProto {
+                    name: Some("config".into()),
+                    number: Some(2),
+                    r#type: Some(field_descriptor_proto::Type::Message as i32),
+                    type_name: Some(".google.protobuf.Struct".into()),
+                    ..Default::default()
+                },
+            ],
+            ..Default::default()
+        };
+
+        let file = FileDescriptorProto {
+            name: Some("config.proto".into()),
+            package: Some("com.example".into()),
+            dependency: vec!["google/protobuf/struct.proto".into()],
+            message_type: vec![config_state],
+            syntax: Some("proto3".into()),
+            ..Default::default()
+        };
+
+        let pool = DescriptorPool::from_file_descriptor_set(FileDescriptorSet {
+            file: vec![well_known_dynamic_value_file(), file],
+        })
+        .expect("failed to create descriptor pool");
+
+        let descriptor = pool
+            .get_message_by_name("com.example.ConfigState")
+            .expect("failed to get message descriptor");
+
+        // Covers every JSON kind: object (nested + empty), array, string, number, bool, null.
+        // `mode` before `ev` on purpose: the output must be sorted regardless of input order.
+        let message = DynamicMessage::parse_text_format(
+            descriptor.clone(),
+            r#"
+            name: "session"
+            config {
+              fields { key: "camera" value { struct_value {
+                fields { key: "mode" value { string_value: "auto" } }
+                fields { key: "ev" value { number_value: -0.5 } }
+              } } }
+              fields { key: "enabled" value { bool_value: true } }
+              fields { key: "tags" value { list_value {
+                values { string_value: "a" }
+                values { number_value: 2 }
+              } } }
+              fields { key: "empty" value { struct_value {} } }
+              fields { key: "nothing" value { null_value: NULL_VALUE } }
+            }
+            "#,
+        )
+        .expect("failed to parse text format");
+
+        assert_decoded_snapshot(
+            &descriptor,
+            &[message, DynamicMessage::new(descriptor.clone())],
+            "dynamic_value_messages_are_stored_as_json_text",
+        );
     }
 
     /// Helper to test field combinations with or without presence tracking.
