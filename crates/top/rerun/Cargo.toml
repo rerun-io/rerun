@@ -31,6 +31,7 @@ default = [
   "image",
   "log",
   "map_view",
+  "rrd",
   "sdk",
   "server",
 ]
@@ -109,16 +110,25 @@ perf_telemetry = [
 ## This only works on native.
 perf_telemetry_tracy = ["perf_telemetry", "re_perf_telemetry/tracy"]
 
+## Programmatic access to the `.rrd`/`.rbl` file manipulations of the `rerun rrd` CLI.
+##
+## Only optimization is exposed so far.
+rrd = [
+  "re_log_encoding/decoder",
+  "re_log_encoding/encoder",
+  "re_sdk_types/video", # GoP detection converts our codec component into a `re_video` one
+]
+
 ## Add support for the [`run()`] function, which acts like a main-function for a CLI,
 ## acting the same as [the `rerun` binary](https://crates.io/crates/rerun-cli).
 run = [
   "auth",
   "clap",
-  "dep:re_chunk_store",
   "dep:re_crash_handler",
   "dep:re_data_source",
   "re_log_encoding/decoder",
   "re_log_encoding/encoder",
+  "rrd",
   "sdk",
   "unindent",
 ]
@@ -183,7 +193,7 @@ walkdir.workspace = true
 # Optional dependencies:
 re_analytics = { workspace = true, optional = true }
 re_auth = { workspace = true, optional = true }
-re_chunk_store = { workspace = true, optional = true }
+re_chunk_store.workspace = true
 re_crash_handler = { workspace = true, optional = true }
 re_data_source = { workspace = true, optional = true }
 re_dataframe = { workspace = true, optional = true }
@@ -214,6 +224,9 @@ url = { workspace = true, optional = true }
 
 [target.'cfg(target_family = "unix")'.dependencies]
 libc = { workspace = true, optional = true }
+
+[dev-dependencies]
+tempfile.workspace = true
 
 [build-dependencies]
 re_build_tools.workspace = true

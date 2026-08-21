@@ -3,10 +3,9 @@ use std::io::{IsTerminal as _, Write as _};
 use anyhow::Context as _;
 use itertools::Either;
 use re_byte_size::SizeBytes as _;
-use re_chunk_store::{ChunkStoreConfig, CompactionOptions, IsStartOfGop, OptimizationProfile};
+use re_chunk_store::{ChunkStoreConfig, CompactionOptions, OptimizationProfile};
 use re_entity_db::EntityDb;
 use re_log_types::StoreId;
-use re_sdk::StoreKind;
 
 use crate::commands::read_rrd_streams_from_file_or_stdin;
 
@@ -252,14 +251,10 @@ impl OptimizeCommand {
 
         let split_size_ratio = split_size_ratio.or(profile.split_size_ratio);
 
-        let is_start_of_gop: IsStartOfGop = std::sync::Arc::new(|data, codec| {
-            re_video::is_start_of_gop(data, codec.into()).map_err(|err| anyhow::anyhow!(err))
-        });
-
         let compaction_options = CompactionOptions {
             config: store_config.clone(),
             num_extra_passes: Some(num_extra_passes as usize),
-            is_start_of_gop: gop_batching.then_some(is_start_of_gop),
+            is_start_of_gop: gop_batching.then(crate::rrd::gop_detector),
             split_size_ratio,
             fix_keyframe: *fix_keyframe,
         };
@@ -488,36 +483,7 @@ fn merge_and_compact(
     }
 
     if let Some(compaction_options) = compaction_options {
-        let now = std::time::Instant::now();
-
-        let num_chunks_before = entity_dbs
-            .values()
-            .map(|db| db.storage_engine().store().num_physical_chunks() as u64)
-            .sum::<u64>();
-
-        for db in entity_dbs.values() {
-            // Safety: we are the only owners of that data, it's fine.
-            #[expect(unsafe_code)]
-            let engine = unsafe { db.storage_engine_raw() };
-
-            let compacted = engine.read().store().compacted(compaction_options)?;
-            *engine.write().store() = compacted;
-        }
-
-        let num_chunks_after = entity_dbs
-            .values()
-            .map(|db| db.storage_engine().store().num_physical_chunks() as u64)
-            .sum::<u64>();
-
-        let num_chunks_reduction = format!(
-            "-{:3.3}%",
-            100.0 - num_chunks_after as f64 / (num_chunks_before as f64 + f64::EPSILON) * 100.0
-        );
-
-        re_log::info!(
-            num_chunks_before, num_chunks_after, num_chunks_reduction, time=?now.elapsed(),
-            "compaction completed",
-        );
+        crate::rrd::compact_entity_dbs(&entity_dbs, compaction_options)?;
     }
 
     log_chunk_size_stats(&entity_dbs, store_config, "post-compaction");
@@ -530,40 +496,10 @@ fn merge_and_compact(
         Either::Right(std::io::BufWriter::new(std::io::stdout().lock()))
     };
 
-    re_log::info!("preparing output…");
-    let messages_rbl = entity_dbs
-        .values()
-        .filter(|entity_db| entity_db.store_kind() == StoreKind::Blueprint)
-        .flat_map(|entity_db| entity_db.to_messages(None /* time selection */));
-
-    let mut num_chunks_after = 0u64;
-    let messages_rrd = entity_dbs
-        .values()
-        .filter(|entity_db| entity_db.store_kind() == StoreKind::Recording)
-        .flat_map(|entity_db| entity_db.to_messages(None /* time selection */))
-        .inspect(|msg| {
-            num_chunks_after += matches!(msg, Ok(re_log_types::LogMsg::ArrowMsg(_, _))) as u64;
-        });
-
-    // TODO(cmc): encoding options should match the original.
-    let encoding_options = re_log_encoding::rrd::EncodingOptions::PROTOBUF_COMPRESSED;
-    let version = entity_dbs
-        .values()
-        .next()
-        .and_then(|db| db.store_info())
-        .and_then(|info| info.store_version)
-        .unwrap_or(re_build_info::CrateVersion::LOCAL);
-
-    re_log::info!("encoding…");
-    let rrd_out_size = re_log_encoding::Encoder::encode_into(
-        version,
-        encoding_options,
-        // NOTE: We want to make sure all blueprints come first, so that the viewer can immediately
-        // set up the viewport correctly.
-        std::iter::chain(messages_rbl, messages_rrd),
-        &mut rrd_out,
-    )
-    .context("couldn't encode messages")?;
+    let crate::rrd::EncodeStats {
+        num_chunks: num_chunks_after,
+        num_bytes: rrd_out_size,
+    } = crate::rrd::encode_entity_dbs(&entity_dbs, &mut rrd_out)?;
 
     rrd_out.flush().context("couldn't flush output")?;
 

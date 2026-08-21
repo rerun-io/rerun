@@ -109,6 +109,9 @@
 #[cfg(feature = "run")]
 mod commands;
 
+#[cfg(feature = "rrd")]
+pub mod rrd;
+
 #[cfg(feature = "sdk")]
 mod sdk;
 
