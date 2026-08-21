@@ -1,5 +1,13 @@
 # Rerun changelog
 
+## [0.36.2](https://github.com/rerun-io/rerun/compare/0.36.1...0.36.2) - 2026-08-21
+
+### 🔎 Details
+
+#### 🪳 Bug fixes
+- Fix opening external links [3d5eb9c](https://github.com/rerun-io/rerun/commit/3d5eb9c478cf44f812e29c62aab6c5fb30de69ac)
+
+
 ## [0.36.1](https://github.com/rerun-io/rerun/compare/0.36.0...0.36.1) - 2026-08-19
 
 ### 🔎 Details
