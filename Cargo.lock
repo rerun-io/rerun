@@ -11638,6 +11638,7 @@ dependencies = [
  "re_viewer_mcp",
  "re_web_viewer_server",
  "similar-asserts",
+ "tempfile",
  "tokio",
  "unindent",
  "url",
