@@ -47,28 +47,23 @@ impl std::fmt::Display for TonicStatusError {
 fn fmt_tonic_status(f: &mut std::fmt::Formatter<'_>, status: &tonic::Status) -> std::fmt::Result {
     // The server message may come with details of its own, which must stay details:
     // the status code belongs on the summary.
-    let (summary, details) = re_error::split_details(status.message());
+    let mut error = re_error::StructuredError::parse(status.message());
 
-    let mut summary = if summary.is_empty() {
-        "gRPC error".to_owned()
-    } else {
-        summary.to_owned()
-    };
+    if error.summary.is_empty() {
+        error.summary = "gRPC error".to_owned();
+    }
 
-    if status.code() != tonic::Code::Unknown {
+    let code = status.code();
+    if code != tonic::Code::Unknown {
         // The `Debug` name ("NotFound"), not tonic's long `Display` prose.
-        summary = format!("{summary} ({:?})", status.code());
+        error.summary = format!("{} ({code:?})", error.summary);
     }
 
-    let mut details = details
-        .into_iter()
-        .map(ToOwned::to_owned)
-        .collect::<Vec<_>>();
     if !status.metadata().is_empty() {
-        details.push(format!("metadata: {:?}", status.metadata().as_ref()));
+        error.add_detail(format!("metadata: {:?}", status.metadata().as_ref()));
     }
 
-    f.write_str(&re_error::format_with_many_details(summary, details))
+    write!(f, "{error}")
 }
 
 impl From<tonic::Status> for TonicStatusError {

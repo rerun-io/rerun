@@ -151,30 +151,24 @@ fn fmt_tonic_status(f: &mut std::fmt::Formatter<'_>, status: &tonic::Status) -> 
     let code = status.code();
 
     // The server message may come with details of its own, which must stay details.
-    let (summary, details) = re_error::split_details(status.message());
+    let mut error = re_error::StructuredError::parse(status.message());
 
-    let mut summary = if summary.is_empty() {
-        "gRPC error".to_owned()
-    } else {
-        summary.to_owned()
-    };
+    if error.summary.is_empty() {
+        error.summary = "gRPC error".to_owned();
+    }
 
     // `Unknown` says nothing, and is what a browser reports for any blocked `fetch`; the rest are
     // worth naming. An `ApiError` wrapping this leaves out its own kind when it is just this code
     // by another name, so the two don't say the same thing twice.
     if code != tonic::Code::Unknown {
-        summary = format!("{summary} ({code:?})");
+        error.summary = format!("{} ({code:?})", error.summary);
     }
 
-    let mut details = details
-        .into_iter()
-        .map(ToOwned::to_owned)
-        .collect::<Vec<_>>();
     if !status.metadata().is_empty() {
-        details.push(format!("metadata: {:?}", status.metadata().as_ref()));
+        error.add_detail(format!("metadata: {:?}", status.metadata().as_ref()));
     }
 
-    f.write_str(&re_error::format_with_many_details(summary, details))
+    write!(f, "{error}")
 }
 
 impl From<tonic::Status> for TonicStatusError {

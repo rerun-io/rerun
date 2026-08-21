@@ -91,7 +91,10 @@ wayland-protocols = { workspace = true, features = ["client", "unstable"] }
 egui_kittest.workspace = true
 egui_tiles.workspace = true
 rand = { workspace = true, features = ["std", "thread_rng"] }
+re_quota_channel.workspace = true
+re_redap_client.workspace = true # to exercise the real error formatting in tests
 static_assertions.workspace = true
+tonic.workspace = true
 
 
 [build-dependencies]

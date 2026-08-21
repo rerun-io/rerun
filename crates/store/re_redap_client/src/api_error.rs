@@ -526,18 +526,20 @@ impl std::fmt::Display for ApiError {
             trace_id,
         } = self;
 
-        let mut details = vec![format!("Server: {origin}")];
+        let source = source.as_ref().map(|err| err.to_string());
+
+        let mut details = Vec::new();
+
+        details.push(format!("Server: {origin}"));
 
         if let Some(trace_id) = trace_id {
             details.push(format!("trace-id: {trace_id}"));
         }
 
-        let source = source.as_ref().map(|err| err.to_string());
-
         let source_summary = source.as_deref().map(|source| {
-            let (summary, source_details) = re_error::split_details(source);
-            details.extend(source_details.into_iter().map(ToOwned::to_owned));
-            summary
+            let source = re_error::StructuredError::parse(source);
+            details.extend(source.details);
+            source.summary
         });
 
         // A gRPC source already names its status code, and our kind is derived from that very
@@ -561,7 +563,9 @@ impl std::fmt::Display for ApiError {
             None => format!("{message}{kind}"),
         };
 
-        f.write_str(&re_error::format_with_many_details(summary, details))
+        let error = re_error::StructuredError::from_summary(summary).with_details(details);
+
+        write!(f, "{error}")
     }
 }
 
@@ -580,12 +584,12 @@ mod tests {
     /// The worst case: a server error whose message carries details of its own, plus response
     /// metadata, plus a trace-id, plus a known server.
     ///
-    /// Everything the user needs must be in the summary, and everything else behind the details
-    /// separator, without any of it being said twice.
+    /// Everything the user needs must be in the summary, and everything else on the detail lines,
+    /// without any of it being said twice.
     #[test]
     fn test_display_of_server_error() {
         let mut status = tonic::Status::not_found(
-            "the dataset has no promoted revision yet\nDetails: dataset url: file:///path/to/file",
+            "the dataset has no promoted revision yet\n- dataset url: file:///path/to/file",
         );
         status.metadata_mut().insert(
             crate::GRPC_RESPONSE_TRACEID_HEADER,
@@ -601,10 +605,10 @@ mod tests {
         assert_eq!(
             err.to_string(),
             "/GetRrdManifest failed: the dataset has no promoted revision yet (NotFound)\n\
-             Details: Server: rerun://api.example.com:443\n\
-             trace-id: abba000000000000000000000000abba\n\
-             dataset url: file:///path/to/file\n\
-             metadata: {\"x-request-trace-id\": \"abba000000000000000000000000abba\"}"
+             - Server: rerun://api.example.com:443\n\
+             - trace-id: abba000000000000000000000000abba\n\
+             - dataset url: file:///path/to/file\n\
+             - metadata: {\"x-request-trace-id\": \"abba000000000000000000000000abba\"}"
         );
     }
 
@@ -621,7 +625,7 @@ mod tests {
         assert_eq!(
             err.to_string(),
             "/RegisterWithDataset failed: transaction aborted (Aborted)\n\
-             Details: Server: rerun://example.com:443"
+             - Server: rerun://example.com:443"
         );
     }
 
@@ -629,7 +633,7 @@ mod tests {
     fn test_display_without_source_or_trace_id() {
         assert_eq!(
             ApiError::internal(&re_uri::Origin::test(), "something went wrong").to_string(),
-            "something went wrong (Internal)\nDetails: Server: rerun://example.com:443"
+            "something went wrong (Internal)\n- Server: rerun://example.com:443"
         );
     }
 }
