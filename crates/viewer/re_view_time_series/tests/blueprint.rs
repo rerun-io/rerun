@@ -9,7 +9,7 @@ use re_sdk_types::archetypes::{self, Scalars, SeriesLines, SeriesPoints, Transfo
 use re_sdk_types::blueprint;
 use re_sdk_types::blueprint::archetypes::VisibleTimeRanges;
 use re_sdk_types::encodings::{self, TimeRange};
-use re_sdk_types::{DynamicArchetype, Loggable as _, VisualizableArchetype as _, components};
+use re_sdk_types::{DynamicArchetype, ToArrow as _, VisualizableArchetype as _, components};
 use re_test_context::TestContext;
 use re_test_context::VisualizerBlueprintContext as _;
 use re_test_context::external::egui_kittest::SnapshotResults;
@@ -419,7 +419,7 @@ fn log_data_nested(test_context: &mut TestContext, timeline: re_log_types::Timel
         let b = ((1.0 - t) * 255.0) as u8;
         let color = components::Color::from_rgb(r, g, b);
 
-        // Serialize Color to Arrow using the Loggable trait
+        // Serialize Color to Arrow using the `ToArrow` trait
         let color_arrow = encodings::Rgba32::to_arrow([color.0]).expect("could not convert color");
         let color_offsets = arrow::buffer::OffsetBuffer::from_lengths([1]);
         let color_list_array = ListArray::new(

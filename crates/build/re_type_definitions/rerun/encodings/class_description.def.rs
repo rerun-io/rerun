@@ -21,6 +21,7 @@
 /// \py a single `ClassDescription`.
 #[rerun::rerun_type]
 #[python(aliases = "encodings.AnnotationInfoLike")]
+#[rust(arrow_opt)]
 #[rust(derive(Default, Eq, PartialEq))]
 #[rerun(state = "stable")]
 pub struct ClassDescription {

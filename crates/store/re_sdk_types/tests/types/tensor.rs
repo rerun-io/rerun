@@ -1,7 +1,7 @@
 use re_sdk_types::archetypes::Tensor;
 use re_sdk_types::encodings::{TensorBuffer, TensorData};
 use re_sdk_types::tensor_data::TensorCastError;
-use re_sdk_types::{Archetype as _, AsComponents as _, Loggable as _};
+use re_sdk_types::{Archetype as _, AsComponents as _, FromArrow as _, ToArrow as _};
 
 #[test]
 fn tensor_buffer_roundtrip() {

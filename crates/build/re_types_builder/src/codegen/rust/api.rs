@@ -174,11 +174,13 @@ fn generate_object_file(
 
     code.push_str("\n\n");
 
+    code.push_str("use ::std::borrow::Cow;\n");
+    code.push_str("use ::arrow::array::ArrayRef;\n");
     code.push_str("use ::re_types_core::try_serialize_field;\n");
     code.push_str("use ::re_types_core::SerializationResult;\n");
     code.push_str("use ::re_types_core::{DeserializationResult, DeserializationError};\n");
     code.push_str("use ::re_types_core::{ComponentDescriptor, ComponentType};\n");
-    code.push_str("use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};\n");
+    code.push_str("use ::re_types_core::SerializedComponentBatch;\n");
 
     // NOTE: `TokenStream`s discard whitespacing information by definition, so we need to
     // inject some of our own when writing to file… while making sure that don't inject
@@ -769,7 +771,7 @@ fn quote_trait_impls_from_obj(
 ) -> TokenStream {
     match obj.kind {
         ObjectKind::Encoding | ObjectKind::Component => {
-            quote_trait_impls_for_encoding_or_component(objects, type_registry, obj)
+            quote_trait_impls_for_encoding_or_component(reporter, objects, type_registry, obj)
         }
 
         ObjectKind::Archetype => quote_trait_impls_for_archetype(reporter, obj),
@@ -778,7 +780,9 @@ fn quote_trait_impls_from_obj(
     }
 }
 
+/// Implements the Arrow conversion traits for an encoding or component.
 fn quote_trait_impls_for_encoding_or_component(
+    reporter: &Reporter,
     objects: &Objects,
     type_registry: &TypeRegistry,
     obj: &Object,
@@ -792,9 +796,6 @@ fn quote_trait_impls_for_encoding_or_component(
     let name = format_ident!("{name}");
 
     let datatype = type_registry.get(fqname);
-
-    let optimize_for_buffer_slice =
-        should_optimize_buffer_slice_deserialize(objects, obj, type_registry);
 
     let is_forwarded_type = obj.is_arrow_transparent()
         && !obj.fields[0].is_nullable
@@ -832,6 +833,14 @@ fn quote_trait_impls_for_encoding_or_component(
     });
 
     let quoted_impl_loggable = if forwarded_type.is_some() {
+        if obj.is_attr_set(RustAttr::ArrowOpt) {
+            reporter.error(
+                &obj.virtpath,
+                &obj.fqname,
+                "`attr.rust.arrow_opt` does nothing on a transparent wrapper: it forwards to its \
+                 encoding, so set the attribute on that encoding instead",
+            );
+        }
         quote! {}
     } else {
         let quoted_arrow_datatype = {
@@ -848,96 +857,17 @@ fn quote_trait_impls_for_encoding_or_component(
             }
         };
 
-        let quoted_from_arrow = if optimize_for_buffer_slice {
-            let from_arrow_body = {
-                let quoted_deserializer =
-                    quote_arrow_deserializer_buffer_slice(type_registry, objects, obj);
-
-                quote! {
-                    // NOTE(#3850): Don't add a profile scope here: the profiler overhead is too big for this fast function.
-                    // re_tracing::profile_function!();
-
-                    use arrow::{array::*, buffer::*, datatypes::*};
-                    use ::re_types_core::{arrow_helpers::*, arrow_zip_validity::ZipValidity, Loggable as _, ResultExt as _};
-
-                    // This code-path cannot have null entries.
-                    err_on_nulls(arrow_data, #fqname)?;
-
-                    Ok(#quoted_deserializer)
-                }
-            };
-
-            quote! {
-                #[inline]
-                fn from_arrow(
-                    arrow_data: &dyn arrow::array::Array,
-                ) -> DeserializationResult<Vec<Self>>
-                where
-                    Self: Sized
-                {
-                    #from_arrow_body
-                }
-            }
-        } else {
-            quote!()
-        };
-
-        // Forward deserialization to existing encoding if it's transparent.
-        let quoted_deserializer = {
-            let quoted_deserializer = quote_arrow_deserializer(type_registry, objects, obj);
-            quote! {
-                // NOTE(#3850): Don't add a profile scope here: the profiler overhead is too big for this fast function.
-                // re_tracing::profile_function!();
-
-                use arrow::{array::*, buffer::*, datatypes::*};
-                use ::re_types_core::{arrow_helpers::*, arrow_zip_validity::ZipValidity, Loggable as _, ResultExt as _};
-
-                Ok(#quoted_deserializer)
-            }
-        };
-
-        let quoted_serializer = {
-            let quoted_serializer =
-                quote_arrow_serializer(type_registry, objects, obj, &format_ident!("data"));
-
-            quote! {
-                // NOTE: Don't inline this, this gets _huge_.
-                fn to_arrow_opt<'a>(
-                    data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-                ) -> SerializationResult<arrow::array::ArrayRef>
-                where
-                    Self: Clone + 'a
-                {
-                    // NOTE(#3850): Don't add a profile scope here: the profiler overhead is too big for this fast function.
-                    // re_tracing::profile_function!();
-
-                    #![allow(clippy::manual_is_variant_and)]
-                    use arrow::{array::*, buffer::*, datatypes::*};
-                    use ::re_types_core::{Loggable as _, ResultExt as _, arrow_helpers::as_array_ref};
-
-                    Ok(#quoted_serializer)
-                }
-            }
-        };
+        let quoted_to_arrow = quote_to_arrow(objects, type_registry, obj);
+        let quoted_from_arrow = quote_from_arrow(objects, type_registry, obj);
 
         quote! {
-            impl ::re_types_core::Loggable for #name {
+            impl ::re_types_core::ArrowDatatype for #name {
                 #quoted_arrow_datatype
-
-                #quoted_serializer
-
-                // NOTE: Don't inline this, this gets _huge_.
-                fn from_arrow_opt(
-                    arrow_data: &dyn arrow::array::Array,
-                ) -> DeserializationResult<Vec<Option<Self>>>
-                where
-                    Self: Sized
-                {
-                    #quoted_deserializer
-                }
-
-                #quoted_from_arrow
             }
+
+            #quoted_to_arrow
+
+            #quoted_from_arrow
         }
     };
 
@@ -947,6 +877,170 @@ fn quote_trait_impls_for_encoding_or_component(
         ::re_types_core::macros::impl_into_cow!(#name);
 
         #quoted_impl_loggable
+    }
+}
+
+/// Implements either `ToArrow` or, for types that opt in to nullability, `ToArrowOpt`.
+fn quote_to_arrow(objects: &Objects, type_registry: &TypeRegistry, obj: &Object) -> TokenStream {
+    let name = format_ident!("{}", obj.name);
+
+    let quoted_serializer = |elements_are_nullable: bool| {
+        let quoted_serializer = quote_arrow_serializer(
+            type_registry,
+            objects,
+            obj,
+            &format_ident!("data"),
+            elements_are_nullable,
+        );
+
+        quote! {
+            // NOTE(#3850): Don't add a profile scope here: the profiler overhead is too big for this fast function.
+            // re_tracing::profile_function!();
+
+            #![allow(clippy::manual_is_variant_and)]
+            use arrow::{array::*, buffer::*, datatypes::*};
+            use ::re_types_core::{ArrowDatatype as _, ToArrow as _, ToArrowOpt as _, ResultExt as _, arrow_helpers::as_array_ref};
+
+            Ok(#quoted_serializer)
+        }
+    };
+
+    // The non-nullable serializer needs no validity bitmaps, so it is the cheaper of the two.
+    if obj.is_attr_set(RustAttr::ArrowOpt) {
+        let quoted_serializer = quoted_serializer(true);
+        quote! {
+            impl ::re_types_core::ToArrowOpt for #name {
+                // NOTE: Don't inline this, this gets _huge_.
+                fn to_arrow_opt<'a>(
+                    data: impl IntoIterator<Item = Option<impl Into<Cow<'a, Self>>>>,
+                ) -> SerializationResult<ArrayRef>
+                where
+                    Self: Clone + 'a
+                {
+                    #quoted_serializer
+                }
+            }
+
+            ::re_types_core::macros::impl_to_arrow_via_to_arrow_opt!(#name);
+        }
+    } else {
+        let quoted_serializer = quoted_serializer(false);
+        quote! {
+            impl ::re_types_core::ToArrow for #name {
+                // NOTE: Don't inline this, this gets _huge_.
+                fn to_arrow<'a>(
+                    data: impl IntoIterator<Item = impl Into<Cow<'a, Self>>>,
+                ) -> SerializationResult<ArrayRef>
+                where
+                    Self: Clone + 'a
+                {
+                    #quoted_serializer
+                }
+            }
+        }
+    }
+}
+
+/// Implements `FromArrow` and, for types that opt in to nullability, `FromArrowOpt` too.
+fn quote_from_arrow(objects: &Objects, type_registry: &TypeRegistry, obj: &Object) -> TokenStream {
+    let name = format_ident!("{}", obj.name);
+    let fqname = obj.fqname.as_str();
+
+    let quoted_deserializer = |elements_are_nullable: bool| {
+        let quoted_deserializer =
+            quote_arrow_deserializer(type_registry, objects, obj, elements_are_nullable);
+
+        // Nothing can be null on the non-nullable path, so say so up front and let the
+        // deserializer read the values buffers directly rather than walking validity bitmaps.
+        //
+        // A transparent wrapper around a nullable field is the exception: it has no validity
+        // bitmap of its own, so the array's nulls are that field's `None`s and are legal.
+        let elements_can_be_null =
+            elements_are_nullable || (obj.is_arrow_transparent() && obj.fields[0].is_nullable);
+        let quoted_err_on_nulls =
+            (!elements_can_be_null).then(|| quote!(err_on_nulls(arrow_data, #fqname)?;));
+
+        quote! {
+            // NOTE(#3850): Don't add a profile scope here: the profiler overhead is too big for this fast function.
+            // re_tracing::profile_function!();
+
+            use arrow::{array::*, buffer::*, datatypes::*};
+            use ::re_types_core::{arrow_helpers::*, arrow_zip_validity::ZipValidity, ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _};
+
+            #quoted_err_on_nulls
+
+            Ok(#quoted_deserializer)
+        }
+    };
+
+    // A buffer-slice deserializer reads the values directly, so it lands in `FromArrow` whether or
+    // not the nullable trait is implemented.
+    let quoted_from_arrow_buffer_slice = should_optimize_buffer_slice_deserialize(
+        objects,
+        obj,
+        type_registry,
+    )
+    .then(|| {
+        let quoted_deserializer = quote_arrow_deserializer_buffer_slice(type_registry, objects, obj);
+
+        quote! {
+            impl ::re_types_core::FromArrow for #name {
+                #[inline]
+                fn from_arrow(
+                    arrow_data: &dyn arrow::array::Array,
+                ) -> DeserializationResult<Vec<Self>>
+                {
+                    // NOTE(#3850): Don't add a profile scope here: the profiler overhead is too big for this fast function.
+                    // re_tracing::profile_function!();
+
+                    use arrow::{array::*, buffer::*, datatypes::*};
+                    use ::re_types_core::{arrow_helpers::*, arrow_zip_validity::ZipValidity, ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _};
+
+                    // This code-path cannot have null entries.
+                    err_on_nulls(arrow_data, #fqname)?;
+
+                    Ok(#quoted_deserializer)
+                }
+            }
+        }
+    });
+
+    if obj.is_attr_set(RustAttr::ArrowOpt) {
+        let quoted_deserializer_opt = quoted_deserializer(true);
+        let quoted_from_arrow = quoted_from_arrow_buffer_slice.unwrap_or_else(|| {
+            quote! {
+                ::re_types_core::macros::impl_from_arrow_via_from_arrow_opt!(#name);
+            }
+        });
+
+        quote! {
+            impl ::re_types_core::FromArrowOpt for #name {
+                // NOTE: Don't inline this, this gets _huge_.
+                fn from_arrow_opt(
+                    arrow_data: &dyn arrow::array::Array,
+                ) -> DeserializationResult<Vec<Option<Self>>>
+                {
+                    #quoted_deserializer_opt
+                }
+            }
+
+            #quoted_from_arrow
+        }
+    } else {
+        quoted_from_arrow_buffer_slice.unwrap_or_else(|| {
+            let quoted_deserializer = quoted_deserializer(false);
+            quote! {
+                impl ::re_types_core::FromArrow for #name {
+                    // NOTE: Don't inline this, this gets _huge_.
+                    fn from_arrow(
+                        arrow_data: &dyn arrow::array::Array,
+                    ) -> DeserializationResult<Vec<Self>>
+                    {
+                        #quoted_deserializer
+                    }
+                }
+            }
+        })
     }
 }
 
@@ -1141,23 +1235,23 @@ fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenSt
             }
 
             #[inline]
-            fn required_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+            fn required_components() -> Cow<'static, [ComponentDescriptor]> {
                 REQUIRED_COMPONENTS.as_slice().into()
             }
 
             #[inline]
-            fn recommended_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]>  {
+            fn recommended_components() -> Cow<'static, [ComponentDescriptor]>  {
                 RECOMMENDED_COMPONENTS.as_slice().into()
             }
 
             #[inline]
-            fn optional_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]>  {
+            fn optional_components() -> Cow<'static, [ComponentDescriptor]>  {
                 OPTIONAL_COMPONENTS.as_slice().into()
             }
 
             // NOTE: Don't rely on default implementation so that we can keep everything static.
             #[inline]
-            fn all_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]>  {
+            fn all_components() -> Cow<'static, [ComponentDescriptor]>  {
                 ALL_COMPONENTS.as_slice().into()
             }
 
@@ -1165,12 +1259,12 @@ fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenSt
             fn from_arrow_components(
                 arrow_data: impl IntoIterator<Item = (
                     ComponentDescriptor,
-                    arrow::array::ArrayRef,
+                    ArrayRef,
                 )>,
             ) -> DeserializationResult<Self> {
                 re_tracing::profile_function!();
 
-                use ::re_types_core::{Loggable as _, ResultExt as _};
+                use ::re_types_core::{ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _};
 
                 let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
                 #(#all_deserializers;)*
@@ -1498,7 +1592,7 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
             #clear_fields_doc
             #[inline]
             pub fn clear_fields() -> Self {
-                use ::re_types_core::Loggable as _;
+                use ::re_types_core::ArrowDatatype as _;
                 Self {
                     #(#fields),*
                 }

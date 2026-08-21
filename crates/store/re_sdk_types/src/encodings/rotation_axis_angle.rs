@@ -16,11 +16,13 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::wildcard_imports)]
 
+use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
+use ::re_types_core::SerializedComponentBatch;
 use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
+use ::std::borrow::Cow;
 
 /// **Encoding**: 3D rotation represented by a rotation around a given axis.
 #[derive(Clone, Debug, Copy, PartialEq, ::re_byte_size::SizeBytes)]
@@ -39,7 +41,7 @@ pub struct RotationAxisAngle {
 
 ::re_types_core::macros::impl_into_cow!(RotationAxisAngle);
 
-impl ::re_types_core::Loggable for RotationAxisAngle {
+impl ::re_types_core::ArrowDatatype for RotationAxisAngle {
     #[inline]
     fn arrow_datatype() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
@@ -48,32 +50,34 @@ impl ::re_types_core::Loggable for RotationAxisAngle {
             Field::new("angle", <crate::encodings::Angle>::arrow_datatype(), false),
         ]))
     }
+}
 
-    fn to_arrow_opt<'a>(
-        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> SerializationResult<arrow::array::ArrayRef>
+impl ::re_types_core::ToArrow for RotationAxisAngle {
+    fn to_arrow<'a>(
+        data: impl IntoIterator<Item = impl Into<Cow<'a, Self>>>,
+    ) -> SerializationResult<ArrayRef>
     where
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{Loggable as _, ResultExt as _, arrow_helpers::as_array_ref};
+        use ::re_types_core::{
+            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            arrow_helpers::as_array_ref,
+        };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let fields = Fields::from(vec![
                 Field::new("axis", <crate::encodings::Vec3D>::arrow_datatype(), false),
                 Field::new("angle", <crate::encodings::Angle>::arrow_datatype(), false),
             ]);
-            let (somes, data): (Vec<_>, Vec<_>) = data
+            let data: Vec<_> = data
                 .into_iter()
                 .map(|datum| {
-                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    (datum.is_some(), datum)
+                    let datum: Cow<'a, Self> = datum.into();
+                    datum
                 })
-                .unzip();
-            let validity: Option<arrow::buffer::NullBuffer> = {
-                let any_nones = somes.iter().any(|some| !*some);
-                any_nones.then(|| somes.into())
-            };
+                .collect();
+            let validity = None;
             as_array_ref(StructArray::new(
                 fields,
                 vec![
@@ -81,7 +85,7 @@ impl ::re_types_core::Loggable for RotationAxisAngle {
                         let (somes, axis): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| datum.axis.clone());
+                                let datum = Some(datum.axis.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -108,9 +112,7 @@ impl ::re_types_core::Loggable for RotationAxisAngle {
                                 std::sync::Arc::new(Field::new("item", DataType::Float32, false)),
                                 3,
                                 as_array_ref(PrimitiveArray::<Float32Type>::new(
-                                    ScalarBuffer::from(
-                                        axis_inner_data.into_iter().collect::<Vec<_>>(),
-                                    ),
+                                    axis_inner_data.into_iter().collect(),
                                     axis_inner_validity,
                                 )),
                                 axis_validity,
@@ -121,7 +123,7 @@ impl ::re_types_core::Loggable for RotationAxisAngle {
                         let (somes, angle): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| datum.angle.clone());
+                                let datum = Some(datum.angle.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -130,14 +132,10 @@ impl ::re_types_core::Loggable for RotationAxisAngle {
                             any_nones.then(|| somes.into())
                         };
                         as_array_ref(PrimitiveArray::<Float32Type>::new(
-                            ScalarBuffer::from(
-                                angle
-                                    .into_iter()
-                                    .map(|datum| {
-                                        datum.map(|datum| datum.radians).unwrap_or_default()
-                                    })
-                                    .collect::<Vec<_>>(),
-                            ),
+                            angle
+                                .into_iter()
+                                .map(|datum| datum.map(|datum| datum.radians).unwrap_or_default())
+                                .collect(),
                             angle_validity,
                         ))
                     },
@@ -146,118 +144,128 @@ impl ::re_types_core::Loggable for RotationAxisAngle {
             ))
         })
     }
+}
 
-    fn from_arrow_opt(
-        arrow_data: &dyn arrow::array::Array,
-    ) -> DeserializationResult<Vec<Option<Self>>>
-    where
-        Self: Sized,
-    {
+impl ::re_types_core::FromArrow for RotationAxisAngle {
+    fn from_arrow(arrow_data: &dyn arrow::array::Array) -> DeserializationResult<Vec<Self>> {
         use ::re_types_core::{
-            Loggable as _, ResultExt as _, arrow_helpers::*, arrow_zip_validity::ZipValidity,
+            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
+        err_on_nulls(arrow_data, "rerun.encodings.RotationAxisAngle")?;
         Ok({
-            let arrow_data = arrow_data
-                .try_cast::<arrow::array::StructArray>(|| Self::arrow_datatype())
-                .with_context("rerun.encodings.RotationAxisAngle")?;
-            if arrow_data.is_empty() {
-                Vec::new()
-            } else {
-                let (arrow_data_fields, arrow_data_arrays) =
-                    (arrow_data.fields(), arrow_data.columns());
-                let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
-                    arrow_data_fields.iter().map(|field| field.name().as_str()),
-                    arrow_data_arrays,
-                )
-                .collect();
-                let axis = {
-                    if !arrays_by_name.contains_key("axis") {
-                        return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
-                            "axis",
-                        ))
-                        .with_context("rerun.encodings.RotationAxisAngle");
-                    }
-                    let arrow_data = &**arrays_by_name["axis"];
-                    {
-                        let arrow_data = arrow_data
-                            .try_cast::<arrow::array::FixedSizeListArray>(|| {
-                                DataType::FixedSizeList(
-                                    std::sync::Arc::new(Field::new(
-                                        "item",
-                                        DataType::Float32,
-                                        false,
-                                    )),
-                                    3,
-                                )
-                            })
-                            .with_context("rerun.encodings.RotationAxisAngle#axis")?;
-                        if arrow_data.is_empty() {
-                            Vec::new()
-                        } else {
-                            let offsets = ::std::iter::zip(
-                                (0..).step_by(3usize),
-                                (3usize..).step_by(3usize).take(arrow_data.len()),
-                            );
-                            let arrow_data_inner = {
-                                let arrow_data_inner = &**arrow_data.values();
-                                arrow_data_inner
-                                    .try_cast::<Float32Array>(|| DataType::Float32)
-                                    .with_context("rerun.encodings.RotationAxisAngle#axis")?
-                                    .into_iter()
-                                    .collect::<Vec<_>>()
-                            };
-                            ZipValidity::new_with_validity(offsets, arrow_data.nulls())
-                                .map(|elem| {
-                                    elem.map(|(start, end): (usize, usize)| {
-                                        re_log::debug_assert!(end - start == 3usize);
-                                        if arrow_data_inner.len() < end {
-                                            return Err(DeserializationError::offset_slice_oob(
-                                                (start, end),
-                                                arrow_data_inner.len(),
-                                            ));
-                                        }
-
-                                        #[expect(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                        let data =
-                                            unsafe { arrow_data_inner.get_unchecked(start..end) };
-                                        let data =
-                                            data.iter().cloned().map(Option::unwrap_or_default);
-
-                                        // NOTE: Unwrapping cannot fail: the length must be correct.
-                                        #[expect(clippy::unwrap_used)]
-                                        Ok(array_init::from_iter(data).unwrap())
-                                    })
-                                    .transpose()
-                                })
-                                .map(|res_or_opt| {
-                                    res_or_opt
-                                        .map(|res_or_opt| res_or_opt.map(crate::encodings::Vec3D))
-                                })
-                                .collect::<DeserializationResult<Vec<Option<_>>>>()?
+            {
+                let arrow_data = arrow_data
+                    .try_cast::<arrow::array::StructArray>(|| Self::arrow_datatype())
+                    .with_context("rerun.encodings.RotationAxisAngle")?;
+                if arrow_data.is_empty() {
+                    Vec::new()
+                } else {
+                    let (arrow_data_fields, arrow_data_arrays) =
+                        (arrow_data.fields(), arrow_data.columns());
+                    let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
+                        arrow_data_fields.iter().map(|field| field.name().as_str()),
+                        arrow_data_arrays,
+                    )
+                    .collect();
+                    let axis = {
+                        if !arrays_by_name.contains_key("axis") {
+                            return Err(DeserializationError::missing_struct_field(
+                                Self::arrow_datatype(),
+                                "axis",
+                            ))
+                            .with_context("rerun.encodings.RotationAxisAngle");
                         }
-                        .into_iter()
-                    }
-                };
-                let angle = {
-                    if !arrays_by_name.contains_key("angle") {
-                        return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
-                            "angle",
-                        ))
-                        .with_context("rerun.encodings.RotationAxisAngle");
-                    }
-                    let arrow_data = &**arrays_by_name["angle"];
-                    arrow_data
-                        .try_cast::<Float32Array>(|| DataType::Float32)
-                        .with_context("rerun.encodings.RotationAxisAngle#angle")?
-                        .into_iter()
-                        .map(|res_or_opt| {
-                            res_or_opt.map(|radians| crate::encodings::Angle { radians })
-                        })
-                };
-                ZipValidity::new_with_validity(::itertools::izip!(axis, angle), arrow_data.nulls())
+                        let arrow_data = &**arrays_by_name["axis"];
+                        {
+                            let arrow_data = arrow_data
+                                .try_cast::<arrow::array::FixedSizeListArray>(|| {
+                                    DataType::FixedSizeList(
+                                        std::sync::Arc::new(Field::new(
+                                            "item",
+                                            DataType::Float32,
+                                            false,
+                                        )),
+                                        3,
+                                    )
+                                })
+                                .with_context("rerun.encodings.RotationAxisAngle#axis")?;
+                            if arrow_data.is_empty() {
+                                Vec::new()
+                            } else {
+                                let offsets = ::std::iter::zip(
+                                    (0..).step_by(3usize),
+                                    (3usize..).step_by(3usize).take(arrow_data.len()),
+                                );
+                                let arrow_data_inner = {
+                                    let arrow_data_inner = &**arrow_data.values();
+                                    arrow_data_inner
+                                        .try_cast::<Float32Array>(|| DataType::Float32)
+                                        .with_context("rerun.encodings.RotationAxisAngle#axis")?
+                                        .into_iter()
+                                        .collect::<Vec<_>>()
+                                };
+                                ZipValidity::new_with_validity(offsets, arrow_data.nulls())
+                                    .map(|elem| {
+                                        elem.map(|(start, end): (usize, usize)| {
+                                            re_log::debug_assert!(end - start == 3usize);
+                                            if arrow_data_inner.len() < end {
+                                                return Err(
+                                                    DeserializationError::offset_slice_oob(
+                                                        (start, end),
+                                                        arrow_data_inner.len(),
+                                                    ),
+                                                );
+                                            }
+
+                                            #[expect(
+                                                unsafe_code,
+                                                clippy::undocumented_unsafe_blocks
+                                            )]
+                                            let data = unsafe {
+                                                arrow_data_inner.get_unchecked(start..end)
+                                            };
+                                            let data =
+                                                data.iter().cloned().map(Option::unwrap_or_default);
+
+                                            // NOTE: Unwrapping cannot fail: the length must be correct.
+                                            #[expect(clippy::unwrap_used)]
+                                            Ok(array_init::from_iter(data).unwrap())
+                                        })
+                                        .transpose()
+                                    })
+                                    .map(|res_or_opt| {
+                                        res_or_opt.map(|res_or_opt| {
+                                            res_or_opt.map(crate::encodings::Vec3D)
+                                        })
+                                    })
+                                    .collect::<DeserializationResult<Vec<Option<_>>>>()?
+                            }
+                            .into_iter()
+                        }
+                    };
+                    let angle = {
+                        if !arrays_by_name.contains_key("angle") {
+                            return Err(DeserializationError::missing_struct_field(
+                                Self::arrow_datatype(),
+                                "angle",
+                            ))
+                            .with_context("rerun.encodings.RotationAxisAngle");
+                        }
+                        let arrow_data = &**arrays_by_name["angle"];
+                        arrow_data
+                            .try_cast::<Float32Array>(|| DataType::Float32)
+                            .with_context("rerun.encodings.RotationAxisAngle#angle")?
+                            .into_iter()
+                            .map(|res_or_opt| {
+                                res_or_opt.map(|radians| crate::encodings::Angle { radians })
+                            })
+                    };
+                    ZipValidity::new_with_validity(
+                        ::itertools::izip!(axis, angle),
+                        arrow_data.nulls(),
+                    )
                     .map(|opt| {
                         opt.map(|(axis, angle)| {
                             Ok(Self {
@@ -273,7 +281,11 @@ impl ::re_types_core::Loggable for RotationAxisAngle {
                     })
                     .collect::<DeserializationResult<Vec<_>>>()
                     .with_context("rerun.encodings.RotationAxisAngle")?
+                }
             }
-        })
+        }
+        .into_iter()
+        .map(|v| v.ok_or_else(DeserializationError::missing_data))
+        .collect::<DeserializationResult<Vec<_>>>()?)
     }
 }

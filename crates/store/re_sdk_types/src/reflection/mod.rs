@@ -10,8 +10,8 @@ use crate::blueprint::components::*;
 use crate::components::*;
 use re_types_core::components::*;
 use re_types_core::{
-    ArchetypeName, Component, ComponentBatch as _, ComponentType, Loggable as _,
-    SerializationError,
+    ArchetypeName, ArrowDatatype as _, Component, ComponentBatch as _, ComponentType,
+    FromArrow as _, SerializationError,
     reflection::{
         ArchetypeFieldFlags, ArchetypeFieldReflection, ArchetypeReflection, ArchetypeReflectionMap,
         ComponentReflection, ComponentReflectionMap, Reflection,

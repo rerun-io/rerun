@@ -6,6 +6,7 @@
 #[repr(u8)]
 #[rerun(scope = "blueprint")]
 #[rerun(state = "stable")]
+#[rust(arrow_opt)]
 pub enum ComponentSourceKind {
     /// Use an explicit selection defined by `source_component`.
     ///

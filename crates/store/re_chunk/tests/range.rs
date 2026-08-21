@@ -3,7 +3,7 @@ use nohash_hasher::IntMap;
 use re_chunk::{Chunk, RangeQuery, RowId, TimePoint, Timeline, TimelineName};
 use re_log_types::AbsoluteTimeRange;
 use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
-use re_types_core::{ComponentDescriptor, Loggable as _};
+use re_types_core::{ArrowDatatype as _, ComponentDescriptor};
 
 // ---
 

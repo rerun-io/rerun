@@ -16,11 +16,13 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::wildcard_imports)]
 
+use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
+use ::re_types_core::SerializedComponentBatch;
 use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
+use ::std::borrow::Cow;
 
 /// **Encoding**: The description of a semantic Class.
 ///
@@ -50,7 +52,7 @@ pub struct ClassDescription {
 
 ::re_types_core::macros::impl_into_cow!(ClassDescription);
 
-impl ::re_types_core::Loggable for ClassDescription {
+impl ::re_types_core::ArrowDatatype for ClassDescription {
     #[inline]
     fn arrow_datatype() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
@@ -80,15 +82,20 @@ impl ::re_types_core::Loggable for ClassDescription {
             ),
         ]))
     }
+}
 
+impl ::re_types_core::ToArrowOpt for ClassDescription {
     fn to_arrow_opt<'a>(
-        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> SerializationResult<arrow::array::ArrayRef>
+        data: impl IntoIterator<Item = Option<impl Into<Cow<'a, Self>>>>,
+    ) -> SerializationResult<ArrayRef>
     where
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{Loggable as _, ResultExt as _, arrow_helpers::as_array_ref};
+        use ::re_types_core::{
+            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            arrow_helpers::as_array_ref,
+        };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let fields = Fields::from(vec![
@@ -119,7 +126,7 @@ impl ::re_types_core::Loggable for ClassDescription {
             let (somes, data): (Vec<_>, Vec<_>) = data
                 .into_iter()
                 .map(|datum| {
-                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
+                    let datum: Option<Cow<'a, Self>> = datum.map(Into::into);
                     (datum.is_some(), datum)
                 })
                 .unzip();
@@ -143,7 +150,7 @@ impl ::re_types_core::Loggable for ClassDescription {
                             any_nones.then(|| somes.into())
                         };
                         {
-                            _ = info_validity;
+                            let _ = info_validity;
                             crate::encodings::AnnotationInfo::to_arrow_opt(info)?
                         }
                     },
@@ -172,9 +179,7 @@ impl ::re_types_core::Loggable for ClassDescription {
                                 .flatten()
                                 .flatten()
                                 .collect();
-                            let keypoint_annotations_inner_validity: Option<
-                                arrow::buffer::NullBuffer,
-                            > = None;
+                            let keypoint_annotations_inner_validity = None;
                             as_array_ref(ListArray::try_new(
                                 std::sync::Arc::new(Field::new(
                                     "item",
@@ -183,9 +188,10 @@ impl ::re_types_core::Loggable for ClassDescription {
                                 )),
                                 offsets,
                                 {
-                                    _ = keypoint_annotations_inner_validity;
-                                    crate::encodings::AnnotationInfo::to_arrow_opt(
-                                        keypoint_annotations_inner_data.into_iter().map(Some),
+                                    let _: Option<arrow::buffer::NullBuffer> =
+                                        keypoint_annotations_inner_validity;
+                                    crate::encodings::AnnotationInfo::to_arrow(
+                                        keypoint_annotations_inner_data,
                                     )?
                                 },
                                 keypoint_annotations_validity,
@@ -217,9 +223,7 @@ impl ::re_types_core::Loggable for ClassDescription {
                                 .flatten()
                                 .flatten()
                                 .collect();
-                            let keypoint_connections_inner_validity: Option<
-                                arrow::buffer::NullBuffer,
-                            > = None;
+                            let keypoint_connections_inner_validity = None;
                             as_array_ref(ListArray::try_new(
                                 std::sync::Arc::new(Field::new(
                                     "item",
@@ -228,9 +232,10 @@ impl ::re_types_core::Loggable for ClassDescription {
                                 )),
                                 offsets,
                                 {
-                                    _ = keypoint_connections_inner_validity;
-                                    crate::encodings::KeypointPair::to_arrow_opt(
-                                        keypoint_connections_inner_data.into_iter().map(Some),
+                                    let _: Option<arrow::buffer::NullBuffer> =
+                                        keypoint_connections_inner_validity;
+                                    crate::encodings::KeypointPair::to_arrow(
+                                        keypoint_connections_inner_data,
                                     )?
                                 },
                                 keypoint_connections_validity,
@@ -242,15 +247,17 @@ impl ::re_types_core::Loggable for ClassDescription {
             ))
         })
     }
+}
 
+::re_types_core::macros::impl_to_arrow_via_to_arrow_opt!(ClassDescription);
+
+impl ::re_types_core::FromArrowOpt for ClassDescription {
     fn from_arrow_opt(
         arrow_data: &dyn arrow::array::Array,
-    ) -> DeserializationResult<Vec<Option<Self>>>
-    where
-        Self: Sized,
-    {
+    ) -> DeserializationResult<Vec<Option<Self>>> {
         use ::re_types_core::{
-            Loggable as _, ResultExt as _, arrow_helpers::*, arrow_zip_validity::ZipValidity,
+            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
@@ -442,3 +449,5 @@ impl ::re_types_core::Loggable for ClassDescription {
         })
     }
 }
+
+::re_types_core::macros::impl_from_arrow_via_from_arrow_opt!(ClassDescription);

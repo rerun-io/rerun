@@ -16,11 +16,13 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::wildcard_imports)]
 
+use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
+use ::re_types_core::SerializedComponentBatch;
 use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
+use ::std::borrow::Cow;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq, ::re_byte_size::SizeBytes)]
 #[repr(transparent)]
@@ -28,75 +30,50 @@ pub struct PrimitiveComponent(pub u32);
 
 ::re_types_core::macros::impl_into_cow!(PrimitiveComponent);
 
-impl ::re_types_core::Loggable for PrimitiveComponent {
+impl ::re_types_core::ArrowDatatype for PrimitiveComponent {
     #[inline]
     fn arrow_datatype() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
         DataType::UInt32
     }
+}
 
-    fn to_arrow_opt<'a>(
-        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> SerializationResult<arrow::array::ArrayRef>
+impl ::re_types_core::ToArrow for PrimitiveComponent {
+    fn to_arrow<'a>(
+        data: impl IntoIterator<Item = impl Into<Cow<'a, Self>>>,
+    ) -> SerializationResult<ArrayRef>
     where
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{Loggable as _, ResultExt as _, arrow_helpers::as_array_ref};
+        use ::re_types_core::{
+            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            arrow_helpers::as_array_ref,
+        };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
-            let (somes, data0): (Vec<_>, Vec<_>) = data
+            let data0: Vec<_> = data
                 .into_iter()
                 .map(|datum| {
-                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    let datum = datum.map(|datum| datum.into_owned().0);
-                    (datum.is_some(), datum)
+                    let datum: Cow<'a, Self> = datum.into();
+                    datum.into_owned().0
                 })
-                .unzip();
-            let data0_validity: Option<arrow::buffer::NullBuffer> = {
-                let any_nones = somes.iter().any(|some| !*some);
-                any_nones.then(|| somes.into())
-            };
+                .collect();
+            let data0_validity = None;
             as_array_ref(PrimitiveArray::<UInt32Type>::new(
-                ScalarBuffer::from(
-                    data0
-                        .into_iter()
-                        .map(|v| v.unwrap_or_default())
-                        .collect::<Vec<_>>(),
-                ),
+                data0.into_iter().collect(),
                 data0_validity,
             ))
         })
     }
+}
 
-    fn from_arrow_opt(
-        arrow_data: &dyn arrow::array::Array,
-    ) -> DeserializationResult<Vec<Option<Self>>>
-    where
-        Self: Sized,
-    {
-        use ::re_types_core::{
-            Loggable as _, ResultExt as _, arrow_helpers::*, arrow_zip_validity::ZipValidity,
-        };
-        use arrow::{array::*, buffer::*, datatypes::*};
-        Ok(arrow_data
-            .try_cast::<UInt32Array>(|| Self::arrow_datatype())
-            .with_context("rerun.testing.encodings.PrimitiveComponent#value")?
-            .into_iter()
-            .map(|v| v.ok_or_else(DeserializationError::missing_data))
-            .map(|res| res.map(|v| Some(Self(v))))
-            .collect::<DeserializationResult<Vec<Option<_>>>>()
-            .with_context("rerun.testing.encodings.PrimitiveComponent#value")
-            .with_context("rerun.testing.encodings.PrimitiveComponent")?)
-    }
-
+impl ::re_types_core::FromArrow for PrimitiveComponent {
     #[inline]
-    fn from_arrow(arrow_data: &dyn arrow::array::Array) -> DeserializationResult<Vec<Self>>
-    where
-        Self: Sized,
-    {
+    fn from_arrow(arrow_data: &dyn arrow::array::Array) -> DeserializationResult<Vec<Self>> {
         use ::re_types_core::{
-            Loggable as _, ResultExt as _, arrow_helpers::*, arrow_zip_validity::ZipValidity,
+            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
         err_on_nulls(arrow_data, "rerun.testing.encodings.PrimitiveComponent")?;

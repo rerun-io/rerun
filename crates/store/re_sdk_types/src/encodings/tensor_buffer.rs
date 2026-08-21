@@ -16,11 +16,13 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::wildcard_imports)]
 
+use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
+use ::re_types_core::SerializedComponentBatch;
 use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
+use ::std::borrow::Cow;
 
 /// **Encoding**: The underlying storage for [`archetypes::Tensor`][crate::archetypes::Tensor].
 ///
@@ -63,7 +65,7 @@ pub enum TensorBuffer {
 
 ::re_types_core::macros::impl_into_cow!(TensorBuffer);
 
-impl ::re_types_core::Loggable for TensorBuffer {
+impl ::re_types_core::ArrowDatatype for TensorBuffer {
     #[inline]
     fn arrow_datatype() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
@@ -177,22 +179,27 @@ impl ::re_types_core::Loggable for TensorBuffer {
             UnionMode::Dense,
         )
     }
+}
 
+impl ::re_types_core::ToArrowOpt for TensorBuffer {
     fn to_arrow_opt<'a>(
-        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> SerializationResult<arrow::array::ArrayRef>
+        data: impl IntoIterator<Item = Option<impl Into<Cow<'a, Self>>>>,
+    ) -> SerializationResult<ArrayRef>
     where
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{Loggable as _, ResultExt as _, arrow_helpers::as_array_ref};
+        use ::re_types_core::{
+            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            arrow_helpers::as_array_ref,
+        };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             // Dense Arrow union
             let data: Vec<_> = data
                 .into_iter()
                 .map(|datum| {
-                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
+                    let datum: Option<Cow<'a, Self>> = datum.map(Into::into);
                     datum
                 })
                 .collect();
@@ -404,7 +411,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             _ => None,
                         })
                         .collect();
-                    let u8_validity: Option<arrow::buffer::NullBuffer> = None;
+                    let u8_validity = None;
                     {
                         let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
                             u8.iter().map(|datum| datum.len()),
@@ -426,7 +433,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 _ => Vec::new().into(),
                             }
                         };
-                        let u8_inner_validity: Option<arrow::buffer::NullBuffer> = None;
+                        let u8_inner_validity = None;
                         as_array_ref(ListArray::try_new(
                             std::sync::Arc::new(Field::new("item", DataType::UInt8, false)),
                             offsets,
@@ -446,7 +453,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             _ => None,
                         })
                         .collect();
-                    let u16_validity: Option<arrow::buffer::NullBuffer> = None;
+                    let u16_validity = None;
                     {
                         let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
                             u16.iter().map(|datum| datum.len()),
@@ -457,7 +464,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
-                        let u16_inner_validity: Option<arrow::buffer::NullBuffer> = None;
+                        let u16_inner_validity = None;
                         as_array_ref(ListArray::try_new(
                             std::sync::Arc::new(Field::new("item", DataType::UInt16, false)),
                             offsets,
@@ -477,7 +484,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             _ => None,
                         })
                         .collect();
-                    let u32_validity: Option<arrow::buffer::NullBuffer> = None;
+                    let u32_validity = None;
                     {
                         let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
                             u32.iter().map(|datum| datum.len()),
@@ -488,7 +495,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
-                        let u32_inner_validity: Option<arrow::buffer::NullBuffer> = None;
+                        let u32_inner_validity = None;
                         as_array_ref(ListArray::try_new(
                             std::sync::Arc::new(Field::new("item", DataType::UInt32, false)),
                             offsets,
@@ -508,7 +515,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             _ => None,
                         })
                         .collect();
-                    let u64_validity: Option<arrow::buffer::NullBuffer> = None;
+                    let u64_validity = None;
                     {
                         let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
                             u64.iter().map(|datum| datum.len()),
@@ -519,7 +526,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
-                        let u64_inner_validity: Option<arrow::buffer::NullBuffer> = None;
+                        let u64_inner_validity = None;
                         as_array_ref(ListArray::try_new(
                             std::sync::Arc::new(Field::new("item", DataType::UInt64, false)),
                             offsets,
@@ -539,7 +546,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             _ => None,
                         })
                         .collect();
-                    let i8_validity: Option<arrow::buffer::NullBuffer> = None;
+                    let i8_validity = None;
                     {
                         let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
                             i8.iter().map(|datum| datum.len()),
@@ -550,7 +557,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
-                        let i8_inner_validity: Option<arrow::buffer::NullBuffer> = None;
+                        let i8_inner_validity = None;
                         as_array_ref(ListArray::try_new(
                             std::sync::Arc::new(Field::new("item", DataType::Int8, false)),
                             offsets,
@@ -570,7 +577,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             _ => None,
                         })
                         .collect();
-                    let i16_validity: Option<arrow::buffer::NullBuffer> = None;
+                    let i16_validity = None;
                     {
                         let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
                             i16.iter().map(|datum| datum.len()),
@@ -581,7 +588,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
-                        let i16_inner_validity: Option<arrow::buffer::NullBuffer> = None;
+                        let i16_inner_validity = None;
                         as_array_ref(ListArray::try_new(
                             std::sync::Arc::new(Field::new("item", DataType::Int16, false)),
                             offsets,
@@ -601,7 +608,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             _ => None,
                         })
                         .collect();
-                    let i32_validity: Option<arrow::buffer::NullBuffer> = None;
+                    let i32_validity = None;
                     {
                         let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
                             i32.iter().map(|datum| datum.len()),
@@ -612,7 +619,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
-                        let i32_inner_validity: Option<arrow::buffer::NullBuffer> = None;
+                        let i32_inner_validity = None;
                         as_array_ref(ListArray::try_new(
                             std::sync::Arc::new(Field::new("item", DataType::Int32, false)),
                             offsets,
@@ -632,7 +639,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             _ => None,
                         })
                         .collect();
-                    let i64_validity: Option<arrow::buffer::NullBuffer> = None;
+                    let i64_validity = None;
                     {
                         let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
                             i64.iter().map(|datum| datum.len()),
@@ -643,7 +650,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
-                        let i64_inner_validity: Option<arrow::buffer::NullBuffer> = None;
+                        let i64_inner_validity = None;
                         as_array_ref(ListArray::try_new(
                             std::sync::Arc::new(Field::new("item", DataType::Int64, false)),
                             offsets,
@@ -663,7 +670,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             _ => None,
                         })
                         .collect();
-                    let f16_validity: Option<arrow::buffer::NullBuffer> = None;
+                    let f16_validity = None;
                     {
                         let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
                             f16.iter().map(|datum| datum.len()),
@@ -674,7 +681,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
-                        let f16_inner_validity: Option<arrow::buffer::NullBuffer> = None;
+                        let f16_inner_validity = None;
                         as_array_ref(ListArray::try_new(
                             std::sync::Arc::new(Field::new("item", DataType::Float16, false)),
                             offsets,
@@ -694,7 +701,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             _ => None,
                         })
                         .collect();
-                    let f32_validity: Option<arrow::buffer::NullBuffer> = None;
+                    let f32_validity = None;
                     {
                         let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
                             f32.iter().map(|datum| datum.len()),
@@ -705,7 +712,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
-                        let f32_inner_validity: Option<arrow::buffer::NullBuffer> = None;
+                        let f32_inner_validity = None;
                         as_array_ref(ListArray::try_new(
                             std::sync::Arc::new(Field::new("item", DataType::Float32, false)),
                             offsets,
@@ -725,7 +732,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             _ => None,
                         })
                         .collect();
-                    let f64_validity: Option<arrow::buffer::NullBuffer> = None;
+                    let f64_validity = None;
                     {
                         let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
                             f64.iter().map(|datum| datum.len()),
@@ -736,7 +743,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
-                        let f64_inner_validity: Option<arrow::buffer::NullBuffer> = None;
+                        let f64_inner_validity = None;
                         as_array_ref(ListArray::try_new(
                             std::sync::Arc::new(Field::new("item", DataType::Float64, false)),
                             offsets,
@@ -759,15 +766,17 @@ impl ::re_types_core::Loggable for TensorBuffer {
             )?)
         })
     }
+}
 
+::re_types_core::macros::impl_to_arrow_via_to_arrow_opt!(TensorBuffer);
+
+impl ::re_types_core::FromArrowOpt for TensorBuffer {
     fn from_arrow_opt(
         arrow_data: &dyn arrow::array::Array,
-    ) -> DeserializationResult<Vec<Option<Self>>>
-    where
-        Self: Sized,
-    {
+    ) -> DeserializationResult<Vec<Option<Self>>> {
         use ::re_types_core::{
-            Loggable as _, ResultExt as _, arrow_helpers::*, arrow_zip_validity::ZipValidity,
+            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
@@ -1511,3 +1520,5 @@ impl ::re_types_core::Loggable for TensorBuffer {
         })
     }
 }
+
+::re_types_core::macros::impl_from_arrow_via_from_arrow_opt!(TensorBuffer);

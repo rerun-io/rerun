@@ -1,6 +1,6 @@
 use arrow::datatypes::{DataType as ArrowDatatype, Field as ArrowField};
 use re_arrow_util::WrongDatatypeError;
-use re_types_core::{Loggable as _, RowId};
+use re_types_core::{ArrowDatatype as _, RowId};
 
 use crate::MetadataExt as _;
 

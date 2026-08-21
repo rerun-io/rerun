@@ -22,6 +22,7 @@ pub struct TextLogColumn {
 #[repr(u8)]
 #[rerun(scope = "blueprint")]
 #[rerun(state = "stable")]
+#[rust(arrow_opt)]
 pub enum TextLogColumnKind {
     /// Which entity path this was logged to.
     #[default]

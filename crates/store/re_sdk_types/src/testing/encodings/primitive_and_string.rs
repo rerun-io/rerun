@@ -16,11 +16,13 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::wildcard_imports)]
 
+use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
+use ::re_types_core::SerializedComponentBatch;
 use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
+use ::std::borrow::Cow;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq, ::re_byte_size::SizeBytes)]
 pub struct PrimitiveAndString {
@@ -30,7 +32,7 @@ pub struct PrimitiveAndString {
 
 ::re_types_core::macros::impl_into_cow!(PrimitiveAndString);
 
-impl ::re_types_core::Loggable for PrimitiveAndString {
+impl ::re_types_core::ArrowDatatype for PrimitiveAndString {
     #[inline]
     fn arrow_datatype() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
@@ -47,15 +49,20 @@ impl ::re_types_core::Loggable for PrimitiveAndString {
             ),
         ]))
     }
+}
 
-    fn to_arrow_opt<'a>(
-        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> SerializationResult<arrow::array::ArrayRef>
+impl ::re_types_core::ToArrow for PrimitiveAndString {
+    fn to_arrow<'a>(
+        data: impl IntoIterator<Item = impl Into<Cow<'a, Self>>>,
+    ) -> SerializationResult<ArrayRef>
     where
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{Loggable as _, ResultExt as _, arrow_helpers::as_array_ref};
+        use ::re_types_core::{
+            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            arrow_helpers::as_array_ref,
+        };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let fields = Fields::from(vec![
@@ -70,17 +77,14 @@ impl ::re_types_core::Loggable for PrimitiveAndString {
                     false,
                 ),
             ]);
-            let (somes, data): (Vec<_>, Vec<_>) = data
+            let data: Vec<_> = data
                 .into_iter()
                 .map(|datum| {
-                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    (datum.is_some(), datum)
+                    let datum: Cow<'a, Self> = datum.into();
+                    datum
                 })
-                .unzip();
-            let validity: Option<arrow::buffer::NullBuffer> = {
-                let any_nones = somes.iter().any(|some| !*some);
-                any_nones.then(|| somes.into())
-            };
+                .collect();
+            let validity = None;
             as_array_ref(StructArray::new(
                 fields,
                 vec![
@@ -88,7 +92,7 @@ impl ::re_types_core::Loggable for PrimitiveAndString {
                         let (somes, p): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| datum.p.clone());
+                                let datum = Some(datum.p.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -97,11 +101,9 @@ impl ::re_types_core::Loggable for PrimitiveAndString {
                             any_nones.then(|| somes.into())
                         };
                         as_array_ref(PrimitiveArray::<UInt32Type>::new(
-                            ScalarBuffer::from(
-                                p.into_iter()
-                                    .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
-                                    .collect::<Vec<_>>(),
-                            ),
+                            p.into_iter()
+                                .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
+                                .collect(),
                             p_validity,
                         ))
                     },
@@ -109,7 +111,7 @@ impl ::re_types_core::Loggable for PrimitiveAndString {
                         let (somes, s): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| datum.s.clone());
+                                let datum = Some(datum.s.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -142,64 +144,67 @@ impl ::re_types_core::Loggable for PrimitiveAndString {
             ))
         })
     }
+}
 
-    fn from_arrow_opt(
-        arrow_data: &dyn arrow::array::Array,
-    ) -> DeserializationResult<Vec<Option<Self>>>
-    where
-        Self: Sized,
-    {
+impl ::re_types_core::FromArrow for PrimitiveAndString {
+    fn from_arrow(arrow_data: &dyn arrow::array::Array) -> DeserializationResult<Vec<Self>> {
         use ::re_types_core::{
-            Loggable as _, ResultExt as _, arrow_helpers::*, arrow_zip_validity::ZipValidity,
+            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
+        err_on_nulls(arrow_data, "rerun.testing.encodings.PrimitiveAndString")?;
         Ok({
-            let arrow_data = arrow_data
-                .try_cast::<arrow::array::StructArray>(|| Self::arrow_datatype())
-                .with_context("rerun.testing.encodings.PrimitiveAndString")?;
-            if arrow_data.is_empty() {
-                Vec::new()
-            } else {
-                let (arrow_data_fields, arrow_data_arrays) =
-                    (arrow_data.fields(), arrow_data.columns());
-                let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
-                    arrow_data_fields.iter().map(|field| field.name().as_str()),
-                    arrow_data_arrays,
-                )
-                .collect();
-                let p = {
-                    if !arrays_by_name.contains_key("p") {
-                        return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
-                            "p",
-                        ))
-                        .with_context("rerun.testing.encodings.PrimitiveAndString");
-                    }
-                    let arrow_data = &**arrays_by_name["p"];
-                    arrow_data
-                        .try_cast::<UInt32Array>(|| DataType::UInt32)
-                        .with_context("rerun.testing.encodings.PrimitiveAndString#p")?
-                        .into_iter()
-                        .map(|res_or_opt| {
-                            res_or_opt.map(crate::testing::encodings::PrimitiveComponent)
-                        })
-                };
-                let s = {
-                    if !arrays_by_name.contains_key("s") {
-                        return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
-                            "s",
-                        ))
-                        .with_context("rerun.testing.encodings.PrimitiveAndString");
-                    }
-                    let arrow_data = &**arrays_by_name["s"];
-                    {
-                        let arrow_data = arrow_data
-                            .try_cast::<StringArray>(|| DataType::Utf8)
-                            .with_context("rerun.testing.encodings.PrimitiveAndString#s")?;
-                        let arrow_data_buf = arrow_data.values();
-                        let offsets = arrow_data.offsets();
-                        ZipValidity::new_with_validity(offsets.array_windows(), arrow_data.nulls())
+            {
+                let arrow_data = arrow_data
+                    .try_cast::<arrow::array::StructArray>(|| Self::arrow_datatype())
+                    .with_context("rerun.testing.encodings.PrimitiveAndString")?;
+                if arrow_data.is_empty() {
+                    Vec::new()
+                } else {
+                    let (arrow_data_fields, arrow_data_arrays) =
+                        (arrow_data.fields(), arrow_data.columns());
+                    let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
+                        arrow_data_fields.iter().map(|field| field.name().as_str()),
+                        arrow_data_arrays,
+                    )
+                    .collect();
+                    let p = {
+                        if !arrays_by_name.contains_key("p") {
+                            return Err(DeserializationError::missing_struct_field(
+                                Self::arrow_datatype(),
+                                "p",
+                            ))
+                            .with_context("rerun.testing.encodings.PrimitiveAndString");
+                        }
+                        let arrow_data = &**arrays_by_name["p"];
+                        arrow_data
+                            .try_cast::<UInt32Array>(|| DataType::UInt32)
+                            .with_context("rerun.testing.encodings.PrimitiveAndString#p")?
+                            .into_iter()
+                            .map(|res_or_opt| {
+                                res_or_opt.map(crate::testing::encodings::PrimitiveComponent)
+                            })
+                    };
+                    let s = {
+                        if !arrays_by_name.contains_key("s") {
+                            return Err(DeserializationError::missing_struct_field(
+                                Self::arrow_datatype(),
+                                "s",
+                            ))
+                            .with_context("rerun.testing.encodings.PrimitiveAndString");
+                        }
+                        let arrow_data = &**arrays_by_name["s"];
+                        {
+                            let arrow_data = arrow_data
+                                .try_cast::<StringArray>(|| DataType::Utf8)
+                                .with_context("rerun.testing.encodings.PrimitiveAndString#s")?;
+                            let arrow_data_buf = arrow_data.values();
+                            let offsets = arrow_data.offsets();
+                            ZipValidity::new_with_validity(
+                                offsets.array_windows(),
+                                arrow_data.nulls(),
+                            )
                             .map(|elem| {
                                 elem.map(|&[start, end]| {
                                     let start = start as usize;
@@ -228,23 +233,31 @@ impl ::re_types_core::Loggable for PrimitiveAndString {
                             .collect::<DeserializationResult<Vec<Option<_>>>>()
                             .with_context("rerun.testing.encodings.PrimitiveAndString#s")?
                             .into_iter()
-                    }
-                };
-                ZipValidity::new_with_validity(::itertools::izip!(p, s), arrow_data.nulls())
-                    .map(|opt| {
-                        opt.map(|(p, s)| {
-                            Ok(Self {
-                                p: p.ok_or_else(DeserializationError::missing_data)
-                                    .with_context("rerun.testing.encodings.PrimitiveAndString#p")?,
-                                s: s.ok_or_else(DeserializationError::missing_data)
-                                    .with_context("rerun.testing.encodings.PrimitiveAndString#s")?,
+                        }
+                    };
+                    ZipValidity::new_with_validity(::itertools::izip!(p, s), arrow_data.nulls())
+                        .map(|opt| {
+                            opt.map(|(p, s)| {
+                                Ok(Self {
+                                    p: p.ok_or_else(DeserializationError::missing_data)
+                                        .with_context(
+                                            "rerun.testing.encodings.PrimitiveAndString#p",
+                                        )?,
+                                    s: s.ok_or_else(DeserializationError::missing_data)
+                                        .with_context(
+                                            "rerun.testing.encodings.PrimitiveAndString#s",
+                                        )?,
+                                })
                             })
+                            .transpose()
                         })
-                        .transpose()
-                    })
-                    .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.testing.encodings.PrimitiveAndString")?
+                        .collect::<DeserializationResult<Vec<_>>>()
+                        .with_context("rerun.testing.encodings.PrimitiveAndString")?
+                }
             }
-        })
+        }
+        .into_iter()
+        .map(|v| v.ok_or_else(DeserializationError::missing_data))
+        .collect::<DeserializationResult<Vec<_>>>()?)
     }
 }

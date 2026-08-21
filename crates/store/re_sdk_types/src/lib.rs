@@ -228,7 +228,7 @@ pub mod components {
 
 /// The low-level encodings that [`components`] are built from.
 ///
-/// They all implement the [`Loggable`] trait.
+/// They all implement the Arrow conversion traits ([`ToArrow`], [`FromArrow`], etc).
 pub mod encodings {
 
     // Some encodings are so fundamental and used everywhere that we want them to be exposed

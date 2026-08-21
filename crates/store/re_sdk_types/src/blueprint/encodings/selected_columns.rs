@@ -16,11 +16,13 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::wildcard_imports)]
 
+use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
+use ::re_types_core::SerializedComponentBatch;
 use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
+use ::std::borrow::Cow;
 
 /// **Encoding**: List of selected columns in a dataframe.
 ///
@@ -36,7 +38,7 @@ pub struct SelectedColumns {
 
 ::re_types_core::macros::impl_into_cow!(SelectedColumns);
 
-impl ::re_types_core::Loggable for SelectedColumns {
+impl ::re_types_core::ArrowDatatype for SelectedColumns {
     #[inline]
     fn arrow_datatype() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
@@ -61,15 +63,20 @@ impl ::re_types_core::Loggable for SelectedColumns {
             ),
         ]))
     }
+}
 
-    fn to_arrow_opt<'a>(
-        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> SerializationResult<arrow::array::ArrayRef>
+impl ::re_types_core::ToArrow for SelectedColumns {
+    fn to_arrow<'a>(
+        data: impl IntoIterator<Item = impl Into<Cow<'a, Self>>>,
+    ) -> SerializationResult<ArrayRef>
     where
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{Loggable as _, ResultExt as _, arrow_helpers::as_array_ref};
+        use ::re_types_core::{
+            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            arrow_helpers::as_array_ref,
+        };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let fields = Fields::from(vec![
@@ -92,17 +99,14 @@ impl ::re_types_core::Loggable for SelectedColumns {
                     false,
                 ),
             ]);
-            let (somes, data): (Vec<_>, Vec<_>) = data
+            let data: Vec<_> = data
                 .into_iter()
                 .map(|datum| {
-                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    (datum.is_some(), datum)
+                    let datum: Cow<'a, Self> = datum.into();
+                    datum
                 })
-                .unzip();
-            let validity: Option<arrow::buffer::NullBuffer> = {
-                let any_nones = somes.iter().any(|some| !*some);
-                any_nones.then(|| somes.into())
-            };
+                .collect();
+            let validity = None;
             as_array_ref(StructArray::new(
                 fields,
                 vec![
@@ -110,7 +114,7 @@ impl ::re_types_core::Loggable for SelectedColumns {
                         let (somes, time_columns): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| datum.time_columns.clone());
+                                let datum = Some(datum.time_columns.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -126,8 +130,7 @@ impl ::re_types_core::Loggable for SelectedColumns {
                             );
                             let time_columns_inner_data: Vec<_> =
                                 time_columns.into_iter().flatten().flatten().collect();
-                            let time_columns_inner_validity: Option<arrow::buffer::NullBuffer> =
-                                None;
+                            let time_columns_inner_validity = None;
                             as_array_ref(ListArray::try_new(
                                 std::sync::Arc::new(Field::new(
                                     "item",
@@ -166,8 +169,7 @@ impl ::re_types_core::Loggable for SelectedColumns {
                         let (somes, component_columns): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum =
-                                    datum.as_ref().map(|datum| datum.component_columns.clone());
+                                let datum = Some(datum.component_columns.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -183,15 +185,14 @@ impl ::re_types_core::Loggable for SelectedColumns {
                             );
                             let component_columns_inner_data: Vec<_> =
                                 component_columns.into_iter().flatten().flatten().collect();
-                            let component_columns_inner_validity: Option<
-                                arrow::buffer::NullBuffer,
-                            > = None;
+                            let component_columns_inner_validity = None;
                             as_array_ref(ListArray::try_new(std::sync::Arc::new(Field::new("item",
                         < crate ::blueprint::encodings::ComponentColumnSelector >
-                        ::arrow_datatype(), false)), offsets, { _ =
-                        component_columns_inner_validity; crate
-                        ::blueprint::encodings::ComponentColumnSelector::to_arrow_opt(component_columns_inner_data
-                        .into_iter().map(Some)) ? }, component_columns_validity,) ?)
+                        ::arrow_datatype(), false)), offsets, { let _ : Option <
+                        arrow::buffer::NullBuffer > = component_columns_inner_validity;
+                        crate
+                        ::blueprint::encodings::ComponentColumnSelector::to_arrow(component_columns_inner_data)
+                        ? }, component_columns_validity,) ?)
                         }
                     },
                 ],
@@ -199,243 +200,258 @@ impl ::re_types_core::Loggable for SelectedColumns {
             ))
         })
     }
+}
 
-    fn from_arrow_opt(
-        arrow_data: &dyn arrow::array::Array,
-    ) -> DeserializationResult<Vec<Option<Self>>>
-    where
-        Self: Sized,
-    {
+impl ::re_types_core::FromArrow for SelectedColumns {
+    fn from_arrow(arrow_data: &dyn arrow::array::Array) -> DeserializationResult<Vec<Self>> {
         use ::re_types_core::{
-            Loggable as _, ResultExt as _, arrow_helpers::*, arrow_zip_validity::ZipValidity,
+            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
-        Ok({
-            let arrow_data = arrow_data
-                .try_cast::<arrow::array::StructArray>(|| Self::arrow_datatype())
-                .with_context("rerun.blueprint.encodings.SelectedColumns")?;
-            if arrow_data.is_empty() {
-                Vec::new()
-            } else {
-                let (arrow_data_fields, arrow_data_arrays) =
-                    (arrow_data.fields(), arrow_data.columns());
-                let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
-                    arrow_data_fields.iter().map(|field| field.name().as_str()),
-                    arrow_data_arrays,
-                )
-                .collect();
-                let time_columns = {
-                    if !arrays_by_name.contains_key("time_columns") {
-                        return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
-                            "time_columns",
-                        ))
-                        .with_context("rerun.blueprint.encodings.SelectedColumns");
-                    }
-                    let arrow_data = &**arrays_by_name["time_columns"];
-                    {
-                        let arrow_data = arrow_data
-                            .try_cast::<arrow::array::ListArray>(|| {
-                                DataType::List(std::sync::Arc::new(Field::new(
-                                    "item",
-                                    <crate::encodings::Utf8>::arrow_datatype(),
-                                    false,
-                                )))
-                            })
-                            .with_context(
-                                "rerun.blueprint.encodings.SelectedColumns#time_columns",
-                            )?;
-                        if arrow_data.is_empty() {
-                            Vec::new()
-                        } else {
-                            let arrow_data_inner = {
-                                let arrow_data_inner = &**arrow_data.values();
-                                {
-                                    let arrow_data_inner = arrow_data_inner
-                                        .try_cast::<StringArray>(|| DataType::Utf8)
-                                        .with_context(
-                                            "rerun.blueprint.encodings.SelectedColumns#time_columns",
-                                        )?;
-                                    let arrow_data_inner_buf = arrow_data_inner.values();
-                                    let offsets = arrow_data_inner.offsets();
+        err_on_nulls(arrow_data, "rerun.blueprint.encodings.SelectedColumns")?;
+        Ok(
+            {
+                {
+                    let arrow_data = arrow_data
+                        .try_cast::<arrow::array::StructArray>(|| Self::arrow_datatype())
+                        .with_context("rerun.blueprint.encodings.SelectedColumns")?;
+                    if arrow_data.is_empty() {
+                        Vec::new()
+                    } else {
+                        let (arrow_data_fields, arrow_data_arrays) = (
+                            arrow_data.fields(),
+                            arrow_data.columns(),
+                        );
+                        let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
+                                arrow_data_fields.iter().map(|field| field.name().as_str()),
+                                arrow_data_arrays,
+                            )
+                            .collect();
+                        let time_columns = {
+                            if !arrays_by_name.contains_key("time_columns") {
+                                return Err(
+                                        DeserializationError::missing_struct_field(
+                                            Self::arrow_datatype(),
+                                            "time_columns",
+                                        ),
+                                    )
+                                    .with_context("rerun.blueprint.encodings.SelectedColumns");
+                            }
+                            let arrow_data = &**arrays_by_name["time_columns"];
+                            {
+                                let arrow_data = arrow_data
+                                    .try_cast::<
+                                        arrow::array::ListArray,
+                                    >(|| DataType::List(
+                                        std::sync::Arc::new(
+                                            Field::new(
+                                                "item",
+                                                <crate::encodings::Utf8>::arrow_datatype(),
+                                                false,
+                                            ),
+                                        ),
+                                    ))
+                                    .with_context(
+                                        "rerun.blueprint.encodings.SelectedColumns#time_columns",
+                                    )?;
+                                if arrow_data.is_empty() {
+                                    Vec::new()
+                                } else {
+                                    let arrow_data_inner = {
+                                        let arrow_data_inner = &**arrow_data.values();
+                                        {
+                                            let arrow_data_inner = arrow_data_inner
+                                                .try_cast::<StringArray>(|| DataType::Utf8)
+                                                .with_context(
+                                                    "rerun.blueprint.encodings.SelectedColumns#time_columns",
+                                                )?;
+                                            let arrow_data_inner_buf = arrow_data_inner.values();
+                                            let offsets = arrow_data_inner.offsets();
+                                            ZipValidity::new_with_validity(
+                                                    offsets.array_windows(),
+                                                    arrow_data_inner.nulls(),
+                                                )
+                                                .map(|elem| {
+                                                    elem
+                                                        .map(|&[start, end]| {
+                                                            let start = start as usize;
+                                                            let end = end as usize;
+                                                            let len = end - start;
+                                                            if arrow_data_inner_buf.len() < end {
+                                                                return Err(
+                                                                    DeserializationError::offset_slice_oob(
+                                                                        (start, end),
+                                                                        arrow_data_inner_buf.len(),
+                                                                    ),
+                                                                );
+                                                            }
+                                                            let data = arrow_data_inner_buf
+                                                                .slice_with_length(start, len);
+                                                            Ok(data)
+                                                        })
+                                                        .transpose()
+                                                })
+                                                .map(|res_or_opt| {
+                                                    res_or_opt
+                                                        .map(|res_or_opt| {
+                                                            res_or_opt
+                                                                .map(|v| crate::encodings::Utf8(
+                                                                    ::re_types_core::ArrowString::from(v),
+                                                                ))
+                                                        })
+                                                })
+                                                .collect::<DeserializationResult<Vec<Option<_>>>>()
+                                                .with_context(
+                                                    "rerun.blueprint.encodings.SelectedColumns#time_columns",
+                                                )?
+                                                .into_iter()
+                                        }
+                                            .collect::<Vec<_>>()
+                                    };
+                                    let offsets = arrow_data.offsets();
                                     ZipValidity::new_with_validity(
                                             offsets.array_windows(),
-                                            arrow_data_inner.nulls(),
+                                            arrow_data.nulls(),
                                         )
                                         .map(|elem| {
                                             elem
                                                 .map(|&[start, end]| {
                                                     let start = start as usize;
                                                     let end = end as usize;
-                                                    let len = end - start;
-                                                    if arrow_data_inner_buf.len() < end {
+                                                    if arrow_data_inner.len() < end {
                                                         return Err(
                                                             DeserializationError::offset_slice_oob(
                                                                 (start, end),
-                                                                arrow_data_inner_buf.len(),
+                                                                arrow_data_inner.len(),
                                                             ),
                                                         );
                                                     }
-                                                    let data = arrow_data_inner_buf
-                                                        .slice_with_length(start, len);
+
+                                                    #[expect(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                                    let data = unsafe {
+                                                        arrow_data_inner.get_unchecked(start..end)
+                                                    };
+                                                    let data = data
+                                                        .iter()
+                                                        .cloned()
+                                                        .map(Option::unwrap_or_default)
+                                                        .collect();
                                                     Ok(data)
                                                 })
                                                 .transpose()
                                         })
-                                        .map(|res_or_opt| {
-                                            res_or_opt
-                                                .map(|res_or_opt| {
-                                                    res_or_opt
-                                                        .map(|v| crate::encodings::Utf8(
-                                                            ::re_types_core::ArrowString::from(v),
-                                                        ))
-                                                })
-                                        })
-                                        .collect::<DeserializationResult<Vec<Option<_>>>>()
-                                        .with_context(
-                                            "rerun.blueprint.encodings.SelectedColumns#time_columns",
-                                        )?
-                                        .into_iter()
+                                        .collect::<DeserializationResult<Vec<Option<_>>>>()?
                                 }
-                                    .collect::<Vec<_>>()
-                            };
-                            let offsets = arrow_data.offsets();
-                            ZipValidity::new_with_validity(
-                                    offsets.array_windows(),
-                                    arrow_data.nulls(),
-                                )
-                                .map(|elem| {
-                                    elem
-                                        .map(|&[start, end]| {
-                                            let start = start as usize;
-                                            let end = end as usize;
-                                            if arrow_data_inner.len() < end {
-                                                return Err(
-                                                    DeserializationError::offset_slice_oob(
-                                                        (start, end),
-                                                        arrow_data_inner.len(),
-                                                    ),
-                                                );
-                                            }
-
-                                            #[expect(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                            let data = unsafe {
-                                                arrow_data_inner.get_unchecked(start..end)
-                                            };
-                                            let data = data
-                                                .iter()
-                                                .cloned()
-                                                .map(Option::unwrap_or_default)
-                                                .collect();
-                                            Ok(data)
-                                        })
-                                        .transpose()
-                                })
-                                .collect::<DeserializationResult<Vec<Option<_>>>>()?
-                        }
-                            .into_iter()
-                    }
-                };
-                let component_columns = {
-                    if !arrays_by_name.contains_key("component_columns") {
-                        return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
-                            "component_columns",
-                        ))
-                        .with_context("rerun.blueprint.encodings.SelectedColumns");
-                    }
-                    let arrow_data = &**arrays_by_name["component_columns"];
-                    {
-                        let arrow_data = arrow_data
-                            .try_cast::<
-                                arrow::array::ListArray,
-                            >(|| DataType::List(
-                                std::sync::Arc::new(
-                                    Field::new(
-                                        "item",
-                                        <crate::blueprint::encodings::ComponentColumnSelector>::arrow_datatype(),
-                                        false,
-                                    ),
-                                ),
-                            ))
-                            .with_context(
-                                "rerun.blueprint.encodings.SelectedColumns#component_columns",
-                            )?;
-                        if arrow_data.is_empty() {
-                            Vec::new()
-                        } else {
-                            let arrow_data_inner = {
-                                let arrow_data_inner = &**arrow_data.values();
-                                crate::blueprint::encodings::ComponentColumnSelector::from_arrow_opt(
-                                        arrow_data_inner,
+                                    .into_iter()
+                            }
+                        };
+                        let component_columns = {
+                            if !arrays_by_name.contains_key("component_columns") {
+                                return Err(
+                                        DeserializationError::missing_struct_field(
+                                            Self::arrow_datatype(),
+                                            "component_columns",
+                                        ),
                                     )
+                                    .with_context("rerun.blueprint.encodings.SelectedColumns");
+                            }
+                            let arrow_data = &**arrays_by_name["component_columns"];
+                            {
+                                let arrow_data = arrow_data
+                                    .try_cast::<
+                                        arrow::array::ListArray,
+                                    >(|| DataType::List(
+                                        std::sync::Arc::new(
+                                            Field::new(
+                                                "item",
+                                                <crate::blueprint::encodings::ComponentColumnSelector>::arrow_datatype(),
+                                                false,
+                                            ),
+                                        ),
+                                    ))
                                     .with_context(
                                         "rerun.blueprint.encodings.SelectedColumns#component_columns",
-                                    )?
-                                    .into_iter()
-                                    .collect::<Vec<_>>()
-                            };
-                            let offsets = arrow_data.offsets();
-                            ZipValidity::new_with_validity(
-                                    offsets.array_windows(),
-                                    arrow_data.nulls(),
-                                )
-                                .map(|elem| {
-                                    elem
-                                        .map(|&[start, end]| {
-                                            let start = start as usize;
-                                            let end = end as usize;
-                                            if arrow_data_inner.len() < end {
-                                                return Err(
-                                                    DeserializationError::offset_slice_oob(
-                                                        (start, end),
-                                                        arrow_data_inner.len(),
-                                                    ),
-                                                );
-                                            }
+                                    )?;
+                                if arrow_data.is_empty() {
+                                    Vec::new()
+                                } else {
+                                    let arrow_data_inner = {
+                                        let arrow_data_inner = &**arrow_data.values();
+                                        crate::blueprint::encodings::ComponentColumnSelector::from_arrow_opt(
+                                                arrow_data_inner,
+                                            )
+                                            .with_context(
+                                                "rerun.blueprint.encodings.SelectedColumns#component_columns",
+                                            )?
+                                            .into_iter()
+                                            .collect::<Vec<_>>()
+                                    };
+                                    let offsets = arrow_data.offsets();
+                                    ZipValidity::new_with_validity(
+                                            offsets.array_windows(),
+                                            arrow_data.nulls(),
+                                        )
+                                        .map(|elem| {
+                                            elem
+                                                .map(|&[start, end]| {
+                                                    let start = start as usize;
+                                                    let end = end as usize;
+                                                    if arrow_data_inner.len() < end {
+                                                        return Err(
+                                                            DeserializationError::offset_slice_oob(
+                                                                (start, end),
+                                                                arrow_data_inner.len(),
+                                                            ),
+                                                        );
+                                                    }
 
-                                            #[expect(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                            let data = unsafe {
-                                                arrow_data_inner.get_unchecked(start..end)
-                                            };
-                                            let data = data
-                                                .iter()
-                                                .cloned()
-                                                .map(Option::unwrap_or_default)
-                                                .collect();
-                                            Ok(data)
+                                                    #[expect(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                                    let data = unsafe {
+                                                        arrow_data_inner.get_unchecked(start..end)
+                                                    };
+                                                    let data = data
+                                                        .iter()
+                                                        .cloned()
+                                                        .map(Option::unwrap_or_default)
+                                                        .collect();
+                                                    Ok(data)
+                                                })
+                                                .transpose()
                                         })
-                                        .transpose()
-                                })
-                                .collect::<DeserializationResult<Vec<Option<_>>>>()?
-                        }
-                            .into_iter()
+                                        .collect::<DeserializationResult<Vec<Option<_>>>>()?
+                                }
+                                    .into_iter()
+                            }
+                        };
+                        ZipValidity::new_with_validity(
+                                ::itertools::izip!(time_columns, component_columns),
+                                arrow_data.nulls(),
+                            )
+                            .map(|opt| {
+                                opt
+                                    .map(|(time_columns, component_columns)| Ok(Self {
+                                        time_columns: time_columns
+                                            .ok_or_else(DeserializationError::missing_data)
+                                            .with_context(
+                                                "rerun.blueprint.encodings.SelectedColumns#time_columns",
+                                            )?,
+                                        component_columns: component_columns
+                                            .ok_or_else(DeserializationError::missing_data)
+                                            .with_context(
+                                                "rerun.blueprint.encodings.SelectedColumns#component_columns",
+                                            )?,
+                                    }))
+                                    .transpose()
+                            })
+                            .collect::<DeserializationResult<Vec<_>>>()
+                            .with_context("rerun.blueprint.encodings.SelectedColumns")?
                     }
-                };
-                ZipValidity::new_with_validity(
-                    ::itertools::izip!(time_columns, component_columns),
-                    arrow_data.nulls(),
-                )
-                .map(|opt| {
-                    opt.map(|(time_columns, component_columns)| {
-                        Ok(Self {
-                            time_columns: time_columns
-                                .ok_or_else(DeserializationError::missing_data)
-                                .with_context(
-                                    "rerun.blueprint.encodings.SelectedColumns#time_columns",
-                                )?,
-                            component_columns: component_columns
-                                .ok_or_else(DeserializationError::missing_data)
-                                .with_context(
-                                    "rerun.blueprint.encodings.SelectedColumns#component_columns",
-                                )?,
-                        })
-                    })
-                    .transpose()
-                })
-                .collect::<DeserializationResult<Vec<_>>>()
-                .with_context("rerun.blueprint.encodings.SelectedColumns")?
+                }
             }
-        })
+                .into_iter()
+                .map(|v| v.ok_or_else(DeserializationError::missing_data))
+                .collect::<DeserializationResult<Vec<_>>>()?,
+        )
     }
 }

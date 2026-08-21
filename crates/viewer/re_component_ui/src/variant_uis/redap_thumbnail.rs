@@ -1,7 +1,7 @@
 use std::error::Error;
 
 use re_sdk_types::components::MediaType;
-use re_types_core::{ComponentIdentifier, Loggable as _, RowId};
+use re_types_core::{ComponentIdentifier, FromArrow as _, RowId};
 use re_ui::UiLayout;
 use re_viewer_context::AppContext;
 

@@ -443,7 +443,7 @@ fn read_ply(
 
 #[cfg(test)]
 mod tests {
-    use re_types_core::Loggable as _;
+    use re_types_core::FromArrow as _;
 
     use super::{GaussianSplats3D, NUM_SH_COEFFICIENTS};
     use crate::components::{Color, Position3D, RotationQuat, Scale3D, SphericalHarmonics3Rgb};

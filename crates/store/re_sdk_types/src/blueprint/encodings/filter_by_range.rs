@@ -16,11 +16,13 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::wildcard_imports)]
 
+use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
+use ::re_types_core::SerializedComponentBatch;
 use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
+use ::std::borrow::Cow;
 
 /// **Encoding**: Configuration for the filter-by-range feature of the dataframe view.
 ///
@@ -36,7 +38,7 @@ pub struct FilterByRange {
 
 ::re_types_core::macros::impl_into_cow!(FilterByRange);
 
-impl ::re_types_core::Loggable for FilterByRange {
+impl ::re_types_core::ArrowDatatype for FilterByRange {
     #[inline]
     fn arrow_datatype() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
@@ -49,15 +51,20 @@ impl ::re_types_core::Loggable for FilterByRange {
             Field::new("end", <crate::encodings::TimeInt>::arrow_datatype(), false),
         ]))
     }
+}
 
-    fn to_arrow_opt<'a>(
-        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> SerializationResult<arrow::array::ArrayRef>
+impl ::re_types_core::ToArrow for FilterByRange {
+    fn to_arrow<'a>(
+        data: impl IntoIterator<Item = impl Into<Cow<'a, Self>>>,
+    ) -> SerializationResult<ArrayRef>
     where
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{Loggable as _, ResultExt as _, arrow_helpers::as_array_ref};
+        use ::re_types_core::{
+            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            arrow_helpers::as_array_ref,
+        };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let fields = Fields::from(vec![
@@ -68,17 +75,14 @@ impl ::re_types_core::Loggable for FilterByRange {
                 ),
                 Field::new("end", <crate::encodings::TimeInt>::arrow_datatype(), false),
             ]);
-            let (somes, data): (Vec<_>, Vec<_>) = data
+            let data: Vec<_> = data
                 .into_iter()
                 .map(|datum| {
-                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    (datum.is_some(), datum)
+                    let datum: Cow<'a, Self> = datum.into();
+                    datum
                 })
-                .unzip();
-            let validity: Option<arrow::buffer::NullBuffer> = {
-                let any_nones = somes.iter().any(|some| !*some);
-                any_nones.then(|| somes.into())
-            };
+                .collect();
+            let validity = None;
             as_array_ref(StructArray::new(
                 fields,
                 vec![
@@ -86,7 +90,7 @@ impl ::re_types_core::Loggable for FilterByRange {
                         let (somes, start): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| datum.start.clone());
+                                let datum = Some(datum.start.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -95,12 +99,10 @@ impl ::re_types_core::Loggable for FilterByRange {
                             any_nones.then(|| somes.into())
                         };
                         as_array_ref(PrimitiveArray::<Int64Type>::new(
-                            ScalarBuffer::from(
-                                start
-                                    .into_iter()
-                                    .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
-                                    .collect::<Vec<_>>(),
-                            ),
+                            start
+                                .into_iter()
+                                .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
+                                .collect(),
                             start_validity,
                         ))
                     },
@@ -108,7 +110,7 @@ impl ::re_types_core::Loggable for FilterByRange {
                         let (somes, end): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| datum.end.clone());
+                                let datum = Some(datum.end.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -117,11 +119,9 @@ impl ::re_types_core::Loggable for FilterByRange {
                             any_nones.then(|| somes.into())
                         };
                         as_array_ref(PrimitiveArray::<Int64Type>::new(
-                            ScalarBuffer::from(
-                                end.into_iter()
-                                    .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
-                                    .collect::<Vec<_>>(),
-                            ),
+                            end.into_iter()
+                                .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
+                                .collect(),
                             end_validity,
                         ))
                     },
@@ -130,62 +130,65 @@ impl ::re_types_core::Loggable for FilterByRange {
             ))
         })
     }
+}
 
-    fn from_arrow_opt(
-        arrow_data: &dyn arrow::array::Array,
-    ) -> DeserializationResult<Vec<Option<Self>>>
-    where
-        Self: Sized,
-    {
+impl ::re_types_core::FromArrow for FilterByRange {
+    fn from_arrow(arrow_data: &dyn arrow::array::Array) -> DeserializationResult<Vec<Self>> {
         use ::re_types_core::{
-            Loggable as _, ResultExt as _, arrow_helpers::*, arrow_zip_validity::ZipValidity,
+            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
+        err_on_nulls(arrow_data, "rerun.blueprint.encodings.FilterByRange")?;
         Ok({
-            let arrow_data = arrow_data
-                .try_cast::<arrow::array::StructArray>(|| Self::arrow_datatype())
-                .with_context("rerun.blueprint.encodings.FilterByRange")?;
-            if arrow_data.is_empty() {
-                Vec::new()
-            } else {
-                let (arrow_data_fields, arrow_data_arrays) =
-                    (arrow_data.fields(), arrow_data.columns());
-                let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
-                    arrow_data_fields.iter().map(|field| field.name().as_str()),
-                    arrow_data_arrays,
-                )
-                .collect();
-                let start = {
-                    if !arrays_by_name.contains_key("start") {
-                        return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
-                            "start",
-                        ))
-                        .with_context("rerun.blueprint.encodings.FilterByRange");
-                    }
-                    let arrow_data = &**arrays_by_name["start"];
-                    arrow_data
-                        .try_cast::<Int64Array>(|| DataType::Int64)
-                        .with_context("rerun.blueprint.encodings.FilterByRange#start")?
-                        .into_iter()
-                        .map(|res_or_opt| res_or_opt.map(crate::encodings::TimeInt))
-                };
-                let end = {
-                    if !arrays_by_name.contains_key("end") {
-                        return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
-                            "end",
-                        ))
-                        .with_context("rerun.blueprint.encodings.FilterByRange");
-                    }
-                    let arrow_data = &**arrays_by_name["end"];
-                    arrow_data
-                        .try_cast::<Int64Array>(|| DataType::Int64)
-                        .with_context("rerun.blueprint.encodings.FilterByRange#end")?
-                        .into_iter()
-                        .map(|res_or_opt| res_or_opt.map(crate::encodings::TimeInt))
-                };
-                ZipValidity::new_with_validity(::itertools::izip!(start, end), arrow_data.nulls())
+            {
+                let arrow_data = arrow_data
+                    .try_cast::<arrow::array::StructArray>(|| Self::arrow_datatype())
+                    .with_context("rerun.blueprint.encodings.FilterByRange")?;
+                if arrow_data.is_empty() {
+                    Vec::new()
+                } else {
+                    let (arrow_data_fields, arrow_data_arrays) =
+                        (arrow_data.fields(), arrow_data.columns());
+                    let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
+                        arrow_data_fields.iter().map(|field| field.name().as_str()),
+                        arrow_data_arrays,
+                    )
+                    .collect();
+                    let start = {
+                        if !arrays_by_name.contains_key("start") {
+                            return Err(DeserializationError::missing_struct_field(
+                                Self::arrow_datatype(),
+                                "start",
+                            ))
+                            .with_context("rerun.blueprint.encodings.FilterByRange");
+                        }
+                        let arrow_data = &**arrays_by_name["start"];
+                        arrow_data
+                            .try_cast::<Int64Array>(|| DataType::Int64)
+                            .with_context("rerun.blueprint.encodings.FilterByRange#start")?
+                            .into_iter()
+                            .map(|res_or_opt| res_or_opt.map(crate::encodings::TimeInt))
+                    };
+                    let end = {
+                        if !arrays_by_name.contains_key("end") {
+                            return Err(DeserializationError::missing_struct_field(
+                                Self::arrow_datatype(),
+                                "end",
+                            ))
+                            .with_context("rerun.blueprint.encodings.FilterByRange");
+                        }
+                        let arrow_data = &**arrays_by_name["end"];
+                        arrow_data
+                            .try_cast::<Int64Array>(|| DataType::Int64)
+                            .with_context("rerun.blueprint.encodings.FilterByRange#end")?
+                            .into_iter()
+                            .map(|res_or_opt| res_or_opt.map(crate::encodings::TimeInt))
+                    };
+                    ZipValidity::new_with_validity(
+                        ::itertools::izip!(start, end),
+                        arrow_data.nulls(),
+                    )
                     .map(|opt| {
                         opt.map(|(start, end)| {
                             Ok(Self {
@@ -203,7 +206,11 @@ impl ::re_types_core::Loggable for FilterByRange {
                     })
                     .collect::<DeserializationResult<Vec<_>>>()
                     .with_context("rerun.blueprint.encodings.FilterByRange")?
+                }
             }
-        })
+        }
+        .into_iter()
+        .map(|v| v.ok_or_else(DeserializationError::missing_data))
+        .collect::<DeserializationResult<Vec<_>>>()?)
     }
 }

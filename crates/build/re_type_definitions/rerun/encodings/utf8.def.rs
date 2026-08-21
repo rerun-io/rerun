@@ -8,6 +8,7 @@
 #[arrow(transparent)]
 #[python(aliases = "str")]
 #[python(array_aliases = "str | Sequence[str] | npt.ArrayLike")]
+#[rust(arrow_opt)]
 #[rust(derive_only(Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash))]
 #[rust(override_crate = "re_types_core")]
 #[rust(repr = "transparent")]

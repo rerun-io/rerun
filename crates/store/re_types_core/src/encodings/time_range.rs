@@ -17,10 +17,12 @@
 #![allow(clippy::wildcard_imports)]
 
 use crate::SerializationResult;
+use crate::SerializedComponentBatch;
 use crate::try_serialize_field;
-use crate::{ComponentBatch as _, SerializedComponentBatch};
 use crate::{ComponentDescriptor, ComponentType};
 use crate::{DeserializationError, DeserializationResult};
+use ::arrow::array::ArrayRef;
+use ::std::borrow::Cow;
 
 /// **Encoding**: Visible time range bounds for a specific timeline.
 #[derive(Clone, Debug, Copy, PartialEq, Eq, ::re_byte_size::SizeBytes)]
@@ -34,7 +36,7 @@ pub struct TimeRange {
 
 crate::macros::impl_into_cow!(TimeRange);
 
-impl crate::Loggable for TimeRange {
+impl crate::ArrowDatatype for TimeRange {
     #[inline]
     fn arrow_datatype() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
@@ -51,15 +53,20 @@ impl crate::Loggable for TimeRange {
             ),
         ]))
     }
+}
 
+impl crate::ToArrowOpt for TimeRange {
     fn to_arrow_opt<'a>(
-        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> SerializationResult<arrow::array::ArrayRef>
+        data: impl IntoIterator<Item = Option<impl Into<Cow<'a, Self>>>>,
+    ) -> SerializationResult<ArrayRef>
     where
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use crate::{Loggable as _, ResultExt as _, arrow_helpers::as_array_ref};
+        use crate::{
+            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            arrow_helpers::as_array_ref,
+        };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let fields = Fields::from(vec![
@@ -77,7 +84,7 @@ impl crate::Loggable for TimeRange {
             let (somes, data): (Vec<_>, Vec<_>) = data
                 .into_iter()
                 .map(|datum| {
-                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
+                    let datum: Option<Cow<'a, Self>> = datum.map(Into::into);
                     (datum.is_some(), datum)
                 })
                 .unzip();
@@ -101,7 +108,7 @@ impl crate::Loggable for TimeRange {
                             any_nones.then(|| somes.into())
                         };
                         {
-                            _ = start_validity;
+                            let _ = start_validity;
                             crate::encodings::TimeRangeBoundary::to_arrow_opt(start)?
                         }
                     },
@@ -118,7 +125,7 @@ impl crate::Loggable for TimeRange {
                             any_nones.then(|| somes.into())
                         };
                         {
-                            _ = end_validity;
+                            let _ = end_validity;
                             crate::encodings::TimeRangeBoundary::to_arrow_opt(end)?
                         }
                     },
@@ -127,15 +134,17 @@ impl crate::Loggable for TimeRange {
             ))
         })
     }
+}
 
+crate::macros::impl_to_arrow_via_to_arrow_opt!(TimeRange);
+
+impl crate::FromArrowOpt for TimeRange {
     fn from_arrow_opt(
         arrow_data: &dyn arrow::array::Array,
-    ) -> DeserializationResult<Vec<Option<Self>>>
-    where
-        Self: Sized,
-    {
+    ) -> DeserializationResult<Vec<Option<Self>>> {
         use crate::{
-            Loggable as _, ResultExt as _, arrow_helpers::*, arrow_zip_validity::ZipValidity,
+            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
@@ -198,3 +207,5 @@ impl crate::Loggable for TimeRange {
         })
     }
 }
+
+crate::macros::impl_from_arrow_via_from_arrow_opt!(TimeRange);

@@ -11,7 +11,7 @@ use itertools::Itertools as _;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::EntityPath;
 use re_log_types::EntityPathPart;
-use re_sdk_types::Loggable as _;
+use re_sdk_types::ToArrow as _;
 use re_sdk_types::archetypes::Transform3D;
 use re_sdk_types::encodings::{Quaternion, Vec3D};
 use urdf_rs::{Geometry, Joint, Link, Material, Robot};

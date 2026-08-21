@@ -129,6 +129,14 @@ pub enum RerunAttr {
 /// What the Rust backend does with a type.
 #[derive(AsRefStr, Clone, Copy, Debug, Display, EnumIter, PartialEq, Eq, PartialOrd, Ord)]
 pub enum RustAttr {
+    /// Also implement the nullable Arrow traits, `ToArrowOpt` and `FromArrowOpt`.
+    ///
+    /// Every type implements `ToArrow` and `FromArrow`. The nullable variants are only needed by
+    /// types that appear as a nullable field of another type, since that field's (de)serializer
+    /// calls them.
+    #[strum(serialize = "attr.rust.arrow_opt")]
+    ArrowOpt,
+
     /// Traits to `#[derive]` on the generated type, on top of the ones every type gets.
     #[strum(serialize = "attr.rust.derive")]
     Derive,

@@ -16,11 +16,13 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::wildcard_imports)]
 
+use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
+use ::re_types_core::SerializedComponentBatch;
 use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
+use ::std::borrow::Cow;
 
 /// **Archetype**: Configuration of the text log columns.
 ///
@@ -110,31 +112,33 @@ impl ::re_types_core::Archetype for TextLogColumns {
     }
 
     #[inline]
-    fn required_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+    fn required_components() -> Cow<'static, [ComponentDescriptor]> {
         REQUIRED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn recommended_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+    fn recommended_components() -> Cow<'static, [ComponentDescriptor]> {
         RECOMMENDED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn optional_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+    fn optional_components() -> Cow<'static, [ComponentDescriptor]> {
         OPTIONAL_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn all_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+    fn all_components() -> Cow<'static, [ComponentDescriptor]> {
         ALL_COMPONENTS.as_slice().into()
     }
 
     #[inline]
     fn from_arrow_components(
-        arrow_data: impl IntoIterator<Item = (ComponentDescriptor, arrow::array::ArrayRef)>,
+        arrow_data: impl IntoIterator<Item = (ComponentDescriptor, ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
-        use ::re_types_core::{Loggable as _, ResultExt as _};
+        use ::re_types_core::{
+            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+        };
         let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
         let timeline_columns = arrays_by_descr
             .get(&Self::descriptor_timeline_columns())
@@ -185,7 +189,7 @@ impl TextLogColumns {
     /// Clear all the fields of a `TextLogColumns`.
     #[inline]
     pub fn clear_fields() -> Self {
-        use ::re_types_core::Loggable as _;
+        use ::re_types_core::ArrowDatatype as _;
         Self {
             timeline_columns: Some(SerializedComponentBatch::new(
                 crate::blueprint::components::TimelineColumn::arrow_empty(),

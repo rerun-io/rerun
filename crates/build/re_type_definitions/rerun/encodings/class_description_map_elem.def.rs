@@ -7,6 +7,7 @@
 #[rerun::rerun_type]
 #[python(aliases = "encodings.ClassDescriptionLike")]
 #[rerun(state = "unstable")]
+#[rust(arrow_opt)]
 #[rust(derive(Default, Eq, PartialEq))]
 pub struct ClassDescriptionMapElem {
     /// The key: the [`rerun::components::ClassId`].

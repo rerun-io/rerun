@@ -331,7 +331,7 @@ fn read_ply(reader: &mut impl std::io::BufRead) -> std::io::Result<Points3D> {
 
 #[cfg(test)]
 mod tests {
-    use re_types_core::Loggable as _;
+    use re_types_core::FromArrow as _;
 
     use super::Points3D;
     use crate::components::{Color, Position3D, Radius, Text};

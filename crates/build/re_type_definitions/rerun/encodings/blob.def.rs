@@ -8,6 +8,9 @@
 #[arrow(transparent)]
 #[python(aliases = "bytes | npt.NDArray[np.uint8]")]
 #[python(array_aliases = "bytes | npt.NDArray[np.uint8]")]
+// Only needed by the nullable-serialization test in `blob_ext.rs`: no other encoding that
+// opts in is buffer-backed, so nothing else covers that path.
+#[rust(arrow_opt)]
 #[rust(derive(PartialEq))]
 #[rust(repr = "transparent")]
 #[rust(tuple_struct)]

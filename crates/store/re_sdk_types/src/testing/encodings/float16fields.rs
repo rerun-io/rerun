@@ -16,11 +16,13 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::wildcard_imports)]
 
+use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
+use ::re_types_core::SerializedComponentBatch;
 use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
+use ::std::borrow::Cow;
 
 #[derive(Clone, Debug, Default, PartialEq, ::re_byte_size::SizeBytes)]
 pub struct Float16Fields {
@@ -30,7 +32,7 @@ pub struct Float16Fields {
 
 ::re_types_core::macros::impl_into_cow!(Float16Fields);
 
-impl ::re_types_core::Loggable for Float16Fields {
+impl ::re_types_core::ArrowDatatype for Float16Fields {
     #[inline]
     fn arrow_datatype() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
@@ -47,15 +49,20 @@ impl ::re_types_core::Loggable for Float16Fields {
             ),
         ]))
     }
+}
 
-    fn to_arrow_opt<'a>(
-        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> SerializationResult<arrow::array::ArrayRef>
+impl ::re_types_core::ToArrow for Float16Fields {
+    fn to_arrow<'a>(
+        data: impl IntoIterator<Item = impl Into<Cow<'a, Self>>>,
+    ) -> SerializationResult<ArrayRef>
     where
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{Loggable as _, ResultExt as _, arrow_helpers::as_array_ref};
+        use ::re_types_core::{
+            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            arrow_helpers::as_array_ref,
+        };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let fields = Fields::from(vec![
@@ -70,17 +77,14 @@ impl ::re_types_core::Loggable for Float16Fields {
                     false,
                 ),
             ]);
-            let (somes, data): (Vec<_>, Vec<_>) = data
+            let data: Vec<_> = data
                 .into_iter()
                 .map(|datum| {
-                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    (datum.is_some(), datum)
+                    let datum: Cow<'a, Self> = datum.into();
+                    datum
                 })
-                .unzip();
-            let validity: Option<arrow::buffer::NullBuffer> = {
-                let any_nones = somes.iter().any(|some| !*some);
-                any_nones.then(|| somes.into())
-            };
+                .collect();
+            let validity = None;
             as_array_ref(StructArray::new(
                 fields,
                 vec![
@@ -88,7 +92,7 @@ impl ::re_types_core::Loggable for Float16Fields {
                         let (somes, single_half): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| datum.single_half.clone());
+                                let datum = Some(datum.single_half.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -97,12 +101,10 @@ impl ::re_types_core::Loggable for Float16Fields {
                             any_nones.then(|| somes.into())
                         };
                         as_array_ref(PrimitiveArray::<Float16Type>::new(
-                            ScalarBuffer::from(
-                                single_half
-                                    .into_iter()
-                                    .map(|v| v.unwrap_or_default())
-                                    .collect::<Vec<_>>(),
-                            ),
+                            single_half
+                                .into_iter()
+                                .map(|v| v.unwrap_or_default())
+                                .collect(),
                             single_half_validity,
                         ))
                     },
@@ -110,7 +112,7 @@ impl ::re_types_core::Loggable for Float16Fields {
                         let (somes, many_halves): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| datum.many_halves.clone());
+                                let datum = Some(datum.many_halves.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -131,8 +133,7 @@ impl ::re_types_core::Loggable for Float16Fields {
                                 .collect::<Vec<_>>()
                                 .concat()
                                 .into();
-                            let many_halves_inner_validity: Option<arrow::buffer::NullBuffer> =
-                                None;
+                            let many_halves_inner_validity = None;
                             as_array_ref(ListArray::try_new(
                                 std::sync::Arc::new(Field::new("item", DataType::Float16, false)),
                                 offsets,
@@ -149,125 +150,132 @@ impl ::re_types_core::Loggable for Float16Fields {
             ))
         })
     }
+}
 
-    fn from_arrow_opt(
-        arrow_data: &dyn arrow::array::Array,
-    ) -> DeserializationResult<Vec<Option<Self>>>
-    where
-        Self: Sized,
-    {
+impl ::re_types_core::FromArrow for Float16Fields {
+    fn from_arrow(arrow_data: &dyn arrow::array::Array) -> DeserializationResult<Vec<Self>> {
         use ::re_types_core::{
-            Loggable as _, ResultExt as _, arrow_helpers::*, arrow_zip_validity::ZipValidity,
+            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
+        err_on_nulls(arrow_data, "rerun.testing.encodings.Float16Fields")?;
         Ok({
-            let arrow_data = arrow_data
-                .try_cast::<arrow::array::StructArray>(|| Self::arrow_datatype())
-                .with_context("rerun.testing.encodings.Float16Fields")?;
-            if arrow_data.is_empty() {
-                Vec::new()
-            } else {
-                let (arrow_data_fields, arrow_data_arrays) =
-                    (arrow_data.fields(), arrow_data.columns());
-                let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
-                    arrow_data_fields.iter().map(|field| field.name().as_str()),
-                    arrow_data_arrays,
-                )
-                .collect();
-                let single_half = {
-                    if !arrays_by_name.contains_key("single_half") {
-                        return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
-                            "single_half",
-                        ))
-                        .with_context("rerun.testing.encodings.Float16Fields");
-                    }
-                    let arrow_data = &**arrays_by_name["single_half"];
-                    arrow_data
-                        .try_cast::<Float16Array>(|| DataType::Float16)
-                        .with_context("rerun.testing.encodings.Float16Fields#single_half")?
-                        .into_iter()
-                };
-                let many_halves = {
-                    if !arrays_by_name.contains_key("many_halves") {
-                        return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
-                            "many_halves",
-                        ))
-                        .with_context("rerun.testing.encodings.Float16Fields");
-                    }
-                    let arrow_data = &**arrays_by_name["many_halves"];
-                    {
-                        let arrow_data = arrow_data
-                            .try_cast::<arrow::array::ListArray>(|| {
-                                DataType::List(std::sync::Arc::new(Field::new(
-                                    "item",
-                                    DataType::Float16,
-                                    false,
-                                )))
-                            })
-                            .with_context("rerun.testing.encodings.Float16Fields#many_halves")?;
-                        if arrow_data.is_empty() {
-                            Vec::new()
-                        } else {
-                            let arrow_data_inner = {
-                                let arrow_data_inner = &**arrow_data.values();
-                                arrow_data_inner
-                                    .try_cast::<Float16Array>(|| DataType::Float16)
-                                    .with_context(
-                                        "rerun.testing.encodings.Float16Fields#many_halves",
-                                    )?
-                                    .values()
-                            };
-                            let offsets = arrow_data.offsets();
-                            ZipValidity::new_with_validity(
-                                offsets.array_windows(),
-                                arrow_data.nulls(),
-                            )
-                            .map(|elem| {
-                                elem.map(|&[start, end]| {
-                                    let start = start as usize;
-                                    let end = end as usize;
-                                    if arrow_data_inner.len() < end {
-                                        return Err(DeserializationError::offset_slice_oob(
-                                            (start, end),
-                                            arrow_data_inner.len(),
-                                        ));
-                                    }
-                                    let data = arrow_data_inner.clone().slice(start, end - start);
-                                    Ok(data)
-                                })
-                                .transpose()
-                            })
-                            .collect::<DeserializationResult<Vec<Option<_>>>>()?
+            {
+                let arrow_data = arrow_data
+                    .try_cast::<arrow::array::StructArray>(|| Self::arrow_datatype())
+                    .with_context("rerun.testing.encodings.Float16Fields")?;
+                if arrow_data.is_empty() {
+                    Vec::new()
+                } else {
+                    let (arrow_data_fields, arrow_data_arrays) =
+                        (arrow_data.fields(), arrow_data.columns());
+                    let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
+                        arrow_data_fields.iter().map(|field| field.name().as_str()),
+                        arrow_data_arrays,
+                    )
+                    .collect();
+                    let single_half = {
+                        if !arrays_by_name.contains_key("single_half") {
+                            return Err(DeserializationError::missing_struct_field(
+                                Self::arrow_datatype(),
+                                "single_half",
+                            ))
+                            .with_context("rerun.testing.encodings.Float16Fields");
                         }
-                        .into_iter()
-                    }
-                };
-                ZipValidity::new_with_validity(
-                    ::itertools::izip!(single_half, many_halves),
-                    arrow_data.nulls(),
-                )
-                .map(|opt| {
-                    opt.map(|(single_half, many_halves)| {
-                        Ok(Self {
-                            single_half: single_half
-                                .ok_or_else(DeserializationError::missing_data)
-                                .with_context(
-                                    "rerun.testing.encodings.Float16Fields#single_half",
-                                )?,
-                            many_halves: many_halves
-                                .ok_or_else(DeserializationError::missing_data)
+                        let arrow_data = &**arrays_by_name["single_half"];
+                        arrow_data
+                            .try_cast::<Float16Array>(|| DataType::Float16)
+                            .with_context("rerun.testing.encodings.Float16Fields#single_half")?
+                            .into_iter()
+                    };
+                    let many_halves = {
+                        if !arrays_by_name.contains_key("many_halves") {
+                            return Err(DeserializationError::missing_struct_field(
+                                Self::arrow_datatype(),
+                                "many_halves",
+                            ))
+                            .with_context("rerun.testing.encodings.Float16Fields");
+                        }
+                        let arrow_data = &**arrays_by_name["many_halves"];
+                        {
+                            let arrow_data = arrow_data
+                                .try_cast::<arrow::array::ListArray>(|| {
+                                    DataType::List(std::sync::Arc::new(Field::new(
+                                        "item",
+                                        DataType::Float16,
+                                        false,
+                                    )))
+                                })
                                 .with_context(
                                     "rerun.testing.encodings.Float16Fields#many_halves",
-                                )?,
+                                )?;
+                            if arrow_data.is_empty() {
+                                Vec::new()
+                            } else {
+                                let arrow_data_inner = {
+                                    let arrow_data_inner = &**arrow_data.values();
+                                    arrow_data_inner
+                                        .try_cast::<Float16Array>(|| DataType::Float16)
+                                        .with_context(
+                                            "rerun.testing.encodings.Float16Fields#many_halves",
+                                        )?
+                                        .values()
+                                };
+                                let offsets = arrow_data.offsets();
+                                ZipValidity::new_with_validity(
+                                    offsets.array_windows(),
+                                    arrow_data.nulls(),
+                                )
+                                .map(|elem| {
+                                    elem.map(|&[start, end]| {
+                                        let start = start as usize;
+                                        let end = end as usize;
+                                        if arrow_data_inner.len() < end {
+                                            return Err(DeserializationError::offset_slice_oob(
+                                                (start, end),
+                                                arrow_data_inner.len(),
+                                            ));
+                                        }
+                                        let data =
+                                            arrow_data_inner.clone().slice(start, end - start);
+                                        Ok(data)
+                                    })
+                                    .transpose()
+                                })
+                                .collect::<DeserializationResult<Vec<Option<_>>>>()?
+                            }
+                            .into_iter()
+                        }
+                    };
+                    ZipValidity::new_with_validity(
+                        ::itertools::izip!(single_half, many_halves),
+                        arrow_data.nulls(),
+                    )
+                    .map(|opt| {
+                        opt.map(|(single_half, many_halves)| {
+                            Ok(Self {
+                                single_half: single_half
+                                    .ok_or_else(DeserializationError::missing_data)
+                                    .with_context(
+                                        "rerun.testing.encodings.Float16Fields#single_half",
+                                    )?,
+                                many_halves: many_halves
+                                    .ok_or_else(DeserializationError::missing_data)
+                                    .with_context(
+                                        "rerun.testing.encodings.Float16Fields#many_halves",
+                                    )?,
+                            })
                         })
+                        .transpose()
                     })
-                    .transpose()
-                })
-                .collect::<DeserializationResult<Vec<_>>>()
-                .with_context("rerun.testing.encodings.Float16Fields")?
+                    .collect::<DeserializationResult<Vec<_>>>()
+                    .with_context("rerun.testing.encodings.Float16Fields")?
+                }
             }
-        })
+        }
+        .into_iter()
+        .map(|v| v.ok_or_else(DeserializationError::missing_data))
+        .collect::<DeserializationResult<Vec<_>>>()?)
     }
 }

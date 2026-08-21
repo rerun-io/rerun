@@ -1,4 +1,4 @@
-use re_types_core::{ArrowString, Loggable as _, try_serialize_field};
+use re_types_core::{ArrowString, FromArrow as _, try_serialize_field};
 
 use super::Tensor;
 use crate::components;

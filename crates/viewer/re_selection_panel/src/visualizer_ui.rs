@@ -1467,7 +1467,7 @@ mod tests {
     }
 
     fn vec3d() -> DataType {
-        <re_sdk_types::encodings::Vec3D as re_types_core::Loggable>::arrow_datatype()
+        <re_sdk_types::encodings::Vec3D as re_types_core::ArrowDatatype>::arrow_datatype()
     }
 
     fn native(component: ComponentIdentifier) -> (ComponentIdentifier, DatatypeMatch) {

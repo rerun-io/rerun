@@ -4,6 +4,7 @@
 /// A pair representing a channel ID and its associated message count.
 #[rerun::rerun_type]
 #[python(aliases = "Tuple[encodings.UInt16Like, encodings.UInt64Like]")]
+#[rust(arrow_opt)]
 #[rust(derive(Default, PartialEq, Eq, PartialOrd, Ord))]
 #[rerun(state = "stable")]
 pub struct ChannelCountPair {

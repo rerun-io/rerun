@@ -6,6 +6,7 @@
 #[rerun::rerun_type]
 #[python(aliases = "str")]
 #[rerun(scope = "blueprint")]
+#[rust(arrow_opt)]
 #[rust(derive(Default, PartialEq, Eq, Hash))]
 #[rerun(state = "unstable")]
 pub struct ComponentColumnSelector {

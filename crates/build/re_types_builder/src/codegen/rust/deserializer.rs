@@ -19,16 +19,22 @@ use crate::{Object, Objects, TypeRegistry};
 /// This short-circuits on error using the `try` (`?`) operator: the outer scope must be one that
 /// returns a `Result<_, DeserializationError>`!
 ///
-/// There is a 1:1 relationship between `quote_arrow_deserializer` and `Loggable::from_arrow_opt`:
+/// There is a 1:1 relationship between `quote_arrow_deserializer` and the two deserialization
+/// traits, selected by `elements_are_nullable`:
 /// ```ignore
 /// fn from_arrow_opt(data: &dyn ::arrow::array::Array) -> DeserializationResult<Vec<Option<Self>>> {
-///     Ok(#quoted_deserializer)
+///     Ok(#quoted_deserializer) // elements_are_nullable = true
+/// }
+///
+/// fn from_arrow(data: &dyn ::arrow::array::Array) -> DeserializationResult<Vec<Self>> {
+///     Ok(#quoted_deserializer) // elements_are_nullable = false
 /// }
 /// ```
 ///
 /// This tells you two things:
 /// - The runtime Arrow payload is always held in a variable `data`, identified as `data_src` below.
-/// - The returned `TokenStream` must always instantiates a `Vec<Option<Self>>`.
+/// - The returned `TokenStream` instantiates a `Vec<Option<Self>>` when the elements are nullable,
+///   and a `Vec<Self>` otherwise.
 ///
 /// ## Performance vs validation
 /// The deserializers are designed for maximum performance, assuming the incoming data is correct.
@@ -56,6 +62,7 @@ pub fn quote_arrow_deserializer(
     type_registry: &TypeRegistry,
     objects: &Objects,
     obj: &Object,
+    elements_are_nullable: bool,
 ) -> TokenStream {
     // Runtime identifier of the variable holding the Arrow payload (`&dyn ::arrow::array::Array`).
     let data_src = format_ident!("arrow_data");
@@ -70,45 +77,50 @@ pub fn quote_arrow_deserializer(
 
     if is_enum {
         // An enum is very similar to a transparent type.
-
-        // As a transparent type, it's not clear what this does or
-        // where it should come from. Also, it's not used in the internal
-        // implementation of `quote_arrow_field_deserializer` anyways.
-        // TODO(#6819): If we get rid of nullable components this will likely need to change.
-        let is_nullable = true; // Will be ignored
-
         let obj_field_fqname = format!("{obj_fqname}#enum");
 
         let quoted_deserializer = quote_arrow_field_deserializer(
             objects,
             datatype.to_logical_type(),
             &quoted_self_datatype, // we are transparent, so the datatype of `Self` is the datatype of our contents
-            is_nullable,
+            elements_are_nullable,
             &obj_field_fqname,
             &data_src,
             InnerRepr::NativeIterable,
         );
 
-        let quoted_remapping = quote! {
-            .map(|typ| {
-                match typ {
-                    Some(val) => {
-                        <Self as ::re_types_core::reflection::Enum>::try_from_integer(val).map(Some).ok_or_else(|| {
-                            DeserializationError::missing_union_arm(
-                                #quoted_self_datatype, "<invalid>", val as _,
-                            )
-                        })
-                    },
-                    None => Ok(None),
-                }
-            })
+        let quoted_remapping = if elements_are_nullable {
+            quote! {
+                .map(|typ| {
+                    match typ {
+                        Some(val) => {
+                            <Self as ::re_types_core::reflection::Enum>::try_from_integer(val).map(Some).ok_or_else(|| {
+                                DeserializationError::missing_union_arm(
+                                    #quoted_self_datatype, "<invalid>", val as _,
+                                )
+                            })
+                        },
+                        None => Ok(None),
+                    }
+                })
+            }
+        } else {
+            quote! {
+                .map(|val| {
+                    <Self as ::re_types_core::reflection::Enum>::try_from_integer(val).ok_or_else(|| {
+                        DeserializationError::missing_union_arm(
+                            #quoted_self_datatype, "<invalid>", val as _,
+                        )
+                    })
+                })
+            }
         };
 
         quote! {
             #quoted_deserializer
             #quoted_remapping
             // NOTE: implicit Vec<Result> to Result<Vec>
-            .collect::<DeserializationResult<Vec<Option<_>>>>()
+            .collect::<DeserializationResult<Vec<_>>>()
             .with_context(#obj_fqname)?
         }
     } else if is_arrow_transparent {
@@ -128,15 +140,36 @@ pub fn quote_arrow_deserializer(
 
         let field_datatype = type_registry.get(&obj_field.fqname);
 
+        // Plain values are only an option when nothing can be null — neither the elements nor the
+        // wrapped field — and the field's datatype has a non-nullable deserializer at all.
+        let field_is_nullable = elements_are_nullable
+            || obj_field.is_nullable
+            || !field_deserializer_handles_non_nullable(objects, &field_datatype);
+
         let quoted_deserializer = quote_arrow_field_deserializer(
             objects,
             &field_datatype,
             &quoted_self_datatype, // we are transparent, so the datatype of `Self` is the datatype of our contents
-            obj_field.is_nullable,
+            field_is_nullable,
             obj_field_fqname,
             &data_src,
             InnerRepr::NativeIterable,
         );
+
+        if !field_is_nullable {
+            // Plain, infallible values: no `Option` to unwrap and no `Result` to thread through.
+            let quoted_remapping = if is_tuple_struct {
+                quote!(.map(Self))
+            } else {
+                quote!(.map(|#data_dst| Self { #data_dst }))
+            };
+
+            return quote! {
+                #quoted_deserializer
+                #quoted_remapping
+                .collect::<Vec<_>>()
+            };
+        }
 
         let quoted_unwrapping = if obj_field.is_nullable {
             quote!(.map(Ok))
@@ -145,10 +178,11 @@ pub fn quote_arrow_deserializer(
             quote!(.map(|v| v.ok_or_else(DeserializationError::missing_data)))
         };
 
-        let quoted_remapping = if is_tuple_struct {
-            quote!(.map(|res| res.map(|v| Some(Self(v)))))
-        } else {
-            quote!(.map(|res| res.map(|#data_dst| Some(Self { #data_dst }))))
+        let quoted_remapping = match (is_tuple_struct, elements_are_nullable) {
+            (true, true) => quote!(.map(|res| res.map(|v| Some(Self(v))))),
+            (true, false) => quote!(.map(|res| res.map(Self))),
+            (false, true) => quote!(.map(|res| res.map(|#data_dst| Some(Self { #data_dst })))),
+            (false, false) => quote!(.map(|res| res.map(|#data_dst| Self { #data_dst }))),
         };
 
         quote! {
@@ -156,7 +190,7 @@ pub fn quote_arrow_deserializer(
             #quoted_unwrapping
             #quoted_remapping
             // NOTE: implicit Vec<Result> to Result<Vec>
-            .collect::<DeserializationResult<Vec<Option<_>>>>()
+            .collect::<DeserializationResult<Vec<_>>>()
             // NOTE: double context so the user can see the transparent shenanigans going on in the
             // error.
             .with_context(#obj_field_fqname)
@@ -164,7 +198,8 @@ pub fn quote_arrow_deserializer(
         }
     } else {
         // NOTE: This can only be struct or union/enum at this point.
-        match datatype.to_logical_type() {
+        // These branches always produce `Vec<Option<Self>>`; a non-nullable caller unwraps below.
+        let quoted_deserializer = match datatype.to_logical_type() {
             DataType::Struct(_) => {
                 let data_src_fields = format_ident!("{data_src}_fields");
                 let data_src_arrays = format_ident!("{data_src}_arrays");
@@ -178,7 +213,7 @@ pub fn quote_arrow_deserializer(
                         objects,
                         field_datatype,
                         &quote_datatype(field_datatype),
-                        obj_field.is_nullable,
+                        YIELD_OPTIONS,
                         obj_field.fqname.as_str(),
                         &data_src,
                         InnerRepr::NativeIterable,
@@ -327,7 +362,7 @@ pub fn quote_arrow_deserializer(
                             objects,
                             field_datatype,
                             &quote_datatype(field_datatype),
-                            obj_field.is_nullable,
+                            YIELD_OPTIONS,
                             obj_field.fqname.as_str(),
                             &data_src,
                             InnerRepr::NativeIterable,
@@ -457,6 +492,12 @@ pub fn quote_arrow_deserializer(
             }
 
             _ => unimplemented!("{datatype:#?}"),
+        };
+
+        if elements_are_nullable {
+            quoted_deserializer
+        } else {
+            quote_unwrap_options(&quoted_deserializer)
         }
     }
 }
@@ -471,14 +512,42 @@ enum InnerRepr {
     NativeIterable,
 }
 
+/// Passed as `yield_options` by callers that want `Option`s whatever the field's own nullability,
+/// because they inspect and unwrap them themselves.
+const YIELD_OPTIONS: bool = true;
+
+/// Does [`quote_arrow_field_deserializer`] yield plain values, rather than `Option`s, when told
+/// that the elements cannot be null?
+///
+/// Only the cheap cases are implemented; everything else still goes through `Option`s and is
+/// unwrapped by the caller.
+fn field_deserializer_handles_non_nullable(objects: &Objects, datatype: &DataType) -> bool {
+    datatype.enum_obj(objects).is_some()
+        || matches!(datatype.to_logical_type(), DataType::Atomic(_))
+}
+
+/// Unwraps a `Vec<Option<Self>>`-producing deserializer into a `Vec<Self>`-producing one.
+fn quote_unwrap_options(quoted_deserializer: &TokenStream) -> TokenStream {
+    quote! {
+        { #quoted_deserializer }
+            .into_iter()
+            .map(|v| v.ok_or_else(DeserializationError::missing_data))
+            .collect::<DeserializationResult<Vec<_>>>()?
+    }
+}
+
 /// This generates code that deserializes a runtime Arrow payload according to the specified `datatype`.
 ///
 /// The `datatype` comes from our compile-time Arrow registry, not from the runtime payload!
 /// If the datatype happens to be a struct or union, this will merely inject a runtime call to
-/// `Loggable::from_arrow_opt` and call it a day, preventing code bloat.
+/// `FromArrowOpt::from_arrow_opt` and call it a day, preventing code bloat.
 ///
 /// `data_src` is the runtime identifier of the variable holding the Arrow payload (`&dyn ::arrow::array::Array`).
-/// The returned `TokenStream` always instantiates a `Vec<Option<T>>`.
+///
+/// `yield_options` decides whether the generated iterator yields `Option<T>` or plain `T`.
+/// Plain values are cheaper — no validity bitmap to walk — but are only available for the
+/// datatypes listed in [`field_deserializer_handles_non_nullable`]; everything else ignores the
+/// flag and yields `Option`s regardless.
 ///
 /// This short-circuits on error using the `try` (`?`) operator: the outer scope must be one that
 /// returns a `Result<_, DeserializationError>`!
@@ -486,23 +555,30 @@ fn quote_arrow_field_deserializer(
     objects: &Objects,
     datatype: &DataType,
     quoted_datatype: &TokenStream,
-    is_nullable: bool,
+    yield_options: bool,
     obj_field_fqname: &str,
     data_src: &proc_macro2::Ident, // &dyn ::arrow::array::Array
     inner_repr: InnerRepr,
 ) -> TokenStream {
-    _ = is_nullable; // not yet used, will be needed very soon
-
     // If the inner object is an enum, then dispatch to its deserializer.
     if let Some(obj) = datatype.enum_obj(objects) {
         let fqname_use = quote_fqname_as_type_path(&obj.fqname);
-        return quote!(#fqname_use::from_arrow_opt(#data_src).with_context(#obj_field_fqname)?.into_iter());
+        return if yield_options {
+            quote!(#fqname_use::from_arrow_opt(#data_src).with_context(#obj_field_fqname)?.into_iter())
+        } else {
+            quote!(#fqname_use::from_arrow(#data_src).with_context(#obj_field_fqname)?.into_iter())
+        };
     }
 
     match datatype.to_logical_type() {
         DataType::Atomic(atomic) => {
+            let iter_kind = if yield_options {
+                IteratorKind::OptionValue
+            } else {
+                IteratorKind::Value
+            };
             let quoted_iter_transparency =
-                quote_iterator_transparency(objects, datatype, IteratorKind::OptionValue, None);
+                quote_iterator_transparency(objects, datatype, iter_kind, None);
 
             let quoted_downcast = {
                 let cast_as = atomic.to_string();
@@ -515,6 +591,21 @@ fn quote_arrow_field_deserializer(
                     #quoted_downcast?
                     .values()
                 },
+                // NOTE: `into_iter` walks the validity bitmap to yield `Option`s. When the
+                // elements cannot be null, reading the values buffer skips that entirely.
+                InnerRepr::NativeIterable if !yield_options => {
+                    // A `BooleanBuffer` iterates by value; every other buffer iterates by reference.
+                    let quoted_copied =
+                        (atomic != &AtomicDataType::Boolean).then(|| quote!(.copied()));
+
+                    quote! {
+                        #quoted_downcast?
+                            .values()
+                            .iter()
+                            #quoted_copied
+                            #quoted_iter_transparency
+                    }
+                }
                 InnerRepr::NativeIterable => quote! {
                     #quoted_downcast?
                         .into_iter() // NOTE: automatically checks the bitmap on our behalf
@@ -644,7 +735,7 @@ fn quote_arrow_field_deserializer(
                 objects,
                 inner.data_type(),
                 &quote_datatype(inner.data_type()),
-                inner.is_nullable,
+                YIELD_OPTIONS,
                 obj_field_fqname,
                 &data_src_inner,
                 InnerRepr::NativeIterable,
@@ -783,7 +874,7 @@ fn quote_arrow_field_deserializer(
                 objects,
                 inner.data_type(),
                 &quote_datatype(inner.data_type()),
-                inner.is_nullable,
+                YIELD_OPTIONS,
                 obj_field_fqname,
                 &data_src_inner,
                 inner_repr,
@@ -1025,7 +1116,7 @@ fn quote_iterator_transparency(
 /// allowing us to map directly to slices rather than iterating. The ability to use this optimization is
 /// determined by [`should_optimize_buffer_slice_deserialize`].
 ///
-/// There is a 1:1 relationship between `quote_arrow_deserializer_buffer_slice` and `Loggable::from_arrow`:
+/// There is a 1:1 relationship between `quote_arrow_deserializer_buffer_slice` and `FromArrow::from_arrow`:
 /// ```ignore
 /// fn from_arrow(data: &dyn ::arrow::array::Array) -> DeserializationResult<Vec<Self>> {
 ///     Ok(#quoted_deserializer_)

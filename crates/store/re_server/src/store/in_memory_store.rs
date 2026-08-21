@@ -25,7 +25,7 @@ use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
 use re_tuid::Tuid;
 #[cfg(not(target_arch = "wasm32"))]
 use re_types_core::LayerName;
-use re_types_core::{ComponentBatch as _, Loggable as _};
+use re_types_core::{ArrowDatatype as _, ComponentBatch as _};
 
 #[cfg(not(target_arch = "wasm32"))]
 use crate::NamedPath;

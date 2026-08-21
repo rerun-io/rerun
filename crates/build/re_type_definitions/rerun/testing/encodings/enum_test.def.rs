@@ -5,6 +5,7 @@
 #[rerun::rerun_type]
 #[repr(u8)]
 #[rerun(state = "stable")]
+#[rust(arrow_opt)]
 pub enum EnumTest {
     /// Great film.
     Up = 1,
@@ -51,6 +52,7 @@ pub struct FixedSizeWideEnumArray {
 }
 
 #[rerun::rerun_type]
+#[rust(arrow_opt)]
 #[rust(derive(Default, PartialEq, Eq))]
 #[rerun(state = "stable")]
 pub struct MultiEnum {
@@ -65,6 +67,7 @@ pub struct MultiEnum {
 #[rerun::rerun_type]
 #[repr(u8)]
 #[rerun(state = "stable")]
+#[rust(arrow_opt)]
 pub enum ValuedEnum {
     /// One.
     One = 1,
@@ -83,6 +86,7 @@ pub enum ValuedEnum {
 #[rerun::rerun_type]
 #[repr(u32)]
 #[rerun(state = "stable")]
+#[rust(arrow_opt)]
 pub enum WideEnum {
     /// Low value.
     Low = 1,

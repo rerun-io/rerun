@@ -7,6 +7,7 @@
 /// The id refers either to a class or key-point id
 #[rerun::rerun_type]
 #[python(aliases = "int | Tuple[int, str] | Tuple[int, str, encodings.Rgba32Like]")]
+#[rust(arrow_opt)]
 #[rust(derive(Default, Eq, PartialEq))]
 #[rerun(state = "stable")]
 pub struct AnnotationInfo {

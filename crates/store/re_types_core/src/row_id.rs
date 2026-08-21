@@ -1,6 +1,6 @@
 use arrow::array::Array as _;
 
-use crate::Loggable as _;
+use crate::ArrowDatatype as _;
 
 /// A unique ID for a row's worth of data within a chunk.
 ///

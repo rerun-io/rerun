@@ -15,7 +15,7 @@ use re_renderer::{
     ScreenshotProcessor, device_caps,
 };
 use re_sdk_types::archetypes::GaussianSplats3D;
-use re_types_core::Loggable as _;
+use re_types_core::FromArrow as _;
 
 /// Defaults render the checked-in `cactus.ply` from a fixed camera.
 #[derive(clap::Parser)]

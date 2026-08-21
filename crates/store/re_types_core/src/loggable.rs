@@ -7,44 +7,43 @@ use crate::{ComponentIdentifier, DeserializationResult, SerializationResult};
 
 // ---
 
-/// A [`Loggable`] represents a single instance in an array of loggable data.
+/// Describes the Arrow datatype that a type is (de)serialized to and from.
 ///
-/// Internally, Arrow, and by extension Rerun, only deal with arrays of data.
-/// We refer to individual entries in these arrays as instances.
-///
-/// A [`Loggable`] has no semantics (such as a name, for example): it's just data.
-/// If you want to encode semantics, then you're looking for a [`Component`], which extends [`Loggable`].
-///
-/// Implementing the [`Loggable`] trait automatically derives the [`ComponentBatch`] implementation,
-/// which makes it possible to work with lists' worth of data in a generic fashion.
-pub trait Loggable: 'static + Send + Sync + Clone + Sized + SizeBytes {
+/// This is the base trait of the four (de)serialization traits ([`ToArrow`], [`ToArrowOpt`],
+/// [`FromArrow`], [`FromArrowOpt`]): a type may implement any subset of those, but it must always
+/// agree on a single datatype.
+pub trait ArrowDatatype: Sized {
     /// The underlying [`arrow::datatypes::DataType`], excluding datatype extensions.
     fn arrow_datatype() -> arrow::datatypes::DataType;
 
-    // Returns an empty Arrow array that matches this `Loggable`'s underlying datatype.
+    /// Returns an empty Arrow array that matches this type's underlying datatype.
     #[inline]
     fn arrow_empty() -> arrow::array::ArrayRef {
         arrow::array::new_empty_array(&Self::arrow_datatype())
     }
+}
 
-    /// Given an iterator of owned or reference values to the current [`Loggable`], serializes
-    /// them into an Arrow array.
+/// Serializes an iterator of values into an Arrow array.
+///
+/// Most types implement this in terms of [`ToArrowOpt`]; see [`crate::macros::impl_to_arrow_via_to_arrow_opt`].
+/// Types whose Arrow encoding cannot express null values (e.g. `Tuid`) implement this one only.
+pub trait ToArrow: ArrowDatatype + Clone {
+    /// Given an iterator of owned or reference values, serializes them into an Arrow array.
     ///
     /// When using Rerun's builtin components & encodings, this can only fail if the data
     /// exceeds the maximum number of entries in an Arrow array (2^31 for standard arrays,
     /// 2^63 for large arrays).
-    #[inline]
     fn to_arrow<'a>(
         data: impl IntoIterator<Item = impl Into<std::borrow::Cow<'a, Self>>>,
     ) -> SerializationResult<arrow::array::ArrayRef>
     where
-        Self: 'a,
-    {
-        Self::to_arrow_opt(data.into_iter().map(|v| Some(v)))
-    }
+        Self: 'a;
+}
 
-    /// Given an iterator of options of owned or reference values to the current
-    /// [`Loggable`], serializes them into an Arrow array.
+/// Serializes an iterator of optional values into a nullable Arrow array.
+pub trait ToArrowOpt: ArrowDatatype + Clone {
+    /// Given an iterator of options of owned or reference values, serializes them into an Arrow
+    /// array.
     ///
     /// When using Rerun's builtin components & encodings, this can only fail if the data
     /// exceeds the maximum number of entries in an Arrow array (2^31 for standard arrays,
@@ -54,37 +53,76 @@ pub trait Loggable: 'static + Send + Sync + Clone + Sized + SizeBytes {
     ) -> SerializationResult<arrow::array::ArrayRef>
     where
         Self: 'a;
+}
 
-    /// Given an Arrow array, deserializes it into a collection of [`Loggable`]s.
-    #[inline]
-    fn from_arrow(data: &dyn arrow::array::Array) -> DeserializationResult<Vec<Self>> {
-        Self::from_arrow_opt(data)?
-            .into_iter()
-            .map(|opt| opt.ok_or_else(crate::DeserializationError::missing_data))
-            .collect::<DeserializationResult<Vec<_>>>()
-    }
-
-    /// Given an Arrow array, deserializes it into a collection of optional [`Loggable`]s.
-    #[inline]
-    fn from_arrow_opt(
-        data: &dyn arrow::array::Array,
-    ) -> crate::DeserializationResult<Vec<Option<Self>>> {
-        Self::from_arrow(data).map(|v| v.into_iter().map(Some).collect())
-    }
+/// Deserializes an Arrow array into a collection of values, failing on nulls.
+pub trait FromArrow: ArrowDatatype {
+    /// Given an Arrow array, deserializes it into a collection of values.
+    fn from_arrow(data: &dyn arrow::array::Array) -> DeserializationResult<Vec<Self>>;
 
     /// Verifies that the given Arrow array can be deserialized into a collection of [`Self`]s.
     ///
     /// Calls [`Self::from_arrow`] and returns an error if it fails.
-    fn verify_arrow_array(data: &dyn arrow::array::Array) -> crate::DeserializationResult<()> {
+    fn verify_arrow_array(data: &dyn arrow::array::Array) -> DeserializationResult<()> {
         Self::from_arrow(data).map(|_| ())
     }
 }
 
+/// Deserializes a nullable Arrow array into a collection of optional values.
+pub trait FromArrowOpt: ArrowDatatype {
+    /// Given an Arrow array, deserializes it into a collection of optional values.
+    fn from_arrow_opt(data: &dyn arrow::array::Array) -> DeserializationResult<Vec<Option<Self>>>;
+}
+
+// --- Bridges between the serialization traits ---
+
+/// Implements [`ToArrow::to_arrow`] in terms of [`ToArrowOpt`].
+///
+/// See [`crate::macros::impl_to_arrow_via_to_arrow_opt`].
+#[inline]
+pub fn to_arrow_via_to_arrow_opt<'a, T: ToArrowOpt + 'a>(
+    data: impl IntoIterator<Item = impl Into<std::borrow::Cow<'a, T>>>,
+) -> SerializationResult<arrow::array::ArrayRef> {
+    T::to_arrow_opt(data.into_iter().map(Some))
+}
+
+/// Implements [`FromArrow::from_arrow`] in terms of [`FromArrowOpt`], failing on nulls.
+///
+/// See [`crate::macros::impl_from_arrow_via_from_arrow_opt`].
+#[inline]
+pub fn from_arrow_via_from_arrow_opt<T: FromArrowOpt>(
+    data: &dyn arrow::array::Array,
+) -> DeserializationResult<Vec<T>> {
+    T::from_arrow_opt(data)?
+        .into_iter()
+        .map(|opt| opt.ok_or_else(crate::DeserializationError::missing_data))
+        .collect()
+}
+
+/// Implements [`FromArrowOpt::from_arrow_opt`] in terms of [`FromArrow`].
+///
+/// The resulting array never contains nulls.
+///
+/// See [`crate::macros::impl_from_arrow_opt_via_from_arrow`].
+#[inline]
+pub fn from_arrow_opt_via_from_arrow<T: FromArrow>(
+    data: &dyn arrow::array::Array,
+) -> DeserializationResult<Vec<Option<T>>> {
+    T::from_arrow(data).map(|v| v.into_iter().map(Some).collect())
+}
+
 /// A [`Component`] describes semantic data that can be used by any number of [`Archetype`]s.
+///
+/// A component round-trips through Arrow: it must implement [`ToArrow`] and [`FromArrow`].
+///
+/// Note that the nullable variants, [`ToArrowOpt`] and [`FromArrowOpt`], are deliberately *not*
+/// required: a component has to round-trip, but it does not have to be nullable.
 ///
 /// Implementing the [`Component`] trait automatically derives the [`ComponentBatch`] implementation,
 /// which makes it possible to work with lists' worth of data in a generic fashion.
-pub trait Component: Loggable {
+pub trait Component:
+    'static + Send + Sync + Clone + Sized + SizeBytes + ToArrow + FromArrow
+{
     /// The fully-qualified type of this component, e.g. `rerun.components.Position2D`.
     fn name() -> ComponentType;
 }

@@ -17,10 +17,12 @@
 #![allow(clippy::wildcard_imports)]
 
 use crate::SerializationResult;
+use crate::SerializedComponentBatch;
 use crate::try_serialize_field;
-use crate::{ComponentBatch as _, SerializedComponentBatch};
 use crate::{ComponentDescriptor, ComponentType};
 use crate::{DeserializationError, DeserializationResult};
+use ::arrow::array::ArrayRef;
+use ::std::borrow::Cow;
 
 /// **Encoding**: A single boolean.
 #[derive(
@@ -31,66 +33,59 @@ pub struct Bool(pub bool);
 
 crate::macros::impl_into_cow!(Bool);
 
-impl crate::Loggable for Bool {
+impl crate::ArrowDatatype for Bool {
     #[inline]
     fn arrow_datatype() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
         DataType::Boolean
     }
+}
 
-    fn to_arrow_opt<'a>(
-        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> SerializationResult<arrow::array::ArrayRef>
+impl crate::ToArrow for Bool {
+    fn to_arrow<'a>(
+        data: impl IntoIterator<Item = impl Into<Cow<'a, Self>>>,
+    ) -> SerializationResult<ArrayRef>
     where
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use crate::{Loggable as _, ResultExt as _, arrow_helpers::as_array_ref};
+        use crate::{
+            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            arrow_helpers::as_array_ref,
+        };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
-            let (somes, data0): (Vec<_>, Vec<_>) = data
+            let data0: Vec<_> = data
                 .into_iter()
                 .map(|datum| {
-                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    let datum = datum.map(|datum| datum.into_owned().0);
-                    (datum.is_some(), datum)
+                    let datum: Cow<'a, Self> = datum.into();
+                    datum.into_owned().0
                 })
-                .unzip();
-            let data0_validity: Option<arrow::buffer::NullBuffer> = {
-                let any_nones = somes.iter().any(|some| !*some);
-                any_nones.then(|| somes.into())
-            };
+                .collect();
+            let data0_validity = None;
             as_array_ref(BooleanArray::new(
-                BooleanBuffer::from(
-                    data0
-                        .into_iter()
-                        .map(|v| v.unwrap_or_default())
-                        .collect::<Vec<_>>(),
-                ),
+                data0.into_iter().collect(),
                 data0_validity,
             ))
         })
     }
+}
 
-    fn from_arrow_opt(
-        arrow_data: &dyn arrow::array::Array,
-    ) -> DeserializationResult<Vec<Option<Self>>>
-    where
-        Self: Sized,
-    {
+impl crate::FromArrow for Bool {
+    fn from_arrow(arrow_data: &dyn arrow::array::Array) -> DeserializationResult<Vec<Self>> {
         use crate::{
-            Loggable as _, ResultExt as _, arrow_helpers::*, arrow_zip_validity::ZipValidity,
+            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
+        err_on_nulls(arrow_data, "rerun.encodings.Bool")?;
         Ok(arrow_data
             .try_cast::<BooleanArray>(|| Self::arrow_datatype())
             .with_context("rerun.encodings.Bool#value")?
-            .into_iter()
-            .map(|v| v.ok_or_else(DeserializationError::missing_data))
-            .map(|res| res.map(|v| Some(Self(v))))
-            .collect::<DeserializationResult<Vec<Option<_>>>>()
-            .with_context("rerun.encodings.Bool#value")
-            .with_context("rerun.encodings.Bool")?)
+            .values()
+            .iter()
+            .map(Self)
+            .collect::<Vec<_>>())
     }
 }
 

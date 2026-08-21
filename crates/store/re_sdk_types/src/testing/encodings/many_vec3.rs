@@ -16,11 +16,13 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::wildcard_imports)]
 
+use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
+use ::re_types_core::SerializedComponentBatch;
 use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
+use ::std::borrow::Cow;
 
 /// **Encoding**: A fixed-size array of arrays — exercises nested fixed-size lists in Arrow.
 #[derive(
@@ -38,7 +40,7 @@ pub struct ManyVec3(pub [[f32; 3usize]; 2usize]);
 
 ::re_types_core::macros::impl_into_cow!(ManyVec3);
 
-impl ::re_types_core::Loggable for ManyVec3 {
+impl ::re_types_core::ArrowDatatype for ManyVec3 {
     #[inline]
     fn arrow_datatype() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
@@ -54,49 +56,33 @@ impl ::re_types_core::Loggable for ManyVec3 {
             2,
         )
     }
+}
 
-    fn to_arrow_opt<'a>(
-        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> SerializationResult<arrow::array::ArrayRef>
+impl ::re_types_core::ToArrow for ManyVec3 {
+    fn to_arrow<'a>(
+        data: impl IntoIterator<Item = impl Into<Cow<'a, Self>>>,
+    ) -> SerializationResult<ArrayRef>
     where
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{Loggable as _, ResultExt as _, arrow_helpers::as_array_ref};
+        use ::re_types_core::{
+            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            arrow_helpers::as_array_ref,
+        };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
-            let (somes, data0): (Vec<_>, Vec<_>) = data
+            let data0: Vec<_> = data
                 .into_iter()
                 .map(|datum| {
-                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    let datum = datum.map(|datum| datum.into_owned().0);
-                    (datum.is_some(), datum)
+                    let datum: Cow<'a, Self> = datum.into();
+                    datum.into_owned().0
                 })
-                .unzip();
-            let data0_validity: Option<arrow::buffer::NullBuffer> = {
-                let any_nones = somes.iter().any(|some| !*some);
-                any_nones.then(|| somes.into())
-            };
+                .collect();
+            let data0_validity = None;
             {
-                let data0_inner_data: Vec<_> = data0
-                    .into_iter()
-                    .flat_map(|v| match v {
-                        Some(v) => itertools::Either::Left(v.into_iter()),
-                        None => itertools::Either::Right(std::iter::repeat_n(
-                            Default::default(),
-                            2usize,
-                        )),
-                    })
-                    .collect();
-                let data0_inner_validity: Option<arrow::buffer::NullBuffer> =
-                    data0_validity.as_ref().map(|validity| {
-                        validity
-                            .iter()
-                            .map(|b| std::iter::repeat_n(b, 2usize))
-                            .flatten()
-                            .collect::<Vec<_>>()
-                            .into()
-                    });
+                let data0_inner_data: Vec<_> = data0.into_iter().flatten().collect();
+                let data0_inner_validity = None;
                 as_array_ref(FixedSizeListArray::new(
                     std::sync::Arc::new(Field::new(
                         "item",
@@ -110,15 +96,12 @@ impl ::re_types_core::Loggable for ManyVec3 {
                     {
                         let data0_inner_data_inner_data: Vec<_> =
                             data0_inner_data.into_iter().flatten().collect();
-                        let data0_inner_data_inner_validity: Option<arrow::buffer::NullBuffer> =
-                            None;
+                        let data0_inner_data_inner_validity = None;
                         as_array_ref(FixedSizeListArray::new(
                             std::sync::Arc::new(Field::new("item", DataType::Float32, false)),
                             3,
                             as_array_ref(PrimitiveArray::<Float32Type>::new(
-                                ScalarBuffer::from(
-                                    data0_inner_data_inner_data.into_iter().collect::<Vec<_>>(),
-                                ),
+                                data0_inner_data_inner_data.into_iter().collect(),
                                 data0_inner_data_inner_validity,
                             )),
                             data0_inner_validity,
@@ -129,127 +112,14 @@ impl ::re_types_core::Loggable for ManyVec3 {
             }
         })
     }
+}
 
-    fn from_arrow_opt(
-        arrow_data: &dyn arrow::array::Array,
-    ) -> DeserializationResult<Vec<Option<Self>>>
-    where
-        Self: Sized,
-    {
-        use ::re_types_core::{
-            Loggable as _, ResultExt as _, arrow_helpers::*, arrow_zip_validity::ZipValidity,
-        };
-        use arrow::{array::*, buffer::*, datatypes::*};
-        Ok({
-            let arrow_data = arrow_data
-                .try_cast::<arrow::array::FixedSizeListArray>(|| Self::arrow_datatype())
-                .with_context("rerun.testing.encodings.ManyVec3#triples")?;
-            if arrow_data.is_empty() {
-                Vec::new()
-            } else {
-                let offsets = ::std::iter::zip(
-                    (0..).step_by(2usize),
-                    (2usize..).step_by(2usize).take(arrow_data.len()),
-                );
-                let arrow_data_inner = {
-                    let arrow_data_inner = &**arrow_data.values();
-                    {
-                        let arrow_data_inner = arrow_data_inner
-                            .try_cast::<arrow::array::FixedSizeListArray>(|| {
-                                DataType::FixedSizeList(
-                                    std::sync::Arc::new(Field::new(
-                                        "item",
-                                        DataType::Float32,
-                                        false,
-                                    )),
-                                    3,
-                                )
-                            })
-                            .with_context("rerun.testing.encodings.ManyVec3#triples")?;
-                        if arrow_data_inner.is_empty() {
-                            Vec::new()
-                        } else {
-                            let offsets = ::std::iter::zip(
-                                (0..).step_by(3usize),
-                                (3usize..).step_by(3usize).take(arrow_data_inner.len()),
-                            );
-                            let arrow_data_inner_inner = {
-                                let arrow_data_inner_inner = &**arrow_data_inner.values();
-                                arrow_data_inner_inner
-                                    .try_cast::<Float32Array>(|| DataType::Float32)
-                                    .with_context("rerun.testing.encodings.ManyVec3#triples")?
-                                    .into_iter()
-                                    .collect::<Vec<_>>()
-                            };
-                            ZipValidity::new_with_validity(offsets, arrow_data_inner.nulls())
-                                .map(|elem| {
-                                    elem.map(|(start, end): (usize, usize)| {
-                                        re_log::debug_assert!(end - start == 3usize);
-                                        if arrow_data_inner_inner.len() < end {
-                                            return Err(DeserializationError::offset_slice_oob(
-                                                (start, end),
-                                                arrow_data_inner_inner.len(),
-                                            ));
-                                        }
-
-                                        #[expect(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                        let data = unsafe {
-                                            arrow_data_inner_inner.get_unchecked(start..end)
-                                        };
-                                        let data =
-                                            data.iter().cloned().map(Option::unwrap_or_default);
-
-                                        // NOTE: Unwrapping cannot fail: the length must be correct.
-                                        #[expect(clippy::unwrap_used)]
-                                        Ok(array_init::from_iter(data).unwrap())
-                                    })
-                                    .transpose()
-                                })
-                                .collect::<DeserializationResult<Vec<Option<_>>>>()?
-                        }
-                        .into_iter()
-                    }
-                    .collect::<Vec<_>>()
-                };
-                ZipValidity::new_with_validity(offsets, arrow_data.nulls())
-                    .map(|elem| {
-                        elem.map(|(start, end): (usize, usize)| {
-                            re_log::debug_assert!(end - start == 2usize);
-                            if arrow_data_inner.len() < end {
-                                return Err(DeserializationError::offset_slice_oob(
-                                    (start, end),
-                                    arrow_data_inner.len(),
-                                ));
-                            }
-
-                            #[expect(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                            let data = unsafe { arrow_data_inner.get_unchecked(start..end) };
-                            let data = data.iter().cloned().map(Option::unwrap_or_default);
-
-                            // NOTE: Unwrapping cannot fail: the length must be correct.
-                            #[expect(clippy::unwrap_used)]
-                            Ok(array_init::from_iter(data).unwrap())
-                        })
-                        .transpose()
-                    })
-                    .collect::<DeserializationResult<Vec<Option<_>>>>()?
-            }
-            .into_iter()
-        }
-        .map(|v| v.ok_or_else(DeserializationError::missing_data))
-        .map(|res| res.map(|v| Some(Self(v))))
-        .collect::<DeserializationResult<Vec<Option<_>>>>()
-        .with_context("rerun.testing.encodings.ManyVec3#triples")
-        .with_context("rerun.testing.encodings.ManyVec3")?)
-    }
-
+impl ::re_types_core::FromArrow for ManyVec3 {
     #[inline]
-    fn from_arrow(arrow_data: &dyn arrow::array::Array) -> DeserializationResult<Vec<Self>>
-    where
-        Self: Sized,
-    {
+    fn from_arrow(arrow_data: &dyn arrow::array::Array) -> DeserializationResult<Vec<Self>> {
         use ::re_types_core::{
-            Loggable as _, ResultExt as _, arrow_helpers::*, arrow_zip_validity::ZipValidity,
+            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
         err_on_nulls(arrow_data, "rerun.testing.encodings.ManyVec3")?;

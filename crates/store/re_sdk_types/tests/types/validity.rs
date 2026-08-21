@@ -1,5 +1,6 @@
 use re_sdk_types::components::{self, Position2D};
-use re_sdk_types::{DeserializationError, Loggable as _};
+use re_sdk_types::encodings;
+use re_sdk_types::{DeserializationError, FromArrow as _, ToArrow as _, ToArrowOpt as _};
 
 #[test]
 fn validity_checks() {
@@ -12,22 +13,23 @@ fn validity_checks() {
     let deserialized = Position2D::from_arrow(serialized.as_ref());
     assert!(deserialized.is_ok());
 
+    // The nullable half needs a type that opts in to `ToArrowOpt`; see `attr.rust.arrow_opt`.
     let good_nullable = vec![
-        Some(components::Position2D::new(1.0, 2.0)), //
-        Some(components::Position2D::new(3.0, 4.0)), //
+        Some(encodings::Utf8::from("hello")), //
+        Some(encodings::Utf8::from("world")), //
     ];
 
-    let serialized = Position2D::to_arrow_opt(good_nullable).unwrap();
-    let deserialized = Position2D::from_arrow(serialized.as_ref());
+    let serialized = encodings::Utf8::to_arrow_opt(good_nullable).unwrap();
+    let deserialized = encodings::Utf8::from_arrow(serialized.as_ref());
     assert!(deserialized.is_ok());
 
     let bad = vec![
-        Some(components::Position2D::new(1.0, 2.0)), //
+        Some(encodings::Utf8::from("hello")), //
         None,
     ];
 
-    let serialized = Position2D::to_arrow_opt(bad).unwrap();
-    let deserialized = Position2D::from_arrow(serialized.as_ref());
+    let serialized = encodings::Utf8::to_arrow_opt(bad).unwrap();
+    let deserialized = encodings::Utf8::from_arrow(serialized.as_ref());
     assert!(deserialized.is_err());
     let actual_error = deserialized.err().unwrap().without_context();
     assert!(

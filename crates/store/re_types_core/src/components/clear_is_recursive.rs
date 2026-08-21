@@ -17,10 +17,12 @@
 #![allow(clippy::wildcard_imports)]
 
 use crate::SerializationResult;
+use crate::SerializedComponentBatch;
 use crate::try_serialize_field;
-use crate::{ComponentBatch as _, SerializedComponentBatch};
 use crate::{ComponentDescriptor, ComponentType};
 use crate::{DeserializationError, DeserializationResult};
+use ::arrow::array::ArrayRef;
+use ::std::borrow::Cow;
 
 /// **Component**: Configures how a clear operation should behave - recursive or not.
 #[derive(Clone, Debug, Copy, PartialEq, Eq, ::re_byte_size::SizeBytes)]

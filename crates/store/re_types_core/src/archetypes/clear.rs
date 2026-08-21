@@ -17,10 +17,12 @@
 #![allow(clippy::wildcard_imports)]
 
 use crate::SerializationResult;
+use crate::SerializedComponentBatch;
 use crate::try_serialize_field;
-use crate::{ComponentBatch as _, SerializedComponentBatch};
 use crate::{ComponentDescriptor, ComponentType};
 use crate::{DeserializationError, DeserializationResult};
+use ::arrow::array::ArrayRef;
+use ::std::borrow::Cow;
 
 /// **Archetype**: Empties all the components of an entity.
 ///
@@ -135,31 +137,31 @@ impl crate::Archetype for Clear {
     }
 
     #[inline]
-    fn required_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+    fn required_components() -> Cow<'static, [ComponentDescriptor]> {
         REQUIRED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn recommended_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+    fn recommended_components() -> Cow<'static, [ComponentDescriptor]> {
         RECOMMENDED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn optional_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+    fn optional_components() -> Cow<'static, [ComponentDescriptor]> {
         OPTIONAL_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn all_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+    fn all_components() -> Cow<'static, [ComponentDescriptor]> {
         ALL_COMPONENTS.as_slice().into()
     }
 
     #[inline]
     fn from_arrow_components(
-        arrow_data: impl IntoIterator<Item = (ComponentDescriptor, arrow::array::ArrayRef)>,
+        arrow_data: impl IntoIterator<Item = (ComponentDescriptor, ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
-        use crate::{Loggable as _, ResultExt as _};
+        use crate::{ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _};
         let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
         let is_recursive = arrays_by_descr
             .get(&Self::descriptor_is_recursive())
@@ -200,7 +202,7 @@ impl Clear {
     /// Clear all the fields of a `Clear`.
     #[inline]
     pub fn clear_fields() -> Self {
-        use crate::Loggable as _;
+        use crate::ArrowDatatype as _;
         Self {
             is_recursive: Some(SerializedComponentBatch::new(
                 crate::components::ClearIsRecursive::arrow_empty(),

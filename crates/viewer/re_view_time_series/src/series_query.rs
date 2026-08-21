@@ -10,7 +10,7 @@ use re_log_types::external::arrow::array::AsArray as _;
 use re_log_types::external::arrow::buffer::BooleanBuffer;
 use re_log_types::external::arrow::datatypes::UInt32Type;
 use re_sdk_types::external::arrow::datatypes::DataType as ArrowDatatype;
-use re_sdk_types::{ComponentDescriptor, Loggable as _, RowId, archetypes, components};
+use re_sdk_types::{ArrowDatatype as _, ComponentDescriptor, RowId, archetypes, components};
 use re_view::clamped_or_nothing;
 use re_viewer_context::{ViewQuery, ViewerReportSeverity};
 

@@ -341,7 +341,7 @@ fn roundtrip() {
 /// Fixed-size array of structs, i.e. a nested Arrow `FixedSizeList<FixedSizeList<Float32, 3>, 2>`.
 #[test]
 fn roundtrip_fixed_size_array_of_structs() {
-    use re_types_core::Loggable as _;
+    use re_types_core::{ArrowDatatype as _, FromArrow as _, ToArrow as _};
 
     let expected_datatype = arrow::datatypes::DataType::FixedSizeList(
         std::sync::Arc::new(arrow::datatypes::Field::new(

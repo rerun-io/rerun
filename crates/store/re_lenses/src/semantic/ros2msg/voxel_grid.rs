@@ -6,7 +6,7 @@ use arrow::array::{Array as _, ArrayRef, Float32Builder, ListArray, StructArray,
 use arrow::datatypes::{DataType, Field};
 use re_lenses_core::Selector;
 use re_lenses_core::combinators::Error;
-use re_sdk_types::Loggable as _;
+use re_sdk_types::ToArrow as _;
 use re_sdk_types::archetypes::{CoordinateFrame, VoxelGridMap};
 use re_sdk_types::components::Opacity;
 

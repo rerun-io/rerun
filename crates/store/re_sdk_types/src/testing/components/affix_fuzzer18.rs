@@ -16,11 +16,13 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::wildcard_imports)]
 
+use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
+use ::re_types_core::SerializedComponentBatch;
 use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
+use ::std::borrow::Cow;
 
 #[derive(Clone, Debug, Default, PartialEq, ::re_byte_size::SizeBytes)]
 pub struct AffixFuzzer18(pub Option<Vec<crate::testing::encodings::NestedUnion>>);
@@ -34,7 +36,7 @@ impl ::re_types_core::Component for AffixFuzzer18 {
 
 ::re_types_core::macros::impl_into_cow!(AffixFuzzer18);
 
-impl ::re_types_core::Loggable for AffixFuzzer18 {
+impl ::re_types_core::ArrowDatatype for AffixFuzzer18 {
     #[inline]
     fn arrow_datatype() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
@@ -44,22 +46,27 @@ impl ::re_types_core::Loggable for AffixFuzzer18 {
             true,
         )))
     }
+}
 
-    fn to_arrow_opt<'a>(
-        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> SerializationResult<arrow::array::ArrayRef>
+impl ::re_types_core::ToArrow for AffixFuzzer18 {
+    fn to_arrow<'a>(
+        data: impl IntoIterator<Item = impl Into<Cow<'a, Self>>>,
+    ) -> SerializationResult<ArrayRef>
     where
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{Loggable as _, ResultExt as _, arrow_helpers::as_array_ref};
+        use ::re_types_core::{
+            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            arrow_helpers::as_array_ref,
+        };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
                 .map(|datum| {
-                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    let datum = datum.map(|datum| datum.into_owned().0).flatten();
+                    let datum: Cow<'a, Self> = datum.into();
+                    let datum = datum.into_owned().0;
                     (datum.is_some(), datum)
                 })
                 .unzip();
@@ -74,7 +81,7 @@ impl ::re_types_core::Loggable for AffixFuzzer18 {
                         .map(|opt| opt.as_ref().map_or(0, |datum| datum.len())),
                 );
                 let data0_inner_data: Vec<_> = data0.into_iter().flatten().flatten().collect();
-                let data0_inner_validity: Option<arrow::buffer::NullBuffer> = None;
+                let data0_inner_validity = None;
                 as_array_ref(ListArray::try_new(
                     std::sync::Arc::new(Field::new(
                         "item",
@@ -83,25 +90,21 @@ impl ::re_types_core::Loggable for AffixFuzzer18 {
                     )),
                     offsets,
                     {
-                        _ = data0_inner_validity;
-                        crate::testing::encodings::NestedUnion::to_arrow_opt(
-                            data0_inner_data.into_iter().map(Some),
-                        )?
+                        let _: Option<arrow::buffer::NullBuffer> = data0_inner_validity;
+                        crate::testing::encodings::NestedUnion::to_arrow(data0_inner_data)?
                     },
                     data0_validity,
                 )?)
             }
         })
     }
+}
 
-    fn from_arrow_opt(
-        arrow_data: &dyn arrow::array::Array,
-    ) -> DeserializationResult<Vec<Option<Self>>>
-    where
-        Self: Sized,
-    {
+impl ::re_types_core::FromArrow for AffixFuzzer18 {
+    fn from_arrow(arrow_data: &dyn arrow::array::Array) -> DeserializationResult<Vec<Self>> {
         use ::re_types_core::{
-            Loggable as _, ResultExt as _, arrow_helpers::*, arrow_zip_validity::ZipValidity,
+            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
@@ -149,8 +152,8 @@ impl ::re_types_core::Loggable for AffixFuzzer18 {
             .into_iter()
         }
         .map(Ok)
-        .map(|res| res.map(|v| Some(Self(v))))
-        .collect::<DeserializationResult<Vec<Option<_>>>>()
+        .map(|res| res.map(Self))
+        .collect::<DeserializationResult<Vec<_>>>()
         .with_context("rerun.testing.components.AffixFuzzer18#many_optional_unions")
         .with_context("rerun.testing.components.AffixFuzzer18")?)
     }

@@ -14,7 +14,7 @@ use arrow::datatypes::{Field as ArrowField, Schema as ArrowSchema};
 
 use re_arrow_util::RecordBatchExt as _;
 use re_log_types::{EntityPath, TimelineName};
-use re_types_core::{ChunkId, FIELD_METADATA_KEY_COMPONENT, Loggable as _, RowId};
+use re_types_core::{ArrowDatatype as _, ChunkId, FIELD_METADATA_KEY_COMPONENT, RowId};
 
 use crate::{
     BatchType, ChunkBatch, ComponentColumnDescriptor, IndexColumnDescriptor, MetadataExt as _,
@@ -575,7 +575,7 @@ mod tests {
         DataType as ArrowDatatype, Field as ArrowField, Schema as ArrowSchema, TimeUnit,
     };
     use re_log_types::{EntityPath, TimelineName};
-    use re_types_core::{Loggable as _, RowId};
+    use re_types_core::{FromArrow as _, RowId};
 
     use super::{DataframeIndex, chunk_batches_from_dataframe_record_batch};
     use crate::{

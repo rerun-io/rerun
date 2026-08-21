@@ -1,4 +1,4 @@
-use re_types_core::{Loggable as _, SerializedComponentBatch};
+use re_types_core::{SerializedComponentBatch, ToArrowOpt as _};
 
 use crate::components::Text;
 

@@ -305,7 +305,7 @@ mod tests {
 
     use re_log_types::example_components::{MyColor, MyPoint, MyPoints};
     use re_log_types::{EntityPath, Timeline};
-    use re_types_core::{ChunkId, Loggable as _, RowId, TimelineName};
+    use re_types_core::{ChunkId, RowId, TimelineName, ToArrow as _};
 
     use super::*;
 

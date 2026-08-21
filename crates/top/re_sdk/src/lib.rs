@@ -108,10 +108,12 @@ pub mod time {
     };
 }
 
+pub use re_sdk_types::macros;
 pub use re_sdk_types::{
-    Archetype, ArchetypeName, AsComponents, Component, ComponentBatch, ComponentDescriptor,
-    ComponentIdentifier, ComponentType, DeserializationError, DeserializationResult, Loggable,
-    SerializationError, SerializationResult, SerializedComponentBatch, SerializedComponentColumn,
+    Archetype, ArchetypeName, ArrowDatatype, AsComponents, Component, ComponentBatch,
+    ComponentDescriptor, ComponentIdentifier, ComponentType, DeserializationError,
+    DeserializationResult, FromArrow, FromArrowOpt, SerializationError, SerializationResult,
+    SerializedComponentBatch, SerializedComponentColumn, ToArrow, ToArrowOpt,
 };
 pub use time::{TimeCell, TimePoint, Timeline, TimelineName};
 

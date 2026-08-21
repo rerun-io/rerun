@@ -7,6 +7,7 @@
 #[rerun::rerun_type]
 #[repr(i8)]
 #[rerun(state = "stable")]
+#[rust(arrow_opt)]
 #[rust(derive_only(Clone, PartialEq))]
 pub enum TensorBuffer {
     /// 8bit unsigned integer.

@@ -64,7 +64,7 @@ impl std::ops::Deref for Blob {
 #[cfg(test)]
 mod tests {
     use arrow::array::Array as _;
-    use re_types_core::Loggable as _;
+    use re_types_core::{FromArrow as _, ToArrow as _, ToArrowOpt as _};
 
     use super::*;
 

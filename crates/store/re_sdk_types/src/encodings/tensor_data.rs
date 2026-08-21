@@ -16,11 +16,13 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::wildcard_imports)]
 
+use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
+use ::re_types_core::SerializedComponentBatch;
 use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
+use ::std::borrow::Cow;
 
 /// **Encoding**: An N-dimensional array of numbers.
 ///
@@ -50,7 +52,7 @@ pub struct TensorData {
 
 ::re_types_core::macros::impl_into_cow!(TensorData);
 
-impl ::re_types_core::Loggable for TensorData {
+impl ::re_types_core::ArrowDatatype for TensorData {
     #[inline]
     fn arrow_datatype() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
@@ -80,15 +82,20 @@ impl ::re_types_core::Loggable for TensorData {
             ),
         ]))
     }
+}
 
-    fn to_arrow_opt<'a>(
-        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> SerializationResult<arrow::array::ArrayRef>
+impl ::re_types_core::ToArrow for TensorData {
+    fn to_arrow<'a>(
+        data: impl IntoIterator<Item = impl Into<Cow<'a, Self>>>,
+    ) -> SerializationResult<ArrayRef>
     where
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{Loggable as _, ResultExt as _, arrow_helpers::as_array_ref};
+        use ::re_types_core::{
+            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            arrow_helpers::as_array_ref,
+        };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let fields = Fields::from(vec![
@@ -116,17 +123,14 @@ impl ::re_types_core::Loggable for TensorData {
                     true,
                 ),
             ]);
-            let (somes, data): (Vec<_>, Vec<_>) = data
+            let data: Vec<_> = data
                 .into_iter()
                 .map(|datum| {
-                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    (datum.is_some(), datum)
+                    let datum: Cow<'a, Self> = datum.into();
+                    datum
                 })
-                .unzip();
-            let validity: Option<arrow::buffer::NullBuffer> = {
-                let any_nones = somes.iter().any(|some| !*some);
-                any_nones.then(|| somes.into())
-            };
+                .collect();
+            let validity = None;
             as_array_ref(StructArray::new(
                 fields,
                 vec![
@@ -134,7 +138,7 @@ impl ::re_types_core::Loggable for TensorData {
                         let (somes, shape): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| datum.shape.clone());
+                                let datum = Some(datum.shape.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -155,7 +159,7 @@ impl ::re_types_core::Loggable for TensorData {
                                 .collect::<Vec<_>>()
                                 .concat()
                                 .into();
-                            let shape_inner_validity: Option<arrow::buffer::NullBuffer> = None;
+                            let shape_inner_validity = None;
                             as_array_ref(ListArray::try_new(
                                 std::sync::Arc::new(Field::new("item", DataType::UInt64, false)),
                                 offsets,
@@ -171,8 +175,7 @@ impl ::re_types_core::Loggable for TensorData {
                         let (somes, names): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum =
-                                    datum.as_ref().map(|datum| datum.names.clone()).flatten();
+                                let datum = Some(datum.names.clone()).flatten();
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -188,7 +191,7 @@ impl ::re_types_core::Loggable for TensorData {
                             );
                             let names_inner_data: Vec<_> =
                                 names.into_iter().flatten().flatten().collect();
-                            let names_inner_validity: Option<arrow::buffer::NullBuffer> = None;
+                            let names_inner_validity = None;
                             as_array_ref(ListArray::try_new(
                                 std::sync::Arc::new(Field::new("item", DataType::Utf8, false)),
                                 offsets,
@@ -222,7 +225,7 @@ impl ::re_types_core::Loggable for TensorData {
                         let (somes, buffer): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| datum.buffer.clone());
+                                let datum = Some(datum.buffer.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -231,7 +234,7 @@ impl ::re_types_core::Loggable for TensorData {
                             any_nones.then(|| somes.into())
                         };
                         {
-                            _ = buffer_validity;
+                            let _ = buffer_validity;
                             crate::encodings::TensorBuffer::to_arrow_opt(buffer)?
                         }
                     },
@@ -240,217 +243,222 @@ impl ::re_types_core::Loggable for TensorData {
             ))
         })
     }
+}
 
-    fn from_arrow_opt(
-        arrow_data: &dyn arrow::array::Array,
-    ) -> DeserializationResult<Vec<Option<Self>>>
-    where
-        Self: Sized,
-    {
+impl ::re_types_core::FromArrow for TensorData {
+    fn from_arrow(arrow_data: &dyn arrow::array::Array) -> DeserializationResult<Vec<Self>> {
         use ::re_types_core::{
-            Loggable as _, ResultExt as _, arrow_helpers::*, arrow_zip_validity::ZipValidity,
+            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
+        err_on_nulls(arrow_data, "rerun.encodings.TensorData")?;
         Ok({
-            let arrow_data = arrow_data
-                .try_cast::<arrow::array::StructArray>(|| Self::arrow_datatype())
-                .with_context("rerun.encodings.TensorData")?;
-            if arrow_data.is_empty() {
-                Vec::new()
-            } else {
-                let (arrow_data_fields, arrow_data_arrays) =
-                    (arrow_data.fields(), arrow_data.columns());
-                let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
-                    arrow_data_fields.iter().map(|field| field.name().as_str()),
-                    arrow_data_arrays,
-                )
-                .collect();
-                let shape = {
-                    if !arrays_by_name.contains_key("shape") {
-                        return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
-                            "shape",
-                        ))
-                        .with_context("rerun.encodings.TensorData");
-                    }
-                    let arrow_data = &**arrays_by_name["shape"];
-                    {
-                        let arrow_data = arrow_data
-                            .try_cast::<arrow::array::ListArray>(|| {
-                                DataType::List(std::sync::Arc::new(Field::new(
-                                    "item",
-                                    DataType::UInt64,
-                                    false,
-                                )))
-                            })
-                            .with_context("rerun.encodings.TensorData#shape")?;
-                        if arrow_data.is_empty() {
-                            Vec::new()
-                        } else {
-                            let arrow_data_inner = {
-                                let arrow_data_inner = &**arrow_data.values();
-                                arrow_data_inner
-                                    .try_cast::<UInt64Array>(|| DataType::UInt64)
-                                    .with_context("rerun.encodings.TensorData#shape")?
-                                    .values()
-                            };
-                            let offsets = arrow_data.offsets();
-                            ZipValidity::new_with_validity(
-                                offsets.array_windows(),
-                                arrow_data.nulls(),
-                            )
-                            .map(|elem| {
-                                elem.map(|&[start, end]| {
-                                    let start = start as usize;
-                                    let end = end as usize;
-                                    if arrow_data_inner.len() < end {
-                                        return Err(DeserializationError::offset_slice_oob(
-                                            (start, end),
-                                            arrow_data_inner.len(),
-                                        ));
-                                    }
-                                    let data = arrow_data_inner.clone().slice(start, end - start);
-                                    Ok(data)
-                                })
-                                .transpose()
-                            })
-                            .collect::<DeserializationResult<Vec<Option<_>>>>()?
+            {
+                let arrow_data = arrow_data
+                    .try_cast::<arrow::array::StructArray>(|| Self::arrow_datatype())
+                    .with_context("rerun.encodings.TensorData")?;
+                if arrow_data.is_empty() {
+                    Vec::new()
+                } else {
+                    let (arrow_data_fields, arrow_data_arrays) =
+                        (arrow_data.fields(), arrow_data.columns());
+                    let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
+                        arrow_data_fields.iter().map(|field| field.name().as_str()),
+                        arrow_data_arrays,
+                    )
+                    .collect();
+                    let shape = {
+                        if !arrays_by_name.contains_key("shape") {
+                            return Err(DeserializationError::missing_struct_field(
+                                Self::arrow_datatype(),
+                                "shape",
+                            ))
+                            .with_context("rerun.encodings.TensorData");
                         }
-                        .into_iter()
-                    }
-                };
-                let names = {
-                    if !arrays_by_name.contains_key("names") {
-                        return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
-                            "names",
-                        ))
-                        .with_context("rerun.encodings.TensorData");
-                    }
-                    let arrow_data = &**arrays_by_name["names"];
-                    {
-                        let arrow_data = arrow_data
-                            .try_cast::<arrow::array::ListArray>(|| {
-                                DataType::List(std::sync::Arc::new(Field::new(
-                                    "item",
-                                    DataType::Utf8,
-                                    false,
-                                )))
-                            })
-                            .with_context("rerun.encodings.TensorData#names")?;
-                        if arrow_data.is_empty() {
-                            Vec::new()
-                        } else {
-                            let arrow_data_inner = {
-                                let arrow_data_inner = &**arrow_data.values();
-                                {
-                                    let arrow_data_inner = arrow_data_inner
-                                        .try_cast::<StringArray>(|| DataType::Utf8)
-                                        .with_context("rerun.encodings.TensorData#names")?;
-                                    let arrow_data_inner_buf = arrow_data_inner.values();
-                                    let offsets = arrow_data_inner.offsets();
-                                    ZipValidity::new_with_validity(
-                                        offsets.array_windows(),
-                                        arrow_data_inner.nulls(),
-                                    )
-                                    .map(|elem| {
-                                        elem.map(|&[start, end]| {
-                                            let start = start as usize;
-                                            let end = end as usize;
-                                            let len = end - start;
-                                            if arrow_data_inner_buf.len() < end {
-                                                return Err(
-                                                    DeserializationError::offset_slice_oob(
-                                                        (start, end),
-                                                        arrow_data_inner_buf.len(),
-                                                    ),
-                                                );
-                                            }
-                                            let data =
-                                                arrow_data_inner_buf.slice_with_length(start, len);
-                                            Ok(data)
-                                        })
-                                        .transpose()
+                        let arrow_data = &**arrays_by_name["shape"];
+                        {
+                            let arrow_data = arrow_data
+                                .try_cast::<arrow::array::ListArray>(|| {
+                                    DataType::List(std::sync::Arc::new(Field::new(
+                                        "item",
+                                        DataType::UInt64,
+                                        false,
+                                    )))
+                                })
+                                .with_context("rerun.encodings.TensorData#shape")?;
+                            if arrow_data.is_empty() {
+                                Vec::new()
+                            } else {
+                                let arrow_data_inner = {
+                                    let arrow_data_inner = &**arrow_data.values();
+                                    arrow_data_inner
+                                        .try_cast::<UInt64Array>(|| DataType::UInt64)
+                                        .with_context("rerun.encodings.TensorData#shape")?
+                                        .values()
+                                };
+                                let offsets = arrow_data.offsets();
+                                ZipValidity::new_with_validity(
+                                    offsets.array_windows(),
+                                    arrow_data.nulls(),
+                                )
+                                .map(|elem| {
+                                    elem.map(|&[start, end]| {
+                                        let start = start as usize;
+                                        let end = end as usize;
+                                        if arrow_data_inner.len() < end {
+                                            return Err(DeserializationError::offset_slice_oob(
+                                                (start, end),
+                                                arrow_data_inner.len(),
+                                            ));
+                                        }
+                                        let data =
+                                            arrow_data_inner.clone().slice(start, end - start);
+                                        Ok(data)
                                     })
-                                    .map(|res_or_opt| {
-                                        res_or_opt.map(|res_or_opt| {
-                                            res_or_opt
-                                                .map(|v| ::re_types_core::ArrowString::from(v))
+                                    .transpose()
+                                })
+                                .collect::<DeserializationResult<Vec<Option<_>>>>()?
+                            }
+                            .into_iter()
+                        }
+                    };
+                    let names = {
+                        if !arrays_by_name.contains_key("names") {
+                            return Err(DeserializationError::missing_struct_field(
+                                Self::arrow_datatype(),
+                                "names",
+                            ))
+                            .with_context("rerun.encodings.TensorData");
+                        }
+                        let arrow_data = &**arrays_by_name["names"];
+                        {
+                            let arrow_data = arrow_data
+                                .try_cast::<arrow::array::ListArray>(|| {
+                                    DataType::List(std::sync::Arc::new(Field::new(
+                                        "item",
+                                        DataType::Utf8,
+                                        false,
+                                    )))
+                                })
+                                .with_context("rerun.encodings.TensorData#names")?;
+                            if arrow_data.is_empty() {
+                                Vec::new()
+                            } else {
+                                let arrow_data_inner = {
+                                    let arrow_data_inner = &**arrow_data.values();
+                                    {
+                                        let arrow_data_inner = arrow_data_inner
+                                            .try_cast::<StringArray>(|| DataType::Utf8)
+                                            .with_context("rerun.encodings.TensorData#names")?;
+                                        let arrow_data_inner_buf = arrow_data_inner.values();
+                                        let offsets = arrow_data_inner.offsets();
+                                        ZipValidity::new_with_validity(
+                                            offsets.array_windows(),
+                                            arrow_data_inner.nulls(),
+                                        )
+                                        .map(|elem| {
+                                            elem.map(|&[start, end]| {
+                                                let start = start as usize;
+                                                let end = end as usize;
+                                                let len = end - start;
+                                                if arrow_data_inner_buf.len() < end {
+                                                    return Err(
+                                                        DeserializationError::offset_slice_oob(
+                                                            (start, end),
+                                                            arrow_data_inner_buf.len(),
+                                                        ),
+                                                    );
+                                                }
+                                                let data = arrow_data_inner_buf
+                                                    .slice_with_length(start, len);
+                                                Ok(data)
+                                            })
+                                            .transpose()
                                         })
-                                    })
-                                    .collect::<DeserializationResult<Vec<Option<_>>>>()
-                                    .with_context("rerun.encodings.TensorData#names")?
-                                    .into_iter()
-                                }
-                                .collect::<Vec<_>>()
-                            };
-                            let offsets = arrow_data.offsets();
-                            ZipValidity::new_with_validity(
-                                offsets.array_windows(),
-                                arrow_data.nulls(),
-                            )
-                            .map(|elem| {
-                                elem.map(|&[start, end]| {
-                                    let start = start as usize;
-                                    let end = end as usize;
-                                    if arrow_data_inner.len() < end {
-                                        return Err(DeserializationError::offset_slice_oob(
-                                            (start, end),
-                                            arrow_data_inner.len(),
-                                        ));
+                                        .map(|res_or_opt| {
+                                            res_or_opt.map(|res_or_opt| {
+                                                res_or_opt
+                                                    .map(|v| ::re_types_core::ArrowString::from(v))
+                                            })
+                                        })
+                                        .collect::<DeserializationResult<Vec<Option<_>>>>()
+                                        .with_context("rerun.encodings.TensorData#names")?
+                                        .into_iter()
                                     }
+                                    .collect::<Vec<_>>()
+                                };
+                                let offsets = arrow_data.offsets();
+                                ZipValidity::new_with_validity(
+                                    offsets.array_windows(),
+                                    arrow_data.nulls(),
+                                )
+                                .map(|elem| {
+                                    elem.map(|&[start, end]| {
+                                        let start = start as usize;
+                                        let end = end as usize;
+                                        if arrow_data_inner.len() < end {
+                                            return Err(DeserializationError::offset_slice_oob(
+                                                (start, end),
+                                                arrow_data_inner.len(),
+                                            ));
+                                        }
 
-                                    #[expect(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                    let data =
-                                        unsafe { arrow_data_inner.get_unchecked(start..end) };
-                                    let data = data
-                                        .iter()
-                                        .cloned()
-                                        .map(Option::unwrap_or_default)
-                                        .collect();
-                                    Ok(data)
+                                        #[expect(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                        let data =
+                                            unsafe { arrow_data_inner.get_unchecked(start..end) };
+                                        let data = data
+                                            .iter()
+                                            .cloned()
+                                            .map(Option::unwrap_or_default)
+                                            .collect();
+                                        Ok(data)
+                                    })
+                                    .transpose()
                                 })
-                                .transpose()
-                            })
-                            .collect::<DeserializationResult<Vec<Option<_>>>>()?
+                                .collect::<DeserializationResult<Vec<Option<_>>>>()?
+                            }
+                            .into_iter()
                         }
-                        .into_iter()
-                    }
-                };
-                let buffer = {
-                    if !arrays_by_name.contains_key("buffer") {
-                        return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
-                            "buffer",
-                        ))
-                        .with_context("rerun.encodings.TensorData");
-                    }
-                    let arrow_data = &**arrays_by_name["buffer"];
-                    crate::encodings::TensorBuffer::from_arrow_opt(arrow_data)
-                        .with_context("rerun.encodings.TensorData#buffer")?
-                        .into_iter()
-                };
-                ZipValidity::new_with_validity(
-                    ::itertools::izip!(shape, names, buffer),
-                    arrow_data.nulls(),
-                )
-                .map(|opt| {
-                    opt.map(|(shape, names, buffer)| {
-                        Ok(Self {
-                            shape: shape
-                                .ok_or_else(DeserializationError::missing_data)
-                                .with_context("rerun.encodings.TensorData#shape")?,
-                            names,
-                            buffer: buffer
-                                .ok_or_else(DeserializationError::missing_data)
-                                .with_context("rerun.encodings.TensorData#buffer")?,
+                    };
+                    let buffer = {
+                        if !arrays_by_name.contains_key("buffer") {
+                            return Err(DeserializationError::missing_struct_field(
+                                Self::arrow_datatype(),
+                                "buffer",
+                            ))
+                            .with_context("rerun.encodings.TensorData");
+                        }
+                        let arrow_data = &**arrays_by_name["buffer"];
+                        crate::encodings::TensorBuffer::from_arrow_opt(arrow_data)
+                            .with_context("rerun.encodings.TensorData#buffer")?
+                            .into_iter()
+                    };
+                    ZipValidity::new_with_validity(
+                        ::itertools::izip!(shape, names, buffer),
+                        arrow_data.nulls(),
+                    )
+                    .map(|opt| {
+                        opt.map(|(shape, names, buffer)| {
+                            Ok(Self {
+                                shape: shape
+                                    .ok_or_else(DeserializationError::missing_data)
+                                    .with_context("rerun.encodings.TensorData#shape")?,
+                                names,
+                                buffer: buffer
+                                    .ok_or_else(DeserializationError::missing_data)
+                                    .with_context("rerun.encodings.TensorData#buffer")?,
+                            })
                         })
+                        .transpose()
                     })
-                    .transpose()
-                })
-                .collect::<DeserializationResult<Vec<_>>>()
-                .with_context("rerun.encodings.TensorData")?
+                    .collect::<DeserializationResult<Vec<_>>>()
+                    .with_context("rerun.encodings.TensorData")?
+                }
             }
-        })
+        }
+        .into_iter()
+        .map(|v| v.ok_or_else(DeserializationError::missing_data))
+        .collect::<DeserializationResult<Vec<_>>>()?)
     }
 }

@@ -16,11 +16,13 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::wildcard_imports)]
 
+use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
+use ::re_types_core::SerializedComponentBatch;
 use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
+use ::std::borrow::Cow;
 
 #[derive(Clone, Debug, PartialEq, ::re_byte_size::SizeBytes)]
 pub enum NestedUnion {
@@ -30,7 +32,7 @@ pub enum NestedUnion {
 
 ::re_types_core::macros::impl_into_cow!(NestedUnion);
 
-impl ::re_types_core::Loggable for NestedUnion {
+impl ::re_types_core::ArrowDatatype for NestedUnion {
     #[inline]
     fn arrow_datatype() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
@@ -59,22 +61,27 @@ impl ::re_types_core::Loggable for NestedUnion {
             UnionMode::Dense,
         )
     }
+}
 
+impl ::re_types_core::ToArrowOpt for NestedUnion {
     fn to_arrow_opt<'a>(
-        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> SerializationResult<arrow::array::ArrayRef>
+        data: impl IntoIterator<Item = Option<impl Into<Cow<'a, Self>>>>,
+    ) -> SerializationResult<ArrayRef>
     where
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{Loggable as _, ResultExt as _, arrow_helpers::as_array_ref};
+        use ::re_types_core::{
+            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            arrow_helpers::as_array_ref,
+        };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             // Dense Arrow union
             let data: Vec<_> = data
                 .into_iter()
                 .map(|datum| {
-                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
+                    let datum: Option<Cow<'a, Self>> = datum.map(Into::into);
                     datum
                 })
                 .collect();
@@ -138,12 +145,10 @@ impl ::re_types_core::Loggable for NestedUnion {
                             _ => None,
                         })
                         .collect();
-                    let single_required_validity: Option<arrow::buffer::NullBuffer> = None;
+                    let single_required_validity = None;
                     {
-                        _ = single_required_validity;
-                        crate::testing::encodings::ScalarUnion::to_arrow_opt(
-                            single_required.into_iter().map(Some),
-                        )?
+                        let _: Option<arrow::buffer::NullBuffer> = single_required_validity;
+                        crate::testing::encodings::ScalarUnion::to_arrow(single_required)?
                     }
                 },
                 {
@@ -154,14 +159,14 @@ impl ::re_types_core::Loggable for NestedUnion {
                             _ => None,
                         })
                         .collect();
-                    let many_required_validity: Option<arrow::buffer::NullBuffer> = None;
+                    let many_required_validity = None;
                     {
                         let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
                             many_required.iter().map(|datum| datum.len()),
                         );
                         let many_required_inner_data: Vec<_> =
                             many_required.into_iter().flatten().collect();
-                        let many_required_inner_validity: Option<arrow::buffer::NullBuffer> = None;
+                        let many_required_inner_validity = None;
                         as_array_ref(ListArray::try_new(
                             std::sync::Arc::new(Field::new(
                                 "item",
@@ -170,9 +175,10 @@ impl ::re_types_core::Loggable for NestedUnion {
                             )),
                             offsets,
                             {
-                                _ = many_required_inner_validity;
-                                crate::testing::encodings::ScalarUnion::to_arrow_opt(
-                                    many_required_inner_data.into_iter().map(Some),
+                                let _: Option<arrow::buffer::NullBuffer> =
+                                    many_required_inner_validity;
+                                crate::testing::encodings::ScalarUnion::to_arrow(
+                                    many_required_inner_data,
                                 )?
                             },
                             many_required_validity,
@@ -190,15 +196,17 @@ impl ::re_types_core::Loggable for NestedUnion {
             )?)
         })
     }
+}
 
+::re_types_core::macros::impl_to_arrow_via_to_arrow_opt!(NestedUnion);
+
+impl ::re_types_core::FromArrowOpt for NestedUnion {
     fn from_arrow_opt(
         arrow_data: &dyn arrow::array::Array,
-    ) -> DeserializationResult<Vec<Option<Self>>>
-    where
-        Self: Sized,
-    {
+    ) -> DeserializationResult<Vec<Option<Self>>> {
         use ::re_types_core::{
-            Loggable as _, ResultExt as _, arrow_helpers::*, arrow_zip_validity::ZipValidity,
+            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
@@ -352,3 +360,5 @@ impl ::re_types_core::Loggable for NestedUnion {
         })
     }
 }
+
+::re_types_core::macros::impl_from_arrow_via_from_arrow_opt!(NestedUnion);

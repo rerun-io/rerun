@@ -16,11 +16,13 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::wildcard_imports)]
 
+use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
+use ::re_types_core::SerializedComponentBatch;
 use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
+use ::std::borrow::Cow;
 
 /// **Encoding**: Configuration for the filter is not null feature of the dataframe view.
 ///
@@ -36,7 +38,7 @@ pub struct FilterIsNotNull {
 
 ::re_types_core::macros::impl_into_cow!(FilterIsNotNull);
 
-impl ::re_types_core::Loggable for FilterIsNotNull {
+impl ::re_types_core::ArrowDatatype for FilterIsNotNull {
     #[inline]
     fn arrow_datatype() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
@@ -49,15 +51,20 @@ impl ::re_types_core::Loggable for FilterIsNotNull {
             ),
         ]))
     }
+}
 
-    fn to_arrow_opt<'a>(
-        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> SerializationResult<arrow::array::ArrayRef>
+impl ::re_types_core::ToArrow for FilterIsNotNull {
+    fn to_arrow<'a>(
+        data: impl IntoIterator<Item = impl Into<Cow<'a, Self>>>,
+    ) -> SerializationResult<ArrayRef>
     where
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{Loggable as _, ResultExt as _, arrow_helpers::as_array_ref};
+        use ::re_types_core::{
+            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            arrow_helpers::as_array_ref,
+        };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let fields = Fields::from(vec![
@@ -68,17 +75,14 @@ impl ::re_types_core::Loggable for FilterIsNotNull {
                     false,
                 ),
             ]);
-            let (somes, data): (Vec<_>, Vec<_>) = data
+            let data: Vec<_> = data
                 .into_iter()
                 .map(|datum| {
-                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    (datum.is_some(), datum)
+                    let datum: Cow<'a, Self> = datum.into();
+                    datum
                 })
-                .unzip();
-            let validity: Option<arrow::buffer::NullBuffer> = {
-                let any_nones = somes.iter().any(|some| !*some);
-                any_nones.then(|| somes.into())
-            };
+                .collect();
+            let validity = None;
             as_array_ref(StructArray::new(
                 fields,
                 vec![
@@ -86,7 +90,7 @@ impl ::re_types_core::Loggable for FilterIsNotNull {
                         let (somes, active): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| datum.active.clone());
+                                let datum = Some(datum.active.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -95,12 +99,10 @@ impl ::re_types_core::Loggable for FilterIsNotNull {
                             any_nones.then(|| somes.into())
                         };
                         as_array_ref(BooleanArray::new(
-                            BooleanBuffer::from(
-                                active
-                                    .into_iter()
-                                    .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
-                                    .collect::<Vec<_>>(),
-                            ),
+                            active
+                                .into_iter()
+                                .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
+                                .collect(),
                             active_validity,
                         ))
                     },
@@ -108,7 +110,7 @@ impl ::re_types_core::Loggable for FilterIsNotNull {
                         let (somes, column): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| datum.column.clone());
+                                let datum = Some(datum.column.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -117,7 +119,7 @@ impl ::re_types_core::Loggable for FilterIsNotNull {
                             any_nones.then(|| somes.into())
                         };
                         {
-                            _ = column_validity;
+                            let _ = column_validity;
                             crate::blueprint::encodings::ComponentColumnSelector::to_arrow_opt(
                                 column,
                             )?
@@ -128,79 +130,89 @@ impl ::re_types_core::Loggable for FilterIsNotNull {
             ))
         })
     }
+}
 
-    fn from_arrow_opt(
-        arrow_data: &dyn arrow::array::Array,
-    ) -> DeserializationResult<Vec<Option<Self>>>
-    where
-        Self: Sized,
-    {
+impl ::re_types_core::FromArrow for FilterIsNotNull {
+    fn from_arrow(arrow_data: &dyn arrow::array::Array) -> DeserializationResult<Vec<Self>> {
         use ::re_types_core::{
-            Loggable as _, ResultExt as _, arrow_helpers::*, arrow_zip_validity::ZipValidity,
+            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
+        err_on_nulls(arrow_data, "rerun.blueprint.encodings.FilterIsNotNull")?;
         Ok({
-            let arrow_data = arrow_data
-                .try_cast::<arrow::array::StructArray>(|| Self::arrow_datatype())
-                .with_context("rerun.blueprint.encodings.FilterIsNotNull")?;
-            if arrow_data.is_empty() {
-                Vec::new()
-            } else {
-                let (arrow_data_fields, arrow_data_arrays) =
-                    (arrow_data.fields(), arrow_data.columns());
-                let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
-                    arrow_data_fields.iter().map(|field| field.name().as_str()),
-                    arrow_data_arrays,
-                )
-                .collect();
-                let active = {
-                    if !arrays_by_name.contains_key("active") {
-                        return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
-                            "active",
-                        ))
-                        .with_context("rerun.blueprint.encodings.FilterIsNotNull");
-                    }
-                    let arrow_data = &**arrays_by_name["active"];
-                    arrow_data
-                        .try_cast::<BooleanArray>(|| DataType::Boolean)
-                        .with_context("rerun.blueprint.encodings.FilterIsNotNull#active")?
-                        .into_iter()
-                        .map(|res_or_opt| res_or_opt.map(crate::encodings::Bool))
-                };
-                let column = {
-                    if !arrays_by_name.contains_key("column") {
-                        return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
-                            "column",
-                        ))
-                        .with_context("rerun.blueprint.encodings.FilterIsNotNull");
-                    }
-                    let arrow_data = &**arrays_by_name["column"];
-                    crate::blueprint::encodings::ComponentColumnSelector::from_arrow_opt(arrow_data)
+            {
+                let arrow_data = arrow_data
+                    .try_cast::<arrow::array::StructArray>(|| Self::arrow_datatype())
+                    .with_context("rerun.blueprint.encodings.FilterIsNotNull")?;
+                if arrow_data.is_empty() {
+                    Vec::new()
+                } else {
+                    let (arrow_data_fields, arrow_data_arrays) =
+                        (arrow_data.fields(), arrow_data.columns());
+                    let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
+                        arrow_data_fields.iter().map(|field| field.name().as_str()),
+                        arrow_data_arrays,
+                    )
+                    .collect();
+                    let active = {
+                        if !arrays_by_name.contains_key("active") {
+                            return Err(DeserializationError::missing_struct_field(
+                                Self::arrow_datatype(),
+                                "active",
+                            ))
+                            .with_context("rerun.blueprint.encodings.FilterIsNotNull");
+                        }
+                        let arrow_data = &**arrays_by_name["active"];
+                        arrow_data
+                            .try_cast::<BooleanArray>(|| DataType::Boolean)
+                            .with_context("rerun.blueprint.encodings.FilterIsNotNull#active")?
+                            .into_iter()
+                            .map(|res_or_opt| res_or_opt.map(crate::encodings::Bool))
+                    };
+                    let column = {
+                        if !arrays_by_name.contains_key("column") {
+                            return Err(DeserializationError::missing_struct_field(
+                                Self::arrow_datatype(),
+                                "column",
+                            ))
+                            .with_context("rerun.blueprint.encodings.FilterIsNotNull");
+                        }
+                        let arrow_data = &**arrays_by_name["column"];
+                        crate::blueprint::encodings::ComponentColumnSelector::from_arrow_opt(
+                            arrow_data,
+                        )
                         .with_context("rerun.blueprint.encodings.FilterIsNotNull#column")?
                         .into_iter()
-                };
-                ZipValidity::new_with_validity(
-                    ::itertools::izip!(active, column),
-                    arrow_data.nulls(),
-                )
-                .map(|opt| {
-                    opt.map(|(active, column)| {
-                        Ok(Self {
-                            active: active
-                                .ok_or_else(DeserializationError::missing_data)
-                                .with_context("rerun.blueprint.encodings.FilterIsNotNull#active")?,
-                            column: column
-                                .ok_or_else(DeserializationError::missing_data)
-                                .with_context("rerun.blueprint.encodings.FilterIsNotNull#column")?,
+                    };
+                    ZipValidity::new_with_validity(
+                        ::itertools::izip!(active, column),
+                        arrow_data.nulls(),
+                    )
+                    .map(|opt| {
+                        opt.map(|(active, column)| {
+                            Ok(Self {
+                                active: active
+                                    .ok_or_else(DeserializationError::missing_data)
+                                    .with_context(
+                                        "rerun.blueprint.encodings.FilterIsNotNull#active",
+                                    )?,
+                                column: column
+                                    .ok_or_else(DeserializationError::missing_data)
+                                    .with_context(
+                                        "rerun.blueprint.encodings.FilterIsNotNull#column",
+                                    )?,
+                            })
                         })
+                        .transpose()
                     })
-                    .transpose()
-                })
-                .collect::<DeserializationResult<Vec<_>>>()
-                .with_context("rerun.blueprint.encodings.FilterIsNotNull")?
+                    .collect::<DeserializationResult<Vec<_>>>()
+                    .with_context("rerun.blueprint.encodings.FilterIsNotNull")?
+                }
             }
-        })
+        }
+        .into_iter()
+        .map(|v| v.ok_or_else(DeserializationError::missing_data))
+        .collect::<DeserializationResult<Vec<_>>>()?)
     }
 }

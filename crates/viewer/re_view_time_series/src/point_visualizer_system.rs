@@ -2,7 +2,7 @@ use itertools::Itertools as _;
 use rayon::prelude::*;
 use re_sdk_types::archetypes::SeriesPoints;
 use re_sdk_types::components::{self, MarkerShape, MarkerSize};
-use re_sdk_types::{Archetype as _, Loggable as _, archetypes};
+use re_sdk_types::{Archetype as _, FromArrow as _, archetypes};
 use re_view::{ChunksWithComponent, clamped_or_nothing, range_with_blueprint_resolved_data};
 use re_viewer_context::external::re_entity_db::InstancePath;
 use re_viewer_context::{

@@ -402,7 +402,7 @@ mod tests {
     };
     use re_log_types::{example_components::MyPoint, example_components::MyPoints};
     use re_sdk_types::ComponentDescriptor;
-    use re_types_core::Loggable as _;
+    use re_types_core::ArrowDatatype as _;
     use std::assert_matches;
 
     const BUFFER_CTYPE: &str = "test.components.Buffer";

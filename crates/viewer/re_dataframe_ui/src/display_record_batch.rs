@@ -18,7 +18,7 @@ use re_log_types::{EntityPath, TimeInt, Timeline};
 use re_sdk_types::ComponentDescriptor;
 use re_sdk_types::components::{Blob, MediaType};
 use re_sorbet::ColumnDescriptorRef;
-use re_types_core::{Component as _, DeserializationError, Loggable as _, RowId};
+use re_types_core::{Component as _, DeserializationError, FromArrow as _, RowId};
 use re_ui::UiExt as _;
 use re_viewer_context::{AppContext, UiLayout, VariantName};
 

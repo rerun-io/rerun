@@ -8,6 +8,7 @@
 // `AffixFuzzer*` names; nothing here is randomly fuzzed.
 
 #[rerun::rerun_type]
+#[rust(arrow_opt)]
 #[rust(derive(Default, PartialEq, Eq))]
 #[rerun(state = "stable")]
 pub struct FixedSizeBytes {
@@ -15,6 +16,7 @@ pub struct FixedSizeBytes {
 }
 
 #[rerun::rerun_type]
+#[rust(arrow_opt)]
 #[rust(derive(Default, PartialEq))]
 #[rerun(state = "stable")]
 pub struct FlattenedScalar {
@@ -44,6 +46,7 @@ pub struct ManyVec3 {
 }
 
 #[rerun::rerun_type]
+#[rust(arrow_opt)]
 #[rust(derive(Default, PartialEq))]
 #[rerun(state = "stable")]
 pub struct MixedFields {
@@ -68,6 +71,7 @@ pub struct MixedFields {
 
 #[rerun::rerun_type]
 #[repr(i8)]
+#[rust(arrow_opt)]
 #[rust(derive(PartialEq))]
 #[rerun(state = "stable")]
 pub enum NestedUnion {
@@ -95,6 +99,7 @@ pub struct PrimitiveAndString {
 
 #[rerun::rerun_type]
 #[repr(i8)]
+#[rust(arrow_opt)]
 #[rust(derive(PartialEq))]
 #[rerun(state = "stable")]
 pub enum ScalarUnion {

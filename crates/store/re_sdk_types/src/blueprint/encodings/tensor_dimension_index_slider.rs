@@ -16,11 +16,13 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::wildcard_imports)]
 
+use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
+use ::re_types_core::SerializedComponentBatch;
 use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
+use ::std::borrow::Cow;
 
 /// **Encoding**: Defines a slider for the index of some dimension.
 ///
@@ -33,7 +35,7 @@ pub struct TensorDimensionIndexSlider {
 
 ::re_types_core::macros::impl_into_cow!(TensorDimensionIndexSlider);
 
-impl ::re_types_core::Loggable for TensorDimensionIndexSlider {
+impl ::re_types_core::ArrowDatatype for TensorDimensionIndexSlider {
     #[inline]
     fn arrow_datatype() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
@@ -43,36 +45,38 @@ impl ::re_types_core::Loggable for TensorDimensionIndexSlider {
             false,
         )]))
     }
+}
 
-    fn to_arrow_opt<'a>(
-        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> SerializationResult<arrow::array::ArrayRef>
+impl ::re_types_core::ToArrow for TensorDimensionIndexSlider {
+    fn to_arrow<'a>(
+        data: impl IntoIterator<Item = impl Into<Cow<'a, Self>>>,
+    ) -> SerializationResult<ArrayRef>
     where
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{Loggable as _, ResultExt as _, arrow_helpers::as_array_ref};
+        use ::re_types_core::{
+            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            arrow_helpers::as_array_ref,
+        };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let fields = Fields::from(vec![Field::new("dimension", DataType::UInt32, false)]);
-            let (somes, data): (Vec<_>, Vec<_>) = data
+            let data: Vec<_> = data
                 .into_iter()
                 .map(|datum| {
-                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    (datum.is_some(), datum)
+                    let datum: Cow<'a, Self> = datum.into();
+                    datum
                 })
-                .unzip();
-            let validity: Option<arrow::buffer::NullBuffer> = {
-                let any_nones = somes.iter().any(|some| !*some);
-                any_nones.then(|| somes.into())
-            };
+                .collect();
+            let validity = None;
             as_array_ref(StructArray::new(
                 fields,
                 vec![{
                     let (somes, dimension): (Vec<_>, Vec<_>) = data
                         .iter()
                         .map(|datum| {
-                            let datum = datum.as_ref().map(|datum| datum.dimension.clone());
+                            let datum = Some(datum.dimension.clone());
                             (datum.is_some(), datum)
                         })
                         .unzip();
@@ -81,12 +85,10 @@ impl ::re_types_core::Loggable for TensorDimensionIndexSlider {
                         any_nones.then(|| somes.into())
                     };
                     as_array_ref(PrimitiveArray::<UInt32Type>::new(
-                        ScalarBuffer::from(
-                            dimension
-                                .into_iter()
-                                .map(|v| v.unwrap_or_default())
-                                .collect::<Vec<_>>(),
-                        ),
+                        dimension
+                            .into_iter()
+                            .map(|v| v.unwrap_or_default())
+                            .collect(),
                         dimension_validity,
                     ))
                 }],
@@ -94,68 +96,85 @@ impl ::re_types_core::Loggable for TensorDimensionIndexSlider {
             ))
         })
     }
+}
 
-    fn from_arrow_opt(
-        arrow_data: &dyn arrow::array::Array,
-    ) -> DeserializationResult<Vec<Option<Self>>>
-    where
-        Self: Sized,
-    {
+impl ::re_types_core::FromArrow for TensorDimensionIndexSlider {
+    fn from_arrow(arrow_data: &dyn arrow::array::Array) -> DeserializationResult<Vec<Self>> {
         use ::re_types_core::{
-            Loggable as _, ResultExt as _, arrow_helpers::*, arrow_zip_validity::ZipValidity,
+            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
-        Ok({
-            let arrow_data = arrow_data
-                .try_cast::<arrow::array::StructArray>(|| Self::arrow_datatype())
-                .with_context("rerun.blueprint.encodings.TensorDimensionIndexSlider")?;
-            if arrow_data.is_empty() {
-                Vec::new()
-            } else {
-                let (arrow_data_fields, arrow_data_arrays) =
-                    (arrow_data.fields(), arrow_data.columns());
-                let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
-                    arrow_data_fields.iter().map(|field| field.name().as_str()),
-                    arrow_data_arrays,
-                )
-                .collect();
-                let dimension = {
-                    if !arrays_by_name.contains_key("dimension") {
-                        return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
-                            "dimension",
-                        ))
-                        .with_context("rerun.blueprint.encodings.TensorDimensionIndexSlider");
-                    }
-                    let arrow_data = &**arrays_by_name["dimension"];
-                    arrow_data
-                        .try_cast::<UInt32Array>(|| DataType::UInt32)
+        err_on_nulls(
+            arrow_data,
+            "rerun.blueprint.encodings.TensorDimensionIndexSlider",
+        )?;
+        Ok(
+            {
+                {
+                    let arrow_data = arrow_data
+                        .try_cast::<arrow::array::StructArray>(|| Self::arrow_datatype())
                         .with_context(
-                            "rerun.blueprint.encodings.TensorDimensionIndexSlider#dimension",
-                        )?
-                        .into_iter()
-                };
-                ZipValidity::new_with_validity(
-                        ::itertools::izip!(dimension),
-                        arrow_data.nulls(),
-                    )
-                    .map(|opt| {
-                        opt
-                            .map(|(dimension)| Ok(Self {
-                                dimension: dimension
-                                    .ok_or_else(DeserializationError::missing_data)
+                            "rerun.blueprint.encodings.TensorDimensionIndexSlider",
+                        )?;
+                    if arrow_data.is_empty() {
+                        Vec::new()
+                    } else {
+                        let (arrow_data_fields, arrow_data_arrays) = (
+                            arrow_data.fields(),
+                            arrow_data.columns(),
+                        );
+                        let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
+                                arrow_data_fields.iter().map(|field| field.name().as_str()),
+                                arrow_data_arrays,
+                            )
+                            .collect();
+                        let dimension = {
+                            if !arrays_by_name.contains_key("dimension") {
+                                return Err(
+                                        DeserializationError::missing_struct_field(
+                                            Self::arrow_datatype(),
+                                            "dimension",
+                                        ),
+                                    )
                                     .with_context(
-                                        "rerun.blueprint.encodings.TensorDimensionIndexSlider#dimension",
-                                    )?,
-                            }))
-                            .transpose()
-                    })
-                    .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context(
-                        "rerun.blueprint.encodings.TensorDimensionIndexSlider",
-                    )?
+                                        "rerun.blueprint.encodings.TensorDimensionIndexSlider",
+                                    );
+                            }
+                            let arrow_data = &**arrays_by_name["dimension"];
+                            arrow_data
+                                .try_cast::<UInt32Array>(|| DataType::UInt32)
+                                .with_context(
+                                    "rerun.blueprint.encodings.TensorDimensionIndexSlider#dimension",
+                                )?
+                                .into_iter()
+                        };
+                        ZipValidity::new_with_validity(
+                                ::itertools::izip!(dimension),
+                                arrow_data.nulls(),
+                            )
+                            .map(|opt| {
+                                opt
+                                    .map(|(dimension)| Ok(Self {
+                                        dimension: dimension
+                                            .ok_or_else(DeserializationError::missing_data)
+                                            .with_context(
+                                                "rerun.blueprint.encodings.TensorDimensionIndexSlider#dimension",
+                                            )?,
+                                    }))
+                                    .transpose()
+                            })
+                            .collect::<DeserializationResult<Vec<_>>>()
+                            .with_context(
+                                "rerun.blueprint.encodings.TensorDimensionIndexSlider",
+                            )?
+                    }
+                }
             }
-        })
+                .into_iter()
+                .map(|v| v.ok_or_else(DeserializationError::missing_data))
+                .collect::<DeserializationResult<Vec<_>>>()?,
+        )
     }
 }
 

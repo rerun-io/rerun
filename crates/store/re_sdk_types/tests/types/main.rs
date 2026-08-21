@@ -22,6 +22,8 @@ mod segmentation_image;
 mod tensor;
 mod text_document;
 mod transform3d;
+#[cfg(feature = "testing")]
+mod transparent_optional;
 mod union_tags;
 mod view_coordinates;
 mod voxel_grid_map;

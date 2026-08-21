@@ -7,6 +7,7 @@
 #[rerun::rerun_type]
 #[repr(u8)]
 #[rerun(state = "stable")]
+#[rust(arrow_opt)]
 pub enum ColorModel {
     /// Grayscale luminance intencity/brightness/value, sometimes called `Y`
     #[default]

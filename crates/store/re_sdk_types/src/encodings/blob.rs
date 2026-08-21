@@ -16,11 +16,13 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::wildcard_imports)]
 
+use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
+use ::re_types_core::SerializedComponentBatch;
 use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
+use ::std::borrow::Cow;
 
 /// **Encoding**: A binary blob of data.
 ///
@@ -31,7 +33,7 @@ pub struct Blob(pub ::arrow::buffer::ScalarBuffer<u8>);
 
 ::re_types_core::macros::impl_into_cow!(Blob);
 
-impl ::re_types_core::Loggable for Blob {
+impl ::re_types_core::ArrowDatatype for Blob {
     #[inline]
     fn arrow_datatype() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
@@ -41,21 +43,26 @@ impl ::re_types_core::Loggable for Blob {
             false,
         )))
     }
+}
 
+impl ::re_types_core::ToArrowOpt for Blob {
     fn to_arrow_opt<'a>(
-        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> SerializationResult<arrow::array::ArrayRef>
+        data: impl IntoIterator<Item = Option<impl Into<Cow<'a, Self>>>>,
+    ) -> SerializationResult<ArrayRef>
     where
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{Loggable as _, ResultExt as _, arrow_helpers::as_array_ref};
+        use ::re_types_core::{
+            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            arrow_helpers::as_array_ref,
+        };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
                 .map(|datum| {
-                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
+                    let datum: Option<Cow<'a, Self>> = datum.map(Into::into);
                     let datum = datum.map(|datum| datum.into_owned().0);
                     (datum.is_some(), datum)
                 })
@@ -87,7 +94,7 @@ impl ::re_types_core::Loggable for Blob {
                         _ => Vec::new().into(),
                     }
                 };
-                let data0_inner_validity: Option<arrow::buffer::NullBuffer> = None;
+                let data0_inner_validity = None;
                 as_array_ref(ListArray::try_new(
                     std::sync::Arc::new(Field::new("item", DataType::UInt8, false)),
                     offsets,
@@ -100,15 +107,17 @@ impl ::re_types_core::Loggable for Blob {
             }
         })
     }
+}
 
+::re_types_core::macros::impl_to_arrow_via_to_arrow_opt!(Blob);
+
+impl ::re_types_core::FromArrowOpt for Blob {
     fn from_arrow_opt(
         arrow_data: &dyn arrow::array::Array,
-    ) -> DeserializationResult<Vec<Option<Self>>>
-    where
-        Self: Sized,
-    {
+    ) -> DeserializationResult<Vec<Option<Self>>> {
         use ::re_types_core::{
-            Loggable as _, ResultExt as _, arrow_helpers::*, arrow_zip_validity::ZipValidity,
+            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
@@ -148,11 +157,13 @@ impl ::re_types_core::Loggable for Blob {
         }
         .map(|v| v.ok_or_else(DeserializationError::missing_data))
         .map(|res| res.map(|v| Some(Self(v))))
-        .collect::<DeserializationResult<Vec<Option<_>>>>()
+        .collect::<DeserializationResult<Vec<_>>>()
         .with_context("rerun.encodings.Blob#data")
         .with_context("rerun.encodings.Blob")?)
     }
 }
+
+::re_types_core::macros::impl_from_arrow_via_from_arrow_opt!(Blob);
 
 impl From<::arrow::buffer::ScalarBuffer<u8>> for Blob {
     #[inline]

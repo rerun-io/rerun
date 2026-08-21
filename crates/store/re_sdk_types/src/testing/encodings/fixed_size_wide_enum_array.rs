@@ -16,11 +16,13 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::wildcard_imports)]
 
+use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
+use ::re_types_core::SerializedComponentBatch;
 use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
+use ::std::borrow::Cow;
 
 /// **Encoding**: Test encoding for fixed-size arrays of wide enums.
 #[derive(Clone, Debug, Copy, PartialEq, Eq, ::re_byte_size::SizeBytes)]
@@ -32,7 +34,7 @@ pub struct FixedSizeWideEnumArray(
 
 ::re_types_core::macros::impl_into_cow!(FixedSizeWideEnumArray);
 
-impl ::re_types_core::Loggable for FixedSizeWideEnumArray {
+impl ::re_types_core::ArrowDatatype for FixedSizeWideEnumArray {
     #[inline]
     fn arrow_datatype() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
@@ -45,53 +47,33 @@ impl ::re_types_core::Loggable for FixedSizeWideEnumArray {
             2,
         )
     }
+}
 
-    fn to_arrow_opt<'a>(
-        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> SerializationResult<arrow::array::ArrayRef>
+impl ::re_types_core::ToArrow for FixedSizeWideEnumArray {
+    fn to_arrow<'a>(
+        data: impl IntoIterator<Item = impl Into<Cow<'a, Self>>>,
+    ) -> SerializationResult<ArrayRef>
     where
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{Loggable as _, ResultExt as _, arrow_helpers::as_array_ref};
+        use ::re_types_core::{
+            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            arrow_helpers::as_array_ref,
+        };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
-            let (somes, data0): (Vec<_>, Vec<_>) = data
+            let data0: Vec<_> = data
                 .into_iter()
                 .map(|datum| {
-                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    let datum = datum.map(|datum| datum.into_owned().0);
-                    (datum.is_some(), datum)
+                    let datum: Cow<'a, Self> = datum.into();
+                    datum.into_owned().0
                 })
-                .unzip();
-            let data0_validity: Option<arrow::buffer::NullBuffer> = {
-                let any_nones = somes.iter().any(|some| !*some);
-                any_nones.then(|| somes.into())
-            };
+                .collect();
+            let data0_validity = None;
             {
-                let data0_inner_data: Vec<_> = data0
-                    .into_iter()
-                    .flat_map(|v| match v {
-                        Some(v) => itertools::Either::Left(v.into_iter()),
-                        None => {
-                            itertools::Either::Right(
-                                std::iter::repeat_n(
-                                    <crate::testing::encodings::WideEnum as ::re_types_core::reflection::Enum>::variants()[0],
-                                    2usize,
-                                ),
-                            )
-                        }
-                    })
-                    .collect();
-                let data0_inner_validity: Option<arrow::buffer::NullBuffer> =
-                    data0_validity.as_ref().map(|validity| {
-                        validity
-                            .iter()
-                            .map(|b| std::iter::repeat_n(b, 2usize))
-                            .flatten()
-                            .collect::<Vec<_>>()
-                            .into()
-                    });
+                let data0_inner_data: Vec<_> = data0.into_iter().flatten().collect();
+                let data0_inner_validity = None;
                 as_array_ref(FixedSizeListArray::new(
                     std::sync::Arc::new(Field::new(
                         "item",
@@ -100,27 +82,24 @@ impl ::re_types_core::Loggable for FixedSizeWideEnumArray {
                     )),
                     2,
                     {
-                        _ = data0_inner_validity;
-                        crate::testing::encodings::WideEnum::to_arrow_opt(
-                            data0_inner_data.into_iter().map(Some),
-                        )?
+                        let _: Option<arrow::buffer::NullBuffer> = data0_inner_validity;
+                        crate::testing::encodings::WideEnum::to_arrow(data0_inner_data)?
                     },
                     data0_validity,
                 ))
             }
         })
     }
+}
 
-    fn from_arrow_opt(
-        arrow_data: &dyn arrow::array::Array,
-    ) -> DeserializationResult<Vec<Option<Self>>>
-    where
-        Self: Sized,
-    {
+impl ::re_types_core::FromArrow for FixedSizeWideEnumArray {
+    fn from_arrow(arrow_data: &dyn arrow::array::Array) -> DeserializationResult<Vec<Self>> {
         use ::re_types_core::{
-            Loggable as _, ResultExt as _, arrow_helpers::*, arrow_zip_validity::ZipValidity,
+            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
+        err_on_nulls(arrow_data, "rerun.testing.encodings.FixedSizeWideEnumArray")?;
         Ok(
             {
                 let arrow_data = arrow_data
@@ -190,8 +169,8 @@ impl ::re_types_core::Loggable for FixedSizeWideEnumArray {
                     .into_iter()
             }
                 .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                .map(|res| res.map(|v| Some(Self(v))))
-                .collect::<DeserializationResult<Vec<Option<_>>>>()
+                .map(|res| res.map(Self))
+                .collect::<DeserializationResult<Vec<_>>>()
                 .with_context("rerun.testing.encodings.FixedSizeWideEnumArray#values")
                 .with_context("rerun.testing.encodings.FixedSizeWideEnumArray")?,
         )

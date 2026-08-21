@@ -16,11 +16,13 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::wildcard_imports)]
 
+use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
+use ::re_types_core::SerializedComponentBatch;
 use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
+use ::std::borrow::Cow;
 
 #[derive(Clone, Debug, PartialEq, ::re_byte_size::SizeBytes)]
 pub enum ScalarUnion {
@@ -32,7 +34,7 @@ pub enum ScalarUnion {
 
 ::re_types_core::macros::impl_into_cow!(ScalarUnion);
 
-impl ::re_types_core::Loggable for ScalarUnion {
+impl ::re_types_core::ArrowDatatype for ScalarUnion {
     #[inline]
     fn arrow_datatype() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
@@ -66,22 +68,27 @@ impl ::re_types_core::Loggable for ScalarUnion {
             UnionMode::Dense,
         )
     }
+}
 
+impl ::re_types_core::ToArrowOpt for ScalarUnion {
     fn to_arrow_opt<'a>(
-        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> SerializationResult<arrow::array::ArrayRef>
+        data: impl IntoIterator<Item = Option<impl Into<Cow<'a, Self>>>>,
+    ) -> SerializationResult<ArrayRef>
     where
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{Loggable as _, ResultExt as _, arrow_helpers::as_array_ref};
+        use ::re_types_core::{
+            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            arrow_helpers::as_array_ref,
+        };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             // Dense Arrow union
             let data: Vec<_> = data
                 .into_iter()
                 .map(|datum| {
-                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
+                    let datum: Option<Cow<'a, Self>> = datum.map(Into::into);
                     datum
                 })
                 .collect();
@@ -164,9 +171,9 @@ impl ::re_types_core::Loggable for ScalarUnion {
                             _ => None,
                         })
                         .collect();
-                    let degrees_validity: Option<arrow::buffer::NullBuffer> = None;
+                    let degrees_validity = None;
                     as_array_ref(PrimitiveArray::<Float32Type>::new(
-                        ScalarBuffer::from(degrees.into_iter().collect::<Vec<_>>()),
+                        degrees.into_iter().collect(),
                         degrees_validity,
                     ))
                 },
@@ -178,14 +185,14 @@ impl ::re_types_core::Loggable for ScalarUnion {
                             _ => None,
                         })
                         .collect();
-                    let craziness_validity: Option<arrow::buffer::NullBuffer> = None;
+                    let craziness_validity = None;
                     {
                         let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
                             craziness.iter().map(|datum| datum.len()),
                         );
                         let craziness_inner_data: Vec<_> =
                             craziness.into_iter().flatten().collect();
-                        let craziness_inner_validity: Option<arrow::buffer::NullBuffer> = None;
+                        let craziness_inner_validity = None;
                         as_array_ref(ListArray::try_new(
                             std::sync::Arc::new(Field::new(
                                 "item",
@@ -194,9 +201,9 @@ impl ::re_types_core::Loggable for ScalarUnion {
                             )),
                             offsets,
                             {
-                                _ = craziness_inner_validity;
-                                crate::testing::encodings::MixedFields::to_arrow_opt(
-                                    craziness_inner_data.into_iter().map(Some),
+                                let _: Option<arrow::buffer::NullBuffer> = craziness_inner_validity;
+                                crate::testing::encodings::MixedFields::to_arrow(
+                                    craziness_inner_data,
                                 )?
                             },
                             craziness_validity,
@@ -211,22 +218,16 @@ impl ::re_types_core::Loggable for ScalarUnion {
                             _ => None,
                         })
                         .collect();
-                    let fixed_size_shenanigans_validity: Option<arrow::buffer::NullBuffer> = None;
+                    let fixed_size_shenanigans_validity = None;
                     {
                         let fixed_size_shenanigans_inner_data: Vec<_> =
                             fixed_size_shenanigans.into_iter().flatten().collect();
-                        let fixed_size_shenanigans_inner_validity: Option<
-                            arrow::buffer::NullBuffer,
-                        > = None;
+                        let fixed_size_shenanigans_inner_validity = None;
                         as_array_ref(FixedSizeListArray::new(
                             std::sync::Arc::new(Field::new("item", DataType::Float32, false)),
                             3,
                             as_array_ref(PrimitiveArray::<Float32Type>::new(
-                                ScalarBuffer::from(
-                                    fixed_size_shenanigans_inner_data
-                                        .into_iter()
-                                        .collect::<Vec<_>>(),
-                                ),
+                                fixed_size_shenanigans_inner_data.into_iter().collect(),
                                 fixed_size_shenanigans_inner_validity,
                             )),
                             fixed_size_shenanigans_validity,
@@ -249,15 +250,17 @@ impl ::re_types_core::Loggable for ScalarUnion {
             )?)
         })
     }
+}
 
+::re_types_core::macros::impl_to_arrow_via_to_arrow_opt!(ScalarUnion);
+
+impl ::re_types_core::FromArrowOpt for ScalarUnion {
     fn from_arrow_opt(
         arrow_data: &dyn arrow::array::Array,
-    ) -> DeserializationResult<Vec<Option<Self>>>
-    where
-        Self: Sized,
-    {
+    ) -> DeserializationResult<Vec<Option<Self>>> {
         use ::re_types_core::{
-            Loggable as _, ResultExt as _, arrow_helpers::*, arrow_zip_validity::ZipValidity,
+            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
@@ -516,3 +519,5 @@ impl ::re_types_core::Loggable for ScalarUnion {
         })
     }
 }
+
+::re_types_core::macros::impl_from_arrow_via_from_arrow_opt!(ScalarUnion);

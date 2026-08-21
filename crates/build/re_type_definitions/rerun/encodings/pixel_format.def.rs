@@ -20,6 +20,7 @@
 #[rerun::rerun_type]
 #[repr(u8)]
 #[rerun(state = "stable")]
+#[rust(arrow_opt)]
 pub enum PixelFormat {
     // Given lack of a universal standard, the values of the enums are arbitrarily chosen to match
     // those from the `predefined pixel format` portion of the `Frame` class in the Ocean library:

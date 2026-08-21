@@ -17,10 +17,12 @@
 #![allow(clippy::wildcard_imports)]
 
 use crate::SerializationResult;
+use crate::SerializedComponentBatch;
 use crate::try_serialize_field;
-use crate::{ComponentBatch as _, SerializedComponentBatch};
 use crate::{ComponentDescriptor, ComponentType};
 use crate::{DeserializationError, DeserializationResult};
+use ::arrow::array::ArrayRef;
+use ::std::borrow::Cow;
 
 /// **Encoding**: Visible time range bounds for a specific timeline.
 #[derive(Clone, Debug, PartialEq, Eq, ::re_byte_size::SizeBytes)]
@@ -34,7 +36,7 @@ pub struct VisibleTimeRange {
 
 crate::macros::impl_into_cow!(VisibleTimeRange);
 
-impl crate::Loggable for VisibleTimeRange {
+impl crate::ArrowDatatype for VisibleTimeRange {
     #[inline]
     fn arrow_datatype() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
@@ -51,15 +53,20 @@ impl crate::Loggable for VisibleTimeRange {
             ),
         ]))
     }
+}
 
-    fn to_arrow_opt<'a>(
-        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> SerializationResult<arrow::array::ArrayRef>
+impl crate::ToArrow for VisibleTimeRange {
+    fn to_arrow<'a>(
+        data: impl IntoIterator<Item = impl Into<Cow<'a, Self>>>,
+    ) -> SerializationResult<ArrayRef>
     where
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use crate::{Loggable as _, ResultExt as _, arrow_helpers::as_array_ref};
+        use crate::{
+            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            arrow_helpers::as_array_ref,
+        };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let fields = Fields::from(vec![
@@ -74,17 +81,14 @@ impl crate::Loggable for VisibleTimeRange {
                     false,
                 ),
             ]);
-            let (somes, data): (Vec<_>, Vec<_>) = data
+            let data: Vec<_> = data
                 .into_iter()
                 .map(|datum| {
-                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    (datum.is_some(), datum)
+                    let datum: Cow<'a, Self> = datum.into();
+                    datum
                 })
-                .unzip();
-            let validity: Option<arrow::buffer::NullBuffer> = {
-                let any_nones = somes.iter().any(|some| !*some);
-                any_nones.then(|| somes.into())
-            };
+                .collect();
+            let validity = None;
             as_array_ref(StructArray::new(
                 fields,
                 vec![
@@ -92,7 +96,7 @@ impl crate::Loggable for VisibleTimeRange {
                         let (somes, timeline): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| datum.timeline.clone());
+                                let datum = Some(datum.timeline.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -125,7 +129,7 @@ impl crate::Loggable for VisibleTimeRange {
                         let (somes, range): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| datum.range.clone());
+                                let datum = Some(datum.range.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -134,7 +138,7 @@ impl crate::Loggable for VisibleTimeRange {
                             any_nones.then(|| somes.into())
                         };
                         {
-                            _ = range_validity;
+                            let _ = range_validity;
                             crate::encodings::TimeRange::to_arrow_opt(range)?
                         }
                     },
@@ -143,47 +147,50 @@ impl crate::Loggable for VisibleTimeRange {
             ))
         })
     }
+}
 
-    fn from_arrow_opt(
-        arrow_data: &dyn arrow::array::Array,
-    ) -> DeserializationResult<Vec<Option<Self>>>
-    where
-        Self: Sized,
-    {
+impl crate::FromArrow for VisibleTimeRange {
+    fn from_arrow(arrow_data: &dyn arrow::array::Array) -> DeserializationResult<Vec<Self>> {
         use crate::{
-            Loggable as _, ResultExt as _, arrow_helpers::*, arrow_zip_validity::ZipValidity,
+            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
+        err_on_nulls(arrow_data, "rerun.encodings.VisibleTimeRange")?;
         Ok({
-            let arrow_data = arrow_data
-                .try_cast::<arrow::array::StructArray>(|| Self::arrow_datatype())
-                .with_context("rerun.encodings.VisibleTimeRange")?;
-            if arrow_data.is_empty() {
-                Vec::new()
-            } else {
-                let (arrow_data_fields, arrow_data_arrays) =
-                    (arrow_data.fields(), arrow_data.columns());
-                let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
-                    arrow_data_fields.iter().map(|field| field.name().as_str()),
-                    arrow_data_arrays,
-                )
-                .collect();
-                let timeline = {
-                    if !arrays_by_name.contains_key("timeline") {
-                        return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
-                            "timeline",
-                        ))
-                        .with_context("rerun.encodings.VisibleTimeRange");
-                    }
-                    let arrow_data = &**arrays_by_name["timeline"];
-                    {
-                        let arrow_data = arrow_data
-                            .try_cast::<StringArray>(|| DataType::Utf8)
-                            .with_context("rerun.encodings.VisibleTimeRange#timeline")?;
-                        let arrow_data_buf = arrow_data.values();
-                        let offsets = arrow_data.offsets();
-                        ZipValidity::new_with_validity(offsets.array_windows(), arrow_data.nulls())
+            {
+                let arrow_data = arrow_data
+                    .try_cast::<arrow::array::StructArray>(|| Self::arrow_datatype())
+                    .with_context("rerun.encodings.VisibleTimeRange")?;
+                if arrow_data.is_empty() {
+                    Vec::new()
+                } else {
+                    let (arrow_data_fields, arrow_data_arrays) =
+                        (arrow_data.fields(), arrow_data.columns());
+                    let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
+                        arrow_data_fields.iter().map(|field| field.name().as_str()),
+                        arrow_data_arrays,
+                    )
+                    .collect();
+                    let timeline = {
+                        if !arrays_by_name.contains_key("timeline") {
+                            return Err(DeserializationError::missing_struct_field(
+                                Self::arrow_datatype(),
+                                "timeline",
+                            ))
+                            .with_context("rerun.encodings.VisibleTimeRange");
+                        }
+                        let arrow_data = &**arrays_by_name["timeline"];
+                        {
+                            let arrow_data = arrow_data
+                                .try_cast::<StringArray>(|| DataType::Utf8)
+                                .with_context("rerun.encodings.VisibleTimeRange#timeline")?;
+                            let arrow_data_buf = arrow_data.values();
+                            let offsets = arrow_data.offsets();
+                            ZipValidity::new_with_validity(
+                                offsets.array_windows(),
+                                arrow_data.nulls(),
+                            )
                             .map(|elem| {
                                 elem.map(|&[start, end]| {
                                     let start = start as usize;
@@ -210,41 +217,47 @@ impl crate::Loggable for VisibleTimeRange {
                             .collect::<DeserializationResult<Vec<Option<_>>>>()
                             .with_context("rerun.encodings.VisibleTimeRange#timeline")?
                             .into_iter()
-                    }
-                };
-                let range = {
-                    if !arrays_by_name.contains_key("range") {
-                        return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
-                            "range",
-                        ))
-                        .with_context("rerun.encodings.VisibleTimeRange");
-                    }
-                    let arrow_data = &**arrays_by_name["range"];
-                    crate::encodings::TimeRange::from_arrow_opt(arrow_data)
-                        .with_context("rerun.encodings.VisibleTimeRange#range")?
-                        .into_iter()
-                };
-                ZipValidity::new_with_validity(
-                    ::itertools::izip!(timeline, range),
-                    arrow_data.nulls(),
-                )
-                .map(|opt| {
-                    opt.map(|(timeline, range)| {
-                        Ok(Self {
-                            timeline: timeline
-                                .ok_or_else(DeserializationError::missing_data)
-                                .with_context("rerun.encodings.VisibleTimeRange#timeline")?,
-                            range: range
-                                .ok_or_else(DeserializationError::missing_data)
-                                .with_context("rerun.encodings.VisibleTimeRange#range")?,
+                        }
+                    };
+                    let range = {
+                        if !arrays_by_name.contains_key("range") {
+                            return Err(DeserializationError::missing_struct_field(
+                                Self::arrow_datatype(),
+                                "range",
+                            ))
+                            .with_context("rerun.encodings.VisibleTimeRange");
+                        }
+                        let arrow_data = &**arrays_by_name["range"];
+                        crate::encodings::TimeRange::from_arrow_opt(arrow_data)
+                            .with_context("rerun.encodings.VisibleTimeRange#range")?
+                            .into_iter()
+                    };
+                    ZipValidity::new_with_validity(
+                        ::itertools::izip!(timeline, range),
+                        arrow_data.nulls(),
+                    )
+                    .map(|opt| {
+                        opt.map(|(timeline, range)| {
+                            Ok(Self {
+                                timeline: timeline
+                                    .ok_or_else(DeserializationError::missing_data)
+                                    .with_context(
+                                    "rerun.encodings.VisibleTimeRange#timeline",
+                                )?,
+                                range: range
+                                    .ok_or_else(DeserializationError::missing_data)
+                                    .with_context("rerun.encodings.VisibleTimeRange#range")?,
+                            })
                         })
+                        .transpose()
                     })
-                    .transpose()
-                })
-                .collect::<DeserializationResult<Vec<_>>>()
-                .with_context("rerun.encodings.VisibleTimeRange")?
+                    .collect::<DeserializationResult<Vec<_>>>()
+                    .with_context("rerun.encodings.VisibleTimeRange")?
+                }
             }
-        })
+        }
+        .into_iter()
+        .map(|v| v.ok_or_else(DeserializationError::missing_data))
+        .collect::<DeserializationResult<Vec<_>>>()?)
     }
 }

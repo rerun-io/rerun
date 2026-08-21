@@ -7,6 +7,7 @@
 #[rerun::rerun_type]
 #[repr(u8)]
 #[rerun(state = "stable")]
+#[rust(arrow_opt)]
 pub enum ChannelDatatype {
     // In theory these values are totally arbitrary. There's no great accepted
     // standard for these, but we'll try to keep them somewhat sanely organized.

@@ -62,7 +62,7 @@ mod tests {
     use re_chunk::{Chunk, RowId};
     use re_entity_db::EntityDb;
     use re_log_types::{StoreId, TimePoint};
-    use re_sdk_types::{Loggable as _, archetypes::Points3D, components::Radius};
+    use re_sdk_types::{ArrowDatatype as _, archetypes::Points3D, components::Radius};
 
     use super::is_valid_blueprint;
 

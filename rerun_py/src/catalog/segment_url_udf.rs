@@ -18,7 +18,7 @@ use re_log_types::{
     AbsoluteTimeRange, DataPath, NonMinI64, TimeCell, TimeType, Timeline, TimelineName,
 };
 use re_tuid::Tuid;
-use re_types_core::{Loggable as _, SegmentId};
+use re_types_core::{FromArrow as _, SegmentId};
 use re_uri::{DatasetUri, Fragment, Origin, TimeSelection};
 
 #[derive(Debug)]

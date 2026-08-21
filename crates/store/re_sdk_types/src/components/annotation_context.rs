@@ -16,11 +16,13 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::wildcard_imports)]
 
+use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
+use ::re_types_core::SerializedComponentBatch;
 use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
+use ::std::borrow::Cow;
 
 /// **Component**: The annotation context provides additional information on how to display entities.
 ///
@@ -46,7 +48,7 @@ impl ::re_types_core::Component for AnnotationContext {
 
 ::re_types_core::macros::impl_into_cow!(AnnotationContext);
 
-impl ::re_types_core::Loggable for AnnotationContext {
+impl ::re_types_core::ArrowDatatype for AnnotationContext {
     #[inline]
     fn arrow_datatype() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
@@ -56,37 +58,36 @@ impl ::re_types_core::Loggable for AnnotationContext {
             false,
         )))
     }
+}
 
-    fn to_arrow_opt<'a>(
-        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> SerializationResult<arrow::array::ArrayRef>
+impl ::re_types_core::ToArrow for AnnotationContext {
+    fn to_arrow<'a>(
+        data: impl IntoIterator<Item = impl Into<Cow<'a, Self>>>,
+    ) -> SerializationResult<ArrayRef>
     where
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{Loggable as _, ResultExt as _, arrow_helpers::as_array_ref};
+        use ::re_types_core::{
+            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            arrow_helpers::as_array_ref,
+        };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
-            let (somes, data0): (Vec<_>, Vec<_>) = data
+            let data0: Vec<_> = data
                 .into_iter()
                 .map(|datum| {
-                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    let datum = datum.map(|datum| datum.into_owned().0);
-                    (datum.is_some(), datum)
+                    let datum: Cow<'a, Self> = datum.into();
+                    datum.into_owned().0
                 })
-                .unzip();
-            let data0_validity: Option<arrow::buffer::NullBuffer> = {
-                let any_nones = somes.iter().any(|some| !*some);
-                any_nones.then(|| somes.into())
-            };
+                .collect();
+            let data0_validity = None;
             {
                 let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
-                    data0
-                        .iter()
-                        .map(|opt| opt.as_ref().map_or(0, |datum| datum.len())),
+                    data0.iter().map(|datum| datum.len()),
                 );
-                let data0_inner_data: Vec<_> = data0.into_iter().flatten().flatten().collect();
-                let data0_inner_validity: Option<arrow::buffer::NullBuffer> = None;
+                let data0_inner_data: Vec<_> = data0.into_iter().flatten().collect();
+                let data0_inner_validity = None;
                 as_array_ref(ListArray::try_new(
                     std::sync::Arc::new(Field::new(
                         "item",
@@ -95,27 +96,24 @@ impl ::re_types_core::Loggable for AnnotationContext {
                     )),
                     offsets,
                     {
-                        _ = data0_inner_validity;
-                        crate::encodings::ClassDescriptionMapElem::to_arrow_opt(
-                            data0_inner_data.into_iter().map(Some),
-                        )?
+                        let _: Option<arrow::buffer::NullBuffer> = data0_inner_validity;
+                        crate::encodings::ClassDescriptionMapElem::to_arrow(data0_inner_data)?
                     },
                     data0_validity,
                 )?)
             }
         })
     }
+}
 
-    fn from_arrow_opt(
-        arrow_data: &dyn arrow::array::Array,
-    ) -> DeserializationResult<Vec<Option<Self>>>
-    where
-        Self: Sized,
-    {
+impl ::re_types_core::FromArrow for AnnotationContext {
+    fn from_arrow(arrow_data: &dyn arrow::array::Array) -> DeserializationResult<Vec<Self>> {
         use ::re_types_core::{
-            Loggable as _, ResultExt as _, arrow_helpers::*, arrow_zip_validity::ZipValidity,
+            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
+        err_on_nulls(arrow_data, "rerun.components.AnnotationContext")?;
         Ok({
             let arrow_data = arrow_data
                 .try_cast::<arrow::array::ListArray>(|| Self::arrow_datatype())
@@ -159,8 +157,8 @@ impl ::re_types_core::Loggable for AnnotationContext {
             .into_iter()
         }
         .map(|v| v.ok_or_else(DeserializationError::missing_data))
-        .map(|res| res.map(|v| Some(Self(v))))
-        .collect::<DeserializationResult<Vec<Option<_>>>>()
+        .map(|res| res.map(Self))
+        .collect::<DeserializationResult<Vec<_>>>()
         .with_context("rerun.components.AnnotationContext#class_map")
         .with_context("rerun.components.AnnotationContext")?)
     }

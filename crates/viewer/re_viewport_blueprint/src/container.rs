@@ -10,7 +10,7 @@ use re_sdk_types::blueprint::components::{
     ActiveTab, ColumnShare, ContainerKind, GridColumns, IncludedContent, RowShare,
 };
 use re_sdk_types::components::{Name, Visible};
-use re_sdk_types::{Archetype as _, Loggable as _};
+use re_sdk_types::{Archetype as _, ArrowDatatype as _};
 use re_viewer_context::{
     BlueprintContext as _, ContainerId, Contents, ContentsName, ViewId, ViewerContext,
 };

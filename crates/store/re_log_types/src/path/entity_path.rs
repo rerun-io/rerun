@@ -541,30 +541,20 @@ impl std::ops::Div<&'static str> for EntityPath {
 
 // ----------------------------------------------------------------------------
 
-use re_types_core::Loggable;
+use re_types_core::{ArrowDatatype, FromArrow, ToArrow};
 
 use super::entity_path_part::RESERVED_NAMESPACE_PREFIX;
 
 re_types_core::macros::impl_into_cow!(EntityPath);
 
-impl Loggable for EntityPath {
+impl ArrowDatatype for EntityPath {
     #[inline]
     fn arrow_datatype() -> arrow::datatypes::DataType {
         re_types_core::encodings::Utf8::arrow_datatype()
     }
+}
 
-    fn to_arrow_opt<'a>(
-        _data: impl IntoIterator<Item = Option<impl Into<std::borrow::Cow<'a, Self>>>>,
-    ) -> re_types_core::SerializationResult<arrow::array::ArrayRef>
-    where
-        Self: 'a,
-    {
-        Err(re_types_core::SerializationError::not_implemented(
-            "rerun.controls.EntityPath",
-            "EntityPaths are never nullable, use `to_arrow()` instead",
-        ))
-    }
-
+impl ToArrow for EntityPath {
     #[inline]
     fn to_arrow<'a>(
         data: impl IntoIterator<Item = impl Into<std::borrow::Cow<'a, Self>>>,
@@ -578,7 +568,9 @@ impl Loggable for EntityPath {
                 .map(|ent_path| re_types_core::encodings::Utf8(ent_path.to_string().into())),
         )
     }
+}
 
+impl FromArrow for EntityPath {
     fn from_arrow(
         array: &dyn ::arrow::array::Array,
     ) -> re_types_core::DeserializationResult<Vec<Self>> {

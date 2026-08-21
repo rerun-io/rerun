@@ -16,8 +16,8 @@ use re_log_types::{
     AbsoluteTimeRange, EntityPath, NonMinI64, TimeInt, TimeType, Timeline, TimelineName,
 };
 use re_types_core::{
-    ComponentDescriptor, ComponentIdentifier, ComponentType, DeserializationError, Loggable as _,
-    SerializationError, SerializedComponentColumn,
+    ArrowDatatype as _, ComponentDescriptor, ComponentIdentifier, ComponentType,
+    DeserializationError, SerializationError, SerializedComponentColumn,
 };
 
 use crate::{ChunkId, RowId};

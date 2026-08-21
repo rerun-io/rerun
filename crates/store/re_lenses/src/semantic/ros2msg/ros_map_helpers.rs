@@ -4,7 +4,7 @@ use arrow::array::{
     Array as _, ArrayRef, Int8Array, ListArray, ListBuilder, StructArray, UInt8Builder, UInt32Array,
 };
 use re_lenses_core::combinators::Error;
-use re_sdk_types::Loggable as _;
+use re_sdk_types::ToArrow as _;
 use re_sdk_types::components::{Colormap, ImageFormat};
 use re_sdk_types::encodings::{ChannelDatatype, ColorModel};
 

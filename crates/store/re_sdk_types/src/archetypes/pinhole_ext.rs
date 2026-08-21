@@ -1,4 +1,4 @@
-use re_types_core::{DeserializationResult, Loggable as _};
+use re_types_core::{DeserializationResult, FromArrow as _};
 
 use super::Pinhole;
 use crate::components::{PinholeProjection, Resolution, ViewCoordinates};

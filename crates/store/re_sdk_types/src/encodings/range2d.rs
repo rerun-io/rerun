@@ -16,11 +16,13 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::wildcard_imports)]
 
+use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
+use ::re_types_core::SerializedComponentBatch;
 use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
+use ::std::borrow::Cow;
 
 /// **Encoding**: An Axis-Aligned Bounding Box in 2D space, implemented as the minimum and maximum corners.
 #[derive(
@@ -44,7 +46,7 @@ pub struct Range2D {
 
 ::re_types_core::macros::impl_into_cow!(Range2D);
 
-impl ::re_types_core::Loggable for Range2D {
+impl ::re_types_core::ArrowDatatype for Range2D {
     #[inline]
     fn arrow_datatype() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
@@ -61,15 +63,20 @@ impl ::re_types_core::Loggable for Range2D {
             ),
         ]))
     }
+}
 
-    fn to_arrow_opt<'a>(
-        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> SerializationResult<arrow::array::ArrayRef>
+impl ::re_types_core::ToArrow for Range2D {
+    fn to_arrow<'a>(
+        data: impl IntoIterator<Item = impl Into<Cow<'a, Self>>>,
+    ) -> SerializationResult<ArrayRef>
     where
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{Loggable as _, ResultExt as _, arrow_helpers::as_array_ref};
+        use ::re_types_core::{
+            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            arrow_helpers::as_array_ref,
+        };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let fields = Fields::from(vec![
@@ -84,17 +91,14 @@ impl ::re_types_core::Loggable for Range2D {
                     false,
                 ),
             ]);
-            let (somes, data): (Vec<_>, Vec<_>) = data
+            let data: Vec<_> = data
                 .into_iter()
                 .map(|datum| {
-                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    (datum.is_some(), datum)
+                    let datum: Cow<'a, Self> = datum.into();
+                    datum
                 })
-                .unzip();
-            let validity: Option<arrow::buffer::NullBuffer> = {
-                let any_nones = somes.iter().any(|some| !*some);
-                any_nones.then(|| somes.into())
-            };
+                .collect();
+            let validity = None;
             as_array_ref(StructArray::new(
                 fields,
                 vec![
@@ -102,7 +106,7 @@ impl ::re_types_core::Loggable for Range2D {
                         let (somes, x_range): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| datum.x_range.clone());
+                                let datum = Some(datum.x_range.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -129,9 +133,7 @@ impl ::re_types_core::Loggable for Range2D {
                                 std::sync::Arc::new(Field::new("item", DataType::Float64, false)),
                                 2,
                                 as_array_ref(PrimitiveArray::<Float64Type>::new(
-                                    ScalarBuffer::from(
-                                        x_range_inner_data.into_iter().collect::<Vec<_>>(),
-                                    ),
+                                    x_range_inner_data.into_iter().collect(),
                                     x_range_inner_validity,
                                 )),
                                 x_range_validity,
@@ -142,7 +144,7 @@ impl ::re_types_core::Loggable for Range2D {
                         let (somes, y_range): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| datum.y_range.clone());
+                                let datum = Some(datum.y_range.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -169,9 +171,7 @@ impl ::re_types_core::Loggable for Range2D {
                                 std::sync::Arc::new(Field::new("item", DataType::Float64, false)),
                                 2,
                                 as_array_ref(PrimitiveArray::<Float64Type>::new(
-                                    ScalarBuffer::from(
-                                        y_range_inner_data.into_iter().collect::<Vec<_>>(),
-                                    ),
+                                    y_range_inner_data.into_iter().collect(),
                                     y_range_inner_validity,
                                 )),
                                 y_range_validity,
@@ -183,189 +183,207 @@ impl ::re_types_core::Loggable for Range2D {
             ))
         })
     }
+}
 
-    fn from_arrow_opt(
-        arrow_data: &dyn arrow::array::Array,
-    ) -> DeserializationResult<Vec<Option<Self>>>
-    where
-        Self: Sized,
-    {
+impl ::re_types_core::FromArrow for Range2D {
+    fn from_arrow(arrow_data: &dyn arrow::array::Array) -> DeserializationResult<Vec<Self>> {
         use ::re_types_core::{
-            Loggable as _, ResultExt as _, arrow_helpers::*, arrow_zip_validity::ZipValidity,
+            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
+        err_on_nulls(arrow_data, "rerun.encodings.Range2D")?;
         Ok({
-            let arrow_data = arrow_data
-                .try_cast::<arrow::array::StructArray>(|| Self::arrow_datatype())
-                .with_context("rerun.encodings.Range2D")?;
-            if arrow_data.is_empty() {
-                Vec::new()
-            } else {
-                let (arrow_data_fields, arrow_data_arrays) =
-                    (arrow_data.fields(), arrow_data.columns());
-                let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
-                    arrow_data_fields.iter().map(|field| field.name().as_str()),
-                    arrow_data_arrays,
-                )
-                .collect();
-                let x_range = {
-                    if !arrays_by_name.contains_key("x_range") {
-                        return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
-                            "x_range",
-                        ))
-                        .with_context("rerun.encodings.Range2D");
-                    }
-                    let arrow_data = &**arrays_by_name["x_range"];
-                    {
-                        let arrow_data = arrow_data
-                            .try_cast::<arrow::array::FixedSizeListArray>(|| {
-                                DataType::FixedSizeList(
-                                    std::sync::Arc::new(Field::new(
-                                        "item",
-                                        DataType::Float64,
-                                        false,
-                                    )),
-                                    2,
-                                )
-                            })
-                            .with_context("rerun.encodings.Range2D#x_range")?;
-                        if arrow_data.is_empty() {
-                            Vec::new()
-                        } else {
-                            let offsets = ::std::iter::zip(
-                                (0..).step_by(2usize),
-                                (2usize..).step_by(2usize).take(arrow_data.len()),
-                            );
-                            let arrow_data_inner = {
-                                let arrow_data_inner = &**arrow_data.values();
-                                arrow_data_inner
-                                    .try_cast::<Float64Array>(|| DataType::Float64)
-                                    .with_context("rerun.encodings.Range2D#x_range")?
-                                    .into_iter()
-                                    .collect::<Vec<_>>()
-                            };
-                            ZipValidity::new_with_validity(offsets, arrow_data.nulls())
-                                .map(|elem| {
-                                    elem.map(|(start, end): (usize, usize)| {
-                                        re_log::debug_assert!(end - start == 2usize);
-                                        if arrow_data_inner.len() < end {
-                                            return Err(DeserializationError::offset_slice_oob(
-                                                (start, end),
-                                                arrow_data_inner.len(),
-                                            ));
-                                        }
-
-                                        #[expect(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                        let data =
-                                            unsafe { arrow_data_inner.get_unchecked(start..end) };
-                                        let data =
-                                            data.iter().cloned().map(Option::unwrap_or_default);
-
-                                        // NOTE: Unwrapping cannot fail: the length must be correct.
-                                        #[expect(clippy::unwrap_used)]
-                                        Ok(array_init::from_iter(data).unwrap())
-                                    })
-                                    .transpose()
-                                })
-                                .map(|res_or_opt| {
-                                    res_or_opt
-                                        .map(|res_or_opt| res_or_opt.map(crate::encodings::Range1D))
-                                })
-                                .collect::<DeserializationResult<Vec<Option<_>>>>()?
+            {
+                let arrow_data = arrow_data
+                    .try_cast::<arrow::array::StructArray>(|| Self::arrow_datatype())
+                    .with_context("rerun.encodings.Range2D")?;
+                if arrow_data.is_empty() {
+                    Vec::new()
+                } else {
+                    let (arrow_data_fields, arrow_data_arrays) =
+                        (arrow_data.fields(), arrow_data.columns());
+                    let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
+                        arrow_data_fields.iter().map(|field| field.name().as_str()),
+                        arrow_data_arrays,
+                    )
+                    .collect();
+                    let x_range = {
+                        if !arrays_by_name.contains_key("x_range") {
+                            return Err(DeserializationError::missing_struct_field(
+                                Self::arrow_datatype(),
+                                "x_range",
+                            ))
+                            .with_context("rerun.encodings.Range2D");
                         }
-                        .into_iter()
-                    }
-                };
-                let y_range = {
-                    if !arrays_by_name.contains_key("y_range") {
-                        return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
-                            "y_range",
-                        ))
-                        .with_context("rerun.encodings.Range2D");
-                    }
-                    let arrow_data = &**arrays_by_name["y_range"];
-                    {
-                        let arrow_data = arrow_data
-                            .try_cast::<arrow::array::FixedSizeListArray>(|| {
-                                DataType::FixedSizeList(
-                                    std::sync::Arc::new(Field::new(
-                                        "item",
-                                        DataType::Float64,
-                                        false,
-                                    )),
-                                    2,
-                                )
-                            })
-                            .with_context("rerun.encodings.Range2D#y_range")?;
-                        if arrow_data.is_empty() {
-                            Vec::new()
-                        } else {
-                            let offsets = ::std::iter::zip(
-                                (0..).step_by(2usize),
-                                (2usize..).step_by(2usize).take(arrow_data.len()),
-                            );
-                            let arrow_data_inner = {
-                                let arrow_data_inner = &**arrow_data.values();
-                                arrow_data_inner
-                                    .try_cast::<Float64Array>(|| DataType::Float64)
-                                    .with_context("rerun.encodings.Range2D#y_range")?
-                                    .into_iter()
-                                    .collect::<Vec<_>>()
-                            };
-                            ZipValidity::new_with_validity(offsets, arrow_data.nulls())
-                                .map(|elem| {
-                                    elem.map(|(start, end): (usize, usize)| {
-                                        re_log::debug_assert!(end - start == 2usize);
-                                        if arrow_data_inner.len() < end {
-                                            return Err(DeserializationError::offset_slice_oob(
-                                                (start, end),
-                                                arrow_data_inner.len(),
-                                            ));
-                                        }
+                        let arrow_data = &**arrays_by_name["x_range"];
+                        {
+                            let arrow_data = arrow_data
+                                .try_cast::<arrow::array::FixedSizeListArray>(|| {
+                                    DataType::FixedSizeList(
+                                        std::sync::Arc::new(Field::new(
+                                            "item",
+                                            DataType::Float64,
+                                            false,
+                                        )),
+                                        2,
+                                    )
+                                })
+                                .with_context("rerun.encodings.Range2D#x_range")?;
+                            if arrow_data.is_empty() {
+                                Vec::new()
+                            } else {
+                                let offsets = ::std::iter::zip(
+                                    (0..).step_by(2usize),
+                                    (2usize..).step_by(2usize).take(arrow_data.len()),
+                                );
+                                let arrow_data_inner = {
+                                    let arrow_data_inner = &**arrow_data.values();
+                                    arrow_data_inner
+                                        .try_cast::<Float64Array>(|| DataType::Float64)
+                                        .with_context("rerun.encodings.Range2D#x_range")?
+                                        .into_iter()
+                                        .collect::<Vec<_>>()
+                                };
+                                ZipValidity::new_with_validity(offsets, arrow_data.nulls())
+                                    .map(|elem| {
+                                        elem.map(|(start, end): (usize, usize)| {
+                                            re_log::debug_assert!(end - start == 2usize);
+                                            if arrow_data_inner.len() < end {
+                                                return Err(
+                                                    DeserializationError::offset_slice_oob(
+                                                        (start, end),
+                                                        arrow_data_inner.len(),
+                                                    ),
+                                                );
+                                            }
 
-                                        #[expect(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                        let data =
-                                            unsafe { arrow_data_inner.get_unchecked(start..end) };
-                                        let data =
-                                            data.iter().cloned().map(Option::unwrap_or_default);
+                                            #[expect(
+                                                unsafe_code,
+                                                clippy::undocumented_unsafe_blocks
+                                            )]
+                                            let data = unsafe {
+                                                arrow_data_inner.get_unchecked(start..end)
+                                            };
+                                            let data =
+                                                data.iter().cloned().map(Option::unwrap_or_default);
 
-                                        // NOTE: Unwrapping cannot fail: the length must be correct.
-                                        #[expect(clippy::unwrap_used)]
-                                        Ok(array_init::from_iter(data).unwrap())
+                                            // NOTE: Unwrapping cannot fail: the length must be correct.
+                                            #[expect(clippy::unwrap_used)]
+                                            Ok(array_init::from_iter(data).unwrap())
+                                        })
+                                        .transpose()
                                     })
-                                    .transpose()
-                                })
-                                .map(|res_or_opt| {
-                                    res_or_opt
-                                        .map(|res_or_opt| res_or_opt.map(crate::encodings::Range1D))
-                                })
-                                .collect::<DeserializationResult<Vec<Option<_>>>>()?
+                                    .map(|res_or_opt| {
+                                        res_or_opt.map(|res_or_opt| {
+                                            res_or_opt.map(crate::encodings::Range1D)
+                                        })
+                                    })
+                                    .collect::<DeserializationResult<Vec<Option<_>>>>()?
+                            }
+                            .into_iter()
                         }
-                        .into_iter()
-                    }
-                };
-                ZipValidity::new_with_validity(
-                    ::itertools::izip!(x_range, y_range),
-                    arrow_data.nulls(),
-                )
-                .map(|opt| {
-                    opt.map(|(x_range, y_range)| {
-                        Ok(Self {
-                            x_range: x_range
-                                .ok_or_else(DeserializationError::missing_data)
-                                .with_context("rerun.encodings.Range2D#x_range")?,
-                            y_range: y_range
-                                .ok_or_else(DeserializationError::missing_data)
-                                .with_context("rerun.encodings.Range2D#y_range")?,
+                    };
+                    let y_range = {
+                        if !arrays_by_name.contains_key("y_range") {
+                            return Err(DeserializationError::missing_struct_field(
+                                Self::arrow_datatype(),
+                                "y_range",
+                            ))
+                            .with_context("rerun.encodings.Range2D");
+                        }
+                        let arrow_data = &**arrays_by_name["y_range"];
+                        {
+                            let arrow_data = arrow_data
+                                .try_cast::<arrow::array::FixedSizeListArray>(|| {
+                                    DataType::FixedSizeList(
+                                        std::sync::Arc::new(Field::new(
+                                            "item",
+                                            DataType::Float64,
+                                            false,
+                                        )),
+                                        2,
+                                    )
+                                })
+                                .with_context("rerun.encodings.Range2D#y_range")?;
+                            if arrow_data.is_empty() {
+                                Vec::new()
+                            } else {
+                                let offsets = ::std::iter::zip(
+                                    (0..).step_by(2usize),
+                                    (2usize..).step_by(2usize).take(arrow_data.len()),
+                                );
+                                let arrow_data_inner = {
+                                    let arrow_data_inner = &**arrow_data.values();
+                                    arrow_data_inner
+                                        .try_cast::<Float64Array>(|| DataType::Float64)
+                                        .with_context("rerun.encodings.Range2D#y_range")?
+                                        .into_iter()
+                                        .collect::<Vec<_>>()
+                                };
+                                ZipValidity::new_with_validity(offsets, arrow_data.nulls())
+                                    .map(|elem| {
+                                        elem.map(|(start, end): (usize, usize)| {
+                                            re_log::debug_assert!(end - start == 2usize);
+                                            if arrow_data_inner.len() < end {
+                                                return Err(
+                                                    DeserializationError::offset_slice_oob(
+                                                        (start, end),
+                                                        arrow_data_inner.len(),
+                                                    ),
+                                                );
+                                            }
+
+                                            #[expect(
+                                                unsafe_code,
+                                                clippy::undocumented_unsafe_blocks
+                                            )]
+                                            let data = unsafe {
+                                                arrow_data_inner.get_unchecked(start..end)
+                                            };
+                                            let data =
+                                                data.iter().cloned().map(Option::unwrap_or_default);
+
+                                            // NOTE: Unwrapping cannot fail: the length must be correct.
+                                            #[expect(clippy::unwrap_used)]
+                                            Ok(array_init::from_iter(data).unwrap())
+                                        })
+                                        .transpose()
+                                    })
+                                    .map(|res_or_opt| {
+                                        res_or_opt.map(|res_or_opt| {
+                                            res_or_opt.map(crate::encodings::Range1D)
+                                        })
+                                    })
+                                    .collect::<DeserializationResult<Vec<Option<_>>>>()?
+                            }
+                            .into_iter()
+                        }
+                    };
+                    ZipValidity::new_with_validity(
+                        ::itertools::izip!(x_range, y_range),
+                        arrow_data.nulls(),
+                    )
+                    .map(|opt| {
+                        opt.map(|(x_range, y_range)| {
+                            Ok(Self {
+                                x_range: x_range
+                                    .ok_or_else(DeserializationError::missing_data)
+                                    .with_context("rerun.encodings.Range2D#x_range")?,
+                                y_range: y_range
+                                    .ok_or_else(DeserializationError::missing_data)
+                                    .with_context("rerun.encodings.Range2D#y_range")?,
+                            })
                         })
+                        .transpose()
                     })
-                    .transpose()
-                })
-                .collect::<DeserializationResult<Vec<_>>>()
-                .with_context("rerun.encodings.Range2D")?
+                    .collect::<DeserializationResult<Vec<_>>>()
+                    .with_context("rerun.encodings.Range2D")?
+                }
             }
-        })
+        }
+        .into_iter()
+        .map(|v| v.ok_or_else(DeserializationError::missing_data))
+        .collect::<DeserializationResult<Vec<_>>>()?)
     }
 }

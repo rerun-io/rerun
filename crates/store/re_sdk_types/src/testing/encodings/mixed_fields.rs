@@ -16,11 +16,13 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::wildcard_imports)]
 
+use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
+use ::re_types_core::SerializedComponentBatch;
 use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
+use ::std::borrow::Cow;
 
 #[derive(Clone, Debug, Default, PartialEq, ::re_byte_size::SizeBytes)]
 pub struct MixedFields {
@@ -37,7 +39,7 @@ pub struct MixedFields {
 
 ::re_types_core::macros::impl_into_cow!(MixedFields);
 
-impl ::re_types_core::Loggable for MixedFields {
+impl ::re_types_core::ArrowDatatype for MixedFields {
     #[inline]
     fn arrow_datatype() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
@@ -81,15 +83,20 @@ impl ::re_types_core::Loggable for MixedFields {
             Field::new("from_parent", DataType::Boolean, true),
         ]))
     }
+}
 
+impl ::re_types_core::ToArrowOpt for MixedFields {
     fn to_arrow_opt<'a>(
-        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> SerializationResult<arrow::array::ArrayRef>
+        data: impl IntoIterator<Item = Option<impl Into<Cow<'a, Self>>>>,
+    ) -> SerializationResult<ArrayRef>
     where
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{Loggable as _, ResultExt as _, arrow_helpers::as_array_ref};
+        use ::re_types_core::{
+            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            arrow_helpers::as_array_ref,
+        };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let fields = Fields::from(vec![
@@ -134,7 +141,7 @@ impl ::re_types_core::Loggable for MixedFields {
             let (somes, data): (Vec<_>, Vec<_>) = data
                 .into_iter()
                 .map(|datum| {
-                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
+                    let datum: Option<Cow<'a, Self>> = datum.map(Into::into);
                     (datum.is_some(), datum)
                 })
                 .unzip();
@@ -161,12 +168,10 @@ impl ::re_types_core::Loggable for MixedFields {
                             any_nones.then(|| somes.into())
                         };
                         as_array_ref(PrimitiveArray::<Float32Type>::new(
-                            ScalarBuffer::from(
-                                single_float_optional
-                                    .into_iter()
-                                    .map(|v| v.unwrap_or_default())
-                                    .collect::<Vec<_>>(),
-                            ),
+                            single_float_optional
+                                .into_iter()
+                                .map(|v| v.unwrap_or_default())
+                                .collect(),
                             single_float_optional_validity,
                         ))
                     },
@@ -278,9 +283,7 @@ impl ::re_types_core::Loggable for MixedFields {
                                     .collect::<Vec<_>>()
                                     .concat()
                                     .into();
-                            let many_floats_optional_inner_validity: Option<
-                                arrow::buffer::NullBuffer,
-                            > = None;
+                            let many_floats_optional_inner_validity = None;
                             as_array_ref(ListArray::try_new(
                                 std::sync::Arc::new(Field::new("item", DataType::Float32, false)),
                                 offsets,
@@ -317,9 +320,7 @@ impl ::re_types_core::Loggable for MixedFields {
                                 .flatten()
                                 .flatten()
                                 .collect();
-                            let many_strings_required_inner_validity: Option<
-                                arrow::buffer::NullBuffer,
-                            > = None;
+                            let many_strings_required_inner_validity = None;
                             as_array_ref(ListArray::try_new(
                                 std::sync::Arc::new(Field::new("item", DataType::Utf8, false)),
                                 offsets,
@@ -378,9 +379,7 @@ impl ::re_types_core::Loggable for MixedFields {
                                 .flatten()
                                 .flatten()
                                 .collect();
-                            let many_strings_optional_inner_validity: Option<
-                                arrow::buffer::NullBuffer,
-                            > = None;
+                            let many_strings_optional_inner_validity = None;
                             as_array_ref(ListArray::try_new(
                                 std::sync::Arc::new(Field::new("item", DataType::Utf8, false)),
                                 offsets,
@@ -427,12 +426,10 @@ impl ::re_types_core::Loggable for MixedFields {
                             any_nones.then(|| somes.into())
                         };
                         as_array_ref(PrimitiveArray::<Float32Type>::new(
-                            ScalarBuffer::from(
-                                flattened_scalar
-                                    .into_iter()
-                                    .map(|v| v.unwrap_or_default())
-                                    .collect::<Vec<_>>(),
-                            ),
+                            flattened_scalar
+                                .into_iter()
+                                .map(|v| v.unwrap_or_default())
+                                .collect(),
                             flattened_scalar_validity,
                         ))
                     },
@@ -451,7 +448,7 @@ impl ::re_types_core::Loggable for MixedFields {
                             any_nones.then(|| somes.into())
                         };
                         {
-                            _ = almost_flattened_scalar_validity;
+                            let _ = almost_flattened_scalar_validity;
                             crate::testing::encodings::FlattenedScalar::to_arrow_opt(
                                 almost_flattened_scalar,
                             )?
@@ -473,12 +470,10 @@ impl ::re_types_core::Loggable for MixedFields {
                             any_nones.then(|| somes.into())
                         };
                         as_array_ref(BooleanArray::new(
-                            BooleanBuffer::from(
-                                from_parent
-                                    .into_iter()
-                                    .map(|v| v.unwrap_or_default())
-                                    .collect::<Vec<_>>(),
-                            ),
+                            from_parent
+                                .into_iter()
+                                .map(|v| v.unwrap_or_default())
+                                .collect(),
                             from_parent_validity,
                         ))
                     },
@@ -487,15 +482,17 @@ impl ::re_types_core::Loggable for MixedFields {
             ))
         })
     }
+}
 
+::re_types_core::macros::impl_to_arrow_via_to_arrow_opt!(MixedFields);
+
+impl ::re_types_core::FromArrowOpt for MixedFields {
     fn from_arrow_opt(
         arrow_data: &dyn arrow::array::Array,
-    ) -> DeserializationResult<Vec<Option<Self>>>
-    where
-        Self: Sized,
-    {
+    ) -> DeserializationResult<Vec<Option<Self>>> {
         use ::re_types_core::{
-            Loggable as _, ResultExt as _, arrow_helpers::*, arrow_zip_validity::ZipValidity,
+            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
@@ -995,3 +992,5 @@ impl ::re_types_core::Loggable for MixedFields {
         })
     }
 }
+
+::re_types_core::macros::impl_from_arrow_via_from_arrow_opt!(MixedFields);

@@ -31,7 +31,7 @@ use re_sorbet::{
 };
 use re_span::Span;
 use re_types_core::arrow_helpers::as_array_ref;
-use re_types_core::{Loggable as _, SerializedComponentColumn, archetypes};
+use re_types_core::{ArrowDatatype as _, SerializedComponentColumn, archetypes};
 
 // ---
 

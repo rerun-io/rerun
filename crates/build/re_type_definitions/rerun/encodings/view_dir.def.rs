@@ -8,6 +8,7 @@
 #[rerun::rerun_type]
 #[repr(u8)]
 #[rerun(state = "stable")]
+#[rust(arrow_opt)]
 pub enum ViewDir {
     /// Up.
     Up = 1,

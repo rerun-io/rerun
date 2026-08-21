@@ -16,11 +16,13 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::wildcard_imports)]
 
+use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
+use ::re_types_core::SerializedComponentBatch;
 use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
+use ::std::borrow::Cow;
 
 /// **Encoding**: A text log column.
 ///
@@ -38,7 +40,7 @@ pub struct TextLogColumn {
 
 ::re_types_core::macros::impl_into_cow!(TextLogColumn);
 
-impl ::re_types_core::Loggable for TextLogColumn {
+impl ::re_types_core::ArrowDatatype for TextLogColumn {
     #[inline]
     fn arrow_datatype() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
@@ -51,15 +53,20 @@ impl ::re_types_core::Loggable for TextLogColumn {
             ),
         ]))
     }
+}
 
-    fn to_arrow_opt<'a>(
-        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> SerializationResult<arrow::array::ArrayRef>
+impl ::re_types_core::ToArrow for TextLogColumn {
+    fn to_arrow<'a>(
+        data: impl IntoIterator<Item = impl Into<Cow<'a, Self>>>,
+    ) -> SerializationResult<ArrayRef>
     where
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{Loggable as _, ResultExt as _, arrow_helpers::as_array_ref};
+        use ::re_types_core::{
+            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            arrow_helpers::as_array_ref,
+        };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let fields = Fields::from(vec![
@@ -70,17 +77,14 @@ impl ::re_types_core::Loggable for TextLogColumn {
                     false,
                 ),
             ]);
-            let (somes, data): (Vec<_>, Vec<_>) = data
+            let data: Vec<_> = data
                 .into_iter()
                 .map(|datum| {
-                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    (datum.is_some(), datum)
+                    let datum: Cow<'a, Self> = datum.into();
+                    datum
                 })
-                .unzip();
-            let validity: Option<arrow::buffer::NullBuffer> = {
-                let any_nones = somes.iter().any(|some| !*some);
-                any_nones.then(|| somes.into())
-            };
+                .collect();
+            let validity = None;
             as_array_ref(StructArray::new(
                 fields,
                 vec![
@@ -88,7 +92,7 @@ impl ::re_types_core::Loggable for TextLogColumn {
                         let (somes, visible): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| datum.visible.clone());
+                                let datum = Some(datum.visible.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -97,12 +101,10 @@ impl ::re_types_core::Loggable for TextLogColumn {
                             any_nones.then(|| somes.into())
                         };
                         as_array_ref(BooleanArray::new(
-                            BooleanBuffer::from(
-                                visible
-                                    .into_iter()
-                                    .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
-                                    .collect::<Vec<_>>(),
-                            ),
+                            visible
+                                .into_iter()
+                                .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
+                                .collect(),
                             visible_validity,
                         ))
                     },
@@ -110,7 +112,7 @@ impl ::re_types_core::Loggable for TextLogColumn {
                         let (somes, kind): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| datum.kind.clone());
+                                let datum = Some(datum.kind.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -119,7 +121,7 @@ impl ::re_types_core::Loggable for TextLogColumn {
                             any_nones.then(|| somes.into())
                         };
                         {
-                            _ = kind_validity;
+                            let _ = kind_validity;
                             crate::blueprint::encodings::TextLogColumnKind::to_arrow_opt(kind)?
                         }
                     },
@@ -128,79 +130,85 @@ impl ::re_types_core::Loggable for TextLogColumn {
             ))
         })
     }
+}
 
-    fn from_arrow_opt(
-        arrow_data: &dyn arrow::array::Array,
-    ) -> DeserializationResult<Vec<Option<Self>>>
-    where
-        Self: Sized,
-    {
+impl ::re_types_core::FromArrow for TextLogColumn {
+    fn from_arrow(arrow_data: &dyn arrow::array::Array) -> DeserializationResult<Vec<Self>> {
         use ::re_types_core::{
-            Loggable as _, ResultExt as _, arrow_helpers::*, arrow_zip_validity::ZipValidity,
+            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
+        err_on_nulls(arrow_data, "rerun.blueprint.encodings.TextLogColumn")?;
         Ok({
-            let arrow_data = arrow_data
-                .try_cast::<arrow::array::StructArray>(|| Self::arrow_datatype())
-                .with_context("rerun.blueprint.encodings.TextLogColumn")?;
-            if arrow_data.is_empty() {
-                Vec::new()
-            } else {
-                let (arrow_data_fields, arrow_data_arrays) =
-                    (arrow_data.fields(), arrow_data.columns());
-                let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
-                    arrow_data_fields.iter().map(|field| field.name().as_str()),
-                    arrow_data_arrays,
-                )
-                .collect();
-                let visible = {
-                    if !arrays_by_name.contains_key("visible") {
-                        return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
-                            "visible",
-                        ))
-                        .with_context("rerun.blueprint.encodings.TextLogColumn");
-                    }
-                    let arrow_data = &**arrays_by_name["visible"];
-                    arrow_data
-                        .try_cast::<BooleanArray>(|| DataType::Boolean)
-                        .with_context("rerun.blueprint.encodings.TextLogColumn#visible")?
-                        .into_iter()
-                        .map(|res_or_opt| res_or_opt.map(crate::encodings::Bool))
-                };
-                let kind = {
-                    if !arrays_by_name.contains_key("kind") {
-                        return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
-                            "kind",
-                        ))
-                        .with_context("rerun.blueprint.encodings.TextLogColumn");
-                    }
-                    let arrow_data = &**arrays_by_name["kind"];
-                    crate::blueprint::encodings::TextLogColumnKind::from_arrow_opt(arrow_data)
-                        .with_context("rerun.blueprint.encodings.TextLogColumn#kind")?
-                        .into_iter()
-                };
-                ZipValidity::new_with_validity(
-                    ::itertools::izip!(visible, kind),
-                    arrow_data.nulls(),
-                )
-                .map(|opt| {
-                    opt.map(|(visible, kind)| {
-                        Ok(Self {
-                            visible: visible
-                                .ok_or_else(DeserializationError::missing_data)
-                                .with_context("rerun.blueprint.encodings.TextLogColumn#visible")?,
-                            kind: kind
-                                .ok_or_else(DeserializationError::missing_data)
-                                .with_context("rerun.blueprint.encodings.TextLogColumn#kind")?,
+            {
+                let arrow_data = arrow_data
+                    .try_cast::<arrow::array::StructArray>(|| Self::arrow_datatype())
+                    .with_context("rerun.blueprint.encodings.TextLogColumn")?;
+                if arrow_data.is_empty() {
+                    Vec::new()
+                } else {
+                    let (arrow_data_fields, arrow_data_arrays) =
+                        (arrow_data.fields(), arrow_data.columns());
+                    let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
+                        arrow_data_fields.iter().map(|field| field.name().as_str()),
+                        arrow_data_arrays,
+                    )
+                    .collect();
+                    let visible = {
+                        if !arrays_by_name.contains_key("visible") {
+                            return Err(DeserializationError::missing_struct_field(
+                                Self::arrow_datatype(),
+                                "visible",
+                            ))
+                            .with_context("rerun.blueprint.encodings.TextLogColumn");
+                        }
+                        let arrow_data = &**arrays_by_name["visible"];
+                        arrow_data
+                            .try_cast::<BooleanArray>(|| DataType::Boolean)
+                            .with_context("rerun.blueprint.encodings.TextLogColumn#visible")?
+                            .into_iter()
+                            .map(|res_or_opt| res_or_opt.map(crate::encodings::Bool))
+                    };
+                    let kind = {
+                        if !arrays_by_name.contains_key("kind") {
+                            return Err(DeserializationError::missing_struct_field(
+                                Self::arrow_datatype(),
+                                "kind",
+                            ))
+                            .with_context("rerun.blueprint.encodings.TextLogColumn");
+                        }
+                        let arrow_data = &**arrays_by_name["kind"];
+                        crate::blueprint::encodings::TextLogColumnKind::from_arrow_opt(arrow_data)
+                            .with_context("rerun.blueprint.encodings.TextLogColumn#kind")?
+                            .into_iter()
+                    };
+                    ZipValidity::new_with_validity(
+                        ::itertools::izip!(visible, kind),
+                        arrow_data.nulls(),
+                    )
+                    .map(|opt| {
+                        opt.map(|(visible, kind)| {
+                            Ok(Self {
+                                visible: visible
+                                    .ok_or_else(DeserializationError::missing_data)
+                                    .with_context(
+                                        "rerun.blueprint.encodings.TextLogColumn#visible",
+                                    )?,
+                                kind: kind
+                                    .ok_or_else(DeserializationError::missing_data)
+                                    .with_context("rerun.blueprint.encodings.TextLogColumn#kind")?,
+                            })
                         })
+                        .transpose()
                     })
-                    .transpose()
-                })
-                .collect::<DeserializationResult<Vec<_>>>()
-                .with_context("rerun.blueprint.encodings.TextLogColumn")?
+                    .collect::<DeserializationResult<Vec<_>>>()
+                    .with_context("rerun.blueprint.encodings.TextLogColumn")?
+                }
             }
-        })
+        }
+        .into_iter()
+        .map(|v| v.ok_or_else(DeserializationError::missing_data))
+        .collect::<DeserializationResult<Vec<_>>>()?)
     }
 }

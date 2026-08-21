@@ -9,11 +9,17 @@ use crate::{Object, Objects, TypeRegistry};
 
 // ---
 
+/// Writes out the body of a `to_arrow` (`elements_are_nullable = false`) or `to_arrow_opt`
+/// (`elements_are_nullable = true`) implementation.
+///
+/// `data_src` holds `impl Into<Cow<'a, Self>>` items, wrapped in an `Option` iff the elements are
+/// nullable. Non-nullable elements need no validity bitmap, which is what makes that path cheaper.
 pub fn quote_arrow_serializer(
     type_registry: &TypeRegistry,
     objects: &Objects,
     obj: &Object,
     data_src: &proc_macro2::Ident,
+    elements_are_nullable: bool,
 ) -> TokenStream {
     let datatype = &type_registry.get(&obj.fqname);
 
@@ -31,28 +37,10 @@ pub fn quote_arrow_serializer(
         }
     };
 
-    let quoted_validity = |var| {
-        quote! {
-            let #var: Option<arrow::buffer::NullBuffer> = {
-                // NOTE: Don't compute a validity if there isn't at least one null element.
-                let any_nones = somes.iter().any(|some| !*some);
-                any_nones.then(|| somes.into())
-            }
-        }
-    };
-
     if is_enum {
         let quoted_data_src = data_src.clone();
         let quoted_data_dst = format_ident!("data0");
         let validity_dst = format_ident!("{quoted_data_dst}_validity");
-
-        // The choice of true or false for `elements_are_nullable` here is a bit confusing.
-        // This code-gen path forms the basis of `to_arrow_opt`, which implies that we
-        // support nullable elements. Additionally, this MAY be used as a recursive code
-        // path when using an enum within a struct, and that struct within the field may
-        // be null, as such the elements are always handled as nullable.
-        // TODO(#6819): If we get rid of nullable components this will likely need to change.
-        let elements_are_nullable = true;
 
         let quoted_serializer = quote_arrow_field_serializer(
             objects,
@@ -63,7 +51,7 @@ pub fn quote_arrow_serializer(
             InnerRepr::NativeIterable,
         );
 
-        let quoted_validity = quoted_validity(validity_dst);
+        let quoted_validity = quote_validity(&validity_dst, elements_are_nullable);
         let repr_type = match obj.enum_integer_type() {
             Some(EnumIntegerType::U8) => quote!(u8),
             Some(EnumIntegerType::U16) => quote!(u16),
@@ -72,19 +60,30 @@ pub fn quote_arrow_serializer(
             None => unreachable!("enums must have an integer type"),
         };
 
+        let quoted_collect = if elements_are_nullable {
+            quote! {
+                let (somes, #quoted_data_dst): (Vec<_>, Vec<_>) = #quoted_data_src
+                    .into_iter()
+                    .map(|datum| {
+                        let datum: Option<Cow<'a, Self>> = datum.map(Into::into);
+                        let datum = datum.map(|datum| *datum as #repr_type);
+                        (datum.is_some(), datum)
+                    })
+                    .unzip();
+            }
+        } else {
+            quote! {
+                let #quoted_data_dst = #quoted_data_src
+                    .into_iter()
+                    .map(|datum| {
+                        let datum: Cow<'a, Self> = datum.into();
+                        *datum as #repr_type
+                    });
+            }
+        };
+
         quote! {{
-            let (somes, #quoted_data_dst): (Vec<_>, Vec<_>) = #quoted_data_src
-                .into_iter()
-                .map(|datum| {
-                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-
-                    let datum = datum
-                    .map(|datum| *datum as #repr_type);
-
-                    (datum.is_some(), datum)
-                })
-                .unzip();
-
+            #quoted_collect
 
             #quoted_validity;
 
@@ -113,37 +112,71 @@ pub fn quote_arrow_serializer(
         };
 
         let datatype = &type_registry.get(&obj_field.fqname);
-        let elements_are_nullable = true;
+
+        // A transparent wrapper has no validity bitmap of its own: the array's nulls are the
+        // wrapped field's `None`s. So when that field is nullable the bitmap has to be built even
+        // if the elements themselves cannot be null — dropping it would silently turn `None` into
+        // the default value.
+        let values_are_nullable = elements_are_nullable || obj_field.is_nullable;
 
         let quoted_serializer = quote_arrow_field_serializer(
             objects,
             datatype,
             &validity_dst,
-            elements_are_nullable,
+            values_are_nullable,
             &quoted_data_dst,
             InnerRepr::NativeIterable,
         );
 
-        let quoted_validity = quoted_validity(validity_dst);
-
         let quoted_flatten = quoted_flatten(obj_field.is_nullable);
 
-        quote! {{
-            let (somes, #quoted_data_dst): (Vec<_>, Vec<_>) = #quoted_data_src
-                .into_iter()
-                .map(|datum| {
-                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-
-                    let datum = datum
+        let (quoted_collect, quoted_validity) = if elements_are_nullable {
+            (
+                quote! {
+                    let (somes, #quoted_data_dst): (Vec<_>, Vec<_>) = #quoted_data_src
+                        .into_iter()
                         .map(|datum| {
+                            let datum: Option<Cow<'a, Self>> = datum.map(Into::into);
+                            let datum = datum
+                                .map(|datum| datum.into_owned().#quoted_member_accessor)
+                                #quoted_flatten;
+                            (datum.is_some(), datum)
+                        })
+                        .unzip();
+                },
+                quote_validity_from_somes(&validity_dst),
+            )
+        } else if obj_field.is_nullable {
+            (
+                quote! {
+                    let (somes, #quoted_data_dst): (Vec<_>, Vec<_>) = #quoted_data_src
+                        .into_iter()
+                        .map(|datum| {
+                            let datum: Cow<'a, Self> = datum.into();
+                            let datum = datum.into_owned().#quoted_member_accessor;
+                            (datum.is_some(), datum)
+                        })
+                        .unzip();
+                },
+                quote_validity_from_somes(&validity_dst),
+            )
+        } else {
+            (
+                quote! {
+                    let #quoted_data_dst: Vec<_> = #quoted_data_src
+                        .into_iter()
+                        .map(|datum| {
+                            let datum: Cow<'a, Self> = datum.into();
                             datum.into_owned().#quoted_member_accessor
                         })
-                        #quoted_flatten;
+                        .collect();
+                },
+                quote!(let #validity_dst = None),
+            )
+        };
 
-                    (datum.is_some(), datum)
-                })
-                .unzip();
-
+        quote! {{
+            #quoted_collect
 
             #quoted_validity;
 
@@ -160,31 +193,33 @@ pub fn quote_arrow_serializer(
                     let validity_dst = format_ident!("{data_dst}_validity");
 
                     let inner_datatype = &type_registry.get(&obj_field.fqname);
-                    let elements_are_nullable = true;
 
+                    // A struct's fields are individually nullable in the Arrow schema, so they
+                    // keep their validity bitmaps even when the elements themselves cannot be null.
                     let quoted_serializer = quote_arrow_field_serializer(
                         objects,
                         inner_datatype,
                         &validity_dst,
-                        elements_are_nullable,
+                        true, // the field itself is always nullable
                         &data_dst,
                         InnerRepr::NativeIterable,
                     );
 
                     let quoted_flatten = quoted_flatten(obj_field.is_nullable);
 
-                    let quoted_validity = quoted_validity(validity_dst);
+                    let quoted_field_value = if elements_are_nullable {
+                        quote!(datum.as_ref().map(|datum| datum.#data_dst.clone()))
+                    } else {
+                        quote!(Some(datum.#data_dst.clone()))
+                    };
+
+                    let quoted_validity = quote_validity_from_somes(&validity_dst);
 
                     quote! {{
                         let (somes, #data_dst): (Vec<_>, Vec<_>) = #data_src
                             .iter()
                             .map(|datum| {
-                                let datum = datum
-                                    .as_ref()
-                                    .map(|datum| {
-                                        datum.#data_dst.clone()
-                                    })
-                                    #quoted_flatten;
+                                let datum = #quoted_field_value #quoted_flatten;
 
                                 (datum.is_some(), datum)
                             })
@@ -197,18 +232,35 @@ pub fn quote_arrow_serializer(
                     }}
                 });
 
-                let quoted_declare_validity = quoted_validity(format_ident!("validity"));
+                let quoted_declare_validity =
+                    quote_validity(&format_ident!("validity"), elements_are_nullable);
+
+                let quoted_collect = if elements_are_nullable {
+                    quote! {
+                        let (somes, #data_src): (Vec<_>, Vec<_>) = #data_src
+                            .into_iter()
+                            .map(|datum| {
+                                let datum: Option<Cow<'a, Self>> = datum.map(Into::into);
+                                (datum.is_some(), datum)
+                            })
+                            .unzip();
+                    }
+                } else {
+                    quote! {
+                        let #data_src: Vec<_> = #data_src
+                            .into_iter()
+                            .map(|datum| {
+                                let datum: Cow<'a, Self> = datum.into();
+                                datum
+                            })
+                            .collect();
+                    }
+                };
 
                 quote! {{
                     let fields = Fields::from(vec![#(#quoted_fields,)*]);
 
-                    let (somes, #data_src): (Vec<_>, Vec<_>) = #data_src
-                        .into_iter()
-                        .map(|datum| {
-                            let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                            (datum.is_some(), datum)
-                        })
-                        .unzip();
+                    #quoted_collect
 
                     #quoted_declare_validity;
 
@@ -224,11 +276,18 @@ pub fn quote_arrow_serializer(
                 // We use sparse unions for enums, which means only 8 bits is required for each field,
                 // and nulls are encoded with a special 0-index `_null_markers` variant.
                 let quoted_fields = fields.iter().map(ArrowFieldTokenizer::new);
+                // A union encodes nullability as a dedicated variant rather than a validity
+                // bitmap, so the body below is written against `Option`s either way.
+                let quoted_into_option = if elements_are_nullable {
+                    quote!(datum.map(Into::into))
+                } else {
+                    quote!(Some(datum.into()))
+                };
                 let quoted_data_collect = quote! {
                     let #data_src: Vec<_> = #data_src
                         .into_iter()
                         .map(|datum| {
-                            let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
+                            let datum: Option<Cow<'a, Self>> = #quoted_into_option;
                             datum
                         })
                         .collect();
@@ -279,11 +338,18 @@ pub fn quote_arrow_serializer(
             DataType::Union(fields, UnionMode::Dense) => {
                 let quoted_field_type_ids = (0..fields.len()).map(Literal::usize_unsuffixed);
                 let quoted_fields = fields.iter().map(ArrowFieldTokenizer::new);
+                // A union encodes nullability as a dedicated variant rather than a validity
+                // bitmap, so the body below is written against `Option`s either way.
+                let quoted_into_option = if elements_are_nullable {
+                    quote!(datum.map(Into::into))
+                } else {
+                    quote!(Some(datum.into()))
+                };
                 let quoted_data_collect = quote! {
                     let #data_src: Vec<_> = #data_src
                         .into_iter()
                         .map(|datum| {
-                            let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
+                            let datum: Option<Cow<'a, Self>> = #quoted_into_option;
                             datum
                         })
                         .collect();
@@ -330,7 +396,7 @@ pub fn quote_arrow_serializer(
                             })
                             .collect();
 
-                        let #validity_dst: Option<arrow::buffer::NullBuffer> = None;
+                        let #validity_dst = None;
                         #quoted_serializer
                     }}
                 });
@@ -457,6 +523,29 @@ enum InnerRepr {
     NativeIterable,
 }
 
+/// Declares `var` as the validity bitmap for the elements, or as `None` if they cannot be null.
+fn quote_validity(var: &proc_macro2::Ident, elements_are_nullable: bool) -> TokenStream {
+    if elements_are_nullable {
+        quote_validity_from_somes(var)
+    } else {
+        quote!(let #var = None)
+    }
+}
+
+/// Declares `var` as the validity bitmap for the `somes` currently in scope.
+///
+/// Expects a `somes: Vec<bool>` binding, as produced by the `(somes, values)` unzip that every
+/// nullable serializer starts with.
+fn quote_validity_from_somes(var: &proc_macro2::Ident) -> TokenStream {
+    quote! {
+        let #var: Option<arrow::buffer::NullBuffer> = {
+            // NOTE: Don't compute a validity if there isn't at least one null element.
+            let any_nones = somes.iter().any(|some| !*some);
+            any_nones.then(|| somes.into())
+        }
+    }
+}
+
 /// Writes out code to serialize a single field.
 ///
 /// If `elements_are_nullable` is `false`, then we ignore null elements in the input data.
@@ -483,16 +572,19 @@ fn quote_arrow_field_serializer(
     // If the inner object is an enum, then dispatch to its serializer.
     if let Some(obj) = datatype.enum_obj(objects) {
         let fqname_use = quote_fqname_as_type_path(&obj.fqname);
-        let option_wrapper = if elements_are_nullable {
-            quote! {}
-        } else {
-            quote! { .into_iter().map(Some) }
-        };
 
-        return quote! {{
-            _ = #validity_src;
-            #fqname_use::to_arrow_opt(#data_src #option_wrapper)?
-        }};
+        return if elements_are_nullable {
+            quote! {{
+                let _ = #validity_src;
+                #fqname_use::to_arrow_opt(#data_src)?
+            }}
+        } else {
+            quote! {{
+                // Pins the type of the otherwise-unused validity, which is a bare `None` here.
+                let _: Option<arrow::buffer::NullBuffer> = #validity_src;
+                #fqname_use::to_arrow(#data_src)?
+            }}
+        };
     }
 
     let inner_is_arrow_transparent = inner_obj.is_some_and(|obj| obj.is_arrow_transparent());
@@ -546,7 +638,7 @@ fn quote_arrow_field_serializer(
             if atomic == &AtomicDataType::Boolean {
                 quote! {
                     as_array_ref(BooleanArray::new(
-                        BooleanBuffer::from(#data_src.into_iter() #quoted_transparent_mapping .collect::<Vec<_>>()),
+                        #data_src.into_iter() #quoted_transparent_mapping .collect(),
                         #validity_src,
                     ))
                 }
@@ -564,7 +656,7 @@ fn quote_arrow_field_serializer(
                     },
                     InnerRepr::NativeIterable => quote! {
                         as_array_ref(PrimitiveArray::<#arrow_primitive_type>::new(
-                            ScalarBuffer::from(#data_src.into_iter() #quoted_transparent_mapping .collect::<Vec<_>>()),
+                            #data_src.into_iter() #quoted_transparent_mapping .collect(),
                             #validity_src,
                         ))
                     },
@@ -913,7 +1005,7 @@ fn quote_arrow_field_serializer(
             } else {
                 // TODO(cmc): We don't support intra-list nullability in our IDL at the moment.
                 quote! {
-                    let #inner_validity_ident: Option<arrow::buffer::NullBuffer> = None;
+                    let #inner_validity_ident = None;
                 }
             };
 
@@ -952,16 +1044,19 @@ fn quote_arrow_field_serializer(
                 unreachable!()
             };
             let fqname_use = quote_fqname_as_type_path(fqname);
-            let option_wrapper = if elements_are_nullable {
-                quote! {}
-            } else {
-                quote! { .into_iter().map(Some) }
-            };
 
-            quote! {{
-                _ = #validity_src;
-                #fqname_use::to_arrow_opt(#data_src #option_wrapper)?
-            }}
+            if elements_are_nullable {
+                quote! {{
+                    let _ = #validity_src;
+                    #fqname_use::to_arrow_opt(#data_src)?
+                }}
+            } else {
+                quote! {{
+                    // Pins the type of the otherwise-unused validity, which is a bare `None` here.
+                    let _: Option<arrow::buffer::NullBuffer> = #validity_src;
+                    #fqname_use::to_arrow(#data_src)?
+                }}
+            }
         }
 
         DataType::Object { .. } => unimplemented!("{datatype:#?}"),

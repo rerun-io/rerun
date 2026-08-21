@@ -244,7 +244,7 @@ impl BufferAndFormatConstraint {
     /// buffers are opaque byte blobs regardless of the specific image archetype.
     // TODO(andreas): It would be great if we could support `BinaryArray` as well!
     pub fn buffer_arrow_datatype() -> arrow::datatypes::DataType {
-        <re_sdk_types::encodings::Blob as re_types_core::Loggable>::arrow_datatype()
+        <re_sdk_types::encodings::Blob as re_types_core::ArrowDatatype>::arrow_datatype()
     }
 
     /// The buffer component slot on the visualizer.

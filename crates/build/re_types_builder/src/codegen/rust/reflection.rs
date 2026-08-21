@@ -47,7 +47,8 @@ pub fn generate_reflection(
             ArchetypeName,
             ComponentType,
             Component,
-            Loggable as _,
+            ArrowDatatype as _,
+            FromArrow as _,
             ComponentBatch as _,
             reflection::{
                 generate_component_identifier_reflection,

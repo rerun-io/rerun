@@ -3,6 +3,7 @@
 
 /// Visible time range bounds for a specific timeline.
 #[rerun::rerun_type]
+#[rust(arrow_opt)]
 #[rust(derive(Copy, PartialEq, Eq))]
 #[rust(override_crate = "re_types_core")]
 #[rerun(state = "stable")]
@@ -18,6 +19,7 @@ pub struct TimeRange {
 /// Left or right boundary of a time range.
 #[rerun::rerun_type]
 #[repr(i8)]
+#[rust(arrow_opt)]
 #[rust(derive(Copy, PartialEq, Eq))]
 #[rust(override_crate = "re_types_core")]
 #[rerun(state = "stable")]

@@ -17,11 +17,13 @@
 #![allow(clippy::wildcard_imports)]
 #![allow(non_camel_case_types)]
 
+use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
+use ::re_types_core::SerializedComponentBatch;
 use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
+use ::std::borrow::Cow;
 
 /// **Encoding**: A test of the enum type.
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Default, ::re_byte_size::SizeBytes)]
@@ -49,27 +51,32 @@ pub enum EnumTest {
 
 ::re_types_core::macros::impl_into_cow!(EnumTest);
 
-impl ::re_types_core::Loggable for EnumTest {
+impl ::re_types_core::ArrowDatatype for EnumTest {
     #[inline]
     fn arrow_datatype() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
         DataType::UInt8
     }
+}
 
+impl ::re_types_core::ToArrowOpt for EnumTest {
     fn to_arrow_opt<'a>(
-        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> SerializationResult<arrow::array::ArrayRef>
+        data: impl IntoIterator<Item = Option<impl Into<Cow<'a, Self>>>>,
+    ) -> SerializationResult<ArrayRef>
     where
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{Loggable as _, ResultExt as _, arrow_helpers::as_array_ref};
+        use ::re_types_core::{
+            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            arrow_helpers::as_array_ref,
+        };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
                 .map(|datum| {
-                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
+                    let datum: Option<Cow<'a, Self>> = datum.map(Into::into);
                     let datum = datum.map(|datum| *datum as u8);
                     (datum.is_some(), datum)
                 })
@@ -79,25 +86,22 @@ impl ::re_types_core::Loggable for EnumTest {
                 any_nones.then(|| somes.into())
             };
             as_array_ref(PrimitiveArray::<UInt8Type>::new(
-                ScalarBuffer::from(
-                    data0
-                        .into_iter()
-                        .map(|v| v.unwrap_or_default())
-                        .collect::<Vec<_>>(),
-                ),
+                data0.into_iter().map(|v| v.unwrap_or_default()).collect(),
                 data0_validity,
             ))
         })
     }
+}
 
+::re_types_core::macros::impl_to_arrow_via_to_arrow_opt!(EnumTest);
+
+impl ::re_types_core::FromArrowOpt for EnumTest {
     fn from_arrow_opt(
         arrow_data: &dyn arrow::array::Array,
-    ) -> DeserializationResult<Vec<Option<Self>>>
-    where
-        Self: Sized,
-    {
+    ) -> DeserializationResult<Vec<Option<Self>>> {
         use ::re_types_core::{
-            Loggable as _, ResultExt as _, arrow_helpers::*, arrow_zip_validity::ZipValidity,
+            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok(arrow_data
@@ -116,10 +120,12 @@ impl ::re_types_core::Loggable for EnumTest {
                     }),
                 None => Ok(None),
             })
-            .collect::<DeserializationResult<Vec<Option<_>>>>()
+            .collect::<DeserializationResult<Vec<_>>>()
             .with_context("rerun.testing.encodings.EnumTest")?)
     }
 }
+
+::re_types_core::macros::impl_from_arrow_via_from_arrow_opt!(EnumTest);
 
 impl std::fmt::Display for EnumTest {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

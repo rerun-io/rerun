@@ -1,5 +1,5 @@
 #[expect(unused_imports, clippy::unused_trait_names)] // used in docstrings
-use crate::{Component, Loggable};
+use crate::Component;
 use crate::{ComponentDescriptor, DeserializationResult};
 
 // ---
