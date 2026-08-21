@@ -21,10 +21,11 @@ use bitflags::bitflags;
 use enumset::{EnumSet, enum_set};
 use itertools::Itertools as _;
 use parking_lot::Mutex;
+use re_log::ResultExt as _;
 use smallvec::smallvec;
 
 use super::{DrawData, DrawError, RenderContext, Renderer};
-use crate::allocator::create_and_fill_uniform_buffer_batch;
+use crate::allocator::{DataTextureSource, create_and_fill_uniform_buffer_batch};
 use crate::draw_phases::{
     DrawPhase, OutlineMaskProcessor, PickingLayerObjectId, PickingLayerProcessor,
 };
@@ -36,11 +37,12 @@ use crate::transparent_sort::{
 use crate::view_builder::ViewBuilder;
 use crate::wgpu_resources::{
     BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
-    GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, PipelineLayoutDesc, RenderPipelineDesc,
+    GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, GpuTexture, PipelineLayoutDesc,
+    RenderPipelineDesc,
 };
 use crate::{
-    DepthOffset, DrawableCollector, Label, OutlineMaskPreference, PointCloudBuilder,
-    include_shader_module,
+    Color32, DepthOffset, DrawableCollector, Label, OutlineMaskPreference, PickingLayerInstanceId,
+    PointCloudBuilder, PositionRadius, include_shader_module,
 };
 
 bitflags! {
@@ -258,9 +260,14 @@ pub struct PointCloudBatchInfo {
     pub flags: PointCloudBatchFlags,
 
     /// Number of points covered by this batch.
-    ///
-    /// The batch will start with the next point after the one the previous batch ended with.
     pub point_count: u32,
+
+    /// Index of this batch's first point in the shared point-data textures.
+    ///
+    /// `None` continues right after the point the previous batch ended with, which is what
+    /// [`crate::PointCloudBuilder`] produces. Setting it explicitly lets several batches draw
+    /// overlapping ranges of a single upload, e.g. one batch per instance transform.
+    pub first_point_index: Option<u32>,
 
     /// Object-space bounds used to place the batch in the draw-phase distance ordering.
     pub object_space_bounding_box: macaw::BoundingBox,
@@ -288,7 +295,9 @@ pub struct PointCloudBatchInfo {
     ///
     /// Only populated for batches with [`PointCloudBatchFlags::FLAG_PREMULTIPLIED_ALPHA`];
     /// filled in automatically by [`crate::PointCloudBuilder`].
-    pub sort_positions: Option<Vec<glam::Vec3>>,
+    ///
+    /// Shared so that batches over a cached upload can reuse one copy of the positions.
+    pub sort_positions: Option<Arc<Vec<glam::Vec3>>>,
 
     /// Caller-owned cache for the back-to-front ordering, persisted across frames to seed the next
     /// sort for each view.
@@ -306,6 +315,7 @@ impl Default for PointCloudBatchInfo {
             world_from_obj: glam::Affine3A::IDENTITY,
             flags: PointCloudBatchFlags::FLAG_ENABLE_SHADING,
             point_count: 0,
+            first_point_index: None,
             object_space_bounding_box: macaw::BoundingBox::nothing(),
             overall_outline_mask_ids: OutlineMaskPreference::NONE,
             additional_outline_mask_ids_vertex_ranges: Vec::new(),
@@ -321,6 +331,133 @@ impl Default for PointCloudBatchInfo {
 pub enum PointCloudDrawDataError {
     #[error("Failed to transfer data to the GPU: {0}")]
     FailedTransferringDataToGpu(#[from] crate::allocator::CpuWriteGpuReadError),
+}
+
+/// Point data residing on the GPU, shareable across frames and draw data instances.
+///
+/// Uploading is the expensive part of drawing a point cloud, so callers whose point data is
+/// unchanged from frame to frame should hold on to this and only rebuild the per-frame
+/// [`PointCloudDrawData`] around it via [`PointCloudDrawData::from_gpu_cloud`].
+/// Keeping it alive keeps the data textures from being reclaimed by the resource pool.
+pub struct GpuPointCloud {
+    position_data_texture: GpuTexture,
+    color_texture: GpuTexture,
+    picking_instance_id_texture: GpuTexture,
+
+    /// Number of points that were actually uploaded.
+    ///
+    /// May be lower than the number of points passed in if the data texture limit was reached.
+    num_points: u32,
+}
+
+impl GpuPointCloud {
+    /// Uploads point data to the GPU.
+    ///
+    /// `colors` and `picking_ids` are clamped to edge if they are shorter than
+    /// `positions_and_radii`. Returns `None` if there are no points to upload.
+    pub fn new(
+        ctx: &RenderContext,
+        positions_and_radii: &[PositionRadius],
+        colors: &[Color32],
+        picking_ids: &[PickingLayerInstanceId],
+    ) -> Result<Option<Self>, PointCloudDrawDataError> {
+        re_tracing::profile_function!();
+
+        let mut position_radius_buffer = DataTextureSource::new(ctx);
+
+        // The data texture limit is the same for all three textures, so checking one is enough.
+        let num_points = position_radius_buffer
+            .reserve(positions_and_radii.len())?
+            .min(positions_and_radii.len());
+        if num_points == 0 {
+            return Ok(None);
+        }
+        if num_points < positions_and_radii.len() {
+            re_log::error_once!(
+                "Reached maximum number of points for point cloud of {num_points}. Ignoring all excess points."
+            );
+        }
+
+        position_radius_buffer
+            .extend_from_slice(&positions_and_radii[..num_points])
+            .ok_or_log_error();
+
+        let mut color_buffer = DataTextureSource::new(ctx);
+        color_buffer.reserve(num_points)?;
+        color_buffer
+            .extend_from_slice_clamped(
+                &colors[..num_points.min(colors.len())],
+                Color32::WHITE,
+                num_points,
+            )
+            .ok_or_log_error();
+
+        let mut picking_instance_ids_buffer = DataTextureSource::new(ctx);
+        picking_instance_ids_buffer.reserve(num_points)?;
+        picking_instance_ids_buffer
+            .extend_from_slice_clamped(
+                &picking_ids[..num_points.min(picking_ids.len())],
+                PickingLayerInstanceId::default(),
+                num_points,
+            )
+            .ok_or_log_error();
+
+        Self::from_data_texture_sources(
+            position_radius_buffer,
+            color_buffer,
+            picking_instance_ids_buffer,
+        )
+        .map(Some)
+    }
+
+    /// Encodes the copies from already-staged point data into freshly allocated data textures.
+    fn from_data_texture_sources(
+        position_radius_buffer: DataTextureSource<'_, PositionRadius>,
+        color_buffer: DataTextureSource<'_, Color32>,
+        picking_instance_ids_buffer: DataTextureSource<'_, PickingLayerInstanceId>,
+    ) -> Result<Self, PointCloudDrawDataError> {
+        let num_points = position_radius_buffer.len() as u32;
+
+        Ok(Self {
+            position_data_texture: position_radius_buffer.finish(
+                wgpu::TextureFormat::Rgba32Float,
+                "GpuPointCloud::position_data_texture",
+            )?,
+            color_texture: color_buffer.finish(
+                wgpu::TextureFormat::Rgba8UnormSrgb,
+                "GpuPointCloud::color_texture",
+            )?,
+            picking_instance_id_texture: picking_instance_ids_buffer.finish(
+                wgpu::TextureFormat::Rg32Uint,
+                "GpuPointCloud::picking_instance_id_texture",
+            )?,
+            num_points,
+        })
+    }
+
+    /// Number of points that were actually uploaded.
+    #[inline]
+    pub fn num_points(&self) -> u32 {
+        self.num_points
+    }
+
+    /// Approximate number of GPU bytes occupied by the data textures.
+    ///
+    /// Ignores padding introduced by the driver as well as any GPU-side compression.
+    pub fn gpu_byte_size(&self) -> u64 {
+        [
+            &self.position_data_texture,
+            &self.color_texture,
+            &self.picking_instance_id_texture,
+        ]
+        .into_iter()
+        .map(|texture| {
+            let desc = &texture.creation_desc;
+            let num_texels = desc.size.width as u64 * desc.size.height as u64;
+            num_texels * desc.format.block_copy_size(None).unwrap_or(0) as u64
+        })
+        .sum()
+    }
 }
 
 impl PointCloudDrawData {
@@ -342,25 +479,60 @@ impl PointCloudDrawData {
             radius_boost_in_ui_points_for_outlines,
         } = builder;
 
-        let point_renderer = ctx.renderer::<PointCloudRenderer>();
-        let batches = batches.as_slice();
-
         if vertices_buffer.is_empty() {
-            return Ok(Self {
-                bind_group_all_points: None,
-                bind_group_all_points_outline_mask: None,
-                batches: Vec::new(),
-                drawables: Arc::new(Mutex::new(SortedDrawables::default())),
-            });
+            return Ok(Self::empty());
         }
 
-        let num_vertices = vertices_buffer.len();
+        let gpu_cloud = GpuPointCloud::from_data_texture_sources(
+            vertices_buffer,
+            color_buffer,
+            picking_instance_ids_buffer,
+        )?;
+
+        Ok(Self::from_gpu_cloud(
+            ctx,
+            &gpu_cloud,
+            &batches,
+            radius_boost_in_ui_points_for_outlines,
+        ))
+    }
+
+    fn empty() -> Self {
+        Self {
+            bind_group_all_points: None,
+            bind_group_all_points_outline_mask: None,
+            batches: Vec::new(),
+            drawables: Arc::new(Mutex::new(SortedDrawables::default())),
+        }
+    }
+
+    /// Builds the per-frame draw data for an already uploaded point cloud.
+    ///
+    /// Only the per-batch state (transforms, flags, outline masks, picking ids, depth offsets and
+    /// transparent sorting) is rebuilt here; the point data itself is reused as-is.
+    ///
+    /// If no batches are passed, all points are assumed to be in a single batch with identity transform.
+    pub fn from_gpu_cloud(
+        ctx: &RenderContext,
+        gpu_cloud: &GpuPointCloud,
+        batches: &[PointCloudBatchInfo],
+        radius_boost_in_ui_points_for_outlines: f32,
+    ) -> Self {
+        re_tracing::profile_function!();
+
+        let point_renderer = ctx.renderer::<PointCloudRenderer>();
+
+        let num_vertices = gpu_cloud.num_points;
+        if num_vertices == 0 {
+            return Self::empty();
+        }
 
         let fallback_batches = [PointCloudBatchInfo {
             label: "fallback_batches".into(),
             world_from_obj: glam::Affine3A::IDENTITY,
             flags: PointCloudBatchFlags::empty(),
-            point_count: num_vertices as _,
+            point_count: num_vertices,
+            first_point_index: None,
             object_space_bounding_box: macaw::BoundingBox::nothing(),
             overall_outline_mask_ids: OutlineMaskPreference::NONE,
             additional_outline_mask_ids_vertex_ranges: Vec::new(),
@@ -375,18 +547,26 @@ impl PointCloudDrawData {
             batches
         };
 
-        let position_data_texture = vertices_buffer.finish(
-            wgpu::TextureFormat::Rgba32Float,
-            "PointCloudDrawData::position_data_texture",
-        )?;
-        let color_texture = color_buffer.finish(
-            wgpu::TextureFormat::Rgba8UnormSrgb,
-            "PointCloudDrawData::color_texture",
-        )?;
-        let picking_instance_id_texture = picking_instance_ids_buffer.finish(
-            wgpu::TextureFormat::Rg32Uint,
-            "PointCloudDrawData::picking_instance_id_texture",
-        )?;
+        // Resolve which slice of the shared point-data textures each batch draws.
+        // Batches without an explicit start continue right after the previous one; explicit starts
+        // let several batches share a single upload.
+        let point_ranges = {
+            let mut next_point_index = 0;
+            batches
+                .iter()
+                .map(|batch_info| {
+                    let start = batch_info
+                        .first_point_index
+                        .unwrap_or(next_point_index)
+                        .min(num_vertices);
+                    let end = start
+                        .saturating_add(batch_info.point_count)
+                        .min(num_vertices);
+                    next_point_index = end;
+                    start..end
+                })
+                .collect_vec()
+        };
 
         let draw_data_uniform_buffer_bindings = create_and_fill_uniform_buffer_batch(
             ctx,
@@ -416,9 +596,11 @@ impl PointCloudDrawData {
                 &BindGroupDesc {
                     label,
                     entries: smallvec![
-                        BindGroupEntry::DefaultTextureView(position_data_texture.handle),
-                        BindGroupEntry::DefaultTextureView(color_texture.handle),
-                        BindGroupEntry::DefaultTextureView(picking_instance_id_texture.handle),
+                        BindGroupEntry::DefaultTextureView(gpu_cloud.position_data_texture.handle),
+                        BindGroupEntry::DefaultTextureView(gpu_cloud.color_texture.handle),
+                        BindGroupEntry::DefaultTextureView(
+                            gpu_cloud.picking_instance_id_texture.handle
+                        ),
                         draw_data_uniform_buffer_binding,
                     ],
                     layout: point_renderer.bind_group_layout_all_points,
@@ -438,14 +620,10 @@ impl PointCloudDrawData {
         // Process batches
         let mut batches_internal = Vec::with_capacity(batches.len());
         {
-            let mut first_point_index = 0;
             let uniform_buffer_bindings = create_and_fill_uniform_buffer_batch(
                 ctx,
                 "point batch uniform buffers".into(),
-                batches.iter().map(|batch_info| {
-                    let current_first_point_index = first_point_index;
-                    first_point_index += batch_info.point_count;
-
+                std::iter::zip(batches, &point_ranges).map(|(batch_info, point_range)| {
                     let enable_index_lookup = batch_info
                         .sort_positions
                         .as_ref()
@@ -467,7 +645,7 @@ impl PointCloudDrawData {
                             .into(),
                         picking_object_id: batch_info.picking_object_id,
                         depth_offset: batch_info.depth_offset as f32,
-                        first_point_index: current_first_point_index,
+                        first_point_index: point_range.start,
                         _row_padding: 0,
                         end_padding: Default::default(),
                     }
@@ -480,45 +658,37 @@ impl PointCloudDrawData {
                 create_and_fill_uniform_buffer_batch(
                     ctx,
                     "lines batch uniform buffers - mask only".into(),
-                    batches
-                        .iter()
-                        .scan(0, |first_point_index, batch_info| {
-                            let current_first_point_index = *first_point_index;
-                            *first_point_index += batch_info.point_count;
-
+                    std::iter::zip(batches, &point_ranges)
+                        .flat_map(|(batch_info, point_range)| {
                             // Masks never use sorting, so we don't need index lookup here.
                             let flags = batch_info
                                 .flags
                                 .difference(PointCloudBatchFlags::FLAG_ENABLE_INDEX_LOOKUP)
                                 .bits();
 
-                            Some(
-                                batch_info
-                                    .additional_outline_mask_ids_vertex_ranges
-                                    .iter()
-                                    .map(move |(_, mask)| gpu_data::BatchUniformBuffer {
-                                        world_from_obj: batch_info.world_from_obj.into(),
-                                        flags,
-                                        outline_mask_ids: mask.0.unwrap_or_default().into(),
-                                        picking_object_id: batch_info.picking_object_id,
-                                        depth_offset: batch_info.depth_offset as f32,
-                                        first_point_index: current_first_point_index,
-                                        _row_padding: 0,
-                                        end_padding: Default::default(),
-                                    }),
-                            )
+                            batch_info
+                                .additional_outline_mask_ids_vertex_ranges
+                                .iter()
+                                .map(move |(_, mask)| gpu_data::BatchUniformBuffer {
+                                    world_from_obj: batch_info.world_from_obj.into(),
+                                    flags,
+                                    outline_mask_ids: mask.0.unwrap_or_default().into(),
+                                    picking_object_id: batch_info.picking_object_id,
+                                    depth_offset: batch_info.depth_offset as f32,
+                                    first_point_index: point_range.start,
+                                    _row_padding: 0,
+                                    end_padding: Default::default(),
+                                })
                         })
-                        .flatten()
                         .collect::<Vec<_>>()
                         .into_iter(),
                 )
                 .into_iter();
 
-            let mut start_point_for_next_batch = 0;
-            for (batch_info, uniform_buffer_binding) in
-                std::iter::zip(batches, uniform_buffer_bindings)
-            {
-                let point_vertex_range_end = start_point_for_next_batch + batch_info.point_count;
+            for ((batch_info, point_range), uniform_buffer_binding) in std::iter::zip(
+                std::iter::zip(batches, &point_ranges),
+                uniform_buffer_bindings,
+            ) {
                 // Transparent batches are alpha-blended in the transparent phase, everything else
                 // is drawn opaque (relying on alpha-to-coverage for edge anti-aliasing).
                 let color_phase = if batch_info
@@ -542,7 +712,7 @@ impl PointCloudDrawData {
                     .as_ref()
                     .filter(|positions| !positions.is_empty())
                     .map(|obj_positions| TransparentSort {
-                        object_positions: Arc::new(obj_positions.clone()),
+                        object_positions: obj_positions.clone(),
                         object_from_world: batch_info.world_from_obj.inverse(),
                         sort_order_cache: batch_info.sort_order_cache.clone(),
                     });
@@ -561,15 +731,16 @@ impl PointCloudDrawData {
                     ctx,
                     batch_info.label.clone(),
                     uniform_buffer_binding,
-                    start_point_for_next_batch..point_vertex_range_end,
+                    point_range.clone(),
                     center_world_position,
                     active_phases,
                     sort,
                 ));
 
                 for (range, _) in &batch_info.additional_outline_mask_ids_vertex_ranges {
-                    let range = (range.start + start_point_for_next_batch)
-                        ..(range.end + start_point_for_next_batch);
+                    // Ranges are relative to the batch, and must stay within what was uploaded.
+                    let range = (range.start + point_range.start).min(point_range.end)
+                        ..(range.end + point_range.start).min(point_range.end);
                     batches_internal.push(point_renderer.create_point_cloud_batch(
                         ctx,
                         format!("{:?} strip-only {:?}", batch_info.label, range).into(),
@@ -580,22 +751,15 @@ impl PointCloudDrawData {
                         None,
                     ));
                 }
-
-                start_point_for_next_batch = point_vertex_range_end;
-
-                // Should happen only if the number of vertices was clamped.
-                if start_point_for_next_batch >= num_vertices as u32 {
-                    break;
-                }
             }
         }
 
-        Ok(Self {
+        Self {
             bind_group_all_points: Some(bind_group_all_points),
             bind_group_all_points_outline_mask: Some(bind_group_all_points_outline_mask),
             batches: batches_internal,
             drawables: Arc::new(Mutex::new(SortedDrawables::default())),
-        })
+        }
     }
 }
 
