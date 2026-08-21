@@ -1,7 +1,7 @@
 use itertools::Itertools as _;
 use re_chunk::TimelineName;
 use re_entity_db::{EntityDb, LogSource};
-use re_log_channel::RecordingOpenBehavior;
+use re_log_channel::{RecordingOpenBehavior, SaveScreenshotError};
 use re_log_types::{ApplicationId, RecordingId, StoreId, StoreKind};
 use re_sdk_types::blueprint::components::PlayState;
 use re_ui::{RecordingCommand, UICommand, UICommandSender as _};
@@ -749,57 +749,95 @@ impl App {
                 view_id,
                 notify,
             } => {
-                if let Some(view_id) = view_id {
-                    // Screenshot a specific view
-                    if let Some(view_info) = self.egui_ctx.memory_mut(|mem| {
-                        mem.caches
-                            .cache::<re_viewer_context::ViewRectPublisher>()
-                            .get(&view_id)
-                            .cloned()
-                    }) {
-                        let re_viewer_context::PublishedViewInfo { name, rect } = view_info;
-                        let rect = rect.shrink(2.5); // Hacky: Shrink so we don't accidentally include the border of the view.
-                        if !rect.is_positive() {
-                            re_log::warn!("View too small for a screenshot");
-                            return;
-                        }
+                self.save_screenshot(target, view_id, notify);
+            }
+        }
+    }
 
-                        self.egui_ctx
-                            .send_viewport_cmd(egui::ViewportCommand::Screenshot(
-                                egui::UserData::new(re_viewer_context::ScreenshotInfo {
-                                    ui_rect: Some(rect),
-                                    pixels_per_point: self.egui_ctx.pixels_per_point(),
-                                    name,
-                                    target,
-                                    notify,
-                                }),
-                            ));
-                    } else {
-                        re_log::warn!("View {view_id} not found for screenshot");
-                    }
-                } else {
-                    // Screenshot the entire viewer
-                    self.egui_ctx
-                        .send_viewport_cmd(egui::ViewportCommand::Screenshot(egui::UserData::new(
-                            re_viewer_context::ScreenshotInfo {
-                                ui_rect: None,
-                                pixels_per_point: self.egui_ctx.pixels_per_point(),
-                                name: "screenshot".to_owned(),
-                                target,
-                                notify,
-                            },
-                        )));
+    fn save_screenshot(
+        &mut self,
+        target: re_viewer_context::ScreenshotTarget,
+        view_id: Option<re_viewer_context::ViewId>,
+        notify: bool,
+    ) {
+        if let Some(view_id) = view_id {
+            // Screenshot a specific view
+            if let Some(view_info) = self.egui_ctx.memory_mut(|mem| {
+                mem.caches
+                    .cache::<re_viewer_context::ViewRectPublisher>()
+                    .get(&view_id)
+                    .cloned()
+            }) {
+                let re_viewer_context::PublishedViewInfo { name, rect } = view_info;
+                let rect = rect.shrink(2.5); // Hacky: Shrink so we don't accidentally include the border of the view.
+                if !rect.is_positive() {
+                    re_log::warn!("View too small for a screenshot");
+                    self.notify_screenshot_failed(
+                        &target,
+                        SaveScreenshotError::ViewTooSmall {
+                            view_id: view_id.to_string(),
+                        },
+                    );
+                    return;
                 }
 
-                // Screenshot commands may be triggered from receiving messages over the network, so we may not actually do any painting right now.
-                // Make sure we do at least once, so the screenshot gets saved out.
-                self.egui_ctx.request_repaint();
-
-                // TODO(#12481): Depending on the platform we a request repaint alone isn't enough to wake up the viewer.
-                // For now we do a focus switch but this isn't ideal since it breaks the flow of programmatic screenshot taking.
                 self.egui_ctx
-                    .send_viewport_cmd(egui::ViewportCommand::Focus);
+                    .send_viewport_cmd(egui::ViewportCommand::Screenshot(egui::UserData::new(
+                        re_viewer_context::ScreenshotInfo {
+                            ui_rect: Some(rect),
+                            pixels_per_point: self.egui_ctx.pixels_per_point(),
+                            name,
+                            target,
+                            notify,
+                        },
+                    )));
+            } else {
+                re_log::warn!("View {view_id} not found for screenshot");
+                self.notify_screenshot_failed(
+                    &target,
+                    SaveScreenshotError::ViewNotFound {
+                        view_id: view_id.to_string(),
+                    },
+                );
+                return;
             }
+        } else {
+            // Screenshot the entire viewer
+            self.egui_ctx
+                .send_viewport_cmd(egui::ViewportCommand::Screenshot(egui::UserData::new(
+                    re_viewer_context::ScreenshotInfo {
+                        ui_rect: None,
+                        pixels_per_point: self.egui_ctx.pixels_per_point(),
+                        name: "screenshot".to_owned(),
+                        target,
+                        notify,
+                    },
+                )));
+        }
+
+        // Screenshot commands may be triggered from receiving messages over the network, so we may not actually do any painting right now.
+        // Make sure we do at least once, so the screenshot gets saved out.
+        self.egui_ctx.request_repaint();
+
+        // TODO(#12481): Depending on the platform we a request repaint alone isn't enough to wake up the viewer.
+        // For now we do a focus switch but this isn't ideal since it breaks the flow of programmatic screenshot taking.
+        self.egui_ctx
+            .send_viewport_cmd(egui::ViewportCommand::Focus);
+    }
+
+    /// Tell any RPC caller waiting for a screenshot at this file path that it failed.
+    ///
+    /// Without this, `ViewerControlService::SaveScreenshot` would hang forever,
+    /// and the notifier map entry would leak.
+    fn notify_screenshot_failed(
+        &mut self,
+        target: &re_viewer_context::ScreenshotTarget,
+        err: SaveScreenshotError,
+    ) {
+        if let re_viewer_context::ScreenshotTarget::SaveToPath(file_path) = target
+            && let Some(notifier) = self.pending_screenshot_notifiers.remove(file_path)
+        {
+            notifier.unbounded_send(Err(err)).ok();
         }
     }
 

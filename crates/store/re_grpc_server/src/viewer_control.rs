@@ -44,6 +44,12 @@ impl viewer_control_service_server::ViewerControlService for ViewerControl {
             Some(Err(err @ SaveScreenshotError::InvalidViewId { .. })) => {
                 Err(tonic::Status::invalid_argument(err.to_string()))
             }
+            Some(Err(err @ SaveScreenshotError::ViewNotFound { .. })) => {
+                Err(tonic::Status::not_found(err.to_string()))
+            }
+            Some(Err(err @ SaveScreenshotError::ViewTooSmall { .. })) => {
+                Err(tonic::Status::failed_precondition(err.to_string()))
+            }
             Some(Err(
                 err @ (SaveScreenshotError::InvalidImageData
                 | SaveScreenshotError::SaveToPathFailed { .. }),

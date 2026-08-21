@@ -182,6 +182,14 @@ pub enum SaveScreenshotError {
     #[error("Failed to parse view id {view_id:?}, expected a UUID")]
     InvalidViewId { view_id: String },
 
+    /// The requested view does not exist (or is not currently visible).
+    #[error("View {view_id} not found")]
+    ViewNotFound { view_id: String },
+
+    /// The requested view is too small to screenshot.
+    #[error("View {view_id} is too small for a screenshot")]
+    ViewTooSmall { view_id: String },
+
     /// The captured pixel data could not be turned into an image.
     #[error("Failed to create image from screenshot data")]
     InvalidImageData,
