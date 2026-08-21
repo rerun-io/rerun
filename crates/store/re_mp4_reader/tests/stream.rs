@@ -45,6 +45,7 @@ fn stream_config() -> Mp4Config {
         mode: Mode::Stream {
             chunk_by_gop: true,
             transcode: Mp4TranscodeOptions::default(),
+            time_window: None,
         },
         ..Default::default()
     }
@@ -236,6 +237,7 @@ fn b_frames_are_transcoded_into_a_video_stream() {
         mode: Mode::Stream {
             chunk_by_gop: true,
             transcode: Mp4TranscodeOptions::default(),
+            time_window: None,
         },
         ..Default::default()
     };
@@ -305,6 +307,7 @@ fn b_frames_without_ffmpeg_reports_missing_ffmpeg() {
             chunk_by_gop: true,
             transcode: Mp4TranscodeOptions::default()
                 .with_ffmpeg_override(PathBuf::from("/definitely/not/a/real/ffmpeg")),
+            time_window: None,
         },
         ..Default::default()
     };
@@ -331,6 +334,7 @@ fn av1_source_transcodes_to_h264_output() {
         mode: Mode::Stream {
             chunk_by_gop: true,
             transcode: Mp4TranscodeOptions::default().with_output_codec(VideoCodec::H264),
+            time_window: None,
         },
         ..Default::default()
     };
@@ -375,6 +379,7 @@ fn requesting_the_source_codec_stays_on_the_direct_path() {
             transcode: Mp4TranscodeOptions::default()
                 .with_output_codec(VideoCodec::H264)
                 .with_ffmpeg_override(PathBuf::from("/definitely/not/a/real/ffmpeg")),
+            time_window: None,
         },
         ..Default::default()
     };
@@ -401,6 +406,7 @@ fn requesting_the_source_codec_stays_on_the_direct_path() {
 fn transcode_or_skip(
     path: &std::path::Path,
     transcode: Mp4TranscodeOptions,
+    time_window: Option<TimeWindow>,
     label: &str,
 ) -> Option<Vec<Chunk>> {
     let entity_path = EntityPath::from("video");
@@ -408,6 +414,7 @@ fn transcode_or_skip(
         mode: Mode::Stream {
             chunk_by_gop: true,
             transcode,
+            time_window,
         },
         ..Default::default()
     };
@@ -456,6 +463,7 @@ fn gop_size_forces_keyframe_spacing() {
     let Some(chunks) = transcode_or_skip(
         &path,
         Mp4TranscodeOptions::default().with_gop_size(GOP as u32),
+        None,
         "gop_spacing",
     ) else {
         return;
@@ -524,6 +532,7 @@ fn transcodes_across_codec_pairs() {
         let Some(chunks) = transcode_or_skip(
             &path,
             Mp4TranscodeOptions::default().with_output_codec(target),
+            None,
             label,
         ) else {
             continue;
@@ -553,14 +562,14 @@ fn transcodes_across_codec_pairs() {
     }
 }
 
-/// A time window always routes through the transcode: slicing is ffmpeg's job,
-/// on every source — even one that streams directly when unwindowed.
+/// A window whose start lands on a keyframe is sliced by the reader itself —
+/// no ffmpeg involved.
 ///
 /// Proven by pointing `ffmpeg_override` at a path that does not exist: the
-/// windowed read of a clean AV1 source fails reaching ffmpeg instead of reading
-/// directly. Needs no ffmpeg, so it runs anywhere.
+/// windowed read of a clean AV1 source still succeeds. Needs no ffmpeg, so it
+/// runs anywhere.
 #[test]
-fn windowing_routes_through_the_transcode() {
+fn aligned_window_needs_no_ffmpeg() {
     let entity_path = EntityPath::from("video");
     let path = fixture_path("Big_Buck_Bunny_1080_1s_av1.mp4");
     let window = TimeWindow::new(Duration::ZERO, Duration::from_millis(500)).expect("valid window");
@@ -568,19 +577,239 @@ fn windowing_routes_through_the_transcode() {
         mode: Mode::Stream {
             chunk_by_gop: true,
             transcode: Mp4TranscodeOptions::default()
-                .with_time_window(window)
                 .with_ffmpeg_override(PathBuf::from("/definitely/not/a/real/ffmpeg")),
+            time_window: Some(window),
+        },
+        ..Default::default()
+    };
+
+    let chunks = collect_chunks(
+        load_mp4(&path, &config, &entity_path).expect("an aligned windowed read needs no ffmpeg"),
+        "windowed_direct",
+    );
+    assert!(
+        !sample_times(&chunks).is_empty(),
+        "the windowed direct read must emit samples"
+    );
+}
+
+/// A window whose start lands on a keyframe emits exactly the source's samples
+/// of `[start, end)` at their window-relative times: nothing before the start,
+/// nothing at or past the end. Chunking is packaging, not selection, so the law
+/// holds for per-GOP and per-sample chunks alike. Needs no ffmpeg.
+#[test]
+fn aligned_window_slices_the_direct_read_exactly() {
+    let path = fixture_path("Big_Buck_Bunny_1080_1s_h264_nobframes.mp4");
+    let entity_path = EntityPath::from("video");
+
+    let full = collect_chunks(
+        load_mp4(&path, &stream_config(), &entity_path).expect("direct read"),
+        "windowed_slice_full",
+    );
+    let full_times = sample_times(&full);
+
+    // The fixture's only keyframe is at t=0, so an aligned window starts there.
+    let end_ns = 900_000_000_i64;
+    let window = TimeWindow::new(Duration::ZERO, Duration::from_millis(900)).expect("valid window");
+    let expected: Vec<i64> = full_times.iter().copied().filter(|&t| t < end_ns).collect();
+    assert!(
+        expected.len() < full_times.len(),
+        "the window must trim the tail for the law to be meaningful"
+    );
+
+    for chunk_by_gop in [true, false] {
+        let label = format!("windowed_slice(chunk_by_gop: {chunk_by_gop})");
+        let config = Mp4Config {
+            mode: Mode::Stream {
+                chunk_by_gop,
+                transcode: Mp4TranscodeOptions::default(),
+                time_window: Some(window),
+            },
+            ..Default::default()
+        };
+        let windowed = collect_chunks(
+            load_mp4(&path, &config, &entity_path).expect("windowed direct read"),
+            &label,
+        );
+
+        assert_eq!(sample_times(&windowed), expected, "{label}");
+        assert_eq!(
+            keyframe_marker_times(&windowed, &label).first(),
+            Some(&0),
+            "{label}: the stream starts on the keyframe at the window start"
+        );
+    }
+}
+
+/// A window whose start splits a GOP needs the re-encode of the split GOP's
+/// remainder, so it must reach ffmpeg.
+///
+/// Proven by pointing `ffmpeg_override` at a path that does not exist: the read
+/// fails reaching ffmpeg instead of slicing directly. Needs no ffmpeg, so it
+/// runs anywhere.
+#[test]
+fn mid_gop_window_requires_ffmpeg() {
+    let entity_path = EntityPath::from("video");
+    let path = fixture_path("Big_Buck_Bunny_1080_1s_av1.mp4");
+    let window = TimeWindow::new(Duration::from_millis(400), Duration::from_millis(900))
+        .expect("valid window");
+    let config = Mp4Config {
+        mode: Mode::Stream {
+            chunk_by_gop: true,
+            transcode: Mp4TranscodeOptions::default()
+                .with_ffmpeg_override(PathBuf::from("/definitely/not/a/real/ffmpeg")),
+            time_window: Some(window),
         },
         ..Default::default()
     };
 
     let msg = match load_mp4(&path, &config, &entity_path) {
-        Ok(_) => panic!("a windowed read must transcode, so it must fail without ffmpeg"),
+        Ok(_) => {
+            panic!(
+                "a mid-GOP windowed read must re-encode its head, so it must fail without ffmpeg"
+            )
+        }
         Err(err) => err.to_string(),
     };
     assert!(
         msg.contains("Couldn't find an installation of the FFmpeg executable"),
         "expected the FFmpeg-not-installed message, got: {msg}"
+    );
+}
+
+/// A mid-GOP window emits nothing from before the window start: exactly one
+/// sample lands at t=0 (the frame at the start), every time stays within the
+/// window's length, and fewer samples come out than the full file holds.
+///
+/// Skipped (not failed) when ffmpeg isn't available.
+#[test]
+fn mid_gop_window_is_frame_exact() {
+    let path = fixture_path("Big_Buck_Bunny_1080_1s_h264_nobframes.mp4");
+    let entity_path = EntityPath::from("video");
+    let (start_ms, end_ms) = (400, 900);
+    let window = TimeWindow::new(
+        Duration::from_millis(start_ms),
+        Duration::from_millis(end_ms),
+    )
+    .expect("valid window");
+
+    let full_times = sample_times(&collect_chunks(
+        load_mp4(&path, &stream_config(), &entity_path).expect("direct read"),
+        "frame_exact_full",
+    ));
+
+    let Some(exact) = transcode_or_skip(
+        &path,
+        Mp4TranscodeOptions::default(),
+        Some(window),
+        "exact_window",
+    ) else {
+        return;
+    };
+    let times = sample_times(&exact);
+    let window_len_ns = i64::try_from(end_ms - start_ms).expect("small") * 1_000_000;
+
+    assert_eq!(
+        times.iter().filter(|&&t| t == 0).count(),
+        1,
+        "frame-exact: exactly one sample at t=0, got {times:?}"
+    );
+    assert!(
+        times.iter().all(|&t| (0..=window_len_ns).contains(&t)),
+        "every emitted time must lie within the window's length, got {times:?}"
+    );
+    assert!(
+        times.len() < full_times.len(),
+        "the windowed read must emit fewer samples than the full file"
+    );
+}
+
+/// Worst-case split: a 100-frame GOP windowed at its 100th frame. The smart cut
+/// re-encodes only that one frame — the split GOP's 99-frame decode is paid at
+/// conversion time — and the direct tail must equal the source's samples exactly.
+///
+/// Generates its own fixture with ffmpeg; skipped (not failed) when unavailable.
+#[test]
+fn windowed_read_at_the_end_of_a_100_frame_gop() {
+    // 120 frames at 30 fps, keyframes forced exactly at frames 0 and 100.
+    let dir = std::path::Path::new(env!("CARGO_TARGET_TMPDIR")).join("worst_case_gop");
+    std::fs::create_dir_all(&dir).expect("temp dir");
+    let path = dir.join("gop100.mp4");
+    let generated = std::process::Command::new("ffmpeg")
+        .args(["-y", "-f", "lavfi", "-i", "testsrc2=duration=4:rate=30"])
+        .args(["-c:v", "libx264", "-bf", "0", "-g", "100"])
+        .args(["-force_key_frames", "expr:eq(mod(n,100),0)"])
+        .args(["-x264-params", "scenecut=0"])
+        .args(["-pix_fmt", "yuv420p"])
+        .arg(&path)
+        .output();
+    match generated {
+        Ok(out) if out.status.success() => {}
+        _ => {
+            eprintln!("skipping windowed_read_at_the_end_of_a_100_frame_gop: ffmpeg not available");
+            return;
+        }
+    }
+
+    let entity_path = EntityPath::from("video");
+    let full = collect_chunks(
+        load_mp4(&path, &stream_config(), &entity_path).expect("direct read"),
+        "maximal_preroll_full",
+    );
+    let full_times = sample_times(&full);
+    let keyframes = keyframe_marker_times(&full, "maximal_preroll_full");
+    assert_eq!(full_times.len(), 120, "the fixture must have 120 frames");
+    assert_eq!(
+        keyframes.len(),
+        2,
+        "the fixture must have keyframes only at frames 0 and 100"
+    );
+
+    // Window starts at frame 99 — the last frame of the first 100-frame GOP: the
+    // smart cut re-encodes only that one frame (paying the split GOP's decode at
+    // conversion) and serves frames 100–119 directly, unchanged.
+    let start_ns = 3_300_000_000_i64; // 99 / 30 fps
+    let window =
+        TimeWindow::new(Duration::from_millis(3300), Duration::from_secs(4)).expect("valid window");
+    let covering_keyframe = keyframes.iter().copied().filter(|&t| t <= start_ns).max();
+    assert_eq!(covering_keyframe, Some(0), "frame 0 covers frame 99");
+
+    let config = Mp4Config {
+        mode: Mode::Stream {
+            chunk_by_gop: true,
+            transcode: Mp4TranscodeOptions::default(),
+            time_window: Some(window),
+        },
+        ..Default::default()
+    };
+    let windowed = collect_chunks(
+        load_mp4(&path, &config, &entity_path).expect("smart-cut read"),
+        "worst_case_gop",
+    );
+    let times = sample_times(&windowed);
+
+    assert_eq!(
+        times.iter().filter(|&&t| t == 0).count(),
+        1,
+        "frame-exact: exactly one sample at t=0 (frame 99, re-encoded as a keyframe)"
+    );
+    // The direct tail must be the source's own samples, at their exact
+    // window-relative times.
+    let expected_tail: Vec<i64> = full_times
+        .iter()
+        .copied()
+        .filter(|&t| t > start_ns)
+        .map(|t| t - start_ns)
+        .collect();
+    assert_eq!(
+        times[1..],
+        expected_tail,
+        "the smart cut's direct tail must equal the source's samples exactly"
+    );
+    assert_eq!(
+        keyframe_marker_times(&windowed, "worst_case_gop").first(),
+        Some(&0),
+        "the re-encoded head starts on a keyframe at t=0"
     );
 }
 
@@ -597,6 +826,7 @@ fn windowed_transcode_emits_only_the_window() {
     let Some(full) = transcode_or_skip(
         &path,
         Mp4TranscodeOptions::default(),
+        None,
         "windowed_transcode_full",
     ) else {
         return;
@@ -606,7 +836,8 @@ fn windowed_transcode_emits_only_the_window() {
         .expect("valid window");
     let Some(windowed) = transcode_or_skip(
         &path,
-        Mp4TranscodeOptions::default().with_time_window(window),
+        Mp4TranscodeOptions::default(),
+        Some(window),
         "windowed_transcode",
     ) else {
         return;

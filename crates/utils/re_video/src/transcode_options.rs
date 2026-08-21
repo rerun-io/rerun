@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 
-use crate::{TimeWindow, VideoCodec};
+use crate::VideoCodec;
 
 /// How to transcode an mp4 stream.
 ///
@@ -25,14 +25,6 @@ pub struct Mp4TranscodeOptions {
     ///
     /// `None` (default) looks it up on `PATH`.
     pub ffmpeg_override: Option<PathBuf>,
-
-    /// Half-open `[start, end)` window of the source to transcode; `None` transcodes the whole file.
-    ///
-    /// A window always forces a transcode (see [`Self::requests_transform`]), even for a
-    /// source that could otherwise be read directly: ffmpeg receives it as an input-side
-    /// seek, decodes only the window, and re-encodes with output timestamps rebased to
-    /// zero (window-relative, not source PTS). Requires a seekable file source.
-    pub time_window: Option<TimeWindow>,
 }
 
 impl Mp4TranscodeOptions {
@@ -64,25 +56,17 @@ impl Mp4TranscodeOptions {
         self
     }
 
-    /// Set [`Self::time_window`].
-    #[inline]
-    pub fn with_time_window(mut self, time_window: TimeWindow) -> Self {
-        self.time_window = Some(time_window);
-        self
-    }
-
     /// `source_codec` is the codec of the input: requesting `output_codec` equal
     /// to it is a no-op that doesn't warrant a re-encode. Hardware acceleration
     /// alone is deliberately not a trigger either — it only influences *how* a
-    /// transcode that is happening anyway is run. A time window is a trigger:
-    /// slicing is done by ffmpeg, so a windowed read always transcodes.
+    /// transcode that is happening anyway is run.
     #[inline]
     pub fn requests_transform(&self, source_codec: &VideoCodec) -> bool {
         let changes_codec = self
             .output_codec
             .as_ref()
             .is_some_and(|target| target != source_codec);
-        changes_codec || self.gop_size.is_some() || self.time_window.is_some()
+        changes_codec || self.gop_size.is_some()
     }
 }
 
@@ -112,7 +96,7 @@ pub enum HwAccel {
 #[cfg(test)]
 mod tests {
     use super::{HwAccel, Mp4TranscodeOptions};
-    use crate::{TimeWindow, VideoCodec};
+    use crate::VideoCodec;
 
     #[test]
     fn requests_transform_truth_table() {
@@ -152,15 +136,6 @@ mod tests {
         assert!(
             !Mp4TranscodeOptions::default()
                 .with_hardware_acceleration(HwAccel::Auto)
-                .requests_transform(&h264)
-        );
-
-        // A time window is a transform: slicing is done by ffmpeg.
-        let window = TimeWindow::new(std::time::Duration::ZERO, std::time::Duration::from_secs(1))
-            .expect("valid window");
-        assert!(
-            Mp4TranscodeOptions::default()
-                .with_time_window(window)
                 .requests_transform(&h264)
         );
     }

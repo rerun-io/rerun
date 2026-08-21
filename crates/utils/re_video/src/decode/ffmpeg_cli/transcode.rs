@@ -17,7 +17,7 @@ use ffmpeg_sidecar::iter::FfmpegIterator;
 
 use super::FFmpegVersion;
 use super::ffmpeg::{Error, check_ffmpeg_version};
-use crate::{HwAccel, Mp4TranscodeOptions, VideoCodec};
+use crate::{HwAccel, Mp4TranscodeOptions, TimeWindow, VideoCodec};
 
 /// How many trailing error/fatal stderr lines to keep for error reporting.
 const STDERR_TAIL_LINES: usize = 40;
@@ -124,7 +124,10 @@ impl Drop for TranscodedMp4 {
 /// The re-encode is done at a visually-lossless quality and preserves the source pixel format where
 /// possible, so the output is a faithful — not bit-exact — copy of the input.
 ///
-/// [`Mp4TranscodeOptions::time_window`] transcodes only that given time window.
+/// `window` transcodes only that half-open `[start, end)` slice of the source
+/// (an input-side seek, so ffmpeg decodes O(window)); `None` transcodes the
+/// whole file. Output timestamps are rebased to zero (window-relative, not
+/// source PTS).
 ///
 /// Returns [`Error::FFmpegNotInstalled`] if no usable `ffmpeg` executable is
 /// found, or [`Error::NoEncoderForCodec`] if this ffmpeg build has no encoder for
@@ -133,6 +136,7 @@ pub fn transcode_mp4(
     input_path: &Path,
     source_codec: VideoCodec,
     options: &Mp4TranscodeOptions,
+    window: Option<TimeWindow>,
     debug_name: &str,
 ) -> Result<TranscodedMp4, Error> {
     re_tracing::profile_function!();
@@ -148,7 +152,7 @@ pub fn transcode_mp4(
     let available = available_encoders(ffmpeg_path);
     let spec = resolve_encoder(&target, options.hardware_acceleration, &available)?;
 
-    let mut command = build_transcode_command(ffmpeg_path, input_path, &spec, options);
+    let mut command = build_transcode_command(ffmpeg_path, input_path, &spec, options, window);
     let mut child = command.spawn().map_err(Error::FailedToStartFfmpeg)?;
 
     // The same event iterator the decoder consumes: it spawns the stdout/stderr
@@ -173,10 +177,11 @@ fn build_transcode_command(
     input_path: &Path,
     spec: &EncoderSpec,
     options: &Mp4TranscodeOptions,
+    window: Option<TimeWindow>,
 ) -> FfmpegCommand {
     let mut command = ffmpeg_command(ffmpeg_path);
 
-    if let Some(window) = &options.time_window {
+    if let Some(window) = &window {
         // Input-side seek (before `-i`): ffmpeg decodes only `[start, end)` instead
         // of the whole file. Both values are positions on the source's timeline.
         command.args(["-ss", &window.start().as_secs_f64().to_string()]);
@@ -402,14 +407,14 @@ mod tests {
         names.iter().map(|s| (*s).to_owned()).collect()
     }
 
-    fn command_args(options: &Mp4TranscodeOptions) -> Vec<String> {
+    fn command_args(options: &Mp4TranscodeOptions, window: Option<TimeWindow>) -> Vec<String> {
         let spec = resolve_encoder(
             &VideoCodec::H264,
             HwAccel::Off,
             &available_set(&["libx264"]),
         )
         .expect("libx264 available");
-        build_transcode_command(None, Path::new("in.mp4"), &spec, options)
+        build_transcode_command(None, Path::new("in.mp4"), &spec, options, window)
             .get_args()
             .map(|arg| arg.to_string_lossy().into_owned())
             .collect()
@@ -421,7 +426,7 @@ mod tests {
     fn windowed_transcode_is_bounded() {
         let window = TimeWindow::new(Duration::from_millis(1500), Duration::from_millis(2250))
             .expect("valid window");
-        let args = command_args(&Mp4TranscodeOptions::default().with_time_window(window));
+        let args = command_args(&Mp4TranscodeOptions::default(), Some(window));
 
         let position = |flag: &str| {
             args.iter()
@@ -440,7 +445,7 @@ mod tests {
 
     #[test]
     fn no_window_adds_no_seek_args() {
-        let args = command_args(&Mp4TranscodeOptions::default());
+        let args = command_args(&Mp4TranscodeOptions::default(), None);
         assert!(
             !args.iter().any(|arg| arg == "-ss" || arg == "-to"),
             "an unwindowed transcode must not seek: {args:?}"

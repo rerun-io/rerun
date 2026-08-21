@@ -23,7 +23,8 @@ use re_sdk_types::archetypes::VideoStream;
 use re_sdk_types::components::VideoCodec;
 use re_video::player::GetVideoSource;
 use re_video::{
-    Mp4TranscodeOptions, SampleIndex, SampleMetadataState, VideoDataDescription, VideoSource,
+    Mp4TranscodeOptions, SampleIndex, SampleMetadataState, Time, TimeWindow, VideoDataDescription,
+    VideoSource,
 };
 
 use crate::Mp4Error;
@@ -65,6 +66,15 @@ impl StreamInput {
     }
 }
 
+/// The chunk-emission parameters — constant across every chunk of one stream read.
+#[derive(Clone)]
+pub(crate) struct Emission {
+    pub entity_path: EntityPath,
+    pub timeline_name: TimelineName,
+    pub timeline_type: TimeType,
+    pub chunk_by_gop: bool,
+}
+
 /// Build a chunk iterator for stream mode.
 ///
 /// Demuxes the source once to inspect it, then emits the static codec chunk,
@@ -74,11 +84,9 @@ impl StreamInput {
 /// constructor rather than from the first `.next()` on the iterator.
 pub(crate) fn iter_chunks(
     input: StreamInput,
-    entity_path: &EntityPath,
-    timeline_name: TimelineName,
-    chunk_by_gop: bool,
-    timeline_type: TimeType,
+    emission: Emission,
     transcode: &Mp4TranscodeOptions,
+    time_window: Option<TimeWindow>,
     debug_name: &str,
 ) -> Result<ChunkIter, Mp4Error> {
     re_tracing::profile_function!();
@@ -103,62 +111,116 @@ pub(crate) fn iter_chunks(
     let output_mapped_codec =
         VideoCodec::try_from(target_codec).map_err(|_err| Mp4Error::ImageSequenceInStreamMode)?;
 
-    // Transcode when the source has container-level B-frame reordering (which only
-    // H.264/H.265 produce, and which `VideoStream` can't model — #10090) OR when a
-    // transform (a *different* output codec, or a GOP size) was requested.
-    // Requesting the output codec the source already uses is a
-    // no-op and stays on the direct path.
+    // A re-encode is forced by container-level B-frame reordering (which only
+    // H.264/H.265 produce, and which `VideoStream` can't model — #10090) or by a
+    // requested transform (a *different* output codec, or a GOP size). Requesting
+    // the output codec the source already uses is a no-op and stays direct.
     let needs_decoder_reordering = !desc.samples_statistics.dts_always_equal_pts;
-    let wants_transcode = needs_decoder_reordering || transcode.requests_transform(&desc.codec);
+    let needs_reencode = needs_decoder_reordering || transcode.requests_transform(&desc.codec);
 
-    let segments: Box<dyn Iterator<Item = Result<Segment, Mp4Error>>> = if wants_transcode {
-        // ffmpeg re-encodes and streams back a fragmented mp4, one segment per GOP
-        // fragment. Only one GOP is resident at a time.
+    // Each segment carries its own cut: the transcode path needs none (ffmpeg's
+    // output is already window-relative and frame-exact), the direct path slices
+    // with a [`WindowCut`], and a window with a mid-GOP start mixes the two
+    // (see [`WindowRoute`]).
+    type Segments = Box<dyn Iterator<Item = Result<(Segment, Option<WindowCut>), Mp4Error>>>;
+
+    let segments: Segments = if needs_reencode {
+        // ffmpeg re-encodes (applying any window itself) and streams back a
+        // fragmented mp4, one segment per GOP fragment. Only one GOP is resident
+        // at a time.
         drop(reader);
         cfg_select! {
             target_arch = "wasm32" => {
-                let _ = (input, transcode);
+                let _ = (input, transcode, time_window);
                 return Err(Mp4Error::TranscodeRequiresFfmpeg);
             }
             _ => {
-                Box::new(transcoded_segments(
-                    input,
-                    desc.codec.clone(),
-                    transcode,
-                    debug_name,
-                )?)
+                Box::new(
+                    transcoded_segments(
+                        input,
+                        desc.codec.clone(),
+                        transcode,
+                        time_window,
+                        debug_name,
+                    )?
+                    .map(|segment| segment.map(|s| (s, None))),
+                )
             }
         }
     } else {
-        // Direct path: no container reordering and no requested transform — read the
-        // source in place (sample bytes are fetched on demand, so the whole file is
-        // never resident).
-        Box::new(std::iter::once(Segment::new(reader, desc)))
+        match time_window
+            .map(|w| WindowRoute::resolve(&desc, w))
+            .transpose()?
+        {
+            // No window: read the source in place (sample bytes are fetched on
+            // demand, so the whole file is never resident).
+            None => Box::new(std::iter::once(
+                Segment::new(reader, desc).map(|s| (s, None)),
+            )),
+
+            // The whole window is copied directly, sliced by the cut.
+            Some(WindowRoute::Direct(cut)) => Box::new(std::iter::once(
+                Segment::new(reader, desc).map(|s| (s, Some(cut))),
+            )),
+
+            // Smart cut the time window using ffmpeg; transcode the first GOP, copy
+            // the rest.
+            Some(WindowRoute::Split {
+                head,
+                head_cut,
+                tail_cut,
+            }) => {
+                cfg_select! {
+                    target_arch = "wasm32" => {
+                        let _ = (input, transcode, head, head_cut, tail_cut);
+                        drop(reader);
+                        return Err(Mp4Error::TranscodeRequiresFfmpeg);
+                    }
+                    _ => {
+                        // Like the full transcode: ffmpeg needs a seekable file.
+                        let StreamInput::Path(path) = &input else {
+                            return Err(Mp4Error::TranscodeRequiresSeekableFile);
+                        };
+                        let head_segments = transcoded_segments(
+                            StreamInput::Path(path.clone()),
+                            desc.codec.clone(),
+                            transcode,
+                            Some(head),
+                            debug_name,
+                        )?
+                        .map(move |segment| segment.map(|s| (s, Some(head_cut))));
+
+                        // A `None` tail cut means the window ends inside the
+                        // split GOP: the head is the whole window.
+                        let tail: Segments = if let Some(cut) = tail_cut {
+                            Box::new(std::iter::once(
+                                Segment::new(reader, desc).map(|s| (s, Some(cut))),
+                            ))
+                        } else {
+                            drop(reader);
+                            Box::new(std::iter::empty())
+                        };
+                        Box::new(std::iter::chain(head_segments, tail))
+                    }
+                }
+            }
+        }
     };
 
-    let entity_path = entity_path.clone();
-    let codec_chunk = build_codec_chunk(&entity_path, output_mapped_codec);
+    let codec_chunk = build_codec_chunk(&emission.entity_path, output_mapped_codec);
 
     let sample_chunks = {
-        let entity_path = entity_path.clone();
-        segments.flat_map(move |segment| {
-            gop_chunks(
-                segment,
-                entity_path.clone(),
-                timeline_name,
-                timeline_type,
-                chunk_by_gop,
-            )
-        })
+        let emission = emission.clone();
+        segments.flat_map(move |item| gop_chunks(item, emission.clone()))
     };
 
     Ok(Box::new(std::iter::chain(
         std::iter::once(codec_chunk),
         WithKeyframeMarker {
             sample_chunks,
-            entity_path,
-            timeline_name,
-            timeline_type,
+            entity_path: emission.entity_path,
+            timeline_name: emission.timeline_name,
+            timeline_type: emission.timeline_type,
             keyframe_times: Vec::new(),
             done: false,
         },
@@ -215,6 +277,127 @@ where
     }
 }
 
+/// A window cut resolved against one segment: emit the samples of
+/// `[emit_from, end)`, timestamped `pts − start` (window-relative).
+///
+/// `emit_from` never precedes `start`, so emitted timestamps are never negative:
+/// the output is frame-exact.
+#[derive(Clone, Copy)]
+struct WindowCut {
+    emit_from_ns: i64,
+    start_ns: i64,
+    end_ns: i64,
+}
+
+impl WindowCut {
+    /// A degenerate cut that only guards an end boundary: no rebase — used to trim
+    /// ffmpeg's already-rebased head output at the splice seam.
+    fn trim_to(end_ns: i64) -> Self {
+        Self {
+            emit_from_ns: 0,
+            start_ns: 0,
+            end_ns,
+        }
+    }
+
+    fn keeps(&self, pts_ns: i64) -> bool {
+        (self.emit_from_ns..self.end_ns).contains(&pts_ns)
+    }
+}
+
+/// How a window is served when the source itself needs no re-encode.
+enum WindowRoute {
+    /// A GOP aligned window cut, copies the source video's GOPs directly.
+    Direct(WindowCut),
+
+    /// Frame-exact with a start that splits a GOP: `head` = [start, next keyframe)
+    /// is re-encoded (paying the split GOP's decode at conversion time, so the
+    /// first output frame becomes a keyframe), and [next keyframe, end) is served
+    /// directly, unchanged.
+    ///
+    /// `head_cut` trims the re-encoded output to [0, next keyframe − start) so
+    /// ffmpeg's `-to` boundary can never leak a frame the tail also emits.
+    /// `tail_cut` is `None` when the window ends inside the split GOP — the head
+    /// is then the whole window.
+    Split {
+        head: TimeWindow,
+        head_cut: WindowCut,
+        tail_cut: Option<WindowCut>,
+    },
+}
+
+impl WindowRoute {
+    fn resolve(desc: &VideoDataDescription, window: TimeWindow) -> Result<Self, Mp4Error> {
+        let timescale = desc.timescale.ok_or(Mp4Error::NoTimescale)?;
+        let as_ns =
+            |duration: std::time::Duration| i64::try_from(duration.as_nanos()).unwrap_or(i64::MAX);
+        let start_ns = as_ns(window.start());
+        let end_ns = as_ns(window.end());
+
+        // The single covering-keyframe lookup — the cut, the aligned check, and the
+        // next keyframe below all derive from it, so they can never disagree.
+        let start = Time::from_secs(window.start().as_secs_f64(), timescale);
+        let covering = desc.presentation_time_keyframe_index(start);
+        let keyframe_pts_ns = |index: usize| -> Option<i64> {
+            desc.keyframe_indices
+                .get(index)
+                .and_then(|&sample| desc.samples[sample].sample())
+                .map(|sample| sample.presentation_timestamp.into_nanos(timescale))
+        };
+
+        // The pts of the keyframe covering `start` — the latest keyframe at or
+        // before it. The window is *aligned* (served directly) when that keyframe
+        // is not strictly before `start`: exact equality, a start that precedes the
+        // first keyframe (`None` — no frame exists before it either), and the
+        // lookup's nearest-time-unit rounding resolving to a keyframe just *after*
+        // `start` all collapse onto `emit_from == start` via the `min`.
+        let emit_from_ns = covering
+            .and_then(keyframe_pts_ns)
+            .map_or(start_ns, |keyframe_ns| keyframe_ns.min(start_ns));
+        let cut = WindowCut {
+            emit_from_ns,
+            start_ns,
+            end_ns,
+        };
+
+        if cut.emit_from_ns == cut.start_ns {
+            return Ok(Self::Direct(cut));
+        }
+
+        // The first keyframe strictly after `start`: one past the covering one.
+        let next_keyframe_ns = keyframe_pts_ns(covering.map_or(0, |index| index + 1));
+        let (head_end_ns, tail_cut) = match next_keyframe_ns {
+            Some(keyframe_ns) if keyframe_ns < end_ns => (
+                keyframe_ns,
+                Some(WindowCut {
+                    emit_from_ns: keyframe_ns,
+                    start_ns,
+                    end_ns,
+                }),
+            ),
+            // The window ends inside the split GOP (or the split GOP is the last
+            // one): the head covers the whole window.
+            _ => (end_ns, None),
+        };
+
+        let head = TimeWindow::new(
+            window.start(),
+            std::time::Duration::from_nanos(u64::try_from(head_end_ns).unwrap_or(u64::MAX)),
+        )
+        .ok_or_else(|| {
+            // Unreachable: both candidates for `head_end_ns` exceed the start (the
+            // next keyframe is strictly after it; the window end always is).
+            Mp4Error::SampleConversion("window head must be non-empty".to_owned())
+        })?;
+
+        Ok(Self::Split {
+            head,
+            head_cut: WindowCut::trim_to(head_end_ns - start_ns),
+            tail_cut,
+        })
+    }
+}
+
 /// A demuxed, validated mp4 segment — everything needed to emit its GOP chunks.
 ///
 /// The direct path produces exactly one (the whole source); the transcode path
@@ -256,34 +439,24 @@ impl Segment {
 /// Each chunk comes with the times of the keyframes in it, for
 /// [`WithKeyframeMarker`] to collect.
 fn gop_chunks(
-    segment: Result<Segment, Mp4Error>,
-    entity_path: EntityPath,
-    timeline_name: TimelineName,
-    timeline_type: TimeType,
-    chunk_by_gop: bool,
+    segment: Result<(Segment, Option<WindowCut>), Mp4Error>,
+    emission: Emission,
 ) -> impl Iterator<Item = Result<(Chunk, Vec<i64>), Mp4Error>> {
+    let (segment, window_cut) = match segment {
+        Ok(pair) => pair,
+        Err(err) => return Either::Left(std::iter::once(Err(err))),
+    };
     let Segment {
         mut reader,
         desc,
         timescale,
-    } = match segment {
-        Ok(segment) => segment,
-        Err(err) => return Either::Left(std::iter::once(Err(err))),
-    };
+    } = segment;
 
-    let ranges = sample_ranges(&desc, chunk_by_gop, &entity_path);
+    let ranges = sample_ranges(&desc, timescale, &emission, window_cut);
     Either::Right(ranges.into_iter().filter_map(move |range| {
-        // `Ok(None)` (a GOP whose samples were all unloaded) → skip via `transpose`.
-        build_gop_chunk(
-            &mut *reader,
-            &desc,
-            timescale,
-            timeline_name,
-            timeline_type,
-            &entity_path,
-            range,
-        )
-        .transpose()
+        // `Ok(None)` (a GOP whose samples were all unloaded or cut away) → skip via
+        // `transpose`.
+        build_gop_chunk(&mut *reader, &desc, timescale, &emission, range, window_cut).transpose()
     }))
 }
 
@@ -294,6 +467,7 @@ fn transcoded_segments(
     input: StreamInput,
     source_codec: re_video::VideoCodec,
     transcode: &Mp4TranscodeOptions,
+    time_window: Option<TimeWindow>,
     debug_name: &str,
 ) -> Result<impl Iterator<Item = Result<Segment, Mp4Error>> + use<>, Mp4Error> {
     // ffmpeg needs a seekable file (an mp4's `moov` can trail its `mdat`, so a
@@ -302,7 +476,7 @@ fn transcoded_segments(
         return Err(Mp4Error::TranscodeRequiresSeekableFile);
     };
 
-    let chunks = re_video::transcode_mp4(&path, source_codec, transcode, debug_name)
+    let chunks = re_video::transcode_mp4(&path, source_codec, transcode, time_window, debug_name)
         .map_err(|err| map_ffmpeg_err(&err))?;
     let scanner = FragmentScanner::new(ChunkReader::new(chunks), debug_name)?;
 
@@ -559,15 +733,30 @@ fn read_exact_or_eof<R: Read>(reader: &mut R, buf: &mut [u8]) -> Result<bool, Mp
 // Shared chunk construction.
 // ---------------------------------------------------------------------------
 
-/// GOP ranges (or per-sample singleton ranges) to emit one chunk each.
+/// GOP ranges (or per-sample singleton ranges) to emit one chunk each, restricted to
+/// the GOPs (or samples) that `window_cut` keeps.
 fn sample_ranges(
     desc: &VideoDataDescription,
-    chunk_by_gop: bool,
-    entity_path: &EntityPath,
+    timescale: re_video::Timescale,
+    emission: &Emission,
+    window_cut: Option<WindowCut>,
 ) -> Vec<Range<SampleIndex>> {
-    if chunk_by_gop {
+    let keeps = |range: &Range<SampleIndex>| {
+        let Some(cut) = window_cut else {
+            return true;
+        };
+        desc.samples[range.start]
+            .sample()
+            .is_some_and(|sample| cut.keeps(sample.presentation_timestamp.into_nanos(timescale)))
+    };
+
+    if emission.chunk_by_gop {
+        // A GOP is keyframe-anchored, so testing its first sample against the cut
+        // keeps exactly the GOPs from the cut's emit-from point up to the window
+        // end; the last GOP's out-of-window samples are dropped per sample below.
         (0..desc.keyframe_indices.len())
             .filter_map(|i| desc.gop_sample_range_for_keyframe(i))
+            .filter(keeps)
             .collect()
     } else {
         desc.samples
@@ -576,11 +765,13 @@ fn sample_ranges(
                 SampleMetadataState::Present(_) => Some(idx..idx + 1),
                 SampleMetadataState::Unloaded { .. } => {
                     re_log::warn_once!(
-                        "Skipping unloaded sample {idx} in mp4 demux (entity path: {entity_path})"
+                        "Skipping unloaded sample {idx} in mp4 demux (entity path: {})",
+                        emission.entity_path
                     );
                     None
                 }
             })
+            .filter(keeps)
             .collect()
     }
 }
@@ -604,10 +795,9 @@ fn build_gop_chunk(
     reader: &mut dyn ReadSeek,
     desc: &VideoDataDescription,
     timescale: re_video::Timescale,
-    timeline_name: TimelineName,
-    timeline_type: TimeType,
-    entity_path: &EntityPath,
+    emission: &Emission,
     range: Range<SampleIndex>,
+    window_cut: Option<WindowCut>,
 ) -> Result<Option<(Chunk, Vec<i64>)>, Mp4Error> {
     let mut time_values: Vec<i64> = Vec::with_capacity(range.len());
     let mut sample_blobs: Vec<Vec<u8>> = Vec::with_capacity(range.len());
@@ -617,12 +807,21 @@ fn build_gop_chunk(
     for sample_idx in range {
         let SampleMetadataState::Present(meta) = &desc.samples[sample_idx] else {
             re_log::warn_once!(
-                "Skipping unloaded sample {sample_idx} in mp4 demux (entity path: {entity_path})"
+                "Skipping unloaded sample {sample_idx} in mp4 demux (entity path: {})",
+                emission.entity_path
             );
             continue;
         };
 
-        let pts_ns = meta.presentation_timestamp.into_nanos(timescale);
+        let mut pts_ns = meta.presentation_timestamp.into_nanos(timescale);
+        if let Some(cut) = window_cut {
+            if !cut.keeps(pts_ns) {
+                continue; // the tail GOP's samples past the window end
+            }
+            // Window-relative. Never negative: emission never precedes the window
+            // start (see [`WindowCut`]).
+            pts_ns -= cut.start_ns;
+        }
         time_values.push(pts_ns);
 
         // mp4 demux only emits `VideoSource::Span` (`VideoSource::Id` is never
@@ -674,7 +873,7 @@ fn build_gop_chunk(
         return Ok(None);
     }
 
-    let timeline = Timeline::new(timeline_name, timeline_type);
+    let timeline = Timeline::new(emission.timeline_name, emission.timeline_type);
     // Stream mode always emits B-frame-free samples (either the source had none,
     // or they were transcoded away), so the samples are in PTS order.
     let time_column = TimeColumn::new(
@@ -693,7 +892,7 @@ fn build_gop_chunk(
 
     let chunk = Chunk::from_auto_row_ids(
         ChunkId::new(),
-        entity_path.clone(),
+        emission.entity_path.clone(),
         std::iter::once((*timeline.name(), time_column)).collect(),
         components.into_iter().collect(),
     )?;
@@ -744,6 +943,7 @@ fn build_keyframe_chunk(
 mod tests {
     use re_chunk::EntityPath;
     use re_log_types::{TimeType, TimelineName};
+    use re_video::VideoDataDescription;
     use std::assert_matches;
 
     use super::{FragmentScanner, WithKeyframeMarker};
@@ -816,5 +1016,162 @@ mod tests {
         let stream = [mp4_box(b"ftyp", b"isom"), mp4_box(b"moov", b"meta")].concat();
         let mut scanner = FragmentScanner::new(std::io::Cursor::new(stream), "test").unwrap();
         assert!(scanner.next().is_none());
+    }
+
+    /// A B-frame-free description at nanosecond timescale: one `Present` sample per
+    /// pts, keyframes at the given pts (each must also be a sample pts).
+    fn desc_with_samples(keyframe_pts_ns: &[i64], sample_pts_ns: &[i64]) -> VideoDataDescription {
+        use re_video::{
+            SampleMetadata, SamplesStatistics, Span, StableIndexDeque, Time, Timescale,
+            VideoDeliveryMethod, VideoSource,
+        };
+
+        let samples: StableIndexDeque<_> = sample_pts_ns
+            .iter()
+            .enumerate()
+            .map(|(frame_nr, &pts)| {
+                super::SampleMetadataState::Present(SampleMetadata {
+                    is_sync: keyframe_pts_ns.contains(&pts),
+                    frame_nr: frame_nr as u32,
+                    decode_timestamp: Time::new(pts),
+                    presentation_timestamp: Time::new(pts),
+                    duration: None,
+                    source: VideoSource::Span(Span { start: 0, len: 0 }),
+                })
+            })
+            .collect();
+        let keyframe_indices = keyframe_pts_ns
+            .iter()
+            .map(|kf| {
+                sample_pts_ns
+                    .iter()
+                    .position(|pts| pts == kf)
+                    .expect("keyframe pts must be a sample pts")
+            })
+            .collect();
+
+        VideoDataDescription {
+            codec: re_video::VideoCodec::AV1,
+            encoding_details: None,
+            timescale: Some(Timescale::NANOSECOND),
+            delivery_method: VideoDeliveryMethod::Static {
+                duration: Time::new(*sample_pts_ns.last().expect("at least one sample")),
+            },
+            keyframe_indices,
+            samples,
+            samples_statistics: SamplesStatistics::NO_BFRAMES,
+            mp4_tracks: Default::default(),
+        }
+    }
+
+    fn resolve(desc: &VideoDataDescription, window: super::TimeWindow) -> super::WindowRoute {
+        super::WindowRoute::resolve(desc, window).expect("timescale present")
+    }
+
+    /// A window starting before the first keyframe resolves to the direct cut:
+    /// no frame exists before the start, so the direct slice is already
+    /// frame-exact. (No mp4 fixture starts late, so this branch is only
+    /// reachable synthetically.)
+    #[test]
+    fn window_before_the_first_keyframe_resolves_direct() {
+        let ms = |v: u64| std::time::Duration::from_millis(v);
+        let desc = desc_with_samples(
+            &[500_000_000],
+            &[500_000_000, 600_000_000, 700_000_000, 800_000_000],
+        );
+        let window = super::TimeWindow::new(ms(100), ms(800)).expect("valid window");
+
+        let super::WindowRoute::Direct(cut) = resolve(&desc, window) else {
+            panic!("a window preceding the first keyframe is served directly");
+        };
+
+        assert_eq!(
+            cut.emit_from_ns, 100_000_000,
+            "no covering keyframe → emission begins at the window start itself"
+        );
+        assert!(cut.keeps(500_000_000));
+        assert!(!cut.keeps(99_999_999));
+        assert!(!cut.keeps(800_000_000), "the end stays exclusive");
+    }
+
+    /// A window whose start lands on a keyframe resolves to the direct cut —
+    /// already frame-exact there, so no re-encode is planned.
+    #[test]
+    fn window_with_aligned_start_resolves_direct() {
+        let ms = |v: u64| std::time::Duration::from_millis(v);
+        let desc = desc_with_samples(
+            &[0, 500_000_000],
+            &[0, 250_000_000, 500_000_000, 750_000_000, 900_000_000],
+        );
+        let window = super::TimeWindow::new(ms(500), ms(900)).expect("valid window");
+
+        let super::WindowRoute::Direct(cut) = resolve(&desc, window) else {
+            panic!("a window starting on a keyframe needs no re-encode");
+        };
+        assert_eq!(cut.emit_from_ns, 500_000_000);
+        assert!(
+            !cut.keeps(250_000_000),
+            "nothing before the start is emitted"
+        );
+    }
+
+    /// A window whose start splits a GOP resolves to a split: the head re-encodes
+    /// [start, next keyframe), the tail serves the rest directly.
+    #[test]
+    fn window_with_mid_gop_start_resolves_split() {
+        let ms = |v: u64| std::time::Duration::from_millis(v);
+        let desc = desc_with_samples(
+            &[0, 500_000_000],
+            &[0, 250_000_000, 500_000_000, 750_000_000, 900_000_000],
+        );
+        let window = super::TimeWindow::new(ms(200), ms(900)).expect("valid window");
+
+        let super::WindowRoute::Split {
+            head,
+            head_cut,
+            tail_cut,
+        } = resolve(&desc, window)
+        else {
+            panic!("a mid-GOP window must split");
+        };
+
+        assert_eq!(head.start(), ms(200));
+        assert_eq!(head.end(), ms(500), "the head ends at the next keyframe");
+        assert!(head_cut.keeps(0) && !head_cut.keeps(300_000_000));
+        let tail = tail_cut.expect("the window extends past the split GOP");
+        assert_eq!(tail.emit_from_ns, 500_000_000);
+        assert!(
+            !tail.keeps(250_000_000),
+            "the tail starts at the next keyframe — the head owns everything before"
+        );
+        assert!(!tail.keeps(900_000_000), "the end stays exclusive");
+    }
+
+    /// A window that ends inside the GOP its start splits has no tail: the
+    /// re-encoded head is the whole window.
+    #[test]
+    fn window_inside_one_gop_resolves_headless_split() {
+        let ms = |v: u64| std::time::Duration::from_millis(v);
+        let desc = desc_with_samples(
+            &[0, 500_000_000],
+            &[0, 250_000_000, 500_000_000, 750_000_000, 900_000_000],
+        );
+        let window = super::TimeWindow::new(ms(200), ms(400)).expect("valid window");
+
+        let super::WindowRoute::Split {
+            head,
+            head_cut,
+            tail_cut,
+        } = resolve(&desc, window)
+        else {
+            panic!("a mid-GOP window must split");
+        };
+
+        assert_eq!(head.end(), ms(400), "the head covers the whole window");
+        assert!(!head_cut.keeps(200_000_000), "trimmed at end − start");
+        assert!(
+            tail_cut.is_none(),
+            "the window never reaches the next keyframe"
+        );
     }
 }

@@ -138,6 +138,7 @@ impl PyMp4ReaderInternal {
             "stream" => Mode::Stream {
                 chunk_by_gop,
                 transcode: transcode.map(|t| t.inner.clone()).unwrap_or_default(),
+                time_window: None,
             },
             other => {
                 return Err(PyValueError::new_err(format!(

@@ -55,14 +55,18 @@ pub fn load_mp4(
         Mode::Stream {
             chunk_by_gop,
             transcode,
+            time_window,
         } => {
             let iter = stream::iter_chunks(
                 stream::StreamInput::Path(path.to_path_buf()),
-                entity_path,
-                config.timeline_name,
-                *chunk_by_gop,
-                config.timeline_type,
+                stream::Emission {
+                    entity_path: entity_path.clone(),
+                    timeline_name: config.timeline_name,
+                    timeline_type: config.timeline_type,
+                    chunk_by_gop: *chunk_by_gop,
+                },
                 transcode,
+                *time_window,
                 &debug_name,
             )?;
             Ok(Either::Right(iter))
@@ -103,14 +107,18 @@ pub fn load_mp4_from_bytes(
         Mode::Stream {
             chunk_by_gop,
             transcode,
+            time_window,
         } => {
             let iter = stream::iter_chunks(
                 stream::StreamInput::Bytes(bytes),
-                entity_path,
-                config.timeline_name,
-                *chunk_by_gop,
-                config.timeline_type,
+                stream::Emission {
+                    entity_path: entity_path.clone(),
+                    timeline_name: config.timeline_name,
+                    timeline_type: config.timeline_type,
+                    chunk_by_gop: *chunk_by_gop,
+                },
                 transcode,
+                *time_window,
                 debug_name,
             )?;
             Ok(Either::Right(iter))
