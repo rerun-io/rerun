@@ -20,18 +20,16 @@ all-features = true
 
 
 [features]
-default = ["archetype", "mcap", "lerobot", "parquet", "urdf"]
+default = ["image", "video", "mcap", "lerobot", "parquet", "urdf"]
 
-# Generic importers for image and video data.
-archetype = [
-    "dep:image",
-    "dep:re_mp4_reader",
-    "re_sdk_types/image",
-    "re_sdk_types/video",
-]
+## Every importer feature.
+all = ["image", "lerobot", "mcap", "parquet", "urdf", "video"]
 
-# MCAP file import. Also pulls in `urdf` since `robot_description` topics are
-# decoded via the URDF importer's XML parser.
+## Import of common image formats (PNG, JPEG, …) as `EncodedImage`/`EncodedDepthImage`.
+image = ["dep:image", "re_sdk_types/image"]
+
+## MCAP file import. Also pulls in `urdf` since `robot_description` topics are
+## decoded via the URDF importer's XML parser.
 mcap = [
     "dep:mcap",
     "dep:memmap2",
@@ -40,15 +38,18 @@ mcap = [
     "urdf",
 ]
 
-# LeRobot dataset import. Pulls in `parquet`/`arrow` transitively via `re_lerobot`
-# regardless of whether the `parquet` feature is also on.
+## LeRobot dataset import. Pulls in `parquet`/`arrow` transitively via `re_lerobot`
+## regardless of whether the `parquet` feature is also on.
 lerobot = ["dep:re_lerobot"]
 
-# Parquet file import.
+## Parquet file import.
 parquet = ["dep:parquet", "dep:re_parquet"]
 
-# URDF file import.
+## URDF file import.
 urdf = ["dep:urdf-rs", "dep:ureq"]
+
+## Import of MP4 video as `AssetVideo`.
+video = ["dep:re_mp4_reader", "re_sdk_types/video"]
 
 
 [[test]]
@@ -64,12 +65,11 @@ required-features = ["mcap"]
 [[test]]
 name = "test_mp4_importer"
 path = "tests/test_mp4_importer.rs"
-required-features = ["archetype"]
+required-features = ["video"]
 
 [[test]]
 name = "test_ply_importer"
 path = "tests/test_ply_importer.rs"
-required-features = ["archetype"]
 
 [[test]]
 name = "test_urdf_importer"
@@ -96,6 +96,7 @@ re_tracing.workspace = true
 ahash.workspace = true
 anyhow.workspace = true
 arrow.workspace = true
+document-features.workspace = true
 memmap2 = { workspace = true, optional = true }
 crossbeam.workspace = true
 image = { workspace = true, optional = true }

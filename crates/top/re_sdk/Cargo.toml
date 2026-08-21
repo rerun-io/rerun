@@ -31,11 +31,7 @@ default = []
 importers = [
   "dep:re_importer",
   "dep:re_log_channel",
-  "re_importer?/archetype",
-  "re_importer?/mcap",
-  "re_importer?/lerobot",
-  "re_importer?/parquet",
-  "re_importer?/urdf",
+  "re_importer?/all",
 ]
 
 ## Support serving a web viewer over HTTP.

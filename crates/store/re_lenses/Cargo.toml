@@ -20,7 +20,7 @@ all-features = true
 [features]
 default = ["semantic"]
 
-# Builtin lens pipelines for known MCAP topic conventions.
+## Builtin lens pipelines for known MCAP topic conventions.
 semantic = ["dep:re_mcap"]
 
 [dependencies]
@@ -35,6 +35,7 @@ re_sdk_types.workspace = true
 re_tracing.workspace = true
 
 arrow.workspace = true
+document-features.workspace = true
 itertools.workspace = true
 
 [dev-dependencies]
