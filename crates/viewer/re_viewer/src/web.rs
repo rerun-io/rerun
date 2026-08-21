@@ -871,25 +871,6 @@ fn create_app(
     };
     crate::customize_eframe_and_setup_renderer(cc)?;
 
-    if let Some(theme) = theme {
-        match theme.to_ascii_lowercase().as_str() {
-            "dark" => cc
-                .egui_ctx
-                .options_mut(|o| o.theme_preference = egui::ThemePreference::Dark),
-            "light" => cc
-                .egui_ctx
-                .options_mut(|o| o.theme_preference = egui::ThemePreference::Light),
-            "system" => cc
-                .egui_ctx
-                .options_mut(|o| o.theme_preference = egui::ThemePreference::System),
-            _ => {
-                re_log::warn!(
-                    "Ignoring unknown `theme` value {theme:?}; expected `dark`, `light`, or `system`."
-                );
-            }
-        }
-    }
-
     let mut app = crate::App::new(
         main_thread_token,
         build_info,
@@ -899,6 +880,26 @@ fn create_app(
         Some(connection_registry),
         AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen().expect("Infallible on web"),
     );
+
+    // An explicit web option takes precedence over the restored theme preference.
+    if let Some(theme) = theme {
+        match theme.to_ascii_lowercase().as_str() {
+            "dark" => app
+                .egui_ctx
+                .options_mut(|o| o.theme_preference = egui::ThemePreference::Dark),
+            "light" => app
+                .egui_ctx
+                .options_mut(|o| o.theme_preference = egui::ThemePreference::Light),
+            "system" => app
+                .egui_ctx
+                .options_mut(|o| o.theme_preference = egui::ThemePreference::System),
+            _ => {
+                re_log::warn!(
+                    "Ignoring unknown `theme` value {theme:?}; expected `dark`, `light`, or `system`."
+                );
+            }
+        }
+    }
 
     if enable_history {
         install_popstate_listener(&mut app).ok_or_log_error();
