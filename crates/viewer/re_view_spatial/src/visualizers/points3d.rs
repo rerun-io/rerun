@@ -1,14 +1,16 @@
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 use parking_lot::Mutex;
 use re_byte_size::SizeBytes as _;
 use re_entity_db::EntityDb;
+use re_log::ResultExt as _;
 use re_log_types::hash::Hash64;
-use re_renderer::{
-    LineDrawableBuilder, PickingLayerInstanceId, PointCloudBuilder, PositionRadius, SortOrderCache,
+use re_renderer::renderer::{
+    GpuPointCloud, PointCloudBatchFlags, PointCloudBatchInfo, PointCloudDrawData,
 };
+use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId, PositionRadius, SortOrderCache};
 use re_sdk_types::Archetype as _;
 use re_sdk_types::ArrowString;
 use re_sdk_types::archetypes::Points3D;
@@ -77,6 +79,18 @@ struct Points3DCpu {
     ///
     /// Each instance transform has its own cache, which tracks ordering per rendered view.
     sort_order_caches: Mutex<Vec<SortOrderCache>>,
+
+    /// The same point data residing on the GPU, uploaded once when this entry is created.
+    ///
+    /// `None` if there was nothing to upload or the upload failed.
+    #[size_bytes(ignore)] // VRAM, reported through `Points3DCache::vram_usage` instead.
+    gpu: Option<Arc<GpuPointCloud>>,
+
+    /// Object-space positions handed to the renderer for back-to-front sorting.
+    ///
+    /// Only materialized for clouds that are actually drawn transparently.
+    #[size_bytes(ignore)] // Only populated for transparent clouds.
+    sort_positions: OnceLock<Arc<Vec<glam::Vec3>>>,
 }
 
 impl Points3DCpu {
@@ -131,6 +145,18 @@ impl Points3DCpu {
 
         let has_transparency = colors.iter().any(|c| !c.is_opaque());
 
+        // Uploading here (rather than per frame) is the whole point of this cache: the same
+        // textures are reused for as long as this entry lives.
+        let gpu = GpuPointCloud::new(
+            ctx.viewer_ctx().render_ctx(),
+            &position_radii,
+            &colors,
+            &picking_ids,
+        )
+        .ok_or_log_error()
+        .flatten()
+        .map(Arc::new);
+
         Self {
             position_radii,
             robust_bounds,
@@ -140,6 +166,8 @@ impl Points3DCpu {
             colors,
             has_transparency,
             sort_order_caches: Mutex::new(Vec::new()),
+            gpu,
+            sort_positions: OnceLock::new(),
         }
     }
 
@@ -147,6 +175,15 @@ impl Points3DCpu {
         let mut caches = self.sort_order_caches.lock();
         caches.resize_with(transform_index + 1, SortOrderCache::default);
         caches[transform_index].clone()
+    }
+
+    fn sort_positions(&self) -> Arc<Vec<glam::Vec3>> {
+        self.sort_positions
+            .get_or_init(|| {
+                re_tracing::profile_scope!("sort_positions");
+                Arc::new(self.position_radii.iter().map(|pr| pr.pos).collect())
+            })
+            .clone()
     }
 }
 
@@ -219,6 +256,16 @@ impl Cache for Points3DCache {
         self.cache.clear();
     }
 
+    fn vram_usage(&self) -> re_byte_size::MemUsageTree {
+        re_byte_size::MemUsageTree::Bytes(
+            self.cache
+                .values()
+                .filter_map(|entry| entry.cpu.gpu.as_ref())
+                .map(|gpu| gpu.gpu_byte_size())
+                .sum(),
+        )
+    }
+
     fn on_store_events(
         &mut self,
         _events: &[&re_chunk_store::ChunkStoreEvent],
@@ -256,7 +303,7 @@ impl Points3DVisualizer {
     fn process_data<'a>(
         view_data: &mut SpatialViewVisualizerData,
         ctx: &QueryContext<'_>,
-        point_builder: &mut PointCloudBuilder<'_>,
+        point_draw_data: &mut Vec<PointCloudDrawData>,
         line_builder: &mut LineDrawableBuilder<'_>,
         query: &ViewQuery<'_>,
         ent_context: &SpatialSceneVisualizerInstructionContext<'_>,
@@ -292,10 +339,15 @@ impl Points3DVisualizer {
                 typed_fallback_for(ctx, Points3D::descriptor_point_shading().component)
             });
 
-            // TODO(grtlr): The following is a quick fix to get multiple instance poses to work
-            // with point clouds: We sent the same point cloud multiple times to the GPU (bad
-            // for memory) and render them with multiple draw calls across different batches (bad
-            // for performance).
+            // All instance transforms draw the same, singly-uploaded point data; only the
+            // per-batch state differs.
+            let Some(gpu_cloud) = cpu.gpu.clone() else {
+                continue;
+            };
+            let point_count = gpu_cloud.num_points();
+            let mut batches =
+                Vec::with_capacity(ent_context.transform_info.target_from_instances().len());
+
             for (transform_index, world_from_obj) in ent_context
                 .transform_info
                 .target_from_instances()
@@ -307,23 +359,15 @@ impl Points3DVisualizer {
 
                 let alpha_blend = transparency_enabled && cpu.has_transparency;
 
-                let mut point_batch = point_builder
-                    .batch(entity_path.to_string())
-                    .enable_shading(matches!(point_shading, PointShading::Gradient))
-                    .enable_alpha_blending(alpha_blend)
-                    .world_from_obj(world_from_obj)
-                    .object_space_bounding_box(cpu.robust_bounds.exact)
-                    .outline_mask_ids(ent_context.highlight.overall)
-                    .picking_object_id(re_renderer::PickingLayerObjectId(entity_path.hash64()));
-
-                if alpha_blend {
-                    point_batch = point_batch.sort_order(cpu.sort_order_cache(transform_index));
-                }
-
-                let mut point_range_builder =
-                    point_batch.add_points(&cpu.position_radii, &cpu.colors, &cpu.picking_ids);
+                let mut flags = PointCloudBatchFlags::empty();
+                flags.set(
+                    PointCloudBatchFlags::FLAG_ENABLE_SHADING,
+                    matches!(point_shading, PointShading::Gradient),
+                );
+                flags.set(PointCloudBatchFlags::FLAG_PREMULTIPLIED_ALPHA, alpha_blend);
 
                 // Determine if there's any sub-ranges that need extra highlighting.
+                let mut additional_outline_mask_ids_vertex_ranges = Vec::new();
                 {
                     #[expect(clippy::iter_over_hash_type)]
                     // Non-overlapping per-instance mask ranges.
@@ -332,15 +376,29 @@ impl Points3DVisualizer {
                             < num_instances as u64)
                             .then_some(highlighted_key.get());
                         if let Some(highlighted_point_index) = highlighted_point_index {
-                            point_range_builder = point_range_builder
-                                .push_additional_outline_mask_ids_for_range(
-                                    highlighted_point_index as u32
-                                        ..highlighted_point_index as u32 + 1,
-                                    *instance_mask_ids,
-                                );
+                            additional_outline_mask_ids_vertex_ranges.push((
+                                highlighted_point_index as u32..highlighted_point_index as u32 + 1,
+                                *instance_mask_ids,
+                            ));
                         }
                     }
                 }
+
+                batches.push(PointCloudBatchInfo {
+                    label: entity_path.to_string().into(),
+                    world_from_obj,
+                    flags,
+                    point_count,
+                    // Every transform draws the entire, shared upload.
+                    first_point_index: Some(0),
+                    object_space_bounding_box: cpu.robust_bounds.exact,
+                    overall_outline_mask_ids: ent_context.highlight.overall,
+                    additional_outline_mask_ids_vertex_ranges,
+                    picking_object_id: re_renderer::PickingLayerObjectId(entity_path.hash64()),
+                    depth_offset: 0,
+                    sort_positions: alpha_blend.then(|| cpu.sort_positions()),
+                    sort_order_cache: alpha_blend.then(|| cpu.sort_order_cache(transform_index)),
+                });
 
                 view_data.add_bounds(
                     entity_path.hash(),
@@ -374,6 +432,13 @@ impl Points3DVisualizer {
                     world_from_obj,
                 ));
             }
+
+            point_draw_data.push(PointCloudDrawData::from_gpu_cloud(
+                ctx.viewer_ctx().render_ctx(),
+                &gpu_cloud,
+                &batches,
+                re_view::SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
+            ));
         }
 
         Ok(())
@@ -414,10 +479,8 @@ impl VisualizerSystem for Points3DVisualizer {
         let mut view_data = SpatialViewVisualizerData::default();
         let output = VisualizerExecutionOutput::default();
 
-        let mut point_builder = PointCloudBuilder::new(ctx.viewer_ctx.render_ctx());
-        point_builder.radius_boost_in_ui_points_for_outlines(
-            re_view::SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
-        );
+        // One draw data per cached point cloud: each has its own, independently cached upload.
+        let mut point_draw_data = Vec::new();
 
         // We need lines from keypoints. The number of lines we'll have is harder to predict, so we'll go
         // with the dynamic allocation approach.
@@ -442,7 +505,7 @@ impl VisualizerSystem for Points3DVisualizer {
                     return Ok(());
                 }
 
-                let num_positions = {
+                let num_positions: usize = {
                     re_tracing::profile_scope!("num_positions");
                     all_positions
                         .chunks()
@@ -456,7 +519,6 @@ impl VisualizerSystem for Points3DVisualizer {
                     return Ok(());
                 }
 
-                point_builder.reserve(num_positions)?;
                 let all_colors = results.iter_optional(Points3D::descriptor_colors().component);
                 let all_radii = results.iter_optional(Points3D::descriptor_radii().component);
                 let all_labels = results.iter_optional(Points3D::descriptor_labels().component);
@@ -516,7 +578,7 @@ impl VisualizerSystem for Points3DVisualizer {
                 Self::process_data(
                     &mut view_data,
                     ctx,
-                    &mut point_builder,
+                    &mut point_draw_data,
                     &mut line_builder,
                     view_query,
                     spatial_ctx,
@@ -526,10 +588,10 @@ impl VisualizerSystem for Points3DVisualizer {
         )?;
 
         Ok(output
-            .with_draw_data([
-                point_builder.into_draw_data()?.into(),
-                line_builder.into_draw_data()?.into(),
-            ])
+            .with_draw_data(itertools::chain!(
+                point_draw_data.into_iter().map(Into::into),
+                [line_builder.into_draw_data()?.into()],
+            ))
             .with_visualizer_data(view_data))
     }
 }
