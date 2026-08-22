@@ -588,12 +588,10 @@ impl VisualizerSystem for Points3DVisualizer {
         )?;
 
         Ok(output
-            .with_draw_data(
-                point_draw_data
-                    .into_iter()
-                    .map(Into::into)
-                    .chain([line_builder.into_draw_data()?.into()]),
-            )
+            .with_draw_data(itertools::chain!(
+                point_draw_data.into_iter().map(Into::into),
+                [line_builder.into_draw_data()?.into()],
+            ))
             .with_visualizer_data(view_data))
     }
 }
