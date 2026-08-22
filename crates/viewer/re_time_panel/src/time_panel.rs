@@ -4,18 +4,20 @@ use egui::{
     Align, CursorIcon, Modifiers, NumExt as _, Painter, PointerButton, Rect, Response, RichText,
     TextEdit, Ui, Vec2, WidgetInfo, WidgetType,
 };
+use re_chunk::TimelineName;
 use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item_with_context};
 use re_data_ui::DataUi as _;
 use re_entity_db::InstancePath;
 use re_entity_db::entity_db::RedapConnectionState;
 use re_log_types::{
     AbsoluteTimeRange, AbsoluteTimeRangeF, ApplicationId, ComponentPath, EntityPath, TimeInt,
-    TimeReal,
+    TimeReal, TimeType,
 };
 use re_sdk_types::ComponentIdentifier;
 use re_sdk_types::blueprint::components::PanelState;
 use re_sdk_types::reflection::ComponentDescriptorExt as _;
 use re_ui::filter_widget::format_matching_text;
+use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{
     ContextExt as _, DesignTokens, Help, IconText, ReButton, Size, UiExt as _, Variant,
     filter_widget, icons, list_item,
@@ -148,6 +150,26 @@ pub struct TimePanel {
     /// If we're hovering a specific event - what time is it?
     #[serde(skip)]
     hovered_event_time: Option<TimeInt>,
+
+    /// Whether the streams tree is sorted by "temporal relevance" (closeness to the current time
+    /// cursor, in either direction) instead of the default alphabetical/hierarchical order.
+    temporal_relevance_sort: bool,
+
+    /// The cursor value the temporal-relevance sort is currently using, held fixed for the
+    /// duration of a pointer press. See `tree_ui` for why.
+    #[serde(skip)]
+    temporal_relevance_reference: Option<(TimelineName, TimeInt)>,
+
+    /// A time-cursor jump requested by clicking a row's data density graph, held back one frame
+    /// before being turned into a `TimeControlCommand`.
+    ///
+    /// Clicking a row both selects it and jumps the cursor to the clicked point. If the cursor
+    /// moves in the very same frame the selection is made, the temporal-relevance sort (which is
+    /// keyed off the cursor) reshuffles the list before the selection has had a chance to land,
+    /// so the click can appear to hit the wrong row. Applying the jump a frame late gives the
+    /// selection a full frame to settle on the list as it stood when clicked.
+    #[serde(skip)]
+    pending_time_jump: Option<TimeReal>,
 }
 
 impl Default for TimePanel {
@@ -167,6 +189,9 @@ impl Default for TimePanel {
             scroll_to_me_item: None,
             time_edit_string: None,
             hovered_event_time: None,
+            temporal_relevance_sort: false,
+            temporal_relevance_reference: None,
+            pending_time_jump: None,
         }
     }
 }
@@ -227,6 +252,13 @@ impl TimePanel {
         self.hovered_event_time = None;
 
         let mut time_commands = Vec::new();
+
+        // A jump requested by a row click last frame: apply it now, one frame after the click,
+        // so the selection made by that same click gets a frame to settle before the
+        // temporal-relevance sort reacts to the new cursor. See `pending_time_jump`.
+        if let Some(time) = self.pending_time_jump.take() {
+            time_commands.push(TimeControlCommand::SetTimeClamped(time));
+        }
 
         // this is the size of everything above the central panel (window title bar, top bar on web,
         // etc.)
@@ -591,15 +623,7 @@ impl TimePanel {
                 ui.spacing_mut().item_spacing.y = 0.0;
 
                 ui.full_span_scope(0.0..=time_x_left, |ui| {
-                    self.filter_state.section_title_ui(
-                        ui,
-                        egui::RichText::new(if self.source == TimePanelSource::Blueprint {
-                            "Blueprint Streams"
-                        } else {
-                            "Streams"
-                        })
-                        .strong(),
-                    );
+                    self.streams_section_title_ui(ui);
                 });
             })
             .response
@@ -764,11 +788,57 @@ impl TimePanel {
 
                 let filter_matcher = self.filter_state.filter();
 
+                let temporal_relevance = self.temporal_relevance_sort.then(|| {
+                    let timeline = *store_ctx.time_ctrl.timeline_name();
+                    let live_cursor = store_ctx.time_ctrl.time_int().unwrap_or(TimeInt::MIN);
+
+                    // Freeze the sort's reference cursor for the duration of a press.
+                    //
+                    // `data_density_graph_ui`'s click handling checks the frame-global
+                    // `pointer.primary_clicked()`, not a per-row `egui::Response` -- so it doesn't
+                    // have egui's usual guarantee that a click is attributed to whichever widget
+                    // was actually under the pointer at *press* time. It's decided fresh, by
+                    // whichever row's rect the pointer happens to be over on the *release* frame.
+                    // If the list reorders in between -- whether from this very press moving the
+                    // cursor, or just from a live/playing recording advancing it on its own -- the
+                    // release can land on a different entity than the one that was pressed.
+                    // Holding the sort still for the whole press means the list can't reorder out
+                    // from under the pointer mid-click, regardless of why the cursor is moving.
+                    let cursor = if ui.input(|i| i.pointer.primary_down()) {
+                        match self.temporal_relevance_reference {
+                            Some((ref_timeline, ref_cursor)) if ref_timeline == timeline => {
+                                ref_cursor
+                            }
+                            _ => {
+                                self.temporal_relevance_reference = Some((timeline, live_cursor));
+                                live_cursor
+                            }
+                        }
+                    } else {
+                        self.temporal_relevance_reference = None;
+                        live_cursor
+                    };
+
+                    // Bin event times to a coarse, fixed-size grid before comparing distances,
+                    // so that near-simultaneous events (repeated updates on a live-streaming
+                    // entity, several components logged a few ms apart, etc.) tie instead of
+                    // causing constant reordering over trivial differences. This is a
+                    // data-precision concern, not a zoom concern, so the bin size is a fixed
+                    // real-world duration rather than scaled to the visible time span.
+                    let bin_width_ns: i64 = match store_ctx.time_ctrl.time_type() {
+                        Some(TimeType::DurationNs | TimeType::TimestampNs) => 100_000_000, // 0.1s
+                        _ => 0, // sequence timelines have no natural sub-unit to bin away
+                    };
+
+                    (timeline, cursor, bin_width_ns)
+                });
+
                 let streams_tree_data =
                     crate::streams_tree_data::StreamsTreeData::from_source_and_filter(
                         viewer_ctx,
                         self.source,
                         &filter_matcher,
+                        temporal_relevance,
                     );
 
                 // If an item is focused, expand every node leading to it so it becomes visible
@@ -806,6 +876,67 @@ impl TimePanel {
                     );
                 }
             });
+    }
+
+    fn streams_section_title_ui(&mut self, ui: &mut egui::Ui) {
+        let title = egui::RichText::new(if self.source == TimePanelSource::Blueprint {
+            "Blueprint Streams"
+        } else {
+            "Streams"
+        })
+        .strong();
+
+        // While searching, fall back to the filter widget's built-in title/search UI.
+        // Sort stays active if already enabled; the toggle is shown when not searching.
+        if self.filter_state.is_active() {
+            self.filter_state.section_title_ui(ui, title);
+            return;
+        }
+
+        let mut activate_search = false;
+        let mut temporal_relevance_sort = self.temporal_relevance_sort;
+
+        list_item::list_item_scope(ui, "streams_section_title", |ui| {
+            ui.list_item()
+                .interactive(false)
+                .force_background(ui.tokens().section_header_color)
+                .show_flat(
+                    ui,
+                    list_item::LabelContent::new(title)
+                        .with_always_show_buttons(true)
+                        // `LabelContent::desired_width` only measures the title text -- it has
+                        // no idea buttons are attached -- so without this, the row gets sized to
+                        // fit "Streams" alone (during egui's sizing pass, which then sticks for
+                        // every following frame) and the buttons render with nowhere to go.
+                        .min_desired_width(150.0)
+                        // Right-to-left: right-most button first.
+                        .with_action_button(&icons::SEARCH, "Search", || {
+                            activate_search = true;
+                        })
+                        .with_buttons(|ui| {
+                            let mut response = ui.add(
+                                ui.small_icon_button_widget(
+                                    &icons::VIEW_STATE_TIMELINE,
+                                    "Sort streams by temporal relevance",
+                                )
+                                .selected(temporal_relevance_sort),
+                            );
+                            if response.clicked() {
+                                temporal_relevance_sort = !temporal_relevance_sort;
+                                response.mark_changed();
+                            }
+                            response.on_hover_text(
+                                "Sort streams by closeness to the current time cursor \
+                                 (nearest update, before or after, first).",
+                            );
+                        }),
+                );
+        });
+
+        self.temporal_relevance_sort = temporal_relevance_sort;
+        if activate_search {
+            self.filter_state.activate("");
+        }
     }
 
     /// Display the list item for an entity.
@@ -945,14 +1076,7 @@ impl TimePanel {
 
                 // show the density graph only if that item is closed
                 if is_closed {
-                    self.data_density_graph_ui(
-                        store_ctx,
-                        time_area_painter,
-                        ui,
-                        row_rect,
-                        &item,
-                        time_commands,
-                    );
+                    self.data_density_graph_ui(store_ctx, time_area_painter, ui, row_rect, &item);
                 }
             }
         }
@@ -1143,7 +1267,6 @@ impl TimePanel {
                             ui,
                             row_rect,
                             &item,
-                            time_commands,
                         );
                     }
                 }
@@ -1198,7 +1321,6 @@ impl TimePanel {
         ui: &egui::Ui,
         row_rect: Rect,
         item: &TimePanelItem,
-        time_commands: &mut Vec<TimeControlCommand>,
     ) {
         let hovered_time = data_density_graph::data_density_graph_ui(
             &mut self.data_density_graph_painter,
@@ -1219,7 +1341,14 @@ impl TimePanel {
                 ctx.command_sender
                     .send_system(SystemCommand::SetSelection(item.to_item().into()));
 
-                time_commands.push(TimeControlCommand::SetTimeClamped(hovered_time.into()));
+                // Deferred by a frame -- see `pending_time_jump`.
+                self.pending_time_jump = Some(hovered_time.into());
+
+                // The temporal-relevance sort can relocate this row once the cursor jump lands
+                // (e.g. clicking a row far down a long scrolled list can send its own row to the
+                // very top). Without this, the newly-selected row can scroll out of view, making
+                // the click look like it did nothing.
+                self.scroll_to_me_item = Some(item.to_item());
             } else {
                 ctx.selection_state().set_hovered(item.to_item());
             }
