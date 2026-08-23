@@ -1,5 +1,3 @@
-use std::net::SocketAddr;
-
 use pyo3::exceptions::PyValueError;
 use pyo3::types::{
     PyAnyMethods as _, PyDict, PyDictMethods as _, PyModule, PyModuleMethods as _, PyString,
@@ -48,20 +46,11 @@ impl PyServerInternal {
             .parse()
             .map_err(|err| PyValueError::new_err(format!("Invalid IP: {host:?}: {err}")))?;
 
-        let connect_ip = if host.is_unspecified() {
-            // We usually cannot connect to 0.0.0.0 or ::, so tell clients to connect to 127.0.0.1 instead:
-            std::net::Ipv4Addr::LOCALHOST.into()
-        } else {
-            host
-        };
-        let connect_address = SocketAddr::new(connect_ip, args.port);
-
-        let url = format!("rerun+http://{connect_address}");
-
         crate::utils::wait_for_future(py, async {
             let handle = args.create_server_handle().await.map_err(|err| {
                 PyValueError::new_err(format!("Failed to start Rerun server: {err:#}"))
             })?;
+            let url = format!("rerun+http://{}", handle.connect_addr());
 
             Ok(Self {
                 handle: Some(handle),

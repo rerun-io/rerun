@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import socket
 from pathlib import Path
+from urllib.parse import urlparse
 
 import pyarrow as pa
 import pytest
@@ -48,6 +50,17 @@ def test_server_random_port() -> None:
         assert server1.is_running()
         assert server2.is_running()
         assert server1.url() != server2.url()
+
+
+def test_server_port_zero_reports_bound_port() -> None:
+    """Test that port zero reports the OS-assigned port rather than zero."""
+    with Server(host="127.0.0.1", port=0) as server:
+        url = urlparse(server.url().replace("rerun+http://", "http://", 1))
+        assert url.hostname is not None
+        assert url.port not in (None, 0)
+
+        with socket.create_connection((url.hostname, url.port), timeout=1):
+            pass
 
 
 def test_server_shutdown_twice_raises() -> None:
