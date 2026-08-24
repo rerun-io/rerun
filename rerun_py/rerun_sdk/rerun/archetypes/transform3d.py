@@ -322,6 +322,8 @@ class Transform3D(Transform3DExt, Archetype):
         parent_frame:
             The parent frame this transform transforms into.
 
+            Any child frame has exactly one parent frame at any point in time, so logging a different `parent_frame` for a known `child_frame` replaces the previous relationship.
+
             If not specified, this is set to the implicit transform frame of the current entity path's parent.
             This means that if a [`archetypes.Transform3D`][rerun.archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.
 
@@ -485,6 +487,8 @@ class Transform3D(Transform3DExt, Archetype):
         parent_frame:
             The parent frame this transform transforms into.
 
+            Any child frame has exactly one parent frame at any point in time, so logging a different `parent_frame` for a known `child_frame` replaces the previous relationship.
+
             If not specified, this is set to the implicit transform frame of the current entity path's parent.
             This means that if a [`archetypes.Transform3D`][rerun.archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.
 
@@ -646,6 +650,8 @@ class Transform3D(Transform3DExt, Archetype):
         converter=components.TransformFrameIdBatch._converter,  # type: ignore[misc]
     )
     # The parent frame this transform transforms into.
+    #
+    # Any child frame has exactly one parent frame at any point in time, so logging a different `parent_frame` for a known `child_frame` replaces the previous relationship.
     #
     # If not specified, this is set to the implicit transform frame of the current entity path's parent.
     # This means that if a [`archetypes.Transform3D`][rerun.archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.

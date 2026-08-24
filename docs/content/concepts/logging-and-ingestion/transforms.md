@@ -58,6 +58,34 @@ Named transform frames have several advantages over entity path based hierarchie
 * several entities may be associated with the same frame
 * frees up entity paths for semantic rather than geometric organization
 
+### One parent per frame
+
+A transform frame has exactly one parent at any point in time. This is the same convention that ROS' [tf2](https://wiki.ros.org/tf2) uses.
+
+A transform relationship is identified by its `child_frame`.
+Logging another `Transform3D` with the same `child_frame` but a different `parent_frame` therefore does not add a second relationship, it replaces the existing one:
+
+```python
+rr.log("tf", rr.Transform3D(parent_frame="first_parent", child_frame="child"))
+rr.log("tf", rr.Transform3D(parent_frame="second_parent", child_frame="child"))
+```
+
+Both calls are part of the recording. `child` has `first_parent` as its parent up to the second call, and `second_parent` from there on.
+Since transforms are resolved for a single point in time, `first_parent` and `child` end up unrelated as soon as the time cursor is past the second call.
+
+This structure can make expressing a transform with two natural parents a bit unintuitive. Typically, it is best to invert one of the two relationships instead and use `relation=ChildFromParent`:
+
+```python
+rr.log("tf", rr.Transform3D(parent_frame="first_parent", child_frame="child"))
+# Same values as the `second_parent` to `child` transform, expressed as `child` to `second_parent`:
+rr.log(
+    "tf",
+    rr.Transform3D(parent_frame="child", child_frame="second_parent", relation=rr.TransformRelation.ChildFromParent),
+)
+```
+
+`first_parent` now stays connected and all three frames can be transformed into each other.
+
 ### Entity hierarchy based transforms under the hood
 
 Under the hood, Rerun's entity path hierarchies actually use the same transform frame system as named frames.
