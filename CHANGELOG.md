@@ -1,5 +1,19 @@
 # Rerun changelog
 
+## [0.36.3](https://github.com/rerun-io/rerun/compare/0.36.2...0.36.3) - 2026-08-24
+
+### ✨ Overview & highlights
+
+- Optimize a recording from Rust with `rrd::optimize`
+
+📖 Release notes: https://rerun.io/docs/changelog/changeset-0-36#optimize-a-recording-from-rust-with-rrdoptimize
+
+### 🔎 Details
+
+#### 🦀 Rust API
+- Add a standalone `rrd::optimize_file` API to the `rerun` crate [389767f](https://github.com/rerun-io/rerun/commit/389767f2217ca481f2ebaaf9b3fd8b3ec90f7f59)
+
+
 ## [0.36.2](https://github.com/rerun-io/rerun/compare/0.36.1...0.36.2) - 2026-08-21
 
 ### 🔎 Details
