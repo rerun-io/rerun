@@ -16,7 +16,6 @@ use re_viewer::{SystemCommand, SystemCommandSender as _};
 use re_viewer_context::TimeControlCommand;
 use std::io::Write as _;
 use std::path::Path;
-use std::time::Duration;
 
 /// Maximum number of concurrent downloads.
 const DOWNLOAD_CONCURRENCY: usize = 8;
@@ -260,17 +259,11 @@ async fn test_old_rrds_in_current_viewer() {
         });
 
         // Wait for the loading popup to disappear.
-        step_until(
-            "loading popup dismissed",
-            &mut harness,
-            |harness| {
-                !harness
-                    .query_all_by_role(Role::Window)
-                    .any(|window| window.query_by_label_contains("Loading").is_some())
-            },
-            Duration::from_millis(100),
-            Duration::from_secs(10),
-        );
+        step_until("loading popup dismissed", &mut harness, |harness| {
+            !harness
+                .query_all_by_role(Role::Window)
+                .any(|window| window.query_by_label_contains("Loading").is_some())
+        });
 
         assert!(
             harness.state().active_recording_id().is_some(),

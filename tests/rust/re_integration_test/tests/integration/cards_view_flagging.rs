@@ -7,7 +7,6 @@
 //! the widget-level (in-memory only) version of this test.
 
 use std::sync::Arc;
-use std::time::Duration;
 
 use arrow::array::{AsArray as _, BooleanArray, Int64Array, RecordBatch, StringArray};
 use arrow::datatypes::{DataType, Field, Schema};
@@ -80,13 +79,9 @@ pub async fn cards_view_flagging() {
         )),
         ..Default::default()
     });
-    viewer_test_utils::step_until(
-        "table data loads",
-        &mut harness,
-        |harness| harness.query_by_label_contains("Alice").is_some(),
-        Duration::from_millis(100),
-        Duration::from_secs(5),
-    );
+    viewer_test_utils::step_until("table data loads", &mut harness, |harness| {
+        harness.query_by_label_contains("Alice").is_some()
+    });
     harness.set_blueprint_panel_opened(false);
     harness.set_selection_panel_opened(false);
     harness.set_time_panel_opened(false);
@@ -105,8 +100,6 @@ pub async fn cards_view_flagging() {
                 .next()
                 .is_some()
         },
-        Duration::from_millis(100),
-        Duration::from_secs(5),
     );
 
     harness.snapshot("cards_view_flagging_before");
@@ -133,8 +126,6 @@ pub async fn cards_view_flagging() {
                     .block_on(async { scan_flag_value(&server, table.details.id, 1).await })
             }) == Some(true)
         },
-        Duration::from_millis(100),
-        Duration::from_secs(5),
     );
 }
 

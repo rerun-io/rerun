@@ -1,6 +1,5 @@
 use std::str::FromStr as _;
 use std::sync::Arc;
-use std::time::Duration;
 
 use arrow::array::{Int64Array, RecordBatch, StringArray};
 use arrow::datatypes::{DataType, Field, Schema};
@@ -125,8 +124,6 @@ pub async fn dataset_folders() {
                 && harness.query_all_by_label_contains("metrics").count() == 2
                 && harness.query_all_by_label_contains("summary").count() == 2
         },
-        Duration::from_millis(100),
-        Duration::from_secs(5),
     );
     harness.step_until_no_loading_indicator();
     assert_route_and_selection(&mut harness, &folder_route("perception"));
@@ -150,8 +147,6 @@ pub async fn dataset_folders() {
                     .query_by_role_and_label(Role::Button, "pedestrians")
                     .is_some()
         },
-        Duration::from_millis(100),
-        Duration::from_secs(5),
     );
     harness.step_until_no_loading_indicator();
     assert_route_and_selection(&mut harness, &folder_route("perception.detection"));
@@ -168,8 +163,6 @@ pub async fn dataset_folders() {
                 && harness.query_all_by_label_contains("metrics").count() == 2
                 && harness.query_all_by_label_contains("summary").count() == 2
         },
-        Duration::from_millis(100),
-        Duration::from_secs(5),
     );
     harness.step_until_no_loading_indicator();
     assert_route_and_selection(&mut harness, &folder_route("perception"));
@@ -191,8 +184,6 @@ pub async fn dataset_folders() {
                 && harness.query_all_by_label_contains("metrics").count() == 2
                 && harness.query_all_by_label_contains("summary").count() == 2
         },
-        Duration::from_millis(100),
-        Duration::from_secs(5),
     );
     table_harness.step_until_no_loading_indicator();
 
@@ -206,8 +197,6 @@ pub async fn dataset_folders() {
         "table `perception.metrics` row appears",
         &mut table_harness,
         |harness| harness.query_by_label_contains("metrics-row").is_some(),
-        Duration::from_millis(100),
-        Duration::from_secs(5),
     );
     assert_route_and_selection(&mut table_harness, &metrics_route);
 
@@ -221,8 +210,6 @@ pub async fn dataset_folders() {
         "dataset `perception.summary` recording appears",
         &mut harness,
         |harness| harness.query_by_label_contains("rec_summary").is_some(),
-        Duration::from_millis(100),
-        Duration::from_secs(5),
     );
     harness.step_until_no_loading_indicator();
     assert_route_and_selection(&mut harness, &summary_route);

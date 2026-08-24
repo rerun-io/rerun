@@ -2,7 +2,6 @@
 //! the blueprint happens to have been saved under.
 
 use std::path::{Path, PathBuf};
-use std::time::Duration;
 
 use re_integration_test::HarnessExt as _;
 use re_log_types::{ApplicationId, StoreId, StoreKind};
@@ -142,8 +141,6 @@ async fn test_dropped_blueprint_is_applied_to_open_recording() {
         "the imported blueprint became active",
         &mut harness,
         |harness| active_blueprint_id(harness).is_some_and(|id| id != blueprint_before),
-        Duration::from_millis(50),
-        Duration::from_secs(10),
     );
 
     // The imported blueprint must have been filed under the open application, not the one it was

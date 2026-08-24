@@ -3,7 +3,6 @@
 //! in the dataset's Assets tab and in the recording panel.
 
 use std::str::FromStr as _;
-use std::time::Duration;
 
 use arrow::array::RecordBatch;
 use egui_kittest::Harness;
@@ -408,17 +407,11 @@ async fn dataset_assets_tab() {
         ..Default::default()
     });
 
-    viewer_test_utils::step_until(
-        "both assets are listed",
-        &mut harness,
-        |harness| {
-            ASSET_IDS
-                .iter()
-                .all(|id| harness.query_all_by_label_contains(id).count() > 0)
-        },
-        Duration::from_millis(100),
-        Duration::from_secs(10),
-    );
+    viewer_test_utils::step_until("both assets are listed", &mut harness, |harness| {
+        ASSET_IDS
+            .iter()
+            .all(|id| harness.query_all_by_label_contains(id).count() > 0)
+    });
     harness.step_until_no_loading_indicator();
 
     // `CardLayout` measures a row on one frame and lays it out on the next, so the cards only
@@ -502,8 +495,6 @@ async fn open_asset_lists_it_under_owning_dataset() {
                         > 0
                 }
         },
-        Duration::from_millis(100),
-        Duration::from_secs(5),
     );
 
     harness.set_selection_panel_opened(false);
@@ -595,13 +586,9 @@ async fn assets_of_a_dataset_do_not_share_a_blueprint() {
 
 /// Steps the viewer until `store_id` is the active recording.
 fn step_until_active_recording(harness: &mut Harness<'static, re_viewer::App>, store_id: &StoreId) {
-    viewer_test_utils::step_until(
-        "the asset is the active recording",
-        harness,
-        |harness| harness.state().active_recording_id() == Some(store_id),
-        Duration::from_millis(10),
-        Duration::from_secs(10),
-    );
+    viewer_test_utils::step_until("the asset is the active recording", harness, |harness| {
+        harness.state().active_recording_id() == Some(store_id)
+    });
 }
 
 /// Steps the viewer until the store behind `uri` holds chunks that came from `asset_segment_id`.
@@ -631,7 +618,5 @@ fn step_until_asset_chunks_are_loaded(
                     })
             })
         },
-        Duration::from_millis(10),
-        Duration::from_secs(10),
     );
 }

@@ -168,27 +168,27 @@ impl InspectionHarness {
     }
 
     /// Repeatedly [`run_ok`](Self::run_ok) and evaluate `predicate` until it returns `true` or
-    /// `max_duration` elapses.
+    /// `timeout` elapses.
     ///
     /// Failing to settle is not an error here: we are waiting for something to happen, so the
-    /// viewer is expected to still be repainting. `max_duration` is the real deadline.
-    pub fn step_until(
+    /// viewer is expected to still be repainting. `timeout` is the real deadline.
+    pub fn step_until_with_custom_timeout(
         &mut self,
         description: &str,
         mut predicate: impl FnMut(&Self) -> bool,
-        step_duration: Duration,
-        max_duration: Duration,
+        poll_interval: Duration,
+        timeout: Duration,
     ) {
         let start = Instant::now();
         self.run_ok();
         while !predicate(self) {
             assert!(
-                start.elapsed() <= max_duration,
-                "Timed out waiting for {description:?} after {max_duration:?}.\n\
+                start.elapsed() <= timeout,
+                "Timed out waiting for {description:?} after {timeout:?}.\n\
                  Available nodes: {:#?}",
                 self.root_node()
             );
-            std::thread::sleep(step_duration);
+            std::thread::sleep(poll_interval);
             self.run_ok();
         }
     }

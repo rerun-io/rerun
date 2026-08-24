@@ -1,5 +1,4 @@
 use std::sync::Arc;
-use std::time::Duration;
 
 use arrow::array::{Int64Array, RecordBatch, StringArray};
 use arrow::datatypes::{DataType, Field, Schema};
@@ -53,18 +52,12 @@ pub async fn watch_events_auto_refresh_test() {
     harness.set_time_panel_opened(false);
 
     // Wait for the persistent dataset and table to appear in the panel.
-    viewer_test_utils::step_until(
-        "Persistent entries appear",
-        &mut harness,
-        |harness| {
-            let panel = harness.recording_panel();
-            let root = panel.root();
-            root.query_by_label_contains(persistent_dataset).is_some()
-                && root.query_by_label_contains(persistent_table).is_some()
-        },
-        Duration::from_millis(100),
-        Duration::from_secs(5),
-    );
+    viewer_test_utils::step_until("Persistent entries appear", &mut harness, |harness| {
+        let panel = harness.recording_panel();
+        let root = panel.root();
+        root.query_by_label_contains(persistent_dataset).is_some()
+            && root.query_by_label_contains(persistent_table).is_some()
+    });
 
     // Select the persistent table so its data is shown, avoiding the transient "Loading…" state
     // of the persistent dataset in the snapshot.
@@ -78,8 +71,6 @@ pub async fn watch_events_auto_refresh_test() {
         "Persistent table data is rendered in main view",
         &mut harness,
         |harness| harness.query_by_label_contains("alpha").is_some(),
-        Duration::from_millis(100),
-        Duration::from_secs(10),
     );
     snapshot_results.add(harness.try_snapshot("watch_events_1_initial"));
 
@@ -94,24 +85,16 @@ pub async fn watch_events_auto_refresh_test() {
         .expect("Failed to create dataset");
     let table = create_table(&mut client, transient_table).await;
 
-    viewer_test_utils::step_until(
-        "Transient entries auto-appear",
-        &mut harness,
-        |harness| {
-            let panel = harness.recording_panel();
-            let root = panel.root();
-            root.query_by_label_contains(transient_dataset).is_some()
-                && root.query_by_label_contains(transient_table).is_some()
-        },
-        Duration::from_millis(100),
-        Duration::from_secs(5),
-    );
+    viewer_test_utils::step_until("Transient entries auto-appear", &mut harness, |harness| {
+        let panel = harness.recording_panel();
+        let root = panel.root();
+        root.query_by_label_contains(transient_dataset).is_some()
+            && root.query_by_label_contains(transient_table).is_some()
+    });
     viewer_test_utils::step_until(
         "Persistent table data is rendered again after refresh",
         &mut harness,
         |harness| harness.query_by_label_contains("alpha").is_some(),
-        Duration::from_millis(100),
-        Duration::from_secs(10),
     );
     snapshot_results.add(harness.try_snapshot("watch_events_2_entries_added"));
 
@@ -128,8 +111,6 @@ pub async fn watch_events_auto_refresh_test() {
         "Transient table data is rendered in main view",
         &mut harness,
         |harness| harness.query_by_label_contains("alpha").is_some(),
-        Duration::from_millis(100),
-        Duration::from_secs(10),
     );
 
     // When deleting entries, the server emits `EntryDeleted` and the viewer auto-refreshes again.
@@ -171,8 +152,6 @@ pub async fn watch_events_auto_refresh_test() {
                 && root.query_by_label_contains(persistent_dataset).is_some()
                 && root.query_by_label_contains(persistent_table).is_some()
         },
-        Duration::from_millis(100),
-        Duration::from_secs(5),
     );
     snapshot_results.add(harness.try_snapshot("watch_events_3_entries_removed"));
 }

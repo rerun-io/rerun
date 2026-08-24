@@ -9,7 +9,7 @@ use std::time::Duration;
 use base64::Engine as _;
 use egui_kittest::kittest::Queryable as _;
 use re_entity_db::StoreBundle;
-use re_integration_test::{HarnessConfig, InspectionHarness};
+use re_integration_test::{HarnessConfig, InspectionHarness, ViewerHarnessExt as _};
 use re_log_channel::LogSource;
 use re_log_types::StoreKind;
 use re_sdk::RecordingStreamBuilder;
@@ -142,32 +142,22 @@ fn export_from_browser(harness: &InspectionHarness, method: &str) -> Vec<u8> {
         .expect("browser export should be base64")
 }
 
-fn wait_for_test_recording(harness: &mut InspectionHarness, description: &str) {
-    harness.step_until(
-        description,
-        |harness| {
-            harness
-                .query_by_label_contains("browser_export_recording")
-                .is_some()
-                && harness.query_by_label_contains("test_entity").is_some()
-        },
-        Duration::from_millis(10),
-        Duration::from_secs(5),
-    );
+fn wait_for_test_recording(harness: &mut InspectionHarness, description: &'static str) {
+    harness.step_until(description, |harness| {
+        harness
+            .query_by_label_contains("browser_export_recording")
+            .is_some()
+            && harness.query_by_label_contains("test_entity").is_some()
+    });
 }
 
-fn wait_for_test_blueprint(harness: &mut InspectionHarness, description: &str) {
-    harness.step_until(
-        description,
-        |harness| {
-            harness
-                .query_all_by_label_contains("Browser export test view")
-                .next()
-                .is_some()
-        },
-        Duration::from_millis(10),
-        Duration::from_secs(5),
-    );
+fn wait_for_test_blueprint(harness: &mut InspectionHarness, description: &'static str) {
+    harness.step_until(description, |harness| {
+        harness
+            .query_all_by_label_contains("Browser export test view")
+            .next()
+            .is_some()
+    });
 }
 
 fn assert_exported_blueprint(bytes: &[u8]) {

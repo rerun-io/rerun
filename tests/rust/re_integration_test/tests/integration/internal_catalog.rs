@@ -171,18 +171,12 @@ async fn internal_catalog_revealed_by_catalog_api() {
         .await
         .expect("failed to create dataset");
 
-    viewer_test_utils::step_until(
-        "internal catalog revealed",
-        &mut harness,
-        |harness| {
-            let panel = harness.recording_panel();
-            let root = panel.root();
-            root.query_by_label_contains("Viewer catalog").is_some()
-                && root.query_by_label_contains(DATASET_NAME).is_some()
-        },
-        Duration::from_millis(100),
-        Duration::from_secs(5),
-    );
+    viewer_test_utils::step_until("internal catalog revealed", &mut harness, |harness| {
+        let panel = harness.recording_panel();
+        let root = panel.root();
+        root.query_by_label_contains("Viewer catalog").is_some()
+            && root.query_by_label_contains(DATASET_NAME).is_some()
+    });
 
     harness.snapshot("internal_catalog_revealed_by_catalog_api");
 }
@@ -223,18 +217,12 @@ async fn internal_catalog_load_rbl() {
         .state()
         .open_url_or_file(&rbl_path.display().to_string());
 
-    viewer_test_utils::step_until(
-        "blueprint catalog entry opened",
-        &mut harness,
-        |harness| {
-            matches!(
-                harness.state().testonly_get_route(),
-                Route::RedapEntry { .. }
-            )
-        },
-        Duration::from_millis(100),
-        Duration::from_secs(10),
-    );
+    viewer_test_utils::step_until("blueprint catalog entry opened", &mut harness, |harness| {
+        matches!(
+            harness.state().testonly_get_route(),
+            Route::RedapEntry { .. }
+        )
+    });
 
     let Route::RedapEntry {
         origin, entry_id, ..
@@ -313,8 +301,6 @@ async fn internal_catalog_load_rbl() {
                     })
             })
         },
-        Duration::from_millis(100),
-        Duration::from_secs(10),
     );
 
     harness.set_blueprint_panel_opened(true);
@@ -344,50 +330,38 @@ async fn internal_catalog_load_rrd() {
 
         let points = EntityPath::from("points");
         let frame = TimelineName::from("frame");
-        viewer_test_utils::step_until(
-            "file loaded",
-            &mut harness,
-            move |harness| {
-                let Some(store_id) = harness.state().active_recording_id().cloned() else {
-                    return false;
-                };
-                if store_id.recording_id().as_str() != RRD_RECORDING_ID {
-                    return false;
-                }
+        viewer_test_utils::step_until("file loaded", &mut harness, move |harness| {
+            let Some(store_id) = harness.state().active_recording_id().cloned() else {
+                return false;
+            };
+            if store_id.recording_id().as_str() != RRD_RECORDING_ID {
+                return false;
+            }
 
-                let points = points.clone();
-                harness.run_with_app_context(move |ctx| {
-                    ctx.storage_context
-                        .hub
-                        .entity_db(&store_id)
-                        .is_some_and(|db| {
-                            db.data_source
-                                .as_ref()
-                                .is_some_and(|source| source.is_redap() == use_viewer_catalog)
-                                && db
-                                    .storage_engine()
-                                    .store()
-                                    .entity_has_physical_temporal_data_on_timeline(&points, &frame)
-                        })
-                })
-            },
-            Duration::from_millis(100),
-            Duration::from_secs(10),
-        );
+            let points = points.clone();
+            harness.run_with_app_context(move |ctx| {
+                ctx.storage_context
+                    .hub
+                    .entity_db(&store_id)
+                    .is_some_and(|db| {
+                        db.data_source
+                            .as_ref()
+                            .is_some_and(|source| source.is_redap() == use_viewer_catalog)
+                            && db
+                                .storage_engine()
+                                .store()
+                                .entity_has_physical_temporal_data_on_timeline(&points, &frame)
+                    })
+            })
+        });
 
         let loading_rrd_toast = format!("Loading {rrd_path:?}…");
-        viewer_test_utils::step_until(
-            "loading toast gone",
-            &mut harness,
-            |harness| {
-                harness
-                    .query_all_by_label_contains(&loading_rrd_toast)
-                    .next()
-                    .is_none()
-            },
-            Duration::from_millis(100),
-            Duration::from_secs(10),
-        );
+        viewer_test_utils::step_until("loading toast gone", &mut harness, |harness| {
+            harness
+                .query_all_by_label_contains(&loading_rrd_toast)
+                .next()
+                .is_none()
+        });
 
         harness.set_time_panel_opened(false);
 

@@ -84,29 +84,38 @@ pub trait ViewerHarnessExt {
             .is_some()
     }
 
+    /// Repeatedly [`run`](Self::run) and evaluate `predicate` until it returns `true` or the
+    /// default timeout elapses.
+    #[track_caller]
+    fn step_until(&mut self, description: &'static str, predicate: impl FnMut(&Self) -> bool) {
+        self.step_until_with_custom_timeout(
+            description,
+            predicate,
+            re_viewer::viewer_test_utils::DEFAULT_POLL_INTERVAL,
+            re_viewer::viewer_test_utils::DEFAULT_WAIT_TIMEOUT,
+        );
+    }
+
     /// Repeatedly [`run`](Self::run) and evaluate `predicate` until it returns `true` or
-    /// `max_duration` elapses.
+    /// `timeout` elapses.
     ///
     /// Failing to settle is not an error here: we are waiting for something to happen, so the
-    /// viewer is expected to still be repainting. `max_duration` is the real deadline.
+    /// viewer is expected to still be repainting. `timeout` is the real deadline.
     #[track_caller]
-    fn step_until(
+    fn step_until_with_custom_timeout(
         &mut self,
         description: &'static str,
         predicate: impl FnMut(&Self) -> bool,
-        step_duration: Duration,
-        max_duration: Duration,
+        poll_interval: Duration,
+        timeout: Duration,
     );
 
     /// Wait until the viewer is no longer showing any loading indicator.
     #[track_caller]
     fn step_until_no_loading_indicator(&mut self) {
-        self.step_until(
-            "Wait until there's no more loading indicator",
-            |harness| !harness.is_loading(),
-            std::time::Duration::from_millis(5),
-            std::time::Duration::from_secs(5),
-        );
+        self.step_until("Wait until there's no more loading indicator", |harness| {
+            !harness.is_loading()
+        });
     }
 
     /// Click the only node with `label`, then settle.
@@ -194,19 +203,19 @@ impl ViewerHarnessExt for egui_kittest::Harness<'_, re_viewer::App> {
     }
 
     #[track_caller]
-    fn step_until(
+    fn step_until_with_custom_timeout(
         &mut self,
         description: &'static str,
         mut predicate: impl FnMut(&Self) -> bool,
-        step_duration: Duration,
-        max_duration: Duration,
+        poll_interval: Duration,
+        timeout: Duration,
     ) {
-        re_viewer::viewer_test_utils::step_until(
+        re_viewer::viewer_test_utils::step_until_with_custom_timeout(
             description,
             self,
             |harness| predicate(&*harness),
-            step_duration,
-            max_duration,
+            poll_interval,
+            timeout,
         );
     }
 
@@ -248,13 +257,13 @@ impl ViewerHarnessExt for InspectionHarness {
     }
 
     #[track_caller]
-    fn step_until(
+    fn step_until_with_custom_timeout(
         &mut self,
         description: &'static str,
         predicate: impl FnMut(&Self) -> bool,
-        step_duration: Duration,
-        max_duration: Duration,
+        poll_interval: Duration,
+        timeout: Duration,
     ) {
-        Self::step_until(self, description, predicate, step_duration, max_duration);
+        Self::step_until_with_custom_timeout(self, description, predicate, poll_interval, timeout);
     }
 }

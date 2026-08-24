@@ -140,7 +140,7 @@ pub async fn preview_table() {
         .map(|uri| uri.clone().without_fragment())
         .collect();
     let preview_entity = re_log_types::EntityPath::from("test_entity");
-    viewer_test_utils::step_until(
+    viewer_test_utils::step_until_with_custom_timeout(
         "All preview recordings loaded",
         &mut harness,
         |harness| {
@@ -197,7 +197,7 @@ pub async fn preview_table() {
     }
 
     let opened_segment = preview_uris[0].clone();
-    viewer_test_utils::step_until(
+    viewer_test_utils::step_until_with_custom_timeout(
         "Clicked card opens its recording",
         &mut harness,
         |harness| {
@@ -215,7 +215,7 @@ pub async fn preview_table() {
         Duration::from_secs(15),
     );
 
-    viewer_test_utils::step_until(
+    viewer_test_utils::step_until_with_custom_timeout(
         "Opened recording source tree populated",
         &mut harness,
         |harness| harness.query_by_label_contains("Streams").is_some(),

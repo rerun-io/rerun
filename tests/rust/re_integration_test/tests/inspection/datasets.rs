@@ -1,4 +1,4 @@
-use std::{str::FromStr as _, time::Duration};
+use std::str::FromStr as _;
 
 use egui_kittest::SnapshotResults;
 use egui_kittest::kittest::Queryable as _;
@@ -43,12 +43,9 @@ pub async fn dataset_ui_test() {
     harness.run_ok();
 
     // Wait for both datasets to appear.
-    harness.step_until(
-        "Redap server datasets appear",
-        |harness| harness.query_all_by_label_contains("my_dataset").count() == 2,
-        Duration::from_millis(100),
-        Duration::from_secs(5),
-    );
+    harness.step_until("Redap server datasets appear", |harness| {
+        harness.query_all_by_label_contains("my_dataset").count() == 2
+    });
 
     // Click the dataset (pick the first match, which is in the left panel).
     harness
@@ -57,17 +54,12 @@ pub async fn dataset_ui_test() {
         .expect("my_dataset label should be present")
         .click();
 
-    harness.step_until(
-        "Redap recording id appears",
-        |harness| {
-            harness
-                .query_all_by_label_contains("new_recording_id")
-                .next()
-                .is_some()
-        },
-        Duration::from_millis(100),
-        Duration::from_secs(5),
-    );
+    harness.step_until("Redap recording id appears", |harness| {
+        harness
+            .query_all_by_label_contains("new_recording_id")
+            .next()
+            .is_some()
+    });
     harness.step_until_no_loading_indicator();
 
     snapshot_results.add(harness.try_snapshot("dataset_ui_table"));
@@ -85,17 +77,12 @@ pub async fn start_with_dataset_url() {
         ..Default::default()
     });
 
-    harness.step_until(
-        "Redap recording id appears",
-        |harness| {
-            harness
-                .query_all_by_label_contains("new_recording_id")
-                .next()
-                .is_some()
-        },
-        Duration::from_millis(100),
-        Duration::from_secs(5),
-    );
+    harness.step_until("Redap recording id appears", |harness| {
+        harness
+            .query_all_by_label_contains("new_recording_id")
+            .next()
+            .is_some()
+    });
     harness.step_until_no_loading_indicator();
 
     let mut snapshot_results = SnapshotResults::new();
@@ -136,17 +123,12 @@ pub async fn start_with_segment_fragment_url() {
         ..Default::default()
     });
 
-    harness.step_until(
-        "Recording opened and source tree populated",
-        |harness| {
-            harness.query_by_label_contains("Streams").is_some()
-                && !harness.is_loading()
-                && harness.query_by_label_contains("my_dataset").is_some()
-                && harness.query_all_by_label("new_recording_id").count() == 3
-        },
-        Duration::from_millis(100),
-        Duration::from_secs(5),
-    );
+    harness.step_until("Recording opened and source tree populated", |harness| {
+        harness.query_by_label_contains("Streams").is_some()
+            && !harness.is_loading()
+            && harness.query_by_label_contains("my_dataset").is_some()
+            && harness.query_all_by_label("new_recording_id").count() == 3
+    });
 
     harness.set_selection_panel_opened(false);
 
