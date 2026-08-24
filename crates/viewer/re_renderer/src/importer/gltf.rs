@@ -292,7 +292,10 @@ fn import_mesh(
 
         materials.push(Material {
             label: primitive.material().name().into(),
-            index_range: index_offset..triangle_indices.len() as u32 * 3,
+            index_range: re_span::Span::from_start_end(
+                index_offset,
+                triangle_indices.len() as u32 * 3,
+            ),
             albedo,
             albedo_factor,
         });

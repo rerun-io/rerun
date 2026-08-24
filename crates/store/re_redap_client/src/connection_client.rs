@@ -123,9 +123,10 @@ async fn fetch_rrd_manifest_via_key(
     };
 
     let Some(range_end) = location
-        .length
+        .byte_span
+        .len
         .checked_sub(1)
-        .and_then(|length_minus_one| location.offset.checked_add(length_minus_one))
+        .and_then(|length_minus_one| location.byte_span.start.checked_add(length_minus_one))
     else {
         return Err(ApiError::deserialization(
             origin,
@@ -137,7 +138,7 @@ async fn fetch_rrd_manifest_via_key(
     let mut request = ehttp::Request::get(direct_url.as_str()).with_timeout(None);
     request.headers.insert(
         http::header::RANGE.as_str(),
-        format!("bytes={}-{}", location.offset, range_end),
+        format!("bytes={}-{range_end}", location.byte_span.start),
     );
     let expected_etag = etag.filter(|etag| !etag.is_empty());
     if let Some(etag) = expected_etag.as_ref().and_then(ETag::as_if_match) {
@@ -199,7 +200,7 @@ async fn fetch_rrd_manifest_via_key(
 
     let content_range = response.headers.get(http::header::CONTENT_RANGE.as_str());
     if !content_range.is_some_and(|content_range| {
-        content_range_matches(content_range, location.offset, range_end)
+        content_range_matches(content_range, location.byte_span.start, range_end)
     }) {
         return Err(ApiError::with_kind_and_source(
             origin,
@@ -213,7 +214,7 @@ async fn fetch_rrd_manifest_via_key(
         ));
     }
 
-    let expected_length = usize::try_from(location.length).map_err(|err| {
+    let expected_length = usize::try_from(location.byte_span.len).map_err(|err| {
         ApiError::deserialization_with_source(
             origin,
             trace_id,

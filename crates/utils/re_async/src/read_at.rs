@@ -1,5 +1,7 @@
 use std::io;
 
+use re_span::Span;
+
 /// Asynchronous positional reads of bytes.
 ///
 /// Reads are stateless (`&self`, explicit `offset`) and return owned [`bytes::Bytes`], so a single
@@ -8,12 +10,25 @@ use std::io;
 //
 // TODO(grtlr): `std::fs::File::read_exact_at` performs blocking I/O on the async executor thread.
 // Run the complete positioned read via `spawn_blocking`.
+/// Convert `span.len` for indexing, failing where it does not fit
+/// (`usize` is 32-bit on wasm).
+///
+/// Shared by [`AsyncReadAt`] implementations so the error stays uniform.
+pub fn span_len_usize(span: Span<u64>) -> io::Result<usize> {
+    usize::try_from(span.len).map_err(|_err| {
+        io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "read length does not fit this platform's pointer size",
+        )
+    })
+}
+
 #[async_trait::async_trait]
 pub trait AsyncReadAt: Send + Sync {
-    /// Reads exactly `len` bytes starting at `offset`.
+    /// Reads exactly the bytes of `span`.
     ///
-    /// Returns [`io::ErrorKind::UnexpectedEof`] if the stream ends before `len` bytes are read.
-    async fn read_exact_at(&self, offset: u64, len: usize) -> io::Result<bytes::Bytes>;
+    /// Returns [`io::ErrorKind::UnexpectedEof`] if the stream ends before `span.len` bytes are read.
+    async fn read_exact_at(&self, span: Span<u64>) -> io::Result<bytes::Bytes>;
 
     /// Returns the total number of bytes available.
     async fn size(&self) -> io::Result<u64>;
@@ -24,7 +39,9 @@ pub trait AsyncReadAt: Send + Sync {
 #[cfg(not(target_arch = "wasm32"))]
 #[async_trait::async_trait]
 impl AsyncReadAt for std::fs::File {
-    async fn read_exact_at(&self, offset: u64, len: usize) -> io::Result<bytes::Bytes> {
+    async fn read_exact_at(&self, span: Span<u64>) -> io::Result<bytes::Bytes> {
+        let offset = span.start;
+        let len = span_len_usize(span)?;
         let mut buf = vec![0u8; len];
         let mut filled = 0;
         while filled < len {
@@ -67,13 +84,10 @@ impl AsyncReadAt for std::fs::File {
 /// [`bytes::Bytes::slice`] shares the backing allocation, so reads are zero-copy.
 #[async_trait::async_trait]
 impl AsyncReadAt for bytes::Bytes {
-    async fn read_exact_at(&self, offset: u64, len: usize) -> io::Result<Self> {
-        let Ok(start) = usize::try_from(offset) else {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidInput,
-                "offset out of range",
-            ));
-        };
+    async fn read_exact_at(&self, span: Span<u64>) -> io::Result<Self> {
+        let start = usize::try_from(span.start)
+            .map_err(|_err| io::Error::new(io::ErrorKind::InvalidInput, "span out of range"))?;
+        let len = span_len_usize(span)?;
         let end = start
             .checked_add(len)
             .filter(|&end| end <= self.len())

@@ -496,7 +496,7 @@ where
 
     // NOTE: No need for validity checks here, `component_spans` already takes care of that.
     Either::Right(
-        component_spans.map(move |span| bytemuck::cast_slice(&values[(span * size).range()])),
+        component_spans.map(move |span| bytemuck::cast_slice(&values[span.scale(size).range()])),
     )
 }
 
@@ -585,7 +585,7 @@ where
 
     // NOTE: No need for validity checks here, `component_spans` already takes care of that.
     Either::Right(
-        component_spans.map(move |span| bytemuck::cast_slice(&values[(span * size).range()])),
+        component_spans.map(move |span| bytemuck::cast_slice(&values[span.scale(size).range()])),
     )
 }
 

@@ -13,7 +13,6 @@
 //!   Only one GOP is resident at a time.
 
 use std::io::{Read, Seek, SeekFrom};
-use std::ops::Range;
 
 use itertools::Either;
 
@@ -21,6 +20,7 @@ use re_chunk::{Chunk, ChunkId, EntityPath, RowId, TimeColumn, TimePoint};
 use re_log_types::{TimeType, Timeline, TimelineName};
 use re_sdk_types::archetypes::VideoStream;
 use re_sdk_types::components::VideoCodec;
+use re_span::Span;
 use re_video::player::GetVideoSource;
 use re_video::{
     Mp4TranscodeOptions, SampleIndex, SampleMetadataState, Time, TimeWindow, VideoDataDescription,
@@ -740,8 +740,8 @@ fn sample_ranges(
     timescale: re_video::Timescale,
     emission: &Emission,
     window_cut: Option<WindowCut>,
-) -> Vec<Range<SampleIndex>> {
-    let keeps = |range: &Range<SampleIndex>| {
+) -> Vec<Span<SampleIndex>> {
+    let keeps = |range: &Span<SampleIndex>| {
         let Some(cut) = window_cut else {
             return true;
         };
@@ -762,7 +762,7 @@ fn sample_ranges(
         desc.samples
             .iter_indexed()
             .filter_map(|(idx, sample)| match sample {
-                SampleMetadataState::Present(_) => Some(idx..idx + 1),
+                SampleMetadataState::Present(_) => Some(Span::from_start_len(idx, 1)),
                 SampleMetadataState::Unloaded { .. } => {
                     re_log::warn_once!(
                         "Skipping unloaded sample {idx} in mp4 demux (entity path: {})",
@@ -796,11 +796,11 @@ fn build_gop_chunk(
     desc: &VideoDataDescription,
     timescale: re_video::Timescale,
     emission: &Emission,
-    range: Range<SampleIndex>,
+    range: Span<SampleIndex>,
     window_cut: Option<WindowCut>,
 ) -> Result<Option<(Chunk, Vec<i64>)>, Mp4Error> {
-    let mut time_values: Vec<i64> = Vec::with_capacity(range.len());
-    let mut sample_blobs: Vec<Vec<u8>> = Vec::with_capacity(range.len());
+    let mut time_values: Vec<i64> = Vec::with_capacity(range.len);
+    let mut sample_blobs: Vec<Vec<u8>> = Vec::with_capacity(range.len);
     let mut keyframe_times: Vec<i64> = Vec::new();
 
     let mut sample_bytes = vec![];

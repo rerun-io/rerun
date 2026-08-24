@@ -15,11 +15,11 @@
 //! (same mechanism as transparent point clouds).
 
 use std::num::NonZeroU64;
-use std::ops::Range;
 use std::sync::Arc;
 
 use enumset::{EnumSet, enum_set};
 use parking_lot::Mutex;
+use re_span::Span;
 use smallvec::smallvec;
 
 use super::{DrawData, DrawError, RenderContext, Renderer};
@@ -168,7 +168,7 @@ const VERTICES_PER_GAUSSIAN: u32 = 6;
 #[derive(Clone)]
 struct GaussianSplatBatch {
     bind_group: GpuBindGroup,
-    vertex_range: Range<u32>,
+    vertex_range: Span<u32>,
     active_phases: EnumSet<DrawPhase>,
 
     /// World-space center of the batch, used as its inter-primitive draw-order sort key.
@@ -285,7 +285,7 @@ pub struct GaussianSplatBatchInfo {
     /// Having many of these can be slow as they require their own uniform buffer & draw call each.
     /// This feature is meant for a limited number of "extra selections".
     /// If an overall mask is defined as well, the per-range masks overwrite the overall mask.
-    pub additional_outline_mask_ids_vertex_ranges: Vec<(Range<u32>, OutlineMaskPreference)>,
+    pub additional_outline_mask_ids_vertex_ranges: Vec<(Span<u32>, OutlineMaskPreference)>,
 
     /// Picking object id that applies for the entire batch.
     pub picking_object_id: PickingLayerObjectId,
@@ -566,20 +566,19 @@ impl GaussianSplatDrawData {
                     ctx,
                     batch_info.label.clone(),
                     uniform_buffer_binding,
-                    start_gaussian_for_next_batch..gaussian_range_end,
+                    Span::from_start_end(start_gaussian_for_next_batch, gaussian_range_end),
                     active_phases,
                     center_world_position,
                     sort,
                 ));
 
                 for (range, _) in &batch_info.additional_outline_mask_ids_vertex_ranges {
-                    let range = (range.start + start_gaussian_for_next_batch)
-                        ..(range.end + start_gaussian_for_next_batch);
+                    let range = range.add(start_gaussian_for_next_batch);
                     batches_internal.push(renderer.create_gaussian_splat_batch(
                         ctx,
                         format!("{:?} outline-only {:?}", batch_info.label, range).into(),
                         uniform_buffer_bindings_mask_only_batches.next().unwrap(),
-                        range.clone(),
+                        range,
                         enum_set![DrawPhase::OutlineMask],
                         center_world_position,
                         None,
@@ -621,7 +620,7 @@ impl GaussianSplatRenderer {
         ctx: &RenderContext,
         label: Label,
         uniform_buffer_binding: BindGroupEntry,
-        gaussian_range: Range<u32>,
+        gaussian_range: Span<u32>,
         active_phases: EnumSet<DrawPhase>,
         center_world_position: glam::Vec3,
         sort: Option<TransparentSort>,
@@ -638,8 +637,7 @@ impl GaussianSplatRenderer {
 
         GaussianSplatBatch {
             bind_group,
-            vertex_range: (gaussian_range.start * VERTICES_PER_GAUSSIAN)
-                ..(gaussian_range.end * VERTICES_PER_GAUSSIAN),
+            vertex_range: gaussian_range.scale(VERTICES_PER_GAUSSIAN),
             active_phases,
             center_world_position,
             sort,
@@ -862,7 +860,7 @@ impl Renderer for GaussianSplatRenderer {
                 pass.set_bind_group(2, &batch.bind_group, &[]);
                 pass.set_bind_group(3, lookup_bind_group, &[]);
 
-                pass.draw(batch.vertex_range.clone(), 0..1);
+                pass.draw(batch.vertex_range.range(), 0..1);
             }
         }
 

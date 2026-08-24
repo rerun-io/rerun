@@ -241,14 +241,15 @@ fn process_messages<W: std::io::Write>(
                     .unwrap_or_else(|| store_id.recording_id().to_string()),
             );
 
-            let byte_offsets = &byte_offsets_excluding_header[i..i + data.num_rows()];
-            let byte_sizes = &byte_sizes_excluding_header[i..i + data.num_rows()];
-            let byte_sizes_uncompressed = &byte_sizes_uncompressed[i..i + data.num_rows()];
+            let window = re_span::Span::from_start_len(i, data.num_rows());
+            let byte_offsets = &byte_offsets_excluding_header[window.range()];
+            let byte_sizes = &byte_sizes_excluding_header[window.range()];
+            let byte_sizes_uncompressed = &byte_sizes_uncompressed[window.range()];
 
             // NOTE: All of this works because our CLI tools guarantee that while the data and the
             // footers will be received at a different time, they'll still follow the same global order.
             // Still, we double check the chunk IDs in order to make sure that they still align.
-            let chunk_ids = &chunk_ids[i..i + data.num_rows()];
+            let chunk_ids = &chunk_ids[window.range()];
             for (chunk_id, expected_chunk_id) in
                 itertools::izip!(chunk_ids, manifest.col_chunk_id()?)
             {

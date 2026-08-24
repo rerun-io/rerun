@@ -10,6 +10,7 @@ use arrow::datatypes::{DataType, Field, UInt8Type};
 use arrow::error::ArrowError;
 use itertools::Itertools as _;
 use re_log::debug_assert;
+use re_span::Span;
 
 // ---------------------------------------------------------------------------------
 
@@ -595,18 +596,14 @@ fn test_wrap_in_list_array() {
 /// This is the erased version, see [`deep_slice_array`] for a typed implementation.
 //
 // TODO(cmc): optimize from there; future results should always match this baseline.
-pub fn deep_slice_array_erased(
-    array: &dyn arrow::array::Array,
-    offset: usize,
-    length: usize,
-) -> ArrayRef {
+pub fn deep_slice_array_erased(array: &dyn arrow::array::Array, span: Span<usize>) -> ArrayRef {
     let data = array.to_data();
 
     let use_null_optimization = false;
     let mut data_sliced =
-        arrow::array::MutableArrayData::new(vec![&data], use_null_optimization, length);
+        arrow::array::MutableArrayData::new(vec![&data], use_null_optimization, span.len);
 
-    data_sliced.extend(0, offset, offset + length);
+    data_sliced.extend(0, span.start, span.end());
 
     arrow::array::make_array(data_sliced.freeze())
 }
@@ -619,14 +616,14 @@ pub fn deep_slice_array_erased(
 /// This is the erased version, see [`deep_slice_array_erased`] for a typed implementation.
 //
 // TODO(cmc): optimize from there; future results should always match this baseline.
-pub fn deep_slice_array<T: Array + From<ArrayData>>(array: &T, offset: usize, length: usize) -> T {
+pub fn deep_slice_array<T: Array + From<ArrayData>>(array: &T, span: Span<usize>) -> T {
     let data = array.to_data();
 
     let use_null_optimization = false;
     let mut data_sliced =
-        arrow::array::MutableArrayData::new(vec![&data], use_null_optimization, length);
+        arrow::array::MutableArrayData::new(vec![&data], use_null_optimization, span.len);
 
-    data_sliced.extend(0, offset, offset + length);
+    data_sliced.extend(0, span.start, span.end());
 
     T::from(data_sliced.freeze())
 }
@@ -1065,7 +1062,7 @@ mod tests {
         let to = offset + len;
 
         let sliced = array.slice(offset, len);
-        let deep_sliced = deep_slice_array_erased(&array, offset, len);
+        let deep_sliced = deep_slice_array_erased(&array, Span::from_start_len(offset, len));
         assert_eq!(&deep_sliced, &sliced);
 
         writeln!(output, "{descr}:").ok();

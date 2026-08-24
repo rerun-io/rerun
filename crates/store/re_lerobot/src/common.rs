@@ -466,14 +466,20 @@ pub(crate) fn build_video_stream_chunks(
     let end_sample = video
         .gop_sample_range_for_keyframe(end_keyframe)
         .ok_or(LeRobotError::Other(anyhow!("Bad video data")))?
-        .end;
+        .end();
 
-    let sample_range = start_sample..end_sample;
+    let sample_range =
+        re_span::Span::try_from_start_end(start_sample, end_sample).ok_or_else(|| {
+            anyhow!(
+                "Inverted sample range {start_sample}..{end_sample} for feature '{entity}' \
+                 (episode timestamp range {from_ts}..{to_ts})"
+            )
+        })?;
 
     // Extract all video samples in this range
-    let mut samples = Vec::with_capacity(sample_range.len());
+    let mut samples = Vec::with_capacity(sample_range.len);
 
-    for (sample_idx, sample_meta) in video.samples.iter_index_range_clamped(&sample_range) {
+    for (sample_idx, sample_meta) in video.samples.iter_index_range_clamped(sample_range) {
         let Some(sample_meta) = sample_meta.sample() else {
             continue;
         };

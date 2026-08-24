@@ -1,6 +1,5 @@
 //! Bounded parquet reading: decode only the row groups intersecting a row range.
 
-use std::ops::Range;
 use std::path::Path;
 
 use anyhow::anyhow;
@@ -9,20 +8,21 @@ use parquet::arrow::arrow_reader::{
     ParquetRecordBatchReader, ParquetRecordBatchReaderBuilder, RowSelection, RowSelector,
 };
 use parquet::file::reader::ChunkReader;
+use re_span::Span;
 
 use crate::LeRobotError;
 
-/// Open a record-batch reader over `rows` (half-open); `None` reads the whole file.
+/// Open a record-batch reader over `rows`; `None` reads the whole file.
 ///
-/// A bounded range decodes only the row groups that intersect it, with a [`RowSelection`]
-/// trimming the partial groups at the edges. A range that reaches outside the file, or an
+/// A bounded span decodes only the row groups that intersect it, with a [`RowSelection`]
+/// trimming the partial groups at the edges. A span that reaches outside the file, or an
 /// empty one, is an error.
 ///
 /// There is no separate schema accessor by design: the schema travels with the batches
 /// (`RecordBatch::schema` on any yielded batch).
 pub fn read_row_range(
     path: &Path,
-    rows: Option<Range<u64>>,
+    rows: Option<Span<u64>>,
 ) -> Result<impl Iterator<Item = Result<RecordBatch, arrow::error::ArrowError>> + use<>, LeRobotError>
 {
     re_tracing::profile_function!();
@@ -33,7 +33,7 @@ pub fn read_row_range(
 /// `path` is error context only; the bytes come from `input`.
 fn open_row_range<R: ChunkReader + 'static>(
     input: R,
-    rows: Option<Range<u64>>,
+    rows: Option<Span<u64>>,
     path: &Path,
 ) -> Result<ParquetRecordBatchReader, LeRobotError> {
     let builder = ParquetRecordBatchReaderBuilder::try_new(input)?;
@@ -43,7 +43,7 @@ fn open_row_range<R: ChunkReader + 'static>(
     };
 
     let num_rows = row_count(builder.metadata().file_metadata().num_rows(), path)?;
-    if rows.start >= rows.end || rows.end > num_rows {
+    if rows.is_empty() || num_rows < rows.end() {
         return Err(LeRobotError::InvalidRowRange {
             rows,
             num_rows,
@@ -57,7 +57,7 @@ fn open_row_range<R: ChunkReader + 'static>(
     let mut group_start: u64 = 0;
     for (index, row_group) in builder.metadata().row_groups().iter().enumerate() {
         let group_end = group_start + row_count(row_group.num_rows(), path)?;
-        if group_start < rows.end && rows.start < group_end {
+        if group_start < rows.end() && rows.start < group_end {
             row_groups.push(index);
             selected_start.get_or_insert(group_start);
             selected_len += group_end - group_start;
@@ -70,7 +70,7 @@ fn open_row_range<R: ChunkReader + 'static>(
     // range is in bounds), so one skip/select/skip triple covers it.
     let selected_start = selected_start.unwrap_or(rows.start);
     let leading = rows.start - selected_start;
-    let taken = rows.end - rows.start;
+    let taken = rows.len;
     re_log::debug_assert!(
         leading + taken <= selected_len,
         "the selected groups must cover the in-bounds range"
@@ -177,26 +177,33 @@ mod tests {
         write_parquet(&path, 10, 4); // row groups: [0,4), [4,8), [8,10)
 
         for (range, expected) in [
-            (0..10, (0..10).collect::<Vec<i64>>()),
-            (3..7, vec![3, 4, 5, 6]),
-            (4..8, vec![4, 5, 6, 7]),
-            (9..10, vec![9]),
+            (Span::from_start_end(0, 10), (0..10).collect::<Vec<i64>>()),
+            (Span::from_start_end(3, 7), vec![3, 4, 5, 6]),
+            (Span::from_start_end(4, 8), vec![4, 5, 6, 7]),
+            (Span::from_start_end(9, 10), vec![9]),
         ] {
-            let reader = read_row_range(&path, Some(range.clone())).unwrap();
+            let reader = read_row_range(&path, Some(range)).unwrap();
             assert_eq!(read_values(reader), expected, "range {range:?}");
         }
     }
 
-    /// An empty or out-of-bounds range is a loud error, not a silently clamped read.
+    /// An empty or out-of-bounds span is a loud error, not a silently clamped read.
     #[test]
-    #[expect(clippy::reversed_empty_ranges)] // 7..3 is the point: it must be rejected
     fn empty_and_out_of_bounds_ranges_are_errors() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("data.parquet");
         write_parquet(&path, 10, 4);
 
-        for range in [5..5, 8..11, 10..12, 7..3] {
-            let Err(err) = read_row_range(&path, Some(range.clone())) else {
+        // An inverted range like `7..3` is unrepresentable as a `Span`:
+        // it must be rejected at construction.
+        assert_eq!(Span::try_from_start_end(7_u64, 3), None);
+
+        for range in [
+            Span::from_start_end(5, 5),
+            Span::from_start_end(8, 11),
+            Span::from_start_end(10, 12),
+        ] {
+            let Err(err) = read_row_range(&path, Some(range)) else {
                 panic!("range {range:?} must be rejected")
             };
             assert!(
@@ -217,7 +224,7 @@ mod tests {
             .unwrap()
             .map(Result::unwrap)
             .collect();
-        let ranged: Vec<RecordBatch> = read_row_range(&path, Some(0..10))
+        let ranged: Vec<RecordBatch> = read_row_range(&path, Some(Span::from_start_end(0, 10)))
             .unwrap()
             .map(Result::unwrap)
             .collect();
@@ -281,7 +288,12 @@ mod tests {
             offsets: Arc::clone(&offsets),
         };
 
-        let reader = open_row_range(logger, Some(8..10), Path::new("logged.parquet")).unwrap();
+        let reader = open_row_range(
+            logger,
+            Some(Span::from_start_end(8, 10)),
+            Path::new("logged.parquet"),
+        )
+        .unwrap();
         let metadata = {
             let file = File::open(&path).unwrap();
             ParquetRecordBatchReaderBuilder::try_new(file)

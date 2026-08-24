@@ -111,8 +111,7 @@ impl From<ChunkKey> for crate::cloud::v1alpha1::ChunkKey {
 #[derive(Debug, Clone)]
 pub struct RrdChunkLocation {
     pub url: url::Url,
-    pub offset: u64,
-    pub length: u64,
+    pub byte_span: re_span::Span<u64>,
 }
 
 impl RrdChunkLocation {
@@ -155,8 +154,7 @@ impl TryFrom<crate::cloud::v1alpha1::RrdChunkLocation> for RrdChunkLocation {
 
         Ok(Self {
             url,
-            offset,
-            length,
+            byte_span: re_span::Span::from_start_len(offset, length),
         })
     }
 }
@@ -165,8 +163,8 @@ impl From<RrdChunkLocation> for crate::cloud::v1alpha1::RrdChunkLocation {
     fn from(value: RrdChunkLocation) -> Self {
         Self {
             url: Some(value.url.to_string()),
-            offset: Some(value.offset),
-            length: Some(value.length),
+            offset: Some(value.byte_span.start),
+            length: Some(value.byte_span.len),
         }
     }
 }

@@ -731,7 +731,7 @@ fn materials_for_uncolored_mesh(
 ) -> smallvec::SmallVec<[mesh::Material; 1]> {
     smallvec![mesh::Material {
         label: "default material".into(),
-        index_range: 0..(num_triangles * 3) as u32,
+        index_range: re_span::Span::from_start_len(0, (num_triangles * 3) as u32),
         albedo: render_ctx
             .texture_manager_2d
             .white_texture_unorm_handle()

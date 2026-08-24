@@ -26,6 +26,7 @@ use arrow::util::display::{ArrayFormatter, FormatOptions};
 use egui::{RichText, Ui};
 use itertools::Itertools as _;
 use re_log_types::TimestampFormat;
+use re_span::Span;
 use re_ui::list_item::{CustomContent, LabelContent};
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_ui::{UiExt as _, UiLayout};
@@ -141,7 +142,11 @@ impl<'a> ArrayUi<'a> {
 
     /// Show a `list_item` based tree view of the data.
     pub fn show(&self, ui: &mut Ui) {
-        list_ui(ui, 0..self.array.len(), &*self.show_index);
+        list_ui(
+            ui,
+            Span::from_start_len(0, self.array.len()),
+            &*self.show_index,
+        );
     }
 
     /// Returns a [`SyntaxHighlightedBuilder`] that displays the entire array.
@@ -569,14 +574,14 @@ fn write_list(
 ///
 /// If there are enough items, it will show items in a tree of ranges.
 ///
-/// Since arrow arrays might not start at 0, you need pass a `Range<usize>`.
+/// Since arrow arrays might not start at 0, you need pass a [`Span`].
 /// E.g. a [`GenericListArray`] consists of a single large values array and an offsets array.
 /// So the nth list would be a slice of the main array based on the offsets array at n.
 /// See the [`GenericListArray`] docs for more info.
 ///
 /// The indexes shown in the UI will be _normalized_ so it's always `0..end-start`.
-pub(crate) fn list_ui(ui: &mut Ui, range: Range<usize>, values: &dyn ShowIndex) {
-    let ui_range = 0..(range.end - range.start);
+pub(crate) fn list_ui(ui: &mut Ui, range: Span<usize>, values: &dyn ShowIndex) {
+    let ui_range = Span::from_start_len(0, range.len);
 
     list_item_ranges(ui, ui_range, &mut |ui, ui_idx| {
         let node = ArrowNode::index(ui_idx, values);
@@ -610,7 +615,7 @@ impl<'a, O: OffsetSizeTrait> ShowIndexState<'a> for &'a GenericListArray<O> {
         let offsets = self.value_offsets();
         let end = offsets[idx + 1].as_usize();
         let start = offsets[idx].as_usize();
-        list_ui(ui, start..end, show_index.as_ref());
+        list_ui(ui, Span::from_start_end(start, end), show_index.as_ref());
     }
 
     fn is_item_nested(&self) -> bool {
@@ -664,7 +669,7 @@ impl<'a> ShowIndexState<'a> for &'a FixedSizeListArray {
     ) {
         let start = idx * *value_length;
         let end = start + *value_length;
-        list_ui(ui, start..end, values.as_ref());
+        list_ui(ui, Span::from_start_end(start, end), values.as_ref());
     }
 
     fn is_item_nested(&self) -> bool {

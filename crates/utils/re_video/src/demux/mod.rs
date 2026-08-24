@@ -98,6 +98,9 @@ pub enum VideoCodec {
 /// Index used for referencing into [`VideoDataDescription::samples`].
 pub type SampleIndex = usize;
 
+/// A span of consecutive [`SampleIndex`]es.
+pub type SampleIndexSpan = re_span::Span<SampleIndex>;
+
 /// An index into [`VideoDataDescription::keyframe_indices`], not stable between mutations.
 pub type KeyframeIndex = usize;
 
@@ -210,18 +213,14 @@ impl re_byte_size::SizeBytes for VideoDataDescription {
 
 impl VideoDataDescription {
     /// Get the group of pictures which use a keyframe, including the keyframe sample itself.
-    pub fn gop_sample_range_for_keyframe(
-        &self,
-        keyframe_idx: usize,
-    ) -> Option<std::ops::Range<SampleIndex>> {
-        Some(
-            *self.keyframe_indices.get(keyframe_idx)?
-                ..self
-                    .keyframe_indices
-                    .get(keyframe_idx + 1)
-                    .copied()
-                    .unwrap_or_else(|| self.samples.next_index()),
-        )
+    pub fn gop_sample_range_for_keyframe(&self, keyframe_idx: usize) -> Option<Span<SampleIndex>> {
+        Some(Span::from_start_end(
+            *self.keyframe_indices.get(keyframe_idx)?,
+            self.keyframe_indices
+                .get(keyframe_idx + 1)
+                .copied()
+                .unwrap_or_else(|| self.samples.next_index()),
+        ))
     }
 
     /// If this video is a [`VideoCodec::ImageSequence`], returns the

@@ -1,12 +1,11 @@
-use std::ops::Range;
-
 use egui::Ui;
+use re_span::Span;
 use re_ui::UiExt as _;
 use re_ui::list_item::LabelContent;
 
 /// Utility to efficiently display a large list as recursive tree of smaller ranges.
-pub fn list_item_ranges(ui: &mut Ui, range: Range<usize>, item_fn: &mut dyn FnMut(&mut Ui, usize)) {
-    let range_len = range.len();
+pub fn list_item_ranges(ui: &mut Ui, range: Span<usize>, item_fn: &mut dyn FnMut(&mut Ui, usize)) {
+    let range_len = range.len;
 
     const RANGE_SIZE: usize = 100;
 
@@ -28,15 +27,15 @@ pub fn list_item_ranges(ui: &mut Ui, range: Range<usize>, item_fn: &mut dyn FnMu
     };
 
     let mut current = range.start;
-    while current < range.end {
-        let chunk_end = usize::min(current + chunk_size, range.end);
-        let chunk_range = current..chunk_end;
-        let id = ui.unique_id().with(chunk_range.clone());
+    while current < range.end() {
+        let chunk_end = usize::min(current + chunk_size, range.end());
+        let chunk_range = Span::from_start_end(current, chunk_end);
+        let id = ui.unique_id().with(chunk_range);
         ui.list_item().show_hierarchical_with_children(
             ui,
             id,
             false,
-            LabelContent::new(format!("{}..{}", chunk_range.start, chunk_range.end - 1)),
+            LabelContent::new(format!("{}..{}", chunk_range.start, chunk_range.end() - 1)),
             |ui| {
                 list_item_ranges(ui, chunk_range, item_fn);
             },

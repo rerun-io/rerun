@@ -299,7 +299,7 @@ impl VoxelGridMapVisualizer {
             if let Some(mask) = highlighted_instances.get(&Instance::from(instance_index as u64)) {
                 let instance_index = instance_index as u32;
                 additional_outline_mask_ids_instance_ranges
-                    .push((instance_index..instance_index + 1, *mask));
+                    .push((re_span::Span::from_start_len(instance_index, 1), *mask));
             }
 
             min_index = min_index.min(index);

@@ -107,6 +107,8 @@ pub use importer::{CpuModel, CpuModelMeshKey};
 pub use line_drawable_builder::{LineBatchBuilder, LineDrawableBuilder, LineStripBuilder};
 pub use point_cloud_builder::{PointCloudBatchBuilder, PointCloudBuilder};
 pub use queueable_draw_data::QueueableDrawData;
+// Re-export `Span`, which is used in many public interfaces.
+pub use re_span::Span;
 pub use rect::{RectF32, RectInt};
 pub use renderer::gpu_data::{GaussianShCoefficient, PositionRadius};
 pub use robust_bounds::RobustBounds;

@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 
 use re_async::AsyncReadAt;
 use re_log_types::{ApplicationId, LogMsg, StoreId};
+use re_span::Span;
 
 use crate::rrd::{
     CodecError, Decodable as _, DecoderEntrypoint as _, MessageHeader, MessageKind, StreamFooter,
@@ -37,7 +38,10 @@ pub(super) async fn read_rrd_footer_payload<R: AsyncReadAt>(
         ));
     }
     let header_buf = reader
-        .read_exact_at(0, StreamHeader::ENCODED_SIZE_BYTES)
+        .read_exact_at(Span::from_start_len(
+            0,
+            StreamHeader::ENCODED_SIZE_BYTES as u64,
+        ))
         .await?;
     StreamHeader::from_rrd_bytes(&header_buf)?; // validates FourCC + version
 
@@ -47,10 +51,10 @@ pub(super) async fn read_rrd_footer_payload<R: AsyncReadAt>(
     }
     // SAFETY: The preceding size check prevents the subtraction from underflowing.
     let footer_buf = reader
-        .read_exact_at(
+        .read_exact_at(Span::from_start_len(
             file_len - StreamFooter::ENCODED_SIZE_BYTES as u64,
-            StreamFooter::ENCODED_SIZE_BYTES,
-        )
+            StreamFooter::ENCODED_SIZE_BYTES as u64,
+        ))
         .await?;
 
     let Ok(stream_footer) = StreamFooter::from_rrd_bytes(&footer_buf) else {
@@ -63,11 +67,10 @@ pub(super) async fn read_rrd_footer_payload<R: AsyncReadAt>(
         return Ok(None);
     };
 
-    let span = &entry.rrd_footer_byte_span_from_start_excluding_header;
-    let payload_len = usize::try_from(span.len)?;
+    let span = entry.rrd_footer_byte_span_from_start_excluding_header;
 
     // Sanity check: payload must fit within the file.
-    if span.start + span.len > file_len {
+    if file_len < span.end() {
         return Err(CodecError::FrameDecoding(format!(
             "RrdFooter payload span ({start}..{end}) exceeds file size ({file_len})",
             start = span.start,
@@ -76,7 +79,7 @@ pub(super) async fn read_rrd_footer_payload<R: AsyncReadAt>(
     }
 
     // 3. Read the RrdFooter payload.
-    let payload_buf = reader.read_exact_at(span.start, payload_len).await?;
+    let payload_buf = reader.read_exact_at(span).await?;
 
     // 4. Validate CRC.
     let actual_crc = StreamFooter::compute_crc(&payload_buf);
@@ -139,7 +142,10 @@ pub async fn enumerate_legacy_metadata<R: AsyncReadAt>(
     // Read and validate the StreamHeader; it also carries the crate version we need when
     // decoding individual message payloads (for version-dependent migrations).
     let stream_header_buf = reader
-        .read_exact_at(0, StreamHeader::ENCODED_SIZE_BYTES)
+        .read_exact_at(Span::from_start_len(
+            0,
+            StreamHeader::ENCODED_SIZE_BYTES as u64,
+        ))
         .await?;
     let stream_header = StreamHeader::from_rrd_bytes(&stream_header_buf)?;
     let (version, _options) = stream_header.to_version_and_options()?;
@@ -151,7 +157,10 @@ pub async fn enumerate_legacy_metadata<R: AsyncReadAt>(
     let mut offset = StreamHeader::ENCODED_SIZE_BYTES as u64;
     loop {
         let msg_header_buf = match reader
-            .read_exact_at(offset, MessageHeader::ENCODED_SIZE_BYTES)
+            .read_exact_at(Span::from_start_len(
+                offset,
+                MessageHeader::ENCODED_SIZE_BYTES as u64,
+            ))
             .await
         {
             Ok(buf) => buf,
@@ -165,8 +174,9 @@ pub async fn enumerate_legacy_metadata<R: AsyncReadAt>(
             MessageKind::End => break,
 
             MessageKind::SetStoreInfo | MessageKind::BlueprintActivationCommand => {
-                let payload_len = usize::try_from(header.len).map_err(CodecError::Overflow)?;
-                let payload = reader.read_exact_at(offset, payload_len).await?;
+                let payload = reader
+                    .read_exact_at(Span::from_start_len(offset, header.len))
+                    .await?;
                 offset += header.len;
                 let byte_span = re_chunk::Span::from_start_len(0, header.len);
                 match LogMsg::decode(

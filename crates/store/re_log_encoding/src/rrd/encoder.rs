@@ -8,6 +8,7 @@ use re_build_info::CrateVersion;
 use re_chunk::{ChunkError, ChunkResult};
 use re_log_types::{LogMsg, StoreId};
 use re_sorbet::SorbetError;
+use re_span::Span;
 
 use crate::{
     CodecError, Compression, Encodable as _, EncodingOptions, MessageHeader, MessageKind,
@@ -113,7 +114,7 @@ impl FooterState {
     fn append(
         &mut self,
         msg: &re_log_types::LogMsg,
-        byte_span_excluding_header: re_span::Span<u64>,
+        byte_span_excluding_header: Span<u64>,
         byte_size_uncompressed: u64,
     ) -> Result<(), EncodeError> {
         match msg {
@@ -279,7 +280,7 @@ impl<W: std::io::Write> Encoder<W> {
     pub unsafe fn append_transport_without_footer(
         &mut self,
         message: &re_protos::log_msg::v1alpha1::log_msg::Msg,
-    ) -> Result<(re_span::Span<u64>, u64), EncodeError> {
+    ) -> Result<(Span<u64>, u64), EncodeError> {
         // We cannot update the RRD manifest without decoding the message, which would defeat the
         // entire purposes of using this method in the first place.
         // Therefore, we disable footers if and when this method is used.
@@ -294,7 +295,7 @@ impl<W: std::io::Write> Encoder<W> {
     fn write_encodable(
         &mut self,
         encodable: &dyn crate::Encodable,
-    ) -> Result<(u64, re_span::Span<u64>), EncodeError> {
+    ) -> Result<(u64, Span<u64>), EncodeError> {
         re_tracing::profile_function!();
 
         if self.is_finished {
@@ -324,7 +325,7 @@ impl<W: std::io::Write> Encoder<W> {
         let byte_size_excluding_header = n - crate::MessageHeader::ENCODED_SIZE_BYTES as u64;
 
         let byte_span_excluding_header =
-            re_span::Span::from_start_len(byte_offset_excluding_header, byte_size_excluding_header);
+            Span::from_start_len(byte_offset_excluding_header, byte_size_excluding_header);
 
         Ok((n, byte_span_excluding_header))
     }

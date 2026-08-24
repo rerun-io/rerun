@@ -123,7 +123,7 @@ fn cube_gpu_mesh(ctx: &RenderContext) -> Arc<GpuMesh> {
                 vertex_positions,
                 materials: smallvec![Material {
                     label: "opaque_material".into(),
-                    index_range: 0..36,
+                    index_range: re_span::Span::from_start_len(0, 36),
                     albedo: ctx.texture_manager_2d.white_texture_unorm_handle().clone(),
                     albedo_factor: re_renderer::Rgba::WHITE,
                 }],

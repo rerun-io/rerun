@@ -92,12 +92,8 @@ struct VideoBlobCache {
     remaining_refs: HashMap<PathBuf, usize>,
 }
 
-/// Episode location within a Parquet file
-#[derive(Debug, Clone)]
-struct EpisodeRowRange {
-    start_row: usize,
-    end_row: usize,
-}
+/// Episode row span within a Parquet file
+type EpisodeRowSpan = re_span::Span<usize>;
 
 /// Read the string at index `i`, returning `None` if the array is absent or the value is null.
 fn value_at(array: Option<&StringArray>, i: usize) -> Option<&str> {
@@ -479,7 +475,7 @@ impl LeRobotDatasetV3 {
             }
 
             if let Some(range) = row_ranges.get(&ep_idx) {
-                let sliced = full_data.slice(range.start_row, range.end_row - range.start_row);
+                let sliced = full_data.slice(range.start, range.len);
                 cache.insert(ep_idx, Arc::new(sliced));
             }
         }
@@ -490,8 +486,8 @@ impl LeRobotDatasetV3 {
     /// Build an index mapping `episode_index` -> row range in a single pass
     fn build_episode_row_index(
         episode_indices: &Int64Array,
-    ) -> HashMap<EpisodeIndex, EpisodeRowRange> {
-        let mut ranges: HashMap<EpisodeIndex, EpisodeRowRange> = HashMap::default();
+    ) -> HashMap<EpisodeIndex, EpisodeRowSpan> {
+        let mut ranges: HashMap<EpisodeIndex, EpisodeRowSpan> = HashMap::default();
         let mut current_episode: Option<i64> = None;
         let mut current_start = 0;
 
@@ -505,10 +501,7 @@ impl LeRobotDatasetV3 {
                 {
                     ranges.insert(
                         EpisodeIndex(prev_ep as usize),
-                        EpisodeRowRange {
-                            start_row: current_start,
-                            end_row: i,
-                        },
+                        EpisodeRowSpan::from_start_end(current_start, i),
                     );
                 }
                 current_episode = Some(ep_idx);
@@ -522,10 +515,7 @@ impl LeRobotDatasetV3 {
         {
             ranges.insert(
                 EpisodeIndex(ep_idx as usize),
-                EpisodeRowRange {
-                    start_row: current_start,
-                    end_row: episode_indices.len(),
-                },
+                EpisodeRowSpan::from_start_end(current_start, episode_indices.len()),
             );
         }
 

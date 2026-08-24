@@ -2,7 +2,7 @@
 
 use arrow::array::ArrayRef;
 use arrow::datatypes::Field;
-use re_chunk::{Chunk, ChunkComponents, ChunkId, EntityPath, TimeColumn};
+use re_chunk::{Chunk, ChunkComponents, ChunkId, EntityPath, Span, TimeColumn};
 
 use crate::config::Hdf5Config;
 use crate::convert;
@@ -19,9 +19,9 @@ struct UnitColumn {
 }
 
 impl UnitColumn {
-    /// This column's per-row values for the row window `[start, start + len)`.
-    fn window_values(&self, start: usize, len: usize) -> Result<(Field, ArrayRef), Hdf5Error> {
-        convert::read_row_values(&self.dataset, &self.desc, start, len)
+    /// This column's per-row values for the given row window.
+    fn window_values(&self, rows: Span<usize>) -> Result<(Field, ArrayRef), Hdf5Error> {
+        convert::read_row_values(&self.dataset, &self.desc, rows)
     }
 }
 
@@ -163,6 +163,7 @@ impl Hdf5ChunkIterator {
             .expect("emit_window is only called with pending rows");
         let start = pending.next_row;
         let len = (pending.num_rows - start).min(pending.rows_per_window);
+        let window = Span::from_start_len(start, len);
         // Advance before reading, so a failed window doesn't repeat forever.
         pending.next_row += len;
 
@@ -187,7 +188,7 @@ impl Hdf5ChunkIterator {
         let window_values = pending
             .columns
             .iter()
-            .map(|column| column.window_values(start, len))
+            .map(|column| column.window_values(window))
             .collect::<Result<Vec<_>, _>>()?;
 
         // A single-dataset group emits a bare component even in struct mode,

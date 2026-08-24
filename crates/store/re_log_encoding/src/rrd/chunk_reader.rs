@@ -62,12 +62,10 @@ pub async fn read_chunks<R: AsyncReadAt>(
 
     for group in &groups {
         // Read the entire merged span in one I/O call.
-        let buf = reader
-            .read_exact_at(group.byte_span.start, usize::try_from(group.byte_span.len)?)
-            .await?;
+        let buf = reader.read_exact_at(group.byte_span).await?;
 
         // Slice out individual chunks and decode them.
-        for &(_chunk_id, chunk_span) in &entries[group.entry_range.clone()] {
+        for &(_chunk_id, chunk_span) in &entries[group.entry_span.range()] {
             let local_span = Span::from_start_len(
                 usize::try_from(chunk_span.start - group.byte_span.start)?,
                 usize::try_from(chunk_span.len)?,
@@ -85,7 +83,7 @@ struct CoalescedSpan {
     byte_span: Span<u64>,
 
     /// Which entries (index range into the sorted entries slice) this span covers.
-    entry_range: std::ops::Range<usize>,
+    entry_span: Span<usize>,
 }
 
 /// Merge chunk spans that are adjacent or within [`MERGE_GAP_BYTES`] of each other.
@@ -99,14 +97,14 @@ fn coalesce_spans(entries: &[(ChunkId, Span<u64>)]) -> Vec<CoalescedSpan> {
             if span.start <= last_end + MERGE_GAP_BYTES {
                 // Extend the current group.
                 last.byte_span.len = span.end().max(last_end) - last.byte_span.start;
-                last.entry_range.end = i + 1;
+                last.entry_span.len = i + 1 - last.entry_span.start;
                 continue;
             }
         }
         // Start a new group.
         groups.push(CoalescedSpan {
             byte_span: span,
-            entry_range: i..i + 1,
+            entry_span: Span::from_start_len(i, 1),
         });
     }
 
@@ -213,7 +211,7 @@ mod tests {
         let groups = coalesce_spans(&entries);
         assert_eq!(groups.len(), 1);
         assert_eq!(groups[0].byte_span, span(100, 150)); // 100..250
-        assert_eq!(groups[0].entry_range, 0..3);
+        assert_eq!(groups[0].entry_span, Span::from_start_len(0, 3));
     }
 
     #[test]
@@ -230,10 +228,10 @@ mod tests {
         assert_eq!(groups.len(), 2);
 
         assert_eq!(groups[0].byte_span, span(0, 200)); // 0..200
-        assert_eq!(groups[0].entry_range, 0..2);
+        assert_eq!(groups[0].entry_span, Span::from_start_len(0, 2));
 
         assert_eq!(groups[1].byte_span, span(200 + gap, 150)); // (200+gap)..(200+gap+150)
-        assert_eq!(groups[1].entry_range, 2..4);
+        assert_eq!(groups[1].entry_span, Span::from_start_len(2, 2));
     }
 
     #[test]
@@ -246,7 +244,7 @@ mod tests {
         let groups = coalesce_spans(&entries);
         assert_eq!(groups.len(), 1);
         assert_eq!(groups[0].byte_span, span(0, 100 + MERGE_GAP_BYTES + 50));
-        assert_eq!(groups[0].entry_range, 0..2);
+        assert_eq!(groups[0].entry_span, Span::from_start_len(0, 2));
 
         // One byte beyond → separate groups.
         let entries = vec![

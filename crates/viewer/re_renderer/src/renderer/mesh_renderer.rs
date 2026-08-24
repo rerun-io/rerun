@@ -3,8 +3,8 @@
 //! Uses instancing to render instances of the same mesh in a single draw call.
 //! Instance data is kept in an instance-stepped vertex data.
 
+use re_span::Span;
 use std::collections::BTreeMap;
-use std::ops::Range;
 use std::sync::Arc;
 
 use enumset::EnumSet;
@@ -96,7 +96,7 @@ mod gpu_data {
 #[derive(Clone)]
 struct MeshBatch {
     mesh: Arc<GpuMesh>,
-    instance_range: Range<u32>,
+    instance_range: Span<u32>,
     draw_phase: DrawPhase,
 
     /// If true, all the instances in this batch have a transparent tint,
@@ -349,7 +349,7 @@ impl MeshDrawData {
                         let instance_idx = num_processed_instances + i as u32;
                         batches.push(MeshBatch {
                             mesh: mesh.clone(), // TODO(andreas): That's a lot of arc cloning going on here.
-                            instance_range: instance_idx..(instance_idx + 1),
+                            instance_range: Span::from_start_len(instance_idx, 1),
                             draw_phase: DrawPhase::Transparent,
                             has_transparent_tint: !instance.additive_tint.is_opaque(),
                             cull_mode: batch_key.cull_mode,
@@ -371,7 +371,7 @@ impl MeshDrawData {
                         if chunk[0].1.contains(phase) {
                             batches.push(MeshBatch {
                                 mesh: mesh.clone(),
-                                instance_range: instance_start..(instance_start + num_instances),
+                                instance_range: Span::from_start_len(instance_start, num_instances),
                                 draw_phase: phase,
                                 has_transparent_tint: false,
                                 cull_mode: batch_key.cull_mode,
@@ -388,8 +388,10 @@ impl MeshDrawData {
                 // (see `instance_draw_phases`)
                 batches.push(MeshBatch {
                     mesh,
-                    instance_range: num_processed_instances
-                        ..(num_processed_instances + instances.len() as u32),
+                    instance_range: Span::from_start_len(
+                        num_processed_instances,
+                        instances.len() as u32,
+                    ),
                     draw_phase: DrawPhase::PickingLayer,
                     has_transparent_tint: false,
                     cull_mode: batch_key.cull_mode,
@@ -682,25 +684,25 @@ impl Renderer for MeshRenderer {
                 pass.set_vertex_buffer(
                     1,
                     vertex_buffer_combined
-                        .slice(mesh_batch.mesh.vertex_buffer_positions_range.clone()),
+                        .slice(mesh_batch.mesh.vertex_buffer_positions_range.range()),
                 );
                 pass.set_vertex_buffer(
                     2,
                     vertex_buffer_combined
-                        .slice(mesh_batch.mesh.vertex_buffer_colors_range.clone()),
+                        .slice(mesh_batch.mesh.vertex_buffer_colors_range.range()),
                 );
                 pass.set_vertex_buffer(
                     3,
                     vertex_buffer_combined
-                        .slice(mesh_batch.mesh.vertex_buffer_normals_range.clone()),
+                        .slice(mesh_batch.mesh.vertex_buffer_normals_range.range()),
                 );
                 pass.set_vertex_buffer(
                     4,
                     vertex_buffer_combined
-                        .slice(mesh_batch.mesh.vertex_buffer_texcoord_range.clone()),
+                        .slice(mesh_batch.mesh.vertex_buffer_texcoord_range.range()),
                 );
                 pass.set_index_buffer(
-                    index_buffer.slice(mesh_batch.mesh.index_buffer_range.clone()),
+                    index_buffer.slice(mesh_batch.mesh.index_buffer_range.range()),
                     wgpu::IndexFormat::Uint32,
                 );
 
@@ -745,8 +747,8 @@ impl Renderer for MeshRenderer {
 
                     pass.set_bind_group(1, &material.bind_group, &[]);
 
-                    let indices = material.index_range.clone();
-                    let instances = mesh_batch.instance_range.clone();
+                    let indices = material.index_range.range();
+                    let instances = mesh_batch.instance_range.range();
                     if phase == DrawPhase::Transparent {
                         match mesh_batch.cull_mode {
                             None => {
@@ -856,7 +858,7 @@ mod tests {
             ctx,
             smallvec![Material {
                 label: "opaque_material".into(),
-                index_range: 0..3,
+                index_range: Span::from_start_len(0, 3),
                 albedo: ctx.texture_manager_2d.white_texture_unorm_handle().clone(),
                 albedo_factor: crate::Rgba::WHITE
             }],
@@ -869,13 +871,13 @@ mod tests {
             smallvec![
                 Material {
                     label: "opaque_material".into(),
-                    index_range: 0..3,
+                    index_range: Span::from_start_len(0, 3),
                     albedo: ctx.texture_manager_2d.white_texture_unorm_handle().clone(),
                     albedo_factor: crate::Rgba::WHITE
                 },
                 Material {
                     label: "opaque_material".into(),
-                    index_range: 0..3,
+                    index_range: Span::from_start_len(0, 3),
                     albedo: ctx.texture_manager_2d.white_texture_unorm_handle().clone(),
                     albedo_factor: crate::Rgba::TRANSPARENT
                 }
@@ -908,9 +910,9 @@ mod tests {
         // This should create one bach each for the two active layers (picking & opaque).
         let draw_data = MeshDrawData::new(&ctx, &instances).unwrap();
         assert_eq!(draw_data.batches.len(), 2);
-        assert_eq!(draw_data.batches[0].instance_range.len(), 2);
+        assert_eq!(draw_data.batches[0].instance_range.len, 2);
         assert_eq!(draw_data.batches[0].draw_phase, DrawPhase::Opaque);
-        assert_eq!(draw_data.batches[1].instance_range.len(), 2);
+        assert_eq!(draw_data.batches[1].instance_range.len, 2);
         assert_eq!(draw_data.batches[1].draw_phase, DrawPhase::PickingLayer);
 
         let mut draw_phase_manager = DrawPhaseManager::new(EnumSet::all());
@@ -947,15 +949,15 @@ mod tests {
         // but two additional ones for the ones with transparent tint (these never batch).
         let draw_data = MeshDrawData::new(&ctx, &instances).unwrap();
         assert_eq!(draw_data.batches.len(), 4);
-        assert_eq!(draw_data.batches[0].instance_range.len(), 1);
+        assert_eq!(draw_data.batches[0].instance_range.len, 1);
         assert_eq!(draw_data.batches[0].draw_phase, DrawPhase::Transparent);
         assert!(draw_data.batches[1].has_transparent_tint);
-        assert_eq!(draw_data.batches[1].instance_range.len(), 1);
+        assert_eq!(draw_data.batches[1].instance_range.len, 1);
         assert_eq!(draw_data.batches[1].draw_phase, DrawPhase::Transparent);
         assert!(draw_data.batches[1].has_transparent_tint);
-        assert_eq!(draw_data.batches[2].instance_range.len(), 2);
+        assert_eq!(draw_data.batches[2].instance_range.len, 2);
         assert_eq!(draw_data.batches[2].draw_phase, DrawPhase::Opaque);
-        assert_eq!(draw_data.batches[3].instance_range.len(), 4);
+        assert_eq!(draw_data.batches[3].instance_range.len, 4);
         assert_eq!(draw_data.batches[3].draw_phase, DrawPhase::PickingLayer);
 
         let mut draw_phase_manager = DrawPhaseManager::new(EnumSet::all());
@@ -997,11 +999,11 @@ mod tests {
         // but additional outline for the instance with outlines..
         let draw_data = MeshDrawData::new(&ctx, &instances).unwrap();
         assert_eq!(draw_data.batches.len(), 3);
-        assert_eq!(draw_data.batches[0].instance_range.len(), 4); // All draw outlines.
+        assert_eq!(draw_data.batches[0].instance_range.len, 4); // All draw outlines.
         assert_eq!(draw_data.batches[0].draw_phase, DrawPhase::Opaque);
-        assert_eq!(draw_data.batches[1].instance_range.len(), 2); // Two outlines, batched together.
+        assert_eq!(draw_data.batches[1].instance_range.len, 2); // Two outlines, batched together.
         assert_eq!(draw_data.batches[1].draw_phase, DrawPhase::OutlineMask);
-        assert_eq!(draw_data.batches[2].instance_range.len(), 4); // All draw picking.
+        assert_eq!(draw_data.batches[2].instance_range.len, 4); // All draw picking.
         assert_eq!(draw_data.batches[2].draw_phase, DrawPhase::PickingLayer);
 
         let mut draw_phase_manager = DrawPhaseManager::new(EnumSet::all());
@@ -1035,13 +1037,13 @@ mod tests {
         // Transparent instances can't be batched!
         let draw_data = MeshDrawData::new(&ctx, &instances).unwrap();
         assert_eq!(draw_data.batches.len(), 4);
-        assert_eq!(draw_data.batches[0].instance_range.len(), 1);
+        assert_eq!(draw_data.batches[0].instance_range.len, 1);
         assert_eq!(draw_data.batches[0].draw_phase, DrawPhase::Transparent);
-        assert_eq!(draw_data.batches[1].instance_range.len(), 1);
+        assert_eq!(draw_data.batches[1].instance_range.len, 1);
         assert_eq!(draw_data.batches[1].draw_phase, DrawPhase::Transparent);
-        assert_eq!(draw_data.batches[2].instance_range.len(), 2);
+        assert_eq!(draw_data.batches[2].instance_range.len, 2);
         assert_eq!(draw_data.batches[2].draw_phase, DrawPhase::Opaque);
-        assert_eq!(draw_data.batches[3].instance_range.len(), 2);
+        assert_eq!(draw_data.batches[3].instance_range.len, 2);
         assert_eq!(draw_data.batches[3].draw_phase, DrawPhase::PickingLayer);
 
         let mut draw_phase_manager = DrawPhaseManager::new(EnumSet::all());

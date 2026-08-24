@@ -1,4 +1,5 @@
 use re_log_types::{AbsoluteTimeRange, TimelineName};
+use re_span::Span;
 use re_types_core::ComponentIdentifier;
 
 use crate::Chunk;
@@ -280,7 +281,10 @@ impl Chunk {
                 end_index = usize::min(self.num_rows(), end_index.saturating_add(1));
             }
 
-            chunk.row_sliced_shallow(start_index, end_index.saturating_sub(start_index))
+            chunk.row_sliced_shallow(Span::from_start_len(
+                start_index,
+                end_index.saturating_sub(start_index),
+            ))
         }
     }
 }

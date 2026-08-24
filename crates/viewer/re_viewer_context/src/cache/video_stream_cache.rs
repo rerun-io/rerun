@@ -18,7 +18,9 @@ use re_log_types::{EntityPathHash, TimeType};
 use re_sdk_types::archetypes::VideoStream;
 use re_sdk_types::components;
 use re_video::player::GetVideoSource;
-use re_video::{DecodeSettings, SampleMetadataState, StableIndexDeque, VideoSource};
+use re_video::{
+    DecodeSettings, SampleIndexSpan, SampleMetadataState, StableIndexDeque, VideoSource,
+};
 
 use crate::Cache;
 
@@ -540,7 +542,7 @@ fn handle_deletion(
 
     let (sample_count, other_min, other_max) = video_data
         .samples
-        .iter_index_range_clamped(&known_range.idx_range())
+        .iter_index_range_clamped(known_range.idx_range())
         .fold(
             (
                 0usize,
@@ -604,7 +606,7 @@ fn handle_deletion(
 
     let mut samples = video_data
         .samples
-        .iter_index_range_clamped_mut(&known_range.idx_range());
+        .iter_index_range_clamped_mut(known_range.idx_range());
 
     if clear_start {
         rrd_manifest_chunks
@@ -704,7 +706,7 @@ fn handle_compacted_chunk_addition(
         .filter_map(|(range, chunk)| {
             video_data
                 .samples
-                .iter_index_range_clamped_mut(&range.idx_range())
+                .iter_index_range_clamped_mut(range.idx_range())
                 .filter(|(_, s)| s.source_primary_id() == Some(chunk.id().as_tuid()))
                 .find(|(_, s)| s.is_unloaded())
                 .map(|(idx, _)| idx)
@@ -738,7 +740,7 @@ fn handle_compacted_chunk_addition(
     for (range, reused_chunk) in reused_chunks {
         for (idx, sample) in video_data
             .samples
-            .iter_index_range_clamped_mut(&range.idx_range())
+            .iter_index_range_clamped_mut(range.idx_range())
             .filter(|(_, s)| s.source_primary_id() == Some(reused_chunk.id().as_tuid()))
         {
             update_min_max(idx);
@@ -833,7 +835,7 @@ fn handle_split_chunk_addition(
 
     let mut samples = video_data
         .samples
-        .iter_index_range_clamped_mut(&old_known_range.idx_range())
+        .iter_index_range_clamped_mut(old_known_range.idx_range())
         .filter(|(_, s)| s.source_primary_id() == Some(original_chunk.id().as_tuid()));
 
     flatten_chunk_samples(
@@ -1051,8 +1053,8 @@ impl ChunkSampleRange {
         );
     }
 
-    fn idx_range(&self) -> std::ops::Range<re_video::SampleIndex> {
-        self.first_sample..self.last_sample + 1
+    fn idx_range(&self) -> SampleIndexSpan {
+        SampleIndexSpan::from_start_end(self.first_sample, self.last_sample + 1)
     }
 }
 
@@ -1099,7 +1101,7 @@ fn read_samples_from_known_chunk(
     let end_keyframes = keyframe_indices.drain(split_idx..).collect::<Vec<_>>();
 
     let mut samples_iter = samples
-        .iter_index_range_clamped_mut(&load_range.idx_range())
+        .iter_index_range_clamped_mut(load_range.idx_range())
         .filter(|(_, c)| c.source_primary_id() == Some(chunk.id().as_tuid()));
 
     let rows = std::iter::zip(
@@ -1236,7 +1238,7 @@ fn is_sample_sync(
 /// Fill out durations for all new samples plus the first existing sample for which we didn't know the duration yet.
 /// (We set the duration for the last sample to `None` since we don't know how long it will last.)
 fn update_sample_durations(
-    known_range: std::ops::Range<re_video::SampleIndex>,
+    known_range: SampleIndexSpan,
     samples: &mut StableIndexDeque<SampleMetadataState>,
 ) -> Result<(), VideoStreamProcessingError> {
     let mut start = known_range.start.at_least(samples.min_index());
@@ -1249,7 +1251,7 @@ fn update_sample_durations(
             break;
         }
     }
-    let mut end = known_range.end.at_most(samples.next_index());
+    let mut end = known_range.end().at_most(samples.next_index());
     while let Some(new_end) = end.checked_add(1)
         && let Some(sample) = samples.get(new_end - 1)
     {
@@ -1898,10 +1900,13 @@ fn find_affected_sample_range(
         .map(|idx| video_descr.keyframe_indices[idx])
         .unwrap_or_else(|| video_descr.samples.min_index());
 
-    let range = known_range
-        .as_ref()
-        .map(|r| r.first_sample.min(start))
-        .unwrap_or(start)..video_descr.samples.next_index();
+    let range = SampleIndexSpan::from_start_end(
+        known_range
+            .as_ref()
+            .map(|r| r.first_sample.min(start))
+            .unwrap_or(start),
+        video_descr.samples.next_index(),
+    );
 
     let mut start_sample = None;
     let mut end_sample = None;
@@ -1909,7 +1914,7 @@ fn find_affected_sample_range(
     let mut last_timestamp = None;
 
     // Find the index range we have to re-order.
-    for (idx, sample) in video_descr.samples.iter_index_range_clamped(&range) {
+    for (idx, sample) in video_descr.samples.iter_index_range_clamped(range) {
         // Skip the conflicting samples if there are any.
         if sample.source_primary_id() == Some(conflicting_chunk.id().as_tuid()) {
             if start_sample.is_none() {
@@ -1994,9 +1999,13 @@ fn handle_out_of_order_chunk(
 
     let mut chunk_samples = BTreeMap::<ChunkId, ChunkSamples>::default();
 
-    for (_, sample) in video_descr
-        .samples
-        .iter_index_range_clamped(&(*sample_range.start()..sample_range.end() + 1))
+    for (_, sample) in
+        video_descr
+            .samples
+            .iter_index_range_clamped(SampleIndexSpan::from_start_end(
+                *sample_range.start(),
+                sample_range.end() + 1,
+            ))
     {
         let Some(primary_id) = sample.source_primary_id() else {
             continue;
@@ -2143,9 +2152,13 @@ fn handle_out_of_order_chunk(
 
     // Correct frame_nr for all samples after `start_sample`:
     let samples_end = video_descr.samples.next_index();
-    for (idx, sample) in video_descr
-        .samples
-        .iter_index_range_clamped_mut(&(*sample_range.start()..samples_end))
+    for (idx, sample) in
+        video_descr
+            .samples
+            .iter_index_range_clamped_mut(SampleIndexSpan::from_start_end(
+                *sample_range.start(),
+                samples_end,
+            ))
     {
         if let SampleMetadataState::Present(meta) = sample {
             meta.frame_nr = idx as re_video::FrameNumber;
@@ -2153,7 +2166,7 @@ fn handle_out_of_order_chunk(
     }
 
     update_sample_durations(
-        *sample_range.start()..sample_range.start() + new_count,
+        SampleIndexSpan::from_start_len(*sample_range.start(), new_count),
         &mut video_descr.samples,
     )?;
 

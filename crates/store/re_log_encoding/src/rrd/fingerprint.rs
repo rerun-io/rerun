@@ -32,10 +32,12 @@ impl RrdFingerprint {
         let mut hasher = sha2::Sha256::new();
         let mut offset = 0u64;
         while offset < size {
-            let len = usize::try_from((64 * 1024u64).min(size - offset))?;
-            let buffer = reader.read_exact_at(offset, len).await?;
+            let len = (64 * 1024u64).min(size - offset);
+            let buffer = reader
+                .read_exact_at(re_span::Span::from_start_len(offset, len))
+                .await?;
             hasher.update(&buffer);
-            offset += len as u64;
+            offset += len;
         }
 
         Ok(Self(hasher.finalize().into()))

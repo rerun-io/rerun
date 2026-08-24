@@ -373,7 +373,7 @@ impl PointCloudBatchBuilder<'_, '_> {
     #[inline]
     pub fn push_additional_outline_mask_ids_for_range(
         mut self,
-        range: std::ops::Range<u32>,
+        range: re_span::Span<u32>,
         ids: OutlineMaskPreference,
     ) -> Self {
         self.batch_mut()

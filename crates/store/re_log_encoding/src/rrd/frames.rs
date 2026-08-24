@@ -1,6 +1,7 @@
 // --- FileHeader ---
 pub use re_build_info::CrateVersion; // convenience
 pub use re_protos::common::v1alpha1::ext::Compression;
+use re_span::Span;
 
 use crate::rrd::{Decodable, Encodable, OptionsError}; // convenience
 
@@ -260,7 +261,7 @@ pub struct StreamFooterEntry {
     /// ```
     ///
     /// [`RrdFooter`]: [crate::RrdFooter]
-    pub rrd_footer_byte_span_from_start_excluding_header: re_span::Span<u64>,
+    pub rrd_footer_byte_span_from_start_excluding_header: Span<u64>,
 
     /// Checksum for the [`RrdFooter`] payload.
     ///
@@ -298,7 +299,7 @@ impl StreamFooter {
     pub const RRD_IDENTIFIER: [u8; 4] = *b"FOOT";
 
     pub fn new(
-        rrd_footer_byte_span_from_start_excluding_header: re_span::Span<u64>,
+        rrd_footer_byte_span_from_start_excluding_header: Span<u64>,
         crc_excluding_header: u32,
     ) -> Self {
         Self {
@@ -316,7 +317,7 @@ impl StreamFooter {
         rrd_footer_bytes: &[u8],
     ) -> Self {
         let crc_excluding_header = Self::compute_crc(rrd_footer_bytes);
-        let rrd_footer_byte_span_from_start_excluding_header = re_span::Span {
+        let rrd_footer_byte_span_from_start_excluding_header = Span {
             start: rrd_footer_byte_offset_from_start_excluding_header,
             len: rrd_footer_bytes.len() as u64,
         };
@@ -423,7 +424,7 @@ impl Decodable for StreamFooter {
         let mut pos = 0;
         let entries = (0..num_rrd_footers)
             .map(|_| {
-                let rrd_footer_byte_span_from_start_excluding_header = re_span::Span {
+                let rrd_footer_byte_span_from_start_excluding_header = Span {
                     start: u64::from_le_bytes(
                         dynamic_data[pos..pos + 8]
                             .try_into()

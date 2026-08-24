@@ -91,7 +91,7 @@ pub fn load_obj_from_buffer(
             // TODO(andreas): proper material loading
             materials: smallvec![Material {
                 label: "default material".into(),
-                index_range: 0..mesh.indices.len() as u32,
+                index_range: re_span::Span::from_start_len(0, mesh.indices.len() as u32),
                 albedo: texture.clone(),
                 albedo_factor: crate::Rgba::WHITE,
             }],

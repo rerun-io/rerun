@@ -18,4 +18,5 @@ workspace = true
 anyhow.workspace = true
 itertools.workspace = true
 re_cdr.workspace = true
+re_span.workspace = true
 thiserror.workspace = true

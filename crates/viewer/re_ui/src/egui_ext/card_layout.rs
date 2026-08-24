@@ -22,8 +22,7 @@ pub struct CardLayout {
 
 /// Pre-computed assignment of items to a single row.
 struct RowAssignment {
-    first_item: usize,
-    num_items: usize,
+    items: re_span::Span<usize>,
     total_width: f32,
 }
 
@@ -132,12 +131,12 @@ impl CardLayout {
             }
             if row_y + row_height < visible.min.y {
                 row_y += row_height + item_spacing.y;
-                ui.skip_ahead_auto_ids(row.num_items);
+                ui.skip_ahead_auto_ids(row.items.len);
                 continue;
             }
 
-            let gap_space = item_spacing.x * (row.num_items - 1) as f32;
-            let gap_space_item = gap_space / row.num_items as f32;
+            let gap_space = item_spacing.x * (row.items.len - 1) as f32;
+            let gap_space_item = gap_space / row.items.len as f32;
             let is_last_row = row_idx + 1 == rows.len();
             let item_growth = if !all_rows_use_available_width && is_last_row && rows.len() > 1 {
                 // Use the first row's growth factor so last-row cards
@@ -150,8 +149,8 @@ impl CardLayout {
             let mut card_x = full_rect.min.x;
             let mut new_row_stats = RowStats::default();
 
-            for i in 0..row.num_items {
-                let item = &items[row.first_item + i];
+            for i in row.items {
+                let item = &items[i];
                 let frame = item.frame.unwrap_or(default_frame);
                 let frame_margin = frame.inner_margin.sum();
                 let card_width =
@@ -186,7 +185,7 @@ impl CardLayout {
                 let mut content_height = 0.0;
                 frame.show(&mut child_ui, |ui| {
                     ui.set_width((card_width - frame_margin.x).at_most(ui.available_width()));
-                    show_item(ui, row.first_item + i, card_hovered);
+                    show_item(ui, i, card_hovered);
 
                     content_height = ui.min_size().y;
                     ui.set_height((row_height - frame_margin.y).at_least(0.0));
@@ -228,8 +227,7 @@ impl CardLayout {
                 idx += 1;
             }
             Some(RowAssignment {
-                first_item,
-                num_items: idx - first_item,
+                items: re_span::Span::from_start_end(first_item, idx),
                 total_width,
             })
         })

@@ -266,12 +266,17 @@ impl Video {
                             .gop_sample_range_for_keyframe(keyframe_idx)
                     })
                     .reduce(|a, b| {
-                        Option::zip(a, b).map(|(a, b)| a.start.min(b.start)..a.end.max(b.end))
+                        Option::zip(a, b).map(|(a, b)| {
+                            re_span::Span::from_start_end(
+                                a.start.min(b.start),
+                                a.end().max(b.end()),
+                            )
+                        })
                     })
                     .flatten()
                     .is_some_and(|gop| {
                         // Check if the gop range overlaps with the changed samples range.
-                        gop.start <= change_end && change_start < gop.end
+                        gop.start <= change_end && change_start < gop.end()
                     })
             };
 

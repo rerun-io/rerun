@@ -658,7 +658,9 @@ fn frame_info_ui(
 
         if let Some(sample_range) = video_descr.gop_sample_range_for_keyframe(keyframe_idx) {
             let first_sample = video_descr.samples.get(sample_range.start);
-            let last_sample = video_descr.samples.get(sample_range.end.saturating_sub(1));
+            let last_sample = video_descr
+                .samples
+                .get(sample_range.end().saturating_sub(1));
 
             if let Some((first_sample, last_sample)) = Option::zip(
                 first_sample.and_then(|s| s.sample()),

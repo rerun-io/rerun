@@ -185,7 +185,7 @@ impl LoadedMesh {
             vertex_texcoords,
             materials: smallvec::smallvec![re_renderer::mesh::Material {
                 label: name.to_owned().into(),
-                index_range: 0..num_indices as _,
+                index_range: re_span::Span::from_start_len(0, num_indices as _),
                 albedo,
                 albedo_factor: albedo_factor.unwrap_or(encodings::Rgba32::WHITE).into(),
             }],

@@ -7,6 +7,7 @@ use std::io;
 use std::path::{Component, Path};
 use std::sync::Arc;
 
+use re_span::Span;
 use wasm_bindgen::{JsCast, JsValue};
 use web_sys::{
     DomException, FileSystemDirectoryHandle, FileSystemFileHandle, FileSystemWritableFileStream,
@@ -114,9 +115,11 @@ impl File {
 
 #[async_trait::async_trait]
 impl re_async::AsyncReadAt for File {
-    async fn read_exact_at(&self, offset: u64, len: usize) -> io::Result<bytes::Bytes> {
+    async fn read_exact_at(&self, span: Span<u64>) -> io::Result<bytes::Bytes> {
         let file = self.file.clone();
         re_async::spawn_local_with_result(async move {
+            let offset = span.start;
+            let len = re_async::span_len_usize(span)?;
             let end = offset.checked_add(len as u64).ok_or_else(|| {
                 io::Error::new(io::ErrorKind::InvalidInput, "read range overflows u64")
             })?;
@@ -512,7 +515,7 @@ mod test {
         );
 
         assert_eq!(
-            file.read_exact_at(3, 4)
+            file.read_exact_at(Span::from_start_len(3, 4))
                 .await
                 .expect("mid-file read should succeed"),
             b"3456".as_slice(),
@@ -520,14 +523,14 @@ mod test {
 
         // A read ending exactly at EOF returns all requested bytes.
         assert_eq!(
-            file.read_exact_at(6, 4)
+            file.read_exact_at(Span::from_start_len(6, 4))
                 .await
                 .expect("tail read should succeed"),
             b"6789".as_slice(),
         );
 
         let err = file
-            .read_exact_at(8, 4)
+            .read_exact_at(Span::from_start_len(8, 4))
             .await
             .expect_err("reading past the end should fail");
         assert_eq!(err.kind(), io::ErrorKind::UnexpectedEof);

@@ -44,6 +44,7 @@ re_renderer = { workspace = true, features = [
 ] }
 re_rvl.workspace = true
 re_sdk_types = { workspace = true, features = ["ecolor", "glam", "image"] }
+re_span.workspace = true
 re_tf.workspace = true
 re_tracing.workspace = true
 re_ui.workspace = true

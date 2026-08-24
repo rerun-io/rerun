@@ -246,8 +246,7 @@ fn build_chunk_key_column(
             data_source_kind: DataSourceKind::Rrd,
             location: RrdChunkLocation {
                 url: storage_url.clone(),
-                offset,
-                length,
+                byte_span: re_span::Span::from_start_len(offset, length),
             }
             .as_bytes(),
             etag: etag.cloned(),
@@ -364,8 +363,8 @@ mod tests {
                 .expect("location must decode to a valid RrdChunkLocation");
 
             assert_eq!(location.url, storage_url);
-            assert_eq!(location.offset, raw_offsets[i] - header_size);
-            assert_eq!(location.length, raw_sizes[i] + header_size);
+            assert_eq!(location.byte_span.start, raw_offsets[i] - header_size);
+            assert_eq!(location.byte_span.len, raw_sizes[i] + header_size);
             assert_eq!(chunk_key.etag, Some(etag.clone()));
             assert_eq!(chunk_key.registration_time, Some(registration_time));
         }

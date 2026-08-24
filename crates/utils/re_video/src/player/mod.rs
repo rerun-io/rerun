@@ -2,13 +2,13 @@
 
 mod sample_decoder;
 
-use std::ops::Range;
 use std::time::Duration;
 
 use web_time::Instant;
 
 use crate::{
-    DecodeSettings, FrameInfo, KeyframeIndex, SampleIndex, Time, VideoDeliveryMethod, VideoSource,
+    DecodeSettings, FrameInfo, KeyframeIndex, SampleIndex, Span, Time, VideoDeliveryMethod,
+    VideoSource,
 };
 
 pub use sample_decoder::VideoSampleDecoder;
@@ -357,10 +357,10 @@ pub fn request_keyframe_before(
     video_source: &dyn GetVideoSource,
 ) -> Result<KeyframeIndex, VideoPlayerError> {
     // Need to start from at least `samples.min_index()` since that's the index of the first sample.
-    let range = video_description.samples.min_index()..idx + 1;
+    let range = Span::from_start_end(video_description.samples.min_index(), idx + 1);
     if let Some((from_idx, s)) = video_description
         .samples
-        .iter_index_range_clamped(&range)
+        .iter_index_range_clamped(range)
         .rev()
         .find(|(_, s)| match s {
             crate::SampleMetadataState::Present(s) => s.is_sync,
@@ -389,7 +389,7 @@ pub fn request_keyframe_before(
         // sample's bytes here, so we pass `sub_id: None`.
         for (_, sample) in video_description
             .samples
-            .iter_index_range_clamped(&(from_idx..idx + 1))
+            .iter_index_range_clamped(Span::from_start_end(from_idx, idx + 1))
             .rev()
         {
             if let Some(source) = sample.source_to_mark_in_use() {
@@ -783,13 +783,15 @@ impl<T: Default> VideoPlayer<T> {
                     video_source.require_video_source(source);
                 }
 
-                let range = (last_enqueued + 1)
-                    ..keyframe_range.end.min(
+                let range = Span::from_start_end(
+                    last_enqueued + 1,
+                    keyframe_range.end().min(
                         requested_sample_idx
                             + self.sample_decoder.max_num_samples_to_enqueue_ahead()
                             + 1,
-                    );
-                self.enqueue_sample_range(video_description, &range, video_source)?;
+                    ),
+                );
+                self.enqueue_sample_range(video_description, range, video_source)?;
             }
         }
 
@@ -918,9 +920,12 @@ impl<T: Default> VideoPlayer<T> {
             .ok_or(VideoPlayerError::BadData)?;
 
         if sample_range.start < max_last_sample_idx {
-            let sample_range = sample_range.start..sample_range.end.min(max_last_sample_idx + 1);
+            let sample_range = Span::from_start_end(
+                sample_range.start,
+                sample_range.end().min(max_last_sample_idx + 1),
+            );
 
-            self.enqueue_sample_range(video_description, &sample_range, video_source)
+            self.enqueue_sample_range(video_description, sample_range, video_source)
         } else {
             re_log::debug_panic!(
                 "[DEBUG] Tried to enqueue gop starting after max samples to enqueue"
@@ -935,7 +940,7 @@ impl<T: Default> VideoPlayer<T> {
     fn enqueue_sample_range(
         &mut self,
         video_description: &crate::VideoDataDescription,
-        sample_range: &Range<SampleIndex>,
+        sample_range: Span<SampleIndex>,
         video_source: &dyn GetVideoSource,
     ) -> Result<(), VideoPlayerError> {
         for (sample_idx, sample) in video_description
@@ -1034,9 +1039,14 @@ impl<T: Default> VideoPlayer<T> {
                 min_num_samples_to_enqueue_ahead + self.config.tolerated_output_delay_in_num_frames;
 
             let sample_idx_end = video_description.samples.next_index();
-            for (_, sample) in video_description.samples.iter_index_range_clamped(
-                &(sample_idx_end.saturating_sub(allowed_delay + 1)..sample_idx_end),
-            ) {
+            for (_, sample) in
+                video_description
+                    .samples
+                    .iter_index_range_clamped(Span::from_start_end(
+                        sample_idx_end.saturating_sub(allowed_delay + 1),
+                        sample_idx_end,
+                    ))
+            {
                 let Some(sample) = sample.sample() else {
                     continue;
                 };

@@ -6,7 +6,7 @@ use std::time::Duration;
 
 mod read_at;
 
-pub use read_at::AsyncReadAt;
+pub use read_at::{AsyncReadAt, span_len_usize};
 
 /// Waits for at least `duration`.
 #[cfg(not(target_arch = "wasm32"))]

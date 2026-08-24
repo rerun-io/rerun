@@ -1,4 +1,5 @@
 use itertools::Itertools as _;
+use re_span::Span;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -69,17 +70,17 @@ impl MessageSpecification {
             }
 
             // Parse type and name (common to both constants and fields)
-            let (ty_start, ty_end) = next_token_bounds(line, 0)
+            let ty_span = next_token_bounds(line, 0)
                 .ok_or_else(|| ParseError::Syntax(format!("missing type in line: `{line}`")))?;
-            let (name_start, name_end) = next_token_bounds(line, ty_end)
+            let name_span = next_token_bounds(line, ty_span.end())
                 .ok_or_else(|| ParseError::Syntax(format!("missing name in line: `{line}`")))?;
 
-            let ty_str = &line[ty_start..ty_end];
-            let name = &line[name_start..name_end];
+            let ty_str = &line[ty_span.range()];
+            let name = &line[name_span.range()];
             let ty = Type::parse(ty_str)?;
 
             // Check if rest starts with '=' to differentiate constant from field
-            let rest = line[name_end..].trim();
+            let rest = line[name_span.end()..].trim();
 
             if rest.starts_with('=') {
                 let constant = Constant::parse(ty, name, rest)?;
@@ -553,9 +554,9 @@ impl Literal {
 }
 
 /// Parse the bounds of the next whitespace-delimited token in a string.
-/// Returns (`start_index`, `end_index`) of the token, or `None` if no token found.
+/// Returns the byte span of the token, or `None` if no token found.
 /// Treats '=' as a separate single-character token, except when part of '<=' type bounds.
-fn next_token_bounds(s: &str, start: usize) -> Option<(usize, usize)> {
+fn next_token_bounds(s: &str, start: usize) -> Option<Span<usize>> {
     let remaining = s.get(start..)?;
     let token_start = start + remaining.len() - remaining.trim_start().len();
     let token = remaining.trim_start();
@@ -566,7 +567,7 @@ fn next_token_bounds(s: &str, start: usize) -> Option<(usize, usize)> {
 
     // If the token starts with '=', return it as a single-character token
     if token.starts_with('=') {
-        return Some((token_start, token_start + 1));
+        return Some(Span::from_start_len(token_start, 1));
     }
 
     // Find the end of the token
@@ -595,7 +596,7 @@ fn next_token_bounds(s: &str, start: usize) -> Option<(usize, usize)> {
     if token_len_bytes == 0 {
         None
     } else {
-        Some((token_start, token_start + token_len_bytes))
+        Some(Span::from_start_len(token_start, token_len_bytes))
     }
 }
 

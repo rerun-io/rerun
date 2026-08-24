@@ -27,6 +27,7 @@ async-trait.workspace = true
 bytes.workspace = true
 js-sys.workspace = true
 re_async.workspace = true
+re_span.workspace = true
 wasm-bindgen.workspace = true
 web-sys = { workspace = true, features = [
   "Blob",

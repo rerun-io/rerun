@@ -937,7 +937,7 @@ fn extract_chunks_for_single_split(
                         // We're bootstrapping at the component batch level, so might as well discard everything else.
                         .component_sliced(*component)
                         // `Chunk::latest_at` internally performs shallow-slicing, so make sure to actually deeply re-slice.
-                        .row_sliced_deep(0, 1)
+                        .row_sliced_unit_deep(0)
                         // This chunk might be re-used in other places in this split, and because we're slicing it
                         // (and we really, really need to slice it), we must make sure that it doesn't share
                         // a chunk ID nor a row ID with anything else.
@@ -1017,7 +1017,7 @@ fn extract_chunks_for_single_split(
                     chunk.id(),
                     chunk
                         // Reminder: always perform deep copies if the intent is to write back to disk.
-                        .row_sliced_deep(start_idx, slice_len),
+                        .row_sliced_deep(re_chunk::Span::from_start_len(start_idx, slice_len)),
                 )
             };
 

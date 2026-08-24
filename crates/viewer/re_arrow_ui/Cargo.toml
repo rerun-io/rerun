@@ -18,6 +18,7 @@ workspace = true
 [dependencies]
 re_format.workspace = true
 re_log_types.workspace = true
+re_span.workspace = true
 re_tracing.workspace = true
 re_ui.workspace = true
 

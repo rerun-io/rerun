@@ -116,8 +116,10 @@ impl Points2DVisualizer {
                         if let Some(highlighted_point_index) = highlighted_point_index {
                             point_range_builder = point_range_builder
                                 .push_additional_outline_mask_ids_for_range(
-                                    highlighted_point_index as u32
-                                        ..highlighted_point_index as u32 + 1,
+                                    re_span::Span::from_start_len(
+                                        highlighted_point_index as u32,
+                                        1,
+                                    ),
                                     *instance_mask_ids,
                                 );
                         }

@@ -1417,13 +1417,13 @@ fn test_single_child_and_parent_over_time(
         }
         ChildParentFrameChangesOverTimeTestMode::MultipleChunksInOrder => {
             for row_idx in 0..chunk.num_rows() {
-                entity_db.add_chunk(&Arc::new(chunk.row_sliced_shallow(row_idx, 1)))?;
+                entity_db.add_chunk(&chunk.row_sliced_unit_shallow(row_idx).into_chunk())?;
                 apply_store_subscriber_events(&mut cache, &entity_db);
             }
         }
         ChildParentFrameChangesOverTimeTestMode::MultipleChunksReverseOrder => {
             for row_idx in (0..chunk.num_rows()).rev() {
-                entity_db.add_chunk(&Arc::new(chunk.row_sliced_shallow(row_idx, 1)))?;
+                entity_db.add_chunk(&chunk.row_sliced_unit_shallow(row_idx).into_chunk())?;
                 apply_store_subscriber_events(&mut cache, &entity_db);
             }
         }

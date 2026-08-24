@@ -194,7 +194,7 @@ impl GeoPointsOutput {
                     (highlighted_key.get() < num_instances).then_some(highlighted_key.get());
                 if let Some(highlighted_point_index) = highlighted_point_index {
                     point_batch = point_batch.push_additional_outline_mask_ids_for_range(
-                        highlighted_point_index as u32..highlighted_point_index as u32 + 1,
+                        re_span::Span::from_start_len(highlighted_point_index as u32, 1),
                         *instance_mask_ids,
                     );
                 }

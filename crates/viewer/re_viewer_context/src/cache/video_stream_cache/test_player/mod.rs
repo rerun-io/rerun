@@ -232,7 +232,11 @@ impl TestVideoPlayer {
         }
         self.video_descr.samples[idx] = sample;
 
-        super::update_sample_durations(idx..idx + 1, &mut self.video_descr.samples).unwrap();
+        super::update_sample_durations(
+            re_video::Span::from_start_len(idx, 1),
+            &mut self.video_descr.samples,
+        )
+        .unwrap();
     }
 }
 
@@ -300,7 +304,10 @@ fn create_video(
         }
     }
 
-    super::update_sample_durations(0..samples.next_index(), &mut samples)?;
+    super::update_sample_durations(
+        re_video::Span::from_start_len(0, samples.next_index()),
+        &mut samples,
+    )?;
 
     let video_descr = VideoDataDescription {
         delivery_method: re_video::VideoDeliveryMethod::Stream {

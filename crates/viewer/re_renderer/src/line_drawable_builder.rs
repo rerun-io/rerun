@@ -1,4 +1,4 @@
-use std::ops::Range;
+use re_span::Span;
 
 use re_log::ResultExt as _;
 
@@ -203,13 +203,13 @@ impl<'ctx> LineBatchBuilder<'_, 'ctx> {
         }
 
         let vertex_range = if num_vertices_added == 0 {
-            0..0
+            Span::default()
         } else {
             let vertex_buffer_element_count = self.0.vertices_buffer.len();
             // The vertex range works with "logical line vertices", meaning we don't want to include the start sentinel
             // which at this point is already included in `vertices_buffer`, thus -1.
             let total_vertex_count = vertex_buffer_element_count - 1;
-            (total_vertex_count - num_vertices_added)..(total_vertex_count)
+            Span::from_start_len(total_vertex_count - num_vertices_added, num_vertices_added)
         };
 
         LineStripBuilder {
@@ -460,7 +460,7 @@ impl<'ctx> LineBatchBuilder<'_, 'ctx> {
 pub struct LineStripBuilder<'a, 'ctx> {
     builder: &'a mut LineDrawableBuilder<'ctx>,
     outline_mask_ids: OutlineMaskPreference,
-    vertex_range: Range<usize>,
+    vertex_range: Span<usize>,
 
     picking_instance_id: PickingLayerInstanceId,
     strip: LineStripInfo,
@@ -472,7 +472,7 @@ impl<'a, 'ctx> LineStripBuilder<'a, 'ctx> {
         Self {
             builder,
             outline_mask_ids: OutlineMaskPreference::NONE,
-            vertex_range: 0..0,
+            vertex_range: Span::default(),
             picking_instance_id: PickingLayerInstanceId::default(),
             strip: LineStripInfo::default(),
             num_strips_added: 0,
@@ -527,7 +527,10 @@ impl Drop for LineStripBuilder<'_, '_> {
                 .unwrap()
                 .additional_outline_mask_ids_vertex_ranges
                 .push((
-                    self.vertex_range.start as u32..self.vertex_range.end as u32,
+                    Span::from_start_len(
+                        self.vertex_range.start as u32,
+                        self.vertex_range.len as u32,
+                    ),
                     self.outline_mask_ids,
                 ));
         }

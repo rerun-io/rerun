@@ -460,12 +460,9 @@ pub enum LeRobotError {
     #[error("Episode {0:?} data file does not contain any records")]
     EmptyEpisode(EpisodeIndex),
 
-    #[error(
-        "Row range {}..{} is empty or outside the file's {num_rows} rows\nFile path: {path}",
-        rows.start, rows.end
-    )]
+    #[error("Row range {rows:?} is empty or outside the file's {num_rows} rows\nFile path: {path}")]
     InvalidRowRange {
-        rows: std::ops::Range<u64>,
+        rows: re_span::Span<u64>,
         num_rows: u64,
         path: std::path::PathBuf,
     },

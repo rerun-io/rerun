@@ -14,13 +14,13 @@
 //!
 
 use std::num::NonZeroU64;
-use std::ops::Range;
 use std::sync::Arc;
 
 use bitflags::bitflags;
 use enumset::{EnumSet, enum_set};
 use itertools::Itertools as _;
 use parking_lot::Mutex;
+use re_span::Span;
 use smallvec::smallvec;
 
 use super::{DrawData, DrawError, RenderContext, Renderer};
@@ -159,7 +159,7 @@ pub mod gpu_data {
 #[derive(Clone)]
 struct PointCloudBatch {
     bind_group: GpuBindGroup,
-    vertex_range: Range<u32>,
+    vertex_range: Span<u32>,
     center_world_position: glam::Vec3,
     active_phases: EnumSet<DrawPhase>,
 
@@ -275,7 +275,7 @@ pub struct PointCloudBatchInfo {
     /// Having many of these individual outline masks can be slow as they require each their own uniform buffer & draw call.
     /// This feature is meant for a limited number of "extra selections"
     /// If an overall mask is defined as well, the per-point-range masks is overwriting the overall mask.
-    pub additional_outline_mask_ids_vertex_ranges: Vec<(Range<u32>, OutlineMaskPreference)>,
+    pub additional_outline_mask_ids_vertex_ranges: Vec<(Span<u32>, OutlineMaskPreference)>,
 
     /// Picking object id that applies for the entire batch.
     pub picking_object_id: PickingLayerObjectId,
@@ -561,20 +561,19 @@ impl PointCloudDrawData {
                     ctx,
                     batch_info.label.clone(),
                     uniform_buffer_binding,
-                    start_point_for_next_batch..point_vertex_range_end,
+                    Span::from_start_end(start_point_for_next_batch, point_vertex_range_end),
                     center_world_position,
                     active_phases,
                     sort,
                 ));
 
                 for (range, _) in &batch_info.additional_outline_mask_ids_vertex_ranges {
-                    let range = (range.start + start_point_for_next_batch)
-                        ..(range.end + start_point_for_next_batch);
+                    let range = range.add(start_point_for_next_batch);
                     batches_internal.push(point_renderer.create_point_cloud_batch(
                         ctx,
                         format!("{:?} strip-only {:?}", batch_info.label, range).into(),
                         uniform_buffer_bindings_mask_only_batches.next().unwrap(),
-                        range.clone(),
+                        range,
                         center_world_position,
                         enum_set![DrawPhase::OutlineMask],
                         None,
@@ -618,7 +617,7 @@ impl PointCloudRenderer {
         ctx: &RenderContext,
         label: Label,
         uniform_buffer_binding: BindGroupEntry,
-        vertex_range: Range<u32>,
+        vertex_range: Span<u32>,
         center_world_position: glam::Vec3,
         active_phases: EnumSet<DrawPhase>,
         sort: Option<TransparentSort>,
@@ -637,7 +636,7 @@ impl PointCloudRenderer {
 
         PointCloudBatch {
             bind_group,
-            vertex_range: (vertex_range.start * 6)..(vertex_range.end * 6),
+            vertex_range: vertex_range.scale(6),
             center_world_position,
             active_phases,
             sort,
@@ -898,7 +897,7 @@ impl Renderer for PointCloudRenderer {
                 pass.set_bind_group(2, &batch.bind_group, &[]);
                 pass.set_bind_group(3, lookup_bind_group, &[]);
 
-                pass.draw(batch.vertex_range.clone(), 0..1);
+                pass.draw(batch.vertex_range.range(), 0..1);
             }
         }
 

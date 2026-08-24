@@ -24,6 +24,7 @@ use arrow::array::{
 use arrow::buffer::{OffsetBuffer, ScalarBuffer};
 use arrow::datatypes::{Field, Fields};
 use hdf5_pure::DType;
+use re_chunk::Span;
 use re_sdk_types::{ComponentDescriptor, ComponentIdentifier};
 
 use crate::config::IndexType;
@@ -168,21 +169,19 @@ pub(crate) fn row_byte_estimate(desc: &DatasetDesc) -> usize {
     elements_per_row.max(1).saturating_mul(element_bytes)
 }
 
-/// Read the row window `[start_row, start_row + num_rows)` of a dataset into
-/// its per-row value array (see module docs) and the matching `Field` (named
-/// after the dataset leaf).
+/// Read the given row window of a dataset into its per-row value array (see
+/// module docs) and the matching `Field` (named after the dataset leaf).
 ///
 /// The single core builder used by both the standalone and the struct-packed
-/// emit paths. A 0-D dataset counts as one row (pass `(0, 1)`).
+/// emit paths. A 0-D dataset counts as one row (pass a `(0, 1)` span).
 pub(crate) fn read_row_values(
     dataset: &hdf5_pure::Dataset,
     desc: &DatasetDesc,
-    start_row: usize,
-    num_rows: usize,
+    rows: Span<usize>,
 ) -> Result<(Field, ArrayRef), Hdf5Error> {
     re_tracing::profile_function!();
 
-    let flat = read_flat_values(dataset, desc, start_row, num_rows)?;
+    let flat = read_flat_values(dataset, desc, rows)?;
 
     let values: ArrayRef = match desc.shape.len() {
         // Each row is one scalar (a 0-D dataset yields a single row).
@@ -203,7 +202,7 @@ pub(crate) fn read_row_values(
             #[expect(clippy::cast_possible_truncation)]
             let per_row = desc.shape[1..].iter().product::<u64>() as usize;
             let item_field = Arc::new(Field::new("item", flat.data_type().clone(), true));
-            let offsets = OffsetBuffer::from_lengths(std::iter::repeat_n(per_row, num_rows));
+            let offsets = OffsetBuffer::from_lengths(std::iter::repeat_n(per_row, rows.len));
             Arc::new(ListArray::try_new(item_field, offsets, flat, None)?)
         }
     };
@@ -219,11 +218,11 @@ pub(crate) fn read_row_values(
 fn read_flat_values(
     dataset: &hdf5_pure::Dataset,
     desc: &DatasetDesc,
-    start_row: usize,
-    num_rows: usize,
+    rows: Span<usize>,
 ) -> Result<ArrayRef, Hdf5Error> {
     let read_err = |source| Hdf5Error::read_dataset(&desc.path, source);
-    let (start, count) = (start_row as u64, num_rows as u64);
+    let rows = rows.cast_u64();
+    let (start, count) = (rows.start, rows.len);
 
     macro_rules! read {
         ($rows_fn:ident, $array:ident) => {
@@ -276,7 +275,7 @@ pub(crate) fn read_dataset_to_list(
     let dataset = open_dataset(file, desc)?;
     #[expect(clippy::cast_possible_truncation)]
     let num_rows = desc.shape.first().copied().unwrap_or(1) as usize;
-    let (field, values) = read_row_values(&dataset, desc, 0, num_rows)?;
+    let (field, values) = read_row_values(&dataset, desc, Span::from_start_len(0, num_rows))?;
     values_to_component(desc.name(), field, values)
 }
 

@@ -333,7 +333,7 @@ impl GaussianSplats3DVisualizer {
                     if highlighted_key.get() < num_instances as u64 {
                         let highlighted_index = highlighted_key.get() as u32;
                         splat_batch = splat_batch.push_additional_outline_mask_ids_for_range(
-                            highlighted_index..highlighted_index + 1,
+                            re_span::Span::from_start_len(highlighted_index, 1),
                             *instance_mask_ids,
                         );
                     }

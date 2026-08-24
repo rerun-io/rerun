@@ -6,7 +6,7 @@
 //! necessary conversion code (in the form of `From` and `TryFrom` traits) in this crate.
 
 pub mod external {
-    pub use prost;
+    pub use {prost, re_span};
 }
 
 pub mod headers;
