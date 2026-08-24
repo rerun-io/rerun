@@ -1268,20 +1268,15 @@ pub struct UpdateDatasetEntryRequest {
     pub dataset_details: DatasetDetails,
 }
 
-impl TryFrom<crate::cloud::v1alpha1::UpdateDatasetEntryRequest> for UpdateDatasetEntryRequest {
-    type Error = TypeConversionError;
-
-    fn try_from(
+impl UpdateDatasetEntryRequest {
+    /// Builds this from the wire request plus an entry id already resolved from the
+    /// `x-rerun-entry-id` header or the deprecated body field.
+    pub fn from_resolved(
+        id: EntryId,
         value: crate::cloud::v1alpha1::UpdateDatasetEntryRequest,
-    ) -> Result<Self, Self::Error> {
+    ) -> Result<Self, TypeConversionError> {
         Ok(Self {
-            id: value
-                .id
-                .ok_or(missing_field!(
-                    crate::cloud::v1alpha1::UpdateDatasetEntryRequest,
-                    "id"
-                ))?
-                .try_into()?,
+            id,
             dataset_details: value
                 .dataset_details
                 .ok_or(missing_field!(
@@ -1388,18 +1383,15 @@ pub struct UpdateEntryRequest {
     pub entry_details_update: EntryDetailsUpdate,
 }
 
-impl TryFrom<crate::cloud::v1alpha1::UpdateEntryRequest> for UpdateEntryRequest {
-    type Error = TypeConversionError;
-
-    fn try_from(value: crate::cloud::v1alpha1::UpdateEntryRequest) -> Result<Self, Self::Error> {
+impl UpdateEntryRequest {
+    /// Builds this from the wire request plus an entry id already resolved from the
+    /// `x-rerun-entry-id` header or the deprecated body field.
+    pub fn from_resolved(
+        id: re_log_types::EntryId,
+        value: crate::cloud::v1alpha1::UpdateEntryRequest,
+    ) -> Result<Self, TypeConversionError> {
         Ok(Self {
-            id: value
-                .id
-                .ok_or(missing_field!(
-                    crate::cloud::v1alpha1::UpdateEntryRequest,
-                    "id"
-                ))?
-                .try_into()?,
+            id,
             entry_details_update: value
                 .entry_details_update
                 .ok_or(missing_field!(
@@ -1509,20 +1501,15 @@ pub struct UpdateTableEntryRequest {
     pub table_details: TableDetails,
 }
 
-impl TryFrom<crate::cloud::v1alpha1::UpdateTableEntryRequest> for UpdateTableEntryRequest {
-    type Error = TypeConversionError;
-
-    fn try_from(
+impl UpdateTableEntryRequest {
+    /// Builds this from the wire request plus an entry id already resolved from the
+    /// `x-rerun-entry-id` header or the deprecated body field.
+    pub fn from_resolved(
+        id: EntryId,
         value: crate::cloud::v1alpha1::UpdateTableEntryRequest,
-    ) -> Result<Self, Self::Error> {
+    ) -> Result<Self, TypeConversionError> {
         Ok(Self {
-            id: value
-                .id
-                .ok_or(missing_field!(
-                    crate::cloud::v1alpha1::UpdateTableEntryRequest,
-                    "id"
-                ))?
-                .try_into()?,
+            id,
             table_details: value
                 .table_details
                 .ok_or(missing_field!(

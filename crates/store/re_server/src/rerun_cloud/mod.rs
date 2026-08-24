@@ -35,7 +35,7 @@ use re_protos::cloud::v1alpha1::{
     WatchEventsResponse, segment_id_filter, watch_events_response,
 };
 use re_protos::common::v1alpha1::ext::{DatasetKind, IfDuplicateBehavior, SegmentId};
-use re_protos::headers::RerunHeadersExtractorExt as _;
+use re_protos::headers::{RerunHeadersExtractorExt as _, resolve_entry_id};
 use re_protos::missing_field;
 use re_protos::{
     EntryName,
@@ -804,7 +804,8 @@ impl RerunCloudService for RerunCloudHandler {
         request: tonic::Request<re_protos::cloud::v1alpha1::UpdateDatasetEntryRequest>,
     ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::UpdateDatasetEntryResponse>>
     {
-        let request: UpdateDatasetEntryRequest = request.into_inner().try_into()?;
+        let entry_id = resolve_entry_id(&request, request.get_ref().id.as_ref())?;
+        let request = UpdateDatasetEntryRequest::from_resolved(entry_id, request.into_inner())?;
 
         request
             .dataset_details
@@ -853,11 +854,7 @@ impl RerunCloudService for RerunCloudHandler {
     ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::ReadTableEntryResponse>> {
         let store = self.store.read().await;
 
-        let id = request
-            .into_inner()
-            .id
-            .ok_or_else(|| Status::invalid_argument("No table entry ID provided"))?
-            .try_into()?;
+        let id = resolve_entry_id(&request, request.get_ref().id.as_ref())?;
 
         let table = store.table(id).ok_or_else(|| {
             tonic::Status::not_found(format!("table with entry ID '{id}' not found"))
@@ -875,7 +872,8 @@ impl RerunCloudService for RerunCloudHandler {
         &self,
         request: tonic::Request<re_protos::cloud::v1alpha1::UpdateTableEntryRequest>,
     ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::UpdateTableEntryResponse>> {
-        let request: UpdateTableEntryRequest = request.into_inner().try_into()?;
+        let entry_id = resolve_entry_id(&request, request.get_ref().id.as_ref())?;
+        let request = UpdateTableEntryRequest::from_resolved(entry_id, request.into_inner())?;
 
         let mut store = self.store.write().await;
         store.table(request.id).ok_or_else(|| {
@@ -922,7 +920,7 @@ impl RerunCloudService for RerunCloudHandler {
         &self,
         request: tonic::Request<re_protos::cloud::v1alpha1::DeleteEntryRequest>,
     ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::DeleteEntryResponse>> {
-        let entry_id = request.into_inner().try_into()?;
+        let entry_id = resolve_entry_id(&request, request.get_ref().id.as_ref())?;
 
         self.store.write().await.delete_entry(entry_id)?;
 
@@ -939,10 +937,11 @@ impl RerunCloudService for RerunCloudHandler {
         &self,
         request: tonic::Request<re_protos::cloud::v1alpha1::UpdateEntryRequest>,
     ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::UpdateEntryResponse>> {
+        let resolved_id = resolve_entry_id(&request, request.get_ref().id.as_ref())?;
         let UpdateEntryRequest {
             id: entry_id,
             entry_details_update: EntryDetailsUpdate { name },
-        } = request.into_inner().try_into()?;
+        } = UpdateEntryRequest::from_resolved(resolved_id, request.into_inner())?;
 
         let mut store = self.store.write().await;
 
@@ -1917,10 +1916,7 @@ impl RerunCloudService for RerunCloudHandler {
         request: tonic::Request<re_protos::cloud::v1alpha1::GetTableSchemaRequest>,
     ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::GetTableSchemaResponse>> {
         let store = self.store.read().await;
-        let Some(entry_id) = request.into_inner().table_id else {
-            return Err(Status::not_found("Table ID not specified in request"));
-        };
-        let entry_id = entry_id.try_into()?;
+        let entry_id = resolve_entry_id(&request, request.get_ref().table_id.as_ref())?;
 
         let table = store
             .table(entry_id)
@@ -1943,10 +1939,7 @@ impl RerunCloudService for RerunCloudHandler {
         &self,
         request: tonic::Request<re_protos::cloud::v1alpha1::ScanTableRequest>,
     ) -> tonic::Result<tonic::Response<Self::ScanTableStream>> {
-        let Some(entry_id) = request.into_inner().table_id else {
-            return Err(Status::not_found("Table ID not specified in request"));
-        };
-        let entry_id = entry_id.try_into()?;
+        let entry_id = resolve_entry_id(&request, request.get_ref().table_id.as_ref())?;
 
         let provider = {
             let store = self.store.read().await;
