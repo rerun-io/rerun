@@ -240,7 +240,7 @@ async fn load_chunks(client: &mut ConnectionClient, batch: &RecordBatch) -> ApiR
 
     let chunk_stream = client.fetch_segment_chunks_by_id(batch).await?;
     let mut chunk_stream =
-        re_redap_client::fetch_chunks_response_to_chunk_and_segment_id(chunk_stream);
+        re_redap_client::fetch_chunks_response_to_chunk_and_segment_id(chunk_stream, None);
     let mut all_chunks = Vec::new();
     while let Some(chunks) = chunk_stream.next().await {
         for (chunk, _partition_id) in chunks? {

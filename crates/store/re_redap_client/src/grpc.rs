@@ -1,5 +1,7 @@
 use std::ops::ControlFlow;
 use std::sync::Arc;
+#[cfg(not(target_arch = "wasm32"))]
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use arrow::array::{AsArray as _, RecordBatch};
 use arrow::error::ArrowError;
@@ -448,6 +450,7 @@ pub type ChunksWithSegment = Vec<(Chunk, Option<SegmentId>)>;
 #[cfg(not(target_arch = "wasm32"))]
 pub fn fetch_chunks_response_to_chunk_and_segment_id(
     response: crate::FetchChunksResponseStream,
+    decode_time_us: Option<Arc<AtomicU64>>,
 ) -> crate::ApiResponseStream<ChunksWithSegment> {
     let origin = response.origin().clone();
     let trace_id = response.trace_id();
@@ -463,6 +466,9 @@ pub fn fetch_chunks_response_to_chunk_and_segment_id(
                 let trace_id = trace_id;
                 let origin = origin.clone();
                 let parent_span = parent_span.clone();
+                // Cheap `Option<Arc>` clone per response batch; only present when a
+                // caller wants to attribute decode CPU time to a query.
+                let decode_time_us = decode_time_us.clone();
                 // We want to make sure to offload that compute-heavy work to the compute worker pool: it's
                 // not going to make this one single pipeline any faster, but it will prevent starvation of
                 // the Tokio runtime (which would slow down every other futures currently scheduled!).
@@ -476,7 +482,11 @@ pub fn fetch_chunks_response_to_chunk_and_segment_id(
                     )
                     .entered();
 
-                    r.chunks
+                    // Time the decode loop from inside the blocking task so we
+                    // capture true CPU time, not scheduling wait.
+                    let decode_start = web_time::Instant::now();
+                    let result: Result<ChunksWithSegment, ApiError> = r
+                        .chunks
                         .into_iter()
                         .map(|arrow_msg| {
                             re_tracing::profile_scope!(
@@ -509,7 +519,11 @@ pub fn fetch_chunks_response_to_chunk_and_segment_id(
 
                             Ok((chunk, segment_id))
                         })
-                        .try_collect()
+                        .try_collect();
+                    if let Some(acc) = &decode_time_us {
+                        acc.fetch_add(decode_start.elapsed().as_micros() as u64, Ordering::Relaxed);
+                    }
+                    result
                 })
             }
         })
@@ -534,6 +548,7 @@ pub fn fetch_chunks_response_to_chunk_and_segment_id(
 #[cfg(target_arch = "wasm32")]
 pub fn fetch_chunks_response_to_chunk_and_segment_id(
     response: crate::FetchChunksResponseStream,
+    decode_time_us: Option<Arc<std::sync::atomic::AtomicU64>>,
 ) -> crate::ApiResponseStream<ChunksWithSegment> {
     let origin = response.origin().clone();
     let trace_id = response.trace_id();
@@ -547,7 +562,9 @@ pub fn fetch_chunks_response_to_chunk_and_segment_id(
                 tracing::trace_span!("fetch_chunks::batch_decode", num_chunks = resp.chunks.len())
                     .entered();
 
-            resp.chunks
+            let decode_start = web_time::Instant::now();
+            let result: Result<ChunksWithSegment, ApiError> = resp
+                .chunks
                 .into_iter()
                 .map(|arrow_msg| {
                     let segment_id = arrow_msg
@@ -577,7 +594,14 @@ pub fn fetch_chunks_response_to_chunk_and_segment_id(
 
                     Ok((chunk, segment_id))
                 })
-                .try_collect()
+                .try_collect();
+            if let Some(acc) = &decode_time_us {
+                acc.fetch_add(
+                    decode_start.elapsed().as_micros() as u64,
+                    std::sync::atomic::Ordering::Relaxed,
+                );
+            }
+            result
         }
     });
     crate::ApiResponseStream::new(origin, stream, trace_id)
@@ -1420,7 +1444,7 @@ async fn load_small_chunk_batch(
 ) -> ApiResult<(ControlFlow<()>, u64)> {
     // TODO(RR-3323): FetchChunks should expose a proper bidirectional streaming path on native.
     let chunk_stream = client.fetch_segment_chunks_by_id(batch).await?;
-    let mut chunk_stream = fetch_chunks_response_to_chunk_and_segment_id(chunk_stream);
+    let mut chunk_stream = fetch_chunks_response_to_chunk_and_segment_id(chunk_stream, None);
     let trace_id = chunk_stream.trace_id();
 
     let mut batch_bytes: u64 = 0;

@@ -47,6 +47,36 @@ const GRPC_BATCH_SIZE: usize = 12;
 /// This bounds both concurrency and the reorder buffer size.
 const IO_PIPELINE_BUFFER: usize = 24;
 
+/// RAII gauge for the number of fetch tasks in flight at once.
+///
+/// Bumps `current_inflight_fetches` on entry — updating the
+/// `peak_inflight_fetches` high-water mark via `fetch_max` — and decrements on
+/// drop, so the reported peak is correct even when a task returns early on
+/// error. `QueryMetrics` is shared across every partition's IO loop, so the
+/// peak is the true global concurrency (one unit per merged transport batch).
+struct InflightFetchGuard<'a>(&'a QueryMetrics);
+
+impl<'a> InflightFetchGuard<'a> {
+    fn enter(metrics: &'a QueryMetrics) -> Self {
+        let in_flight = metrics
+            .current_inflight_fetches
+            .fetch_add(1, Ordering::Relaxed)
+            + 1;
+        metrics
+            .peak_inflight_fetches
+            .fetch_max(in_flight, Ordering::Relaxed);
+        Self(metrics)
+    }
+}
+
+impl Drop for InflightFetchGuard<'_> {
+    fn drop(&mut self) {
+        self.0
+            .current_inflight_fetches
+            .fetch_sub(1, Ordering::Relaxed);
+    }
+}
+
 /// Connect timeout for direct-URL (S3) fetches. Bounds DNS + TCP + TLS
 /// setup so a hung connect cannot indefinitely hold one of the scarce
 /// process-global direct-fetch permits. Mirrors the gRPC client's 10s.
@@ -903,13 +933,16 @@ async fn fetch_remaining_via_grpc<T: DataframeClientAPI>(
         // an error from the gRPC fetch does not leak headroom to the
         // shared cross-partition budget.
         let mut stats = TaskFetchStats::default();
-        let all_chunks = fetch_batch_group_via_grpc(
-            batch_group,
-            client,
-            &metrics.fetch_grpc_requests,
-            &mut stats,
-        )
-        .await?;
+        let all_chunks = {
+            let _inflight = InflightFetchGuard::enter(metrics);
+            fetch_batch_group_via_grpc(
+                batch_group,
+                client,
+                &metrics.fetch_grpc_requests,
+                &mut stats,
+            )
+            .await?
+        };
 
         let actual: usize = all_chunks
             .iter()
@@ -1198,47 +1231,54 @@ pub(super) async fn chunk_stream_io_loop<T: DataframeClientAPI>(
                         .reserve_guarded_with_priority(estimated, task_time_min, segment_ids)
                         .await;
 
-                    let chunks = match task {
-                        FetchTask::Direct(batch) => {
-                            match fetch_batch_direct(
-                                origin,
-                                &batch,
-                                &http_client,
-                                &metrics.fetch_direct_requests,
-                                &mut stats,
-                                &pending_analytics,
-                            )
-                            .await
-                            {
-                                Ok(chunks) => chunks,
-                                Err(err) => {
-                                    stats.try_flush_into(
-                                        &pending_analytics,
-                                        Err(QueryErrorKind::DirectFetch),
-                                    );
-                                    return Err(err);
+                    let chunks = {
+                        // In-flight spans the fetch task (network + decode), but excludes time
+                        // parked on the byte-budget reservation above. This keeps the peak
+                        // focused on true concurrent work rather than queued/reserved tasks.
+                        // The guard decrements on every exit path (including early returns).
+                        let _inflight = InflightFetchGuard::enter(&metrics);
+                        match task {
+                            FetchTask::Direct(batch) => {
+                                match fetch_batch_direct(
+                                    origin,
+                                    &batch,
+                                    &http_client,
+                                    &metrics.fetch_direct_requests,
+                                    &mut stats,
+                                    &pending_analytics,
+                                )
+                                .await
+                                {
+                                    Ok(chunks) => chunks,
+                                    Err(err) => {
+                                        stats.try_flush_into(
+                                            &pending_analytics,
+                                            Err(QueryErrorKind::DirectFetch),
+                                        );
+                                        return Err(err);
+                                    }
                                 }
                             }
-                        }
-                        FetchTask::Grpc(batch) => {
-                            let bytes = batch_byte_size(&batch);
-                            #[cfg(not(target_arch = "wasm32"))]
-                            crate::chunk_fetcher::metrics::record_grpc_no_direct_urls(bytes);
-                            match fetch_batch_group_via_grpc(
-                                std::slice::from_ref(&batch),
-                                &client,
-                                &metrics.fetch_grpc_requests,
-                                &mut stats,
-                            )
-                            .await
-                            {
-                                Ok(chunks) => chunks,
-                                Err(err) => {
-                                    stats.try_flush_into(
-                                        &pending_analytics,
-                                        Err(QueryErrorKind::GrpcFetch),
-                                    );
-                                    return Err(err);
+                            FetchTask::Grpc(batch) => {
+                                let bytes = batch_byte_size(&batch);
+                                #[cfg(not(target_arch = "wasm32"))]
+                                crate::chunk_fetcher::metrics::record_grpc_no_direct_urls(bytes);
+                                match fetch_batch_group_via_grpc(
+                                    std::slice::from_ref(&batch),
+                                    &client,
+                                    &metrics.fetch_grpc_requests,
+                                    &mut stats,
+                                )
+                                .await
+                                {
+                                    Ok(chunks) => chunks,
+                                    Err(err) => {
+                                        stats.try_flush_into(
+                                            &pending_analytics,
+                                            Err(QueryErrorKind::GrpcFetch),
+                                        );
+                                        return Err(err);
+                                    }
                                 }
                             }
                         }

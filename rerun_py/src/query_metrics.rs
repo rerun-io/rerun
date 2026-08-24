@@ -148,6 +148,14 @@ impl PyQueryMetrics {
         self.snap.query_info.entity_path_narrowing_applied
     }
 
+    /// DataFusion target partition count for this scan — the degree of
+    /// parallelism the plan was built for. Makes `peak_inflight_fetches`
+    /// interpretable.
+    #[getter]
+    fn target_partitions(&self) -> usize {
+        self.snap.query_info.target_partitions
+    }
+
     // ---- Execution-time fields ----
 
     /// Wall-clock time from the start of `scan()` until the query finished
@@ -376,6 +384,39 @@ impl PyQueryMetrics {
     #[getter]
     fn pipeline_stall_breaker_activations(&self) -> u64 {
         self.snap.pipeline_stall_breaker_activations
+    }
+
+    // ---- Delivered payload, decode cost, observed parallelism ----
+
+    /// Total rows delivered to the consumer, summed across partitions —
+    /// post-decode, post-query, post-client-filter. Compared with the fetch
+    /// byte counters this reveals over-fetching ("fetched a lot, delivered
+    /// little").
+    #[getter]
+    fn delivered_rows(&self) -> u64 {
+        self.snap.delivered_rows
+    }
+
+    /// In-memory (decoded) size of every record batch delivered to the
+    /// consumer, summed across partitions.
+    #[getter]
+    fn delivered_bytes(&self) -> u64 {
+        self.snap.delivered_bytes
+    }
+
+    /// Total CPU time spent decoding/decompressing fetched chunks (both fetch
+    /// paths). Compare against `total_duration` to separate CPU-bound queries
+    /// from network-bound ones.
+    #[getter]
+    fn decode_duration(&self) -> Duration {
+        self.snap.decode_duration
+    }
+
+    /// Highest number of fetch tasks in flight at once across the whole query
+    /// (one unit per concurrent merged transport batch).
+    #[getter]
+    fn peak_inflight_fetches(&self) -> u64 {
+        self.snap.peak_inflight_fetches
     }
 
     fn __repr__(&self) -> String {

@@ -2,7 +2,7 @@
 
 use std::collections::BTreeMap;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use std::{error::Error as _, fmt::Write as _};
 
 use arrow::array::{
@@ -349,6 +349,10 @@ pub async fn fetch_batch_group_via_grpc<T: DataframeClientAPI>(
 ) -> ApiResult<Vec<ChunksWithSegment>> {
     let mut all_chunks = Vec::new();
 
+    // Decode runs inside `spawn_blocking` in `re_redap_client`, so we hand it a
+    // shared accumulator and fold the total into `stats` once the group is done.
+    let decode_us = std::sync::Arc::new(AtomicU64::new(0));
+
     let origin = client.origin().clone();
     let mut client = client.clone();
     for batch in batch_group {
@@ -375,8 +379,10 @@ pub async fn fetch_batch_group_via_grpc<T: DataframeClientAPI>(
             "/FetchChunks",
         );
 
-        let chunk_stream =
-            re_redap_client::fetch_chunks_response_to_chunk_and_segment_id(response_stream);
+        let chunk_stream = re_redap_client::fetch_chunks_response_to_chunk_and_segment_id(
+            response_stream,
+            Some(std::sync::Arc::clone(&decode_us)),
+        );
 
         let batch_chunks: Vec<ApiResult<ChunksWithSegment>> = chunk_stream.collect().await;
         for chunk_result in batch_chunks {
@@ -384,6 +390,8 @@ pub async fn fetch_batch_group_via_grpc<T: DataframeClientAPI>(
         }
         stats.record_grpc_bytes(batch_byte_size(batch));
     }
+
+    stats.record_decode(Duration::from_micros(decode_us.load(Ordering::Relaxed)));
 
     Ok(all_chunks)
 }
@@ -788,13 +796,14 @@ async fn fetch_batch_via_direct_urls(
                     let fetch_result = fetch_merged_range(&http_client, &request).await;
 
                     match fetch_result {
-                        Ok(results) => {
+                        Ok((results, decode_elapsed)) => {
                             if attempt > 1 {
                                 re_log::debug!(
                                     "Direct fetch [{req_idx}] succeeded on attempt {attempt}"
                                 );
                             }
                             local_stats.record_direct_bytes(useful_bytes);
+                            local_stats.record_decode(decode_elapsed);
                             return (Ok(results), local_stats);
                         }
                         Err(err) if err.retryable => {
@@ -866,10 +875,12 @@ async fn fetch_batch_via_direct_urls(
 
 type DecodedChunk = (usize, (Chunk, Option<SegmentId>));
 
+/// Returns the decoded chunks plus the CPU time spent decoding them (the
+/// network permit has already been released, so this is pure decode cost).
 async fn fetch_merged_range(
     http_client: &reqwest::Client,
     request: &MergedRangeRequest,
-) -> Result<Vec<DecodedChunk>, DirectFetchError> {
+) -> Result<(Vec<DecodedChunk>, Duration), DirectFetchError> {
     let MergedRangeRequest {
         url,
         file_range,
@@ -895,7 +906,10 @@ async fn fetch_merged_range(
 
     // Extract individual chunks from the merged response.
     // Deep copy each chunk to avoid holding the entire merged buffer alive.
-    chunks
+    // Time the decode/decompress work — the network transfer already
+    // completed above, so this isolates CPU-bound decode cost.
+    let decode_start = Instant::now();
+    let decoded: Vec<DecodedChunk> = chunks
         .iter()
         .map(|info| {
             let span = info.span_in_merged;
@@ -940,7 +954,8 @@ async fn fetch_merged_range(
                 })
                 .map(|chunk_with_segment| (info.original_row_index, chunk_with_segment))
         })
-        .try_collect()
+        .try_collect()?;
+    Ok((decoded, decode_start.elapsed()))
 }
 
 /// The undecoded bytes and metadata of a fetched merged range.

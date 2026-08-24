@@ -118,8 +118,11 @@ impl<T: DataframeClientAPI> DataframeSegmentStream<T> {
 
         // Then we need to fully decode these chunks, i.e. both the transport layer (Protobuf)
         // and the app layer (Arrow).
-        let mut chunk_stream =
-            re_redap_client::fetch_chunks_response_to_chunk_and_segment_id(response_stream);
+        let decode_us = Arc::new(std::sync::atomic::AtomicU64::new(0));
+        let mut chunk_stream = re_redap_client::fetch_chunks_response_to_chunk_and_segment_id(
+            response_stream,
+            Some(Arc::clone(&decode_us)),
+        );
 
         // Note: using segment id as the store id, shouldn't really
         // matter since this is just a temporary store.
@@ -170,6 +173,11 @@ impl<T: DataframeClientAPI> DataframeSegmentStream<T> {
                     })?;
             }
         }
+
+        self.pending_analytics.metrics().decode_time_us.fetch_add(
+            decode_us.load(std::sync::atomic::Ordering::Relaxed),
+            std::sync::atomic::Ordering::Relaxed,
+        );
 
         Ok(store)
     }
@@ -256,7 +264,19 @@ impl<T: DataframeClientAPI> Stream for DataframeSegmentStream<T> {
             match create_next_row(&origin, query, segment_id, &this.projected_schema)
                 .map_err(|err| err.into_df_error())?
             {
-                Some(rb) => return Poll::Ready(Some(Ok(rb))),
+                Some(rb) => {
+                    // Payload delivered to the consumer — post-query,
+                    // post-client-filter. Mirrors the native path.
+                    let metrics = this.pending_analytics.metrics();
+                    metrics
+                        .delivered_rows
+                        .fetch_add(rb.num_rows() as u64, std::sync::atomic::Ordering::Relaxed);
+                    metrics.delivered_bytes.fetch_add(
+                        rb.get_array_memory_size() as u64,
+                        std::sync::atomic::Ordering::Relaxed,
+                    );
+                    return Poll::Ready(Some(Ok(rb)));
+                }
                 None => this.current_query = None,
             }
         }

@@ -301,11 +301,23 @@ impl<T: DataframeClientAPI> Stream for DataframeSegmentStream<T> {
             .poll_recv(cx)
             .map(|result| Ok(result).transpose());
 
-        if matches!(&result, Poll::Ready(Some(Ok(_)))) {
+        if let Poll::Ready(Some(Ok(batch))) = &result {
             // This could be the first time we return data that will actually be
             // shown to the user — as close to the perceived latency as we'll get.
             // `record_first_chunk` is OnceLock-backed; subsequent calls are no-ops.
             this.pending_analytics.record_first_chunk();
+
+            // Payload actually delivered to the consumer — post-decode,
+            // post-query, post-client-filter. Two relaxed adds per batch
+            // (batches are coarse), summed across partitions via the shared
+            // atomics, so the snapshot reports whole-query delivered totals.
+            let metrics = this.pending_analytics.metrics();
+            metrics
+                .delivered_rows
+                .fetch_add(batch.num_rows() as u64, Ordering::Relaxed);
+            metrics
+                .delivered_bytes
+                .fetch_add(batch.get_array_memory_size() as u64, Ordering::Relaxed);
         }
 
         if matches!(&result, Poll::Ready(None)) {

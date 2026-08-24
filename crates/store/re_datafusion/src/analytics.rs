@@ -326,6 +326,12 @@ pub struct QueryInfo {
     /// Total size of all queried chunks in bytes (from chunk metadata).
     pub query_bytes: u64,
 
+    /// DataFusion target partition count for this scan (from
+    /// `SessionConfig::target_partitions`) — the degree of parallelism the
+    /// plan was built for. Provides the denominator that makes the observed
+    /// `peak_inflight_fetches` throughput counter interpretable.
+    pub target_partitions: usize,
+
     /// Min # chunks touched within any single segment in this query.
     pub query_chunks_per_segment_min: u32,
 
@@ -365,8 +371,10 @@ pub struct QueryInfo {
     /// `filters_pushed_down + filters_applied_client_side`).
     pub filters_total: u32,
 
-    /// Semicolon-delimited SQL representations of every offered filter
-    /// (e.g. `"(log_time > 0);rerun_segment_id IN ('a', 'b')"`).
+    /// Semicolon-delimited SQL representations of every offered filter, with
+    /// all literals scrubbed to `?` placeholders so the signature is a template
+    /// and carries no customer data (see [`expr_filter_signature`])
+    /// (e.g. `"(log_time > ?);rerun_segment_id IN (?, ?)"`).
     pub filters_signatures: String,
 
     /// Semicolon-delimited SQL signatures of filters classified as
@@ -588,12 +596,22 @@ pub(crate) struct TaskFetchStats {
     direct_max_attempt: u64,
     direct_original_ranges: u64,
     direct_merged_ranges: u64,
+
+    /// CPU time spent in `Chunk::from_record_batch` (both fetch paths) for the
+    /// chunks decoded by this task.
+    decode: Duration,
 }
 
 #[cfg_attr(target_arch = "wasm32", expect(dead_code))]
 impl TaskFetchStats {
     pub fn record_grpc_bytes(&mut self, bytes: u64) {
         self.grpc_bytes += bytes;
+    }
+
+    /// Add decode/decompress CPU time observed while turning fetched bytes into
+    /// chunks. Accumulated per task, then summed into `decode_time_us`.
+    pub fn record_decode(&mut self, elapsed: Duration) {
+        self.decode = self.decode.saturating_add(elapsed);
     }
 
     pub fn record_direct_bytes(&mut self, bytes: u64) {
@@ -637,6 +655,7 @@ impl TaskFetchStats {
             direct_max_attempt,
             direct_original_ranges,
             direct_merged_ranges,
+            decode,
         } = other;
         self.grpc_bytes += grpc_bytes;
         self.direct_bytes += direct_bytes;
@@ -646,6 +665,7 @@ impl TaskFetchStats {
         self.direct_max_attempt = self.direct_max_attempt.max(direct_max_attempt);
         self.direct_original_ranges += direct_original_ranges;
         self.direct_merged_ranges += direct_merged_ranges;
+        self.decode = self.decode.saturating_add(decode);
     }
 
     /// Fold this buffer into the shared [`QueryMetrics`].
@@ -663,6 +683,7 @@ impl TaskFetchStats {
             direct_max_attempt,
             direct_original_ranges,
             direct_merged_ranges,
+            decode,
         } = self;
 
         // Zero-valued fields are skipped so totally-idle tasks don't touch the
@@ -706,6 +727,11 @@ impl TaskFetchStats {
             metrics
                 .fetch_direct_merged_ranges
                 .fetch_add(direct_merged_ranges, Ordering::Relaxed);
+        }
+        if !decode.is_zero() {
+            metrics
+                .decode_time_us
+                .fetch_add(decode.as_micros() as u64, Ordering::Relaxed);
         }
     }
 
@@ -807,6 +833,10 @@ pub(crate) fn build_metrics_set_for_explain(
     global("segment_admission_waits").add(load(&metrics.segment_admission_waits));
     global("pipeline_stall_breaker_activations")
         .add(load(&metrics.pipeline_stall_breaker_activations));
+    global("delivered_rows").add(load(&metrics.delivered_rows));
+    global("delivered_bytes").add(load(&metrics.delivered_bytes));
+    global("decode_duration_us").add(load(&metrics.decode_time_us));
+    global("peak_inflight_fetches").add(load(&metrics.peak_inflight_fetches));
 
     if let Some(ttfr) = time_to_first_chunk {
         MetricBuilder::new(&set)
@@ -867,6 +897,7 @@ fn build_query_span(snap: &QuerySnapshot, wall_clock_range: Range<SystemTime>) -
                 query_columns,
                 query_entities,
                 query_bytes,
+                target_partitions,
                 query_chunks_per_segment_min,
                 query_chunks_per_segment_max,
                 query_chunks_per_segment_mean,
@@ -917,6 +948,10 @@ fn build_query_span(snap: &QuerySnapshot, wall_clock_range: Range<SystemTime>) -
         pipeline_byte_waits,
         segment_admission_waits,
         pipeline_stall_breaker_activations,
+        delivered_rows,
+        delivered_bytes,
+        decode_duration,
+        peak_inflight_fetches,
     } = snap;
 
     #[expect(
@@ -1033,6 +1068,12 @@ fn build_query_span(snap: &QuerySnapshot, wall_clock_range: Range<SystemTime>) -
             "entity_path_narrowing_applied",
             *entity_path_narrowing_applied,
         ),
+        // Delivered payload, decode cost, observed parallelism.
+        kv_int("query_target_partitions", *target_partitions as i64),
+        kv_int("delivered_rows", *delivered_rows as i64),
+        kv_int("delivered_bytes", *delivered_bytes as i64),
+        kv_int("decode_duration_us", decode_duration.as_micros() as i64),
+        kv_int("peak_inflight_fetches", *peak_inflight_fetches as i64),
     ];
 
     if *filters_total > 0 {
@@ -1102,14 +1143,47 @@ fn build_query_span(snap: &QuerySnapshot, wall_clock_range: Range<SystemTime>) -
 // reachable from the client today and will be added via server-side OTLP
 // span enrichment in a follow-up.
 
+/// Replace every literal in `expr` with a `?` placeholder.
+///
+/// This templates the filter signature — two filters differing only in their
+/// constants (`frame_nr > 100` vs `frame_nr > 200`) collapse to the same
+/// signature — and, just as importantly, keeps customer data out of both the
+/// analytics span and the Python `MetricsCollector`, which read the same
+/// signatures. The `TreeNode` walk recurses, so `IN (…)`, `BETWEEN … AND …`,
+/// `LIKE`, and nested comparisons are all scrubbed in one pass.
+fn scrub_expr_literals(expr: &Expr) -> Expr {
+    use datafusion::common::tree_node::{Transformed, TreeNode as _};
+    use datafusion::logical_expr::expr::Placeholder;
+
+    expr.clone()
+        .transform(|e| {
+            if matches!(e, Expr::Literal(..)) {
+                // Unparses to a bare `?` (see datafusion unparser) — no quotes,
+                // no value, no type. A single fixed token means identical
+                // templates regardless of how many literals a filter has.
+                Ok(Transformed::yes(Expr::Placeholder(
+                    Placeholder::new_with_field("?".to_owned(), None),
+                )))
+            } else {
+                Ok(Transformed::no(e))
+            }
+        })
+        .map(|transformed| transformed.data)
+        .unwrap_or_else(|_| expr.clone())
+}
+
 /// Produce a SQL representation of a DataFusion filter expression for analytics.
+///
+/// Literals are scrubbed to `?` placeholders first (see [`scrub_expr_literals`])
+/// so the signature is a template and carries no customer data.
 ///
 /// Falls back to `variant_name()` for expressions the SQL unparser doesn't support.
 /// The result is escaped so that individual signatures can be safely joined with `;`.
 pub(crate) fn expr_filter_signature(expr: &Expr) -> String {
-    let sql = datafusion::sql::unparser::expr_to_sql(expr)
+    let scrubbed = scrub_expr_literals(expr);
+    let sql = datafusion::sql::unparser::expr_to_sql(&scrubbed)
         .map(|e| e.to_string())
-        .unwrap_or_else(|_| expr.variant_name().to_owned());
+        .unwrap_or_else(|_| scrubbed.variant_name().to_owned());
     escape_sig_str(&sql)
 }
 
@@ -1545,1213 +1619,16 @@ fn kv_double(key: &str, value: f64) -> KeyValue {
 }
 
 #[cfg(test)]
-mod tests {
-    use std::collections::HashSet;
-
-    use super::*;
-
-    fn dummy_query_info() -> QueryInfo {
-        QueryInfo {
-            dataset_id: "ds-123".to_owned(),
-            query_chunks: 42,
-            query_segments: 5,
-            query_layers: 2,
-            query_columns: 7,
-            query_entities: 3,
-            query_bytes: 1234,
-            query_chunks_per_segment_min: 4,
-            query_chunks_per_segment_max: 12,
-            query_chunks_per_segment_mean: 8.4,
-            query_type: QueryType::LatestAt,
-            primary_index_name: None,
-            time_to_first_chunk_info: None,
-            trace_id: None,
-            filters_pushed_down: 0,
-            filters_applied_client_side: 0,
-            entity_path_narrowing_applied: false,
-            filters_total: 0,
-            filters_signatures: String::new(),
-            filters_signatures_exact: String::new(),
-            filters_signatures_inexact: String::new(),
-            filters_signatures_unsupported: String::new(),
-        }
-    }
-
-    #[test]
-    fn assign_span_identity_uses_correlated_trace_id() {
-        let trace_id = opentelemetry::TraceId::from_bytes([7; 16]);
-        let mut span = Span::default();
-
-        assign_span_identity(&mut span, Some(trace_id)).unwrap();
-
-        assert_eq!(span.trace_id, trace_id.to_bytes());
-        assert_eq!(span.span_id.len(), 8);
-        assert!(span.span_id.iter().any(|byte| *byte != 0));
-    }
-
-    #[test]
-    fn assign_span_identity_generates_trace_id_without_correlation() {
-        let mut span = Span::default();
-
-        assign_span_identity(&mut span, None).unwrap();
-
-        assert_eq!(span.trace_id.len(), 16);
-        assert!(span.trace_id.iter().any(|byte| *byte != 0));
-        assert_eq!(span.span_id.len(), 8);
-        assert!(span.span_id.iter().any(|byte| *byte != 0));
-    }
-
-    fn attribute_keys(span: &Span) -> HashSet<&str> {
-        let keys: HashSet<_> = span.attributes.iter().map(|kv| kv.key.as_str()).collect();
-        re_log::debug_assert_eq!(
-            keys.len(),
-            span.attributes.len(),
-            "span contains duplicate attribute keys"
-        );
-        keys
-    }
-
-    fn find_int(span: &Span, key: &str) -> Option<i64> {
-        span.attributes
-            .iter()
-            .find(|kv| kv.key == key)
-            .and_then(|kv| match kv.value.as_ref()?.value.as_ref()? {
-                Value::IntValue(i) => Some(*i),
-                _ => None,
-            })
-    }
-
-    fn find_string<'a>(span: &'a Span, key: &str) -> Option<&'a str> {
-        span.attributes
-            .iter()
-            .find(|kv| kv.key == key)
-            .and_then(|kv| match kv.value.as_ref()?.value.as_ref()? {
-                Value::StringValue(s) => Some(s.as_str()),
-                _ => None,
-            })
-    }
-
-    fn find_double(span: &Span, key: &str) -> Option<f64> {
-        span.attributes
-            .iter()
-            .find(|kv| kv.key == key)
-            .and_then(|kv| match kv.value.as_ref()?.value.as_ref()? {
-                Value::DoubleValue(d) => Some(*d),
-                _ => None,
-            })
-    }
-
-    fn find_bool(span: &Span, key: &str) -> Option<bool> {
-        span.attributes
-            .iter()
-            .find(|kv| kv.key == key)
-            .and_then(|kv| match kv.value.as_ref()?.value.as_ref()? {
-                Value::BoolValue(b) => Some(*b),
-                _ => None,
-            })
-    }
-
-    /// Required attributes that must always be emitted, regardless of query state.
-    /// Adding/removing one of these is a breaking change for the analytics pipeline.
-    const REQUIRED_KEYS: &[&str] = &[
-        "dataset_id",
-        "query_chunks",
-        "query_segments",
-        "query_layers",
-        "query_columns",
-        "query_entities",
-        "query_bytes",
-        "query_chunks_per_segment_min",
-        "query_chunks_per_segment_max",
-        "query_chunks_per_segment_mean",
-        "query_type",
-        "total_duration_us",
-        "is_success",
-        "fetch_grpc_requests",
-        "fetch_grpc_bytes",
-        "fetch_direct_requests",
-        "fetch_direct_bytes",
-        "fetch_direct_retries",
-        "fetch_direct_requests_retried",
-        "fetch_direct_retry_sleep_us",
-        "fetch_direct_max_attempt",
-        "fetch_direct_original_ranges",
-        "fetch_direct_merged_ranges",
-        "planned_fetch_batches",
-        "planned_segment_waves",
-        "segment_admission_limit",
-        "segment_admission_candidate_limit",
-        "segment_admission_source",
-        "segment_admission_candidate_reason",
-        "segment_admission_adaptive_enabled",
-        "segment_admission_profile_segment_count",
-        "segment_admission_profile_complete",
-        "segment_admission_p95_segment_bytes",
-        "segment_admission_max_segment_bytes",
-        "segment_admission_largest_window_bytes",
-        "max_segments_per_fetch_batch",
-        "max_segments_per_wave",
-        "peak_active_segments",
-        "pipeline_budget_bytes",
-        "pipeline_peak_decoded_bytes",
-        "pipeline_byte_waits",
-        "segment_admission_waits",
-        "pipeline_stall_breaker_activations",
-        "filters_pushed_down",
-        "filters_applied_client_side",
-        "entity_path_narrowing_applied",
-    ];
-
-    /// Build a fresh `QuerySnapshot` mirroring `dummy_query_info()`, with no
-    /// execution data — analogous to the pre-refactor `TaskFetchStats::default`
-    /// fixture.
-    fn snapshot_from_info(query_info: QueryInfo) -> QuerySnapshot {
-        QuerySnapshot {
-            query_info,
-            total_duration: Duration::ZERO,
-            time_to_first_chunk: None,
-            error_kind: None,
-            direct_terminal_reason: None,
-            fetch_grpc_requests: 0,
-            fetch_grpc_bytes: 0,
-            fetch_direct_requests: 0,
-            fetch_direct_bytes: 0,
-            fetch_direct_retries: 0,
-            fetch_direct_requests_retried: 0,
-            fetch_direct_retry_sleep: Duration::ZERO,
-            fetch_direct_max_attempt: 0,
-            fetch_direct_original_ranges: 0,
-            fetch_direct_merged_ranges: 0,
-            planned_fetch_batches: 0,
-            planned_segment_waves: 0,
-            segment_admission_limit: 0,
-            segment_admission_candidate_limit: 0,
-            segment_admission_source: "metrics_only",
-            segment_admission_candidate_reason: "eligible",
-            segment_admission_adaptive_enabled: false,
-            segment_admission_profile_segment_count: 0,
-            segment_admission_profile_complete: false,
-            segment_admission_p95_segment_bytes: 0,
-            segment_admission_max_segment_bytes: 0,
-            segment_admission_largest_window_bytes: 0,
-            max_segments_per_fetch_batch: 0,
-            max_segments_per_wave: 0,
-            peak_active_segments: 0,
-            pipeline_budget_bytes: 0,
-            pipeline_peak_decoded_bytes: 0,
-            pipeline_byte_waits: 0,
-            segment_admission_waits: 0,
-            pipeline_stall_breaker_activations: 0,
-        }
-    }
-
-    #[test]
-    fn build_query_span_minimal_emits_only_required_attributes() {
-        let qi = dummy_query_info();
-        let mut snap = snapshot_from_info(qi);
-        snap.total_duration = Duration::from_micros(500);
-
-        let span = build_query_span(
-            &snap,
-            SystemTime::UNIX_EPOCH..SystemTime::UNIX_EPOCH + Duration::from_secs(1),
-        );
-
-        // Span shape
-        assert_eq!(span.name, "cloud_query_dataset");
-        assert_eq!(span.kind, i32::from(SpanKind::Client));
-        assert!(span.links.is_empty());
-
-        // Attribute key set is exactly the required keys — no optional keys leaked.
-        let expected: HashSet<&str> = REQUIRED_KEYS.iter().copied().collect();
-        let actual = attribute_keys(&span);
-        assert_eq!(
-            actual,
-            expected,
-            "extra/missing attribute keys: {:?}",
-            actual.symmetric_difference(&expected).collect::<Vec<_>>()
-        );
-
-        // Spot-check a few values.
-        assert_eq!(find_string(&span, "dataset_id"), Some("ds-123"));
-        assert_eq!(find_int(&span, "query_chunks"), Some(42));
-        assert_eq!(find_int(&span, "query_chunks_per_segment_min"), Some(4));
-        assert_eq!(find_int(&span, "query_chunks_per_segment_max"), Some(12));
-        assert_eq!(
-            find_double(&span, "query_chunks_per_segment_mean"),
-            Some(f64::from(8.4_f32))
-        );
-        assert_eq!(find_string(&span, "query_type"), Some("latest_at"));
-        assert_eq!(find_int(&span, "total_duration_us"), Some(500));
-        assert_eq!(find_bool(&span, "is_success"), Some(true));
-    }
-
-    #[test]
-    fn build_query_span_records_fetch_stats() {
-        let qi = dummy_query_info();
-        let mut snap = snapshot_from_info(qi);
-        snap.total_duration = Duration::from_millis(1);
-        snap.fetch_grpc_requests = 2;
-        snap.fetch_grpc_bytes = 5_000;
-        snap.fetch_direct_requests = 1;
-        snap.fetch_direct_bytes = 10_000;
-        snap.fetch_direct_retries = 2;
-        snap.fetch_direct_requests_retried = 1;
-        snap.fetch_direct_retry_sleep = Duration::from_millis(12);
-        snap.fetch_direct_max_attempt = 3;
-        snap.fetch_direct_original_ranges = 8;
-        snap.fetch_direct_merged_ranges = 4;
-        snap.planned_fetch_batches = 16;
-        snap.planned_segment_waves = 1_332;
-        snap.segment_admission_limit = 3;
-        snap.segment_admission_candidate_limit = 16;
-        snap.segment_admission_source = "metrics_only";
-        snap.segment_admission_candidate_reason = "eligible";
-        snap.segment_admission_adaptive_enabled = true;
-        snap.segment_admission_profile_segment_count = 32;
-        snap.segment_admission_profile_complete = true;
-        snap.segment_admission_p95_segment_bytes = 1024;
-        snap.segment_admission_max_segment_bytes = 2048;
-        snap.segment_admission_largest_window_bytes = 16_384;
-        snap.max_segments_per_fetch_batch = 3;
-        snap.max_segments_per_wave = 3;
-        snap.peak_active_segments = 3;
-        snap.pipeline_budget_bytes = 4 * 1024 * 1024 * 1024;
-        snap.pipeline_peak_decoded_bytes = 96 * 1024 * 1024;
-        snap.pipeline_byte_waits = 2;
-        snap.segment_admission_waits = 1_329;
-        snap.pipeline_stall_breaker_activations = 1;
-
-        let span = build_query_span(
-            &snap,
-            SystemTime::UNIX_EPOCH..SystemTime::UNIX_EPOCH + Duration::from_secs(1),
-        );
-
-        assert_eq!(find_int(&span, "fetch_grpc_requests"), Some(2));
-        assert_eq!(find_int(&span, "fetch_grpc_bytes"), Some(5_000));
-        assert_eq!(find_int(&span, "fetch_direct_requests"), Some(1));
-        assert_eq!(find_int(&span, "fetch_direct_bytes"), Some(10_000));
-        assert_eq!(find_int(&span, "fetch_direct_retries"), Some(2));
-        assert_eq!(find_int(&span, "fetch_direct_requests_retried"), Some(1));
-        assert_eq!(find_int(&span, "fetch_direct_retry_sleep_us"), Some(12_000));
-        assert_eq!(find_int(&span, "fetch_direct_max_attempt"), Some(3));
-        assert_eq!(find_int(&span, "fetch_direct_original_ranges"), Some(8));
-        assert_eq!(find_int(&span, "fetch_direct_merged_ranges"), Some(4));
-        assert_eq!(find_int(&span, "planned_fetch_batches"), Some(16));
-        assert_eq!(find_int(&span, "planned_segment_waves"), Some(1_332));
-        assert_eq!(find_int(&span, "segment_admission_limit"), Some(3));
-        assert_eq!(
-            find_int(&span, "segment_admission_candidate_limit"),
-            Some(16)
-        );
-        assert_eq!(
-            find_string(&span, "segment_admission_source"),
-            Some("metrics_only")
-        );
-        assert_eq!(
-            find_string(&span, "segment_admission_candidate_reason"),
-            Some("eligible")
-        );
-        assert_eq!(
-            find_bool(&span, "segment_admission_adaptive_enabled"),
-            Some(true)
-        );
-        assert_eq!(
-            find_int(&span, "segment_admission_profile_segment_count"),
-            Some(32)
-        );
-        assert_eq!(
-            find_bool(&span, "segment_admission_profile_complete"),
-            Some(true)
-        );
-        assert_eq!(
-            find_int(&span, "segment_admission_p95_segment_bytes"),
-            Some(1024)
-        );
-        assert_eq!(
-            find_int(&span, "segment_admission_max_segment_bytes"),
-            Some(2048)
-        );
-        assert_eq!(
-            find_int(&span, "segment_admission_largest_window_bytes"),
-            Some(16_384)
-        );
-        assert_eq!(find_int(&span, "max_segments_per_fetch_batch"), Some(3));
-        assert_eq!(find_int(&span, "max_segments_per_wave"), Some(3));
-        assert_eq!(find_int(&span, "peak_active_segments"), Some(3));
-        assert_eq!(
-            find_int(&span, "pipeline_budget_bytes"),
-            Some(4 * 1024 * 1024 * 1024)
-        );
-        assert_eq!(
-            find_int(&span, "pipeline_peak_decoded_bytes"),
-            Some(96 * 1024 * 1024)
-        );
-        assert_eq!(find_int(&span, "pipeline_byte_waits"), Some(2));
-        assert_eq!(find_int(&span, "segment_admission_waits"), Some(1_329));
-        assert_eq!(
-            find_int(&span, "pipeline_stall_breaker_activations"),
-            Some(1)
-        );
-    }
-
-    #[test]
-    fn build_query_span_emits_all_optional_attributes_when_present() {
-        let trace_id = opentelemetry::TraceId::from_bytes([7u8; 16]);
-        let mut qi = dummy_query_info();
-        qi.primary_index_name = Some("log_time".to_owned());
-        qi.time_to_first_chunk_info = Some(Duration::from_micros(123));
-        qi.trace_id = Some(trace_id);
-
-        let mut snap = snapshot_from_info(qi);
-        snap.total_duration = Duration::from_micros(999);
-        snap.time_to_first_chunk = Some(Duration::from_micros(456));
-        snap.direct_terminal_reason = Some(DirectFetchFailureReason::Http5xx);
-        snap.error_kind = Some(QueryErrorKind::DirectFetch.as_str());
-
-        let span = build_query_span(
-            &snap,
-            SystemTime::UNIX_EPOCH..SystemTime::UNIX_EPOCH + Duration::from_secs(1),
-        );
-
-        // Optional keys must all be present.
-        let optional = [
-            "primary_index_name",
-            "time_to_first_chunk_info_us",
-            "time_to_first_chunk_us",
-            "fetch_direct_terminal_reason",
-            "error_kind",
-        ];
-        let keys = attribute_keys(&span);
-        for k in optional {
-            assert!(keys.contains(k), "missing optional attribute: {k}");
-        }
-
-        // is_success flips to false when error_kind is set.
-        assert_eq!(find_bool(&span, "is_success"), Some(false));
-
-        assert_eq!(find_string(&span, "primary_index_name"), Some("log_time"));
-        assert_eq!(find_int(&span, "time_to_first_chunk_info_us"), Some(123));
-        assert_eq!(find_int(&span, "time_to_first_chunk_us"), Some(456));
-        assert_eq!(
-            find_string(&span, "fetch_direct_terminal_reason"),
-            Some("http_5xx")
-        );
-        assert_eq!(find_string(&span, "error_kind"), Some("direct_fetch"));
-        assert!(span.links.is_empty());
-    }
-
-    /// Confirms the planning-phase metrics that `EXPLAIN ANALYZE` reads are
-    /// all surfaced by [`build_metrics_set_for_explain`]. Regression check
-    /// that `_min` shows up — prior to the alignment fix only `_max` was
-    /// surfaced.
-    #[test]
-    fn explain_metrics_set_includes_chunks_per_segment_min_and_max() {
-        let metrics = QueryMetrics::new(dummy_query_info());
-        let set = build_metrics_set_for_explain(&metrics, 1, None);
-
-        let aggregated = set.aggregate_by_name();
-        let names: std::collections::HashSet<_> = aggregated
-            .iter()
-            .filter_map(|m| match m.value() {
-                datafusion::physical_plan::metrics::MetricValue::Count { name, .. } => {
-                    Some(name.as_ref().to_owned())
-                }
-                _ => None,
-            })
-            .collect();
-
-        assert!(
-            names.contains("query_chunks_per_segment_min"),
-            "expected query_chunks_per_segment_min in explain metrics: {names:?}"
-        );
-        assert!(
-            names.contains("query_chunks_per_segment_max"),
-            "expected query_chunks_per_segment_max in explain metrics: {names:?}"
-        );
-    }
-
-    #[test]
-    fn build_query_span_uses_wall_clock_range() {
-        let qi = dummy_query_info();
-        let snap = snapshot_from_info(qi);
-        let start = SystemTime::UNIX_EPOCH + Duration::from_secs(2);
-        let end = SystemTime::UNIX_EPOCH + Duration::from_millis(2_500);
-
-        let span = build_query_span(&snap, start..end);
-
-        assert_eq!(span.start_time_unix_nano, 2_000_000_000);
-        assert_eq!(span.end_time_unix_nano, 2_500_000_000);
-    }
-}
+mod test_explain_metrics_set;
 
 #[cfg(test)]
-mod table_query_tests {
-    use std::assert_matches;
-    use std::collections::HashSet;
-
-    use re_protos::cloud::v1alpha1::ext::{LanceTable, ProviderDetails, SystemTable};
-
-    use super::*;
-
-    fn lance_provider_details() -> ProviderDetails {
-        // Construct via the protobuf type so we don't need a direct `url`
-        // dependency in this crate just for tests.
-        let proto = re_protos::cloud::v1alpha1::LanceTable {
-            table_url: "s3://bucket/path".to_owned(),
-        };
-        ProviderDetails::LanceTable(LanceTable::try_from(proto).unwrap())
-    }
-
-    // ---- helpers ----
-
-    fn dummy_table_query_info() -> TableQueryInfo {
-        TableQueryInfo {
-            table_id: "tbl-42".to_owned(),
-            table_kind: TableKind::Lance,
-            caller: TableQueryCaller::BrowserDetailView,
-            schema_total_columns: 12,
-            projected_columns: 5,
-            has_limit: false,
-            limit_value: None,
-            time_range: SystemTime::UNIX_EPOCH..SystemTime::UNIX_EPOCH + Duration::from_secs(1),
-            filters_total: 0,
-            filters_signatures: String::new(),
-        }
-    }
-
-    fn empty_stats() -> TableScanStatsSnapshot {
-        TableScanStatsSnapshot::default()
-    }
-
-    fn attribute_keys(span: &Span) -> HashSet<&str> {
-        let keys: HashSet<_> = span.attributes.iter().map(|kv| kv.key.as_str()).collect();
-        assert_eq!(
-            keys.len(),
-            span.attributes.len(),
-            "span contains duplicate attribute keys"
-        );
-        keys
-    }
-
-    fn find_int(span: &Span, key: &str) -> Option<i64> {
-        span.attributes
-            .iter()
-            .find(|kv| kv.key == key)
-            .and_then(|kv| match kv.value.as_ref()?.value.as_ref()? {
-                Value::IntValue(i) => Some(*i),
-                _ => None,
-            })
-    }
-
-    fn find_string<'a>(span: &'a Span, key: &str) -> Option<&'a str> {
-        span.attributes
-            .iter()
-            .find(|kv| kv.key == key)
-            .and_then(|kv| match kv.value.as_ref()?.value.as_ref()? {
-                Value::StringValue(s) => Some(s.as_str()),
-                _ => None,
-            })
-    }
-
-    fn find_bool(span: &Span, key: &str) -> Option<bool> {
-        span.attributes
-            .iter()
-            .find(|kv| kv.key == key)
-            .and_then(|kv| match kv.value.as_ref()?.value.as_ref()? {
-                Value::BoolValue(b) => Some(*b),
-                _ => None,
-            })
-    }
-
-    /// Required attributes that must always be emitted, regardless of scan
-    /// outcome. Adding/removing one of these is a breaking change for the
-    /// analytics pipeline (`PostHog` dashboards, server-side enrichment, etc.).
-    const REQUIRED_KEYS: &[&str] = &[
-        "table_id",
-        "table_kind",
-        "caller",
-        "schema_total_columns",
-        "projected_columns",
-        "has_limit",
-        "is_success",
-        "total_duration_us",
-        "fetch_grpc_requests",
-        "num_record_batches",
-        "rows_returned",
-        "bytes_returned",
-    ];
-
-    // ---- builder shape ----
-
-    #[test]
-    fn build_table_query_span_minimal_emits_only_required_attributes() {
-        let info = dummy_table_query_info();
-
-        let span = build_table_query_span(
-            &info,
-            empty_stats(),
-            SystemTime::UNIX_EPOCH..SystemTime::UNIX_EPOCH + Duration::from_secs(1),
-            Duration::from_micros(500),
-            None,
-            None,
-            None,
-            None,
-        );
-
-        // Span shape
-        assert_eq!(span.name, "cloud_scan_table");
-        assert_eq!(span.kind, i32::from(SpanKind::Client));
-        assert!(span.links.is_empty());
-
-        // Attribute key set is exactly the required keys — no optional keys leaked.
-        let expected: HashSet<&str> = REQUIRED_KEYS.iter().copied().collect();
-        let actual = attribute_keys(&span);
-        assert_eq!(
-            actual,
-            expected,
-            "extra/missing attribute keys: {:?}",
-            actual.symmetric_difference(&expected).collect::<Vec<_>>()
-        );
-
-        // Spot-check key values from the dummy info.
-        assert_eq!(find_string(&span, "table_id"), Some("tbl-42"));
-        assert_eq!(find_string(&span, "table_kind"), Some("lance"));
-        assert_eq!(find_string(&span, "caller"), Some("browser_detail_view"));
-        assert_eq!(find_int(&span, "schema_total_columns"), Some(12));
-        assert_eq!(find_int(&span, "projected_columns"), Some(5));
-        assert_eq!(find_bool(&span, "has_limit"), Some(false));
-        assert_eq!(find_bool(&span, "is_success"), Some(true));
-        assert_eq!(find_int(&span, "total_duration_us"), Some(500));
-    }
-
-    #[test]
-    fn build_table_query_span_records_scan_stats() {
-        let info = dummy_table_query_info();
-        let stats = TableScanStatsSnapshot {
-            grpc_requests: 7,
-            batches: 7,
-            rows_returned: 12_345,
-            bytes_returned: 4_567_890,
-        };
-
-        let span = build_table_query_span(
-            &info,
-            stats,
-            SystemTime::UNIX_EPOCH..SystemTime::UNIX_EPOCH + Duration::from_secs(1),
-            Duration::from_millis(2),
-            None,
-            None,
-            None,
-            None,
-        );
-
-        assert_eq!(find_int(&span, "fetch_grpc_requests"), Some(7));
-        assert_eq!(find_int(&span, "num_record_batches"), Some(7));
-        assert_eq!(find_int(&span, "rows_returned"), Some(12_345));
-        assert_eq!(find_int(&span, "bytes_returned"), Some(4_567_890));
-    }
-
-    #[test]
-    fn build_table_query_span_emits_optional_attributes_when_present() {
-        let trace_id = opentelemetry::TraceId::from_bytes([3u8; 16]);
-        let mut info = dummy_table_query_info();
-        info.has_limit = true;
-        info.limit_value = Some(500);
-
-        let span = build_table_query_span(
-            &info,
-            empty_stats(),
-            SystemTime::UNIX_EPOCH..SystemTime::UNIX_EPOCH + Duration::from_secs(1),
-            Duration::from_millis(1),
-            Some(Duration::from_micros(50)),
-            Some(Duration::from_micros(75)),
-            Some(trace_id),
-            Some(QueryErrorKind::Decode.as_str()),
-        );
-
-        // All optional keys are present.
-        let optional = [
-            "limit_value",
-            "time_to_first_response_us",
-            "time_to_first_batch_us",
-            "error_kind",
-        ];
-        let keys = attribute_keys(&span);
-        for k in optional {
-            assert!(keys.contains(k), "missing optional attribute: {k}");
-        }
-
-        // is_success flips to false when error_kind is set.
-        assert_eq!(find_bool(&span, "is_success"), Some(false));
-
-        assert_eq!(find_int(&span, "limit_value"), Some(500));
-        assert_eq!(find_int(&span, "time_to_first_response_us"), Some(50));
-        assert_eq!(find_int(&span, "time_to_first_batch_us"), Some(75));
-        assert_eq!(find_string(&span, "error_kind"), Some("decode"));
-        assert!(span.links.is_empty());
-    }
-
-    #[test]
-    fn build_table_query_span_uses_wall_clock_range() {
-        let info = dummy_table_query_info();
-        let start = SystemTime::UNIX_EPOCH + Duration::from_secs(2);
-        let end = SystemTime::UNIX_EPOCH + Duration::from_millis(2_500);
-
-        let span = build_table_query_span(
-            &info,
-            empty_stats(),
-            start..end,
-            Duration::from_micros(0),
-            None,
-            None,
-            None,
-            None,
-        );
-
-        assert_eq!(span.start_time_unix_nano, 2_000_000_000);
-        assert_eq!(span.end_time_unix_nano, 2_500_000_000);
-    }
-
-    #[test]
-    fn build_table_query_span_records_table_kind_and_caller_strings() {
-        // Walk every variant — protects the bounded-enum string mapping from
-        // accidental changes that would silently rename PostHog dimensions.
-        let cases = [
-            (TableKind::Lance, "lance"),
-            (TableKind::SystemEntries, "system_entries"),
-            (TableKind::SystemNamespaces, "system_namespaces"),
-            (TableKind::Unknown, "unknown"),
-        ];
-        for (kind, expected) in cases {
-            let mut info = dummy_table_query_info();
-            info.table_kind = kind;
-            let span = build_table_query_span(
-                &info,
-                empty_stats(),
-                SystemTime::UNIX_EPOCH..SystemTime::UNIX_EPOCH,
-                Duration::ZERO,
-                None,
-                None,
-                None,
-                None,
-            );
-            assert_eq!(find_string(&span, "table_kind"), Some(expected));
-        }
-
-        let cases = [
-            (TableQueryCaller::CatalogResolver, "catalog_resolver"),
-            (TableQueryCaller::EntriesTable, "entries_table"),
-            (TableQueryCaller::BrowserDetailView, "browser_detail_view"),
-        ];
-        for (caller, expected) in cases {
-            let mut info = dummy_table_query_info();
-            info.caller = caller;
-            let span = build_table_query_span(
-                &info,
-                empty_stats(),
-                SystemTime::UNIX_EPOCH..SystemTime::UNIX_EPOCH,
-                Duration::ZERO,
-                None,
-                None,
-                None,
-                None,
-            );
-            assert_eq!(find_string(&span, "caller"), Some(expected));
-        }
-    }
-
-    #[test]
-    fn build_table_query_span_no_limit_value_when_no_limit() {
-        // has_limit defaults to false, limit_value to None — the optional
-        // `limit_value` attribute must NOT be emitted.
-        let info = dummy_table_query_info();
-        let span = build_table_query_span(
-            &info,
-            empty_stats(),
-            SystemTime::UNIX_EPOCH..SystemTime::UNIX_EPOCH,
-            Duration::ZERO,
-            None,
-            None,
-            None,
-            None,
-        );
-        assert!(!attribute_keys(&span).contains("limit_value"));
-    }
-
-    // ---- TableKind::from(&ProviderDetails) ----
-
-    #[test]
-    fn table_kind_from_lance_provider() {
-        assert_matches!(TableKind::from(&lance_provider_details()), TableKind::Lance);
-    }
-
-    #[test]
-    fn table_kind_from_system_entries_provider() {
-        let pd = ProviderDetails::SystemTable(SystemTable {
-            kind: SystemTableKind::Entries,
-        });
-        assert_matches!(TableKind::from(&pd), TableKind::SystemEntries);
-    }
-
-    #[test]
-    fn table_kind_from_system_namespaces_provider() {
-        let pd = ProviderDetails::SystemTable(SystemTable {
-            kind: SystemTableKind::Namespaces,
-        });
-        assert_matches!(TableKind::from(&pd), TableKind::SystemNamespaces);
-    }
-
-    #[test]
-    fn table_kind_from_system_unspecified_falls_back_to_unknown() {
-        let pd = ProviderDetails::SystemTable(SystemTable {
-            kind: SystemTableKind::Unspecified,
-        });
-        assert_matches!(TableKind::from(&pd), TableKind::Unknown);
-    }
-
-    // ---- record_* idempotence ----
-    //
-    // All `record_*` setters are advertised as "only the first call has effect".
-    // These tests pin that contract; subsequent calls must not overwrite.
-
-    fn make_pending() -> PendingTableQueryAnalytics {
-        let origin: Origin = "rerun+http://localhost:51234".parse().unwrap();
-        let analytics = ConnectionAnalytics::disabled_for_test(origin);
-        analytics.begin_table_query(dummy_table_query_info(), Instant::now())
-    }
-
-    #[tokio::test]
-    async fn record_first_response_is_once_only() {
-        let pending = make_pending();
-        pending.record_first_response();
-        let first = pending.inner.time_to_first_response.get().copied().unwrap();
-        std::thread::sleep(Duration::from_millis(2));
-        pending.record_first_response();
-        let second = pending.inner.time_to_first_response.get().copied().unwrap();
-        assert_eq!(first, second, "second call must not overwrite");
-    }
-
-    #[tokio::test]
-    async fn record_first_batch_is_once_only() {
-        let pending = make_pending();
-        pending.record_first_batch();
-        let first = pending.inner.time_to_first_batch.get().copied().unwrap();
-        std::thread::sleep(Duration::from_millis(2));
-        pending.record_first_batch();
-        let second = pending.inner.time_to_first_batch.get().copied().unwrap();
-        assert_eq!(first, second);
-    }
-
-    #[tokio::test]
-    async fn record_error_is_once_only() {
-        let pending = make_pending();
-        pending.record_error(QueryErrorKind::GrpcFetch);
-        pending.record_error(QueryErrorKind::Decode);
-        assert_eq!(
-            pending.inner.error_kind.get().copied(),
-            Some(QueryErrorKind::GrpcFetch.as_str())
-        );
-    }
-
-    #[tokio::test]
-    async fn record_trace_id_is_once_only() {
-        let pending = make_pending();
-        let first = opentelemetry::TraceId::from_bytes([1u8; 16]);
-        let second = opentelemetry::TraceId::from_bytes([2u8; 16]);
-        pending.record_trace_id(first);
-        pending.record_trace_id(second);
-        assert_eq!(pending.inner.trace_id.get().copied(), Some(first));
-    }
-
-    #[tokio::test]
-    async fn record_batch_accumulates_across_calls() {
-        let pending = make_pending();
-        pending.record_batch(100, 1_000);
-        pending.record_batch(50, 500);
-        pending.record_batch(0, 0); // empty batch — still counts a request/batch
-        let stats = pending.inner.stats.snapshot();
-        assert_eq!(stats.grpc_requests, 3);
-        assert_eq!(stats.batches, 3);
-        assert_eq!(stats.rows_returned, 150);
-        assert_eq!(stats.bytes_returned, 1_500);
-    }
-}
+mod test_expr_filter_signature;
 
 #[cfg(test)]
-mod explain_metrics_set_tests {
-    //! Sanity-check that [`build_metrics_set_for_explain`] populates the
-    //! `MetricsSet` with the values from [`QueryInfo`] and the runtime
-    //! atomics on [`QueryMetrics`]. This is the contract that backs
-    //! `EXPLAIN ANALYZE` output for `SegmentStreamExec`.
-
-    use super::*;
-
-    fn dummy_query_info(
-        filters_pushed_down: usize,
-        filters_applied_client_side: usize,
-        entity_path_narrowing_applied: bool,
-    ) -> QueryInfo {
-        QueryInfo {
-            dataset_id: "ds-test".to_owned(),
-            query_chunks: 7,
-            query_segments: 3,
-            query_layers: 2,
-            query_columns: 11,
-            query_entities: 5,
-            query_bytes: 12_345,
-            query_chunks_per_segment_min: 1,
-            query_chunks_per_segment_max: 4,
-            query_chunks_per_segment_mean: 2.5,
-            query_type: QueryType::LatestAt,
-            primary_index_name: Some("log_time".to_owned()),
-            time_to_first_chunk_info: Some(Duration::from_millis(2)),
-            trace_id: None,
-            filters_pushed_down,
-            filters_applied_client_side,
-            entity_path_narrowing_applied,
-            filters_total: 0,
-            filters_signatures: String::new(),
-            filters_signatures_exact: String::new(),
-            filters_signatures_inexact: String::new(),
-            filters_signatures_unsupported: String::new(),
-        }
-    }
-
-    /// Helper to look up the value of a single `global_counter`-style metric by name.
-    fn metric_value_by_name(set: &MetricsSet, name: &str) -> Option<usize> {
-        set.iter()
-            .find(|m| m.value().name() == name)
-            .map(|m| m.value().as_usize())
-    }
-
-    #[test]
-    fn emits_chunk_segment_byte_counts() {
-        let metrics = QueryMetrics::new(dummy_query_info(0, 0, false));
-        let set = build_metrics_set_for_explain(&metrics, 1, None);
-
-        assert_eq!(metric_value_by_name(&set, "query_chunks"), Some(7));
-        assert_eq!(metric_value_by_name(&set, "query_segments"), Some(3));
-        assert_eq!(metric_value_by_name(&set, "query_layers"), Some(2));
-        assert_eq!(metric_value_by_name(&set, "query_columns"), Some(11));
-        assert_eq!(metric_value_by_name(&set, "query_entities"), Some(5));
-        assert_eq!(metric_value_by_name(&set, "query_bytes"), Some(12_345));
-        assert_eq!(
-            metric_value_by_name(&set, "query_chunks_per_segment_max"),
-            Some(4),
-        );
-        assert_eq!(
-            metric_value_by_name(&set, "time_to_first_chunk_info_us"),
-            Some(2_000),
-        );
-    }
-
-    #[test]
-    fn emits_filter_pushdown_counters() {
-        let metrics = QueryMetrics::new(dummy_query_info(2, 1, false));
-        let set = build_metrics_set_for_explain(&metrics, 1, None);
-
-        assert_eq!(metric_value_by_name(&set, "filters_pushed_down"), Some(2));
-        assert_eq!(
-            metric_value_by_name(&set, "filters_applied_client_side"),
-            Some(1),
-        );
-        // Boolean: only emitted when true. With `false` here the metric is absent.
-        assert_eq!(
-            metric_value_by_name(&set, "entity_path_narrowing_applied"),
-            None,
-        );
-    }
-
-    #[test]
-    fn emits_entity_path_narrowing_when_applied() {
-        let metrics = QueryMetrics::new(dummy_query_info(0, 0, true));
-        let set = build_metrics_set_for_explain(&metrics, 1, None);
-
-        assert_eq!(
-            metric_value_by_name(&set, "entity_path_narrowing_applied"),
-            Some(1),
-        );
-    }
-
-    #[test]
-    fn emits_runtime_counters_and_partition_count() {
-        let metrics = QueryMetrics::new(dummy_query_info(0, 0, false));
-        // Simulate two partitions each contributing to the shared atomics.
-        metrics.fetch_grpc_bytes.fetch_add(1_000, Ordering::Relaxed);
-        metrics.fetch_grpc_bytes.fetch_add(2_500, Ordering::Relaxed);
-        metrics
-            .fetch_direct_max_attempt
-            .fetch_max(3, Ordering::Relaxed);
-        metrics
-            .fetch_direct_max_attempt
-            .fetch_max(5, Ordering::Relaxed);
-        metrics
-            .fetch_direct_max_attempt
-            .fetch_max(2, Ordering::Relaxed);
-        metrics
-            .planned_fetch_batches
-            .fetch_add(16, Ordering::Relaxed);
-        metrics
-            .planned_segment_waves
-            .fetch_add(1_332, Ordering::Relaxed);
-        metrics
-            .segment_admission_limit
-            .fetch_max(3, Ordering::Relaxed);
-        metrics.segment_admission_source.store(
-            crate::metrics_capture::SegmentAdmissionSource::MetricsOnly as u64,
-            Ordering::Relaxed,
-        );
-        metrics.segment_admission_candidate_reason.store(
-            crate::metrics_capture::SegmentAdmissionCandidateReason::Eligible as u64,
-            Ordering::Relaxed,
-        );
-        metrics
-            .max_segments_per_fetch_batch
-            .fetch_max(2, Ordering::Relaxed);
-        metrics
-            .max_segments_per_wave
-            .fetch_max(3, Ordering::Relaxed);
-        metrics.peak_active_segments.fetch_max(3, Ordering::Relaxed);
-        metrics
-            .pipeline_budget_bytes
-            .store(4 * 1024 * 1024 * 1024, Ordering::Relaxed);
-        metrics
-            .pipeline_peak_decoded_bytes
-            .fetch_max(96 * 1024 * 1024, Ordering::Relaxed);
-        metrics.pipeline_byte_waits.fetch_add(4, Ordering::Relaxed);
-        metrics
-            .segment_admission_waits
-            .fetch_add(20, Ordering::Relaxed);
-        metrics
-            .pipeline_stall_breaker_activations
-            .fetch_add(1, Ordering::Relaxed);
-
-        let set = build_metrics_set_for_explain(&metrics, 4, None);
-
-        assert_eq!(metric_value_by_name(&set, "fetch_grpc_bytes"), Some(3_500));
-        // True cross-partition max, not a sum.
-        assert_eq!(
-            metric_value_by_name(&set, "fetch_direct_max_attempt"),
-            Some(5),
-        );
-        assert_eq!(metric_value_by_name(&set, "num_partitions"), Some(4));
-        assert_eq!(
-            metric_value_by_name(&set, "planned_fetch_batches"),
-            Some(16)
-        );
-        assert_eq!(
-            metric_value_by_name(&set, "planned_segment_waves"),
-            Some(1_332)
-        );
-        assert_eq!(
-            metric_value_by_name(&set, "segment_admission_limit"),
-            Some(3)
-        );
-        assert_eq!(
-            metric_value_by_name(&set, "segment_admission_source_code"),
-            Some(crate::metrics_capture::SegmentAdmissionSource::MetricsOnly as usize)
-        );
-        assert_eq!(
-            metric_value_by_name(&set, "segment_admission_candidate_reason_code"),
-            Some(crate::metrics_capture::SegmentAdmissionCandidateReason::Eligible as usize)
-        );
-        assert_eq!(
-            metric_value_by_name(&set, "max_segments_per_fetch_batch"),
-            Some(2)
-        );
-        assert_eq!(metric_value_by_name(&set, "max_segments_per_wave"), Some(3));
-        assert_eq!(metric_value_by_name(&set, "peak_active_segments"), Some(3));
-        assert_eq!(
-            metric_value_by_name(&set, "pipeline_budget_bytes"),
-            Some(4 * 1024 * 1024 * 1024)
-        );
-        assert_eq!(
-            metric_value_by_name(&set, "pipeline_peak_decoded_bytes"),
-            Some(96 * 1024 * 1024)
-        );
-        assert_eq!(metric_value_by_name(&set, "pipeline_byte_waits"), Some(4));
-        assert_eq!(
-            metric_value_by_name(&set, "segment_admission_waits"),
-            Some(20)
-        );
-        assert_eq!(
-            metric_value_by_name(&set, "pipeline_stall_breaker_activations"),
-            Some(1)
-        );
-    }
-}
+mod test_filter_capture_span;
 
 #[cfg(test)]
-mod expr_filter_signature_tests {
-    use datafusion::logical_expr::expr::InList;
-    use datafusion::logical_expr::{Between, col, lit};
-
-    use super::*;
-
-    #[test]
-    fn binary_expr_column_on_left() {
-        let expr = col("frame_nr").gt(lit(100i64));
-        assert_eq!(expr_filter_signature(&expr), "(frame_nr > 100)");
-    }
-
-    #[test]
-    fn binary_expr_column_on_right() {
-        let expr = lit(100i64).lt(col("frame_nr"));
-        assert_eq!(expr_filter_signature(&expr), "(100 < frame_nr)");
-    }
-
-    #[test]
-    fn binary_expr_equality() {
-        let expr = col("rerun_segment_id").eq(lit("some-segment"));
-        assert_eq!(
-            expr_filter_signature(&expr),
-            "(rerun_segment_id = 'some-segment')"
-        );
-    }
-
-    #[test]
-    fn between_expr() {
-        let expr = Expr::Between(Between {
-            expr: Box::new(col("log_time")),
-            negated: false,
-            low: Box::new(lit(0i64)),
-            high: Box::new(lit(1000i64)),
-        });
-        assert_eq!(
-            expr_filter_signature(&expr),
-            "(log_time BETWEEN 0 AND 1000)"
-        );
-    }
-
-    #[test]
-    fn in_list_expr() {
-        let expr = Expr::InList(InList {
-            expr: Box::new(col("rerun_segment_id")),
-            list: vec![lit("a"), lit("b")],
-            negated: false,
-        });
-        assert_eq!(
-            expr_filter_signature(&expr),
-            "rerun_segment_id IN ('a', 'b')"
-        );
-    }
-
-    #[test]
-    fn alias_is_transparent() {
-        let expr = col("frame_nr").gt(lit(5i64)).alias("my_filter");
-        assert_eq!(expr_filter_signature(&expr), "(frame_nr > 5)");
-    }
-
-    #[test]
-    fn plain_column_reference() {
-        let expr = col("something");
-        assert_eq!(expr_filter_signature(&expr), "something");
-    }
-
-    #[test]
-    fn semicolon_in_column_name_is_escaped() {
-        // SQL quotes the identifier as "my;col"; the `;` is then escaped for join safety.
-        let expr = col("my;col").gt(lit(0i64));
-        assert_eq!(expr_filter_signature(&expr), "(\"my\\;col\" > 0)");
-    }
-
-    #[test]
-    fn backslash_in_column_name_is_escaped() {
-        // SQL quotes the identifier as "my\col"; the `\` is then escaped.
-        let expr = col("my\\col").gt(lit(0i64));
-        assert_eq!(expr_filter_signature(&expr), "(\"my\\\\col\" > 0)");
-    }
-}
+mod test_table_query;
 
 #[cfg(test)]
-mod filter_capture_span_tests {
-    use std::collections::HashSet;
-
-    use super::*;
-
-    fn dummy_info_with_filters(offered: u32, signatures: &str) -> TableQueryInfo {
-        TableQueryInfo {
-            table_id: "tbl-1".to_owned(),
-            table_kind: TableKind::Lance,
-            caller: TableQueryCaller::CatalogResolver,
-            schema_total_columns: 4,
-            projected_columns: 4,
-            has_limit: false,
-            limit_value: None,
-            time_range: web_time::SystemTime::UNIX_EPOCH
-                ..web_time::SystemTime::UNIX_EPOCH + web_time::Duration::from_secs(1),
-            filters_total: offered,
-            filters_signatures: signatures.to_owned(),
-        }
-    }
-
-    fn attribute_keys(span: &opentelemetry_proto::tonic::trace::v1::Span) -> HashSet<&str> {
-        span.attributes.iter().map(|kv| kv.key.as_str()).collect()
-    }
-
-    fn find_int(span: &opentelemetry_proto::tonic::trace::v1::Span, key: &str) -> Option<i64> {
-        use opentelemetry_proto::tonic::common::v1::any_value::Value;
-        span.attributes
-            .iter()
-            .find(|kv| kv.key == key)
-            .and_then(|kv| match kv.value.as_ref()?.value.as_ref()? {
-                Value::IntValue(i) => Some(*i),
-                _ => None,
-            })
-    }
-
-    fn find_string<'a>(
-        span: &'a opentelemetry_proto::tonic::trace::v1::Span,
-        key: &str,
-    ) -> Option<&'a str> {
-        use opentelemetry_proto::tonic::common::v1::any_value::Value;
-        span.attributes
-            .iter()
-            .find(|kv| kv.key == key)
-            .and_then(|kv| match kv.value.as_ref()?.value.as_ref()? {
-                Value::StringValue(s) => Some(s.as_str()),
-                _ => None,
-            })
-    }
-
-    #[test]
-    fn filters_omitted_when_none_offered() {
-        let info = dummy_info_with_filters(0, "");
-        let span = build_table_query_span(
-            &info,
-            TableScanStatsSnapshot::default(),
-            web_time::SystemTime::UNIX_EPOCH
-                ..web_time::SystemTime::UNIX_EPOCH + web_time::Duration::from_secs(1),
-            web_time::Duration::ZERO,
-            None,
-            None,
-            None,
-            None,
-        );
-        let keys = attribute_keys(&span);
-        assert!(!keys.contains("filters_total"), "must be absent when zero");
-        assert!(
-            !keys.contains("filters_signatures"),
-            "must be absent when empty"
-        );
-    }
-
-    #[test]
-    fn filters_emitted_when_present() {
-        let sigs = "(frame_nr > 100);rerun_segment_id IN ('a', 'b')";
-        let info = dummy_info_with_filters(2, sigs);
-        let span = build_table_query_span(
-            &info,
-            TableScanStatsSnapshot::default(),
-            web_time::SystemTime::UNIX_EPOCH
-                ..web_time::SystemTime::UNIX_EPOCH + web_time::Duration::from_secs(1),
-            web_time::Duration::ZERO,
-            None,
-            None,
-            None,
-            None,
-        );
-        assert_eq!(find_int(&span, "filters_total"), Some(2));
-        assert_eq!(find_string(&span, "filters_signatures"), Some(sigs));
-    }
-}
+mod tests;
