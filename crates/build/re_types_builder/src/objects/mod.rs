@@ -756,31 +756,19 @@ pub enum Type {
     Utf8,
 
     /// A fixed-size array, e.g. `[f32; 3]`.
-    FixedSizeList {
-        elem_type: ElementType,
-        length: usize,
-    },
+    ///
+    /// The element type is never the unit type or a [`Self::List`]:
+    /// the frontend rejects both.
+    FixedSizeList { elem_type: Box<Self>, length: usize },
 
     /// A list of arbitrary length, e.g. `Vec<f32>`.
-    List { elem_type: ElementType },
+    ///
+    /// The element type is never the unit type or a [`Self::List`]:
+    /// the frontend rejects both.
+    List { elem_type: Box<Self> },
 
     /// Another definition, referred to by fully-qualified name, e.g. `rerun::datatypes::Vec3D`.
     Object { fqname: String },
-}
-
-impl From<ElementType> for Type {
-    fn from(typ: ElementType) -> Self {
-        match typ {
-            ElementType::Atomic(atomic) => Self::Atomic(atomic),
-            ElementType::Binary => Self::Binary,
-            ElementType::Utf8 => Self::Utf8,
-            ElementType::Object { fqname } => Self::Object { fqname },
-            ElementType::FixedSizeList { elem_type, length } => Self::FixedSizeList {
-                elem_type: *elem_type,
-                length,
-            },
-        }
-    }
 }
 
 impl Type {
@@ -794,38 +782,18 @@ impl Type {
         self == &Self::UNIT
     }
 
-    /// The inverse of `From<ElementType> for Type`: the element type that this type
-    /// corresponds to when used as a list element.
-    ///
-    /// Returns `None` for types that cannot be element types (the unit type, lists).
-    pub fn to_element_type(&self) -> Option<ElementType> {
-        match self {
-            // The unit type and lists cannot be elements.
-            Self::Atomic(AtomicDataType::Null) | Self::List { .. } => None,
-
-            Self::Atomic(atomic) => Some(ElementType::Atomic(*atomic)),
-            Self::Binary => Some(ElementType::Binary),
-            Self::Utf8 => Some(ElementType::Utf8),
-            Self::Object { fqname } => Some(ElementType::Object {
-                fqname: fqname.clone(),
-            }),
-            Self::FixedSizeList { elem_type, length } => Some(ElementType::FixedSizeList {
-                elem_type: Box::new(elem_type.clone()),
-                length: *length,
-            }),
-        }
-    }
-
     /// A list of `self`, or `self` if it is already a list or a fixed-size list.
     ///
     /// `None` for the unit type, which cannot be an element type.
     pub fn make_plural(&self) -> Option<Self> {
-        match self {
-            Self::List { .. } | Self::FixedSizeList { .. } => Some(self.clone()),
-
-            _ => self
-                .to_element_type()
-                .map(|elem_type| Self::List { elem_type }),
+        if self.is_unit() {
+            None // An array of nothing is nothing.
+        } else if self.is_plural() {
+            Some(self.clone())
+        } else {
+            Some(Self::List {
+                elem_type: Box::new(self.clone()),
+            })
         }
     }
 
@@ -835,7 +803,7 @@ impl Type {
     }
 
     /// Returns element type for lists and fixed-size lists.
-    pub fn plural_inner(&self) -> Option<&ElementType> {
+    pub fn plural_inner(&self) -> Option<&Self> {
         match self {
             Self::List { elem_type }
             | Self::FixedSizeList {
@@ -848,12 +816,42 @@ impl Type {
     }
 
     /// Like [`Self::plural_inner`], but only for [`Self::List`], not for fixed-size ones.
-    pub fn list_inner(&self) -> Option<&ElementType> {
+    pub fn list_inner(&self) -> Option<&Self> {
         self.plural_inner()
             .filter(|_| matches!(self, Self::List { .. }))
     }
 
-    /// `Some(fqname)` if this is an `Object`, or a list of `Object`s.
+    /// Recursively resolves nested arrays and lists to their innermost element type.
+    ///
+    /// Returns `self` for everything but [`Self::FixedSizeList`] and [`Self::List`].
+    pub fn innermost_element_type(&self) -> &Self {
+        match self {
+            Self::FixedSizeList { elem_type, .. } | Self::List { elem_type } => {
+                elem_type.innermost_element_type()
+            }
+            _ => self,
+        }
+    }
+
+    /// `Some(Object)` if this is an enum object.
+    pub fn enum_obj<'a>(&self, objects: &'a Objects) -> Option<&'a Object> {
+        match self {
+            Self::Object { fqname } => enum_obj_of(objects, fqname),
+            _ => None,
+        }
+    }
+
+    /// Is this type directly backed by a native arrow `Buffer`. This means the data can
+    /// be returned using a `ScalarBuffer` which facilitates direct zero-copy access to
+    /// a slice representation.
+    pub fn backed_by_scalar_buffer(&self) -> bool {
+        match self {
+            Self::Atomic(atomic) => atomic.backed_by_scalar_buffer(),
+            _ => false,
+        }
+    }
+
+    /// `Some(fqname)` if this is an `Object`, or a (possibly nested) list of `Object`s.
     pub fn fqname(&self) -> Option<&str> {
         match self {
             Self::Object { fqname } => Some(fqname.as_str()),
@@ -900,91 +898,6 @@ fn is_union_fqname(objects: &Objects, fqname: &str) -> bool {
         obj.fields[0].typ.is_union(objects)
     } else {
         obj.class == ObjectClass::Union
-    }
-}
-
-/// The element type of a [`Type::List`] or a [`Type::FixedSizeList`].
-///
-/// A [`Type`] that can be neither the unit type nor a list: an array of nothing is nothing, and a
-/// definition cannot say `Vec<Vec<f32>>`. A list of *fixed-size* arrays is fine, though, hence
-/// [`Self::FixedSizeList`].
-///
-/// Convert with [`Type::to_element_type`] one way and `Type::from` the other.
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
-pub enum ElementType {
-    /// A number or a boolean.
-    ///
-    /// Never [`AtomicDataType::Null`]: an array of nothing is nothing.
-    Atomic(AtomicDataType),
-
-    /// A list of bytes of arbitrary length, i.e. `rerun::Binary`.
-    Binary,
-
-    /// A string of arbitrary length, i.e. `String`.
-    Utf8,
-
-    /// Another definition, referred to by fully-qualified name, e.g. `rerun::datatypes::Vec3D`.
-    Object { fqname: String },
-
-    /// A nested fixed-size array, e.g. the `[f32; 4]` of a `[[f32; 4]; 4]` field.
-    FixedSizeList { elem_type: Box<Self>, length: usize },
-}
-
-impl ElementType {
-    /// `Some(fqname)` if this is an `Object`.
-    pub fn fqname(&self) -> Option<&str> {
-        match self {
-            Self::Object { fqname } => Some(fqname.as_str()),
-            _ => None,
-        }
-    }
-
-    /// Recursively resolves nested arrays to their innermost element type.
-    ///
-    /// Returns `self` for everything but [`Self::FixedSizeList`].
-    pub fn innermost_element_type(&self) -> &Self {
-        match self {
-            Self::FixedSizeList { elem_type, .. } => elem_type.innermost_element_type(),
-            _ => self,
-        }
-    }
-
-    /// `Some(Object)` if this is an enum object.
-    pub fn enum_obj<'a>(&self, objects: &'a Objects) -> Option<&'a Object> {
-        match self {
-            Self::Object { fqname } => enum_obj_of(objects, fqname),
-            _ => None,
-        }
-    }
-
-    /// Is the destructor trivial/default (i.e. is this simple data with no allocations)?
-    pub fn has_default_destructor(&self, objects: &Objects) -> bool {
-        match self {
-            Self::Atomic(_) => true,
-
-            Self::Binary | Self::Utf8 => false,
-
-            Self::Object { fqname } => objects[fqname].has_default_destructor(objects),
-
-            Self::FixedSizeList { elem_type, .. } => elem_type.has_default_destructor(objects),
-        }
-    }
-
-    /// Is this type directly backed by a native arrow `Buffer`. This means the data can
-    /// be returned using a `ScalarBuffer` which facilitates direct zero-copy access to
-    /// a slice representation.
-    pub fn backed_by_scalar_buffer(&self) -> bool {
-        match self {
-            Self::Atomic(atomic) => atomic.backed_by_scalar_buffer(),
-            Self::Binary | Self::Utf8 | Self::Object { .. } | Self::FixedSizeList { .. } => false,
-        }
-    }
-
-    pub fn is_union(&self, objects: &Objects) -> bool {
-        match self {
-            Self::Object { fqname } => is_union_fqname(objects, fqname),
-            _ => false,
-        }
     }
 }
 

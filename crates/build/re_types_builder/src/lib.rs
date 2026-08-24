@@ -140,8 +140,7 @@ pub use self::data_type::AtomicDataType;
 pub use self::docs::Docs;
 pub use self::format::{CodeFormatter, CppCodeFormatter, PythonCodeFormatter, RustCodeFormatter};
 pub use self::objects::{
-    Attributes, ElementType, EnumIntegerType, Object, ObjectClass, ObjectField, ObjectKind,
-    Objects, Type,
+    Attributes, EnumIntegerType, Object, ObjectClass, ObjectField, ObjectKind, Objects, Type,
 };
 pub use self::report::{Report, Reporter};
 pub use self::type_registry::TypeRegistry;

@@ -22,8 +22,8 @@ use crate::codegen::rust::util::{is_tuple_struct_from_obj, quote_doc_line};
 use crate::codegen::{Target, autogen_warning};
 use crate::objects::ObjectClass;
 use crate::{
-    ATTR_DEFAULT, CodeGenerator, ElementType, Object, ObjectField, ObjectKind, Objects, Reporter,
-    RerunAttr, RustAttr, Type, TypeRegistry, format_path,
+    ATTR_DEFAULT, CodeGenerator, Object, ObjectField, ObjectKind, Objects, Reporter, RerunAttr,
+    RustAttr, Type, TypeRegistry, format_path,
 };
 
 // ---
@@ -704,6 +704,10 @@ impl quote::ToTokens for TypeTokenizer<'_> {
             Type::Binary => quote!(::arrow::buffer::Buffer),
             Type::Utf8 => quote!(::re_types_core::ArrowString),
             Type::FixedSizeList { elem_type, length } => {
+                let elem_type = TypeTokenizer {
+                    typ: elem_type,
+                    unwrap: false,
+                };
                 if *unwrap {
                     quote!(#elem_type)
                 } else {
@@ -711,31 +715,19 @@ impl quote::ToTokens for TypeTokenizer<'_> {
                 }
             }
             Type::List { elem_type } => {
+                let quoted_elem_type = TypeTokenizer {
+                    typ: elem_type,
+                    unwrap: false,
+                };
                 if *unwrap {
-                    quote!(#elem_type)
+                    quote!(#quoted_elem_type)
                 } else if elem_type.backed_by_scalar_buffer() {
-                    quote!(::arrow::buffer::ScalarBuffer<#elem_type>)
+                    quote!(::arrow::buffer::ScalarBuffer<#quoted_elem_type>)
                 } else {
-                    quote!(Vec<#elem_type>)
+                    quote!(Vec<#quoted_elem_type>)
                 }
             }
             Type::Object { fqname } => quote_fqname_as_type_path(fqname),
-        }
-        .to_tokens(tokens);
-    }
-}
-
-impl quote::ToTokens for &ElementType {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        match self {
-            ElementType::Atomic(atomic) => quote_atomic_rust_type(*atomic),
-            ElementType::Binary => quote!(::arrow::buffer::Buffer),
-            ElementType::Utf8 => quote!(::re_types_core::ArrowString),
-            ElementType::Object { fqname } => quote_fqname_as_type_path(fqname),
-            ElementType::FixedSizeList { elem_type, length } => {
-                let elem_type = &**elem_type;
-                quote!([#elem_type; #length])
-            }
         }
         .to_tokens(tokens);
     }
@@ -1353,6 +1345,10 @@ fn quote_from_impl_from_obj(obj: &Object) -> TokenStream {
 
     if obj_field.typ.fqname().is_some() {
         if let Some(inner) = obj_field.typ.list_inner() {
+            let inner = TypeTokenizer {
+                typ: inner,
+                unwrap: false,
+            };
             if obj_field.is_nullable {
                 let quoted_binding = if obj_is_tuple_struct {
                     quote!(Self(v.map(|v| v.into_iter().map(|v| v.into()).collect())))

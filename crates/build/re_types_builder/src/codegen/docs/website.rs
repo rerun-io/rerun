@@ -435,16 +435,10 @@ fn write_fields(reporter: &Reporter, objects: &Objects, o: &mut String, object: 
             Type::Utf8 => atomic("Utf8"),
 
             Type::FixedSizeList { elem_type, length } => {
-                format!(
-                    "{length}x {}",
-                    type_info(objects, &Type::from(elem_type.clone()))
-                )
+                format!("{length}x {}", type_info(objects, elem_type))
             }
             Type::List { elem_type } => {
-                format!(
-                    "List of {}",
-                    type_info(objects, &Type::from(elem_type.clone()))
-                )
+                format!("List of {}", type_info(objects, elem_type))
             }
             Type::Object { fqname } => {
                 let ty = objects.get(fqname).unwrap();

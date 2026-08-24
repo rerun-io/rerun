@@ -25,8 +25,8 @@ use crate::codegen::autogen_warning;
 use crate::codegen::common::collect_snippets_for_api_docs;
 use crate::objects::{EnumIntegerType, ObjectClass};
 use crate::{
-    AtomicDataType, CppAttr, Docs, ElementType, GeneratedFiles, Object, ObjectField, ObjectKind,
-    Objects, Reporter, Type, TypeRegistry, format_path,
+    AtomicDataType, CppAttr, Docs, GeneratedFiles, Object, ObjectField, ObjectKind, Objects,
+    Reporter, Type, TypeRegistry, format_path,
 };
 
 type Result<T = (), E = anyhow::Error> = std::result::Result<T, E>;
@@ -1982,7 +1982,7 @@ fn quote_fill_arrow_array_builder(
                         } else if arrow_builder_type == "ListBuilder" {
                             let field_name = format_ident!("{}", variant.snake_case_name());
 
-                            if *element_type == ElementType::Atomic(AtomicDataType::Float16) {
+                            if *element_type == Type::Atomic(AtomicDataType::Float16) {
                                 // We need an extra cast for float16:
                                 quote! {
                                     ARROW_RETURN_NOT_OK(variant_builder->Append());
@@ -1996,10 +1996,10 @@ fn quote_fill_arrow_array_builder(
                                 }
                             } else {
                                 let typ_builder_ident = match element_type {
-                                    ElementType::Atomic(atomic) => Some(arrow_builder_ident(*atomic)),
-                                    ElementType::Binary => Some(format_ident!("BinaryBuilder")),
-                                    ElementType::Utf8 => Some(format_ident!("StringBuilder")),
-                                    ElementType::Object { .. } | ElementType::FixedSizeList { .. } => None,
+                                    Type::Atomic(atomic) => Some(arrow_builder_ident(*atomic)),
+                                    Type::Binary => Some(format_ident!("BinaryBuilder")),
+                                    Type::Utf8 => Some(format_ident!("StringBuilder")),
+                                    _ => None,
                                 };
 
                                 if let Some(typ_builder_ident) = typ_builder_ident {
@@ -2087,7 +2087,7 @@ fn quote_append_field_to_builder(
 
     if let Some(elem_type) = field.typ.plural_inner() {
         let value_builder = format_ident!("value_builder");
-        let value_builder_type = arrow_array_builder_type(&elem_type.clone().into(), objects);
+        let value_builder_type = arrow_array_builder_type(elem_type, objects);
 
         if !field.is_nullable
             && matches!(field.typ, Type::FixedSizeList { .. })
@@ -2105,7 +2105,7 @@ fn quote_append_field_to_builder(
                 ARROW_RETURN_NOT_OK(#builder->AppendValues(static_cast<int64_t>(num_elements)));
                 static_assert(sizeof(elements[0].#field_name) == sizeof(elements[0]));
             };
-            if let ElementType::Object { fqname } = elem_type {
+            if let Type::Object { fqname } = elem_type {
                 // Elements are structs: delegate the contiguous value range to the
                 // element type's own `fill_arrow_array_builder`.
                 let fqname = quote_fqname_as_type_path(includes, fqname);
@@ -2117,7 +2117,7 @@ fn quote_append_field_to_builder(
                         num_elements * #num_items_per_value)
                     );
                 }
-            } else if matches!(elem_type, ElementType::FixedSizeList { .. }) {
+            } else if matches!(elem_type, Type::FixedSizeList { .. }) {
                 // Elements are nested fixed-size arrays (e.g. `[[float; 3]; 2]`).
                 let append_contents = quote_append_nested_array_contents(
                     objects,
@@ -2133,12 +2133,11 @@ fn quote_append_field_to_builder(
                 }
             } else {
                 // `rerun::half` needs a cast because arrow takes it as `uint16_t`.
-                let value_ptr_accessor =
-                    if *elem_type == ElementType::Atomic(AtomicDataType::Float16) {
-                        quote!(reinterpret_cast<const uint16_t*>(#field_accessor.data()))
-                    } else {
-                        quote!(#field_accessor.data())
-                    };
+                let value_ptr_accessor = if *elem_type == Type::Atomic(AtomicDataType::Float16) {
+                    quote!(reinterpret_cast<const uint16_t*>(#field_accessor.data()))
+                } else {
+                    quote!(#field_accessor.data())
+                };
                 quote! {
                     #setup
                     ARROW_RETURN_NOT_OK(#value_builder->AppendValues(
@@ -2314,8 +2313,8 @@ fn quote_append_single_value_to_builder(
         Type::FixedSizeList { elem_type, .. } | Type::List { elem_type } => {
             let num_items_per_element = quote_num_items_per_value(typ, value_access);
 
-            match elem_type {
-                ElementType::Atomic(AtomicDataType::Float16) => {
+            match &**elem_type {
+                Type::Atomic(AtomicDataType::Float16) => {
                     // We need to convert `rerun::half` to `uint16_t`:
                     let field_ptr_accessor = quote_field_ptr_access(typ, value_access);
                     quote! {
@@ -2325,13 +2324,13 @@ fn quote_append_single_value_to_builder(
                         );
                     }
                 }
-                ElementType::Atomic(_) => {
+                Type::Atomic(_) => {
                     let field_ptr_accessor = quote_field_ptr_access(typ, value_access);
                     quote! {
                         ARROW_RETURN_NOT_OK(#value_builder->AppendValues(#field_ptr_accessor, static_cast<int64_t>(#num_items_per_element), nullptr));
                     }
                 }
-                ElementType::Binary => {
+                Type::Binary => {
                     quote! {
                         for (size_t item_idx = 0; item_idx < #num_items_per_element; item_idx += 1) {
                             auto&& data = &#value_access[elem_idx].data;
@@ -2339,14 +2338,14 @@ fn quote_append_single_value_to_builder(
                         }
                     }
                 }
-                ElementType::Utf8 => {
+                Type::Utf8 => {
                     quote! {
                         for (size_t item_idx = 0; item_idx < #num_items_per_element; item_idx += 1) {
                             ARROW_RETURN_NOT_OK(#value_builder->Append(#value_access[item_idx]));
                         }
                     }
                 }
-                ElementType::Object { fqname } => {
+                Type::Object { fqname } => {
                     let fqname = quote_fqname_as_type_path(includes, fqname);
                     let field_ptr_accessor = quote_field_ptr_access(typ, value_access);
                     quote! {
@@ -2355,7 +2354,7 @@ fn quote_append_single_value_to_builder(
                         }
                     }
                 }
-                ElementType::FixedSizeList { .. } => quote_append_nested_array_contents(
+                Type::FixedSizeList { .. } => quote_append_nested_array_contents(
                     objects,
                     includes,
                     elem_type,
@@ -2363,6 +2362,10 @@ fn quote_append_single_value_to_builder(
                     &quote!(#value_access.data()),
                     &num_items_per_element,
                 ),
+
+                Type::List { .. } => {
+                    unreachable!("the frontend rejects nested `Vec`s")
+                }
             }
         }
         Type::Object { fqname } => {
@@ -2378,13 +2381,13 @@ fn quote_append_single_value_to_builder(
 /// The intermediate list slots of each nesting level are appended in bulk, then all
 /// innermost scalars in one go — the data is contiguous in memory.
 ///
-/// `elem_type` is the `ElementType::FixedSizeList` element type of the outermost array/vector,
+/// `elem_type` is the `Type::FixedSizeList` element type of the outermost array/vector,
 /// `num_items` the total number of such elements being appended, and `data_ptr` a
 /// pointer to the first one.
 fn quote_append_nested_array_contents(
     objects: &Objects,
     includes: &mut Includes,
-    elem_type: &ElementType,
+    elem_type: &Type,
     builder: &Ident,
     data_ptr: &TokenStream,
     num_items: &TokenStream,
@@ -2395,17 +2398,14 @@ fn quote_append_nested_array_contents(
     let mut elem_type = elem_type;
     let mut level: usize = 0;
 
-    while let ElementType::FixedSizeList {
-        elem_type: inner, ..
+    while let Type::FixedSizeList {
+        elem_type: inner,
+        length,
     } = elem_type
     {
-        let ElementType::FixedSizeList { length, .. } = elem_type else {
-            unreachable!();
-        };
-
         level += 1;
         let child_builder = format_ident!("value_builder_inner{level}");
-        let child_builder_type = arrow_array_builder_type(&(**inner).clone().into(), objects);
+        let child_builder_type = arrow_array_builder_type(inner, objects);
         chain.extend(quote! {
             ARROW_RETURN_NOT_OK(#parent_builder->AppendValues(static_cast<int64_t>(#num_items)));
             auto #child_builder = static_cast<arrow::#child_builder_type*>(#parent_builder->value_builder());
@@ -2420,12 +2420,12 @@ fn quote_append_nested_array_contents(
     // The innermost data pointer needs a cast: `data_ptr` points at `std::array`s,
     // and `rerun::half`/`bool` are taken as `uint16_t`/`uint8_t` by arrow.
     let cast_type = match elem_type {
-        ElementType::Atomic(AtomicDataType::Float16) => quote!(uint16_t),
-        ElementType::Atomic(AtomicDataType::Boolean) => quote!(uint8_t),
-        ElementType::Object { .. } | ElementType::Utf8 | ElementType::Binary => unimplemented!(
+        Type::Atomic(AtomicDataType::Float16) => quote!(uint16_t),
+        Type::Atomic(AtomicDataType::Boolean) => quote!(uint8_t),
+        Type::Object { .. } | Type::Utf8 | Type::Binary | Type::List { .. } => unimplemented!(
             "nested fixed-size arrays over {elem_type:?} are not supported by the C++ codegen"
         ),
-        _ => quote_element_type(includes, elem_type),
+        _ => quote_type(includes, elem_type),
     };
 
     chain.extend(quote! {
@@ -2449,7 +2449,7 @@ fn quote_num_items_per_value(typ: &Type, value_accessor: &TokenStream) -> TokenS
 fn quote_field_ptr_access(typ: &Type, field_accessor: &TokenStream) -> TokenStream {
     let (ptr_access, typ) = match typ {
         Type::FixedSizeList { elem_type, .. } | Type::List { elem_type } => {
-            (quote!(#field_accessor.data()), elem_type.clone().into())
+            (quote!(#field_accessor.data()), (**elem_type).clone())
         }
         _ => (quote!(&#field_accessor), typ.clone()),
     };
@@ -2523,7 +2523,7 @@ fn quote_archetype_unserialized_type(
     match &obj_field.typ {
         Type::List { elem_type } => {
             hpp_includes.insert_rerun("collection.hpp");
-            let elem_type = quote_element_type(hpp_includes, elem_type);
+            let elem_type = quote_type(hpp_includes, elem_type);
             quote! { Collection<#elem_type> }
         }
         Type::Object { fqname } => quote_fqname_as_type_path(hpp_includes, fqname),
@@ -2551,32 +2551,7 @@ fn quote_variable_with_docstring(
 }
 
 fn quote_field_type(includes: &mut Includes, obj_field: &ObjectField) -> TokenStream {
-    let typ = match &obj_field.typ {
-        Type::Atomic(atomic) => quote_atomic_type(includes, *atomic),
-        Type::Binary => {
-            includes.insert_rerun("collection.hpp");
-            quote! { rerun::Collection<uint8_t>  }
-        }
-        Type::Utf8 => {
-            includes.insert_system("string");
-            quote! { std::string  }
-        }
-        Type::FixedSizeList { elem_type, length } => {
-            includes.insert_system("array");
-            let elem_type = quote_element_type(includes, elem_type);
-            let length = Literal::usize_unsuffixed(*length);
-            quote! { std::array<#elem_type, #length> }
-        }
-        Type::List { elem_type } => {
-            let elem_type = quote_element_type(includes, elem_type);
-            includes.insert_rerun("collection.hpp");
-            quote! { rerun::Collection<#elem_type>  }
-        }
-        Type::Object { fqname } => {
-            let type_name = quote_fqname_as_type_path(includes, fqname);
-            quote! { #type_name  }
-        }
-    };
+    let typ = quote_type(includes, &obj_field.typ);
 
     if obj_field.is_nullable {
         includes.insert_system("optional");
@@ -2621,24 +2596,30 @@ fn quote_atomic_type(includes: &mut Includes, atomic: AtomicDataType) -> TokenSt
     }
 }
 
-fn quote_element_type(includes: &mut Includes, typ: &ElementType) -> TokenStream {
+/// The C++ spelling of a [`Type`], e.g. `std::array<float, 3>` for a `[f32; 3]`.
+fn quote_type(includes: &mut Includes, typ: &Type) -> TokenStream {
     match typ {
-        ElementType::Atomic(atomic) => quote_atomic_type(includes, *atomic),
-        ElementType::Binary => {
+        Type::Atomic(atomic) => quote_atomic_type(includes, *atomic),
+        Type::Binary => {
             includes.insert_rerun("collection.hpp");
-            quote! { rerun::Collection<uint8_t>  }
+            quote! { rerun::Collection<uint8_t> }
         }
-        ElementType::Utf8 => {
+        Type::Utf8 => {
             includes.insert_system("string");
             quote! { std::string }
         }
-        ElementType::Object { fqname } => quote_fqname_as_type_path(includes, fqname),
-        ElementType::FixedSizeList { elem_type, length } => {
+        Type::FixedSizeList { elem_type, length } => {
             includes.insert_system("array");
-            let elem_type = quote_element_type(includes, elem_type);
+            let elem_type = quote_type(includes, elem_type);
             let length = Literal::usize_unsuffixed(*length);
             quote! { std::array<#elem_type, #length> }
         }
+        Type::List { elem_type } => {
+            includes.insert_rerun("collection.hpp");
+            let elem_type = quote_type(includes, elem_type);
+            quote! { rerun::Collection<#elem_type> }
+        }
+        Type::Object { fqname } => quote_fqname_as_type_path(includes, fqname),
     }
 }
 
@@ -2845,13 +2826,12 @@ fn quote_arrow_field_type(
 }
 
 fn quote_arrow_elem_type(
-    elem_type: &ElementType,
+    elem_type: &Type,
     objects: &Objects,
     includes: &mut Includes,
 ) -> TokenStream {
-    let typ: Type = elem_type.clone().into();
-    let datatype = quote_arrow_datatype(&typ, objects, includes, false);
-    let is_nullable = typ.is_unit(); // null type must be nullable
+    let datatype = quote_arrow_datatype(elem_type, objects, includes, false);
+    let is_nullable = elem_type.is_unit(); // null type must be nullable
     let is_nullable = is_nullable || elem_type.is_union(objects); // Rerun unions always has a `_null_marker: null` variant, so they are always nullable
     quote! {
         arrow::field("item", #datatype, #is_nullable)

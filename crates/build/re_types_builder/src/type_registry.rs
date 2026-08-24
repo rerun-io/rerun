@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use anyhow::Context as _;
 
 use crate::data_type::{AtomicDataType, DataType, Field, UnionMode};
-use crate::{ArrowAttr, ElementType, Object, ObjectField, Objects, Type};
+use crate::{ArrowAttr, Object, ObjectField, Objects, Type};
 
 // --- Registry ---
 
@@ -166,14 +166,14 @@ impl TypeRegistry {
     }
 
     /// The unnamed element field of a list or a fixed-size list.
-    fn item_field(&mut self, objects: &Objects, elem_type: &ElementType) -> Field {
+    fn item_field(&mut self, objects: &Objects, elem_type: &Type) -> Field {
         Field {
             name: "item".into(),
-            data_type: self.datatype_from_type(objects, &elem_type.clone().into()),
+            data_type: self.datatype_from_type(objects, elem_type),
             // NOTE: Do _not_ confuse this with the nullability of the field itself!
-            // This would be the nullability of the elements of the list itself, which our IDL
-            // literally is unable to express at the moment, so you can be certain this is
-            // always false.
+            // This would be the nullability of the elements of the list itself, which the
+            // frontend rejects for now (https://github.com/rerun-io/rerun/issues/2993),
+            // so you can be certain this is always false.
             is_nullable: false,
         }
     }

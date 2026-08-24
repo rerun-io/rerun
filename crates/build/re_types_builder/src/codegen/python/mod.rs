@@ -22,8 +22,8 @@ use crate::codegen::{StringExt as _, autogen_warning};
 use crate::data_type::{AtomicDataType, DataType, Field, UnionMode};
 use crate::objects::{ObjectClass, State};
 use crate::{
-    CodeGenerator, Docs, ElementType, GeneratedFiles, Object, ObjectField, ObjectKind, Objects,
-    PythonAttr, Reporter, Type, TypeRegistry, format_path,
+    CodeGenerator, Docs, GeneratedFiles, Object, ObjectField, ObjectKind, Objects, PythonAttr,
+    Reporter, Type, TypeRegistry, format_path,
 };
 
 /// The standard python init method.
@@ -1781,8 +1781,8 @@ fn quote_import_clauses_from_field(
             elem_type,
             length: _,
         }
-        | Type::List { elem_type } => match elem_type {
-            ElementType::Object { fqname } => Some(fqname),
+        | Type::List { elem_type } => match &**elem_type {
+            Type::Object { fqname } => Some(fqname),
             _ => None,
         },
         Type::Object { fqname } => Some(fqname),
@@ -1857,20 +1857,22 @@ fn quote_field_type_from_field(
         Type::FixedSizeList {
             elem_type,
             length: _,
-        } => match elem_type {
-            ElementType::Binary | ElementType::Utf8 => unimplemented!(
+        } => match &**elem_type {
+            Type::Binary | Type::Utf8 => unimplemented!(
                 "fixed-size arrays of {elem_type:?} are not supported by the Python codegen"
             ),
-            _ => quote_plural_field_type_from_element_type(elem_type, unwrap, &mut unwrapped),
+            elem_type => {
+                quote_plural_field_type_from_element_type(elem_type, unwrap, &mut unwrapped)
+            }
         },
-        Type::List { elem_type } => match elem_type {
-            ElementType::Binary => "list[bytes]".to_owned(),
-            ElementType::Utf8 => "list[str]".to_owned(),
-            _ => quote_plural_field_type_from_element_type(elem_type, unwrap, &mut unwrapped),
+        Type::List { elem_type } => match &**elem_type {
+            Type::Binary => "list[bytes]".to_owned(),
+            Type::Utf8 => "list[str]".to_owned(),
+            elem_type => {
+                quote_plural_field_type_from_element_type(elem_type, unwrap, &mut unwrapped)
+            }
         },
-        Type::Object { fqname } => quote_type_from_element_type(&ElementType::Object {
-            fqname: fqname.clone(),
-        }),
+        Type::Object { fqname } => fqname_to_type(fqname),
     };
 
     (typ, unwrapped)
@@ -1879,12 +1881,12 @@ fn quote_field_type_from_field(
 /// The Python type of an array/vector field over the given element type
 /// (excluding `Binary`/`Utf8` elements, whose spelling differs between the two).
 fn quote_plural_field_type_from_element_type(
-    elem_type: &ElementType,
+    elem_type: &Type,
     unwrap: bool,
     unwrapped: &mut bool,
 ) -> String {
-    if let ElementType::Object { .. } = elem_type {
-        let typ = quote_type_from_element_type(elem_type);
+    if let Type::Object { .. } = elem_type {
+        let typ = quote_type_from_type(elem_type);
         if unwrap {
             *unwrapped = true;
             typ
@@ -1896,17 +1898,19 @@ fn quote_plural_field_type_from_element_type(
         // numpy array of the innermost element type.
         let innermost = elem_type.innermost_element_type();
         match innermost {
-            ElementType::Atomic(atomic) => {
+            Type::Atomic(atomic) => {
                 let np_dtype = np_dtype_from_atomic(*atomic)
                     .unwrap_or_else(|| unimplemented!("the unit type cannot be an array element"));
                 format!("npt.NDArray[{np_dtype}]")
             }
-            ElementType::Binary | ElementType::Utf8 | ElementType::Object { .. } => {
+            Type::Binary | Type::Utf8 | Type::Object { .. } => {
                 unimplemented!(
                     "nested fixed-size arrays over {innermost:?} are not supported by the Python codegen"
                 )
             }
-            ElementType::FixedSizeList { .. } => unreachable!("innermost cannot be an array"),
+            Type::FixedSizeList { .. } | Type::List { .. } => {
+                unreachable!("innermost cannot be an array or vector")
+            }
         }
     }
 }
@@ -1960,9 +1964,7 @@ fn quote_field_converter_from_field(
             }
         }
         Type::Object { fqname } => {
-            let typ = quote_type_from_element_type(&ElementType::Object {
-                fqname: fqname.clone(),
-            });
+            let typ = fqname_to_type(fqname);
             let field_obj = &objects[fqname];
 
             // If the extension class has a custom init we don't know if we can
@@ -2021,21 +2023,23 @@ fn quote_field_converter_from_field(
 }
 
 // Returns the name of the NumPy array conversion method for the given element type or empty string if not applicable.
-fn lookup_np_array_conversion_method(elem_type: &ElementType) -> String {
+fn lookup_np_array_conversion_method(elem_type: &Type) -> String {
     // Nested fixed-size arrays convert like their innermost element type:
     // the numpy conversion preserves the multi-dimensional shape.
     match elem_type.innermost_element_type() {
         // `np.bool_` is spelled `bool` here, and the rest are spelled as they are.
-        ElementType::Atomic(AtomicDataType::Boolean) => "to_np_bool".to_owned(),
-        ElementType::Atomic(atomic) => match np_dtype_from_atomic(*atomic) {
+        Type::Atomic(AtomicDataType::Boolean) => "to_np_bool".to_owned(),
+        Type::Atomic(atomic) => match np_dtype_from_atomic(*atomic) {
             Some(np_dtype) => format!("to_np_{}", np_dtype.trim_start_matches("np.")),
             None => unreachable!("the unit type cannot be an array element"),
         },
 
         // No numpy conversion for these; the field keeps its native representation.
-        ElementType::Binary | ElementType::Utf8 | ElementType::Object { .. } => String::new(),
+        Type::Binary | Type::Utf8 | Type::Object { .. } => String::new(),
 
-        ElementType::FixedSizeList { .. } => unreachable!("innermost cannot be an array"),
+        Type::FixedSizeList { .. } | Type::List { .. } => {
+            unreachable!("innermost cannot be an array or vector")
+        }
     }
 }
 
@@ -2153,16 +2157,9 @@ fn quote_type_from_type(typ: &Type) -> String {
         Type::Utf8 => "str".to_owned(),
         Type::Object { fqname } => fqname_to_type(fqname),
         Type::FixedSizeList { elem_type, .. } | Type::List { elem_type } => {
-            format!(
-                "list[{}]",
-                quote_type_from_type(&Type::from(elem_type.clone()))
-            )
+            format!("list[{}]", quote_type_from_type(elem_type))
         }
     }
-}
-
-fn quote_type_from_element_type(typ: &ElementType) -> String {
-    quote_type_from_type(&Type::from(typ.clone()))
 }
 
 /// Arrow support objects
@@ -2324,17 +2321,6 @@ fn np_dtype_from_type(t: &Type) -> Option<&'static str> {
     }
 }
 
-/// The numpy dtype for a scalar [`ElementType`], if it is a numeric/bool scalar.
-fn np_dtype_from_element_type(t: &ElementType) -> Option<&'static str> {
-    match t {
-        ElementType::Atomic(atomic) => np_dtype_from_atomic(*atomic),
-        ElementType::Binary
-        | ElementType::Utf8
-        | ElementType::Object { .. }
-        | ElementType::FixedSizeList { .. } => None,
-    }
-}
-
 /// For a fixed-size array whose innermost element is a numeric/bool scalar, returns
 /// `(numpy_dtype, nesting_depth)`, where depth counts the array levels: `1` for `[f16; N]`,
 /// `2` for `[[f16; 3]; N]`, and so on. Returns `None` for anything else.
@@ -2343,12 +2329,12 @@ fn fixed_size_array_scalar_dtype(typ: &Type) -> Option<(&'static str, usize)> {
         return None;
     };
     let mut depth = 1;
-    let mut elem = elem_type;
-    while let ElementType::FixedSizeList { elem_type, .. } = elem {
+    let mut elem: &Type = elem_type;
+    while let Type::FixedSizeList { elem_type, .. } = elem {
         depth += 1;
         elem = elem_type;
     }
-    np_dtype_from_element_type(elem).map(|np_dtype| (np_dtype, depth))
+    np_dtype_from_type(elem).map(|np_dtype| (np_dtype, depth))
 }
 
 /// Only implemented for some cases.

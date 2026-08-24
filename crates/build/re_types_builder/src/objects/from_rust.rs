@@ -42,8 +42,8 @@ use camino::{Utf8Path, Utf8PathBuf};
 use syn::spanned::Spanned;
 
 use crate::{
-    AtomicDataType, Attribute, Docs, ElementType, Object, ObjectClass, ObjectField, ObjectKind,
-    Objects, Reporter, RerunAttr, Type,
+    AtomicDataType, Attribute, Docs, Object, ObjectClass, ObjectField, ObjectKind, Objects,
+    Reporter, RerunAttr, Type,
 };
 
 use super::{Attributes, EnumIntegerType, State};
@@ -636,15 +636,27 @@ impl Parser<'_> {
         }
     }
 
-    fn parse_element_type(&self, ty: &syn::Type) -> Result<ElementType> {
+    /// Like [`Self::parse_type`], but for element positions, where the unit type and nested
+    /// `Vec`s are rejected as a decision rather than falling out of the IR.
+    fn parse_element_type(&self, ty: &syn::Type) -> Result<Box<Type>> {
         let typ = self.parse_type(ty)?;
-        typ.to_element_type().ok_or_else(|| {
-            self.error(
-                Spanned::span(ty),
-                format!("{typ:?} cannot be used as an array or vector element"),
-            );
-            Fail
-        })
+        match typ {
+            Type::Atomic(AtomicDataType::Null) => {
+                self.error(
+                    Spanned::span(ty),
+                    "The unit type cannot be used as an array or vector element",
+                );
+                Err(Fail)
+            }
+            Type::List { .. } => {
+                self.error(
+                    Spanned::span(ty),
+                    "Nested `Vec` is not supported yet — only the outermost type may be a `Vec`",
+                );
+                Err(Fail)
+            }
+            _ => Ok(Box::new(typ)),
+        }
     }
 
     fn parse_array_length(&self, expr: &syn::Expr) -> Result<usize> {
@@ -1234,7 +1246,7 @@ mod tests {
                 (
                     "fixed",
                     &Type::FixedSizeList {
-                        elem_type: ElementType::Atomic(AtomicDataType::Float32),
+                        elem_type: Box::new(Type::Atomic(AtomicDataType::Float32)),
                         length: 3
                     },
                     false
@@ -1242,17 +1254,17 @@ mod tests {
                 (
                     "list",
                     &Type::List {
-                        elem_type: ElementType::Atomic(AtomicDataType::UInt8)
+                        elem_type: Box::new(Type::Atomic(AtomicDataType::UInt8))
                     },
                     false
                 ),
                 (
                     "nested",
                     &Type::FixedSizeList {
-                        elem_type: ElementType::FixedSizeList {
-                            elem_type: Box::new(ElementType::Atomic(AtomicDataType::Float32)),
+                        elem_type: Box::new(Type::FixedSizeList {
+                            elem_type: Box::new(Type::Atomic(AtomicDataType::Float32)),
                             length: 4
-                        },
+                        }),
                         length: 4
                     },
                     false
@@ -1260,9 +1272,9 @@ mod tests {
                 (
                     "objects",
                     &Type::List {
-                        elem_type: ElementType::Object {
+                        elem_type: Box::new(Type::Object {
                             fqname: "rerun.encodings.Vec3D".to_owned()
-                        }
+                        })
                     },
                     false
                 ),
@@ -1538,6 +1550,18 @@ mod tests {
                 "Nested `Option` is not supported",
             ),
             ("pub struct A { pub a: Vec<Option<u8>> }", "outermost level"),
+            (
+                "pub struct A { pub a: Vec<Vec<u8>> }",
+                "Nested `Vec` is not supported",
+            ),
+            (
+                "pub struct A { pub a: [Vec<u8>; 2] }",
+                "Nested `Vec` is not supported",
+            ),
+            (
+                "#[repr(i8)] pub enum A { B(Vec<()>) = 1 }",
+                "unit type cannot be used",
+            ),
             ("pub struct A { pub a: [u8; N] }", "plain integer literals"),
             ("#[repr(i8)] pub enum A { B(u8) }", "need an explicit value"),
             ("#[repr(i8)] pub enum A { B(u8) = 0 }", "0 is reserved"),
