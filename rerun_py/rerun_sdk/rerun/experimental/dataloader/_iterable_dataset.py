@@ -30,6 +30,7 @@ from ._utils import (
     _warn_if_fork_unsafe,
     _WorkerConnection,
 )
+from .decoders._base import DecodedSample
 
 if TYPE_CHECKING:
     from collections.abc import Generator, Iterator
@@ -41,8 +42,8 @@ if TYPE_CHECKING:
 
 
 def _count_yields(
-    samples: Generator[dict[str, torch.Tensor | None], None, None],
-) -> Generator[dict[str, torch.Tensor | None], None, None]:
+    samples: Generator[DecodedSample, None, None],
+) -> Generator[DecodedSample, None, None]:
     """
     Yield `samples` through, recording the yield count and downstream pull gaps on the current span.
 
@@ -73,7 +74,7 @@ def _count_yields(
         samples.close()
 
 
-class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tensor | None]]):
+class RerunIterableDataset(torch.utils.data.IterableDataset[DecodedSample]):
     """
     Iterable dataset backed by a catalog server.
 
@@ -205,14 +206,14 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tens
         """Set the epoch for shuffling (like `DistributedSampler.set_epoch`)."""
         self._epoch = epoch
 
-    def __iter__(self) -> Iterator[dict[str, torch.Tensor | None]]:
+    def __iter__(self) -> Iterator[DecodedSample]:
         """Yield this worker's samples: replayed from a manifest, or fetched live from the catalog."""
         if self._manifest is not None:
             yield from self._iter_manifest()
         else:
             yield from self._iter_catalog()
 
-    def _iter_catalog(self) -> Iterator[dict[str, torch.Tensor | None]]:
+    def _iter_catalog(self) -> Iterator[DecodedSample]:
         """
         Yield individual samples as they are decoded.
 
@@ -264,7 +265,7 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tens
                 fetched_groups = _fetch_queries_parallel(query_plans, view=view, index=self._index)
                 return FetchedBlock(targets=targets, fetched_groups=fetched_groups)
 
-            def process(fetched: FetchedBlock) -> Iterator[dict[str, torch.Tensor | None]]:
+            def process(fetched: FetchedBlock) -> Iterator[DecodedSample]:
                 # 1. Group each fetched table into contiguous, index-ordered segment spans.
                 indexed = _index_fetched_block(fetched, self._index)
                 # 2. Map each requested timeline range to physical Arrow rows.
@@ -288,7 +289,7 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tens
                 samples = self._shuffle_buffer.shuffle(samples, rng=rng)
             yield from _count_yields(samples)
 
-    def _iter_manifest(self) -> Iterator[dict[str, torch.Tensor | None]]:
+    def _iter_manifest(self) -> Iterator[DecodedSample]:
         """Replay the manifest for this `(rank, worker)`: fetch groups in order, emit in the frozen order."""
         from .manifest._manifest_read import targets_from_rows
 
@@ -334,7 +335,7 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tens
                 fetched_groups = _fetch_queries_parallel(query_plans, view=view, index=self._index)
                 return FetchedBlock(targets=targets, fetched_groups=fetched_groups)
 
-            def process(fetched: FetchedBlock) -> Iterator[dict[str, torch.Tensor | None]]:
+            def process(fetched: FetchedBlock) -> Iterator[DecodedSample]:
                 # 1. Group each fetched table into contiguous, index-ordered segment spans.
                 indexed = _index_fetched_block(fetched, self._index)
                 # 2. Map each requested timeline range to physical Arrow rows.

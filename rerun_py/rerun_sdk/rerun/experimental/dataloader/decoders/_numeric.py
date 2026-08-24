@@ -23,7 +23,7 @@ _RAGGED_WINDOW_ERROR = (
 )
 
 
-class NumericDecoder(ColumnDecoder):
+class NumericDecoder(ColumnDecoder[torch.Tensor]):
     """
     Decode Arrow numeric / list-of-numeric columns to tensors, one vectorized gather per batch.
 

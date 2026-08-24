@@ -30,11 +30,11 @@ For timestamp timelines, `FixedRateSampling` defines the sampling grid and the s
 
 ### Decoders
 
-Each `Field` has a [`ColumnDecoder`](https://ref.rerun.io/docs/python/stable/experimental_dataloader/#rerun.experimental.dataloader.ColumnDecoder) that converts a raw Arrow column to a `torch.Tensor`:
+Each `Field` has a [`ColumnDecoder`](https://ref.rerun.io/docs/python/stable/experimental_dataloader/#rerun.experimental.dataloader.ColumnDecoder) that converts a raw Arrow column to a training value:
 
 - [`NumericDecoder`](https://ref.rerun.io/docs/python/stable/experimental_dataloader/#rerun.experimental.dataloader.NumericDecoder) — scalars and numeric lists
 - [`ImageDecoder`](https://ref.rerun.io/docs/python/stable/experimental_dataloader/#rerun.experimental.dataloader.ImageDecoder) — JPEG/PNG blobs
-- [`VideoFrameDecoder`](https://ref.rerun.io/docs/python/stable/experimental_dataloader/#rerun.experimental.dataloader.VideoFrameDecoder) — compressed video (`h264`/`h265`/`av1`)
+- [`VideoFrameDecoder`](https://ref.rerun.io/docs/python/stable/experimental_dataloader/#rerun.experimental.dataloader.VideoFrameDecoder) — compressed video (`h264`/`h265`/`av1`) as RGB tensors or compact YUV420 planes
 
 ### Windows
 

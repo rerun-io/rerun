@@ -14,7 +14,7 @@ import pytest
 import torch
 from PIL import Image
 from rerun.experimental import Selector
-from rerun.experimental.dataloader import Field
+from rerun.experimental.dataloader import Field, Yuv420Frame
 from rerun.experimental.dataloader._sample_index import SegmentMetadata
 from rerun.experimental.dataloader._utils import (
     FieldFetchRequest,
@@ -37,7 +37,7 @@ from rerun.experimental.dataloader.decoders import (
     VideoFrameDecoder,
 )
 from rerun.experimental.dataloader.decoders._arrow import _flatten_blob, _unwrap_to_numpy
-from rerun.experimental.dataloader.decoders._video import _extract_video_samples, _starts_with
+from rerun.experimental.dataloader.decoders._video import _decoder_name, _extract_video_samples, _starts_with
 
 
 def _encoder_available(name: str) -> bool:
@@ -479,6 +479,11 @@ def test_starts_with() -> None:
     assert not _starts_with([b"a", b"x"], [b"a", b"b"])
 
 
+@pytest.mark.parametrize(("codec", "expected"), [("AVC", "h264"), ("H265", "hevc"), ("HEVC", "hevc")])
+def test_video_decoder_name_normalizes_aliases(codec: str, expected: str) -> None:
+    assert _decoder_name(codec) == expected
+
+
 def _encode_h264(num_frames: int, gop: int, b_frames: int = 0) -> list[bytes]:
     """One Annex B sample per frame, keyframes every *gop* frames."""
     encoder = av.CodecContext.create("libx264", "w")
@@ -624,6 +629,68 @@ def test_video_frame_decoder_delayed_stream_falls_back_to_flush() -> None:
     assert len(decoder._sessions) == 0
 
 
+@pytest.mark.parametrize("thread_count", [2, 4])
+def test_video_frame_decoder_frame_threading_drains_contiguous_run_once(
+    monkeypatch: pytest.MonkeyPatch,
+    thread_count: int,
+) -> None:
+    samples = _encode_h264(num_frames=16, gop=16)
+    request = DecodeRequest(
+        sample_position=0,
+        segment_id="seg",
+        index_value=13,
+        decode_row_indices=tuple(range(14)),
+        output_row_indices=tuple(range(8, 14)),
+        starts_at_keyframe=True,
+    )
+    batch = _sample_batch(samples, is_windowed=True)
+    expected = VideoFrameDecoder(
+        codec="h264",
+        window_storage="view",
+    ).decode(batch, [request])[0]
+    decoder = VideoFrameDecoder(
+        codec="h264",
+        thread_count=thread_count,
+        window_storage="view",
+    )
+
+    def unexpected_replay(*_args: object, **_kwargs: object) -> torch.Tensor:
+        raise AssertionError("frame-threaded contiguous decode must not replay each requested frame")
+
+    monkeypatch.setattr(decoder, "_feed_last", unexpected_replay)
+    actual = decoder.decode(batch, [request])[0]
+
+    assert actual is not None and expected is not None
+    torch.testing.assert_close(actual, expected)
+    assert actual.is_contiguous()
+    assert len(decoder._sessions) == 0
+
+
+def test_video_frame_decoder_yuv420_view_handles_delayed_stream() -> None:
+    samples = _encode_h264(num_frames=8, gop=8, b_frames=2)
+    request = DecodeRequest(
+        sample_position=0,
+        segment_id="seg",
+        index_value=7,
+        decode_row_indices=tuple(range(8)),
+        output_row_indices=(5, 6, 7),
+        starts_at_keyframe=True,
+    )
+    batch = _sample_batch(samples, is_windowed=True)
+
+    (expected,) = VideoFrameDecoder(codec="h264", window_storage="view").decode(batch, [request])
+    (decoded,) = VideoFrameDecoder(
+        codec="h264",
+        window_storage="view",
+        output_format="yuv420p",
+    ).decode(batch, [request])
+
+    assert isinstance(expected, torch.Tensor)
+    assert isinstance(decoded, Yuv420Frame)
+    converted = decoded.to_rgb(normalize=False, color_space="bt601", color_range="limited")
+    torch.testing.assert_close(converted, expected.float(), rtol=0, atol=5)
+
+
 def test_video_frame_decoder_pickle_drops_sessions() -> None:
     samples = _encode_h264(num_frames=4, gop=4)
     decoder = VideoFrameDecoder(codec="h264")
@@ -698,6 +765,284 @@ def test_video_frame_decoder_window_stacks_do_not_share_memory() -> None:
     assert first.data_ptr() != second.data_ptr()
     first.zero_()
     assert torch.count_nonzero(second) > 0
+
+
+def test_video_frame_decoder_contiguous_windows_can_share_frame_bank() -> None:
+    samples = _encode_h264(num_frames=5, gop=5)
+    requests = [
+        DecodeRequest(
+            sample_position=position,
+            segment_id="seg",
+            index_value=position + 2,
+            decode_row_indices=tuple(range(position + 3)),
+            output_row_indices=(position + 1, position + 2),
+            starts_at_keyframe=True,
+        )
+        for position in range(2)
+    ]
+
+    batch = _sample_batch(samples, is_windowed=True)
+    expected = VideoFrameDecoder(codec="h264").decode(batch, requests)
+    first, second = VideoFrameDecoder(codec="h264", window_storage="view").decode(
+        batch,
+        requests,
+    )
+
+    assert first is not None and second is not None
+    assert expected[0] is not None and expected[1] is not None
+    torch.testing.assert_close(first, expected[0])
+    torch.testing.assert_close(second, expected[1])
+    assert first.untyped_storage().data_ptr() == second.untyped_storage().data_ptr()
+    first[1].zero_()
+    assert torch.count_nonzero(second[0]) == 0
+
+
+def test_video_frame_decoder_yuv420_writes_shared_bank_directly(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    samples = _encode_h264(num_frames=5, gop=5)
+    requests = [
+        DecodeRequest(
+            sample_position=position,
+            segment_id="seg",
+            index_value=position + 2,
+            decode_row_indices=tuple(range(position + 3)),
+            output_row_indices=(position + 1, position + 2),
+            starts_at_keyframe=True,
+        )
+        for position in range(2)
+    ]
+    batch = _sample_batch(samples, is_windowed=True)
+    stack_calls = 0
+    original_stack = torch.stack
+
+    def count_stack(*args: object, **kwargs: object) -> torch.Tensor:
+        nonlocal stack_calls
+        stack_calls += 1
+        return original_stack(*args, **kwargs)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(torch, "stack", count_stack)
+    first, second = VideoFrameDecoder(
+        codec="h264",
+        window_storage="view",
+        output_format="yuv420p",
+    ).decode(batch, requests)
+
+    assert isinstance(first, Yuv420Frame) and isinstance(second, Yuv420Frame)
+    assert first.y.is_contiguous() and first.uv.is_contiguous()
+    assert second.y.is_contiguous() and second.uv.is_contiguous()
+    assert first.y.untyped_storage().data_ptr() == second.y.untyped_storage().data_ptr()
+    assert first.uv.untyped_storage().data_ptr() == second.uv.untyped_storage().data_ptr()
+    assert stack_calls == 0
+
+
+def test_video_frame_decoder_yuv420_matches_rgb_conversion() -> None:
+    samples = _encode_h264(num_frames=8, gop=8)
+    request = DecodeRequest(
+        sample_position=0,
+        segment_id="seg",
+        index_value=7,
+        decode_row_indices=tuple(range(8)),
+        output_row_indices=tuple(range(2, 8)),
+        starts_at_keyframe=True,
+    )
+    batch = _sample_batch(samples, is_windowed=True)
+    (expected,) = VideoFrameDecoder(codec="h264", window_storage="view").decode(batch, [request])
+    (decoded,) = VideoFrameDecoder(
+        codec="h264",
+        window_storage="view",
+        output_format="yuv420p",
+    ).decode(batch, [request])
+
+    assert isinstance(expected, torch.Tensor)
+    assert isinstance(decoded, Yuv420Frame)
+    assert decoded.y.shape == (6, 1, 64, 64)
+    assert decoded.uv.shape == (6, 2, 32, 32)
+    assert decoded.y.untyped_storage().nbytes() + decoded.uv.untyped_storage().nbytes() == expected.numel() // 2
+    converted = decoded.to_rgb(
+        dtype=torch.float32,
+        normalize=False,
+        color_space="bt601",
+        color_range="limited",
+    )
+    torch.testing.assert_close(converted, expected.float(), rtol=0, atol=3)
+
+
+@pytest.mark.parametrize(
+    ("av_color_space", "expected"),
+    [(1, "bt709"), (5, "bt601"), (6, "bt601"), (9, "bt2020"), (2, "unspecified")],
+)
+def test_video_frame_decoder_maps_yuv_color_space_metadata(av_color_space: int, expected: str) -> None:
+    frame = av.VideoFrame(4, 4, "yuv420p")
+    frame.colorspace = av_color_space
+
+    assert VideoFrameDecoder._frame_color_space(frame) == expected
+
+
+def test_video_frame_decoder_preserves_full_range_yuvj420p_samples() -> None:
+    frame = av.VideoFrame(4, 4, "yuvj420p")
+    for plane, value in zip(frame.planes, (32, 96, 160), strict=True):
+        plane.update(bytes([value]) * plane.buffer_size)
+
+    decoded = VideoFrameDecoder(output_format="yuv420p")._frame_to_yuv420(frame)
+
+    assert decoded.color_range == "full"
+    assert torch.all(decoded.y == 32)
+    assert torch.all(decoded.uv[0] == 96)
+    assert torch.all(decoded.uv[1] == 160)
+
+
+def test_video_frame_decoder_yuv420_contiguous_windows_share_plane_banks() -> None:
+    samples = _encode_h264(num_frames=5, gop=5)
+    requests = [
+        DecodeRequest(
+            sample_position=position,
+            segment_id="seg",
+            index_value=position + 2,
+            decode_row_indices=tuple(range(position + 3)),
+            output_row_indices=(position + 1, position + 2),
+            starts_at_keyframe=True,
+        )
+        for position in range(2)
+    ]
+    first, second = VideoFrameDecoder(
+        codec="h264",
+        window_storage="view",
+        output_format="yuv420p",
+    ).decode(_sample_batch(samples, is_windowed=True), requests)
+
+    assert isinstance(first, Yuv420Frame) and isinstance(second, Yuv420Frame)
+    assert first.y.untyped_storage().data_ptr() == second.y.untyped_storage().data_ptr()
+    assert first.uv.untyped_storage().data_ptr() == second.uv.untyped_storage().data_ptr()
+
+
+def test_video_frame_decoder_collation_materializes_view_windows() -> None:
+    samples = _encode_h264(num_frames=5, gop=5)
+    requests = [
+        DecodeRequest(
+            sample_position=position,
+            segment_id="seg",
+            index_value=position + 2,
+            decode_row_indices=tuple(range(position + 3)),
+            output_row_indices=(position + 1, position + 2),
+            starts_at_keyframe=True,
+        )
+        for position in range(2)
+    ]
+    first, second = VideoFrameDecoder(codec="h264", window_storage="view").decode(
+        _sample_batch(samples, is_windowed=True),
+        requests,
+    )
+
+    assert first is not None and second is not None
+    collated = torch.stack([first, second])
+    first[1].zero_()
+    assert torch.count_nonzero(collated[0, 1]) > 0
+    assert torch.count_nonzero(collated[1, 0]) > 0
+
+
+def test_video_frame_decoder_view_mode_copies_irregular_windows() -> None:
+    samples = _encode_h264(num_frames=5, gop=5)
+    irregular = DecodeRequest(
+        sample_position=0,
+        segment_id="seg",
+        index_value=3,
+        decode_row_indices=(0, 1, 2, 3),
+        output_row_indices=(1, 3),
+        starts_at_keyframe=True,
+    )
+    middle = DecodeRequest(
+        sample_position=1,
+        segment_id="seg",
+        index_value=2,
+        decode_row_indices=(0, 1, 2),
+        output_row_indices=(2,),
+        starts_at_keyframe=True,
+    )
+    last = DecodeRequest(
+        sample_position=2,
+        segment_id="seg",
+        index_value=3,
+        decode_row_indices=(0, 1, 2, 3),
+        output_row_indices=(3,),
+        starts_at_keyframe=True,
+    )
+
+    batch = _sample_batch(samples, is_windowed=True)
+    requests = [irregular, middle, last]
+    expected = VideoFrameDecoder(codec="h264").decode(batch, requests)
+    irregular_out, middle_out, last_out = VideoFrameDecoder(codec="h264", window_storage="view").decode(
+        batch,
+        requests,
+    )
+
+    assert irregular_out is not None and middle_out is not None and last_out is not None
+    for actual, copied in zip((irregular_out, middle_out, last_out), expected, strict=True):
+        assert copied is not None
+        torch.testing.assert_close(actual, copied)
+    assert middle_out.untyped_storage().data_ptr() == last_out.untyped_storage().data_ptr()
+    assert irregular_out.untyped_storage().data_ptr() != last_out.untyped_storage().data_ptr()
+    irregular_out[1].zero_()
+    assert torch.count_nonzero(last_out[0]) > 0
+
+
+def test_video_frame_decoder_view_mode_skips_bank_without_contiguous_windows(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    samples = _encode_h264(num_frames=4, gop=4)
+    request = DecodeRequest(
+        sample_position=0,
+        segment_id="seg",
+        index_value=2,
+        decode_row_indices=(0, 1, 2),
+        output_row_indices=(2, 2),
+        starts_at_keyframe=True,
+    )
+    stack_calls = 0
+    original_stack = torch.stack
+
+    def count_stack(*args: object, **kwargs: object) -> torch.Tensor:
+        nonlocal stack_calls
+        stack_calls += 1
+        return original_stack(*args, **kwargs)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(torch, "stack", count_stack)
+    (decoded,) = VideoFrameDecoder(codec="h264", window_storage="view").decode(
+        _sample_batch(samples, is_windowed=True),
+        [request],
+    )
+
+    assert decoded is not None
+    assert stack_calls == 1
+
+
+def test_video_frame_decoder_rejects_unknown_window_storage() -> None:
+    with pytest.raises(ValueError, match="window_storage"):
+        VideoFrameDecoder(window_storage="unknown")  # type: ignore[call-overload]
+
+
+def test_video_frame_decoder_rejects_unknown_output_format() -> None:
+    with pytest.raises(ValueError, match="output_format"):
+        VideoFrameDecoder(output_format="unknown")  # type: ignore[call-overload]
+
+
+def test_video_frame_decoder_accepts_automatic_thread_count() -> None:
+    decoder = VideoFrameDecoder(thread_count=0)
+
+    assert decoder.thread_count == 0
+    assert decoder._create_context().thread_count == 0
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "message"),
+    [
+        ({"thread_count": -1}, "thread_count"),
+        ({"max_decoder_sessions": -1}, "max_decoder_sessions"),
+    ],
+)
+def test_video_frame_decoder_rejects_invalid_resource_limits(kwargs: dict[str, int], message: str) -> None:
+    with pytest.raises(ValueError, match=message):
+        VideoFrameDecoder(**kwargs)  # type: ignore[call-overload]
 
 
 def _group_table(segment_ids: list[str], index_values: list[int]) -> pa.Table:

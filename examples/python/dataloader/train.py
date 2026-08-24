@@ -236,7 +236,7 @@ def main() -> None:
 
     # IterableDataset doesn't support indexing, so probe shape via iteration.
     state_tensor = next(iter(ds))["state"]
-    assert state_tensor is not None  # NumericDecoder never returns None
+    assert isinstance(state_tensor, torch.Tensor)  # NumericDecoder always returns tensors
     state_dim = state_tensor.shape[0]
     action_dim = state_dim
     print(f"Dimensions: {state_dim=}, {action_dim=}")

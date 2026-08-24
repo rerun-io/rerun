@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from ._base import DecodeRequest, FieldBatch
 
 
-class ImageDecoder(ColumnDecoder):
+class ImageDecoder(ColumnDecoder[torch.Tensor]):
     """Decode encoded-image blobs (JPEG/PNG) to `[C, H, W]` uint8 tensors."""
 
     @with_tracing("ImageDecoder.decode")

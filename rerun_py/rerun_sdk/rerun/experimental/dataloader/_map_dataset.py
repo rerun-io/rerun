@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import torch
 import torch.utils.data
 
 from rerun._tracing import with_tracing
@@ -25,13 +24,14 @@ from ._utils import (
     _warn_if_fork_unsafe,
     _WorkerConnection,
 )
+from .decoders._base import DecodedSample
 
 if TYPE_CHECKING:
     from ._config import DataSource, Field
     from .manifest._manifest import Manifest
 
 
-class RerunMapDataset(torch.utils.data.Dataset[dict[str, torch.Tensor | None]]):
+class RerunMapDataset(torch.utils.data.Dataset[DecodedSample]):
     """
     Map-style dataset backed by a catalog server.
 
@@ -163,12 +163,12 @@ class RerunMapDataset(torch.utils.data.Dataset[dict[str, torch.Tensor | None]]):
             return self._manifest.num_rows
         return self._sample_index.total_samples
 
-    def __getitem__(self, idx: int) -> dict[str, torch.Tensor | None]:  # ty: ignore[invalid-method-override]
+    def __getitem__(self, idx: int) -> DecodedSample:  # ty: ignore[invalid-method-override]
         """Fetch a single sample by global index (one server query)."""
         return self.__getitems__([idx])[0]
 
     @with_tracing("RerunMapDataset.__getitems__")
-    def __getitems__(self, indices: list[int]) -> list[dict[str, torch.Tensor | None]]:
+    def __getitems__(self, indices: list[int]) -> list[DecodedSample]:
         """
         Fetch multiple samples by global index in a single server query.
 

@@ -235,7 +235,12 @@ def _decode_targets(
             },
         )
         for target in targets:
-            results[target] = dataset[target]
+            sample = dataset[target]
+            image = sample["image"]
+            state = sample["state"]
+            assert image is None or isinstance(image, torch.Tensor)
+            assert state is None or isinstance(state, torch.Tensor)
+            results[target] = {"image": image, "state": state}
     return results
 
 
@@ -420,7 +425,7 @@ def test_fixed_rate_sampling_sparse_frames_decode_correctly(tmp_path: Path, time
         )
         served = dataset[target_slot]["image"]
 
-    assert served is not None, "served decode unexpectedly returned None"
+    assert isinstance(served, torch.Tensor), "served decode unexpectedly returned a non-tensor value"
     assert torch.equal(served, ground_truth), "fixed-rate sparse sampling changed the decoded frame"
 
 
@@ -502,5 +507,5 @@ def test_off_grid_capture_rate_decodes_correctly(tmp_path: Path) -> None:
 
     for slot in range(num_slots):
         image = served[slot]["image"]
-        assert image is not None, f"served decode returned None for slot {slot}"
+        assert isinstance(image, torch.Tensor), f"served decode returned a non-tensor value for slot {slot}"
         assert torch.equal(image, ground_truth[slot]), f"off-grid decode mismatch at slot {slot}"

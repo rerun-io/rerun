@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from rerun.catalog._entry import DatasetEntry
     from rerun.experimental._selector import Selector
 
-    from .decoders import ColumnDecoder
+    from .decoders._base import ColumnDecoder, DecodedValue
 
 
 @dataclass(frozen=True)
@@ -28,7 +28,7 @@ class Field:
         column (e.g. `"/camera:EncodedImage:blob"`).
     decode
         A [`ColumnDecoder`][rerun.experimental.dataloader.ColumnDecoder]
-        that turns the Arrow column into a tensor.
+        that turns the Arrow column into a training value.
     select
         Optional jq-like [`Selector`][rerun.experimental.Selector] applied
         client-side to the Arrow column before `decode`. Used for nested
@@ -51,8 +51,10 @@ class Field:
         `(-2.5, 0.0)` on a timestamp timeline requests exactly the values at
         2.5 seconds before the current sample and at the current sample.
 
-        A compressed-video window yields a `[T, C, H, W]` frame stack,
-        bootstrapped from the keyframe preceding the earliest output.
+        An RGB compressed-video window yields a `[T, C, H, W]` frame stack;
+        `VideoFrameDecoder(output_format="yuv420p")` instead yields a
+        [`Yuv420Frame`][rerun.experimental.dataloader.Yuv420Frame]. Both are bootstrapped from the keyframe preceding
+        the earliest output.
     max_staleness
         Optional maximum age of the data backing a sample, using the same unit
         convention as `window`: integral index steps for integer timelines and
@@ -65,7 +67,7 @@ class Field:
     """
 
     path: str
-    decode: ColumnDecoder
+    decode: ColumnDecoder[DecodedValue]
     select: Selector | None = None
     window: tuple[int | float, ...] | None = None
     max_staleness: int | float | None = None

@@ -9,16 +9,18 @@ required sibling `is_keyframe` column.
 from __future__ import annotations
 
 import pathlib
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import pytest
 import rerun as rr
+import torch
 from rerun.experimental.dataloader import (
     DataSource,
     Field,
     NumericDecoder,
     RerunMapDataset,
     VideoFrameDecoder,
+    Yuv420Frame,
 )
 
 if TYPE_CHECKING:
@@ -128,17 +130,21 @@ def test_keyframe_path_decodes_mid_gop_target(rrd_with_keyframes: tuple[Path, li
         )
         sample = dataset[target]
 
-    assert sample["image"] is not None
-    assert sample["image"].ndim == 3
-    assert sample["image"].shape[0] == 3  # (C, H, W)
-    assert sample["state"] is not None
-    assert float(sample["state"][0]) == float(target)
+    image = sample["image"]
+    assert isinstance(image, torch.Tensor)
+    assert image.ndim == 3
+    assert image.shape[0] == 3  # (C, H, W)
+    state = sample["state"]
+    assert isinstance(state, torch.Tensor)
+    assert float(state[0]) == float(target)
 
 
 @pytest.mark.filterwarnings("ignore:The default multiprocessing start method is 'fork':RuntimeWarning")
-def test_windowed_video_returns_frame_stack(rrd_with_keyframes: tuple[Path, list[int]]) -> None:
-    import torch
-
+@pytest.mark.parametrize("window_storage", ["copy", "view"])
+def test_windowed_video_returns_frame_stack(
+    rrd_with_keyframes: tuple[Path, list[int]],
+    window_storage: Literal["copy", "view"],
+) -> None:
     rrd_dir, keyframes = rrd_with_keyframes
     target = keyframes[0] + 5
     window = (-3, -2, -1, 0)
@@ -151,7 +157,10 @@ def test_windowed_video_returns_frame_stack(rrd_with_keyframes: tuple[Path, list
             {
                 "clip": Field(
                     "/video:VideoStream:sample",
-                    decode=VideoFrameDecoder(codec="h264"),
+                    decode=VideoFrameDecoder(
+                        codec="h264",
+                        window_storage=window_storage,
+                    ),
                     window=window,
                 ),
                 "single": Field(
@@ -164,10 +173,40 @@ def test_windowed_video_returns_frame_stack(rrd_with_keyframes: tuple[Path, list
 
     clip = sample["clip"]
     frame = sample["single"]
-    assert clip is not None and frame is not None
+    assert isinstance(clip, torch.Tensor)
+    assert isinstance(frame, torch.Tensor)
     assert tuple(clip.shape[:2]) == (len(window), 3)
     assert clip.shape[2:] == frame.shape[1:]
     assert torch.equal(clip[-1], frame)
+
+
+@pytest.mark.filterwarnings("ignore:The default multiprocessing start method is 'fork':RuntimeWarning")
+def test_windowed_video_can_remain_yuv420(rrd_with_keyframes: tuple[Path, list[int]]) -> None:
+    """The YUV output crosses the complete map-dataset pipeline without implicit RGB conversion."""
+    rrd_dir, keyframes = rrd_with_keyframes
+    target = keyframes[0] + 5
+    window = (-3, -2, -1, 0)
+
+    with rr.server.Server(datasets={"video": rrd_dir}) as server:
+        source = DataSource(server.client().get_dataset("video"))
+        dataset = RerunMapDataset(
+            source,
+            "frame",
+            {
+                "clip": Field(
+                    "/video:VideoStream:sample",
+                    decode=VideoFrameDecoder(codec="h264", window_storage="view", output_format="yuv420p"),
+                    window=window,
+                ),
+            },
+        )
+        clip = dataset[target]["clip"]
+
+    assert isinstance(clip, Yuv420Frame)
+    assert clip.y.shape[:2] == (len(window), 1)
+    assert clip.uv.shape[:2] == (len(window), 2)
+    assert clip.y.shape[-2] == clip.uv.shape[-2] * 2
+    assert clip.y.shape[-1] == clip.uv.shape[-1] * 2
 
 
 @pytest.mark.filterwarnings("ignore:The default multiprocessing start method is 'fork':RuntimeWarning")

@@ -4,18 +4,25 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Generic, TypeAlias, TypeVar
 
 import pyarrow as pa
+import torch
+
+from .._yuv import Yuv420Frame
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    import torch
-
     from rerun.experimental._selector import Selector
 
     from .._sample_index import IndexValue
+
+DecodedValue: TypeAlias = torch.Tensor | Yuv420Frame
+DecodedResult: TypeAlias = DecodedValue | None
+DecodedSample: TypeAlias = dict[str, DecodedResult]
+
+_DecodedT_co = TypeVar("_DecodedT_co", covariant=True)
 
 
 @dataclass(frozen=True, slots=True)
@@ -118,11 +125,11 @@ class FieldBatch:
         return sliced
 
 
-class ColumnDecoder(ABC):
+class ColumnDecoder(ABC, Generic[_DecodedT_co]):
     """
     Base class for column decoders.
 
-    Subclasses convert raw Arrow data into tensors. The pipeline calls
+    Subclasses convert raw Arrow data into decoded values. The pipeline calls
     [`decode`][rerun.experimental.dataloader.ColumnDecoder.decode]
     once per field with every requested sample of a fetch block, so decoders can
     amortize work across samples (one vectorized gather for numeric data, one
@@ -137,15 +144,15 @@ class ColumnDecoder(ABC):
         self,
         batch: FieldBatch,
         requests: Sequence[DecodeRequest],
-    ) -> list[torch.Tensor | None]:
+    ) -> Sequence[_DecodedT_co | None]:
         """
         Decode all `requests` against `batch`, returning one entry per request.
 
         `requests` arrive in row order: grouped by segment, and ascending by
         index value within a segment. Implementations may process them in any
         internal order (e.g. grouped by GOP), but the result must align 1:1 with
-        the input: `result[i]` is `requests[i]`'s tensor, or `None` to signal
-        data missing for that sample.
+        the input: `result[i]` is `requests[i]`'s decoded value, or `None` to
+        signal data missing for that sample.
         """
         ...
 

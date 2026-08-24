@@ -12,7 +12,7 @@ from concurrent.futures import Future, ThreadPoolExecutor
 from contextlib import contextmanager
 from dataclasses import dataclass
 from functools import partial
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, TypeVar
 
 import numpy as np
 import pyarrow as pa
@@ -34,13 +34,13 @@ from .decoders import DecodeRequest, FieldBatch
 if TYPE_CHECKING:
     from collections.abc import Callable, Generator, Iterator, Sequence
 
-    import torch
-
     from rerun.catalog._entry import DatasetEntry
 
     from ._config import DataSource, Field
     from ._sample_index import SampleIndex, SegmentMetadata
-    from .decoders import ColumnDecoder
+    from .decoders._base import ColumnDecoder, DecodedResult, DecodedSample, DecodedValue
+
+_DecodedT = TypeVar("_DecodedT")
 
 
 @dataclass(frozen=True, slots=True)
@@ -180,7 +180,7 @@ class _WorkerConnection:
         self._initialized: bool = False
         self._init_pid: int = -1
         self._view: DatasetEntry | None = None
-        self._decoders: dict[str, ColumnDecoder] = {}
+        self._decoders: dict[str, ColumnDecoder[DecodedValue]] = {}
 
     @classmethod
     def from_source(cls, source: DataSource, fields: dict[str, Field]) -> _WorkerConnection:
@@ -188,7 +188,7 @@ class _WorkerConnection:
         return cls(catalog_url=source.dataset.catalog.url, dataset_name=source.dataset.name, fields=fields)
 
     @with_tracing("RerunDataset._ensure_initialized")
-    def ensure(self) -> tuple[DatasetEntry, dict[str, ColumnDecoder]]:
+    def ensure(self) -> tuple[DatasetEntry, dict[str, ColumnDecoder[DecodedValue]]]:
         """Return `(view, decoders)`, building them once per worker process."""
         pid = os.getpid()
         if self._initialized and self._init_pid == pid:
@@ -233,7 +233,6 @@ def _locate_samples(
         "rerun.dataloader.fetch.num_requested_indices": len(indices),
         "rerun.dataloader.fetch.num_located_targets": len(located),
         "rerun.dataloader.fetch.num_fields": num_fields,
-        "rerun.dataloader.fetch.num_segments": len({seg.segment_id for seg, _ in located}),
         "rerun.dataloader.fetch.index_values_bytes_estimate": len(indices) * 8,
     })
     return located
@@ -275,8 +274,8 @@ def _pipeline_blocks(
     blocks: list[np.ndarray],
     *,
     fetch: Callable[[np.ndarray], Any],
-    process: Callable[[Any], Iterator[dict[str, torch.Tensor | None]]],
-) -> Generator[dict[str, torch.Tensor | None], None, None]:
+    process: Callable[[Any], Iterator[DecodedSample]],
+) -> Generator[DecodedSample, None, None]:
     """Process blocks while fetching the next block on a background thread."""
     if not blocks:
         return
@@ -304,9 +303,9 @@ def _pipeline_blocks(
 
 
 def _replay(
-    samples: Generator[dict[str, torch.Tensor | None], None, None],
+    samples: Generator[DecodedSample, None, None],
     order: np.ndarray,
-) -> Generator[dict[str, torch.Tensor | None], None, None]:
+) -> Generator[DecodedSample, None, None]:
     """
     Re-emit a fetch-order sample stream in a known pull `order` (a deterministic queue).
 
@@ -317,7 +316,7 @@ def _replay(
     Closes `samples` on exit, so an early teardown reaches the fetch executor's
     shutdown promptly.
     """
-    buffer: dict[int, dict[str, torch.Tensor | None]] = {}
+    buffer: dict[int, DecodedSample] = {}
     fetched = enumerate(samples)
     try:
         for fetch_idx in order:
@@ -703,8 +702,8 @@ def _decode_field_batch(
     prepared_field: PreparedField,
     num_samples: int,
     key: str,
-    decoder: ColumnDecoder,
-) -> list[torch.Tensor | None]:
+    decoder: ColumnDecoder[_DecodedT],
+) -> list[_DecodedT | None]:
     """
     Decode one field for every target of a fetch block; `result[i]` aligns with `targets[i]`.
 
@@ -725,7 +724,7 @@ def _decode_field_batch(
             f"for {len(prepared_field.requests)} requests (field {key!r})"
         )
 
-    out: list[torch.Tensor | None] = [None] * num_samples
+    out: list[_DecodedT | None] = [None] * num_samples
     for request, result in zip(prepared_field.requests, results, strict=True):
         out[request.sample_position] = result
     return out
@@ -734,16 +733,16 @@ def _decode_field_batch(
 def _decode_iter(
     *,
     prepared: PreparedBlock,
-    decoders: dict[str, ColumnDecoder],
+    decoders: dict[str, ColumnDecoder[DecodedValue]],
     executor: ThreadPoolExecutor | None = None,
-) -> Iterator[dict[str, torch.Tensor | None]]:
+) -> Iterator[DecodedSample]:
     """Yield decoded samples one at a time from a block's materialized query tables."""
     with tracing_scope("RerunDataset._decode_block"):
         set_current_span_attributes({"rerun.dataloader.decode.block_size": prepared.num_samples})
         if not prepared.num_samples:
             return
 
-        decode_field: dict[str, Callable[[], list[torch.Tensor | None]]] = {}
+        decode_field: dict[str, Callable[[], list[DecodedResult]]] = {}
         for key, prepared_field in prepared.fields.items():
             decode_field[key] = partial(
                 _decode_field_batch,
@@ -758,7 +757,7 @@ def _decode_iter(
         else:
             # Copy the caller's contextvars so each field's spans nest under this
             # block's span instead of appearing as roots.
-            futures: dict[str, Future[list[torch.Tensor | None]]] = {
+            futures: dict[str, Future[list[DecodedResult]]] = {
                 key: executor.submit(contextvars.copy_context().run, decode) for key, decode in decode_field.items()
             }
             per_field = {key: future.result() for key, future in futures.items()}
