@@ -25,6 +25,9 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 use ::std::borrow::Cow;
 
 /// **Component**: A display name, typically for an entity or a item like a plot series.
+///
+/// This name is only a display label, never an identifier: it is not used to look anything
+/// up, and two items may share the same name.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ::re_byte_size::SizeBytes)]
 #[repr(transparent)]
 pub struct Name(pub crate::encodings::Utf8);

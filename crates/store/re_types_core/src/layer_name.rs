@@ -2,6 +2,13 @@
 ///
 /// Layers partition a segment's chunks into named groups that can be
 /// registered, queried, and deleted independently.
+///
+/// This name is used both as an identifier and as a display label: there is no separate layer
+/// id, so the name is what a layer is keyed on (e.g. `Segment::sources`) and what the API
+/// refers to it by, and it is also what the user reads.
+///
+/// Being the key has consequences: two layers with the same name in the same segment are the
+/// same layer.
 //
 // NOTE: Intentionally does not implement `Default` — a blank layer name is
 // almost always a bug. It cannot be constructed empty at all: use the fallible

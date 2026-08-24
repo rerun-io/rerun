@@ -18,6 +18,9 @@ class ColumnName(encodings.Utf8, ComponentMixin):
     """
     **Component**: The name of a column in a table.
 
+    This is the physical column name: it is what the column is looked up by, and it is also
+    what the user reads whenever the column has no separate, human-facing label.
+
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
 

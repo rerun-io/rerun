@@ -124,6 +124,10 @@ pub trait ArchetypeReflectionMarker {}
 
 re_string_interner::declare_new_type_nonempty!(
     /// The fully-qualified name of an [`Archetype`], e.g. `rerun.archetypes.Points3D`.
+    ///
+    /// This name is used both as an identifier and as a display label: it is part of what
+    /// identifies a column (see [`crate::ComponentDescriptor`]) and is used as a map key,
+    /// and it is also shown in short form to the user, via [`ArchetypeName::short_name`].
     pub struct ArchetypeName;
 );
 

@@ -131,7 +131,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <ColumnName as Component>::name(),
             ComponentReflection {
-                docstring_md: "The name of a column in a table.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                docstring_md: "The name of a column in a table.\n\nThis is the physical column name: it is what the column is looked up by, and it is also\nwhat the user reads whenever the column has no separate, human-facing label.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: None,
                 datatype: ColumnName::arrow_datatype(),
@@ -505,7 +505,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <TimelineName as Component>::name(),
             ComponentReflection {
-                docstring_md: "A timeline identified by its name.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                docstring_md: "A timeline identified by its name.\n\nThe name is used both as an identifier and as a display label: it is what timelines are\nkeyed on, and also what the user reads.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(TimelineName::default().to_arrow()?),
                 datatype: TimelineName::arrow_datatype(),
@@ -1110,7 +1110,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <Name as Component>::name(),
             ComponentReflection {
-                docstring_md: "A display name, typically for an entity or a item like a plot series.",
+                docstring_md: "A display name, typically for an entity or a item like a plot series.\n\nThis name is only a display label, never an identifier: it is not used to look anything\nup, and two items may share the same name.",
                 deprecation_summary: None,
                 custom_placeholder: Some(Name::default().to_arrow()?),
                 datatype: Name::arrow_datatype(),

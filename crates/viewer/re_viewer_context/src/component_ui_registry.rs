@@ -71,6 +71,9 @@ pub enum EditOrView {
 
 re_string_interner::declare_new_type_nonempty!(
     /// The name of a UI variant (see [`ComponentUiIdentifier::Variant`]).
+    ///
+    /// This name is only an identifier, never shown to the user: it is the key a component UI
+    /// is registered under, so registering twice under the same name replaces the first UI.
     pub struct VariantName;
 );
 

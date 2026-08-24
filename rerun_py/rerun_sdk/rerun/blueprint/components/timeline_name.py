@@ -18,6 +18,9 @@ class TimelineName(encodings.Utf8, ComponentMixin):
     """
     **Component**: A timeline identified by its name.
 
+    The name is used both as an identifier and as a display label: it is what timelines are
+    keyed on, and also what the user reads.
+
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
 

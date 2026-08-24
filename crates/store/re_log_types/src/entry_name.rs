@@ -26,6 +26,15 @@ impl From<String> for InvalidEntryNameError {
 
 /// A validated, non-empty ASCII entry name.
 ///
+/// This name is used both as a display label and as a lookup key, but it is *not* the identity
+/// of the entry: that is [`EntryId`](crate::EntryId), which is immutable and randomly
+/// generated. A name is unique within a catalog, but an entry can be renamed, and the name it
+/// frees up can then be taken by another entry, so a name only resolves to an
+/// [`EntryId`](crate::EntryId) at the moment of lookup.
+///
+/// Store and reference entries by [`EntryId`](crate::EntryId); use `EntryName` for user input
+/// and display. [`EntryIdOrName`](crate::EntryIdOrName) exists for APIs that accept either.
+///
 /// Entry names must:
 /// - Be at most 180 characters long
 /// - Only contain ASCII alphanumeric characters, underscores, hyphens, dots, spaces,
