@@ -2,6 +2,7 @@ use std::error::Error;
 use std::str::FromStr as _;
 
 use egui::{Align2, AtomKind, Id, IntoAtoms as _, Ui};
+use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_types_core::{ComponentIdentifier, RowId};
 use re_ui::loading_indicator::paint_loading_indicator_inside;
 use re_ui::{ReButton, Size, UiExt as _, Variant, icons};
@@ -26,8 +27,7 @@ pub fn redap_uri_button(
     }
 
     let url_str = array
-        .as_any()
-        .downcast_ref::<arrow::array::StringArray>()
+        .downcast_array_ref::<arrow::array::StringArray>()
         .ok_or_else(|| format!("unsupported arrow datatype: {}", array.data_type()))?
         .value(0);
 

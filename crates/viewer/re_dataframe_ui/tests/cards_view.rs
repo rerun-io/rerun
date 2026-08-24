@@ -132,6 +132,7 @@ async fn test_cards_view_flagging() {
             .app_options
             .experimental
             .table_cards_and_blueprints = true;
+        test_context.component_ui_registry = re_component_ui::create_component_ui_registry();
         let runtime_handle =
             AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen().unwrap();
 

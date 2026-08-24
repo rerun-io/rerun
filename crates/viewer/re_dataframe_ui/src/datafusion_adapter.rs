@@ -9,6 +9,7 @@ use datafusion::functions::expr_fn::concat;
 use datafusion::logical_expr::{binary_expr, col as datafusion_col, lit};
 use datafusion::prelude::{SessionContext, cast, encode};
 use futures::{StreamExt as _, TryStreamExt as _};
+use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_async::AsyncRuntimeHandle;
 use re_log::{error, warn};
 use re_log_types::Timestamp;
@@ -511,11 +512,7 @@ fn update_existing_flag_column(
             continue;
         };
 
-        let Some(old_col) = batch
-            .column(col_idx)
-            .as_any()
-            .downcast_ref::<BooleanArray>()
-        else {
+        let Some(old_col) = batch.column(col_idx).downcast_array_ref::<BooleanArray>() else {
             re_log::warn_once!("Flag column at index {col_idx} is not a boolean column");
             break;
         };
