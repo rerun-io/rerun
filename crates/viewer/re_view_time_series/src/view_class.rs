@@ -13,7 +13,7 @@ use re_sdk_types::blueprint::components::{
     Corner2D, Enabled, LinkAxis, LockRangeDuringZoom, VisualizerInstructionId,
 };
 use re_sdk_types::components::{AggregationPolicy, Color, Range1D, Visible};
-use re_sdk_types::encodings::{TimeRange, TimeRangeBoundary};
+use re_sdk_types::encodings::TimeRange;
 use re_sdk_types::{ComponentBatch as _, ComponentIdentifier, View as _, ViewClassIdentifier};
 use re_ui::{Help, IconText, MouseButtonText, UiExt as _, icons, list_item};
 use re_view::controls::{MOVE_TIME_CURSOR_BUTTON, SELECTION_RECT_ZOOM_BUTTON};
@@ -22,10 +22,9 @@ use re_viewer_context::{
     BlueprintContext as _, DataResultInteractionAddress, DatatypeMatch, DragAndDropFeedback,
     IdentifiedViewSystem as _, IndicatedEntities, PerVisualizerType, QueryRange,
     RecommendedMappings, RecommendedView, RecommendedVisualizers, SingleRequiredComponentMatch,
-    SystemExecutionOutput, TimeControlCommand, ViewClass, ViewClassExt as _,
-    ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _,
-    ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext, VisualizableReason,
-    VisualizerComponentSource,
+    SystemExecutionOutput, ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewId, ViewQuery,
+    ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
+    ViewSystemIdentifier, ViewerContext, VisualizableReason, VisualizerComponentSource,
 };
 use re_viewport_blueprint::ViewProperty;
 use smallvec::SmallVec;
@@ -741,13 +740,8 @@ impl ViewClass for TimeSeriesView {
                 {
                     let time = re_log_types::TimeReal::from(pointer.x as i64 + time_offset);
 
-                    set_time(
-                        ctx,
-                        current_time,
-                        &view_time_range,
-                        &mut new_view_time_range,
-                        time,
-                    );
+                    new_view_time_range =
+                        re_view::set_time_cursor(ctx, current_time, Some(&view_time_range.0), time);
                 }
 
                 plot_double_clicked = plot_ui.response().double_clicked();
@@ -979,42 +973,6 @@ impl ViewClass for TimeSeriesView {
 
         Ok(Default::default())
     }
-}
-
-fn set_time(
-    ctx: &ViewerContext<'_>,
-    current_time: Option<i64>,
-    view_time_range: &re_sdk_types::blueprint::components::TimeRange,
-    new_view_time_range: &mut Option<TimeRange>,
-    time: re_log_types::TimeReal,
-) {
-    if let Some(current_time) = current_time {
-        let current_time = re_log_types::TimeInt::new_temporal(current_time);
-        let time = time.floor();
-
-        let time_diff = current_time.as_i64() - time.as_i64();
-
-        let mut either_relative = false;
-        let mut map_time_range_boundary = |boundary| {
-            if let TimeRangeBoundary::CursorRelative(offset) = boundary {
-                either_relative = true;
-                TimeRangeBoundary::CursorRelative((offset.0 + time_diff).into())
-            } else {
-                boundary
-            }
-        };
-
-        *new_view_time_range = Some(TimeRange {
-            start: map_time_range_boundary(view_time_range.start),
-            end: map_time_range_boundary(view_time_range.end),
-        })
-        .filter(|_| either_relative);
-    }
-
-    ctx.send_time_commands([
-        TimeControlCommand::SetTimeClamped(time),
-        TimeControlCommand::Pause,
-    ]);
 }
 
 fn all_scalar_mappings_for(
@@ -1470,13 +1428,8 @@ fn paint_time_cursor(
         // Avoid frame-delay:
         time_x = pointer_pos.x;
 
-        set_time(
-            ctx,
-            current_time,
-            view_time_range,
-            new_view_time_range,
-            new_time.into(),
-        );
+        *new_view_time_range =
+            re_view::set_time_cursor(ctx, current_time, Some(&view_time_range.0), new_time.into());
     }
 
     let highlighted = is_near || is_being_dragged;

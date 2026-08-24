@@ -62,6 +62,8 @@ use re_log_types::TimeInt;
 use re_sdk_types::Archetype as _;
 use re_sdk_types::ArrowString;
 use re_sdk_types::archetypes::{StateChange, StateConfiguration};
+use re_sdk_types::blueprint::archetypes::TimeAxis;
+use re_sdk_types::blueprint::components::LinkAxis;
 use re_sdk_types::components::Text;
 use re_view::{ComponentCastRule, collect_recursive_clears};
 use re_viewer_context::{
@@ -69,6 +71,7 @@ use re_viewer_context::{
     ViewContextCollection, ViewQuery, ViewSystemExecutionError, ViewSystemIdentifier,
     ViewerReportSeverity, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
 };
+use re_viewport_blueprint::ViewProperty;
 
 use crate::data::{
     StateLane, StateLaneGroup, StateLanePhase, StateLanePhaseContent, StateLanesOutput,
@@ -324,14 +327,39 @@ impl VisualizerSystem for StateVisualizer {
 
         let output = VisualizerExecutionOutput::default();
 
-        // Until the view has auto-fit on its first frame, `visible_time_range` is `None`; we
-        // query everything so the auto-fit (which runs in `ui`) has the full data to fit to.
-        let view_window = ctx
-            .view_state
-            .as_any()
-            .downcast_ref::<crate::view_class::StateTimelineViewState>()
-            .and_then(|state| state.visible_time_range(view_query.timeline))
-            .unwrap_or(AbsoluteTimeRange::EVERYTHING);
+        // The pan/zoom window the view is about to draw — see `view_class::view_window`. Deriving it
+        // here rather than reading back what was drawn last frame keeps the query in step with a
+        // window that follows the time cursor, and keeps the first frame of a long recording from
+        // querying all of it.
+        //
+        // Without a time range for the timeline we have nothing to derive it from — and no data to
+        // speak of either, so query everything.
+        let view_window = if let Some(timeline_range) = ctx
+            .viewer_ctx
+            .recording()
+            .time_range_for(&view_query.timeline)
+            && let Some(state) = ctx
+                .view_state
+                .as_any()
+                .downcast_ref::<crate::view_class::StateTimelineViewState>()
+        {
+            let time_axis = ViewProperty::from_archetype::<TimeAxis>(ctx);
+            let link = time_axis
+                .component_or_fallback::<LinkAxis>(ctx, TimeAxis::descriptor_link().component)?;
+
+            let (_, time_view) = crate::view_class::view_window(
+                ctx.viewer_ctx,
+                state,
+                link,
+                view_query.timeline,
+                Some(timeline_range),
+                view_query.latest_at,
+                crate::view_class::data_time_range_of(timeline_range),
+            );
+            crate::view_class::window_time_range(time_view)
+        } else {
+            AbsoluteTimeRange::EVERYTHING
+        };
 
         let builder = LaneGroupBuilder::new(ctx, view_query, &output);
 

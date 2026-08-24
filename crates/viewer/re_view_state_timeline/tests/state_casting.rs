@@ -117,8 +117,7 @@ fn run_visualizer_impl(
                 .as_any_mut()
                 .downcast_mut::<StateTimelineViewState>()
                 .expect("state timeline view state")
-                .time_views
-                .insert(
+                .set_window(
                     *Timeline::log_tick().name(),
                     re_viewer_context::TimeView {
                         min: min.into(),

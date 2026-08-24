@@ -44,7 +44,10 @@ pub use query::{
     range_with_blueprint_resolved_data_polymorphic, resolve_visible_time_range,
 };
 use re_log_types::external::arrow;
-pub use time_axis::{resolve_time_axis_range, time_axis_range_from_window};
+pub use time_axis::{
+    cursor_centered_default_range, resolve_time_axis_range, set_time_cursor,
+    time_axis_range_after_cursor_move, time_axis_range_from_window,
+};
 pub use view_property_ui::{
     view_property_component_ui, view_property_component_ui_custom, view_property_ui,
     view_property_ui_with_hidden_components, view_property_ui_with_redirect,

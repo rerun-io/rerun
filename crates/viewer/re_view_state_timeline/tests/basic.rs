@@ -688,6 +688,69 @@ fn test_state_timeline_zoom() {
     snapshot_results.add(harness.try_snapshot("state_timeline_zoom_after"));
 }
 
+/// A recording spanning more time than the view is willing to show at once starts out with a window
+/// centered on the time cursor, so the cursor stays in the middle of the view as time advances (e.g.
+/// while playing). Zooming (or panning) takes the window off the cursor, and it then stays where the
+/// user left it.
+#[test]
+fn test_state_timeline_cursor_pinned_to_center() {
+    let mut snapshot_results = SnapshotResults::new();
+    let mut test_context = TestContext::new_with_view_class::<StateTimelineView>();
+
+    // Far more than the 2000 ticks we're willing to show at once.
+    let timeline = Timeline::new_sequence("tick");
+    for (i, tick) in (0..10_000).step_by(500).enumerate() {
+        let state = if i % 2 == 0 { "Idle" } else { "Moving" };
+        test_context.log_entity("state/robot_mode", |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                TimePoint::from([(timeline, tick)]),
+                &re_sdk_types::archetypes::StateChange::single(state),
+            )
+        });
+    }
+
+    test_context.set_active_timeline(*timeline.name());
+
+    let view_id = setup_blueprint(&mut test_context);
+    let set_time = |tick: i64| test_context.set_time(re_log_types::TimeInt::new_temporal(tick));
+
+    set_time(4_000);
+
+    let size = egui::vec2(800.0, 150.0);
+    let mut harness = test_context
+        .setup_kittest_for_rendering_ui(size)
+        .build_ui(|ui| {
+            test_context.run_with_single_view(ui, view_id);
+        });
+
+    harness.run();
+    snapshot_results.add(harness.try_snapshot("state_timeline_cursor_pinned_at_4000"));
+
+    // The window follows the cursor, which therefore stays in the middle of the view.
+    set_time(6_000);
+    harness.run();
+    snapshot_results.add(harness.try_snapshot("state_timeline_cursor_pinned_at_6000"));
+
+    // Cmd+scroll to zoom in around the pointer. This takes the window off the cursor…
+    let center = egui::pos2(size.x * 0.5, size.y * 0.5);
+    harness.hover_at(center);
+    for _ in 0..3 {
+        harness.event(egui::Event::MouseWheel {
+            unit: egui::MouseWheelUnit::Line,
+            delta: egui::vec2(0.0, 1.0),
+            phase: egui::TouchPhase::Move,
+            modifiers: egui::Modifiers::COMMAND,
+        });
+        harness.run();
+    }
+
+    // …so advancing time now moves the cursor through a window that stays put.
+    set_time(6_200);
+    harness.run();
+    snapshot_results.add(harness.try_snapshot("state_timeline_cursor_unpinned_after_zoom"));
+}
+
 /// Regression test for RR-4294: after panning so that every logged state change lies to the
 /// *left* of the visible window, the lane must still render — showing the state active at the
 /// window start (the last change before the range) — rather than disappearing entirely.

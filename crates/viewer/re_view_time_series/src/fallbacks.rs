@@ -149,8 +149,6 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
     system_registry.register_fallback_provider(
         TimeAxis::descriptor_view_range().component,
         |ctx| -> re_sdk_types::blueprint::components::TimeRange {
-            use re_chunk_store::TimeType;
-
             let timeline = ctx.viewer_ctx().time_ctrl.timeline();
 
             let recording_range = timeline
@@ -168,32 +166,10 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
 
             if let Some(timeline) = timeline
                 && let Some(data_range) = data_range
+                && let Some(range) =
+                    re_view::cursor_centered_default_range(timeline.typ(), data_range.abs_length())
             {
-                let span = data_range.abs_length();
-
-                // When viewing large recordings (spanning hours), it is VERY important
-                // that we only show part of the data by default, for two reasons:
-                //
-                // # Performance
-                // If we show all the data, we need to collect and aggregate all the data. This can be VERY slow.
-                //
-                // # Legibility
-                // A sufficiently zoomed out plot is indistinguishable from noise
-
-                const NS_PER_SEC: i64 = 1_000_000_000;
-
-                match timeline.typ() {
-                    TimeType::Sequence => {
-                        if 2_000 < span {
-                            return TimeRange::from_cursor_plus_minus(1_000).into();
-                        }
-                    }
-                    TimeType::TimestampNs | TimeType::DurationNs => {
-                        if (60 * NS_PER_SEC as u64) < span {
-                            return TimeRange::from_cursor_plus_minus(30 * NS_PER_SEC).into();
-                        }
-                    }
-                }
+                return range.into();
             }
 
             // View the entire data_range:
