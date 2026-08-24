@@ -258,8 +258,12 @@ impl PointCloudBatchBuilder<'_, '_> {
             && batch.sort_order_cache.is_some();
         if wants_sorting {
             re_tracing::profile_scope!("sort_positions");
-            let sort_positions = self.batch_mut().sort_positions.get_or_insert_with(Vec::new);
-            sort_positions.extend(positions_and_radii.iter().map(|pr| pr.pos));
+            let sort_positions = self
+                .batch_mut()
+                .sort_positions
+                .get_or_insert_with(|| std::sync::Arc::new(Vec::new()));
+            std::sync::Arc::make_mut(sort_positions)
+                .extend(positions_and_radii.iter().map(|pr| pr.pos));
         }
 
         {

@@ -21,7 +21,8 @@ pub use generic_skybox::{GenericSkyboxDrawData, GenericSkyboxType};
 pub use lines::{LineBatchInfo, LineDrawData, LineDrawDataError, LineStripFlags};
 pub use mesh_renderer::{GpuMeshInstance, MeshDrawData};
 pub use point_cloud::{
-    PointCloudBatchFlags, PointCloudBatchInfo, PointCloudDrawData, PointCloudDrawDataError,
+    GpuPointCloud, PointCloudBatchFlags, PointCloudBatchInfo, PointCloudDrawData,
+    PointCloudDrawDataError,
 };
 pub use rectangles::{
     ColorMapper, ColormappedTexture, RectangleDrawData, RectangleOptions, ShaderDecoding,
