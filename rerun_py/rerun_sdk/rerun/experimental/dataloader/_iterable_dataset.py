@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+import warnings
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -38,7 +39,71 @@ if TYPE_CHECKING:
     import pyarrow as pa
 
     from ._config import DataSource, Field
+    from ._utils import Target
     from .manifest._manifest import Manifest
+
+
+_DEFAULT_MAX_CONSECUTIVE_SKIPPED_SAMPLES = 1000
+
+
+def _skip_incomplete(
+    samples: Generator[DecodedSample, None, None],
+    *,
+    max_consecutive_skipped_samples: int | None = _DEFAULT_MAX_CONSECUTIVE_SKIPPED_SAMPLES,
+) -> Generator[DecodedSample, None, None]:
+    """Drop live samples with missing fields up to the configured limit."""
+    if max_consecutive_skipped_samples is not None and max_consecutive_skipped_samples < 0:
+        raise ValueError(f"max_consecutive_skipped_samples must be non-negative, got {max_consecutive_skipped_samples}")
+
+    skipped = 0
+    consecutive_skipped = 0
+    skipped_by_field: dict[str, int] = {}
+    warned: set[str] = set()
+    try:
+        for sample in samples:
+            missing = [key for key, value in sample.items() if value is None]
+            if not missing:
+                consecutive_skipped = 0
+                yield sample
+                continue
+
+            skipped += 1
+            consecutive_skipped += 1
+            for key in missing:
+                skipped_by_field[key] = skipped_by_field.get(key, 0) + 1
+            set_current_span_attributes({"rerun.dataloader.iter.num_samples_skipped": skipped})
+            for key in sorted(set(missing) - warned):
+                warnings.warn(
+                    f"Skipping samples where field {key!r} has no value. "
+                    "Batches stay at full size; the epoch yields fewer samples.",
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
+            warned.update(missing)
+            if max_consecutive_skipped_samples is not None and consecutive_skipped > max_consecutive_skipped_samples:
+                field_counts = ", ".join(f"{key}={skipped_by_field[key]}" for key in sorted(skipped_by_field))
+                raise RuntimeError(
+                    f"Exceeded max_consecutive_skipped_samples={max_consecutive_skipped_samples} after "
+                    f"encountering {consecutive_skipped} consecutive incomplete samples "
+                    f"({skipped} total; missing fields: {field_counts})"
+                )
+    finally:
+        samples.close()
+
+
+def _raise_if_incomplete(
+    sample: DecodedSample,
+    target: Target,
+    required: set[str],
+) -> None:
+    """Raise if a required field is missing despite a manifest's validation."""
+    missing = [key for key in required if sample.get(key) is None]
+    if missing:
+        raise RuntimeError(
+            f"Required fields decoded to nothing: {', '.join(sorted(missing))}. The manifest was built "
+            "against different data, so regenerate it.\n"
+            f"Segment: {target.segment.segment_id} at {target.index_value}"
+        )
 
 
 def _count_yields(
@@ -85,7 +150,10 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[DecodedSample]):
     The index list is partitioned across DDP ranks and DataLoader workers
     internally. With shuffling enabled (default), the sample order is permuted
     once per epoch before partitioning; call `set_epoch` to re-seed between
-    epochs.
+    epochs. When a finite live dataset is consumed to exhaustion under DDP,
+    wrap the training loop in `DistributedDataParallel.join()`: rank shards can
+    have different lengths, especially when incomplete samples are skipped
+    after sharding.
 
     Parameters
     ----------
@@ -111,6 +179,12 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[DecodedSample]):
         [`NoShuffle`][rerun.experimental.dataloader.NoShuffle] for natural order.
     decode_threads
         Fields to decode concurrently within each `DataLoader` worker.
+    max_consecutive_skipped_samples
+        Maximum number of consecutive incomplete samples to skip in each live
+        iterator, independently for every rank and `DataLoader` worker. A valid
+        sample resets the count. The next missing sample raises with total and
+        per-field counts. Defaults to 1000; pass `None` to apply no limit.
+        Manifest replay remains strict regardless of this setting.
 
     """
 
@@ -124,15 +198,21 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[DecodedSample]):
         fetch_block_size: int = 128,
         shuffle_strategy: ShuffleStrategy | None = None,
         decode_threads: int | None = None,
+        max_consecutive_skipped_samples: int | None = _DEFAULT_MAX_CONSECUTIVE_SKIPPED_SAMPLES,
     ) -> None:
         super().__init__()
 
         _warn_if_fork_unsafe(stacklevel=3)
+        if max_consecutive_skipped_samples is not None and max_consecutive_skipped_samples < 0:
+            raise ValueError(
+                f"max_consecutive_skipped_samples must be non-negative, got {max_consecutive_skipped_samples}"
+            )
 
         self._fields = fields
         self._index = index
         self._fetch_block_size = fetch_block_size
         self._decode_threads = _resolve_decode_threads(decode_threads, fields)
+        self._max_consecutive_skipped_samples = max_consecutive_skipped_samples
 
         self._shuffle_strategy = shuffle_strategy if shuffle_strategy is not None else SampleShuffle()
         self._shuffle_buffer = self._shuffle_strategy.emission_buffer()
@@ -277,7 +357,10 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[DecodedSample]):
                     executor=executor,
                 )
 
-            samples = _pipeline_blocks(blocks, fetch=fetch_block, process=process)
+            samples = _skip_incomplete(
+                _pipeline_blocks(blocks, fetch=fetch_block, process=process),
+                max_consecutive_skipped_samples=self._max_consecutive_skipped_samples,
+            )
             if self._shuffle_buffer is not None:
                 distributed = torch.distributed.is_available() and torch.distributed.is_initialized()
                 rank = torch.distributed.get_rank() if distributed else 0
@@ -335,17 +418,23 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[DecodedSample]):
                 fetched_groups = _fetch_queries_parallel(query_plans, view=view, index=self._index)
                 return FetchedBlock(targets=targets, fetched_groups=fetched_groups)
 
+            # Only the fields being decoded: a replay may ask for a subset of what was frozen.
+            required = {key for key in meta.required_fields if key in self._fields}
+
             def process(fetched: FetchedBlock) -> Iterator[DecodedSample]:
                 # 1. Group each fetched table into contiguous, index-ordered segment spans.
                 indexed = _index_fetched_block(fetched, self._index)
                 # 2. Map each requested timeline range to physical Arrow rows.
                 prepared = _resolve_decode_requests_in_block(indexed)
                 # 3. Decode field batches and scatter their results back into sample order.
-                return _decode_iter(
+                decoded = _decode_iter(
                     prepared=prepared,
                     decoders=decoders,
                     executor=executor,
                 )
+                for target, sample in zip(fetched.targets, decoded, strict=True):
+                    _raise_if_incomplete(sample, target, required)
+                    yield sample
 
             samples = _pipeline_blocks(blocks, fetch=fetch_block, process=process)
             yield from _count_yields(_replay(samples, emit_order))

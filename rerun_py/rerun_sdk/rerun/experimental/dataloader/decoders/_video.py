@@ -352,8 +352,22 @@ class VideoFrameDecoder(ColumnDecoder[DecodedValue], Generic[_OutputFormatT]):
             "rerun.dataloader.video.gop_runs": len(runs),
         })
         for request_positions in runs:
-            self._decode_run(batch, requests, request_positions, out=out)
+            self._try_decode_run(batch, requests, request_positions, out=out)
         return out
+
+    def _try_decode_run(
+        self,
+        batch: FieldBatch,
+        requests: Sequence[DecodeRequest],
+        request_positions: list[int],
+        *,
+        out: list[DecodedValue | None],
+    ) -> None:
+        """Decode one GOP run, leaving its outputs unresolved when its encoded data is invalid."""
+        try:
+            self._decode_run(batch, requests, request_positions, out=out)
+        except (av.FFmpegError, ValueError):
+            pass
 
     def _decode_run(
         self,
@@ -466,11 +480,13 @@ class VideoFrameDecoder(ColumnDecoder[DecodedValue], Generic[_OutputFormatT]):
             # the run's keyframe.
             decoded_frames_by_packet_position = {}
             for packet_position in wanted_packet_positions:
-                decoded_frames_by_packet_position[packet_position] = self._feed_last(
+                frame = self._feed_last(
                     segment_id,
                     samples[: packet_position + 1],
                     capture_frame=capture_frame_fn,
                 )
+                if frame is not None:
+                    decoded_frames_by_packet_position[packet_position] = frame
 
         if view_packet_positions_by_request is not None and self._try_emit_view_windows(
             packet_positions_by_request=view_packet_positions_by_request,
@@ -494,7 +510,13 @@ class VideoFrameDecoder(ColumnDecoder[DecodedValue], Generic[_OutputFormatT]):
             if any(frame is None for frame in frames):
                 continue
             resolved = cast("list[DecodedValue]", frames)
-            out[request_position] = _stack_decoded_frames(resolved) if batch.is_windowed else resolved[0]
+
+            if batch.is_windowed:
+                if any(not _decoded_frames_are_compatible(frame, resolved[0]) for frame in resolved[1:]):
+                    continue
+                out[request_position] = _stack_decoded_frames(resolved)
+            else:
+                out[request_position] = resolved[0]
 
     @staticmethod
     def _try_emit_view_windows(
@@ -681,11 +703,7 @@ class VideoFrameDecoder(ColumnDecoder[DecodedValue], Generic[_OutputFormatT]):
             return None
         target_frame = session.last_frame
         if target_frame is None:
-            raise RuntimeError(
-                f"Failed to decode target frame for segment {segment_id}: "
-                f"{len(feed)} context samples included a keyframe but the decoder "
-                "produced no frame."
-            )
+            return {}
         position = len(feed) - 1
         return {position: frame_capture(position, target_frame)}
 
@@ -695,17 +713,15 @@ class VideoFrameDecoder(ColumnDecoder[DecodedValue], Generic[_OutputFormatT]):
         feed: list[bytes],
         *,
         capture_frame: Callable[[int, av.VideoFrame], DecodedValue] | None = None,
-    ) -> DecodedValue:
+    ) -> DecodedValue | None:
         """
-        Feed *feed* through a (possibly cached) session and return its final frame.
+        Feed *feed* through a (possibly cached) session and return its final frame, if any.
 
-        Unlike a multi-frame `_feed_run`, this always resolves: the final frame is
-        by construction the last frame the codec emits, so on a delayed stream the
-        flush serves it.
+        Unlike a multi-frame `_feed_run`, the final frame is the last frame the
+        codec emits, so on a delayed stream the flush can serve it directly.
         """
         captured = self._feed_run(segment_id, feed, [len(feed) - 1], capture_frame=capture_frame)
-        assert captured is not None  # `_feed_run` only returns `None` for multi-frame wants
-        return captured[len(feed) - 1]
+        return None if captured is None else captured.get(len(feed) - 1)
 
     def _decode_selected(self, batch: FieldBatch, request: DecodeRequest) -> DecodedValue | None:
         """Decode one request whose context went through a row-preserving selector."""
@@ -726,7 +742,7 @@ class VideoFrameDecoder(ColumnDecoder[DecodedValue], Generic[_OutputFormatT]):
             starts_at_keyframe=request.starts_at_keyframe,
         )
         out: list[DecodedValue | None] = [None]
-        self._decode_run(FieldBatch(column=decode_rows, is_windowed=batch.is_windowed), [adjusted], [0], out=out)
+        self._try_decode_run(FieldBatch(column=decode_rows, is_windowed=batch.is_windowed), [adjusted], [0], out=out)
         return out[0]
 
     def _is_keyframe(self, sample: bytes) -> bool | None:

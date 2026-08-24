@@ -255,7 +255,7 @@ def test_manifest_replays_live_order_exactly(monkeypatch: pytest.MonkeyPatch, st
     monkeypatch.setattr(
         iterable_dataset,
         "_decode_iter",
-        lambda *, prepared, **_: ({"anchor": int(t.index_value)} for t in prepared.targets),
+        lambda *, prepared, **_: ({"anchor": int(t.index_value), "x": torch.ones(1)} for t in prepared.targets),
     )
     _stub_catalog(monkeypatch, fetched_groups=[])
 
@@ -282,7 +282,7 @@ def test_manifest_replays_live_order_across_ranks(monkeypatch: pytest.MonkeyPatc
     monkeypatch.setattr(
         iterable_dataset,
         "_decode_iter",
-        lambda *, prepared, **_: ({"anchor": int(t.index_value)} for t in prepared.targets),
+        lambda *, prepared, **_: ({"anchor": int(t.index_value), "x": torch.ones(1)} for t in prepared.targets),
     )
     _stub_catalog(monkeypatch, fetched_groups=[])
 

@@ -32,7 +32,7 @@ from ._sample_index import IndexValue, _ns_to_datetime64, _ns_to_timedelta64
 from .decoders import DecodeRequest, FieldBatch
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Generator, Iterator, Sequence
+    from collections.abc import Callable, Generator, Iterable, Iterator, Sequence
 
     from rerun.catalog._entry import DatasetEntry
 
@@ -599,7 +599,6 @@ def _resolve_decode_requests(
     fetch_requests: Sequence[FieldFetchRequest],
     *,
     indexed_table: IndexedTable,
-    key: str,
 ) -> list[DecodeRequest]:
     """
     Resolve one field's timeline-level fetch requests to physical Arrow rows.
@@ -616,10 +615,7 @@ def _resolve_decode_requests(
     for segment_id, segment_requests in by_segment.items():
         span = indexed_table.segment_spans.get(segment_id)
         if span is None:
-            raise RuntimeError(
-                f"No rows returned for field {key!r} in segment {segment_id!r} "
-                f"at index {segment_requests[0].index_value!r}"
-            )
+            continue
 
         span_start, span_stop = span
         rows = indexed_table.index_values[span_start:span_stop]
@@ -680,16 +676,16 @@ def _resolve_decode_requests_in_block(indexed: IndexedBlock) -> PreparedBlock:
     for group in indexed.groups:
         for key, field in group.fields.items():
             fetch_requests = group.fetch_requests[key]
+            column = group.indexed_table.table.column(key).combine_chunks()
             prepared_fields[key] = PreparedField(
                 batch=FieldBatch(
-                    column=group.indexed_table.table.column(key).combine_chunks(),
+                    column=column,
                     select=field.select,
                     is_windowed=field.window is not None,
                 ),
                 requests=_resolve_decode_requests(
                     fetch_requests,
                     indexed_table=group.indexed_table,
-                    key=key,
                 ),
                 num_segments=len(group.indexed_table.segment_spans),
             )
@@ -986,7 +982,7 @@ def _fetch_prior_keyframes(
     # falls back to fetching every component on the entity.
     # Scope to just the keyframe entities (the `is_keyframe` siblings live on the same
     # entities as the video samples), so this query never touches unrelated entities.
-    keyframe_contents = sorted({f"{p.split(':')[0]}/**" for p in unique_paths})
+    keyframe_contents = _content_filter_for_paths(unique_paths)
 
     with tracing_scope("RerunDataset._fetch_prior_keyframes.to_arrow_table"):
         table = (
@@ -1026,4 +1022,9 @@ def _prior_keyframe(sorted_kfs: np.ndarray | None, target: int) -> int | None:
 
 def _derive_content_filter(fields: dict[str, Field]) -> list[str]:
     """Build entity content-filter patterns from field paths (`"/camera:EncodedImage:blob"` -> `"/camera/**"`)."""
-    return sorted({f"{f.path.split(':')[0]}/**" for f in fields.values()})
+    return _content_filter_for_paths(field.path for field in fields.values())
+
+
+def _content_filter_for_paths(paths: Iterable[str]) -> list[str]:
+    """Build entity content-filter patterns without splitting escaped colons in entity paths."""
+    return sorted({f"{path.rsplit(':', 2)[0]}/**" for path in paths})

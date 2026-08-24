@@ -133,8 +133,36 @@ def test_flatten_blob_binary_respects_offsets() -> None:
         np.testing.assert_array_equal(_flatten_blob(arr, row), np.frombuffer(expected, dtype=np.uint8))
 
 
-def test_numeric_decoder_rejects_variable_widths_within_window() -> None:
-    column = pa.array([[0.0], [1.0, 2.0], [3.0]], type=pa.list_(pa.float64()))
+def test_numeric_decoder_returns_none_only_for_ragged_window() -> None:
+    column = pa.array([[0.0], [1.0, 2.0], [3.0], [4.0]], type=pa.list_(pa.float64()))
+    requests = [
+        DecodeRequest(
+            sample_position=0,
+            segment_id="seg",
+            index_value=1,
+            decode_row_indices=(0, 1),
+            output_row_indices=(0, 1),
+            starts_at_keyframe=False,
+        ),
+        DecodeRequest(
+            sample_position=1,
+            segment_id="seg",
+            index_value=3,
+            decode_row_indices=(2, 3),
+            output_row_indices=(2, 3),
+            starts_at_keyframe=False,
+        ),
+    ]
+
+    ragged, rectangular = NumericDecoder().decode(FieldBatch(column=column, is_windowed=True), requests)
+
+    assert ragged is None
+    assert rectangular is not None
+    torch.testing.assert_close(rectangular, torch.tensor([[3.0], [4.0]], dtype=torch.float64))
+
+
+def test_numeric_decoder_returns_none_for_window_with_null_row() -> None:
+    column = pa.array([[0.0], None], type=pa.list_(pa.float64()))
     request = DecodeRequest(
         sample_position=0,
         segment_id="seg",
@@ -144,11 +172,12 @@ def test_numeric_decoder_rejects_variable_widths_within_window() -> None:
         starts_at_keyframe=False,
     )
 
-    with pytest.raises(ValueError, match="varying numeric row widths"):
-        NumericDecoder().decode(FieldBatch(column=column, is_windowed=True), [request])
+    (decoded,) = NumericDecoder().decode(FieldBatch(column=column, is_windowed=True), [request])
+
+    assert decoded is None
 
 
-def test_numeric_decoder_rejects_different_widths_across_window_requests() -> None:
+def test_numeric_decoder_allows_different_widths_across_rectangular_window_requests() -> None:
     column = pa.array([[0.0], [1.0], [2.0, 3.0], [4.0, 5.0]], type=pa.list_(pa.float64()))
     requests = [
         DecodeRequest(
@@ -169,8 +198,11 @@ def test_numeric_decoder_rejects_different_widths_across_window_requests() -> No
         ),
     ]
 
-    with pytest.raises(ValueError, match="varying numeric row widths"):
-        NumericDecoder().decode(FieldBatch(column=column, is_windowed=True), requests)
+    narrow, wide = NumericDecoder().decode(FieldBatch(column=column, is_windowed=True), requests)
+
+    assert narrow is not None and wide is not None
+    torch.testing.assert_close(narrow, torch.tensor([[0.0], [1.0]], dtype=torch.float64))
+    torch.testing.assert_close(wide, torch.tensor([[2.0, 3.0], [4.0, 5.0]], dtype=torch.float64))
 
 
 @pytest.mark.parametrize("dims", [1, 7])
@@ -335,6 +367,29 @@ def test_image_decoder_window_returns_every_frame() -> None:
     assert [int(frame[0, 0, 0]) for frame in decoded] == [10, 20, 30]
 
 
+def test_image_decoder_returns_none_for_corrupt_data_without_losing_other_requests() -> None:
+    buffer = io.BytesIO()
+    Image.new("RGB", (4, 3), (10, 10, 10)).save(buffer, format="PNG")
+    column = pa.array([[b"not an image"], [buffer.getvalue()]], type=pa.list_(pa.binary()))
+    requests = [
+        DecodeRequest(
+            sample_position=row,
+            segment_id="seg",
+            index_value=row,
+            decode_row_indices=(row,),
+            output_row_indices=(row,),
+            starts_at_keyframe=False,
+        )
+        for row in range(2)
+    ]
+
+    corrupt, valid = ImageDecoder().decode(FieldBatch(column=column), requests)
+
+    assert corrupt is None
+    assert valid is not None
+    assert tuple(valid.shape) == (3, 3, 4)
+
+
 def test_video_frame_decoder_returns_none_without_keyframe() -> None:
     """`decode` returns `None` when the prefetched window contains no keyframe."""
     p_slice_only = _h264_annex_b([(1, b"\xab\xcd\xef\x01\x02\x03")])
@@ -376,6 +431,51 @@ def test_video_frame_decoder_skips_request_without_resolved_keyframe() -> None:
 
     assert decoded[0] is None
     assert decoded[1] is not None
+
+
+def test_video_frame_decoder_returns_none_for_one_corrupt_gop_and_continues(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    packet = _h264_annex_b([(5, b"\x88")])
+    decoder = VideoFrameDecoder(codec="h264")
+    monkeypatch.setattr(decoder, "_is_keyframe", lambda _sample: True)
+
+    def feed_run(
+        segment_id: str,
+        _feed: list[bytes],
+        wanted: list[int],
+        *,
+        capture_frame: object | None = None,
+    ) -> dict[int, torch.Tensor]:
+        del capture_frame
+        if segment_id == "corrupt":
+            raise av.error.InvalidDataError(1, "corrupt packet")
+        return {wanted[-1]: torch.zeros((3, 2, 2), dtype=torch.uint8)}
+
+    monkeypatch.setattr(decoder, "_feed_run", feed_run)
+    requests = [
+        DecodeRequest(
+            sample_position=0,
+            segment_id="corrupt",
+            index_value=0,
+            decode_row_indices=(0,),
+            output_row_indices=(0,),
+            starts_at_keyframe=True,
+        ),
+        DecodeRequest(
+            sample_position=1,
+            segment_id="valid",
+            index_value=0,
+            decode_row_indices=(1,),
+            output_row_indices=(1,),
+            starts_at_keyframe=True,
+        ),
+    ]
+
+    corrupt, valid = decoder.decode(_sample_batch([packet, packet]), requests)
+
+    assert corrupt is None
+    assert valid is not None
 
 
 def test_video_frame_decoder_is_keyframe_h264() -> None:
@@ -1139,7 +1239,6 @@ def test_resolve_decode_requests_resolve_rows_within_their_own_segment() -> None
     requests = _resolve_decode_requests(
         [targets[position].fetch_requests["x"] for group in _decode_order(targets) for position in group],
         indexed_table=indexed_table,
-        key="x",
     )
 
     assert [(r.segment_id, r.index_value, r.decode_row_indices) for r in requests] == [
@@ -1165,7 +1264,6 @@ def test_resolve_decode_requests_resolve_a_window_to_a_row_range() -> None:
     (request,) = _resolve_decode_requests(
         [fetch_request],
         indexed_table=indexed_table,
-        key="x",
     )
 
     # The window `(0, 2)` around target 1 covers index values 1..=3, held by rows 1..4.
@@ -1186,7 +1284,10 @@ def test_resolve_decode_requests_maps_explicit_outputs_to_latest_rows() -> None:
         starts_at_keyframe=False,
     )
 
-    (request,) = _resolve_decode_requests([fetch_request], indexed_table=indexed_table, key="x")
+    (request,) = _resolve_decode_requests(
+        [fetch_request],
+        indexed_table=indexed_table,
+    )
 
     assert request.decode_row_indices == (0, 0, 1)
     assert request.output_row_indices == (0, 0, 1)
@@ -1225,6 +1326,36 @@ def test_prepare_block_omits_unresolved_decode_requests() -> None:
     torch.testing.assert_close(decoded[1], torch.tensor([1.0], dtype=torch.float64))
 
 
+def test_numeric_decoder_returns_none_for_null_rows_but_preserves_valid_empty_values() -> None:
+    targets = _targets([("a", 0), ("a", 1), ("a", 2)])
+    field = Field(path="/x", decode=NumericDecoder())
+    table = _group_table(["a", "a", "a"], [0, 1, 2]).set_column(
+        2,
+        "x",
+        pa.array([None, [], [1.0]], type=pa.list_(pa.float64())),
+    )
+    indexed_table = _find_segment_boundaries(table, "t")
+    indexed = IndexedBlock(
+        targets=targets,
+        groups=[
+            IndexedGroup(
+                fields={"x": field},
+                fetch_requests={"x": [target.fetch_requests["x"] for target in targets]},
+                indexed_table=indexed_table,
+            )
+        ],
+    )
+
+    prepared = _resolve_decode_requests_in_block(indexed).fields["x"]
+    decoded = _decode_field_batch(prepared_field=prepared, num_samples=3, key="x", decoder=NumericDecoder())
+
+    assert [request.sample_position for request in prepared.requests] == [0, 1, 2]
+    assert decoded[0] is None
+    assert decoded[1] is not None and decoded[1].numel() == 0
+    assert decoded[2] is not None
+    torch.testing.assert_close(decoded[2], torch.tensor([1.0], dtype=torch.float64))
+
+
 def test_resolve_decode_requests_keeps_context_rows_separate_from_outputs() -> None:
     indexed_table = _find_segment_boundaries(_group_table(["a", "a", "a", "a"], [0, 1, 2, 3]), "t")
     fetch_request = FieldFetchRequest(
@@ -1238,18 +1369,49 @@ def test_resolve_decode_requests_keeps_context_rows_separate_from_outputs() -> N
         starts_at_keyframe=True,
     )
 
-    (request,) = _resolve_decode_requests([fetch_request], indexed_table=indexed_table, key="video")
+    (request,) = _resolve_decode_requests(
+        [fetch_request],
+        indexed_table=indexed_table,
+    )
 
     assert request.decode_row_indices == (0, 1, 2, 3)
     assert request.output_row_indices == (2, 3)
 
 
-def test_resolve_decode_requests_rejects_a_segment_with_no_rows() -> None:
+def test_resolve_decode_requests_allows_sparse_contiguous_context() -> None:
+    table = _group_table(["a", "a", "a"], [0, 1, 2]).set_column(
+        2,
+        "x",
+        pa.array([[b"first"], None, [b"last"]], type=pa.list_(pa.binary())),
+    )
+    indexed_table = _find_segment_boundaries(table, "t")
+    fetch_request = FieldFetchRequest(
+        sample_position=0,
+        segment_id="a",
+        index_value=2,
+        decode_index_range=(0, 2),
+        output_index_values=(2,),
+        fill_latest_at=False,
+        requires_contiguous_fetch=True,
+        starts_at_keyframe=True,
+    )
+
+    (request,) = _resolve_decode_requests(
+        [fetch_request],
+        indexed_table=indexed_table,
+    )
+
+    assert request.decode_row_indices == (0, 1, 2)
+    assert request.output_row_indices == (2,)
+
+
+def test_resolve_decode_requests_omits_a_segment_with_no_rows() -> None:
     indexed_table = _find_segment_boundaries(_group_table(["a"], [0]), "t")
     targets = _targets([("missing", 0)])
-    with pytest.raises(RuntimeError, match="No rows returned for field 'x' in segment 'missing'"):
-        _resolve_decode_requests(
-            [targets[0].fetch_requests["x"]],
-            indexed_table=indexed_table,
-            key="x",
-        )
+
+    requests = _resolve_decode_requests(
+        [targets[0].fetch_requests["x"]],
+        indexed_table=indexed_table,
+    )
+
+    assert requests == []

@@ -13,6 +13,8 @@ from rerun.experimental.dataloader._utils import (
     _build_query_indices,
     _build_query_plans,
     _build_target,
+    _content_filter_for_paths,
+    _derive_content_filter,
 )
 from rerun.experimental.dataloader.decoders import ImageDecoder, NumericDecoder, VideoFrameDecoder
 
@@ -51,6 +53,18 @@ def _targets(
 
 def _requests(targets: list[Target]) -> dict[str, list[FieldFetchRequest]]:
     return {key: [target.fetch_requests[key] for target in targets] for key in targets[0].fetch_requests}
+
+
+def test_content_filter_preserves_escaped_colons_in_entity_paths() -> None:
+    fields = {
+        "video": Field(path=r"/videos/head\:left:VideoStream:sample", decode=VideoFrameDecoder()),
+        "state": Field(path=r"/robot/state:Scalars:scalars", decode=NumericDecoder()),
+    }
+
+    assert _derive_content_filter(fields) == [r"/robot/state/**", r"/videos/head\:left/**"]
+    assert _content_filter_for_paths([
+        r"/videos/head\:left:VideoStream:is_keyframe",
+    ]) == [r"/videos/head\:left/**"]
 
 
 @pytest.mark.parametrize(
