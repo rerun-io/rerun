@@ -142,10 +142,16 @@ impl TryFrom<crate::log_msg::v1alpha1::PythonVersion> for re_log_types::PythonVe
 
     #[inline]
     fn try_from(value: crate::log_msg::v1alpha1::PythonVersion) -> Result<Self, Self::Error> {
+        fn as_u8(field_name: &'static str, value: i32) -> Result<u8, TypeConversionError> {
+            u8::try_from(value).map_err(|err| {
+                invalid_field!(crate::log_msg::v1alpha1::PythonVersion, field_name, err)
+            })
+        }
+
         Ok(Self {
-            major: value.major as u8,
-            minor: value.minor as u8,
-            patch: value.patch as u8,
+            major: as_u8("major", value.major)?,
+            minor: as_u8("minor", value.minor)?,
+            patch: as_u8("patch", value.patch)?,
             suffix: value.suffix,
         })
     }
@@ -345,6 +351,32 @@ mod tests {
         let proto_store_source: crate::log_msg::v1alpha1::StoreSource = store_source.clone().into();
         let store_source2: re_log_types::StoreSource = proto_store_source.try_into().unwrap();
         assert_eq!(store_source, store_source2);
+    }
+
+    #[test]
+    fn python_version_out_of_range() {
+        for (major, minor, patch) in [(300, 0, 0), (0, -1, 0), (0, 0, 256)] {
+            let proto = crate::log_msg::v1alpha1::PythonVersion {
+                major,
+                minor,
+                patch,
+                suffix: String::new(),
+            };
+            assert!(re_log_types::PythonVersion::try_from(proto).is_err());
+        }
+    }
+
+    #[test]
+    fn python_version_boundary_roundtrip() {
+        let version = re_log_types::PythonVersion {
+            major: 255,
+            minor: 0,
+            patch: 255,
+            suffix: "rc1".to_owned(),
+        };
+        let proto: crate::log_msg::v1alpha1::PythonVersion = version.clone().into();
+        let roundtripped = re_log_types::PythonVersion::try_from(proto).unwrap();
+        assert_eq!(version, roundtripped);
     }
 
     #[test]
