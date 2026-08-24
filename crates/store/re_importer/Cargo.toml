@@ -34,13 +34,7 @@ lerobot = ["dep:re_lerobot"]
 
 ## MCAP file import. Also pulls in `urdf` since `robot_description` topics are
 ## decoded via the URDF importer's XML parser.
-mcap = [
-    "dep:mcap",
-    "dep:memmap2",
-    "dep:re_mcap",
-    "dep:re_lenses",
-    "urdf",
-]
+mcap = ["dep:mcap", "dep:memmap2", "dep:re_mcap", "dep:re_lenses", "urdf"]
 
 ## Parquet file import.
 parquet = ["dep:parquet", "dep:re_parquet"]
