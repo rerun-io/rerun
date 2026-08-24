@@ -1266,11 +1266,20 @@ impl message_proxy_service_server::MessageProxyService for MessageProxy {
                 Ok(Some(WriteMessagesRequest {
                     log_msg: Some(log_msg),
                 })) => {
-                    self.push_message(log_msg).await;
+                    if log_msg.msg.is_some() {
+                        self.push_message(log_msg).await;
+                    } else {
+                        // Reject at ingress, so that live and replayed streams see the same messages.
+                        return Err(tonic::Status::invalid_argument(
+                            "missing `msg` in `log_msg` in `WriteMessagesRequest`",
+                        ));
+                    }
                 }
 
                 Ok(Some(WriteMessagesRequest { log_msg: None })) => {
-                    re_log::warn!("missing log_msg in WriteMessagesRequest");
+                    return Err(tonic::Status::invalid_argument(
+                        "missing `log_msg` in `WriteMessagesRequest`",
+                    ));
                 }
 
                 Ok(None) => {
@@ -1279,8 +1288,9 @@ impl message_proxy_service_server::MessageProxyService for MessageProxy {
                 }
 
                 Err(err) => {
-                    re_log::error!("Error while receiving messages: {}", TonicStatusError(err));
-                    break;
+                    let err = TonicStatusError(err);
+                    re_log::error!("Error while receiving messages: {err}");
+                    return Err(err.0);
                 }
             }
         }
@@ -1303,15 +1313,20 @@ impl message_proxy_service_server::MessageProxyService for MessageProxy {
         &self,
         request: tonic::Request<WriteTableRequest>,
     ) -> tonic::Result<tonic::Response<WriteTableResponse>> {
-        if let WriteTableRequest {
-            id: Some(id),
-            data: Some(data),
-        } = request.into_inner()
-        {
-            self.push_message(TableMsgProto { id, data }).await;
-        } else {
-            re_log::warn!("malformed `WriteTableRequest`");
-        }
+        let WriteTableRequest { id, data } = request.into_inner();
+
+        let Some(id) = id else {
+            return Err(tonic::Status::invalid_argument(
+                "missing `id` in `WriteTableRequest`",
+            ));
+        };
+        let Some(data) = data else {
+            return Err(tonic::Status::invalid_argument(
+                "missing `data` in `WriteTableRequest`",
+            ));
+        };
+
+        self.push_message(TableMsgProto { id, data }).await;
 
         Ok(tonic::Response::new(WriteTableResponse {}))
     }
@@ -1897,6 +1912,95 @@ mod tests {
         let actual = read_log_stream(&mut log_stream, expected.len()).await;
 
         assert_eq!(actual, expected);
+
+        completion.finish();
+    }
+
+    #[tokio::test]
+    async fn write_messages_half_close_returns_ok() {
+        let (completion, addr) = setup().await;
+        let mut client = make_client(addr).await;
+
+        let blueprint_id = StoreId::random(StoreKind::Blueprint, "test_app");
+        let messages = fake_log_stream_blueprint(&blueprint_id, 1);
+
+        let requests = messages
+            .into_iter()
+            .map(|msg| WriteMessagesRequest {
+                log_msg: Some(msg.to_transport(Compression::Off).unwrap().into()),
+            })
+            .collect_vec();
+
+        // The client half-closing the stream after sending is the normal end of a write:
+        let response = client.write_messages(tokio_stream::iter(requests)).await;
+        assert!(response.is_ok());
+
+        completion.finish();
+    }
+
+    #[tokio::test]
+    async fn write_table_missing_fields_are_invalid_argument() {
+        let (completion, addr) = setup().await;
+        let mut client = make_client(addr).await;
+
+        let status = client
+            .write_table(WriteTableRequest {
+                id: None,
+                data: None,
+            })
+            .await
+            .unwrap_err();
+        assert_eq!(status.code(), tonic::Code::InvalidArgument);
+        assert!(status.message().contains("`id`"));
+
+        let status = client
+            .write_table(WriteTableRequest {
+                id: Some(TableIdProto {
+                    id: "some_table".to_owned(),
+                }),
+                data: None,
+            })
+            .await
+            .unwrap_err();
+        assert_eq!(status.code(), tonic::Code::InvalidArgument);
+        assert!(status.message().contains("`data`"));
+
+        completion.finish();
+    }
+
+    #[tokio::test]
+    async fn write_messages_rejects_log_msg_with_unset_oneof() {
+        let (completion, addr) = setup().await;
+        let mut client = make_client(addr).await;
+
+        let blueprint_id = StoreId::random(StoreKind::Blueprint, "test_app");
+        let messages = fake_log_stream_blueprint(&blueprint_id, 1);
+
+        // Start reading before writing, so the malformed message would reach us if it were broadcast:
+        let mut log_stream = client.read_messages(ReadMessagesRequest {}).await.unwrap();
+
+        let valid = messages
+            .clone()
+            .into_iter()
+            .map(|msg| WriteMessagesRequest {
+                log_msg: Some(msg.to_transport(Compression::Off).unwrap().into()),
+            });
+        let malformed = WriteMessagesRequest {
+            log_msg: Some(LogMsgProto { msg: None }),
+        };
+        let requests = chain!(valid, [malformed]).collect_vec();
+
+        // A `log_msg` with an unset `msg` oneof is rejected at ingress:
+        let status = client
+            .write_messages(tokio_stream::iter(requests))
+            .await
+            .unwrap_err();
+        assert_eq!(status.code(), tonic::Code::InvalidArgument);
+        assert!(status.message().contains("`msg`"));
+
+        // The valid messages preceding it should still be broadcast:
+        let actual = read_log_stream(&mut log_stream, messages.len()).await;
+        assert_eq!(messages, actual);
 
         completion.finish();
     }
