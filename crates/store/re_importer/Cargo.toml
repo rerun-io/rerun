@@ -28,6 +28,10 @@ all = ["image", "lerobot", "mcap", "parquet", "urdf", "video"]
 ## Import of common image formats (PNG, JPEG, …) as `EncodedImage`/`EncodedDepthImage`.
 image = ["dep:image", "re_sdk_types/image"]
 
+## LeRobot dataset import. Pulls in `parquet`/`arrow` transitively via `re_lerobot`
+## regardless of whether the `parquet` feature is also on.
+lerobot = ["dep:re_lerobot"]
+
 ## MCAP file import. Also pulls in `urdf` since `robot_description` topics are
 ## decoded via the URDF importer's XML parser.
 mcap = [
@@ -37,10 +41,6 @@ mcap = [
     "dep:re_lenses",
     "urdf",
 ]
-
-## LeRobot dataset import. Pulls in `parquet`/`arrow` transitively via `re_lerobot`
-## regardless of whether the `parquet` feature is also on.
-lerobot = ["dep:re_lerobot"]
 
 ## Parquet file import.
 parquet = ["dep:parquet", "dep:re_parquet"]
