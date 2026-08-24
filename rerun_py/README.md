@@ -1,31 +1,36 @@
-# The Rerun Python SDK
+<h3 align="center">
+  <a href="https://www.rerun.io/">
+    <img width="1000" height="200" alt="Rerun" src="https://static.rerun.io/d0f5443d4803cac65c73fcc064936c09f5e7f208_rerun_banner.png" />
+  </a>
+</h3>
 
-Use the Rerun SDK to record data like images, tensors, point clouds, and text. Data is streamed to the Rerun Viewer for live visualization or to file for later use.
+# The data layer for physical AI
 
-<p align="center">
-  <img width="800" alt="Rerun Viewer" src="https://github.com/rerun-io/rerun/assets/2624717/c4900538-fc3a-43b8-841a-8d226e7b5a2e">
-</p>
+The data primitives to build, understand, and improve your data loop.
+Designed for multi-rate, multimodal data, from the first recording to massive scale.
+
+The open source Rerun Python SDK provides a single toolchain to log, transform, query, view, and train on multi-rate, multimodal data.
 
 ## Install
 
 ```sh
-pip3 install rerun-sdk
+pip install rerun-sdk
 ```
 
-ℹ️ Note:
 The Python module is called `rerun`, while the package published on PyPI is `rerun-sdk`.
 
-For other SDK languages see [Installing Rerun](https://www.rerun.io/docs/overview/installing-rerun/viewer).
+See [Install Rerun](https://rerun.io/docs/getting-started/install-rerun) for the Viewer and other SDK languages.
 
 We also provide a [Jupyter widget](https://pypi.org/project/rerun-notebook/) for interactive data visualization in Jupyter notebooks:
 ```sh
-pip3 install rerun-sdk[notebook]
+pip install rerun-sdk[notebook]
 ```
 
 ## Example
+
 ```py
-import rerun as rr
 import numpy as np
+import rerun as rr
 
 rr.init("rerun_example_app", spawn=True)
 
@@ -35,19 +40,28 @@ colors = np.vstack([rgb.ravel() for rgb in np.mgrid[3 * [slice(0, 255, 10j)]]]).
 rr.log("points3d", rr.Points3D(positions, colors=colors))
 ```
 
+<picture>
+  <img src="https://static.rerun.io/pointcloud/80cc95c74b1fbab26af9b0d3547387352f932914/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/pointcloud/80cc95c74b1fbab26af9b0d3547387352f932914/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/pointcloud/80cc95c74b1fbab26af9b0d3547387352f932914/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/pointcloud/80cc95c74b1fbab26af9b0d3547387352f932914/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/pointcloud/80cc95c74b1fbab26af9b0d3547387352f932914/1200w.png">
+</picture>
+
 ## Resources
-* [Examples](https://www.rerun.io/examples)
-* [Python API docs](https://ref.rerun.io/docs/python)
-* [Quick start](https://www.rerun.io/docs/getting-started/data-in/python)
-* [Tutorial](https://www.rerun.io/docs/getting-started/data-in/python)
-* [Troubleshooting](https://www.rerun.io/docs/overview/installing-rerun/troubleshooting)
-* [Discord Server](https://discord.com/invite/Gcm8BbTaAj)
+
+- [Examples](https://rerun.io/examples)
+- [Python API reference](https://ref.rerun.io/docs/python)
+- [Log and ingest data](https://rerun.io/docs/getting-started/data-in)
+- [Query and transform data](https://rerun.io/docs/getting-started/data-out)
+- [Troubleshooting](https://rerun.io/docs/getting-started/install-rerun/troubleshooting)
+- [Discord](https://discord.com/invite/Gcm8BbTaAj)
 
 ## Logging and viewing in different processes
 
-You can run the Viewer and logger in different processes.
+The Viewer and Python logger can run in separate processes.
+Start the Viewer in one terminal:
 
-In one terminal, start up a Viewer with a server that the SDK can connect to:
 ```sh
 python3 -m rerun
 ```
@@ -56,55 +70,62 @@ In a second terminal, run the example with the `--connect` option:
 ```sh
 python3 examples/python/plots/plots.py --connect
 ```
-Note that SDK and Viewer can run on different machines!
 
+Note that SDK and Viewer can run on different machines!
+See [SDK operating modes](https://rerun.io/docs/reference/sdk/operating-modes) for connection options.
 
 # Building Rerun from source
 
-We use [`pixi`](https://pixi.sh/) for managing dev-tool versioning, download and task running. See [here](https://pixi.sh/latest/#installation) for installation instructions.
+Rerun uses [`pixi`](https://pixi.sh/) for development tools and tasks.
+[Install pixi](https://pixi.sh/latest/#installation), clone the repository, and run these commands from its `rerun/` directory.
 
+Build and install a development version of the Python SDK:
 ```sh
 pixi run py-build
 ```
-This builds the SDK for Python (use `pixi run py-build --release` for a release build).
 
-You can then run examples via uv:
+For an optimized build, use:
 ```sh
-pixi run uv run examples/python/minimal/minimal.py
+pixi run py-build-release
 ```
 
-To build a wheel instead for manual install use:
+Run an example in the development environment:
+```sh
+pixi run uvpy examples/python/minimal/minimal.py
+```
+
+Build a wheel for manual installation:
 ```sh
 pixi run py-build-wheel
 ```
 
-Refer to [BUILD.md](../BUILD.md) for details on the various different build options of the Rerun Viewer and SDKs for all target languages.
-
+See [BUILD.md](../BUILD.md) for all Viewer and SDK build options.
 
 # Installing a pre-release
 
-Prebuilt dev wheels from head of main are available at <https://github.com/rerun-io/rerun/releases/tag/prerelease>.
-
-While we try to keep the main branch usable at all times, it may be unstable occasionally. Use at your own risk.
-
+Development wheels built from the latest `main` branch are available from the [prerelease](https://github.com/rerun-io/rerun/releases/tag/prerelease) release.
+The `main` branch can be unstable, so use these wheels at your own risk.
 
 # Running Python unit tests
+
+Run the full Python test suite:
+
 ```sh
 pixi run py-test
 ```
 
-If you run into a problem, run `rm -rf .pixi .venv` and try again.
+Build the SDK and run one test file:
 
-# Running specific Python unit tests
 ```sh
 pixi run py-build && pixi run uvpy -m pytest rerun_py/tests/unit/test_tensor.py
 ```
 
 # Profiling the Python SDK
 
-Set `RERUN_PUFFIN=1` to spawn a [`puffin_viewer`](https://github.com/EmbarkStudios/puffin) attached to the SDK on startup. The Rust side of the SDK then streams scopes (anything wrapped in `re_tracing::profile_function!` / `profile_scope!`) to the viewer for the lifetime of the process.
+Install [`puffin_viewer`](https://github.com/EmbarkStudios/puffin), then set `RERUN_PUFFIN=1` when you start a Python program:
 
 ```sh
+cargo install puffin_viewer
 RERUN_PUFFIN=1 pixi run uvpy your_script.py
 ```
 

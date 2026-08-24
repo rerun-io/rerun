@@ -52,15 +52,13 @@ rr.log("path/to/points", rr.Points3D(positions, colors=colors))
 …
 ```
 
-<p align="center">
-  <picture>
-    <img src="https://static.rerun.io/opf_screenshot/bee51040cba93c0bae62ef6c57fa703704012a41/full.png" alt="">
-    <source media="(max-width: 480px)" srcset="https://static.rerun.io/opf_screenshot/bee51040cba93c0bae62ef6c57fa703704012a41/480w.png">
-    <source media="(max-width: 768px)" srcset="https://static.rerun.io/opf_screenshot/bee51040cba93c0bae62ef6c57fa703704012a41/768w.png">
-    <source media="(max-width: 1024px)" srcset="https://static.rerun.io/opf_screenshot/bee51040cba93c0bae62ef6c57fa703704012a41/1024w.png">
-    <source media="(max-width: 1200px)" srcset="https://static.rerun.io/opf_screenshot/bee51040cba93c0bae62ef6c57fa703704012a41/1200w.png">
-  </picture>
-</p>
+<picture>
+  <img src="https://static.rerun.io/pointcloud/80cc95c74b1fbab26af9b0d3547387352f932914/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/pointcloud/80cc95c74b1fbab26af9b0d3547387352f932914/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/pointcloud/80cc95c74b1fbab26af9b0d3547387352f932914/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/pointcloud/80cc95c74b1fbab26af9b0d3547387352f932914/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/pointcloud/80cc95c74b1fbab26af9b0d3547387352f932914/1200w.png">
+</picture>
 
 ## Getting started
 * [**C++**](https://www.rerun.io/docs/getting-started/data-in/cpp)
