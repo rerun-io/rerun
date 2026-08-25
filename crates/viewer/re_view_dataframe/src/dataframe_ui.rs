@@ -502,6 +502,8 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
                         batch_row_idx,
                         instance_index,
                         UiLayout::List,
+                        None,
+                        false,
                     );
                 };
 

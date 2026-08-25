@@ -14,6 +14,7 @@ fn test_query_metrics() -> Arc<QueryMetrics> {
         query_columns: 0,
         query_entities: 0,
         query_bytes: 0,
+        target_partitions: 1,
         query_chunks_per_segment_min: 0,
         query_chunks_per_segment_max: 0,
         query_chunks_per_segment_mean: 0.0,

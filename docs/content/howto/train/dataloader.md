@@ -82,7 +82,7 @@ The example uses this to feed 50-step action chunks into the ACT policy.
 With `VideoFrameDecoder`, a window returns one decoded frame per explicit offset as a `[T, 3, H, W]` tensor.
 For GPU training, `VideoFrameDecoder(output_format="yuv420p", window_storage="view")` instead returns compact YUV planes, shares decoded storage across overlapping windows, and defers RGB conversion until after device transfer.
 With `NumericDecoder`, every resolved numeric-list row in a window must have the same width, producing a `[T, D]` tensor (including `[T, 1]` for a scalar component).
-Variable-width window rows raise an error rather than being flattened and losing their time boundaries.
+Variable-width window rows decode to `None` rather than being flattened and losing their time boundaries; the live iterable dataset treats that sample as missing.
 
 Unwindowed variable-sized values such as point clouds remain supported as one tensor per sample.
 Batch them with a custom `collate_fn` that pads and returns a mask, samples a fixed number of elements, or concatenates values and returns batch offsets.
@@ -148,6 +148,38 @@ Wrap either in `torch.utils.data.DataLoader`:
 snippet: howto/dataloader[dataloader]
 
 For DDP, the iterable dataset partitions the index list across ranks automatically. With the map dataset, swap in `sampler=DistributedSampler(ds)` and call `sampler.set_epoch(epoch)` each epoch.
+
+> [!WARNING]
+> When a finite live `RerunIterableDataset` is consumed to exhaustion under DDP, wrap the training loop in [`DistributedDataParallel.join()`](https://docs.pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html#torch.nn.parallel.DistributedDataParallel.join):
+>
+> ```python
+> with model.join():
+>     for batch in dataloader:
+>         loss = train_step(model, batch)
+>         loss.backward()
+>         optimizer.step()
+>         optimizer.zero_grad()
+> ```
+>
+> Rank shards can differ slightly in size, and missing samples are skipped after sharding, so one rank may finish before another.
+> Without `join()`, the remaining rank can wait forever in the next DDP collective.
+> This also applies when Ray `TorchTrainer` wraps the model in DDP: call `join()` explicitly inside `train_loop_per_worker`.
+> `join()` is specific to DDP; FSDP and other distributed strategies need their own uneven-input handling or a training loop that provides the same number of steps to every rank.
+
+### Missing values
+
+The live `RerunIterableDataset` drops a sample when any decoder returns `None` and warns once for each missing field.
+`None` is the decoder contract for unresolved data; a valid zero-sized tensor is still yielded.
+Null source rows and expected encoded-image or video decode failures are converted to `None`; a corrupt video GOP does not prevent later GOPs in the fetch block from decoding.
+Custom decoders should return `None` for recoverable data errors; exceptions still propagate as decoder failures.
+Set `max_consecutive_skipped_samples` to bound how many such samples each rank and `DataLoader` worker may skip in a row; a valid sample resets the count, and exceeding the limit raises with total and per-field counts.
+The default is 100; pass `None` to apply no limit.
+
+Live samples are partitioned across workers and DDP ranks before decoding, so uneven missing data can make their yielded sample counts differ.
+Use the DDP `join()` pattern above when consuming the live dataset to exhaustion.
+For deterministic multi-rank training, generate a `Manifest` with the appropriate `required_fields`: invalid samples are removed before sharding, and replay raises if a required field has disappeared or no longer decodes instead of silently changing the frozen epoch.
+
+`RerunMapDataset` cannot skip a missing item without changing its stable index mapping, so its sample dictionary may contain `None` for an unresolved field.
 
 ### Shuffling and fetch locality
 

@@ -137,6 +137,17 @@ pub(crate) struct QueryMetrics {
     pub pipeline_byte_waits: AtomicU64,
     pub segment_admission_waits: AtomicU64,
     pub pipeline_stall_breaker_activations: AtomicU64,
+
+    // ---- Delivered payload, decode cost, observed parallelism --------------
+    pub delivered_rows: AtomicU64,
+    pub delivered_bytes: AtomicU64,
+    pub decode_time_us: AtomicU64,
+
+    /// Scratch gauge: fetch tasks currently in flight. Feeds
+    /// `peak_inflight_fetches` via `fetch_max`; never read into the snapshot.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub current_inflight_fetches: AtomicU64,
+    pub peak_inflight_fetches: AtomicU64,
 }
 
 impl QueryMetrics {
@@ -173,6 +184,12 @@ impl QueryMetrics {
             pipeline_byte_waits: AtomicU64::new(0),
             segment_admission_waits: AtomicU64::new(0),
             pipeline_stall_breaker_activations: AtomicU64::new(0),
+            delivered_rows: AtomicU64::new(0),
+            delivered_bytes: AtomicU64::new(0),
+            decode_time_us: AtomicU64::new(0),
+            #[cfg(not(target_arch = "wasm32"))]
+            current_inflight_fetches: AtomicU64::new(0),
+            peak_inflight_fetches: AtomicU64::new(0),
         }
     }
 }
@@ -336,6 +353,34 @@ pub struct QuerySnapshot {
 
     /// Number of times the saturated-pipeline stall breaker activated.
     pub pipeline_stall_breaker_activations: u64,
+
+    // ---- Delivered payload, decode cost, observed parallelism --------------
+    //
+    // Unlike the fetch `_bytes` counters above (catalog-reported on-disk size),
+    // `delivered_bytes` is the in-memory size of the record batches actually
+    // handed to the consumer — after decode, after the latest-at/range query,
+    // and after client-side filtering. The two together give a waste ratio:
+    // `(fetch_grpc_bytes + fetch_direct_bytes) / delivered_bytes`.
+    /// Total rows across every record batch delivered to the consumer, summed
+    /// across partitions. Post-decode, post-query, post-client-filter.
+    pub delivered_rows: u64,
+
+    /// In-memory (decoded) size of every record batch delivered to the
+    /// consumer, via `RecordBatch::get_array_memory_size`, summed across
+    /// partitions. Measured just below `SizedCoalesceBatchesExec`, the last
+    /// boundary this crate owns, so it excludes any downstream repacking.
+    pub delivered_bytes: u64,
+
+    /// Total CPU time spent decoding/decompressing fetched chunks
+    /// (`Chunk::from_record_batch` on both the direct and gRPC paths), summed
+    /// across all fetch tasks. Compare against `total_duration` to separate
+    /// CPU-bound queries from network-bound ones.
+    pub decode_duration: Duration,
+
+    /// Highest number of fetch tasks observed in flight at once across the
+    /// whole query (one unit per concurrent merged transport batch). With
+    /// `query_info.target_partitions` this makes throughput interpretable.
+    pub peak_inflight_fetches: u64,
 }
 
 /// Build a [`QuerySnapshot`] from the canonical [`QueryMetrics`] source.
@@ -398,6 +443,10 @@ pub(crate) fn build_query_snapshot(
         pipeline_byte_waits: load(&metrics.pipeline_byte_waits),
         segment_admission_waits: load(&metrics.segment_admission_waits),
         pipeline_stall_breaker_activations: load(&metrics.pipeline_stall_breaker_activations),
+        delivered_rows: load(&metrics.delivered_rows),
+        delivered_bytes: load(&metrics.delivered_bytes),
+        decode_duration: Duration::from_micros(load(&metrics.decode_time_us)),
+        peak_inflight_fetches: load(&metrics.peak_inflight_fetches),
     }
 }
 
@@ -470,6 +519,7 @@ mod tests {
             query_columns: 4,
             query_entities: 1,
             query_bytes: 1024,
+            target_partitions: 4,
             query_chunks_per_segment_min: 5,
             query_chunks_per_segment_max: 5,
             query_chunks_per_segment_mean: 5.0,
@@ -559,6 +609,19 @@ mod tests {
         metrics
             .pipeline_stall_breaker_activations
             .fetch_add(1, Ordering::Relaxed);
+        // Delivered payload / decode / parallelism, simulating two partitions.
+        metrics.delivered_rows.fetch_add(100, Ordering::Relaxed);
+        metrics.delivered_rows.fetch_add(50, Ordering::Relaxed);
+        metrics.delivered_bytes.fetch_add(4_000, Ordering::Relaxed);
+        metrics.delivered_bytes.fetch_add(2_000, Ordering::Relaxed);
+        metrics.decode_time_us.fetch_add(1_200, Ordering::Relaxed);
+        metrics.decode_time_us.fetch_add(800, Ordering::Relaxed);
+        metrics
+            .peak_inflight_fetches
+            .fetch_max(7, Ordering::Relaxed);
+        metrics
+            .peak_inflight_fetches
+            .fetch_max(5, Ordering::Relaxed);
 
         let snap = build_query_snapshot(&metrics, Duration::from_millis(42), None, None, None);
 
@@ -584,7 +647,13 @@ mod tests {
         assert_eq!(snap.pipeline_byte_waits, 2);
         assert_eq!(snap.segment_admission_waits, 4);
         assert_eq!(snap.pipeline_stall_breaker_activations, 1);
+        assert_eq!(snap.delivered_rows, 150);
+        assert_eq!(snap.delivered_bytes, 6_000);
+        assert_eq!(snap.decode_duration, Duration::from_millis(2));
+        // `fetch_max`, so the peak is the max across partitions, not the sum.
+        assert_eq!(snap.peak_inflight_fetches, 7);
         assert_eq!(snap.query_info.dataset_id, "ds-test");
+        assert_eq!(snap.query_info.target_partitions, 4);
         assert_eq!(snap.total_duration, Duration::from_millis(42));
         assert!(snap.query_info.entity_path_narrowing_applied);
     }

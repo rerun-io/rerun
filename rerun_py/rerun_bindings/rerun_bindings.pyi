@@ -1909,6 +1909,9 @@ class _QueryMetrics:
     entity_path_narrowing_applied: bool
     """True when projection-based entity-path narrowing actually trimmed the set of entity paths sent to `query_dataset`."""
 
+    target_partitions: int
+    """DataFusion target partition count for this scan — the degree of parallelism the plan was built for. Makes `peak_inflight_fetches` interpretable."""
+
     # Execution-time
     total_duration: timedelta
     """Wall-clock time from the start of `scan()` until the query finished (cleanly or via error). Always populated."""
@@ -2012,6 +2015,19 @@ class _QueryMetrics:
 
     pipeline_stall_breaker_activations: int
     """Number of saturated-pipeline stall-breaker activations."""
+
+    # Delivered payload, decode cost, observed parallelism
+    delivered_rows: int
+    """Total rows delivered to the consumer, summed across partitions — post-decode, post-query, post-client-filter."""
+
+    delivered_bytes: int
+    """In-memory (decoded) size of every record batch delivered to the consumer, summed across partitions."""
+
+    decode_duration: timedelta
+    """Total CPU time spent decoding/decompressing fetched chunks (both fetch paths). Compare against `total_duration` to separate CPU-bound queries from network-bound ones."""
+
+    peak_inflight_fetches: int
+    """Highest number of fetch tasks in flight at once across the whole query (one unit per concurrent merged transport batch)."""
 
 class _MetricsCollectorHandle:
     """Opaque handle held by the `query_metrics()` context manager."""

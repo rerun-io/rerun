@@ -455,6 +455,8 @@ impl ComponentUiRegistry {
 
     /// Registers singleline UI to view Arrow data using a specific [`VariantName`].
     ///
+    /// The callback remains read-only when this variant is requested from an editable context.
+    ///
     /// `variant_name` must be a valid [`VariantName`] (i.e. non-empty); passing an empty
     /// string literal/const will panic.
     pub fn add_variant_ui(
@@ -473,15 +475,7 @@ impl ComponentUiRegistry {
     ) {
         let variant_name = variant_name.into();
         let untyped_callback: UntypedComponentEditOrViewCallback = Box::new(
-            move |ctx, ui, component_descriptor, row_id, value, edit_or_view| {
-                match edit_or_view {
-                    EditOrView::View => {}
-                    EditOrView::Edit => {
-                        re_log::error_once!("Editing variant UIs is not supported.");
-                        return None;
-                    }
-                }
-
+            move |ctx, ui, component_descriptor, row_id, value, _edit_or_view| {
                 let res = callback(ctx, ui, component_descriptor.component, row_id, value);
 
                 if let Err(err) = res {
@@ -493,6 +487,56 @@ impl ComponentUiRegistry {
                 }
 
                 None
+            },
+        );
+
+        self.component_singleline_edit_or_view
+            .insert(variant_name.into(), untyped_callback);
+    }
+
+    /// Registers a variant UI that can edit an Arrow value when given a mutable reference.
+    pub fn add_edit_or_view_variant_ui(
+        &mut self,
+        variant_name: impl Into<VariantName>,
+        callback: impl Fn(
+            &AppContext<'_>,
+            &mut egui::Ui,
+            ComponentIdentifier,
+            Option<RowId>,
+            &mut MaybeMutRef<'_, arrow::array::ArrayRef>,
+        ) -> Result<egui::Response, Box<dyn std::error::Error>>
+        + Send
+        + Sync
+        + 'static,
+    ) {
+        let variant_name = variant_name.into();
+        let untyped_callback: UntypedComponentEditOrViewCallback = Box::new(
+            move |ctx, ui, component_descriptor, row_id, value, edit_or_view| {
+                let mut current_value = arrow::array::make_array(value.to_data());
+                let result = {
+                    let mut maybe_mut = match edit_or_view {
+                        EditOrView::View => MaybeMutRef::Ref(&current_value),
+                        EditOrView::Edit => MaybeMutRef::MutRef(&mut current_value),
+                    };
+                    callback(
+                        ctx,
+                        ui,
+                        component_descriptor.component,
+                        row_id,
+                        &mut maybe_mut,
+                    )
+                };
+                match result {
+                    Ok(response) if response.changed() => Some(current_value),
+                    Ok(_) => None,
+                    Err(err) => {
+                        re_log::error_once!(
+                            "UI for variant {variant_name} failed to display the provided data: {err}"
+                        );
+                        fallback_ui(ui, UiLayout::List, ctx.app_options.timestamp_format, value);
+                        None
+                    }
+                }
             },
         );
 
@@ -767,6 +811,42 @@ impl ComponentUiRegistry {
             ctx.app_options.timestamp_format,
             component_raw,
         );
+    }
+
+    /// Show an editable variant UI and return its edited Arrow value.
+    pub fn variant_edit_ui_raw(
+        &self,
+        ctx: &AppContext<'_>,
+        ui: &mut egui::Ui,
+        variant_name: VariantName,
+        component_descr: &ComponentDescriptor,
+        row_id: Option<RowId>,
+        component_raw: &dyn arrow::array::Array,
+    ) -> Option<arrow::array::ArrayRef> {
+        let Some(callback) = self
+            .component_singleline_edit_or_view
+            .get(&variant_name.into())
+        else {
+            re_log::debug_once!(
+                "Variant name {variant_name} was not found, using fallback ui instead"
+            );
+            fallback_ui(
+                ui,
+                UiLayout::List,
+                ctx.app_options.timestamp_format,
+                component_raw,
+            );
+            return None;
+        };
+
+        callback(
+            ctx,
+            ui,
+            component_descr,
+            row_id,
+            component_raw,
+            EditOrView::Edit,
+        )
     }
 
     /// Show a multi-line editor for this instance of this component.

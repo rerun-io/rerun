@@ -685,6 +685,7 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
                 .as_ref()
                 .map(compute_chunk_info_aggregates)
                 .unwrap_or_default();
+            let target_partitions = state.config().target_partitions();
             let query_info = QueryInfo {
                 dataset_id: self.dataset_id.to_string(),
                 query_chunks: agg.chunks,
@@ -693,6 +694,7 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
                 query_columns: self.schema.fields().len(),
                 query_entities: self.query_dataset_request.entity_paths.len(),
                 query_bytes: agg.bytes,
+                target_partitions,
                 query_chunks_per_segment_min: agg.chunks_per_segment_min,
                 query_chunks_per_segment_max: agg.chunks_per_segment_max,
                 query_chunks_per_segment_mean: agg.chunks_per_segment_mean,
@@ -750,7 +752,7 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
                 &self.schema,
                 self.sort_index,
                 projection,
-                state.config().target_partitions(),
+                target_partitions,
                 chunk_info_batches,
                 query_expression,
                 self.index_values.clone(),

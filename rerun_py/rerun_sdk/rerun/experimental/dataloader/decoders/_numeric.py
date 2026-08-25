@@ -17,11 +17,6 @@ if TYPE_CHECKING:
 
     from ._base import DecodeRequest, FieldBatch
 
-_RAGGED_WINDOW_ERROR = (
-    "NumericDecoder cannot decode Field.window with varying numeric row widths; "
-    "pad or resample values to a fixed width, or use a custom decoder for ragged windows"
-)
-
 
 class NumericDecoder(ColumnDecoder[torch.Tensor]):
     """
@@ -31,7 +26,8 @@ class NumericDecoder(ColumnDecoder[torch.Tensor]):
     across the whole fetch block at once rather than once per sample.
 
     Windowed numeric lists require every resolved row to have the same width
-    and return `[T, D]` (including `[T, 1]` for scalar components); varying widths raise.
+    and return `[T, D]` (including `[T, 1]` for scalar components); a window
+    with varying widths returns `None`.
     Unwindowed variable-width fields return one tensor per sample and require a padding
     or ragged-data collator for batching.
     """
@@ -55,7 +51,7 @@ class NumericDecoder(ColumnDecoder[torch.Tensor]):
         )
         uniform_output_width = output_widths.size > 0 and bool(np.all(output_widths == output_widths[0]))
         if batch.is_windowed and output_widths.size and not uniform_output_width:
-            raise ValueError(_RAGGED_WINDOW_ERROR)
+            return [self._decode_selected(batch, request) for request in requests]
 
         # Common fixed-width case, such as joint states.
         if uniform_output_width and output_widths[0] > 0:
@@ -88,9 +84,11 @@ class NumericDecoder(ColumnDecoder[torch.Tensor]):
     @staticmethod
     def _decode_selected(batch: FieldBatch, request: DecodeRequest) -> torch.Tensor | None:
         output_rows = batch.take_output_rows(request)
+        if output_rows.null_count:
+            return None
         if not batch.is_windowed:
             return torch.as_tensor(_unwrap_to_numpy(output_rows))
         values = [torch.as_tensor(_unwrap_to_numpy(output_rows.slice(row, 1))) for row in range(len(output_rows))]
         if values and any(value.shape != values[0].shape for value in values[1:]):
-            raise ValueError(_RAGGED_WINDOW_ERROR)
+            return None
         return torch.stack(values)

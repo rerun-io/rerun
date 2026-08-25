@@ -35,12 +35,25 @@ class ImageDecoder(ColumnDecoder[torch.Tensor]):
 
     def _decode_request(self, batch: FieldBatch, request: DecodeRequest) -> torch.Tensor | None:
         output_rows = batch.take_output_rows(request)
+        if output_rows.null_count:
+            return None
         if not batch.is_windowed:
             return self._decode_one(output_rows)
-        return torch.stack([self._decode_one(output_rows.slice(row, 1)) for row in range(len(output_rows))])
+        frames: list[torch.Tensor] = []
+        for row in range(len(output_rows)):
+            frame = self._decode_one(output_rows.slice(row, 1))
+            if frame is None:
+                return None
+            frames.append(frame)
+        if any(frame.shape != frames[0].shape for frame in frames[1:]):
+            return None
+        return torch.stack(frames)
 
     @staticmethod
-    def _decode_one(raw: pa.Array) -> torch.Tensor:
-        blob_bytes = bytes(_flatten_blob(raw, 0))
-        image = Image.open(io.BytesIO(blob_bytes))
-        return pil_to_tensor(image)  # type: ignore[no-any-return]
+    def _decode_one(raw: pa.Array) -> torch.Tensor | None:
+        try:
+            blob_bytes = bytes(_flatten_blob(raw, 0))
+            with Image.open(io.BytesIO(blob_bytes)) as image:
+                return pil_to_tensor(image)  # type: ignore[no-any-return]
+        except (OSError, ValueError):
+            return None

@@ -30,6 +30,9 @@ mod visible_dnd;
 mod visual_bounds2d;
 mod zoom_level;
 
+/// Variant used to render editable and read-only table flags.
+pub const TABLE_FLAG_VARIANT: &str = "table_flag";
+
 use encoding_uis::{
     edit_bool, edit_f32_min_to_max_float, edit_f32_zero_to_max, edit_f32_zero_to_one,
     edit_f64_min_to_max_float, edit_f64_zero_to_max, edit_multiline_string, edit_or_view_vec2d,
@@ -254,6 +257,7 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     registry.add_variant_ui(REDAP_URI_BUTTON_VARIANT, variant_uis::redap_uri_button);
     registry.add_variant_ui(REDAP_ENTRY_KIND_VARIANT, variant_uis::redap_entry_kind);
     registry.add_variant_ui(REDAP_THUMBNAIL_VARIANT, variant_uis::redap_thumbnail);
+    registry.add_edit_or_view_variant_ui(TABLE_FLAG_VARIANT, variant_uis::table_flag);
 
     registry
 }

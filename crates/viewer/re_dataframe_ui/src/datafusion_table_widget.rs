@@ -979,21 +979,6 @@ pub fn string_value_at(
     Some(string_array.value(0).to_owned())
 }
 
-/// Extract a boolean value from a named column at the given row.
-pub fn bool_value_at(
-    columns: &Columns<'_>,
-    display_record_batches: &[DisplayRecordBatch],
-    row: u64,
-    column_name: &ColumnName,
-) -> Option<bool> {
-    let data = value_at(columns, display_record_batches, row, column_name)?;
-    let bool_array = data.downcast_array_ref::<arrow::array::BooleanArray>()?;
-    if bool_array.is_empty() {
-        return None;
-    }
-    Some(bool_array.value(0))
-}
-
 /// Resolve the recording for a row's segment URI, triggering async loading if needed.
 ///
 /// Shared between the regular table and card layouts.
@@ -1356,7 +1341,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
             {
                 let column = &display_record_batch.columns()[col_index];
 
-                column.data_ui(self.ctx, ui, batch_index, None, UiLayout::List);
+                column.data_ui(self.ctx, ui, batch_index, None, UiLayout::List, None, false);
             }
         }
     }

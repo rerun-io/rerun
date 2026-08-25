@@ -1,16 +1,17 @@
 use std::str::FromStr as _;
 
+use arrow::array::Array as _;
 use egui::{Frame, RichText, Ui};
 
+use re_arrow_util::ArrowArrayDowncastRef as _;
+use re_component_ui::TABLE_FLAG_VARIANT;
 use re_sdk_types::blueprint::components::ColumnName;
 use re_ui::egui_ext::card_layout::CardLayout;
 use re_ui::{UiExt as _, UiLayout};
-use re_viewer_context::{AppContext, ViewStates};
+use re_viewer_context::{AppContext, VariantName, ViewStates};
 
 use crate::DisplayRecordBatch;
-use crate::datafusion_table_widget::{
-    Columns, bool_value_at, find_row_batch, resolve_recording_for_row,
-};
+use crate::datafusion_table_widget::{Columns, find_row_batch, resolve_recording_for_row};
 use crate::display_record_batch::DisplayColumn;
 use crate::preview_renderer::RecordingPreviewRenderer;
 use crate::re_table_utils::UiTableConfig;
@@ -193,18 +194,34 @@ fn card_content_ui(
                 }
             },
             |ui| {
-                if flagging_enabled && let Some(flag_col) = &table_blueprint.flag_column {
-                    let is_flagged =
-                        bool_value_at(columns, display_record_batches, row_idx, flag_col)
-                            .unwrap_or(false);
-
-                    // Right-align the flag toggle.
+                if let Some(flag_column) = &table_blueprint.flag_column
+                    && let Some(column_index) = columns.index_by_physical_name(flag_column)
+                {
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        if flag_button(ui, is_flagged, card_hovered).clicked() {
-                            flag_change_event = Some(FlagChangeEvent {
-                                row: row_idx,
-                                new_value: !is_flagged,
-                            });
+                        if let Some(column) = display_record_batch.columns().get(column_index)
+                            && let Some(edited) = column.data_ui(
+                                ctx,
+                                ui,
+                                batch_index,
+                                None,
+                                UiLayout::List,
+                                Some(VariantName::from_static_str(TABLE_FLAG_VARIANT)),
+                                flagging_enabled,
+                            )
+                        {
+                            let new_value = edited
+                                .downcast_array_ref::<arrow::array::BooleanArray>()
+                                .and_then(|edited| {
+                                    (!edited.is_empty() && !edited.is_null(0))
+                                        .then(|| edited.value(0))
+                                });
+
+                            if let Some(new_value) = new_value {
+                                flag_change_event = Some(FlagChangeEvent {
+                                    row: row_idx,
+                                    new_value,
+                                });
+                            }
                         }
                     });
                 }
@@ -261,7 +278,7 @@ fn card_content_ui(
                     ui.spacing_mut().item_spacing.x = 8.0;
                     ui.label(RichText::new(&col_name).monospace());
                     ui.spacing_mut().item_spacing.x = 20.0;
-                    column.data_ui(ctx, ui, batch_index, None, UiLayout::Inline);
+                    column.data_ui(ctx, ui, batch_index, None, UiLayout::Inline, None, false);
                 }
             }
         });
@@ -277,75 +294,4 @@ fn card_content_ui(
     }
 
     flag_change_event
-}
-
-/// A flag toggle button with progressive-disclosure styling.
-///
-/// Three visual tiers based on hover context:
-/// - **Idle** (mouse away from card): transparent bg, muted icon — flag "melts" into the card.
-/// - **Card hovered**: subtle bg appears, icon becomes legible — flag is *revealed*.
-/// - **Flag hovered**: stronger bg, same icon — flag is clearly *actionable*.
-///
-/// When toggled on the flag is always visible (orange) so the user can see their selection
-/// at a glance, with the same three-tier brightness progression on hover.
-#[expect(clippy::fn_params_excessive_bools)]
-fn flag_button(ui: &mut Ui, is_flagged: bool, card_hovered: bool) -> egui::Response {
-    let tokens = ui.tokens();
-
-    let size = egui::vec2(30.0, 24.0);
-    let icon_size = egui::vec2(14.0, 14.0);
-
-    let (rect, response) = ui.allocate_exact_size(size, egui::Sense::click());
-    response.widget_info(|| {
-        egui::WidgetInfo::selected(
-            egui::WidgetType::Checkbox,
-            ui.is_enabled(),
-            is_flagged,
-            "Flag",
-        )
-    });
-
-    if ui.is_rect_visible(rect) {
-        let flag_hovered = response.hovered();
-
-        let (bg, icon_tint) = if is_flagged {
-            let bg = if flag_hovered {
-                tokens.flag_toggled_bg_hover
-            } else if card_hovered {
-                tokens.flag_toggled_bg_card_hover
-            } else {
-                tokens.flag_toggled_bg
-            };
-            (bg, tokens.flag_toggled_icon)
-        } else {
-            let bg = if flag_hovered {
-                tokens.flag_untoggled_bg_hover
-            } else if card_hovered {
-                tokens.flag_untoggled_bg_card_hover
-            } else {
-                tokens.flag_untoggled_bg
-            };
-            let icon_tint = if flag_hovered || card_hovered {
-                tokens.flag_untoggled_icon_hover
-            } else {
-                tokens.flag_untoggled_icon
-            };
-            (bg, icon_tint)
-        };
-
-        if bg.a() > 0 {
-            let rounding = 4.0;
-            ui.painter().rect_filled(rect, rounding, bg);
-        }
-
-        let icon = if is_flagged {
-            &re_ui::icons::FLAG_TOGGLED
-        } else {
-            &re_ui::icons::FLAG_UNTOGGLED
-        };
-
-        let icon_rect = egui::Rect::from_center_size(rect.center(), icon_size);
-        icon.as_image().tint(icon_tint).paint_at(ui, icon_rect);
-    }
-    response
 }

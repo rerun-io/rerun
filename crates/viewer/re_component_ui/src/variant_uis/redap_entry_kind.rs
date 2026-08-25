@@ -1,5 +1,6 @@
 use std::error::Error;
 
+use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_protos::cloud::v1alpha1::EntryKind;
 use re_types_core::{ComponentIdentifier, RowId};
 use re_viewer_context::AppContext;
@@ -17,8 +18,7 @@ pub fn redap_entry_kind(
     }
 
     let value = array
-        .as_any()
-        .downcast_ref::<arrow::array::Int32Array>()
+        .downcast_array_ref::<arrow::array::Int32Array>()
         .ok_or_else(|| format!("unsupported arrow datatype: {}", array.data_type()))?
         .value(0);
 
