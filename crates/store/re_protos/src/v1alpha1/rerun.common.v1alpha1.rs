@@ -24,6 +24,7 @@ impl ::prost::Name for RerunChunk {
 /// uniquely identifies a table
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct TableId {
+    /// The identifier itself.
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
 }
@@ -40,6 +41,7 @@ impl ::prost::Name for TableId {
 /// A recording can have multiple timelines, each is identified by a name, for example `log_tick`, `log_time`, etc.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct Timeline {
+    /// Name of the timeline, e.g. `log_time`.
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
@@ -56,6 +58,7 @@ impl ::prost::Name for Timeline {
 /// A point in time on a timeline: a sequence index for sequence timelines, or nanoseconds for temporal timelines.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct TimelineTime {
+    /// The time value. Its meaning depends on the timeline's `TimeType`.
     #[prost(int64, tag = "1")]
     pub time: i64,
 }
@@ -73,8 +76,10 @@ impl ::prost::Name for TimelineTime {
 /// depending on the timeline it is associated with. Time range is inclusive for both start and end time points.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct TimeRange {
+    /// First time point of the range, inclusive.
     #[prost(int64, tag = "1")]
     pub start: i64,
+    /// Last time point of the range, inclusive.
     #[prost(int64, tag = "2")]
     pub end: i64,
 }
@@ -91,6 +96,7 @@ impl ::prost::Name for TimeRange {
 /// arrow IPC serialized schema
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct Schema {
+    /// The schema, as Arrow IPC serialized bytes.
     #[prost(bytes = "bytes", optional, tag = "1")]
     pub arrow_schema: ::core::option::Option<::prost::bytes::Bytes>,
 }
@@ -104,6 +110,7 @@ impl ::prost::Name for Schema {
         "/rerun.common.v1alpha1.Schema".into()
     }
 }
+/// Selects a single index column to query along.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct IndexColumnSelector {
     /// TODO(zehiko) we need to add support for other types of index selectors
@@ -120,6 +127,7 @@ impl ::prost::Name for IndexColumnSelector {
         "/rerun.common.v1alpha1.IndexColumnSelector".into()
     }
 }
+/// A range of values along an index column.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct IndexRange {
     /// TODO(zehiko) support for other ranges for other index selectors
@@ -140,6 +148,7 @@ impl ::prost::Name for IndexRange {
 /// See <<https://www.rerun.io/docs/concepts/logging-and-ingestion/entity-path>> for more on entity paths.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct EntityPath {
+    /// The path itself, e.g. `camera/3/points`.
     #[prost(string, tag = "1")]
     pub path: ::prost::alloc::string::String,
 }
@@ -153,8 +162,16 @@ impl ::prost::Name for EntityPath {
         "/rerun.common.v1alpha1.EntityPath".into()
     }
 }
+/// User-chosen name of the application doing the logging.
+///
+/// Catalog-backed data has no logging application, so the client synthesizes an id
+/// (`re_log_types::ApplicationId::from_entry_id` / `from_asset`): the dataset entry id for a
+/// segment, `{dataset_entry_id}-{asset_id}` for an asset, and the table entry id for a table
+/// blueprint. Servers never populate this field.
+/// TODO(RR-1358), TODO(RR-4857): remove synthetic application IDs from catalog-backed data.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ApplicationId {
+    /// The identifier itself.
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
 }
@@ -168,6 +185,7 @@ impl ::prost::Name for ApplicationId {
         "/rerun.common.v1alpha1.ApplicationId".into()
     }
 }
+/// Uniquely identifies a store, i.e. a recording or a blueprint.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct StoreId {
     /// The kind of the store.
@@ -177,7 +195,8 @@ pub struct StoreId {
     /// arbitrary uuid.
     #[prost(string, tag = "2")]
     pub recording_id: ::prost::alloc::string::String,
-    /// User-chosen name of the application doing the logging. For remote stores, this is the dataset entry id.
+    /// User-chosen name of the application doing the logging.
+    /// Synthesized by the client for catalog-backed stores; see `ApplicationId`.
     #[prost(message, optional, tag = "3")]
     pub application_id: ::core::option::Option<ApplicationId>,
 }
@@ -191,13 +210,14 @@ impl ::prost::Name for StoreId {
         "/rerun.common.v1alpha1.StoreId".into()
     }
 }
+/// A time-ordered globally unique 128-bit identifier. Mirrors `re_tuid::Tuid`.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct Tuid {
-    /// Approximate nanoseconds since epoch.
+    /// Approximate nanoseconds since epoch. The upper 64 bits of the `Tuid`. Required.
     #[prost(fixed64, optional, tag = "1")]
     pub time_ns: ::core::option::Option<u64>,
     /// Initialized to something random on each thread, then incremented for each
-    /// new `Tuid` being allocated.
+    /// new `Tuid` being allocated. The lower 64 bits of the `Tuid`. Required.
     #[prost(fixed64, optional, tag = "2")]
     pub inc: ::core::option::Option<u64>,
 }
@@ -211,8 +231,10 @@ impl ::prost::Name for Tuid {
         "/rerun.common.v1alpha1.Tuid".into()
     }
 }
+/// Uniquely identifies a catalog entry, i.e. a dataset or a table.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct EntryId {
+    /// The identifier itself.
     #[prost(message, optional, tag = "1")]
     pub id: ::core::option::Option<Tuid>,
 }
@@ -300,6 +322,7 @@ pub struct ScanParameters {
     /// List of columns to project. If empty, all columns will be projected.
     #[prost(string, repeated, tag = "1")]
     pub columns: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    /// What to do about entries of `columns` that the table does not have.
     #[prost(enumeration = "IfMissingBehavior", tag = "2")]
     pub on_missing_columns: i32,
     /// An arbitrary filter expression that will be passed to the Lance scanner as-is.
@@ -347,12 +370,18 @@ impl ::prost::Name for ScanParameters {
         "/rerun.common.v1alpha1.ScanParameters".into()
     }
 }
+/// One `ORDER BY` term, passed to the Lance scanner as-is.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ScanParametersOrderClause {
+    /// Sort in descending order rather than ascending.
     #[prost(bool, tag = "1")]
     pub descending: bool,
+    /// Sort nulls after all other values rather than before them.
+    ///
+    /// The default (`false`) sorts nulls before all other values.
     #[prost(bool, tag = "2")]
     pub nulls_last: bool,
+    /// Name of the column to sort by.
     #[prost(string, optional, tag = "3")]
     pub column_name: ::core::option::Option<::prost::alloc::string::String>,
 }
@@ -371,6 +400,7 @@ impl ::prost::Name for ScanParametersOrderClause {
 /// with a string, but we will probably revisit this.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct SegmentId {
+    /// The identifier itself.
     #[prost(string, optional, tag = "1")]
     pub id: ::core::option::Option<::prost::alloc::string::String>,
 }
@@ -384,6 +414,7 @@ impl ::prost::Name for SegmentId {
         "/rerun.common.v1alpha1.SegmentId".into()
     }
 }
+/// Fully describes the semantics of a column of data. Mirrors `re_types_core::ComponentDescriptor`.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ComponentDescriptor {
     /// Optional name of the `Archetype` associated with this data.
@@ -410,6 +441,7 @@ impl ::prost::Name for ComponentDescriptor {
 /// tasks subsystem
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct TaskId {
+    /// The identifier itself.
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
 }
@@ -476,23 +508,31 @@ impl ::prost::Name for BuildInfo {
 /// Mirrors `re_build_info::CrateVersion`.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct SemanticVersion {
+    /// Major version, e.g. `0` in `0.19.1`.
     #[prost(fixed32, optional, tag = "1")]
     pub major: ::core::option::Option<u32>,
+    /// Minor version, e.g. `19` in `0.19.1`.
     #[prost(fixed32, optional, tag = "2")]
     pub minor: ::core::option::Option<u32>,
+    /// Patch version, e.g. `1` in `0.19.1`.
     #[prost(fixed32, optional, tag = "3")]
     pub patch: ::core::option::Option<u32>,
+    /// The pre-release part of the version, absent for a final release.
     #[prost(oneof = "semantic_version::Meta", tags = "4, 5, 6")]
     pub meta: ::core::option::Option<semantic_version::Meta>,
 }
 /// Nested message and enum types in `SemanticVersion`.
 pub mod semantic_version {
+    /// The pre-release part of the version, absent for a final release.
     #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
     pub enum Meta {
+        /// Release-candidate number, e.g. `2` in `0.19.1-rc.2`.
         #[prost(fixed32, tag = "4")]
         Rc(u32),
+        /// Alpha number, e.g. `2` in `0.19.1-alpha.2`.
         #[prost(fixed32, tag = "5")]
         Alpha(u32),
+        /// An alpha built from a development checkout, e.g. `0.19.1-alpha.2+dev`.
         #[prost(message, tag = "6")]
         DevAlpha(super::DevAlpha),
     }
@@ -510,8 +550,15 @@ impl ::prost::Name for SemanticVersion {
 /// Mirrors `re_build_info::DevAlpha`.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct DevAlpha {
+    /// Alpha number, e.g. `2` in `0.19.1-alpha.2+dev`.
     #[prost(fixed32, optional, tag = "1")]
     pub alpha: ::core::option::Option<u32>,
+    /// The commit hash, if known. Absent corresponds to `+dev`.
+    ///
+    /// Populated when encoding, but currently dropped when decoding:
+    /// `re_build_info::Meta::DevAlpha::commit` is `Option<&'static \[u8\]>`, so a received
+    /// `DevAlpha` always decodes as `+dev`.
+    /// TODO(cmc): keep the commit hash on the decode path.
     #[prost(string, optional, tag = "2")]
     pub commit: ::core::option::Option<::prost::alloc::string::String>,
 }
@@ -526,9 +573,16 @@ impl ::prost::Name for DevAlpha {
     }
 }
 /// The type of compression used on the payload.
+///
+/// A value outside this enum (a codec added by a newer writer) is rejected outright, rather than
+/// read as `COMPRESSION_UNSPECIFIED` and failing later as a corrupt payload.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum Compression {
+    /// We don't know how the payload is compressed.
+    ///
+    /// Never written: every encoder sets `NONE` or `LZ4` explicitly. The `ArrowMsg` and
+    /// `DataframePart` decoders treat it as `NONE`; `rerun rrd stats` rejects it.
     Unspecified = 0,
     /// No compression.
     None = 1,
@@ -562,7 +616,12 @@ impl Compression {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum EncoderVersion {
+    /// We don't know which encoder was used.
+    ///
+    /// Never written, and rejected on read: decoding a `RerunChunk` or `DataframePart` with this
+    /// (or an unrecognized) encoder version is an error.
     Unspecified = 0,
+    /// The payload is Arrow IPC. This is the only version defined so far.
     V0 = 1,
 }
 impl EncoderVersion {
@@ -589,6 +648,11 @@ impl EncoderVersion {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum TimeType {
+    /// We don't know what the time values on this timeline mean.
+    ///
+    /// Never written. There is no conversion from this enum back to `re_log_types::TimeType`;
+    /// the only reader (the viewer MCP bridge) renders it, and any unrecognized value, as the
+    /// string `unknown`.
     Unspecified = 0,
     /// Used e.g. for frames in a film.
     Sequence = 1,
@@ -621,11 +685,17 @@ impl TimeType {
         }
     }
 }
+/// What a store holds. Mirrors `re_log_types::StoreKind`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum StoreKind {
+    /// We don't know what this store holds.
+    ///
+    /// Never written. Silently read as `STORE_KIND_RECORDING`, as is any unrecognized value.
     Unspecified = 0,
+    /// A recording of user data.
     Recording = 1,
+    /// Data associated with the blueprint state, i.e. how the viewer is laid out.
     Blueprint = 2,
 }
 impl StoreKind {
@@ -658,8 +728,13 @@ impl StoreKind {
 pub enum DatasetKind {
     /// Always reserve unspecified as default value
     Unspecified = 0,
+    /// Holds recording segments. No registration limits.
     Recording = 1,
+    /// Holds blueprints. Segments are size-capped, since a blueprint is small.
     Blueprint = 2,
+    /// Holds a small set of static blobs shared across a dataset's segments.
+    ///
+    /// Deliberately kept small: static chunks only, plus a segment size and count cap.
     Asset = 3,
 }
 impl DatasetKind {
@@ -686,11 +761,15 @@ impl DatasetKind {
         }
     }
 }
+/// Specify how the relevant call behaves when something it refers to does not exist.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum IfMissingBehavior {
+    /// Always reserve unspecified as default value.
     Unspecified = 0,
+    /// Ignore the missing item and carry on.
     Skip = 1,
+    /// Return an error if the item is missing.
     Error = 2,
 }
 impl IfMissingBehavior {
@@ -720,6 +799,7 @@ impl IfMissingBehavior {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum IfDuplicateBehavior {
+    /// Always reserve unspecified as default value.
     Unspecified = 0,
     /// Overwrite the existing item
     Overwrite = 1,

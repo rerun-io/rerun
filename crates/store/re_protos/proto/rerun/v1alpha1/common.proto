@@ -1,9 +1,24 @@
+// Building blocks shared by every other `rerun.*` proto.
+//
+// Identifiers, timelines and time ranges, the Arrow-payload envelopes (`RerunChunk`,
+// `DataframePart`, `Schema`), Lance scan parameters, and version and build information.
+//
+// This file defines no service. Types that are specific to one API belong in that API's file
+// instead.
+
 syntax = "proto3";
 
 package rerun.common.v1alpha1;
 
 // The type of compression used on the payload.
+//
+// A value outside this enum (a codec added by a newer writer) is rejected outright, rather than
+// read as `COMPRESSION_UNSPECIFIED` and failing later as a corrupt payload.
 enum Compression {
+  // We don't know how the payload is compressed.
+  //
+  // Never written: every encoder sets `NONE` or `LZ4` explicitly. The `ArrowMsg` and
+  // `DataframePart` decoders treat it as `NONE`; `rerun rrd stats` rejects it.
   COMPRESSION_UNSPECIFIED = 0;
 
   // No compression.
@@ -16,7 +31,13 @@ enum Compression {
 // supported encoder versions for encoding data
 // See `RerunData` and `RerunChunkData` for its usage
 enum EncoderVersion {
+  // We don't know which encoder was used.
+  //
+  // Never written, and rejected on read: decoding a `RerunChunk` or `DataframePart` with this
+  // (or an unrecognized) encoder version is an error.
   ENCODER_VERSION_UNSPECIFIED = 0;
+
+  // The payload is Arrow IPC. This is the only version defined so far.
   ENCODER_VERSION_V0 = 1;
 }
 
@@ -33,16 +54,23 @@ message RerunChunk {
 
 // uniquely identifies a table
 message TableId {
+  // The identifier itself.
   string id = 1;
 }
 
 // A recording can have multiple timelines, each is identified by a name, for example `log_tick`, `log_time`, etc.
 message Timeline {
+  // Name of the timeline, e.g. `log_time`.
   string name = 1;
 }
 
 // The type of a timeline's time values. Mirrors `re_log_types::TimeType`.
 enum TimeType {
+  // We don't know what the time values on this timeline mean.
+  //
+  // Never written. There is no conversion from this enum back to `re_log_types::TimeType`;
+  // the only reader (the viewer MCP bridge) renders it, and any unrecognized value, as the
+  // string `unknown`.
   TIME_TYPE_UNSPECIFIED = 0;
 
   // Used e.g. for frames in a film.
@@ -57,26 +85,33 @@ enum TimeType {
 
 // A point in time on a timeline: a sequence index for sequence timelines, or nanoseconds for temporal timelines.
 message TimelineTime {
+  // The time value. Its meaning depends on the timeline's `TimeType`.
   int64 time = 1;
 }
 
 // A time range between start and end time points. Each 64 bit number can represent different time point data
 // depending on the timeline it is associated with. Time range is inclusive for both start and end time points.
 message TimeRange {
+  // First time point of the range, inclusive.
   int64 start = 1;
+
+  // Last time point of the range, inclusive.
   int64 end = 2;
 }
 
 // arrow IPC serialized schema
 message Schema {
+  // The schema, as Arrow IPC serialized bytes.
   optional bytes arrow_schema = 1;
 }
 
+// Selects a single index column to query along.
 message IndexColumnSelector {
   // TODO(zehiko) we need to add support for other types of index selectors
   Timeline timeline = 1;
 }
 
+// A range of values along an index column.
 message IndexRange {
   // TODO(zehiko) support for other ranges for other index selectors
   TimeRange time_range = 1;
@@ -85,19 +120,37 @@ message IndexRange {
 // The unique identifier of an entity, e.g. `camera/3/points`
 // See <https://www.rerun.io/docs/concepts/logging-and-ingestion/entity-path> for more on entity paths.
 message EntityPath {
+  // The path itself, e.g. `camera/3/points`.
   string path = 1;
 }
 
+// User-chosen name of the application doing the logging.
+//
+// Catalog-backed data has no logging application, so the client synthesizes an id
+// (`re_log_types::ApplicationId::from_entry_id` / `from_asset`): the dataset entry id for a
+// segment, `{dataset_entry_id}-{asset_id}` for an asset, and the table entry id for a table
+// blueprint. Servers never populate this field.
+// TODO(RR-1358), TODO(RR-4857): remove synthetic application IDs from catalog-backed data.
 message ApplicationId {
+  // The identifier itself.
   string id = 1;
 }
 
+// What a store holds. Mirrors `re_log_types::StoreKind`.
 enum StoreKind {
+  // We don't know what this store holds.
+  //
+  // Never written. Silently read as `STORE_KIND_RECORDING`, as is any unrecognized value.
   STORE_KIND_UNSPECIFIED = 0;
+
+  // A recording of user data.
   STORE_KIND_RECORDING = 1;
+
+  // Data associated with the blueprint state, i.e. how the viewer is laid out.
   STORE_KIND_BLUEPRINT = 2;
 }
 
+// Uniquely identifies a store, i.e. a recording or a blueprint.
 message StoreId {
   // The kind of the store.
   StoreKind kind = 1;
@@ -106,20 +159,24 @@ message StoreId {
   // arbitrary uuid.
   string recording_id = 2;
 
-  // User-chosen name of the application doing the logging. For remote stores, this is the dataset entry id.
+  // User-chosen name of the application doing the logging.
+  // Synthesized by the client for catalog-backed stores; see `ApplicationId`.
   rerun.common.v1alpha1.ApplicationId application_id = 3;
 }
 
+// A time-ordered globally unique 128-bit identifier. Mirrors `re_tuid::Tuid`.
 message Tuid {
-  // Approximate nanoseconds since epoch.
+  // Approximate nanoseconds since epoch. The upper 64 bits of the `Tuid`. Required.
   optional fixed64 time_ns = 1;
 
   // Initialized to something random on each thread, then incremented for each
-  // new `Tuid` being allocated.
+  // new `Tuid` being allocated. The lower 64 bits of the `Tuid`. Required.
   optional fixed64 inc = 2;
 }
 
+// Uniquely identifies a catalog entry, i.e. a dataset or a table.
 message EntryId {
+  // The identifier itself.
   Tuid id = 1;
 }
 
@@ -130,10 +187,15 @@ enum DatasetKind {
   // Always reserve unspecified as default value
   DATASET_KIND_UNSPECIFIED = 0;
 
+  // Holds recording segments. No registration limits.
   DATASET_KIND_RECORDING = 1;
 
+  // Holds blueprints. Segments are size-capped, since a blueprint is small.
   DATASET_KIND_BLUEPRINT = 2;
 
+  // Holds a small set of static blobs shared across a dataset's segments.
+  //
+  // Deliberately kept small: static chunks only, plus a segment size and count cap.
   DATASET_KIND_ASSET = 3;
 }
 
@@ -187,6 +249,7 @@ message ScanParameters {
   // List of columns to project. If empty, all columns will be projected.
   repeated string columns = 1;
 
+  // What to do about entries of `columns` that the table does not have.
   IfMissingBehavior on_missing_columns = 2;
 
   // An arbitrary filter expression that will be passed to the Lance scanner as-is.
@@ -224,15 +287,22 @@ message ScanParameters {
   bool explain_filter = 8;
 }
 
+// Specify how the relevant call behaves when something it refers to does not exist.
 enum IfMissingBehavior {
+  // Always reserve unspecified as default value.
   IF_MISSING_BEHAVIOR_UNSPECIFIED = 0;
+
+  // Ignore the missing item and carry on.
   IF_MISSING_BEHAVIOR_SKIP = 1;
+
+  // Return an error if the item is missing.
   IF_MISSING_BEHAVIOR_ERROR = 2;
 }
 
 // Specify how the relevant creation call behaves
 // in case of previously created (duplicate) items
 enum IfDuplicateBehavior {
+  // Always reserve unspecified as default value.
   IF_DUPLICATE_BEHAVIOR_UNSPECIFIED = 0;
 
   // Overwrite the existing item
@@ -245,9 +315,17 @@ enum IfDuplicateBehavior {
   IF_DUPLICATE_BEHAVIOR_ERROR = 3;
 }
 
+// One `ORDER BY` term, passed to the Lance scanner as-is.
 message ScanParametersOrderClause {
+  // Sort in descending order rather than ascending.
   bool descending = 1;
+
+  // Sort nulls after all other values rather than before them.
+  //
+  // The default (`false`) sorts nulls before all other values.
   bool nulls_last = 2;
+
+  // Name of the column to sort by.
   optional string column_name = 3;
 }
 
@@ -255,9 +333,11 @@ message ScanParametersOrderClause {
 // which means it can be of any type. For simplicity we start
 // with a string, but we will probably revisit this.
 message SegmentId {
+  // The identifier itself.
   optional string id = 1;
 }
 
+// Fully describes the semantics of a column of data. Mirrors `re_types_core::ComponentDescriptor`.
 message ComponentDescriptor {
   reserved 1;
   reserved "archetype_name";
@@ -281,6 +361,7 @@ message ComponentDescriptor {
 // Unique identifier of a task submitted in the redap
 // tasks subsystem
 message TaskId {
+  // The identifier itself.
   string id = 1;
 }
 
@@ -325,21 +406,38 @@ message BuildInfo {
 
 // Mirrors `re_build_info::CrateVersion`.
 message SemanticVersion {
+  // Major version, e.g. `0` in `0.19.1`.
   optional fixed32 major = 1;
 
+  // Minor version, e.g. `19` in `0.19.1`.
   optional fixed32 minor = 2;
 
+  // Patch version, e.g. `1` in `0.19.1`.
   optional fixed32 patch = 3;
 
+  // The pre-release part of the version, absent for a final release.
   oneof meta {
+    // Release-candidate number, e.g. `2` in `0.19.1-rc.2`.
     fixed32 rc = 4;
+
+    // Alpha number, e.g. `2` in `0.19.1-alpha.2`.
     fixed32 alpha = 5;
+
+    // An alpha built from a development checkout, e.g. `0.19.1-alpha.2+dev`.
     DevAlpha dev_alpha = 6;
   }
 }
 
 // Mirrors `re_build_info::DevAlpha`.
 message DevAlpha {
+  // Alpha number, e.g. `2` in `0.19.1-alpha.2+dev`.
   optional fixed32 alpha = 1;
+
+  // The commit hash, if known. Absent corresponds to `+dev`.
+  //
+  // Populated when encoding, but currently dropped when decoding:
+  // `re_build_info::Meta::DevAlpha::commit` is `Option<&'static [u8]>`, so a received
+  // `DevAlpha` always decodes as `+dev`.
+  // TODO(cmc): keep the commit hash on the decode path.
   optional string commit = 2;
 }
