@@ -41,6 +41,7 @@ parking_lot.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
+re_log = { workspace = true, features = ["setup"] }
 criterion.workspace = true
 insta.workspace = true
 mimalloc.workspace = true

@@ -27,7 +27,7 @@ default = []
 
 ## Feature to set up logging in binaries,
 ## i.e. from `main` or in a web-app.
-setup = ["dep:tracing-log", "dep:tracing-web"]
+setup = ["dep:tracing-log", "dep:tracing-subscriber", "dep:tracing-web"]
 
 
 [dependencies]
@@ -36,7 +36,7 @@ crossbeam.workspace = true
 parking_lot.workspace = true
 
 tracing.workspace = true
-tracing-subscriber.workspace = true
+tracing-subscriber = { workspace = true, optional = true }
 tracing-log = { workspace = true, optional = true }
 
 # web dependencies:

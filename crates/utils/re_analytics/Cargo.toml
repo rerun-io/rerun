@@ -48,4 +48,5 @@ directories.workspace = true
 web-sys = { workspace = true, features = ["Storage"] }
 
 [dev-dependencies]
+re_log = { workspace = true, features = ["setup"] }
 regex-lite.workspace = true

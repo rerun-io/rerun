@@ -96,6 +96,7 @@ re_async.workspace = true
 re_web.workspace = true
 
 [dev-dependencies]
+re_log = { workspace = true, features = ["setup"] }
 re_ui = { workspace = true, features = ["testing"] }
 
 egui_kittest.workspace = true
