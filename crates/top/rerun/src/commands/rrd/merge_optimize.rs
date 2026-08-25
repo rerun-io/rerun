@@ -188,8 +188,12 @@ pub struct OptimizeCommand {
     ///
     /// This keeps "thick" columns (images, videos, blobs) out of the same chunk as
     /// "thin" columns (scalars, transforms, text), so the viewer can fetch just the
-    /// thin data without dragging along the thick payload. Components belonging to
-    /// the same archetype are always kept together.
+    /// thin data without dragging along the thick payload.
+    ///
+    /// Components belonging to the same archetype are always kept together, because
+    /// an archetype's components are only meaningful as a set: an `EncodedImage:blob`
+    /// cannot be decoded without its `EncodedImage:media_type`. Splitting them would
+    /// only force a reader to fetch both chunks anyway.
     ///
     /// A good starting value is 10.0. If unset, the profile's value is used.
     #[arg(long = "split-size-ratio")]

@@ -62,8 +62,13 @@ class OptimizationProfile:
 
     This keeps large columns (images, videos, blobs) out of the same chunk as
     small columns (scalars, transforms, text), so the viewer can fetch just
-    the small columns without dragging along the large payload. Components
-    belonging to the same archetype are always kept together.
+    the small columns without dragging along the large payload.
+
+    Components belonging to the same archetype are always kept together,
+    because an archetype's components are only meaningful as a set: an
+    `EncodedImage:blob` cannot be decoded without its
+    `EncodedImage:media_type`. Splitting them would only force a reader to
+    fetch both chunks anyway.
 
     A good starting value is `10.0`. If `None` (default), no splitting is
     performed.

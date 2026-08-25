@@ -40,8 +40,12 @@ pub struct CompactionOptions {
     /// every archetype is forced into its own chunk.
     ///
     /// This keeps "thick" columns (images, videos, blobs) out of the same chunk as
-    /// "thin" columns (scalars, transforms, text). Components belonging to the same
-    /// archetype always stay together.
+    /// "thin" columns (scalars, transforms, text).
+    ///
+    /// Components belonging to the same archetype always stay together, because an
+    /// archetype's components are only meaningful as a set: an `EncodedImage:blob`
+    /// cannot be decoded without its `EncodedImage:media_type`. Splitting them would
+    /// only force a reader to fetch both chunks anyway.
     ///
     /// `None` disables the split.
     pub split_size_ratio: Option<f64>,

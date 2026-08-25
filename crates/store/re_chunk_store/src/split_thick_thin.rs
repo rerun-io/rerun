@@ -4,6 +4,10 @@
 //! The heuristic groups components by archetype, sorts those groups by byte size, and
 //! splits wherever two neighbors differ by more than the given ratio. An archetype is
 //! always kept together, components without an archetype are treated as a group of one.
+//!
+//! An archetype is never split because its components are only meaningful as a set: an
+//! `EncodedImage:blob` cannot be decoded without its `EncodedImage:media_type`. Putting
+//! them in separate chunks would only force a reader to fetch both chunks anyway.
 
 use ahash::{HashMap, HashMapExt as _};
 use itertools::Itertools as _;
@@ -14,8 +18,9 @@ use re_types_core::{ArchetypeName, ComponentIdentifier};
 
 /// How we group components before deciding where to split.
 ///
-/// Components that belong to the same archetype always stay together. Components without
-/// an archetype can be placed independently.
+/// Components that belong to the same archetype always stay together, since they are only
+/// meaningful as a set (a blob needs its media type to be decodable). Components without an
+/// archetype can be placed independently.
 #[derive(Clone, PartialEq, Eq, Hash)]
 enum ComponentGroup {
     Archetype(ArchetypeName),
