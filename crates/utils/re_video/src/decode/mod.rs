@@ -110,7 +110,8 @@ pub use webcodecs::WebVideoFrame;
 mod rvl_decoder;
 
 use crate::{
-    FrameNumber, SampleIndex, Time, VideoDataDescription, player::VideoPlaybackIssueSeverity,
+    FrameNumber, SampleIndex, Time, VideoDataDescription, VideoSource,
+    player::VideoPlaybackIssueSeverity,
 };
 
 #[derive(thiserror::Error, Debug, Clone, re_byte_size::SizeBytes)]
@@ -394,6 +395,12 @@ pub struct Chunk {
     /// Use [`Self::sample_idx`] instead.
     pub frame_nr: FrameNumber,
 
+    /// Where the sample this chunk came from has its bytes.
+    ///
+    /// This identifies the sample no matter where it ends up in the video data description,
+    /// unlike [`Self::sample_idx`] which shifts whenever samples are inserted or removed before it.
+    pub source: VideoSource,
+
     /// Decode timestamp of this sample.
     /// Chunks are expected to be submitted in the order of decode timestamp.
     ///
@@ -487,18 +494,6 @@ pub struct FrameInfo {
     /// None = unknown.
     pub is_sync: Option<bool>,
 
-    /// Which sample in the video is this from?
-    ///
-    /// We always assume one sample leads one frame
-    /// (but may provide arbitrary additional information which may be needed for other frames in the GOP).
-    ///
-    /// This is the order of which the samples appear in the container,
-    /// which is ordered by [`Self::latest_decode_timestamp`].
-    /// I.e. this is NOT ordered by [`Self::presentation_timestamp`].
-    ///
-    /// None = unknown.
-    pub sample_idx: Option<SampleIndex>,
-
     /// Which frame is this?
     ///
     /// This is on the assumption that each sample produces a single frame,
@@ -508,6 +503,15 @@ pub struct FrameInfo {
     ///
     /// None = unknown.
     pub frame_nr: Option<FrameNumber>,
+
+    /// Where the sample this frame was decoded from has its bytes.
+    ///
+    /// This identifies the sample no matter where it ends up in the video data description,
+    /// unlike a sample index which shifts whenever samples are inserted or removed before it.
+    /// Use [`VideoDataDescription::sample_index_of_source`] to get back to a sample index.
+    ///
+    /// None = unknown.
+    pub source: Option<VideoSource>,
 
     /// Time at which this frame appears in the frame stream, in time units.
     ///

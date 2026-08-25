@@ -272,8 +272,8 @@ fn create_frame(debug_name: &str, picture: &dav1d::Picture) -> FrameResult {
             // TODO(andreas): dav1d has a user-data field that isn't exposed yet.
             // We should us that to populate these fields.
             is_sync: None,
-            sample_idx: None,
             frame_nr: None,
+            source: None,
             latest_decode_timestamp: None,
 
             presentation_timestamp: Time(picture.timestamp().unwrap_or(0)),

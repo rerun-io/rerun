@@ -40,8 +40,8 @@ impl AsyncDecoder for TestDecoder {
                 },
                 info: re_video::FrameInfo {
                     is_sync: Some(chunk.is_sync),
-                    sample_idx: Some(chunk.sample_idx),
                     frame_nr: Some(chunk.frame_nr),
+                    source: Some(chunk.source),
                     presentation_timestamp: chunk.presentation_timestamp,
                     duration: chunk.duration,
                     latest_decode_timestamp: Some(chunk.decode_timestamp),
@@ -101,6 +101,7 @@ pub(super) struct TestVideoPlayer {
     video_descr: VideoDataDescription,
     video_descr_source: Option<Box<dyn Fn() -> VideoDataDescription>>,
     time: f64,
+    last_status: Option<re_video::player::PlayerFrameStatus>,
 }
 
 impl TestVideoPlayer {
@@ -124,6 +125,7 @@ impl TestVideoPlayer {
             video_descr,
             video_descr_source: None,
             time: 0.0,
+            last_status: None,
         }
     }
 
@@ -170,14 +172,26 @@ impl TestVideoPlayer {
         time: f64,
         video_source: &dyn GetVideoSource,
     ) -> Result<(), VideoPlayerError> {
-        self.video.frame_at(
+        self.last_status = Some(self.video.frame_at(
             Time::from_secs(time, re_video::Timescale::NANOSECOND),
             &self.video_descr,
             &mut |(), _| Ok(()),
             video_source,
-        )?;
+        )?);
 
         Ok(())
+    }
+
+    /// Sample the frame on screen was decoded from.
+    fn shown_sample_idx(&self) -> Option<SampleIndex> {
+        let frame_info = self.last_status.as_ref()?.frame_info.as_ref()?;
+        self.video_descr
+            .sample_index_of_source(frame_info.presentation_timestamp, frame_info.source?)
+    }
+
+    /// How far behind the player reported to be for the last requested frame.
+    fn delay_state(&self) -> Option<re_video::player::DecoderDelayState> {
+        Some(self.last_status.as_ref()?.decoder_delay_state)
     }
 
     #[track_caller]
@@ -412,6 +426,99 @@ fn player_irregular() {
     let video = create_video(samples).unwrap();
 
     test_simple_video(video, count, 0.1, 2500.0);
+}
+
+/// All samples of a video share one timestamp, and more keep streaming in on it. The frame on
+/// screen should be the one decoded from the last sample.
+#[test]
+fn player_samples_on_a_single_time() {
+    fn video_descr(num_samples: usize) -> VideoDataDescription {
+        let mut samples: re_video::StableIndexDeque<SampleMetadataState> =
+            std::iter::chain(once(keyframe(0.0)), (1..num_samples).map(|_| frame(0.0))).collect();
+
+        for (idx, sample) in samples.iter_indexed_mut() {
+            if let Some(sample) = sample.sample_mut() {
+                sample.frame_nr = idx as u32;
+            }
+        }
+
+        VideoDataDescription {
+            delivery_method: re_video::VideoDeliveryMethod::Stream {
+                last_time_updated_samples: std::time::Instant::now(),
+            },
+            keyframe_indices: vec![0],
+            samples_statistics: re_video::SamplesStatistics::new(&samples),
+            samples,
+
+            codec: re_video::VideoCodec::H265,
+            encoding_details: None,
+            mp4_tracks: Default::default(),
+            timescale: None,
+        }
+    }
+
+    let source = TestVideoSource::new(|_: re_video::VideoSource| {});
+    let mut video = TestVideoPlayer::from_descr(video_descr(5));
+
+    video.frame_at(0.0, &source).unwrap();
+    assert_eq!(video.shown_sample_idx(), Some(4));
+
+    video.video_descr = video_descr(10);
+    video.frame_at(0.0, &source).unwrap();
+    assert_eq!(video.shown_sample_idx(), Some(9));
+}
+
+/// Samples arriving out of order are inserted ahead of the ones the player is showing, which
+/// shifts the index of every sample after them. The frame the player decoded earlier still
+/// carries its old index, so it has to be recognized by something that survives the shift.
+/// Otherwise the player reports having fallen behind and shows a loading indicator even though
+/// nothing changed on screen.
+#[test]
+fn player_after_samples_shift() {
+    let dt = 0.25;
+    let gop_len = 4;
+
+    // Builds samples of `count` GOPs starting at `start_time`, one keyframe per GOP.
+    let gops = |start_time: f64, count: usize| -> Vec<SampleMetadataState> {
+        (0..count * gop_len)
+            .map(|i| {
+                let time = start_time + i as f64 * dt;
+                if i % gop_len == 0 {
+                    keyframe(time)
+                } else {
+                    frame(time)
+                }
+            })
+            .collect()
+    };
+
+    // What the player starts out with, and what shows up later sorting before all of it.
+    let present = gops(5.0, 4);
+    let inserted = gops(1.0, 4);
+
+    let mut video = create_video(present.clone()).unwrap();
+
+    // Settle on a frame far enough from the end of the stream that the tolerance for live
+    // streams doesn't cover it.
+    video.play(5.0..6.0, dt).unwrap();
+    assert_eq!(
+        video.delay_state(),
+        Some(re_video::player::DecoderDelayState::UpToDate)
+    );
+
+    // Take on the samples that arrived late and move the player into the new index space, that
+    // way `re_renderer`'s video handles an out-of-order chunk that misses the player's own GOP.
+    let TestVideoPlayer { video_descr, .. } =
+        create_video(std::iter::chain(&inserted, &present).cloned()).unwrap();
+    video.video_descr = video_descr;
+    video.video.shift_indices(0, inserted.len().cast_signed());
+
+    // Asking for the very same frame again must not make the player think it fell behind.
+    video.play(5.5..6.0, dt).unwrap();
+    assert_eq!(
+        video.delay_state(),
+        Some(re_video::player::DecoderDelayState::UpToDate)
+    );
 }
 
 #[test]

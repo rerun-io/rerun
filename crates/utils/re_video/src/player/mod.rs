@@ -527,6 +527,7 @@ impl<T: Default> VideoPlayer<T> {
             .and_then(|s| s.sample()); // This is only `None` if we no longer have the sample around, or the sample hasn't loaded yet.
         let requested_sample_pts =
             requested_sample.map_or(requested_pts, |s| s.presentation_timestamp);
+        let requested_sample_source = requested_sample.map(|s| s.source);
 
         // Ensure we have enough samples enqueued to the decoder to cover the request.
         // (This method also makes sure that the next few frames become available, so call this even if we already have the frame we want.)
@@ -537,19 +538,22 @@ impl<T: Default> VideoPlayer<T> {
             // Use the `requested_pts` which may be a bit higher than the PTS of the latest-at sample for `requested_pts`.
             // This is to hedge against not well-behaved decoders, that may produce PTS values that
             // don't show up in the input data (that in and on its own is a bug, but this makes it more robust)
-            .process_incoming_frames_and_drop_earlier_than(requested_pts);
+            .process_incoming_frames_and_drop_earlier_than(requested_pts, video_description);
         if let Some(decoded_frame) = self.sample_decoder.oldest_available_frame() {
             self.decoder_delay_state = self.determine_new_decoder_delay_state(
                 video_description,
                 requested_sample,
-                decoded_frame.info.presentation_timestamp,
+                requested_sample_idx,
+                &decoded_frame.info,
             );
 
             // Update the output if it isn't already up to date and we're not waiting for the decoder to catch up.
             let current_frame_info = self.frame_info.as_ref();
-            if current_frame_info
-                .is_none_or(|info| info.presentation_timestamp != requested_sample_pts)
-                && self.decoder_delay_state != DecoderDelayState::Behind
+            if !is_frame_of_sample(
+                current_frame_info,
+                requested_sample_pts,
+                requested_sample_source,
+            ) && self.decoder_delay_state != DecoderDelayState::Behind
             {
                 let output = self.output.get_or_insert_with(T::default);
                 update_output(output, decoded_frame)?; // Update errors are very unusual, error out on those immediately.
@@ -562,14 +566,12 @@ impl<T: Default> VideoPlayer<T> {
         } else {
             // If the sample decoder didn't report a frame we naturally still use the last output.
             // This output may or may not be up to date, update the delay state accordingly!
-            let current_frame_info = self.frame_info.as_ref();
-            self.decoder_delay_state = if let Some(last_decoded_pts) =
-                current_frame_info.map(|info| info.presentation_timestamp)
-            {
+            self.decoder_delay_state = if let Some(last_decoded_frame) = self.frame_info.as_ref() {
                 self.determine_new_decoder_delay_state(
                     video_description,
                     requested_sample,
-                    last_decoded_pts,
+                    requested_sample_idx,
+                    last_decoded_frame,
                 )
             } else {
                 DecoderDelayState::Behind
@@ -1016,15 +1018,22 @@ impl<T: Default> VideoPlayer<T> {
         &self,
         video_description: &crate::VideoDataDescription,
         requested_sample: Option<&crate::SampleMetadata>,
-        last_decoded_frame_pts: Time,
+        requested_sample_idx: SampleIndex,
+        last_decoded_frame: &crate::FrameInfo,
     ) -> DecoderDelayState {
+        let last_decoded_frame_pts = last_decoded_frame.presentation_timestamp;
+
         let Some(requested_sample) = requested_sample else {
             // Desired sample doesn't exist. This should only happen if the video is being GC'ed from the back.
             // We're technically not catching up, but we may as well behave as if we are.
             return DecoderDelayState::Behind;
         };
 
-        if requested_sample.presentation_timestamp == last_decoded_frame_pts {
+        if is_frame_of_sample(
+            Some(last_decoded_frame),
+            requested_sample.presentation_timestamp,
+            Some(requested_sample.source),
+        ) {
             return DecoderDelayState::UpToDate;
         }
 
@@ -1064,7 +1073,8 @@ impl<T: Default> VideoPlayer<T> {
                 if is_significantly_behind(
                     video_description,
                     requested_sample,
-                    last_decoded_frame_pts,
+                    requested_sample_idx,
+                    last_decoded_frame,
                     self.config.tolerated_output_delay_in_num_frames,
                 ) {
                     DecoderDelayState::Behind
@@ -1100,18 +1110,47 @@ fn treat_video_as_live_stream(
     }
 }
 
+/// Is this the frame decoded from the given sample?
+///
+/// Samples can share a presentation timestamp, so the source decides which of them a frame came from.
+///
+/// If either side doesn't know its source, the presentation timestamp is all we have to go on.
+fn is_frame_of_sample(
+    frame: Option<&crate::FrameInfo>,
+    sample_pts: Time,
+    sample_source: Option<VideoSource>,
+) -> bool {
+    frame.is_some_and(|frame| {
+        frame.presentation_timestamp == sample_pts
+            && Option::zip(frame.source, sample_source)
+                .is_none_or(|(frame_source, sample_source)| frame_source == sample_source)
+    })
+}
+
 /// Determine whether the decoder is catching up with the requested frame within a certain tolerance.
 fn is_significantly_behind(
     video_description: &crate::VideoDataDescription,
     requested_sample: &crate::SampleMetadata,
-    decoded_frame_pts: Time,
+    requested_sample_idx: SampleIndex,
+    decoded_frame: &crate::FrameInfo,
     tolerated_output_delay_in_num_frames: usize,
 ) -> bool {
     let requested_pts = requested_sample.presentation_timestamp;
+    let decoded_frame_pts = decoded_frame.presentation_timestamp;
 
     if decoded_frame_pts == requested_pts {
-        // Decoder caught up with request!
-        return false;
+        // Samples can share a timestamp, so measure the distance in samples.
+        // Only the source tells us which of them the frame was decoded from.
+        let Some(decoded_sample_idx) = decoded_frame
+            .source
+            .and_then(|source| video_description.sample_index_of_source(requested_pts, source))
+        else {
+            // Without a source we can't tell samples with the same timestamp apart.
+            return false;
+        };
+
+        return requested_sample_idx.saturating_sub(decoded_sample_idx)
+            > tolerated_output_delay_in_num_frames;
     }
 
     if decoded_frame_pts > requested_pts {

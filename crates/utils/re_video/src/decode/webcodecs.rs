@@ -229,7 +229,7 @@ impl AsyncDecoder for WebVideoDecoder {
                 frame_info: FrameInfo {
                     frame_nr: Some(video_chunk.frame_nr),
                     is_sync: Some(video_chunk.is_sync),
-                    sample_idx: Some(video_chunk.sample_idx),
+                    source: Some(video_chunk.source),
                     presentation_timestamp: video_chunk.presentation_timestamp,
                     duration: video_chunk.duration,
                     latest_decode_timestamp: Some(video_chunk.decode_timestamp),

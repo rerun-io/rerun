@@ -882,6 +882,36 @@ impl VideoDataDescription {
         )
     }
 
+    /// The index of the sample that has its bytes at the given source.
+    ///
+    /// Only samples presented at `presentation_timestamp` are considered.
+    /// Samples sharing a presentation timestamp sit next to each other,
+    /// so this walks back from the last of them.
+    ///
+    /// Returns `None` if we no longer have that sample around.
+    pub fn sample_index_of_source(
+        &self,
+        presentation_timestamp: Time,
+        source: VideoSource,
+    ) -> Option<SampleIndex> {
+        let last_idx = self
+            .latest_sample_index_at_presentation_timestamp(presentation_timestamp)
+            .ok()?;
+
+        for sample_idx in (self.samples.min_index()..=last_idx).rev() {
+            let sample = self.samples[sample_idx].sample()?;
+
+            if sample.presentation_timestamp != presentation_timestamp {
+                break;
+            }
+            if sample.source == source {
+                return Some(sample_idx);
+            }
+        }
+
+        None
+    }
+
     /// Returns the sample presenteed directly prior to the given sample.
     ///
     /// Remember that samples are ordered in decode timestamp order,
@@ -1214,6 +1244,7 @@ impl SampleMetadata {
             presentation_timestamp: self.presentation_timestamp,
             duration: self.duration,
             is_sync: self.is_sync,
+            source: self.source,
         })
     }
 }

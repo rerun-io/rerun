@@ -83,8 +83,8 @@ async fn decode_image(
 fn frame_info(chunk: &Chunk) -> FrameInfo {
     FrameInfo {
         is_sync: Some(true),
-        sample_idx: Some(chunk.sample_idx),
         frame_nr: Some(chunk.frame_nr),
+        source: Some(chunk.source),
         presentation_timestamp: chunk.presentation_timestamp,
         duration: chunk.duration,
         latest_decode_timestamp: Some(chunk.decode_timestamp),

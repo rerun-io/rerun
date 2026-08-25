@@ -546,8 +546,8 @@ fn frame_info_ui(
 ) {
     let FrameInfo {
         is_sync,
-        sample_idx,
         frame_nr,
+        source,
         presentation_timestamp,
         duration: _,
         latest_decode_timestamp,
@@ -590,7 +590,8 @@ fn frame_info_ui(
         }
     }
 
-    if let Some(sample_idx) = sample_idx
+    if let Some(sample_idx) =
+        source.and_then(|source| video_descr.sample_index_of_source(presentation_timestamp, source))
         && stream_kind == StreamKind::Video
     {
         ui.list_item_flat_noninteractive(PropertyContent::new("Sample").value_fn(move |ui, _| {
