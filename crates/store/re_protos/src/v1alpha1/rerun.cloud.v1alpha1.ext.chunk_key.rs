@@ -266,7 +266,8 @@ impl From<RrdManifestKey> for crate::cloud::v1alpha1::RrdManifestKey {
 
 /// User-facing message returned (server-side) and surfaced (client-side) when
 /// drift between the registered source object and the live one is detected.
-pub const SOURCE_CHANGED_MESSAGE: &str = "the source object has changed since this dataset was registered; re-register to pick up the new version";
+pub const SOURCE_CHANGED_MESSAGE: &str =
+    "the source object changed; re-register it to pick up the new version";
 
 /// Typed wrapper around an HTTP `ETag` value (RFC 7232).
 ///
