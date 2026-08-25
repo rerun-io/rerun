@@ -122,6 +122,7 @@ rerun = { workspace = true, default-features = false, features = [
   "log",
   "run",
   "server",
+  "video",
 ] }
 
 re_server = { workspace = true, optional = true }

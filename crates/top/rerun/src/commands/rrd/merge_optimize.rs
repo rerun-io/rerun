@@ -202,6 +202,7 @@ pub struct OptimizeCommand {
 
 impl OptimizeCommand {
     pub fn run(&self) -> anyhow::Result<()> {
+        #[cfg_attr(not(feature = "video"), allow(unused_variables))]
         let Self {
             path_to_input_rrds,
             path_to_output_rrd,
@@ -244,6 +245,7 @@ impl OptimizeCommand {
 
         let num_extra_passes = num_extra_passes.unwrap_or(profile.num_extra_passes);
 
+        #[cfg(feature = "video")]
         let gop_batching = !*no_rebatch_videos && profile.gop_batching;
 
         if let Some(ratio) = *split_size_ratio {
@@ -255,10 +257,15 @@ impl OptimizeCommand {
 
         let split_size_ratio = split_size_ratio.or(profile.split_size_ratio);
 
+        let is_start_of_gop = cfg_select! {
+            feature = "video" => gop_batching.then(crate::rrd::gop_detector),
+            _ => None,
+        };
+
         let compaction_options = CompactionOptions {
             config: store_config.clone(),
             num_extra_passes: Some(num_extra_passes as usize),
-            is_start_of_gop: gop_batching.then(crate::rrd::gop_detector),
+            is_start_of_gop,
             split_size_ratio,
             fix_keyframe: *fix_keyframe,
         };
