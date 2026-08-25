@@ -10817,6 +10817,7 @@ dependencies = [
  "re_query",
  "re_renderer",
  "re_sdk_types",
+ "re_test_context",
  "re_tracing",
  "re_types_core",
  "re_ui",

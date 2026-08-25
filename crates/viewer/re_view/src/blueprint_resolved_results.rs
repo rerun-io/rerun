@@ -34,8 +34,8 @@ pub struct BlueprintResolvedLatestAtResults<'a> {
 
     pub(crate) component_sources: ComponentSourcesMap,
 
-    /// Hash of mappings applied to [`Self::store_results`].
-    pub(crate) component_indices_hash: Hash64,
+    /// Hash of the visualizer instruction's component mappings.
+    pub(crate) component_mappings_hash: Hash64,
 }
 
 impl<'a> BlueprintResolvedLatestAtResults<'a> {
@@ -111,7 +111,7 @@ pub struct BlueprintResolvedRangeResults<'a> {
 
     pub(crate) component_sources: ComponentSourcesMap,
 
-    /// Hash of mappings applied to [`Self::store_results`].
+    /// Hash of the visualizer instruction's component mappings.
     pub(crate) component_mappings_hash: Hash64,
 }
 
@@ -343,7 +343,7 @@ impl BlueprintResolvedResults<'_> {
                         .filter_map(|chunk| chunk.row_id()),
                 );
 
-                Hash64::hash((&indices, r.component_indices_hash))
+                Hash64::hash((&indices, r.component_mappings_hash))
             }
 
             Self::Range(_, r) => {

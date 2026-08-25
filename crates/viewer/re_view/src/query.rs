@@ -388,7 +388,7 @@ pub fn range_with_blueprint_resolved_data_polymorphic<'a>(
         query_context,
         view_defaults: &ctx.query_result.view_defaults,
         component_sources,
-        component_mappings_hash: Hash64::hash(&active_remappings),
+        component_mappings_hash: Hash64::hash(&visualizer_instruction.component_mappings),
     }
 }
 
@@ -563,7 +563,9 @@ pub fn latest_at_with_blueprint_resolved_data_polymorphic<'a>(
         view_defaults: &ctx.query_result.view_defaults,
         query_context,
         component_sources,
-        component_indices_hash: Hash64::hash(&active_remappings),
+        component_mappings_hash: Hash64::hash(
+            visualizer_instruction.map(|instruction| &instruction.component_mappings),
+        ),
     }
 }
 
@@ -775,5 +777,164 @@ impl DataResultQuery for DataResult {
                 (latest_query, results).into()
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use re_chunk_store::RangeQuery;
+    use re_log_types::{AbsoluteTimeRange, EntityPath, TimelineName};
+    use re_sdk_types::blueprint::components::VisualizerInstructionId;
+    use re_test_context::TestContext;
+    use re_types_core::ViewClassIdentifier;
+    use re_viewer_context::{
+        DataQueryResult, DataResult, QueryRange, ViewContext, ViewId, ViewSystemIdentifier,
+        VisualizerComponentMappings, VisualizerComponentSource, VisualizerInstruction,
+    };
+
+    use super::{latest_at_with_blueprint_resolved_data, range_with_blueprint_resolved_data};
+    use crate::BlueprintResolvedResults;
+
+    #[test]
+    fn query_result_hash_changes_with_component_mappings() {
+        let test_context = TestContext::new();
+        let egui_ctx = egui::Context::default();
+
+        let data_result = DataResult {
+            entity_path: EntityPath::from("entity"),
+            any_visualizers_available: true,
+            visualizer_instructions: Vec::new(),
+            tree_prefix_only: false,
+            visible: true,
+            interactive: true,
+            override_base_path: EntityPath::from("override").clone(),
+            query_range: QueryRange::LatestAt,
+        };
+
+        let target_a = "target_a".into();
+        let target_b = "target_b".into();
+        let source_a = "source_a".into();
+        let source_b = "source_b".into();
+
+        let instruction_id = VisualizerInstructionId::new_random();
+
+        let test_mappings = [
+            ("empty", VisualizerComponentMappings::default()),
+            (
+                "override",
+                VisualizerComponentMappings::from([(
+                    target_a,
+                    VisualizerComponentSource::Override,
+                )]),
+            ),
+            (
+                "default",
+                VisualizerComponentMappings::from([(target_a, VisualizerComponentSource::Default)]),
+            ),
+            (
+                "source",
+                VisualizerComponentMappings::from([(
+                    target_a,
+                    VisualizerComponentSource::SourceComponent {
+                        source_component: source_a,
+                        selector: String::new(),
+                    },
+                )]),
+            ),
+            (
+                "selector",
+                VisualizerComponentMappings::from([(
+                    target_a,
+                    VisualizerComponentSource::SourceComponent {
+                        source_component: source_a,
+                        selector: "$.field".to_owned(),
+                    },
+                )]),
+            ),
+            (
+                "other source",
+                VisualizerComponentMappings::from([(
+                    target_a,
+                    VisualizerComponentSource::SourceComponent {
+                        source_component: source_b,
+                        selector: "$.field".to_owned(),
+                    },
+                )]),
+            ),
+            (
+                "other target",
+                VisualizerComponentMappings::from([(
+                    target_b,
+                    VisualizerComponentSource::SourceComponent {
+                        source_component: source_b,
+                        selector: "$.field".to_owned(),
+                    },
+                )]),
+            ),
+        ];
+
+        test_context.run(&egui_ctx, move |viewer_ctx| {
+            let ctx = ViewContext {
+                viewer_ctx,
+                view_id: ViewId::invalid(),
+                view_class_identifier: ViewClassIdentifier::from_static_str("Test"),
+                space_origin: &EntityPath::root(),
+                view_state: &(),
+                query_result: &DataQueryResult::default(),
+            };
+            let range_query =
+                RangeQuery::new(TimelineName::log_tick(), AbsoluteTimeRange::EVERYTHING);
+
+            let query_hashes = |component_mappings: VisualizerComponentMappings| {
+                let instruction = VisualizerInstruction::new(
+                    instruction_id,
+                    ViewSystemIdentifier::from_static_str("Test"),
+                    &EntityPath::from("override"),
+                    component_mappings,
+                );
+                let latest_results = latest_at_with_blueprint_resolved_data(
+                    &ctx,
+                    None,
+                    &ctx.current_query(),
+                    &data_result,
+                    [target_a, target_b],
+                    Some(&instruction),
+                );
+                let range_results = range_with_blueprint_resolved_data(
+                    &ctx,
+                    None,
+                    &range_query,
+                    &data_result,
+                    [target_a, target_b],
+                    &instruction,
+                );
+
+                (
+                    BlueprintResolvedResults::from((ctx.current_query(), latest_results))
+                        .query_result_hash(),
+                    BlueprintResolvedResults::from((range_query.clone(), range_results))
+                        .query_result_hash(),
+                )
+            };
+
+            for pair in test_mappings
+                .into_iter()
+                .map(|(name, mappings)| (name, query_hashes(mappings)))
+                .collect::<Vec<_>>()
+                .windows(2)
+            {
+                let [(previous_name, previous), (current_name, current)] = pair else {
+                    unreachable!();
+                };
+                assert_ne!(
+                    previous.0, current.0,
+                    "Latest-at hash did not change from {previous_name} to {current_name}"
+                );
+                assert_ne!(
+                    previous.1, current.1,
+                    "Range hash did not change from {previous_name} to {current_name}"
+                );
+            }
+        });
     }
 }
