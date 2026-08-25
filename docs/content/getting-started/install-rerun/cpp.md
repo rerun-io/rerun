@@ -20,3 +20,5 @@ You'll additionally need to install the [Viewer](./viewer.md).
 ## Next steps
 
 [Set up a C++ project](../../getting-started/project-setup/cpp.md), then walk through the [Log and Ingest](../../getting-started/data-in.md) tutorial.
+
+-   [C++ API docs](https://ref.rerun.io/docs/cpp)

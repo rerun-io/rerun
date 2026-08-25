@@ -17,3 +17,5 @@ Conda always comes with support for all features but if using pip you may need t
 ## Next steps
 
 [Set up a Python project](../../getting-started/project-setup/python.md), then walk through the [Log and Ingest](../../getting-started/data-in.md) tutorial.
+
+-   [Python API docs](https://ref.rerun.io/docs/python)
