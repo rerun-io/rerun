@@ -133,6 +133,7 @@ changelog/upcoming/grpc-server-sink-multi-sink: changelog/changeset-0-36#multi-s
 changelog/upcoming/improved-viewer-timeline-navigation: changelog/changeset-0-36#improved-viewer-timeline-navigation
 changelog/upcoming/mcap-info-and-check: changelog/changeset-0-36#better-mcap-file-introspection-via-cli-and-python
 changelog/upcoming/parquet-reader-stream-options: changelog/changeset-0-36#parquetreader-loading-options-moved-to-stream
+changelog/upcoming/rust-rrd-optimize-api: changelog/changeset-0-36#optimize-a-recording-from-rust-with-rrdoptimize
 
 # Types - `datatypes` renamed to `encodings`
 reference/types/datatypes: reference/types/encodings
