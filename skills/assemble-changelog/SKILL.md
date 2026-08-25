@@ -110,6 +110,19 @@ Delete the merged `upcoming/*.md` entries, keeping `_template.md`:
 find docs/content/changelog/upcoming -maxdepth 1 -type f -name '*.md' ! -name '_template.md' -exec git rm -- {} +
 ```
 
+Every entry was a published docs page, so each deletion needs a redirect in
+`docs/content/_redirects.yaml` pointing at the section it was merged into, otherwise
+`scripts/ci/check_doc_redirects.py` fails:
+
+```yaml
+# Changelog - 0.XX upcoming entries merged into the release changeset
+changelog/upcoming/<slug>: changelog/changeset-0-XX#<heading-anchor>
+```
+
+The anchor is the `### ` heading lowercased with punctuation dropped and spaces turned into
+dashes, so the heading `` ### `ParquetReader` loading options moved to `stream()` `` becomes
+`parquetreader-loading-options-moved-to-stream`.
+
 ## Checklist before declaring done
 
 - [ ] Every non-template `upcoming/` entry is represented in the changeset.
@@ -117,6 +130,7 @@ find docs/content/changelog/upcoming -maxdepth 1 -type f -name '*.md' ! -name '_
 - [ ] `## Highlights` reads as a coherent whole, not a list of fragments.
 - [ ] `upcoming/` contains only `_template.md`.
 - [ ] `python scripts/ci/check_changelog_redirect.py` passes (redirect points at this changeset).
+- [ ] `python scripts/ci/check_doc_redirects.py --base origin/main` passes (every deleted `upcoming/` entry has a redirect).
 
 ## Notes
 
