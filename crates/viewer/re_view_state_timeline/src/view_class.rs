@@ -1,6 +1,7 @@
+use egui::emath::GuiRounding as _;
 use re_log_types::{
-    AbsoluteTimeRange, ComponentPath, EntityPath, TimeCell, TimeInt, TimeReal, TimeType,
-    TimelineName, TimestampFormat,
+    AbsoluteTimeRange, ComponentPath, DateVisibility, EntityPath, TimeCell, TimeInt, TimeReal,
+    TimeType, TimelineName, TimestampFormat,
 };
 use re_sdk_types::blueprint::archetypes::TimeAxis;
 use re_sdk_types::blueprint::components::LinkAxis;
@@ -24,6 +25,11 @@ const LANE_GAP: f32 = 4.0;
 
 /// Vertical gap between the stacked instance lanes of a multi-instance group.
 const SUB_LANE_GAP: f32 = 1.0;
+
+/// Prefixes of the phase boundary lines in the tooltip. They share a column, so the times
+/// they label line up.
+const START_PREFIX: &str = "Start:";
+const END_PREFIX: &str = "End:";
 
 const TIME_AXIS_HEIGHT: f32 = 20.0;
 const TOP_MARGIN: f32 = 4.0;
@@ -1270,6 +1276,8 @@ fn show_item_tooltip(
     time_type: TimeType,
     timestamp_format: TimestampFormat,
 ) {
+    let timestamp_format = timestamp_format.with_date_visibility(DateVisibility::HideDate);
+
     egui::Tooltip::always_open(
         ui.ctx().clone(),
         ui.layer_id(),
@@ -1277,42 +1285,48 @@ fn show_item_tooltip(
         egui::PopupAnchor::Pointer,
     )
     .show(|ui| {
+        ui.spacing_mut().item_spacing.y = 3.0;
+        // The tooltip's `egui::Area` keeps the size it was laid out with when it opened, so
+        // without this every subsequent phase would wrap its text to the width of the first one
+        // hovered.
+        let frame_margins = ui.spacing().menu_margin.sum().x;
+        let available_width = ui.ctx().content_rect().width() - frame_margins;
+        ui.set_max_width(ui.spacing().tooltip_width.min(available_width));
+
         let weak = ui.visuals().weak_text_color();
-        let small = egui::FontId::proportional(11.0);
-        if let Some(instance) = instance {
-            ui.label(
-                egui::RichText::new(format!("Instance {instance}"))
-                    .font(small.clone())
-                    .color(weak),
-            );
-        }
-        match item {
+        let small = egui::FontId::proportional(10.0);
+
+        let format_time = |time: i64| TimeCell::new(time_type, time).format(timestamp_format);
+
+        // Reserve the room for the separator between the label and the phase boundaries. The
+        // line itself can only be painted once everything has been laid out.
+        let separator_space = |ui: &mut egui::Ui| -> f32 {
+            ui.add_space(8.0);
+            let y = ui.cursor().top();
+            ui.add_space(ui.spacing().item_spacing.y + 8.0);
+            y
+        };
+
+        let (label, boundaries) = match item {
             RenderItem::Single {
                 phase, end_time, ..
             } => {
-                ui.label(phase.content.as_ref().map_or("", |s| s.label.as_str()));
-                ui.add_space(4.0);
-                let start = TimeCell::new(time_type, phase.start_time).format(timestamp_format);
-                ui.label(
-                    egui::RichText::new(format!("Start: {start}"))
-                        .font(small.clone())
-                        .color(weak),
-                );
-                if let Some(end) = end_time {
-                    let end = TimeCell::new(time_type, *end).format(timestamp_format);
-                    ui.label(
-                        egui::RichText::new(format!("End: {end}"))
-                            .font(small)
-                            .color(weak),
-                    );
-                } else {
+                let end = match end_time {
+                    Some(end) => format_time(*end),
                     // No end time → open-ended last phase.
-                    ui.label(
-                        egui::RichText::new("End: ongoing (no later data)")
-                            .font(small)
-                            .color(weak),
-                    );
-                }
+                    None => "-".to_owned(),
+                };
+                (
+                    phase
+                        .content
+                        .as_ref()
+                        .map_or("", |s| s.label.as_str())
+                        .to_owned(),
+                    vec![
+                        (START_PREFIX, format_time(phase.start_time)),
+                        (END_PREFIX, end),
+                    ],
+                )
             }
             RenderItem::Merged {
                 start_time,
@@ -1320,24 +1334,52 @@ fn show_item_tooltip(
                 count,
                 ..
             } => {
-                ui.label(format!("{count} states (zoom in to see details)"));
-                ui.add_space(4.0);
-                let start = TimeCell::new(time_type, *start_time).format(timestamp_format);
-                ui.label(
-                    egui::RichText::new(format!("Start: {start}"))
-                        .font(small.clone())
-                        .color(weak),
-                );
+                let mut boundaries = vec![(START_PREFIX, format_time(*start_time))];
                 if let Some(end) = end_time {
-                    let end = TimeCell::new(time_type, *end).format(timestamp_format);
-                    ui.label(
-                        egui::RichText::new(format!("End: {end}"))
-                            .font(small)
-                            .color(weak),
-                    );
+                    boundaries.push((END_PREFIX, format_time(*end)));
                 }
+                (
+                    format!("{count} states (zoom in to see details)"),
+                    boundaries,
+                )
             }
+        };
+
+        if let Some(instance) = instance {
+            ui.label(
+                egui::RichText::new(format!("Instance {instance}"))
+                    .font(small.clone())
+                    .color(weak),
+            );
         }
+        ui.label(label);
+        let separator_y = separator_space(ui);
+
+        // A grid, so that the times line up in a column of their own.
+        egui::Grid::new("state_tooltip_boundaries")
+            .num_columns(2)
+            .min_col_width(0.0)
+            .min_row_height(0.0)
+            .show(ui, |ui| {
+                for (prefix, time) in boundaries {
+                    ui.label(egui::RichText::new(prefix).font(small.clone()).color(weak));
+                    ui.label(egui::RichText::new(time).font(small.clone()).color(weak));
+                    ui.end_row();
+                }
+            });
+
+        // Span the whole tooltip, bleeding into the frame's margins.
+        let margin = ui.spacing().menu_margin;
+        let content = ui.min_rect();
+        let painter = ui.painter();
+        painter.hline(
+            egui::Rangef::new(
+                content.left() - margin.leftf(),
+                content.right() + margin.rightf(),
+            ),
+            separator_y.round_to_pixels(painter.pixels_per_point()),
+            egui::Stroke::new(1.0, weak),
+        );
     });
 }
 
