@@ -344,7 +344,7 @@ impl UICommand {
             Self::ToggleCommandPalette => smallvec![cmd(Key::K), cmd(Key::P)],
 
             #[cfg(not(target_arch = "wasm32"))]
-            Self::ScreenshotWholeApp => smallvec![],
+            Self::ScreenshotWholeApp => smallvec![ctrl_shift(Key::F)],
 
             #[cfg(debug_assertions)]
             Self::ResetEguiMemory => smallvec![],
