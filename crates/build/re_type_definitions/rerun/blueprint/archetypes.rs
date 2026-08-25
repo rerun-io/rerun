@@ -4,6 +4,8 @@
 mod active_visualizers;
 #[path = "archetypes/background.def.rs"]
 mod background;
+#[path = "archetypes/card_layout.def.rs"]
+mod card_layout;
 #[path = "archetypes/container_blueprint.def.rs"]
 mod container_blueprint;
 #[path = "archetypes/dataframe_query.def.rs"]
@@ -34,12 +36,20 @@ mod near_clip_plane;
 mod panel_blueprint;
 #[path = "archetypes/plot_legend.def.rs"]
 mod plot_legend;
+#[path = "archetypes/previews_config.def.rs"]
+mod previews_config;
 #[path = "archetypes/scalar_axis.def.rs"]
 mod scalar_axis;
 #[path = "archetypes/spatial_information.def.rs"]
 mod spatial_information;
 #[path = "archetypes/table_blueprint.def.rs"]
 mod table_blueprint;
+#[path = "archetypes/table_column.def.rs"]
+mod table_column;
+#[path = "archetypes/table_column_preview.def.rs"]
+mod table_column_preview;
+#[path = "archetypes/table_layout.def.rs"]
+mod table_layout;
 #[path = "archetypes/tensor_scalar_mapping.def.rs"]
 mod tensor_scalar_mapping;
 #[path = "archetypes/tensor_slice_selection.def.rs"]
@@ -71,6 +81,7 @@ mod visualizer_instruction;
 
 pub use self::active_visualizers::*;
 pub use self::background::*;
+pub use self::card_layout::*;
 pub use self::container_blueprint::*;
 pub use self::dataframe_query::*;
 pub use self::entity_behavior::*;
@@ -86,9 +97,13 @@ pub use self::map_zoom::*;
 pub use self::near_clip_plane::*;
 pub use self::panel_blueprint::*;
 pub use self::plot_legend::*;
+pub use self::previews_config::*;
 pub use self::scalar_axis::*;
 pub use self::spatial_information::*;
 pub use self::table_blueprint::*;
+pub use self::table_column::*;
+pub use self::table_column_preview::*;
+pub use self::table_layout::*;
 pub use self::tensor_scalar_mapping::*;
 pub use self::tensor_slice_selection::*;
 pub use self::tensor_view_fit::*;

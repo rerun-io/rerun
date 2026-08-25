@@ -1,0 +1,8 @@
+---
+source: crates/viewer/re_viewer/tests/all_component_fallbacks.rs
+expression: arch_display
+---
+name: [<name>]
+editable: [false]
+visible: [true]
+cell_kind: [1]

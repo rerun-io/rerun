@@ -28,6 +28,8 @@ mod component_column_selector;
 mod container_kind;
 #[path = "components/corner2d.def.rs"]
 mod corner2d;
+#[path = "components/editable.def.rs"]
+mod editable;
 #[path = "components/enabled.def.rs"]
 mod enabled;
 #[path = "components/eye3d_kind.def.rs"]
@@ -74,6 +76,10 @@ mod root_container;
 mod row_share;
 #[path = "components/selected_columns.def.rs"]
 mod selected_columns;
+#[path = "components/table_cell_kind.def.rs"]
+mod table_cell_kind;
+#[path = "components/table_layout_kind.def.rs"]
+mod table_layout_kind;
 #[path = "components/tensor_dimension_index_slider.def.rs"]
 mod tensor_dimension_index_slider;
 #[path = "components/text_log_column.def.rs"]
@@ -123,6 +129,7 @@ pub use self::column_share::*;
 pub use self::component_column_selector::*;
 pub use self::container_kind::*;
 pub use self::corner2d::*;
+pub use self::editable::*;
 pub use self::enabled::*;
 pub use self::eye3d_kind::*;
 pub use self::filter_by_range::*;
@@ -146,6 +153,8 @@ pub use self::query_expression::*;
 pub use self::root_container::*;
 pub use self::row_share::*;
 pub use self::selected_columns::*;
+pub use self::table_cell_kind::*;
+pub use self::table_layout_kind::*;
 pub use self::tensor_dimension_index_slider::*;
 pub use self::text_log_column::*;
 pub use self::time_int::*;

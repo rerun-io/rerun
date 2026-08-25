@@ -195,6 +195,17 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <Editable as Component>::name(),
+            ComponentReflection {
+                docstring_md: "Whether a table column's values can be edited.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: None,
+                datatype: Editable::arrow_datatype(),
+                is_enum: false,
+                verify_arrow_array: Editable::verify_arrow_array,
+            },
+        ),
+        (
             <Enabled as Component>::name(),
             ComponentReflection {
                 docstring_md: "Whether a procedure is enabled.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
@@ -445,6 +456,28 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
                 datatype: SelectedColumns::arrow_datatype(),
                 is_enum: false,
                 verify_arrow_array: SelectedColumns::verify_arrow_array,
+            },
+        ),
+        (
+            <TableCellKind as Component>::name(),
+            ComponentReflection {
+                docstring_md: "How a table column value is rendered.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: Some(TableCellKind::default().to_arrow()?),
+                datatype: TableCellKind::arrow_datatype(),
+                is_enum: true,
+                verify_arrow_array: TableCellKind::verify_arrow_array,
+            },
+        ),
+        (
+            <TableLayoutKind as Component>::name(),
+            ComponentReflection {
+                docstring_md: "How table records are presented.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: Some(TableLayoutKind::default().to_arrow()?),
+                datatype: TableLayoutKind::arrow_datatype(),
+                is_enum: true,
+                verify_arrow_array: TableLayoutKind::verify_arrow_array,
             },
         ),
         (
@@ -4077,6 +4110,38 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
+            ArchetypeName::from("rerun.blueprint.archetypes.CardLayout"),
+            ArchetypeReflection {
+                display_name: "Card layout",
+                deprecation_summary: None,
+                scope: Some("blueprint"),
+                view_types: &[],
+                fields: vec![
+                    ArchetypeFieldReflection {
+                        name: "title",
+                        display_name: "Title",
+                        component_type: "rerun.blueprint.components.ColumnName".into(),
+                        docstring_md: "The source column used for card titles.\n\nIf unset, the first visible string column is used as the title.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "link",
+                        display_name: "Link",
+                        component_type: "rerun.blueprint.components.ColumnName".into(),
+                        docstring_md: "The source column containing the target opened when a card is activated.\n\nIf unset, the first configured preview field is used, then the first inferred URL column.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "field_order",
+                        display_name: "Field order",
+                        component_type: "rerun.blueprint.components.ColumnName".into(),
+                        docstring_md: "Source columns visible by default in each card, in display order.\n\nUnlisted fields are hidden unless their archetypes.TableColumn visibility overrides the default.\nEach source column may appear at most once.\n\nFields with `TableCellKind::Flag` are omitted from the labeled-field list and the first one is shown in the card header.\nCard layouts currently support at most one flag field.",
+                        flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                ],
+            },
+        ),
+        (
             ArchetypeName::from("rerun.blueprint.archetypes.ContainerBlueprint"),
             ArchetypeReflection {
                 display_name: "Container blueprint",
@@ -4611,6 +4676,22 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
+            ArchetypeName::from("rerun.blueprint.archetypes.PreviewsConfig"),
+            ArchetypeReflection {
+                display_name: "Previews config",
+                deprecation_summary: None,
+                scope: Some("blueprint"),
+                view_types: &[],
+                fields: vec![ArchetypeFieldReflection {
+                    name: "timeline",
+                    display_name: "Timeline",
+                    component_type: "rerun.blueprint.components.TimelineName".into(),
+                    docstring_md: "The timeline used by every preview cell.\n\nIf left empty a timeline is automatically picked, preferring custom over built-in.",
+                    flags: ArchetypeFieldFlags::UI_EDITABLE,
+                }],
+            },
+        ),
+        (
             ArchetypeName::from("rerun.blueprint.archetypes.ScalarAxis"),
             ArchetypeReflection {
                 display_name: "Scalar axis",
@@ -4711,6 +4792,93 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                 ],
+            },
+        ),
+        (
+            ArchetypeName::from("rerun.blueprint.archetypes.TableBlueprintV2"),
+            ArchetypeReflection {
+                display_name: "Table blueprint v2",
+                deprecation_summary: None,
+                scope: Some("blueprint"),
+                view_types: &[],
+                fields: vec![ArchetypeFieldReflection {
+                    name: "default_layout",
+                    display_name: "Default layout",
+                    component_type: "rerun.blueprint.components.TableLayoutKind".into(),
+                    docstring_md: "The layout shown when the table is first opened and no user selection has been persisted.\n\nIf unset, defaults to card layout if available.\n`Cards` falls back to table layout when no archetypes.CardLayout is configured.",
+                    flags: ArchetypeFieldFlags::UI_EDITABLE,
+                }],
+            },
+        ),
+        (
+            ArchetypeName::from("rerun.blueprint.archetypes.TableColumn"),
+            ArchetypeReflection {
+                display_name: "Table column",
+                deprecation_summary: None,
+                scope: Some("blueprint"),
+                view_types: &[],
+                fields: vec![
+                    ArchetypeFieldReflection {
+                        name: "name",
+                        display_name: "Name",
+                        component_type: "rerun.components.Name".into(),
+                        docstring_md: "The name shown for the column.\n\nIf unset, the name is inferred from the source column.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "editable",
+                        display_name: "Editable",
+                        component_type: "rerun.blueprint.components.Editable".into(),
+                        docstring_md: "Whether the column's values can be edited.\n\nIf unset, editing is disabled.\nEdits requires a remote table with a column marked by `rerun:is_table_index` metadata and write permission.\n⚠ Currently only boolean values are supported.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "visible",
+                        display_name: "Visible",
+                        component_type: "rerun.components.Visible".into(),
+                        docstring_md: "Whether the column is visible in this layout.\n\nIf unset, the enclosing layout determines visibility.\nTable layouts use the viewer default for the source column.\nCard layouts show sources listed in `field_order` and hide unlisted sources.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "cell_kind",
+                        display_name: "Cell kind",
+                        component_type: "rerun.blueprint.components.TableCellKind".into(),
+                        docstring_md: "How to render the column's values.\n\nIf unset or `Auto`, the viewer infers the renderer from the component or Arrow datatype.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::from("rerun.blueprint.archetypes.TableColumnPreview"),
+            ArchetypeReflection {
+                display_name: "Table column preview",
+                deprecation_summary: None,
+                scope: Some("blueprint"),
+                view_types: &[],
+                fields: vec![ArchetypeFieldReflection {
+                    name: "views",
+                    display_name: "Views",
+                    component_type: "rerun.blueprint.components.IncludedContent".into(),
+                    docstring_md: "The views rendered for the preview, in display order.\n\nEach components.IncludedContent must reference a archetypes.ViewBlueprint at `/view/{view_id}`.\nView contents, properties, defaults, and overrides remain at their regular blueprint paths.",
+                    flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
+                }],
+            },
+        ),
+        (
+            ArchetypeName::from("rerun.blueprint.archetypes.TableLayout"),
+            ArchetypeReflection {
+                display_name: "Table layout",
+                deprecation_summary: None,
+                scope: Some("blueprint"),
+                view_types: &[],
+                fields: vec![ArchetypeFieldReflection {
+                    name: "column_order",
+                    display_name: "Column order",
+                    component_type: "rerun.blueprint.components.ColumnName".into(),
+                    docstring_md: "Source columns to show first, in display order.\n\nUnmentioned columns retain the viewer defaults and follow in default order.\nEach source column may appear at most once.",
+                    flags: ArchetypeFieldFlags::UI_EDITABLE,
+                }],
             },
         ),
         (
