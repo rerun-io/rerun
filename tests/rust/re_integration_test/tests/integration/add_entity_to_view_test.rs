@@ -283,3 +283,68 @@ pub async fn test_add_entity_to_view_tensor() {
     harness.set_selection_panel_opened(false);
     harness.snapshot_app("add_entity_to_view_tensor_5");
 }
+
+/// Harness with two entities whose components are datatype-compatible with several views, but that
+/// each only really belong to one of them.
+fn make_recommendation_test_harness<'a>() -> egui_kittest::Harness<'a, re_viewer::App> {
+    let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions {
+        window_size: Some(egui::Vec2::new(1024.0, 1024.0)),
+        ..Default::default()
+    });
+    harness.init_recording();
+
+    let timeline = re_sdk::Timeline::new_sequence("timeline_a");
+    for i in 0..4_i32 {
+        harness.log_entity("scalars", |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                [(timeline, i64::from(i))],
+                &re_sdk_types::archetypes::Scalars::new([f64::from(i)]),
+            )
+        });
+        let state = if i % 2 == 0 { "idle" } else { "running" };
+        harness.log_entity("states", |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                [(timeline, i64::from(i))],
+                &re_sdk_types::archetypes::StateChange::new().with_state([state]),
+            )
+        });
+    }
+
+    harness.clear_current_blueprint();
+    harness
+}
+
+/// A `Scalars` entity should be recommended for the time series view, but not for the state
+/// timeline view — even though the latter can ingest `Float64` components.
+#[tokio::test(flavor = "multi_thread")]
+pub async fn test_add_entity_to_view_recommendations_scalars() {
+    let mut harness = make_recommendation_test_harness();
+
+    harness.streams_tree().right_click_label("scalars");
+    harness.hover_label_contains("Add to new view");
+
+    assert!(harness.query_all_by_label("Time series").count() > 0);
+    assert!(harness.query_all_by_label("Dataframe").count() > 0);
+    // Visualizable by the state visualizer (`Float64` casts to a state), but not recommended.
+    assert_eq!(harness.query_all_by_label("State timeline").count(), 0);
+}
+
+/// A `StateChange` entity should be recommended for the state timeline view, but not for the views
+/// that merely accept its `Utf8` component.
+#[tokio::test(flavor = "multi_thread")]
+pub async fn test_add_entity_to_view_recommendations_states() {
+    let mut harness = make_recommendation_test_harness();
+
+    harness.streams_tree().right_click_label("states");
+    harness.hover_label_contains("Add to new view");
+
+    assert!(harness.query_all_by_label("State timeline").count() > 0);
+    assert!(harness.query_all_by_label("Dataframe").count() > 0);
+    // `StateChange:state` is a `Text` component, but that doesn't make it a graph node, a document
+    // or a log message.
+    assert_eq!(harness.query_all_by_label("Graph").count(), 0);
+    assert_eq!(harness.query_all_by_label("Text document").count(), 0);
+    assert_eq!(harness.query_all_by_label("Text log").count(), 0);
+}

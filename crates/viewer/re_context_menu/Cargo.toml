@@ -35,4 +35,5 @@ egui.workspace = true
 egui_tiles.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true
+smallvec.workspace = true
 static_assertions.workspace = true

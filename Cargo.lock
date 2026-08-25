@@ -9031,6 +9031,7 @@ dependencies = [
  "re_viewer_context",
  "re_viewport_blueprint",
  "re_web",
+ "smallvec",
  "static_assertions",
 ]
 
