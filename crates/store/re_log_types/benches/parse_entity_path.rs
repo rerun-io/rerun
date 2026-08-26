@@ -3,8 +3,10 @@
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
-criterion::criterion_group!(benches, parse_entity_path);
+criterion::criterion_group!(benches, parse_entity_path, common_ancestor);
 criterion::criterion_main!(benches);
+
+const NUM_ENTITIES: usize = 32;
 
 fn parse_entity_path(c: &mut criterion::Criterion) {
     if std::env::var("CI").is_ok() {
@@ -34,6 +36,26 @@ fn parse_entity_path(c: &mut criterion::Criterion) {
                 let entity_path = re_log_types::EntityPath::parse_forgiving(path_str);
                 std::hint::black_box(entity_path);
             }
+        });
+    });
+}
+
+fn common_ancestor(c: &mut criterion::Criterion) {
+    if std::env::var("CI").is_ok() {
+        return;
+    }
+
+    let entities = (0..NUM_ENTITIES)
+        .map(|entity_idx| {
+            re_log_types::EntityPath::from(format!("world/site/cameras/camera_{entity_idx}/sensor"))
+        })
+        .collect::<Vec<_>>();
+
+    let mut group = c.benchmark_group("EntityPath/common_ancestor/32");
+    group.throughput(criterion::Throughput::Elements(NUM_ENTITIES as _));
+    group.bench_function("compute", |b| {
+        b.iter(|| {
+            re_log_types::EntityPath::common_ancestor_of(std::hint::black_box(entities.iter()))
         });
     });
 }
