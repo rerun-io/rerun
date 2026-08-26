@@ -84,10 +84,12 @@ impl LogDataSource {
         {
             use itertools::Itertools as _;
 
+            // See https://learn.microsoft.com/en-us/dotnet/standard/io/file-path-formats
             fn looks_like_windows_abs_path(path: &str) -> bool {
                 let path = path.as_bytes();
-                // "C:/" etc
-                path.get(1).copied() == Some(b':') && path.get(2).copied() == Some(b'/')
+                path.starts_with(b"\\\\")
+                    || (path.get(1).copied() == Some(b':')
+                        && matches!(path.get(2).copied(), Some(b'/' | b'\\')))
             }
 
             fn looks_like_a_file_path(uri: &str) -> bool {
@@ -106,7 +108,9 @@ impl LogDataSource {
                     true // Unix relative path
                 } else if looks_like_windows_abs_path(uri) {
                     true
-                } else if uri.starts_with("http:") || uri.starts_with("https:") {
+                } else if url::Url::parse(uri).is_ok() {
+                    // An explicit URI scheme cannot name a local path. Windows paths are handled
+                    // above because the URL parser interprets their drive letter as a scheme.
                     false
                 } else {
                     // We use a simple heuristic here: if there are multiple dots, it is likely an url,
@@ -492,6 +496,10 @@ mod tests {
             "foo.png",
             "/foo/bar/baz.rbl",
             "D:/file.jpg",
+            "D:\\file.jpg",
+            "D:\\directory.with.dots\\file.jpg",
+            "\\\\server.example\\share\\file.jpg", // https://learn.microsoft.com/en-us/dotnet/standard/io/file-path-formats#unc-paths
+            "//server.example/share/file.jpg",
         ];
         let http = [
             "http://example.com/foo.rrd",
@@ -544,6 +552,10 @@ mod tests {
             "data:application/octet-stream;base64,UlJEMAo=",
             "data:,inline-text",
             "blob:https://example.com/550e8400-e29b-41d4-a716-446655440000",
+            "s3://example-bucket/recording.rrd",
+            "gs://bucket/file.rrd",
+            "ftp://host/file.rrd",
+            "custom://host/file.rrd",
         ];
 
         let file_source = FileSource::DragAndDrop {
