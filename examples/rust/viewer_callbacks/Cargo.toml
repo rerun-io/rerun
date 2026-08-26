@@ -16,6 +16,7 @@ analytics = ["rerun/analytics"]
 rerun = { path = "../../../crates/top/rerun", default-features = false, features = [
   "native_viewer",
   "server",
+  "log_setup",
 ] }
 
 # mimalloc is a much faster allocator:

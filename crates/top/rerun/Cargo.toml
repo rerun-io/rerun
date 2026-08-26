@@ -76,6 +76,13 @@ image = ["re_sdk_types?/image"]
 ## Integration with the [`log`](https://crates.io/crates/log/) crate.
 log = ["dep:env_filter", "dep:log"]
 
+## Enable the logging-setup helpers on the re-exported `re_log`,
+## i.e. `rerun::external::re_log::setup_logging`.
+##
+## Only useful in binaries: it pulls in `tracing-subscriber`, which a library
+## should leave to whoever owns `main`.
+log_setup = ["re_log/setup"]
+
 ## Support the map view.
 ## This adds a lot of extra dependencies.
 map_view = ["re_viewer?/map_view"]

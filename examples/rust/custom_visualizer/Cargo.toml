@@ -18,6 +18,7 @@ rerun = { path = "../../../crates/top/rerun", default-features = false, features
   "run",
   "server",
   "video",
+  "log_setup",
 ] }
 
 # Need a direct dependency for `#[derive(bytemuck::Pod, bytemuck::Zeroable)]`.
