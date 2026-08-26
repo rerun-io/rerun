@@ -64,6 +64,11 @@ class Field:
         Enforced only during manifest construction, not by the streaming
         dataloader.
 
+        For compressed video, manifests conservatively measure age from the
+        latest prior keyframe because sparse keyframe metadata does not expose
+        non-keyframe timestamps. A sample may therefore be dropped even when a
+        fresher non-keyframe exists.
+
     """
 
     path: str

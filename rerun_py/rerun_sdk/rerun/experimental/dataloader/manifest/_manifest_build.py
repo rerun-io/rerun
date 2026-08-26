@@ -91,11 +91,11 @@ def build_manifest_table(
     """
     Build a validity-checked, **unshuffled** sampling-manifest table for one epoch.
 
-    Scans the source once to capture each sample's **actual observed** index
-    values per field (not the algebraic grid), drops samples whose required
-    fields have no usable data, then unrolls one epoch in natural order (see
-    [`NoShuffle`][rerun.experimental.dataloader.NoShuffle]) into per-`(rank, worker)`
-    `fetch_group` and `emit_rank` columns. Re-order it later with
+    Scans the source once to capture each non-video field's **actual observed**
+    index values and each video field's sparse keyframe index (not the algebraic
+    grid), drops samples whose required fields have no usable data, then unrolls
+    one epoch in natural order (see [`NoShuffle`][rerun.experimental.dataloader.NoShuffle])
+    into per-`(rank, worker)` `fetch_group` and `emit_rank` columns. Re-order it later with
     [`schedule_samples`][]. Returns the Arrow table (header in the schema
     metadata); [`Manifest.generate`][rerun.experimental.dataloader.Manifest.generate] wraps it into a
     manifest, which is persisted with
@@ -193,17 +193,6 @@ def build_manifest_table(
 # --------------------------------------------------------------------------------------
 
 
-def _keyframe_covered(field: Field) -> bool:
-    """
-    Whether a video field's validity is already decided by its prior-keyframe check.
-
-    Such a field needs no real-index scan: a prior keyframe is itself a real row,
-    so `_too_far_back`'s existence test can never drop a sample the keyframe check
-    keeps. Only holds without a window (staleness would need the nearest real row).
-    """
-    return is_video_field(field) and field.window is None and field.max_staleness is None
-
-
 @with_tracing("build_manifest_table._scan")
 def _scan(
     *,
@@ -215,19 +204,11 @@ def _scan(
     required: set[str],
     max_workers: int,
 ) -> _ScanResult:
-    """Run the source scans concurrently: prior keyframes (video) and each entity's real index values per segment."""
+    """Scan keyframes for video fields and entity index values for required non-video fields."""
     seg_ids = sorted({seg.segment_id for seg, _ in segment_maxes})
-    # Only scan entities whose validity still depends on a real-index lookup; a
-    # keyframe-covered field's entity is skipped entirely (see `_keyframe_covered`).
-    entities = (
-        sorted({
-            field.path.split(":")[0]
-            for key, field in fields.items()
-            if key in required and not _keyframe_covered(field)
-        })
-        if seg_ids
-        else []
-    )
+    entities = sorted({
+        field.path.split(":")[0] for key, field in fields.items() if key in required and not is_video_field(field)
+    })
 
     def keyframe_task() -> dict[str, _SegmentIndices]:
         # `_fetch_prior_keyframes` only reads each segment's largest target, so one
@@ -282,8 +263,9 @@ def _resolve_rows(
     window arithmetic and no keyframe scan — the ranges are precomputed here.
 
     A `required` field drops the sample when, for any point in its window, the
-    nearest real row is missing, older than `max_staleness`, or for video it
-    has no prior keyframe to decode from.
+    nearest real row is missing or older than `max_staleness`. Video uses the
+    latest prior keyframe as a conservative proxy for that row and also requires
+    a keyframe before the start of its decode range.
 
     Works one segment at a time, packing each segment's kept samples straight into
     numpy and releasing that segment's scan data, so the whole sample space is never
@@ -291,7 +273,6 @@ def _resolve_rows(
     """
     keyframes, real_by_entity = scan.keyframes, scan.real_by_entity
     video = {k: is_video_field(f) for k, f in fields.items()}
-    covered = {k: _keyframe_covered(f) for k, f in fields.items()}
     entity_of = {k: f.path.split(":")[0] for k, f in fields.items()}
     step = sample_index.ns_per_sample or 1
 
@@ -302,9 +283,14 @@ def _resolve_rows(
     with tracing_scope("build_manifest_table._resolve_rows.samples"):
         for seg in sample_index.segments:
             sid = seg.segment_id
-            # This segment's scan data is shared across all its samples.
-            observed_index_values_by_field = {k: real_by_entity.get(entity_of[k], {}).get(sid) for k in fields}
+            # Video validity uses sparse keyframe timestamps as a conservative
+            # substitute for the complete frame index, so a video field does not
+            # itself trigger a scan of the heavy sample component.
             keyframe_positions_by_field = {k: keyframes.get(k, {}).get(sid) for k in fields}
+            observed_index_values_by_field = {
+                k: (keyframe_positions_by_field[k] if video[k] else real_by_entity.get(entity_of[k], {}).get(sid))
+                for k in fields
+            }
 
             anchors: list[int] = []
             los: dict[str, list[int]] = {k: [] for k in fields}
@@ -313,19 +299,15 @@ def _resolve_rows(
                 ranges: dict[str, tuple[int, int]] = {}
                 keep = True
                 for key, field in fields.items():
-                    if (
-                        key in required
-                        and not covered[key]
-                        and _too_far_back(
-                            observed_index_values_by_field[key], index_value, field=field, sample_index=sample_index
-                        )
+                    if key in required and _too_far_back(
+                        observed_index_values_by_field[key], index_value, field=field, sample_index=sample_index
                     ):
                         keep = False
                         break
                     kf = None
                     if video[key]:
-                        # The prior keyframe may sit arbitrarily far back (exempt from
-                        # staleness) but must exist, else the GOP can't be decoded.
+                        # The prior keyframe anchors the contiguous decode range and
+                        # must exist for a required field, else the GOP can't be decoded.
                         decode_start = min(int(value) for value in sample_index.output_index_values(index_value, field))
                         kf = _prior_keyframe(keyframe_positions_by_field[key], decode_start)
                         if key in required and kf is None:
@@ -374,8 +356,8 @@ def _resolve_rows(
     )
 
 
-def _too_far_back(real: np.ndarray | None, index_value: int, *, field: Field, sample_index: SampleIndex) -> bool:
-    """Whether any point in *field*'s window has no real row at or before it, or one older than `max_staleness`."""
+def _too_far_back(observed: np.ndarray | None, index_value: int, *, field: Field, sample_index: SampleIndex) -> bool:
+    """Whether any output lacks a prior observed row or its prior row exceeds `max_staleness`."""
     max_staleness = field.max_staleness
     if max_staleness is not None:
         if sample_index.ns_dtype is not None:
@@ -385,7 +367,7 @@ def _too_far_back(real: np.ndarray | None, index_value: int, *, field: Field, sa
 
     for value in sample_index.output_index_values(index_value, field):
         g = int(value)
-        prior = _prior_keyframe(real, g)
+        prior = _prior_keyframe(observed, g)
         if prior is None:
             return True
         if max_staleness is not None and g - prior > max_staleness:

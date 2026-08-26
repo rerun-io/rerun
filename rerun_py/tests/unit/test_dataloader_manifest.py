@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING, cast
 import numpy as np
 import pyarrow as pa
 import pytest
+import rerun.experimental.dataloader.manifest._manifest_build as manifest_build
 import torch
 from rerun.experimental.dataloader import (
     BlockShuffle,
@@ -25,6 +26,7 @@ from rerun.experimental.dataloader import (
     RerunIterableDataset,
     RerunMapDataset,
     SampleShuffle,
+    VideoFrameDecoder,
     _iterable_dataset as iterable_dataset,
     _map_dataset as map_dataset,
 )
@@ -48,6 +50,7 @@ from rerun.experimental.dataloader.manifest._manifest_build import (
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from rerun.catalog._entry import DatasetEntry
     from rerun.experimental.dataloader._config import DataSource
     from rerun.experimental.dataloader._shuffle import ShuffleStrategy
 
@@ -166,6 +169,98 @@ def test_resolve_rows_walks_segments_and_drops_invalid() -> None:
     lo, hi = rows.field_ranges["x"]
     assert lo.tolist() == hi.tolist() == [2, 3, 4, 100, 101, 102]  # scalar field: range is just the anchor
     assert scan.real_by_entity["/e"] == {}  # each segment's scan data released as it was resolved
+
+
+def test_windowed_video_validity_is_covered_by_its_prior_keyframe() -> None:
+    sample_index = SampleIndex([
+        SegmentMetadata(segment_id="a", index_start=2, index_end=3, num_samples=2),
+    ])
+    field = Field(
+        "/video:VideoStream:sample",
+        decode=VideoFrameDecoder(),
+        window=(-1, 0),
+    )
+    scan = _ScanResult(
+        keyframes={"video": {"a": np.array([0], dtype=np.int64)}},
+        real_by_entity={},
+    )
+
+    rows = _resolve_rows(
+        fields={"video": field},
+        sample_index=sample_index,
+        scan=scan,
+        required={"video"},
+    )
+
+    assert rows.anchors.tolist() == [2, 3]
+    lo, hi = rows.field_ranges["video"]
+    assert lo.tolist() == [0, 0]
+    assert hi.tolist() == [2, 3]
+
+
+def test_manifest_video_scan_never_fetches_frame_timestamps(monkeypatch: pytest.MonkeyPatch) -> None:
+    sample_index = SampleIndex([
+        SegmentMetadata(segment_id="a", index_start=2, index_end=3, num_samples=2),
+    ])
+    video = Field(
+        "/video:VideoStream:sample",
+        decode=VideoFrameDecoder(),
+        window=(-1, 0),
+        max_staleness=2,
+    )
+    state = Field("/state:Scalars:scalars", decode=NumericDecoder())
+    keyframes = {"video": {"a": np.array([0], dtype=np.int64)}}
+    fetched_entities: list[str] = []
+
+    monkeypatch.setattr(manifest_build, "_fetch_prior_keyframes", lambda **_: keyframes)
+
+    def fetch_entity_index_values(*, entity: str, **_: object) -> np.ndarray:
+        fetched_entities.append(entity)
+        return np.array([2, 3], dtype=np.int64)
+
+    monkeypatch.setattr(manifest_build, "_fetch_entity_index_values", fetch_entity_index_values)
+
+    scan = manifest_build._scan(
+        view=cast("DatasetEntry", SimpleNamespace()),
+        index="frame",
+        fields={"video": video, "state": state},
+        sample_index=sample_index,
+        segment_maxes=[(sample_index.segments[0], 3)],
+        required={"video", "state"},
+        max_workers=1,
+    )
+
+    assert fetched_entities == ["/state"]
+    assert scan.keyframes == keyframes
+    assert scan.real_by_entity["/state"]["a"].tolist() == [2, 3]
+
+
+def test_video_staleness_is_conservatively_bounded_by_prior_keyframes() -> None:
+    sample_index = SampleIndex([
+        SegmentMetadata(segment_id="a", index_start=2, index_end=3, num_samples=2),
+    ])
+    field = Field(
+        "/video:VideoStream:sample",
+        decode=VideoFrameDecoder(),
+        window=(-1, 0),
+        max_staleness=2,
+    )
+    scan = _ScanResult(
+        keyframes={"video": {"a": np.array([0], dtype=np.int64)}},
+        real_by_entity={},
+    )
+
+    rows = _resolve_rows(
+        fields={"video": field},
+        sample_index=sample_index,
+        scan=scan,
+        required={"video"},
+    )
+
+    assert rows.anchors.tolist() == [2]
+    lo, hi = rows.field_ranges["video"]
+    assert lo.tolist() == [0]
+    assert hi.tolist() == [2]
 
 
 def test_temporal_max_staleness_is_expressed_in_seconds() -> None:
