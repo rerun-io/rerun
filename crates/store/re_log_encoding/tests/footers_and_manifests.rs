@@ -761,10 +761,10 @@ fn add_chunk_keys_to_raw(raw: &RawRrdManifest) -> RawRrdManifest {
     }
 }
 
-/// Verifies that concatenating manifests where some have `chunk_keys` and others don't
+/// Verifies that merging manifests where some have `chunk_keys` and others don't
 /// produces a correctly aligned result (null keys for manifests without them).
 #[test]
-fn concat_with_mixed_chunk_keys() {
+fn merge_with_mixed_chunk_keys() {
     use re_log_types::example_components::{MyPoint, MyPoints};
     use re_log_types::{TimeInt, build_frame_nr};
 
@@ -803,8 +803,8 @@ fn concat_with_mixed_chunk_keys() {
     assert!(m1.col_chunk_key_raw().is_some());
     assert!(m2.col_chunk_key_raw().is_none());
 
-    // Concat should handle mixed chunk_keys gracefully
-    let combined = RrdManifest::concat(&[&m1, &m2]).unwrap();
+    // Merging should handle mixed chunk_keys gracefully
+    let combined = RrdManifest::merge(&[&m1, &m2]).unwrap();
 
     // Total chunks must equal sum of parts
     assert_eq!(combined.num_chunks(), 4);
@@ -825,6 +825,57 @@ fn concat_with_mixed_chunk_keys() {
     // Last two entries (from m2, which had no keys) should be null
     assert!(combined_keys.is_null(2));
     assert!(combined_keys.is_null(3));
+}
+
+/// Two manifests that disagree on the type of a column they both have cannot have their schemas
+/// unified. The merge keeps the schema of the first one and still describes every chunk.
+#[test]
+fn merge_keeps_the_first_schema_when_columns_disagree() {
+    use re_log_types::example_components::{MyPoint, MyPoint64, MyPoints};
+    use re_log_types::{TimeInt, build_frame_nr};
+
+    let store_id = generate_recording_store_id();
+
+    let mut next_chunk_id = next_chunk_id_generator(300);
+    let mut next_row_id = next_row_id_generator(300);
+    let timepoint = TimePoint::from([build_frame_nr(TimeInt::new_temporal(10))]);
+
+    let manifest_of = |chunk: Chunk| {
+        let raw =
+            RawRrdManifest::build_in_memory_from_chunks(store_id.clone(), [chunk].iter()).unwrap();
+        RrdManifest::try_new(&raw).unwrap()
+    };
+
+    // The same component logged with two different types, so the column shares its name but not
+    // its datatype.
+    let points = MyPoint::from_iter(0..1);
+    let first = manifest_of(
+        Chunk::builder_with_id(next_chunk_id(), "entity_a")
+            .with_sparse_component_batches(
+                next_row_id(),
+                timepoint.clone(),
+                [(MyPoints::descriptor_points(), Some(&points as _))],
+            )
+            .build()
+            .unwrap(),
+    );
+
+    let points_64 = MyPoint64::from_iter(0..1);
+    let second = manifest_of(
+        Chunk::builder_with_id(next_chunk_id(), "entity_a")
+            .with_sparse_component_batches(
+                next_row_id(),
+                timepoint,
+                [(MyPoints::descriptor_points(), Some(&points_64 as _))],
+            )
+            .build()
+            .unwrap(),
+    );
+
+    let combined = RrdManifest::merge(&[&first, &second]).unwrap();
+
+    assert_eq!(combined.num_chunks(), 2);
+    assert_eq!(combined.recording_schema(), first.recording_schema());
 }
 
 /// Filtering a manifest drops the chunk logged under `__properties` and keeps every other chunk.
@@ -935,9 +986,9 @@ fn size_bytes_accounts_for_extracted_arrays() {
 }
 
 /// Verifies that `RawRrdManifest::concat` → `RrdManifest::try_new` produces the same result
-/// as `RrdManifest::try_new` on each part → `RrdManifest::concat`.
+/// as `RrdManifest::try_new` on each part → `RrdManifest::merge`.
 #[test]
-fn concat_raw_then_validate_vs_validate_then_concat() {
+fn concat_raw_then_validate_vs_validate_then_merge() {
     use re_log_types::example_components::{MyColor, MyPoint, MyPoints};
     use re_log_types::{TimeInt, build_frame_nr};
 
@@ -996,11 +1047,11 @@ fn concat_raw_then_validate_vs_validate_then_concat() {
     let raw_concatenated = RawRrdManifest::concat(&[&raw1, &raw2, &raw3]).unwrap();
     let path_a = RrdManifest::try_new(&raw_concatenated).unwrap();
 
-    // Path B: validate each raw manifest into RrdManifest first, then concat.
+    // Path B: validate each raw manifest into RrdManifest first, then merge.
     let m1 = RrdManifest::try_new(&raw1).unwrap();
     let m2 = RrdManifest::try_new(&raw2).unwrap();
     let m3 = RrdManifest::try_new(&raw3).unwrap();
-    let path_b = RrdManifest::concat(&[&m1, &m2, &m3]).unwrap();
+    let path_b = RrdManifest::merge(&[&m1, &m2, &m3]).unwrap();
 
     // Both paths must produce identical results.
     assert_eq!(path_a.num_chunks(), path_b.num_chunks(), "num_chunks");

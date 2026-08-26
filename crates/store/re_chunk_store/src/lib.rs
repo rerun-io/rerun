@@ -17,14 +17,17 @@
 //!
 
 mod compact;
+mod compaction_election;
 mod dataframe;
 
 mod drop_time_range;
 pub mod entity_tree;
 mod events;
 mod gc;
+mod insert_rrd_manifest;
 mod lazy_store;
 mod lineage;
+mod lineage_dropping;
 mod missing_chunk_reporter;
 mod profile;
 mod properties;

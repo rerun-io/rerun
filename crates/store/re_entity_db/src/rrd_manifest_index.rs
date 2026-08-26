@@ -107,7 +107,7 @@ struct LoadedRanges {
 /// A secondary index that keeps track of which chunks have been loaded into memory.
 ///
 /// This is constructed from an [`RrdManifest`], which is what the server sends to the client/viewer.
-/// The manifest may be received in parts and concatenated together.
+/// The manifest may be received in parts and merged together.
 #[derive(Default, re_byte_size::SizeBytes)]
 #[cfg_attr(feature = "testing", derive(Clone))]
 pub struct RrdManifestIndex {
@@ -163,9 +163,9 @@ impl RrdManifestIndex {
     ) -> CodecResult<()> {
         re_tracing::profile_function!();
 
-        // Concatenate before updating caches.
-        let concatenated = match &self.manifest {
-            Some(existing) => Some(Arc::new(RrdManifest::concat(&[existing, &delta])?)),
+        // Merge before updating caches.
+        let merged = match &self.manifest {
+            Some(existing) => Some(Arc::new(RrdManifest::merge(&[existing, &delta])?)),
             None => None,
         };
 
@@ -218,7 +218,7 @@ impl RrdManifestIndex {
 
         self.sorted_chunks.update(entity_tree, delta.temporal_map());
 
-        self.manifest = Some(concatenated.unwrap_or(delta));
+        self.manifest = Some(merged.unwrap_or(delta));
 
         Ok(())
     }
