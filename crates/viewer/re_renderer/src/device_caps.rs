@@ -171,6 +171,12 @@ pub struct DeviceCaps {
     /// Since this has a direct effect on the image sizes & screen resolution a user can use, we always pick the highest possible.
     pub max_texture_dimension2d: u32,
 
+    /// Maximum texture dimension in voxels along all three axes of a 3D texture.
+    ///
+    /// This limits the size of volumes (e.g. 3D scans) a user can upload, so we always pick the highest possible.
+    /// Note that the WebGPU minimum of 2048 is a lot lower than [`Self::max_texture_dimension2d`].
+    pub max_texture_dimension3d: u32,
+
     /// Maximum buffer size in bytes.
     ///
     /// Since this has a direct effect on how much data a user can wrangle on the gpu, we always pick the highest possible.
@@ -203,6 +209,7 @@ impl DeviceCaps {
         Self {
             tier,
             max_texture_dimension2d: limits.max_texture_dimension_2d,
+            max_texture_dimension3d: limits.max_texture_dimension_3d,
             max_buffer_size: limits.max_buffer_size,
         }
     }
@@ -277,6 +284,8 @@ impl DeviceCaps {
     pub fn limits(&self) -> wgpu::Limits {
         wgpu::Limits {
             max_texture_dimension_2d: self.max_texture_dimension2d,
+            // The webgl2 downlevel default is a mere 256, which is far too small for e.g. a 3D scan.
+            max_texture_dimension_3d: self.max_texture_dimension3d,
             max_buffer_size: self.max_buffer_size,
             ..wgpu::Limits::downlevel_webgl2_defaults()
         }

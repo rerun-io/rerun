@@ -2,7 +2,7 @@ use std::sync::mpsc;
 
 use re_log::debug_assert;
 
-use crate::texture_info::Texture2DBufferInfo;
+use crate::texture_info::{Texture2DBufferInfo, Texture3DBufferInfo};
 use crate::wgpu_resources::{BufferDesc, GpuBuffer, GpuBufferPool, GpuTexture};
 
 #[derive(thiserror::Error, Debug, Clone, PartialEq, Eq)]
@@ -30,10 +30,10 @@ pub enum CpuWriteGpuReadError {
     },
 
     #[error(
-        "Target texture doesn't fit the size of the written data to this buffer! Texture target buffer should be at most {max_copy_size} bytes, but the to be written data was {written_data_size} bytes."
+        "The written data doesn't fill the target texture exactly! Expected {required_copy_size} bytes, but the to be written data was {written_data_size} bytes."
     )]
     TargetTextureBufferSizeMismatch {
-        max_copy_size: u64,
+        required_copy_size: u64,
         written_data_size: usize,
     },
 }
@@ -291,13 +291,15 @@ where
     ) -> Result<(), CpuWriteGpuReadError> {
         let buffer_info = Texture2DBufferInfo::new(destination.texture.format(), copy_size);
 
-        // Validate that we stay within the written part of the slice (wgpu can't fully know our intention here, so we have to check).
-        // This is a bit of a leaky check since we haven't looked at copy_size which may limit the amount of memory we need.
-        if (buffer_info.buffer_size_padded as usize) < self.num_written() * std::mem::size_of::<T>()
-        {
+        // The written data has to cover the copied region exactly:
+        // too little and we'd copy uninitialized memory into the texture,
+        // too much and the extra data would be silently dropped.
+        // (wgpu can't fully know our intention here, so we have to check.)
+        let written_data_size = self.num_written() * std::mem::size_of::<T>();
+        if buffer_info.buffer_size_padded as usize != written_data_size {
             return Err(CpuWriteGpuReadError::TargetTextureBufferSizeMismatch {
-                max_copy_size: buffer_info.buffer_size_padded,
-                written_data_size: self.num_written() * std::mem::size_of::<T>(),
+                required_copy_size: buffer_info.buffer_size_padded,
+                written_data_size,
             });
         }
 
@@ -311,6 +313,50 @@ where
                 },
             },
             destination,
+            copy_size,
+        );
+
+        Ok(())
+    }
+
+    /// Copies all so far written data to the entirety of mip level 0 of a 3D texture.
+    ///
+    /// Assumes that the buffer consists of as-tightly-packed-as-possible rows of data
+    /// (taking into account required padding as specified by [`wgpu::COPY_BYTES_PER_ROW_ALIGNMENT`]),
+    /// with the rows of each depth slice following each other.
+    ///
+    /// Fails if the buffer size is not sufficient to fill the entire texture.
+    pub fn copy_to_texture3d_entire_mip0(
+        self,
+        encoder: &mut wgpu::CommandEncoder,
+        destination: &GpuTexture,
+    ) -> Result<(), CpuWriteGpuReadError> {
+        let copy_size = destination.texture.size();
+        let buffer_info = Texture3DBufferInfo::new(destination.texture.format(), copy_size);
+
+        // The written data has to cover the texture exactly:
+        // too little and we'd copy uninitialized memory into the texture,
+        // too much and the extra data would be silently dropped.
+        // (wgpu can't fully know our intention here, so we have to check).
+        let written_data_size = self.num_written() * std::mem::size_of::<T>();
+        if buffer_info.buffer_size_padded as usize != written_data_size {
+            return Err(CpuWriteGpuReadError::TargetTextureBufferSizeMismatch {
+                required_copy_size: buffer_info.buffer_size_padded,
+                written_data_size,
+            });
+        }
+
+        encoder.copy_buffer_to_texture(
+            wgpu::TexelCopyBufferInfo {
+                buffer: &self.chunk_buffer,
+                layout: buffer_info.buffer_layout(self.byte_offset_in_chunk_buffer),
+            },
+            wgpu::TexelCopyTextureInfo {
+                texture: &destination.texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
             copy_size,
         );
 

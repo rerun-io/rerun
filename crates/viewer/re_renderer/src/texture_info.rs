@@ -117,6 +117,62 @@ impl Texture2DBufferInfo {
     }
 }
 
+/// Utility for dealing with buffers containing raw 3D texture data.
+///
+/// Unlike a 2D copy, a copy that spans several depth slices has to tell the GPU how many rows
+/// make up a single slice, since each row is padded individually.
+#[derive(Clone, Debug)]
+pub struct Texture3DBufferInfo {
+    /// Layout of a single depth slice.
+    pub slice: Texture2DBufferInfo,
+
+    /// How many rows of blocks a single depth slice consists of.
+    pub rows_per_image: u32,
+
+    /// Number of depth slices.
+    pub depth: u32,
+
+    /// Size required for an unpadded buffer holding all slices.
+    pub buffer_size_unpadded: wgpu::BufferAddress,
+
+    /// Size required for a padded buffer holding all slices, as it is read/written from/to the GPU.
+    pub buffer_size_padded: wgpu::BufferAddress,
+}
+
+impl Texture3DBufferInfo {
+    /// Retrieves 3D texture buffer info for a given format & texture size.
+    ///
+    /// If a single buffer is not possible for all aspects of the texture format, all sizes will be zero.
+    #[inline]
+    pub fn new(format: wgpu::TextureFormat, extent: wgpu::Extent3d) -> Self {
+        let slice = Texture2DBufferInfo::new(format, extent);
+        let rows_per_image = extent.height / format.block_dimensions().1;
+        let depth = extent.depth_or_array_layers;
+
+        let buffer_size_unpadded = slice.buffer_size_unpadded * depth as wgpu::BufferAddress;
+        let buffer_size_padded = slice.buffer_size_padded * depth as wgpu::BufferAddress;
+
+        Self {
+            slice,
+            rows_per_image,
+            depth,
+            buffer_size_unpadded,
+            buffer_size_padded,
+        }
+    }
+
+    /// Layout of the data in a buffer holding all slices, as wgpu expects it for a copy.
+    #[inline]
+    pub fn buffer_layout(&self, offset: wgpu::BufferAddress) -> wgpu::TexelCopyBufferLayout {
+        wgpu::TexelCopyBufferLayout {
+            offset,
+            bytes_per_row: Some(self.slice.bytes_per_row_padded),
+            // Only required when copying more than one slice, but always correct.
+            rows_per_image: Some(self.rows_per_image),
+        }
+    }
+}
+
 /// The range of values a shader sees when sampling this format.
 ///
 /// `Unorm`, `Float` and sRGB formats sample in `[0, 1]`, `Snorm` in `[-1, 1]`, and integer
@@ -199,5 +255,47 @@ pub fn sample_value_range(format: wgpu::TextureFormat) -> [f32; 2] {
 
         // Signed-normalized variants of the compressed formats
         F::Bc4RSnorm | F::Bc5RgSnorm | F::EacR11Snorm | F::EacRg11Snorm => [-1.0, 1.0],
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Padding is per row, so a volume of many thin slices is dominated by padding.
+    #[test]
+    fn texture3d_buffer_info_pads_every_row_of_every_slice() {
+        let info = Texture3DBufferInfo::new(
+            wgpu::TextureFormat::R16Float,
+            wgpu::Extent3d {
+                width: 3,
+                height: 5,
+                depth_or_array_layers: 2,
+            },
+        );
+
+        assert_eq!(info.rows_per_image, 5);
+        assert_eq!(info.depth, 2);
+        assert_eq!(info.slice.bytes_per_row_unpadded, 6);
+        assert_eq!(info.slice.bytes_per_row_padded, 256);
+        assert_eq!(info.buffer_size_unpadded, 6 * 5 * 2);
+        assert_eq!(info.buffer_size_padded, 256 * 5 * 2);
+    }
+
+    /// A row that is already aligned needs no padding at all, in which case the upload can bulk copy.
+    #[test]
+    fn texture3d_buffer_info_needs_no_padding_for_aligned_rows() {
+        let info = Texture3DBufferInfo::new(
+            wgpu::TextureFormat::R32Float,
+            wgpu::Extent3d {
+                width: 64,
+                height: 2,
+                depth_or_array_layers: 3,
+            },
+        );
+
+        assert_eq!(info.slice.bytes_per_row_unpadded, 256);
+        assert_eq!(info.slice.bytes_per_row_padded, 256);
+        assert_eq!(info.buffer_size_padded, info.buffer_size_unpadded);
     }
 }

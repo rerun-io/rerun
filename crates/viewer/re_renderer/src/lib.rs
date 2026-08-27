@@ -114,7 +114,7 @@ pub use renderer::gpu_data::{GaussianShCoefficient, PositionRadius};
 pub use robust_bounds::RobustBounds;
 pub use shape_builder::ShapeBuilder;
 pub use size::Size;
-pub use texture_info::Texture2DBufferInfo;
+pub use texture_info::{Texture2DBufferInfo, Texture3DBufferInfo};
 pub use transform::RectTransform;
 pub use view_builder::{
     BlendWithBackground, RenderMode, ViewBuilder, ViewBuilderId, ViewPickingConfiguration,

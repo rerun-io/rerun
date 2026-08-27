@@ -128,19 +128,11 @@ pub struct ImageDataDesc<'a> {
 }
 
 impl ImageDataDesc<'_> {
-    fn validate(
+    /// Checks the data against the texture it is to be transferred into.
+    fn validate_target_texture(
         &self,
-        limits: &wgpu::Limits,
         target_texture_desc: &TextureDesc,
     ) -> Result<(), ImageDataToTextureError> {
-        let Self {
-            label,
-            data,
-            format,
-            width_height,
-            alpha_channel_usage: _,
-        } = self;
-
         if !target_texture_desc
             .usage
             .contains(self.target_texture_usage_requirements())
@@ -158,6 +150,21 @@ impl ImageDataDesc<'_> {
                 required_format: self.target_texture_format(),
             });
         }
+
+        Ok(())
+    }
+
+    /// Checks the data against the device limits.
+    ///
+    /// This has to pass before any gpu resources are allocated for the data.
+    fn validate(&self, limits: &wgpu::Limits) -> Result<(), ImageDataToTextureError> {
+        let Self {
+            label,
+            data,
+            format,
+            width_height,
+            alpha_channel_usage: _,
+        } = self;
 
         if width_height[0] == 0 || width_height[1] == 0 {
             return Err(ImageDataToTextureError::ZeroSize(label.clone()));
@@ -219,12 +226,16 @@ impl ImageDataDesc<'_> {
     }
 
     /// Creates a texture that can hold the image data.
+    ///
+    /// Fails if the data doesn't fit the device limits, in which case nothing is allocated.
     pub fn create_target_texture(
         &self,
         ctx: &RenderContext,
         texture_usages: wgpu::TextureUsages,
-    ) -> GpuTexture {
-        ctx.gpu_resources.textures.alloc(
+    ) -> Result<GpuTexture, ImageDataToTextureError> {
+        self.validate(&ctx.device.limits())?;
+
+        Ok(ctx.gpu_resources.textures.alloc(
             &ctx.device,
             &TextureDesc {
                 label: self.label.clone(),
@@ -239,7 +250,7 @@ impl ImageDataDesc<'_> {
                 format: self.target_texture_format(),
                 usage: self.target_texture_usage_requirements() | texture_usages,
             },
-        )
+        ))
     }
 }
 
@@ -262,7 +273,8 @@ pub fn transfer_image_data_to_texture(
 ) -> Result<(), ImageDataToTextureError> {
     re_tracing::profile_function!();
 
-    image_data.validate(&ctx.device.limits(), &target_texture.creation_desc)?;
+    image_data.validate(&ctx.device.limits())?;
+    image_data.validate_target_texture(&target_texture.creation_desc)?;
 
     let ImageDataDesc {
         label,

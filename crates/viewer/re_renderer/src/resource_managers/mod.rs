@@ -7,11 +7,16 @@
 //! low level gpu resources and their efficient allocation.
 
 mod image_data_to_texture;
+mod texture_3d;
 mod texture_manager;
 mod yuv_converter;
 
 pub use image_data_to_texture::{
     ImageDataDesc, ImageDataToTextureError, SourceImageDataFormat, transfer_image_data_to_texture,
+};
+pub use texture_3d::{
+    GpuTexture3D, Texture3DDataDesc, Texture3DDataError, create_and_upload_texture_3d,
+    transfer_texture_3d_data,
 };
 pub use texture_manager::{
     AlphaChannelUsage, GpuTexture2D, TextureManager2D, TextureManager2DError,
