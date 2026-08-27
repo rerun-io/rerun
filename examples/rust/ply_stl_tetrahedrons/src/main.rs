@@ -11,16 +11,21 @@ use std::path::{Path, PathBuf};
 
 use rerun::external::re_log;
 
+#[derive(Debug, clap::Parser)]
+#[clap(author, version, about)]
+struct Args {
+    #[command(flatten)]
+    rerun: rerun::clap::RerunArgs,
+}
+
 fn main() -> anyhow::Result<()> {
-    let main_thread_token = rerun::MainThreadToken::i_promise_i_am_on_the_main_thread();
     re_log::setup_logging();
 
-    let (rec, storage) =
-        rerun::RecordingStreamBuilder::new("rerun_example_ply_stl_tetrahedrons").memory()?;
-    run(&rec)?;
+    use clap::Parser as _;
+    let args = Args::parse();
 
-    rerun::native_viewer::show(main_thread_token, storage.take())?;
-    Ok(())
+    let (rec, _serve_guard) = args.rerun.init("rerun_example_ply_stl_tetrahedrons")?;
+    run(&rec)
 }
 
 fn run(rec: &rerun::RecordingStream) -> anyhow::Result<()> {

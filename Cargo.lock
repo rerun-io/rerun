@@ -7926,6 +7926,7 @@ name = "ply_stl_tetrahedrons"
 version = "0.37.0-alpha.1+dev"
 dependencies = [
  "anyhow",
+ "clap",
  "rerun",
 ]
 

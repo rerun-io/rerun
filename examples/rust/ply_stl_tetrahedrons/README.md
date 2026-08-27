@@ -23,4 +23,5 @@ All files are generated as tetrahedrons or tetrahedron projections and live in t
 cargo run -p ply_stl_tetrahedrons
 ```
 
-The example opens the viewer from the local checkout and blocks until the viewer window is closed.
+This spawns a Viewer and logs into it.
+Pass `--help` for the other ways to consume the data, such as `--save` or `--serve`.

@@ -7,9 +7,7 @@ license = "MIT OR Apache-2.0"
 publish = false
 
 [dependencies]
-rerun = { path = "../../../crates/top/rerun", default-features = false, features = [
-  "native_viewer",
-  "sdk",
-] }
+rerun = { path = "../../../crates/top/rerun", features = ["clap", "web_viewer"] }
 
 anyhow.workspace = true
+clap = { workspace = true, features = ["derive"] }
