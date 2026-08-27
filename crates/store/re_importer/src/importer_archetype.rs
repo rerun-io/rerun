@@ -1,7 +1,7 @@
 use re_chunk::{Chunk, RowId};
 use re_log_types::{ApplicationId, EntityPath, TimePoint};
 
-use crate::{ImportedData, Importer, ImporterError};
+use crate::{ImportedData, Importer, ImporterError, PLY_EXTENSION};
 
 // ---
 
@@ -143,6 +143,12 @@ impl Importer for ArchetypeImporter {
                 }
                 _ => Err(crate::ImporterError::Incompatible(filepath.clone())),
             }
+        } else if extension == PLY_EXTENSION {
+            // `.ply` is in both the mesh and the point-cloud extension lists, so it needs to come
+            // first: only the header tells us which of the two a given file actually holds.
+            re_log::debug!(?filepath, importer = self.name(), "Loading .ply geometry…",);
+            load_ply(&filepath, timepoint, entity_path, &contents)
+                .map(|chunks| self.send_chunks(&tx, &store_id, chunks))
         } else if crate::SUPPORTED_MESH_EXTENSIONS.contains(&extension.as_str()) {
             re_log::debug!(?filepath, importer = self.name(), "Loading 3D model…",);
             load_mesh(
@@ -152,10 +158,6 @@ impl Importer for ArchetypeImporter {
                 contents.into_owned(),
             )
             .map(|chunks| self.send_chunks(&tx, &store_id, chunks))
-        } else if crate::SUPPORTED_POINT_CLOUD_EXTENSIONS.contains(&extension.as_str()) {
-            re_log::debug!(?filepath, importer = self.name(), "Loading .ply geometry…",);
-            load_ply(&filepath, timepoint, entity_path, &contents)
-                .map(|chunks| self.send_chunks(&tx, &store_id, chunks))
         } else if crate::SUPPORTED_TEXT_EXTENSIONS.contains(&extension.as_str()) {
             re_log::debug!(?filepath, importer = self.name(), "Loading text document…",);
             load_text_document(
