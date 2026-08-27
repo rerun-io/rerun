@@ -247,6 +247,7 @@ Update instructions:
 | re_crash_handler     | Detect panics and signals, logging them and optionally sending them to analytics.             |
 | re_error             | Helpers for handling errors.                                                                  |
 | re_format            | Miscellaneous tools to format and parse numbers, durations, etc.                              |
+| re_gpu_video         | Hardware video decoding straight to GPU textures, via Vulkan Video and VideoToolbox.         |
 | re_grpc_headers      | Rerun gRPC header conventions (`x-rerun-*` consts, version interceptor, tower layers).        |
 | re_int               | Small numeric helper traits: saturating integer casts and unsigned absolute value.            |
 | re_lenses            | A collection of lenses for mapping component data to Rerun semantic types.                    |

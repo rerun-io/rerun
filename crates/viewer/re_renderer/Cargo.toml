@@ -95,7 +95,10 @@ tobj = { workspace = true, optional = true }
 
 # native
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+re_gpu_video.workspace = true
+
 notify.workspace = true
+pollster.workspace = true
 
 # web
 [target.'cfg(target_arch = "wasm32")'.dependencies]

@@ -30,6 +30,8 @@
 #![expect(clippy::unwrap_used)]
 
 mod allocator;
+#[cfg(native)]
+pub mod device;
 pub mod device_caps;
 pub mod importer;
 pub mod mesh;
