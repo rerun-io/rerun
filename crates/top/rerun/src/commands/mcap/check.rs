@@ -18,7 +18,7 @@ use parking_lot::Mutex;
 use re_log_types::{TimeType, TimelineName};
 use re_mcap::decoders::{DecoderRegistry, TopicFilter};
 
-use super::info::print_table;
+use crate::commands::table_util::print_table;
 
 #[derive(Debug, Clone, clap::Parser)]
 pub struct CheckCommand {

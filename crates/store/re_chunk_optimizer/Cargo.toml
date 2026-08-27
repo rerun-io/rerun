@@ -1,0 +1,35 @@
+[package]
+name = "re_chunk_optimizer"
+authors.workspace = true
+description = "Analysis and memory-bounded optimization of Rerun chunk layouts"
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+license.workspace = true
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+
+
+[dependencies]
+re_chunk.workspace = true
+re_log_encoding = { workspace = true, features = ["decoder"] }
+re_log_types.workspace = true
+
+itertools.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+re_chunk_store.workspace = true # only for `OptimizationProfile::OBJECT_STORE` in tests
+re_types_core.workspace = true
+
+anyhow.workspace = true
+insta.workspace = true

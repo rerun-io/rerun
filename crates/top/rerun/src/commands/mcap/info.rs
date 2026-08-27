@@ -4,8 +4,8 @@
 
 use std::path::PathBuf;
 
+use crate::commands::table_util::print_table;
 use anyhow::Context as _;
-use comfy_table::{CellAlignment, ContentArrangement, Table, TableComponent, presets};
 
 #[derive(Debug, Clone, clap::Parser)]
 pub struct InfoCommand {
@@ -205,38 +205,4 @@ fn format_timestamp(timestamp_ns: Option<u64>) -> String {
             || "—".to_owned(),
             |timestamp| re_log_types::Timestamp::from_nanos_since_epoch(timestamp).format_iso(),
         )
-}
-
-pub(super) fn print_table(headers: &[&str], rows: &[Vec<String>], right_aligned: &[usize]) {
-    if headers.is_empty()
-        || rows.iter().any(|row| row.len() != headers.len())
-        || right_aligned.iter().any(|&column| column >= headers.len())
-    {
-        return;
-    }
-
-    let mut table = Table::new();
-    table
-        .load_preset(presets::NOTHING)
-        .set_content_arrangement(ContentArrangement::Disabled)
-        .set_style(TableComponent::HeaderLines, '─')
-        .set_header(headers);
-
-    for row in rows {
-        table.add_row(row);
-    }
-
-    for &column in right_aligned {
-        let Some(column) = table.column_mut(column) else {
-            return;
-        };
-        column.set_cell_alignment(CellAlignment::Right);
-    }
-
-    for (index, column) in table.column_iter_mut().enumerate() {
-        let right_padding = if index + 1 == headers.len() { 0 } else { 2 };
-        column.set_padding((0, right_padding));
-    }
-
-    println!("{}", table.trim_fmt());
 }

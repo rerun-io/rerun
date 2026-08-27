@@ -8920,6 +8920,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_chunk_optimizer"
+version = "0.37.0-alpha.1+dev"
+dependencies = [
+ "anyhow",
+ "insta",
+ "itertools 0.15.0",
+ "re_chunk",
+ "re_chunk_store",
+ "re_log_encoding",
+ "re_log_types",
+ "re_types_core",
+ "thiserror 2.0.19",
+]
+
+[[package]]
 name = "re_chunk_store"
 version = "0.37.0-alpha.1+dev"
 dependencies = [
@@ -11628,6 +11643,7 @@ dependencies = [
  "re_byte_size",
  "re_capabilities",
  "re_chunk",
+ "re_chunk_optimizer",
  "re_chunk_store",
  "re_crash_handler",
  "re_data_source",

@@ -373,4 +373,3 @@ This includes the chunk and footer schemas, as well as the high-level data model
 Sorbet is versioned and **subject to change**, but `re_sorbet` performs in-memory migration to the current Sorbet version as chunks (and the footer manifest) are loaded.
 Any CLI tool that rewrites an RRD (`rerun rrd merge`, `rerun rrd optimize`, `rerun rrd migrate`, …) emits chunks in the current Sorbet version, so a round-trip through any of these is also a migration.
 Future changes to Sorbet will be auto-migrated in the same way.
-

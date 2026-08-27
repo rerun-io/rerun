@@ -125,6 +125,7 @@ rrd = [
 run = [
   "auth",
   "clap",
+  "dep:re_chunk_optimizer",
   "dep:re_crash_handler",
   "dep:re_data_source",
   "re_log_encoding/decoder",
@@ -199,6 +200,7 @@ walkdir.workspace = true
 # Optional dependencies:
 re_analytics = { workspace = true, optional = true }
 re_auth = { workspace = true, optional = true }
+re_chunk_optimizer = { workspace = true, optional = true }
 re_chunk_store.workspace = true
 re_crash_handler = { workspace = true, optional = true }
 re_data_source = { workspace = true, optional = true }

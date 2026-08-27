@@ -70,6 +70,7 @@ re_types_builder_prelude = { path = "crates/build/re_types_builder_prelude", ver
 # crates/store:
 re_lenses_core = { path = "crates/store/re_lenses_core", version = "=0.37.0-alpha.1", default-features = false }
 re_chunk = { path = "crates/store/re_chunk", version = "=0.37.0-alpha.1", default-features = false }
+re_chunk_optimizer = { path = "crates/store/re_chunk_optimizer", version = "=0.37.0-alpha.1", default-features = false }
 re_chunk_store = { path = "crates/store/re_chunk_store", version = "=0.37.0-alpha.1", default-features = false }
 re_importer = { path = "crates/store/re_importer", version = "=0.37.0-alpha.1", default-features = false }
 re_data_source = { path = "crates/store/re_data_source", version = "=0.37.0-alpha.1", default-features = false }
@@ -543,6 +544,7 @@ debug = false
 "re_capabilities".debug = true
 "re_case".debug = true
 "re_chunk_store_ui".debug = true
+"re_chunk_optimizer".debug = true
 "re_chunk_store".debug = true
 "re_chunk".debug = true
 "re_component_ui".debug = true
