@@ -1,6 +1,6 @@
 <!--[metadata]
 title = "Asset3D PLY mesh rendering"
-tags = ["PLY", "STL", "Points3D", "Points2D", "Asset3D"]
+tags = ["2D", "3D", "Mesh", "Point cloud"]
 -->
 
 This example logs raw `.ply` mesh files as [`Asset3D`](https://www.rerun.io/docs/reference/types/archetypes/asset3d) with the Rust SDK and relies on the Viewer to render them as meshes.
