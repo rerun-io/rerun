@@ -102,6 +102,12 @@ const SEEN_GAUSSIAN: u16 = SEEN_SCALE_X
     | SEEN_SH_DC_1
     | SEEN_SH_DC_2
     | SEEN_OPACITY;
+/// The properties that only matter when we read the color out of spherical harmonics.
+///
+/// Note that this deliberately excludes `scale_*`: those feed the radius, which is computed
+/// independently of where the color came from.
+const SEEN_SH_COLOR: u16 = SEEN_SH_DC_0 | SEEN_SH_DC_1 | SEEN_SH_DC_2 | SEEN_OPACITY;
+
 const SEEN_ALL_KNOWN_PROPS: u16 =
     SEEN_X | SEEN_Y | SEEN_Z | SEEN_COLORS | SEEN_RADIUS | SEEN_LABEL | SEEN_GAUSSIAN;
 
@@ -264,14 +270,10 @@ impl ParsedVertex {
                 alpha,
             )))
         } else if let (Some(r), Some(g), Some(b)) = (red, green, blue) {
-            Self::note_ignored_props_for(seen_props, ignored_props, SEEN_GAUSSIAN);
+            Self::note_ignored_props_for(seen_props, ignored_props, SEEN_SH_COLOR);
             Some(Color::new((r, g, b, alpha.unwrap_or(255))))
         } else {
-            Self::note_ignored_props_for(
-                seen_props,
-                ignored_props,
-                SEEN_COLORS | SEEN_SH_DC_0 | SEEN_SH_DC_1 | SEEN_SH_DC_2 | SEEN_OPACITY,
-            );
+            Self::note_ignored_props_for(seen_props, ignored_props, SEEN_COLORS | SEEN_SH_COLOR);
             None
         };
 
