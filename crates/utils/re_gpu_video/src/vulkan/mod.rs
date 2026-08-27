@@ -7,6 +7,7 @@ mod caps;
 mod decoder;
 mod device;
 mod dpb;
+mod output;
 mod record;
 mod session;
 mod sync;
@@ -24,7 +25,7 @@ use crate::{DecodeError, H264DecodeCapabilities, SetupError};
 
 use caps::{QueuePlan, VulkanVideoCaps};
 
-pub use decoder::{CpuDecoder, CpuFrame};
+pub use decoder::{CpuDecoder, CpuFrame, TextureDecoder};
 
 /// Device extensions needed for H.264 decoding.
 const REQUIRED_EXTENSIONS: [&std::ffi::CStr; 3] = [
@@ -153,6 +154,11 @@ pub struct VulkanContext {
 impl VulkanContext {
     pub fn capabilities(&self) -> &H264DecodeCapabilities {
         &self.shared.capabilities
+    }
+
+    /// See [`crate::GpuVideoContext::create_h264_decoder`].
+    pub fn create_h264_decoder(&self) -> Result<TextureDecoder, DecodeError> {
+        TextureDecoder::new(self.shared.clone())
     }
 
     /// See [`crate::GpuVideoContext::create_h264_cpu_decoder`].

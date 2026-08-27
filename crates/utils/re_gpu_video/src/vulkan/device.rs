@@ -11,8 +11,9 @@ use crate::SetupError;
 /// Never destroys the raw device: wgpu owns it, and the held [`wgpu::Device`] clone
 /// keeps it alive for as long as anything references this wrapper.
 pub struct Device {
-    /// Keeps the wgpu device (and with it the raw Vulkan device) alive.
-    _wgpu_device: wgpu::Device,
+    /// The wgpu device the raw Vulkan device was pulled out of.
+    /// Keeps it alive, and lets the output path hand textures back to wgpu.
+    pub wgpu_device: wgpu::Device,
 
     pub raw: ash::Device,
     pub video_queue_fns: ash::khr::video_queue::Device,
@@ -37,7 +38,7 @@ impl Device {
                 .get_physical_device_memory_properties(hal_device.raw_physical_device());
 
             Ok(Self {
-                _wgpu_device: device.clone(),
+                wgpu_device: device.clone(),
                 video_queue_fns: ash::khr::video_queue::Device::new(raw_instance, &raw),
                 video_decode_fns: ash::khr::video_decode_queue::Device::new(raw_instance, &raw),
                 raw,

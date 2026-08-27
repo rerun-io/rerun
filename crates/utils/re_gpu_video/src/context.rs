@@ -33,6 +33,15 @@ impl GpuVideoContext {
         }
     }
 
+    /// Creates a decoder producing frames as GPU textures.
+    pub fn create_h264_decoder(&self) -> Result<crate::H264Decoder, DecodeError> {
+        match &self.inner {
+            ContextInner::Vulkan(context) => Ok(crate::H264Decoder::new_vulkan(
+                context.create_h264_decoder()?,
+            )),
+        }
+    }
+
     /// Creates a decoder reading the decoded frames back into CPU pixel buffers.
     ///
     /// The permanent debugging path (see `examples/decode_to_yuv.rs`): the texture

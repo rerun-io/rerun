@@ -1,10 +1,12 @@
-//! Records the per-frame decode and readback command buffers.
+//! Records the per-frame decode and output-copy command buffers.
 //!
 //! The decode command buffer runs on the decode queue: layout transitions,
 //! `vkCmdBeginVideoCodingKHR` (with a session reset on first use), the decode
 //! operation wrapped in a result-status query, and the transition of the decode
-//! output to `TRANSFER_SRC` for the copy. The readback command buffer runs on the
-//! copy queue and copies the two NV12 planes into a host-visible buffer.
+//! output to `TRANSFER_SRC` for the copy. The output-copy command buffer runs on
+//! the copy queue and copies the two NV12 planes of the display region either
+//! into a host-visible buffer (the CPU debugging path) or into a fresh NV12
+//! image handed to wgpu (see [`super::output`]).
 
 use ash::vk;
 
@@ -28,15 +30,26 @@ pub struct FrameDecode<'a> {
     pub slice_offsets: &'a [u32],
 }
 
-/// Where the readback copy puts the two planes of the decoded frame.
-pub struct Readback {
-    pub buffer: vk::Buffer,
+/// The image the output copy reads the decoded frame from, left in
+/// `TRANSFER_SRC_OPTIMAL` by [`record_decode`].
+pub struct CopySource {
+    pub image: vk::Image,
+    pub layer: u32,
+
+    /// The source doubles as a DPB slot (coincide-mode hardware) and must be
+    /// transitioned back to the DPB layout after the copy.
+    pub restore_dpb_layout: bool,
 
     /// Top-left corner of the display region within the coded image, in luma texels.
     pub crop_offset: [i32; 2],
 
     /// Display size in luma texels.
     pub display: [u32; 2],
+}
+
+/// Where the readback copy puts the two planes of the decoded frame.
+pub struct Readback {
+    pub buffer: vk::Buffer,
 
     /// Byte offset of the chroma plane within the buffer (the luma plane is at 0).
     pub uv_buffer_offset: u64,
@@ -332,29 +345,24 @@ pub fn record_decode(
 
 /// Records the copy of the decoded frame's display region into the readback buffer,
 /// cropping the coded image down to the display size.
-///
-/// In coincide mode the copied layer doubles as a DPB slot and is transitioned back
-/// to the DPB layout afterwards.
 #[expect(unsafe_code)]
-pub fn record_readback(
+pub fn record_output_to_buffer(
     device: &Device,
     cmd: vk::CommandBuffer,
-    images: &DecodeImages,
-    setup_slot: Option<u8>,
+    source: &CopySource,
     readback: &Readback,
 ) {
     re_tracing::profile_function!();
 
-    let (image, layer) = images.readback_source(setup_slot);
     let subresource = |aspect| {
         vk::ImageSubresourceLayers::default()
             .aspect_mask(aspect)
-            .base_array_layer(layer)
+            .base_array_layer(source.layer)
             .layer_count(1)
     };
 
-    let [crop_x, crop_y] = readback.crop_offset;
-    let [display_width, display_height] = readback.display;
+    let [crop_x, crop_y] = source.crop_offset;
+    let [display_width, display_height] = source.display;
 
     // Plane offsets and extents are in each plane's own texel coordinates,
     // half resolution for the chroma plane. 4:2:0 crop offsets are always even.
@@ -387,7 +395,7 @@ pub fn record_readback(
             }),
     ];
     let copy_info = vk::CopyImageToBufferInfo2::default()
-        .src_image(image)
+        .src_image(source.image)
         .src_image_layout(vk::ImageLayout::TRANSFER_SRC_OPTIMAL)
         .dst_buffer(readback.buffer)
         .regions(&regions);
@@ -397,36 +405,136 @@ pub fn record_readback(
         device.raw.cmd_copy_image_to_buffer2(cmd, &copy_info);
     }
 
-    let mut barriers = Vec::new();
-    if images.coincide {
-        // The layer stays a valid reference picture, restore its layout.
-        barriers.push(image_barrier(
-            image,
-            layer,
-            1,
-            vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
-            vk::ImageLayout::VIDEO_DECODE_DPB_KHR,
-            (
-                vk::PipelineStageFlags2::TRANSFER,
-                vk::AccessFlags2::TRANSFER_READ,
-            ),
-            (
-                vk::PipelineStageFlags2::ALL_COMMANDS,
-                vk::AccessFlags2::NONE,
-            ),
-        ));
-    }
     // Make the copy visible to the host read after the semaphore wait.
     let host_read_barriers = [vk::MemoryBarrier2::default()
         .src_stage_mask(vk::PipelineStageFlags2::TRANSFER)
         .src_access_mask(vk::AccessFlags2::TRANSFER_WRITE)
         .dst_stage_mask(vk::PipelineStageFlags2::HOST)
         .dst_access_mask(vk::AccessFlags2::HOST_READ)];
+    let restore_barriers = source_restore_barriers(source);
     let dependency = vk::DependencyInfo::default()
-        .image_memory_barriers(&barriers)
+        .image_memory_barriers(&restore_barriers)
         .memory_barriers(&host_read_barriers);
     // SAFETY: The command buffer is in recording state.
     unsafe {
         device.raw.cmd_pipeline_barrier2(cmd, &dependency);
     }
+}
+
+/// Records the copy of the decoded frame's display region into a fresh NV12 image
+/// destined for wgpu, cropping the coded image down to `dst_extent`.
+///
+/// `dst_extent` is the display size rounded up to even (NV12 images need even sizes),
+/// the destination image's own extent. The image's previous content is discarded, and
+/// it is left in `TRANSFER_DST_OPTIMAL`: the layout matching the `COPY_DST` state it
+/// is handed to wgpu in.
+#[expect(unsafe_code)]
+pub fn record_output_to_image(
+    device: &Device,
+    cmd: vk::CommandBuffer,
+    source: &CopySource,
+    dst_image: vk::Image,
+    dst_extent: vk::Extent2D,
+) {
+    re_tracing::profile_function!();
+
+    pipeline_barrier(
+        device,
+        cmd,
+        &[image_barrier(
+            dst_image,
+            0,
+            1,
+            vk::ImageLayout::UNDEFINED,
+            vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+            (vk::PipelineStageFlags2::NONE, vk::AccessFlags2::NONE),
+            (
+                vk::PipelineStageFlags2::TRANSFER,
+                vk::AccessFlags2::TRANSFER_WRITE,
+            ),
+        )],
+    );
+
+    let subresource = |aspect, layer| {
+        vk::ImageSubresourceLayers::default()
+            .aspect_mask(aspect)
+            .base_array_layer(layer)
+            .layer_count(1)
+    };
+    let [crop_x, crop_y] = source.crop_offset;
+
+    // Plane offsets and extents are in each plane's own texel coordinates,
+    // half resolution for the chroma plane. 4:2:0 crop offsets are always even,
+    // and the even destination extent never reaches past the coded size:
+    // an odd display size means at least one texel of crop on the far side.
+    let regions = [
+        vk::ImageCopy2::default()
+            .src_subresource(subresource(vk::ImageAspectFlags::PLANE_0, source.layer))
+            .src_offset(vk::Offset3D {
+                x: crop_x,
+                y: crop_y,
+                z: 0,
+            })
+            .dst_subresource(subresource(vk::ImageAspectFlags::PLANE_0, 0))
+            .extent(vk::Extent3D {
+                width: dst_extent.width,
+                height: dst_extent.height,
+                depth: 1,
+            }),
+        vk::ImageCopy2::default()
+            .src_subresource(subresource(vk::ImageAspectFlags::PLANE_1, source.layer))
+            .src_offset(vk::Offset3D {
+                x: crop_x / 2,
+                y: crop_y / 2,
+                z: 0,
+            })
+            .dst_subresource(subresource(vk::ImageAspectFlags::PLANE_1, 0))
+            .extent(vk::Extent3D {
+                width: dst_extent.width / 2,
+                height: dst_extent.height / 2,
+                depth: 1,
+            }),
+    ];
+    let copy_info = vk::CopyImageInfo2::default()
+        .src_image(source.image)
+        .src_image_layout(vk::ImageLayout::TRANSFER_SRC_OPTIMAL)
+        .dst_image(dst_image)
+        .dst_image_layout(vk::ImageLayout::TRANSFER_DST_OPTIMAL)
+        .regions(&regions);
+
+    // SAFETY: The command buffer is in recording state.
+    unsafe {
+        device.raw.cmd_copy_image2(cmd, &copy_info);
+    }
+
+    // No barrier for the destination: the host wait on the copy's semaphore value
+    // orders it against wgpu's submissions, and wgpu's own transition out of
+    // `COPY_DST` makes the transfer write visible there.
+    let barriers = source_restore_barriers(source);
+    if !barriers.is_empty() {
+        pipeline_barrier(device, cmd, &barriers);
+    }
+}
+
+/// In coincide mode the copy source doubles as a DPB slot and stays a valid
+/// reference picture: restore its layout after the copy read.
+fn source_restore_barriers(source: &CopySource) -> Vec<vk::ImageMemoryBarrier2<'static>> {
+    if !source.restore_dpb_layout {
+        return Vec::new();
+    }
+    vec![image_barrier(
+        source.image,
+        source.layer,
+        1,
+        vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
+        vk::ImageLayout::VIDEO_DECODE_DPB_KHR,
+        (
+            vk::PipelineStageFlags2::TRANSFER,
+            vk::AccessFlags2::TRANSFER_READ,
+        ),
+        (
+            vk::PipelineStageFlags2::ALL_COMMANDS,
+            vk::AccessFlags2::NONE,
+        ),
+    )]
 }
