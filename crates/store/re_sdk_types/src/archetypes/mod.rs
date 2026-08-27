@@ -53,6 +53,7 @@ mod mesh3d_ext;
 mod pinhole;
 mod pinhole_ext;
 mod points2d;
+mod points2d_ext;
 mod points3d;
 mod points3d_ext;
 mod recording_info;
