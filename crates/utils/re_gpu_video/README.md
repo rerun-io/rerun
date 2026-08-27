@@ -10,7 +10,7 @@ Part of the [`rerun`](https://github.com/rerun-io/rerun) family of crates.
 Hardware video decoding straight to `wgpu` textures, without the decoded frames ever leaving the GPU.
 
 Two backends, chosen at runtime based on the wgpu backend of the adapter:
-* Vulkan Video (Linux & Windows)
+* Vulkan Video: any Vulkan driver exposing the video decode extensions
 * VideoToolbox (macOS, not yet implemented)
 
 Decode-only, H.264 first.

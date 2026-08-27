@@ -2,7 +2,8 @@
 //!
 //! Two backends, chosen at runtime based on the wgpu backend of the adapter
 //! (see [`VideoDeviceSetup::request`]):
-//! * Vulkan Video (Linux & Windows)
+//! * Vulkan Video: any Vulkan driver exposing the video decode extensions.
+//!   Software rasterizers and `MoltenVK` don't, the probe reports no support there.
 //! * `VideoToolbox` (macOS, not yet implemented)
 //!
 //! Integration happens in two steps:
@@ -13,11 +14,11 @@
 //!   get enabled on it.
 //! * [`VideoDeviceSetup::into_context`] then turns the setup into a [`GpuVideoContext`],
 //!   from which decoders can be created.
+//!
+//! This crate is native only, web builds must not include it.
 
 mod context;
 mod setup;
-
-#[cfg(vulkan_video)]
 mod vulkan;
 
 pub use context::GpuVideoContext;
@@ -49,6 +50,5 @@ pub enum SetupError {
     UnexpectedWgpuBackend,
 
     #[error("Vulkan error: {0}")]
-    #[cfg(vulkan_video)]
     Vulkan(#[from] ash::vk::Result),
 }

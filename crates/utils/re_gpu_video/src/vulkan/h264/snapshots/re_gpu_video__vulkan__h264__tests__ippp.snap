@@ -1,0 +1,53 @@
+---
+source: crates/utils/re_gpu_video/src/vulkan/h264/tests.rs
+assertion_line: 78
+expression: "trace_fixture(\"ippp\")"
+---
+# AU 0
+Sps { id: 0, 64x64, poc_type: 2, max_num_ref_frames: 3, log2_max_frame_num: 4 }
+Pps { id: 0, sps: 0 }
+DecodeFrame { frame_num: 0, poc: 0 (top 0, bottom 0), idr, ref -> slot 0 }
+# AU 1
+DecodeFrame { frame_num: 1, poc: 2 (top 2, bottom 2), ref -> slot 1, refs: [slot 0 (fn 0, poc 0)], l0: [0] }
+# AU 2
+DecodeFrame { frame_num: 2, poc: 4 (top 4, bottom 4), ref -> slot 2, refs: [slot 0 (fn 0, poc 0), slot 1 (fn 1, poc 2)], l0: [1, 1, 0] }
+# AU 3
+DecodeFrame { frame_num: 3, poc: 6 (top 6, bottom 6), ref -> slot 3, refs: [slot 0 (fn 0, poc 0), slot 1 (fn 1, poc 2), slot 2 (fn 2, poc 4)], l0: [2, 2, 1, 0] }
+FreeSlots [0]
+# AU 4
+DecodeFrame { frame_num: 4, poc: 8 (top 8, bottom 8), ref -> slot 0, refs: [slot 1 (fn 1, poc 2), slot 2 (fn 2, poc 4), slot 3 (fn 3, poc 6)], l0: [3, 3, 2, 1] }
+FreeSlots [1]
+# AU 5
+DecodeFrame { frame_num: 5, poc: 10 (top 10, bottom 10), ref -> slot 1, refs: [slot 0 (fn 4, poc 8), slot 2 (fn 2, poc 4), slot 3 (fn 3, poc 6)], l0: [0, 0, 3, 2] }
+FreeSlots [2]
+# AU 6
+DecodeFrame { frame_num: 6, poc: 12 (top 12, bottom 12), ref -> slot 2, refs: [slot 0 (fn 4, poc 8), slot 1 (fn 5, poc 10), slot 3 (fn 3, poc 6)], l0: [1, 1, 0, 3] }
+FreeSlots [3]
+# AU 7
+DecodeFrame { frame_num: 7, poc: 14 (top 14, bottom 14), ref -> slot 3, refs: [slot 0 (fn 4, poc 8), slot 1 (fn 5, poc 10), slot 2 (fn 6, poc 12)], l0: [2, 2, 1, 0] }
+FreeSlots [0]
+# AU 8
+DecodeFrame { frame_num: 8, poc: 16 (top 16, bottom 16), ref -> slot 0, refs: [slot 1 (fn 5, poc 10), slot 2 (fn 6, poc 12), slot 3 (fn 7, poc 14)], l0: [3, 3, 2, 1] }
+FreeSlots [1]
+# AU 9
+DecodeFrame { frame_num: 9, poc: 18 (top 18, bottom 18), ref -> slot 1, refs: [slot 0 (fn 8, poc 16), slot 2 (fn 6, poc 12), slot 3 (fn 7, poc 14)], l0: [0, 0, 3, 2] }
+FreeSlots [2]
+# AU 10
+DecodeFrame { frame_num: 10, poc: 20 (top 20, bottom 20), ref -> slot 2, refs: [slot 0 (fn 8, poc 16), slot 1 (fn 9, poc 18), slot 3 (fn 7, poc 14)], l0: [1, 1, 0, 3] }
+FreeSlots [3]
+# AU 11
+DecodeFrame { frame_num: 11, poc: 22 (top 22, bottom 22), ref -> slot 3, refs: [slot 0 (fn 8, poc 16), slot 1 (fn 9, poc 18), slot 2 (fn 10, poc 20)], l0: [2, 2, 1, 0] }
+FreeSlots [0]
+# AU 12
+DecodeFrame { frame_num: 12, poc: 24 (top 24, bottom 24), ref -> slot 0, refs: [slot 1 (fn 9, poc 18), slot 2 (fn 10, poc 20), slot 3 (fn 11, poc 22)], l0: [3, 3, 2, 1] }
+FreeSlots [1]
+# AU 13
+DecodeFrame { frame_num: 13, poc: 26 (top 26, bottom 26), ref -> slot 1, refs: [slot 0 (fn 12, poc 24), slot 2 (fn 10, poc 20), slot 3 (fn 11, poc 22)], l0: [0, 0, 3, 2] }
+FreeSlots [2]
+# AU 14
+DecodeFrame { frame_num: 14, poc: 28 (top 28, bottom 28), ref -> slot 2, refs: [slot 0 (fn 12, poc 24), slot 1 (fn 13, poc 26), slot 3 (fn 11, poc 22)], l0: [1, 1, 0, 3] }
+FreeSlots [3]
+# AU 15
+DecodeFrame { frame_num: 15, poc: 30 (top 30, bottom 30), ref -> slot 3, refs: [slot 0 (fn 12, poc 24), slot 1 (fn 13, poc 26), slot 2 (fn 14, poc 28)], l0: [2, 2, 1, 0] }
+FreeSlots [0]
+# reorder delay 0
