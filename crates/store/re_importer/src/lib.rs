@@ -22,7 +22,6 @@ mod importer_directory;
 mod importer_rrd;
 #[cfg(feature = "urdf")]
 mod importer_urdf;
-mod ply;
 
 // This importer currently only works when loading the entire dataset directory, and we cannot do that on web yet.
 #[cfg(all(feature = "lerobot", not(target_arch = "wasm32")))]
@@ -590,17 +589,13 @@ pub const SUPPORTED_DEPTH_IMAGE_EXTENSIONS: &[&str] = &["rvl", "png"];
 
 pub const SUPPORTED_VIDEO_EXTENSIONS: &[&str] = &["mp4"];
 
-/// The `.ply` extension, which is in both [`SUPPORTED_MESH_EXTENSIONS`] and
-/// [`SUPPORTED_POINT_CLOUD_EXTENSIONS`].
-pub const PLY_EXTENSION: &str = "ply";
-
 /// Note that `.ply` is also in [`SUPPORTED_POINT_CLOUD_EXTENSIONS`]: its header decides
 /// whether a given file holds a mesh or a point cloud.
-pub const SUPPORTED_MESH_EXTENSIONS: &[&str] = &["glb", "gltf", "obj", PLY_EXTENSION, "stl", "dae"];
+pub const SUPPORTED_MESH_EXTENSIONS: &[&str] = &["glb", "gltf", "obj", "ply", "stl", "dae"];
 
 /// Note that `.ply` is also in [`SUPPORTED_MESH_EXTENSIONS`]: its header decides
 /// whether a given file holds a mesh or a point cloud.
-pub const SUPPORTED_POINT_CLOUD_EXTENSIONS: &[&str] = &[PLY_EXTENSION];
+pub const SUPPORTED_POINT_CLOUD_EXTENSIONS: &[&str] = &["ply"];
 
 pub const SUPPORTED_RERUN_EXTENSIONS: &[&str] = &["rbl", "rrd"];
 
@@ -677,14 +672,12 @@ fn test_supported_extensions() {
     assert!(is_supported_file_extension("urdf"));
 
     // `.ply` holds either, so anyone probing the public lists must find it in both.
-    assert!(SUPPORTED_MESH_EXTENSIONS.contains(&PLY_EXTENSION));
-    assert!(SUPPORTED_POINT_CLOUD_EXTENSIONS.contains(&PLY_EXTENSION));
+    assert!(SUPPORTED_MESH_EXTENSIONS.contains(&"ply"));
+    assert!(SUPPORTED_POINT_CLOUD_EXTENSIONS.contains(&"ply"));
 
     // …which must not make it show up twice in a file dialog filter.
     assert_eq!(
-        supported_extensions()
-            .filter(|ext| *ext == PLY_EXTENSION)
-            .count(),
+        supported_extensions().filter(|ext| *ext == "ply").count(),
         1
     );
 }

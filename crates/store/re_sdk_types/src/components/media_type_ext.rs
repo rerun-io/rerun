@@ -229,13 +229,13 @@ impl MediaType {
             Some("obj") => {
                 return Some(Self::obj());
             }
-            // `mime_guess2` considers `.stl` to be a `application/vnd.ms-pki.stl`.
-            Some("stl") => {
-                return Some(Self::stl());
-            }
             // `mime_guess2` doesn't know about PLY, but we use `application/x-ply`.
             Some("ply") => {
                 return Some(Self::ply());
+            }
+            // `mime_guess2` considers `.stl` to be a `application/vnd.ms-pki.stl`.
+            Some("stl") => {
+                return Some(Self::stl());
             }
             _ => {}
         }
