@@ -639,7 +639,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         return RegistrationHandle(self._internal.register_prefix(recordings_prefix, layer_name, on_duplicate))
 
-    def segment_store(self, segment_id: str) -> LazyStore:
+    def segment_store(self, segment_id: str, *, include_assets: bool = True) -> LazyStore:
         """
         Open a remote segment as a [`LazyStore`][rerun.experimental.LazyStore].
 
@@ -647,10 +647,20 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         via [`LazyStore.stream`][rerun.experimental.LazyStore.stream]. To fully
         materialize into a [`ChunkStore`][rerun.experimental.ChunkStore], call
         `lazy.stream().collect()`.
+
+        Parameters
+        ----------
+        segment_id:
+            The segment to open.
+        include_assets:
+            Whether the assets registered for this dataset are part of the store.
+            Their manifests are fetched alongside the segment's own, which costs one
+            request to list the assets and one for each of their manifests.
+
         """
         from rerun.experimental import LazyStore
 
-        return LazyStore(self._internal.segment_store(segment_id))
+        return LazyStore(self._internal.segment_store(segment_id, include_assets=include_assets))
 
     @with_tracing("DatasetEntry.filter_segments")
     def filter_segments(self, segment_ids: str | Sequence[str] | datafusion.DataFrame) -> DatasetView:

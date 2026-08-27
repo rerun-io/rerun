@@ -8,10 +8,13 @@ use re_log_encoding::{ChunkProvider, ChunkProviderError, RawRrdManifest, RrdMani
 use re_log_types::EntryId;
 use re_types_core::SegmentId;
 
-use crate::{ApiError, ConnectionHandle, fetch_chunks_response_to_chunk_and_segment_id};
+use crate::asset::{AssetSegments, asset_manifest, asset_segments};
+use crate::{
+    ApiError, ConnectionClient, ConnectionHandle, fetch_chunks_response_to_chunk_and_segment_id,
+};
 
-/// gRPC-backed [`ChunkProvider`]: serves the manifest of a single dataset
-/// segment and fetches its chunks on demand via `FetchChunks`.
+/// gRPC-backed [`ChunkProvider`]: serves the manifest of a dataset segment
+/// and fetches its chunks on demand via `FetchChunks`.
 //TODO(RR-4546): this needs to be on par with the table provider stuff in terms of chunk downloading
 // (signed url, batching, etc.). The current streaming strategy is really poor, and only works
 // because of a workaround we have to mitigate RR-4545
@@ -20,7 +23,11 @@ pub struct SegmentChunkProvider {
     dataset_id: EntryId,
     segment_id: SegmentId,
 
+    /// The raw manifest of the segment itself, without the assets it references.
     raw_manifest: Arc<RawRrdManifest>,
+
+    /// Every chunk this provider serves: the manifest of the segment, followed by one per asset it
+    /// references when `include_assets` was set.
     manifest: Arc<RrdManifest>,
 
     /// Map from `ChunkId` to its row index in `manifest.chunk_fetcher_rb()`.
@@ -30,10 +37,14 @@ pub struct SegmentChunkProvider {
 
 impl SegmentChunkProvider {
     /// Fetch the segment manifest from the server and build a provider.
+    ///
+    /// With `include_assets`, the manifests of the assets the dataset registered are fetched too,
+    /// and this provider then also serves their chunks.
     pub async fn try_new(
         connection: ConnectionHandle,
         dataset_id: EntryId,
         segment_id: SegmentId,
+        include_assets: bool,
     ) -> Result<Self, ApiError> {
         let mut client = connection.client().await?;
         let raw_manifest = client
@@ -41,7 +52,7 @@ impl SegmentChunkProvider {
             .await?;
         let raw_manifest = Arc::new(raw_manifest);
 
-        let manifest = Arc::new(RrdManifest::try_new(&raw_manifest).map_err(|err| {
+        let segment_manifest = Arc::new(RrdManifest::try_new(&raw_manifest).map_err(|err| {
             ApiError::deserialization_with_source(
                 &connection.origin().clone(),
                 None,
@@ -49,6 +60,32 @@ impl SegmentChunkProvider {
                 "failed to validate RrdManifest from /GetRrdManifest",
             )
         })?);
+
+        let asset_manifests = if include_assets {
+            fetch_asset_manifests(&mut client, dataset_id).await
+        } else {
+            Vec::new()
+        };
+
+        let manifests: Vec<Arc<RrdManifest>> =
+            std::iter::chain(std::iter::once(segment_manifest), asset_manifests).collect();
+
+        // A `FetchChunks` request can span datasets, so one manifest covering the segment and its
+        // assets lets any of their chunks be fetched in a single request.
+        let manifest = if let [only] = manifests.as_slice() {
+            Arc::clone(only)
+        } else {
+            let parts: Vec<&RrdManifest> = manifests.iter().map(Arc::as_ref).collect();
+
+            Arc::new(RrdManifest::merge(&parts).map_err(|err| {
+                ApiError::deserialization_with_source(
+                    connection.origin(),
+                    None,
+                    err,
+                    "failed combining the segment and asset manifests",
+                )
+            })?)
+        };
 
         let chunk_id_to_row = manifest
             .col_chunk_ids()
@@ -74,6 +111,50 @@ impl SegmentChunkProvider {
     pub fn segment_id(&self) -> &SegmentId {
         &self.segment_id
     }
+}
+
+/// Fetches the manifest of every asset registered for the dataset.
+///
+/// Failing to load an asset only costs the data of that asset, so the failure is logged and the
+/// remaining assets are still loaded.
+async fn fetch_asset_manifests(
+    client: &mut ConnectionClient,
+    dataset_id: EntryId,
+) -> Vec<Arc<RrdManifest>> {
+    let Some(AssetSegments {
+        dataset_id: asset_dataset_id,
+        segment_ids: asset_segment_ids,
+    }) = asset_segments(client, dataset_id).await
+    else {
+        return Vec::new();
+    };
+
+    let mut manifests = Vec::with_capacity(asset_segment_ids.len());
+    for asset_segment_id in asset_segment_ids {
+        let raw_manifest = match client
+            .get_rrd_manifest(asset_dataset_id, asset_segment_id.clone())
+            .await
+        {
+            Ok(raw_manifest) => raw_manifest,
+            Err(err) => {
+                re_log::warn!(
+                    "Failed to fetch asset manifest, skipping it: {err}\nAsset segment id: {asset_segment_id}"
+                );
+                continue;
+            }
+        };
+
+        match asset_manifest(client, raw_manifest) {
+            Ok((_raw_manifest, manifest)) => manifests.push(Arc::new(manifest)),
+            Err(err) => {
+                re_log::warn!(
+                    "Invalid asset manifest, skipping it: {err}\nAsset segment id: {asset_segment_id}"
+                );
+            }
+        }
+    }
+
+    manifests
 }
 
 #[async_trait::async_trait]

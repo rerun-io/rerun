@@ -29,7 +29,7 @@ pub struct LazyStore {
     store: ChunkStoreHandle,
     provider: Arc<dyn ChunkProvider>,
 
-    /// Precomputed map from `ChunkId` to manifest row index.
+    /// Precomputed map from `ChunkId` to its row index in the provider's manifest.
     chunk_id_to_index: HashMap<ChunkId, usize>,
 
     /// Precomputed per-chunk timeline ranges.
@@ -44,7 +44,9 @@ impl LazyStore {
     /// Build a lazy store from any chunk provider.
     ///
     /// The provider's manifest is used to populate the inner [`ChunkStore`]'s virtual index; the
-    /// provider's `load_chunks` serves on-demand reads.
+    /// provider's `load_chunks` serves on-demand reads. A provider serving the chunks of more than
+    /// one segment, e.g. a dataset segment and the assets it references, describes all of them in
+    /// that one manifest, which has a column for the segment of every chunk.
     ///
     /// Infallible: every fallible step (manifest parsing, file open, etc.) happens during the
     /// provider's own construction.
@@ -139,7 +141,7 @@ impl LazyStore {
         self.manifest().num_chunks()
     }
 
-    /// The parsed manifest for this store.
+    /// The parsed manifest of every chunk this store can serve.
     pub fn manifest(&self) -> &Arc<RrdManifest> {
         self.provider.manifest()
     }
@@ -162,9 +164,15 @@ impl LazyStore {
         &self.provider
     }
 
-    /// Look up the manifest row index for a given chunk ID.
+    /// Look up the row index of a chunk in [`Self::manifest`].
     pub fn chunk_row_index(&self, chunk_id: &ChunkId) -> Option<usize> {
         self.chunk_id_to_index.get(chunk_id).copied()
+    }
+
+    /// The deflated byte size of a chunk.
+    pub fn chunk_byte_size(&self, chunk_id: &ChunkId) -> Option<u64> {
+        let row = self.chunk_row_index(chunk_id)?;
+        self.manifest().col_chunk_byte_size().get(row).copied()
     }
 
     /// Per-chunk timeline ranges.

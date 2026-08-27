@@ -23,6 +23,7 @@ use re_types_core::SegmentId;
 use re_uri::Origin;
 use tokio_stream::StreamExt as _;
 
+use crate::asset::{AssetSegments, asset_manifest, asset_segments};
 use crate::{
     ApiError, ApiErrorKind, ApiResult, BoxedRedapClientStack, ConnectionClient,
     MAX_DECODING_MESSAGE_SIZE, SegmentQueryParams,
@@ -936,56 +937,49 @@ async fn stream_segment_from_server(
     }
 
     // Only recording datasets have assets, so a blueprint or asset dataset has none to look up.
-    if dataset_kind == DatasetKind::Recording {
-        match client.get_assets_for_segment(dataset_id).await {
-            Ok(Some((asset_dataset_id, asset_segment_ids))) => {
-                // Every segment of the asset dataset is returned, so all of the dataset's assets
-                // are streamed for each segment that is opened.
-                for asset_segment_id in asset_segment_ids {
-                    // TODO(RR-5399): Cache asset manifests?
-                    // We don't support assets without manifests.
-                    match stream_manifest(
-                        client,
-                        tx,
-                        asset_dataset_id,
-                        &asset_segment_id,
-                        options,
-                        &store_id,
-                        ManifestKind::Asset,
-                    )
-                    .await
-                    {
-                        Ok(ManifestOutcome::Loaded) => {}
+    if dataset_kind == DatasetKind::Recording
+        && let Some(AssetSegments {
+            dataset_id: asset_dataset_id,
+            segment_ids: asset_segment_ids,
+        }) = asset_segments(client, dataset_id).await
+    {
+        // All of the dataset's assets are streamed for each segment that is opened.
+        for asset_segment_id in asset_segment_ids {
+            // TODO(RR-5399): Cache asset manifests?
+            // We don't support assets without manifests.
+            match stream_manifest(
+                client,
+                tx,
+                asset_dataset_id,
+                &asset_segment_id,
+                options,
+                &store_id,
+                ManifestKind::Asset,
+            )
+            .await
+            {
+                Ok(ManifestOutcome::Loaded) => {}
 
-                        Ok(ManifestOutcome::ReceiverDisconnected) => {
-                            return Ok(ControlFlow::Break(()));
-                        }
+                Ok(ManifestOutcome::ReceiverDisconnected) => {
+                    return Ok(ControlFlow::Break(()));
+                }
 
-                        Ok(ManifestOutcome::NoManifest { .. }) => {
-                            re_log::warn_once!(
-                                "The server has no manifest for this asset, skipping it\nAsset segment id: {asset_segment_id}"
-                            );
-                        }
+                Ok(ManifestOutcome::NoManifest { .. }) => {
+                    re_log::warn_once!(
+                        "The server has no manifest for this asset, skipping it\nAsset segment id: {asset_segment_id}"
+                    );
+                }
 
-                        Err(err) => {
-                            re_log::warn!(
-                                "{}",
-                                re_error::format_with_details(
-                                    format!("Failed to stream asset manifest, skipping it: {err}"),
-                                    format!("Asset segment id: {asset_segment_id}"),
-                                )
-                            );
-                        }
-                    }
+                Err(err) => {
+                    re_log::warn!(
+                        "{}",
+                        re_error::format_with_details(
+                            format!("Failed to stream asset manifest, skipping it: {err}"),
+                            format!("Asset segment id: {asset_segment_id}"),
+                        )
+                    );
                 }
             }
-            Ok(None) => {}
-            Err(err) => match err.kind {
-                ApiErrorKind::NotFound | ApiErrorKind::Unimplemented => {}
-                _ => {
-                    re_log::warn!("Failed to fetch assets: {err}");
-                }
-            },
         }
     }
 
@@ -1202,29 +1196,20 @@ async fn stream_manifest(
             while let Some(part_result) = manifest_stream.next().await {
                 let raw_rrd_manifest_part = part_result?;
 
-                let raw_rrd_manifest_part = if manifest_kind == ManifestKind::Asset {
-                    raw_rrd_manifest_part
-                        .without_recording_properties()
-                        .map_err(|err| {
-                            ApiError::invalid_arguments_with_source(
-                                client.origin(),
-                                trace_id,
-                                err,
-                                "Failed to drop the recording properties of an asset manifest",
-                            )
-                        })?
+                let (raw_rrd_manifest_part, rrd_manifest) = if manifest_kind == ManifestKind::Asset
+                {
+                    asset_manifest(client, raw_rrd_manifest_part).map_err(|err| {
+                        ApiError::invalid_arguments_with_source(
+                            client.origin(),
+                            trace_id,
+                            err,
+                            "Invalid asset manifest part",
+                        )
+                    })?
                 } else {
-                    raw_rrd_manifest_part
-                };
-
-                let part_nr = rrd_manifest_parts.len() + 1;
-                re_log::debug!(
-                    "Received RRD manifest part #{part_nr}/? ({} deflated, {:.1}s elapsed)",
-                    re_format::format_bytes(raw_rrd_manifest_part.total_size_bytes() as _),
-                    start_time.elapsed().as_secs_f32(),
-                );
-
-                let rrd_manifest = re_log_encoding::RrdManifest::try_new(&raw_rrd_manifest_part)
+                    let rrd_manifest = re_log_encoding::RrdManifest::try_new(
+                        &raw_rrd_manifest_part,
+                    )
                     .map_err(|err| {
                         ApiError::invalid_arguments_with_source(
                             client.origin(),
@@ -1234,13 +1219,17 @@ async fn stream_manifest(
                         )
                     })?;
 
-                let rrd_manifest = Arc::new(rrd_manifest);
+                    (raw_rrd_manifest_part, rrd_manifest)
+                };
 
-                // Mark the asset's chunks as cacheable before the client sees the manifest, so that
-                // any chunk it goes on to request is already known to be worth keeping.
-                if manifest_kind == ManifestKind::Asset {
-                    client.mark_asset_chunks(rrd_manifest.col_chunk_ids());
-                }
+                let part_nr = rrd_manifest_parts.len() + 1;
+                re_log::debug!(
+                    "Received RRD manifest part #{part_nr}/? ({} deflated, {:.1}s elapsed)",
+                    re_format::format_bytes(raw_rrd_manifest_part.total_size_bytes() as _),
+                    start_time.elapsed().as_secs_f32(),
+                );
+
+                let rrd_manifest = Arc::new(rrd_manifest);
 
                 if tx
                     .send(DataSourceMessage::RrdManifest(

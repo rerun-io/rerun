@@ -54,7 +54,7 @@ impl PyLazyStoreInternal {
 
     /// The total number of chunks described by the manifest (virtual and physical).
     fn num_chunks(&self) -> usize {
-        self.inner.manifest().num_chunks()
+        self.inner.num_chunks()
     }
 
     /// Monotonic count of chunks physically loaded from this store since it was opened.
@@ -288,7 +288,7 @@ impl IndexedChunkStream {
     /// Stream only the given chunk IDs (used by pushdown).
     ///
     /// IDs that do not appear in the manifest are tolerated — `next_batch_end` assigns
-    /// them a size of `0` via [`LazyStore::chunk_row_index`]'s `None` branch, and
+    /// them a size of `0` via [`LazyStore::chunk_byte_size`]'s `None` branch, and
     /// `load_chunks` is the layer that would ultimately reject them. Manifest membership
     /// is the caller's invariant.
     fn new_with_ids(lazy: Arc<LazyStore>, chunk_ids: Vec<ChunkId>) -> Self {
@@ -304,15 +304,10 @@ impl IndexedChunkStream {
     /// chosen so the cumulative byte size stays under [`Self::BATCH_BYTE_BUDGET`].
     /// Always advances by at least one chunk to guarantee progress on huge chunks.
     fn next_batch_end(&self) -> usize {
-        let sizes = self.lazy.manifest().col_chunk_byte_size();
         let mut end = self.next_id;
         let mut accumulated: u64 = 0;
         while end < self.chunk_ids.len() {
-            let size = self
-                .lazy
-                .chunk_row_index(&self.chunk_ids[end])
-                .map(|row| sizes[row])
-                .unwrap_or(0);
+            let size = self.lazy.chunk_byte_size(&self.chunk_ids[end]).unwrap_or(0);
             if end > self.next_id && accumulated.saturating_add(size) > Self::BATCH_BYTE_BUDGET {
                 break;
             }

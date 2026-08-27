@@ -533,9 +533,14 @@ impl PyDatasetEntryInternal {
 
     /// Open a remote segment as a [`LazyStore`][rerun.experimental.LazyStore].
     ///
-    /// One round-trip on construction (the manifest); chunks are fetched on
-    /// demand.
-    fn segment_store(self_: PyRef<'_, Self>, segment_id: String) -> PyResult<PyLazyStoreInternal> {
+    /// One round-trip on construction for the manifest. With `include_assets`, one more to list
+    /// the assets and one for each of their manifests. Chunks are fetched on demand.
+    #[pyo3(signature = (segment_id, *, include_assets = true))]
+    fn segment_store(
+        self_: PyRef<'_, Self>,
+        segment_id: String,
+        include_assets: bool,
+    ) -> PyResult<PyLazyStoreInternal> {
         let py = self_.py();
         let _span = read_trace_context_from_python(py, "DatasetEntry.segment_store").entered();
         let connection = self_.client.borrow(py).connection().clone();
@@ -543,13 +548,17 @@ impl PyDatasetEntryInternal {
         let segment_id = SegmentId::from(segment_id);
 
         let provider = wait_for_future(py, async {
-            SegmentChunkProvider::try_new(connection.inner().clone(), dataset_id, segment_id)
-                .await
-                .map_err(to_py_err)
+            SegmentChunkProvider::try_new(
+                connection.inner().clone(),
+                dataset_id,
+                segment_id,
+                include_assets,
+            )
+            .await
+            .map_err(to_py_err)
         })?;
 
-        let lazy = LazyStore::new(Arc::new(provider));
-        Ok(PyLazyStoreInternal::new(lazy))
+        Ok(PyLazyStoreInternal::new(LazyStore::new(Arc::new(provider))))
     }
 
     /// Perform maintenance tasks on the datasets.

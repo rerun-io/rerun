@@ -25,6 +25,9 @@ pub use self::rrd::RrdChunkProvider;
 #[async_trait::async_trait]
 pub trait ChunkProvider: Send + Sync {
     /// The validated, indexed manifest of chunks this provider serves.
+    ///
+    /// A provider serving the chunks of more than one segment, e.g. a dataset segment and the
+    /// assets it references, describes all of them in this one manifest.
     fn manifest(&self) -> &Arc<RrdManifest>;
 
     /// The raw, as-parsed manifest. Kept around so consumers (e.g. the server's `GetRrdManifest`

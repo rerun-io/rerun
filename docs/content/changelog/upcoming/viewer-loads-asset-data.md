@@ -20,4 +20,19 @@ Assets can also be registered, and unregistered right in the viewer:
 
 // TODO(isse): Add video.
 
+From Python, a segment store covers the dataset's assets alongside the segment's own data.
+Pass `include_assets=False` to leave them out, which also skips the requests for their manifests:
+
+```python
+dataset.register_asset("file:///data/robot_mesh.rrd")
+
+# Describes the chunks of both the segment and the asset.
+store = dataset.segment_store(segment_id)
+for chunk in store.stream().to_chunks():
+    print(chunk.entity_path)
+
+# Describes only the segment, no asset manifests are fetched.
+segment_only = dataset.segment_store(segment_id, include_assets=False)
+```
+
 // TODO(isse): Add snippet (& docs!) on assets, and how to register them.

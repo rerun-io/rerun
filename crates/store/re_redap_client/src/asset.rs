@@ -4,13 +4,14 @@ use std::collections::hash_map;
 
 use ahash::HashMap;
 use arrow::array::RecordBatch;
-use re_log_types::Timestamp;
+use re_log_encoding::{CodecResult, RawRrdManifest, RrdManifest};
+use re_log_types::{EntryId, Timestamp};
 use re_protos::cloud::v1alpha1::ext::{
     DataSource, LayerRegistrationStatus, ScanDatasetManifestDataframe,
 };
 use re_types_core::SegmentId;
 
-use crate::{ApiError, ApiResult};
+use crate::{ApiError, ApiErrorKind, ApiResult, ConnectionClient};
 
 /// One asset of a dataset, as it stands in its asset dataset.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -213,6 +214,53 @@ pub(crate) fn assets_from_manifest(
     assets.sort_by(|left, right| left.id.cmp(&right.id));
 
     Ok(assets)
+}
+
+/// The asset dataset of a dataset, and every asset segment within it.
+pub(crate) struct AssetSegments {
+    pub dataset_id: EntryId,
+    pub segment_ids: Vec<SegmentId>,
+}
+
+/// The assets registered for a dataset, or `None` when it has none or they could not be fetched.
+pub(crate) async fn asset_segments(
+    client: &mut ConnectionClient,
+    dataset_id: EntryId,
+) -> Option<AssetSegments> {
+    match client.get_assets_for_segment(dataset_id).await {
+        Ok(Some((dataset_id, segment_ids))) => Some(AssetSegments {
+            dataset_id,
+            segment_ids,
+        }),
+
+        Ok(None) => None,
+
+        Err(err) => {
+            if !matches!(
+                err.kind,
+                ApiErrorKind::NotFound
+                    | ApiErrorKind::Unimplemented
+                    | ApiErrorKind::InvalidArguments
+            ) {
+                re_log::warn!("Failed to fetch assets: {err}");
+            }
+            None
+        }
+    }
+}
+
+/// The manifest of one asset, without its recording properties and with its chunks marked for
+/// caching.
+pub(crate) fn asset_manifest(
+    client: &ConnectionClient,
+    raw_manifest: RawRrdManifest,
+) -> CodecResult<(RawRrdManifest, RrdManifest)> {
+    let raw_manifest = raw_manifest.without_recording_properties()?;
+    let manifest = RrdManifest::try_new(&raw_manifest)?;
+
+    client.mark_asset_chunks(manifest.col_chunk_ids());
+
+    Ok((raw_manifest, manifest))
 }
 
 #[cfg(test)]

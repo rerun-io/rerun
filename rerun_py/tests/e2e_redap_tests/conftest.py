@@ -372,6 +372,21 @@ def entry_factory(catalog_client: CatalogClient, request: pytest.FixtureRequest)
     factory.cleanup()
 
 
+@pytest.fixture(scope="session")
+def session_entry_factory(catalog_client: CatalogClient) -> Generator[EntryFactory, None, None]:
+    """
+    Like `entry_factory`, but shared by the whole test session.
+
+    Use it for entries that several tests only read from, so that registration happens once. The prefix is
+    session-specific to avoid collisions across test runs.
+    """
+    import uuid
+
+    factory = EntryFactory(catalog_client, f"session_{uuid.uuid4().hex}_")
+    yield factory
+    factory.cleanup()
+
+
 @pytest.fixture(scope="function")
 def recording_factory(tmp_path: Path) -> Callable[[Sequence[str]], list[str]]:
     def create_recordings(recording_ids: Sequence[str]) -> list[str]:
