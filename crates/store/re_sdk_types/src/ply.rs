@@ -105,9 +105,10 @@ fn classify_geometry_header(header: &ply_rs_bw::ply::Header) -> std::io::Result<
     // Every shape we support needs vertices, so a mesh without them is rejected here rather
     // than surviving to the viewer as an `Asset3D` that fails on zero vertices.
     let Some(vertex_element) = header.elements.get(ELEMENT_VERTEX) else {
+        let elements = header.elements.keys().collect::<Vec<_>>();
         return Err(std::io::Error::new(
             std::io::ErrorKind::InvalidData,
-            "PLY file is missing required \"vertex\" element",
+            format!("PLY file is missing required \"vertex\" element, and has only: {elements:?}"),
         ));
     };
 
@@ -124,10 +125,15 @@ fn classify_geometry_header(header: &ply_rs_bw::ply::Header) -> std::io::Result<
     match classify_vertex_layout(vertex_element) {
         PlyVertexLayout::Xy => Ok(PlyGeometryClass::Points2D),
         PlyVertexLayout::Xyz => Ok(PlyGeometryClass::Points3D),
-        PlyVertexLayout::Other => Err(std::io::Error::new(
-            std::io::ErrorKind::InvalidData,
-            "PLY vertex element must contain at least \"x\" and \"y\"",
-        )),
+        PlyVertexLayout::Other => {
+            let properties = vertex_element.properties.keys().collect::<Vec<_>>();
+            Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                format!(
+                    "PLY vertex element must contain at least \"x\" and \"y\", but has: {properties:?}"
+                ),
+            ))
+        }
     }
 }
 
@@ -195,23 +201,31 @@ pub(crate) fn set_text(property: &Property, target: &mut Option<Text>) -> Proper
     }
 }
 
-/// Warn about the `vertex` properties this archetype has no use for.
+/// Warn about the properties of an element that the reading archetype has no use for.
 ///
 /// The header lists every property of the element, so this is decided once, before any
-/// payload is read: the supported set is exactly the fields of the struct we read into.
+/// payload is read: what is supported is exactly what the struct we read into can hold.
+///
+/// `is_supported` is a predicate rather than a list because some archetypes accept a family
+/// of names, such as the `f_rest_*` spherical harmonics coefficients.
 pub(crate) fn warn_about_unsupported_properties(
     element_def: &ply_rs_bw::ply::ElementDef,
-    supported: &[&str],
+    filepath: Option<&std::path::Path>,
+    is_supported: impl Fn(&str) -> bool,
 ) {
     let unsupported = element_def
         .properties
         .keys()
         .map(String::as_str)
-        .filter(|name| !supported.contains(name))
+        .filter(|name| !is_supported(name))
         .collect::<BTreeSet<_>>();
 
     if !unsupported.is_empty() {
-        re_log::warn!("Ignored properties of .ply file: {unsupported:?}");
+        // Paths go last, so they are easy to strip when copy-pasting.
+        let path_suffix = filepath.map_or_else(String::new, |filepath| {
+            format!("\nFile path: {}", filepath.display())
+        });
+        re_log::warn_once!("Ignored properties of .ply file: {unsupported:?}{path_suffix}"); // NOLINT path at end
     }
 }
 
@@ -251,7 +265,9 @@ pub(crate) fn read_vertex_element<V: PropertyAccess, T: std::io::BufRead>(
                 .map_err(std::io::Error::from)?;
 
             if !vertices.is_empty() {
-                warn_about_unsupported_properties(element_def, supported_properties);
+                warn_about_unsupported_properties(element_def, None, |name| {
+                    supported_properties.contains(&name)
+                });
             }
         } else {
             re_log::warn!("Ignoring {:?} in .ply file", element_def.name);
@@ -418,11 +434,13 @@ end_header
 7
 "#;
 
-        let err = classify(contents).unwrap_err();
+        let err = classify(contents).unwrap_err().to_string();
         assert!(
-            err.to_string()
-                .contains("PLY file is missing required \"vertex\" element")
+            err.contains("PLY file is missing required \"vertex\" element"),
+            "{err}"
         );
+        // The elements the file *does* have, to make the mismatch obvious.
+        assert!(err.contains("material"), "{err}");
     }
 
     #[test]
@@ -437,11 +455,13 @@ end_header
 4 5
 "#;
 
-        let err = classify(contents).unwrap_err();
+        let err = classify(contents).unwrap_err().to_string();
         assert!(
-            err.to_string()
-                .contains("PLY vertex element must contain at least \"x\" and \"y\"")
+            err.contains("PLY vertex element must contain at least \"x\" and \"y\""),
+            "{err}"
         );
+        // The properties the vertex element *does* have, to make the mismatch obvious.
+        assert!(err.contains("\"x\", \"z\""), "{err}");
     }
 
     #[test]

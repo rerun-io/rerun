@@ -369,20 +369,13 @@ fn read_ply(
         };
         let has_sh = 0 < num_sh_per_channel;
 
-        let mut ignored_props = std::collections::BTreeSet::new();
-        for prop_name in element.properties.keys() {
-            // Dropped `f_rest_*` coefficients are covered by the warning above, and the normals
-            // are expected to be present even though we have no use for them.
-            let known = prop_name.starts_with(prop::F_REST_PREFIX)
-                || prop::NORMALS.contains(&prop_name.as_str())
-                || slot_of(prop_name, num_sh_per_channel).is_some();
-            if !known {
-                ignored_props.insert(prop_name.clone());
-            }
-        }
-        if !ignored_props.is_empty() {
-            re_log::warn_once!("Ignored properties of .ply file: {ignored_props:?}{path_suffix}"); // NOLINT path at end
-        }
+        // Dropped `f_rest_*` coefficients are covered by the warning above, and the normals
+        // are expected to be present even though we have no use for them.
+        crate::ply::warn_about_unsupported_properties(element, filepath, |name| {
+            name.starts_with(prop::F_REST_PREFIX)
+                || prop::NORMALS.contains(&name)
+                || slot_of(name, num_sh_per_channel).is_some()
+        });
 
         let mut batch = read_plan(element, num_sh_per_channel);
         let mut remaining = element.count;
