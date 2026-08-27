@@ -23,6 +23,10 @@ mod vulkan;
 
 pub use context::GpuVideoContext;
 pub use setup::VideoDeviceSetup;
+pub use vulkan::h264::ParseError;
+
+#[doc(hidden)]
+pub use vulkan::{CpuDecoder, CpuFrame};
 
 /// H.264 decode capabilities of a device, as reported by the backend.
 #[derive(Clone, Debug)]
@@ -51,4 +55,22 @@ pub enum SetupError {
 
     #[error("Vulkan error: {0}")]
     Vulkan(#[from] ash::vk::Result),
+}
+
+/// Decoding failed. The stream can't be decoded by this backend (or is invalid),
+/// or the driver reported an error. Callers fall back to software decoding,
+/// silent corruption is never an option.
+#[derive(thiserror::Error, Debug)]
+pub enum DecodeError {
+    #[error(transparent)]
+    Parse(#[from] ParseError),
+
+    #[error("Vulkan error: {0}")]
+    Vulkan(#[from] ash::vk::Result),
+
+    #[error("Stream exceeds device limits: {0}")]
+    ExceedsDeviceLimits(String),
+
+    #[error("The driver reported a decode error (result status {0})")]
+    DecodeFailed(i32),
 }

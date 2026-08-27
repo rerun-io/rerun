@@ -17,6 +17,10 @@ use h264_reader::nal::{
 pub struct SpsStdParams {
     std: std_video::StdVideoH264SequenceParameterSet,
     _offsets_for_ref_frame: Vec<i32>,
+    #[cfg_attr(
+        not(test),
+        expect(dead_code, reason = "keeps the memory `pScalingLists` points at alive")
+    )]
     scaling_lists: Option<Box<std_video::StdVideoH264ScalingLists>>,
 }
 
@@ -26,6 +30,7 @@ impl SpsStdParams {
     }
 
     /// What `pScalingLists` points at, for safe inspection.
+    #[cfg(test)]
     pub fn scaling_lists(&self) -> Option<&std_video::StdVideoH264ScalingLists> {
         self.scaling_lists.as_deref()
     }

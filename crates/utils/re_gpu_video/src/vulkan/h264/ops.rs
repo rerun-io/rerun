@@ -43,6 +43,12 @@ pub struct DecodeInfo {
 
     pub is_idr: bool,
 
+    /// `idr_pic_id` of the slice headers, 0 for non-IDR frames.
+    pub idr_pic_id: u16,
+
+    /// All slices of the frame are intra coded (I or SI).
+    pub is_intra: bool,
+
     /// The DPB slot this frame gets decoded into when it is a reference frame
     /// (`nal_ref_idc != 0`). `None` for non-reference frames, which only produce output.
     ///
