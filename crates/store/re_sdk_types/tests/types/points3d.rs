@@ -237,3 +237,26 @@ end_header
     assert_eq!(err.kind(), std::io::ErrorKind::InvalidData);
     assert!(err.to_string().contains("PLY property 'z'"));
 }
+
+/// The header is ASCII either way, so nothing above catches a mis-decoded binary payload.
+#[test]
+fn ply_reads_binary_little_endian_payloads() {
+    let mut contents = b"\
+ply
+format binary_little_endian 1.0
+element vertex 2
+property float x
+property float y
+property float z
+end_header
+"
+    .to_vec();
+    for value in [1.0f32, 2.0, 3.0, -4.0, 5.5, 6.0] {
+        contents.extend_from_slice(&value.to_le_bytes());
+    }
+
+    let parsed = Points3D::from_file_contents(&contents).unwrap();
+    let expected = Points3D::new([(1.0, 2.0, 3.0), (-4.0, 5.5, 6.0)]);
+
+    similar_asserts::assert_eq!(parsed, expected);
+}
