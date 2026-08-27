@@ -9348,6 +9348,7 @@ dependencies = [
  "ash",
  "h264-reader",
  "insta",
+ "itertools 0.15.0",
  "parking_lot",
  "pollster 1.0.1",
  "re_log",

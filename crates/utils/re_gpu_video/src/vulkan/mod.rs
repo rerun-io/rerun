@@ -2,22 +2,29 @@
 //!
 //! ash/vk types never leave this module tree, see the layering rule in the crate docs.
 
+mod alloc;
 mod caps;
+mod decoder;
+mod device;
+mod dpb;
+mod record;
+mod session;
+mod sync;
 
 // The safe H.264 bitstream parser: pure CPU code producing the plain-data `DecodeOp` IR
 // the rest of the backend executes. Fully covered by tests on all platforms.
-#[cfg_attr(
-    not(test),
-    expect(dead_code, reason = "consumed from the decoder milestones on")
-)]
-mod h264;
+pub(crate) mod h264;
+
+use std::sync::Arc;
 
 use ash::vk;
 use parking_lot::Mutex;
 
-use crate::{H264DecodeCapabilities, SetupError};
+use crate::{DecodeError, H264DecodeCapabilities, SetupError};
 
 use caps::{QueuePlan, VulkanVideoCaps};
+
+pub use decoder::{CpuDecoder, CpuFrame};
 
 /// Device extensions needed for H.264 decoding.
 const REQUIRED_EXTENSIONS: [&std::ffi::CStr; 3] = [
@@ -105,79 +112,51 @@ impl VulkanSetup {
     ///
     /// Fetches the decode & copy queues from the raw device and builds the
     /// video extension function tables.
-    pub fn into_context(self, device: &wgpu::Device) -> Result<VulkanContext, SetupError> {
-        #[expect(unsafe_code)] // Safety: the device is kept alive by the returned context.
-        let (raw_device, video_queue_fns, video_decode_fns, decode_queue, copy_queue) = unsafe {
-            let hal_device = device
-                .as_hal::<wgpu::hal::api::Vulkan>()
-                .ok_or(SetupError::UnexpectedWgpuBackend)?;
+    pub fn into_context(self, wgpu_device: &wgpu::Device) -> Result<VulkanContext, SetupError> {
+        let device = Arc::new(device::Device::from_wgpu(wgpu_device)?);
 
-            let raw_device = hal_device.raw_device().clone();
-            let raw_instance = hal_device.shared_instance().raw_instance();
-
-            let video_queue_fns = ash::khr::video_queue::Device::new(raw_instance, &raw_device);
-            let video_decode_fns =
-                ash::khr::video_decode_queue::Device::new(raw_instance, &raw_device);
-
-            let decode = self.queue_plan.decode;
-            let decode_queue = raw_device.get_device_queue(decode.family_index, decode.queue_index);
-            let copy_queue = self
-                .queue_plan
-                .copy
-                .map(|copy| raw_device.get_device_queue(copy.family_index, copy.queue_index));
-
-            (
-                raw_device,
-                video_queue_fns,
-                video_decode_fns,
-                decode_queue,
-                copy_queue,
-            )
-        };
+        let decode_queue = device.get_queue(self.queue_plan.decode);
+        let copy_queue = self.queue_plan.copy.map(|copy| device.get_queue(copy));
 
         Ok(VulkanContext {
-            device: device.clone(),
-            raw_device,
-            video_queue_fns,
-            video_decode_fns,
-            decode_queue: Mutex::new(decode_queue),
-            copy_queue: copy_queue.map(Mutex::new),
-            capabilities: self.capabilities,
-            video_caps: self.video_caps,
+            shared: Arc::new(Shared {
+                device,
+                decode_queue: Mutex::new(decode_queue),
+                copy_queue: copy_queue.map(Mutex::new),
+                queue_plan: self.queue_plan,
+                capabilities: self.capabilities,
+                video_caps: self.video_caps,
+            }),
         })
     }
 }
 
-/// Vulkan half of [`crate::GpuVideoContext`].
-pub struct VulkanContext {
-    /// Keeps the wgpu device (and with it the raw Vulkan device) alive as long as this context.
-    #[expect(dead_code)] // Used from the decoder milestones on.
-    device: wgpu::Device,
+/// Everything the per-decoder objects share, behind one `Arc`.
+pub(crate) struct Shared {
+    pub device: Arc<device::Device>,
 
-    #[expect(dead_code)] // Used from the decoder milestones on.
-    raw_device: ash::Device,
-
-    #[expect(dead_code)] // Used from the decoder milestones on.
-    video_queue_fns: ash::khr::video_queue::Device,
-
-    #[expect(dead_code)] // Used from the decoder milestones on.
-    video_decode_fns: ash::khr::video_decode_queue::Device,
-
-    #[expect(dead_code)] // Used from the decoder milestones on.
-    decode_queue: Mutex<vk::Queue>,
+    pub decode_queue: Mutex<vk::Queue>,
 
     /// `None` when the copy runs on the decode queue.
-    #[expect(dead_code)] // Used from the decoder milestones on.
-    copy_queue: Option<Mutex<vk::Queue>>,
+    pub copy_queue: Option<Mutex<vk::Queue>>,
 
-    capabilities: H264DecodeCapabilities,
+    pub queue_plan: QueuePlan,
+    pub capabilities: H264DecodeCapabilities,
+    pub video_caps: VulkanVideoCaps,
+}
 
-    #[expect(dead_code)] // Used from the decoder milestones on.
-    video_caps: VulkanVideoCaps,
+/// Vulkan half of [`crate::GpuVideoContext`].
+pub struct VulkanContext {
+    shared: Arc<Shared>,
 }
 
 impl VulkanContext {
     pub fn capabilities(&self) -> &H264DecodeCapabilities {
-        &self.capabilities
+        &self.shared.capabilities
+    }
+
+    /// See [`crate::GpuVideoContext::create_h264_cpu_decoder`].
+    pub fn create_h264_cpu_decoder(&self) -> Result<CpuDecoder, DecodeError> {
+        CpuDecoder::new(self.shared.clone())
     }
 }

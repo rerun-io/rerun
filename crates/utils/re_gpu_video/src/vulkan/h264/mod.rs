@@ -29,6 +29,7 @@ use std::collections::HashMap;
 use h264_reader::nal::{Nal as _, RefNal, UnitType, sps::SeqParameterSet};
 
 pub use ops::{DecodeInfo, DecodeOp};
+pub use std_params::{PpsStdParams, SpsStdParams};
 
 /// The pushed data can't be decoded. The decoder gives up and falls back to
 /// software decoding, silent corruption is never an option.
@@ -161,6 +162,10 @@ impl Parser {
 
     /// `max_num_reorder_frames` of the active SPS: how many frames may precede a frame
     /// in decoding order but follow it in presentation order.
+    #[cfg_attr(
+        not(test),
+        expect(dead_code, reason = "wired into the public decoder with the sorter")
+    )]
     pub fn reorder_delay(&self) -> usize {
         self.reorder_delay
     }
@@ -347,6 +352,14 @@ impl Parser {
                 .map(|slice| slice.range.clone())
                 .collect(),
             is_idr,
+            idr_pic_id: first.header.idr_pic_id.unwrap_or(0) as u16,
+            is_intra: picture.slices.iter().all(|slice| {
+                matches!(
+                    slice.header.slice_type.family,
+                    h264_reader::nal::slice::SliceFamily::I
+                        | h264_reader::nal::slice::SliceFamily::SI
+                )
+            }),
             setup_slot: outcome.setup_slot,
             long_term_frame_idx: outcome.long_term_frame_idx,
             frame_num: first.header.frame_num,

@@ -28,25 +28,37 @@ pub struct QueuePlan {
     /// Total queue count to request per family, including wgpu's queue in family 0.
     /// Only contains families this plan puts queues in.
     pub queue_counts: Vec<(u32, u32)>,
+
+    /// The decode queue family supports result-status queries,
+    /// which report whether a decode operation actually succeeded.
+    pub decode_supports_result_status: bool,
 }
 
 /// Vulkan-level H.264 decode capabilities, needed later for session & image creation.
 #[derive(Clone, Debug)]
-#[expect(dead_code)] // Used from the decoder milestones on.
 pub struct VulkanVideoCaps {
     /// DPB images and decode output must be one and the same image (older AMD).
     /// Otherwise we decode with distinct output images (preferred).
     pub dpb_and_output_coincide: bool,
 
     /// DPB slots may live in separate images. When false, all slots
-    /// must be layers of one array image.
+    /// must be layers of one array image (which the backend always uses).
+    #[expect(dead_code, reason = "recorded for driver-quirk handling later")]
     pub separate_reference_images: bool,
 
+    /// The backend always decodes from buffer offset 0, trivially aligned.
+    #[expect(dead_code, reason = "recorded for driver-quirk handling later")]
     pub min_bitstream_buffer_offset_alignment: u64,
+
     pub min_bitstream_buffer_size_alignment: u64,
 
     /// Decode extents get rounded up to this granularity.
+    #[expect(dead_code, reason = "recorded for driver-quirk handling later")]
     pub picture_access_granularity: [u32; 2],
+
+    /// The H.264 decode std header version the driver supports,
+    /// passed back on video session creation.
+    pub std_header_version: vk::ExtensionProperties,
 }
 
 pub struct VulkanProbe {
@@ -158,6 +170,7 @@ pub fn probe(adapter: &wgpu::Adapter) -> Option<VulkanProbe> {
         capabilities.picture_access_granularity.width,
         capabilities.picture_access_granularity.height,
     ];
+    let std_header_version = capabilities.std_header_version;
 
     // Prefer distinct DPB & output images, fall back to coincident when that's all
     // the hardware does. The spec guarantees at least one of the two flags.
@@ -194,6 +207,7 @@ pub fn probe(adapter: &wgpu::Adapter) -> Option<VulkanProbe> {
         min_bitstream_buffer_offset_alignment,
         min_bitstream_buffer_size_alignment,
         picture_access_granularity,
+        std_header_version,
     };
 
     let capabilities = H264DecodeCapabilities {
@@ -226,20 +240,28 @@ fn plan_queues(
         flags: vk::QueueFlags,
         queue_count: u32,
         video_ops: vk::VideoCodecOperationFlagsKHR,
+        result_status: bool,
     }
 
     // SAFETY: The physical device comes from this instance and `properties` is sized by the `_len` query.
     let families: Vec<Family> = unsafe {
         let count = raw_instance.get_physical_device_queue_family_properties2_len(physical_device);
         let mut video_properties = vec![vk::QueueFamilyVideoPropertiesKHR::default(); count];
+        let mut query_properties =
+            vec![vk::QueueFamilyQueryResultStatusPropertiesKHR::default(); count];
         let mut properties: Vec<vk::QueueFamilyProperties2<'_>> = video_properties
             .iter_mut()
-            .map(|video| vk::QueueFamilyProperties2::default().push_next(video))
+            .zip(query_properties.iter_mut())
+            .map(|(video, query)| {
+                vk::QueueFamilyProperties2::default()
+                    .push_next(video)
+                    .push_next(query)
+            })
             .collect();
         raw_instance.get_physical_device_queue_family_properties2(physical_device, &mut properties);
 
-        // `properties` mutably borrows `video_properties` through the pnext chains,
-        // so copy the plain fields out before reading the video properties.
+        // `properties` mutably borrows the chained property structs,
+        // so copy the plain fields out before reading them.
         let flags_and_counts: Vec<(vk::QueueFlags, u32)> = properties
             .iter()
             .map(|properties| {
@@ -253,11 +275,12 @@ fn plan_queues(
 
         flags_and_counts
             .into_iter()
-            .zip(video_properties.iter())
-            .map(|((flags, queue_count), video)| Family {
+            .zip(video_properties.iter().zip(query_properties.iter()))
+            .map(|((flags, queue_count), (video, query))| Family {
                 flags,
                 queue_count,
                 video_ops: video.video_codec_operations,
+                result_status: query.query_result_status_support != vk::FALSE,
             })
             .collect()
     };
@@ -339,6 +362,7 @@ fn plan_queues(
         decode,
         copy,
         queue_counts,
+        decode_supports_result_status: families[decode_family].result_status,
     })
 }
 

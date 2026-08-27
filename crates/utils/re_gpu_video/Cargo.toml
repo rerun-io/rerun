@@ -26,6 +26,7 @@ re_tracing.workspace = true
 
 ash.workspace = true
 h264-reader.workspace = true
+itertools.workspace = true
 parking_lot.workspace = true
 thiserror.workspace = true
 wgpu.workspace = true
