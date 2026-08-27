@@ -1,3 +1,11 @@
+// The SDK-to-viewer message proxy.
+//
+// Defines `MessageProxyService`, a bounded buffer that SDKs write log messages and tables into and
+// that viewers read out of. This is what backs `rerun+http://` connections.
+//
+// The viewer's remote-control API shares this proto package but lives in
+// `rerun/v1alpha1/viewer.proto`.
+
 syntax = "proto3";
 
 package rerun.sdk_comms.v1alpha1;
@@ -10,50 +18,94 @@ import "rerun/v1alpha1/log_msg.proto";
 // - SDKs produce messages by calling `WriteMessages`
 // - Viewers consume messages by calling `ReadMessages`
 //
-// The buffer is bounded by a memory limit, and will drop the oldest messages when the limit is reached.
+// The buffer is bounded by a memory limit. When the limit is reached, the oldest messages are
+// dropped: ordinary data first, then static data. Store info, blueprint data, and blueprint
+// activation commands are never dropped. A memory limit of zero disables the buffer entirely,
+// so readers only see messages written after they connect.
 //
-// Whenever `ReadMessages` is called, all buffered messages are sent in the order they were received.
-// The stream will then also yield any new messages passed to `WriteMessages` from any client.
+// A reader first gets the buffered messages, then stays subscribed to everything any client
+// writes from then on. Store info and blueprint data always come before ordinary data. With
+// the default `OldestFirst` playback behavior the buffer is drained before live messages;
+// with `NewestFirst` the server prioritizes live messages and replays the buffer newest-first.
 service MessageProxyService {
   // TODO(jan): Would it be more efficient to send a "message batch" instead of individual messages?
   //            It may allow us to amortize the overhead of the gRPC protocol.
+  // Push log messages into the buffer.
+  //
+  // The response is only sent once the client half-closes the stream.
+  //
+  // A malformed request fails the whole call with `INVALID_ARGUMENT` (a gRPC status code).
+  // The messages accepted before it stay in the buffer, and readers have already seen them.
   rpc WriteMessages(stream WriteMessagesRequest) returns (WriteMessagesResponse) {}
+
+  // Subscribe to the log messages in the buffer.
+  //
+  // The stream first yields everything currently buffered, then stays open and yields whatever
+  // any client writes from then on.
   rpc ReadMessages(ReadMessagesRequest) returns (stream ReadMessagesResponse) {}
 
+  // Push a single table into the buffer.
   rpc WriteTable(WriteTableRequest) returns (WriteTableResponse) {}
+
+  // Subscribe to the tables in the buffer.
+  //
+  // Same semantics as `ReadMessages`, but yields only tables. Both are filtered views of the
+  // same underlying buffer and subscription.
   rpc ReadTables(ReadTablesRequest) returns (stream ReadTablesResponse) {}
 }
 
 // WriteMessages
 
+// One message pushed by `WriteMessages`.
 message WriteMessagesRequest {
+  // The message to buffer.
+  //
+  // Required, and its `msg` oneof must be set: either way, an unset one fails the call with
+  // `INVALID_ARGUMENT`. Rejecting at ingress keeps live and replayed streams identical.
   rerun.log_msg.v1alpha1.LogMsg log_msg = 1;
 }
 
+// Response for `WriteMessages`. Empty: it only signals that the stream was consumed.
 message WriteMessagesResponse {}
 
 // ReadMessages
 
+// Request for `ReadMessages`. Empty: a reader always gets the whole buffer.
 message ReadMessagesRequest {}
 
+// One message yielded by `ReadMessages`.
 message ReadMessagesResponse {
+  // The buffered message.
   rerun.log_msg.v1alpha1.LogMsg log_msg = 1;
 }
 
 // WriteTable
 
+// Request for `WriteTable`.
+//
+// Both fields are required: a request missing either fails with `INVALID_ARGUMENT` (a gRPC
+// status code).
 message WriteTableRequest {
+  // Identifies the table.
   rerun.common.v1alpha1.TableId id = 1;
+
+  // The table contents.
   rerun.common.v1alpha1.DataframePart data = 2;
 }
 
+// Response for `WriteTable`. Empty: it only signals that the table was buffered.
 message WriteTableResponse {}
 
 // ReadTables
 
+// Request for `ReadTables`. Empty: a reader always gets the whole buffer.
 message ReadTablesRequest {}
 
+// One table yielded by `ReadTables`.
 message ReadTablesResponse {
+  // Identifies the table.
   rerun.common.v1alpha1.TableId id = 1;
+
+  // The table contents.
   rerun.common.v1alpha1.DataframePart data = 2;
 }
