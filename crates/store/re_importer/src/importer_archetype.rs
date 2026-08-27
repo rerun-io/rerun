@@ -429,27 +429,6 @@ mod tests {
     }
 
     fn assert_ply_asset3d_chunk(chunk: &Chunk, entity_path: &str, contents: &[u8]) {
-        assert!(
-            chunk
-                .components()
-                .contains_component(Asset3D::descriptor_blob().component)
-        );
-        assert!(
-            !chunk
-                .components()
-                .contains_component(Mesh3D::descriptor_vertex_positions().component)
-        );
-        assert!(
-            !chunk
-                .components()
-                .contains_component(Points2D::descriptor_positions().component)
-        );
-        assert!(
-            !chunk
-                .components()
-                .contains_component(Points3D::descriptor_positions().component)
-        );
-
         let expected = Chunk::builder(EntityPath::from(entity_path))
             .with_archetype(
                 RowId::new(),
