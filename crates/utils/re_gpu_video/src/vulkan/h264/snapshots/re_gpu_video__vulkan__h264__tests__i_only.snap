@@ -1,0 +1,31 @@
+---
+source: crates/utils/re_gpu_video/src/vulkan/h264/tests.rs
+assertion_line: 73
+expression: "trace_fixture(\"i_only\")"
+---
+# AU 0
+Sps { id: 0, 64x64, poc_type: 2, max_num_ref_frames: 0, log2_max_frame_num: 4 }
+Pps { id: 0, sps: 0 }
+DecodeFrame { frame_num: 0, poc: 0 (top 0, bottom 0), idr, ref -> slot 0 }
+# AU 1
+FreeSlots [0]
+DecodeFrame { frame_num: 0, poc: 0 (top 0, bottom 0), idr, ref -> slot 0 }
+# AU 2
+FreeSlots [0]
+DecodeFrame { frame_num: 0, poc: 0 (top 0, bottom 0), idr, ref -> slot 0 }
+# AU 3
+FreeSlots [0]
+DecodeFrame { frame_num: 0, poc: 0 (top 0, bottom 0), idr, ref -> slot 0 }
+# AU 4
+FreeSlots [0]
+DecodeFrame { frame_num: 0, poc: 0 (top 0, bottom 0), idr, ref -> slot 0 }
+# AU 5
+FreeSlots [0]
+DecodeFrame { frame_num: 0, poc: 0 (top 0, bottom 0), idr, ref -> slot 0 }
+# AU 6
+FreeSlots [0]
+DecodeFrame { frame_num: 0, poc: 0 (top 0, bottom 0), idr, ref -> slot 0 }
+# AU 7
+FreeSlots [0]
+DecodeFrame { frame_num: 0, poc: 0 (top 0, bottom 0), idr, ref -> slot 0 }
+# reorder delay 0

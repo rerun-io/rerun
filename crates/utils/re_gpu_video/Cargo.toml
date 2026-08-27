@@ -19,26 +19,22 @@ workspace = true
 all-features = true
 targets = ["x86_64-unknown-linux-gnu"]
 
+# This crate is native only, web builds must not include it.
 [dependencies]
 re_log.workspace = true
 re_tracing.workspace = true
 
+ash.workspace = true
+h264-reader.workspace = true
+parking_lot.workspace = true
 thiserror.workspace = true
 wgpu.workspace = true
-
-# Vulkan Video backend (Windows and non-Apple unix).
-[target.'cfg(any(target_os = "windows", all(unix, not(target_vendor = "apple"))))'.dependencies]
-ash.workspace = true
-parking_lot.workspace = true
 
 [dev-dependencies]
 re_log = { workspace = true, features = ["setup"] }
 
+insta.workspace = true
 pollster.workspace = true
 
 [lib]
 bench = false
-
-# For build.rs:
-[build-dependencies]
-cfg_aliases.workspace = true

@@ -11,7 +11,6 @@ pub struct VideoDeviceSetup {
 }
 
 enum SetupInner {
-    #[cfg(vulkan_video)]
     Vulkan(crate::vulkan::VulkanSetup),
     // VideoToolbox variant will be added here for the macOS backend.
 }
@@ -28,18 +27,9 @@ impl VideoDeviceSetup {
 
         match adapter.get_info().backend {
             wgpu::Backend::Vulkan => {
-                #[cfg(vulkan_video)]
-                {
-                    crate::vulkan::VulkanSetup::request(adapter).map(|setup| Self {
-                        inner: SetupInner::Vulkan(setup),
-                    })
-                }
-                #[cfg(not(vulkan_video))]
-                {
-                    // Vulkan without the Vulkan Video backend compiled in,
-                    // e.g. MoltenVK on macOS (which has no video extensions anyways).
-                    None
-                }
+                crate::vulkan::VulkanSetup::request(adapter).map(|setup| Self {
+                    inner: SetupInner::Vulkan(setup),
+                })
             }
 
             // TODO(isse): VideoToolbox backend on Metal.
@@ -49,11 +39,7 @@ impl VideoDeviceSetup {
 
     pub fn capabilities(&self) -> &H264DecodeCapabilities {
         match &self.inner {
-            #[cfg(vulkan_video)]
             SetupInner::Vulkan(setup) => setup.capabilities(),
-
-            #[cfg(not(vulkan_video))]
-            _ => unreachable!("`VideoDeviceSetup` cannot be constructed without a backend"),
         }
     }
 
@@ -64,11 +50,7 @@ impl VideoDeviceSetup {
     /// Metal works against a plainly created device.
     pub fn needs_hal_device_creation(&self) -> bool {
         match &self.inner {
-            #[cfg(vulkan_video)]
             SetupInner::Vulkan(_) => true,
-
-            #[cfg(not(vulkan_video))]
-            _ => unreachable!("`VideoDeviceSetup` cannot be constructed without a backend"),
         }
     }
 
@@ -85,11 +67,7 @@ impl VideoDeviceSetup {
     /// Panics for backends where [`Self::needs_hal_device_creation`] is false.
     pub fn create_device_callback(&mut self) -> Box<wgpu::hal::vulkan::CreateDeviceCallback<'_>> {
         match &mut self.inner {
-            #[cfg(vulkan_video)]
             SetupInner::Vulkan(setup) => setup.create_device_callback(),
-
-            #[cfg(not(vulkan_video))]
-            _ => unreachable!("`VideoDeviceSetup` cannot be constructed without a backend"),
         }
     }
 
@@ -98,11 +76,7 @@ impl VideoDeviceSetup {
     /// Vulkan: the device must have been created through the callback from
     /// [`Self::create_device_callback`], on the same adapter that was probed.
     pub fn into_context(self, device: &wgpu::Device) -> Result<Arc<GpuVideoContext>, SetupError> {
-        #[cfg(not(vulkan_video))]
-        let _ = device;
-
         match self.inner {
-            #[cfg(vulkan_video)]
             SetupInner::Vulkan(setup) => Ok(Arc::new(GpuVideoContext::new_vulkan(
                 setup.into_context(device)?,
             ))),

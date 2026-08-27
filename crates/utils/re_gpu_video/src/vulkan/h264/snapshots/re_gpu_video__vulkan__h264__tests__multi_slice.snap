@@ -1,0 +1,29 @@
+---
+source: crates/utils/re_gpu_video/src/vulkan/h264/tests.rs
+assertion_line: 93
+expression: "trace_fixture(\"multi_slice\")"
+---
+# AU 0
+Sps { id: 0, 64x64, poc_type: 2, max_num_ref_frames: 3, log2_max_frame_num: 4 }
+Pps { id: 0, sps: 0 }
+DecodeFrame { frame_num: 0, poc: 0 (top 0, bottom 0), idr, ref -> slot 0, slices: 3 }
+# AU 1
+DecodeFrame { frame_num: 1, poc: 2 (top 2, bottom 2), ref -> slot 1, slices: 3, refs: [slot 0 (fn 0, poc 0)], l0: [0] }
+# AU 2
+DecodeFrame { frame_num: 2, poc: 4 (top 4, bottom 4), ref -> slot 2, slices: 3, refs: [slot 0 (fn 0, poc 0), slot 1 (fn 1, poc 2)], l0: [1, 1, 0] }
+# AU 3
+DecodeFrame { frame_num: 3, poc: 6 (top 6, bottom 6), ref -> slot 3, slices: 3, refs: [slot 0 (fn 0, poc 0), slot 1 (fn 1, poc 2), slot 2 (fn 2, poc 4)], l0: [2, 2, 1, 0] }
+FreeSlots [0]
+# AU 4
+DecodeFrame { frame_num: 4, poc: 8 (top 8, bottom 8), ref -> slot 0, slices: 3, refs: [slot 1 (fn 1, poc 2), slot 2 (fn 2, poc 4), slot 3 (fn 3, poc 6)], l0: [3, 3, 2, 1] }
+FreeSlots [1]
+# AU 5
+DecodeFrame { frame_num: 5, poc: 10 (top 10, bottom 10), ref -> slot 1, slices: 3, refs: [slot 0 (fn 4, poc 8), slot 2 (fn 2, poc 4), slot 3 (fn 3, poc 6)], l0: [0, 0, 3, 2] }
+FreeSlots [2]
+# AU 6
+DecodeFrame { frame_num: 6, poc: 12 (top 12, bottom 12), ref -> slot 2, slices: 3, refs: [slot 0 (fn 4, poc 8), slot 1 (fn 5, poc 10), slot 3 (fn 3, poc 6)], l0: [1, 1, 0, 3] }
+FreeSlots [3]
+# AU 7
+DecodeFrame { frame_num: 7, poc: 14 (top 14, bottom 14), ref -> slot 3, slices: 3, refs: [slot 0 (fn 4, poc 8), slot 1 (fn 5, poc 10), slot 2 (fn 6, poc 12)], l0: [2, 2, 1, 0] }
+FreeSlots [0]
+# reorder delay 0

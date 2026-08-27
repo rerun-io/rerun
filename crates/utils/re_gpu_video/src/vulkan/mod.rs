@@ -4,6 +4,14 @@
 
 mod caps;
 
+// The safe H.264 bitstream parser: pure CPU code producing the plain-data `DecodeOp` IR
+// the rest of the backend executes. Fully covered by tests on all platforms.
+#[cfg_attr(
+    not(test),
+    expect(dead_code, reason = "consumed from the decoder milestones on")
+)]
+mod h264;
+
 use ash::vk;
 use parking_lot::Mutex;
 

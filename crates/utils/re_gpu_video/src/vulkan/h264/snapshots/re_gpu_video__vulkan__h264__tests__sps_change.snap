@@ -1,0 +1,40 @@
+---
+source: crates/utils/re_gpu_video/src/vulkan/h264/tests.rs
+assertion_line: 98
+expression: "trace_fixture(\"sps_change\")"
+---
+# AU 0
+Sps { id: 0, 64x64, poc_type: 2, max_num_ref_frames: 3, log2_max_frame_num: 4 }
+Pps { id: 0, sps: 0 }
+DecodeFrame { frame_num: 0, poc: 0 (top 0, bottom 0), idr, ref -> slot 0 }
+# AU 1
+DecodeFrame { frame_num: 1, poc: 2 (top 2, bottom 2), ref -> slot 1, refs: [slot 0 (fn 0, poc 0)], l0: [0] }
+# AU 2
+DecodeFrame { frame_num: 2, poc: 4 (top 4, bottom 4), ref -> slot 2, refs: [slot 0 (fn 0, poc 0), slot 1 (fn 1, poc 2)], l0: [1, 1, 0] }
+# AU 3
+DecodeFrame { frame_num: 3, poc: 6 (top 6, bottom 6), ref -> slot 3, refs: [slot 0 (fn 0, poc 0), slot 1 (fn 1, poc 2), slot 2 (fn 2, poc 4)], l0: [2, 2, 1, 0] }
+FreeSlots [0]
+# AU 4
+DecodeFrame { frame_num: 4, poc: 8 (top 8, bottom 8), ref -> slot 0, refs: [slot 1 (fn 1, poc 2), slot 2 (fn 2, poc 4), slot 3 (fn 3, poc 6)], l0: [3, 3, 2, 1] }
+FreeSlots [1]
+# AU 5
+DecodeFrame { frame_num: 5, poc: 10 (top 10, bottom 10), ref -> slot 1, refs: [slot 0 (fn 4, poc 8), slot 2 (fn 2, poc 4), slot 3 (fn 3, poc 6)], l0: [0, 0, 3, 2] }
+FreeSlots [2]
+# AU 6
+Sps { id: 0, 96x64, poc_type: 2, max_num_ref_frames: 3, log2_max_frame_num: 4 }
+FreeSlots [0, 1, 3]
+DecodeFrame { frame_num: 0, poc: 0 (top 0, bottom 0), idr, ref -> slot 0 }
+# AU 7
+DecodeFrame { frame_num: 1, poc: 2 (top 2, bottom 2), ref -> slot 1, refs: [slot 0 (fn 0, poc 0)], l0: [0] }
+# AU 8
+DecodeFrame { frame_num: 2, poc: 4 (top 4, bottom 4), ref -> slot 2, refs: [slot 0 (fn 0, poc 0), slot 1 (fn 1, poc 2)], l0: [1, 1, 0] }
+# AU 9
+DecodeFrame { frame_num: 3, poc: 6 (top 6, bottom 6), ref -> slot 3, refs: [slot 0 (fn 0, poc 0), slot 1 (fn 1, poc 2), slot 2 (fn 2, poc 4)], l0: [2, 2, 1, 0] }
+FreeSlots [0]
+# AU 10
+DecodeFrame { frame_num: 4, poc: 8 (top 8, bottom 8), ref -> slot 0, refs: [slot 1 (fn 1, poc 2), slot 2 (fn 2, poc 4), slot 3 (fn 3, poc 6)], l0: [3, 3, 2, 1] }
+FreeSlots [1]
+# AU 11
+DecodeFrame { frame_num: 5, poc: 10 (top 10, bottom 10), ref -> slot 1, refs: [slot 0 (fn 4, poc 8), slot 2 (fn 2, poc 4), slot 3 (fn 3, poc 6)], l0: [0, 0, 3, 2] }
+FreeSlots [2]
+# reorder delay 0
