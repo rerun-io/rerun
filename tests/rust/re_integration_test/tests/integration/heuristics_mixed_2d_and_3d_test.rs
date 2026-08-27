@@ -5,7 +5,9 @@ use re_sdk::log::RowId;
 use re_viewer::external::re_sdk_types;
 use re_viewer::viewer_test_utils::{self, HarnessOptions};
 
-const IMAGE_SIZE: (usize, usize) = (20, 30);
+/// The logged images are `ndarray`-shaped `[height, width, 3]`.
+const IMAGE_HEIGHT: usize = 20;
+const IMAGE_WIDTH: usize = 30;
 
 fn log_test_image(
     harness: &mut egui_kittest::Harness<'_, re_viewer::App>,
@@ -13,7 +15,7 @@ fn log_test_image(
     color: [u8; 3],
 ) {
     let image =
-        ndarray::Array3::from_shape_fn((IMAGE_SIZE.0, IMAGE_SIZE.1, 3), |(_, _, c)| color[c]);
+        ndarray::Array3::from_shape_fn((IMAGE_HEIGHT, IMAGE_WIDTH, 3), |(_, _, c)| color[c]);
 
     harness.log_entity(entity_path, |builder| {
         builder.with_archetype(
@@ -61,9 +63,9 @@ fn make_multi_view_test_harness<'a>() -> egui_kittest::Harness<'a, re_viewer::Ap
             TimePoint::default(),
             &re_sdk_types::archetypes::Pinhole::from_focal_length_and_resolution(
                 [128.0, 128.0],
-                [IMAGE_SIZE.1 as f32, IMAGE_SIZE.0 as f32],
+                [IMAGE_WIDTH as f32, IMAGE_HEIGHT as f32],
             )
-            .with_principal_point([IMAGE_SIZE.0 as f32 / 2.0, IMAGE_SIZE.1 as f32 / 2.0])
+            .with_principal_point([IMAGE_WIDTH as f32 / 2.0, IMAGE_HEIGHT as f32 / 2.0])
             .with_image_plane_distance(1.0),
         )
     });

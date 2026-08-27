@@ -10,6 +10,7 @@ use re_lenses::Lenses;
 use re_log_types::{SetStoreInfo, StoreId, StoreInfo};
 use re_mcap::{DecoderIdentifier, DecoderRegistry, SelectedDecoders, TopicFilter};
 use re_quota_channel::send_crossbeam;
+use re_span::Span;
 
 use crate::{ImportedData, Importer, ImporterError, ImporterSettings, URDF_DECODER_IDENTIFIER};
 
@@ -33,7 +34,7 @@ pub struct McapImporter {
     // TODO(RR-3491): We don't need the fallback logic anymore; use `OutputMode` instead.
     raw_fallback_enabled: bool,
     topic_filter: TopicFilter,
-    time_range: Option<(u64, u64)>,
+    time_range: Option<Span<u64>>,
     recover: bool,
     lenses_by_time_type: HashMap<re_log_types::TimeType, Arc<Lenses>>,
 }
@@ -87,7 +88,7 @@ impl McapImporter {
     /// and before content-derived timelines. Chunks whose index bounds fall entirely outside the
     /// range are skipped before decompression, so this bounds peak memory as well as output.
     /// `None` clears the filter.
-    pub fn with_time_range(mut self, time_range: Option<(u64, u64)>) -> Self {
+    pub fn with_time_range(mut self, time_range: Option<Span<u64>>) -> Self {
         self.time_range = time_range;
         self
     }
@@ -148,7 +149,7 @@ impl McapImporter {
     {
         // Tag the scope with the time range so each window of a windowed read is a distinct span.
         re_tracing::profile_function!(match self.time_range {
-            Some((start, end)) => format!("log_time [{start}, {end})"),
+            Some(time_range) => format!("log_time [{}, {})", time_range.start, time_range.end()),
             None => "full".to_owned(),
         });
 

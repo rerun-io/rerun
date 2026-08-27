@@ -16,9 +16,12 @@ pub enum Mesh3DError {
 
     #[error(
         "Positions & normals array must have the same length, \
-        got positions={0} vs. normals={1}"
+        got positions={num_positions} vs. normals={num_normals}"
     )]
-    MismatchedPositionsNormals(usize, usize),
+    MismatchedPositionsNormals {
+        num_positions: usize,
+        num_normals: usize,
+    },
 }
 
 impl Mesh3D {
@@ -77,10 +80,10 @@ impl Mesh3D {
         if let Some(normals) = &self.vertex_normals
             && normals.array.len() != num_vertices
         {
-            return Err(Mesh3DError::MismatchedPositionsNormals(
-                num_vertices,
-                normals.array.len(),
-            ));
+            return Err(Mesh3DError::MismatchedPositionsNormals {
+                num_positions: num_vertices,
+                num_normals: normals.array.len(),
+            });
         }
 
         Ok(())

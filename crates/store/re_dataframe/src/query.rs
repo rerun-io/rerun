@@ -2526,6 +2526,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
 #[cfg(test)]
 #[expect(clippy::iter_on_single_items)]
 mod tests {
+    use std::ops::RangeInclusive;
     use std::sync::Arc;
 
     use arrow::array::{StringArray, UInt32Array};
@@ -4018,10 +4019,10 @@ mod tests {
 
         // Three pairwise-disjoint chunks, each dense (10 rows step 1, strictly
         // increasing) so all three should satisfy `is_bulk_eligible`.
-        let chunk_ranges: [(i64, i64); 3] = [(10, 19), (30, 39), (50, 59)];
-        for (lo, hi) in chunk_ranges {
+        let chunk_ranges: [RangeInclusive<i64>; 3] = [10..=19, 30..=39, 50..=59];
+        for chunk_range in chunk_ranges {
             let mut builder = Chunk::builder(entity_path.clone());
-            for t in lo..=hi {
+            for t in chunk_range {
                 #[expect(clippy::cast_sign_loss)]
                 let pt = MyPoint::from_iter((t as u32)..=(t as u32));
                 builder = builder.with_archetype(
@@ -4114,10 +4115,10 @@ mod tests {
         let entity_path = EntityPath::from("/multi");
         let timeline = TimelineName::from("frame");
 
-        let chunk_ranges: [(i64, i64); 3] = [(10, 19), (30, 39), (50, 59)];
-        for (lo, hi) in chunk_ranges {
+        let chunk_ranges: [RangeInclusive<i64>; 3] = [10..=19, 30..=39, 50..=59];
+        for chunk_range in chunk_ranges {
             let mut builder = Chunk::builder(entity_path.clone());
-            for t in lo..=hi {
+            for t in chunk_range {
                 #[expect(clippy::cast_sign_loss)]
                 let n = t as u32;
                 let archetype = MyPoints::new(MyPoint::from_iter(n..=n))
@@ -4197,14 +4198,20 @@ mod tests {
         Ok(())
     }
 
+    /// How much of a run `next_n_rows` emitted, and how much of it took the bulk fast path.
+    struct BulkRunStats {
+        total_rows: usize,
+        bulk_emitted_rows: u64,
+    }
+
     /// Runs `query` via `next_n_rows` and asserts the result exactly matches the `next_row`
-    /// reference path, column by column. Returns `(total_rows, bulk_emitted_rows)` so callers
-    /// can additionally assert on how much (if any) of the run went through
-    /// [`QueryHandle::try_bulk_emit_run`]'s bulk fast path.
+    /// reference path, column by column. Returns the row counts so callers can additionally
+    /// assert on how much (if any) of the run went through [`QueryHandle::try_bulk_emit_run`]'s
+    /// bulk fast path.
     fn assert_bulk_matches_reference(
         engine: &QueryEngine<StorageEngine>,
         query: QueryExpression,
-    ) -> (usize, u64) {
+    ) -> BulkRunStats {
         let reference: Vec<_> = engine.query(query.clone()).iter().collect();
         let total_rows = reference.len();
 
@@ -4238,7 +4245,10 @@ mod tests {
             assert_eq!(r.to_data(), c.to_data(), "column {col_idx} mismatch");
         }
 
-        (total_rows, candidate_handle.bulk_emitted_rows())
+        BulkRunStats {
+            total_rows,
+            bulk_emitted_rows: candidate_handle.bulk_emitted_rows(),
+        }
     }
 
     /// A component that's only sparsely present relative to a sibling component on the same
@@ -4290,7 +4300,10 @@ mod tests {
             ..Default::default()
         };
 
-        let (total_rows, bulk_emitted) = assert_bulk_matches_reference(&engine, query);
+        let BulkRunStats {
+            total_rows,
+            bulk_emitted_rows: bulk_emitted,
+        } = assert_bulk_matches_reference(&engine, query);
         assert_eq!(total_rows, 10);
         assert_eq!(
             bulk_emitted as usize, total_rows,
@@ -4323,7 +4336,10 @@ mod tests {
             ..Default::default()
         };
 
-        let (total_rows, bulk_emitted) = assert_bulk_matches_reference(&engine, query);
+        let BulkRunStats {
+            total_rows,
+            bulk_emitted_rows: bulk_emitted,
+        } = assert_bulk_matches_reference(&engine, query);
         assert_eq!(total_rows, 11);
         assert_eq!(
             bulk_emitted, 0,
@@ -4349,10 +4365,10 @@ mod tests {
 
         // Points: 3 disjoint, dense, bulk-eligible chunks -- entirely *after* Colors' overlap
         // region below, so Colors is fully exhausted by the time Points' rows come up.
-        let points_ranges: [(i64, i64); 3] = [(20, 29), (40, 49), (60, 69)];
-        for (lo, hi) in points_ranges {
+        let points_ranges: [RangeInclusive<i64>; 3] = [20..=29, 40..=49, 60..=69];
+        for points_range in points_ranges {
             let mut builder = Chunk::builder(entity_path.clone());
-            for t in lo..=hi {
+            for t in points_range {
                 #[expect(clippy::cast_sign_loss)]
                 let points = MyPoint::from_iter((t as u32)..=(t as u32));
                 builder = builder.with_sparse_component_batches(
@@ -4390,7 +4406,10 @@ mod tests {
             ..Default::default()
         };
 
-        let (total_rows, bulk_emitted) = assert_bulk_matches_reference(&engine, query);
+        let BulkRunStats {
+            total_rows,
+            bulk_emitted_rows: bulk_emitted,
+        } = assert_bulk_matches_reference(&engine, query);
         assert_eq!(
             total_rows, 41,
             "11 overlapping Colors rows + 30 disjoint Points rows"
@@ -4421,10 +4440,10 @@ mod tests {
         // Two components, each with 3 disjoint dense chunks on the same frame grid -- both
         // individually bulk-eligible, so `slice_count == 2` for every run. Every row also
         // carries a second timeline (`log_time`), explicitly selected below.
-        let chunk_ranges: [(i64, i64); 3] = [(10, 19), (30, 39), (50, 59)];
-        for (lo, hi) in chunk_ranges {
+        let chunk_ranges: [RangeInclusive<i64>; 3] = [10..=19, 30..=39, 50..=59];
+        for chunk_range in chunk_ranges {
             let mut builder = Chunk::builder(entity_path.clone());
-            for t in lo..=hi {
+            for t in chunk_range {
                 #[expect(clippy::cast_sign_loss)]
                 let n = t as u32;
                 let points = MyPoint::from_iter(n..=n);
@@ -4465,7 +4484,10 @@ mod tests {
             ..Default::default()
         };
 
-        let (total_rows, bulk_emitted) = assert_bulk_matches_reference(&engine, query);
+        let BulkRunStats {
+            total_rows,
+            bulk_emitted_rows: bulk_emitted,
+        } = assert_bulk_matches_reference(&engine, query);
         assert_eq!(total_rows, 30);
         assert_eq!(
             bulk_emitted, 0,
@@ -4497,11 +4519,11 @@ mod tests {
         );
         let entity_path = EntityPath::from("/rowid_selection");
 
-        let chunk_ranges: [(u32, u32); 3] = [(10, 19), (30, 39), (50, 59)];
+        let chunk_ranges: [RangeInclusive<u32>; 3] = [10..=19, 30..=39, 50..=59];
         let mut chunks = Vec::with_capacity(chunk_ranges.len());
-        for (lo, hi) in chunk_ranges {
+        for chunk_range in chunk_ranges {
             let mut builder = Chunk::builder(entity_path.clone());
-            for t in lo..=hi {
+            for t in chunk_range {
                 let points = MyPoint::from_iter(t..=t);
                 builder = builder.with_sparse_component_batches(
                     RowId::new(),
@@ -4608,7 +4630,10 @@ mod tests {
                 ..Default::default()
             };
 
-            let (total_rows, bulk_emitted) = assert_bulk_matches_reference(&engine, query);
+            let BulkRunStats {
+                total_rows,
+                bulk_emitted_rows: bulk_emitted,
+            } = assert_bulk_matches_reference(&engine, query);
             assert_eq!(total_rows, n_rows);
             if n_rows < BULK_MIN_RUN {
                 assert_eq!(
@@ -5389,9 +5414,15 @@ mod tests {
         re_log::setup_logging();
 
         let entity_path = EntityPath::from("/dup");
-        let build_chunk = |rows: &[(i64, u32)]| -> anyhow::Result<Arc<Chunk>> {
+
+        struct Row {
+            frame: i64,
+            payload: u32,
+        }
+        let row = |frame: i64, payload: u32| Row { frame, payload };
+        let build_chunk = |rows: &[Row]| -> anyhow::Result<Arc<Chunk>> {
             let mut builder = Chunk::builder(entity_path.clone());
-            for &(frame, payload) in rows {
+            for &Row { frame, payload } in rows {
                 let points = MyPoint::from_iter(payload..=payload);
                 builder = builder.with_sparse_component_batches(
                     RowId::new(),
@@ -5402,9 +5433,9 @@ mod tests {
             Ok(Arc::new(builder.build()?))
         };
 
-        let chunk_a = build_chunk(&[(0, 0), (2, 1), (2, 2)])?; // duplicate frame 2
-        let chunk_b = build_chunk(&[(1, 3), (3, 4)])?;
-        let chunk_c = build_chunk(&[(4, 5), (5, 6)])?;
+        let chunk_a = build_chunk(&[row(0, 0), row(2, 1), row(2, 2)])?; // duplicate frame 2
+        let chunk_b = build_chunk(&[row(1, 3), row(3, 4)])?;
+        let chunk_c = build_chunk(&[row(4, 5), row(5, 6)])?;
         let chunks = vec![chunk_a, chunk_b, chunk_c];
 
         let forward: Vec<usize> = vec![0, 1, 2];

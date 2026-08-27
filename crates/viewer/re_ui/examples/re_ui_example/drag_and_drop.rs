@@ -5,6 +5,13 @@ use re_ui::{UiExt as _, list_item};
 #[derive(Hash, Clone, Copy, PartialEq, Eq)]
 struct ItemId(u32);
 
+/// A pending move of one item to another position in the list.
+#[derive(Clone, Copy)]
+struct Swap {
+    source: usize,
+    target: usize,
+}
+
 pub struct ExampleDragAndDrop {
     items: Vec<ItemId>,
 
@@ -26,7 +33,7 @@ impl ExampleDragAndDrop {
     ///
     /// Note: this function uses `ListItem` and must be wrapped in a `ListItemContent`.
     pub fn ui(&mut self, ui: &mut egui::Ui) {
-        let mut swap: Option<(usize, usize)> = None;
+        let mut swap: Option<Swap> = None;
 
         for (i, item_id) in self.items.iter().enumerate() {
             //
@@ -94,7 +101,10 @@ impl ExampleDragAndDrop {
                     // note: can't use `response.drag_released()` because we not the item which
                     // started the drag
                     if ui.input(|i| i.pointer.any_released()) {
-                        swap = Some((source_item_position_index, target));
+                        swap = Some(Swap {
+                            source: source_item_position_index,
+                            target,
+                        });
 
                         egui::DragAndDrop::clear_payload(ui.ctx());
                     }
@@ -106,7 +116,7 @@ impl ExampleDragAndDrop {
         // Handle the swap command (if any)
         //
 
-        if let Some((source, target)) = swap
+        if let Some(Swap { source, target }) = swap
             && source != target
         {
             let item = self.items.remove(source);

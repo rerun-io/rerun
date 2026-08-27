@@ -23,10 +23,17 @@ const DOWNLOAD_CONCURRENCY: usize = 8;
 /// Prefix used for in-flight download temp files in the cache directory.
 const DOWNLOAD_TEMP_PREFIX: &str = ".rrd-download-";
 
+/// A `major.minor` version, without the patch.
+#[derive(Clone, Copy)]
+struct MinorVersion {
+    major: u32,
+    minor: u32,
+}
+
 /// Derive previous minor version from `CARGO_PKG_VERSION`.
 ///
-/// E.g., `"0.32.0-alpha.1+dev"` → `(0, 31)`.
-fn previous_minor_version() -> (u32, u32) {
+/// E.g., `"0.32.0-alpha.1+dev"` → `0.31`.
+fn previous_minor_version() -> MinorVersion {
     let version = env!("CARGO_PKG_VERSION"); // e.g. "0.32.0-alpha.1+dev"
     let parts: Vec<&str> = version.split('.').collect();
     let major: u32 = parts[0].parse().expect("failed to parse major version");
@@ -35,7 +42,10 @@ fn previous_minor_version() -> (u32, u32) {
         minor > 0,
         "Cannot derive previous version from minor=0 (version={version})"
     );
-    (major, minor - 1)
+    MinorVersion {
+        major,
+        minor: minor - 1,
+    }
 }
 
 /// Probe `app.rerun.io` to find the latest patch for a given `major.minor`.
@@ -197,8 +207,8 @@ async fn ensure_rrd_cached(
 #[tokio::test(flavor = "multi_thread")]
 async fn test_old_rrds_in_current_viewer() {
     let client = reqwest::Client::new();
-    let (major, prev_minor) = previous_minor_version();
-    let version = resolve_latest_patch(&client, major, prev_minor).await;
+    let MinorVersion { major, minor } = previous_minor_version();
+    let version = resolve_latest_patch(&client, major, minor).await;
     eprintln!("Testing backward compatibility with version {version}");
 
     let cache_dir = directories::ProjectDirs::from("io", "rerun", "rerun-integration-tests")

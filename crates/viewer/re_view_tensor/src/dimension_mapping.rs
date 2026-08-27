@@ -88,7 +88,10 @@ fn make_width_height_valid(
 
     // If there's more than two dimensions, force width and height to be set.
     if shape.len() >= 2 && (width.is_none() || height.is_none()) {
-        let (default_width, default_height) = find_width_height_dim_indices(shape);
+        let WidthHeightDims {
+            width: default_width,
+            height: default_height,
+        } = find_width_height_dim_indices(shape);
         if width.is_none() {
             *width = Some(
                 TensorDimensionSelection {
@@ -190,8 +193,21 @@ fn make_slider_valid(
     }
 }
 
+/// The dimension indices a tensor is displayed along.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct WidthHeightDims {
+    width: usize,
+    height: usize,
+}
+
+/// The two longest dimensions of a tensor, by size.
+struct TwoLongestDims {
+    longest: usize,
+    second_longest: usize,
+}
+
 #[expect(clippy::collapsible_else_if)]
-fn find_width_height_dim_indices(shape: &[TensorDimension]) -> (usize, usize) {
+fn find_width_height_dim_indices(shape: &[TensorDimension]) -> WidthHeightDims {
     assert!(shape.len() >= 2);
 
     let mut width = None;
@@ -213,10 +229,13 @@ fn find_width_height_dim_indices(shape: &[TensorDimension]) -> (usize, usize) {
     }
 
     if let (Some(width), Some(height)) = (width, height) {
-        (width, height)
+        WidthHeightDims { width, height }
     } else {
         // Backup: go by length:
-        let (longest, second_longest) = longest_and_second_longest_dim_indices(shape);
+        let TwoLongestDims {
+            longest,
+            second_longest,
+        } = longest_and_second_longest_dim_indices(shape);
 
         if let Some(width) = width {
             let height = if width == longest {
@@ -224,20 +243,26 @@ fn find_width_height_dim_indices(shape: &[TensorDimension]) -> (usize, usize) {
             } else {
                 longest
             };
-            (width, height)
+            WidthHeightDims { width, height }
         } else if let Some(height) = height {
             let width = if height == longest {
                 second_longest
             } else {
                 longest
             };
-            (width, height)
+            WidthHeightDims { width, height }
         } else {
             if (longest, second_longest) == (0, 1) || (longest, second_longest) == (1, 0) {
                 // The first two dimensions - assume numpy ordering of [h, w, …]
-                (1, 0)
+                WidthHeightDims {
+                    width: 1,
+                    height: 0,
+                }
             } else {
-                (longest, second_longest)
+                WidthHeightDims {
+                    width: longest,
+                    height: second_longest,
+                }
             }
         }
     }
@@ -252,7 +277,7 @@ fn is_name_like_height(lowercase: &str) -> bool {
 }
 
 /// Returns the longest and second longest dimensions
-fn longest_and_second_longest_dim_indices(shape: &[TensorDimension]) -> (usize, usize) {
+fn longest_and_second_longest_dim_indices(shape: &[TensorDimension]) -> TwoLongestDims {
     let mut longest_idx = 0;
     let mut second_longest_idx = 0;
 
@@ -266,9 +291,15 @@ fn longest_and_second_longest_dim_indices(shape: &[TensorDimension]) -> (usize, 
     }
 
     if longest_idx == second_longest_idx {
-        (0, 1)
+        TwoLongestDims {
+            longest: 0,
+            second_longest: 1,
+        }
     } else {
-        (longest_idx, second_longest_idx)
+        TwoLongestDims {
+            longest: longest_idx,
+            second_longest: second_longest_idx,
+        }
     }
 }
 
@@ -279,7 +310,7 @@ mod tests {
 
     use crate::TensorDimension;
     use crate::dimension_mapping::{
-        find_width_height_dim_indices, make_indices_valid, make_slider_valid,
+        WidthHeightDims, find_width_height_dim_indices, make_indices_valid, make_slider_valid,
         make_width_height_valid,
     };
 
@@ -292,7 +323,10 @@ mod tests {
         fn dim(size: u64) -> TensorDimension {
             TensorDimension::unnamed(size)
         }
-        let wh = find_width_height_dim_indices;
+        let wh = |shape: &[TensorDimension]| {
+            let WidthHeightDims { width, height } = find_width_height_dim_indices(shape);
+            (width, height)
+        };
 
         assert_eq!(wh(&[dim(800), dim(50)]), (1, 0), "numpy ordering");
         assert_eq!(wh(&[dim(50), dim(800)]), (1, 0), "numpy ordering");

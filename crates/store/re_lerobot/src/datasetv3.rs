@@ -340,11 +340,14 @@ impl LeRobotDatasetV3 {
         re_tracing::profile_scope!("load_all_episode_data_files");
 
         // Group episodes by their data file
-        let mut files_to_episodes: BTreeMap<(usize, usize), Vec<EpisodeIndex>> =
+        let mut files_to_episodes: BTreeMap<DataFileLocation, Vec<EpisodeIndex>> =
             BTreeMap::default();
         for episode in self.metadata.episodes.values() {
             files_to_episodes
-                .entry((episode.data_chunk_index, episode.data_file_index))
+                .entry(DataFileLocation {
+                    chunk_index: episode.data_chunk_index,
+                    file_index: episode.data_file_index,
+                })
                 .or_default()
                 .push(episode.episode_index);
         }
@@ -771,6 +774,13 @@ pub struct FeatureFileMetadata {
 
     /// End timestamp for the feature data in this file
     pub to_timestamp: Option<f64>,
+}
+
+/// Which data file an episode lives in: the chunk, and the file within that chunk.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+struct DataFileLocation {
+    chunk_index: usize,
+    file_index: usize,
 }
 
 /// Episode metadata for a `LeRobot` v3 dataset.

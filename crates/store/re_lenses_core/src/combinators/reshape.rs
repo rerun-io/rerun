@@ -11,6 +11,7 @@ use arrow::datatypes::Field;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_log::debug_assert_eq;
+use re_span::Span;
 
 use super::{error::Error, transform::Transform};
 
@@ -177,8 +178,8 @@ impl Transform for Flatten {
 
         let mut current_offset = 0i32;
 
-        // Collect ranges of values to copy (as (start, length) pairs)
-        let mut value_ranges: Vec<(i32, i32)> = Vec::new();
+        // Collect ranges of values to copy
+        let mut value_spans: Vec<Span<usize>> = Vec::new();
 
         for outer_row_idx in 0..source.len() {
             if source.is_null(outer_row_idx) {
@@ -197,15 +198,14 @@ impl Transform for Flatten {
                     let length = inner_end - inner_start;
 
                     if length > 0 {
-                        // Try to merge with previous range if contiguous
-                        if let Some((last_start, last_len)) = value_ranges.last_mut() {
-                            if *last_start + *last_len == inner_start {
-                                *last_len += length;
-                            } else {
-                                value_ranges.push((inner_start, length));
-                            }
+                        let span = Span::from_start_len(inner_start as usize, length as usize);
+                        // Try to merge with previous span if contiguous
+                        if let Some(last) = value_spans.last_mut()
+                            && last.end() == span.start
+                        {
+                            last.len += span.len;
                         } else {
-                            value_ranges.push((inner_start, length));
+                            value_spans.push(span);
                         }
                         current_offset += length;
                     }
@@ -216,17 +216,16 @@ impl Transform for Flatten {
         }
 
         // Build flattened values by slicing larger contiguous chunks
-        let flattened_values = if value_ranges.is_empty() {
+        let flattened_values = if let &[span] = value_spans.as_slice() {
+            // Single contiguous span - just slice once
+            inner_values.slice(span.start, span.len)
+        } else if value_spans.is_empty() {
             inner_values.slice(0, 0)
-        } else if value_ranges.len() == 1 {
-            // Single contiguous range - just slice once
-            let (start, length) = value_ranges[0];
-            inner_values.slice(start as usize, length as usize)
         } else {
-            // Multiple ranges - slice and concatenate
-            let slices: Vec<_> = value_ranges
+            // Multiple spans - slice and concatenate
+            let slices: Vec<_> = value_spans
                 .iter()
-                .map(|&(start, length)| inner_values.slice(start as usize, length as usize))
+                .map(|span| inner_values.slice(span.start, span.len))
                 .collect();
             let refs: Vec<&dyn Array> = slices.iter().map(|a| a.as_ref()).collect();
             re_arrow_util::concat_arrays(&refs)?

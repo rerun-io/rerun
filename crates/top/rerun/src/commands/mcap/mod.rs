@@ -12,6 +12,7 @@ use re_log_types::{Duration, LogMsg, RecordingId, TimeType, Timestamp};
 use re_mcap::{DecoderIdentifier, SelectedDecoders, TopicFilter};
 use re_sdk::external::re_importer::{McapImporter, supported_mcap_decoder_identifiers};
 use re_sdk::{ApplicationId, ImportedData, Importer, ImporterSettings};
+use re_span::Span;
 
 use check::CheckCommand;
 use info::InfoCommand;
@@ -169,19 +170,20 @@ fn parse_time(value: &str) -> Result<u64, String> {
 fn compile_time_range(
     start_time: Option<u64>,
     end_time: Option<u64>,
-) -> anyhow::Result<Option<(u64, u64)>> {
+) -> anyhow::Result<Option<Span<u64>>> {
     if start_time.is_none() && end_time.is_none() {
         return Ok(None);
     }
 
     let start = start_time.unwrap_or(0);
     let end = end_time.unwrap_or(u64::MAX);
+    let span = Span::try_from_start_end(start, end).filter(|span| !span.is_empty());
     anyhow::ensure!(
-        start < end,
+        span.is_some(),
         "start-time ({start}) must be less than end-time ({end}); the range is half-open [start, end)"
     );
 
-    Ok(Some((start, end)))
+    Ok(span)
 }
 
 impl ConvertCommand {

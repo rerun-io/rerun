@@ -100,6 +100,20 @@ impl<Idx: Unsigned + Copy> Span<Idx> {
         })
     }
 
+    /// Do the two spans share at least one index?
+    ///
+    /// An empty span intersects nothing.
+    #[inline]
+    pub fn intersects(self, other: Self) -> bool
+    where
+        Idx: PartialOrd,
+    {
+        !self.is_empty()
+            && !other.is_empty()
+            && self.start < other.end()
+            && other.start < self.end()
+    }
+
     /// The smallest span covering both `self` and `other`, including any gap between them.
     #[inline]
     pub fn union(self, other: Self) -> Self
@@ -307,6 +321,17 @@ mod tests {
             Some(Span::from_start_len(5, 0))
         );
         assert_eq!(Span::try_from_start_end(7_u64, 3), None);
+    }
+
+    #[test]
+    fn intersects_is_half_open_and_empty_spans_intersect_nothing() {
+        let span = Span::from_start_len(3_u64, 4); // 3..7
+        assert!(span.intersects(Span::from_start_len(6, 1))); // last index
+        assert!(span.intersects(Span::from_start_len(0, 4))); // overlaps the start
+        assert!(!span.intersects(Span::from_start_len(7, 1))); // just past the end
+        assert!(!span.intersects(Span::from_start_len(0, 3))); // ends where `span` starts
+        assert!(!span.intersects(Span::from_start_len(5, 0))); // empty, inside `span`
+        assert!(!Span::from_start_len(5_u64, 0).intersects(span));
     }
 
     #[test]

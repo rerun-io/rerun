@@ -16,6 +16,7 @@ use re_chunk::RowId;
 use re_chunk::external::nohash_hasher::IntMap;
 use re_chunk::{Chunk, EntityPath};
 use re_log_types::TimeType;
+use re_span::Span;
 
 pub use self::attachments::McapAttachmentsDecoder;
 pub use self::metadata::McapMetadataDecoder;
@@ -388,7 +389,7 @@ impl MessageDecoderRunner {
         mcap_bytes: &[u8],
         summary: &mcap::Summary,
         time_type: TimeType,
-        time_range: Option<(u64, u64)>,
+        time_range: Option<Span<u64>>,
         emit: &(dyn Fn(Chunk) + Send + Sync),
     ) -> Result<(), Error> {
         self.inner.init(summary)?;
@@ -416,8 +417,8 @@ impl MessageDecoderRunner {
                 match msg {
                     Ok(message) => {
                         // Skip messages outside the `[start, end)` `log_time` range.
-                        if let Some((start, end)) = time_range
-                            && (message.log_time < start || message.log_time >= end)
+                        if let Some(time_range) = time_range
+                            && !time_range.contains(message.log_time)
                         {
                             continue;
                         }
@@ -457,10 +458,17 @@ impl MessageDecoderRunner {
         // Collected into a `Vec` so the parallel path can index a contiguous `0..total`:
         // its reorder buffer keys on gap-free indices, so skipping inside the worker loop would stall it.
         let selected: Vec<&::mcap::records::ChunkIndex> = match time_range {
-            Some((start, end)) => summary
+            Some(time_range) => summary
                 .chunk_indexes
                 .iter()
-                .filter(|c| c.message_end_time >= start && c.message_start_time < end)
+                .filter(|c| {
+                    // The chunk index bounds are inclusive on both ends.
+                    let chunk_span = Span::from_start_end(
+                        c.message_start_time,
+                        c.message_end_time.saturating_add(1),
+                    );
+                    chunk_span.intersects(time_range)
+                })
                 .collect(),
             None => summary.chunk_indexes.iter().collect(),
         };
@@ -598,7 +606,7 @@ pub struct ExecutionPlan {
     /// Optional `[start, end)` `log_time` range (nanoseconds). When set, chunks and messages
     /// whose `log_time` falls outside the range are skipped; chunks that fall entirely outside
     /// are never decompressed, so this bounds peak memory and not just output.
-    pub time_range: Option<(u64, u64)>,
+    pub time_range: Option<Span<u64>>,
 }
 
 impl ExecutionPlan {
@@ -607,7 +615,7 @@ impl ExecutionPlan {
     /// Chunks whose index bounds fall entirely outside the range are skipped before decompression.
     /// `None` clears the filter (decode everything).
     #[inline]
-    pub fn with_time_range(mut self, time_range: Option<(u64, u64)>) -> Self {
+    pub fn with_time_range(mut self, time_range: Option<Span<u64>>) -> Self {
         self.time_range = time_range;
         self
     }
@@ -627,9 +635,11 @@ impl ExecutionPlan {
         }
 
         let time_range = self.time_range;
-        if let Some((start, end)) = time_range {
+        if let Some(time_range) = time_range {
             re_log::info!(
-                "Filtering MCAP messages to log_time range [{start}, {end}) (nanoseconds)"
+                "Filtering MCAP messages to log_time range [{}, {}) (nanoseconds)",
+                time_range.start,
+                time_range.end(),
             );
         }
         for runner in &mut self.runners {
@@ -1022,7 +1032,7 @@ mod tests {
     fn run_with_time_range(
         buffer: &[u8],
         summary: &mcap::Summary,
-        time_range: Option<(u64, u64)>,
+        time_range: Option<Span<u64>>,
     ) -> Vec<i64> {
         let plan = DecoderRegistry::all_with_raw_fallback()
             .plan(buffer, summary, &TopicFilter::default())
@@ -1046,22 +1056,22 @@ mod tests {
             vec![10, 20, 30]
         );
         assert_eq!(
-            run_with_time_range(&buffer, &summary, Some((0, u64::MAX))),
+            run_with_time_range(&buffer, &summary, Some(Span::from_start_end(0, u64::MAX))),
             vec![10, 20, 30]
         );
         // Half-open `[start, end)`: 15..25 keeps only 20.
         assert_eq!(
-            run_with_time_range(&buffer, &summary, Some((15, 25))),
+            run_with_time_range(&buffer, &summary, Some(Span::from_start_end(15, 25))),
             vec![20]
         );
         // Inclusive start, exclusive end: [20, 30) keeps 20 but not 30.
         assert_eq!(
-            run_with_time_range(&buffer, &summary, Some((20, 30))),
+            run_with_time_range(&buffer, &summary, Some(Span::from_start_end(20, 30))),
             vec![20]
         );
         // A range that overlaps no chunk yields nothing.
         assert_eq!(
-            run_with_time_range(&buffer, &summary, Some((100, 200))),
+            run_with_time_range(&buffer, &summary, Some(Span::from_start_end(100, 200))),
             Vec::<i64>::new()
         );
     }
@@ -1073,7 +1083,7 @@ mod tests {
         assert_eq!(summary.chunk_indexes.len(), 1);
 
         assert_eq!(
-            run_with_time_range(&buffer, &summary, Some((15, 25))),
+            run_with_time_range(&buffer, &summary, Some(Span::from_start_end(15, 25))),
             vec![20]
         );
     }
@@ -1088,7 +1098,7 @@ mod tests {
         // `workers = current_num_threads()`, so a 1-thread pool forces the serial path and a
         // larger pool forces the parallel reorder path. Both must emit the same in-range messages
         // in the same order (RowId is regenerated on the parallel path, so we compare times only).
-        let run_in_pool = |threads: usize, time_range: Option<(u64, u64)>| -> Vec<i64> {
+        let run_in_pool = |threads: usize, time_range: Option<Span<u64>>| -> Vec<i64> {
             let pool = rayon::ThreadPoolBuilder::new()
                 .num_threads(threads)
                 .build()
@@ -1096,7 +1106,7 @@ mod tests {
             pool.install(|| run_with_time_range(&buffer, &summary, time_range))
         };
 
-        let filter = Some((100, 500));
+        let filter = Some(Span::from_start_end(100, 500));
         let expected: Vec<i64> = (100..500).step_by(10).collect();
 
         let serial = run_in_pool(1, filter);

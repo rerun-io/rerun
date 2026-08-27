@@ -8,7 +8,7 @@ use arrow::datatypes::DataType;
 use egui::NumExt as _;
 use parking_lot::RwLock;
 use re_byte_size::SizeBytes as _;
-use re_chunk::{ChunkId, EntityPath, RowId, Span, TimelineName};
+use re_chunk::{ChunkId, EntityPath, RowId, TimelineName};
 use re_chunk_store::{
     ChunkDirectLineageReport, ChunkStoreDiff, ChunkStoreEvent, ChunkTrackingMode,
 };
@@ -17,6 +17,7 @@ use re_log::{debug_assert, debug_panic};
 use re_log_types::{EntityPathHash, TimeType};
 use re_sdk_types::archetypes::VideoStream;
 use re_sdk_types::components;
+use re_span::Span;
 use re_video::player::GetVideoSource;
 use re_video::{
     DecodeSettings, SampleIndexSpan, SampleMetadataState, StableIndexDeque, VideoSource,

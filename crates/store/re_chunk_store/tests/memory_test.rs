@@ -54,15 +54,25 @@ fn live_bytes_global() -> usize {
     LIVE_BYTES_GLOBAL.load(Relaxed)
 }
 
-/// Returns `(num_bytes_allocated, num_bytes_allocated_by_this_thread)`.
-fn memory_use<R>(run: impl Fn() -> R) -> (usize, usize) {
+/// How many bytes a piece of work allocated, process-wide and on the calling thread.
+struct MemoryUse {
+    global_bytes: usize,
+
+    #[expect(dead_code)]
+    local_bytes: usize,
+}
+
+fn memory_use<R>(run: impl Fn() -> R) -> MemoryUse {
     let used_bytes_start_local = live_bytes_local();
     let used_bytes_start_global = live_bytes_global();
     let ret = run();
     let bytes_used_local = live_bytes_local() - used_bytes_start_local;
     let bytes_used_global = live_bytes_global() - used_bytes_start_global;
     drop(ret);
-    (bytes_used_global, bytes_used_local)
+    MemoryUse {
+        global_bytes: bytes_used_global,
+        local_bytes: bytes_used_local,
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -85,7 +95,10 @@ fn scalar_memory_overhead() {
 
     const NUM_SCALARS: usize = 1024 * 1024;
 
-    let (total_mem_use_global, _total_mem_use_local) = memory_use(|| {
+    let MemoryUse {
+        global_bytes: total_mem_use_global,
+        ..
+    } = memory_use(|| {
         let mut store = ChunkStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
             ChunkStoreConfig::default(),

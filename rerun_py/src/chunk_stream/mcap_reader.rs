@@ -7,6 +7,7 @@ use pyo3::prelude::*;
 use re_chunk::Chunk;
 use re_log_types::TimeType;
 use re_mcap::{DecoderIdentifier, SelectedDecoders, TopicFilter};
+use re_span::Span;
 
 use super::error::ChunkPipelineError;
 use super::py_stream::PyLazyChunkStreamInternal;
@@ -579,7 +580,7 @@ fn compile_topic_filter(
 fn compile_time_range(
     start_time_ns: Option<i64>,
     end_time_ns: Option<i64>,
-) -> PyResult<Option<(u64, u64)>> {
+) -> PyResult<Option<Span<u64>>> {
     if start_time_ns.is_none() && end_time_ns.is_none() {
         return Ok(None);
     }
@@ -603,13 +604,13 @@ fn compile_time_range(
         None => u64::MAX,
     };
 
-    if start >= end {
+    let Some(span) = Span::try_from_start_end(start, end).filter(|span| !span.is_empty()) else {
         return Err(PyValueError::new_err(format!(
             "start_time_ns ({start}) must be less than end_time_ns ({end}); the range is half-open [start, end)"
         )));
-    }
+    };
 
-    Ok(Some((start, end)))
+    Ok(Some(span))
 }
 
 fn mmap_file(path: &Path) -> Result<memmap2::Mmap, ChunkPipelineError> {
