@@ -281,9 +281,13 @@ fn triangulate_face(indices: &[u32]) -> impl Iterator<Item = glam::UVec3> + '_ {
         .map(|pair| glam::uvec3(indices[0], pair[0], pair[1]))
 }
 
+/// Faces are overwhelmingly triangles or quads, and we hold every face of the mesh at once,
+/// so keeping the small ones inline saves an allocation per face.
+type FaceIndices = smallvec::SmallVec<[u32; 4]>;
+
 #[derive(Default)]
 struct ParsedMeshFace<const USE_VERTEX_INDICES: bool> {
-    indices: Vec<u32>,
+    indices: FaceIndices,
 }
 
 impl<const USE_VERTEX_INDICES: bool> ParsedMeshFace<USE_VERTEX_INDICES> {
@@ -323,7 +327,7 @@ impl<const USE_VERTEX_INDICES: bool> ply_rs_bw::ply::PropertyAccess
         }
 
         if let Some(indices) = property.to_u32_list() {
-            self.indices = indices;
+            self.indices = FaceIndices::from_slice(&indices);
             PropertyAccessResult::Set
         } else {
             PropertyAccessResult::UnsupportedType
