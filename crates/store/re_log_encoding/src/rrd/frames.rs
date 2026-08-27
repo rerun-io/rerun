@@ -419,7 +419,24 @@ impl Decodable for StreamFooter {
                 .expect("cannot fail, checked above"),
         );
 
-        let dynamic_data = &data[data.len() - Self::ENCODED_SIZE_BYTES..];
+        // The entry count comes from the file, so a corrupt one can name more entries than the
+        // slice holds. Saturating arithmetic keeps it from wrapping on 32-bit targets: it asks
+        // for a size no slice can satisfy, and the check below rejects it.
+        let entries_size =
+            (num_rrd_footers as usize).saturating_mul(Self::ENCODED_SIZE_BYTES_SINGLE_ENTRY);
+        let encoded_size = Self::ENCODED_SIZE_BYTES_IGNORING_ENTRIES.saturating_add(entries_size);
+        if data.len() < encoded_size {
+            return Err(crate::rrd::CodecError::FrameDecoding(format!(
+                "invalid StreamFooter length (announces {num_rrd_footers} entries, needing {encoded_size} bytes, but got {})",
+                data.len()
+            )));
+        }
+
+        // The entries end where the fixed part starts, so their start depends on how many there
+        // are. For the single entry any RRD carries today, that is `ENCODED_SIZE_BYTES` back
+        // from the end.
+        let dynamic_data = &data
+            [data.len() - encoded_size..data.len() - Self::ENCODED_SIZE_BYTES_IGNORING_ENTRIES];
 
         let mut pos = 0;
         let entries = (0..num_rrd_footers)
@@ -530,5 +547,92 @@ impl Decodable for MessageHeader {
         let len = u64::from_le_bytes(data[8..16].try_into().expect("cannot fail, checked above"));
 
         Ok(Self { kind, len })
+    }
+}
+
+// ---
+
+#[cfg(test)]
+mod tests {
+    use re_span::Span;
+
+    use crate::rrd::{Decodable as _, Encodable as _, StreamFooter, StreamFooterEntry};
+
+    fn encode(footer: &StreamFooter) -> Vec<u8> {
+        let mut bytes = Vec::new();
+        footer
+            .to_rrd_bytes(&mut bytes)
+            .expect("encoding a single-entry stream footer must succeed");
+        bytes
+    }
+
+    /// Callers decode a stream footer from a tail read of exactly
+    /// [`StreamFooter::ENCODED_SIZE_BYTES`] bytes.
+    /// An entry count those bytes cannot hold must return an error, which is how a caller knows
+    /// to fall back to a full scan.
+    #[test]
+    fn decoding_rejects_more_entries_than_the_bytes_can_hold() {
+        let mut bytes = encode(&StreamFooter::new(
+            Span {
+                start: 64,
+                len: 128,
+            },
+            0xDEAD_BEEF,
+        ));
+
+        // Claim two entries while still handing over one entry's worth of bytes.
+        let count_start = bytes.len() - size_of::<u32>();
+        bytes[count_start..].copy_from_slice(&2u32.to_le_bytes());
+
+        let err = StreamFooter::from_rrd_bytes(&bytes)
+            .expect_err("a footer announcing more entries than it carries must not decode");
+        assert!(
+            matches!(err, crate::rrd::CodecError::FrameDecoding(_)),
+            "expected a framing error, got {err}"
+        );
+    }
+
+    /// Every announced entry must decode, each at its own offset.
+    /// Nothing writes more than one entry today, so this test is the only thing that exercises
+    /// that path.
+    #[test]
+    fn decoding_reads_every_announced_entry() {
+        let first = StreamFooterEntry {
+            rrd_footer_byte_span_from_start_excluding_header: Span {
+                start: 64,
+                len: 128,
+            },
+            crc_excluding_header: 0x1111_1111,
+        };
+        let second = StreamFooterEntry {
+            rrd_footer_byte_span_from_start_excluding_header: Span {
+                start: 512,
+                len: 256,
+            },
+            crc_excluding_header: 0x2222_2222,
+        };
+
+        // The encoder refuses to write more than one entry, so lay the bytes out by hand:
+        // both entries, then the fixed part announcing two of them.
+        let entry_size = StreamFooter::ENCODED_SIZE_BYTES_SINGLE_ENTRY;
+        let mut bytes = encode(&StreamFooter::new(
+            first.rrd_footer_byte_span_from_start_excluding_header,
+            first.crc_excluding_header,
+        ));
+        let fixed = bytes.split_off(entry_size);
+        bytes.extend_from_slice(
+            &encode(&StreamFooter::new(
+                second.rrd_footer_byte_span_from_start_excluding_header,
+                second.crc_excluding_header,
+            ))[..entry_size],
+        );
+        bytes.extend_from_slice(&fixed);
+        let count_start = bytes.len() - size_of::<u32>();
+        bytes[count_start..].copy_from_slice(&2u32.to_le_bytes());
+
+        let footer =
+            StreamFooter::from_rrd_bytes(&bytes).expect("a complete two-entry footer must decode");
+
+        assert_eq!(vec![first, second], footer.entries);
     }
 }
