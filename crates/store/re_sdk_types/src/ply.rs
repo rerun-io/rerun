@@ -21,16 +21,6 @@ pub(crate) const PROP_ALPHA: &str = "alpha";
 pub(crate) const PROP_RADIUS: &str = "radius";
 pub(crate) const PROP_LABEL: &str = "label";
 
-// Gaussian splatting parameters, which `Points3D` also understands: it reads the colour out
-// of the degree-0 spherical harmonics and the radius out of the scale.
-pub(crate) const PROP_SH_DC_0: &str = "f_dc_0";
-pub(crate) const PROP_SH_DC_1: &str = "f_dc_1";
-pub(crate) const PROP_SH_DC_2: &str = "f_dc_2";
-pub(crate) const PROP_OPACITY: &str = "opacity";
-pub(crate) const PROP_SCALE_X: &str = "scale_0";
-pub(crate) const PROP_SCALE_Y: &str = "scale_1";
-pub(crate) const PROP_SCALE_Z: &str = "scale_2";
-
 /// Which of `x`/`y`/`z` a `vertex` element carries.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum PlyVertexLayout {

@@ -209,7 +209,7 @@ end_header
 }
 
 #[test]
-fn ply_preserves_gaussian_splat_properties() {
+fn ply_ignores_gaussian_splat_properties() {
     let contents = br#"ply
 format ascii 1.0
 element vertex 1
@@ -227,10 +227,9 @@ end_header
 0 0 0 0 0 0 0 0 0 0
 "#;
 
+    // A reconstruction is `GaussianSplats3D`'s job; as a point cloud this is just a position.
     let parsed = Points3D::from_file_contents(contents).unwrap();
-    let expected = Points3D::new([(0.0, 0.0, 0.0)])
-        .with_colors([0x80808080])
-        .with_radii([1.0]);
+    let expected = Points3D::new([(0.0, 0.0, 0.0)]);
 
     similar_asserts::assert_eq!(parsed, expected);
 }
@@ -274,33 +273,6 @@ end_header
 
     let parsed = Points3D::from_file_contents(&contents).unwrap();
     let expected = Points3D::new([(1.0, 2.0, 3.0), (-4.0, 5.5, 6.0)]);
-
-    similar_asserts::assert_eq!(parsed, expected);
-}
-
-/// `scale_*` feeds the radius no matter where the color came from.
-#[test]
-fn ply_uses_scale_for_radius_alongside_rgb_colors() {
-    let contents = br#"ply
-format ascii 1.0
-element vertex 1
-property float x
-property float y
-property float z
-property uchar red
-property uchar green
-property uchar blue
-property float scale_0
-property float scale_1
-property float scale_2
-end_header
-1 2 3 255 0 0 0 0 0
-"#;
-
-    let parsed = Points3D::from_file_contents(contents).unwrap();
-    let expected = Points3D::new([(1.0, 2.0, 3.0)])
-        .with_colors([0xFF0000FF])
-        .with_radii([1.0]);
 
     similar_asserts::assert_eq!(parsed, expected);
 }

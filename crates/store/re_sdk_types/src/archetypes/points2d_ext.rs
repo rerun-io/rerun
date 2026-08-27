@@ -172,10 +172,8 @@ fn read_ply<T: std::io::BufRead>(reader: &mut T) -> std::io::Result<Points2D> {
         arch = arch.with_radii(radii);
     }
     if labels.iter().any(|opt| opt.is_some()) {
-        // If some labels have been specified but not others, default the unspecified ones to "undef".
-        let labels = labels
-            .into_iter()
-            .map(|opt| opt.unwrap_or(Text("undef".into())));
+        // If some labels have been specified but not others, leave the rest empty.
+        let labels = labels.into_iter().map(Option::unwrap_or_default);
         arch = arch.with_labels(labels);
     }
 

@@ -10,7 +10,7 @@ use crate::encodings::Quaternion;
 /// The names of the PLY properties used by 3D Gaussian Splatting (3DGS) training checkpoints,
 /// as produced by the reference INRIA implementation and most tools that followed it.
 ///
-/// The ones `Points3D` also understands come from [`crate::ply`], so the two agree.
+/// The positions come from [`crate::ply`], since every archetype spells those the same.
 mod prop {
     use crate::ply;
 
@@ -22,7 +22,7 @@ mod prop {
     pub const NORMALS: [&str; 3] = ["nx", "ny", "nz"];
 
     /// The degree-0 (DC) spherical harmonics coefficients, one per RGB channel.
-    pub const F_DC: [&str; 3] = [ply::PROP_SH_DC_0, ply::PROP_SH_DC_1, ply::PROP_SH_DC_2];
+    pub const F_DC: [&str; 3] = ["f_dc_0", "f_dc_1", "f_dc_2"];
 
     /// Prefix of the higher-degree spherical harmonics coefficients, `f_rest_0` and up.
     ///
@@ -30,10 +30,10 @@ mod prop {
     pub const F_REST_PREFIX: &str = "f_rest_";
 
     /// Opacity as a logit; the actual opacity is `sigmoid(opacity)`.
-    pub const OPACITY: &str = ply::PROP_OPACITY;
+    pub const OPACITY: &str = "opacity";
 
     /// Per-axis scale as a logarithm; the actual scale is `exp(scale_i)`.
-    pub const SCALE: [&str; 3] = [ply::PROP_SCALE_X, ply::PROP_SCALE_Y, ply::PROP_SCALE_Z];
+    pub const SCALE: [&str; 3] = ["scale_0", "scale_1", "scale_2"];
 
     /// Rotation as an unnormalized `wxyz` quaternion.
     pub const ROT: [&str; 4] = ["rot_0", "rot_1", "rot_2", "rot_3"];

@@ -6,13 +6,10 @@ use crate::ply;
 
 /// The `vertex` properties a `Points3D` is read out of.
 ///
-/// Anything else in the header is reported as ignored, once.
-///
-/// The gaussian splatting parameters are in here because a `.ply` that carries some of them
-/// but is not a full reconstruction (see [`crate::archetypes::GaussianSplats3D`]) still reads
-/// as a point cloud: the color comes out of the degree-0 spherical harmonics, and the radius
-/// out of the scale.
-const SUPPORTED_PROPERTIES: [&str; 16] = [
+/// Anything else in the header is reported as ignored, once. That includes the gaussian
+/// splatting parameters: a reconstruction is read by
+/// [`crate::archetypes::GaussianSplats3D`] instead.
+const SUPPORTED_PROPERTIES: [&str; 9] = [
     ply::PROP_X,
     ply::PROP_Y,
     ply::PROP_Z,
@@ -22,13 +19,6 @@ const SUPPORTED_PROPERTIES: [&str; 16] = [
     ply::PROP_ALPHA,
     ply::PROP_RADIUS,
     ply::PROP_LABEL,
-    ply::PROP_SH_DC_0,
-    ply::PROP_SH_DC_1,
-    ply::PROP_SH_DC_2,
-    ply::PROP_OPACITY,
-    ply::PROP_SCALE_X,
-    ply::PROP_SCALE_Y,
-    ply::PROP_SCALE_Z,
 ];
 
 #[derive(Default)]
@@ -42,13 +32,6 @@ struct ParsedPoint3D {
     alpha: Option<u8>,
     radius: Option<f32>,
     label: Option<Text>,
-    sh_dc_0: Option<f32>,
-    sh_dc_1: Option<f32>,
-    sh_dc_2: Option<f32>,
-    opacity: Option<f32>,
-    scale_x: Option<f32>,
-    scale_y: Option<f32>,
-    scale_z: Option<f32>,
 }
 
 impl PropertyAccess for ParsedPoint3D {
@@ -67,13 +50,6 @@ impl PropertyAccess for ParsedPoint3D {
             ply::PROP_ALPHA => ply::set_color(&property, &mut self.alpha),
             ply::PROP_RADIUS => ply::set_f32(&property, &mut self.radius),
             ply::PROP_LABEL => ply::set_text(&property, &mut self.label),
-            ply::PROP_SH_DC_0 => ply::set_f32(&property, &mut self.sh_dc_0),
-            ply::PROP_SH_DC_1 => ply::set_f32(&property, &mut self.sh_dc_1),
-            ply::PROP_SH_DC_2 => ply::set_f32(&property, &mut self.sh_dc_2),
-            ply::PROP_OPACITY => ply::set_f32(&property, &mut self.opacity),
-            ply::PROP_SCALE_X => ply::set_f32(&property, &mut self.scale_x),
-            ply::PROP_SCALE_Y => ply::set_f32(&property, &mut self.scale_y),
-            ply::PROP_SCALE_Z => ply::set_f32(&property, &mut self.scale_z),
             _ => PropertyAccessResult::Ignored,
         }
     }
@@ -99,13 +75,6 @@ impl ParsedPoint3D {
             alpha,
             radius,
             label,
-            sh_dc_0,
-            sh_dc_1,
-            sh_dc_2,
-            opacity,
-            scale_x,
-            scale_y,
-            scale_z,
         } = self;
 
         let (Some(x), Some(y)) = (x, y) else {
@@ -116,39 +85,16 @@ impl ParsedPoint3D {
         // flattens an `x`/`y`-only `.ply` mesh onto `z = 0`.
         let z = z.unwrap_or(0.0);
 
-        // Spherical harmonics win over plain RGB: a file carrying both is a splat.
-        let color = if let (Some(r_dc), Some(g_dc), Some(b_dc)) = (sh_dc_0, sh_dc_1, sh_dc_2) {
-            fn to_u8(value: f32) -> u8 {
-                (value * 255.0 + 0.5) as u8
-            }
-
-            // See http://en.wikipedia.org/wiki/Table_of_spherical_harmonics
-            let sh_c0 = 0.5 * (1.0 / std::f32::consts::PI).sqrt();
-            let alpha = opacity.map_or(255, |value| to_u8(1.0 / (1.0 + (-value).exp())));
-            Some(Color::new((
-                to_u8(0.5 + sh_c0 * r_dc),
-                to_u8(0.5 + sh_c0 * g_dc),
-                to_u8(0.5 + sh_c0 * b_dc),
-                alpha,
-            )))
-        } else if let (Some(r), Some(g), Some(b)) = (red, green, blue) {
+        let color = if let (Some(r), Some(g), Some(b)) = (red, green, blue) {
             Some(Color::new((r, g, b, alpha.unwrap_or(255))))
         } else {
             None
         };
 
-        // Likewise, a gaussian's scale wins over an explicit radius.
-        let radius = if let (Some(x), Some(y), Some(z)) = (scale_x, scale_y, scale_z) {
-            let (x, y, z) = (x.exp(), y.exp(), z.exp());
-            Some(Radius::from((x * y * z).cbrt()))
-        } else {
-            radius.map(Radius::from)
-        };
-
         Some(Vertex3D {
             position: Position3D::new(x, y, z),
             color,
-            radius,
+            radius: radius.map(Radius::from),
             label,
         })
     }
@@ -231,10 +177,8 @@ fn read_ply<T: std::io::BufRead>(reader: &mut T) -> std::io::Result<Points3D> {
         arch = arch.with_radii(radii);
     }
     if labels.iter().any(|opt| opt.is_some()) {
-        // If some labels have been specified but not others, default the unspecified ones to "undef".
-        let labels = labels
-            .into_iter()
-            .map(|opt| opt.unwrap_or(Text("undef".into())));
+        // If some labels have been specified but not others, leave the rest empty.
+        let labels = labels.into_iter().map(Option::unwrap_or_default);
         arch = arch.with_labels(labels);
     }
 
