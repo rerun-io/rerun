@@ -675,11 +675,9 @@ fn chunk_from_gop(
         let indices = &rows_per_chunk[chunk_id];
 
         let indices_array = arrow::array::Int32Array::from(indices.clone());
-        // `VideoStream:is_keyframe` is a deliberate exception to the convention
-        // that components of the same archetype share a chunk (see compact.rs).
-        // We split it off because keyframe queries should be cheap — pulling the
-        // multi-MiB sample column to read a 1-bit-per-row signal defeats the point.
-        // Optimize emits its own sparse marker chunk via `build_keyframe_chunk`.
+        // We drop `is_keyframe` here rather than leave it to the `#[rerun(own_chunk)]` split:
+        // rebatching emits its own sparse marker chunk via `build_keyframe_chunk`,
+        // having validated or re-derived the values.
         let extracted = source_chunk
             .taken(&indices_array)
             .component_dropped(VideoStream::descriptor_is_keyframe().component);

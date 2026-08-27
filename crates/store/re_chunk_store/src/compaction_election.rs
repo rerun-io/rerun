@@ -59,56 +59,50 @@ impl ChunkStore {
         }
 
         let mut candidates_below_threshold: HashMap<ChunkId, u64> = HashMap::default();
-        let mut check_if_chunk_below_threshold =
-            |store: &Self, candidate_chunk_id: ChunkId| -> u64 {
-                let ChunkStoreConfig {
-                    enable_changelog: _,
-                    chunk_max_bytes,
-                    chunk_max_rows,
-                    chunk_max_rows_if_unsorted,
-                } = store.config;
+        let mut check_if_chunk_below_threshold = |store: &Self,
+                                                  candidate_chunk_id: ChunkId|
+         -> u64 {
+            let ChunkStoreConfig {
+                enable_changelog: _,
+                chunk_max_bytes,
+                chunk_max_rows,
+                chunk_max_rows_if_unsorted,
+            } = store.config;
 
-                *candidates_below_threshold
-                    .entry(candidate_chunk_id)
-                    .or_insert_with(|| {
-                        store
-                            .physical_chunks_per_chunk_id
-                            .get(&candidate_chunk_id)
-                            .map_or(0, |candidate| {
-                                if chunk.id() == candidate_chunk_id {
-                                    return 0;
-                                }
+            *candidates_below_threshold
+                .entry(candidate_chunk_id)
+                .or_insert_with(|| {
+                    store
+                        .physical_chunks_per_chunk_id
+                        .get(&candidate_chunk_id)
+                        .map_or(0, |candidate| {
+                            if chunk.id() == candidate_chunk_id {
+                                return 0;
+                            }
 
-                                if !chunk.concatenable(candidate) {
-                                    return 0;
-                                }
+                            if !store.may_compact_together(chunk, candidate, candidate_chunk_id) {
+                                return 0;
+                            }
 
-                                // Refuse the candidate if it descends from a split chunk, directly or indirectly.
-                                // Compacting chunks coming from a split lineage is generally a mistake, as that is likely
-                                // to lead to overlaps that weren't there in the first place.
-                                if self.descends_from_a_split(&candidate_chunk_id) {
-                                    return 0;
-                                }
+                            let total_bytes = <Chunk as SizeBytes>::total_size_bytes(chunk)
+                                + <Chunk as SizeBytes>::total_size_bytes(candidate);
+                            let is_below_bytes_threshold = total_bytes <= chunk_max_bytes;
 
-                                let total_bytes = <Chunk as SizeBytes>::total_size_bytes(chunk)
-                                    + <Chunk as SizeBytes>::total_size_bytes(candidate);
-                                let is_below_bytes_threshold = total_bytes <= chunk_max_bytes;
+                            let total_rows = (chunk.num_rows() + candidate.num_rows()) as u64;
+                            let is_below_rows_threshold = if candidate.all_timelines_sorted() {
+                                total_rows <= chunk_max_rows
+                            } else {
+                                total_rows <= chunk_max_rows_if_unsorted
+                            };
 
-                                let total_rows = (chunk.num_rows() + candidate.num_rows()) as u64;
-                                let is_below_rows_threshold = if candidate.all_timelines_sorted() {
-                                    total_rows <= chunk_max_rows
-                                } else {
-                                    total_rows <= chunk_max_rows_if_unsorted
-                                };
+                            if is_below_bytes_threshold && is_below_rows_threshold {
+                                return candidate.num_rows() as u64;
+                            }
 
-                                if is_below_bytes_threshold && is_below_rows_threshold {
-                                    return candidate.num_rows() as u64;
-                                }
-
-                                0
-                            })
-                    })
-            };
+                            0
+                        })
+                })
+        };
 
         let mut candidates: HashMap<ChunkId, u64> = HashMap::default();
 
@@ -184,6 +178,40 @@ impl ChunkStore {
                     .get(&chunk_id)
                     .map(Arc::clone)
             })
+    }
+
+    /// May these two chunks be merged into one at all, size thresholds aside?
+    fn may_compact_together(
+        &self,
+        chunk: &Chunk,
+        candidate: &Chunk,
+        candidate_chunk_id: ChunkId,
+    ) -> bool {
+        // They must share their entity path and timelines, and agree on the datatypes of the
+        // components they have in common.
+        if !chunk.concatenable(candidate) {
+            return false;
+        }
+
+        // `concatenable` ignores the columns the two chunks do not have in common, so on its
+        // own it would happily merge a dedicated `#[rerun(own_chunk)]` chunk into a chunk that
+        // holds more.
+        // Note: we only need this because we currently use the ChunkStore for `rerun rrd optimize`.
+        if !re_chunk::split_columns::may_merge(
+            chunk,
+            candidate,
+            re_sdk_types::reflection::own_chunk_components(),
+        ) {
+            return false;
+        }
+
+        // Compacting chunks coming from a split lineage is generally a mistake, as that is
+        // likely to lead to overlaps that weren't there in the first place.
+        if self.descends_from_a_split(&candidate_chunk_id) {
+            return false;
+        }
+
+        true
     }
 }
 

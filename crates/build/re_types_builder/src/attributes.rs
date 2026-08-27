@@ -95,6 +95,14 @@ pub enum RerunAttr {
     #[strum(serialize = "attr.rerun.override_type")]
     OverrideType,
 
+    /// The component always gets a chunk of its own, never sharing one with any other component.
+    ///
+    /// This is for small components that a reader wants without the bulk they are logged next to,
+    /// e.g. `IsKeyframe` beside the video samples it points at. It overrides the rule that keeps
+    /// an archetype's components together in one chunk.
+    #[strum(serialize = "attr.rerun.own_chunk")]
+    OwnChunk,
+
     /// The field has a good default, so it is set unless the user says otherwise; see also
     /// [`Optional`](Self::Optional) and [`Required`](Self::Required).
     #[strum(serialize = "attr.rerun.recommended")]

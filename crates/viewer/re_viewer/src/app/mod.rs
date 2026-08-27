@@ -342,12 +342,7 @@ impl App {
             }
         };
 
-        let reflection = re_sdk_types::reflection::generate_reflection().unwrap_or_else(|err| {
-            re_log::error!(
-                "Failed to create list of serialized default values for components: {err}"
-            );
-            Default::default()
-        });
+        let reflection = re_sdk_types::reflection::reflection().clone();
 
         // The blueprint validator needs to know the expected datatype of every component.
         // `Reflection::components` is never mutated after this point (unlike the archetype

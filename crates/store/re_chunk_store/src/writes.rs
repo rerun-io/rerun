@@ -251,9 +251,9 @@ impl ChunkStore {
             // Always perform the recursive splitting inline, so that we don't generate and send store
             // events that won't make any sense for downstream consumers, since these halfway chunks
             // never get exposed to the outside world in any way.
-            let mut split_chunks: Vec<Arc<Chunk>> = Chunk::split_chunk_if_needed(
+            let mut split_chunks: Vec<Arc<Chunk>> = Chunk::split_rows(
                 chunk.clone(),
-                &re_chunk::ChunkSplitConfig {
+                &re_chunk::SplitRowsOptions {
                     chunk_max_bytes: self.config.chunk_max_bytes,
                     chunk_max_rows: self.config.chunk_max_rows,
                     chunk_max_rows_if_unsorted: self.config.chunk_max_rows_if_unsorted,
@@ -270,9 +270,9 @@ impl ChunkStore {
                             // Never split a chunk that descends from a direct or indirect compaction, ever.
                             vec![]
                         } else {
-                            Chunk::split_chunk_if_needed(
+                            Chunk::split_rows(
                                 split_chunk.clone(),
-                                &re_chunk::ChunkSplitConfig {
+                                &re_chunk::SplitRowsOptions {
                                     chunk_max_bytes: self.config.chunk_max_bytes,
                                     chunk_max_rows: self.config.chunk_max_rows,
                                     chunk_max_rows_if_unsorted: self

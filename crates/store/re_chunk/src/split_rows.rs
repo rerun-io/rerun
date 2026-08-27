@@ -1,3 +1,7 @@
+//! Split a chunk by row, when it has grown past the row or byte limits.
+//!
+//! Every piece keeps all the columns. Contrast [`Chunk::split_columns`], which keeps all the rows.
+
 use std::sync::Arc;
 
 use re_byte_size::SizeBytes;
@@ -5,9 +9,9 @@ use re_span::Span;
 
 use crate::Chunk;
 
-/// See [`Chunk::split_chunk_if_needed`].
+/// How [`Chunk::split_rows`] should break a chunk up.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct ChunkSplitConfig {
+pub struct SplitRowsOptions {
     /// Split chunks larger than this.
     pub chunk_max_bytes: u64,
 
@@ -27,16 +31,16 @@ pub struct ChunkSplitConfig {
 impl Chunk {
     /// Naively splits a chunk if it exceeds the configured thresholds.
     ///
-    /// The resulting pieces may still be larger than [`ChunkSplitConfig::chunk_max_bytes`].
+    /// The resulting pieces may still be larger than [`SplitRowsOptions::chunk_max_bytes`].
     ///
     /// The Chunk is *deeply* sliced, as opposed to shallowly. Refer to [`Chunk::row_sliced_deep`]
     /// to learn more about that and why it matters.
-    pub fn split_chunk_if_needed(chunk: Arc<Self>, cfg: &ChunkSplitConfig) -> Vec<Arc<Self>> {
-        let ChunkSplitConfig {
+    pub fn split_rows(chunk: Arc<Self>, options: &SplitRowsOptions) -> Vec<Arc<Self>> {
+        let SplitRowsOptions {
             chunk_max_bytes,
             chunk_max_rows,
             chunk_max_rows_if_unsorted,
-        } = *cfg;
+        } = *options;
 
         let chunk_size_bytes = <Self as SizeBytes>::total_size_bytes(chunk.as_ref());
         let chunk_num_rows = chunk.num_rows() as u64;

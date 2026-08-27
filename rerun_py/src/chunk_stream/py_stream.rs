@@ -244,11 +244,13 @@ impl PyLazyChunkStreamInternal {
                     })?;
             }
 
-            // Always pipe through `finalize_compaction`. When
-            // `num_extra_passes == Some(0)` and `is_start_of_gop == None`, this
-            // is a near-no-op that still applies the `ALL_DISABLED` post-condition
-            // (`ChunkStore::config` is `pub(crate)` so we can't set it directly
-            // from here).
+            // Always pipe through `finalize_compaction`, both for the
+            // `ALL_DISABLED` post-condition (`ChunkStore::config` is
+            // `pub(crate)`, so we can't set it directly from here) and because
+            // the `#[rerun(own_chunk)]` split runs there. That split is not
+            // optional: even with `num_extra_passes == Some(0)` and
+            // `is_start_of_gop == None`, a chunk that carries such a component
+            // next to anything else is broken up.
             let store = store.finalize_compaction(&options).map_err(|err| {
                 ChunkPipelineError::ChunkStoreInsert {
                     reason: err.to_string(),

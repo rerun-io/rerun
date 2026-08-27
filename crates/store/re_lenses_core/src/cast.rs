@@ -1,6 +1,6 @@
 //! Opt-in casting of derive lens output columns to match their target component.
 
-use std::sync::{Arc, OnceLock};
+use std::sync::Arc;
 
 use arrow::array::{Array as _, ListArray};
 use arrow::compute::cast;
@@ -8,23 +8,15 @@ use arrow::datatypes::{DataType, Field};
 
 use re_chunk::EntityPath;
 use re_sdk_types::ComponentDescriptor;
-use re_sdk_types::reflection::Reflection;
+use re_sdk_types::reflection::reflection;
 
 use crate::ast::CastTo;
 use crate::error::LensRuntimeError;
 
-/// Cached component reflection, used to resolve [`CastTo::Auto`] targets.
-fn reflection() -> Option<&'static Reflection> {
-    static REFLECTION: OnceLock<Option<Reflection>> = OnceLock::new();
-    REFLECTION
-        .get_or_init(|| re_sdk_types::reflection::generate_reflection().ok())
-        .as_ref()
-}
-
 /// The canonical Arrow element datatype of the component named by `descr`, if known.
 fn canonical_datatype(descr: &ComponentDescriptor) -> Option<DataType> {
     let component_type = descr.component_type?;
-    reflection()?
+    reflection()
         .components
         .get(&component_type)
         .map(|reflection| reflection.datatype.clone())

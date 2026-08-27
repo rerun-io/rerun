@@ -5,6 +5,9 @@
 //! splits wherever two neighbors differ by more than the given ratio. An archetype is
 //! always kept together, components without an archetype are treated as a group of one.
 //!
+//! Components that want a chunk of their own are split off before this runs; see
+//! [`super::own_chunk`].
+//!
 //! An archetype is never split because its components are only meaningful as a set: an
 //! `EncodedImage:blob` cannot be decoded without its `EncodedImage:media_type`. Putting
 //! them in separate chunks would only force a reader to fetch both chunks anyway.
@@ -13,8 +16,9 @@ use ahash::{HashMap, HashMapExt as _};
 use itertools::Itertools as _;
 
 use re_byte_size::SizeBytes as _;
-use re_chunk::Chunk;
 use re_types_core::{ArchetypeName, ComponentIdentifier};
+
+use crate::Chunk;
 
 /// How we group components before deciding where to split.
 ///
@@ -33,7 +37,7 @@ enum ComponentGroup {
 /// meets or exceeds the threshold. A chunk with `k` such gaps becomes `k + 1` chunks.
 ///
 /// Returns `None` if no split is needed.
-pub(crate) fn split_chunk(chunk: &Chunk, ratio: f64) -> Option<Vec<Chunk>> {
+pub fn split(chunk: &Chunk, ratio: f64) -> Option<Vec<Chunk>> {
     struct Group {
         bytes: u64,
         components: Vec<ComponentIdentifier>,
@@ -87,10 +91,6 @@ pub(crate) fn split_chunk(chunk: &Chunk, ratio: f64) -> Option<Vec<Chunk>> {
             components.extend_from_slice(&group.components);
         }
 
-        // This will result in duplicate row ids since row ids are
-        // preserved with `components_sliced`. Which is fine since
-        // 1. We're not mutating the data the row contains.
-        // 2. We're not splitting things in the same archetype.
         splits.push(chunk.components_sliced(&components));
         start = end;
     }
@@ -109,10 +109,11 @@ pub(crate) fn split_chunk(chunk: &Chunk, ratio: f64) -> Option<Vec<Chunk>> {
 mod tests {
     use super::*;
 
-    use re_chunk::RowId;
     use re_log_types::{EntityPath, Timeline, example_components::MyPoint};
     use re_sdk_types::components::Blob;
     use re_types_core::{ArchetypeName, ComponentDescriptor};
+
+    use crate::RowId;
 
     #[test]
     fn splits_thick_from_thin() {
@@ -154,7 +155,7 @@ mod tests {
             .build()
             .unwrap();
 
-        let splits = split_chunk(&chunk, 10.0).expect("should split");
+        let splits = split(&chunk, 10.0).expect("should split");
         assert_eq!(splits.len(), 2);
         let sizes: Vec<u64> = splits.iter().map(Chunk::heap_size_bytes).collect();
         assert!(
@@ -212,7 +213,7 @@ mod tests {
             .build()
             .unwrap();
 
-        let splits = split_chunk(&chunk, 10.0).expect("should split");
+        let splits = split(&chunk, 10.0).expect("should split");
         assert_eq!(
             splits.len(),
             3,
@@ -262,6 +263,6 @@ mod tests {
             .build()
             .unwrap();
 
-        assert!(split_chunk(&chunk, 10.0).is_none());
+        assert!(split(&chunk, 10.0).is_none());
     }
 }

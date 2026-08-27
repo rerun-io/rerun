@@ -70,6 +70,10 @@ class OptimizationProfile:
     `EncodedImage:media_type`. Splitting them would only force a reader to
     fetch both chunks anyway.
 
+    The exception is a component that always gets a chunk of its own, such as
+    `VideoStream:is_keyframe`. Those are separated out first, whether or not
+    this is set.
+
     A good starting value is `10.0`. If `None` (default), no splitting is
     performed.
     """

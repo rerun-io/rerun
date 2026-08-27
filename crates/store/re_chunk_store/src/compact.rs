@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use re_chunk::{Chunk, ChunkShared, split_columns::SplitColumnsOptions};
 use re_sdk_types::components::VideoCodec;
 
 use crate::{ChunkStore, ChunkStoreConfig, ChunkStoreError};
@@ -45,7 +46,9 @@ pub struct CompactionOptions {
     /// Components belonging to the same archetype always stay together, because an
     /// archetype's components are only meaningful as a set: an `EncodedImage:blob`
     /// cannot be decoded without its `EncodedImage:media_type`. Splitting them would
-    /// only force a reader to fetch both chunks anyway.
+    /// only force a reader to fetch both chunks anyway. A component marked
+    /// `#[rerun(own_chunk)]` is the one exception, and is split off before this split
+    /// runs, whether or not this is set.
     ///
     /// `None` disables the split.
     pub split_size_ratio: Option<f64>,
@@ -112,29 +115,39 @@ impl ChunkStore {
             config,
             num_extra_passes,
             is_start_of_gop,
-            split_size_ratio,
+            split_size_ratio: _, // read by `CompactionOptions::split_options`
             fix_keyframe,
         } = options;
 
         let num_extra_passes = num_extra_passes.unwrap_or(50);
 
-        // If `split_size_ratio` is set, re-insert each chunk split into one piece per
-        // size tier. Compaction's merge-candidate search is per-component, so a thin
-        // chunk can only merge with another thin chunk — it won't pull a thick
-        // sibling back in through the shared small component.
-        if let Some(&ratio) = split_size_ratio.as_ref() {
-            let chunks: Vec<_> = self.iter_physical_chunks().cloned().collect();
-            let mut new_store = Self::new(self.id().clone(), config.clone());
-            for chunk in &chunks {
-                if let Some(splits) = crate::split_thick_thin::split_chunk(chunk, ratio) {
-                    for split in splits {
-                        new_store.insert_chunk(&Arc::new(split))?;
-                    }
-                } else {
-                    new_store.insert_chunk(chunk)?;
+        // Split the chunks that should not stay mixed. Only if that changed anything do we
+        // pay for a re-insert pass.
+        {
+            re_tracing::profile_scope!("split-chunks");
+
+            let split_options = options.split_options();
+
+            let mut kept_chunks: Vec<ChunkShared> = Vec::new();
+            let mut new_chunks: Vec<Chunk> = Vec::new();
+            for chunk in self.iter_physical_chunks() {
+                match chunk.split_columns(&split_options) {
+                    Some(splits) => new_chunks.extend(splits),
+                    None => kept_chunks.push(chunk.clone()),
                 }
             }
-            self = new_store;
+
+            if !new_chunks.is_empty() {
+                re_tracing::profile_scope!("re-insert-chunks");
+                let mut new_store = Self::new(self.id().clone(), config.clone());
+                for chunk in &kept_chunks {
+                    new_store.insert_chunk(chunk)?;
+                }
+                for chunk in new_chunks {
+                    new_store.insert_chunk(&Arc::new(chunk))?;
+                }
+                self = new_store;
+            }
         }
 
         for pass in 0..num_extra_passes {
@@ -185,6 +198,16 @@ impl ChunkStore {
         // Post-condition: returned store is inert.
         self.config = ChunkStoreConfig::ALL_DISABLED;
         Ok(self)
+    }
+}
+
+impl CompactionOptions {
+    /// How the chunks should be broken up before compaction runs.
+    fn split_options(&self) -> SplitColumnsOptions {
+        SplitColumnsOptions {
+            own_chunks: re_sdk_types::reflection::own_chunk_components().clone(),
+            split_size_ratio: self.split_size_ratio,
+        }
     }
 }
 

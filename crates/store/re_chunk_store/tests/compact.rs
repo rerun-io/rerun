@@ -948,3 +948,325 @@ fn rebatching_is_insensitive_to_timeline_map_iteration_order() {
         sample_chunk_count(&compacted)
     );
 }
+
+/// `is_keyframe` is marked `#[rerun(own_chunk)]`, so it must end up alone in its chunk.
+#[test]
+fn optimize_gives_is_keyframe_its_own_chunk_without_video_rebatching() {
+    let num_samples: i64 = 10;
+    let period: i64 = 5;
+    let entity_path: EntityPath = "/video".into();
+    let timeline = Timeline::new_sequence("frame");
+
+    let store_id = re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "video_test");
+    let mut store = ChunkStore::new(store_id, ChunkStoreConfig::ALL_DISABLED);
+
+    // Every sample chunk carries the marker next to the sample it belongs to.
+    for i in 0..num_samples {
+        let sample = VideoSample::from(vec![0u8; 64 * 1024]);
+        let is_keyframe = IsKeyframe::from(i % period == 0);
+        let chunk = Chunk::builder(entity_path.clone())
+            .with_component_batches(
+                RowId::new(),
+                TimePoint::from_iter([(timeline, i)]),
+                [
+                    (
+                        VideoStream::descriptor_sample(),
+                        &[sample] as &dyn re_types_core::ComponentBatch,
+                    ),
+                    (
+                        VideoStream::descriptor_is_keyframe(),
+                        &[is_keyframe] as &dyn re_types_core::ComponentBatch,
+                    ),
+                ],
+            )
+            .build()
+            .expect("build sample chunk");
+        store.insert_chunk(&Arc::new(chunk)).expect("insert sample");
+    }
+
+    let compacted = store.compacted(&options(Some(50))).expect("compacted");
+
+    let mut num_keyframe_chunks = 0;
+    let mut num_sample_chunks = 0;
+    let mut num_keyframe_rows: i64 = 0;
+    let mut num_sample_rows: i64 = 0;
+    for chunk in compacted.iter_physical_chunks() {
+        let has_keyframe = chunk_has_component(chunk, "VideoStream:is_keyframe");
+        let has_sample = chunk_has_component(chunk, "VideoStream:sample");
+        assert!(
+            has_keyframe != has_sample,
+            "every chunk holds either the markers or the samples, never both"
+        );
+        if has_keyframe {
+            assert_eq!(
+                chunk.components().len(),
+                1,
+                "the marker chunk holds nothing else"
+            );
+            num_keyframe_chunks += 1;
+            num_keyframe_rows += i64::try_from(chunk.num_rows()).expect("row count fits");
+        }
+        if has_sample {
+            num_sample_chunks += 1;
+            num_sample_rows += i64::try_from(chunk.num_rows()).expect("row count fits");
+        }
+    }
+
+    // 640 KiB of samples do not fit in one chunk, while the markers easily do.
+    assert!(
+        1 < num_sample_chunks,
+        "the samples must be spread over several chunks, got {num_sample_chunks}"
+    );
+    assert_eq!(num_keyframe_chunks, 1, "one chunk holds all the markers");
+
+    // Nothing is lost by the split.
+    assert_eq!(num_keyframe_rows, num_samples);
+    assert_eq!(num_sample_rows, num_samples);
+}
+
+/// The realistic shape: many source chunks, each carrying video samples *and* the sparse
+/// `is_keyframe` markers for those samples.
+///
+/// After optimize the samples are spread over several chunks (split on GoP boundaries, each
+/// under `chunk_max_bytes`), while every marker ends up in a single chunk, because they are
+/// tiny enough to all fit in one.
+#[test]
+fn optimize_collects_all_keyframe_markers_into_one_chunk() {
+    let num_samples: i64 = 60;
+    let period: i64 = 10; // 6 GoPs
+    let sample_bytes = 64 * 1024;
+    let chunk_max_bytes = 1024 * 1024; // fits one 640 KiB GoP, not two
+    let rows_per_source_chunk: i64 = 7; // deliberately misaligned with the GoPs
+
+    let entity_path: EntityPath = "/video".into();
+    let timeline = Timeline::new_sequence("frame");
+
+    let store_id = re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "video_test");
+    let mut store = ChunkStore::new(store_id, ChunkStoreConfig::ALL_DISABLED);
+
+    let codec_chunk = Chunk::builder(entity_path.clone())
+        .with_component(
+            RowId::new(),
+            TimePoint::default(),
+            VideoStream::descriptor_codec(),
+            &VideoCodec::H264,
+        )
+        .expect("build codec chunk")
+        .build()
+        .expect("finalize codec chunk");
+    store
+        .insert_chunk(&Arc::new(codec_chunk))
+        .expect("insert codec");
+
+    // Fake samples: the frame index in the first four bytes (so
+    // `indexed_keyframe_callback` can recognize a keyframe), then padding.
+    let mut num_mixed_source_chunks = 0;
+    for first_frame in (0..num_samples).step_by(rows_per_source_chunk as usize) {
+        let mut builder = Chunk::builder(entity_path.clone());
+        for frame in first_frame..(first_frame + rows_per_source_chunk).min(num_samples) {
+            let mut bytes = (frame as u32).to_le_bytes().to_vec();
+            bytes.resize(sample_bytes, 0);
+            let timepoint = TimePoint::from_iter([(timeline, frame)]);
+
+            builder = if frame % period == 0 {
+                // A keyframe: the marker rides along in the very same row, which is what an
+                // SDK user gets when they log `VideoStream` with `is_keyframe` set.
+                builder.with_component_batches(
+                    RowId::new(),
+                    timepoint,
+                    [
+                        (
+                            VideoStream::descriptor_sample(),
+                            &[VideoSample::from(bytes)] as &dyn re_types_core::ComponentBatch,
+                        ),
+                        (
+                            VideoStream::descriptor_is_keyframe(),
+                            &[IsKeyframe::from(true)] as &dyn re_types_core::ComponentBatch,
+                        ),
+                    ],
+                )
+            } else {
+                // `is_keyframe` is a sparse marker: nothing is logged for a non-keyframe.
+                builder
+                    .with_component(
+                        RowId::new(),
+                        timepoint,
+                        VideoStream::descriptor_sample(),
+                        &VideoSample::from(bytes),
+                    )
+                    .expect("build sample row")
+            };
+        }
+        let chunk = Arc::new(builder.build().expect("finalize source chunk"));
+        if chunk_has_component(&chunk, "VideoStream:is_keyframe") {
+            num_mixed_source_chunks += 1;
+        }
+        store.insert_chunk(&chunk).expect("insert samples");
+    }
+
+    assert!(
+        1 < num_mixed_source_chunks,
+        "several source chunks must mix the markers with the samples, got {num_mixed_source_chunks}"
+    );
+
+    let options = CompactionOptions {
+        config: ChunkStoreConfig {
+            chunk_max_bytes,
+            ..ChunkStoreConfig::DEFAULT
+        },
+        num_extra_passes: Some(50),
+        is_start_of_gop: Some(indexed_keyframe_callback(period)),
+        split_size_ratio: None,
+        fix_keyframe: false,
+    };
+    let compacted = store.compacted(&options).expect("compacted");
+
+    let mut num_sample_chunks = 0;
+    let mut num_keyframe_chunks = 0;
+    let mut num_sample_rows: i64 = 0;
+    for chunk in compacted.iter_physical_chunks() {
+        let has_sample = chunk_has_component(chunk, "VideoStream:sample");
+        let has_keyframe = chunk_has_component(chunk, "VideoStream:is_keyframe");
+        assert!(
+            !(has_sample && has_keyframe),
+            "the markers must not ride along with the samples"
+        );
+
+        if has_sample {
+            num_sample_chunks += 1;
+            num_sample_rows += i64::try_from(chunk.num_rows()).expect("row count fits");
+            assert!(
+                re_byte_size::SizeBytes::total_size_bytes(&**chunk) <= chunk_max_bytes,
+                "each GoP is 640 KiB, so no sample chunk should exceed {chunk_max_bytes} bytes"
+            );
+        }
+        if has_keyframe {
+            num_keyframe_chunks += 1;
+        }
+    }
+
+    assert_eq!(
+        num_sample_chunks,
+        num_samples / period,
+        "one sample chunk per GoP: two GoPs would not fit under `chunk_max_bytes`"
+    );
+    assert_eq!(
+        num_keyframe_chunks, 1,
+        "all markers are tiny, so they belong in a single chunk"
+    );
+    assert_eq!(num_sample_rows, num_samples);
+    let num_keyframes = u64::try_from(num_samples / period).expect("keyframe count fits");
+    assert_eq!(count_true_keyframes(&compacted), num_keyframes);
+    assert_eq!(count_false_keyframes(&compacted), 0);
+}
+
+/// The guard must not spread beyond dedicated chunks. Two ordinary `VideoStream` chunks whose
+/// shapes differ only because one batch happened to carry a marker are what an SDK produces all
+/// through a recording, and they must still compact together.
+#[test]
+fn insertion_still_merges_a_mixed_chunk_with_a_sample_chunk() {
+    let entity_path: EntityPath = "/video".into();
+    let timeline = Timeline::new_sequence("frame");
+
+    let store_id = re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "video_test");
+    let mut store = ChunkStore::new(store_id, ChunkStoreConfig::DEFAULT);
+
+    // Frame 0: a keyframe, so the marker rides along with the sample.
+    let mixed = Chunk::builder(entity_path.clone())
+        .with_component_batches(
+            RowId::new(),
+            TimePoint::from_iter([(timeline, 0_i64)]),
+            [
+                (
+                    VideoStream::descriptor_sample(),
+                    &[VideoSample::from(vec![0u8; 1024])] as &dyn re_types_core::ComponentBatch,
+                ),
+                (
+                    VideoStream::descriptor_is_keyframe(),
+                    &[IsKeyframe::from(true)] as &dyn re_types_core::ComponentBatch,
+                ),
+            ],
+        )
+        .build()
+        .expect("build mixed chunk");
+    store.insert_chunk(&Arc::new(mixed)).expect("insert mixed");
+
+    // Frame 1: not a keyframe, so nothing is logged for the sparse marker.
+    let sample_only = Chunk::builder(entity_path)
+        .with_component(
+            RowId::new(),
+            TimePoint::from_iter([(timeline, 1_i64)]),
+            VideoStream::descriptor_sample(),
+            &VideoSample::from(vec![0u8; 1024]),
+        )
+        .expect("build sample row")
+        .build()
+        .expect("build sample chunk");
+    store
+        .insert_chunk(&Arc::new(sample_only))
+        .expect("insert sample");
+
+    assert_eq!(
+        store.num_physical_chunks(),
+        1,
+        "neither chunk is dedicated to `is_keyframe`, so compaction must still merge them"
+    );
+}
+
+/// A dedicated `is_keyframe` chunk must survive plain store insertion next to a chunk that
+/// carries the samples too: `Chunk::concatenable` would allow that merge, undoing the split.
+#[test]
+fn insertion_never_merges_a_keyframe_chunk_into_a_sample_chunk() {
+    let entity_path: EntityPath = "/video".into();
+    let timeline = Timeline::new_sequence("frame");
+
+    let store_id = re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "video_test");
+    let mut store = ChunkStore::new(store_id, ChunkStoreConfig::DEFAULT);
+
+    // Frame 0: samples and marker together, as logged from the SDK.
+    let mixed = Chunk::builder(entity_path.clone())
+        .with_component_batches(
+            RowId::new(),
+            TimePoint::from_iter([(timeline, 0_i64)]),
+            [
+                (
+                    VideoStream::descriptor_sample(),
+                    &[VideoSample::from(vec![0u8; 1024])] as &dyn re_types_core::ComponentBatch,
+                ),
+                (
+                    VideoStream::descriptor_is_keyframe(),
+                    &[IsKeyframe::from(true)] as &dyn re_types_core::ComponentBatch,
+                ),
+            ],
+        )
+        .build()
+        .expect("build mixed chunk");
+    store.insert_chunk(&Arc::new(mixed)).expect("insert mixed");
+
+    // Frame 1: a dedicated marker chunk, e.g. one that `rrd optimize` produced earlier.
+    let marker = Chunk::builder(entity_path)
+        .with_component(
+            RowId::new(),
+            TimePoint::from_iter([(timeline, 1_i64)]),
+            VideoStream::descriptor_is_keyframe(),
+            &IsKeyframe::from(true),
+        )
+        .expect("build marker row")
+        .build()
+        .expect("build marker chunk");
+    store
+        .insert_chunk(&Arc::new(marker))
+        .expect("insert marker");
+
+    let dedicated_marker_chunks = store
+        .iter_physical_chunks()
+        .filter(|chunk| {
+            chunk_has_component(chunk, "VideoStream:is_keyframe")
+                && !chunk_has_component(chunk, "VideoStream:sample")
+        })
+        .count();
+    assert_eq!(
+        dedicated_marker_chunks, 1,
+        "the dedicated marker chunk must not have been merged into the sample chunk"
+    );
+}

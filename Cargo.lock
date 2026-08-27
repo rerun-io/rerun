@@ -8912,6 +8912,7 @@ dependencies = [
  "re_log",
  "re_log_types",
  "re_quota_channel",
+ "re_sdk_types",
  "re_sorbet",
  "re_span",
  "re_tracing",

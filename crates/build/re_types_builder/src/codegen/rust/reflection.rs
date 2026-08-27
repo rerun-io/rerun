@@ -58,23 +58,53 @@ pub fn generate_reflection(
                 ArchetypeReflectionMap,
                 ComponentReflection,
                 ComponentReflectionMap,
+                ComponentTypeSet,
                 Reflection,
             },
             SerializationError,
         };
 
+        #[doc = "Reflection about all known components and archetypes."]
+        #[doc = ""]
+        #[doc = "Built on first use and shared from then on."]
+        #[doc = "Clone it if you need to extend it, as the viewer does for custom archetypes."]
+        pub fn reflection() -> &'static Reflection {
+            static REFLECTION: std::sync::OnceLock<Reflection> = std::sync::OnceLock::new();
+            REFLECTION.get_or_init(generate_reflection)
+        }
+
         #[doc = "Generates reflection about all known components."]
         #[doc = ""]
-        #[doc = "Call only once and reuse the results."]
-        pub fn generate_reflection() -> Result<Reflection, SerializationError> {
+        #[doc = "Private: go through [`reflection`], which builds this once and shares it."]
+        #[doc = ""]
+        #[doc = "# Panics"]
+        #[doc = "If a component's placeholder cannot be serialized, which is a bug in Rerun."]
+        fn generate_reflection() -> Reflection {
             re_tracing::profile_function!();
 
             let archetypes = generate_archetype_reflection();
 
-            Ok(Reflection {
-                components: generate_component_reflection()?,
+            Reflection {
+                components: generate_component_reflection()
+                    .expect("Failed to serialize the component placeholders — this is a bug in Rerun"),
                 component_identifiers: generate_component_identifier_reflection(&archetypes),
                 archetypes
+            }
+        }
+
+        #[doc = "The component types marked `#[rerun(own_chunk)]`."]
+        #[doc = ""]
+        #[doc = "Each of these always gets a chunk of its own, never sharing one with any other"]
+        #[doc = "component, not even one of its own archetype."]
+        pub fn own_chunk_components() -> &'static ComponentTypeSet {
+            static COMPONENTS: std::sync::OnceLock<ComponentTypeSet> = std::sync::OnceLock::new();
+            COMPONENTS.get_or_init(|| {
+                reflection()
+                    .components
+                    .iter()
+                    .filter(|(_, reflection)| reflection.own_chunk)
+                    .map(|(component_type, _)| *component_type)
+                    .collect()
             })
         }
 
@@ -160,6 +190,7 @@ fn generate_component_reflection(
         };
 
         let is_enum = obj.is_enum();
+        let own_chunk = obj.attrs.has(RerunAttr::OwnChunk);
         let quoted_reflection = quote! {
             ComponentReflection {
                 docstring_md: #docstring_md,
@@ -167,6 +198,7 @@ fn generate_component_reflection(
                 custom_placeholder: #custom_placeholder,
                 datatype: #type_name::arrow_datatype(),
                 is_enum: #is_enum,
+                own_chunk: #own_chunk,
                 verify_arrow_array: #type_name::verify_arrow_array,
             }
         };

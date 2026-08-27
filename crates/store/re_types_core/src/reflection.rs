@@ -282,6 +282,9 @@ pub fn generic_placeholder_for_datatype(
 /// Runtime reflection about components.
 pub type ComponentReflectionMap = nohash_hasher::IntMap<ComponentType, ComponentReflection>;
 
+/// A set of component types.
+pub type ComponentTypeSet = nohash_hasher::IntSet<ComponentType>;
+
 /// Runtime reflection about component identifiers.
 pub type ComponentIdentifierReflectionMap =
     nohash_hasher::IntMap<ComponentIdentifier, ComponentDescriptor>;
@@ -324,6 +327,14 @@ pub struct ComponentReflection {
 
     /// Whether this component is an enum type (as opposed to a struct/union).
     pub is_enum: bool,
+
+    /// Whether this component always belongs in a chunk of its own.
+    ///
+    /// Set for small components that a reader wants without the bulk they are logged next to,
+    /// e.g. `IsKeyframe` beside the video samples it points at.
+    /// Chunk optimization splits such a component out of any chunk it shares with others,
+    /// even when that breaks up an archetype.
+    pub own_chunk: bool,
 
     /// Checks that the given Arrow array can be deserialized into a collection of [`Self`]s.
     pub verify_arrow_array: fn(&dyn arrow::array::Array) -> crate::DeserializationResult<()>,

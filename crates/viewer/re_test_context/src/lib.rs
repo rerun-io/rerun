@@ -307,8 +307,7 @@ impl TestContext {
         let component_fallback_registry =
             re_component_fallbacks::create_component_fallback_registry();
 
-        let reflection =
-            re_sdk_types::reflection::generate_reflection().expect("Failed to generate reflection");
+        let reflection = re_sdk_types::reflection::reflection().clone();
 
         Self {
             app_options: AppOptions::test(),

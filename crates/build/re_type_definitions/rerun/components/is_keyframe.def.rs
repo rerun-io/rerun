@@ -14,6 +14,9 @@
 #[rust(derive(Copy, PartialEq, Eq, PartialOrd, Ord, Hash))]
 #[rust(repr = "transparent")]
 #[rerun(state = "stable")]
+// This marker is tiny, but the video samples it sits next to are not.
+// Keeping it in a chunk of its own lets a reader scan keyframes without fetching any video data.
+#[rerun(own_chunk)]
 pub struct IsKeyframe {
     pub is_keyframe: rerun::encodings::Bool,
 }

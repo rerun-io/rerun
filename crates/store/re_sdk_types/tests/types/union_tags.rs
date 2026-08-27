@@ -24,8 +24,7 @@ use arrow::datatypes::DataType;
 /// Snapshots every union reachable from a component, one block per union, sorted.
 #[test]
 fn union_type_ids_are_stable() {
-    let reflection = re_sdk_types::reflection::generate_reflection()
-        .expect("failed to generate component reflection");
+    let reflection = re_sdk_types::reflection::reflection();
 
     let mut unions = BTreeSet::new();
     #[expect(clippy::iter_over_hash_type)] // the results land in a `BTreeSet`, so order is moot

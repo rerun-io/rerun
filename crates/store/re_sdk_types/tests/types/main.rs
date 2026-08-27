@@ -18,6 +18,7 @@ mod line_strips3d;
 mod mesh3d;
 mod points2d;
 mod points3d;
+mod reflection;
 mod segmentation_image;
 mod tensor;
 mod text_document;

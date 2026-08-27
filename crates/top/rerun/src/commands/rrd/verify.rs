@@ -25,7 +25,7 @@ pub struct VerifyCommand {
 
 impl VerifyCommand {
     pub fn run(&self) -> anyhow::Result<()> {
-        let mut verifier = Verifier::new()?;
+        let mut verifier = Verifier::new();
 
         let Self {
             path_to_input_rrds,
@@ -110,16 +110,16 @@ impl VerifyCommand {
 // ---
 
 struct Verifier {
-    reflection: Reflection,
+    reflection: &'static Reflection,
     errors: HashSet<String>,
 }
 
 impl Verifier {
-    fn new() -> anyhow::Result<Self> {
-        Ok(Self {
-            reflection: re_sdk_types::reflection::generate_reflection()?,
+    fn new() -> Self {
+        Self {
+            reflection: re_sdk_types::reflection::reflection(),
             errors: HashSet::new(),
-        })
+        }
     }
 
     fn verify_log_msg(&mut self, source: &str, msg: LogMsg) {

@@ -33,7 +33,6 @@ mod profile;
 mod properties;
 mod query;
 mod rebatch_videos;
-mod split_thick_thin;
 mod stats;
 mod store;
 mod store_schema;
