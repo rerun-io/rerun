@@ -3,7 +3,7 @@
 This script:
 1. Downloads a LeRobot dataset from HuggingFace Hub.
 2. Loads it into Rerun via the built-in LeRobot importer (`log_file_from_path`).
-3. Splits the resulting archive into one RRD per episode.
+3. Splits the resulting archive into one optimized RRD per episode, deriving video keyframe markers.
 4. Registers the per-episode RRDs to a catalog server instance.
 
 """
@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import re
+from dataclasses import replace
 from pathlib import Path
 
 from huggingface_hub import snapshot_download
@@ -49,12 +50,15 @@ def lerobot_to_combined_rrd(dataset_dir: Path, combined_rrd: Path) -> None:
 
 
 def split_into_episode_rrds(combined_rrd: Path, rrd_dir: Path) -> list[Path]:
-    """Split a combined RRD archive into one RRD per episode.
+    """Split and optimize a combined RRD archive into one RRD per episode.
 
+    Optimization derives the sparse `VideoStream:is_keyframe` markers required
+    by `VideoFrameDecoder` and prepares chunks for catalog-backed access.
     Returns the paths of the written per-episode RRDs.
     """
     rrd_dir.mkdir(parents=True, exist_ok=True)
 
+    profile = replace(rr.experimental.OptimizationProfile.OBJECT_STORE, fix_keyframe=True)
     reader = rr.experimental.RrdReader(str(combined_rrd))
     recordings = reader.recordings()
     print(f"Archive contains {len(recordings)} recordings")
@@ -69,9 +73,12 @@ def split_into_episode_rrds(combined_rrd: Path, rrd_dir: Path) -> list[Path]:
         episode_id = _zero_pad_episode_id(entry.recording_id)
         rrd_path = rrd_dir / f"{episode_id}.rrd"
 
-        with rr.RecordingStream(APPLICATION_ID, recording_id=episode_id, send_properties=False) as rec:
-            rec.save(str(rrd_path))
-            rec.send_chunks(store)
+        optimized_store = store.stream().collect(optimize=profile)
+        optimized_store.write_rrd(
+            rrd_path,
+            application_id=APPLICATION_ID,
+            recording_id=episode_id,
+        )
         episode_paths.append(rrd_path)
         print(f"  wrote {rrd_path} ({rrd_path.stat().st_size / (1024 * 1024):.1f} MB)")
 
