@@ -1,0 +1,50 @@
+---
+source: crates/utils/re_gpu_video/src/vulkan/av1/tests.rs
+expression: "trace_fixtures(&[\"ippp\", \"seq_change\"])"
+---
+# TU 0
+ParametersChanged
+DecodeFrame { picture 0, order hint 0, key, slot 0 }
+# TU 1
+DecodeFrame { picture 1, order hint 1, slot 1, refs: [slot 0 (order hint 0)], names: [0, 0, 0, 0, 0, 0, 0] }
+# TU 2
+DecodeFrame { picture 2, order hint 2, slot 2, refs: [slot 0 (order hint 0), slot 1 (order hint 1)], names: [1, 0, 0, 0, 0, 0, 0] }
+# TU 3
+DecodeFrame { picture 3, order hint 3, slot 3, refs: [slot 0 (order hint 0), slot 2 (order hint 2)], names: [2, 0, 0, 0, 0, 0, 0] }
+# TU 4
+DecodeFrame { picture 4, order hint 4, slot 4, refs: [slot 0 (order hint 0), slot 3 (order hint 3)], names: [3, 0, 0, 0, 0, 0, 0] }
+# TU 5
+DecodeFrame { picture 5, order hint 5, slot 5, refs: [slot 0 (order hint 0), slot 1 (order hint 1), slot 4 (order hint 4)], names: [4, 0, 0, 0, 0, 0, 1] }
+# TU 6
+DecodeFrame { picture 6, order hint 6, slot 6, refs: [slot 0 (order hint 0), slot 2 (order hint 2), slot 5 (order hint 5)], names: [5, 0, 0, 0, 0, 0, 2] }
+# TU 7
+DecodeFrame { picture 7, order hint 7, slot 7, refs: [slot 0 (order hint 0), slot 1 (order hint 1), slot 3 (order hint 3), slot 6 (order hint 6)], names: [6, 1, 0, 0, 0, 0, 3], evicted: [1] }
+# TU 8
+DecodeFrame { picture 8, order hint 8, slot 1, refs: [slot 0 (order hint 0), slot 2 (order hint 2), slot 4 (order hint 4), slot 7 (order hint 7)], names: [7, 2, 0, 0, 0, 0, 4], evicted: [2] }
+# TU 9
+DecodeFrame { picture 9, order hint 9, slot 2, refs: [slot 0 (order hint 0), slot 1 (order hint 8), slot 3 (order hint 3), slot 5 (order hint 5)], names: [1, 3, 0, 0, 0, 0, 5], evicted: [3] }
+# TU 10
+DecodeFrame { picture 10, order hint 10, slot 3, refs: [slot 0 (order hint 0), slot 2 (order hint 9), slot 4 (order hint 4), slot 6 (order hint 6)], names: [2, 4, 0, 0, 0, 0, 6], evicted: [4] }
+# TU 11
+DecodeFrame { picture 11, order hint 11, slot 4, refs: [slot 0 (order hint 0), slot 3 (order hint 10), slot 5 (order hint 5), slot 7 (order hint 7)], names: [3, 5, 0, 0, 0, 0, 7], evicted: [5] }
+# TU 12
+DecodeFrame { picture 12, order hint 12, slot 5, refs: [slot 0 (order hint 0), slot 1 (order hint 8), slot 4 (order hint 11), slot 6 (order hint 6)], names: [4, 6, 0, 0, 0, 0, 1], evicted: [6] }
+# TU 13
+DecodeFrame { picture 13, order hint 13, slot 6, refs: [slot 0 (order hint 0), slot 2 (order hint 9), slot 5 (order hint 12), slot 7 (order hint 7)], names: [5, 7, 0, 0, 0, 0, 2], evicted: [7] }
+# TU 14
+DecodeFrame { picture 14, order hint 14, slot 7, refs: [slot 0 (order hint 0), slot 1 (order hint 8), slot 3 (order hint 10), slot 6 (order hint 13)], names: [6, 1, 0, 0, 0, 0, 3], evicted: [8] }
+# TU 15
+DecodeFrame { picture 15, order hint 15, slot 1, refs: [slot 0 (order hint 0), slot 2 (order hint 9), slot 4 (order hint 11), slot 7 (order hint 14)], names: [7, 2, 0, 0, 0, 0, 4], evicted: [9] }
+# TU 16
+ParametersChanged
+DecodeFrame { picture 16, order hint 0, key, slot 2, evicted: [0, 15, 10, 11, 12, 13, 14] }
+# TU 17
+DecodeFrame { picture 17, order hint 1, slot 0, refs: [slot 2 (order hint 0)], names: [2, 2, 2, 2, 2, 2, 2] }
+# TU 18
+DecodeFrame { picture 18, order hint 2, slot 1, refs: [slot 0 (order hint 1), slot 2 (order hint 0)], names: [0, 2, 2, 2, 2, 2, 2] }
+# TU 19
+DecodeFrame { picture 19, order hint 3, slot 3, refs: [slot 1 (order hint 2), slot 2 (order hint 0)], names: [1, 2, 2, 2, 2, 2, 2] }
+# TU 20
+DecodeFrame { picture 20, order hint 4, slot 4, refs: [slot 2 (order hint 0), slot 3 (order hint 3)], names: [3, 2, 2, 2, 2, 2, 2] }
+# TU 21
+DecodeFrame { picture 21, order hint 5, slot 5, refs: [slot 0 (order hint 1), slot 2 (order hint 0), slot 4 (order hint 4)], names: [4, 2, 2, 2, 2, 2, 0] }

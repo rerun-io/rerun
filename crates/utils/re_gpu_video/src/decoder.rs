@@ -81,13 +81,15 @@ impl Decoder {
         }
     }
 
-    /// Decodes one annex-b access unit, returning zero or more frames in presentation order.
+    /// Decodes one access unit, returning zero or more frames in presentation order.
     ///
-    /// Decoding must start at an IDR frame carrying its parameter sets. `pts` travels into
+    /// One access unit is one annex-b frame for H.264 and H.265, and one temporal
+    /// unit of OBUs in low-overhead format for AV1. Decoding must start at a random
+    /// access point carrying its parameter sets. `pts` travels into
     /// [`DecodedFrame::pts`] untouched. A frame comes out once its GPU work finished
     /// and its presentation order is settled, so it may take up to
     /// [`Self::reorder_delay`] further access units. Any error leaves the decoder
-    /// waiting for the next IDR frame, like after [`Self::reset`].
+    /// waiting for the next random access point, like after [`Self::reset`].
     pub fn push_access_unit(
         &mut self,
         data: &[u8],
@@ -97,9 +99,14 @@ impl Decoder {
         match &mut self.inner {
             DecoderInner::Vulkan(decoder) => {
                 let reorder_delay = decoder.reorder_delay();
+                let sorted = decoder.emits_in_presentation_order();
                 for (key, frame) in decoder.push_access_unit(data, pts)? {
-                    self.sorter
-                        .push(key, frame.is_idr, frame, reorder_delay, &mut out);
+                    if sorted {
+                        out.push(frame);
+                    } else {
+                        self.sorter
+                            .push(key, frame.is_idr, frame, reorder_delay, &mut out);
+                    }
                 }
             }
         }
@@ -113,9 +120,14 @@ impl Decoder {
         match &mut self.inner {
             DecoderInner::Vulkan(decoder) => {
                 let reorder_delay = decoder.reorder_delay();
+                let sorted = decoder.emits_in_presentation_order();
                 for (key, frame) in decoder.flush()? {
-                    self.sorter
-                        .push(key, frame.is_idr, frame, reorder_delay, &mut out);
+                    if sorted {
+                        out.push(frame);
+                    } else {
+                        self.sorter
+                            .push(key, frame.is_idr, frame, reorder_delay, &mut out);
+                    }
                 }
             }
         }
@@ -123,7 +135,8 @@ impl Decoder {
         Ok(out)
     }
 
-    /// Drops all frame state for a seek. The next access unit must hold an IDR frame.
+    /// Drops all frame state for a seek. The next access unit must hold a random
+    /// access point.
     pub fn reset(&mut self) {
         match &mut self.inner {
             DecoderInner::Vulkan(decoder) => decoder.reset(),

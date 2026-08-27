@@ -29,7 +29,11 @@ fn main() {
             println!("  No video decode support.");
             continue;
         };
-        for codec in [re_gpu_video::Codec::H264, re_gpu_video::Codec::H265] {
+        for codec in [
+            re_gpu_video::Codec::H264,
+            re_gpu_video::Codec::H265,
+            re_gpu_video::Codec::AV1,
+        ] {
             match setup.capabilities(codec) {
                 Some(capabilities) => println!("  {codec} decode support: {capabilities:#?}"),
                 None => println!("  No {codec} decode support."),

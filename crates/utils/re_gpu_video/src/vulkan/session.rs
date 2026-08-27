@@ -200,6 +200,23 @@ impl SessionParameters {
         Self::create(device, &create_info)
     }
 
+    /// AV1's only parameter set is the sequence header.
+    pub fn new_av1(
+        device: Arc<Device>,
+        session: &VideoSession,
+        sequence_header: &vk::native::StdVideoAV1SequenceHeader,
+    ) -> Result<Self, vk::Result> {
+        re_tracing::profile_function!();
+
+        let mut av1_create_info = vk::VideoDecodeAV1SessionParametersCreateInfoKHR::default()
+            .std_sequence_header(sequence_header);
+        let create_info = vk::VideoSessionParametersCreateInfoKHR::default()
+            .video_session(session.raw)
+            .push_next(&mut av1_create_info);
+
+        Self::create(device, &create_info)
+    }
+
     #[expect(unsafe_code)]
     fn create(
         device: Arc<Device>,

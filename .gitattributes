@@ -16,6 +16,7 @@ pixi.lock linguist-generated=true
 **/*.h264 filter=lfs diff=lfs merge=lfs -text
 **/*.h265 filter=lfs diff=lfs merge=lfs -text
 **/*.h5 filter=lfs diff=lfs merge=lfs -text
+**/*.ivf filter=lfs diff=lfs merge=lfs -text
 **/*.mp4 filter=lfs diff=lfs merge=lfs -text
 examples/assets/example.rrd filter=lfs diff=lfs merge=lfs -text
 tests/assets/gaussian_splats/*.ply filter=lfs diff=lfs merge=lfs -text

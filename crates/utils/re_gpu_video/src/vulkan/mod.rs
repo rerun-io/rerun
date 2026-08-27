@@ -16,6 +16,7 @@ mod sync;
 
 // The safe bitstream parsers, one per codec: pure CPU code producing the plain-data
 // `DecodeOp` IR the rest of the backend executes. Fully covered by tests on all platforms.
+pub(crate) mod av1;
 pub(crate) mod h264;
 pub(crate) mod h265;
 

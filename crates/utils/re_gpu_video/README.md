@@ -13,4 +13,4 @@ Two backends, chosen at runtime based on the wgpu backend of the adapter:
 * Vulkan Video: any Vulkan driver exposing the video decode extensions
 * VideoToolbox (macOS, not yet implemented)
 
-Decode-only, H.264 first.
+Decode-only: H.264, H.265, and AV1.

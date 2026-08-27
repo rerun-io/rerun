@@ -1,6 +1,7 @@
-//! Decodes an elementary stream (annex-b) on the GPU and writes the frames as
-//! raw planar yuv420p, for PSNR comparison against ffmpeg's software decoder.
-//! The codec follows the file extension:
+//! Decodes a video file on the GPU and writes the frames as raw planar yuv420p,
+//! for PSNR comparison against ffmpeg's software decoder. The codec follows the
+//! file extension: annex-b elementary streams for H.264 and H.265, an IVF file
+//! for AV1.
 //!
 //! ```sh
 //! cargo run -p re_gpu_video --example decode_to_yuv -- tests/assets/ipb.h264 /tmp/gpu.yuv
@@ -21,8 +22,34 @@ fn codec_of(path: &str) -> Option<Codec> {
     match path.rsplit('.').next() {
         Some("h265" | "hevc" | "265") => Some(Codec::H265),
         Some("h264" | "264") => Some(Codec::H264),
+        Some("ivf") => Some(Codec::AV1),
         _ => None,
     }
+}
+
+/// The access units of an input file, one push into the decoder each.
+///
+/// The H.264 and H.265 parsers find the frame boundaries in an annex-b
+/// elementary stream themselves, so the whole file goes in as one push. AV1
+/// takes one temporal unit per call, which is what an IVF frame holds.
+fn access_units(codec: Codec, data: &[u8]) -> Vec<&[u8]> {
+    if codec != Codec::AV1 {
+        return vec![data];
+    }
+
+    const FILE_HEADER: usize = 32;
+    const FRAME_HEADER: usize = 12;
+
+    assert_eq!(&data[..4], b"DKIF", "not an IVF file");
+    let mut units = Vec::new();
+    let mut pos = FILE_HEADER;
+    while pos + FRAME_HEADER <= data.len() {
+        let size = u32::from_le_bytes(data[pos..pos + 4].try_into().expect("four bytes")) as usize;
+        pos += FRAME_HEADER;
+        units.push(&data[pos..pos + size]);
+        pos += size;
+    }
+    units
 }
 
 fn main() {
@@ -30,11 +57,11 @@ fn main() {
 
     let mut args = std::env::args().skip(1);
     let (Some(input), Some(output)) = (args.next(), args.next()) else {
-        eprintln!("Usage: decode_to_yuv <input.h264|input.h265> <output.yuv>");
+        eprintln!("Usage: decode_to_yuv <input.h264|input.h265|input.ivf> <output.yuv>");
         std::process::exit(1);
     };
     let Some(codec) = codec_of(&input) else {
-        eprintln!("Cannot tell the codec from the file extension, expected .h264 or .h265");
+        eprintln!("Cannot tell the codec from the file extension, expected .h264, .h265, or .ivf");
         std::process::exit(1);
     };
 
@@ -96,8 +123,10 @@ fn main() {
         .create_cpu_decoder(codec)
         .expect("decoder creation failed");
 
-    // The parser splits frames on its own, the whole stream can go in as one push.
-    let frames = decoder.push_access_unit(&data).expect("decoding failed");
+    let mut frames = Vec::new();
+    for unit in access_units(codec, &data) {
+        frames.extend(decoder.push_access_unit(unit).expect("decoding failed"));
+    }
 
     let mut file = std::io::BufWriter::new(
         std::fs::File::create(&output).expect("failed to create the output file"),
@@ -105,12 +134,16 @@ fn main() {
 
     // Frames arrive in decode order. Presentation order sorts by picture order count,
     // within the groups delimited by IDR frames (an IDR resets the count to zero and
-    // no frame is presented across it in the other order).
+    // no frame is presented across it in the other order). AV1 codes the output of
+    // every frame, so its frames come out in presentation order already.
+    let reorders = codec != Codec::AV1;
     let mut pending: Vec<CpuFrame> = Vec::new();
     let mut written = 0;
     let mut size = None;
     let mut flush = |pending: &mut Vec<CpuFrame>, file: &mut dyn std::io::Write| {
-        pending.sort_by_key(|frame| frame.poc);
+        if reorders {
+            pending.sort_by_key(|frame| frame.poc);
+        }
         for frame in pending.drain(..) {
             let frame_size = (frame.width, frame.height);
             if *size.get_or_insert(frame_size) != frame_size {
@@ -125,7 +158,7 @@ fn main() {
         }
     };
     for frame in frames {
-        if frame.is_idr {
+        if reorders && frame.is_idr {
             flush(&mut pending, &mut file);
         }
         pending.push(frame);

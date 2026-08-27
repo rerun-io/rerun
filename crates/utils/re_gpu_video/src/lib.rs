@@ -32,6 +32,7 @@ pub use setup::VideoDeviceSetup;
 pub enum Codec {
     H264,
     H265,
+    AV1,
 }
 
 impl std::fmt::Display for Codec {
@@ -39,6 +40,7 @@ impl std::fmt::Display for Codec {
         f.write_str(match self {
             Self::H264 => "H.264",
             Self::H265 => "H.265",
+            Self::AV1 => "AV1",
         })
     }
 }
@@ -136,8 +138,11 @@ pub enum ParseError {
     #[error("Slices within one frame disagree on their shared header fields")]
     InconsistentSlices,
 
-    #[error("Expected an IDR frame (start of stream, after a seek, or after an error)")]
-    ExpectedIdr,
+    #[error("Expected a random access point (start of stream, after a seek, or after an error)")]
+    ExpectedRandomAccessPoint,
+
+    #[error("The stream applies film grain, which this device's AV1 decoder does not support")]
+    FilmGrainUnsupported,
 }
 
 impl ParseError {

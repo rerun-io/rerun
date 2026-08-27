@@ -280,6 +280,47 @@ pub trait AsyncDecoder: Send + Sync {
     }
 }
 
+/// Tries to decode the stream on the render device, `None` when it can't.
+///
+/// Falls through to software decoding whenever the device has no decoder for the
+/// codec, the user asked for software decoding, or the decoder fails to start.
+#[cfg(with_gpu_video)]
+fn try_gpu_decoder(
+    debug_name: &str,
+    video: &crate::VideoDataDescription,
+    decode_settings: &DecodeSettings,
+    output_sender: &crate::Sender<FrameResult>,
+) -> Option<Box<dyn AsyncDecoder>> {
+    if decode_settings.hw_acceleration == DecodeHardwareAcceleration::PreferSoftware {
+        return None;
+    }
+    let gpu_video = decode_settings.gpu_video.0.as_ref()?;
+    let codec = gpu_video::gpu_video_codec(&video.codec)?;
+    gpu_video.capabilities(codec)?;
+
+    match gpu_video::GpuDecoder::new(
+        debug_name.to_owned(),
+        gpu_video,
+        codec,
+        video,
+        output_sender.clone(),
+    ) {
+        Ok(decoder) => {
+            re_log::debug!(
+                "Decoding {codec} on the GPU via {}",
+                gpu_video.backend_name()
+            );
+            Some(Box::new(decoder))
+        }
+        Err(err) => {
+            re_log::warn_once!(
+                "Failed to create GPU video decoder, falling back to software decoding: {err}"
+            );
+            None
+        }
+    }
+}
+
 /// Creates a new async decoder for the given `video` data.
 pub fn new_decoder(
     debug_name: &str,
@@ -323,9 +364,16 @@ pub fn new_decoder(
         }
         _ => {
             match &video.codec {
-                #[cfg(feature = "av1")]
+                #[cfg(any(feature = "av1", with_gpu_video))]
                 crate::VideoCodec::AV1 => {
-                    #[cfg(linux_arm64)]
+                    #[cfg(with_gpu_video)]
+                    if let Some(decoder) =
+                        try_gpu_decoder(debug_name, video, decode_settings, &output_sender)
+                    {
+                        return Ok(decoder);
+                    }
+
+                    #[cfg(all(feature = "av1", linux_arm64))]
                     {
                         return Err(DecodeError::NoDav1dOnLinuxArm64);
                     }
@@ -339,6 +387,11 @@ pub fn new_decoder(
                             output_sender,
                         )));
                     }
+
+                    #[allow(unreachable_code, clippy::allow_attributes)]
+                    Err(DecodeError::UnsupportedCodec(
+                        video.human_readable_codec_string(),
+                    ))
                 }
 
                 #[cfg(any(with_ffmpeg, with_gpu_video))]
@@ -347,32 +400,10 @@ pub fn new_decoder(
                 | crate::VideoCodec::VP8
                 | crate::VideoCodec::VP9 => {
                     #[cfg(with_gpu_video)]
-                    if decode_settings.hw_acceleration
-                        != DecodeHardwareAcceleration::PreferSoftware
-                        && let Some(gpu_video) = &decode_settings.gpu_video.0
-                        && let Some(codec) = gpu_video::gpu_video_codec(&video.codec)
-                        && gpu_video.capabilities(codec).is_some()
+                    if let Some(decoder) =
+                        try_gpu_decoder(debug_name, video, decode_settings, &output_sender)
                     {
-                        match gpu_video::GpuDecoder::new(
-                            debug_name.to_owned(),
-                            gpu_video,
-                            codec,
-                            video,
-                            output_sender.clone(),
-                        ) {
-                            Ok(decoder) => {
-                                re_log::debug!(
-                                    "Decoding {codec} on the GPU via {}",
-                                    gpu_video.backend_name()
-                                );
-                                return Ok(Box::new(decoder));
-                            }
-                            Err(err) => {
-                                re_log::warn_once!(
-                                    "Failed to create GPU video decoder, falling back to software decoding: {err}"
-                                );
-                            }
-                        }
+                        return Ok(decoder);
                     }
 
                     #[cfg(with_ffmpeg)]
@@ -412,7 +443,11 @@ pub fn new_decoder(
                     }
                 }
 
-                #[cfg(not(all(feature = "av1", with_ffmpeg)))]
+                // Only reachable when a codec arm above is compiled out.
+                #[cfg(not(all(
+                    any(feature = "av1", with_gpu_video),
+                    any(with_ffmpeg, with_gpu_video)
+                )))]
                 _ => Err(DecodeError::UnsupportedCodec(
                     video.human_readable_codec_string(),
                 )),

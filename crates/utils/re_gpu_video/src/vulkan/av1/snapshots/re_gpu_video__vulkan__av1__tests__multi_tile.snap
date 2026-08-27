@@ -1,0 +1,21 @@
+---
+source: crates/utils/re_gpu_video/src/vulkan/av1/tests.rs
+expression: "trace_fixture(\"multi_tile\")"
+---
+# TU 0
+ParametersChanged
+DecodeFrame { picture 0, order hint 0, key, slot 0, tiles: 4 }
+# TU 1
+DecodeFrame { picture 1, order hint 1, slot 1, tiles: 4, refs: [slot 0 (order hint 0)], names: [0, 0, 0, 0, 0, 0, 0] }
+# TU 2
+DecodeFrame { picture 2, order hint 2, slot 2, tiles: 4, refs: [slot 0 (order hint 0), slot 1 (order hint 1)], names: [1, 0, 0, 0, 0, 0, 0] }
+# TU 3
+DecodeFrame { picture 3, order hint 3, slot 3, tiles: 4, refs: [slot 0 (order hint 0), slot 2 (order hint 2)], names: [2, 0, 0, 0, 0, 0, 0] }
+# TU 4
+DecodeFrame { picture 4, order hint 4, slot 4, tiles: 4, refs: [slot 0 (order hint 0), slot 3 (order hint 3)], names: [3, 0, 0, 0, 0, 0, 0] }
+# TU 5
+DecodeFrame { picture 5, order hint 5, slot 5, tiles: 4, refs: [slot 0 (order hint 0), slot 1 (order hint 1), slot 4 (order hint 4)], names: [4, 0, 0, 0, 0, 0, 1] }
+# TU 6
+DecodeFrame { picture 6, order hint 6, slot 6, tiles: 4, refs: [slot 0 (order hint 0), slot 2 (order hint 2), slot 5 (order hint 5)], names: [5, 0, 0, 0, 0, 0, 2] }
+# TU 7
+DecodeFrame { picture 7, order hint 7, slot 7, tiles: 4, refs: [slot 0 (order hint 0), slot 1 (order hint 1), slot 3 (order hint 3), slot 6 (order hint 6)], names: [6, 1, 0, 0, 0, 0, 3], evicted: [1] }

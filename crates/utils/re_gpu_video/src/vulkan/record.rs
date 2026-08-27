@@ -19,15 +19,17 @@ use super::session::{SessionParameters, VideoSession};
 pub struct FrameDecode<'a> {
     pub info: &'a CodecFrameInfo,
 
-    /// Bitstream buffer holding the slice NALs, each prefixed with a 3-byte start code.
+    /// Bitstream buffer holding the frame's bitstream ranges, laid out as
+    /// [`super::codec::Bitstream`] describes.
     pub bitstream_buffer: vk::Buffer,
 
     /// Used range of the bitstream buffer, aligned to the device's
     /// bitstream size alignment.
     pub bitstream_size: u64,
 
-    /// Offsets of the slices (at their start codes) within the buffer.
-    pub slice_offsets: &'a [u32],
+    /// Offset of each of those ranges within the buffer. For H.264 and H.265
+    /// these are the slice offsets, at their start codes.
+    pub bitstream_offsets: &'a [u32],
 
     /// The result-status query this decode writes: the frame's resource-slot index.
     pub query_index: u32,
@@ -273,6 +275,9 @@ pub fn record_decode(
         CodecFrameInfo::H265(info) => {
             record_h265_decode(device, cmd, session, parameters, images, frame, info);
         }
+        CodecFrameInfo::Av1(info) => {
+            record_av1_decode(device, cmd, session, parameters, images, frame, info);
+        }
     }
 
     // Hand the decode output to the copy queue. Visibility across the queues comes
@@ -396,7 +401,7 @@ fn record_h264_decode(
             let std_pic = std_picture_info(info);
             let mut h264_picture_info = vk::VideoDecodeH264PictureInfoKHR::default()
                 .std_picture_info(&std_pic)
-                .slice_offsets(frame.slice_offsets);
+                .slice_offsets(frame.bitstream_offsets);
             let mut decode_info = vk::VideoDecodeInfoKHR::default()
                 .src_buffer(frame.bitstream_buffer)
                 .src_buffer_offset(0)
@@ -486,7 +491,7 @@ fn record_h265_decode(
             let std_pic = std_h265_picture_info(info);
             let mut h265_picture_info = vk::VideoDecodeH265PictureInfoKHR::default()
                 .std_picture_info(&std_pic)
-                .slice_segment_offsets(frame.slice_offsets);
+                .slice_segment_offsets(frame.bitstream_offsets);
             let decode_info = vk::VideoDecodeInfoKHR::default()
                 .src_buffer(frame.bitstream_buffer)
                 .src_buffer_offset(0)
@@ -558,6 +563,125 @@ fn std_h265_picture_info(
         RefPicSetStCurrAfter: pad(&info.st_curr_after),
         RefPicSetLtCurr: pad(&info.lt_curr),
     }
+}
+
+/// Records the AV1 coding scope of one picture's decode: the reference and setup
+/// slot infos, and the decode operation itself.
+fn record_av1_decode(
+    device: &Device,
+    cmd: vk::CommandBuffer,
+    session: &mut VideoSession,
+    parameters: &SessionParameters,
+    images: &DecodeImages,
+    frame: &FrameDecode<'_>,
+    info: &super::av1::DecodeInfo,
+) {
+    // The reference slots of this decode. The resources and AV1 slot infos must
+    // stay in place while the slot infos point at them, hence the separate vecs.
+    let std_refs: Vec<vk::native::StdVideoDecodeAV1ReferenceInfo> = info
+        .references
+        .iter()
+        .map(super::av1::std_reference_info)
+        .collect();
+    let resources: Vec<vk::VideoPictureResourceInfoKHR<'_>> = info
+        .references
+        .iter()
+        .map(|reference| images.dpb_resource(u32::from(reference.slot)))
+        .collect();
+    let mut slot_infos: Vec<vk::VideoDecodeAV1DpbSlotInfoKHR<'_>> = std_refs
+        .iter()
+        .map(|std_ref| vk::VideoDecodeAV1DpbSlotInfoKHR::default().std_reference_info(std_ref))
+        .collect();
+    let reference_slots: Vec<vk::VideoReferenceSlotInfoKHR<'_>> =
+        itertools::izip!(&info.references, &resources, slot_infos.iter_mut())
+            .map(|(reference, resource, slot_info)| {
+                vk::VideoReferenceSlotInfoKHR::default()
+                    .slot_index(i32::from(reference.slot))
+                    .picture_resource(resource)
+                    .push_next(slot_info)
+            })
+            .collect();
+
+    // The slot this picture activates, with its own reference metadata. Every
+    // AV1 picture is decoded into the buffer, whether a later picture ends up
+    // referencing it or not.
+    let setup_resource = images.dpb_resource(u32::from(info.setup_slot));
+    let setup_std_ref =
+        super::av1::std_reference_info(&super::av1::reference_info(&info.header, info.setup_slot));
+    let mut setup_slot_av1 =
+        vk::VideoDecodeAV1DpbSlotInfoKHR::default().std_reference_info(&setup_std_ref);
+    let setup_slot = vk::VideoReferenceSlotInfoKHR::default()
+        .slot_index(i32::from(info.setup_slot))
+        .picture_resource(&setup_resource)
+        .push_next(&mut setup_slot_av1);
+
+    // Everything used within the video coding scope must be bound at its begin:
+    // the active references with their slot indices, plus (index -1, not yet a
+    // slot) the resource the setup slot activates.
+    let mut begin_slots = reference_slots.clone();
+    begin_slots.push(
+        vk::VideoReferenceSlotInfoKHR::default()
+            .slot_index(-1)
+            .picture_resource(&setup_resource),
+    );
+
+    // The tile data, addressed within the uploaded OBUs.
+    let tile_offsets: Vec<u32> = info
+        .tiles
+        .iter()
+        .map(|tile| {
+            frame
+                .bitstream_offsets
+                .get(tile.obu)
+                .copied()
+                .unwrap_or_default()
+                + tile.offset
+        })
+        .collect();
+    let tile_sizes: Vec<u32> = info.tiles.iter().map(|tile| tile.size).collect();
+
+    // The DPB slot each reference name resolves to, `-1` for the names an intra
+    // picture leaves unused.
+    let reference_name_slot_indices: [i32; vk::MAX_VIDEO_AV1_REFERENCES_PER_FRAME_KHR] =
+        std::array::from_fn(|name| info.reference_name_slots[name].map_or(-1, i32::from));
+
+    coding_scope(
+        device,
+        cmd,
+        session,
+        parameters,
+        &begin_slots,
+        frame.query_index,
+        || {
+            let std_pic = super::av1::PictureStdParams::build(&info.header);
+            let mut av1_picture_info = vk::VideoDecodeAV1PictureInfoKHR::default()
+                .std_picture_info(std_pic.std())
+                .reference_name_slot_indices(reference_name_slot_indices)
+                .frame_header_offset(
+                    frame
+                        .bitstream_offsets
+                        .get(info.frame_header_obu)
+                        .copied()
+                        .unwrap_or_default(),
+                )
+                .tile_offsets(&tile_offsets)
+                .tile_sizes(&tile_sizes);
+            let decode_info = vk::VideoDecodeInfoKHR::default()
+                .src_buffer(frame.bitstream_buffer)
+                .src_buffer_offset(0)
+                .src_buffer_range(frame.bitstream_size)
+                .dst_picture_resource(images.dst_resource(Some(info.setup_slot)))
+                .reference_slots(&reference_slots)
+                .setup_reference_slot(&setup_slot)
+                .push_next(&mut av1_picture_info);
+            // SAFETY: The command buffer is in recording state and every struct
+            // chained into the decode info outlives the call.
+            #[expect(unsafe_code)]
+            unsafe {
+                (device.video_decode_fns.fp().cmd_decode_video_khr)(cmd, &raw const decode_info);
+            }
+        },
+    );
 }
 
 /// Records the copy of the decoded frame's display region into the readback buffer,
@@ -728,6 +852,15 @@ pub fn record_output_to_image(
     // observed the copy's semaphore value, which orders it against wgpu's
     // submissions, and wgpu's own transition out of `COPY_DST` makes the
     // transfer write visible there.
+    let barriers = source_restore_barriers(source);
+    if !barriers.is_empty() {
+        pipeline_barrier(device, cmd, &barriers);
+    }
+}
+
+/// Records what a skipped output copy still owes: the layout restore, for a
+/// frame that is decoded as a reference for others and never shown.
+pub fn record_output_skipped(device: &Device, cmd: vk::CommandBuffer, source: &CopySource) {
     let barriers = source_restore_barriers(source);
     if !barriers.is_empty() {
         pipeline_barrier(device, cmd, &barriers);

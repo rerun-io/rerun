@@ -14,7 +14,7 @@
 //! running is what blocks. [`CpuDecoder`] waits for every frame. All of this
 //! runs on the caller's (decoder worker) thread, never on the render thread.
 
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 
 use ash::vk;
@@ -23,7 +23,7 @@ use crate::{Codec, ColorProperties, DecodeCapabilities, DecodeError, DecodedFram
 
 use super::Shared;
 use super::caps::VulkanVideoCaps;
-use super::codec::{CodecFrameInfo, CodecProfile, CodecState};
+use super::codec::{CodecFrameInfo, CodecOp, CodecProfile, CodecState, FrameOutput};
 use super::device::{CommandPool, Device};
 use super::dpb::DecodeImages;
 use super::output::{OutputImage, OutputPool};
@@ -31,8 +31,8 @@ use super::record::{self, CopySource};
 use super::session::{SessionParameters, VideoSession};
 use super::sync::TimelineSemaphore;
 
-/// H.264 and H.265 streams never need more DPB slots than 16 reference frames
-/// plus the current one, whatever the hardware would offer.
+/// No stream needs more DPB slots than 16 reference frames plus the current one,
+/// whatever the hardware would offer. AV1 gets by with nine.
 const MAX_DPB_SLOTS: u32 = 17;
 
 /// How many frames may be in flight on the GPU before decoding blocks the host.
@@ -151,7 +151,11 @@ impl DecoderCore {
 
         Ok(Self {
             semaphore: TimelineSemaphore::new(shared.device.clone())?,
-            codec: CodecState::new(codec, capabilities.max_dpb_slots.min(MAX_DPB_SLOTS) as u8),
+            codec: CodecState::new(
+                codec,
+                capabilities.max_dpb_slots.min(MAX_DPB_SLOTS) as u8,
+                &video_caps,
+            ),
             capabilities,
             video_caps,
             parameters_dirty: false,
@@ -164,9 +168,9 @@ impl DecoderCore {
         })
     }
 
-    /// Parses one annex-b access unit, tracking parameter sets and returning
-    /// the frames to decode.
-    fn parse(&mut self, data: &[u8]) -> Result<Vec<CodecFrameInfo>, DecodeError> {
+    /// Parses one access unit, tracking parameter sets and returning what to
+    /// decode and output.
+    fn parse(&mut self, data: &[u8]) -> Result<Vec<CodecOp>, DecodeError> {
         self.codec.parse(data, &mut self.parameters_dirty)
     }
 
@@ -260,7 +264,7 @@ impl DecoderCore {
         self.ensure_session(facts.profile, coded_extent, facts.dpb_slots)?;
         self.ensure_parameters()?;
         let slot_index = self.acquire_slot()?;
-        let (bitstream_size, slice_offsets) =
+        let (bitstream_size, bitstream_offsets) =
             self.upload_bitstream(slot_index, facts.profile, info, data)?;
 
         let active = self.active.as_mut().expect("ensured above");
@@ -297,7 +301,7 @@ impl DecoderCore {
                     .expect("uploaded above")
                     .raw,
                 bitstream_size,
-                slice_offsets: &slice_offsets,
+                bitstream_offsets: &bitstream_offsets,
                 query_index: slot_index as u32,
             },
         );
@@ -466,10 +470,10 @@ impl DecoderCore {
         Ok(())
     }
 
-    /// Writes the frame's slices into the slot's bitstream buffer, each prefixed
-    /// with a 3-byte start code, zero-padded to the device's size alignment.
+    /// Writes the frame's bitstream ranges into the slot's bitstream buffer,
+    /// zero-padded to the device's size alignment.
     ///
-    /// Returns the aligned size and the slice offsets within the buffer.
+    /// Returns the aligned size and the offset of each range within the buffer.
     fn upload_bitstream(
         &mut self,
         slot_index: usize,
@@ -481,12 +485,18 @@ impl DecoderCore {
 
         const START_CODE: [u8; 3] = [0, 0, 1];
 
-        let slice_ranges = info.slice_ranges();
-        let mut slice_offsets = Vec::with_capacity(slice_ranges.len());
+        let bitstream = info.bitstream();
+        let prefix: &[u8] = if bitstream.start_codes {
+            &START_CODE
+        } else {
+            &[]
+        };
+
+        let mut offsets = Vec::with_capacity(bitstream.ranges.len());
         let mut size = 0_u64;
-        for range in slice_ranges {
-            slice_offsets.push(size as u32);
-            size += (START_CODE.len() + range.len()) as u64;
+        for range in bitstream.ranges {
+            offsets.push(size as u32);
+            size += (prefix.len() + range.len()) as u64;
         }
         let alignment = self.video_caps.min_bitstream_buffer_size_alignment.max(1);
         let aligned_size = size.next_multiple_of(alignment);
@@ -516,15 +526,15 @@ impl DecoderCore {
             .expect("created above")
             .mapped_slice_mut();
         let mut cursor = 0;
-        for range in slice_ranges {
-            mapped[cursor..cursor + START_CODE.len()].copy_from_slice(&START_CODE);
-            cursor += START_CODE.len();
+        for range in bitstream.ranges {
+            mapped[cursor..cursor + prefix.len()].copy_from_slice(prefix);
+            cursor += prefix.len();
             mapped[cursor..cursor + range.len()].copy_from_slice(&data[range.clone()]);
             cursor += range.len();
         }
         mapped[cursor..aligned_size as usize].fill(0);
 
-        Ok((aligned_size, slice_offsets))
+        Ok((aligned_size, offsets))
     }
 
     /// Reads the result-status query of a completed decode, when supported.
@@ -577,15 +587,50 @@ pub struct TextureDecoder {
     /// Frames whose GPU work may still be running, in decode order.
     /// Wrapped for wgpu and emitted once their copy value completed.
     pending: VecDeque<PendingFrame>,
+
+    /// Decoded output waiting for the access unit that shows it, by picture id.
+    /// Only AV1 holds frames back this way.
+    held_back: HashMap<u64, DecodedImage>,
 }
 
 /// A frame submitted to the GPU, held back until its output copy completed.
 struct PendingFrame {
     copy_value: u64,
+
+    /// The caller's timestamp of the access unit this frame leaves the decoder with.
+    pts: i64,
+
+    /// Held back frames that can never be shown any more, recycled with this one.
+    evicted_pictures: Vec<u64>,
+
+    disposition: Disposition,
+}
+
+/// What becomes of a frame once its GPU work completed.
+enum Disposition {
+    /// Emit the decoded image.
+    Show(DecodedImage),
+
+    /// Hold the decoded image back under this picture id.
+    HoldBack {
+        picture_id: u64,
+        image: DecodedImage,
+    },
+
+    /// Emit the image held back under this picture id.
+    ShowHeldBack { picture_id: u64 },
+
+    /// The frame is a reference for others and never shown, so nothing was
+    /// copied out of it. Its submission still runs, so the decode stays tracked
+    /// and the DPB layer keeps its layout.
+    NotShown,
+}
+
+/// One decoded frame's output image and everything the frame reports about it.
+struct DecodedImage {
     image: OutputImage,
     display: [u32; 2],
     poc: i32,
-    pts: i64,
     is_idr: bool,
     color: ColorProperties,
 }
@@ -597,6 +642,7 @@ impl TextureDecoder {
             core: DecoderCore::new(shared, codec)?,
             pool,
             pending: VecDeque::new(),
+            held_back: HashMap::new(),
         })
     }
 
@@ -616,26 +662,77 @@ impl TextureDecoder {
     ) -> Result<Vec<(i64, DecodedFrame)>, DecodeError> {
         re_tracing::profile_function!();
 
-        for info in self.core.parse(data)? {
+        for op in self.core.parse(data)? {
+            let info = match op {
+                CodecOp::Decode(info) => info,
+                CodecOp::ShowHeldBack {
+                    picture_id,
+                    evicted_pictures,
+                } => {
+                    // Nothing to decode: the picture's output copy ran with the
+                    // access unit that decoded it, and everything ahead of this
+                    // entry in the queue gates it.
+                    self.pending.push_back(PendingFrame {
+                        copy_value: 0,
+                        pts,
+                        evicted_pictures,
+                        disposition: Disposition::ShowHeldBack { picture_id },
+                    });
+                    continue;
+                }
+            };
+
             let decode = self.core.submit_decode(&info, data)?;
-            let image = self.pool.acquire(&decode.source)?;
+            let output = info.output();
+
+            // A frame nothing ever shows still needs its decode tracked, so the
+            // copy submission goes through with an empty command buffer.
+            let image = match output {
+                FrameOutput::Show | FrameOutput::HoldBack => {
+                    Some(self.pool.acquire(&decode.source)?)
+                }
+                FrameOutput::None => None,
+            };
             let copy_value = self.core.submit_copy(&decode, |device, cmd| {
-                record::record_output_to_image(
-                    device,
-                    cmd,
-                    &decode.source,
-                    image.raw(),
-                    image.extent,
-                );
+                if let Some(image) = &image {
+                    record::record_output_to_image(
+                        device,
+                        cmd,
+                        &decode.source,
+                        image.raw(),
+                        image.extent,
+                    );
+                } else {
+                    record::record_output_skipped(device, cmd, &decode.source);
+                }
             })?;
+
+            let disposition = match (output, image) {
+                (FrameOutput::Show, Some(image)) => Disposition::Show(DecodedImage {
+                    image,
+                    display: decode.source.display,
+                    poc: info.poc(),
+                    is_idr: info.is_idr(),
+                    color: decode.color,
+                }),
+                (FrameOutput::HoldBack, Some(image)) => Disposition::HoldBack {
+                    picture_id: info.picture_id(),
+                    image: DecodedImage {
+                        image,
+                        display: decode.source.display,
+                        poc: info.poc(),
+                        is_idr: info.is_idr(),
+                        color: decode.color,
+                    },
+                },
+                _ => Disposition::NotShown,
+            };
+
             self.pending.push_back(PendingFrame {
                 copy_value,
-                image,
-                display: decode.source.display,
-                poc: info.poc(),
                 pts,
-                is_idr: info.is_idr(),
-                color: decode.color,
+                evicted_pictures: info.evicted_pictures().to_vec(),
+                disposition,
             });
         }
 
@@ -659,19 +756,51 @@ impl TextureDecoder {
             .is_some_and(|frame| frame.copy_value <= completed)
         {
             let frame = self.pending.pop_front().expect("checked above");
-            let wrapped = self.pool.wrap(
-                frame.image,
-                frame.display,
-                frame.pts,
-                frame.is_idr,
-                frame.color,
-            );
-            frames.push((i64::from(frame.poc), wrapped));
+
+            for picture_id in frame.evicted_pictures {
+                if let Some(evicted) = self.held_back.remove(&picture_id) {
+                    self.pool.recycle(evicted.image);
+                }
+            }
+
+            let shown = match frame.disposition {
+                Disposition::Show(image) => Some(image),
+                Disposition::HoldBack { picture_id, image } => {
+                    if let Some(replaced) = self.held_back.insert(picture_id, image) {
+                        self.pool.recycle(replaced.image);
+                    }
+                    None
+                }
+                Disposition::ShowHeldBack { picture_id } => {
+                    let held_back = self.held_back.remove(&picture_id);
+                    if held_back.is_none() {
+                        // Can't happen: the parser only names pictures it saw
+                        // the decoder hold back.
+                        re_log::warn_once!(
+                            "Video stream shows a frame the decoder never held back"
+                        );
+                    }
+                    held_back
+                }
+                Disposition::NotShown => None,
+            };
+
+            if let Some(shown) = shown {
+                let wrapped = self.pool.wrap(
+                    shown.image,
+                    shown.display,
+                    frame.pts,
+                    shown.is_idr,
+                    shown.color,
+                );
+                frames.push((i64::from(shown.poc), wrapped));
+            }
         }
         frames
     }
 
-    /// Drops all frame state for a seek. The next access unit must hold an IDR frame.
+    /// Drops all frame state for a seek. The next access unit must hold a random
+    /// access point.
     pub fn reset(&mut self) {
         // Finish in-flight work so the pending images are safe to recycle.
         // A decode failure of a stale frame doesn't matter here, only wait errors.
@@ -679,7 +808,16 @@ impl TextureDecoder {
             re_log::warn_once!("Error while draining the video decoder for a seek: {err}");
         }
         for frame in self.pending.drain(..) {
-            self.pool.recycle(frame.image);
+            match frame.disposition {
+                Disposition::Show(image) | Disposition::HoldBack { image, .. } => {
+                    self.pool.recycle(image.image);
+                }
+                Disposition::ShowHeldBack { .. } | Disposition::NotShown => {}
+            }
+        }
+        #[expect(clippy::iter_over_hash_type, reason = "recycling order doesn't matter")]
+        for (_, held_back) in self.held_back.drain() {
+            self.pool.recycle(held_back.image);
         }
         self.core.reset();
     }
@@ -687,6 +825,11 @@ impl TextureDecoder {
     /// See [`CodecState::reorder_delay`].
     pub fn reorder_delay(&self) -> usize {
         self.core.codec.reorder_delay()
+    }
+
+    /// See [`CodecState::emits_in_presentation_order`].
+    pub fn emits_in_presentation_order(&self) -> bool {
+        self.core.codec.emits_in_presentation_order()
     }
 
     /// How many frames may be in flight on the GPU, and so held back by
@@ -704,6 +847,10 @@ impl TextureDecoder {
 pub struct CpuDecoder {
     core: DecoderCore,
     readback: Option<super::alloc::Buffer>,
+
+    /// Decoded frames waiting for the access unit that shows them, by picture
+    /// id. Only AV1 holds frames back this way.
+    held_back: HashMap<u64, CpuFrame>,
 }
 
 impl CpuDecoder {
@@ -711,26 +858,61 @@ impl CpuDecoder {
         Ok(Self {
             core: DecoderCore::new(shared, codec)?,
             readback: None,
+            held_back: HashMap::new(),
         })
     }
 
-    /// Decodes one annex-b access unit, returning its frames in decode order.
+    /// Decodes one access unit, returning its frames in decode order.
     ///
     /// Blocks until the hardware finished. Any error leaves the decoder waiting
-    /// for an IDR frame, like after a reset.
+    /// for a random access point, like after a reset.
     pub fn push_access_unit(&mut self, data: &[u8]) -> Result<Vec<CpuFrame>, DecodeError> {
         re_tracing::profile_function!();
 
         let mut frames = Vec::new();
-        for info in self.core.parse(data)? {
-            frames.push(self.decode_frame(&info, data)?);
+        for op in self.core.parse(data)? {
+            match op {
+                CodecOp::ShowHeldBack {
+                    picture_id,
+                    evicted_pictures,
+                } => {
+                    let shown = self.held_back.remove(&picture_id);
+                    self.evict(&evicted_pictures);
+                    frames.extend(shown);
+                }
+
+                CodecOp::Decode(info) => {
+                    let output = info.output();
+                    let picture_id = info.picture_id();
+                    let evicted_pictures = info.evicted_pictures().to_vec();
+
+                    let frame = self.decode_frame(&info, data)?;
+                    self.evict(&evicted_pictures);
+                    match output {
+                        FrameOutput::Show => frames.push(frame),
+                        FrameOutput::HoldBack => {
+                            self.held_back.insert(picture_id, frame);
+                        }
+                        FrameOutput::None => {}
+                    }
+                }
+            }
         }
         Ok(frames)
     }
 
-    /// Drops all frame state for a seek. The next access unit must hold an IDR frame.
+    /// Drops all frame state for a seek. The next access unit must hold a random
+    /// access point.
     pub fn reset(&mut self) {
+        self.held_back.clear();
         self.core.reset();
+    }
+
+    /// Drops the held back frames that can never be shown any more.
+    fn evict(&mut self, picture_ids: &[u64]) {
+        for picture_id in picture_ids {
+            self.held_back.remove(picture_id);
+        }
     }
 
     fn decode_frame(

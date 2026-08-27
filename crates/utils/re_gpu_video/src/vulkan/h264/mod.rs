@@ -147,7 +147,7 @@ impl Parser {
                         && nal_header.nal_unit_type()
                             == UnitType::SliceLayerWithoutPartitioningNonIdr
                     {
-                        return Err(ParseError::ExpectedIdr);
+                        return Err(ParseError::ExpectedRandomAccessPoint);
                     }
 
                     let slice = parse::parse_slice(&self.ctx, nal_header, &nal, range)?;
@@ -208,7 +208,7 @@ impl Parser {
         let is_idr = first.is_idr;
 
         if self.awaiting_idr && !is_idr {
-            return Err(ParseError::ExpectedIdr);
+            return Err(ParseError::ExpectedRandomAccessPoint);
         }
         if is_idr && first.nal_ref_idc == 0 {
             return Err(ParseError::Invalid("IDR frame with nal_ref_idc 0"));

@@ -347,7 +347,7 @@ impl Parser {
 
         if self.awaiting_irap {
             if !first.is_irap {
-                return Err(ParseError::ExpectedIdr);
+                return Err(ParseError::ExpectedRandomAccessPoint);
             }
             self.awaiting_irap = false;
             // The pictures that precede this one in presentation order reference

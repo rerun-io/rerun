@@ -18,6 +18,7 @@ pub fn gpu_video_codec(codec: &crate::VideoCodec) -> Option<re_gpu_video::Codec>
     match codec {
         crate::VideoCodec::H264 => Some(re_gpu_video::Codec::H264),
         crate::VideoCodec::H265 => Some(re_gpu_video::Codec::H265),
+        crate::VideoCodec::AV1 => Some(re_gpu_video::Codec::AV1),
         _ => None,
     }
 }
@@ -47,7 +48,7 @@ impl GpuDecoder {
         let sync_decoder = GpuSyncDecoder {
             decoder,
             input_format: InputFormat::from_descr(video_descr),
-            annexb_buffer: Vec::new(),
+            input_buffer: Vec::new(),
             pending_frame_infos: BTreeMap::new(),
             reorder_delay: reorder_delay.clone(),
         };
@@ -77,10 +78,11 @@ impl AsyncDecoder for GpuDecoder {
     }
 }
 
-/// What conversion `Chunk::data` needs before it can be pushed as an annex-b access unit.
+/// What conversion `Chunk::data` needs before it can be pushed as an access unit.
 enum InputFormat {
-    /// Streamed video is already annex-b, pass it through verbatim.
-    AnnexB,
+    /// Streamed video already has the framing the decoder expects: annex-b for
+    /// H.264 and H.265, a temporal unit of OBUs for AV1.
+    Verbatim,
 
     /// H.264 in MP4: prepend SPS/PPS to each IDR, otherwise length-prefix → annex-b.
     Avcc {
@@ -93,6 +95,10 @@ enum InputFormat {
         hvcc: re_mp4::HevcBox,
         state: AnnexBStreamState,
     },
+
+    /// AV1 in MP4: the samples are temporal units already, but the sequence
+    /// header may live in the `av1C` box instead of the samples.
+    Av1 { config_obus: Vec<u8> },
 }
 
 impl InputFormat {
@@ -113,7 +119,10 @@ impl InputFormat {
                     state: AnnexBStreamState::default(),
                 }
             }
-            _ => Self::AnnexB,
+            Some(re_mp4::StsdBoxContent::Av01(av01)) => Self::Av1 {
+                config_obus: av01.av1c.config_obus.clone(),
+            },
+            _ => Self::Verbatim,
         }
     }
 }
@@ -132,8 +141,8 @@ struct GpuSyncDecoder {
     decoder: re_gpu_video::Decoder,
     input_format: InputFormat,
 
-    /// Reused conversion buffer for AVCC input.
-    annexb_buffer: Vec<u8>,
+    /// Reused conversion buffer for the inputs that need one.
+    input_buffer: Vec<u8>,
 
     /// Chunk metadata keyed by presentation timestamp, waiting for the decoded frame.
     ///
@@ -191,28 +200,41 @@ impl SyncDecoder for GpuSyncDecoder {
         }
 
         let data: &[u8] = match &mut self.input_format {
-            InputFormat::AnnexB => &chunk.data,
+            InputFormat::Verbatim => &chunk.data,
             InputFormat::Avcc { avcc, state } => {
-                self.annexb_buffer.clear();
+                self.input_buffer.clear();
                 if let Err(err) =
-                    write_avc_chunk_to_nalu_stream(avcc, &mut self.annexb_buffer, &chunk, state)
+                    write_avc_chunk_to_nalu_stream(avcc, &mut self.input_buffer, &chunk, state)
                 {
                     let _send_error =
                         output_sender.send(Err(DecodeError::BadAvccData(err.to_string())));
                     return;
                 }
-                &self.annexb_buffer
+                &self.input_buffer
             }
             InputFormat::Hvcc { hvcc, state } => {
-                self.annexb_buffer.clear();
+                self.input_buffer.clear();
                 if let Err(err) =
-                    write_hevc_chunk_to_nalu_stream(hvcc, &mut self.annexb_buffer, &chunk, state)
+                    write_hevc_chunk_to_nalu_stream(hvcc, &mut self.input_buffer, &chunk, state)
                 {
                     let _send_error =
                         output_sender.send(Err(DecodeError::BadAvccData(err.to_string())));
                     return;
                 }
-                &self.annexb_buffer
+                &self.input_buffer
+            }
+            InputFormat::Av1 { config_obus } => {
+                if chunk.is_sync && !config_obus.is_empty() {
+                    // The sequence header the decoder needs is only guaranteed
+                    // to be in the sample entry, so send it with every random
+                    // access point. Repeats of one it already saw are skipped.
+                    self.input_buffer.clear();
+                    self.input_buffer.extend_from_slice(config_obus);
+                    self.input_buffer.extend_from_slice(&chunk.data);
+                    &self.input_buffer
+                } else {
+                    &chunk.data
+                }
             }
         };
 

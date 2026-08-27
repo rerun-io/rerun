@@ -125,7 +125,10 @@ fn starting_at_a_non_idr_frame_is_an_error() {
     let data = fixture("ippp");
     let mut parser = Parser::new(17);
     let result = parser.push_access_unit(split_on_aud(&data)[1]);
-    assert!(matches!(result, Err(ParseError::ExpectedIdr)), "{result:?}");
+    assert!(
+        matches!(result, Err(ParseError::ExpectedRandomAccessPoint)),
+        "{result:?}"
+    );
 }
 
 #[test]
@@ -138,7 +141,10 @@ fn reset_requires_an_idr_frame() {
 
     parser.reset();
     let result = parser.push_access_unit(units[2]);
-    assert!(matches!(result, Err(ParseError::ExpectedIdr)), "{result:?}");
+    assert!(
+        matches!(result, Err(ParseError::ExpectedRandomAccessPoint)),
+        "{result:?}"
+    );
 
     // The error keeps the parser waiting, an IDR recovers it.
     let ops = parser.push_access_unit(units[0]).unwrap();

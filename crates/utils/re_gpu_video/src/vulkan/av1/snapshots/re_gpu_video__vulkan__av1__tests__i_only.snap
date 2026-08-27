@@ -1,0 +1,21 @@
+---
+source: crates/utils/re_gpu_video/src/vulkan/av1/tests.rs
+expression: "trace_fixture(\"i_only\")"
+---
+# TU 0
+ParametersChanged
+DecodeFrame { picture 0, order hint 0, key, slot 0 }
+# TU 1
+DecodeFrame { picture 1, order hint 0, key, slot 1, evicted: [0] }
+# TU 2
+DecodeFrame { picture 2, order hint 0, key, slot 0, evicted: [1] }
+# TU 3
+DecodeFrame { picture 3, order hint 0, key, slot 1, evicted: [2] }
+# TU 4
+DecodeFrame { picture 4, order hint 0, key, slot 0, evicted: [3] }
+# TU 5
+DecodeFrame { picture 5, order hint 0, key, slot 1, evicted: [4] }
+# TU 6
+DecodeFrame { picture 6, order hint 0, key, slot 0, evicted: [5] }
+# TU 7
+DecodeFrame { picture 7, order hint 0, key, slot 1, evicted: [6] }

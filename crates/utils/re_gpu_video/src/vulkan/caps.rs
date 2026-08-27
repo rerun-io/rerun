@@ -10,13 +10,14 @@ use crate::{Codec, DecodeCapabilities};
 use super::codec::CodecProfile;
 
 /// The codecs the Vulkan backend can probe for.
-pub const PROBED_CODECS: [Codec; 2] = [Codec::H264, Codec::H265];
+pub const PROBED_CODECS: [Codec; 3] = [Codec::H264, Codec::H265, Codec::AV1];
 
 /// The decode extension of a codec.
 pub fn codec_extension(codec: Codec) -> &'static std::ffi::CStr {
     match codec {
         Codec::H264 => ash::khr::video_decode_h264::NAME,
         Codec::H265 => ash::khr::video_decode_h265::NAME,
+        Codec::AV1 => ash::khr::video_decode_av1::NAME,
     }
 }
 
@@ -25,21 +26,31 @@ fn codec_operation(codec: Codec) -> vk::VideoCodecOperationFlagsKHR {
     match codec {
         Codec::H264 => vk::VideoCodecOperationFlagsKHR::DECODE_H264,
         Codec::H265 => vk::VideoCodecOperationFlagsKHR::DECODE_H265,
+        Codec::AV1 => vk::VideoCodecOperationFlagsKHR::DECODE_AV1,
     }
 }
 
-/// The profile to probe capabilities against.
+/// The profiles to probe capabilities against, most capable first.
 ///
 /// Hardware H.264 decoders support Baseline/Main/High uniformly, and H.265
-/// decoders Main, so one profile query per codec is enough.
-fn probe_profile(codec: Codec) -> CodecProfile {
+/// decoders Main, so one profile query is enough for those. AV1 makes film
+/// grain part of the profile, and hardware that decodes AV1 doesn't always
+/// apply grain, so both variants are probed.
+fn probe_profiles(codec: Codec) -> Vec<CodecProfile> {
     match codec {
-        Codec::H264 => CodecProfile::H264 {
+        Codec::H264 => vec![CodecProfile::H264 {
             std_profile_idc: vk::native::StdVideoH264ProfileIdc_STD_VIDEO_H264_PROFILE_IDC_HIGH,
-        },
-        Codec::H265 => CodecProfile::H265 {
+        }],
+        Codec::H265 => vec![CodecProfile::H265 {
             std_profile_idc: vk::native::StdVideoH265ProfileIdc_STD_VIDEO_H265_PROFILE_IDC_MAIN,
-        },
+        }],
+        Codec::AV1 => [true, false]
+            .into_iter()
+            .map(|film_grain| CodecProfile::Av1 {
+                std_profile: vk::native::StdVideoAV1Profile_STD_VIDEO_AV1_PROFILE_MAIN,
+                film_grain,
+            })
+            .collect(),
     }
 }
 
@@ -92,6 +103,10 @@ pub struct VulkanVideoCaps {
     #[expect(dead_code, reason = "recorded for driver-quirk handling later")]
     pub picture_access_granularity: [u32; 2],
 
+    /// AV1 only: the decoder can apply the film grain a stream carries.
+    /// Streams that apply grain fall back to software decoding without it.
+    pub av1_film_grain_support: bool,
+
     /// The H.264 decode std header version the driver supports,
     /// passed back on video session creation.
     pub std_header_version: vk::ExtensionProperties,
@@ -112,6 +127,7 @@ pub struct CodecSupport {
 pub struct SupportedCodecs {
     pub h264: Option<CodecSupport>,
     pub h265: Option<CodecSupport>,
+    pub av1: Option<CodecSupport>,
 }
 
 impl SupportedCodecs {
@@ -119,6 +135,7 @@ impl SupportedCodecs {
         match codec {
             Codec::H264 => self.h264.as_ref(),
             Codec::H265 => self.h265.as_ref(),
+            Codec::AV1 => self.av1.as_ref(),
         }
     }
 
@@ -126,6 +143,7 @@ impl SupportedCodecs {
         match codec {
             Codec::H264 => self.h264 = Some(support),
             Codec::H265 => self.h265 = Some(support),
+            Codec::AV1 => self.av1 = Some(support),
         }
     }
 
@@ -133,12 +151,13 @@ impl SupportedCodecs {
         match codec {
             Codec::H264 => self.h264 = None,
             Codec::H265 => self.h265 = None,
+            Codec::AV1 => self.av1 = None,
         }
     }
 
     /// The supported codecs.
     pub fn codecs(&self) -> impl Iterator<Item = Codec> + '_ {
-        [Codec::H264, Codec::H265]
+        PROBED_CODECS
             .into_iter()
             .filter(|&codec| self.get(codec).is_some())
     }
@@ -237,22 +256,37 @@ pub fn probe(adapter: &wgpu::Adapter) -> Option<VulkanProbe> {
     Some(VulkanProbe { queue_plan, codecs })
 }
 
-/// Queries the capabilities and NV12 format support of one codec's probe profile.
-#[expect(unsafe_code)]
+/// Queries the capabilities and NV12 format support of a codec, trying its probe
+/// profiles in order of preference.
 fn probe_codec(
     video_queue_instance_fns: &ash::khr::video_queue::Instance,
     physical_device: vk::PhysicalDevice,
     codec: Codec,
 ) -> Option<CodecSupport> {
-    probe_profile(codec).with_profile(|profile| {
+    probe_profiles(codec).into_iter().find_map(|profile| {
+        probe_profile(video_queue_instance_fns, physical_device, codec, profile)
+    })
+}
+
+/// Queries the capabilities and NV12 format support of one codec profile.
+#[expect(unsafe_code)]
+fn probe_profile(
+    video_queue_instance_fns: &ash::khr::video_queue::Instance,
+    physical_device: vk::PhysicalDevice,
+    codec: Codec,
+    probe_profile: CodecProfile,
+) -> Option<CodecSupport> {
+    probe_profile.with_profile(|profile| {
         let mut h264_capabilities = vk::VideoDecodeH264CapabilitiesKHR::default();
         let mut h265_capabilities = vk::VideoDecodeH265CapabilitiesKHR::default();
+        let mut av1_capabilities = vk::VideoDecodeAV1CapabilitiesKHR::default();
         let mut decode_capabilities = vk::VideoDecodeCapabilitiesKHR::default();
         let mut capabilities =
             vk::VideoCapabilitiesKHR::default().push_next(&mut decode_capabilities);
         capabilities = match codec {
             Codec::H264 => capabilities.push_next(&mut h264_capabilities),
             Codec::H265 => capabilities.push_next(&mut h265_capabilities),
+            Codec::AV1 => capabilities.push_next(&mut av1_capabilities),
         };
 
         // SAFETY: All three arguments outlive the call and the structs are properly chained.
@@ -301,6 +335,7 @@ fn probe_codec(
         let max_level_idc = match codec {
             Codec::H264 => h264_level_idc_number(h264_capabilities.max_level_idc),
             Codec::H265 => h265_level_idc_number(h265_capabilities.max_level_idc),
+            Codec::AV1 => av1_level_number(av1_capabilities.max_level),
         };
 
         // The decoded frames need to be NV12 both in the DPB and as copyable decode output.
@@ -344,6 +379,13 @@ fn probe_codec(
                 min_bitstream_buffer_offset_alignment,
                 min_bitstream_buffer_size_alignment,
                 picture_access_granularity,
+                av1_film_grain_support: matches!(
+                    probe_profile,
+                    CodecProfile::Av1 {
+                        film_grain: true,
+                        ..
+                    }
+                ),
                 std_header_version,
             },
         })
@@ -567,4 +609,17 @@ fn h264_level_idc_number(level: vk::native::StdVideoH264LevelIdc) -> u32 {
 fn h265_level_idc_number(level: vk::native::StdVideoH265LevelIdc) -> u32 {
     const LEVELS: [u32; 13] = [10, 20, 21, 30, 31, 40, 41, 50, 51, 52, 60, 61, 62];
     LEVELS.get(level as usize).copied().unwrap_or(0)
+}
+
+/// Converts `StdVideoAV1Level` (four minor levels per major level, counted from
+/// 2.0) to the same level numbering the public API reports for the other codecs
+/// (e.g. 51 for level 5.1).
+fn av1_level_number(level: vk::native::StdVideoAV1Level) -> u32 {
+    /// Levels 2.0 through 7.3.
+    const LEVEL_COUNT: u32 = 24;
+
+    if level >= LEVEL_COUNT {
+        return 0;
+    }
+    (2 + level / 4) * 10 + level % 4
 }
