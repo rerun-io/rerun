@@ -9346,6 +9346,7 @@ name = "re_gpu_video"
 version = "0.37.0-alpha.1+dev"
 dependencies = [
  "ash",
+ "cros-codecs",
  "h264-reader",
  "insta",
  "itertools 0.15.0",

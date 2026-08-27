@@ -1,11 +1,47 @@
-//! Runtime probe for Vulkan Video H.264 decode support.
+//! Runtime probe for Vulkan Video decode support, per codec.
 //!
 //! Everything here must fail soft: a `None` from [`probe`] makes callers fall back to
 //! creating a plain device without video support.
 
 use ash::vk;
 
-use crate::H264DecodeCapabilities;
+use crate::{Codec, DecodeCapabilities};
+
+use super::codec::CodecProfile;
+
+/// The codecs the Vulkan backend can probe for.
+pub const PROBED_CODECS: [Codec; 2] = [Codec::H264, Codec::H265];
+
+/// The decode extension of a codec.
+pub fn codec_extension(codec: Codec) -> &'static std::ffi::CStr {
+    match codec {
+        Codec::H264 => ash::khr::video_decode_h264::NAME,
+        Codec::H265 => ash::khr::video_decode_h265::NAME,
+    }
+}
+
+/// The queue-family video operation of a codec.
+fn codec_operation(codec: Codec) -> vk::VideoCodecOperationFlagsKHR {
+    match codec {
+        Codec::H264 => vk::VideoCodecOperationFlagsKHR::DECODE_H264,
+        Codec::H265 => vk::VideoCodecOperationFlagsKHR::DECODE_H265,
+    }
+}
+
+/// The profile to probe capabilities against.
+///
+/// Hardware H.264 decoders support Baseline/Main/High uniformly, and H.265
+/// decoders Main, so one profile query per codec is enough.
+fn probe_profile(codec: Codec) -> CodecProfile {
+    match codec {
+        Codec::H264 => CodecProfile::H264 {
+            std_profile_idc: vk::native::StdVideoH264ProfileIdc_STD_VIDEO_H264_PROFILE_IDC_HIGH,
+        },
+        Codec::H265 => CodecProfile::H265 {
+            std_profile_idc: vk::native::StdVideoH265ProfileIdc_STD_VIDEO_H265_PROFILE_IDC_MAIN,
+        },
+    }
+}
 
 /// A queue on the device, identified by family and index within the family.
 #[derive(Clone, Copy, Debug)]
@@ -61,16 +97,63 @@ pub struct VulkanVideoCaps {
     pub std_header_version: vk::ExtensionProperties,
 }
 
-pub struct VulkanProbe {
-    pub queue_plan: QueuePlan,
-    pub capabilities: H264DecodeCapabilities,
+/// A device's support for decoding one codec.
+#[derive(Clone, Debug)]
+pub struct CodecSupport {
+    /// The public half.
+    pub capabilities: DecodeCapabilities,
+
+    /// The Vulkan half, needed for session & image creation.
     pub video_caps: VulkanVideoCaps,
 }
 
-/// Probes the adapter for everything H.264 decode needs.
+/// The probed decode support per codec.
+#[derive(Clone, Debug, Default)]
+pub struct SupportedCodecs {
+    pub h264: Option<CodecSupport>,
+    pub h265: Option<CodecSupport>,
+}
+
+impl SupportedCodecs {
+    pub fn get(&self, codec: Codec) -> Option<&CodecSupport> {
+        match codec {
+            Codec::H264 => self.h264.as_ref(),
+            Codec::H265 => self.h265.as_ref(),
+        }
+    }
+
+    fn set(&mut self, codec: Codec, support: CodecSupport) {
+        match codec {
+            Codec::H264 => self.h264 = Some(support),
+            Codec::H265 => self.h265 = Some(support),
+        }
+    }
+
+    fn unset(&mut self, codec: Codec) {
+        match codec {
+            Codec::H264 => self.h264 = None,
+            Codec::H265 => self.h265 = None,
+        }
+    }
+
+    /// The supported codecs.
+    pub fn codecs(&self) -> impl Iterator<Item = Codec> + '_ {
+        [Codec::H264, Codec::H265]
+            .into_iter()
+            .filter(|&codec| self.get(codec).is_some())
+    }
+}
+
+pub struct VulkanProbe {
+    pub queue_plan: QueuePlan,
+    pub codecs: SupportedCodecs,
+}
+
+/// Probes the adapter for everything video decoding needs, per codec.
 ///
-/// Logs the reason at debug level whenever support is missing:
-/// software rasterizers and `MoltenVK` land here, it's not an error.
+/// Returns `None` when no codec is supported at all. Logs the reason at debug
+/// level whenever support is missing: software rasterizers and `MoltenVK` land
+/// here, it's not an error.
 #[expect(unsafe_code)] // Naked Vulkan calls on the adapter's physical device.
 pub fn probe(adapter: &wgpu::Adapter) -> Option<VulkanProbe> {
     re_tracing::profile_function!();
@@ -104,138 +187,181 @@ pub fn probe(adapter: &wgpu::Adapter) -> Option<VulkanProbe> {
     // SAFETY: The physical device comes from this instance.
     let extensions =
         unsafe { raw_instance.enumerate_device_extension_properties(physical_device) }.ok()?;
-    for required in super::REQUIRED_EXTENSIONS {
-        if !extensions
+    let has_extension = |name: &std::ffi::CStr| {
+        extensions
             .iter()
-            .any(|extension| extension.extension_name_as_c_str() == Ok(required))
-        {
+            .any(|extension| extension.extension_name_as_c_str() == Ok(name))
+    };
+    for required in super::BASE_EXTENSIONS {
+        if !has_extension(required) {
             re_log::debug!("No GPU video decode support: device extension {required:?} missing.");
             return None;
         }
     }
 
-    let queue_plan = plan_queues(raw_instance, physical_device)?;
-
-    // H.264 decode profile to query against: High profile, progressive, 4:2:0, 8-bit.
-    // Hardware H.264 decoders support Baseline/Main/High uniformly.
-    let mut h264_profile = vk::VideoDecodeH264ProfileInfoKHR::default()
-        .std_profile_idc(vk::native::StdVideoH264ProfileIdc_STD_VIDEO_H264_PROFILE_IDC_HIGH)
-        .picture_layout(vk::VideoDecodeH264PictureLayoutFlagsKHR::PROGRESSIVE);
-    let profile = vk::VideoProfileInfoKHR::default()
-        .video_codec_operation(vk::VideoCodecOperationFlagsKHR::DECODE_H264)
-        .chroma_subsampling(vk::VideoChromaSubsamplingFlagsKHR::TYPE_420)
-        .luma_bit_depth(vk::VideoComponentBitDepthFlagsKHR::TYPE_8)
-        .chroma_bit_depth(vk::VideoComponentBitDepthFlagsKHR::TYPE_8)
-        .push_next(&mut h264_profile);
-
     let video_queue_instance_fns = ash::khr::video_queue::Instance::new(entry, raw_instance);
 
-    let mut h264_capabilities = vk::VideoDecodeH264CapabilitiesKHR::default();
-    let mut decode_capabilities = vk::VideoDecodeCapabilitiesKHR::default();
-    let mut capabilities = vk::VideoCapabilitiesKHR::default()
-        .push_next(&mut decode_capabilities)
-        .push_next(&mut h264_capabilities);
-
-    // SAFETY: All three arguments outlive the call and the structs are properly chained.
-    let result = unsafe {
-        (video_queue_instance_fns
-            .fp()
-            .get_physical_device_video_capabilities_khr)(
-            physical_device,
-            &raw const profile,
-            &raw mut capabilities,
-        )
-    };
-    if result != vk::Result::SUCCESS {
-        re_log::debug!(
-            "No GPU video decode support: H.264 video capability query failed with {result:?}."
-        );
+    let mut codecs = SupportedCodecs::default();
+    let mut wanted_ops = vk::VideoCodecOperationFlagsKHR::empty();
+    for codec in PROBED_CODECS {
+        if !has_extension(codec_extension(codec)) {
+            re_log::debug!(
+                "No GPU {codec} decode support: device extension {:?} missing.",
+                codec_extension(codec)
+            );
+            continue;
+        }
+        if let Some(support) = probe_codec(&video_queue_instance_fns, physical_device, codec) {
+            codecs.set(codec, support);
+            wanted_ops |= codec_operation(codec);
+        }
+    }
+    if wanted_ops.is_empty() {
+        re_log::debug!("No GPU video decode support: no supported codec.");
         return None;
     }
 
-    let min_coded_extent = [
-        capabilities.min_coded_extent.width,
-        capabilities.min_coded_extent.height,
-    ];
-    let max_coded_extent = [
-        capabilities.max_coded_extent.width,
-        capabilities.max_coded_extent.height,
-    ];
-    let max_dpb_slots = capabilities.max_dpb_slots;
-    let max_active_references = capabilities.max_active_reference_pictures;
-    let capability_flags = capabilities.flags;
-    let min_bitstream_buffer_offset_alignment = capabilities.min_bitstream_buffer_offset_alignment;
-    let min_bitstream_buffer_size_alignment = capabilities.min_bitstream_buffer_size_alignment;
-    let picture_access_granularity = [
-        capabilities.picture_access_granularity.width,
-        capabilities.picture_access_granularity.height,
-    ];
-    let std_header_version = capabilities.std_header_version;
+    let (queue_plan, family_ops) = plan_queues(raw_instance, physical_device, wanted_ops)?;
 
-    // Prefer distinct DPB & output images, fall back to coincident when that's all
-    // the hardware does. The spec guarantees at least one of the two flags.
-    let dpb_and_output_coincide = !decode_capabilities
-        .flags
-        .contains(vk::VideoDecodeCapabilityFlagsKHR::DPB_AND_OUTPUT_DISTINCT);
-
-    // The decoded frames need to be NV12 both in the DPB and as copyable decode output.
-    let output_usage =
-        vk::ImageUsageFlags::VIDEO_DECODE_DST_KHR | vk::ImageUsageFlags::TRANSFER_SRC;
-    let dpb_usage = if dpb_and_output_coincide {
-        vk::ImageUsageFlags::VIDEO_DECODE_DPB_KHR | output_usage
-    } else {
-        vk::ImageUsageFlags::VIDEO_DECODE_DPB_KHR
-    };
-    let mut usages = vec![dpb_usage];
-    if !dpb_and_output_coincide {
-        usages.push(output_usage);
+    // Drop codecs the chosen decode queue family can't decode.
+    for codec in PROBED_CODECS {
+        if codecs.get(codec).is_some() && !family_ops.contains(codec_operation(codec)) {
+            re_log::debug!("No GPU {codec} decode support: the decode queue family lacks it.");
+            codecs.unset(codec);
+        }
     }
-    for usage in usages {
-        if !supports_nv12_video_format(&video_queue_instance_fns, physical_device, &profile, usage)
-        {
+    codecs.codecs().next()?;
+
+    re_log::debug!("Vulkan Video decode support found: {codecs:?}, queue plan {queue_plan:?}.");
+
+    Some(VulkanProbe { queue_plan, codecs })
+}
+
+/// Queries the capabilities and NV12 format support of one codec's probe profile.
+#[expect(unsafe_code)]
+fn probe_codec(
+    video_queue_instance_fns: &ash::khr::video_queue::Instance,
+    physical_device: vk::PhysicalDevice,
+    codec: Codec,
+) -> Option<CodecSupport> {
+    probe_profile(codec).with_profile(|profile| {
+        let mut h264_capabilities = vk::VideoDecodeH264CapabilitiesKHR::default();
+        let mut h265_capabilities = vk::VideoDecodeH265CapabilitiesKHR::default();
+        let mut decode_capabilities = vk::VideoDecodeCapabilitiesKHR::default();
+        let mut capabilities =
+            vk::VideoCapabilitiesKHR::default().push_next(&mut decode_capabilities);
+        capabilities = match codec {
+            Codec::H264 => capabilities.push_next(&mut h264_capabilities),
+            Codec::H265 => capabilities.push_next(&mut h265_capabilities),
+        };
+
+        // SAFETY: All three arguments outlive the call and the structs are properly chained.
+        let result = unsafe {
+            (video_queue_instance_fns
+                .fp()
+                .get_physical_device_video_capabilities_khr)(
+                physical_device,
+                &raw const *profile,
+                &raw mut capabilities,
+            )
+        };
+        if result != vk::Result::SUCCESS {
             re_log::debug!(
-                "No GPU video decode support: no NV12 video format for usage {usage:?}."
+                "No GPU {codec} decode support: video capability query failed with {result:?}."
             );
             return None;
         }
-    }
 
-    let video_caps = VulkanVideoCaps {
-        dpb_and_output_coincide,
-        separate_reference_images: capability_flags
-            .contains(vk::VideoCapabilityFlagsKHR::SEPARATE_REFERENCE_IMAGES),
-        min_bitstream_buffer_offset_alignment,
-        min_bitstream_buffer_size_alignment,
-        picture_access_granularity,
-        std_header_version,
-    };
+        let min_coded_extent = [
+            capabilities.min_coded_extent.width,
+            capabilities.min_coded_extent.height,
+        ];
+        let max_coded_extent = [
+            capabilities.max_coded_extent.width,
+            capabilities.max_coded_extent.height,
+        ];
+        let max_dpb_slots = capabilities.max_dpb_slots;
+        let max_active_references = capabilities.max_active_reference_pictures;
+        let capability_flags = capabilities.flags;
+        let min_bitstream_buffer_offset_alignment =
+            capabilities.min_bitstream_buffer_offset_alignment;
+        let min_bitstream_buffer_size_alignment = capabilities.min_bitstream_buffer_size_alignment;
+        let picture_access_granularity = [
+            capabilities.picture_access_granularity.width,
+            capabilities.picture_access_granularity.height,
+        ];
+        let std_header_version = capabilities.std_header_version;
 
-    let capabilities = H264DecodeCapabilities {
-        min_coded_extent,
-        max_coded_extent,
-        max_dpb_slots,
-        max_active_references,
-        max_level_idc: level_idc_number(h264_capabilities.max_level_idc),
-    };
+        // Prefer distinct DPB & output images, fall back to coincident when that's all
+        // the hardware does. The spec guarantees at least one of the two flags.
+        let dpb_and_output_coincide = !decode_capabilities
+            .flags
+            .contains(vk::VideoDecodeCapabilityFlagsKHR::DPB_AND_OUTPUT_DISTINCT);
 
-    re_log::debug!(
-        "Vulkan Video H.264 decode support found: {capabilities:?}, {video_caps:?}, queue plan {queue_plan:?}."
-    );
+        let max_level_idc = match codec {
+            Codec::H264 => h264_level_idc_number(h264_capabilities.max_level_idc),
+            Codec::H265 => h265_level_idc_number(h265_capabilities.max_level_idc),
+        };
 
-    Some(VulkanProbe {
-        queue_plan,
-        capabilities,
-        video_caps,
+        // The decoded frames need to be NV12 both in the DPB and as copyable decode output.
+        let output_usage =
+            vk::ImageUsageFlags::VIDEO_DECODE_DST_KHR | vk::ImageUsageFlags::TRANSFER_SRC;
+        let dpb_usage = if dpb_and_output_coincide {
+            vk::ImageUsageFlags::VIDEO_DECODE_DPB_KHR | output_usage
+        } else {
+            vk::ImageUsageFlags::VIDEO_DECODE_DPB_KHR
+        };
+        let mut usages = vec![dpb_usage];
+        if !dpb_and_output_coincide {
+            usages.push(output_usage);
+        }
+        for usage in usages {
+            if !supports_nv12_video_format(
+                video_queue_instance_fns,
+                physical_device,
+                profile,
+                usage,
+            ) {
+                re_log::debug!(
+                    "No GPU {codec} decode support: no NV12 video format for usage {usage:?}."
+                );
+                return None;
+            }
+        }
+
+        Some(CodecSupport {
+            capabilities: DecodeCapabilities {
+                min_coded_extent,
+                max_coded_extent,
+                max_dpb_slots,
+                max_active_references,
+                max_level_idc,
+            },
+            video_caps: VulkanVideoCaps {
+                dpb_and_output_coincide,
+                separate_reference_images: capability_flags
+                    .contains(vk::VideoCapabilityFlagsKHR::SEPARATE_REFERENCE_IMAGES),
+                min_bitstream_buffer_offset_alignment,
+                min_bitstream_buffer_size_alignment,
+                picture_access_granularity,
+                std_header_version,
+            },
+        })
     })
 }
 
-/// Finds an H.264 decode queue and a transfer-capable copy queue,
-/// without touching the single queue wgpu creates for itself (family 0, index 0).
+/// Finds a decode queue for the wanted codec operations and a transfer-capable
+/// copy queue, without touching the single queue wgpu creates for itself
+/// (family 0, index 0).
+///
+/// Also returns the video operations of the chosen decode family: codecs whose
+/// operation it lacks aren't decodable with this plan.
 #[expect(unsafe_code)]
 fn plan_queues(
     raw_instance: &ash::Instance,
     physical_device: vk::PhysicalDevice,
-) -> Option<QueuePlan> {
+    wanted_ops: vk::VideoCodecOperationFlagsKHR,
+) -> Option<(QueuePlan, vk::VideoCodecOperationFlagsKHR)> {
     struct Family {
         flags: vk::QueueFlags,
         queue_count: u32,
@@ -303,14 +429,23 @@ fn plan_queues(
         })
     };
 
-    let decode_family = families.iter().position(|family| {
-        family.flags.contains(vk::QueueFlags::VIDEO_DECODE_KHR)
-            && family
-                .video_ops
-                .contains(vk::VideoCodecOperationFlagsKHR::DECODE_H264)
-    });
+    // The family covering the most wanted codec operations, ties broken by index.
+    let decode_family = families
+        .iter()
+        .enumerate()
+        .filter(|(_, family)| {
+            family.flags.contains(vk::QueueFlags::VIDEO_DECODE_KHR)
+                && family.video_ops.intersects(wanted_ops)
+        })
+        .max_by_key(|(index, family)| {
+            (
+                (family.video_ops & wanted_ops).as_raw().count_ones(),
+                std::cmp::Reverse(*index),
+            )
+        })
+        .map(|(index, _)| index);
     let Some(decode_family) = decode_family else {
-        re_log::debug!("No GPU video decode support: no H.264 decode queue family.");
+        re_log::debug!("No GPU video decode support: no decode queue family for {wanted_ops:?}.");
         return None;
     };
 
@@ -358,12 +493,15 @@ fn plan_queues(
         })
         .collect();
 
-    Some(QueuePlan {
-        decode,
-        copy,
-        queue_counts,
-        decode_supports_result_status: families[decode_family].result_status,
-    })
+    Some((
+        QueuePlan {
+            decode,
+            copy,
+            queue_counts,
+            decode_supports_result_status: families[decode_family].result_status,
+        },
+        families[decode_family].video_ops,
+    ))
 }
 
 /// Whether NV12 is among the supported video formats for the given usage and profile.
@@ -417,9 +555,16 @@ fn supports_nv12_video_format(
 
 /// Converts `StdVideoH264LevelIdc` (an enum counting levels from 0) to the
 /// `level_idc` numbering used in bitstreams and the public API (e.g. 51 for level 5.1).
-fn level_idc_number(level: vk::native::StdVideoH264LevelIdc) -> u32 {
+fn h264_level_idc_number(level: vk::native::StdVideoH264LevelIdc) -> u32 {
     const LEVELS: [u32; 19] = [
         10, 11, 12, 13, 20, 21, 22, 30, 31, 32, 40, 41, 42, 50, 51, 52, 60, 61, 62,
     ];
+    LEVELS.get(level as usize).copied().unwrap_or(0)
+}
+
+/// Converts `StdVideoH265LevelIdc` (an enum counting levels from 0) to the same
+/// level numbering the public API reports for H.264 (e.g. 51 for level 5.1).
+fn h265_level_idc_number(level: vk::native::StdVideoH265LevelIdc) -> u32 {
+    const LEVELS: [u32; 13] = [10, 20, 21, 30, 31, 40, 41, 50, 51, 52, 60, 61, 62];
     LEVELS.get(level as usize).copied().unwrap_or(0)
 }

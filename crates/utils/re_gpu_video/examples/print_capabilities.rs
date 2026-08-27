@@ -26,10 +26,15 @@ fn main() {
         );
 
         let Some(mut setup) = VideoDeviceSetup::request(adapter) else {
-            println!("  No H.264 decode support.");
+            println!("  No video decode support.");
             continue;
         };
-        println!("  H.264 decode support: {:#?}", setup.capabilities());
+        for codec in [re_gpu_video::Codec::H264, re_gpu_video::Codec::H265] {
+            match setup.capabilities(codec) {
+                Some(capabilities) => println!("  {codec} decode support: {capabilities:#?}"),
+                None => println!("  No {codec} decode support."),
+            }
+        }
 
         // Create a device the same way re_renderer does, to smoke-test the whole path.
         let descriptor = wgpu::DeviceDescriptor {

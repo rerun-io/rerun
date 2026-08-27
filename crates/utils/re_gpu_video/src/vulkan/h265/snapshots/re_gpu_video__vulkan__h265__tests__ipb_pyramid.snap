@@ -1,0 +1,54 @@
+---
+source: crates/utils/re_gpu_video/src/vulkan/h265/tests.rs
+expression: "trace_fixture(\"ipb_pyramid\")"
+---
+# AU 0
+ParametersChanged
+DecodeFrame { poc: 0, idr, slot 0 }
+# AU 1
+DecodeFrame { poc: 4, slot 1, refs: [slot 0 (st poc 0)], before: [0] }
+# AU 2
+DecodeFrame { poc: 2, slot 2, refs: [slot 0 (st poc 0), slot 1 (st poc 4)], before: [0], after: [1] }
+# AU 3
+DecodeFrame { poc: 1, slot 3, refs: [slot 0 (st poc 0), slot 1 (st poc 4), slot 2 (st poc 2)], before: [0], after: [2, 1] }
+# AU 4
+DecodeFrame { poc: 3, slot 3, refs: [slot 0 (st poc 0), slot 1 (st poc 4), slot 2 (st poc 2)], before: [2, 0], after: [1] }
+# AU 5
+DecodeFrame { poc: 8, slot 3, refs: [slot 0 (st poc 0), slot 1 (st poc 4), slot 2 (st poc 2)], before: [1, 2, 0] }
+# AU 6
+DecodeFrame { poc: 6, slot 4, refs: [slot 0 (st poc 0), slot 1 (st poc 4), slot 2 (st poc 2), slot 3 (st poc 8)], before: [1, 2, 0], after: [3] }
+# AU 7
+DecodeFrame { poc: 5, slot 0, refs: [slot 1 (st poc 4), slot 2 (st poc 2), slot 3 (st poc 8), slot 4 (st poc 6)], before: [1, 2], after: [4, 3] }
+# AU 8
+DecodeFrame { poc: 7, slot 0, refs: [slot 1 (st poc 4), slot 2 (st poc 2), slot 3 (st poc 8), slot 4 (st poc 6)], before: [4, 1, 2], after: [3] }
+# AU 9
+DecodeFrame { poc: 12, slot 0, refs: [slot 1 (st poc 4), slot 2 (st poc 2), slot 3 (st poc 8), slot 4 (st poc 6)], before: [3, 4, 1, 2] }
+# AU 10
+DecodeFrame { poc: 10, slot 1, refs: [slot 0 (st poc 12), slot 2 (st poc 2), slot 3 (st poc 8), slot 4 (st poc 6)], before: [3, 4, 2], after: [0] }
+# AU 11
+DecodeFrame { poc: 9, slot 2, refs: [slot 0 (st poc 12), slot 1 (st poc 10), slot 3 (st poc 8), slot 4 (st poc 6)], before: [3, 4], after: [1, 0] }
+# AU 12
+DecodeFrame { poc: 11, slot 2, refs: [slot 0 (st poc 12), slot 1 (st poc 10), slot 3 (st poc 8), slot 4 (st poc 6)], before: [1, 3, 4], after: [0] }
+# AU 13
+DecodeFrame { poc: 16, slot 2, refs: [slot 0 (st poc 12), slot 1 (st poc 10), slot 3 (st poc 8), slot 4 (st poc 6)], before: [0, 1, 3, 4] }
+# AU 14
+DecodeFrame { poc: 14, slot 3, refs: [slot 0 (st poc 12), slot 1 (st poc 10), slot 2 (st poc 16), slot 4 (st poc 6)], before: [0, 1, 4], after: [2] }
+# AU 15
+DecodeFrame { poc: 13, slot 4, refs: [slot 0 (st poc 12), slot 1 (st poc 10), slot 2 (st poc 16), slot 3 (st poc 14)], before: [0, 1], after: [3, 2] }
+# AU 16
+DecodeFrame { poc: 15, slot 4, refs: [slot 0 (st poc 12), slot 1 (st poc 10), slot 2 (st poc 16), slot 3 (st poc 14)], before: [3, 0, 1], after: [2] }
+# AU 17
+DecodeFrame { poc: 20, slot 4, refs: [slot 0 (st poc 12), slot 1 (st poc 10), slot 2 (st poc 16), slot 3 (st poc 14)], before: [2, 3, 0, 1] }
+# AU 18
+DecodeFrame { poc: 18, slot 0, refs: [slot 1 (st poc 10), slot 2 (st poc 16), slot 3 (st poc 14), slot 4 (st poc 20)], before: [2, 3, 1], after: [4] }
+# AU 19
+DecodeFrame { poc: 17, slot 1, refs: [slot 0 (st poc 18), slot 2 (st poc 16), slot 3 (st poc 14), slot 4 (st poc 20)], before: [2, 3], after: [0, 4] }
+# AU 20
+DecodeFrame { poc: 19, slot 1, refs: [slot 0 (st poc 18), slot 2 (st poc 16), slot 3 (st poc 14), slot 4 (st poc 20)], before: [0, 2, 3], after: [4] }
+# AU 21
+DecodeFrame { poc: 23, slot 1, refs: [slot 0 (st poc 18), slot 2 (st poc 16), slot 3 (st poc 14), slot 4 (st poc 20)], before: [4, 0, 2, 3] }
+# AU 22
+DecodeFrame { poc: 22, slot 2, refs: [slot 0 (st poc 18), slot 1 (st poc 23), slot 3 (st poc 14), slot 4 (st poc 20)], before: [4, 0, 3], after: [1] }
+# AU 23
+DecodeFrame { poc: 21, slot 3, refs: [slot 0 (st poc 18), slot 1 (st poc 23), slot 2 (st poc 22), slot 4 (st poc 20)], before: [4, 0], after: [2, 1] }
+# reorder delay 2

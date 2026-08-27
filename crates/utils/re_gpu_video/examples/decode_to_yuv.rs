@@ -1,5 +1,6 @@
-//! Decodes an H.264 elementary stream (annex-b) on the GPU and writes the frames as
-//! raw planar yuv420p, for PSNR comparison against ffmpeg's software decoder:
+//! Decodes an elementary stream (annex-b) on the GPU and writes the frames as
+//! raw planar yuv420p, for PSNR comparison against ffmpeg's software decoder.
+//! The codec follows the file extension:
 //!
 //! ```sh
 //! cargo run -p re_gpu_video --example decode_to_yuv -- tests/assets/ipb.h264 /tmp/gpu.yuv
@@ -13,14 +14,27 @@
 
 use std::io::Write as _;
 
-use re_gpu_video::{CpuFrame, VideoDeviceSetup};
+use re_gpu_video::{Codec, CpuFrame, VideoDeviceSetup};
+
+/// The codec of a fixture, from its file extension.
+fn codec_of(path: &str) -> Option<Codec> {
+    match path.rsplit('.').next() {
+        Some("h265" | "hevc" | "265") => Some(Codec::H265),
+        Some("h264" | "264") => Some(Codec::H264),
+        _ => None,
+    }
+}
 
 fn main() {
     re_log::setup_logging();
 
     let mut args = std::env::args().skip(1);
     let (Some(input), Some(output)) = (args.next(), args.next()) else {
-        eprintln!("Usage: decode_to_yuv <input.h264> <output.yuv>");
+        eprintln!("Usage: decode_to_yuv <input.h264|input.h265> <output.yuv>");
+        std::process::exit(1);
+    };
+    let Some(codec) = codec_of(&input) else {
+        eprintln!("Cannot tell the codec from the file extension, expected .h264 or .h265");
         std::process::exit(1);
     };
 
@@ -29,17 +43,18 @@ fn main() {
     let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle());
     let adapters = pollster::block_on(instance.enumerate_adapters(wgpu::Backends::all()));
 
-    let Some((adapter, mut setup)) = adapters
-        .iter()
-        .find_map(|adapter| VideoDeviceSetup::request(adapter).map(|setup| (adapter, setup)))
-    else {
-        eprintln!("No adapter with H.264 decode support found.");
+    let Some((adapter, mut setup)) = adapters.iter().find_map(|adapter| {
+        VideoDeviceSetup::request(adapter)
+            .filter(|setup| setup.capabilities(codec).is_some())
+            .map(|setup| (adapter, setup))
+    }) else {
+        eprintln!("No adapter with {codec} decode support found.");
         std::process::exit(1);
     };
     println!(
-        "Decoding on {} using {:#?}",
+        "Decoding {codec} on {} using {:#?}",
         adapter.get_info().name,
-        setup.capabilities()
+        setup.capabilities(codec)
     );
 
     let descriptor = wgpu::DeviceDescriptor {
@@ -78,7 +93,7 @@ fn main() {
         .into_context(&device)
         .expect("video context creation failed");
     let mut decoder = context
-        .create_h264_cpu_decoder()
+        .create_cpu_decoder(codec)
         .expect("decoder creation failed");
 
     // The parser splits frames on its own, the whole stream can go in as one push.

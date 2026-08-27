@@ -12,8 +12,8 @@ use std::sync::Arc;
 
 use ash::vk;
 
+use super::codec::CodecProfile;
 use super::device::Device;
-use super::session::with_profile_list;
 
 /// The images one video session decodes into.
 ///
@@ -45,7 +45,7 @@ impl DecodeImages {
     #[expect(unsafe_code)]
     pub fn new(
         device: Arc<Device>,
-        std_profile_idc: vk::native::StdVideoH264ProfileIdc,
+        profile: CodecProfile,
         coded_extent: vk::Extent2D,
         dpb_slots: u32,
         coincide: bool,
@@ -70,7 +70,7 @@ impl DecodeImages {
 
         let image = |usage: vk::ImageUsageFlags, layers: u32, copied_from: bool| {
             let (sharing_mode, families) = sharing(copied_from);
-            with_profile_list(std_profile_idc, |profile_list| {
+            profile.with_profile_list(|profile_list| {
                 let create_info = vk::ImageCreateInfo::default()
                     .image_type(vk::ImageType::TYPE_2D)
                     .format(vk::Format::G8_B8R8_2PLANE_420_UNORM)

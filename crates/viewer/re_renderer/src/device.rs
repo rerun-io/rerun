@@ -28,8 +28,9 @@ pub fn create_device(
     };
 
     re_log::debug!(
-        "GPU video decode support found: {:?}",
-        video_setup.capabilities()
+        "GPU video decode support found, H.264: {:?}, H.265: {:?}",
+        video_setup.capabilities(re_gpu_video::Codec::H264),
+        video_setup.capabilities(re_gpu_video::Codec::H265),
     );
 
     let device_and_queue = if video_setup.needs_hal_device_creation() {

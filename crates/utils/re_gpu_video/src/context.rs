@@ -1,4 +1,4 @@
-use crate::{DecodeError, H264DecodeCapabilities};
+use crate::{Codec, DecodeCapabilities, DecodeError};
 
 /// Video decode support living alongside a wgpu device.
 ///
@@ -20,9 +20,10 @@ impl GpuVideoContext {
         }
     }
 
-    pub fn h264_capabilities(&self) -> &H264DecodeCapabilities {
+    /// The device's decode capabilities for a codec, `None` when it can't decode it.
+    pub fn capabilities(&self, codec: Codec) -> Option<&DecodeCapabilities> {
         match &self.inner {
-            ContextInner::Vulkan(context) => context.capabilities(),
+            ContextInner::Vulkan(context) => context.capabilities(codec),
         }
     }
 
@@ -34,22 +35,22 @@ impl GpuVideoContext {
     }
 
     /// Creates a decoder producing frames as GPU textures.
-    pub fn create_h264_decoder(&self) -> Result<crate::H264Decoder, DecodeError> {
+    pub fn create_decoder(&self, codec: Codec) -> Result<crate::Decoder, DecodeError> {
         match &self.inner {
-            ContextInner::Vulkan(context) => Ok(crate::H264Decoder::new_vulkan(
-                context.create_h264_decoder()?,
-            )),
+            ContextInner::Vulkan(context) => {
+                Ok(crate::Decoder::new_vulkan(context.create_decoder(codec)?))
+            }
         }
     }
 
     /// Creates a decoder reading the decoded frames back into CPU pixel buffers.
     ///
     /// The permanent debugging path (see `examples/decode_to_yuv.rs`): the texture
-    /// decoder of later milestones is what real callers use. Vulkan backend only.
+    /// decoder is what real callers use. Vulkan backend only.
     #[doc(hidden)]
-    pub fn create_h264_cpu_decoder(&self) -> Result<crate::CpuDecoder, DecodeError> {
+    pub fn create_cpu_decoder(&self, codec: Codec) -> Result<crate::CpuDecoder, DecodeError> {
         match &self.inner {
-            ContextInner::Vulkan(context) => context.create_h264_cpu_decoder(),
+            ContextInner::Vulkan(context) => context.create_cpu_decoder(codec),
         }
     }
 }

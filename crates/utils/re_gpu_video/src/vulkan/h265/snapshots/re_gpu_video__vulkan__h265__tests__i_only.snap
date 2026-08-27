@@ -1,0 +1,22 @@
+---
+source: crates/utils/re_gpu_video/src/vulkan/h265/tests.rs
+expression: "trace_fixture(\"i_only\")"
+---
+# AU 0
+ParametersChanged
+DecodeFrame { poc: 0, idr, slot 0 }
+# AU 1
+DecodeFrame { poc: 0, idr, slot 0 }
+# AU 2
+DecodeFrame { poc: 0, idr, slot 0 }
+# AU 3
+DecodeFrame { poc: 0, idr, slot 0 }
+# AU 4
+DecodeFrame { poc: 0, idr, slot 0 }
+# AU 5
+DecodeFrame { poc: 0, idr, slot 0 }
+# AU 6
+DecodeFrame { poc: 0, idr, slot 0 }
+# AU 7
+DecodeFrame { poc: 0, idr, slot 0 }
+# reorder delay 0

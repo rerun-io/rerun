@@ -3,7 +3,9 @@
 //! ash/vk types never leave this module tree, see the layering rule in the crate docs.
 
 mod alloc;
+mod annexb;
 mod caps;
+mod codec;
 mod decoder;
 mod device;
 mod dpb;
@@ -12,26 +14,27 @@ mod record;
 mod session;
 mod sync;
 
-// The safe H.264 bitstream parser: pure CPU code producing the plain-data `DecodeOp` IR
-// the rest of the backend executes. Fully covered by tests on all platforms.
+// The safe bitstream parsers, one per codec: pure CPU code producing the plain-data
+// `DecodeOp` IR the rest of the backend executes. Fully covered by tests on all platforms.
 pub(crate) mod h264;
+pub(crate) mod h265;
 
 use std::sync::Arc;
 
 use ash::vk;
 use parking_lot::Mutex;
 
-use crate::{DecodeError, H264DecodeCapabilities, SetupError};
+use crate::{Codec, DecodeCapabilities, DecodeError, SetupError};
 
-use caps::{QueuePlan, VulkanVideoCaps};
+use caps::{QueuePlan, SupportedCodecs};
 
 pub use decoder::{CpuDecoder, CpuFrame, TextureDecoder};
 
-/// Device extensions needed for H.264 decoding.
-const REQUIRED_EXTENSIONS: [&std::ffi::CStr; 3] = [
+/// Device extensions needed for video decoding with any codec.
+/// Each supported codec adds its own extension on top ([`caps::codec_extension`]).
+const BASE_EXTENSIONS: [&std::ffi::CStr; 2] = [
     ash::khr::video_queue::NAME,
     ash::khr::video_decode_queue::NAME,
-    ash::khr::video_decode_h264::NAME,
 ];
 
 /// Priorities for the queue create infos assembled in the device-creation callback.
@@ -43,8 +46,7 @@ static QUEUE_PRIORITIES: [f32; 3] = [1.0, 0.5, 0.5];
 /// Vulkan half of [`crate::VideoDeviceSetup`].
 pub struct VulkanSetup {
     queue_plan: QueuePlan,
-    capabilities: H264DecodeCapabilities,
-    video_caps: VulkanVideoCaps,
+    codecs: SupportedCodecs,
 
     /// Chained into the device create info by the device-creation callback.
     /// Owned by the setup so that it outlives the create info's pnext chain.
@@ -54,7 +56,7 @@ pub struct VulkanSetup {
 }
 
 impl VulkanSetup {
-    /// Probes the adapter for H.264 decode support.
+    /// Probes the adapter for video decode support.
     ///
     /// Returns `None` if anything needed is missing. Never fails device creation:
     /// callers fall back to a plain device without video support.
@@ -63,24 +65,27 @@ impl VulkanSetup {
 
         Some(Self {
             queue_plan: probe.queue_plan,
-            capabilities: probe.capabilities,
-            video_caps: probe.video_caps,
+            codecs: probe.codecs,
             sync2_features: vk::PhysicalDeviceSynchronization2Features::default()
                 .synchronization2(true),
         })
     }
 
-    pub fn capabilities(&self) -> &H264DecodeCapabilities {
-        &self.capabilities
+    pub fn capabilities(&self, codec: Codec) -> Option<&DecodeCapabilities> {
+        self.codecs.get(codec).map(|support| &support.capabilities)
     }
 
     /// See [`crate::VideoDeviceSetup::create_device_callback`].
     pub fn create_device_callback(&mut self) -> Box<wgpu::hal::vulkan::CreateDeviceCallback<'_>> {
         let queue_plan = self.queue_plan.clone();
+        let extensions: Vec<&'static std::ffi::CStr> = BASE_EXTENSIONS
+            .into_iter()
+            .chain(self.codecs.codecs().map(caps::codec_extension))
+            .collect();
         let sync2_features = &mut self.sync2_features;
 
         Box::new(move |args| {
-            for name in REQUIRED_EXTENSIONS {
+            for &name in &extensions {
                 if !args.extensions.contains(&name) {
                     args.extensions.push(name);
                 }
@@ -125,8 +130,7 @@ impl VulkanSetup {
                 decode_queue: Mutex::new(decode_queue),
                 copy_queue: copy_queue.map(Mutex::new),
                 queue_plan: self.queue_plan,
-                capabilities: self.capabilities,
-                video_caps: self.video_caps,
+                codecs: self.codecs,
             }),
         })
     }
@@ -142,8 +146,7 @@ pub(crate) struct Shared {
     pub copy_queue: Option<Mutex<vk::Queue>>,
 
     pub queue_plan: QueuePlan,
-    pub capabilities: H264DecodeCapabilities,
-    pub video_caps: VulkanVideoCaps,
+    pub codecs: SupportedCodecs,
 }
 
 /// Vulkan half of [`crate::GpuVideoContext`].
@@ -152,17 +155,20 @@ pub struct VulkanContext {
 }
 
 impl VulkanContext {
-    pub fn capabilities(&self) -> &H264DecodeCapabilities {
-        &self.shared.capabilities
+    pub fn capabilities(&self, codec: Codec) -> Option<&DecodeCapabilities> {
+        self.shared
+            .codecs
+            .get(codec)
+            .map(|support| &support.capabilities)
     }
 
-    /// See [`crate::GpuVideoContext::create_h264_decoder`].
-    pub fn create_h264_decoder(&self) -> Result<TextureDecoder, DecodeError> {
-        TextureDecoder::new(self.shared.clone())
+    /// See [`crate::GpuVideoContext::create_decoder`].
+    pub fn create_decoder(&self, codec: Codec) -> Result<TextureDecoder, DecodeError> {
+        TextureDecoder::new(self.shared.clone(), codec)
     }
 
-    /// See [`crate::GpuVideoContext::create_h264_cpu_decoder`].
-    pub fn create_h264_cpu_decoder(&self) -> Result<CpuDecoder, DecodeError> {
-        CpuDecoder::new(self.shared.clone())
+    /// See [`crate::GpuVideoContext::create_cpu_decoder`].
+    pub fn create_cpu_decoder(&self, codec: Codec) -> Result<CpuDecoder, DecodeError> {
+        CpuDecoder::new(self.shared.clone(), codec)
     }
 }

@@ -347,20 +347,22 @@ pub fn new_decoder(
                 | crate::VideoCodec::VP8
                 | crate::VideoCodec::VP9 => {
                     #[cfg(with_gpu_video)]
-                    if matches!(video.codec, crate::VideoCodec::H264)
-                        && decode_settings.hw_acceleration
-                            != DecodeHardwareAcceleration::PreferSoftware
+                    if decode_settings.hw_acceleration
+                        != DecodeHardwareAcceleration::PreferSoftware
                         && let Some(gpu_video) = &decode_settings.gpu_video.0
+                        && let Some(codec) = gpu_video::gpu_video_codec(&video.codec)
+                        && gpu_video.capabilities(codec).is_some()
                     {
                         match gpu_video::GpuDecoder::new(
                             debug_name.to_owned(),
                             gpu_video,
+                            codec,
                             video,
                             output_sender.clone(),
                         ) {
                             Ok(decoder) => {
                                 re_log::debug!(
-                                    "Decoding H.264 on the GPU via {}",
+                                    "Decoding {codec} on the GPU via {}",
                                     gpu_video.backend_name()
                                 );
                                 return Ok(Box::new(decoder));

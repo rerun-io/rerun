@@ -1,0 +1,38 @@
+---
+source: crates/utils/re_gpu_video/src/vulkan/h265/tests.rs
+expression: "trace_fixture(\"ipb\")"
+---
+# AU 0
+ParametersChanged
+DecodeFrame { poc: 0, idr, slot 0 }
+# AU 1
+DecodeFrame { poc: 3, slot 1, refs: [slot 0 (st poc 0)], before: [0] }
+# AU 2
+DecodeFrame { poc: 1, slot 2, refs: [slot 0 (st poc 0), slot 1 (st poc 3)], before: [0], after: [1] }
+# AU 3
+DecodeFrame { poc: 2, slot 2, refs: [slot 0 (st poc 0), slot 1 (st poc 3)], before: [0], after: [1] }
+# AU 4
+DecodeFrame { poc: 6, slot 2, refs: [slot 0 (st poc 0), slot 1 (st poc 3)], before: [1, 0] }
+# AU 5
+DecodeFrame { poc: 4, slot 3, refs: [slot 0 (st poc 0), slot 1 (st poc 3), slot 2 (st poc 6)], before: [1, 0], after: [2] }
+# AU 6
+DecodeFrame { poc: 5, slot 3, refs: [slot 0 (st poc 0), slot 1 (st poc 3), slot 2 (st poc 6)], before: [1, 0], after: [2] }
+# AU 7
+DecodeFrame { poc: 9, slot 3, refs: [slot 0 (st poc 0), slot 1 (st poc 3), slot 2 (st poc 6)], before: [2, 1, 0] }
+# AU 8
+DecodeFrame { poc: 7, slot 0, refs: [slot 1 (st poc 3), slot 2 (st poc 6), slot 3 (st poc 9)], before: [2, 1], after: [3] }
+# AU 9
+DecodeFrame { poc: 8, slot 0, refs: [slot 1 (st poc 3), slot 2 (st poc 6), slot 3 (st poc 9)], before: [2, 1], after: [3] }
+# AU 10
+DecodeFrame { poc: 12, slot 0, refs: [slot 1 (st poc 3), slot 2 (st poc 6), slot 3 (st poc 9)], before: [3, 2, 1] }
+# AU 11
+DecodeFrame { poc: 10, slot 1, refs: [slot 0 (st poc 12), slot 2 (st poc 6), slot 3 (st poc 9)], before: [3, 2], after: [0] }
+# AU 12
+DecodeFrame { poc: 11, slot 1, refs: [slot 0 (st poc 12), slot 2 (st poc 6), slot 3 (st poc 9)], before: [3, 2], after: [0] }
+# AU 13
+DecodeFrame { poc: 15, slot 1, refs: [slot 0 (st poc 12), slot 2 (st poc 6), slot 3 (st poc 9)], before: [0, 3, 2] }
+# AU 14
+DecodeFrame { poc: 13, slot 2, refs: [slot 0 (st poc 12), slot 1 (st poc 15), slot 3 (st poc 9)], before: [0, 3], after: [1] }
+# AU 15
+DecodeFrame { poc: 14, slot 2, refs: [slot 0 (st poc 12), slot 1 (st poc 15), slot 3 (st poc 9)], before: [0, 3], after: [1] }
+# reorder delay 1

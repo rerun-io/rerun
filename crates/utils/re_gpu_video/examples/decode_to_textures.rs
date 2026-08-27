@@ -1,15 +1,26 @@
-//! Decodes an H.264 elementary stream (annex-b) through the texture-output decoder,
+//! Decodes an elementary stream (annex-b) through the texture-output decoder,
 //! samples every frame's NV12 plane views in a render pass, and compares the result
 //! byte for byte against the CPU readback decoder:
 //!
 //! ```sh
 //! cargo run -p re_gpu_video --example decode_to_textures -- tests/assets/ipb.h264
+//! cargo run -p re_gpu_video --example decode_to_textures -- tests/assets/ipb.h265
 //! ```
 //!
-//! Runs with wgpu validation on, so it also verifies that the wrapped textures are
-//! acceptable to wgpu as sampling sources. Exits non-zero on any mismatch.
+//! The codec follows the file extension. Runs with wgpu validation on, so it also
+//! verifies that the wrapped textures are acceptable to wgpu as sampling sources.
+//! Exits non-zero on any mismatch.
 
-use re_gpu_video::{CpuFrame, DecodedFrame, VideoDeviceSetup};
+use re_gpu_video::{Codec, CpuFrame, DecodedFrame, VideoDeviceSetup};
+
+/// The codec of a fixture, from its file extension.
+fn codec_of(path: &str) -> Option<Codec> {
+    match path.rsplit('.').next() {
+        Some("h265" | "hevc" | "265") => Some(Codec::H265),
+        Some("h264" | "264") => Some(Codec::H264),
+        _ => None,
+    }
+}
 
 /// Renders vec4(y, u, v, 1) per pixel from the two plane views, by texel load.
 const SHADER: &str = "
@@ -36,7 +47,11 @@ fn main() {
 
     let mut args = std::env::args().skip(1);
     let Some(input) = args.next() else {
-        eprintln!("Usage: decode_to_textures <input.h264>");
+        eprintln!("Usage: decode_to_textures <input.h264|input.h265>");
+        std::process::exit(1);
+    };
+    let Some(codec) = codec_of(&input) else {
+        eprintln!("Cannot tell the codec from the file extension, expected .h264 or .h265");
         std::process::exit(1);
     };
 
@@ -47,14 +62,15 @@ fn main() {
     let instance = wgpu::Instance::new(instance_descriptor);
     let adapters = pollster::block_on(instance.enumerate_adapters(wgpu::Backends::all()));
 
-    let Some((adapter, mut setup)) = adapters
-        .iter()
-        .find_map(|adapter| VideoDeviceSetup::request(adapter).map(|setup| (adapter, setup)))
-    else {
-        eprintln!("No adapter with H.264 decode support found.");
+    let Some((adapter, mut setup)) = adapters.iter().find_map(|adapter| {
+        VideoDeviceSetup::request(adapter)
+            .filter(|setup| setup.capabilities(codec).is_some())
+            .map(|setup| (adapter, setup))
+    }) else {
+        eprintln!("No adapter with {codec} decode support found.");
         std::process::exit(1);
     };
-    println!("Decoding on {}", adapter.get_info().name);
+    println!("Decoding {codec} on {}", adapter.get_info().name);
 
     let descriptor = wgpu::DeviceDescriptor {
         label: Some("decode_to_textures"),
@@ -95,7 +111,7 @@ fn main() {
     // Decode the stream twice: through the texture path under test,
     // and through the CPU readback path as the reference.
     let mut texture_decoder = context
-        .create_h264_decoder()
+        .create_decoder(codec)
         .expect("decoder creation failed");
     let mut texture_frames = texture_decoder
         .push_access_unit(&data, 0)
@@ -103,7 +119,7 @@ fn main() {
     texture_frames.extend(texture_decoder.flush().expect("flush failed"));
 
     let mut cpu_decoder = context
-        .create_h264_cpu_decoder()
+        .create_cpu_decoder(codec)
         .expect("decoder creation failed");
     let cpu_frames = cpu_decoder
         .push_access_unit(&data)

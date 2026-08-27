@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::{GpuVideoContext, H264DecodeCapabilities, SetupError};
+use crate::{Codec, DecodeCapabilities, GpuVideoContext, SetupError};
 
 /// Everything needed to create a wgpu device with video decode support.
 ///
@@ -16,10 +16,10 @@ enum SetupInner {
 }
 
 impl VideoDeviceSetup {
-    /// Probes the adapter for H.264 decode support, dispatching on its wgpu backend.
+    /// Probes the adapter for video decode support, dispatching on its wgpu backend.
     ///
     /// Vulkan: `None` if the video extensions are missing (`MoltenVK`, lavapipe),
-    /// there is no H.264-capable decode queue family, or no usable NV12 decode format.
+    /// there is no capable decode queue family, or no usable NV12 decode format.
     /// Metal: `None` for now, the `VideoToolbox` backend is not implemented yet.
     /// Other backends: `None`.
     pub fn request(adapter: &wgpu::Adapter) -> Option<Self> {
@@ -37,9 +37,10 @@ impl VideoDeviceSetup {
         }
     }
 
-    pub fn capabilities(&self) -> &H264DecodeCapabilities {
+    /// The device's decode capabilities for a codec, `None` when it can't decode it.
+    pub fn capabilities(&self, codec: Codec) -> Option<&DecodeCapabilities> {
         match &self.inner {
-            SetupInner::Vulkan(setup) => setup.capabilities(),
+            SetupInner::Vulkan(setup) => setup.capabilities(codec),
         }
     }
 

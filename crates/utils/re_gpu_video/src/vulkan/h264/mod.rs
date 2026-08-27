@@ -31,66 +31,7 @@ use h264_reader::nal::{Nal as _, RefNal, UnitType, sps::SeqParameterSet};
 pub use ops::{DecodeInfo, DecodeOp};
 pub use std_params::{PpsStdParams, SpsStdParams};
 
-/// The pushed data can't be decoded. The decoder gives up and falls back to
-/// software decoding, silent corruption is never an option.
-#[derive(thiserror::Error, Debug)]
-pub enum ParseError {
-    #[error("Data is not an annex-b NAL stream")]
-    NotAnnexB,
-
-    // `h264-reader` errors implement neither `Display` nor `Error`.
-    #[error("Failed to parse {what}: {details}")]
-    Nal { what: &'static str, details: String },
-
-    #[error("Unsupported H.264 feature: {0}")]
-    Unsupported(&'static str),
-
-    #[error("Invalid bitstream: {0}")]
-    Invalid(&'static str),
-
-    #[error("Slice header picture order count syntax doesn't match the SPS")]
-    PocSyntaxMismatch,
-
-    #[error("The stream needs {needed} DPB slots, the device supports {available}")]
-    TooManyRefFrames { needed: u32, available: u8 },
-
-    #[error(
-        "Gap in frame_num: got {got}, expected {expected} — reference frames are missing \
-         (gaps_in_frame_num_value_allowed_flag: {gaps_allowed})"
-    )]
-    FrameNumGap {
-        got: u16,
-        expected: u16,
-        gaps_allowed: bool,
-    },
-
-    #[error("A P or B frame arrived while no reference frames are available")]
-    NoReferencesAvailable,
-
-    #[error("Missing {what}")]
-    MissingReference { what: &'static str },
-
-    #[error("More reference frames than the stream declared in its SPS")]
-    DpbOverflow,
-
-    #[error("The access unit starts in the middle of a frame")]
-    IncompletePicture,
-
-    #[error("Slices within one frame disagree on their shared header fields")]
-    InconsistentSlices,
-
-    #[error("Expected an IDR frame (start of stream, after a seek, or after an error)")]
-    ExpectedIdr,
-}
-
-impl ParseError {
-    fn nal(what: &'static str, err: impl std::fmt::Debug) -> Self {
-        Self::Nal {
-            what,
-            details: format!("{err:?}"),
-        }
-    }
-}
+pub(crate) use crate::ParseError;
 
 /// Turns annex-b access units into [`DecodeOp`]s, one call per access unit.
 ///

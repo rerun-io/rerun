@@ -24,9 +24,24 @@ mod sorter;
 mod vulkan;
 
 pub use context::GpuVideoContext;
-pub use decoder::{DecodedFrame, H264Decoder};
+pub use decoder::{DecodedFrame, Decoder};
 pub use setup::VideoDeviceSetup;
-pub use vulkan::h264::ParseError;
+
+/// A video codec decodable by this crate, hardware support permitting.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Codec {
+    H264,
+    H265,
+}
+
+impl std::fmt::Display for Codec {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Self::H264 => "H.264",
+            Self::H265 => "H.265",
+        })
+    }
+}
 
 #[doc(hidden)]
 pub use vulkan::{CpuDecoder, CpuFrame};
@@ -52,9 +67,9 @@ pub enum MatrixCoefficients {
     Bt709,
 }
 
-/// H.264 decode capabilities of a device, as reported by the backend.
+/// Decode capabilities of a device for one [`Codec`], as reported by the backend.
 #[derive(Clone, Debug)]
-pub struct H264DecodeCapabilities {
+pub struct DecodeCapabilities {
     /// Smallest supported coded width & height.
     pub min_coded_extent: [u32; 2],
 
@@ -67,8 +82,71 @@ pub struct H264DecodeCapabilities {
     /// Maximum number of active reference pictures per decode operation.
     pub max_active_references: u32,
 
-    /// Maximum supported H.264 level (`level_idc` value, e.g. 51 for level 5.1).
+    /// Maximum supported level, in the codec's own `level_idc` numbering
+    /// (e.g. 51 for H.264 level 5.1).
     pub max_level_idc: u32,
+}
+
+/// The pushed data can't be decoded. The decoder gives up and falls back to
+/// software decoding, silent corruption is never an option.
+#[derive(thiserror::Error, Debug)]
+pub enum ParseError {
+    #[error("Data is not an annex-b NAL stream")]
+    NotAnnexB,
+
+    // `h264-reader` errors implement neither `Display` nor `Error`,
+    // `cros-codecs` reports plain strings.
+    #[error("Failed to parse {what}: {details}")]
+    Nal { what: &'static str, details: String },
+
+    #[error("Unsupported bitstream feature: {0}")]
+    Unsupported(&'static str),
+
+    #[error("Invalid bitstream: {0}")]
+    Invalid(&'static str),
+
+    #[error("Slice header picture order count syntax doesn't match the SPS")]
+    PocSyntaxMismatch,
+
+    #[error("The stream needs {needed} DPB slots, the device supports {available}")]
+    TooManyRefFrames { needed: u32, available: u8 },
+
+    #[error(
+        "Gap in frame_num: got {got}, expected {expected} — reference frames are missing \
+         (gaps_in_frame_num_value_allowed_flag: {gaps_allowed})"
+    )]
+    FrameNumGap {
+        got: u16,
+        expected: u16,
+        gaps_allowed: bool,
+    },
+
+    #[error("A P or B frame arrived while no reference frames are available")]
+    NoReferencesAvailable,
+
+    #[error("Missing {what}")]
+    MissingReference { what: &'static str },
+
+    #[error("More reference frames than the stream declared in its SPS")]
+    DpbOverflow,
+
+    #[error("The access unit starts in the middle of a frame")]
+    IncompletePicture,
+
+    #[error("Slices within one frame disagree on their shared header fields")]
+    InconsistentSlices,
+
+    #[error("Expected an IDR frame (start of stream, after a seek, or after an error)")]
+    ExpectedIdr,
+}
+
+impl ParseError {
+    pub(crate) fn nal(what: &'static str, err: impl std::fmt::Debug) -> Self {
+        Self::Nal {
+            what,
+            details: format!("{err:?}"),
+        }
+    }
 }
 
 /// Failed to turn a [`VideoDeviceSetup`] into a [`GpuVideoContext`].
@@ -97,4 +175,7 @@ pub enum DecodeError {
 
     #[error("The driver reported a decode error (result status {0})")]
     DecodeFailed(i32),
+
+    #[error("The device does not support GPU decoding of {0}")]
+    UnsupportedCodec(Codec),
 }

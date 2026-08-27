@@ -1,4 +1,4 @@
-//! H.264 decoding on the GPU via `re_gpu_video`, producing frames that never leave VRAM.
+//! Video decoding on the GPU via `re_gpu_video`, producing frames that never leave VRAM.
 
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -9,10 +9,20 @@ use re_gpu_video::GpuVideoContext;
 use super::sync_decoder_wrapper::{SyncDecoder, SyncDecoderWrapper};
 use super::{AsyncDecoder, Chunk, DecodeError, Frame, FrameContent, FrameInfo, FrameResult};
 use crate::h264::write_avc_chunk_to_nalu_stream;
+use crate::h265::write_hevc_chunk_to_nalu_stream;
 use crate::nalu::AnnexBStreamState;
 use crate::{FrameNumber, Sender, Time, VideoDataDescription, VideoSource};
 
-/// Decodes H.264 to GPU textures using the [`re_gpu_video`] backend of the render device.
+/// The `re_gpu_video` codec of a stream, `None` for codecs it can't decode.
+pub fn gpu_video_codec(codec: &crate::VideoCodec) -> Option<re_gpu_video::Codec> {
+    match codec {
+        crate::VideoCodec::H264 => Some(re_gpu_video::Codec::H264),
+        crate::VideoCodec::H265 => Some(re_gpu_video::Codec::H265),
+        _ => None,
+    }
+}
+
+/// Decodes video to GPU textures using the [`re_gpu_video`] backend of the render device.
 ///
 /// The backend work runs on a dedicated decoder thread via [`SyncDecoderWrapper`],
 /// frames cross the output channel as [`FrameContent::GpuTexture`].
@@ -27,10 +37,11 @@ impl GpuDecoder {
     pub fn new(
         debug_name: String,
         context: &GpuVideoContext,
+        codec: re_gpu_video::Codec,
         video_descr: &VideoDataDescription,
         output_sender: Sender<FrameResult>,
     ) -> Result<Self, re_gpu_video::DecodeError> {
-        let decoder = context.create_h264_decoder()?;
+        let decoder = context.create_decoder(codec)?;
         let reorder_delay = Arc::new(AtomicUsize::new(0));
 
         let sync_decoder = GpuSyncDecoder {
@@ -68,12 +79,18 @@ impl AsyncDecoder for GpuDecoder {
 
 /// What conversion `Chunk::data` needs before it can be pushed as an annex-b access unit.
 enum InputFormat {
-    /// Streamed H.264 is already annex-b, pass it through verbatim.
+    /// Streamed video is already annex-b, pass it through verbatim.
     AnnexB,
 
     /// H.264 in MP4: prepend SPS/PPS to each IDR, otherwise length-prefix → annex-b.
     Avcc {
         avcc: re_mp4::Avc1Box,
+        state: AnnexBStreamState,
+    },
+
+    /// H.265 in MP4: prepend VPS/SPS/PPS to each IDR, otherwise the same.
+    Hvcc {
+        hvcc: re_mp4::HevcBox,
         state: AnnexBStreamState,
     },
 }
@@ -90,6 +107,12 @@ impl InputFormat {
                 avcc: avc1.clone(),
                 state: AnnexBStreamState::default(),
             },
+            Some(re_mp4::StsdBoxContent::Hvc1(hvcc) | re_mp4::StsdBoxContent::Hev1(hvcc)) => {
+                Self::Hvcc {
+                    hvcc: hvcc.clone(),
+                    state: AnnexBStreamState::default(),
+                }
+            }
             _ => Self::AnnexB,
         }
     }
@@ -106,7 +129,7 @@ struct PendingFrameInfo {
 }
 
 struct GpuSyncDecoder {
-    decoder: re_gpu_video::H264Decoder,
+    decoder: re_gpu_video::Decoder,
     input_format: InputFormat,
 
     /// Reused conversion buffer for AVCC input.
@@ -173,6 +196,17 @@ impl SyncDecoder for GpuSyncDecoder {
                 self.annexb_buffer.clear();
                 if let Err(err) =
                     write_avc_chunk_to_nalu_stream(avcc, &mut self.annexb_buffer, &chunk, state)
+                {
+                    let _send_error =
+                        output_sender.send(Err(DecodeError::BadAvccData(err.to_string())));
+                    return;
+                }
+                &self.annexb_buffer
+            }
+            InputFormat::Hvcc { hvcc, state } => {
+                self.annexb_buffer.clear();
+                if let Err(err) =
+                    write_hevc_chunk_to_nalu_stream(hvcc, &mut self.annexb_buffer, &chunk, state)
                 {
                     let _send_error =
                         output_sender.send(Err(DecodeError::BadAvccData(err.to_string())));

@@ -25,6 +25,7 @@ re_log.workspace = true
 re_tracing.workspace = true
 
 ash.workspace = true
+cros-codecs.workspace = true
 h264-reader.workspace = true
 itertools.workspace = true
 parking_lot.workspace = true

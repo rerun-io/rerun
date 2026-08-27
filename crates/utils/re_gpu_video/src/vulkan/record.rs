@@ -10,14 +10,14 @@
 
 use ash::vk;
 
+use super::codec::CodecFrameInfo;
 use super::device::Device;
 use super::dpb::DecodeImages;
-use super::h264::DecodeInfo;
 use super::session::{SessionParameters, VideoSession};
 
 /// Everything [`record_decode`] needs besides the session objects.
 pub struct FrameDecode<'a> {
-    pub info: &'a DecodeInfo,
+    pub info: &'a CodecFrameInfo,
 
     /// Bitstream buffer holding the slice NALs, each prefixed with a 3-byte start code.
     pub bitstream_buffer: vk::Buffer,
@@ -97,6 +97,61 @@ fn pipeline_barrier(
     }
 }
 
+/// Begins the video coding scope (resetting the session state on its first use),
+/// runs `decode` wrapped in the frame's result-status query, and ends the scope.
+///
+/// The codec-specific arms of [`record_decode`] call this with their fully built
+/// begin slots, and issue their `vkCmdDecodeVideoKHR` inside `decode`.
+#[expect(unsafe_code)]
+fn coding_scope(
+    device: &Device,
+    cmd: vk::CommandBuffer,
+    session: &mut VideoSession,
+    parameters: &SessionParameters,
+    begin_slots: &[vk::VideoReferenceSlotInfoKHR<'_>],
+    query_index: u32,
+    decode: impl FnOnce(),
+) {
+    let begin_info = vk::VideoBeginCodingInfoKHR::default()
+        .video_session(session.raw)
+        .video_session_parameters(parameters.raw)
+        .reference_slots(begin_slots);
+
+    // SAFETY: The command buffer is in recording state and every struct chained into
+    // the infos outlives the recording calls.
+    unsafe {
+        (device.video_queue_fns.fp().cmd_begin_video_coding_khr)(cmd, &raw const begin_info);
+
+        if session.needs_reset {
+            session.needs_reset = false;
+            let control_info = vk::VideoCodingControlInfoKHR::default()
+                .flags(vk::VideoCodingControlFlagsKHR::RESET);
+            (device.video_queue_fns.fp().cmd_control_video_coding_khr)(
+                cmd,
+                &raw const control_info,
+            );
+        }
+
+        if let Some(query_pool) = session.query_pool {
+            device.raw.cmd_begin_query(
+                cmd,
+                query_pool,
+                query_index,
+                vk::QueryControlFlags::empty(),
+            );
+        }
+
+        decode();
+
+        if let Some(query_pool) = session.query_pool {
+            device.raw.cmd_end_query(cmd, query_pool, query_index);
+        }
+
+        let end_info = vk::VideoEndCodingInfoKHR::default();
+        (device.video_queue_fns.fp().cmd_end_video_coding_khr)(cmd, &raw const end_info);
+    }
+}
+
 fn std_reference_info(
     frame_num: u16,
     top_field_order_cnt: i32,
@@ -118,7 +173,7 @@ fn std_reference_info(
     }
 }
 
-fn std_picture_info(info: &DecodeInfo) -> vk::native::StdVideoDecodeH264PictureInfo {
+fn std_picture_info(info: &super::h264::DecodeInfo) -> vk::native::StdVideoDecodeH264PictureInfo {
     let mut flags = vk::native::StdVideoDecodeH264PictureInfoFlags {
         _bitfield_align_1: [],
         _bitfield_1: vk::native::__BindgenBitfieldUnit::new([0; 1]),
@@ -154,8 +209,6 @@ pub fn record_decode(
     frame: &FrameDecode<'_>,
 ) {
     re_tracing::profile_function!();
-
-    let info = frame.info;
 
     // Result-status queries are reset outside of the video coding scope.
     if let Some(query_pool) = session.query_pool {
@@ -213,6 +266,53 @@ pub fn record_decode(
         device.raw.cmd_pipeline_barrier2(cmd, &dependency);
     }
 
+    match frame.info {
+        CodecFrameInfo::H264(info) => {
+            record_h264_decode(device, cmd, session, parameters, images, frame, info);
+        }
+        CodecFrameInfo::H265(info) => {
+            record_h265_decode(device, cmd, session, parameters, images, frame, info);
+        }
+    }
+
+    // Hand the decode output to the copy queue. Visibility across the queues comes
+    // from the timeline semaphore, the barrier only performs the layout transition.
+    // Keyed on the activated slot, the same layer the decode wrote and the copy reads.
+    let (readback_image, readback_layer) = images.readback_source(frame.info.activated_slot());
+    let old_layout = if images.coincide {
+        vk::ImageLayout::VIDEO_DECODE_DPB_KHR
+    } else {
+        vk::ImageLayout::VIDEO_DECODE_DST_KHR
+    };
+    pipeline_barrier(
+        device,
+        cmd,
+        &[image_barrier(
+            readback_image,
+            readback_layer,
+            1,
+            old_layout,
+            vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
+            decode_stage,
+            (
+                vk::PipelineStageFlags2::ALL_COMMANDS,
+                vk::AccessFlags2::NONE,
+            ),
+        )],
+    );
+}
+
+/// Records the H.264 coding scope of one frame's decode: the reference and setup
+/// slot infos, and the decode operation itself.
+fn record_h264_decode(
+    device: &Device,
+    cmd: vk::CommandBuffer,
+    session: &mut VideoSession,
+    parameters: &SessionParameters,
+    images: &DecodeImages,
+    frame: &FrameDecode<'_>,
+    info: &super::h264::DecodeInfo,
+) {
     // The reference slots of this decode. The resources and H.264 slot infos must
     // stay in place while the slot infos point at them, hence the separate vecs.
     let std_refs: Vec<vk::native::StdVideoDecodeH264ReferenceInfo> = info
@@ -285,83 +385,179 @@ pub fn record_decode(
         );
     }
 
-    let begin_info = vk::VideoBeginCodingInfoKHR::default()
-        .video_session(session.raw)
-        .video_session_parameters(parameters.raw)
-        .reference_slots(&begin_slots);
-
-    // SAFETY: The command buffer is in recording state and every struct chained into
-    // the infos outlives the recording calls.
-    unsafe {
-        (device.video_queue_fns.fp().cmd_begin_video_coding_khr)(cmd, &raw const begin_info);
-
-        if session.needs_reset {
-            session.needs_reset = false;
-            let control_info = vk::VideoCodingControlInfoKHR::default()
-                .flags(vk::VideoCodingControlFlagsKHR::RESET);
-            (device.video_queue_fns.fp().cmd_control_video_coding_khr)(
-                cmd,
-                &raw const control_info,
-            );
-        }
-
-        if let Some(query_pool) = session.query_pool {
-            device.raw.cmd_begin_query(
-                cmd,
-                query_pool,
-                frame.query_index,
-                vk::QueryControlFlags::empty(),
-            );
-        }
-
-        let std_pic = std_picture_info(info);
-        let mut h264_picture_info = vk::VideoDecodeH264PictureInfoKHR::default()
-            .std_picture_info(&std_pic)
-            .slice_offsets(frame.slice_offsets);
-        let mut decode_info = vk::VideoDecodeInfoKHR::default()
-            .src_buffer(frame.bitstream_buffer)
-            .src_buffer_offset(0)
-            .src_buffer_range(frame.bitstream_size)
-            .dst_picture_resource(images.dst_resource(activated_slot))
-            .reference_slots(&reference_slots)
-            .push_next(&mut h264_picture_info);
-        if let Some(setup_slot) = &setup_slot {
-            decode_info = decode_info.setup_reference_slot(setup_slot);
-        }
-        (device.video_decode_fns.fp().cmd_decode_video_khr)(cmd, &raw const decode_info);
-
-        if let Some(query_pool) = session.query_pool {
-            device.raw.cmd_end_query(cmd, query_pool, frame.query_index);
-        }
-
-        let end_info = vk::VideoEndCodingInfoKHR::default();
-        (device.video_queue_fns.fp().cmd_end_video_coding_khr)(cmd, &raw const end_info);
-    }
-
-    // Hand the decode output to the copy queue. Visibility across the queues comes
-    // from the timeline semaphore, the barrier only performs the layout transition.
-    let (readback_image, readback_layer) = images.readback_source(info.setup_slot);
-    let old_layout = if images.coincide {
-        vk::ImageLayout::VIDEO_DECODE_DPB_KHR
-    } else {
-        vk::ImageLayout::VIDEO_DECODE_DST_KHR
-    };
-    pipeline_barrier(
+    coding_scope(
         device,
         cmd,
-        &[image_barrier(
-            readback_image,
-            readback_layer,
-            1,
-            old_layout,
-            vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
-            decode_stage,
-            (
-                vk::PipelineStageFlags2::ALL_COMMANDS,
-                vk::AccessFlags2::NONE,
-            ),
-        )],
+        session,
+        parameters,
+        &begin_slots,
+        frame.query_index,
+        || {
+            let std_pic = std_picture_info(info);
+            let mut h264_picture_info = vk::VideoDecodeH264PictureInfoKHR::default()
+                .std_picture_info(&std_pic)
+                .slice_offsets(frame.slice_offsets);
+            let mut decode_info = vk::VideoDecodeInfoKHR::default()
+                .src_buffer(frame.bitstream_buffer)
+                .src_buffer_offset(0)
+                .src_buffer_range(frame.bitstream_size)
+                .dst_picture_resource(images.dst_resource(activated_slot))
+                .reference_slots(&reference_slots)
+                .push_next(&mut h264_picture_info);
+            if let Some(setup_slot) = &setup_slot {
+                decode_info = decode_info.setup_reference_slot(setup_slot);
+            }
+            // SAFETY: The command buffer is in recording state and every struct
+            // chained into the decode info outlives the call.
+            #[expect(unsafe_code)]
+            unsafe {
+                (device.video_decode_fns.fp().cmd_decode_video_khr)(cmd, &raw const decode_info);
+            }
+        },
     );
+}
+
+/// Records the H.265 coding scope of one picture's decode: the reference and
+/// setup slot infos, and the decode operation itself.
+fn record_h265_decode(
+    device: &Device,
+    cmd: vk::CommandBuffer,
+    session: &mut VideoSession,
+    parameters: &SessionParameters,
+    images: &DecodeImages,
+    frame: &FrameDecode<'_>,
+    info: &super::h265::DecodeInfo,
+) {
+    // The reference slots of this decode. The resources and H.265 slot infos must
+    // stay in place while the slot infos point at them, hence the separate vecs.
+    let std_refs: Vec<vk::native::StdVideoDecodeH265ReferenceInfo> = info
+        .references
+        .iter()
+        .map(|reference| std_h265_reference_info(reference.poc, reference.is_long_term))
+        .collect();
+    let resources: Vec<vk::VideoPictureResourceInfoKHR<'_>> = info
+        .references
+        .iter()
+        .map(|reference| images.dpb_resource(u32::from(reference.slot)))
+        .collect();
+    let mut slot_infos: Vec<vk::VideoDecodeH265DpbSlotInfoKHR<'_>> = std_refs
+        .iter()
+        .map(|std_ref| vk::VideoDecodeH265DpbSlotInfoKHR::default().std_reference_info(std_ref))
+        .collect();
+    let reference_slots: Vec<vk::VideoReferenceSlotInfoKHR<'_>> =
+        itertools::izip!(&info.references, &resources, slot_infos.iter_mut())
+            .map(|(reference, resource, slot_info)| {
+                vk::VideoReferenceSlotInfoKHR::default()
+                    .slot_index(i32::from(reference.slot))
+                    .picture_resource(resource)
+                    .push_next(slot_info)
+            })
+            .collect();
+
+    // The slot this picture activates, with its own reference metadata. Every
+    // H.265 picture becomes a short-term reference right after decoding.
+    let setup_resource = images.dpb_resource(u32::from(info.setup_slot));
+    let setup_std_ref = std_h265_reference_info(info.poc, false);
+    let mut setup_slot_h265 =
+        vk::VideoDecodeH265DpbSlotInfoKHR::default().std_reference_info(&setup_std_ref);
+    let setup_slot = vk::VideoReferenceSlotInfoKHR::default()
+        .slot_index(i32::from(info.setup_slot))
+        .picture_resource(&setup_resource)
+        .push_next(&mut setup_slot_h265);
+
+    // Everything used within the video coding scope must be bound at its begin:
+    // the active references with their slot indices, plus (index -1, not yet a
+    // slot) the resource the setup slot activates.
+    let mut begin_slots = reference_slots.clone();
+    begin_slots.push(
+        vk::VideoReferenceSlotInfoKHR::default()
+            .slot_index(-1)
+            .picture_resource(&setup_resource),
+    );
+
+    coding_scope(
+        device,
+        cmd,
+        session,
+        parameters,
+        &begin_slots,
+        frame.query_index,
+        || {
+            let std_pic = std_h265_picture_info(info);
+            let mut h265_picture_info = vk::VideoDecodeH265PictureInfoKHR::default()
+                .std_picture_info(&std_pic)
+                .slice_segment_offsets(frame.slice_offsets);
+            let decode_info = vk::VideoDecodeInfoKHR::default()
+                .src_buffer(frame.bitstream_buffer)
+                .src_buffer_offset(0)
+                .src_buffer_range(frame.bitstream_size)
+                .dst_picture_resource(images.dst_resource(Some(info.setup_slot)))
+                .reference_slots(&reference_slots)
+                .setup_reference_slot(&setup_slot)
+                .push_next(&mut h265_picture_info);
+            // SAFETY: The command buffer is in recording state and every struct
+            // chained into the decode info outlives the call.
+            #[expect(unsafe_code)]
+            unsafe {
+                (device.video_decode_fns.fp().cmd_decode_video_khr)(cmd, &raw const decode_info);
+            }
+        },
+    );
+}
+
+fn std_h265_reference_info(
+    poc: i32,
+    is_long_term: bool,
+) -> vk::native::StdVideoDecodeH265ReferenceInfo {
+    let mut flags = vk::native::StdVideoDecodeH265ReferenceInfoFlags {
+        _bitfield_align_1: [],
+        _bitfield_1: vk::native::__BindgenBitfieldUnit::new([0; 1]),
+        __bindgen_padding_0: [0; 3],
+    };
+    flags.set_used_for_long_term_reference(is_long_term.into());
+    flags.set_unused_for_reference(0);
+
+    vk::native::StdVideoDecodeH265ReferenceInfo {
+        flags,
+        PicOrderCntVal: poc,
+    }
+}
+
+fn std_h265_picture_info(
+    info: &super::h265::DecodeInfo,
+) -> vk::native::StdVideoDecodeH265PictureInfo {
+    let mut flags = vk::native::StdVideoDecodeH265PictureInfoFlags {
+        _bitfield_align_1: [],
+        _bitfield_1: vk::native::__BindgenBitfieldUnit::new([0; 1]),
+        __bindgen_padding_0: [0; 3],
+    };
+    flags.set_IrapPicFlag(info.is_irap.into());
+    flags.set_IdrPicFlag(info.is_idr.into());
+    flags.set_IsReference(1);
+    flags.set_short_term_ref_pic_set_sps_flag(info.short_term_ref_pic_set_sps_flag.into());
+
+    // The reference sets are slot indices padded with the unused marker.
+    let pad = |slots: &[u8]| -> [u8; 8] {
+        let mut padded = [super::h265::UNUSED_SLOT; 8];
+        for (target, &slot) in padded.iter_mut().zip(slots) {
+            *target = slot;
+        }
+        padded
+    };
+
+    vk::native::StdVideoDecodeH265PictureInfo {
+        flags,
+        sps_video_parameter_set_id: info.vps_id,
+        pps_seq_parameter_set_id: info.sps_id,
+        pps_pic_parameter_set_id: info.pps_id,
+        NumDeltaPocsOfRefRpsIdx: info.num_delta_pocs_of_ref_rps_idx,
+        PicOrderCntVal: info.poc,
+        NumBitsForSTRefPicSetInSlice: info.num_bits_for_st_ref_pic_set_in_slice,
+        reserved: 0,
+        RefPicSetStCurrBefore: pad(&info.st_curr_before),
+        RefPicSetStCurrAfter: pad(&info.st_curr_after),
+        RefPicSetLtCurr: pad(&info.lt_curr),
+    }
 }
 
 /// Records the copy of the decoded frame's display region into the readback buffer,

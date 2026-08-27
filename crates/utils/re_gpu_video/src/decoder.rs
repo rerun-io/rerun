@@ -1,4 +1,4 @@
-//! The public decoder: H.264 access units in, GPU-texture frames in presentation order out.
+//! The public decoder: access units in, GPU-texture frames in presentation order out.
 
 use crate::{ColorProperties, DecodeError, sorter::ReorderBuffer};
 
@@ -58,12 +58,12 @@ impl DecodedFrame {
     }
 }
 
-/// Decodes H.264 access units into [`DecodedFrame`]s, in presentation order.
+/// Decodes access units of one codec into [`DecodedFrame`]s, in presentation order.
 ///
-/// Created via [`crate::GpuVideoContext::create_h264_decoder`].
+/// Created via [`crate::GpuVideoContext::create_decoder`].
 /// Decoding blocks on the GPU work once enough frames are in flight, so this
 /// belongs on a decoder worker thread, never on the render thread.
-pub struct H264Decoder {
+pub struct Decoder {
     inner: DecoderInner,
     sorter: ReorderBuffer<DecodedFrame>,
 }
@@ -73,7 +73,7 @@ enum DecoderInner {
     // VideoToolbox variant will be added here for the macOS backend.
 }
 
-impl H264Decoder {
+impl Decoder {
     pub(crate) fn new_vulkan(decoder: crate::vulkan::TextureDecoder) -> Self {
         Self {
             inner: DecoderInner::Vulkan(decoder),
@@ -83,7 +83,7 @@ impl H264Decoder {
 
     /// Decodes one annex-b access unit, returning zero or more frames in presentation order.
     ///
-    /// Decoding must start at an IDR frame carrying its SPS/PPS. `pts` travels into
+    /// Decoding must start at an IDR frame carrying its parameter sets. `pts` travels into
     /// [`DecodedFrame::pts`] untouched. A frame comes out once its GPU work finished
     /// and its presentation order is settled, so it may take up to
     /// [`Self::reorder_delay`] further access units. Any error leaves the decoder
@@ -147,7 +147,7 @@ mod tests {
     #[test]
     fn decoder_and_frames_are_send() {
         fn assert_send<T: Send>() {}
-        assert_send::<super::H264Decoder>();
+        assert_send::<super::Decoder>();
         assert_send::<super::DecodedFrame>();
     }
 }

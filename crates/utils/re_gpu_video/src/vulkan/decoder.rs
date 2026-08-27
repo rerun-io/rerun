@@ -14,25 +14,25 @@
 //! running is what blocks. [`CpuDecoder`] waits for every frame. All of this
 //! runs on the caller's (decoder worker) thread, never on the render thread.
 
-use std::collections::{HashMap, VecDeque};
+use std::collections::VecDeque;
 use std::sync::Arc;
 
 use ash::vk;
-use h264_reader::nal::sps::SeqParameterSet;
 
-use crate::{ColorProperties, DecodeError, DecodedFrame, MatrixCoefficients};
+use crate::{Codec, ColorProperties, DecodeCapabilities, DecodeError, DecodedFrame};
 
 use super::Shared;
+use super::caps::VulkanVideoCaps;
+use super::codec::{CodecFrameInfo, CodecProfile, CodecState};
 use super::device::{CommandPool, Device};
 use super::dpb::DecodeImages;
-use super::h264::{DecodeInfo, DecodeOp, ParseError, Parser, PpsStdParams, SpsStdParams};
 use super::output::{OutputImage, OutputPool};
 use super::record::{self, CopySource};
-use super::session::{SessionParameters, VideoSession, with_profile_list};
+use super::session::{SessionParameters, VideoSession};
 use super::sync::TimelineSemaphore;
 
-/// H.264 streams never need more DPB slots than 16 reference frames plus the
-/// current one, whatever the hardware would offer.
+/// H.264 and H.265 streams never need more DPB slots than 16 reference frames
+/// plus the current one, whatever the hardware would offer.
 const MAX_DPB_SLOTS: u32 = 17;
 
 /// How many frames may be in flight on the GPU before decoding blocks the host.
@@ -56,11 +56,6 @@ pub struct CpuFrame {
     /// NV12: the luma plane, followed by the interleaved chroma plane at half
     /// resolution. Rows are tightly packed to the display width.
     pub data: Vec<u8>,
-}
-
-struct SpsEntry {
-    parsed: SeqParameterSet,
-    std: SpsStdParams,
 }
 
 /// Everything bound to one video session, recreated together when an SPS
@@ -105,10 +100,11 @@ struct InFlightDecode {
 struct DecoderCore {
     shared: Arc<Shared>,
     semaphore: TimelineSemaphore,
-    parser: Parser,
+    codec: CodecState,
 
-    sps: HashMap<u8, SpsEntry>,
-    pps: HashMap<u8, PpsStdParams>,
+    /// The device's capabilities for the codec, copied out of [`Shared`].
+    capabilities: DecodeCapabilities,
+    video_caps: VulkanVideoCaps,
 
     /// A parameter set changed: the next frame recreates the session parameters.
     parameters_dirty: bool,
@@ -128,7 +124,14 @@ struct DecoderCore {
 }
 
 impl DecoderCore {
-    fn new(shared: Arc<Shared>) -> Result<Self, DecodeError> {
+    fn new(shared: Arc<Shared>, codec: Codec) -> Result<Self, DecodeError> {
+        let support = shared
+            .codecs
+            .get(codec)
+            .ok_or(DecodeError::UnsupportedCodec(codec))?;
+        let capabilities = support.capabilities.clone();
+        let video_caps = support.video_caps.clone();
+
         let decode_family = shared.queue_plan.decode.family_index;
         let copy_family = shared
             .queue_plan
@@ -148,9 +151,9 @@ impl DecoderCore {
 
         Ok(Self {
             semaphore: TimelineSemaphore::new(shared.device.clone())?,
-            parser: Parser::new(shared.capabilities.max_dpb_slots.min(MAX_DPB_SLOTS) as u8),
-            sps: HashMap::new(),
-            pps: HashMap::new(),
+            codec: CodecState::new(codec, capabilities.max_dpb_slots.min(MAX_DPB_SLOTS) as u8),
+            capabilities,
+            video_caps,
             parameters_dirty: false,
             active: None,
             slots,
@@ -163,40 +166,13 @@ impl DecoderCore {
 
     /// Parses one annex-b access unit, tracking parameter sets and returning
     /// the frames to decode.
-    fn parse(&mut self, data: &[u8]) -> Result<Vec<DecodeInfo>, DecodeError> {
-        let mut frames = Vec::new();
-        for op in self.parser.push_access_unit(data)? {
-            match op {
-                DecodeOp::Sps(sps) => {
-                    self.sps.insert(
-                        sps.seq_parameter_set_id.id(),
-                        SpsEntry {
-                            std: SpsStdParams::build(&sps),
-                            parsed: *sps,
-                        },
-                    );
-                    self.parameters_dirty = true;
-                }
-
-                DecodeOp::Pps(pps) => {
-                    self.pps
-                        .insert(pps.pic_parameter_set_id.id(), PpsStdParams::build(&pps));
-                    self.parameters_dirty = true;
-                }
-
-                DecodeOp::DecodeFrame(info) => frames.push(info),
-
-                // Slot deactivation is implicit: a freed slot index is simply
-                // re-activated by the next frame decoding into it.
-                DecodeOp::FreeSlots(_) => {}
-            }
-        }
-        Ok(frames)
+    fn parse(&mut self, data: &[u8]) -> Result<Vec<CodecFrameInfo>, DecodeError> {
+        self.codec.parse(data, &mut self.parameters_dirty)
     }
 
     /// Drops all frame state for a seek. The next access unit must hold an IDR frame.
     fn reset(&mut self) {
-        self.parser.reset();
+        self.codec.reset();
         // The session and images survive: an IDR re-activates the DPB slots,
         // and a changed SPS recreates them anyway.
     }
@@ -253,26 +229,15 @@ impl DecoderCore {
     /// needed, uploads the bitstream, and submits the decode on the decode queue.
     fn submit_decode(
         &mut self,
-        info: &DecodeInfo,
+        info: &CodecFrameInfo,
         data: &[u8],
     ) -> Result<SubmittedDecode, DecodeError> {
         re_tracing::profile_function!();
 
-        let sps_entry = self
-            .sps
-            .get(&info.sps_id)
-            .ok_or(ParseError::MissingReference { what: "SPS" })?;
-        let std_profile_idc = sps_entry.std.std().profile_idc;
-        let parsed = &sps_entry.parsed;
-        let color = color_properties(parsed);
+        let facts = self.codec.frame_facts(info)?;
+        let coded_extent = facts.coded_extent;
 
-        let coded_extent = vk::Extent2D {
-            width: (parsed.pic_width_in_mbs_minus1 + 1) * 16,
-            height: (parsed.pic_height_in_map_units_minus1 + 1) * 16,
-        };
-        let dpb_slots = parsed.max_num_ref_frames + 1;
-
-        let capabilities = &self.shared.capabilities;
+        let capabilities = &self.capabilities;
         let [min_width, min_height] = capabilities.min_coded_extent;
         let [max_width, max_height] = capabilities.max_coded_extent;
         if coded_extent.width < min_width
@@ -285,43 +250,18 @@ impl DecoderCore {
                 coded_extent.width, coded_extent.height,
             )));
         }
-        if parsed.max_num_ref_frames > capabilities.max_active_references {
+        if facts.max_ref_frames > capabilities.max_active_references {
             return Err(DecodeError::ExceedsDeviceLimits(format!(
                 "the stream uses up to {} reference frames, the device supports {}",
-                parsed.max_num_ref_frames, capabilities.max_active_references,
+                facts.max_ref_frames, capabilities.max_active_references,
             )));
         }
 
-        // The display region: the coded size minus the SPS frame cropping.
-        // 4:2:0 progressive crop offsets are in units of two luma samples.
-        let (crop_left, crop_right, crop_top, crop_bottom) =
-            parsed.frame_cropping.as_ref().map_or((0, 0, 0, 0), |crop| {
-                (
-                    crop.left_offset * 2,
-                    crop.right_offset * 2,
-                    crop.top_offset * 2,
-                    crop.bottom_offset * 2,
-                )
-            });
-        let display_width = coded_extent
-            .width
-            .checked_sub(crop_left + crop_right)
-            .filter(|&width| width > 0)
-            .ok_or(ParseError::Invalid(
-                "frame cropping exceeds the coded width",
-            ))?;
-        let display_height = coded_extent
-            .height
-            .checked_sub(crop_top + crop_bottom)
-            .filter(|&height| height > 0)
-            .ok_or(ParseError::Invalid(
-                "frame cropping exceeds the coded height",
-            ))?;
-
-        self.ensure_session(std_profile_idc, coded_extent, dpb_slots)?;
+        self.ensure_session(facts.profile, coded_extent, facts.dpb_slots)?;
         self.ensure_parameters()?;
         let slot_index = self.acquire_slot()?;
-        let (bitstream_size, slice_offsets) = self.upload_bitstream(slot_index, info, data)?;
+        let (bitstream_size, slice_offsets) =
+            self.upload_bitstream(slot_index, facts.profile, info, data)?;
 
         let active = self.active.as_mut().expect("ensured above");
         active.images.select_next_output();
@@ -337,10 +277,7 @@ impl DecoderCore {
                 (image, layer) == write_target
                     || (active.images.coincide
                         && image == active.images.dpb_image()
-                        && info
-                            .references
-                            .iter()
-                            .any(|reference| u32::from(reference.slot) == layer))
+                        && info.reference_slots().any(|slot| u32::from(slot) == layer))
             })
             .map(|&(_, _, value)| value)
             .max();
@@ -378,10 +315,10 @@ impl DecoderCore {
                 image: source_image,
                 layer: source_layer,
                 restore_dpb_layout: active.images.coincide,
-                crop_offset: [crop_left.cast_signed(), crop_top.cast_signed()],
-                display: [display_width, display_height],
+                crop_offset: facts.crop_offset,
+                display: facts.display,
             },
-            color,
+            color: facts.color,
         })
     }
 
@@ -445,12 +382,12 @@ impl DecoderCore {
     /// Recreates the session and its images when the SPS demands different ones.
     fn ensure_session(
         &mut self,
-        std_profile_idc: vk::native::StdVideoH264ProfileIdc,
+        profile: CodecProfile,
         coded_extent: vk::Extent2D,
         dpb_slots: u32,
     ) -> Result<(), DecodeError> {
         let matches = self.active.as_ref().is_some_and(|active| {
-            active.session.std_profile_idc == std_profile_idc
+            active.session.profile == profile
                 && active.session.coded_extent == coded_extent
                 && active.session.max_dpb_slots == dpb_slots
         });
@@ -472,15 +409,12 @@ impl DecoderCore {
 
         let session = VideoSession::new(
             self.shared.device.clone(),
-            &self.shared.video_caps,
+            &self.video_caps,
             decode_family,
-            std_profile_idc,
+            profile,
             coded_extent,
             dpb_slots,
-            self.shared
-                .capabilities
-                .max_active_references
-                .min(dpb_slots - 1),
+            self.capabilities.max_active_references.min(dpb_slots - 1),
             if queue_plan.decode_supports_result_status {
                 PIPELINE_DEPTH as u32
             } else {
@@ -489,10 +423,10 @@ impl DecoderCore {
         )?;
         let images = DecodeImages::new(
             self.shared.device.clone(),
-            std_profile_idc,
+            profile,
             coded_extent,
             dpb_slots,
-            self.shared.video_caps.dpb_and_output_coincide,
+            self.video_caps.dpb_and_output_coincide,
             PIPELINE_DEPTH as u32,
             decode_family,
             copy_family,
@@ -523,18 +457,11 @@ impl DecoderCore {
         }
         let active = self.active.as_mut().expect("session ensured first");
 
-        // The std structs' pointers refer into the entries owned by the maps,
-        // which stay alive over the creation call.
-        let sps: Vec<_> = self.sps.values().map(|entry| *entry.std.std()).collect();
-        let pps: Vec<_> = self.pps.values().map(|entry| *entry.std()).collect();
-
         active.parameters = None;
-        active.parameters = Some(SessionParameters::new(
-            self.shared.device.clone(),
-            &active.session,
-            &sps,
-            &pps,
-        )?);
+        active.parameters = Some(
+            self.codec
+                .build_session_parameters(self.shared.device.clone(), &active.session)?,
+        );
         self.parameters_dirty = false;
         Ok(())
     }
@@ -546,24 +473,22 @@ impl DecoderCore {
     fn upload_bitstream(
         &mut self,
         slot_index: usize,
-        info: &DecodeInfo,
+        profile: CodecProfile,
+        info: &CodecFrameInfo,
         data: &[u8],
     ) -> Result<(u64, Vec<u32>), DecodeError> {
         re_tracing::profile_function!();
 
         const START_CODE: [u8; 3] = [0, 0, 1];
 
-        let mut slice_offsets = Vec::with_capacity(info.slice_ranges.len());
+        let slice_ranges = info.slice_ranges();
+        let mut slice_offsets = Vec::with_capacity(slice_ranges.len());
         let mut size = 0_u64;
-        for range in &info.slice_ranges {
+        for range in slice_ranges {
             slice_offsets.push(size as u32);
             size += (START_CODE.len() + range.len()) as u64;
         }
-        let alignment = self
-            .shared
-            .video_caps
-            .min_bitstream_buffer_size_alignment
-            .max(1);
+        let alignment = self.video_caps.min_bitstream_buffer_size_alignment.max(1);
         let aligned_size = size.next_multiple_of(alignment);
 
         let slot = &mut self.slots[slot_index];
@@ -574,22 +499,14 @@ impl DecoderCore {
         {
             slot.bitstream = None;
             let capacity = aligned_size.next_power_of_two().max(1 << 16);
-            let buffer = with_profile_list(
-                self.sps
-                    .get(&info.sps_id)
-                    .expect("checked by the caller")
-                    .std
-                    .std()
-                    .profile_idc,
-                |profile_list| {
-                    let create_info = vk::BufferCreateInfo::default()
-                        .size(capacity)
-                        .usage(vk::BufferUsageFlags::VIDEO_DECODE_SRC_KHR)
-                        .sharing_mode(vk::SharingMode::EXCLUSIVE)
-                        .push_next(profile_list);
-                    super::alloc::Buffer::new_host(self.shared.device.clone(), &create_info)
-                },
-            )?;
+            let buffer = profile.with_profile_list(|profile_list| {
+                let create_info = vk::BufferCreateInfo::default()
+                    .size(capacity)
+                    .usage(vk::BufferUsageFlags::VIDEO_DECODE_SRC_KHR)
+                    .sharing_mode(vk::SharingMode::EXCLUSIVE)
+                    .push_next(profile_list);
+                super::alloc::Buffer::new_host(self.shared.device.clone(), &create_info)
+            })?;
             slot.bitstream = Some(buffer);
         }
 
@@ -599,7 +516,7 @@ impl DecoderCore {
             .expect("created above")
             .mapped_slice_mut();
         let mut cursor = 0;
-        for range in &info.slice_ranges {
+        for range in slice_ranges {
             mapped[cursor..cursor + START_CODE.len()].copy_from_slice(&START_CODE);
             cursor += START_CODE.len();
             mapped[cursor..cursor + range.len()].copy_from_slice(&data[range.clone()]);
@@ -648,28 +565,9 @@ impl Drop for DecoderCore {
     }
 }
 
-/// Color properties from the SPS VUI, absent fields left at their defaults.
-fn color_properties(sps: &SeqParameterSet) -> ColorProperties {
-    let signal_type = sps
-        .vui_parameters
-        .as_ref()
-        .and_then(|vui| vui.video_signal_type.as_ref());
-    ColorProperties {
-        full_range: signal_type.is_some_and(|signal| signal.video_full_range_flag),
-        matrix_coefficients: match signal_type
-            .and_then(|signal| signal.colour_description.as_ref())
-            .map(|colour| colour.matrix_coefficients)
-        {
-            Some(1) => MatrixCoefficients::Bt709,
-            Some(5 | 6) => MatrixCoefficients::Bt601,
-            _ => MatrixCoefficients::Unspecified,
-        },
-    }
-}
-
-/// Decodes H.264 access units into NV12 `wgpu` textures, in decode order.
+/// Decodes access units into NV12 `wgpu` textures, in decode order.
 ///
-/// The Vulkan half of [`crate::H264Decoder`], which adds the reordering to
+/// The Vulkan half of [`crate::Decoder`], which adds the reordering to
 /// presentation order.
 pub struct TextureDecoder {
     // Dropped before the pending frames' images: its drop waits for the GPU.
@@ -693,10 +591,10 @@ struct PendingFrame {
 }
 
 impl TextureDecoder {
-    pub(super) fn new(shared: Arc<Shared>) -> Result<Self, DecodeError> {
+    pub(super) fn new(shared: Arc<Shared>, codec: Codec) -> Result<Self, DecodeError> {
         let pool = OutputPool::new(shared.device.clone(), &shared.queue_plan);
         Ok(Self {
-            core: DecoderCore::new(shared)?,
+            core: DecoderCore::new(shared, codec)?,
             pool,
             pending: VecDeque::new(),
         })
@@ -710,7 +608,7 @@ impl TextureDecoder {
     /// later call (or by [`Self::flush`]), so the returned frames may stem from
     /// earlier access units. Blocks only when [`PIPELINE_DEPTH`] frames are
     /// already in flight. Any error leaves the decoder waiting for an IDR frame,
-    /// like [`Parser::push_access_unit`].
+    /// like after a reset.
     pub fn push_access_unit(
         &mut self,
         data: &[u8],
@@ -734,9 +632,9 @@ impl TextureDecoder {
                 copy_value,
                 image,
                 display: decode.source.display,
-                poc: info.poc,
+                poc: info.poc(),
                 pts,
-                is_idr: info.is_idr,
+                is_idr: info.is_idr(),
                 color: decode.color,
             });
         }
@@ -786,9 +684,9 @@ impl TextureDecoder {
         self.core.reset();
     }
 
-    /// See [`Parser::reorder_delay`].
+    /// See [`CodecState::reorder_delay`].
     pub fn reorder_delay(&self) -> usize {
-        self.core.parser.reorder_delay()
+        self.core.codec.reorder_delay()
     }
 
     /// How many frames may be in flight on the GPU, and so held back by
@@ -799,7 +697,7 @@ impl TextureDecoder {
     }
 }
 
-/// Decodes H.264 access units into CPU pixel buffers.
+/// Decodes access units into CPU pixel buffers.
 ///
 /// The permanent debugging path: bit-exact readback of what the hardware decoded,
 /// for comparison against a software decoder (see `examples/decode_to_yuv.rs`).
@@ -809,9 +707,9 @@ pub struct CpuDecoder {
 }
 
 impl CpuDecoder {
-    pub(super) fn new(shared: Arc<Shared>) -> Result<Self, DecodeError> {
+    pub(super) fn new(shared: Arc<Shared>, codec: Codec) -> Result<Self, DecodeError> {
         Ok(Self {
-            core: DecoderCore::new(shared)?,
+            core: DecoderCore::new(shared, codec)?,
             readback: None,
         })
     }
@@ -819,7 +717,7 @@ impl CpuDecoder {
     /// Decodes one annex-b access unit, returning its frames in decode order.
     ///
     /// Blocks until the hardware finished. Any error leaves the decoder waiting
-    /// for an IDR frame, like [`Parser::push_access_unit`].
+    /// for an IDR frame, like after a reset.
     pub fn push_access_unit(&mut self, data: &[u8]) -> Result<Vec<CpuFrame>, DecodeError> {
         re_tracing::profile_function!();
 
@@ -835,7 +733,11 @@ impl CpuDecoder {
         self.core.reset();
     }
 
-    fn decode_frame(&mut self, info: &DecodeInfo, data: &[u8]) -> Result<CpuFrame, DecodeError> {
+    fn decode_frame(
+        &mut self,
+        info: &CodecFrameInfo,
+        data: &[u8],
+    ) -> Result<CpuFrame, DecodeError> {
         re_tracing::profile_function!();
 
         let decode = self.core.submit_decode(info, data)?;
@@ -887,8 +789,8 @@ impl CpuDecoder {
         Ok(CpuFrame {
             width: display_width,
             height: display_height,
-            poc: info.poc,
-            is_idr: info.is_idr,
+            poc: info.poc(),
+            is_idr: info.is_idr(),
             data: nv12,
         })
     }

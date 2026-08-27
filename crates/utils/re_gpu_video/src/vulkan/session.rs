@@ -1,9 +1,9 @@
 //! Video session and session parameters lifecycle.
 //!
-//! A session is bound to one H.264 profile, coded extent, and DPB slot count.
+//! A session is bound to one codec profile, coded extent, and DPB slot count.
 //! When an SPS changes any of those the decoder recreates the session (and with it
-//! the DPB images). Session parameters are add-only in Vulkan, so on any SPS/PPS
-//! change the decoder recreates the parameters object from all known parameter sets.
+//! the DPB images). Session parameters are add-only in Vulkan, so on any parameter
+//! set change the decoder recreates the parameters object from all known parameter sets.
 
 use std::sync::Arc;
 
@@ -11,40 +11,8 @@ use ash::vk;
 
 use super::alloc::SessionMemory;
 use super::caps::VulkanVideoCaps;
+use super::codec::CodecProfile;
 use super::device::Device;
-
-/// Builds the H.264 decode profile (progressive, 4:2:0, 8-bit) all
-/// profile-bound objects are created against, and hands it to `f`.
-///
-/// A closure because the pnext chain borrows stack-owned structs.
-pub fn with_profile<R>(
-    std_profile_idc: vk::native::StdVideoH264ProfileIdc,
-    f: impl FnOnce(&vk::VideoProfileInfoKHR<'_>) -> R,
-) -> R {
-    let mut h264_profile = vk::VideoDecodeH264ProfileInfoKHR::default()
-        .std_profile_idc(std_profile_idc)
-        .picture_layout(vk::VideoDecodeH264PictureLayoutFlagsKHR::PROGRESSIVE);
-    let profile = vk::VideoProfileInfoKHR::default()
-        .video_codec_operation(vk::VideoCodecOperationFlagsKHR::DECODE_H264)
-        .chroma_subsampling(vk::VideoChromaSubsamplingFlagsKHR::TYPE_420)
-        .luma_bit_depth(vk::VideoComponentBitDepthFlagsKHR::TYPE_8)
-        .chroma_bit_depth(vk::VideoComponentBitDepthFlagsKHR::TYPE_8)
-        .push_next(&mut h264_profile);
-    f(&profile)
-}
-
-/// Like [`with_profile`], wrapped in the `VideoProfileListInfoKHR` that image and
-/// buffer create infos chain.
-pub fn with_profile_list<R>(
-    std_profile_idc: vk::native::StdVideoH264ProfileIdc,
-    f: impl FnOnce(&mut vk::VideoProfileListInfoKHR<'_>) -> R,
-) -> R {
-    with_profile(std_profile_idc, |profile| {
-        let mut list =
-            vk::VideoProfileListInfoKHR::default().profiles(std::slice::from_ref(profile));
-        f(&mut list)
-    })
-}
 
 /// A video session with its bound memory and result-status query pool.
 pub struct VideoSession {
@@ -61,7 +29,7 @@ pub struct VideoSession {
     pub needs_reset: bool,
 
     // What the session was created for, to detect when an SPS demands a new one.
-    pub std_profile_idc: vk::native::StdVideoH264ProfileIdc,
+    pub profile: CodecProfile,
     pub coded_extent: vk::Extent2D,
     pub max_dpb_slots: u32,
 }
@@ -72,7 +40,7 @@ impl VideoSession {
         device: Arc<Device>,
         video_caps: &VulkanVideoCaps,
         decode_queue_family_index: u32,
-        std_profile_idc: vk::native::StdVideoH264ProfileIdc,
+        profile: CodecProfile,
         coded_extent: vk::Extent2D,
         max_dpb_slots: u32,
         max_active_references: u32,
@@ -80,7 +48,7 @@ impl VideoSession {
     ) -> Result<Self, vk::Result> {
         re_tracing::profile_function!();
 
-        let raw = with_profile(std_profile_idc, |profile| {
+        let raw = profile.with_profile(|profile| {
             let create_info = vk::VideoSessionCreateInfoKHR::default()
                 .queue_family_index(decode_queue_family_index)
                 .video_profile(profile)
@@ -125,7 +93,7 @@ impl VideoSession {
         };
 
         let query_pool = if result_status_query_count > 0 {
-            let result = with_profile(std_profile_idc, |profile| {
+            let result = profile.with_profile(|profile| {
                 let mut profile = *profile;
                 let create_info = vk::QueryPoolCreateInfo::default()
                     .query_type(vk::QueryType::RESULT_STATUS_ONLY_KHR)
@@ -151,7 +119,7 @@ impl VideoSession {
             _memory: memory,
             query_pool,
             needs_reset: true,
-            std_profile_idc,
+            profile,
             coded_extent,
             max_dpb_slots,
         })
@@ -185,8 +153,7 @@ pub struct SessionParameters {
 }
 
 impl SessionParameters {
-    #[expect(unsafe_code)]
-    pub fn new(
+    pub fn new_h264(
         device: Arc<Device>,
         session: &VideoSession,
         sps: &[vk::native::StdVideoH264SequenceParameterSet],
@@ -205,6 +172,39 @@ impl SessionParameters {
             .video_session(session.raw)
             .push_next(&mut h264_create_info);
 
+        Self::create(device, &create_info)
+    }
+
+    pub fn new_h265(
+        device: Arc<Device>,
+        session: &VideoSession,
+        vps: &[vk::native::StdVideoH265VideoParameterSet],
+        sps: &[vk::native::StdVideoH265SequenceParameterSet],
+        pps: &[vk::native::StdVideoH265PictureParameterSet],
+    ) -> Result<Self, vk::Result> {
+        re_tracing::profile_function!();
+
+        let add_info = vk::VideoDecodeH265SessionParametersAddInfoKHR::default()
+            .std_vp_ss(vps)
+            .std_sp_ss(sps)
+            .std_pp_ss(pps);
+        let mut h265_create_info = vk::VideoDecodeH265SessionParametersCreateInfoKHR::default()
+            .max_std_vps_count(vps.len() as u32)
+            .max_std_sps_count(sps.len() as u32)
+            .max_std_pps_count(pps.len() as u32)
+            .parameters_add_info(&add_info);
+        let create_info = vk::VideoSessionParametersCreateInfoKHR::default()
+            .video_session(session.raw)
+            .push_next(&mut h265_create_info);
+
+        Self::create(device, &create_info)
+    }
+
+    #[expect(unsafe_code)]
+    fn create(
+        device: Arc<Device>,
+        create_info: &vk::VideoSessionParametersCreateInfoKHR<'_>,
+    ) -> Result<Self, vk::Result> {
         let mut raw = vk::VideoSessionParametersKHR::null();
         // SAFETY: All create-info pointers outlive the call.
         unsafe {
@@ -213,7 +213,7 @@ impl SessionParameters {
                 .fp()
                 .create_video_session_parameters_khr)(
                 device.raw.handle(),
-                &raw const create_info,
+                &raw const *create_info,
                 std::ptr::null(),
                 &raw mut raw,
             )
