@@ -91,6 +91,9 @@ mod av1;
 #[cfg(with_ffmpeg)]
 mod ffmpeg_cli;
 
+#[cfg(with_gpu_video)]
+mod gpu_video;
+
 #[cfg(with_ffmpeg)]
 pub use ffmpeg_cli::FFmpegCliDecoder;
 #[cfg(with_ffmpeg)]
@@ -156,6 +159,13 @@ pub enum DecodeError {
     #[error(transparent)]
     Ffmpeg(#[size_bytes(ignore)] std::sync::Arc<FFmpegError>),
 
+    #[cfg(with_gpu_video)]
+    #[error("GPU video decoder: {0}")]
+    GpuVideo(#[size_bytes(ignore)] std::sync::Arc<re_gpu_video::DecodeError>),
+
+    #[error("Failed to convert AVCC sample data to an annex-b stream: {0}")]
+    BadAvccData(#[size_bytes(ignore)] String),
+
     #[error("Unsupported bits per component: {0}")]
     BadBitsPerComponent(#[size_bytes(ignore)] usize),
 }
@@ -186,8 +196,12 @@ impl DecodeError {
             #[cfg(with_ffmpeg)]
             Self::Ffmpeg(err) => err.should_request_more_frames(),
 
+            // The GPU decoder recovers at the next IDR frame.
+            #[cfg(with_gpu_video)]
+            Self::GpuVideo(_) => true,
+
             // Unsupported format.
-            Self::BadBitsPerComponent(_) => false,
+            Self::BadBitsPerComponent(_) | Self::BadAvccData(_) => false,
         }
     }
 
@@ -204,11 +218,14 @@ impl DecodeError {
             Self::WebDecoder(err) => err.severity(),
             #[cfg(with_ffmpeg)]
             Self::Ffmpeg(_) => VideoPlaybackIssueSeverity::Error,
+            #[cfg(with_gpu_video)]
+            Self::GpuVideo(_) => VideoPlaybackIssueSeverity::Error,
 
             Self::UnsupportedCodec(_)
             | Self::Dav1dWithoutNasm
             | Self::NoDav1dOnLinuxArm64
             | Self::BadBitsPerComponent(_)
+            | Self::BadAvccData(_)
             | Self::RvlDecoder(_) => VideoPlaybackIssueSeverity::Error,
         }
     }
@@ -324,17 +341,56 @@ pub fn new_decoder(
                     }
                 }
 
-                #[cfg(with_ffmpeg)]
+                #[cfg(any(with_ffmpeg, with_gpu_video))]
                 crate::VideoCodec::H264
                 | crate::VideoCodec::H265
                 | crate::VideoCodec::VP8
-                | crate::VideoCodec::VP9 => Ok(Box::new(FFmpegCliDecoder::new(
-                    debug_name.to_owned(),
-                    video.encoding_details.as_ref(),
-                    output_sender,
-                    decode_settings.ffmpeg_path.clone(),
-                    &video.codec,
-                )?)),
+                | crate::VideoCodec::VP9 => {
+                    #[cfg(with_gpu_video)]
+                    if matches!(video.codec, crate::VideoCodec::H264)
+                        && decode_settings.hw_acceleration
+                            != DecodeHardwareAcceleration::PreferSoftware
+                        && let Some(gpu_video) = &decode_settings.gpu_video.0
+                    {
+                        match gpu_video::GpuDecoder::new(
+                            debug_name.to_owned(),
+                            gpu_video,
+                            video,
+                            output_sender.clone(),
+                        ) {
+                            Ok(decoder) => {
+                                re_log::debug!(
+                                    "Decoding H.264 on the GPU via {}",
+                                    gpu_video.backend_name()
+                                );
+                                return Ok(Box::new(decoder));
+                            }
+                            Err(err) => {
+                                re_log::warn_once!(
+                                    "Failed to create GPU video decoder, falling back to software decoding: {err}"
+                                );
+                            }
+                        }
+                    }
+
+                    #[cfg(with_ffmpeg)]
+                    {
+                        Ok(Box::new(FFmpegCliDecoder::new(
+                            debug_name.to_owned(),
+                            video.encoding_details.as_ref(),
+                            output_sender,
+                            decode_settings.ffmpeg_path.clone(),
+                            &video.codec,
+                        )?))
+                    }
+
+                    #[cfg(not(with_ffmpeg))]
+                    {
+                        Err(DecodeError::UnsupportedCodec(
+                            video.human_readable_codec_string(),
+                        ))
+                    }
+                }
 
                 crate::VideoCodec::ImageSequence(codec) => {
                     if codec.as_deref() == Some("application/rvl") {
@@ -479,7 +535,49 @@ cfg_select! {
     }
     _ => {
         /// Data for a decoded frame on native targets.
-        pub type FrameContent = DecodedFrameContent;
+        pub enum FrameContent {
+            /// CPU-side decoded data.
+            Decoded(DecodedFrameContent),
+
+            /// Frame decoded on the GPU, living in a GPU texture that never left VRAM.
+            #[cfg(with_gpu_video)]
+            GpuTexture(Box<re_gpu_video::DecodedFrame>),
+        }
+
+        impl FrameContent {
+            pub fn width(&self) -> u32 {
+                match self {
+                    Self::Decoded(frame) => frame.width(),
+                    #[cfg(with_gpu_video)]
+                    Self::GpuTexture(frame) => frame.width,
+                }
+            }
+
+            pub fn height(&self) -> u32 {
+                match self {
+                    Self::Decoded(frame) => frame.height(),
+                    #[cfg(with_gpu_video)]
+                    Self::GpuTexture(frame) => frame.height,
+                }
+            }
+        }
+
+        impl re_byte_size::SizeBytes for FrameContent {
+            fn heap_size_bytes(&self) -> u64 {
+                match self {
+                    Self::Decoded(frame) => frame.heap_size_bytes(),
+                    #[cfg(with_gpu_video)]
+                    Self::GpuTexture(frame) => {
+                        // The VRAM held by the frame's NV12 texture, so that the frame
+                        // channel's quota keeps limiting in-flight memory.
+                        // The planes are padded to even sizes.
+                        let width = u64::from(frame.width.next_multiple_of(2));
+                        let height = u64::from(frame.height.next_multiple_of(2));
+                        width * height * 3 / 2
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -663,6 +761,51 @@ pub struct DecodeSettings {
     /// If not provided, we use the path automatically determined by `ffmpeg_sidecar`.
     #[cfg(not(target_arch = "wasm32"))]
     pub ffmpeg_path: Option<std::path::PathBuf>,
+
+    /// GPU video decode context of the renderer's device, if it has one.
+    ///
+    /// Not a persisted setting: injected right before players are created.
+    #[cfg(with_gpu_video)]
+    #[serde(skip)]
+    pub gpu_video: GpuVideoContextHandle,
+}
+
+/// Shared handle to a [`re_gpu_video::GpuVideoContext`], if the renderer's device has one.
+///
+/// Compares and hashes by identity so [`DecodeSettings`] keeps its derives.
+#[cfg(with_gpu_video)]
+#[derive(Clone, Default)]
+pub struct GpuVideoContextHandle(pub Option<std::sync::Arc<re_gpu_video::GpuVideoContext>>);
+
+#[cfg(with_gpu_video)]
+impl std::fmt::Debug for GpuVideoContextHandle {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self.0 {
+            Some(context) => write!(f, "GpuVideoContextHandle({})", context.backend_name()),
+            None => write!(f, "GpuVideoContextHandle(None)"),
+        }
+    }
+}
+
+#[cfg(with_gpu_video)]
+impl PartialEq for GpuVideoContextHandle {
+    fn eq(&self, other: &Self) -> bool {
+        match (&self.0, &other.0) {
+            (Some(a), Some(b)) => std::sync::Arc::ptr_eq(a, b),
+            (None, None) => true,
+            _ => false,
+        }
+    }
+}
+
+#[cfg(with_gpu_video)]
+impl Eq for GpuVideoContextHandle {}
+
+#[cfg(with_gpu_video)]
+impl std::hash::Hash for GpuVideoContextHandle {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.0.as_ref().map(std::sync::Arc::as_ptr).hash(state);
+    }
 }
 
 impl std::fmt::Display for DecodeHardwareAcceleration {

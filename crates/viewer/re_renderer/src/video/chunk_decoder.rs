@@ -66,7 +66,11 @@ fn gpu_texture_format_for_frame_content(content: &FrameContent) -> wgpu::Texture
             }
         }
         _ => {
-            gpu_texture_format_for_decoded_frame_content(content)
+            match content {
+                FrameContent::Decoded(content) => gpu_texture_format_for_decoded_frame_content(content),
+                // The GPU-decoded NV12 frame gets converted to RGBA.
+                FrameContent::GpuTexture(_) => wgpu::TextureFormat::Rgba8Unorm,
+            }
         }
     }
 }
@@ -142,9 +146,66 @@ pub fn copy_frame_to_texture(
             }
         }
         _ => {
-            copy_decoded_video_frame_to_texture(ctx, frame, target_texture)
+            match frame {
+                FrameContent::Decoded(frame) => {
+                    copy_decoded_video_frame_to_texture(ctx, frame, target_texture)
+                }
+                FrameContent::GpuTexture(frame) => {
+                    convert_gpu_texture_frame_to_texture(ctx, frame, target_texture)
+                }
+            }
         }
     }
+}
+
+/// Converts a GPU-decoded NV12 frame into the RGBA target texture, without leaving the GPU.
+#[cfg(not(target_arch = "wasm32"))]
+fn convert_gpu_texture_frame_to_texture(
+    ctx: &RenderContext,
+    frame: &re_gpu_video::DecodedFrame,
+    target_texture: &GpuTexture,
+) -> Result<SourceImageDataFormat, VideoPlayerError> {
+    use crate::resource_managers::{
+        Nv12PlaneConversionTask, YuvMatrixCoefficients, YuvPixelLayout, YuvRange,
+    };
+
+    re_tracing::profile_function!();
+
+    let range = if frame.color.full_range {
+        YuvRange::Full
+    } else {
+        YuvRange::Limited
+    };
+    let coefficients = match frame.color.matrix_coefficients {
+        re_gpu_video::MatrixCoefficients::Bt601 => YuvMatrixCoefficients::Bt601,
+        re_gpu_video::MatrixCoefficients::Bt709 => YuvMatrixCoefficients::Bt709,
+        re_gpu_video::MatrixCoefficients::Unspecified => {
+            // The common guess: HD content is BT.709, SD content is BT.601.
+            if frame.height > 576 {
+                YuvMatrixCoefficients::Bt709
+            } else {
+                YuvMatrixCoefficients::Bt601
+            }
+        }
+    };
+
+    Nv12PlaneConversionTask::new(
+        ctx,
+        range,
+        coefficients,
+        &frame.y,
+        &frame.uv,
+        target_texture,
+    )
+    .map_err(|err| VideoPlayerError::TextureUploadError(err.to_string()))?
+    .convert_planes_to_texture(ctx)
+    .map_err(|err| VideoPlayerError::TextureUploadError(err.to_string()))?;
+
+    Ok(SourceImageDataFormat::Yuv {
+        layout: YuvPixelLayout::Y_UV420,
+        coefficients,
+        range,
+    })
 }
 
 #[cfg(target_arch = "wasm32")]

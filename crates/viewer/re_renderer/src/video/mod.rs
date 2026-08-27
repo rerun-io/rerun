@@ -192,10 +192,20 @@ impl Video {
         let decoder_entry = match players.entry(player_stream_id) {
             Entry::Occupied(occupied_entry) => occupied_entry.into_mut(),
             Entry::Vacant(vacant_entry) => {
+                #[cfg_attr(web, expect(unused_mut))]
+                let mut decode_settings = self.decode_settings.clone();
+                #[cfg(native)]
+                {
+                    // The GPU video context lives on the render context,
+                    // which isn't in reach where the settings are created.
+                    decode_settings.gpu_video =
+                        re_video::GpuVideoContextHandle(render_context.gpu_video().cloned());
+                }
+
                 let new_player = match VideoPlayer::new(
                     &self.debug_name,
                     &self.video_description,
-                    &self.decode_settings,
+                    &decode_settings,
                 ) {
                     Ok(player) => player,
                     Err(err) => return FrameDecodingOutput::error(err),

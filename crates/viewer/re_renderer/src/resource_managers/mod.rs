@@ -21,4 +21,4 @@ pub use texture_3d::{
 pub use texture_manager::{
     AlphaChannelUsage, GpuTexture2D, TextureManager2D, TextureManager2DError,
 };
-pub use yuv_converter::{YuvMatrixCoefficients, YuvPixelLayout, YuvRange};
+pub use yuv_converter::{Nv12PlaneConversionTask, YuvMatrixCoefficients, YuvPixelLayout, YuvRange};

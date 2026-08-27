@@ -357,6 +357,7 @@ impl Parser {
                 )
             }),
             setup_slot: outcome.setup_slot,
+            scratch_slot: outcome.scratch_slot,
             long_term_frame_idx: outcome.long_term_frame_idx,
             frame_num: first.header.frame_num,
             poc: poc.poc(),

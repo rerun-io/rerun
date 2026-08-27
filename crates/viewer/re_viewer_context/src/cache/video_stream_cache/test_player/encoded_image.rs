@@ -81,6 +81,7 @@ fn playable_stream(cache: &mut VideoStreamCache, store: &EntityDb) -> SharablePl
             re_video::DecodeSettings {
                 hw_acceleration: Default::default(),
                 ffmpeg_path: Some(std::path::PathBuf::from("/not/used")),
+                ..Default::default()
             },
             blob_component,
             re_video::VideoCodec::ImageSequence(media_type),

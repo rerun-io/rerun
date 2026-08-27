@@ -191,6 +191,9 @@ impl AppOptions {
                 .video
                 .override_ffmpeg_path
                 .then(|| std::path::PathBuf::from(&self.video.ffmpeg_path)),
+
+            // The GPU video context is injected later, at video player creation.
+            ..Default::default()
         }
     }
 }

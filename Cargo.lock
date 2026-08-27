@@ -10824,6 +10824,7 @@ dependencies = [
  "poll-promise",
  "re_async",
  "re_byte_size",
+ "re_gpu_video",
  "re_int",
  "re_log",
  "re_mp4",

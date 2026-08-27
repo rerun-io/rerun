@@ -315,12 +315,12 @@ fn create_frame(
     };
 
     Ok(Frame {
-        content: FrameContent {
+        content: FrameContent::Decoded(crate::decode::DecodedFrameContent {
             data,
             width: picture.width(),
             height: picture.height(),
             format,
-        },
+        }),
         info: FrameInfo {
             is_sync: submitted_chunk.map(|chunk| chunk.is_sync),
             frame_nr: submitted_chunk.map(|chunk| chunk.frame_nr),

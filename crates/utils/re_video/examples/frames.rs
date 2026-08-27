@@ -115,7 +115,10 @@ fn main() {
                 .open(output_dir.join(format!("{i:0width$}.ppm")))
                 .expect("failed to open file");
 
-            let frame = &frame.content;
+            let re_video::FrameContent::Decoded(frame) = &frame.content else {
+                re_log::error_once!("GPU-texture frame writing is not supported");
+                continue;
+            };
             match frame.format {
                 re_video::PixelFormat::Rgb8Unorm => {
                     write_ppm_rgb24(&mut file, frame.width, frame.height, &frame.data);

@@ -2,8 +2,8 @@
 //! construction (spec 8.2.4), and reference picture marking (spec 8.2.5).
 //!
 //! Also owns the DPB slot assignment: every reference frame occupies one slot from
-//! decode until it is unmarked. Non-reference frames never occupy a slot, the backend
-//! decodes them straight to an output image.
+//! decode until it is unmarked. Non-reference frames get a scratch slot nothing
+//! references, see [`MarkOutcome::scratch_slot`].
 
 use h264_reader::nal::slice::{
     DecRefPicMarking, MemoryManagementControlOperation, ModificationOfPicNums,
@@ -66,6 +66,10 @@ pub struct CurrentFrame {
 pub struct MarkOutcome {
     /// The slot the current frame gets decoded into, `None` for non-reference frames.
     pub setup_slot: Option<u8>,
+
+    /// A free slot for non-reference frames to activate, `None` when `setup_slot` is set.
+    /// See [`super::ops::DecodeInfo::scratch_slot`].
+    pub scratch_slot: Option<u8>,
 
     /// Set when the current frame was marked as a long-term reference.
     pub long_term_frame_idx: Option<u16>,
@@ -362,7 +366,10 @@ impl Dpb {
         marking: Option<&DecRefPicMarking>,
     ) -> Result<MarkOutcome, ParseError> {
         let Some(marking) = marking else {
-            return Ok(MarkOutcome::default());
+            return Ok(MarkOutcome {
+                scratch_slot: Some(self.allocate_slot()?),
+                ..MarkOutcome::default()
+            });
         };
 
         let mut freed = Vec::new();
@@ -433,6 +440,7 @@ impl Dpb {
 
         Ok(MarkOutcome {
             setup_slot: Some(setup_slot),
+            scratch_slot: None,
             long_term_frame_idx,
             freed,
         })

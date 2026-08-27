@@ -246,7 +246,7 @@ impl DecoderCore {
             self.semaphore.submit(*queue, cmd, None)?
         };
 
-        let (source_image, source_layer) = active.images.readback_source(info.setup_slot);
+        let (source_image, source_layer) = active.images.readback_source(info.activated_slot());
         Ok(SubmittedDecode {
             decode_value,
             source: CopySource {

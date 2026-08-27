@@ -26,8 +26,20 @@ pub fn init() {
     }
 
     {
+        let virtpath = Path::new("shader/conversions/nv12_plane_converter.wgsl");
+        let content = include_str!("../shader/conversions/nv12_plane_converter.wgsl").into();
+        fs.create_file(virtpath, content).unwrap();
+    }
+
+    {
         let virtpath = Path::new("shader/conversions/yuv_converter.wgsl");
         let content = include_str!("../shader/conversions/yuv_converter.wgsl").into();
+        fs.create_file(virtpath, content).unwrap();
+    }
+
+    {
+        let virtpath = Path::new("shader/conversions/yuv_srgb_conversion.wgsl");
+        let content = include_str!("../shader/conversions/yuv_srgb_conversion.wgsl").into();
         fs.create_file(virtpath, content).unwrap();
     }
 

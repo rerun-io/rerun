@@ -625,12 +625,12 @@ impl FrameBuffer {
         );
 
         Some(Frame {
-            content: FrameContent {
+            content: FrameContent::Decoded(crate::decode::DecodedFrameContent {
                 data,
                 width,
                 height,
                 format: pixel_format.clone(),
-            },
+            }),
             info: FrameInfo {
                 is_sync: Some(frame_info.is_sync),
                 frame_nr: Some(frame_info.frame_nr),
@@ -769,14 +769,14 @@ fn read_ffmpeg_output(
 
                 let frame = buffer.on_frame(pixel_format, frame_info_rx, ffmpeg_frame)?;
 
+                if let FrameContent::Decoded(crate::decode::DecodedFrameContent {
+                    width,
+                    height,
+                    format,
+                    ..
+                }) = &frame.content
                 {
                     // Log
-                    let FrameContent {
-                        width,
-                        height,
-                        format,
-                        ..
-                    } = &frame.content;
                     re_log::trace!(
                         "{debug_name} received frame {frame_num}: source {source:?} dts {dts:?} pts {pts:?} fmt {format:?} size {width}x{height}. buffered: {num_buffered}, outstanding: {num_outstanding}",
                         source = frame.info.source,
