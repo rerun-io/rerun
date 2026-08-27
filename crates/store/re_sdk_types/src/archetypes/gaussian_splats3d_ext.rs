@@ -9,16 +9,20 @@ use crate::encodings::Quaternion;
 
 /// The names of the PLY properties used by 3D Gaussian Splatting (3DGS) training checkpoints,
 /// as produced by the reference INRIA implementation and most tools that followed it.
+///
+/// The ones `Points3D` also understands come from [`crate::ply`], so the two agree.
 mod prop {
-    pub const X: &str = "x";
-    pub const Y: &str = "y";
-    pub const Z: &str = "z";
+    use crate::ply;
+
+    pub const X: &str = ply::PROP_X;
+    pub const Y: &str = ply::PROP_Y;
+    pub const Z: &str = ply::PROP_Z;
 
     /// Vestigial normals, always zero in practice. Read nowhere, but expected in the header.
     pub const NORMALS: [&str; 3] = ["nx", "ny", "nz"];
 
     /// The degree-0 (DC) spherical harmonics coefficients, one per RGB channel.
-    pub const F_DC: [&str; 3] = ["f_dc_0", "f_dc_1", "f_dc_2"];
+    pub const F_DC: [&str; 3] = [ply::PROP_SH_DC_0, ply::PROP_SH_DC_1, ply::PROP_SH_DC_2];
 
     /// Prefix of the higher-degree spherical harmonics coefficients, `f_rest_0` and up.
     ///
@@ -26,10 +30,10 @@ mod prop {
     pub const F_REST_PREFIX: &str = "f_rest_";
 
     /// Opacity as a logit; the actual opacity is `sigmoid(opacity)`.
-    pub const OPACITY: &str = "opacity";
+    pub const OPACITY: &str = ply::PROP_OPACITY;
 
     /// Per-axis scale as a logarithm; the actual scale is `exp(scale_i)`.
-    pub const SCALE: [&str; 3] = ["scale_0", "scale_1", "scale_2"];
+    pub const SCALE: [&str; 3] = [ply::PROP_SCALE_X, ply::PROP_SCALE_Y, ply::PROP_SCALE_Z];
 
     /// Rotation as an unnormalized `wxyz` quaternion.
     pub const ROT: [&str; 4] = ["rot_0", "rot_1", "rot_2", "rot_3"];
@@ -116,7 +120,7 @@ impl GaussianSplats3D {
         };
         header
             .elements
-            .get("vertex")
+            .get(crate::ply::ELEMENT_VERTEX)
             .is_some_and(has_required_splat_properties)
     }
 }
@@ -322,7 +326,7 @@ fn read_ply(
     let mut read_any_splats = false;
 
     for (key, element) in &header.elements {
-        if key != "vertex" {
+        if key != crate::ply::ELEMENT_VERTEX {
             if read_any_splats {
                 // Everything after the gaussians is ignored; we just stop reading here.
                 re_log::warn_once!("Ignoring {key:?} in .ply file{path_suffix}"); // NOLINT path at end
