@@ -904,7 +904,7 @@ impl VideoDataDescription {
             if sample.presentation_timestamp != presentation_timestamp {
                 break;
             }
-            if sample.source == source {
+            if sample.source.is_same_sample(&source) {
                 return Some(sample_idx);
             }
         }
@@ -998,14 +998,14 @@ impl SampleMetadataState {
 
     /// The full [`VideoSource`] descriptor for this sample.
     ///
-    /// For unloaded samples we don't yet know the sub-id so it's lifted to an
-    /// `Id { sub_id: None }` form.
+    /// For unloaded samples we don't yet know the sample id so it's lifted to an
+    /// `Id { sample_id: None }` form.
     pub fn source(&self) -> VideoSource {
         match self {
             Self::Present(sample) => sample.source,
             Self::Unloaded { source_id, .. } => VideoSource::Id {
-                id: *source_id,
-                sub_id: None,
+                container_id: *source_id,
+                sample_id: None,
             },
         }
     }
@@ -1031,17 +1031,20 @@ impl SampleMetadataState {
     /// container the host could unload.
     pub fn source_to_mark_in_use(&self) -> Option<VideoSource> {
         self.source_primary_id()
-            .map(|id| VideoSource::Id { id, sub_id: None })
+            .map(|container_id| VideoSource::Id {
+                container_id,
+                sample_id: None,
+            })
     }
 
     /// Reassign the primary id of this sample's source (e.g. after the host
-    /// renames or relocates the container). Sub-id is preserved.
+    /// renames or relocates the container). The sample id is preserved.
     /// No-op for `Span` sources, which don't have a primary id.
     pub fn set_source_primary_id(&mut self, new_id: Tuid) {
         match self {
             Self::Present(sample) => match &mut sample.source {
                 VideoSource::Span(_) => {}
-                VideoSource::Id { id, .. } => *id = new_id,
+                VideoSource::Id { container_id, .. } => *container_id = new_id,
             },
             Self::Unloaded { source_id, .. } => *source_id = new_id,
         }
@@ -1129,20 +1132,43 @@ pub enum VideoSource {
 
     /// An identifier pair the host resolves to the sample's bytes.
     ///
-    /// `id` identifies a container (e.g. a Rerun chunk for video streams),
-    /// `sub_id` selects the sample within. `sub_id == None` can be used if
+    /// `container_id` identifies a container (e.g. a Rerun chunk for video streams),
+    /// `sample_id` selects the sample within. `sample_id == None` can be used if
     /// the specific sample within the container is not known, for example
     /// when the sample is unloaded.
-    Id { id: Tuid, sub_id: Option<Tuid> },
+    ///
+    /// `sample_id` is used to uniquely identify a sample across a whole video.
+    Id {
+        container_id: Tuid,
+        sample_id: Option<Tuid>,
+    },
 }
 
 impl VideoSource {
     /// Identify a specific item within a container.
     #[inline]
-    pub fn id(id: Tuid, sub_id: Tuid) -> Self {
+    pub fn id(container_id: Tuid, sample_id: Tuid) -> Self {
         Self::Id {
-            id,
-            sub_id: Some(sub_id),
+            container_id,
+            sample_id: Some(sample_id),
+        }
+    }
+
+    /// Do both sources point at the same sample?
+    #[inline]
+    pub fn is_same_sample(&self, other: &Self) -> bool {
+        match (self, other) {
+            // The container id is reassigned when compactions happen,
+            // so use `sample_id` to uniquely identify the sample.
+            (
+                Self::Id {
+                    sample_id: Some(a), ..
+                },
+                Self::Id {
+                    sample_id: Some(b), ..
+                },
+            ) => a == b,
+            _ => self == other,
         }
     }
 
@@ -1156,7 +1182,10 @@ impl VideoSource {
     pub fn only_source(self) -> Self {
         match self {
             Self::Span(_) => self,
-            Self::Id { id, .. } => Self::Id { id, sub_id: None },
+            Self::Id { container_id, .. } => Self::Id {
+                container_id,
+                sample_id: None,
+            },
         }
     }
 
@@ -1168,7 +1197,7 @@ impl VideoSource {
     pub fn primary_id(&self) -> Option<Tuid> {
         match self {
             Self::Span(_) => None,
-            Self::Id { id, .. } => Some(*id),
+            Self::Id { container_id, .. } => Some(*container_id),
         }
     }
 }

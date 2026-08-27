@@ -193,8 +193,7 @@ pub enum DecoderDelayState {
 
     /// The decoder is catching up after a long seek.
     ///
-    /// The video texture is no longer updated until the decoder has caught up.
-    /// This state will only be left after reaching [`DecoderDelayState::UpToDate`] again.
+    /// The video texture is no longer updated until the decoder is back within tolerance.
     ///
     /// The tolerance value used for this is [`PlayerConfiguration::tolerated_output_delay_in_num_frames`].
     Behind,
@@ -386,7 +385,7 @@ pub fn request_keyframe_before(
 
         // Touch every source from the unloaded/keyframe up until the current index
         // so the host marks them as still in use. We don't need any specific
-        // sample's bytes here, so we pass `sub_id: None`.
+        // sample's bytes here, so we pass `sample_id: None`.
         for (_, sample) in video_description
             .samples
             .iter_index_range_clamped(Span::from_start_end(from_idx, idx + 1))
@@ -732,8 +731,8 @@ impl<T: Default> VideoPlayer<T> {
                     // since we stay ahead of the requested sample as described above.
                     if last_enqueued <= requested_sample_idx {
                         video_source.require_video_source(crate::VideoSource::Id {
-                            id: *source_id,
-                            sub_id: None,
+                            container_id: *source_id,
+                            sample_id: None,
                         });
 
                         return Err(UnloadedSampleDataError::ExpectedSampleNotLoaded.into());
@@ -742,8 +741,8 @@ impl<T: Default> VideoPlayer<T> {
                     // sample. This will request forward for when we're enqueueing
                     // infront of a sample.
                     video_source.indicate_video_source(crate::VideoSource::Id {
-                        id: *source_id,
-                        sub_id: None,
+                        container_id: *source_id,
+                        sample_id: None,
                     });
 
                     break;
@@ -1066,27 +1065,16 @@ impl<T: Default> VideoPlayer<T> {
             }
         }
 
-        match self.decoder_delay_state {
-            DecoderDelayState::UpToDate
-            | DecoderDelayState::UpToDateWithinTolerance
-            | DecoderDelayState::UpToDateToleratedEdgeOfLiveStream => {
-                if is_significantly_behind(
-                    video_description,
-                    requested_sample,
-                    requested_sample_idx,
-                    last_decoded_frame,
-                    self.config.tolerated_output_delay_in_num_frames,
-                ) {
-                    DecoderDelayState::Behind
-                } else {
-                    DecoderDelayState::UpToDateWithinTolerance
-                }
-            }
-
-            DecoderDelayState::Behind => {
-                // Only exit behind state if we caught up to the requested frame.
-                DecoderDelayState::Behind
-            }
+        if is_significantly_behind(
+            video_description,
+            requested_sample,
+            requested_sample_idx,
+            last_decoded_frame,
+            self.config.tolerated_output_delay_in_num_frames,
+        ) {
+            DecoderDelayState::Behind
+        } else {
+            DecoderDelayState::UpToDateWithinTolerance
         }
     }
 }
@@ -1122,8 +1110,9 @@ fn is_frame_of_sample(
 ) -> bool {
     frame.is_some_and(|frame| {
         frame.presentation_timestamp == sample_pts
-            && Option::zip(frame.source, sample_source)
-                .is_none_or(|(frame_source, sample_source)| frame_source == sample_source)
+            && Option::zip(frame.source, sample_source).is_none_or(
+                |(frame_source, sample_source)| frame_source.is_same_sample(&sample_source),
+            )
     })
 }
 

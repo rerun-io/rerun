@@ -38,41 +38,44 @@ pub struct VideoStoreSource<'a> {
 
 impl GetVideoSource for VideoStoreSource<'_> {
     fn get_video_chunk(&self, source: VideoSource) -> &[u8] {
-        let lookup = |id: re_log_types::external::re_tuid::Tuid,
-                      sub_id: Option<re_log_types::external::re_tuid::Tuid>|
+        let lookup = |container_id: re_log_types::external::re_tuid::Tuid,
+                      sample_id: Option<re_log_types::external::re_tuid::Tuid>|
          -> Option<&[u8]> {
             let chunk = if self.indicate {
                 self.store
-                    .use_chunk_or_report_missing(&ChunkId::from_tuid(id))
+                    .use_chunk_or_report_missing(&ChunkId::from_tuid(container_id))
             } else {
                 self.store
-                    .use_transient_chunk_or_report_missing(&ChunkId::from_tuid(id))
+                    .use_transient_chunk_or_report_missing(&ChunkId::from_tuid(container_id))
             }?;
-            let sub_id = sub_id?;
+            let sample_id = sample_id?;
             let (offsets, buffer) = re_arrow_util::blob_arrays_offsets_and_buffer(
                 chunk.raw_component_array(self.sample_component)?,
             )?;
-            let row_idx = chunk.row_index_of(re_sdk_types::RowId::from_tuid(sub_id))?;
+            let row_idx = chunk.row_index_of(re_sdk_types::RowId::from_tuid(sample_id))?;
             let start = offsets[row_idx] as usize;
             let end = offsets[row_idx + 1] as usize;
             Some(&buffer.as_slice()[start..end])
         };
 
         match source {
-            VideoSource::Id { id, sub_id } => lookup(id, sub_id).unwrap_or(&[]),
+            VideoSource::Id {
+                container_id,
+                sample_id,
+            } => lookup(container_id, sample_id).unwrap_or(&[]),
             VideoSource::Span(_) => &[],
         }
     }
 
     fn require_video_source(&self, source: VideoSource) {
         match source {
-            VideoSource::Id { id, sub_id: _ } => {
+            VideoSource::Id { container_id, .. } => {
                 if self.indicate {
                     self.store
-                        .use_chunk_or_report_missing(&ChunkId::from_tuid(id));
+                        .use_chunk_or_report_missing(&ChunkId::from_tuid(container_id));
                 } else {
                     self.store
-                        .use_transient_chunk_or_report_missing(&ChunkId::from_tuid(id));
+                        .use_transient_chunk_or_report_missing(&ChunkId::from_tuid(container_id));
                 }
             }
             VideoSource::Span(_) => {}
@@ -81,12 +84,13 @@ impl GetVideoSource for VideoStoreSource<'_> {
 
     fn indicate_video_source(&self, source: VideoSource) {
         match source {
-            VideoSource::Id { id, sub_id: _ } => {
+            VideoSource::Id { container_id, .. } => {
                 if self.indicate {
-                    self.store.use_chunk_or_indicate(&ChunkId::from_tuid(id));
+                    self.store
+                        .use_chunk_or_indicate(&ChunkId::from_tuid(container_id));
                 } else {
                     self.store
-                        .use_transient_chunk_or_report_missing(&ChunkId::from_tuid(id));
+                        .use_transient_chunk_or_report_missing(&ChunkId::from_tuid(container_id));
                 }
             }
             VideoSource::Span(_) => {}
@@ -1578,7 +1582,7 @@ impl QueuedSample {
 /// Row the sample was read from, if known.
 fn sample_row_id(sample: &SampleMetadataState) -> Option<RowId> {
     match sample.source() {
-        VideoSource::Id { sub_id, .. } => sub_id.map(RowId::from_tuid),
+        VideoSource::Id { sample_id, .. } => sample_id.map(RowId::from_tuid),
         VideoSource::Span(_) => None,
     }
 }
@@ -2824,9 +2828,9 @@ mod tests {
         // Exactly one sample, sourced from the highest-`RowId` row.
         assert_eq!(data_descr.samples.num_elements(), 1);
         let sample = data_descr.samples.iter().next().unwrap().sample().unwrap();
-        let re_video::VideoSource::Id { sub_id, .. } = sample.source else {
+        let re_video::VideoSource::Id { sample_id, .. } = sample.source else {
             panic!("expected an id-based video source");
         };
-        assert_eq!(sub_id, Some(high_row_id.as_tuid()));
+        assert_eq!(sample_id, Some(high_row_id.as_tuid()));
     }
 }
