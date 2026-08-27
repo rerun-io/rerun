@@ -107,6 +107,11 @@
     "selection_stroke_color": {
       "color": "{Blue.900}"
     },
+    // Selection-panel history back/forward buttons:
+    "history_button_fill": {"color": "{Gray.800}"},
+    "history_button_fill_hovered": {"color": "{Gray.750}"},
+    "history_button_icon_active": {"color": "{Gray.250}"},
+    "history_button_icon_inactive": {"color": "{Gray.600}"},
     "focus_outline_stroke": {
       "color": "{Blue.400}",
       "width": 1

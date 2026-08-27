@@ -35,14 +35,13 @@
 //!    actually transferred to the container and [`egui::DragAndDrop::clear_payload`] must be
 //!    called.
 
-use std::fmt::{Display, Formatter};
+use std::fmt::Formatter;
 
-use itertools::Itertools as _;
 use re_entity_db::InstancePath;
 use re_log_types::{ComponentPath, EntityPath};
 use re_ui::UiExt as _;
 
-use crate::{Contents, DataResultInteractionAddress, Item, ItemCollection};
+use crate::{Contents, DataResultInteractionAddress, Item, ItemCollection, ItemCounter};
 
 #[derive(Debug)]
 pub enum DragAndDropPayload {
@@ -302,80 +301,5 @@ fn drag_pill_frame(tokens: &re_ui::DesignTokens, droppable: bool) -> egui::Frame
         //TODO(ab): needed to avoid the pill being cropped, not sure why?
         outer_margin: egui::Margin::same(1),
         ..Default::default()
-    }
-}
-
-/// Helper class to count item types and display them in a human-readable way.
-#[derive(Debug, Default)]
-struct ItemCounter {
-    container_cnt: u32,
-    view_cnt: u32,
-    app_cnt: u32,
-    table_cnt: u32,
-    data_source_cnt: u32,
-    store_cnt: u32,
-    entity_cnt: u32,
-    instance_cnt: u32,
-    component_cnt: u32,
-    redap_server_cnt: u32,
-    redap_entry_cnt: u32,
-}
-
-impl ItemCounter {
-    fn add(&mut self, item: &Item) {
-        match item {
-            Item::Container(_) => self.container_cnt += 1,
-            Item::View(_) => self.view_cnt += 1,
-            Item::AppId(_) => self.app_cnt += 1,
-            Item::TableId(_) => self.table_cnt += 1,
-            Item::DataSource(_) => self.data_source_cnt += 1,
-            Item::StoreId(_) => self.store_cnt += 1,
-            Item::InstancePath(instance_path)
-            | Item::DataResult(DataResultInteractionAddress { instance_path, .. }) => {
-                if instance_path.is_all() {
-                    self.entity_cnt += 1;
-                } else {
-                    self.instance_cnt += 1;
-                }
-            }
-            Item::ComponentPath(_) => self.component_cnt += 1,
-            Item::RedapServer(_) => self.redap_server_cnt += 1,
-            Item::RedapEntry { .. } => self.redap_entry_cnt += 1,
-        }
-    }
-}
-
-impl Display for ItemCounter {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let count_and_names = [
-            (&self.container_cnt, "container", "containers"),
-            (&self.view_cnt, "view", "views"),
-            (&self.app_cnt, "app", "apps"),
-            (&self.data_source_cnt, "data source", "data sources"),
-            (&self.store_cnt, "store", "stores"),
-            (&self.entity_cnt, "entity", "entities"),
-            (&self.instance_cnt, "instance", "instances"),
-            (&self.component_cnt, "component", "components"),
-        ];
-
-        count_and_names
-            .into_iter()
-            .filter_map(|(&count, name_singular, name_plural)| {
-                if count > 0 {
-                    Some(format!(
-                        "{} {}",
-                        re_format::format_uint(count),
-                        if count == 1 {
-                            name_singular
-                        } else {
-                            name_plural
-                        },
-                    ))
-                } else {
-                    None
-                }
-            })
-            .join(", ")
-            .fmt(f)
     }
 }

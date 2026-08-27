@@ -30,6 +30,7 @@ mod heuristics;
 mod image_info;
 mod item;
 mod item_collection;
+mod item_counter;
 mod link_button;
 mod maybe_mut_ref;
 pub mod open_url;
@@ -99,6 +100,7 @@ pub use self::item::{
     resolve_mono_instance_path_item,
 };
 pub use self::item_collection::{ItemCollection, ItemContext};
+pub use self::item_counter::ItemCounter;
 pub use self::link_button::{
     LinkKind, ResolvedEntry, UrlNameLookup, make_url_decorator, segment_button_atoms, url_atoms,
 };

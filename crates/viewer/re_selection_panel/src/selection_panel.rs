@@ -26,6 +26,8 @@ use re_viewport_blueprint::ui::show_add_view_or_container_modal;
 use crate::defaults_ui::view_components_defaults_section_ui;
 use crate::item_heading_no_breadcrumbs::item_title_list_item;
 use crate::item_heading_with_breadcrumbs::item_heading_with_breadcrumbs;
+use crate::selection_history::SelectionHistory;
+use crate::selection_history_ui::selection_history_ui;
 use crate::view_entity_picker::ViewEntityPicker;
 use crate::visible_time_range_ui::{
     visible_time_range_ui_for_data_result, visible_time_range_ui_for_view,
@@ -59,6 +61,7 @@ impl SelectionPanel {
         view_states: &mut ViewStates,
         ui: &mut egui::Ui,
         expanded: &mut bool,
+        selection_history: &mut SelectionHistory,
     ) {
         let screen_width = ui.content_rect().width();
 
@@ -72,11 +75,28 @@ impl SelectionPanel {
                 ..Default::default()
             });
 
+        if selection_history.stack.is_empty() || ctx.selection_state().selection_changed().is_some()
+        {
+            selection_history.update_selection(ctx.selection());
+        }
+
         panel.show_collapsible(ui, expanded, |ui: &mut egui::Ui| {
             ui.panel_content(|ui| {
                 let hover = "The selection view contains information and options about \
                     the currently selected object(s)";
-                ui.panel_title_bar("Selection", Some(hover));
+
+                let selection = re_ui::PanelTitleBar::new("Selection")
+                    .hover_text(hover)
+                    .show_with_left_buttons(ui, |ui| {
+                        // The history arrows sit closer together than egui's default spacing.
+                        ui.spacing_mut().item_spacing.x = 2.0;
+                        selection_history_ui(ctx, viewport, ui, selection_history)
+                    });
+
+                if let Some(selection) = selection {
+                    ctx.command_sender()
+                        .send_system(SystemCommand::set_selection(selection));
+                }
             });
 
             // move the vertical spacing between the title and the content to _inside_ the scroll

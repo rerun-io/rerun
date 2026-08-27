@@ -40,6 +40,7 @@ re_ui.workspace = true
 re_uri.workspace = true
 re_video = { workspace = true, features = ["ffmpeg"] }
 re_viewer_context.workspace = true
+re_viewport_blueprint.workspace = true
 
 ahash.workspace = true
 anyhow.workspace = true

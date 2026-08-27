@@ -1,21 +1,21 @@
-use egui::WidgetText;
-use re_chunk::EntityPath;
-use re_data_ui::item_ui::guess_instance_path_icon;
+use egui::{Atoms, WidgetText};
 use re_entity_db::InstancePath;
 use re_entity_db::entity_db::EntityDbClass;
-use re_log_types::{ComponentPath, TableId};
+use re_log_types::{ComponentPath, EntityPath, TableId};
 use re_sdk_types::archetypes::RecordingInfo;
 use re_sdk_types::components::{Name, Timestamp};
 use re_ui::list_item::LabelContent;
 use re_ui::syntax_highlighting::{
     InstanceInBrackets as InstanceWithBrackets, SyntaxHighlightedBuilder,
 };
-use re_ui::{SyntaxHighlighting as _, icons};
+use re_ui::{HasDesignTokens as _, SyntaxHighlighting as _, icons};
 use re_viewer_context::{
     ContainerId, Contents, DataResultInteractionAddress, Item, RedapEntryKind, ViewId,
     ViewerContext, contents_name_style,
 };
 use re_viewport_blueprint::ViewportBlueprint;
+
+use crate::item_ui::guess_instance_path_icon;
 
 pub fn is_component_static(ctx: &ViewerContext<'_>, component_path: &ComponentPath) -> bool {
     let ComponentPath {
@@ -264,6 +264,17 @@ impl ItemTitle {
         content
     }
 
+    /// The icon and the label as atoms, ready for a button or a label.
+    pub fn into_atoms(self, style: &egui::Style, icon_tint: egui::Color32) -> Atoms<'static> {
+        Atoms::new((
+            self.icon
+                .as_image()
+                .fit_to_exact_size(style.tokens().small_icon_size)
+                .tint(icon_tint),
+            self.label,
+        ))
+    }
+
     fn new(name: impl Into<egui::WidgetText>, icon: &'static re_ui::Icon) -> Self {
         Self {
             label: name.into(),
@@ -283,5 +294,101 @@ impl ItemTitle {
     fn with_label_style(mut self, label_style: re_ui::LabelStyle) -> Self {
         self.label_style = Some(label_style);
         self
+    }
+}
+
+// ----------------------------------------------------------------------------
+
+/// The chevron that separates the parts of a [`QualifiedItemTitle`].
+pub fn part_separator_image(tint: egui::Color32) -> egui::Image<'static> {
+    icons::CHEVRON
+        .as_image()
+        .fit_to_exact_size(egui::Vec2::splat(8.0))
+        .tint(tint)
+}
+
+/// A title that stands on its own, made of one or more [`ItemTitle`] parts, outermost first.
+///
+/// [`ItemTitle::from_item`] assumes the surrounding UI supplies the context — the selection panel
+/// draws breadcrumbs above the title, so the title itself shows only the last part of an entity
+/// path, and only the index of an instance. In a flat list (a menu, a history) there is no such
+/// context, so here paths are spelled out in full, and an item that is made of two things — a
+/// component path, a data result — becomes two parts.
+#[must_use]
+pub struct QualifiedItemTitle {
+    /// Outermost part first.
+    pub parts: Vec<ItemTitle>,
+}
+
+impl QualifiedItemTitle {
+    pub fn from_item(
+        ctx: &ViewerContext<'_>,
+        viewport: &ViewportBlueprint,
+        style: &egui::Style,
+        item: &Item,
+    ) -> Self {
+        match item {
+            Item::InstancePath(instance_path) => Self::single(
+                ItemTitle::new(
+                    instance_path.syntax_highlighted(style),
+                    guess_instance_path_icon(ctx, instance_path),
+                )
+                .with_tooltip(instance_path.syntax_highlighted(style)),
+            ),
+
+            // Break up into entity path and component:
+            Item::ComponentPath(component_path) => {
+                let mut title = Self::from_item(
+                    ctx,
+                    viewport,
+                    style,
+                    &Item::from(component_path.entity_path.clone()),
+                );
+                title.parts.push(ItemTitle {
+                    label: component_path.component.syntax_highlighted(style).into(),
+                    ..ItemTitle::from_component_path(ctx, component_path)
+                });
+                title
+            }
+
+            // Break up into view and instance path:
+            Item::DataResult(DataResultInteractionAddress {
+                view_id,
+                instance_path,
+                visualizer: _, // Can't distinguish visualizer here since we don't name them.
+            }) => {
+                let mut title = Self::from_item(ctx, viewport, style, &Item::View(*view_id));
+                title.parts.extend(
+                    Self::from_item(
+                        ctx,
+                        viewport,
+                        style,
+                        &Item::InstancePath(instance_path.clone()),
+                    )
+                    .parts,
+                );
+                title
+            }
+
+            _ => Self::single(ItemTitle::from_item(ctx, viewport, style, item)),
+        }
+    }
+
+    /// All parts as atoms, the separator between them, ready for a button or a label.
+    pub fn into_atoms(self, style: &egui::Style, icon_tint: egui::Color32) -> Atoms<'static> {
+        let mut atoms = Atoms::default();
+
+        for (i, part) in self.parts.into_iter().enumerate() {
+            if i != 0 {
+                atoms.push_right(part_separator_image(icon_tint));
+            }
+            atoms.extend_right(part.into_atoms(style, icon_tint));
+        }
+
+        atoms
+    }
+
+    fn single(title: ItemTitle) -> Self {
+        Self { parts: vec![title] }
     }
 }

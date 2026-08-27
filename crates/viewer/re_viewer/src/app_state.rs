@@ -67,6 +67,13 @@ pub struct AppState {
     #[serde(skip)]
     pub blueprint_undo_state: HashMap<StoreId, BlueprintUndoState>,
 
+    /// The selection panel's back/forward history for each recording.
+    ///
+    /// Kept per recording so that stepping back never jumps you to a different recording.
+    /// Created lazily on first use with a given store.
+    #[serde(skip)]
+    pub selection_histories: HashMap<StoreId, re_selection_panel::SelectionHistory>,
+
     selection_panel: re_selection_panel::SelectionPanel,
     time_panel: re_time_panel::TimePanel,
     blueprint_time_panel: re_time_panel::TimePanel,
@@ -148,6 +155,7 @@ impl Default for AppState {
             time_controls: Default::default(),
             app_caches: Default::default(),
             blueprint_undo_state: Default::default(),
+            selection_histories: Default::default(),
             blueprint_time_control: Default::default(),
             selection_panel: Default::default(),
             time_panel: Default::default(),
@@ -381,7 +389,7 @@ impl AppState {
                 );
             }
 
-            Route::LocalRecording { recording_id: _ } => {
+            Route::LocalRecording { recording_id } => {
                 // `viewport_ui` is `Some` iff `active_store_context` is `Some`.
                 let (Some(store_context), Some(viewport_ui)) = (active_store_context, viewport_ui)
                 else {
@@ -393,6 +401,7 @@ impl AppState {
 
                 let Self {
                     blueprint_undo_state,
+                    selection_histories,
                     blueprint_time_control,
                     selection_panel,
                     time_panel,
@@ -600,6 +609,7 @@ impl AppState {
                     view_states,
                     ui,
                     &mut selection_expanded,
+                    selection_histories.entry(recording_id.clone()).or_default(),
                 );
                 if selection_expanded != selection_was_expanded {
                     // The user dragged the resize handle past the panel's limits to collapse/expand it:
@@ -1094,6 +1104,9 @@ impl AppState {
             .retain(|store_id, _| store_hub.store_bundle().contains(store_id));
 
         self.blueprint_undo_state
+            .retain(|store_id, _| store_hub.store_bundle().contains(store_id));
+
+        self.selection_histories
             .retain(|store_id, _| store_hub.store_bundle().contains(store_id));
 
         if let Some(preview_state) = &mut self.view_states.preview_state {

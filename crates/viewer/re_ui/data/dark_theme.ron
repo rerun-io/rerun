@@ -107,6 +107,11 @@
     "selection_stroke_color": {
       "color": "{Blue.900}" // TODO(emilk): should we unify this with text_color_on_primary?
     },
+    // Selection-panel history back/forward buttons:
+    "history_button_fill": {"color": "{Gray.250}"},
+    "history_button_fill_hovered": {"color": "{Gray.300}"},
+    "history_button_icon_active": {"color": "{Gray.800}"},
+    "history_button_icon_inactive": {"color": "{Gray.450}"},
     "focus_outline_stroke": {
       "color": "{Blue.400}",
       "width": 1

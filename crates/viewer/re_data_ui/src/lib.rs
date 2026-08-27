@@ -29,6 +29,7 @@ mod transform_frames_ui;
 mod video_ui;
 
 mod extra_data_ui;
+pub mod item_title;
 pub mod item_ui;
 
 pub use self::component_ui_registry::{add_to_registry, register_component_uis};

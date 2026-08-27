@@ -3,13 +3,15 @@
 mod defaults_ui;
 mod item_heading_no_breadcrumbs;
 mod item_heading_with_breadcrumbs;
-mod item_title;
+mod selection_history;
+mod selection_history_ui;
 mod selection_panel;
 mod view_entity_picker;
 mod view_space_origin_ui;
 mod visible_time_range_ui;
 mod visualizer_ui;
 
+pub use selection_history::SelectionHistory;
 pub use selection_panel::SelectionPanel;
 pub use visualizer_ui::SourceSelectorContext;
 
@@ -40,7 +42,14 @@ mod test {
             );
 
             let mut selection_panel = SelectionPanel::default();
-            selection_panel.show_panel(ctx, &blueprint, &mut Default::default(), ui, &mut true);
+            selection_panel.show_panel(
+                ctx,
+                &blueprint,
+                &mut Default::default(),
+                ui,
+                &mut true,
+                &mut Default::default(),
+            );
         });
     }
 }

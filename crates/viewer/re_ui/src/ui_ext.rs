@@ -424,53 +424,28 @@ pub trait UiExt {
     /// This title bar is meant to be used in a panel with proper inner margin and clip rectangle
     /// set.
     ///
-    /// Use [`UiExt::panel_title_bar_with_buttons`] to display buttons in the title bar.
+    /// Shorthand for [`crate::PanelTitleBar`], which also supports buttons.
     fn panel_title_bar(&mut self, label: &str, hover_text: Option<&str>) {
         self.panel_title_bar_with_buttons(label, hover_text, |_ui| {});
     }
 
-    /// Static title bar used to separate panels into section with custom buttons when hovered.
-    ///h
+    /// Static title bar used to separate panels into section, with buttons at its right edge.
+    ///
     /// This title bar is meant to be used in a panel with proper inner margin and clip rectangle
     /// set.
+    ///
+    /// Shorthand for [`crate::PanelTitleBar`], which also supports buttons after the label.
     fn panel_title_bar_with_buttons<R>(
         &mut self,
         label: &str,
         hover_text: Option<&str>,
         add_right_buttons: impl FnOnce(&mut egui::Ui) -> R,
     ) -> R {
-        let tokens = self.tokens();
-        let ui = self.ui_mut();
-
-        ui.allocate_ui_with_layout(
-            egui::vec2(ui.available_width(), tokens.title_bar_height()),
-            egui::Layout::left_to_right(egui::Align::Center),
-            |ui| {
-                // draw horizontal separator lines
-                let rect = egui::Rect::from_x_y_ranges(
-                    ui.full_span(),
-                    ui.available_rect_before_wrap().y_range(),
-                );
-
-                ui.painter()
-                    .rect_filled(rect, 0.0, ui.tokens().section_header_color);
-
-                // draw label
-                let resp = ui.strong(label);
-                if let Some(hover_text) = hover_text {
-                    resp.on_hover_text(hover_text);
-                }
-
-                // draw hover buttons
-                ui.allocate_ui_with_layout(
-                    ui.available_size(),
-                    egui::Layout::right_to_left(egui::Align::Center),
-                    add_right_buttons,
-                )
-                .inner
-            },
-        )
-        .inner
+        let mut title_bar = crate::PanelTitleBar::new(label);
+        if let Some(hover_text) = hover_text {
+            title_bar = title_bar.hover_text(hover_text);
+        }
+        title_bar.show_with_right_buttons(self.ui_mut(), add_right_buttons)
     }
 
     /// Replacement for [`egui::CollapsingHeader`] that respect our style.

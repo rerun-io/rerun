@@ -9118,6 +9118,7 @@ dependencies = [
  "re_uri",
  "re_video",
  "re_viewer_context",
+ "re_viewport_blueprint",
  "rexif",
  "unindent",
 ]

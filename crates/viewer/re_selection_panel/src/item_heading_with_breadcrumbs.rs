@@ -22,7 +22,7 @@ use re_ui::{ReButton, Size, UiExt as _, icons, list_item, menu::menu_style};
 use re_viewer_context::{ContainerId, Contents, Item, ViewId, ViewerContext};
 use re_viewport_blueprint::ViewportBlueprint;
 
-use crate::item_title::ItemTitle;
+use re_data_ui::item_title::ItemTitle;
 
 /// The popup grows with its content (e.g. when the user expands a subtree),
 /// up to this size — beyond it, the content scrolls.
