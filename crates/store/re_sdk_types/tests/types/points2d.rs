@@ -1,5 +1,3 @@
-use std::path::{Path, PathBuf};
-
 use re_sdk_types::archetypes::Points2D;
 use re_sdk_types::components::{self, ShowLabels};
 use re_sdk_types::{Archetype as _, AsComponents as _, ComponentBatch as _};
@@ -65,9 +63,8 @@ fn roundtrip() {
     similar_asserts::assert_eq!(expected, deserialized);
 }
 
-fn example_ply_path() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../examples/assets/example.ply")
-}
+/// The example `.ply` fixture, embedded so that moving it is a compile error.
+const EXAMPLE_PLY: &str = include_str!("../../../../../examples/assets/example.ply");
 
 #[test]
 fn ply_parses_optional_properties_and_ignores_extra_data() {
@@ -167,10 +164,7 @@ end_header
 
 #[test]
 fn ply_rejects_three_dimensional_headers() {
-    let path = example_ply_path();
-    let contents = std::fs::read(path).unwrap();
-
-    let err = Points2D::from_file_contents(&contents).unwrap_err();
+    let err = Points2D::from_file_contents(EXAMPLE_PLY.as_bytes()).unwrap_err();
 
     assert_eq!(err.kind(), std::io::ErrorKind::InvalidData);
 }

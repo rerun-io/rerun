@@ -1,5 +1,3 @@
-use std::path::{Path, PathBuf};
-
 use re_sdk_types::archetypes::Points3D;
 use re_sdk_types::{Archetype as _, AsComponents as _, ComponentBatch as _, components};
 
@@ -62,18 +60,17 @@ fn roundtrip() {
     similar_asserts::assert_eq!(expected, deserialized);
 }
 
-fn example_ply_path() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../examples/assets/example.ply")
-}
+/// The example `.ply` fixture, embedded so that moving it is a compile error.
+const EXAMPLE_PLY: &str = include_str!("../../../../../examples/assets/example.ply");
 
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn ply_from_path_matches_contents_for_example_fixture() {
-    let path = example_ply_path();
-    let contents = std::fs::read(&path).unwrap();
+    let mut file = tempfile::NamedTempFile::new().unwrap();
+    std::io::Write::write_all(&mut file, EXAMPLE_PLY.as_bytes()).unwrap();
 
-    let from_path = Points3D::from_file_path(&path).unwrap();
-    let from_contents = Points3D::from_file_contents(&contents).unwrap();
+    let from_path = Points3D::from_file_path(file.path()).unwrap();
+    let from_contents = Points3D::from_file_contents(EXAMPLE_PLY.as_bytes()).unwrap();
 
     similar_asserts::assert_eq!(from_path, from_contents);
 }
