@@ -18,15 +18,39 @@
 //! This crate is native only, web builds must not include it.
 
 mod context;
+mod decoder;
 mod setup;
+mod sorter;
 mod vulkan;
 
 pub use context::GpuVideoContext;
+pub use decoder::{DecodedFrame, H264Decoder};
 pub use setup::VideoDeviceSetup;
 pub use vulkan::h264::ParseError;
 
 #[doc(hidden)]
 pub use vulkan::{CpuDecoder, CpuFrame};
+
+/// Color interpretation of decoded frames, as declared by the bitstream (SPS VUI).
+#[derive(Clone, Copy, Debug, Default)]
+pub struct ColorProperties {
+    /// Full range (0-255) samples instead of the limited/video range (16-235).
+    pub full_range: bool,
+
+    pub matrix_coefficients: MatrixCoefficients,
+}
+
+/// YUV→RGB matrix coefficients of [`ColorProperties`].
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum MatrixCoefficients {
+    /// The stream doesn't say. Callers pick a default, commonly by resolution.
+    #[default]
+    Unspecified,
+
+    Bt601,
+
+    Bt709,
+}
 
 /// H.264 decode capabilities of a device, as reported by the backend.
 #[derive(Clone, Debug)]

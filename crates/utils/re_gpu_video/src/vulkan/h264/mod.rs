@@ -162,10 +162,6 @@ impl Parser {
 
     /// `max_num_reorder_frames` of the active SPS: how many frames may precede a frame
     /// in decoding order but follow it in presentation order.
-    #[cfg_attr(
-        not(test),
-        expect(dead_code, reason = "wired into the public decoder with the sorter")
-    )]
     pub fn reorder_delay(&self) -> usize {
         self.reorder_delay
     }

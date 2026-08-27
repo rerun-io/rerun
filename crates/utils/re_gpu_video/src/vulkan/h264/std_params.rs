@@ -24,6 +24,11 @@ pub struct SpsStdParams {
     scaling_lists: Option<Box<std_video::StdVideoH264ScalingLists>>,
 }
 
+// SAFETY: The struct's pointers refer into heap allocations it owns,
+// nothing is tied to the creating thread.
+#[expect(unsafe_code)]
+unsafe impl Send for SpsStdParams {}
+
 impl SpsStdParams {
     pub fn std(&self) -> &std_video::StdVideoH264SequenceParameterSet {
         &self.std
@@ -151,6 +156,11 @@ pub struct PpsStdParams {
     std: std_video::StdVideoH264PictureParameterSet,
     _scaling_lists: Option<Box<std_video::StdVideoH264ScalingLists>>,
 }
+
+// SAFETY: The struct's pointers refer into heap allocations it owns,
+// nothing is tied to the creating thread.
+#[expect(unsafe_code)]
+unsafe impl Send for PpsStdParams {}
 
 impl PpsStdParams {
     pub fn std(&self) -> &std_video::StdVideoH264PictureParameterSet {
