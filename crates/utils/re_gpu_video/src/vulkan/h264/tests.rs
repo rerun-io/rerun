@@ -3,7 +3,7 @@
 //! references, memory management control operations, `frame_num` gaps).
 //!
 //! The fixtures live in `tests/assets/`, see `generate.sh` there. The traces list
-//! every [`DecodeOp`] per access unit; changes to them must be re-reviewed against
+//! every [`DecodeOp`] per access unit. Changes to them must be re-reviewed against
 //! the spec or a reference decoder.
 
 use std::fmt::Write as _;

@@ -304,7 +304,7 @@ fn create_native_wgpu_setup(
 
     // TODO(#8475): Add the ability to pick adapter by name (see `create_new_wgpu_setup`).
     //
-    // No window exists yet, so no surface to check compatibility against — same as before,
+    // No window exists yet, so no surface to check compatibility against. Same as before,
     // the instance never had a display handle on native.
     let adapter = re_renderer::device_caps::select_adapter(&adapters, backends, None)?;
 

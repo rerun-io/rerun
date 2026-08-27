@@ -69,7 +69,7 @@ pub struct DecodeInfo {
     pub references: Vec<ReferenceInfo>,
 
     /// The reference picture lists of the first slice, mainly for tracing and debugging.
-    /// The backend binds `references`; the driver re-derives per-slice lists
+    /// The backend binds `references`, and the driver re-derives per-slice lists
     /// from the slice headers in the bitstream.
     pub ref_lists: RefLists,
 }
