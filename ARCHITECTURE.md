@@ -257,7 +257,6 @@ Update instructions:
 | re_memory            | Run-time memory tracking and profiling.                                                       |
 | re_mutex             | A wrapper around `parking_lot::Mutex` useful for debugging deadlocks.                         |
 | re_perf_telemetry    | In and out of process performance profiling utilities for Rerun & Redap                       |
-| re_ply               | Shared helpers for PLY file classification.                                                   |
 | re_quota_channel     | A mpsc channel that applies backpressure based on byte size                                   |
 | re_ros_msg           | Parsing and deserializing ROS   messages                                                      |
 | re_rvl               | Codecs for depth compression including RVL and PNG.                                           |

@@ -22,6 +22,7 @@ mod importer_directory;
 mod importer_rrd;
 #[cfg(feature = "urdf")]
 mod importer_urdf;
+mod ply;
 
 // This importer currently only works when loading the entire dataset directory, and we cannot do that on web yet.
 #[cfg(all(feature = "lerobot", not(target_arch = "wasm32")))]

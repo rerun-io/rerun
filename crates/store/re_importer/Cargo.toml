@@ -83,7 +83,6 @@ re_log_types.workspace = true
 re_log.workspace = true
 re_mcap = { workspace = true, optional = true }
 re_mp4_reader = { workspace = true, optional = true }
-re_ply.workspace = true
 re_quota_channel.workspace = true
 re_sdk_types = { workspace = true, features = ["ecolor", "glam"] }
 re_tracing.workspace = true
@@ -99,6 +98,7 @@ indexmap.workspace = true
 itertools.workspace = true
 mcap = { workspace = true, optional = true }
 parking_lot.workspace = true
+ply-rs-bw.workspace = true
 rayon.workspace = true
 serde.workspace = true
 thiserror.workspace = true

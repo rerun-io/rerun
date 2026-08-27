@@ -349,20 +349,22 @@ fn load_ply(
                 .map_err(anyhow::Error::from)?;
                 builder = builder.with_archetype(RowId::new(), timepoint, &gaussians);
             } else {
-                match re_ply::classify_geometry_from_bytes(contents).map_err(anyhow::Error::from)? {
-                    re_ply::PlyGeometryClass::Points2D => {
+                match crate::ply::classify_geometry_from_bytes(contents)
+                    .map_err(anyhow::Error::from)?
+                {
+                    crate::ply::PlyGeometryClass::Points2D => {
                         let points2d =
                             re_sdk_types::archetypes::Points2D::from_file_contents(contents)
                                 .map_err(anyhow::Error::from)?;
                         builder = builder.with_archetype(RowId::new(), timepoint, &points2d);
                     }
-                    re_ply::PlyGeometryClass::Points3D => {
+                    crate::ply::PlyGeometryClass::Points3D => {
                         let points3d =
                             re_sdk_types::archetypes::Points3D::from_file_contents(contents)
                                 .map_err(anyhow::Error::from)?;
                         builder = builder.with_archetype(RowId::new(), timepoint, &points3d);
                     }
-                    re_ply::PlyGeometryClass::MeshOrAsset3D => {
+                    crate::ply::PlyGeometryClass::MeshOrAsset3D => {
                         let asset3d = re_sdk_types::archetypes::Asset3D::from_file_contents(
                             contents.to_vec(),
                             Some(re_sdk_types::components::MediaType::ply()),

@@ -5,6 +5,72 @@ use smallvec::smallvec;
 use crate::mesh::{self, CpuMesh};
 use crate::{CpuModel, Label, RenderContext, Rgba32Unmul};
 
+const ELEMENT_VERTEX: &str = "vertex";
+const ELEMENT_FACE: &str = "face";
+
+const PROP_X: &str = "x";
+const PROP_Y: &str = "y";
+const PROP_Z: &str = "z";
+const PROP_NX: &str = "nx";
+const PROP_NY: &str = "ny";
+const PROP_NZ: &str = "nz";
+const PROP_RED: &str = "red";
+const PROP_GREEN: &str = "green";
+const PROP_BLUE: &str = "blue";
+const PROP_ALPHA: &str = "alpha";
+
+/// The `vertex` properties we know how to read.
+const MESH_VERTEX_PROPERTIES: [&str; 10] = [
+    PROP_X, PROP_Y, PROP_Z, PROP_NX, PROP_NY, PROP_NZ, PROP_RED, PROP_GREEN, PROP_BLUE, PROP_ALPHA,
+];
+
+/// Which property of the `face` element holds the vertex indices.
+///
+/// `vertex_indices` is what the PLY spec says, but `vertex_index` is common enough in the wild
+/// that we accept it too.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum PlyFaceIndexProperty {
+    VertexIndices,
+    VertexIndex,
+}
+
+impl PlyFaceIndexProperty {
+    const PROPERTY_NAMES: [&'static str; 2] = ["vertex_indices", "vertex_index"];
+
+    #[inline]
+    const fn property_name(self) -> &'static str {
+        match self {
+            Self::VertexIndices => Self::PROPERTY_NAMES[0],
+            Self::VertexIndex => Self::PROPERTY_NAMES[1],
+        }
+    }
+}
+
+fn classify_face_index_property(
+    element_def: &ply_rs_bw::ply::ElementDef,
+) -> Option<PlyFaceIndexProperty> {
+    [
+        PlyFaceIndexProperty::VertexIndices,
+        PlyFaceIndexProperty::VertexIndex,
+    ]
+    .into_iter()
+    .find(|property| {
+        element_def
+            .properties
+            .contains_key(property.property_name())
+    })
+}
+
+/// A payload target for elements that have to be consumed, but whose contents we discard.
+#[derive(Default)]
+struct IgnoredElement;
+
+impl ply_rs_bw::ply::PropertyAccess for IgnoredElement {
+    fn new() -> Self {
+        Self
+    }
+}
+
 #[derive(thiserror::Error, Debug)]
 pub enum PlyImportError {
     #[error("Error loading PLY mesh: {0}")]
@@ -124,7 +190,7 @@ impl ply_rs_bw::ply::PropertyAccess for ParsedMeshVertex {
         use ply_rs_bw::ply::PropertyAccessResult;
 
         match property_name {
-            re_ply::PROP_X => {
+            PROP_X => {
                 if let Some(value) = property.to_f32_lossy() {
                     self.x = Some(value);
                     PropertyAccessResult::Set
@@ -132,7 +198,7 @@ impl ply_rs_bw::ply::PropertyAccess for ParsedMeshVertex {
                     PropertyAccessResult::UnsupportedType
                 }
             }
-            re_ply::PROP_Y => {
+            PROP_Y => {
                 if let Some(value) = property.to_f32_lossy() {
                     self.y = Some(value);
                     PropertyAccessResult::Set
@@ -140,7 +206,7 @@ impl ply_rs_bw::ply::PropertyAccess for ParsedMeshVertex {
                     PropertyAccessResult::UnsupportedType
                 }
             }
-            re_ply::PROP_Z => {
+            PROP_Z => {
                 if let Some(value) = property.to_f32_lossy() {
                     self.z = Some(value);
                     PropertyAccessResult::Set
@@ -148,7 +214,7 @@ impl ply_rs_bw::ply::PropertyAccess for ParsedMeshVertex {
                     PropertyAccessResult::UnsupportedType
                 }
             }
-            re_ply::PROP_NX => {
+            PROP_NX => {
                 if let Some(value) = property.to_f32_lossy() {
                     self.nx = Some(value);
                     PropertyAccessResult::Set
@@ -156,7 +222,7 @@ impl ply_rs_bw::ply::PropertyAccess for ParsedMeshVertex {
                     PropertyAccessResult::Ignored
                 }
             }
-            re_ply::PROP_NY => {
+            PROP_NY => {
                 if let Some(value) = property.to_f32_lossy() {
                     self.ny = Some(value);
                     PropertyAccessResult::Set
@@ -164,7 +230,7 @@ impl ply_rs_bw::ply::PropertyAccess for ParsedMeshVertex {
                     PropertyAccessResult::Ignored
                 }
             }
-            re_ply::PROP_NZ => {
+            PROP_NZ => {
                 if let Some(value) = property.to_f32_lossy() {
                     self.nz = Some(value);
                     PropertyAccessResult::Set
@@ -172,7 +238,7 @@ impl ply_rs_bw::ply::PropertyAccess for ParsedMeshVertex {
                     PropertyAccessResult::Ignored
                 }
             }
-            re_ply::PROP_RED => {
+            PROP_RED => {
                 if let Some(value) = property.to_u8_color_lossy() {
                     self.red = Some(value);
                     PropertyAccessResult::Set
@@ -180,7 +246,7 @@ impl ply_rs_bw::ply::PropertyAccess for ParsedMeshVertex {
                     PropertyAccessResult::Ignored
                 }
             }
-            re_ply::PROP_GREEN => {
+            PROP_GREEN => {
                 if let Some(value) = property.to_u8_color_lossy() {
                     self.green = Some(value);
                     PropertyAccessResult::Set
@@ -188,7 +254,7 @@ impl ply_rs_bw::ply::PropertyAccess for ParsedMeshVertex {
                     PropertyAccessResult::Ignored
                 }
             }
-            re_ply::PROP_BLUE => {
+            PROP_BLUE => {
                 if let Some(value) = property.to_u8_color_lossy() {
                     self.blue = Some(value);
                     PropertyAccessResult::Set
@@ -196,7 +262,7 @@ impl ply_rs_bw::ply::PropertyAccess for ParsedMeshVertex {
                     PropertyAccessResult::Ignored
                 }
             }
-            re_ply::PROP_ALPHA => {
+            PROP_ALPHA => {
                 if let Some(value) = property.to_u8_color_lossy() {
                     self.alpha = Some(value);
                     PropertyAccessResult::Set
@@ -223,9 +289,9 @@ struct ParsedMeshFace<const USE_VERTEX_INDICES: bool> {
 impl<const USE_VERTEX_INDICES: bool> ParsedMeshFace<USE_VERTEX_INDICES> {
     const fn property_name() -> &'static str {
         if USE_VERTEX_INDICES {
-            re_ply::PROP_VERTEX_INDICES
+            PlyFaceIndexProperty::VertexIndices.property_name()
         } else {
-            re_ply::PROP_VERTEX_INDEX
+            PlyFaceIndexProperty::VertexIndex.property_name()
         }
     }
 
@@ -277,7 +343,7 @@ fn face_unknown_props(element_def: &ply_rs_bw::ply::ElementDef) -> BTreeSet<Stri
     element_def
         .properties
         .keys()
-        .filter(|name| !re_ply::is_mesh_face_index_property(name.as_str()))
+        .filter(|name| !PlyFaceIndexProperty::PROPERTY_NAMES.contains(&name.as_str()))
         .cloned()
         .collect()
 }
@@ -286,7 +352,7 @@ fn vertex_unknown_props(element_def: &ply_rs_bw::ply::ElementDef) -> BTreeSet<St
     element_def
         .properties
         .keys()
-        .filter(|name| !re_ply::is_mesh_vertex_property(name.as_str()))
+        .filter(|name| !MESH_VERTEX_PROPERTIES.contains(&name.as_str()))
         .cloned()
         .collect()
 }
@@ -321,7 +387,7 @@ fn parse_ply_mesh_from_buffer(buffer: &[u8]) -> std::io::Result<ParsedPlyMesh> {
 fn parse_ply_mesh<T: std::io::BufRead>(reader: &mut T) -> std::io::Result<ParsedPlyMesh> {
     re_tracing::profile_function!();
 
-    let ignored_element_parser = ply_rs_bw::parser::Parser::<re_ply::IgnoredElement>::new();
+    let ignored_element_parser = ply_rs_bw::parser::Parser::<IgnoredElement>::new();
     let vertex_parser = ply_rs_bw::parser::Parser::<ParsedMeshVertex>::new();
     let face_indices_parser = ply_rs_bw::parser::Parser::<ParsedMeshFace<true>>::new();
     let face_index_parser = ply_rs_bw::parser::Parser::<ParsedMeshFace<false>>::new();
@@ -335,16 +401,16 @@ fn parse_ply_mesh<T: std::io::BufRead>(reader: &mut T) -> std::io::Result<Parsed
             .map_err(std::io::Error::from)?;
         let face_index_property = header
             .elements
-            .get(re_ply::ELEMENT_FACE)
-            .and_then(re_ply::classify_face_index_property);
+            .get(ELEMENT_FACE)
+            .and_then(classify_face_index_property);
         let face_ignored_props = header
             .elements
-            .get(re_ply::ELEMENT_FACE)
+            .get(ELEMENT_FACE)
             .map(face_unknown_props)
             .unwrap_or_default();
         let vertex_ignored_props = header
             .elements
-            .get(re_ply::ELEMENT_VERTEX)
+            .get(ELEMENT_VERTEX)
             .map(vertex_unknown_props)
             .unwrap_or_default();
 
@@ -367,7 +433,7 @@ fn parse_ply_mesh<T: std::io::BufRead>(reader: &mut T) -> std::io::Result<Parsed
 
     for (_key, element_def) in &header.elements {
         match element_def.name.as_str() {
-            re_ply::ELEMENT_VERTEX => {
+            ELEMENT_VERTEX => {
                 let vertices = vertex_parser
                     .read_payload_for_element(&mut payload_reader, element_def, &header)
                     .map_err(std::io::Error::from)?;
@@ -387,11 +453,11 @@ fn parse_ply_mesh<T: std::io::BufRead>(reader: &mut T) -> std::io::Result<Parsed
                     colors.push(color);
                 }
             }
-            re_ply::ELEMENT_FACE => {
+            ELEMENT_FACE => {
                 saw_faces = true;
 
                 match face_index_property {
-                    Some(re_ply::PlyFaceIndexProperty::VertexIndices) => {
+                    Some(PlyFaceIndexProperty::VertexIndices) => {
                         let faces = face_indices_parser
                             .read_payload_for_element(&mut payload_reader, element_def, &header)
                             .map_err(std::io::Error::from)?;
@@ -404,7 +470,7 @@ fn parse_ply_mesh<T: std::io::BufRead>(reader: &mut T) -> std::io::Result<Parsed
                             triangle_indices.extend(parse_face(face));
                         }
                     }
-                    Some(re_ply::PlyFaceIndexProperty::VertexIndex) => {
+                    Some(PlyFaceIndexProperty::VertexIndex) => {
                         let faces = face_index_parser
                             .read_payload_for_element(&mut payload_reader, element_def, &header)
                             .map_err(std::io::Error::from)?;
