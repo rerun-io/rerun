@@ -4,8 +4,8 @@
 //! [`CpuWorkerMsg`] channel.
 
 use std::collections::{HashMap, HashSet};
-use std::sync::Arc;
 use std::sync::atomic::Ordering;
+use std::sync::{Arc, LazyLock};
 use std::time::Duration;
 
 use arrow::array::{RecordBatch, StringArray};
@@ -88,6 +88,21 @@ const DIRECT_FETCH_CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 /// 16 MB merged range is never falsely cancelled, while a stalled body
 /// still releases its permit.
 const DIRECT_FETCH_READ_TIMEOUT: Duration = Duration::from_secs(30);
+
+/// How long an unused connection stays in the pool before it is closed.
+const DIRECT_FETCH_POOL_IDLE_TIMEOUT: Duration = Duration::from_secs(30);
+
+/// Process-wide HTTP client for direct-URL (presigned object-store) chunk fetches.
+///
+/// Cloning is a cheap `Arc` bump that shares the same pool.
+static DIRECT_FETCH_HTTP_CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
+    reqwest::Client::builder()
+        .connect_timeout(DIRECT_FETCH_CONNECT_TIMEOUT)
+        .read_timeout(DIRECT_FETCH_READ_TIMEOUT)
+        .pool_idle_timeout(DIRECT_FETCH_POOL_IDLE_TIMEOUT)
+        .build()
+        .expect("static reqwest client config is valid")
+});
 
 /// Build a [`SegmentChunkManifest`] per segment from the `:start` column
 /// the server attaches to each `chunk_info` row when the query has a
@@ -1167,11 +1182,9 @@ pub(super) async fn chunk_stream_io_loop<T: DataframeClientAPI>(
     }
     re_log::debug!("Fetch tasks: {total_n_direct} direct, {total_n_grpc} gRPC fallback");
 
-    let http_client = reqwest::Client::builder()
-        .connect_timeout(DIRECT_FETCH_CONNECT_TIMEOUT)
-        .read_timeout(DIRECT_FETCH_READ_TIMEOUT)
-        .build()
-        .expect("static reqwest client config is valid");
+    // Reuse the process-wide client so the object-store connection pool stays
+    // warm across queries instead of paying a cold handshake on every fetch.
+    let http_client = DIRECT_FETCH_HTTP_CLIENT.clone();
     let total_tasks = total_n_direct + total_n_grpc;
     let mut tasks_completed: usize = 0;
 

@@ -1000,10 +1000,10 @@ fn read_env_usize(key: &str, default: usize) -> usize {
 ///
 /// See [`DEFAULT_DIRECT_FETCH_MAX_CONCURRENCY`] for why this bound exists.
 /// Resolved once from [`ENV_DIRECT_FETCH_MAX_CONCURRENCY`] on first use and
-/// shared process-wide (the exhausted resource — the DNS resolver,
-/// ephemeral ports, local socket stack — is per-process, and the fetch
-/// client is per-query, so a per-query cap would not bound co-tenant
-/// queries).
+/// shared process-wide: the resources it protects — the DNS resolver,
+/// ephemeral ports, the local socket stack — are per-process, and so is
+/// the fetch client, so a per-query cap would multiply across co-tenant
+/// queries.
 pub(crate) fn direct_fetch_semaphore() -> &'static tokio::sync::Semaphore {
     static SEM: std::sync::OnceLock<tokio::sync::Semaphore> = std::sync::OnceLock::new();
     SEM.get_or_init(|| {
