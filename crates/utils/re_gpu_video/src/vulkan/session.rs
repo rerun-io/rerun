@@ -54,6 +54,7 @@ pub struct VideoSession {
 
     /// Reports whether decode operations actually succeeded, when the
     /// decode queue family supports result-status queries.
+    /// One query per in-flight frame slot.
     pub query_pool: Option<vk::QueryPool>,
 
     /// The session state must be reset with a control command before the first decode.
@@ -75,7 +76,7 @@ impl VideoSession {
         coded_extent: vk::Extent2D,
         max_dpb_slots: u32,
         max_active_references: u32,
-        with_result_status_queries: bool,
+        result_status_query_count: u32,
     ) -> Result<Self, vk::Result> {
         re_tracing::profile_function!();
 
@@ -123,12 +124,12 @@ impl VideoSession {
             }
         };
 
-        let query_pool = if with_result_status_queries {
+        let query_pool = if result_status_query_count > 0 {
             let result = with_profile(std_profile_idc, |profile| {
                 let mut profile = *profile;
                 let create_info = vk::QueryPoolCreateInfo::default()
                     .query_type(vk::QueryType::RESULT_STATUS_ONLY_KHR)
-                    .query_count(1)
+                    .query_count(result_status_query_count)
                     .push_next(&mut profile);
                 // SAFETY: Plain creation, destroyed in drop.
                 unsafe { device.raw.create_query_pool(&create_info, None) }

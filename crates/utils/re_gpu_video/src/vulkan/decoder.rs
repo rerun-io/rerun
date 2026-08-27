@@ -5,11 +5,16 @@
 //! decode submission. [`TextureDecoder`] copies decoded frames into fresh NV12
 //! images handed to wgpu, [`CpuDecoder`] reads them back into CPU pixel buffers.
 //!
-//! v1 sync model: one decode submission and one output-copy submission per frame,
-//! ordered by a timeline semaphore the host then waits on. This runs on the
-//! caller's (decoder worker) thread, never on the render thread.
+//! Sync model: one decode submission and one output-copy submission per frame,
+//! ordered by a timeline semaphore. [`TextureDecoder`] keeps up to
+//! [`PIPELINE_DEPTH`] frames in flight and only hands a frame to wgpu once the
+//! semaphore confirms its copy completed, so the host rarely blocks; the
+//! per-frame resources (command pools, bitstream buffer, result-status query)
+//! live in slots reused round-robin, and reusing a slot whose work is still
+//! running is what blocks. [`CpuDecoder`] waits for every frame. All of this
+//! runs on the caller's (decoder worker) thread, never on the render thread.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 
 use ash::vk;
@@ -21,7 +26,7 @@ use super::Shared;
 use super::device::{CommandPool, Device};
 use super::dpb::DecodeImages;
 use super::h264::{DecodeInfo, DecodeOp, ParseError, Parser, PpsStdParams, SpsStdParams};
-use super::output::OutputPool;
+use super::output::{OutputImage, OutputPool};
 use super::record::{self, CopySource};
 use super::session::{SessionParameters, VideoSession, with_profile_list};
 use super::sync::TimelineSemaphore;
@@ -29,6 +34,12 @@ use super::sync::TimelineSemaphore;
 /// H.264 streams never need more DPB slots than 16 reference frames plus the
 /// current one, whatever the hardware would offer.
 const MAX_DPB_SLOTS: u32 = 17;
+
+/// How many frames may be in flight on the GPU before decoding blocks the host.
+///
+/// Sizes the per-frame resource slots, the result-status query pool, and the
+/// output-image ring in distinct mode.
+const PIPELINE_DEPTH: usize = 4;
 
 /// One decoded frame read back to the CPU, in decode order.
 pub struct CpuFrame {
@@ -65,8 +76,29 @@ struct ActiveSession {
 /// The output copy must wait for `decode_value` on the core's semaphore.
 struct SubmittedDecode {
     decode_value: u64,
+    slot_index: usize,
     source: CopySource,
     color: ColorProperties,
+}
+
+/// Per-in-flight-frame resources, reused round-robin.
+struct FrameSlot {
+    decode_pool: CommandPool,
+    copy_pool: CommandPool,
+    bitstream: Option<super::alloc::Buffer>,
+
+    /// Copy semaphore value of the slot's last use, 0 when never used.
+    /// Everything in the slot is free to reuse once it is reached.
+    copy_value: u64,
+}
+
+/// A submitted decode whose completion has not been observed yet.
+struct InFlightDecode {
+    copy_value: u64,
+
+    /// The result-status query to read once `copy_value` is reached:
+    /// the frame's slot index.
+    query_index: u32,
 }
 
 /// The session, parsing, and decode-submission machinery shared by the frontends.
@@ -83,10 +115,16 @@ struct DecoderCore {
 
     active: Option<ActiveSession>,
 
-    bitstream: Option<super::alloc::Buffer>,
+    slots: Vec<FrameSlot>,
+    next_slot: usize,
 
-    decode_pool: CommandPool,
-    copy_pool: CommandPool,
+    /// Submitted decodes not yet observed complete, in submission order.
+    in_flight: VecDeque<InFlightDecode>,
+
+    /// The latest pending copy reading each (image, layer), by semaphore value.
+    /// A decode writing that layer, or referencing it in coincide mode (the copy
+    /// restores its layout), must wait for the copy on the GPU.
+    pending_layer_copies: Vec<(vk::Image, u32, u64)>,
 }
 
 impl DecoderCore {
@@ -97,6 +135,17 @@ impl DecoderCore {
             .copy
             .map_or(decode_family, |copy| copy.family_index);
 
+        let slots = (0..PIPELINE_DEPTH)
+            .map(|_| {
+                Ok(FrameSlot {
+                    decode_pool: CommandPool::new(shared.device.clone(), decode_family)?,
+                    copy_pool: CommandPool::new(shared.device.clone(), copy_family)?,
+                    bitstream: None,
+                    copy_value: 0,
+                })
+            })
+            .collect::<Result<Vec<_>, vk::Result>>()?;
+
         Ok(Self {
             semaphore: TimelineSemaphore::new(shared.device.clone())?,
             parser: Parser::new(shared.capabilities.max_dpb_slots.min(MAX_DPB_SLOTS) as u8),
@@ -104,9 +153,10 @@ impl DecoderCore {
             pps: HashMap::new(),
             parameters_dirty: false,
             active: None,
-            bitstream: None,
-            decode_pool: CommandPool::new(shared.device.clone(), decode_family)?,
-            copy_pool: CommandPool::new(shared.device.clone(), copy_family)?,
+            slots,
+            next_slot: 0,
+            in_flight: VecDeque::new(),
+            pending_layer_copies: Vec::new(),
             shared,
         })
     }
@@ -149,6 +199,54 @@ impl DecoderCore {
         self.parser.reset();
         // The session and images survive: an IDR re-activates the DPB slots,
         // and a changed SPS recreates them anyway.
+    }
+
+    /// Retires in-flight decodes the semaphore already passed: reads their
+    /// result-status queries and prunes the pending-copy tracking.
+    /// Returns `completed` for the caller to compare frames against.
+    fn retire_completed(&mut self, completed: u64) -> Result<u64, DecodeError> {
+        while let Some(front) = self.in_flight.front() {
+            if front.copy_value > completed {
+                break;
+            }
+            let query_index = front.query_index;
+            self.in_flight.pop_front();
+            self.check_decode_status(query_index)?;
+        }
+        self.pending_layer_copies
+            .retain(|&(_, _, value)| value > completed);
+        Ok(completed)
+    }
+
+    /// Retires whatever completed so far, without blocking.
+    fn poll_completed(&mut self) -> Result<u64, DecodeError> {
+        let completed = self.semaphore.completed()?;
+        self.retire_completed(completed)
+    }
+
+    /// Blocks until the semaphore reaches `value`, then retires.
+    fn wait_and_retire(&mut self, value: u64) -> Result<u64, DecodeError> {
+        self.semaphore.wait(value)?;
+        // Later submissions may have completed in the meantime.
+        let completed = self.semaphore.completed()?.max(value);
+        self.retire_completed(completed)
+    }
+
+    /// Blocks until every submission completed, then retires.
+    fn drain(&mut self) -> Result<u64, DecodeError> {
+        self.wait_and_retire(self.semaphore.last_value())
+    }
+
+    /// The next resource slot, waiting out its previous use. This wait is the
+    /// backpressure bounding the number of frames in flight.
+    fn acquire_slot(&mut self) -> Result<usize, DecodeError> {
+        let index = self.next_slot;
+        self.next_slot = (index + 1) % self.slots.len();
+        let previous_use = self.slots[index].copy_value;
+        if previous_use > 0 {
+            self.wait_and_retire(previous_use)?;
+        }
+        Ok(index)
     }
 
     /// Validates the frame against the device limits, (re)creates session state as
@@ -222,11 +320,32 @@ impl DecoderCore {
 
         self.ensure_session(std_profile_idc, coded_extent, dpb_slots)?;
         self.ensure_parameters()?;
-        let (bitstream_size, slice_offsets) = self.upload_bitstream(info, data)?;
+        let slot_index = self.acquire_slot()?;
+        let (bitstream_size, slice_offsets) = self.upload_bitstream(slot_index, info, data)?;
 
         let active = self.active.as_mut().expect("ensured above");
+        active.images.select_next_output();
 
-        let cmd = self.decode_pool.begin()?;
+        // Pending copies may still be reading what this decode touches: the
+        // output it writes, and in coincide mode its reference layers, whose
+        // layout the copy restores. Wait for them on the GPU.
+        let write_target = active.images.readback_source(info.activated_slot());
+        let wait_value = self
+            .pending_layer_copies
+            .iter()
+            .filter(|&&(image, layer, _)| {
+                (image, layer) == write_target
+                    || (active.images.coincide
+                        && image == active.images.dpb_image()
+                        && info
+                            .references
+                            .iter()
+                            .any(|reference| u32::from(reference.slot) == layer))
+            })
+            .map(|&(_, _, value)| value)
+            .max();
+
+        let cmd = self.slots[slot_index].decode_pool.begin()?;
         record::record_decode(
             &self.shared.device,
             cmd,
@@ -235,20 +354,26 @@ impl DecoderCore {
             &mut active.images,
             &record::FrameDecode {
                 info,
-                bitstream_buffer: self.bitstream.as_ref().expect("uploaded above").raw,
+                bitstream_buffer: self.slots[slot_index]
+                    .bitstream
+                    .as_ref()
+                    .expect("uploaded above")
+                    .raw,
                 bitstream_size,
                 slice_offsets: &slice_offsets,
+                query_index: slot_index as u32,
             },
         );
-        self.decode_pool.end()?;
+        self.slots[slot_index].decode_pool.end()?;
         let decode_value = {
             let queue = self.shared.decode_queue.lock();
-            self.semaphore.submit(*queue, cmd, None)?
+            self.semaphore.submit(*queue, cmd, wait_value)?
         };
 
-        let (source_image, source_layer) = active.images.readback_source(info.activated_slot());
+        let (source_image, source_layer) = write_target;
         Ok(SubmittedDecode {
             decode_value,
+            slot_index,
             source: CopySource {
                 image: source_image,
                 layer: source_layer,
@@ -261,17 +386,18 @@ impl DecoderCore {
     }
 
     /// Records and submits the output copy of a decoded frame on the copy queue,
-    /// blocks until it completed, and checks the decode's result status.
-    fn submit_copy_and_wait(
+    /// without waiting. Returns the copy's semaphore value.
+    fn submit_copy(
         &mut self,
         decode: &SubmittedDecode,
         record_copy: impl FnOnce(&Device, vk::CommandBuffer),
-    ) -> Result<(), DecodeError> {
+    ) -> Result<u64, DecodeError> {
         re_tracing::profile_function!();
 
-        let cmd = self.copy_pool.begin()?;
+        let slot = &self.slots[decode.slot_index];
+        let cmd = slot.copy_pool.begin()?;
         record_copy(&self.shared.device, cmd);
-        self.copy_pool.end()?;
+        slot.copy_pool.end()?;
         let copy_value = {
             let queue = self
                 .shared
@@ -283,8 +409,37 @@ impl DecoderCore {
                 .submit(*queue, cmd, Some(decode.decode_value))?
         };
 
-        self.semaphore.wait(copy_value)?;
-        self.check_decode_status()
+        self.slots[decode.slot_index].copy_value = copy_value;
+        self.in_flight.push_back(InFlightDecode {
+            copy_value,
+            query_index: decode.slot_index as u32,
+        });
+
+        // Track the copy's read of its source layer for later decodes.
+        let key = (decode.source.image, decode.source.layer);
+        if let Some(entry) = self
+            .pending_layer_copies
+            .iter_mut()
+            .find(|(image, layer, _)| (*image, *layer) == key)
+        {
+            entry.2 = copy_value;
+        } else {
+            self.pending_layer_copies.push((key.0, key.1, copy_value));
+        }
+
+        Ok(copy_value)
+    }
+
+    /// [`Self::submit_copy`], then blocks until the copy completed and the
+    /// decode's result status is checked.
+    fn submit_copy_and_wait(
+        &mut self,
+        decode: &SubmittedDecode,
+        record_copy: impl FnOnce(&Device, vk::CommandBuffer),
+    ) -> Result<(), DecodeError> {
+        let copy_value = self.submit_copy(decode, record_copy)?;
+        self.wait_and_retire(copy_value)?;
+        Ok(())
     }
 
     /// Recreates the session and its images when the SPS demands different ones.
@@ -303,8 +458,11 @@ impl DecoderCore {
             return Ok(());
         }
 
-        // The per-frame host wait means nothing is in flight, safe to drop.
+        // In-flight decodes reference the session, its query pool, and the images:
+        // finish them before dropping anything.
+        self.drain()?;
         self.active = None;
+        self.pending_layer_copies.clear();
 
         let queue_plan = &self.shared.queue_plan;
         let decode_family = queue_plan.decode.family_index;
@@ -323,7 +481,11 @@ impl DecoderCore {
                 .capabilities
                 .max_active_references
                 .min(dpb_slots - 1),
-            queue_plan.decode_supports_result_status,
+            if queue_plan.decode_supports_result_status {
+                PIPELINE_DEPTH as u32
+            } else {
+                0
+            },
         )?;
         let images = DecodeImages::new(
             self.shared.device.clone(),
@@ -331,6 +493,7 @@ impl DecoderCore {
             coded_extent,
             dpb_slots,
             self.shared.video_caps.dpb_and_output_coincide,
+            PIPELINE_DEPTH as u32,
             decode_family,
             copy_family,
         )?;
@@ -346,10 +509,19 @@ impl DecoderCore {
 
     /// Recreates the session parameters from all known SPS/PPS when needed.
     fn ensure_parameters(&mut self) -> Result<(), DecodeError> {
-        let active = self.active.as_mut().expect("session ensured first");
-        if !self.parameters_dirty && active.parameters.is_some() {
-            return Ok(());
+        {
+            let active = self.active.as_ref().expect("session ensured first");
+            if !self.parameters_dirty && active.parameters.is_some() {
+                return Ok(());
+            }
         }
+
+        // In-flight decodes reference the current parameters object:
+        // finish them before dropping it.
+        if !self.in_flight.is_empty() {
+            self.drain()?;
+        }
+        let active = self.active.as_mut().expect("session ensured first");
 
         // The std structs' pointers refer into the entries owned by the maps,
         // which stay alive over the creation call.
@@ -367,12 +539,13 @@ impl DecoderCore {
         Ok(())
     }
 
-    /// Writes the frame's slices into the bitstream buffer, each prefixed with a
-    /// 3-byte start code, zero-padded to the device's size alignment.
+    /// Writes the frame's slices into the slot's bitstream buffer, each prefixed
+    /// with a 3-byte start code, zero-padded to the device's size alignment.
     ///
     /// Returns the aligned size and the slice offsets within the buffer.
     fn upload_bitstream(
         &mut self,
+        slot_index: usize,
         info: &DecodeInfo,
         data: &[u8],
     ) -> Result<(u64, Vec<u32>), DecodeError> {
@@ -393,12 +566,13 @@ impl DecoderCore {
             .max(1);
         let aligned_size = size.next_multiple_of(alignment);
 
-        if self
+        let slot = &mut self.slots[slot_index];
+        if slot
             .bitstream
             .as_ref()
             .is_none_or(|buffer| buffer.size < aligned_size)
         {
-            self.bitstream = None;
+            slot.bitstream = None;
             let capacity = aligned_size.next_power_of_two().max(1 << 16);
             let buffer = with_profile_list(
                 self.sps
@@ -416,10 +590,10 @@ impl DecoderCore {
                     super::alloc::Buffer::new_host(self.shared.device.clone(), &create_info)
                 },
             )?;
-            self.bitstream = Some(buffer);
+            slot.bitstream = Some(buffer);
         }
 
-        let mapped = self
+        let mapped = slot
             .bitstream
             .as_mut()
             .expect("created above")
@@ -436,9 +610,9 @@ impl DecoderCore {
         Ok((aligned_size, slice_offsets))
     }
 
-    /// Reads the result-status query of the frame just waited on, when supported.
+    /// Reads the result-status query of a completed decode, when supported.
     #[expect(unsafe_code)]
-    fn check_decode_status(&self) -> Result<(), DecodeError> {
+    fn check_decode_status(&self, query_index: u32) -> Result<(), DecodeError> {
         let Some(query_pool) = self
             .active
             .as_ref()
@@ -449,11 +623,11 @@ impl DecoderCore {
 
         // A `VkQueryResultStatusKHR` value: negative means the decode failed.
         let mut status = [0_i32];
-        // SAFETY: The query was written by the submission the caller waited on.
+        // SAFETY: The query was written by a submission the caller waited on.
         unsafe {
             self.shared.device.raw.get_query_pool_results(
                 query_pool,
-                0,
+                query_index,
                 &mut status,
                 vk::QueryResultFlags::WITH_STATUS_KHR,
             )?;
@@ -467,8 +641,7 @@ impl DecoderCore {
 
 impl Drop for DecoderCore {
     fn drop(&mut self) {
-        // Everything is host-waited per frame, but an error may have left a
-        // submission in flight: never destroy resources under the GPU.
+        // Frames may still be in flight: never destroy resources under the GPU.
         if let Err(err) = self.semaphore.wait_idle() {
             re_log::warn!("Failed to wait for the video decoder to go idle: {err}");
         }
@@ -499,8 +672,24 @@ fn color_properties(sps: &SeqParameterSet) -> ColorProperties {
 /// The Vulkan half of [`crate::H264Decoder`], which adds the reordering to
 /// presentation order.
 pub struct TextureDecoder {
+    // Dropped before the pending frames' images: its drop waits for the GPU.
     core: DecoderCore,
     pool: OutputPool,
+
+    /// Frames whose GPU work may still be running, in decode order.
+    /// Wrapped for wgpu and emitted once their copy value completed.
+    pending: VecDeque<PendingFrame>,
+}
+
+/// A frame submitted to the GPU, held back until its output copy completed.
+struct PendingFrame {
+    copy_value: u64,
+    image: OutputImage,
+    display: [u32; 2],
+    poc: i32,
+    pts: i64,
+    is_idr: bool,
+    color: ColorProperties,
 }
 
 impl TextureDecoder {
@@ -509,15 +698,19 @@ impl TextureDecoder {
         Ok(Self {
             core: DecoderCore::new(shared)?,
             pool,
+            pending: VecDeque::new(),
         })
     }
 
-    /// Decodes one annex-b access unit, returning its frames in decode order,
+    /// Decodes one annex-b access unit, returning finished frames in decode order,
     /// each keyed by its picture order count (the presentation order key within
     /// a group delimited by IDR frames).
     ///
-    /// Blocks until the hardware finished. Any error leaves the decoder waiting
-    /// for an IDR frame, like [`Parser::push_access_unit`].
+    /// Frames whose GPU work is still running are held back and returned by a
+    /// later call (or by [`Self::flush`]), so the returned frames may stem from
+    /// earlier access units. Blocks only when [`PIPELINE_DEPTH`] frames are
+    /// already in flight. Any error leaves the decoder waiting for an IDR frame,
+    /// like [`Parser::push_access_unit`].
     pub fn push_access_unit(
         &mut self,
         data: &[u8],
@@ -525,11 +718,10 @@ impl TextureDecoder {
     ) -> Result<Vec<(i64, DecodedFrame)>, DecodeError> {
         re_tracing::profile_function!();
 
-        let mut frames = Vec::new();
         for info in self.core.parse(data)? {
             let decode = self.core.submit_decode(&info, data)?;
             let image = self.pool.acquire(&decode.source)?;
-            self.core.submit_copy_and_wait(&decode, |device, cmd| {
+            let copy_value = self.core.submit_copy(&decode, |device, cmd| {
                 record::record_output_to_image(
                     device,
                     cmd,
@@ -538,22 +730,72 @@ impl TextureDecoder {
                     image.extent,
                 );
             })?;
-            let frame = self
-                .pool
-                .wrap(image, &decode.source, pts, info.is_idr, decode.color);
-            frames.push((i64::from(info.poc), frame));
+            self.pending.push_back(PendingFrame {
+                copy_value,
+                image,
+                display: decode.source.display,
+                poc: info.poc,
+                pts,
+                is_idr: info.is_idr,
+                color: decode.color,
+            });
         }
-        Ok(frames)
+
+        let completed = self.core.poll_completed()?;
+        Ok(self.take_completed(completed))
+    }
+
+    /// Waits for all in-flight GPU work and returns the finished frames:
+    /// the stream ended.
+    pub fn flush(&mut self) -> Result<Vec<(i64, DecodedFrame)>, DecodeError> {
+        let completed = self.core.drain()?;
+        Ok(self.take_completed(completed))
+    }
+
+    /// Wraps and emits the pending frames whose copy completed.
+    fn take_completed(&mut self, completed: u64) -> Vec<(i64, DecodedFrame)> {
+        let mut frames = Vec::new();
+        while self
+            .pending
+            .front()
+            .is_some_and(|frame| frame.copy_value <= completed)
+        {
+            let frame = self.pending.pop_front().expect("checked above");
+            let wrapped = self.pool.wrap(
+                frame.image,
+                frame.display,
+                frame.pts,
+                frame.is_idr,
+                frame.color,
+            );
+            frames.push((i64::from(frame.poc), wrapped));
+        }
+        frames
     }
 
     /// Drops all frame state for a seek. The next access unit must hold an IDR frame.
     pub fn reset(&mut self) {
+        // Finish in-flight work so the pending images are safe to recycle.
+        // A decode failure of a stale frame doesn't matter here, only wait errors.
+        if let Err(err) = self.core.drain() {
+            re_log::warn_once!("Error while draining the video decoder for a seek: {err}");
+        }
+        for frame in self.pending.drain(..) {
+            self.pool.recycle(frame.image);
+        }
         self.core.reset();
     }
 
     /// See [`Parser::reorder_delay`].
     pub fn reorder_delay(&self) -> usize {
         self.core.parser.reorder_delay()
+    }
+
+    /// How many frames may be in flight on the GPU, and so held back by
+    /// [`Self::push_access_unit`], before decoding blocks on the oldest.
+    #[expect(clippy::unused_self)]
+    pub fn pipeline_depth(&self) -> usize {
+        PIPELINE_DEPTH
     }
 }
 

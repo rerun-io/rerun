@@ -2,9 +2,11 @@
 //!
 //! DPB slots are layers of one NV12 array image (always legal, also on hardware
 //! without `SEPARATE_REFERENCE_IMAGES`), with the parser's slot index doubling as
-//! the layer index. On distinct-mode hardware decode output goes to a separate
-//! single-layer image; on coincide-mode hardware the DPB layer itself is the output,
-//! with one spare layer for non-reference frames that occupy no DPB slot.
+//! the layer index. On distinct-mode hardware decode output goes to a ring of
+//! separate single-layer images, one per in-flight frame, so a decode never has
+//! to wait for the previous frame's output copy. On coincide-mode hardware the
+//! DPB layer itself is the output, with one spare layer for non-reference frames
+//! that occupy no DPB slot.
 
 use std::sync::Arc;
 
@@ -21,8 +23,11 @@ pub struct DecodeImages {
     dpb_view: vk::ImageView,
     dpb: super::alloc::Image,
 
-    /// Output image and its view, `None` on coincide-mode hardware.
-    output: Option<(super::alloc::Image, vk::ImageView)>,
+    /// Output-image ring, empty on coincide-mode hardware.
+    outputs: Vec<(super::alloc::Image, vk::ImageView)>,
+
+    /// The ring entry the current frame decodes into, see [`Self::select_next_output`].
+    current_output: usize,
 
     pub coded_extent: vk::Extent2D,
     pub coincide: bool,
@@ -44,6 +49,7 @@ impl DecodeImages {
         coded_extent: vk::Extent2D,
         dpb_slots: u32,
         coincide: bool,
+        output_ring_size: u32,
         decode_queue_family: u32,
         copy_queue_family: u32,
     ) -> Result<Self, vk::Result> {
@@ -115,36 +121,46 @@ impl DecodeImages {
         let dpb = image(dpb_usage, dpb_layers, coincide)?;
         let dpb_view = view(&dpb, vk::ImageViewType::TYPE_2D_ARRAY, dpb_layers)?;
 
-        let output = if coincide {
-            None
-        } else {
-            let output = match image(
-                vk::ImageUsageFlags::VIDEO_DECODE_DST_KHR | readback_usage,
-                1,
-                true,
-            ) {
-                Ok(output) => output,
-                Err(err) => {
-                    // SAFETY: Nothing references the view yet.
-                    unsafe { device.raw.destroy_image_view(dpb_view, None) };
-                    return Err(err);
+        let mut outputs = Vec::new();
+        if !coincide {
+            #[expect(unsafe_code)]
+            let cleanup = |outputs: &Vec<(super::alloc::Image, vk::ImageView)>| {
+                // SAFETY: Nothing references the views yet.
+                unsafe {
+                    device.raw.destroy_image_view(dpb_view, None);
+                    for (_, output_view) in outputs {
+                        device.raw.destroy_image_view(*output_view, None);
+                    }
                 }
             };
-            match view(&output, vk::ImageViewType::TYPE_2D, 1) {
-                Ok(output_view) => Some((output, output_view)),
-                Err(err) => {
-                    // SAFETY: Nothing references the view yet.
-                    unsafe { device.raw.destroy_image_view(dpb_view, None) };
-                    return Err(err);
+            for _ in 0..output_ring_size.max(1) {
+                let output = match image(
+                    vk::ImageUsageFlags::VIDEO_DECODE_DST_KHR | readback_usage,
+                    1,
+                    true,
+                ) {
+                    Ok(output) => output,
+                    Err(err) => {
+                        cleanup(&outputs);
+                        return Err(err);
+                    }
+                };
+                match view(&output, vk::ImageViewType::TYPE_2D, 1) {
+                    Ok(output_view) => outputs.push((output, output_view)),
+                    Err(err) => {
+                        cleanup(&outputs);
+                        return Err(err);
+                    }
                 }
             }
-        };
+        }
 
         Ok(Self {
             device,
             dpb_view,
             dpb,
-            output,
+            outputs,
+            current_output: 0,
             coded_extent,
             coincide,
             needs_layout_init: true,
@@ -173,12 +189,20 @@ impl DecodeImages {
         })
     }
 
+    /// Rotates to the next output-ring image in distinct mode, a no-op in
+    /// coincide mode. Call once per frame before recording its decode.
+    pub fn select_next_output(&mut self) {
+        if !self.outputs.is_empty() {
+            self.current_output = (self.current_output + 1) % self.outputs.len();
+        }
+    }
+
     /// The picture resource decode output is written to.
     pub fn dst_resource(&self, setup_slot: Option<u8>) -> vk::VideoPictureResourceInfoKHR<'static> {
         if let Some(layer) = self.dst_layer(setup_slot) {
             self.dpb_resource(layer)
         } else {
-            let (_, output_view) = self.output.as_ref().expect("distinct mode has an output");
+            let (_, output_view) = &self.outputs[self.current_output];
             vk::VideoPictureResourceInfoKHR::default()
                 .coded_extent(self.coded_extent)
                 .image_view_binding(*output_view)
@@ -190,14 +214,16 @@ impl DecodeImages {
         if let Some(layer) = self.dst_layer(setup_slot) {
             (self.dpb.raw, layer)
         } else {
-            let (output, _) = self.output.as_ref().expect("distinct mode has an output");
+            let (output, _) = &self.outputs[self.current_output];
             (output.raw, 0)
         }
     }
 
-    /// The separate output image in distinct mode.
-    pub fn output_image(&self) -> Option<vk::Image> {
-        self.output.as_ref().map(|(image, _)| image.raw)
+    /// The current output-ring image in distinct mode.
+    pub fn current_output_image(&self) -> Option<vk::Image> {
+        self.outputs
+            .get(self.current_output)
+            .map(|(image, _)| image.raw)
     }
 }
 
@@ -208,7 +234,7 @@ impl Drop for DecodeImages {
         // The views go first, their images follow via field drop order.
         unsafe {
             self.device.raw.destroy_image_view(self.dpb_view, None);
-            if let Some((_, output_view)) = &self.output {
+            for (_, output_view) in &self.outputs {
                 self.device.raw.destroy_image_view(*output_view, None);
             }
         }

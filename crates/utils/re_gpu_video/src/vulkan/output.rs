@@ -83,6 +83,16 @@ impl OutputPool {
         self.create_image(extent)
     }
 
+    /// Returns an image that never made it to wgpu to the free list.
+    ///
+    /// All GPU work on it must have completed.
+    pub fn recycle(&self, image: OutputImage) {
+        let mut free = self.free.lock();
+        if free.len() < MAX_FREE_IMAGES {
+            free.push(image);
+        }
+    }
+
     fn create_image(&self, extent: vk::Extent2D) -> Result<OutputImage, vk::Result> {
         re_tracing::profile_function!();
 
@@ -124,13 +134,13 @@ impl OutputPool {
     /// its plane views.
     ///
     /// The image must have been left in `TRANSFER_DST_OPTIMAL` by the output copy,
-    /// with the copy completed (host-waited): the texture enters wgpu in the
-    /// `COPY_DST` state and wgpu's own barriers take over from there.
+    /// with the copy's completion observed on the host: the texture enters wgpu
+    /// in the `COPY_DST` state and wgpu's own barriers take over from there.
     #[expect(unsafe_code)]
     pub fn wrap(
         &self,
         image: OutputImage,
-        source: &CopySource,
+        display: [u32; 2],
         pts: i64,
         is_idr: bool,
         color: ColorProperties,
@@ -158,7 +168,8 @@ impl OutputPool {
 
         let wgpu_device = &self.device.wgpu_device;
         // SAFETY: The image was created on this device with a descriptor matching
-        // the one given here, its content is fully written and host-waited, and
+        // the one given here, its content is fully written (completion observed
+        // on the host), and
         // ownership (including deferred destruction) is handed over via the drop
         // callback. `TextureUses::COPY_DST` matches the `TRANSFER_DST_OPTIMAL`
         // layout the copy left the image in.
@@ -219,15 +230,6 @@ impl OutputPool {
             wgpu::TextureFormat::Rg8Unorm,
         );
 
-        DecodedFrame::new(
-            texture,
-            y,
-            uv,
-            source.display[0],
-            source.display[1],
-            pts,
-            is_idr,
-            color,
-        )
+        DecodedFrame::new(texture, y, uv, display[0], display[1], pts, is_idr, color)
     }
 }

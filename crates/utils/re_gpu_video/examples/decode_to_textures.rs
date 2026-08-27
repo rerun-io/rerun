@@ -100,7 +100,7 @@ fn main() {
     let mut texture_frames = texture_decoder
         .push_access_unit(&data, 0)
         .expect("decoding failed");
-    texture_frames.extend(texture_decoder.flush());
+    texture_frames.extend(texture_decoder.flush().expect("flush failed"));
 
     let mut cpu_decoder = context
         .create_h264_cpu_decoder()
