@@ -102,6 +102,7 @@ const SEEN_GAUSSIAN: u16 = SEEN_SCALE_X
     | SEEN_SH_DC_1
     | SEEN_SH_DC_2
     | SEEN_OPACITY;
+
 /// The properties that only matter when we read the color out of spherical harmonics.
 ///
 /// Note that this deliberately excludes `scale_*`: those feed the radius, which is computed
