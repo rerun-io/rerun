@@ -74,6 +74,18 @@ impl TimelineSemaphore {
         Ok(signal_value)
     }
 
+    /// The value most recently scheduled for signaling.
+    pub fn last_value(&self) -> u64 {
+        self.value
+    }
+
+    /// The value the semaphore has reached, without blocking.
+    #[expect(unsafe_code)]
+    pub fn completed(&self) -> Result<u64, vk::Result> {
+        // SAFETY: Plain counter query.
+        unsafe { self.device.raw.get_semaphore_counter_value(self.raw) }
+    }
+
     /// Blocks until the semaphore reaches `value`.
     #[expect(unsafe_code)]
     pub fn wait(&self, value: u64) -> Result<(), vk::Result> {

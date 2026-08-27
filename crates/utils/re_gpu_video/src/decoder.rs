@@ -61,8 +61,8 @@ impl DecodedFrame {
 /// Decodes H.264 access units into [`DecodedFrame`]s, in presentation order.
 ///
 /// Created via [`crate::GpuVideoContext::create_h264_decoder`].
-/// Decoding blocks on the GPU work, so this belongs on a decoder worker thread,
-/// never on the render thread.
+/// Decoding blocks on the GPU work once enough frames are in flight, so this
+/// belongs on a decoder worker thread, never on the render thread.
 pub struct H264Decoder {
     inner: DecoderInner,
     sorter: ReorderBuffer<DecodedFrame>,
@@ -84,8 +84,10 @@ impl H264Decoder {
     /// Decodes one annex-b access unit, returning zero or more frames in presentation order.
     ///
     /// Decoding must start at an IDR frame carrying its SPS/PPS. `pts` travels into
-    /// [`DecodedFrame::pts`] untouched. Any error leaves the decoder waiting for the
-    /// next IDR frame, like after [`Self::reset`].
+    /// [`DecodedFrame::pts`] untouched. A frame comes out once its GPU work finished
+    /// and its presentation order is settled, so it may take up to
+    /// [`Self::reorder_delay`] further access units. Any error leaves the decoder
+    /// waiting for the next IDR frame, like after [`Self::reset`].
     pub fn push_access_unit(
         &mut self,
         data: &[u8],
@@ -104,11 +106,21 @@ impl H264Decoder {
         Ok(out)
     }
 
-    /// Emits the remaining buffered frames: the stream ended.
-    pub fn flush(&mut self) -> Vec<DecodedFrame> {
+    /// Waits for the in-flight GPU work and emits the remaining buffered frames:
+    /// the stream ended.
+    pub fn flush(&mut self) -> Result<Vec<DecodedFrame>, DecodeError> {
         let mut out = Vec::new();
+        match &mut self.inner {
+            DecoderInner::Vulkan(decoder) => {
+                let reorder_delay = decoder.reorder_delay();
+                for (key, frame) in decoder.flush()? {
+                    self.sorter
+                        .push(key, frame.is_idr, frame, reorder_delay, &mut out);
+                }
+            }
+        }
         self.sorter.flush(&mut out);
-        out
+        Ok(out)
     }
 
     /// Drops all frame state for a seek. The next access unit must hold an IDR frame.
@@ -120,10 +132,11 @@ impl H264Decoder {
     }
 
     /// How many frames may need to be pushed beyond a frame before it comes out:
-    /// `max_num_reorder_frames` of the active SPS.
+    /// `max_num_reorder_frames` of the active SPS, plus the frames the backend
+    /// may keep in flight on the GPU.
     pub fn reorder_delay(&self) -> usize {
         match &self.inner {
-            DecoderInner::Vulkan(decoder) => decoder.reorder_delay(),
+            DecoderInner::Vulkan(decoder) => decoder.reorder_delay() + decoder.pipeline_depth(),
         }
     }
 }

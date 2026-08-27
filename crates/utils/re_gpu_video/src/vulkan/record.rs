@@ -28,6 +28,9 @@ pub struct FrameDecode<'a> {
 
     /// Offsets of the slices (at their start codes) within the buffer.
     pub slice_offsets: &'a [u32],
+
+    /// The result-status query this decode writes: the frame's resource-slot index.
+    pub query_index: u32,
 }
 
 /// The image the output copy reads the decoded frame from, left in
@@ -158,7 +161,9 @@ pub fn record_decode(
     if let Some(query_pool) = session.query_pool {
         // SAFETY: The command buffer is in recording state.
         unsafe {
-            device.raw.cmd_reset_query_pool(cmd, query_pool, 0, 1);
+            device
+                .raw
+                .cmd_reset_query_pool(cmd, query_pool, frame.query_index, 1);
         }
     }
 
@@ -180,8 +185,8 @@ pub fn record_decode(
             decode_stage,
         ));
     }
-    if let Some(output) = images.output_image() {
-        // The previous frame's content is dead, discard it.
+    if let Some(output) = images.current_output_image() {
+        // This ring image's previous content is dead, discard it.
         barriers.push(image_barrier(
             output,
             0,
@@ -192,8 +197,20 @@ pub fn record_decode(
             decode_stage,
         ));
     }
-    if !barriers.is_empty() {
-        pipeline_barrier(device, cmd, &barriers);
+    // Consecutive decode submissions overlap on the queue with no other
+    // synchronization between them: order this frame's DPB reads and writes
+    // after the previous frame's.
+    let decode_ordering = [vk::MemoryBarrier2::default()
+        .src_stage_mask(decode_stage.0)
+        .src_access_mask(decode_stage.1)
+        .dst_stage_mask(decode_stage.0)
+        .dst_access_mask(decode_stage.1)];
+    let dependency = vk::DependencyInfo::default()
+        .memory_barriers(&decode_ordering)
+        .image_memory_barriers(&barriers);
+    // SAFETY: The command buffer is in recording state.
+    unsafe {
+        device.raw.cmd_pipeline_barrier2(cmd, &dependency);
     }
 
     // The reference slots of this decode. The resources and H.264 slot infos must
@@ -289,9 +306,12 @@ pub fn record_decode(
         }
 
         if let Some(query_pool) = session.query_pool {
-            device
-                .raw
-                .cmd_begin_query(cmd, query_pool, 0, vk::QueryControlFlags::empty());
+            device.raw.cmd_begin_query(
+                cmd,
+                query_pool,
+                frame.query_index,
+                vk::QueryControlFlags::empty(),
+            );
         }
 
         let std_pic = std_picture_info(info);
@@ -311,7 +331,7 @@ pub fn record_decode(
         (device.video_decode_fns.fp().cmd_decode_video_khr)(cmd, &raw const decode_info);
 
         if let Some(query_pool) = session.query_pool {
-            device.raw.cmd_end_query(cmd, query_pool, 0);
+            device.raw.cmd_end_query(cmd, query_pool, frame.query_index);
         }
 
         let end_info = vk::VideoEndCodingInfoKHR::default();
@@ -508,9 +528,10 @@ pub fn record_output_to_image(
         device.raw.cmd_copy_image2(cmd, &copy_info);
     }
 
-    // No barrier for the destination: the host wait on the copy's semaphore value
-    // orders it against wgpu's submissions, and wgpu's own transition out of
-    // `COPY_DST` makes the transfer write visible there.
+    // No barrier for the destination: the image only goes to wgpu once the host
+    // observed the copy's semaphore value, which orders it against wgpu's
+    // submissions, and wgpu's own transition out of `COPY_DST` makes the
+    // transfer write visible there.
     let barriers = source_restore_barriers(source);
     if !barriers.is_empty() {
         pipeline_barrier(device, cmd, &barriers);

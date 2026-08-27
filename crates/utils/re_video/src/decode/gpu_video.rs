@@ -207,8 +207,12 @@ impl SyncDecoder for GpuSyncDecoder {
     }
 
     fn end_of_video(&mut self, output_sender: &Sender<FrameResult>) {
-        let frames = self.decoder.flush();
-        self.emit_frames(frames, output_sender);
+        match self.decoder.flush() {
+            Ok(frames) => self.emit_frames(frames, output_sender),
+            Err(err) => {
+                let _send_error = output_sender.send(Err(DecodeError::GpuVideo(Arc::new(err))));
+            }
+        }
     }
 
     fn reset(&mut self, video_descr: &VideoDataDescription) {
