@@ -336,43 +336,45 @@ fn load_ply(
     entity_path: EntityPath,
     contents: &[u8],
 ) -> Result<impl ExactSizeIterator<Item = Chunk> + use<>, ImporterError> {
+    use crate::ply::PlyGeometryClass;
+
     re_tracing::profile_function!();
 
     let rows = [
         {
-            let mut builder = Chunk::builder(entity_path);
-            if re_sdk_types::archetypes::GaussianSplats3D::is_gaussian_splat_ply(contents) {
-                let gaussians = re_sdk_types::archetypes::GaussianSplats3D::from_ply_file_contents(
-                    contents,
-                    Some(filepath),
-                )
-                .map_err(anyhow::Error::from)?;
-                builder = builder.with_archetype(RowId::new(), timepoint, &gaussians);
-            } else {
-                match crate::ply::classify_geometry_from_bytes(contents)
-                    .map_err(anyhow::Error::from)?
-                {
-                    crate::ply::PlyGeometryClass::Points2D => {
-                        let points2d =
-                            re_sdk_types::archetypes::Points2D::from_file_contents(contents)
-                                .map_err(anyhow::Error::from)?;
-                        builder = builder.with_archetype(RowId::new(), timepoint, &points2d);
-                    }
-                    crate::ply::PlyGeometryClass::Points3D => {
-                        let points3d =
-                            re_sdk_types::archetypes::Points3D::from_file_contents(contents)
-                                .map_err(anyhow::Error::from)?;
-                        builder = builder.with_archetype(RowId::new(), timepoint, &points3d);
-                    }
-                    crate::ply::PlyGeometryClass::MeshOrAsset3D => {
-                        let asset3d = re_sdk_types::archetypes::Asset3D::from_file_contents(
-                            contents.to_vec(),
-                            Some(re_sdk_types::components::MediaType::ply()),
-                        );
-                        builder = builder.with_archetype(RowId::new(), timepoint, &asset3d);
-                    }
+            use re_sdk_types::archetypes::{Asset3D, GaussianSplats3D, Points2D, Points3D};
+
+            let builder = Chunk::builder(entity_path);
+            let row_id = RowId::new();
+
+            let builder = match crate::ply::classify_geometry_from_bytes(contents)
+                .map_err(anyhow::Error::from)?
+            {
+                PlyGeometryClass::GaussianSplats3D => {
+                    let gaussians =
+                        GaussianSplats3D::from_ply_file_contents(contents, Some(filepath))
+                            .map_err(anyhow::Error::from)?;
+                    builder.with_archetype(row_id, timepoint, &gaussians)
                 }
-            }
+                PlyGeometryClass::Points2D => {
+                    let points2d =
+                        Points2D::from_file_contents(contents).map_err(anyhow::Error::from)?;
+                    builder.with_archetype(row_id, timepoint, &points2d)
+                }
+                PlyGeometryClass::Points3D => {
+                    let points3d =
+                        Points3D::from_file_contents(contents).map_err(anyhow::Error::from)?;
+                    builder.with_archetype(row_id, timepoint, &points3d)
+                }
+                PlyGeometryClass::MeshOrAsset3D => {
+                    let asset3d = Asset3D::from_file_contents(
+                        contents.to_vec(),
+                        Some(re_sdk_types::components::MediaType::ply()),
+                    );
+                    builder.with_archetype(row_id, timepoint, &asset3d)
+                }
+            };
+
             builder.build()?
         },
         //

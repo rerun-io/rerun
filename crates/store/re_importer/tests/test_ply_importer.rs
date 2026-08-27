@@ -39,6 +39,27 @@ mod tests {
         rx.iter().filter_map(ImportedData::into_chunk).collect()
     }
 
+    /// Import `contents` as if it were the file at `filepath`, keeping any error.
+    fn import_result(
+        filepath: &str,
+        contents: &[u8],
+    ) -> Result<Vec<Chunk>, re_importer::ImporterError> {
+        let (tx, rx) = crossbeam::channel::bounded(8);
+        let settings = ImporterSettings::recommended("test");
+
+        ArchetypeImporter.import_from_file_contents(
+            &settings,
+            filepath.into(),
+            std::borrow::Cow::Borrowed(contents),
+            tx,
+        )?;
+
+        Ok(rx
+            .into_iter()
+            .filter_map(ImportedData::into_chunk)
+            .collect())
+    }
+
     /// Import `contents` as if it were the file at `filepath`.
     fn import_single_chunk(filepath: &str, contents: &[u8]) -> Chunk {
         let (tx, rx) = crossbeam::channel::bounded(8);
@@ -183,9 +204,10 @@ end_header
         );
     }
 
-    /// Faces alone are enough: we never validate the vertices of something we pass through.
+    /// Every shape we support needs vertices, so this is rejected up front rather than
+    /// becoming an `Asset3D` the viewer can only fail on.
     #[test]
-    fn faces_without_vertices_load_as_asset3d() {
+    fn faces_without_vertices_are_rejected() {
         let contents = br#"ply
 format ascii 1.0
 element face 1
@@ -194,16 +216,18 @@ end_header
 3 0 1 2
 "#;
 
-        assert_imports_as(
-            "faces_only.ply",
-            contents,
-            &Asset3D::from_file_contents(contents.to_vec(), Some(MediaType::ply())),
+        let err = import_result("faces_only.ply", contents).unwrap_err();
+        assert!(
+            err.to_string()
+                .contains("PLY file is missing required \"vertex\" element"),
+            "{err}"
         );
     }
 
-    /// A face element we cannot read the indices of is still topology, so still an asset.
+    /// A face element whose indices we cannot read gives us no topology to build a mesh out
+    /// of, so show the vertices rather than an asset that fails to load.
     #[test]
-    fn unreadable_face_indices_still_load_as_asset3d() {
+    fn unreadable_face_indices_fall_back_to_points() {
         let contents = br#"ply
 format ascii 1.0
 element vertex 4
@@ -225,7 +249,8 @@ end_header
         assert_imports_as(
             "unsupported_faces.ply",
             contents,
-            &Asset3D::from_file_contents(contents.to_vec(), Some(MediaType::ply())),
+            &Points2D::new([(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)])
+                .with_colors([0xFF0000FF, 0x00FF00FF, 0x0000FFFF, 0xFFFF00FF]),
         );
     }
 
