@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import warnings
 from pathlib import Path
 
 import torch
@@ -9,6 +10,14 @@ import torch.multiprocessing
 from torch import nn
 
 import rerun as rr
+
+# Suppress warnings when FixedRateSampling samples indices where some entities
+# lack data.
+warnings.filterwarnings(
+    "ignore",
+    message=r"Skipping samples where field .* has no value",
+    category=RuntimeWarning,
+)
 
 # Rerun's tokio runtime is not fork-safe, so DataLoader workers must use
 # `spawn`. Set this before constructing any DataLoader, even with
