@@ -148,7 +148,19 @@ struct ParsedVertex {
 }
 
 impl ParsedVertex {
-    fn note_ignored_props_for(seen_props: u16, ignored_props: &mut BTreeSet<String>, mask: u16) {
+    /// Notes the properties in `mask` that this vertex carried but that we end up dropping.
+    ///
+    /// `None` means we already know the answer and should not do the work again: which
+    /// properties get dropped follows from the header, so every vertex reports the same set.
+    fn note_ignored_props_for(
+        seen_props: u16,
+        ignored_props: &mut Option<BTreeSet<String>>,
+        mask: u16,
+    ) {
+        let Some(ignored_props) = ignored_props.as_mut() else {
+            return;
+        };
+
         for (name, bit) in [
             (PROP_X, SEEN_X),
             (PROP_Y, SEEN_Y),
@@ -173,7 +185,7 @@ impl ParsedVertex {
         }
     }
 
-    fn into_vertex2d(self, ignored_props: &mut BTreeSet<String>) -> Option<Vertex2D> {
+    fn into_vertex2d(self, ignored_props: &mut Option<BTreeSet<String>>) -> Option<Vertex2D> {
         let Self {
             x,
             y,
@@ -229,7 +241,7 @@ impl ParsedVertex {
         })
     }
 
-    fn into_vertex3d(self, ignored_props: &mut BTreeSet<String>) -> Option<Vertex3D> {
+    fn into_vertex3d(self, ignored_props: &mut Option<BTreeSet<String>>) -> Option<Vertex3D> {
         let Self {
             x,
             y,
@@ -583,8 +595,12 @@ pub fn read_points2d<T: std::io::BufRead>(reader: &mut T) -> std::io::Result<Poi
     let mut radii = Vec::new();
     let mut labels = Vec::new();
 
-    for parsed in vertices {
-        if let Some(vertex) = parsed.into_vertex2d(&mut ignored_props) {
+    for (index, parsed) in vertices.into_iter().enumerate() {
+        // The header decides which properties we drop, so the first vertex tells us everything.
+        // Asking every vertex would allocate a `String` per point.
+        let mut noted = (index == 0).then(BTreeSet::new);
+
+        if let Some(vertex) = parsed.into_vertex2d(&mut noted) {
             let Vertex2D {
                 position,
                 color,
@@ -596,6 +612,8 @@ pub fn read_points2d<T: std::io::BufRead>(reader: &mut T) -> std::io::Result<Poi
             radii.push(radius); // opt
             labels.push(label); // opt
         }
+
+        ignored_props.extend(noted.into_iter().flatten());
     }
 
     if !ignored_props.is_empty() {
@@ -645,8 +663,12 @@ pub fn read_points3d<T: std::io::BufRead>(reader: &mut T) -> std::io::Result<Poi
     let mut radii = Vec::new();
     let mut labels = Vec::new();
 
-    for parsed in vertices {
-        if let Some(vertex) = parsed.into_vertex3d(&mut ignored_props) {
+    for (index, parsed) in vertices.into_iter().enumerate() {
+        // The header decides which properties we drop, so the first vertex tells us everything.
+        // Asking every vertex would allocate a `String` per point.
+        let mut noted = (index == 0).then(BTreeSet::new);
+
+        if let Some(vertex) = parsed.into_vertex3d(&mut noted) {
             let Vertex3D {
                 position,
                 color,
@@ -658,6 +680,8 @@ pub fn read_points3d<T: std::io::BufRead>(reader: &mut T) -> std::io::Result<Poi
             radii.push(radius); // opt
             labels.push(label); // opt
         }
+
+        ignored_props.extend(noted.into_iter().flatten());
     }
 
     if !ignored_props.is_empty() {
