@@ -9351,6 +9351,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_gpu_video"
+version = "0.38.0-alpha.1+dev"
+dependencies = [
+ "ash",
+ "cfg_aliases",
+ "parking_lot",
+ "pollster 1.0.1",
+ "re_log",
+ "re_tracing",
+ "thiserror 2.0.19",
+ "wgpu",
+]
+
+[[package]]
 name = "re_grpc_client"
 version = "0.38.0-alpha.1+dev"
 dependencies = [
@@ -10181,6 +10195,7 @@ dependencies = [
  "re_build_tools",
  "re_byte_size",
  "re_error",
+ "re_gpu_video",
  "re_log",
  "re_mutex",
  "re_quota_channel",
@@ -11189,6 +11204,7 @@ dependencies = [
  "num-traits",
  "parking_lot",
  "poll-promise",
+ "pollster 1.0.1",
  "rayon",
  "re_analytics",
  "re_async",

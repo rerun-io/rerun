@@ -168,6 +168,7 @@ wgpu.workspace = true
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 egui_kittest.workspace = true
 poll-promise = { workspace = true, features = ["tokio"] }
+pollster.workspace = true
 re_perf_telemetry = { workspace = true, optional = true }
 tokio.workspace = true
 

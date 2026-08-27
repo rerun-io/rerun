@@ -99,6 +99,11 @@ pub struct RenderContext {
     config: RenderConfig,
     output_format_color: wgpu::TextureFormat,
 
+    /// GPU video decode support, present if the device was created with it
+    /// (see `crate::device::create_device`).
+    #[cfg(native)]
+    gpu_video: Option<Arc<re_gpu_video::GpuVideoContext>>,
+
     /// Global bindings, always bound to 0 bind group slot zero.
     /// [`Renderer`] are not allowed to use bind group 0 themselves!
     pub global_bindings: GlobalBindings,
@@ -250,6 +255,8 @@ impl RenderContext {
             adapter_info,
             config,
             output_format_color,
+            #[cfg(native)]
+            gpu_video: None,
             global_bindings,
             renderers,
             resolver,
@@ -444,6 +451,23 @@ This means, either a call to RenderContext::before_submit was omitted, or the pr
     /// Returns the device's capabilities.
     pub fn device_caps(&self) -> &DeviceCaps {
         &self.device_caps
+    }
+
+    /// GPU video decode support, present if the device was created with it
+    /// (see [`crate::device::create_device`]).
+    #[cfg(native)]
+    pub fn gpu_video(&self) -> Option<&Arc<re_gpu_video::GpuVideoContext>> {
+        self.gpu_video.as_ref()
+    }
+
+    /// Attaches GPU video decode support to this context.
+    ///
+    /// The context must live on the same device this render context was created with,
+    /// see [`crate::device::create_device`].
+    #[cfg(native)]
+    pub fn with_gpu_video(mut self, gpu_video: Option<Arc<re_gpu_video::GpuVideoContext>>) -> Self {
+        self.gpu_video = gpu_video;
+        self
     }
 
     pub fn adapter_info(&self) -> &wgpu::AdapterInfo {

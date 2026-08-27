@@ -216,29 +216,37 @@ impl AppEnvironment {
 
 // ---------------------------------------------------------------------------
 
+/// Carries the GPU video context from [`wgpu_options`] (where the device gets created) to
+/// [`customize_eframe_and_setup_renderer`] (where the [`re_renderer::RenderContext`] gets created).
+#[cfg(not(target_arch = "wasm32"))]
+static PENDING_GPU_VIDEO_CONTEXT: parking_lot::Mutex<
+    Option<std::sync::Arc<re_renderer::device::GpuVideoContext>>,
+> = parking_lot::Mutex::new(None);
+
 pub(crate) fn wgpu_options(force_wgpu_backend: Option<&str>) -> egui_wgpu::WgpuConfiguration {
     re_tracing::profile_function!();
 
-    let instance_descriptor = re_renderer::device_caps::instance_descriptor(force_wgpu_backend);
-    let backends = instance_descriptor.backends;
+    // On native, create instance, adapter & device eagerly through re_renderer:
+    // probing for GPU video decode support needs control over device creation,
+    // which egui-wgpu's own device creation doesn't offer.
+    // On web, keep letting egui-wgpu create everything
+    // (there is no video decode backend there and setup is async).
+    #[cfg(not(target_arch = "wasm32"))]
+    let wgpu_setup = match create_native_wgpu_setup(force_wgpu_backend) {
+        Ok(setup) => egui_wgpu::WgpuSetup::Existing(setup),
+        Err(err) => {
+            re_log::error!(
+                "Failed to create a graphics device, leaving device creation to egui-wgpu: {err}"
+            );
+            create_new_wgpu_setup(force_wgpu_backend)
+        }
+    };
+
+    #[cfg(target_arch = "wasm32")]
+    let wgpu_setup = create_new_wgpu_setup(force_wgpu_backend);
 
     egui_wgpu::WgpuConfiguration {
-        wgpu_setup: egui_wgpu::WgpuSetup::CreateNew(egui_wgpu::WgpuSetupCreateNew {
-            instance_descriptor,
-
-            // TODO(#8475): Add the ability to pick adapter by name.
-            // (user may e.g. request "nvidia" or "intel" and it should just work!)
-            // Should ideally produce structured reasoning of why which one was picked in the process.
-            native_adapter_selector: Some(std::sync::Arc::new(move |adapters, surface| {
-                re_renderer::device_caps::select_adapter(adapters, backends, surface)
-            })),
-            device_descriptor: std::sync::Arc::new(|adapter| {
-                re_renderer::device_caps::DeviceCaps::from_adapter_without_validation(adapter)
-                    .device_descriptor()
-            }),
-
-            ..egui_wgpu::WgpuSetupCreateNew::without_display_handle()
-        }),
+        wgpu_setup,
 
         surface: egui_wgpu::SurfaceConfig {
             // Explicitly stick with wgpu's latency default which is more optimized for high throughput than
@@ -250,6 +258,73 @@ pub(crate) fn wgpu_options(force_wgpu_backend: Option<&str>) -> egui_wgpu::WgpuC
 
         ..Default::default()
     }
+}
+
+/// The graphics setup used on web and as the fallback on native:
+/// egui-wgpu creates instance, adapter & device itself, steered by `re_renderer`'s preferences.
+fn create_new_wgpu_setup(force_wgpu_backend: Option<&str>) -> egui_wgpu::WgpuSetup {
+    let instance_descriptor = re_renderer::device_caps::instance_descriptor(force_wgpu_backend);
+    let backends = instance_descriptor.backends;
+
+    egui_wgpu::WgpuSetup::CreateNew(egui_wgpu::WgpuSetupCreateNew {
+        instance_descriptor,
+
+        // TODO(#8475): Add the ability to pick adapter by name.
+        // (user may e.g. request "nvidia" or "intel" and it should just work!)
+        // Should ideally produce structured reasoning of why which one was picked in the process.
+        native_adapter_selector: Some(std::sync::Arc::new(move |adapters, surface| {
+            re_renderer::device_caps::select_adapter(adapters, backends, surface)
+        })),
+        device_descriptor: std::sync::Arc::new(|adapter| {
+            re_renderer::device_caps::DeviceCaps::from_adapter_without_validation(adapter)
+                .device_descriptor()
+        }),
+
+        ..egui_wgpu::WgpuSetupCreateNew::without_display_handle()
+    })
+}
+
+/// Creates instance, adapter & device the same way the [`create_new_wgpu_setup`] path would,
+/// but with `re_renderer` in control of device creation so it can probe for
+/// GPU video decode support.
+///
+/// The resulting video context is parked in [`PENDING_GPU_VIDEO_CONTEXT`] for
+/// [`customize_eframe_and_setup_renderer`] to pick up.
+#[cfg(not(target_arch = "wasm32"))]
+fn create_native_wgpu_setup(
+    force_wgpu_backend: Option<&str>,
+) -> Result<egui_wgpu::WgpuSetupExisting, String> {
+    re_tracing::profile_function!();
+
+    let instance_descriptor = re_renderer::device_caps::instance_descriptor(force_wgpu_backend);
+    let backends = instance_descriptor.backends;
+
+    let instance = wgpu::Instance::new(instance_descriptor);
+    let adapters = pollster::block_on(instance.enumerate_adapters(backends));
+
+    // TODO(#8475): Add the ability to pick adapter by name (see `create_new_wgpu_setup`).
+    //
+    // No window exists yet, so no surface to check compatibility against — same as before,
+    // the instance never had a display handle on native.
+    let adapter = re_renderer::device_caps::select_adapter(&adapters, backends, None)?;
+
+    let (device, queue, gpu_video) =
+        re_renderer::device::create_device(&adapter).map_err(|err| err.to_string())?;
+
+    if let Some(gpu_video) = &gpu_video {
+        re_log::debug!(
+            "GPU video decoding available via {}.",
+            gpu_video.backend_name()
+        );
+    }
+    *PENDING_GPU_VIDEO_CONTEXT.lock() = gpu_video;
+
+    Ok(egui_wgpu::WgpuSetupExisting {
+        instance,
+        adapter,
+        device,
+        queue,
+    })
 }
 
 /// Customize eframe and egui to suit the rerun viewer.
@@ -271,6 +346,11 @@ pub fn customize_eframe_and_setup_renderer(
             render_state.target_format,
             re_renderer::RenderConfig::best_for_device_caps,
         )?;
+
+        // Pick up the GPU video context if `wgpu_options` created the device with one.
+        #[cfg(not(target_arch = "wasm32"))]
+        let render_ctx = render_ctx.with_gpu_video(PENDING_GPU_VIDEO_CONTEXT.lock().take());
+
         paint_callback_resources.insert(render_ctx);
     }
 
