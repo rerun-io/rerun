@@ -114,6 +114,42 @@ end_header
     }
 
     #[test]
+    fn missing_vertex_element_is_rejected() {
+        let contents = br#"ply
+format ascii 1.0
+element material 1
+property int material_index
+end_header
+7
+"#;
+
+        let err = classify(contents).unwrap_err();
+        assert!(
+            err.to_string()
+                .contains("PLY file is missing required \"vertex\" element")
+        );
+    }
+
+    #[test]
+    fn vertices_without_y_are_rejected() {
+        let contents = br#"ply
+format ascii 1.0
+element vertex 2
+property float x
+property float z
+end_header
+1 2
+4 5
+"#;
+
+        let err = classify(contents).unwrap_err();
+        assert!(
+            err.to_string()
+                .contains("PLY vertex element must contain at least \"x\" and \"y\"")
+        );
+    }
+
+    #[test]
     fn zero_face_element_keeps_point_classification() {
         let contents = br#"ply
 format ascii 1.0
