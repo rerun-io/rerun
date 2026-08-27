@@ -65,8 +65,19 @@ struct ParsedMeshVertex {
     alpha: Option<u8>,
 }
 
+/// A vertex of a PLY mesh, with the optional properties resolved.
+struct MeshVertex {
+    position: glam::Vec3,
+
+    /// From `nx`/`ny`/`nz`, which have to be present together.
+    normal: Option<glam::Vec3>,
+
+    /// From `red`/`green`/`blue`, with `alpha` defaulting to opaque.
+    color: Option<Rgba32Unmul>,
+}
+
 impl ParsedMeshVertex {
-    fn into_parts(self) -> std::io::Result<(glam::Vec3, Option<glam::Vec3>, Option<Rgba32Unmul>)> {
+    fn into_vertex(self) -> std::io::Result<MeshVertex> {
         let (Some(x), Some(y)) = (self.x, self.y) else {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
@@ -92,7 +103,11 @@ impl ParsedMeshVertex {
             None
         };
 
-        Ok((position, normal, color))
+        Ok(MeshVertex {
+            position,
+            normal,
+            color,
+        })
     }
 }
 
@@ -362,7 +377,11 @@ fn parse_ply_mesh<T: std::io::BufRead>(reader: &mut T) -> std::io::Result<Parsed
                 }
 
                 for vertex in vertices {
-                    let (position, normal, color) = vertex.into_parts()?;
+                    let MeshVertex {
+                        position,
+                        normal,
+                        color,
+                    } = vertex.into_vertex()?;
                     positions.push(position);
                     normals.push(normal);
                     colors.push(color);
