@@ -41,38 +41,38 @@ fn test_to_snake_case() {
     );
 
     assert_eq!(
-        to_snake_case("rerun.datatypes.Utf8"),
-        "rerun.datatypes.utf8"
+        to_snake_case("rerun.encodings.Utf8"),
+        "rerun.encodings.utf8"
     );
     assert_eq!(
-        to_snake_case("rerun.datatypes.utf8"),
-        "rerun.datatypes.utf8"
-    );
-
-    assert_eq!(
-        to_snake_case("rerun.datatypes.UVec2D"),
-        "rerun.datatypes.uvec2d"
-    );
-    assert_eq!(
-        to_snake_case("rerun.datatypes.uvec2d"),
-        "rerun.datatypes.uvec2d"
-    );
-    assert_eq!(
-        to_snake_case("rerun.datatypes.IVec3D"),
-        "rerun.datatypes.ivec3d"
-    );
-    assert_eq!(
-        to_snake_case("rerun.datatypes.ivec3d"),
-        "rerun.datatypes.ivec3d"
+        to_snake_case("rerun.encodings.utf8"),
+        "rerun.encodings.utf8"
     );
 
     assert_eq!(
-        to_snake_case("rerun.datatypes.UInt32"),
-        "rerun.datatypes.uint32"
+        to_snake_case("rerun.encodings.UVec2D"),
+        "rerun.encodings.uvec2d"
     );
     assert_eq!(
-        to_snake_case("rerun.datatypes.uint32"),
-        "rerun.datatypes.uint32"
+        to_snake_case("rerun.encodings.uvec2d"),
+        "rerun.encodings.uvec2d"
+    );
+    assert_eq!(
+        to_snake_case("rerun.encodings.IVec3D"),
+        "rerun.encodings.ivec3d"
+    );
+    assert_eq!(
+        to_snake_case("rerun.encodings.ivec3d"),
+        "rerun.encodings.ivec3d"
+    );
+
+    assert_eq!(
+        to_snake_case("rerun.encodings.UInt32"),
+        "rerun.encodings.uint32"
+    );
+    assert_eq!(
+        to_snake_case("rerun.encodings.uint32"),
+        "rerun.encodings.uint32"
     );
 
     assert_eq!(
@@ -143,29 +143,29 @@ fn test_to_pascal_case() {
     );
 
     assert_eq!(
-        to_pascal_case("rerun.datatypes.uvec2d"),
-        "rerun.datatypes.UVec2D"
+        to_pascal_case("rerun.encodings.uvec2d"),
+        "rerun.encodings.UVec2D"
     );
     assert_eq!(
-        to_pascal_case("rerun.datatypes.UVec2D"),
-        "rerun.datatypes.UVec2D"
+        to_pascal_case("rerun.encodings.UVec2D"),
+        "rerun.encodings.UVec2D"
     );
     assert_eq!(
-        to_pascal_case("rerun.datatypes.ivec3d"),
-        "rerun.datatypes.IVec3D"
+        to_pascal_case("rerun.encodings.ivec3d"),
+        "rerun.encodings.IVec3D"
     );
     assert_eq!(
-        to_pascal_case("rerun.datatypes.IVec3D"),
-        "rerun.datatypes.IVec3D"
+        to_pascal_case("rerun.encodings.IVec3D"),
+        "rerun.encodings.IVec3D"
     );
 
     assert_eq!(
-        to_pascal_case("rerun.datatypes.uint32"),
-        "rerun.datatypes.UInt32"
+        to_pascal_case("rerun.encodings.uint32"),
+        "rerun.encodings.UInt32"
     );
     assert_eq!(
-        to_pascal_case("rerun.datatypes.UInt32"),
-        "rerun.datatypes.UInt32"
+        to_pascal_case("rerun.encodings.UInt32"),
+        "rerun.encodings.UInt32"
     );
 
     assert_eq!(
@@ -237,29 +237,29 @@ fn test_to_human_case() {
     );
 
     assert_eq!(
-        to_human_case("rerun.datatypes.uvec2d"),
-        "rerun.datatypes.UVec 2D"
+        to_human_case("rerun.encodings.uvec2d"),
+        "rerun.encodings.UVec 2D"
     );
     assert_eq!(
-        to_human_case("rerun.datatypes.UVec2D"),
-        "rerun.datatypes.UVec 2D"
+        to_human_case("rerun.encodings.UVec2D"),
+        "rerun.encodings.UVec 2D"
     );
     assert_eq!(
-        to_human_case("rerun.datatypes.ivec3d"),
-        "rerun.datatypes.IVec 3D"
+        to_human_case("rerun.encodings.ivec3d"),
+        "rerun.encodings.IVec 3D"
     );
     assert_eq!(
-        to_human_case("rerun.datatypes.IVec3D"),
-        "rerun.datatypes.IVec 3D"
+        to_human_case("rerun.encodings.IVec3D"),
+        "rerun.encodings.IVec 3D"
     );
 
     assert_eq!(
-        to_human_case("rerun.datatypes.uint32"),
-        "rerun.datatypes.UInt32"
+        to_human_case("rerun.encodings.uint32"),
+        "rerun.encodings.UInt32"
     );
     assert_eq!(
-        to_human_case("rerun.datatypes.UInt32"),
-        "rerun.datatypes.UInt32"
+        to_human_case("rerun.encodings.UInt32"),
+        "rerun.encodings.UInt32"
     );
 
     assert_eq!(

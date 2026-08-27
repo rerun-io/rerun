@@ -15,7 +15,7 @@ We call an `Archetype` a well-define collection of component that represent a gi
 
 Some complex components are build using combination of another type of object called "datatype". These objects have well-defined memory layout but typically lack semantics. For example, the `Vec3D` datatype is a size 3 array of `float32`, and can be used by various components (for example, the `Position3D` component use the `Vec3D` datatype).
 
-The purpose of the Python SDK is to make it easy to build archetype-conforming data structures and log them for subsequent display and inspection using the Rerun viewer, through an easy-to-learn, Pythonic API. To that end, it exposes an API over the supported archetypes, as well as all the components and datatypes needed to build them. In addition, the SDK provides the `rr.log()` function to log any archetype-conforming object, and several support function for initialization, recording session management, etc.
+The purpose of the Python SDK is to make it easy to build archetype-conforming data structures and log them for subsequent display and inspection using the Rerun viewer, through an easy-to-learn, Pythonic API. To that end, it exposes an API over the supported archetypes, as well as all the components and encodings needed to build them. In addition, the SDK provides the `rr.log()` function to log any archetype-conforming object, and several support function for initialization, recording session management, etc.
 
 The present document focuses on the construction of archetype-conforming objects and the `rr.log()` function.
 
@@ -50,7 +50,7 @@ TODO(ab)
 ## Code generation
 
 Keeping the various SDKs in sync with the Rerun Viewer requires automation to be tractable.
-The Python SDK is no exception, and large parts of its implementation is generated using the `re_sdk_types` and `re_types_builder` crates, based on the object definitions found in `crates/store/re_sdk_types/definitions` and the generation code found in `crates/build/re_types_builder/src/codegen/python.rs`.
+The Python SDK is no exception, and large parts of its implementation is generated using the `re_sdk_types` and `re_types_builder` crates, based on the object definitions found in `crates/build/re_type_definitions` and the generation code found in `crates/build/re_types_builder/src/codegen/python.rs`.
 
 #### Archetype
 
@@ -66,13 +66,13 @@ The code generator distinguishes between delegating and non-delegating component
 
 Delegating components use a datatype as field type, and their Arrow extension array object delegate its implementation to the corresponding datatype's. As a result, their implementation is very minimal, and forgoes native objects and typing aliases. `Point2D` is an example of delegating component (it delegates to the `Point2D` datatype).
 
-Non-delegating components use a native type as field type, such as a `float` or `int` instead of relying on a separate datatypes. As a result, their implementation much resembles that of datatypes as they must handle data serialization in addition to their semantic role. In particular, a native object and typing aliases are generated.
+Non-delegating components use a native type as field type, such as a `float` or `int` instead of relying on a separate encodings. As a result, their implementation much resembles that of encodings as they must handle data serialization in addition to their semantic role. In particular, a native object and typing aliases are generated.
 
-#### Datatypes
+#### Encodings
 
-Datatypes primary concern is modelling well-defined data structures, including a nice user-facing construction API and support for Arrow serialization. All the object types described in the previous section are thus generated for components.
+Encodings primary concern is modelling well-defined data structures, including a nice user-facing construction API and support for Arrow serialization. All the object types described in the previous section are thus generated for components.
 
-Contrary to archetypes and components, datatypes occasionally represent complex data structures, such as `Transform3D`, made of nested structs and unions. The latter, lacking an obvious counterpart in Python, calls for a specific treatment (see below for details).
+Contrary to archetypes and components, encodings occasionally represent complex data structures, such as `Transform3D`, made of nested structs and unions. The latter, lacking an obvious counterpart in Python, calls for a specific treatment (see below for details).
 
 
 ## Extensions
@@ -84,8 +84,8 @@ This section covers the available hooks.
 ### The TypeExt class
 
 During codegen, each class looks for a file: `class_ext.py` in the same directory where the class
-will be generated. For example `datatypes/rgba32_ext.py` is the extension file for the `Rgba32` datatype,
-which can be found in `datatypes/rgba32.py`.
+will be generated. For example `encodings/rgba32_ext.py` is the extension file for the `Rgba32` datatype,
+which can be found in `encodings/rgba32.py`.
 
 In this file you must define a class called `<Type>Ext`, which will be added as a mixin to the generated class.
 
@@ -105,7 +105,7 @@ The override implementation may make use of the `__attrs_init__()` function, whi
 [generates](https://www.attrs.org/en/stable/init.html#custom-init) to call through to the generated `__init__()` method
 that would otherwise have been generated.
 
-Init method overrides are typically used when the default constructor provided by `attrs` doesn't provide a satisfactory API. See `datatypes/angle_ext.py` for an example.
+Init method overrides are typically used when the default constructor provided by `attrs` doesn't provide a satisfactory API. See `encodings/angle_ext.py` for an example.
 
 #### Native object field converter (`fieldname__field_converter_override()`)
 
@@ -130,7 +130,7 @@ be skipped.
 
 #### PyArrow array conversion method (`native_to_pa_array_override()`)
 
-This hook is the primary means of providing serialization to Arrow data, which is required for any non-delegating component or datatypes used by delegating components.
+This hook is the primary means of providing serialization to Arrow data, which is required for any non-delegating component or encodings used by delegating components.
 
 ## Design notes on code generation
 
@@ -160,7 +160,7 @@ The `converter` attribute of [`attrs.field()`] can be any callable. Often, `lamb
 
 - using built-in function (e.g. `int()`, for non-nullable `int` fields);
 - using one of the functions provided in `_converters.py` (e.g. `int_or_none()` for nullable `int` fields);
-- locally generating a bespoke converter function (e.g. for field using datatypes, nullable or otherwise).
+- locally generating a bespoke converter function (e.g. for field using encodings, nullable or otherwise).
 
 
 ### Typing

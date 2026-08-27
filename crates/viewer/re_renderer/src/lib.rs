@@ -50,15 +50,18 @@ mod error_handling;
 mod file_resolver;
 mod file_server;
 mod file_system;
+mod gaussian_splat_builder;
 mod global_bindings;
 mod label;
 mod line_drawable_builder;
 mod point_cloud_builder;
 mod queueable_draw_data;
 mod rect;
+mod robust_bounds;
 mod shape_builder;
 mod size;
 mod transform;
+mod transparent_sort;
 pub mod util;
 mod wgpu_resources;
 
@@ -95,15 +98,20 @@ pub use draw_phases::{
 pub use label::Label;
 pub use resource_managers::AlphaChannelUsage;
 pub use texture_readback::{TextureReadback, poll_read_texture, schedule_read_texture};
+pub use transparent_sort::SortOrderCache;
 // Re-export used color types directly.
 pub use ecolor::{Color32, Hsva, Rgba};
+pub use gaussian_splat_builder::{GaussianSplatBatchBuilder, GaussianSplatBuilder};
 pub use global_bindings::GlobalBindings;
 pub use importer::{CpuModel, CpuModelMeshKey};
 pub use line_drawable_builder::{LineBatchBuilder, LineDrawableBuilder, LineStripBuilder};
 pub use point_cloud_builder::{PointCloudBatchBuilder, PointCloudBuilder};
 pub use queueable_draw_data::QueueableDrawData;
+// Re-export `Span`, which is used in many public interfaces.
+pub use re_span::Span;
 pub use rect::{RectF32, RectInt};
-pub use renderer::gpu_data::PositionRadius;
+pub use renderer::gpu_data::{GaussianShCoefficient, PositionRadius};
+pub use robust_bounds::RobustBounds;
 pub use shape_builder::ShapeBuilder;
 pub use size::Size;
 pub use texture_info::Texture2DBufferInfo;

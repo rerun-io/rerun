@@ -1,5 +1,5 @@
 use proc_macro2::{Literal, TokenStream};
-use quote::quote;
+use quote::{format_ident, quote};
 
 use crate::data_type::{AtomicDataType, DataType, Field, UnionMode};
 
@@ -112,7 +112,6 @@ impl quote::ToTokens for ArrowFieldTokenizer<'_> {
             name,
             data_type,
             is_nullable,
-            metadata,
         } = field;
 
         // Unions in Rerun always has a `_null_markers` arm, so all unions are nullable,
@@ -125,28 +124,10 @@ impl quote::ToTokens for ArrowFieldTokenizer<'_> {
             recursive: true,
         };
 
-        let maybe_with_metadata = if metadata.is_empty() {
-            quote!()
-        } else {
-            let metadata = StrStrMapTokenizer(metadata);
-            quote!(.with_metadata(#metadata))
-        };
-
         quote! {
             Field::new(#name, #datatype, #is_nullable)
-            #maybe_with_metadata
         }
         .to_tokens(tokens);
-    }
-}
-
-pub struct StrStrMapTokenizer<'a>(pub &'a std::collections::BTreeMap<String, String>);
-
-impl quote::ToTokens for StrStrMapTokenizer<'_> {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        let k = self.0.keys();
-        let v = self.0.values();
-        quote!([#((#k, #v),)*].into()).to_tokens(tokens);
     }
 }
 
@@ -156,30 +137,30 @@ pub fn quote_fqname_as_type_path(fqname: impl AsRef<str>) -> TokenStream {
     quote!(#expr)
 }
 
-/// Can this type be used with `arrow::ScalarBuffer`?
-pub fn is_backed_by_scalar_buffer(typ: &DataType) -> bool {
-    if let DataType::Atomic(atomic) = typ {
-        !matches!(atomic, AtomicDataType::Null | AtomicDataType::Boolean)
-    } else {
-        false
+/// The Rust spelling of a primitive, e.g. `u8` for a `UInt8`.
+pub fn quote_atomic_rust_type(atomic: AtomicDataType) -> TokenStream {
+    match atomic {
+        AtomicDataType::Null => quote!(()),
+        AtomicDataType::Boolean => quote!(bool),
+        AtomicDataType::UInt8 => quote!(u8),
+        AtomicDataType::UInt16 => quote!(u16),
+        AtomicDataType::UInt32 => quote!(u32),
+        AtomicDataType::UInt64 => quote!(u64),
+        AtomicDataType::Int8 => quote!(i8),
+        AtomicDataType::Int16 => quote!(i16),
+        AtomicDataType::Int32 => quote!(i32),
+        AtomicDataType::Int64 => quote!(i64),
+        AtomicDataType::Float16 => quote!(half::f16),
+        AtomicDataType::Float32 => quote!(f32),
+        AtomicDataType::Float64 => quote!(f64),
     }
 }
 
+/// The `arrow::datatypes::*Type` marker struct for a primitive, e.g. `UInt8Type` for a `u8`.
 pub fn quoted_arrow_primitive_type(datatype: &DataType) -> TokenStream {
-    match datatype {
-        DataType::Atomic(AtomicDataType::Null) => quote!(NullType),
-        DataType::Atomic(AtomicDataType::Boolean) => quote!(BooleanType),
-        DataType::Atomic(AtomicDataType::Int8) => quote!(Int8Type),
-        DataType::Atomic(AtomicDataType::Int16) => quote!(Int16Type),
-        DataType::Atomic(AtomicDataType::Int32) => quote!(Int32Type),
-        DataType::Atomic(AtomicDataType::Int64) => quote!(Int64Type),
-        DataType::Atomic(AtomicDataType::UInt8) => quote!(UInt8Type),
-        DataType::Atomic(AtomicDataType::UInt16) => quote!(UInt16Type),
-        DataType::Atomic(AtomicDataType::UInt32) => quote!(UInt32Type),
-        DataType::Atomic(AtomicDataType::UInt64) => quote!(UInt64Type),
-        DataType::Atomic(AtomicDataType::Float16) => quote!(Float16Type),
-        DataType::Atomic(AtomicDataType::Float32) => quote!(Float32Type),
-        DataType::Atomic(AtomicDataType::Float64) => quote!(Float64Type),
-        _ => unimplemented!("Not a primitive type: {datatype:#?}"),
-    }
+    let DataType::Atomic(atomic) = datatype else {
+        unimplemented!("Not a primitive type: {datatype:#?}");
+    };
+    let ident = format_ident!("{atomic}Type");
+    quote!(#ident)
 }

@@ -2,11 +2,10 @@ use re_chunk_store::RowId;
 use re_log_types::{TimePoint, Timeline};
 use re_test_context::TestContext;
 use re_test_context::external::egui_kittest::SnapshotResults;
+use re_test_context::external::egui_kittest::kittest::Queryable as _;
 use re_test_viewport::TestContextExt as _;
 use re_view_state_timeline::StateTimelineView;
-use re_viewer_context::{
-    BlueprintContext as _, GLOBAL_VIEW_ID, TimeControlCommand, ViewClass as _, ViewId,
-};
+use re_viewer_context::{GLOBAL_VIEW_ID, ViewClass as _, ViewId};
 use re_viewport_blueprint::{ViewBlueprint, ViewProperty};
 
 fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
@@ -114,30 +113,25 @@ fn test_state_timeline_multi_instance_bootstrap() {
     // unlike emulating pan/zoom scroll events.
     let view_id = test_context.setup_viewport_blueprint(|ctx, blueprint_ctx| {
         let view = ViewBlueprint::new_with_root_wildcard(StateTimelineView::identifier());
-        let time_axis = ViewProperty::from_archetype::<blueprint::archetypes::TimeAxis>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query,
-            view.id,
-        );
+        let time_axis =
+            ViewProperty::from_archetype_for_view::<blueprint::archetypes::TimeAxis>(ctx, view.id);
         time_axis.save_blueprint_component(
             ctx,
             &blueprint::archetypes::TimeAxis::descriptor_link(),
             &blueprint::components::LinkAxis::LinkToGlobal,
         );
-        let global_time_axis = ViewProperty::from_archetype::<blueprint::archetypes::TimeAxis>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query,
-            GLOBAL_VIEW_ID,
-        );
+        let global_time_axis = ViewProperty::from_archetype_for_view::<
+            blueprint::archetypes::TimeAxis,
+        >(ctx, GLOBAL_VIEW_ID);
         global_time_axis.save_blueprint_component(
             ctx,
             &blueprint::archetypes::TimeAxis::descriptor_view_range(),
-            &blueprint::components::TimeRange(re_sdk_types::datatypes::TimeRange {
-                start: re_sdk_types::datatypes::TimeRangeBoundary::Absolute(
-                    re_sdk_types::datatypes::TimeInt(12),
+            &blueprint::components::TimeRange(re_sdk_types::encodings::TimeRange {
+                start: re_sdk_types::encodings::TimeRangeBoundary::Absolute(
+                    re_sdk_types::encodings::TimeInt(12),
                 ),
-                end: re_sdk_types::datatypes::TimeRangeBoundary::Absolute(
-                    re_sdk_types::datatypes::TimeInt(30),
+                end: re_sdk_types::encodings::TimeRangeBoundary::Absolute(
+                    re_sdk_types::encodings::TimeInt(30),
                 ),
             }),
         );
@@ -196,30 +190,25 @@ fn test_state_timeline_multi_instance_stable_lane_count() {
     // unlike emulating pan/zoom scroll events.
     let view_id = test_context.setup_viewport_blueprint(|ctx, blueprint_ctx| {
         let view = ViewBlueprint::new_with_root_wildcard(StateTimelineView::identifier());
-        let time_axis = ViewProperty::from_archetype::<blueprint::archetypes::TimeAxis>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query,
-            view.id,
-        );
+        let time_axis =
+            ViewProperty::from_archetype_for_view::<blueprint::archetypes::TimeAxis>(ctx, view.id);
         time_axis.save_blueprint_component(
             ctx,
             &blueprint::archetypes::TimeAxis::descriptor_link(),
             &blueprint::components::LinkAxis::LinkToGlobal,
         );
-        let global_time_axis = ViewProperty::from_archetype::<blueprint::archetypes::TimeAxis>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query,
-            GLOBAL_VIEW_ID,
-        );
+        let global_time_axis = ViewProperty::from_archetype_for_view::<
+            blueprint::archetypes::TimeAxis,
+        >(ctx, GLOBAL_VIEW_ID);
         global_time_axis.save_blueprint_component(
             ctx,
             &blueprint::archetypes::TimeAxis::descriptor_view_range(),
-            &blueprint::components::TimeRange(re_sdk_types::datatypes::TimeRange {
-                start: re_sdk_types::datatypes::TimeRangeBoundary::Absolute(
-                    re_sdk_types::datatypes::TimeInt(12),
+            &blueprint::components::TimeRange(re_sdk_types::encodings::TimeRange {
+                start: re_sdk_types::encodings::TimeRangeBoundary::Absolute(
+                    re_sdk_types::encodings::TimeInt(12),
                 ),
-                end: re_sdk_types::datatypes::TimeRangeBoundary::Absolute(
-                    re_sdk_types::datatypes::TimeInt(30),
+                end: re_sdk_types::encodings::TimeRangeBoundary::Absolute(
+                    re_sdk_types::encodings::TimeInt(30),
                 ),
             }),
         );
@@ -270,14 +259,7 @@ fn test_state_timeline_basic() {
     test_context.set_active_timeline(*timeline.name());
 
     // Set time cursor to tick 20 (mid-range).
-    let store_id = test_context.active_store_id();
-    test_context.send_time_commands(
-        store_id,
-        [TimeControlCommand::SetTime(
-            re_log_types::TimeInt::new_temporal(20).into(),
-        )],
-    );
-    test_context.handle_system_commands(&egui::Context::default());
+    test_context.set_time(re_log_types::TimeInt::new_temporal(20));
 
     let view_id = setup_blueprint(&mut test_context);
     test_context
@@ -316,14 +298,7 @@ fn test_state_timeline_time_cursor() {
     test_context.set_active_timeline(*timeline.name());
 
     // Set time cursor to tick 30.
-    let store_id = test_context.active_store_id();
-    test_context.send_time_commands(
-        store_id,
-        [TimeControlCommand::SetTime(
-            re_log_types::TimeInt::new_temporal(30).into(),
-        )],
-    );
-    test_context.handle_system_commands(&egui::Context::default());
+    test_context.set_time(re_log_types::TimeInt::new_temporal(30));
 
     let view_id = setup_blueprint(&mut test_context);
     test_context
@@ -373,14 +348,7 @@ fn test_state_timeline_null_is_reset() {
     test_context.set_active_timeline(*timeline.name());
 
     // Place the cursor in the null region to confirm the gap left by the reset.
-    let store_id = test_context.active_store_id();
-    test_context.send_time_commands(
-        store_id,
-        [TimeControlCommand::SetTime(
-            re_log_types::TimeInt::new_temporal(30).into(),
-        )],
-    );
-    test_context.handle_system_commands(&egui::Context::default());
+    test_context.set_time(re_log_types::TimeInt::new_temporal(30));
 
     let view_id = setup_blueprint(&mut test_context);
     test_context
@@ -534,18 +502,10 @@ fn test_state_timeline_timeline_switch() {
     }
 
     let view_id = setup_blueprint(&mut test_context);
-    let egui_ctx = egui::Context::default();
 
     // Snapshot with the sequence timeline active.
     test_context.set_active_timeline(*seq_timeline.name());
-    let store_id = test_context.active_store_id();
-    test_context.send_time_commands(
-        store_id.clone(),
-        [TimeControlCommand::SetTime(
-            re_log_types::TimeInt::new_temporal(20).into(),
-        )],
-    );
-    test_context.handle_system_commands(&egui_ctx);
+    test_context.set_time(re_log_types::TimeInt::new_temporal(20));
     snapshot_results.add(test_context.run_view_ui_and_save_snapshot(
         view_id,
         "state_timeline_timeline_switch_sequence",
@@ -555,13 +515,7 @@ fn test_state_timeline_timeline_switch() {
 
     // Switch to the timestamp timeline and snapshot again.
     test_context.set_active_timeline(*ts_timeline.name());
-    test_context.send_time_commands(
-        store_id,
-        [TimeControlCommand::SetTime(
-            re_log_types::TimeInt::new_temporal(base_ns + 20 * step_ns).into(),
-        )],
-    );
-    test_context.handle_system_commands(&egui_ctx);
+    test_context.set_time(re_log_types::TimeInt::new_temporal(base_ns + 20 * step_ns));
     snapshot_results.add(test_context.run_view_ui_and_save_snapshot(
         view_id,
         "state_timeline_timeline_switch_timestamp",
@@ -708,7 +662,7 @@ fn test_state_timeline_zoom() {
 
     let size = egui::vec2(800.0, 400.0);
     let mut harness = test_context
-        .setup_kittest_for_rendering_3d(size)
+        .setup_kittest_for_rendering_ui(size)
         .build_ui(|ui| {
             test_context.run_with_single_view(ui, view_id);
         });
@@ -732,6 +686,69 @@ fn test_state_timeline_zoom() {
     }
 
     snapshot_results.add(harness.try_snapshot("state_timeline_zoom_after"));
+}
+
+/// A recording spanning more time than the view is willing to show at once starts out with a window
+/// centered on the time cursor, so the cursor stays in the middle of the view as time advances (e.g.
+/// while playing). Zooming (or panning) takes the window off the cursor, and it then stays where the
+/// user left it.
+#[test]
+fn test_state_timeline_cursor_pinned_to_center() {
+    let mut snapshot_results = SnapshotResults::new();
+    let mut test_context = TestContext::new_with_view_class::<StateTimelineView>();
+
+    // Far more than the 2000 ticks we're willing to show at once.
+    let timeline = Timeline::new_sequence("tick");
+    for (i, tick) in (0..10_000).step_by(500).enumerate() {
+        let state = if i % 2 == 0 { "Idle" } else { "Moving" };
+        test_context.log_entity("state/robot_mode", |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                TimePoint::from([(timeline, tick)]),
+                &re_sdk_types::archetypes::StateChange::single(state),
+            )
+        });
+    }
+
+    test_context.set_active_timeline(*timeline.name());
+
+    let view_id = setup_blueprint(&mut test_context);
+    let set_time = |tick: i64| test_context.set_time(re_log_types::TimeInt::new_temporal(tick));
+
+    set_time(4_000);
+
+    let size = egui::vec2(800.0, 150.0);
+    let mut harness = test_context
+        .setup_kittest_for_rendering_ui(size)
+        .build_ui(|ui| {
+            test_context.run_with_single_view(ui, view_id);
+        });
+
+    harness.run();
+    snapshot_results.add(harness.try_snapshot("state_timeline_cursor_pinned_at_4000"));
+
+    // The window follows the cursor, which therefore stays in the middle of the view.
+    set_time(6_000);
+    harness.run();
+    snapshot_results.add(harness.try_snapshot("state_timeline_cursor_pinned_at_6000"));
+
+    // Cmd+scroll to zoom in around the pointer. This takes the window off the cursor…
+    let center = egui::pos2(size.x * 0.5, size.y * 0.5);
+    harness.hover_at(center);
+    for _ in 0..3 {
+        harness.event(egui::Event::MouseWheel {
+            unit: egui::MouseWheelUnit::Line,
+            delta: egui::vec2(0.0, 1.0),
+            phase: egui::TouchPhase::Move,
+            modifiers: egui::Modifiers::COMMAND,
+        });
+        harness.run();
+    }
+
+    // …so advancing time now moves the cursor through a window that stays put.
+    set_time(6_200);
+    harness.run();
+    snapshot_results.add(harness.try_snapshot("state_timeline_cursor_unpinned_after_zoom"));
 }
 
 /// Regression test for RR-4294: after panning so that every logged state change lies to the
@@ -769,7 +786,7 @@ fn test_state_timeline_pan_past_data() {
 
     let size = egui::vec2(800.0, 150.0);
     let mut harness = test_context
-        .setup_kittest_for_rendering_3d(size)
+        .setup_kittest_for_rendering_ui(size)
         .build_ui(|ui| {
             test_context.run_with_single_view(ui, view_id);
         });
@@ -830,7 +847,7 @@ fn test_state_timeline_pan_before_data() {
 
     let size = egui::vec2(800.0, 150.0);
     let mut harness = test_context
-        .setup_kittest_for_rendering_3d(size)
+        .setup_kittest_for_rendering_ui(size)
         .build_ui(|ui| {
             test_context.run_with_single_view(ui, view_id);
         });
@@ -853,6 +870,75 @@ fn test_state_timeline_pan_before_data() {
     }
 
     snapshot_results.add(harness.try_snapshot("state_timeline_pan_before_data"));
+}
+
+/// Same as [`test_state_timeline_pan_before_data`], but every lane's last event is a `Clear`.
+#[test]
+fn test_state_timeline_pan_before_data_ending_in_clear() {
+    let mut snapshot_results = SnapshotResults::new();
+    let mut test_context = TestContext::new_with_view_class::<StateTimelineView>();
+
+    let timeline = Timeline::new_sequence("tick");
+
+    for (tick, entity, state) in [
+        (0, "state/robot_mode", "Idle"),
+        (10, "state/robot_mode", "Moving"),
+        (0, "state/power", "On"),
+        (15, "state/power", "Low"),
+    ] {
+        test_context.log_entity(entity, |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                TimePoint::from([(timeline, tick)]),
+                &re_sdk_types::archetypes::StateChange::single(state),
+            )
+        });
+    }
+
+    // Each lane ends with a `Clear`, i.e. the last event on the entity is not a state.
+    for (tick, entity) in [(20, "state/robot_mode"), (25, "state/power")] {
+        test_context.log_entity(entity, |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                TimePoint::from([(timeline, tick)]),
+                &re_sdk_types::archetypes::Clear::new(false),
+            )
+        });
+    }
+
+    test_context.set_active_timeline(*timeline.name());
+
+    let view_id = setup_blueprint(&mut test_context);
+
+    let size = egui::vec2(800.0, 150.0);
+    let mut harness = test_context
+        .setup_kittest_for_rendering_ui(size)
+        .build_ui(|ui| {
+            test_context.run_with_single_view(ui, view_id);
+        });
+
+    // Let the view auto-fit to the data.
+    harness.run();
+
+    // Pan far to the left, leaving the window entirely before the data.
+    let center = egui::pos2(size.x * 0.5, size.y * 0.5);
+    harness.hover_at(center);
+    for _ in 0..8 {
+        harness.event(egui::Event::MouseWheel {
+            unit: egui::MouseWheelUnit::Point,
+            delta: egui::vec2(2000.0, 0.0),
+            phase: egui::TouchPhase::Move,
+            modifiers: egui::Modifiers::NONE,
+        });
+        harness.step();
+    }
+
+    assert!(
+        harness.query_by_label_contains("No state data").is_none(),
+        "the view fell back to its empty-state message after panning before the data"
+    );
+
+    snapshot_results.add(harness.try_snapshot("state_timeline_pan_before_data_ending_in_clear"));
 }
 
 /// Exercises every awkward shape the state slot can take in one lane:
@@ -998,11 +1084,8 @@ fn test_state_timeline_link_to_global() {
     // Create the view and link its time axis to global.
     let view_id = test_context.setup_viewport_blueprint(|ctx, blueprint_ctx| {
         let view = ViewBlueprint::new_with_root_wildcard(StateTimelineView::identifier());
-        let time_axis = ViewProperty::from_archetype::<blueprint::archetypes::TimeAxis>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query,
-            view.id,
-        );
+        let time_axis =
+            ViewProperty::from_archetype_for_view::<blueprint::archetypes::TimeAxis>(ctx, view.id);
         time_axis.save_blueprint_component(
             ctx,
             &blueprint::archetypes::TimeAxis::descriptor_link(),
@@ -1013,9 +1096,8 @@ fn test_state_timeline_link_to_global() {
 
     let read_global_range = |test_context: &TestContext| {
         test_context.with_blueprint_ctx(|ctx, _store_hub| {
-            ViewProperty::from_archetype::<blueprint::archetypes::TimeAxis>(
-                ctx.current_blueprint(),
-                ctx.blueprint_query(),
+            ViewProperty::from_archetype_for_view::<blueprint::archetypes::TimeAxis>(
+                &ctx,
                 GLOBAL_VIEW_ID,
             )
             .component_or_empty::<blueprint::components::TimeRange>(
@@ -1033,7 +1115,7 @@ fn test_state_timeline_link_to_global() {
 
     let size = egui::vec2(800.0, 150.0);
     let mut harness = test_context
-        .setup_kittest_for_rendering_3d(size)
+        .setup_kittest_for_rendering_ui(size)
         .build_ui(|ui| {
             test_context.run_with_single_view(ui, view_id);
         });
@@ -1066,10 +1148,10 @@ fn test_state_timeline_link_to_global() {
     assert!(
         matches!(
             global_range.start,
-            re_sdk_types::datatypes::TimeRangeBoundary::Absolute(_)
+            re_sdk_types::encodings::TimeRangeBoundary::Absolute(_)
         ) && matches!(
             global_range.end,
-            re_sdk_types::datatypes::TimeRangeBoundary::Absolute(_)
+            re_sdk_types::encodings::TimeRangeBoundary::Absolute(_)
         ),
         "linked pan should write an absolute range, got {global_range:?}"
     );

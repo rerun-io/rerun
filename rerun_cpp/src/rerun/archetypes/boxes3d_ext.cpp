@@ -30,7 +30,7 @@ namespace rerun {
         /// TODO(#3285): Does *not* preserve data as-is and instead creates half-sizes from the
         /// input data.
         /// TODO(andreas): This should not take an std::vector.
-        static Boxes3D from_sizes(const std::vector<datatypes::Vec3D>& sizes);
+        static Boxes3D from_sizes(const std::vector<encodings::Vec3D>& sizes);
 
         /// Creates new `Boxes3D` with `centers` and `half_sizes` created from centers and (full)
         /// sizes.
@@ -40,7 +40,7 @@ namespace rerun {
         /// TODO(andreas): This should not take an std::vector.
         static Boxes3D from_centers_and_sizes(
             Collection<components::Translation3D> centers,
-            const std::vector<datatypes::Vec3D>& sizes
+            const std::vector<encodings::Vec3D>& sizes
         ) {
             return from_sizes(std::move(sizes)).with_centers(std::move(centers));
         }
@@ -52,12 +52,12 @@ namespace rerun {
         /// from the input data.
         /// TODO(andreas): This should not take an std::vector.
         static Boxes3D from_mins_and_sizes(
-            const std::vector<datatypes::Vec3D>& mins, const std::vector<datatypes::Vec3D>& sizes
+            const std::vector<encodings::Vec3D>& mins, const std::vector<encodings::Vec3D>& sizes
         );
 
         // </CODEGEN_COPY_TO_HEADER>
 #endif
-        Boxes3D Boxes3D::from_sizes(const std::vector<datatypes::Vec3D>& sizes) {
+        Boxes3D Boxes3D::from_sizes(const std::vector<encodings::Vec3D>& sizes) {
             std::vector<components::HalfSize3D> half_sizes;
             half_sizes.reserve(sizes.size());
             for (const auto& size : sizes) {
@@ -69,7 +69,7 @@ namespace rerun {
         }
 
         Boxes3D Boxes3D::from_mins_and_sizes(
-            const std::vector<datatypes::Vec3D>& mins, const std::vector<datatypes::Vec3D>& sizes
+            const std::vector<encodings::Vec3D>& mins, const std::vector<encodings::Vec3D>& sizes
         ) {
             auto num_components = std::min(mins.size(), sizes.size());
 

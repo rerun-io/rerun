@@ -11,7 +11,7 @@ dependencies = [
   "rerun-sdk",
   "timm==1.0.19",
   "torch", # this will use the version defined in the uv workspace
-  "transformers>=4.55.0",
+  "transformers>=5.5.0", # >=5.5.0 clears three code-execution advisories in 4.x
 ]
 
 [project.scripts]

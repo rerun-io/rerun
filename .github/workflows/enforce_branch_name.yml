@@ -28,7 +28,7 @@ jobs:
 
       - name: Leave comment if PR is from master/main branch of fork d
         if: ${{ failure() }}
-        uses: actions/github-script@v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
         # GitHub API is very unreliable. We don't want to fail the entire workflow just because we couldn't post a comment.
         continue-on-error: true
         with:

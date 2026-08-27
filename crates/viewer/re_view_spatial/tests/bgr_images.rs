@@ -6,7 +6,7 @@ use re_chunk_store::RowId;
 use re_log_types::TimePoint;
 use re_sdk_types::Archetype as _;
 use re_sdk_types::blueprint::components::BackgroundKind;
-use re_sdk_types::datatypes::ColorModel;
+use re_sdk_types::encodings::ColorModel;
 use re_sdk_types::image::ImageChannelType;
 use re_test_context::TestContext;
 use re_test_context::external::egui_kittest::SnapshotResults;
@@ -60,7 +60,7 @@ fn run_bgr_test<T: ImageChannelType>(
         color_model.to_string().to_lowercase(),
     );
 
-    snapshot_results.add(test_context.run_view_ui_and_save_snapshot(
+    snapshot_results.add(test_context.run_view_ui_and_save_renderer_snapshot(
         view_id,
         &snapshot_name,
         egui::vec2(300.0, 200.0),

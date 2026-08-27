@@ -3,11 +3,9 @@
 //! The only entry point is [`create_component_ui_registry`], which registers all editors in the component UI registry.
 //! This should be called by `re_viewer` on startup.
 
-#![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
-
 mod color;
 pub mod color_swatch;
-mod datatype_uis;
+mod encoding_uis;
 mod entity_path;
 mod geo_line_string;
 mod image_format;
@@ -32,12 +30,15 @@ mod visible_dnd;
 mod visual_bounds2d;
 mod zoom_level;
 
-use datatype_uis::{
+/// Variant used to render editable and read-only table flags.
+pub const TABLE_FLAG_VARIANT: &str = "table_flag";
+
+use encoding_uis::{
     edit_bool, edit_f32_min_to_max_float, edit_f32_zero_to_max, edit_f32_zero_to_one,
     edit_f64_min_to_max_float, edit_f64_zero_to_max, edit_multiline_string, edit_or_view_vec2d,
-    edit_or_view_vec3d, edit_or_view_vec3d_positive, edit_singleline_string, edit_u64_range,
-    edit_ui_points, edit_view_enum, edit_view_enum_with_variant_available, edit_view_range1d,
-    view_timestamp, view_uuid, view_view_id,
+    edit_or_view_vec3d, edit_or_view_vec3d_positive, edit_singleline_string, edit_u32_range,
+    edit_u64_range, edit_ui_points, edit_view_enum, edit_view_enum_with_variant_available,
+    edit_view_range1d, view_timestamp, view_uuid, view_view_id,
 };
 use re_sdk_types::ColormapSelection;
 use re_sdk_types::blueprint::components::{
@@ -49,8 +50,9 @@ use re_sdk_types::components::{
     AggregationPolicy, AlbedoFactor, AxisLength, Color, DepthMeter, DrawOrder, FillMode, FillRatio,
     GammaCorrection, GraphType, HalfSize3D, ImagePlaneDistance, InterpolationMode, IsKeyframe,
     Length, LinearSpeed, MagnificationFilter, MarkerSize, MeshFaceRendering, Name, Opacity,
-    PointShading, Position2D, Position3D, Range1D, Scale3D, ShowLabels, StrokeWidth, Text,
-    Timestamp, TransformRelation, Translation3D, ValueRange, Vector3D, VideoCodec, Visible,
+    PointShading, Position2D, Position3D, Range1D, Scale3D, ShowLabels, SphericalHarmonicsDegree,
+    StrokeWidth, Text, Timestamp, TransformRelation, Translation3D, ValueRange, Vector3D,
+    VideoCodec, Visible,
 };
 use re_sdk_types::{archetypes, components};
 use re_viewer_context::gpu_bridge::colormap_edit_or_view_ui_with_selection;
@@ -107,6 +109,9 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     // integer range components:
     registry.add_singleline_edit_or_view::<ForceIterations>(|ctx, ui, value| {
         edit_u64_range(ctx, ui, value, 1..=5)
+    });
+    registry.add_singleline_edit_or_view::<SphericalHarmonicsDegree>(|ctx, ui, value| {
+        edit_u32_range(ctx, ui, value, 0..=SphericalHarmonicsDegree::MAX)
     });
 
     // Bool components:
@@ -214,7 +219,10 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
 
     registry.add_singleline_edit_or_view(image_format::edit_or_view_image_format);
     registry.add_singleline_edit_or_view(resolution::edit_or_view_resolution);
-    registry.add_singleline_edit_or_view(view_coordinates::edit_or_view_view_coordinates);
+
+    registry
+        .add_singleline_edit_or_view(view_coordinates::singleline_edit_or_view_view_coordinates);
+    registry.add_multiline_edit_or_view(view_coordinates::multiline_edit_or_view_view_coordinates);
 
     registry.add_singleline_edit_or_view(radius::edit_radius_ui);
     registry.add_singleline_edit_or_view(marker_shape::edit_marker_shape_ui);
@@ -249,6 +257,7 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     registry.add_variant_ui(REDAP_URI_BUTTON_VARIANT, variant_uis::redap_uri_button);
     registry.add_variant_ui(REDAP_ENTRY_KIND_VARIANT, variant_uis::redap_entry_kind);
     registry.add_variant_ui(REDAP_THUMBNAIL_VARIANT, variant_uis::redap_thumbnail);
+    registry.add_edit_or_view_variant_ui(TABLE_FLAG_VARIANT, variant_uis::table_flag);
 
     registry
 }

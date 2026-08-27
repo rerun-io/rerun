@@ -85,7 +85,7 @@ impl EntityDataUi for Blob {
 }
 
 /// Show EXIF data about the given blob (image), if possible.
-fn exif_ui(ui: &mut egui::Ui, key: StoredBlobCacheKey, blob: &re_sdk_types::datatypes::Blob) {
+fn exif_ui(ui: &mut egui::Ui, key: StoredBlobCacheKey, blob: &re_sdk_types::encodings::Blob) {
     let exif_result = ui.memory_mut(|mem| {
         // Cache EXIF parsing to avoid re-parsing every frame.
         // The parsing is really fast, so this is not really needed.
@@ -123,7 +123,7 @@ fn exif_ui(ui: &mut egui::Ui, key: StoredBlobCacheKey, blob: &re_sdk_types::data
 /// Utility for displaying additional UI for blobs.
 pub struct BlobUi {
     component: ComponentIdentifier,
-    blob: re_sdk_types::datatypes::Blob,
+    blob: re_sdk_types::encodings::Blob,
 
     /// Additional video ui if the blob is a video.
     video: Option<VideoUi>,
@@ -191,7 +191,7 @@ impl BlobUi {
         entity_path: &re_log_types::EntityPath,
         blob_component_descriptor: &ComponentDescriptor,
         blob_row_id: Option<RowId>,
-        blob: re_sdk_types::datatypes::Blob,
+        blob: re_sdk_types::encodings::Blob,
         media_type: Option<&MediaType>,
         video_timestamp: Option<VideoTimestamp>,
     ) -> Self {

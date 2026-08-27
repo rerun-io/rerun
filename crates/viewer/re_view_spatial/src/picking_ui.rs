@@ -5,12 +5,13 @@ use re_log_types::Instance;
 use re_renderer::ViewPickingConfiguration;
 use re_ui::UiExt as _;
 use re_ui::list_item::{PropertyContent, list_item_scope};
-use re_view::AnnotationSceneContext;
+use re_view::AnnotationMapCache;
 use re_viewer_context::{
     DataResultInteractionAddress, IdentifiedViewSystem as _, Item, ItemCollection, ItemContext,
     UiLayout, ViewQuery, ViewSystemExecutionError, ViewerContext,
 };
 
+use crate::TransformTreeContext;
 use crate::visualizers::DepthImageProcessResult;
 use crate::{
     PickableRectSourceData, PickableTexturedRect, SpaceKind,
@@ -62,9 +63,7 @@ pub fn picking(
         show_debug_view: ctx.app_options().show_picking_debug_overlay,
     };
 
-    let annotations = system_output
-        .context_systems
-        .get_and_report_missing::<AnnotationSceneContext>(missing_chunk_reporter)?;
+    let annotations = AnnotationMapCache::for_query(ctx, &query.latest_at_query());
 
     let picking_result = picking_context.pick(
         ctx.render_ctx(),
@@ -155,7 +154,7 @@ pub fn picking(
                             query,
                             spatial_kind,
                             picking_context.camera_plane_from_ui,
-                            annotations,
+                            &annotations,
                             picked_pixel,
                             hit_idx as _,
                         );
@@ -223,9 +222,12 @@ pub fn picking(
         ItemCollection::from_items_and_context(hovered_items.into_iter().map(|item| (item, None)));
 
     if let Some((_, context)) = hovered_items.iter_mut().next() {
+        let transforms = system_output
+            .context_systems
+            .get_and_report_missing::<TransformTreeContext>(missing_chunk_reporter)?;
         *context = Some(match spatial_kind {
             SpaceKind::TwoD => ItemContext::TwoD {
-                space_2d: query.space_origin.clone(),
+                space_2d_target_frame: transforms.target_frame(),
                 pos: picking_context
                     .pointer_in_camera_plane
                     .extend(depth_at_pointer.unwrap_or(f32::INFINITY)),
@@ -239,14 +241,14 @@ pub fn picking(
                 let pinhole_cameras = &cameras.pinhole_cameras;
 
                 ItemContext::ThreeD {
-                    space_3d: query.space_origin.clone(),
+                    space_3d_target_frame: transforms.target_frame(),
                     pos: hovered_point,
                     tracked_entity: state.last_tracked_entity().cloned(),
-                    point_in_space_cameras: pinhole_cameras
+                    point_in_2d_spaces: pinhole_cameras
                         .iter()
                         .map(|cam| {
                             (
-                                cam.ent_path.clone(),
+                                cam.pinhole_child_frame_id,
                                 hovered_point.map(|pos| cam.project_onto_2d(pos)),
                             )
                         })

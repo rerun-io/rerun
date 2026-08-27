@@ -640,14 +640,14 @@ fn batching_thread(
             // NOTE: This can only fail if all receivers have been dropped, which simply cannot happen
             // as long the batching thread is alive… which is where we currently are.
 
-            if !chunk.components.is_empty() {
-                // make sure the chunk didn't contain *only* indicators!
-                tx_chunk.send(chunk).ok();
-            } else {
+            if chunk.components.is_empty() {
                 re_log::warn_once!(
                     "Dropping chunk without components. Entity path: {}",
                     chunk.entity_path()
                 );
+            } else {
+                // make sure the chunk didn't contain *only* indicators!
+                tx_chunk.send(chunk).ok();
             }
         }
 
@@ -687,14 +687,14 @@ fn batching_thread(
                         // NOTE: This can only fail if all receivers have been dropped, which simply cannot happen
                         // as long the batching thread is alive… which is where we currently are.
 
-                        if !chunk.components.is_empty() {
-                            // make sure the chunk didn't contain *only* indicators!
-                            tx_chunk.send(chunk).ok();
-                        } else {
+                        if chunk.components.is_empty() {
                             re_log::warn_once!(
                                 "Dropping chunk without components. Entity path: {}",
                                 chunk.entity_path()
                             );
+                        } else {
+                            // make sure the chunk didn't contain *only* indicators!
+                            tx_chunk.send(chunk).ok();
                         }
                     },
                     Command::AppendRow(entity_path, row) => {
@@ -913,7 +913,7 @@ impl PendingRow {
         per_timeline_set.into_values().flat_map(move |rows| {
             re_tracing::profile_scope!("iterate per timeline set");
 
-            // Then we split the micro batches even further -- one sub-batch per unique set of datatypes.
+            // Then we split the micro batches even further -- one sub-batch per unique set of encodings.
             let mut per_datatype_set: IntMap<u64 /* ArrowDatatype set */, Vec<Self>> =
                 Default::default();
             {
@@ -1009,7 +1009,7 @@ impl PendingRow {
                                 },
                             ));
 
-                            components = all_components.clone();
+                            components.clone_from(&all_components);
                         }
                     }
 
@@ -1122,7 +1122,7 @@ impl PendingTimeColumn {
 mod tests {
     use crossbeam::channel::TryRecvError;
     use re_log_types::example_components::{MyIndex, MyLabel, MyPoint, MyPoint64, MyPoints};
-    use re_types_core::{ComponentDescriptor, Loggable as _};
+    use re_types_core::{ComponentDescriptor, ToArrow as _};
 
     use super::*;
 
@@ -1663,7 +1663,7 @@ mod tests {
 
     /// A bunch of rows with different datatypes will end up in different batches.
     #[test]
-    fn different_datatypes() -> anyhow::Result<()> {
+    fn different_encodings() -> anyhow::Result<()> {
         let batcher = ChunkBatcher::new(ChunkBatcherConfig::NEVER, BatcherHooks::NONE)?;
 
         let timeline1 = Timeline::new_duration("log_time");

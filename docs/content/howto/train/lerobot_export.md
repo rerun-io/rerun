@@ -1,6 +1,7 @@
 ---
 title: Export recordings to LeRobot datasets
 order: 90
+description: Align multi-rate sensor data and export to LeRobot
 ---
 
 Convert Rerun data into the training dataset version of your choice.
@@ -121,3 +122,7 @@ rerun-lerobot \
 ```
 
 See the [`rerun-lerobot` repository](https://github.com/rerun-io/rerun-lerobot) for the complete implementation.
+
+## Related
+
+To go the other way — ingesting of a LeRobot dataset — see [Loading a LeRobot dataset](../logging-and-ingestion/lerobot.md).

@@ -395,6 +395,49 @@ fn missing_index_column_is_error() {
 }
 
 #[test]
+fn validate_config_checks_schema() {
+    let batch = RecordBatch::try_new(
+        Arc::new(Schema::new(vec![
+            Field::new("frame_index", DataType::Int64, false),
+            Field::new("x", DataType::Float64, false),
+        ])),
+        vec![
+            Arc::new(Int64Array::from(vec![0, 1])),
+            Arc::new(Float64Array::from(vec![1.0, 2.0])),
+        ],
+    )
+    .unwrap();
+    let path = write_parquet_tmp(&batch);
+
+    let valid = ParquetConfig {
+        index_columns: vec![IndexColumn {
+            name: "frame_index".into(),
+            index_type: IndexType::Sequence,
+        }],
+        static_columns: vec!["x".into()],
+        ..Default::default()
+    };
+    assert!(re_parquet::validate_config(&path, &valid).is_ok());
+
+    let missing_index = ParquetConfig {
+        index_columns: vec![IndexColumn {
+            name: "nonexistent".into(),
+            index_type: IndexType::Sequence,
+        }],
+        ..Default::default()
+    };
+    let err = re_parquet::validate_config(&path, &missing_index).unwrap_err();
+    assert!(err.to_string().contains("Index column"), "{err}");
+
+    let missing_static = ParquetConfig {
+        static_columns: vec!["nonexistent".into()],
+        ..Default::default()
+    };
+    let err = re_parquet::validate_config(&path, &missing_static).unwrap_err();
+    assert!(err.to_string().contains("Static column"), "{err}");
+}
+
+#[test]
 fn static_columns() {
     // Uniform static columns -> timeless chunk
     let batch = RecordBatch::try_new(

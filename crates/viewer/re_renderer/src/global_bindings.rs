@@ -45,7 +45,12 @@ pub struct FrameUniformBuffer {
     pub deterministic_rendering: u32,
 
     /// Screen resolution in pixels.
-    pub framebuffer_resolution: wgpu_buffer_types::Vec2RowPadded,
+    pub framebuffer_resolution: glam::Vec2,
+
+    /// `framebuffer_resolution / (2 * tan_half_fov)`.
+    ///
+    /// Zero for orthographic projection.
+    pub focal_length_in_pixels: glam::Vec2,
 }
 
 /// Global bindings which are always available on bind group 0 for all [`crate::renderer::Renderer`].

@@ -79,7 +79,7 @@ fn build_test_scene(entities: &[(&'static str, EntityKind)]) -> TestContext {
 
                     match image_type {
                         ImageType::Color => &archetypes::Image::from_color_model_and_tensor(
-                            re_sdk_types::datatypes::ColorModel::RGB,
+                            re_sdk_types::encodings::ColorModel::RGB,
                             Array::<u8, _>::zeros((h, w, 3).f()),
                         )
                         .unwrap() as &dyn AsComponents,

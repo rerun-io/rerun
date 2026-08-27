@@ -25,6 +25,7 @@ pub struct DownloadCommand {
 
 impl DownloadCommand {
     pub fn run(self, tokio_runtime: &tokio::runtime::Handle) -> anyhow::Result<()> {
+        let async_runtime = re_async::AsyncRuntimeHandle::new_native(tokio_runtime.clone());
         let output_dir = self
             .output_dir
             .unwrap_or_else(|| std::path::PathBuf::from("."));
@@ -96,6 +97,7 @@ impl DownloadCommand {
             let readable_url = data_source.as_uri().unwrap_or_else(|| url.clone());
 
             let rx = data_source.stream_with_options(
+                &async_runtime,
                 on_auth_err,
                 &connection_registry,
                 streaming_options,
@@ -211,10 +213,13 @@ fn ensure_credentials(
 /// Derive an output `.rrd` filename from the data source.
 fn output_filename(data_source: &LogDataSource, original_url: &str) -> std::path::PathBuf {
     match data_source {
-        LogDataSource::RedapDatasetSegment { uri, .. } => format!("{}.rrd", uri.segment_id).into(),
+        LogDataSource::RedapDatasetSegment { uri, .. } => match &uri.segment_id {
+            Some(segment_id) => format!("{segment_id}.rrd").into(),
+            None => "output.rrd".into(),
+        },
 
         #[cfg(not(target_arch = "wasm32"))]
-        LogDataSource::FilePath { path, .. } => path
+        LogDataSource::File { path, .. } => path
             .file_name()
             .map(Into::into)
             .unwrap_or_else(|| "output.rrd".into()),
@@ -222,9 +227,14 @@ fn output_filename(data_source: &LogDataSource, original_url: &str) -> std::path
         LogDataSource::HttpUrl { url, .. } => {
             let path = url.path();
             let filename = path.rsplit('/').next().unwrap_or("output.rrd");
+            let extension = std::path::Path::new(filename)
+                .extension()
+                .and_then(|extension| extension.to_str())
+                .unwrap_or_default()
+                .to_lowercase();
             if filename.is_empty() {
                 "output.rrd".into()
-            } else if filename.ends_with(".rrd") || filename.ends_with(".rbl") {
+            } else if matches!(extension.as_str(), "rrd" | "rbl") {
                 filename.into()
             } else {
                 format!("{filename}.rrd").into()

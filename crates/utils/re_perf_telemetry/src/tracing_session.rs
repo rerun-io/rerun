@@ -159,14 +159,14 @@ pub(crate) fn set_session_id_reader(reader: SessionIdReader) {
 /// Invoke the registered reader, if any. Returns `None` when no reader has
 /// been installed or when the feature is off.
 fn read_via_reader() -> Option<RerunTracingSessionId> {
-    #[cfg(feature = "session_id_reader")]
-    {
-        let reader = SESSION_ID_READER.get()?;
-        reader()
-    }
-    #[cfg(not(feature = "session_id_reader"))]
-    {
-        None
+    cfg_select! {
+        feature = "session_id_reader" => {
+            let reader = SESSION_ID_READER.get()?;
+            reader()
+        }
+        _ => {
+            None
+        }
     }
 }
 
@@ -407,7 +407,7 @@ mod tests {
         // standing up the full OTel pipeline.
         crate::telemetry::set_telemetry_active_for_test(true);
 
-        let rt = tokio::runtime::Builder::new_current_thread()
+        let rt = tokio::runtime::Builder::new_current_thread() // NOLINT: the synchronous test owns this runtime
             .enable_all()
             .build()
             .unwrap();
@@ -478,7 +478,7 @@ mod tests {
 
         let baseline = ACTIVE_TRACING_SESSION_COUNT.load(Ordering::Acquire);
 
-        let rt = tokio::runtime::Builder::new_current_thread()
+        let rt = tokio::runtime::Builder::new_current_thread() // NOLINT: the synchronous test owns this runtime
             .enable_all()
             .build()
             .unwrap();

@@ -4,6 +4,7 @@
 //! Does not implement any concrete view.
 
 // TODO(andreas): Can we move some of these to the `re_view` crate?
+mod diagnostic;
 mod highlights;
 mod named_system;
 mod spawn_heuristics;
@@ -21,17 +22,18 @@ mod visualizer_system;
 
 use std::sync::Arc;
 
+pub use diagnostic::{ViewerDiagnostic, ViewerReportSeverity};
 pub use highlights::{
     OptionalViewEntityHighlight, ViewEntityHighlight, ViewHighlights, ViewOutlineMasks,
 };
 pub use named_system::{IdentifiedViewSystem, PerSystemEntities, ViewSystemIdentifier};
-pub use spawn_heuristics::{RecommendedView, ViewSpawnHeuristics};
+pub use spawn_heuristics::{MAX_VIEWS_SPAWNED, RecommendedView, ViewSpawnHeuristics};
 pub use system_execution_output::{
     SystemExecutionOutput, VisualizerTypeReport, VisualizerViewReport,
 };
 pub use view_class::{
-    RecommendedVisualizers, ViewClass, ViewClassExt, ViewClassLayoutPriority, ViewState,
-    ViewStateExt, VisualizersSectionOutput, VisualizersSectionUi,
+    RecommendedVisualizers, ViewClass, ViewClassExt, ViewClassLayoutPriority, ViewClassUiOutput,
+    ViewState, ViewStateExt, VisualizersSectionOutput, VisualizersSectionUi,
 };
 pub use view_class_placeholder::ViewClassPlaceholder;
 pub use view_class_registry::{ViewClassRegistry, ViewClassRegistryError, ViewSystemRegistrator};
@@ -49,7 +51,7 @@ pub use visualizability_constraints::{
 };
 pub use visualizer_system::{
     VisualizerCollection, VisualizerExecutionOutput, VisualizerInstructionReport,
-    VisualizerQueryInfo, VisualizerReportContext, VisualizerReportSeverity, VisualizerSystem,
+    VisualizerQueryInfo, VisualizerReportContext, VisualizerSystem,
 };
 
 // ---------------------------------------------------------------------------
@@ -106,6 +108,12 @@ impl From<re_renderer::renderer::LineDrawDataError> for ViewSystemExecutionError
 
 impl From<re_renderer::renderer::PointCloudDrawDataError> for ViewSystemExecutionError {
     fn from(val: re_renderer::renderer::PointCloudDrawDataError) -> Self {
+        Self::DrawDataCreationError(Arc::new(val))
+    }
+}
+
+impl From<re_renderer::renderer::GaussianSplatDrawDataError> for ViewSystemExecutionError {
+    fn from(val: re_renderer::renderer::GaussianSplatDrawDataError) -> Self {
         Self::DrawDataCreationError(Arc::new(val))
     }
 }

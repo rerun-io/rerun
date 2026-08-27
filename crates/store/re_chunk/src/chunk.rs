@@ -16,8 +16,8 @@ use re_log_types::{
     AbsoluteTimeRange, EntityPath, NonMinI64, TimeInt, TimeType, Timeline, TimelineName,
 };
 use re_types_core::{
-    ComponentDescriptor, ComponentIdentifier, ComponentType, DeserializationError, Loggable as _,
-    SerializationError, SerializedComponentColumn,
+    ArrowDatatype as _, ComponentDescriptor, ComponentIdentifier, ComponentType,
+    DeserializationError, SerializationError, SerializedComponentColumn,
 };
 
 use crate::{ChunkId, RowId};
@@ -164,6 +164,23 @@ impl ChunkComponents {
         column: SerializedComponentColumn,
     ) -> Option<SerializedComponentColumn> {
         self.0.insert(column.descriptor.component, column)
+    }
+
+    /// Rewrites every column's outer list field into
+    /// [`re_arrow_util::canonical_component_list_field`].
+    ///
+    /// [`Chunk::new`] calls this so that every chunk in the system — however it was produced —
+    /// describes its component columns the same way. See
+    /// [`re_arrow_util::canonicalized_component_list_array`] for why that matters, and
+    /// [`Chunk::sanity_check`] for the invariant it establishes.
+    pub(crate) fn canonicalize_list_fields(&mut self) {
+        for column in self.0.values_mut() {
+            if let Some(canonical) =
+                re_arrow_util::canonicalized_component_list_array(&column.list_array)
+            {
+                column.list_array = canonical;
+            }
+        }
     }
 }
 
@@ -958,6 +975,10 @@ impl Chunk {
             components,
         };
 
+        // Every path that produces a `Chunk` funnels through here, which makes this the one
+        // place where the outer-list convention can be enforced for good.
+        chunk.components.canonicalize_list_fields();
+
         chunk.is_sorted = is_sorted.unwrap_or_else(|| chunk.is_row_ids_sorted_uncached());
 
         chunk.sanity_check()?;
@@ -1127,6 +1148,7 @@ impl Chunk {
     ) -> ChunkResult<()> {
         self.id = ChunkId::new();
         self.components.insert(component_column);
+        self.components.canonicalize_list_fields();
         self.reset_cached_heap_size_bytes();
         self.sanity_check()
     }
@@ -1161,7 +1183,7 @@ impl TimeColumn {
         let time_slice = times.as_ref();
 
         let is_sorted =
-            is_sorted.unwrap_or_else(|| time_slice.windows(2).all(|times| times[0] <= times[1]));
+            is_sorted.unwrap_or_else(|| time_slice.array_windows().all(|[a, b]| a <= b));
 
         let time_range = if is_sorted {
             // NOTE: The 'or' in 'map_or' is never hit, but better safe than sorry.
@@ -1777,7 +1799,7 @@ impl Chunk {
             }
         }
 
-        let unsorted_timelines = self.unsorted_timelines();
+        let unsorted_timelines: Vec<_> = self.unsorted_timelines().collect();
         if !unsorted_timelines.is_empty() {
             if re_log::is_rerun_very_strict() {
                 panic!(
@@ -1886,9 +1908,23 @@ impl Chunk {
             }
 
             // Ensure that each cell is a list (we don't support mono-components yet).
-            if let arrow::datatypes::DataType::List(_field) = list_array.data_type() {
-                // We don't check `field.is_nullable()` here because we support both.
+            if let arrow::datatypes::DataType::List(field) = list_array.data_type() {
+                // `Chunk::new` canonicalizes the outer list field of every component column, so
+                // anything else here means the chunk was mutated in place afterwards — via
+                // `ChunkComponents::list_arrays_mut` or its `DerefMut`. That is a programmer
+                // error, so we only pay for the check in debug builds.
                 // TODO(#6819): Remove support for inner nullability.
+                if cfg!(debug_assertions)
+                    && let canonical =
+                        re_arrow_util::canonical_component_list_field(field.data_type().clone())
+                    && field.as_ref() != &canonical
+                {
+                    return Err(ChunkError::Malformed {
+                        reason: format!(
+                            "Component column {component} must describe its outer list as {canonical:?}, got {field:?}",
+                        ),
+                    });
+                }
             } else {
                 return Err(ChunkError::Malformed {
                     reason: format!(
@@ -1941,9 +1977,7 @@ impl TimeColumn {
 
         let times = times.as_ref();
 
-        if cfg!(debug_assertions)
-            && *is_sorted != times.windows(2).all(|times| times[0] <= times[1])
-        {
+        if cfg!(debug_assertions) && *is_sorted != times.array_windows().all(|[a, b]| a <= b) {
             return Err(ChunkError::Malformed {
                 reason: format!(
                     "Time column is marked as {}sorted but isn't: {times:?}",

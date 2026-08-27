@@ -429,6 +429,50 @@ impl ::prost::Name for GetSegmentTableSchemaResponse {
     }
 }
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SegmentIdList {
+    #[prost(string, repeated, tag = "1")]
+    pub segment_ids: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+}
+impl ::prost::Name for SegmentIdList {
+    const NAME: &'static str = "SegmentIdList";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.SegmentIdList".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.SegmentIdList".into()
+    }
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SegmentIdFilter {
+    #[prost(oneof = "segment_id_filter::Strategy", tags = "1, 2")]
+    pub strategy: ::core::option::Option<segment_id_filter::Strategy>,
+}
+/// Nested message and enum types in `SegmentIdFilter`.
+pub mod segment_id_filter {
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
+    pub enum Strategy {
+        /// Scan only manifest rows belonging to these segment IDs.
+        /// An empty list scans no segment rows.
+        #[prost(message, tag = "1")]
+        ScanOnly(super::SegmentIdList),
+        /// Scan all manifest rows except those belonging to these segment IDs.
+        /// An empty list skips no segment rows.
+        #[prost(message, tag = "2")]
+        Skip(super::SegmentIdList),
+    }
+}
+impl ::prost::Name for SegmentIdFilter {
+    const NAME: &'static str = "SegmentIdFilter";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.SegmentIdFilter".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.SegmentIdFilter".into()
+    }
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ScanSegmentTableRequest {
     /// A list of column names to be projected server-side.
     ///
@@ -441,16 +485,12 @@ pub struct ScanSegmentTableRequest {
     /// an `InvalidArgument` error.
     #[prost(string, repeated, tag = "1")]
     pub columns: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
-    /// An optional best-effort filter hint, expressed as a SQL boolean expression over the
-    /// segment-table columns (e.g. `rerun_segment_id = 'abc'`).
+    /// An optional best-effort hint for pruning segment IDs from the server-side scan.
     ///
-    /// If empty, no filter hint is provided.
-    /// Column names use the public (segment) terminology.
-    /// Servers may apply this filter, ignore it, or reject malformed/unsupported filters with an
-    /// `InvalidArgument` error.
+    /// Servers may apply or ignore this filter.
     /// Clients must re-apply filters locally if correctness depends on them.
-    #[prost(string, tag = "2")]
-    pub sql_filter: ::prost::alloc::string::String,
+    #[prost(message, optional, tag = "3")]
+    pub segment_id_filter: ::core::option::Option<SegmentIdFilter>,
 }
 impl ::prost::Name for ScanSegmentTableRequest {
     const NAME: &'static str = "ScanSegmentTableRequest";
@@ -518,16 +558,12 @@ pub struct ScanDatasetManifestRequest {
     /// an `InvalidArgument` error.
     #[prost(string, repeated, tag = "3")]
     pub columns: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
-    /// An optional best-effort filter hint, expressed as a SQL boolean expression over the
-    /// dataset-manifest columns (e.g. `rerun_segment_id = 'abc'`).
+    /// An optional best-effort hint for pruning segment IDs from the server-side scan.
     ///
-    /// If empty, no filter hint is provided.
-    /// Column names use the public (segment) terminology.
-    /// Servers may apply this filter, ignore it, or reject malformed/unsupported filters with an
-    /// `InvalidArgument` error.
+    /// Servers may apply or ignore this filter.
     /// Clients must re-apply filters locally if correctness depends on them.
-    #[prost(string, tag = "4")]
-    pub sql_filter: ::prost::alloc::string::String,
+    #[prost(message, optional, tag = "5")]
+    pub segment_id_filter: ::core::option::Option<SegmentIdFilter>,
 }
 impl ::prost::Name for ScanDatasetManifestRequest {
     const NAME: &'static str = "ScanDatasetManifestRequest";
@@ -586,6 +622,12 @@ impl ::prost::Name for GetDatasetSchemaResponse {
 pub struct GetRrdManifestRequest {
     #[prost(message, optional, tag = "1")]
     pub segment_id: ::core::option::Option<super::super::common::v1alpha1::SegmentId>,
+    /// Asks the server to return direct URLs pointing at encoded
+    /// `rerun.log_msg.v1alpha1.RrdFooter` payloads instead of inlining manifests.
+    ///
+    /// It is not guaranteed that the server will honor this.
+    #[prost(bool, tag = "2")]
+    pub generate_direct_urls: bool,
 }
 impl ::prost::Name for GetRrdManifestRequest {
     const NAME: &'static str = "GetRrdManifestRequest";
@@ -597,10 +639,15 @@ impl ::prost::Name for GetRrdManifestRequest {
         "/rerun.cloud.v1alpha1.GetRrdManifestRequest".into()
     }
 }
+/// Exactly one of `rrd_manifest` and `manifest_key` is set per response.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetRrdManifestResponse {
+    /// The manifest, inlined.
     #[prost(message, optional, tag = "1")]
     pub rrd_manifest: ::core::option::Option<super::super::log_msg::v1alpha1::RrdManifest>,
+    /// Points at an encoded `rerun.log_msg.v1alpha1.RrdFooter` payload for the client to fetch and decode.
+    #[prost(message, optional, tag = "2")]
+    pub manifest_key: ::core::option::Option<RrdManifestKey>,
 }
 impl ::prost::Name for GetRrdManifestResponse {
     const NAME: &'static str = "GetRrdManifestResponse";
@@ -1000,12 +1047,14 @@ pub struct DoMaintenanceRequest {
     /// of all indexes.
     #[prost(bool, tag = "2")]
     pub optimize_indexes: bool,
-    /// Retrain all builtin indexes on this dataset from scratch.
+    /// Fully consolidate every index on this dataset, ignoring the server's segment-count
+    /// threshold that normally bounds how often indexes are merged.
     ///
-    /// This retrains all builtin indexes from scratch for optimal runtime performance.
-    /// This is faster than re-creating the indexes, and automatically keeps track of their configurations.
+    /// This is the manual drain hammer for accumulated index segments and deferred index-remap
+    /// (fragment-reuse) debt. Implies `optimize_indexes`.
     ///
-    /// This implies `optimize_indexes`.
+    /// Historically this retrained user-defined vector indexes; those are gone, and the remaining
+    /// builtin scalar indexes have no trained state — a retrain is exactly a full consolidation.
     #[prost(bool, tag = "6")]
     pub retrain_indexes: bool,
     /// Compact the underlying Lance fragments, for all Rerun Manifests.
@@ -1023,6 +1072,12 @@ pub struct DoMaintenanceRequest {
     /// and <https://docs.rs/lance/latest/lance/dataset/cleanup/fn.cleanup_old_versions.html>
     #[prost(message, optional, tag = "4")]
     pub cleanup_before: ::core::option::Option<::prost_types::Timestamp>,
+    /// List the replicated dataset in its object store, such as S3, and remove objects that are no
+    /// longer present in the local dataset.
+    /// This performs a full remote reconciliation, unlike normal cleanup, which only removes replica
+    /// objects corresponding to local files deleted during that cleanup.
+    #[prost(bool, tag = "7")]
+    pub gc_object_store: bool,
     /// Override default platform behavior and allow cleanup of recent files. This will respect
     /// the value of `cleanup_before` timestamp even if it's more recent than 1 hour.
     ///
@@ -1836,6 +1891,38 @@ impl ::prost::Name for RrdChunkLocation {
         "/rerun.cloud.v1alpha1.RrdChunkLocation".into()
     }
 }
+/// `RrdManifestKey` points at an encoded `rerun.log_msg.v1alpha1.RrdFooter` payload in the object store.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct RrdManifestKey {
+    /// The canonical location of the footer payload (e.g. s3://bucket/file).
+    #[prost(message, optional, tag = "1")]
+    pub location: ::core::option::Option<RrdChunkLocation>,
+    /// The segment layer whose manifest is stored in this footer.
+    #[prost(string, optional, tag = "2")]
+    pub layer: ::core::option::Option<::prost::alloc::string::String>,
+    /// ETag of the source object (the layer's RRD file) as observed at registration time.
+    ///
+    /// Clients should pass this as an `If-Match` precondition when fetching, so that a concurrent
+    /// re-registration results in a clean failure (HTTP 412) instead of decoding garbage from a
+    /// mismatched byte range.
+    ///
+    /// Optional: legacy registrations and stores that do not return an ETag leave this unset.
+    #[prost(string, optional, tag = "3")]
+    pub etag: ::core::option::Option<::prost::alloc::string::String>,
+    /// Presigned URL the client fetches the manifest's byte range from.
+    #[prost(string, optional, tag = "4")]
+    pub direct_url: ::core::option::Option<::prost::alloc::string::String>,
+}
+impl ::prost::Name for RrdManifestKey {
+    const NAME: &'static str = "RrdManifestKey";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.RrdManifestKey".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.RrdManifestKey".into()
+    }
+}
 /// Error codes for application level errors
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
@@ -2586,6 +2673,11 @@ pub mod rerun_cloud_service_client {
         /// When that happens, it is guaranteed that all parts have the same exact Sorbet schemas (and therefore
         /// identical Sorbet schema hashes too).
         /// That means it is always semantically valid to concatenate the data from these RRD manifests.
+        ///
+        /// If the client sets `generate_direct_urls`, the server may instead return keys pointing at
+        /// encoded `rerun.log_msg.v1alpha1.RrdFooter` payloads for the client to fetch and decode.
+        /// This is best-effort: the response may still inline the manifests: clients must handle both forms.
+        /// However, all the items in a stream will either send inline manifest or urls, uniformly.
         pub async fn get_rrd_manifest(
             &mut self,
             request: impl tonic::IntoRequest<super::GetRrdManifestRequest>,
@@ -3094,6 +3186,11 @@ pub mod rerun_cloud_service_server {
         /// When that happens, it is guaranteed that all parts have the same exact Sorbet schemas (and therefore
         /// identical Sorbet schema hashes too).
         /// That means it is always semantically valid to concatenate the data from these RRD manifests.
+        ///
+        /// If the client sets `generate_direct_urls`, the server may instead return keys pointing at
+        /// encoded `rerun.log_msg.v1alpha1.RrdFooter` payloads for the client to fetch and decode.
+        /// This is best-effort: the response may still inline the manifests: clients must handle both forms.
+        /// However, all the items in a stream will either send inline manifest or urls, uniformly.
         async fn get_rrd_manifest(
             &self,
             request: tonic::Request<super::GetRrdManifestRequest>,

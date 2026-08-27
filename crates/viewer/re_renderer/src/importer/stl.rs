@@ -48,7 +48,7 @@ pub fn load_stl_from_buffer(
 
     let material = mesh::Material {
         label: name.clone(),
-        index_range: 0..num_vertices as u32,
+        index_range: re_span::Span::from_start_len(0, num_vertices as u32),
         albedo: ctx.texture_manager_2d.white_texture_unorm_handle().clone(),
         albedo_factor: crate::Rgba::WHITE,
     };

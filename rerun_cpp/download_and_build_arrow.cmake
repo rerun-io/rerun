@@ -81,7 +81,14 @@ function(download_and_build_arrow)
         set(VERSION_PATCH "-DCMAKE_POLICY_VERSION_MINIMUM=${CMAKE_POLICY_VERSION_MINIMUM}")
     endif()
 
+    # TODO(apache/arrow#45985): Arrow can't support CMake 4.0 yet
     set(MIMALLOC_PATCH ${CMAKE_CURRENT_LIST_DIR}/patches/mimalloc_cmake4.patch)
+
+    # Arrow 18 only recognizes Apple's older `cctools-<version>` libtool version string.
+    # Patch it to also recognize the newer `cctools_ld-<version>` format instead of misidentifying it as GNU libtool.
+    # Fixed upstream by https://github.com/apache/arrow/pull/49370 and released in Arrow 25.
+    # TODO(michael): Remove this backport when upgrading to Arrow 25 or newer.
+    set(MACOS_LIBTOOL_PATCH ${CMAKE_CURRENT_LIST_DIR}/patches/arrow18_macos_libtool.patch)
 
     ExternalProject_Add(
         arrow_cpp
@@ -91,9 +98,9 @@ function(download_and_build_arrow)
         DOWNLOAD_NO_PROGRESS ON # Progress sounds like a nice idea but is in practice very spammy.
         UPDATE_COMMAND "" # Prevent unnecessary rebuilds on every cmake --build
 
-        # Apply patch after checkout but before configure
-        # TODO(apache/arrow#45985): Arrow can't support CMake 4.0 yet
-        PATCH_COMMAND git apply --check ${MIMALLOC_PATCH} && git apply ${MIMALLOC_PATCH} || true
+        # Apply patches after checkout but before configure.
+        # Keep Git from discovering the enclosing repository and skipping paths relative to the extracted Arrow source.
+        PATCH_COMMAND ${CMAKE_COMMAND} -E env GIT_CEILING_DIRECTORIES=${ARROW_DOWNLOAD_PATH}/src git apply ${MIMALLOC_PATCH} ${MACOS_LIBTOOL_PATCH}
 
         # LOG_X ON means that the output of the command will
         # be logged to a file _instead_ of printed to the console.
@@ -105,6 +112,7 @@ function(download_and_build_arrow)
         -DARROW_BOOST_USE_SHARED=OFF
         -DARROW_BUILD_SHARED=${ARROW_BUILD_SHARED}
         -DARROW_BUILD_STATIC=${ARROW_BUILD_STATIC}
+        -DBUILD_WARNING_LEVEL=PRODUCTION # Arrow's debug CHECKIN level promotes third-party warnings to errors.
         -DARROW_CXXFLAGS=${ARROW_CXXFLAGS}
         -DARROW_COMPUTE=OFF
         -DARROW_IPC=ON # Needed due to: https://github.com/apache/arrow/issues/44563

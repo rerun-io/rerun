@@ -1,3 +1,5 @@
+#![allow(clippy::iter_over_hash_type)]
+
 //! # Rerun - Visualize streams of multimodal data.
 //!
 //! Add the `rerun` library to your crate with `cargo add rerun`.
@@ -106,6 +108,9 @@
 
 #[cfg(feature = "run")]
 mod commands;
+
+#[cfg(feature = "rrd")]
+pub mod rrd;
 
 #[cfg(feature = "sdk")]
 mod sdk;

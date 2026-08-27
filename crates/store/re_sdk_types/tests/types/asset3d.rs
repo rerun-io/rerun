@@ -1,6 +1,6 @@
 use re_sdk_types::archetypes::Asset3D;
 use re_sdk_types::components::{AlbedoFactor, Blob, MediaType};
-use re_sdk_types::datatypes::{Rgba32, Utf8};
+use re_sdk_types::encodings::{Rgba32, Utf8};
 use re_sdk_types::{Archetype as _, AsComponents as _, ComponentBatch as _};
 
 #[test]

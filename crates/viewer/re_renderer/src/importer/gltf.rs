@@ -31,6 +31,12 @@ pub enum GltfImportError {
 
     #[error("Mesh {mesh_name:?} has no triangle primitives.")]
     NoTrianglePrimitives { mesh_name: String },
+
+    #[error(
+        "This file requires glTF extension(s) that Rerun does not support: {0}. \
+         If this is Draco or meshopt compression, re-export the model uncompressed."
+    )]
+    UnsupportedRequiredExtensions(String),
 }
 
 /// Loads both gltf and glb into the mesh & texture manager.
@@ -43,7 +49,7 @@ pub fn load_gltf_from_buffer(
 
     let (doc, buffers, images) = {
         re_tracing::profile_scope!("gltf::import_slice");
-        gltf::import_slice(buffer)?
+        gltf::import_slice(buffer).map_err(|err| explain_import_error(err, buffer))?
     };
 
     let mut images_as_textures = Vec::with_capacity(images.len());
@@ -68,18 +74,20 @@ pub fn load_gltf_from_buffer(
         };
 
         // Images don't have names, but textures do. Gather all texture names for debug labeling.
-        #[cfg(debug_assertions)]
-        let texture_names = doc.textures().fold(String::new(), |mut name_list, t| {
-            if t.source().index() == _index {
-                if !name_list.is_empty() {
-                    name_list.push_str(", ");
-                }
-                name_list.push_str(t.name().unwrap_or(""));
+        let texture_names = cfg_select! {
+            debug_assertions => {
+                doc.textures().fold(String::new(), |mut name_list, t| {
+                    if t.source().index() == _index {
+                        if !name_list.is_empty() {
+                            name_list.push_str(", ");
+                        }
+                        name_list.push_str(t.name().unwrap_or(""));
+                    }
+                    name_list
+                })
             }
-            name_list
-        });
-        #[cfg(not(debug_assertions))]
-        let texture_names = "";
+            _ => { "" }
+        };
 
         let texture = ImageDataDesc {
             label: if texture_names.is_empty() {
@@ -120,6 +128,25 @@ pub fn load_gltf_from_buffer(
     }
 
     Ok(re_model)
+}
+
+/// Turn an opaque `gltf` loading error into an actionable one when the cause is an
+/// unsupported required extension.
+///
+/// `gltf` rejects unsupported `extensionsRequired` during validation, before we ever get
+/// to the geometry, so we re-parse without validation just to name the offending extensions.
+fn explain_import_error(err: gltf::Error, buffer: &[u8]) -> GltfImportError {
+    if let Ok(gltf) = gltf::Gltf::from_slice_without_validation(buffer) {
+        let unsupported = gltf
+            .document
+            .extensions_required()
+            .map(str::to_owned)
+            .collect::<Vec<_>>();
+        if !unsupported.is_empty() {
+            return GltfImportError::UnsupportedRequiredExtensions(unsupported.join(", "));
+        }
+    }
+    GltfImportError::GltfLoading(err)
 }
 
 fn map_format(format: gltf::image::Format) -> Option<wgpu::TextureFormat> {
@@ -265,7 +292,10 @@ fn import_mesh(
 
         materials.push(Material {
             label: primitive.material().name().into(),
-            index_range: index_offset..triangle_indices.len() as u32 * 3,
+            index_range: re_span::Span::from_start_end(
+                index_offset,
+                triangle_indices.len() as u32 * 3,
+            ),
             albedo,
             albedo_factor,
         });
@@ -327,5 +357,25 @@ fn gather_instances_recursive(
         && let Some(&mesh_key) = meshes.get(&mesh.index())
     {
         model.add_instance(mesh_key, transform);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{GltfImportError, explain_import_error};
+
+    #[test]
+    fn unsupported_required_extension_is_named() {
+        // A file that requires Draco compression fails validation in `gltf::import_slice`
+        // before any geometry is read. We should turn that into an actionable error.
+        let json = br#"{"asset":{"version":"2.0"},"extensionsUsed":["KHR_draco_mesh_compression"],"extensionsRequired":["KHR_draco_mesh_compression"]}"#;
+        let err = gltf::import_slice(json).unwrap_err();
+
+        match explain_import_error(err, json) {
+            GltfImportError::UnsupportedRequiredExtensions(exts) => {
+                assert_eq!(exts, "KHR_draco_mesh_compression");
+            }
+            other => panic!("expected UnsupportedRequiredExtensions, got {other:?}"),
+        }
     }
 }

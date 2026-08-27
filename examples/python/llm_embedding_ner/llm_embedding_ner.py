@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import argparse
 from collections import defaultdict
-from typing import Any
+from typing import Any, cast
 
 import torch
 import umap
@@ -126,7 +126,8 @@ def run_llm_ner(text: str) -> None:
 
     # Compute intermediate and final output
     token_ids = tokenizer.encode(text)
-    token_words = tokenizer.convert_ids_to_tokens(token_ids)
+    # `convert_ids_to_tokens` is overloaded on `int` vs `list[int]`, so it widens to `str | list[str]`.
+    token_words = cast("list[str]", tokenizer.convert_ids_to_tokens(token_ids))
 
     print("Computing embeddings and output…")
     # NOTE The embeddings are currently computed twice (next line and as part of the pipeline)
@@ -142,10 +143,16 @@ def run_llm_ner(text: str) -> None:
     class_ids = [0 for _ in token_words]
     for ner_result in ner_results:
         class_ids[ner_result["index"]] = label2index[ner_result["entity"]]
+    # `Any` is load-bearing, twice over, so please read before tidying:
+    # `AnyValues.__init__` takes `drop_untyped_nones: bool` as its first positional-or-keyword
+    # parameter, so mypy checks the value type of any `**`-unpacked mapping against `bool`. Only
+    # `Any` satisfies that — a precise union fails, and so does one with `bool` added to it.
+    # The literal also has to stay on one line, or `scripts/lint.py` flags the key with a space in it.
+    any_values: dict[str, Any] = {"Token": token_words, "Named Entity": entity_per_token(token_words, ner_results)}
     rr.log(
         "umap_embeddings",
         rr.Points3D(umap_embeddings, class_ids=class_ids),
-        rr.AnyValues(**{"Token": token_words, "Named Entity": entity_per_token(token_words, ner_results)}),
+        rr.AnyValues(**any_values),
     )
     log_ner_results(ner_results)
 

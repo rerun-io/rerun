@@ -158,6 +158,7 @@ fn register_and_get_with_args() {
 fn get_unknown_function() {
     let registry = FunctionRegistry::new();
     let result = registry.get("nonexistent", &[]);
+    // Not `assert_matches!`, because the `Ok` variant is not `Debug`.
     assert!(matches!(
         result,
         Err(FunctionRegistryError::UnknownFunction { .. })
@@ -181,6 +182,7 @@ fn get_one_arg_function_with_no_args() {
     let rt = test_runtime();
 
     let result = rt.function_registry().get("prepend", &[]);
+    // Not `assert_matches!`, because the `Ok` variant is not `Debug`.
     assert!(matches!(
         result,
         Err(FunctionRegistryError::WrongArguments { .. })

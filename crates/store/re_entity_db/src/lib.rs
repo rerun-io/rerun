@@ -1,3 +1,5 @@
+#![allow(clippy::iter_over_hash_type)]
+
 //! This is how we store and index logging data.
 //!
 //! ## Feature flags

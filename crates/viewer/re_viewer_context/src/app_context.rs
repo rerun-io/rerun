@@ -150,10 +150,7 @@ impl AppContext<'_> {
 
     /// The current active Redap entry id, if any.
     pub fn active_redap_entry(&self) -> Option<re_log_types::EntryId> {
-        match self.route {
-            Route::RedapEntry { kind, .. } => kind.entry_id(),
-            _ => None,
-        }
+        self.route.entry_id()
     }
 
     /// The current active local table, if any.
@@ -343,7 +340,7 @@ impl AppContext<'_> {
 
                     for (item, ctx) in new_selection.iter_mut() {
                         if let Some(new_ctx) = toggle_items_set.get(item) {
-                            *ctx = new_ctx.clone();
+                            ctx.clone_from(new_ctx);
                             toggle_items_set.remove(item);
                         }
                     }

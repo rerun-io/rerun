@@ -4,21 +4,9 @@ pub enum QueryRange {
     /// Use a time range on the currently active timeline.
     ///
     /// This is also known as "visible time range"
-    TimeRange(re_sdk_types::datatypes::TimeRange),
+    TimeRange(re_sdk_types::encodings::TimeRange),
 
     /// Use latest-at semantics.
     #[default]
     LatestAt,
-}
-
-impl QueryRange {
-    #[inline]
-    pub fn is_latest_at(&self) -> bool {
-        matches!(self, Self::LatestAt)
-    }
-
-    #[inline]
-    pub fn is_time_range(&self) -> bool {
-        matches!(self, Self::TimeRange(_))
-    }
 }

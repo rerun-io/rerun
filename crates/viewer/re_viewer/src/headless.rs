@@ -65,7 +65,6 @@ pub fn run_headless_app(
     let idle_timeout = Duration::from_secs(1);
     loop {
         harness.step();
-        handle_pending_screenshots(&mut harness);
 
         if has_pending_close(&harness) {
             re_log::info!("Headless viewer received close request, shutting down.");
@@ -95,48 +94,4 @@ fn has_pending_close(harness: &egui_kittest::Harness<'_, App>) -> bool {
         .values()
         .flat_map(|v| v.commands.iter())
         .any(|cmd| matches!(cmd, egui::ViewportCommand::Close))
-}
-
-/// Bridge [`egui::ViewportCommand::Screenshot`] requests through `kittest`'s
-/// offscreen renderer.
-///
-/// In a normal `eframe::run_native` setup, the windowing backend captures the
-/// framebuffer after a screenshot command and emits an
-/// [`egui::Event::Screenshot`] that the viewer's `App` listens for. `kittest`
-/// doesn't process viewport commands itself, so we have to do that translation
-/// here, otherwise `save_screenshot` requests would be silently dropped.
-fn handle_pending_screenshots(harness: &mut egui_kittest::Harness<'_, App>) {
-    let pending: Vec<egui::UserData> = harness
-        .output()
-        .viewport_output
-        .values()
-        .flat_map(|v| v.commands.iter())
-        .filter_map(|cmd| match cmd {
-            egui::ViewportCommand::Screenshot(user_data) => Some(user_data.clone()),
-            _ => None,
-        })
-        .collect();
-
-    if pending.is_empty() {
-        return;
-    }
-
-    let rgba = match harness.render() {
-        Ok(rgba) => rgba,
-        Err(err) => {
-            re_log::error!("Failed to render headless screenshot: {err}");
-            return;
-        }
-    };
-    let size = [rgba.width() as usize, rgba.height() as usize];
-    let pixels = rgba.into_raw();
-    let color_image = Arc::new(egui::ColorImage::from_rgba_premultiplied(size, &pixels));
-
-    for user_data in pending {
-        harness.event(egui::Event::Screenshot {
-            viewport_id: egui::ViewportId::ROOT,
-            user_data,
-            image: color_image.clone(),
-        });
-    }
 }

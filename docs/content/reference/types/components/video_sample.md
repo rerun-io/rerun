@@ -10,8 +10,8 @@ Each video sample must contain enough data for exactly one video frame
 
 Keyframes may require additional data, for details see [`components.VideoCodec`](https://rerun.io/docs/reference/types/components/video_codec).
 
-## Rerun datatype
-[`Blob`](../datatypes/blob.md)
+## Rerun encoding
+[`Blob`](../encodings/blob.md)
 
 
 ## Arrow datatype

@@ -8,8 +8,8 @@ The scene-unit dimensions of one voxel in a sparse 3D voxel grid.
 Each component is the size of a voxel along the corresponding local grid axis.
 All components must be finite and positive.
 
-## Rerun datatype
-[`Vec3D`](../datatypes/vec3d.md)
+## Rerun encoding
+[`Vec3D`](../encodings/vec3d.md)
 
 
 ## Arrow datatype

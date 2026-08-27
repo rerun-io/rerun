@@ -210,19 +210,19 @@ mod tests {
         );
         assert_eq!(
             Duration::from_str("42ms").unwrap(),
-            Duration::from_secs(0.042)
+            Duration::from_millis(42)
         );
         assert_eq!(
             Duration::from_str("42us").unwrap(),
-            Duration::from_secs(0.000042)
+            Duration::from_micros(42)
         );
         assert_eq!(
             Duration::from_str("42µs").unwrap(),
-            Duration::from_secs(0.000042)
+            Duration::from_micros(42)
         );
         assert_eq!(
             Duration::from_str("42ns").unwrap(),
-            Duration::from_secs(0.000000042)
+            Duration::from_nanos(42)
         );
 
         // Hour format.

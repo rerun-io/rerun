@@ -8,11 +8,11 @@ import numpy.typing as npt
 from PIL import Image as PILImage
 
 from ..components import ColormapLike, ImageFormat
-from ..datatypes import ChannelDatatype, Float32Like
+from ..encodings import ChannelDatatype, Float32Like
 from ..error_utils import catch_and_log_exceptions
 
 if TYPE_CHECKING:
-    from rerun.datatypes.range1d import Range1DLike
+    from rerun.encodings.range1d import Range1DLike
 
     from .. import components
     from . import DepthImage, EncodedDepthImage

@@ -5,7 +5,7 @@ use re_test_context::TestContext;
 use re_test_context::external::egui_kittest::SnapshotResults;
 use re_test_viewport::TestContextExt as _;
 use re_view_text_log::TextView;
-use re_viewer_context::{TimeControlCommand, ViewClass as _, ViewId};
+use re_viewer_context::{ViewClass as _, ViewId};
 use re_viewport_blueprint::ViewBlueprint;
 
 fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
@@ -28,13 +28,7 @@ fn temporal_anchor_between_sequence_steps() {
     test_context.set_active_timeline(*timeline.name());
 
     // The temporal anchor is intentionally between two sequence steps.
-    test_context.send_time_commands(
-        test_context.active_store_id(),
-        [TimeControlCommand::SetTime(
-            TimeInt::new_temporal(100).into(),
-        )],
-    );
-    test_context.handle_system_commands(&egui::Context::default());
+    test_context.set_time(TimeInt::new_temporal(100));
 
     let view_id = setup_blueprint(&mut test_context);
     snapshot_results.add(test_context.run_view_ui_and_save_snapshot(

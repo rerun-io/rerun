@@ -1,4 +1,3 @@
-use std::any::Any;
 use std::hash::{Hash, Hasher};
 use std::sync::{Arc, LazyLock};
 
@@ -19,8 +18,8 @@ use re_log_types::{
     AbsoluteTimeRange, DataPath, NonMinI64, TimeCell, TimeType, Timeline, TimelineName,
 };
 use re_tuid::Tuid;
-use re_types_core::{Loggable as _, SegmentId};
-use re_uri::{DatasetSegmentUri, Fragment, Origin, TimeSelection};
+use re_types_core::{FromArrow as _, SegmentId};
+use re_uri::{DatasetUri, Fragment, Origin, TimeSelection};
 
 #[derive(Debug)]
 struct SegmentUrlUdf {
@@ -62,10 +61,6 @@ impl SegmentUrlUdf {
 }
 
 impl ScalarUDFImpl for SegmentUrlUdf {
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
     fn name(&self) -> &'static str {
         "segment_url"
     }
@@ -325,10 +320,11 @@ impl ScalarUDFImpl for SegmentUrlUdf {
 
             // TODO(ab): this is an unfortunate lot of cloning just to format a URL string, but
             // chances are we'll run in other problems by the time this becomes a performance issue.
-            let uri = DatasetSegmentUri {
+            let uri = DatasetUri {
                 origin: origin.clone(),
                 dataset_id,
-                segment_id,
+                resource: re_uri::DatasetResource::Segments,
+                segment_id: Some(segment_id),
                 fragment: Fragment {
                     selection,
                     when,

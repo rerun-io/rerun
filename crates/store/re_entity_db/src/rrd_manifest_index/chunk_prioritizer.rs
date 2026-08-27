@@ -8,6 +8,7 @@ use itertools::chain;
 use re_byte_size::SizeBytes as _;
 use re_chunk::{Chunk, ChunkId, ComponentIdentifier, TimeInt, Timeline, TimelineName};
 use re_chunk_store::{ChunkStore, QueriedChunkIdTracker};
+use re_int::SaturatingCast as _;
 use re_log::debug_assert;
 use re_log_encoding::RrdManifest;
 use re_log_types::{AbsoluteTimeRange, EntityPathHash, TimelinePoint};
@@ -259,7 +260,7 @@ impl RemainingByteBudget {
         Self {
             total_bytes_in_memory,
             remaining_bytes_in_memory: total_bytes_in_memory,
-            remaining_bytes_on_wire: i64::try_from(max_bytes_on_wire).unwrap_or(i64::MAX),
+            remaining_bytes_on_wire: max_bytes_on_wire.saturating_cast::<i64>(),
         }
     }
 
@@ -898,60 +899,55 @@ impl ChunkFetcher<'_> {
                 ChunkPriorityStage::Missing(missing) => {
                     if let Some(missing) = missing.next() {
                         return Some(PrioritizedRootChunk::required(missing));
-                    } else {
-                        self.fetch_stage = ChunkPriorityStage::HighPrioBefore(IterState::Uninited);
                     }
+                    self.fetch_stage = ChunkPriorityStage::HighPrioBefore(IterState::Uninited);
                 }
                 ChunkPriorityStage::HighPrioBefore(_) => {
                     if let Some(prioritized) = self.high_prio_chunk_stage() {
                         return Some(prioritized);
-                    } else {
-                        let mut indicated_roots = Vec::new();
-                        for missing_virtual_chunk_id in std::iter::chain(
-                            self.tracker.transient_missing_virtual.iter(),
-                            &self.tracker.indicated_virtual,
-                        ) {
-                            self.store
-                                .collect_root_ids(missing_virtual_chunk_id, &mut indicated_roots);
-                        }
-                        indicated_roots.sort();
-                        indicated_roots.dedup();
-
-                        self.fetch_stage =
-                            ChunkPriorityStage::Indicated(indicated_roots.into_iter());
                     }
+
+                    let mut indicated_roots = Vec::new();
+                    for missing_virtual_chunk_id in std::iter::chain(
+                        self.tracker.transient_missing_virtual.iter(),
+                        &self.tracker.indicated_virtual,
+                    ) {
+                        self.store
+                            .collect_root_ids(missing_virtual_chunk_id, &mut indicated_roots);
+                    }
+                    indicated_roots.sort();
+                    indicated_roots.dedup();
+
+                    self.fetch_stage = ChunkPriorityStage::Indicated(indicated_roots.into_iter());
                 }
 
                 ChunkPriorityStage::Indicated(indicated) => {
                     if let Some(indicated) = indicated.next() {
                         return Some(PrioritizedRootChunk::indicated(indicated));
-                    } else {
-                        self.fetch_stage = ChunkPriorityStage::HighPrioAfter {
-                            idx: IterState::Uninited,
-                            // Load 5 wall-clock seconds ahead of high prio chunks.
-                            buffer_time: 5.0,
-                        };
                     }
+                    self.fetch_stage = ChunkPriorityStage::HighPrioAfter {
+                        idx: IterState::Uninited,
+                        // Load 5 wall-clock seconds ahead of high prio chunks.
+                        buffer_time: 5.0,
+                    };
                 }
                 ChunkPriorityStage::HighPrioAfter { .. } => {
                     if let Some(prioritized) = self.high_prio_chunk_stage() {
                         return Some(prioritized);
-                    } else {
-                        self.fetch_stage = ChunkPriorityStage::Static(0);
                     }
+                    self.fetch_stage = ChunkPriorityStage::Static(0);
                 }
                 ChunkPriorityStage::Static(idx) => {
                     if let Some(c) = self.prioritizer.static_chunk_ids.get(*idx) {
                         *idx += 1;
 
                         return Some(PrioritizedRootChunk::indicated(*c));
-                    } else {
-                        self.fetch_stage = ChunkPriorityStage::TimeQuery {
-                            stage: TimeRangeStage::AfterCursor,
-                            iter_state: None,
-                            interesting: true,
-                        };
                     }
+                    self.fetch_stage = ChunkPriorityStage::TimeQuery {
+                        stage: TimeRangeStage::AfterCursor,
+                        iter_state: None,
+                        interesting: true,
+                    };
                 }
 
                 ChunkPriorityStage::TimeQuery {
@@ -991,9 +987,8 @@ impl ChunkFetcher<'_> {
                 ChunkPriorityStage::Everything(chunks) => {
                     if let Some(chunk_id) = chunks.next() {
                         return Some(PrioritizedRootChunk::everything(*chunk_id));
-                    } else {
-                        self.fetch_stage = ChunkPriorityStage::Done;
                     }
+                    self.fetch_stage = ChunkPriorityStage::Done;
                 }
                 ChunkPriorityStage::Done => return None,
             }
@@ -1039,13 +1034,13 @@ impl ChunkFetcher<'_> {
                 IterState::Done => None,
             }
             && let Some(c) = chunks_on_timeline.get(current_idx)
-            && if !before {
+            && if before {
+                true
+            } else {
                 // After load `buffer_time` wall-clock seconds into the future
                 (c.time_range.min - time_cursor.time_cursor.time).as_f64()
                     / time_cursor.speed_if_unpaused
                     < buffer_time
-            } else {
-                true
             }
         {
             *idx = if let Some(idx) = if before {

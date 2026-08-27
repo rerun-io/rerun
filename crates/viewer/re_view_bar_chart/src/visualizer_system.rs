@@ -5,7 +5,7 @@ use re_sdk_types::{
     Archetype as _,
     archetypes::BarChart,
     components::{self, Length},
-    datatypes,
+    encodings,
 };
 use re_view::{
     BlueprintResolvedResults, DataResultQuery as _, VisualizerInstructionQueryResults,
@@ -18,9 +18,9 @@ use re_viewer_context::{
 
 #[derive(Default, Clone)]
 pub struct BarChartData {
-    pub abscissa: datatypes::TensorData,
+    pub abscissa: encodings::TensorData,
     pub widths: Vec<f32>,
-    pub values: datatypes::TensorData,
+    pub values: encodings::TensorData,
     pub color: components::Color,
 }
 
@@ -96,11 +96,7 @@ impl VisualizerSystem for BarChartVisualizerSystem {
 
                 let widths = clamped_vec_or_else(widths, length as usize, || {
                     typed_fallback_for::<Length>(
-                        &ctx.query_context(
-                            data_result,
-                            view_query.latest_at_query(),
-                            instruction.id,
-                        ),
+                        results.query_context(),
                         BarChart::descriptor_widths().component,
                     )
                     .0

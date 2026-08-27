@@ -12,7 +12,7 @@ use re_test_context::TestContext;
 use re_test_context::external::egui_kittest::SnapshotResults;
 use re_test_viewport::TestContextExt as _;
 use re_view_time_series::TimeSeriesView;
-use re_viewer_context::{BlueprintContext as _, TimeControlCommand, ViewClass as _, ViewId};
+use re_viewer_context::{BlueprintContext as _, ViewClass as _, ViewId};
 use re_viewport_blueprint::{ViewBlueprint, ViewContents, ViewProperty};
 
 fn color_gradient0(step: i64) -> re_sdk_types::components::Color {
@@ -527,12 +527,7 @@ fn test_non_finite_islands() {
     // Move the legend to the top right corner to avoid covering any of the data.
     let view_id = test_context.setup_viewport_blueprint(|ctx, blueprint| {
         let view = ViewBlueprint::new_with_root_wildcard(TimeSeriesView::identifier());
-        ViewProperty::from_archetype::<PlotLegend>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query,
-            view.id,
-        )
-        .save_blueprint_component(
+        ViewProperty::from_archetype_for_view::<PlotLegend>(ctx, view.id).save_blueprint_component(
             ctx,
             &PlotLegend::descriptor_corner(),
             &[Corner2D::RightTop],
@@ -572,17 +567,15 @@ fn test_series_lines_single_logged_point() {
     let view_id = test_context.setup_viewport_blueprint(|ctx, blueprint| {
         let view = ViewBlueprint::new_with_root_wildcard(TimeSeriesView::identifier());
 
-        ViewProperty::from_archetype::<re_sdk_types::blueprint::archetypes::TimeAxis>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query,
-            view.id,
+        ViewProperty::from_archetype_for_view::<re_sdk_types::blueprint::archetypes::TimeAxis>(
+            ctx, view.id,
         )
         .save_blueprint_component(
             ctx,
             &re_sdk_types::blueprint::archetypes::TimeAxis::descriptor_view_range(),
-            &re_sdk_types::datatypes::TimeRange {
-                start: re_sdk_types::datatypes::TimeRangeBoundary::Absolute(0.into()),
-                end: re_sdk_types::datatypes::TimeRangeBoundary::Absolute(20.into()),
+            &re_sdk_types::encodings::TimeRange {
+                start: re_sdk_types::encodings::TimeRangeBoundary::Absolute(0.into()),
+                end: re_sdk_types::encodings::TimeRangeBoundary::Absolute(20.into()),
             },
         );
 
@@ -720,13 +713,13 @@ fn test_bootstrapped_secondaries_impl(partial_range: bool, snapshot_results: &mu
                 override_path.clone(),
                 &re_sdk_types::blueprint::archetypes::VisibleTimeRanges::new([
                     re_sdk_types::blueprint::components::VisibleTimeRange(
-                        re_sdk_types::datatypes::VisibleTimeRange {
+                        re_sdk_types::encodings::VisibleTimeRange {
                             timeline: "log_tick".into(),
-                            range: re_sdk_types::datatypes::TimeRange {
-                                start: re_sdk_types::datatypes::TimeRangeBoundary::Absolute(
+                            range: re_sdk_types::encodings::TimeRange {
+                                start: re_sdk_types::encodings::TimeRangeBoundary::Absolute(
                                     70.into(),
                                 ),
-                                end: re_sdk_types::datatypes::TimeRangeBoundary::Infinite,
+                                end: re_sdk_types::encodings::TimeRangeBoundary::Infinite,
                             },
                         },
                     ),
@@ -767,13 +760,7 @@ fn temporal_anchor_between_sequence_steps() {
     test_context.set_active_timeline(*timeline.name());
 
     // Pin the cursor at 100 — like a `#when` URL anchor would.
-    test_context.send_time_commands(
-        test_context.active_store_id(),
-        [TimeControlCommand::SetTime(
-            TimeInt::new_temporal(100).into(),
-        )],
-    );
-    test_context.handle_system_commands(&egui::Context::default());
+    test_context.set_time(TimeInt::new_temporal(100));
 
     let view_id = setup_blueprint(&mut test_context);
     snapshot_results.add(test_context.run_view_ui_and_save_snapshot(

@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
-use re_sdk_types::datatypes::{TensorBuffer, TensorData};
+use re_sdk_types::encodings::{TensorBuffer, TensorData};
 use re_sdk_types::tensor_data::TensorCastError;
 
 #[test]

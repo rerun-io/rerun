@@ -31,7 +31,7 @@ use re_sorbet::{
 };
 use re_span::Span;
 use re_types_core::arrow_helpers::as_array_ref;
-use re_types_core::{Loggable as _, SerializedComponentColumn, archetypes};
+use re_types_core::{ArrowDatatype as _, SerializedComponentColumn, archetypes};
 
 // ---
 
@@ -816,7 +816,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                     continue;
                 }
 
-                cc.times_unique = times.windows(2).all(|w| w[0] < w[1]);
+                cc.times_unique = times.array_windows().all(|[a, b]| a < b);
 
                 // Find the position of `times[0]` in `unique_index_values`,
                 // then verify that the chunk's rows align 1:1 with the next
@@ -1266,6 +1266,12 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     ///     // …
     /// }
     /// ```
+    ///
+    /// ⚠️ The returned future checks the store lock only once, at construction time: if the
+    /// store is write-locked at that moment, polling that same future instance will never make
+    /// progress, even after the lock is released.
+    /// Construct a fresh future for each poll attempt, or use [`Self::next_n_rows_async`],
+    /// which re-checks the lock on every poll.
     #[cfg(not(target_arch = "wasm32"))]
     pub fn next_row_async(
         &mut self,
@@ -3683,6 +3689,228 @@ mod tests {
         Ok(())
     }
 
+    /// Async/concurrency tests kept in their own submodule to stay visually separate from the
+    /// synchronous tests above.
+    mod async_tests {
+        use super::*;
+
+        /// Builds a manually-driven, no-op [`std::task::Context`] for deterministically polling
+        /// futures without a runtime executor. Mirrors the technique in `async_barebones` above.
+        fn noop_context() -> std::task::Context<'static> {
+            const RAW_WAKER_NOOP: std::task::RawWaker = {
+                const VTABLE: std::task::RawWakerVTable =
+                    std::task::RawWakerVTable::new(|_| RAW_WAKER_NOOP, |_| {}, |_| {}, |_| {});
+                std::task::RawWaker::new(std::ptr::null(), &VTABLE)
+            };
+
+            #[expect(unsafe_code)]
+            std::task::Context::from_waker(
+                // Safety: a Waker is just a privacy-preserving wrapper around a RawWaker.
+                unsafe {
+                    &*std::ptr::from_ref::<std::task::RawWaker>(&RAW_WAKER_NOOP)
+                        .cast::<std::task::Waker>()
+                },
+            )
+        }
+
+        /// `next_row_async`'s `Future` calls `engine.try_with` exactly once, at construction
+        /// time, and captures the result by `move` -- unlike `next_n_rows_async`, whose
+        /// `poll_fn` calls `engine.try_with` fresh on every poll. If the lock is contended at
+        /// construction time, re-polling *the same future instance* can never make progress,
+        /// even after the lock is released, because the frozen `None` result is never
+        /// recomputed.
+        ///
+        /// This trap is documented on `next_row_async` itself. If this assertion starts
+        /// failing, `next_row_async` has started recovering from contention -- update that
+        /// doc comment accordingly.
+        #[tokio::test]
+        async fn next_row_async_does_not_recover_when_polled_repeatedly() -> anyhow::Result<()> {
+            re_log::setup_logging();
+
+            let store = ChunkStoreHandle::new(create_nasty_store()?);
+            let query_cache = QueryCache::new_handle(store.clone());
+            let query_engine = QueryEngine::new(store.clone(), query_cache.clone());
+
+            let filtered_index = Some(TimelineName::from("frame_nr"));
+            let query = QueryExpression {
+                filtered_index,
+                ..Default::default()
+            };
+
+            let mut handle = query_engine.query(query);
+            let engine_guard = query_engine.engine.write_arc();
+
+            let fut = handle.next_row_async();
+            let mut fut = std::pin::pin!(fut);
+            let mut cx = noop_context();
+
+            use std::future::Future as _;
+            assert!(fut.as_mut().poll(&mut cx).is_pending());
+            assert!(fut.as_mut().poll(&mut cx).is_pending());
+
+            drop(engine_guard);
+
+            assert!(
+                fut.as_mut().poll(&mut cx).is_pending(),
+                "next_row_async's frozen `try_with` result should keep this future stuck even \
+                 after the lock is released",
+            );
+
+            Ok(())
+        }
+
+        /// Contrasts with the test above: `next_n_rows_async` recomputes `try_with` on every
+        /// poll, so re-polling the same future instance after the lock is released does make
+        /// progress.
+        #[tokio::test]
+        async fn next_n_rows_async_recovers_when_polled_repeatedly() -> anyhow::Result<()> {
+            re_log::setup_logging();
+
+            let store = ChunkStoreHandle::new(create_nasty_store()?);
+            let query_cache = QueryCache::new_handle(store.clone());
+            let query_engine = QueryEngine::new(store.clone(), query_cache.clone());
+
+            let filtered_index = Some(TimelineName::from("frame_nr"));
+            let query = QueryExpression {
+                filtered_index,
+                ..Default::default()
+            };
+
+            let mut handle = query_engine.query(query);
+            let engine_guard = query_engine.engine.write_arc();
+
+            let fut = handle.next_n_rows_async(64, usize::MAX);
+            let mut fut = std::pin::pin!(fut);
+            let mut cx = noop_context();
+
+            use std::future::Future as _;
+            assert!(fut.as_mut().poll(&mut cx).is_pending());
+
+            drop(engine_guard);
+
+            let out = loop {
+                if let std::task::Poll::Ready(out) = fut.as_mut().poll(&mut cx) {
+                    break out;
+                }
+            };
+            assert!(out.num_rows > 0);
+
+            Ok(())
+        }
+
+        /// Generalizes `async_barebones` to several concurrent readers plus a background
+        /// writer that repeatedly (not just once) acquires and releases the engine lock while
+        /// the readers are draining -- a liveness/throughput regression guard: every reader
+        /// must eventually drain the same total row count as a synchronous reference query,
+        /// even under sustained contention.
+        #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+        async fn concurrent_readers_survive_sustained_writer_contention() -> anyhow::Result<()> {
+            re_log::setup_logging();
+
+            let store = ChunkStoreHandle::new(create_nasty_store()?);
+            let query_cache = QueryCache::new_handle(store.clone());
+            let query_engine = QueryEngine::new(store.clone(), query_cache.clone());
+
+            let filtered_index = Some(TimelineName::from("frame_nr"));
+            let query = QueryExpression {
+                filtered_index,
+                ..Default::default()
+            };
+
+            let expected_rows = query_engine.query(query.clone()).num_rows();
+
+            // A real writer uses the same blocking `write_arc()` primitive a background OS
+            // thread does here, not an async-aware lock -- so a plain `std::thread` repeatedly
+            // grabbing and releasing it is a faithful stand-in.
+            let writer_engine = query_engine.engine.clone();
+            let stop = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+            let writer_stop = stop.clone();
+            let writer = std::thread::Builder::new()
+                .name("contention_test_writer".into())
+                .spawn(move || {
+                    while !writer_stop.load(std::sync::atomic::Ordering::Relaxed) {
+                        let _guard = writer_engine.write_arc();
+                        std::thread::yield_now();
+                    }
+                })
+                .expect("failed to spawn writer thread");
+
+            const N_READERS: usize = 4;
+            let mut readers = Vec::with_capacity(N_READERS);
+            for _ in 0..N_READERS {
+                let query_engine = query_engine.clone();
+                let query = query.clone();
+                readers.push(tokio::spawn(async move {
+                    let mut handle = query_engine.query(query);
+                    let mut total = 0u64;
+                    loop {
+                        let out = handle.next_n_rows_async(64, usize::MAX).await;
+                        if out.num_rows == 0 {
+                            break;
+                        }
+                        total += out.num_rows as u64;
+                    }
+                    total
+                }));
+            }
+
+            for reader in readers {
+                let total = reader.await?;
+                assert_eq!(total, expected_rows);
+            }
+
+            stop.store(true, std::sync::atomic::Ordering::Relaxed);
+            writer.join().expect("writer thread panicked");
+
+            Ok(())
+        }
+
+        /// Polling a `next_n_rows_async` future once while the lock is held schedules a
+        /// `rayon::spawn` waiter before returning `Pending` (see the `Poll::Pending` branch of
+        /// `next_n_rows_async`). Dropping the future without ever resuming it must not leave
+        /// any stale state behind: a fresh, unrelated query against the same engine afterward
+        /// must still produce correct results.
+        #[tokio::test]
+        async fn cancelling_next_n_rows_async_mid_poll_does_not_corrupt_later_queries()
+        -> anyhow::Result<()> {
+            re_log::setup_logging();
+
+            let store = ChunkStoreHandle::new(create_nasty_store()?);
+            let query_cache = QueryCache::new_handle(store.clone());
+            let query_engine = QueryEngine::new(store.clone(), query_cache.clone());
+
+            let filtered_index = Some(TimelineName::from("frame_nr"));
+            let query = QueryExpression {
+                filtered_index,
+                ..Default::default()
+            };
+
+            let expected_rows = query_engine.query(query.clone()).num_rows();
+
+            let engine_guard = query_engine.engine.write_arc();
+            let mut handle = query_engine.query(query.clone());
+            {
+                let fut = handle.next_n_rows_async(64, usize::MAX);
+                let mut fut = std::pin::pin!(fut);
+                let mut cx = noop_context();
+
+                use std::future::Future as _;
+                assert!(fut.as_mut().poll(&mut cx).is_pending());
+                // `fut` is dropped here without ever being resumed.
+            }
+            drop(engine_guard);
+
+            let mut fresh_handle = query_engine.query(query);
+            let mut total = 0u64;
+            while fresh_handle.next_row().is_some() {
+                total += 1;
+            }
+            assert_eq!(total, expected_rows);
+
+            Ok(())
+        }
+    }
+
     /// Verifies that `next_n_rows` produces the same data as repeated `next_row` calls,
     /// across all sparse-fill strategies and a representative selection of queries.
     #[test]
@@ -3795,7 +4023,7 @@ mod tests {
             let mut builder = Chunk::builder(entity_path.clone());
             for t in lo..=hi {
                 #[expect(clippy::cast_sign_loss)]
-                let pt = MyPoint::from_iter((t as u32)..(t as u32 + 1));
+                let pt = MyPoint::from_iter((t as u32)..=(t as u32));
                 builder = builder.with_archetype(
                     RowId::new(),
                     [(timeline, TimeCell::from_sequence(t))],
@@ -3892,7 +4120,7 @@ mod tests {
             for t in lo..=hi {
                 #[expect(clippy::cast_sign_loss)]
                 let n = t as u32;
-                let archetype = MyPoints::new(MyPoint::from_iter(n..n + 1))
+                let archetype = MyPoints::new(MyPoint::from_iter(n..=n))
                     .with_colors([MyColor::from(0xFF000000_u32 | n)])
                     .with_labels([MyLabel(format!("L{n}"))]);
                 builder = builder.with_archetype(
@@ -3964,6 +4192,435 @@ mod tests {
             let r = re_arrow_util::concat_arrays(&ref_parts).expect("ref concat");
             let c = re_arrow_util::concat_arrays(&cand_parts).expect("cand concat");
             assert_eq!(r.to_data(), c.to_data(), "column {col_idx} mismatch");
+        }
+
+        Ok(())
+    }
+
+    /// Runs `query` via `next_n_rows` and asserts the result exactly matches the `next_row`
+    /// reference path, column by column. Returns `(total_rows, bulk_emitted_rows)` so callers
+    /// can additionally assert on how much (if any) of the run went through
+    /// [`QueryHandle::try_bulk_emit_run`]'s bulk fast path.
+    fn assert_bulk_matches_reference(
+        engine: &QueryEngine<StorageEngine>,
+        query: QueryExpression,
+    ) -> (usize, u64) {
+        let reference: Vec<_> = engine.query(query.clone()).iter().collect();
+        let total_rows = reference.len();
+
+        let mut candidate_handle = engine.query(query);
+        let n_fields = candidate_handle.schema().fields.len();
+        let mut candidate_columns: Vec<Vec<ArrowArrayRef>> =
+            (0..n_fields).map(|_| Vec::new()).collect();
+        let mut candidate_rows = 0usize;
+        loop {
+            let out = candidate_handle.next_n_rows(64, usize::MAX);
+            if out.num_rows == 0 {
+                break;
+            }
+            candidate_rows += out.num_rows;
+            for (col_idx, arr) in out.columns.into_iter().enumerate() {
+                candidate_columns[col_idx].push(arr);
+            }
+        }
+        assert_eq!(candidate_rows, total_rows, "row count mismatch");
+
+        for (col_idx, parts) in candidate_columns.iter().enumerate() {
+            let ref_parts: Vec<&dyn arrow::array::Array> =
+                reference.iter().map(|row| row[col_idx].as_ref()).collect();
+            let cand_parts: Vec<&dyn arrow::array::Array> =
+                parts.iter().map(|a| a.as_ref()).collect();
+            if ref_parts.is_empty() && cand_parts.is_empty() {
+                continue;
+            }
+            let r = re_arrow_util::concat_arrays(&ref_parts).expect("ref concat");
+            let c = re_arrow_util::concat_arrays(&cand_parts).expect("cand concat");
+            assert_eq!(r.to_data(), c.to_data(), "column {col_idx} mismatch");
+        }
+
+        (total_rows, candidate_handle.bulk_emitted_rows())
+    }
+
+    /// A component that's only sparsely present relative to a sibling component on the same
+    /// entity forces [`ColumnRunClass::Null`] runs for whichever side has no data at `cur_row`
+    /// -- both the "gap before this chunk" branch and the "chunk exhausted, nothing left"
+    /// fallback. Neither is exercised by the disjoint-single/multi-column tests above, which
+    /// always have every column covering every row.
+    #[test]
+    fn next_n_rows_bulk_null_class_on_sparse_components() -> anyhow::Result<()> {
+        re_log::setup_logging();
+
+        let mut store = ChunkStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
+            ChunkStoreConfig::COMPACTION_DISABLED,
+        );
+        let entity_path = EntityPath::from("/sparse_components");
+
+        // Points: frames 0..5. Colors: frames 10..15. Disjoint in time, so
+        // `unique_index_values` is their union (10 rows), and each component is `Null`
+        // for the other's half.
+        let mut points_builder = Chunk::builder(entity_path.clone());
+        for f in 0u32..5 {
+            let points = MyPoint::from_iter(f..=f);
+            points_builder = points_builder.with_sparse_component_batches(
+                RowId::new(),
+                [build_frame_nr(TimeInt::new_temporal(i64::from(f)))],
+                [(MyPoints::descriptor_points(), Some(&points as _))],
+            );
+        }
+        store.insert_chunk(&Arc::new(points_builder.build()?))?;
+
+        let mut colors_builder = Chunk::builder(entity_path.clone());
+        for f in 10u32..15 {
+            let colors = MyColor::from_iter(f..=f);
+            colors_builder = colors_builder.with_sparse_component_batches(
+                RowId::new(),
+                [build_frame_nr(TimeInt::new_temporal(i64::from(f)))],
+                [(MyPoints::descriptor_colors(), Some(&colors as _))],
+            );
+        }
+        store.insert_chunk(&Arc::new(colors_builder.build()?))?;
+
+        let store = ChunkStoreHandle::new(store);
+        let cache = QueryCache::new_handle(store.clone());
+        let engine = QueryEngine::new(store, cache);
+
+        let query = QueryExpression {
+            filtered_index: Some(TimelineName::from("frame_nr")),
+            ..Default::default()
+        };
+
+        let (total_rows, bulk_emitted) = assert_bulk_matches_reference(&engine, query);
+        assert_eq!(total_rows, 10);
+        assert_eq!(
+            bulk_emitted as usize, total_rows,
+            "both runs (5 rows each) meet BULK_MIN_RUN and should fully bulk-emit, \
+             one column Null-filled in each",
+        );
+
+        Ok(())
+    }
+
+    /// Any overlap anywhere in a view column forces `try_bulk_emit_run` to bail for the
+    /// *entire* run (not just null out that column) -- confirmed here via `next_n_rows`,
+    /// complementing [`pruning_walk_overlapping_chunks_rowid_invariance`] which only drives
+    /// the same overlapping fixture through `next_row`/`_resolve_one_row`.
+    #[test]
+    fn next_n_rows_bails_entirely_on_overlap() -> anyhow::Result<()> {
+        re_log::setup_logging();
+
+        const N_CHUNKS: usize = 3;
+        const CHUNK_WIDTH: u32 = 5;
+        const STEP: u32 = 3;
+        let chunks = build_overlapping_chunks(N_CHUNKS, CHUNK_WIDTH, STEP)?;
+        let order: Vec<usize> = (0..N_CHUNKS).collect();
+        let store = ChunkStoreHandle::new(build_overlapping_chunk_store(&chunks, &order)?);
+        let cache = QueryCache::new_handle(store.clone());
+        let engine = QueryEngine::new(store, cache);
+
+        let query = QueryExpression {
+            filtered_index: Some(TimelineName::from("frame_nr")),
+            ..Default::default()
+        };
+
+        let (total_rows, bulk_emitted) = assert_bulk_matches_reference(&engine, query);
+        assert_eq!(total_rows, 11);
+        assert_eq!(
+            bulk_emitted, 0,
+            "overlap should force a total bail to the per-row path for every row",
+        );
+
+        Ok(())
+    }
+
+    /// A column that's ineligible for the bulk path only forces a bail for the rows its own
+    /// chunks actually cover -- once it's exhausted, a sibling column resumes bulk-emitting.
+    /// Complements the "total bail" test above, which never gives the eligible column a chance
+    /// to run once the ineligible one is out of the way.
+    #[test]
+    fn next_n_rows_bulk_partial_bail_on_mixed_eligibility() -> anyhow::Result<()> {
+        re_log::setup_logging();
+
+        let entity_path = EntityPath::from("/mixed_eligibility");
+        let mut store = ChunkStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
+            ChunkStoreConfig::COMPACTION_DISABLED,
+        );
+
+        // Points: 3 disjoint, dense, bulk-eligible chunks -- entirely *after* Colors' overlap
+        // region below, so Colors is fully exhausted by the time Points' rows come up.
+        let points_ranges: [(i64, i64); 3] = [(20, 29), (40, 49), (60, 69)];
+        for (lo, hi) in points_ranges {
+            let mut builder = Chunk::builder(entity_path.clone());
+            for t in lo..=hi {
+                #[expect(clippy::cast_sign_loss)]
+                let points = MyPoint::from_iter((t as u32)..=(t as u32));
+                builder = builder.with_sparse_component_batches(
+                    RowId::new(),
+                    [build_frame_nr(TimeInt::new_temporal(t))],
+                    [(MyPoints::descriptor_points(), Some(&points as _))],
+                );
+            }
+            store.insert_chunk(&Arc::new(builder.build()?))?;
+        }
+
+        // Colors: overlapping chunks over frames [0, 11) -- never bulk-eligible.
+        const B_CHUNK_WIDTH: u32 = 5;
+        const B_STEP: u32 = 3;
+        for k in 0u32..3 {
+            let base = k * B_STEP;
+            let mut builder = Chunk::builder(entity_path.clone());
+            for f in base..base + B_CHUNK_WIDTH {
+                let colors = MyColor::from_iter(f..=f);
+                builder = builder.with_sparse_component_batches(
+                    RowId::new(),
+                    [build_frame_nr(TimeInt::new_temporal(i64::from(f)))],
+                    [(MyPoints::descriptor_colors(), Some(&colors as _))],
+                );
+            }
+            store.insert_chunk(&Arc::new(builder.build()?))?;
+        }
+
+        let store = ChunkStoreHandle::new(store);
+        let cache = QueryCache::new_handle(store.clone());
+        let engine = QueryEngine::new(store, cache);
+
+        let query = QueryExpression {
+            filtered_index: Some(TimelineName::from("frame_nr")),
+            ..Default::default()
+        };
+
+        let (total_rows, bulk_emitted) = assert_bulk_matches_reference(&engine, query);
+        assert_eq!(
+            total_rows, 41,
+            "11 overlapping Colors rows + 30 disjoint Points rows"
+        );
+        assert!(
+            0 < bulk_emitted && bulk_emitted < total_rows as u64,
+            "expected Points' disjoint rows to bulk-emit while Colors' overlap forces a \
+             partial bail, got {bulk_emitted}/{total_rows}",
+        );
+
+        Ok(())
+    }
+
+    /// With more than one simultaneously-`Slice`-eligible column in a run, `try_bulk_emit_run`
+    /// bails if a non-`filtered_index` timeline is also selected -- replicating the per-row
+    /// path's max-across-cells resolution for that timeline would require per-row comparison
+    /// across multiple slices, which the bulk path doesn't implement.
+    #[test]
+    fn next_n_rows_bulk_bails_on_multi_slice_with_other_timeline_selected() -> anyhow::Result<()> {
+        re_log::setup_logging();
+
+        let entity_path = EntityPath::from("/multi_tl");
+        let mut store = ChunkStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
+            ChunkStoreConfig::COMPACTION_DISABLED,
+        );
+
+        // Two components, each with 3 disjoint dense chunks on the same frame grid -- both
+        // individually bulk-eligible, so `slice_count == 2` for every run. Every row also
+        // carries a second timeline (`log_time`), explicitly selected below.
+        let chunk_ranges: [(i64, i64); 3] = [(10, 19), (30, 39), (50, 59)];
+        for (lo, hi) in chunk_ranges {
+            let mut builder = Chunk::builder(entity_path.clone());
+            for t in lo..=hi {
+                #[expect(clippy::cast_sign_loss)]
+                let n = t as u32;
+                let points = MyPoint::from_iter(n..=n);
+                let colors = MyColor::from_iter(n..=n);
+                builder = builder.with_sparse_component_batches(
+                    RowId::new(),
+                    [
+                        build_frame_nr(TimeInt::new_temporal(t)),
+                        build_log_time(TimeInt::new_temporal(t).into()),
+                    ],
+                    [
+                        (MyPoints::descriptor_points(), Some(&points as _)),
+                        (MyPoints::descriptor_colors(), Some(&colors as _)),
+                    ],
+                );
+            }
+            store.insert_chunk(&Arc::new(builder.build()?))?;
+        }
+
+        let store = ChunkStoreHandle::new(store);
+        let cache = QueryCache::new_handle(store.clone());
+        let engine = QueryEngine::new(store, cache);
+
+        let query = QueryExpression {
+            filtered_index: Some(TimelineName::from("frame_nr")),
+            selection: Some(vec![
+                ColumnSelector::Time(TimeColumnSelector::from(TimelineName::from("frame_nr"))),
+                ColumnSelector::Time(TimeColumnSelector::from(TimelineName::from("log_time"))),
+                ColumnSelector::Component(ComponentColumnSelector {
+                    entity_path: entity_path.clone(),
+                    component: MyPoints::descriptor_points().component.to_string(),
+                }),
+                ColumnSelector::Component(ComponentColumnSelector {
+                    entity_path,
+                    component: MyPoints::descriptor_colors().component.to_string(),
+                }),
+            ]),
+            ..Default::default()
+        };
+
+        let (total_rows, bulk_emitted) = assert_bulk_matches_reference(&engine, query);
+        assert_eq!(total_rows, 30);
+        assert_eq!(
+            bulk_emitted, 0,
+            "selecting a second timeline alongside >1 simultaneously bulk-eligible column \
+             should force a full bail",
+        );
+
+        Ok(())
+    }
+
+    /// Exercises the `ColumnDescriptor::RowId(_)` emitter branch of `try_bulk_emit_run`, which
+    /// requires an explicit `RowId` `selection` (`ChunkColumnDescriptors::indices_and_components`
+    /// excludes it otherwise, `TODO(#9922)`).
+    ///
+    /// This intentionally does *not* use [`assert_bulk_matches_reference`]: the per-row path
+    /// (`next_row` / `_resolve_one_row`) unconditionally sources `RowId` from the *first view
+    /// column* rather than whichever column contributed the current row (same `TODO(#9922)`).
+    /// Since view columns are time-columns-first, that's the `frame_nr` `Time` column here,
+    /// which has no chunks -- so the per-row path emits an all-null `RowId` column, while the
+    /// bulk path correctly emits the real values. This is a known divergence, not a bug in this
+    /// test, so it's pinned against the real inserted `RowId`s instead.
+    #[test]
+    fn next_n_rows_bulk_emits_explicit_row_id_selection() -> anyhow::Result<()> {
+        re_log::setup_logging();
+
+        let mut store = ChunkStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
+            ChunkStoreConfig::COMPACTION_DISABLED,
+        );
+        let entity_path = EntityPath::from("/rowid_selection");
+
+        let chunk_ranges: [(u32, u32); 3] = [(10, 19), (30, 39), (50, 59)];
+        let mut chunks = Vec::with_capacity(chunk_ranges.len());
+        for (lo, hi) in chunk_ranges {
+            let mut builder = Chunk::builder(entity_path.clone());
+            for t in lo..=hi {
+                let points = MyPoint::from_iter(t..=t);
+                builder = builder.with_sparse_component_batches(
+                    RowId::new(),
+                    [build_frame_nr(TimeInt::new_temporal(t as i64))],
+                    [(MyPoints::descriptor_points(), Some(&points as _))],
+                );
+            }
+            let chunk = Arc::new(builder.build()?);
+            store.insert_chunk(&chunk)?;
+            chunks.push(chunk);
+        }
+
+        let store = ChunkStoreHandle::new(store);
+        let cache = QueryCache::new_handle(store.clone());
+        let engine = QueryEngine::new(store, cache);
+
+        let query = QueryExpression {
+            filtered_index: Some(TimelineName::from("frame_nr")),
+            selection: Some(vec![
+                ColumnSelector::RowId,
+                ColumnSelector::Time(TimeColumnSelector::from(TimelineName::from("frame_nr"))),
+                ColumnSelector::Component(ComponentColumnSelector {
+                    entity_path,
+                    component: MyPoints::descriptor_points().component.to_string(),
+                }),
+            ]),
+            ..Default::default()
+        };
+
+        let mut handle = engine.query(query);
+        let n_fields = handle.schema().fields.len();
+        let mut columns: Vec<Vec<ArrowArrayRef>> = (0..n_fields).map(|_| Vec::new()).collect();
+        let mut total_rows = 0usize;
+        loop {
+            let out = handle.next_n_rows(64, usize::MAX);
+            if out.num_rows == 0 {
+                break;
+            }
+            total_rows += out.num_rows;
+            for (col_idx, arr) in out.columns.into_iter().enumerate() {
+                columns[col_idx].push(arr);
+            }
+        }
+
+        assert_eq!(total_rows, 30);
+        assert_eq!(
+            handle.bulk_emitted_rows() as usize,
+            total_rows,
+            "expected the whole run to bulk-emit, including the RowId column",
+        );
+
+        // `RowId` is the first selected column above.
+        let expected_row_id_parts: Vec<&dyn arrow::array::Array> = chunks
+            .iter()
+            .map(|c| c.row_ids_array() as &dyn arrow::array::Array)
+            .collect();
+        let expected_row_ids = re_arrow_util::concat_arrays(&expected_row_id_parts)?;
+
+        let got_row_id_parts: Vec<&dyn arrow::array::Array> =
+            columns[0].iter().map(|a| a.as_ref()).collect();
+        let got_row_ids = re_arrow_util::concat_arrays(&got_row_id_parts)?;
+
+        assert_eq!(
+            got_row_ids.to_data(),
+            expected_row_ids.to_data(),
+            "bulk-emitted RowIds should match the real RowIds inserted into the store",
+        );
+
+        Ok(())
+    }
+
+    /// Pins the off-by-one behavior of the [`BULK_MIN_RUN`] gate: a run of exactly
+    /// `BULK_MIN_RUN - 1` rows must fall through to the per-row path (still producing correct
+    /// output), while a run of exactly `BULK_MIN_RUN` rows must bulk-emit in full.
+    #[test]
+    fn next_n_rows_bulk_min_run_boundary() -> anyhow::Result<()> {
+        re_log::setup_logging();
+
+        for n_rows in [BULK_MIN_RUN - 1, BULK_MIN_RUN, BULK_MIN_RUN + 1] {
+            let mut store = ChunkStore::new(
+                re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
+                ChunkStoreConfig::COMPACTION_DISABLED,
+            );
+            let entity_path = EntityPath::from("/boundary");
+            let mut builder = Chunk::builder(entity_path.clone());
+            for t in 0..n_rows {
+                #[expect(clippy::cast_possible_wrap, clippy::cast_possible_truncation)]
+                let (frame, payload) = (t as i64, t as u32);
+                let points = MyPoint::from_iter(payload..=payload);
+                builder = builder.with_sparse_component_batches(
+                    RowId::new(),
+                    [build_frame_nr(TimeInt::new_temporal(frame))],
+                    [(MyPoints::descriptor_points(), Some(&points as _))],
+                );
+            }
+            store.insert_chunk(&Arc::new(builder.build()?))?;
+
+            let store = ChunkStoreHandle::new(store);
+            let cache = QueryCache::new_handle(store.clone());
+            let engine = QueryEngine::new(store, cache);
+
+            let query = QueryExpression {
+                filtered_index: Some(TimelineName::from("frame_nr")),
+                ..Default::default()
+            };
+
+            let (total_rows, bulk_emitted) = assert_bulk_matches_reference(&engine, query);
+            assert_eq!(total_rows, n_rows);
+            if n_rows < BULK_MIN_RUN {
+                assert_eq!(
+                    bulk_emitted, 0,
+                    "a run of {n_rows} rows is below BULK_MIN_RUN and should not bulk-emit",
+                );
+            } else {
+                assert_eq!(
+                    bulk_emitted as usize, n_rows,
+                    "a run of {n_rows} rows meets BULK_MIN_RUN and should fully bulk-emit",
+                );
+            }
         }
 
         Ok(())
@@ -4304,7 +4961,7 @@ mod tests {
                 let global_row = chunk_idx * rows_per_chunk + local_row;
                 #[expect(clippy::cast_possible_wrap)]
                 let frame = TimeInt::new_temporal(global_row as i64);
-                let points = MyPoint::from_iter(global_row as u32..global_row as u32 + 1);
+                let points = MyPoint::from_iter((global_row as u32)..=(global_row as u32));
                 builder = builder.with_sparse_component_batches(
                     RowId::new(),
                     [build_frame_nr(frame)],
@@ -4359,7 +5016,7 @@ mod tests {
             #[expect(clippy::cast_possible_truncation)]
             let payload_offset = (k as u32) * 1_000;
             for f in base..base + chunk_width {
-                let points = MyPoint::from_iter((f + payload_offset)..(f + payload_offset + 1));
+                let points = MyPoint::from_iter((f + payload_offset)..=(f + payload_offset));
                 let frame = TimeInt::new_temporal(i64::from(f));
                 builder = builder.with_sparse_component_batches(
                     RowId::new(),
@@ -4588,6 +5245,245 @@ mod tests {
             row_count += 1;
         }
         assert_eq!(row_count, TOTAL_ROWS);
+
+        Ok(())
+    }
+
+    /// Iterating forward past a row, then seeking backward to an earlier row, must yield the
+    /// same tail as a handle that seeks there directly. Exercises the "seek before this
+    /// chunk's range" (`cursor = 0`) branch of `seek_to_index_value_impl` once a cursor has
+    /// already advanced past it.
+    #[test]
+    fn seek_backward_after_partial_iteration_matches_fresh_seek() -> anyhow::Result<()> {
+        re_log::setup_logging();
+
+        const N_CHUNKS: usize = 5;
+        const ROWS_PER_CHUNK: usize = 4;
+        let order: Vec<usize> = (0..N_CHUNKS).collect();
+        let store = ChunkStoreHandle::new(build_disjoint_chunk_store(
+            N_CHUNKS,
+            ROWS_PER_CHUNK,
+            &order,
+        )?);
+
+        let filtered_index = Some(TimelineName::from("frame_nr"));
+        let query = QueryExpression {
+            filtered_index,
+            ..Default::default()
+        };
+
+        let cache = QueryCache::new_handle(store.clone());
+        let engine = QueryEngine::new(store.clone(), cache);
+
+        // Reference: a fresh handle that seeks directly to row 5.
+        let mut reference_handle = engine.query(query.clone());
+        reference_handle.seek_to_row(5);
+        let mut expected = Vec::new();
+        while let Some(row) = reference_handle.next_row() {
+            expected.push(row);
+        }
+
+        // Candidate: iterate forward past row 5, then seek backward to row 5.
+        let mut handle = engine.query(query);
+        for _ in 0..12 {
+            handle.next_row();
+        }
+        handle.seek_to_row(5);
+        let mut got = Vec::new();
+        while let Some(row) = handle.next_row() {
+            got.push(row);
+        }
+
+        assert_eq!(got.len(), expected.len());
+        for (i, (a, b)) in std::iter::zip(&got, &expected).enumerate() {
+            for (col_idx, (x, y)) in std::iter::zip(a, b).enumerate() {
+                assert_eq!(x.to_data(), y.to_data(), "row {i} col {col_idx} mismatch");
+            }
+        }
+
+        Ok(())
+    }
+
+    /// A chunk that lacks the `filtered_index` timeline entirely (e.g. a static chunk) hits
+    /// the silent `continue` in `seek_to_index_value_impl` -- its cursor is simply never
+    /// touched by seeking. Confirm that leaving it untouched never corrupts its (constant)
+    /// contribution to the output, across forward and backward seeks.
+    #[test]
+    fn seek_leaves_untouched_static_chunk_cursor_correct() -> anyhow::Result<()> {
+        re_log::setup_logging();
+
+        let entity_path = EntityPath::from("/mixed");
+        let mut store = ChunkStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
+            ChunkStoreConfig::COMPACTION_DISABLED,
+        );
+
+        // Temporal chunk: one `Points` value per frame, frames 0..5.
+        let mut builder = Chunk::builder(entity_path.clone());
+        for f in 0u32..5 {
+            let points = MyPoint::from_iter(f..=f);
+            builder = builder.with_sparse_component_batches(
+                RowId::new(),
+                [build_frame_nr(TimeInt::new_temporal(i64::from(f)))],
+                [(MyPoints::descriptor_points(), Some(&points as _))],
+            );
+        }
+        store.insert_chunk(&Arc::new(builder.build()?))?;
+
+        // Static chunk: a single `Colors` value, with no `frame_nr` timeline at all.
+        let colors = MyColor::from_iter(0..1);
+        let static_chunk = Chunk::builder(entity_path.clone())
+            .with_sparse_component_batches(
+                RowId::new(),
+                TimePoint::default(),
+                [(MyPoints::descriptor_colors(), Some(&colors as _))],
+            )
+            .build()?;
+        store.insert_chunk(&Arc::new(static_chunk))?;
+
+        let store = ChunkStoreHandle::new(store);
+        let filtered_index = Some(TimelineName::from("frame_nr"));
+        let query = QueryExpression {
+            filtered_index,
+            ..Default::default()
+        };
+
+        let cache = QueryCache::new_handle(store.clone());
+        let engine = QueryEngine::new(store.clone(), cache);
+
+        // Reference: straightforward full iteration.
+        let mut reference_handle = engine.query(query.clone());
+        let mut expected = Vec::new();
+        while let Some(row) = reference_handle.next_row() {
+            expected.push(row);
+        }
+        assert_eq!(expected.len(), 5);
+
+        // Seek forward, then backward, then iterate to completion. The static column's
+        // cursor is never touched by `seek_to_index_value_impl` (it lacks the `frame_nr`
+        // timeline), so it must keep yielding its one value regardless of where we land.
+        let mut handle = engine.query(query);
+        handle.seek_to_row(3);
+        handle.seek_to_row(1);
+        let mut got = Vec::new();
+        while let Some(row) = handle.next_row() {
+            got.push(row);
+        }
+
+        assert_eq!(got.len(), expected.len() - 1);
+        for (i, (a, b)) in std::iter::zip(&got, &expected[1..]).enumerate() {
+            for (col_idx, (x, y)) in std::iter::zip(a, b).enumerate() {
+                assert_eq!(x.to_data(), y.to_data(), "row {i} col {col_idx} mismatch");
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Same insert-order-invariance property as [`pruning_walk_insert_order_invariance`], but
+    /// with a chunk containing a duplicate index value (`times_unique == false`) -- the exact
+    /// condition that also forces the bulk fast-path to bail, so this doubles as a regression
+    /// guard for that boundary on the plain per-row walk.
+    #[test]
+    fn pruning_walk_insert_order_invariance_with_duplicate_timestamps() -> anyhow::Result<()> {
+        re_log::setup_logging();
+
+        let entity_path = EntityPath::from("/dup");
+        let build_chunk = |rows: &[(i64, u32)]| -> anyhow::Result<Arc<Chunk>> {
+            let mut builder = Chunk::builder(entity_path.clone());
+            for &(frame, payload) in rows {
+                let points = MyPoint::from_iter(payload..=payload);
+                builder = builder.with_sparse_component_batches(
+                    RowId::new(),
+                    [build_frame_nr(TimeInt::new_temporal(frame))],
+                    [(MyPoints::descriptor_points(), Some(&points as _))],
+                );
+            }
+            Ok(Arc::new(builder.build()?))
+        };
+
+        let chunk_a = build_chunk(&[(0, 0), (2, 1), (2, 2)])?; // duplicate frame 2
+        let chunk_b = build_chunk(&[(1, 3), (3, 4)])?;
+        let chunk_c = build_chunk(&[(4, 5), (5, 6)])?;
+        let chunks = vec![chunk_a, chunk_b, chunk_c];
+
+        let forward: Vec<usize> = vec![0, 1, 2];
+        let reversed: Vec<usize> = vec![2, 1, 0];
+        let shuffled: Vec<usize> = vec![1, 2, 0];
+
+        let store_fwd = ChunkStoreHandle::new(build_overlapping_chunk_store(&chunks, &forward)?);
+        let store_rev = ChunkStoreHandle::new(build_overlapping_chunk_store(&chunks, &reversed)?);
+        let store_shuf = ChunkStoreHandle::new(build_overlapping_chunk_store(&chunks, &shuffled)?);
+
+        let filtered_index = Some(TimelineName::from("frame_nr"));
+        let query = QueryExpression {
+            filtered_index,
+            ..Default::default()
+        };
+
+        let rb_fwd = run_query_collect_rows(&store_fwd, query.clone())?;
+        let rb_rev = run_query_collect_rows(&store_rev, query.clone())?;
+        let rb_shuf = run_query_collect_rows(&store_shuf, query)?;
+
+        // Unique frame values: {0,1,2,3,4,5} -- the duplicate at frame 2 collapses to one row.
+        assert_eq!(rb_fwd.num_rows(), 6);
+        assert_eq!(rb_fwd, rb_rev, "forward vs reversed insert order differ");
+        assert_eq!(rb_fwd, rb_shuf, "forward vs shuffled insert order differ");
+
+        Ok(())
+    }
+
+    /// An early, long-lived chunk that overlaps *every* later chunk in the store -- the exact
+    /// shape `fill_bulk_metadata`'s `max_prev_time_max` comment calls out by name as the
+    /// reason a "next-neighbor-only" overlap check isn't sufficient, but which had no
+    /// dedicated test.
+    #[test]
+    fn pruning_walk_deep_overlap_nesting_invariance() -> anyhow::Result<()> {
+        re_log::setup_logging();
+
+        let entity_path = EntityPath::from("/nested");
+        let build_chunk =
+            |range: std::ops::Range<u32>, payload_offset: u32| -> anyhow::Result<Arc<Chunk>> {
+                let mut builder = Chunk::builder(entity_path.clone());
+                for f in range {
+                    let payload = payload_offset + f;
+                    let points = MyPoint::from_iter(payload..=payload);
+                    builder = builder.with_sparse_component_batches(
+                        RowId::new(),
+                        [build_frame_nr(TimeInt::new_temporal(i64::from(f)))],
+                        [(MyPoints::descriptor_points(), Some(&points as _))],
+                    );
+                }
+                Ok(Arc::new(builder.build()?))
+            };
+
+        let chunk_a = build_chunk(0..20, 0)?; // spans the entire timeline
+        let chunk_b = build_chunk(2..5, 1_000)?;
+        let chunk_c = build_chunk(8..11, 2_000)?;
+        let chunk_d = build_chunk(14..17, 3_000)?;
+        let chunks = vec![chunk_a, chunk_b, chunk_c, chunk_d];
+
+        let forward: Vec<usize> = vec![0, 1, 2, 3];
+        let reversed: Vec<usize> = vec![3, 2, 1, 0];
+        let shuffled: Vec<usize> = vec![2, 0, 3, 1];
+
+        let store_fwd = ChunkStoreHandle::new(build_overlapping_chunk_store(&chunks, &forward)?);
+        let store_rev = ChunkStoreHandle::new(build_overlapping_chunk_store(&chunks, &reversed)?);
+        let store_shuf = ChunkStoreHandle::new(build_overlapping_chunk_store(&chunks, &shuffled)?);
+
+        let filtered_index = Some(TimelineName::from("frame_nr"));
+        let query = QueryExpression {
+            filtered_index,
+            ..Default::default()
+        };
+
+        let rb_fwd = run_query_collect_rows(&store_fwd, query.clone())?;
+        let rb_rev = run_query_collect_rows(&store_rev, query.clone())?;
+        let rb_shuf = run_query_collect_rows(&store_shuf, query)?;
+
+        assert_eq!(rb_fwd.num_rows(), 20);
+        assert_eq!(rb_fwd, rb_rev, "forward vs reversed insert order differ");
+        assert_eq!(rb_fwd, rb_shuf, "forward vs shuffled insert order differ");
 
         Ok(())
     }

@@ -8,7 +8,7 @@ import pytest
 import rerun as rr
 import torch
 from rerun.components import DepthMeter, ImageFormat
-from rerun.datatypes import ChannelDatatype, Float32Like
+from rerun.encodings import ChannelDatatype, Float32Like
 from rerun.error_utils import RerunWarning
 
 rng = np.random.default_rng(12345)

@@ -10,20 +10,20 @@ import rerun.blueprint as rrb
 from .common_arrays import none_empty_or_value
 
 if TYPE_CHECKING:
-    from rerun.blueprint.datatypes import TensorDimensionIndexSliderArrayLike
+    from rerun.blueprint.encodings import TensorDimensionIndexSliderArrayLike
 
 
 def test_tensor_slice_selection() -> None:
     widths = [
         None,
         2,
-        rr.datatypes.TensorDimensionSelection(dimension=2, invert=False),
+        rr.encodings.TensorDimensionSelection(dimension=2, invert=False),
         rr.components.TensorWidthDimension(dimension=2, invert=False),
     ]
     heights = [
         None,
         3,
-        rr.datatypes.TensorDimensionSelection(dimension=3, invert=False),
+        rr.encodings.TensorDimensionSelection(dimension=3, invert=False),
         rr.components.TensorHeightDimension(dimension=3, invert=False),
     ]
     indices_arrays = [
@@ -53,9 +53,9 @@ def test_tensor_slice_selection() -> None:
     )
 
     for width, height, indices, slider in all_arrays:
-        width = cast("rr.datatypes.TensorDimensionSelectionLike | None", width)
-        height = cast("rr.datatypes.TensorDimensionSelectionLike | None", height)
-        indices = cast("rr.datatypes.TensorDimensionIndexSelectionArrayLike | None", indices)
+        width = cast("rr.encodings.TensorDimensionSelectionLike | None", width)
+        height = cast("rr.encodings.TensorDimensionSelectionLike | None", height)
+        indices = cast("rr.encodings.TensorDimensionIndexSelectionArrayLike | None", indices)
         slider = cast("TensorDimensionIndexSliderArrayLike | None", slider)
 
         print(

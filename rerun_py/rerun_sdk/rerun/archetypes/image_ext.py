@@ -8,7 +8,7 @@ import numpy.typing as npt
 from PIL import Image as PILImage
 
 from ..components import ImageFormat
-from ..datatypes import (
+from ..encodings import (
     ChannelDatatype,
     ChannelDatatypeLike,
     ColorModel,

@@ -1,6 +1,7 @@
 ---
 title: Component mappings
 order: 250
+description: Redirect a visualizer's input to a different component
 ---
 
 By default, each visualizer reads its input components from the - for example, the `Points3D` visualizer reads colors from `Points3D:colors`.

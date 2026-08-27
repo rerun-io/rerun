@@ -53,7 +53,7 @@ pub fn process_color_slice<'a>(
 
 pub type Keypoints = HashMap<
     (re_sdk_types::components::ClassId, i64),
-    HashMap<re_sdk_types::datatypes::KeypointId, glam::Vec3>,
+    HashMap<re_sdk_types::encodings::KeypointId, glam::Vec3>,
 >;
 
 /// Resolves all annotations and keypoints for the given entity view.

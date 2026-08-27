@@ -4,7 +4,9 @@ use arrow::array::{
 };
 use itertools::Itertools as _;
 use nohash_hasher::IntSet;
+use re_arrow_util::ListArrayExt as _;
 use re_log_types::TimelineName;
+use re_span::Span;
 use re_types_core::{ComponentIdentifier, SerializedComponentColumn};
 
 use crate::{Chunk, ChunkId, RowId, TimeColumn, UnitChunkShared};
@@ -54,9 +56,9 @@ impl Chunk {
     /// (e.g. when slicing the results of a query).
     /// When slicing data for long-term storage, whether in-memory or on disk, see [`Self::row_sliced_deep`] instead.
     #[must_use]
-    pub fn row_sliced_shallow(&self, index: usize, len: usize) -> Self {
+    pub fn row_sliced_shallow(&self, span: Span<usize>) -> Self {
         let deep = false;
-        self.row_sliced_impl(index, len, deep)
+        self.row_sliced_impl(span, deep)
     }
 
     /// Slice out a single row. Panics if out-of-index.
@@ -65,7 +67,7 @@ impl Chunk {
     pub fn row_sliced_unit_shallow(&self, index: usize) -> UnitChunkShared {
         let original_chunk_id = self.id();
         #[expect(clippy::unwrap_used)] // cannot fail: we always have exactly one row
-        self.row_sliced_shallow(index, 1)
+        self.row_sliced_shallow(Span::from_start_len(index, 1))
             .into_unit_with_original_chunk_id(original_chunk_id)
             .unwrap()
     }
@@ -93,13 +95,24 @@ impl Chunk {
     /// in-memory (e.g. in a `ChunkStore`), or on disk.
     /// When slicing data for short-term needs (e.g. slicing the results of a query) prefer [`Self::row_sliced_shallow`] instead.
     #[must_use]
-    pub fn row_sliced_deep(&self, index: usize, len: usize) -> Self {
+    pub fn row_sliced_deep(&self, span: Span<usize>) -> Self {
         let deep = true;
-        self.row_sliced_impl(index, len, deep)
+        self.row_sliced_impl(span, deep)
+    }
+
+    /// Deep-slice out a single row. Panics if out-of-index.
+    ///
+    /// See also [`Self::row_sliced_deep`].
+    pub fn row_sliced_unit_deep(&self, index: usize) -> UnitChunkShared {
+        let original_chunk_id = self.id();
+        #[expect(clippy::unwrap_used)] // cannot fail: we always have exactly one row
+        self.row_sliced_deep(Span::from_start_len(index, 1))
+            .into_unit_with_original_chunk_id(original_chunk_id)
+            .unwrap()
     }
 
     #[must_use]
-    fn row_sliced_impl(&self, index: usize, len: usize, deep: bool) -> Self {
+    fn row_sliced_impl(&self, span: Span<usize>, deep: bool) -> Self {
         re_tracing::profile_function!(if deep { "deep" } else { "shallow" });
 
         let Self {
@@ -115,17 +128,12 @@ impl Chunk {
         // NOTE: Bound checking costs are completely dwarfed by everything else, and preventing the
         // viewer from crashing is more important than anything else in any case.
 
-        if index >= self.num_rows() {
+        let span = span.clamped_to(self.num_rows());
+        if span.is_empty() {
             return self.emptied();
         }
 
-        let end_offset = usize::min(index.saturating_add(len), self.num_rows());
-        let len = end_offset.saturating_sub(index);
-
-        if len == 0 {
-            return self.emptied();
-        }
-
+        let Span { start: index, len } = span;
         let is_sorted = *is_sorted || (len < 2);
 
         let mut chunk = Self {
@@ -134,20 +142,20 @@ impl Chunk {
             heap_size_bytes: Default::default(),
             is_sorted,
             row_ids: if deep {
-                re_arrow_util::deep_slice_array(row_ids, index, len)
+                re_arrow_util::deep_slice_array(row_ids, span)
             } else {
                 row_ids.slice(index, len)
             },
             timelines: timelines
                 .iter()
-                .map(|(timeline, time_column)| (*timeline, time_column.row_sliced(index, len)))
+                .map(|(timeline, time_column)| (*timeline, time_column.row_sliced(span)))
                 .collect(),
             components: components
                 .values()
                 .map(|column| {
                     SerializedComponentColumn::new(
                         if deep {
-                            re_arrow_util::deep_slice_array(&column.list_array, index, len)
+                            re_arrow_util::deep_slice_array(&column.list_array, span)
                         } else {
                             column.list_array.slice(index, len)
                         },
@@ -535,12 +543,8 @@ impl Chunk {
             components: components
                 .values()
                 .map(|column| {
-                    let field = match column.list_array.data_type() {
-                        arrow::datatypes::DataType::List(field) => field.clone(),
-                        _ => unreachable!("This is always s list array"),
-                    };
                     SerializedComponentColumn::new(
-                        ArrowListArray::new_null(field, 0),
+                        ArrowListArray::new_null(column.list_array.field().clone(), 0),
                         column.descriptor.clone(),
                     )
                 })
@@ -600,7 +604,7 @@ impl Chunk {
         }
 
         if self.is_static() {
-            return self.row_sliced_shallow(self.num_rows().saturating_sub(1), 1);
+            return self.row_sliced_shallow(Span::from_start_len(self.num_rows() - 1, 1));
         }
 
         let Some(time_column) = self.timelines.get(index) else {
@@ -840,7 +844,7 @@ impl TimeColumn {
     /// run out of bounds.
     /// This can result in an empty [`TimeColumn`] being returned if the slice is completely OOB.
     #[inline]
-    pub fn row_sliced(&self, index: usize, len: usize) -> Self {
+    pub fn row_sliced(&self, span: Span<usize>) -> Self {
         let Self {
             timeline,
             times,
@@ -851,17 +855,12 @@ impl TimeColumn {
         // NOTE: Bound checking costs are completely dwarfed by everything else, and preventing the
         // viewer from crashing is more important than anything else in any case.
 
-        if index >= self.num_rows() {
+        let span = span.clamped_to(self.num_rows());
+        if span.is_empty() {
             return self.emptied();
         }
 
-        let end_offset = usize::min(index.saturating_add(len), self.num_rows());
-        let len = end_offset.saturating_sub(index);
-
-        if len == 0 {
-            return self.emptied();
-        }
-
+        let Span { start: index, len } = span;
         let is_sorted = *is_sorted || (len < 2);
 
         // We can know for sure whether the resulting chunk is already sorted (see conditional
@@ -886,6 +885,14 @@ impl TimeColumn {
         let is_sorted_opt = is_sorted.then_some(is_sorted);
 
         Self::new(is_sorted_opt, *timeline, times.clone().slice(index, len))
+    }
+
+    /// Slice out a single row. The result is empty if out-of-index.
+    ///
+    /// See also [`Self::row_sliced`].
+    #[inline]
+    pub fn row_sliced_unit(&self, index: usize) -> Self {
+        self.row_sliced(Span::from_start_len(index, 1))
     }
 
     /// Empties the [`TimeColumn`] vertically.
@@ -1743,9 +1750,9 @@ mod tests {
         eprintln!("Original chunk size: {original_size} bytes");
 
         // Create 3 single-row slices
-        let slice1 = chunk.row_sliced_deep(0, 1);
-        let slice2 = chunk.row_sliced_deep(1, 1);
-        let slice3 = chunk.row_sliced_deep(2, 1);
+        let slice1 = chunk.row_sliced_deep(Span::from_start_len(0, 1));
+        let slice2 = chunk.row_sliced_deep(Span::from_start_len(1, 1));
+        let slice3 = chunk.row_sliced_deep(Span::from_start_len(2, 1));
 
         let slice1_size = slice1.heap_size_bytes();
         let slice2_size = slice2.heap_size_bytes();

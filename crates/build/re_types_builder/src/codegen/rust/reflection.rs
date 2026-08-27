@@ -8,10 +8,7 @@ use quote::{format_ident, quote};
 
 use super::util::{append_tokens, doc_as_lines};
 use crate::codegen::{Target, autogen_warning};
-use crate::{
-    ATTR_RERUN_COMPONENT_NO_UI_EDIT, ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RUST_DERIVE,
-    ATTR_RUST_DERIVE_ONLY, ObjectKind, Objects, Reporter,
-};
+use crate::{ObjectKind, Objects, Reporter, RerunAttr, RustAttr};
 
 /// Generate reflection about components and archetypes.
 pub fn generate_reflection(
@@ -50,7 +47,8 @@ pub fn generate_reflection(
             ArchetypeName,
             ComponentType,
             Component,
-            Loggable as _,
+            ArrowDatatype as _,
+            FromArrow as _,
             ComponentBatch as _,
             reflection::{
                 generate_component_identifier_reflection,
@@ -138,8 +136,8 @@ fn generate_component_reflection(
                 .iter()
                 .any(|field| field.attrs.has(crate::ATTR_DEFAULT));
         let has_default_attr = obj
-            .try_get_attr::<String>(ATTR_RUST_DERIVE_ONLY)
-            .or_else(|| obj.try_get_attr::<String>(ATTR_RUST_DERIVE))
+            .try_get_attr::<String>(RustAttr::DeriveOnly)
+            .or_else(|| obj.try_get_attr::<String>(RustAttr::Derive))
             .is_some_and(|derives| derives.contains("Default"));
         let auto_derive_default = is_enum_with_default || has_default_attr;
         let has_custom_default_impl =
@@ -218,8 +216,8 @@ fn generate_archetype_reflection(reporter: &Reporter, objects: &Objects) -> Toke
                 Target::WebDocsMarkdown,
             )
             .join("\n");
-            let required = field.attrs.has(ATTR_RERUN_COMPONENT_REQUIRED);
-            let ui_editable = !field.attrs.has(ATTR_RERUN_COMPONENT_NO_UI_EDIT);
+            let required = field.attrs.has(RerunAttr::Required);
+            let ui_editable = !field.attrs.has(RerunAttr::NoUiEdit);
 
             let mut flag_tokens: Vec<TokenStream> = Vec::new();
             if required {

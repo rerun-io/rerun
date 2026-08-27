@@ -3,22 +3,19 @@ use crate::batch_coalescer::coalesce_exec::SizedCoalesceBatchesExec;
 use crate::batch_coalescer::coalescer::CoalescerOptions;
 use crate::pushdown_expressions::{apply_filter_expr_to_queries, filter_expr_is_supported};
 use ahash::{HashMap, HashMapExt as _, HashSet};
-use arrow::array::{
-    ArrayRef, DurationNanosecondArray, Int64Array, RecordBatch, TimestampMicrosecondArray,
-    TimestampMillisecondArray, TimestampNanosecondArray, TimestampSecondArray, UInt32Array,
-};
-use arrow::compute::concat_batches;
-use arrow::datatypes::{DataType, Field, Int64Type, Schema, SchemaRef, TimeUnit};
+use arrow::array::{ArrayRef, RecordBatch, UInt32Array};
+use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
 use arrow::record_batch::RecordBatchOptions;
 use async_trait::async_trait;
 use datafusion::catalog::{Session, TableProvider};
-use datafusion::common::{Column, DataFusionError, downcast_value, exec_datafusion_err};
+use datafusion::common::{Column, DataFusionError, exec_datafusion_err};
 use datafusion::datasource::TableType;
 use datafusion::logical_expr::{Expr, Operator, TableProviderFilterPushDown};
 use datafusion::physical_plan::ExecutionPlan;
 use futures::StreamExt as _;
 use itertools::Itertools as _;
 use parking_lot::Mutex;
+use re_async::AsyncRuntimeHandle;
 use re_dataframe::external::re_chunk_store::ChunkStore;
 use re_dataframe::{Index, IndexValue, QueryExpression, SparseFillStrategy};
 use re_log_types::{EntityPath, EntryId};
@@ -33,14 +30,12 @@ use re_protos::{
     cloud::v1alpha1::ext::{Query, QueryDatasetRequest, QueryLatestAt, QueryRange},
     common::v1alpha1::ext::SegmentId,
 };
-use re_redap_client::{ApiError, ApiResult, ConnectionClient, ConnectionRegistryHandle};
+use re_redap_client::{ApiError, ApiResult, ConnectionClient, ConnectionHandle};
 
 use crate::{IntoDfError as _, SegmentStreamExec};
 use re_sorbet::{
     BatchType, ChunkColumnDescriptors, ColumnDescriptor, ColumnKind, ComponentColumnSelector,
 };
-use re_uri::Origin;
-use std::any::Any;
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 use std::str::FromStr as _;
@@ -70,6 +65,28 @@ pub(crate) fn force_grpc() -> bool {
 #[cfg(target_arch = "wasm32")]
 pub(crate) fn force_grpc() -> bool {
     false
+}
+
+/// How many of a scan's `query_dataset` requests run concurrently.
+///
+/// A scan may issue several; this bounds how many are in flight at
+/// once. On native the width is `pipeline_budget::query_dataset_max_concurrency`,
+/// and each request also takes a permit from the process-wide
+/// `pipeline_budget::query_dataset_semaphore` so co-tenant scans share one
+/// ceiling. On wasm `pipeline_budget` isn't compiled in and there's no env, so
+/// the width is a small fixed constant.
+fn query_dataset_fanout() -> usize {
+    cfg_select! {
+        target_arch = "wasm32" => {
+            /// gRPC-web requests overlap usefully even though wasm is single-threaded;
+            /// kept modest since there's no process-wide limiter to back it up.
+            const WASM_QUERY_DATASET_FANOUT: usize = 8;
+            WASM_QUERY_DATASET_FANOUT
+        }
+        _ => {
+            crate::pipeline_budget::query_dataset_max_concurrency()
+        }
+    }
 }
 
 /// Sets the size for output record batches in rows. The last batch will likely be smaller.
@@ -144,6 +161,9 @@ struct FilterCapture {
 /// responses more directly.
 #[async_trait]
 pub trait DataframeClientAPI: std::fmt::Debug + Clone + Send + Sync + Unpin + 'static {
+    /// The server this client talks to, named in the errors it produces.
+    fn origin(&self) -> &re_uri::Origin;
+
     async fn get_dataset_schema(
         &mut self,
         request: tonic::Request<GetDatasetSchemaRequest>,
@@ -164,6 +184,11 @@ pub trait DataframeClientAPI: std::fmt::Debug + Clone + Send + Sync + Unpin + 's
 
 #[async_trait]
 impl DataframeClientAPI for ConnectionClient {
+    fn origin(&self) -> &re_uri::Origin {
+        // The inherent `RedapClient::origin`, not this trait method.
+        Self::origin(self)
+    }
+
     async fn get_dataset_schema(
         &mut self,
         request: tonic::Request<GetDatasetSchemaRequest>,
@@ -197,8 +222,7 @@ impl DataframeQueryTableProvider<ConnectionClient> {
     /// RPC is skipped — useful when the caller has already fetched the schema.
     #[tracing::instrument(level = "info", skip_all)]
     pub async fn new(
-        origin: Origin,
-        connection_registry: ConnectionRegistryHandle,
+        connection: ConnectionHandle,
         dataset_id: EntryId,
         query_expression: &QueryExpression,
         segment_ids: &[impl AsRef<str> + Sync],
@@ -207,7 +231,8 @@ impl DataframeQueryTableProvider<ConnectionClient> {
         #[cfg(not(target_arch = "wasm32"))] trace_headers: Option<crate::TraceHeaders>,
         metrics_collectors: Vec<crate::MetricsCollector>,
     ) -> ApiResult<Self> {
-        let connection = connection_registry.connection(origin.clone()).await?;
+        let origin = connection.origin().clone();
+        let connection = connection.connection().await?;
 
         let mut provider = Self::new_from_client(
             connection.client,
@@ -222,7 +247,18 @@ impl DataframeQueryTableProvider<ConnectionClient> {
         )
         .await?;
 
-        provider.analytics = connection.analytics.map(crate::ConnectionAnalytics::new);
+        if let Some(exporter) = connection.analytics {
+            let async_runtime = AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen()
+                .map_err(|err| {
+                    ApiError::internal_with_source(
+                        &origin,
+                        None,
+                        err,
+                        "failed to capture the async runtime for query analytics",
+                    )
+                })?;
+            provider.analytics = Some(crate::ConnectionAnalytics::new(exporter, async_runtime));
+        }
 
         Ok(provider)
     }
@@ -240,6 +276,8 @@ impl<T: DataframeClientAPI> DataframeQueryTableProvider<T> {
         #[cfg(not(target_arch = "wasm32"))] trace_headers: Option<crate::TraceHeaders>,
         metrics_collectors: Vec<crate::MetricsCollector>,
     ) -> ApiResult<Self> {
+        let origin = client.origin().clone();
+
         // Either use the caller-provided schema or fetch it from the server.
         let (schema, trace_id) = if let Some(schema) = arrow_schema {
             (schema, None)
@@ -248,10 +286,15 @@ impl<T: DataframeClientAPI> DataframeQueryTableProvider<T> {
             let response = client
                 .get_dataset_schema(request)
                 .await
-                .map_err(|err| ApiError::tonic(err, "get_dataset_schema"))?;
+                .map_err(|err| ApiError::tonic(&origin, err, "get_dataset_schema"))?;
             let trace_id = re_redap_client::extract_trace_id(response.metadata());
             let schema = response.into_inner().schema().map_err(|err| {
-                ApiError::deserialization_with_source(trace_id, err, "decoding dataset schema")
+                ApiError::deserialization_with_source(
+                    &origin,
+                    trace_id,
+                    err,
+                    "decoding dataset schema",
+                )
             })?;
             (schema, trace_id)
         };
@@ -259,7 +302,12 @@ impl<T: DataframeClientAPI> DataframeQueryTableProvider<T> {
         let schema = compute_schema_for_query(&schema, query_expression).map_err(|err| {
             // `compute_schema_for_query` fails when the caller-provided query
             // references columns/entity-paths not present in the dataset schema
-            ApiError::invalid_arguments_with_source(trace_id, err, "computing schema for query")
+            ApiError::invalid_arguments_with_source(
+                &origin,
+                trace_id,
+                err,
+                "computing schema for query",
+            )
         })?;
 
         let entity_paths = query_expression
@@ -403,10 +451,6 @@ impl<T: DataframeClientAPI> DataframeQueryTableProvider<T> {
 
 #[async_trait]
 impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
     fn schema(&self) -> SchemaRef {
         Arc::clone(&self.schema)
     }
@@ -535,63 +579,102 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
 
             let mut trace_id: Option<opentelemetry::TraceId> = None;
 
-            for dataset_query in dataset_queries {
-                let query_start = Instant::now();
+            // These are independent read-only queries, so fan them out with
+            // bounded concurrency (`query_dataset_fanout`). Order doesn't
+            // matter: the batches are concatenated and deduplicated by chunk id
+            // below.
+            let queries_start = Instant::now();
+            let mut response_futures = futures::stream::iter(dataset_queries)
+                .map(|dataset_query| {
+                    let client = self.client.clone();
+                    let origin = client.origin().clone();
+                    let dataset_id = self.dataset_id;
+                    async move {
+                        // Hold a process-wide permit for the whole open+drain so
+                        // co-tenant queries share one ceiling on concurrent
+                        // `query_dataset` streams (the fan-out width alone only
+                        // bounds a single scan). Dropped when this task ends.
+                        #[cfg(not(target_arch = "wasm32"))]
+                        let _permit = crate::pipeline_budget::query_dataset_semaphore()
+                            .acquire()
+                            .await
+                            .expect("query_dataset semaphore is never closed");
 
-                // Build the proto request once, then clone it per retry attempt (`tonic::Request`
-                // isn't `Clone`). The server rejects `QueryDataset` with `ResourceExhausted`
-                // fail-fast (before any work) when its stream-concurrency limiter is saturated, so
-                // retrying the open is idempotent. Map tonic → `ApiError` *inside* the retry so the
-                // predicate sees `ResourcesExhausted`, and to `DataFusionError` *outside*.
-                let proto_request: re_protos::cloud::v1alpha1::QueryDatasetRequest =
-                    dataset_query.into();
-                let dataset_id = self.dataset_id;
-                let response =
-                    re_redap_client::with_retry_resource_exhausted("query_dataset", || {
-                        let mut client = self.client.clone();
-                        let request =
-                            tonic::Request::new(proto_request.clone()).with_entry_id(dataset_id);
-                        async move {
-                            client
-                                .query_dataset(request)
-                                .await
-                                .map_err(|err| ApiError::tonic(err, "query_dataset"))
+                        // Build the proto request once, then clone it per retry attempt
+                        // (`tonic::Request` isn't `Clone`). The server rejects `QueryDataset`
+                        // with `ResourceExhausted` fail-fast (before any work) when its
+                        // stream-concurrency limiter is saturated, so retrying the open is
+                        // idempotent. Map tonic → `ApiError` *inside* the retry so the predicate
+                        // sees `ResourcesExhausted`, and to `DataFusionError` *outside*.
+                        let proto_request: re_protos::cloud::v1alpha1::QueryDatasetRequest =
+                            dataset_query.into();
+                        let response =
+                            re_redap_client::with_retry_resource_exhausted("query_dataset", || {
+                                let mut client = client.clone();
+                                let origin = origin.clone();
+                                let request = tonic::Request::new(proto_request.clone())
+                                    .with_entry_id(dataset_id);
+                                async move {
+                                    client.query_dataset(request).await.map_err(|err| {
+                                        ApiError::tonic(&origin, err, "query_dataset")
+                                    })
+                                }
+                            })
+                            .await
+                            .map_err(|err| err.into_df_error())?;
+
+                        // Capture the server-side trace-id from response metadata.
+                        let trace_id = re_redap_client::extract_trace_id(response.metadata());
+
+                        let mut response_stream = response.into_inner();
+                        let mut batches = Vec::new();
+                        let mut time_to_first: Option<Duration> = None;
+
+                        while let Some(response) = response_stream.next().await {
+                            if time_to_first.is_none() {
+                                time_to_first = Some(queries_start.elapsed());
+                            }
+
+                            let response = response.map_err(|err| {
+                                ApiError::tonic(&origin, err, "query_dataset response stream")
+                                    .with_trace_id(trace_id)
+                                    .into_df_error()
+                            })?;
+                            let Some(dataframe_part) = response.data else {
+                                continue;
+                            };
+                            let batch: RecordBatch = dataframe_part.try_into().map_err(|err| {
+                                ApiError::deserialization_with_source(
+                                    &origin,
+                                    trace_id,
+                                    err,
+                                    "decoding query_dataset response batch",
+                                )
+                                .into_df_error()
+                            })?;
+
+                            batches.push(batch);
                         }
-                    })
-                    .await
-                    .map_err(|err| err.into_df_error())?;
 
-                // Capture the server-side trace-id from response metadata.
-                if trace_id.is_none() {
-                    trace_id = re_redap_client::extract_trace_id(response.metadata());
-                }
-
-                let mut response_stream = response.into_inner();
-
-                while let Some(response) = response_stream.next().await {
-                    if time_to_first_chunk_info.is_none() {
-                        time_to_first_chunk_info = Some(query_start.elapsed());
+                        Ok::<_, DataFusionError>((batches, time_to_first, trace_id))
                     }
+                })
+                .buffer_unordered(query_dataset_fanout());
 
-                    let response = response.map_err(|err| {
-                        ApiError::tonic(err, "query_dataset response stream")
-                            .with_trace_id(trace_id)
-                            .into_df_error()
-                    })?;
-                    let Some(dataframe_part) = response.data else {
-                        continue;
-                    };
-                    let batch: RecordBatch = dataframe_part.try_into().map_err(|err| {
-                        ApiError::deserialization_with_source(
-                            trace_id,
-                            err,
-                            "decoding query_dataset response batch",
-                        )
-                        .into_df_error()
-                    })?;
+            while let Some(result) = response_futures.next().await {
+                let (batches, time_to_first, response_trace_id) = result?;
 
-                    chunk_info_batches.push(batch);
+                if trace_id.is_none() {
+                    trace_id = response_trace_id;
                 }
+                // Time to first chunk info is the earliest first-response across
+                // all concurrent queries, measured from the shared fan-out start.
+                time_to_first_chunk_info = match (time_to_first_chunk_info, time_to_first) {
+                    (Some(current), Some(candidate)) => Some(current.min(candidate)),
+                    (existing, candidate) => existing.or(candidate),
+                };
+
+                chunk_info_batches.extend(batches);
             }
             let chunk_info_batches = compute_unique_chunk_info_ids(chunk_info_batches)?;
 
@@ -602,6 +685,7 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
                 .as_ref()
                 .map(compute_chunk_info_aggregates)
                 .unwrap_or_default();
+            let target_partitions = state.config().target_partitions();
             let query_info = QueryInfo {
                 dataset_id: self.dataset_id.to_string(),
                 query_chunks: agg.chunks,
@@ -610,6 +694,7 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
                 query_columns: self.schema.fields().len(),
                 query_entities: self.query_dataset_request.entity_paths.len(),
                 query_bytes: agg.bytes,
+                target_partitions,
                 query_chunks_per_segment_min: agg.chunks_per_segment_min,
                 query_chunks_per_segment_max: agg.chunks_per_segment_max,
                 query_chunks_per_segment_mean: agg.chunks_per_segment_mean,
@@ -667,7 +752,7 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
                 &self.schema,
                 self.sort_index,
                 projection,
-                state.config().target_partitions(),
+                target_partitions,
                 chunk_info_batches,
                 query_expression,
                 self.index_values.clone(),
@@ -940,16 +1025,48 @@ pub(crate) fn prepend_string_column_schema(schema: &Schema, column_name: &str) -
     Schema::new_with_metadata(fields, schema.metadata.clone())
 }
 
+/// Takes each field's data type from the corresponding array in `columns`, keeping the
+/// field name, nullability and metadata from `schema`.
+///
+/// A `QueryHandle`'s schema is built from the `ChunkStore`'s
+/// `ComponentColumnDescriptor`s, and `ChunkStore` rewrites the outer list field of every
+/// component column to `Field::new("item", value_type, true)` — discarding the name and
+/// nullability the producer actually used (see `re_chunk_store::store_schema`). The row
+/// data, on the other hand, is sliced straight out of the chunks, so it keeps the
+/// original field. For a producer that emits a non-nullable outer list field the two
+/// disagree, and `RecordBatch::try_new` rejects the batch: arrow's `equals_datatype`
+/// compares child-field nullability. See <https://github.com/rerun-io/rerun/issues/12887>.
+///
+/// Building the intermediate batch against the *actual* data types side-steps that
+/// mismatch; the following `align_record_batch_to_schema` then widens the columns to the
+/// DataFusion output schema, which is what resolves the nullability difference for real.
+pub(crate) fn schema_with_array_datatypes(schema: &Schema, columns: &[ArrayRef]) -> Schema {
+    re_log::debug_assert_eq!(schema.fields().len(), columns.len());
+
+    let fields = std::iter::zip(schema.fields(), columns)
+        .map(|(field, column)| {
+            if field.data_type() == column.data_type() {
+                (**field).clone()
+            } else {
+                Field::clone(field).with_data_type(column.data_type().clone())
+            }
+        })
+        .collect::<Vec<_>>();
+
+    Schema::new_with_metadata(fields, schema.metadata.clone())
+}
+
 /// Hash a segment id for DataFusion partition routing.
 ///
 /// Hashes the underlying string with DataFusion's `HashValue` so the result
 /// matches `RepartitionExec`'s hashing of the segment-id string column.
-pub(crate) fn segment_partition_hash(
-    segment_id: &SegmentId,
-    random_state: &ahash::RandomState,
-) -> u64 {
+pub(crate) fn segment_partition_hash(segment_id: &SegmentId) -> u64 {
     use datafusion::common::hash_utils::HashValue as _;
-    segment_id.as_str().hash_one(random_state)
+    use datafusion::physical_plan::repartition::REPARTITION_RANDOM_STATE;
+
+    segment_id
+        .as_str()
+        .hash_one(REPARTITION_RANDOM_STATE.random_state())
 }
 
 /// We need to create `num_partitions` of DataFusion partition stream outputs, each of
@@ -990,40 +1107,6 @@ pub(crate) fn group_chunk_infos_by_segment_id(
     }
 
     Ok(Arc::new(results))
-}
-
-#[tracing::instrument(level = "trace", skip_all)]
-#[expect(dead_code)]
-pub(crate) fn time_array_ref_to_i64(time_array: &ArrayRef) -> Result<Int64Array, DataFusionError> {
-    Ok(match time_array.data_type() {
-        DataType::Int64 => downcast_value!(time_array, Int64Array).reinterpret_cast::<Int64Type>(),
-        DataType::Timestamp(TimeUnit::Second, _) => {
-            let nano_array = downcast_value!(time_array, TimestampSecondArray);
-            nano_array.reinterpret_cast::<Int64Type>()
-        }
-        DataType::Timestamp(TimeUnit::Millisecond, _) => {
-            let nano_array = downcast_value!(time_array, TimestampMillisecondArray);
-            nano_array.reinterpret_cast::<Int64Type>()
-        }
-        DataType::Timestamp(TimeUnit::Microsecond, _) => {
-            let nano_array = downcast_value!(time_array, TimestampMicrosecondArray);
-            nano_array.reinterpret_cast::<Int64Type>()
-        }
-        DataType::Timestamp(TimeUnit::Nanosecond, _) => {
-            let nano_array = downcast_value!(time_array, TimestampNanosecondArray);
-            nano_array.reinterpret_cast::<Int64Type>()
-        }
-        DataType::Duration(TimeUnit::Nanosecond) => {
-            let duration_array = downcast_value!(time_array, DurationNanosecondArray);
-            duration_array.reinterpret_cast::<Int64Type>()
-        }
-        _ => {
-            return Err(exec_datafusion_err!(
-                "Unexpected type for time column {}",
-                time_array.data_type()
-            ));
-        }
-    })
 }
 
 /// Compact, display-friendly snapshot of the plan-time decisions that drove a scan.
@@ -1237,8 +1320,18 @@ fn compute_unique_chunk_info_ids(
         return Ok(None);
     }
 
-    let schema = chunk_info_batches[0].schema();
-    let combined = concat_batches(&schema, &chunk_info_batches)?;
+    // Merge by column *name*, not by position: a `query_dataset` response schema is only
+    // pinned by name (that is what `QueryDatasetDataframe::COLUMN_*` extraction relies on),
+    // and the batches we get here come from several independent responses — one per fan-out
+    // branch, each free to carry a different column order and a different set of optional
+    // columns (`chunk_byte_offset`, `{timeline}:start`, …). A branch that selected nothing
+    // typically answers with the server's fallback empty batch, whose columns are neither
+    // ordered nor shaped like the populated branches'. Concatenating those positionally
+    // either fails outright (`It is not possible to concatenate arrays of different data
+    // types (Utf8, Boolean)`) or, worse, silently pairs up same-typed but unrelated columns.
+    let combined = re_arrow_util::concat_polymorphic_batches(&chunk_info_batches)
+        .map_err(|err| exec_datafusion_err!("merging chunk-info batches: {err}"))?;
+    let schema = combined.schema();
     drop(chunk_info_batches);
 
     let chunk_ids = QueryDatasetDataframe::COLUMN_CHUNK_ID
@@ -1273,6 +1366,52 @@ mod tests {
     use re_protos::cloud::v1alpha1::ext;
 
     use super::*;
+
+    /// A `RecordBatch` can only be built from a schema whose data types match the arrays
+    /// exactly — arrow's `equals_datatype` compares child-field nullability. Fields keep their
+    /// name, nullability and metadata; only the data type follows the array.
+    #[test]
+    fn schema_with_array_datatypes_follows_the_arrays() {
+        use arrow::array::{ListArray, UInt8Array};
+        use arrow::buffer::OffsetBuffer;
+
+        let column = Arc::new(ListArray::new(
+            Arc::new(Field::new_list_field(DataType::UInt8, false)),
+            OffsetBuffer::from_lengths([2]),
+            Arc::new(UInt8Array::from(vec![1u8, 2])),
+            None,
+        )) as ArrayRef;
+
+        // The schema disagrees with the data about the item field's nullability, as a
+        // `ChunkStore`-derived query schema does for an externally-produced column.
+        let declared =
+            Field::new("blob", DataType::new_list(DataType::UInt8, true), true).with_metadata(
+                HashMap::from([("rerun:kind".to_owned(), "data".to_owned())]),
+            );
+        let schema = Schema::new_with_metadata(vec![declared.clone()], HashMap::default());
+
+        let adjusted = schema_with_array_datatypes(&schema, &[Arc::clone(&column)]);
+        let field = adjusted.field(0);
+
+        assert_eq!(field.data_type(), column.data_type());
+        assert_eq!(field.name(), declared.name());
+        assert_eq!(field.is_nullable(), declared.is_nullable());
+        assert_eq!(field.metadata(), declared.metadata());
+
+        RecordBatch::try_new_with_options(
+            Arc::new(adjusted),
+            vec![Arc::clone(&column)],
+            &RecordBatchOptions::default().with_row_count(Some(1)),
+        )
+        .expect("batch must build against the adjusted schema");
+
+        // Matching data types are left alone.
+        let matching = Schema::new_with_metadata(
+            vec![Field::new("blob", column.data_type().clone(), true)],
+            HashMap::default(),
+        );
+        assert_eq!(schema_with_array_datatypes(&matching, &[column]), matching);
+    }
 
     #[test]
     fn per_segment_values_align_to_segment_ids_order() {

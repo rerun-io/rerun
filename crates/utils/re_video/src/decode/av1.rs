@@ -1,5 +1,6 @@
 //! AV1 support.
 
+use std::collections::BTreeMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use dav1d::{PixelLayout, PlanarImageComponent};
@@ -11,11 +12,32 @@ use super::{
     YuvPixelLayout, YuvRange,
 };
 use crate::decode::FrameResult;
-use crate::{Sender, Time, VideoDataDescription};
+use crate::{FrameNumber, Sender, Time, VideoDataDescription, VideoSource};
+
+/// What we know about a frame at the time we hand its chunk to dav1d.
+///
+/// A `Picture` carries none of this, so we keep it until the picture decoded from that chunk
+/// comes back out.
+#[derive(Clone, Copy)]
+struct SubmittedChunkInfo {
+    is_sync: bool,
+    frame_nr: FrameNumber,
+    source: VideoSource,
+    decode_timestamp: Time,
+}
 
 pub struct SyncDav1dDecoder {
     decoder: dav1d::Decoder,
     debug_name: String,
+
+    /// What we knew about each chunk we submitted, keyed by the offset we passed to dav1d.
+    submitted_chunks: BTreeMap<i64, SubmittedChunkInfo>,
+
+    /// The offset to pass to dav1d for the next chunk.
+    ///
+    /// dav1d never looks at the offset itself. It only copies it from the chunk over to the
+    /// picture decoded from that chunk, which is what lets us pair the two up again.
+    next_offset: i64,
 }
 
 impl SyncDecoder for SyncDav1dDecoder {
@@ -35,6 +57,7 @@ impl SyncDecoder for SyncDav1dDecoder {
         re_tracing::profile_function!();
 
         self.decoder.flush();
+        self.submitted_chunks.clear();
 
         debug_assert!(
             matches!(self.decoder.get_picture(), Err(dav1d::Error::Again)),
@@ -79,6 +102,8 @@ impl SyncDav1dDecoder {
         Ok(Self {
             decoder,
             debug_name,
+            submitted_chunks: BTreeMap::new(),
+            next_offset: 0,
         })
     }
 
@@ -89,15 +114,32 @@ impl SyncDav1dDecoder {
             chunk.presentation_timestamp
         ));
 
+        // Offset is passed through the av1 decoder and sends it back for the frame from
+        // this chunk, and is not read by the decoder at all:
+        // https://videolan.videolan.me/dav1d/structDav1dDataProps.html
+        let offset = self.next_offset;
+        self.next_offset += 1;
+        self.submitted_chunks.insert(
+            offset,
+            SubmittedChunkInfo {
+                is_sync: chunk.is_sync,
+                frame_nr: chunk.frame_nr,
+                source: chunk.source,
+                decode_timestamp: chunk.decode_timestamp,
+            },
+        );
+
         re_tracing::profile_scope!("send_data");
         match self.decoder.send_data(
             chunk.data,
-            None,
+            Some(offset),
             Some(chunk.presentation_timestamp.0),
             chunk.duration.map(|d| d.0),
         ) {
             Ok(()) => {}
             Err(err) => {
+                self.submitted_chunks.remove(&offset);
+
                 debug_assert!(
                     err != dav1d::Error::Again,
                     "Bug in AV1 decoder: send_data returned `Error::Again`. This shouldn't happen, since we process all images in a chunk right away"
@@ -122,7 +164,14 @@ impl SyncDav1dDecoder {
             };
             match picture {
                 Ok(picture) => {
-                    let frame = create_frame(&self.debug_name, &picture);
+                    let offset = picture.offset();
+
+                    // Pictures come out in the order we submitted their chunks, so anything left
+                    // below this offset is from a chunk that never produced a picture.
+                    self.submitted_chunks = self.submitted_chunks.split_off(&offset);
+                    let submitted_chunk = self.submitted_chunks.remove(&offset);
+
+                    let frame = create_frame(&self.debug_name, &picture, submitted_chunk);
                     output_sender.send(frame).ok();
                     count += 1;
                 }
@@ -139,7 +188,11 @@ impl SyncDav1dDecoder {
     }
 }
 
-fn create_frame(debug_name: &str, picture: &dav1d::Picture) -> FrameResult {
+fn create_frame(
+    debug_name: &str,
+    picture: &dav1d::Picture,
+    submitted_chunk: Option<SubmittedChunkInfo>,
+) -> FrameResult {
     re_tracing::profile_function!();
 
     let bits_per_component = picture
@@ -269,12 +322,10 @@ fn create_frame(debug_name: &str, picture: &dav1d::Picture) -> FrameResult {
             format,
         },
         info: FrameInfo {
-            // TODO(andreas): dav1d has a user-data field that isn't exposed yet.
-            // We should us that to populate these fields.
-            is_sync: None,
-            sample_idx: None,
-            frame_nr: None,
-            latest_decode_timestamp: None,
+            is_sync: submitted_chunk.map(|chunk| chunk.is_sync),
+            frame_nr: submitted_chunk.map(|chunk| chunk.frame_nr),
+            source: submitted_chunk.map(|chunk| chunk.source),
+            latest_decode_timestamp: submitted_chunk.map(|chunk| chunk.decode_timestamp),
 
             presentation_timestamp: Time(picture.timestamp().unwrap_or(0)),
             duration: (picture.duration() != 0).then_some(Time(picture.duration())),
@@ -354,5 +405,60 @@ fn yuv_matrix_coefficients(debug_name: &str, picture: &dav1d::Picture) -> YuvMat
             );
             YuvMatrixCoefficients::Bt709
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+
+    use super::*;
+    use crate::player::VideoSliceSource;
+
+    /// Every frame dav1d hands back has to say which sample it was decoded from.
+    /// The decoder is only told this when the sample goes in, so it has to survive the round trip
+    /// through dav1d and come back out attached to the right picture.
+    #[test]
+    fn decoded_frames_report_the_sample_they_came_from() {
+        let video_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../../tests/assets/video/Big_Buck_Bunny_1080_1s_av1.mp4");
+        let data = std::fs::read(&video_path).unwrap();
+        let video_descr =
+            VideoDataDescription::load_from_bytes(&data, "video/mp4", "av1 round trip").unwrap();
+
+        let (frame_tx, frame_rx) = crate::channel("av1 round trip");
+        let should_stop = AtomicBool::new(false);
+        let mut decoder = SyncDav1dDecoder::new("av1 round trip".to_owned()).unwrap();
+
+        // A handful of frames is enough to see the round trip work, no need to decode the whole video.
+        const NUM_SAMPLES_TO_DECODE: usize = 4;
+
+        let mut sample_idx_of_source = HashMap::new();
+        for (sample_idx, sample) in video_descr
+            .samples
+            .iter_indexed()
+            .take(NUM_SAMPLES_TO_DECODE)
+        {
+            let sample = sample.sample().unwrap();
+            let chunk = sample.get(&VideoSliceSource(&data), sample_idx).unwrap();
+            sample_idx_of_source.insert(sample.source, sample_idx);
+            SyncDecoder::submit_chunk(&mut decoder, &should_stop, chunk, &frame_tx);
+        }
+
+        let mut num_frames = 0;
+        while let Ok(frame) = frame_rx.try_recv() {
+            let info = frame.unwrap().info;
+
+            let source = info.source.expect("frame should know its sample");
+            let sample_idx = sample_idx_of_source[&source];
+            let sample = video_descr.samples[sample_idx].sample().unwrap();
+
+            assert_eq!(info.presentation_timestamp, sample.presentation_timestamp);
+            assert_eq!(info.is_sync, Some(sample.is_sync));
+
+            num_frames += 1;
+        }
+
+        assert_eq!(num_frames, NUM_SAMPLES_TO_DECODE);
     }
 }

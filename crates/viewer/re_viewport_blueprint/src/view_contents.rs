@@ -15,7 +15,7 @@ use re_sdk_types::blueprint::components::{QueryExpression, VisualizerInstruction
 use re_sdk_types::blueprint::{
     archetypes as blueprint_archetypes, components as blueprint_components,
 };
-use re_sdk_types::{Loggable as _, ViewClassIdentifier};
+use re_sdk_types::{FromArrow as _, ViewClassIdentifier};
 use re_viewer_context::{
     DataQueryResult, DataResult, DataResultHandle, DataResultNode, DataResultTree,
     IndicatedEntities, PerVisualizerType, QueryRange, ViewId, ViewSystemIdentifier, ViewerContext,
@@ -59,32 +59,6 @@ pub struct ViewContents {
 }
 
 impl ViewContents {
-    pub fn is_equivalent(&self, other: &Self) -> bool {
-        self.view_class_identifier.eq(&other.view_class_identifier)
-            && self.entity_path_filter.eq(&other.entity_path_filter)
-    }
-
-    /// Checks whether the results of this query "fully contains" the results of another query.
-    ///
-    /// If this returns `true` then the [`DataQueryResult`] returned by this query should always
-    /// contain any [`EntityPath`] that would be included in the results of the other query.
-    ///
-    /// This is a conservative estimate, and may return `false` in situations where the
-    /// query does in fact cover the other query. However, it should never return `true`
-    /// in a case where the other query would not be fully covered.
-    pub fn entity_path_filter_is_superset_of(&self, other: &Self) -> bool {
-        // A query can't fully contain another if their view classes don't match
-        if self.view_class_identifier != other.view_class_identifier {
-            return false;
-        }
-
-        // Anything included by the other query is also included by this query
-        self.entity_path_filter
-            .is_superset_of(&other.entity_path_filter)
-    }
-}
-
-impl ViewContents {
     /// Creates a new [`ViewContents`].
     ///
     /// This [`ViewContents`] is ephemeral. It must be saved by calling
@@ -120,7 +94,7 @@ impl ViewContents {
         view_class_identifier: ViewClassIdentifier,
         subst_env: &EntityPathSubs,
     ) -> Self {
-        let property = ViewProperty::from_archetype::<blueprint_archetypes::ViewContents>(
+        let property = ViewProperty::from_archetype_with_db::<blueprint_archetypes::ViewContents>(
             blueprint_db,
             query,
             view_id,
@@ -239,9 +213,8 @@ impl ViewContents {
 
     /// Save the entity path filter.
     fn save_entity_path_filter_to_blueprint(&self, ctx: &ViewerContext<'_>) {
-        ViewProperty::from_archetype::<blueprint_archetypes::ViewContents>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query,
+        ViewProperty::from_archetype_for_view::<blueprint_archetypes::ViewContents>(
+            ctx,
             self.view_id,
         )
         .save_blueprint_component(
@@ -287,12 +260,14 @@ impl ViewContents {
             re_tracing::profile_scope!("visualizable_entities_per_visualizer_in_view");
 
             let mut visualizable_entities_per_visualizer_in_view = IntMap::default();
+            #[expect(clippy::iter_over_hash_type)] // Filling another hash map.
             for (visualizer, visualizable_entities) in visualizable_entities_per_visualizer.iter() {
                 // Skip over visualizers that aren't used in this view.
                 if !visualizer_collection.contains_visualizer_type(*visualizer) {
                     continue;
                 }
 
+                #[expect(clippy::iter_over_hash_type)] // Filling another hash map.
                 for (entity_path, reason) in visualizable_entities.iter() {
                     visualizable_entities_per_visualizer_in_view
                         .entry(entity_path.hash())
@@ -328,6 +303,7 @@ impl ViewContents {
 
             // Figure out which components are relevant.
             let mut components_for_defaults = IntSet::default();
+            #[expect(clippy::iter_over_hash_type)] // Set union is order-independent.
             for (visualizer, entities) in visualizable_entities_per_visualizer.iter() {
                 if entities.is_empty() {
                     continue;
@@ -572,7 +548,7 @@ impl DataQueryPropertyResolver<'_> {
 
                         let (_high, low) = uuid.as_u64_pair();
                         let id = VisualizerInstructionId::from(
-                            re_sdk_types::datatypes::Uuid::from(uuid),
+                            re_sdk_types::encodings::Uuid::from(uuid),
                         );
                         known_ids.insert(low, id);
                     }

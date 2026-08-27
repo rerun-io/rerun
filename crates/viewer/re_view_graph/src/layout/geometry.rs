@@ -52,17 +52,6 @@ impl EdgeGeometry {
         }
     }
 
-    /// The direction of the edge at the source node (normalized).
-    pub fn source_arrow_direction(&self) -> Vec2 {
-        use PathGeometry::{CubicBezier, Line};
-        match self.path {
-            Line { source, target } => (source.to_vec2() - target.to_vec2()).normalized(),
-            CubicBezier {
-                source, control, ..
-            } => (control[0].to_vec2() - source.to_vec2()).normalized(),
-        }
-    }
-
     /// The direction of the edge at the target node (normalized).
     pub fn target_arrow_direction(&self) -> Vec2 {
         use PathGeometry::{CubicBezier, Line};

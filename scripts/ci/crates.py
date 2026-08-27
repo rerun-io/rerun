@@ -402,6 +402,7 @@ def is_already_published(version: str, crate: Crate) -> bool:
     resp = requests.get(
         f"https://crates.io/api/v1/crates/{crate_name}",
         headers={"user-agent": "rerun-publishing-script (rerun.io)"},
+        timeout=30,
     )
     body = resp.json()
 
@@ -614,6 +615,7 @@ def get_latest_published_version(crate_name: str, skip_prerelease: bool = False)
     resp = requests.get(
         f"https://crates.io/api/v1/crates/{crate_name}",
         headers={"user-agent": "rerun-publishing-script (rerun.io)"},
+        timeout=30,
     )
     body = resp.json()
 

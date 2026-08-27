@@ -80,6 +80,7 @@ fn ply_from_path_matches_contents_for_example_fixture() {
 
 #[test]
 fn ply_parses_optional_properties_and_ignores_extra_data() {
+    // NOLINT_START ("uchar uchar" is valid PLY, not a double word)
     let contents = br#"ply
 format ascii 1.0
 element vertex 2
@@ -99,6 +100,7 @@ end_header
 4 5 6 11 21 31 1.5 3 66 121 101 43
 3 0 1 1
 "#;
+    // NOLINT_END
 
     let parsed = Points3D::from_file_contents(contents).unwrap();
     let expected = Points3D::new([(1.0, 2.0, 3.0), (4.0, 5.0, 6.0)])
@@ -218,6 +220,7 @@ end_header
 
 #[test]
 fn ply_rejects_supported_vertex_properties_with_unsupported_types() {
+    // NOLINT_START ("uchar uchar" is valid PLY, not a double word)
     let contents = br#"ply
 format ascii 1.0
 element vertex 1
@@ -227,6 +230,7 @@ property list uchar uchar z
 end_header
 1 2 1 255
 "#;
+    // NOLINT_END
 
     let err = Points3D::from_file_contents(contents).unwrap_err();
 

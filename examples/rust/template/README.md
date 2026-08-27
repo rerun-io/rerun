@@ -1,5 +1,6 @@
 <!--[metadata]
 title = "Template"
+# Tags must come from `examples/tags.toml` — reuse an existing tag, or add a new one to that list.
 tags = ["Human case", "Comma", "Separated", "ACRONYM", "Respect brand names", "Hugging Face", "Coca-Cola"]
 thumbnail = "https://static.rerun.io/template/f53a939567970272cf7c740f1efe5c72f20de7ab/480w.png"
 thumbnail_dimensions = [480, 359]

@@ -126,7 +126,7 @@ impl ViewClass for TextDocumentView {
         state: &mut dyn ViewState,
         query: &ViewQuery<'_>,
         system_output: re_viewer_context::SystemExecutionOutput,
-    ) -> Result<(), ViewSystemExecutionError> {
+    ) -> Result<re_viewer_context::ViewClassUiOutput, ViewSystemExecutionError> {
         let tokens = ui.tokens();
         let state = state.downcast_mut::<TextDocumentViewState>()?;
         let text_entries = system_output.visualizer_data_or_default::<Vec<TextDocumentEntry>>(
@@ -174,7 +174,7 @@ impl ViewClass for TextDocumentView {
                 .send_system(SystemCommand::set_selection(Item::View(query.view_id)));
         }
 
-        Ok(())
+        Ok(Default::default())
     }
 }
 
@@ -186,11 +186,7 @@ fn text_document_ui(
     text_entries: &[TextDocumentEntry],
 ) -> Result<(), ViewSystemExecutionError> {
     let view_ctx = TextDocumentView.view_context(ctx, query.view_id, state, query.space_origin);
-    let format_property = ViewProperty::from_archetype::<TextDocumentFormat>(
-        ctx.blueprint_db(),
-        ctx.blueprint_query,
-        query.view_id,
-    );
+    let format_property = ViewProperty::from_archetype::<TextDocumentFormat>(&view_ctx);
     let monospace = format_property.component_or_fallback::<Enabled>(
         &view_ctx,
         TextDocumentFormat::descriptor_monospace().component,

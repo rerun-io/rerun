@@ -1,8 +1,8 @@
 use re_log_types::StoreId;
 
 use crate::{
-    CatalogUri, DEFAULT_PROXY_PORT, DEFAULT_REDAP_PORT, DatasetSegmentUri, EntryUri, Error,
-    FolderUri, Fragment, Origin, ProxyUri,
+    CatalogUri, DEFAULT_PROXY_PORT, DEFAULT_REDAP_PORT, DatasetUri, EntryUri, Error, FolderUri,
+    Fragment, Origin, ProxyUri,
 };
 
 /// Parsed from `rerun://addr:port/recording/12345` or `rerun://addr:port/catalog`
@@ -11,14 +11,14 @@ pub enum RedapUri {
     /// `/catalog` - also the default if there is no /endpoint
     Catalog(CatalogUri),
 
-    /// `/entry`
+    /// `/entry/<entry_id>`
     Entry(EntryUri),
 
     /// `/folder/<dotted.path>` — a dataset-name prefix grouping.
     Folder(FolderUri),
 
-    /// `/dataset`
-    DatasetData(DatasetSegmentUri),
+    /// `/dataset/<dataset_id>[/<resource>]`
+    Dataset(DatasetUri),
 
     /// We use the `/proxy` endpoint to access another _local_ viewer.
     Proxy(ProxyUri),
@@ -30,7 +30,7 @@ impl RedapUri {
             Self::Catalog(uri) => &uri.origin,
             Self::Entry(uri) => &uri.origin,
             Self::Folder(uri) => &uri.origin,
-            Self::DatasetData(uri) => &uri.origin,
+            Self::Dataset(uri) => &uri.origin,
             Self::Proxy(uri) => &uri.origin,
         }
     }
@@ -39,14 +39,14 @@ impl RedapUri {
     pub fn fragment(&self) -> Option<&Fragment> {
         match self {
             Self::Catalog(_) | Self::Proxy(_) | Self::Entry(_) | Self::Folder(_) => None,
-            Self::DatasetData(dataset_data_endpoint) => Some(&dataset_data_endpoint.fragment),
+            Self::Dataset(dataset_uri) => Some(&dataset_uri.fragment),
         }
     }
 
     pub fn store_id(&self) -> Option<StoreId> {
         match self {
             Self::Catalog(_) | Self::Entry(_) | Self::Folder(_) | Self::Proxy(_) => None,
-            Self::DatasetData(dataset_data_uri) => Some(dataset_data_uri.store_id()),
+            Self::Dataset(dataset_uri) => dataset_uri.store_id(),
         }
     }
 }
@@ -57,7 +57,7 @@ impl std::fmt::Display for RedapUri {
             Self::Catalog(uri) => write!(f, "{uri}"),
             Self::Entry(uri) => write!(f, "{uri}"),
             Self::Folder(uri) => write!(f, "{uri}"),
-            Self::DatasetData(uri) => write!(f, "{uri}"),
+            Self::Dataset(uri) => write!(f, "{uri}"),
             Self::Proxy(uri) => write!(f, "{uri}"),
         }
     }
@@ -87,7 +87,7 @@ impl std::str::FromStr for RedapUri {
         let segments = http_url
             .path_segments()
             .ok_or_else(|| Error::UnexpectedBaseUrl(input.to_owned()))?
-            .take(2)
+            .take(3)
             .filter(|s| !s.is_empty()) // handle trailing slashes
             .collect::<Vec<_>>();
 
@@ -96,13 +96,14 @@ impl std::str::FromStr for RedapUri {
 
             ["catalog"] | [] => Ok(Self::Catalog(CatalogUri::new(origin))),
 
-            ["entry", entry_id] => {
+            ["entry", entry_id, ..] => {
                 let entry_id =
                     re_log_types::EntryId::from_str(entry_id).map_err(Error::InvalidTuid)?;
+
                 Ok(Self::Entry(EntryUri::new(origin, entry_id)))
             }
 
-            ["folder", path] => {
+            ["folder", path, ..] => {
                 let decoded = percent_encoding::percent_decode_str(path)
                     .decode_utf8()
                     .map_err(|_err| Error::UnexpectedUri(format!("folder/{path}")))?;
@@ -112,10 +113,17 @@ impl std::str::FromStr for RedapUri {
                 Ok(Self::Folder(FolderUri::new(origin, decoded.into_owned())))
             }
 
-            ["dataset", dataset_id] => {
+            ["dataset", dataset_id, rest @ ..] => {
                 let dataset_id = re_tuid::Tuid::from_str(dataset_id).map_err(Error::InvalidTuid)?;
 
-                DatasetSegmentUri::new(origin, dataset_id, &http_url).map(Self::DatasetData)
+                // Fall back to the default resource if the url names one we don't know,
+                // which may happen for urls from prior/newer versions.
+                let resource = rest
+                    .first()
+                    .and_then(|resource| crate::DatasetResource::from_str(resource).ok())
+                    .unwrap_or_default();
+
+                DatasetUri::new(origin, dataset_id, resource, &http_url).map(Self::Dataset)
             }
             [unknown, ..] => Err(Error::UnexpectedUri(format!("{unknown}/"))),
         }
@@ -150,11 +158,13 @@ impl<'de> serde::Deserialize<'de> for RedapUri {
 #[cfg(test)]
 mod tests {
     use core::net::Ipv4Addr;
+    use std::assert_matches;
 
     use re_log_types::DataPath;
+    use re_types_core::SegmentId;
 
     use super::*;
-    use crate::{DatasetSegmentUri, Fragment, Scheme};
+    use crate::{DatasetResource, DatasetUri, Fragment, Scheme};
 
     #[test]
     fn scheme_conversion() {
@@ -204,15 +214,31 @@ mod tests {
         );
     }
 
+    /// An entry url with a trailing path segment still parses, so that urls from prior versions
+    /// keep opening the entry.
+    #[test]
+    fn test_entry_url_trailing_path() {
+        let url = "rerun://127.0.0.1:1234/entry/1830B33B45B963E7774455beb91701ae/whatever";
+
+        let RedapUri::Entry(entry) = url.parse::<RedapUri>().unwrap() else {
+            panic!("Expected an entry");
+        };
+        assert_eq!(
+            entry.entry_id,
+            "1830B33B45B963E7774455beb91701ae".parse().unwrap(),
+        );
+    }
+
     #[test]
     fn test_dataset_data_url_to_address() {
         let url =
             "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?segment_id=sid";
         let address: RedapUri = url.parse().unwrap();
 
-        let RedapUri::DatasetData(DatasetSegmentUri {
+        let RedapUri::Dataset(DatasetUri {
             origin,
             dataset_id,
+            resource,
             segment_id,
             fragment,
         }) = address
@@ -220,6 +246,7 @@ mod tests {
             panic!("Expected recording");
         };
 
+        assert_eq!(resource, DatasetResource::Segments);
         assert_eq!(origin.scheme, Scheme::RerunHttps);
         assert_eq!(origin.host, url::Host::<String>::Ipv4(Ipv4Addr::LOCALHOST));
         assert_eq!(origin.port, 1234);
@@ -227,8 +254,53 @@ mod tests {
             dataset_id,
             "1830B33B45B963E7774455beb91701ae".parse().unwrap(),
         );
-        assert_eq!(segment_id.as_str(), "sid");
+        assert_eq!(segment_id.as_ref().map(SegmentId::as_str), Some("sid"));
         assert_eq!(fragment, Default::default());
+    }
+
+    /// The resource a dataset url points at is a trailing path segment, and survives being
+    /// formatted back into a url. The default resource is left out of the url entirely.
+    #[test]
+    fn test_dataset_url_resource_roundtrip() {
+        for (url, expected_resource) in [
+            (
+                "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/assets?segment_id=robot_mesh",
+                DatasetResource::Assets,
+            ),
+            (
+                "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae?segment_id=robot_mesh",
+                DatasetResource::Segments,
+            ),
+            (
+                "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/assets",
+                DatasetResource::Assets,
+            ),
+            (
+                "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae",
+                DatasetResource::Segments,
+            ),
+        ] {
+            let uri: RedapUri = url.parse().unwrap();
+
+            let RedapUri::Dataset(dataset) = &uri else {
+                panic!("Expected a dataset");
+            };
+            assert_eq!(dataset.resource, expected_resource);
+
+            assert_eq!(uri.to_string(), url);
+        }
+    }
+
+    /// A resource we don't know falls back to the default one, so that urls from other versions
+    /// still open the dataset.
+    #[test]
+    fn test_dataset_url_unknown_resource() {
+        let url = "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/whatever?segment_id=sid";
+
+        let RedapUri::Dataset(dataset) = url.parse::<RedapUri>().unwrap() else {
+            panic!("Expected a dataset");
+        };
+        assert_eq!(dataset.resource, DatasetResource::default());
     }
 
     /// Test that `partition_id` still works for backward compatibility.
@@ -238,12 +310,12 @@ mod tests {
             "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid";
         let address: RedapUri = url.parse().unwrap();
 
-        let RedapUri::DatasetData(DatasetSegmentUri { segment_id, .. }) = address else {
+        let RedapUri::Dataset(DatasetUri { segment_id, .. }) = address else {
             panic!("Expected recording");
         };
 
         // Legacy `partition_id` is parsed into `segment_id`.
-        assert_eq!(segment_id.as_str(), "pid");
+        assert_eq!(segment_id.as_ref().map(SegmentId::as_str), Some("pid"));
     }
 
     /// Test that `segment_id` and `partition_id` together do not work.
@@ -260,9 +332,10 @@ mod tests {
         let url = "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?segment_id=sid#selection=/some/entity[#42]";
         let address: RedapUri = url.parse().unwrap();
 
-        let RedapUri::DatasetData(DatasetSegmentUri {
+        let RedapUri::Dataset(DatasetUri {
             origin,
             dataset_id,
+            resource,
             segment_id,
             fragment,
         }) = address
@@ -270,6 +343,7 @@ mod tests {
             panic!("Expected recording");
         };
 
+        assert_eq!(resource, DatasetResource::Segments);
         assert_eq!(origin.scheme, Scheme::RerunHttps);
         assert_eq!(origin.host, url::Host::<String>::Ipv4(Ipv4Addr::LOCALHOST));
         assert_eq!(origin.port, 1234);
@@ -277,7 +351,7 @@ mod tests {
             dataset_id,
             "1830B33B45B963E7774455beb91701ae".parse().unwrap(),
         );
-        assert_eq!(segment_id.as_str(), "sid");
+        assert_eq!(segment_id.as_ref().map(SegmentId::as_str), Some("sid"));
         assert_eq!(
             fragment,
             Fragment {
@@ -296,9 +370,10 @@ mod tests {
         let url = "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?segment_id=sid#focus=/some/entity[#42]";
         let address: RedapUri = url.parse().unwrap();
 
-        let RedapUri::DatasetData(DatasetSegmentUri {
+        let RedapUri::Dataset(DatasetUri {
             origin,
             dataset_id,
+            resource,
             segment_id,
             fragment,
         }) = address
@@ -306,6 +381,7 @@ mod tests {
             panic!("Expected recording");
         };
 
+        assert_eq!(resource, DatasetResource::Segments);
         assert_eq!(origin.scheme, Scheme::RerunHttps);
         assert_eq!(origin.host, url::Host::<String>::Ipv4(Ipv4Addr::LOCALHOST));
         assert_eq!(origin.port, 1234);
@@ -313,22 +389,28 @@ mod tests {
             dataset_id,
             "1830B33B45B963E7774455beb91701ae".parse().unwrap(),
         );
-        assert_eq!(segment_id.as_str(), "sid");
+        assert_eq!(segment_id.as_ref().map(SegmentId::as_str), Some("sid"));
         assert_eq!(fragment, Fragment::default());
     }
 
+    /// A dataset url without a `segment_id` points at the dataset itself rather than at a segment
+    /// to load.
     #[test]
-    fn test_dataset_data_url_missing_segment_id() {
-        let url = "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data";
+    fn test_dataset_url_without_segment_id() {
+        let url = "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae";
 
-        assert!(url.parse::<RedapUri>().is_err());
+        let RedapUri::Dataset(dataset) = url.parse::<RedapUri>().unwrap() else {
+            panic!("Expected a dataset");
+        };
+        assert_eq!(dataset.segment_id, None);
+        assert_eq!(dataset.store_id(), None);
     }
 
     #[test]
     fn test_http_catalog_url_to_address() {
         let url = "rerun+http://127.0.0.1:50051/catalog";
         let address: RedapUri = url.parse().unwrap();
-        assert!(matches!(
+        assert_matches!(
             address,
             RedapUri::Catalog(CatalogUri {
                 origin: Origin {
@@ -337,7 +419,7 @@ mod tests {
                     port: 50051
                 },
             })
-        ));
+        );
     }
 
     #[test]
@@ -345,7 +427,7 @@ mod tests {
         let url = "rerun+https://127.0.0.1:50051/catalog";
         let address: RedapUri = url.parse().unwrap();
 
-        assert!(matches!(
+        assert_matches!(
             address,
             RedapUri::Catalog(CatalogUri {
                 origin: Origin {
@@ -354,7 +436,7 @@ mod tests {
                     port: 50051
                 }
             })
-        ));
+        );
     }
 
     #[test]
@@ -379,7 +461,7 @@ mod tests {
         let url = "http://wrong-scheme:1234/recording/12345";
         let address: Result<RedapUri, _> = url.parse();
 
-        assert!(matches!(address.unwrap_err(), super::Error::InvalidScheme));
+        assert_matches!(address.unwrap_err(), super::Error::InvalidScheme);
     }
 
     #[test]
@@ -387,10 +469,9 @@ mod tests {
         let url = "rerun://0.0.0.0:51234/redap/recordings/12345";
         let address: Result<RedapUri, _> = url.parse();
 
-        assert!(matches!(
+        assert_matches!(
             address.unwrap_err(),
-            super::Error::UnexpectedUri(unknown) if &unknown == "redap/"
-        ));
+            super::Error::UnexpectedUri(unknown) if &unknown == "redap/");
     }
 
     #[test]

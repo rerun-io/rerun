@@ -61,7 +61,10 @@ impl Icon {
 
     #[inline]
     pub fn as_image(&self) -> Image<'static> {
-        let scale = if self.uri.ends_with(".svg") {
+        let is_svg = std::path::Path::new(self.uri)
+            .extension()
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("svg"));
+        let scale = if is_svg {
             1.0
         } else {
             0.5 // Because we save all png icons as 2x
@@ -125,7 +128,7 @@ pub const RERUN_LOGO: Icon = icon_from_path!("../data/icons/rerun_logo.png");
 pub const HELP: Icon = icon_from_path!("../data/icons/help.svg");
 
 pub const PLAY: Icon = icon_from_path!("../data/icons/play.svg");
-pub const FOLLOW: Icon = icon_from_path!("../data/icons/follow.svg");
+pub const PLAYHEAD_NAV: Icon = icon_from_path!("../data/icons/playhead_nav.svg");
 pub const PAUSE: Icon = icon_from_path!("../data/icons/pause.svg");
 pub const CHEVRON: Icon = icon_from_path!("../data/icons/chevron.svg");
 pub const ARROW_LEFT: Icon = icon_from_path!("../data/icons/arrow_left.svg");
@@ -144,7 +147,6 @@ pub const LEFT_PANEL_TOGGLE: Icon = icon_from_path!("../data/icons/left_panel_to
 pub const MINIMIZE: Icon = icon_from_path!("../data/icons/minimize.svg");
 pub const MAXIMIZE: Icon = icon_from_path!("../data/icons/maximize.svg");
 pub const EXPAND: Icon = icon_from_path!("../data/icons/expand.svg");
-pub const COLUMN_VISIBILITY: Icon = icon_from_path!("../data/icons/column_visibility.svg");
 
 pub const VISIBLE: Icon = icon_from_path!("../data/icons/visible.svg");
 pub const INVISIBLE: Icon = icon_from_path!("../data/icons/invisible.svg");
@@ -218,6 +220,19 @@ pub const RECORDING: Icon = icon_from_path!("../data/icons/recording.svg");
 pub const OPEN_RECORDING: Icon = icon_from_path!("../data/icons/open_recording.svg");
 pub const BLUEPRINT: Icon = icon_from_path!("../data/icons/blueprint.svg");
 
+// These link icons have a blue arrow that wouldn't work with the usual tint we do for light/dark,
+// so we have separate icons for the themes:
+pub const LINK_RECORDING_LIGHT: Icon = icon_from_path!("../data/icons/link_recording_light.svg");
+pub const LINK_RECORDING_DARK: Icon = icon_from_path!("../data/icons/link_recording_dark.svg");
+pub const LINK_DATASET_LIGHT: Icon = icon_from_path!("../data/icons/link_dataset_light.svg");
+pub const LINK_DATASET_DARK: Icon = icon_from_path!("../data/icons/link_dataset_dark.svg");
+pub const LINK_TABLE_LIGHT: Icon = icon_from_path!("../data/icons/link_table_light.svg");
+pub const LINK_TABLE_DARK: Icon = icon_from_path!("../data/icons/link_table_dark.svg");
+pub const LINK_FOLDER_LIGHT: Icon = icon_from_path!("../data/icons/link_folder_light.svg");
+pub const LINK_FOLDER_DARK: Icon = icon_from_path!("../data/icons/link_folder_dark.svg");
+pub const LINK_PROXY_LIGHT: Icon = icon_from_path!("../data/icons/link_proxy_light.svg");
+pub const LINK_PROXY_DARK: Icon = icon_from_path!("../data/icons/link_proxy_dark.svg");
+
 pub const GITHUB: Icon = icon_from_path!("../data/icons/github.svg");
 
 // Notifications:
@@ -228,7 +243,6 @@ pub const SUCCESS: Icon = icon_from_path!("../data/icons/success.svg");
 pub const VIDEO_ERROR: Icon = icon_from_path!("../data/icons/video_error.svg");
 
 // Drag and drop:
-pub const DND_ADD_NEW: Icon = icon_from_path!("../data/icons/dnd_add_new.svg");
 pub const DND_ADD_TO_EXISTING: Icon = icon_from_path!("../data/icons/dnd_add_to_existing.svg");
 pub const DND_MOVE: Icon = icon_from_path!("../data/icons/dnd_move.svg");
 pub const DND_HANDLE: Icon = icon_from_path!("../data/icons/dnd_handle.svg");

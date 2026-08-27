@@ -50,6 +50,7 @@ thiserror.workspace = true
 
 [dev-dependencies]
 criterion.workspace = true
+serde_json.workspace = true
 similar-asserts.workspace = true
 
 [lib]

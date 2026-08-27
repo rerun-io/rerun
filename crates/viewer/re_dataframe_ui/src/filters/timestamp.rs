@@ -24,8 +24,8 @@ use datafusion::common::{Result as DataFusionResult, exec_err};
 use datafusion::logical_expr::{Expr, TypeSignature, col, not};
 use jiff::{RoundMode, Timestamp, TimestampRound, ToSpan as _};
 use re_log_types::TimestampFormat;
-use re_types_core::Loggable as _;
-use re_types_core::datatypes::TimeInt;
+use re_types_core::ArrowDatatype as _;
+use re_types_core::encodings::TimeInt;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_ui::{DesignTokens, SyntaxHighlighting, UiExt as _};
 use strum::VariantArray as _;
@@ -119,27 +119,6 @@ impl TimestampFilter {
     pub fn yesterday() -> Self {
         Self {
             kind: TimestampFilterKind::Yesterday,
-            ..Default::default()
-        }
-    }
-
-    pub fn last_24_hours() -> Self {
-        Self {
-            kind: TimestampFilterKind::Last24Hours,
-            ..Default::default()
-        }
-    }
-
-    pub fn this_week() -> Self {
-        Self {
-            kind: TimestampFilterKind::ThisWeek,
-            ..Default::default()
-        }
-    }
-
-    pub fn last_week() -> Self {
-        Self {
-            kind: TimestampFilterKind::LastWeek,
             ..Default::default()
         }
     }
@@ -808,6 +787,7 @@ impl FilterUdf for ResolvedTimestampFilter {
 
 #[cfg(test)]
 mod tests {
+    #![expect(clippy::unreadable_literal)]
     use jiff::civil::date;
 
     use super::*;

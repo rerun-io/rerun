@@ -1,6 +1,7 @@
 ---
 title: Optimize chunk count
 order: 800
+description: Reduce chunk count to improve ingest and query performance
 ---
 
 
@@ -94,7 +95,30 @@ ipc_size_bytes_p999 = 568 KiB
 # … truncated …
 ```
 
-If a file contains many small chunks, run [`rerun rrd optimize`](../../reference/cli.md#rerun-rrd-optimize) to rewrite it with fewer, larger chunks. For example:
+When the recording carries a chunk index (any recent SDK writes one; run [`rerun rrd migrate`](../../reference/cli.md#rerun-rrd-migrate) to add one to older files), the stats end with a `Chunk index analysis` section that answers the question directly:
+
+```
+Chunk index analysis
+--------------------
+
+Store StoreId(Recording, "rerun_example_nuscenes", "0c5e8853cb07475c8d0caf3a9cb2688b")
+chunk index columns: 144
+
+Optimization check based on a 2.0 MiB chunk size target (`--profile object-store`)
+  - theoretical lower bound:  67 chunks
+  - effective:               463 chunks (6.9×)
+  - excess:                  396 chunks
+
+⚠️ This recording may be unoptimized — consider running `rerun rrd optimize`
+```
+
+The `theoretical lower bound` is the fewest temporal chunks that merging could possibly produce under the target chunk size, and `effective` is how many the recording actually has.
+The multiplier and the `excess` count are how far apart the two are.
+When both cross a threshold, a warning is printed, as is the case above.
+Note that this check currently ignores other optimization such as GoP batching, etc.)
+
+As suggested by the warning, if a file contains many small chunks, run [`rerun rrd optimize`](../../reference/cli.md#rerun-rrd-optimize) to rewrite it with fewer, larger chunks.
+For example:
 ```sh
 $ rerun rrd optimize --max-size 2MiB -o nuscenes_compacted.rrd <(curl 'https://app.rerun.io/version/latest/examples/nuscenes_dataset.rrd')
 merge/compaction finished srcs=["/dev/fd/63"] time=2.51217062s num_chunks_before=576 num_chunks_after=217 num_chunks_reduction="-62.326%" srcs_size_bytes=90.0 MiB dst_size_bytes=89.6 MiB size_reduction="-0.474%"

@@ -1,5 +1,6 @@
 <!--[metadata]
 title = "Stereo vision SLAM"
+description = "Stereo-vision SLAM on the KITTI self-driving dataset: vehicle trajectory plus the surrounding point cloud."
 source = "https://github.com/rerun-io/StereoVision-SLAM"
 tags = ["3D", "Point cloud", "C++"]
 thumbnail = "https://static.rerun.io/stereovision_slam/c36cfcf8bc7ec9f03b40559d596d7fee97907ba8/480w.png"
@@ -152,7 +153,7 @@ rec.log("world/path",
         rerun::Vec3D(camera_position.data()),
         rerun::Mat3x3(camera_orientation.data()), true));
 
-std::vector<rerun::datatypes::Vec3D> path;
+std::vector<rerun::encodings::Vec3D> path;
 // …
 rec.log("world/path", rerun::LineStrips3D(rerun::LineStrip3D(path)));
 ```

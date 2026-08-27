@@ -21,17 +21,43 @@ pub fn test_annotations() {
                     (
                         0,
                         "black",
-                        re_sdk_types::datatypes::Rgba32::from_rgb(0, 0, 0),
+                        re_sdk_types::encodings::Rgba32::from_rgb(0, 0, 0),
                     ),
                     (
                         1,
                         "red",
-                        re_sdk_types::datatypes::Rgba32::from_rgb(255, 0, 0),
+                        re_sdk_types::encodings::Rgba32::from_rgb(255, 0, 0),
                     ),
                     (
                         2,
                         "green",
-                        re_sdk_types::datatypes::Rgba32::from_rgb(0, 255, 0),
+                        re_sdk_types::encodings::Rgba32::from_rgb(0, 255, 0),
+                    ),
+                ]),
+            )
+        });
+
+        // A nearer context applies only to the segmentation image below.
+        // This tests that the different annotation contexts are picked up respectively.
+        test_context.log_entity("segmentation", |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                TimePoint::default(),
+                &re_sdk_types::archetypes::AnnotationContext::new([
+                    (
+                        0,
+                        "segmentation background",
+                        re_sdk_types::datatypes::Rgba32::from_rgb(0, 0, 0),
+                    ),
+                    (
+                        1,
+                        "blue",
+                        re_sdk_types::datatypes::Rgba32::from_rgb(0, 0, 255),
+                    ),
+                    (
+                        2,
+                        "yellow",
+                        re_sdk_types::datatypes::Rgba32::from_rgb(255, 255, 0),
                     ),
                 ]),
             )
@@ -105,8 +131,8 @@ fn run_view_ui_and_save_snapshot(
     {
         // There should be one view with an image and a batch of 2 rectangles.
         //
-        // The image should contain a red region and a green region.
-        // There should be 1 red rectangle and 1 green rectangle.
+        // The image should contain a blue region and a yellow region from its parent context.
+        // The rectangles should remain red and green from the root context.
 
         let name = format!("{name}_overview");
         harness.run();
@@ -114,12 +140,8 @@ fn run_view_ui_and_save_snapshot(
     }
 
     {
-        // Hover over each of the elements and confirm it shows the label as "red" or "green" as
-        // expected.
-        //
-        // *Note*: when hovering the rectangles, a tooltip pertaining to the image will _also_
-        // appear and indicate a label of "0". This is expected as the image is black at this
-        // location.
+        // Hover over each element and confirm that rectangles use the root context while image
+        // pixels use the nearer segmentation context.
 
         {
             let name = format!("{name}_hover_background");

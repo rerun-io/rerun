@@ -275,7 +275,8 @@ mod tests {
                 time: Some(10.0 + i as f64),
                 ..Default::default()
             };
-            let _out = ctx.run_ui(input, |_| {});
+            let mut output = ctx.run_ui(input, |_| {});
+            output.textures_delta.clear();
         }
     }
 
@@ -287,7 +288,8 @@ mod tests {
             time: Some(100.0 + frame_nr as f64),
             ..Default::default()
         };
-        let _out = ctx.run_ui(input, |_| {});
+        let mut output = ctx.run_ui(input, |_| {});
+        output.textures_delta.clear();
         undo.update(ctx, db);
     }
 
@@ -327,11 +329,8 @@ mod tests {
         );
 
         let frame_nrs: Vec<u64> = undo.inflection_points.values().copied().collect();
-        for window in frame_nrs.windows(2) {
-            assert!(
-                window[0] <= window[1],
-                "Frame numbers must be monotonic, got {frame_nrs:?}"
-            );
+        for [a, b] in frame_nrs.array_windows() {
+            assert!(a <= b, "Frame numbers must be monotonic, got {frame_nrs:?}");
         }
     }
 

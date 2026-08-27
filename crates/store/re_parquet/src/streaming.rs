@@ -16,7 +16,7 @@ use re_log::ResultExt as _;
 // Component: for KeyValuePairs::name(), ComponentBatch: for .try_serialized()
 use re_sdk_types::{
     Component as _, ComponentBatch as _, ComponentDescriptor, ComponentIdentifier,
-    InvalidComponentIdentifierError, datatypes,
+    InvalidComponentIdentifierError, encodings,
 };
 
 use crate::config::{ColumnGrouping, ParquetConfig};
@@ -31,8 +31,36 @@ pub enum ParquetError {
     #[error(transparent)]
     Arrow(#[from] arrow::error::ArrowError),
 
-    #[error(transparent)]
+    #[error("{0:#}")]
     Other(#[from] anyhow::Error),
+}
+
+/// Validate `config` against the file's schema without reading any row data.
+///
+/// Only the footer is decoded, so this is cheap enough to run eagerly.
+pub(crate) fn validate_from_path(
+    path: &std::path::Path,
+    config: &ParquetConfig,
+) -> Result<(), ParquetError> {
+    use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
+
+    let file =
+        std::fs::File::open(path).map_err(|err| ParquetError::from(anyhow::Error::from(err)))?;
+    let builder = ParquetRecordBatchReaderBuilder::try_new(file)
+        .map_err(|err| ParquetError::from(anyhow::Error::from(err)))?;
+    let schema = builder.schema();
+
+    timeline::resolve_explicit_index_columns(schema, &config.index_columns)?;
+
+    for name in &config.static_columns {
+        if !schema.fields().iter().any(|f| f.name() == name) {
+            return Err(
+                anyhow::anyhow!("Static column '{name}' not found in parquet schema").into(),
+            );
+        }
+    }
+
+    Ok(())
 }
 
 /// Load a parquet file from disk and return a chunk iterator.
@@ -390,9 +418,9 @@ fn build_metadata_chunk(metadata: &parquet::file::metadata::ParquetMetaData) -> 
         return None;
     }
 
-    let pairs: Vec<datatypes::Utf8Pair> = kv_metadata
+    let pairs: Vec<encodings::Utf8Pair> = kv_metadata
         .iter()
-        .map(|kv| datatypes::Utf8Pair {
+        .map(|kv| encodings::Utf8Pair {
             first: kv.key.clone().into(),
             second: kv.value.clone().unwrap_or_default().into(),
         })

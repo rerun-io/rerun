@@ -14,13 +14,13 @@ use re_log_types::external::arrow::array::{
 };
 use re_log_types::{EntityPath, Timeline};
 use re_sdk_types::archetypes::TextLog;
-use re_sdk_types::blueprint::datatypes::{ComponentSourceKind, VisualizerComponentMapping};
+use re_sdk_types::blueprint::encodings::{ComponentSourceKind, VisualizerComponentMapping};
 use re_sdk_types::{ArchetypeName, ComponentIdentifier, DynamicArchetype, Visualizer};
 use re_test_context::TestContext;
 use re_test_context::VisualizerBlueprintContext as _;
 use re_test_viewport::TestContextExt as _;
 use re_view_state_timeline::{
-    StateLanesData, StateTimelineView, StateTimelineViewState, StateValueKind, StateVisualizer,
+    StateLanesOutput, StateTimelineView, StateTimelineViewState, StateValueKind, StateVisualizer,
 };
 use re_viewer_context::{IdentifiedViewSystem as _, ViewClass as _, ViewId};
 use re_viewport::execute_systems_for_view;
@@ -77,11 +77,11 @@ fn build_view(
     })
 }
 
-/// Run the state visualizer and collect every emitted [`StateLanesData`].
+/// Run the state visualizer and collect every emitted [`StateLanesOutput`].
 ///
 /// Reconstructs the per-frame execution that the viewport normally performs, then peeks at
 /// the visualizer's typed output rather than rendering it.
-fn run_visualizer(test_context: &TestContext, view_id: ViewId) -> Vec<StateLanesData> {
+fn run_visualizer(test_context: &TestContext, view_id: ViewId) -> Vec<StateLanesOutput> {
     run_visualizer_impl(test_context, view_id, None)
 }
 
@@ -92,7 +92,7 @@ fn run_visualizer_with_window(
     view_id: ViewId,
     min: f64,
     time_spanned: f64,
-) -> Vec<StateLanesData> {
+) -> Vec<StateLanesOutput> {
     run_visualizer_impl(test_context, view_id, Some((min, time_spanned)))
 }
 
@@ -100,7 +100,7 @@ fn run_visualizer_impl(
     test_context: &TestContext,
     view_id: ViewId,
     window: Option<(f64, f64)>,
-) -> Vec<StateLanesData> {
+) -> Vec<StateLanesOutput> {
     test_context.run_once_in_egui_central_panel(|ctx, _ui| {
         let viewport_blueprint =
             ViewportBlueprint::from_db(ctx.store_context.blueprint, &test_context.blueprint_query);
@@ -117,8 +117,7 @@ fn run_visualizer_impl(
                 .as_any_mut()
                 .downcast_mut::<StateTimelineViewState>()
                 .expect("state timeline view state")
-                .time_views
-                .insert(
+                .set_window(
                     *Timeline::log_tick().name(),
                     re_viewer_context::TimeView {
                         min: min.into(),
@@ -136,13 +135,13 @@ fn run_visualizer_impl(
             execute_systems_for_view(ctx, view_blueprint, view_state.as_ref(), &once_per_frame);
 
         system_output
-            .iter_visualizer_data::<StateLanesData>()
+            .iter_visualizer_data::<StateLanesOutput>()
             .cloned()
             .collect()
     })
 }
 
-fn phase_labels(lanes_data: &StateLanesData, entity: &str) -> Vec<String> {
+fn phase_labels(lanes_data: &StateLanesOutput, entity: &str) -> Vec<String> {
     let group = lanes_data
         .groups
         .iter()
@@ -166,7 +165,7 @@ fn phase_labels(lanes_data: &StateLanesData, entity: &str) -> Vec<String> {
 
 /// Like [`phase_labels`] but keeps each phase's start time, so tests can assert *when* a
 /// reset (gap, rendered as an empty label) begins.
-fn timed_phase_labels(lanes_data: &StateLanesData, entity: &str) -> Vec<(i64, String)> {
+fn timed_phase_labels(lanes_data: &StateLanesOutput, entity: &str) -> Vec<(i64, String)> {
     let group = lanes_data
         .groups
         .iter()
@@ -191,13 +190,15 @@ fn timed_phase_labels(lanes_data: &StateLanesData, entity: &str) -> Vec<(i64, St
         .collect()
 }
 
-fn value_kind(lanes_data: &StateLanesData, entity: &str) -> StateValueKind {
+fn value_kind(lanes_data: &StateLanesOutput, entity: &str) -> StateValueKind {
     let group = lanes_data
         .groups
         .iter()
         .find(|g| g.entity_path == EntityPath::from(entity))
         .unwrap_or_else(|| panic!("no lane group for entity {entity}"));
-    group.value_kind
+    group
+        .value_kind
+        .unwrap_or_else(|| panic!("lane group for entity {entity} has no value kind"))
 }
 
 /// Log a `DynamicArchetype` with one field at three ticks, then install an explicit visualizer
@@ -248,7 +249,7 @@ fn test_cast_int32_via_dynamic_archetype() {
     );
 
     let outputs = run_visualizer(&test_context, view_id);
-    assert_eq!(outputs.len(), 1, "expected one StateLanesData output");
+    assert_eq!(outputs.len(), 1, "expected one StateLanesOutput output");
 
     // Int32 collapses to Float64; integer-valued floats render without a trailing `.0`,
     // and consecutive identical phases merge.
@@ -661,7 +662,7 @@ fn test_dynamic_archetype_multiple_same_type() {
     assert_eq!(groups_on_entity.len(), 2);
 
     for group in &groups_on_entity {
-        assert_eq!(group.value_kind, StateValueKind::String);
+        assert_eq!(group.value_kind, Some(StateValueKind::String));
         assert_eq!(group.lanes.len(), 1);
     }
 
@@ -744,6 +745,7 @@ fn test_dynamic_archetype_multiple_different_types() {
             .find(|g| g.label.contains(source))
             .unwrap_or_else(|| panic!("no lane group labelled with {source}"))
             .value_kind
+            .unwrap_or_else(|| panic!("lane group labelled with {source} has no value kind"))
     };
     assert_eq!(kind_of("multi_mix:label"), StateValueKind::String);
     assert_eq!(kind_of("multi_mix:speed"), StateValueKind::Scalar);

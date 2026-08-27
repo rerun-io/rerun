@@ -1,7 +1,7 @@
 use ndarray::{Array, ShapeBuilder as _, s};
 use re_chunk_store::RowId;
-use re_log_types::TimePoint;
-use re_sdk_types::datatypes::Rgba32;
+use re_log_types::{TimeInt, TimePoint, Timeline};
+use re_sdk_types::encodings::Rgba32;
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
 use re_viewer_context::{ViewClass as _, ViewId};
@@ -16,16 +16,39 @@ pub fn test_segmentation_image_transparency() {
     let mut test_context = TestContext::new_with_view_class::<re_view_spatial::SpatialView2D>();
 
     let (width, height) = (12, 8);
+    let timeline = Timeline::new_sequence("frame");
+    test_context.set_active_timeline(*timeline.name());
+    let frame = |sequence: i64| {
+        TimePoint::default().with(
+            timeline,
+            TimeInt::from_sequence(sequence.try_into().expect("unexpected min value")),
+        )
+    };
 
-    // Log annotation context: class 0 is fully transparent, 1 is red, 2 is green.
+    // Class 0 stays transparent while the visible colors change with the annotation context.
     test_context.log_entity("/", |builder| {
         builder.with_archetype(
             RowId::new(),
-            TimePoint::default(),
+            frame(1),
             &re_sdk_types::archetypes::AnnotationContext::new([
-                (0u16, "nothing", Rgba32::from_unmultiplied_rgba(0, 0, 0, 0)), // fully transparent
+                (0u16, "nothing", Rgba32::from_unmultiplied_rgba(0, 0, 0, 0)),
                 (1, "red", Rgba32::from_unmultiplied_rgba(255, 0, 0, 255)),
                 (2, "green", Rgba32::from_unmultiplied_rgba(0, 255, 0, 255)),
+            ]),
+        )
+    });
+    test_context.log_entity("/", |builder| {
+        builder.with_archetype(
+            RowId::new(),
+            frame(2),
+            &re_sdk_types::archetypes::AnnotationContext::new([
+                (0u16, "nothing", Rgba32::from_unmultiplied_rgba(0, 0, 0, 0)),
+                (1, "cyan", Rgba32::from_unmultiplied_rgba(0, 255, 255, 255)),
+                (
+                    2,
+                    "magenta",
+                    Rgba32::from_unmultiplied_rgba(255, 0, 255, 255),
+                ),
             ]),
         )
     });
@@ -38,7 +61,7 @@ pub fn test_segmentation_image_transparency() {
             RowId::new(),
             TimePoint::default(),
             &re_sdk_types::archetypes::Image::from_color_model_and_tensor(
-                re_sdk_types::datatypes::ColorModel::RGB,
+                re_sdk_types::encodings::ColorModel::RGB,
                 image,
             )
             .unwrap(),
@@ -87,6 +110,11 @@ fn run_view_ui_and_save_snapshot(
             test_context.run_with_single_view(ui, view_id);
         });
 
+    test_context.set_time(1);
     harness.run();
     harness.snapshot(name);
+
+    test_context.set_time(2);
+    harness.run();
+    harness.snapshot(format!("{name}_updated_annotation_context"));
 }

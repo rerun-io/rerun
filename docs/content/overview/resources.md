@@ -18,7 +18,8 @@ order: 400
 - [Types](../reference/types.md)
 - [Per language API documentation](../reference.md)
 - [CLI flags](../reference/cli.md)
-- [Migration notes](../reference/migration.md)
+- [Changelog](../changelog.md)
+- [Migration guides](../reference/migration.md)
 
 ### Contributing to Rerun
 

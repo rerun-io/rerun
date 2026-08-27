@@ -8,8 +8,10 @@ import rerun as rr
 rr.init("rerun_example_set_sinks")
 
 rr.set_sinks(
-    # Connect to a local viewer using the default URL
+    # Connect to an existing local Viewer or gRPC server.
     rr.GrpcSink(),
+    # To host a gRPC server instead, replace the sink above with:
+    # rr.GrpcServerSink(),
     # Write data to a `data.rrd` file in the current directory
     rr.FileSink("data.rrd"),
 )

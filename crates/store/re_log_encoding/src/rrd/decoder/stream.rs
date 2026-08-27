@@ -1,7 +1,7 @@
 use std::pin::Pin;
 
-use tokio::io::AsyncBufRead;
-use tokio_stream::{Stream, StreamExt as _};
+use futures::io::AsyncBufRead;
+use futures::stream::{Stream, StreamExt as _};
 
 use crate::RawRrdManifest;
 use crate::rrd::{DecodeError, Decoder, DecoderEntrypoint};
@@ -9,24 +9,6 @@ use crate::rrd::{DecodeError, Decoder, DecoderEntrypoint};
 // ---
 
 impl<T: DecoderEntrypoint + Unpin> Decoder<T> {
-    /// Instantiates a new lazy decoding stream on top of the given buffered reader.
-    ///
-    /// This does not perform any IO until the returned stream is polled. I.e. this will not
-    /// fail if the reader doesn't even contain valid RRD data.
-    ///
-    /// This takes a `BufRead` instead of a `Read` because:
-    /// * This guarantees this will never run on non-buffered input.
-    /// * This lets the end-user in control of the buffering, which prevents unfortunately stacked
-    ///   buffers (and thus exploding memory usage and copies).
-    ///
-    pub fn decode_lazy_async<R: tokio::io::AsyncBufRead>(reader: R) -> DecoderStream<T, R> {
-        DecoderStream {
-            decoder: Self::new(),
-            reader,
-            first_msg: None,
-        }
-    }
-
     /// Instantiates a new eager decoding stream on top of the given buffered reader.
     ///
     /// This will perform a first decoding pass immediately. This allows this constructor to fail
@@ -38,7 +20,7 @@ impl<T: DecoderEntrypoint + Unpin> Decoder<T> {
     /// * This lets the end-user in control of the buffering, which prevents unfortunately stacked
     ///   buffers (and thus exploding memory usage and copies).
     ///
-    pub async fn decode_eager_async<R: tokio::io::AsyncBufRead + Unpin>(
+    pub async fn decode_eager_async<R: AsyncBufRead + Unpin>(
         reader: R,
     ) -> Result<DecoderStream<T, R>, DecodeError> {
         let mut it = DecoderStream {
@@ -142,10 +124,10 @@ impl<T: DecoderEntrypoint + Unpin, R: AsyncBufRead + Unpin> Stream for DecoderSt
 
 #[cfg(all(test, feature = "encoder"))]
 mod tests {
+    use futures::StreamExt as _;
     use re_build_info::CrateVersion;
     use re_chunk::RowId;
     use re_log_types::{LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource};
-    use tokio_stream::StreamExt as _;
 
     use crate::DecoderApp;
     use crate::rrd::{Compression, EncodingOptions, Serializer};
@@ -191,8 +173,8 @@ mod tests {
         ]
     }
 
-    #[tokio::test]
-    async fn test_streaming_decoder_handles_corrupted_input_file() {
+    #[test]
+    fn test_streaming_decoder_handles_corrupted_input_file() {
         let rrd_version = CrateVersion::LOCAL;
 
         let messages = fake_log_messages();
@@ -217,17 +199,19 @@ mod tests {
             // waiting for more data when there's none to be read.
             let data = &data[..data.len() - 1];
 
-            let buf_reader = tokio::io::BufReader::new(std::io::Cursor::new(data));
+            let buf_reader = futures::io::BufReader::new(data);
 
-            let decoder = DecoderApp::decode_eager_async(buf_reader).await.unwrap();
-            let decoded_messages = decoder.map(Result::unwrap).collect::<Vec<_>>().await;
+            let decoder =
+                futures::executor::block_on(DecoderApp::decode_eager_async(buf_reader)).unwrap();
+            let decoded_messages =
+                futures::executor::block_on(decoder.map(Result::unwrap).collect::<Vec<_>>());
 
             similar_asserts::assert_eq!(decoded_messages, messages);
         }
     }
 
-    #[tokio::test]
-    async fn test_streaming_decoder_happy_paths() {
+    #[test]
+    fn test_streaming_decoder_happy_paths() {
         let rrd_version = CrateVersion::LOCAL;
 
         let messages = fake_log_messages();
@@ -248,10 +232,12 @@ mod tests {
             crate::Encoder::encode_into(rrd_version, options, messages.iter().map(Ok), &mut data)
                 .unwrap();
 
-            let buf_reader = tokio::io::BufReader::new(std::io::Cursor::new(data));
+            let buf_reader = futures::io::BufReader::new(data.as_slice());
 
-            let decoder = DecoderApp::decode_eager_async(buf_reader).await.unwrap();
-            let decoded_messages = decoder.map(Result::unwrap).collect::<Vec<_>>().await;
+            let decoder =
+                futures::executor::block_on(DecoderApp::decode_eager_async(buf_reader)).unwrap();
+            let decoded_messages =
+                futures::executor::block_on(decoder.map(Result::unwrap).collect::<Vec<_>>());
 
             similar_asserts::assert_eq!(decoded_messages, messages);
         }

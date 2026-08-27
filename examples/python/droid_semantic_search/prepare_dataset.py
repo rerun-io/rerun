@@ -12,8 +12,8 @@ Either way the episodes are registered to the catalog as a dataset (default name
 They carry H.264 `VideoStream`s but no pre-computed embeddings, so `ingest.py` will take its
 (slower) compute path: decode frames and embed them with SigLIP-2.
 
-Episodes are optimized first to derive keyframe markers, so the compute path can decode
-frames (DROID doesn't log the markers the decoder needs). Pass `--no-optimize` to skip.
+Episodes are optimized first to derive the keyframe markers required by the compute path.
+Pass `--no-optimize` only when registering the raw episodes without running `ingest.py`.
 
 Run inside the rerun SDK venv, with a `rerun server` running in another terminal, e.g.:
 
@@ -180,8 +180,8 @@ def main() -> None:
         "--optimize",
         default=True,
         action=argparse.BooleanOptionalAction,
-        help="Derive keyframe markers before registering, so ingest.py can decode frames "
-        "(~100%% yield vs ~25%%). Use --no-optimize to register episodes as-is.",
+        help="Derive the keyframe markers required by ingest.py. "
+        "Use --no-optimize only to register the raw episodes without computing embeddings.",
     )
     parser.add_argument(
         "--optimized-dir",

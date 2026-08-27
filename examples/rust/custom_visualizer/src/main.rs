@@ -105,10 +105,10 @@ fn builtin_recording() -> Result<re_log_channel::LogReceiver, rerun::RecordingSt
     let cols = 512u32;
     let rows = 512u32;
     let num_terrain_frames = 60;
-    let format = rerun::components::ImageFormat(rerun::datatypes::ImageFormat::from_color_model(
+    let format = rerun::components::ImageFormat(rerun::encodings::ImageFormat::from_color_model(
         [cols, rows],
-        rerun::datatypes::ColorModel::L,
-        rerun::datatypes::ChannelDatatype::F32,
+        rerun::encodings::ColorModel::L,
+        rerun::encodings::ChannelDatatype::F32,
     ));
 
     for frame in 0..num_terrain_frames {

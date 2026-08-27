@@ -6,7 +6,6 @@ pub use depth_offsets::EntityDepthOffsets;
 use re_renderer::DepthOffset;
 use re_sdk_types::ViewClassIdentifier;
 use re_sdk_types::blueprint::components::VisualizerInstructionId;
-use re_view::AnnotationSceneContext;
 use re_viewer_context::{Annotations, ViewClassRegistryError};
 pub use transform_tree_context::{TransformInfo, TransformTreeContext};
 
@@ -27,8 +26,7 @@ pub fn register_spatial_contexts(
     system_registry.register_context_system::<TransformTreeContext>()?;
     system_registry.register_context_system::<EntityDepthOffsets>()?;
 
-    system_registry.register_context_system::<AnnotationSceneContext>()?;
-    re_viewer_context::AnnotationContextStoreSubscriber::subscription_handle(); // Needed by `AnnotationSceneContext`
+    re_viewer_context::AnnotationContextStoreSubscriber::subscription_handle();
 
     Ok(())
 }

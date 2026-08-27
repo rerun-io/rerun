@@ -23,6 +23,7 @@ default = []
 
 
 [dependencies]
+re_async.workspace = true
 re_importer.workspace = true
 re_format.workspace = true
 re_grpc_client.workspace = true
@@ -40,10 +41,7 @@ itertools.workspace = true
 rayon.workspace = true
 url.workspace = true
 
-# native dependencies:
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-tokio.workspace = true
-
 # web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-wasm-bindgen-futures.workspace = true
+re_web.workspace = true
+web-sys = { workspace = true, features = ["File"] }

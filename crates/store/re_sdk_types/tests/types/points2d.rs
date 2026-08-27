@@ -71,6 +71,7 @@ fn example_ply_path() -> PathBuf {
 
 #[test]
 fn ply_parses_optional_properties_and_ignores_extra_data() {
+    // NOLINT_START ("uchar uchar" is valid PLY, not a double word)
     let contents = br#"ply
 format ascii 1.0
 element vertex 2
@@ -90,6 +91,7 @@ end_header
 4 5 11 21 31 1.5 3 66 121 101 43
 0 1
 "#;
+    // NOLINT_END
 
     let parsed = Points2D::from_file_contents(contents).unwrap();
     let expected = Points2D::new([(1.0, 2.0), (4.0, 5.0)])

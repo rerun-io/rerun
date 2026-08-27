@@ -8,7 +8,7 @@ use re_chunk::{ChunkId, EntityPath};
 use re_log_types::StoreId;
 use re_sorbet::SorbetSchema;
 
-use super::{RawRrdManifest, RrdManifestStaticMap, RrdManifestTemporalMap};
+use super::{HubRrdManifest, RawRrdManifest, RrdManifestStaticMap, RrdManifestTemporalMap};
 use crate::{CodecError, CodecResult};
 
 /// A pre-validated and parsed [`RawRrdManifest`].
@@ -33,6 +33,10 @@ pub struct RrdManifest {
     recording_schema: SorbetSchema,
     sorbet_schema: arrow::datatypes::Schema,
 
+    /// Hash of `sorbet_schema`, to compare two schemas without walking their fields.
+    /// See [`RawRrdManifest::compute_sorbet_schema_sha256`].
+    sorbet_schema_sha256: [u8; 32],
+
     chunk_ids: FixedSizeBinaryArray,
     chunk_entity_paths: StringArray,
     chunk_is_static: BooleanBuffer,
@@ -56,8 +60,9 @@ impl PartialEq for RrdManifest {
             recording_schema,
             // We skip `sorbet_schema` (the raw `arrow::datatypes::Schema`) because it is
             // redundant with `recording_schema` for semantic equality, and its field order
-            // is not preserved through protobuf round-trips.
+            // is not preserved through protobuf round-trips. Its hash is skipped along with it.
             sorbet_schema: _,
+            sorbet_schema_sha256: _,
             chunk_ids,
             chunk_entity_paths,
             chunk_is_static,
@@ -98,10 +103,10 @@ impl re_byte_size::SizeBytes for RrdManifest {
 
         // After `try_new`, some extracted arrays (chunk_ids, chunk_is_static, …) share their
         // underlying `Arc<Buffer>` with the pruned `RecordBatch` columns, so they are already
-        // covered by `chunk_fetcher_rb.heap_size_bytes()`. However, after `concat` all arrays
+        // covered by `chunk_fetcher_rb.heap_size_bytes()`. However, after `merge` all arrays
         // are independently allocated, so the pruned-batch size alone would undercount.
         // We intentionally accept that minor double-count (via Arc sharing) from `try_new`
-        // in exchange for always being correct after `concat`.
+        // in exchange for always being correct after `merge`.
         //
         // Fields that are never in the pruned batch must always be counted separately:
         self.chunk_fetcher_rb.heap_size_bytes()
@@ -130,8 +135,8 @@ impl RrdManifest {
     pub const FIELD_CHUNK_KEY: &str = RawRrdManifest::FIELD_CHUNK_KEY;
     pub const FIELD_CHUNK_IS_STATIC: &str = RawRrdManifest::FIELD_CHUNK_IS_STATIC;
     pub const FIELD_CHUNK_BYTE_OFFSET: &str = RawRrdManifest::FIELD_CHUNK_BYTE_OFFSET;
-    pub const FIELD_CHUNK_PARTITION_ID: &str = "chunk_partition_id";
-    pub const FIELD_RERUN_PARTITION_LAYER: &str = "rerun_partition_layer";
+    pub const FIELD_CHUNK_PARTITION_ID: &str = HubRrdManifest::FIELD_CHUNK_PARTITION_ID;
+    pub const FIELD_RERUN_PARTITION_LAYER: &str = HubRrdManifest::FIELD_RERUN_PARTITION_LAYER;
 
     /// All columns present in the pruned batch returned by [`Self::chunk_fetcher_rb()`].
     pub const CHUNK_FETCHER_COLUMNS: &[&str] = &[
@@ -254,6 +259,7 @@ impl RrdManifest {
             store_id: manifest.store_id.clone(),
             recording_schema,
             sorbet_schema: manifest.sorbet_schema.clone(),
+            sorbet_schema_sha256: manifest.sorbet_schema_sha256,
             chunk_ids,
             chunk_entity_paths,
             chunk_is_static,
@@ -272,17 +278,22 @@ impl RrdManifest {
         &self.recording_schema
     }
 
-    pub fn concat(manifests: &[&Self]) -> CodecResult<Self> {
+    /// The chunk fetcher batches of every manifest, concatenated in the given order.
+    ///
+    /// See [`Self::CHUNK_FETCHER_COLUMNS`] for the columns these pruned batches keep.
+    fn concat_chunk_fetcher_rb(manifests: &[&Self]) -> CodecResult<RecordBatch> {
         re_tracing::profile_function!();
 
         let first = manifests
             .first()
             .ok_or_else(|| CodecError::FrameDecoding("No manifests to concatenate".to_owned()))?;
 
+        if manifests.len() == 1 {
+            return Ok(first.chunk_fetcher_rb.clone());
+        }
+
         let any_has_chunk_keys = manifests.iter().any(|m| m.chunk_keys.is_some());
 
-        // Concatenate the (already pruned) raw manifests — used for `take_record_batch`.
-        //
         // When some manifests have `chunk_key` and others don't, we must normalize
         // the schemas before calling `concat_batches` (which requires matching schemas).
         let normalized_batches: Vec<RecordBatch>;
@@ -308,12 +319,105 @@ impl RrdManifest {
             .first()
             .map(|b| b.schema())
             .unwrap_or_else(|| first.chunk_fetcher_rb.schema());
-        let combined_batches = arrow::compute::concat_batches(&combined_schema, batches_to_concat)
-            .map_err(|err| {
-                CodecError::FrameDecoding(format!(
-                    "Failed to concatenate RRD manifest parts: {err}"
-                ))
-            })?;
+
+        arrow::compute::concat_batches(&combined_schema, batches_to_concat).map_err(|err| {
+            CodecError::FrameDecoding(format!("Failed to concatenate RRD manifest parts: {err}"))
+        })
+    }
+
+    /// The schema covering the columns of every manifest, and its hash.
+    ///
+    /// Manifests that share a schema keep it as it is. Ones that do not have their columns unified,
+    /// so the entities and components of all of them can be read off the result. The metadata stays
+    /// that of the first manifest.
+    ///
+    /// Manifests that disagree on the type of a column they both have cannot be unified. The schema
+    /// of the first is then used as it is, with a warning.
+    fn merge_schemas(
+        manifests: &[&Self],
+    ) -> CodecResult<(SorbetSchema, arrow::datatypes::Schema, [u8; 32])> {
+        let first = manifests
+            .first()
+            .ok_or_else(|| CodecError::FrameDecoding("No manifests to concatenate".to_owned()))?;
+
+        let schema_of_first = || {
+            (
+                first.recording_schema.clone(),
+                first.sorbet_schema.clone(),
+                first.sorbet_schema_sha256,
+            )
+        };
+
+        if manifests
+            .iter()
+            .all(|m| m.sorbet_schema_sha256 == first.sorbet_schema_sha256)
+        {
+            return Ok(schema_of_first());
+        }
+
+        re_tracing::profile_function!();
+
+        match Self::unify_columns(manifests) {
+            Ok(unified) => Ok(unified),
+            Err(err) => {
+                re_log::warn_once!(
+                    "Failed to merge the schemas of the manifests, using the first one: {err}"
+                );
+                Ok(schema_of_first())
+            }
+        }
+    }
+
+    /// The columns of every manifest in one schema, with the metadata of the first.
+    fn unify_columns(
+        manifests: &[&Self],
+    ) -> CodecResult<(SorbetSchema, arrow::datatypes::Schema, [u8; 32])> {
+        let first = manifests
+            .first()
+            .ok_or_else(|| CodecError::FrameDecoding("No manifests to concatenate".to_owned()))?;
+
+        // Merge the fields into the first schema instead of using `Schema::try_merge`: that one
+        // also merges the schema metadata and errors when two schemas disagree on a key. The
+        // metadata comes from the first manifest.
+        let mut builder = arrow::datatypes::SchemaBuilder::from(&first.sorbet_schema);
+        for manifest in &manifests[1..] {
+            for field in manifest.sorbet_schema.fields() {
+                builder.try_merge(field).map_err(|err| {
+                    CodecError::FrameDecoding(format!("Failed to merge manifest schemas: {err}"))
+                })?;
+            }
+        }
+        let sorbet_schema = builder.finish();
+
+        let sorbet_schema_sha256 = RawRrdManifest::compute_sorbet_schema_sha256(&sorbet_schema)
+            .map_err(CodecError::ArrowSerialization)?;
+
+        let mut recording_schema =
+            SorbetSchema::try_from_raw_arrow_schema(Arc::new(sorbet_schema.clone()))?;
+        // Sorted for the same reason as in `try_new`: to keep `PartialEq` stable.
+        recording_schema.columns.columns.sort();
+
+        Ok((recording_schema, sorbet_schema, sorbet_schema_sha256))
+    }
+
+    /// One manifest describing every chunk of every part, in the given order.
+    ///
+    /// The parts can be the pieces of one segment's manifest, or the manifests of several
+    /// segments. The store id is that of the first part, and the schema covers the columns of all
+    /// of them.
+    pub fn merge(manifests: &[&Self]) -> CodecResult<Self> {
+        re_tracing::profile_function!();
+
+        let first = manifests
+            .first()
+            .ok_or_else(|| CodecError::FrameDecoding("No manifests to concatenate".to_owned()))?;
+
+        let any_has_chunk_keys = manifests.iter().any(|m| m.chunk_keys.is_some());
+
+        let (recording_schema, sorbet_schema, sorbet_schema_sha256) =
+            Self::merge_schemas(manifests)?;
+
+        let combined_batches = Self::concat_chunk_fetcher_rb(manifests)?;
 
         // Concatenate pre-extracted Arrow arrays directly, avoiding a round-trip
         // through `try_new` which would fail on pruned data (missing sparse columns).
@@ -435,8 +539,9 @@ impl RrdManifest {
         Ok(Self {
             chunk_fetcher_rb: combined_batches,
             store_id: first.store_id.clone(),
-            recording_schema: first.recording_schema.clone(),
-            sorbet_schema: first.sorbet_schema.clone(),
+            recording_schema,
+            sorbet_schema,
+            sorbet_schema_sha256,
             chunk_ids,
             chunk_entity_paths,
             chunk_is_static,
@@ -495,6 +600,16 @@ impl RrdManifest {
     pub fn col_chunk_ids(&self) -> &[ChunkId] {
         #[expect(clippy::unwrap_used)] // Validated in constructor
         ChunkId::try_slice_from_arrow(&self.chunk_ids).unwrap()
+    }
+
+    /// Returns all the chunk ids of a batch that has a [`Self::FIELD_CHUNK_ID`] column.
+    pub fn col_chunk_ids_of(batch: &RecordBatch) -> Option<&[ChunkId]> {
+        use re_arrow_util::ArrowArrayDowncastRef as _;
+
+        let array = batch
+            .column_by_name(Self::FIELD_CHUNK_ID)
+            .and_then(|array| array.downcast_array_ref::<FixedSizeBinaryArray>())?;
+        ChunkId::try_slice_from_arrow(array).ok()
     }
 
     /// Returns the raw Arrow array for entity paths.
@@ -561,6 +676,19 @@ impl RrdManifest {
         self.chunk_keys.as_ref()
     }
 
+    /// The segment each chunk comes from, row-aligned with [`Self::col_chunk_ids`].
+    ///
+    /// A manifest served from a server always has this column, since `FetchChunks`
+    /// needs it. One read from an RRD file doesn't.
+    pub fn col_chunk_partition_id(&self) -> Option<&StringArray> {
+        use re_arrow_util::ArrowArrayDowncastRef as _;
+
+        let column = self
+            .chunk_fetcher_rb
+            .column_by_name(Self::FIELD_CHUNK_PARTITION_ID)?;
+        column.downcast_array_ref::<StringArray>()
+    }
+
     /// Returns the map-based representation of the static data in this RRD manifest.
     #[inline]
     pub fn static_map(&self) -> &RrdManifestStaticMap {
@@ -575,7 +703,7 @@ impl RrdManifest {
 
     /// Add an all-null `chunk_key` column to a `RecordBatch` that doesn't have one.
     ///
-    /// Used by [`Self::concat`] to normalize schemas when some manifests have chunk keys
+    /// Used by [`Self::merge`] to normalize schemas when some manifests have chunk keys
     /// and others don't.
     fn add_null_chunk_key_column(batch: &RecordBatch) -> RecordBatch {
         let num_rows = batch.num_rows();

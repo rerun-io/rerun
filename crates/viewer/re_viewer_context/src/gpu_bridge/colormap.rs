@@ -208,5 +208,6 @@ pub fn colormap_to_re_renderer(
         re_sdk_types::components::Colormap::Twilight => re_renderer::Colormap::Twilight,
         re_sdk_types::components::Colormap::RvizMap => re_renderer::Colormap::RvizMap,
         re_sdk_types::components::Colormap::RvizCostmap => re_renderer::Colormap::RvizCostmap,
+        re_sdk_types::components::Colormap::Costmap => re_renderer::Colormap::Costmap,
     }
 }

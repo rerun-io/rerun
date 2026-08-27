@@ -22,6 +22,7 @@ int main(int argc, char* argv[]) {
         rerun::Boxes2D::from_mins_and_sizes(
             {{-2.0f, -2.0f}, {0.0f, 0.f}},
             {{3.0f, 3.0f}, {2.0f, 2.0f}}
-        ).with_class_ids({1, 2})
+        )
+            .with_class_ids({1, 2})
     );
 }

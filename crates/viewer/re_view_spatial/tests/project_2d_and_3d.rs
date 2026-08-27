@@ -2,7 +2,7 @@
 
 use re_log_types::{EntityPath, EntityPathFilter, TimePoint};
 use re_sdk_types::components::RotationAxisAngle;
-use re_sdk_types::datatypes::Angle;
+use re_sdk_types::encodings::Angle;
 use re_sdk_types::{archetypes, blueprint::archetypes as blueprint_archetypes, components};
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
@@ -42,7 +42,7 @@ fn setup_scene(test_context: &mut TestContext, use_explicit_frames: bool) {
         }
 
         archetypes::Image::from_color_model_and_tensor(
-            re_sdk_types::datatypes::ColorModel::RGB,
+            re_sdk_types::encodings::ColorModel::RGB,
             data,
         )
         .expect("failed to create image")
@@ -57,7 +57,8 @@ fn setup_scene(test_context: &mut TestContext, use_explicit_frames: bool) {
         [(0.2, 0.4, 0.2), (0.2, 0.2, 0.4), (0.4, 0.2, 0.2)],
     )
     .with_colors([0xFF0000FF, 0x00FF00FF, 0x0000FFFF])
-    .with_fill_mode(components::FillMode::Solid);
+    .with_fill_mode(components::FillMode::Solid)
+    .with_labels(["red", "green", "blue"]);
 
     let origin_transform = archetypes::Transform3D::from_rotation(RotationAxisAngle::new(
         glam::Vec3::Z,
@@ -223,10 +224,8 @@ fn test_3d_in_2d(use_explicit_frames: bool) {
         // TODO(RR-3076): We don't correctly pick up the target frame from a pinhole origin without coordinate frame.
         // But we also want to remove origin in the future. Either way it's a matter of better target frame heuristic.
         if use_explicit_frames {
-            ViewProperty::from_archetype::<blueprint_archetypes::SpatialInformation>(
-                ctx.blueprint_db(),
-                ctx.blueprint_query,
-                view.id,
+            ViewProperty::from_archetype_for_view::<blueprint_archetypes::SpatialInformation>(
+                ctx, view.id,
             )
             .save_blueprint_component(
                 ctx,

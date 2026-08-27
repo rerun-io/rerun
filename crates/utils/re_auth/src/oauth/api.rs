@@ -42,13 +42,13 @@ pub fn send_native<Req: IntoRequest>(
     ehttp::fetch(req, move |res| {
         let res = res.map_err(Error::Request).and_then(move |res| {
             if !res.ok {
-                if !res.bytes.is_empty() {
+                return if res.bytes.is_empty() {
+                    Err(Error::Request(res.status_text.clone()))
+                } else {
                     re_log::trace!("error response: {:?}", res.text());
                     let err = String::from_utf8_lossy(&res.bytes).into_owned();
-                    return Err(Error::Http(err));
-                } else {
-                    return Err(Error::Request(res.status_text.clone()));
-                }
+                    Err(Error::Http(err))
+                };
             }
 
             serde_json::from_slice(&res.bytes).map_err(Error::Deserialize)
@@ -71,13 +71,13 @@ pub async fn send_async<Req: IntoRequest>(req: Req) -> Result<Req::Res, Error> {
         .map_err(Error::Request)?;
 
     if !res.ok && !is_allowed_error::<Req>(res.status) {
-        if !res.bytes.is_empty() {
+        return if res.bytes.is_empty() {
+            Err(Error::Request(res.status_text.clone()))
+        } else {
             re_log::trace!("error response: {:?}", res.text());
             let err = String::from_utf8_lossy(&res.bytes).into_owned();
-            return Err(Error::Http(err));
-        } else {
-            return Err(Error::Request(res.status_text.clone()));
-        }
+            Err(Error::Http(err))
+        };
     }
 
     serde_json::from_slice::<Req::Res>(&res.bytes).map_err(Error::Deserialize)
@@ -96,13 +96,13 @@ pub async fn send_async_allow_4xx<Req: IntoRequest>(req: Req) -> Result<Req::Res
         .map_err(Error::Request)?;
 
     if !res.ok && res.status < 400 || res.status > 499 {
-        if !res.bytes.is_empty() {
+        return if res.bytes.is_empty() {
+            Err(Error::Request(res.status_text.clone()))
+        } else {
             re_log::trace!("error response: {:?}", res.text());
             let err = String::from_utf8_lossy(&res.bytes).into_owned();
-            return Err(Error::Http(err));
-        } else {
-            return Err(Error::Request(res.status_text.clone()));
-        }
+            Err(Error::Http(err))
+        };
     }
 
     serde_json::from_slice::<Req::Res>(&res.bytes).map_err(Error::Deserialize)
@@ -321,19 +321,10 @@ impl From<AuthenticateWithCodeResponse> for RefreshResponse {
     }
 }
 
-#[expect(dead_code)] // maybe these fields are useful in the future
 #[derive(Debug, Clone, serde::Deserialize)]
 struct User {
     id: String,
     email: String,
-    email_verified: bool,
-    profile_picture_url: Option<String>,
-    first_name: Option<String>,
-    last_name: Option<String>,
-    last_sign_in_at: Option<String>,
-    created_at: String,
-    updated_at: String,
-    external_id: Option<String>,
 }
 
 impl From<User> for crate::oauth::User {

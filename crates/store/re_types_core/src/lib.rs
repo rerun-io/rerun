@@ -9,7 +9,11 @@
 //! When multiple instances of a [`Component`] are put together in an array, they yield a
 //! [`ComponentBatch`]: the atomic unit of (de)serialization.
 //!
-//! Internally, [`Component`]s are implemented using many different [`Loggable`]s.
+//! Conversion to and from Arrow is split across five traits, so that each type only implements
+//! the conversions that make sense for it: [`ArrowDatatype`], [`ToArrow`], [`ToArrowOpt`],
+//! [`FromArrow`] and [`FromArrowOpt`].
+//! A [`Component`] requires [`ToArrow`] and [`FromArrow`]; the nullable variants are optional
+//! and being phased out.
 //!
 //! ## Feature flags
 #![doc = document_features::document_features!()]
@@ -55,8 +59,12 @@ pub use self::component_descriptor::{
     FIELD_METADATA_KEY_COMPONENT_TYPE,
 };
 pub use self::dynamic_archetype::DynamicArchetype;
-pub use self::layer_name::LayerName;
-pub use self::loggable::{Component, ComponentSet, ComponentType, Loggable, UnorderedComponentSet};
+pub use self::layer_name::{InvalidLayerNameError, LayerName};
+pub use self::loggable::{
+    ArrowDatatype, Component, ComponentSet, ComponentType, FromArrow, FromArrowOpt, ToArrow,
+    ToArrowOpt, UnorderedComponentSet, from_arrow_opt_via_from_arrow,
+    from_arrow_via_from_arrow_opt, to_arrow_via_to_arrow_opt,
+};
 pub use self::result::{
     _Backtrace, DeserializationError, DeserializationResult, ResultExt, SerializationError,
     SerializationResult,
@@ -80,11 +88,14 @@ pub mod archetypes;
 /// There are also re-exported by `re_sdk_types`.
 pub mod components;
 
-/// Fundamental datatypes that are implemented in `re_types_core` directly for convenience and
+/// Fundamental encodings that are implemented in `re_types_core` directly for convenience and
 /// dependency optimization.
 ///
 /// There are also re-exported by `re_sdk_types`.
-pub mod datatypes;
+pub mod encodings;
+
+#[deprecated(since = "0.37.0", note = "renamed to `encodings`")]
+pub use self::encodings as datatypes;
 
 // ---
 
@@ -92,7 +103,10 @@ pub mod datatypes;
 mod _macros; // just for the side-effect of exporting the macros
 
 pub mod macros {
-    pub use super::impl_into_cow;
+    pub use super::{
+        impl_from_arrow_opt_via_from_arrow, impl_from_arrow_via_from_arrow_opt, impl_into_cow,
+        impl_to_arrow_via_to_arrow_opt,
+    };
 }
 
 pub mod external {
@@ -157,7 +171,7 @@ macro_rules! static_assert_struct_has_fields {
 /// merely be logged, not returned (except in debug builds, where all errors panic).
 #[doc(hidden)] // public so we can access it from re_sdk_types too
 #[expect(clippy::unnecessary_wraps)] // clippy gets confused in debug builds
-pub fn try_serialize_field<L: Loggable>(
+pub fn try_serialize_field<L: ToArrow>(
     descriptor: ComponentDescriptor,
     instances: impl IntoIterator<Item = impl Into<L>>,
 ) -> Option<SerializedComponentBatch> {

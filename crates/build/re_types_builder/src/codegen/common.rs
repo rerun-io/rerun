@@ -313,9 +313,8 @@ pub fn collect_snippets_for_api_docs<'a>(
             Err(err) => {
                 if base.missing_extensions.iter().any(|ext| ext == extension) {
                     continue;
-                } else {
-                    return Err(err).with_context(|| format!("couldn't open snippet {path:?}"));
                 }
+                return Err(err).with_context(|| format!("couldn't open snippet {path:?}"));
             }
         };
         let mut content = content

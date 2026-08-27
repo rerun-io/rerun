@@ -63,6 +63,11 @@ pub enum Error {
     #[error("Bad video data: {0}")]
     BadVideoData(String),
 
+    #[error(
+        "This FFmpeg build has no usable encoder for {codec:?}. Install a build with the matching encoder (e.g. libvpx for VP8/VP9, libsvtav1/libaom for AV1) or choose a different output codec."
+    )]
+    NoEncoderForCodec { codec: crate::VideoCodec },
+
     #[error("FFmpeg error: {0}")]
     Ffmpeg(String),
 
@@ -119,21 +124,19 @@ struct FFmpegFrameInfo {
     /// can be decoded from only this one sample (though I'm not 100% sure).
     is_sync: bool,
 
-    /// Which sample in the video is this from?
-    ///
-    /// In MP4, one sample is one frame, but we may be reordering samples when decoding.
-    ///
-    /// This is the order of which the samples appear in the container,
-    /// which is usually ordered by [`Self::decode_timestamp`].
-    sample_idx: usize,
-
     /// Which frame is this?
     ///
     /// This is on the assumption that each sample produces a single frame,
     /// which is true for MP4.
     ///
     /// This is the index of frames ordered by [`Self::presentation_timestamp`].
-    frame_nr: u32,
+    frame_nr: crate::FrameNumber,
+
+    /// Where the sample this frame was decoded from has its bytes.
+    ///
+    /// This identifies the sample no matter where it ends up in the video data description,
+    /// unlike a sample index which shifts whenever samples are inserted or removed before it.
+    source: crate::VideoSource,
 
     presentation_timestamp: Time,
     duration: Option<Time>,
@@ -190,11 +193,11 @@ struct OutputSender {
 fn send_output(
     output_sender: &OutputSender,
     result: FrameResult,
-) -> Result<(), SendError<FrameResult>> {
+) -> Result<(), Box<SendError<FrameResult>>> {
     if output_sender.stop_signal.load(Ordering::Acquire) {
-        Err(SendError(result))
+        Err(Box::new(SendError(result)))
     } else {
-        output_sender.sender.send(result)
+        output_sender.sender.send(result).map_err(Box::new)
     }
 }
 
@@ -400,8 +403,8 @@ impl FFmpegProcessAndListener {
         // Chunks are defined to always yield a single frame.
         let frame_info = FFmpegFrameInfo {
             is_sync: chunk.is_sync,
-            sample_idx: chunk.sample_idx,
             frame_nr: chunk.frame_nr,
+            source: chunk.source,
             presentation_timestamp: chunk.presentation_timestamp,
             decode_timestamp: chunk.decode_timestamp,
             duration: chunk.duration,
@@ -543,12 +546,12 @@ struct FrameBuffer {
     /// Received frame-infos, waiting to be matched to output frames.
     ///
     /// Key is the frame number, making this list sorted in presentation order.
-    pending: BTreeMap<u32, FFmpegFrameInfo>,
+    pending: BTreeMap<crate::FrameNumber, FFmpegFrameInfo>,
 
     /// The frame number of the next frame if we had any so far.
     ///
     /// `None` if we haven't received any frames yet since the last decoder reset.
-    next_frame_nr: Option<u32>,
+    next_frame_nr: Option<crate::FrameNumber>,
 }
 
 impl FrameBuffer {
@@ -630,8 +633,8 @@ impl FrameBuffer {
             },
             info: FrameInfo {
                 is_sync: Some(frame_info.is_sync),
-                sample_idx: Some(frame_info.sample_idx),
                 frame_nr: Some(frame_info.frame_nr),
+                source: Some(frame_info.source),
                 presentation_timestamp: frame_info.presentation_timestamp,
                 latest_decode_timestamp: Some(frame_info.decode_timestamp),
                 duration: frame_info.duration,
@@ -775,8 +778,8 @@ fn read_ffmpeg_output(
                         ..
                     } = &frame.content;
                     re_log::trace!(
-                        "{debug_name} received frame {frame_num}: sample {sample_idx:?} dts {dts:?} pts {pts:?} fmt {format:?} size {width}x{height}. buffered: {num_buffered}, outstanding: {num_outstanding}",
-                        sample_idx = frame.info.sample_idx,
+                        "{debug_name} received frame {frame_num}: source {source:?} dts {dts:?} pts {pts:?} fmt {format:?} size {width}x{height}. buffered: {num_buffered}, outstanding: {num_outstanding}",
+                        source = frame.info.source,
                         dts = frame.info.latest_decode_timestamp,
                         pts = frame.info.presentation_timestamp,
                         num_buffered = buffer.pending.len(),

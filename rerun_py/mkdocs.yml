@@ -89,7 +89,7 @@ plugins:
         common/index.md: index.md
         common/archetypes.md: archetypes.md
         common/components.md: components.md
-        common/datatypes.md: datatypes.md
+        common/encodings.md: encodings.md
         common/catalog.md: catalog.md
         common/utilities.md: utilities.md
         common/server.md: server.md
@@ -99,7 +99,7 @@ plugins:
         common/blueprint_apis.md: blueprint.md
         common/blueprint_archetypes.md: blueprint_archetypes.md
         common/blueprint_components.md: blueprint_components.md
-        common/blueprint_datatypes.md: blueprint_datatypes.md
+        common/blueprint_encodings.md: blueprint_encodings.md
         common/blueprint_views.md: blueprint_views.md
         common/initialization_functions.md: rerun.md
         common/logging_functions.md: rerun.md

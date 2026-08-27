@@ -1,8 +1,9 @@
 FROM quay.io/pypa/manylinux_2_28
 LABEL maintainer="opensource@rerun.io"
-# Remember to update the version in publish.sh
-# TODO(jleibs) use this version in the publish.sh script and below in the CACHE_KEY
-LABEL version="0.18.0-x86-64"
+
+# Image version. Passed in by `publish.sh`
+ARG VERSION=dev
+LABEL version="${VERSION}"
 LABEL description="Docker image used for the CI of https://github.com/rerun-io/rerun"
 
 RUN set -eux; \
@@ -40,11 +41,13 @@ ENV RUSTUP_HOME=/usr/local/rustup \
     CARGO_HOME=/usr/local/cargo \
     PATH=/usr/local/cargo/bin:$PATH
 
-# Install Rustup
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+# Install Rustup. Use RUST_TOOLCHAIN to specify the version of Rust to install.
+ARG RUST_TOOLCHAIN=stable
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+  | sh -s -- -y --default-toolchain "$RUST_TOOLCHAIN"
 
 # Increment this to invalidate cache
-ENV CACHE_KEY=rerun_docker_v0.18.0
+ENV CACHE_KEY=rerun_docker_v${VERSION}
 
 # See: https://github.com/actions/runner-images/issues/6775#issuecomment-1410270956
 RUN git config --system --add safe.directory '*'

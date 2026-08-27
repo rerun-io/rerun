@@ -2,12 +2,10 @@
 //!
 //! Types & utilities for defining View classes and communicating with the Viewport.
 
-#![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
-
 pub mod controls;
 
 mod annotation_context_utils;
-mod annotation_scene_context;
+mod annotation_map_cache;
 mod blueprint_resolved_results;
 mod chunks_with_component;
 mod clears;
@@ -15,6 +13,7 @@ mod component_drop;
 mod instance_hash_conversions;
 mod outlines;
 mod query;
+mod time_axis;
 mod view_property_ui;
 mod visualizer_query;
 
@@ -23,7 +22,7 @@ use std::{borrow::Cow, sync::Arc};
 pub use annotation_context_utils::{
     process_annotation_and_keypoint_slices, process_annotation_slices, process_color_slice,
 };
-pub use annotation_scene_context::AnnotationSceneContext;
+pub use annotation_map_cache::AnnotationMapCache;
 pub use blueprint_resolved_results::{
     BlueprintResolvedLatestAtResults, BlueprintResolvedRangeResults, BlueprintResolvedResults,
     BlueprintResolvedResultsExt, HybridResultsChunkIter,
@@ -42,12 +41,16 @@ pub use outlines::{
 pub use query::{
     ComponentCastRule, DataResultQuery, latest_at_with_blueprint_resolved_data,
     latest_at_with_blueprint_resolved_data_polymorphic, range_with_blueprint_resolved_data,
-    range_with_blueprint_resolved_data_polymorphic,
+    range_with_blueprint_resolved_data_polymorphic, resolve_visible_time_range,
 };
 use re_log_types::external::arrow;
+pub use time_axis::{
+    cursor_centered_default_range, resolve_time_axis_range, set_time_cursor,
+    time_axis_range_after_cursor_move, time_axis_range_from_window,
+};
 pub use view_property_ui::{
     view_property_component_ui, view_property_component_ui_custom, view_property_ui,
-    view_property_ui_with_redirect,
+    view_property_ui_with_hidden_components, view_property_ui_with_redirect,
 };
 pub use visualizer_query::VisualizerInstructionQueryResults;
 

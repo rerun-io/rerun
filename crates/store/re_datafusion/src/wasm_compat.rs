@@ -4,7 +4,7 @@ use re_redap_client::ApiResult;
 /// version for information.
 #[cfg(not(target_arch = "wasm32"))]
 #[inline]
-pub async fn make_future_send<F, T>(f: F) -> ApiResult<T>
+pub async fn make_future_send<F, T>(_origin: re_uri::Origin, f: F) -> ApiResult<T>
 where
     F: std::future::Future<Output = ApiResult<T>> + Send + 'static,
     T: Send + 'static,
@@ -19,40 +19,21 @@ where
 /// ones.
 #[cfg(target_arch = "wasm32")]
 pub fn make_future_send<F, T>(
+    origin: re_uri::Origin,
     f: F,
 ) -> impl std::future::Future<Output = ApiResult<T>> + Send + 'static
 where
     F: std::future::Future<Output = ApiResult<T>> + 'static,
     T: Send + 'static,
 {
-    use futures::{FutureExt as _, pin_mut};
-    use futures_util::future::{Either, select};
+    let task = re_async::spawn_local_with_result(f);
 
-    let (mut tx, rx) = futures::channel::oneshot::channel();
-
-    wasm_bindgen_futures::spawn_local(async {
-        let cancellation = tx.cancellation();
-
-        // needed by `select`
-        pin_mut!(f, cancellation);
-
-        match select(f, cancellation).await {
-            Either::Left((result, _)) => {
-                tx.send(result).ok();
-            }
-
-            Either::Right(_) => {
-                // If cancellation is triggered, it means that the future holding on `rx` was
-                // dropped. So we don't need to do anything.
-            }
-        }
-    });
-
-    rx.map(|result| {
-        result.unwrap_or_else(|_cancelled| {
+    async move {
+        task.await.unwrap_or_else(|_cancelled| {
             Err(re_redap_client::ApiError::internal(
+                &origin,
                 "wasm task cancelled unexpectedly",
             ))
         })
-    })
+    }
 }

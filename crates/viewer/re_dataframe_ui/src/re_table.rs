@@ -13,14 +13,14 @@ use re_format::format_uint;
 use re_ui::egui_ext::response_ext::ResponseExt as _;
 use re_ui::{TableStyle, UiExt as _};
 
-use crate::re_table_utils::{TableConfig, apply_table_style_fixes, cell_ui, header_ui};
+use crate::re_table_utils::{apply_table_style_fixes, cell_ui, header_ui};
 use crate::table_selection::TableSelectionState;
 
 /// Wrapper around [`egui_table::TableDelegate`] that handles styling, selection, column visibility, row numbers, etc.
 pub struct ReTable<'a> {
     session_id: Id,
     inner: &'a mut dyn egui_table::TableDelegate,
-    config: &'a TableConfig,
+    visible_columns: Vec<(Id, usize)>,
     selection: TableSelectionState,
     previous_selection: TableSelectionState,
     num_rows: u64,
@@ -43,7 +43,7 @@ impl<'a> ReTable<'a> {
         egui_ctx: &egui::Context,
         session_id: Id,
         inner: &'a mut dyn egui_table::TableDelegate,
-        config: &'a TableConfig,
+        visible_columns: impl IntoIterator<Item = (Id, usize)>,
         num_rows: u64,
     ) -> Self {
         let mut selection = TableSelectionState::load(egui_ctx, session_id);
@@ -53,7 +53,7 @@ impl<'a> ReTable<'a> {
         Self {
             session_id,
             inner,
-            config,
+            visible_columns: visible_columns.into_iter().collect(),
             selection,
             previous_selection,
             num_rows,
@@ -143,9 +143,9 @@ impl<'a> ReTable<'a> {
                             .range(Rangef::new(preview_column_width, preview_column_width))
                             .id(Id::new("segment_preview"))
                     }),
-                    self.config
-                        .visible_column_ids()
-                        .map(|id| egui_table::Column::new(200.0).resizable(true).id(id)),
+                    self.visible_columns
+                        .iter()
+                        .map(|(id, _)| egui_table::Column::new(200.0).resizable(true).id(*id)),
                 )
                 .collect::<Vec<_>>(),
             )
@@ -209,11 +209,11 @@ impl egui_table::TableDelegate for ReTable<'_> {
                 // Data column headers.
                 let column_index = cell.group_index - 1 - num_preview_columns;
 
-                if let Some(col_index) = self.config.visible_column_indexes().nth(column_index) {
+                if let Some((_, col_index)) = self.visible_columns.get(column_index) {
                     let mut header_cell_info = cell.clone();
                     // Offset by num_preview_columns so the delegate sees extra prefix indices 0..num_preview_columns
                     // and data indices starting at num_preview_columns.
-                    header_cell_info.group_index = num_preview_columns + col_index;
+                    header_cell_info.group_index = num_preview_columns + *col_index;
 
                     self.inner.header_cell_ui(ui, &header_cell_info);
                 }
@@ -259,9 +259,9 @@ impl egui_table::TableDelegate for ReTable<'_> {
             cell_ui(ui, self.table_style, false, |ui| {
                 ui.set_truncate_style();
                 let col_index = cell.col_nr - 1 - num_preview_columns;
-                if let Some(col_index) = self.config.visible_column_indexes().nth(col_index) {
+                if let Some((_, col_index)) = self.visible_columns.get(col_index) {
                     let mut cell_info = cell.clone();
-                    cell_info.col_nr = num_preview_columns + col_index;
+                    cell_info.col_nr = num_preview_columns + *col_index;
                     self.inner.cell_ui(ui, &cell_info);
                 }
             });

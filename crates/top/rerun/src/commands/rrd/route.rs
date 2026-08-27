@@ -6,7 +6,7 @@ use itertools::Itertools as _;
 
 use re_chunk::ChunkId;
 use re_log_encoding::{Encoder, RawRrdManifest};
-use re_protos::common::v1alpha1::ApplicationId;
+use re_log_types::ApplicationId;
 use re_protos::log_msg::v1alpha1::log_msg::Msg;
 use re_protos::log_msg::v1alpha1::{ArrowMsg, BlueprintActivationCommand, SetStoreInfo, StoreInfo};
 
@@ -57,7 +57,8 @@ impl RouteCommand {
         let rewrites = Rewrites {
             application_id: application_id
                 .as_ref()
-                .map(|id| ApplicationId { id: id.clone() }),
+                .map(|id| ApplicationId::try_new(id.clone()))
+                .transpose()?,
             recording_id: recording_id.clone(),
         };
 
@@ -164,11 +165,12 @@ fn process_messages<W: std::io::Write>(
                     }) => {
                         if let Some(target_store_id) = store_id {
                             if let Some(recording_id) = &rewrites.recording_id {
-                                target_store_id.recording_id = recording_id.clone();
+                                target_store_id.recording_id.clone_from(recording_id);
                             }
 
                             if let Some(application_id) = &rewrites.application_id {
-                                target_store_id.application_id = Some(application_id.clone());
+                                target_store_id.application_id =
+                                    Some(application_id.clone().into());
                             }
                         }
                     }
@@ -232,21 +234,22 @@ fn process_messages<W: std::io::Write>(
                 rewrites
                     .application_id
                     .clone()
-                    .unwrap_or_else(|| store_id.application_id().clone().into()),
+                    .unwrap_or_else(|| store_id.application_id().clone()),
                 rewrites
                     .recording_id
                     .clone()
                     .unwrap_or_else(|| store_id.recording_id().to_string()),
             );
 
-            let byte_offsets = &byte_offsets_excluding_header[i..i + data.num_rows()];
-            let byte_sizes = &byte_sizes_excluding_header[i..i + data.num_rows()];
-            let byte_sizes_uncompressed = &byte_sizes_uncompressed[i..i + data.num_rows()];
+            let window = re_span::Span::from_start_len(i, data.num_rows());
+            let byte_offsets = &byte_offsets_excluding_header[window.range()];
+            let byte_sizes = &byte_sizes_excluding_header[window.range()];
+            let byte_sizes_uncompressed = &byte_sizes_uncompressed[window.range()];
 
             // NOTE: All of this works because our CLI tools guarantee that while the data and the
             // footers will be received at a different time, they'll still follow the same global order.
             // Still, we double check the chunk IDs in order to make sure that they still align.
-            let chunk_ids = &chunk_ids[i..i + data.num_rows()];
+            let chunk_ids = &chunk_ids[window.range()];
             for (chunk_id, expected_chunk_id) in
                 itertools::izip!(chunk_ids, manifest.col_chunk_id()?)
             {

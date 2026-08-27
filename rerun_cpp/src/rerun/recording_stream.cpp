@@ -34,7 +34,8 @@ namespace rerun {
     }
 
     RecordingStream::RecordingStream(
-        std::string_view app_id, std::string_view recording_id, StoreKind store_kind
+        std::string_view app_id, std::string_view recording_id, StoreKind store_kind,
+        bool send_properties
     )
         : _store_kind(store_kind) {
         check_binary_and_header_version_match().handle();
@@ -45,7 +46,8 @@ namespace rerun {
         store_info.store_kind = store_kind_to_c(store_kind);
 
         rr_error status = {};
-        this->_id = rr_recording_stream_new(&store_info, is_default_enabled(), &status);
+        this->_id =
+            rr_recording_stream_new(&store_info, is_default_enabled(), send_properties, &status);
         auto err = Error(status);
         if (err.is_ok()) {
             this->_enabled = rr_recording_stream_is_enabled(this->_id, &status);
@@ -112,8 +114,26 @@ namespace rerun {
 
         std::vector<rr_log_sink> c_sinks;
         c_sinks.reserve(num_sinks);
+        std::vector<std::vector<rr_string>> c_cors_origins;
+        c_cors_origins.reserve(num_sinks);
+
         for (uint32_t i = 0; i < num_sinks; i++) {
             c_sinks.push_back(detail::to_rr_log_sink(sinks[i]));
+
+            if (sinks[i].kind == LogSink::Kind::GrpcServer) {
+                const auto& origins = sinks[i].grpc_server->cors_allow_origins;
+                auto& c_origins = c_cors_origins.emplace_back();
+                c_origins.reserve(origins.size());
+                for (const auto& origin : origins) {
+                    c_origins.push_back(detail::to_rr_string(origin));
+                }
+
+                c_sinks.back().grpc_server.cors_allow_origins = c_origins.data();
+                c_sinks.back().grpc_server.num_cors_allow_origins =
+                    static_cast<uint32_t>(c_origins.size());
+            } else {
+                c_cors_origins.emplace_back();
+            }
         }
         rr_recording_stream_set_sinks(_id, c_sinks.data(), num_sinks, &status);
 
@@ -251,15 +271,7 @@ namespace rerun {
             return Error::ok();
         }
 
-        std::vector<ComponentBatch> instanced;
-
-        for (const auto& batch : batches) {
-            instanced.push_back(std::move(batch));
-        }
-
-        bool inject_time = !static_;
-
-        return try_log_data_row(entity_path, instanced.size(), instanced.data(), inject_time);
+        return try_log_data_row(entity_path, batches.size(), batches.data(), !static_);
     }
 
     Error RecordingStream::try_log_data_row(
@@ -372,7 +384,7 @@ namespace rerun {
         rr_error status = {};
         log_static(
             this->PROPERTIES_ENTITY_PATH,
-            rerun::archetypes::RecordingInfo::update_fields().with_name(name.data())
+            rerun::archetypes::RecordingInfo::update_fields().with_name(std::string(name))
         );
         return status;
     }

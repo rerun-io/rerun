@@ -141,11 +141,7 @@ impl SpatialViewState {
 
     // Say the name out loud. It is fun!
     pub fn view_eye_ui(&mut self, ui: &mut egui::Ui, ctx: &ViewerContext<'_>, view_id: ViewId) {
-        let eye_property = ViewProperty::from_archetype::<EyeControls3D>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query,
-            view_id,
-        );
+        let eye_property = ViewProperty::from_archetype_for_view::<EyeControls3D>(ctx, view_id);
 
         if ui
             .button("Reset")
@@ -203,17 +199,21 @@ impl SpatialViewState {
 pub fn create_labels(
     labels: &[UiLabel],
     ui_from_scene: egui::emath::RectTransform,
-    eye3d: &Eye,
+    ui_from_world_3d: glam::Mat4,
+    view_from_world_3d: macaw::IsoTransform,
     parent_ui: &egui::Ui,
     highlights: &ViewHighlights,
     spatial_kind: SpaceKind,
 ) -> (Vec<egui::Shape>, Vec<PickableUiRect>) {
     re_tracing::profile_function!();
 
-    let ui_from_world_3d = eye3d.ui_from_world(*ui_from_scene.to());
-
-    let resolved_labels =
-        resolve_label_positions(labels, &ui_from_scene, &ui_from_world_3d, spatial_kind);
+    let resolved_labels = resolve_label_positions(
+        labels,
+        &ui_from_scene,
+        &ui_from_world_3d,
+        view_from_world_3d,
+        spatial_kind,
+    );
 
     // When there are many visible multi-line labels, collapse them to their
     // first line to reduce visual clutter.
@@ -365,6 +365,7 @@ fn resolve_label_positions(
     labels: &[UiLabel],
     ui_from_scene: &egui::emath::RectTransform,
     ui_from_world_3d: &glam::Mat4,
+    view_from_world_3d: macaw::IsoTransform,
     spatial_kind: SpaceKind,
 ) -> Vec<(UiLabel, f32, egui::Pos2)> {
     let viewport = ui_from_scene.to().expand(100.0);
@@ -390,9 +391,6 @@ fn resolve_label_positions(
                 (f32::INFINITY, pos_in_ui)
             }
             UiLabelTarget::Position3D(pos) => {
-                if spatial_kind == SpaceKind::TwoD {
-                    continue; // TODO(#1640): 3D labels are not visible in 2D for now.
-                }
                 let pos_in_ui = *ui_from_world_3d * pos.extend(1.0);
                 if pos_in_ui.w <= 0.0 {
                     continue; // behind camera
@@ -412,7 +410,7 @@ fn resolve_label_positions(
     // Closest last (painters algorithm)
     resolved.sort_by_key(|(label, _, _)| {
         if let UiLabelTarget::Position3D(pos) = label.target {
-            OrderedFloat::from(-ui_from_world_3d.project_point3(pos).z)
+            OrderedFloat::from(view_from_world_3d.transform_point3(pos).z)
         } else {
             OrderedFloat::from(0.0)
         }
@@ -520,6 +518,7 @@ pub fn paint_loading_indicators(
 pub fn bbox_debug_ui(ui: &mut egui::Ui, state: &mut SpatialViewState) {
     ui.re_checkbox(&mut state.show_smoothed_bbox, "Smoothed bbox");
     ui.re_checkbox(&mut state.show_per_entity_bbox, "Per-entity bboxes");
+    ui.debug_only_badge();
 }
 
 /// Draws the origin axes gizmo of a spatial view.
@@ -575,6 +574,7 @@ pub fn draw_bounding_boxes(
 
     if state.show_per_entity_bbox {
         let mut batch = line_builder.batch("per_entity_regions_of_interest");
+        #[expect(clippy::iter_over_hash_type)] // Draw order of lines isn't important.
         for region_of_interest in state.bounding_boxes.region_of_interest_per_entity.values() {
             batch
                 .add_box_outline(region_of_interest)

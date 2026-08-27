@@ -6,7 +6,7 @@ use re_chunk::{ComponentIdentifier, TimelineName};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityPath, TimeInt};
 use re_sdk_types::blueprint::components::VisualizerInstructionId;
-use re_sdk_types::blueprint::datatypes::{ComponentSourceKind, VisualizerComponentMapping};
+use re_sdk_types::blueprint::encodings::{ComponentSourceKind, VisualizerComponentMapping};
 use re_sdk_types::{
     InvalidComponentIdentifierError,
     blueprint::archetypes::{self as blueprint_archetypes, EntityBehavior},
@@ -64,14 +64,6 @@ impl VisualizerComponentSource {
     }
 
     pub fn source_kind(&self) -> ComponentSourceKind {
-        match self {
-            Self::SourceComponent { .. } => ComponentSourceKind::SourceComponent,
-            Self::Override => ComponentSourceKind::Override,
-            Self::Default => ComponentSourceKind::Default,
-        }
-    }
-
-    pub fn component_source_kind(&self) -> ComponentSourceKind {
         match self {
             Self::SourceComponent { .. } => ComponentSourceKind::SourceComponent,
             Self::Override => ComponentSourceKind::Override,

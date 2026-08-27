@@ -13,28 +13,30 @@
 //! that srgb->linear conversion happens on texture load.
 //!
 
-use std::collections::HashMap;
 use std::num::NonZeroU64;
-use std::ops::Range;
 use std::sync::Arc;
 
 use bitflags::bitflags;
 use enumset::{EnumSet, enum_set};
 use itertools::Itertools as _;
 use parking_lot::Mutex;
+use re_span::Span;
 use smallvec::smallvec;
 
 use super::{DrawData, DrawError, RenderContext, Renderer};
-use crate::allocator::{DataTextureSource, create_and_fill_uniform_buffer_batch};
+use crate::allocator::create_and_fill_uniform_buffer_batch;
 use crate::draw_phases::{
     DrawPhase, OutlineMaskProcessor, PickingLayerObjectId, PickingLayerProcessor,
 };
 use crate::renderer::{DrawDataDrawable, DrawInstruction, DrawableCollectionViewInfo};
+use crate::transparent_sort::{
+    SortOrderCache, SortedDrawable, SortedDrawables, TransparentSort,
+    build_back_to_front_lookup_texture,
+};
 use crate::view_builder::ViewBuilder;
 use crate::wgpu_resources::{
     BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
-    GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, GpuTexture, PipelineLayoutDesc,
-    RenderPipelineDesc,
+    GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, PipelineLayoutDesc, RenderPipelineDesc,
 };
 use crate::{
     DepthOffset, DrawableCollector, Label, OutlineMaskPreference, PointCloudBuilder,
@@ -153,120 +155,16 @@ pub mod gpu_data {
     }
 }
 
-/// Per-frame back-to-front sorting data for a transparent point cloud batch.
-///
-/// Points within a transparent batch are sorted on the CPU each frame (in
-/// [`PointCloudDrawData::collect_drawables`]) so they can be painted back-to-front.
-/// Sorting is only done within a single batch, not against other batches or primitives.
-#[derive(Clone)]
-struct TransparentSort {
-    /// Object-space center of each point in this batch, used as the sort key.
-    object_positions: Arc<Vec<glam::Vec3>>,
-
-    /// Transforms the camera into the same space as `object_positions` once per view.
-    object_from_world: glam::Affine3A,
-
-    /// Caller-owned scratch buffers holding each view's previous back-to-front ordering.
-    ///
-    /// `None` disables cross-frame reuse, so the cloud is sorted from scratch every frame.
-    sort_order_cache: Option<PointCloudSortOrderCache>,
-}
-
-/// Previous point ordering for each view rendering the same point cloud batch.
-#[derive(Clone, Default, re_byte_size::SizeBytes)]
-pub struct PointCloudSortOrderCache {
-    sort_orders: Arc<Mutex<HashMap<crate::ViewBuilderId, Vec<u32>>>>,
-}
-
-/// Builds a lookup texture that draws points back-to-front (farthest from the camera first),
-/// allowing premultiplied-alpha blending to composite correctly.
-fn build_back_to_front_lookup_texture(
-    ctx: &RenderContext,
-    sort: &TransparentSort,
-    view_info: &DrawableCollectionViewInfo,
-) -> Option<GpuTexture> {
-    re_tracing::profile_function!();
-
-    let object_positions = &sort.object_positions;
-    let num_points = object_positions.len();
-    if num_points == 0 {
-        return None;
-    }
-
-    // Start from the previous frame's ordering when we have one: the eye usually moves only
-    // a little between frames, so the ordering is nearly correct already and re-sorting it is
-    // much cheaper than sorting `0..n` from scratch (Rust's sort detects already-ordered runs).
-    let mut point_order = sort
-        .sort_order_cache
-        .as_ref()
-        .and_then(|cache| cache.sort_orders.lock().remove(&view_info.view_id))
-        .filter(|order| order.len() == num_points)
-        .unwrap_or_else(|| (0..num_points as u32).collect());
-
-    let eye_object_position = sort
-        .object_from_world
-        .transform_point3(view_info.camera_world_position.into());
-    {
-        re_tracing::profile_scope!("sort");
-        // `sort_by_cached_key` computes the key once per point (`O(n)` distance computations)
-        // instead of recomputing it on every comparison like `sort_by` would.
-        // The squared distance is non-negative and finite, so its `f32` bit pattern is monotonic
-        // and usable as an integer sort key; `Reverse` gives us farthest-first.
-        point_order.sort_by_cached_key(|&i| {
-            // Sorting by radial distance keeps the ordering stable when the camera rotates.
-            let distance_squared =
-                object_positions[i as usize].distance_squared(eye_object_position);
-            std::cmp::Reverse(distance_squared.to_bits())
-        });
-    }
-
-    // Stash this frame's ordering to seed next frame's sort for this view.
-    if let Some(cache) = &sort.sort_order_cache {
-        cache
-            .sort_orders
-            .lock()
-            .insert(view_info.view_id, point_order.clone());
-    }
-
-    let mut lookup_texture = DataTextureSource::new(ctx);
-    if let Err(err) = lookup_texture.extend_from_slice(&point_order) {
-        re_log::error_once!("Failed to upload point index lookup texture: {err}");
-        return None;
-    }
-    match lookup_texture.finish(
-        wgpu::TextureFormat::R32Uint,
-        "PointCloudDrawData::point_index_lookup_texture",
-    ) {
-        Ok(texture) => Some(texture),
-        Err(err) => {
-            re_log::error_once!("Failed to upload point index lookup texture: {err}");
-            None
-        }
-    }
-}
-
 /// Internal, ready to draw representation of [`PointCloudBatchInfo`]
 #[derive(Clone)]
 struct PointCloudBatch {
     bind_group: GpuBindGroup,
-    vertex_range: Range<u32>,
+    vertex_range: Span<u32>,
     center_world_position: glam::Vec3,
     active_phases: EnumSet<DrawPhase>,
 
     /// Set for transparent batches that should be painted back-to-front.
     sort: Option<TransparentSort>,
-}
-
-/// Resources selected for a single batch in a single view.
-struct PointCloudDrawable {
-    batch_index: usize,
-    lookup_bind_group: Option<GpuBindGroup>,
-}
-
-#[derive(Default)]
-struct PointCloudDrawables {
-    frame_index: u64, // TODO(andreas): having to hand-implement this mechanism here seems brittle, surely per-frame drawable data will happen more often in the future.
-    entries: Vec<PointCloudDrawable>,
 }
 
 /// A point cloud drawing operation.
@@ -279,7 +177,7 @@ pub struct PointCloudDrawData {
 
     /// Appended during drawable collection so each view retains its own sorted lookup texture.
     /// Entries from the previous frame are discarded when this draw data is reused.
-    drawables: Arc<Mutex<PointCloudDrawables>>,
+    drawables: Arc<Mutex<SortedDrawables>>,
 }
 
 impl DrawData for PointCloudDrawData {
@@ -325,22 +223,14 @@ impl DrawData for PointCloudDrawData {
                 None
             };
 
-            let drawable_index = {
-                let mut drawables = self.drawables.lock();
-
-                // Discard outdated drawables first.
-                let frame_index = collector.render_ctx().active_frame.frame_index;
-                if drawables.frame_index != frame_index {
-                    drawables.frame_index = frame_index;
-                    drawables.entries.clear();
-                }
-
-                drawables.entries.push(PointCloudDrawable {
+            let frame_index = collector.render_ctx().active_frame.frame_index;
+            let drawable_index = self.drawables.lock().push_for_frame(
+                frame_index,
+                SortedDrawable {
                     batch_index,
                     lookup_bind_group,
-                });
-                drawables.entries.len() - 1
-            };
+                },
+            );
 
             collector.add_drawable(
                 batch.active_phases,
@@ -385,7 +275,7 @@ pub struct PointCloudBatchInfo {
     /// Having many of these individual outline masks can be slow as they require each their own uniform buffer & draw call.
     /// This feature is meant for a limited number of "extra selections"
     /// If an overall mask is defined as well, the per-point-range masks is overwriting the overall mask.
-    pub additional_outline_mask_ids_vertex_ranges: Vec<(Range<u32>, OutlineMaskPreference)>,
+    pub additional_outline_mask_ids_vertex_ranges: Vec<(Span<u32>, OutlineMaskPreference)>,
 
     /// Picking object id that applies for the entire batch.
     pub picking_object_id: PickingLayerObjectId,
@@ -405,7 +295,7 @@ pub struct PointCloudBatchInfo {
     ///
     /// The caller owns the storage and its invalidation. `None` disables the optimization, sorting
     /// from scratch every frame. Only relevant for transparent batches.
-    pub sort_order_cache: Option<PointCloudSortOrderCache>,
+    pub sort_order_cache: Option<SortOrderCache>,
 }
 
 impl Default for PointCloudBatchInfo {
@@ -460,7 +350,7 @@ impl PointCloudDrawData {
                 bind_group_all_points: None,
                 bind_group_all_points_outline_mask: None,
                 batches: Vec::new(),
-                drawables: Arc::new(Mutex::new(PointCloudDrawables::default())),
+                drawables: Arc::new(Mutex::new(SortedDrawables::default())),
             });
         }
 
@@ -671,20 +561,19 @@ impl PointCloudDrawData {
                     ctx,
                     batch_info.label.clone(),
                     uniform_buffer_binding,
-                    start_point_for_next_batch..point_vertex_range_end,
+                    Span::from_start_end(start_point_for_next_batch, point_vertex_range_end),
                     center_world_position,
                     active_phases,
                     sort,
                 ));
 
                 for (range, _) in &batch_info.additional_outline_mask_ids_vertex_ranges {
-                    let range = (range.start + start_point_for_next_batch)
-                        ..(range.end + start_point_for_next_batch);
+                    let range = range.add(start_point_for_next_batch);
                     batches_internal.push(point_renderer.create_point_cloud_batch(
                         ctx,
                         format!("{:?} strip-only {:?}", batch_info.label, range).into(),
                         uniform_buffer_bindings_mask_only_batches.next().unwrap(),
-                        range.clone(),
+                        range,
                         center_world_position,
                         enum_set![DrawPhase::OutlineMask],
                         None,
@@ -704,7 +593,7 @@ impl PointCloudDrawData {
             bind_group_all_points: Some(bind_group_all_points),
             bind_group_all_points_outline_mask: Some(bind_group_all_points_outline_mask),
             batches: batches_internal,
-            drawables: Arc::new(Mutex::new(PointCloudDrawables::default())),
+            drawables: Arc::new(Mutex::new(SortedDrawables::default())),
         })
     }
 }
@@ -728,7 +617,7 @@ impl PointCloudRenderer {
         ctx: &RenderContext,
         label: Label,
         uniform_buffer_binding: BindGroupEntry,
-        vertex_range: Range<u32>,
+        vertex_range: Span<u32>,
         center_world_position: glam::Vec3,
         active_phases: EnumSet<DrawPhase>,
         sort: Option<TransparentSort>,
@@ -747,7 +636,7 @@ impl PointCloudRenderer {
 
         PointCloudBatch {
             bind_group,
-            vertex_range: (vertex_range.start * 6)..(vertex_range.end * 6),
+            vertex_range: vertex_range.scale(6),
             center_world_position,
             active_phases,
             sort,
@@ -997,7 +886,7 @@ impl Renderer for PointCloudRenderer {
             let point_cloud_drawables = draw_data.drawables.lock();
             for drawable in *drawables {
                 let point_cloud_drawable =
-                    &point_cloud_drawables.entries[drawable.draw_data_payload as usize];
+                    point_cloud_drawables.get(drawable.draw_data_payload as usize);
                 let batch = &draw_data.batches[point_cloud_drawable.batch_index];
 
                 let lookup_bind_group = point_cloud_drawable
@@ -1008,7 +897,7 @@ impl Renderer for PointCloudRenderer {
                 pass.set_bind_group(2, &batch.bind_group, &[]);
                 pass.set_bind_group(3, lookup_bind_group, &[]);
 
-                pass.draw(batch.vertex_range.clone(), 0..1);
+                pass.draw(batch.vertex_range.range(), 0..1);
             }
         }
 

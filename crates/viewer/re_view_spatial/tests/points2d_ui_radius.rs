@@ -58,7 +58,7 @@ fn test_points2d_ui_radius_constant_across_positions() {
         ctx.save_blueprint_archetype(
             property_path,
             &re_sdk_types::blueprint::archetypes::VisualBounds2D::new(
-                re_sdk_types::datatypes::Range2D {
+                re_sdk_types::encodings::Range2D {
                     x_range: [-500.0, 5500.0].into(),
                     y_range: [-3000.0, 3000.0].into(),
                 },
@@ -69,7 +69,7 @@ fn test_points2d_ui_radius_constant_across_positions() {
     });
 
     test_context
-        .run_view_ui_and_save_snapshot(
+        .run_view_ui_and_save_renderer_snapshot(
             view_id,
             "points2d_ui_radius_constant_across_positions",
             SNAPSHOT_SIZE,

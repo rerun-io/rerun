@@ -209,9 +209,9 @@ impl<T: DecoderEntrypoint> Decoder<T> {
                     let (version, options) = match version_and_options {
                         Ok(ok) => ok,
                         Err(err) => {
-                            if is_first_header {
+                            return if is_first_header {
                                 // We expected a header, but didn't find one!
-                                return Err(err.into());
+                                Err(err.into())
                             } else {
                                 // A bunch of weird trailing bytes means we're now in an irrecoverable state, but
                                 // it doesn't change the fact that we've just successfully yielded an entire stream's
@@ -223,8 +223,8 @@ impl<T: DecoderEntrypoint> Decoder<T> {
                                     "trailing bytes in rrd stream: {header_data:?} ({err})"
                                 );
                                 self.state = DecoderState::Aborted;
-                                return Ok(None);
-                            }
+                                Ok(None)
+                            };
                         }
                     };
 
@@ -309,33 +309,27 @@ impl<T: DecoderEntrypoint> Decoder<T> {
                     if let Some(message) = message {
                         self.state = DecoderState::WaitingForMessageHeader;
                         return Ok(Some(message));
-                    } else {
-                        re_log::trace!(
-                            "End of stream - expecting either a StreamFooter or a new Streamheader"
-                        );
-
-                        if !bytes.is_empty() {
-                            let rrd_footer =
-                                re_protos::log_msg::v1alpha1::RrdFooter::from_rrd_bytes(&bytes)?;
-                            self.rrd_manifests.extend(rrd_footer.manifests);
-
-                            // A non-empty ::End message means there must be a footer ahead, no exception.
-                            self.state = DecoderState::WaitingForStreamFooter;
-                        } else {
-                            // There are 2 possible scenarios where we can end up here:
-                            // * The recording doesn't contain any data messages (e.g. it's empty except for
-                            //   a `SetStoreInfo` message).
-                            // * Backward compatibility: the payload is empty (i.e. `header.len == 0`) because the
-                            //   `End` message was written by a legacy encoder that predates the introduction of footers.
-                            //
-                            // Either way, we have to expect a footer next, since we don't know for sure which scenario
-                            // we're in. We could check the encoder version and such, but that's just superfluous complexity
-                            // since `WaitingForStreamFooter` already knows how to deal with optional footers anyway.
-                            self.state = DecoderState::WaitingForStreamFooter;
-                        }
-
-                        return self.try_read();
                     }
+                    re_log::trace!(
+                        "End of stream - expecting either a StreamFooter or a new Streamheader"
+                    );
+
+                    if !bytes.is_empty() {
+                        let rrd_footer =
+                            re_protos::log_msg::v1alpha1::RrdFooter::from_rrd_bytes(&bytes)?;
+                        self.rrd_manifests.extend(rrd_footer.manifests);
+                    }
+
+                    // We expect a footer next, either way:
+                    // * A non-empty `::End` message means there must be a footer ahead, no exception.
+                    // * An empty payload means either that the recording doesn't contain any data messages
+                    //   (e.g. it's empty except for a `SetStoreInfo` message), or that the `End` message was
+                    //   written by a legacy encoder that predates the introduction of footers. We don't know
+                    //   for sure which scenario we're in, and we don't have to: `WaitingForStreamFooter`
+                    //   already knows how to deal with optional footers anyway.
+                    self.state = DecoderState::WaitingForStreamFooter;
+
+                    return self.try_read();
                 }
 
                 // Not enough data yet -- wait to be fed and called back once again.

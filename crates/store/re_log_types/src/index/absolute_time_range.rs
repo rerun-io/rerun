@@ -6,7 +6,7 @@ use crate::{TimeInt, TimeReal};
 
 /// An absolute time range using [`TimeInt`].
 ///
-/// Can be resolved from [`re_types_core::datatypes::TimeRange`] (which *may* have relative bounds) using a given timeline & cursor.
+/// Can be resolved from [`re_types_core::encodings::TimeRange`] (which *may* have relative bounds) using a given timeline & cursor.
 ///
 /// Should not include [`TimeInt::STATIC`].
 #[derive(
@@ -135,8 +135,8 @@ impl AbsoluteTimeRange {
     }
 
     pub fn from_relative_time_range(
-        range: &re_types_core::datatypes::TimeRange,
-        cursor: impl Into<re_types_core::datatypes::TimeInt>,
+        range: &re_types_core::encodings::TimeRange,
+        cursor: impl Into<re_types_core::encodings::TimeInt>,
     ) -> Self {
         let cursor = cursor.into();
 

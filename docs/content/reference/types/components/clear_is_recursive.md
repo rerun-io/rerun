@@ -5,8 +5,8 @@ title: "ClearIsRecursive"
 
 Configures how a clear operation should behave - recursive or not.
 
-## Rerun datatype
-[`Bool`](../datatypes/bool.md)
+## Rerun encoding
+[`Bool`](../encodings/bool.md)
 
 
 ## Arrow datatype

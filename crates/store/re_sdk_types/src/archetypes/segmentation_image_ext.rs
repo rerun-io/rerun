@@ -1,5 +1,5 @@
 use super::SegmentationImage;
-use crate::datatypes::{ImageFormat, TensorData};
+use crate::encodings::{ImageFormat, TensorData};
 use crate::image::{
     ImageConstructionError, blob_and_datatype_from_tensor, find_non_empty_dim_indices,
 };

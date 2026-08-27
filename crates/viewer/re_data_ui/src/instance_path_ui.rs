@@ -41,7 +41,7 @@ impl DataUi for InstancePath {
             ui_layout.label(
                 ui,
                 format!(
-                    "{self} has no own components on timeline {:?}, but its children do",
+                    "{self} has no own components on timeline {}, but its children do",
                     ctx.timeline_name()
                 ),
             );

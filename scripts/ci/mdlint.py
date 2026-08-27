@@ -53,14 +53,14 @@ def extend_span(content: str, span: Span) -> Span:
     ```
     """
 
-    if content[span.start] == "\n":
+    if span.start < len(content) and content[span.start] == "\n":
         actual_start = span.start + 1
     else:
         actual_start = content.rfind("\n", 0, span.start)
         if actual_start == -1:
             actual_start = 0
 
-    if content[span.end] == "\n":
+    if span.end == len(content) or content[span.end] == "\n":
         actual_end = span.end
     else:
         actual_end = content.find("\n", span.end)
@@ -245,12 +245,36 @@ class BadDataReferenceError(Error):
         )
 
 
+class LooseUpcomingAssetLinkError(Error):
+    CODE = "E006"
+
+    def __init__(self, span: Span) -> None:
+        super().__init__(
+            type(self).CODE,
+            "upcoming changelog entries must not use GitHub assets or standalone URLs",
+            span,
+        )
+
+    @staticmethod
+    def explain() -> str:
+        return textwrap.dedent(
+            """
+            Do not use GitHub-hosted assets in `docs/content/changelog/upcoming/`.
+            Store release media as permanent website assets and embed them with normal Markdown or HTML markup.
+
+            Do not paste any URL on its own line.
+            Use a named Markdown link for ordinary links.
+            """,
+        )
+
+
 EXPLAIN = {
     NoClosingTagError.CODE: NoClosingTagError.explain,
     NoPrecedingBlankLineError.CODE: NoPrecedingBlankLineError.explain,
     BlankLinesError.CODE: BlankLinesError.explain,
     BacktickLinkError.CODE: BacktickLinkError.explain,
     BadDataReferenceError.CODE: BadDataReferenceError.explain,
+    LooseUpcomingAssetLinkError.CODE: LooseUpcomingAssetLinkError.explain,
 }
 
 
@@ -320,9 +344,21 @@ def check_preceding_newline(tagname: str, content: str, spans: ElementSpans, err
 #   <picture>
 #     <source>
 #   </picture>
-PICTURE_BAD_SOURCE_INDENT = re.compile("(\\n\\s*)(\\n\\s+)<source")
+PICTURE_BAD_SOURCE_INDENT = re.compile(r"(\n\s*)(\n\s+)<source")
 
 DATA_INLINE_VIEWER = "data-inline-viewer"
+UPCOMING_CHANGELOG_PARTS = ("docs", "content", "changelog", "upcoming")
+STANDALONE_URL = re.compile(
+    r"^[ \t]*(?:(?:>[ \t]*)+)?(?:(?:[-+*]|\d+[.)])[ \t]+)?"
+    r"(?P<url>https?://[^\s<>]+)[ \t]*(?:\r?\n)?$"
+)
+GITHUB_ASSET_URL = re.compile(
+    r"https?://(?:"
+    r"github\.com/(?:user-attachments/assets|[^/\s<>]+/[^/\s<>]+/assets)/"
+    r"|(?:private-)?user-images\.githubusercontent\.com/"
+    r")[^\s<>\"')]+"
+)
+FENCED_CODE = re.compile(r"^[ \t]{0,3}(?P<marker>`{3,}|~{3,})")
 
 
 def check_picture_elements(content: str, errors: list[Error]) -> None:
@@ -413,6 +449,68 @@ def check_invalid_links(content: str, errors: list[Error]) -> None:
         errors.append(BacktickLinkError(span=Span(link_start, link_end)))
 
 
+def is_upcoming_changelog(path: str) -> bool:
+    parts = Path(path).parts
+    return any(
+        parts[index : index + len(UPCOMING_CHANGELOG_PARTS)] == UPCOMING_CHANGELOG_PARTS
+        for index in range(len(parts) - len(UPCOMING_CHANGELOG_PARTS) + 1)
+    )
+
+
+def check_upcoming_asset_links(path: str, content: str, errors: list[Error]) -> None:
+    if not is_upcoming_changelog(path):
+        return
+
+    fence: str | None = None
+    in_comment = False
+    offset = 0
+    for line in content.splitlines(keepends=True):
+        marker_match = FENCED_CODE.match(line)
+        if marker_match is not None and not in_comment:
+            marker = marker_match.group("marker")
+            if fence is None:
+                fence = marker
+            elif marker.startswith(fence[0]) and len(fence) <= len(marker):
+                fence = None
+        elif fence is None:
+            visible_line = list(line)
+            cursor = 0
+            while cursor < len(line):
+                if in_comment:
+                    comment_end = line.find("-->", cursor)
+                    if comment_end == -1:
+                        comment_end = len(line)
+                    else:
+                        comment_end += len("-->")
+                        in_comment = False
+                    visible_line[cursor:comment_end] = " " * (comment_end - cursor)
+                    cursor = comment_end
+                else:
+                    comment_start = line.find("<!--", cursor)
+                    if comment_start == -1:
+                        break
+                    in_comment = True
+                    cursor = comment_start
+
+            visible_content = "".join(visible_line)
+            github_asset_matches = list(GITHUB_ASSET_URL.finditer(visible_content))
+            for match in github_asset_matches:
+                errors.append(
+                    LooseUpcomingAssetLinkError(
+                        Span(offset + match.start(), offset + match.end()),
+                    )
+                )
+
+            url_match = STANDALONE_URL.fullmatch(visible_content)
+            if url_match is not None and not github_asset_matches:
+                errors.append(
+                    LooseUpcomingAssetLinkError(
+                        Span(offset + url_match.start("url"), offset + url_match.end("url")),
+                    )
+                )
+        offset += len(line)
+
+
 def check_file(path: str) -> str | None:
     errors: list[Error] = []
     content = Path(path).read_text(encoding="utf-8")
@@ -420,6 +518,7 @@ def check_file(path: str) -> str | None:
     check_picture_elements(content, errors)
     check_video_elements(content, errors)
     check_invalid_links(content, errors)
+    check_upcoming_asset_links(path, content, errors)
 
     if len(errors) != 0:
         return "\n".join([error.render(path, content) for error in errors])

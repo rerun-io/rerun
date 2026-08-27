@@ -1,9 +1,9 @@
 use std::collections::BTreeSet;
 use std::sync::Arc;
 
-use egui::accesskit::{Role, Toggled};
+use egui::accesskit::Role;
 use egui::{Modifiers, PointerButton};
-use egui_kittest::kittest::{NodeT as _, Queryable as _};
+use egui_kittest::kittest::Queryable as _;
 use parking_lot::Mutex;
 use re_sdk::external::re_log_types::{SetStoreInfo, StoreInfo};
 use re_sdk::external::re_tuid::Tuid;
@@ -18,12 +18,10 @@ use re_viewer::external::re_sdk_types;
 use re_viewer::external::re_viewer_context::{self, AppContext, ViewerContext, blueprint_timeline};
 use re_viewer::viewer_test_utils::AppTestingExt as _;
 use re_viewer::{SystemCommand, SystemCommandSender as _};
-use re_viewer_context::{ContainerId, Route};
+use re_viewer_context::{ContainerId, Route, TimeControl, TimeControlCommand};
 use re_viewport_blueprint::ViewportBlueprint;
 
-// use crate::GetSection;
-// use crate::GetSection as _;
-use crate::ViewerSection;
+use crate::ViewerHarnessExt;
 
 /// Returns true if `s` contains a `YYYY-MM-DD` or `HH:MM:SS` substring.
 ///
@@ -57,7 +55,7 @@ fn contains_date_or_time_pattern(s: &str) -> bool {
 }
 
 // Kittest harness utilities specific to the Rerun app.
-pub trait HarnessExt<'h> {
+pub trait HarnessExt<'h>: ViewerHarnessExt {
     // Initializes the chunk store with a new, empty recording and blueprint.
     fn init_recording(&mut self);
 
@@ -77,6 +75,15 @@ pub trait HarnessExt<'h> {
     fn run_with_app_context<R: 'static>(
         &mut self,
         func: impl FnOnce(&AppContext<'_>) -> R + 'static,
+    ) -> R;
+
+    // Sends time control commands to the active recording, then lets the app settle.
+    fn send_time_commands(&mut self, commands: impl IntoIterator<Item = TimeControlCommand>);
+
+    // Runs a function with the `TimeControl` of the active recording.
+    fn with_active_time_ctrl<R: 'static>(
+        &mut self,
+        func: impl FnOnce(&TimeControl) -> R + 'static,
     ) -> R;
 
     // Removes all views and containers from the current blueprint.
@@ -131,31 +138,6 @@ pub trait HarnessExt<'h> {
     // Prints the current viewer state.
     fn debug_viewer_state(&mut self);
 
-    // Opens / closes app panels
-    fn set_panel_opened(&mut self, panel_label: &str, opened: bool);
-
-    fn set_blueprint_panel_opened(&mut self, opened: bool) {
-        self.set_panel_opened("Blueprint panel toggle", opened);
-    }
-
-    fn set_selection_panel_opened(&mut self, opened: bool) {
-        self.set_panel_opened("Selection panel toggle", opened);
-    }
-
-    fn set_time_panel_opened(&mut self, opened: bool) {
-        self.set_panel_opened("Time panel toggle", opened);
-    }
-
-    // Get a viewer section, eg. blueprint tree or selection panel.
-    fn section<'a>(&'a mut self, section_label: &'a str) -> ViewerSection<'a, 'h>
-    where
-        'h: 'a;
-
-    // The viewer section whose root node is the root of the app.
-    fn root_section<'a>(&'a mut self) -> ViewerSection<'a, 'h>
-    where
-        'h: 'a;
-
     /// Helper function to save the active recording to file for troubleshooting.
     ///
     /// Note: Right now it _only_ saves the recording and blueprints are ignored.
@@ -164,50 +146,20 @@ pub trait HarnessExt<'h> {
     /// Helper function to save the active blueprint to file for troubleshooting.
     fn save_blueprint_to_file(&mut self, path: impl AsRef<std::path::Path>);
 
-    // The viewer section whose root node is the blueprint tree.
-    fn blueprint_tree<'a>(&'a mut self) -> ViewerSection<'a, 'h> {
-        self.section("_blueprint_tree")
-    }
+    fn click_nth_label(&mut self, label: &str, index: usize);
+    fn right_click_nth_label(&mut self, label: &str, index: usize);
+    fn hover_nth_label(&mut self, label: &str, index: usize);
+    fn drag_nth_label(&mut self, label: &str, index: usize);
+    fn drop_nth_label(&mut self, label: &str, index: usize);
+}
 
-    // The viewer section whose root node is the streams tree.
-    fn streams_tree<'a>(&'a mut self) -> ViewerSection<'a, 'h> {
-        self.section("_streams_tree")
-    }
-
-    // The viewer section whose root node is the recording panel (the "Sources" panel).
-    fn recording_panel<'a>(&'a mut self) -> ViewerSection<'a, 'h> {
-        self.section("_recording_panel")
-    }
-
-    // The viewer section whose root node is the selection panel.
-    fn selection_panel<'a>(&'a mut self) -> ViewerSection<'a, 'h> {
-        self.section("_selection_panel")
-    }
-
-    // Convenience proxy functions to the root section:
-
-    fn click_label(&mut self, label: &str) {
-        self.root_section().click_label(label);
-    }
-
-    fn right_click_label(&mut self, label: &str) {
-        self.root_section().right_click_label(label);
-    }
-
-    fn click_label_contains(&mut self, label: &str) {
-        self.root_section().click_label_contains(label);
-    }
-
+impl<'h> HarnessExt<'h> for egui_kittest::Harness<'h, re_viewer::App> {
     fn click_nth_label(&mut self, label: &str, index: usize) {
         self.root_section().click_nth_label(label, index);
     }
 
     fn right_click_nth_label(&mut self, label: &str, index: usize) {
         self.root_section().right_click_nth_label(label, index);
-    }
-
-    fn hover_label_contains(&mut self, label: &str) {
-        self.root_section().hover_label_contains(label);
     }
 
     fn hover_nth_label(&mut self, label: &str, index: usize) {
@@ -221,9 +173,27 @@ pub trait HarnessExt<'h> {
     fn drop_nth_label(&mut self, label: &str, index: usize) {
         self.root_section().drop_nth_label(label, index);
     }
-}
 
-impl<'h> HarnessExt<'h> for egui_kittest::Harness<'h, re_viewer::App> {
+    fn send_time_commands(&mut self, commands: impl IntoIterator<Item = TimeControlCommand>) {
+        let commands: Vec<_> = commands.into_iter().collect();
+        self.run_with_app_context(move |ctx| {
+            ctx.send_time_commands_to_active_recording(commands);
+        });
+        self.run_ok();
+    }
+
+    fn with_active_time_ctrl<R: 'static>(
+        &mut self,
+        func: impl FnOnce(&TimeControl) -> R + 'static,
+    ) -> R {
+        self.run_with_app_context(move |ctx| {
+            func(
+                ctx.active_time_ctrl()
+                    .expect("active recording route should have a time control"),
+            )
+        })
+    }
+
     fn clear_current_blueprint(&mut self) {
         self.setup_viewport_blueprint(|_viewer_context, blueprint| {
             for item in blueprint.contents_iter() {
@@ -541,38 +511,6 @@ impl<'h> HarnessExt<'h> for egui_kittest::Harness<'h, re_viewer::App> {
             "Expected one new container id, got {container_ids:?}"
         );
         *container_ids[0]
-    }
-
-    fn set_panel_opened(&mut self, panel_label: &str, opened: bool) {
-        let node = self.get_by_label(panel_label);
-        let is_open = Some(Toggled::True) == node.accesskit_node().data().toggled();
-        if is_open != opened {
-            // We don't use `click_label` here because it settles internally via `run()`,
-            // which can cause panics.
-            self.get_by_label(panel_label).click();
-        }
-        self.remove_cursor();
-        self.run_ok();
-    }
-
-    fn section<'a>(&'a mut self, section_label: &'a str) -> ViewerSection<'a, 'h>
-    where
-        'h: 'a,
-    {
-        ViewerSection::<'a, 'h> {
-            harness: self,
-            section_label: Some(section_label),
-        }
-    }
-
-    fn root_section<'a>(&'a mut self) -> ViewerSection<'a, 'h>
-    where
-        'h: 'a,
-    {
-        ViewerSection::<'a, 'h> {
-            harness: self,
-            section_label: None,
-        }
     }
 
     fn save_recording_to_file(&mut self, path: impl AsRef<std::path::Path>) {

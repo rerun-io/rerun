@@ -385,7 +385,6 @@ fn footer_interleaved_stores_without_set_store_info() {
             row_id: *RowId::ZERO,
             info: re_log_types::StoreInfo {
                 store_id: store_id_recording.clone(),
-                cloned_from: None,
                 store_source: re_log_types::StoreSource::Unknown,
                 store_version: Some(re_build_info::CrateVersion::new(1, 2, 3)),
             },
@@ -399,6 +398,14 @@ fn footer_interleaved_stores_without_set_store_info() {
     );
 
     let msgs_encoded = Encoder::encode(msgs.map(Ok)).unwrap();
+
+    let store_ids = futures::executor::block_on(re_log_encoding::enumerate_rrd_stores(
+        &bytes::Bytes::from(msgs_encoded.clone()),
+    ))
+    .unwrap();
+    let mut expected_store_ids = vec![store_id_recording.clone(), store_id_blueprint.clone()];
+    expected_store_ids.sort();
+    assert_eq!(store_ids, expected_store_ids);
 
     // Decode the footer and check that we got two separate manifests, each holding the chunks
     // that genuinely belong to it. Pre-fix, the blueprint chunks were merged into the recording's
@@ -466,7 +473,6 @@ fn footer_empty() {
             row_id: *RowId::ZERO,
             info: re_log_types::StoreInfo {
                 store_id: store_id.clone(),
-                cloned_from: None,
                 store_source: re_log_types::StoreSource::Unknown,
                 store_version: Some(re_build_info::CrateVersion::new(1, 2, 3)),
             },
@@ -532,7 +538,6 @@ fn generate_recording(
             row_id: *RowId::ZERO,
             info: re_log_types::StoreInfo {
                 store_id: store_id.clone(),
-                cloned_from: None,
                 store_source: re_log_types::StoreSource::Unknown,
                 store_version: Some(re_build_info::CrateVersion::new(1, 2, 3)),
             },
@@ -670,7 +675,6 @@ fn generate_blueprint(
             row_id: *RowId::ZERO,
             info: re_log_types::StoreInfo {
                 store_id: store_id.clone(),
-                cloned_from: None,
                 store_source: re_log_types::StoreSource::Unknown,
                 store_version: Some(re_build_info::CrateVersion::new(4, 5, 6)),
             },
@@ -757,10 +761,10 @@ fn add_chunk_keys_to_raw(raw: &RawRrdManifest) -> RawRrdManifest {
     }
 }
 
-/// Verifies that concatenating manifests where some have `chunk_keys` and others don't
+/// Verifies that merging manifests where some have `chunk_keys` and others don't
 /// produces a correctly aligned result (null keys for manifests without them).
 #[test]
-fn concat_with_mixed_chunk_keys() {
+fn merge_with_mixed_chunk_keys() {
     use re_log_types::example_components::{MyPoint, MyPoints};
     use re_log_types::{TimeInt, build_frame_nr};
 
@@ -799,8 +803,8 @@ fn concat_with_mixed_chunk_keys() {
     assert!(m1.col_chunk_key_raw().is_some());
     assert!(m2.col_chunk_key_raw().is_none());
 
-    // Concat should handle mixed chunk_keys gracefully
-    let combined = RrdManifest::concat(&[&m1, &m2]).unwrap();
+    // Merging should handle mixed chunk_keys gracefully
+    let combined = RrdManifest::merge(&[&m1, &m2]).unwrap();
 
     // Total chunks must equal sum of parts
     assert_eq!(combined.num_chunks(), 4);
@@ -821,6 +825,112 @@ fn concat_with_mixed_chunk_keys() {
     // Last two entries (from m2, which had no keys) should be null
     assert!(combined_keys.is_null(2));
     assert!(combined_keys.is_null(3));
+}
+
+/// Two manifests that disagree on the type of a column they both have cannot have their schemas
+/// unified. The merge keeps the schema of the first one and still describes every chunk.
+#[test]
+fn merge_keeps_the_first_schema_when_columns_disagree() {
+    use re_log_types::example_components::{MyPoint, MyPoint64, MyPoints};
+    use re_log_types::{TimeInt, build_frame_nr};
+
+    let store_id = generate_recording_store_id();
+
+    let mut next_chunk_id = next_chunk_id_generator(300);
+    let mut next_row_id = next_row_id_generator(300);
+    let timepoint = TimePoint::from([build_frame_nr(TimeInt::new_temporal(10))]);
+
+    let manifest_of = |chunk: Chunk| {
+        let raw =
+            RawRrdManifest::build_in_memory_from_chunks(store_id.clone(), [chunk].iter()).unwrap();
+        RrdManifest::try_new(&raw).unwrap()
+    };
+
+    // The same component logged with two different types, so the column shares its name but not
+    // its datatype.
+    let points = MyPoint::from_iter(0..1);
+    let first = manifest_of(
+        Chunk::builder_with_id(next_chunk_id(), "entity_a")
+            .with_sparse_component_batches(
+                next_row_id(),
+                timepoint.clone(),
+                [(MyPoints::descriptor_points(), Some(&points as _))],
+            )
+            .build()
+            .unwrap(),
+    );
+
+    let points_64 = MyPoint64::from_iter(0..1);
+    let second = manifest_of(
+        Chunk::builder_with_id(next_chunk_id(), "entity_a")
+            .with_sparse_component_batches(
+                next_row_id(),
+                timepoint,
+                [(MyPoints::descriptor_points(), Some(&points_64 as _))],
+            )
+            .build()
+            .unwrap(),
+    );
+
+    let combined = RrdManifest::merge(&[&first, &second]).unwrap();
+
+    assert_eq!(combined.num_chunks(), 2);
+    assert_eq!(combined.recording_schema(), first.recording_schema());
+}
+
+/// Filtering a manifest drops the chunk logged under `__properties` and keeps every other chunk.
+#[test]
+fn without_recording_properties_only_drops_the_properties_chunk() {
+    use re_log_types::example_components::{MyPoint, MyPoints};
+    use re_log_types::{EntityPath, TimeInt, build_frame_nr};
+
+    let store_id = generate_recording_store_id();
+
+    let mut next_chunk_id = next_chunk_id_generator(400);
+    let mut next_row_id = next_row_id_generator(400);
+
+    let mut make_chunk = |entity: EntityPath, timepoint: TimePoint| -> Chunk {
+        let points = MyPoint::from_iter(0..1);
+        Chunk::builder_with_id(next_chunk_id(), entity)
+            .with_sparse_component_batches(
+                next_row_id(),
+                timepoint,
+                [(MyPoints::descriptor_points(), Some(&points as _))],
+            )
+            .build()
+            .unwrap()
+    };
+
+    let data = make_chunk(
+        "entity_a".into(),
+        TimePoint::from([build_frame_nr(TimeInt::new_temporal(10))]),
+    );
+    let properties = make_chunk(EntityPath::properties(), TimePoint::STATIC);
+
+    let raw = RawRrdManifest::build_in_memory_from_chunks(
+        store_id.clone(),
+        [&data, &properties].into_iter(),
+    )
+    .unwrap();
+    assert_eq!(RrdManifest::try_new(&raw).unwrap().num_chunks(), 2);
+
+    let filtered = raw.without_recording_properties().unwrap();
+    let filtered = RrdManifest::try_new(&filtered).unwrap();
+
+    assert_eq!(filtered.col_chunk_ids().to_vec(), vec![data.id()]);
+    assert!(
+        filtered.static_map().is_empty(),
+        "the properties chunk was the only static one"
+    );
+
+    // A manifest that has nothing to drop comes back untouched.
+    let data_only =
+        RawRrdManifest::build_in_memory_from_chunks(store_id, std::iter::once(&data)).unwrap();
+    let before = data_only.data.clone();
+    assert_eq!(
+        data_only.without_recording_properties().unwrap().data,
+        before
+    );
 }
 
 /// Verifies that `heap_size_bytes` accounts for pre-extracted arrays that are NOT
@@ -876,9 +986,9 @@ fn size_bytes_accounts_for_extracted_arrays() {
 }
 
 /// Verifies that `RawRrdManifest::concat` → `RrdManifest::try_new` produces the same result
-/// as `RrdManifest::try_new` on each part → `RrdManifest::concat`.
+/// as `RrdManifest::try_new` on each part → `RrdManifest::merge`.
 #[test]
-fn concat_raw_then_validate_vs_validate_then_concat() {
+fn concat_raw_then_validate_vs_validate_then_merge() {
     use re_log_types::example_components::{MyColor, MyPoint, MyPoints};
     use re_log_types::{TimeInt, build_frame_nr};
 
@@ -937,11 +1047,11 @@ fn concat_raw_then_validate_vs_validate_then_concat() {
     let raw_concatenated = RawRrdManifest::concat(&[&raw1, &raw2, &raw3]).unwrap();
     let path_a = RrdManifest::try_new(&raw_concatenated).unwrap();
 
-    // Path B: validate each raw manifest into RrdManifest first, then concat.
+    // Path B: validate each raw manifest into RrdManifest first, then merge.
     let m1 = RrdManifest::try_new(&raw1).unwrap();
     let m2 = RrdManifest::try_new(&raw2).unwrap();
     let m3 = RrdManifest::try_new(&raw3).unwrap();
-    let path_b = RrdManifest::concat(&[&m1, &m2, &m3]).unwrap();
+    let path_b = RrdManifest::merge(&[&m1, &m2, &m3]).unwrap();
 
     // Both paths must produce identical results.
     assert_eq!(path_a.num_chunks(), path_b.num_chunks(), "num_chunks");

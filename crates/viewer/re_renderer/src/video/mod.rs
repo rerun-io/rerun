@@ -144,6 +144,7 @@ impl Video {
     /// This is useful when the video description has changed since the decoders were created.
     pub fn reset_all_decoders(&self) {
         let mut players = self.players.lock();
+        #[expect(clippy::iter_over_hash_type)] // Each player is reset independently.
         for player in players.values_mut() {
             player
                 .player
@@ -248,6 +249,7 @@ impl Video {
         size_delta: isize,
     ) {
         let mut players = self.players.lock();
+        #[expect(clippy::iter_over_hash_type)] // Each player is updated based on its own state.
         for entry in players.values_mut() {
             let player = &mut entry.player;
 
@@ -264,12 +266,17 @@ impl Video {
                             .gop_sample_range_for_keyframe(keyframe_idx)
                     })
                     .reduce(|a, b| {
-                        Option::zip(a, b).map(|(a, b)| a.start.min(b.start)..a.end.max(b.end))
+                        Option::zip(a, b).map(|(a, b)| {
+                            re_span::Span::from_start_end(
+                                a.start.min(b.start),
+                                a.end().max(b.end()),
+                            )
+                        })
                     })
                     .flatten()
                     .is_some_and(|gop| {
                         // Check if the gop range overlaps with the changed samples range.
-                        gop.start <= change_end && change_start < gop.end
+                        gop.start <= change_end && change_start < gop.end()
                     })
             };
 
@@ -292,6 +299,7 @@ impl Video {
         players.retain(|_id, entry| entry.used_last_frame);
 
         // Reset for the next frame:
+        #[expect(clippy::iter_over_hash_type)] // All entries receive the same value.
         for entry in players.values_mut() {
             entry.used_last_frame = false;
         }

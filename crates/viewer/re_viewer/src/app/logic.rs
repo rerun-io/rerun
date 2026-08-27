@@ -4,8 +4,8 @@ use ahash::HashMap;
 use re_chunk::TimelineName;
 use re_entity_db::LogSource;
 use re_log_channel::{
-    DataSourceMessage, DataSourceUiCommand, InspectError, RecordingOpenBehavior,
-    SaveScreenshotError,
+    BlueprintTarget, DataSourceMessage, DataSourceUiCommand, DefaultBlueprintRegistration,
+    InspectError, RecordingOpenBehavior, SaveScreenshotError,
 };
 use re_log_types::{LogMsg, StoreId, StoreKind, TableMsg, TimeReal, TimeType};
 use re_protos::common::v1alpha1::TimeType as ProtoTimeType;
@@ -20,7 +20,7 @@ use re_viewer_context::{
 
 use crate::app_blueprint::AppBlueprint;
 
-use super::App;
+use super::{App, WindowDecorationsRequest};
 
 impl App {
     /// Called before each call to `ui`, but ALSO when the app is
@@ -92,6 +92,7 @@ impl App {
         self.state.cleanup(&store_hub);
 
         self.sync_native_window_theme(egui_ctx);
+        self.sync_native_window_decorations(egui_ctx);
 
         // Return the `StoreHub` to the Viewer so we have it on the next frame
         self.store_hub = Some(store_hub);
@@ -115,6 +116,36 @@ impl App {
         }
     }
 
+    /// Hand the window decorations over to the OS, or take them over ourselves.
+    ///
+    /// Only this may act on [`re_viewer_context::AppOptions::custom_window_decorations`];
+    /// everything that paints must use [`Self::custom_window_decorations`] instead, so
+    /// that a mid-frame toggle takes effect on the next frame rather than halfway through
+    /// this one.
+    fn sync_native_window_decorations(&mut self, egui_ctx: &egui::Context) {
+        if !re_ui::supports_custom_decorations(egui_ctx.os()) {
+            return;
+        }
+
+        let desired = self.app_options().custom_window_decorations;
+        let request = if desired {
+            WindowDecorationsRequest::Custom
+        } else {
+            WindowDecorationsRequest::Native
+        };
+        if self.window_decorations_request == request {
+            return;
+        }
+        self.window_decorations_request = request;
+
+        egui_ctx.send_viewport_cmd(egui::ViewportCommand::Decorations(!desired));
+
+        // The window always has an alpha-capable surface where custom decorations are
+        // possible (see `eframe_options`), because that cannot be changed after creation.
+        // Send this even when `desired` is false, or the window may stay transparent.
+        egui_ctx.send_viewport_cmd(egui::ViewportCommand::Transparent(desired));
+    }
+
     fn receive_messages(&mut self, store_hub: &mut StoreHub, egui_ctx: &egui::Context) {
         re_tracing::profile_function!();
 
@@ -123,7 +154,7 @@ impl App {
         while let Some((channel_source, msg)) = self.rx_log.try_recv() {
             re_log::trace!("Received a message from {channel_source:?}"); // Used by `test_ui_wakeup` test app!
 
-            if let Some(re_uri::RedapUri::DatasetData(uri)) = channel_source.redap_uri() {
+            if let Some(re_uri::RedapUri::Dataset(uri)) = channel_source.redap_uri() {
                 self.connection_registry.clear_uri_error(uri);
             }
 
@@ -138,27 +169,18 @@ impl App {
 
                 re_log_channel::SmartMessagePayload::Quit(err) => {
                     if let Some(err) = err {
-                        re_log::warn!(
-                            "Data source has left unexpectedly: {err}, source: {}",
-                            msg.source
+                        re_log::error!(
+                            "{}",
+                            re_error::format_with_details(
+                                format!("Data source failed: {err}"),
+                                format!("Source: {}", msg.source),
+                            )
                         );
-                        if let Some(re_uri::RedapUri::DatasetData(uri)) = channel_source.redap_uri()
-                        {
+                        if let Some(re_uri::RedapUri::Dataset(uri)) = channel_source.redap_uri() {
                             self.connection_registry.set_uri_error(uri, err.to_string());
                         }
                     } else {
                         re_log::debug!("Data source {} has finished", msg.source);
-                        if let LogSource::RedapGrpcStream {
-                            table_blueprint: Some(table_blueprint),
-                            ..
-                        } = channel_source.as_ref()
-                            && let Err(err) = store_hub.associate_table_blueprint(
-                                table_blueprint.table_id.clone(),
-                                &table_blueprint.blueprint_id,
-                            )
-                        {
-                            re_log::warn!("Failed to register table blueprint: {err}");
-                        }
                     }
                     continue;
                 }
@@ -171,7 +193,9 @@ impl App {
                 DataSourceMessage::RrdManifest(store_id, _)
                 | DataSourceMessage::RrdManifestComplete(store_id) => Some(store_id.clone()),
                 DataSourceMessage::LogMsg(log_msg) => Some(log_msg.store_id().clone()),
-                DataSourceMessage::TableMsg(_) | DataSourceMessage::UiCommand(_) => None,
+                DataSourceMessage::DefaultBlueprintRegistration(_)
+                | DataSourceMessage::TableMsg(_)
+                | DataSourceMessage::UiCommand(_) => None,
             };
 
             let maybe_new_store = msg_store_id
@@ -206,6 +230,10 @@ impl App {
                     self.receive_log_msg(&msg, store_hub, egui_ctx, &channel_source);
                 }
 
+                DataSourceMessage::DefaultBlueprintRegistration(registration) => {
+                    self.receive_default_blueprint_registration(registration, store_hub);
+                }
+
                 DataSourceMessage::TableMsg(table) => {
                     self.receive_table_msg(store_hub, egui_ctx, table);
                 }
@@ -235,6 +263,41 @@ impl App {
         // Run pending system commands in case any of the messages resulted in additional commands.
         // This avoid further frame delays on these commands.
         self.run_pending_system_commands(store_hub, egui_ctx);
+    }
+
+    fn receive_default_blueprint_registration(
+        &mut self,
+        registration: DefaultBlueprintRegistration,
+        store_hub: &mut StoreHub,
+    ) {
+        let DefaultBlueprintRegistration {
+            blueprint_id,
+            target,
+        } = registration;
+
+        match target {
+            BlueprintTarget::Application(app_id) => {
+                if blueprint_id.application_id() != &app_id {
+                    re_log::warn!(
+                        "Received a blueprint registration whose application target does not match its store ID"
+                    );
+                    return;
+                }
+                if let Err(err) = store_hub.set_default_blueprint_for_app(&blueprint_id) {
+                    re_log::warn!("Failed to register application blueprint: {err}");
+                }
+            }
+
+            BlueprintTarget::Table(table_ref) => {
+                if let Err(err) = self.table_blueprints.set_default_blueprint(
+                    &table_ref,
+                    &blueprint_id,
+                    store_hub.store_bundle_mut(),
+                ) {
+                    re_log::warn!("Failed to register table blueprint: {err}");
+                }
+            }
+        }
     }
 
     /// There is logic duplicated between this and [`Self::prefetch_chunks`].
@@ -288,9 +351,10 @@ impl App {
             // Now we _hopefully_ do. The `LogMsg` could also belong to the blueprint, so
             // we need to check for that as well.
             if let LogSource::RedapGrpcStream { uri, .. } = channel_source
-                && &uri.store_id() == store_id
+                && let Some(uri_store_id) = uri.store_id()
+                && &uri_store_id == store_id
             {
-                self.go_to_dataset_data(uri.store_id(), uri.fragment.clone());
+                self.go_to_dataset_data(uri_store_id, uri.fragment.clone());
             }
         }
 
@@ -917,48 +981,68 @@ impl App {
         use re_memory::MemoryUse;
 
         let limit = self.app_options().memory_limit;
-        let mut mem_use_before = MemoryUse::capture();
-
         let default_limit = re_memory::MemoryLimit::default_for_current_platform();
 
         // If we are at the default limit, which is derived from system memory,
-        // we actually do want to count external to OOM.
+        // we actually do want to count external to avoid OOM.
         let external_mem = if limit.as_bytes() >= default_limit.as_bytes()
-            || default_limit.is_exceeded_by(&mem_use_before).is_some()
+            || default_limit
+                .is_exceeded_by(&MemoryUse::capture())
+                .is_some()
         {
             0
         } else {
-            let external_mem = self.external_memory_users.total_external_memory();
-
-            if let Some(counted) = &mut mem_use_before.counted {
-                *counted -= external_mem;
-            }
-
-            if let Some(resident) = &mut mem_use_before.resident {
-                *resident -= external_mem;
-            }
-
-            external_mem
+            self.external_memory_users.total_external_memory()
         };
 
-        if let Some(minimum_fraction_to_purge) = limit.is_exceeded_by(&mem_use_before) {
-            re_log::info_once!("Reached memory limit of {limit}. Freeing up data…");
+        // Memory use as the limit sees it. We measure again between the steps of a purge, so that
+        // each step only has to deal with what the previous ones left behind.
+        let memory_use = || {
+            let mut mem_use = MemoryUse::capture();
 
+            if let Some(counted) = &mut mem_use.counted {
+                *counted = counted.saturating_sub(external_mem);
+            }
+
+            if let Some(resident) = &mut mem_use.resident {
+                *resident = resident.saturating_sub(external_mem);
+            }
+
+            mem_use
+        };
+
+        let mem_use_before = memory_use();
+
+        if limit.is_exceeded_by(&mem_use_before).is_none() {
+            return;
+        }
+
+        re_log::info_once!("Reached memory limit of {limit}. Freeing up data…");
+
+        re_log::trace!("RAM limit: {limit}");
+        if let Some(resident) = mem_use_before.resident {
+            re_log::trace!("Resident: {}", format_bytes(resident as _),);
+        }
+        if let Some(counted) = mem_use_before.counted {
+            re_log::trace!("Counted: {}", format_bytes(counted as _));
+        }
+        if external_mem > 0 {
+            re_log::trace!("External: {}", format_bytes(external_mem as _));
+        }
+
+        re_tracing::profile_scope!("pruning");
+
+        // Free data in order of how expensive it is to get back, and re-check the limit between
+        // each step, so that we never drop more than we have to.
+
+        // The app caches hold data the viewer derives locally, so they are the cheapest to rebuild.
+        self.state.app_caches.purge_memory();
+
+        let mem_use_after_app_caches = memory_use();
+        if let Some(minimum_fraction_to_purge) = limit.is_exceeded_by(&mem_use_after_app_caches) {
             let fraction_to_purge = (minimum_fraction_to_purge + 0.2).clamp(0.25, 1.0);
 
-            re_log::trace!("RAM limit: {limit}");
-            if let Some(resident) = mem_use_before.resident {
-                re_log::trace!("Resident: {}", format_bytes(resident as _),);
-            }
-            if let Some(counted) = mem_use_before.counted {
-                re_log::trace!("Counted: {}", format_bytes(counted as _));
-            }
-            if external_mem > 0 {
-                re_log::trace!("External: {}", format_bytes(external_mem as _));
-            }
-
-            re_tracing::profile_scope!("pruning");
-            if let Some(counted) = mem_use_before.counted {
+            if let Some(counted) = mem_use_after_app_caches.counted {
                 re_log::trace!(
                     "Attempting to purge {:.1}% of used RAM ({})…",
                     100.0 * fraction_to_purge,
@@ -971,37 +1055,43 @@ impl App {
                 self.active_recording_id(),
                 &|store_id| self.state.time_cursor_for(store_id).map(|t| t.time_cursor),
             );
-            self.state.app_caches.purge_memory();
-
-            let mem_use_after = MemoryUse::capture();
-
-            let freed_memory = mem_use_before - mem_use_after;
-
-            if let (Some(counted_before), Some(counted_diff)) =
-                (mem_use_before.counted, freed_memory.counted)
-                && 0 < counted_diff
-            {
-                re_log::debug!(
-                    "GC result: -{} (-{:.1}%).",
-                    format_bytes(counted_diff as _),
-                    100.0 * counted_diff as f32 / counted_before as f32
-                );
-            }
-
-            // Cache app overhead = total memory use minus all recording chunk data.
-            // This captures fonts, UI state, indices, and other unevictable memory.
-            if let Some(current_mem_use) = mem_use_after.counted.or(mem_use_after.resident) {
-                let total_chunk_bytes: u64 = store_hub
-                    .store_bundle()
-                    .recordings()
-                    .map(|r| r.byte_size_of_physical_chunks())
-                    .sum();
-                self.cached_app_overhead_bytes =
-                    Some(current_mem_use.saturating_sub(total_chunk_bytes));
-            }
-
-            self.dev_panel.note_memory_purge();
         }
+
+        // The network-level chunk cache goes last. Its chunks are shared between segments, so
+        // dropping them means downloading the same asset again for the next segment that wants it,
+        // which is exactly what the cache exists to avoid.
+        if limit.is_exceeded_by(&memory_use()).is_some() {
+            self.connection_registry.purge_memory();
+        }
+
+        let mem_use_after = MemoryUse::capture();
+
+        let freed_memory = mem_use_before - mem_use_after;
+
+        if let (Some(counted_before), Some(counted_diff)) =
+            (mem_use_before.counted, freed_memory.counted)
+            && 0 < counted_diff
+        {
+            re_log::debug!(
+                "GC result: -{} (-{:.1}%).",
+                format_bytes(counted_diff as _),
+                100.0 * counted_diff as f32 / counted_before as f32
+            );
+        }
+
+        // Cache app overhead = total memory use minus all recording chunk data.
+        // This captures fonts, UI state, indices, and other unevictable memory.
+        if let Some(current_mem_use) = mem_use_after.counted.or(mem_use_after.resident) {
+            let total_chunk_bytes: u64 = store_hub
+                .store_bundle()
+                .recordings()
+                .map(|r| r.byte_size_of_physical_chunks())
+                .sum();
+            self.cached_app_overhead_bytes =
+                Some(current_mem_use.saturating_sub(total_chunk_bytes));
+        }
+
+        self.dev_panel.note_memory_purge();
     }
 
     /// Prefetch chunks for the open recording (stream from server)
@@ -1127,7 +1217,7 @@ impl App {
 }
 
 /// Handle a `egui_inspection` request.
-fn serve_inspect_request(
+pub(crate) fn serve_inspect_request(
     egui_ctx: &egui::Context,
     request: &[u8],
     on_done: futures::channel::mpsc::UnboundedSender<Result<Vec<u8>, InspectError>>,

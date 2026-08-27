@@ -92,7 +92,7 @@ impl ViewClass for TestViewClass {
         _state: &mut dyn ViewState,
         _query: &ViewQuery<'_>,
         _system_output: SystemExecutionOutput,
-    ) -> Result<(), ViewSystemExecutionError> {
-        Ok(())
+    ) -> Result<re_viewer_context::ViewClassUiOutput, ViewSystemExecutionError> {
+        Ok(Default::default())
     }
 }

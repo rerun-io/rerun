@@ -9,7 +9,7 @@ use re_protos::cloud::v1alpha1::{
 };
 use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_sdk::AsComponents;
-use re_sdk::external::re_log_encoding::{RawRrdManifest, ToApplication as _};
+use re_sdk::external::re_log_encoding::{RawRrdManifest, ToApplication as _, sha256_to_hex};
 use re_sdk_types::AnyValues;
 use re_types_core::SegmentId;
 
@@ -122,6 +122,7 @@ pub async fn layered_segment(service: impl RerunCloudService) {
         .get_rrd_manifest(
             tonic::Request::new(GetRrdManifestRequest {
                 segment_id: Some(segment_name.into()),
+                generate_direct_urls: false,
             })
             .with_entry_name(entry_name(dataset_name)),
         )
@@ -178,6 +179,7 @@ pub async fn layered_segment_stress(service: impl RerunCloudService) {
         .get_rrd_manifest(
             tonic::Request::new(GetRrdManifestRequest {
                 segment_id: Some(segment_name.into()),
+                generate_direct_urls: false,
             })
             .with_entry_name(entry_name(dataset_name)),
         )
@@ -228,6 +230,7 @@ pub async fn layered_segment_stress(service: impl RerunCloudService) {
                 .get_rrd_manifest(
                     tonic::Request::new(GetRrdManifestRequest {
                         segment_id: Some(segment_name.into()),
+                        generate_direct_urls: false,
                     })
                     .with_entry_name(entry_name(dataset_name)),
                 )
@@ -265,6 +268,7 @@ pub async fn unregistered_segment(service: impl RerunCloudService) {
         .get_rrd_manifest(
             tonic::Request::new(GetRrdManifestRequest {
                 segment_id: Some("my_segment_id".into()),
+                generate_direct_urls: false,
             })
             .with_entry_name(entry_name(dataset_name)),
         )
@@ -281,6 +285,7 @@ pub async fn segment_id_not_found(service: impl RerunCloudService) {
         .get_rrd_manifest(
             tonic::Request::new(GetRrdManifestRequest {
                 segment_id: Some(segment_id.into()),
+                generate_direct_urls: false,
             })
             .with_entry_name(entry_name(dataset_name)),
         )
@@ -301,6 +306,7 @@ async fn dataset_rrd_manifest_snapshot(
         .get_rrd_manifest(
             tonic::Request::new(GetRrdManifestRequest {
                 segment_id: Some(segment_id.into()),
+                generate_direct_urls: false,
             })
             .with_entry_name(entry_name(dataset_name)),
         )
@@ -359,11 +365,7 @@ async fn dataset_rrd_manifest_snapshot(
     );
     insta::assert_snapshot!(
         format!("{snapshot_name}_sorbet_schema_sha256"),
-        rrd_manifest
-            .sorbet_schema_sha256
-            .iter()
-            .map(|b| format!("{b:02x}"))
-            .collect::<String>(),
+        sha256_to_hex(&rrd_manifest.sorbet_schema_sha256),
     );
 
     Ok(rrd_manifest)

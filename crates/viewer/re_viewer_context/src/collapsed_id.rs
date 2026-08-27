@@ -30,8 +30,6 @@ pub enum CollapseScope {
 }
 
 impl CollapseScope {
-    const ALL: [Self; 2] = [Self::StreamsTree, Self::BlueprintTree];
-
     // convenience functions
 
     /// Create a [`CollapsedId`] for an [`Item`] of supported kind.
@@ -103,19 +101,6 @@ pub enum CollapseItem {
     View(ViewId),
     DataResult(ViewId, EntityPath),
     Entity(EntityPath),
-}
-
-impl CollapseItem {
-    /// Set the collapsed state for the given item in every available scopes.
-    pub fn set_open_all(&self, egui_ctx: &egui::Context, open: bool) {
-        for scope in CollapseScope::ALL {
-            let id = CollapsedId {
-                item: self.clone(),
-                scope,
-            };
-            id.set_open(egui_ctx, open);
-        }
-    }
 }
 
 /// A collapsed identifier.

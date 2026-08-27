@@ -28,7 +28,7 @@ type OncePerFrameResults = IntMap<ViewSystemIdentifier, ViewContextSystemOncePer
 #[cfg_attr(not(target_arch = "wasm32"), expect(clippy::large_enum_variant))]
 pub(crate) enum PreviewRecording<'a> {
     Resolved(&'a EntityDb),
-    Unresolved(re_uri::DatasetSegmentUri),
+    Unresolved(re_uri::DatasetUri),
 }
 
 /// Renders views from a blueprint [`EntityDb`], independent of the main viewport.
@@ -153,18 +153,18 @@ impl<'a> RecordingPreviewRenderer<'a> {
                         ui.error_label(err);
                     });
                     return;
-                } else {
-                    // We don't have a recording yet
-                    let recording_store_id = StoreId::new(
-                        StoreKind::Recording,
-                        "___preview_renderer___",
-                        "empty_placeholder",
-                    );
-                    owned_recording = EntityDb::new(recording_store_id);
-                    owned_caches = StoreCache::new(view_class_registry, &owned_recording);
-
-                    (&owned_recording, &owned_caches)
                 }
+
+                // We don't have a recording yet
+                let recording_store_id = StoreId::new(
+                    StoreKind::Recording,
+                    "___preview_renderer___",
+                    "empty_placeholder",
+                );
+                owned_recording = EntityDb::new(recording_store_id);
+                owned_caches = StoreCache::new(view_class_registry, &owned_recording);
+
+                (&owned_recording, &owned_caches)
             }
             None => {
                 // We don't have a recording yet
@@ -326,7 +326,7 @@ impl<'a> RecordingPreviewRenderer<'a> {
                     let input_before = input.clone();
 
                     // Suppress most input.
-                    input.raw.modifiers = egui::Modifiers::default();
+                    input.modifiers = egui::Modifiers::default();
                     input.raw.events.clear();
                     input.smooth_scroll_delta = egui::Vec2::ZERO;
                     input.focused = false;

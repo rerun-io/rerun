@@ -302,9 +302,15 @@ If no arguments are given, a server will be hosted which a Rerun SDK can connect
     #[clap(long)]
     hide_welcome_screen: bool,
 
-    /// Detach Rerun Viewer process from the application process.
+    /// Detach the native Rerun Viewer process from the invoking process.
+    ///
+    /// Ignored for any command that doesn't spawn a viewer.
     #[clap(long)]
     detach_process: bool,
+
+    /// Marks the relaunched child of a detached Rerun Viewer.
+    #[clap(long, hide = true)]
+    detached_process_child: bool,
 
     /// Run the viewer in headless mode (no OS window).
     ///
@@ -313,6 +319,20 @@ If no arguments are given, a server will be hosted which a Rerun SDK can connect
     /// screenshots via `save_screenshot`.
     #[clap(long)]
     headless: bool,
+
+    /// Run the viewer in the context of an integration test.
+    ///
+    /// This isolates the viewer from the developer's environment so tests are reproducible:
+    /// it does not read or write persisted viewer state (blueprints, panel layout, recent
+    /// servers), does not use stored redap credentials, and does not record analytics.
+    ///
+    /// Intended to be used together with `--headless` when driving the viewer over
+    /// `egui_inspection` from an integration test.
+    ///
+    /// Hidden from `--help` and the generated CLI manual: it's a testing-only flag, not part of
+    /// the public interface.
+    #[clap(long, hide = true)]
+    integration_test: bool,
 
     /// Set the screen resolution (in logical points), e.g. "1920x1080".
     /// Useful together with `--screenshot-to`.
@@ -704,10 +724,21 @@ where
         std::env::set_var("OTEL_SERVICE_NAME", "rerun");
     }
 
+    let raw_args = args.into_iter().map(Into::into).collect::<Vec<_>>();
+
     use clap::Parser as _;
-    let mut args = Args::parse_from(args);
+    let mut args = Args::parse_from(raw_args.iter());
+
+    #[cfg(feature = "native_viewer")]
+    if should_relaunch_detached(&args) {
+        relaunch_detached(&raw_args)?;
+        return Ok(0);
+    }
+
     #[cfg(feature = "analytics")]
-    record_cli_command_analytics(&args);
+    if !args.integration_test {
+        record_cli_command_analytics(&args);
+    }
 
     initialize_thread_pool(args.threads);
 
@@ -717,10 +748,13 @@ where
 
     if args.version {
         println!("{build_info}");
+        #[cfg(feature = "video")]
         println!(
             "Video features: {}",
             re_video::enabled_features().iter().join(" ")
         );
+        #[cfg(not(feature = "video"))]
+        println!("Video features: (video support disabled in this build)");
         return Ok(0);
     }
 
@@ -827,13 +861,122 @@ where
                 .downcast_ref::<std::io::Error>()
                 .is_some_and(|io_err| io_err.kind() == std::io::ErrorKind::AddrInUse) =>
         {
-            re_log::warn!("{err}");
+            re_log::warn!("{err:#}");
             Ok(1)
         }
 
         // Unclean failure -- re-raise exception
         Err(err) => Err(err),
     }
+}
+
+#[cfg(feature = "native_viewer")]
+fn should_relaunch_detached(args: &Args) -> bool {
+    // Destructure to ensure we consider all fields when adding new ones.
+    let Args {
+        detach_process,
+        detached_process_child,
+        command,
+        serve_grpc,
+        serve_web,
+        web_viewer,
+        save,
+        test_receive,
+        version,
+
+        headless: _,
+        integration_test: _,
+        bind: _,
+        memory_limit: _,
+        server_memory_limit: _,
+        newest_first: _,
+        cors_allow_origin: _,
+        persist_state: _,
+        port: _,
+        new: _,
+        profile: _,
+        screenshot_to: _,
+        connect: _,
+        expect_data_soon: _,
+        threads: _,
+        url_or_paths: _,
+        web_viewer_port: _,
+        hide_welcome_screen: _,
+        window_size: _,
+        renderer: _,
+        video_decoder: _,
+    } = args;
+
+    *detach_process
+        && !detached_process_child
+        && command.is_none()
+        && !serve_grpc
+        && !serve_web
+        && !web_viewer
+        && save.is_none()
+        && !test_receive
+        && !version
+}
+
+#[cfg(feature = "native_viewer")]
+fn detached_child_args(raw_args: &[std::ffi::OsString]) -> Vec<&std::ffi::OsStr> {
+    let mut child_args = raw_args
+        .iter()
+        .skip(1)
+        .map(std::ffi::OsString::as_os_str)
+        .collect::<Vec<_>>();
+    let insertion_index = child_args
+        .iter()
+        .position(|arg| *arg == std::ffi::OsStr::new("--"))
+        .unwrap_or(child_args.len());
+    child_args.insert(
+        insertion_index,
+        std::ffi::OsStr::new("--detached-process-child"),
+    );
+    child_args
+}
+
+#[cfg(feature = "native_viewer")]
+fn relaunch_detached(raw_args: &[std::ffi::OsString]) -> anyhow::Result<()> {
+    let executable = std::env::current_exe()
+        .map_err(|err| anyhow::anyhow!("failed to locate the Rerun executable: {err}"))?;
+    let mut command = std::process::Command::new(executable);
+    command
+        .args(detached_child_args(raw_args))
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null());
+
+    #[cfg(target_family = "unix")]
+    {
+        use std::os::unix::process::CommandExt as _;
+
+        // SAFETY: This runs in the forked child before exec and only calls the
+        // async-signal-safe `setsid`.
+        #[expect(unsafe_code)]
+        unsafe {
+            command.pre_exec(|| {
+                if libc::setsid() == -1 {
+                    Err(std::io::Error::last_os_error())
+                } else {
+                    Ok(())
+                }
+            });
+        }
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt as _;
+
+        const DETACHED_PROCESS: u32 = 0x0000_0008;
+        command.creation_flags(DETACHED_PROCESS);
+    }
+
+    command
+        .spawn()
+        .map_err(|err| anyhow::anyhow!("failed to launch the detached Rerun Viewer: {err}"))?;
+    Ok(())
 }
 
 fn run_impl(
@@ -845,7 +988,12 @@ fn run_impl(
     #[cfg(feature = "native_viewer")] profiler: re_tracing::Profiler,
 ) -> anyhow::Result<()> {
     //TODO(#10068): populate token passed with `--token`
-    let connection_registry = re_redap_client::ConnectionRegistry::new_with_stored_credentials();
+    let connection_registry = if args.integration_test {
+        re_redap_client::ConnectionRegistry::new_without_stored_credentials()
+    } else {
+        re_redap_client::ConnectionRegistry::new_with_stored_credentials()
+    };
+    let async_runtime = re_async::AsyncRuntimeHandle::new_native(tokio_runtime_handle.clone());
 
     let wants_new = args.new || args.port.is_auto();
     let port = args.port.port();
@@ -898,6 +1046,7 @@ fn run_impl(
             url_or_paths,
             &UrlParamProcessingConfig::convert_everything_to_data_sources(),
             &connection_registry,
+            &async_runtime,
             None,
         )?;
         save_or_test_receive(
@@ -915,6 +1064,7 @@ fn run_impl(
                     url_or_paths,
                     &UrlParamProcessingConfig::convert_everything_to_data_sources(),
                     &connection_registry,
+                    &async_runtime,
                     None,
                 )?;
                 serve_grpc(
@@ -945,6 +1095,7 @@ fn run_impl(
                     url_or_paths,
                     &UrlParamProcessingConfig::grpc_server_and_web_viewer(),
                     &connection_registry,
+                    &async_runtime,
                     None,
                 )?;
                 #[cfg(all(feature = "server", feature = "web_viewer"))]
@@ -965,6 +1116,7 @@ fn run_impl(
             url_or_paths,
             &UrlParamProcessingConfig::convert_everything_to_data_sources(),
             &connection_registry,
+            &async_runtime,
             None,
         )?;
         connect_to_existing_server(receivers, server_addr)
@@ -976,7 +1128,7 @@ fn run_impl(
                 _main_thread_token,
                 _build_info,
                 _call_source,
-                tokio_runtime_handle,
+                async_runtime,
                 profiler,
                 connection_registry,
                 #[cfg(feature = "server")]
@@ -999,7 +1151,7 @@ fn start_native_viewer(
     _main_thread_token: re_viewer::MainThreadToken,
     _build_info: re_build_info::BuildInfo,
     call_source: CallSource,
-    tokio_runtime_handle: &tokio::runtime::Handle,
+    async_runtime: re_async::AsyncRuntimeHandle,
     profiler: re_tracing::Profiler,
     connection_registry: re_redap_client::ConnectionRegistryHandle,
     #[cfg(feature = "server")] server_addr: std::net::SocketAddr,
@@ -1011,6 +1163,7 @@ fn start_native_viewer(
 
     let startup_options = native_startup_options_from_args(args)?;
 
+    let integration_test = args.integration_test;
     let connect = args.connect.is_some();
     let renderer = args.renderer.as_deref();
     let memory_limit = args
@@ -1027,8 +1180,6 @@ fn start_native_viewer(
 
     let auth_error_handler = re_viewer::App::auth_error_handler(command_tx.clone());
 
-    let tokio_runtime_handle = tokio_runtime_handle.clone();
-
     // Start catching `re_log::info/warn/error` messages
     // so we can show them in the notification panel.
     // In particular: create this before calling `run_native_app`
@@ -1043,6 +1194,7 @@ fn start_native_viewer(
         url_or_paths,
         &UrlParamProcessingConfig::native_viewer(),
         &connection_registry,
+        &async_runtime,
         Some(auth_error_handler),
     )?;
 
@@ -1050,7 +1202,7 @@ fn start_native_viewer(
         {
             let tx = command_tx.clone();
             let egui_ctx = cc.egui_ctx.clone();
-            tokio::spawn(async move {
+            async_runtime.spawn_future(async move {
                 // We catch ctrl-c commands so we can properly quit.
                 // Without this, recent state changes might not be persisted.
                 match tokio::signal::ctrl_c().await {
@@ -1065,36 +1217,22 @@ fn start_native_viewer(
                 }
             });
         }
+        let app_env = if integration_test {
+            re_viewer::AppEnvironment::Test
+        } else {
+            call_source.app_env()
+        };
         let mut app = re_viewer::App::with_commands(
             _main_thread_token,
             _build_info,
-            call_source.app_env(),
+            app_env,
             startup_options,
             cc,
             Some(connection_registry.clone()),
-            re_viewer::AsyncRuntimeHandle::new_native(tokio_runtime_handle),
+            async_runtime,
             text_log_rx,
             (command_tx, command_rx),
         );
-
-        // The internal catalog is served (loopback-only) on the proxy server's port below, and
-        // also reached in-process by the viewer.
-        #[cfg(all(
-            feature = "server",
-            feature = "oss_server",
-            not(target_arch = "wasm32")
-        ))]
-        let internal_catalog = (!connect && app.app_options().experimental.use_internal_catalog)
-            .then(|| re_viewer::internal_catalog::build(server_addr));
-
-        #[cfg(all(
-            feature = "server",
-            feature = "oss_server",
-            not(target_arch = "wasm32")
-        ))]
-        if let Some(catalog) = &internal_catalog {
-            connection_registry.set_internal((catalog.origin.clone(), catalog.connection.clone()));
-        }
 
         if let Some(memory_limit) = memory_limit {
             app.app_options_mut().memory_limit = memory_limit;
@@ -1103,16 +1241,18 @@ fn start_native_viewer(
         // If we're **not** connecting to an existing server, we spawn a new one and add it to the list of receivers.
         #[cfg(feature = "server")]
         if !connect {
-            #[cfg_attr(
-                not(all(feature = "oss_server", not(target_arch = "wasm32"))),
-                expect(unused_mut)
-            )]
+            // The internal catalog is served (loopback-only) on the proxy server's port below, and
+            // also reached in-process by the viewer.
+            #[cfg(not(target_arch = "wasm32"))]
+            let internal_catalog = re_viewer::internal_catalog::build(server_addr);
+            #[cfg(not(target_arch = "wasm32"))]
+            connection_registry.set_internal(internal_catalog.connection.clone());
+
+            #[cfg_attr(target_arch = "wasm32", expect(unused_mut))]
             let mut extra_services = re_grpc_server::LoopbackServices::default();
 
-            #[cfg(all(feature = "oss_server", not(target_arch = "wasm32")))]
-            if let Some(catalog) = &internal_catalog {
-                extra_services.add_service(catalog.grpc_service());
-            }
+            #[cfg(not(target_arch = "wasm32"))]
+            extra_services.add_service(internal_catalog.grpc_service());
 
             let (log_receiver, grpc_server_handle) = re_grpc_server::spawn_with_recv_and_services(
                 server_addr,
@@ -1192,7 +1332,7 @@ fn native_startup_options_from_args(args: &Args) -> anyhow::Result<re_viewer::St
     Ok(re_viewer::StartupOptions {
         hide_welcome_screen: args.hide_welcome_screen,
         detach_process: args.detach_process,
-        persist_state: args.persist_state,
+        persist_state: args.persist_state && !args.integration_test,
         is_in_notebook: false,
         screenshot_to_path_then_quit: args.screenshot_to.clone(),
 
@@ -1313,6 +1453,7 @@ fn serve_web(
         force_wgpu_backend,
         video_decoder,
         open_browser,
+        assets_archive_path: None,
     }
     .host_web_viewer()?
     .block();
@@ -1472,6 +1613,12 @@ fn assert_receive_into_entity_db(rx: &LogReceiverSet) -> anyhow::Result<re_entit
                             mut_db.add_log_msg(&msg)?;
                         }
 
+                        DataSourceMessage::DefaultBlueprintRegistration(_) => {
+                            anyhow::bail!(
+                                "Received a blueprint registration which can't be stored in an EntityDb"
+                            );
+                        }
+
                         DataSourceMessage::TableMsg(_) => {
                             anyhow::bail!(
                                 "Received a TableMsg which can't be stored in an EntityDb"
@@ -1499,9 +1646,8 @@ fn assert_receive_into_entity_db(rx: &LogReceiverSet) -> anyhow::Result<re_entit
                         anyhow::ensure!(0 < num_messages, "No messages received");
                         re_log::info!("Successfully ingested {num_messages} messages.");
                         return Ok(db);
-                    } else {
-                        anyhow::bail!("EntityDb never initialized");
                     }
+                    anyhow::bail!("EntityDb never initialized");
                 }
             }
         } else {
@@ -1561,7 +1707,7 @@ fn initialize_tokio_runtime(threads_args: i32) -> std::io::Result<Runtime> {
     use std::sync::atomic::{AtomicUsize, Ordering};
 
     // Name the tokio threads for the benefit of debuggers and profilers:
-    let mut builder = tokio::runtime::Builder::new_multi_thread();
+    let mut builder = tokio::runtime::Builder::new_multi_thread(); // NOLINT: the CLI process owns this configurable runtime
     builder.thread_name_fn(|| {
         static ATOMIC_ID: AtomicUsize = AtomicUsize::new(0);
         let nr = ATOMIC_ID.fetch_add(1, Ordering::Relaxed);
@@ -1569,15 +1715,19 @@ fn initialize_tokio_runtime(threads_args: i32) -> std::io::Result<Runtime> {
     });
     builder.enable_all();
 
-    if threads_args < 0 {
-        if let Ok(cores) = std::thread::available_parallelism() {
-            let threads = cores.get().saturating_sub((-threads_args) as _).max(1);
-            builder.worker_threads(threads);
+    match threads_args.cmp(&0) {
+        std::cmp::Ordering::Less => {
+            if let Ok(cores) = std::thread::available_parallelism() {
+                let threads = cores.get().saturating_sub((-threads_args) as _).max(1);
+                builder.worker_threads(threads);
+            }
         }
-    } else if 0 < threads_args {
-        builder.worker_threads(threads_args as usize);
-    } else {
-        // 0 means "use default" (typically num CPUs)
+        std::cmp::Ordering::Equal => {
+            // 0 means "use default" (typically num CPUs)
+        }
+        std::cmp::Ordering::Greater => {
+            builder.worker_threads(threads_args as usize);
+        }
     }
 
     builder.build()
@@ -1716,6 +1866,7 @@ impl ReceiversFromUrlParams {
         input_urls: Vec<String>,
         config: &UrlParamProcessingConfig,
         connection_registry: &re_redap_client::ConnectionRegistryHandle,
+        async_runtime: &re_async::AsyncRuntimeHandle,
         auth_error_handler: Option<AuthErrorHandler>,
     ) -> anyhow::Result<Self> {
         let mut data_sources = Vec::new();
@@ -1746,7 +1897,7 @@ impl ReceiversFromUrlParams {
                         }
                     }
 
-                    LogDataSource::FilePath { .. } => {
+                    LogDataSource::File { .. } => {
                         if config.data_source_from_filepaths {
                             data_sources.push(data_source);
                         } else {
@@ -1754,7 +1905,7 @@ impl ReceiversFromUrlParams {
                         }
                     }
 
-                    LogDataSource::FileContents(..) | LogDataSource::Stdin => {
+                    LogDataSource::Stdin => {
                         data_sources.push(data_source);
                     }
                 }
@@ -1772,7 +1923,13 @@ impl ReceiversFromUrlParams {
 
         let log_receivers = data_sources
             .into_iter()
-            .map(|data_source| data_source.stream(auth_error_handler.clone(), connection_registry))
+            .map(|data_source| {
+                data_source.stream(
+                    async_runtime,
+                    auth_error_handler.clone(),
+                    connection_registry,
+                )
+            })
             .collect::<anyhow::Result<Vec<_>>>()?;
 
         Ok(Self {
@@ -1817,6 +1974,7 @@ fn record_cli_command_analytics(args: &Args) {
         detach_process,
 
         // Not logged
+        detached_process_child: _,
         threads: _,
         url_or_paths: _,
         version: _,
@@ -1832,6 +1990,7 @@ fn record_cli_command_analytics(args: &Args) {
         port: _,
         new: _,
         headless: _,
+        integration_test: _,
     } = args;
 
     let (command, subcommand) = match command {
@@ -1903,4 +2062,97 @@ fn record_cli_command_analytics(args: &Args) {
         detach_process: *detach_process,
         test_receive: *test_receive,
     });
+}
+
+#[cfg(all(test, feature = "native_viewer"))]
+mod tests {
+    use super::*;
+
+    use clap::Parser as _;
+
+    #[test]
+    fn detach_relaunches_a_native_viewer_exactly_once() {
+        for cli_args in [
+            &["rerun", "--detach-process"][..],
+            &["rerun", "--detach-process", "recording.rrd"],
+            &["rerun", "--detach-process", "--headless"],
+            &[
+                "rerun",
+                "--detach-process",
+                "--screenshot-to",
+                "screenshot.png",
+            ],
+        ] {
+            let raw_args = cli_args
+                .iter()
+                .copied()
+                .map(std::ffi::OsString::from)
+                .collect::<Vec<_>>();
+            let parent = Args::try_parse_from(raw_args.iter()).unwrap();
+            assert!(
+                should_relaunch_detached(&parent),
+                "expected relaunch for {cli_args:?}"
+            );
+
+            let child_args = detached_child_args(&raw_args);
+            let child = Args::try_parse_from(std::iter::chain(
+                std::iter::once(std::ffi::OsStr::new("rerun")),
+                child_args,
+            ))
+            .unwrap();
+            assert!(child.detached_process_child);
+            assert!(
+                !should_relaunch_detached(&child),
+                "unexpected second relaunch for {cli_args:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn detach_child_marker_precedes_end_of_options_separator() {
+        let raw_args =
+            ["rerun", "--detach-process", "--", "recording.rrd"].map(std::ffi::OsString::from);
+        let parent = Args::try_parse_from(raw_args.iter()).unwrap();
+        assert!(should_relaunch_detached(&parent));
+
+        let child_args = detached_child_args(&raw_args);
+
+        assert_eq!(
+            child_args,
+            [
+                std::ffi::OsStr::new("--detach-process"),
+                std::ffi::OsStr::new("--detached-process-child"),
+                std::ffi::OsStr::new("--"),
+                std::ffi::OsStr::new("recording.rrd"),
+            ]
+        );
+
+        let child = Args::try_parse_from(std::iter::chain(
+            std::iter::once(std::ffi::OsStr::new("rerun")),
+            child_args,
+        ))
+        .unwrap();
+        assert!(child.detached_process_child);
+        assert!(!should_relaunch_detached(&child));
+        assert_eq!(child.url_or_paths, ["recording.rrd"]);
+    }
+
+    #[test]
+    fn detach_does_not_relaunch_non_viewer_modes() {
+        for cli_args in [
+            &["rerun", "--detach-process", "--serve-grpc"][..],
+            &["rerun", "--detach-process", "--serve-web"],
+            &["rerun", "--detach-process", "--web-viewer"],
+            &["rerun", "--detach-process", "--save", "output.rrd"],
+            &["rerun", "--detach-process", "--test-receive"],
+            &["rerun", "--detach-process", "--version"],
+            &["rerun", "--detach-process", "reset"],
+        ] {
+            let args = Args::try_parse_from(cli_args).unwrap();
+            assert!(
+                !should_relaunch_detached(&args),
+                "unexpected relaunch for {cli_args:?}"
+            );
+        }
+    }
 }

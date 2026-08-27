@@ -13,12 +13,6 @@ import {
 
 const root_dir = path.resolve(script_dir, "..");
 
-if (!process.env.NODE_AUTH_TOKEN) {
-  fail(
-    `"NODE_AUTH_TOKEN" env is not set. https://docs.npmjs.com/creating-and-viewing-access-tokens`,
-  );
-}
-
 /** @type {{ workspaces: string[] }} */
 const root_package_json = JSON.parse(
   fs.readFileSync(path.join(root_dir, "package.json"), "utf-8"),

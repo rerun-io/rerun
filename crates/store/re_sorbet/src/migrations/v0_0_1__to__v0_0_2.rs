@@ -152,7 +152,7 @@ fn migrate_tuid_column(
 
         let new_field = ArrowField::new(
             field.name(),
-            <Tuid as re_types_core::Loggable>::arrow_datatype(),
+            <Tuid as re_types_core::ArrowDatatype>::arrow_datatype(),
             false,
         )
         .with_metadata(field.metadata().clone());

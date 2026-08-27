@@ -47,7 +47,7 @@ impl VideoAssetCache {
         debug_name: String,
         blob_row_id: RowId,
         blob_component: ComponentIdentifier,
-        video_buffer: &re_sdk_types::datatypes::Blob,
+        video_buffer: &re_sdk_types::encodings::Blob,
         media_type: Option<&MediaType>,
         decode_settings: DecodeSettings,
     ) -> Arc<Result<Video, VideoLoadError>> {

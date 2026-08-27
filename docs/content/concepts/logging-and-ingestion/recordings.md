@@ -1,6 +1,7 @@
 ---
 title: Recordings
 order: 100
+description: How recordings are identified and grouped by application ID
 ---
 
 
@@ -17,6 +18,13 @@ The recording/file analogy comes short of describing how the Rerun Viewer handle
 
 When the Viewer receives data, whether by loading a `.rrd` file or an incoming logging stream, it pools the corresponding data by recording ID and application ID.
 This can be thought of as a logical recording, even though its source might be multiple files.
+
+```
+physical recording 1 ─┐
+physical recording 2 ─┼─ one logical recording (if same recording ID)
+          …          ─┘
+```
+
 This implicit merging semantics also implies that, from the perspective of the Viewer, recordings are never "completed."
 This enables the [distributed logging workflows](#distributed-recordings) described below.
 
@@ -27,17 +35,36 @@ In particular, they share the same [blueprint](../visualization/blueprints.md).
 <!-- NOLINT -->
 ### Recordings on a catalog server
 
-A catalog server has a slightly different object model, which you can read more about in [Catalog object model](../query-and-transform/catalog-object-model.md).
+A catalog server has a slightly different object model, so the terminology changes once recordings are registered into a Rerun catalog.
+You can read more about it in [Catalog object model](../query-and-transform/catalog-object-model.md).
 
 Datasets are top-level objects that group semantically related episodes of data, which we call _segments_.
+Populating a dataset happens by registering recordings using the Catalog SDK.
+Its recording ID becomes the segment ID, and its application ID is discarded.
 For example, it can be multiple recordings of the same robotic task.
 Blueprints can optionally be assigned to datasets, so all segments in a dataset share the same blueprint.
 
-Populating a dataset happens by registering recordings using the Catalog SDK.
-Its recording ID becomes the segment ID, and its application ID is discarded.
+```
+Dataset
+├── Segment A: (segment ID 'A' <- recording ID 'A')
+├── Segment B: (segment ID 'B' <- recording ID 'B')
+└── …
+```
 
-Segments can contain multiple _layers_ identified by their name, each backed by a `.rrd` file.
-This again allows pooling multiple physical recordings into a single (logical) segment.
+As a logical recording can contain multiple physical files, a segment can contain multiple _layers_ identified by the segment ID, each backed by a `.rrd` file.
+
+```
+Dataset
+├── Segment A: (segment ID 'A')
+│    ├── Layer 1: physical recording 1 (recording ID 'A')
+│    ├── Layer 2: physical recording 2 (recording ID 'A')
+│    └── …
+└── …
+```
+
+This allows pooling multiple physical recordings into a single (logical) segment.
+
+See [How-To: Using layers](../../howto/logging-and-ingestion/layers.md) for how to append data to existing segments via named layers.
 
 
 ### Distributed recordings
@@ -57,7 +84,10 @@ Rerun recordings are stored in `.rrd` files. [Blueprints](../visualization/bluep
 ## Application IDs
 
 Rerun recordings have an _application ID_ in their metadata.
-Application IDs are arbitrary user-defined strings set when initializing the SDK:
+Application IDs are user-defined strings set when initializing the SDK.
+They are subject to the same restrictions as [catalog entry names](../query-and-transform/catalog-object-model.md#catalog).
+`EntryName` values are non-empty ASCII strings of at most 180 characters and may contain only alphanumeric characters, underscores, hyphens, dots, spaces, brackets, and colons.
+Unsupported characters and dots in application IDs are normalized to hyphens, and migrated IDs receive a short hash suffix.
 
 snippet: tutorials/custom-application-id
 

@@ -14,10 +14,10 @@ use re_log_types::{AbsoluteTimeRange, TimeInt};
 use crate::{
     ChunkDeletionReason, ChunkStore, ChunkStoreChunkStats, ChunkStoreDiff, ChunkStoreDiffDeletion,
     ChunkStoreEvent, ChunkStoreStats,
+    lineage_dropping::LineageDroppingCtx,
     store::{
         ChunkIdSetPerTimePerComponentPerTimelinePerEntity, ChunkIdSetPerTimePerTimelinePerEntity,
     },
-    writes::LineageDroppingCtx,
 };
 
 // Used all over in docstrings.

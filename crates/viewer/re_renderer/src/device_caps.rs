@@ -1,3 +1,5 @@
+use re_web::browser;
+
 /// Device tiers `re_renderer` distinguishes.
 ///
 /// To reduce complexity, we rarely do fine-grained feature checks,
@@ -502,7 +504,7 @@ pub fn default_backends() -> wgpu::Backends {
         // For changing the backend we use standard wgpu env var, i.e. WGPU_BACKEND.
         wgpu::Backends::from_env()
             .unwrap_or(wgpu::Backends::VULKAN | wgpu::Backends::METAL | wgpu::Backends::GL)
-    } else if is_safari_browser() || is_firefox_browser() {
+    } else if browser::is_safari() || browser::is_firefox() {
         // TODO(#12788): Safari WebGPU broken on 26.4 (3D content fails to render)
         // TODO(#11009): Fix videos on WebGPU firefox
         wgpu::Backends::GL
@@ -578,40 +580,4 @@ pub fn validate_graphics_backend_applicability(backend: wgpu::Backend) -> Result
         }
     }
     Ok(())
-}
-
-/// Are we running inside the Safari browser?
-pub fn is_safari_browser() -> bool {
-    #[cfg(target_arch = "wasm32")]
-    fn is_safari_browser_inner() -> Option<bool> {
-        use web_sys::wasm_bindgen::JsCast as _;
-        use web_sys::wasm_bindgen::JsValue;
-        let window = web_sys::window()?;
-        Some(web_sys::js_sys::Object::has_own(
-            window.unchecked_ref::<web_sys::js_sys::Object>(),
-            &JsValue::from("safari"),
-        ))
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    fn is_safari_browser_inner() -> Option<bool> {
-        None
-    }
-
-    is_safari_browser_inner().unwrap_or(false)
-}
-
-/// Are we running inside the Firefox browser?
-pub fn is_firefox_browser() -> bool {
-    #[cfg(target_arch = "wasm32")]
-    {
-        web_sys::window()
-            .and_then(|w| w.navigator().user_agent().ok())
-            .is_some_and(|ua| ua.to_lowercase().contains("firefox"))
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        false
-    }
 }

@@ -53,14 +53,14 @@ pub enum ViewerOpenUrl {
 
     /// A path to a local file.
     ///
-    /// See also [`LogDataSource::FilePath`].
+    /// See also [`LogDataSource::File`].
     #[cfg(not(target_arch = "wasm32"))]
     FilePath(std::path::PathBuf),
 
-    /// A `rerun://` URI pointing to a recording.
+    /// A `rerun://` URI pointing to a dataset, or to a recording within it.
     ///
-    /// See also [`LogDataSource::RedapDatasetSegment`].
-    RedapDatasetSegment(re_uri::DatasetSegmentUri),
+    /// See also [`LogDataSource::RedapDatasetSegment`], which covers only recordings.
+    RedapDataset(re_uri::DatasetUri),
 
     /// A `rerun+http://` URI pointing to a proxy.
     ///
@@ -110,7 +110,7 @@ impl std::fmt::Debug for ViewerOpenUrl {
             Self::HttpUrl(url) => write!(f, "HttpUrl({url})"),
             #[cfg(not(target_arch = "wasm32"))]
             Self::FilePath(path) => write!(f, "FilePath({path:?})"),
-            Self::RedapDatasetSegment(uri) => write!(f, "RedapDatasetSegment({uri})"),
+            Self::RedapDataset(uri) => write!(f, "RedapDataset({uri})"),
             Self::RedapProxy(uri) => write!(f, "RedapProxy({uri})"),
             Self::RedapCatalog(uri) => write!(f, "RedapCatalog({uri})"),
             Self::RedapEntry(uri) => write!(f, "RedapEntry({uri})"),
@@ -141,7 +141,7 @@ impl From<re_uri::RedapUri> for ViewerOpenUrl {
             re_uri::RedapUri::Catalog(uri) => Self::RedapCatalog(uri),
             re_uri::RedapUri::Entry(uri) => Self::RedapEntry(uri),
             re_uri::RedapUri::Folder(uri) => Self::RedapFolder(uri),
-            re_uri::RedapUri::DatasetData(uri) => Self::RedapDatasetSegment(uri),
+            re_uri::RedapUri::Dataset(uri) => Self::RedapDataset(uri),
             re_uri::RedapUri::Proxy(uri) => Self::RedapProxy(uri),
         }
     }
@@ -180,6 +180,8 @@ impl ViewerOpenUrl {
             Ok(Self::RedapEntry(uri))
         } else if let Ok(uri) = url.parse::<re_uri::FolderUri>() {
             Ok(Self::RedapFolder(uri))
+        } else if let Ok(uri) = url.parse::<re_uri::DatasetUri>() {
+            Ok(Self::RedapDataset(uri))
         } else if let Some(selection) = url.strip_prefix(INTRA_RECORDING_URL_SCHEME) {
             match selection.parse::<Item>() {
                 Ok(item) => Ok(Self::IntraRecordingSelection(item)),
@@ -197,10 +199,11 @@ impl ViewerOpenUrl {
                 LogDataSource::HttpUrl { url, .. } => Ok(Self::HttpUrl(url)),
 
                 #[cfg(not(target_arch = "wasm32"))]
-                LogDataSource::FilePath { path, .. } => Ok(Self::FilePath(path)),
+                LogDataSource::File { path, .. } => Ok(Self::FilePath(path)),
 
-                LogDataSource::FileContents(..) => {
-                    unreachable!("FileContents can not be shared as a URL");
+                #[cfg(target_arch = "wasm32")]
+                LogDataSource::File { .. } => {
+                    unreachable!("A browser file cannot be shared as a URL")
                 }
 
                 #[cfg(not(target_arch = "wasm32"))]
@@ -209,7 +212,7 @@ impl ViewerOpenUrl {
                 LogDataSource::RedapDatasetSegment {
                     uri,
                     open_behavior: _,
-                } => Ok(Self::RedapDatasetSegment(uri)),
+                } => Ok(Self::RedapDataset(uri)),
 
                 LogDataSource::RedapProxy(proxy_uri) => Ok(Self::RedapProxy(proxy_uri)),
             }
@@ -319,16 +322,16 @@ impl ViewerOpenUrl {
             LogSource::HttpStream { url, .. } => Ok(Self::HttpUrl(url.parse::<Url>()?)),
 
             LogSource::File { path, .. } => {
-                #[cfg(not(target_arch = "wasm32"))]
-                {
-                    Ok(Self::FilePath(path.clone()))
-                }
-                #[cfg(target_arch = "wasm32")]
-                {
-                    _ = path;
-                    Err(anyhow::anyhow!(
-                        "Can't share links to local files on the web."
-                    ))
+                cfg_select! {
+                    target_arch = "wasm32" => {
+                        _ = path;
+                        Err(anyhow::anyhow!(
+                            "Can't share links to local files on the web."
+                        ))
+                    }
+                    _ => {
+                        Ok(Self::FilePath(path.clone()))
+                    }
                 }
             }
 
@@ -346,7 +349,7 @@ impl ViewerOpenUrl {
                 "Can't share links to recordings streamed from stdin."
             )),
 
-            LogSource::RedapGrpcStream { uri, .. } => Ok(Self::RedapDatasetSegment(uri.clone())),
+            LogSource::RedapGrpcStream { uri, .. } => Ok(Self::RedapDataset(uri.clone())),
 
             LogSource::MessageProxy(proxy_uri) => Ok(Self::RedapProxy(proxy_uri.clone())),
         }
@@ -388,14 +391,31 @@ impl ViewerOpenUrl {
                 Err(anyhow::anyhow!("Can't share links to local tables."))
             }
 
-            Route::RedapEntry { origin, kind } => match kind {
-                crate::RedapEntryKind::Entry(id) => {
-                    Ok(Self::RedapEntry(re_uri::EntryUri::new(origin.clone(), *id)))
+            Route::RedapEntry {
+                origin,
+                entry_id,
+                kind,
+            } => match kind {
+                Some(crate::EntryKind::Dataset(resource)) => {
+                    Ok(Self::RedapDataset(re_uri::DatasetUri {
+                        origin: origin.clone(),
+                        dataset_id: entry_id.id,
+                        resource: *resource,
+                        segment_id: None,
+                        fragment: re_uri::Fragment::default(),
+                    }))
                 }
-                crate::RedapEntryKind::Folder(path) => Ok(Self::RedapFolder(
-                    re_uri::FolderUri::new(origin.clone(), path.clone()),
+
+                // An entry url opens a table and a dataset alike.
+                Some(crate::EntryKind::Table) | None => Ok(Self::RedapEntry(
+                    re_uri::EntryUri::new(origin.clone(), *entry_id),
                 )),
             },
+
+            Route::RedapFolder { origin, path } => Ok(Self::RedapFolder(re_uri::FolderUri::new(
+                origin.clone(),
+                path.clone(),
+            ))),
 
             Route::RedapServer(server) => {
                 // `as_url` on the origin gives us an http link.
@@ -439,8 +459,8 @@ impl ViewerOpenUrl {
             #[cfg(not(target_arch = "wasm32"))]
             Self::FilePath(path) => vec1![(*path.to_string_lossy()).to_owned()],
 
-            Self::RedapDatasetSegment(dataset_segment_uri) => {
-                vec1![dataset_segment_uri.to_string()]
+            Self::RedapDataset(dataset_uri) => {
+                vec1![dataset_uri.to_string()]
             }
 
             Self::RedapProxy(proxy_uri) => {
@@ -541,11 +561,14 @@ impl ViewerOpenUrl {
             }),
             #[cfg(not(target_arch = "wasm32"))]
             Self::FilePath(path) => Some(LogSource::File { path: path.clone() }),
-            Self::RedapDatasetSegment(uri) => Some(LogSource::RedapGrpcStream {
-                uri: uri.clone(),
-                open_behavior: RecordingOpenBehavior::Background,
-                table_blueprint: None,
-            }),
+            Self::RedapDataset(uri) => {
+                uri.segment_id
+                    .is_some()
+                    .then(|| LogSource::RedapGrpcStream {
+                        uri: uri.clone(),
+                        open_behavior: RecordingOpenBehavior::Background,
+                    })
+            }
             Self::RedapProxy(uri) => Some(LogSource::MessageProxy(uri.clone())),
             Self::WebEventListener => Some(LogSource::RrdWebEvent),
             Self::WebViewerUrl { url_parameters, .. } => (url_parameters.len() == 1)
@@ -595,21 +618,29 @@ impl ViewerOpenUrl {
             }
             #[cfg(not(target_arch = "wasm32"))]
             Self::FilePath(path) => {
-                command_sender.send_system(SystemCommand::LoadDataSource(
-                    LogDataSource::FilePath {
-                        file_source: re_log_types::FileSource::Uri,
-                        path,
-                    },
-                ));
+                command_sender.send_system(SystemCommand::LoadDataSource(LogDataSource::File {
+                    file_source: re_log_types::FileSource::Uri,
+                    path,
+                }));
             }
-            Self::RedapDatasetSegment(uri) => {
-                command_sender.send_system(SystemCommand::LoadDataSource(
-                    LogDataSource::RedapDatasetSegment {
-                        uri,
-                        // Open behavior is not encoded in the url right now.
-                        open_behavior: options.recording_open_behavior,
-                    },
-                ));
+            Self::RedapDataset(uri) => {
+                if uri.segment_id.is_some() {
+                    command_sender.send_system(SystemCommand::LoadDataSource(
+                        LogDataSource::RedapDatasetSegment {
+                            uri,
+                            // Open behavior is not encoded in the url right now.
+                            open_behavior: options.recording_open_behavior,
+                        },
+                    ));
+                } else {
+                    // The url points at the dataset itself, so show it rather than load from it.
+                    open_redap_entry(
+                        command_sender,
+                        uri.origin,
+                        uri.dataset_id.into(),
+                        Some(crate::EntryKind::Dataset(uri.resource)),
+                    );
+                }
             }
             Self::RedapProxy(proxy_uri) => {
                 command_sender.send_system(SystemCommand::LoadDataSource(
@@ -627,14 +658,7 @@ impl ViewerOpenUrl {
                 command_sender.send_system(SystemCommand::SetFocus(item.into()));
             }
             Self::RedapEntry(uri) => {
-                command_sender.send_system(SystemCommand::AddRedapServer(uri.origin.clone()));
-                command_sender.send_system(SystemCommand::RefreshRedapEntry {
-                    origin: uri.origin.clone(),
-                    entry_id: uri.entry_id,
-                });
-                let item = Item::from(uri);
-                command_sender.send_system(SystemCommand::set_selection(item.clone()));
-                command_sender.send_system(SystemCommand::SetFocus(item.into()));
+                open_redap_entry(command_sender, uri.origin, uri.entry_id, None);
             }
             Self::RedapFolder(uri) => {
                 command_sender.send_system(SystemCommand::AddRedapServer(uri.origin.clone()));
@@ -658,8 +682,7 @@ impl ViewerOpenUrl {
                     // We _are_ a web viewer.
                     // If the base URL doesn't match our own then that's reason for concern (==warn),
                     // because this URL was probably meant to be opened in a different Rerun version.
-                    if let Some(window) = web_sys::window()
-                        && let Ok(location) = window.location().href()
+                    if let Ok(location) = re_web::browser::current_page_url()
                         && let Ok(location) = Url::parse(&location)
                     {
                         let current_webpage_base_url = base_url(&location);
@@ -716,7 +739,7 @@ impl ViewerOpenUrl {
 
             Self::ChunkStoreBrowser { .. } => self,
 
-            Self::RedapDatasetSegment(uri) => Self::RedapDatasetSegment(uri.without_fragment()),
+            Self::RedapDataset(uri) => Self::RedapDataset(uri.without_fragment()),
             Self::WebViewerUrl {
                 base_url,
                 mut url_parameters,
@@ -740,7 +763,14 @@ impl ViewerOpenUrl {
             Self::HttpUrl(..) => None,
             #[cfg(not(target_arch = "wasm32"))]
             Self::FilePath(..) => None,
-            Self::RedapDatasetSegment(uri) => Some(&mut uri.fragment),
+            // A fragment says where to look within a recording.
+            Self::RedapDataset(uri) => {
+                if uri.segment_id.is_some() {
+                    Some(&mut uri.fragment)
+                } else {
+                    None
+                }
+            }
             Self::RedapProxy(..) => None,
             Self::RedapCatalog(..) => None,
             Self::RedapEntry(..) => None,
@@ -760,6 +790,35 @@ impl ViewerOpenUrl {
             Self::ChunkStoreBrowser { .. } => None,
         }
     }
+}
+
+/// Navigate to an entry on a redap server, showing it as the given kind.
+fn open_redap_entry(
+    command_sender: &CommandSender,
+    origin: re_uri::Origin,
+    entry_id: re_log_types::EntryId,
+    kind: Option<crate::EntryKind>,
+) {
+    command_sender.send_system(SystemCommand::AddRedapServer(origin.clone()));
+    command_sender.send_system(SystemCommand::RefreshRedapEntry {
+        origin: origin.clone(),
+        entry_id,
+    });
+
+    let item = Item::RedapEntry {
+        origin: origin.clone(),
+        kind: crate::RedapEntryKind::Entry(entry_id),
+    };
+    command_sender.send_system(SystemCommand::set_selection(item.clone()));
+    command_sender.send_system(SystemCommand::SetFocus(item.into()));
+
+    // An `Item` names no kind, so selecting one leaves it unresolved.
+    // Send the kind the url named afterwards.
+    command_sender.send_system(SystemCommand::SetRoute(Route::RedapEntry {
+        origin,
+        entry_id,
+        kind,
+    }));
 }
 
 fn parse_chunk_store_browser_url(url: &str) -> anyhow::Result<Option<ViewerOpenUrl>> {
@@ -792,9 +851,10 @@ fn parse_chunk_store_browser_url(url: &str) -> anyhow::Result<Option<ViewerOpenU
     }
 
     let recording_id = match (application_id, recording_name) {
-        (Some(application_id), Some(recording_id)) => {
-            Some(StoreId::recording(application_id, recording_id))
-        }
+        (Some(application_id), Some(recording_id)) => Some(StoreId::recording(
+            re_log_types::ApplicationId::try_new(application_id)?,
+            recording_id,
+        )),
         (None, None) => None,
         _ => anyhow::bail!("Chunk store browser URL must include both app_id and recording_id"),
     };
@@ -885,6 +945,7 @@ fn handle_web_event_listener(egui_ctx: &egui::Context, command_sender: &CommandS
 
 #[cfg(test)]
 mod tests {
+    use std::assert_matches;
     use std::{
         net::{Ipv4Addr, SocketAddrV4},
         str::FromStr as _,
@@ -894,14 +955,14 @@ mod tests {
     use re_entity_db::{EntityDb, EntityPath, InstancePath};
     use re_log_channel::{LogSource, RecordingOpenBehavior};
     use re_log_types::{EntryId, StoreId, StoreKind, TableId};
-    use re_uri::{CatalogUri, DatasetSegmentUri, Fragment, Scheme};
+    use re_uri::{CatalogUri, DatasetUri, Fragment, Scheme};
     use re_uri::{
         Origin,
         external::url::{self, Url},
     };
 
-    use super::{CHUNK_STORE_BROWSER_URL, ViewerOpenUrl};
-    use crate::{Item, Route, StoreHub};
+    use super::{CHUNK_STORE_BROWSER_URL, OpenUrlOptions, ViewerOpenUrl};
+    use crate::{Item, Route, StoreHub, SystemCommand, command_channel};
 
     #[test]
     fn test_viewer_open_url_from_str() {
@@ -929,11 +990,11 @@ mod tests {
             ViewerOpenUrl::RedapEntry(re_uri::EntryUri::from_str(&url).unwrap())
         );
 
-        // DatasetSegmentUri
+        // DatasetUri
         let url = format!("rerun://127.0.0.1:1234/dataset/{entry_id}?segment_id=pid");
         assert_eq!(
             ViewerOpenUrl::from_str(&url).unwrap(),
-            ViewerOpenUrl::RedapDatasetSegment(url.parse().unwrap())
+            ViewerOpenUrl::RedapDataset(url.parse().unwrap())
         );
 
         // IntraRecordingSelection
@@ -1053,6 +1114,102 @@ mod tests {
         }
     }
 
+    /// An entry url opens the entry and routes there with an unresolved kind.
+    #[test]
+    fn test_open_entry_url() {
+        let entry_id = EntryId::new();
+        let url = format!("rerun://localhost:51234/entry/{entry_id}");
+
+        assert_eq!(
+            url.parse::<ViewerOpenUrl>().unwrap(),
+            ViewerOpenUrl::RedapEntry(re_uri::EntryUri::new(
+                "rerun://localhost:51234".parse().unwrap(),
+                entry_id
+            ))
+        );
+
+        let (command_sender, command_receiver) = command_channel();
+        url.parse::<ViewerOpenUrl>().unwrap().open(
+            &egui::Context::default(),
+            &OpenUrlOptions::default(),
+            &command_sender,
+        );
+
+        let route = std::iter::from_fn(|| command_receiver.recv_system())
+            .filter_map(|(_, command)| match command {
+                SystemCommand::SetRoute(route) => Some(route),
+                _ => None,
+            })
+            .last()
+            .expect("opening an entry url should set a route");
+
+        assert_matches!(route, Route::RedapEntry { kind: None, .. });
+    }
+
+    /// A dataset url that names a resource opens showing that resource, rather than falling back
+    /// to the default one.
+    #[test]
+    fn test_open_dataset_url_keeps_resource() {
+        let entry_id = EntryId::new();
+        let url = format!("rerun://localhost:51234/dataset/{entry_id}/assets");
+
+        let (command_sender, command_receiver) = command_channel();
+        url.parse::<ViewerOpenUrl>().unwrap().open(
+            &egui::Context::default(),
+            &OpenUrlOptions::default(),
+            &command_sender,
+        );
+
+        let route = std::iter::from_fn(|| command_receiver.recv_system())
+            .filter_map(|(_, command)| match command {
+                SystemCommand::SetRoute(route) => Some(route),
+                _ => None,
+            })
+            .last()
+            .expect("opening a dataset url should set a route");
+
+        assert_matches!(
+            route,
+            Route::RedapEntry {
+                kind: Some(crate::EntryKind::Dataset(re_uri::DatasetResource::Assets)),
+                ..
+            }
+        );
+    }
+
+    /// Sharing a route that knows it shows a dataset yields a dataset url naming the resource on
+    /// display but no segment. Opening that url lands back on the same resource.
+    #[test]
+    fn test_share_dataset_route_as_dataset_url() {
+        let store_hub = StoreHub::test_hub();
+        let origin: re_uri::Origin = "rerun://localhost:51234".parse().unwrap();
+        let entry_id = EntryId::new();
+
+        let url = ViewerOpenUrl::from_route(
+            &store_hub,
+            &Route::RedapEntry {
+                origin: origin.clone(),
+                entry_id,
+                kind: Some(crate::EntryKind::Dataset(re_uri::DatasetResource::Assets)),
+            },
+        )
+        .unwrap();
+
+        assert_eq!(
+            url,
+            ViewerOpenUrl::RedapDataset(DatasetUri {
+                origin,
+                dataset_id: entry_id.id,
+                resource: re_uri::DatasetResource::Assets,
+                segment_id: None,
+                fragment: Fragment::default(),
+            })
+        );
+
+        let shared = url.sharable_url(None).unwrap();
+        assert_eq!(shared.parse::<ViewerOpenUrl>().unwrap(), url);
+    }
+
     #[test]
     fn test_viewer_open_url_from_route() {
         let store_hub = StoreHub::test_hub();
@@ -1086,9 +1243,9 @@ mod tests {
 
         // Folder route round-trips through ViewerOpenUrl + parser.
         let folder_path = "perception.detection".to_owned();
-        let folder_route = Route::RedapEntry {
+        let folder_route = Route::RedapFolder {
             origin: origin.clone(),
-            kind: crate::RedapEntryKind::Folder(folder_path.clone()),
+            path: folder_path.clone(),
         };
         let folder_url = ViewerOpenUrl::from_route(&store_hub, &folder_route).unwrap();
         assert_eq!(
@@ -1211,11 +1368,10 @@ mod tests {
             Some(LogSource::RedapGrpcStream {
                 uri: uri.parse().unwrap(),
                 open_behavior: RecordingOpenBehavior::Background,
-                table_blueprint: None,
             }),
         );
 
-        let mut uri: re_uri::DatasetSegmentUri = uri.parse().unwrap();
+        let mut uri: re_uri::DatasetUri = uri.parse().unwrap();
 
         assert_eq!(
             ViewerOpenUrl::from_route(
@@ -1225,7 +1381,7 @@ mod tests {
                 }
             )
             .unwrap(),
-            ViewerOpenUrl::RedapDatasetSegment(uri.clone())
+            ViewerOpenUrl::RedapDataset(uri.clone())
         );
 
         let fragment = Fragment {
@@ -1252,7 +1408,7 @@ mod tests {
 
         *url.fragment_mut().unwrap() = fragment;
 
-        assert_eq!(url, ViewerOpenUrl::RedapDatasetSegment(uri),);
+        assert_eq!(url, ViewerOpenUrl::RedapDataset(uri),);
 
         // originating from message proxy.
         let uri = "rerun://localhost:51234/proxy";
@@ -1300,7 +1456,7 @@ mod tests {
         let entry_id = EntryId::new();
         let uri = format!("rerun://127.0.0.1:1234/dataset/{entry_id}?segment_id=pid");
         assert_eq!(
-            ViewerOpenUrl::RedapDatasetSegment(uri.parse().unwrap())
+            ViewerOpenUrl::RedapDataset(uri.parse().unwrap())
                 .sharable_url(None)
                 .unwrap(),
             uri
@@ -1391,7 +1547,7 @@ mod tests {
         );
 
         assert_eq!(
-            ViewerOpenUrl::RedapDatasetSegment(
+            ViewerOpenUrl::RedapDataset(
                 "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae?segment_id=pid"
                     .parse()
                     .unwrap()
@@ -1468,19 +1624,21 @@ mod tests {
             ),
             (
                 "rerun+http://localhost:51234/dataset/187A3200CAE4DD795748a7ad187e21a3?segment_id=6977dcfd524a45b3b786c9a5a0bde4e1",
-                ViewerOpenUrl::RedapDatasetSegment(DatasetSegmentUri {
+                ViewerOpenUrl::RedapDataset(DatasetUri {
                     origin: "rerun+http://localhost:51234".parse().unwrap(),
                     dataset_id: "187A3200CAE4DD795748a7ad187e21a3".parse().unwrap(),
-                    segment_id: "6977dcfd524a45b3b786c9a5a0bde4e1".into(),
+                    resource: re_uri::DatasetResource::Segments,
+                    segment_id: Some("6977dcfd524a45b3b786c9a5a0bde4e1".into()),
                     fragment: Default::default(),
                 }),
             ),
             (
                 "rerun+http://localhost:51234/dataset/187A3200CAE4DD795748a7ad187e21a3?segment_id=6977dcfd524a45b3b786c9a5a0bde4e1#time_selection=stable_time@+1.096s..+2.097s",
-                ViewerOpenUrl::RedapDatasetSegment(DatasetSegmentUri {
+                ViewerOpenUrl::RedapDataset(DatasetUri {
                     origin: "rerun+http://localhost:51234".parse().unwrap(),
                     dataset_id: "187A3200CAE4DD795748a7ad187e21a3".parse().unwrap(),
-                    segment_id: "6977dcfd524a45b3b786c9a5a0bde4e1".into(),
+                    resource: re_uri::DatasetResource::Segments,
+                    segment_id: Some("6977dcfd524a45b3b786c9a5a0bde4e1".into()),
                     fragment: re_uri::Fragment {
                         time_selection: Some("stable_time@+1.096s..+2.097s".parse().unwrap()),
                         ..Default::default()
@@ -1489,10 +1647,11 @@ mod tests {
             ),
             (
                 "rerun+http://localhost:51234/dataset/187A3200CAE4DD795748a7ad187e21a3?segment_id=6977dcfd524a45b3b786c9a5a0bde4e1#time_selection=stable_time@+1.096s..+2.097s&when=stable_time@+3.990s",
-                ViewerOpenUrl::RedapDatasetSegment(DatasetSegmentUri {
+                ViewerOpenUrl::RedapDataset(DatasetUri {
                     origin: "rerun+http://localhost:51234".parse().unwrap(),
                     dataset_id: "187A3200CAE4DD795748a7ad187e21a3".parse().unwrap(),
-                    segment_id: "6977dcfd524a45b3b786c9a5a0bde4e1".into(),
+                    resource: re_uri::DatasetResource::Segments,
+                    segment_id: Some("6977dcfd524a45b3b786c9a5a0bde4e1".into()),
                     fragment: re_uri::Fragment {
                         when: Some((
                             "stable_time".into(),
@@ -1512,7 +1671,7 @@ mod tests {
                     assert_eq!(got, expected);
                 }
                 Err(err) => {
-                    DatasetSegmentUri::from_str(uri).unwrap();
+                    DatasetUri::from_str(uri).unwrap();
                     panic!("{err}");
                 }
             }

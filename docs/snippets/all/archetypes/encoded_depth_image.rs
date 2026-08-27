@@ -12,9 +12,13 @@ fn main() -> anyhow::Result<()> {
         rerun::RecordingStreamBuilder::new("rerun_example_encoded_depth_image")
             .spawn()?;
 
+    let is_png = std::path::Path::new(path)
+        .extension()
+        .is_some_and(|ext| ext.eq_ignore_ascii_case("png"));
+
     let depth_blob = std::fs::read(path)?;
     let encoded_depth = rerun::EncodedDepthImage::new(depth_blob)
-        .with_media_type(if path.ends_with(".png") {
+        .with_media_type(if is_png {
             rerun::components::MediaType::PNG
         } else {
             rerun::components::MediaType::RVL

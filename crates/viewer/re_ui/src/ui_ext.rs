@@ -1,8 +1,8 @@
-use egui::emath::GuiRounding as _;
 use egui::{
-    CollapsingResponse, Color32, IntoAtoms, NumExt as _, Rangef, Rect, StrokeKind, Widget as _,
-    WidgetInfo, WidgetText, pos2,
+    CollapsingResponse, Color32, IntoAtoms, Margin, NumExt as _, Rangef, Rect, StrokeKind,
+    UiBuilder, Widget as _, WidgetInfo, WidgetText, pos2,
 };
+use egui::{CornerRadius, emath::GuiRounding as _};
 
 use crate::alert::Alert;
 use crate::button::ReButton;
@@ -54,38 +54,51 @@ pub trait UiExt {
         crate::loading_indicator::loading_indicator_ui(self.ui_mut(), reason)
     }
 
+    /// Like [`Self::loading_indicator`], but as tall as one line of text, so a label can take its
+    /// place without changing layout.
+    #[doc(alias = "spinner")]
+    fn inline_loading_indicator(&mut self, reason: &str) -> egui::Response {
+        crate::loading_indicator::inline_loading_indicator_ui(self.ui_mut(), reason)
+    }
+
+    /// Small orange "debug only" pill, marking UI that is only present in debug builds.
+    #[cfg(debug_assertions)]
+    fn debug_only_badge(&mut self) -> egui::Response {
+        crate::debug_only::debug_only_badge_ui(self.ui_mut())
+    }
+
     /// Shows a success label with a large border.
     ///
-    /// If the text contains [`re_error::DETAILS_SEPARATOR`], the details are
+    /// If the text has a details section (see [`re_error::StructuredError`]), the details are
     /// shown on hover instead of inline.
     ///
     /// If you don't want a border, use [`crate::ContextExt::success_text`].
     fn success_label(&mut self, success_text: impl Into<String>) -> egui::Response {
-        let success_text = success_text.into();
-        let (summary, details) = re_error::split_details(&success_text);
-        Alert::success().show_text(self.ui_mut(), summary, details.map(str::to_owned))
+        let text = re_error::StructuredError::parse(success_text.into());
+        let details = text.details_joined();
+        Alert::success().show_text(self.ui_mut(), text.summary, details)
     }
 
     /// Shows an info label with a large border.
     ///
-    /// If the text contains [`re_error::DETAILS_SEPARATOR`], the details are
+    /// If the text has a details section (see [`re_error::StructuredError`]), the details are
     /// shown on hover instead of inline.
     fn info_label(&mut self, info_text: impl Into<String>) -> egui::Response {
-        let info_text = info_text.into();
-        let (summary, details) = re_error::split_details(&info_text);
-        Alert::info().show_text(self.ui_mut(), summary, details.map(str::to_owned))
+        let text = re_error::StructuredError::parse(info_text.into());
+        let details = text.details_joined();
+        Alert::info().show_text(self.ui_mut(), text.summary, details)
     }
 
     /// Shows a warning label with a large border.
     ///
-    /// If the text contains [`re_error::DETAILS_SEPARATOR`], the details are
+    /// If the text has a details section (see [`re_error::StructuredError`]), the details are
     /// shown on hover instead of inline.
     ///
     /// If you don't want a border, use [`crate::ContextExt::warning_text`].
     fn warning_label(&mut self, warning_text: impl Into<String>) -> egui::Response {
-        let warning_text = warning_text.into();
-        let (summary, details) = re_error::split_details(&warning_text);
-        Alert::warning().show_text(self.ui_mut(), summary, details.map(str::to_owned))
+        let text = re_error::StructuredError::parse(warning_text.into());
+        let details = text.details_joined();
+        Alert::warning().show_text(self.ui_mut(), text.summary, details)
     }
 
     /// Shows a small error label with the given text on hover and copies the text to the clipboard on click with a large border.
@@ -101,7 +114,7 @@ pub trait UiExt {
 
     /// Shows an error label with the entire error text and copies the text to the clipboard on click.
     ///
-    /// If the text contains [`re_error::DETAILS_SEPARATOR`], the details are
+    /// If the text has a details section (see [`re_error::StructuredError`]), the details are
     /// shown on hover instead of inline.
     ///
     /// Use this only if the error message is short, or you have a lot of room.
@@ -109,9 +122,9 @@ pub trait UiExt {
     ///
     /// This has a large border! If you don't want a border, use [`crate::ContextExt::error_text`].
     fn error_label(&mut self, error_text: impl Into<String>) -> egui::Response {
-        let error_text = error_text.into();
-        let (summary, details) = re_error::split_details(&error_text);
-        Alert::error().show_text(self.ui_mut(), summary, details.map(str::to_owned))
+        let text = re_error::StructuredError::parse(error_text.into());
+        let details = text.details_joined();
+        Alert::error().show_text(self.ui_mut(), text.summary, details)
     }
 
     /// The `alt_text` will be used for accessibility (e.g. read by screen readers),
@@ -466,12 +479,13 @@ pub trait UiExt {
     /// where the collapsing header should align nicely with checkboxes and other controls.
     fn collapsing_header<R>(
         &mut self,
-        label: &str,
+        label: impl Into<WidgetText>,
         default_open: bool,
         add_body: impl FnOnce(&mut egui::Ui) -> R,
     ) -> egui::CollapsingResponse<R> {
+        let label = label.into();
         let ui = self.ui_mut();
-        let id = ui.make_persistent_id(label);
+        let id = ui.make_persistent_id(label.text());
         let button_padding = ui.spacing().button_padding;
 
         let available = ui.available_rect_before_wrap();
@@ -480,7 +494,7 @@ pub trait UiExt {
         let indent = 18.0;
         let text_pos = available.min + egui::vec2(indent, 0.0);
         let wrap_width = available.right() - text_pos.x;
-        let galley = egui::WidgetText::from(label).into_galley(
+        let galley = label.into_galley(
             ui,
             Some(egui::TextWrapMode::Extend),
             wrap_width,
@@ -498,6 +512,13 @@ pub trait UiExt {
         let (_, rect) = ui.allocate_space(desired_size);
 
         let mut header_response = ui.interact(rect, id, egui::Sense::click());
+        header_response.widget_info(|| {
+            egui::WidgetInfo::labeled(
+                egui::WidgetType::CollapsingHeader,
+                ui.is_enabled(),
+                galley.text(),
+            )
+        });
         let text_pos = pos2(
             text_pos.x,
             header_response.rect.center().y - galley.size().y / 2.0,
@@ -1015,13 +1036,6 @@ pub trait UiExt {
             let (rect, response) =
                 ui.allocate_exact_size(vec2(width, ui.available_height()), egui::Sense::click());
 
-            // Keep the hover background from covering the divider below the top bar.
-            let rect = {
-                let mut paint_rect = rect;
-                paint_rect.max.y -= ui.tokens().bottom_bar_stroke.width;
-                paint_rect
-            };
-
             let mut icon_color = if response.hovered() && close_button {
                 egui::Color32::WHITE
             } else {
@@ -1045,12 +1059,12 @@ pub trait UiExt {
                 let corner_radius = if close_button && !is_windows {
                     let is_window_maximized =
                         ui.ctx().input(|i| i.viewport().maximized == Some(true));
-                    egui::CornerRadius {
+                    CornerRadius {
                         ne: ui.tokens().native_window_corner_radius(is_window_maximized),
                         ..Default::default()
                     }
                 } else {
-                    egui::CornerRadius::ZERO
+                    CornerRadius::ZERO
                 };
 
                 ui.painter().rect_filled(rect, corner_radius, fill);
@@ -1268,11 +1282,13 @@ pub trait UiExt {
     ) -> egui::InnerResponse<R> {
         let ui = self.ui_mut();
 
-        let tokens = ui.tokens();
+        let margin = 3;
+
         egui::Frame {
-            inner_margin: egui::Margin::same(3),
-            stroke: tokens.bottom_bar_stroke,
-            corner_radius: ui.visuals().widgets.hovered.corner_radius + egui::CornerRadius::same(3),
+            inner_margin: Margin::same(margin),
+            stroke: ui.visuals().widgets.noninteractive.bg_stroke,
+            corner_radius: ui.visuals().widgets.hovered.corner_radius
+                + CornerRadius::same(margin as _),
             ..Default::default()
         }
         .show(ui, |ui| {
@@ -1367,6 +1383,42 @@ pub trait UiExt {
             egui::Stroke::new(1.0, ui.visuals().error_fg_color);
         ui.visuals_mut().widgets.inactive.bg_stroke =
             egui::Stroke::new(1.0, ui.visuals().error_fg_color);
+    }
+
+    /// Show `contents` as one wrapping unit inside a [`egui::Ui::horizontal_wrapped`] layout.
+    ///
+    /// Don't use too many of these in the same layout, as it could take a frame per row and wrap
+    /// unit to settle.
+    fn wrap_unit<R>(
+        &mut self,
+        contents: impl FnOnce(&mut egui::Ui) -> R,
+    ) -> egui::InnerResponse<R> {
+        let ui = self.ui_mut();
+
+        let id = ui.next_auto_id();
+        let last_width = ui.read_response(id).map(|response| response.rect.width());
+        let available = ui.available_rect_before_wrap().width();
+
+        // Only break a row that already has something on it: `end_row` moves
+        // down by one row height even on an empty row, which would leave a
+        // blank row above the contents.
+        let row_has_content = available < ui.max_rect().width() - 0.5;
+
+        if row_has_content && last_width.is_some_and(|width| available < width) {
+            ui.end_row();
+        }
+
+        let layout = ui.layout().with_main_wrap(false);
+        let response = ui.scope_builder(UiBuilder::new().id(id).layout(layout), contents);
+
+        // The contents have a width we did not know about when we placed them.
+        // Ask for one more pass, so the next one puts them on the correct row.
+        let width = response.response.rect.width();
+        if last_width.is_none_or(|last_width| 0.5 < (last_width - width).abs()) {
+            ui.request_discard("wrap_unit width changed");
+        }
+
+        response
     }
 }
 

@@ -5,8 +5,8 @@ use std::sync::Arc;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_byte_size::SizeBytes;
 use re_types_core::{
-    Component, ComponentDescriptor, ComponentType, DeserializationError, Loggable,
-    SerializedComponentBatch,
+    ArrowDatatype, Component, ComponentDescriptor, ComponentType, DeserializationError, FromArrow,
+    SerializedComponentBatch, ToArrow,
 };
 
 // ----------------------------------------------------------------------------
@@ -153,7 +153,7 @@ impl MyPoint {
 
 re_types_core::macros::impl_into_cow!(MyPoint);
 
-impl Loggable for MyPoint {
+impl ArrowDatatype for MyPoint {
     fn arrow_datatype() -> arrow::datatypes::DataType {
         use arrow::datatypes::DataType::Float32;
         arrow::datatypes::DataType::Struct(arrow::datatypes::Fields::from(vec![
@@ -161,21 +161,19 @@ impl Loggable for MyPoint {
             arrow::datatypes::Field::new("y", Float32, false),
         ]))
     }
+}
 
-    fn to_arrow_opt<'a>(
-        data: impl IntoIterator<Item = Option<impl Into<std::borrow::Cow<'a, Self>>>>,
+impl ToArrow for MyPoint {
+    fn to_arrow<'a>(
+        data: impl IntoIterator<Item = impl Into<std::borrow::Cow<'a, Self>>>,
     ) -> re_types_core::SerializationResult<arrow::array::ArrayRef>
     where
         Self: 'a,
     {
         use arrow::datatypes::DataType::Float32;
 
-        let (xs, ys): (Vec<_>, Vec<_>) = data
-            .into_iter()
-            .map(Option::unwrap)
-            .map(Into::into)
-            .map(|p| (p.x, p.y))
-            .unzip();
+        let (xs, ys): (Vec<_>, Vec<_>) =
+            data.into_iter().map(Into::into).map(|p| (p.x, p.y)).unzip();
 
         let x_array = Arc::new(arrow::array::Float32Array::from(xs));
         let y_array = Arc::new(arrow::array::Float32Array::from(ys));
@@ -189,10 +187,12 @@ impl Loggable for MyPoint {
             None,
         )))
     }
+}
 
-    fn from_arrow_opt(
+impl FromArrow for MyPoint {
+    fn from_arrow(
         data: &dyn arrow::array::Array,
-    ) -> re_types_core::DeserializationResult<Vec<Option<Self>>> {
+    ) -> re_types_core::DeserializationResult<Vec<Self>> {
         let array = data
             .downcast_array_ref::<arrow::array::StructArray>()
             .ok_or_else(DeserializationError::downcast_error::<arrow::array::StructArray>)?;
@@ -207,15 +207,15 @@ impl Loggable for MyPoint {
             .downcast_array_ref::<arrow::array::Float32Array>()
             .ok_or_else(DeserializationError::downcast_error::<arrow::array::Float32Array>)?;
 
-        Ok(std::iter::zip(xs.iter(), ys.iter())
+        std::iter::zip(xs.iter(), ys.iter())
             .map(|(x, y)| {
                 if let (Some(x), Some(y)) = (x, y) {
-                    Some(Self { x, y })
+                    Ok(Self { x, y })
                 } else {
-                    None
+                    Err(re_types_core::DeserializationError::missing_data())
                 }
             })
-            .collect())
+            .collect()
     }
 }
 
@@ -258,7 +258,7 @@ impl MyPoint64 {
 
 re_types_core::macros::impl_into_cow!(MyPoint64);
 
-impl Loggable for MyPoint64 {
+impl ArrowDatatype for MyPoint64 {
     fn arrow_datatype() -> arrow::datatypes::DataType {
         use arrow::datatypes::DataType::Float64;
         arrow::datatypes::DataType::Struct(arrow::datatypes::Fields::from(vec![
@@ -266,21 +266,19 @@ impl Loggable for MyPoint64 {
             arrow::datatypes::Field::new("y", Float64, false),
         ]))
     }
+}
 
-    fn to_arrow_opt<'a>(
-        data: impl IntoIterator<Item = Option<impl Into<std::borrow::Cow<'a, Self>>>>,
+impl ToArrow for MyPoint64 {
+    fn to_arrow<'a>(
+        data: impl IntoIterator<Item = impl Into<std::borrow::Cow<'a, Self>>>,
     ) -> re_types_core::SerializationResult<arrow::array::ArrayRef>
     where
         Self: 'a,
     {
         use arrow::datatypes::DataType::Float64;
 
-        let (xs, ys): (Vec<_>, Vec<_>) = data
-            .into_iter()
-            .map(Option::unwrap)
-            .map(Into::into)
-            .map(|p| (p.x, p.y))
-            .unzip();
+        let (xs, ys): (Vec<_>, Vec<_>) =
+            data.into_iter().map(Into::into).map(|p| (p.x, p.y)).unzip();
 
         let x_array = Arc::new(arrow::array::Float64Array::from(xs));
         let y_array = Arc::new(arrow::array::Float64Array::from(ys));
@@ -294,10 +292,12 @@ impl Loggable for MyPoint64 {
             None,
         )))
     }
+}
 
-    fn from_arrow_opt(
+impl FromArrow for MyPoint64 {
+    fn from_arrow(
         data: &dyn arrow::array::Array,
-    ) -> re_types_core::DeserializationResult<Vec<Option<Self>>> {
+    ) -> re_types_core::DeserializationResult<Vec<Self>> {
         let array = data
             .downcast_array_ref::<arrow::array::StructArray>()
             .ok_or_else(DeserializationError::downcast_error::<arrow::array::StructArray>)?;
@@ -312,15 +312,15 @@ impl Loggable for MyPoint64 {
             .downcast_array_ref::<arrow::array::Float64Array>()
             .ok_or_else(DeserializationError::downcast_error::<arrow::array::Float64Array>)?;
 
-        Ok(std::iter::zip(xs.iter(), ys.iter())
+        std::iter::zip(xs.iter(), ys.iter())
             .map(|(x, y)| {
                 if let (Some(x), Some(y)) = (x, y) {
-                    Some(Self { x, y })
+                    Ok(Self { x, y })
                 } else {
-                    None
+                    Err(re_types_core::DeserializationError::missing_data())
                 }
             })
-            .collect())
+            .collect()
     }
 }
 
@@ -371,31 +371,32 @@ impl From<u32> for MyColor {
 
 re_types_core::macros::impl_into_cow!(MyColor);
 
-impl Loggable for MyColor {
+impl ArrowDatatype for MyColor {
     fn arrow_datatype() -> arrow::datatypes::DataType {
         arrow::datatypes::DataType::UInt32
     }
+}
 
-    fn to_arrow_opt<'a>(
-        data: impl IntoIterator<Item = Option<impl Into<std::borrow::Cow<'a, Self>>>>,
+impl ToArrow for MyColor {
+    fn to_arrow<'a>(
+        data: impl IntoIterator<Item = impl Into<std::borrow::Cow<'a, Self>>>,
     ) -> re_types_core::SerializationResult<arrow::array::ArrayRef>
     where
         Self: 'a,
     {
-        use re_types_core::datatypes::UInt32;
-        UInt32::to_arrow_opt(
-            data.into_iter()
-                .map(|opt| opt.map(Into::into).map(|c| UInt32(c.0))),
-        )
+        use re_types_core::encodings::UInt32;
+        UInt32::to_arrow(data.into_iter().map(Into::into).map(|c| UInt32(c.0)))
     }
+}
 
-    fn from_arrow_opt(
+impl FromArrow for MyColor {
+    fn from_arrow(
         data: &dyn arrow::array::Array,
-    ) -> re_types_core::DeserializationResult<Vec<Option<Self>>> {
-        use re_types_core::datatypes::UInt32;
-        Ok(UInt32::from_arrow_opt(data)?
+    ) -> re_types_core::DeserializationResult<Vec<Self>> {
+        use re_types_core::encodings::UInt32;
+        Ok(UInt32::from_arrow(data)?
             .into_iter()
-            .map(|opt| opt.map(|v| Self(v.0)))
+            .map(|v| Self(v.0))
             .collect())
     }
 }
@@ -415,31 +416,36 @@ pub struct MyLabel(pub String);
 
 re_types_core::macros::impl_into_cow!(MyLabel);
 
-impl Loggable for MyLabel {
+impl ArrowDatatype for MyLabel {
     fn arrow_datatype() -> arrow::datatypes::DataType {
-        re_types_core::datatypes::Utf8::arrow_datatype()
+        re_types_core::encodings::Utf8::arrow_datatype()
     }
+}
 
-    fn to_arrow_opt<'a>(
-        data: impl IntoIterator<Item = Option<impl Into<std::borrow::Cow<'a, Self>>>>,
+impl ToArrow for MyLabel {
+    fn to_arrow<'a>(
+        data: impl IntoIterator<Item = impl Into<std::borrow::Cow<'a, Self>>>,
     ) -> re_types_core::SerializationResult<arrow::array::ArrayRef>
     where
         Self: 'a,
     {
-        use re_types_core::datatypes::Utf8;
-        Utf8::to_arrow_opt(
+        use re_types_core::encodings::Utf8;
+        Utf8::to_arrow(
             data.into_iter()
-                .map(|opt| opt.map(Into::into).map(|l| Utf8(l.0.clone().into()))),
+                .map(Into::into)
+                .map(|l| Utf8(l.0.clone().into())),
         )
     }
+}
 
-    fn from_arrow_opt(
+impl FromArrow for MyLabel {
+    fn from_arrow(
         data: &dyn arrow::array::Array,
-    ) -> re_types_core::DeserializationResult<Vec<Option<Self>>> {
-        use re_types_core::datatypes::Utf8;
-        Ok(Utf8::from_arrow_opt(data)?
+    ) -> re_types_core::DeserializationResult<Vec<Self>> {
+        use re_types_core::encodings::Utf8;
+        Ok(Utf8::from_arrow(data)?
             .into_iter()
-            .map(|opt| opt.map(|v| Self(v.0.to_string())))
+            .map(|v| Self(v.0.to_string()))
             .collect())
     }
 }
@@ -486,31 +492,32 @@ impl MyIndex {
 
 re_types_core::macros::impl_into_cow!(MyIndex);
 
-impl Loggable for MyIndex {
+impl ArrowDatatype for MyIndex {
     fn arrow_datatype() -> arrow::datatypes::DataType {
         arrow::datatypes::DataType::UInt64
     }
+}
 
-    fn to_arrow_opt<'a>(
-        data: impl IntoIterator<Item = Option<impl Into<std::borrow::Cow<'a, Self>>>>,
+impl ToArrow for MyIndex {
+    fn to_arrow<'a>(
+        data: impl IntoIterator<Item = impl Into<std::borrow::Cow<'a, Self>>>,
     ) -> re_types_core::SerializationResult<arrow::array::ArrayRef>
     where
         Self: 'a,
     {
-        use re_types_core::datatypes::UInt64;
-        UInt64::to_arrow_opt(
-            data.into_iter()
-                .map(|opt| opt.map(Into::into).map(|c| UInt64(c.0))),
-        )
+        use re_types_core::encodings::UInt64;
+        UInt64::to_arrow(data.into_iter().map(Into::into).map(|c| UInt64(c.0)))
     }
+}
 
-    fn from_arrow_opt(
+impl FromArrow for MyIndex {
+    fn from_arrow(
         data: &dyn arrow::array::Array,
-    ) -> re_types_core::DeserializationResult<Vec<Option<Self>>> {
-        use re_types_core::datatypes::UInt64;
-        Ok(UInt64::from_arrow_opt(data)?
+    ) -> re_types_core::DeserializationResult<Vec<Self>> {
+        use re_types_core::encodings::UInt64;
+        Ok(UInt64::from_arrow(data)?
             .into_iter()
-            .map(|opt| opt.map(|v| Self(v.0)))
+            .map(|v| Self(v.0))
             .collect())
     }
 }

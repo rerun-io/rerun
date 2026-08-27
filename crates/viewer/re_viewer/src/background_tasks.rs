@@ -49,6 +49,10 @@ impl BackgroundTasks {
     where
         F: FnOnce() -> anyhow::Result<PathBuf> + Send + 'static,
     {
+        if self.is_file_save_in_progress() {
+            anyhow::bail!("Another save operation is already in progress");
+        }
+
         self.spawn_threaded_promise(FILE_SAVER_PROMISE, f)
     }
 
@@ -77,5 +81,26 @@ impl BackgroundTasks {
 
     pub fn is_file_save_in_progress(&self) -> bool {
         self.promises.contains_key(FILE_SAVER_PROMISE)
+    }
+}
+
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod tests {
+    use super::BackgroundTasks;
+
+    #[test]
+    fn concurrent_file_save_reports_clear_error() {
+        let mut tasks = BackgroundTasks::default();
+        tasks.spawn_file_saver(|| Ok(Default::default())).unwrap();
+
+        // This is not racy since `BackgroundTasks` needs polling to clear out tasks.
+        let err = tasks
+            .spawn_file_saver(|| Ok(Default::default()))
+            .unwrap_err();
+
+        assert_eq!(
+            err.to_string(),
+            "Another save operation is already in progress"
+        );
     }
 }

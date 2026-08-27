@@ -1,6 +1,6 @@
 {
   "name": "@rerun-io/web-viewer",
-  "version": "0.35.0-alpha.1+dev",
+  "version": "0.37.0-alpha.1+dev",
   "description": "Embed the Rerun web viewer in your app",
   "licenses": [
     {
@@ -61,7 +61,7 @@
   ],
   "devDependencies": {
     "dts-buddy": "^0.3.0",
-    "typedoc": "^0.28.6",
+    "typedoc": "^0.28.20",
     "typedoc-github-theme": "^0.3.0",
     "typescript": "^5.2.2"
   }

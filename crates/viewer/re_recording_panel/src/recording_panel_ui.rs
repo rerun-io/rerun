@@ -12,7 +12,7 @@ use re_ui::{ContextExt as _, OnResponseExt as _, UiExt as _, UiLayout, icons, li
 use re_uri::dataset_hierarchy_leaf_name;
 use re_viewer_context::open_url::ViewerOpenUrl;
 use re_viewer_context::{
-    AppContext, Item, RecordingOrTable, RedapEntryKind, Route, SystemCommand,
+    AppContext, Item, RecordingOrLocalTable, RedapEntryKind, Route, SystemCommand,
     SystemCommandSender as _,
 };
 
@@ -143,10 +143,7 @@ fn add_button_ui(
                 #[cfg(debug_assertions)]
                 {
                     ui.separator();
-                    ui.add_enabled(
-                        false,
-                        egui::Button::new(egui::RichText::new("Debug-only tools").italics()),
-                    );
+                    ui.debug_only_badge();
 
                     if ui.button("Print recording entity DBs").clicked() {
                         let recording_entity_dbs = ctx
@@ -306,6 +303,12 @@ fn server_section_ui(ctx: &AppContext<'_>, ui: &mut egui::Ui, server_data: &Serv
         is_internal,
         entries_data,
     } = server_data;
+
+    // We hide the section for the internal catalog, until we actually have data.
+    // This mirrors the behavior of "Local" in the recording panel.
+    if *is_internal && entries_data.iter_datasets().is_empty() {
+        return;
+    }
 
     let content = list_item::LabelContent::header(server_title(ctx, origin, *is_internal))
         .with_menu_button(&icons::MORE, "Actions", move |ui| {
@@ -468,7 +471,7 @@ fn dataset_entry_ui(ctx: &AppContext<'_>, ui: &mut egui::Ui, dataset_entry_data:
                 for db in displayed_segments.iter().filter_map(SegmentData::entity_db) {
                     ctx.command_sender()
                         .send_system(SystemCommand::CloseRecordingOrTable(
-                            RecordingOrTable::Recording {
+                            RecordingOrLocalTable::Recording {
                                 store_id: db.store_id().clone(),
                             },
                         ));
@@ -477,7 +480,9 @@ fn dataset_entry_ui(ctx: &AppContext<'_>, ui: &mut egui::Ui, dataset_entry_data:
         });
     }
 
-    let item_response = if !displayed_segments.is_empty() {
+    let item_response = if displayed_segments.is_empty() {
+        list_item.show_hierarchical(ui, list_item_content)
+    } else {
         list_item
             .show_hierarchical_with_children(ui, id, true, list_item_content, |ui| {
                 for segment in displayed_segments {
@@ -502,15 +507,19 @@ fn dataset_entry_ui(ctx: &AppContext<'_>, ui: &mut egui::Ui, dataset_entry_data:
                 }
             })
             .item_response
-    } else {
-        list_item.show_hierarchical(ui, list_item_content)
     };
 
     let item_response = item_response.on_hover_ui(|ui| {
-        ui.label(format!("Dataset: {name:?}"));
+        ui.label(format!("Dataset: {name}"));
     });
 
-    let new_route = Route::from(re_uri::EntryUri::new(origin.clone(), *entry_id));
+    let new_route = Route::RedapEntry {
+        origin: origin.clone(),
+        entry_id: *entry_id,
+        kind: Some(re_viewer_context::EntryKind::Dataset(
+            re_uri::DatasetResource::default(),
+        )),
+    };
 
     item_response.context_menu(|ui| {
         let url = ViewerOpenUrl::from_route(ctx.store_hub(), &new_route)
@@ -556,8 +565,8 @@ fn remote_table_entry_ui(
     let RemoteTableData {
         entry_data:
             EntryData {
-                origin: _,
-                entry_id: _,
+                origin,
+                entry_id,
                 name,
                 icon,
                 is_selected,
@@ -576,10 +585,12 @@ fn remote_table_entry_ui(
     ctx.handle_select_focus_sync(&item_response, item.clone());
 
     if item_response.clicked() {
-        if let Some(route) = Route::from_item(&item) {
-            ctx.command_sender()
-                .send_system(SystemCommand::SetRoute(route));
-        }
+        ctx.command_sender()
+            .send_system(SystemCommand::SetRoute(Route::RedapEntry {
+                origin: origin.clone(),
+                entry_id: *entry_id,
+                kind: Some(re_viewer_context::EntryKind::Table),
+            }));
         ctx.command_sender()
             .send_system(SystemCommand::set_selection(item));
     }
@@ -649,7 +660,9 @@ fn app_id_section_ui(ctx: &AppContext<'_>, ui: &mut egui::Ui, local_app_id: &App
         });
     }
 
-    let mut item_response = if !loaded_recordings.is_empty() {
+    let mut item_response = if loaded_recordings.is_empty() {
+        list_item.show_hierarchical(ui, list_item_content)
+    } else {
         list_item
             .show_hierarchical_with_children(ui, id, true, list_item_content, |ui| {
                 for recording_data in loaded_recordings {
@@ -668,8 +681,6 @@ fn app_id_section_ui(ctx: &AppContext<'_>, ui: &mut egui::Ui, local_app_id: &App
                 }
             })
             .item_response
-    } else {
-        list_item.show_hierarchical(ui, list_item_content)
     };
 
     item_response = item_response.on_hover_ui(|ui| {

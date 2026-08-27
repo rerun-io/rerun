@@ -13,7 +13,7 @@ use re_sdk_types::blueprint::components::{
     Corner2D, Enabled, LinkAxis, LockRangeDuringZoom, VisualizerInstructionId,
 };
 use re_sdk_types::components::{AggregationPolicy, Color, Range1D, Visible};
-use re_sdk_types::datatypes::{TimeRange, TimeRangeBoundary};
+use re_sdk_types::encodings::TimeRange;
 use re_sdk_types::{ComponentBatch as _, ComponentIdentifier, View as _, ViewClassIdentifier};
 use re_ui::{Help, IconText, MouseButtonText, UiExt as _, icons, list_item};
 use re_view::controls::{MOVE_TIME_CURSOR_BUTTON, SELECTION_RECT_ZOOM_BUTTON};
@@ -22,10 +22,9 @@ use re_viewer_context::{
     BlueprintContext as _, DataResultInteractionAddress, DatatypeMatch, DragAndDropFeedback,
     IdentifiedViewSystem as _, IndicatedEntities, PerVisualizerType, QueryRange,
     RecommendedMappings, RecommendedView, RecommendedVisualizers, SingleRequiredComponentMatch,
-    SystemExecutionOutput, TimeControlCommand, ViewClass, ViewClassExt as _,
-    ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _,
-    ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext, VisualizableReason,
-    VisualizerComponentSource,
+    SystemExecutionOutput, ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewId, ViewQuery,
+    ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
+    ViewSystemIdentifier, ViewerContext, VisualizableReason, VisualizerComponentSource,
 };
 use re_viewport_blueprint::ViewProperty;
 use smallvec::SmallVec;
@@ -230,12 +229,8 @@ impl ViewClass for TimeSeriesView {
             view_property_ui::<PlotBackground>(&ctx, ui);
             view_property_ui::<PlotLegend>(&ctx, ui);
 
-            let link_x_axis = ViewProperty::from_archetype::<TimeAxis>(
-                ctx.blueprint_db(),
-                ctx.blueprint_query(),
-                view_id,
-            )
-            .component_or_fallback::<LinkAxis>(&ctx, TimeAxis::descriptor_link().component)?;
+            let link_x_axis = ViewProperty::from_archetype::<TimeAxis>(&ctx)
+                .component_or_fallback::<LinkAxis>(&ctx, TimeAxis::descriptor_link().component)?;
 
             match link_x_axis {
                 LinkAxis::Independent => {
@@ -449,7 +444,7 @@ impl ViewClass for TimeSeriesView {
         state: &mut dyn ViewState,
         query: &ViewQuery<'_>,
         mut system_output: SystemExecutionOutput,
-    ) -> Result<(), ViewSystemExecutionError> {
+    ) -> Result<re_viewer_context::ViewClassUiOutput, ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
         let state = state.downcast_mut::<TimeSeriesViewState>()?;
@@ -535,7 +530,7 @@ impl ViewClass for TimeSeriesView {
 
         let current_time = ctx.time_ctrl.time_i64();
         let Some(timeline) = ctx.time_ctrl.timeline() else {
-            return Ok(());
+            return Ok(Default::default());
         };
         let time_type = timeline.typ();
 
@@ -582,15 +577,10 @@ impl ViewClass for TimeSeriesView {
             }
         }
 
-        let blueprint_db = ctx.blueprint_db();
         let view_id = query.view_id;
 
         let view_ctx = self.view_context(ctx, view_id, state, query.space_origin);
-        let background = ViewProperty::from_archetype::<PlotBackground>(
-            blueprint_db,
-            ctx.blueprint_query,
-            view_id,
-        );
+        let background = ViewProperty::from_archetype::<PlotBackground>(&view_ctx);
         let background_color = background.component_or_fallback::<Color>(
             &view_ctx,
             PlotBackground::descriptor_color().component,
@@ -600,8 +590,7 @@ impl ViewClass for TimeSeriesView {
             PlotBackground::descriptor_show_grid().component,
         )?;
 
-        let plot_legend =
-            ViewProperty::from_archetype::<PlotLegend>(blueprint_db, ctx.blueprint_query, view_id);
+        let plot_legend = ViewProperty::from_archetype::<PlotLegend>(&view_ctx);
         let legend_visible = plot_legend.component_or_fallback::<Visible>(
             &view_ctx,
             PlotLegend::descriptor_visible().component,
@@ -611,42 +600,28 @@ impl ViewClass for TimeSeriesView {
             PlotLegend::descriptor_corner().component,
         )?;
 
-        let time_axis =
-            ViewProperty::from_archetype::<TimeAxis>(blueprint_db, ctx.blueprint_query, view_id);
+        let time_axis = ViewProperty::from_archetype::<TimeAxis>(&view_ctx);
 
         let link_x_axis = time_axis
             .component_or_fallback::<LinkAxis>(&view_ctx, TimeAxis::descriptor_link().component)?;
 
-        let view_current_time = re_sdk_types::datatypes::TimeInt(
+        let view_current_time = re_sdk_types::encodings::TimeInt(
             current_time
                 .unwrap_or_default()
                 .at_least(timeline_range.min.as_i64()),
         );
 
-        let query_result;
         // If we globally link the x-axis it will ignore this view's time range property and use
         // `GLOBAL_VIEW_ID's` time range property instead.
         let (time_range_property, time_range_ctx) = match link_x_axis {
             LinkAxis::Independent => (&time_axis, &view_ctx),
-            LinkAxis::LinkToGlobal => {
-                query_result = re_viewer_context::DataQueryResult::default();
-
-                (
-                    &ViewProperty::from_archetype::<TimeAxis>(
-                        ctx.blueprint_db(),
-                        ctx.blueprint_query,
-                        re_viewer_context::GLOBAL_VIEW_ID,
-                    ),
-                    &re_viewer_context::ViewContext {
-                        viewer_ctx: ctx,
-                        view_id: re_viewer_context::GLOBAL_VIEW_ID,
-                        view_class_identifier: Self::identifier(),
-                        space_origin: query.space_origin,
-                        view_state: state,
-                        query_result: &query_result,
-                    },
-                )
-            }
+            LinkAxis::LinkToGlobal => (
+                &ViewProperty::from_archetype_for_view::<TimeAxis>(
+                    ctx,
+                    re_viewer_context::GLOBAL_VIEW_ID,
+                ),
+                &view_ctx.with_view_id(re_viewer_context::GLOBAL_VIEW_ID),
+            ),
         };
 
         let view_time_range = time_range_property
@@ -657,33 +632,22 @@ impl ViewClass for TimeSeriesView {
 
         let resolve_time_range =
             |view_time_range: &re_sdk_types::blueprint::components::TimeRange| {
+                let range = re_view::resolve_time_axis_range(
+                    view_time_range,
+                    timeline_range,
+                    view_current_time,
+                );
+
+                // Into plot space, where `f64` coordinates still have enough precision.
                 make_range_sane(Range1D::new(
-                    match view_time_range.start {
-                        re_sdk_types::datatypes::TimeRangeBoundary::Infinite => {
-                            timeline_range.min.as_i64()
-                        }
-                        _ => {
-                            view_time_range
-                                .start
-                                .start_boundary_time(view_current_time)
-                                .0
-                        }
-                    }
-                    .saturating_sub(time_offset) as f64,
-                    match view_time_range.end {
-                        re_sdk_types::datatypes::TimeRangeBoundary::Infinite => {
-                            timeline_range.max.as_i64()
-                        }
-                        _ => view_time_range.end.end_boundary_time(view_current_time).0,
-                    }
-                    .saturating_sub(time_offset) as f64,
+                    range.min.as_i64().saturating_sub(time_offset) as f64,
+                    range.max.as_i64().saturating_sub(time_offset) as f64,
                 ))
             };
 
         let x_range = resolve_time_range(&view_time_range);
 
-        let scalar_axis =
-            ViewProperty::from_archetype::<ScalarAxis>(blueprint_db, ctx.blueprint_query, view_id);
+        let scalar_axis = ViewProperty::from_archetype::<ScalarAxis>(&view_ctx);
         let y_range = scalar_axis.component_or_fallback::<Range1D>(
             &view_ctx,
             ScalarAxis::descriptor_range().component,
@@ -776,13 +740,8 @@ impl ViewClass for TimeSeriesView {
                 {
                     let time = re_log_types::TimeReal::from(pointer.x as i64 + time_offset);
 
-                    set_time(
-                        ctx,
-                        current_time,
-                        &view_time_range,
-                        &mut new_view_time_range,
-                        time,
-                    );
+                    new_view_time_range =
+                        re_view::set_time_cursor(ctx, current_time, Some(&view_time_range.0), time);
                 }
 
                 plot_double_clicked = plot_ui.response().double_clicked();
@@ -909,27 +868,11 @@ impl ViewClass for TimeSeriesView {
                                 return None;
                             }
 
-                            let new_x_range_rounded = Range1D::new(
-                                new_x_range.start().round(),
-                                new_x_range.end().round(),
-                            );
-
-                            let new_view_time_range = TimeRange {
-                                start: re_sdk_types::datatypes::TimeRangeBoundary::Absolute(
-                                    re_sdk_types::datatypes::TimeInt(
-                                        (new_x_range_rounded.start() as i64)
-                                            .saturating_add(time_offset),
-                                    ),
-                                ),
-                                end: re_sdk_types::datatypes::TimeRangeBoundary::Absolute(
-                                    re_sdk_types::datatypes::TimeInt(
-                                        (new_x_range_rounded.end() as i64)
-                                            .saturating_add(time_offset),
-                                    ),
-                                ),
-                            };
-
-                            Some(new_view_time_range)
+                            Some(re_view::time_axis_range_from_window(
+                                re_log_types::TimeReal::from(new_x_range.start()),
+                                re_log_types::TimeReal::from(new_x_range.end()),
+                                time_offset,
+                            ))
                         })
                         .map(re_sdk_types::blueprint::components::TimeRange)
                         && view_time_range != new_view_time_range
@@ -1024,46 +967,12 @@ impl ViewClass for TimeSeriesView {
                 update_series_visibility_from_legend(ctx, query, &all_plot_series, &hidden_items);
             }
 
-            Ok(())
+            Ok::<(), ViewSystemExecutionError>(())
         })
-        .inner
+        .inner?;
+
+        Ok(Default::default())
     }
-}
-
-fn set_time(
-    ctx: &ViewerContext<'_>,
-    current_time: Option<i64>,
-    view_time_range: &re_sdk_types::blueprint::components::TimeRange,
-    new_view_time_range: &mut Option<TimeRange>,
-    time: re_log_types::TimeReal,
-) {
-    if let Some(current_time) = current_time {
-        let current_time = re_log_types::TimeInt::new_temporal(current_time);
-        let time = time.floor();
-
-        let time_diff = current_time.as_i64() - time.as_i64();
-
-        let mut either_relative = false;
-        let mut map_time_range_boundary = |boundary| {
-            if let TimeRangeBoundary::CursorRelative(offset) = boundary {
-                either_relative = true;
-                TimeRangeBoundary::CursorRelative((offset.0 + time_diff).into())
-            } else {
-                boundary
-            }
-        };
-
-        *new_view_time_range = Some(TimeRange {
-            start: map_time_range_boundary(view_time_range.start),
-            end: map_time_range_boundary(view_time_range.end),
-        })
-        .filter(|_| either_relative);
-    }
-
-    ctx.send_time_commands([
-        TimeControlCommand::SetTimeClamped(time),
-        TimeControlCommand::Pause,
-    ]);
 }
 
 fn all_scalar_mappings_for(
@@ -1519,13 +1428,8 @@ fn paint_time_cursor(
         // Avoid frame-delay:
         time_x = pointer_pos.x;
 
-        set_time(
-            ctx,
-            current_time,
-            view_time_range,
-            new_view_time_range,
-            new_time.into(),
-        );
+        *new_view_time_range =
+            re_view::set_time_cursor(ctx, current_time, Some(&view_time_range.0), new_time.into());
     }
 
     let highlighted = is_near || is_being_dragged;
@@ -1656,23 +1560,23 @@ pub(crate) fn to_stepped_points(points: &[[f64; 2]], mode: crate::StepMode) -> V
     let mut stepped = Vec::with_capacity(capacity);
     match mode {
         crate::StepMode::After => {
-            for pair in points.windows(2) {
-                stepped.push(pair[0]);
-                stepped.push([pair[1][0], pair[0][1]]);
+            for [a, b] in points.array_windows() {
+                stepped.push(*a);
+                stepped.push([b[0], a[1]]);
             }
         }
         crate::StepMode::Before => {
-            for pair in points.windows(2) {
-                stepped.push(pair[0]);
-                stepped.push([pair[0][0], pair[1][1]]);
+            for [a, b] in points.array_windows() {
+                stepped.push(*a);
+                stepped.push([a[0], b[1]]);
             }
         }
         crate::StepMode::Mid => {
-            for pair in points.windows(2) {
-                let mid_t = fast_midpoint(pair[0][0], pair[1][0]);
-                stepped.push(pair[0]);
-                stepped.push([mid_t, pair[0][1]]);
-                stepped.push([mid_t, pair[1][1]]);
+            for [a, b] in points.array_windows() {
+                let mid_t = fast_midpoint(a[0], b[0]);
+                stepped.push(*a);
+                stepped.push([mid_t, a[1]]);
+                stepped.push([mid_t, b[1]]);
             }
         }
     }

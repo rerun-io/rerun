@@ -16,7 +16,7 @@ pub fn make_test_chunks(num_chunks: usize) -> Vec<Arc<Chunk>> {
     (0..num_chunks)
         .map(|i| {
             let row_id = RowId::new();
-            let points = MyPoint::from_iter(i as u32..i as u32 + 1);
+            let points = MyPoint::from_iter((i as u32)..=(i as u32));
             let chunk = Chunk::builder(entity_path.clone())
                 .with_sparse_component_batches(
                     row_id,

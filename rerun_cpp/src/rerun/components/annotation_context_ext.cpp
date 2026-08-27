@@ -12,9 +12,9 @@ namespace rerun::components {
 #if 0
     // <CODEGEN_COPY_TO_HEADER>
 
-    /// Construct from an initializer list of elements from which `rerun::datatypes::ClassDescriptionMapElem`s can be constructed.
+    /// Construct from an initializer list of elements from which `rerun::encodings::ClassDescriptionMapElem`s can be constructed.
     ///
-    /// This will then create a new collection of `rerun::datatypes::ClassDescriptionMapElem`.
+    /// This will then create a new collection of `rerun::encodings::ClassDescriptionMapElem`.
     ///
     /// _Implementation note_:
     /// We handle this type of conversion in a generic `rerun::ContainerAdapter`.
@@ -23,15 +23,15 @@ namespace rerun::components {
     template <
         typename TElement, //
         typename = std::enable_if_t<
-            std::is_constructible_v<datatypes::ClassDescriptionMapElem, TElement>> //
+            std::is_constructible_v<encodings::ClassDescriptionMapElem, TElement>> //
         >
     AnnotationContext(std::initializer_list<TElement> class_descriptions) {
-        std::vector<datatypes::ClassDescriptionMapElem> class_map_new;
+        std::vector<encodings::ClassDescriptionMapElem> class_map_new;
         class_map_new.reserve(class_descriptions.size());
         for (const auto& class_description : class_descriptions) {
             class_map_new.emplace_back(std::move(class_description));
         }
-        class_map = Collection<datatypes::ClassDescriptionMapElem>::take_ownership(
+        class_map = Collection<encodings::ClassDescriptionMapElem>::take_ownership(
             std::move(class_map_new)
         );
     }

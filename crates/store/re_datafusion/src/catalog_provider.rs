@@ -1,4 +1,3 @@
-use std::any::Any;
 use std::sync::Arc;
 
 use ahash::{HashMap, HashSet};
@@ -7,6 +6,7 @@ use datafusion::catalog::{CatalogProvider, CatalogProviderList, SchemaProvider, 
 use datafusion::common::{DataFusionError, Result as DataFusionResult, TableReference, exec_err};
 use datafusion::logical_expr::TableType;
 use parking_lot::Mutex;
+use re_async::AsyncRuntimeHandle;
 use re_log_types::EntryName;
 use re_protos::cloud::v1alpha1::EntryKind;
 use re_redap_client::{ConnectionAnalyticsExporter, ConnectionClient};
@@ -66,10 +66,6 @@ impl RedapCatalogProviderList {
 }
 
 impl CatalogProviderList for RedapCatalogProviderList {
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
     fn register_catalog(
         &self,
         name: String,
@@ -192,10 +188,6 @@ impl RedapCatalogProvider {
 }
 
 impl CatalogProvider for RedapCatalogProvider {
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
     fn schema_names(&self) -> Vec<String> {
         // Enumerates server entries (a wildcard `FindEntries`) and projects them to distinct
         // schema names. Only used by `SHOW SCHEMAS` / `INFORMATION_SCHEMA.schemata`; the SELECT
@@ -319,10 +311,6 @@ impl SchemaProvider for RedapSchemaProvider {
         self.catalog_name.as_deref()
     }
 
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
     fn table_names(&self) -> Vec<String> {
         let table_refs = get_table_refs(&self.client, &self.runtime).unwrap_or_else(|err| {
             re_log::error!("Error getting table references: {err}");
@@ -358,7 +346,11 @@ impl SchemaProvider for RedapSchemaProvider {
         )
         .with_caller(TableQueryCaller::CatalogResolver);
         if let Some(exporter) = self.analytics.clone() {
-            provider = provider.with_analytics(exporter);
+            let async_runtime = cfg_select! {
+                target_arch = "wasm32" => { AsyncRuntimeHandle::new_web() }
+                _ => { AsyncRuntimeHandle::new_native(self.runtime.clone()) }
+            };
+            provider = provider.with_analytics(exporter, async_runtime);
         }
         provider.into_provider().await.map(Some)
     }

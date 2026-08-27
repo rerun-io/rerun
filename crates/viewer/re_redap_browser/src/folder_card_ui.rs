@@ -7,7 +7,7 @@ use re_ui::UiExt as _;
 use re_ui::egui_ext::card_layout::CardLayout;
 use re_ui::icons;
 use re_uri::{DATASET_HIERARCHY_SEPARATOR, split_dataset_hierarchy_path};
-use re_viewer_context::{RedapEntryKind, Route, SystemCommand, SystemCommandSender as _};
+use re_viewer_context::{Route, SystemCommand, SystemCommandSender as _};
 
 use crate::entries::Entry;
 
@@ -76,9 +76,9 @@ pub fn folder_cards_ui(
                             };
                             ui.label(label);
 
-                            Route::RedapEntry {
+                            Route::RedapFolder {
                                 origin: origin.clone(),
-                                kind: RedapEntryKind::Folder(path_prefix.clone()),
+                                path: path_prefix.clone(),
                             }
                         }
                         FolderChildCard::Entry {
@@ -99,7 +99,11 @@ pub fn folder_cards_ui(
                                 ui.strong(name);
                             });
 
-                            Route::from(re_uri::EntryUri::new(origin.clone(), *entry_id))
+                            Route::RedapEntry {
+                                origin: origin.clone(),
+                                entry_id: *entry_id,
+                                kind: crate::entries::route_entry_kind(*kind),
+                            }
                         }
                     };
 

@@ -104,6 +104,7 @@ class QueryMetrics:
     filters_pushed_down: int
     filters_applied_client_side: int
     entity_path_narrowing_applied: bool
+    target_partitions: int
 
     # Execution-time
     total_duration: datetime.timedelta
@@ -127,6 +128,15 @@ class QueryMetrics:
     planned_fetch_batches: int
     planned_segment_waves: int
     segment_admission_limit: int
+    segment_admission_candidate_limit: int
+    segment_admission_source: str
+    segment_admission_candidate_reason: str
+    segment_admission_adaptive_enabled: bool
+    segment_admission_profile_segment_count: int
+    segment_admission_profile_complete: bool
+    segment_admission_p95_segment_bytes: int
+    segment_admission_max_segment_bytes: int
+    segment_admission_largest_window_bytes: int
     max_segments_per_fetch_batch: int
     max_segments_per_wave: int
     peak_active_segments: int
@@ -135,6 +145,12 @@ class QueryMetrics:
     pipeline_byte_waits: int
     segment_admission_waits: int
     pipeline_stall_breaker_activations: int
+
+    # Delivered payload, decode cost, observed parallelism
+    delivered_rows: int
+    delivered_bytes: int
+    decode_duration: datetime.timedelta
+    peak_inflight_fetches: int
 
     @property
     def fetch_requests(self) -> int:
@@ -145,6 +161,19 @@ class QueryMetrics:
     def fetch_bytes(self) -> int:
         """Total bytes fetched across both gRPC and direct transports."""
         return self.fetch_grpc_bytes + self.fetch_direct_bytes
+
+    @property
+    def waste_ratio(self) -> float | None:
+        """
+        Bytes fetched per byte delivered — the over-fetch signal.
+
+        A large value means the query pulled far more data than it handed back
+        (e.g. "fetched 4 GB, delivered 200 rows"). `None` when nothing was
+        delivered, so the ratio is undefined.
+        """
+        if self.delivered_bytes == 0:
+            return None
+        return self.fetch_bytes / self.delivered_bytes
 
 
 def _from_rust(m: object) -> QueryMetrics:
@@ -166,6 +195,7 @@ def _from_rust(m: object) -> QueryMetrics:
         filters_pushed_down=m.filters_pushed_down,  # type: ignore[attr-defined]
         filters_applied_client_side=m.filters_applied_client_side,  # type: ignore[attr-defined]
         entity_path_narrowing_applied=m.entity_path_narrowing_applied,  # type: ignore[attr-defined]
+        target_partitions=m.target_partitions,  # type: ignore[attr-defined]
         total_duration=m.total_duration,  # type: ignore[attr-defined]
         time_to_first_chunk=m.time_to_first_chunk,  # type: ignore[attr-defined]
         error_kind=m.error_kind,  # type: ignore[attr-defined]
@@ -183,6 +213,15 @@ def _from_rust(m: object) -> QueryMetrics:
         planned_fetch_batches=m.planned_fetch_batches,  # type: ignore[attr-defined]
         planned_segment_waves=m.planned_segment_waves,  # type: ignore[attr-defined]
         segment_admission_limit=m.segment_admission_limit,  # type: ignore[attr-defined]
+        segment_admission_candidate_limit=m.segment_admission_candidate_limit,  # type: ignore[attr-defined]
+        segment_admission_source=m.segment_admission_source,  # type: ignore[attr-defined]
+        segment_admission_candidate_reason=m.segment_admission_candidate_reason,  # type: ignore[attr-defined]
+        segment_admission_adaptive_enabled=m.segment_admission_adaptive_enabled,  # type: ignore[attr-defined]
+        segment_admission_profile_segment_count=m.segment_admission_profile_segment_count,  # type: ignore[attr-defined]
+        segment_admission_profile_complete=m.segment_admission_profile_complete,  # type: ignore[attr-defined]
+        segment_admission_p95_segment_bytes=m.segment_admission_p95_segment_bytes,  # type: ignore[attr-defined]
+        segment_admission_max_segment_bytes=m.segment_admission_max_segment_bytes,  # type: ignore[attr-defined]
+        segment_admission_largest_window_bytes=m.segment_admission_largest_window_bytes,  # type: ignore[attr-defined]
         max_segments_per_fetch_batch=m.max_segments_per_fetch_batch,  # type: ignore[attr-defined]
         max_segments_per_wave=m.max_segments_per_wave,  # type: ignore[attr-defined]
         peak_active_segments=m.peak_active_segments,  # type: ignore[attr-defined]
@@ -191,6 +230,10 @@ def _from_rust(m: object) -> QueryMetrics:
         pipeline_byte_waits=m.pipeline_byte_waits,  # type: ignore[attr-defined]
         segment_admission_waits=m.segment_admission_waits,  # type: ignore[attr-defined]
         pipeline_stall_breaker_activations=m.pipeline_stall_breaker_activations,  # type: ignore[attr-defined]
+        delivered_rows=m.delivered_rows,  # type: ignore[attr-defined]
+        delivered_bytes=m.delivered_bytes,  # type: ignore[attr-defined]
+        decode_duration=m.decode_duration,  # type: ignore[attr-defined]
+        peak_inflight_fetches=m.peak_inflight_fetches,  # type: ignore[attr-defined]
     )
 
 

@@ -1,6 +1,4 @@
-use std::collections::HashSet;
 use std::sync::Arc;
-use std::sync::OnceLock;
 
 use arrow::array::RecordBatch;
 use arrow::datatypes::SchemaRef;
@@ -18,16 +16,9 @@ use tracing::instrument;
 
 use crate::grpc_streaming_provider::{GrpcStreamProvider, GrpcStreamToTable, ScanParams};
 use crate::pushdown_expressions::{
-    classify_filters_for_pushdown, filters_to_pushdown_sql, pushdown_filterable_columns,
+    classify_segment_id_filters_for_pushdown, segment_id_filter_from_filters,
 };
 use crate::wasm_compat::make_future_send;
-
-/// Public segment-table columns the server can filter on: the base scalar columns. List columns
-/// (`rerun_layer_names`, `rerun_storage_urls`) and dynamic `property:*` columns aren't supported.
-fn supported_filter_columns() -> &'static HashSet<String> {
-    static COLUMNS: OnceLock<HashSet<String>> = OnceLock::new();
-    COLUMNS.get_or_init(|| pushdown_filterable_columns(&ScanSegmentTableDataframe::min_schema()))
-}
 
 //TODO(ab): deduplicate from DatasetManifestProvider
 #[derive(Clone)]
@@ -65,16 +56,23 @@ impl SegmentTableProvider {
 
 #[async_trait]
 impl GrpcStreamToTable for SegmentTableProvider {
+    fn origin(&self) -> &re_uri::Origin {
+        self.client.origin()
+    }
+
     type GrpcStreamData = ScanSegmentTableResponse;
 
     #[instrument(skip(self), err, parent = &self.parent_span)]
     async fn fetch_schema(&mut self) -> ApiResult<SchemaRef> {
         let mut client = self.client.clone();
+        let origin = client.origin().clone();
         let dataset_id = self.dataset_id;
 
         Ok(Arc::new(
-            make_future_send(async move { client.get_segment_table_schema(dataset_id).await })
-                .await?,
+            make_future_send(origin.clone(), async move {
+                client.get_segment_table_schema(dataset_id).await
+            })
+            .await?,
         ))
     }
 
@@ -85,27 +83,35 @@ impl GrpcStreamToTable for SegmentTableProvider {
         &mut self,
         params: &ScanParams,
     ) -> ApiResult<re_redap_client::ApiResponseStream<Self::GrpcStreamData>> {
-        let sql_filter = filters_to_pushdown_sql(&params.filters, supported_filter_columns())
-            .unwrap_or_default();
+        let segment_id_filter = segment_id_filter_from_filters(
+            &params.filters,
+            ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
+        );
 
         let request = tonic::Request::new(ScanSegmentTableRequest {
-            columns: vec![], // all of them
-            sql_filter,
+            columns: params
+                .projected_columns
+                .as_deref()
+                .unwrap_or_default()
+                .to_vec(),
+            segment_id_filter,
         })
         .with_entry_id(self.dataset_id);
 
         let mut client = self.client.clone();
+        let origin = client.origin().clone();
 
-        let response = make_future_send(async move {
+        let response = make_future_send(origin.clone(), async move {
             client
                 .inner()
                 .scan_segment_table(request)
                 .await
-                .map_err(|err| ApiError::tonic(err, "/ScanSegmentTable failed"))
+                .map_err(|err| ApiError::tonic(&origin, err, "/ScanSegmentTable failed"))
         })
         .await?;
 
         Ok(re_redap_client::ApiResponseStream::from_tonic_response(
+            self.origin().clone(),
             response,
             "/ScanSegmentTable",
         ))
@@ -115,9 +121,9 @@ impl GrpcStreamToTable for SegmentTableProvider {
         &self,
         filters: &[&Expr],
     ) -> DataFusionResult<Vec<TableProviderFilterPushDown>> {
-        Ok(classify_filters_for_pushdown(
+        Ok(classify_segment_id_filters_for_pushdown(
             filters,
-            supported_filter_columns(),
+            ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
         ))
     }
 
@@ -129,11 +135,16 @@ impl GrpcStreamToTable for SegmentTableProvider {
         response
             .data
             .ok_or_else(|| {
-                ApiError::deserialization(None, "DataFrame missing from SegmentTable response")
+                ApiError::deserialization(
+                    self.origin(),
+                    None,
+                    "DataFrame missing from SegmentTable response",
+                )
             })?
             .try_into()
             .map_err(|err: re_protos::TypeConversionError| {
                 ApiError::deserialization_with_source(
+                    self.origin(),
                     None,
                     err,
                     "failed decoding /ScanSegmentTable response",

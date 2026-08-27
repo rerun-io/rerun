@@ -20,42 +20,26 @@ mod channel_logger;
 mod debug_assert;
 #[cfg(feature = "setup")]
 mod event_visitor;
+mod log_once;
 mod result_extensions;
 #[cfg(feature = "setup")]
 mod setup;
+
 #[cfg(feature = "setup")]
 pub use channel_logger::{LogMsg, Receiver, Sender, add_log_msg_receiver};
 #[cfg(feature = "setup")]
 pub use event_visitor::FieldValue;
-
-pub use tracing::Level;
-#[cfg(feature = "setup")]
-pub use tracing_subscriber::filter::LevelFilter;
-// The `re_log::info_once!(…)` etc are nice helpers, but the `log-once` crate is a bit lacking.
-// In the future we should implement our own macros to de-duplicate based on the callsite,
-// similar to how the log console in a browser will automatically suppress duplicates.
-pub use log_once::{debug_once, error_once, info_once, trace_once, warn_once};
+pub use log_once::LogOnceSet;
 pub use result_extensions::ResultExt;
 #[cfg(all(feature = "setup", not(target_arch = "wasm32")))]
 pub use setup::PanicOnWarnScope;
 #[cfg(feature = "setup")]
 pub use setup::{setup_logging, setup_logging_with_filter};
+pub use tracing::Level;
+#[cfg(feature = "setup")]
+pub use tracing_subscriber::filter::LevelFilter;
 // The tracing macros support more syntax features than the log, that's why we use them:
-pub use tracing::{debug, error, info, trace, warn};
-
-/// Log once at the given [`Level`].
-#[macro_export]
-macro_rules! log_once {
-    ($level:expr, $($arg:tt)+) => {
-        match $level {
-            $crate::Level::ERROR => $crate::error_once!($($arg)+),
-            $crate::Level::WARN => $crate::warn_once!($($arg)+),
-            $crate::Level::INFO => $crate::info_once!($($arg)+),
-            $crate::Level::DEBUG => $crate::debug_once!($($arg)+),
-            $crate::Level::TRACE => $crate::trace_once!($($arg)+),
-        }
-    };
-}
+pub use tracing::{debug, error, event, info, trace, warn};
 
 /// Log a warning in debug builds, or a debug message in release builds.
 ///
@@ -64,11 +48,15 @@ macro_rules! log_once {
 ///
 /// In debug builds, the message is prefixed with "DEBUG: " and logged at WARN level.
 /// In release builds, the message is logged at DEBUG level without any prefix.
+///
+/// This macro never triggers panic-on-warn (`RERUN_PANIC_ON_WARN` or `PanicOnWarnScope`):
+/// that is meant to catch user-facing warnings, and this macro is never a warning
+/// in release builds.
 #[cfg(debug_assertions)]
 #[macro_export]
 macro_rules! debug_warn {
     ($($arg:tt)+) => {
-        $crate::warn!("DEBUG: {}", format_args!($($arg)+))
+        $crate::with_panic_on_warn_suppressed(|| $crate::warn!("DEBUG: {}", format_args!($($arg)+)))
     };
 }
 
@@ -94,11 +82,15 @@ macro_rules! debug_warn {
 ///
 /// In debug builds, the message is prefixed with "DEBUG: " and logged at WARN level.
 /// In release builds, the message is logged at DEBUG level without any prefix.
+///
+/// This macro never triggers panic-on-warn (`RERUN_PANIC_ON_WARN` or `PanicOnWarnScope`):
+/// that is meant to catch user-facing warnings, and this macro is never a warning
+/// in release builds.
 #[cfg(debug_assertions)]
 #[macro_export]
 macro_rules! debug_warn_once {
     ($($arg:tt)+) => {
-        $crate::warn_once!("DEBUG: {}", format_args!($($arg)+))
+        $crate::with_panic_on_warn_suppressed(|| $crate::warn_once!("DEBUG: {}", format_args!($($arg)+)))
     };
 }
 
@@ -123,6 +115,7 @@ pub mod external {
 }
 
 /// Never log anything less serious than a `ERROR` from these crates.
+#[cfg(any(feature = "setup", not(target_arch = "wasm32")))]
 const CRATES_AT_ERROR_LEVEL: &[&str] = &[
     // silence rustls in release mode: https://github.com/rerun-io/rerun/issues/3104
     #[cfg(not(debug_assertions))]
@@ -130,6 +123,7 @@ const CRATES_AT_ERROR_LEVEL: &[&str] = &[
 ];
 
 /// Never log anything less serious than a `WARN` from these crates.
+#[cfg(any(feature = "setup", not(target_arch = "wasm32")))]
 const CRATES_AT_WARN_LEVEL: &[&str] = &[
     // wgpu crates spam a lot on info level, which is really annoying
     // TODO(emilk): remove once https://github.com/gfx-rs/wgpu/issues/3206 is fixed
@@ -143,6 +137,7 @@ const CRATES_AT_WARN_LEVEL: &[&str] = &[
 /// Never log anything less serious than a `INFO` from these crates.
 ///
 /// These creates are quite spammy on debug, drowning out what we care about:
+#[cfg(any(feature = "setup", not(target_arch = "wasm32")))]
 const CRATES_AT_INFO_LEVEL: &[&str] = &[
     "datafusion_optimizer",
     "datafusion",
@@ -252,25 +247,26 @@ fn add_builtin_log_filter(base_log_filter: &str) -> String {
 #[cfg(feature = "setup")]
 fn is_log_enabled(
     filter: tracing_subscriber::filter::LevelFilter,
-    metadata: &tracing::Metadata<'_>,
+    target: &str,
+    level: &tracing::Level,
 ) -> bool {
     if CRATES_AT_ERROR_LEVEL
         .iter()
-        .any(|crate_name| metadata.target().starts_with(crate_name))
+        .any(|crate_name| target.starts_with(crate_name))
     {
-        *metadata.level() <= tracing_subscriber::filter::LevelFilter::ERROR
+        *level <= tracing_subscriber::filter::LevelFilter::ERROR
     } else if CRATES_AT_WARN_LEVEL
         .iter()
-        .any(|crate_name| metadata.target().starts_with(crate_name))
+        .any(|crate_name| target.starts_with(crate_name))
     {
-        *metadata.level() <= tracing_subscriber::filter::LevelFilter::WARN
+        *level <= tracing_subscriber::filter::LevelFilter::WARN
     } else if CRATES_AT_INFO_LEVEL
         .iter()
-        .any(|crate_name| metadata.target().starts_with(crate_name))
+        .any(|crate_name| target.starts_with(crate_name))
     {
-        *metadata.level() <= tracing_subscriber::filter::LevelFilter::INFO
+        *level <= tracing_subscriber::filter::LevelFilter::INFO
     } else {
-        *metadata.level() <= filter
+        *level <= filter
     }
 }
 
@@ -335,6 +331,49 @@ pub fn env_var_is_truthy(var_name: &str) -> bool {
 pub fn is_rerun_very_strict() -> bool {
     static VERY_STRICT: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
     *VERY_STRICT.get_or_init(|| env_var_is_truthy("RERUN_VERY_STRICT"))
+}
+
+/// Is `RERUN_PANIC_ON_WARN` set to a truthy value?
+///
+/// When enabled, any user-facing warning or error log message causes a panic
+/// (see `setup_logging`). This is meant for tests and CI, to catch warnings early.
+///
+/// The result is cached on the first call, so subsequent calls are very cheap and
+/// changing the environment variable at runtime has no effect.
+pub fn is_panic_on_warn() -> bool {
+    static PANIC_ON_WARN: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *PANIC_ON_WARN.get_or_init(|| env_var_is_truthy("RERUN_PANIC_ON_WARN"))
+}
+
+thread_local! {
+    static SUPPRESS_PANIC_ON_WARN: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// Runs `f` with panic-on-warn suppressed on the current thread.
+///
+/// Used by [`debug_warn!`] & co, which are warnings only in debug builds
+/// and thus shouldn't trip `RERUN_PANIC_ON_WARN` or `PanicOnWarnScope`.
+///
+/// This relies on `tracing` dispatching events synchronously on the emitting thread.
+#[doc(hidden)] // implementation detail of the `debug_warn!` family
+pub fn with_panic_on_warn_suppressed<R>(f: impl FnOnce() -> R) -> R {
+    // RAII-restore, so a panic during `f` (e.g. while formatting) doesn't leak the flag.
+    struct Guard(bool);
+
+    impl Drop for Guard {
+        fn drop(&mut self) {
+            SUPPRESS_PANIC_ON_WARN.with(|suppress| suppress.set(self.0));
+        }
+    }
+
+    let _guard = Guard(SUPPRESS_PANIC_ON_WARN.with(|suppress| suppress.replace(true)));
+    f()
+}
+
+/// Is panic-on-warn currently suppressed on this thread (see [`with_panic_on_warn_suppressed`])?
+#[cfg(all(feature = "setup", not(target_arch = "wasm32")))] // only used by the `PanicOnWarn` layer
+pub(crate) fn is_panic_on_warn_suppressed() -> bool {
+    SUPPRESS_PANIC_ON_WARN.with(|suppress| suppress.get())
 }
 
 /// Shorten a path to a Rust source file.

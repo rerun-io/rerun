@@ -52,15 +52,13 @@ rr.log("path/to/points", rr.Points3D(positions, colors=colors))
 …
 ```
 
-<p align="center">
-  <picture>
-    <img src="https://static.rerun.io/opf_screenshot/bee51040cba93c0bae62ef6c57fa703704012a41/full.png" alt="">
-    <source media="(max-width: 480px)" srcset="https://static.rerun.io/opf_screenshot/bee51040cba93c0bae62ef6c57fa703704012a41/480w.png">
-    <source media="(max-width: 768px)" srcset="https://static.rerun.io/opf_screenshot/bee51040cba93c0bae62ef6c57fa703704012a41/768w.png">
-    <source media="(max-width: 1024px)" srcset="https://static.rerun.io/opf_screenshot/bee51040cba93c0bae62ef6c57fa703704012a41/1024w.png">
-    <source media="(max-width: 1200px)" srcset="https://static.rerun.io/opf_screenshot/bee51040cba93c0bae62ef6c57fa703704012a41/1200w.png">
-  </picture>
-</p>
+<picture>
+  <img src="https://static.rerun.io/pointcloud/80cc95c74b1fbab26af9b0d3547387352f932914/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/pointcloud/80cc95c74b1fbab26af9b0d3547387352f932914/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/pointcloud/80cc95c74b1fbab26af9b0d3547387352f932914/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/pointcloud/80cc95c74b1fbab26af9b0d3547387352f932914/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/pointcloud/80cc95c74b1fbab26af9b0d3547387352f932914/1200w.png">
+</picture>
 
 ## Getting started
 * [**C++**](https://www.rerun.io/docs/getting-started/data-in/cpp)
@@ -145,7 +143,7 @@ Of course, Rerun is useful for much more than just robots. Any time you have any
 
 ### Rerun vs. Rviz
 
-When coming from pure visualization tools like [RViz](https://docs.ros.org/en/rolling/Tutorials/Intermediate/RViz/RViz-Main.html), you might be used to seeing the latest data only.
+When coming from pure visualization tools like [RViz](https://docs.ros.org/en/jazzy/Tutorials/Intermediate/RViz/RViz-Main.html), you might be used to seeing the latest data only.
 Rerun is more than a pure visualization solution, it provides a platform for multimodal data with a powerful visualizer, storage model and query engine (see also: [*"What is Rerun?"*](https://rerun.io/docs/overview/what-is-rerun)).
 In robotics, you can use Rerun e.g. to record test runs, manage and query training data, visually debug live streams or recordings (also from third-party formats like [MCAP](https://rerun.io/docs/howto/logging-and-ingestion/mcap)) and much more.
 

@@ -1,5 +1,6 @@
 <!--[metadata]
 title = "Mast3r slam - real-time dense slam with 3D reconstruction priors"
+description = "Mast3r-SLAM is a real-time monocular SLAM system built on the Mast3r 3D reconstruction prior, robust in the wild."
 tags = ["2D", "3D", "Pinhole camera", "Time series", "SLAM"]
 source = "https://github.com/rerun-io/mast3r-slam"
 thumbnail = "https://static.rerun.io/square-thumbnail/56b091d93d23c4353f6a919bf789493da19893e6/480w.png"

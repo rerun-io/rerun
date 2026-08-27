@@ -1,7 +1,7 @@
 use arrow::array::Array as _;
 use re_arrow_util::WrongDatatypeError;
 
-use crate::Loggable as _;
+use crate::ArrowDatatype as _;
 
 /// A unique ID for a `Chunk`.
 ///

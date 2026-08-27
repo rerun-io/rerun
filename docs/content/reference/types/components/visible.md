@@ -5,8 +5,8 @@ title: "Visible"
 
 Whether the container, view, entity or instance is currently visible.
 
-## Rerun datatype
-[`Bool`](../datatypes/bool.md)
+## Rerun encoding
+[`Bool`](../encodings/bool.md)
 
 
 ## Arrow datatype

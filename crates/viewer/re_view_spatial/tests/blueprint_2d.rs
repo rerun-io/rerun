@@ -17,7 +17,7 @@ pub fn test_blueprint_no_overrides_or_defaults_with_spatial_2d() {
 
     let view_id = setup_blueprint(&mut test_context, None, None);
     test_context
-        .run_view_ui_and_save_snapshot(
+        .run_view_ui_and_save_renderer_snapshot(
             view_id,
             "blueprint_no_overrides_or_defaults_with_spatial_2d",
             SNAPSHOT_SIZE,
@@ -34,7 +34,7 @@ pub fn test_blueprint_overrides_with_spatial_2d() {
 
     let view_id = setup_blueprint(&mut test_context, Some(&arrow_overrides()), None);
     test_context
-        .run_view_ui_and_save_snapshot(
+        .run_view_ui_and_save_renderer_snapshot(
             view_id,
             "blueprint_overrides_with_spatial_2d",
             SNAPSHOT_SIZE,
@@ -51,7 +51,7 @@ pub fn test_blueprint_defaults_with_spatial_2d() {
 
     let view_id = setup_blueprint(&mut test_context, None, Some(&arrow_defaults()));
     test_context
-        .run_view_ui_and_save_snapshot(
+        .run_view_ui_and_save_renderer_snapshot(
             view_id,
             "blueprint_defaults_with_spatial_2d",
             SNAPSHOT_SIZE,
@@ -104,7 +104,7 @@ fn setup_blueprint(
         ctx.save_blueprint_archetype(
             property_path.clone(),
             &re_sdk_types::blueprint::archetypes::VisualBounds2D::new(
-                re_sdk_types::datatypes::Range2D {
+                re_sdk_types::encodings::Range2D {
                     x_range: [-4.0, 4.0].into(),
                     y_range: [-1.1, 2.6].into(),
                 },

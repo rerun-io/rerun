@@ -1,5 +1,6 @@
 <!--[metadata]
 title = "DROID semantic frame search"
+description = "Find moments in robot demonstrations by describing them in plain language. Embeddings flow from a Rerun dataset into a vector store and deep-link back into the viewer."
 tags = ["Robotics", "Semantic search", "Embeddings", "SigLIP", "LanceDB", "Qdrant", "Rerun Hub"]
 thumbnail = "https://static.rerun.io/droid_semantic_search/fd265e110c9d05c9fdd018c68dd83561aa836c52/480w.png"
 thumbnail_dimensions = [480, 320]
@@ -99,7 +100,7 @@ Useful flags:
 - `--source bundled|huggingface` to force a source (default `auto`).
 - `--num-episodes N` to register more (or fewer) episodes; `0` for all (the full Hub dataset is ~3.3 GB).
 - `--dataset-name` to register under a different name (pass the same name to `ingest.py`/`search.py`).
-- `--no-optimize` to register episodes as-is (see the video decode yield note below).
+- `--no-optimize` to register episodes as-is without subsequently running `ingest.py`.
 - `--catalog-url ""` to skip registration.
 
 ### 4. Build the search index
@@ -148,10 +149,10 @@ Run `ingest.py --help` and `search.py --help` for the full flag list — index m
 ## Notes and gotchas
 
 - **SigLIP text tokenization.** SigLIP is trained with a fixed 64-token sequence and *must* be tokenized with `padding="max_length", max_length=64`. With dynamic padding the text embeddings are malformed and text→image retrieval collapses onto a single "hub" frame that wins every query.
-- **Video decode yield.** DROID doesn't log the `VideoStream:is_keyframe` markers the decoder needs to seek, so without them only ~25 % of sampled frames decode.
-  `prepare_dataset.py` derives the markers up front (via `optimize`), which brings yield to ~100 %.
+- **Video keyframes.** DROID doesn't log the `VideoStream:is_keyframe` markers required by `VideoFrameDecoder`.
+  `prepare_dataset.py` derives the markers up front via `optimize` so `ingest.py` can decode the streams.
   Optimized copies land in `./optimized`; the originals are untouched.
-  Skip it with `--no-optimize` if you'd rather register the raw episodes.
+  Raw episodes registered with `--no-optimize` cannot use the compute path in `ingest.py`.
 
 ## Files
 

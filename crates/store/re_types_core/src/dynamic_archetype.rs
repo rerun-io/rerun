@@ -5,7 +5,7 @@ use nohash_hasher::IntMap;
 use crate::reflection::ComponentDescriptorExt as _;
 use crate::{
     ArchetypeName, AsComponents, Component, ComponentDescriptor, ComponentIdentifier,
-    ComponentType, Loggable, SerializedComponentBatch, try_serialize_field,
+    ComponentType, SerializedComponentBatch, ToArrow, try_serialize_field,
 };
 
 /// A helper for logging a dynamically defined archetype to Rerun.
@@ -77,7 +77,7 @@ impl DynamicArchetype {
     ///
     /// This method can be used to override the component type.
     #[inline]
-    pub fn with_component_override<L: Loggable>(
+    pub fn with_component_override<L: ToArrow>(
         mut self,
         field: impl Into<ComponentIdentifier>,
         component_type: impl Into<ComponentType>,

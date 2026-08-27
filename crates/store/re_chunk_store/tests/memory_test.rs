@@ -72,7 +72,7 @@ use re_chunk::{BatcherHooks, ChunkBatcher, ChunkBatcherConfig, PendingRow};
 use re_chunk_store::{ChunkStore, ChunkStoreConfig};
 use re_log_types::{TimePoint, Timeline};
 use re_sdk_types::components::Scalar;
-use re_sdk_types::{Loggable as _, SerializedComponentBatch, archetypes};
+use re_sdk_types::{SerializedComponentBatch, ToArrow as _, archetypes};
 
 /// The memory overhead of storing many scalars in the store.
 #[test]

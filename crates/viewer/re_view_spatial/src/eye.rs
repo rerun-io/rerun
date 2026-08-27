@@ -5,6 +5,7 @@ use re_log_types::EntityPath;
 use re_sdk_types::blueprint::archetypes::EyeControls3D;
 use re_sdk_types::blueprint::components::{AngularSpeed, Eye3DKind};
 use re_sdk_types::components::{LinearSpeed, Position3D, Vector3D};
+use re_ui::ContextExt as _;
 use re_view::controls::{
     DRAG_PAN3D_BUTTON, ROLL_MOUSE, ROLL_MOUSE_ALT, ROLL_MOUSE_MODIFIER, ROTATE3D_BUTTON,
     RuntimeModifiers, SPEED_UP_3D_MODIFIER,
@@ -733,9 +734,8 @@ pub fn find_camera(cameras: &[PinholeWrapper], needle: &EntityPath) -> Option<Ey
         if &camera.ent_path == needle {
             if found_camera.is_some() {
                 return None; // More than one camera
-            } else {
-                found_camera = Some(camera);
             }
+            found_camera = Some(camera);
         }
     }
 
@@ -1189,11 +1189,7 @@ impl EyeState {
         bounding_boxes: &SceneBoundingBoxes,
         enable_gamepad_navigation: bool,
     ) -> Result<Eye, ViewPropertyQueryError> {
-        let eye_property = ViewProperty::from_archetype::<EyeControls3D>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query(),
-            ctx.view_id,
-        );
+        let eye_property = ViewProperty::from_archetype::<EyeControls3D>(ctx);
 
         let target_eye = self.control_and_sync_with_blueprint(
             ctx,
@@ -1220,7 +1216,9 @@ impl EyeState {
             self.start_interpolation();
         }
 
-        let eye = if let Some(interpolation) = &mut self.interpolation
+        // Disable eye animations in tests
+        let eye = if !ctx.egui_ctx().is_test()
+            && let Some(interpolation) = &mut self.interpolation
             && let Some(target_time) =
                 EyeInterpolation::target_time(&interpolation.start, &target_eye)
         {

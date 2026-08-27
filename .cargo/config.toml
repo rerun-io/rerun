@@ -65,7 +65,10 @@ rustflags = [
   '-Ctarget-feature=+simd128,+bulk-memory,+nontrapping-fptoint,+multivalue',
 ]
 
-# Use rust-lld on Windows due problems with large debug symbols.
-# See https://github.com/rust-lang/rust/issues/141626
-[target.x86_64-pc-windows-msvc]
-linker = "rust-lld"
+# `rust-lld` produces non-deterministic output, so we use `link.exe /Brepro` instead.
+# `/Brepro` is an undocumented flag that replaces the timestamp in the dll's PE header with a fixed value.
+# See (e.g.) https://nikhilism.com/post/2020/windows-deterministic-builds/
+# Note that some sources claim that this is incompatible with incremental builds.
+[target.'cfg(all(target_os = "windows", target_env = "msvc"))']
+linker = "link.exe"
+rustflags = ["-C", "link-arg=/Brepro"]

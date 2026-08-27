@@ -8,8 +8,10 @@ use itertools::Itertools as _;
 use re_chunk_store::ColumnDescriptor;
 use re_dataframe::QueryHandle;
 use re_dataframe::external::re_query::StorageEngineArcReadGuard;
-use re_dataframe_ui::re_table_utils::{apply_table_style_fixes, cell_ui, header_ui};
-use re_dataframe_ui::{ColumnBlueprint, DisplayRecordBatch, DisplayRecordBatchError};
+use re_dataframe_ui::{
+    CELL_SEPARATOR_STROKE_OFFSET, ColumnBlueprint, DisplayRecordBatch, DisplayRecordBatchError,
+    apply_table_style_fixes, cell_ui, header_ui,
+};
 use re_log_types::{EntityPath, TimeInt, TimelineName};
 use re_sdk_types::ComponentDescriptor;
 use re_sdk_types::reflection::ComponentDescriptorExt as _;
@@ -500,6 +502,8 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
                         batch_row_idx,
                         instance_index,
                         UiLayout::List,
+                        None,
+                        false,
                     );
                 };
 
@@ -532,7 +536,7 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
             let stroke = ui.visuals().widgets.inactive.fg_stroke;
             ui.painter().hline(
                 rect.x_range(),
-                rect.max.y - re_dataframe_ui::re_table_utils::CELL_SEPARATOR_STROKE_OFFSET,
+                rect.max.y - CELL_SEPARATOR_STROKE_OFFSET,
                 egui::Stroke::new(2.0, stroke.color),
             );
         }

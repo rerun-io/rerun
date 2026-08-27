@@ -567,11 +567,6 @@ This means, either a call to RenderContext::before_submit was omitted, or the pr
         self.renderers.read()
     }
 
-    /// Returns the global frame index of the active frame.
-    pub fn active_frame_idx(&self) -> u64 {
-        self.active_frame.frame_index
-    }
-
     /// Returns the device's capabilities.
     pub fn device_caps(&self) -> &DeviceCaps {
         &self.device_caps
@@ -706,6 +701,7 @@ pub fn adapter_info_summary(info: &wgpu::AdapterInfo) -> String {
         subgroup_min_size: _,
         subgroup_max_size: _,
         transient_saves_memory: _,
+        limit_bucket: _,
     } = &info;
 
     // Example values:

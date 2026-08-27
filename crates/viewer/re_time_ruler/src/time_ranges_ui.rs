@@ -208,20 +208,6 @@ impl TimeRangesUi {
         slf
     }
 
-    /// Clamp the time to range within we have any data.
-    ///
-    /// Used when user is dragging the time handle.
-    /// This may still contain data outside of the range a store marks as valid.
-    pub fn clamp_time(&self, mut time: TimeReal) -> TimeReal {
-        if let (Some(first), Some(last)) = (self.segments.first(), self.segments.last()) {
-            time = time.clamp(
-                TimeReal::from(first.tight_time.min()),
-                TimeReal::from(last.tight_time.max()),
-            );
-        }
-        time
-    }
-
     /// Make sure the time is not between segments.
     ///
     /// This is so that the playback doesn't get stuck between segments.
@@ -292,10 +278,9 @@ impl TimeRangesUi {
             } else if needle_time <= segment.time.max {
                 let t = segment.time.inverse_lerp(needle_time);
                 return Some(lerp(segment.x, t));
-            } else {
-                last_x = segment.x.last;
-                last_time = segment.time.max;
             }
+            last_x = segment.x.last;
+            last_time = segment.time.max;
         }
 
         // extrapolate:
@@ -349,10 +334,9 @@ impl TimeRangesUi {
             } else if needle_x <= segment.x.last {
                 let t = remap(needle_x, segment.x, 0.0..=1.0);
                 return Some(segment.time.lerp(t));
-            } else {
-                last_x = segment.x.last;
-                last_time = segment.time.max;
             }
+            last_x = segment.x.last;
+            last_time = segment.time.max;
         }
 
         // extrapolate:

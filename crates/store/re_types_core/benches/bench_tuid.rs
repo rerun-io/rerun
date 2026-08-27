@@ -4,7 +4,7 @@
 use criterion::{Criterion, criterion_group, criterion_main};
 
 fn bench_arrow(c: &mut Criterion) {
-    use re_types_core::Loggable as _;
+    use re_types_core::{FromArrow as _, ToArrow as _};
 
     for elem_count in [1, 1000] {
         {

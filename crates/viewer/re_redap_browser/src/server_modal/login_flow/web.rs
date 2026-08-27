@@ -1,29 +1,14 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use re_async::AsyncRuntimeHandle;
 use re_auth::oauth::Credentials;
 use re_auth::oauth::api::{AuthenticateWithCode, Pkce, authorization_url, send_async};
 use re_log::ResultExt as _;
 use re_ui::UiExt as _;
-use re_viewer_context::AsyncRuntimeHandle;
 use uuid::Uuid;
 use wasm_bindgen::JsCast as _;
 use wasm_bindgen::prelude::Closure;
-
-#[expect(clippy::needless_pass_by_value)]
-fn js_value_to_string(s: wasm_bindgen::JsValue) -> String {
-    // it's already a string
-    if let Some(s) = s.as_string() {
-        return s;
-    }
-
-    // it's an Error, call `toString` instead
-    if let Some(s) = s.dyn_ref::<js_sys::Error>() {
-        return format!("{}", s.to_string());
-    }
-
-    format!("{s:#?}")
-}
 
 type StorageEventCallback = dyn FnMut(web_sys::StorageEvent);
 
@@ -77,7 +62,7 @@ impl State {
 
         let Some(child_window) = parent_window
             .open_with_url_and_target_and_features(&login_url, "auth", "width=480,height=640")
-            .map_err(js_value_to_string)?
+            .map_err(|err| re_web::Error::from(err).to_string())?
         else {
             return Err("window.open did not return a handle".into());
         };
@@ -107,7 +92,7 @@ impl State {
             // ignoring the error here
             if child_window
                 .closed()
-                .map_err(js_value_to_string)
+                .map_err(|err| re_web::Error::from(err).to_string())
                 .ok_or_log_error()
                 .unwrap_or_default()
             {

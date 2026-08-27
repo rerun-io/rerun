@@ -12,5 +12,5 @@ rr.init("rerun_example_asset3d", spawn=True)
 
 rr.log(
     "world", rr.ViewCoordinates.RIGHT_HAND_Z_UP, static=True
-)  # Set an up-axis
+)  # Set the 3D view's up direction
 rr.log("world/asset", rr.Asset3D(path=sys.argv[1]))

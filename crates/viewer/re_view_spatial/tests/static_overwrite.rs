@@ -127,16 +127,12 @@ fn run_view_ui_and_save_snapshot(
         });
 
     test_context.with_blueprint_ctx(|ctx, _| {
-        ViewProperty::from_archetype::<EyeControls3D>(
-            ctx.current_blueprint(),
-            ctx.blueprint_query(),
-            view_id,
-        )
-        .save_blueprint_component(
-            &ctx,
-            &EyeControls3D::descriptor_position(),
-            &Position3D::new(0.0, 5.0, 3.0),
-        );
+        ViewProperty::from_archetype_for_view::<EyeControls3D>(&ctx, view_id)
+            .save_blueprint_component(
+                &ctx,
+                &EyeControls3D::descriptor_position(),
+                &Position3D::new(0.0, 5.0, 3.0),
+            );
     });
     test_context.handle_system_commands(&harness.ctx);
     harness.run();

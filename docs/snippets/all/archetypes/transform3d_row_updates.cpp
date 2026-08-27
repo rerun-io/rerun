@@ -19,8 +19,8 @@ int main(int argc, char* argv[]) {
     rec.set_time_sequence("tick", 0);
     rec.log(
         "box",
-        rerun::Boxes3D::from_half_sizes({{4.f, 2.f, 1.0f}}
-        ).with_fill_mode(rerun::FillMode::Solid),
+        rerun::Boxes3D::from_half_sizes({{4.f, 2.f, 1.0f}})
+            .with_fill_mode(rerun::FillMode::Solid),
         rerun::TransformAxes3D(10.0)
     );
 

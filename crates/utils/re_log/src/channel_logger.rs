@@ -62,19 +62,25 @@ where
         let metadata = event.metadata();
 
         let mut channels = self.channels.write();
-        if !channels
-            .iter()
-            .any(|channel| crate::is_log_enabled(channel.filter, metadata))
-        {
+        if channels.is_empty() {
             return;
         }
 
         let mut visitor = crate::event_visitor::EventVisitor::default();
         event.record(&mut visitor);
-        let (message, fields) = visitor.into_message_and_fields();
+        let (message, mut fields) = visitor.into_message_and_fields();
+        let target = normalize_tracing_log_fields(&mut fields)
+            .unwrap_or_else(|| metadata.target().to_owned());
+
+        if !channels
+            .iter()
+            .any(|channel| crate::is_log_enabled(channel.filter, &target, metadata.level()))
+        {
+            return;
+        }
 
         channels.retain(|channel| {
-            if crate::is_log_enabled(channel.filter, metadata) {
+            if crate::is_log_enabled(channel.filter, &target, metadata.level()) {
                 // Ok with a naked `send` here, because we use an unbounded channel,
                 // so this can never block.
                 #[cfg_attr(not(target_arch = "wasm32"), expect(clippy::disallowed_methods))]
@@ -82,7 +88,7 @@ where
                     .tx
                     .send(LogMsg {
                         level: *metadata.level(),
-                        target: metadata.target().to_owned(),
+                        target: target.clone(),
                         message: message.clone(),
                         fields: fields.clone(),
                     })
@@ -92,4 +98,17 @@ where
             }
         });
     }
+}
+
+fn normalize_tracing_log_fields(fields: &mut Vec<(&'static str, FieldValue)>) -> Option<String> {
+    // For events from `log` the target is a metadata field `log.target` with a string value.
+    let target_index = fields.iter().position(|(name, _)| *name == "log.target")?;
+    let (_, FieldValue::String(target)) = fields.remove(target_index) else {
+        return None;
+    };
+
+    // Remove the `log` only fields for `log.module_path`, `log.file`, and `log.line`.
+    fields.retain(|(name, _)| !matches!(*name, "log.module_path" | "log.file" | "log.line"));
+
+    Some(target)
 }

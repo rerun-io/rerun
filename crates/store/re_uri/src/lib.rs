@@ -25,8 +25,14 @@
 //!     // Proxy to send messages to another viewer.
 //!     "rerun+http://localhost:51234/proxy",
 //!
-//!     // Links to a recording on the catalog server (optionally with timestamp).
-//!     "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?segment_id=sid&time_range=timeline@1.23s..72s",
+//!     // Links to a dataset on the catalog server.
+//!     "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae",
+//!
+//!     // Links to the assets of a dataset.
+//!     "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/assets",
+//!
+//!     // Links to a recording within a dataset (optionally with a time selection).
+//!     "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae?segment_id=sid#time_selection=timeline@1.23s..72s",
 //!
 //!     // Links to a folder (dataset-name prefix) within the catalog.
 //!     "rerun://rerun.io/folder/perception.detection",
@@ -43,13 +49,14 @@ mod fragment;
 mod origin;
 mod redap_uri;
 mod scheme;
+mod table_reference;
 mod time_selection;
 
 pub use self::dataset_hierarchy::{
     DATASET_HIERARCHY_SEPARATOR, dataset_hierarchy_leaf_name, split_dataset_hierarchy_path,
 };
 pub use self::endpoints::catalog::CatalogUri;
-pub use self::endpoints::dataset::DatasetSegmentUri;
+pub use self::endpoints::dataset::{DatasetResource, DatasetUri};
 pub use self::endpoints::entry::EntryUri;
 pub use self::endpoints::folder::FolderUri;
 pub use self::endpoints::proxy::ProxyUri;
@@ -58,6 +65,7 @@ pub use self::fragment::Fragment;
 pub use self::origin::Origin;
 pub use self::redap_uri::RedapUri;
 pub use self::scheme::Scheme;
+pub use self::table_reference::TableReference;
 pub use self::time_selection::TimeSelection;
 
 pub mod external {

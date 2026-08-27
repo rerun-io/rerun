@@ -49,6 +49,7 @@ def _fake_query_metrics(**overrides: Any) -> SimpleNamespace:
         "filters_pushed_down": 1,
         "filters_applied_client_side": 0,
         "entity_path_narrowing_applied": True,
+        "target_partitions": 4,
         "total_duration": datetime.timedelta(microseconds=500),
         "time_to_first_chunk": None,
         "error_kind": None,
@@ -66,6 +67,15 @@ def _fake_query_metrics(**overrides: Any) -> SimpleNamespace:
         "planned_fetch_batches": 1,
         "planned_segment_waves": 1,
         "segment_admission_limit": 3,
+        "segment_admission_candidate_limit": 16,
+        "segment_admission_source": "metrics_only",
+        "segment_admission_candidate_reason": "eligible",
+        "segment_admission_adaptive_enabled": False,
+        "segment_admission_profile_segment_count": 32,
+        "segment_admission_profile_complete": True,
+        "segment_admission_p95_segment_bytes": 1024,
+        "segment_admission_max_segment_bytes": 2048,
+        "segment_admission_largest_window_bytes": 16_384,
         "max_segments_per_fetch_batch": 1,
         "max_segments_per_wave": 1,
         "peak_active_segments": 1,
@@ -74,6 +84,10 @@ def _fake_query_metrics(**overrides: Any) -> SimpleNamespace:
         "pipeline_byte_waits": 0,
         "segment_admission_waits": 0,
         "pipeline_stall_breaker_activations": 0,
+        "delivered_rows": 100,
+        "delivered_bytes": 2048,
+        "decode_duration": datetime.timedelta(microseconds=150),
+        "peak_inflight_fetches": 2,
     }
     defaults.update(overrides)
     return SimpleNamespace(**defaults)
@@ -179,6 +193,15 @@ def test_fake_handle_populates_collector(install_fake_handles: list[_FakeHandle]
     assert qs[0].planned_fetch_batches == 16
     assert qs[0].planned_segment_waves == 1_332
     assert qs[0].segment_admission_limit == 3
+    assert qs[0].segment_admission_candidate_limit == 16
+    assert qs[0].segment_admission_source == "metrics_only"
+    assert qs[0].segment_admission_candidate_reason == "eligible"
+    assert qs[0].segment_admission_adaptive_enabled is False
+    assert qs[0].segment_admission_profile_segment_count == 32
+    assert qs[0].segment_admission_profile_complete is True
+    assert qs[0].segment_admission_p95_segment_bytes == 1024
+    assert qs[0].segment_admission_max_segment_bytes == 2048
+    assert qs[0].segment_admission_largest_window_bytes == 16_384
     assert qs[0].max_segments_per_fetch_batch == 2
     assert qs[0].max_segments_per_wave == 3
     assert qs[0].peak_active_segments == 3
@@ -436,3 +459,46 @@ def test_repeated_reads_are_non_destructive(install_fake_handles: list[_FakeHand
     assert first == second
     assert len(first) == 1
     assert first[0].query_chunks == 5
+
+
+# ---------------------------------------------------------------------------
+# C12. Delivered payload / decode / parallelism fields flow through, and the
+# derived `waste_ratio` combines fetched vs delivered bytes.
+# ---------------------------------------------------------------------------
+
+
+def test_embedding_fields_flow_through(install_fake_handles: list[_FakeHandle]) -> None:
+    with query_metrics() as m:
+        handle = install_fake_handles[-1]
+        handle.pending.append(
+            _fake_query_metrics(
+                target_partitions=16,
+                delivered_rows=200,
+                delivered_bytes=1000,
+                decode_duration=datetime.timedelta(milliseconds=3),
+                peak_inflight_fetches=9,
+                fetch_grpc_bytes=8000,
+                fetch_direct_bytes=2000,
+            )
+        )
+        qs = m.queries
+
+    assert len(qs) == 1
+    q = qs[0]
+    assert q.target_partitions == 16
+    assert q.delivered_rows == 200
+    assert q.delivered_bytes == 1000
+    assert q.decode_duration == datetime.timedelta(milliseconds=3)
+    assert q.peak_inflight_fetches == 9
+    # waste_ratio = (grpc + direct) / delivered = 10_000 / 1_000.
+    assert q.waste_ratio == pytest.approx(10.0)
+
+
+def test_waste_ratio_is_none_when_nothing_delivered(install_fake_handles: list[_FakeHandle]) -> None:
+    with query_metrics() as m:
+        handle = install_fake_handles[-1]
+        handle.pending.append(_fake_query_metrics(delivered_bytes=0))
+        q = m.last_query()
+
+    assert q is not None
+    assert q.waste_ratio is None

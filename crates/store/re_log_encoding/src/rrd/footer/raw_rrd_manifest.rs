@@ -200,14 +200,20 @@ pub struct RrdManifestSha256(pub [u8; 32]);
 
 impl std::fmt::Display for RrdManifestSha256 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!(
-            "RrdManifest#{}",
-            self.0
-                .iter()
-                .map(|b| format!("{b:02x}"))
-                .collect::<String>(),
-        ))
+        write!(f, "RrdManifest#{}", sha256_to_hex(&self.0))
     }
+}
+
+/// Format a SHA256 hash as a lowercase hex string.
+pub fn sha256_to_hex(sha256: &[u8; 32]) -> String {
+    use std::fmt::Write as _;
+
+    sha256
+        .iter()
+        .fold(String::with_capacity(2 * sha256.len()), |mut hex, byte| {
+            write!(hex, "{byte:02x}").ok();
+            hex
+        })
 }
 
 impl RawRrdManifest {
@@ -255,6 +261,34 @@ impl RawRrdManifest {
             sorbet_schema_sha256: first.sorbet_schema_sha256,
             data,
         })
+    }
+
+    /// Returns this manifest without the chunks logged under `__properties`.
+    ///
+    /// An asset joins the store of the segment that references it, where its own recording
+    /// properties would take the place of that segment's.
+    pub fn without_recording_properties(self) -> CodecResult<Self> {
+        re_tracing::profile_function!();
+
+        let keep: BooleanArray = self
+            .col_chunk_entity_path_raw()?
+            .iter()
+            .map(|entity_path| {
+                let is_property = entity_path.is_some_and(|entity_path| {
+                    EntityPath::parse_forgiving(entity_path).is_property()
+                });
+                Some(!is_property)
+            })
+            .collect();
+
+        if keep.true_count() == keep.len() {
+            return Ok(self);
+        }
+
+        let data = arrow::compute::filter_record_batch(&self.data, &keep)
+            .map_err(CodecError::ArrowDeserialization)?;
+
+        Ok(Self { data, ..self })
     }
 
     /// Merges multiple manifests into one, tolerating schema differences.
@@ -1298,14 +1332,8 @@ impl RawRrdManifest {
             return Err(CodecError::ArrowDeserialization(ArrowError::SchemaError(
                 format!(
                     "invalid schema hash: expected {} but got {}",
-                    expected_sorbet_schema_sha256
-                        .iter()
-                        .map(|b| format!("{b:02x}"))
-                        .collect::<String>(),
-                    self.sorbet_schema_sha256
-                        .iter()
-                        .map(|b| format!("{b:02x}"))
-                        .collect::<String>(),
+                    sha256_to_hex(&expected_sorbet_schema_sha256),
+                    sha256_to_hex(&self.sorbet_schema_sha256),
                 ),
             )));
         }
@@ -1340,7 +1368,7 @@ impl RawRrdManifest {
     ];
 
     pub fn field_chunk_id() -> Field {
-        use re_log_types::external::re_types_core::Loggable as _;
+        use re_log_types::external::re_types_core::ArrowDatatype as _;
         let nullable = false; // every chunk has an ID
         Field::new(Self::FIELD_CHUNK_ID, ChunkId::arrow_datatype(), nullable)
     }

@@ -5,15 +5,16 @@ mod hierarchical_drag_and_drop;
 mod right_panel;
 
 use crossbeam::channel::Receiver;
-use egui::{ComboBox, Modifiers, Rect, ScrollArea, Widget as _, os};
+use egui::{ComboBox, Modifiers, Rect, ScrollArea, Widget as _};
 use re_ui::filter_widget::{FilterState, format_matching_text};
 use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::menu::menu_style;
 use re_ui::notifications::NotificationUi;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
+use re_ui::text_edit::{ReTextEdit, TextEditVariant};
 use re_ui::{
     ComboItem, ComboItemHeader, ContextExt as _, DesignTokens, Help, IconText, OnResponseExt as _,
-    UICommand, UICommandSender, UiExt as _, WindowFrameConfig, icons, list_item,
+    Size, UICommand, UICommandSender, UiExt as _, WindowFrameConfig, icons, list_item,
 };
 
 /// Sender that queues up the execution of a command.
@@ -48,18 +49,13 @@ fn command_channel() -> (CommandSender, CommandReceiver) {
 fn main() -> eframe::Result {
     re_log::setup_logging();
 
-    let fullsize_content = re_ui::fullsize_content(os::OperatingSystem::default());
-    let custom_decorations = re_ui::supports_custom_decorations(os::OperatingSystem::default());
     let native_options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default()
-            .with_app_id("re_ui_example")
-            .with_decorations(!custom_decorations) // Maybe hide the OS-specific "chrome" around the window
-            .with_fullsize_content_view(fullsize_content)
-            .with_inner_size([1200.0, 800.0])
-            .with_title_shown(!fullsize_content)
-            .with_titlebar_buttons_shown(!custom_decorations)
-            .with_titlebar_shown(!fullsize_content)
-            .with_transparent(custom_decorations), // To have rounded corners without decorations we need transparency
+        viewport: re_ui::viewport_with_window_chrome(
+            egui::ViewportBuilder::default()
+                .with_app_id("re_ui_example")
+                .with_inner_size([1200.0, 800.0]),
+            re_ui::custom_window_decorations_default(),
+        ),
 
         ..Default::default()
     };
@@ -136,9 +132,7 @@ impl ExampleApp {
             command_receiver,
             latest_cmd: Default::default(),
 
-            use_custom_decorations: re_ui::supports_custom_decorations(
-                os::OperatingSystem::default(),
-            ),
+            use_custom_decorations: re_ui::custom_window_decorations_default(),
         }
     }
 
@@ -596,6 +590,21 @@ impl egui_tiles::Behavior<Tab> for MyTileTreeBehavior {
         ui.help_button(|ui| {
             ui.label("This some help text.");
         });
+
+        for variant in [TextEditVariant::Filled, TextEditVariant::Outlined] {
+            ui.horizontal_wrapped(|ui| {
+                ui.spacing_mut().text_edit_width = 200.0;
+                for size in [Size::Normal, Size::Small, Size::Tiny] {
+                    ui.add(
+                        ReTextEdit::singleline(&mut String::new())
+                            .size(size)
+                            .variant(variant)
+                            .hint_text("Focus me!")
+                            .prefix(icons::SEARCH),
+                    );
+                }
+            });
+        }
 
         Default::default()
     }

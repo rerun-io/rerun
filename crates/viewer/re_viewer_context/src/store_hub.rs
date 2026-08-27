@@ -18,8 +18,8 @@ use re_sdk_types::archetypes;
 use re_sdk_types::components::Timestamp;
 
 use crate::{
-    ActiveStoreContext, BlueprintUndoState, RecordingOrTable, Route, StorageContext, StoreCache,
-    TableStore, TableStores, TimeControl, ViewClassRegistry,
+    ActiveStoreContext, BlueprintUndoState, RecordingOrLocalTable, Route, StorageContext,
+    StoreCache, TableStore, TableStores, TimeControl, ViewClassRegistry,
 };
 
 // ---
@@ -121,9 +121,6 @@ pub struct StoreHub {
 
     default_blueprint_by_app_id: HashMap<ApplicationId, StoreId>,
     active_blueprint_by_app_id: HashMap<ApplicationId, StoreId>,
-
-    /// Blueprints associated with tables rather than [`ApplicationId`]
-    table_blueprints: HashMap<TableId, StoreId>,
 
     data_source_order: DataSourceOrder,
     store_bundle: StoreBundle,
@@ -279,7 +276,6 @@ impl StoreHub {
             store_usages: Default::default(),
 
             table_stores: TableStores::default(),
-            table_blueprints: Default::default(),
         }
     }
 
@@ -536,39 +532,10 @@ impl StoreHub {
         self.table_stores.insert(id, store)
     }
 
-    /// Register a fully-loaded blueprint store as the blueprint for a table.
-    pub fn associate_table_blueprint(
-        &mut self,
-        table_id: TableId,
-        store_id: &StoreId,
-    ) -> anyhow::Result<()> {
-        let store = self
-            .store_bundle
-            .get(store_id)
-            .with_context(|| format!("missing table blueprint store: {store_id:?}"))?;
-
-        anyhow::ensure!(
-            store.store_kind() == StoreKind::Blueprint,
-            "table blueprint store must be a blueprint store, got {:?}",
-            store.store_kind()
-        );
-
-        if let Some(old_store_id) = self.table_blueprints.insert(table_id, store_id.clone())
-            && &old_store_id != store_id
-        {
-            self.remove_store(&old_store_id);
-        }
-
-        Ok(())
-    }
-
-    /// Look up the decoded blueprint [`EntityDb`] for a table, if one was stored.
-    pub fn table_blueprint(&self, table_id: &TableId) -> Option<&EntityDb> {
-        let store_id = self.table_blueprints.get(table_id)?;
-        self.store_bundle.get(store_id)
-    }
-
-    fn remove_store(&mut self, store_id: &StoreId) {
+    /// Removes a store and its `StoreHub`-owned references.
+    ///
+    /// The caller must first remove references owned outside `StoreHub`, such as table-blueprint associations.
+    pub fn remove_store(&mut self, store_id: &StoreId) {
         _ = self.store_caches.remove(store_id);
         let removed_store = self.store_bundle.remove(store_id);
 
@@ -614,16 +581,13 @@ impl StoreHub {
             });
     }
 
-    pub fn remove(&mut self, entry: &RecordingOrTable) {
+    pub fn remove(&mut self, entry: &RecordingOrLocalTable) {
         match entry {
-            RecordingOrTable::Recording { store_id } => {
+            RecordingOrLocalTable::Recording { store_id } => {
                 self.remove_store(store_id);
             }
-            RecordingOrTable::Table { table_id } => {
+            RecordingOrLocalTable::LocalTable { table_id } => {
                 self.table_stores.remove(table_id);
-                if let Some(blueprint_store_id) = self.table_blueprints.remove(table_id) {
-                    self.store_bundle.remove(&blueprint_store_id);
-                }
             }
         }
     }
@@ -641,7 +605,7 @@ impl StoreHub {
             })
             .collect();
         for store in stores_to_remove {
-            self.remove(&RecordingOrTable::Recording { store_id: store });
+            self.remove(&RecordingOrLocalTable::Recording { store_id: store });
         }
     }
 
@@ -679,7 +643,6 @@ impl StoreHub {
             .retain(|store_id, _| store_ids_retained.contains(store_id));
 
         self.table_stores.clear();
-        self.table_blueprints.clear();
     }
 
     // ---------------------
@@ -1171,11 +1134,12 @@ impl StoreHub {
     }
 
     /// Find a recording whose redap URI matches the given `uri`, ignoring fragments.
-    pub fn find_recording_by_uri(&self, uri: &re_uri::DatasetSegmentUri) -> Option<&EntityDb> {
+    pub fn find_recording_by_uri(&self, uri: &re_uri::DatasetUri) -> Option<&EntityDb> {
         self.store_bundle.recordings().find(|db| {
             db.redap_uri().is_some_and(|redap_uri| {
                 redap_uri.origin == uri.origin
                     && redap_uri.dataset_id == uri.dataset_id
+                    && redap_uri.resource == uri.resource
                     && redap_uri.segment_id == uri.segment_id
             })
         })
@@ -1203,50 +1167,48 @@ impl StoreHub {
         });
     }
 
+    /// Drops all but the latest data for every blueprint.
+    /// Preserves usable undo points in the process.
     pub fn gc_blueprints(&mut self, undo_state: &HashMap<StoreId, BlueprintUndoState>) {
         re_tracing::profile_function!();
 
-        for blueprint_id in std::iter::chain(
-            self.active_blueprint_by_app_id.values(),
-            self.default_blueprint_by_app_id.values(),
-        ) {
-            if let Some(blueprint) = self.store_bundle.get_mut(blueprint_id) {
-                if self.blueprint_last_gc.get(blueprint_id) == Some(&blueprint.generation()) {
-                    continue; // no change since last gc
-                }
-
-                let mut protected_time_ranges = IntMap::default();
-                if let Some(undo) = undo_state.get(blueprint_id)
-                    && let Some(time) = undo.oldest_undo_point()
-                {
-                    // Save everything that we could want to undo to:
-                    protected_time_ranges.insert(
-                        crate::blueprint_timeline(),
-                        AbsoluteTimeRange::new(time, re_chunk::TimeInt::MAX),
-                    );
-                }
-
-                let store_events = blueprint.gc(&GarbageCollectionOptions {
-                    // TODO(#8249): configure blueprint GC to remove an entity if all that remains of it is a recursive clear
-                    target: GarbageCollectionTarget::Everything,
-                    protect_latest: 1, // keep the latest instance of everything, or we will forget things that haven't changed in a while
-                    time_budget: re_entity_db::DEFAULT_GC_TIME_BUDGET,
-                    protected_time_ranges,
-                    protected_chunks: HashSet::default(),
-                    furthest_from: None,
-                    // There is no point in keeping old virtual indices for blueprint data.
-                    perform_deep_deletions: true,
-                });
-                if !store_events.is_empty() {
-                    re_log::debug!("Garbage-collected blueprint store");
-                    if let Some(cache) = self.store_caches.get_mut(blueprint_id) {
-                        cache.on_store_events(&store_events, blueprint);
-                    }
-                }
-
-                self.blueprint_last_gc
-                    .insert(blueprint_id.clone(), blueprint.generation());
+        for blueprint in self.store_bundle.blueprints_mut() {
+            let blueprint_id = blueprint.store_id();
+            if self.blueprint_last_gc.get(blueprint_id) == Some(&blueprint.generation()) {
+                continue; // no change since last gc
             }
+
+            let mut protected_time_ranges = IntMap::default();
+            if let Some(undo) = undo_state.get(blueprint_id)
+                && let Some(time) = undo.oldest_undo_point()
+            {
+                // Save everything that we could want to undo to:
+                protected_time_ranges.insert(
+                    crate::blueprint_timeline(),
+                    AbsoluteTimeRange::new(time, re_chunk::TimeInt::MAX),
+                );
+            }
+
+            let store_events = blueprint.gc(&GarbageCollectionOptions {
+                // TODO(#8249): configure blueprint GC to remove an entity if all that remains of it is a recursive clear
+                target: GarbageCollectionTarget::Everything,
+                protect_latest: 1, // keep the latest instance of everything, or we will forget things that haven't changed in a while
+                time_budget: re_entity_db::DEFAULT_GC_TIME_BUDGET,
+                protected_time_ranges,
+                protected_chunks: HashSet::default(),
+                furthest_from: None,
+                // There is no point in keeping old virtual indices for blueprint data.
+                perform_deep_deletions: true,
+            });
+            if !store_events.is_empty() {
+                re_log::debug!("Garbage-collected blueprint store");
+                if let Some(cache) = self.store_caches.get_mut(blueprint_id) {
+                    cache.on_store_events(&store_events, blueprint);
+                }
+            }
+
+            self.blueprint_last_gc
+                .insert(blueprint_id.clone(), blueprint.generation());
         }
     }
 
@@ -1393,7 +1355,6 @@ impl StoreHub {
             active_blueprint_by_app_id: _,
             store_bundle,
             table_stores,
-            table_blueprints: _,
             data_source_order: _,
             should_enable_heuristics_by_app_id: _,
 
@@ -1453,7 +1414,6 @@ impl MemUsageTreeCapture for StoreHub {
             persistence: _,
             default_blueprint_by_app_id: _,
             active_blueprint_by_app_id: _,
-            table_blueprints: _,
             data_source_order: _,
             should_enable_heuristics_by_app_id: _,
 

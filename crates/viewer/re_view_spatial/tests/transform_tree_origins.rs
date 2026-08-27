@@ -1,3 +1,5 @@
+#![expect(clippy::unreadable_literal)]
+
 use re_chunk_store::RowId;
 use re_log_types::TimePoint;
 use re_sdk_types::blueprint::archetypes::SpatialInformation;
@@ -117,9 +119,9 @@ pub fn test_transform_tree_origins() {
                 TimePoint::default(),
                 &re_sdk_types::archetypes::Transform3D::from_translation_rotation(
                     [r_planet.sin() * d_planet, r_planet.cos() * d_planet, 0.0],
-                    re_sdk_types::datatypes::RotationAxisAngle {
+                    re_sdk_types::encodings::RotationAxisAngle {
                         axis: [1.0, 0.0, 0.0].into(),
-                        angle: re_sdk_types::datatypes::Angle::from_degrees(20.0),
+                        angle: re_sdk_types::encodings::Angle::from_degrees(20.0),
                     },
                 ),
             )
@@ -132,9 +134,9 @@ pub fn test_transform_tree_origins() {
                 &re_sdk_types::archetypes::Transform3D::from_translation_rotation(
                     [r_moon.cos() * d_moon, r_moon.sin() * d_moon, 0.0],
                     // This rotation only really has a visual effect when we put the origin to the moon. Which we're going to do!
-                    re_sdk_types::datatypes::RotationAxisAngle {
+                    re_sdk_types::encodings::RotationAxisAngle {
                         axis: [0.0, 0.0, 1.0].into(),
-                        angle: re_sdk_types::datatypes::Angle::from_degrees(20.0),
+                        angle: re_sdk_types::encodings::Angle::from_degrees(20.0),
                     },
                 )
                 .with_relation(re_sdk_types::components::TransformRelation::ChildFromParent),
@@ -176,16 +178,12 @@ fn setup_blueprint(test_context: &mut TestContext, origin: &str) -> ViewId {
             },
         ));
 
-        ViewProperty::from_archetype::<SpatialInformation>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query,
-            view_id,
-        )
-        .save_blueprint_component(
-            ctx,
-            &SpatialInformation::descriptor_show_axes(),
-            &Enabled::from(true),
-        );
+        ViewProperty::from_archetype_for_view::<SpatialInformation>(ctx, view_id)
+            .save_blueprint_component(
+                ctx,
+                &SpatialInformation::descriptor_show_axes(),
+                &Enabled::from(true),
+            );
 
         view_id
     })

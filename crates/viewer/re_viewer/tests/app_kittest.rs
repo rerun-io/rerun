@@ -1,7 +1,5 @@
 #![cfg(feature = "testing")]
 
-use std::time::Duration;
-
 use egui::accesskit::Role;
 use egui::os::OperatingSystem;
 use egui_kittest::SnapshotResults;
@@ -59,8 +57,6 @@ async fn settings_screen() {
                     )
                     .is_some()
             },
-            Duration::from_millis(100),
-            Duration::from_secs(5),
         );
         snapshot_results
             .add(harness.try_snapshot(format!("settings_screen_{}", os_snapshot_suffix(os))));

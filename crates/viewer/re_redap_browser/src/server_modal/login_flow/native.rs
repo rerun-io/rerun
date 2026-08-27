@@ -5,7 +5,7 @@ use egui::mutex::Mutex;
 use re_auth::callback_server::OauthCallbackServer;
 use re_auth::oauth::Credentials;
 use re_auth::oauth::api::{AuthenticateWithCode, Pkce, send_native};
-use re_ui::{UiExt as _, Variant, icons};
+use re_ui::{ContextExt as _, UiExt as _, Variant, icons};
 
 use super::ActionButton;
 
@@ -36,16 +36,23 @@ impl State {
                     webbrowser::open(self.callback_server.get_login_url()).ok();
                 }
 
-                if ActionButton::new(&icons::COPY, "Copy link", "Copied to clipboard!")
-                    .show(ui, &mut self.show_copy_feedback)
-                    .clicked()
+                // Hide the button during tests, so that the native and wasm builds match visually.
+                if !ui.ctx().is_test()
+                    && ActionButton::new(&icons::COPY, "Copy link", "Copied to clipboard!")
+                        .show(ui, &mut self.show_copy_feedback)
+                        .clicked()
                 {
                     ui.copy_text(self.callback_server.get_login_url().to_owned());
                 }
             });
         }
 
-        ui.request_repaint_after(Duration::from_millis(10));
+        // Poll `Self::done` for the browser's redirect back to our callback server.
+        //
+        // Keep this comfortably above one frame time: `request_repaint_after` subtracts the
+        // predicted frame time from the delay, so anything shorter saturates to zero and turns
+        // this into a repaint on every single frame.
+        ui.request_repaint_after(Duration::from_millis(300));
     }
 
     pub fn done(&mut self) -> Result<Option<Credentials>, String> {

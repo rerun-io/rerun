@@ -14,7 +14,7 @@ use arrow::datatypes::{Field as ArrowField, Schema as ArrowSchema};
 
 use re_arrow_util::RecordBatchExt as _;
 use re_log_types::{EntityPath, TimelineName};
-use re_types_core::{ChunkId, FIELD_METADATA_KEY_COMPONENT, Loggable as _, RowId};
+use re_types_core::{ArrowDatatype as _, ChunkId, FIELD_METADATA_KEY_COMPONENT, RowId};
 
 use crate::{
     BatchType, ChunkBatch, ComponentColumnDescriptor, IndexColumnDescriptor, MetadataExt as _,
@@ -563,6 +563,7 @@ fn mint_row_ids(count: usize) -> arrow::array::FixedSizeBinaryArray {
 
 #[cfg(test)]
 mod tests {
+    use std::assert_matches;
     use std::sync::Arc;
 
     use arrow::array::{
@@ -574,7 +575,7 @@ mod tests {
         DataType as ArrowDatatype, Field as ArrowField, Schema as ArrowSchema, TimeUnit,
     };
     use re_log_types::{EntityPath, TimelineName};
-    use re_types_core::{Loggable as _, RowId};
+    use re_types_core::{FromArrow as _, RowId};
 
     use super::{DataframeIndex, chunk_batches_from_dataframe_record_batch};
     use crate::{
@@ -713,7 +714,7 @@ mod tests {
         );
         let err = chunk_batches_from_dataframe_record_batch(&rb, &DataframeIndex::Auto, None)
             .unwrap_err();
-        assert!(matches!(err, DataframeToChunksError::AmbiguousStaticData));
+        assert_matches!(err, DataframeToChunksError::AmbiguousStaticData);
     }
 
     /// `Columns` promotes the named columns, with their time type taken from the Arrow dtype.

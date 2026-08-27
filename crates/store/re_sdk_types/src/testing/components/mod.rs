@@ -23,6 +23,7 @@ mod affix_fuzzer6;
 mod affix_fuzzer7;
 mod affix_fuzzer8;
 mod affix_fuzzer9;
+mod many_vec3;
 
 pub use self::affix_fuzzer1::AffixFuzzer1;
 pub use self::affix_fuzzer2::AffixFuzzer2;
@@ -47,3 +48,4 @@ pub use self::affix_fuzzer20::AffixFuzzer20;
 pub use self::affix_fuzzer21::AffixFuzzer21;
 pub use self::affix_fuzzer22::AffixFuzzer22;
 pub use self::affix_fuzzer23::AffixFuzzer23;
+pub use self::many_vec3::ManyVec3;

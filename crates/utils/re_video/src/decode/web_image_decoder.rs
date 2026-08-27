@@ -40,7 +40,7 @@ impl AsyncDecoder for WebImageDecoder {
         let bit_depth = self.bit_depth;
         let chroma_subsampling = self.chroma_subsampling;
 
-        wasm_bindgen_futures::spawn_local(async move {
+        re_async::spawn_local(async move {
             match decode_image(chunk, &mime_type, bit_depth, chroma_subsampling).await {
                 Ok(frame) => {
                     output_sender.send(Ok(frame)).ok();
@@ -83,8 +83,8 @@ async fn decode_image(
 fn frame_info(chunk: &Chunk) -> FrameInfo {
     FrameInfo {
         is_sync: Some(true),
-        sample_idx: Some(chunk.sample_idx),
         frame_nr: Some(chunk.frame_nr),
+        source: Some(chunk.source),
         presentation_timestamp: chunk.presentation_timestamp,
         duration: chunk.duration,
         latest_decode_timestamp: Some(chunk.decode_timestamp),
@@ -124,14 +124,12 @@ async fn decode_image_with_browser(chunk: &Chunk, mime_type: &str) -> Result<Fra
         )))
     })?;
 
-    let bitmap_js = wasm_bindgen_futures::JsFuture::from(promise)
-        .await
-        .map_err(|err| {
-            DecodeError::WebDecoder(super::webcodecs::WebError::Decoding(format!(
-                "createImageBitmap rejected: {}",
-                string_from_js_value(&err)
-            )))
-        })?;
+    let bitmap_js = promise.await.map_err(|err| {
+        DecodeError::WebDecoder(super::webcodecs::WebError::Decoding(format!(
+            "createImageBitmap rejected: {}",
+            string_from_js_value(&err)
+        )))
+    })?;
 
     let bitmap: web_sys::ImageBitmap = bitmap_js.dyn_into().map_err(|_js_err| {
         DecodeError::WebDecoder(super::webcodecs::WebError::Decoding(

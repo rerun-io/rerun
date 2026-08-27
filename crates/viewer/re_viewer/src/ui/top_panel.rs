@@ -152,7 +152,8 @@ fn top_bar_ui(
             }
         }
 
-        if cfg!(debug_assertions) && !app.app_env().is_test() {
+        #[cfg(debug_assertions)]
+        if !app.app_env().is_test() {
             multi_pass_warning_dot_ui(ui);
         }
     }
@@ -269,6 +270,7 @@ fn software_rasterizer_warning_ui(ui: &mut egui::Ui, info: &wgpu::AdapterInfo) {
 ///
 /// An infrequent blinking of the dot (e.g. when opening a new panel) is expected,
 /// but it should not be sustained.
+#[cfg(debug_assertions)]
 fn multi_pass_warning_dot_ui(ui: &mut egui::Ui) {
     let is_multi_pass = 0 < ui.current_pass_index();
 

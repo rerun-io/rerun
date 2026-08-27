@@ -13,7 +13,7 @@ namespace rerun {
 
 #ifdef EDIT_EXTENSION
         struct ResolutionExt {
-            rerun::datatypes::Vec2D resolution;
+            rerun::encodings::Vec2D resolution;
 #define Resolution ResolutionExt
 
             // <CODEGEN_COPY_TO_HEADER>

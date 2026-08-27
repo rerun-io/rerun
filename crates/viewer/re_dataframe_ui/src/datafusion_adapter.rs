@@ -9,16 +9,18 @@ use datafusion::functions::expr_fn::concat;
 use datafusion::logical_expr::{binary_expr, col as datafusion_col, lit};
 use datafusion::prelude::{SessionContext, cast, encode};
 use futures::{StreamExt as _, TryStreamExt as _};
+use re_arrow_util::ArrowArrayDowncastRef as _;
+use re_async::AsyncRuntimeHandle;
 use re_log::{error, warn};
 use re_log_types::Timestamp;
 use re_mutex::Mutex;
 use re_quota_channel::send_crossbeam;
 use re_sorbet::{BatchType, SorbetBatch, SorbetSchema};
-use re_viewer_context::AsyncRuntimeHandle;
 
 use crate::ColumnFilter;
-use crate::grid_view::FlagChangeEvent;
-use crate::table_blueprint::{EntryLinksSpec, SegmentLinksSpec, SortBy, TableBlueprint};
+use crate::cards_view::FlagChangeEvent;
+use crate::column_sorting::SortBy;
+use crate::table_blueprint::{EntryLinksSpec, SegmentLinksSpec};
 use crate::table_selection::TableSelectionState;
 
 /// Make sure we escape column names correctly for datafusion.
@@ -33,42 +35,18 @@ fn col(name: &str) -> datafusion::logical_expr::Expr {
     datafusion_col(format!("{name:?}"))
 }
 
-/// The subset of [`TableBlueprint`] that is actually handled by datafusion.
+/// The subset of `TableBlueprint` that is actually handled by datafusion.
 ///
 /// In general, there are aspects of a table blueprint that are handled by the UI in an immediate
 /// mode fashion (e.g. is a column visible?), and other aspects that are handled by datafusion (e.g.
 /// sorting). This struct is for the latter.
-#[derive(Debug, Clone, PartialEq, Default)]
-struct DataFusionQueryData {
+#[derive(Debug, Clone, Eq, PartialEq, Default)]
+pub struct DataFusionQueryData {
     pub sort_by: Option<SortBy>,
     pub segment_links: Option<SegmentLinksSpec>,
     pub entry_links: Option<EntryLinksSpec>,
     pub prefilter: Option<datafusion::prelude::Expr>,
     pub column_filters: Vec<ColumnFilter>,
-}
-
-impl From<&TableBlueprint> for DataFusionQueryData {
-    fn from(value: &TableBlueprint) -> Self {
-        let TableBlueprint {
-            sort_by,
-            segment_links,
-            entry_links,
-            prefilter,
-            column_filters,
-            segment_preview_column: _,
-            grid_view_card_title: _,
-            flag_column: _,
-            url_column: _,
-        } = value;
-
-        Self {
-            sort_by: sort_by.clone(),
-            segment_links: segment_links.clone(),
-            entry_links: entry_links.clone(),
-            prefilter: prefilter.clone(),
-            column_filters: column_filters.clone(),
-        }
-    }
 }
 
 /// Result of the async datafusion query process.
@@ -113,7 +91,7 @@ impl DataFusionQueryResult {
     }
 }
 
-/// A table blueprint along with the context required to execute the corresponding datafusion query.
+/// Query state and the context required to execute the corresponding datafusion query.
 #[derive(Clone)]
 struct DataFusionQuery {
     session_ctx: Arc<SessionContext>,
@@ -219,9 +197,8 @@ impl DataFusionQuery {
 
         if let Some(sort_by) = sort_by {
             let ascending = sort_by.direction.is_ascending();
-            dataframe = dataframe.sort(vec![
-                col(&sort_by.column_physical_name).sort(ascending, ascending),
-            ])?;
+            dataframe =
+                dataframe.sort(vec![col(&sort_by.column_name).sort(ascending, ascending)])?;
         }
 
         //
@@ -238,7 +215,7 @@ impl DataFusionQuery {
     /// Note: the future returned by this function must be `'static`, so it takes `self`. Use
     /// `clone()` as required.
     fn execute_streaming(self, runtime: &AsyncRuntimeHandle) -> Receiver<QueryEvent> {
-        let (tx, rx) = crate::create_channel(1000);
+        let (tx, rx) = re_quota_channel::create_crossbeam_channel(1000);
         runtime.spawn_future(async move {
             if let Ok(stream) = self.batch_stream().await {
                 let schema = stream.schema();
@@ -344,9 +321,6 @@ impl PartialEq for DataFusionQuery {
 pub struct DataFusionAdapter {
     id: egui::Id,
 
-    /// The current table blueprint
-    blueprint: TableBlueprint,
-
     /// The query used to produce the dataframe.
     query: DataFusionQuery,
 
@@ -376,19 +350,18 @@ impl DataFusionAdapter {
         session_ctx: &Arc<SessionContext>,
         table_ref: TableReference,
         id: egui::Id,
-        initial_blueprint: TableBlueprint,
+        initial_query_data: DataFusionQueryData,
     ) -> Self {
         let adapter = ui.data(|data| data.get_temp::<Self>(id));
 
         let mut adapter = adapter.unwrap_or_else(|| {
-            let initial_query = DataFusionQueryData::from(&initial_blueprint);
-            let query = DataFusionQuery::new(Arc::clone(session_ctx), table_ref, initial_query);
+            let query =
+                DataFusionQuery::new(Arc::clone(session_ctx), table_ref, initial_query_data);
 
             let rx = query.clone().execute_streaming(runtime);
 
             let table_state = Self {
                 id,
-                blueprint: initial_blueprint,
                 rx: Arc::new(Mutex::new(rx)),
                 results: None,
                 query,
@@ -463,8 +436,8 @@ impl DataFusionAdapter {
         adapter
     }
 
-    pub fn blueprint(&self) -> &TableBlueprint {
-        &self.blueprint
+    pub fn query_data(&self) -> &DataFusionQueryData {
+        &self.query.query_data
     }
 
     /// Update the query and save the state to egui's memory.
@@ -475,12 +448,9 @@ impl DataFusionAdapter {
         mut self,
         runtime: &AsyncRuntimeHandle,
         ui: &egui::Ui,
-        new_blueprint: TableBlueprint,
+        new_query_data: DataFusionQueryData,
     ) {
-        self.blueprint = new_blueprint;
-
         // retrigger a new datafusion query if required.
-        let new_query_data = DataFusionQueryData::from(&self.blueprint);
         if self.query.query_data != new_query_data {
             self.query.query_data = new_query_data;
 
@@ -512,20 +482,14 @@ impl DataFusionAdapter {
     pub fn apply_flag_changes(
         &mut self,
         ui: &egui::Ui,
-        flag_column_name: &str,
+        display_column_index: usize,
         changes: &[FlagChangeEvent],
     ) {
         let Some(Ok(results)) = &mut self.results else {
             return;
         };
 
-        let Some(col_idx) = results.sorbet_schema.columns.iter().position(|desc| {
-            matches!(desc, re_sorbet::ColumnDescriptor::Component(c) if c.component.as_str() == flag_column_name)
-        }) else {
-            return;
-        };
-
-        update_existing_flag_column(results, col_idx, changes);
+        update_existing_flag_column(results, display_column_index, changes);
 
         ui.data_mut(|data| {
             data.insert_temp(self.id, self.clone());
@@ -548,11 +512,7 @@ fn update_existing_flag_column(
             continue;
         };
 
-        let Some(old_col) = batch
-            .column(col_idx)
-            .as_any()
-            .downcast_ref::<BooleanArray>()
-        else {
+        let Some(old_col) = batch.column(col_idx).downcast_array_ref::<BooleanArray>() else {
             re_log::warn_once!("Flag column at index {col_idx} is not a boolean column");
             break;
         };
@@ -596,4 +556,86 @@ fn balanced_binary_exprs(
     }
 
     exprs.into_iter().next()
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use arrow::datatypes::{DataType, Field};
+    use re_log_types::EntryId;
+
+    use super::DataFusionQueryData;
+    use crate::column_sorting::SortBy;
+    use crate::filters::{ColumnFilter, StringFilter, StringOperator};
+    use crate::table_blueprint::{EntryLinksSpec, SegmentLinksSpec, TableBlueprint};
+
+    #[test]
+    fn display_roles_do_not_change_query_fingerprint() {
+        fn query_fingerprint(
+            state: &(DataFusionQueryData, TableBlueprint),
+        ) -> &DataFusionQueryData {
+            &state.0
+        }
+
+        let first = (
+            DataFusionQueryData::default(),
+            TableBlueprint {
+                segment_preview_column: Some("preview_a".into()),
+                flag_column: Some("flag_a".into()),
+                grid_view_card_title: Some("title_a".into()),
+                url_column: Some("url_a".into()),
+            },
+        );
+        let second = (
+            first.0.clone(),
+            TableBlueprint {
+                segment_preview_column: Some("preview_b".into()),
+                flag_column: None,
+                grid_view_card_title: Some("title_b".into()),
+                url_column: None,
+            },
+        );
+
+        assert_ne!(first.1, second.1);
+        assert_eq!(query_fingerprint(&first), query_fingerprint(&second));
+    }
+
+    #[test]
+    fn query_inputs_change_query_fingerprint() {
+        let baseline = DataFusionQueryData::default();
+
+        let mut changed = baseline.clone();
+        changed.sort_by = Some(SortBy::ascending("sort".into()));
+        assert_ne!(baseline, changed);
+
+        let mut changed = baseline.clone();
+        changed.prefilter = Some(datafusion::prelude::col("prefilter"));
+        assert_ne!(baseline, changed);
+
+        let mut changed = baseline.clone();
+        changed.column_filters.push(ColumnFilter::new(
+            Arc::new(Field::new("filter", DataType::Utf8, true)),
+            StringFilter::new(StringOperator::Contains, "value"),
+        ));
+        assert_ne!(baseline, changed);
+
+        let origin: re_uri::Origin = "rerun+http://127.0.0.1:9876".parse().unwrap();
+        let mut changed = baseline.clone();
+        changed.segment_links = Some(SegmentLinksSpec {
+            column_name: "segment_link".into(),
+            segment_id_column_name: "segment_id".into(),
+            origin: origin.clone(),
+            dataset_id: EntryId::new(),
+        });
+        assert_ne!(baseline, changed);
+
+        let mut changed = baseline.clone();
+        changed.entry_links = Some(EntryLinksSpec {
+            column_name: "entry_link".into(),
+            entry_id_column_name: "entry_id".into(),
+            origin,
+        });
+        assert_ne!(baseline, changed);
+    }
 }

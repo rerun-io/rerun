@@ -1,5 +1,6 @@
 <!--[metadata]
 title = "Notebook: 2D neural fields"
+description = "Train a small neural field to fit a 2D image inside Jupyter, with the live training progress logged into Rerun."
 tags = ["Notebook", "Neural Field", "2D"]
 thumbnail = "https://static.rerun.io/tiger/b38c93f0efe8c5e7bd15270d8bc885128debcbae/480w.png"
 thumbnail_dimensions = [480, 480]

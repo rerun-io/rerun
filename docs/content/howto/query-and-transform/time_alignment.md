@@ -1,6 +1,7 @@
 ---
 title: Time-align data
 order: 75
+description: Fill forward to run compute at a fixed frequency
 ---
 
 Real-world data is usually not time-aligned.

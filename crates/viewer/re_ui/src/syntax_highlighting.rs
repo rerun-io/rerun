@@ -222,29 +222,10 @@ impl SyntaxHighlightedBuilder {
     }
 
     /// Append text with a custom format closure.
-    #[inline]
-    pub fn append_with_format_closure<F>(&mut self, text: &str, f: F) -> &mut Self
-    where
-        F: 'static + Fn(&Style) -> TextFormat,
-    {
-        self.append_kind(SyntaxHighlightedStyle::CustomClosure(Box::new(f)), text);
-        self
-    }
-
     /// With a custom format.
     #[inline]
     pub fn with_format(mut self, text: &str, format: TextFormat) -> Self {
         self.append_with_format(text, format);
-        self
-    }
-
-    /// With a custom format closure.
-    #[inline]
-    pub fn with_format_closure<F>(mut self, text: &str, f: F) -> Self
-    where
-        F: 'static + Fn(&Style) -> TextFormat,
-    {
-        self.append_with_format_closure(text, f);
         self
     }
 }
@@ -296,7 +277,6 @@ enum SyntaxHighlightedStyle {
     BodyDefault,
     BodyItalics,
     Custom(Box<TextFormat>),
-    CustomClosure(Box<dyn Fn(&Style) -> TextFormat>),
 }
 
 impl std::fmt::Debug for SyntaxHighlightedStyle {
@@ -313,7 +293,6 @@ impl std::fmt::Debug for SyntaxHighlightedStyle {
             Self::BodyDefault => write!(f, "BodyDefault"),
             Self::BodyItalics => write!(f, "BodyItalics"),
             Self::Custom(_) => write!(f, "Custom(…)"),
-            Self::CustomClosure(_) => write!(f, "CustomClosure(…)"),
         }
     }
 }
@@ -375,7 +354,6 @@ impl SyntaxHighlightedStyle {
                 format
             }
             Self::Custom(format) => *format.clone(),
-            Self::CustomClosure(f) => f(style),
         }
     }
 }

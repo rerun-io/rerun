@@ -1,5 +1,7 @@
 use std::collections::VecDeque;
 
+use re_span::Span;
+
 /// A deque with an offset that allows indices into it to stay valid.
 ///
 /// Does not expose the underlying [`VecDeque`] directly to guarantee that all operations are valid.
@@ -343,45 +345,42 @@ impl<T> StableIndexDeque<T> {
     /// Iterates over an index range which is truncated to a valid range in the list.
     ///
     /// ```
-    /// # use re_video::StableIndexDeque;
+    /// # use re_video::{Span, StableIndexDeque};
     /// let mut v = (0..5).collect::<StableIndexDeque<i32>>();
     /// v.pop_front();
-    /// assert_eq!(v.iter_index_range_clamped(&(0..5)).collect::<Vec<_>>(), vec![(1, &1), (2, &2), (3, &3), (4, &4)]);
-    /// assert_eq!(v.iter_index_range_clamped(&(2..4)).collect::<Vec<_>>(), vec![(2, &2), (3, &3)]);
-    /// assert_eq!(v.iter_index_range_clamped(&(3..5)).collect::<Vec<_>>(), vec![(3, &3), (4, &4)]);
+    /// assert_eq!(v.iter_index_range_clamped(Span::from_start_end(0, 5)).collect::<Vec<_>>(), vec![(1, &1), (2, &2), (3, &3), (4, &4)]);
+    /// assert_eq!(v.iter_index_range_clamped(Span::from_start_end(2, 4)).collect::<Vec<_>>(), vec![(2, &2), (3, &3)]);
+    /// assert_eq!(v.iter_index_range_clamped(Span::from_start_end(3, 5)).collect::<Vec<_>>(), vec![(3, &3), (4, &4)]);
     /// ```
     #[inline]
-    pub fn iter_index_range_clamped<'a>(
-        &'a self,
-        range: &std::ops::Range<usize>,
-    ) -> impl DoubleEndedIterator<Item = (usize, &'a T)> + ExactSizeIterator + use<'a, T> {
-        let shifted_range = range.start.saturating_sub(self.index_offset)
-            ..range.end.saturating_sub(self.index_offset);
-        let num_elements = shifted_range.end - shifted_range.start;
-        self.iter_indexed()
-            .skip(shifted_range.start)
-            .take(num_elements)
+    pub fn iter_index_range_clamped(
+        &self,
+        span: Span<usize>,
+    ) -> impl DoubleEndedIterator<Item = (usize, &T)> + ExactSizeIterator + use<'_, T> {
+        let shifted = span.saturating_sub(self.index_offset);
+        self.iter_indexed().skip(shifted.start).take(shifted.len)
     }
 
     /// Mutably iterates over an index range which is truncated to a valid range in
     /// the list.
     ///
     /// ```
-    /// # use re_video::StableIndexDeque;
+    /// # use re_video::{Span, StableIndexDeque};
     /// let mut v = (0..5).collect::<StableIndexDeque<i32>>();
     /// v.pop_front();
-    /// assert_eq!(v.iter_index_range_clamped_mut(&(0..5)).collect::<Vec<_>>(), vec![(1, &mut 1), (2, &mut 2), (3, &mut 3), (4, &mut 4)]);
-    /// assert_eq!(v.iter_index_range_clamped_mut(&(2..4)).collect::<Vec<_>>(), vec![(2, &mut 2), (3, &mut 3)]);
-    /// assert_eq!(v.iter_index_range_clamped_mut(&(3..5)).collect::<Vec<_>>(), vec![(3, &mut 3), (4, &mut 4)]);
+    /// assert_eq!(v.iter_index_range_clamped_mut(Span::from_start_end(0, 5)).collect::<Vec<_>>(), vec![(1, &mut 1), (2, &mut 2), (3, &mut 3), (4, &mut 4)]);
+    /// assert_eq!(v.iter_index_range_clamped_mut(Span::from_start_end(2, 4)).collect::<Vec<_>>(), vec![(2, &mut 2), (3, &mut 3)]);
+    /// assert_eq!(v.iter_index_range_clamped_mut(Span::from_start_end(3, 5)).collect::<Vec<_>>(), vec![(3, &mut 3), (4, &mut 4)]);
     /// ```
     #[inline]
-    pub fn iter_index_range_clamped_mut<'a>(
-        &'a mut self,
-        range: &std::ops::Range<usize>,
-    ) -> impl DoubleEndedIterator<Item = (usize, &'a mut T)> + ExactSizeIterator + use<'a, T> {
-        let range_start = range.start.saturating_sub(self.index_offset);
-        let num_elements = range.end - range.start;
-        self.iter_indexed_mut().skip(range_start).take(num_elements)
+    pub fn iter_index_range_clamped_mut(
+        &mut self,
+        span: Span<usize>,
+    ) -> impl DoubleEndedIterator<Item = (usize, &mut T)> + ExactSizeIterator + use<'_, T> {
+        let shifted = span.saturating_sub(self.index_offset);
+        self.iter_indexed_mut()
+            .skip(shifted.start)
+            .take(shifted.len)
     }
 }
 

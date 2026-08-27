@@ -121,3 +121,32 @@ impl<T> RerunHeadersExtractorExt for tonic::Request<T> {
         Ok(Some(entry_name))
     }
 }
+
+/// Resolves the entry id of an entry-addressed request.
+///
+/// The id is read from the `x-rerun-entry-id` HTTP header first; if absent, the caller-supplied
+/// deprecated body id is used as a fallback, to stay compatible with old clients.
+/// If both the header and the body carry an id, they must agree: a mismatch is rejected with
+/// [`tonic::Code::InvalidArgument`].
+///
+/// The body fallback can be removed once we can stop being backwards compatible with
+/// clients older or equal to 0.32.x.
+pub fn resolve_entry_id<T>(
+    req: &tonic::Request<T>,
+    body_id: Option<&crate::common::v1alpha1::EntryId>,
+) -> tonic::Result<re_log_types::EntryId> {
+    let header_id = req.entry_id()?;
+    let body_id: Option<re_log_types::EntryId> = body_id.map(|id| (*id).try_into()).transpose()?;
+
+    match (header_id, body_id) {
+        (Some(header_id), Some(body_id)) if header_id != body_id => {
+            Err(tonic::Status::invalid_argument(format!(
+                "mismatched entry ids: the '{RERUN_HTTP_HEADER_ENTRY_ID}' header says '{header_id}', but the request body says '{body_id}'"
+            )))
+        }
+        (Some(id), _) | (None, Some(id)) => Ok(id),
+        (None, None) => Err(tonic::Status::invalid_argument(
+            "missing entry id in request header and body",
+        )),
+    }
+}

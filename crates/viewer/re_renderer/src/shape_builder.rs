@@ -90,7 +90,7 @@ impl ShapeBuilder {
             // the full marker color (see `instanced_mesh.wgsl` for the exact formula).
             materials: smallvec![Material {
                 label: label.into(),
-                index_range: 0..index_count,
+                index_range: re_span::Span::from_start_len(0, index_count),
                 albedo,
                 albedo_factor: Rgba::BLACK,
             }],

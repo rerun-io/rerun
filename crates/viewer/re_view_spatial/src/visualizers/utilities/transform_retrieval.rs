@@ -2,9 +2,9 @@ use re_log_types::EntityPath;
 use re_sdk_types::ViewClassIdentifier;
 use re_sdk_types::blueprint::components::VisualizerInstructionId;
 use re_sdk_types::components::{RotationAxisAngle, RotationQuat, Translation3D};
-use re_sdk_types::datatypes::Quaternion;
+use re_sdk_types::encodings::Quaternion;
 use re_tf::TransformFrameIdHash;
-use re_viewer_context::{ViewClass as _, VisualizerExecutionOutput, VisualizerReportSeverity};
+use re_viewer_context::{ViewClass as _, ViewerReportSeverity, VisualizerExecutionOutput};
 
 use crate::SpaceKind;
 use crate::contexts::{TransformInfo, TransformTreeContext};
@@ -36,7 +36,7 @@ pub fn entity_from_grid_transform(
         {
             results.report_for_component(
                 quaternion_component,
-                VisualizerReportSeverity::Warning,
+                ViewerReportSeverity::Warning,
                 format!(
                     "{archetype_label} {entity_path} has both quaternion and rotation_axis_angle set; using quaternion."
                 ),
@@ -45,7 +45,7 @@ pub fn entity_from_grid_transform(
             let Ok(rotation) = glam::Affine3A::try_from(quaternion) else {
                 results.report_for_component(
                     quaternion_component,
-                    VisualizerReportSeverity::Error,
+                    ViewerReportSeverity::Error,
                     "invalid rotation quaternion",
                 );
                 return None;
@@ -56,7 +56,7 @@ pub fn entity_from_grid_transform(
             let Ok(rotation) = glam::Affine3A::try_from(quaternion) else {
                 results.report_for_component(
                     quaternion_component,
-                    VisualizerReportSeverity::Error,
+                    ViewerReportSeverity::Error,
                     "invalid rotation quaternion",
                 );
                 return None;
@@ -67,7 +67,7 @@ pub fn entity_from_grid_transform(
             let Ok(rotation) = glam::Affine3A::try_from(rotation_axis_angle) else {
                 results.report_for_component(
                     rotation_axis_angle_component,
-                    VisualizerReportSeverity::Error,
+                    ViewerReportSeverity::Error,
                     "invalid rotation axis-angle",
                 );
                 return None;
@@ -117,16 +117,23 @@ pub fn transform_info_for_archetype_or_report_error<'a>(
 ) -> Option<&'a TransformInfo> {
     re_tracing::profile_function!();
 
+    if transform_context.uses_implicit_frame_for_empty_coordinate_frame(entity_path.hash()) {
+        output.report_unspecified_source(
+            *instruction_id,
+            ViewerReportSeverity::Warning,
+            format!(
+                "CoordinateFrame has an empty frame ID; falling back to the implicit frame {:?}.",
+                re_tf::TransformFrameId::from_entity_path(entity_path).as_str(),
+            ),
+        );
+    }
+
     let result = transform_context.target_from_entity_path(entity_path.hash());
     let transform_info = match format_transform_info_result(entity_path, transform_context, result)
     {
         Ok(transform_info) => transform_info,
         Err(err_msg) => {
-            output.report_unspecified_source(
-                *instruction_id,
-                VisualizerReportSeverity::Error,
-                err_msg,
-            );
+            output.report_unspecified_source(*instruction_id, ViewerReportSeverity::Error, err_msg);
             return None;
         }
     };
@@ -260,7 +267,7 @@ pub fn is_valid_space_for_content(
         } else {
             "The origin of the 3D view".to_owned()
         };
-        output.report_unspecified_source(*instruction_id, VisualizerReportSeverity::Error, format!(
+        output.report_unspecified_source(*instruction_id, ViewerReportSeverity::Error, format!(
                 "{origin} is under pinhole projection which is not supported by most 3D visualizations."
             ));
         return false;
@@ -291,7 +298,7 @@ pub fn is_valid_space_for_content(
                         None => {
                             output.report_unspecified_source(
                                     *instruction_id,
-                                    VisualizerReportSeverity::Error,
+                                    ViewerReportSeverity::Error,
                                     format!(
                                         "This 2D content has a pinhole transform frame ancestor{}, but the 2D view's target frame doesn't have a pinhole root.",
                                         frame_text(transform.tree_root())
@@ -304,7 +311,7 @@ pub fn is_valid_space_for_content(
                         {
                             output.report_unspecified_source(
                                     *instruction_id,
-                                    VisualizerReportSeverity::Error,
+                                    ViewerReportSeverity::Error,
                                     format!(
                                         "This 2D content has a pinhole transform frame ancestor{} that is different from the 2D view's pinhole root{}.",
                                         frame_text(transform.tree_root()), frame_text(target_frame_pinhole_root)
@@ -323,7 +330,7 @@ pub fn is_valid_space_for_content(
                     } else {
                         output.report_unspecified_source(
                             *instruction_id,
-                            VisualizerReportSeverity::Error,
+                            ViewerReportSeverity::Error,
                             "2D visualizers require a pinhole ancestor to be shown in a 3D view.",
                         );
                         false
@@ -337,7 +344,7 @@ pub fn is_valid_space_for_content(
             if transform_has_pinhole_ancestor {
                 output.report_unspecified_source(
                     *instruction_id,
-                    VisualizerReportSeverity::Error,
+                    ViewerReportSeverity::Error,
                     "Can't visualize 3D content that is under a pinhole projection.",
                 );
                 return false;
@@ -357,7 +364,7 @@ pub fn is_valid_space_for_content(
                     } else {
                         output.report_unspecified_source(
                             *instruction_id,
-                            VisualizerReportSeverity::Error,
+                            ViewerReportSeverity::Error,
                             "3D visualizers require a pinhole at the origin of the 2D view.",
                         );
                         false

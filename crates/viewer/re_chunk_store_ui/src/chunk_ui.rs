@@ -9,6 +9,7 @@ use re_chunk_store::{Chunk, ChunkId};
 use re_log_types::{TimeInt, Timeline, TimestampFormat};
 use re_ui::{UiExt as _, list_item};
 
+use crate::chunk_store_ui::source_segments_ui;
 use crate::sort::{SortColumn, SortDirection, sortable_column_header_ui};
 use crate::toolbar_ui::{close_button_right_ui, copy_button_ui, info_toggle_button_ui};
 
@@ -287,6 +288,11 @@ impl ChunkUi {
             );
 
             ui.list_item_flat_noninteractive(
+                list_item::PropertyContent::new("Segment")
+                    .value_fn(|ui, _| source_segments_ui(ui, store, &self.chunk.id())),
+            );
+
+            ui.list_item_flat_noninteractive(
                 list_item::PropertyContent::new("Row count")
                     .value_text(self.chunk.num_rows().to_string()),
             );
@@ -299,12 +305,11 @@ impl ChunkUi {
 
             ui.list_item_flat_noninteractive(
                 list_item::PropertyContent::new("Unsorted timelines").value_text({
-                    let unsorted_timelines = self.chunk.unsorted_timelines();
-                    if unsorted_timelines.is_empty() {
+                    let mut unsorted_timelines = self.chunk.unsorted_timelines().peekable();
+                    if unsorted_timelines.peek().is_none() {
                         "none".to_owned()
                     } else {
                         unsorted_timelines
-                            .iter()
                             .map(|timeline| timeline.as_str())
                             .join(", ")
                     }

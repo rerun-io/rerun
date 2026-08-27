@@ -1,5 +1,5 @@
 use super::LatLon;
-use crate::datatypes::DVec2D;
+use crate::encodings::DVec2D;
 
 // ---
 

@@ -1,0 +1,10 @@
+---
+source: crates/store/re_chunk_optimizer/tests/analysis.rs
+expression: analysis.merge
+---
+MergeAssessment {
+    actual_chunks: 4,
+    achievable_chunks: 2,
+    excess_chunks: 2,
+    factor: 2.0,
+}

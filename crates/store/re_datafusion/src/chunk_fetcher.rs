@@ -2,7 +2,7 @@
 
 use std::collections::BTreeMap;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use std::{error::Error as _, fmt::Write as _};
 
 use arrow::array::{
@@ -25,6 +25,7 @@ use re_protos::{
     common::v1alpha1::ext::SegmentId,
 };
 use re_redap_client::ApiResult;
+use re_span::Span;
 
 use crate::analytics::{DirectFetchFailureReason, PendingQueryAnalytics, TaskFetchStats};
 use crate::dataframe_query_common::DataframeClientAPI;
@@ -109,7 +110,7 @@ pub type ChunksWithSegment = Vec<(Chunk, Option<SegmentId>)>;
 pub type SortedChunksWithSegment = (SegmentId, Vec<Chunk>);
 
 /// Maximum size of a single merged HTTP Range request (16 MB, matching server).
-const MAX_MERGED_RANGE_SIZE: usize = 16 * 1024 * 1024;
+const MAX_MERGED_RANGE_SIZE: u64 = 16 * 1024 * 1024;
 
 /// Number of times to retry direct fetch on transient errors before returning a hard error.
 const DIRECT_FETCH_MAX_RETRIES: usize = 10;
@@ -125,11 +126,8 @@ struct ChunkInMergedRange {
     /// Index of this chunk in the original `RecordBatch` (used to preserve ordering).
     original_row_index: usize,
 
-    /// Byte offset of this chunk within the merged response body.
-    offset_in_merged: usize,
-
-    /// Byte length of this chunk.
-    length: usize,
+    /// Byte span of this chunk within the merged response body.
+    span_in_merged: Span<u64>,
 }
 
 /// A single HTTP Range request that may cover multiple adjacent chunks.
@@ -137,11 +135,8 @@ struct MergedRangeRequest {
     /// The presigned URL to fetch from.
     url: String,
 
-    /// Absolute byte range start within the file (inclusive).
-    file_range_start: usize,
-
-    /// Absolute byte range end within the file (exclusive).
-    file_range_end: usize,
+    /// Absolute byte span within the file.
+    file_range: Span<u64>,
 
     /// Individual chunks to extract from the merged response.
     chunks: Vec<ChunkInMergedRange>,
@@ -276,6 +271,7 @@ pub fn batch_byte_size_uncompressed(batch: &RecordBatch) -> Option<u64> {
 /// recording the one-shot terminal failure reason on the shared state.
 #[tracing::instrument(level = "info", skip_all, fields(num_chunks, byte_size))]
 pub async fn fetch_batch_direct(
+    origin: &re_uri::Origin,
     batch: &RecordBatch,
     http_client: &reqwest::Client,
     request_counter: &AtomicU64,
@@ -302,6 +298,7 @@ pub async fn fetch_batch_direct(
             #[cfg(not(target_arch = "wasm32"))]
             metrics::record_direct_failure(reason.as_str());
             Err(re_redap_client::ApiError::connection_with_source(
+                origin,
                 None,
                 err,
                 "fetching chunks via direct URLs",
@@ -352,6 +349,11 @@ pub async fn fetch_batch_group_via_grpc<T: DataframeClientAPI>(
 ) -> ApiResult<Vec<ChunksWithSegment>> {
     let mut all_chunks = Vec::new();
 
+    // Decode runs inside `spawn_blocking` in `re_redap_client`, so we hand it a
+    // shared accumulator and fold the total into `stats` once the group is done.
+    let decode_us = std::sync::Arc::new(AtomicU64::new(0));
+
+    let origin = client.origin().clone();
     let mut client = client.clone();
     for batch in batch_group {
         request_counter.fetch_add(1, Ordering::Relaxed);
@@ -367,13 +369,20 @@ pub async fn fetch_batch_group_via_grpc<T: DataframeClientAPI>(
             .fetch_chunks(req)
             .instrument(tracing::trace_span!("batched_fetch_chunks"))
             .await
-            .map_err(|err| re_redap_client::ApiError::tonic(err, "FetchChunks request failed"))?;
+            .map_err(|err| {
+                re_redap_client::ApiError::tonic(&origin, err, "FetchChunks request failed")
+            })?;
 
-        let response_stream =
-            re_redap_client::ApiResponseStream::from_tonic_response(response, "/FetchChunks");
+        let response_stream = re_redap_client::ApiResponseStream::from_tonic_response(
+            origin.clone(),
+            response,
+            "/FetchChunks",
+        );
 
-        let chunk_stream =
-            re_redap_client::fetch_chunks_response_to_chunk_and_segment_id(response_stream);
+        let chunk_stream = re_redap_client::fetch_chunks_response_to_chunk_and_segment_id(
+            response_stream,
+            Some(std::sync::Arc::clone(&decode_us)),
+        );
 
         let batch_chunks: Vec<ApiResult<ChunksWithSegment>> = chunk_stream.collect().await;
         for chunk_result in batch_chunks {
@@ -381,6 +390,8 @@ pub async fn fetch_batch_group_via_grpc<T: DataframeClientAPI>(
         }
         stats.record_grpc_bytes(batch_byte_size(batch));
     }
+
+    stats.record_decode(Duration::from_micros(decode_us.load(Ordering::Relaxed)));
 
     Ok(all_chunks)
 }
@@ -456,13 +467,13 @@ impl From<reqwest::Error> for DirectFetchError {
 
 /// Returns the optimal gap size for merging adjacent byte ranges.
 /// Uses 25% of average chunk size — merging across a gap "wastes" at most 25% extra bandwidth.
-fn calculate_optimal_gap_size(ranges: &[(u64, u64)]) -> usize {
+fn calculate_optimal_gap_size(ranges: &[Span<u64>]) -> u64 {
     if ranges.len() < 2 {
         return 0;
     }
     let avg_chunk_size: f64 =
-        ranges.iter().map(|(_, len)| *len as f64).sum::<f64>() / ranges.len() as f64;
-    (avg_chunk_size * 0.25) as usize
+        ranges.iter().map(|span| span.len as f64).sum::<f64>() / ranges.len() as f64;
+    (avg_chunk_size * 0.25) as u64
 }
 
 /// Merge adjacent byte ranges for a single URL into fewer, larger HTTP Range requests.
@@ -471,8 +482,8 @@ fn calculate_optimal_gap_size(ranges: &[(u64, u64)]) -> usize {
 /// merged range does not exceed [`MAX_MERGED_RANGE_SIZE`].
 fn merge_ranges_for_url(
     url: String,
-    mut chunks: Vec<(usize, u64, u64)>, // (original_row_index, offset, length)
-    max_gap_size: usize,
+    mut chunks: Vec<(usize, Span<u64>)>, // (original_row_index, byte span in file)
+    max_gap_size: u64,
     segment_id: Option<SegmentId>,
     expected_etag: Option<ETag>,
     registration_time: Option<jiff::Timestamp>,
@@ -482,54 +493,46 @@ fn merge_ranges_for_url(
     }
 
     // Sort by offset
-    chunks.sort_by_key(|&(_, offset, _)| offset);
+    chunks.sort_by_key(|&(_, span)| span.start);
     // Deduplicate ranges with same offset, keeping the first one
-    chunks.dedup_by_key(|(_, offset, _)| *offset);
+    chunks.dedup_by_key(|(_, span)| span.start);
 
     let mut merged_ranges = Vec::new();
-    let (first_row, first_offset, first_length) = chunks[0];
-    let mut current_start = first_offset as usize;
-    let mut current_end = (first_offset + first_length) as usize;
+    let (first_row, first_span) = chunks[0];
+    let mut current_span = first_span;
     let mut chunk_infos = vec![ChunkInMergedRange {
         original_row_index: first_row,
-        offset_in_merged: 0,
-        length: first_length as usize,
+        span_in_merged: Span::from_start_len(0, first_span.len),
     }];
 
-    for (row_idx, offset, length) in chunks.into_iter().skip(1) {
-        let offset = offset as usize;
-        let length = length as usize;
-        let gap_size = offset.saturating_sub(current_end);
+    for (row_idx, span) in chunks.into_iter().skip(1) {
+        let gap_size = span.start.saturating_sub(current_span.end());
 
-        let new_end = (offset + length).max(current_end);
-        let new_merged_size = new_end - current_start;
+        // What the merged range would become (chunks are sorted, so the start stays)
+        let candidate = current_span.union(span);
 
-        let should_merge = gap_size <= max_gap_size && new_merged_size <= MAX_MERGED_RANGE_SIZE;
+        let should_merge = gap_size <= max_gap_size && candidate.len <= MAX_MERGED_RANGE_SIZE;
 
         if should_merge {
             chunk_infos.push(ChunkInMergedRange {
                 original_row_index: row_idx,
-                offset_in_merged: offset - current_start,
-                length,
+                span_in_merged: Span::from_start_len(span.start - current_span.start, span.len),
             });
-            current_end = new_end;
+            current_span = candidate;
         } else {
             merged_ranges.push(MergedRangeRequest {
                 url: url.clone(),
-                file_range_start: current_start,
-                file_range_end: current_end,
+                file_range: current_span,
                 chunks: chunk_infos,
                 segment_id: segment_id.clone(),
                 expected_etag: expected_etag.clone(),
                 registration_time,
             });
 
-            current_start = offset;
-            current_end = offset + length;
+            current_span = span;
             chunk_infos = vec![ChunkInMergedRange {
                 original_row_index: row_idx,
-                offset_in_merged: 0,
-                length,
+                span_in_merged: Span::from_start_len(0, span.len),
             }];
         }
     }
@@ -537,8 +540,7 @@ fn merge_ranges_for_url(
     // Don't forget the last range
     merged_ranges.push(MergedRangeRequest {
         url,
-        file_range_start: current_start,
-        file_range_end: current_end,
+        file_range: current_span,
         chunks: chunk_infos,
         segment_id,
         expected_etag,
@@ -552,11 +554,11 @@ fn merge_ranges_for_url(
 ///
 /// Small ranges are latency-bound (high concurrency helps), large ranges are
 /// bandwidth-bound (fewer concurrent requests avoids contention).
-fn calculate_adaptive_concurrency(ranges: &[(u64, u64)]) -> usize {
+fn calculate_adaptive_concurrency(ranges: &[Span<u64>]) -> usize {
     if ranges.is_empty() {
         return 1;
     }
-    let total_range_size: usize = ranges.iter().map(|(_, len)| *len as usize).sum();
+    let total_range_size: usize = ranges.iter().map(|span| span.len as usize).sum();
     let avg_range_size = total_range_size / ranges.len();
 
     // Factor 1: range size determines base concurrency
@@ -605,7 +607,7 @@ fn decode_chunk_from_bytes(bytes: &[u8]) -> Result<(Chunk, Option<SegmentId>), D
         DirectFetchError::new(format!("ArrowMsg::to_application() failed: {err}"), false)
     })?;
 
-    let chunk = Chunk::from_record_batch(&app_msg.batch).map_err(|err| {
+    let chunk = Chunk::from_chunk_record_batch(&app_msg.batch).map_err(|err| {
         DirectFetchError::new(format!("Chunk::from_record_batch failed: {err}"), false)
     })?;
 
@@ -669,13 +671,13 @@ async fn fetch_batch_via_direct_urls(
     // ETag and registration_time are per-source-object (per URL), so all rows
     // sharing a URL share both, and we stash them once on first sight.
     struct UrlGroup {
-        ranges: Vec<(usize, u64, u64)>,
+        ranges: Vec<(usize, Span<u64>)>,
         segment_id: Option<SegmentId>,
         expected_etag: Option<ETag>,
         registration_time: Option<jiff::Timestamp>,
     }
     let mut url_groups: BTreeMap<String, UrlGroup> = BTreeMap::new();
-    let mut all_ranges: Vec<(u64, u64)> = Vec::with_capacity(num_rows);
+    let mut all_ranges: Vec<Span<u64>> = Vec::with_capacity(num_rows);
 
     for i in 0..num_rows {
         if chunk_keys.is_null(i) || direct_urls.is_null(i) {
@@ -699,8 +701,6 @@ async fn fetch_batch_via_direct_urls(
             })?;
 
         let url = direct_urls.value(i).to_owned();
-        let offset = rrd_location.offset;
-        let length = rrd_location.length;
 
         url_groups
             .entry(url)
@@ -711,8 +711,8 @@ async fn fetch_batch_via_direct_urls(
                 registration_time: chunk_key.registration_time,
             })
             .ranges
-            .push((i, offset, length));
-        all_ranges.push((offset, length));
+            .push((i, rrd_location.byte_span));
+        all_ranges.push(rrd_location.byte_span);
     }
 
     // Step 2: Merge adjacent ranges per URL.
@@ -759,13 +759,15 @@ async fn fetch_batch_via_direct_urls(
             async move {
                 request_counter.fetch_add(1, Ordering::Relaxed);
                 let mut local_stats = TaskFetchStats::default();
-                let useful_bytes = request.chunks.iter().map(|chunk| chunk.length as u64).sum();
-                // Range headers are inclusive
-                let range_end = request.file_range_end - 1;
+                let useful_bytes = request
+                    .chunks
+                    .iter()
+                    .map(|chunk| chunk.span_in_merged.len)
+                    .sum();
                 re_log::debug!(
-                    "Merged fetch [{req_idx}]: {start}..={range_end} ({} chunks)",
+                    "Merged fetch [{req_idx}]: {file_range:?} ({} chunks)",
                     request.chunks.len(),
-                    start = request.file_range_start,
+                    file_range = request.file_range,
                 );
 
                 // Backoff matching gRPC retry settings: base 100ms, max 3s, full jitter (`[0, base)`).
@@ -791,17 +793,17 @@ async fn fetch_batch_via_direct_urls(
                         backoff.sleep().await;
                     }
 
-                    let fetch_result =
-                        fetch_merged_range(&http_client, &request, range_end).await;
+                    let fetch_result = fetch_merged_range(&http_client, &request).await;
 
                     match fetch_result {
-                        Ok(results) => {
+                        Ok((results, decode_elapsed)) => {
                             if attempt > 1 {
                                 re_log::debug!(
                                     "Direct fetch [{req_idx}] succeeded on attempt {attempt}"
                                 );
                             }
                             local_stats.record_direct_bytes(useful_bytes);
+                            local_stats.record_decode(decode_elapsed);
                             return (Ok(results), local_stats);
                         }
                         Err(err) if err.retryable => {
@@ -873,20 +875,21 @@ async fn fetch_batch_via_direct_urls(
 
 type DecodedChunk = (usize, (Chunk, Option<SegmentId>));
 
+/// Returns the decoded chunks plus the CPU time spent decoding them (the
+/// network permit has already been released, so this is pure decode cost).
 async fn fetch_merged_range(
     http_client: &reqwest::Client,
     request: &MergedRangeRequest,
-    range_end: usize,
-) -> Result<Vec<DecodedChunk>, DirectFetchError> {
+) -> Result<(Vec<DecodedChunk>, Duration), DirectFetchError> {
     let MergedRangeRequest {
         url,
-        file_range_start: range_start,
-        file_range_end: _,
+        file_range,
         chunks,
         segment_id,
         expected_etag,
         registration_time,
     } = request;
+    let file_range = *file_range;
     let segment_id = segment_id.as_ref();
     let expected_etag = expected_etag.as_ref();
     let registration_time = *registration_time;
@@ -897,31 +900,26 @@ async fn fetch_merged_range(
         merged_bytes,
         returned_etag,
         last_modified,
-    } = fetch_merged_range_bytes(
-        http_client,
-        url,
-        *range_start,
-        range_end,
-        expected_etag,
-        segment_id,
-    )
-    .await?;
+    } = fetch_merged_range_bytes(http_client, url, file_range, expected_etag, segment_id).await?;
 
     tracing::Span::current().record("bytes", merged_bytes.len());
 
     // Extract individual chunks from the merged response.
     // Deep copy each chunk to avoid holding the entire merged buffer alive.
-    chunks
+    // Time the decode/decompress work — the network transfer already
+    // completed above, so this isolates CPU-bound decode cost.
+    let decode_start = Instant::now();
+    let decoded: Vec<DecodedChunk> = chunks
         .iter()
         .map(|info| {
-            let start = info.offset_in_merged;
-            let end = start + info.length;
+            let span = info.span_in_merged;
             // Deep copy: prevents holding entire 16MB merged buffer in memory
-            let chunk_bytes = merged_bytes.get(start..end).ok_or_else(|| {
+            let chunk_bytes = merged_bytes.get(span.range_usize()).ok_or_else(|| {
                 DirectFetchError::new(
                     format!(
                         "merged range shorter than expected: need {end} bytes, got {}",
-                        merged_bytes.len()
+                        merged_bytes.len(),
+                        end = span.end(),
                     ),
                     false,
                 )
@@ -936,10 +934,10 @@ async fn fetch_merged_range(
                     re_log::error!(
                         segment_id = segment_id.map(|s| s.as_str()).unwrap_or("unknown"),
                         url = logged_url,
-                        range_start,
-                        range_end,
-                        chunk_offset = info.offset_in_merged,
-                        chunk_length = info.length,
+                        range_start = file_range.start,
+                        range_len = file_range.len,
+                        chunk_offset = info.span_in_merged.start,
+                        chunk_length = info.span_in_merged.len,
                         expected_etag = ?expected_etag,
                         actual_etag = ?returned_etag,
                         object_last_modified = ?last_modified,
@@ -956,7 +954,8 @@ async fn fetch_merged_range(
                 })
                 .map(|chunk_with_segment| (info.original_row_index, chunk_with_segment))
         })
-        .try_collect()
+        .try_collect()?;
+    Ok((decoded, decode_start.elapsed()))
 }
 
 /// The undecoded bytes and metadata of a fetched merged range.
@@ -980,11 +979,19 @@ struct FetchedRange {
 async fn fetch_merged_range_bytes(
     http_client: &reqwest::Client,
     url: &str,
-    range_start: usize,
-    range_end: usize,
+    file_range: Span<u64>,
     expected_etag: Option<&ETag>,
     segment_id: Option<&SegmentId>,
 ) -> Result<FetchedRange, DirectFetchError> {
+    // `Range` headers are inclusive, so an empty span has no end to ask for.
+    let Some(range_end) = file_range.end().checked_sub(1) else {
+        return Err(DirectFetchError::new(
+            "refusing to fetch an empty byte range".to_owned(),
+            false,
+        ));
+    };
+    let range_start = file_range.start;
+
     let _permit = crate::pipeline_budget::direct_fetch_semaphore()
         .acquire()
         .await
@@ -1045,10 +1052,21 @@ mod tests {
 
     use super::*;
 
-    #[derive(Clone, Debug, Default)]
+    #[derive(Clone, Debug)]
     struct TestFetchClient {
+        origin: re_uri::Origin,
         calls: Arc<AtomicU64>,
         fail_on_call: u64,
+    }
+
+    impl Default for TestFetchClient {
+        fn default() -> Self {
+            Self {
+                origin: re_uri::Origin::test(),
+                calls: Arc::default(),
+                fail_on_call: 0,
+            }
+        }
     }
 
     #[derive(Debug)]
@@ -1065,6 +1083,10 @@ mod tests {
 
     #[async_trait::async_trait]
     impl DataframeClientAPI for TestFetchClient {
+        fn origin(&self) -> &re_uri::Origin {
+            &self.origin
+        }
+
         async fn get_dataset_schema(
             &mut self,
             _request: Request<GetDatasetSchemaRequest>,

@@ -5,6 +5,10 @@
 # to the user in the error, instead of "error: invalid channel name '[toolchain]'".
 
 [toolchain]
-channel = "1.95.0"
+
+# IMPORTANT: when you change the version below, also rebuild and publish
+# the CI docker image by running `rerun/ci_docker/publish.sh`. The image bakes
+# this version in so CI can skip the rustup download.
+channel = "1.96.0"
 components = ["rustfmt", "clippy"]
 targets = ["wasm32-unknown-unknown"]

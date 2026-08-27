@@ -73,6 +73,8 @@ on [Entities and Components](../../concepts/logging-and-ingestion/entity-compone
 * [`Scale3D`](components/scale3d.md): A 3D scale factor.
 * [`SchemaId`](components/schema_id.md): A 16-bit unique identifier for a schema within the MCAP file.
 * [`ShowLabels`](components/show_labels.md): Whether the entity's [`components.Text`](https://rerun.io/docs/reference/types/components/text) label is shown.
+* [`SphericalHarmonics3Rgb`](components/spherical_harmonics3rgb.md): View-dependent color, expressed as spherical harmonics coefficients of degrees 1 through 3.
+* [`SphericalHarmonicsDegree`](components/spherical_harmonics_degree.md): The highest spherical harmonics degree to evaluate when rendering, 0-3.
 * [`StrokeWidth`](components/stroke_width.md): The width of a stroke specified in UI points.
 * [`TensorData`](components/tensor_data.md): An N-dimensional array of numbers.
 * [`TensorDimensionIndexSelection`](components/tensor_dimension_index_selection.md): Specifies a concrete index on a tensor dimension.
@@ -93,7 +95,7 @@ on [Entities and Components](../../concepts/logging-and-ingestion/entity-compone
 * [`VideoCodec`](components/video_codec.md): The codec used to encode video stored in [`components.VideoSample`](https://rerun.io/docs/reference/types/components/video_sample).
 * [`VideoSample`](components/video_sample.md): Video sample data (also known as "video chunk").
 * [`VideoTimestamp`](components/video_timestamp.md): Timestamp inside a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video).
-* [`ViewCoordinates`](components/view_coordinates.md): How we interpret the coordinate system of an entity/space.
+* [`ViewCoordinates`](components/view_coordinates.md): An orientation convention for a camera or 3D view.
 * [`Visible`](components/visible.md): Whether the container, view, entity or instance is currently visible.
 * [`VoxelIndex`](components/voxel_index.md): Integer index of a voxel in a sparse 3D voxel grid.
 * [`VoxelSize`](components/voxel_size.md): The scene-unit dimensions of one voxel in a sparse 3D voxel grid.

@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use re_chunk::{Chunk, EntityPath, RowId, TimePoint};
 use re_sdk_types::{
     Component as _, ComponentBatch as _, ComponentDescriptor, ComponentIdentifier,
-    SerializedComponentBatch, components, datatypes,
+    SerializedComponentBatch, components, encodings,
 };
 
 use super::{Decoder, DecoderContext, DecoderIdentifier};
@@ -70,7 +70,7 @@ impl Decoder for McapMetadataDecoder {
         for (name, entries) in metadata_by_name {
             let pairs: Vec<_> = entries
                 .into_iter()
-                .map(|(key, value)| datatypes::Utf8Pair {
+                .map(|(key, value)| encodings::Utf8Pair {
                     first: key.into(),
                     second: value.into(),
                 })

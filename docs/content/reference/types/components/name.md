@@ -5,8 +5,11 @@ title: "Name"
 
 A display name, typically for an entity or a item like a plot series.
 
-## Rerun datatype
-[`Utf8`](../datatypes/utf8.md)
+This name is only a display label, never an identifier: it is not used to look anything
+up, and two items may share the same name.
+
+## Rerun encoding
+[`Utf8`](../encodings/utf8.md)
 
 
 ## Arrow datatype

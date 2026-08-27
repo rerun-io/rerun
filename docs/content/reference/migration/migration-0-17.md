@@ -1,6 +1,7 @@
 ---
 title: Migrating from 0.16 to 0.17
 order: 993
+hidden: true
 ---
 
 

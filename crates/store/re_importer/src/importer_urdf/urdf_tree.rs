@@ -11,9 +11,9 @@ use itertools::Itertools as _;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::EntityPath;
 use re_log_types::EntityPathPart;
-use re_sdk_types::Loggable as _;
+use re_sdk_types::ToArrow as _;
 use re_sdk_types::archetypes::Transform3D;
-use re_sdk_types::datatypes::{Quaternion, Vec3D};
+use re_sdk_types::encodings::{Quaternion, Vec3D};
 use urdf_rs::{Geometry, Joint, Link, Material, Robot};
 
 use super::joint_transform;
@@ -344,8 +344,8 @@ impl UrdfTree {
             );
         }
 
-        let translation_array = Vec3D::to_arrow_opt(translations.iter().map(Some))?;
-        let quaternion_array = Quaternion::to_arrow_opt(quaternions.iter().map(Some))?;
+        let translation_array = Vec3D::to_arrow(translations.iter())?;
+        let quaternion_array = Quaternion::to_arrow(quaternions.iter())?;
 
         let struct_fields = Fields::from(vec![
             Field::new("translation", translation_array.data_type().clone(), false),

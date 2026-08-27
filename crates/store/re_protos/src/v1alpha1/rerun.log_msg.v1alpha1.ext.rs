@@ -1,5 +1,6 @@
 use prost::bytes::Bytes;
 
+use crate::common::v1alpha1::ext::StoreIdFromProtoError;
 use crate::{TypeConversionError, invalid_field, missing_field};
 
 impl From<crate::log_msg::v1alpha1::log_msg::Msg> for crate::log_msg::v1alpha1::LogMsg {
@@ -141,10 +142,16 @@ impl TryFrom<crate::log_msg::v1alpha1::PythonVersion> for re_log_types::PythonVe
 
     #[inline]
     fn try_from(value: crate::log_msg::v1alpha1::PythonVersion) -> Result<Self, Self::Error> {
+        fn as_u8(field_name: &'static str, value: i32) -> Result<u8, TypeConversionError> {
+            u8::try_from(value).map_err(|err| {
+                invalid_field!(crate::log_msg::v1alpha1::PythonVersion, field_name, err)
+            })
+        }
+
         Ok(Self {
-            major: value.major as u8,
-            minor: value.minor as u8,
-            patch: value.patch as u8,
+            major: as_u8("major", value.major)?,
+            minor: as_u8("minor", value.minor)?,
+            patch: as_u8("patch", value.patch)?,
             suffix: value.suffix,
         })
     }
@@ -232,14 +239,20 @@ impl TryFrom<crate::log_msg::v1alpha1::StoreInfo> for re_log_types::StoreInfo {
             .try_into()
         {
             Ok(store_id) => store_id,
-            Err(err) => match legacy_application_id {
-                Some(app_id) => err.recover(app_id.into()),
+            // 0.24 back compat: a *missing* application id can be recovered from the deprecated
+            // `StoreInfo.application_id` field. A *present but invalid* id (in either place) is a
+            // hard error — we let `ApplicationId::try_new` decide, no empty-string special-casing.
+            Err(StoreIdFromProtoError::MissingApplicationId(err)) => match legacy_application_id {
+                Some(app_id) => err.recover(re_log_types::ApplicationId::try_from(app_id)?),
                 None => {
                     return Err(err.into_type_conversion_error(
                         "both `StoreId` and `StoreInfo` are missing an application id",
                     ));
                 }
             },
+            Err(err @ StoreIdFromProtoError::InvalidApplicationId(_)) => {
+                return Err(err.into());
+            }
         };
 
         let store_source: re_log_types::StoreSource = value
@@ -256,7 +269,6 @@ impl TryFrom<crate::log_msg::v1alpha1::StoreInfo> for re_log_types::StoreInfo {
 
         Ok(Self {
             store_id,
-            cloned_from: None,
             store_source,
             store_version,
         })
@@ -339,6 +351,32 @@ mod tests {
         let proto_store_source: crate::log_msg::v1alpha1::StoreSource = store_source.clone().into();
         let store_source2: re_log_types::StoreSource = proto_store_source.try_into().unwrap();
         assert_eq!(store_source, store_source2);
+    }
+
+    #[test]
+    fn python_version_out_of_range() {
+        for (major, minor, patch) in [(300, 0, 0), (0, -1, 0), (0, 0, 256)] {
+            let proto = crate::log_msg::v1alpha1::PythonVersion {
+                major,
+                minor,
+                patch,
+                suffix: String::new(),
+            };
+            assert!(re_log_types::PythonVersion::try_from(proto).is_err());
+        }
+    }
+
+    #[test]
+    fn python_version_boundary_roundtrip() {
+        let version = re_log_types::PythonVersion {
+            major: 255,
+            minor: 0,
+            patch: 255,
+            suffix: "rc1".to_owned(),
+        };
+        let proto: crate::log_msg::v1alpha1::PythonVersion = version.clone().into();
+        let roundtripped = re_log_types::PythonVersion::try_from(proto).unwrap();
+        assert_eq!(version, roundtripped);
     }
 
     #[test]

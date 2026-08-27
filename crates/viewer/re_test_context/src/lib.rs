@@ -14,6 +14,7 @@ use re_entity_db::{EntityDb, InstancePath};
 use re_log_types::external::re_tuid::Tuid;
 use re_log_types::{
     ApplicationId, EntityPath, EntityPathPart, SetStoreInfo, StoreId, StoreInfo, StoreKind,
+    TimeReal,
 };
 use re_sdk_types::archetypes::RecordingInfo;
 use re_sdk_types::{Component as _, ComponentDescriptor};
@@ -29,6 +30,19 @@ use re_viewer_context::{
 
 pub mod external {
     pub use egui_kittest;
+}
+
+/// Resolve a path under the workspace-root `tests/assets/` directory.
+///
+/// e.g. `asset_path("gaussian_splats/cactus.ply")`.
+pub fn asset_path(relative_path: impl AsRef<std::path::Path>) -> std::path::PathBuf {
+    // `crates/viewer/re_test_context` → `crates/viewer` → `crates` → repo-root.
+    std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .ancestors()
+        .nth(3)
+        .expect("workspace root is three ancestors up from crates/viewer/re_test_context")
+        .join("tests/assets")
+        .join(relative_path)
 }
 
 /// Harness to execute code that rely on [`crate::ViewerContext`].
@@ -478,6 +492,12 @@ impl TestContext {
         self.handle_system_commands(&egui::Context::default());
     }
 
+    pub fn set_time(&self, time: impl Into<TimeReal>) {
+        let store_id = self.active_store_id();
+        self.send_time_commands(store_id, [TimeControlCommand::SetTime(time.into())]);
+        self.handle_system_commands(&egui::Context::default());
+    }
+
     /// Set up for rendering UI, with not 3D/2D in it.
     pub fn setup_kittest_for_rendering_ui(
         &self,
@@ -577,7 +597,6 @@ impl TestContext {
         active_recording.data_source = Some(re_log_channel::LogSource::RedapGrpcStream {
             uri: "rerun+http://localhost:51234/dataset/187A3200CAE4DD795748a7ad187e21a3?segment_id=6977dcfd524a45b3b786c9a5a0bde4e1".parse().unwrap(),
             open_behavior: re_log_channel::RecordingOpenBehavior::OpenAndSelect,
-            table_blueprint: None,
         });
     }
 
@@ -847,11 +866,12 @@ impl TestContext {
                     // Ignore this trying to copy to the clipboard.
                 }
                 SystemCommand::LoadDataSource(data_source) => {
-                    if let Some(re_uri::RedapUri::DatasetData(uri)) = data_source
+                    if let Some(re_uri::RedapUri::Dataset(uri)) = data_source
                         .as_uri()
                         .and_then(|uri| uri.parse::<re_uri::RedapUri>().ok())
+                        && let Some(store_id) = uri.store_id()
                     {
-                        self.go_to_dataset_data(uri.store_id(), uri.fragment);
+                        self.go_to_dataset_data(store_id, uri.fragment);
                     } else {
                         handled = false;
                     }

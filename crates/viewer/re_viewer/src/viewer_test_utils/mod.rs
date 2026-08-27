@@ -9,17 +9,18 @@ pub use app_testing_ext::AppTestingExt;
 use egui_kittest::Harness;
 use re_build_info::build_info;
 use re_viewer_context::AppOptions;
-use re_viewer_context::external::re_log_types::DateVisibility;
 
 pub type AppOptionsEditor = Box<dyn Fn(&mut AppOptions)>;
 
-#[derive(Default)]
 pub struct HarnessOptions {
     pub window_size: Option<egui::Vec2>,
     pub max_steps: Option<u64>,
     pub step_dt: Option<f32>,
     pub startup_url: Option<String>,
     pub enable_component_mapping: bool,
+
+    /// Snapshot tolerance policy for the rendered view.
+    pub snapshot_test_options: re_ui::testing::TestOptions,
 
     /// Allows tests to emulate platform-specific UI behavior.
     pub os: Option<egui::os::OperatingSystem>,
@@ -28,12 +29,27 @@ pub struct HarnessOptions {
     pub app_options_editor: Option<AppOptionsEditor>,
 }
 
+impl Default for HarnessOptions {
+    fn default() -> Self {
+        Self {
+            window_size: None,
+            max_steps: None,
+            step_dt: None,
+            startup_url: None,
+            enable_component_mapping: false,
+            snapshot_test_options: re_ui::testing::TestOptions::Gui,
+            os: None,
+            app_options_editor: None,
+        }
+    }
+}
+
 /// Convenience function for creating a kittest harness of the viewer App.
 pub fn viewer_harness(options: &HarnessOptions) -> Harness<'static, App> {
     let window_size = options.window_size.unwrap_or(egui::vec2(1024.0, 768.0));
 
     let mut harness_builder =
-        re_ui::testing::new_harness(re_ui::testing::TestOptions::Rendering3D, window_size);
+        re_ui::testing::new_harness(options.snapshot_test_options, window_size);
     if let Some(max_steps) = options.max_steps {
         harness_builder = harness_builder.with_max_steps(max_steps);
     }
@@ -48,17 +64,12 @@ pub fn viewer_harness(options: &HarnessOptions) -> Harness<'static, App> {
         customize_eframe_and_setup_renderer(cc).expect("Failed to customize eframe");
         let connection_registry =
             re_redap_client::ConnectionRegistry::new_without_stored_credentials();
-        #[cfg(all(feature = "internal_catalog", not(target_arch = "wasm32")))]
-        {
-            // Tests don't spawn a proxy server, so the catalog is only reached in-process; the
-            // origin's port is just a label here.
-            let addr = std::net::SocketAddr::from((
-                std::net::Ipv4Addr::LOCALHOST,
-                re_uri::DEFAULT_PROXY_PORT,
-            ));
-            let catalog = crate::internal_catalog::build(addr);
-            connection_registry.set_internal((catalog.origin, catalog.connection));
-        }
+        // Tests don't spawn a proxy server, so the catalog is only reached in-process; the
+        // origin's port is just a label here.
+        let addr =
+            std::net::SocketAddr::from((std::net::Ipv4Addr::LOCALHOST, re_uri::DEFAULT_PROXY_PORT));
+        let catalog = crate::internal_catalog::build(addr);
+        connection_registry.set_internal(catalog.connection);
         let mut app = App::new(
             MainThreadToken::i_promise_i_am_only_using_this_for_a_test(),
             build_info!(),
@@ -74,22 +85,6 @@ pub fn viewer_harness(options: &HarnessOptions) -> Harness<'static, App> {
             AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen()
                 .expect("Failed to create AsyncRuntimeHandle"),
         );
-        // Force the FFmpeg path to be wrong so we have a reproducible behavior.
-        app.app_options_mut().video.ffmpeg_path = "/fake/ffmpeg/path".to_owned();
-        app.app_options_mut().video.override_ffmpeg_path = true;
-
-        // Enable table cards and blueprints in tests.
-        app.app_options_mut()
-            .experimental
-            .table_cards_and_blueprints = true;
-
-        // Always show the full date so timestamps render as `YYYY-MM-DD HH:MM:SS`
-        // regardless of when the test runs. The default `HideDateToday` would
-        // silently break snapshots once the calendar day rolls over.
-        app.app_options_mut().timestamp_format = app
-            .app_options()
-            .timestamp_format
-            .with_date_visibility(DateVisibility::ShowDate);
 
         if let Some(editor) = &options.app_options_editor {
             editor(app.app_options_mut());
@@ -106,22 +101,46 @@ pub fn viewer_harness(options: &HarnessOptions) -> Harness<'static, App> {
     })
 }
 
+/// How long [`step_until`] sleeps between attempts by default.
+pub const DEFAULT_POLL_INTERVAL: std::time::Duration = std::time::Duration::from_millis(10);
+
+/// How long [`step_until`] waits before timing out by default.
+pub const DEFAULT_WAIT_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(5);
+
 /// Steps through the harness until the `predicate` closure returns `true`.
 #[track_caller]
 pub fn step_until<'app, 'harness, Predicate>(
     test_description: &'static str,
     harness: &'harness mut egui_kittest::Harness<'app, App>,
+    predicate: Predicate,
+) where
+    Predicate: for<'a> FnMut(&'a mut egui_kittest::Harness<'app, App>) -> bool,
+{
+    step_until_with_custom_timeout(
+        test_description,
+        harness,
+        predicate,
+        DEFAULT_POLL_INTERVAL,
+        DEFAULT_WAIT_TIMEOUT,
+    );
+}
+
+/// Steps through the harness until the `predicate` closure returns `true`.
+#[track_caller]
+pub fn step_until_with_custom_timeout<'app, 'harness, Predicate>(
+    test_description: &'static str,
+    harness: &'harness mut egui_kittest::Harness<'app, App>,
     mut predicate: Predicate,
-    step_duration: std::time::Duration,
-    max_duration: std::time::Duration,
+    poll_interval: std::time::Duration,
+    timeout: std::time::Duration,
 ) where
     Predicate: for<'a> FnMut(&'a mut egui_kittest::Harness<'app, App>) -> bool,
 {
     let start_time = std::time::Instant::now();
     let mut success = predicate(harness);
-    while !success && start_time.elapsed() <= max_duration {
+    while !success && start_time.elapsed() <= timeout {
         harness.step();
-        std::thread::sleep(step_duration);
+        std::thread::sleep(poll_interval);
         harness.step();
         success = predicate(harness);
     }
@@ -133,7 +152,7 @@ pub fn step_until<'app, 'harness, Predicate>(
         harness
             .try_snapshot_options(
                 test_description,
-                &egui_kittest::SnapshotOptions::default().output_path(snapshot_path),
+                &re_ui::testing::default_snapshot_options_for_ui().output_path(snapshot_path),
             )
             .ok();
 

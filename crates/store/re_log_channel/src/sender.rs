@@ -1,6 +1,11 @@
 use std::sync::Arc;
 
-use crate::{Channel, DataSourceMessage, LogSource, SendError, SmartMessage, SmartMessagePayload};
+use re_byte_size::SizeBytes as _;
+
+use crate::{
+    Channel, DataSourceMessage, LogSource, SendError, SmartMessage, SmartMessagePayload,
+    TrySendError,
+};
 
 #[derive(Clone)]
 pub struct LogSender {
@@ -34,6 +39,38 @@ impl LogSender {
                 SmartMessagePayload::Msg(msg) => SendError(Box::new(msg)),
                 SmartMessagePayload::Flush { .. } | SmartMessagePayload::Quit(_) => unreachable!(),
             })?;
+        if let Some(waker) = self.channel.waker.read().as_ref() {
+            (waker)();
+        }
+
+        Ok(())
+    }
+
+    /// Tries to send a message to the receiver without blocking.
+    ///
+    /// Returns the message if the channel is full or disconnected.
+    pub fn try_send(
+        &self,
+        msg: DataSourceMessage,
+    ) -> Result<(), TrySendError<Box<DataSourceMessage>>> {
+        let smart_msg = SmartMessage {
+            source: Arc::clone(&self.source),
+            payload: SmartMessagePayload::Msg(msg),
+        };
+        let size_bytes = smart_msg.total_size_bytes();
+
+        self.tx.try_send(smart_msg, size_bytes).map_err(|err| {
+            let map_msg = |msg: SmartMessage| match msg.payload {
+                SmartMessagePayload::Msg(msg) => Box::new(msg),
+                SmartMessagePayload::Flush { .. } | SmartMessagePayload::Quit(_) => unreachable!(),
+            };
+
+            match err {
+                TrySendError::Full(msg) => TrySendError::Full(map_msg(msg)),
+                TrySendError::Disconnected(msg) => TrySendError::Disconnected(map_msg(msg)),
+            }
+        })?;
+
         if let Some(waker) = self.channel.waker.read().as_ref() {
             (waker)();
         }

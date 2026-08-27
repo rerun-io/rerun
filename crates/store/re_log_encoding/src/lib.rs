@@ -1,3 +1,5 @@
+#![allow(clippy::iter_over_hash_type)]
+
 //! This crate covers two equally important but orthogonal matters:
 //! * Converting between transport-level and application-level Rerun types.
 //! * Encoding and decoding Rerun RRD streams.

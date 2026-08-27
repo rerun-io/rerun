@@ -274,36 +274,6 @@ impl<'a> ViewerContext<'a> {
             .handle_select_focus_sync(response, interacted_items);
     }
 
-    /// Are we running inside the Safari browser?
-    pub fn is_safari_browser(&self) -> bool {
-        #![expect(clippy::unused_self)]
-
-        #[cfg(target_arch = "wasm32")]
-        fn is_safari_browser_inner() -> Option<bool> {
-            use web_sys::wasm_bindgen::JsCast as _;
-            use web_sys::wasm_bindgen::JsValue;
-            let window = web_sys::window()?;
-            Some(web_sys::js_sys::Object::has_own(
-                window.unchecked_ref::<web_sys::js_sys::Object>(),
-                &JsValue::from("safari"),
-            ))
-        }
-
-        #[cfg(not(target_arch = "wasm32"))]
-        fn is_safari_browser_inner() -> Option<bool> {
-            None
-        }
-
-        is_safari_browser_inner().unwrap_or(false)
-    }
-
-    /// This returns `true` if we have an active recording.
-    ///
-    /// It excludes the globally hardcoded welcome screen app ID.
-    pub fn has_active_recording(&self) -> bool {
-        self.recording().application_id() != StoreHub::welcome_screen_app_id()
-    }
-
     /// Reverts to the default route.
     pub fn revert_to_default_route(&self) {
         self.app_ctx.revert_to_default_route();

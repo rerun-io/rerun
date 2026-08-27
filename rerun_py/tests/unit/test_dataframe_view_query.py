@@ -3,22 +3,22 @@ from __future__ import annotations
 import pytest
 import rerun as rr
 import rerun.blueprint.components as blueprint_components
-from rerun import TimeInt, datatypes
+from rerun import TimeInt, encodings
 from rerun.blueprint.archetypes import DataframeQuery
 
 
 def test_component_column_selector_explicit() -> None:
     selector = blueprint_components.ComponentColumnSelector(entity_path="entity/path", component="Component")
 
-    assert selector.entity_path == rr.datatypes.EntityPath("entity/path")
-    assert selector.component == rr.datatypes.Utf8("Component")
+    assert selector.entity_path == rr.encodings.EntityPath("entity/path")
+    assert selector.component == rr.encodings.Utf8("Component")
 
 
 def test_component_column_selector_spec() -> None:
     selector = blueprint_components.ComponentColumnSelector("entity/path:Component")
 
-    assert selector.entity_path == rr.datatypes.EntityPath("entity/path")
-    assert selector.component == rr.datatypes.Utf8("Component")
+    assert selector.entity_path == rr.encodings.EntityPath("entity/path")
+    assert selector.component == rr.encodings.Utf8("Component")
 
 
 def test_component_column_selector_fail() -> None:
@@ -58,13 +58,13 @@ def test_selected_columns() -> None:
     columns = blueprint_components.SelectedColumns([
         "t",
         "/entity/path:Component",
-        datatypes.Utf8("frame"),
+        encodings.Utf8("frame"),
         blueprint_components.ComponentColumnSelector("/world/robot:Position3D"),
     ])
 
     assert columns.time_columns == [
-        datatypes.Utf8("t"),
-        datatypes.Utf8("frame"),
+        encodings.Utf8("t"),
+        encodings.Utf8("frame"),
     ]
     assert columns.component_columns == [
         blueprint_components.ComponentColumnSelector("/entity/path:Component"),
@@ -77,7 +77,7 @@ def test_selected_columns_batch() -> None:
         [
             "t",
             "/entity/path:Component",
-            datatypes.Utf8("frame"),
+            encodings.Utf8("frame"),
             blueprint_components.ComponentColumnSelector("/world/robot:Position3D"),
         ],
     ])
@@ -85,7 +85,7 @@ def test_selected_columns_batch() -> None:
         blueprint_components.SelectedColumns([
             "t",
             "/entity/path:Component",
-            datatypes.Utf8("frame"),
+            encodings.Utf8("frame"),
             blueprint_components.ComponentColumnSelector("/world/robot:Position3D"),
         ]),
     )
@@ -114,7 +114,7 @@ def test_selected_columns_batch_multiple() -> None:
             "/entity/path:Component",
         ]),
         blueprint_components.SelectedColumns([
-            datatypes.Utf8("frame"),
+            encodings.Utf8("frame"),
             blueprint_components.ComponentColumnSelector("/world/robot:Position3D"),
         ]),
     ])
@@ -136,7 +136,7 @@ def test_dataframe_query_property() -> None:
 
     assert query.timeline == blueprint_components.TimelineNameBatch("frame")
     assert query.filter_by_range == blueprint_components.FilterByRangeBatch(
-        blueprint_components.FilterByRange(rr.datatypes.TimeInt(seq=1), rr.datatypes.TimeInt(seq=10)),
+        blueprint_components.FilterByRange(rr.encodings.TimeInt(seq=1), rr.encodings.TimeInt(seq=10)),
     )
     assert query.filter_is_not_null == blueprint_components.FilterIsNotNullBatch(
         blueprint_components.FilterIsNotNull(
@@ -149,7 +149,7 @@ def test_dataframe_query_property() -> None:
 
     assert query.select == blueprint_components.SelectedColumnsBatch(
         blueprint_components.SelectedColumns([
-            datatypes.Utf8("t"),
+            encodings.Utf8("t"),
             blueprint_components.ComponentColumnSelector(entity_path="/entity/path", component="Component"),
         ]),
     )
@@ -181,14 +181,14 @@ def test_dataframe_query_property_explicit() -> None:
             component="Component",
         ),
         select=[
-            datatypes.Utf8("frame"),
+            encodings.Utf8("frame"),
             blueprint_components.ComponentColumnSelector("/world/robot:Position3D"),
         ],
     )
 
     assert query.timeline == blueprint_components.TimelineNameBatch("frame")
     assert query.filter_by_range == blueprint_components.FilterByRangeBatch(
-        blueprint_components.FilterByRange(rr.datatypes.TimeInt(seq=1), rr.datatypes.TimeInt(seq=10)),
+        blueprint_components.FilterByRange(rr.encodings.TimeInt(seq=1), rr.encodings.TimeInt(seq=10)),
     )
     assert query.filter_is_not_null == blueprint_components.FilterIsNotNullBatch(
         blueprint_components.FilterIsNotNull(
@@ -199,7 +199,7 @@ def test_dataframe_query_property_explicit() -> None:
 
     assert query.select == blueprint_components.SelectedColumnsBatch(
         blueprint_components.SelectedColumns([
-            datatypes.Utf8("frame"),
+            encodings.Utf8("frame"),
             blueprint_components.ComponentColumnSelector(entity_path="/world/robot", component="Position3D"),
         ]),
     )

@@ -1,8 +1,8 @@
 [package]
 name = "custom_callback"
-version = "0.35.0-alpha.1+dev"
+version = "0.37.0-alpha.1+dev"
 edition = "2024"
-rust-version = "1.95"
+rust-version = "1.96"
 license = "MIT OR Apache-2.0"
 publish = false
 
@@ -25,6 +25,7 @@ rerun = { path = "../../../crates/top/rerun", default-features = false, features
   "native_viewer",
   "run",
   "server",
+  "video",
 ] }
 
 bincode.workspace = true

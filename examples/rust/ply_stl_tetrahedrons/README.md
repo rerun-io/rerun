@@ -1,5 +1,5 @@
 <!--[metadata]
-title = "Asset3D PLY Mesh Rendering"
+title = "Asset3D PLY mesh rendering"
 tags = ["PLY", "STL", "Points3D", "Points2D", "Asset3D"]
 -->
 

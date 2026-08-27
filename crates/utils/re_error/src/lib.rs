@@ -1,5 +1,9 @@
 //! Helpers for error handling.
 
+mod structured_error;
+
+pub use self::structured_error::{StructuredError, format_with_details};
+
 /// Walk the source chain of `error` (starting from `error` itself) and return the
 /// first source that can be downcast to `T`.
 ///
@@ -25,15 +29,6 @@ where
     None
 }
 
-/// The separator used to split error messages into a summary and details.
-///
-/// If an error message contains this separator, the notification system
-/// will display the part before it as the main message and the part after
-/// inside a collapsible "Details" section.
-///
-/// Use [`format_with_details`] to format errors using this convention.
-pub const DETAILS_SEPARATOR: &str = "\nDetails:";
-
 /// Format an error, including its chain of sources.
 ///
 /// Always use this when displaying an error, especially `anyhow::Error`.
@@ -55,34 +50,6 @@ pub fn format_ref(error: &dyn std::error::Error) -> String {
     string
 }
 
-/// Format an error with details coming after [`DETAILS_SEPARATOR`].
-pub fn format_with_details(error: impl Into<String>, details: impl Into<String>) -> String {
-    let error = error.into();
-    let details = details.into();
-    if details.is_empty() {
-        error
-    } else {
-        format!("{error}{DETAILS_SEPARATOR} {details}")
-    }
-}
-
-/// Split a message that may contain a [`DETAILS_SEPARATOR`] into summary and optional details.
-///
-/// Returns `(summary, Some(details))` if the separator is present,
-/// or `(message, None)` if not.
-pub fn split_details(message: &str) -> (&str, Option<&str>) {
-    if let Some((summary, details)) = message.split_once(DETAILS_SEPARATOR) {
-        let details = details.trim();
-        if details.is_empty() {
-            (summary, None)
-        } else {
-            (summary, Some(details))
-        }
-    } else {
-        (message, None)
-    }
-}
-
 #[test]
 fn test_format() {
     let err = anyhow::format_err!("root_cause")
@@ -93,14 +60,6 @@ fn test_format() {
 
     // Now we do:
     assert_eq!(format(&err), "outer_context: inner_context: root_cause");
-}
-
-#[test]
-fn test_format_with_details() {
-    assert_eq!(
-        format_with_details("Error", "The fine print"),
-        "Error\nDetails: The fine print"
-    );
 }
 
 #[test]
@@ -143,21 +102,4 @@ fn test_downcast_source() {
     // Negative: no error in the chain matches `T` — walk terminates with None.
     let only_wrap = Wrap(Box::new(Leaf("inner")));
     assert!(downcast_source::<std::io::Error>(&only_wrap).is_none());
-}
-
-#[test]
-fn test_split_details() {
-    for (in_summary, in_details) in [("just a message", ""), ("message", "the fine print")] {
-        let combined = format_with_details(in_summary, in_details);
-        let (out_summary, out_details) = split_details(&combined);
-        assert_eq!(out_summary, in_summary);
-        assert_eq!(
-            out_details,
-            if in_details.is_empty() {
-                None
-            } else {
-                Some(in_details)
-            }
-        );
-    }
 }

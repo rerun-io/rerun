@@ -128,12 +128,11 @@ impl SpawnOptions {
             if std::fs::metadata(&local_build_path).is_ok() {
                 re_log::info!("Spawning the locally built rerun at {local_build_path}");
                 return local_build_path;
-            } else {
-                re_log::info!(
-                    "No locally built rerun found at {local_build_path:?}, using executable named {:?} from PATH.",
-                    self.executable_name
-                );
             }
+            re_log::info!(
+                "No locally built rerun found at {local_build_path:?}, using executable named {:?} from PATH.",
+                self.executable_name
+            );
         }
 
         self.executable_name.clone()

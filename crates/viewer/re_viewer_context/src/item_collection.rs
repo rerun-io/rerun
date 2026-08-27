@@ -6,16 +6,18 @@ use re_chunk::EntityPath;
 use re_entity_db::EntityDb;
 use re_log_types::StoreKind;
 use re_sdk_types::external::glam;
+use re_tf::TransformFrameIdHash;
 
 use crate::{DataResultInteractionAddress, Item, ViewId, resolve_mono_instance_path_item};
 
 /// Context information that a view might attach to an item from [`ItemCollection`] and useful
 /// for how a selection might be displayed and interacted with.
-#[derive(Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum ItemContext {
     /// Hovering/Selecting in a 2D space.
     TwoD {
-        space_2d: EntityPath,
+        /// The target frame of the 2D (sub)space in which the pointer is hovering.
+        space_2d_target_frame: TransformFrameIdHash,
 
         /// Where in this 2D space (+ depth)?
         pos: glam::Vec3,
@@ -23,8 +25,8 @@ pub enum ItemContext {
 
     /// Hovering/Selecting in a 3D space.
     ThreeD {
-        /// The 3D space with the camera(s)
-        space_3d: EntityPath,
+        /// The target frame of the 3D space in which the pointer is hovering.
+        space_3d_target_frame: TransformFrameIdHash,
 
         /// The point in 3D space that is hovered, if any.
         pos: Option<glam::Vec3>,
@@ -34,7 +36,7 @@ pub enum ItemContext {
         tracked_entity: Option<EntityPath>,
 
         /// Corresponding 2D spaces and pixel coordinates (with Z=depth)
-        point_in_space_cameras: Vec<(EntityPath, Option<glam::Vec3>)>,
+        point_in_2d_spaces: Vec<(TransformFrameIdHash, Option<glam::Vec3>)>,
     },
 
     /// Hovering/selecting in one of the streams trees.
@@ -148,18 +150,6 @@ impl ItemCollection {
     /// Returns true if the exact selection is part of the current selection.
     pub fn contains_item(&self, needle: &Item) -> bool {
         self.0.iter().any(|(item, _)| item == needle)
-    }
-
-    pub fn are_all_items_same_kind(&self) -> Option<&'static str> {
-        if let Some(first_item) = self.first_item()
-            && self
-                .iter_items()
-                .skip(1)
-                .all(|item| std::mem::discriminant(first_item) == std::mem::discriminant(item))
-        {
-            return Some(first_item.kind());
-        }
-        None
     }
 
     /// Retains elements that fulfill a certain condition.

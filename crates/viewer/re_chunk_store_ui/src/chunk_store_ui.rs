@@ -28,6 +28,7 @@ enum ChunkListColumn {
     #[default]
     ChunkId,
     EntityPath,
+    Segment,
     RowCount,
     ChunkSize,
     Timeline(TimelineName),
@@ -102,6 +103,7 @@ impl ChunkListColumn {
         match self {
             Self::ChunkId => sortable_column_header_ui(self, ui, sort_column, "Chunk ID"),
             Self::EntityPath => sortable_column_header_ui(self, ui, sort_column, "Entity"),
+            Self::Segment => sortable_column_header_ui(self, ui, sort_column, "Segment"),
             Self::RowCount => sortable_column_header_ui(self, ui, sort_column, "# rows"),
             Self::ChunkSize => sortable_column_header_ui(self, ui, sort_column, "Size"),
             Self::Timeline(timeline_name) => {
@@ -269,9 +271,7 @@ impl DatastoreUi {
             self.focused_chunk = None;
         }
 
-        if !datastore_ui_active {
-            command_sender.send_system(SystemCommand::SetRoute(return_route.clone()));
-        } else {
+        if datastore_ui_active {
             let new_selected_store_id = match self.store_kind {
                 StoreKind::Recording => self.selected_recording_id.clone(),
                 StoreKind::Blueprint => self.selected_blueprint_id.clone(),
@@ -292,6 +292,8 @@ impl DatastoreUi {
                     return_route: Box::new(return_route.clone()),
                 }));
             }
+        } else {
+            command_sender.send_system(SystemCommand::SetRoute(return_route.clone()));
         }
     }
 
@@ -372,6 +374,10 @@ impl DatastoreUi {
                 });
 
                 row.col(|ui| {
+                    ChunkListColumn::Segment.ui(ui, &mut self.chunk_list_sort_column);
+                });
+
+                row.col(|ui| {
                     ChunkListColumn::RowCount.ui(ui, &mut self.chunk_list_sort_column);
                 });
 
@@ -408,6 +414,10 @@ impl DatastoreUi {
 
                         row.col(|ui| {
                             ui.label(chunk.entity_path().to_string());
+                        });
+
+                        row.col(|ui| {
+                            source_segments_ui(ui, chunk_store, &chunk.id());
                         });
 
                         row.col(|ui| {
@@ -473,7 +483,7 @@ impl DatastoreUi {
                         .id_salt(chunk_store.id())
                         .columns(
                             Column::auto_with_initial_suggestion(200.0).clip(true),
-                            5 + all_timelines.len(),
+                            6 + all_timelines.len(),
                         )
                         .resizable(true)
                         .vscroll(true)
@@ -610,6 +620,9 @@ impl DatastoreUi {
             ChunkListColumn::ChunkId => {} // already sorted by row IDs
             ChunkListColumn::EntityPath => {
                 chunks.sort_by_key(|chunk| chunk.entity_path().to_string());
+            }
+            ChunkListColumn::Segment => {
+                chunks.sort_by_cached_key(|chunk| chunk_store.find_source_segments(&chunk.id()));
             }
             ChunkListColumn::RowCount => chunks.sort_by_key(|chunk| chunk.num_rows()),
             ChunkListColumn::ChunkSize => chunks.sort_by_key(|chunk| chunk.heap_size_bytes()),
@@ -897,6 +910,19 @@ fn store_selector_combo_ui<'a>(
                 }
             }
         });
+}
+
+/// Displays which segments, if any, a chunk's data was streamed in from.
+pub(crate) fn source_segments_ui(ui: &mut egui::Ui, chunk_store: &ChunkStore, chunk_id: &ChunkId) {
+    let segments = chunk_store.find_source_segments(chunk_id);
+
+    if segments.is_empty() {
+        ui.label("-")
+            .on_hover_text("This chunk's data doesn't come from a manifest");
+    } else {
+        ui.label(segments.iter().join(", "))
+            .on_hover_text("The segments this chunk's data was streamed in from");
+    }
 }
 
 fn format_time_range(

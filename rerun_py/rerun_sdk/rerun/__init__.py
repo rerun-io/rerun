@@ -9,8 +9,8 @@ from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 import numpy as np
 
-__version__ = "0.35.0-alpha.1+dev"
-__version_info__ = (0, 35, 0, "alpha.1")
+__version__ = "0.37.0-alpha.1+dev"
+__version_info__ = (0, 37, 0, "alpha.1")
 
 if sys.version_info < (3, 10):  # noqa: UP036
     raise RuntimeError("Rerun SDK requires Python 3.10 or later.")
@@ -116,6 +116,7 @@ from .archetypes import (
     Ellipsoids3D as Ellipsoids3D,
     EncodedDepthImage as EncodedDepthImage,
     EncodedImage as EncodedImage,
+    GaussianSplats3D as GaussianSplats3D,
     GeoLineStrings as GeoLineStrings,
     GeoPoints as GeoPoints,
     GraphEdges as GraphEdges,
@@ -168,7 +169,10 @@ from .components import (
     TransformRelation as TransformRelation,
     VideoCodec as VideoCodec,
 )
-from .datatypes import (
+from .dynamic_archetype import (
+    DynamicArchetype as DynamicArchetype,
+)
+from .encodings import (
     Angle as Angle,
     AnnotationInfo as AnnotationInfo,
     ChannelDatatype as ChannelDatatype,
@@ -183,9 +187,6 @@ from .datatypes import (
     TimeRange as TimeRange,
     TimeRangeBoundary as TimeRangeBoundary,
     VisibleTimeRange as VisibleTimeRange,
-)
-from .dynamic_archetype import (
-    DynamicArchetype as DynamicArchetype,
 )
 from .error_utils import (
     set_strict_mode as set_strict_mode,
@@ -209,6 +210,7 @@ from .recording_stream import (
 )
 from .sinks import (
     FileSink as FileSink,
+    GrpcServerSink as GrpcServerSink,
     GrpcSink as GrpcSink,
     connect_grpc as connect_grpc,
     disconnect as disconnect,
@@ -259,6 +261,10 @@ def __getattr__(name: str) -> Any:
             stacklevel=2,
         )
         return EXTERNAL_IMPORTER_INCOMPATIBLE_EXIT_CODE
+    if name == "datatypes":
+        from . import datatypes  # The module itself warns.
+
+        return datatypes
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
@@ -485,7 +491,9 @@ def start_web_viewer_server(port: int = 0) -> None:
 
     """
 
-    bindings.start_web_viewer_server(port)
+    from .web import _packaged_assets_archive_path
+
+    bindings.start_web_viewer_server(port, assets_archive_path=_packaged_assets_archive_path())
 
 
 def notebook_show(

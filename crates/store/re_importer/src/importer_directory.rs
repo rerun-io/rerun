@@ -27,8 +27,9 @@ impl crate::Importer for DirectoryImporter {
             return Err(crate::ImporterError::Incompatible(dirpath.clone()));
         }
 
-        if crate::lerobot::is_lerobot_dataset(&dirpath) {
-            // LeRobot dataset is loaded by LeRobotDatasetImporter
+        // LeRobot datasets are loaded by LeRobotDatasetImporter.
+        #[cfg(feature = "lerobot")]
+        if crate::is_lerobot_dataset(&dirpath) {
             return Err(crate::ImporterError::Incompatible(dirpath.clone()));
         }
 

@@ -6,7 +6,7 @@ use re_log_types::EntityPath;
 use re_sdk_types::blueprint::archetypes::ContainerBlueprint;
 use re_sdk_types::blueprint::components::{ColumnShare, ContainerKind, IncludedContent, RowShare};
 use re_sdk_types::components::{Name, Visible};
-use re_sdk_types::datatypes::{Bool, Float32};
+use re_sdk_types::encodings::{Bool, Float32};
 
 /// Internal container data shared by all container types.
 #[derive(Debug)]
@@ -151,13 +151,13 @@ fn log_container(
 
     if let Some(grid_columns) = container.grid_columns {
         arch = arch.with_grid_columns(re_sdk_types::blueprint::components::GridColumns(
-            re_sdk_types::datatypes::UInt32(grid_columns),
+            re_sdk_types::encodings::UInt32(grid_columns),
         ));
     }
 
     if let Some(ref active_tab) = container.active_tab {
         arch = arch.with_active_tab(re_sdk_types::blueprint::components::ActiveTab(
-            re_sdk_types::datatypes::EntityPath::from(active_tab.as_str()),
+            re_sdk_types::encodings::EntityPath::from(active_tab.as_str()),
         ));
     }
 

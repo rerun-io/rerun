@@ -4,7 +4,7 @@ use re_sdk_types::blueprint::components::TensorDimensionIndexSlider;
 use re_sdk_types::components::{
     TensorDimensionIndexSelection, TensorHeightDimension, TensorWidthDimension,
 };
-use re_sdk_types::datatypes::TensorDimensionSelection;
+use re_sdk_types::encodings::TensorDimensionSelection;
 use re_viewport_blueprint::ViewProperty;
 
 use crate::TensorDimension;
@@ -158,7 +158,7 @@ fn make_indices_valid(
     height.inspect(|h| covered_dims[h.dimension as usize] = true);
     for (i, _) in covered_dims.into_iter().enumerate().filter(|(_, b)| !b) {
         indices.push(
-            re_sdk_types::datatypes::TensorDimensionIndexSelection {
+            re_sdk_types::encodings::TensorDimensionIndexSelection {
                 dimension: i as u32,
                 index: shape[i].size / 2,
             }

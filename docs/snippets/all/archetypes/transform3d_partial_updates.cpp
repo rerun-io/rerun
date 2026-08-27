@@ -17,8 +17,8 @@ int main(int argc, char* argv[]) {
     // Set up a 3D box.
     rec.log(
         "box",
-        rerun::Boxes3D::from_half_sizes({{4.f, 2.f, 1.0f}}
-        ).with_fill_mode(rerun::FillMode::Solid)
+        rerun::Boxes3D::from_half_sizes({{4.f, 2.f, 1.0f}})
+            .with_fill_mode(rerun::FillMode::Solid)
     );
 
     // Update only the rotation of the box.

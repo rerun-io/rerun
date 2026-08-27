@@ -7,7 +7,7 @@ use re_log_types::{ComponentPath, EntityPath};
 use re_sdk_types::ViewClassIdentifier;
 use vec1::Vec1;
 
-use super::ViewContext;
+use super::{ViewContext, ViewerDiagnostic};
 use crate::{
     DragAndDropFeedback, IndicatedEntities, PerVisualizerType, QueryRange, RecommendedMappings,
     SystemExecutionOutput, ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics,
@@ -129,6 +129,20 @@ pub struct VisualizersSectionOutput<'a> {
     /// Per-entity options for the "add visualizer" menu.
     /// Recommended visualizers for an entity may or may not be identical to [`ViewClass::recommended_visualizers_for_entity`].
     pub add_options: Vec<(EntityPath, RecommendedVisualizers)>,
+}
+
+/// Output produced by [`ViewClass::ui`].
+#[derive(Default)]
+pub struct ViewClassUiOutput {
+    /// Diagnostics about the view as a whole.
+    pub reports: Vec<ViewerDiagnostic>,
+}
+
+impl ViewClassUiOutput {
+    pub fn with_report(mut self, report: ViewerDiagnostic) -> Self {
+        self.reports.push(report);
+        self
+    }
 }
 
 /// Defines a class of view without any concrete types making it suitable for storage and interfacing.
@@ -310,6 +324,17 @@ pub trait ViewClass: Send + Sync {
         Ok(())
     }
 
+    /// By default, views accept any drag-and-dropped entity that a visualizer can show. That might
+    /// be too loose for some views. In that case, this method can be overridden to reject entities
+    /// before visualizability is checked.
+    fn reject_entity_drop_reason(
+        &self,
+        _ctx: &ViewerContext<'_>,
+        _entity_path: &EntityPath,
+    ) -> Option<&'static str> {
+        None
+    }
+
     /// Handle components being dragged over a view of this class.
     ///
     /// This is the component-drop counterpart to the generic entity-drop handling done by the
@@ -346,7 +371,7 @@ pub trait ViewClass: Send + Sync {
         state: &mut dyn ViewState,
         query: &ViewQuery<'_>,
         system_output: SystemExecutionOutput,
-    ) -> Result<(), ViewSystemExecutionError>;
+    ) -> Result<ViewClassUiOutput, ViewSystemExecutionError>;
 }
 
 pub trait ViewClassExt<'a>: ViewClass + 'a {

@@ -11,7 +11,7 @@ from rerun.components import (
     GeoLineStringArrayLike,
     GeoLineStringBatch,
 )
-from rerun.datatypes import DVec2D, Float32ArrayLike, Rgba32ArrayLike
+from rerun.encodings import DVec2D, Float32ArrayLike, Rgba32ArrayLike
 
 from .common_arrays import (
     colors_arrays,

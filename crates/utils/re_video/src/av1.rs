@@ -156,6 +156,7 @@ pub const AV1_TEST_INTER_FRAME: &[u8] = &[
 #[cfg(test)]
 mod test {
     use super::{GopStartDetection, detect_av1_keyframe_start};
+    use std::assert_matches;
 
     #[test]
     fn test_detect_av1_keyframe_start() {
@@ -179,7 +180,7 @@ mod test {
     #[test]
     fn test_detect_av1_empty_data() {
         let result = detect_av1_keyframe_start(&[]);
-        assert!(matches!(result, Ok(GopStartDetection::NotStartOfGop)));
+        assert_matches!(result, Ok(GopStartDetection::NotStartOfGop));
     }
 
     #[test]
@@ -188,7 +189,7 @@ mod test {
         let invalid_data = &[0xFF, 0xFF, 0xFF, 0xFF, 0xFF];
         let result = detect_av1_keyframe_start(invalid_data);
 
-        assert!(matches!(result, Ok(GopStartDetection::NotStartOfGop)));
+        assert_matches!(result, Ok(GopStartDetection::NotStartOfGop));
     }
 
     /// AV1 sample with three sequential Frame OBUs and no Sequence Header.

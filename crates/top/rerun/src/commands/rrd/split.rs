@@ -200,7 +200,13 @@ impl SplitCommand {
         );
 
         re_log::info!("extracting keyframes…");
+        #[cfg(feature = "video")]
         let mut keyframes_per_entity: IntMap<_, Vec<_>> = IntMap::default();
+        #[cfg(not(feature = "video"))]
+        let keyframes_per_entity: IntMap<_, Vec<_>> = IntMap::default();
+        // Without the `video` feature there is no keyframe detection, so no entity ever
+        // gets keyframe-based rebatching.
+        #[cfg(feature = "video")]
         for store in stores.values() {
             for entity in store.all_entities() {
                 let keyframes = extract_keyframes(&entity, store, cutoff_timeline);
@@ -789,6 +795,7 @@ impl SplitCommand {
 }
 
 // TODO(RR-3810): For a virtual store implementation, we'd want this to load no more than 1 chunk at a time.
+#[cfg(feature = "video")]
 fn extract_keyframes(
     entity_path: &EntityPath,
     store: &ChunkStore,
@@ -937,7 +944,7 @@ fn extract_chunks_for_single_split(
                         // We're bootstrapping at the component batch level, so might as well discard everything else.
                         .component_sliced(*component)
                         // `Chunk::latest_at` internally performs shallow-slicing, so make sure to actually deeply re-slice.
-                        .row_sliced_deep(0, 1)
+                        .row_sliced_unit_deep(0)
                         // This chunk might be re-used in other places in this split, and because we're slicing it
                         // (and we really, really need to slice it), we must make sure that it doesn't share
                         // a chunk ID nor a row ID with anything else.
@@ -1017,7 +1024,7 @@ fn extract_chunks_for_single_split(
                     chunk.id(),
                     chunk
                         // Reminder: always perform deep copies if the intent is to write back to disk.
-                        .row_sliced_deep(start_idx, slice_len),
+                        .row_sliced_deep(re_chunk::Span::from_start_len(start_idx, slice_len)),
                 )
             };
 

@@ -46,6 +46,7 @@ pub enum UICommand {
 
     TogglePanelStateOverrides,
     ToggleDevPanel,
+    ToggleChunkStoreBrowser,
     ToggleTopPanel,
     ToggleBlueprintPanel,
     ExpandBlueprintPanel,
@@ -161,6 +162,10 @@ impl UICommand {
             Self::ToggleDevPanel => (
                 "Toggle dev panel",
                 "View developer stats like RAM usage inside Rerun Viewer",
+            ),
+            Self::ToggleChunkStoreBrowser => (
+                "Toggle chunk store browser",
+                "Toggle the chunk store browser",
             ),
 
             Self::TogglePanelStateOverrides => (
@@ -309,6 +314,7 @@ impl UICommand {
             #[cfg(not(target_arch = "wasm32"))]
             Self::CaptureProfileTrace => smallvec![],
             Self::ToggleDevPanel => smallvec![ctrl_shift(Key::M)],
+            Self::ToggleChunkStoreBrowser => smallvec![ctrl_shift(Key::D)],
             Self::TogglePanelStateOverrides => smallvec![],
             Self::ToggleTopPanel => smallvec![],
             Self::ToggleBlueprintPanel => smallvec![ctrl_shift(Key::B)],
@@ -338,7 +344,7 @@ impl UICommand {
             Self::ToggleCommandPalette => smallvec![cmd(Key::K), cmd(Key::P)],
 
             #[cfg(not(target_arch = "wasm32"))]
-            Self::ScreenshotWholeApp => smallvec![],
+            Self::ScreenshotWholeApp => smallvec![ctrl_shift(Key::F)],
 
             #[cfg(debug_assertions)]
             Self::ResetEguiMemory => smallvec![],
@@ -383,6 +389,14 @@ impl UICommand {
 
     pub fn is_link(self) -> bool {
         matches!(self, Self::OpenWebHelp | Self::OpenRerunDiscord)
+    }
+
+    /// Does this command only exist in debug builds?
+    ///
+    /// Such commands are marked with an orange "debug only" badge in the UI.
+    #[cfg(debug_assertions)]
+    pub fn is_debug_only(self) -> bool {
+        matches!(self, Self::ToggleEguiDebugPanel | Self::ResetEguiMemory)
     }
 
     /// Listen for keyboard shortcuts of [`UICommand`]s only.
@@ -451,7 +465,19 @@ impl UICommand {
                 self.text(),
             )
         } else {
-            egui::Button::new(self.text())
+            cfg_select! {
+                debug_assertions => {
+                    if self.is_debug_only() {
+                        egui::Button::new((
+                            self.text(),
+                            crate::debug_only::debug_only_rich_text(&egui_ctx.global_style()),
+                        ))
+                    } else {
+                        egui::Button::new(self.text())
+                    }
+                }
+                _ => egui::Button::new(self.text()),
+            }
         };
 
         if let Some(shortcut_text) = self.formatted_kb_shortcut(egui_ctx) {

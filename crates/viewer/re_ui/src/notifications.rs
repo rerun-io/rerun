@@ -4,8 +4,9 @@
 //! they're first created and in the notification panel.
 //!
 //! ## Special cased text
-//! - If a notifications text contains [`re_error::DETAILS_SEPARATOR`] the section after that
-//!   will be displayed inside a collapsible details header.
+//! - If a notifications text has details (see [`re_error::StructuredError`]), those are shown
+//!   inside a collapsible details header, one per line. Structured log fields go in there too.
+//! - URLs in notification text are rendered as inline clickable links.
 
 use std::time::Duration;
 
@@ -66,6 +67,15 @@ fn is_relevant(target: &str, level: re_log::Level) -> bool {
         return false;
     }
 
+    // There is often an overlap between the info messages from`re_server`
+    // and the viewer. Since the viewer usually has more context it is better
+    // suited to inform the user. We suppress info messages from `re_server`
+    // to avoid spamming.
+    if level == re_log::Level::INFO && (target == "re_server" || target.starts_with("re_server::"))
+    {
+        return false;
+    }
+
     matches!(
         level,
         re_log::Level::WARN | re_log::Level::ERROR | re_log::Level::INFO
@@ -101,11 +111,11 @@ pub struct Notification {
     level: NotificationLevel,
     text: String,
 
-    /// if set this notifications will have a collapsible details section.
-    details: Option<String>,
-
-    /// Structured key-value fields, shown one `key: value` per line.
-    fields: Vec<(&'static str, re_log::FieldValue)>,
+    /// If non-empty, this notification will have a collapsible details section,
+    /// with one line per detail.
+    ///
+    /// Structured key-value fields end up here too, as `key: value` lines.
+    details: Vec<String>,
 
     link: Option<Link>,
 
@@ -131,8 +141,7 @@ impl Notification {
         Self {
             level,
             text: text.into(),
-            details: None,
-            fields: Vec::new(),
+            details: Vec::new(),
             link: None,
             permanent_dismiss_id: None,
             created_at: Timestamp::now(),
@@ -151,45 +160,30 @@ impl Notification {
         &self.text
     }
 
-    /// The full text contents, including any structured fields, one `key: value` per line.
+    /// The full text contents, including the details.
     fn copy_text(&self) -> String {
-        use std::fmt::Write as _;
-        let mut text = self.text.clone();
-        for (key, value) in &self.fields {
-            write!(text, "\n{key}: {value}").ok();
+        re_error::StructuredError {
+            summary: self.text.clone(),
+            details: self.details.clone(),
         }
-        if let Some(details) = &self.details {
-            text = re_error::format_with_details(text, details.as_str());
-        }
-        text
+        .to_string()
     }
 
-    pub fn with_details(mut self, details: impl Into<String>) -> Self {
-        self.details = Some(details.into());
+    pub fn with_details(mut self, details: impl IntoIterator<Item = impl Into<String>>) -> Self {
+        self.details = details.into_iter().map(Into::into).collect();
         self
     }
 
-    /// Set the structured key-value fields, shown one `key: value` per line.
+    /// Add the structured key-value fields as details, one `key: value` per line.
     ///
-    /// Field values containing [`re_error::DETAILS_SEPARATOR`] are split: the part after the
-    /// separator is moved into the collapsible details section. This matters e.g. for
-    /// `#[tracing::instrument(err)]`, which reports the whole error — details and all — as an
-    /// `error` field.
+    /// A field value may carry details of its own (see [`re_error::StructuredError`]); those
+    /// follow it, one per line.
     pub fn with_fields(mut self, fields: Vec<(&'static str, re_log::FieldValue)>) -> Self {
-        self.fields = fields
-            .into_iter()
-            .map(|(key, value)| {
-                let (value, value_details) = split_field_details(value);
-                if let Some(value_details) = value_details {
-                    let details = self.details.get_or_insert_default();
-                    if !details.is_empty() {
-                        details.push('\n');
-                    }
-                    details.push_str(&value_details);
-                }
-                (key, value)
-            })
-            .collect();
+        for (key, value) in fields {
+            let value = re_error::StructuredError::parse(value.to_string());
+            self.details.push(format!("{key}: {}", value.summary));
+            self.details.extend(value.details);
+        }
         self
     }
 
@@ -227,27 +221,60 @@ impl Notification {
     }
 }
 
-/// Split a field value on [`re_error::DETAILS_SEPARATOR`], returning the value with the details
-/// removed, plus the details themselves (if any).
-fn split_field_details(value: re_log::FieldValue) -> (re_log::FieldValue, Option<String>) {
-    use re_log::FieldValue;
+#[derive(Debug, PartialEq, Eq)]
+enum TextSegment<'a> {
+    Text(&'a str),
+    Url(&'a str),
+}
 
-    fn split(text: &str) -> Option<(String, String)> {
-        let (summary, details) = re_error::split_details(text);
-        details.map(|details| (summary.trim_end().to_owned(), details.to_owned()))
+fn split_links(text: &str) -> Vec<TextSegment<'_>> {
+    let mut segments = Vec::new();
+    let mut plain_text_start = 0;
+    let mut token_start = 0;
+
+    for chunk in text.split_inclusive(char::is_whitespace) {
+        let token = chunk.trim_end_matches(char::is_whitespace);
+        let current_token_start = token_start;
+        token_start += chunk.len();
+
+        let candidate_with_suffix = token.trim_start_matches(['(', '[', '{', '<', '"', '\'']);
+        let candidate = candidate_with_suffix
+            .trim_end_matches(['.', ',', ':', ';', '!', '?', ')', ']', '}', '>', '"', '\'']);
+        if url::Url::parse(candidate).is_err() {
+            continue;
+        }
+
+        let url_start = current_token_start + (token.len() - candidate_with_suffix.len());
+        if plain_text_start < url_start {
+            segments.push(TextSegment::Text(&text[plain_text_start..url_start]));
+        }
+        segments.push(TextSegment::Url(candidate));
+        plain_text_start = url_start + candidate.len();
     }
 
-    let split = match &value {
-        FieldValue::String(text) => split(text).map(|(s, d)| (FieldValue::String(s), d)),
-        FieldValue::Debug(text) => split(text).map(|(s, d)| (FieldValue::Debug(s), d)),
-        FieldValue::Error(text) => split(text).map(|(s, d)| (FieldValue::Error(s), d)),
-        FieldValue::Bool(_) | FieldValue::I64(_) | FieldValue::U64(_) => None,
-    };
-
-    match split {
-        Some((value, details)) => (value, Some(details)),
-        None => (value, None),
+    if plain_text_start < text.len() {
+        segments.push(TextSegment::Text(&text[plain_text_start..]));
     }
+    segments
+}
+
+/// Show `text`, rendering embedded URLs as inline hyperlinks.
+fn label_with_inline_links(ui: &mut egui::Ui, text: &str) {
+    ui.horizontal_wrapped(|ui| {
+        ui.spacing_mut().item_spacing.x = 0.0;
+        for segment in split_links(text) {
+            match segment {
+                TextSegment::Text(text) => {
+                    ui.label(text);
+                }
+                TextSegment::Url(url) => {
+                    // Toasts render after the viewer's hyperlink interceptor, so navigating in the
+                    // same tab would replace the running Web Viewer.
+                    ui.add(egui::Hyperlink::from_label_and_url(url, url).open_in_new_tab(true));
+                }
+            }
+        }
+    });
 }
 
 #[derive(Clone, Copy, serde::Serialize, serde::Deserialize)]
@@ -299,8 +326,8 @@ impl NotificationUi {
     /// based on that log.
     ///
     /// ## Special cased text
-    /// - If a notifications text contains [`re_error::DETAILS_SEPARATOR`] the section after that
-    ///   will be displayed inside a collapsible details header.
+    /// - If a notifications text has details (see [`re_error::StructuredError`]), those are shown
+    ///   inside a collapsible details header, one per line. Structured log fields go in there too.
     pub fn add_log(&mut self, log_msg: re_log::LogMsg) {
         let re_log::LogMsg {
             level,
@@ -310,15 +337,21 @@ impl NotificationUi {
         } = log_msg;
 
         if is_relevant(&target, level) {
-            let (summary, details) = re_error::split_details(&message);
+            let mut message = re_error::StructuredError::parse(message);
+            let mut fields = fields;
 
-            let mut notification = Notification::new(level.into(), summary);
-
-            if let Some(details) = details {
-                notification = notification.with_details(details);
+            // `#[tracing::instrument(err)]` reports the whole error as an `error` field, with no
+            // message at all. That error is the message, so show it as one instead of as a field.
+            if message.summary.is_empty()
+                && let Some(i) = fields.iter().position(|(key, _)| *key == "error")
+            {
+                let (_, error) = fields.remove(i);
+                message = message.concat(re_error::StructuredError::parse(error.to_string()));
             }
 
-            notification = notification.with_fields(fields);
+            let notification = Notification::new(level.into(), message.summary)
+                .with_details(message.details)
+                .with_fields(fields);
 
             self.add(notification);
         }
@@ -429,10 +462,10 @@ impl NotificationUi {
         ui.set_max_height(panel_max_height);
 
         ui.horizontal_top(|ui| {
-            if !notifications.is_empty() {
-                ui.strong(format!("Notifications ({})", notifications.len()));
-            } else {
+            if notifications.is_empty() {
                 ui.strong("Notifications");
+            } else {
+                ui.strong(format!("Notifications ({})", notifications.len()));
             }
             ui.with_layout(egui::Layout::top_down(egui::Align::Max), |ui| {
                 if ui.small_icon_button(&icons::CLOSE, "Close").clicked() {
@@ -514,7 +547,14 @@ impl Toasts {
                 })
                 .response;
 
+            // Reading the details is what a toast is for; don't yank it away mid-read.
+            let details_are_open = 0.0
+                < egui_ctx.data(|data| {
+                    details_openness(data, notification.unique_id, DisplayMode::Toast)
+                });
+
             if !response.hovered()
+                && !details_are_open
                 && !egui_ctx.rect_contains_pointer(response.layer_id, response.interact_rect)
             {
                 notification.toast_ttl = notification.toast_ttl.saturating_sub(dt);
@@ -540,11 +580,49 @@ impl Toasts {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+/// Where a notification is being shown, which decides what it may do with the space it has.
+#[derive(Clone, Copy)]
 enum DisplayMode {
+    /// In the notification panel, where it stays until dismissed.
+    ///
+    /// It is stuck with the width of the panel, and shows its age and a dismiss button.
     Panel,
+
+    /// As a toast floating over the viewport, until its time to live runs out.
+    ///
+    /// It is free-floating, so it may grow sideways to fit its expanded details.
     Toast,
 }
+
+/// Where the last shown openness of a notification's details section is kept, so that the toast
+/// can widen for it and stay up while it is open.
+///
+/// The same notification can be shown in both modes at once, each with its own details section,
+/// so the two must not share a key.
+fn details_openness_id(unique_id: u64, mode: DisplayMode) -> egui::Id {
+    let mode = match mode {
+        DisplayMode::Panel => "panel",
+        DisplayMode::Toast => "toast",
+    };
+    egui::Id::new(("notification_details_openness", unique_id, mode))
+}
+
+/// How open the details section of this notification is, from 0 (collapsed) to 1 (expanded).
+///
+/// This is what the previous frame drew, since the details are shown after the width is decided.
+fn details_openness(data: &egui::util::IdTypeMap, unique_id: u64, mode: DisplayMode) -> f32 {
+    data.get_temp::<f32>(details_openness_id(unique_id, mode))
+        .unwrap_or(0.0)
+}
+
+/// The width of the text column of a notification, with its details collapsed.
+const NARROW_WIDTH: f32 = 270.0;
+
+/// The width of the text column of a toast with its details expanded.
+const WIDE_WIDTH: f32 = 420.0;
+
+/// Room to leave around a toast, so a wide one doesn't touch the edges of the viewport.
+const TOAST_MARGIN: f32 = 32.0;
 
 fn show_notification(
     ui: &mut egui::Ui,
@@ -555,7 +633,6 @@ fn show_notification(
         level,
         text,
         details,
-        fields,
         link,
         permanent_dismiss_id,
         created_at,
@@ -564,11 +641,27 @@ fn show_notification(
         unique_id,
     } = notification;
 
+    // A toast is free-floating, so it may grow sideways to fit expanded details.
+    // A notification in the panel is stuck with the width of the panel.
+    let openness_id = details_openness_id(*unique_id, mode);
+    let openness = ui.data(|data| details_openness(data, *unique_id, mode));
+    let width = match mode {
+        DisplayMode::Toast => {
+            let max_width =
+                (ui.ctx().viewport_rect().width() - 2.0 * TOAST_MARGIN).at_least(NARROW_WIDTH);
+            if 0.0 < openness && openness < 1.0 {
+                ui.ctx().request_repaint();
+            }
+            egui::lerp(NARROW_WIDTH..=WIDE_WIDTH.min(max_width), openness)
+        }
+        DisplayMode::Panel => NARROW_WIDTH,
+    };
+
     ui.push_id(unique_id, |ui| {
-        let background_color = if mode == DisplayMode::Toast || *is_unread {
-            ui.tokens().notification_background_color
-        } else {
-            ui.tokens().notification_panel_background_color
+        let background_color = match mode {
+            DisplayMode::Toast => ui.tokens().notification_background_color,
+            DisplayMode::Panel if *is_unread => ui.tokens().notification_background_color,
+            DisplayMode::Panel => ui.tokens().notification_panel_background_color,
         };
 
         let mut reaction = None;
@@ -585,33 +678,39 @@ fn show_notification(
 
                         ui.vertical(|ui| {
                             ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
-                            ui.set_width(270.0);
+                            ui.set_width(width);
                             if !text.is_empty() {
-                                ui.label(text);
+                                label_with_inline_links(ui, text);
                             }
 
-                            for (key, value) in fields {
-                                ui.label(
-                                    egui::RichText::new(format!("{key}: {value}"))
-                                        .monospace()
-                                        .weak(),
-                                );
-                            }
-
-                            if let Some(details) = details {
-                                ui.collapsing_header("Details", false, |ui| {
-                                    ui.label(egui::RichText::new(details).monospace().weak());
+                            if !details.is_empty() {
+                                let response = ui.collapsing_header("Details", false, |ui| {
+                                    for detail in details {
+                                        ui.label(egui::RichText::new(detail).monospace().weak());
+                                    }
                                 });
+
+                                // Read one frame later, to widen the toast for the details.
+                                ui.data_mut(|data| {
+                                    data.insert_temp(openness_id, response.openness);
+                                });
+                                if response.openness != openness {
+                                    ui.ctx().request_repaint();
+                                }
                             }
                         });
 
                         ui.add_space(4.0);
-                        if mode == DisplayMode::Panel {
-                            notification_age_label(ui, *created_at);
+                        match mode {
+                            DisplayMode::Panel => notification_age_label(ui, *created_at),
+                            DisplayMode::Toast => {}
                         }
                     });
 
-                    let show_dismiss = mode == DisplayMode::Panel;
+                    let show_dismiss = match mode {
+                        DisplayMode::Panel => true,
+                        DisplayMode::Toast => false,
+                    };
                     let show_bottom_bar = show_dismiss || link.is_some();
 
                     if show_bottom_bar {
@@ -676,4 +775,83 @@ fn notification_age_label(ui: &mut egui::Ui, created_at: Timestamp) {
             .on_hover_text(created_at.to_string());
         });
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Every field becomes a `key: value` detail, and a field that is an error with details of
+    /// its own brings those along, right after it.
+    #[test]
+    fn test_fields_become_details() {
+        use re_log::FieldValue;
+
+        let notification = Notification::new(NotificationLevel::Error, "Failed to connect")
+            .with_fields(vec![
+                ("user_name", FieldValue::String("bob".to_owned())),
+                ("num_attempts", FieldValue::I64(42)),
+                (
+                    "error",
+                    FieldValue::Error("it failed\n- the fine print".to_owned()),
+                ),
+            ]);
+
+        assert_eq!(
+            notification.details,
+            [
+                "user_name: bob",
+                "num_attempts: 42",
+                "error: it failed",
+                "the fine print",
+            ]
+        );
+    }
+
+    #[test]
+    fn test_split_links() {
+        use TextSegment::{Text, Url};
+
+        assert_eq!(
+            split_links("See https://rerun.invalid/docs and (http://example.invalid/help)."),
+            vec![
+                Text("See "),
+                Url("https://rerun.invalid/docs"),
+                Text(" and ("),
+                Url("http://example.invalid/help"),
+                Text(")."),
+            ]
+        );
+        assert_eq!(
+            split_links("Not a link: rerun.invalid/docs; this is: mailto:help@example.invalid"),
+            vec![
+                Text("Not a link: rerun.invalid/docs; this is: "),
+                Url("mailto:help@example.invalid"),
+            ]
+        );
+    }
+
+    /// `#[tracing::instrument(err)]` logs the whole error as an `error` field and no message.
+    /// That error is the message, so it must not end up as a dim `error: …` field.
+    #[test]
+    fn test_lone_error_field_becomes_the_message() {
+        let mut ui = NotificationUi::new(egui::Context::default());
+
+        ui.add_log(re_log::LogMsg {
+            level: re_log::Level::ERROR,
+            target: "re_ui".to_owned(),
+            message: String::new(),
+            fields: vec![(
+                "error",
+                re_log::FieldValue::Error("it failed\n- the fine print".to_owned()),
+            )],
+        });
+
+        let notification = ui
+            .notifications()
+            .first()
+            .expect("the log should have become a notification");
+        assert_eq!(notification.text(), "it failed");
+        assert_eq!(notification.details, ["the fine print"]);
+    }
 }

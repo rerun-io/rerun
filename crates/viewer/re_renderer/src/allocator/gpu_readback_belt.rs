@@ -1,5 +1,6 @@
-use std::ops::Range;
 use std::sync::mpsc;
+
+use re_span::Span;
 
 use re_log::debug_assert;
 
@@ -16,7 +17,7 @@ pub type GpuReadbackUserDataStorage = Box<dyn std::any::Any + 'static + Send>;
 
 struct PendingReadbackRange {
     identifier: GpuReadbackIdentifier,
-    buffer_range: Range<wgpu::BufferAddress>,
+    buffer_range: Span<wgpu::BufferAddress>,
     user_data: GpuReadbackUserDataStorage,
 
     /// The frame index when the readback was scheduled.
@@ -38,7 +39,7 @@ pub enum GpuReadbackError {
 /// as we need to copy the data from the GPU to this CPU accessible buffer.
 pub struct GpuReadbackBuffer {
     chunk_buffer: GpuBuffer,
-    range_in_chunk: Range<wgpu::BufferAddress>,
+    range_in_chunk: Span<wgpu::BufferAddress>,
 }
 
 impl GpuReadbackBuffer {
@@ -93,7 +94,7 @@ impl GpuReadbackBuffer {
 
             // Validate that stay within the slice (wgpu can't fully know our intention here, so we have to check).
             debug_assert!(
-                buffer_info.buffer_size_padded <= self.range_in_chunk.end - start_offset,
+                buffer_info.buffer_size_padded <= self.range_in_chunk.end() - start_offset,
                 "Texture data is too large to fit into the readback buffer!"
             );
 
@@ -110,8 +111,10 @@ impl GpuReadbackBuffer {
                 *copy_extents,
             );
 
-            self.range_in_chunk =
-                (start_offset + buffer_info.buffer_size_padded)..self.range_in_chunk.end;
+            self.range_in_chunk = Span::from_start_end(
+                start_offset + buffer_info.buffer_size_padded,
+                self.range_in_chunk.end(),
+            );
         }
         Ok(())
     }
@@ -127,7 +130,7 @@ impl GpuReadbackBuffer {
     //     source: &GpuBuffer,
     //     source_offset: wgpu::BufferAddress,
     // ) {
-    //     let copy_size = self.range_in_chunk.end - self.range_in_chunk.start;
+    //     let copy_size = self.range_in_chunk.len;
 
     //     // Wgpu does validation as well, but in debug mode we want to panic if the buffer doesn't fit.
     //     debug_assert!(copy_size <= source_offset + source.size(),
@@ -173,11 +176,11 @@ impl Chunk {
     ) -> GpuReadbackBuffer {
         debug_assert!(size_in_bytes <= self.remaining_capacity());
 
-        let buffer_range = self.unused_offset..self.unused_offset + size_in_bytes;
+        let buffer_range = Span::from_start_len(self.unused_offset, size_in_bytes);
 
         self.ranges_in_use.push(PendingReadbackRange {
             identifier,
-            buffer_range: buffer_range.clone(),
+            buffer_range,
             user_data,
             scheduled_frame_index,
         });
@@ -468,8 +471,12 @@ impl GpuReadbackBelt {
 
                 let (result, scheduled_frame_index) = {
                     let range = chunk.ranges_in_use.swap_remove(range_index);
-                    let slice = chunk.buffer.slice(range.buffer_range.clone());
-                    let data = slice.get_mapped_range();
+                    let slice = chunk.buffer.slice(range.buffer_range.range());
+                    // A chunk is only sent to `self.receiver` after its `map_async` succeeded, and
+                    // ranges within a chunk never overlap, so mapping this range cannot fail.
+                    let data = slice
+                        .get_mapped_range()
+                        .expect("Readback chunk range is mapped");
                     (
                         callback(&data, range.user_data.downcast::<UserDataType>().unwrap()),
                         range.scheduled_frame_index,

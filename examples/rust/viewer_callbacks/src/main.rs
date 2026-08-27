@@ -173,11 +173,19 @@ fn selection_item_ui(ui: &mut egui::Ui, item: &re_viewer::SelectionChangeItem) {
                 }
                 ui.horizontal(|ui| {
                     ui.add_space(16.0);
-                    ui.label(format!("View name: {view_name:?}"));
+                    ui.label(format!(
+                        "View name: {}",
+                        view_name.as_deref().unwrap_or("<unnamed>")
+                    ));
                 });
                 ui.horizontal(|ui| {
                     ui.add_space(16.0);
-                    ui.label(format!("Position: {position:?}"));
+                    ui.label(position.map_or_else(
+                        || "Position: <unknown>".to_owned(),
+                        |position| {
+                            format!("Position: [{}, {}, {}]", position.x, position.y, position.z)
+                        },
+                    ));
                 });
             });
         }

@@ -1,4 +1,3 @@
-use std::any::Any;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
@@ -16,6 +15,7 @@ use datafusion::physical_plan::execution_plan::{Boundedness, EmissionType};
 use datafusion::physical_plan::{DisplayAs, DisplayFormatType, ExecutionPlan, PlanProperties};
 use futures::Stream;
 use parking_lot::Mutex;
+use re_async::AsyncRuntimeHandle;
 use re_log_types::{EntryId, EntryIdOrName};
 use re_protos::cloud::v1alpha1::ext::{EntryDetails, TableInsertMode};
 use re_protos::cloud::v1alpha1::{
@@ -102,8 +102,12 @@ impl TableEntryTableProvider {
     /// Enable per-scan analytics for this provider.
     ///
     /// Without this call no `cloud_scan_table` span will be emitted.
-    pub fn with_analytics(mut self, exporter: ConnectionAnalyticsExporter) -> Self {
-        self.analytics = Some(ConnectionAnalytics::new(exporter));
+    pub fn with_analytics(
+        mut self,
+        exporter: ConnectionAnalyticsExporter,
+        async_runtime: AsyncRuntimeHandle,
+    ) -> Self {
+        self.analytics = Some(ConnectionAnalytics::new(exporter, async_runtime));
         self
     }
 
@@ -137,9 +141,10 @@ impl TableEntryTableProvider {
 
             EntryIdOrName::Name(table_name) => {
                 let mut client = self.client.clone();
+                let origin = client.origin().clone();
                 let table_name_copy = table_name.clone();
 
-                let response = make_future_send(async move {
+                let response = make_future_send(origin.clone(), async move {
                     client
                         .inner()
                         .find_entries(FindEntriesRequest {
@@ -155,7 +160,7 @@ impl TableEntryTableProvider {
                             }),
                         })
                         .await
-                        .map_err(|err| ApiError::tonic(err, "/FindEntries failed"))
+                        .map_err(|err| ApiError::tonic(&origin, err, "/FindEntries failed"))
                 })
                 .await?;
                 let trace_id = re_redap_client::extract_trace_id(response.metadata());
@@ -166,6 +171,7 @@ impl TableEntryTableProvider {
                     .first()
                     .ok_or_else(|| {
                         ApiError::deserialization(
+                            self.origin(),
                             trace_id,
                             format!("No entry found with name: {table_name}"),
                         )
@@ -174,6 +180,7 @@ impl TableEntryTableProvider {
                     .try_into()
                     .map_err(|err: re_protos::TypeConversionError| {
                         ApiError::deserialization_with_source(
+                            self.origin(),
                             trace_id,
                             err,
                             "failed decoding /FindEntries response",
@@ -191,6 +198,10 @@ impl TableEntryTableProvider {
 
 #[async_trait]
 impl GrpcStreamToTable for TableEntryTableProvider {
+    fn origin(&self) -> &re_uri::Origin {
+        self.client.origin()
+    }
+
     type GrpcStreamData = ScanTableResponse;
 
     #[instrument(skip(self), err, parent = &self.parent_span)]
@@ -202,13 +213,14 @@ impl GrpcStreamToTable for TableEntryTableProvider {
         .with_entry_id(table_id);
 
         let mut client = self.client.clone();
+        let origin = client.origin().clone();
 
-        let response = make_future_send(async move {
+        let response = make_future_send(origin.clone(), async move {
             client
                 .inner()
                 .get_table_schema(request)
                 .await
-                .map_err(|err| ApiError::tonic(err, "/GetTableSchema failed"))
+                .map_err(|err| ApiError::tonic(&origin, err, "/GetTableSchema failed"))
         })
         .await?;
         let trace_id = re_redap_client::extract_trace_id(response.metadata());
@@ -219,6 +231,7 @@ impl GrpcStreamToTable for TableEntryTableProvider {
                 .schema
                 .ok_or_else(|| {
                     ApiError::deserialization(
+                        self.origin(),
                         trace_id,
                         "Schema missing from GetTableSchema response",
                     )
@@ -226,6 +239,7 @@ impl GrpcStreamToTable for TableEntryTableProvider {
                 .try_into()
                 .map_err(|err: arrow::error::ArrowError| {
                     ApiError::deserialization_with_source(
+                        self.origin(),
                         trace_id,
                         err,
                         "failed decoding /GetTableSchema response",
@@ -246,17 +260,19 @@ impl GrpcStreamToTable for TableEntryTableProvider {
         .with_entry_id(table_id);
 
         let mut client = self.client.clone();
+        let origin = client.origin().clone();
 
-        let response = make_future_send(async move {
+        let response = make_future_send(origin.clone(), async move {
             client
                 .inner()
                 .scan_table(request)
                 .await
-                .map_err(|err| ApiError::tonic(err, "/ScanTable failed"))
+                .map_err(|err| ApiError::tonic(&origin, err, "/ScanTable failed"))
         })
         .await?;
 
         Ok(re_redap_client::ApiResponseStream::from_tonic_response(
+            self.origin().clone(),
             response,
             "/ScanTable",
         ))
@@ -270,11 +286,16 @@ impl GrpcStreamToTable for TableEntryTableProvider {
         response
             .dataframe_part
             .ok_or_else(|| {
-                ApiError::deserialization(None, "DataFrame missing from PartitionList response")
+                ApiError::deserialization(
+                    self.origin(),
+                    None,
+                    "DataFrame missing from PartitionList response",
+                )
             })?
             .try_into()
             .map_err(|err: re_protos::TypeConversionError| {
                 ApiError::deserialization_with_source(
+                    self.origin(),
                     None,
                     err,
                     "failed decoding /ScanTable response",
@@ -423,10 +444,6 @@ impl ExecutionPlan for TableEntryWriterExec {
         "TableEntryWriterExec"
     }
 
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
     fn properties(&self) -> &Arc<PlanProperties> {
         &self.props
     }
@@ -472,6 +489,7 @@ impl ExecutionPlan for TableEntryWriterExec {
 }
 
 struct RecordBatchGrpcOutputStream {
+    origin: re_uri::Origin,
     input_stream: SendableRecordBatchStream,
     grpc_sender: Option<GrpcStreamSender>,
     thread_status: tokio::sync::oneshot::Receiver<ApiResult>,
@@ -502,6 +520,7 @@ impl RecordBatchGrpcOutputStream {
 
         // Create an oneshot channel for reporting when the thread is complete
         let (thread_status_tx, thread_status_rx) = tokio::sync::oneshot::channel();
+        let origin = client.origin().clone();
 
         runtime.spawn(async move {
             let shutdown_response = async {
@@ -516,6 +535,7 @@ impl RecordBatchGrpcOutputStream {
         });
 
         Self {
+            origin,
             input_stream,
             grpc_sender: Some(GrpcStreamSender { sender: tx }),
             thread_status: thread_status_rx,
@@ -559,15 +579,16 @@ impl Stream for RecordBatchGrpcOutputStream {
                         Err(tokio::sync::mpsc::error::TrySendError::Closed(_)) => {
                             // Channel closed - the gRPC task may have failed
                             // Check if we have a stored error
-                            if let Some(err) = self.grpc_error.take() {
-                                return Poll::Ready(Some(Err(err.into_df_error())));
+                            return if let Some(err) = self.grpc_error.take() {
+                                Poll::Ready(Some(Err(err.into_df_error())))
                             } else {
                                 // Channel closed without error - treat as broken pipe
-                                return Poll::Ready(Some(Err(ApiError::connection(
+                                Poll::Ready(Some(Err(ApiError::connection(
+                                    &self.origin,
                                     "/WriteTable gRPC stream closed unexpectedly",
                                 )
-                                .into_df_error())));
-                            }
+                                .into_df_error())))
+                            };
                         }
                     }
                 }

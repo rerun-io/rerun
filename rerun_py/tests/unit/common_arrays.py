@@ -17,7 +17,7 @@ from rerun.components import (
     RadiusBatch,
     TextBatch,
 )
-from rerun.datatypes import (
+from rerun.encodings import (
     Angle,
     DVec2D,
     DVec2DArrayLike,

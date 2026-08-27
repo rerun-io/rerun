@@ -3,9 +3,13 @@
 mod analytics_exporter;
 mod api_error;
 mod api_response_stream;
+mod asset;
+mod chunk_cache;
 mod connection_client;
+mod connection_handle;
 mod connection_registry;
 mod grpc;
+mod registration_handle;
 
 #[cfg(not(target_arch = "wasm32"))]
 mod segment_chunk_provider;
@@ -17,10 +21,13 @@ pub use self::analytics_exporter::ConnectionAnalyticsExporter;
 pub use self::api_error::{ApiError, ApiErrorKind, ApiResult};
 
 pub use self::api_response_stream::ApiResponseStream;
+pub use self::asset::Asset;
+pub use self::chunk_cache::{ChunkCache, ChunkCacheHandle};
 pub use self::connection_client::{
     BoxedRedapClientStack, Connection, ConnectionClient, FetchChunksResponseStream, RedapClient,
     SegmentQueryParams,
 };
+pub use self::connection_handle::ConnectionHandle;
 pub use self::connection_registry::{
     ClientCredentialsError, ConnectionRegistry, ConnectionRegistryHandle, CredentialSource,
     Credentials, SourcedCredentials,
@@ -30,6 +37,7 @@ pub use self::grpc::{
     fetch_chunks_response_to_chunk_and_segment_id, stream_blueprint_and_segment_from_server,
     stream_table_blueprint_segment_from_server, table_blueprint_log_channel,
 };
+pub use self::registration_handle::{RegistrationHandle, SegmentRegistrationResult};
 
 #[cfg(not(target_arch = "wasm32"))]
 pub use self::grpc::PoolChannel;
@@ -90,6 +98,25 @@ pub fn extract_trace_id(metadata: &tonic::metadata::MetadataMap) -> Option<opent
     opentelemetry::TraceId::from_hex(s).ok()
 }
 
+/// Format a leading trace-id section for a task error message.
+pub fn format_trace_ids(
+    request_trace_id: Option<TraceId>,
+    query_trace_id: Option<TraceId>,
+) -> String {
+    let mut lines = Vec::new();
+    if let Some(trace_id) = request_trace_id {
+        lines.push(format!("Registration request trace-id: {trace_id}"));
+    }
+    if let Some(trace_id) = query_trace_id {
+        lines.push(format!("Task-completion query trace-id: {trace_id}"));
+    }
+    if lines.is_empty() {
+        String::new()
+    } else {
+        format!("\n{}", lines.join("\n"))
+    }
+}
+
 /// Wrapper with a nicer error message
 #[derive(Debug)]
 pub struct TonicStatusError(Box<tonic::Status>);
@@ -115,31 +142,33 @@ impl TonicStatusError {
 
 impl std::fmt::Display for TonicStatusError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        // NOTE: duplicated in `re_grpc_server` and `re_grpc_client`
+        // NOTE: near-duplicate of the ones in `re_grpc_server` and `re_grpc_client`
         fmt_tonic_status(f, &self.0)
     }
 }
 
 fn fmt_tonic_status(f: &mut std::fmt::Formatter<'_>, status: &tonic::Status) -> std::fmt::Result {
-    if status.message().is_empty() {
-        write!(f, "gRPC error")?;
-    } else {
-        write!(f, "{}", status.message())?;
+    let code = status.code();
+
+    // The server message may come with details of its own, which must stay details.
+    let mut error = re_error::StructuredError::parse(status.message());
+
+    if error.summary.is_empty() {
+        error.summary = "gRPC error".to_owned();
     }
 
-    if status.code() != tonic::Code::Unknown {
-        write!(f, " ({})", status.code())?;
+    // `Unknown` says nothing, and is what a browser reports for any blocked `fetch`; the rest are
+    // worth naming. An `ApiError` wrapping this leaves out its own kind when it is just this code
+    // by another name, so the two don't say the same thing twice.
+    if code != tonic::Code::Unknown {
+        error.summary = format!("{} ({code:?})", error.summary);
     }
 
     if !status.metadata().is_empty() {
-        write!(
-            f,
-            "{} metadata: {:?}",
-            re_error::DETAILS_SEPARATOR,
-            status.metadata().as_ref()
-        )?;
+        error.add_detail(format!("metadata: {:?}", status.metadata().as_ref()));
     }
-    Ok(())
+
+    write!(f, "{error}")
 }
 
 impl From<tonic::Status> for TonicStatusError {
@@ -332,7 +361,7 @@ where
     Err(last_retryable_err.expect("bug: this should not be None if we reach here"))
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(target_arch = "wasm32")))]
 mod retry_tests {
     use super::*;
     use std::sync::atomic::{AtomicUsize, Ordering};
@@ -340,7 +369,11 @@ mod retry_tests {
     /// Build an `ApiError` of kind `ResourcesExhausted`, exactly as the client would from a
     /// server `tonic::Status::resource_exhausted`.
     fn resource_exhausted_err() -> ApiError {
-        ApiError::tonic(tonic::Status::resource_exhausted("busy"), "test")
+        ApiError::tonic(
+            &re_uri::Origin::test(),
+            tonic::Status::resource_exhausted("busy"),
+            "test",
+        )
     }
 
     /// A fast policy (sub-ms sleeps) so the retry-logic tests don't actually wait. The public
@@ -384,7 +417,7 @@ mod retry_tests {
         let calls = AtomicUsize::new(0);
         let res: ApiResult<u32> = with_retry_resource_exhausted("test", || async {
             calls.fetch_add(1, Ordering::SeqCst);
-            Err(ApiError::internal("boom"))
+            Err(ApiError::internal(&re_uri::Origin::test(), "boom"))
         })
         .await;
 

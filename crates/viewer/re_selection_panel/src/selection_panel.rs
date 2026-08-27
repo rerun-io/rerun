@@ -34,6 +34,10 @@ use crate::visualizer_ui::visualizer_ui;
 
 // ---
 
+/// Vertical space between the last plain item and the first section header.
+/// Boundaries between sections already get this space. Plain list items give none, so we add it here.
+const SPACE_BEFORE_FIRST_SECTION: f32 = 4.0;
+
 fn default_selection_panel_width(screen_width: f32) -> f32 {
     (0.45 * screen_width).min(300.0).round()
 }
@@ -65,12 +69,6 @@ impl SelectionPanel {
             .resizable(true)
             .frame(egui::Frame {
                 fill: ui.style().visuals.panel_fill,
-                inner_margin: egui::Margin {
-                    // TODO(emilk/egui#7749): This is a workaround to prevent flicker between
-                    // the time panel resize handle and our scroll bar.
-                    bottom: 4,
-                    ..Default::default()
-                },
                 ..Default::default()
             });
 
@@ -192,11 +190,6 @@ impl SelectionPanel {
                 let is_static = engine
                     .store()
                     .entity_has_static_component(entity_path, component_descriptor.component);
-                ui.list_item_flat_noninteractive(PropertyContent::new("Parent entity").value_fn(
-                    |ui, _| {
-                        item_ui::entity_path_parts_buttons(&store_view_ctx, ui, None, entity_path);
-                    },
-                ));
 
                 ui.list_item_flat_noninteractive(
                     PropertyContent::new("Index type").value_text(if is_static {
@@ -212,70 +205,39 @@ impl SelectionPanel {
                     component_type,
                 } = component_descriptor;
 
-                if let Some(archetype_name) = archetype_name {
-                    ui.list_item_flat_noninteractive(PropertyContent::new("Archetype").value_fn(
-                        |ui, _| {
-                            ui.label(archetype_name.short_name()).on_hover_ui(|ui| {
-                                ui.spacing_mut().item_spacing.y = 12.0;
-
-                                ui.strong(archetype_name.full_name());
-
-                                if let Some(doc_url) = archetype_name.doc_url() {
-                                    ui.re_hyperlink("Full documentation", doc_url, true);
-                                }
-                            });
-                        },
-                    ));
-                }
-
                 ui.list_item_flat_noninteractive(
-                    PropertyContent::new("Component").value_text(component.as_str()),
+                    PropertyContent::new("Component identifier").value_text(component.as_str()),
                 );
 
-                if let Some(component_type) = component_type {
-                    ui.list_item_flat_noninteractive(
-                        PropertyContent::new("Component type").value_fn(|ui, _| {
-                            ui.label(component_type.short_name()).on_hover_ui(|ui| {
-                                ui.spacing_mut().item_spacing.y = 12.0;
-
-                                ui.strong(component_type.full_name());
-
-                                // Only show the first line of the docs:
-                                if let Some(markdown) = ctx
-                                    .reflection()
-                                    .components
-                                    .get(&component_type)
-                                    .map(|info| info.docstring_md)
-                                {
-                                    ui.markdown_ui(markdown);
-                                }
-
-                                if let Some(doc_url) = component_type.doc_url() {
-                                    ui.re_hyperlink("Full documentation", doc_url, true);
-                                }
-                            });
-                        }),
+                if let Some(archetype_name) = archetype_name {
+                    name_property_with_hover_buttons(
+                        ui,
+                        "Archetype name",
+                        archetype_name.full_name(),
+                        archetype_name.doc_url(),
                     );
                 }
 
+                if let Some(component_type) = component_type {
+                    name_property_with_hover_buttons(
+                        ui,
+                        "Component type",
+                        component_type.full_name(),
+                        component_type.doc_url(),
+                    );
+                }
+
+                if let Some(datatype) = ctx.reflection().lookup_datatype(component) {
+                    ui.list_item_flat_noninteractive(
+                        PropertyContent::new("Arrow data type").value_text(format!("{datatype}")),
+                    );
+                }
+
+                // Last, after all the properties of the component itself:
                 list_existing_data_blueprints(ctx, viewport, ui, &entity_path.clone().into());
             }
 
             Item::InstancePath(instance_path) => {
-                let store_view_ctx =
-                    ctx.guess_store_view_context_for_entity(&instance_path.entity_path);
-
-                ui.list_item_flat_noninteractive(PropertyContent::new("Entity path").value_fn(
-                    |ui, _| {
-                        item_ui::entity_path_parts_buttons(
-                            &store_view_ctx,
-                            ui,
-                            None,
-                            &instance_path.entity_path,
-                        );
-                    },
-                ));
-
                 if instance_path.instance.is_specific() {
                     ui.list_item_flat_noninteractive(
                         PropertyContent::new("Instance")
@@ -302,19 +264,6 @@ impl SelectionPanel {
                 instance_path,
                 visualizer: _,
             }) => {
-                let store_view_ctx =
-                    ctx.guess_store_view_context_for_entity(&instance_path.entity_path);
-                ui.list_item_flat_noninteractive(PropertyContent::new("Stream entity").value_fn(
-                    |ui, _| {
-                        item_ui::entity_path_parts_buttons(
-                            &store_view_ctx,
-                            ui,
-                            None,
-                            &instance_path.entity_path,
-                        );
-                    },
-                ));
-
                 if instance_path.instance.is_specific() {
                     ui.list_item_flat_noninteractive(PropertyContent::new("Instance").value_fn(
                         |ui, _| {
@@ -340,8 +289,6 @@ impl SelectionPanel {
                         && let Some(view) = viewport.view(view_id)
                     {
                         let view_ctx = view.bundle_context_with_states(ctx, view_states);
-                        visible_interactive_toggle_ui(&view_ctx, ui, query_result, data_result);
-
                         let is_spatial_view =
                             view.class_identifier() == "3D" || view.class_identifier() == "2D";
                         if is_spatial_view {
@@ -361,6 +308,7 @@ impl SelectionPanel {
         };
 
         if let Some(data_ui_item) = data_section_ui(item) {
+            ui.add_space(SPACE_BEFORE_FIRST_SECTION);
             ui.section_collapsing_header("Data").show(ui, |ui| {
                 // TODO(#6075): Because `list_item_scope` changes it. Temporary until everything is `ListItem`.
                 ui.spacing_mut().item_spacing.y = ui.global_style().spacing.item_spacing.y;
@@ -451,6 +399,7 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
                 ui.add_space(8.0);
             }
 
+            ui.add_space(SPACE_BEFORE_FIRST_SECTION);
             ui.section_collapsing_header("Entity path filter")
                 .with_action_button(
                     &re_ui::icons::EDIT,
@@ -799,8 +748,8 @@ fn coordinate_frame_ui(ui: &mut egui::Ui, ctx: &ViewContext<'_>, data_result: &D
             );
         })
         .with_menu_button(&re_ui::icons::MORE, "More options", |ui: &mut egui::Ui| {
-            crate::visualizer_ui::reset_override_button(
-                ctx,
+            reset_override_button(
+                ctx.viewer_ctx,
                 ui,
                 component_descr.clone(),
                 data_result.override_base_path(),
@@ -817,9 +766,10 @@ To learn more about coordinate frames, see the [Spaces & Transforms](https://rer
         });
 
     if frame_id_before.is_empty() {
-        ui.warning_label(
-            "Transform relation can't be resolved due to empty coordinate frame name.",
-        );
+        ui.warning_label(format!(
+            "CoordinateFrame has an empty frame ID; falling back to the implicit frame {}.",
+            TransformFrameId::from_entity_path(&data_result.entity_path).as_str(),
+        ));
     }
 
     if frame_id_before != frame_id {
@@ -829,6 +779,31 @@ To learn more about coordinate frames, see the [Spaces & Transforms](https://rer
             &component_descr,
             &TransformFrameId::new(&frame_id),
         );
+    }
+}
+
+pub fn reset_override_button(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    component_descr: ComponentDescriptor,
+    override_path: &EntityPath,
+) {
+    let component = component_descr.component;
+    let raw_override = ctx.raw_latest_at_in_current_blueprint(override_path, component);
+    let raw_override_default_blueprint =
+        ctx.raw_latest_at_in_default_blueprint(override_path, component);
+
+    if ui
+        .add_enabled(
+            raw_override != raw_override_default_blueprint,
+            egui::Button::new("Reset override to default blueprint"),
+        )
+        .on_hover_text("Resets the override to what is specified in the default blueprint")
+        .on_disabled_hover_text("Current override is the same as the override specified in the default blueprint (if any)")
+        .clicked()
+    {
+        ctx.reset_blueprint_component(override_path.clone(), component_descr);
+        ui.close();
     }
 }
 
@@ -1058,6 +1033,7 @@ fn container_children(
         }
     };
 
+    ui.add_space(SPACE_BEFORE_FIRST_SECTION);
     ui.section_collapsing_header("Contents")
         .with_action_button(
             &re_ui::icons::ADD,
@@ -1086,25 +1062,66 @@ fn data_section_ui(item: &Item) -> Option<Box<dyn DataUi>> {
     }
 }
 
-fn view_button(
-    ctx: &ViewerContext<'_>,
+/// A property row showing a (fully qualified) name as a plain label, with icon
+/// buttons that appear right after the end of the label when the row is hovered:
+/// one to copy the name, and — when the name has a documentation page — one to
+/// open it.
+///
+/// When the label is too long it truncates to make room, so the buttons stay
+/// at the end of the row.
+fn name_property_with_hover_buttons(
     ui: &mut egui::Ui,
-    view: &re_viewport_blueprint::ViewBlueprint,
-) -> egui::Response {
-    let item = Item::View(view.id);
-    let is_selected = ctx.selection().contains_item(&item);
-    let view_name = view.display_name_or_default();
-    let class = view.class(ctx.view_class_registry());
+    property_label: &str,
+    full_name: &str,
+    doc_url: Option<String>,
+) {
+    ui.list_item_flat_noninteractive(PropertyContent::new(property_label).value_fn(
+        move |ui, _| {
+            // The row is non-interactive, so compute its hover state ourselves, the
+            // same way list-item buttons do (see `ItemButtons::should_show_buttons`).
+            let row_rect = egui::Rect::from_x_y_ranges(ui.full_span(), ui.max_rect().y_range());
+            let row_hovered = ui.ctx().rect_contains_pointer(ui.layer_id(), row_rect)
+                && !egui::DragAndDrop::has_any_payload(ui.ctx())
+                && ui.ctx().dragged_id().is_none();
 
-    let response = ui
-        .selectable_label_with_icon(
-            class.icon(),
-            view_name.as_ref(),
-            is_selected,
-            contents_name_style(&view_name),
-        )
-        .on_hover_text(format!("{} view", class.display_name()));
-    item_ui::cursor_interact_with_selectable(&ctx.app_ctx, response, item)
+            if !row_hovered {
+                // Same as `PropertyContent::value_text`.
+                ui.add(egui::Label::new(full_name).truncate());
+                return;
+            }
+
+            // Reserve room for the icon buttons, so a long label truncates instead
+            // of pushing them out of the row.
+            let button_count = if doc_url.is_some() { 2.0 } else { 1.0 };
+            let button_width = ui.tokens().small_icon_size.x + 2.0 * ui.spacing().button_padding.x;
+            let reserved = button_count * (button_width + ui.spacing().item_spacing.x);
+            let label_budget = (ui.available_width() - reserved).max(0.0);
+
+            ui.scope(|ui| {
+                ui.set_max_width(label_budget);
+                ui.add(egui::Label::new(full_name).truncate());
+            });
+
+            if ui
+                .small_icon_button(&re_ui::icons::COPY, "Copy")
+                .on_hover_text("Copy")
+                .clicked()
+            {
+                ui.copy_text(full_name.to_owned());
+                // Shows up as a notification toast, so the user knows the click landed.
+                re_log::info!("Copied {full_name:?} to clipboard");
+            }
+
+            if let Some(doc_url) = &doc_url
+                && ui
+                    .small_icon_button(&re_ui::icons::EXTERNAL_LINK, "Read documentation")
+                    .on_hover_text("Read documentation")
+                    .clicked()
+            {
+                ui.open_url(egui::OpenUrl::new_tab(doc_url));
+            }
+        },
+    ));
 }
 
 /// Display a list of all the views an entity appears in.
@@ -1124,18 +1141,37 @@ fn list_existing_data_blueprints(
     } else {
         for &view_id in &views_with_path {
             if let Some(view) = viewport.view(&view_id) {
-                let response = ui.list_item().show_flat(
-                    ui,
-                    PropertyContent::new("Shown in").value_fn(|ui, _| {
-                        view_button(ctx, ui, view);
-                    }),
-                );
+                let view_name = view.display_name_or_default();
+                let class = view.class(ctx.view_class_registry());
 
                 let item = Item::DataResult(DataResultInteractionAddress {
                     view_id,
                     instance_path: instance_path.clone(),
                     visualizer: None,
                 });
+                let is_selected = ctx.selection().contains_item(&item);
+
+                let item_for_label = item.clone();
+                let response = ui.list_item().selected(is_selected).show_flat(
+                    ui,
+                    PropertyContent::new("Shown in").value_fn(|ui, _| {
+                        let label_response = ui
+                            .selectable_label_with_icon(
+                                class.icon(),
+                                view_name.as_ref(),
+                                is_selected,
+                                contents_name_style(&view_name),
+                            )
+                            .on_hover_text(format!("{} view", class.display_name()));
+
+                        cursor_interact_with_selectable(
+                            &ctx.app_ctx,
+                            label_response,
+                            item_for_label,
+                        );
+                    }),
+                );
+
                 let response = response.on_hover_ui(|ui| {
                     let include_subtree = false;
                     item_ui::instance_hover_card_ui(
@@ -1266,6 +1302,7 @@ fn container_top_level_properties(
                         prune_single_child_containers: false,
                         all_panes_must_have_tabs: true,
                         join_nested_linear_containers: true,
+                        flatten_tabs_in_tabs: false,
                     },
                 );
             })
@@ -1404,40 +1441,6 @@ fn show_list_item_for_container_child(
     }
 
     true
-}
-
-fn visible_interactive_toggle_ui(
-    ctx: &ViewContext<'_>,
-    ui: &mut egui::Ui,
-    query_result: &DataQueryResult,
-    data_result: &DataResult,
-) {
-    {
-        let visible_before = data_result.is_visible();
-        let mut visible = visible_before;
-
-        ui.list_item_flat_noninteractive(
-            list_item::PropertyContent::new("Visible").value_bool_mut(&mut visible),
-        )
-        .on_hover_text("If disabled, the entity won't be shown in the view.");
-
-        if visible_before != visible {
-            data_result.save_visible(ctx.viewer_ctx, &query_result.tree, visible);
-        }
-    }
-    {
-        let interactive_before = data_result.is_interactive();
-        let mut interactive = interactive_before;
-
-        ui.list_item_flat_noninteractive(
-            list_item::PropertyContent::new("Interactive").value_bool_mut(&mut interactive),
-        )
-        .on_hover_text("If disabled, the entity will not react to any mouse interaction.");
-
-        if interactive_before != interactive {
-            data_result.save_interactive(ctx.viewer_ctx, &query_result.tree, interactive);
-        }
-    }
 }
 
 #[cfg(test)]
@@ -1647,6 +1650,68 @@ mod tests {
 
         harness.run();
         harness.snapshot("selection_panel_component_static_overwrite");
+    }
+
+    /// Snapshot test for the selection panel when a static named transform component that was
+    /// logged multiple times is selected.
+    ///
+    /// Named transforms are the exception to static overwrite semantics: the store preserves all
+    /// of them, so the panel must not claim that data was overwritten.
+    /// See `re_chunk_store::preserves_static_transforms`, #12853 and RR-4887 for more info.
+    #[test]
+    fn selection_panel_component_static_transform_overwrite_snapshot() {
+        let mut test_context = get_test_context();
+
+        let entity_path = EntityPath::from("tf_static");
+
+        // A single static chunk with multiple transform rows, mirroring how a `/tf_static` MCAP
+        // topic is loaded: one entity carrying one transform per parent/child frame pair.
+        test_context.log_entity(entity_path.clone(), |builder| {
+            builder
+                .with_archetype(
+                    RowId::new(),
+                    TimePoint::STATIC,
+                    &archetypes::Transform3D::default()
+                        .with_parent_frame("world")
+                        .with_child_frame("camera"),
+                )
+                .with_archetype(
+                    RowId::new(),
+                    TimePoint::STATIC,
+                    &archetypes::Transform3D::default()
+                        .with_parent_frame("world")
+                        .with_child_frame("lidar"),
+                )
+                .with_archetype(
+                    RowId::new(),
+                    TimePoint::STATIC,
+                    &archetypes::Transform3D::default()
+                        .with_parent_frame("odom")
+                        .with_child_frame("base_link"),
+                )
+        });
+
+        test_context
+            .selection_state
+            .lock()
+            .set_selection(Item::ComponentPath(re_log_types::ComponentPath {
+                entity_path,
+                component: archetypes::Transform3D::descriptor_child_frame().component,
+            }));
+
+        let viewport_blueprint = ViewportBlueprint::from_db(
+            test_context.active_blueprint(),
+            &LatestAtQuery::latest(blueprint_timeline()),
+        );
+
+        let mut harness = test_context
+            .setup_kittest_for_rendering_ui([400.0, 350.0])
+            .build_ui(|ui| {
+                selection_panel_ui(&test_context, &viewport_blueprint, ui);
+            });
+
+        harness.run();
+        harness.snapshot("selection_panel_component_static_transform_overwrite");
     }
 
     /// Snapshot test for the selection panel when a static component with additional time information is

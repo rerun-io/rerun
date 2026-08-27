@@ -76,6 +76,21 @@ impl CommandPaletteAction {
             }
         }
     }
+
+    #[cfg(debug_assertions)]
+    pub fn is_debug_only(&self) -> bool {
+        match self {
+            Self::UiCommand(command) => command.is_debug_only(),
+            Self::RecordingCommand(command) => command.kind.is_debug_only(),
+            Self::RedapServerCommand(_)
+            | Self::TableCommand(_)
+            | Self::SelectEntityPath(_)
+            | Self::SelectComponentPath(_)
+            | Self::SelectRedapServer(_)
+            | Self::SelectRedapEntry { .. }
+            | Self::OpenUrl(_) => false,
+        }
+    }
 }
 
 /// Feeds the viewer's commands into the [`re_ui::CommandPalette`].
@@ -416,6 +431,12 @@ impl CommandPaletteProvider<CommandPaletteAction> for CommandPaletteProviderImpl
                     },
                 ),
             );
+        }
+
+        // Mark commands that only exist in debug builds:
+        #[cfg(debug_assertions)]
+        if matched.command.is_debug_only() {
+            re_ui::debug_only::append_debug_only_badge(&mut job, ui.style());
         }
 
         CmdRow {

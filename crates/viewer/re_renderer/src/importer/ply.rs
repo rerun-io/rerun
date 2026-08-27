@@ -28,7 +28,7 @@ pub fn load_ply_from_buffer(
 
     let material = mesh::Material {
         label: label.clone(),
-        index_range: 0..num_indices as u32,
+        index_range: re_span::Span::from_start_len(0, num_indices as u32),
         albedo: ctx.texture_manager_2d.white_texture_unorm_handle().clone(),
         albedo_factor: crate::Rgba::WHITE,
     };

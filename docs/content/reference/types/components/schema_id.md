@@ -5,8 +5,8 @@ title: "SchemaId"
 
 A 16-bit unique identifier for a schema within the MCAP file.
 
-## Rerun datatype
-[`UInt16`](../datatypes/uint16.md)
+## Rerun encoding
+[`UInt16`](../encodings/uint16.md)
 
 
 ## Arrow datatype

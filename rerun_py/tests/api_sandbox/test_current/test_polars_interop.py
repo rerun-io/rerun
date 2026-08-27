@@ -84,7 +84,7 @@ def test_segment_table_to_polars(simple_dataset_prefix: Path) -> None:
     with rr.server.Server() as server:
         client = server.client()
         ds = client.create_dataset("my_dataset")
-        ds.register_prefix(simple_dataset_prefix.as_uri())
+        ds.register_prefix(simple_dataset_prefix.as_uri()).wait()
 
         df = ds.segment_table().to_polars()
 
@@ -127,7 +127,7 @@ def test_dataframe_query_to_polars(simple_dataset_prefix: Path) -> None:
     with rr.server.Server() as server:
         client = server.client()
         ds = client.create_dataset("my_dataset")
-        ds.register_prefix(simple_dataset_prefix.as_uri())
+        ds.register_prefix(simple_dataset_prefix.as_uri()).wait()
 
         # Create a view filtered to specific segments
         view = ds.filter_segments(["simple_recording_0", "simple_recording_2"])

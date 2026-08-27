@@ -30,6 +30,8 @@ mod entrypoint;
 mod mcap;
 mod rrd;
 mod stdio;
+#[cfg(feature = "importers")]
+mod table_util;
 
 #[cfg(feature = "analytics")]
 mod analytics;

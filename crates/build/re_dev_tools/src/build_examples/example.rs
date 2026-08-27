@@ -89,8 +89,6 @@ impl Example {
 pub enum Language {
     Rust,
     Python,
-    #[expect(dead_code)]
-    C,
     Cpp,
     Notebook,
 }
@@ -102,7 +100,6 @@ impl Language {
         match self {
             Self::Rust => Path::new("rust"),
             Self::Python => Path::new("python"),
-            Self::C => Path::new("c"),
             Self::Cpp => Path::new("cpp"),
             Self::Notebook => Path::new("notebook"),
         }
@@ -113,7 +110,6 @@ impl Language {
         match self {
             Self::Rust => "rs",
             Self::Python => "py",
-            Self::C => "c",
             Self::Cpp => "cpp",
             Self::Notebook => "ipynb",
         }

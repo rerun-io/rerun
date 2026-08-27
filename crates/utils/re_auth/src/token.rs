@@ -24,7 +24,7 @@ pub struct HostMismatchError {
 }
 
 /// A JWT that is used to authenticate the client.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, re_byte_size::SizeBytes)]
 #[repr(transparent)]
 pub struct Jwt(pub(crate) String);
 

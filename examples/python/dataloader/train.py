@@ -4,6 +4,15 @@ Demonstrates how to stream robot trajectory data from Rerun's catalog
 into an imitation learning policy (Action Chunking Transformers).
 
 The Rerun dataloader's Field.window feature fetches future action chunks in a single query per batch.
+
+Usage:
+
+    train.py [common options]                       # RerunIterableDataset (default)
+    train.py iterable [common options] [--shuffle ...]
+    train.py map [common options]
+
+See https://rerun.io/docs/howto/train/dataloader for what the dataset styles
+and shuffle options mean and how to tune them.
 """
 
 from __future__ import annotations
@@ -23,11 +32,15 @@ from torch.utils.data import DataLoader
 from rerun._tracing import tracing_scope, with_tracing
 from rerun.catalog import CatalogClient
 from rerun.experimental.dataloader import (
+    BlockShuffle,
     DataSource,
     Field,
+    NoShuffle,
     NumericDecoder,
     RerunIterableDataset,
     RerunMapDataset,
+    SampleShuffle,
+    ShuffleStrategy,
     VideoFrameDecoder,
 )
 
@@ -43,7 +56,7 @@ EPOCHS = 5
 BATCH_SIZE = 8
 LR = 1e-5
 NUM_WORKERS = 4
-FETCH_SIZE = 256
+FETCH_BLOCK_SIZE = 256
 
 
 class CollateFn:
@@ -79,40 +92,80 @@ class CollateFn:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument(
-        "--catalog-url",
-        default="rerun+http://127.0.0.1:51234",
-        help="Rerun catalog URL",
-    )
-    parser.add_argument(
-        "--dataset",
-        default="rerun_so101-pick-and-place",
-        help="Dataset name in the catalog",
-    )
-    parser.add_argument("--num-segments", type=int, default=3, help="Number of segments to use (0 for all)")
-    parser.add_argument("--epochs", type=int, default=EPOCHS, help="Number of training epochs")
-    parser.add_argument("--batch-size", type=int, default=BATCH_SIZE, help="Training batch size")
-    parser.add_argument("--num-workers", type=int, default=NUM_WORKERS, help="DataLoader worker processes")
-    parser.add_argument(
-        "--fetch-size",
+    common = argparse.ArgumentParser(add_help=False)
+    common.add_argument("--catalog-url", default="rerun+http://127.0.0.1:51234", help="Rerun catalog URL")
+    common.add_argument("--dataset", default="rerun_so101-pick-and-place", help="Dataset name in the catalog")
+    common.add_argument("--num-segments", type=int, default=3, help="Number of segments to use (0 for all)")
+    common.add_argument("--epochs", type=int, default=EPOCHS, help="Number of training epochs")
+    common.add_argument("--batch-size", type=int, default=BATCH_SIZE, help="Training batch size")
+    common.add_argument("--num-workers", type=int, default=NUM_WORKERS, help="DataLoader worker processes")
+    common.add_argument(
+        "--decode-threads",
         type=int,
-        default=FETCH_SIZE,
-        help="Samples fetched per server query for the iterable dataset",
+        default=None,
+        help="Fields decoded concurrently inside each worker (default: one per video field). "
+        "Prefer this over --num-workers when RAM per worker, not CPU, is the limit",
     )
-    parser.add_argument("--lr", type=float, default=LR, help="Learning rate")
-    parser.add_argument(
-        "--dataset-style",
-        choices=("iterable", "map"),
-        default="iterable",
-        help="Which Rerun dataset class to use: 'iterable' (RerunIterableDataset, internal shuffling) "
-        "or 'map' (RerunMapDataset, random access via DataLoader samplers).",
-    )
-    parser.add_argument(
+    common.add_argument("--lr", type=float, default=LR, help="Learning rate")
+    common.add_argument(
         "--checkpoint-dir",
         type=Path,
         default=CHECKPOINT_DIR,
         help="Directory to save the trained policy checkpoint",
+    )
+
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        parents=[common],
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    subparsers = parser.add_subparsers(dest="dataset_style", title="dataset style")
+
+    iterable = subparsers.add_parser(
+        "iterable",
+        parents=[common],
+        help="RerunIterableDataset: streaming iteration with internal shuffling (default)",
+    )
+    iterable.add_argument(
+        "--fetch-block-size", type=int, default=FETCH_BLOCK_SIZE, help="Samples fetched per server query"
+    )
+    iterable.add_argument(
+        "--shuffle",
+        choices=("block", "sample", "none"),
+        default="block",
+        help="Fetch order: 'block' shuffles contiguous blocks (fast fetches), "
+        "'sample' shuffles individual samples (decorrelated but slow fetches), "
+        "'none' reads in natural order",
+    )
+    iterable.add_argument(
+        "--shuffle-buffer-size",
+        type=int,
+        default=None,
+        help="Post-decode shuffle buffer for --shuffle block (samples per worker); mixes many blocks "
+        "into each batch. Holds this many decoded samples per worker, so budget "
+        "buffer_size * bytes_per_sample * num_workers of RAM",
+    )
+    iterable.add_argument(
+        "--shuffle-buffer-min-fill",
+        type=int,
+        default=None,
+        help="Samples buffered before emission starts (default: half the buffer). "
+        "This is also how long the first batch is delayed",
+    )
+
+    subparsers.add_parser(
+        "map",
+        parents=[common],
+        help="RerunMapDataset: random access, shuffling via DataLoader samplers",
+    )
+
+    # Bare `train.py` behaves like `train.py iterable` with its defaults.
+    parser.set_defaults(
+        dataset_style="iterable",
+        fetch_block_size=FETCH_BLOCK_SIZE,
+        shuffle="block",
+        shuffle_buffer_size=None,
+        shuffle_buffer_min_fill=None,
     )
     return parser.parse_args()
 
@@ -137,19 +190,20 @@ def main() -> None:
         "action": Field(
             "/action:Scalars:scalars",
             decode=NumericDecoder(),
-            window=(1, CHUNK_SIZE),
+            # `frame_index` is an integer timeline, so offsets are integral frame steps.
+            window=tuple(range(1, CHUNK_SIZE + 1)),
         ),
         "image_laptop": Field(
             "/observation.images.laptop:VideoStream:sample",
-            decode=VideoFrameDecoder(codec="av1", keyframe_interval=2),
+            decode=VideoFrameDecoder(codec="av1"),
         ),
         "image_phone": Field(
             "/observation.images.phone:VideoStream:sample",
-            decode=VideoFrameDecoder(codec="av1", keyframe_interval=2),
+            decode=VideoFrameDecoder(codec="av1"),
         ),
         "image_side": Field(
             "/observation.images.side:VideoStream:sample",
-            decode=VideoFrameDecoder(codec="av1", keyframe_interval=2),
+            decode=VideoFrameDecoder(codec="av1"),
         ),
     }
 
@@ -157,12 +211,32 @@ def main() -> None:
     if args.dataset_style == "map":
         ds = RerunMapDataset(source=source, index="frame_index", fields=fields)
     else:
-        ds = RerunIterableDataset(source=source, index="frame_index", fields=fields, fetch_size=args.fetch_size)
+        # Only `BlockShuffle` takes an emission buffer: its fetch order is deliberately
+        # correlated, so emission is where its batches get decorrelated. `SampleShuffle`
+        # already fetches a uniform permutation and `NoShuffle` is a deterministic baseline.
+        if args.shuffle != "block" and (args.shuffle_buffer_size or args.shuffle_buffer_min_fill):
+            raise SystemExit(f"--shuffle-buffer-* only applies to --shuffle block, not {args.shuffle!r}")
+        shuffle_strategies: dict[str, ShuffleStrategy] = {
+            "block": BlockShuffle(
+                buffer_size=args.shuffle_buffer_size,
+                min_fill=args.shuffle_buffer_min_fill,
+            ),
+            "sample": SampleShuffle(),
+            "none": NoShuffle(),
+        }
+        ds = RerunIterableDataset(
+            source=source,
+            index="frame_index",
+            fields=fields,
+            fetch_block_size=args.fetch_block_size,
+            shuffle_strategy=shuffle_strategies[args.shuffle],
+            decode_threads=args.decode_threads,
+        )
     print(f"Using {args.dataset_style} dataset with {len(ds)} samples (after window trimming)")
 
     # IterableDataset doesn't support indexing, so probe shape via iteration.
     state_tensor = next(iter(ds))["state"]
-    assert state_tensor is not None  # NumericDecoder never returns None
+    assert isinstance(state_tensor, torch.Tensor)  # NumericDecoder always returns tensors
     state_dim = state_tensor.shape[0]
     action_dim = state_dim
     print(f"Dimensions: {state_dim=}, {action_dim=}")

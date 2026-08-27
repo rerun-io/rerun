@@ -1,4 +1,4 @@
-use re_chunk::TimelineName;
+use re_chunk::{Span, TimelineName};
 use re_log::debug_assert;
 use re_log_types::AbsoluteTimeRange;
 
@@ -108,10 +108,13 @@ impl ChunkStore {
                     // Drop the original chunk (not the sorted copy) so the store can find it by ID.
                     chunks_to_drop.push(chunk.clone());
                     if 0 < min_idx {
-                        new_chunks.push(sorted.row_sliced_shallow(0, min_idx));
+                        new_chunks
+                            .push(sorted.row_sliced_shallow(Span::from_start_len(0, min_idx)));
                     }
                     if max_idx < num_rows {
-                        new_chunks.push(sorted.row_sliced_shallow(max_idx, num_rows - max_idx));
+                        new_chunks.push(
+                            sorted.row_sliced_shallow(Span::from_start_end(max_idx, num_rows)),
+                        );
                     }
                 }
             }

@@ -1,3 +1,5 @@
+#![allow(clippy::iter_over_hash_type)]
+
 //! # Rerun spatial transform processing
 //!
 //! ## Concepts
@@ -157,8 +159,9 @@ pub use self::transform_resolution_cache::{
     transform_cache_snapshot,
 };
 
-/// Returns the view coordinates used for 2D (image) views.
+/// Returns the fixed RDF orientation convention used by image pixel space.
 ///
+/// This is independent of the axes configured for a spatial view.
 /// TODO(#1387): Image coordinate space should be configurable.
 pub fn image_view_coordinates() -> re_sdk_types::components::ViewCoordinates {
     re_sdk_types::archetypes::Pinhole::DEFAULT_CAMERA_XYZ

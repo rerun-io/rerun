@@ -151,18 +151,16 @@ mod web_event_listener {
 pub use web_event_listener::stream_rrd_from_event_listener;
 
 #[cfg(target_arch = "wasm32")]
-// TODO(#3408): remove unwrap()
-#[expect(clippy::unwrap_used)]
 pub mod web_decode {
     use std::sync::Arc;
 
     use super::{Error, HttpMessage, HttpMessageCallback};
 
     pub fn decode_rrd(rrd_bytes: Vec<u8>, on_msg: Arc<HttpMessageCallback>) {
-        wasm_bindgen_futures::spawn_local(decode_rrd_async(rrd_bytes, on_msg));
+        re_async::spawn_local(decode_rrd_async(rrd_bytes, on_msg));
     }
 
-    /// Decodes the file in chunks, with an yield between each chunk.
+    /// Decodes the file in chunks, with a yield between each chunk.
     ///
     /// This is cooperative multi-tasking.
     async fn decode_rrd_async(rrd_bytes: Vec<u8>, on_msg: Arc<HttpMessageCallback>) {
@@ -187,8 +185,7 @@ pub mod web_decode {
                     }
 
                     if last_yield.elapsed() > web_time::Duration::from_millis(10) {
-                        // yield to the ui task
-                        yield_().await;
+                        re_async::yield_now().await;
                         last_yield = web_time::Instant::now();
                     }
                 }
@@ -198,24 +195,6 @@ pub mod web_decode {
                 let _ignored_control_flow = on_msg(HttpMessage::Failure(Error::DecodeEager(err)));
             }
         }
-    }
-
-    // Yield to other tasks
-    async fn yield_() {
-        // TODO(emilk): create a better async yield function. See https://github.com/wasm-bindgen/wasm-bindgen/issues/3359
-        sleep_ms(1).await;
-    }
-
-    // Hack to get async sleep on wasm
-    async fn sleep_ms(millis: i32) {
-        let mut cb = |resolve: js_sys::Function, _reject: js_sys::Function| {
-            web_sys::window()
-                .unwrap()
-                .set_timeout_with_callback_and_timeout_and_arguments_0(&resolve, millis)
-                .expect("Failed to call set_timeout");
-        };
-        let p = js_sys::Promise::new(&mut cb);
-        wasm_bindgen_futures::JsFuture::from(p).await.unwrap();
     }
 }
 

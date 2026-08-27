@@ -2,10 +2,34 @@ use proc_macro2::Ident;
 use quote::{format_ident, quote};
 
 use super::forward_decl::{ForwardDecl, ForwardDecls};
-use crate::{Object, ObjectClass, Objects, Type};
+use crate::{AtomicDataType, Object, ObjectClass, Objects, Type};
 
 pub fn arrow_array_builder_type(typ: &Type, objects: &Objects) -> Ident {
     arrow_array_builder_type_and_declaration(typ, objects, &mut ForwardDecls::default())
+}
+
+/// What arrow's C++ classes for `atomic` are called, e.g. `arrow::HalfFloatBuilder` and
+/// `arrow::HalfFloatType` for a `f16`.
+pub fn arrow_class_prefix(atomic: AtomicDataType) -> &'static str {
+    match atomic {
+        AtomicDataType::Null => "Null",
+        AtomicDataType::Boolean => "Boolean",
+        AtomicDataType::Int8 => "Int8",
+        AtomicDataType::Int16 => "Int16",
+        AtomicDataType::Int32 => "Int32",
+        AtomicDataType::Int64 => "Int64",
+        AtomicDataType::UInt8 => "UInt8",
+        AtomicDataType::UInt16 => "UInt16",
+        AtomicDataType::UInt32 => "UInt32",
+        AtomicDataType::UInt64 => "UInt64",
+        AtomicDataType::Float16 => "HalfFloat",
+        AtomicDataType::Float32 => "Float",
+        AtomicDataType::Float64 => "Double",
+    }
+}
+
+pub fn arrow_builder_ident(atomic: AtomicDataType) -> Ident {
+    format_ident!("{}Builder", arrow_class_prefix(atomic))
 }
 
 fn arrow_array_builder_type_and_declaration(
@@ -14,40 +38,15 @@ fn arrow_array_builder_type_and_declaration(
     declarations: &mut ForwardDecls,
 ) -> Ident {
     match typ {
-        Type::Unit => {
-            let ident = format_ident!("NullBuilder");
+        // The numeric builders are all `arrow::NumericBuilder<T>` aliases, the other two are
+        // classes of their own.
+        Type::Atomic(atomic @ (AtomicDataType::Null | AtomicDataType::Boolean)) => {
+            let ident = arrow_builder_ident(*atomic);
             declarations.insert("arrow", ForwardDecl::Class(ident.clone()));
             ident
         }
-
-        Type::Int8
-        | Type::Int16
-        | Type::Int32
-        | Type::Int64
-        | Type::UInt8
-        | Type::UInt16
-        | Type::UInt32
-        | Type::UInt64
-        | Type::Float16
-        | Type::Float32
-        | Type::Float64 => {
-            let klass = match typ {
-                Type::Int8 => "Int8",
-                Type::Int16 => "Int16",
-                Type::Int32 => "Int32",
-                Type::Int64 => "Int64",
-                Type::UInt8 => "UInt8",
-                Type::UInt16 => "UInt16",
-                Type::UInt32 => "UInt32",
-                Type::UInt64 => "UInt64",
-                Type::Float16 => "HalfFloat",
-                Type::Float32 => "Float",
-                Type::Float64 => "Double",
-                _ => {
-                    unreachable!();
-                }
-            };
-            let klass_type = format_ident!("{klass}Type");
+        Type::Atomic(atomic) => {
+            let klass_type = format_ident!("{}Type", arrow_class_prefix(*atomic));
 
             declarations.insert(
                 "arrow",
@@ -55,7 +54,7 @@ fn arrow_array_builder_type_and_declaration(
             );
             declarations.insert("arrow", ForwardDecl::Class(klass_type.clone()));
 
-            let ident = format_ident!("{klass}Builder");
+            let ident = arrow_builder_ident(*atomic);
             declarations.insert(
                 "arrow",
                 ForwardDecl::Alias {
@@ -70,22 +69,17 @@ fn arrow_array_builder_type_and_declaration(
             declarations.insert("arrow", ForwardDecl::Class(ident.clone()));
             ident
         }
-        Type::String => {
+        Type::Utf8 => {
             let ident = format_ident!("StringBuilder");
             declarations.insert("arrow", ForwardDecl::Class(ident.clone()));
             ident
         }
-        Type::Bool => {
-            let ident = format_ident!("BooleanBuilder");
-            declarations.insert("arrow", ForwardDecl::Class(ident.clone()));
-            ident
-        }
-        Type::Array { .. } => {
+        Type::FixedSizeList { .. } => {
             let ident = format_ident!("FixedSizeListBuilder");
             declarations.insert("arrow", ForwardDecl::Class(ident.clone()));
             ident
         }
-        Type::Vector { .. } => {
+        Type::List { .. } => {
             let ident = format_ident!("ListBuilder");
             declarations.insert("arrow", ForwardDecl::Class(ident.clone()));
             ident

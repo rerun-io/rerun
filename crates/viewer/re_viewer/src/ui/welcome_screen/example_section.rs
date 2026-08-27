@@ -203,7 +203,7 @@ impl Default for ExampleSection {
 impl ExampleSection {
     pub fn set_manifest_url(&mut self, egui_ctx: &egui::Context, url: String) {
         if self.manifest_url != url {
-            self.manifest_url = url.clone();
+            self.manifest_url.clone_from(&url);
             self.examples = Some(load_manifest(egui_ctx, url));
         }
     }

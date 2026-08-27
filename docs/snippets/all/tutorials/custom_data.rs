@@ -48,24 +48,39 @@ impl From<f32> for Confidence {
     }
 }
 
-impl rerun::Loggable for Confidence {
+impl rerun::ArrowDatatype for Confidence {
     #[inline]
     fn arrow_datatype() -> arrow::datatypes::DataType {
-        rerun::Float32::arrow_datatype()
+        <rerun::Float32 as rerun::ArrowDatatype>::arrow_datatype()
     }
+}
 
+// A `Component` needs `ToArrow` and `FromArrow`. The nullable variants, `ToArrowOpt` and
+// `FromArrowOpt`, are only worth implementing if this type is a nullable field of another one.
+
+impl rerun::ToArrow for Confidence {
     #[inline]
-    fn to_arrow_opt<'a>(
-        data: impl IntoIterator<
-            Item = Option<impl Into<std::borrow::Cow<'a, Self>>>,
-        >,
+    fn to_arrow<'a>(
+        data: impl IntoIterator<Item = impl Into<std::borrow::Cow<'a, Self>>>,
     ) -> re_sdk_types::SerializationResult<arrow::array::ArrayRef>
     where
         Self: 'a,
     {
-        rerun::Float32::to_arrow_opt(
-            data.into_iter().map(|opt| opt.map(Into::into).map(|c| c.0)),
+        <rerun::Float32 as rerun::ToArrow>::to_arrow(
+            data.into_iter().map(Into::into).map(|c| c.0),
         )
+    }
+}
+
+impl rerun::FromArrow for Confidence {
+    #[inline]
+    fn from_arrow(
+        data: &dyn arrow::array::Array,
+    ) -> re_sdk_types::DeserializationResult<Vec<Self>> {
+        Ok(<rerun::Float32 as rerun::FromArrow>::from_arrow(data)?
+            .into_iter()
+            .map(Confidence)
+            .collect())
     }
 }
 

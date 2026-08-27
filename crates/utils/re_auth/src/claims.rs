@@ -119,6 +119,8 @@ where
 
 #[cfg(test)]
 mod tests {
+    #![expect(clippy::unreadable_literal)]
+
     use super::*;
 
     #[test]

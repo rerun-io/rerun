@@ -234,6 +234,7 @@ fn log_msg_transport_to_app<I: ApplicationIdInjector + ?Sized>(
 ) -> Result<re_log_types::LogMsg, CodecError> {
     re_tracing::profile_function!();
 
+    use re_protos::common::v1alpha1::ext::StoreIdFromProtoError;
     use re_protos::log_msg::v1alpha1::log_msg::Msg;
     use re_protos::missing_field;
 
@@ -256,13 +257,16 @@ fn log_msg_transport_to_app<I: ApplicationIdInjector + ?Sized>(
                 .try_into()
             {
                 Ok(store_id) => store_id,
-                Err(err) => {
+                // A *missing* app id can be recovered from an earlier `SetStoreInfo`; a *present
+                // but invalid* one is a hard error.
+                Err(StoreIdFromProtoError::MissingApplicationId(err)) => {
                     let Some(store_id) = app_id_injector.recover_store_id(err.clone()) else {
                         return Err(err.into());
                     };
 
                     store_id
                 }
+                Err(err @ StoreIdFromProtoError::InvalidApplicationId(_)) => return Err(err.into()),
             };
 
             Ok(re_log_types::LogMsg::ArrowMsg(store_id, encoded))
@@ -283,13 +287,16 @@ fn log_msg_transport_to_app<I: ApplicationIdInjector + ?Sized>(
                 .try_into()
             {
                 Ok(store_id) => store_id,
-                Err(err) => {
+                // A *missing* app id can be recovered from an earlier `SetStoreInfo`; a *present
+                // but invalid* one is a hard error.
+                Err(StoreIdFromProtoError::MissingApplicationId(err)) => {
                     let Some(store_id) = app_id_injector.recover_store_id(err.clone()) else {
                         return Err(err.into());
                     };
 
                     store_id
                 }
+                Err(err @ StoreIdFromProtoError::InvalidApplicationId(_)) => return Err(err.into()),
             };
 
             Ok(re_log_types::LogMsg::BlueprintActivationCommand(
@@ -316,10 +323,16 @@ fn arrow_msg_transport_to_app(
         return Err(CodecError::UnsupportedEncoding);
     }
 
+    // NOTE: Don't use the prost accessor `arrow_msg.compression()` here: it silently maps
+    // unknown enum values (e.g. a new codec from a future writer) to the default, which would
+    // then fail with a confusing Arrow-IPC parse error further down the line.
+    let compression = re_protos::common::v1alpha1::Compression::try_from(arrow_msg.compression)
+        .map_err(re_protos::TypeConversionError::from)?;
+
     let batch = decode_arrow(
         &arrow_msg.payload,
         arrow_msg.uncompressed_size as usize,
-        arrow_msg.compression().into(),
+        compression.into(),
     )?;
 
     let chunk_id = re_sorbet::chunk_id_of_schema(batch.schema_ref())?.as_tuid();
@@ -490,4 +503,38 @@ fn decode_arrow(
         .next()
         .ok_or(CodecError::MissingRecordBatch)?
         .map_err(CodecError::ArrowDeserialization)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::CodecError;
+
+    fn arrow_msg_with_compression(compression: i32) -> re_protos::log_msg::v1alpha1::ArrowMsg {
+        re_protos::log_msg::v1alpha1::ArrowMsg {
+            store_id: None,
+            chunk_id: None,
+            compression,
+            uncompressed_size: 0,
+            encoding: re_protos::log_msg::v1alpha1::Encoding::ArrowIpc as i32,
+            payload: Default::default(),
+            is_static: None,
+        }
+    }
+
+    #[test]
+    fn arrow_msg_unknown_compression_errors() {
+        let arrow_msg = arrow_msg_with_compression(99);
+        let result = super::arrow_msg_transport_to_app(&arrow_msg);
+        assert!(matches!(result, Err(CodecError::TypeConversion(_))));
+    }
+
+    #[test]
+    fn arrow_msg_unspecified_compression_is_accepted() {
+        // `COMPRESSION_UNSPECIFIED` is documented to mean no compression, so it must not be
+        // rejected as an unknown enum value (the empty payload fails later, during Arrow-IPC
+        // decoding).
+        let arrow_msg = arrow_msg_with_compression(0);
+        let result = super::arrow_msg_transport_to_app(&arrow_msg);
+        assert!(!matches!(result, Err(CodecError::TypeConversion(_))));
+    }
 }

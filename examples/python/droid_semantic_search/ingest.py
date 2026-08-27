@@ -35,12 +35,8 @@ from rerun.catalog import CatalogClient
 ALL_CAMERAS = ("wrist", "ext1", "ext2")
 TIMELINE = "real_time"
 
-# DROID is H.264, GOP size 64 at ~15 fps (see the droid-loader). These knobs are only a
-# fallback for episodes registered with `--no-optimize` (no keyframe markers): the decoder
-# then seeks by a fixed window, so we use 2x the GOP to make sure each window holds a keyframe.
+# DROID uses H.264 video.
 DROID_CODEC = "h264"
-DROID_KEYFRAME_INTERVAL = 128
-DROID_FPS_ESTIMATE = 15.0
 
 
 def parse_args() -> argparse.Namespace:
@@ -214,11 +210,7 @@ def compute_embedding_table(
     fields = {
         field_name: Field(
             f"/camera/{role}:VideoStream:sample",
-            decode=VideoFrameDecoder(
-                codec=DROID_CODEC,
-                keyframe_interval=DROID_KEYFRAME_INTERVAL,
-                fps_estimate=DROID_FPS_ESTIMATE,
-            ),
+            decode=VideoFrameDecoder(codec=DROID_CODEC),
         ),
     }
     ds = RerunMapDataset(

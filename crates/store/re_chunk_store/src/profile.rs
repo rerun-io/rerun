@@ -50,7 +50,12 @@ pub struct OptimizationProfile {
     ///
     /// This separates "thick" columns (images, blobs) from "thin" columns (scalars,
     /// transforms). A value of `1.0` forces each archetype into its own chunk.
-    /// Components belonging to the same archetype are never split across chunks.
+    ///
+    /// Components belonging to the same archetype are never split across chunks:
+    /// an archetype's components only make sense together, e.g. an
+    /// `EncodedImage:blob` cannot be decoded without its `EncodedImage:media_type`.
+    /// Separating them would just force a reader to fetch both chunks anyway.
+    ///
     /// `None` disables the thick/thin split entirely.
     pub split_size_ratio: Option<f64>,
 }

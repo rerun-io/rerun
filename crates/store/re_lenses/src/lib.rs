@@ -2,9 +2,15 @@
 //! are applied to chunks that contain the target component.
 //!
 //! See [`Lens`] for more details and assumptions.
+//!
+//! ## Feature flags
+#![doc = document_features::document_features!()]
+//!
 
 pub mod op;
 mod runtime;
+#[cfg(feature = "semantic")]
+pub mod semantic;
 
 pub use self::runtime::default_runtime;
 

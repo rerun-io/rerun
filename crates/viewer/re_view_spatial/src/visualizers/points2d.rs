@@ -85,7 +85,7 @@ impl Points2DVisualizer {
                 .as_affine3a();
 
             let has_transparency = transparency_enabled && colors.iter().any(|c| !c.is_opaque());
-            let point_cloud_bounds = re_renderer::util::point_cloud_bounds(&positions);
+            let robust_bounds = re_renderer::RobustBounds::from_points(&positions);
 
             {
                 let point_batch = point_builder
@@ -97,7 +97,7 @@ impl Points2DVisualizer {
                     )
                     .enable_alpha_blending(has_transparency)
                     .world_from_obj(world_from_obj)
-                    .object_space_bounding_box(point_cloud_bounds.bbox)
+                    .object_space_bounding_box(robust_bounds.exact)
                     .outline_mask_ids(ent_context.highlight.overall)
                     .picking_object_id(re_renderer::PickingLayerObjectId(entity_path.hash64()));
 
@@ -107,6 +107,8 @@ impl Points2DVisualizer {
                 // Determine if there's any sub-ranges that need extra highlighting.
                 {
                     re_tracing::profile_scope!("marking additional highlight points");
+                    #[expect(clippy::iter_over_hash_type)]
+                    // Non-overlapping per-instance mask ranges.
                     for (highlighted_key, instance_mask_ids) in &ent_context.highlight.instances {
                         let highlighted_point_index = (highlighted_key.get()
                             < num_instances as u64)
@@ -114,8 +116,10 @@ impl Points2DVisualizer {
                         if let Some(highlighted_point_index) = highlighted_point_index {
                             point_range_builder = point_range_builder
                                 .push_additional_outline_mask_ids_for_range(
-                                    highlighted_point_index as u32
-                                        ..highlighted_point_index as u32 + 1,
+                                    re_span::Span::from_start_len(
+                                        highlighted_point_index as u32,
+                                        1,
+                                    ),
                                     *instance_mask_ids,
                                 );
                         }
@@ -123,10 +127,9 @@ impl Points2DVisualizer {
                 }
             }
 
-            view_data.add_bounding_box_and_region_of_interest(
+            view_data.add_bounds(
                 entity_path.hash(),
-                point_cloud_bounds.bbox,
-                point_cloud_bounds.region_of_interest,
+                robust_bounds,
                 world_from_obj,
                 SpaceKind::TwoD,
             );
@@ -144,7 +147,7 @@ impl Points2DVisualizer {
                     entity_path,
                     visualizer_instruction: ent_context.visualizer_instruction,
                     num_instances,
-                    overall_position: point_cloud_bounds.bbox.center().truncate(),
+                    overall_position: robust_bounds.exact.center().truncate(),
                     instance_positions: data.positions.iter().map(|p| glam::vec2(p.x(), p.y())),
                     labels: &data.labels,
                     colors: &colors,
@@ -314,5 +317,268 @@ impl VisualizerSystem for Points2DVisualizer {
                 line_builder.into_draw_data()?.into(),
             ])
             .with_visualizer_data(view_data))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use re_log_types::TimeInt;
+    use re_sdk_types::archetypes::{AnnotationContext, Points2D};
+    use re_sdk_types::blueprint::{
+        archetypes::VisibleTimeRanges, components as blueprint_components,
+    };
+    use re_sdk_types::components::{ClassId, Color};
+    use re_sdk_types::datatypes::{self, TimeRange, TimeRangeBoundary, VisibleTimeRange};
+    use re_test_context::TestContext;
+    use re_test_viewport::TestContextExt as _;
+    use re_viewer_context::{ViewClass as _, ViewId};
+    use re_viewport_blueprint::{ViewBlueprint, ViewProperty};
+
+    use crate::visualizers::{UiLabel, UiLabelStyle, collect_ui_labels};
+
+    const ANN: Color = Color(datatypes::Rgba32::from_rgb(30, 60, 90));
+    const LATE_ANN: Color = Color(datatypes::Rgba32::from_rgb(90, 60, 30));
+    const RED: Color = Color(datatypes::Rgba32::from_rgb(255, 0, 0));
+    const GREEN: Color = Color(datatypes::Rgba32::from_rgb(0, 255, 0));
+    const BLUE: Color = Color(datatypes::Rgba32::from_rgb(0, 0, 255));
+
+    fn setup_entities(ctx: &mut TestContext) {
+        let timeline = re_log_types::Timeline::new_sequence("frame");
+
+        ctx.log_entity("/", |builder| {
+            builder.with_archetype_auto_row(
+                [(timeline, 1)],
+                &AnnotationContext::new([(3, "three", ANN.0)]),
+            )
+        });
+        // Add another annotation context at a later time to test that the latest-at resolution works.
+        ctx.log_entity("/", |builder| {
+            builder.with_archetype_auto_row(
+                [(timeline, 5)],
+                &AnnotationContext::new([(3, "three-updated", LATE_ANN.0)]),
+            )
+        });
+
+        fn positions(y: f32) -> [(f32, f32); 3] {
+            [(10.0, y), (20.0, y), (30.0, y)]
+        }
+
+        // One concrete Points2D entity, queried both latest-at and as a time range.
+        // Labels are enabled so the resolved color/label can be inspected without image snapshots.
+        //
+        // `omitted` means the component should carry its previous value forward.
+        // `[]` means an explicit empty component batch, which should reset the previous value.
+        //
+        // frame:      1             2                 3          4                  5
+        // colors:     R/G/B         omitted           []         omitted            blue
+        // class IDs:  omitted       3                 omitted    []                 3
+        // expected: manual RGB; annotation label and RGB; annotation 3; manual label only; annotation label and blue
+        ctx.log_entity("points", |builder| {
+            builder.with_archetype_auto_row(
+                [(timeline, 1)],
+                &Points2D::new(positions(10.0))
+                    .with_show_labels(true)
+                    .with_colors([RED, GREEN, BLUE])
+                    .with_labels(["manual-red", "manual-green", "manual-blue"]),
+            )
+        });
+        ctx.log_entity("points", |builder| {
+            builder.with_archetype_auto_row(
+                [(timeline, 2)],
+                &Points2D::new(positions(20.0))
+                    .with_class_ids([3])
+                    .with_labels([] as [&str; 0]),
+            )
+        });
+        ctx.log_entity("points", |builder| {
+            builder.with_archetype_auto_row(
+                [(timeline, 3)],
+                &Points2D::new(positions(30.0))
+                    .with_colors([] as [Color; 0])
+                    .with_labels([] as [&str; 0]),
+            )
+        });
+        ctx.log_entity("points", |builder| {
+            builder.with_archetype_auto_row(
+                [(timeline, 4)],
+                &Points2D::new(positions(40.0))
+                    .with_class_ids([] as [ClassId; 0])
+                    .with_labels(["manual-label-after-class-reset"]),
+            )
+        });
+        ctx.log_entity("points", |builder| {
+            builder.with_archetype_auto_row(
+                [(timeline, 5)],
+                &Points2D::new(positions(50.0))
+                    .with_colors([BLUE])
+                    .with_class_ids([3])
+                    .with_labels([] as [&str; 0]),
+            )
+        });
+
+        ctx.set_active_timeline(*timeline.name());
+    }
+
+    fn collect_labels(test_context: &TestContext, view_id: ViewId) -> Vec<UiLabel> {
+        let labels = std::cell::RefCell::new(Vec::new());
+        let mut harness = test_context
+            .setup_kittest_for_rendering_3d(egui::vec2(1.0, 1.0))
+            .build_ui(|ui| {
+                test_context.handle_system_commands(ui.ctx());
+                test_context.run_ui(ui, |ctx, _ui| {
+                    let view = ViewBlueprint::try_from_db(
+                        view_id,
+                        ctx.store_context.blueprint,
+                        ctx.blueprint_query,
+                    )
+                    .expect("view should exist");
+
+                    let registry = ctx.view_class_registry();
+                    let class = registry.get_class_or_log_error(view.class_identifier());
+                    let once_per_frame = registry.run_once_per_frame_context_systems(
+                        ctx,
+                        std::iter::once(view.class_identifier()),
+                    );
+                    let mut view_states = test_context.view_states.lock();
+                    let view_state = view_states.get_mut_or_create(ctx.store_id(), view_id, class);
+                    let (_, output) = re_viewport::execute_systems_for_view(
+                        ctx,
+                        &view,
+                        view_state,
+                        &once_per_frame,
+                    );
+
+                    *labels.borrow_mut() = collect_ui_labels(&output);
+                });
+            });
+        harness.run();
+        drop(harness);
+
+        labels.into_inner()
+    }
+
+    fn assert_labels(labels: &[UiLabel], expected: &[(&str, Color)]) {
+        assert_eq!(expected.len(), labels.len());
+        for (label, (expected_text, expected_color)) in std::iter::zip(labels.iter(), expected) {
+            assert_eq!(*expected_text, label.text);
+            assert!(label.style == UiLabelStyle::Color((*expected_color).into()));
+        }
+    }
+
+    #[test]
+    fn color_resolution_mixes_manual_colors_and_annotation_context_latest_at() {
+        let mut test_context = TestContext::new_with_view_class::<crate::SpatialView2D>();
+        setup_entities(&mut test_context);
+
+        let view_id = test_context.setup_viewport_blueprint(|_ctx, blueprint| {
+            blueprint.add_view_at_root(ViewBlueprint::new_with_root_wildcard(
+                crate::SpatialView2D::identifier(),
+            ))
+        });
+
+        test_context.set_time(1);
+        assert_labels(
+            &collect_labels(&test_context, view_id),
+            &[
+                ("manual-red", RED),
+                ("manual-green", GREEN),
+                ("manual-blue", BLUE),
+            ],
+        );
+
+        test_context.set_time(2);
+        assert_labels(
+            &collect_labels(&test_context, view_id),
+            &[("three", RED), ("three", GREEN), ("three", BLUE)],
+        );
+
+        test_context.set_time(3);
+        assert_labels(
+            &collect_labels(&test_context, view_id),
+            &[("three", ANN); 3],
+        );
+
+        test_context.set_time(4);
+        let no_class_id = collect_labels(&test_context, view_id);
+        assert_eq!(1, no_class_id.len());
+        assert_eq!("manual-label-after-class-reset", no_class_id[0].text);
+        assert!(no_class_id[0].style != UiLabelStyle::Color(ANN.into()));
+
+        test_context.set_time(5);
+        assert_labels(
+            &collect_labels(&test_context, view_id),
+            &[("three-updated", BLUE); 3],
+        );
+    }
+
+    #[test]
+    fn color_resolution_mixes_manual_colors_and_annotation_context_range() {
+        let mut test_context = TestContext::new_with_view_class::<crate::SpatialView2D>();
+        setup_entities(&mut test_context);
+
+        let view_id = test_context.setup_viewport_blueprint(|ctx, blueprint| {
+            let view_id = blueprint.add_view_at_root(ViewBlueprint::new_with_root_wildcard(
+                crate::SpatialView2D::identifier(),
+            ));
+
+            let property = ViewProperty::from_archetype_for_view::<VisibleTimeRanges>(ctx, view_id);
+            property.save_blueprint_component(
+                ctx,
+                &VisibleTimeRanges::descriptor_ranges(),
+                &blueprint_components::VisibleTimeRange(VisibleTimeRange {
+                    timeline: "frame".into(),
+                    range: TimeRange {
+                        start: TimeRangeBoundary::Absolute(
+                            TimeInt::from_sequence(1.try_into().unwrap()).into(),
+                        ),
+                        end: TimeRangeBoundary::Absolute(
+                            TimeInt::from_sequence(5.try_into().unwrap()).into(),
+                        ),
+                    },
+                }),
+            );
+
+            view_id
+        });
+
+        // Range covers the end-to-end range-zip path: optional colors and class IDs must carry
+        // forward when omitted and reset when logged as empty, independently of one another.
+        // The annotation context is resolved latest-at the cursor and applies to the entire range.
+        test_context.set_time(3);
+        let range = collect_labels(&test_context, view_id);
+        assert_eq!(13, range.len());
+
+        let expected_before_class_reset = [
+            // 1
+            ("manual-red", RED),
+            ("manual-green", GREEN),
+            ("manual-blue", BLUE),
+            // 2
+            ("three", RED),
+            ("three", GREEN),
+            ("three", BLUE),
+            // 3
+            ("three", ANN),
+            ("three", ANN),
+            ("three", ANN),
+        ];
+        assert_labels(&range[..9], &expected_before_class_reset);
+
+        // Don't hard-code the fallback color after the class-id reset: the important behavior is
+        // that the annotation label/color no longer applies, not which fallback color is chosen.
+        assert_eq!("manual-label-after-class-reset", range[9].text);
+        assert!(range[9].style != UiLabelStyle::Color(ANN.into()));
+
+        assert_labels(&range[10..], &[("three", BLUE); 3]);
+
+        test_context.set_time(5);
+        let range_after_context_update = collect_labels(&test_context, view_id);
+        assert_eq!(13, range_after_context_update.len());
+        for index in [3, 4, 5, 6, 7, 8, 10, 11, 12] {
+            assert_eq!("three-updated", range_after_context_update[index].text);
+        }
+        for label in &range_after_context_update[6..9] {
+            assert!(label.style == UiLabelStyle::Color(LATE_ANN.into()));
+        }
     }
 }

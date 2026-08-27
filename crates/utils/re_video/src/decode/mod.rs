@@ -96,7 +96,7 @@ pub use ffmpeg_cli::FFmpegCliDecoder;
 #[cfg(with_ffmpeg)]
 pub use ffmpeg_cli::{
     Error as FFmpegError, FFmpegVersion, FFmpegVersionParseError, TranscodedMp4,
-    ffmpeg_download_url, transcode_mp4_drop_b_frames,
+    ffmpeg_download_url, transcode_mp4,
 };
 
 #[cfg(target_arch = "wasm32")]
@@ -109,7 +109,10 @@ pub use webcodecs::WebVideoFrame;
 
 mod rvl_decoder;
 
-use crate::{SampleIndex, Time, VideoDataDescription, player::VideoPlaybackIssueSeverity};
+use crate::{
+    FrameNumber, SampleIndex, Time, VideoDataDescription, VideoSource,
+    player::VideoPlaybackIssueSeverity,
+};
 
 #[derive(thiserror::Error, Debug, Clone, re_byte_size::SizeBytes)]
 pub enum DecodeError {
@@ -276,86 +279,87 @@ pub fn new_decoder(
         video.human_readable_codec_string()
     );
 
-    #[cfg(target_arch = "wasm32")]
-    {
-        return match &video.codec {
-            crate::VideoCodec::ImageSequence(codec) => {
-                if codec.as_deref() == Some("application/rvl") {
-                    Ok(Box::new(sync_decoder_wrapper::SyncDecoderWrapper::new(
-                        "rvl decoder".to_owned(),
-                        Box::new(rvl_decoder::RvlDecoder),
-                        output_sender,
-                    )))
-                } else if let Some(decoder) =
-                    web_image_decoder::WebImageDecoder::try_new(video, output_sender.clone())
-                {
-                    Ok(Box::new(decoder))
-                } else {
-                    Err(DecodeError::WaitingForCodecDetails)
+    cfg_select! {
+        target_arch = "wasm32" => {
+            match &video.codec {
+                crate::VideoCodec::ImageSequence(codec) => {
+                    if codec.as_deref() == Some("application/rvl") {
+                        Ok(Box::new(sync_decoder_wrapper::SyncDecoderWrapper::new(
+                            "rvl decoder".to_owned(),
+                            Box::new(rvl_decoder::RvlDecoder),
+                            output_sender,
+                        )))
+                    } else if let Some(decoder) =
+                        web_image_decoder::WebImageDecoder::try_new(video, output_sender.clone())
+                    {
+                        Ok(Box::new(decoder))
+                    } else {
+                        Err(DecodeError::WaitingForCodecDetails)
+                    }
                 }
+                _ => Ok(Box::new(webcodecs::WebVideoDecoder::new(
+                    video,
+                    decode_settings.hw_acceleration,
+                    output_sender,
+                )?)),
             }
-            _ => Ok(Box::new(webcodecs::WebVideoDecoder::new(
-                video,
-                decode_settings.hw_acceleration,
-                output_sender,
-            )?)),
-        };
-    }
+        }
+        _ => {
+            match &video.codec {
+                #[cfg(feature = "av1")]
+                crate::VideoCodec::AV1 => {
+                    #[cfg(linux_arm64)]
+                    {
+                        return Err(DecodeError::NoDav1dOnLinuxArm64);
+                    }
 
-    #[cfg(not(target_arch = "wasm32"))]
-    match &video.codec {
-        #[cfg(feature = "av1")]
-        crate::VideoCodec::AV1 => {
-            #[cfg(linux_arm64)]
-            {
-                return Err(DecodeError::NoDav1dOnLinuxArm64);
-            }
+                    #[cfg(with_dav1d)]
+                    {
+                        re_log::trace!("Decoding AV1…");
+                        return Ok(Box::new(sync_decoder_wrapper::SyncDecoderWrapper::new(
+                            debug_name.to_owned(),
+                            Box::new(av1::SyncDav1dDecoder::new(debug_name.to_owned())?),
+                            output_sender,
+                        )));
+                    }
+                }
 
-            #[cfg(with_dav1d)]
-            {
-                re_log::trace!("Decoding AV1…");
-                return Ok(Box::new(sync_decoder_wrapper::SyncDecoderWrapper::new(
+                #[cfg(with_ffmpeg)]
+                crate::VideoCodec::H264
+                | crate::VideoCodec::H265
+                | crate::VideoCodec::VP8
+                | crate::VideoCodec::VP9 => Ok(Box::new(FFmpegCliDecoder::new(
                     debug_name.to_owned(),
-                    Box::new(av1::SyncDav1dDecoder::new(debug_name.to_owned())?),
+                    video.encoding_details.as_ref(),
                     output_sender,
-                )));
+                    decode_settings.ffmpeg_path.clone(),
+                    &video.codec,
+                )?)),
+
+                crate::VideoCodec::ImageSequence(codec) => {
+                    if codec.as_deref() == Some("application/rvl") {
+                        Ok(Box::new(sync_decoder_wrapper::SyncDecoderWrapper::new(
+                            "rvl decoder".to_owned(),
+                            Box::new(rvl_decoder::RvlDecoder),
+                            output_sender,
+                        )))
+                    } else if let Some(decoder) = image_decoder::SyncImageDecoder::try_new(video) {
+                        Ok(Box::new(sync_decoder_wrapper::SyncDecoderWrapper::new(
+                            format!("image decoder ({})", decoder.mime_type()),
+                            Box::new(decoder),
+                            output_sender,
+                        )))
+                    } else {
+                        Err(DecodeError::WaitingForCodecDetails)
+                    }
+                }
+
+                #[cfg(not(all(feature = "av1", with_ffmpeg)))]
+                _ => Err(DecodeError::UnsupportedCodec(
+                    video.human_readable_codec_string(),
+                )),
             }
         }
-
-        #[cfg(with_ffmpeg)]
-        crate::VideoCodec::H264
-        | crate::VideoCodec::H265
-        | crate::VideoCodec::VP8
-        | crate::VideoCodec::VP9 => Ok(Box::new(FFmpegCliDecoder::new(
-            debug_name.to_owned(),
-            video.encoding_details.as_ref(),
-            output_sender,
-            decode_settings.ffmpeg_path.clone(),
-            &video.codec,
-        )?)),
-
-        crate::VideoCodec::ImageSequence(codec) => {
-            if codec.as_deref() == Some("application/rvl") {
-                Ok(Box::new(sync_decoder_wrapper::SyncDecoderWrapper::new(
-                    "rvl decoder".to_owned(),
-                    Box::new(rvl_decoder::RvlDecoder),
-                    output_sender,
-                )))
-            } else if let Some(decoder) = image_decoder::SyncImageDecoder::try_new(video) {
-                Ok(Box::new(sync_decoder_wrapper::SyncDecoderWrapper::new(
-                    format!("image decoder ({})", decoder.mime_type()),
-                    Box::new(decoder),
-                    output_sender,
-                )))
-            } else {
-                Err(DecodeError::WaitingForCodecDetails)
-            }
-        }
-
-        #[cfg(not(all(feature = "av1", with_ffmpeg)))]
-        _ => Err(DecodeError::UnsupportedCodec(
-            video.human_readable_codec_string(),
-        )),
     }
 }
 
@@ -378,7 +382,7 @@ pub struct Chunk {
     ///
     /// This is the order of which the samples appear in the container,
     /// which is usually ordered by [`Self::decode_timestamp`].
-    pub sample_idx: usize,
+    pub sample_idx: SampleIndex,
 
     /// Which frame does this chunk belong to?
     ///
@@ -389,7 +393,13 @@ pub struct Chunk {
     ///
     /// Do *not* use this to index into the video data description!
     /// Use [`Self::sample_idx`] instead.
-    pub frame_nr: u32,
+    pub frame_nr: FrameNumber,
+
+    /// Where the sample this chunk came from has its bytes.
+    ///
+    /// This identifies the sample no matter where it ends up in the video data description,
+    /// unlike [`Self::sample_idx`] which shifts whenever samples are inserted or removed before it.
+    pub source: VideoSource,
 
     /// Decode timestamp of this sample.
     /// Chunks are expected to be submitted in the order of decode timestamp.
@@ -432,42 +442,44 @@ impl DecodedFrameContent {
     }
 }
 
-/// Data for a decoded frame on native targets.
-#[cfg(not(target_arch = "wasm32"))]
-pub type FrameContent = DecodedFrameContent;
+cfg_select! {
+    target_arch = "wasm32" => {
+        /// Data for a decoded frame on the web.
+        ///
+        /// Frames either come from the browser's `WebCodecs` API (color/luma video) or
+        /// from a CPU-side decoder (e.g. RVL depth). The two are kept in one type so
+        /// downstream code can treat them uniformly.
+        #[derive(re_byte_size::SizeBytes)]
+        pub enum FrameContent {
+            /// Browser-owned frame produced by WebCodecs/browser image decoding.
+            ///
+            /// Prefer that whenever possible.
+            WebVideoFrame(webcodecs::WebVideoFrame),
 
-/// Data for a decoded frame on the web.
-///
-/// Frames either come from the browser's `WebCodecs` API (color/luma video) or
-/// from a CPU-side decoder (e.g. RVL depth). The two are kept in one type so
-/// downstream code can treat them uniformly.
-#[cfg(target_arch = "wasm32")]
-#[derive(re_byte_size::SizeBytes)]
-pub enum FrameContent {
-    /// Browser-owned frame produced by WebCodecs/browser image decoding.
-    ///
-    /// Prefer that whenever possible.
-    WebVideoFrame(webcodecs::WebVideoFrame),
+            /// CPU-side decoded data, used when browser decoding would lose information,
+            /// for instance when decoding 16bit images (for which as of writing there's no way to get out the raw data)
+            Decoded(DecodedFrameContent),
+        }
 
-    /// CPU-side decoded data, used when browser decoding would lose information,
-    /// for instance when decoding 16bit images (for which as of writing there's no way to get out the raw data)
-    Decoded(DecodedFrameContent),
-}
+        impl FrameContent {
+            pub fn width(&self) -> u32 {
+                match self {
+                    Self::WebVideoFrame(frame) => frame.display_width(),
+                    Self::Decoded(frame) => frame.width(),
+                }
+            }
 
-#[cfg(target_arch = "wasm32")]
-impl FrameContent {
-    pub fn width(&self) -> u32 {
-        match self {
-            Self::WebVideoFrame(frame) => frame.display_width(),
-            Self::Decoded(frame) => frame.width(),
+            pub fn height(&self) -> u32 {
+                match self {
+                    Self::WebVideoFrame(frame) => frame.display_height(),
+                    Self::Decoded(frame) => frame.height(),
+                }
+            }
         }
     }
-
-    pub fn height(&self) -> u32 {
-        match self {
-            Self::WebVideoFrame(frame) => frame.display_height(),
-            Self::Decoded(frame) => frame.height(),
-        }
+    _ => {
+        /// Data for a decoded frame on native targets.
+        pub type FrameContent = DecodedFrameContent;
     }
 }
 
@@ -482,18 +494,6 @@ pub struct FrameInfo {
     /// None = unknown.
     pub is_sync: Option<bool>,
 
-    /// Which sample in the video is this from?
-    ///
-    /// We always assume one sample leads one frame
-    /// (but may provide arbitrary additional information which may be needed for other frames in the GOP).
-    ///
-    /// This is the order of which the samples appear in the container,
-    /// which is ordered by [`Self::latest_decode_timestamp`].
-    /// I.e. this is NOT ordered by [`Self::presentation_timestamp`].
-    ///
-    /// None = unknown.
-    pub sample_idx: Option<SampleIndex>,
-
     /// Which frame is this?
     ///
     /// This is on the assumption that each sample produces a single frame,
@@ -502,7 +502,16 @@ pub struct FrameInfo {
     /// This is the index of frames ordered by [`Self::presentation_timestamp`].
     ///
     /// None = unknown.
-    pub frame_nr: Option<u32>,
+    pub frame_nr: Option<FrameNumber>,
+
+    /// Where the sample this frame was decoded from has its bytes.
+    ///
+    /// This identifies the sample no matter where it ends up in the video data description,
+    /// unlike a sample index which shifts whenever samples are inserted or removed before it.
+    /// Use [`VideoDataDescription::sample_index_of_source`] to get back to a sample index.
+    ///
+    /// None = unknown.
+    pub source: Option<VideoSource>,
 
     /// Time at which this frame appears in the frame stream, in time units.
     ///

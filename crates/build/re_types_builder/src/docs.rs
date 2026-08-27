@@ -1,7 +1,7 @@
 use crate::codegen::Target;
 use crate::{Objects, Reporter};
 
-/// A high-level representation of the contents of a flatbuffer docstring.
+/// A high-level representation of the contents of a docstring.
 #[derive(Debug, Clone, Default)]
 pub struct Docs {
     /// All documentation lines, including the leading tag, if any.
@@ -15,20 +15,6 @@ pub struct Docs {
 }
 
 impl Docs {
-    pub fn from_raw_docs(
-        reporter: &Reporter,
-        virtpath: &str,
-        fqname: &str,
-        docs: Option<flatbuffers::Vector<'_, flatbuffers::ForwardsUOffset<&'_ str>>>,
-    ) -> Self {
-        Self::from_lines(
-            reporter,
-            virtpath,
-            fqname,
-            docs.into_iter().flat_map(|doc| doc.into_iter()),
-        )
-    }
-
     pub fn from_lines<'a>(
         reporter: &Reporter,
         virtpath: &str,
@@ -46,6 +32,21 @@ impl Docs {
         }
 
         Self { lines }
+    }
+
+    /// The docstring as it was written: the text following each `///`, leading space included.
+    ///
+    /// The inverse of [`Self::from_lines`].
+    pub fn to_lines(&self) -> Vec<String> {
+        self.lines
+            .iter()
+            .map(|(tag, comment)| match (tag.as_str(), comment.as_str()) {
+                ("", "") => String::new(),
+                ("", comment) => format!(" {comment}"),
+                (tag, "") => format!(" \\{tag}"),
+                (tag, comment) => format!(" \\{tag} {comment}"),
+            })
+            .collect()
     }
 
     /// Get the first line of the documentation untagged.
@@ -82,7 +83,7 @@ impl Docs {
     ///
     /// For instance, pass [`Target::Python`] to get all lines that are untagged or starts with `"\py"`.
     ///
-    /// The tagged lines (`\py`) are left as is, but untagged lines will have Rerun doclinks translated to the target language.
+    /// Rerun doclinks are translated to the target language in both tagged and untagged lines.
     pub(super) fn lines_for(
         &self,
         reporter: &Reporter,
@@ -101,12 +102,8 @@ impl Docs {
         );
 
         remove_extra_newlines(self.lines.iter().filter_map(|(tag, line)| {
-            if tag.is_empty() {
+            if tag.is_empty() || tag == target_tag {
                 Some(translate_doc_line(reporter, objects, line, target))
-            } else if tag == target_tag {
-                // We don't expect doclinks in tagged lines, because tagged lines are usually
-                // language-specific, and thus should have the correct format already.
-                Some(line.to_owned())
             } else {
                 None
             }
@@ -180,7 +177,7 @@ fn find_and_recommend_doclinks(
                 && content.chars().all(|c| c.is_ascii_alphanumeric())
                 && content.chars().next().unwrap().is_ascii_uppercase()
 
-                // TODO(emilk): support references to things outside the default `rerun.scope`.
+                // TODO(emilk): Infer the scope before recommending doclinks to types outside the default `rerun` scope.
                 && !matches!(content, "ViewContents" | "VisibleTimeRanges" | "QueryExpression")
 
                 // In some blueprint code we refer to stuff in Rerun.
@@ -190,7 +187,7 @@ fn find_and_recommend_doclinks(
                 && !matches!(content, "OpenStreetMap");
 
             if looks_like_type_name {
-                reporter.warn(virtpath, fqname, format!("`{content}` can be written as a doclink, e.g. [archetypes.{content}] in comment: /// {full_comment}"));
+                reporter.warn(virtpath, fqname, format!("`{content}` can be written as a doclink, e.g. [`rerun::archetypes::{content}`] in comment: /// {full_comment}"));
             }
             comment = &comment[end + 1..];
         } else {
@@ -201,12 +198,12 @@ fn find_and_recommend_doclinks(
 
 use doclink_translation::translate_doc_line;
 
-/// We support doclinks in our docstrings.
+/// We support rustdoc links to Rerun types in our docstrings.
 ///
-/// They need to follow this format:
-/// ```fbs
-/// /// See also [archetype.Image].
-/// table Tensor { … }
+/// They should use fully-qualified paths:
+/// ```rust,ignore
+/// /// See also [`rerun::archetypes::Image`].
+/// struct Tensor;
 /// ```
 ///
 /// This module is all about translating these doclinks to the different [`Target`]s.
@@ -214,9 +211,9 @@ use doclink_translation::translate_doc_line;
 /// The code is not very efficient, but it is simple and works.
 mod doclink_translation {
     use super::Target;
-    use crate::{ObjectKind, Objects, Reporter};
+    use crate::{Objects, Reporter};
 
-    /// Convert Rerun-style doclinks to the target language.
+    /// Convert links to Rerun types to the target language.
     pub fn translate_doc_line(
         reporter: &Reporter,
         objects: &Objects,
@@ -284,11 +281,15 @@ mod doclink_translation {
         try_translate_doclink(objects, doclink_tokens, target).unwrap_or_else(|err| {
             let original_doclink: String = doclink_tokens.join("");
 
-            // The worlds simplest heuristic, but at least it doesn't warn about things like [x, y, z, w].
-            let looks_like_rerun_doclink =
-                !original_doclink.contains(' ') && original_doclink.len() > 6;
-
-            if looks_like_rerun_doclink {
+            if normalized_object_path(doclink_tokens).is_ok_and(|object_path| {
+                objects.values().any(|object| {
+                    object.fqname.rsplit_once('.').is_some_and(|(package, _)| {
+                        object_path
+                            .strip_prefix(package)
+                            .is_some_and(|suffix| suffix.starts_with('.'))
+                    })
+                })
+            }) {
                 reporter.warn_no_context(format!(
                     "Looks like a Rerun doclink, but fails to parse: {original_doclink} - {err}"
                 ));
@@ -298,87 +299,47 @@ mod doclink_translation {
         })
     }
 
+    fn normalized_object_path(doclink_tokens: &[&str]) -> Result<String, String> {
+        let original_doclink = doclink_tokens.join("");
+        let object_path = original_doclink
+            .strip_prefix('[')
+            .and_then(|link| link.strip_suffix(']'))
+            .ok_or("Expected a rustdoc link")?;
+        let object_path = object_path
+            .strip_prefix('`')
+            .and_then(|link| link.strip_suffix('`'))
+            .unwrap_or(object_path);
+        let object_path = object_path.strip_prefix("crate::").unwrap_or(object_path);
+        let object_path = object_path.strip_prefix("rerun::").unwrap_or(object_path);
+        Ok(format!("rerun.{}", object_path.replace("::", ".")))
+    }
+
     fn try_translate_doclink(
         objects: &Objects,
         doclink_tokens: &[&str],
         target: Target,
     ) -> Result<String, String> {
-        let has_type_or_enum = doclink_tokens.iter().filter(|t| t == &&".").count() == 2;
-
-        let mut tokens = doclink_tokens.iter();
-        if tokens.next() != Some(&"[") {
-            return Err("Missing opening bracket".to_owned());
-        }
-        let kind = *tokens.next().ok_or("Missing kind")?;
-        if kind == "`" {
-            return Err("Do not use backticks inside doclinks".to_owned());
-        }
-        if tokens.next() != Some(&".") {
-            return Err("Missing dot".to_owned());
-        }
-        let type_name = *tokens.next().ok_or("Missing type name")?;
-
-        let field_or_enum_name = if has_type_or_enum {
-            if tokens.next() != Some(&".") {
-                return Err("Missing dot".to_owned());
-            }
-            tokens.next()
+        let object_fqname = normalized_object_path(doclink_tokens)?;
+        let (object, field_or_enum_name) = if let Some(object) = objects.get(&object_fqname) {
+            (object, None)
+        } else if let Some((object_fqname, field_or_enum_name)) = object_fqname.rsplit_once('.')
+            && let Some(object) = objects.get(object_fqname)
+        {
+            (object, Some(field_or_enum_name))
         } else {
-            None
+            return Err("No object found for doclink".to_owned());
         };
 
-        if tokens.next() != Some(&"]") {
-            return Err("Missing closing bracket".to_owned());
-        }
-        if tokens.next().is_some() {
-            return Err("Trailing tokens".to_owned());
-        }
+        let kind = object.kind.plural_snake_case();
+        let type_name = object.name.as_str();
+        let scope = object.scope().unwrap_or_default();
+        let is_unreleased = object.is_attr_set(crate::DocsAttr::Unreleased);
 
-        // Validate kind:
-        if ObjectKind::ALL
-            .iter()
-            .all(|object_kind| object_kind.plural_snake_case() != kind)
-        {
+        if let Some(deprecation_summary) = object.deprecation_summary() {
             return Err(format!(
-                "Invalid kind {kind:?}. Valid are: {}",
-                ObjectKind::ALL
-                    .map(|object_kind| object_kind.plural_snake_case())
-                    .join(", ")
+                "Found doclink to deprecated object '{}': {deprecation_summary}",
+                object.fqname,
             ));
-        }
-
-        let is_unreleased;
-        let scope;
-        {
-            // Find the target object:
-            let mut candidates = vec![];
-            for obj in objects.values() {
-                if obj.kind.plural_snake_case() == kind && obj.name == type_name {
-                    candidates.push(obj);
-                }
-            }
-
-            let Some(object) = candidates.first() else {
-                return Err("No object found for doclink".to_owned());
-            };
-
-            if candidates.len() > 2 {
-                use itertools::Itertools as _;
-                return Err(format!(
-                    "Multiple objects found for doclink: {}",
-                    candidates.iter().map(|obj| &obj.fqname).format(", ")
-                ));
-            }
-
-            scope = object.scope().unwrap_or_default();
-            is_unreleased = object.is_attr_set(crate::ATTR_DOCS_UNRELEASED);
-
-            if let Some(deprecation_summary) = object.deprecation_summary() {
-                return Err(format!(
-                    "Found doclink to deprecated object '{}': {deprecation_summary}",
-                    object.fqname,
-                ));
-            }
         }
 
         Ok(match target {
@@ -432,7 +393,7 @@ mod doclink_translation {
                 // For instance, https://rerun.io/docs/reference/types/views/spatial2d_view
                 // TODO(emilk): relative links would be nicer for the local markdown files
                 let type_name_snake_case = re_case::to_snake_case(type_name);
-                let query = if is_unreleased {
+                let query = if is_unreleased || object.kind.has_unpublished_docs() {
                     "?speculative-link" // or our link checker will complain
                 } else {
                     ""
@@ -461,7 +422,7 @@ mod doclink_translation {
                 if 0 < index {
                     tokens.push(&input[..index]);
                 }
-                tokens.push(&input[index..index + 1]);
+                tokens.push(&input[index..=index]);
                 input = &input[index + 1..];
             } else {
                 tokens.push(input);
@@ -482,11 +443,11 @@ mod tests {
     fn test_objects() -> Objects {
         Objects {
             objects: std::iter::once((
-                "rerun.views.Spatial2DView".to_owned(),
+                "rerun.blueprint.views.Spatial2DView".to_owned(),
                 Object {
                     virtpath: "path".to_owned(),
                     filepath: "path".into(),
-                    fqname: "rerun.views.Spatial2DView".to_owned(),
+                    fqname: "rerun.blueprint.views.Spatial2DView".to_owned(),
                     pkg_name: "test".to_owned(),
                     name: "Spatial2DView".to_owned(),
                     docs: Docs::default(),
@@ -495,7 +456,6 @@ mod tests {
                     state: State::Stable,
                     fields: Vec::new(),
                     class: crate::ObjectClass::Struct,
-                    datatype: None,
                 },
             ))
             .collect(),
@@ -506,7 +466,7 @@ mod tests {
     fn test_tokenize() {
         assert_eq!(tokenize("This is a comment"), vec!["This is a comment"]);
         assert_eq!(
-            tokenize("A vector `[1, 2, 3]` and a doclink [archetype.Image]."),
+            tokenize("A vector `[1, 2, 3]` and a doclink [`rerun::archetypes::Image`]."),
             vec![
                 "A vector ",
                 "`",
@@ -516,9 +476,9 @@ mod tests {
                 "`",
                 " and a doclink ",
                 "[",
-                "archetype",
-                ".",
-                "Image",
+                "`",
+                "rerun::archetypes::Image",
+                "`",
                 "]",
                 "."
             ]
@@ -530,8 +490,7 @@ mod tests {
         let objects = test_objects();
         let (_report, reporter) = crate::report::init();
 
-        let input =
-            "A vector `[1, 2, 3]` and a doclink [views.Spatial2DView] and a [url](www.rerun.io).";
+        let input = "A vector `[1, 2, 3]` and a doclink [`rerun::blueprint::views::Spatial2DView`] and a [url](www.rerun.io).";
 
         assert_eq!(
             translate_doc_line(&reporter, &objects, input, Target::Cpp),
@@ -555,11 +514,47 @@ mod tests {
     }
 
     #[test]
+    fn test_translate_relative_doclinks() {
+        let objects = test_objects();
+        let (_report, reporter) = crate::report::init();
+        let expected = "[`views::Spatial2DView`][crate::blueprint::views::Spatial2DView]";
+
+        for input in [
+            "[`blueprint::views::Spatial2DView`]",
+            "[`crate::blueprint::views::Spatial2DView`]",
+            "[`rerun::blueprint::views::Spatial2DView`]",
+            "[rerun::blueprint::views::Spatial2DView]",
+        ] {
+            assert_eq!(
+                translate_doc_line(&reporter, &objects, input, Target::Rust),
+                expected
+            );
+        }
+    }
+
+    #[test]
+    fn test_warns_only_for_links_in_known_rerun_packages() {
+        let objects = test_objects();
+        let (report, reporter) = crate::report::init();
+
+        assert_eq!(
+            translate_doc_line(
+                &reporter,
+                &objects,
+                "[`blueprint::views::Typo`] and [not a doclink]",
+                Target::Rust,
+            ),
+            "[`blueprint::views::Typo`] and [not a doclink]"
+        );
+        assert_eq!(report.drain_warnings().len(), 1);
+    }
+
+    #[test]
     fn test_translate_doclinks_with_field() {
         let objects = test_objects();
         let (_report, reporter) = crate::report::init();
 
-        let input = "A vector `[1, 2, 3]` and a doclink [views.Spatial2DView.position] and a [url](www.rerun.io).";
+        let input = "A vector `[1, 2, 3]` and a doclink [`rerun::blueprint::views::Spatial2DView::position`] and a [url](www.rerun.io).";
 
         assert_eq!(
             translate_doc_line(&reporter, &objects, input, Target::Cpp),
@@ -592,11 +587,11 @@ mod tests {
             "testpath",
             "testfqname",
             [
-                r" Doclink to [views.Spatial2DView].",
+                r" Doclink to [`rerun::blueprint::views::Spatial2DView`].",
                 r" ",
                 r" The second line.",
                 r" ",
-                r" \py Only for Python.",
+                r" \py Only for Python: [`rerun::blueprint::views::Spatial2DView`].",
                 r" ",
                 r" The third line.",
                 r" ",
@@ -605,7 +600,10 @@ mod tests {
             .into_iter(),
         );
 
-        assert_eq!(docs.only_lines_tagged("py"), vec!["Only for Python.",]);
+        assert_eq!(
+            docs.only_lines_tagged("py"),
+            vec!["Only for Python: [`rerun::blueprint::views::Spatial2DView`]."]
+        );
 
         assert_eq!(docs.only_lines_tagged("cpp"), vec!["Only for C++.",]);
 
@@ -616,7 +614,7 @@ mod tests {
                 "",
                 "The second line.",
                 "",
-                "Only for Python.",
+                "Only for Python: [`views.Spatial2DView`][rerun.blueprint.views.Spatial2DView].",
                 "",
                 "The third line.",
             ]

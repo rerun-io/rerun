@@ -45,11 +45,6 @@ struct LayoutStatistics {
     /// The semantics are exactly the same as [`LayoutInfo`]'s `left_column_width`.
     max_desired_left_column_width: Option<f32>,
 
-    /// Track whether any item uses the action button.
-    ///
-    /// If so, space for a right-aligned gutter should be reserved.
-    is_action_button_used: bool,
-
     /// Max item width.
     ///
     /// The width is calculated from [`LayoutInfo::left_x`] to the right edge of the item.
@@ -135,6 +130,9 @@ pub struct LayoutInfo {
     ///
     /// This value is measured from `left_x`.
     pub(crate) property_content_max_width: Option<f32>,
+
+    /// Whether the next list item is the first item in this scope.
+    is_first_item: bool,
 }
 
 impl Default for LayoutInfo {
@@ -144,6 +142,7 @@ impl Default for LayoutInfo {
             left_column_width: None,
             scope_id: egui::Id::NULL,
             property_content_max_width: None,
+            is_first_item: true,
         }
     }
 }
@@ -159,13 +158,6 @@ impl LayoutInfo {
                 .max_desired_left_column_width
                 .map(|v| v.max(desired_width))
                 .or(Some(desired_width));
-        });
-    }
-
-    /// Indicate whether right-aligned space should be reserved for the action button.
-    pub fn reserve_action_button_space(&self, ui: &egui::Ui, reserve: bool) {
-        LayoutStatistics::update(ui, self.scope_id, |stats| {
-            stats.is_action_button_used |= reserve;
         });
     }
 
@@ -238,6 +230,19 @@ impl LayoutInfoStack {
             state.cloned().unwrap_or_default()
         })
     }
+
+    /// Returns whether the next list item is the first item in the current scope.
+    pub(crate) fn take_is_first_item(ctx: &egui::Context) -> bool {
+        ctx.data_mut(|writer| {
+            let stack: &mut Self = writer.get_temp_mut_or_default(egui::Id::NULL);
+            let Some(layout_info) = stack.0.last_mut() else {
+                re_log::debug_assert!(false, "ListItem was not wrapped in list_item_scope()");
+                return false;
+            };
+
+            std::mem::replace(&mut layout_info.is_first_item, false)
+        })
+    }
 }
 
 /// Create a scope in which `[ListItem]`s can be created.
@@ -290,6 +295,7 @@ pub fn list_item_scope<R>(
         left_column_width,
         scope_id,
         property_content_max_width: layout_stats.property_content_max_width,
+        is_first_item: true,
     };
 
     let is_root = ListItemNavigation::init_if_root(ui.ctx());

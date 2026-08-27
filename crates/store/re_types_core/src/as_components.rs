@@ -13,7 +13,7 @@ use crate::{SerializationResult, SerializedComponentBatch};
 ///
 /// Have a look at our [Custom Data Importer] example to learn more about handwritten bundles.
 ///
-/// [IDL definitions]: https://github.com/rerun-io/rerun/tree/latest/crates/store/re_sdk_types/definitions/rerun
+/// [IDL definitions]: https://github.com/rerun-io/rerun/tree/latest/crates/build/re_type_definitions/rerun
 /// [Custom Data Importer]: https://github.com/rerun-io/rerun/blob/latest/examples/rust/custom_importer
 /// [`Component`]: [crate::Component]
 pub trait AsComponents {
@@ -233,31 +233,30 @@ mod tests {
 
     crate::macros::impl_into_cow!(MyColor);
 
-    impl crate::Loggable for MyColor {
+    impl crate::ArrowDatatype for MyColor {
         fn arrow_datatype() -> arrow::datatypes::DataType {
             arrow::datatypes::DataType::UInt32
         }
+    }
 
-        fn to_arrow_opt<'a>(
-            data: impl IntoIterator<Item = Option<impl Into<std::borrow::Cow<'a, Self>>>>,
+    impl crate::ToArrow for MyColor {
+        fn to_arrow<'a>(
+            data: impl IntoIterator<Item = impl Into<std::borrow::Cow<'a, Self>>>,
         ) -> crate::SerializationResult<arrow::array::ArrayRef>
         where
             Self: 'a,
         {
-            use crate::datatypes::UInt32;
-            UInt32::to_arrow_opt(
-                data.into_iter()
-                    .map(|opt| opt.map(Into::into).map(|c| UInt32(c.0))),
-            )
+            use crate::encodings::UInt32;
+            UInt32::to_arrow(data.into_iter().map(Into::into).map(|c| UInt32(c.0)))
         }
+    }
 
-        fn from_arrow_opt(
-            data: &dyn arrow::array::Array,
-        ) -> crate::DeserializationResult<Vec<Option<Self>>> {
-            use crate::datatypes::UInt32;
-            Ok(UInt32::from_arrow_opt(data)?
+    impl crate::FromArrow for MyColor {
+        fn from_arrow(data: &dyn arrow::array::Array) -> crate::DeserializationResult<Vec<Self>> {
+            use crate::encodings::UInt32;
+            Ok(UInt32::from_arrow(data)?
                 .into_iter()
-                .map(|opt| opt.map(|v| Self(v.0)))
+                .map(|v| Self(v.0))
                 .collect())
         }
     }

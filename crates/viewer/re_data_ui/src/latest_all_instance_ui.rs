@@ -59,15 +59,37 @@ impl DataUi for LatestAllInstanceResult<'_> {
                     .num_physical_static_events_for_component(&entity_path, component);
 
                 if static_message_count > 1 {
-                    ui.warning_label(format!(
-                        "Logged {} as static",
-                        format_plural_s(static_message_count, "time")
-                    ))
-                    .on_hover_text(
-                        "When a static component is logged multiple times, only the last value \
-                            is stored. Previously logged values are overwritten and not \
-                            recoverable.",
-                    );
+                    // Named transforms are the exception to static overwrite semantics: the store
+                    // keeps every static transform, e.g. a `/tf_static` entity with one transform
+                    // per parent/child frame pair, so nothing was actually lost.
+                    // See `re_chunk_store::preserves_static_transforms` and RR-4887 for details.
+                    let archetype_name = engine
+                        .store()
+                        .schema()
+                        .entity_component_descriptor(&entity_path, component)
+                        .and_then(|descriptor| descriptor.archetype);
+
+                    if re_chunk_store::preserves_static_transforms(archetype_name) {
+                        ui.info_label(format!(
+                            "Logged {} as static",
+                            format_plural_s(static_message_count, "time")
+                        ))
+                        .on_hover_text(
+                            "Named transforms are the exception to static data: every logged \
+                                static transform is preserved, e.g. a `/tf_static` entity \
+                                carrying one transform per parent/child frame pair.",
+                        );
+                    } else {
+                        ui.warning_label(format!(
+                            "Logged {} as static",
+                            format_plural_s(static_message_count, "time")
+                        ))
+                        .on_hover_text(
+                            "When a static component is logged multiple times, only the last value \
+                                is stored. Previously logged values are overwritten and not \
+                                recoverable.",
+                        );
+                    }
                 }
 
                 let temporal_message_count = engine

@@ -3,7 +3,14 @@ use eframe::emath::Align;
 use egui::{Atom, AtomExt as _, AtomKind, Button, DragValue, RichText, TextEdit, Ui, Vec2};
 use re_ui::list_item::{ListItemContentButtonsExt as _, PropertyContent};
 use re_ui::re_form::{ConstructFormStrip as _, FormFields, SelectableStrip};
-use re_ui::{UiExt as _, icons, list_item};
+use re_ui::{TabBar, UiExt as _, icons, list_item};
+
+#[derive(PartialEq)]
+enum DemoTab {
+    Segments,
+    Assets,
+    Schema,
+}
 
 pub struct RightPanel {
     show_hierarchical_demo: bool,
@@ -11,6 +18,7 @@ pub struct RightPanel {
     hierarchical_drag_and_drop: hierarchical_drag_and_drop::HierarchicalDragAndDrop,
     selected_list_item: Option<usize>,
     use_action_button: bool,
+    tab: DemoTab,
 
     // dummy data
     text: String,
@@ -27,6 +35,7 @@ impl Default for RightPanel {
                 hierarchical_drag_and_drop::HierarchicalDragAndDrop::default(),
             selected_list_item: None,
             use_action_button: false,
+            tab: DemoTab::Segments,
             // dummy data
             text: "Hello world".to_owned(),
             color: [128, 0, 0, 255],
@@ -59,6 +68,28 @@ impl RightPanel {
                             self.drag_and_drop.ui(ui);
                         }
                     });
+            });
+        });
+
+        //
+        // Tab bar demo.
+        //
+
+        ui.panel_content(|ui| {
+            list_item::list_item_scope(ui, "tab_bar", |ui| {
+                ui.section_collapsing_header("Tab bar").show(ui, |ui| {
+                    TabBar::new(ui)
+                        .selectable_value(&mut self.tab, DemoTab::Segments, "Segments")
+                        .selectable_value(&mut self.tab, DemoTab::Assets, "Assets")
+                        .selectable_value(&mut self.tab, DemoTab::Schema, "Schema");
+
+                    ui.add_space(8.0);
+                    ui.label(match self.tab {
+                        DemoTab::Segments => "Segments content",
+                        DemoTab::Assets => "Assets content",
+                        DemoTab::Schema => "Schema content",
+                    });
+                });
             });
         });
 

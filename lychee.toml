@@ -77,6 +77,7 @@ exclude_path = [
   "crates/utils/re_analytics/src/event.rs", # Contains test with malformed urls
   "crates/utils/re_perf_telemetry/src/telemetry.rs", # Contains `parse_rerun_endpoint` docs/tests with fake `rerun://host…` URLs
   "crates/viewer/re_viewer/src/reflection/mod.rs", # Checker struggles how links from examples are escaped here. They are all checked elsewhere, so not an issue.
+  "docs/content/changelog/upcoming", # Transient per-PR changeset entries; their relative links resolve from changelog/ once merged at release, and the merged changeset is link-checked then.
   "docs/snippets/INDEX.md", # The snippet index is guaranteed should be correct by design.
   "scripts/lint.py", # Contains url-matching regexes that aren't actual urls
   "scripts/screenshot_compare/assets/templates/",
@@ -104,6 +105,7 @@ exclude = [
   '/examples', # Relative link to our examples gallery.
   'http://0.0.0.0',
   'http://127.0.0.1',
+  'http://127.0.0.2',
   'http://localhost',
   're_viewer.js', # Build artifact that html is linking to.
   'recording:/', # rrd recording link.
@@ -123,19 +125,35 @@ exclude = [
   'https://github.com/rerun-io/rerun/issues/\.*', # Ignore links to our own issues.
 
   # Intentionally faked links.
+  'https?://(rerun|example)\.invalid/.*', # URL-rendering tests in re_ui notifications.
+  'mailto:help@example\.invalid', # URL-rendering tests in re_ui notifications.
+  '^https://github/$',
   'file:///does/not/exist.rrd',
   'file:///path/to/file',
   'file:///tmp/droidnano/Fri_Aug_18_09:46:43_2023.rrd',
+  'file://cors.json', # AWS CLI `--cors-configuration file://…` syntax in docs/content/hub/bucket-cors.md, not a real link.
   'file://foo',
   'file://path/to/file.rrd',
   'file://somehost/file/path.rrd',
   'http://foo.*',
   'http://x/',
-  'https://x/',
   'https://foo.*',
+  'https://github\.com/rerun-io/rerun/n',
   'https://link.to',
+  'https://private-user-images\.githubusercontent\.com/demo\.mp4\?x=1&y=2',
   'https://rerun.rs',
+  'https://private-user-images.githubusercontent.com/123/456/demo.mp4.*',
+  'https://static.rerun.io/demo.mp4',
   'https://static.rerun.io/my_screenshot/',
+  'https://static/',
+  'https://static\.rerun\.io/abc_github-01234567\.mp4',
+  'https://static\.rerun\.io/commented\.mp4',
+  'https://static\.rerun\.io/demo\.mp4',
+  'https://static\.rerun\.io/demo\.mp4/n',
+  'https://static\.rerun\.io/example\.mp4',
+  'https://static\.rerun\.io/hash_demo\.mp4',
+  'https://user-images/',
+  'https://x/',
   'https://your-hosted-asset-url.com/re_viewer_bg.wasm',
   'https://your-hosted-asset-url.com/widget.js',
   'rerun://localhost:51234/recording/some-recording-id',
@@ -148,6 +166,7 @@ exclude = [
   'http(s)?://example.com/.*',
   'file:///uri1.rrd',
   'file:///uri2.rrd',
+  'file:///recordings/data.rrd', # Example URL in the url-pill tests.
 
   # Link fragments and data links in examples.
   'https://raw.githubusercontent.com/googlefonts/noto-emoji/', # URL fragment.
@@ -176,6 +195,10 @@ exclude = [
   'https://www.shadertoy.com/*', # 403 on CI
   'https://www.tensorflow.org/*', # tensorflow.org apparently blocks CI.
   'https://www.unicode.org/license.txt', # Gives network error on CI.
+
+  # `CHANGELOG.md` links to a release's changeset page, which only goes live with the docs deploy
+  # that follows the release — so the newest links 404 until then.
+  'https://rerun.io/docs/changelog/changeset-.*',
 
   # Need GitHub login.
   'https://github.com/rerun-io/landing',

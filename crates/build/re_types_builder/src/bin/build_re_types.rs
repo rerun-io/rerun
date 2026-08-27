@@ -13,8 +13,7 @@ use re_build_tools::{
 use re_types_builder::{SourceLocations, compute_re_types_hash};
 
 const RE_TYPES_SOURCE_HASH_PATH: &str = "crates/store/re_sdk_types/source_hash.txt";
-const DEFINITIONS_DIR_PATH: &str = "crates/store/re_sdk_types/definitions";
-const ENTRYPOINT_PATH: &str = "crates/store/re_sdk_types/definitions/entry_point.fbs";
+const DEFINITIONS_DIR_PATH: &str = "crates/build/re_type_definitions";
 const SNIPPETS_DIR_PATH: &str = "docs/snippets/all";
 const CPP_OUTPUT_DIR_PATH: &str = "rerun_cpp";
 const PYTHON_OUTPUT_DIR_PATH: &str = "rerun_py/rerun_sdk/rerun";
@@ -87,7 +86,6 @@ fn main() {
 
     let re_types_source_hash_path = workspace_dir.join(RE_TYPES_SOURCE_HASH_PATH);
     let definitions_dir_path = workspace_dir.join(DEFINITIONS_DIR_PATH);
-    let entrypoint_path = workspace_dir.join(ENTRYPOINT_PATH);
     let cpp_output_dir_path = workspace_dir.join(CPP_OUTPUT_DIR_PATH);
     let python_output_dir_path = workspace_dir.join(PYTHON_OUTPUT_DIR_PATH);
     let python_testing_output_dir_path = workspace_dir.join(PYTHON_TESTING_OUTPUT_DIR_PATH);
@@ -124,11 +122,16 @@ fn main() {
     re_log::info!("Running codegen…");
     let (report, reporter) = re_types_builder::report::init();
 
-    re_log::info!("Generating flatbuffers code…");
-    re_types_builder::generate_fbs(&reporter, &definitions_dir_path, check);
-
+    re_log::info!("Reading the type definitions…");
     let (objects, type_registry) =
-        re_types_builder::generate_lang_agnostic(&reporter, definitions_dir_path, entrypoint_path);
+        re_types_builder::generate_lang_agnostic(&reporter, &definitions_dir_path);
+
+    re_types_builder::generate_definitions_module_tree(
+        &reporter,
+        &definitions_dir_path,
+        &objects,
+        check,
+    );
 
     re_tracing::profile_scope!("Language-specific code-gen");
     join!(

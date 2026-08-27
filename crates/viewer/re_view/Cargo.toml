@@ -42,3 +42,6 @@ glam.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true
 thiserror.workspace = true
+
+[dev-dependencies]
+re_test_context.workspace = true

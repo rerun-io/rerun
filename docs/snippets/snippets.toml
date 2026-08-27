@@ -179,6 +179,17 @@ backwards_check = [
   "cpp",
   "rust",
 ]
+"archetypes/gaussian_splats3d_ply" = [
+  # Takes a `.ply` path as an argument. Pointing it at `tests/assets/gaussian_splats/cactus.ply`
+  # would produce an ~18 MB rrd, too big to check in as a backwards-compatibility reference —
+  # and `opt_out.backwards_check` isn't an escape hatch, since it also stops the snippet from
+  # saving its output at all (it would then spawn a real Viewer and hang).
+  # The `.ply` → `GaussianSplats3D` path is covered end-to-end instead by
+  # `crates/store/re_importer/tests/test_ply_importer.rs`, which runs against that same file.
+  "py",
+  "cpp",
+  "rust",
+]
 "concepts/build_chunk" = [ # Python-only experimental API
   "cpp",
   "rust",
@@ -317,6 +328,19 @@ backwards_check = [
 ]
 "howto/lerobot_export" = [
   "py", # lerobot is not part of our environment as it causes dependency issues
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
+"howto/load_lerobot" = [
+  # A LeRobot dataset imports as one recording per episode (plus the SDK's own `rr.init`
+  # recording), but `rerun rrd compare` only supports single-recording rrds, so neither the
+  # backwards-compatibility check nor the cross-language comparison can run — and
+  # `opt_out.backwards_check` isn't an escape hatch, since it also stops the snippet from saving
+  # its output at all (it would then spawn a real Viewer and hang).
+  # The LeRobot import path is covered end-to-end by the golden tests in
+  # `crates/store/re_importer/tests/` instead.
+  # TODO(RR-5451): teach `rrd compare` to pair up multi-recording rrds, then re-enable this.
+  "py",
   "cpp", # Not implemented
   "rust", # Not implemented
 ]
@@ -699,3 +723,7 @@ quick_start = [ # These examples don't have exactly the same implementation.
 ]
 "archetypes/video_manual_frames" = ["$config_dir/../../tests/assets/video/Sintel_1080_10s_av1.mp4"]
 "howto/load_mcap" = ["$config_dir/../../tests/assets/mcap/r2b_galileo.mcap"]
+# Reuses the committed v3 fixture from the `re_importer` tests rather than duplicating the dataset asset.
+"howto/load_lerobot" = [
+  "$config_dir/../../crates/store/re_importer/tests/assets/lerobot/v30_apple_storage",
+]

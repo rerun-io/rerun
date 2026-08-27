@@ -264,6 +264,14 @@ impl<T: SizeBytes, E: SizeBytes> SizeBytes for Result<T, E> {
     }
 }
 
+impl SizeBytes for Arc<str> {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        let arc_overhead = 2 * size_of::<usize>() as u64;
+        (self.len() as u64 + arc_overhead) / Self::strong_count(self) as u64
+    }
+}
+
 impl<T: SizeBytes + ?Sized> SizeBytes for Arc<T> {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {

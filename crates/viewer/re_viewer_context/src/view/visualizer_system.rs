@@ -13,7 +13,7 @@ use re_sdk_types::{ComponentDescriptor, ComponentIdentifier, ViewClassIdentifier
 use crate::{
     BufferAndFormatConstraint, SingleRequiredComponentConstraint, ViewContext,
     ViewContextCollection, ViewQuery, ViewSystemExecutionError, ViewSystemIdentifier,
-    VisualizabilityConstraints,
+    ViewerDiagnostic, ViewerReportSeverity, VisualizabilityConstraints,
 };
 
 #[derive(Debug, Clone, Default)]
@@ -141,31 +141,6 @@ impl VisualizerQueryInfo {
     }
 }
 
-/// Severity level for visualizer diagnostics.
-///
-/// Sorts from least concern to highest.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, re_byte_size::SizeBytes)]
-pub enum VisualizerReportSeverity {
-    /// A purely informational report for a component.
-    ///
-    /// For example if a component is not supported in some situations, but that's expected
-    /// (e.g. a colormap component that has no effect with non-grayscale image data).
-    Info,
-
-    /// Something went wrong on an optional component.
-    ///
-    /// We can often still show something using the default.
-    Warning,
-
-    /// Something went wrong on a required component (or otherwise fatally).
-    ///
-    /// The entity usually can't be shown.
-    Error,
-
-    /// It's not just a single visualizer instruction that failed, but the visualizer as a whole tanked.
-    OverallVisualizerError,
-}
-
 /// Contextual information about where/why a diagnostic occurred.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash, re_byte_size::SizeBytes)]
 pub struct VisualizerReportContext {
@@ -199,14 +174,8 @@ pub struct VisualizerReportContext {
 /// For a high-level failure handling overview, see the `re_viewer` crate documentation.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, re_byte_size::SizeBytes)]
 pub struct VisualizerInstructionReport {
-    pub severity: VisualizerReportSeverity,
+    pub diagnostic: ViewerDiagnostic,
     pub context: VisualizerReportContext,
-
-    /// Short message suitable for inline display
-    pub summary: String,
-
-    /// Optional detailed explanation
-    pub details: Option<String>,
 }
 
 /// Result of running [`VisualizerSystem::execute`].
@@ -275,15 +244,17 @@ impl VisualizerExecutionOutput {
     pub fn report_unspecified_source(
         &self,
         instruction_id: VisualizerInstructionId,
-        severity: VisualizerReportSeverity,
+        severity: ViewerReportSeverity,
         summary: impl Into<String>,
     ) {
         self.report(
             instruction_id,
             VisualizerInstructionReport {
-                severity,
-                summary: summary.into(),
-                details: None,
+                diagnostic: ViewerDiagnostic {
+                    severity,
+                    summary: summary.into(),
+                    details: None,
+                },
                 context: VisualizerReportContext::default(),
             },
         );

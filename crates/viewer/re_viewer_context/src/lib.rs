@@ -10,13 +10,11 @@
 //     VideoLoadError: Send + Sync,
 // but that slows compilation down by a ton
 #![recursion_limit = "256"]
-#![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
 
 mod active_store_context;
 mod annotations;
 mod app_context;
 mod app_options;
-mod async_runtime_handle;
 mod blueprint_helpers;
 mod blueprint_id;
 mod cache;
@@ -32,6 +30,7 @@ mod heuristics;
 mod image_info;
 mod item;
 mod item_collection;
+mod link_button;
 mod maybe_mut_ref;
 pub mod open_url;
 mod query_context;
@@ -64,7 +63,6 @@ pub use self::annotations::{
 };
 pub use self::app_context::{AppContext, AuthContext};
 pub use self::app_options::{AppOptions, ExperimentalAppOptions, VideoOptions};
-pub use self::async_runtime_handle::{AsyncRuntimeError, AsyncRuntimeHandle, WasmNotSend};
 pub use self::blueprint_helpers::{
     AppBlueprintCtx, BlueprintContext, blueprint_timeline, blueprint_timepoint_for_writes,
 };
@@ -101,13 +99,16 @@ pub use self::item::{
     resolve_mono_instance_path_item,
 };
 pub use self::item_collection::{ItemCollection, ItemContext};
+pub use self::link_button::{
+    LinkKind, ResolvedEntry, UrlNameLookup, make_url_decorator, segment_button_atoms, url_atoms,
+};
 pub use self::maybe_mut_ref::MaybeMutRef;
 pub use self::query_context::{
     DataQueryResult, DataResultHandle, DataResultNode, DataResultTree, QueryContext,
 };
 pub use self::query_range::QueryRange;
-pub use self::recording_or_table::RecordingOrTable;
-pub use self::route::Route;
+pub use self::recording_or_table::RecordingOrLocalTable;
+pub use self::route::{EntryKind, Route};
 pub use self::selection_state::{
     ApplicationSelectionState, HoverHighlight, InteractionHighlight, SelectionChange,
     SelectionHighlight,
@@ -133,21 +134,24 @@ pub use self::utils::{
     video_timestamp_component_to_video_time,
 };
 pub use self::view::{
-    BufferAndFormatConstraint, DataResult, IdentifiedViewSystem, OptionalViewEntityHighlight,
-    PerSystemEntities, PreviewState, RecommendedMappings, RecommendedView, RecommendedVisualizers,
-    SingleRequiredComponentConstraint, SystemExecutionOutput, ViewClass, ViewClassExt,
-    ViewClassLayoutPriority, ViewClassPlaceholder, ViewClassRegistry, ViewClassRegistryError,
-    ViewContext, ViewContextCollection, ViewContextSystem, ViewContextSystemOncePerFrameResult,
+    BufferAndFormatConstraint, DataResult, IdentifiedViewSystem, MAX_VIEWS_SPAWNED,
+    OptionalViewEntityHighlight, PerSystemEntities, PreviewState, RecommendedMappings,
+    RecommendedView, RecommendedVisualizers, SingleRequiredComponentConstraint,
+    SystemExecutionOutput, ViewClass, ViewClassExt, ViewClassLayoutPriority, ViewClassPlaceholder,
+    ViewClassRegistry, ViewClassRegistryError, ViewClassUiOutput, ViewContext,
+    ViewContextCollection, ViewContextSystem, ViewContextSystemOncePerFrameResult,
     ViewEntityHighlight, ViewHighlights, ViewOutlineMasks, ViewQuery, ViewSpawnHeuristics,
     ViewState, ViewStateExt, ViewStates, ViewSystemExecutionError, ViewSystemIdentifier,
-    ViewSystemRegistrator, ViewSystemState, VisualizabilityConstraints, VisualizerCollection,
-    VisualizerComponentMappings, VisualizerComponentSource, VisualizerExecutionOutput,
-    VisualizerInstruction, VisualizerInstructionReport, VisualizerInstructionsPerType,
-    VisualizerQueryInfo, VisualizerReportContext, VisualizerReportSeverity, VisualizerSystem,
-    VisualizerTypeReport, VisualizerViewReport, VisualizersSectionOutput, VisualizersSectionUi,
+    ViewSystemRegistrator, ViewSystemState, ViewerDiagnostic, ViewerReportSeverity,
+    VisualizabilityConstraints, VisualizerCollection, VisualizerComponentMappings,
+    VisualizerComponentSource, VisualizerExecutionOutput, VisualizerInstruction,
+    VisualizerInstructionReport, VisualizerInstructionsPerType, VisualizerQueryInfo,
+    VisualizerReportContext, VisualizerSystem, VisualizerTypeReport, VisualizerViewReport,
+    VisualizersSectionOutput, VisualizersSectionUi,
 };
 pub use self::viewer_context::ViewerContext;
 pub use self::visitor_flow_control::VisitorControlFlow; // Historical reasons
+pub use re_uri::TableReference;
 
 pub mod external {
     #[cfg(not(target_arch = "wasm32"))]

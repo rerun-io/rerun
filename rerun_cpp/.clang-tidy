@@ -1,0 +1,49 @@
+# clang-tidy for the C++ SDK, including generated code.
+# Run with `pixi run -e cpp lint-cpp-files`.
+#
+# This is a *security* lint, not a style pass — `readability-*`, `modernize-*` and
+# `performance-*` would bury it. `.clang-format` remains the authority on style.
+#
+# Why each check is off:
+#   bugprone-easily-swappable-parameters    Style opinion, and a loud one.
+#   bugprone-exception-escape               `Error` holds a `std::string`, so its constructors
+#                                           can throw. Means `terminate`, not memory unsafety.
+#   bugprone-forward-declaration-namespace  Declaration placement. No runtime consequence.
+#   bugprone-reserved-identifier            `_CategoryFoo` enum members in the public `Error`
+#   (+ cert-dcl37-c, cert-dcl51-cpp)        header. Renaming them would break the API.
+#   cert-dcl50-cpp                          C-style variadics, deliberate for C interop.
+#   cert-err33-c                            Unchecked `fprintf` to stderr. Nothing follows.
+#   cert-err58-cpp                          Public SDK constants use generated constructors that
+#                                           are not `noexcept`; changing them to accessors would
+#                                           break the API.
+#   cert-int09-c                            False positive e.g. for `enum class ErrorCode`.
+#   bugprone-chained-comparison             Spams with expanded CHECK macros.
+#                                           TODO(michael): use a newer clang version that supports
+#                                           this more fine-grained setting for `CheckOptions`:
+#                                           `bugprone-chained-comparison.IgnoreMacros: true`.
+#   bugprone-implicit-widening-of-multiplication-result
+#                                           Flags harmless products of literals like `std::vector<int>(10 * 10, 0)`.
+Checks: >
+  -*,
+  bugprone-*,
+  cert-*,
+  clang-analyzer-*,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-exception-escape,
+  -bugprone-forward-declaration-namespace,
+  -bugprone-reserved-identifier,
+  -cert-dcl37-c,
+  -cert-dcl50-cpp,
+  -cert-dcl51-cpp,
+  -cert-err33-c,
+  -cert-err58-cpp,
+  -cert-int09-c,
+  -bugprone-chained-comparison,
+  -bugprone-implicit-widening-of-multiplication-result
+
+# The SDK is header-heavy, so restricting diagnostics to main files would miss most of the code.
+HeaderFilterRegex: 'rerun_cpp/src/rerun/.*'
+
+# CI passes `-warnings-as-errors` to `run-clang-tidy`. Setting this here would also affect
+# editors and clangd.
+WarningsAsErrors: ''

@@ -9,8 +9,8 @@ A scale of 1.0 means no scaling.
 A scale of 2.0 means doubling the size.
 Each component scales along the corresponding axis.
 
-## Rerun datatype
-[`Vec3D`](../datatypes/vec3d.md)
+## Rerun encoding
+[`Vec3D`](../encodings/vec3d.md)
 
 
 ## Arrow datatype
@@ -26,5 +26,6 @@ FixedSizeList(3 x non-null Float32)
 
 ## Used by
 
+* [`GaussianSplats3D`](../archetypes/gaussian_splats3d.md)
 * [`InstancePoses3D`](../archetypes/instance_poses3d.md)
 * [`Transform3D`](../archetypes/transform3d.md)

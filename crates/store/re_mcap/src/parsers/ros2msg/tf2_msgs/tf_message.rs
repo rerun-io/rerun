@@ -3,7 +3,7 @@ use re_chunk::{Chunk, ChunkId};
 
 use re_sdk_types::archetypes::Transform3D;
 use re_sdk_types::components::{RotationQuat, Translation3D};
-use re_sdk_types::datatypes::Quaternion;
+use re_sdk_types::encodings::Quaternion;
 
 use super::super::Ros2MessageParser;
 use crate::parsers::ros2msg::definitions::geometry_msgs::{Transform, TransformStamped};

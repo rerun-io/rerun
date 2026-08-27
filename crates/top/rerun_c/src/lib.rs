@@ -356,10 +356,23 @@ pub struct CFileSink {
     pub path: CStringView,
 }
 
+/// Log sink which hosts a gRPC server.
+#[derive(Debug)]
+#[repr(C)]
+pub struct CGrpcServerSink {
+    pub bind_ip: CStringView,
+    pub port: u16,
+    pub server_memory_limit: CStringView,
+    pub newest_first: bool,
+    pub cors_allow_origins: *const CStringView,
+    pub num_cors_allow_origins: u32,
+}
+
 /// A sink for log messages.
 ///
 /// See specific log sink types for more information:
 /// * [`CGrpcSink`]
+/// * [`CGrpcServerSink`]
 /// * [`CFileSink`]
 ///
 /// See `rr_log_sink` and `RR_LOG_SINK_KIND` enum values in the C header.
@@ -367,9 +380,11 @@ pub struct CFileSink {
 /// Layout is defined in [the Rust reference](https://doc.rust-lang.org/stable/reference/type-layout.html#reprc-enums-with-fields).
 #[derive(Debug)]
 #[repr(C, u8)]
+#[expect(clippy::enum_variant_names)] // Variant names mirror the C `rr_log_sink` union field names.
 pub enum CLogSink {
     GrpcSink { grpc: CGrpcSink } = 0,
     FileSink { file: CFileSink } = 1,
+    GrpcServerSink { grpc_server: CGrpcServerSink } = 2,
 }
 
 // ⚠️ Remember to also update `uint32_t rr_error_code` AND `enum class ErrorCode` !
@@ -447,6 +462,15 @@ pub extern "C" fn rr_version_string() -> *const c_char {
     }); // unwrap: there won't be any NUL bytes in the string
 
     VERSION.as_ptr()
+}
+
+/// Converts a 32-bit float to the bits of an IEEE 754 16-bit half-precision float.
+// SAFETY: the unsafety comes from #[no_mangle], because we can declare multiple
+// functions with the same symbol names, and the linker behavior in this case i undefined.
+#[expect(unsafe_code)]
+#[unsafe(no_mangle)]
+pub extern "C" fn rr_f16_from_f32(value: f32) -> u16 {
+    half::f16::from_f32(value).to_bits()
 }
 
 #[expect(clippy::result_large_err)]
@@ -528,10 +552,12 @@ pub extern "C" fn rr_register_component_type(
     }
 }
 
-#[expect(clippy::result_large_err)]
+// The bools mirror the C signature.
+#[expect(clippy::result_large_err, clippy::fn_params_excessive_bools)]
 fn rr_recording_stream_new_impl(
     store_info: *const CStoreInfo,
     default_enabled: bool,
+    send_properties: bool,
 ) -> Result<CRecordingStream, CError> {
     {
         use std::sync::Once;
@@ -565,12 +591,16 @@ fn rr_recording_stream_new_impl(
         store_kind,
     } = *store_info;
 
-    let application_id = application_id.as_nonempty_str("store_info.application_id")?;
+    let application_id = re_sdk::ApplicationId::try_new(
+        application_id.as_nonempty_str("store_info.application_id")?,
+    )
+    .map_err(|err| CError::new(CErrorCode::InvalidStringArgument, &err.to_string()))?;
 
     let mut rec_builder = RecordingStreamBuilder::new(application_id)
         //.store_id(recording_id.clone()) // TODO(andreas): Expose store id.
         .store_source(re_sdk::external::re_log_types::StoreSource::CSdk)
-        .default_enabled(default_enabled);
+        .default_enabled(default_enabled)
+        .send_properties(send_properties);
 
     if let Some(recording_id) = recording_id.as_optional_str("recording_id")? {
         rec_builder = rec_builder.recording_id(recording_id);
@@ -594,9 +624,10 @@ fn rr_recording_stream_new_impl(
 pub extern "C" fn rr_recording_stream_new(
     store_info: *const CStoreInfo,
     default_enabled: bool,
+    send_properties: bool,
     error: *mut CError,
 ) -> CRecordingStream {
-    match rr_recording_stream_new_impl(store_info, default_enabled) {
+    match rr_recording_stream_new_impl(store_info, default_enabled, send_properties) {
         Err(err) => {
             err.write_error(error);
             0
@@ -762,6 +793,49 @@ fn rr_recording_stream_set_sinks_impl(
                         )
                     },
                 )?));
+            }
+            CLogSink::GrpcServerSink { grpc_server } => {
+                let bind_ip = grpc_server.bind_ip.as_nonempty_str("bind_ip")?;
+                let cors_allow_origins = if grpc_server.cors_allow_origins.is_null()
+                    || grpc_server.num_cors_allow_origins == 0
+                {
+                    &[]
+                } else {
+                    unsafe {
+                        std::slice::from_raw_parts(
+                            grpc_server.cors_allow_origins,
+                            grpc_server.num_cors_allow_origins as usize,
+                        )
+                    }
+                };
+                let cors_allowed_origins = cors_allow_origins
+                    .iter()
+                    .map(|origin| Ok(origin.as_nonempty_str("cors_allow_origin")?.to_owned()))
+                    .try_collect()?;
+                let server_options = re_sdk::ServerOptions {
+                    playback_behavior: re_sdk::PlaybackBehavior::from_newest_first(
+                        grpc_server.newest_first,
+                    ),
+                    memory_limit: grpc_server
+                        .server_memory_limit
+                        .as_maybe_empty_str("server_memory_limit")?
+                        .parse::<re_sdk::MemoryLimit>()
+                        .map_err(|err| CError::new(CErrorCode::InvalidMemoryLimit, &err))?,
+                    cors_allowed_origins,
+                };
+                sinks.push(Box::new(
+                    re_sdk::grpc_server::GrpcServerSink::new(
+                        bind_ip,
+                        grpc_server.port,
+                        server_options,
+                    )
+                    .map_err(|err| {
+                        CError::new(
+                            CErrorCode::RecordingStreamServeGrpcFailure,
+                            &err.to_string(),
+                        )
+                    })?,
+                ));
             }
         }
     }
@@ -1226,7 +1300,7 @@ fn rr_recording_stream_send_columns_impl(
         .map(|time_column| {
             let timeline: Timeline = time_column.timeline.clone().try_into()?;
             let datatype = arrow::datatypes::DataType::Int64;
-            let array = unsafe { FFI_ArrowArray::from_raw(&mut time_column.times) } ; // Move out of the array
+            let array = unsafe { FFI_ArrowArray::from_raw(&raw mut time_column.times) } ; // Move out of the array
             let time_values_untyped = unsafe { arrow_array_from_c_ffi(array, datatype) }?;
             let time_values = TimeColumn::read_array(&ArrowArrayRef::from(time_values_untyped)).map_err(|err| {
                 CError::new(

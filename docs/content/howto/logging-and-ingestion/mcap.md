@@ -1,6 +1,7 @@
 ---
 title: Working with MCAP
 order: 700
+description: Open and inspect MCAP files in Rerun
 ---
 
 The Rerun Viewer has built-in support for opening [MCAP](https://mcap.dev/) files, an open container format for storing timestamped messages.
@@ -52,11 +53,11 @@ To map MCAP messages to Rerun entities we make the following assumptions:
 * The contents of an MCAP message will be extracted to Rerun components and grouped under a corresponding Rerun archetype.
 * `message_log_time` and `message_publish_time` of an MCAP message will be carried over to Rerun as two distinct [timelines](../../concepts/logging-and-ingestion/timelines.md).
 
-### Layered architecture
+### Decoder architecture
 
-Rerun uses a _layered architecture_ to process MCAP files at different levels of abstraction. This design allows the same MCAP file to be ingested in multiple ways simultaneously, from raw bytes to semantically meaningful visualizations.
+Rerun uses _decoders_ to process MCAP files at different levels of abstraction. This design allows to choose up to which level the MCAP message payloads are converted to RRD, from keeping only raw bytes up to a full semantic conversion to Rerun archetypes.
 
-Each layer extracts different types of information from the MCAP source and each of the following layers will create distinct Rerun archetypes:
+Each decoder extracts different types of information from the MCAP source:
 
 - **`raw`**: Logs the unprocessed message bytes as Rerun blobs without any interpretation
 - **`schema`**: Extracts metadata about channels, topics, and schemas

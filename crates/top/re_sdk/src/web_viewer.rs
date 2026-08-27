@@ -43,6 +43,7 @@ impl WebViewerSink {
         open_browser: bool,
         bind_ip: &str,
         web_port: WebViewerServerPort,
+        assets_archive_path: Option<&std::path::Path>,
         grpc_port: u16,
         server_options: re_grpc_server::ServerOptions,
     ) -> Result<Self, WebViewerSinkError> {
@@ -53,7 +54,7 @@ impl WebViewerSink {
         let server_handle = std::thread::Builder::new()
             .name("message_proxy_server".to_owned())
             .spawn(move || {
-                let mut builder = tokio::runtime::Builder::new_current_thread();
+                let mut builder = tokio::runtime::Builder::new_current_thread(); // NOLINT: the synchronous server thread owns this runtime
                 builder.enable_all();
                 let rt = builder.build().expect("failed to build tokio runtime");
 
@@ -65,7 +66,8 @@ impl WebViewerSink {
                 ));
             })
             .expect("failed to spawn thread for message proxy server");
-        let webviewer_server = WebViewerServer::new(bind_ip, web_port)?;
+        let webviewer_server =
+            WebViewerServer::with_archive(bind_ip, web_port, assets_archive_path)?;
 
         let http_web_viewer_bound_url = webviewer_server.bound_url();
         let http_web_viewer_url = webviewer_server.server_url();
@@ -168,6 +170,12 @@ pub struct WebViewerConfig {
     ///
     /// Defaults to `true`.
     pub open_browser: bool,
+
+    /// If set, the web viewer assets are served from this zip archive,
+    /// instead of the assets built into the binary.
+    ///
+    /// Defaults to `None`.
+    pub assets_archive_path: Option<std::path::PathBuf>,
 }
 
 #[cfg(feature = "web_viewer")]
@@ -180,6 +188,7 @@ impl Default for WebViewerConfig {
             force_wgpu_backend: None,
             video_decoder: None,
             open_browser: true,
+            assets_archive_path: None,
         }
     }
 }
@@ -201,9 +210,11 @@ impl WebViewerConfig {
             force_wgpu_backend,
             video_decoder,
             open_browser,
+            assets_archive_path,
         } = self;
 
-        let web_server = WebViewerServer::new(&bind_ip, web_port)?;
+        let web_server =
+            WebViewerServer::with_archive(&bind_ip, web_port, assets_archive_path.as_deref())?;
         let http_web_viewer_bound_url = web_server.bound_url();
         let http_web_viewer_url = web_server.server_url();
 
@@ -263,6 +274,7 @@ pub fn new_sink(
     open_browser: bool,
     bind_ip: &str,
     web_port: WebViewerServerPort,
+    assets_archive_path: Option<&std::path::Path>,
     grpc_port: u16,
     server_options: re_grpc_server::ServerOptions,
 ) -> Result<Box<dyn crate::sink::LogSink>, WebViewerSinkError> {
@@ -270,6 +282,7 @@ pub fn new_sink(
         open_browser,
         bind_ip,
         web_port,
+        assets_archive_path,
         grpc_port,
         server_options,
     )?))

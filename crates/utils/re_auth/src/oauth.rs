@@ -83,29 +83,28 @@ pub fn clear_credentials(
 
     // Load credentials before clearing so we can extract the session ID.
     let outcome = storage::load().ok().flatten().map(|creds| {
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            // On native, start a local callback server so WorkOS can redirect
-            // back to a "logged out" landing page.
-            match crate::callback_server::start_logout_server(&creds.claims.sid) {
-                Ok((url, handle)) => LogoutOutcome {
-                    logout_url: url,
-                    server_handle: Some(handle),
-                },
-                Err(err) => {
-                    re_log::warn!("Failed to start logout callback server: {err}");
-                    LogoutOutcome {
-                        logout_url: api::logout_url(&creds.claims.sid, None),
-                        server_handle: None,
-                    }
+        cfg_select! {
+            target_arch = "wasm32" => {
+                LogoutOutcome {
+                    logout_url: api::logout_url(&creds.claims.sid, signed_out_url),
                 }
             }
-        }
-
-        #[cfg(target_arch = "wasm32")]
-        {
-            LogoutOutcome {
-                logout_url: api::logout_url(&creds.claims.sid, signed_out_url),
+            _ => {
+                // On native, start a local callback server so WorkOS can redirect
+                // back to a "logged out" landing page.
+                match crate::callback_server::start_logout_server(&creds.claims.sid) {
+                    Ok((url, handle)) => LogoutOutcome {
+                        logout_url: url,
+                        server_handle: Some(handle),
+                    },
+                    Err(err) => {
+                        re_log::warn!("Failed to start logout callback server: {err}");
+                        LogoutOutcome {
+                            logout_url: api::logout_url(&creds.claims.sid, None),
+                            server_handle: None,
+                        }
+                    }
+                }
             }
         }
     });
@@ -332,7 +331,7 @@ impl Credentials {
         let claims = RerunCloudClaims::try_from_unverified_jwt(&jwt)?;
         let access_token = AccessToken::try_from_unverified_jwt(jwt)?;
         let mut user: User = res.user;
-        user.org_name = claims.org_name.clone();
+        user.org_name.clone_from(&claims.org_name);
         Ok(InMemoryCredentials(Self {
             user,
             refresh_token: Some(RefreshToken(res.refresh_token)),
@@ -424,7 +423,7 @@ impl AccessToken {
     }
 
     pub fn remaining_duration_secs(&self) -> i64 {
-        use saturating_cast::SaturatingCast as _;
+        use re_int::SaturatingCast as _;
 
         // Time in seconds since unix epoch
         let now: i64 = jsonwebtoken::get_current_timestamp().saturating_cast();

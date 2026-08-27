@@ -61,6 +61,11 @@ enum ExternalError {
     #[error("{0}")]
     ApiError(Box<re_redap_client::ApiError>),
 
+    /// A DataFusion error that isn't a server error, so it has no [`re_redap_client::ApiError`]
+    /// (which always names a server) to carry it.
+    #[error("{0}")]
+    DataFusionError(Box<datafusion::error::DataFusionError>, ApiErrorKind),
+
     #[error("{0}")]
     ArrowError(#[from] arrow::error::ArrowError),
 
@@ -84,6 +89,9 @@ enum ExternalError {
 
     #[error(transparent)]
     TokenError(#[from] re_auth::TokenError),
+
+    #[error(transparent)]
+    InvalidLayerNameError(#[from] re_types_core::InvalidLayerNameError),
 }
 
 const _: () = assert!(
@@ -140,15 +148,7 @@ impl From<datafusion::error::DataFusionError> for ExternalError {
             return Self::ApiError(Box::new(api.clone()));
         }
         let kind = apierror_kind_for_df_error(&value);
-        let message = match kind {
-            ApiErrorKind::InvalidArguments => "DataFusion query error",
-            ApiErrorKind::Unimplemented => "DataFusion feature not implemented",
-            ApiErrorKind::ResourcesExhausted => "DataFusion resources exhausted",
-            _ => "DataFusion error",
-        };
-        Self::ApiError(Box::new(re_redap_client::ApiError::with_kind_and_source(
-            kind, None, value, message,
-        )))
+        Self::DataFusionError(Box::new(value), kind)
     }
 }
 
@@ -194,6 +194,24 @@ impl From<ExternalError> for PyErr {
                 | ApiErrorKind::FailedPrecondition => PyRuntimeError::new_err(err.to_string()),
             },
 
+            ExternalError::DataFusionError(err, kind) => {
+                let message = match kind {
+                    ApiErrorKind::InvalidArguments => format!("DataFusion query error: {err}"),
+                    ApiErrorKind::Unimplemented => {
+                        format!("DataFusion feature not implemented: {err}")
+                    }
+                    ApiErrorKind::ResourcesExhausted => {
+                        format!("DataFusion resources exhausted: {err}")
+                    }
+                    _ => format!("DataFusion error: {err}"),
+                };
+                match kind {
+                    ApiErrorKind::InvalidArguments => PyValueError::new_err(message),
+                    ApiErrorKind::ResourcesExhausted => PyConnectionError::new_err(message),
+                    _ => PyRuntimeError::new_err(message),
+                }
+            }
+
             ExternalError::ArrowError(err) => PyValueError::new_err(format!("Arrow error: {err}")),
 
             ExternalError::UrlParseError(err) => {
@@ -219,6 +237,8 @@ impl From<ExternalError> for PyErr {
             ExternalError::TokenError(err) => {
                 PyPermissionError::new_err(format!("Invalid token: {err}"))
             }
+
+            ExternalError::InvalidLayerNameError(err) => PyValueError::new_err(err.to_string()),
         }
     }
 }
@@ -245,6 +265,7 @@ mod tests {
             TraceId::from_hex("0123456789abcdef0123456789abcdef").expect("valid trace-id");
         let arrow_err = arrow::error::ArrowError::SchemaError("rerun schema mismatch: boom".into());
         let api = ApiError::with_kind_and_source(
+            &re_uri::Origin::test(),
             ApiErrorKind::Internal,
             Some(trace_id),
             arrow_err,
@@ -274,6 +295,7 @@ mod tests {
     #[test]
     fn recovers_api_error_through_context_wrapper() {
         let api = ApiError::with_kind_and_source(
+            &re_uri::Origin::test(),
             ApiErrorKind::NotFound,
             None,
             arrow::error::ArrowError::SchemaError("inner".into()),

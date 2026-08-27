@@ -10,6 +10,8 @@ mod nalu;
 pub mod player;
 mod stable_index_deque;
 mod time;
+mod time_window;
+mod transcode_options;
 mod vp8;
 mod vp9;
 
@@ -22,9 +24,9 @@ pub use decode::{
     Result as DecodeResult, YuvMatrixCoefficients, YuvPixelLayout, YuvRange, new_decoder,
 };
 pub use demux::{
-    ChromaSubsamplingModes, KeyframeIndex, SampleIndex, SampleMetadata, SampleMetadataState,
-    SamplesStatistics, VideoCodec, VideoDataDescription, VideoDeliveryMethod, VideoEncodingDetails,
-    VideoLoadError, VideoSource,
+    ChromaSubsamplingModes, FrameNumber, KeyframeIndex, SampleIndex, SampleIndexSpan,
+    SampleMetadata, SampleMetadataState, SamplesStatistics, VideoCodec, VideoDataDescription,
+    VideoDeliveryMethod, VideoEncodingDetails, VideoLoadError, VideoSource,
 };
 pub use gop_detection::{
     DetectGopStartError, GopStartDetection, detect_gop_start, is_start_of_gop,
@@ -32,7 +34,9 @@ pub use gop_detection::{
 // AnnexB conversions are useful for testing.
 pub use h264::{write_avc_chunk_to_annexb, write_avc_chunk_to_nalu_stream};
 pub use h265::{write_hevc_chunk_to_annexb, write_hevc_chunk_to_nalu_stream};
-pub use nalu::AnnexBStreamState;
+pub use nalu::{
+    AnnexBStreamState, AnnexBStreamWriteError, write_length_prefixed_nalus_to_annexb_stream,
+};
 // Re-export:
 #[doc(no_inline)]
 pub use {
@@ -43,10 +47,13 @@ pub use {
     time::{Time, Timescale},
 };
 
+pub use self::time_window::TimeWindow;
+pub use self::transcode_options::{HwAccel, Mp4TranscodeOptions};
+
 #[cfg(with_ffmpeg)]
 pub use self::decode::{
     FFmpegError, FFmpegVersion, FFmpegVersionParseError, TranscodedMp4, ffmpeg_download_url,
-    transcode_mp4_drop_b_frames,
+    transcode_mp4,
 };
 
 pub fn enabled_features() -> &'static [&'static str] {

@@ -39,11 +39,7 @@ struct QueryArchetype<'a, T> {
 
 impl<'a, T: Archetype> QueryArchetype<'a, T> {
     fn new(ctx: &'a ViewContext<'a>) -> Self {
-        let property = ViewProperty::from_archetype::<T>(
-            ctx.viewer_ctx.blueprint_db(),
-            ctx.blueprint_query(),
-            ctx.view_id,
-        );
+        let property = ViewProperty::from_archetype::<T>(ctx);
         Self {
             ctx,
             property,

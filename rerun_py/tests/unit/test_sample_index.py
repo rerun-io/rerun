@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
+from rerun.experimental.dataloader import Field
 from rerun.experimental.dataloader._sample_index import SampleIndex, SegmentMetadata
+from rerun.experimental.dataloader.decoders import NumericDecoder
 
 
 def _integer_segment(segment_id: str, index_start: int, index_end: int) -> SegmentMetadata:
@@ -39,6 +41,12 @@ def test_global_to_local_integer_single_segment() -> None:
         assert resolved_seg is seg
         assert value == 10 + pos
         assert isinstance(value, int)
+
+
+@pytest.mark.parametrize("max_staleness", [-1, float("inf"), float("nan")])
+def test_field_rejects_invalid_max_staleness(max_staleness: float) -> None:
+    with pytest.raises(ValueError, match=r"Field\.max_staleness"):
+        Field("/state:Scalars:scalars", decode=NumericDecoder(), max_staleness=max_staleness)
 
 
 def test_global_to_local_integer_multiple_segments() -> None:

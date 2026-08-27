@@ -167,18 +167,25 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
     ui.strong("Video");
     video_section_ui(ui, video);
 
+    #[cfg(target_arch = "wasm32")]
+    if experimental.use_viewer_catalog {
+        separator_with_some_space(ui);
+        ui.strong("Origin private filesystem");
+        origin_private_filesystem_section_ui(ui);
+    }
+
     {
         let ExperimentalAppOptions {
             table_cards_and_blueprints,
             gamepad_navigation,
             point_cloud_transparency,
-            use_internal_catalog,
+            use_viewer_catalog,
         } = experimental;
         separator_with_some_space(ui);
         ui.strong("Experimental");
         ui.re_checkbox(table_cards_and_blueprints, "Table cards and blueprints")
             .on_hover_text(
-                "Enable registered table blueprints, plus grid view mode for server supplied tables.\n\n\
+                "Enable registered table blueprints and the card layout for server-supplied tables.\n\n\
                  When enabled, tables can use registered view definitions for segment previews, and a list/grid toggle appears in the table title bar.",
             );
         ui.re_checkbox(point_cloud_transparency, "Point cloud transparency")
@@ -186,32 +193,68 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
                 "Alpha-blend semi-transparent point clouds, sorting them back-to-front.\n\n\
                  Sorting happens on the CPU every frame, so this is very slow for large point clouds.",
             );
-        #[cfg(feature = "internal_catalog")]
-        ui.re_checkbox(
-            use_internal_catalog,
-            "Load files via Viewer catalog (restart required)",
-        )
-        .on_hover_text(
-            "Open .rrd files through the Viewer catalog instead of importing them directly \
-                     into the viewer.\n\n\
-                     Takes effect for files opened after enabling; the catalog starts at launch \
-                     when this is on.",
-        );
-        #[cfg(not(feature = "internal_catalog"))]
-        let _ = use_internal_catalog;
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            let gamepad_navigation_response = ui
-                .re_checkbox(gamepad_navigation, "Gamepad navigation")
-                .on_hover_text("Enable gamepad navigation in 3D spatial views.");
-            if gamepad_navigation_response.changed() && !*gamepad_navigation {
-                re_gamepad::clear_event_waker();
+        ui.re_checkbox(use_viewer_catalog, "Load files via Viewer catalog")
+            .on_hover_text(
+                "Load .rrd files through the Viewer catalog instead of importing them as a live \
+                 recording. Takes effect for files opened after enabling.",
+            );
+        cfg_select! {
+            target_arch = "wasm32" => {
+                let _ = gamepad_navigation;
+            }
+            _ => {
+                let gamepad_navigation_response = ui
+                    .re_checkbox(gamepad_navigation, "Gamepad navigation")
+                    .on_hover_text("Enable gamepad navigation in 3D spatial views.");
+                if gamepad_navigation_response.changed() && !*gamepad_navigation {
+                    re_gamepad::clear_event_waker();
+                }
             }
         }
-        #[cfg(target_arch = "wasm32")]
-        {
-            let _ = gamepad_navigation;
-        }
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+fn origin_private_filesystem_section_ui(ui: &mut Ui) {
+    if ui
+        .button("Request persistence")
+        .on_hover_text(
+            "Ask the browser to protect Viewer catalog files from automatic storage eviction. \
+             The browser may deny this request. Some browsers, including Firefox, also increase \
+             the origin's storage quota when persistence is granted.",
+        )
+        .clicked()
+    {
+        let request = re_web::browser::window().and_then(|window| {
+            window
+                .navigator()
+                .storage()
+                .persist()
+                .map_err(re_web::Error::from)
+        });
+        re_async::spawn_local(async move {
+            let result = match request {
+                Ok(request) => request
+                    .await
+                    .map_err(re_web::Error::from)
+                    .and_then(|value| {
+                        value.as_bool().ok_or_else(|| {
+                            re_web::Error::new(
+                                "persistent storage request returned a non-boolean value",
+                            )
+                        })
+                    }),
+                Err(err) => Err(err),
+            };
+
+            match result {
+                Ok(true) => re_log::info!("Persistent browser storage granted"),
+                Ok(false) => re_log::warn!("Persistent browser storage denied"),
+                Err(err) => {
+                    re_log::error!("Failed to request persistent browser storage: {err}");
+                }
+            }
+        });
     }
 }
 
@@ -392,64 +435,63 @@ fn map_view_section_ui(ui: &mut Ui, mapbox_access_token: &mut String) {
 }
 
 fn video_section_ui(ui: &mut Ui, options: &mut VideoOptions) {
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        ui.re_checkbox(
-            &mut options.override_ffmpeg_path,
-            "Override the FFmpeg binary path",
-        )
-        .on_hover_ui(|ui| {
-            ui.markdown_ui(
-                "By default, the viewer tries to automatically find a suitable FFmpeg binary in \
-                the system's `PATH`. Enabling this option allows you to specify a custom path to \
-                the FFmpeg binary.",
-            );
-        });
+    cfg_select! {
+        target_arch = "wasm32" => {
+            // This affects only the web target, so we don't need to show it on native.
+            use re_video::DecodeHardwareAcceleration;
 
-        ui.add_enabled_ui(options.override_ffmpeg_path, |ui| {
+            let hardware_acceleration = &mut options.hw_acceleration;
             ui.horizontal(|ui| {
-                // TODO(ab): needed for alignment, we should use egui flex instead
-                ui.set_height(19.0);
-
-                ui.label("Path:");
-
-                ui.add(egui::TextEdit::singleline(&mut options.ffmpeg_path));
+                ui.label("Decoder:");
+                egui::ComboBox::from_id_salt("video_decoder_hw_acceleration")
+                    .selected_text(hardware_acceleration.to_string())
+                    .show_ui(ui, |ui| {
+                        ui.selectable_value(
+                            hardware_acceleration,
+                            DecodeHardwareAcceleration::Auto,
+                            DecodeHardwareAcceleration::Auto.to_string(),
+                        );
+                        ui.selectable_value(
+                            hardware_acceleration,
+                            DecodeHardwareAcceleration::PreferSoftware,
+                            DecodeHardwareAcceleration::PreferSoftware.to_string(),
+                        );
+                        ui.selectable_value(
+                            hardware_acceleration,
+                            DecodeHardwareAcceleration::PreferHardware,
+                            DecodeHardwareAcceleration::PreferHardware.to_string(),
+                        );
+                    });
+                // Note that the setting is part of the video's cache key, so, if it changes, the cache
+                // entries outdate automatically.
             });
-        });
+        }
+        _ => {
+            ui.re_checkbox(
+                &mut options.override_ffmpeg_path,
+                "Override the FFmpeg binary path",
+            )
+            .on_hover_ui(|ui| {
+                ui.markdown_ui(
+                    "By default, the viewer tries to automatically find a suitable FFmpeg binary in \
+                    the system's `PATH`. Enabling this option allows you to specify a custom path to \
+                    the FFmpeg binary.",
+                );
+            });
 
-        ffmpeg_path_status_ui(ui, options);
-    }
+            ui.add_enabled_ui(options.override_ffmpeg_path, |ui| {
+                ui.horizontal(|ui| {
+                    // TODO(ab): needed for alignment, we should use egui flex instead
+                    ui.set_height(19.0);
 
-    // This affects only the web target, so we don't need to show it on native.
-    #[cfg(target_arch = "wasm32")]
-    {
-        use re_video::DecodeHardwareAcceleration;
+                    ui.label("Path:");
 
-        let hardware_acceleration = &mut options.hw_acceleration;
-        ui.horizontal(|ui| {
-            ui.label("Decoder:");
-            egui::ComboBox::from_id_salt("video_decoder_hw_acceleration")
-                .selected_text(hardware_acceleration.to_string())
-                .show_ui(ui, |ui| {
-                    ui.selectable_value(
-                        hardware_acceleration,
-                        DecodeHardwareAcceleration::Auto,
-                        DecodeHardwareAcceleration::Auto.to_string(),
-                    );
-                    ui.selectable_value(
-                        hardware_acceleration,
-                        DecodeHardwareAcceleration::PreferSoftware,
-                        DecodeHardwareAcceleration::PreferSoftware.to_string(),
-                    );
-                    ui.selectable_value(
-                        hardware_acceleration,
-                        DecodeHardwareAcceleration::PreferHardware,
-                        DecodeHardwareAcceleration::PreferHardware.to_string(),
-                    );
+                    ui.add(egui::TextEdit::singleline(&mut options.ffmpeg_path));
                 });
-            // Note that the setting is part of the video's cache key, so, if it changes, the cache
-            // entries outdate automatically.
-        });
+            });
+
+            ffmpeg_path_status_ui(ui, options);
+        }
     }
 }
 

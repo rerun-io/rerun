@@ -24,8 +24,8 @@ def test_any_value() -> None:
     assert np.all(foo_batch.as_arrow_array().to_numpy() == np.array([1.0, 2.0, 3.0]))
 
 
-def test_any_value_datatypes() -> None:
-    values = rr.AnyValues(my_points=rr.datatypes.Vec2DBatch([(0, 1), (2, 3), (4, 5)]))
+def test_any_value_encodings() -> None:
+    values = rr.AnyValues(my_points=rr.encodings.Vec2DBatch([(0, 1), (2, 3), (4, 5)]))
 
     batches = list(values.as_component_batches())
 

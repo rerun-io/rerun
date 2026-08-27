@@ -9,7 +9,7 @@ import numpy as np
 import pytest
 import rerun as rr
 import torch
-from rerun.datatypes import (
+from rerun.encodings import (
     Angle,
     Float64ArrayLike,
     Quaternion,
@@ -95,10 +95,10 @@ def test_transform3d() -> None:
         mat3x3,
         relation,
     ) in all_arrays:
-        translation = cast("rr.datatypes.Vec3DLike | None", translation)
-        quaternion = cast("rr.datatypes.QuaternionLike | None", quaternion)
-        scale = cast("rr.datatypes.Vec3DLike | None", scale)
-        mat3x3 = cast("rr.datatypes.Mat3x3Like | None", mat3x3)
+        translation = cast("rr.encodings.Vec3DLike | None", translation)
+        quaternion = cast("rr.encodings.QuaternionLike | None", quaternion)
+        scale = cast("rr.encodings.Vec3DLike | None", scale)
+        mat3x3 = cast("rr.encodings.Mat3x3Like | None", mat3x3)
         relation = cast("rr.components.TransformRelationLike | None", relations)
 
         print(

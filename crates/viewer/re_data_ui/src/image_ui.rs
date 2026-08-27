@@ -3,7 +3,7 @@ use re_capabilities::MainThreadToken;
 use re_chunk_store::UnitChunkShared;
 use re_renderer::renderer::ColormappedTexture;
 use re_sdk_types::components;
-use re_sdk_types::datatypes::{ChannelDatatype, ColorModel};
+use re_sdk_types::encodings::{ChannelDatatype, ColorModel};
 use re_sdk_types::image::ImageKind;
 use re_types_core::{Component as _, ComponentDescriptor};
 use re_ui::list_item::ListItemContentButtonsExt as _;

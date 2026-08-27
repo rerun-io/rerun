@@ -6,7 +6,7 @@ use re_log_types::{AbsoluteTimeRange, EntityPath, TimeType, TimelineName};
 use re_sdk_types::Archetype as _;
 use re_sdk_types::blueprint::archetypes as blueprint_archetypes;
 use re_sdk_types::blueprint::components::VisibleTimeRange;
-use re_sdk_types::datatypes::{TimeInt, TimeRange, TimeRangeBoundary};
+use re_sdk_types::encodings::{TimeInt, TimeRange, TimeRangeBoundary};
 use re_ui::list_item::{LabelContent, ListItemContentButtonsExt as _};
 use re_ui::{RelativeTimeRange, TimeDragValue, UiExt as _, relative_time_range_label_text};
 use re_viewer_context::{
@@ -142,7 +142,7 @@ fn save_visible_time_ranges(
             existing.range = time_range;
         } else {
             visible_time_range_list.push(
-                re_sdk_types::datatypes::VisibleTimeRange {
+                re_sdk_types::encodings::VisibleTimeRange {
                     timeline: timeline_name.as_str().into(),
                     range: time_range,
                 }

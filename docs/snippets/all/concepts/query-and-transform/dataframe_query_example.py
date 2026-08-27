@@ -2,18 +2,17 @@
 
 import atexit
 import math
-import os
 import tempfile
+from pathlib import Path
 
 from datafusion import col
 
 import rerun as rr
 
-# should be a cross-platform way to generate a rrd path.
-RRD_PATH = tempfile.mktemp(suffix=".rrd")
-atexit.register(
-    lambda: os.unlink(RRD_PATH) if os.path.exists(RRD_PATH) else None
-)
+# a cross-platform way to generate a rrd path, cleaned up when the process exits
+_tmp_dir = tempfile.TemporaryDirectory()
+atexit.register(_tmp_dir.cleanup)
+RRD_PATH = str(Path(_tmp_dir.name) / "query_example.rrd")
 
 # region: setup
 # create some data

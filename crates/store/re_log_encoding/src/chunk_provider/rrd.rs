@@ -1,17 +1,13 @@
-use std::io::{Read, Seek};
-#[cfg(not(target_arch = "wasm32"))]
-use std::path::Path;
 use std::sync::Arc;
 
-use parking_lot::Mutex;
-
+use re_async::AsyncReadAt;
 use re_chunk::{Chunk, ChunkId};
 
 use crate::{ChunkProvider, ChunkProviderError, CodecResult, RawRrdManifest, RrdManifest};
 
 /// Reader-backed [`ChunkProvider`].
-pub struct RrdChunkProvider<R: Read + Seek> {
-    reader: Mutex<R>,
+pub struct RrdChunkProvider<R: AsyncReadAt> {
+    reader: R,
     manifest: Arc<RrdManifest>,
     raw_manifest: Arc<RawRrdManifest>,
 
@@ -19,7 +15,7 @@ pub struct RrdChunkProvider<R: Read + Seek> {
     source: String,
 }
 
-impl<R: Read + Seek> RrdChunkProvider<R> {
+impl<R: AsyncReadAt> RrdChunkProvider<R> {
     /// Build a chunk provider from an already-open reader.
     ///
     /// The reader's cursor position is irrelevant; chunk reads seek to absolute manifest offsets.
@@ -30,7 +26,7 @@ impl<R: Read + Seek> RrdChunkProvider<R> {
     ) -> CodecResult<Self> {
         let manifest = Arc::new(RrdManifest::try_new(&raw_manifest)?);
         Ok(Self {
-            reader: Mutex::new(reader),
+            reader,
             manifest,
             raw_manifest,
             source: source.into(),
@@ -38,38 +34,8 @@ impl<R: Read + Seek> RrdChunkProvider<R> {
     }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
-impl RrdChunkProvider<std::fs::File> {
-    /// Open an RRD file as a chunk provider.
-    ///
-    /// The caller must have read and selected the appropriate raw manifest from the footer (e.g. by
-    /// `StoreKind::Recording`); byte offsets in the manifest must come from the same file.
-    pub fn try_from_path(
-        path: impl AsRef<Path>,
-        raw_manifest: Arc<RawRrdManifest>,
-    ) -> CodecResult<Self> {
-        let path = path.as_ref();
-        let file = std::fs::File::open(path)?;
-        Self::try_from_file(file, path, raw_manifest)
-    }
-
-    /// Build a chunk provider from an already-open file handle.
-    ///
-    /// Use this when the caller has already opened the file (e.g. to read the footer): reusing the
-    /// handle avoids a drop-and-reopen race window. `path` is used purely for the diagnostic
-    /// `source()` string and need not be re-opened by this function.
-    ///
-    /// The file's cursor position is irrelevant; chunk reads seek to absolute manifest offsets.
-    pub fn try_from_file(
-        file: std::fs::File,
-        path: impl AsRef<Path>,
-        raw_manifest: Arc<RawRrdManifest>,
-    ) -> CodecResult<Self> {
-        Self::from_reader(file, path.as_ref().display().to_string(), raw_manifest)
-    }
-}
-
-impl<R: Read + Seek + Send> ChunkProvider for RrdChunkProvider<R> {
+#[async_trait::async_trait]
+impl<R: AsyncReadAt> ChunkProvider for RrdChunkProvider<R> {
     fn manifest(&self) -> &Arc<RrdManifest> {
         &self.manifest
     }
@@ -82,12 +48,12 @@ impl<R: Read + Seek + Send> ChunkProvider for RrdChunkProvider<R> {
         self.source.clone()
     }
 
-    fn load_chunks(&self, ids: &[ChunkId]) -> Result<Vec<Arc<Chunk>>, ChunkProviderError> {
+    async fn load_chunks(&self, ids: &[ChunkId]) -> Result<Vec<Arc<Chunk>>, ChunkProviderError> {
         if ids.is_empty() {
             return Ok(Vec::new());
         }
-        let mut reader = self.reader.lock();
-        crate::read_chunks(&mut *reader, &self.manifest, ids)
+        crate::read_chunks(&self.reader, &self.manifest, ids)
+            .await
             .map_err(|err| ChunkProviderError(Box::new(err)))
     }
 }
@@ -130,7 +96,7 @@ mod tests {
         for frame_idx in 0..num_chunks {
             let entity_path = EntityPath::from(format!("/entity_{frame_idx}"));
             let row_id = RowId::new();
-            let points = MyPoint::from_iter(frame_idx as u32..frame_idx as u32 + 1);
+            let points = MyPoint::from_iter((frame_idx as u32)..=(frame_idx as u32));
             let chunk = Chunk::builder(entity_path)
                 .with_sparse_component_batches(
                     row_id,
@@ -173,18 +139,21 @@ mod tests {
         let path = dir.path().join("test.rrd");
         let (store_id, chunks) = write_test_rrd(&path, 3);
 
-        let mut footer_file = std::fs::File::open(&path).unwrap();
-        let footer = crate::read_rrd_footer(&mut footer_file).unwrap().unwrap();
+        let footer_file = std::fs::File::open(&path).unwrap();
+        let footer = futures::executor::block_on(crate::read_rrd_footer(&footer_file))
+            .unwrap()
+            .unwrap();
         let raw = Arc::new(footer.manifests[&store_id].clone());
         drop(footer_file);
 
         let store_file = std::fs::File::open(&path).unwrap();
-        let provider = RrdChunkProvider::try_from_file(store_file, &path, raw).unwrap();
+        let provider =
+            RrdChunkProvider::from_reader(store_file, path.display().to_string(), raw).unwrap();
 
         assert_eq!(provider.manifest().col_chunk_ids().len(), chunks.len());
 
         let ids: Vec<ChunkId> = provider.manifest().col_chunk_ids().to_vec();
-        let loaded = provider.load_chunks(&ids).unwrap();
+        let loaded = futures::executor::block_on(provider.load_chunks(&ids)).unwrap();
 
         let mut loaded_ids: Vec<_> = loaded.iter().map(|c| c.id()).collect();
         let mut expected_ids: Vec<_> = ids.clone();

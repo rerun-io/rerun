@@ -1,7 +1,7 @@
 use super::MediaType;
 use re_rvl::RosRvlMetadata;
 
-// TODO(#2388): come up with some DSL in our flatbuffers definitions so that we can declare these
+// TODO(#2388): come up with some DSL in `re_type_definitions` so that we can declare these
 // constants directly in there.
 impl MediaType {
     /// Plain text.

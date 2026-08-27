@@ -19,21 +19,21 @@ namespace rerun::archetypes {
 RR_DISABLE_MAYBE_UNINITIALIZED_PUSH
 
     /// New Tensor from dimensions and tensor buffer.
-    Tensor(Collection<uint64_t> shape, datatypes::TensorBuffer buffer)
-        : Tensor(datatypes::TensorData(std::move(shape), std::move(buffer))) {}
+    Tensor(Collection<uint64_t> shape, encodings::TensorBuffer buffer)
+        : Tensor(encodings::TensorData(std::move(shape), std::move(buffer))) {}
 
 RR_DISABLE_MAYBE_UNINITIALIZED_POP
 
     /// New tensor from dimensions and pointer to tensor data.
     ///
-    /// Type must be one of the types supported by `rerun::datatypes::TensorData`.
+    /// Type must be one of the types supported by `rerun::encodings::TensorData`.
     /// \param shape
     /// Shape of the image. Determines the number of elements expected to be in `data`.
     /// \param data_
     /// Target of the pointer must outlive the archetype.
     template <typename TElement>
     explicit Tensor(Collection<uint64_t> shape, const TElement* data_)
-        : Tensor(datatypes::TensorData(std::move(shape), data_)) {}
+        : Tensor(encodings::TensorData(std::move(shape), data_)) {}
 
     /// Update the `names` of the contained `TensorData` dimensions.
     ///
@@ -49,14 +49,14 @@ RR_DISABLE_MAYBE_UNINITIALIZED_POP
     Result<std::shared_ptr<arrow::Array>> tensor_data_with_dim_names(
         const std::optional<rerun::ComponentBatch>& data, Collection<std::string> names
     ) {
-        if (names.empty()) {
-            return std::move(data.value().array);
-        }
         if (!data.has_value()) {
             return Error(
                 ErrorCode::InvalidComponent,
                 "Can't set names on a tensor that doesn't have any data"
             );
+        }
+        if (names.empty()) {
+            return std::move(data.value().array);
         }
 
         // TODO(#9119): Right now everything is crammed into a single struct array,
@@ -107,7 +107,7 @@ RR_DISABLE_MAYBE_UNINITIALIZED_POP
         }
 
         // Build a new names array and put everything back together.
-        auto datatype = rerun::Loggable<rerun::datatypes::TensorData>::arrow_datatype();
+        auto datatype = rerun::Loggable<rerun::encodings::TensorData>::arrow_datatype();
         auto name_field = datatype->field(1);
         arrow::MemoryPool* pool = arrow::default_memory_pool();
         ARROW_ASSIGN_OR_RAISE(auto names_builder, arrow::MakeBuilder(name_field->type(), pool))
@@ -145,6 +145,8 @@ RR_DISABLE_MAYBE_UNINITIALIZED_POP
             return std::move(*this);
         }
 
+        // `tensor_data_with_dim_names` errors when `data` is empty, so it is set here.
+        // NOLINTNEXTLINE(bugprone-unchecked-optional-access)
         this->data.value().array = std::move(result.value);
 
         return std::move(*this);

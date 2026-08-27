@@ -2,7 +2,7 @@ use re_sdk_types::archetypes::Mesh3D;
 use re_sdk_types::components::{
     AlbedoFactor, ClassId, Color, Position3D, Texcoord2D, TriangleIndices, Vector3D,
 };
-use re_sdk_types::datatypes::{Rgba32, UVec3D, Vec2D, Vec3D};
+use re_sdk_types::encodings::{Rgba32, UVec3D, Vec2D, Vec3D};
 use re_sdk_types::{Archetype as _, AsComponents as _, ComponentBatch as _};
 
 #[test]

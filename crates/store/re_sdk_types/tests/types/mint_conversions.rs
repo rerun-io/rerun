@@ -1,15 +1,15 @@
-use re_sdk_types::{components, datatypes};
+use re_sdk_types::{components, encodings};
 
 #[test]
 fn vec2d() {
     {
-        let datatype: datatypes::Vec2D = [1.0, 2.0].into();
+        let datatype: encodings::Vec2D = [1.0, 2.0].into();
         let mint: mint::Vector2<f32> = datatype.into();
         assert_eq!(mint, [1.0, 2.0].into());
     }
     {
         let mint: mint::Vector2<f32> = [1.0, 2.0].into();
-        let datatype: datatypes::Vec2D = mint.into();
+        let datatype: encodings::Vec2D = mint.into();
         assert_eq!(datatype.x(), 1.0);
         assert_eq!(datatype.y(), 2.0);
     }
@@ -18,13 +18,13 @@ fn vec2d() {
 #[test]
 fn vec3d() {
     {
-        let datatype: datatypes::Vec3D = [1.0, 2.0, 3.0].into();
+        let datatype: encodings::Vec3D = [1.0, 2.0, 3.0].into();
         let mint: mint::Vector3<f32> = datatype.into();
         assert_eq!(mint, [1.0, 2.0, 3.0].into());
     }
     {
         let mint: mint::Vector3<f32> = [1.0, 2.0, 3.0].into();
-        let datatype: datatypes::Vec3D = mint.into();
+        let datatype: encodings::Vec3D = mint.into();
         assert_eq!(datatype.x(), 1.0);
         assert_eq!(datatype.y(), 2.0);
         assert_eq!(datatype.z(), 3.0);
@@ -34,7 +34,7 @@ fn vec3d() {
 #[test]
 fn vec4d() {
     {
-        let datatype: datatypes::Vec4D = [1.0, 2.0, 3.0, 4.0].into();
+        let datatype: encodings::Vec4D = [1.0, 2.0, 3.0, 4.0].into();
         let mint: mint::Vector4<f32> = datatype.into();
         assert_eq!(mint.x, 1.0);
         assert_eq!(mint.y, 2.0);
@@ -43,7 +43,7 @@ fn vec4d() {
     }
     {
         let mint: mint::Vector4<f32> = [1.0, 2.0, 3.0, 4.0].into();
-        let datatype: datatypes::Vec4D = mint.into();
+        let datatype: encodings::Vec4D = mint.into();
         assert_eq!(datatype.x(), 1.0);
         assert_eq!(datatype.y(), 2.0);
         assert_eq!(datatype.z(), 3.0);
@@ -117,13 +117,13 @@ fn half_sizes_3d() {
 #[test]
 fn quaternion() {
     {
-        let datatype = datatypes::Quaternion::from_xyzw([1.0, 2.0, 3.0, 4.0]);
+        let datatype = encodings::Quaternion::from_xyzw([1.0, 2.0, 3.0, 4.0]);
         let mint: mint::Quaternion<f32> = datatype.into();
         assert_eq!(mint, [1.0, 2.0, 3.0, 4.0].into());
     }
     {
         let mint: mint::Quaternion<f32> = [1.0, 2.0, 3.0, 4.0].into();
-        let datatype: datatypes::Quaternion = mint.into();
+        let datatype: encodings::Quaternion = mint.into();
         assert_eq!(datatype.0[0], 1.0);
         assert_eq!(datatype.0[1], 2.0);
         assert_eq!(datatype.0[2], 3.0);
@@ -140,13 +140,13 @@ fn mat3() {
     ];
 
     {
-        let datatype: datatypes::Mat3x3 = m.into();
+        let datatype: encodings::Mat3x3 = m.into();
         let mint: mint::ColumnMatrix3<f32> = datatype.into();
         assert_eq!(mint, m.into());
     }
     {
         let mint: mint::ColumnMatrix3<f32> = m.into();
-        let datatype: datatypes::Mat3x3 = mint.into();
+        let datatype: encodings::Mat3x3 = mint.into();
         assert_eq!(datatype, m.into());
     }
 }
@@ -161,13 +161,13 @@ fn mat4() {
     ];
 
     {
-        let datatype: datatypes::Mat4x4 = m.into();
+        let datatype: encodings::Mat4x4 = m.into();
         let mint: mint::ColumnMatrix4<f32> = datatype.into();
         assert_eq!(mint, m.into());
     }
     {
         let mint: mint::ColumnMatrix4<f32> = m.into();
-        let datatype: datatypes::Mat4x4 = mint.into();
+        let datatype: encodings::Mat4x4 = mint.into();
         assert_eq!(datatype, m.into());
     }
 }

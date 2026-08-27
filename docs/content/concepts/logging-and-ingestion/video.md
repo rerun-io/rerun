@@ -1,6 +1,7 @@
 ---
 title: Video
 order: 1100
+description: How Rerun handles video streams and codecs
 ---
 
 A stream of images (like those produced by a camera) can be logged to Rerun in several different ways:

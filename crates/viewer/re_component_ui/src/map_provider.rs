@@ -1,7 +1,7 @@
 use re_sdk_types::blueprint::components::MapProvider;
 use re_viewer_context::AppContext;
 
-use crate::datatype_uis::{VariantAvailable, VariantAvailableProvider};
+use crate::encoding_uis::{VariantAvailable, VariantAvailableProvider};
 
 pub struct MapProviderVariantAvailable;
 

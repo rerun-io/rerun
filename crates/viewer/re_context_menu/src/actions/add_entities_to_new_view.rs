@@ -1,11 +1,15 @@
 use egui::{Response, Ui};
 use itertools::Itertools as _;
 use nohash_hasher::IntSet;
-use re_log_types::{EntityPath, EntityPathFilter, EntityPathRule, RuleEffect};
+use re_log_types::{EntityPath, EntityPathFilter, EntityPathHash, EntityPathRule, RuleEffect};
 use re_sdk_types::ViewClassIdentifier;
 use re_ui::UiExt as _;
-use re_viewer_context::{Item, RecommendedView, SystemCommand, SystemCommandSender as _};
+use re_viewer_context::{
+    Item, RecommendedView, SystemCommand, SystemCommandSender as _, ViewClass,
+    ViewSystemIdentifier, ViewerContext, VisualizableEntities, VisualizableReason,
+};
 use re_viewport_blueprint::ViewBlueprint;
+use smallvec::SmallVec;
 
 use crate::{ContextMenuAction, ContextMenuContext};
 
@@ -79,7 +83,7 @@ impl ContextMenuAction for AddEntitiesToNewViewAction {
     }
 }
 
-/// Builds a list of compatible views for the provided selection.
+/// Builds a list of views that are a good fit for the provided selection.
 fn recommended_views_for_selection(ctx: &ContextMenuContext<'_>) -> IntSet<ViewClassIdentifier> {
     re_tracing::profile_function!();
 
@@ -94,24 +98,17 @@ fn recommended_views_for_selection(ctx: &ContextMenuContext<'_>) -> IntSet<ViewC
     let view_class_registry = ctx.viewer_context.view_class_registry();
 
     for entry in view_class_registry.iter_registry() {
-        // We consider a view class to be recommended if all selected entities are
-        // "visualizable" with it through a native type.
-        // By "visualizable" we mean that either the entity itself, or any
-        // of its sub-entities, are visualizable.
+        let class = view_class_registry.get_class_or_log_error(entry.identifier);
+        let visualizers: SmallVec<[(ViewSystemIdentifier, &VisualizableEntities); 32]> = ctx
+            .viewer_context
+            .iter_visualizable_entities_for_view_class(entry.identifier)
+            .collect();
 
+        // We consider a view class to be recommended if all selected entities are "shown" by it.
+        // By "shown" we mean that either the entity itself, or any of its sub-entities, would be
+        // displayed in a new view of this class.
         let covered = entities_of_interest.iter().all(|candidate_entity| {
-            ctx.viewer_context
-                .iter_visualizable_entities_for_view_class(entry.identifier)
-                .any(|(_visualizer, visualizable_entities)| {
-                    visualizable_entities
-                        .0
-                        .iter()
-                        .any(|(visualizable_entity, _reason)| {
-                            // TODO(andreas): Do we want to consider certain reasons as more relevant than others?
-                            // For example, should we consider native-semantics as more recommended?
-                            visualizable_entity.starts_with(candidate_entity)
-                        })
-                })
+            would_show_subtree(ctx.viewer_context, class, &visualizers, candidate_entity)
         });
 
         if covered {
@@ -120,6 +117,67 @@ fn recommended_views_for_selection(ctx: &ContextMenuContext<'_>) -> IntSet<ViewC
     }
 
     output
+}
+
+/// Would a newly created view of `class` show `candidate_entity` or any of its sub-entities?
+fn would_show_subtree(
+    viewer_ctx: &ViewerContext<'_>,
+    class: &dyn ViewClass,
+    visualizers: &[(ViewSystemIdentifier, &VisualizableEntities)],
+    candidate_entity: &EntityPath,
+) -> bool {
+    // Check the selected entity itself first: it's by far the most common match, and it saves us
+    // from walking the (potentially very large) list of visualizable entities below.
+    if would_show_entity(viewer_ctx, class, visualizers, candidate_entity) {
+        return true;
+    }
+
+    // This can grow to the size of the subtree, so a linear-scan container won't do.
+    let mut already_checked: IntSet<EntityPathHash> =
+        std::iter::once(candidate_entity.hash()).collect();
+
+    for (_visualizer, visualizable_entities) in visualizers {
+        #[expect(clippy::iter_over_hash_type)] // We stop at the first match, order doesn't matter.
+        for entity_path in visualizable_entities.keys() {
+            if entity_path.starts_with(candidate_entity)
+                && already_checked.insert(entity_path.hash())
+                && would_show_entity(viewer_ctx, class, visualizers, entity_path)
+            {
+                return true;
+            }
+        }
+    }
+
+    false
+}
+
+/// Would a newly created view of `class` show `entity_path` right away?
+fn would_show_entity(
+    viewer_ctx: &ViewerContext<'_>,
+    class: &dyn ViewClass,
+    visualizers: &[(ViewSystemIdentifier, &VisualizableEntities)],
+    entity_path: &EntityPath,
+) -> bool {
+    // This is the same per-entity input that view contents resolution feeds into
+    // `ViewClass::recommended_visualizers_for_entity`, see `ViewContents::build_data_result_tree`.
+    let visualizers_with_reason: SmallVec<[(ViewSystemIdentifier, &VisualizableReason); 8]> =
+        visualizers
+            .iter()
+            .filter_map(|(visualizer, visualizable_entities)| {
+                visualizable_entities
+                    .get(entity_path)
+                    .map(|reason| (*visualizer, reason))
+            })
+            .collect();
+
+    !class
+        .recommended_visualizers_for_entity(
+            entity_path,
+            &visualizers_with_reason,
+            viewer_ctx.indicated_entities_per_visualizer,
+        )
+        .into_auto_spawned()
+        .is_empty()
 }
 
 /// Creates a view of the given class, with root set as origin, and a filter set to include all

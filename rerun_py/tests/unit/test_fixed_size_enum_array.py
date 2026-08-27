@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import pyarrow as pa
-from test_types.datatypes import (
+import pytest
+from test_types.encodings import (
     FixedSizeEnumArray,
     FixedSizeEnumArrayBatch,
     FixedSizeWideEnumArray,
@@ -28,6 +29,11 @@ def test_fixed_size_enum_array_batch() -> None:
 def test_fixed_size_enum_array_accepts_existing_instance() -> None:
     original = FixedSizeEnumArray(["Up", "Down", "Right"])  # type: ignore[arg-type]
     FixedSizeEnumArray(original)  # Does not raise an exception.
+
+
+def test_fixed_size_enum_array_validates_length() -> None:
+    with pytest.raises(ValueError, match="must be a 3-element array"):
+        FixedSizeEnumArray(["Up", "Down", "Right", "Left"])  # type: ignore[arg-type]
 
 
 def test_fixed_size_wide_enum_array_batch() -> None:

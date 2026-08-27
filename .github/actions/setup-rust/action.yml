@@ -54,7 +54,7 @@ runs:
       shell: bash --noprofile --norc -euo pipefail {0}
 
     - name: Set up GCP credentials
-      uses: google-github-actions/auth@v3
+      uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
       with:
         workload_identity_provider: ${{ inputs.workload_identity_provider }}
         service_account: ${{ inputs.service_account }}
@@ -85,6 +85,6 @@ runs:
 
     # Recommended way to install nextest on CI.
     - name: Install latest nextest release
-      uses: taiki-e/install-action@v2.48.7
+      uses: taiki-e/install-action@80466ef8efa80486cdfbddf929453a4f3565c791 # v2.62.34
       with:
         tool: nextest@0.9.89

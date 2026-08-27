@@ -12,11 +12,20 @@ pub enum Error {
     #[error("Channel {0} does not define a schema")]
     NoSchema(String),
 
-    #[error("Invalid schema {schema}: {source}")]
+    #[error("Invalid schema {schema}: {source:#}")]
     InvalidSchema {
         schema: String,
         source: anyhow::Error,
     },
+
+    /// The embedded summary could not be read, but recovery may be able to reconstruct it.
+    #[error(
+        "MCAP summary is missing or corrupt; try reopening it with recovery enabled. Details: {details:#}"
+    )]
+    SummaryRequiresRecovery { details: anyhow::Error },
+
+    #[error("Not an MCAP file: missing start magic")]
+    MissingStartMagic,
 
     #[error(transparent)]
     Mcap(#[from] ::mcap::McapError),

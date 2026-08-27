@@ -134,11 +134,10 @@ impl App {
             UICommand::OpenProfiler.menu_button_ui(ui, &self.command_sender);
 
             UICommand::ToggleDevPanel.menu_button_ui(ui, &self.command_sender);
-            RecordingCommandKind::ToggleChunkStoreBrowser.menu_button_ui(
-                ui,
-                recording_id,
-                &self.command_sender,
-            );
+            UICommand::ToggleChunkStoreBrowser.menu_button_ui(ui, &self.command_sender);
+
+            #[cfg(not(target_arch = "wasm32"))]
+            UICommand::ScreenshotWholeApp.menu_button_ui(ui, &self.command_sender);
 
             #[cfg(debug_assertions)]
             UICommand::ToggleEguiDebugPanel.menu_button_ui(ui, &self.command_sender);
@@ -152,7 +151,7 @@ impl App {
         backend_menu_ui(&self.command_sender, ui, render_state);
 
         #[cfg(debug_assertions)]
-        menu::SubMenuButton::new("Debug")
+        menu::SubMenuButton::new(("Debug", re_ui::debug_only::debug_only_rich_text(ui.style())))
             .config(
                 menu::MenuConfig::new()
                     .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside)
@@ -168,7 +167,7 @@ impl App {
                 );
 
                 ui.label("egui debug options:");
-                ui.weak(format!("pixels_per_point: {:?}", ui.pixels_per_point()));
+                ui.weak(format!("pixels_per_point: {}", ui.pixels_per_point()));
                 egui_debug_options_ui(ui);
             });
 
@@ -379,6 +378,7 @@ fn render_state_ui(ui: &mut egui::Ui, render_state: &egui_wgpu::RenderState) {
             subgroup_min_size: _,
             subgroup_max_size: _,
             transient_saves_memory: _,
+            limit_bucket: _,
         } = &info;
 
         // Example values:
@@ -392,22 +392,28 @@ fn render_state_ui(ui: &mut egui::Ui, render_state: &egui_wgpu::RenderState) {
             ui.end_row();
 
             ui.label("Device Type");
-            ui.label(format!("{device_type:?}"));
+            ui.label(match device_type {
+                wgpu::DeviceType::Other => "Other",
+                wgpu::DeviceType::IntegratedGpu => "Integrated GPU",
+                wgpu::DeviceType::DiscreteGpu => "Discrete GPU",
+                wgpu::DeviceType::VirtualGpu => "Virtual GPU",
+                wgpu::DeviceType::Cpu => "CPU",
+            });
             ui.end_row();
 
             if !name.is_empty() {
                 ui.label("Name");
-                ui.label(format!("{name:?}"));
+                ui.label(name);
                 ui.end_row();
             }
             if !driver.is_empty() {
                 ui.label("Driver");
-                ui.label(format!("{driver:?}"));
+                ui.label(driver);
                 ui.end_row();
             }
             if !driver_info.is_empty() {
                 ui.label("Driver info");
-                ui.label(format!("{driver_info:?}"));
+                ui.label(driver_info);
                 ui.end_row();
             }
             if *vendor != 0 {
@@ -537,6 +543,20 @@ fn debug_menu_options_ui(
 
     if ui.button("Log something at INFO level").clicked() {
         re_log::info!("Logging some info");
+    }
+
+    if ui.button("Log an error").clicked() {
+        // The same shape a failed server call arrives in: a summary, and the rest as details.
+        let err = re_error::StructuredError::parse(
+            "/GetTableSchema failed: invalid lance input (Internal)",
+        )
+        .with_details([
+            "Server: rerun://example.com:443",
+            "trace-id: ad66019921fce81f3f56462f9a8dbd63",
+            "dataset url: file:///path/to/file",
+            r#"metadata: {"x-request-trace-id": "ad66019921fce81f3f56462f9a8dbd63"}"#,
+        ]);
+        re_log::error!("{err}");
     }
 
     RecordingCommandKind::ToggleBlueprintInspectionPanel.menu_button_ui(

@@ -1,6 +1,6 @@
 use std::collections::BTreeSet;
 
-use re_sdk_types::datatypes::Utf8;
+use re_sdk_types::encodings::Utf8;
 use re_sdk_types::reflection::ComponentDescriptorExt as _;
 use re_sdk_types::{
     AsComponents as _, Component as _, ComponentDescriptor, DynamicArchetype, components,

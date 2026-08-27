@@ -1,4 +1,150 @@
-use crate::UiExt as _;
+use crate::{DesignTokens, Size, TextEditVisuals, UiExt as _, all_visuals};
+use egui::{Align, Atoms, IntoAtoms, Response, Style, TextBuffer, TextEdit, Ui, Vec2, Widget};
+
+/// Wrapper around eguis [`TextEdit`] that applies reruns styling
+pub struct ReTextEdit<'a> {
+    text_edit: TextEdit<'a>,
+    size: Size,
+    variant: TextEditVariant,
+    prefix: Atoms<'static>,
+    suffix: Atoms<'static>,
+}
+
+// The visual variant of the text edit.
+#[derive(Debug, Clone, Copy)]
+pub enum TextEditVariant {
+    /// No bg fill and an outline stroke. Use when the textedit is standalone and doesn't edit a
+    /// value (e.g. search bar).
+    Outlined,
+
+    /// Filled to look similar to buttons and other widgets. Use in forms or when editing some
+    /// value.
+    Filled,
+}
+
+impl TextEditVariant {
+    fn visuals<'a>(&self, tokens: &'a DesignTokens) -> &'a TextEditVisuals {
+        match self {
+            Self::Outlined => &tokens.text_edit_outlined,
+            Self::Filled => &tokens.text_edit_filled,
+        }
+    }
+
+    fn apply(&self, style: &mut Style, tokens: &DesignTokens) {
+        let TextEditVisuals {
+            fill,
+            fill_hovered,
+            fill_focused,
+            text,
+            text_placeholder,
+            stroke,
+            stroke_hovered,
+            stroke_focused,
+        } = self.visuals(tokens);
+
+        style.visuals.text_edit_bg_color = Some(*fill);
+        all_visuals(style, |vis| {
+            vis.expansion = 0.0;
+            vis.bg_fill = *fill;
+            vis.weak_bg_fill = *fill;
+            vis.bg_stroke = *stroke;
+            vis.fg_stroke.color = *text;
+        });
+
+        style.visuals.widgets.hovered.weak_bg_fill = *fill_hovered;
+        style.visuals.widgets.hovered.bg_fill = *fill_hovered;
+        style.visuals.widgets.hovered.bg_stroke = *stroke_hovered;
+        style.visuals.widgets.active.weak_bg_fill = *fill_focused;
+        style.visuals.widgets.active.bg_fill = *fill_focused;
+        style.visuals.widgets.active.bg_stroke = *stroke_focused;
+
+        style.visuals.selection.stroke = *stroke_focused;
+
+        // The hint text (placeholder) is painted with the weak text color:
+        style.visuals.weak_text_color = Some(*text_placeholder);
+    }
+}
+
+impl ReTextEdit<'_> {
+    pub fn singleline(text: &mut dyn TextBuffer) -> ReTextEdit<'_> {
+        ReTextEdit {
+            text_edit: TextEdit::singleline(text).vertical_align(Align::Center),
+            size: Size::Small,
+            variant: TextEditVariant::Outlined,
+            prefix: Atoms::default(),
+            suffix: Atoms::default(),
+        }
+    }
+
+    pub fn multiline(text: &mut dyn TextBuffer) -> ReTextEdit<'_> {
+        ReTextEdit {
+            text_edit: TextEdit::singleline(text),
+            size: Size::Small,
+            variant: TextEditVariant::Outlined,
+            prefix: Atoms::default(),
+            suffix: Atoms::default(),
+        }
+    }
+
+    pub fn size(mut self, size: Size) -> Self {
+        self.size = size;
+        self
+    }
+
+    pub fn variant(mut self, variant: TextEditVariant) -> Self {
+        self.variant = variant;
+        self
+    }
+
+    pub fn prefix(mut self, atoms: impl IntoAtoms<'static>) -> Self {
+        self.prefix = atoms.into_atoms();
+        self
+    }
+
+    pub fn suffix(mut self, atoms: impl IntoAtoms<'static>) -> Self {
+        self.suffix = atoms.into_atoms();
+        self
+    }
+
+    pub fn hint_text(mut self, text: impl IntoAtoms<'static>) -> Self {
+        self.text_edit = self.text_edit.hint_text(text);
+        self
+    }
+}
+
+impl Widget for ReTextEdit<'_> {
+    fn ui(self, ui: &mut Ui) -> Response {
+        let Self {
+            mut text_edit,
+            size,
+            variant,
+            mut prefix,
+            mut suffix,
+        } = self;
+        let previous_style = ui.style().clone();
+        let tokens = ui.tokens();
+        let style = ui.style_mut();
+        size.apply(style, false);
+        variant.apply(style, tokens);
+
+        if !prefix.is_empty() {
+            prefix.map_images(|i| i.tint(tokens.text_strong));
+            text_edit = text_edit.prefix(prefix);
+        }
+        if !suffix.is_empty() {
+            suffix.map_images(|i| i.tint(tokens.text_strong));
+            text_edit = text_edit.suffix(suffix);
+        }
+
+        text_edit = text_edit.min_size(Vec2::new(0.0, size.height()));
+
+        let response = ui.add(text_edit);
+
+        ui.set_style(previous_style);
+
+        response
+    }
+}
 
 /// Text edit with autocomplete suggestions popup.
 ///

@@ -1,3 +1,4 @@
+use std::assert_matches;
 use std::sync::{Arc, OnceLock};
 
 use glam::DAffine3;
@@ -363,10 +364,10 @@ fn test_latest_at_transform_cache_snapshot() -> Result<(), Box<dyn std::error::E
         .expect("implicit hierarchy edge should be present");
 
     // Check that the implicit edge has no logged transform payload.
-    assert!(matches!(
+    assert_matches!(
         implicit_edge.source,
         transform_cache_snapshot::EdgeSource::ImplicitHierarchy
-    ));
+    );
 
     // Check that the logged transform shows up as such in the snapshot.
     let transform_edge = snapshot
@@ -915,7 +916,7 @@ fn test_tree_transforms() -> Result<(), Box<dyn std::error::Error>> {
             // This involves casting f32 components to f64 and renormalizing, which produces
             // slightly different values than directly computing in f64.
             Some(DAffine3::from_quat(
-                convert::quaternion_to_dquat(re_sdk_types::datatypes::Quaternion::from(
+                convert::quaternion_to_dquat(re_sdk_types::encodings::Quaternion::from(
                     glam::Quat::from_rotation_x(1.0),
                 ))
                 .unwrap(),
@@ -1244,7 +1245,7 @@ fn test_clear_non_recursive() -> Result<(), Box<dyn std::error::Error>> {
             // And only now add the data chunk.
             entity_db.add_chunk(&Arc::new(data_chunk))?;
         } else {
-            let chunk = data_chunk.concatenated(&clear_chunk)?;
+            let chunk = Chunk::concat_and_sort(&data_chunk, &clear_chunk)?;
             entity_db.add_chunk(&Arc::new(chunk))?;
         }
 
@@ -1416,13 +1417,13 @@ fn test_single_child_and_parent_over_time(
         }
         ChildParentFrameChangesOverTimeTestMode::MultipleChunksInOrder => {
             for row_idx in 0..chunk.num_rows() {
-                entity_db.add_chunk(&Arc::new(chunk.row_sliced_shallow(row_idx, 1)))?;
+                entity_db.add_chunk(&chunk.row_sliced_unit_shallow(row_idx).into_chunk())?;
                 apply_store_subscriber_events(&mut cache, &entity_db);
             }
         }
         ChildParentFrameChangesOverTimeTestMode::MultipleChunksReverseOrder => {
             for row_idx in (0..chunk.num_rows()).rev() {
-                entity_db.add_chunk(&Arc::new(chunk.row_sliced_shallow(row_idx, 1)))?;
+                entity_db.add_chunk(&chunk.row_sliced_unit_shallow(row_idx).into_chunk())?;
                 apply_store_subscriber_events(&mut cache, &entity_db);
             }
         }

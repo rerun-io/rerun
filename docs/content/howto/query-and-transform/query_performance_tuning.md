@@ -1,6 +1,7 @@
 ---
 title: Query Performance Tuning
 order: 110
+description: Tips for keeping queries fast as datasets grow
 ---
 
 This is a loose collection of considerations when querying Rerun datasets.

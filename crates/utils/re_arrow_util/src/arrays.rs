@@ -2,14 +2,15 @@ use std::iter::repeat_n;
 use std::sync::Arc;
 
 use arrow::array::{
-    Array, ArrayData, ArrayRef, ArrowPrimitiveType, BooleanArray, FixedSizeListArray, ListArray,
-    PrimitiveArray, UInt32Array, new_empty_array,
+    Array, ArrayData, ArrayRef, ArrowPrimitiveType, BinaryArray, BooleanArray, FixedSizeListArray,
+    GenericListArray, ListArray, OffsetSizeTrait, PrimitiveArray, UInt32Array, new_empty_array,
 };
 use arrow::buffer::{Buffer, NullBuffer, OffsetBuffer};
 use arrow::datatypes::{DataType, Field, UInt8Type};
 use arrow::error::ArrowError;
 use itertools::Itertools as _;
 use re_log::debug_assert;
+use re_span::Span;
 
 // ---------------------------------------------------------------------------------
 
@@ -141,6 +142,49 @@ pub fn arrays_to_list_array(
     Some(ListArray::new(field.into(), offsets, data, nulls.into()))
 }
 
+/// The canonical field for the outer list of a component column: named `item`, nullable, and
+/// without metadata.
+///
+/// Every component column in a chunk is a [`ListArray`] whose items are one row's worth of
+/// component instances. A row can be missing, so the item field is nullable — which is what
+/// [`arrays_to_list_array`] and the code generator both produce. Anything reading a chunk's
+/// schema back out is entitled to assume this shape; see
+/// [`canonicalized_component_list_array`].
+#[inline]
+pub fn canonical_component_list_field(value_type: DataType) -> Field {
+    let nullable = true;
+    Field::new_list_field(value_type, nullable)
+}
+
+/// Rewrites `list_array`'s outer field into [`canonical_component_list_field`], leaving the
+/// values, offsets and nulls untouched. Returns `None` if the field is already canonical.
+///
+/// External producers are free to describe the outer list differently — declaring the item
+/// non-nullable, or naming it something other than `item` — and nothing downstream re-derives
+/// that field from the data. `ChunkStore`, meanwhile, always reports the canonical shape in the
+/// `ComponentColumnDescriptor`s it hands out. To avoid such disagreements, this normalization
+/// ensures that `list_array` follows the canonical form, rewriting its outer list field if needed.
+///
+/// This only touches the *outer* list. The value type is the component's own datatype and is
+/// left exactly as the producer declared it — `Blob`, for instance, is legitimately a
+/// `List(non-null UInt8)`.
+///
+/// Cheap: the common already-canonical case does no work at all, and the rewrite moves buffers
+/// rather than copying them.
+pub fn canonicalized_component_list_array(list_array: &ListArray) -> Option<ListArray> {
+    let field = list_array.field();
+
+    let canonical = canonical_component_list_field(field.data_type().clone());
+    if field.as_ref() == &canonical {
+        return None;
+    }
+
+    let (_field, offsets, values, nulls) = list_array.clone().into_parts();
+
+    // Only the field changed, so the parts still line up: this cannot fail.
+    Some(ListArray::new(canonical.into(), offsets, values, nulls))
+}
+
 /// Given a sparse [`ListArray`] (i.e. an array with a nulls bitmap that contains at least
 /// one falsy value), returns a dense [`ListArray`] that only contains the non-null values from
 /// the original list.
@@ -158,17 +202,24 @@ pub fn sparse_list_array_to_dense_list_array(list_array: &ListArray) -> ListArra
 
     let offsets = OffsetBuffer::from_lengths(list_array.iter().flatten().map(|array| array.len()));
 
-    let fields = list_array_fields(list_array);
+    let field = list_array.field().clone();
 
-    ListArray::new(fields, offsets, list_array.values().clone(), None)
+    ListArray::new(field, offsets, list_array.values().clone(), None)
 }
 
-fn list_array_fields(list_array: &arrow::array::GenericListArray<i32>) -> std::sync::Arc<Field> {
-    match list_array.data_type() {
-        DataType::List(fields) | DataType::LargeList(fields) => fields,
-        _ => unreachable!("The GenericListArray constructor guaranteed we can't get here"),
+/// Extensions for [`GenericListArray`].
+pub trait ListArrayExt {
+    /// The field describing the items of this list-array.
+    fn field(&self) -> &Arc<Field>;
+}
+
+impl<O: OffsetSizeTrait> ListArrayExt for GenericListArray<O> {
+    fn field(&self) -> &Arc<Field> {
+        match self.data_type() {
+            DataType::List(field) | DataType::LargeList(field) => field,
+            _ => unreachable!("The GenericListArray constructor guaranteed we can't get here"),
+        }
     }
-    .clone()
 }
 
 /// Create a new [`ListArray`] of target length by appending null values to its back.
@@ -180,7 +231,7 @@ pub fn pad_list_array_back(list_array: &ListArray, target_len: usize) -> ListArr
         return list_array.clone();
     }
 
-    let fields = list_array_fields(list_array);
+    let field = list_array.field().clone();
 
     let offsets = {
         OffsetBuffer::from_lengths(std::iter::chain(
@@ -206,7 +257,7 @@ pub fn pad_list_array_back(list_array: &ListArray, target_len: usize) -> ListArr
         }
     };
 
-    ListArray::new(fields, offsets, values, Some(nulls))
+    ListArray::new(field, offsets, values, Some(nulls))
 }
 
 /// Create a new [`ListArray`] of target length by appending null values to its front.
@@ -218,7 +269,7 @@ pub fn pad_list_array_front(list_array: &ListArray, target_len: usize) -> ListAr
         return list_array.clone();
     }
 
-    let fields = list_array_fields(list_array);
+    let field = list_array.field().clone();
 
     let offsets = {
         OffsetBuffer::from_lengths(std::iter::chain(
@@ -244,7 +295,7 @@ pub fn pad_list_array_front(list_array: &ListArray, target_len: usize) -> ListAr
         }
     };
 
-    ListArray::new(fields, offsets, values, Some(nulls))
+    ListArray::new(field, offsets, values, Some(nulls))
 }
 
 /// Returns a new [[`ListArray`]] with len `entries`.
@@ -349,8 +400,8 @@ where
         let starts_at_zero = || indices[0] == O::Native::ZERO;
         let is_consecutive = || {
             indices
-                .windows(2)
-                .all(|values| values[1] == values[0] + O::Native::ONE)
+                .array_windows()
+                .all(|&[a, b]| b == a + O::Native::ONE)
         };
 
         if starts_at_zero() && is_consecutive() {
@@ -451,6 +502,41 @@ pub fn blob_arrays_offsets_and_buffer(array: &dyn Array) -> Option<(&OffsetBuffe
     Some((inner_list_array.offsets(), values))
 }
 
+/// Returns a binary-array view of blob data represented as `BinaryArray` or `ListArray<UInt8>`.
+///
+/// The returned array reuses the input offsets and byte buffer.
+// TODO(RR-1977): consistently use only `BinaryArray` for all blob types.
+pub fn blob_array_to_binary(array: &dyn Array) -> Option<BinaryArray> {
+    if let Some(array) = array.downcast_array_ref::<BinaryArray>() {
+        return Some(array.clone());
+    }
+
+    let array = array.downcast_array_ref::<ListArray>()?;
+    let values = array
+        .values()
+        .downcast_array_ref::<PrimitiveArray<UInt8Type>>()?;
+    (values.null_count() == 0).then(|| BinaryArray::from(array.clone()))
+}
+
+#[test]
+fn blob_array_to_binary_reuses_buffers() {
+    let values = PrimitiveArray::<UInt8Type>::from(vec![b'a', b'b', b'c']);
+    let list = ListArray::new(
+        Arc::new(Field::new_list_field(DataType::UInt8, false)),
+        OffsetBuffer::new(vec![0, 2, 3].into()),
+        Arc::new(values.clone()),
+        None,
+    );
+
+    let binary = blob_array_to_binary(&list).unwrap();
+    assert_eq!(binary.value(0), b"ab");
+    assert_eq!(binary.value(1), b"c");
+    assert_eq!(binary.values().as_ptr(), values.values().as_ptr());
+
+    let cloned = blob_array_to_binary(&binary).unwrap();
+    assert_eq!(cloned.values().as_ptr(), binary.values().as_ptr());
+}
+
 #[test]
 fn test_wrap_in_list_array() {
     use arrow::array::{Array as _, AsArray as _, Int32Array};
@@ -510,18 +596,14 @@ fn test_wrap_in_list_array() {
 /// This is the erased version, see [`deep_slice_array`] for a typed implementation.
 //
 // TODO(cmc): optimize from there; future results should always match this baseline.
-pub fn deep_slice_array_erased(
-    array: &dyn arrow::array::Array,
-    offset: usize,
-    length: usize,
-) -> ArrayRef {
+pub fn deep_slice_array_erased(array: &dyn arrow::array::Array, span: Span<usize>) -> ArrayRef {
     let data = array.to_data();
 
     let use_null_optimization = false;
     let mut data_sliced =
-        arrow::array::MutableArrayData::new(vec![&data], use_null_optimization, length);
+        arrow::array::MutableArrayData::new(vec![&data], use_null_optimization, span.len);
 
-    data_sliced.extend(0, offset, offset + length);
+    data_sliced.extend(0, span.start, span.end());
 
     arrow::array::make_array(data_sliced.freeze())
 }
@@ -534,14 +616,14 @@ pub fn deep_slice_array_erased(
 /// This is the erased version, see [`deep_slice_array_erased`] for a typed implementation.
 //
 // TODO(cmc): optimize from there; future results should always match this baseline.
-pub fn deep_slice_array<T: Array + From<ArrayData>>(array: &T, offset: usize, length: usize) -> T {
+pub fn deep_slice_array<T: Array + From<ArrayData>>(array: &T, span: Span<usize>) -> T {
     let data = array.to_data();
 
     let use_null_optimization = false;
     let mut data_sliced =
-        arrow::array::MutableArrayData::new(vec![&data], use_null_optimization, length);
+        arrow::array::MutableArrayData::new(vec![&data], use_null_optimization, span.len);
 
-    data_sliced.extend(0, offset, offset + length);
+    data_sliced.extend(0, span.start, span.end());
 
     T::from(data_sliced.freeze())
 }
@@ -564,6 +646,41 @@ mod tests {
     use std::sync::Arc;
 
     use super::*;
+
+    /// A `Blob`-shaped column as an external producer might build it: the outer item declared
+    /// non-nullable. Canonicalization must flip that, keep the inner `List(non-null UInt8)` —
+    /// which is `Blob`'s own datatype — and preserve the values.
+    #[test]
+    fn canonicalize_component_list_array_normalizes_outer_field_only() {
+        let bytes = Arc::new(UInt8Array::from(vec![1u8, 2, 3]));
+        let blob = Arc::new(ListArray::new(
+            Arc::new(Field::new_list_field(DataType::UInt8, false)),
+            OffsetBuffer::from_lengths([2, 1]),
+            bytes,
+            None,
+        ));
+        let column = ListArray::new(
+            Arc::new(Field::new("blob", blob.data_type().clone(), false)),
+            OffsetBuffer::from_lengths([1, 1]),
+            blob,
+            None,
+        );
+
+        let canonicalized = canonicalized_component_list_array(&column).expect("not canonical");
+
+        assert_eq!(
+            canonicalized.data_type(),
+            &DataType::List(Arc::new(Field::new_list_field(
+                DataType::List(Arc::new(Field::new_list_field(DataType::UInt8, false))),
+                true,
+            ))),
+        );
+        assert_eq!(canonicalized.values(), column.values());
+        assert_eq!(canonicalized.offsets(), column.offsets());
+
+        // Already canonical: no work, no new array.
+        assert!(canonicalized_component_list_array(&canonicalized).is_none());
+    }
 
     #[test]
     fn deep_slice() {
@@ -945,7 +1062,7 @@ mod tests {
         let to = offset + len;
 
         let sliced = array.slice(offset, len);
-        let deep_sliced = deep_slice_array_erased(&array, offset, len);
+        let deep_sliced = deep_slice_array_erased(&array, Span::from_start_len(offset, len));
         assert_eq!(&deep_sliced, &sliced);
 
         writeln!(output, "{descr}:").ok();

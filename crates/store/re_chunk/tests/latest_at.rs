@@ -2,7 +2,7 @@ use arrow::datatypes::DataType as ArrowDatatype;
 use nohash_hasher::IntMap;
 use re_chunk::{Chunk, LatestAtQuery, RowId, TimePoint, Timeline, TimelineName};
 use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
-use re_types_core::{ComponentDescriptor, Loggable as _};
+use re_types_core::{ArrowDatatype as _, ComponentDescriptor};
 
 // ---
 

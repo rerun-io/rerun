@@ -98,8 +98,17 @@ pub enum VideoCodec {
 /// Index used for referencing into [`VideoDataDescription::samples`].
 pub type SampleIndex = usize;
 
+/// A span of consecutive [`SampleIndex`]es.
+pub type SampleIndexSpan = re_span::Span<SampleIndex>;
+
 /// An index into [`VideoDataDescription::keyframe_indices`], not stable between mutations.
 pub type KeyframeIndex = usize;
+
+/// A frame's index in presentation order.
+///
+/// This is intentionally `u32` because we do not expect to handle videos with more than
+/// [`u32::MAX`] frames.
+pub type FrameNumber = u32;
 
 /// Distinguishes static videos from potentially ongoing video streams.
 #[derive(Clone, Debug)]
@@ -204,18 +213,14 @@ impl re_byte_size::SizeBytes for VideoDataDescription {
 
 impl VideoDataDescription {
     /// Get the group of pictures which use a keyframe, including the keyframe sample itself.
-    pub fn gop_sample_range_for_keyframe(
-        &self,
-        keyframe_idx: usize,
-    ) -> Option<std::ops::Range<SampleIndex>> {
-        Some(
-            *self.keyframe_indices.get(keyframe_idx)?
-                ..self
-                    .keyframe_indices
-                    .get(keyframe_idx + 1)
-                    .copied()
-                    .unwrap_or_else(|| self.samples.next_index()),
-        )
+    pub fn gop_sample_range_for_keyframe(&self, keyframe_idx: usize) -> Option<Span<SampleIndex>> {
+        Some(Span::from_start_end(
+            *self.keyframe_indices.get(keyframe_idx)?,
+            self.keyframe_indices
+                .get(keyframe_idx + 1)
+                .copied()
+                .unwrap_or_else(|| self.samples.next_index()),
+        ))
     }
 
     /// If this video is a [`VideoCodec::ImageSequence`], returns the
@@ -637,11 +642,11 @@ impl VideoDataDescription {
             VideoCodec::VP8 => "VP8",
             VideoCodec::VP9 => "VP9",
             VideoCodec::ImageSequence(_) => {
-                if let Some(codec) = self.image_codec_mime_type() {
-                    return codec.to_owned();
+                return if let Some(codec) = self.image_codec_mime_type() {
+                    codec.to_owned()
                 } else {
-                    return "unknown".to_owned();
-                }
+                    "unknown".to_owned()
+                };
             }
         }
         .to_owned();
@@ -875,6 +880,36 @@ impl VideoDataDescription {
             &self.samples_statistics,
             presentation_timestamp,
         )
+    }
+
+    /// The index of the sample that has its bytes at the given source.
+    ///
+    /// Only samples presented at `presentation_timestamp` are considered.
+    /// Samples sharing a presentation timestamp sit next to each other,
+    /// so this walks back from the last of them.
+    ///
+    /// Returns `None` if we no longer have that sample around.
+    pub fn sample_index_of_source(
+        &self,
+        presentation_timestamp: Time,
+        source: VideoSource,
+    ) -> Option<SampleIndex> {
+        let last_idx = self
+            .latest_sample_index_at_presentation_timestamp(presentation_timestamp)
+            .ok()?;
+
+        for sample_idx in (self.samples.min_index()..=last_idx).rev() {
+            let sample = self.samples[sample_idx].sample()?;
+
+            if sample.presentation_timestamp != presentation_timestamp {
+                break;
+            }
+            if sample.source == source {
+                return Some(sample_idx);
+            }
+        }
+
+        None
     }
 
     /// Returns the sample presenteed directly prior to the given sample.
@@ -1155,7 +1190,7 @@ pub struct SampleMetadata {
     /// This is the index of samples ordered by [`Self::presentation_timestamp`].
     ///
     /// Do **not** ever use this for indexing into the array of samples.
-    pub frame_nr: u32,
+    pub frame_nr: FrameNumber,
 
     /// Time at which this sample appears in the decoded bitstream, in time units.
     ///
@@ -1209,6 +1244,7 @@ impl SampleMetadata {
             presentation_timestamp: self.presentation_timestamp,
             duration: self.duration,
             is_sync: self.is_sync,
+            source: self.source,
         })
     }
 }

@@ -4,7 +4,7 @@ use re_sdk_types::blueprint::archetypes::EyeControls3D;
 use re_sdk_types::components::Position3D;
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
-use re_viewer_context::{BlueprintContext as _, TimeControlCommand, ViewClass as _, ViewId};
+use re_viewer_context::{TimeControlCommand, ViewClass as _, ViewId};
 use re_viewport_blueprint::{ViewBlueprint, ViewProperty};
 
 #[test]
@@ -109,7 +109,7 @@ pub fn test_transform_hierarchy() {
                     &re_sdk_types::archetypes::Transform3D::from_rotation(
                         re_sdk_types::components::RotationAxisAngle::new(
                             (0.0, 1.0, 0.0),
-                            re_sdk_types::datatypes::Angle::from_degrees(90.0),
+                            re_sdk_types::encodings::Angle::from_degrees(90.0),
                         ),
                     ),
                 )
@@ -130,7 +130,7 @@ pub fn test_transform_hierarchy() {
                         // -45 degrees around the y axis.
                         // Via https://www.andre-gaschler.com/rotationconverter/
                         re_sdk_types::components::RotationQuat(
-                            re_sdk_types::datatypes::Quaternion::from_xyzw([
+                            re_sdk_types::encodings::Quaternion::from_xyzw([
                                 0.0, -0.3826834, 0.0, 0.9238796,
                             ]),
                         ),
@@ -205,11 +205,7 @@ fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
         let view_id = view_blueprint.id;
         blueprint.add_views(std::iter::once(view_blueprint), None, None);
 
-        let property = ViewProperty::from_archetype::<EyeControls3D>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query(),
-            view_id,
-        );
+        let property = ViewProperty::from_archetype_for_view::<EyeControls3D>(ctx, view_id);
         property.save_blueprint_component(
             ctx,
             &EyeControls3D::descriptor_position(),

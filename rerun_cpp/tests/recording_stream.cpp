@@ -210,29 +210,29 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                 THEN("an archetype can be logged") {
                     stream.log(
                         "log_archetype-splat",
-                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}}
-                        ).with_colors(rerun::Color(0xFF0000FF))
+                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}})
+                            .with_colors(rerun::Color(0xFF0000FF))
                     );
                     stream.log_static(
                         "log_archetype-splat",
-                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}}
-                        ).with_colors(rerun::Color(0xFF0000FF))
+                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}})
+                            .with_colors(rerun::Color(0xFF0000FF))
                     );
                 }
                 THEN("several archetypes can be logged") {
                     stream.log(
                         "log_archetype-splat",
-                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}}
-                        ).with_colors(rerun::Color(0xFF0000FF)),
-                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}}
-                        ).with_colors(rerun::Color(0xFF0000FF))
+                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}})
+                            .with_colors(rerun::Color(0xFF0000FF)),
+                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}})
+                            .with_colors(rerun::Color(0xFF0000FF))
                     );
                     stream.log_static(
                         "log_archetype-splat",
-                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}}
-                        ).with_colors(rerun::Color(0xFF0000FF)),
-                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}}
-                        ).with_colors(rerun::Color(0xFF0000FF))
+                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}})
+                            .with_colors(rerun::Color(0xFF0000FF)),
+                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}})
+                            .with_colors(rerun::Color(0xFF0000FF))
                     );
                 }
 
@@ -422,6 +422,21 @@ SCENARIO("RecordingStream can connect over grpc", TEST_TAG) {
             test_logging_to_grpc_connection(url, rerun::RecordingStream::current());
         }
     }
+}
+
+SCENARIO("RecordingStream can set a grpc server sink", TEST_TAG) {
+    rerun::RecordingStream stream("test-local");
+    rerun::GrpcServerSink sink{
+        "0.0.0.0",
+        21522,
+        "64MiB",
+        rerun::PlaybackBehavior::NewestFirst,
+        {"https://*.example.com"}
+    };
+    CHECK(
+        stream.set_sinks(sink, rerun::FileSink{"build/test_output/server-sink.rrd"}).code ==
+        rerun::ErrorCode::Ok
+    );
 }
 
 SCENARIO("RecordingStream can serve grpc", TEST_TAG) {

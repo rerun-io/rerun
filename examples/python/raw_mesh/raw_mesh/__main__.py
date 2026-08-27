@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Shows how to use the Rerun SDK to log raw 3D meshes (so-called "triangle soups") and their transform hierarchy.
+Shows how to log a 3D scene as raw mesh data or as a prepacked asset.
 
-Note that while this example loads GLTF meshes to illustrate
-[`Mesh3D`](https://rerun.io/docs/reference/types/archetypes/mesh3d)'s abilitites,
-you can also send various kinds of mesh assets directly via
+By default, the example parses the scene and logs its geometry and transform hierarchy with
+[`Mesh3D`](https://rerun.io/docs/reference/types/archetypes/mesh3d).
+Pass `--asset3d` to log the original file directly with
 [`Asset3D`](https://rerun.io/docs/reference/types/archetypes/asset3d).
 """
 
@@ -23,8 +23,8 @@ import rerun.blueprint as rrb
 from .download_dataset import AVAILABLE_MESHES, ensure_mesh_downloaded
 
 DESCRIPTION = """
-# Raw meshes
-This example shows how you can log a hierarchical 3D mesh, including its transform hierarchy.
+# 3D meshes
+This example can log a 3D scene as explicit `Mesh3D` data or as a prepacked `Asset3D`.
 
 The full source code for this example is available [on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/raw_mesh).
 """
@@ -111,7 +111,7 @@ def log_scene(scene: trimesh.Scene, node: str, path: str | None = None) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Logs raw 3D meshes and their transform hierarchy using the Rerun SDK.",
+        description="Logs a 3D scene as raw Mesh3D data or as a prepacked Asset3D.",
     )
     parser.add_argument(
         "--scene",
@@ -125,16 +125,17 @@ def main() -> None:
         type=Path,
         help="Path to a scene to analyze. If set, overrides the `--scene` argument.",
     )
+    parser.add_argument(
+        "--asset3d",
+        action="store_true",
+        help="Log the scene as a prepacked Asset3D instead of converting it into Mesh3D archetypes.",
+    )
     rr.script_add_args(parser)
     args = parser.parse_args()
 
     scene_path = args.scene_path
     if scene_path is None:
         scene_path = ensure_mesh_downloaded(args.scene)
-    scene = load_scene(scene_path)
-
-    root = next(iter(scene.graph.nodes))
-
     blueprint = rrb.Horizontal(
         rrb.Spatial3DView(name="Mesh", origin="/world"),
         rrb.TextDocumentView(name="Description", origin="/description"),
@@ -145,8 +146,14 @@ def main() -> None:
     rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), static=True)
 
     # glTF always uses a right-handed coordinate system when +Y is up and meshes face +Z.
-    rr.log(root, rr.ViewCoordinates.RUB, static=True)
-    log_scene(scene, root)
+    if args.asset3d:
+        rr.log("world", rr.ViewCoordinates.RUB, static=True)
+        rr.log("world/asset", rr.Asset3D(path=scene_path))
+    else:
+        scene = load_scene(scene_path)
+        root = next(iter(scene.graph.nodes))
+        rr.log(root, rr.ViewCoordinates.RUB, static=True)
+        log_scene(scene, root)
 
     rr.script_teardown(args)
 

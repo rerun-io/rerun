@@ -44,7 +44,8 @@ def main() -> None:
         with open(tarball, "wb") as f:
             artifact.download_to_file(f)
         with tarfile.open(tarball, "r:gz") as tar:
-            tar.extractall(args.dest)
+            # `filter="data"` rejects absolute paths and `..` components in members.
+            tar.extractall(args.dest, filter="data")
         tarball.unlink()
         return
 

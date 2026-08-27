@@ -39,11 +39,6 @@ impl Layout {
         self.nodes.get(node).copied()
     }
 
-    /// Gets the shape of an edge in the final layout.
-    pub fn get_edge(&self, edge: &EdgeId) -> Option<&[EdgeGeometry]> {
-        self.edges.get(edge).map(|es| es.as_slice())
-    }
-
     /// Returns an iterator over all edges in the layout.
     pub fn edges(&self) -> impl Iterator<Item = (EdgeId, &[EdgeGeometry])> {
         self.edges.iter().map(|(id, es)| (*id, es.as_slice()))

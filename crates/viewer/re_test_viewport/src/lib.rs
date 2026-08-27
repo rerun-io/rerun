@@ -33,6 +33,15 @@ pub trait TestContextExt {
         size: egui::Vec2,
         snapshot_options: Option<SnapshotOptions>,
     ) -> SnapshotResult;
+
+    /// Like [`Self::run_view_ui_and_save_snapshot`], but for a view that draws with `re_renderer`.
+    fn run_view_ui_and_save_renderer_snapshot(
+        &self,
+        view_id: ViewId,
+        snapshot_name: &str,
+        size: egui::Vec2,
+        snapshot_options: Option<SnapshotOptions>,
+    ) -> SnapshotResult;
 }
 
 impl TestContextExt for TestContext {
@@ -49,8 +58,6 @@ impl TestContextExt for TestContext {
     /// Important pre-requisite:
     /// - The current timeline must already be set to the timeline of interest, because some
     ///   updates are timeline-dependant (in particular those related to visible time range).
-    /// - The view classes used by view must be already registered (see
-    ///   [`TestContext::register_view_class`]).
     /// - The data store must be already populated for the views to have any content (see, e.g.,
     ///   [`TestContext::log_entity`]).
     ///
@@ -91,14 +98,18 @@ impl TestContextExt for TestContext {
 
                             let class_registry = ctx.view_class_registry();
                             let class_identifier = view_blueprint.class_identifier();
-                            let class = class_registry.class(class_identifier).unwrap_or_else(|| panic!("The class '{class_identifier}' must be registered beforehand"));
+                            let class = class_registry.get_class_or_log_error(class_identifier);
 
                             let query_range = view_blueprint.query_range(
                                 ctx.blueprint_db(),
                                 ctx.blueprint_query,
                                 ctx.time_ctrl.timeline(),
                                 class_registry,
-                                self.view_states.lock().get_mut_or_create(ctx.store_id(), *view_id, class),
+                                self.view_states.lock().get_mut_or_create(
+                                    ctx.store_id(),
+                                    *view_id,
+                                    class,
+                                ),
                             );
 
                             let data_query_result = view_blueprint.contents.build_data_result_tree(
@@ -158,7 +169,7 @@ impl TestContextExt for TestContext {
             MissingChunkReporter::new(system_execution_output.any_missing_chunks());
 
         let view_state = view_states.get_mut_or_create(ctx.store_id(), view_id, view_class);
-        view_class
+        let view_ui_output = view_class
             .ui(
                 ctx,
                 &missing_chunk_reporter,
@@ -168,6 +179,7 @@ impl TestContextExt for TestContext {
                 system_execution_output,
             )
             .expect("failed to run view ui");
+        view_states.set_view_reports(ctx.store_id(), view_id, view_ui_output.reports);
 
         // We intentionally ignore missing_chunk_reporter in this test… for now.
     }
@@ -188,15 +200,56 @@ impl TestContextExt for TestContext {
         size: egui::Vec2,
         snapshot_options: Option<SnapshotOptions>,
     ) -> SnapshotResult {
-        let mut harness = self.setup_kittest_for_rendering_3d(size).build_ui(|ui| {
-            self.run_with_single_view(ui, view_id);
-        });
-        harness.run();
+        run_view_ui_and_save_snapshot_with_test_options(
+            self,
+            view_id,
+            snapshot_name,
+            size,
+            snapshot_options,
+            re_ui::testing::TestOptions::Gui,
+        )
+    }
 
-        if let Some(snapshot_options) = snapshot_options {
-            harness.try_snapshot_options(snapshot_name, &snapshot_options)
-        } else {
-            harness.try_snapshot(snapshot_name)
+    fn run_view_ui_and_save_renderer_snapshot(
+        &self,
+        view_id: ViewId,
+        snapshot_name: &str,
+        size: egui::Vec2,
+        snapshot_options: Option<SnapshotOptions>,
+    ) -> SnapshotResult {
+        run_view_ui_and_save_snapshot_with_test_options(
+            self,
+            view_id,
+            snapshot_name,
+            size,
+            snapshot_options,
+            re_ui::testing::TestOptions::Rendering3D,
+        )
+    }
+}
+
+fn run_view_ui_and_save_snapshot_with_test_options(
+    test_context: &TestContext,
+    view_id: ViewId,
+    snapshot_name: &str,
+    size: egui::Vec2,
+    snapshot_options: Option<SnapshotOptions>,
+    test_options: re_ui::testing::TestOptions,
+) -> SnapshotResult {
+    let harness_builder = match test_options {
+        re_ui::testing::TestOptions::Gui => test_context.setup_kittest_for_rendering_ui(size),
+        re_ui::testing::TestOptions::Rendering3D => {
+            test_context.setup_kittest_for_rendering_3d(size)
         }
+    };
+    let mut harness = harness_builder.build_ui(|ui| {
+        test_context.run_with_single_view(ui, view_id);
+    });
+    harness.run();
+
+    if let Some(snapshot_options) = snapshot_options {
+        harness.try_snapshot_options(snapshot_name, &snapshot_options)
+    } else {
+        harness.try_snapshot(snapshot_name)
     }
 }

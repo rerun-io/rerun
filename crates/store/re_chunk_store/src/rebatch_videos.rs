@@ -229,7 +229,7 @@ fn rebatch_video_entity(
     re_tracing::profile_function!();
 
     for chunk in sample_chunks.values() {
-        let unsorted_timelines = chunk.unsorted_timelines();
+        let unsorted_timelines: Vec<_> = chunk.unsorted_timelines().collect();
         if !unsorted_timelines.is_empty() {
             // We could try pick one of the timelines _are_ sorted (w/ relation to RowId),
             // but let's be better safe than sorry for now. Video playback on these
@@ -634,7 +634,9 @@ fn split_into_gop_groups<'a>(
     }
 
     std::iter::chain(
-        split_points.windows(2).map(|w| &sample_index[w[0]..w[1]]),
+        split_points
+            .array_windows()
+            .map(|&[a, b]| &sample_index[a..b]),
         std::iter::once(&sample_index[*split_points.last().unwrap_or(&0)..]),
     )
     .filter(|group| !group.is_empty())
@@ -726,9 +728,8 @@ fn merge_chunks(config: &ChunkStoreConfig, gop_chunks: Vec<Chunk>) -> anyhow::Re
                 accumulator_bytes += gop_bytes;
                 accumulator = Some(combined);
                 continue;
-            } else {
-                merged.push(acc);
             }
+            merged.push(acc);
         }
 
         accumulator_bytes = gop_bytes;

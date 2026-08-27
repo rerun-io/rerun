@@ -10,7 +10,8 @@ use crate::codegen::common::ExampleInfo;
 use crate::codegen::{Target, autogen_warning};
 use crate::objects::{FieldKind, ViewReference};
 use crate::{
-    CodeGenerator, GeneratedFiles, Object, ObjectField, ObjectKind, Objects, Reporter, Type,
+    AtomicDataType, CodeGenerator, GeneratedFiles, Object, ObjectField, ObjectKind, Objects,
+    Reporter, Type,
 };
 
 pub const DATAFRAME_VIEW_FQNAME: &str = "rerun.blueprint.views.DataframeView";
@@ -49,7 +50,7 @@ impl CodeGenerator for DocsCodeGenerator {
         // Gather view type mapping per object.
         let views_per_archetype = collect_view_types_per_archetype(objects);
 
-        let (mut archetypes, mut components, mut datatypes, mut views) =
+        let (mut archetypes, mut components, mut encodings, mut views) =
             (Vec::new(), Vec::new(), Vec::new(), Vec::new());
 
         for object in objects.values() {
@@ -64,7 +65,7 @@ impl CodeGenerator for DocsCodeGenerator {
             }
 
             match object.kind {
-                ObjectKind::Datatype => datatypes.push(object),
+                ObjectKind::Encoding => encodings.push(object),
                 ObjectKind::Component => components.push(object),
                 ObjectKind::Archetype => archetypes.push(object),
                 ObjectKind::View => views.push(object),
@@ -109,10 +110,10 @@ on [Entities and Components](../../concepts/logging-and-ingestion/entity-compone
                 &components,
             ),
             (
-                ObjectKind::Datatype,
+                ObjectKind::Encoding,
                 3,
                 r"Data types are the lowest layer of the data model hierarchy. They are re-usable types used by the components.",
-                &datatypes,
+                &encodings,
             ),
             (
                 ObjectKind::View,
@@ -262,7 +263,7 @@ fn object_page(
     putln!(page);
 
     match object.kind {
-        ObjectKind::Datatype | ObjectKind::Component => {
+        ObjectKind::Encoding | ObjectKind::Component => {
             write_fields(reporter, objects, &mut page, object);
         }
         ObjectKind::Archetype => {
@@ -273,7 +274,7 @@ fn object_page(
         }
     }
 
-    if matches!(object.kind, ObjectKind::Datatype | ObjectKind::Component) {
+    if matches!(object.kind, ObjectKind::Encoding | ObjectKind::Component) {
         let datatype = &type_registry.get(&object.fqname);
         putln!(page);
         putln!(page, "## Arrow datatype");
@@ -291,7 +292,7 @@ fn object_page(
     write_example_list(&mut page, &examples);
 
     match object.kind {
-        ObjectKind::Datatype | ObjectKind::Component => {
+        ObjectKind::Encoding | ObjectKind::Component => {
             putln!(page);
             write_used_by(&mut page, reporter, objects, object);
         }
@@ -318,11 +319,14 @@ fn object_page(
 }
 
 fn list_links(page: &mut String, object: &Object) {
-    let speculative_marker = if object.is_attr_set(crate::ATTR_DOCS_UNRELEASED) {
-        "?speculative-link"
-    } else {
-        ""
-    };
+    // The per-language API docs are published per release, so a whole kind of page can be
+    // unreachable even when the object itself is old.
+    let speculative_marker =
+        if object.is_attr_set(crate::DocsAttr::Unreleased) || object.kind.has_unpublished_docs() {
+            "?speculative-link"
+        } else {
+            ""
+        };
 
     if object.kind == ObjectKind::View {
         // More complicated link due to scope
@@ -412,35 +416,29 @@ fn write_fields(reporter: &Reporter, objects: &Objects, o: &mut String, object: 
         }
 
         match ty {
-            Type::Unit => unreachable!("Should be handled elsewhere"),
+            Type::Atomic(AtomicDataType::Null) => unreachable!("Should be handled elsewhere"),
 
             // We use explicit, arrow-like names:
-            Type::UInt8 => atomic("UInt8"),
-            Type::UInt16 => atomic("UInt16"),
-            Type::UInt32 => atomic("UInt32"),
-            Type::UInt64 => atomic("UInt64"),
-            Type::Int8 => atomic("Int8"),
-            Type::Int16 => atomic("Int16"),
-            Type::Int32 => atomic("Int32"),
-            Type::Int64 => atomic("Int64"),
-            Type::Bool => atomic("Boolean"),
-            Type::Float16 => atomic("Float16"),
-            Type::Float32 => atomic("Float32"),
-            Type::Float64 => atomic("Float64"),
+            Type::Atomic(AtomicDataType::UInt8) => atomic("UInt8"),
+            Type::Atomic(AtomicDataType::UInt16) => atomic("UInt16"),
+            Type::Atomic(AtomicDataType::UInt32) => atomic("UInt32"),
+            Type::Atomic(AtomicDataType::UInt64) => atomic("UInt64"),
+            Type::Atomic(AtomicDataType::Int8) => atomic("Int8"),
+            Type::Atomic(AtomicDataType::Int16) => atomic("Int16"),
+            Type::Atomic(AtomicDataType::Int32) => atomic("Int32"),
+            Type::Atomic(AtomicDataType::Int64) => atomic("Int64"),
+            Type::Atomic(AtomicDataType::Boolean) => atomic("Boolean"),
+            Type::Atomic(AtomicDataType::Float16) => atomic("Float16"),
+            Type::Atomic(AtomicDataType::Float32) => atomic("Float32"),
+            Type::Atomic(AtomicDataType::Float64) => atomic("Float64"),
             Type::Binary => atomic("Binary"),
-            Type::String => atomic("Utf8"),
+            Type::Utf8 => atomic("Utf8"),
 
-            Type::Array { elem_type, length } => {
-                format!(
-                    "{length}x {}",
-                    type_info(objects, &Type::from(elem_type.clone()))
-                )
+            Type::FixedSizeList { elem_type, length } => {
+                format!("{length}x {}", type_info(objects, elem_type))
             }
-            Type::Vector { elem_type } => {
-                format!(
-                    "List of {}",
-                    type_info(objects, &Type::from(elem_type.clone()))
-                )
+            Type::List { elem_type } => {
+                format!("List of {}", type_info(objects, elem_type))
             }
             Type::Object { fqname } => {
                 let ty = objects.get(fqname).unwrap();
@@ -459,7 +457,7 @@ fn write_fields(reporter: &Reporter, objects: &Objects, o: &mut String, object: 
         assert_eq!(object.fields.len(), 1);
         let field_type = &object.fields[0].typ;
         if object.kind == ObjectKind::Component && matches!(field_type, Type::Object { .. }) {
-            putln!(o, "## Rerun datatype");
+            putln!(o, "## Rerun encoding");
             putln!(o, "{}", type_info(objects, field_type));
             putln!(o);
         } else {
@@ -488,7 +486,7 @@ fn write_fields(reporter: &Reporter, objects: &Objects, o: &mut String, object: 
 
         if !object.is_enum() {
             field_string.push_str("Type: ");
-            if field.typ == Type::Unit {
+            if field.typ.is_unit() {
                 field_string.push_str("`null`");
             } else {
                 if !field.is_nullable {
@@ -535,7 +533,7 @@ fn write_used_by(o: &mut String, reporter: &Reporter, objects: &Objects, object:
         }
         for field in &ty.fields {
             if field.typ.fqname() == Some(object.fqname.as_str()) {
-                let is_unreleased = ty.is_attr_set(crate::ATTR_DOCS_UNRELEASED);
+                let is_unreleased = ty.is_attr_set(crate::DocsAttr::Unreleased);
                 let speculative_marker = if is_unreleased {
                     "?speculative-link"
                 } else {
@@ -552,13 +550,13 @@ fn write_used_by(o: &mut String, reporter: &Reporter, objects: &Objects, object:
         }
     }
     used_by.sort();
-    used_by.dedup(); // The same datatype can be used multiple times by the same component
+    used_by.dedup(); // The same encoding can be used multiple times by the same component
 
     if used_by.is_empty() {
         // NOTE: there are some false positives here, because unions can only
         // reference other tables, but they are unwrapped in the codegen.
-        // So for instance: `union Angle` uses `rerun.datatypes.Float32` in
-        // `angle.fbs`, but in the generated code that datatype is unused.
+        // So for instance: `union Angle` uses `rerun.encodings.Float32` in
+        // `angle.rs`, but in the generated code that encoding is unused.
         if false {
             reporter.warn(&object.virtpath, &object.fqname, "Unused object");
         }

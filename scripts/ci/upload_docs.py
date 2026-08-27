@@ -141,16 +141,22 @@ def parse_doc_frontmatter(md_path: Path) -> dict[str, Any]:
         raise ValueError(f"{md_path}: frontmatter missing required 'title'")
 
     metadata: dict[str, Any] = {
-        "title": fm["title"],
+        # Coerce to str: an unquoted YAML value like `title: 0.34` parses as a
+        # number, but the website's index.json schema requires a string (a
+        # non-string title makes the revalidation webhook fail with a 500).
+        "title": str(fm["title"]),
         "hidden": bool(fm.get("hidden", False)),
         "expand": bool(fm.get("expand", False)),
     }
-    if "order" in fm and fm["order"] is not None:
-        metadata["order"] = fm["order"]
+    order = fm.get("order")
+    if order is not None:
+        if isinstance(order, bool) or not isinstance(order, (int, float)):
+            raise ValueError(f"{md_path}: 'order' must be a number, got {order!r}")
+        metadata["order"] = order
     if "sort_children" in fm and fm["sort_children"] is not None:
         metadata["sort_children"] = fm["sort_children"]
     if "redirect" in fm and fm["redirect"] is not None:
-        metadata["redirect"] = fm["redirect"]
+        metadata["redirect"] = str(fm["redirect"])
     return metadata
 
 

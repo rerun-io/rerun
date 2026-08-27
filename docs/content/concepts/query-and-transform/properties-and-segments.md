@@ -1,6 +1,7 @@
 ---
 title: Properties and segment tables
 order: 200
+description: Recording-level metadata that filters and sorts segments
 ---
 
 Properties are recording-level metadata that relates to an entire segment.
@@ -153,3 +154,4 @@ Output:
 Yes.
 Both [`rr.init()`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.init) and [`RecordingStream()`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.RecordingStream) accept a `send_properties` parameter (default: `True`).
 Set it to `False` to prevent the built-in `RecordingInfo` properties from being automatically sent when the recording is created.
+In Rust, `RecordingStreamBuilder::send_properties(false)` does the same.

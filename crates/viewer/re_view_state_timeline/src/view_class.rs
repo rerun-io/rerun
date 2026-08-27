@@ -1,20 +1,22 @@
+use egui::emath::GuiRounding as _;
 use re_log_types::{
-    AbsoluteTimeRange, ComponentPath, EntityPath, TimeCell, TimeInt, TimeReal, TimeType,
-    TimelineName, TimestampFormat,
+    AbsoluteTimeRange, ComponentPath, DateVisibility, EntityPath, TimeCell, TimeInt, TimeReal,
+    TimeType, TimelineName, TimestampFormat,
 };
 use re_sdk_types::blueprint::archetypes::TimeAxis;
 use re_sdk_types::blueprint::components::LinkAxis;
+use re_sdk_types::encodings::TimeRange;
 use re_time_ruler::{MAX_ZIG_WIDTH, TimeRangesUi};
 use re_ui::{Help, IconText, MouseButtonText, UiExt as _, icons, list_item};
 use re_viewer_context::{
-    DataQueryResult, DataResultInteractionAddress, DragAndDropFeedback, GLOBAL_VIEW_ID,
-    IdentifiedViewSystem as _, Item, TimeControlCommand, TimeView, ViewClass, ViewClassExt as _,
-    ViewClassLayoutPriority, ViewClassRegistryError, ViewContext, ViewId, ViewQuery,
-    ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext,
+    DataResultInteractionAddress, DragAndDropFeedback, GLOBAL_VIEW_ID, IdentifiedViewSystem as _,
+    Item, QueryRange, TimeControlCommand, TimeView, ViewClass, ViewClassExt as _,
+    ViewClassLayoutPriority, ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics,
+    ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext,
 };
 use re_viewport_blueprint::ViewProperty;
 
-use crate::data::{StateLaneGroup, StateLanePhase, StateLanesData};
+use crate::data::{StateLaneGroup, StateLanePhase, StateLanesOutput};
 
 // Layout constants (in screen pixels).
 const LANE_BAND_HEIGHT: f32 = 22.0;
@@ -23,6 +25,11 @@ const LANE_GAP: f32 = 4.0;
 
 /// Vertical gap between the stacked instance lanes of a multi-instance group.
 const SUB_LANE_GAP: f32 = 1.0;
+
+/// Prefixes of the phase boundary lines in the tooltip. They share a column, so the times
+/// they label line up.
+const START_PREFIX: &str = "Start:";
+const END_PREFIX: &str = "End:";
 
 const TIME_AXIS_HEIGHT: f32 = 20.0;
 const TOP_MARGIN: f32 = 4.0;
@@ -66,23 +73,37 @@ impl RenderItem<'_> {
     }
 }
 
+/// The pan/zoom window of a view with an independent time axis.
+#[derive(Clone, Copy, PartialEq, re_byte_size::SizeBytes)]
+pub(crate) enum ViewWindow {
+    /// Where the user panned/zoomed to. Absolute, so the time cursor moves through it.
+    Fixed(TimeView),
+
+    /// A window given as a `TimeAxis:view_range`, resolved every frame. Possibly cursor-relative.
+    Range(TimeRange),
+}
+
 /// View state for pan/zoom.
 #[derive(Default, re_byte_size::SizeBytes)]
 pub struct StateTimelineViewState {
-    /// Pan/zoom window, stored per timeline (in the same representation as the timeline panel).
-    pub time_views: std::collections::BTreeMap<TimelineName, TimeView>,
+    /// The pan/zoom window of a view with an independent time axis, per timeline, for as long as it
+    /// differs from the default one. (A view linked to the global time axis keeps its window in the
+    /// blueprint instead, shared with every other linked view.)
+    pub(crate) windows: std::collections::BTreeMap<TimelineName, ViewWindow>,
 }
 
 impl StateTimelineViewState {
-    /// The visible time range to query for `timeline`, derived from its pan/zoom.
-    ///
-    /// `None` until `timeline` has been auto-fit.
-    pub fn visible_time_range(&self, timeline: TimelineName) -> Option<AbsoluteTimeRange> {
-        let time_view = self.time_views.get(&timeline)?;
-        let min = time_view.min;
-        let max = min + TimeReal::from(time_view.time_spanned);
-        Some(AbsoluteTimeRange::new(min.floor(), max.ceil()))
+    /// Pan/zoom `timeline` to an absolute window.
+    pub fn set_window(&mut self, timeline: TimelineName, time_view: TimeView) {
+        self.windows.insert(timeline, ViewWindow::Fixed(time_view));
     }
+}
+
+/// The time range a pan/zoom window covers.
+pub(crate) fn window_time_range(time_view: TimeView) -> AbsoluteTimeRange {
+    let min = time_view.min;
+    let max = min + TimeReal::from(time_view.time_spanned);
+    AbsoluteTimeRange::new(min.floor(), max.ceil())
 }
 
 impl ViewState for StateTimelineViewState {
@@ -111,12 +132,8 @@ impl StateTimelineView {
         view_id: ViewId,
         space_origin: &EntityPath,
     ) -> Result<LinkAxis, ViewSystemExecutionError> {
-        let time_axis = ViewProperty::from_archetype::<TimeAxis>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query,
-            view_id,
-        );
         let view_ctx = self.view_context(ctx, view_id, state, space_origin);
+        let time_axis = ViewProperty::from_archetype::<TimeAxis>(&view_ctx);
         Ok(time_axis
             .component_or_fallback::<LinkAxis>(&view_ctx, TimeAxis::descriptor_link().component)?)
     }
@@ -179,6 +196,14 @@ impl ViewClass for StateTimelineView {
         ViewClassLayoutPriority::Low
     }
 
+    fn supports_visible_time_range(&self) -> bool {
+        true
+    }
+
+    fn default_query_range(&self, _view_state: &dyn ViewState) -> QueryRange {
+        QueryRange::TimeRange(re_sdk_types::encodings::TimeRange::EVERYTHING)
+    }
+
     fn spawn_heuristics(
         &self,
         ctx: &ViewerContext<'_>,
@@ -208,11 +233,7 @@ impl ViewClass for StateTimelineView {
     ) -> Result<(), ViewSystemExecutionError> {
         list_item::list_item_scope(ui, "state_timeline_selection_ui", |ui| {
             let ctx = self.view_context(viewer_ctx, view_id, state, space_origin);
-            let time_axis = ViewProperty::from_archetype::<TimeAxis>(
-                ctx.blueprint_db(),
-                ctx.blueprint_query(),
-                view_id,
-            );
+            let time_axis = ViewProperty::from_archetype::<TimeAxis>(&ctx);
             let link = time_axis
                 .component_or_fallback::<LinkAxis>(&ctx, TimeAxis::descriptor_link().component)?;
 
@@ -239,19 +260,11 @@ impl ViewClass for StateTimelineView {
                     .reflection()
                     .field_reflection(&TimeAxis::descriptor_view_range())
             {
-                let global_time_axis = ViewProperty::from_archetype::<TimeAxis>(
-                    ctx.blueprint_db(),
-                    ctx.blueprint_query(),
+                let global_time_axis = ViewProperty::from_archetype_for_view::<TimeAxis>(
+                    ctx.viewer_ctx,
                     GLOBAL_VIEW_ID,
                 );
-                let global_ctx = ViewContext {
-                    viewer_ctx,
-                    view_id: GLOBAL_VIEW_ID,
-                    view_class_identifier: Self::identifier(),
-                    space_origin,
-                    view_state: state,
-                    query_result: &DataQueryResult::default(),
-                };
+                let global_ctx = ctx.with_view_id(GLOBAL_VIEW_ID);
                 let global_query_ctx = global_time_axis.query_context(&global_ctx);
                 re_view::view_property_component_ui(
                     &global_query_ctx,
@@ -265,6 +278,22 @@ impl ViewClass for StateTimelineView {
             Ok::<(), ViewSystemExecutionError>(())
         })
         .inner
+    }
+
+    /// Only take dropped entities that log a `StateChange`. For any other archetype,
+    /// they should drop the component they are interested in instead.
+    fn reject_entity_drop_reason(
+        &self,
+        ctx: &ViewerContext<'_>,
+        entity_path: &EntityPath,
+    ) -> Option<&'static str> {
+        let has_state_change = ctx
+            .indicated_entities_per_visualizer
+            .get(&crate::StateVisualizer::identifier())
+            .is_some_and(|entities| entities.contains(entity_path));
+
+        (!has_state_change)
+            .then_some("No `StateChange` data on this entity, try dropping a component instead")
     }
 
     /// Accept drops of components onto the state timeline view. For each dropped component, a new
@@ -302,14 +331,14 @@ impl ViewClass for StateTimelineView {
         state: &mut dyn ViewState,
         query: &ViewQuery<'_>,
         system_output: re_viewer_context::SystemExecutionOutput,
-    ) -> Result<(), ViewSystemExecutionError> {
+    ) -> Result<re_viewer_context::ViewClassUiOutput, ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
         let state = state.downcast_mut::<StateTimelineViewState>()?;
 
         // Collect all lane groups from all visualizers.
         let all_groups: Vec<&StateLaneGroup> = system_output
-            .iter_visualizer_data::<StateLanesData>()
+            .iter_visualizer_data::<StateLanesOutput>()
             .flat_map(|d| d.groups.iter())
             .collect();
 
@@ -319,52 +348,35 @@ impl ViewClass for StateTimelineView {
             ui.scope_builder(egui::UiBuilder::new().max_rect(rect), |ui| {
                 ui.centered_and_justified(|ui| {
                     ui.label(
-                        "No state data. Drag a string component from the streams tree into this view or add a new visualizer.",
+                        "No state data. Drag a state entity or a string component from the streams tree into this view or add a new visualizer.",
                     );
                 });
             });
-            return Ok(());
+            return Ok(Default::default());
         }
 
         // Compute data time range.
         let timeline_range = ctx.recording().time_range_for(&query.timeline);
-        let timeline_end: Option<i64> = timeline_range.map(|r| r.max.as_i64());
-        let (data_min, data_max) = data_time_range(&all_groups, timeline_end);
+        let (data_min, data_max) = data_time_range(&all_groups, timeline_range);
 
         // How is the time (X) axis linked? When linked to global, the pan/zoom window is
         // shared with all other plots (e.g. time series views) via the global blueprint view,
         // rather than kept local to this view.
         let link = self.time_axis_link(ctx, state, query.view_id, query.space_origin)?;
-        let global_time_axis = (link == LinkAxis::LinkToGlobal).then(|| {
-            ViewProperty::from_archetype::<TimeAxis>(
-                ctx.blueprint_db(),
-                ctx.blueprint_query,
-                GLOBAL_VIEW_ID,
-            )
-        });
+        let global_time_axis = (link == LinkAxis::LinkToGlobal)
+            .then(|| ViewProperty::from_archetype_for_view::<TimeAxis>(ctx, GLOBAL_VIEW_ID));
 
-        let data_span = (data_max - data_min).max(1.0);
-
-        // When linked to global, derive the pan/zoom window from the shared blueprint view
-        // range. Otherwise auto-fit the first time we render this timeline (stored per-view).
-        let mut time_view = if let Some(global_time_axis) = &global_time_axis {
-            resolve_linked_time_view(
-                global_time_axis,
-                timeline_range,
-                query.latest_at,
-                data_min,
-                data_max,
-            )
-        } else {
-            *state.time_views.entry(query.timeline).or_insert_with(|| {
-                let min = data_min - data_span * 0.05;
-                let max = data_max + data_span * 0.05;
-                TimeView {
-                    min: TimeReal::from(min),
-                    time_spanned: max - min,
-                }
-            })
-        };
+        // The window we show, and the range it is configured with (`None` when that range doesn't
+        // refer to the time cursor). Derived exactly like the one the visualizer queried.
+        let (view_range, mut time_view) = view_window(
+            ctx,
+            state,
+            link,
+            query.timeline,
+            timeline_range,
+            query.latest_at,
+            (data_min, data_max),
+        );
         let original_time_view = time_view;
 
         // Allocate the full available rect.
@@ -372,7 +384,7 @@ impl ViewClass for StateTimelineView {
             ui.allocate_exact_size(ui.available_size(), egui::Sense::click_and_drag());
 
         if !ui.is_rect_visible(rect) {
-            return Ok(());
+            return Ok(Default::default());
         }
 
         // Layout: ruler at the top, lanes below.
@@ -401,7 +413,7 @@ impl ViewClass for StateTimelineView {
         // segment, i.e. right up to the zig-zag "end of timeline" band (same as in the time
         // panel). Using the timeline end itself would leave a bare strip the width of the
         // segment expansion between the last phase and the band.
-        let open_end_time: Option<f64> = timeline_end
+        let open_end_time: Option<f64> = timeline_range
             .and_then(|_| time_ranges_ui.segments.last())
             .map(|segment| segment.time.max.as_f64());
 
@@ -478,6 +490,9 @@ impl ViewClass for StateTimelineView {
         let mut hovered_phase: Option<HoveredPhase> = None;
         let mut group_label_anchors: Vec<(egui::Pos2, &StateLaneGroup)> =
             Vec::with_capacity(all_groups.len());
+        let interact_pos = (response.contains_pointer() && !response.dragged())
+            .then(|| ui.input(|i| i.pointer.interact_pos()))
+            .flatten();
         ui.scope_builder(egui::UiBuilder::new().max_rect(lanes_rect), |ui| {
             egui::ScrollArea::vertical()
                 .auto_shrink([false, false])
@@ -497,6 +512,7 @@ impl ViewClass for StateTimelineView {
                             time_type,
                             timestamp_format,
                             open_end_time,
+                            interact_pos,
                         );
                         group_label_anchors.push((result.label_pos, *group));
                         if result.is_hovered {
@@ -528,31 +544,37 @@ impl ViewClass for StateTimelineView {
         });
 
         // Dragging the time cursor.
-        if let Some(cursor_response) = &cursor_response
+        let dragged_time = if let Some(cursor_response) = &cursor_response
             && ui.input(|i| {
                 i.pointer.primary_pressed()
                     || i.pointer.primary_down()
                     || i.pointer.primary_released()
             })
             && let Some(pos) = cursor_response.interact_pointer_pos()
-            && let Some(time) = time_ranges_ui.time_from_x_f32(pos.x)
         {
-            ctx.send_time_commands([
-                TimeControlCommand::Pause,
-                TimeControlCommand::SetTimeClamped(time),
-            ]);
-        }
+            time_ranges_ui.time_from_x_f32(pos.x)
+        } else {
+            None
+        };
 
         // Secondary (right) click anywhere in the view jumps the time cursor.
-        if response.clicked_by(egui::PointerButton::Secondary)
+        let clicked_time = if response.clicked_by(egui::PointerButton::Secondary)
             && let Some(pos) = response.interact_pointer_pos()
-            && let Some(time) = time_ranges_ui.time_from_x_f32(pos.x)
         {
-            ctx.send_time_commands([
-                TimeControlCommand::Pause,
-                TimeControlCommand::SetTimeClamped(time),
-            ]);
-        }
+            time_ranges_ui.time_from_x_f32(pos.x)
+        } else {
+            None
+        };
+
+        // The window to store at the end of the frame, if moving the cursor changed it.
+        let new_view_range = dragged_time.or(clicked_time).and_then(|time| {
+            re_view::set_time_cursor(
+                ctx,
+                Some(query.latest_at.as_i64()),
+                view_range.as_ref(),
+                time,
+            )
+        });
 
         // Pan: primary- or middle-click drag, plus two-finger touchpad horizontal scroll.
         // Cmd+scroll is routed to `zoom_delta` by egui, so it won't double-fire here.
@@ -584,29 +606,32 @@ impl ViewClass for StateTimelineView {
 
         // Double click anywhere in the view to reset zoom.
         // Doesn't reset global time cursor.
-        if let Some(global_time_axis) = &global_time_axis {
-            // Linked to global: persist pan/zoom to the shared blueprint view range.
-            if response.double_clicked() {
+        if response.double_clicked() {
+            if let Some(global_time_axis) = &global_time_axis {
                 global_time_axis.reset_blueprint_component(ctx, TimeAxis::descriptor_view_range());
-                ui.request_repaint();
-            } else if time_view != original_time_view {
-                save_linked_time_view(ctx, global_time_axis, time_view);
-                ui.request_repaint();
+            } else {
+                state.windows.remove(&query.timeline);
             }
-
-            // Keep the query window in sync with what we drew: the visualizer derives its
-            // `RangeQuery` from `visible_time_range` (i.e. `time_views`). Without this, a view
-            // that rendered independently before being linked would keep querying its stale
-            // local window while drawing the global one, dropping transitions outside it.
-            // Re-query (repaint) whenever that window changes.
-            if state.time_views.insert(query.timeline, time_view) != Some(time_view) {
-                ui.request_repaint();
-            }
-        } else if response.double_clicked() {
-            state.time_views.remove(&query.timeline);
             ui.request_repaint();
-        } else {
-            state.time_views.insert(query.timeline, time_view);
+        } else if let Some(new_view_range) = new_view_range {
+            // The time cursor moved and we kept the window it denotes in place.
+            if let Some(global_time_axis) = &global_time_axis {
+                save_linked_view_range(ctx, global_time_axis, new_view_range);
+            } else {
+                state
+                    .windows
+                    .insert(query.timeline, ViewWindow::Range(new_view_range));
+            }
+            ui.request_repaint();
+        } else if time_view != original_time_view {
+            // Panned or zoomed: the window stays where the user left it, which also means it stops
+            // following the time cursor.
+            if let Some(global_time_axis) = &global_time_axis {
+                save_linked_view_range(ctx, global_time_axis, view_range_from_time_view(time_view));
+            } else {
+                state.set_window(query.timeline, time_view);
+            }
+            ui.request_repaint();
         }
 
         // Publish the hovered phase so other views can highlight the same range.
@@ -649,7 +674,7 @@ impl ViewClass for StateTimelineView {
         };
         ctx.handle_select_hover_drag_interactions(&response, interacted_item, false);
 
-        Ok(())
+        Ok(Default::default())
     }
 }
 
@@ -659,11 +684,16 @@ impl ViewClass for StateTimelineView {
 /// Invisible phases break the merge chain so that user-hidden states remain hidden
 /// rather than being folded into a visible merged region. A run of narrow phases that
 /// contains a single phase is emitted as a [`RenderItem::Single`] (no merge marker).
+///
+/// `clip` is the lane's configured visible time range: nothing outside it is painted, however far
+/// the view is zoomed out. It only ever bounds *geometry* — the phase start times and `end_time`s
+/// that end up in tooltips stay the real logged ones.
 fn compute_render_items<'a>(
     phases: &'a [StateLanePhase],
     lanes_rect: egui::Rect,
     time_ranges_ui: &TimeRangesUi,
     open_end_time: Option<f64>,
+    clip: AbsoluteTimeRange,
 ) -> Vec<RenderItem<'a>> {
     struct PendingNarrow<'a> {
         phase: &'a StateLanePhase,
@@ -721,6 +751,10 @@ fn compute_render_items<'a>(
     let mut items: Vec<RenderItem<'a>> = Vec::new();
     let mut pending = Pending::default();
 
+    let clip_min = clip.min.as_i64() as f64;
+    let clip_max = clip.max.as_i64() as f64;
+    let has_clipped_end = clip.max < TimeInt::MAX;
+
     for (i, phase) in phases.iter().enumerate() {
         // Gaps break the merge chain.
         if phase.content.is_none() {
@@ -733,11 +767,21 @@ fn compute_render_items<'a>(
             .get(i + 1)
             .map(|p| p.start_time as f64)
             .or(open_end_time);
-        let Some(x_start) = time_ranges_ui.x_from_time_f32(TimeReal::from(phase.start_time as f64))
+
+        // The clip only moves the painted edges. `next_time`, which becomes the tooltip's end
+        // time, keeps whatever the query found.
+        let clipped_start_time = (phase.start_time as f64).max(clip_min);
+        // With no successor and no known end of timeline, an unclipped phase runs to the right
+        // edge of the widget (as it does today); a clipped one stops at the clip.
+        let clipped_end_time = next_time
+            .or_else(|| has_clipped_end.then_some(clip_max))
+            .map(|t| t.min(clip_max));
+
+        let Some(x_start) = time_ranges_ui.x_from_time_f32(TimeReal::from(clipped_start_time))
         else {
             continue;
         };
-        let x_end_unclipped = match next_time {
+        let x_end_unclipped = match clipped_end_time {
             Some(t) => time_ranges_ui
                 .x_from_time_f32(TimeReal::from(t))
                 .unwrap_or_else(|| lanes_rect.right()),
@@ -763,14 +807,23 @@ fn compute_render_items<'a>(
         }
 
         if is_last {
-            // The last phase is always its own item (never merged) and open-ended. It
-            // extends slightly under the zig-zag "end of timeline" band so the band's
-            // teeth carve into it instead of leaving background notches along its edge.
+            // The last phase is always its own item (never merged) and open-ended.
+            //
+            // Unless the clip cut it short, it extends slightly under the zig-zag "end of
+            // timeline" band so the band's teeth carve into it instead of leaving background
+            // notches along its edge. A clip-capped phase gets no such overshoot — the band sits
+            // at the end of the timeline, not at the end of the visible time range — but it is
+            // still open-ended as far as the data goes, so its `end_time` stays `None`.
+            let capped_by_clip = has_clipped_end && next_time.is_none_or(|t| t > clip_max);
             pending.flush(&mut items);
             items.push(RenderItem::Single {
                 phase,
                 x_start: visible_x_start,
-                x_end: (visible_x_end + MAX_ZIG_WIDTH).min(lanes_rect.right()),
+                x_end: if capped_by_clip {
+                    visible_x_end
+                } else {
+                    (visible_x_end + MAX_ZIG_WIDTH).min(lanes_rect.right())
+                },
                 end_time: None,
             });
         } else if width >= MERGE_PHASE_THRESHOLD_PIXEL {
@@ -795,93 +848,168 @@ fn compute_render_items<'a>(
     items
 }
 
-/// Compute the (min, max) time range across all lane groups.
-fn data_time_range(groups: &[&StateLaneGroup], timeline_end: Option<i64>) -> (f64, f64) {
+/// Compute the (min, max) time range the view spans — its auto-fit window and the position of the
+/// zig-zag "end of timeline" bands.
+///
+/// This is the extent of the logged data, and deliberately *independent* of any configured visible
+/// time range: restricting the visible range says which states to draw, not where the timeline
+/// begins and ends, so the axis must not shift under the user when they change it.
+fn data_time_range(
+    groups: &[&StateLaneGroup],
+    timeline_range: Option<AbsoluteTimeRange>,
+) -> (f64, f64) {
+    // The recording's own range on this timeline is exactly "everything that was logged".
+    if let Some(timeline_range) = timeline_range {
+        return data_time_range_of(timeline_range);
+    }
+
+    // No range for this timeline, in which case there shouldn't be any phase either — every
+    // phase comes from a temporal row on it. Belt and braces: fall back to the lane contents.
     let mut min = f64::MAX;
     let mut max = f64::MIN;
-    for group in groups {
-        for phase in group.lanes.iter().flat_map(|lane| &lane.phases) {
-            let t = phase.start_time as f64;
-            min = min.min(t);
-            max = max.max(t);
-        }
-    }
-    if let Some(end) = timeline_end {
-        max = max.max(end as f64);
+    for phase in groups
+        .iter()
+        .flat_map(|group| &group.lanes)
+        .flat_map(|lane| &lane.phases)
+    {
+        let t = phase.start_time as f64;
+        min = min.min(t);
+        max = max.max(t);
     }
     if min > max {
-        (0.0, 1.0)
-    } else if (max - min).abs() < f64::EPSILON {
+        return (0.0, 1.0);
+    }
+    ensure_visualizable_width(min, max)
+}
+
+/// [`data_time_range`] for a known timeline range.
+pub(crate) fn data_time_range_of(timeline_range: AbsoluteTimeRange) -> (f64, f64) {
+    ensure_visualizable_width(
+        timeline_range.min.as_i64() as f64,
+        timeline_range.max.as_i64() as f64,
+    )
+}
+
+/// A range spanning a single instant has no width to map to screen space, so give it some.
+fn ensure_visualizable_width(min: f64, max: f64) -> (f64, f64) {
+    if (max - min).abs() < f64::EPSILON {
         (min - 0.5, max + 0.5)
     } else {
         (min, max)
     }
 }
 
-/// Resolve the pan/zoom window shared via the global blueprint view range.
+/// The window a view shows until the user moves it, for data spanning `data_min..=data_max`.
 ///
-/// The range is read without a fallback (none is registered for it in this crate), so an unset or
-/// infinite range resolves to the full timeline range — or the data range when the timeline range
-/// is unknown.
-fn resolve_linked_time_view(
-    global_time_axis: &ViewProperty,
+/// Data spanning more than we want to show at once gets a window around the time cursor instead,
+/// which pins the cursor to the center of the view (see [`re_view::cursor_centered_default_range`]).
+/// Anything else is fit to the data, with a small margin on each side.
+fn default_window(time_type: TimeType, data_min: f64, data_max: f64, data_span: f64) -> ViewWindow {
+    if let Some(centered) = re_view::cursor_centered_default_range(time_type, data_span as u64) {
+        return ViewWindow::Range(centered);
+    }
+
+    let min = data_min - data_span * 0.05;
+    let max = data_max + data_span * 0.05;
+    ViewWindow::Fixed(TimeView {
+        min: TimeReal::from(min),
+        time_spanned: max - min,
+    })
+}
+
+/// The pan/zoom window this view shows on `timeline`: the range it is configured with, and the window
+/// that range resolves to.
+pub(crate) fn view_window(
+    ctx: &ViewerContext<'_>,
+    state: &StateTimelineViewState,
+    link: LinkAxis,
+    timeline: TimelineName,
     timeline_range: Option<AbsoluteTimeRange>,
     latest_at: TimeInt,
-    data_min: f64,
-    data_max: f64,
-) -> TimeView {
-    let view_range = global_time_axis
+    (data_min, data_max): (f64, f64),
+) -> (Option<TimeRange>, TimeView) {
+    // Where the window is kept: shared with every other linked view, or local to this one.
+    let configured = match link {
+        LinkAxis::LinkToGlobal => linked_view_range(&ViewProperty::from_archetype_for_view::<
+            TimeAxis,
+        >(ctx, GLOBAL_VIEW_ID))
+        .map(ViewWindow::Range),
+
+        LinkAxis::Independent => state.windows.get(&timeline).copied(),
+    };
+
+    let time_type = ctx
+        .time_ctrl
+        .timeline()
+        .map_or(TimeType::Sequence, |tl| tl.typ());
+    let data_span = (data_max - data_min).max(1.0);
+
+    match configured.unwrap_or_else(|| default_window(time_type, data_min, data_max, data_span)) {
+        ViewWindow::Range(view_range) => {
+            let time_view =
+                resolve_time_view(&view_range, timeline_range, latest_at, data_min, data_max);
+            (Some(view_range), time_view)
+        }
+
+        ViewWindow::Fixed(time_view) => (None, time_view),
+    }
+}
+
+/// The pan/zoom window shared via the global blueprint view range, if it is set.
+fn linked_view_range(global_time_axis: &ViewProperty) -> Option<TimeRange> {
+    global_time_axis
         .component_or_empty::<re_sdk_types::blueprint::components::TimeRange>(
             TimeAxis::descriptor_view_range().component,
         )
         .ok()
         .flatten()
-        .unwrap_or(re_sdk_types::blueprint::components::TimeRange(
-            re_sdk_types::datatypes::TimeRange::EVERYTHING,
-        ));
+        .map(|range| range.0)
+}
 
-    let cursor = re_sdk_types::datatypes::TimeInt(latest_at.as_i64());
-    let min = match view_range.start {
-        re_sdk_types::datatypes::TimeRangeBoundary::Infinite => {
-            timeline_range.map_or(data_min as i64, |r| r.min.as_i64())
-        }
-        _ => view_range.start.start_boundary_time(cursor).0,
-    };
-    let max = match view_range.end {
-        re_sdk_types::datatypes::TimeRangeBoundary::Infinite => {
-            timeline_range.map_or_else(|| data_max.ceil() as i64, |r| r.max.as_i64())
-        }
-        _ => view_range.end.end_boundary_time(cursor).0,
-    };
-    let span = ((max - min) as f64).max(1.0);
+/// Resolve a view range into the pan/zoom window it denotes.
+fn resolve_time_view(
+    view_range: &TimeRange,
+    timeline_range: Option<AbsoluteTimeRange>,
+    latest_at: TimeInt,
+    data_min: f64,
+    data_max: f64,
+) -> TimeView {
+    let timeline_range = timeline_range
+        .unwrap_or_else(|| AbsoluteTimeRange::new(data_min as i64, data_max.ceil() as i64));
+    let range = re_view::resolve_time_axis_range(
+        view_range,
+        timeline_range,
+        re_sdk_types::encodings::TimeInt(latest_at.as_i64()),
+    );
+
+    let span = ((range.max.as_i64() - range.min.as_i64()) as f64).max(1.0);
     TimeView {
-        min: TimeReal::from(min as f64),
+        min: TimeReal::from(range.min.as_i64() as f64),
         time_spanned: span,
     }
 }
 
+/// The view range denoting a pan/zoom window, i.e. the inverse of [`resolve_time_view`].
+fn view_range_from_time_view(time_view: TimeView) -> TimeRange {
+    // We pan/zoom in timeline units already, so there is no plot-space offset to undo.
+    re_view::time_axis_range_from_window(
+        time_view.min,
+        time_view.min + TimeReal::from(time_view.time_spanned),
+        0,
+    )
+}
+
 /// Persist the pan/zoom window to the shared global blueprint view range.
-///
-/// Both endpoints are rounded (rather than floored/ceiled) so the width is preserved: asymmetric
-/// rounding would inflate the range by up to a unit every frame during a continuous pan, feeding
-/// back through [`resolve_linked_time_view`] on the next frame.
-fn save_linked_time_view(
+fn save_linked_view_range(
     ctx: &ViewerContext<'_>,
     global_time_axis: &ViewProperty,
-    time_view: TimeView,
+    view_range: TimeRange,
 ) {
-    let start = time_view.min.round();
-    let end = (time_view.min + TimeReal::from(time_view.time_spanned)).round();
-    let new_range =
-        re_sdk_types::blueprint::components::TimeRange(re_sdk_types::datatypes::TimeRange {
-            start: re_sdk_types::datatypes::TimeRangeBoundary::Absolute(
-                re_sdk_types::datatypes::TimeInt(start.as_i64()),
-            ),
-            end: re_sdk_types::datatypes::TimeRangeBoundary::Absolute(
-                re_sdk_types::datatypes::TimeInt(end.as_i64()),
-            ),
-        });
-    global_time_axis.save_blueprint_component(ctx, &TimeAxis::descriptor_view_range(), &new_range);
+    global_time_axis.save_blueprint_component(
+        ctx,
+        &TimeAxis::descriptor_view_range(),
+        &re_sdk_types::blueprint::components::TimeRange(view_range),
+    );
 }
 
 /// What the lane-group widgets found under the pointer this frame.
@@ -892,6 +1020,23 @@ struct HoveredPhase {
     end_time: Option<i64>,
 
     color: egui::Color32,
+}
+
+/// Cut a hovered phase's time span down to the lane's configured visible time range.
+///
+/// The highlight band this feeds — both in this view and in every other view, via
+/// [`TimeControlCommand::HighlightRange`] — should match the band that was actually painted, not
+/// the phase's full extent. An open-ended phase (`None`) ends at the clip when there is one.
+fn clamp_hovered_range(
+    start_time: i64,
+    end_time: Option<i64>,
+    clip: AbsoluteTimeRange,
+) -> (i64, Option<i64>) {
+    let end_time = match end_time {
+        Some(end_time) => Some(end_time.min(clip.max.as_i64())),
+        None => (clip.max < TimeInt::MAX).then(|| clip.max.as_i64()),
+    };
+    (start_time.max(clip.min.as_i64()), end_time)
 }
 
 /// What [`show_group`] rendered and found under the pointer.
@@ -916,6 +1061,7 @@ fn show_group(
     time_type: TimeType,
     timestamp_format: TimestampFormat,
     open_end_time: Option<f64>,
+    interact_pos: Option<egui::Pos2>,
 ) -> ShowGroupResult {
     let num_lanes = group.lanes.len();
     let bands_height =
@@ -929,7 +1075,9 @@ fn show_group(
     );
     let rect = response.rect;
 
-    let hover_pos = response.hover_pos();
+    // The view owns the click sense. Hence we use the view's interaction position to make sure the logic
+    // is correct even when the user clicks: `response.hover_pos()` would be `None` in this case.
+    let hover_pos = interact_pos.filter(|pos| painter.clip_rect().contains(*pos));
     let merged_fill_inactive = ui.visuals().widgets.inactive.bg_fill;
     let merged_fill_hovered = ui.visuals().widgets.hovered.bg_fill;
     let merged_text_color = ui.visuals().text_color();
@@ -950,9 +1098,15 @@ fn show_group(
         }
 
         // `compute_render_items` uses the rect's x bounds for clipping phases to the
-        // visible time range; y is unused. Passing the group's own rect gives the same
+        // on-screen window; y is unused. Passing the group's own rect gives the same
         // bounds as the old whole-area lanes_rect since every group spans the full width.
-        let render_items = compute_render_items(&lane.phases, rect, time_ranges_ui, open_end_time);
+        let render_items = compute_render_items(
+            &lane.phases,
+            rect,
+            time_ranges_ui,
+            open_end_time,
+            group.visible_time_range,
+        );
 
         for item in &render_items {
             let (x_start, x_end) = item.x_range();
@@ -968,9 +1122,14 @@ fn show_group(
                 } => {
                     paint_single_phase(&painter, item_rect, phase, hovered);
                     if hovered && let Some(content) = &phase.content {
+                        let (start_time, end_time) = clamp_hovered_range(
+                            phase.start_time,
+                            *end_time,
+                            group.visible_time_range,
+                        );
                         hovered_phase = Some(HoveredPhase {
-                            start_time: phase.start_time,
-                            end_time: *end_time,
+                            start_time,
+                            end_time,
                             color: content.color,
                         });
                     }
@@ -988,9 +1147,11 @@ fn show_group(
                     };
                     paint_merged_phase(&painter, item_rect, *count, fill, merged_text_color);
                     if hovered {
+                        let (start_time, end_time) =
+                            clamp_hovered_range(*start_time, *end_time, group.visible_time_range);
                         hovered_phase = Some(HoveredPhase {
-                            start_time: *start_time,
-                            end_time: *end_time,
+                            start_time,
+                            end_time,
                             color: fill,
                         });
                     }
@@ -1115,6 +1276,8 @@ fn show_item_tooltip(
     time_type: TimeType,
     timestamp_format: TimestampFormat,
 ) {
+    let timestamp_format = timestamp_format.with_date_visibility(DateVisibility::HideDate);
+
     egui::Tooltip::always_open(
         ui.ctx().clone(),
         ui.layer_id(),
@@ -1122,42 +1285,48 @@ fn show_item_tooltip(
         egui::PopupAnchor::Pointer,
     )
     .show(|ui| {
+        ui.spacing_mut().item_spacing.y = 3.0;
+        // The tooltip's `egui::Area` keeps the size it was laid out with when it opened, so
+        // without this every subsequent phase would wrap its text to the width of the first one
+        // hovered.
+        let frame_margins = ui.spacing().menu_margin.sum().x;
+        let available_width = ui.ctx().content_rect().width() - frame_margins;
+        ui.set_max_width(ui.spacing().tooltip_width.min(available_width));
+
         let weak = ui.visuals().weak_text_color();
-        let small = egui::FontId::proportional(11.0);
-        if let Some(instance) = instance {
-            ui.label(
-                egui::RichText::new(format!("Instance {instance}"))
-                    .font(small.clone())
-                    .color(weak),
-            );
-        }
-        match item {
+        let small = egui::FontId::proportional(10.0);
+
+        let format_time = |time: i64| TimeCell::new(time_type, time).format(timestamp_format);
+
+        // Reserve the room for the separator between the label and the phase boundaries. The
+        // line itself can only be painted once everything has been laid out.
+        let separator_space = |ui: &mut egui::Ui| -> f32 {
+            ui.add_space(8.0);
+            let y = ui.cursor().top();
+            ui.add_space(ui.spacing().item_spacing.y + 8.0);
+            y
+        };
+
+        let (label, boundaries) = match item {
             RenderItem::Single {
                 phase, end_time, ..
             } => {
-                ui.label(phase.content.as_ref().map_or("", |s| s.label.as_str()));
-                ui.add_space(4.0);
-                let start = TimeCell::new(time_type, phase.start_time).format(timestamp_format);
-                ui.label(
-                    egui::RichText::new(format!("Start: {start}"))
-                        .font(small.clone())
-                        .color(weak),
-                );
-                if let Some(end) = end_time {
-                    let end = TimeCell::new(time_type, *end).format(timestamp_format);
-                    ui.label(
-                        egui::RichText::new(format!("End: {end}"))
-                            .font(small)
-                            .color(weak),
-                    );
-                } else {
+                let end = match end_time {
+                    Some(end) => format_time(*end),
                     // No end time → open-ended last phase.
-                    ui.label(
-                        egui::RichText::new("End: ongoing (no later data)")
-                            .font(small)
-                            .color(weak),
-                    );
-                }
+                    None => "-".to_owned(),
+                };
+                (
+                    phase
+                        .content
+                        .as_ref()
+                        .map_or("", |s| s.label.as_str())
+                        .to_owned(),
+                    vec![
+                        (START_PREFIX, format_time(phase.start_time)),
+                        (END_PREFIX, end),
+                    ],
+                )
             }
             RenderItem::Merged {
                 start_time,
@@ -1165,24 +1334,52 @@ fn show_item_tooltip(
                 count,
                 ..
             } => {
-                ui.label(format!("{count} states (zoom in to see details)"));
-                ui.add_space(4.0);
-                let start = TimeCell::new(time_type, *start_time).format(timestamp_format);
-                ui.label(
-                    egui::RichText::new(format!("Start: {start}"))
-                        .font(small.clone())
-                        .color(weak),
-                );
+                let mut boundaries = vec![(START_PREFIX, format_time(*start_time))];
                 if let Some(end) = end_time {
-                    let end = TimeCell::new(time_type, *end).format(timestamp_format);
-                    ui.label(
-                        egui::RichText::new(format!("End: {end}"))
-                            .font(small)
-                            .color(weak),
-                    );
+                    boundaries.push((END_PREFIX, format_time(*end)));
                 }
+                (
+                    format!("{count} states (zoom in to see details)"),
+                    boundaries,
+                )
             }
+        };
+
+        if let Some(instance) = instance {
+            ui.label(
+                egui::RichText::new(format!("Instance {instance}"))
+                    .font(small.clone())
+                    .color(weak),
+            );
         }
+        ui.label(label);
+        let separator_y = separator_space(ui);
+
+        // A grid, so that the times line up in a column of their own.
+        egui::Grid::new("state_tooltip_boundaries")
+            .num_columns(2)
+            .min_col_width(0.0)
+            .min_row_height(0.0)
+            .show(ui, |ui| {
+                for (prefix, time) in boundaries {
+                    ui.label(egui::RichText::new(prefix).font(small.clone()).color(weak));
+                    ui.label(egui::RichText::new(time).font(small.clone()).color(weak));
+                    ui.end_row();
+                }
+            });
+
+        // Span the whole tooltip, bleeding into the frame's margins.
+        let margin = ui.spacing().menu_margin;
+        let content = ui.min_rect();
+        let painter = ui.painter();
+        painter.hline(
+            egui::Rangef::new(
+                content.left() - margin.leftf(),
+                content.right() + margin.rightf(),
+            ),
+            separator_y.round_to_pixels(painter.pixels_per_point()),
+            egui::Stroke::new(1.0, weak),
+        );
     });
 }
 
@@ -1266,7 +1463,13 @@ mod tests {
     #[test]
     fn empty_lane_produces_no_items() {
         let lane = lane(&[]);
-        let items = compute_render_items(&lane, unit_rect(), &ranges_ui(0.0, 100.0), None);
+        let items = compute_render_items(
+            &lane,
+            unit_rect(),
+            &ranges_ui(0.0, 100.0),
+            None,
+            AbsoluteTimeRange::EVERYTHING,
+        );
         assert!(items.is_empty(), "{items:?}");
     }
 
@@ -1274,7 +1477,13 @@ mod tests {
     fn single_wide_phase_renders_as_single() {
         // One phase covering x=0..100 — well above the merge threshold.
         let lane = lane(&[(0, true)]);
-        let items = compute_render_items(&lane, unit_rect(), &ranges_ui(0.0, 100.0), None);
+        let items = compute_render_items(
+            &lane,
+            unit_rect(),
+            &ranges_ui(0.0, 100.0),
+            None,
+            AbsoluteTimeRange::EVERYTHING,
+        );
         assert_eq!(items.len(), 1, "{items:?}");
         assert!(is_single(&items[0], 0), "{items:?}");
     }
@@ -1284,7 +1493,13 @@ mod tests {
         // Phase 0: x=0..2 (narrow). Phase 1: x=2..100 (wide).
         // The narrow phase has no narrow neighbor to merge with, so it stays Single.
         let lane = lane(&[(0, true), (2, true)]);
-        let items = compute_render_items(&lane, unit_rect(), &ranges_ui(0.0, 100.0), None);
+        let items = compute_render_items(
+            &lane,
+            unit_rect(),
+            &ranges_ui(0.0, 100.0),
+            None,
+            AbsoluteTimeRange::EVERYTHING,
+        );
         assert_eq!(items.len(), 2, "{items:?}");
         assert!(is_single(&items[0], 0), "{items:?}");
         assert!(is_single(&items[1], 2), "{items:?}");
@@ -1294,7 +1509,13 @@ mod tests {
     fn two_consecutive_narrow_phases_merge() {
         // Two narrow (x=0..2, 2..4) + one wide (x=4..100).
         let lane = lane(&[(0, true), (2, true), (4, true)]);
-        let items = compute_render_items(&lane, unit_rect(), &ranges_ui(0.0, 100.0), None);
+        let items = compute_render_items(
+            &lane,
+            unit_rect(),
+            &ranges_ui(0.0, 100.0),
+            None,
+            AbsoluteTimeRange::EVERYTHING,
+        );
         assert_eq!(items.len(), 2, "{items:?}");
         assert!(is_merged(&items[0], 0, 2), "{items:?}");
         assert!(is_single(&items[1], 4), "{items:?}");
@@ -1304,7 +1525,13 @@ mod tests {
     fn wide_phase_breaks_merge_chain() {
         // Wide (0..10), narrow (10..12), wide (12..100) — the lone narrow stays Single.
         let lane = lane(&[(0, true), (10, true), (12, true)]);
-        let items = compute_render_items(&lane, unit_rect(), &ranges_ui(0.0, 100.0), None);
+        let items = compute_render_items(
+            &lane,
+            unit_rect(),
+            &ranges_ui(0.0, 100.0),
+            None,
+            AbsoluteTimeRange::EVERYTHING,
+        );
         assert_eq!(items.len(), 3, "{items:?}");
         assert!(is_single(&items[0], 0), "{items:?}");
         assert!(is_single(&items[1], 10), "{items:?}");
@@ -1316,7 +1543,13 @@ mod tests {
         // narrow visible (0..2), narrow invisible (2..4), narrow visible (4..6), wide (6..100).
         // The two visible narrow phases must NOT merge across the invisible gap.
         let lane = lane(&[(0, true), (2, false), (4, true), (6, true)]);
-        let items = compute_render_items(&lane, unit_rect(), &ranges_ui(0.0, 100.0), None);
+        let items = compute_render_items(
+            &lane,
+            unit_rect(),
+            &ranges_ui(0.0, 100.0),
+            None,
+            AbsoluteTimeRange::EVERYTHING,
+        );
         assert_eq!(items.len(), 3, "{items:?}");
         assert!(is_single(&items[0], 0), "{items:?}");
         assert!(is_single(&items[1], 4), "{items:?}");
@@ -1329,7 +1562,13 @@ mod tests {
         // The gap should not produce a render item, but the first state must end at
         // t=50 (not t=60). The gap also breaks any merge chain.
         let lane = lane(&[(0, true), (50, false), (60, true)]);
-        let items = compute_render_items(&lane, unit_rect(), &ranges_ui(0.0, 100.0), None);
+        let items = compute_render_items(
+            &lane,
+            unit_rect(),
+            &ranges_ui(0.0, 100.0),
+            None,
+            AbsoluteTimeRange::EVERYTHING,
+        );
         assert_eq!(items.len(), 2, "{items:?}");
         match &items[0] {
             RenderItem::Single { end_time, .. } => assert_eq!(*end_time, Some(50)),
@@ -1346,7 +1585,13 @@ mod tests {
         // wide state (0..70), gap at 70 — the lane ends with no active state.
         // The state's end_time must be the gap's start, and the gap itself produces no item.
         let lane = lane(&[(0, true), (70, false)]);
-        let items = compute_render_items(&lane, unit_rect(), &ranges_ui(0.0, 100.0), None);
+        let items = compute_render_items(
+            &lane,
+            unit_rect(),
+            &ranges_ui(0.0, 100.0),
+            None,
+            AbsoluteTimeRange::EVERYTHING,
+        );
         assert_eq!(items.len(), 1, "{items:?}");
         match &items[0] {
             RenderItem::Single { end_time, .. } => assert_eq!(*end_time, Some(70)),
@@ -1361,7 +1606,13 @@ mod tests {
         // The two on-screen narrow phases must merge — the off-screen phases
         // shouldn't terminate the run.
         let lane = lane(&[(0, true), (5, true), (10, true), (32, true), (34, true)]);
-        let items = compute_render_items(&lane, unit_rect(), &ranges_ui(30.0, 130.0), None);
+        let items = compute_render_items(
+            &lane,
+            unit_rect(),
+            &ranges_ui(30.0, 130.0),
+            None,
+            AbsoluteTimeRange::EVERYTHING,
+        );
         assert_eq!(items.len(), 2, "{items:?}");
         assert!(is_merged(&items[0], 10, 2), "{items:?}");
         assert!(is_single(&items[1], 34), "{items:?}");
@@ -1371,7 +1622,13 @@ mod tests {
     fn off_screen_right_phase_stops_iteration() {
         // Viewport t=[0, 100], two visible wide phases, then one off-screen right.
         let lane = lane(&[(0, true), (10, true), (200, true)]);
-        let items = compute_render_items(&lane, unit_rect(), &ranges_ui(0.0, 100.0), None);
+        let items = compute_render_items(
+            &lane,
+            unit_rect(),
+            &ranges_ui(0.0, 100.0),
+            None,
+            AbsoluteTimeRange::EVERYTHING,
+        );
         assert_eq!(items.len(), 2, "{items:?}");
         assert!(is_single(&items[0], 0), "{items:?}");
         assert!(is_single(&items[1], 10), "{items:?}");
@@ -1383,7 +1640,13 @@ mod tests {
         // out as its own open-ended item, so the first 49 merge and #50 stays separate.
         let phases: Vec<(i64, bool)> = (0..50).map(|i| (i * 2, true)).collect();
         let lane = lane(&phases);
-        let items = compute_render_items(&lane, unit_rect(), &ranges_ui(0.0, 100.0), Some(100.0));
+        let items = compute_render_items(
+            &lane,
+            unit_rect(),
+            &ranges_ui(0.0, 100.0),
+            Some(100.0),
+            AbsoluteTimeRange::EVERYTHING,
+        );
         assert_eq!(items.len(), 2, "{items:?}");
         assert!(is_merged(&items[0], 0, 49), "{items:?}");
         assert!(is_open_single(&items[1], 98), "{items:?}");
@@ -1395,7 +1658,13 @@ mod tests {
         // at t=200 that's off-screen-right. The merge group must still be emitted, and the
         // off-screen last phase yields no open-ended item.
         let lane = lane(&[(50, true), (52, true), (54, true), (200, true)]);
-        let items = compute_render_items(&lane, unit_rect(), &ranges_ui(0.0, 100.0), None);
+        let items = compute_render_items(
+            &lane,
+            unit_rect(),
+            &ranges_ui(0.0, 100.0),
+            None,
+            AbsoluteTimeRange::EVERYTHING,
+        );
         assert_eq!(items.len(), 2, "{items:?}");
         assert!(is_merged(&items[0], 50, 2), "{items:?}");
         assert!(is_single(&items[1], 54), "{items:?}");
@@ -1407,7 +1676,13 @@ mod tests {
         // The phase is open-ended and ends at x=50 plus the overshoot that tucks it
         // under the zig-zag "end of timeline" band, rather than at the rect edge.
         let lane = lane(&[(0, true)]);
-        let items = compute_render_items(&lane, unit_rect(), &ranges_ui(0.0, 100.0), Some(50.0));
+        let items = compute_render_items(
+            &lane,
+            unit_rect(),
+            &ranges_ui(0.0, 100.0),
+            Some(50.0),
+            AbsoluteTimeRange::EVERYTHING,
+        );
         assert_eq!(items.len(), 1, "{items:?}");
         let RenderItem::Single {
             x_end, end_time, ..
@@ -1425,13 +1700,194 @@ mod tests {
         );
     }
 
+    /// A visible time range that ends at `max` and is open on the left.
+    fn clip_until(max: i64) -> AbsoluteTimeRange {
+        AbsoluteTimeRange::new(TimeInt::MIN, max)
+    }
+
+    fn x_end_of(item: &RenderItem<'_>) -> f32 {
+        item.x_range().1
+    }
+
+    #[test]
+    fn clip_start_moves_the_painted_edge_but_not_the_phase_start() {
+        // Viewport t=[0, 100], clip starting at 20: the phase logged at 0 is painted from x=20,
+        // but keeps its real start time for the tooltip.
+        let lane = lane(&[(0, true), (50, true)]);
+        let items = compute_render_items(
+            &lane,
+            unit_rect(),
+            &ranges_ui(0.0, 100.0),
+            None,
+            AbsoluteTimeRange::new(20, TimeInt::MAX),
+        );
+        assert_eq!(items.len(), 2, "{items:?}");
+        assert!(is_single(&items[0], 0), "{items:?}");
+        let (x_start, _) = items[0].x_range();
+        assert!((x_start - 20.0).abs() < 0.5, "x_start={x_start} {items:?}");
+    }
+
+    #[test]
+    fn phase_starting_at_the_clip_end_is_not_painted() {
+        // Clip ending at 50: the phase starting exactly there has no width left, and must not
+        // survive as an open-ended tail running to the end of the timeline.
+        let lane = lane(&[(0, true), (50, true)]);
+        let items = compute_render_items(
+            &lane,
+            unit_rect(),
+            &ranges_ui(0.0, 100.0),
+            Some(100.0),
+            clip_until(50),
+        );
+        assert_eq!(items.len(), 1, "{items:?}");
+        assert!(is_single(&items[0], 0), "{items:?}");
+        let RenderItem::Single {
+            x_end, end_time, ..
+        } = &items[0]
+        else {
+            panic!("expected Single, got {items:?}");
+        };
+        assert_eq!(*end_time, Some(50), "{items:?}");
+        assert!((x_end - 50.0).abs() < 0.5, "x_end={x_end} {items:?}");
+    }
+
+    #[test]
+    fn successor_beyond_the_clip_still_ends_the_previous_phase() {
+        // `include_extended_bounds` hands us the state right after the range (here at t=60). It
+        // must not be painted, but it is what tells the tooltip when the in-range phase ended.
+        let lane = lane(&[(0, true), (60, true)]);
+        let items = compute_render_items(
+            &lane,
+            unit_rect(),
+            &ranges_ui(0.0, 100.0),
+            Some(100.0),
+            clip_until(50),
+        );
+        assert_eq!(items.len(), 1, "{items:?}");
+        let RenderItem::Single {
+            x_end, end_time, ..
+        } = &items[0]
+        else {
+            panic!("expected Single, got {items:?}");
+        };
+        assert_eq!(*end_time, Some(60), "{items:?}");
+        assert!((x_end - 50.0).abs() < 0.5, "x_end={x_end} {items:?}");
+    }
+
+    #[test]
+    fn clipped_open_ended_phase_loses_the_zig_tuck_but_stays_open_ended() {
+        // The zig-zag band sits at the end of the timeline (t=100), not at the clip (t=60), so a
+        // clip-capped tail must not overshoot. It is still open-ended as far as the data goes.
+        let lane = lane(&[(0, true)]);
+        let items = compute_render_items(
+            &lane,
+            unit_rect(),
+            &ranges_ui(0.0, 100.0),
+            Some(100.0),
+            clip_until(60),
+        );
+        assert_eq!(items.len(), 1, "{items:?}");
+        assert!(is_open_single(&items[0], 0), "{items:?}");
+        let x_end = x_end_of(&items[0]);
+        assert!((x_end - 60.0).abs() < 0.5, "x_end={x_end} {items:?}");
+    }
+
+    #[test]
+    fn clip_caps_the_tail_even_without_an_open_end_time() {
+        // Without a known end of timeline an unclipped tail runs to the right edge of the widget;
+        // a clipped one stops at the clip instead.
+        let lane = lane(&[(0, true)]);
+        let items = compute_render_items(
+            &lane,
+            unit_rect(),
+            &ranges_ui(0.0, 100.0),
+            None,
+            clip_until(40),
+        );
+        assert_eq!(items.len(), 1, "{items:?}");
+        assert!(is_open_single(&items[0], 0), "{items:?}");
+        let x_end = x_end_of(&items[0]);
+        assert!((x_end - 40.0).abs() < 0.5, "x_end={x_end} {items:?}");
+    }
+
+    #[test]
+    fn hovered_range_is_clamped_to_the_clip() {
+        let clip = AbsoluteTimeRange::new(20, 80);
+        // Overhang on both sides gets cut back to the painted band.
+        assert_eq!(clamp_hovered_range(0, Some(100), clip), (20, Some(80)));
+        // An open-ended phase ends at the clip.
+        assert_eq!(clamp_hovered_range(0, None, clip), (20, Some(80)));
+        // Fully inside: untouched.
+        assert_eq!(clamp_hovered_range(30, Some(50), clip), (30, Some(50)));
+        // Unrestricted: untouched, and an open end stays open.
+        assert_eq!(
+            clamp_hovered_range(0, None, AbsoluteTimeRange::EVERYTHING),
+            (0, None)
+        );
+    }
+
+    fn group_with(visible_time_range: AbsoluteTimeRange, phases: &[(i64, bool)]) -> StateLaneGroup {
+        StateLaneGroup {
+            label: String::new(),
+            entity_path: EntityPath::root(),
+            value_kind: Some(crate::data::StateValueKind::String),
+            visible_time_range,
+            lanes: vec![crate::data::StateLane {
+                phases: lane(phases),
+            }],
+        }
+    }
+
+    #[test]
+    fn axis_spans_the_whole_recording_regardless_of_the_visible_time_range() {
+        // Whatever the configured range is — and whatever ended up queried under it — both ends of
+        // the axis stay on the logged data, so restricting the range never shifts the timeline.
+        let timeline_range = Some(AbsoluteTimeRange::new(0, 100));
+        for visible_time_range in [
+            AbsoluteTimeRange::EVERYTHING,
+            AbsoluteTimeRange::new(20, 60),
+            AbsoluteTimeRange::new(200, 300), // no overlap with the data at all
+        ] {
+            let group = group_with(visible_time_range, &[(5, true), (30, true), (90, true)]);
+            assert_eq!(
+                data_time_range(&[&group], timeline_range),
+                (0.0, 100.0),
+                "{visible_time_range:?}"
+            );
+
+            // Empty lanes (nothing queried under the range) frame the recording just the same.
+            let group = group_with(visible_time_range, &[]);
+            assert_eq!(
+                data_time_range(&[&group], timeline_range),
+                (0.0, 100.0),
+                "{visible_time_range:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn axis_falls_back_to_the_lane_contents_without_a_timeline_range() {
+        let group = group_with(AbsoluteTimeRange::EVERYTHING, &[(10, true), (90, true)]);
+        assert_eq!(data_time_range(&[&group], None), (10.0, 90.0));
+
+        // Nothing at all to go on.
+        let group = group_with(AbsoluteTimeRange::EVERYTHING, &[]);
+        assert_eq!(data_time_range(&[&group], None), (0.0, 1.0));
+    }
+
     #[test]
     fn last_phase_starting_at_open_end_has_zero_width_and_is_not_drawn() {
         // Phase starting exactly at open_end_time gets zero width and produces no item.
         // (In the view this doesn't normally happen: open_end_time is the segment's
         // *expanded* end, so a state logged at the last tick keeps a small width.)
         let lane = lane(&[(0, true), (100, true)]);
-        let items = compute_render_items(&lane, unit_rect(), &ranges_ui(0.0, 120.0), Some(100.0));
+        let items = compute_render_items(
+            &lane,
+            unit_rect(),
+            &ranges_ui(0.0, 120.0),
+            Some(100.0),
+            AbsoluteTimeRange::EVERYTHING,
+        );
         assert_eq!(items.len(), 1, "{items:?}");
         assert!(is_single(&items[0], 0), "{items:?}");
     }

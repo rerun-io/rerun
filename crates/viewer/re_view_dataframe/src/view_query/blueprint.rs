@@ -4,7 +4,7 @@ use re_chunk_store::ColumnDescriptor;
 use re_log::ResultExt as _;
 use re_log_types::{AbsoluteTimeRange, EntityPath, Timeline, TimelineName};
 use re_sdk_types::blueprint::archetypes::DataframeQuery;
-use re_sdk_types::blueprint::{components, datatypes};
+use re_sdk_types::blueprint::{components, encodings};
 use re_sorbet::{ColumnSelector, ComponentColumnSelector};
 use re_viewer_context::{ViewSystemExecutionError, ViewerContext};
 
@@ -163,7 +163,7 @@ impl Query {
         ctx: &ViewerContext<'_>,
         columns: impl IntoIterator<Item = ColumnSelector>,
     ) {
-        let mut selected_columns = datatypes::SelectedColumns::default();
+        let mut selected_columns = encodings::SelectedColumns::default();
         for column in columns {
             match column {
                 ColumnSelector::RowId => {
@@ -177,7 +177,7 @@ impl Query {
                 }
 
                 ColumnSelector::Component(selector) => {
-                    let blueprint_component_selector = datatypes::ComponentColumnSelector::new(
+                    let blueprint_component_selector = encodings::ComponentColumnSelector::new(
                         &selector.entity_path,
                         selector.component,
                     );
@@ -229,7 +229,7 @@ impl Query {
         let query_timeline_name = self.timeline_name(ctx)?;
 
         // no selected columns means only the active timeline and all component columns
-        let Some(datatypes::SelectedColumns {
+        let Some(encodings::SelectedColumns {
             // row_id, // TODO(#9921)
             time_columns,
             component_columns,

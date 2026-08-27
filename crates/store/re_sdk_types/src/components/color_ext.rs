@@ -2,13 +2,13 @@ use super::Color;
 
 impl Color {
     /// Black and opaque.
-    pub const BLACK: Self = Self(crate::datatypes::Rgba32::BLACK);
+    pub const BLACK: Self = Self(crate::encodings::Rgba32::BLACK);
 
     /// White and opaque.
-    pub const WHITE: Self = Self(crate::datatypes::Rgba32::WHITE);
+    pub const WHITE: Self = Self(crate::encodings::Rgba32::WHITE);
 
     /// Fully transparent (invisible).
-    pub const TRANSPARENT: Self = Self(crate::datatypes::Rgba32::TRANSPARENT);
+    pub const TRANSPARENT: Self = Self(crate::encodings::Rgba32::TRANSPARENT);
 
     /// From gamma-space sRGB values.
     #[inline]
@@ -19,7 +19,7 @@ impl Color {
     /// From gamma-space sRGB values, with a separate/unmultiplied alpha in linear-space.
     #[inline]
     pub fn from_unmultiplied_rgba(r: u8, g: u8, b: u8, a: u8) -> Self {
-        Self::from(crate::datatypes::Rgba32::from_unmultiplied_rgba(r, g, b, a))
+        Self::from(crate::encodings::Rgba32::from_unmultiplied_rgba(r, g, b, a))
     }
 
     /// Most significant byte is `r`, least significant byte is `a`.
@@ -49,7 +49,7 @@ impl Color {
 impl Color {
     /// Create a new color.
     #[inline]
-    pub fn new(value: impl Into<crate::datatypes::Rgba32>) -> Self {
+    pub fn new(value: impl Into<crate::encodings::Rgba32>) -> Self {
         Self(value.into())
     }
 }

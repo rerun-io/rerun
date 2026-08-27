@@ -41,9 +41,9 @@ namespace rerun::archetypes {
     /// @param pixel_format How the data should be interpreted.
     Image(
         Collection<uint8_t> bytes, WidthHeight resolution,
-        datatypes::PixelFormat pixel_format
+        encodings::PixelFormat pixel_format
     )
-        : Image{std::move(bytes), datatypes::ImageFormat{resolution, pixel_format}} {}
+        : Image{std::move(bytes), encodings::ImageFormat{resolution, pixel_format}} {}
 
     /// Construct an image from resolution, color model, channel datatype and bytes.
     ///
@@ -56,9 +56,9 @@ namespace rerun::archetypes {
     /// @param datatype Datatype of the individual channels of the color model.
     Image(
         Collection<uint8_t> bytes, WidthHeight resolution,
-        datatypes::ColorModel color_model, datatypes::ChannelDatatype datatype
+        encodings::ColorModel color_model, encodings::ChannelDatatype datatype
     )
-        : Image(std::move(bytes), datatypes::ImageFormat(resolution, color_model, datatype)) {}
+        : Image(std::move(bytes), encodings::ImageFormat(resolution, color_model, datatype)) {}
 
     /// Construct an image from resolution, color model and elements,
     /// inferring the channel datatype from the element type.
@@ -73,7 +73,7 @@ namespace rerun::archetypes {
     template <typename T>
     Image(
         Collection<T> elements, WidthHeight resolution,
-        datatypes::ColorModel color_model
+        encodings::ColorModel color_model
     )
         : Image(elements.to_uint8(), resolution, color_model, get_datatype(elements.data())) {}
 
@@ -88,13 +88,15 @@ namespace rerun::archetypes {
     /// Each element in elements is interpreted as a single channel of the color model.
     template <typename T>
     Image(
-        const T* elements, WidthHeight resolution, datatypes::ColorModel color_model
+        const T* elements, WidthHeight resolution, encodings::ColorModel color_model
     )
         : Image(
-              rerun::Collection<uint8_t>::borrow(
-                  reinterpret_cast<const uint8_t*>(elements),
-                  resolution.width * resolution.height * color_model_channel_count(color_model)
-              ),
+              rerun::Collection<T>::borrow(
+                  elements,
+                  static_cast<size_t>(resolution.width) * resolution.height *
+                      color_model_channel_count(color_model)
+              )
+                  .to_uint8(),
               resolution, color_model, get_datatype(elements)
           ) {}
 
@@ -106,7 +108,7 @@ namespace rerun::archetypes {
     /// The length of the data should be `W * H`.
     /// @param resolution The resolution of the image as {width, height}.
     static Image from_grayscale8(Collection<uint8_t> bytes, WidthHeight resolution) {
-        return Image(bytes, resolution, datatypes::ColorModel::L, datatypes::ChannelDatatype::U8);
+        return Image(bytes, resolution, encodings::ColorModel::L, encodings::ChannelDatatype::U8);
     }
 
     /// Assumes single channel grayscale/luminance with 8-bit per value.
@@ -121,8 +123,8 @@ namespace rerun::archetypes {
         return Image(
             bytes,
             resolution,
-            datatypes::ColorModel::L,
-            datatypes::ChannelDatatype::U8
+            encodings::ColorModel::L,
+            encodings::ChannelDatatype::U8
         );
     }
 
@@ -137,8 +139,8 @@ namespace rerun::archetypes {
         return Image(
             bytes,
             resolution,
-            datatypes::ColorModel::RGB,
-            datatypes::ChannelDatatype::U8
+            encodings::ColorModel::RGB,
+            encodings::ChannelDatatype::U8
         );
     }
 
@@ -153,8 +155,8 @@ namespace rerun::archetypes {
         return Image(
             bytes,
             resolution,
-            datatypes::ColorModel::RGBA,
-            datatypes::ChannelDatatype::U8
+            encodings::ColorModel::RGBA,
+            encodings::ChannelDatatype::U8
         );
     }
 

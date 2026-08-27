@@ -42,17 +42,16 @@ use re_types_core::ComponentDescriptor;
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 // Keep `cargo test` quick when not optimized.
-#[cfg(debug_assertions)]
-const ROW_COUNTS: &[usize] = &[1_000];
-
-#[cfg(not(debug_assertions))]
-const ROW_COUNTS: &[usize] = &[1_000, 10_000, 30_000];
-
-#[cfg(not(debug_assertions))]
-const NEXT_N_ROWS_BATCHES: &[usize] = &[256, 2048];
-
-#[cfg(debug_assertions)]
-const NEXT_N_ROWS_BATCHES: &[usize] = &[256];
+cfg_select! {
+    debug_assertions => {
+        const ROW_COUNTS: &[usize] = &[1_000];
+        const NEXT_N_ROWS_BATCHES: &[usize] = &[256];
+    }
+    _ => {
+        const ROW_COUNTS: &[usize] = &[1_000, 10_000, 30_000];
+        const NEXT_N_ROWS_BATCHES: &[usize] = &[256, 2048];
+    }
+}
 
 const VECTOR_WIDTH: usize = 8;
 const TIMELINE: &str = "log_time";
@@ -73,11 +72,14 @@ criterion_group!(
 );
 criterion_main!(benches);
 
-#[cfg(not(debug_assertions))]
-const N_CHUNKS_SWEEP: &[usize] = &[1, 8, 32, 128, 512];
-
-#[cfg(debug_assertions)]
-const N_CHUNKS_SWEEP: &[usize] = &[1, 32];
+cfg_select! {
+    debug_assertions => {
+        const N_CHUNKS_SWEEP: &[usize] = &[1, 32];
+    }
+    _ => {
+        const N_CHUNKS_SWEEP: &[usize] = &[1, 8, 32, 128, 512];
+    }
+}
 
 const CHUNKED_BENCH_ROWS: usize = 30_720;
 const CHUNKED_BENCH_BATCH: usize = 2048;

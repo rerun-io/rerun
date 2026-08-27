@@ -61,6 +61,8 @@
 #include "components/scale3d.hpp"
 #include "components/schema_id.hpp"
 #include "components/show_labels.hpp"
+#include "components/spherical_harmonics3rgb.hpp"
+#include "components/spherical_harmonics_degree.hpp"
 #include "components/stroke_width.hpp"
 #include "components/tensor_data.hpp"
 #include "components/tensor_dimension_index_selection.hpp"

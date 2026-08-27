@@ -5,8 +5,8 @@ title: "Position3D"
 
 A position in 3D space.
 
-## Rerun datatype
-[`Vec3D`](../datatypes/vec3d.md)
+## Rerun encoding
+[`Vec3D`](../encodings/vec3d.md)
 
 
 ## Arrow datatype
@@ -23,5 +23,6 @@ FixedSizeList(3 x non-null Float32)
 ## Used by
 
 * [`Arrows3D`](../archetypes/arrows3d.md)
+* [`GaussianSplats3D`](../archetypes/gaussian_splats3d.md)
 * [`Mesh3D`](../archetypes/mesh3d.md)
 * [`Points3D`](../archetypes/points3d.md)

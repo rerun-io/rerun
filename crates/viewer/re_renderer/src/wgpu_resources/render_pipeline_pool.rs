@@ -135,7 +135,7 @@ impl RenderPipelineDesc {
         let buffers = self
             .vertex_buffers
             .iter()
-            .map(|b| b.to_wgpu_desc())
+            .map(|b| Some(b.to_wgpu_desc()))
             .collect::<Vec<_>>();
 
         Ok(

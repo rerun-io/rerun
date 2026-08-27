@@ -1,5 +1,7 @@
 use std::ops::ControlFlow;
 use std::sync::Arc;
+#[cfg(not(target_arch = "wasm32"))]
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use arrow::array::{AsArray as _, RecordBatch};
 use arrow::error::ArrowError;
@@ -7,13 +9,16 @@ use itertools::Itertools as _;
 use re_auth::client::AuthDecorator;
 use re_byte_size::SizeBytes as _;
 use re_chunk::{Chunk, ChunkId};
-use re_log_channel::{DataSourceMessage, DataSourceUiCommand};
+use re_log_channel::{
+    BlueprintTarget, DataSourceMessage, DataSourceUiCommand, DefaultBlueprintRegistration,
+};
 use re_log_types::{
     BlueprintActivationCommand, EntryId, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind,
     StoreSource,
 };
 use re_protos::cloud::v1alpha1::ext;
 use re_protos::cloud::v1alpha1::rerun_cloud_service_client::RerunCloudServiceClient;
+use re_protos::common::v1alpha1::ext::DatasetKind;
 use re_types_core::SegmentId;
 use re_uri::Origin;
 use tokio_stream::StreamExt as _;
@@ -48,6 +53,7 @@ pub async fn channel(origin: Origin) -> ApiResult<PoolChannel> {
 
         let ca_cert = tokio::fs::read_to_string(&cert_path).await.map_err(|err| {
             ApiError::internal_with_source(
+                &origin,
                 None,
                 err,
                 format!("couldn't load local cert at {cert_path:?}"),
@@ -69,7 +75,9 @@ pub async fn channel(origin: Origin) -> ApiResult<PoolChannel> {
 
     let mut endpoint = Endpoint::new(http_url)
         .and_then(|ep| ep.tls_config(tls_config))
-        .map_err(|err| ApiError::connection_with_source(None, err, "connecting to server"))?
+        .map_err(|err| {
+            ApiError::connection_with_source(&origin, None, err, "connecting to server")
+        })?
         .http2_adaptive_window(true) // Optimize for throughput
         .connect_timeout(std::time::Duration::from_secs(10))
         // Send HTTP/2 PINGs every 30s to keep connections alive across NATs / cloud LBs
@@ -91,6 +99,7 @@ pub async fn channel(origin: Origin) -> ApiResult<PoolChannel> {
     // below can run on failure) and surfaces connection errors through the `with_retry` wrapper.
     let connect_result = endpoint.connect().await.map_err(|err| {
         ApiError::connection_with_source(
+            &origin,
             None,
             err,
             format!("failed to connect to server at {origin}"),
@@ -122,6 +131,7 @@ pub async fn channel(origin: Origin) -> ApiResult<PoolChannel> {
 
             if endpoint.connect().await.is_ok() {
                 Err(ApiError::connection(
+                    &origin,
                     "the server is expecting an unencrypted connection (try `rerun+http://` if you are sure)",
                 ))
             } else {
@@ -440,119 +450,161 @@ pub type ChunksWithSegment = Vec<(Chunk, Option<SegmentId>)>;
 #[cfg(not(target_arch = "wasm32"))]
 pub fn fetch_chunks_response_to_chunk_and_segment_id(
     response: crate::FetchChunksResponseStream,
+    decode_time_us: Option<Arc<AtomicU64>>,
 ) -> crate::ApiResponseStream<ChunksWithSegment> {
+    let origin = response.origin().clone();
     let trace_id = response.trace_id();
+
     // `spawn_blocking` runs on the blocking thread pool with no tracing context.
     // Capture the caller's span here so the decode/migration spans nested inside
     // are parented under the SDK call instead of becoming orphan roots in Jaeger.
     let parent_span = tracing::Span::current();
     let stream = response
-        .then(move |resp| {
-            let trace_id = trace_id;
-            let parent_span = parent_span.clone();
-            // We want to make sure to offload that compute-heavy work to the compute worker pool: it's
-            // not going to make this one single pipeline any faster, but it will prevent starvation of
-            // the Tokio runtime (which would slow down every other futures currently scheduled!).
-            tokio::task::spawn_blocking(move || {
-                let _parent_guard = parent_span.enter();
-                let r = resp?;
-                let _span = tracing::trace_span!(
-                    parent: &parent_span,
-                    "fetch_chunks::batch_decode",
-                    num_chunks = r.chunks.len(),
-                )
-                .entered();
+        .then({
+            let origin = origin.clone();
+            move |resp| {
+                let trace_id = trace_id;
+                let origin = origin.clone();
+                let parent_span = parent_span.clone();
+                // Cheap `Option<Arc>` clone per response batch; only present when a
+                // caller wants to attribute decode CPU time to a query.
+                let decode_time_us = decode_time_us.clone();
+                // We want to make sure to offload that compute-heavy work to the compute worker pool: it's
+                // not going to make this one single pipeline any faster, but it will prevent starvation of
+                // the Tokio runtime (which would slow down every other futures currently scheduled!).
+                tokio::task::spawn_blocking(move || {
+                    let _parent_guard = parent_span.enter();
+                    let r = resp?;
+                    let _span = tracing::trace_span!(
+                        parent: &parent_span,
+                        "fetch_chunks::batch_decode",
+                        num_chunks = r.chunks.len(),
+                    )
+                    .entered();
 
-                r.chunks
-                    .into_iter()
-                    .map(|arrow_msg| {
-                        re_tracing::profile_scope!("fetch_chunks_response_to_chunk_and_segment_id");
-                        let segment_id = arrow_msg
-                            .store_id
-                            .clone()
-                            .map(|id| SegmentId::from(id.recording_id));
+                    // Time the decode loop from inside the blocking task so we
+                    // capture true CPU time, not scheduling wait.
+                    let decode_start = web_time::Instant::now();
+                    let result: Result<ChunksWithSegment, ApiError> = r
+                        .chunks
+                        .into_iter()
+                        .map(|arrow_msg| {
+                            re_tracing::profile_scope!(
+                                "fetch_chunks_response_to_chunk_and_segment_id"
+                            );
+                            let segment_id = arrow_msg
+                                .store_id
+                                .clone()
+                                .map(|id| SegmentId::from(id.recording_id));
 
-                        use re_log_encoding::ToApplication as _;
-                        let arrow_msg = arrow_msg.to_application(()).map_err(|err| {
+                            use re_log_encoding::ToApplication as _;
+                            let arrow_msg = arrow_msg.to_application(()).map_err(|err| {
                             ApiError::deserialization_with_source(
+                                &origin,
                                 trace_id,
                                 err,
                                 "failed to get arrow data for item in /FetchChunks response stream",
                             )
                         })?;
 
-                        let chunk = re_chunk::Chunk::from_record_batch(&arrow_msg.batch).map_err(
-                            |err| {
-                                ApiError::deserialization_with_source(
-                                    trace_id,
-                                    err,
-                                    "failed to parse item in /FetchChunks response stream",
-                                )
-                            },
-                        )?;
+                            let chunk = re_chunk::Chunk::from_chunk_record_batch(&arrow_msg.batch)
+                                .map_err(|err| {
+                                    ApiError::deserialization_with_source(
+                                        &origin,
+                                        trace_id,
+                                        err,
+                                        "failed to parse item in /FetchChunks response stream",
+                                    )
+                                })?;
 
-                        Ok((chunk, segment_id))
-                    })
-                    .try_collect()
-            })
+                            Ok((chunk, segment_id))
+                        })
+                        .try_collect();
+                    if let Some(acc) = &decode_time_us {
+                        acc.fetch_add(decode_start.elapsed().as_micros() as u64, Ordering::Relaxed);
+                    }
+                    result
+                })
+            }
         })
-        .map(move |res| {
-            res.map_err(|err| {
-                ApiError::internal_with_source(
-                    trace_id,
-                    err,
-                    "failed to sync on /FetchChunks response stream",
-                )
-            })
-            .flatten()
+        .map({
+            let origin = origin.clone();
+            move |res| {
+                res.map_err(|err| {
+                    ApiError::internal_with_source(
+                        &origin,
+                        trace_id,
+                        err,
+                        "failed to sync on /FetchChunks response stream",
+                    )
+                })
+                .flatten()
+            }
         });
-    crate::ApiResponseStream::new(stream, trace_id)
+    crate::ApiResponseStream::new(origin, stream, trace_id)
 }
 
 // This code path happens to be shared between native and web, but we don't have a Tokio runtime on web!
 #[cfg(target_arch = "wasm32")]
 pub fn fetch_chunks_response_to_chunk_and_segment_id(
     response: crate::FetchChunksResponseStream,
+    decode_time_us: Option<Arc<std::sync::atomic::AtomicU64>>,
 ) -> crate::ApiResponseStream<ChunksWithSegment> {
+    let origin = response.origin().clone();
     let trace_id = response.trace_id();
-    let stream = response.map(move |resp| {
-        let resp = resp?;
+    let stream = response.map({
+        let origin = origin.clone();
+        move |resp| {
+            let origin = origin.clone();
+            let resp = resp?;
 
-        let _span =
-            tracing::trace_span!("fetch_chunks::batch_decode", num_chunks = resp.chunks.len())
-                .entered();
+            let _span =
+                tracing::trace_span!("fetch_chunks::batch_decode", num_chunks = resp.chunks.len())
+                    .entered();
 
-        resp.chunks
-            .into_iter()
-            .map(|arrow_msg| {
-                let segment_id = arrow_msg
-                    .store_id
-                    .clone()
-                    .map(|id| SegmentId::from(id.recording_id));
+            let decode_start = web_time::Instant::now();
+            let result: Result<ChunksWithSegment, ApiError> = resp
+                .chunks
+                .into_iter()
+                .map(|arrow_msg| {
+                    let segment_id = arrow_msg
+                        .store_id
+                        .clone()
+                        .map(|id| SegmentId::from(id.recording_id));
 
-                use re_log_encoding::ToApplication as _;
-                let arrow_msg = arrow_msg.to_application(()).map_err(|err| {
-                    ApiError::deserialization_with_source(
-                        trace_id,
-                        err,
-                        "failed to get arrow data for item in /FetchChunks response stream",
-                    )
-                })?;
-
-                let chunk =
-                    re_chunk::Chunk::from_record_batch(&arrow_msg.batch).map_err(|err| {
+                    use re_log_encoding::ToApplication as _;
+                    let arrow_msg = arrow_msg.to_application(()).map_err(|err| {
                         ApiError::deserialization_with_source(
+                            &origin,
                             trace_id,
                             err,
-                            "failed to parse item in /FetchChunks response stream",
+                            "failed to get arrow data for item in /FetchChunks response stream",
                         )
                     })?;
 
-                Ok((chunk, segment_id))
-            })
-            .try_collect()
+                    let chunk = re_chunk::Chunk::from_chunk_record_batch(&arrow_msg.batch)
+                        .map_err(|err| {
+                            ApiError::deserialization_with_source(
+                                &origin,
+                                trace_id,
+                                err,
+                                "failed to parse item in /FetchChunks response stream",
+                            )
+                        })?;
+
+                    Ok((chunk, segment_id))
+                })
+                .try_collect();
+            if let Some(acc) = &decode_time_us {
+                acc.fetch_add(
+                    decode_start.elapsed().as_micros() as u64,
+                    std::sync::atomic::Ordering::Relaxed,
+                );
+            }
+            result
+        }
     });
-    crate::ApiResponseStream::new(stream, trace_id)
+    crate::ApiResponseStream::new(origin, stream, trace_id)
 }
 
 /// Callback invoked as chunks are downloaded.
@@ -616,7 +668,6 @@ async fn stream_blueprint_segment(
 ) -> Result<ControlFlow<()>, ApiError> {
     let blueprint_store_info = StoreInfo {
         store_id: blueprint_store_id,
-        cloned_from: None,
         store_source: StoreSource::Unknown,
         store_version: None,
     };
@@ -627,6 +678,7 @@ async fn stream_blueprint_segment(
         blueprint_store_info,
         tx,
         blueprint_dataset,
+        DatasetKind::Blueprint,
         blueprint_segment,
         re_uri::Fragment::default(),
         &StreamingOptions::default(),
@@ -645,37 +697,32 @@ pub fn table_blueprint_log_channel(
     origin: re_uri::Origin,
     blueprint_dataset: EntryId,
     blueprint_segment: &SegmentId,
-    table_id: re_log_types::TableId,
-    blueprint_store_id: StoreId,
 ) -> (re_log_channel::LogSender, re_log_channel::LogReceiver) {
-    let source_uri = re_uri::DatasetSegmentUri {
+    let source_uri = re_uri::DatasetUri {
         origin,
         dataset_id: blueprint_dataset.id,
-        segment_id: blueprint_segment.clone(),
+        resource: re_uri::DatasetResource::Segments,
+        segment_id: Some(blueprint_segment.clone()),
         fragment: re_uri::Fragment::default(),
     };
 
     re_log_channel::log_channel(re_log_channel::LogSource::RedapGrpcStream {
         uri: source_uri,
         open_behavior: re_log_channel::RecordingOpenBehavior::Background,
-        table_blueprint: Some(re_log_channel::TableBlueprintSource {
-            table_id,
-            blueprint_id: blueprint_store_id,
-        }),
     })
 }
 
 /// Stream a registered `.rbl` blueprint segment into an existing log channel.
 ///
-/// This streams the blueprint data and then sends a successful quit marker on the same channel.
-/// The viewer uses the channel's [`re_log_channel::LogSource`] metadata to register the blueprint
-/// only after all blueprint messages have been processed.
+/// This streams the blueprint data, registers it with the target table, and then sends a successful
+/// quit marker on the same channel.
 /// It does not emit a [`LogMsg::BlueprintActivationCommand`], so the blueprint is not activated as
 /// an application default blueprint.
 pub async fn stream_table_blueprint_segment_from_server(
     mut client: ConnectionClient,
     tx: re_log_channel::LogSender,
     blueprint_store_id: StoreId,
+    table_ref: re_uri::TableReference,
     blueprint_dataset: EntryId,
     blueprint_segment: SegmentId,
 ) -> ApiResult {
@@ -689,6 +736,20 @@ pub async fn stream_table_blueprint_segment_from_server(
     .await?
     .is_break()
     {
+        return Ok(());
+    }
+
+    if tx
+        .send(
+            DefaultBlueprintRegistration {
+                blueprint_id: blueprint_store_id,
+                target: BlueprintTarget::Table(table_ref),
+            }
+            .into(),
+        )
+        .is_err()
+    {
+        re_log::debug!("Receiver disconnected");
         return Ok(());
     }
 
@@ -711,16 +772,44 @@ pub async fn stream_table_blueprint_segment_from_server(
 pub async fn stream_blueprint_and_segment_from_server(
     mut client: ConnectionClient,
     tx: re_log_channel::LogSender,
-    uri: re_uri::DatasetSegmentUri,
+    uri: re_uri::DatasetUri,
     options: StreamingOptions,
 ) -> ApiResult {
     re_log::debug!("Loading {uri}…");
 
-    let recording_store_id = uri.store_id();
+    let (Some(segment_id), Some(recording_store_id)) = (uri.segment_id.clone(), uri.store_id())
+    else {
+        return Err(ApiError::invalid_arguments(
+            client.origin(),
+            format!("Cannot stream a dataset that names no segment\nUri: {uri}"),
+        ));
+    };
 
-    if options.download.contains(SegmentDownload::BLUEPRINT) {
-        let dataset_entry = client.read_dataset_entry(uri.dataset_id.into()).await?;
+    // The entry tells us which default blueprint to stream, and which kind of dataset this is.
+    let dataset_entry = client.read_dataset_entry(uri.dataset_id.into()).await?;
 
+    // An asset is a segment of the dataset's hidden asset dataset, which the url does not name.
+    let (dataset_id, dataset_kind) = match uri.resource {
+        re_uri::DatasetResource::Segments => (
+            EntryId::from(uri.dataset_id),
+            dataset_entry.handle.dataset_kind,
+        ),
+
+        re_uri::DatasetResource::Assets => {
+            let Some(asset_dataset) = dataset_entry.dataset_details.asset_dataset else {
+                return Err(ApiError::invalid_arguments(
+                    client.origin(),
+                    format!("No assets are registered for this dataset\nUri: {uri}"),
+                ));
+            };
+
+            (asset_dataset, DatasetKind::Asset)
+        }
+    };
+
+    // An asset shows something else entirely than the dataset's own segments, so the dataset's
+    // blueprint does not apply to it.
+    if dataset_kind != DatasetKind::Asset && options.download.contains(SegmentDownload::BLUEPRINT) {
         if let Some((blueprint_dataset, blueprint_segment)) =
             dataset_entry.dataset_details.default_blueprint()
         {
@@ -764,17 +853,17 @@ pub async fn stream_blueprint_and_segment_from_server(
         }
     }
 
-    let re_uri::DatasetSegmentUri {
+    let re_uri::DatasetUri {
         origin: _,
-        dataset_id,
-        segment_id,
+        dataset_id: _,
+        resource: _,
+        segment_id: _, // Taken above
         fragment,
     } = uri;
 
     if options.download.contains(SegmentDownload::SEGMENT) {
         let store_info = StoreInfo {
             store_id: recording_store_id,
-            cloned_from: None,
             store_source: StoreSource::Unknown,
             store_version: None,
         };
@@ -783,7 +872,8 @@ pub async fn stream_blueprint_and_segment_from_server(
             &mut client,
             store_info,
             &tx,
-            dataset_id.into(),
+            dataset_id,
+            dataset_kind,
             segment_id,
             fragment,
             &options,
@@ -804,6 +894,7 @@ async fn stream_segment_from_server(
     store_info: StoreInfo,
     tx: &re_log_channel::LogSender,
     dataset_id: EntryId,
+    dataset_kind: DatasetKind,
     segment_id: SegmentId,
     fragment: re_uri::Fragment,
     options: &StreamingOptions,
@@ -844,117 +935,80 @@ async fn stream_segment_from_server(
         }
     }
 
+    // Only recording datasets have assets, so a blueprint or asset dataset has none to look up.
+    if dataset_kind == DatasetKind::Recording {
+        match client.get_assets_for_segment(dataset_id).await {
+            Ok(Some((asset_dataset_id, asset_segment_ids))) => {
+                // Every segment of the asset dataset is returned, so all of the dataset's assets
+                // are streamed for each segment that is opened.
+                for asset_segment_id in asset_segment_ids {
+                    // TODO(RR-5399): Cache asset manifests?
+                    // We don't support assets without manifests.
+                    match stream_manifest(
+                        client,
+                        tx,
+                        asset_dataset_id,
+                        &asset_segment_id,
+                        options,
+                        &store_id,
+                        ManifestKind::Asset,
+                    )
+                    .await
+                    {
+                        Ok(ManifestOutcome::Loaded) => {}
+
+                        Ok(ManifestOutcome::ReceiverDisconnected) => {
+                            return Ok(ControlFlow::Break(()));
+                        }
+
+                        Ok(ManifestOutcome::NoManifest { .. }) => {
+                            re_log::warn_once!(
+                                "The server has no manifest for this asset, skipping it\nAsset segment id: {asset_segment_id}"
+                            );
+                        }
+
+                        Err(err) => {
+                            re_log::warn!(
+                                "{}",
+                                re_error::format_with_details(
+                                    format!("Failed to stream asset manifest, skipping it: {err}"),
+                                    format!("Asset segment id: {asset_segment_id}"),
+                                )
+                            );
+                        }
+                    }
+                }
+            }
+            Ok(None) => {}
+            Err(err) => match err.kind {
+                ApiErrorKind::NotFound | ApiErrorKind::Unimplemented => {}
+                _ => {
+                    re_log::warn!("Failed to fetch assets: {err}");
+                }
+            },
+        }
+    }
+
     // TODO(RR-2976): Do not, under any circumstances, try to chain gRPC streams
     // together. Interlaced streams are a giant footgun that will invariably lead to the exhaustion
     // of client's HTTP2 connection window, and ultimately to a complete stall of the entire system.
     // See the attached issues for more information.
 
-    let start_time = web_time::Instant::now();
-    let manifest_stream_result = client
-        .get_rrd_manifest_stream(dataset_id, segment_id.clone())
-        .await;
-    let trace_id = manifest_stream_result
-        .as_ref()
-        .ok()
-        .and_then(|s| s.trace_id());
-    match manifest_stream_result {
-        Ok(manifest_stream) => {
-            let mut manifest_stream = std::pin::pin!(manifest_stream);
-
-            let mut rrd_manifest_parts: Vec<Arc<re_log_encoding::RrdManifest>> = Vec::new();
-
-            while let Some(part_result) = manifest_stream.next().await {
-                let raw_rrd_manifest_part = part_result?;
-
-                let part_nr = rrd_manifest_parts.len() + 1;
-                re_log::debug!(
-                    "Received RRD manifest part #{part_nr}/? ({} deflated, {:.1}s elapsed)",
-                    re_format::format_bytes(raw_rrd_manifest_part.total_size_bytes() as _),
-                    start_time.elapsed().as_secs_f32(),
-                );
-
-                let rrd_manifest = re_log_encoding::RrdManifest::try_new(&raw_rrd_manifest_part)
-                    .map_err(|err| {
-                        ApiError::invalid_arguments_with_source(
-                            trace_id,
-                            err,
-                            "Invalid RRD manifest part",
-                        )
-                    })?;
-
-                let rrd_manifest = Arc::new(rrd_manifest);
-
-                if tx
-                    .send(DataSourceMessage::RrdManifest(
-                        store_id.clone(),
-                        rrd_manifest.clone(),
-                    ))
-                    .is_err()
-                {
-                    re_log::debug!("Receiver disconnected");
-                    return Ok(ControlFlow::Break(()));
-                }
-
-                rrd_manifest_parts.push(rrd_manifest);
-            }
-
-            if rrd_manifest_parts.is_empty() {
-                return Err(ApiError::deserialization(
-                    trace_id,
-                    "failed to parse the response for /GetRrdManifest (no data)",
-                ));
-            }
-
-            let part_nr = rrd_manifest_parts.len();
-            re_log::debug!(
-                "Full RRD manifest loaded in {:.1}s in {}",
-                start_time.elapsed().as_secs_f32(),
-                re_format::format_plural_s(part_nr, "part")
-            );
-
-            if tx
-                .send(DataSourceMessage::RrdManifestComplete(store_id.clone()))
-                .is_err()
-            {
-                re_log::debug!("Receiver disconnected");
-                return Ok(ControlFlow::Break(()));
-            }
-
-            match store_id.kind() {
-                StoreKind::Recording if !options.force_full_download => {
-                    re_log::debug!("Letting the viewer load chunks on-demand");
-                    return Ok(ControlFlow::Continue(()));
-                }
-                StoreKind::Recording | StoreKind::Blueprint => {
-                    re_log::debug!("Loading all of the chunks in one go; most important first");
-                    let refs: Vec<&re_log_encoding::RrdManifest> =
-                        rrd_manifest_parts.iter().map(|m| m.as_ref()).collect();
-                    let combined = re_log_encoding::RrdManifest::concat(&refs).map_err(|err| {
-                        ApiError::invalid_arguments_with_source(
-                            trace_id,
-                            err,
-                            "Failed to concatenate RRD manifest parts",
-                        )
-                    })?;
-                    let batch = sort_batch(combined.chunk_fetcher_rb()).map_err(|err| {
-                        ApiError::invalid_arguments_with_source(
-                            trace_id,
-                            err,
-                            "Failed to sort chunk index",
-                        )
-                    })?;
-                    return load_chunks(client, tx, &store_id, batch, options).await;
-                }
-            }
-        }
-        Err(err) => {
-            if err.kind == ApiErrorKind::Unimplemented {
-                re_log::debug_once!("The server does not support on-demand streaming"); // Legacy server
-            } else {
-                re_log::warn!("Failed to load RRD manifest: {err}");
-            }
-        }
-    }
+    let trace_id = match stream_manifest(
+        client,
+        tx,
+        dataset_id,
+        &segment_id,
+        options,
+        &store_id,
+        ManifestKind::Segment,
+    )
+    .await?
+    {
+        ManifestOutcome::Loaded => return Ok(ControlFlow::Continue(())),
+        ManifestOutcome::ReceiverDisconnected => return Ok(ControlFlow::Break(())),
+        ManifestOutcome::NoManifest { trace_id } => trace_id,
+    };
 
     // Fallback for servers that does not support the RRD manifests:
 
@@ -992,6 +1046,7 @@ async fn stream_segment_from_server(
             )
             .map_err(|err| {
                 ApiError::invalid_arguments_with_source(
+                    client.origin(),
                     None,
                     err,
                     "Failed to concat chunk index batches",
@@ -1000,10 +1055,15 @@ async fn stream_segment_from_server(
 
             // Prioritize the chunks:
             let batch = sort_batch(&batch).map_err(|err| {
-                ApiError::invalid_arguments_with_source(trace_id, err, "Failed to sort chunk index")
+                ApiError::invalid_arguments_with_source(
+                    client.origin(),
+                    trace_id,
+                    err,
+                    "Failed to sort chunk index",
+                )
             })?;
 
-            if let Some(chunk_ids) = chunk_id_column(&batch) {
+            if let Some(chunk_ids) = re_log_encoding::RrdManifest::col_chunk_ids_of(&batch) {
                 already_loaded_chunk_ids = chunk_ids.iter().copied().collect();
             } else {
                 re_log::warn_once!(
@@ -1041,6 +1101,7 @@ async fn stream_segment_from_server(
 
     let batch = arrow::compute::concat_batches(&batches[0].schema(), &batches).map_err(|err| {
         ApiError::invalid_arguments_with_source(
+            client.origin(),
             trace_id,
             err,
             "Failed to concat chunk index batches",
@@ -1049,10 +1110,15 @@ async fn stream_segment_from_server(
 
     // Prioritize the chunks:
     let batch = sort_batch(&batch).map_err(|err| {
-        ApiError::invalid_arguments_with_source(trace_id, err, "Failed to sort chunk index")
+        ApiError::invalid_arguments_with_source(
+            client.origin(),
+            trace_id,
+            err,
+            "Failed to sort chunk index",
+        )
     })?;
 
-    if let Some(chunk_ids) = chunk_id_column(&batch)
+    if let Some(chunk_ids) = re_log_encoding::RrdManifest::col_chunk_ids_of(&batch)
         && !already_loaded_chunk_ids.is_empty()
     {
         // Filter out already loaded chunk IDs:
@@ -1070,7 +1136,12 @@ async fn stream_segment_from_server(
 
         let filtered_batch =
             re_arrow_util::take_record_batch(&batch, &filtered_indices).map_err(|err| {
-                ApiError::invalid_arguments_with_source(trace_id, err, "take_record_batch")
+                ApiError::invalid_arguments_with_source(
+                    client.origin(),
+                    trace_id,
+                    err,
+                    "take_record_batch",
+                )
             })?;
 
         load_chunks(client, tx, &store_id, filtered_batch, options).await
@@ -1079,11 +1150,195 @@ async fn stream_segment_from_server(
     }
 }
 
-fn chunk_id_column(batch: &RecordBatch) -> Option<&[ChunkId]> {
-    let array = batch
-        .column_by_name(re_log_encoding::RawRrdManifest::FIELD_CHUNK_ID)
-        .and_then(|array| array.as_fixed_size_binary_opt())?;
-    ChunkId::try_slice_from_arrow(array).ok()
+/// Whether a manifest describes a segment's own data, or an asset that segment references.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum ManifestKind {
+    /// The manifest of the segment being loaded.
+    Segment,
+
+    /// The manifest of an asset, which lives in the asset dataset and is shared by many segments.
+    Asset,
+}
+
+/// What came out of streaming a single manifest.
+enum ManifestOutcome {
+    /// The manifest was streamed, and any chunks it covers have been handled.
+    Loaded,
+
+    /// The server has no manifest for this segment, so the caller should fall back to listing
+    /// chunks itself.
+    NoManifest {
+        trace_id: Option<opentelemetry::TraceId>,
+    },
+
+    /// The log channel receiver went away, so there is nobody left to stream to.
+    ReceiverDisconnected,
+}
+
+async fn stream_manifest(
+    client: &mut ConnectionClient,
+    tx: &re_log_channel::LogSender,
+    dataset_id: EntryId,
+    segment_id: &SegmentId,
+    options: &StreamingOptions,
+    store_id: &StoreId,
+    manifest_kind: ManifestKind,
+) -> ApiResult<ManifestOutcome> {
+    let start_time = web_time::Instant::now();
+    let manifest_stream_result = client
+        .get_rrd_manifest_stream(dataset_id, segment_id.clone())
+        .await;
+    let trace_id = manifest_stream_result
+        .as_ref()
+        .ok()
+        .and_then(|s| s.trace_id());
+    match manifest_stream_result {
+        Ok(manifest_stream) => {
+            let mut manifest_stream = std::pin::pin!(manifest_stream);
+
+            let mut raw_rrd_manifest_parts = Vec::new();
+            let mut rrd_manifest_parts: Vec<Arc<re_log_encoding::RrdManifest>> = Vec::new();
+
+            while let Some(part_result) = manifest_stream.next().await {
+                let raw_rrd_manifest_part = part_result?;
+
+                let raw_rrd_manifest_part = if manifest_kind == ManifestKind::Asset {
+                    raw_rrd_manifest_part
+                        .without_recording_properties()
+                        .map_err(|err| {
+                            ApiError::invalid_arguments_with_source(
+                                client.origin(),
+                                trace_id,
+                                err,
+                                "Failed to drop the recording properties of an asset manifest",
+                            )
+                        })?
+                } else {
+                    raw_rrd_manifest_part
+                };
+
+                let part_nr = rrd_manifest_parts.len() + 1;
+                re_log::debug!(
+                    "Received RRD manifest part #{part_nr}/? ({} deflated, {:.1}s elapsed)",
+                    re_format::format_bytes(raw_rrd_manifest_part.total_size_bytes() as _),
+                    start_time.elapsed().as_secs_f32(),
+                );
+
+                let rrd_manifest = re_log_encoding::RrdManifest::try_new(&raw_rrd_manifest_part)
+                    .map_err(|err| {
+                        ApiError::invalid_arguments_with_source(
+                            client.origin(),
+                            trace_id,
+                            err,
+                            "Invalid RRD manifest part",
+                        )
+                    })?;
+
+                let rrd_manifest = Arc::new(rrd_manifest);
+
+                // Mark the asset's chunks as cacheable before the client sees the manifest, so that
+                // any chunk it goes on to request is already known to be worth keeping.
+                if manifest_kind == ManifestKind::Asset {
+                    client.mark_asset_chunks(rrd_manifest.col_chunk_ids());
+                }
+
+                if tx
+                    .send(DataSourceMessage::RrdManifest(
+                        store_id.clone(),
+                        rrd_manifest.clone(),
+                    ))
+                    .is_err()
+                {
+                    re_log::debug!("Receiver disconnected");
+                    return Ok(ManifestOutcome::ReceiverDisconnected);
+                }
+
+                raw_rrd_manifest_parts.push(raw_rrd_manifest_part);
+                rrd_manifest_parts.push(rrd_manifest);
+            }
+
+            if rrd_manifest_parts.is_empty() {
+                return Err(ApiError::deserialization(
+                    client.origin(),
+                    trace_id,
+                    "failed to parse the response for /GetRrdManifest (no data)",
+                ));
+            }
+
+            let part_nr = rrd_manifest_parts.len();
+            re_log::debug!(
+                "Full RRD manifest loaded in {:.1}s in {}",
+                start_time.elapsed().as_secs_f32(),
+                re_format::format_plural_s(part_nr, "part")
+            );
+
+            // An asset manifest is only a part of what the store will receive, so the store is not
+            // done until its own manifest has arrived.
+            if manifest_kind == ManifestKind::Segment
+                && tx
+                    .send(DataSourceMessage::RrdManifestComplete(store_id.clone()))
+                    .is_err()
+            {
+                re_log::debug!("Receiver disconnected");
+                return Ok(ManifestOutcome::ReceiverDisconnected);
+            }
+
+            match store_id.kind() {
+                StoreKind::Recording if !options.force_full_download => {
+                    re_log::debug!("Letting the viewer load chunks on-demand");
+                    return Ok(ManifestOutcome::Loaded);
+                }
+                StoreKind::Recording | StoreKind::Blueprint => {
+                    re_log::debug!("Loading all of the chunks in one go; most important first");
+                    let combined = re_log_encoding::RawRrdManifest::merge(
+                        store_id.clone(),
+                        raw_rrd_manifest_parts,
+                    )
+                    .map_err(|err| {
+                        ApiError::invalid_arguments_with_source(
+                            client.origin(),
+                            trace_id,
+                            err,
+                            "Failed to merge RRD manifest parts",
+                        )
+                    })?;
+                    let combined =
+                        re_log_encoding::RrdManifest::try_new(&combined).map_err(|err| {
+                            ApiError::invalid_arguments_with_source(
+                                client.origin(),
+                                trace_id,
+                                err,
+                                "Invalid merged RRD manifest",
+                            )
+                        })?;
+                    let batch = sort_batch(combined.chunk_fetcher_rb()).map_err(|err| {
+                        ApiError::invalid_arguments_with_source(
+                            client.origin(),
+                            trace_id,
+                            err,
+                            "Failed to sort chunk index",
+                        )
+                    })?;
+
+                    // TODO(isse): Make sure full download works for assets.
+                    return load_chunks(client, tx, store_id, batch, options)
+                        .await
+                        .map(|flow| match flow {
+                            ControlFlow::Continue(()) => ManifestOutcome::Loaded,
+                            ControlFlow::Break(()) => ManifestOutcome::ReceiverDisconnected,
+                        });
+                }
+            }
+        }
+        Err(err) => {
+            if err.kind == ApiErrorKind::Unimplemented {
+                re_log::debug_once!("The server does not support on-demand streaming"); // Legacy server
+            } else {
+                re_log::warn!("{err}");
+            }
+        }
+    }
+    Ok(ManifestOutcome::NoManifest { trace_id })
 }
 
 /// Takes a dataframe that looks like an [`re_log_encoding::RrdManifest`] (has a `chunk_key` column).
@@ -1189,7 +1444,7 @@ async fn load_small_chunk_batch(
 ) -> ApiResult<(ControlFlow<()>, u64)> {
     // TODO(RR-3323): FetchChunks should expose a proper bidirectional streaming path on native.
     let chunk_stream = client.fetch_segment_chunks_by_id(batch).await?;
-    let mut chunk_stream = fetch_chunks_response_to_chunk_and_segment_id(chunk_stream);
+    let mut chunk_stream = fetch_chunks_response_to_chunk_and_segment_id(chunk_stream, None);
     let trace_id = chunk_stream.trace_id();
 
     let mut batch_bytes: u64 = 0;
@@ -1207,6 +1462,7 @@ async fn load_small_chunk_batch(
                         // TODO(#10229): this looks to be converting back and forth?
                         chunk.to_arrow_msg().map_err(|err| {
                             ApiError::deserialization_with_source(
+                                client.origin(),
                                 trace_id,
                                 err,
                                 "failed to parse chunk in /FetchChunks response stream",

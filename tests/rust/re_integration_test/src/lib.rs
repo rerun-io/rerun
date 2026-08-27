@@ -1,17 +1,21 @@
 //! Integration tests for rerun and the in memory server.
 
+mod inspection;
 mod kittest_harness_ext;
 mod test_data;
+mod viewer_harness_ext;
 mod viewer_section;
 
 use std::net::TcpListener;
 
+pub use inspection::{HarnessConfig, InspectionHarness, TargetViewer};
 pub use kittest_harness_ext::HarnessExt;
-use re_redap_client::{ApiResult, ConnectionClient, ConnectionRegistry};
+use re_redap_client::{ApiResult, ConnectionClient, ConnectionHandle, ConnectionRegistry};
 use re_sdk_types::SegmentId;
 use re_server::ServerHandle;
 use re_uri::external::url::Host;
-pub use test_data::register_table_blueprint;
+pub use test_data::{register_asset, register_table_blueprint};
+pub use viewer_harness_ext::ViewerHarnessExt;
 // pub use viewer_section::GetSection;
 pub use viewer_section::ViewerSection;
 
@@ -55,9 +59,9 @@ impl TestServer {
         let segment_id = {
             let this = &self;
             async move {
-                let mut client = this.client().await.expect("Failed to connect");
+                let connection = this.connection_handle();
                 test_data::load_test_data_with_name(
-                    &mut client,
+                    &connection,
                     dataset_name,
                     dataset_id,
                     new_recording_id,
@@ -80,9 +84,9 @@ impl TestServer {
         count: usize,
     ) -> (Self, Vec<SegmentId>) {
         let segment_ids = {
-            let mut client = self.client().await.expect("Failed to connect");
+            let connection = self.connection_handle();
             test_data::load_static_preview_data(
-                &mut client,
+                &connection,
                 dataset_name,
                 dataset_id,
                 recording_id_prefix,
@@ -98,20 +102,30 @@ impl TestServer {
         self.port
     }
 
-    pub async fn client(&self) -> ApiResult<ConnectionClient> {
+    /// For testing: get a reference to the injected errors, which can be used to make specific
+    /// gRPC endpoints fail.
+    pub fn injected_errors(&self) -> &re_server::InjectedErrors {
+        self.server_handle
+            .as_ref()
+            .expect("Server handle not initialized")
+            .injected_errors()
+    }
+
+    pub fn connection_handle(&self) -> ConnectionHandle {
         let origin = re_uri::Origin {
             host: Host::Domain("localhost".to_owned()),
             port: self.port,
             scheme: re_uri::Scheme::RerunHttp,
         };
-        ConnectionRegistry::new_without_stored_credentials()
-            .client(origin)
-            .await
+        ConnectionRegistry::new_without_stored_credentials().connection_handle(origin)
+    }
+
+    pub async fn client(&self) -> ApiResult<ConnectionClient> {
+        self.connection_handle().client().await
     }
 
     pub async fn add_test_data(&self) -> SegmentId {
-        let client = self.client().await.expect("Failed to connect");
-        test_data::load_test_data(client)
+        test_data::load_test_data(&self.connection_handle())
             .await
             .expect("Failed to load test data")
     }
@@ -132,7 +146,7 @@ impl Drop for TestServer {
 }
 
 /// Get a free port from the OS.
-fn get_free_port() -> u16 {
+pub(crate) fn get_free_port() -> u16 {
     let listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind to a random port");
     let addr = listener.local_addr().expect("Failed to get local address");
     addr.port()

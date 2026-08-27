@@ -10,8 +10,8 @@ use crate::blueprint::components::*;
 use crate::components::*;
 use re_types_core::components::*;
 use re_types_core::{
-    ArchetypeName, Component, ComponentBatch as _, ComponentType, Loggable as _,
-    SerializationError,
+    ArchetypeName, ArrowDatatype as _, Component, ComponentBatch as _, ComponentType,
+    FromArrow as _, SerializationError,
     reflection::{
         ArchetypeFieldFlags, ArchetypeFieldReflection, ArchetypeReflection, ArchetypeReflectionMap,
         ComponentReflection, ComponentReflectionMap, Reflection,
@@ -131,7 +131,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <ColumnName as Component>::name(),
             ComponentReflection {
-                docstring_md: "The name of a column in a table.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                docstring_md: "The name of a column in a table.\n\nThis is the physical column name: it is what the column is looked up by, and it is also\nwhat the user reads whenever the column has no separate, human-facing label.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: None,
                 datatype: ColumnName::arrow_datatype(),
@@ -192,6 +192,17 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
                 datatype: Corner2D::arrow_datatype(),
                 is_enum: true,
                 verify_arrow_array: Corner2D::verify_arrow_array,
+            },
+        ),
+        (
+            <Editable as Component>::name(),
+            ComponentReflection {
+                docstring_md: "Whether a table column's values can be edited.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: None,
+                datatype: Editable::arrow_datatype(),
+                is_enum: false,
+                verify_arrow_array: Editable::verify_arrow_array,
             },
         ),
         (
@@ -406,7 +417,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <QueryExpression as Component>::name(),
             ComponentReflection {
-                docstring_md: "An individual query expression used to filter a set of [`datatypes.EntityPath`](https://rerun.io/docs/reference/types/datatypes/entity_path)s.\n\nEach expression is either an inclusion or an exclusion expression.\nInclusions start with an optional `+` and exclusions must start with a `-`.\n\nMultiple expressions are combined together as part of archetypes.ViewContents.\n\nThe `/**` suffix matches the whole subtree, i.e. self and any child, recursively\n(`/world/**` matches both `/world` and `/world/car/driver`).\nOther uses of `*` are not (yet) supported.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                docstring_md: "An individual query expression used to filter a set of [`encodings.EntityPath`](https://rerun.io/docs/reference/types/encodings/entity_path?speculative-link)s.\n\nEach expression is either an inclusion or an exclusion expression.\nInclusions start with an optional `+` and exclusions must start with a `-`.\n\nMultiple expressions are combined together as part of archetypes.ViewContents.\n\nThe `/**` suffix matches the whole subtree, i.e. self and any child, recursively\n(`/world/**` matches both `/world` and `/world/car/driver`).\nOther uses of `*` are not (yet) supported.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(QueryExpression::default().to_arrow()?),
                 datatype: QueryExpression::arrow_datatype(),
@@ -445,6 +456,28 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
                 datatype: SelectedColumns::arrow_datatype(),
                 is_enum: false,
                 verify_arrow_array: SelectedColumns::verify_arrow_array,
+            },
+        ),
+        (
+            <TableCellKind as Component>::name(),
+            ComponentReflection {
+                docstring_md: "How a table column value is rendered.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: Some(TableCellKind::default().to_arrow()?),
+                datatype: TableCellKind::arrow_datatype(),
+                is_enum: true,
+                verify_arrow_array: TableCellKind::verify_arrow_array,
+            },
+        ),
+        (
+            <TableLayoutKind as Component>::name(),
+            ComponentReflection {
+                docstring_md: "How table records are presented.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: Some(TableLayoutKind::default().to_arrow()?),
+                datatype: TableLayoutKind::arrow_datatype(),
+                is_enum: true,
+                verify_arrow_array: TableLayoutKind::verify_arrow_array,
             },
         ),
         (
@@ -505,7 +538,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <TimelineName as Component>::name(),
             ComponentReflection {
-                docstring_md: "A timeline identified by its name.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                docstring_md: "A timeline identified by its name.\n\nThe name is used both as an identifier and as a display label: it is what timelines are\nkeyed on, and also what the user reads.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(TimelineName::default().to_arrow()?),
                 datatype: TimelineName::arrow_datatype(),
@@ -659,7 +692,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <AnnotationContext as Component>::name(),
             ComponentReflection {
-                docstring_md: "The annotation context provides additional information on how to display entities.\n\nEntities can use [`datatypes.ClassId`](https://rerun.io/docs/reference/types/datatypes/class_id)s and [`datatypes.KeypointId`](https://rerun.io/docs/reference/types/datatypes/keypoint_id)s to provide annotations, and\nthe labels and colors will be looked up in the appropriate\nannotation context. We use the *first* annotation context we find in the\npath-hierarchy when searching up through the ancestors of a given entity\npath.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                docstring_md: "The annotation context provides additional information on how to display entities.\n\nEntities can use [`encodings.ClassId`](https://rerun.io/docs/reference/types/encodings/class_id?speculative-link)s and [`encodings.KeypointId`](https://rerun.io/docs/reference/types/encodings/keypoint_id?speculative-link)s to provide annotations, and\nthe labels and colors will be looked up in the appropriate\nannotation context. We use the *first* annotation context we find in the\npath-hierarchy when searching up through the ancestors of a given entity\npath.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(AnnotationContext::default().to_arrow()?),
                 datatype: AnnotationContext::arrow_datatype(),
@@ -1110,7 +1143,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <Name as Component>::name(),
             ComponentReflection {
-                docstring_md: "A display name, typically for an entity or a item like a plot series.",
+                docstring_md: "A display name, typically for an entity or a item like a plot series.\n\nThis name is only a display label, never an identifier: it is not used to look anything\nup, and two items may share the same name.",
                 deprecation_summary: None,
                 custom_placeholder: Some(Name::default().to_arrow()?),
                 datatype: Name::arrow_datatype(),
@@ -1281,6 +1314,28 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
                 datatype: ShowLabels::arrow_datatype(),
                 is_enum: false,
                 verify_arrow_array: ShowLabels::verify_arrow_array,
+            },
+        ),
+        (
+            <SphericalHarmonics3Rgb as Component>::name(),
+            ComponentReflection {
+                docstring_md: "View-dependent color, expressed as spherical harmonics coefficients of degrees 1 through 3.\n\nThe view-independent (degree-0) base color is represented as a separate [`components.Color`](https://rerun.io/docs/reference/types/components/color).\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: None,
+                datatype: SphericalHarmonics3Rgb::arrow_datatype(),
+                is_enum: false,
+                verify_arrow_array: SphericalHarmonics3Rgb::verify_arrow_array,
+            },
+        ),
+        (
+            <SphericalHarmonicsDegree as Component>::name(),
+            ComponentReflection {
+                docstring_md: "The highest spherical harmonics degree to evaluate when rendering, 0-3.\n\n`0` renders the view-independent base color only, and is the fastest.\nEach higher degree brings in more view-dependent detail, at the cost of fetching and\nevaluating more coefficients ([`components.SphericalHarmonics3Rgb`](https://rerun.io/docs/reference/types/components/spherical_harmonics3rgb)):\n3 of them for degree 1, 8 for degree 2, and all 15 for degree 3.\n\nLowering this in the blueprint can make the rendering a lot faster.\n\nDefaults to 3, i.e. every coefficient the data has.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: Some(SphericalHarmonicsDegree::default().to_arrow()?),
+                datatype: SphericalHarmonicsDegree::arrow_datatype(),
+                is_enum: false,
+                verify_arrow_array: SphericalHarmonicsDegree::verify_arrow_array,
             },
         ),
         (
@@ -1506,7 +1561,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <ViewCoordinates as Component>::name(),
             ComponentReflection {
-                docstring_md: "How we interpret the coordinate system of an entity/space.\n\nFor instance: What is \"up\"? What does the Z axis mean?\n\nThe three coordinates are always ordered as [x, y, z].\n\nFor example [Right, Down, Forward] means that the X axis points to the right, the Y axis points\ndown, and the Z axis points forward.\n\n⚠ [Rerun does not yet support left-handed coordinate systems](https://github.com/rerun-io/rerun/issues/5032).\n\nThe following constants are used to represent the different directions:\n * Up = 1\n * Down = 2\n * Right = 3\n * Left = 4\n * Forward = 5\n * Back = 6\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                docstring_md: "An orientation convention for a camera or 3D view.\n\nOn [`archetypes.Pinhole`](https://rerun.io/docs/reference/types/archetypes/pinhole), this component controls the camera orientation and projection direction.\nOn [SpatialInformation](https://rerun.io/docs/reference/types/views/spatial3d_view), it controls the 3D view's eye orientation, navigation, and default grid plane.\nA logged [`archetypes.ViewCoordinates`](https://rerun.io/docs/reference/types/archetypes/view_coordinates) provides the default for [SpatialInformation](https://rerun.io/docs/reference/types/views/spatial3d_view).\n\nThe three directions are always ordered as [x, y, z] and specify where each positive axis points.\nFor example, [Right, Down, Forward] means that +X points right, +Y points down, and +Z points forward.\n\n⚠ [Rerun does not yet support left-handed coordinate systems](https://github.com/rerun-io/rerun/issues/5032).\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(ViewCoordinates::default().to_arrow()?),
                 datatype: ViewCoordinates::arrow_datatype(),
@@ -2493,6 +2548,59 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
+            ArchetypeName::from("rerun.archetypes.GaussianSplats3D"),
+            ArchetypeReflection {
+                display_name: "Gaussian splats 3D",
+                deprecation_summary: None,
+                scope: None,
+                view_types: &["Spatial3DView"],
+                fields: vec![
+                    ArchetypeFieldReflection {
+                        name: "centers",
+                        display_name: "Centers",
+                        component_type: "rerun.components.Position3D".into(),
+                        docstring_md: "The centers (means) of the gaussians.",
+                        flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "scales",
+                        display_name: "Scales",
+                        component_type: "rerun.components.Scale3D".into(),
+                        docstring_md: "Per-axis standard deviations of the gaussians, in scene units.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "quaternions",
+                        display_name: "Quaternions",
+                        component_type: "rerun.components.RotationQuat".into(),
+                        docstring_md: "The orientations of the gaussians.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "colors",
+                        display_name: "Colors",
+                        component_type: "rerun.components.Color".into(),
+                        docstring_md: "The base colors and opacities of the gaussians.\n\nThe RGB part is the view-independent base color, i.e. the degree-0 (DC) term of the spherical harmonics.\nThe alpha part is the peak opacity of the gaussian; the gaussian falloff further modulates it spatially.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "sh_coefficients",
+                        display_name: "Sh coefficients",
+                        component_type: "rerun.components.SphericalHarmonics3Rgb".into(),
+                        docstring_md: "Higher-order spherical harmonics coefficients for view-dependent color.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "spherical_harmonics_degree",
+                        display_name: "Spherical harmonics degree",
+                        component_type: "rerun.components.SphericalHarmonicsDegree".into(),
+                        docstring_md: "The highest spherical harmonics degree to evaluate when rendering, 0-3.\n\nLower values render faster; `0` disables view-dependent color entirely.\nIf not set, defaults to 3, i.e. all coefficients present in the data are used.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                ],
+            },
+        ),
+        (
             ArchetypeName::from("rerun.archetypes.GeoLineStrings"),
             ArchetypeReflection {
                 display_name: "Geo line strings",
@@ -2893,7 +3001,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         name: "colors",
                         display_name: "Colors",
                         component_type: "rerun.components.Color".into(),
-                        docstring_md: "Optional colors for the line strips.",
+                        docstring_md: "Optional colors for the line strips.\n\nThe alpha channel is ignored.",
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
@@ -3195,7 +3303,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         name: "camera_xyz",
                         display_name: "Camera xyz",
                         component_type: "rerun.components.ViewCoordinates".into(),
-                        docstring_md: "Sets the view coordinates for the camera.\n\nAll common values are available as constants on the [`components.ViewCoordinates`](https://rerun.io/docs/reference/types/components/view_coordinates) class.\n\nThe default is `ViewCoordinates::RDF`, i.e. X=Right, Y=Down, Z=Forward, and this is also the recommended setting.\nThis means that the camera frustum will point along the positive Z axis of the parent space,\nand the cameras \"up\" direction will be along the negative Y axis of the parent space.\n\nThe camera frustum will point whichever axis is set to `F` (or the opposite of `B`).\nWhen logging a depth image under this entity, this is the direction the point cloud will be projected.\nWith `RDF`, the default forward is +Z.\n\nThe frustum's \"up\" direction will be whichever axis is set to `U` (or the opposite of `D`).\nThis will match the negative Y direction of pixel space (all images are assumed to have xyz=RDF).\nWith `RDF`, the default is up is -Y.\n\nThe frustum's \"right\" direction will be whichever axis is set to `R` (or the opposite of `L`).\nThis will match the positive X direction of pixel space (all images are assumed to have xyz=RDF).\nWith `RDF`, the default right is +x.\n\nOther common formats are `RUB` (X=Right, Y=Up, Z=Back) and `FLU` (X=Forward, Y=Left, Z=Up).\n\nNOTE: setting this to something else than `RDF` (the default) will change the orientation of the camera frustum,\nand make the pinhole matrix not match up with the coordinate system of the pinhole entity.\n\nThe pinhole matrix (the `image_from_camera` argument) always project along the third (Z) axis,\nbut will be re-oriented to project along the forward axis of the `camera_xyz` argument.",
+                        docstring_md: "Sets the camera orientation convention.\n\nAll common values are available as constants on the [`components.ViewCoordinates`](https://rerun.io/docs/reference/types/components/view_coordinates) class.\n\nThe default is `ViewCoordinates::RDF`: +X is right, +Y is down, and +Z is forward.\nThis makes the camera frustum point along +Z in the parent space, with its up direction along -Y.\n\nThe camera frustum points along the axis set to `F`, or opposite the axis set to `B`.\nWhen logging a depth image under this entity, this is the direction in which the point cloud is projected.\n\nThe frustum's up direction is the axis set to `U`, or opposite the axis set to `D`.\nThis matches the -Y direction of pixel space, where all images use RDF coordinates.\n\nThe frustum's right direction is the axis set to `R`, or opposite the axis set to `L`.\nThis matches the +X direction of pixel space.\n\nOther common formats are `RUB` (X=Right, Y=Up, Z=Back) and `FLU` (X=Forward, Y=Left, Z=Up).\n\n`image_from_camera` is always defined to project along +Z in camera coordinates.\n`camera_xyz` reorients that projection to the forward axis of the pinhole entity.",
                         flags: ArchetypeFieldFlags::empty(),
                     },
                     ArchetypeFieldReflection {
@@ -3329,7 +3437,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         name: "colors",
                         display_name: "Colors",
                         component_type: "rerun.components.Color".into(),
-                        docstring_md: "Optional colors for the points.",
+                        docstring_md: "Optional colors for the points.\n\nBy default, the alpha channel affects brightness rather than transparency.\nTODO(#1611): To use the alpha channel for transparency, enable the experimental \"Transparent point clouds\" feature flag.",
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
@@ -3747,7 +3855,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         name: "parent_frame",
                         display_name: "Parent frame",
                         component_type: "rerun.components.TransformFrameId".into(),
-                        docstring_md: "The parent frame this transform transforms into.\n\nIf not specified, this is set to the implicit transform frame of the current entity path's parent.\nThis means that if a [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d) is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.\n\nTo set the frame an entity is part of see [`archetypes.CoordinateFrame`](https://rerun.io/docs/reference/types/archetypes/coordinate_frame).\n\nAny update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.",
+                        docstring_md: "The parent frame this transform transforms into.\n\nAny child frame has exactly one parent frame at any point in time, so logging a different `parent_frame` for a known `child_frame` replaces the previous relationship.\n\nIf not specified, this is set to the implicit transform frame of the current entity path's parent.\nThis means that if a [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d) is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.\n\nTo set the frame an entity is part of see [`archetypes.CoordinateFrame`](https://rerun.io/docs/reference/types/archetypes/coordinate_frame).\n\nAny update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.",
                         flags: ArchetypeFieldFlags::empty(),
                     },
                 ],
@@ -3997,6 +4105,38 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         component_type: "rerun.components.Color".into(),
                         docstring_md: "Color used for the solid background type.",
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::from("rerun.blueprint.archetypes.CardLayout"),
+            ArchetypeReflection {
+                display_name: "Card layout",
+                deprecation_summary: None,
+                scope: Some("blueprint"),
+                view_types: &[],
+                fields: vec![
+                    ArchetypeFieldReflection {
+                        name: "title",
+                        display_name: "Title",
+                        component_type: "rerun.blueprint.components.ColumnName".into(),
+                        docstring_md: "The source column used for card titles.\n\nIf unset, the first visible string column is used as the title.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "link",
+                        display_name: "Link",
+                        component_type: "rerun.blueprint.components.ColumnName".into(),
+                        docstring_md: "The source column containing the target opened when a card is activated.\n\nIf unset, the first configured preview field is used, then the first inferred URL column.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "field_order",
+                        display_name: "Field order",
+                        component_type: "rerun.blueprint.components.ColumnName".into(),
+                        docstring_md: "Source columns visible by default in each card, in display order.\n\nUnlisted fields are hidden unless their archetypes.TableColumn visibility overrides the default.\nEach source column may appear at most once.\n\nFields with `TableCellKind::Flag` are omitted from the labeled-field list and the first one is shown in the card header.\nCard layouts currently support at most one flag field.",
+                        flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
                     },
                 ],
             },
@@ -4401,7 +4541,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         name: "plane",
                         display_name: "Plane",
                         component_type: "rerun.components.Plane3D".into(),
-                        docstring_md: "In what plane the grid is drawn.\n\nDefaults to whatever plane is determined as the plane at zero units up/down as defined by [`components.ViewCoordinates`](https://rerun.io/docs/reference/types/components/view_coordinates) if present.",
+                        docstring_md: "In what plane the grid is drawn.\n\nDefaults to the plane at zero units along the up/down axis defined by archetypes.SpatialInformation's axes property.",
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
@@ -4536,6 +4676,22 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
+            ArchetypeName::from("rerun.blueprint.archetypes.PreviewsConfig"),
+            ArchetypeReflection {
+                display_name: "Previews config",
+                deprecation_summary: None,
+                scope: Some("blueprint"),
+                view_types: &[],
+                fields: vec![ArchetypeFieldReflection {
+                    name: "timeline",
+                    display_name: "Timeline",
+                    component_type: "rerun.blueprint.components.TimelineName".into(),
+                    docstring_md: "The timeline used by every preview cell.\n\nIf left empty a timeline is automatically picked, preferring custom over built-in.",
+                    flags: ArchetypeFieldFlags::UI_EDITABLE,
+                }],
+            },
+        ),
+        (
             ArchetypeName::from("rerun.blueprint.archetypes.ScalarAxis"),
             ArchetypeReflection {
                 display_name: "Scalar axis",
@@ -4576,6 +4732,13 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
+                        name: "show_bounding_box",
+                        display_name: "Show bounding box",
+                        component_type: "rerun.blueprint.components.Enabled".into(),
+                        docstring_md: "Whether the bounding box should be shown.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
                         name: "show_axes",
                         display_name: "Show axes",
                         component_type: "rerun.blueprint.components.Enabled".into(),
@@ -4583,10 +4746,10 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
-                        name: "show_bounding_box",
-                        display_name: "Show bounding box",
-                        component_type: "rerun.blueprint.components.Enabled".into(),
-                        docstring_md: "Whether the bounding box should be shown.",
+                        name: "axes",
+                        display_name: "Axes",
+                        component_type: "rerun.components.ViewCoordinates".into(),
+                        docstring_md: "Controls the orientation of the axes in a 3D view; it has no effect in a 2D view.\n\nThis determines the 3D eye orientation, navigation, and default grid plane.\n\nThe three directions are always ordered as [x, y, z] and specify where each positive axis points.\nFor example, [Right, Down, Forward] means that +X points right, +Y points down, and +Z points forward.\n\nWhen this property is unset, a 3D view first uses [`archetypes.ViewCoordinates`](https://rerun.io/docs/reference/types/archetypes/view_coordinates) logged at its origin entity or the closest ancestor.\nIf none is found, it uses the camera orientation from the closest ancestor [`archetypes.Pinhole`](https://rerun.io/docs/reference/types/archetypes/pinhole).\nIf neither is found, the fallback is RFU.\n\nThis property is hidden from the selection panel for 2D views.\n\n⚠ [Rerun does not yet support left-handed coordinate systems](https://github.com/rerun-io/rerun/issues/5032).",
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                 ],
@@ -4629,6 +4792,93 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                 ],
+            },
+        ),
+        (
+            ArchetypeName::from("rerun.blueprint.archetypes.TableBlueprintV2"),
+            ArchetypeReflection {
+                display_name: "Table blueprint v2",
+                deprecation_summary: None,
+                scope: Some("blueprint"),
+                view_types: &[],
+                fields: vec![ArchetypeFieldReflection {
+                    name: "default_layout",
+                    display_name: "Default layout",
+                    component_type: "rerun.blueprint.components.TableLayoutKind".into(),
+                    docstring_md: "The layout shown when the table is first opened and no user selection has been persisted.\n\nIf unset, defaults to card layout if available.\n`Cards` falls back to table layout when no archetypes.CardLayout is configured.",
+                    flags: ArchetypeFieldFlags::UI_EDITABLE,
+                }],
+            },
+        ),
+        (
+            ArchetypeName::from("rerun.blueprint.archetypes.TableColumn"),
+            ArchetypeReflection {
+                display_name: "Table column",
+                deprecation_summary: None,
+                scope: Some("blueprint"),
+                view_types: &[],
+                fields: vec![
+                    ArchetypeFieldReflection {
+                        name: "name",
+                        display_name: "Name",
+                        component_type: "rerun.components.Name".into(),
+                        docstring_md: "The name shown for the column.\n\nIf unset, the name is inferred from the source column.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "editable",
+                        display_name: "Editable",
+                        component_type: "rerun.blueprint.components.Editable".into(),
+                        docstring_md: "Whether the column's values can be edited.\n\nIf unset, editing is disabled.\nEdits requires a remote table with a column marked by `rerun:is_table_index` metadata and write permission.\n⚠ Currently only boolean values are supported.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "visible",
+                        display_name: "Visible",
+                        component_type: "rerun.components.Visible".into(),
+                        docstring_md: "Whether the column is visible in this layout.\n\nIf unset, the enclosing layout determines visibility.\nTable layouts use the viewer default for the source column.\nCard layouts show sources listed in `field_order` and hide unlisted sources.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "cell_kind",
+                        display_name: "Cell kind",
+                        component_type: "rerun.blueprint.components.TableCellKind".into(),
+                        docstring_md: "How to render the column's values.\n\nIf unset or `Auto`, the viewer infers the renderer from the component or Arrow datatype.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::from("rerun.blueprint.archetypes.TableColumnPreview"),
+            ArchetypeReflection {
+                display_name: "Table column preview",
+                deprecation_summary: None,
+                scope: Some("blueprint"),
+                view_types: &[],
+                fields: vec![ArchetypeFieldReflection {
+                    name: "views",
+                    display_name: "Views",
+                    component_type: "rerun.blueprint.components.IncludedContent".into(),
+                    docstring_md: "The views rendered for the preview, in display order.\n\nEach components.IncludedContent must reference a archetypes.ViewBlueprint at `/view/{view_id}`.\nView contents, properties, defaults, and overrides remain at their regular blueprint paths.",
+                    flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
+                }],
+            },
+        ),
+        (
+            ArchetypeName::from("rerun.blueprint.archetypes.TableLayout"),
+            ArchetypeReflection {
+                display_name: "Table layout",
+                deprecation_summary: None,
+                scope: Some("blueprint"),
+                view_types: &[],
+                fields: vec![ArchetypeFieldReflection {
+                    name: "column_order",
+                    display_name: "Column order",
+                    component_type: "rerun.blueprint.components.ColumnName".into(),
+                    docstring_md: "Source columns to show first, in display order.\n\nUnmentioned columns retain the viewer defaults and follow in default order.\nEach source column may appear at most once.",
+                    flags: ArchetypeFieldFlags::UI_EDITABLE,
+                }],
             },
         ),
         (

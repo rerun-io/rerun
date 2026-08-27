@@ -45,10 +45,19 @@ impl ViewerOpenUrlDescription {
                 target_short: path.file_name().map(|s| s.display().to_string()),
             },
 
-            ViewerOpenUrl::RedapDatasetSegment(uri) => Self {
-                category: "Segment",
-                target_short: Some(uri.segment_id.to_string()),
-            },
+            ViewerOpenUrl::RedapDataset(uri) => {
+                if let Some(segment_id) = &uri.segment_id {
+                    Self {
+                        category: "Segment",
+                        target_short: Some(segment_id.as_str().to_owned()),
+                    }
+                } else {
+                    Self {
+                        category: "Dataset",
+                        target_short: Some(uri.dataset_id.to_string()),
+                    }
+                }
+            }
 
             ViewerOpenUrl::RedapProxy(_) => Self {
                 category: "GRPC proxy",

@@ -8,7 +8,7 @@ use re_chunk_store::{LatestAtQuery, RangeQuery, UnitChunkShared};
 use re_log_types::hash::Hash64;
 use re_query::{LatestAtResults, RangeResults};
 use re_sdk_types::ComponentIdentifier;
-use re_sdk_types::blueprint::datatypes::ComponentSourceKind;
+use re_sdk_types::blueprint::encodings::ComponentSourceKind;
 use re_viewer_context::{QueryContext, typed_fallback_for};
 
 use crate::{
@@ -16,7 +16,8 @@ use crate::{
     chunks_with_component::{ChunksWithComponent, MaybeChunksWithComponent},
 };
 
-// ---
+pub type ComponentSourcesMap =
+    IntMap<ComponentIdentifier, Result<ComponentSourceKind, ComponentMappingError>>;
 
 /// Wrapper that contains the results of a latest-at query with possible overrides.
 ///
@@ -31,11 +32,10 @@ pub struct BlueprintResolvedLatestAtResults<'a> {
 
     pub(crate) query_context: QueryContext<'a>,
 
-    pub(crate) component_sources:
-        IntMap<ComponentIdentifier, Result<ComponentSourceKind, ComponentMappingError>>,
+    pub(crate) component_sources: ComponentSourcesMap,
 
-    /// Hash of mappings applied to [`Self::store_results`].
-    pub(crate) component_indices_hash: Hash64,
+    /// Hash of the visualizer instruction's component mappings.
+    pub(crate) component_mappings_hash: Hash64,
 }
 
 impl<'a> BlueprintResolvedLatestAtResults<'a> {
@@ -74,9 +74,8 @@ impl<'a> BlueprintResolvedLatestAtResults<'a> {
                         ))
                     };
                     return Ok(Some(unit_chunk));
-                } else {
-                    None
                 }
+                None
             }
             ComponentSourceKind::Override => self.overrides.get(component),
             ComponentSourceKind::Default => self.view_defaults.get(component),
@@ -110,10 +109,9 @@ pub struct BlueprintResolvedRangeResults<'a> {
 
     pub(crate) query_context: QueryContext<'a>,
 
-    pub(crate) component_sources:
-        IntMap<ComponentIdentifier, Result<ComponentSourceKind, ComponentMappingError>>,
+    pub(crate) component_sources: ComponentSourcesMap,
 
-    /// Hash of mappings applied to [`Self::store_results`].
+    /// Hash of the visualizer instruction's component mappings.
     pub(crate) component_mappings_hash: Hash64,
 }
 
@@ -279,17 +277,6 @@ impl BlueprintResolvedLatestAtResults<'_> {
         &self.query_context.query
     }
 
-    /// Returns the fallback arrow array for the given component.
-    ///
-    /// This first tries the registered fallback provider and then falls back to
-    /// the placeholder value registered in the viewer context.
-    pub fn get_fallback_for(&self, descr: &re_types_core::ComponentDescriptor) -> ArrayRef {
-        self.query_context
-            .viewer_ctx()
-            .component_fallback_registry()
-            .fallback_for(descr, self.query_context())
-    }
-
     /// Returns the source of the given component, i.e. whether it came from an override, the store results, or defaults.
     ///
     /// Returns `None` if the component isn't in use at all.
@@ -356,7 +343,7 @@ impl BlueprintResolvedResults<'_> {
                         .filter_map(|chunk| chunk.row_id()),
                 );
 
-                Hash64::hash((&indices, r.component_indices_hash))
+                Hash64::hash((&indices, r.component_mappings_hash))
             }
 
             Self::Range(_, r) => {
@@ -436,8 +423,8 @@ pub trait BlueprintResolvedResultsExt<'a> {
     ///
     /// `force_preserve_store_row_ids`: If true, preserves row IDs from store data in latest-at queries.
     /// If false, all results are re-indexed to ([`TimeInt::STATIC`], [`RowId::ZERO`])
-    /// in order to allow the same range zipping.
-    /// When false, you cannot rely on row ids for any hashing/identification purposes!
+    /// in order to allow the same range-zipping behavior as on range queries.
+    /// When false, you cannot rely on row IDs for any hashing/identification purposes!
     ///
     /// **WARNING:** Blueprint data (overrides/defaults) is **always** re-indexed to
     /// ([`TimeInt::STATIC`], [`RowId::ZERO`]) regardless of this setting.

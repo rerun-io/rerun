@@ -1,0 +1,56 @@
+// This is a Rerun type definition for the SDK, not executable code.
+// It is parsed by `re_types_builder` to generate the Rust, Python and C++ bindings.
+
+/// References a single video frame.
+///
+/// Used to display individual video frames from a [`rerun::archetypes::AssetVideo`].
+/// To show an entire video, a video frame reference for each frame of the video should be logged.
+///
+/// See <https://rerun.io/docs/reference/video> for details of what is and isn't supported.
+///
+/// TODO(#10422): [`rerun::archetypes::VideoFrameReference`] does not yet work with [`rerun::archetypes::VideoStream`].
+///
+/// \example archetypes/video_auto_frames title="Video with automatically determined frames" image="https://static.rerun.io/video_manual_frames/320a44e1e06b8b3a3161ecbbeae3e04d1ccb9589/1200w.png"
+/// \example archetypes/video_manual_frames title="Demonstrates manual use of video frame references" image="https://static.rerun.io/video_manual_frames/9f41c00f84a98cc3f26875fba7c1d2fa2bad7151/1200w.png"
+#[rerun::rerun_type]
+#[docs(category = "Video")]
+#[docs(view_types = "Spatial2DView, Spatial3DView: if logged under a projection")]
+#[rerun(state = "stable")]
+#[rerun(visualizer = "VideoFrameReference")]
+pub struct VideoFrameReference {
+    /// References the closest video frame to this timestamp.
+    ///
+    /// Note that this uses the closest video frame instead of the latest at this timestamp
+    /// in order to be more forgiving of rounding errors for inprecise timestamp types.
+    ///
+    /// Timestamps are relative to the start of the video, i.e. a timestamp of 0 always corresponds to the first frame.
+    /// This is oftentimes equivalent to presentation timestamps (known as PTS), but in the presence of B-frames
+    /// (bidirectionally predicted frames) there may be an offset on the first presentation timestamp in the video.
+    #[rerun(required)]
+    pub timestamp: rerun::components::VideoTimestamp,
+
+    /// Optional reference to an entity with a [`rerun::archetypes::AssetVideo`].
+    ///
+    /// If none is specified, the video is assumed to be at the same entity.
+    /// Note that blueprint overrides on the referenced video will be ignored regardless,
+    /// as this is always interpreted as a reference to the data store.
+    ///
+    /// For a series of video frame references, it is recommended to specify this path only once
+    /// at the beginning of the series and then rely on latest-at query semantics to
+    /// keep the video reference active.
+    #[rerun(optional)]
+    pub video_reference: Option<rerun::components::EntityPath>,
+
+    /// Opacity of the video, useful for layering several media.
+    ///
+    /// Defaults to 1.0 (fully opaque).
+    #[rerun(optional)]
+    pub opacity: Option<rerun::components::Opacity>,
+
+    /// An optional floating point value that specifies the 2D drawing order.
+    ///
+    /// Objects with higher values are drawn on top of those with lower values.
+    /// Defaults to `-15.0`.
+    #[rerun(optional)]
+    pub draw_order: Option<rerun::components::DrawOrder>,
+}

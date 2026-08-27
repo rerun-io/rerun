@@ -1,0 +1,59 @@
+// This is a Rerun type definition for the SDK, not executable code.
+// It is parsed by `re_types_builder` to generate the Rust, Python and C++ bindings.
+
+/// One or more transforms applied on the current entity's transform frame.
+///
+/// Unlike [`rerun::archetypes::Transform3D`], it is *not* propagated in the transform hierarchy.
+/// If [`rerun::archetypes::CoordinateFrame`] is specified, it acts relative to that coordinate frame,
+/// otherwise it is relative to the entity's implicit coordinate frame.
+///
+/// Whenever you log this archetype, the state of the resulting overall pose is fully reset to the new archetype.
+/// This means that if you first log a pose with only a translation, and then log one with only a rotation,
+/// it will be resolved to a pose with only a rotation.
+/// (This is unlike how we usually apply latest-at semantics on an archetype where we take the latest state of any component independently)
+///
+/// From the point of view of the entity's coordinate system,
+/// all components are applied in the inverse order they are listed here.
+/// E.g. if both a translation and a mat3x3 transform are present,
+/// the 3x3 matrix is applied first, followed by the translation.
+///
+/// Currently, many visualizers support only a single instance transform per entity.
+/// Check archetype documentations for details - if not otherwise specified, only the first instance transform is applied.
+/// Some visualizers like the mesh visualizer used for [`rerun::archetypes::Mesh3D`],
+/// will draw an object for every pose, a behavior also known as "instancing".
+///
+/// \example archetypes/instance_poses3d_combined title="Regular & instance transforms in tandem" image="https://static.rerun.io/leaf_transform3d/41674f0082d6de489f8a1cd1583f60f6b5820ddf/1200w.png"
+/// \example archetypes/mesh3d_instancing !api title="3D mesh with instancing" image="https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/1200w.png"
+#[rerun::rerun_type]
+#[docs(category = "Spatial 3D")]
+#[docs(view_types = "Spatial3DView, Spatial2DView: if logged above active projection")]
+#[rerun(state = "stable")]
+#[rerun(visualizer_none)]
+#[rust(derive(PartialEq))]
+pub struct InstancePoses3D {
+    // TODO(#6743): Transforms can't be affected by blueprints which is why all components of this archetype are non-ui editable.
+    /// Translation vectors.
+    #[rerun(no_ui_edit)]
+    #[rerun(optional)]
+    pub translations: Option<Vec<rerun::components::Translation3D>>,
+
+    /// Rotations via axis + angle.
+    #[rerun(no_ui_edit)]
+    #[rerun(optional)]
+    pub rotation_axis_angles: Option<Vec<rerun::components::RotationAxisAngle>>,
+
+    /// Rotations via quaternion.
+    #[rerun(no_ui_edit)]
+    #[rerun(optional)]
+    pub quaternions: Option<Vec<rerun::components::RotationQuat>>,
+
+    /// Scaling factors.
+    #[rerun(no_ui_edit)]
+    #[rerun(optional)]
+    pub scales: Option<Vec<rerun::components::Scale3D>>,
+
+    /// 3x3 transformation matrices.
+    #[rerun(no_ui_edit)]
+    #[rerun(optional)]
+    pub mat3x3: Option<Vec<rerun::components::TransformMat3x3>>,
+}

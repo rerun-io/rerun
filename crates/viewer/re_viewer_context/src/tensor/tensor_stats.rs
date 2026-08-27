@@ -18,7 +18,7 @@ pub struct TensorStats {
 }
 
 impl TensorStats {
-    pub fn from_tensor(tensor: &re_sdk_types::datatypes::TensorData) -> Self {
+    pub fn from_tensor(tensor: &re_sdk_types::encodings::TensorData) -> Self {
         re_tracing::profile_function!();
 
         macro_rules! declare_tensor_range_int {

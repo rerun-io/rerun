@@ -1,4 +1,5 @@
 //! Show arrow data as a tree of rerun `list_items` or as a nicely formatted label with syntax highlighting.
+
 mod arrow_node;
 mod arrow_ui;
 mod datatype_ui;
@@ -11,12 +12,4 @@ pub fn arrow_syntax_highlighted(
     data: &dyn arrow::array::Array,
 ) -> Result<re_ui::syntax_highlighting::SyntaxHighlightedBuilder, arrow::error::ArrowError> {
     show_index::ArrayUi::try_new(data, &show_index::DisplayOptions::default())?.highlighted()
-}
-
-pub fn arrow_value_syntax_highlighted(
-    data: &dyn arrow::array::Array,
-    index: usize,
-) -> Result<re_ui::syntax_highlighting::SyntaxHighlightedBuilder, arrow::error::ArrowError> {
-    show_index::ArrayUi::try_new(data, &show_index::DisplayOptions::default())?
-        .value_highlighted(index)
 }

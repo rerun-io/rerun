@@ -17,6 +17,7 @@
 //! e.g. the entity `foo/bar/baz` is has the transform that is the product of
 //! `foo.transform * foo/bar.transform * foo/bar/baz.transform`.
 
+mod app_id;
 pub mod arrow_msg;
 mod entry_id;
 mod entry_name;
@@ -39,6 +40,7 @@ use re_build_info::CrateVersion;
 use re_types_core::SegmentId;
 pub use re_types_core::{InvalidTimelineNameError, TimelineName};
 
+pub use self::app_id::{ApplicationId, InvalidApplicationIdError};
 pub use self::arrow_msg::{ArrowMsg, ArrowRecordBatchReleaseCallback};
 pub use self::entry_id::{EntryId, EntryIdOrName};
 pub use self::entry_name::{EntryName, InvalidEntryNameError};
@@ -183,6 +185,18 @@ impl std::fmt::Debug for StoreId {
     }
 }
 
+impl std::fmt::Display for StoreId {
+    #[inline]
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self {
+            kind,
+            application_id,
+            recording_id,
+        } = self;
+        write!(f, "{kind}:{application_id}:{recording_id}")
+    }
+}
+
 impl StoreId {
     #[inline]
     pub fn new(
@@ -227,7 +241,7 @@ impl StoreId {
 
     #[inline]
     pub fn empty_recording() -> Self {
-        Self::new(StoreKind::Recording, "<EMPTY>", "<EMPTY>")
+        Self::new(StoreKind::Recording, "-EMPTY-", "<EMPTY>")
     }
 
     #[inline]
@@ -287,72 +301,6 @@ impl StoreId {
     #[inline]
     pub fn application_id(&self) -> &ApplicationId {
         &self.application_id
-    }
-}
-
-// ----------------------------------------------------------------------------
-
-/// The user-chosen name of the application doing the logging.
-///
-/// Application IDs are really schema names.
-/// Every recording using the same schema (approximately!) could share the same blueprint.
-///
-/// In the context of a remote recording, this is the dataset entry id.
-#[derive(
-    Clone,
-    Debug,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    re_byte_size::SizeBytes,
-    serde::Deserialize,
-    serde::Serialize,
-)]
-pub struct ApplicationId(Arc<String>);
-
-impl From<&str> for ApplicationId {
-    fn from(s: &str) -> Self {
-        Self(Arc::new(s.to_owned()))
-    }
-}
-
-impl From<String> for ApplicationId {
-    fn from(s: String) -> Self {
-        Self(Arc::new(s))
-    }
-}
-
-impl ApplicationId {
-    /// The default [`ApplicationId`] if the user hasn't set one.
-    ///
-    /// Currently: `"unknown_app_id"`.
-    pub fn unknown() -> Self {
-        static UNKNOWN_APP_ID: std::sync::LazyLock<ApplicationId> =
-            std::sync::LazyLock::new(|| ApplicationId(Arc::new("unknown_app_id".to_owned())));
-
-        UNKNOWN_APP_ID.clone()
-    }
-
-    pub fn as_str(&self) -> &str {
-        self.0.as_str()
-    }
-
-    /// A randomly generated app id
-    pub fn random() -> Self {
-        Self(Arc::new(format!("app_{}", uuid::Uuid::new_v4().simple())))
-    }
-
-    fn as_recording_id(&self) -> RecordingId {
-        RecordingId(Arc::clone(&self.0))
-    }
-}
-
-impl std::fmt::Display for ApplicationId {
-    #[inline]
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.fmt(f)
     }
 }
 
@@ -627,16 +575,6 @@ pub struct StoreInfo {
     /// segment id).
     pub store_id: StoreId,
 
-    /// If this store is the result of a clone, which store was it cloned from?
-    ///
-    /// A cloned store always gets a new unique ID.
-    ///
-    /// We currently only clone stores for blueprints:
-    /// when we receive a _default_ blueprints on the wire (e.g. from a recording),
-    /// we clone it and make the clone the _active_ blueprint.
-    /// This means all active blueprints are clones.
-    pub cloned_from: Option<StoreId>,
-
     pub store_source: StoreSource,
 
     /// The Rerun version used to encoded the RRD data.
@@ -651,7 +589,6 @@ impl StoreInfo {
     pub fn new(store_id: StoreId, store_source: StoreSource) -> Self {
         Self {
             store_id,
-            cloned_from: None,
             store_source,
             store_version: Some(CrateVersion::LOCAL),
         }
@@ -661,7 +598,6 @@ impl StoreInfo {
     pub fn new_unversioned(store_id: StoreId, store_source: StoreSource) -> Self {
         Self {
             store_id,
-            cloned_from: None,
             store_source,
             store_version: None,
         }

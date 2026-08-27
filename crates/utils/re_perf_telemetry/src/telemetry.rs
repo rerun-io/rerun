@@ -506,10 +506,10 @@ impl Telemetry {
             .ok()
             .filter(|s| !s.is_empty());
         let resolve_endpoint = |signal: String| -> String {
-            if !signal.is_empty() {
-                signal
-            } else {
+            if signal.is_empty() {
                 umbrella_endpoint.clone().unwrap_or_default()
+            } else {
+                signal
             }
         };
         let log_endpoint = resolve_endpoint(log_endpoint);
@@ -561,18 +561,17 @@ impl Telemetry {
         let result: anyhow::Result<Self> = (move || -> anyhow::Result<Self> {
             if !enabled {
                 if tracy_enabled {
-                    #[cfg(feature = "tracy")]
-                    {
-                        tracing_subscriber::registry()
-                            .with(self::tracy::tracy_layer())
-                            .try_init()?;
-                    }
-
-                    #[cfg(not(feature = "tracy"))]
-                    {
-                        anyhow::bail!(
-                            "`TRACY_ENABLED=true` but the 'tracy' feature flag is not toggled"
-                        );
+                    cfg_select! {
+                        feature = "tracy" => {
+                            tracing_subscriber::registry()
+                                .with(self::tracy::tracy_layer())
+                                .try_init()?;
+                        }
+                        _ => {
+                            anyhow::bail!(
+                                "`TRACY_ENABLED=true` but the 'tracy' feature flag is not toggled"
+                            );
+                        }
                     }
                 }
 
@@ -951,23 +950,25 @@ impl Telemetry {
                 (Some(provider), Some(reader_for_telemetry))
             };
 
+            // Without the `tracy` feature the `if` branch always bails, but the `else` is not
+            // redundant in a build that has it:
+            #[cfg_attr(not(feature = "tracy"), expect(clippy::redundant_else))]
             if tracy_enabled {
-                #[cfg(feature = "tracy")]
-                {
-                    tracing_subscriber::registry()
-                        .with(layer_logs_otlp)
-                        .with(layer_logs_and_traces_stdio)
-                        .with(layer_traces_otlp)
-                        .with(SpanMetadataCleanupLayer::default())
-                        .with(self::tracy::tracy_layer())
-                        .try_init()?;
-                }
-
-                #[cfg(not(feature = "tracy"))]
-                {
-                    anyhow::bail!(
-                        "`TRACY_ENABLED=true` but the 'tracy' feature flag is not toggled"
-                    );
+                cfg_select! {
+                    feature = "tracy" => {
+                        tracing_subscriber::registry()
+                            .with(layer_logs_otlp)
+                            .with(layer_logs_and_traces_stdio)
+                            .with(layer_traces_otlp)
+                            .with(SpanMetadataCleanupLayer::default())
+                            .with(self::tracy::tracy_layer())
+                            .try_init()?;
+                    }
+                    _ => {
+                        anyhow::bail!(
+                            "`TRACY_ENABLED=true` but the 'tracy' feature flag is not toggled"
+                        );
+                    }
                 }
             } else {
                 tracing_subscriber::registry()

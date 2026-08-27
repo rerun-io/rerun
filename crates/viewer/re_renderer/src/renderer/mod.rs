@@ -1,6 +1,7 @@
 mod compositor;
 mod debug_overlay;
 mod depth_cloud;
+mod gaussian_splat;
 mod generic_skybox;
 mod lines;
 mod mesh_renderer;
@@ -12,12 +13,15 @@ mod voxel_grid;
 mod world_grid;
 
 pub use debug_overlay::{DebugOverlayDrawData, DebugOverlayError, DebugOverlayRenderer};
+pub use gaussian_splat::{
+    GaussianSplatBatchFlags, GaussianSplatBatchInfo, GaussianSplatDrawData,
+    GaussianSplatDrawDataError, GaussianSplatRenderer, SH_TEXELS_PER_GAUSSIAN,
+};
 pub use generic_skybox::{GenericSkyboxDrawData, GenericSkyboxType};
 pub use lines::{LineBatchInfo, LineDrawData, LineDrawDataError, LineStripFlags};
 pub use mesh_renderer::{GpuMeshInstance, MeshDrawData};
 pub use point_cloud::{
     PointCloudBatchFlags, PointCloudBatchInfo, PointCloudDrawData, PointCloudDrawDataError,
-    PointCloudSortOrderCache,
 };
 pub use rectangles::{
     ColorMapper, ColormappedTexture, RectangleDrawData, RectangleOptions, ShaderDecoding,
@@ -30,6 +34,9 @@ pub use world_grid::{WorldGridConfiguration, WorldGridDrawData, WorldGridRendere
 pub use self::depth_cloud::{DepthCloud, DepthCloudDrawData, DepthCloudRenderer, DepthClouds};
 
 pub mod gpu_data {
+    pub use super::gaussian_splat::gpu_data::{
+        GaussianPositionScaleX, GaussianRotation, GaussianScaleYZ, GaussianShCoefficient,
+    };
     pub use super::lines::gpu_data::{LineStripInfo, LineVertex};
     pub use super::point_cloud::gpu_data::PositionRadius;
 }
@@ -78,15 +85,6 @@ pub struct DrawDataDrawable {
 }
 
 impl DrawDataDrawable {
-    #[inline]
-    pub fn from_affine(
-        view_info: &DrawableCollectionViewInfo,
-        world_from_rdf: &glam::Affine3A,
-        draw_data_payload: DrawDataDrawablePayload,
-    ) -> Self {
-        Self::from_world_position(view_info, world_from_rdf.translation, draw_data_payload)
-    }
-
     #[inline]
     pub fn from_world_position(
         view_info: &DrawableCollectionViewInfo,

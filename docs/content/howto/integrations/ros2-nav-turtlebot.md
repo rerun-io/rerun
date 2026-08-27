@@ -78,7 +78,7 @@ again.
 
 ### TF to rr.Transform3D
 
-Next, we need to map the [ROS TF2](https://docs.ros.org/en/humble/Concepts/About-Tf2.html) transforms to the corresponding Rerun archetype.
+Next, we need to map the [ROS TF2](https://docs.ros.org/en/humble/Concepts/Intermediate/About-Tf2.html) transforms to the corresponding Rerun archetype.
 
 Since Rerun 0.28, the [`Transform3D`](../../reference/types/archetypes/transform3d.md) archetype supports parent/child frame relationships, which makes our conversion step straight-forward. We just have to remember that the ROS [TFMessage](https://docs.ros2.org/foxy/api/tf2_msgs/msg/TFMessage.html) is a container for multiple transforms that have individual timestamps each and set the time accordingly.
 By specifying the parent and child frames, we can log all transforms to the same entity path, similar to the TF topic in ROS.

@@ -45,7 +45,7 @@ row = df.filter(col("log_time") == times[0]).select(
 table = pa.table(row)
 format_details = table[format_column][0][0]
 flattened_image = table[content_column].to_numpy()[0][0]
-num_channels = rr.datatypes.color_model.ColorModel.auto(
+num_channels = rr.encodings.color_model.ColorModel.auto(
     int(format_details["color_model"].as_py())
 ).num_channels()
 image = flattened_image.reshape(

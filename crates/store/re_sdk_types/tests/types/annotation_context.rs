@@ -1,5 +1,5 @@
 use re_sdk_types::archetypes::AnnotationContext;
-use re_sdk_types::datatypes::{ClassDescription, KeypointPair, Rgba32};
+use re_sdk_types::encodings::{ClassDescription, KeypointPair, Rgba32};
 use re_sdk_types::{Archetype as _, AsComponents as _, components};
 
 #[test]

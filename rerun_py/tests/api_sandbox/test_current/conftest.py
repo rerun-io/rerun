@@ -26,7 +26,7 @@ def populated_client(simple_dataset_prefix: Path) -> Iterator[rr.catalog.Catalog
         client = server.client()
 
         ds = client.create_dataset("basic_dataset")
-        ds.register_prefix(simple_dataset_prefix.as_uri())
+        ds.register_prefix(simple_dataset_prefix.as_uri()).wait()
 
         # TODO(jleibs): Consider attaching this metadata table directly to the dataset
         # and automatically joining it by default
@@ -54,7 +54,7 @@ def populated_client_complex(complex_dataset_prefix: Path) -> Iterator[rr.catalo
         client = server.client()
 
         ds = client.create_dataset("complex_dataset")
-        ds.register_prefix(complex_dataset_prefix.as_uri())
+        ds.register_prefix(complex_dataset_prefix.as_uri()).wait()
 
         # TODO(jleibs): Consider attaching this metadata table directly to the dataset
         # and automatically joining it by default

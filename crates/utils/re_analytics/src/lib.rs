@@ -278,22 +278,23 @@ fn load_config(_user_logged_in: bool) -> Result<Config, ConfigError> {
         //       a config on native any other way.
         let config = Config::new()?;
 
-        #[cfg(not(target_arch = "wasm32"))]
-        if config.is_first_run() {
-            if !_user_logged_in {
-                // Only print the disclaimer if the user is not logged in.
-                eprintln!("{DISCLAIMER}");
+        cfg_select! {
+            target_arch = "wasm32" => {
+                // always save the config on web, without printing a disclaimer.
+                config.save()?;
+                re_log::trace!(?config, "saved analytics config");
             }
+            _ => {
+                if config.is_first_run() {
+                    if !_user_logged_in {
+                        // Only print the disclaimer if the user is not logged in.
+                        eprintln!("{DISCLAIMER}");
+                    }
 
-            config.save()?;
-            re_log::trace!(?config, "saved analytics config");
-        }
-
-        #[cfg(target_arch = "wasm32")]
-        {
-            // always save the config on web, without printing a disclaimer.
-            config.save()?;
-            re_log::trace!(?config, "saved analytics config");
+                    config.save()?;
+                    re_log::trace!(?config, "saved analytics config");
+                }
+            }
         }
 
         Ok(config)

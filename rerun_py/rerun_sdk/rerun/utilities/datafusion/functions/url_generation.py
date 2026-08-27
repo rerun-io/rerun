@@ -58,7 +58,7 @@ def segment_url(
 
     """
     if not HAS_DATAFUSION:
-        raise RerunMissingDependencyError("datafusion", "datafusion")
+        raise RerunMissingDependencyError("datafusion", "catalog")
 
     if (time_range_start is None) != (time_range_end is None):
         raise ValueError("time_range_start and time_range_end must both be provided or both be omitted")
@@ -127,7 +127,7 @@ def segment_url(
 
 def _make_rust_udf() -> ScalarUDF:
     if not HAS_DATAFUSION:
-        raise RerunMissingDependencyError("datafusion", "datafusion")
+        raise RerunMissingDependencyError("datafusion", "catalog")
 
     from rerun_bindings import SegmentUrlUdfInternal  # type: ignore[attr-defined]
 

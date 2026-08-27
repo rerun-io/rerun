@@ -1,40 +1,37 @@
 use egui::PointerButton;
-use egui::accesskit::Role;
 use egui_kittest::kittest::Queryable as _;
 
-use crate::HarnessExt as _;
+use crate::ViewerHarnessExt;
 
 /// A section of the viewer, e.g. the "Blueprint" or "Recording" panel. Every query and action in a section
 /// only affects the children of the section.
-pub struct ViewerSection<'a, 'h> {
-    pub harness: &'a mut egui_kittest::Harness<'h, re_viewer::App>,
-    pub section_label: Option<&'a str>,
+pub struct ViewerSection<'a, H: ViewerHarnessExt + ?Sized> {
+    harness: &'a mut H,
+    section_label: Option<&'a str>,
 }
 
-impl<'a, 'h: 'a> ViewerSection<'a, 'h> {
+impl<'a, H: ViewerHarnessExt + ?Sized> ViewerSection<'a, H> {
+    /// A section covering the children of `section_label`, or the whole app when it is `None`.
+    pub(crate) fn new(harness: &'a mut H, section_label: Option<&'a str>) -> Self {
+        Self {
+            harness,
+            section_label,
+        }
+    }
+
     /// Returns the root node of the section.
     ///
     /// # Panics
     /// Panics if the section label is not found.
-    pub fn root<'n>(&'n self) -> egui_kittest::Node<'n>
-    where
-        'a: 'n,
-    {
-        let Some(section_label) = self.section_label else {
-            return self.harness.root();
-        };
-        self.harness
-            .get_by_role_and_label(Role::Pane, section_label)
+    pub fn root(&self) -> egui_kittest::Node<'_> {
+        self.harness.section_node(self.section_label)
     }
 
     /// Returns the only node with the given label.
     ///
     /// # Panics
     /// Panics if there are zero or multiple nodes with the given label.
-    pub fn get_label<'n>(&'n self, label: &'n str) -> egui_kittest::Node<'n>
-    where
-        'a: 'n,
-    {
+    pub fn get_label<'n>(&'n self, label: &'n str) -> egui_kittest::Node<'n> {
         self.root().get_by_label(label)
     }
 
@@ -42,10 +39,7 @@ impl<'a, 'h: 'a> ViewerSection<'a, 'h> {
     ///
     /// # Panics
     /// Panics if there are fewer such nodes than `index`.
-    pub fn get_nth_label<'n>(&'n self, label: &'n str, index: usize) -> egui_kittest::Node<'n>
-    where
-        'a: 'n,
-    {
+    pub fn get_nth_label<'n>(&'n self, label: &'n str, index: usize) -> egui_kittest::Node<'n> {
         let mut nodes = self.root().get_all_by_label(label).collect::<Vec<_>>();
         assert!(
             index < nodes.len(),
@@ -177,7 +171,15 @@ impl<'a, 'h: 'a> ViewerSection<'a, 'h> {
         let triangle_x = rect.left() + 8.0;
         let triangle_y = rect.center().y;
         let triangle_pos = egui::pos2(triangle_x, triangle_y);
-        self.harness.click_at(triangle_pos);
+        for pressed in [true, false] {
+            self.harness.queue_event(egui::Event::PointerButton {
+                pos: triangle_pos,
+                button: PointerButton::Primary,
+                pressed,
+                modifiers: egui::Modifiers::NONE,
+            });
+            self.harness.run();
+        }
     }
 
     /// Helper function to get the node with the given label
@@ -185,10 +187,7 @@ impl<'a, 'h: 'a> ViewerSection<'a, 'h> {
         &'n self,
         label: &'n str,
         index: Option<usize>,
-    ) -> egui_kittest::Node<'n>
-    where
-        'a: 'n,
-    {
+    ) -> egui_kittest::Node<'n> {
         if let Some(index) = index {
             self.get_nth_label(label, index)
         } else {
@@ -201,36 +200,28 @@ impl<'a, 'h: 'a> ViewerSection<'a, 'h> {
         let node = self.get_nth_label_inner(label, index);
 
         let center = node.rect().center();
-        self.harness.event(egui::Event::PointerButton {
+        self.harness.queue_event(egui::Event::PointerButton {
             pos: center,
             button: PointerButton::Primary,
             pressed: true,
             modifiers: egui::Modifiers::NONE,
         });
-
-        // Step until the time has passed `max_click_duration` so this gets
-        // registered as a drag.
-        let wait_time = self
-            .harness
-            .ctx
-            .options(|o| o.input_options.max_click_duration);
-        let end_time = self.harness.ctx.input(|i| i.time + wait_time);
-        while self.harness.ctx.input(|i| i.time) < end_time {
-            self.harness.step();
-        }
+        self.harness.run();
     }
 
     /// Helper function to end dragging the node with the given label
-    pub fn drop_label_inner(&mut self, label: &str, index: Option<usize>) {
+    fn drop_label_inner(&mut self, label: &str, index: Option<usize>) {
         let node = self.get_nth_label_inner(label, index);
-        let event = egui::Event::PointerButton {
-            pos: node.rect().center(),
+
+        let pos = node.rect().center();
+        self.harness.queue_event(egui::Event::PointerMoved(pos));
+        self.harness.queue_event(egui::Event::PointerButton {
+            pos,
             button: PointerButton::Primary,
             pressed: false,
             modifiers: egui::Modifiers::NONE,
-        };
-        self.harness.event(event);
-        self.harness.remove_cursor();
+        });
+        self.harness.queue_event(egui::Event::PointerGone);
         self.harness.run();
     }
 }

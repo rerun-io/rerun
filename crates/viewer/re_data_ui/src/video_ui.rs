@@ -223,11 +223,17 @@ fn video_data_ui(
                 gop_sizes,
             } = &video_descr.samples_statistics;
 
+            #[cfg(not(debug_assertions))]
+            let _ = gop_sizes; // only used by the debug-only UI below
+
             ui.list_item_flat_noninteractive(
                 PropertyContent::new("All PTS equal DTS").value_bool(*dts_always_equal_pts)
             ).on_hover_text("Whether all decode timestamps are equal to presentation timestamps. If true, the video typically has no B-frames.");
 
-            if cfg!(debug_assertions) && gop_sizes.smallest > 0 {
+            #[cfg(debug_assertions)]
+            if gop_sizes.smallest > 0 {
+                ui.debug_only_badge();
+
                 if gop_sizes.smallest == gop_sizes.largest {
                     ui.list_item_flat_noninteractive(
                         PropertyContent::new("GOP size").value_uint(gop_sizes.smallest)
@@ -540,8 +546,8 @@ fn frame_info_ui(
 ) {
     let FrameInfo {
         is_sync,
-        sample_idx,
         frame_nr,
+        source,
         presentation_timestamp,
         duration: _,
         latest_decode_timestamp,
@@ -584,7 +590,8 @@ fn frame_info_ui(
         }
     }
 
-    if let Some(sample_idx) = sample_idx
+    if let Some(sample_idx) =
+        source.and_then(|source| video_descr.sample_index_of_source(presentation_timestamp, source))
         && stream_kind == StreamKind::Video
     {
         ui.list_item_flat_noninteractive(PropertyContent::new("Sample").value_fn(move |ui, _| {
@@ -633,6 +640,7 @@ fn frame_info_ui(
             && let Ok(sample_idx) =
                 video_descr.latest_sample_index_at_presentation_timestamp(presentation_timestamp)
         {
+            ui.debug_only_badge();
             ui.list_item_flat_noninteractive(
                 PropertyContent::new("Highest PTS so far").value_bool(has_sample_highest_pts_so_far[sample_idx])
             ).on_hover_text(format!("Whether the presentation timestamp (PTS) at the this {} is the highest encountered so far. If false there are lower PTS values prior in the list.", stream_kind.frame_word()));
@@ -651,7 +659,9 @@ fn frame_info_ui(
 
         if let Some(sample_range) = video_descr.gop_sample_range_for_keyframe(keyframe_idx) {
             let first_sample = video_descr.samples.get(sample_range.start);
-            let last_sample = video_descr.samples.get(sample_range.end.saturating_sub(1));
+            let last_sample = video_descr
+                .samples
+                .get(sample_range.end().saturating_sub(1));
 
             if let Some((first_sample, last_sample)) = Option::zip(
                 first_sample.and_then(|s| s.sample()),
@@ -757,7 +767,7 @@ pub enum VideoUi {
     Asset(
         Arc<Result<re_renderer::video::Video, VideoLoadError>>,
         Option<VideoTimestamp>,
-        re_sdk_types::datatypes::Blob,
+        re_sdk_types::encodings::Blob,
     ),
 }
 
@@ -767,7 +777,7 @@ impl VideoUi {
         entity_path: &re_log_types::EntityPath,
         blob_row_id: RowId,
         blob_component_descriptor: &ComponentDescriptor,
-        blob: &re_sdk_types::datatypes::Blob,
+        blob: &re_sdk_types::encodings::Blob,
         media_type: Option<&MediaType>,
         video_timestamp: Option<VideoTimestamp>,
     ) -> Option<Self> {

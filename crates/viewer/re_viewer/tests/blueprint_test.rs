@@ -3,10 +3,11 @@ use std::path::Path;
 
 use re_chunk::EntityPath;
 use re_chunk::{RowId, TimePoint};
+use re_sdk_types::ViewClassIdentifier;
 use re_test_context::TestContext;
 use re_test_context::VisualizerBlueprintContext as _;
 use re_test_viewport::TestContextExt as _;
-use re_viewer_context::{BlueprintContext as _, ViewClass as _};
+use re_viewer_context::{BlueprintContext as _, ViewClass as _, ViewerReportSeverity};
 use re_viewport::ViewportUi;
 use re_viewport_blueprint::ViewBlueprint;
 
@@ -161,6 +162,37 @@ fn test_blueprint_load_into_new_context() {
         "blueprint_load_into_new_context_2",
         &mut snapshot_results,
     );
+}
+
+#[test]
+fn test_invalid_view_class_report() {
+    let mut test_context = TestContext::new();
+    let invalid_view_class = ViewClassIdentifier::invalid();
+
+    // `TestContext::run` panics on error logs, so emit the registry's one-time diagnostic
+    // before the test helper resolves the invalid class and renders the placeholder.
+    let _placeholder = test_context
+        .view_class_registry
+        .get_class_or_log_error(invalid_view_class);
+
+    let view_id = test_context.setup_viewport_blueprint(|_ctx, blueprint| {
+        blueprint.add_view_at_root(ViewBlueprint::new_with_root_wildcard(invalid_view_class))
+    });
+
+    let mut snapshot_results = egui_kittest::SnapshotResults::new();
+    take_snapshot(
+        &test_context,
+        "blueprint_invalid_view_class",
+        &mut snapshot_results,
+    );
+
+    let view_states = test_context.view_states.lock();
+    let [report] = view_states.view_reports(&test_context.recording_store_id, view_id) else {
+        panic!("expected exactly one view report");
+    };
+    assert_eq!(report.severity, ViewerReportSeverity::Error);
+    assert_eq!(report.summary, "Unknown view class");
+    assert!(report.details.is_some());
 }
 
 /// When the entity path hash in a `VisualizerInstructionId` doesn't match the current hash

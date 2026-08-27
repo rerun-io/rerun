@@ -1,6 +1,4 @@
-use std::collections::HashSet;
 use std::sync::Arc;
-use std::sync::OnceLock;
 
 use arrow::array::RecordBatch;
 use arrow::datatypes::SchemaRef;
@@ -18,26 +16,9 @@ use tracing::instrument;
 
 use crate::grpc_streaming_provider::{GrpcStreamProvider, GrpcStreamToTable, ScanParams};
 use crate::pushdown_expressions::{
-    classify_filters_for_pushdown, filters_to_pushdown_sql, pushdown_filterable_columns,
+    classify_segment_id_filters_for_pushdown, segment_id_filter_from_filters,
 };
 use crate::wasm_compat::make_future_send;
-
-/// Public column names the server can currently filter on server-side: the scalar base columns of
-/// the dataset-manifest schema.
-///
-/// Excluded: dynamic `property:*` columns (not supported by the server yet), binary columns like
-/// `rerun_schema_sha256` (their literals don't survive the SQL round trip), and
-/// `rerun_last_updated_at` — its public value is backfilled from `rerun_registration_time` for
-/// legacy rows whose stored value is null, so a filter pushed to the raw server-side column would
-/// wrongly drop those rows.
-fn supported_filter_columns() -> &'static HashSet<String> {
-    static COLUMNS: OnceLock<HashSet<String>> = OnceLock::new();
-    COLUMNS.get_or_init(|| {
-        let mut columns = pushdown_filterable_columns(&ScanDatasetManifestDataframe::min_schema());
-        columns.remove(ScanDatasetManifestDataframe::COLUMN_RERUN_LAST_UPDATED_AT_NAME);
-        columns
-    })
-}
 
 //TODO(ab): deduplicate from SegmentTableProvider
 #[derive(Clone)]
@@ -75,16 +56,23 @@ impl DatasetManifestProvider {
 
 #[async_trait]
 impl GrpcStreamToTable for DatasetManifestProvider {
+    fn origin(&self) -> &re_uri::Origin {
+        self.client.origin()
+    }
+
     type GrpcStreamData = ScanDatasetManifestResponse;
 
     #[instrument(skip(self), err, parent = &self.parent_span)]
     async fn fetch_schema(&mut self) -> ApiResult<SchemaRef> {
         let mut client = self.client.clone();
+        let origin = client.origin().clone();
         let dataset_id = self.dataset_id;
 
         Ok(Arc::new(
-            make_future_send(async move { client.get_dataset_manifest_schema(dataset_id).await })
-                .await?,
+            make_future_send(origin.clone(), async move {
+                client.get_dataset_manifest_schema(dataset_id).await
+            })
+            .await?,
         ))
     }
 
@@ -95,27 +83,35 @@ impl GrpcStreamToTable for DatasetManifestProvider {
         &mut self,
         params: &ScanParams,
     ) -> ApiResult<re_redap_client::ApiResponseStream<Self::GrpcStreamData>> {
-        let sql_filter = filters_to_pushdown_sql(&params.filters, supported_filter_columns())
-            .unwrap_or_default();
+        let segment_id_filter = segment_id_filter_from_filters(
+            &params.filters,
+            ScanDatasetManifestDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
+        );
 
         let request = tonic::Request::new(ScanDatasetManifestRequest {
-            columns: vec![], // all of them
-            sql_filter,
+            columns: params
+                .projected_columns
+                .as_deref()
+                .unwrap_or_default()
+                .to_vec(),
+            segment_id_filter,
         })
         .with_entry_id(self.dataset_id);
 
         let mut client = self.client.clone();
+        let origin = client.origin().clone();
 
-        let response = make_future_send(async move {
+        let response = make_future_send(origin.clone(), async move {
             client
                 .inner()
                 .scan_dataset_manifest(request)
                 .await
-                .map_err(|err| ApiError::tonic(err, "/ScanDatasetManifest failed"))
+                .map_err(|err| ApiError::tonic(&origin, err, "/ScanDatasetManifest failed"))
         })
         .await?;
 
         Ok(re_redap_client::ApiResponseStream::from_tonic_response(
+            self.origin().clone(),
             response,
             "/ScanDatasetManifest",
         ))
@@ -125,9 +121,9 @@ impl GrpcStreamToTable for DatasetManifestProvider {
         &self,
         filters: &[&Expr],
     ) -> DataFusionResult<Vec<TableProviderFilterPushDown>> {
-        Ok(classify_filters_for_pushdown(
+        Ok(classify_segment_id_filters_for_pushdown(
             filters,
-            supported_filter_columns(),
+            ScanDatasetManifestDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
         ))
     }
 
@@ -139,11 +135,16 @@ impl GrpcStreamToTable for DatasetManifestProvider {
         response
             .data
             .ok_or_else(|| {
-                ApiError::deserialization(None, "DataFrame missing from DatasetManifest response")
+                ApiError::deserialization(
+                    self.origin(),
+                    None,
+                    "DataFrame missing from DatasetManifest response",
+                )
             })?
             .try_into()
             .map_err(|err: re_protos::TypeConversionError| {
                 ApiError::deserialization_with_source(
+                    self.origin(),
                     None,
                     err,
                     "failed decoding /ScanDatasetManifest response",

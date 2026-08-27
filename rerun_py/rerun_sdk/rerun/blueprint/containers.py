@@ -8,7 +8,7 @@ from .components.container_kind import ContainerKind
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
-    from ..datatypes import BoolLike, Float32ArrayLike, Utf8Like
+    from ..encodings import BoolLike, Float32ArrayLike, Utf8Like
 
 
 class Horizontal(Container):

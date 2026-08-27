@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from ...blueprint import components as blueprint_components, datatypes as blueprint_datatypes
+from ...blueprint import components as blueprint_components, encodings as blueprint_encodings
 from ...error_utils import catch_and_log_exceptions
 
 if TYPE_CHECKING:
-    from ... import datatypes
+    from ... import encodings
 
 
 class DataframeQueryExt:
@@ -15,13 +15,13 @@ class DataframeQueryExt:
     def __init__(
         self: Any,
         *,
-        timeline: datatypes.Utf8Like | None = None,
-        filter_by_range: tuple[datatypes.TimeInt, datatypes.TimeInt]
-        | blueprint_datatypes.FilterByRangeLike
+        timeline: encodings.Utf8Like | None = None,
+        filter_by_range: tuple[encodings.TimeInt, encodings.TimeInt]
+        | blueprint_encodings.FilterByRangeLike
         | None = None,
-        filter_is_not_null: blueprint_datatypes.ComponentColumnSelectorLike | None = None,
+        filter_is_not_null: blueprint_encodings.ComponentColumnSelectorLike | None = None,
         apply_latest_at: bool = False,
-        select: list[blueprint_datatypes.ComponentColumnSelectorLike | datatypes.Utf8Like | str] | None = None,
+        select: list[blueprint_encodings.ComponentColumnSelectorLike | encodings.Utf8Like | str] | None = None,
         entity_order: list[str] | None = None,
         auto_scroll: bool = False,
     ) -> None:
@@ -60,7 +60,7 @@ class DataframeQueryExt:
 
         if filter_is_not_null is not None:
             if isinstance(filter_is_not_null, str):
-                column = blueprint_datatypes.ComponentColumnSelector(spec=filter_is_not_null)
+                column = blueprint_encodings.ComponentColumnSelector(spec=filter_is_not_null)
             else:
                 column = filter_is_not_null
 

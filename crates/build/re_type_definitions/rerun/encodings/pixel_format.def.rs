@@ -1,0 +1,113 @@
+// This is a Rerun type definition for the SDK, not executable code.
+// It is parsed by `re_types_builder` to generate the Rust, Python and C++ bindings.
+
+// TODO(andreas): Clarify relationship to color primaries & yuv matrix coefficients.
+// Right now there's some hardcoded differences between formats.
+// See `image_to_gpu.rs`
+// Suggestion: guides heuristic but doesn't specify it unless noted.
+
+/// Specifieds a particular format of an [`rerun::archetypes::Image`].
+///
+/// Most images can be described by a [`rerun::encodings::ColorModel`] and a [`rerun::encodings::ChannelDatatype`],
+/// e.g. `RGB` and `U8` respectively.
+///
+/// However, some image formats has chroma downsampling and/or
+/// use differing number of bits per channel, and that is what this [`rerun::encodings::PixelFormat`] is for.
+///
+/// All these formats support random access.
+///
+/// For more compressed image formats, see [`rerun::archetypes::EncodedImage`].
+#[rerun::rerun_type]
+#[repr(u8)]
+#[rerun(state = "stable")]
+#[rust(arrow_opt)]
+pub enum PixelFormat {
+    // Given lack of a universal standard, the values of the enums are arbitrarily chosen to match
+    // those from the `predefined pixel format` portion of the `Frame` class in the Ocean library:
+    // https://github.com/facebookresearch/ocean/blob/1112f6101077c97a72a1d750e62dbff3ff01bd72/impl/ocean/base/Frame.h#L182
+    //
+    // However, this is not a strict requirement and implementations should not depend on this
+    // this fact. It merely exists to minimizes to take advantage of the thought that went into
+    // this organization and subsequently reduce the chance we may find ourselves wanting to
+    // change the values in the future.
+    /// `Y_U_V12` is a YUV 4:2:0 fully planar YUV format without chroma downsampling, also known as `I420`.
+    ///
+    /// This uses limited range YUV, i.e. Y is expected to be within [16, 235] and U/V within [16, 240].
+    ///
+    /// First comes entire image in Y in one plane, followed by the U and V planes, which each only have half
+    /// the resolution of the Y plane.
+    Y_U_V12_LimitedRange = 20,
+
+    /// `NV12` (aka `Y_UV12`) is a YUV 4:2:0 chroma downsampled form at with 12 bits per pixel and 8 bits per channel.
+    ///
+    /// This uses limited range YUV, i.e. Y is expected to be within [16, 235] and U/V within [16, 240].
+    ///
+    /// First comes entire image in Y in one plane,
+    /// followed by a plane with interleaved lines ordered as U0, V0, U1, V1, etc.
+    #[default]
+    NV12 = 26,
+
+    /// `YUY2` (aka 'YUYV', 'YUYV16' or 'NV21'), is a YUV 4:2:2 chroma downsampled format with 16 bits per pixel and 8 bits per channel.
+    ///
+    /// This uses limited range YUV, i.e. Y is expected to be within [16, 235] and U/V within [16, 240].
+    ///
+    /// The order of the channels is Y0, U0, Y1, V0, all in the same plane.
+    YUY2 = 27,
+
+    /// Monochrome Y plane only, essentially a YUV 4:0:0 planar format.
+    ///
+    /// Also known as just "gray". This is virtually identical to a 8bit luminance/grayscale (see [`rerun::encodings::ColorModel`]).
+    ///
+    /// This uses entire range YUV, i.e. Y is expected to be within [0, 255].
+    /// (as opposed to "limited range" YUV as used e.g. in NV12).
+    Y8_FullRange = 30,
+
+    /// `Y_U_V24` is a YUV 4:4:4 fully planar YUV format without chroma downsampling, also known as `I444`.
+    ///
+    /// This uses limited range YUV, i.e. Y is expected to be within [16, 235] and U/V within [16, 240].
+    ///
+    /// First comes entire image in Y in one plane, followed by the U and V planes.
+    Y_U_V24_LimitedRange = 39,
+
+    /// `Y_U_V24` is a YUV 4:4:4 fully planar YUV format without chroma downsampling, also known as `I444`.
+    ///
+    /// This uses full range YUV with all components ranging from 0 to 255
+    /// (as opposed to "limited range" YUV as used e.g. in NV12).
+    ///
+    /// First comes entire image in Y in one plane, followed by the U and V planes.
+    Y_U_V24_FullRange = 40,
+
+    /// Monochrome Y plane only, essentially a YUV 4:0:0 planar format.
+    ///
+    /// Also known as just "gray".
+    ///
+    /// This uses limited range YUV, i.e. Y is expected to be within [16, 235].
+    /// If not for this range limitation/remapping, this is almost identical to 8bit luminace/grayscale (see [`rerun::encodings::ColorModel`]).
+    Y8_LimitedRange = 41,
+
+    /// `Y_U_V12` is a YUV 4:2:0 fully planar YUV format without chroma downsampling, also known as `I420`.
+    ///
+    /// This uses full range YUV with all components ranging from 0 to 255
+    /// (as opposed to "limited range" YUV as used e.g. in NV12).
+    ///
+    /// First comes entire image in Y in one plane, followed by the U and V planes, which each only have half
+    /// the resolution of the Y plane.
+    Y_U_V12_FullRange = 44,
+
+    /// `Y_U_V16` is a YUV 4:2:2 fully planar YUV format without chroma downsampling, also known as `I422`.
+    ///
+    /// This uses limited range YUV, i.e. Y is expected to be within [16, 235] and U/V within [16, 240].
+    ///
+    /// First comes entire image in Y in one plane, followed by the U and V planes, which each only have half
+    /// the horizontal resolution of the Y plane.
+    Y_U_V16_LimitedRange = 49,
+
+    /// `Y_U_V16` is a YUV 4:2:2 fully planar YUV format without chroma downsampling, also known as `I422`.
+    ///
+    /// This uses full range YUV with all components ranging from 0 to 255
+    /// (as opposed to "limited range" YUV as used e.g. in NV12).
+    ///
+    /// First comes entire image in Y in one plane, followed by the U and V planes, which each only have half
+    /// the horizontal resolution of the Y plane.
+    Y_U_V16_FullRange = 50,
+}

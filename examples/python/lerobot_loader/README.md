@@ -1,5 +1,6 @@
 <!--[metadata]
 title = "LeRobot loader"
+description = "Rerun's built-in importer for LeRobot datasets: point the viewer at a directory and it loads like any other recording."
 tags = ["2D", "Video", "Loader", "Hugging Face", "LeRobot"]
 thumbnail = "https://static.rerun.io/LeRobot/ec638243c38d01c0d9e27ef4e52e62c43c6e4ba4/480w.png"
 thumbnail_dimensions = [480, 275]

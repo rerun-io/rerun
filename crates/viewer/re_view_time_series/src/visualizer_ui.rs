@@ -6,7 +6,7 @@ use re_log_types::external::arrow::array::AsArray as _;
 use re_sdk_types::archetypes::{SeriesLines, SeriesPoints};
 use re_sdk_types::blueprint::archetypes::ActiveVisualizers;
 use re_sdk_types::components::{self, Color, Name};
-use re_sdk_types::{ComponentDescriptor, Loggable as _};
+use re_sdk_types::{ComponentDescriptor, FromArrow as _};
 use re_ui::UiExt as _;
 use re_ui::egui_ext::response_ext::ResponseExt as _;
 use re_viewer_context::external::re_entity_db::InstancePath;
@@ -263,7 +263,7 @@ impl TimeSeriesColors {
 
         // Draw color boxes from right to left
         for color in self.colors[..num_boxes].iter().rev() {
-            let rgba = re_sdk_types::datatypes::Rgba32::from(*color);
+            let rgba = re_sdk_types::encodings::Rgba32::from(*color);
             let mut color_ref = re_viewer_context::MaybeMutRef::Ref(&rgba);
             ui.add(ColorSwatch::new(&mut color_ref));
         }

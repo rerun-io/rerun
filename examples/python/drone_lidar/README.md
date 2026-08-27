@@ -1,6 +1,6 @@
 <!--[metadata]
 title = "Drone LiDAR"
-tags = ["3D", "drone", "Lidar"]
+tags = ["3D", "Drone", "Lidar"]
 description = "Display drone-based LiDAR data"
 -->
 

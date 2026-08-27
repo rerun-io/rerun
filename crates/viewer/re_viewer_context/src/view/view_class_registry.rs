@@ -307,26 +307,6 @@ impl ViewClassRegistry {
         Ok(())
     }
 
-    /// Removes a view class from the registry.
-    pub fn remove_class<T: ViewClass + Sized>(&mut self) -> Result<(), ViewClassRegistryError> {
-        let identifier = T::identifier();
-        if self.view_classes.remove(&identifier).is_none() {
-            return Err(ViewClassRegistryError::UnknownClassIdentifier(identifier));
-        }
-
-        self.context_systems.retain(|_, context_system_entry| {
-            context_system_entry.used_by.remove(&identifier);
-            !context_system_entry.used_by.is_empty()
-        });
-
-        self.visualizers.retain(|_, visualizer_entry| {
-            visualizer_entry.used_by.remove(&identifier);
-            !visualizer_entry.used_by.is_empty()
-        });
-
-        Ok(())
-    }
-
     /// Registers an additional [`ViewContextSystem`] for a view class.
     ///
     /// Usually, context systems are registered in [`ViewClass::on_register`] which is called when

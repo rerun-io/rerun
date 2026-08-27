@@ -7,7 +7,7 @@ use re_sdk_types::blueprint::archetypes::{PanelBlueprint, TimePanelBlueprint};
 use re_sdk_types::blueprint::components::{
     Fps, LoopMode, PanelState, PlayState, PlaybackSpeed, TimelineName,
 };
-use re_sdk_types::datatypes::Float64;
+use re_sdk_types::encodings::Float64;
 
 use crate::RecordingStreamResult;
 
@@ -170,7 +170,7 @@ impl TimePanel {
             arch = arch.with_loop_mode(loop_mode);
         }
         if let Some(range) = self.time_selection {
-            arch = arch.with_time_selection(re_sdk_types::datatypes::AbsoluteTimeRange {
+            arch = arch.with_time_selection(re_sdk_types::encodings::AbsoluteTimeRange {
                 min: range.min.into(),
                 max: range.max.into(),
             });

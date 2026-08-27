@@ -107,7 +107,7 @@ struct LoadedRanges {
 /// A secondary index that keeps track of which chunks have been loaded into memory.
 ///
 /// This is constructed from an [`RrdManifest`], which is what the server sends to the client/viewer.
-/// The manifest may be received in parts and concatenated together.
+/// The manifest may be received in parts and merged together.
 #[derive(Default, re_byte_size::SizeBytes)]
 #[cfg_attr(feature = "testing", derive(Clone))]
 pub struct RrdManifestIndex {
@@ -163,6 +163,12 @@ impl RrdManifestIndex {
     ) -> CodecResult<()> {
         re_tracing::profile_function!();
 
+        // Merge before updating caches.
+        let merged = match &self.manifest {
+            Some(existing) => Some(Arc::new(RrdManifest::merge(&[existing, &delta])?)),
+            None => None,
+        };
+
         self.update_timeline_stats(&delta);
         self.update_entity_static_data(&delta);
         self.chunk_prioritizer.on_rrd_manifest(&delta);
@@ -210,16 +216,9 @@ impl RrdManifestIndex {
             }
         }
 
-        let new_full_manifest = if let Some(existing) = self.manifest.take() {
-            Arc::new(RrdManifest::concat(&[&existing, &delta])?)
-        } else {
-            delta
-        };
+        self.sorted_chunks.update(entity_tree, delta.temporal_map());
 
-        self.sorted_chunks =
-            SortedTemporalChunks::new(entity_tree, new_full_manifest.temporal_map());
-
-        self.manifest = Some(new_full_manifest);
+        self.manifest = Some(merged.unwrap_or(delta));
 
         Ok(())
     }
@@ -451,25 +450,21 @@ impl RrdManifestIndex {
                     let old_state = chunk_info.state;
                     chunk_info.state = new_state;
 
-                    // Only update loaded ranges on actual state transitions to avoid
-                    // mismatched increments/decrements.
+                    // Only update loaded ranges when a chunk actually became loaded or unloaded, to
+                    // avoid mismatched increments/decrements. Note that `InTransit` counts as
+                    // unloaded, so going back to it from `FullyLoaded` is a change too.
                     if let Some(loaded_ranges) = &mut self.loaded_ranges
-                        && old_state != new_state
+                        && old_state.is_fully_loaded() != new_state.is_fully_loaded()
                     {
-                        match new_state {
-                            LoadState::Unloaded => {
-                                loaded_ranges.ranges.on_chunk_unloaded(
-                                    &chunk_id,
-                                    &self.chunk_prioritizer.component_paths_from_root_id,
-                                );
-                            }
-                            LoadState::InTransit => {}
-                            LoadState::FullyLoaded => {
-                                loaded_ranges.ranges.on_chunk_loaded(
-                                    &chunk_id,
-                                    &self.chunk_prioritizer.component_paths_from_root_id,
-                                );
-                            }
+                        let component_paths = &self.chunk_prioritizer.component_paths_from_root_id;
+                        if new_state.is_fully_loaded() {
+                            loaded_ranges
+                                .ranges
+                                .on_chunk_loaded(&chunk_id, component_paths);
+                        } else {
+                            loaded_ranges
+                                .ranges
+                                .on_chunk_unloaded(&chunk_id, component_paths);
                         }
                     }
 

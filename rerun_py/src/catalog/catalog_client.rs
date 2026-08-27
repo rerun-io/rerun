@@ -10,11 +10,14 @@ use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind};
 
 use crate::catalog::datafusion_catalog::PyDataFusionCatalogProviderList;
 use crate::catalog::{
-    ConnectionHandle, PyDatasetEntryInternal, PyEntryId, PyRerunHtmlTable, PyTableEntryInternal,
+    PyConnectionHandle, PyDatasetEntryInternal, PyEntryId, PyRerunHtmlTable, PyTableEntryInternal,
     to_py_err,
 };
 use crate::trace_context::read_trace_context_from_python;
 use crate::utils::wait_for_future;
+
+/// (version, cloud_provider, cloud_region, features), as returned by `version_info`.
+type VersionInfoTuple = (String, Option<String>, Option<String>, Vec<String>);
 
 /// Client for a remote Rerun catalog server.
 #[pyclass(
@@ -23,16 +26,14 @@ use crate::utils::wait_for_future;
 )]
 
 pub struct PyCatalogClientInternal {
-    origin: re_uri::Origin,
-
-    connection: ConnectionHandle,
+    connection: PyConnectionHandle,
 
     // If this isn't set, it means datafusion wasn't found
     datafusion_ctx: Option<Py<PyAny>>,
 }
 
 impl PyCatalogClientInternal {
-    pub fn connection(&self) -> &ConnectionHandle {
+    pub(crate) fn connection(&self) -> &PyConnectionHandle {
         &self.connection
     }
 }
@@ -97,12 +98,11 @@ impl PyCatalogClientInternal {
         };
         connection_registry.set_credentials(&origin, credentials);
 
-        let connection = ConnectionHandle::new(connection_registry, origin.clone());
+        let connection = PyConnectionHandle::new(connection_registry, origin);
 
         let datafusion_ctx = setup_datafusion_context(py).ok();
 
         let ret = Self {
-            origin,
             connection,
             datafusion_ctx,
         };
@@ -115,18 +115,20 @@ impl PyCatalogClientInternal {
     /// Get the URL of the catalog (a `rerun+http` URL).
     #[getter]
     pub fn url(&self) -> String {
-        self.origin.to_string()
+        self.connection.origin().to_string()
     }
 
-    /// Returns version and deployment information as (version, cloud_provider, cloud_region).
-    fn version_info(
-        self_: Py<Self>,
-        py: Python<'_>,
-    ) -> PyResult<(String, Option<String>, Option<String>)> {
+    /// Returns version and deployment information as (version, cloud_provider, cloud_region, features).
+    fn version_info(self_: Py<Self>, py: Python<'_>) -> PyResult<VersionInfoTuple> {
         let _span = read_trace_context_from_python(py, "CatalogClient.version_info").entered();
         let connection = self_.borrow(py).connection.clone();
         let info = connection.version_info(py)?;
-        Ok((info.version, info.cloud_provider, info.cloud_region))
+        Ok((
+            info.version,
+            info.cloud_provider,
+            info.cloud_region,
+            info.features,
+        ))
     }
 
     fn rtt_seconds(self_: Py<Self>, py: Python<'_>, num_pings: usize) -> PyResult<f64> {
@@ -379,7 +381,7 @@ impl PyCatalogClientInternal {
     }
 
     fn __repr__(&self) -> String {
-        format!("CatalogClient({})", self.origin)
+        format!("CatalogClient({})", self.connection.origin())
     }
 
     // ---
@@ -415,7 +417,8 @@ impl PyCatalogClientInternal {
             return Ok(());
         };
 
-        let connection = wait_for_future(py, self.connection.connection())?;
+        let connection =
+            wait_for_future(py, self.connection.inner().connection()).map_err(to_py_err)?;
         let provider_list =
             PyDataFusionCatalogProviderList::new(connection.client, connection.analytics);
 

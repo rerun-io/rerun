@@ -50,6 +50,13 @@ const CHANNEL_SIZE_MESSAGES: usize = 1024; // TODO(emilk): move into `ServerOpti
 /// even if the server has a [`ServerOptions::memory_limit`] of zero.
 const CHANNEL_SIZE_BYTES: u64 = 128 * 1024 * 1024; // TODO(emilk): move into `ServerOptions` after the patch release.
 
+/// How often the server sends HTTP/2 keepalive pings to idle clients.
+const HTTP2_KEEPALIVE_INTERVAL: std::time::Duration = std::time::Duration::from_secs(10);
+
+/// How long the server waits for a keepalive ping response before
+/// considering the connection dead and closing it.
+const HTTP2_KEEPALIVE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(20);
+
 /// Options for the gRPC Proxy Server
 #[derive(Clone, Debug)]
 pub struct ServerOptions {
@@ -118,25 +125,25 @@ impl std::fmt::Display for TonicStatusError {
 }
 
 fn fmt_tonic_status(f: &mut std::fmt::Formatter<'_>, status: &tonic::Status) -> std::fmt::Result {
-    if status.message().is_empty() {
-        write!(f, "gRPC error")?;
-    } else {
-        write!(f, "{}", status.message())?;
+    // The server message may come with details of its own, which must stay details:
+    // the status code belongs on the summary.
+    let mut error = re_error::StructuredError::parse(status.message());
+
+    if error.summary.is_empty() {
+        error.summary = "gRPC error".to_owned();
     }
 
-    if status.code() != tonic::Code::Unknown {
-        write!(f, " ({})", status.code())?;
+    let code = status.code();
+    if code != tonic::Code::Unknown {
+        // The `Debug` name ("NotFound"), not tonic's long `Display` prose.
+        error.summary = format!("{} ({code:?})", error.summary);
     }
 
     if !status.metadata().is_empty() {
-        write!(
-            f,
-            "{} metadata: {:?}",
-            re_error::DETAILS_SEPARATOR,
-            status.metadata().as_ref()
-        )?;
+        error.add_detail(format!("metadata: {:?}", status.metadata().as_ref()));
     }
-    Ok(())
+
+    write!(f, "{error}")
 }
 
 impl From<tonic::Status> for TonicStatusError {
@@ -339,6 +346,10 @@ async fn serve_impl(
 
     Server::builder()
         .accept_http1(true) // Support `grpc-web` clients
+        // Ping clients so silently dropped connections (no TCP RST, e.g. cable pull
+        // or dead NAT entry) are detected and torn down instead of lingering forever:
+        .http2_keepalive_interval(Some(HTTP2_KEEPALIVE_INTERVAL))
+        .http2_keepalive_timeout(Some(HTTP2_KEEPALIVE_TIMEOUT))
         .layer(cors) // Allow CORS requests from web clients
         .layer(grpc_web) // Support `grpc-web` clients
         .add_routes(routes)
@@ -804,7 +815,7 @@ impl MessageBuffer {
                     .collect()
             }
             PlaybackBehavior::NewestFirst => itertools::chain!(
-                persistent.iter().rev(),
+                persistent.iter(),
                 static_.iter().rev(),
                 disposable.iter().rev()
             )
@@ -1255,11 +1266,20 @@ impl message_proxy_service_server::MessageProxyService for MessageProxy {
                 Ok(Some(WriteMessagesRequest {
                     log_msg: Some(log_msg),
                 })) => {
-                    self.push_message(log_msg).await;
+                    if log_msg.msg.is_some() {
+                        self.push_message(log_msg).await;
+                    } else {
+                        // Reject at ingress, so that live and replayed streams see the same messages.
+                        return Err(tonic::Status::invalid_argument(
+                            "missing `msg` in `log_msg` in `WriteMessagesRequest`",
+                        ));
+                    }
                 }
 
                 Ok(Some(WriteMessagesRequest { log_msg: None })) => {
-                    re_log::warn!("missing log_msg in WriteMessagesRequest");
+                    return Err(tonic::Status::invalid_argument(
+                        "missing `log_msg` in `WriteMessagesRequest`",
+                    ));
                 }
 
                 Ok(None) => {
@@ -1268,8 +1288,9 @@ impl message_proxy_service_server::MessageProxyService for MessageProxy {
                 }
 
                 Err(err) => {
-                    re_log::error!("Error while receiving messages: {}", TonicStatusError(err));
-                    break;
+                    let err = TonicStatusError(err);
+                    re_log::error!("Error while receiving messages: {err}");
+                    return Err(err.0);
                 }
             }
         }
@@ -1292,15 +1313,20 @@ impl message_proxy_service_server::MessageProxyService for MessageProxy {
         &self,
         request: tonic::Request<WriteTableRequest>,
     ) -> tonic::Result<tonic::Response<WriteTableResponse>> {
-        if let WriteTableRequest {
-            id: Some(id),
-            data: Some(data),
-        } = request.into_inner()
-        {
-            self.push_message(TableMsgProto { id, data }).await;
-        } else {
-            re_log::warn!("malformed `WriteTableRequest`");
-        }
+        let WriteTableRequest { id, data } = request.into_inner();
+
+        let Some(id) = id else {
+            return Err(tonic::Status::invalid_argument(
+                "missing `id` in `WriteTableRequest`",
+            ));
+        };
+        let Some(data) = data else {
+            return Err(tonic::Status::invalid_argument(
+                "missing `data` in `WriteTableRequest`",
+            ));
+        };
+
+        self.push_message(TableMsgProto { id, data }).await;
 
         Ok(tonic::Response::new(WriteTableResponse {}))
     }
@@ -1315,6 +1341,7 @@ impl message_proxy_service_server::MessageProxyService for MessageProxy {
 
 #[cfg(test)]
 mod tests {
+    use std::assert_matches;
     use std::net::SocketAddr;
     use std::sync::Arc;
     use std::time::Duration;
@@ -1413,11 +1440,9 @@ mod tests {
 
     /// Generates `n` log messages wrapped in a `SetStoreInfo` at the start and `BlueprintActivationCommand` at the end,
     /// to exercise message ordering.
-    fn fake_log_stream_blueprint(n: usize) -> Vec<LogMsg> {
-        let store_id = StoreId::random(StoreKind::Blueprint, "test_app");
-
+    fn fake_log_stream_blueprint(store_id: &StoreId, n: usize) -> Vec<LogMsg> {
         let mut messages = Vec::new();
-        messages.push(set_store_info_msg(&store_id));
+        messages.push(set_store_info_msg(store_id));
         for _ in 0..n {
             messages.push(LogMsg::ArrowMsg(
                 store_id.clone(),
@@ -1441,7 +1466,7 @@ mod tests {
         }
         messages.push(LogMsg::BlueprintActivationCommand(
             re_log_types::BlueprintActivationCommand {
-                blueprint_id: store_id,
+                blueprint_id: store_id.clone(),
                 make_active: true,
                 make_default: true,
             },
@@ -1604,7 +1629,9 @@ mod tests {
     async fn pubsub_basic() {
         let (completion, addr) = setup().await;
         let mut client = make_client(addr).await; // We use the same client for both producing and consuming
-        let messages = fake_log_stream_blueprint(3);
+
+        let blueprint_id = StoreId::random(StoreKind::Blueprint, "test_app");
+        let messages = fake_log_stream_blueprint(&blueprint_id, 3);
 
         // start reading
         let mut log_stream = client.read_messages(ReadMessagesRequest {}).await.unwrap();
@@ -1619,8 +1646,8 @@ mod tests {
         // While `SetStoreInfo` is sent first in `fake_log_stream`,
         // we can observe that it's also received first,
         // even though it is actually stored out of order in `persistent_message_queue`.
-        assert!(matches!(messages[0], LogMsg::SetStoreInfo(..)));
-        assert!(matches!(actual[0], LogMsg::SetStoreInfo(..)));
+        assert_matches!(messages[0], LogMsg::SetStoreInfo(..));
+        assert_matches!(actual[0], LogMsg::SetStoreInfo(..));
 
         completion.finish();
     }
@@ -1629,7 +1656,8 @@ mod tests {
     async fn pubsub_history() {
         let (completion, addr) = setup().await;
         let mut client = make_client(addr).await; // We use the same client for both producing and consuming
-        let messages = fake_log_stream_blueprint(3);
+        let blueprint_id = StoreId::random(StoreKind::Blueprint, "test_app");
+        let messages = fake_log_stream_blueprint(&blueprint_id, 3);
 
         // don't read anything yet - these messages should be sent to us as part of history when we call `read_messages` later
 
@@ -1649,7 +1677,8 @@ mod tests {
         let (completion, addr) = setup().await;
         let mut producer = make_client(addr).await; // We use separate clients for producing and consuming
         let mut consumers = vec![make_client(addr).await, make_client(addr).await];
-        let messages = fake_log_stream_blueprint(3);
+        let blueprint_id = StoreId::random(StoreKind::Blueprint, "test_app");
+        let messages = fake_log_stream_blueprint(&blueprint_id, 3);
 
         // Initialize multiple read streams:
         let mut log_streams = vec![];
@@ -1678,7 +1707,8 @@ mod tests {
         let (completion, addr) = setup().await;
         let mut producers = vec![make_client(addr).await, make_client(addr).await];
         let mut consumers = vec![make_client(addr).await, make_client(addr).await];
-        let messages = fake_log_stream_blueprint(3);
+        let blueprint_id = StoreId::random(StoreKind::Blueprint, "test_app");
+        let messages = fake_log_stream_blueprint(&blueprint_id, 3);
 
         // Initialize multiple read streams:
         let mut log_streams = vec![];
@@ -1751,7 +1781,8 @@ mod tests {
         // Use an absurdly low memory limit to force all messages to be dropped immediately from history
         let (completion, addr) = setup_with_memory_limit(MemoryLimit::from_bytes(1)).await;
         let mut client = make_client(addr).await;
-        let messages = fake_log_stream_blueprint(3);
+        let blueprint_id = StoreId::random(StoreKind::Blueprint, "test_app");
+        let messages = fake_log_stream_blueprint(&blueprint_id, 3);
 
         // Write some messages
         write_messages(&mut client, messages.clone()).await;
@@ -1793,7 +1824,8 @@ mod tests {
             let (completion, addr) =
                 setup_with_memory_limit(MemoryLimit::from_bytes(memory_limit)).await;
             let mut client = make_client(addr).await; // We use the same client for both producing and consuming
-            let messages = fake_log_stream_blueprint(3);
+            let blueprint_id = StoreId::random(StoreKind::Blueprint, "test_app");
+            let messages = fake_log_stream_blueprint(&blueprint_id, 3);
 
             // Start reading
             let mut log_stream = client.read_messages(ReadMessagesRequest {}).await.unwrap();
@@ -1848,13 +1880,17 @@ mod tests {
         .await;
         let mut client = make_client(addr).await;
 
-        let store_id = StoreId::random(StoreKind::Recording, "test_app");
+        let application_id = "test_app";
+        let store_id = StoreId::random(StoreKind::Recording, application_id);
+        let blueprint_id = StoreId::random(StoreKind::Blueprint, application_id);
 
+        let blueprints = fake_log_stream_blueprint(&blueprint_id, 3);
         let set_store_info = vec![set_store_info_msg(&store_id)];
         let first_statics = generate_log_messages(&store_id, 3, Temporalness::Static);
         let temporals = generate_log_messages(&store_id, 3, Temporalness::Temporal);
         let second_statics = generate_log_messages(&store_id, 3, Temporalness::Static);
 
+        write_messages(&mut client, blueprints.clone()).await;
         write_messages(&mut client, set_store_info.clone()).await;
         write_messages(&mut client, first_statics.clone()).await;
         write_messages(&mut client, temporals.clone()).await;
@@ -1862,6 +1898,9 @@ mod tests {
 
         // All static data should always come before temporal data:
         let expected = itertools::chain!(
+            // `BlueprintActivationCommand` has to follow the blueprint data,
+            // so it's crucial that these are not reversed, in contrast to the others:
+            blueprints.into_iter(),
             set_store_info.into_iter().rev(),
             second_statics.into_iter().rev(),
             first_statics.into_iter().rev(),
@@ -1873,6 +1912,95 @@ mod tests {
         let actual = read_log_stream(&mut log_stream, expected.len()).await;
 
         assert_eq!(actual, expected);
+
+        completion.finish();
+    }
+
+    #[tokio::test]
+    async fn write_messages_half_close_returns_ok() {
+        let (completion, addr) = setup().await;
+        let mut client = make_client(addr).await;
+
+        let blueprint_id = StoreId::random(StoreKind::Blueprint, "test_app");
+        let messages = fake_log_stream_blueprint(&blueprint_id, 1);
+
+        let requests = messages
+            .into_iter()
+            .map(|msg| WriteMessagesRequest {
+                log_msg: Some(msg.to_transport(Compression::Off).unwrap().into()),
+            })
+            .collect_vec();
+
+        // The client half-closing the stream after sending is the normal end of a write:
+        let response = client.write_messages(tokio_stream::iter(requests)).await;
+        assert!(response.is_ok());
+
+        completion.finish();
+    }
+
+    #[tokio::test]
+    async fn write_table_missing_fields_are_invalid_argument() {
+        let (completion, addr) = setup().await;
+        let mut client = make_client(addr).await;
+
+        let status = client
+            .write_table(WriteTableRequest {
+                id: None,
+                data: None,
+            })
+            .await
+            .unwrap_err();
+        assert_eq!(status.code(), tonic::Code::InvalidArgument);
+        assert!(status.message().contains("`id`"));
+
+        let status = client
+            .write_table(WriteTableRequest {
+                id: Some(TableIdProto {
+                    id: "some_table".to_owned(),
+                }),
+                data: None,
+            })
+            .await
+            .unwrap_err();
+        assert_eq!(status.code(), tonic::Code::InvalidArgument);
+        assert!(status.message().contains("`data`"));
+
+        completion.finish();
+    }
+
+    #[tokio::test]
+    async fn write_messages_rejects_log_msg_with_unset_oneof() {
+        let (completion, addr) = setup().await;
+        let mut client = make_client(addr).await;
+
+        let blueprint_id = StoreId::random(StoreKind::Blueprint, "test_app");
+        let messages = fake_log_stream_blueprint(&blueprint_id, 1);
+
+        // Start reading before writing, so the malformed message would reach us if it were broadcast:
+        let mut log_stream = client.read_messages(ReadMessagesRequest {}).await.unwrap();
+
+        let valid = messages
+            .clone()
+            .into_iter()
+            .map(|msg| WriteMessagesRequest {
+                log_msg: Some(msg.to_transport(Compression::Off).unwrap().into()),
+            });
+        let malformed = WriteMessagesRequest {
+            log_msg: Some(LogMsgProto { msg: None }),
+        };
+        let requests = chain!(valid, [malformed]).collect_vec();
+
+        // A `log_msg` with an unset `msg` oneof is rejected at ingress:
+        let status = client
+            .write_messages(tokio_stream::iter(requests))
+            .await
+            .unwrap_err();
+        assert_eq!(status.code(), tonic::Code::InvalidArgument);
+        assert!(status.message().contains("`msg`"));
+
+        // The valid messages preceding it should still be broadcast:
+        let actual = read_log_stream(&mut log_stream, messages.len()).await;
+        assert_eq!(messages, actual);
 
         completion.finish();
     }

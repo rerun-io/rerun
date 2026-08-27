@@ -1,11 +1,11 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include <rerun/datatypes/quaternion.hpp>
-#include <rerun/datatypes/vec2d.hpp>
-#include <rerun/datatypes/vec3d.hpp>
-#include <rerun/datatypes/vec4d.hpp>
+#include <rerun/encodings/quaternion.hpp>
+#include <rerun/encodings/vec2d.hpp>
+#include <rerun/encodings/vec3d.hpp>
+#include <rerun/encodings/vec4d.hpp>
 
-using namespace rerun::datatypes;
+using namespace rerun::encodings;
 
 #define TEST_TAG "[vec_and_quaternion]"
 

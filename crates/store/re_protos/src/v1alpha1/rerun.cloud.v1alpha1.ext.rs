@@ -180,7 +180,10 @@ impl TryFrom<crate::cloud::v1alpha1::UnregisterFromDatasetRequest>
                 .into_iter()
                 .map(TryInto::try_into)
                 .try_collect()?,
-            layers_to_drop: layers_to_drop.into_iter().map(LayerName::from).collect(),
+            layers_to_drop: layers_to_drop
+                .into_iter()
+                .map(LayerName::try_new)
+                .try_collect()?,
             force,
         })
     }
@@ -473,7 +476,7 @@ impl ScanSegmentTableRequest {
     pub fn all() -> Self {
         Self {
             columns: Vec::new(),
-            sql_filter: String::new(),
+            segment_id_filter: None,
         }
     }
 
@@ -481,7 +484,7 @@ impl ScanSegmentTableRequest {
     pub fn with_columns(columns: impl IntoIterator<Item = impl Into<String>>) -> Self {
         Self {
             columns: columns.into_iter().map(Into::into).collect(),
-            sql_filter: String::new(),
+            segment_id_filter: None,
         }
     }
 }
@@ -491,7 +494,7 @@ impl ScanDatasetManifestRequest {
     pub fn all() -> Self {
         Self {
             columns: Vec::new(),
-            sql_filter: String::new(),
+            segment_id_filter: None,
         }
     }
 
@@ -499,7 +502,7 @@ impl ScanDatasetManifestRequest {
     pub fn with_columns(columns: impl IntoIterator<Item = impl Into<String>>) -> Self {
         Self {
             columns: columns.into_iter().map(Into::into).collect(),
-            sql_filter: String::new(),
+            segment_id_filter: None,
         }
     }
 }
@@ -534,6 +537,7 @@ pub struct DoMaintenanceRequest {
     pub retrain_indexes: bool,
     pub compact_fragments: bool,
     pub cleanup_before: Option<jiff::Timestamp>,
+    pub gc_object_store: bool,
     pub unsafe_allow_recent_cleanup: bool,
 }
 
@@ -551,6 +555,7 @@ impl TryFrom<crate::cloud::v1alpha1::DoMaintenanceRequest> for DoMaintenanceRequ
             retrain_indexes: value.retrain_indexes,
             compact_fragments: value.compact_fragments,
             cleanup_before,
+            gc_object_store: value.gc_object_store,
             unsafe_allow_recent_cleanup: value.unsafe_allow_recent_cleanup,
         })
     }
@@ -566,6 +571,7 @@ impl From<DoMaintenanceRequest> for crate::cloud::v1alpha1::DoMaintenanceRequest
                 seconds: ts.as_second(),
                 nanos: ts.subsec_nanosecond(),
             }),
+            gc_object_store: value.gc_object_store,
             unsafe_allow_recent_cleanup: value.unsafe_allow_recent_cleanup,
         }
     }
@@ -1262,20 +1268,15 @@ pub struct UpdateDatasetEntryRequest {
     pub dataset_details: DatasetDetails,
 }
 
-impl TryFrom<crate::cloud::v1alpha1::UpdateDatasetEntryRequest> for UpdateDatasetEntryRequest {
-    type Error = TypeConversionError;
-
-    fn try_from(
+impl UpdateDatasetEntryRequest {
+    /// Builds this from the wire request plus an entry id already resolved from the
+    /// `x-rerun-entry-id` header or the deprecated body field.
+    pub fn from_resolved(
+        id: EntryId,
         value: crate::cloud::v1alpha1::UpdateDatasetEntryRequest,
-    ) -> Result<Self, Self::Error> {
+    ) -> Result<Self, TypeConversionError> {
         Ok(Self {
-            id: value
-                .id
-                .ok_or(missing_field!(
-                    crate::cloud::v1alpha1::UpdateDatasetEntryRequest,
-                    "id"
-                ))?
-                .try_into()?,
+            id,
             dataset_details: value
                 .dataset_details
                 .ok_or(missing_field!(
@@ -1382,18 +1383,15 @@ pub struct UpdateEntryRequest {
     pub entry_details_update: EntryDetailsUpdate,
 }
 
-impl TryFrom<crate::cloud::v1alpha1::UpdateEntryRequest> for UpdateEntryRequest {
-    type Error = TypeConversionError;
-
-    fn try_from(value: crate::cloud::v1alpha1::UpdateEntryRequest) -> Result<Self, Self::Error> {
+impl UpdateEntryRequest {
+    /// Builds this from the wire request plus an entry id already resolved from the
+    /// `x-rerun-entry-id` header or the deprecated body field.
+    pub fn from_resolved(
+        id: re_log_types::EntryId,
+        value: crate::cloud::v1alpha1::UpdateEntryRequest,
+    ) -> Result<Self, TypeConversionError> {
         Ok(Self {
-            id: value
-                .id
-                .ok_or(missing_field!(
-                    crate::cloud::v1alpha1::UpdateEntryRequest,
-                    "id"
-                ))?
-                .try_into()?,
+            id,
             entry_details_update: value
                 .entry_details_update
                 .ok_or(missing_field!(
@@ -1503,20 +1501,15 @@ pub struct UpdateTableEntryRequest {
     pub table_details: TableDetails,
 }
 
-impl TryFrom<crate::cloud::v1alpha1::UpdateTableEntryRequest> for UpdateTableEntryRequest {
-    type Error = TypeConversionError;
-
-    fn try_from(
+impl UpdateTableEntryRequest {
+    /// Builds this from the wire request plus an entry id already resolved from the
+    /// `x-rerun-entry-id` header or the deprecated body field.
+    pub fn from_resolved(
+        id: EntryId,
         value: crate::cloud::v1alpha1::UpdateTableEntryRequest,
-    ) -> Result<Self, Self::Error> {
+    ) -> Result<Self, TypeConversionError> {
         Ok(Self {
-            id: value
-                .id
-                .ok_or(missing_field!(
-                    crate::cloud::v1alpha1::UpdateTableEntryRequest,
-                    "id"
-                ))?
-                .try_into()?,
+            id,
             table_details: value
                 .table_details
                 .ok_or(missing_field!(
@@ -2281,25 +2274,25 @@ impl DataSource {
     }
 
     pub fn new_rrd_layer(
-        layer: impl AsRef<str>,
+        layer: impl Into<LayerName>,
         storage_url: impl AsRef<str>,
     ) -> Result<Self, url::ParseError> {
         Ok(Self {
             storage_url: storage_url.as_ref().parse()?,
             is_prefix: false,
-            layer: LayerName::new(layer.as_ref()),
+            layer: layer.into(),
             kind: DataSourceKind::Rrd,
         })
     }
 
     pub fn new_rrd_layer_prefix(
-        layer: impl AsRef<str>,
+        layer: impl Into<LayerName>,
         storage_url: impl AsRef<str>,
     ) -> Result<Self, url::ParseError> {
         Ok(Self {
             storage_url: storage_url.as_ref().parse()?,
             is_prefix: true,
-            layer: LayerName::new(layer.as_ref()),
+            layer: layer.into(),
             kind: DataSourceKind::Rrd,
         })
     }
@@ -2343,9 +2336,12 @@ impl TryFrom<crate::cloud::v1alpha1::DataSource> for DataSource {
             .ok_or_else(|| missing_field!(crate::cloud::v1alpha1::DataSource, "storage_url"))?
             .parse()?;
 
+        // An empty layer name is treated as absent, for backwards compatibility.
         let layer = data_source
             .layer
-            .map(LayerName::from)
+            .filter(|layer| !layer.is_empty())
+            .map(LayerName::try_new)
+            .transpose()?
             .unwrap_or_else(LayerName::base);
 
         let kind = DataSourceKind::try_from(data_source.typ)?;
@@ -2359,6 +2355,26 @@ impl TryFrom<crate::cloud::v1alpha1::DataSource> for DataSource {
             kind,
         })
     }
+}
+
+#[test]
+fn datasource_layer_from_proto() {
+    let proto = |layer: Option<&str>| crate::cloud::v1alpha1::DataSource {
+        storage_url: Some("s3://bucket/file.rrd".to_owned()),
+        prefix: false,
+        layer: layer.map(ToOwned::to_owned),
+        typ: crate::cloud::v1alpha1::DataSourceKind::Rrd as i32,
+    };
+
+    let data_source = DataSource::try_from(proto(None)).unwrap();
+    assert_eq!(data_source.layer, LayerName::base());
+
+    // An empty layer name is treated as absent, for backwards compatibility.
+    let data_source = DataSource::try_from(proto(Some(""))).unwrap();
+    assert_eq!(data_source.layer, LayerName::base());
+
+    let data_source = DataSource::try_from(proto(Some("my_layer"))).unwrap();
+    assert_eq!(data_source.layer, "my_layer");
 }
 
 // --- Tasks ---

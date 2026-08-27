@@ -5,8 +5,8 @@ title: "MarkerSize"
 
 Radius of a marker of a point in e.g. a 2D plot, measured in UI points.
 
-## Rerun datatype
-[`Float32`](../datatypes/float32.md)
+## Rerun encoding
+[`Float32`](../encodings/float32.md)
 
 
 ## Arrow datatype

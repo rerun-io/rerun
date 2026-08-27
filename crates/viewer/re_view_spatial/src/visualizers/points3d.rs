@@ -7,8 +7,7 @@ use re_byte_size::SizeBytes as _;
 use re_entity_db::EntityDb;
 use re_log_types::hash::Hash64;
 use re_renderer::{
-    LineDrawableBuilder, PickingLayerInstanceId, PointCloudBuilder, PositionRadius,
-    renderer::PointCloudSortOrderCache,
+    LineDrawableBuilder, PickingLayerInstanceId, PointCloudBuilder, PositionRadius, SortOrderCache,
 };
 use re_sdk_types::Archetype as _;
 use re_sdk_types::ArrowString;
@@ -64,7 +63,7 @@ struct Points3DCpu {
     position_radii: Vec<PositionRadius>,
 
     #[size_bytes(ignore)] // Lives entirely on the stack.
-    point_cloud_bounds: re_renderer::util::PointCloudBounds,
+    robust_bounds: re_renderer::RobustBounds,
 
     picking_ids: Vec<PickingLayerInstanceId>,
     annotation_infos: ResolvedAnnotationInfos,
@@ -77,7 +76,7 @@ struct Points3DCpu {
     /// Scratch buffers holding the back-to-front point ordering across frames.
     ///
     /// Each instance transform has its own cache, which tracks ordering per rendered view.
-    sort_order_caches: Mutex<Vec<PointCloudSortOrderCache>>,
+    sort_order_caches: Mutex<Vec<SortOrderCache>>,
 }
 
 impl Points3DCpu {
@@ -108,9 +107,9 @@ impl Points3DCpu {
 
         let positions: &[glam::Vec3] = bytemuck::cast_slice(data.positions);
 
-        let point_cloud_bounds = {
+        let robust_bounds = {
             re_tracing::profile_scope_if!(100_000 < num_instances, "bounding_box");
-            re_renderer::util::point_cloud_bounds(positions)
+            re_renderer::RobustBounds::from_points(positions)
         };
 
         let radii = process_radius_slice(
@@ -134,7 +133,7 @@ impl Points3DCpu {
 
         Self {
             position_radii,
-            point_cloud_bounds,
+            robust_bounds,
             picking_ids,
             annotation_infos,
             keypoints,
@@ -144,9 +143,9 @@ impl Points3DCpu {
         }
     }
 
-    fn sort_order_cache(&self, transform_index: usize) -> PointCloudSortOrderCache {
+    fn sort_order_cache(&self, transform_index: usize) -> SortOrderCache {
         let mut caches = self.sort_order_caches.lock();
-        caches.resize_with(transform_index + 1, PointCloudSortOrderCache::default);
+        caches.resize_with(transform_index + 1, SortOrderCache::default);
         caches[transform_index].clone()
     }
 }
@@ -313,7 +312,7 @@ impl Points3DVisualizer {
                     .enable_shading(matches!(point_shading, PointShading::Gradient))
                     .enable_alpha_blending(alpha_blend)
                     .world_from_obj(world_from_obj)
-                    .object_space_bounding_box(cpu.point_cloud_bounds.bbox)
+                    .object_space_bounding_box(cpu.robust_bounds.exact)
                     .outline_mask_ids(ent_context.highlight.overall)
                     .picking_object_id(re_renderer::PickingLayerObjectId(entity_path.hash64()));
 
@@ -326,6 +325,8 @@ impl Points3DVisualizer {
 
                 // Determine if there's any sub-ranges that need extra highlighting.
                 {
+                    #[expect(clippy::iter_over_hash_type)]
+                    // Non-overlapping per-instance mask ranges.
                     for (highlighted_key, instance_mask_ids) in &ent_context.highlight.instances {
                         let highlighted_point_index = (highlighted_key.get()
                             < num_instances as u64)
@@ -333,18 +334,19 @@ impl Points3DVisualizer {
                         if let Some(highlighted_point_index) = highlighted_point_index {
                             point_range_builder = point_range_builder
                                 .push_additional_outline_mask_ids_for_range(
-                                    highlighted_point_index as u32
-                                        ..highlighted_point_index as u32 + 1,
+                                    re_span::Span::from_start_len(
+                                        highlighted_point_index as u32,
+                                        1,
+                                    ),
                                     *instance_mask_ids,
                                 );
                         }
                     }
                 }
 
-                view_data.add_bounding_box_and_region_of_interest(
+                view_data.add_bounds(
                     entity_path.hash(),
-                    cpu.point_cloud_bounds.bbox,
-                    cpu.point_cloud_bounds.region_of_interest,
+                    cpu.robust_bounds,
                     world_from_obj,
                     SpaceKind::ThreeD,
                 );
@@ -362,7 +364,7 @@ impl Points3DVisualizer {
                         entity_path,
                         visualizer_instruction: ent_context.visualizer_instruction,
                         num_instances,
-                        overall_position: cpu.point_cloud_bounds.bbox.center(),
+                        overall_position: cpu.robust_bounds.exact.center(),
                         instance_positions: cpu.position_radii.iter().map(|pr| pr.pos),
                         labels: &data.labels,
                         colors: &cpu.colors,

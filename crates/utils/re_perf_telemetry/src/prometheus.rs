@@ -223,7 +223,7 @@ fn register_gauge_f64(
         // Convert f64 to i64 with microsecond precision
         gauge_family
             .get_or_create(&labels)
-            .set((point.value() * 1000000.0) as i64);
+            .set((point.value() * 1e6) as i64);
     }
 
     let mut container = metrics.lock();
@@ -398,7 +398,7 @@ fn register_gauge_from_sum_f64(
         // Convert f64 to i64 with microsecond precision
         gauge_family
             .get_or_create(&labels)
-            .set((point.value() * 1000000.0) as i64);
+            .set((point.value() * 1e6) as i64);
     }
 
     let mut container = metrics.lock();

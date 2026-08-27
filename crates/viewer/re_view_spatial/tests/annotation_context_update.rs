@@ -7,7 +7,7 @@ use re_sdk_types::components::Position3D;
 use re_test_context::TestContext;
 use re_test_context::external::egui_kittest::SnapshotResults;
 use re_test_viewport::TestContextExt as _;
-use re_viewer_context::{BlueprintContext as _, TimeControlCommand, ViewClass as _, ViewId};
+use re_viewer_context::{ViewClass as _, ViewId};
 use re_viewport_blueprint::{ViewBlueprint, ViewProperty};
 
 /// Log a point cloud with `class_ids`, and an annotation context that changes color between two frames.
@@ -49,12 +49,12 @@ pub fn test_annotation_context_update_on_points3d() {
                 (
                     0,
                     "red",
-                    re_sdk_types::datatypes::Rgba32::from_rgb(255, 0, 0),
+                    re_sdk_types::encodings::Rgba32::from_rgb(255, 0, 0),
                 ),
                 (
                     1,
                     "green",
-                    re_sdk_types::datatypes::Rgba32::from_rgb(0, 255, 0),
+                    re_sdk_types::encodings::Rgba32::from_rgb(0, 255, 0),
                 ),
             ]),
         )
@@ -68,12 +68,12 @@ pub fn test_annotation_context_update_on_points3d() {
                 (
                     0,
                     "blue",
-                    re_sdk_types::datatypes::Rgba32::from_rgb(0, 0, 255),
+                    re_sdk_types::encodings::Rgba32::from_rgb(0, 0, 255),
                 ),
                 (
                     1,
                     "yellow",
-                    re_sdk_types::datatypes::Rgba32::from_rgb(255, 255, 0),
+                    re_sdk_types::encodings::Rgba32::from_rgb(255, 255, 0),
                 ),
             ]),
         )
@@ -93,11 +93,7 @@ fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
         blueprint.add_views(std::iter::once(view_blueprint), None, None);
 
         // Set eye position so both points are clearly visible.
-        let property = ViewProperty::from_archetype::<EyeControls3D>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query(),
-            view_id,
-        );
+        let property = ViewProperty::from_archetype_for_view::<EyeControls3D>(ctx, view_id);
         property.save_blueprint_component(
             ctx,
             &EyeControls3D::descriptor_position(),
@@ -124,18 +120,12 @@ fn run_view_ui_and_save_snapshot(test_context: &TestContext, view_id: ViewId, na
         });
 
     // Frame 1: should show red + green points.
-    test_context.send_time_commands(
-        test_context.active_store_id(),
-        [TimeControlCommand::SetTime(1_i64.into())],
-    );
+    test_context.set_time(1);
     harness.run();
     snapshot_results.add(harness.try_snapshot(format!("{name}_frame1")));
 
     // Frame 2: should show blue + yellow points (not red + green).
-    test_context.send_time_commands(
-        test_context.active_store_id(),
-        [TimeControlCommand::SetTime(2_i64.into())],
-    );
+    test_context.set_time(2);
     harness.run();
     snapshot_results.add(harness.try_snapshot(format!("{name}_frame2")));
 }

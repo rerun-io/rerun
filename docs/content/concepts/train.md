@@ -1,6 +1,7 @@
 ---
 title: Train
 order: 400
+description: Feed catalog recordings into training pipelines via export or PyTorch
 ---
 
 A Rerun [catalog](query-and-transform/catalog-object-model.md) can feed training pipelines two ways: export recordings to a standard format, or stream them directly into a PyTorch `DataLoader`.
@@ -29,15 +30,16 @@ For timestamp timelines, `FixedRateSampling` defines the sampling grid and the s
 
 ### Decoders
 
-Each `Field` has a `ColumnDecoder` ([`_decoders.py`](https://github.com/rerun-io/rerun/blob/main/rerun_py/rerun_sdk/rerun/experimental/dataloader/_decoders.py)) that converts a raw Arrow column to a `torch.Tensor`:
+Each `Field` has a [`ColumnDecoder`](https://ref.rerun.io/docs/python/stable/experimental_dataloader/#rerun.experimental.dataloader.ColumnDecoder) that converts a raw Arrow column to a training value:
 
 - [`NumericDecoder`](https://ref.rerun.io/docs/python/stable/experimental_dataloader/#rerun.experimental.dataloader.NumericDecoder) — scalars and numeric lists
 - [`ImageDecoder`](https://ref.rerun.io/docs/python/stable/experimental_dataloader/#rerun.experimental.dataloader.ImageDecoder) — JPEG/PNG blobs
-- [`VideoFrameDecoder`](https://ref.rerun.io/docs/python/stable/experimental_dataloader/#rerun.experimental.dataloader.VideoFrameDecoder) — compressed video (`h264`/`h265`/`av1`)
+- [`VideoFrameDecoder`](https://ref.rerun.io/docs/python/stable/experimental_dataloader/#rerun.experimental.dataloader.VideoFrameDecoder) — compressed video (`h264`/`h265`/`av1`) as RGB tensors or compact YUV420 planes
 
 ### Windows
 
-`Field(window=(start, end))` returns a slice of values across an inclusive range relative to the current sample rather than a single value.
+`Field(window=(offset, …))` returns one value per explicit relative offset rather than a single value.
+Offsets must use the unit of the dataset's selected index timeline: integral index units for integer timelines, and seconds for timestamp or duration timelines.
 This is how action chunks and observation history are expressed.
 
 ### Dataset styles

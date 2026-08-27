@@ -1,5 +1,5 @@
 use super::VisualBounds2D;
-use crate::datatypes::Range2D;
+use crate::encodings::Range2D;
 
 impl From<VisualBounds2D> for emath::Rect {
     #[inline]

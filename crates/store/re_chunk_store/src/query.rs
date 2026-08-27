@@ -3,8 +3,8 @@ use std::sync::Arc;
 
 use itertools::{Either, Itertools as _};
 use nohash_hasher::IntSet;
+use re_int::SaturatingCast as _;
 use re_log::debug_assert;
-use saturating_cast::SaturatingCast as _;
 
 use re_chunk::{
     Chunk, ChunkId, ComponentIdentifier, LatestAtQuery, RangeQuery, TimeColumn, TimelineName,

@@ -42,6 +42,7 @@ pub fn concat_polymorphic_batches(batches: &[RecordBatch]) -> arrow::error::Resu
             }
 
             let md_merged = schema_builder.metadata_mut();
+            #[expect(clippy::iter_over_hash_type)] // Metadata order is irrelevant.
             for (k, v) in batch.schema_ref().metadata() {
                 if let Some(previous) = md_merged.insert(k.clone(), v.clone())
                     && previous != *v
@@ -268,9 +269,8 @@ impl RecordBatchExt for RecordBatch {
                     return Err(arrow::error::ArrowError::InvalidArgumentError(format!(
                         "projected column '{col_name}' was requested twice"
                     )));
-                } else {
-                    seen_columns.insert(col_name);
                 }
+                seen_columns.insert(col_name);
 
                 columns
                     .get(col_index)
@@ -317,6 +317,7 @@ impl RecordBatchExt for RecordBatch {
 #[cfg(test)]
 mod tests {
     #![expect(clippy::disallowed_methods)]
+    use std::assert_matches;
 
     use std::collections::HashMap;
     use std::sync::Arc;
@@ -569,7 +570,7 @@ mod tests {
         };
 
         let err = concat_polymorphic_batches(&[batch1.clone(), batch2.clone()]).unwrap_err();
-        assert!(matches!(err, ArrowError::SchemaError(_)));
+        assert_matches!(err, ArrowError::SchemaError(_));
 
         batch2
             .schema_metadata_mut()

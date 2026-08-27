@@ -340,7 +340,8 @@ impl MergedRanges {
             return;
         }
 
-        self.components_of_interest = components_of_interest.clone();
+        self.components_of_interest
+            .clone_from(components_of_interest);
 
         for range in &mut self.ranges {
             range.unloaded_count = None;

@@ -9,8 +9,8 @@ if TYPE_CHECKING:
     import numpy as np
     import numpy.typing as npt
 
-    from .. import components, datatypes
-    from ..datatypes import Float32Like
+    from .. import components, encodings
+    from ..encodings import Float32Like
 
     ImageLike = (
         npt.NDArray[np.float16]
@@ -34,8 +34,8 @@ class EncodedImageExt:
         self: Any,
         *,
         path: str | pathlib.Path | None = None,
-        contents: bytes | IO[bytes] | datatypes.BlobLike | None = None,
-        media_type: datatypes.Utf8Like | None = None,
+        contents: bytes | IO[bytes] | encodings.BlobLike | None = None,
+        media_type: encodings.Utf8Like | None = None,
         opacity: Float32Like | None = None,
         draw_order: Float32Like | None = None,
         magnification_filter: components.MagnificationFilterLike | None = None,

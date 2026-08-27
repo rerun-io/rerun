@@ -5,8 +5,8 @@ title: "Range1D"
 
 A 1D range, specifying a lower and upper bound.
 
-## Rerun datatype
-[`Range1D`](../datatypes/range1d.md)
+## Rerun encoding
+[`Range1D`](../encodings/range1d.md)
 
 
 ## Arrow datatype

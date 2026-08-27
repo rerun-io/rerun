@@ -2,12 +2,13 @@ use re_data_ui::item_ui;
 use re_renderer::external::wgpu;
 use re_renderer::renderer::ColormappedTexture;
 use re_renderer::resource_managers::GpuTexture2D;
-use re_sdk_types::datatypes::ColorModel;
+use re_sdk_types::encodings::ColorModel;
 use re_sdk_types::image::ImageKind;
 use re_sdk_types::tensor_data::TensorElement;
 use re_ui::UiExt as _;
-use re_view::AnnotationSceneContext;
-use re_viewer_context::{Annotations, ImageInfo, StoreViewContext, ViewQuery, gpu_bridge};
+use re_viewer_context::{
+    AnnotationMap, Annotations, ImageInfo, StoreViewContext, ViewQuery, gpu_bridge,
+};
 
 use crate::PickableRectSourceData;
 use crate::SpaceKind;
@@ -25,7 +26,7 @@ pub fn textured_rect_hover_ui(
     query: &ViewQuery<'_>,
     spatial_kind: SpaceKind,
     ui_pan_and_zoom_from_ui: egui::emath::RectTransform,
-    annotations: &AnnotationSceneContext,
+    annotations: &AnnotationMap,
     picked_pixel_info: PickedPixelInfo,
     hover_overlay_index: u32,
 ) {
@@ -72,7 +73,7 @@ pub fn textured_rect_hover_ui(
             None
         };
 
-        let annotations = annotations.0.find(&instance_path.entity_path);
+        let annotations = annotations.find(&instance_path.entity_path);
 
         show_zoomed_image_region(
             ctx.render_ctx(),

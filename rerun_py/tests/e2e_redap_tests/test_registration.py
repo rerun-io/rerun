@@ -170,7 +170,7 @@ def test_register_unregister_batch(
 └───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘\
 """)
 
-    ds.unregister(segments_to_drop=[recording_ids[0], recording_ids[2]], layers_to_drop=[])
+    ds.unregister(segments_to_drop=[recording_ids[0], recording_ids[2]], layers_to_drop=[]).wait()
 
     df = ds.segment_table()
     assert df.count() == 1
@@ -560,8 +560,8 @@ def test_registration_crossregion(catalog_client: CatalogClient) -> None:
     """Tests whether stacks can access S3 buckets cross region when config'd to do so."""
 
     # known dataset prefixes
-    usw2 = "s3://rerun-redap-datasets-pdx/test-resources/dataset/"
-    use1 = "s3://rerun-redap-datasets/test-resources/dataset/"
+    usw2 = "s3://rerun-datasets-curated-446437544659-us-west-2-an/test-resources/dataset/"
+    euw1 = "s3://rerun-datasets-curated-446437544659-eu-west-1-an/test-resources/dataset/"
 
     ds = catalog_client.create_dataset(
         name="test_registration_crossregion_usw2",
@@ -575,12 +575,12 @@ def test_registration_crossregion(catalog_client: CatalogClient) -> None:
         ds.delete()
 
     ds = catalog_client.create_dataset(
-        name="test_registration_crossregion_use1",
+        name="test_registration_crossregion_euw1",
     )
     try:
-        handle = ds.register_prefix(use1).wait()
+        handle = ds.register_prefix(euw1).wait()
         assert len(handle.segment_ids) == 20, (
-            f"Expected 20 segments to be registered from {use1} , got {len(handle.segment_ids)}"
+            f"Expected 20 segments to be registered from {euw1} , got {len(handle.segment_ids)}"
         )
     finally:
         ds.delete()
@@ -590,7 +590,7 @@ def test_registration_crossregion(catalog_client: CatalogClient) -> None:
 def test_registration_footerless(catalog_client: CatalogClient) -> None:
     """Tests whether registration of footerless datasets fails as expected on Rerun Hub."""
 
-    dataset_url = "s3://rerun-redap-datasets-pdx/test-resources/dataset-footerless/"
+    dataset_url = "s3://rerun-datasets-curated-446437544659-us-west-2-an/test-resources/dataset-footerless/"
     expected_msg = "try running `rerun rrd migrate`"
 
     ds = catalog_client.create_dataset(

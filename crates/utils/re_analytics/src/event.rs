@@ -121,6 +121,7 @@ impl Properties for Identify {
         event.insert_opt("rust_version", rust_version);
         event.insert_opt("llvm_version", llvm_version);
         event.insert_opt("python_version", python_version);
+        #[expect(clippy::iter_over_hash_type)] // Insertion order is irrelevant.
         for (name, value) in opt_in_metadata {
             event.insert(name, value);
         }
@@ -482,6 +483,9 @@ pub struct LoadDataSource {
     /// Only applicable for file-based sources.
     pub file_source: Option<&'static str>,
 
+    /// The kind of catalog that handled the load, if any.
+    pub catalog_kind: Option<&'static str>,
+
     /// Whether the data source stream was started successfully.
     pub started_successfully: bool,
 }
@@ -496,12 +500,14 @@ impl Properties for LoadDataSource {
             source_type,
             file_extension,
             file_source,
+            catalog_kind,
             started_successfully,
         } = self;
 
         event.insert("source_type", source_type);
         event.insert_opt("file_extension", file_extension);
         event.insert_opt("file_source", file_source.map(|s| s.to_owned()));
+        event.insert_opt("catalog_kind", catalog_kind.map(|s| s.to_owned()));
         event.insert("started_successfully", started_successfully);
     }
 }

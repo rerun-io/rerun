@@ -15,9 +15,10 @@ mod tests {
         let mcap_data = std::fs::read(path).unwrap();
         let (tx, rx) = crossbeam::channel::bounded(1024);
         let settings = ImporterSettings::recommended("test");
+        let mcap_file = re_mcap::McapFile::new(mcap_data, false);
         McapImporter::default()
             .with_raw_fallback(false)
-            .load_and_send(&mcap_data, &settings, &tx)
+            .load_and_send(&mcap_file, &settings, &tx)
             .unwrap();
         drop(tx);
 

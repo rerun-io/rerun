@@ -7,18 +7,19 @@ use std::str::FromStr as _;
 
 use ahash::HashMap;
 use arrow::array::RecordBatch;
+use futures::StreamExt as _;
 use itertools::Itertools as _;
+use re_async::AsyncRuntimeHandle;
 use re_log::ResultExt as _;
 use re_log_channel::{LogSender, RecordingOpenBehavior};
 use re_log_types::{TableId, TableMsg, TimelineName};
 use re_memory::AccountingAllocator;
 use re_sdk_types::blueprint::components::PlayState;
-use re_viewer_context::{
-    AsyncRuntimeHandle, SystemCommand, SystemCommandSender as _, TimeControlCommand, open_url,
-};
+use re_viewer_context::{SystemCommand, SystemCommandSender as _, TimeControlCommand, open_url};
 use serde::Deserialize;
 use wasm_bindgen::prelude::*;
 
+use crate::saving::RrdSnapshot;
 use crate::web_history::install_popstate_listener;
 use crate::web_tools::{Callback, JsResultExt as _, StringOrStringArray};
 
@@ -55,8 +56,12 @@ impl WebHandle {
 
         let app_options: Option<AppOptions> = serde_wasm_bindgen::from_value(app_options)?;
 
-        let connection_registry =
-            re_redap_client::ConnectionRegistry::new_with_stored_credentials();
+        // Don't use persistent credentials when running tests
+        let connection_registry = if integration_test() {
+            re_redap_client::ConnectionRegistry::new_without_stored_credentials()
+        } else {
+            re_redap_client::ConnectionRegistry::new_with_stored_credentials()
+        };
 
         Ok(Self {
             runner: eframe::WebRunner::new(),
@@ -102,21 +107,6 @@ impl WebHandle {
             ..Default::default()
         };
 
-        // The Wasm catalog is rebuilt empty on every page load while OPFS persists, so any upload
-        // from a prior session is unreachable — the dataset → path mapping lived only in the
-        // in-memory catalog. Clear the uploads directory before the app (and thus the catalog)
-        // exists, so OPFS does not grow without bound.
-        //
-        // TODO(grtlr): Instead of clearing, prepopulate the catalog with the previously uploaded
-        // recordings already sitting in OPFS `/uploads` — reconstruct the datasets via the
-        // `re_server` constructors (`RerunCloudHandlerBuilder` + `create_dataset_entry` /
-        // `register_with_dataset`, as exercised in `re_server/tests/opfs.rs`) so reloads no longer
-        // discard uploaded data.
-        #[cfg(feature = "internal_catalog")]
-        if let Err(err) = re_server::opfs::remove_dir_all("/uploads").await {
-            re_log::warn!("Failed to clear OPFS uploads directory: {err}");
-        }
-
         let connection_registry = self.connection_registry.clone();
         self.runner
             .start(
@@ -136,6 +126,29 @@ impl WebHandle {
         re_log::debug!("Web app started.");
 
         Ok(())
+    }
+
+    /// Handle an encoded `egui_inspection` request.
+    #[wasm_bindgen]
+    pub async fn inspect(&self, request_bytes: &[u8]) -> Result<Vec<u8>, JsValue> {
+        let egui_ctx = {
+            let Some(app) = self.runner.app_mut::<crate::App>() else {
+                return Err(JsValue::from_str("Viewer is not running"));
+            };
+            app.egui_ctx.clone()
+        };
+
+        let (reply_tx, mut reply_rx) =
+            futures::channel::mpsc::unbounded::<Result<Vec<u8>, re_log_channel::InspectError>>();
+        crate::app::serve_inspect_request(&egui_ctx, request_bytes, reply_tx);
+
+        reply_rx
+            .next()
+            .await
+            .ok_or_else(|| JsValue::from_str("Inspection request produced no reply"))?
+            .map_err(|err| {
+                JsValue::from_str(&format!("Failed to encode inspection response: {err}"))
+            })
     }
 
     #[wasm_bindgen]
@@ -188,6 +201,51 @@ impl WebHandle {
     #[wasm_bindgen]
     pub fn destroy(&self) {
         self.runner.destroy();
+    }
+
+    /// Encode the active recording as RRD data.
+    #[wasm_bindgen]
+    pub fn save_recording(&self) -> Result<Vec<u8>, JsValue> {
+        let app = self
+            .runner
+            .app_mut::<crate::App>()
+            .ok_or_else(|| JsValue::from_str("Viewer is not running"))?;
+        let recording_id = app
+            .active_recording_id()
+            .cloned()
+            .ok_or_else(|| JsValue::from_str("No active recording to save"))?;
+        let recording = app
+            .store_hub
+            .as_ref()
+            .and_then(|store_hub| store_hub.entity_db(&recording_id))
+            .ok_or_else(|| JsValue::from_str("Active recording is unavailable"))?;
+
+        RrdSnapshot::recording(recording, None)
+            .encode()
+            .map_err(|err| JsValue::from_str(&format!("Failed to save recording: {err}")))
+    }
+
+    /// Encode the active blueprint as RRD data.
+    #[wasm_bindgen]
+    pub fn save_blueprint(&self) -> Result<Vec<u8>, JsValue> {
+        let app = self
+            .runner
+            .app_mut::<crate::App>()
+            .ok_or_else(|| JsValue::from_str("Viewer is not running"))?;
+        let recording_id = app
+            .active_recording_id()
+            .cloned()
+            .ok_or_else(|| JsValue::from_str("No active recording for blueprint"))?;
+        let blueprint = app
+            .store_hub
+            .as_ref()
+            .and_then(|store_hub| store_hub.active_blueprint_for_app(recording_id.application_id()))
+            .ok_or_else(|| JsValue::from_str("No active blueprint to save"))?;
+        let undo_state = app.state.blueprint_undo_state.get(blueprint.store_id());
+
+        RrdSnapshot::blueprint(blueprint, undo_state)
+            .and_then(RrdSnapshot::encode)
+            .map_err(|err| JsValue::from_str(&format!("Failed to save blueprint: {err}")))
     }
 
     #[wasm_bindgen]
@@ -731,8 +789,15 @@ fn create_app(
 ) -> Result<crate::App, re_renderer::RenderContextError> {
     let build_info = re_build_info::build_info!();
 
-    let app_env = crate::AppEnvironment::Web {
-        url: cc.integration_info.web_info.location.url.clone(),
+    // Don't persist storage when running tests.
+    let integration_test = integration_test();
+
+    let app_env = if integration_test {
+        crate::AppEnvironment::Test
+    } else {
+        crate::AppEnvironment::Web {
+            url: cc.integration_info.web_info.location.url.clone(),
+        }
     };
 
     let AppOptions {
@@ -763,7 +828,12 @@ fn create_app(
         }
     }
 
-    let enable_history = enable_history.unwrap_or(false);
+    // Show in-app back/forth buttons in integration tests so screenshots match native.
+    let enable_history = if integration_test {
+        false
+    } else {
+        enable_history.unwrap_or(false)
+    };
 
     let video_decoder_hw_acceleration = video_decoder.and_then(|s| match s.parse() {
         Err(()) => {
@@ -775,7 +845,8 @@ fn create_app(
 
     let startup_options = crate::StartupOptions {
         location: Some(cc.integration_info.web_info.location.clone()),
-        persist_state: true,
+        // Don't persist state in integration-test mode.
+        persist_state: !integration_test,
         is_in_notebook: notebook.unwrap_or(false),
         expect_data_soon: None,
         force_wgpu_backend: render_backend.clone(),
@@ -787,9 +858,7 @@ fn create_app(
                 let Some(event) = serde_json::to_string(&event).ok_or_log_error() else {
                     return;
                 };
-                on_event
-                    .call1(&JsValue::from_str(&event))
-                    .ok_or_log_js_error();
+                on_event.call1(&JsValue::from_str(&event)).ok_or_log_error();
             }) as crate::event::ViewerEventCallback
         }),
 
@@ -802,25 +871,6 @@ fn create_app(
     };
     crate::customize_eframe_and_setup_renderer(cc)?;
 
-    if let Some(theme) = theme {
-        match theme.to_ascii_lowercase().as_str() {
-            "dark" => cc
-                .egui_ctx
-                .options_mut(|o| o.theme_preference = egui::ThemePreference::Dark),
-            "light" => cc
-                .egui_ctx
-                .options_mut(|o| o.theme_preference = egui::ThemePreference::Light),
-            "system" => cc
-                .egui_ctx
-                .options_mut(|o| o.theme_preference = egui::ThemePreference::System),
-            _ => {
-                re_log::warn!(
-                    "Ignoring unknown `theme` value {theme:?}; expected `dark`, `light`, or `system`."
-                );
-            }
-        }
-    }
-
     let mut app = crate::App::new(
         main_thread_token,
         build_info,
@@ -831,8 +881,28 @@ fn create_app(
         AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen().expect("Infallible on web"),
     );
 
+    // An explicit web option takes precedence over the restored theme preference.
+    if let Some(theme) = theme {
+        match theme.to_ascii_lowercase().as_str() {
+            "dark" => app
+                .egui_ctx
+                .options_mut(|o| o.theme_preference = egui::ThemePreference::Dark),
+            "light" => app
+                .egui_ctx
+                .options_mut(|o| o.theme_preference = egui::ThemePreference::Light),
+            "system" => app
+                .egui_ctx
+                .options_mut(|o| o.theme_preference = egui::ThemePreference::System),
+            _ => {
+                re_log::warn!(
+                    "Ignoring unknown `theme` value {theme:?}; expected `dark`, `light`, or `system`."
+                );
+            }
+        }
+    }
+
     if enable_history {
-        install_popstate_listener(&mut app).ok_or_log_js_error();
+        install_popstate_listener(&mut app).ok_or_log_error();
     }
 
     if let Some(manifest_url) = manifest_url {
@@ -860,6 +930,17 @@ fn create_app(
     }
 
     Ok(app)
+}
+
+/// Whether we are running inside a test.
+///
+/// Set via the `integration_test` url query param in integration tests.
+fn integration_test() -> bool {
+    let Some(search) = web_sys::window().and_then(|w| w.location().search().ok()) else {
+        return false;
+    };
+    web_sys::UrlSearchParams::new_with_str(&search)
+        .is_ok_and(|params| params.has("integration_test"))
 }
 
 /// Used to set the "email" property in the analytics config,

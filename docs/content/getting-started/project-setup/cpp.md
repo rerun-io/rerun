@@ -1,6 +1,7 @@
 ---
 title: Set up a C++ project
 order: 200
+description: Bootstrap a CMake project that links the C++ SDK
 ---
 
 You should have already [installed the C++ SDK](../install-rerun/cpp.md).

@@ -1,6 +1,6 @@
 use re_chunk_store::RowId;
 use re_log_types::TimePoint;
-use re_sdk_types::datatypes::PixelFormat;
+use re_sdk_types::encodings::PixelFormat;
 use re_test_context::TestContext;
 use re_test_context::external::egui_kittest::SnapshotResults;
 use re_test_viewport::TestContextExt as _;
@@ -35,7 +35,7 @@ fn run_chroma_test(
         blueprint.add_view_at_root(view)
     });
 
-    snapshot_results.add(test_context.run_view_ui_and_save_snapshot(
+    snapshot_results.add(test_context.run_view_ui_and_save_renderer_snapshot(
         view_id,
         snapshot_name,
         egui::vec2(380.0, 80.0),

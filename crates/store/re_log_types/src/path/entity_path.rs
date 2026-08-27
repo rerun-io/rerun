@@ -454,14 +454,14 @@ impl From<EntityPath> for String {
 // Reading parses with `parse_forgiving` (via `From<String>`).
 quiver::newtype_datatype!(EntityPath, quiver::Utf8);
 
-impl From<re_types_core::datatypes::EntityPath> for EntityPath {
+impl From<re_types_core::encodings::EntityPath> for EntityPath {
     #[inline]
-    fn from(value: re_types_core::datatypes::EntityPath) -> Self {
+    fn from(value: re_types_core::encodings::EntityPath) -> Self {
         Self::parse_forgiving(&value.0)
     }
 }
 
-impl From<&EntityPath> for re_types_core::datatypes::EntityPath {
+impl From<&EntityPath> for re_types_core::encodings::EntityPath {
     #[inline]
     fn from(value: &EntityPath) -> Self {
         Self(value.to_string().into())
@@ -541,30 +541,20 @@ impl std::ops::Div<&'static str> for EntityPath {
 
 // ----------------------------------------------------------------------------
 
-use re_types_core::Loggable;
+use re_types_core::{ArrowDatatype, FromArrow, ToArrow};
 
 use super::entity_path_part::RESERVED_NAMESPACE_PREFIX;
 
 re_types_core::macros::impl_into_cow!(EntityPath);
 
-impl Loggable for EntityPath {
+impl ArrowDatatype for EntityPath {
     #[inline]
     fn arrow_datatype() -> arrow::datatypes::DataType {
-        re_types_core::datatypes::Utf8::arrow_datatype()
+        re_types_core::encodings::Utf8::arrow_datatype()
     }
+}
 
-    fn to_arrow_opt<'a>(
-        _data: impl IntoIterator<Item = Option<impl Into<std::borrow::Cow<'a, Self>>>>,
-    ) -> re_types_core::SerializationResult<arrow::array::ArrayRef>
-    where
-        Self: 'a,
-    {
-        Err(re_types_core::SerializationError::not_implemented(
-            "rerun.controls.EntityPath",
-            "EntityPaths are never nullable, use `to_arrow()` instead",
-        ))
-    }
-
+impl ToArrow for EntityPath {
     #[inline]
     fn to_arrow<'a>(
         data: impl IntoIterator<Item = impl Into<std::borrow::Cow<'a, Self>>>,
@@ -572,17 +562,19 @@ impl Loggable for EntityPath {
     where
         Self: 'a,
     {
-        re_types_core::datatypes::Utf8::to_arrow(
+        re_types_core::encodings::Utf8::to_arrow(
             data.into_iter()
                 .map(Into::into)
-                .map(|ent_path| re_types_core::datatypes::Utf8(ent_path.to_string().into())),
+                .map(|ent_path| re_types_core::encodings::Utf8(ent_path.to_string().into())),
         )
     }
+}
 
+impl FromArrow for EntityPath {
     fn from_arrow(
         array: &dyn ::arrow::array::Array,
     ) -> re_types_core::DeserializationResult<Vec<Self>> {
-        Ok(re_types_core::datatypes::Utf8::from_arrow(array)?
+        Ok(re_types_core::encodings::Utf8::from_arrow(array)?
             .into_iter()
             .map(|utf8| Self::from(utf8.to_string()))
             .collect())

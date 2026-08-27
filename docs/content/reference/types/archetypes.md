@@ -62,6 +62,7 @@ This page lists all built-in archetypes.
 * [`Capsules3D`](archetypes/capsules3d.md): 3D capsules; cylinders with hemispherical caps.
 * [`Cylinders3D`](archetypes/cylinders3d.md): 3D cylinders with flat caps.
 * [`Ellipsoids3D`](archetypes/ellipsoids3d.md): 3D ellipsoids or spheres.
+* [`GaussianSplats3D`](archetypes/gaussian_splats3d.md): 3D gaussian splats, e.g. from a 3D Gaussian Splatting (3DGS) reconstruction.
 * [`GridMap`](archetypes/grid_map.md): A 2D grid map stored as raster data in an image buffer, with a cell size in scene units and pose.
 * [`InstancePoses3D`](archetypes/instance_poses3d.md): One or more transforms applied on the current entity's transform frame.
 * [`LineStrips3D`](archetypes/line_strips3d.md): 3D line strips with positions and optional colors, radii, labels, etc.
@@ -80,7 +81,7 @@ This page lists all built-in archetypes.
 * [`Pinhole`](archetypes/pinhole.md): Camera perspective projection (a.k.a. intrinsics).
 * [`Transform3D`](archetypes/transform3d.md): A transform between two 3D spaces, i.e. a pose.
 * [`TransformAxes3D`](archetypes/transform_axes3d.md): A visual representation of a [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d).
-* [`ViewCoordinates`](archetypes/view_coordinates.md): How we interpret the coordinate system of an entity/space.
+* [`ViewCoordinates`](archetypes/view_coordinates.md): Sets the default orientation for 3D views at or below this entity.
 
 ## Video
 

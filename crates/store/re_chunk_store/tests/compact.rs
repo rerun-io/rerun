@@ -1,6 +1,7 @@
 //! Tests for `compacted()` and `finalize_compaction`.
 
 #![cfg(test)]
+#![allow(clippy::iter_over_hash_type)]
 
 use std::sync::Arc;
 

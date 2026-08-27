@@ -169,8 +169,8 @@ fn compute_scatter_indices(reference: &ListArray) -> UInt32Array {
     let offsets = reference.value_offsets();
     let mut indices = Vec::new();
 
-    for (row_idx, window) in offsets.windows(2).enumerate() {
-        let count = window[1] - window[0];
+    for (row_idx, [start, end]) in offsets.array_windows().enumerate() {
+        let count = end - start;
         if reference.is_null(row_idx) || count == 0 {
             indices.push(row_idx as u32);
         } else {
@@ -191,6 +191,7 @@ fn scatter_existing_timelines(
 ) -> ChunkTimelines {
     let mut chunk_times: ChunkTimelines = Default::default();
 
+    #[expect(clippy::iter_over_hash_type)] // Timeline insertion order does not affect the chunk.
     for (timeline_name, time_column) in original_timelines {
         let time_values = time_column.times_raw();
         let time_values_array = Int64Array::from(time_values.to_vec());
@@ -290,16 +291,16 @@ fn apply_one_to_many(work: &DeriveWork<'_>, runtime: &Runtime) -> Result<Chunk, 
         match result {
             Ok((component_descr, list_array)) => match Explode.transform(&list_array) {
                 Ok(Some(exploded)) => {
-                    if exploded.len() != expected_rows {
+                    if exploded.len() == expected_rows {
+                        chunk_components
+                            .insert(SerializedComponentColumn::new(exploded, component_descr));
+                    } else {
                         errors.push(LensRuntimeError::InconsistentOutputRows {
                             target_entity: work.target_entity.clone(),
                             component: component_descr.component,
                             expected: expected_rows,
                             actual: exploded.len(),
                         });
-                    } else {
-                        chunk_components
-                            .insert(SerializedComponentColumn::new(exploded, component_descr));
                     }
                 }
                 Ok(None) => {}
@@ -342,30 +343,7 @@ pub fn execute<'a>(
 
     let has_modifications = !mutate_work.is_empty() || !merge_work.is_empty();
 
-    let prefix: Option<Result<Chunk, LensError>> = if !has_modifications {
-        let p: Option<Chunk> = if forward_columns.len() == chunk.components().len() {
-            Some(chunk.clone())
-        } else if forward_columns.is_empty() {
-            None
-        } else {
-            let to_drop: Vec<_> = chunk
-                .components()
-                .keys()
-                .copied()
-                .filter(|id| !forward_columns.contains(id))
-                .collect();
-            let dropped = chunk.components_dropped(&to_drop);
-            (!dropped.components().is_empty()).then_some(dropped)
-        };
-        if plan_errors.is_empty() {
-            p.map(Ok)
-        } else {
-            Some(match p {
-                Some(chunk) => Err(LensError::with_partial_chunk(chunk, plan_errors)),
-                None => Err(LensError::new(None, plan_errors)),
-            })
-        }
-    } else {
+    let prefix: Option<Result<Chunk, LensError>> = if has_modifications {
         let entity_path = chunk.entity_path();
         let timelines = chunk.timelines();
         let mut components = chunk.components().clone();
@@ -438,6 +416,29 @@ pub fn execute<'a>(
                         Err(LensError::new(None, errors))
                     }
                 }
+            })
+        }
+    } else {
+        let p: Option<Chunk> = if forward_columns.len() == chunk.components().len() {
+            Some(chunk.clone())
+        } else if forward_columns.is_empty() {
+            None
+        } else {
+            let to_drop: Vec<_> = chunk
+                .components()
+                .keys()
+                .copied()
+                .filter(|id| !forward_columns.contains(id))
+                .collect();
+            let dropped = chunk.components_dropped(&to_drop);
+            (!dropped.components().is_empty()).then_some(dropped)
+        };
+        if plan_errors.is_empty() {
+            p.map(Ok)
+        } else {
+            Some(match p {
+                Some(chunk) => Err(LensError::with_partial_chunk(chunk, plan_errors)),
+                None => Err(LensError::new(None, plan_errors)),
             })
         }
     };

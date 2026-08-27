@@ -1,3 +1,5 @@
+#![allow(clippy::iter_over_hash_type)]
+
 //! A Rerun server implementation backed by an in-memory store.
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -5,8 +7,6 @@ mod entrypoint;
 #[cfg(not(target_arch = "wasm32"))]
 mod layers;
 mod named_path;
-#[cfg(target_arch = "wasm32")]
-pub mod opfs;
 mod rerun_cloud;
 #[cfg(not(target_arch = "wasm32"))]
 mod server;

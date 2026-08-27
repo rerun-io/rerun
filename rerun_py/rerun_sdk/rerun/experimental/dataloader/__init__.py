@@ -9,27 +9,48 @@ from rerun._tracing import tracing_scope, with_tracing
 from ._config import DataSource, Field
 from ._sample_index import (
     FixedRateSampling,
+    IndexValue,
     SampleIndex,
     SegmentMetadata,
 )
+from ._shuffle import BlockShuffle, NoShuffle, SampleShuffle, ShuffleStrategy
 
 if TYPE_CHECKING:
-    from ._decoders import ColumnDecoder, ImageDecoder, NumericDecoder, VideoFrameDecoder
     from ._iterable_dataset import RerunIterableDataset
     from ._map_dataset import RerunMapDataset
+    from ._yuv import Yuv420Collator, Yuv420Frame
+    from .decoders import (
+        ColumnDecoder,
+        DecodeRequest,
+        FieldBatch,
+        ImageDecoder,
+        NumericDecoder,
+        VideoFrameDecoder,
+    )
+    from .manifest._manifest import Manifest
 
 __all__ = [
+    "BlockShuffle",
     "ColumnDecoder",
     "DataSource",
+    "DecodeRequest",
     "Field",
+    "FieldBatch",
     "FixedRateSampling",
     "ImageDecoder",
+    "IndexValue",
+    "Manifest",
+    "NoShuffle",
     "NumericDecoder",
     "RerunIterableDataset",
     "RerunMapDataset",
     "SampleIndex",
+    "SampleShuffle",
     "SegmentMetadata",
+    "ShuffleStrategy",
     "VideoFrameDecoder",
+    "Yuv420Collator",
+    "Yuv420Frame",
     "tracing_scope",
     "with_tracing",
 ]
@@ -38,12 +59,17 @@ __all__ = [
 # pillow); they are imported lazily (PEP 562) so the package imports without the
 # extra, and decoding pulls it in only on first use.
 _LAZY_SUBMODULES = {
-    "ColumnDecoder": "._decoders",
-    "ImageDecoder": "._decoders",
-    "NumericDecoder": "._decoders",
-    "VideoFrameDecoder": "._decoders",
+    "ColumnDecoder": ".decoders",
+    "DecodeRequest": ".decoders",
+    "FieldBatch": ".decoders",
+    "ImageDecoder": ".decoders",
+    "NumericDecoder": ".decoders",
+    "VideoFrameDecoder": ".decoders",
+    "Yuv420Collator": "._yuv",
+    "Yuv420Frame": "._yuv",
     "RerunIterableDataset": "._iterable_dataset",
     "RerunMapDataset": "._map_dataset",
+    "Manifest": ".manifest._manifest",
 }
 
 

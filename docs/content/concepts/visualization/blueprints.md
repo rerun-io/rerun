@@ -1,6 +1,7 @@
 ---
 title: Blueprints
 order: 100
+description: Define view layouts and visualization defaults programmatically
 ---
 
 ## What are Blueprints?
@@ -63,10 +64,10 @@ This returns to your programmatically specified blueprint (sent from code) or a 
 
 When no default blueprint has been set, the reset button will use the heuristic blueprint instead.
 
-<picture>
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/fe1fcf086752f5d7cdd64b195fb3a6cb99c50737_current_default_heuristic.png">
-  <img src="https://static.rerun.io/fe1fcf086752f5d7cdd64b195fb3a6cb99c50737_current_default_heuristic.png" width="550px" alt="Current, default, and heuristic blueprints">
-</picture>
+<div class="d2-diagram">
+  <img class="d2-dark" src="https://static.rerun.io/fe1fcf086752f5d7cdd64b195fb3a6cb99c50737_current_default_heuristic.png" width="550px" alt="Current, default, and heuristic blueprints">
+  <img class="d2-light" src="https://static.rerun.io/current_default_heuristic_invert/f1f07f49b7e90cfeeb6a0c8bbe47004a9d7593ff/full.png" width="550px" alt="">
+</div>
 
 ## Three ways to work with blueprints
 

@@ -5,6 +5,8 @@
 //! Split out of the main `rerun.cloud.v1alpha1.ext.rs` to keep that file
 //! under the size cap enforced by `scripts/ci/check_large_files.py`.
 
+use re_types_core::LayerName;
+
 use crate::cloud::v1alpha1::ext::DataSourceKind;
 use crate::{TypeConversionError, invalid_field, missing_field};
 
@@ -109,8 +111,7 @@ impl From<ChunkKey> for crate::cloud::v1alpha1::ChunkKey {
 #[derive(Debug, Clone)]
 pub struct RrdChunkLocation {
     pub url: url::Url,
-    pub offset: u64,
-    pub length: u64,
+    pub byte_span: re_span::Span<u64>,
 }
 
 impl RrdChunkLocation {
@@ -153,8 +154,7 @@ impl TryFrom<crate::cloud::v1alpha1::RrdChunkLocation> for RrdChunkLocation {
 
         Ok(Self {
             url,
-            offset,
-            length,
+            byte_span: re_span::Span::from_start_len(offset, length),
         })
     }
 }
@@ -163,8 +163,8 @@ impl From<RrdChunkLocation> for crate::cloud::v1alpha1::RrdChunkLocation {
     fn from(value: RrdChunkLocation) -> Self {
         Self {
             url: Some(value.url.to_string()),
-            offset: Some(value.offset),
-            length: Some(value.length),
+            offset: Some(value.byte_span.start),
+            length: Some(value.byte_span.len),
         }
     }
 }
@@ -182,11 +182,92 @@ impl TryFrom<&[u8]> for RrdChunkLocation {
     }
 }
 
+// --- RrdManifestKey ---
+
+/// Decoded form of [`crate::cloud::v1alpha1::RrdManifestKey`].
+///
+/// Points at one layer's RRD manifest inside its source object.
+/// Unlike the ranges carried by [`ChunkKey`], it does not include the RRD message header.
+#[derive(Debug, Clone)]
+pub struct RrdManifestKey {
+    /// The canonical location of the manifest.
+    pub location: RrdChunkLocation,
+
+    pub layer: Option<LayerName>,
+
+    /// `ETag` of the source object as observed at registration time, when available.
+    ///
+    /// Send it as an `If-Match` precondition when fetching, so that a concurrent
+    /// re-registration fails cleanly (HTTP 412) instead of decoding a mismatched
+    /// byte range.
+    pub etag: Option<ETag>,
+
+    /// Presigned URL
+    pub direct_url: Option<url::Url>,
+}
+
+impl TryFrom<crate::cloud::v1alpha1::RrdManifestKey> for RrdManifestKey {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::cloud::v1alpha1::RrdManifestKey) -> Result<Self, Self::Error> {
+        let location = value
+            .location
+            .ok_or(missing_field!(
+                crate::cloud::v1alpha1::RrdManifestKey,
+                "location"
+            ))?
+            .try_into()?;
+
+        let layer = value
+            .layer
+            .map(LayerName::try_from)
+            .transpose()
+            .map_err(|err| {
+                invalid_field!(
+                    crate::cloud::v1alpha1::RrdManifestKey,
+                    "layer",
+                    err.to_string()
+                )
+            })?;
+
+        let direct_url = value
+            .direct_url
+            .map(|url| url::Url::parse(&url))
+            .transpose()
+            .map_err(|err| {
+                invalid_field!(
+                    crate::cloud::v1alpha1::RrdManifestKey,
+                    "direct_url",
+                    err.to_string()
+                )
+            })?;
+
+        Ok(Self {
+            location,
+            layer,
+            etag: value.etag.map(ETag::new),
+            direct_url,
+        })
+    }
+}
+
+impl From<RrdManifestKey> for crate::cloud::v1alpha1::RrdManifestKey {
+    fn from(value: RrdManifestKey) -> Self {
+        Self {
+            location: Some(value.location.into()),
+            layer: value.layer.map(Into::into),
+            etag: value.etag.map(Into::into),
+            direct_url: value.direct_url.map(|url| url.to_string()),
+        }
+    }
+}
+
 // --- ETag ---
 
 /// User-facing message returned (server-side) and surfaced (client-side) when
 /// drift between the registered source object and the live one is detected.
-pub const SOURCE_CHANGED_MESSAGE: &str = "the source object has changed since this dataset was registered; re-register to pick up the new version";
+pub const SOURCE_CHANGED_MESSAGE: &str =
+    "the source object changed; re-register it to pick up the new version";
 
 /// Typed wrapper around an HTTP `ETag` value (RFC 7232).
 ///
@@ -344,6 +425,87 @@ mod tests {
     fn etag_as_if_match_gates_on_strong() {
         assert_eq!(et("\"abc\"").as_if_match(), Some("\"abc\""));
         assert_eq!(et("W/\"abc\"").as_if_match(), None);
+    }
+
+    #[test]
+    fn rrd_manifest_key_without_location_is_rejected() {
+        // A key with no location can't be fetched, so decoding must fail rather than
+        // hand back a half-usable key.
+        let proto = crate::cloud::v1alpha1::RrdManifestKey {
+            location: None,
+            layer: Some(LayerName::DEFAULT_STR.to_owned()),
+            etag: None,
+            direct_url: None,
+        };
+
+        assert!(RrdManifestKey::try_from(proto).is_err());
+    }
+
+    #[test]
+    fn rrd_manifest_key_without_byte_range_is_rejected() {
+        // Half a range is no range: a reader could neither seek nor size its fetch.
+        let half_ranges = [
+            (Some(10), None),
+            (None, Some(20)),
+            (None, None), //
+        ];
+
+        for (offset, length) in half_ranges {
+            let proto = crate::cloud::v1alpha1::RrdManifestKey {
+                location: Some(crate::cloud::v1alpha1::RrdChunkLocation {
+                    url: Some("s3://bucket/segment.rrd".to_owned()),
+                    offset,
+                    length,
+                }),
+                layer: None,
+                etag: None,
+                direct_url: None,
+            };
+
+            assert!(
+                RrdManifestKey::try_from(proto).is_err(),
+                "offset={offset:?} length={length:?} should be rejected"
+            );
+        }
+    }
+
+    #[test]
+    fn rrd_manifest_key_with_invalid_direct_url_is_rejected() {
+        let proto = crate::cloud::v1alpha1::RrdManifestKey {
+            location: Some(crate::cloud::v1alpha1::RrdChunkLocation {
+                url: Some("s3://bucket/segment.rrd".to_owned()),
+                offset: Some(10),
+                length: Some(20),
+            }),
+            layer: None,
+            etag: None,
+            direct_url: Some("not a url".to_owned()),
+        };
+
+        assert!(RrdManifestKey::try_from(proto).is_err());
+    }
+
+    #[test]
+    fn rrd_manifest_key_direct_url_round_trips() {
+        let proto = crate::cloud::v1alpha1::RrdManifestKey {
+            location: Some(crate::cloud::v1alpha1::RrdChunkLocation {
+                url: Some("s3://bucket/segment.rrd".to_owned()),
+                offset: Some(10),
+                length: Some(20),
+            }),
+            layer: None,
+            etag: None,
+            direct_url: Some(
+                "https://bucket.s3.amazonaws.com/segment.rrd?X-Amz-Signature=abc".to_owned(),
+            ),
+        };
+
+        let key = RrdManifestKey::try_from(proto).expect("valid key must decode");
+        assert_eq!(
+            key.direct_url.expect("direct_url was set").as_str(),
+            "https://bucket.s3.amazonaws.com/segment.rrd?X-Amz-Signature=abc"
+        );
+        assert_eq!(key.location.url.as_str(), "s3://bucket/segment.rrd");
     }
 
     #[test]

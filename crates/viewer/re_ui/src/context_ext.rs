@@ -130,32 +130,34 @@ pub trait ContextExt {
 
         let traffic_button_sizes_fallback = egui::vec2(64.0, 24.0); // source: I measured /emilk
 
-        #[cfg(target_os = "macos")]
-        let native_buttons_size_in_native_scale = if make_room_for_window_buttons {
-            use raw_window_handle::HasWindowHandle as _;
+        let native_buttons_size_in_native_scale = cfg_select! {
+            target_os = "macos" => {
+                if make_room_for_window_buttons {
+                    use raw_window_handle::HasWindowHandle as _;
 
-            use eframe::WindowChromeMetrics;
+                    use eframe::WindowChromeMetrics;
 
-            let metrics = _frame
-                .window_handle()
-                .ok()
-                .and_then(|handle| WindowChromeMetrics::from_window_handle(&handle.as_raw()));
-            if let Some(metrics) = metrics {
-                let WindowChromeMetrics {
-                    traffic_lights_size,
-                } = metrics;
-                traffic_lights_size
-            } else {
-                re_log::debug_warn_once!(
-                    "Failed to measure the size of the mac traffic light area"
-                );
-                traffic_button_sizes_fallback
+                    let metrics = _frame
+                        .window_handle()
+                        .ok()
+                        .and_then(|handle| WindowChromeMetrics::from_window_handle(&handle.as_raw()));
+                    if let Some(metrics) = metrics {
+                        let WindowChromeMetrics {
+                            traffic_lights_size,
+                        } = metrics;
+                        traffic_lights_size
+                    } else {
+                        re_log::debug_warn_once!(
+                            "Failed to measure the size of the mac traffic light area"
+                        );
+                        traffic_button_sizes_fallback
+                    }
+                } else {
+                    egui::Vec2::ZERO
+                }
             }
-        } else {
-            egui::Vec2::ZERO
+            _ => { traffic_button_sizes_fallback }
         };
-        #[cfg(not(target_os = "macos"))]
-        let native_buttons_size_in_native_scale = traffic_button_sizes_fallback;
 
         let height = if make_room_for_window_buttons {
             // On mac we want to match the height of the native red/yellow/green close/minimize/maximize buttons.

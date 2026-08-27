@@ -1,7 +1,3 @@
-use std::sync::Arc;
-
-use re_mutex::RwLock;
-
 use crate::allocator::{GpuReadbackIdentifier, create_and_fill_uniform_buffer};
 use crate::context::RenderContext;
 use crate::draw_phases::{
@@ -66,11 +62,6 @@ struct ViewTargetSetup {
     resolution_in_pixel: [u32; 2],
 }
 
-/// [`ViewBuilder`] that can be shared between threads.
-///
-/// Innermost field is an Option, so it can be consumed for `composite`.
-pub type SharedViewBuilder = Arc<RwLock<Option<ViewBuilder>>>;
-
 /// Configures the camera placement in the orthographic frustum,
 /// as well as the coordinate system convention.
 #[derive(Debug, Clone, Copy)]
@@ -129,7 +120,8 @@ pub enum Projection {
 }
 
 impl Projection {
-    fn projection_from_view(self, resolution_in_pixel: [u32; 2]) -> glam::Mat4 {
+    /// Returns the matrix that maps view space to NDC (normalized device coordinates).
+    pub fn projection_from_view(self, resolution_in_pixel: [u32; 2]) -> glam::Mat4 {
         match self {
             Self::Perspective {
                 vertical_fov,
@@ -575,6 +567,10 @@ impl ViewBuilder {
         let camera_position = config.view_from_world.inverse().translation();
         let camera_forward = -view_from_world.row(2).truncate();
         let projection_from_world = projection_from_view * view_from_world;
+        let framebuffer_resolution = glam::vec2(
+            config.resolution_in_pixel[0] as _,
+            config.resolution_in_pixel[1] as _,
+        );
 
         // Setup frame uniform buffer
         let frame_uniform_buffer_content = FrameUniformBuffer {
@@ -591,11 +587,8 @@ impl ViewBuilder {
                 RenderMode::Beautiful => 0,
                 RenderMode::Deterministic => 1,
             },
-            framebuffer_resolution: glam::vec2(
-                config.resolution_in_pixel[0] as _,
-                config.resolution_in_pixel[1] as _,
-            )
-            .into(),
+            framebuffer_resolution,
+            focal_length_in_pixels: framebuffer_resolution / (2.0 * tan_half_fov),
         };
         let frame_uniform_buffer = create_and_fill_uniform_buffer(
             ctx,

@@ -6,7 +6,7 @@ namespace rerun::archetypes {
 #if 0
     // <CODEGEN_COPY_TO_HEADER>
 
-    BarChart(rerun::datatypes::TensorBuffer buffer) {
+    BarChart(rerun::encodings::TensorBuffer buffer) {
         // Forwarding like this can spuriously fail, since the move might be evaluated before `num_elems`:
         //BarChart(rerun::components::TensorData({buffer.num_elems()}, std::move(buffer)));
 
@@ -21,46 +21,46 @@ namespace rerun::archetypes {
 
     /// Construct a `BarChart` from a `Collection<uint8_t>`.
     BarChart(Collection<uint8_t> u8)
-        : BarChart(rerun::datatypes::TensorBuffer::u8(std::move(u8))) {}
+        : BarChart(rerun::encodings::TensorBuffer::u8(std::move(u8))) {}
 
     /// Construct a `BarChart` from a `Collection<uint16_t>`.
     BarChart(Collection<uint16_t> u16)
-        : BarChart(rerun::datatypes::TensorBuffer::u16(std::move(u16))) {}
+        : BarChart(rerun::encodings::TensorBuffer::u16(std::move(u16))) {}
 
     /// Construct a `BarChart` from a `Collection<uint32_t>`.
     BarChart(Collection<uint32_t> u32)
-        : BarChart(rerun::datatypes::TensorBuffer::u32(std::move(u32))) {}
+        : BarChart(rerun::encodings::TensorBuffer::u32(std::move(u32))) {}
 
     /// Construct a `BarChart` from a `Collection<uint64_t>`.
     BarChart(Collection<uint64_t> u64)
-        : BarChart(rerun::datatypes::TensorBuffer::u64(std::move(u64))) {}
+        : BarChart(rerun::encodings::TensorBuffer::u64(std::move(u64))) {}
 
     /// Construct a `BarChart` from a `Collection<int8_t>`.
-    BarChart(Collection<int8_t> i8) : BarChart(rerun::datatypes::TensorBuffer::i8(std::move(i8))) {}
+    BarChart(Collection<int8_t> i8) : BarChart(rerun::encodings::TensorBuffer::i8(std::move(i8))) {}
 
     /// Construct a `BarChart` from a `Collection<int16_t>`.
     BarChart(Collection<int16_t> i16)
-        : BarChart(rerun::datatypes::TensorBuffer::i16(std::move(i16))) {}
+        : BarChart(rerun::encodings::TensorBuffer::i16(std::move(i16))) {}
 
     /// Construct a `BarChart` from a `Collection<int32_t>`.
     BarChart(Collection<int32_t> i32)
-        : BarChart(rerun::datatypes::TensorBuffer::i32(std::move(i32))) {}
+        : BarChart(rerun::encodings::TensorBuffer::i32(std::move(i32))) {}
 
     /// Construct a `BarChart` from a `Collection<int64_t>`.
     BarChart(Collection<int64_t> i64)
-        : BarChart(rerun::datatypes::TensorBuffer::i64(std::move(i64))) {}
+        : BarChart(rerun::encodings::TensorBuffer::i64(std::move(i64))) {}
 
     /// Construct aBarChart` from a `Collection<half>`.
     BarChart(Collection<rerun::half> f16)
-        : BarChart(rerun::datatypes::TensorBuffer::f16(std::move(f16))) {}
+        : BarChart(rerun::encodings::TensorBuffer::f16(std::move(f16))) {}
 
     /// Construct a `BarChart` from a `Collection<float>`.
     BarChart(Collection<float> f32)
-        : BarChart(rerun::datatypes::TensorBuffer::f32(std::move(f32))) {}
+        : BarChart(rerun::encodings::TensorBuffer::f32(std::move(f32))) {}
 
     /// Construct a `BarChart` from a `Collection<double>`.
     BarChart(Collection<double> f64)
-        : BarChart(rerun::datatypes::TensorBuffer::f64(std::move(f64))) {}
+        : BarChart(rerun::encodings::TensorBuffer::f64(std::move(f64))) {}
 
     // --------------------------------------------------------------------
     // Explicit static constructors:

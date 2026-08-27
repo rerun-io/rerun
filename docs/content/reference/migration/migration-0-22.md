@@ -1,6 +1,7 @@
 ---
 title: Migrating from 0.21 to 0.22
 order: 988
+hidden: true
 ---
 
 ## Major changes to the logging APIs

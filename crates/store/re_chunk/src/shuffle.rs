@@ -1,6 +1,7 @@
 use arrow::array::{Array as ArrowArray, ListArray as ArrowListArray};
 use arrow::buffer::{OffsetBuffer as ArrowOffsets, ScalarBuffer as ArrowScalarBuffer};
 use itertools::Itertools as _;
+use re_arrow_util::ListArrayExt as _;
 use re_log_types::TimelineName;
 
 use crate::{Chunk, ChunkId, TimeColumn};
@@ -74,17 +75,10 @@ impl Chunk {
     }
 
     /// Return all timelines that are not sorted relative to [`crate::RowId`].
-    pub fn unsorted_timelines(&self) -> Vec<TimelineName> {
+    pub fn unsorted_timelines(&self) -> impl Iterator<Item = TimelineName> {
         self.timelines
             .iter()
-            .filter_map(|(name, time_column)| {
-                if time_column.is_sorted() {
-                    None
-                } else {
-                    Some(*name)
-                }
-            })
-            .collect()
+            .filter_map(|(name, time_column)| (!time_column.is_sorted()).then_some(*name))
     }
 
     /// Sort the chunk by [`crate::RowId`], if needed.
@@ -273,7 +267,7 @@ impl Chunk {
                     sorted[to] = times[from];
                 }
 
-                *is_sorted = sorted.windows(2).all(|times| times[0] <= times[1]);
+                *is_sorted = sorted.array_windows().all(|[a, b]| a <= b);
                 *times = ArrowScalarBuffer::from(sorted);
             }
         }
@@ -294,7 +288,7 @@ impl Chunk {
                     .map(|array| &**array as &dyn ArrowArray)
                     .collect_vec();
 
-                let datatype = original.data_type().clone();
+                let field = original.field().clone();
                 let offsets =
                     ArrowOffsets::from_lengths(sorted_arrays.iter().map(|array| array.len()));
                 #[expect(clippy::unwrap_used)] // these are slices of the same outer array
@@ -303,10 +297,6 @@ impl Chunk {
                     .nulls()
                     .map(|validity| swaps.iter().map(|&from| validity.is_valid(from)).collect());
 
-                let field = match datatype {
-                    arrow::datatypes::DataType::List(field) => field.clone(),
-                    _ => unreachable!("This is always s list array"),
-                };
                 *original = ArrowListArray::new(field, offsets, values, validity);
             }
         }
@@ -335,9 +325,7 @@ impl TimeColumn {
     #[inline]
     pub fn is_row_ids_sorted_uncached(&self) -> bool {
         re_tracing::profile_function!();
-        self.times_raw()
-            .windows(2)
-            .all(|times| times[0] <= times[1])
+        self.times_raw().array_windows().all(|[a, b]| a <= b)
     }
 }
 
@@ -703,8 +691,8 @@ mod tests {
 
         // RowIds must be sequential ascending.
         let row_ids: Vec<_> = chunk.row_ids().collect();
-        for w in row_ids.windows(2) {
-            assert!(w[0] < w[1], "row_ids must be strictly ascending");
+        for [a, b] in row_ids.array_windows() {
+            assert!(a < b, "row_ids must be strictly ascending");
         }
 
         Ok(())

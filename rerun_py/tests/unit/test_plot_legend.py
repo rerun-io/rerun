@@ -10,7 +10,7 @@ from rerun.blueprint import components as blueprint_components
 from .common_arrays import none_empty_or_value
 
 if TYPE_CHECKING:
-    from rerun.datatypes.bool import BoolLike
+    from rerun.encodings.bool import BoolLike
 
 
 def test_scalar_axis() -> None:

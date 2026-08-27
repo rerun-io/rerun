@@ -118,14 +118,14 @@ impl StoreBundle {
         self.stores.insert(entity_db.store_id().clone(), entity_db);
     }
 
-    /// In insertion order.
+    /// Iterates all recordings in insertion order.
     pub fn recordings(&self) -> impl Iterator<Item = &EntityDb> {
         self.stores
             .values()
             .filter(|log| log.store_kind() == StoreKind::Recording)
     }
 
-    /// In insertion order.
+    /// Iterates all recordings in insertion order.
     pub fn recordings_mut(&mut self) -> impl Iterator<Item = &mut EntityDb> {
         self.stores
             .values_mut()
@@ -144,6 +144,13 @@ impl StoreBundle {
                     Some(re_log_channel::LogSource::RedapGrpcStream { uri, .. }) if uri.origin == *origin
                 )
             })
+    }
+
+    /// Iterates all blueprints in insertion order.
+    pub fn blueprints_mut(&mut self) -> impl Iterator<Item = &mut EntityDb> {
+        self.stores
+            .values_mut()
+            .filter(|log| log.store_kind() == StoreKind::Blueprint)
     }
 
     // --

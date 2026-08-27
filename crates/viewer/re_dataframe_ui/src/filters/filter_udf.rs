@@ -118,10 +118,6 @@ impl<T: FilterUdf> FilterUdfWrapper<T> {
 }
 
 impl<T: FilterUdf + Debug + Send + Sync> ScalarUDFImpl for FilterUdfWrapper<T> {
-    fn as_any(&self) -> &dyn Any {
-        &self.inner
-    }
-
     fn name(&self) -> &'static str {
         self.inner.name()
     }
