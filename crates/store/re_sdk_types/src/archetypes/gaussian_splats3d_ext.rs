@@ -124,27 +124,6 @@ fn has_required_splat_properties(element: &ElementDef) -> bool {
     .all(|p| element.properties.contains_key(*p))
 }
 
-fn f32(prop: &Property) -> Option<f32> {
-    match *prop {
-        Property::Short(v) => Some(v as f32),
-        Property::UShort(v) => Some(v as f32),
-        Property::Int(v) => Some(v as f32),
-        Property::UInt(v) => Some(v as f32),
-        Property::Float(v) => Some(v),
-        Property::Double(v) => Some(v as f32),
-        Property::Char(_)
-        | Property::UChar(_)
-        | Property::ListChar(_)
-        | Property::ListUChar(_)
-        | Property::ListShort(_)
-        | Property::ListUShort(_)
-        | Property::ListInt(_)
-        | Property::ListUInt(_)
-        | Property::ListFloat(_)
-        | Property::ListDouble(_) => None,
-    }
-}
-
 /// Which [`slot`] a `.ply` property is read into, if any.
 ///
 /// `num_sh_per_channel` is how many spherical harmonics coefficients the file stores per RGB
@@ -225,7 +204,7 @@ impl PropertyAccess for Splat {
         // Properties that aren't ours kept a name that never parses as a slot index;
         // we warn about them once, up-front, based on the header (see `read_ply`).
         if let Ok(slot) = key.parse::<usize>()
-            && let Some(value) = f32(&property)
+            && let Some(value) = property.to_f32_lossy()
             && let Some(destination) = self.values.get_mut(slot)
         {
             *destination = value;
