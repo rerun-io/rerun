@@ -175,6 +175,13 @@ impl TimeInt {
             None => Self::STATIC,
         }
     }
+
+    pub fn saturating_add(&self, arg: i64) -> Self {
+        match self.0 {
+            Some(t) => Self::new_temporal(t.get().saturating_add(arg)),
+            None => Self::STATIC,
+        }
+    }
 }
 
 impl TryFrom<i64> for TimeInt {

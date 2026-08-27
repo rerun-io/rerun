@@ -8,6 +8,7 @@
 
 mod builder;
 mod chunk;
+mod earliest_at;
 mod iter;
 mod latest_at;
 mod merge;
@@ -39,6 +40,7 @@ pub use self::builder::{ChunkBuilder, TimeColumnBuilder};
 pub use self::chunk::{
     Chunk, ChunkComponents, ChunkError, ChunkResult, TimeColumn, TimeColumnError,
 };
+pub use self::earliest_at::EarliestAtQuery;
 pub use self::iter::{
     BoolOptSliceIter, ChunkComponentIter, ChunkComponentIterItem, ChunkComponentSlicer,
     ChunkIndicesIter, NativeOptSliceIter, StringOptSliceIter,

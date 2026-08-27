@@ -1,4 +1,4 @@
-use arrow::array::Array as _;
+use arrow::array::{Array as _, ListArray as ArrowListArray};
 use re_log_types::{TimeInt, TimelineName};
 use re_types_core::ComponentIdentifier;
 
@@ -73,6 +73,19 @@ impl LatestAtQuery {
 
 // ---
 
+/// Which end of the [`RowId`] index a query resolves a static chunk to.
+///
+/// [`RowId`] is an index like any other: an earliest-at query looks for the lowest one, a
+/// latest-at query for the highest.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum RowIdEnd {
+    /// The lowest [`RowId`].
+    Earliest,
+
+    /// The highest [`RowId`].
+    Latest,
+}
+
 impl Chunk {
     /// Runs a [`LatestAtQuery`] filter on a [`Chunk`].
     ///
@@ -81,6 +94,8 @@ impl Chunk {
     ///
     /// The resulting chunk is guaranteed to contain all the same columns as the queried
     /// chunk: there is no horizontal slicing going on.
+    ///
+    /// Ties on the query time are broken on the highest [`RowId`].
     ///
     /// Returns `None` if the `query` yields nothing.
     ///
@@ -101,61 +116,54 @@ impl Chunk {
 
         let component_list_array = self.components.get_array(component)?;
 
-        let mut index = None;
-
-        let is_static = self.is_static();
-        let is_sorted_by_row_id = self.is_row_ids_sorted();
-
-        if is_static {
-            if is_sorted_by_row_id {
-                // Static, row-sorted chunk
-
-                for i in (0..self.num_rows()).rev() {
-                    if !component_list_array.is_valid(i) {
-                        continue;
-                    }
-
-                    index = Some(i);
-                    break;
-                }
-            } else {
-                // Static, row-unsorted chunk
-
-                let mut closest_row_id = RowId::ZERO;
-
-                for (i, row_id) in self.row_ids().enumerate() {
-                    if !component_list_array.is_valid(i) {
-                        continue;
-                    }
-
-                    let is_closer_row_id = row_id > closest_row_id;
-
-                    if is_closer_row_id {
-                        closest_row_id = row_id;
-                        index = Some(i);
-                    }
-                }
-            }
+        let index = if self.is_static() {
+            self.static_row_index(component_list_array, RowIdEnd::Latest)
         } else {
             let time_column = self.timelines.get(&query.timeline()?)?;
 
             let is_sorted_by_time = time_column.is_sorted();
             let times = time_column.times_raw();
 
+            let mut index = None;
+
             if is_sorted_by_time {
-                // Temporal, row-sorted, time-sorted chunk
+                // Temporal, time-sorted chunk
 
-                let i = times
-                    .partition_point(|&time| time <= query.at().as_i64())
-                    .saturating_sub(1);
+                // One past the last row whose time is at-or-before the query time. Zero when the
+                // query precedes every row, which must answer nothing rather than the first row.
+                let end = times.partition_point(|&time| time <= query.at().as_i64());
 
-                for i in (0..=i).rev() {
-                    if !component_list_array.is_valid(i) {
-                        continue;
+                if self.is_row_ids_sorted() {
+                    // Row-ids ascend within each run of equal times, so the first valid row
+                    // walking back already holds the highest `RowId` of its run.
+                    index = (0..end).rev().find(|&i| component_list_array.is_valid(i));
+                } else {
+                    // The first valid row walking back settles the data time, but the rest of that
+                    // time's run can still hold a higher `RowId`, which wins the tie.
+                    let row_ids = self.row_ids_slice();
+                    let mut best_row_id = RowId::ZERO;
+
+                    for i in (0..end).rev() {
+                        if !component_list_array.is_valid(i) {
+                            continue;
+                        }
+
+                        match index {
+                            None => {
+                                best_row_id = row_ids[i];
+                                index = Some(i);
+                            }
+                            Some(best) => {
+                                if times[i] != times[best] {
+                                    break;
+                                }
+                                if row_ids[i] > best_row_id {
+                                    best_row_id = row_ids[i];
+                                    index = Some(i);
+                                }
+                            }
+                        }
                     }
-
-                    index = Some(i);
-                    break;
                 }
             } else {
                 // Temporal, unsorted chunk
@@ -181,8 +189,60 @@ impl Chunk {
                     }
                 }
             }
-        }
+
+            index
+        };
 
         index.map(|i| self.row_sliced_unit_shallow(i))
+    }
+
+    /// The row index holding the valid value at one end of the [`RowId`] index, for the given
+    /// component array, in a static chunk.
+    ///
+    /// Static data has no temporal ordering, so [`RowId`] is the only index left to search along.
+    /// `end` picks which way to search it, the same way the query time picks a direction on a
+    /// temporal chunk.
+    pub(crate) fn static_row_index(
+        &self,
+        component_list_array: &ArrowListArray,
+        end: RowIdEnd,
+    ) -> Option<usize> {
+        if self.is_row_ids_sorted() {
+            // Static, row-sorted chunk
+            match end {
+                RowIdEnd::Earliest => {
+                    (0..self.num_rows()).find(|&i| component_list_array.is_valid(i))
+                }
+                RowIdEnd::Latest => (0..self.num_rows())
+                    .rev()
+                    .find(|&i| component_list_array.is_valid(i)),
+            }
+        } else {
+            // Static, row-unsorted chunk
+            //
+            // `None` until the first valid row: `RowId::ZERO` is a floor, not a ceiling, so it
+            // cannot seed a search for the lowest `RowId`.
+            let mut best: Option<(RowId, usize)> = None;
+
+            for (i, row_id) in self.row_ids().enumerate() {
+                if !component_list_array.is_valid(i) {
+                    continue;
+                }
+
+                let is_better = match best {
+                    None => true,
+                    Some((best_row_id, _)) => match end {
+                        RowIdEnd::Earliest => row_id < best_row_id,
+                        RowIdEnd::Latest => row_id > best_row_id,
+                    },
+                };
+
+                if is_better {
+                    best = Some((row_id, i));
+                }
+            }
+
+            best.map(|(_, i)| i)
+        }
     }
 }

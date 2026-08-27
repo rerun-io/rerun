@@ -8897,6 +8897,7 @@ dependencies = [
  "anyhow",
  "arrow",
  "bytemuck",
+ "criterion",
  "crossbeam",
  "document-features",
  "half",

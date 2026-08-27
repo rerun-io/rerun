@@ -563,3 +563,112 @@ fn query_and_compare(
         );
     }
 }
+
+/// Query `latest_at` and return the `(frame_time, row_id)` of the selected row, or `None`.
+fn latest_at_row(chunk: &Chunk, component: &ComponentDescriptor, at: i64) -> Option<(i64, RowId)> {
+    let timeline = TimelineName::from("frame");
+    let query = LatestAtQuery::new(timeline, at);
+    let unit = chunk.latest_at(&query, component.component)?;
+    let (time, row_id) = unit
+        .index(Some(&timeline))
+        .expect("result must carry the frame index");
+    Some((time.as_i64(), row_id))
+}
+
+/// A query before every row must answer nothing, rather than the first row in the chunk.
+///
+/// The time-sorted path floors its search at row zero, so an unguarded walk backwards from there
+/// hands back data from the future.
+#[test]
+fn temporal_sorted_before_all_data() -> anyhow::Result<()> {
+    re_log::setup_logging();
+
+    let row_id1 = RowId::new();
+    let row_id2 = RowId::new();
+
+    let points1 = &[MyPoint::new(1.0, 1.0)];
+    let points2 = &[MyPoint::new(2.0, 2.0)];
+
+    let chunk = Chunk::builder(ENTITY_PATH)
+        .with_component_batches(
+            row_id1,
+            [(Timeline::new_sequence("frame"), 10)],
+            [(MyPoints::descriptor_points(), points1 as _)],
+        )
+        .with_component_batches(
+            row_id2,
+            [(Timeline::new_sequence("frame"), 20)],
+            [(MyPoints::descriptor_points(), points2 as _)],
+        )
+        .build()?;
+
+    let points = MyPoints::descriptor_points();
+
+    assert_eq!(
+        latest_at_row(&chunk, &points, 9),
+        None,
+        "nothing is logged at-or-before frame 9"
+    );
+    assert_eq!(
+        latest_at_row(&chunk, &points, i64::MIN),
+        None,
+        "nor at the very start of time"
+    );
+
+    // The rows themselves are still reachable, so this is not an off-by-one the other way.
+    assert_eq!(latest_at_row(&chunk, &points, 10), Some((10, row_id1)));
+    assert_eq!(latest_at_row(&chunk, &points, 19), Some((10, row_id1)));
+    assert_eq!(latest_at_row(&chunk, &points, 20), Some((20, row_id2)));
+
+    Ok(())
+}
+
+/// `RowId` breaks ties on the query time, and a time-sorted chunk says nothing about the `RowId`
+/// order within one time — so the tie-break cannot lean on row order.
+#[test]
+fn temporal_sorted_tie_break_row_ids_unsorted() -> anyhow::Result<()> {
+    re_log::setup_logging();
+
+    let row_id_lo = RowId::new();
+    let row_id_hi = RowId::new();
+    assert!(row_id_hi > row_id_lo);
+
+    let colors_lo = &[MyColor::from_rgb(1, 1, 1)];
+    let colors_hi = &[MyColor::from_rgb(2, 2, 2)];
+
+    // The higher row-id first: equal times keep the time column sorted, the row-ids are not.
+    let chunk = Chunk::builder(ENTITY_PATH)
+        .with_component_batches(
+            row_id_hi,
+            [(Timeline::new_sequence("frame"), 3)],
+            [(MyPoints::descriptor_colors(), colors_hi as _)],
+        )
+        .with_component_batches(
+            row_id_lo,
+            [(Timeline::new_sequence("frame"), 3)],
+            [(MyPoints::descriptor_colors(), colors_lo as _)],
+        )
+        .build()?;
+
+    assert!(
+        !chunk.is_row_ids_sorted(),
+        "fixture must be row-id-unsorted"
+    );
+    assert!(
+        chunk
+            .timelines()
+            .get(&TimelineName::from("frame"))
+            .expect("fixture must carry the frame index")
+            .is_sorted(),
+        "fixture must be time-sorted, to reach the sorted path"
+    );
+
+    let colors = MyPoints::descriptor_colors();
+    assert_eq!(
+        latest_at_row(&chunk, &colors, 4),
+        Some((3, row_id_hi)),
+        "a tie at frame 3 must resolve to the highest row-id, whatever the row order"
+    );
+
+    Ok(())
+}

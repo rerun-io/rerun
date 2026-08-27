@@ -2,6 +2,7 @@
 
 mod absolute_time_range;
 mod duration;
+mod index_window;
 mod non_min_i64;
 mod time_cell;
 mod time_int;
@@ -15,6 +16,7 @@ mod timestamp_format;
 
 pub use self::absolute_time_range::{AbsoluteTimeRange, AbsoluteTimeRangeF};
 pub use self::duration::Duration;
+pub use self::index_window::IndexWindow;
 pub use self::non_min_i64::{NonMinI64, TryFromIntError};
 pub use self::time_cell::TimeCell;
 pub use self::time_int::TimeInt;
