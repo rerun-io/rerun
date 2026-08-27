@@ -589,9 +589,16 @@ pub fn entity_db_button_ui(
     let store_id = entity_db.store_id().clone();
     let item = re_viewer_context::Item::StoreId(store_id.clone());
 
-    let icon = match entity_db.store_kind() {
-        re_log_types::StoreKind::Recording => &icons::RECORDING,
-        re_log_types::StoreKind::Blueprint => &icons::BLUEPRINT,
+    // An asset is a segment of a dataset, but it is not a recording of it.
+    let icon = if let EntityDbClass::DatasetSegment(uri) = entity_db.store_class()
+        && uri.resource == re_uri::DatasetResource::Assets
+    {
+        &icons::ASSET
+    } else {
+        match entity_db.store_kind() {
+            re_log_types::StoreKind::Recording => &icons::RECORDING,
+            re_log_types::StoreKind::Blueprint => &icons::BLUEPRINT,
+        }
     };
 
     let mut item_content = list_item::LabelContent::new(title).with_icon(icon);

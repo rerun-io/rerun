@@ -10,6 +10,7 @@ mod connection_handle;
 mod connection_registry;
 mod grpc;
 mod registration_handle;
+mod tasks;
 
 #[cfg(not(target_arch = "wasm32"))]
 mod segment_chunk_provider;
@@ -21,7 +22,9 @@ pub use self::analytics_exporter::ConnectionAnalyticsExporter;
 pub use self::api_error::{ApiError, ApiErrorKind, ApiResult};
 
 pub use self::api_response_stream::ApiResponseStream;
-pub use self::asset::Asset;
+pub use self::asset::{
+    Asset, AssetRegistrationError, DEFAULT_ASSET_TASK_TIMEOUT, asset_data_source,
+};
 pub use self::chunk_cache::{ChunkCache, ChunkCacheHandle};
 pub use self::connection_client::{
     BoxedRedapClientStack, Connection, ConnectionClient, FetchChunksResponseStream, RedapClient,
@@ -38,6 +41,7 @@ pub use self::grpc::{
     stream_table_blueprint_segment_from_server, table_blueprint_log_channel,
 };
 pub use self::registration_handle::{RegistrationHandle, SegmentRegistrationResult};
+pub use self::tasks::TaskCompletion;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub use self::grpc::PoolChannel;

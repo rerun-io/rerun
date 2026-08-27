@@ -14,6 +14,9 @@ pub enum Variant {
     Ghost,
     Outlined,
 
+    /// Filled with the brand blue, for the one action we want the user to take.
+    Blue,
+
     /// Indicate that the thing this button represents is opened.
     Opened,
 
@@ -83,6 +86,7 @@ impl Variant {
             Self::Secondary => &tokens.button_secondary,
             Self::Ghost => &tokens.button_ghost,
             Self::Outlined => &tokens.button_outlined,
+            Self::Blue => &tokens.button_blue,
             Self::Opened => &tokens.button_opened,
             Self::Selected => &tokens.selection,
         }
@@ -195,6 +199,11 @@ impl<'a> ReButton<'a> {
 
     pub fn outlined(mut self) -> Self {
         self.variant = Variant::Outlined;
+        self
+    }
+
+    pub fn blue(mut self) -> Self {
+        self.variant = Variant::Blue;
         self
     }
 

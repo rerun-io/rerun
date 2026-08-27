@@ -218,6 +218,7 @@ impl ModalWrapper {
                 prevent_shrinking(ui);
                 egui::Frame {
                     fill: ctx.global_style().visuals.panel_fill,
+                    corner_radius: ctx.global_style().visuals.window_corner_radius,
                     ..Default::default()
                 }
                 .show(ui, |ui| {

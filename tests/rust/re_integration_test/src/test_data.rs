@@ -150,11 +150,7 @@ async fn register_rrds(
 
     let mut data_sources = Vec::with_capacity(paths.len());
     for path in paths {
-        data_sources.push(DataSource::new_rrd(format!(
-            "file://{}",
-            path.to_str()
-                .ok_or_else(|| "Failed to convert path to str".to_owned())?
-        ))?);
+        data_sources.push(DataSource::new_rrd(file_url(path)?)?);
     }
 
     let registration = connection
@@ -163,29 +159,37 @@ async fn register_rrds(
     Ok(registration.wait(Duration::from_secs(10)).await?)
 }
 
-/// Log a static-only recording and register it with `asset_dataset`, returning its segment id.
+/// Build an `.rrd` file holding a recording that can be registered as an asset.
 ///
 /// Asset datasets only accept static chunks, so the recording logs its points statically.
-pub async fn register_asset(
-    connection: &ConnectionHandle,
-    asset_dataset: EntryId,
-    recording_id: &str,
-) -> Result<SegmentId, Box<dyn Error>> {
-    let path = recording_rrd(recording_id, |stream| {
+pub fn asset_rrd(recording_id: &str) -> Result<tempfile::NamedTempFile, Box<dyn Error>> {
+    recording_rrd(recording_id, |stream| {
         stream
             .log_static(
                 "asset_entity",
                 &archetypes::Points3D::new([(0.0, 0.0, 0.0), (1.0, 1.0, 1.0)]),
             )
             .expect("Failed to log static points 3D");
-    })?;
+    })
+}
 
-    let data_source = DataSource::new_rrd(format!(
-        "file://{}",
-        path.path()
-            .to_str()
-            .ok_or_else(|| "Failed to convert path to str".to_owned())?
-    ))?;
+/// The `file://` url of `path`, for registering it as a data source.
+pub fn file_url(path: &std::path::Path) -> Result<String, Box<dyn Error>> {
+    let path = path
+        .to_str()
+        .ok_or_else(|| "Failed to convert path to str".to_owned())?;
+    Ok(format!("file://{path}"))
+}
+
+/// Log a static-only recording and register it with `asset_dataset`, returning its segment id.
+pub async fn register_asset(
+    connection: &ConnectionHandle,
+    asset_dataset: EntryId,
+    recording_id: &str,
+) -> Result<SegmentId, Box<dyn Error>> {
+    let path = asset_rrd(recording_id)?;
+
+    let data_source = DataSource::new_rrd(file_url(path.path())?)?;
 
     let registration = connection
         .register_with_dataset(asset_dataset, vec![data_source], IfDuplicateBehavior::Error)
@@ -213,12 +217,7 @@ pub async fn register_table_blueprint(
         .blueprint_dataset
         .ok_or("table is missing its implicit blueprint dataset")?;
 
-    let data_source = DataSource::new_rrd(format!(
-        "file://{}",
-        blueprint_rbl
-            .to_str()
-            .ok_or_else(|| "Failed to convert blueprint path to str".to_owned())?
-    ))?;
+    let data_source = DataSource::new_rrd(file_url(blueprint_rbl)?)?;
 
     let registration = connection
         .register_with_dataset(

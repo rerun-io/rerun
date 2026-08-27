@@ -12,7 +12,7 @@ use re_viewer_context::{
 };
 
 use crate::context::Context;
-use crate::servers::Command;
+use crate::servers::{AddServerCommand, Command};
 
 mod login_flow;
 pub use login_flow::{LoginFlow, LoginFlowResult};
@@ -387,11 +387,11 @@ impl ServerModal {
 
                         re_quota_channel::send_crossbeam(
                             ctx.command_sender,
-                            Command::AddServer {
+                            Command::AddServer(AddServerCommand {
                                 origin: origin.clone(),
                                 credentials,
                                 on_add: Some(on_add),
-                            },
+                            }),
                         )
                         .ok();
                     }

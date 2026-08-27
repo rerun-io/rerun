@@ -45,7 +45,10 @@ use tonic::IntoStreamingRequest as _;
 use tonic::codegen::{Body, StdError};
 use url::Url;
 
-use crate::{ApiError, ApiErrorKind, ApiResponseStream, ApiResult, TraceId, extract_trace_id};
+use crate::tasks::task_completion_stream;
+use crate::{
+    ApiError, ApiErrorKind, ApiResponseStream, ApiResult, TaskCompletion, TraceId, extract_trace_id,
+};
 
 /// Extension trait for [`tonic::Response`] that extracts both the inner value
 /// and the server's trace-id in one step.
@@ -1610,6 +1613,44 @@ where
         Ok((trace_id, tasks))
     }
 
+    // -- Assets API --
+
+    /// The asset dataset of `dataset_id`, if it has one.
+    #[tracing::instrument(level = "info", skip_all)]
+    pub async fn asset_dataset(&mut self, dataset_id: EntryId) -> ApiResult<Option<EntryId>> {
+        Ok(self
+            .read_dataset_entry(dataset_id)
+            .await?
+            .dataset_details
+            .asset_dataset)
+    }
+
+    /// The asset dataset of `dataset_id`, creating one if it has none yet.
+    ///
+    /// Datasets are now always created with an asset dataset, but there could still be
+    /// datasets created before.
+    #[tracing::instrument(level = "info", skip_all)]
+    pub async fn ensure_asset_dataset(&mut self, dataset_id: EntryId) -> ApiResult<EntryId> {
+        let dataset_details = self.read_dataset_entry(dataset_id).await?.dataset_details;
+
+        if let Some(asset_dataset) = dataset_details.asset_dataset {
+            return Ok(asset_dataset);
+        }
+
+        // The server attaches the missing asset dataset while handling an update, so send it back
+        // the details it already has.
+        self.update_dataset_entry(dataset_id, dataset_details)
+            .await?
+            .dataset_details
+            .asset_dataset
+            .ok_or_else(|| {
+                ApiError::internal(
+                    &self.origin,
+                    "the server did not attach an asset dataset to this dataset",
+                )
+            })
+    }
+
     /// Register a foreign Lance table to a new table entry in the catalog.
     //TODO(ab): in the future, we will probably support my types of tables (parquet on S3, etc.)
     #[tracing::instrument(level = "info", skip_all)]
@@ -1737,6 +1778,20 @@ where
         ))
     }
 
+    /// Wait for the given tasks to finish, reporting each one as it ends.
+    ///
+    /// The server ends the stream once every task has finished. If `timeout` is reached first, the
+    /// stream yields a `DEADLINE_EXCEEDED` error and any task still running is never reported.
+    #[tracing::instrument(level = "info", skip_all)]
+    pub async fn task_completions(
+        &mut self,
+        task_ids: Vec<TaskId>,
+        timeout: std::time::Duration,
+    ) -> ApiResult<ApiResponseStream<TaskCompletion>> {
+        let responses = self.query_tasks_on_completion(task_ids, timeout).await?;
+        Ok(task_completion_stream(responses))
+    }
+
     #[tracing::instrument(level = "info", skip_all)]
     pub async fn cancel_tasks(&mut self, task_ids: Vec<TaskId>) -> ApiResult {
         self.inner()
@@ -1764,6 +1819,48 @@ where
             .map_err(|err| ApiError::tonic(&self.origin, err, "/QueryTasks failed"))?
             .into_inner();
         Ok(response)
+    }
+
+    /// Wait for the given tasks to finish, failing if any of them did not succeed.
+    ///
+    /// Reaching `timeout` while a task is still running also fails.
+    #[tracing::instrument(level = "info", skip_all)]
+    pub async fn wait_for_tasks(
+        &mut self,
+        task_ids: Vec<TaskId>,
+        timeout: std::time::Duration,
+    ) -> ApiResult {
+        // Old servers unregister synchronously and return no tasks.
+        if task_ids.is_empty() {
+            return Ok(());
+        }
+
+        let completions = self.task_completions(task_ids, timeout).await?;
+        let trace_id = completions.trace_id();
+        let mut completions = std::pin::pin!(completions);
+
+        let mut failures = Vec::new();
+
+        while let Some(completion) = completions.next().await {
+            let completion = completion?;
+            if completion.is_success() {
+                continue;
+            }
+
+            let TaskCompletion {
+                task_id,
+                status,
+                message,
+            } = completion;
+            let message = message.unwrap_or_default();
+            failures.push(format!("task '{task_id}' ended as {status}: {message}"));
+        }
+
+        if failures.is_empty() {
+            Ok(())
+        } else {
+            Err(ApiError::internal(&self.origin, failures.join("\n")).with_trace_id(trace_id))
+        }
     }
 
     #[tracing::instrument(level = "info", skip_all)]

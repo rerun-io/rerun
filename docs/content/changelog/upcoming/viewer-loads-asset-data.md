@@ -16,4 +16,8 @@ When viewing a dataset in the viewer, one can also list assets and certain metad
 
 // TODO(isse): Add video.
 
-// TODO(isse): Add snippet (& docs!) on assets, and how to register them. Also video on UI when available.
+Assets can also be registered, and unregistered right in the viewer:
+
+// TODO(isse): Add video.
+
+// TODO(isse): Add snippet (& docs!) on assets, and how to register them.

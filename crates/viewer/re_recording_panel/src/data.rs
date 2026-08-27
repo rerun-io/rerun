@@ -387,7 +387,7 @@ impl<'a> ServerEntriesData<'a> {
                                 SegmentData::Loading { receiver } => {
                                     ctx.store_hub().data_source_order(receiver)
                                 }
-                                SegmentData::Loaded { entity_db } => {
+                                SegmentData::Loaded { entity_db, .. } => {
                                     if let Some(data_source) = &entity_db.data_source {
                                         ctx.store_hub().data_source_order(data_source)
                                     } else {
@@ -457,7 +457,7 @@ impl<'a> DatasetData<'a> {
         self.displayed_segments
             .iter()
             .filter_map(|segment| match segment {
-                SegmentData::Loaded { entity_db } => Some(*entity_db),
+                SegmentData::Loaded { entity_db, .. } => Some(*entity_db),
                 SegmentData::Loading { .. } => None,
             })
     }

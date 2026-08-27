@@ -1,21 +1,26 @@
 //! Coverage for assets: resolving the assets of a dataset, pulling them in alongside the recording
-//! segment they belong to, reusing them across the segments that share them, and listing them both
-//! in the dataset's Assets tab and in the recording panel.
+//! segment they belong to, reusing them across the segments that share them, listing them both in
+//! the dataset's Assets tab and in the recording panel, and reaching the segments the viewer
+//! already has when they change.
 
 use std::str::FromStr as _;
+use std::time::Duration;
 
 use arrow::array::RecordBatch;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable as _;
 use futures::StreamExt as _;
 
-use re_integration_test::{HarnessExt as _, TestServer, ViewerHarnessExt as _, register_asset};
+use re_integration_test::{
+    HarnessExt as _, TestServer, ViewerHarnessExt as _, asset_rrd, file_url, register_asset,
+};
 use re_log_channel::{DataSourceMessage, LogSource, RecordingOpenBehavior};
 use re_log_encoding::RrdManifest;
 use re_redap_client::{
-    ApiError, ConnectionClient, ConnectionRegistry, ConnectionRegistryHandle, StreamingOptions,
+    ApiError, ConnectionClient, ConnectionRegistry, ConnectionRegistryHandle,
+    DEFAULT_ASSET_TASK_TIMEOUT, StreamingOptions,
 };
-use re_sdk::external::re_log_types::{EntryId, StoreId};
+use re_sdk::external::re_log_types::{EntityPath, EntryId, StoreId};
 use re_sdk::external::re_tuid::Tuid;
 use re_sdk_types::{ChunkId, SegmentId};
 use re_uri::DatasetResource;
@@ -26,6 +31,9 @@ use re_viewer::viewer_test_utils::{self, AppTestingExt as _, HarnessOptions};
 const DATASET_NAME: &str = "my_dataset";
 const DATASET_ID: &str = "187b552b95a5c2f73f37894708825ba5";
 const RECORDING_ID: &str = "new_recording_id";
+
+/// The entity that the test assets log their data to.
+const ASSET_ENTITY: &str = "asset_entity";
 
 fn dataset_id() -> EntryId {
     Tuid::from_str(DATASET_ID)
@@ -154,6 +162,123 @@ async fn get_assets_for_segment_returns_the_registered_assets() {
 
     assert_eq!(entry, asset_dataset);
     assert_eq!(segments, expected_segments);
+}
+
+/// Registering an asset takes the recording dataset and a url, with the connection resolving the
+/// asset dataset itself. The registered asset then shows up among the dataset's assets.
+#[tokio::test(flavor = "multi_thread")]
+async fn register_asset_registers_with_the_datasets_asset_dataset() {
+    let (server, _) = TestServer::spawn()
+        .await
+        .with_named_test_data(DATASET_NAME, DATASET_ID, RECORDING_ID)
+        .await;
+    let connection = server.connection_handle();
+    let mut client = connection
+        .client()
+        .await
+        .expect("Failed to connect to server");
+
+    let asset = asset_rrd("robot_urdf").expect("Failed to build the asset recording");
+    let asset_url = file_url(asset.path()).expect("Failed to build the asset url");
+
+    let segment_id = connection
+        .register_asset(dataset_id(), &asset_url, DEFAULT_ASSET_TASK_TIMEOUT)
+        .await
+        .expect("Failed to register asset");
+
+    let assets = client
+        .get_assets_for_segment(dataset_id())
+        .await
+        .expect("Failed to get assets");
+
+    let asset_dataset = asset_dataset(&mut client, dataset_id()).await;
+    assert_eq!(assets, Some((asset_dataset, vec![segment_id])));
+}
+
+/// Registering the same asset a second time replaces the one already there, leaving the dataset
+/// with a single asset rather than failing on the duplicate.
+#[tokio::test(flavor = "multi_thread")]
+async fn register_asset_replaces_an_already_registered_asset() {
+    let (server, _) = TestServer::spawn()
+        .await
+        .with_named_test_data(DATASET_NAME, DATASET_ID, RECORDING_ID)
+        .await;
+    let connection = server.connection_handle();
+    let mut client = connection
+        .client()
+        .await
+        .expect("Failed to connect to server");
+
+    let asset = asset_rrd("robot_urdf").expect("Failed to build the asset recording");
+    let asset_url = file_url(asset.path()).expect("Failed to build the asset url");
+
+    let first = connection
+        .register_asset(dataset_id(), &asset_url, DEFAULT_ASSET_TASK_TIMEOUT)
+        .await
+        .expect("Failed to register asset");
+    let second = connection
+        .register_asset(dataset_id(), &asset_url, DEFAULT_ASSET_TASK_TIMEOUT)
+        .await
+        .expect("Failed to re-register asset");
+
+    assert_eq!(first, second);
+
+    let (_entry, segments) = client
+        .get_assets_for_segment(dataset_id())
+        .await
+        .expect("Failed to get assets")
+        .expect("the dataset should have assets");
+
+    assert_eq!(segments, vec![second]);
+}
+
+/// Unregistering an asset drops it from the dataset's assets. Dropping one that isn't registered
+/// anymore does nothing.
+#[tokio::test(flavor = "multi_thread")]
+async fn unregister_asset_drops_the_asset() {
+    let (server, _) = TestServer::spawn()
+        .await
+        .with_named_test_data(DATASET_NAME, DATASET_ID, RECORDING_ID)
+        .await;
+    let connection = server.connection_handle();
+    let mut client = connection
+        .client()
+        .await
+        .expect("Failed to connect to server");
+
+    let asset = asset_rrd("robot_urdf").expect("Failed to build the asset recording");
+    let asset_url = file_url(asset.path()).expect("Failed to build the asset url");
+
+    let segment_id = connection
+        .register_asset(dataset_id(), &asset_url, DEFAULT_ASSET_TASK_TIMEOUT)
+        .await
+        .expect("Failed to register asset");
+
+    connection
+        .unregister_asset(
+            dataset_id(),
+            segment_id.clone(),
+            false,
+            DEFAULT_ASSET_TASK_TIMEOUT,
+        )
+        .await
+        .expect("Failed to unregister asset");
+
+    let (_entry, segments) = client
+        .get_assets_for_segment(dataset_id())
+        .await
+        .expect("Failed to get assets")
+        .expect("the dataset keeps its asset dataset after its last asset is dropped");
+
+    assert!(
+        segments.is_empty(),
+        "the unregistered asset should be gone, got {segments:?}"
+    );
+
+    connection
+        .unregister_asset(dataset_id(), segment_id, false, DEFAULT_ASSET_TASK_TIMEOUT)
+        .await
+        .expect("unregistering an asset that is already gone should do nothing");
 }
 
 /// Streaming a segment also pulls in the manifests of the dataset's assets, addressed to the
@@ -312,6 +437,136 @@ async fn asset_chunks_are_only_downloaded_once() {
     );
 }
 
+/// Registering an asset through the modal sends the typed source url to the server, and the asset
+/// it produces shows up in the list without a manual refresh.
+#[tokio::test(flavor = "multi_thread")]
+async fn registering_an_asset_through_the_modal_lists_it() {
+    let (server, _) = TestServer::spawn()
+        .await
+        .with_named_test_data(DATASET_NAME, DATASET_ID, RECORDING_ID)
+        .await;
+
+    let dataset_uri = re_uri::EntryUri::new(origin(&server), dataset_id());
+
+    let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions {
+        startup_url: Some(dataset_uri.to_string()),
+        ..Default::default()
+    });
+    harness.set_selection_panel_opened(false);
+    harness.set_time_panel_opened(false);
+
+    viewer_test_utils::step_until("the dataset page is up", &mut harness, |harness| {
+        harness.query_by_label("Assets").is_some()
+    });
+
+    harness.get_by_label("Assets").click();
+    harness.run_ok();
+
+    viewer_test_utils::step_until(
+        "the dataset reports that it has no assets yet",
+        &mut harness,
+        |harness| harness.query_by_label("No assets registered").is_some(),
+    );
+
+    open_register_asset_modal(&mut harness);
+    harness.snapshot("register_asset_modal");
+
+    let asset = asset_rrd("robot_urdf").expect("Failed to build the asset recording");
+    let asset_url = file_url(asset.path()).expect("Failed to build the asset url");
+
+    harness
+        .get_by_role_and_label(egui::accesskit::Role::TextInput, "SOURCE URI")
+        .type_text(&asset_url);
+    harness.run_ok();
+
+    harness.get_by_label("Register").click();
+    harness.run_ok();
+
+    viewer_test_utils::step_until_with_custom_timeout(
+        "the registered asset shows up in the list",
+        &mut harness,
+        |harness| harness.query_all_by_label_contains("robot_urdf").count() > 0,
+        Duration::from_millis(100),
+        Duration::from_secs(10),
+    );
+}
+
+/// A registration the server refuses stays in the asset list, with the reason it gave, until the
+/// user dismisses it.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_refused_registration_is_listed_as_failed() {
+    let (server, _) = TestServer::spawn()
+        .await
+        .with_named_test_data(DATASET_NAME, DATASET_ID, RECORDING_ID)
+        .await;
+
+    let dataset_uri = re_uri::EntryUri::new(origin(&server), dataset_id());
+
+    let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions {
+        startup_url: Some(dataset_uri.to_string()),
+        ..Default::default()
+    });
+    harness.set_selection_panel_opened(false);
+    harness.set_time_panel_opened(false);
+
+    viewer_test_utils::step_until("the dataset page is up", &mut harness, |harness| {
+        harness.query_by_label("Assets").is_some()
+    });
+
+    harness.get_by_label("Assets").click();
+    harness.run_ok();
+
+    viewer_test_utils::step_until(
+        "the dataset reports that it has no assets yet",
+        &mut harness,
+        |harness| harness.query_by_label("No assets registered").is_some(),
+    );
+
+    open_register_asset_modal(&mut harness);
+
+    // The card shows the reason the server gave, and the snapshot has to look the same on every
+    // machine, so this is an object storage uri the local server cannot read at all. A `file://`
+    // uri would put a local path in the reason, and that path reads differently on Windows.
+    const REFUSED_ASSET_URI: &str = "s3://bucket/does/not/exist.rrd";
+
+    harness
+        .get_by_role_and_label(egui::accesskit::Role::TextInput, "SOURCE URI")
+        .type_text(REFUSED_ASSET_URI);
+    harness.run_ok();
+
+    harness.get_by_label("Register").click();
+    harness.run_ok();
+
+    viewer_test_utils::step_until_with_custom_timeout(
+        "the refused registration is listed",
+        &mut harness,
+        // Only a registration the server has answered can be dismissed, so the button showing up
+        // is what says the refused registration is on the list.
+        |harness| harness.query_by_label("Dismiss").is_some(),
+        Duration::from_millis(100),
+        Duration::from_secs(10),
+    );
+
+    assert!(
+        harness
+            .query_all_by_label_contains("does/not/exist.rrd")
+            .count()
+            > 0,
+        "the card should say which source uri the server refused"
+    );
+
+    harness.snapshot("refused_asset_registration");
+
+    harness.get_by_label("Dismiss").click();
+    harness.run_ok();
+
+    viewer_test_utils::step_until(
+        "dismissing takes the refused registration off the list",
+        &mut harness,
+        |harness| harness.query_by_label("No assets registered").is_some(),
+    );
+}
+
 /// Two segments of the same dataset share one asset. The viewer downloads the asset while opening
 /// the first segment and keeps it cached, so the second segment gets the same data without
 /// downloading it again.
@@ -370,6 +625,42 @@ async fn the_viewer_shares_asset_chunks_between_segments() {
         !cached_asset_chunks.is_empty(),
         "the asset should have chunks in the cache"
     );
+}
+
+/// The Assets tab of a dataset that has none says what an asset is and offers to register the
+/// first one, instead of showing an empty list.
+#[tokio::test(flavor = "multi_thread")]
+async fn dataset_assets_tab_without_assets() {
+    let dataset_id_str = "787b552b95a5c2f73f37894708825bac";
+    let (server, _) = TestServer::spawn()
+        .await
+        .with_named_test_data("robot_data", dataset_id_str, "robot_recording")
+        .await;
+    let dataset = EntryId::from_str(dataset_id_str).expect("valid entry id");
+
+    // The assets are a resource of the dataset, so they have a url of their own.
+    let assets_uri = re_uri::DatasetUri {
+        origin: origin(&server),
+        dataset_id: dataset.id,
+        resource: DatasetResource::Assets,
+        segment_id: None,
+        fragment: re_uri::Fragment::default(),
+    };
+    let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions {
+        startup_url: Some(assets_uri.to_string()),
+        ..Default::default()
+    });
+
+    viewer_test_utils::step_until_with_custom_timeout(
+        "the dataset reports that it has no assets yet",
+        &mut harness,
+        |harness| harness.query_by_label("No assets registered").is_some(),
+        Duration::from_millis(100),
+        Duration::from_secs(10),
+    );
+    harness.step_until_no_loading_indicator();
+
+    harness.snapshot("dataset_assets_tab_without_assets");
 }
 
 /// The Assets tab of a dataset lists one card per asset, showing its size and how long ago it was
@@ -589,6 +880,180 @@ fn step_until_active_recording(harness: &mut Harness<'static, re_viewer::App>, s
     viewer_test_utils::step_until("the asset is the active recording", harness, |harness| {
         harness.state().active_recording_id() == Some(store_id)
     });
+}
+
+/// Registering an asset reaches the segments the viewer already has, so a segment opened before the
+/// asset existed ends up with its data too.
+#[tokio::test(flavor = "multi_thread")]
+async fn registering_an_asset_reaches_segments_the_viewer_already_has() {
+    let (server, segment_id) = TestServer::spawn()
+        .await
+        .with_named_test_data(DATASET_NAME, DATASET_ID, RECORDING_ID)
+        .await;
+
+    let uri = segment_uri(&server, segment_id);
+    let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions {
+        startup_url: Some(uri.to_string()),
+        ..Default::default()
+    });
+    harness.set_selection_panel_opened(false);
+    harness.set_time_panel_opened(false);
+
+    step_until_segment_is_loaded(&mut harness, &uri);
+    assert!(
+        !segment_has_asset_data(&mut harness, &uri),
+        "the dataset has no assets yet, so the segment should have none of their data"
+    );
+
+    open_asset_list(&mut harness, &server);
+
+    open_register_asset_modal(&mut harness);
+
+    let asset = asset_rrd("robot_urdf").expect("Failed to build the asset recording");
+    let asset_url = file_url(asset.path()).expect("Failed to build the asset url");
+
+    harness
+        .get_by_role_and_label(egui::accesskit::Role::TextInput, "SOURCE URI")
+        .type_text(&asset_url);
+    harness.run_ok();
+
+    harness.get_by_label("Register").click();
+    harness.run_ok();
+
+    viewer_test_utils::step_until_with_custom_timeout(
+        "the segment the viewer already had picks up the new asset",
+        &mut harness,
+        |harness| segment_is_loaded(harness, &uri) && segment_has_asset_data(harness, &uri),
+        Duration::from_millis(100),
+        Duration::from_secs(15),
+    );
+}
+
+/// Unregistering an asset takes it back out of the segments the viewer already has.
+#[tokio::test(flavor = "multi_thread")]
+async fn unregistering_an_asset_drops_it_from_segments_the_viewer_already_has() {
+    let (server, segment_id) = TestServer::spawn()
+        .await
+        .with_named_test_data(DATASET_NAME, DATASET_ID, RECORDING_ID)
+        .await;
+
+    let connection = server.connection_handle();
+    let mut client = connection
+        .client()
+        .await
+        .expect("Failed to connect to server");
+    let asset_dataset = asset_dataset(&mut client, dataset_id()).await;
+    register_asset(&connection, asset_dataset, "robot_urdf")
+        .await
+        .expect("Failed to register asset");
+
+    let uri = segment_uri(&server, segment_id);
+    let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions {
+        startup_url: Some(uri.to_string()),
+        ..Default::default()
+    });
+    harness.set_selection_panel_opened(false);
+    harness.set_time_panel_opened(false);
+
+    step_until_segment_is_loaded(&mut harness, &uri);
+    assert!(
+        segment_has_asset_data(&mut harness, &uri),
+        "the segment should have been streamed with the dataset's asset"
+    );
+
+    open_asset_list(&mut harness, &server);
+
+    // Clicked through the accessibility tree, since a toast covers the right edge of the card.
+    harness.get_by_label("more").click_accesskit();
+    viewer_test_utils::step_until("the asset's menu is open", &mut harness, |harness| {
+        harness.query_by_label("Unregister asset").is_some()
+    });
+
+    harness.get_by_label("Unregister asset").click();
+    harness.run_ok();
+
+    viewer_test_utils::step_until_with_custom_timeout(
+        "the segment the viewer already had drops the unregistered asset",
+        &mut harness,
+        |harness| segment_is_loaded(harness, &uri) && !segment_has_asset_data(harness, &uri),
+        Duration::from_millis(100),
+        Duration::from_secs(15),
+    );
+}
+
+/// Opens the modal that registers an asset.
+///
+/// The register button is centered with a width measured the frame before, so it moves once after
+/// showing up. Settling first keeps the click from landing where the button no longer is.
+fn open_register_asset_modal(harness: &mut Harness<'static, re_viewer::App>) {
+    harness.run_ok();
+    harness.get_by_label("Register asset").click();
+    // Opening the modal goes through the browser's command queue, so it appears a frame later.
+    harness.run_ok();
+    harness.run_ok();
+}
+
+/// Navigates to the dataset's asset list, which is where assets are registered and unregistered.
+fn open_asset_list(harness: &mut Harness<'static, re_viewer::App>, server: &TestServer) {
+    let asset_list_uri = re_uri::DatasetUri {
+        origin: origin(server),
+        dataset_id: dataset_id().id,
+        resource: DatasetResource::Assets,
+        segment_id: None,
+        fragment: re_uri::Fragment::default(),
+    };
+    harness
+        .state()
+        .open_url_or_file(&asset_list_uri.to_string());
+
+    viewer_test_utils::step_until("the asset list is up", harness, |harness| {
+        harness.query_by_label("Register asset").is_some()
+    });
+}
+
+/// Steps the viewer until the store behind `uri` has its whole manifest.
+fn step_until_segment_is_loaded(
+    harness: &mut Harness<'static, re_viewer::App>,
+    uri: &re_uri::DatasetUri,
+) {
+    viewer_test_utils::step_until_with_custom_timeout(
+        "the segment is loaded",
+        harness,
+        |harness| segment_is_loaded(harness, uri),
+        Duration::from_millis(100),
+        Duration::from_secs(10),
+    );
+}
+
+/// Whether the store behind `uri` has every part of its manifest, which means it finished streaming.
+fn segment_is_loaded(
+    harness: &mut Harness<'static, re_viewer::App>,
+    uri: &re_uri::DatasetUri,
+) -> bool {
+    let uri = uri.clone();
+    harness.run_with_app_context(move |ctx| {
+        ctx.storage_context
+            .hub
+            .find_recording_by_uri(&uri)
+            .is_some_and(|db| db.rrd_manifest_index().is_manifest_complete())
+    })
+}
+
+/// Whether the store behind `uri` knows the static data the test assets bring with them.
+fn segment_has_asset_data(
+    harness: &mut Harness<'static, re_viewer::App>,
+    uri: &re_uri::DatasetUri,
+) -> bool {
+    let uri = uri.clone();
+    harness.run_with_app_context(move |ctx| {
+        ctx.storage_context
+            .hub
+            .find_recording_by_uri(&uri)
+            .is_some_and(|db| {
+                db.rrd_manifest_index()
+                    .entity_has_static_data(&EntityPath::from(ASSET_ENTITY))
+            })
+    })
 }
 
 /// Steps the viewer until the store behind `uri` holds chunks that came from `asset_segment_id`.

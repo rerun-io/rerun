@@ -956,6 +956,7 @@ impl TestContext {
                 | SystemCommand::RefreshRedapServer(_)
                 | SystemCommand::RefreshRedapEntry { .. }
                 | SystemCommand::RemoveRedapServer(_)
+                | SystemCommand::ReloadDatasetSegments { .. }
                 | SystemCommand::EditRedapServerModal { .. }
                 | SystemCommand::RedapServer(_)
                 | SystemCommand::Table(_)

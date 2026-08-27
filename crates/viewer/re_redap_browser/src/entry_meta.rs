@@ -98,6 +98,21 @@ impl DatasetRequests {
         schema.refresh();
         assets.refresh();
     }
+
+    /// Forget the assets we fetched, so the next access fetches them again.
+    ///
+    /// The rest of the metadata is left alone, since registering an asset doesn't change it.
+    pub fn clear_assets(&self) {
+        self.0.lock().assets.refresh();
+    }
+
+    /// Whether the assets we have are older than what the server has.
+    ///
+    /// True until the first fetch lands, and again from [`Self::clear_assets`] until the fetch
+    /// behind it lands.
+    pub fn assets_pending(&self) -> bool {
+        matches!(self.0.lock().assets.value(), ServerValue::Pending { .. })
+    }
 }
 
 /// Logs a failure of `fetch` as well as passing it on, since metadata is only ever decoration.

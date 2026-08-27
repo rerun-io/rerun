@@ -46,6 +46,14 @@ pub enum SystemCommand {
     /// Remove a server from the redap browser and clean up associated blueprints.
     RemoveRedapServer(re_uri::Origin),
 
+    /// Stream every segment of a dataset that the viewer already has again.
+    ///
+    /// Use this when something streamed with a segment changed, such as the dataset's assets.
+    ReloadDatasetSegments {
+        origin: re_uri::Origin,
+        dataset_id: re_log_types::EntryId,
+    },
+
     /// Open a modal to edit this redap server.
     EditRedapServerModal(EditRedapServerModalCommand),
 

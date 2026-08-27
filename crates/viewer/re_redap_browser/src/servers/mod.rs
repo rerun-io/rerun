@@ -8,23 +8,26 @@ use egui::{Frame, Margin, RichText};
 use re_async::AsyncRuntimeHandle;
 use re_dataframe_ui::ColumnBlueprint;
 use re_log_types::EntryId;
+use re_log_types::external::re_types_core::SegmentId;
 use re_protos::cloud::v1alpha1::EntryKind;
 use re_quota_channel::send_crossbeam;
 use re_redap_client::{
-    ClientCredentialsError, ConnectionHandle, ConnectionRegistryHandle, CredentialSource,
-    Credentials,
+    AssetRegistrationError, ClientCredentialsError, ConnectionHandle, ConnectionRegistryHandle,
+    CredentialSource, Credentials,
 };
 use re_sorbet::ColumnDescriptorRef;
 use re_ui::alert::Alert;
 use re_ui::{UiExt as _, icons};
 use re_uri::DATASET_HIERARCHY_SEPARATOR;
 use re_viewer_context::{
-    AppContext, CommandSender as ViewerCommandSender, EditRedapServerModalCommand,
-    TableReference as ViewerTableReference, ViewStates,
+    AppContext, CommandSender as ViewerCommandSender, EditRedapServerModalCommand, SystemCommand,
+    SystemCommandSender as _, TableReference as ViewerTableReference, ViewStates,
 };
 
+use crate::asset_registration::{AssetRegistrations, AssetUnregistrations};
 use crate::context::Context;
 use crate::entries::{Entries, Entry, Table};
+use crate::register_asset_modal::{AssetTarget, RegisterAssetModal};
 use crate::server_modal::{LoginFlow, LoginFlowResult, ServerModal, ServerModalMode};
 
 mod dataset;
@@ -38,6 +41,12 @@ enum ServerKind {
 pub struct Server {
     connection: ConnectionHandle,
     entries: Entries,
+
+    /// The pending and failed asset registrations of this server's datasets.
+    asset_registrations: AssetRegistrations,
+
+    /// The assets of this server's datasets that were asked to be dropped.
+    asset_unregistrations: AssetUnregistrations,
 
     /// Session context wrapper which holds all the table-like entries of the server.
     tables_session_ctx: Arc<SessionContext>,
@@ -101,6 +110,8 @@ impl Server {
         Self {
             connection,
             entries,
+            asset_registrations: Default::default(),
+            asset_unregistrations: Default::default(),
             tables_session_ctx,
             runtime,
             kind,
@@ -160,6 +171,19 @@ impl Server {
             egui_ctx,
             viewer_command_sender,
         );
+
+        // A registration or unregistration the server answered is listed until the dataset's asset
+        // list has caught up with it, so the asset is never missing from both.
+        let Self {
+            entries,
+            asset_registrations,
+            asset_unregistrations,
+            ..
+        } = self;
+
+        let list_caught_up = |entry_id| !entries.entry_assets_pending(entry_id);
+        asset_registrations.clear_registered(list_caught_up);
+        asset_unregistrations.clear_unregistered(list_caught_up);
     }
 
     fn find_entry(&self, entry_id: EntryId) -> Option<&Entry> {
@@ -563,6 +587,8 @@ pub struct RedapServers {
 
     server_modal_ui: ServerModal,
 
+    register_asset_modal_ui: RegisterAssetModal,
+
     /// Active inline login flow with the origin it was started for.
     ///
     /// That origin will get the token and be refreshed on login.
@@ -613,11 +639,41 @@ impl Default for RedapServers {
             command_sender,
             command_receiver,
             server_modal_ui: Default::default(),
+            register_asset_modal_ui: Default::default(),
             inline_login_flow: None,
         }
     }
 }
 
+/// Add a server with an optional JWT token.
+///
+/// If the token is None, this does *not* remove an existing token.
+pub struct AddServerCommand {
+    pub origin: re_uri::Origin,
+
+    pub credentials: Option<re_redap_client::Credentials>,
+
+    /// Ran after adding the server (useful since [`Command`]s are not ran in order with
+    /// [`re_viewer_context::SystemCommand`]s).
+    pub on_add: Option<Box<dyn FnOnce() + Send>>,
+}
+
+impl std::fmt::Debug for AddServerCommand {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self {
+            origin,
+            credentials,
+            on_add,
+        } = self;
+        f.debug_struct("AddServerCommand")
+            .field("origin", origin)
+            .field("credentials", credentials)
+            .field("on_add", &on_add.as_ref().map(|_| "…"))
+            .finish()
+    }
+}
+
+#[derive(Debug)]
 pub enum Command {
     /// Open a modal to add a new server.
     OpenAddServerModal,
@@ -625,49 +681,65 @@ pub enum Command {
     /// Open a modal to edit an existing server.
     OpenEditServerModal(EditRedapServerModalCommand),
 
-    /// Add a server with an optional JWT token.
-    ///
-    /// If the token is None, this does *not* remove an existing token.
-    ///
-    /// The closure can be used to run something after adding the server (useful since [`Command`]s
-    /// are not ran in order with [`re_viewer_context::SystemCommand`]s).
-    AddServer {
+    /// Open a modal to register an asset with a dataset.
+    OpenRegisterAssetModal(AssetTarget),
+
+    /// The server was asked to register an asset with a dataset.
+    AssetRegistrationStarted {
         origin: re_uri::Origin,
-        credentials: Option<re_redap_client::Credentials>,
-        on_add: Option<Box<dyn FnOnce() + Send>>,
+        entry_id: EntryId,
+
+        /// Where the asset is read from, as typed by the user.
+        source_uri: String,
     },
+
+    /// The server answered an asset registration.
+    AssetRegistrationFinished {
+        origin: re_uri::Origin,
+        entry_id: EntryId,
+        source_uri: String,
+        result: Result<(), AssetRegistrationError>,
+    },
+
+    /// Stop listing a registration the server refused.
+    DismissAssetRegistration {
+        origin: re_uri::Origin,
+        entry_id: EntryId,
+        source_uri: String,
+    },
+
+    /// The server was asked to drop an asset of a dataset.
+    AssetUnregistrationStarted {
+        origin: re_uri::Origin,
+        entry_id: EntryId,
+        asset_id: SegmentId,
+    },
+
+    /// The server answered an asset unregistration.
+    AssetUnregistrationFinished {
+        origin: re_uri::Origin,
+        entry_id: EntryId,
+        asset_id: SegmentId,
+
+        /// Whether the server dropped the asset.
+        unregistered: bool,
+    },
+
+    /// A dataset's assets changed on the server.
+    ///
+    /// Clears the dataset's assets so the next frame fetches them again, and streams the segments
+    /// the viewer already has again.
+    AssetsChanged {
+        origin: re_uri::Origin,
+        entry_id: EntryId,
+    },
+
+    AddServer(AddServerCommand),
 
     RefreshCollection(re_uri::Origin),
 
     /// Use the stored account credentials for a server and refresh.
     UseStoredCredentials(re_uri::Origin),
-}
-
-impl std::fmt::Debug for Command {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::OpenAddServerModal => write!(f, "OpenAddServerModal"),
-            Self::OpenEditServerModal(cmd) => {
-                f.debug_tuple("OpenEditServerModal").field(cmd).finish()
-            }
-            Self::AddServer {
-                origin,
-                credentials,
-                on_add,
-            } => f
-                .debug_struct("AddServer")
-                .field("origin", origin)
-                .field("credentials", credentials)
-                .field("on_add", &on_add.as_ref().map(|_| "…"))
-                .finish(),
-            Self::RefreshCollection(origin) => {
-                f.debug_tuple("RefreshCollection").field(origin).finish()
-            }
-            Self::UseStoredCredentials(origin) => {
-                f.debug_tuple("UseStoredCredentials").field(origin).finish()
-            }
-        }
-    }
 }
 
 impl RedapServers {
@@ -706,11 +778,11 @@ impl RedapServers {
     pub fn add_server(&self, origin: re_uri::Origin) {
         send_crossbeam(
             &self.command_sender,
-            Command::AddServer {
+            Command::AddServer(AddServerCommand {
                 origin,
                 credentials: None,
                 on_add: None,
-            },
+            }),
         )
         .ok();
     }
@@ -757,15 +829,21 @@ impl RedapServers {
     ///
     /// This clears the cached query results and the entry's metadata, so the next frame re-fetches
     /// both from the server — the same effect as the "Refresh table" button in the entry view.
+    ///
+    /// A dataset's failed asset registrations go too, since asking the server again is how the user
+    /// gets rid of a stale answer. Pending ones stay: only the server can end those.
     pub fn refresh_entry(
-        &self,
+        &mut self,
         origin: &re_uri::Origin,
         entry_id: EntryId,
         egui_ctx: &egui::Context,
     ) {
-        let Some(server) = self.servers.get(origin) else {
+        let Some(server) = self.servers.get_mut(origin) else {
             return;
         };
+
+        server.asset_registrations.clear_failed(entry_id);
+
         let Some(entry) = server.find_entry(entry_id) else {
             return;
         };
@@ -870,11 +948,11 @@ impl RedapServers {
         self.pending_servers.drain(..).for_each(|origin| {
             send_crossbeam(
                 &self.command_sender,
-                Command::AddServer {
+                Command::AddServer(AddServerCommand {
                     origin,
                     credentials: None,
                     on_add: None,
-                },
+                }),
             )
             .ok();
         });
@@ -885,6 +963,7 @@ impl RedapServers {
                 egui_ctx,
                 command,
                 login_enabled,
+                viewer_command_sender,
             );
         }
 
@@ -917,6 +996,7 @@ impl RedapServers {
         egui_ctx: &egui::Context,
         command: Command,
         login_enabled: bool,
+        viewer_command_sender: &ViewerCommandSender,
     ) {
         match command {
             Command::OpenAddServerModal => {
@@ -932,11 +1012,108 @@ impl RedapServers {
                 );
             }
 
-            Command::AddServer {
+            Command::OpenRegisterAssetModal(target) => {
+                self.register_asset_modal_ui.open(
+                    target,
+                    connection_registry.clone(),
+                    runtime.clone(),
+                );
+            }
+
+            Command::AssetRegistrationStarted {
+                origin,
+                entry_id,
+                source_uri,
+            } => {
+                if let Some(server) = self.servers.get_mut(&origin) {
+                    server.asset_registrations.start(entry_id, source_uri);
+                }
+            }
+
+            Command::AssetRegistrationFinished {
+                origin,
+                entry_id,
+                source_uri,
+                result,
+            } => {
+                if let Some(server) = self.servers.get_mut(&origin) {
+                    server
+                        .asset_registrations
+                        .finish(entry_id, &source_uri, result);
+                }
+
+                // A registration that failed can still have registered the asset, depending on
+                // how far the server got, and only the refetched list says whether it did.
+                send_crossbeam(
+                    &self.command_sender,
+                    Command::AssetsChanged { origin, entry_id },
+                )
+                .ok();
+            }
+
+            Command::DismissAssetRegistration {
+                origin,
+                entry_id,
+                source_uri,
+            } => {
+                if let Some(server) = self.servers.get_mut(&origin) {
+                    server.asset_registrations.dismiss(entry_id, &source_uri);
+                }
+            }
+
+            Command::AssetUnregistrationStarted {
+                origin,
+                entry_id,
+                asset_id,
+            } => {
+                if let Some(server) = self.servers.get_mut(&origin) {
+                    server.asset_unregistrations.start(entry_id, asset_id);
+                }
+            }
+
+            Command::AssetUnregistrationFinished {
+                origin,
+                entry_id,
+                asset_id,
+                unregistered,
+            } => {
+                if let Some(server) = self.servers.get_mut(&origin) {
+                    server
+                        .asset_unregistrations
+                        .finish(entry_id, &asset_id, unregistered);
+
+                    if unregistered {
+                        server
+                            .asset_registrations
+                            .clear_failed_for_asset(entry_id, &asset_id);
+                    }
+                }
+
+                if unregistered {
+                    send_crossbeam(
+                        &self.command_sender,
+                        Command::AssetsChanged { origin, entry_id },
+                    )
+                    .ok();
+                }
+            }
+
+            Command::AssetsChanged { origin, entry_id } => {
+                if let Some(server) = self.servers.get(&origin) {
+                    server.entries.clear_entry_assets(entry_id);
+                }
+
+                viewer_command_sender.send_system(SystemCommand::ReloadDatasetSegments {
+                    origin,
+                    dataset_id: entry_id,
+                });
+            }
+
+            Command::AddServer(AddServerCommand {
                 origin,
                 credentials,
                 on_add,
-            } => {
+            }) => {
                 if let Some(credentials) = credentials {
                     connection_registry.set_credentials(&origin, credentials);
                 }
@@ -1036,12 +1213,17 @@ impl RedapServers {
         table_blueprints: &re_dataframe_ui::TableBlueprints,
         view_states: &mut ViewStates,
     ) {
+        let browser_ctx = Context {
+            command_sender: &self.command_sender,
+        };
+
         for server in self.servers.values() {
             if let Some(entry) = server.find_entry(active_entry) {
                 match entry.inner() {
                     Ok(crate::entries::EntryInner::Dataset(dataset)) => {
                         server.dataset_entry_ui(
                             ctx,
+                            &browser_ctx,
                             ui,
                             dataset,
                             table_blueprints,
@@ -1081,6 +1263,18 @@ impl RedapServers {
         };
 
         self.server_modal_ui.ui(app_ctx, &ctx, ui);
+
+        // Read every frame, so the open modal keeps up with the dataset.
+        let asset_slots = self
+            .register_asset_modal_ui
+            .target()
+            .and_then(|target| {
+                let server = self.servers.get(&target.origin)?;
+                Some(server.dataset_asset_slots(ui.ctx(), target.dataset_id))
+            })
+            .unwrap_or_default();
+
+        self.register_asset_modal_ui.ui(&ctx, ui, &asset_slots);
     }
 
     pub fn send_command(&self, command: Command) {

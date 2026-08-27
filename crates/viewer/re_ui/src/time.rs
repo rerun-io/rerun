@@ -11,13 +11,13 @@ use re_log_types::{Timestamp, TimestampFormat};
 /// 1-24 hours: "X hours ago"
 /// 1-7 days: "X days ago"
 /// Over 7 days ago: formats the timestamp using the provided `TimestampFormat`.
-pub fn format_duration_short(timestamp: Timestamp, fallback_format: TimestampFormat) -> String {
+pub fn try_format_duration_short(timestamp: Timestamp) -> Option<String> {
     let duration = Timestamp::now().sub(timestamp);
     let seconds = duration.as_secs_f64() as u64;
 
     let format_plural = |n: u64, unit: &'static str| format!("{} ago", format_plural_s(n, unit));
 
-    if seconds < 10 {
+    Some(if seconds < 10 {
         "just now".to_owned()
     } else if seconds < 60 {
         "less than a minute ago".to_owned()
@@ -31,8 +31,20 @@ pub fn format_duration_short(timestamp: Timestamp, fallback_format: TimestampFor
         let days = seconds / 86400;
         format_plural(days, "day")
     } else {
-        timestamp.format(fallback_format)
-    }
+        return None;
+    })
+}
+
+/// Formats a duration in a short, readable format, e.g. ("1 hour ago" or "2 minutes ago")
+///
+/// 0-10 seconds: "just now"
+/// 10-60 seconds: "less than a minute ago"
+/// 1-60 minutes: "X minutes ago"
+/// 1-24 hours: "X hours ago"
+/// 1-7 days: "X days ago"
+/// Over 7 days ago: formats the timestamp using the provided `TimestampFormat`.
+pub fn format_duration_short(timestamp: Timestamp, fallback_format: TimestampFormat) -> String {
+    try_format_duration_short(timestamp).unwrap_or_else(|| timestamp.format(fallback_format))
 }
 
 /// Shows a timestamp as a duration from now, in a short format.
@@ -56,6 +68,9 @@ pub fn short_duration_ui(
     };
     ui.request_repaint_after(std::time::Duration::from_secs(repaint_in_sec));
 
-    let short = format_duration_short(timestamp, format);
-    show(ui, short).on_hover_text(timestamp.format(format))
+    if let Some(short) = try_format_duration_short(timestamp) {
+        show(ui, short).on_hover_text(timestamp.format(format))
+    } else {
+        show(ui, timestamp.format(format))
+    }
 }

@@ -447,6 +447,15 @@
        "color": "#FFD28A"
     },
   },
+  "outlines": {
+    "pending": {
+       "color": "{Gray.850}"
+    },
+    "error": {
+       "color": "#281712"
+    },
+  },
+
   "alert_error": {
     "fill": {
        "color": "{Red.500}",
@@ -484,6 +493,12 @@
     "fill_pressed": { "color": "{Gray.400}" },
     "text": { "color": "{Gray.750}" },
     "stroke": { "color": "{Gray.750}", "width": 1 },
+  },
+  "button_blue": {
+    "fill": { "color": "{Blue.500}" },
+    "fill_hovered": { "color": "{Blue.525}" },
+    "fill_pressed": { "color": "{Blue.550}" },
+    "text": { "color": "{Gray.1000}" },
   },
   "button_opened": {
     "fill": { "color": "{Blue.500}", "alpha": 100 },

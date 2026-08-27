@@ -192,6 +192,25 @@ impl Entries {
         self.entries.poll();
     }
 
+    /// Clear an entry's assets, so the next access refetches them.
+    pub(crate) fn clear_entry_assets(&self, entry_id: EntryId) {
+        if let Some(entry) = self.find_entry(entry_id)
+            && let Ok(EntryInner::Dataset(dataset)) = entry.inner()
+        {
+            dataset.requests.clear_assets();
+        }
+    }
+
+    /// Whether we are waiting for an entry's assets.
+    ///
+    /// An entry we don't have counts as waiting, since we have nothing to say about its assets.
+    pub(crate) fn entry_assets_pending(&self, entry_id: EntryId) -> bool {
+        match self.find_entry(entry_id).map(Entry::inner) {
+            Some(Ok(EntryInner::Dataset(dataset))) => dataset.requests.assets_pending(),
+            _ => true,
+        }
+    }
+
     pub fn find_entry(&self, entry_id: EntryId) -> Option<&Entry> {
         self.entries.get()?.get(&entry_id)
     }

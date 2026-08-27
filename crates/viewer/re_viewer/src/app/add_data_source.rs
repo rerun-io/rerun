@@ -293,6 +293,73 @@ impl App {
         }
     }
 
+    /// Streams every segment of a dataset that the viewer already has again.
+    ///
+    /// Segments keep their store id, so the route, blueprint and time cursor survive. Their data is
+    /// dropped first, so data the server no longer serves goes with it.
+    pub(super) fn reload_dataset_segments(
+        &mut self,
+        store_hub: &mut StoreHub,
+        origin: &re_uri::Origin,
+        dataset_id: EntryId,
+    ) {
+        let segments: Vec<(DatasetUri, StoreId, RecordingOpenBehavior)> = store_hub
+            .store_bundle()
+            .recordings()
+            .filter_map(|db| {
+                let Some(LogSource::RedapGrpcStream { uri, open_behavior }) = &db.data_source
+                else {
+                    return None;
+                };
+
+                if uri.origin != *origin || EntryId::from(uri.dataset_id) != dataset_id {
+                    return None;
+                }
+
+                // A uri that names no segment is the dataset itself, which has nothing to reload.
+                Some((uri.clone(), uri.store_id()?, *open_behavior))
+            })
+            .collect();
+
+        for (uri, store_id, open_behavior) in segments {
+            // Reusing the source keeps this one segment where the viewer keys off it, like the
+            // recording panel.
+            let source = LogSource::RedapGrpcStream {
+                uri: uri.clone(),
+                open_behavior,
+            };
+
+            let data_source = LogDataSource::RedapDatasetSegment {
+                uri: uri.clone(),
+                open_behavior,
+            };
+
+            match data_source.stream_with_options(
+                &self.async_runtime,
+                Self::auth_error_handler(self.command_sender.clone()),
+                &self.connection_registry,
+                // Downloading the blueprint again would throw away the user's edits.
+                re_redap_client::StreamingOptions {
+                    download: re_redap_client::SegmentDownload::SEGMENT,
+                    ..Default::default()
+                },
+            ) {
+                Ok(rx) => {
+                    // Anything still streaming into this store started before the change.
+                    self.rx_log.remove(&source);
+                    store_hub.clear_recording_data(&store_id);
+                    self.add_log_receiver(rx);
+                }
+                Err(err) => {
+                    re_log::error!(
+                        "Failed to reload segment, leaving it as it is: {}\nSegment: {uri}",
+                        re_error::format(err)
+                    );
+                }
+            }
+        }
+    }
+
     /// Makes the first recording store active that is found for a given data source if any.
     fn try_make_recording_from_source_active(
         &mut self,

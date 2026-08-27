@@ -1,17 +1,20 @@
 //! This crates implements the Redap browser feature, including the communication and UI aspects of
 //! it.
 
+mod asset_registration;
 mod context;
 mod entries;
 mod entry_meta;
 mod folder_card_ui;
+mod register_asset_modal;
 mod server_modal;
 mod servers;
 
 pub use re_viewer_context::open_url::EXAMPLES_ORIGIN;
 
 pub use self::entries::{Entries, Entry, EntryInner};
-pub use self::servers::{Command, RedapServers, Server};
+pub use self::register_asset_modal::AssetTarget;
+pub use self::servers::{AddServerCommand, Command, RedapServers, Server};
 
 /// Utility function to switch to the examples screen.
 pub fn switch_to_welcome_screen(command_sender: &re_viewer_context::CommandSender) {

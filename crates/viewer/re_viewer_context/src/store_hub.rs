@@ -565,20 +565,26 @@ impl StoreHub {
             }
         }
 
-        // Drop the store itself on a separate thread,
-        // so that recursing through it and freeing the memory doesn’t block the UI thread.
-        #[allow(
-            clippy::allow_attributes,
-            clippy::disallowed_types,
-            reason = "If this thread spawn fails due to running on Wasm (or for any other reason),
-                      the error will be ignored and the store will be dropped on this thread."
-        )]
-        let (Ok(_) | Err(_)) = std::thread::Builder::new()
-            .name("drop-removed-store".into())
-            .spawn(|| {
-                re_tracing::profile_scope!("drop store");
-                drop(removed_store);
-            });
+        drop_store_off_thread(removed_store);
+    }
+
+    /// Drops a recording's data, keeping the recording in the hub under the same store id.
+    ///
+    /// The recording keeps its data source and its app keeps its blueprints, so it can be streamed
+    /// again. See [`Self::remove`] to take a recording out of the hub for good.
+    pub fn clear_recording_data(&mut self, store_id: &StoreId) {
+        let Some(slot) = self.store_bundle.get_mut(store_id) else {
+            return;
+        };
+
+        let mut empty_store = EntityDb::new(store_id.clone());
+        empty_store.data_source = slot.data_source.clone();
+        let cleared_store = std::mem::replace(slot, empty_store);
+
+        // The caches hold data derived from the chunks we drop.
+        _ = self.store_caches.remove(store_id);
+
+        drop_store_off_thread(cleared_store);
     }
 
     pub fn remove(&mut self, entry: &RecordingOrLocalTable) {
@@ -1398,6 +1404,23 @@ impl StoreHub {
             table_stats,
         }
     }
+}
+
+/// Drops a store on a separate thread, so that recursing through it and freeing the memory doesn’t
+/// block the UI thread.
+fn drop_store_off_thread(store: EntityDb) {
+    #[allow(
+        clippy::allow_attributes,
+        clippy::disallowed_types,
+        reason = "If this thread spawn fails due to running on Wasm (or for any other reason),
+                  the error will be ignored and the store will be dropped on this thread."
+    )]
+    let (Ok(_) | Err(_)) = std::thread::Builder::new()
+        .name("drop-removed-store".into())
+        .spawn(|| {
+            re_tracing::profile_scope!("drop store");
+            drop(store);
+        });
 }
 
 impl MemUsageTreeCapture for StoreHub {

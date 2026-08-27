@@ -30,6 +30,34 @@ impl AlertVisuals {
     }
 }
 
+/// The colors a card is outlined with to say what state its content is in.
+///
+/// One color per state: the outline is drawn in it, and anything marking the card, such as a pill
+/// or the line saying what went wrong, is tinted from it.
+#[derive(Debug)]
+pub struct Outlines {
+    /// Waiting on something that is expected to finish.
+    pub pending: Color32,
+
+    /// Something went wrong and the user has to deal with it.
+    pub error: Color32,
+}
+
+impl Outlines {
+    fn try_get(color_table: &ColorTable, ron: &ron::Value, name: &str) -> anyhow::Result<Self> {
+        let value = ron.get(name)?;
+
+        Ok(Self {
+            pending: color_from_value(color_table, value.get("pending")?)?,
+            error: color_from_value(color_table, value.get("error")?)?,
+        })
+    }
+
+    fn get(color_table: &ColorTable, ron: &ron::Value, name: &str) -> Self {
+        Self::try_get(color_table, ron, name).expect("Failed to parse Outlines")
+    }
+}
+
 /// Colors for a single button [`crate::Variant`].
 #[derive(Debug)]
 pub struct ButtonVisuals {
@@ -318,10 +346,13 @@ pub struct DesignTokens {
     pub alert_warning: AlertVisuals,
     pub alert_error: AlertVisuals,
 
+    pub outlines: Outlines,
+
     pub button_primary: ButtonVisuals,
     pub button_secondary: ButtonVisuals,
     pub button_ghost: ButtonVisuals,
     pub button_outlined: ButtonVisuals,
+    pub button_blue: ButtonVisuals,
     pub button_opened: ButtonVisuals,
 
     /// The accent (`Blue.500`) selection surface: selected items, the selection
@@ -548,10 +579,13 @@ impl DesignTokens {
             alert_warning: AlertVisuals::get(&colors, &theme_value, "alert_warning"),
             alert_error: AlertVisuals::get(&colors, &theme_value, "alert_error"),
 
+            outlines: Outlines::get(&colors, &theme_value, "outlines"),
+
             button_primary: ButtonVisuals::get(&colors, &theme_value, "button_primary"),
             button_secondary: ButtonVisuals::get(&colors, &theme_value, "button_secondary"),
             button_ghost: ButtonVisuals::get(&colors, &theme_value, "button_ghost"),
             button_outlined: ButtonVisuals::get(&colors, &theme_value, "button_outlined"),
+            button_blue: ButtonVisuals::get(&colors, &theme_value, "button_blue"),
             button_opened: ButtonVisuals::get(&colors, &theme_value, "button_opened"),
 
             selection: ButtonVisuals::get(&colors, &theme_value, "selection"),

@@ -160,6 +160,7 @@ pub const RESET: Icon = icon_from_path!("../data/icons/reset.svg");
 
 pub const EDIT: Icon = icon_from_path!("../data/icons/edit.svg");
 pub const MORE: Icon = icon_from_path!("../data/icons/more.svg");
+pub const MORE_VERTICAL: Icon = icon_from_path!("../data/icons/more_vertical.svg");
 
 pub const CLOSE: Icon = icon_from_path!("../data/icons/close.svg");
 pub const CLOSE_SMALL: Icon = icon_from_path!("../data/icons/close_small.svg");
@@ -219,6 +220,7 @@ pub const DATASET: Icon = icon_from_path!("../data/icons/dataset.svg");
 pub const RECORDING: Icon = icon_from_path!("../data/icons/recording.svg");
 pub const OPEN_RECORDING: Icon = icon_from_path!("../data/icons/open_recording.svg");
 pub const BLUEPRINT: Icon = icon_from_path!("../data/icons/blueprint.svg");
+pub const ASSET: Icon = icon_from_path!("../data/icons/asset.svg");
 
 // These link icons have a blue arrow that wouldn't work with the usual tint we do for light/dark,
 // so we have separate icons for the themes:

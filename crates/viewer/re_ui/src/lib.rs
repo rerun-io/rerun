@@ -61,7 +61,8 @@ pub use self::command_palette::{
 };
 pub use self::context_ext::ContextExt;
 pub use self::design_tokens::{
-    AlertVisuals, ButtonVisuals, DesignTokens, TableStyle, TextEditVisuals, WindowFrameConfig,
+    AlertVisuals, ButtonVisuals, DesignTokens, Outlines, TableStyle, TextEditVisuals,
+    WindowFrameConfig,
 };
 pub use self::egui_ext::widget_ext::*;
 pub use self::fuzzy::{FuzzyMatch, FuzzyQuery};
