@@ -32,12 +32,12 @@ impl AsyncDecoder for TestDecoder {
 
         self.sender
             .send(Ok(re_video::Frame {
-                content: re_video::FrameContent {
+                content: re_video::FrameContent::Decoded(re_video::DecodedFrameContent {
                     data: Vec::new(),
                     width: 0,
                     height: 0,
                     format: re_video::PixelFormat::Rgb8Unorm,
-                },
+                }),
                 info: re_video::FrameInfo {
                     is_sync: Some(chunk.is_sync),
                     frame_nr: Some(chunk.frame_nr),

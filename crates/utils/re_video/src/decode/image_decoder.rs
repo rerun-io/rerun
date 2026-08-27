@@ -51,6 +51,11 @@ impl SyncDecoder for SyncImageDecoder {
             }
         };
 
+        let content = cfg_select! {
+            target_arch = "wasm32" => { content }
+            _ => { crate::FrameContent::Decoded(content) }
+        };
+
         let _send_error = output_sender.send(crate::FrameResult::Ok(crate::Frame {
             content,
             info: crate::FrameInfo {

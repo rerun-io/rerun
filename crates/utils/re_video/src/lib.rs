@@ -16,6 +16,8 @@ mod vp8;
 mod vp9;
 
 pub use av1::{AV1_TEST_INTER_FRAME, AV1_TEST_KEYFRAME};
+#[cfg(with_gpu_video)]
+pub use decode::GpuVideoContextHandle;
 #[cfg(target_arch = "wasm32")]
 pub use decode::WebVideoFrame;
 pub use decode::{

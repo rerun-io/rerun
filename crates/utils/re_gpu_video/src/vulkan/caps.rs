@@ -330,8 +330,8 @@ fn plan_queues(
         take_queue(decode_family)
     } else {
         let copy = (0..families.len())
-            .find(|&index| index != decode_family && transfer_capable(&families[index]))
-            .and_then(&mut take_queue);
+            .filter(|&index| index != decode_family && transfer_capable(&families[index]))
+            .find_map(&mut take_queue);
         if copy.is_none() {
             re_log::debug!(
                 "No GPU video decode support: no transfer-capable queue for the output copy."

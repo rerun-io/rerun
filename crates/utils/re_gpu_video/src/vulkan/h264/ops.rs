@@ -56,6 +56,13 @@ pub struct DecodeInfo {
     /// marking follow in a separate [`DecodeOp::FreeSlots`].
     pub setup_slot: Option<u8>,
 
+    /// A free DPB slot for non-reference frames to activate, `None` when `setup_slot` is set.
+    ///
+    /// Vulkan allows a decode without a setup slot, but RADV reads the setup slot
+    /// unconditionally and crashes on the null pointer. Nothing ever references
+    /// the slot, so the next allocation can hand it out again.
+    pub scratch_slot: Option<u8>,
+
     /// The frame is marked as a long-term reference
     /// (IDR `long_term_reference_flag`, or memory management control operation 6).
     pub long_term_frame_idx: Option<u16>,
@@ -132,6 +139,14 @@ impl std::fmt::Display for DecodeOp {
 
             Self::FreeSlots(slots) => write!(f, "FreeSlots {slots:?}"),
         }
+    }
+}
+
+impl DecodeInfo {
+    /// The DPB slot this frame activates: its own reference slot,
+    /// or the scratch slot of a non-reference frame.
+    pub fn activated_slot(&self) -> Option<u8> {
+        self.setup_slot.or(self.scratch_slot)
     }
 }
 

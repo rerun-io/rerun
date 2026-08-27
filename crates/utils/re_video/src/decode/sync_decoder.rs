@@ -13,6 +13,9 @@ pub trait SyncDecoder {
         output_sender: &Sender<FrameResult>,
     );
 
+    /// Called after the last chunk was submitted, emits any buffered frames.
+    fn end_of_video(&mut self, _output_sender: &Sender<FrameResult>) {}
+
     /// Clear and reset everything
     fn reset(&mut self, video_data_description: &VideoDataDescription);
 }

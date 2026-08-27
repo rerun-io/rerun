@@ -231,9 +231,10 @@ pub fn record_decode(
 
     // The DPB slot this frame activates, with the frame's own reference metadata.
     // Long-term frames are addressed by their long-term index from then on.
-    let setup_resource = info
-        .setup_slot
-        .map(|slot| images.dpb_resource(u32::from(slot)));
+    // Non-reference frames get the scratch slot: they activate a slot nothing
+    // references, because RADV crashes when the setup slot is left out.
+    let activated_slot = info.activated_slot();
+    let setup_resource = activated_slot.map(|slot| images.dpb_resource(u32::from(slot)));
     let setup_std_ref = std_reference_info(
         info.long_term_frame_idx.unwrap_or(info.frame_num),
         info.top_field_order_cnt,
@@ -242,7 +243,7 @@ pub fn record_decode(
     );
     let mut setup_slot_h264 =
         vk::VideoDecodeH264DpbSlotInfoKHR::default().std_reference_info(&setup_std_ref);
-    let setup_slot = info.setup_slot.map(|slot| {
+    let setup_slot = activated_slot.map(|slot| {
         vk::VideoReferenceSlotInfoKHR::default()
             .slot_index(i32::from(slot))
             .picture_resource(setup_resource.as_ref().expect("set together"))
@@ -301,7 +302,7 @@ pub fn record_decode(
             .src_buffer(frame.bitstream_buffer)
             .src_buffer_offset(0)
             .src_buffer_range(frame.bitstream_size)
-            .dst_picture_resource(images.dst_resource(info.setup_slot))
+            .dst_picture_resource(images.dst_resource(activated_slot))
             .reference_slots(&reference_slots)
             .push_next(&mut h264_picture_info);
         if let Some(setup_slot) = &setup_slot {

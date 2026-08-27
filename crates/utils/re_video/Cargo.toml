@@ -21,13 +21,16 @@ all-features = true
 
 
 [features]
-default = ["av1", "ffmpeg"]
+default = ["av1", "ffmpeg", "gpu_video"]
 
 ## Native AV1 decoding.
 av1 = ["dep:dav1d"]
 
 ## Decode H.264 using ffmpeg over CLI.
 ffmpeg = ["dep:ffmpeg-sidecar"]
+
+## Decode H.264 on the GPU, straight to GPU textures. Native only.
+gpu_video = ["dep:re_gpu_video"]
 
 ## Enable faster native video decoding with assembly.
 ## You need to install [nasm](https://github.com/netwide-assembler/nasm) to compile with this feature.
@@ -87,6 +90,7 @@ dav1d = { workspace = true, optional = true, default-features = false, features 
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 image = { workspace = true, default-features = false, features = ["jpeg"] }
+re_gpu_video = { workspace = true, optional = true }
 
 # web
 [target.'cfg(target_arch = "wasm32")'.dependencies]

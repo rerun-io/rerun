@@ -21,8 +21,9 @@ pub use texture_3d::{
 pub use texture_manager::{
     AlphaChannelUsage, GpuTexture2D, TextureManager2D, TextureManager2DError,
 };
-pub use yuv_converter::{YuvMatrixCoefficients, YuvPixelLayout, YuvRange};
+pub use yuv_converter::{Nv12PlaneConversionTask, YuvMatrixCoefficients, YuvPixelLayout, YuvRange};
 
 pub fn register_renderers(renderers: &mut crate::Renderers) {
     renderers.register::<yuv_converter::YuvFormatConverter>();
+    renderers.register::<yuv_converter::Nv12PlaneConverter>();
 }

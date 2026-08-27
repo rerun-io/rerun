@@ -10,6 +10,8 @@ pub use super::sync_decoder::SyncDecoder;
 enum Command {
     Chunk(Chunk),
 
+    EndOfVideo,
+
     // Boxed, because `VideoDataDescription` is huge.
     Reset(Box<VideoDataDescription>),
 
@@ -88,6 +90,12 @@ impl AsyncDecoder for SyncDecoderWrapper {
         Ok(())
     }
 
+    fn end_of_video(&mut self) -> Result<()> {
+        self.command_tx.send(Command::EndOfVideo).ok();
+
+        Ok(())
+    }
+
     /// Resets the decoder.
     ///
     /// This does not block; chunks sent before this point will be discarded.
@@ -141,6 +149,11 @@ fn decoder_thread(
             Command::Chunk(chunk) => {
                 if !has_outstanding_reset {
                     decoder.submit_chunk(&comms.should_stop, chunk, output_sender);
+                }
+            }
+            Command::EndOfVideo => {
+                if !has_outstanding_reset {
+                    decoder.end_of_video(output_sender);
                 }
             }
             Command::Reset(video_data_description) => {

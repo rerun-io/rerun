@@ -50,6 +50,11 @@ impl AsyncDecoder for SyncDecoderWrapper {
         Ok(())
     }
 
+    fn end_of_video(&mut self) -> Result<()> {
+        self.sync_decoder.lock().end_of_video(&self.output_sender);
+        Ok(())
+    }
+
     /// Resets the decoder synchronously.
     fn reset(&mut self, video_data_description: &VideoDataDescription) -> Result<()> {
         re_tracing::profile_function!();

@@ -339,6 +339,20 @@ mod gpu_data {
 
         pub _end_padding: [wgpu_buffer_types::PaddingRow; 16 - 2],
     }
+
+    #[repr(C)]
+    #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+    pub struct Nv12PlaneUniformBuffer {
+        /// Uses [`super::YuvMatrixCoefficients`].
+        pub yuv_matrix_coefficients: u32,
+
+        /// Uses [`super::YuvRange`].
+        pub yuv_range: u32,
+
+        pub target_texture_size: [u32; 2],
+
+        pub _end_padding: [wgpu_buffer_types::PaddingRow; 16 - 1],
+    }
 }
 
 /// A work item for the subsampling converter.
@@ -530,6 +544,252 @@ impl Renderer for YuvFormatConverter {
                 fragment_handle: shader_modules.get_or_create(
                     ctx,
                     &include_shader_module!("../../shader/conversions/yuv_converter.wgsl"),
+                ),
+                vertex_buffers: smallvec![],
+                render_targets: smallvec![Some(YuvFormatConversionTask::OUTPUT_FORMAT.into())],
+                primitive: wgpu::PrimitiveState::default(),
+                depth_stencil: None,
+                multisample: wgpu::MultisampleState::default(),
+            },
+        );
+
+        Self {
+            render_pipeline,
+            bind_group_layout,
+        }
+    }
+
+    fn draw(
+        &self,
+        render_pipelines: &crate::wgpu_resources::GpuRenderPipelinePoolAccessor<'_>,
+        _phase: crate::draw_phases::DrawPhase,
+        pass: &mut wgpu::RenderPass<'_>,
+        draw_instructions: &[DrawInstruction<'_, Self::RendererDrawData>],
+    ) -> Result<(), DrawError> {
+        let pipeline = render_pipelines.get(self.render_pipeline)?;
+
+        pass.set_pipeline(pipeline);
+
+        for DrawInstruction { draw_data, .. } in draw_instructions {
+            pass.set_bind_group(0, &draw_data.bind_group, &[]);
+            pass.draw(0..3, 0..1);
+        }
+
+        Ok(())
+    }
+}
+
+/// A work item for [`Nv12PlaneConverter`].
+pub struct Nv12PlaneConversionTask {
+    /// Raw bind group since the input plane views don't come from the texture pool
+    /// (they belong to a texture the video decoder created).
+    bind_group: wgpu::BindGroup,
+
+    /// Keeps the pooled uniform buffer referenced by the bind group alive.
+    _uniform_buffer: crate::wgpu_resources::GpuBuffer,
+
+    target_texture: GpuTexture,
+}
+
+impl DrawData for Nv12PlaneConversionTask {
+    type Renderer = Nv12PlaneConverter;
+
+    fn collect_drawables(
+        &self,
+        _view_info: &DrawableCollectionViewInfo,
+        _collector: &mut DrawableCollector<'_>,
+    ) {
+        // Doesn't participate in regular rendering.
+    }
+}
+
+impl Nv12PlaneConversionTask {
+    /// Creates a new conversion task reading NV12 data from two plane views.
+    ///
+    /// `y_plane` is expected to be a single channel view at target resolution,
+    /// `uv_plane` a two channel view at half resolution
+    /// (both may be padded one texel larger than the target, for odd video sizes).
+    /// The target texture must fulfill the same requirements as for [`YuvFormatConversionTask`].
+    pub fn new(
+        ctx: &RenderContext,
+        yuv_range: YuvRange,
+        yuv_matrix_coefficients: YuvMatrixCoefficients,
+        y_plane: &wgpu::TextureView,
+        uv_plane: &wgpu::TextureView,
+        target_texture: &GpuTexture,
+    ) -> Result<Self, DrawError> {
+        let target_label = target_texture.creation_desc.label.clone();
+        let renderer = ctx.renderer::<Nv12PlaneConverter>()?;
+
+        let uniform_buffer_entry = create_and_fill_uniform_buffer(
+            ctx,
+            format!("{target_label}_conversion").into(),
+            gpu_data::Nv12PlaneUniformBuffer {
+                yuv_matrix_coefficients: yuv_matrix_coefficients as _,
+                yuv_range: yuv_range as _,
+                target_texture_size: [
+                    target_texture.creation_desc.size.width,
+                    target_texture.creation_desc.size.height,
+                ],
+                _end_padding: Default::default(),
+            },
+        );
+
+        let BindGroupEntry::Buffer {
+            handle,
+            offset,
+            size,
+        } = uniform_buffer_entry
+        else {
+            unreachable!("create_and_fill_uniform_buffer always returns a buffer entry");
+        };
+        let uniform_buffer = ctx.gpu_resources.buffers.get_from_handle(handle)?;
+
+        let bind_group_layouts = ctx.gpu_resources.bind_group_layouts.resources();
+        let bind_group = ctx.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some(&format!("{target_label}_conversion")),
+            layout: bind_group_layouts.get(renderer.bind_group_layout)?,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                        buffer: &uniform_buffer.inner,
+                        offset,
+                        size,
+                    }),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::TextureView(y_plane),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::TextureView(uv_plane),
+                },
+            ],
+        });
+
+        Ok(Self {
+            bind_group,
+            _uniform_buffer: uniform_buffer,
+            target_texture: target_texture.clone(),
+        })
+    }
+
+    /// Runs the conversion from the plane views.
+    pub fn convert_planes_to_texture(self, ctx: &RenderContext) -> Result<(), DrawError> {
+        let mut encoder = ctx.active_frame.before_view_builder_encoder.lock();
+        let mut pass = encoder
+            .get()
+            .begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some(self.target_texture.creation_desc.label.get()),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &self.target_texture.default_view,
+                    depth_slice: None,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                ..Default::default()
+            });
+
+        ctx.renderer::<Nv12PlaneConverter>()?.draw(
+            &ctx.gpu_resources.render_pipelines.resources(),
+            crate::draw_phases::DrawPhase::Opaque, // Don't care about the phase.
+            &mut pass,
+            &[DrawInstruction {
+                draw_data: &self,
+                drawables: &[],
+            }],
+        )
+    }
+}
+
+/// Converter turning the two planes of a GPU-decoded NV12 video frame into
+/// a fullscreen sRGB output texture.
+///
+/// Unlike [`YuvFormatConverter`] this samples the planes directly instead of
+/// a CPU-uploaded data texture, see `nv12_plane_converter.wgsl`.
+pub struct Nv12PlaneConverter {
+    render_pipeline: GpuRenderPipelineHandle,
+    bind_group_layout: GpuBindGroupLayoutHandle,
+}
+
+impl Renderer for Nv12PlaneConverter {
+    type RendererDrawData = Nv12PlaneConversionTask;
+
+    fn create_renderer(ctx: &RenderContext) -> Self {
+        let vertex_handle = screen_triangle_vertex_shader(ctx);
+
+        let bind_group_layout = ctx.gpu_resources.bind_group_layouts.get_or_create(
+            &ctx.device,
+            &BindGroupLayoutDesc {
+                label: "Nv12PlaneConverter".into(),
+                entries: vec![
+                    // Uniform buffer with some information.
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size:
+                                (std::mem::size_of::<gpu_data::Nv12PlaneUniformBuffer>() as u64)
+                                    .try_into()
+                                    .ok(),
+                        },
+                        count: None,
+                    },
+                    // Luma plane.
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            multisampled: false,
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                        },
+                        count: None,
+                    },
+                    // Interleaved chroma plane.
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            multisampled: false,
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                        },
+                        count: None,
+                    },
+                ],
+            },
+        );
+
+        let pipeline_layout = ctx.gpu_resources.pipeline_layouts.get_or_create(
+            ctx,
+            &PipelineLayoutDesc {
+                label: "Nv12PlaneConverter".into(),
+                // Note that this is a fairly unusual layout for us with the first entry
+                // not being the globally set bind group!
+                entries: vec![bind_group_layout],
+            },
+        );
+
+        let shader_modules = &ctx.gpu_resources.shader_modules;
+        let render_pipeline = ctx.gpu_resources.render_pipelines.get_or_create(
+            ctx,
+            &RenderPipelineDesc {
+                label: "Nv12PlaneConverter::render_pipeline".into(),
+                pipeline_layout,
+                vertex_entrypoint: "main".into(),
+                vertex_handle,
+                fragment_entrypoint: "fs_main".into(),
+                fragment_handle: shader_modules.get_or_create(
+                    ctx,
+                    &include_shader_module!("../../shader/conversions/nv12_plane_converter.wgsl"),
                 ),
                 vertex_buffers: smallvec![],
                 render_targets: smallvec![Some(YuvFormatConversionTask::OUTPUT_FORMAT.into())],
