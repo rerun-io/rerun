@@ -19,14 +19,13 @@ import numpy as np
 import pyarrow as pa
 import pyarrow.compute as pc
 
-from rerun._tracing import tracing_scope, with_tracing
+from rerun._tracing import set_current_span_attributes, tracing_scope, with_tracing
 
+from ..._query_metrics import QueryMetrics, query_metrics
 from .._sample_index import SampleIndex, SegmentMetadata
 from .._shuffle import NoShuffle, ShuffleBuffer, ShuffleStrategy, _contiguous_shard, _fetch_blocks
 from .._utils import (
     _fetch_prior_keyframes,
-    _prior_keyframe,
-    _resolve_decode_index_range,
     _run_parallel,
     _WorkerConnection,
     is_video_field,
@@ -70,7 +69,7 @@ class _ScanResult:
 class _ResolvedRows:
     """Valid samples in canonical (segment, ascending) order, with each field's decode range."""
 
-    segment_ids: pa.Array  # string
+    segment_ids: pa.Array  # dictionary<int32 -> string>: an int32 code per row, one id string per segment
     anchors: np.ndarray  # int64
     field_ranges: dict[str, tuple[np.ndarray, np.ndarray]]  # {field_key: (lo, hi) int64 arrays}
 
@@ -223,11 +222,42 @@ def _scan(
         for entity, seg_id in entity_segments
     ]
 
-    keyframes, *segment_values = _run_parallel([keyframe_task, *segment_tasks], max_workers=max_workers)
+    # `_run_parallel` copies the caller's contextvars into each worker thread, so the
+    # collector sees every reader query the scan issues.
+    with query_metrics() as metrics:
+        keyframes, *segment_values = _run_parallel([keyframe_task, *segment_tasks], max_workers=max_workers)
+    _log_scan_metrics(metrics.queries)
+
     real_by_entity: dict[str, _SegmentIndices] = defaultdict(dict)
     for (entity, seg_id), values in zip(entity_segments, segment_values, strict=True):
         real_by_entity[entity][seg_id] = values
     return _ScanResult(keyframes=keyframes, real_by_entity=dict(real_by_entity))
+
+
+def _log_scan_metrics(queries: list[QueryMetrics]) -> None:
+    """Print the scan's aggregate network cost and attach it to the scan's tracing span."""
+    if not queries:
+        return
+    fetch_bytes = sum(query.fetch_bytes for query in queries)
+    max_query_bytes = max(query.fetch_bytes for query in queries)
+    direct_requests = sum(query.fetch_direct_requests for query in queries)
+    grpc_requests = sum(query.fetch_grpc_requests for query in queries)
+    query_dataset_rpcs = len(queries)  # one QueryDataset request per reader query
+    print(
+        f"Manifest scan fetched {fetch_bytes:,} bytes ({fetch_bytes / 2**20:.1f} MiB) over the wire "
+        f"across {len(queries)} queries: {direct_requests:,} direct fetch requests, "
+        f"{query_dataset_rpcs + grpc_requests:,} RPC calls "
+        f"({query_dataset_rpcs:,} QueryDataset + {grpc_requests:,} chunk fetch); "
+        f"heaviest query {max_query_bytes:,} bytes"
+    )
+    set_current_span_attributes({
+        "rerun.dataloader.scan.num_queries": len(queries),
+        "rerun.dataloader.scan.network_useful_bytes": fetch_bytes,
+        "rerun.dataloader.scan.max_query_fetch_bytes": max_query_bytes,
+        "rerun.dataloader.scan.direct_requests": direct_requests,
+        "rerun.dataloader.scan.grpc_requests": grpc_requests,
+        "rerun.dataloader.scan.query_dataset_attempts": query_dataset_rpcs,
+    })
 
 
 @with_tracing("build_manifest_table._fetch_entity_index_values")
@@ -259,84 +289,74 @@ def _resolve_rows(
 
     The stored range is exactly the one the reader's decode masks: a field's
     window (`[anchor+w0, anchor+w1]`), a video field's `[prior_keyframe, anchor]`
-    GOP, or just `[anchor, anchor]`. Storing it means reading a manifest needs no
-    window arithmetic and no keyframe scan — the ranges are precomputed here.
+    GOP, or just `[anchor, anchor]`.
 
     A `required` field drops the sample when, for any point in its window, the
     nearest real row is missing or older than `max_staleness`. Video uses the
     latest prior keyframe as a conservative proxy for that row and also requires
     a keyframe before the start of its decode range.
 
-    Works one segment at a time, packing each segment's kept samples straight into
-    numpy and releasing that segment's scan data, so the whole sample space is never
-    resident as Python objects.
+    Works one segment at a time: each field's validity and
+    `[lo, hi]` range are computed over the segment's whole anchor grid with
+    vectorized searchsorted lookups and each
+    segment's scan data is released as soon as it is resolved.
     """
     keyframes, real_by_entity = scan.keyframes, scan.real_by_entity
     video = {k: is_video_field(f) for k, f in fields.items()}
     entity_of = {k: f.path.split(":")[0] for k, f in fields.items()}
+    deltas = {k: _window_deltas(f, sample_index) for k, f in fields.items()}
+    checked = set(fields) & required
+    staleness = {k: _staleness_limit(fields[k], sample_index) for k in checked}
     step = sample_index.ns_per_sample or 1
 
-    seg_id_chunks: list[pa.Array] = []
+    run_sids: list[str] = []
+    run_lengths: list[int] = []
     anchor_chunks: list[np.ndarray] = []
     lo_chunks: dict[str, list[np.ndarray]] = {k: [] for k in fields}
     hi_chunks: dict[str, list[np.ndarray]] = {k: [] for k in fields}
     with tracing_scope("build_manifest_table._resolve_rows.samples"):
         for seg in sample_index.segments:
             sid = seg.segment_id
-            # Video validity uses sparse keyframe timestamps as a conservative
-            # substitute for the complete frame index, so a video field does not
-            # itself trigger a scan of the heavy sample component.
-            keyframe_positions_by_field = {k: keyframes.get(k, {}).get(sid) for k in fields}
-            observed_index_values_by_field = {
-                k: (keyframe_positions_by_field[k] if video[k] else real_by_entity.get(entity_of[k], {}).get(sid))
-                for k in fields
-            }
-
-            anchors: list[int] = []
-            los: dict[str, list[int]] = {k: [] for k in fields}
-            his: dict[str, list[int]] = {k: [] for k in fields}
-            for index_value in (int(seg.index_start) + np.arange(seg.num_samples, dtype=np.int64) * step).tolist():
-                ranges: dict[str, tuple[int, int]] = {}
-                keep = True
-                for key, field in fields.items():
-                    if key in required and _too_far_back(
-                        observed_index_values_by_field[key], index_value, field=field, sample_index=sample_index
-                    ):
-                        keep = False
-                        break
-                    kf = None
-                    if video[key]:
-                        # The prior keyframe anchors the contiguous decode range and
-                        # must exist for a required field, else the GOP can't be decoded.
-                        decode_start = min(int(value) for value in sample_index.output_index_values(index_value, field))
-                        kf = _prior_keyframe(keyframe_positions_by_field[key], decode_start)
-                        if key in required and kf is None:
-                            keep = False
-                            break
-                    output_index_values = sample_index.output_index_values(index_value, field)
-                    lo, hi = _resolve_decode_index_range(
-                        index_value,
-                        field,
-                        output_index_values=output_index_values,
-                        prior_keyframe=kf,
-                    ) or (
-                        index_value,
-                        index_value,
+            anchors = int(seg.index_start) + np.arange(seg.num_samples, dtype=np.int64) * step
+            keep = np.ones(seg.num_samples, dtype=bool)
+            los: dict[str, np.ndarray] = {}
+            his: dict[str, np.ndarray] = {}
+            for key in fields:
+                field_deltas = deltas[key]
+                lo = anchors + int(field_deltas.min())
+                hi = anchors + int(field_deltas.max())
+                if key in checked:
+                    # Video validity uses sparse keyframe timestamps as a conservative
+                    # substitute for the complete frame index, avoiding a scan of the
+                    # heavy sample component.
+                    observed = (
+                        keyframes.get(key, {}).get(sid)
+                        if video[key]
+                        else real_by_entity.get(entity_of[key], {}).get(sid)
                     )
-                    ranges[key] = (int(lo), int(hi))
-                if not keep:
-                    continue
-                anchors.append(index_value)
-                for key in fields:
-                    los[key].append(ranges[key][0])
-                    his[key].append(ranges[key][1])
+                    keep &= _has_valid_prior(
+                        observed,
+                        anchors,
+                        deltas=field_deltas,
+                        max_staleness=staleness[key],
+                    )
+                if video[key]:
+                    # The latest prior keyframe anchors the contiguous decode range.
+                    # Required fields must have one or the GOP cannot be decoded.
+                    kf, has_kf = _prior_values(keyframes.get(key, {}).get(sid), lo)
+                    lo = np.where(has_kf, kf, lo)
+                    if key in required:
+                        keep &= has_kf
+                los[key], his[key] = lo, hi
 
-            if anchors:
-                seg_id_chunks.append(pa.array([sid] * len(anchors), type=pa.string()))
-                anchor_chunks.append(np.asarray(anchors, dtype=np.int64))
+            if keep.any():
+                kept = anchors[keep]
+                run_sids.append(sid)
+                run_lengths.append(len(kept))
+                anchor_chunks.append(kept)
                 for key in fields:
-                    lo_chunks[key].append(np.asarray(los[key], dtype=np.int64))
-                    hi_chunks[key].append(np.asarray(his[key], dtype=np.int64))
+                    lo_chunks[key].append(los[key][keep])
+                    hi_chunks[key].append(his[key][keep])
 
             # Release this segment's scan data now that it is resolved.
             for key in fields:
@@ -344,7 +364,7 @@ def _resolve_rows(
                 keyframes.get(key, {}).pop(sid, None)
 
     return _ResolvedRows(
-        segment_ids=pa.concat_arrays(seg_id_chunks) if seg_id_chunks else pa.array([], type=pa.string()),
+        segment_ids=_dictionary_segment_ids(run_sids, run_lengths),
         anchors=np.concatenate(anchor_chunks) if anchor_chunks else np.empty(0, dtype=np.int64),
         field_ranges={
             k: (
@@ -356,23 +376,80 @@ def _resolve_rows(
     )
 
 
-def _too_far_back(observed: np.ndarray | None, index_value: int, *, field: Field, sample_index: SampleIndex) -> bool:
-    """Whether any output lacks a prior observed row or its prior row exceeds `max_staleness`."""
-    max_staleness = field.max_staleness
-    if max_staleness is not None:
-        if sample_index.ns_dtype is not None:
-            max_staleness = round(float(max_staleness) * 1e9)
-        elif int(max_staleness) != max_staleness:
-            raise ValueError(f"Integer timelines require integral max_staleness, got {max_staleness!r}")
+def _dictionary_segment_ids(run_sids: list[str], run_lengths: list[int]) -> pa.DictionaryArray:
+    """
+    The per-row `segment_id` column as `dictionary<int32 -> string>`, from one `(id, length)` run per segment.
 
-    for value in sample_index.output_index_values(index_value, field):
-        g = int(value)
-        prior = _prior_keyframe(observed, g)
-        if prior is None:
-            return True
-        if max_staleness is not None and g - prior > max_staleness:
-            return True
-    return False
+    The dictionary is value-sorted, so the encoding is a pure function of the rows'
+    logical content: after the canonical gather, identically-sampled datasets yield
+    byte-identical manifests regardless of the order the source enumerated segments.
+    """
+    dictionary = sorted(run_sids)
+    code_of = {sid: code for code, sid in enumerate(dictionary)}
+    codes = np.repeat(
+        np.array([code_of[sid] for sid in run_sids], dtype=np.int32),
+        np.array(run_lengths, dtype=np.int64),
+    )
+    return pa.DictionaryArray.from_arrays(pa.array(codes), pa.array(dictionary, type=pa.string()))
+
+
+def _window_deltas(field: Field, sample_index: SampleIndex) -> np.ndarray:
+    """
+    A field's output offsets relative to its anchor, as int64 index units (`[0]` when unwindowed).
+
+    Mirrors `SampleIndex.offset_index`: seconds scaled to nanoseconds on temporal
+    timelines, integral offsets taken as-is on integer timelines.
+    """
+    if field.window is None:
+        return np.zeros(1, dtype=np.int64)
+    if sample_index.ns_dtype is not None:
+        return np.array([round(float(offset) * 1e9) for offset in field.window], dtype=np.int64)
+    for offset in field.window:
+        if int(offset) != offset:
+            raise ValueError(f"Integer timelines require integral window offsets, got {offset!r}")
+    return np.array([int(offset) for offset in field.window], dtype=np.int64)
+
+
+def _staleness_limit(field: Field, sample_index: SampleIndex) -> int | None:
+    """`Field.max_staleness` as an int64 index-unit limit (ns on temporal timelines), or `None`."""
+    max_staleness = field.max_staleness
+    if max_staleness is None:
+        return None
+    if sample_index.ns_dtype is not None:
+        return round(float(max_staleness) * 1e9)
+    if int(max_staleness) != max_staleness:
+        raise ValueError(f"Integer timelines require integral max_staleness, got {max_staleness!r}")
+    return int(max_staleness)
+
+
+def _prior_values(sorted_values: np.ndarray | None, targets: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Vectorized `_prior_keyframe`: per target, the largest value `<=` it, and whether one exists.
+
+    Where no prior exists the value slot is meaningless; callers must mask with the second array.
+    """
+    if sorted_values is None or sorted_values.size == 0:
+        return np.zeros_like(targets), np.zeros(targets.shape, dtype=bool)
+    pos = np.searchsorted(sorted_values, targets, side="right") - 1
+    return sorted_values[np.maximum(pos, 0)], pos >= 0
+
+
+def _has_valid_prior(
+    real: np.ndarray | None,
+    anchors: np.ndarray,
+    *,
+    deltas: np.ndarray,
+    max_staleness: int | None,
+) -> np.ndarray:
+    """Per anchor, whether every window point has a real row at or before it, within `max_staleness`."""
+    valid = np.ones(anchors.shape, dtype=bool)
+    for delta in deltas.tolist():
+        targets = anchors + delta
+        prior, exists = _prior_values(real, targets)
+        if max_staleness is not None:
+            exists &= targets - prior <= max_staleness
+        valid &= exists
+    return valid
 
 
 # --------------------------------------------------------------------------------------
@@ -380,7 +457,7 @@ def _too_far_back(observed: np.ndarray | None, index_value: int, *, field: Field
 # --------------------------------------------------------------------------------------
 
 
-def _compact_index(seg_ids: list[str]) -> SampleIndex:
+def _compact_index(seg_ids: pa.Array | pa.ChunkedArray) -> SampleIndex:
     """
     A `SampleIndex` over just the valid samples, one segment per contiguous run of `seg_ids`.
 
@@ -388,10 +465,19 @@ def _compact_index(seg_ids: list[str]) -> SampleIndex:
     given id is that segment's valid-sample count. Only `num_samples` (hence
     `segment_offsets`) matters to `_block_order`; the compact index's positions
     map straight back onto the rows of the canonicalized `sample` table.
+
+    Runs are found on the dictionary column's codes with one vectorized diff —
+    never on materialized Python strings, which would cost gigabytes at 10^7+ rows.
     """
+    if len(seg_ids) == 0:
+        return SampleIndex([])
+    combined = seg_ids.combine_chunks() if isinstance(seg_ids, pa.ChunkedArray) else seg_ids
+    codes = combined.indices.to_numpy(zero_copy_only=False)
+    names = combined.dictionary.to_pylist()
+    bounds = [0, *(np.flatnonzero(codes[1:] != codes[:-1]) + 1).tolist(), codes.size]
     segments = [
-        SegmentMetadata(segment_id=sid, index_start=0, index_end=0, num_samples=sum(1 for _ in run))
-        for sid, run in itertools.groupby(seg_ids)
+        SegmentMetadata(segment_id=names[int(codes[start])], index_start=0, index_end=0, num_samples=int(end - start))
+        for start, end in itertools.pairwise(bounds)
     ]
     return SampleIndex(segments)
 
@@ -432,14 +518,12 @@ def _sample_table(rows: _ResolvedRows, field_keys: list[str]) -> pa.Table:
     schedule — its rows are in resolve order, not yet canonical;
     [`schedule_samples`][] orders them and gathers rows out of it in fetch order.
     """
-    # `segment_id` is a plain string, not dictionary-encoded: `pq.write_table`
-    # dictionary-encodes it on disk for free, and keeping it a string in memory
-    # makes canonicalization and `Table.equals` compare by value (no dictionary-index
-    # ambiguity), so identical manifests stay byte-identical with no extra work.
-    # TODO(guillaume): dictionary-encoding `segment_id` at *read* time (one UUID per
-    # segment instead of one per row) is a potential optimization for the manifest's
-    # RAM footprint — it's the dominant column when the whole table is resident. The
-    # build-time byte-identity concern above only applies here, not on the read path.
+    # `segment_id` is `dictionary<int32 -> string>`: an int32 code per row plus
+    # one id string per segment, ~10x smaller than the per-row string column that
+    # otherwise dominates every in-memory copy of the table. The dictionary is
+    # value-sorted at build time (see `_dictionary_segment_ids`), so the encoding is
+    # determined by the logical content alone and identical manifests stay
+    # byte-identical; canonical ordering compares by value via `_segment_sort_key`.
     columns: dict[str, pa.Array] = {
         COL_SEGMENT_ID: rows.segment_ids,
         COL_ANCHOR: pa.array(rows.anchors, type=pa.int64()),
@@ -457,21 +541,33 @@ def _sample_table(rows: _ResolvedRows, field_keys: list[str]) -> pa.Table:
 _SCHEDULE_COLUMNS = frozenset({COL_RANK, COL_WORKER, COL_FETCH_GROUP, COL_EMIT_RANK})
 
 
-def _canonicalize(sample: pa.Table) -> pa.Table:
+def _canonical_order(sample: pa.Table) -> pa.Array:
     """
-    Order a per-sample table into canonical `(segment_id, anchor ascending)` order.
+    Sort indices that put a per-sample table in canonical `(segment_id, anchor ascending)` order.
 
     This is the single definition of canonical order both the build and reschedule
     paths obey, so a given `seed` yields the same epoch order regardless of the
     order the source enumerated its segments. Each segment becomes one contiguous
     run and anchors ascend within it, which is all `_compact_index` and the
     monotonic-decode invariant require.
+
+    The `segment_id` column is ordered through per-value ranks, so the order
+    follows the id *values* whatever order the dictionary itself is in (a
+    parquet round-trip rebuilds dictionaries in appearance order).
     """
-    order = pc.sort_indices(
-        pa.table({COL_SEGMENT_ID: sample[COL_SEGMENT_ID], COL_ANCHOR: sample[COL_ANCHOR]}),
+    return pc.sort_indices(
+        pa.table({COL_SEGMENT_ID: _segment_sort_key(sample[COL_SEGMENT_ID]), COL_ANCHOR: sample[COL_ANCHOR]}),
         sort_keys=[(COL_SEGMENT_ID, "ascending"), (COL_ANCHOR, "ascending")],
     )
-    return sample.take(order)
+
+
+def _segment_sort_key(seg_ids: pa.Array | pa.ChunkedArray) -> pa.Array:
+    """An int32 rank per row of the dictionary-encoded `seg_ids` that orders like the id values."""
+    combined = seg_ids.combine_chunks() if isinstance(seg_ids, pa.ChunkedArray) else seg_ids
+    order = pc.sort_indices(combined.dictionary).to_numpy()
+    rank = np.empty(order.size, dtype=np.int32)
+    rank[order] = np.arange(order.size, dtype=np.int32)
+    return pa.array(rank[combined.indices.to_numpy(zero_copy_only=False)])
 
 
 @with_tracing("schedule_samples")
@@ -498,8 +594,12 @@ def schedule_samples(
     monotonic) *and* the emission buffer, if it defines one;
     `num_ranks` / `num_workers_per_rank` split the epoch into per-worker slices.
     """
-    sample = _canonicalize(sample.select([c for c in sample.column_names if c not in _SCHEDULE_COLUMNS]))
-    compact = _compact_index(sample[COL_SEGMENT_ID].to_pylist())
+    sample = sample.select([c for c in sample.column_names if c not in _SCHEDULE_COLUMNS])
+    # The canonical sort stays an index array: only the `segment_id` column is
+    # gathered here (for `_compact_index`), and the sort is composed with the
+    # fetch-order gather below, so the full table is copied once, not twice.
+    canonical_order = _canonical_order(sample)
+    compact = _compact_index(sample[COL_SEGMENT_ID].take(canonical_order))
     indices, bounds = strategy.epoch_order(compact, fetch_block_size=fetch_block_size, seed=seed)
     buffer = strategy.emission_buffer()
 
@@ -526,7 +626,8 @@ def schedule_samples(
     def _concat(parts: list[np.ndarray], dtype: type) -> np.ndarray:
         return np.concatenate(parts) if parts else np.empty(0, dtype=dtype)
 
-    ordered = sample.take(pa.array(_concat(sids, np.int64), type=pa.int64()))
+    fetch_positions = pa.array(_concat(sids, np.int64), type=pa.int64())
+    ordered = sample.take(canonical_order.take(fetch_positions))
     schedule_columns = {
         COL_RANK: pa.array(_concat(ranks, np.int32), type=pa.int32()),
         COL_WORKER: pa.array(_concat(workers, np.int32), type=pa.int32()),

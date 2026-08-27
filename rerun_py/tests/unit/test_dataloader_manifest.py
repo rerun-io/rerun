@@ -14,8 +14,8 @@ from typing import TYPE_CHECKING, cast
 
 import numpy as np
 import pyarrow as pa
+import pyarrow.parquet as pq
 import pytest
-import rerun.experimental.dataloader.manifest._manifest_build as manifest_build
 import torch
 from rerun.experimental.dataloader import (
     BlockShuffle,
@@ -32,6 +32,7 @@ from rerun.experimental.dataloader import (
 )
 from rerun.experimental.dataloader._sample_index import SampleIndex, SegmentMetadata
 from rerun.experimental.dataloader._utils import FetchedGroup, QueryPlan
+from rerun.experimental.dataloader.manifest import _manifest_build as manifest_build
 from rerun.experimental.dataloader.manifest._manifest import (
     MANIFEST_FORMAT_VERSION,
     ManifestMeta,
@@ -39,11 +40,12 @@ from rerun.experimental.dataloader.manifest._manifest import (
 )
 from rerun.experimental.dataloader.manifest._manifest_build import (
     _compact_index,
+    _has_valid_prior,
     _resolve_rows,
     _ResolvedRows,
     _sample_table,
     _ScanResult,
-    _too_far_back,
+    _staleness_limit,
     schedule_samples,
 )
 
@@ -70,6 +72,44 @@ _SOURCE = cast(
 _FIELDS = {"x": Field("/e:Scalars:scalars", decode=NumericDecoder())}
 
 
+def test_log_scan_metrics_aggregates_queries(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`_log_scan_metrics` sums per-query network counters into one printed line and the scan span."""
+    attributes: dict[str, int | float] = {}
+    monkeypatch.setattr(manifest_build, "set_current_span_attributes", attributes.update)
+    queries = cast(
+        "list[manifest_build.QueryMetrics]",
+        [
+            SimpleNamespace(fetch_bytes=100, fetch_direct_requests=4, fetch_grpc_requests=1),
+            SimpleNamespace(fetch_bytes=50, fetch_direct_requests=3, fetch_grpc_requests=2),
+        ],
+    )
+
+    manifest_build._log_scan_metrics(queries)
+
+    message = capsys.readouterr().out
+    assert "150 bytes" in message
+    assert "across 2 queries" in message
+    assert "7 direct fetch requests" in message
+    assert "5 RPC calls" in message
+    assert "heaviest query 100 bytes" in message
+    assert attributes == {
+        "rerun.dataloader.scan.num_queries": 2,
+        "rerun.dataloader.scan.network_useful_bytes": 150,
+        "rerun.dataloader.scan.max_query_fetch_bytes": 100,
+        "rerun.dataloader.scan.direct_requests": 7,
+        "rerun.dataloader.scan.grpc_requests": 3,
+        "rerun.dataloader.scan.query_dataset_attempts": 2,
+    }
+
+
+def test_log_scan_metrics_is_silent_without_queries(capsys: pytest.CaptureFixture[str]) -> None:
+    """No captured queries (e.g. inert collector) must not print a misleading all-zero line."""
+    manifest_build._log_scan_metrics([])
+    assert not capsys.readouterr().out
+
+
 def _buffer_size(strategy: ShuffleStrategy) -> int | None:
     buffer = strategy.emission_buffer()
     return buffer.buffer_size if buffer is not None else None
@@ -84,7 +124,7 @@ def _build_manifest(strategy: ShuffleStrategy, *, num_ranks: int = 1) -> Manifes
     """Build a `num_ranks` / single-worker manifest for the fake dataset via the real scheduler."""
     anchors = np.array(ANCHORS, dtype=np.int64)
     rows = _ResolvedRows(
-        segment_ids=pa.array(SEGMENT_IDS, type=pa.string()),
+        segment_ids=manifest_build._dictionary_segment_ids(["a", "b"], [8, 4]),
         anchors=anchors,
         field_ranges={"x": (anchors, anchors)},
     )
@@ -169,6 +209,64 @@ def test_resolve_rows_walks_segments_and_drops_invalid() -> None:
     lo, hi = rows.field_ranges["x"]
     assert lo.tolist() == hi.tolist() == [2, 3, 4, 100, 101, 102]  # scalar field: range is just the anchor
     assert scan.real_by_entity["/e"] == {}  # each segment's scan data released as it was resolved
+
+
+def test_resolve_rows_dictionary_encodes_segment_ids() -> None:
+    """`segment_ids` is `dictionary<int32 -> string>` with a value-sorted dictionary — one id per segment, not per row."""
+    sample_index = SampleIndex([
+        SegmentMetadata(segment_id="b", index_start=0, index_end=2, num_samples=3),
+        SegmentMetadata(segment_id="a", index_start=100, index_end=101, num_samples=2),
+    ])
+    scan = _ScanResult(keyframes={}, real_by_entity={"/e": {"b": np.array([0]), "a": np.array([100])}})
+
+    rows = _resolve_rows(fields=_FIELDS, sample_index=sample_index, scan=scan, required={"x"})
+
+    assert pa.types.is_dictionary(rows.segment_ids.type)
+    assert rows.segment_ids.type.value_type == pa.string()
+    assert rows.segment_ids.dictionary.to_pylist() == ["a", "b"]  # value-sorted, not enumeration order
+    assert rows.segment_ids.to_pylist() == ["b", "b", "b", "a", "a"]  # rows stay in resolve order
+
+
+def _rows_for(segments: list[tuple[str, int]]) -> _ResolvedRows:
+    """Two-sample `_ResolvedRows` per segment, resolved in the given enumeration order."""
+    sample_index = SampleIndex([
+        SegmentMetadata(segment_id=sid, index_start=start, index_end=start + 1, num_samples=2)
+        for sid, start in segments
+    ])
+    scan = _ScanResult(keyframes={}, real_by_entity={"/e": {sid: np.array([start]) for sid, start in segments}})
+    return _resolve_rows(fields=_FIELDS, sample_index=sample_index, scan=scan, required={"x"})
+
+
+def test_schedule_is_byte_identical_across_segment_enumeration_orders(tmp_path: Path) -> None:
+    """Resolves that enumerate segments differently schedule to byte-identical tables, also after a parquet round-trip."""
+
+    def scheduled(rows: _ResolvedRows) -> pa.Table:
+        return schedule_samples(
+            _sample_table(rows, ["x"]),
+            strategy=BlockShuffle(),
+            fetch_block_size=2,
+            num_ranks=1,
+            num_workers_per_rank=1,
+            seed=SEED,
+        )
+
+    forward = scheduled(_rows_for([("a", 0), ("b", 100)]))
+    backward = scheduled(_rows_for([("b", 100), ("a", 0)]))
+    assert forward.equals(backward)
+
+    # A parquet round-trip rebuilds dictionaries in appearance order; rescheduling the
+    # read-back table must still order by id value and preserve the row content.
+    path = tmp_path / "roundtrip.parquet"
+    pq.write_table(forward, path)
+    rescheduled = schedule_samples(
+        pq.read_table(path),
+        strategy=BlockShuffle(),
+        fetch_block_size=2,
+        num_ranks=1,
+        num_workers_per_rank=1,
+        seed=SEED,
+    )
+    assert rescheduled.to_pydict() == forward.to_pydict()
 
 
 def test_windowed_video_validity_is_covered_by_its_prior_keyframe() -> None:
@@ -268,8 +366,11 @@ def test_temporal_max_staleness_is_expressed_in_seconds() -> None:
     field = Field("/e:Scalars:scalars", decode=NumericDecoder(), max_staleness=0.5)
     real = np.array([1_000_000_000], dtype=np.int64)
 
-    assert not _too_far_back(real, 1_500_000_000, field=field, sample_index=sample_index)
-    assert _too_far_back(real, 1_500_000_001, field=field, sample_index=sample_index)
+    limit = _staleness_limit(field, sample_index)
+    assert limit == 500_000_000  # seconds scaled to ns on temporal timelines
+    deltas = np.zeros(1, dtype=np.int64)
+    anchors = np.array([1_500_000_000, 1_500_000_001], dtype=np.int64)
+    assert _has_valid_prior(real, anchors, deltas=deltas, max_staleness=limit).tolist() == [True, False]
 
 
 def test_integer_max_staleness_must_be_integral() -> None:
@@ -277,7 +378,7 @@ def test_integer_max_staleness_must_be_integral() -> None:
     field = Field("/e:Scalars:scalars", decode=NumericDecoder(), max_staleness=0.5)
 
     with pytest.raises(ValueError, match="integral max_staleness"):
-        _too_far_back(np.array([0], dtype=np.int64), 1, field=field, sample_index=sample_index)
+        _staleness_limit(field, sample_index)
 
 
 def _patch_rank(monkeypatch: pytest.MonkeyPatch, rank: int, world_size: int) -> None:
@@ -303,7 +404,11 @@ def _build_live(strategy: ShuffleStrategy) -> RerunIterableDataset:
 
 def _stub_catalog(monkeypatch: pytest.MonkeyPatch, fetched_groups: list[FetchedGroup]) -> None:
     """Skip the server: the live index is the compact one, and both paths reuse `fetched_groups`."""
-    monkeypatch.setattr(iterable_dataset.SampleIndex, "build", lambda *_a, **_k: _compact_index(SEGMENT_IDS))
+    monkeypatch.setattr(
+        iterable_dataset.SampleIndex,
+        "build",
+        lambda *_a, **_k: _compact_index(pa.array(SEGMENT_IDS).dictionary_encode()),
+    )
     monkeypatch.setattr(
         iterable_dataset._WorkerConnection,
         "ensure",
