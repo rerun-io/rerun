@@ -18,6 +18,8 @@ and the pixel format (e.g. RGB, RGBA, …).
 The order of dimensions in the underlying [`components.Blob`](https://rerun.io/docs/reference/types/components/blob) follows the typical
 row-major, interleaved-pixel image format.
 
+To show an image as a 3D quad in a [`views.Spatial3DView`](https://rerun.io/docs/reference/types/views/spatial3d_view) without a projection, see the "Image as a 3D quad" example on [`archetypes.Mesh3D`](https://rerun.io/docs/reference/types/archetypes/mesh3d).
+
 ## Fields
 ### Required
 * `buffer`: [`ImageBuffer`](../components/image_buffer.md)

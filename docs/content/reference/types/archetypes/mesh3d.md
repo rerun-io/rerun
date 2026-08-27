@@ -80,3 +80,7 @@ snippet: archetypes/mesh3d_partial_updates
   <img src="https://static.rerun.io/mesh3d_partial_updates/79b8a83294ef2c1eb7f9ae7dea7267a17da464ae/full.png">
 </picture>
 
+### Image as a 3D quad
+
+snippet: archetypes/mesh3d_image
+

@@ -45,6 +45,8 @@ class Image(ImageExt, Archetype, VisualizableArchetype):
     The order of dimensions in the underlying [`components.Blob`][rerun.components.Blob] follows the typical
     row-major, interleaved-pixel image format.
 
+    To show an image as a 3D quad in a [`views.Spatial3DView`][rerun.blueprint.views.Spatial3DView] without a projection, see the "Image as a 3D quad" example on [`archetypes.Mesh3D`][rerun.archetypes.Mesh3D].
+
     Examples
     --------
     ### `image_simple`:
