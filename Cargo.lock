@@ -9451,7 +9451,6 @@ dependencies = [
  "memmap2 0.9.11",
  "parking_lot",
  "parquet",
- "ply-rs-bw",
  "rayon",
  "re_arrow_util",
  "re_chunk",

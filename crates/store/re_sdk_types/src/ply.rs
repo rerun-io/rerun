@@ -9,17 +9,17 @@ use std::collections::BTreeSet;
 use crate::archetypes::{Points2D, Points3D};
 use crate::components::{Color, Position2D, Position3D, Radius, Text};
 
-pub const ELEMENT_VERTEX: &str = "vertex";
+const ELEMENT_VERTEX: &str = "vertex";
 
-pub const PROP_X: &str = "x";
-pub const PROP_Y: &str = "y";
-pub const PROP_Z: &str = "z";
-pub const PROP_RED: &str = "red";
-pub const PROP_GREEN: &str = "green";
-pub const PROP_BLUE: &str = "blue";
-pub const PROP_ALPHA: &str = "alpha";
-pub const PROP_RADIUS: &str = "radius";
-pub const PROP_LABEL: &str = "label";
+const PROP_X: &str = "x";
+const PROP_Y: &str = "y";
+const PROP_Z: &str = "z";
+const PROP_RED: &str = "red";
+const PROP_GREEN: &str = "green";
+const PROP_BLUE: &str = "blue";
+const PROP_ALPHA: &str = "alpha";
+const PROP_RADIUS: &str = "radius";
+const PROP_LABEL: &str = "label";
 
 /// The vertex properties a point cloud can carry.
 const POINT_VERTEX_PROPERTIES: [&str; 9] = [
@@ -36,7 +36,7 @@ const POINT_VERTEX_PROPERTIES: [&str; 9] = [
 
 /// Which of `x`/`y`/`z` a `vertex` element carries.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum PlyVertexLayout {
+enum PlyVertexLayout {
     /// `x` and `y`, but no `z`.
     Xy,
 
@@ -47,7 +47,7 @@ pub enum PlyVertexLayout {
     Other,
 }
 
-pub fn classify_vertex_layout(element_def: &ply_rs_bw::ply::ElementDef) -> PlyVertexLayout {
+fn classify_vertex_layout(element_def: &ply_rs_bw::ply::ElementDef) -> PlyVertexLayout {
     let has_x = element_def.properties.contains_key(PROP_X);
     let has_y = element_def.properties.contains_key(PROP_Y);
     let has_z = element_def.properties.contains_key(PROP_Z);
@@ -56,6 +56,91 @@ pub fn classify_vertex_layout(element_def: &ply_rs_bw::ply::ElementDef) -> PlyVe
         (true, true, false) => PlyVertexLayout::Xy,
         (true, true, true) => PlyVertexLayout::Xyz,
         _ => PlyVertexLayout::Other,
+    }
+}
+
+const ELEMENT_FACE: &str = "face";
+
+/// The `face` properties that can carry topology.
+///
+/// `vertex_indices` is what the PLY spec says; `vertex_index` is common enough in the wild
+/// that the viewer's mesh importer reads it too, so classification has to agree.
+const FACE_INDEX_PROPERTIES: [&str; 2] = ["vertex_indices", "vertex_index"];
+
+/// What a `.ply` file holds, as far as its header tells us.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PlyGeometryClass {
+    /// A 3D Gaussian Splatting reconstruction.
+    GaussianSplats3D,
+
+    /// A point cloud whose vertices have no `z`.
+    Points2D,
+
+    /// A point cloud whose vertices have `x`, `y` and `z`.
+    Points3D,
+
+    /// Topology, which we hand to the viewer untouched as an `Asset3D`.
+    MeshOrAsset3D,
+}
+
+/// Does the header carry topology the viewer can actually read?
+///
+/// A `face` element with no index property leaves nothing to build a mesh out of. Reading such
+/// a file as a point cloud shows the user their vertices; calling it a mesh would hand the
+/// viewer an `Asset3D` it can only fail on.
+fn has_readable_faces(header: &ply_rs_bw::ply::Header) -> bool {
+    header
+        .elements
+        .get(ELEMENT_FACE)
+        .is_some_and(|element_def| {
+            0 < element_def.count
+                && FACE_INDEX_PROPERTIES
+                    .iter()
+                    .any(|name| element_def.properties.contains_key(*name))
+        })
+}
+
+/// Decide which archetype a `.ply` file's contents should become.
+///
+/// Only the header is read, which is cheap: it stops at `end_header`.
+pub fn classify_geometry_from_bytes(contents: &[u8]) -> std::io::Result<PlyGeometryClass> {
+    let parser = ply_rs_bw::parser::Parser::<ply_rs_bw::ply::DefaultElement>::new();
+    let mut reader =
+        ply_rs_bw::parser::Reader::new(std::io::BufReader::new(std::io::Cursor::new(contents)));
+    let header = parser
+        .read_header(&mut reader)
+        .map_err(std::io::Error::from)?;
+
+    classify_geometry_header(&header)
+}
+
+fn classify_geometry_header(header: &ply_rs_bw::ply::Header) -> std::io::Result<PlyGeometryClass> {
+    // Every shape we support needs vertices, so a mesh without them is rejected here rather
+    // than surviving to the viewer as an `Asset3D` that fails on zero vertices.
+    let Some(vertex_element) = header.elements.get(ELEMENT_VERTEX) else {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            "PLY file is missing required \"vertex\" element",
+        ));
+    };
+
+    // A splat `.ply` is a point cloud carrying extra properties, so it has to be recognized
+    // before the vertex-layout rules below claim it as a plain `Points3D`.
+    if crate::archetypes::GaussianSplats3D::is_gaussian_splat_vertex_element(vertex_element) {
+        return Ok(PlyGeometryClass::GaussianSplats3D);
+    }
+
+    if has_readable_faces(header) {
+        return Ok(PlyGeometryClass::MeshOrAsset3D);
+    }
+
+    match classify_vertex_layout(vertex_element) {
+        PlyVertexLayout::Xy => Ok(PlyGeometryClass::Points2D),
+        PlyVertexLayout::Xyz => Ok(PlyGeometryClass::Points3D),
+        PlyVertexLayout::Other => Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            "PLY vertex element must contain at least \"x\" and \"y\"",
+        )),
     }
 }
 
@@ -574,7 +659,7 @@ fn parse_ply_vertices<T: std::io::BufRead>(reader: &mut T) -> std::io::Result<Pa
     Ok(ply)
 }
 
-pub fn read_points2d<T: std::io::BufRead>(reader: &mut T) -> std::io::Result<Points2D> {
+pub(crate) fn read_points2d<T: std::io::BufRead>(reader: &mut T) -> std::io::Result<Points2D> {
     re_tracing::profile_function!();
 
     let ParsedPly {
@@ -649,7 +734,7 @@ pub fn read_points2d<T: std::io::BufRead>(reader: &mut T) -> std::io::Result<Poi
     Ok(arch)
 }
 
-pub fn read_points3d<T: std::io::BufRead>(reader: &mut T) -> std::io::Result<Points3D> {
+pub(crate) fn read_points3d<T: std::io::BufRead>(reader: &mut T) -> std::io::Result<Points3D> {
     re_tracing::profile_function!();
 
     let ParsedPly {
@@ -718,4 +803,201 @@ pub fn read_points3d<T: std::io::BufRead>(reader: &mut T) -> std::io::Result<Poi
     }
 
     Ok(arch)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn classify(contents: &[u8]) -> std::io::Result<PlyGeometryClass> {
+        classify_geometry_from_bytes(contents)
+    }
+
+    #[test]
+    fn classifies_xy_points() {
+        let contents = br#"ply
+format ascii 1.0
+element vertex 1
+property float x
+property float y
+end_header
+1 2
+"#;
+
+        assert_eq!(classify(contents).unwrap(), PlyGeometryClass::Points2D);
+    }
+
+    #[test]
+    fn classifies_xyz_points() {
+        let contents = br#"ply
+format ascii 1.0
+element vertex 1
+property float x
+property float y
+property float z
+end_header
+1 2 3
+"#;
+
+        assert_eq!(classify(contents).unwrap(), PlyGeometryClass::Points3D);
+    }
+
+    #[test]
+    fn classifies_faces_with_vertex_indices_as_a_mesh() {
+        let contents = br#"ply
+format ascii 1.0
+element vertex 3
+property float x
+property float y
+property float z
+element face 1
+property list uchar int vertex_indices
+end_header
+0 0 0
+1 0 0
+0 1 0
+3 0 1 2
+"#;
+
+        assert_eq!(classify(contents).unwrap(), PlyGeometryClass::MeshOrAsset3D);
+    }
+
+    /// `vertex_index` is not what the spec says, but it is common enough that the renderer
+    /// reads it, so classification has to agree.
+    #[test]
+    fn classifies_faces_with_the_vertex_index_alias_as_a_mesh() {
+        let contents = br#"ply
+format ascii 1.0
+element vertex 3
+property float x
+property float y
+property float z
+element face 1
+property list uchar int vertex_index
+end_header
+0 0 0
+1 0 0
+0 1 0
+3 0 1 2
+"#;
+
+        assert_eq!(classify(contents).unwrap(), PlyGeometryClass::MeshOrAsset3D);
+    }
+
+    /// There is no topology to build a mesh out of, so show the user their vertices rather
+    /// than hand the viewer an `Asset3D` it can only fail on.
+    #[test]
+    fn faces_without_index_properties_fall_back_to_points() {
+        let contents = br#"ply
+format ascii 1.0
+element vertex 1
+property float x
+property float y
+element face 1
+property int material_index
+end_header
+1 2
+7
+"#;
+
+        assert_eq!(classify(contents).unwrap(), PlyGeometryClass::Points2D);
+    }
+
+    #[test]
+    fn faces_without_a_vertex_element_are_rejected() {
+        let contents = br#"ply
+format ascii 1.0
+element face 1
+property list uchar int vertex_indices
+end_header
+3 0 1 2
+"#;
+
+        let err = classify(contents).unwrap_err();
+        assert!(
+            err.to_string()
+                .contains("PLY file is missing required \"vertex\" element")
+        );
+    }
+
+    #[test]
+    fn classifies_gaussian_splats() {
+        let contents = br#"ply
+format ascii 1.0
+element vertex 1
+property float x
+property float y
+property float z
+property float f_dc_0
+property float f_dc_1
+property float f_dc_2
+property float opacity
+property float scale_0
+property float scale_1
+property float scale_2
+property float rot_0
+property float rot_1
+property float rot_2
+property float rot_3
+end_header
+0 0 0 1 1 1 1 0 0 0 1 0 0 0
+"#;
+
+        assert_eq!(
+            classify(contents).unwrap(),
+            PlyGeometryClass::GaussianSplats3D
+        );
+    }
+
+    #[test]
+    fn missing_vertex_element_is_rejected() {
+        let contents = br#"ply
+format ascii 1.0
+element material 1
+property int material_index
+end_header
+7
+"#;
+
+        let err = classify(contents).unwrap_err();
+        assert!(
+            err.to_string()
+                .contains("PLY file is missing required \"vertex\" element")
+        );
+    }
+
+    #[test]
+    fn vertices_without_y_are_rejected() {
+        let contents = br#"ply
+format ascii 1.0
+element vertex 2
+property float x
+property float z
+end_header
+1 2
+4 5
+"#;
+
+        let err = classify(contents).unwrap_err();
+        assert!(
+            err.to_string()
+                .contains("PLY vertex element must contain at least \"x\" and \"y\"")
+        );
+    }
+
+    #[test]
+    fn zero_face_element_keeps_point_classification() {
+        let contents = br#"ply
+format ascii 1.0
+element vertex 1
+property float x
+property float y
+element face 0
+property list uchar int vertex_indices
+end_header
+1 2
+"#;
+
+        assert_eq!(classify(contents).unwrap(), PlyGeometryClass::Points2D);
+    }
 }

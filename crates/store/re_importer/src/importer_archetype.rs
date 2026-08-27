@@ -1,7 +1,7 @@
 use re_chunk::{Chunk, RowId};
 use re_log_types::{ApplicationId, EntityPath, TimePoint};
 
-use crate::{ImportedData, Importer, ImporterError, PLY_EXTENSION};
+use crate::{ImportedData, Importer, ImporterError};
 
 // ---
 
@@ -143,7 +143,7 @@ impl Importer for ArchetypeImporter {
                 }
                 _ => Err(crate::ImporterError::Incompatible(filepath.clone())),
             }
-        } else if extension == PLY_EXTENSION {
+        } else if extension == "ply" {
             // `.ply` is in both the mesh and the point-cloud extension lists, so it needs to come
             // first: only the header tells us which of the two a given file actually holds.
             re_log::debug!(?filepath, importer = self.name(), "Loading .ply geometry…",);
@@ -336,7 +336,7 @@ fn load_ply(
     entity_path: EntityPath,
     contents: &[u8],
 ) -> Result<impl ExactSizeIterator<Item = Chunk> + use<>, ImporterError> {
-    use crate::ply::PlyGeometryClass;
+    use re_sdk_types::ply::PlyGeometryClass;
 
     re_tracing::profile_function!();
 
@@ -347,7 +347,7 @@ fn load_ply(
             let builder = Chunk::builder(entity_path);
             let row_id = RowId::new();
 
-            let builder = match crate::ply::classify_geometry_from_bytes(contents)
+            let builder = match re_sdk_types::ply::classify_geometry_from_bytes(contents)
                 .map_err(anyhow::Error::from)?
             {
                 PlyGeometryClass::GaussianSplats3D => {

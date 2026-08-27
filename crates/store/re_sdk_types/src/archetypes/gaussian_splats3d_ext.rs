@@ -96,6 +96,13 @@ impl GaussianSplats3D {
         read_ply(std::io::Cursor::new(contents), filepath)
     }
 
+    /// Do these `vertex` properties look like a 3D Gaussian Splatting (3DGS) reconstruction?
+    ///
+    /// Lets `crate::ply` classify an already-parsed header without re-reading it.
+    pub(crate) fn is_gaussian_splat_vertex_element(element: &ElementDef) -> bool {
+        has_required_splat_properties(element)
+    }
+
     /// Does this look like the contents of a 3D Gaussian Splatting (3DGS) `.ply` file?
     ///
     /// Only the header is inspected, making this cheap enough to use as an up-front check.
