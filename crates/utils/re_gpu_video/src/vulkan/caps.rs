@@ -21,7 +21,7 @@ pub struct QueueSlot {
 pub struct QueuePlan {
     pub decode: QueueSlot,
 
-    /// Queue for copying decode output into fresh output images.
+    /// Queue for copying decode output into new output images.
     /// `None` when the copy runs on the decode queue.
     pub copy: Option<QueueSlot>,
 
