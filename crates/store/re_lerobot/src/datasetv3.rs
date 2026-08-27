@@ -24,7 +24,7 @@ use parking_lot::RwLock;
 use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
 use serde::{Deserialize, Serialize};
 
-use re_arrow_util::ArrowArrayDowncastRef as _;
+use re_arrow_util::{ArrowArrayDowncastRef as _, RecordBatchExt as _};
 use re_chunk::{ArrowArray as _, Chunk, TimeInt};
 
 /// A `LeRobot` dataset consists of structured metadata and recorded episode data stored in
@@ -276,9 +276,8 @@ impl LeRobotDatasetV3 {
         data: &RecordBatch,
     ) -> Result<Vec<(TimeInt, String)>, LeRobotError> {
         let task_indices = data
-            .column_by_name("task_index")
-            .and_then(|c| c.downcast_array_ref::<Int64Array>())
-            .with_context(|| "Failed to get task_index field from dataset!")?;
+            .try_get_column_as::<Int64Array>("task_index")
+            .context("Failed to get task_index field from dataset!")?;
 
         let mut rows = Vec::new();
         let mut time_int = TimeInt::ZERO;
@@ -299,9 +298,8 @@ impl LeRobotDatasetV3 {
         data: &RecordBatch,
     ) -> Result<Vec<(TimeInt, String)>, LeRobotError> {
         let subtask_indices = data
-            .column_by_name("subtask_index")
-            .and_then(|c| c.downcast_array_ref::<Int64Array>())
-            .with_context(|| "Failed to get subtask_index field from dataset!")?;
+            .try_get_column_as::<Int64Array>("subtask_index")
+            .context("Failed to get subtask_index field from dataset!")?;
 
         let mut rows = Vec::new();
         let mut time_int = TimeInt::ZERO;
@@ -456,14 +454,7 @@ impl LeRobotDatasetV3 {
         let full_data = concat_batches(&schema, &batches).map_err(LeRobotError::Arrow)?;
 
         // Build episode row index in a single pass
-        let episode_indices = full_data
-            .column_by_name("episode_index")
-            .and_then(|c| c.downcast_array_ref::<Int64Array>())
-            .ok_or_else(|| {
-                LeRobotError::MissingDatasetInfo(
-                    "`episode_index` column missing or wrong type".into(),
-                )
-            })?;
+        let episode_indices = full_data.try_get_column_as::<Int64Array>("episode_index")?;
 
         let row_ranges = Self::build_episode_row_index(episode_indices);
 
@@ -832,18 +823,15 @@ impl LeRobotEpisodeData {
 
                                 let episode_index = batch
                                     .column_by_name("episode_index")?
-                                    .as_any()
-                                    .downcast_ref::<Int64Array>()?;
+                                    .downcast_array_ref::<Int64Array>()?;
 
                                 let data_chunk_index = batch
                                     .column_by_name("data/chunk_index")?
-                                    .as_any()
-                                    .downcast_ref::<Int64Array>()?;
+                                    .downcast_array_ref::<Int64Array>()?;
 
                                 let data_file_index = batch
                                     .column_by_name("data/file_index")?
-                                    .as_any()
-                                    .downcast_ref::<Int64Array>()?;
+                                    .downcast_array_ref::<Int64Array>()?;
 
                                 Some(Self::collect_episode_data(
                                     &batch,
@@ -1127,8 +1115,8 @@ impl LeRobotDatasetV3Tasks {
                 let b = record_batch.ok()?;
                 let task_index_col = b.column_by_name("task_index")?;
                 let task_col = b.column_by_name("__index_level_0__")?;
-                let task_index = task_index_col.as_any().downcast_ref::<Int64Array>()?;
-                let task = task_col.as_any().downcast_ref::<StringArray>()?;
+                let task_index = task_index_col.downcast_array_ref::<Int64Array>()?;
+                let task = task_col.downcast_array_ref::<StringArray>()?;
 
                 let num_rows = b.num_rows();
                 Some(
@@ -1169,8 +1157,8 @@ impl LeRobotDatasetV3Subtasks {
                 let b = record_batch.ok()?;
                 let subtask_index_col = b.column_by_name("subtask_index")?;
                 let subtask_col = b.column_by_name("subtask")?;
-                let subtask_index = subtask_index_col.as_any().downcast_ref::<Int64Array>()?;
-                let subtask = subtask_col.as_any().downcast_ref::<StringArray>()?;
+                let subtask_index = subtask_index_col.downcast_array_ref::<Int64Array>()?;
+                let subtask = subtask_col.downcast_array_ref::<StringArray>()?;
 
                 let num_rows = b.num_rows();
                 Some(

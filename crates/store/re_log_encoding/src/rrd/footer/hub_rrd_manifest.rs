@@ -181,19 +181,8 @@ impl HubRrdManifest {
 }
 
 fn downcast_u64_column<'a>(data: &'a RecordBatch, name: &str) -> CodecResult<&'a UInt64Array> {
-    use re_arrow_util::ArrowArrayDowncastRef as _;
-    data.column_by_name(name)
-        .ok_or_else(|| {
-            CodecError::ArrowDeserialization(ArrowError::SchemaError(format!(
-                "cannot read column: '{name}' is missing from batch",
-            )))
-        })?
-        .downcast_array_ref::<UInt64Array>()
-        .ok_or_else(|| {
-            CodecError::ArrowDeserialization(ArrowError::SchemaError(format!(
-                "cannot downcast column: '{name}' is not a UInt64Array",
-            )))
-        })
+    use re_arrow_util::RecordBatchExt as _;
+    Ok(data.try_get_column_as::<UInt64Array>(name)?)
 }
 
 /// Extends `data`'s payload-only offset/size columns to cover the RRD message header.
@@ -261,6 +250,7 @@ fn build_chunk_key_column(
 
 #[cfg(test)]
 mod tests {
+    use re_arrow_util::RecordBatchExt as _;
     use re_protos::cloud::v1alpha1::ext::{ChunkKey, ETag, RrdChunkLocation};
     use re_types_core::{LayerName, SegmentId};
     use std::assert_matches;
@@ -287,8 +277,6 @@ mod tests {
 
     #[test]
     fn hub_extends_the_raw_manifest_with_the_three_columns() {
-        use re_arrow_util::ArrowArrayDowncastRef as _;
-
         let raw = build_manifest();
         let storage_url = url::Url::parse("s3://bucket/recording.rrd").expect("valid url");
         let segment_id = SegmentId::from("my_segment");
@@ -316,20 +304,20 @@ mod tests {
 
         let partition_ids = hub
             .data()
-            .column_by_name(HubRrdManifest::FIELD_CHUNK_PARTITION_ID)
-            .expect("hub batch has a chunk_partition_id column")
-            .downcast_array_ref::<arrow::array::StringArray>()
-            .expect("chunk_partition_id is a StringArray");
+            .try_get_column_as::<arrow::array::StringArray>(
+                HubRrdManifest::FIELD_CHUNK_PARTITION_ID,
+            )
+            .unwrap();
         for value in partition_ids.iter().flatten() {
             assert_eq!(value, segment_id.as_str());
         }
 
         let layers = hub
             .data()
-            .column_by_name(HubRrdManifest::FIELD_RERUN_PARTITION_LAYER)
-            .expect("hub batch has a rerun_partition_layer column")
-            .downcast_array_ref::<arrow::array::StringArray>()
-            .expect("rerun_partition_layer is a StringArray");
+            .try_get_column_as::<arrow::array::StringArray>(
+                HubRrdManifest::FIELD_RERUN_PARTITION_LAYER,
+            )
+            .unwrap();
         for value in layers.iter().flatten() {
             assert_eq!(value, layer.as_str());
         }
@@ -345,10 +333,8 @@ mod tests {
 
         let chunk_keys = hub
             .data()
-            .column_by_name(HubRrdManifest::FIELD_CHUNK_KEY)
-            .expect("hub batch has a chunk_key column")
-            .downcast_array_ref::<arrow::array::BinaryArray>()
-            .expect("chunk_key is a BinaryArray");
+            .try_get_column_as::<arrow::array::BinaryArray>(HubRrdManifest::FIELD_CHUNK_KEY)
+            .unwrap();
 
         let header_size = MessageHeader::ENCODED_SIZE_BYTES as u64;
         for (i, key_bytes) in chunk_keys.iter().enumerate() {
@@ -381,10 +367,7 @@ mod tests {
             ),
             (hub.col_chunk_key(), HubRrdManifest::FIELD_CHUNK_KEY),
         ] {
-            let by_name = hub
-                .data()
-                .column_by_name(name)
-                .expect("hub batch has all three hub columns");
+            let by_name = hub.data().try_get_column(name).unwrap();
             assert_eq!(positional, by_name, "accessor for '{name}' is misaligned");
         }
 

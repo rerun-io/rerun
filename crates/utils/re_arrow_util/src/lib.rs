@@ -123,7 +123,7 @@ pub fn reject_unsupported_widenings(dt: &DataType) -> Result<(), arrow::error::A
 // ----------------------------------------------------------------
 
 /// Error used when a column is missing from a record batch
-#[derive(Debug, Clone, thiserror::Error)]
+#[derive(Clone, thiserror::Error)]
 pub struct MissingColumnError {
     pub missing: String,
     pub available: Vec<String>,
@@ -133,6 +133,46 @@ impl std::fmt::Display for MissingColumnError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self { missing, available } = self;
         write!(f, "Missing column: {missing:?}. Available: {available:?}")
+    }
+}
+
+/// Defers to [`std::fmt::Display`], so that `.unwrap()` panics with the readable message.
+impl std::fmt::Debug for MissingColumnError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{self}")
+    }
+}
+
+/// Error used when a column is missing from a record batch, or has the wrong type.
+#[derive(Clone, thiserror::Error)]
+pub enum GetColumnError {
+    #[error(transparent)]
+    Missing(#[from] MissingColumnError),
+
+    #[error("Column {column:?}: {err}")]
+    Downcast {
+        column: String,
+
+        #[source]
+        err: DowncastError,
+    },
+}
+
+/// Defers to [`std::fmt::Display`], so that `.unwrap()` panics with the readable message.
+impl std::fmt::Debug for GetColumnError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{self}")
+    }
+}
+
+impl From<GetColumnError> for arrow::error::ArrowError {
+    fn from(err: GetColumnError) -> Self {
+        let message = err.to_string();
+        match err {
+            // Same mapping as the errors these wrap:
+            GetColumnError::Missing(_) => Self::SchemaError(message),
+            GetColumnError::Downcast { .. } => Self::CastError(message),
+        }
     }
 }
 

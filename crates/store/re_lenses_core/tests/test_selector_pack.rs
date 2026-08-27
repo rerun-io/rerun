@@ -11,6 +11,7 @@ use arrow::array::{Array, FixedSizeListArray, Float64Array, Int64Array, ListArra
 use arrow::buffer::OffsetBuffer;
 use arrow::datatypes::{DataType, Field, Fields};
 
+use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_lenses_core::{Selector, SelectorError as Error};
 
 /// Build a non-null `Struct { x, y }` column with per-field nullability (`[x, y]`) and contents.
@@ -24,14 +25,16 @@ fn xy(nullable: [bool; 2], x: Int64Array, y: Int64Array) -> StructArray {
 
 /// Downcast a result array to a `FixedSizeListArray`.
 fn as_fsl(array: &Arc<dyn Array>) -> &FixedSizeListArray {
-    array.as_any().downcast_ref::<FixedSizeListArray>().unwrap()
+    array
+        .try_downcast_array_ref::<FixedSizeListArray>()
+        .unwrap()
 }
 
 /// Assert that row `row` of a `FixedSizeList<Int64>` is valid and equals `expected`.
 fn assert_row(fsl: &FixedSizeListArray, row: usize, expected: &[i64]) {
     assert!(fsl.is_valid(row), "expected row {row} to be valid");
     let values = fsl.value(row);
-    let values = values.as_any().downcast_ref::<Int64Array>().unwrap();
+    let values = values.try_downcast_array_ref::<Int64Array>().unwrap();
     let actual: Vec<i64> = (0..values.len()).map(|i| values.value(i)).collect();
     assert_eq!(actual, expected, "row {row} values");
 }

@@ -3,7 +3,7 @@ use std::sync::Arc;
 use crate::{Lens, LensBuilderError};
 use arrow::array::{Array as _, ArrayRef, StringArray, StructArray, UInt8Array, UInt32Array};
 use re_lenses_core::Selector;
-use re_lenses_core::combinators::Error;
+use re_lenses_core::combinators::{Error, try_downcast};
 use re_sdk_types::ComponentDescriptor;
 use re_sdk_types::archetypes::TextLog;
 use re_sdk_types::encodings::Rgba32;
@@ -46,14 +46,7 @@ pub fn log() -> Result<Lens, LensBuilderError> {
 /// Formats the log text as `[{name}] {msg}`.
 fn ros2_log_text() -> impl Fn(&ArrayRef) -> Result<Option<ArrayRef>, Error> + Send + Sync {
     move |source: &ArrayRef| {
-        let struct_array = source
-            .as_any()
-            .downcast_ref::<StructArray>()
-            .ok_or_else(|| Error::TypeMismatch {
-                expected: "StructArray".to_owned(),
-                actual: source.data_type().clone(),
-                context: "ros2_log_text input".to_owned(),
-            })?;
+        let struct_array = try_downcast::<StructArray>(source, "ros2_log_text input")?;
 
         let name_array = get_field_as::<StringArray>(struct_array, "name")?;
         let msg_array = get_field_as::<StringArray>(struct_array, "msg")?;
@@ -75,14 +68,7 @@ fn ros2_log_text() -> impl Fn(&ArrayRef) -> Result<Option<ArrayRef>, Error> + Se
 /// Maps ROS 2 numeric log levels to Rerun `TextLogLevel` strings.
 fn ros2_log_level() -> impl Fn(&ArrayRef) -> Result<Option<ArrayRef>, Error> + Send + Sync {
     move |source: &ArrayRef| {
-        let levels = source
-            .as_any()
-            .downcast_ref::<UInt8Array>()
-            .ok_or_else(|| Error::TypeMismatch {
-                expected: "UInt8Array".to_owned(),
-                actual: source.data_type().clone(),
-                context: "ros2_log_level input".to_owned(),
-            })?;
+        let levels = try_downcast::<UInt8Array>(source, "ros2_log_level input")?;
 
         let result: StringArray = levels
             .iter()
@@ -105,14 +91,7 @@ fn ros2_log_level() -> impl Fn(&ArrayRef) -> Result<Option<ArrayRef>, Error> + S
 /// Maps ROS 2 numeric log levels to a packed RGBA `u32` color.
 fn ros2_log_color() -> impl Fn(&ArrayRef) -> Result<Option<ArrayRef>, Error> + Send + Sync {
     move |source: &ArrayRef| {
-        let levels = source
-            .as_any()
-            .downcast_ref::<UInt8Array>()
-            .ok_or_else(|| Error::TypeMismatch {
-                expected: "UInt8Array".to_owned(),
-                actual: source.data_type().clone(),
-                context: "ros2_log_color input".to_owned(),
-            })?;
+        let levels = try_downcast::<UInt8Array>(source, "ros2_log_color input")?;
 
         let result: UInt32Array = levels
             .iter()

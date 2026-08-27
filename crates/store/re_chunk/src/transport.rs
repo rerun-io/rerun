@@ -215,11 +215,10 @@ impl Chunk {
 
             for (schema, column) in batch.component_columns() {
                 let column = column
-                    .downcast_array_ref::<ArrowListArray>()
-                    .ok_or_else(|| ChunkError::Malformed {
+                    .try_downcast_array_ref::<ArrowListArray>()
+                    .map_err(|err| ChunkError::Malformed {
                         reason: format!(
-                            "The outer array in a chunked component batch must be a sparse list, got {:?}",
-                            column.data_type(),
+                            "The outer array in a chunked component batch must be a sparse list: {err}"
                         ),
                     })?;
 

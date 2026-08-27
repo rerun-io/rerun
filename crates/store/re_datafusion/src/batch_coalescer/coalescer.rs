@@ -163,6 +163,7 @@ impl SizedBatchCoalescer {
 
 #[cfg(test)]
 mod tests {
+    use re_arrow_util::ArrowArrayDowncastRef as _;
     use std::collections::HashMap;
     use std::ops::Range;
 
@@ -480,8 +481,7 @@ mod tests {
         assert_eq!(batch.schema(), gc_batch.schema());
         gc_batch
             .column(0)
-            .as_any()
-            .downcast_ref::<StringViewArray>()
+            .try_downcast_array_ref::<StringViewArray>()
             .unwrap()
             .clone()
     }

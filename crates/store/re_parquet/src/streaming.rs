@@ -9,6 +9,7 @@ use arrow::array::{
 };
 use arrow::buffer::OffsetBuffer;
 use arrow::datatypes::{Field, Fields};
+use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::{
     Chunk, ChunkId, EntityPath, RowId, TimeColumn, TimePoint, external::nohash_hasher::IntMap,
 };
@@ -553,7 +554,7 @@ fn format_first_value(array: &dyn Array) -> String {
 
     macro_rules! fmt_primitive {
         ($arr_ty:ty) => {
-            if let Some(arr) = array.as_any().downcast_ref::<$arr_ty>() {
+            if let Some(arr) = array.downcast_array_ref::<$arr_ty>() {
                 return format!("{}", arr.value(0));
             }
         };
@@ -563,13 +564,10 @@ fn format_first_value(array: &dyn Array) -> String {
     fmt_primitive!(arrow::array::Int64Array);
     fmt_primitive!(arrow::array::Int32Array);
 
-    if let Some(arr) = array.as_any().downcast_ref::<arrow::array::StringArray>() {
+    if let Some(arr) = array.downcast_array_ref::<arrow::array::StringArray>() {
         return arr.value(0).to_owned();
     }
-    if let Some(arr) = array
-        .as_any()
-        .downcast_ref::<arrow::array::LargeStringArray>()
-    {
+    if let Some(arr) = array.downcast_array_ref::<arrow::array::LargeStringArray>() {
         return arr.value(0).to_owned();
     }
 

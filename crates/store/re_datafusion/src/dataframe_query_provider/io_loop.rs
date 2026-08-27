@@ -10,6 +10,7 @@ use std::time::Duration;
 
 use arrow::array::{RecordBatch, StringArray};
 use futures::StreamExt as _;
+use re_arrow_util::RecordBatchExt as _;
 use re_dataframe::TimelineName;
 use re_log_types::TimeInt;
 use re_protos::cloud::v1alpha1::ext::QueryDatasetDataframe;
@@ -135,7 +136,7 @@ fn build_segment_manifests(
 
     for rb in chunk_infos {
         let start_col = rb
-            .column_by_name(&start_col_name)
+            .try_get_column(&start_col_name)
             .expect("pre-check above guarantees presence on every batch");
         // `:start` carries the raw `i64` for the timeline's `time_min`. The OSS server emits
         // `Int64`; other servers may emit `TimestampNanosecondArray` / `Time64NanosecondArray` /
@@ -250,11 +251,8 @@ fn extend_distinct_segment_ids(
     order: &mut Vec<String>,
 ) -> ApiResult<()> {
     let seg_col = batch
-        .column_by_name(QueryDatasetDataframe::COLUMN_CHUNK_SEGMENT_ID_NAME)
-        .ok_or_else(|| ApiError::internal(origin, "missing segment_id column in fetch batch"))?
-        .as_any()
-        .downcast_ref::<StringArray>()
-        .ok_or_else(|| ApiError::internal(origin, "segment_id column is not a string array"))?;
+        .try_get_column_as::<StringArray>(QueryDatasetDataframe::COLUMN_CHUNK_SEGMENT_ID_NAME)
+        .map_err(|err| ApiError::internal(origin, err.to_string()))?;
     for i in 0..batch.num_rows() {
         let s = seg_col.value(i);
         if !seen.contains(s) {
@@ -1465,10 +1463,9 @@ mod tests {
         // Each batch's distinct-segment count must not exceed the cap.
         for batch in &batches {
             let seg_col = batch
-                .column_by_name(QueryDatasetDataframe::COLUMN_CHUNK_SEGMENT_ID_NAME)
-                .unwrap()
-                .as_any()
-                .downcast_ref::<StringArray>()
+                .try_get_column_as::<StringArray>(
+                    QueryDatasetDataframe::COLUMN_CHUNK_SEGMENT_ID_NAME,
+                )
                 .unwrap();
             let distinct: HashSet<&str> = (0..seg_col.len()).map(|i| seg_col.value(i)).collect();
             assert!(

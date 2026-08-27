@@ -1,3 +1,5 @@
+use re_arrow_util::ArrowArrayDowncastRef as _;
+
 use super::Blob;
 
 impl Blob {
@@ -21,12 +23,10 @@ impl Blob {
     ) -> Option<&[u8]> {
         let blob_list_array = serialized_blob
             .array
-            .as_any()
-            .downcast_ref::<arrow::array::ListArray>()?;
+            .downcast_array_ref::<arrow::array::ListArray>()?;
         let blob_data = blob_list_array
             .values()
-            .as_any()
-            .downcast_ref::<arrow::array::PrimitiveArray<arrow::datatypes::UInt8Type>>()?;
+            .downcast_array_ref::<arrow::array::PrimitiveArray<arrow::datatypes::UInt8Type>>()?;
 
         Some(blob_data.values().inner().as_slice())
     }
@@ -79,17 +79,15 @@ mod tests {
 
         // Verify it's a ListArray
         let list_array = array
-            .as_any()
-            .downcast_ref::<arrow::array::ListArray>()
-            .expect("Should be a ListArray");
+            .try_downcast_array_ref::<arrow::array::ListArray>()
+            .unwrap();
 
         // Verify the data
         assert_eq!(list_array.len(), 1);
         let inner = list_array
             .values()
-            .as_any()
-            .downcast_ref::<arrow::array::PrimitiveArray<arrow::datatypes::UInt8Type>>()
-            .expect("Inner should be UInt8Array");
+            .try_downcast_array_ref::<arrow::array::PrimitiveArray<arrow::datatypes::UInt8Type>>()
+            .unwrap();
 
         let inner_data: Vec<u8> = inner.values().iter().copied().collect();
         assert_eq!(inner_data, data);
@@ -108,9 +106,8 @@ mod tests {
 
         // Verify it's a ListArray
         let list_array = array
-            .as_any()
-            .downcast_ref::<arrow::array::ListArray>()
-            .expect("Should be a ListArray");
+            .try_downcast_array_ref::<arrow::array::ListArray>()
+            .unwrap();
 
         // Verify the data
         assert_eq!(list_array.len(), 2);
@@ -119,9 +116,8 @@ mod tests {
         let offsets = list_array.offsets();
         let inner = list_array
             .values()
-            .as_any()
-            .downcast_ref::<arrow::array::PrimitiveArray<arrow::datatypes::UInt8Type>>()
-            .expect("Inner should be UInt8Array");
+            .try_downcast_array_ref::<arrow::array::PrimitiveArray<arrow::datatypes::UInt8Type>>()
+            .unwrap();
 
         let start1 = offsets[0] as usize;
         let end1 = offsets[1] as usize;
@@ -156,9 +152,8 @@ mod tests {
         let array = Blob::to_arrow([blob]).unwrap();
 
         let list_array = array
-            .as_any()
-            .downcast_ref::<arrow::array::ListArray>()
-            .expect("Should be a ListArray");
+            .try_downcast_array_ref::<arrow::array::ListArray>()
+            .unwrap();
 
         assert_eq!(list_array.len(), 1);
         let offsets = list_array.offsets();
@@ -174,18 +169,16 @@ mod tests {
         let array = Blob::to_arrow([blob]).unwrap();
 
         let list_array = array
-            .as_any()
-            .downcast_ref::<arrow::array::ListArray>()
-            .expect("Should be a ListArray");
+            .try_downcast_array_ref::<arrow::array::ListArray>()
+            .unwrap();
 
         assert_eq!(list_array.len(), 1);
 
         // Verify the size
         let inner = list_array
             .values()
-            .as_any()
-            .downcast_ref::<arrow::array::PrimitiveArray<arrow::datatypes::UInt8Type>>()
-            .expect("Inner should be UInt8Array");
+            .try_downcast_array_ref::<arrow::array::PrimitiveArray<arrow::datatypes::UInt8Type>>()
+            .unwrap();
 
         assert_eq!(inner.len(), 1920 * 1080 * 3);
     }
@@ -200,9 +193,8 @@ mod tests {
         let array = Blob::to_arrow_opt(blobs).unwrap();
 
         let list_array = array
-            .as_any()
-            .downcast_ref::<arrow::array::ListArray>()
-            .expect("Should be a ListArray");
+            .try_downcast_array_ref::<arrow::array::ListArray>()
+            .unwrap();
 
         assert_eq!(list_array.len(), 2);
 
@@ -219,9 +211,8 @@ mod tests {
 
         let inner = list_array
             .values()
-            .as_any()
-            .downcast_ref::<arrow::array::PrimitiveArray<arrow::datatypes::UInt8Type>>()
-            .expect("Inner should be UInt8Array");
+            .try_downcast_array_ref::<arrow::array::PrimitiveArray<arrow::datatypes::UInt8Type>>()
+            .unwrap();
 
         let inner_slice: Vec<u8> = inner.values().iter().copied().collect();
         assert_eq!(inner_slice, data);
@@ -237,16 +228,14 @@ mod tests {
         let array = Blob::to_arrow([&blob]).unwrap();
 
         let list_array = array
-            .as_any()
-            .downcast_ref::<arrow::array::ListArray>()
-            .expect("Should be a ListArray");
+            .try_downcast_array_ref::<arrow::array::ListArray>()
+            .unwrap();
         assert_eq!(list_array.len(), 1);
 
         let inner = list_array
             .values()
-            .as_any()
-            .downcast_ref::<arrow::array::PrimitiveArray<arrow::datatypes::UInt8Type>>()
-            .expect("Inner should be UInt8Array");
+            .try_downcast_array_ref::<arrow::array::PrimitiveArray<arrow::datatypes::UInt8Type>>()
+            .unwrap();
         assert_eq!(inner.len(), data.len());
         assert_eq!(inner.values().as_ref(), data.as_slice());
     }

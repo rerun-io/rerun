@@ -438,6 +438,9 @@ pub enum LeRobotError {
     #[error(transparent)]
     Arrow(#[from] arrow::error::ArrowError),
 
+    #[error(transparent)]
+    GetColumn(#[from] re_arrow_util::GetColumnError),
+
     #[error("Invalid feature key: {0}")]
     InvalidFeatureKey(String),
 

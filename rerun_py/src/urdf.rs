@@ -5,6 +5,7 @@ use arrow::array::{Array as _, ArrayData, ListArray, make_array};
 use arrow::pyarrow::{PyArrowType, ToPyArrow as _};
 use pyo3::exceptions::{PyNotImplementedError, PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
+use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_sdk::external::re_importer::{UrdfTree, urdf_joint_transform};
 use re_sdk::external::urdf_rs::{Joint, JointType, Link, Mimic};
 use re_sdk::{EntityPath, TimePoint};
@@ -157,18 +158,12 @@ impl PyUrdfTree {
         let names = make_array(names.0);
         let values = make_array(values.0);
 
-        let names = names.as_any().downcast_ref::<ListArray>().ok_or_else(|| {
-            PyValueError::new_err(format!(
-                "joint names must be a list array, got {:?}",
-                names.data_type()
-            ))
-        })?;
-        let values = values.as_any().downcast_ref::<ListArray>().ok_or_else(|| {
-            PyValueError::new_err(format!(
-                "joint values must be a list array, got {:?}",
-                values.data_type()
-            ))
-        })?;
+        let names = names
+            .try_downcast_array_ref::<ListArray>()
+            .map_err(|err| PyValueError::new_err(format!("joint names: {err}")))?;
+        let values = values
+            .try_downcast_array_ref::<ListArray>()
+            .map_err(|err| PyValueError::new_err(format!("joint values: {err}")))?;
 
         let result = self
             .0

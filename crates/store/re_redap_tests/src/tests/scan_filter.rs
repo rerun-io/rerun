@@ -4,6 +4,7 @@
 use arrow::array::{RecordBatch, StringArray};
 use futures::TryStreamExt as _;
 use itertools::Itertools as _;
+use re_arrow_util::RecordBatchExt as _;
 use re_protos::cloud::v1alpha1::ext::ScanSegmentTableDataframe;
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::{
@@ -52,11 +53,10 @@ async fn setup(service: &impl RerunCloudService, dataset_name: &str) {
 fn segment_ids(batches: Vec<RecordBatch>) -> Vec<String> {
     let mut ids = Vec::new();
     for batch in batches {
-        if let Some(column) = batch.column_by_name(SEGMENT_ID_COL) {
-            let column = column
-                .as_any()
-                .downcast_ref::<StringArray>()
-                .expect("rerun_segment_id should be a Utf8 column");
+        if batch.column_by_name(SEGMENT_ID_COL).is_some() {
+            let column = batch
+                .try_get_column_as::<StringArray>(SEGMENT_ID_COL)
+                .unwrap();
             ids.extend(column.iter().flatten().map(str::to_owned));
         }
     }

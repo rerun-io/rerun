@@ -10,6 +10,7 @@ use datafusion::catalog::TableProvider;
 use datafusion::datasource::MemTable;
 use datafusion::logical_expr::TableType;
 use datafusion::prelude::SessionContext;
+use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_datafusion::RedapCatalogProviderList;
 use re_integration_test::TestServer;
 use re_protos::cloud::v1alpha1::ext::TableInsertMode;
@@ -126,8 +127,7 @@ async fn run_count(ctx: &SessionContext, sql: &str) -> i64 {
         .expect("at least one batch with rows");
     batch
         .column(0)
-        .as_any()
-        .downcast_ref::<Int64Array>()
+        .try_downcast_array_ref::<Int64Array>()
         .expect("count column is i64")
         .value(0)
 }

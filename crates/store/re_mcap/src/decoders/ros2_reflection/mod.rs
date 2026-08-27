@@ -264,6 +264,7 @@ mod tests {
     use arrow::array::{
         Array as _, Float32Array, Float64Array, Int32Array, ListArray, StructArray, UInt16Array,
     };
+    use re_arrow_util::ArrowArrayDowncastRef as _;
     use re_chunk::EntityPath;
     use re_log_types::TimeType;
     use re_ros_msg::MessageSchema;
@@ -278,8 +279,7 @@ mod tests {
         decoder
             .finish()
             .values()
-            .as_any()
-            .downcast_ref::<StructArray>()
+            .try_downcast_array_ref::<StructArray>()
             .expect("messages should be structs")
             .clone()
     }
@@ -350,28 +350,24 @@ uint16 value
         let number = array
             .column_by_name("number")
             .unwrap()
-            .as_any()
-            .downcast_ref::<Int32Array>()
+            .try_downcast_array_ref::<Int32Array>()
             .unwrap();
         let values = array
             .column_by_name("values")
             .unwrap()
-            .as_any()
-            .downcast_ref::<ListArray>()
+            .try_downcast_array_ref::<ListArray>()
             .unwrap();
         let values = values.value(0);
-        let values = values.as_any().downcast_ref::<Float32Array>().unwrap();
+        let values = values.try_downcast_array_ref::<Float32Array>().unwrap();
         let inner = array
             .column_by_name("inner")
             .unwrap()
-            .as_any()
-            .downcast_ref::<StructArray>()
+            .try_downcast_array_ref::<StructArray>()
             .unwrap();
         let inner_value = inner
             .column_by_name("value")
             .unwrap()
-            .as_any()
-            .downcast_ref::<UInt16Array>()
+            .try_downcast_array_ref::<UInt16Array>()
             .unwrap();
 
         assert_eq!(decoded_timestamp, Some(2_500_000_000));
@@ -416,17 +412,15 @@ float64 z
         let points = array
             .column_by_name("points")
             .unwrap()
-            .as_any()
-            .downcast_ref::<ListArray>()
+            .try_downcast_array_ref::<ListArray>()
             .unwrap()
             .value(0);
-        let points = points.as_any().downcast_ref::<StructArray>().unwrap();
+        let points = points.try_downcast_array_ref::<StructArray>().unwrap();
         let axis = |name: &str| {
             points
                 .column_by_name(name)
                 .unwrap()
-                .as_any()
-                .downcast_ref::<Float64Array>()
+                .try_downcast_array_ref::<Float64Array>()
                 .unwrap()
                 .values()
                 .to_vec()
@@ -439,11 +433,10 @@ float64 z
         let covariance = array
             .column_by_name("orientation_covariance")
             .unwrap()
-            .as_any()
-            .downcast_ref::<ListArray>()
+            .try_downcast_array_ref::<ListArray>()
             .unwrap()
             .value(0);
-        let covariance = covariance.as_any().downcast_ref::<Float64Array>().unwrap();
+        let covariance = covariance.try_downcast_array_ref::<Float64Array>().unwrap();
 
         assert_eq!(
             covariance.values(),
@@ -535,14 +528,12 @@ uint32 nanosec
         let messages = decoder.finish();
         let array = messages
             .values()
-            .as_any()
-            .downcast_ref::<StructArray>()
+            .try_downcast_array_ref::<StructArray>()
             .unwrap();
         let first = array
             .column_by_name("first")
             .unwrap()
-            .as_any()
-            .downcast_ref::<Int32Array>()
+            .try_downcast_array_ref::<Int32Array>()
             .unwrap();
 
         assert_eq!(messages.len(), 1);
@@ -606,29 +597,25 @@ int32 b
 
         let items = messages
             .values()
-            .as_any()
-            .downcast_ref::<StructArray>()
+            .try_downcast_array_ref::<StructArray>()
             .unwrap()
             .column_by_name("items")
             .unwrap()
-            .as_any()
-            .downcast_ref::<arrow::array::ListArray>()
+            .try_downcast_array_ref::<arrow::array::ListArray>()
             .unwrap()
             .clone();
         assert_eq!(items.len(), 1);
 
         let inner = items
             .values()
-            .as_any()
-            .downcast_ref::<StructArray>()
+            .try_downcast_array_ref::<StructArray>()
             .unwrap();
         assert_eq!(inner.null_count(), 0, "the cancelled element must be gone");
         for (name, expected) in [("a", 7_i32), ("b", 8)] {
             let column = inner
                 .column_by_name(name)
                 .unwrap()
-                .as_any()
-                .downcast_ref::<Int32Array>()
+                .try_downcast_array_ref::<Int32Array>()
                 .unwrap()
                 .clone();
             assert_eq!(column.values(), &[expected], "unexpected values for {name}");
@@ -729,14 +716,12 @@ float64[] values
         let messages = messages
             .list_array
             .values()
-            .as_any()
-            .downcast_ref::<StructArray>()
+            .try_downcast_array_ref::<StructArray>()
             .expect("messages should be structs");
         let first = messages
             .column_by_name("first")
             .unwrap()
-            .as_any()
-            .downcast_ref::<Int32Array>()
+            .try_downcast_array_ref::<Int32Array>()
             .unwrap();
         assert_eq!(first.values(), &[0, 2, 4, 6, 8]);
     }
@@ -761,11 +746,10 @@ float64[] values
         let values = array
             .column_by_name("values")
             .unwrap()
-            .as_any()
-            .downcast_ref::<ListArray>()
+            .try_downcast_array_ref::<ListArray>()
             .unwrap()
             .value(0);
-        let values = values.as_any().downcast_ref::<Float64Array>().unwrap();
+        let values = values.try_downcast_array_ref::<Float64Array>().unwrap();
         assert_eq!(values.values(), &[1.5]);
     }
 

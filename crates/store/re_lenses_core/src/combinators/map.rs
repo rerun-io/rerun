@@ -7,6 +7,8 @@ use arrow::array::{
 };
 use arrow::datatypes::Field;
 
+use re_arrow_util::ArrowArrayDowncastRef as _;
+
 use super::{error::Error, transform::Transform};
 
 /// Maps a transformation over the elements within a list array.
@@ -38,8 +40,7 @@ where
         let (field, offsets, values, nulls) = source.clone().into_parts();
         let downcast =
             values
-                .as_any()
-                .downcast_ref::<S>()
+                .downcast_array_ref::<S>()
                 .ok_or_else(|| Error::UnexpectedListValueType {
                     expected: std::any::type_name::<S>().to_owned(),
                     actual: values.data_type().clone(),
@@ -92,7 +93,7 @@ where
 
     fn transform(&self, source: &FixedSizeListArray) -> Result<Option<FixedSizeListArray>, Error> {
         let values = source.values();
-        let downcast = values.as_any().downcast_ref::<S>().ok_or_else(|| {
+        let downcast = values.downcast_array_ref::<S>().ok_or_else(|| {
             Error::UnexpectedFixedSizeListValueType {
                 expected: std::any::type_name::<S>().to_owned(),
                 actual: values.data_type().clone(),

@@ -1,7 +1,9 @@
 use std::collections::BTreeMap;
 
 use ahash::{HashMap, HashMapExt as _};
+use anyhow::Context as _;
 use itertools::Itertools as _;
+use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::Chunk;
 use re_log_encoding::ToApplication as _;
 use re_log_types::{EntityPath, TimelineName};
@@ -661,9 +663,8 @@ fn compute_stats(app: bool, compressed_size: u64, msg: &Msg) -> anyhow::Result<O
             // something like the following, but generic:
             if false && let Some(log_tick) = decoded.batch.column_by_name("log_tick") {
                 let log_tick = log_tick
-                    .as_any()
-                    .downcast_ref::<arrow::array::Int64Array>()
-                    .ok_or_else(|| anyhow::anyhow!("`log_tick` is not a Int64Array, somehow"))?;
+                    .try_downcast_array_ref::<arrow::array::Int64Array>()
+                    .context("`log_tick` column")?;
                 let _min = log_tick.values().iter().copied().min().unwrap_or_default();
                 let _max = log_tick.values().iter().copied().max().unwrap_or_default();
             }

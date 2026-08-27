@@ -29,5 +29,6 @@ itertools.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
+re_arrow_util.workspace = true
 re_chunk_store.workspace = true
 tempfile.workspace = true

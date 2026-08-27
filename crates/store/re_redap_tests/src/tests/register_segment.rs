@@ -6,7 +6,7 @@ use arrow::array::{Float32Array, Float64Array, ListArray, RecordBatch, StringArr
 use arrow::datatypes::Schema;
 use futures::TryStreamExt as _;
 use itertools::{Itertools as _, izip};
-use re_arrow_util::ArrowArrayDowncastRef as _;
+use re_arrow_util::{ArrowArrayDowncastRef as _, RecordBatchExt as _};
 use re_log_types::{EntityPath, TimeType};
 use re_protos::cloud::v1alpha1::ext as cloud_ext;
 use re_protos::cloud::v1alpha1::ext::{
@@ -296,9 +296,7 @@ pub async fn register_and_scan_simple_dataset_with_properties_out_of_order(
         .unwrap();
 
     let prop_col = dataset_manifest
-        .column_by_name("property:text_log:TextLog:text")
-        .unwrap()
-        .downcast_array_ref::<ListArray>()
+        .try_get_column_as::<ListArray>("property:text_log:TextLog:text")
         .unwrap();
 
     assert!(registration_time_col[0] < registration_time_col[1]);
@@ -306,7 +304,7 @@ pub async fn register_and_scan_simple_dataset_with_properties_out_of_order(
     assert_eq!(
         prop_col
             .value(0)
-            .downcast_array_ref::<StringArray>()
+            .try_downcast_array_ref::<StringArray>()
             .unwrap()
             .value(0),
         "I was logged last, registered first"
@@ -677,15 +675,11 @@ pub async fn register_with_dataset_if_duplicate_behavior_skip(service: impl Reru
     let dataset_manifest = scan_dataset_manifest(&service, dataset_name).await;
 
     let prop_col = dataset_manifest
-        .column_by_name("property:text_log:TextLog:text")
-        .expect("property column should exist")
-        .downcast_array_ref::<ListArray>()
-        .expect("property column should be a list array");
+        .try_get_column_as::<ListArray>("property:text_log:TextLog:text")
+        .unwrap();
 
     let inner_array = prop_col.value(0);
-    let string_array = inner_array
-        .downcast_array_ref::<StringArray>()
-        .expect("inner array should be string array");
+    let string_array = inner_array.try_downcast_array_ref::<StringArray>().unwrap();
     let text = string_array.value(0);
 
     assert_eq!(
@@ -745,15 +739,11 @@ pub async fn register_with_dataset_if_duplicate_behavior_overwrite(
     let dataset_manifest = scan_dataset_manifest(&service, dataset_name).await;
 
     let prop_col = dataset_manifest
-        .column_by_name("property:text_log:TextLog:text")
-        .expect("property column should exist")
-        .downcast_array_ref::<ListArray>()
-        .expect("property column should be a list array");
+        .try_get_column_as::<ListArray>("property:text_log:TextLog:text")
+        .unwrap();
 
     let inner_array = prop_col.value(0);
-    let string_array = inner_array
-        .downcast_array_ref::<StringArray>()
-        .expect("inner array should be string array");
+    let string_array = inner_array.try_downcast_array_ref::<StringArray>().unwrap();
     let text = string_array.value(0);
 
     assert_eq!(

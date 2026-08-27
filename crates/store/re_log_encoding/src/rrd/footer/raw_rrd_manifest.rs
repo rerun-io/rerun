@@ -8,6 +8,7 @@ use arrow::{
     error::ArrowError,
 };
 use itertools::Itertools as _;
+use re_arrow_util::RecordBatchExt as _;
 use re_chunk::external::nohash_hasher::IntMap;
 use re_chunk::external::re_byte_size;
 use re_chunk::{ArchetypeName, ChunkError, ChunkId, ComponentIdentifier, ComponentType, Timeline};
@@ -509,12 +510,11 @@ impl RawRrdManifest {
             itertools::izip!(self.data.schema_ref().fields(), self.data.columns(),)
                 .filter(|(f, _c)| f.name().ends_with(":has_static_data"))
                 .map(|(f, c)| {
-                    c.downcast_array_ref::<arrow::array::BooleanArray>()
-                        .ok_or_else(|| {
+                    c.try_downcast_array_ref::<arrow::array::BooleanArray>()
+                        .map_err(|err| {
                             CodecError::ArrowDeserialization(ArrowError::SchemaError(format!(
-                                "'{}' should be a BooleanArray, but it's a {} instead",
+                                "cannot downcast column '{}': {err}",
                                 f.name(),
-                                c.data_type(),
                             )))
                         })
                         .map(|c| (f, c))
@@ -642,12 +642,11 @@ impl RawRrdManifest {
             let (_, col_end_raw) =
                 TimeType::from_arrow_array(col_end).map_err(CodecError::ArrowDeserialization)?;
             let col_num_rows_raw: &[u64] = col_num_rows
-                .downcast_array_ref::<UInt64Array>()
-                .ok_or_else(|| {
+                .try_downcast_array_ref::<UInt64Array>()
+                .map_err(|err| {
                     CodecError::ArrowDeserialization(ArrowError::SchemaError(format!(
-                        "'{}' should be a BooleanArray, but it's a {} instead",
+                        "cannot downcast column '{}': {err}",
                         field_num_rows.name(),
-                        col_num_rows.data_type(),
                     )))
                 })?
                 .values();
@@ -1523,21 +1522,9 @@ impl RawRrdManifest {
 impl RawRrdManifest {
     /// Returns the raw Arrow data for the entity path column.
     pub fn col_chunk_entity_path_raw(&self) -> CodecResult<&StringArray> {
-        use re_arrow_util::ArrowArrayDowncastRef as _;
-        let name = Self::FIELD_CHUNK_ENTITY_PATH;
-        self.data
-            .column_by_name(name)
-            .ok_or_else(|| {
-                CodecError::ArrowDeserialization(ArrowError::SchemaError(format!(
-                    "cannot read column: '{name}' is missing from batch",
-                )))
-            })?
-            .downcast_array_ref::<StringArray>()
-            .ok_or_else(|| {
-                CodecError::ArrowDeserialization(ArrowError::SchemaError(format!(
-                    "cannot downcast column: '{name}' is not a StringArray",
-                )))
-            })
+        Ok(self
+            .data
+            .try_get_column_as::<StringArray>(Self::FIELD_CHUNK_ENTITY_PATH)?)
     }
 
     /// Returns an iterator over the decoded Arrow data for the entity path column.
@@ -1551,21 +1538,9 @@ impl RawRrdManifest {
 
     /// Returns the raw Arrow data for the chunk ID column.
     pub fn col_chunk_id_raw(&self) -> CodecResult<&FixedSizeBinaryArray> {
-        use re_arrow_util::ArrowArrayDowncastRef as _;
-        let name = Self::FIELD_CHUNK_ID;
-        self.data
-            .column_by_name(name)
-            .ok_or_else(|| {
-                CodecError::ArrowDeserialization(ArrowError::SchemaError(format!(
-                    "cannot read column: '{name}' is missing from batch",
-                )))
-            })?
-            .downcast_array_ref::<FixedSizeBinaryArray>()
-            .ok_or_else(|| {
-                CodecError::ArrowDeserialization(ArrowError::SchemaError(format!(
-                    "cannot downcast column: '{name}' is not a FixedSizeBinaryArray",
-                )))
-            })
+        Ok(self
+            .data
+            .try_get_column_as::<FixedSizeBinaryArray>(Self::FIELD_CHUNK_ID)?)
     }
 
     /// Returns an iterator over the decoded Arrow data for the chunk ID column.
@@ -1593,21 +1568,9 @@ impl RawRrdManifest {
 
     /// Returns the raw Arrow data for the is-static column.
     pub fn col_chunk_is_static_raw(&self) -> CodecResult<&BooleanArray> {
-        use re_arrow_util::ArrowArrayDowncastRef as _;
-        let name = Self::FIELD_CHUNK_IS_STATIC;
-        self.data
-            .column_by_name(name)
-            .ok_or_else(|| {
-                CodecError::ArrowDeserialization(ArrowError::SchemaError(format!(
-                    "cannot read column: '{name}' is missing from batch",
-                )))
-            })?
-            .downcast_array_ref::<BooleanArray>()
-            .ok_or_else(|| {
-                CodecError::ArrowDeserialization(ArrowError::SchemaError(format!(
-                    "cannot downcast column: '{name}' is not a BooleanArray",
-                )))
-            })
+        Ok(self
+            .data
+            .try_get_column_as::<BooleanArray>(Self::FIELD_CHUNK_IS_STATIC)?)
     }
 
     /// Returns an iterator over the decoded Arrow data for the is-static column.
@@ -1619,21 +1582,9 @@ impl RawRrdManifest {
 
     /// Returns the raw Arrow data for the num-rows column.
     pub fn col_chunk_num_rows_raw(&self) -> CodecResult<&UInt64Array> {
-        use re_arrow_util::ArrowArrayDowncastRef as _;
-        let name = Self::FIELD_CHUNK_NUM_ROWS;
-        self.data
-            .column_by_name(name)
-            .ok_or_else(|| {
-                CodecError::ArrowDeserialization(ArrowError::SchemaError(format!(
-                    "cannot read column: '{name}' is missing from batch",
-                )))
-            })?
-            .downcast_array_ref::<UInt64Array>()
-            .ok_or_else(|| {
-                CodecError::ArrowDeserialization(ArrowError::SchemaError(format!(
-                    "cannot downcast column: '{name}' is not a UInt64Array",
-                )))
-            })
+        Ok(self
+            .data
+            .try_get_column_as::<UInt64Array>(Self::FIELD_CHUNK_NUM_ROWS)?)
     }
 
     /// Returns an iterator over the decoded Arrow data for the num-rows column.
@@ -1645,21 +1596,9 @@ impl RawRrdManifest {
 
     /// Returns the raw Arrow data for the byte-offset column.
     pub fn col_chunk_byte_offset_raw(&self) -> CodecResult<&UInt64Array> {
-        use re_arrow_util::ArrowArrayDowncastRef as _;
-        let name = Self::FIELD_CHUNK_BYTE_OFFSET;
-        self.data
-            .column_by_name(name)
-            .ok_or_else(|| {
-                CodecError::ArrowDeserialization(ArrowError::SchemaError(format!(
-                    "cannot read column: '{name}' is missing from batch",
-                )))
-            })?
-            .downcast_array_ref::<UInt64Array>()
-            .ok_or_else(|| {
-                CodecError::ArrowDeserialization(ArrowError::SchemaError(format!(
-                    "cannot downcast column: '{name}' is not a UInt64Array",
-                )))
-            })
+        Ok(self
+            .data
+            .try_get_column_as::<UInt64Array>(Self::FIELD_CHUNK_BYTE_OFFSET)?)
     }
 
     /// Returns an iterator over the decoded Arrow data for the byte-offset column.
@@ -1673,21 +1612,9 @@ impl RawRrdManifest {
     ///
     /// See also the `Understand size/offset columns` section of the [`RawRrdManifest`] documentation.
     pub fn col_chunk_byte_size_raw(&self) -> CodecResult<&UInt64Array> {
-        use re_arrow_util::ArrowArrayDowncastRef as _;
-        let name = Self::FIELD_CHUNK_BYTE_SIZE;
-        self.data
-            .column_by_name(name)
-            .ok_or_else(|| {
-                CodecError::ArrowDeserialization(ArrowError::SchemaError(format!(
-                    "cannot read column: '{name}' is missing from batch",
-                )))
-            })?
-            .downcast_array_ref::<UInt64Array>()
-            .ok_or_else(|| {
-                CodecError::ArrowDeserialization(ArrowError::SchemaError(format!(
-                    "cannot downcast column: '{name}' is not a UInt64Array",
-                )))
-            })
+        Ok(self
+            .data
+            .try_get_column_as::<UInt64Array>(Self::FIELD_CHUNK_BYTE_SIZE)?)
     }
 
     /// Returns an iterator over the decoded Arrow data for the byte-size column.
@@ -1703,21 +1630,9 @@ impl RawRrdManifest {
     ///
     /// See also the `Understand size/offset columns` section of the [`RawRrdManifest`] documentation.
     pub fn col_chunk_byte_size_uncompressed_raw(&self) -> CodecResult<&UInt64Array> {
-        use re_arrow_util::ArrowArrayDowncastRef as _;
-        let name = Self::FIELD_CHUNK_BYTE_SIZE_UNCOMPRESSED;
-        self.data
-            .column_by_name(name)
-            .ok_or_else(|| {
-                CodecError::ArrowDeserialization(ArrowError::SchemaError(format!(
-                    "cannot read column: '{name}' is missing from batch",
-                )))
-            })?
-            .downcast_array_ref::<UInt64Array>()
-            .ok_or_else(|| {
-                CodecError::ArrowDeserialization(ArrowError::SchemaError(format!(
-                    "cannot downcast column: '{name}' is not a UInt64Array",
-                )))
-            })
+        Ok(self
+            .data
+            .try_get_column_as::<UInt64Array>(Self::FIELD_CHUNK_BYTE_SIZE_UNCOMPRESSED)?)
     }
 
     /// Returns an iterator over the decoded Arrow data for the *uncompressed* byte-size column.
@@ -1734,21 +1649,9 @@ impl RawRrdManifest {
 
     /// Returns the raw Arrow data for chunk-key column, if present.
     pub fn col_chunk_key_raw(&self) -> CodecResult<&BinaryArray> {
-        use re_arrow_util::ArrowArrayDowncastRef as _;
-        let name = Self::FIELD_CHUNK_KEY;
-        self.data
-            .column_by_name(name)
-            .ok_or_else(|| {
-                CodecError::ArrowDeserialization(ArrowError::SchemaError(format!(
-                    "cannot read column: '{name}' is missing from batch",
-                )))
-            })?
-            .downcast_array_ref::<BinaryArray>()
-            .ok_or_else(|| {
-                CodecError::ArrowDeserialization(ArrowError::SchemaError(format!(
-                    "cannot downcast column: '{name}' is not a BinaryArray"
-                )))
-            })
+        Ok(self
+            .data
+            .try_get_column_as::<BinaryArray>(Self::FIELD_CHUNK_KEY)?)
     }
 }
 

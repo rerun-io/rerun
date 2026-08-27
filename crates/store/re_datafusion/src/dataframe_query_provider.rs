@@ -34,6 +34,7 @@ use futures::FutureExt as _;
 use futures_util::Stream;
 use io_loop::chunk_stream_io_loop;
 use itertools::Itertools as _;
+use re_arrow_util::RecordBatchExt as _;
 use re_dataframe::{Index, QueryExpression, TimelineName};
 use re_protos::cloud::v1alpha1::ext::{QueryDatasetDataframe, ScanSegmentTableDataframe};
 use re_types_core::SegmentId;
@@ -457,18 +458,12 @@ fn queried_uncompressed_segment_size(batches: &[RecordBatch]) -> Option<u64> {
     let column_name = QueryDatasetDataframe::COLUMN_CHUNK_BYTE_SIZE_UNCOMPRESSED_NAME;
     let mut segment_size = 0u64;
     for batch in batches {
-        let Some(column) = batch.column_by_name(column_name) else {
-            re_log::debug!(
-                "adaptive segment admission: chunk-info batch has no {column_name} column"
-            );
-            return None;
-        };
-        let Some(sizes) = column.as_any().downcast_ref::<UInt64Array>() else {
-            re_log::debug!(
-                "adaptive segment admission: {column_name} is {:?}, expected UInt64",
-                column.data_type(),
-            );
-            return None;
+        let sizes = match batch.try_get_column_as::<UInt64Array>(column_name) {
+            Ok(sizes) => sizes,
+            Err(err) => {
+                re_log::debug!("adaptive segment admission: {err}");
+                return None;
+            }
         };
         if sizes.null_count() > 0 {
             re_log::debug!(

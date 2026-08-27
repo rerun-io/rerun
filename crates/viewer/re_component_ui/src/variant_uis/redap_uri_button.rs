@@ -27,8 +27,7 @@ pub fn redap_uri_button(
     }
 
     let url_str = array
-        .downcast_array_ref::<arrow::array::StringArray>()
-        .ok_or_else(|| format!("unsupported arrow datatype: {}", array.data_type()))?
+        .try_downcast_array_ref::<arrow::array::StringArray>()?
         .value(0);
 
     let uri = RedapUri::from_str(url_str)?;

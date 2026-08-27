@@ -2,6 +2,7 @@
 
 use arrow::array::{AsArray as _, Int64Array, ListArray, UInt32Array};
 use arrow::compute::take;
+use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::{ArrowArray as _, Chunk, ChunkComponents, ChunkId};
 use re_log_types::TimeType;
 use re_sdk_types::{ComponentDescriptor, SerializedComponentColumn};
@@ -80,7 +81,7 @@ fn try_convert_time_column(
     timeline_type: TimeType,
     list_array: &ListArray,
 ) -> Result<(re_chunk::TimelineName, re_chunk::TimeColumn), LensRuntimeError> {
-    if let Some(time_vals) = list_array.values().as_any().downcast_ref::<Int64Array>() {
+    if let Some(time_vals) = list_array.values().downcast_array_ref::<Int64Array>() {
         let time_column = re_chunk::TimeColumn::new(
             None,
             re_chunk::Timeline::new(timeline_name, timeline_type),

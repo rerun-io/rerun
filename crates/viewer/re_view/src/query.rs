@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use nohash_hasher::{IntMap, IntSet};
+use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk_store::{LatestAtQuery, RangeQuery, RowId};
 use re_log_types::{
     TimeInt,
@@ -60,14 +61,9 @@ fn cast_list_array(
     let casted = arrow::compute::cast(source, target_list_datatype)?;
 
     casted
-        .as_any()
-        .downcast_ref::<arrow::array::ListArray>()
-        .cloned()
-        .ok_or_else(|| {
-            arrow::error::ArrowError::CastError(format!(
-                "Expected ListArray after cast, got {:?}",
-                casted.data_type()
-            ))
+        .try_downcast_array::<arrow::array::ListArray>()
+        .map_err(|err| {
+            arrow::error::ArrowError::CastError(format!("Expected a ListArray after cast: {err}"))
         })
 }
 

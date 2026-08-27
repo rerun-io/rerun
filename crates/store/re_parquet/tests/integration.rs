@@ -14,6 +14,7 @@ use arrow::array::{
 use arrow::datatypes::{DataType, Field, Schema};
 use itertools::Itertools as _;
 
+use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::{Chunk, EntityPath};
 use re_log_types::TimeType;
 use re_parquet::{ColumnGrouping, IndexColumn, IndexType, ParquetConfig, TimeUnit};
@@ -205,9 +206,8 @@ fn prefix_grouping() {
     let camera_list = camera.components().get_array("data".into()).unwrap();
     let camera_struct = camera_list
         .values()
-        .as_any()
-        .downcast_ref::<arrow::array::StructArray>()
-        .expect("should be a StructArray");
+        .try_downcast_array_ref::<arrow::array::StructArray>()
+        .unwrap();
     assert_eq!(camera_struct.num_columns(), 2);
     assert_eq!(camera_struct.column_by_name("rgb").unwrap().len(), 3);
     assert_eq!(camera_struct.column_by_name("depth").unwrap().len(), 3);
@@ -226,9 +226,8 @@ fn prefix_grouping() {
     let joint_list = joint.components().get_array("data".into()).unwrap();
     let joint_struct = joint_list
         .values()
-        .as_any()
-        .downcast_ref::<arrow::array::StructArray>()
-        .expect("should be a StructArray");
+        .try_downcast_array_ref::<arrow::array::StructArray>()
+        .unwrap();
     assert_eq!(joint_struct.num_columns(), 2);
     assert!(joint_struct.column_by_name("position").is_some());
     assert!(joint_struct.column_by_name("velocity").is_some());
@@ -677,9 +676,8 @@ fn explicit_prefixes_basic() {
     let foo_list = foo.components().get_array("data".into()).unwrap();
     let foo_struct = foo_list
         .values()
-        .as_any()
-        .downcast_ref::<arrow::array::StructArray>()
-        .expect("should be a StructArray");
+        .try_downcast_array_ref::<arrow::array::StructArray>()
+        .unwrap();
     assert_eq!(foo_struct.num_columns(), 3);
     assert!(foo_struct.column_by_name("a").is_some());
     assert!(foo_struct.column_by_name("b").is_some());
@@ -693,9 +691,8 @@ fn explicit_prefixes_basic() {
     let cat_list = cat.components().get_array("data".into()).unwrap();
     let cat_struct = cat_list
         .values()
-        .as_any()
-        .downcast_ref::<arrow::array::StructArray>()
-        .expect("should be a StructArray");
+        .try_downcast_array_ref::<arrow::array::StructArray>()
+        .unwrap();
     assert_eq!(cat_struct.num_columns(), 3);
 
     let other = data
@@ -778,9 +775,8 @@ fn explicit_prefixes_underscore_stripping() {
     let cat_list = cat.components().get_array("data".into()).unwrap();
     let cat_struct = cat_list
         .values()
-        .as_any()
-        .downcast_ref::<arrow::array::StructArray>()
-        .expect("should be a StructArray");
+        .try_downcast_array_ref::<arrow::array::StructArray>()
+        .unwrap();
     // Comp names should be "foo" and "bar", not "_foo" and "_bar"
     assert!(
         cat_struct.column_by_name("foo").is_some(),
@@ -890,15 +886,13 @@ fn transform3d_from_struct_via_lens() {
         .unwrap();
     let translation = translation
         .values()
-        .as_any()
-        .downcast_ref::<FixedSizeListArray>()
+        .try_downcast_array_ref::<FixedSizeListArray>()
         .expect("translation should be a FixedSizeList");
     assert_eq!(translation.value_length(), 3);
     assert_eq!(translation.values().data_type(), &DataType::Float32);
     let translation = translation
         .values()
-        .as_any()
-        .downcast_ref::<Float32Array>()
+        .try_downcast_array_ref::<Float32Array>()
         .unwrap();
     assert_eq!(
         translation.values().to_vec(),
@@ -912,15 +906,13 @@ fn transform3d_from_struct_via_lens() {
         .unwrap();
     let quaternion = quaternion
         .values()
-        .as_any()
-        .downcast_ref::<FixedSizeListArray>()
+        .try_downcast_array_ref::<FixedSizeListArray>()
         .expect("quaternion should be a FixedSizeList");
     assert_eq!(quaternion.value_length(), 4);
     assert_eq!(quaternion.values().data_type(), &DataType::Float32);
     let quaternion = quaternion
         .values()
-        .as_any()
-        .downcast_ref::<Float32Array>()
+        .try_downcast_array_ref::<Float32Array>()
         .unwrap();
     assert_eq!(
         quaternion.values().to_vec(),

@@ -11,9 +11,9 @@ use arrow::array::types::{
     Int64Type, RunEndIndexType, UInt8Type, UInt16Type, UInt32Type, UInt64Type,
 };
 use arrow::array::{
-    Array, ArrayAccessor as _, DictionaryArray, FixedSizeBinaryArray, FixedSizeListArray,
-    GenericBinaryArray, GenericListArray, MapArray, OffsetSizeTrait, PrimitiveArray, RunArray,
-    StructArray, TimestampMicrosecondArray, TimestampMillisecondArray, TimestampNanosecondArray,
+    Array, ArrayAccessor as _, DictionaryArray, FixedSizeListArray, GenericBinaryArray,
+    GenericListArray, MapArray, OffsetSizeTrait, PrimitiveArray, RunArray, StructArray,
+    TimestampMicrosecondArray, TimestampMillisecondArray, TimestampNanosecondArray,
     TimestampSecondArray, UnionArray, as_generic_binary_array, downcast_dictionary_array,
     downcast_integer_array, downcast_run_array,
 };
@@ -198,13 +198,7 @@ fn make_ui<'a>(
         DataType::Timestamp(TimeUnit::Nanosecond, _) => {
             show_custom(array.as_primitive::<TimestampNanosecondType>(), options)
         }
-        DataType::FixedSizeBinary(_) => {
-            let a = array
-            .as_any()
-            .downcast_ref::<FixedSizeBinaryArray>()
-            .expect("FixedSizeBinaryArray downcast failed");
-            show_arrow_builtin(a, options)
-        }
+        DataType::FixedSizeBinary(_) => show_arrow_builtin(array.as_fixed_size_binary(), options),
         DataType::Binary => {
             show_custom(as_generic_binary_array::<i32>(array), options)
         }
@@ -217,13 +211,7 @@ fn make_ui<'a>(
         }
         DataType::List(_) => show_custom(as_generic_list_array::<i32>(array), options),
         DataType::LargeList(_) => show_custom(as_generic_list_array::<i64>(array), options),
-        DataType::FixedSizeList(_, _) => {
-            let a = array
-                .as_any()
-                .downcast_ref::<FixedSizeListArray>()
-                .expect("FixedSizeListArray downcast failed");
-            show_custom(a, options)
-        }
+        DataType::FixedSizeList(_, _) => show_custom(array.as_fixed_size_list(), options),
         DataType::Struct(_) => show_custom(as_struct_array(array), options),
         DataType::Map(_, _) => show_custom(as_map_array(array), options),
         DataType::Union(_, _) => show_custom(as_union_array(array), options),

@@ -3,6 +3,7 @@ use std::sync::Arc;
 use arrow::array::{Array as _, BinaryArray, FixedSizeBinaryArray, RecordBatch, StringArray};
 use arrow::buffer::{BooleanBuffer, ScalarBuffer};
 use arrow::datatypes::Field;
+use re_arrow_util::{ArrowArrayDowncastRef as _, RecordBatchExt as _};
 use re_chunk::external::re_byte_size;
 use re_chunk::{ChunkId, EntityPath};
 use re_log_types::StoreId;
@@ -426,8 +427,7 @@ impl RrdManifest {
                 manifests.iter().map(|m| &m.chunk_ids as _).collect();
             re_arrow_util::concat_arrays(&arrays)
                 .map_err(|err| CodecError::FrameDecoding(format!("concat chunk_ids: {err}")))?
-                .as_any()
-                .downcast_ref::<FixedSizeBinaryArray>()
+                .try_downcast_array_ref::<FixedSizeBinaryArray>()
                 .expect("concat of FixedSizeBinaryArray should yield FixedSizeBinaryArray")
                 .clone()
         };
@@ -440,8 +440,7 @@ impl RrdManifest {
                 .map_err(|err| {
                     CodecError::FrameDecoding(format!("concat chunk_entity_paths: {err}"))
                 })?
-                .as_any()
-                .downcast_ref::<StringArray>()
+                .try_downcast_array_ref::<StringArray>()
                 .expect("concat of StringArray should yield StringArray")
                 .clone()
         };
@@ -497,8 +496,7 @@ impl RrdManifest {
             Some(
                 re_arrow_util::concat_arrays(&arrays)
                     .map_err(|err| CodecError::FrameDecoding(format!("concat chunk_keys: {err}")))?
-                    .as_any()
-                    .downcast_ref::<BinaryArray>()
+                    .try_downcast_array_ref::<BinaryArray>()
                     .expect("concat of BinaryArray should yield BinaryArray")
                     .clone(),
             )
@@ -604,11 +602,9 @@ impl RrdManifest {
 
     /// Returns all the chunk ids of a batch that has a [`Self::FIELD_CHUNK_ID`] column.
     pub fn col_chunk_ids_of(batch: &RecordBatch) -> Option<&[ChunkId]> {
-        use re_arrow_util::ArrowArrayDowncastRef as _;
-
         let array = batch
-            .column_by_name(Self::FIELD_CHUNK_ID)
-            .and_then(|array| array.downcast_array_ref::<FixedSizeBinaryArray>())?;
+            .try_get_column_as::<FixedSizeBinaryArray>(Self::FIELD_CHUNK_ID)
+            .ok()?;
         ChunkId::try_slice_from_arrow(array).ok()
     }
 

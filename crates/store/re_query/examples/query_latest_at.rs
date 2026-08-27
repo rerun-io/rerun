@@ -86,9 +86,7 @@ fn main() -> anyhow::Result<()> {
             .context("missing")?
             .component_batch_raw(MyPoints::descriptor_colors().component)
             .context("invalid")?;
-        let colors = colors
-            .downcast_array_ref::<ArrowUInt32Array>()
-            .context("invalid")?;
+        let colors = colors.try_downcast_array_ref::<ArrowUInt32Array>()?;
         let colors = colors.values().iter().map(|&color| MyColor(color));
 
         // And finally apply your instance-level joining logic, if any:

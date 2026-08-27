@@ -4,7 +4,8 @@
 //! top-level `stamp` field. [`TimestampLocation`] resolves where that sits while a decode plan is
 //! built, so the timeline can be read straight off the decoded Arrow columns afterwards.
 
-use arrow::array::{Array as _, FixedSizeListArray, Int32Array, StructArray, UInt32Array};
+use arrow::array::{FixedSizeListArray, Int32Array, StructArray, UInt32Array};
+use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_ros_msg::message_spec::BuiltInType;
 
 use crate::parsers::ParserContext;
@@ -113,14 +114,8 @@ pub(super) fn timestamp_columns<'a>(
             sec,
             nanosec,
         } => {
-            let header = root
-                .column(*header)
-                .as_any()
-                .downcast_ref::<StructArray>()?;
-            let stamp = header
-                .column(*stamp)
-                .as_any()
-                .downcast_ref::<StructArray>()?;
+            let header = root.column(*header).downcast_array_ref::<StructArray>()?;
+            let stamp = header.column(*stamp).downcast_array_ref::<StructArray>()?;
             (stamp, *sec, *nanosec)
         }
         TimestampLocation::TopLevel {
@@ -128,19 +123,17 @@ pub(super) fn timestamp_columns<'a>(
             sec,
             nanosec,
         } => {
-            let stamp = root.column(*stamp).as_any().downcast_ref::<StructArray>()?;
+            let stamp = root.column(*stamp).downcast_array_ref::<StructArray>()?;
             (stamp, *sec, *nanosec)
         }
     };
 
     let sec = timestamp_struct
         .column(sec_index)
-        .as_any()
-        .downcast_ref::<Int32Array>()?;
+        .downcast_array_ref::<Int32Array>()?;
     let nanosec = timestamp_struct
         .column(nanosec_index)
-        .as_any()
-        .downcast_ref::<UInt32Array>()?;
+        .downcast_array_ref::<UInt32Array>()?;
 
     Some((sec, nanosec))
 }
@@ -162,8 +155,7 @@ pub(super) fn add_ros2_timestamps(
 
     let columns = messages
         .values()
-        .as_any()
-        .downcast_ref::<StructArray>()
+        .downcast_array_ref::<StructArray>()
         .and_then(|root| timestamp_columns(location, root));
 
     let Some((secs, nanosecs)) = columns else {

@@ -107,10 +107,10 @@ fn concat_single_is_noop() {
 
     {
         let unconcatenated = unconcatenated
-            .downcast_array_ref::<ArrowInt64Array>()
+            .try_downcast_array_ref::<ArrowInt64Array>()
             .unwrap();
         let concatenated = concatenated
-            .downcast_array_ref::<ArrowInt64Array>()
+            .try_downcast_array_ref::<ArrowInt64Array>()
             .unwrap();
 
         assert!(
@@ -163,11 +163,11 @@ fn filter_does_allocate() {
     {
         let unfiltered = unfiltered
             .values()
-            .downcast_array_ref::<ArrowInt64Array>()
+            .try_downcast_array_ref::<ArrowInt64Array>()
             .unwrap();
         let filtered = filtered
             .values()
-            .downcast_array_ref::<ArrowInt64Array>()
+            .try_downcast_array_ref::<ArrowInt64Array>()
             .unwrap();
 
         assert!(
@@ -219,11 +219,11 @@ fn filter_empty_or_full_is_noop() {
     {
         let unfiltered = unfiltered
             .values()
-            .downcast_array_ref::<ArrowInt64Array>()
+            .try_downcast_array_ref::<ArrowInt64Array>()
             .unwrap();
         let filtered = filtered
             .values()
-            .downcast_array_ref::<ArrowInt64Array>()
+            .try_downcast_array_ref::<ArrowInt64Array>()
             .unwrap();
 
         assert!(
@@ -282,11 +282,11 @@ fn take_does_not_allocate() {
     {
         let untaken = untaken
             .values()
-            .downcast_array_ref::<ArrowInt64Array>()
+            .try_downcast_array_ref::<ArrowInt64Array>()
             .unwrap();
         let taken = taken
             .values()
-            .downcast_array_ref::<ArrowInt64Array>()
+            .try_downcast_array_ref::<ArrowInt64Array>()
             .unwrap();
 
         assert!(
@@ -338,11 +338,11 @@ fn take_empty_or_full_is_noop() {
     {
         let untaken = untaken
             .values()
-            .downcast_array_ref::<ArrowInt64Array>()
+            .try_downcast_array_ref::<ArrowInt64Array>()
             .unwrap();
         let taken = taken
             .values()
-            .downcast_array_ref::<ArrowInt64Array>()
+            .try_downcast_array_ref::<ArrowInt64Array>()
             .unwrap();
 
         assert!(

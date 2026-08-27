@@ -17,7 +17,7 @@ use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
-use re_arrow_util::ArrowArrayDowncastRef as _;
+use re_arrow_util::RecordBatchExt as _;
 use re_chunk::{Chunk, TimeInt};
 
 /// A `LeRobot` dataset consists of structured metadata and recorded episode data stored in
@@ -134,9 +134,8 @@ impl LeRobotDatasetV2 {
         data: &RecordBatch,
     ) -> Result<Vec<(TimeInt, String)>, LeRobotError> {
         let task_indices = data
-            .column_by_name("task_index")
-            .and_then(|c| c.downcast_array_ref::<Int64Array>())
-            .with_context(|| "Failed to get task_index field from dataset!")?;
+            .try_get_column_as::<Int64Array>("task_index")
+            .context("Failed to get task_index field from dataset!")?;
 
         let mut rows = Vec::new();
         let mut time_int = TimeInt::ZERO;

@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use arrow::array::{ArrayRef, Float64Array};
 use re_chunk::{Chunk, RowId};
-use re_lenses_core::combinators::Error;
+use re_lenses_core::combinators::{Error, try_downcast};
 use re_lenses_core::function_registry::FunctionRegistry;
 use re_lenses_core::{ChunkExt as _, DynExpr, Runtime, Selector};
 use re_log_types::Timeline;
@@ -12,14 +12,7 @@ use re_sdk_types::ComponentDescriptor;
 
 /// Doubles every float64 value.
 fn double_values(source: &ArrayRef) -> Result<Option<ArrayRef>, Error> {
-    let values = source
-        .as_any()
-        .downcast_ref::<Float64Array>()
-        .ok_or_else(|| Error::TypeMismatch {
-            expected: "Float64".into(),
-            actual: source.data_type().clone(),
-            context: "double_values".into(),
-        })?;
+    let values = try_downcast::<Float64Array>(source, "double_values")?;
 
     let doubled: Float64Array = values.iter().map(|v| v.map(|x| x * 2.0)).collect();
     Ok(Some(Arc::new(doubled)))

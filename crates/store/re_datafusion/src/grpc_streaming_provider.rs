@@ -437,6 +437,7 @@ mod table_query_pipeline_tests {
     use async_trait::async_trait;
     use futures_util::StreamExt as _;
     use parking_lot::Mutex;
+    use re_arrow_util::ArrowArrayDowncastRef as _;
     use re_redap_client::{ApiError, ApiResponseStream, ApiResult};
     use re_uri::Origin;
 
@@ -565,8 +566,7 @@ mod table_query_pipeline_tests {
         assert_eq!(
             normalized
                 .column(0)
-                .as_any()
-                .downcast_ref::<StringArray>()
+                .try_downcast_array_ref::<StringArray>()
                 .unwrap()
                 .value(1),
             "two"
@@ -574,8 +574,7 @@ mod table_query_pipeline_tests {
         assert_eq!(
             normalized
                 .column(1)
-                .as_any()
-                .downcast_ref::<UInt32Array>()
+                .try_downcast_array_ref::<UInt32Array>()
                 .unwrap()
                 .value(0),
             1

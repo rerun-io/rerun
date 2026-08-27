@@ -6,7 +6,25 @@ use arrow::array::{Array, ArrayRef, ArrowPrimitiveType, PrimitiveArray};
 use arrow::compute::cast;
 use arrow::datatypes::Field;
 
+use re_arrow_util::ArrowArrayDowncastRef;
+
 use super::{error::Error, transform::Transform};
+
+/// Downcast an array, producing an [`Error::TypeMismatch`] naming `context` on failure.
+///
+/// Not to be confused with [`arrow::array::downcast_array`], which panics.
+pub fn try_downcast<'a, T: Array + 'static>(
+    source: impl ArrowArrayDowncastRef<'a>,
+    context: &str,
+) -> Result<&'a T, Error> {
+    source
+        .try_downcast_array_ref::<T>()
+        .map_err(|err| Error::TypeMismatch {
+            expected: err.expected_short(),
+            actual: err.actual,
+            context: context.to_owned(),
+        })
+}
 
 /// Casts a primitive array from one type to another using Arrow's type casting.
 ///
@@ -75,14 +93,7 @@ where
     type Target = PrimitiveArray<T>;
 
     fn transform(&self, source: &ArrayRef) -> Result<Option<PrimitiveArray<T>>, Error> {
-        source
-            .as_any()
-            .downcast_ref::<PrimitiveArray<T>>()
-            .ok_or_else(|| Error::TypeMismatch {
-                expected: std::any::type_name::<PrimitiveArray<T>>().to_owned(),
-                actual: source.data_type().clone(),
-                context: "downcast_ref".to_owned(),
-            })
+        try_downcast::<PrimitiveArray<T>>(source, "downcast_ref")
             .cloned()
             .map(Some)
     }

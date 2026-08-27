@@ -64,12 +64,14 @@ pub fn asset_video_read_frame_timestamps_nanos(
     let video_bytes_arrow_array = array_to_rust(video_bytes_arrow_array)?;
 
     let video_bytes_arrow_uint8_array = video_bytes_arrow_array
-        .downcast_array_ref::<arrow::array::ListArray>()
-        .and_then(|arr| arr.values().downcast_array_ref::<arrow::array::UInt8Array>())
-        .ok_or_else(|| {
+        .try_downcast_array_ref::<arrow::array::ListArray>()
+        .and_then(|arr| {
+            arr.values()
+                .try_downcast_array_ref::<arrow::array::UInt8Array>()
+        })
+        .map_err(|err| {
             PyRuntimeError::new_err(format!(
-                "Expected arrow array to be a list with a single uint8 array, instead it has the datatype {}",
-                video_bytes_arrow_array.data_type()
+                "Expected arrow array to be a list with a single uint8 array: {err}"
             ))
         })?;
 

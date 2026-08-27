@@ -44,6 +44,9 @@ pub enum CodecError {
     #[error("Arrow IPC deserialization error: {0}")]
     ArrowDeserialization(::arrow::error::ArrowError),
 
+    #[error(transparent)]
+    GetColumn(#[from] re_arrow_util::GetColumnError),
+
     #[error("Arrow IPC serialization error: {0}")]
     ArrowSerialization(::arrow::error::ArrowError),
 

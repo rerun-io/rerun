@@ -19,6 +19,9 @@ pub enum ExtractPropertiesError {
     #[error("{0}")]
     ArrowError(#[from] ArrowError),
 
+    #[error(transparent)]
+    DowncastError(#[from] re_arrow_util::DowncastError),
+
     #[error("{0}")]
     Internal(String),
 

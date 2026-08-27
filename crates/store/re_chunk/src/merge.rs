@@ -118,7 +118,7 @@ impl Chunk {
             #[expect(clippy::unwrap_used)]
             // concatenating 2 RowId arrays must yield another RowId array
             row_ids
-                .downcast_array_ref::<FixedSizeBinaryArray>()
+                .try_downcast_array_ref::<FixedSizeBinaryArray>()
                 .unwrap()
                 .clone()
         };

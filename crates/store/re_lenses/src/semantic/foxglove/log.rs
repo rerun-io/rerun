@@ -1,7 +1,7 @@
 use crate::{Lens, LensBuilderError, op};
-use arrow::array::{Array as _, ArrayRef, StringArray};
+use arrow::array::{ArrayRef, StringArray};
 use re_lenses_core::Selector;
-use re_lenses_core::combinators::Error;
+use re_lenses_core::combinators::{Error, try_downcast};
 use re_log_types::TimeType;
 use re_sdk_types::archetypes::TextLog;
 
@@ -29,14 +29,7 @@ pub fn log(time_type: TimeType) -> Result<Lens, LensBuilderError> {
 /// [`re_sdk_types::components::TextLogLevel`] strings.
 fn foxglove_to_rerun_log_level() -> impl Fn(&ArrayRef) -> Result<Option<ArrayRef>, Error> {
     move |source: &ArrayRef| {
-        let source = source
-            .as_any()
-            .downcast_ref::<StringArray>()
-            .ok_or_else(|| Error::TypeMismatch {
-                expected: "StringArray".to_owned(),
-                actual: source.data_type().clone(),
-                context: "foxglove_to_rerun_log_level input".to_owned(),
-            })?;
+        let source = try_downcast::<StringArray>(source, "foxglove_to_rerun_log_level input")?;
 
         let result: StringArray = source
             .iter()

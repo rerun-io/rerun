@@ -113,10 +113,12 @@ fn as_int64_array(array: &ArrayRef) -> PyResult<Int64Array> {
             ))
         })?;
         return cast_array
-            .downcast_array_ref::<Int64Array>()
-            .cloned()
-            .ok_or_else(|| {
-                PyTypeError::new_err(format!("Failed to cast {} to int64.", array.data_type()))
+            .try_downcast_array::<Int64Array>()
+            .map_err(|err| {
+                PyTypeError::new_err(format!(
+                    "Failed to cast {} to int64: {err}",
+                    array.data_type()
+                ))
             });
     }
 

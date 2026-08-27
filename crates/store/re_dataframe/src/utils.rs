@@ -7,6 +7,7 @@ use arrow::array::{
 use arrow::datatypes::{DataType, Field, FieldRef, Fields, Schema};
 use arrow::error::ArrowError;
 
+use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_arrow_util::format_field_datatype;
 
 /// Align a [`RecordBatch`] to a target [`Schema`], widening nested types where possible.
@@ -109,16 +110,10 @@ fn widen_struct(
     target_fields: &Fields,
     path: &str,
 ) -> Result<ArrayRef, ArrowError> {
+    // defensive
     let struct_array = array
-        .as_any()
-        .downcast_ref::<StructArray>()
-        .ok_or_else(|| {
-            // defensive
-            schema_mismatch(
-                path,
-                &format!("expected struct array, got {}", array.data_type()),
-            )
-        })?;
+        .try_downcast_array_ref::<StructArray>()
+        .map_err(|err| schema_mismatch(path, &err.to_string()))?;
     let struct_len = struct_array.len();
 
     // Assumes target children are a superset of source children (guaranteed by
@@ -147,14 +142,8 @@ fn widen_list_like<O: OffsetSizeTrait>(
     path: &str,
 ) -> Result<ArrayRef, ArrowError> {
     let list_array = array
-        .as_any()
-        .downcast_ref::<GenericListArray<O>>()
-        .ok_or_else(|| {
-            schema_mismatch(
-                path,
-                &format!("expected list array, got {}", array.data_type()),
-            )
-        })?;
+        .try_downcast_array_ref::<GenericListArray<O>>()
+        .map_err(|err| schema_mismatch(path, &err.to_string()))?;
 
     let item_path = format!("{path}.{}", target_inner.name());
     let widened_values = widen_array_to_field(list_array.values(), target_inner, &item_path)?;
@@ -262,9 +251,8 @@ mod tests {
         let aligned = align_record_batch_to_schema(&batch, &target).unwrap();
         let widened = aligned
             .column(0)
-            .as_any()
-            .downcast_ref::<StructArray>()
-            .expect("struct");
+            .try_downcast_array_ref::<StructArray>()
+            .unwrap();
         assert_eq!(widened.num_columns(), 3);
         assert_eq!(widened.column_by_name("c").unwrap().null_count(), 2);
     }

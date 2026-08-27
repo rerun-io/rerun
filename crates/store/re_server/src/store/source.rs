@@ -283,7 +283,7 @@ mod tests {
     use std::path::Path;
 
     use arrow::array::Array as _;
-    use re_arrow_util::ArrowArrayDowncastRef as _;
+    use re_arrow_util::RecordBatchExt as _;
     use re_chunk_store::external::re_chunk;
     use re_chunk_store::{Chunk, ChunkStore, ChunkStoreConfig, ChunkStoreHandle, LazyStore};
     use re_log_encoding::EncodingOptions;
@@ -498,10 +498,8 @@ mod tests {
         let decode_keys = |manifest: &RawRrdManifest| -> BTreeSet<ChunkId> {
             let keys: &BinaryArray = manifest
                 .data
-                .column_by_name(RawRrdManifest::FIELD_CHUNK_KEY)
-                .expect("chunk_key column missing")
-                .downcast_array_ref::<BinaryArray>()
-                .expect("chunk_key column should be binary");
+                .try_get_column_as::<BinaryArray>(RawRrdManifest::FIELD_CHUNK_KEY)
+                .unwrap();
             (0..keys.len())
                 .map(|i| {
                     ChunkKey::decode(keys.value(i))

@@ -50,6 +50,7 @@ re_web_viewer_server = { workspace = true, optional = true, features = ["__exter
 url = { workspace = true, optional = true }
 
 [dev-dependencies]
+re_arrow_util.workspace = true
 re_dataframe_ui.workspace = true
 re_datafusion.workspace = true
 re_entity_db.workspace = true

@@ -11,7 +11,7 @@ use arrow::{
     datatypes::{DataType, Field},
 };
 use itertools::Itertools as _;
-use re_arrow_util::ArrowArrayDowncastRef as _;
+use re_arrow_util::{ArrowArrayDowncastRef as _, GetColumnError, RecordBatchExt as _};
 use re_chunk::{
     ArrowArray as _, Chunk, ChunkId, EntityPath, RowId, TimeColumn, TimeInt, TimePoint, Timeline,
     TimelineName, external::nohash_hasher::IntMap,
@@ -47,8 +47,8 @@ pub(crate) fn derive_timeline(data: &RecordBatch) -> Result<(Timeline, TimeColum
     let (timeline, time_column) = if let Some(frame_indices) = data.column_by_name("frame_index") {
         let timeline = re_log_types::Timeline::new_sequence("frame_index");
         let times: &arrow::buffer::ScalarBuffer<i64> = frame_indices
-            .downcast_array_ref::<Int64Array>()
-            .ok_or_else(|| anyhow!("LeRobot dataset frame indices are of an unexpected type"))?
+            .try_downcast_array_ref::<Int64Array>()
+            .context("LeRobot dataset frame indices")?
             .values();
         (
             timeline,
@@ -57,8 +57,8 @@ pub(crate) fn derive_timeline(data: &RecordBatch) -> Result<(Timeline, TimeColum
     } else if let Some(timestamps) = data.column_by_name("timestamp") {
         let timeline = re_log_types::Timeline::new_duration("timestamp");
         let times: arrow::buffer::ScalarBuffer<i64> = timestamps
-            .downcast_array_ref::<Float64Array>()
-            .ok_or_else(|| anyhow!("LeRobot dataset timestamps are of an unexpected type"))?
+            .try_downcast_array_ref::<Float64Array>()
+            .context("LeRobot dataset timestamps")?
             .values()
             .iter()
             .map(|t| re_log_types::Duration::from_secs(*t).as_nanos())
@@ -176,12 +176,7 @@ pub fn load_scalar(
 
     match field.data_type() {
         DataType::FixedSizeList(_, _) => {
-            let fixed_size_array = data
-                .column_by_name(feature_key)
-                .and_then(|col| col.downcast_array_ref::<FixedSizeListArray>())
-                .ok_or_else(|| {
-                    LeRobotError::Other(anyhow!("Failed to downcast feature to FixedSizeListArray"))
-                })?;
+            let fixed_size_array = data.try_get_column_as::<FixedSizeListArray>(feature_key)?;
 
             let batch_chunks = make_scalar_batch_entity_chunks(
                 &entity_path,
@@ -192,12 +187,7 @@ pub fn load_scalar(
             Ok(ScalarChunkIterator::Batch(Box::new(batch_chunks)))
         }
         DataType::List(_field) => {
-            let list_array = data
-                .column_by_name(feature_key)
-                .and_then(|col| col.downcast_array_ref::<arrow::array::ListArray>())
-                .ok_or_else(|| {
-                    LeRobotError::Other(anyhow!("Failed to downcast feature to ListArray"))
-                })?;
+            let list_array = data.try_get_column_as::<arrow::array::ListArray>(feature_key)?;
 
             let sliced = extract_list_array_elements_as_f64(list_array).with_context(|| {
                 format!("Failed to cast scalar feature {entity_path} to Float64")
@@ -216,12 +206,9 @@ pub fn load_scalar(
             Ok(ScalarChunkIterator::Batch(Box::new(chunks.into_iter())))
         }
         DataType::Float32 | DataType::Float64 => {
-            let feature_data = data.column_by_name(feature_key).ok_or_else(|| {
-                LeRobotError::Other(anyhow!(
-                    "Failed to get LeRobot dataset column data for: {:?}",
-                    field.name()
-                ))
-            })?;
+            let feature_data = data
+                .try_get_column(feature_key)
+                .map_err(GetColumnError::from)?;
 
             let sliced = extract_scalar_slices_as_f64(feature_data).with_context(|| {
                 format!("Failed to cast scalar feature {entity_path} to Float64")

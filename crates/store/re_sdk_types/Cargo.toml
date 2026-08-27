@@ -49,6 +49,7 @@ testing = []
 
 [dependencies]
 # Rerun
+re_arrow_util.workspace = true
 re_byte_size.workspace = true
 re_error.workspace = true
 re_rvl.workspace = true

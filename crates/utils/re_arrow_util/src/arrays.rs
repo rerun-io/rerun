@@ -14,6 +14,93 @@ use re_span::Span;
 
 // ---------------------------------------------------------------------------------
 
+/// A failed downcast of an arrow array to a concrete array type.
+#[derive(Clone, thiserror::Error)]
+#[error("Failed to downcast array of type {actual} to {}", self.expected_short())]
+pub struct DowncastError {
+    /// The datatype of the array we tried to downcast.
+    pub actual: DataType,
+
+    /// The fully qualified Rust type name of the array we tried to downcast to.
+    pub expected: &'static str,
+}
+
+impl DowncastError {
+    /// The expected type, as one would write it in code.
+    ///
+    /// Module paths are stripped, including inside generics, and arrow's generic array types
+    /// are named by the aliases we actually use:
+    /// `arrow_array::array::byte_array::GenericByteArray<arrow_array::types::GenericStringType<i32>>`
+    /// becomes `StringArray`.
+    pub fn expected_short(&self) -> String {
+        let stripped = strip_module_paths(self.expected);
+        arrow_array_alias(&stripped).unwrap_or(stripped)
+    }
+}
+
+/// `foo::bar::Baz<foo::Qux>` becomes `Baz<Qux>`.
+fn strip_module_paths(type_name: &str) -> String {
+    let mut out = String::with_capacity(type_name.len());
+    let mut ident = String::new();
+    let mut chars = type_name.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c.is_alphanumeric() || c == '_' {
+            ident.push(c);
+        } else if c == ':' && chars.peek() == Some(&':') {
+            chars.next(); // eat the second `:`
+            ident.clear(); // …and the module path segment it followed
+        } else {
+            out.push_str(&ident);
+            ident.clear();
+            out.push(c);
+        }
+    }
+    out.push_str(&ident);
+    out
+}
+
+/// The alias arrow gives one of its generic array types, e.g. `GenericListArray<i32>` -> `ListArray`.
+///
+/// `std::any::type_name` always spells out the underlying generic type, but nobody writes those.
+fn arrow_array_alias(stripped: &str) -> Option<String> {
+    // `PrimitiveArray<Int64Type>` -> `Int64Array`, and the same for every other primitive.
+    if let Some(value_type) = stripped
+        .strip_prefix("PrimitiveArray<")
+        .and_then(|inner| inner.strip_suffix('>'))
+        .and_then(|value_type| value_type.strip_suffix("Type"))
+    {
+        return Some(format!("{value_type}Array"));
+    }
+
+    let alias = match stripped {
+        "GenericByteArray<GenericBinaryType<i32>>" => "BinaryArray",
+        "GenericByteArray<GenericBinaryType<i64>>" => "LargeBinaryArray",
+        "GenericByteArray<GenericStringType<i32>>" => "StringArray",
+        "GenericByteArray<GenericStringType<i64>>" => "LargeStringArray",
+        "GenericByteViewArray<BinaryViewType>" => "BinaryViewArray",
+        "GenericByteViewArray<StringViewType>" => "StringViewArray",
+        "GenericListArray<i32>" => "ListArray",
+        "GenericListArray<i64>" => "LargeListArray",
+        "GenericListViewArray<i32>" => "ListViewArray",
+        "GenericListViewArray<i64>" => "LargeListViewArray",
+        _ => return None,
+    };
+    Some(alias.to_owned())
+}
+
+/// Defers to [`std::fmt::Display`], so that `.unwrap()` panics with the readable message.
+impl std::fmt::Debug for DowncastError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{self}")
+    }
+}
+
+impl From<DowncastError> for ArrowError {
+    fn from(err: DowncastError) -> Self {
+        Self::CastError(err.to_string())
+    }
+}
+
 /// Downcast an arrow array to another array, without having to go via `Any`.
 pub trait ArrowArrayDowncastRef<'a>: 'a {
     /// Downcast an arrow array to another array, without having to go via `Any`.
@@ -21,11 +108,11 @@ pub trait ArrowArrayDowncastRef<'a>: 'a {
 
     /// Similar to `downcast_array_ref`, but returns an error in case the downcast
     /// returns `None`.
-    fn try_downcast_array_ref<T: Array + 'static>(self) -> Result<&'a T, ArrowError>;
+    fn try_downcast_array_ref<T: Array + 'static>(self) -> Result<&'a T, DowncastError>;
 
     /// Similar to `downcast_array_ref`, but returns an error in case the downcast
     /// returns `None`.
-    fn try_downcast_array<T: Array + Clone + 'static>(self) -> Result<T, ArrowError>;
+    fn try_downcast_array<T: Array + Clone + 'static>(self) -> Result<T, DowncastError>;
 }
 
 impl<'a> ArrowArrayDowncastRef<'a> for &'a dyn Array {
@@ -33,41 +120,30 @@ impl<'a> ArrowArrayDowncastRef<'a> for &'a dyn Array {
         self.as_any().downcast_ref()
     }
 
-    fn try_downcast_array_ref<T: Array + 'static>(self) -> Result<&'a T, ArrowError> {
-        self.downcast_array_ref::<T>().ok_or_else(|| {
-            ArrowError::CastError(format!(
-                "Failed to downcast array of type {} to {}",
-                self.data_type(),
-                std::any::type_name::<T>(),
-            ))
+    fn try_downcast_array_ref<T: Array + 'static>(self) -> Result<&'a T, DowncastError> {
+        self.downcast_array_ref::<T>().ok_or_else(|| DowncastError {
+            actual: self.data_type().clone(),
+            expected: std::any::type_name::<T>(),
         })
     }
 
-    /// Similar to `downcast_array_ref`, but returns an error in case the downcast
-    /// returns `None`.
-    fn try_downcast_array<T: Array + Clone + 'static>(self) -> Result<T, ArrowError> {
+    fn try_downcast_array<T: Array + Clone + 'static>(self) -> Result<T, DowncastError> {
         Ok(self.try_downcast_array_ref::<T>()?.clone())
     }
 }
 
 impl<'a> ArrowArrayDowncastRef<'a> for &'a ArrayRef {
     fn downcast_array_ref<T: Array + 'static>(self) -> Option<&'a T> {
-        self.as_any().downcast_ref()
+        let array: &'a dyn Array = &**self;
+        array.downcast_array_ref()
     }
 
-    fn try_downcast_array_ref<T: Array + 'static>(self) -> Result<&'a T, ArrowError> {
-        self.downcast_array_ref::<T>().ok_or_else(|| {
-            ArrowError::CastError(format!(
-                "Failed to downcast array of type {} to {}",
-                self.data_type(),
-                std::any::type_name::<T>(),
-            ))
-        })
+    fn try_downcast_array_ref<T: Array + 'static>(self) -> Result<&'a T, DowncastError> {
+        let array: &'a dyn Array = &**self;
+        array.try_downcast_array_ref()
     }
 
-    /// Similar to `downcast_array_ref`, but returns an error in case the downcast
-    /// returns `None`.
-    fn try_downcast_array<T: Array + Clone + 'static>(self) -> Result<T, ArrowError> {
+    fn try_downcast_array<T: Array + Clone + 'static>(self) -> Result<T, DowncastError> {
         Ok(self.try_downcast_array_ref::<T>()?.clone())
     }
 }
@@ -356,8 +432,7 @@ pub fn filter_array<A: Array + Clone + 'static>(array: &A, filter: &BooleanArray
     let mut array = arrow::compute::filter(array, filter)
         // Unwrap: this literally cannot fail.
         .unwrap()
-        .as_any()
-        .downcast_ref::<A>()
+        .downcast_array_ref::<A>()
         // Unwrap: that's initial type that we got.
         .unwrap()
         .clone();
@@ -405,14 +480,7 @@ where
         };
 
         if starts_at_zero() && is_consecutive() {
-            #[expect(clippy::unwrap_used)]
-            return array
-                .clone()
-                .as_any()
-                .downcast_ref::<A>()
-                // Unwrap: that's initial type that we got.
-                .unwrap()
-                .clone();
+            return array.clone();
         }
     }
 
@@ -421,8 +489,7 @@ where
     let mut array = arrow::compute::take(array, indices, Default::default())
         // Unwrap: this literally cannot fail.
         .unwrap()
-        .as_any()
-        .downcast_ref::<A>()
+        .downcast_array_ref::<A>()
         // Unwrap: that's initial type that we got.
         .unwrap()
         .clone();
@@ -636,8 +703,8 @@ pub fn deep_slice_array<T: Array + From<ArrayData>>(array: &T, span: Span<usize>
 )]
 mod tests {
     use arrow::array::{
-        Array, ArrayRef, Float32Array, Int32Array, Int64Array, ListArray, RecordBatch, StructArray,
-        UInt8Array, UnionArray,
+        Array, ArrayRef, Float32Array, Int32Array, Int64Array, ListArray, RecordBatch, StringArray,
+        StructArray, UInt8Array, UnionArray,
     };
     use arrow::buffer::{OffsetBuffer, ScalarBuffer};
     use arrow::datatypes::{Field, UnionFields};
@@ -646,6 +713,53 @@ mod tests {
     use std::sync::Arc;
 
     use super::*;
+
+    /// The error message must name the array type the way we write it in code, not the full
+    /// generic `arrow_array::…` path that `std::any::type_name` hands us.
+    #[test]
+    fn downcast_error_message() {
+        let array = Int32Array::from(vec![1, 2, 3]);
+        let array: &dyn Array = &array;
+
+        // All three are aliases for generic arrow types, so their `type_name` looks nothing
+        // like what the caller wrote:
+        let err = array
+            .try_downcast_array_ref::<ListArray>()
+            .expect_err("Int32Array is not a ListArray");
+        assert_eq!(
+            err.to_string(),
+            "Failed to downcast array of type Int32 to ListArray"
+        );
+        let err = array
+            .try_downcast_array_ref::<Int64Array>()
+            .expect_err("Int32Array is not an Int64Array");
+        assert_eq!(
+            err.to_string(),
+            "Failed to downcast array of type Int32 to Int64Array"
+        );
+        let err = array
+            .try_downcast_array_ref::<StringArray>()
+            .expect_err("Int32Array is not a StringArray");
+        assert_eq!(
+            err.to_string(),
+            "Failed to downcast array of type Int32 to StringArray"
+        );
+
+        // Types with no alias keep their own name:
+        let err = array
+            .try_downcast_array_ref::<StructArray>()
+            .expect_err("Int32Array is not a StructArray");
+        assert_eq!(
+            err.to_string(),
+            "Failed to downcast array of type Int32 to StructArray"
+        );
+
+        // `Debug` must defer to `Display`, so `.unwrap()` panics with the readable message:
+        assert_eq!(format!("{err:?}"), err.to_string()); // NOLINT: this test asserts `Debug` defers to `Display`
+
+        // Downcasting to the type we already have must succeed:
+        assert!(array.try_downcast_array_ref::<Int32Array>().is_ok());
+    }
 
     /// A `Blob`-shaped column as an external producer might build it: the outer item declared
     /// non-nullable. Canonicalization must flip that, keep the inner `List(non-null UInt8)` —

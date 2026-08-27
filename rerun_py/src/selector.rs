@@ -4,6 +4,7 @@ use pyo3::exceptions::{PyRuntimeError, PyTypeError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::PyModule;
 
+use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_lenses_core::{DynExpr, Selector};
 
 /// Register the selector class.
@@ -88,9 +89,9 @@ impl PySelectorInternal {
         source: PyArrowType<ArrayData>,
     ) -> PyResult<Py<PyAny>> {
         let array: ArrayRef = make_array(source.0);
-        let list_array = array.as_any().downcast_ref::<ListArray>().ok_or_else(|| {
-            PyTypeError::new_err(format!("expected a ListArray, got {:?}", array.data_type()))
-        })?;
+        let list_array = array
+            .try_downcast_array_ref::<ListArray>()
+            .map_err(|err| PyTypeError::new_err(err.to_string()))?;
         let result = re_lenses::default_runtime()
             .execute_per_row(&self.selector, list_array)
             .map_err(|err| PyRuntimeError::new_err(format!("Selector execution failed: {err}")))?;

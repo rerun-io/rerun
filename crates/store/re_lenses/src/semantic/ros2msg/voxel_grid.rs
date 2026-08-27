@@ -5,7 +5,7 @@ use arrow::array::builder::{FixedSizeListBuilder, Int32Builder, ListBuilder, UIn
 use arrow::array::{Array as _, ArrayRef, Float32Builder, ListArray, StructArray, UInt32Array};
 use arrow::datatypes::{DataType, Field};
 use re_lenses_core::Selector;
-use re_lenses_core::combinators::Error;
+use re_lenses_core::combinators::{Error, try_downcast};
 use re_sdk_types::ToArrow as _;
 use re_sdk_types::archetypes::{CoordinateFrame, VoxelGridMap};
 use re_sdk_types::components::Opacity;
@@ -277,29 +277,15 @@ fn nav2_voxel_grid_input<'a>(
     source: &'a ArrayRef,
     context: &'static str,
 ) -> Result<Nav2VoxelGridInput<'a>, Error> {
-    let source = source
-        .as_any()
-        .downcast_ref::<StructArray>()
-        .ok_or_else(|| Error::TypeMismatch {
-            expected: "StructArray".to_owned(),
-            actual: source.data_type().clone(),
-            context: format!("{context} input"),
-        })?;
+    let source = try_downcast::<StructArray>(source, &format!("{context} input"))?;
 
     let data_array = get_field_as::<ListArray>(source, "data")?;
     let size_x_array = get_field_as::<UInt32Array>(source, "size_x")?;
     let size_y_array = get_field_as::<UInt32Array>(source, "size_y")?;
     let size_z_array = get_field_as::<UInt32Array>(source, "size_z")?;
-    let data_values = data_array
-        .values()
-        .as_any()
-        .downcast_ref::<UInt32Array>()
-        .ok_or_else(|| Error::TypeMismatch {
-            expected: "UInt32Array".to_owned(),
-            actual: data_array.values().data_type().clone(),
-            context: format!("{context} data values"),
-        })?
-        .clone();
+    let data_values =
+        try_downcast::<UInt32Array>(data_array.values(), &format!("{context} data values"))?
+            .clone();
 
     Ok(Nav2VoxelGridInput {
         source,

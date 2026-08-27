@@ -166,6 +166,9 @@ pub enum TypeConversionError {
     #[error("failed to convert arrow data: {0}")]
     ArrowError(#[from] arrow::error::ArrowError),
 
+    #[error(transparent)]
+    DowncastError(#[from] re_arrow_util::DowncastError),
+
     #[error("{0}")]
     UnknownEnumValue(#[from] prost::UnknownEnumValue),
 

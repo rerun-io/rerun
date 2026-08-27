@@ -160,7 +160,7 @@ mod tests {
             .flat_map(|batch| {
                 batch
                     .column(0)
-                    .downcast_array_ref::<Int64Array>()
+                    .try_downcast_array_ref::<Int64Array>()
                     .unwrap()
                     .values()
                     .to_vec()

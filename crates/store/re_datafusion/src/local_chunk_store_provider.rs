@@ -299,9 +299,10 @@ impl ExecutionPlan for LocalChunkStoreExec {
 mod tests {
     use super::*;
 
-    use arrow::array::{Array as _, Int64Array, RecordBatch};
+    use arrow::array::{Int64Array, RecordBatch};
     use datafusion::prelude::SessionContext;
     use futures::StreamExt as _;
+    use re_arrow_util::ArrowArrayDowncastRef as _;
     use re_dataframe::external::re_chunk::{Chunk, RowId, TimePoint};
     use re_dataframe::external::re_chunk_store::{
         ChunkStore, ChunkStoreConfig, StaticColumnSelection,
@@ -424,8 +425,7 @@ mod tests {
             assert_eq!(b.schema().field(0).name(), &t_name);
             let _ = b
                 .column(0)
-                .as_any()
-                .downcast_ref::<Int64Array>()
+                .try_downcast_array_ref::<Int64Array>()
                 .expect("`t` is Int64");
         }
     }

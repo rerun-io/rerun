@@ -8,7 +8,7 @@ use arrow::array::{
 use arrow::buffer::OffsetBuffer;
 use arrow::datatypes::{DataType, Field};
 use itertools::Itertools as _;
-use re_lenses_core::combinators::Error;
+use re_lenses_core::combinators::{Error, try_downcast};
 use re_sdk_types::ToArrow as _;
 use re_sdk_types::encodings::ImageFormat;
 
@@ -21,14 +21,7 @@ const ENCODING_FIELD: &str = "encoding";
 pub(crate) fn encoding_to_image_format()
 -> impl Fn(&ArrayRef) -> Result<Option<ArrayRef>, Error> + Send + Sync {
     move |source: &ArrayRef| {
-        let source = source
-            .as_any()
-            .downcast_ref::<StructArray>()
-            .ok_or_else(|| Error::TypeMismatch {
-                expected: "StructArray".to_owned(),
-                actual: source.data_type().clone(),
-                context: "encoding_to_image_format input".to_owned(),
-            })?;
+        let source = try_downcast::<StructArray>(source, "encoding_to_image_format input")?;
 
         let width_array = get_field_as::<UInt32Array>(source, "width")?;
         let height_array = get_field_as::<UInt32Array>(source, "height")?;
@@ -69,14 +62,7 @@ pub(crate) fn extract_image_buffer()
     move |source: &ArrayRef| {
         re_tracing::profile_function!();
 
-        let source = source
-            .as_any()
-            .downcast_ref::<StructArray>()
-            .ok_or_else(|| Error::TypeMismatch {
-                expected: "StructArray".to_owned(),
-                actual: source.data_type().clone(),
-                context: "extract_image_buffer input".to_owned(),
-            })?;
+        let source = try_downcast::<StructArray>(source, "extract_image_buffer input")?;
 
         let width_array = get_field_as::<UInt32Array>(source, "width")?;
         let height_array = get_field_as::<UInt32Array>(source, "height")?;

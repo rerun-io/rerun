@@ -9,6 +9,7 @@ use arrow::array::{
 use arrow::buffer::{NullBuffer, OffsetBuffer, ScalarBuffer};
 use arrow::datatypes::Field;
 
+use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_log::debug_assert_eq;
 
 use super::{error::Error, transform::Transform};
@@ -114,9 +115,9 @@ impl Transform for Flatten {
 
         // The values should be a ListArray (or FixedSizeListArray) that we want to flatten
         let inner_list: Cow<'_, ListArray> =
-            if let Some(list) = values.as_any().downcast_ref::<ListArray>() {
+            if let Some(list) = values.downcast_array_ref::<ListArray>() {
                 Cow::Borrowed(list)
-            } else if let Some(fixed) = values.as_any().downcast_ref::<FixedSizeListArray>() {
+            } else if let Some(fixed) = values.downcast_array_ref::<FixedSizeListArray>() {
                 Cow::Owned(fixed_size_list_to_list(fixed)?)
             } else {
                 return Err(Error::TypeMismatch {

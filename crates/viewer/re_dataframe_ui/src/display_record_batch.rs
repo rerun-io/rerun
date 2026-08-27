@@ -56,18 +56,18 @@ impl ComponentData {
             ArrowDataType::Null => Self::Null,
             ArrowDataType::List(_) => Self::ListArray(
                 column_data
-                    .downcast_array_ref::<ArrowListArray>()
+                    .try_downcast_array_ref::<ArrowListArray>()
                     .expect("`data_type` checked, failure is a bug in re_dataframe")
                     .clone(),
             ),
             ArrowDataType::Dictionary(_, _) => {
                 let dict = column_data
-                    .downcast_array_ref::<ArrowInt32DictionaryArray>()
+                    .try_downcast_array_ref::<ArrowInt32DictionaryArray>()
                     .expect("`data_type` checked, failure is a bug in re_dataframe")
                     .clone();
                 let values = dict
                     .values()
-                    .downcast_array_ref::<ArrowListArray>()
+                    .try_downcast_array_ref::<ArrowListArray>()
                     .expect("`data_type` checked, failure is a bug in re_dataframe")
                     .clone();
                 Self::DictionaryArray { dict, values }

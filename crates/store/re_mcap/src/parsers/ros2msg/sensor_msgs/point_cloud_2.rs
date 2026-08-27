@@ -628,6 +628,7 @@ impl MessageParser for PointCloud2MessageParser {
 
 #[cfg(test)]
 mod tests {
+    use re_arrow_util::ArrowArrayDowncastRef as _;
     use std::{borrow::Cow, collections::BTreeMap, sync::Arc};
 
     use arrow::array::{Array as _, Float32Array};
@@ -825,8 +826,7 @@ mod tests {
             .unwrap();
         let values = intensity
             .values()
-            .as_any()
-            .downcast_ref::<Float32Array>()
+            .try_downcast_array_ref::<Float32Array>()
             .unwrap();
 
         assert_eq!(intensity.len(), 1);

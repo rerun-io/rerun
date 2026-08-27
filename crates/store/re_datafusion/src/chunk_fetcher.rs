@@ -15,6 +15,7 @@ use itertools::Itertools as _;
 use tonic::IntoRequest as _;
 use tracing::Instrument as _;
 
+use re_arrow_util::{ArrowArrayDowncastRef as _, RecordBatchExt as _};
 use re_dataframe::external::re_chunk::Chunk;
 use re_protos::cloud::v1alpha1::FetchChunksRequest;
 use re_protos::cloud::v1alpha1::ext::QueryDatasetDataframe;
@@ -247,7 +248,7 @@ pub fn split_batch_by_direct_url(
 pub fn batch_byte_size(batch: &RecordBatch) -> u64 {
     batch
         .column_by_name(QueryDatasetDataframe::COLUMN_CHUNK_BYTE_LEN_NAME)
-        .and_then(|c| c.as_any().downcast_ref::<UInt64Array>())
+        .and_then(|c| c.downcast_array_ref::<UInt64Array>())
         .map(|arr| arr.iter().map(|v| v.unwrap_or(0)).sum())
         .unwrap_or(0)
 }
@@ -259,7 +260,7 @@ pub fn batch_byte_size(batch: &RecordBatch) -> u64 {
 pub fn batch_byte_size_uncompressed(batch: &RecordBatch) -> Option<u64> {
     batch
         .column_by_name(QueryDatasetDataframe::COLUMN_CHUNK_BYTE_SIZE_UNCOMPRESSED_NAME)
-        .and_then(|c| c.as_any().downcast_ref::<UInt64Array>())
+        .and_then(|c| c.downcast_array_ref::<UInt64Array>())
         .map(|arr| arr.iter().map(|v| v.unwrap_or(0)).sum())
 }
 
@@ -635,13 +636,9 @@ async fn fetch_batch_via_direct_urls(
         batch: &'a RecordBatch,
         column_name: &'static str,
     ) -> Result<&'a T, DirectFetchError> {
-        let column = batch
-            .column_by_name(column_name)
-            .ok_or_else(|| DirectFetchError::new(format!("missing column {column_name}"), false))?;
-        column
-            .as_any()
-            .downcast_ref::<T>()
-            .ok_or_else(|| DirectFetchError::new(format!("invalid column {column_name}"), false))
+        batch
+            .try_get_column_as::<T>(column_name)
+            .map_err(|err| DirectFetchError::new(err.to_string(), false))
     }
 
     // The fetchable URL comes from `direct_url` (presigned `https://`),

@@ -8,7 +8,7 @@ mod reshape;
 mod transform;
 
 pub use self::{
-    cast::{DowncastRef, ListToFixedSizeList, PrimitiveCast},
+    cast::{DowncastRef, ListToFixedSizeList, PrimitiveCast, try_downcast},
     error::Error,
     map::{
         MapFixedSizeList, MapList, MapPrimitive, ReplaceNull, StringPrefix, StringSuffix,

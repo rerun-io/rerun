@@ -8,6 +8,7 @@ use arrow::record_batch::RecordBatch;
 use datafusion::prelude::SessionContext;
 use futures::StreamExt as _;
 use nohash_hasher::{IntMap, IntSet};
+use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_protos::common::v1alpha1::TaskId;
 use tonic::{Code, Request, Response, Status};
 
@@ -102,11 +103,8 @@ fn apply_segment_id_filter(
     let ids = ids.iter().map(String::as_str).collect::<HashSet<_>>();
 
     let segment_ids = batch
-        .column_by_name(ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME)
-        .ok_or_else(|| Status::internal("segment ID column is missing"))?
-        .as_any()
-        .downcast_ref::<StringArray>()
-        .ok_or_else(|| Status::internal("segment ID column is not UTF-8"))?;
+        .try_get_column_as::<StringArray>(ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME)
+        .map_err(|err| Status::internal(err.to_string()))?;
     let mask = segment_ids
         .iter()
         .map(|segment_id| segment_id.map(|segment_id| ids.contains(segment_id) == scan_only))
@@ -1788,11 +1786,10 @@ impl RerunCloudService for RerunCloudHandler {
 
             let chunk_keys_arr = chunk_info_batch
                 .column(chunk_key_col_idx)
-                .as_any()
-                .downcast_ref::<BinaryArray>()
-                .ok_or_else(|| {
+                .try_downcast_array_ref::<BinaryArray>()
+                .map_err(|err| {
                     tonic::Status::invalid_argument(format!(
-                        "{} must be binary array",
+                        "{}: {err}",
                         FetchChunksRequest::FIELD_CHUNK_KEY
                     ))
                 })?;

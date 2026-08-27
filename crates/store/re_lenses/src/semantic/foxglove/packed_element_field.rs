@@ -6,7 +6,9 @@
 
 use std::sync::Arc;
 
+use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_int::SaturatingCast as _;
+use re_lenses_core::combinators::try_downcast;
 
 use crate::semantic::helpers::get_field_as;
 use arrow::array::builder::{
@@ -127,16 +129,16 @@ fn find_field_descriptors(
 ) -> Result<Vec<Option<FieldDescriptor>>, re_lenses_core::combinators::Error> {
     let name_array = fields_struct
         .column_by_name("name")
-        .and_then(|a| a.as_any().downcast_ref::<StringArray>().cloned());
+        .and_then(|a| a.downcast_array_ref::<StringArray>().cloned());
     let offset_array = fields_struct
         .column_by_name("offset")
-        .and_then(|a| a.as_any().downcast_ref::<UInt32Array>().cloned());
+        .and_then(|a| a.downcast_array_ref::<UInt32Array>().cloned());
     // Protobuf enums are stored as Struct{name: Utf8, value: Int32}; extract the `value` field.
     let type_array = fields_struct
         .column_by_name("type")
-        .and_then(|a| a.as_any().downcast_ref::<StructArray>())
+        .and_then(|a| a.downcast_array_ref::<StructArray>())
         .and_then(|s| s.column_by_name("value"))
-        .and_then(|a| a.as_any().downcast_ref::<Int32Array>().cloned());
+        .and_then(|a| a.downcast_array_ref::<Int32Array>().cloned());
 
     let (Some(name_array), Some(offset_array), Some(type_array)) =
         (name_array, offset_array, type_array)
@@ -166,14 +168,7 @@ pub(crate) fn extract_positions(
 ) -> Result<Option<ArrayRef>, re_lenses_core::combinators::Error> {
     re_tracing::profile_function!();
 
-    let source = source
-        .as_any()
-        .downcast_ref::<StructArray>()
-        .ok_or_else(|| re_lenses_core::combinators::Error::TypeMismatch {
-            expected: "StructArray".to_owned(),
-            actual: source.data_type().clone(),
-            context: "extract_positions input".to_owned(),
-        })?;
+    let source = try_downcast::<StructArray>(source, "extract_positions input")?;
 
     let point_stride_array = get_field_as::<UInt32Array>(source, "point_stride")?;
     let fields_array = get_field_as::<ListArray>(source, "fields")?;
@@ -196,14 +191,7 @@ pub(crate) fn extract_positions(
         let point_stride = point_stride_array.value(i) as usize;
         let data = data_array.value(i);
         let fields_value = fields_array.value(i);
-        let fields_struct = fields_value
-            .as_any()
-            .downcast_ref::<StructArray>()
-            .ok_or_else(|| re_lenses_core::combinators::Error::TypeMismatch {
-                expected: "StructArray".to_owned(),
-                actual: fields_value.data_type().clone(),
-                context: "fields element".to_owned(),
-            })?;
+        let fields_struct = try_downcast::<StructArray>(&fields_value, "fields element")?;
 
         let descriptors = find_field_descriptors(fields_struct, &["x", "y", "z"])?;
 
@@ -246,14 +234,7 @@ pub(crate) fn extract_voxel_indices(
 ) -> Result<Option<ArrayRef>, re_lenses_core::combinators::Error> {
     re_tracing::profile_function!();
 
-    let source = source
-        .as_any()
-        .downcast_ref::<StructArray>()
-        .ok_or_else(|| re_lenses_core::combinators::Error::TypeMismatch {
-            expected: "StructArray".to_owned(),
-            actual: source.data_type().clone(),
-            context: "extract_voxel_indices input".to_owned(),
-        })?;
+    let source = try_downcast::<StructArray>(source, "extract_voxel_indices input")?;
 
     let row_count_array = get_field_as::<UInt32Array>(source, "row_count")?;
     let column_count_array = get_field_as::<UInt32Array>(source, "column_count")?;
@@ -342,14 +323,7 @@ fn extract_colors_with_stride(
 ) -> Result<Option<ArrayRef>, re_lenses_core::combinators::Error> {
     re_tracing::profile_function!();
 
-    let source = source
-        .as_any()
-        .downcast_ref::<StructArray>()
-        .ok_or_else(|| re_lenses_core::combinators::Error::TypeMismatch {
-            expected: "StructArray".to_owned(),
-            actual: source.data_type().clone(),
-            context: "extract_colors input".to_owned(),
-        })?;
+    let source = try_downcast::<StructArray>(source, "extract_colors input")?;
 
     let stride_array = get_field_as::<UInt32Array>(source, stride_field_name)?;
     let fields_array = get_field_as::<ListArray>(source, "fields")?;
@@ -366,14 +340,7 @@ fn extract_colors_with_stride(
         let stride = stride_array.value(i) as usize;
         let data = data_array.value(i);
         let fields_value = fields_array.value(i);
-        let fields_struct = fields_value
-            .as_any()
-            .downcast_ref::<StructArray>()
-            .ok_or_else(|| re_lenses_core::combinators::Error::TypeMismatch {
-                expected: "StructArray".to_owned(),
-                actual: fields_value.data_type().clone(),
-                context: "fields element".to_owned(),
-            })?;
+        let fields_struct = try_downcast::<StructArray>(&fields_value, "fields element")?;
 
         let descriptors =
             find_field_descriptors(fields_struct, &["red", "green", "blue", "alpha"])?;
