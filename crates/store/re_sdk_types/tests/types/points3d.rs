@@ -152,7 +152,7 @@ end_header
 }
 
 #[test]
-fn ply_skips_vertices_missing_required_positions() {
+fn ply_without_z_loads_as_a_flat_cloud() {
     let contents = br#"ply
 format ascii 1.0
 element vertex 2
@@ -164,6 +164,26 @@ property uchar blue
 end_header
 1 2 10 20 30
 4 5 40 50 60
+"#;
+
+    let parsed = Points3D::from_file_contents(contents).unwrap();
+    let expected =
+        Points3D::new([(1.0, 2.0, 0.0), (4.0, 5.0, 0.0)]).with_colors([0x0A141EFF, 0x28323CFF]);
+
+    similar_asserts::assert_eq!(parsed, expected);
+}
+
+/// `x` and `y` are the two we cannot make up.
+#[test]
+fn ply_skips_vertices_missing_required_positions() {
+    let contents = br#"ply
+format ascii 1.0
+element vertex 2
+property float x
+property float z
+end_header
+1 3
+4 6
 "#;
 
     let parsed = Points3D::from_file_contents(contents).unwrap();

@@ -250,11 +250,15 @@ impl ParsedVertex {
             seen_props,
         } = self;
 
-        let (Some(x), Some(y), Some(z)) = (x, y, z) else {
+        let (Some(x), Some(y)) = (x, y) else {
             // All points must have positions.
             Self::note_ignored_props_for(seen_props, ignored_props, SEEN_ALL_KNOWN_PROPS);
             return None;
         };
+
+        // `.ply` may leave out `z`, in which case the cloud is flat — the same way the viewer
+        // flattens an `x`/`y`-only `.ply` mesh onto `z = 0`.
+        let z = z.unwrap_or(0.0);
 
         let color = if let (Some(r_dc), Some(g_dc), Some(b_dc)) = (sh_dc_0, sh_dc_1, sh_dc_2) {
             fn to_u8(value: f32) -> u8 {
