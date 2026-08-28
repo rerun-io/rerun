@@ -1257,7 +1257,10 @@ impl eframe::App for App {
             }
 
             if let Err(err) = hub.save_app_blueprints() {
-                re_log::error!("Saving blueprints failed: {err}");
+                re_log::error!("Saving application blueprints failed: {err}");
+            }
+            if let Err(err) = self.table_blueprints.save_persisted_blueprints(hub) {
+                re_log::error!("Saving table blueprints failed: {err}");
             }
         } else {
             re_log::error!("Could not save blueprints: the store hub is not available");
@@ -1482,6 +1485,14 @@ impl eframe::App for App {
 
         {
             let active_route = self.state.navigation.current();
+
+            if let Some(table_ref) = active_route.table_reference()
+                && let Err(err) = self
+                    .table_blueprints
+                    .ensure_active_blueprint(&table_ref, &mut store_hub)
+            {
+                re_log::error_once!("Failed to ensure an active table blueprint: {err}");
+            }
 
             // Read-only copy of time control state (to avoid borrow checker issues with mutable state access).
             let active_time_ctrl = active_route
@@ -1781,50 +1792,50 @@ fn noop_blueprint_loader(
     component_reflection: Arc<ComponentReflectionMap>,
 ) -> BlueprintPersistence {
     BlueprintPersistence {
-        loader: None,
-        saver: None,
         validator: Some(Box::new(move |blueprint| {
             crate::blueprint::is_valid_blueprint(blueprint, &component_reflection)
         })),
-        deleter: None,
+        ..Default::default()
     }
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 fn blueprint_loader(component_reflection: Arc<ComponentReflectionMap>) -> BlueprintPersistence {
+    use anyhow::Context as _;
     use re_entity_db::{EntityDb, StoreBundle};
-    use re_log_types::{ApplicationId, StoreKind};
+    use re_viewer_context::store_hub::BlueprintPersistenceKey;
+
+    fn blueprint_path(key: &BlueprintPersistenceKey) -> anyhow::Result<std::path::PathBuf> {
+        match key {
+            BlueprintPersistenceKey::Recording(app_id) => {
+                crate::saving::recording_blueprint_path(app_id)
+            }
+            BlueprintPersistenceKey::Table(key) => crate::saving::table_blueprint_path(key),
+        }
+    }
 
     fn load_blueprint_from_disk(
-        component_reflection: &ComponentReflectionMap,
-        app_id: &ApplicationId,
+        key: &BlueprintPersistenceKey,
     ) -> anyhow::Result<Option<StoreBundle>> {
-        let blueprint_path = crate::saving::default_blueprint_path(app_id)?;
+        let blueprint_path = blueprint_path(key)?;
         if !blueprint_path.exists() {
             return Ok(None);
         }
 
-        re_log::debug!("Trying to load blueprint for {app_id} from {blueprint_path:?}");
+        re_log::debug!("Trying to load blueprint from {blueprint_path:?}");
 
-        if let Some(bundle) = crate::loading::load_blueprint_file(&blueprint_path) {
-            for store in bundle.entity_dbs() {
-                if store.store_kind() == StoreKind::Blueprint
-                    && !crate::blueprint::is_valid_blueprint(store, component_reflection)
-                {
-                    re_log::warn_once!(
-                        "Blueprint for {app_id} at {blueprint_path:?} appears invalid - will ignore. This is expected if you have just upgraded Rerun versions."
-                    );
-                    return Ok(None);
-                }
-            }
-            Ok(Some(bundle))
-        } else {
-            Ok(None)
-        }
+        Ok(crate::loading::load_blueprint_file(&blueprint_path))
     }
 
-    fn save_blueprint_to_disk(app_id: &ApplicationId, blueprint: &EntityDb) -> anyhow::Result<()> {
-        let blueprint_path = crate::saving::default_blueprint_path(app_id)?;
+    fn save_blueprint_to_disk(
+        key: &BlueprintPersistenceKey,
+        blueprint: &EntityDb,
+    ) -> anyhow::Result<()> {
+        let blueprint_path = blueprint_path(key)?;
+        if let Some(parent) = blueprint_path.parent() {
+            std::fs::create_dir_all(parent)
+                .with_context(|| format!("Could not create blueprint directory: {parent:?}"))?;
+        }
 
         let messages = blueprint.to_messages(None);
         let rrd_version = blueprint
@@ -1836,20 +1847,18 @@ fn blueprint_loader(component_reflection: Arc<ComponentReflectionMap>) -> Bluepr
         // be small & fast to save, but maybe not once we start adding big pieces of user data?
         crate::saving::encode_to_file(rrd_version, &blueprint_path, messages)?;
 
-        re_log::debug!("Saved blueprint for {app_id} to {blueprint_path:?}");
+        re_log::debug!("Saved blueprint to {blueprint_path:?}");
 
         Ok(())
     }
 
     BlueprintPersistence {
-        loader: Some(Box::new({
-            let component_reflection = component_reflection.clone();
-            move |app_id| load_blueprint_from_disk(&component_reflection, app_id)
-        })),
+        loader: Some(Box::new(load_blueprint_from_disk)),
         saver: Some(Box::new(save_blueprint_to_disk)),
         validator: Some(Box::new(move |blueprint| {
             crate::blueprint::is_valid_blueprint(blueprint, &component_reflection)
         })),
         deleter: Some(Box::new(crate::saving::delete_blueprint)),
+        table_blueprint_clearer: Some(Box::new(crate::saving::clear_table_blueprints)),
     }
 }

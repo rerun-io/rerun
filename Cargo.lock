@@ -9158,6 +9158,7 @@ name = "re_dataframe_ui"
 version = "0.37.0-alpha.1+dev"
 dependencies = [
  "ahash",
+ "anyhow",
  "arrow",
  "async-trait",
  "crossbeam",

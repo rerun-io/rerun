@@ -255,7 +255,7 @@ impl App {
 
             SystemCommand::CloseAllEntries => {
                 self.state.navigation.reset();
-                self.table_blueprints.clear(store_hub.store_bundle_mut());
+                self.table_blueprints.close_all_tables(store_hub);
                 store_hub.clear_entries();
 
                 // Stop receiving into the old recordings.
@@ -515,10 +515,7 @@ impl App {
                 re_log::debug!("Reset blueprint to default");
 
                 if let Some(table_ref) = self.state.navigation.current().table_reference() {
-                    if let Err(err) = self
-                        .table_blueprints
-                        .reset(&table_ref, store_hub.store_bundle_mut())
-                    {
+                    if let Err(err) = self.table_blueprints.reset(&table_ref, store_hub) {
                         re_log::warn!("Failed to reset table blueprint: {err}");
                     }
                 } else {
@@ -1530,8 +1527,7 @@ impl App {
         self.state = Default::default();
 
         store_hub.clear_all_cloned_blueprints();
-        self.table_blueprints
-            .clear_all_cloned_blueprints(store_hub.store_bundle_mut());
+        self.table_blueprints.clear_all_cloned_blueprints(store_hub);
 
         // Reset egui:
         egui_ctx.memory_mut(|mem| *mem = Default::default());
@@ -1747,7 +1743,7 @@ impl App {
             RecordingOrLocalTable::LocalTable { table_id } => {
                 // Remove any existing table blueprints associated with this table.
                 self.table_blueprints
-                    .remove_table(&table_id.clone().into(), store_hub.store_bundle_mut());
+                    .close_table(&table_id.clone().into(), store_hub);
             }
         }
 

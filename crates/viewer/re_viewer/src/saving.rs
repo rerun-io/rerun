@@ -3,6 +3,8 @@ use re_chunk::TimelineName;
 use re_entity_db::EntityDb;
 use re_log_types::{ApplicationId, LogMsg, RecordingId, StoreKind};
 use re_viewer_context::BlueprintUndoState;
+#[cfg(not(target_arch = "wasm32"))]
+use re_viewer_context::store_hub::BlueprintPersistenceKey;
 
 /// A stable snapshot of the messages and file-format version needed to encode RRD data.
 ///
@@ -91,16 +93,12 @@ pub fn sanitize_app_id(app_id: &ApplicationId) -> String {
 /// This path should be deterministic and unique.
 // TODO(#2579): Implement equivalent for web
 #[cfg(not(target_arch = "wasm32"))]
-pub fn default_blueprint_path(app_id: &ApplicationId) -> anyhow::Result<std::path::PathBuf> {
-    use anyhow::Context as _;
-
+pub fn recording_blueprint_path(app_id: &ApplicationId) -> anyhow::Result<std::path::PathBuf> {
     let Some(storage_dir) = eframe::storage_dir(crate::native::APP_ID) else {
         anyhow::bail!("Error finding project directory for blueprints.")
     };
 
     let blueprint_dir = storage_dir.join("blueprints");
-    std::fs::create_dir_all(&blueprint_dir)
-        .context("Could not create blueprint save directory.")?;
 
     // We want a unique filename (not a directory) for each app-id.
 
@@ -136,13 +134,46 @@ pub fn default_blueprint_path(app_id: &ApplicationId) -> anyhow::Result<std::pat
     Ok(blueprint_dir.join(format!("{sanitized_app_id}.rbl")))
 }
 
-/// Delete the persisted blueprint for the given `ApplicationId` from disk, if it exists.
 #[cfg(not(target_arch = "wasm32"))]
-pub fn delete_blueprint(app_id: &ApplicationId) -> anyhow::Result<()> {
-    let blueprint_path = default_blueprint_path(app_id)?;
+fn table_blueprints_dir() -> anyhow::Result<std::path::PathBuf> {
+    let Some(storage_dir) = eframe::storage_dir(crate::native::APP_ID) else {
+        anyhow::bail!("Error finding project directory for table blueprints.")
+    };
+    Ok(storage_dir.join("blueprints").join("tables"))
+}
+
+/// Determine the persisted blueprint path for a table.
+#[cfg(not(target_arch = "wasm32"))]
+pub fn table_blueprint_path(
+    table_ref: &re_viewer_context::TableReference,
+) -> anyhow::Result<std::path::PathBuf> {
+    let key_hash = re_log_types::hash::Hash64::hash(table_ref).hash64();
+    Ok(table_blueprints_dir()?.join(format!("{key_hash:016x}.rbl")))
+}
+
+/// Delete all persisted table blueprints from disk.
+#[cfg(not(target_arch = "wasm32"))]
+pub fn clear_table_blueprints() -> anyhow::Result<()> {
+    let path = table_blueprints_dir()?;
+    if path.exists() {
+        std::fs::remove_dir_all(&path)
+            .with_context(|| format!("Could not delete table blueprints: {path:?}"))?;
+    }
+    Ok(())
+}
+
+/// Delete one persisted blueprint from disk, if it exists.
+#[cfg(not(target_arch = "wasm32"))]
+pub fn delete_blueprint(key: &BlueprintPersistenceKey) -> anyhow::Result<()> {
+    let blueprint_path = match key {
+        BlueprintPersistenceKey::Recording(app_id) => recording_blueprint_path(app_id)?,
+        BlueprintPersistenceKey::Table(key) => table_blueprint_path(key)?,
+    };
+
     if blueprint_path.exists() {
-        std::fs::remove_file(&blueprint_path)?;
-        re_log::debug!("Deleted persisted blueprint for {app_id} at {blueprint_path:?}");
+        std::fs::remove_file(&blueprint_path)
+            .with_context(|| format!("Could not delete persisted blueprint: {blueprint_path:?}"))?;
+        re_log::debug!("Deleted persisted blueprint at {blueprint_path:?}");
     }
     Ok(())
 }

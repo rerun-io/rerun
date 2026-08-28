@@ -292,7 +292,7 @@ impl App {
                 if let Err(err) = self.table_blueprints.set_default_blueprint(
                     &table_ref,
                     &blueprint_id,
-                    store_hub.store_bundle_mut(),
+                    store_hub,
                 ) {
                     re_log::warn!("Failed to register table blueprint: {err}");
                 }
