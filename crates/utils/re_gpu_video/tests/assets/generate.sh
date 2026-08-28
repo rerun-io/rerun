@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Regenerates the H.264 parser test fixtures. Requires ffmpeg with libx264.
+# Regenerates the H.264 parser test assets. Requires ffmpeg with libx264.
 #
-# Each fixture is a raw annex-b elementary stream with access unit delimiters,
-# which the golden-trace tests split the stream into access units by.
+# Each asset is a raw annex-b elementary stream with access unit delimiters,
+# which the snapshot tests split the stream into access units by.
 # After regenerating, the insta snapshots in ../../src/vulkan/h264/snapshots
 # must be re-reviewed against a reference decoder, the traces encode encoder choices.
 set -eu

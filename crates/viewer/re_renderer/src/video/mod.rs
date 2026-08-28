@@ -197,7 +197,7 @@ impl Video {
                 #[cfg(native)]
                 {
                     // The GPU video context lives on the render context,
-                    // which isn't in reach where the settings are created.
+                    // which isn't available where the settings are created.
                     decode_settings.gpu_video =
                         re_video::GpuVideoContextHandle(render_context.gpu_video().cloned());
                 }

@@ -1,7 +1,7 @@
 ---
 source: crates/utils/re_gpu_video/src/vulkan/h264/tests.rs
 assertion_line: 78
-expression: "trace_fixture(\"ippp\")"
+expression: "trace_asset(\"ippp\")"
 ---
 # AU 0
 Sps { id: 0, 64x64, poc_type: 2, max_num_ref_frames: 3, log2_max_frame_num: 4 }

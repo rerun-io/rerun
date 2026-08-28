@@ -1,6 +1,6 @@
 //! Decoded frames as wgpu textures.
 //!
-//! The output copy fills a fresh NV12 image per frame, which is handed to wgpu via
+//! The output copy fills a new NV12 image per frame, which is handed to wgpu via
 //! `texture_from_raw`/`create_texture_from_hal` and exposed through its two plane
 //! views. The images come from a recycling pool: when wgpu is done with a texture
 //! (the frame and its views dropped, all GPU work on it finished), the drop callback
@@ -62,7 +62,7 @@ impl OutputPool {
         }
     }
 
-    /// A fresh or recycled image fitting the frame, its content undefined.
+    /// A new or recycled image fitting the frame. Its content is undefined.
     pub fn acquire(&self, source: &CopySource) -> Result<OutputImage, vk::Result> {
         // NV12 images need even sizes. `DecodedFrame` reports the true display
         // size, the padding row/column is never shown.
@@ -83,7 +83,7 @@ impl OutputPool {
         self.create_image(extent)
     }
 
-    /// Returns an image that never made it to wgpu to the free list.
+    /// Puts an image that was never handed to wgpu back into the free list.
     ///
     /// All GPU work on it must have completed.
     pub fn recycle(&self, image: OutputImage) {
@@ -97,7 +97,7 @@ impl OutputPool {
         re_tracing::profile_function!();
 
         // Written by the copy queue, sampled by wgpu's queue: CONCURRENT sharing
-        // between the two families sidesteps ownership transfers, which wgpu has
+        // between the two families avoids ownership transfers, which wgpu has
         // no way to take part in.
         let concurrent_families = [self.copy_family, WGPU_QUEUE_FAMILY];
         let (sharing_mode, families) = if self.copy_family == WGPU_QUEUE_FAMILY {
@@ -167,12 +167,11 @@ impl OutputPool {
         });
 
         let wgpu_device = &self.device.wgpu_device;
-        // SAFETY: The image was created on this device with a descriptor matching
-        // the one given here, its content is fully written (completion observed
-        // on the host), and
-        // ownership (including deferred destruction) is handed over via the drop
-        // callback. `TextureUses::COPY_DST` matches the `TRANSFER_DST_OPTIMAL`
-        // layout the copy left the image in.
+        // SAFETY: The image was created on this device with a descriptor matching the one
+        // given here, its content is fully written (completion observed on the host), and
+        // ownership (including deferred destruction) is handed over via the drop callback.
+        // `TextureUses::COPY_DST` matches the `TRANSFER_DST_OPTIMAL` layout the copy left
+        // the image in.
         let texture = unsafe {
             let hal_device = wgpu_device
                 .as_hal::<wgpu::hal::api::Vulkan>()

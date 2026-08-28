@@ -145,6 +145,8 @@ mod tests {
     use super::nal_ranges;
     use crate::vulkan::h264::ParseError;
 
+    /// NAL splitting covers both start code lengths, strips the zero padding that
+    /// follows a NAL, and drops NALs that are nothing but padding.
     #[test]
     fn nal_ranges_start_codes() {
         // 3- and 4-byte start codes, trailing zero padding, empty input.
@@ -170,6 +172,7 @@ mod tests {
         );
     }
 
+    /// Data without a leading start code is rejected instead of parsed as one big NAL.
     #[test]
     fn nal_ranges_rejects_non_annexb() {
         // Length-prefixed (AVCC) data has no leading start code.

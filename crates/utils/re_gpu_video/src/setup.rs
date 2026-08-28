@@ -47,7 +47,7 @@ impl VideoDeviceSetup {
     /// [`wgpu::hal::vulkan::Adapter::open_with_callback`] with the callback from
     /// [`Self::create_device_callback`].
     ///
-    /// Metal works against a plainly created device.
+    /// Metal will only need a plainly created device.
     pub fn needs_hal_device_creation(&self) -> bool {
         match &self.inner {
             SetupInner::Vulkan(_) => true,

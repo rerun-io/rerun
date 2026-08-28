@@ -1,6 +1,6 @@
 //! The public decoder: H.264 access units in, GPU-texture frames in presentation order out.
 
-use crate::{ColorProperties, DecodeError, sorter::ReorderBuffer};
+use crate::{ColorProperties, DecodeError, reorder::ReorderBuffer};
 
 /// One decoded frame living in a `wgpu` texture, exposed as its two NV12 plane views.
 ///
@@ -15,8 +15,8 @@ pub struct DecodedFrame {
 
     /// Display width in luma texels.
     ///
-    /// The plane views can be slightly larger: the texture pads odd display sizes
-    /// to even ones, the excess row/column is not meant to be shown.
+    /// The plane views can be one texel larger, since the texture pads odd display
+    /// sizes to even ones. The padding row/column is not meant to be shown.
     pub width: u32,
 
     /// Display height in luma texels.
@@ -65,7 +65,7 @@ impl DecodedFrame {
 /// belongs on a decoder worker thread, never on the render thread.
 pub struct H264Decoder {
     inner: DecoderInner,
-    sorter: ReorderBuffer<DecodedFrame>,
+    reorder: ReorderBuffer<DecodedFrame>,
 }
 
 enum DecoderInner {
@@ -77,7 +77,7 @@ impl H264Decoder {
     pub(crate) fn new_vulkan(decoder: crate::vulkan::TextureDecoder) -> Self {
         Self {
             inner: DecoderInner::Vulkan(decoder),
-            sorter: ReorderBuffer::new(),
+            reorder: ReorderBuffer::new(),
         }
     }
 
@@ -98,7 +98,7 @@ impl H264Decoder {
             DecoderInner::Vulkan(decoder) => {
                 let reorder_delay = decoder.reorder_delay();
                 for (key, frame) in decoder.push_access_unit(data, pts)? {
-                    self.sorter
+                    self.reorder
                         .push(key, frame.is_idr, frame, reorder_delay, &mut out);
                 }
             }
@@ -106,20 +106,21 @@ impl H264Decoder {
         Ok(out)
     }
 
-    /// Waits for the in-flight GPU work and emits the remaining buffered frames:
-    /// the stream ended.
+    /// Waits for the in-flight GPU work and returns the remaining buffered frames.
+    ///
+    /// Call this once the stream ended.
     pub fn flush(&mut self) -> Result<Vec<DecodedFrame>, DecodeError> {
         let mut out = Vec::new();
         match &mut self.inner {
             DecoderInner::Vulkan(decoder) => {
                 let reorder_delay = decoder.reorder_delay();
                 for (key, frame) in decoder.flush()? {
-                    self.sorter
+                    self.reorder
                         .push(key, frame.is_idr, frame, reorder_delay, &mut out);
                 }
             }
         }
-        self.sorter.flush(&mut out);
+        self.reorder.flush(&mut out);
         Ok(out)
     }
 
@@ -128,7 +129,7 @@ impl H264Decoder {
         match &mut self.inner {
             DecoderInner::Vulkan(decoder) => decoder.reset(),
         }
-        self.sorter.reset();
+        self.reorder.reset();
     }
 
     /// How many frames may need to be pushed beyond a frame before it comes out:

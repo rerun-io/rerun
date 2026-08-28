@@ -71,7 +71,8 @@ enum InputFormat {
     /// Streamed H.264 is already annex-b, pass it through verbatim.
     AnnexB,
 
-    /// H.264 in MP4: prepend SPS/PPS to each IDR, otherwise length-prefix → annex-b.
+    /// H.264 in MP4: prepend the SPS/PPS to each IDR frame and turn the
+    /// length-prefixed NALs into annex-b.
     Avcc {
         avcc: re_mp4::Avc1Box,
         state: AnnexBStreamState,

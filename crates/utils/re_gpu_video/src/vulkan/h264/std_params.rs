@@ -1,8 +1,8 @@
 //! Conversion of parsed SPS/PPS into the `StdVideoH264*` parameter structs that
 //! Vulkan video session parameters are built from.
 //!
-//! The only file in the parser touching `ash` types, and they are inert bindgen
-//! structs: no Vulkan calls happen here.
+//! The only file in the parser touching `ash` types, and they are plain bindgen
+//! structs, no Vulkan calls happen here.
 
 use ash::vk::native as std_video;
 use h264_reader::nal::{
@@ -209,7 +209,7 @@ impl PpsStdParams {
             pic_init_qp_minus26: pps.pic_init_qp_minus26 as i8,
             pic_init_qs_minus26: pps.pic_init_qs_minus26 as i8,
             chroma_qp_index_offset: pps.chroma_qp_index_offset as i8,
-            // Inferred from `chroma_qp_index_offset` when the extension is absent (spec 7.4.2.2).
+            // Inferred from `chroma_qp_index_offset` when the extension is missing (spec 7.4.2.2).
             second_chroma_qp_index_offset: pps
                 .extension
                 .as_ref()
@@ -239,9 +239,11 @@ fn pic_scaling_lists(matrix: &PicScalingMatrix) -> std_video::StdVideoH264Scalin
     )
 }
 
-/// The scaling list values are kept in the scan order the bitstream conveys them in,
-/// which is what the `StdVideo` structs expect. Lists that are absent or defaulted are
-/// communicated through the masks, the driver applies the spec's fallback rules.
+/// Builds the `StdVideoH264ScalingLists` from the parsed 4x4 and 8x8 lists.
+///
+/// The values are kept in the scan order the bitstream stores them in, which is what
+/// the `StdVideo` structs expect. Lists that are missing or defaulted are communicated
+/// through the masks, the driver applies the spec's fallback rules.
 fn scaling_lists(
     lists_4x4: &[ScalingList<16>],
     lists_8x8: &[ScalingList<64>],

@@ -2,13 +2,13 @@
 //!
 //! [`DecoderCore`] holds everything shared by the two frontends: the parser,
 //! parameter-set tracking, the video session, the bitstream upload, and the
-//! decode submission. [`TextureDecoder`] copies decoded frames into fresh NV12
+//! decode submission. [`TextureDecoder`] copies decoded frames into new NV12
 //! images handed to wgpu, [`CpuDecoder`] reads them back into CPU pixel buffers.
 //!
 //! Sync model: one decode submission and one output-copy submission per frame,
 //! ordered by a timeline semaphore. [`TextureDecoder`] keeps up to
 //! [`PIPELINE_DEPTH`] frames in flight and only hands a frame to wgpu once the
-//! semaphore confirms its copy completed, so the host rarely blocks; the
+//! semaphore confirms its copy completed, so the host rarely blocks. The
 //! per-frame resources (command pools, bitstream buffer, result-status query)
 //! live in slots reused round-robin, and reusing a slot whose work is still
 //! running is what blocks. [`CpuDecoder`] waits for every frame. All of this
@@ -101,7 +101,7 @@ struct InFlightDecode {
     query_index: u32,
 }
 
-/// The session, parsing, and decode-submission machinery shared by the frontends.
+/// The session, parsing, and decode submission shared by the two decoder types.
 struct DecoderCore {
     shared: Arc<Shared>,
     semaphore: TimelineSemaphore,
@@ -201,10 +201,10 @@ impl DecoderCore {
         // and a changed SPS recreates them anyway.
     }
 
-    /// Retires in-flight decodes the semaphore already passed: reads their
+    /// Releases in-flight decodes the semaphore already passed: reads their
     /// result-status queries and prunes the pending-copy tracking.
     /// Returns `completed` for the caller to compare frames against.
-    fn retire_completed(&mut self, completed: u64) -> Result<u64, DecodeError> {
+    fn release_completed(&mut self, completed: u64) -> Result<u64, DecodeError> {
         while let Some(front) = self.in_flight.front() {
             if front.copy_value > completed {
                 break;
@@ -218,23 +218,23 @@ impl DecoderCore {
         Ok(completed)
     }
 
-    /// Retires whatever completed so far, without blocking.
+    /// Releases whatever completed so far, without blocking.
     fn poll_completed(&mut self) -> Result<u64, DecodeError> {
         let completed = self.semaphore.completed()?;
-        self.retire_completed(completed)
+        self.release_completed(completed)
     }
 
-    /// Blocks until the semaphore reaches `value`, then retires.
-    fn wait_and_retire(&mut self, value: u64) -> Result<u64, DecodeError> {
+    /// Blocks until the semaphore reaches `value`, then releases.
+    fn wait_and_release(&mut self, value: u64) -> Result<u64, DecodeError> {
         self.semaphore.wait(value)?;
         // Later submissions may have completed in the meantime.
         let completed = self.semaphore.completed()?.max(value);
-        self.retire_completed(completed)
+        self.release_completed(completed)
     }
 
-    /// Blocks until every submission completed, then retires.
+    /// Blocks until every submission completed, then releases.
     fn drain(&mut self) -> Result<u64, DecodeError> {
-        self.wait_and_retire(self.semaphore.last_value())
+        self.wait_and_release(self.semaphore.last_value())
     }
 
     /// The next resource slot, waiting out its previous use. This wait is the
@@ -244,7 +244,7 @@ impl DecoderCore {
         self.next_slot = (index + 1) % self.slots.len();
         let previous_use = self.slots[index].copy_value;
         if previous_use > 0 {
-            self.wait_and_retire(previous_use)?;
+            self.wait_and_release(previous_use)?;
         }
         Ok(index)
     }
@@ -438,7 +438,7 @@ impl DecoderCore {
         record_copy: impl FnOnce(&Device, vk::CommandBuffer),
     ) -> Result<(), DecodeError> {
         let copy_value = self.submit_copy(decode, record_copy)?;
-        self.wait_and_retire(copy_value)?;
+        self.wait_and_release(copy_value)?;
         Ok(())
     }
 
@@ -641,14 +641,14 @@ impl DecoderCore {
 
 impl Drop for DecoderCore {
     fn drop(&mut self) {
-        // Frames may still be in flight: never destroy resources under the GPU.
+        // Frames may still be in flight: never destroy resources the GPU is still using.
         if let Err(err) = self.semaphore.wait_idle() {
             re_log::warn!("Failed to wait for the video decoder to go idle: {err}");
         }
     }
 }
 
-/// Color properties from the SPS VUI, absent fields left at their defaults.
+/// Color properties from the SPS VUI, missing fields left at their defaults.
 fn color_properties(sps: &SeqParameterSet) -> ColorProperties {
     let signal_type = sps
         .vui_parameters
@@ -707,7 +707,7 @@ impl TextureDecoder {
     /// a group delimited by IDR frames).
     ///
     /// Frames whose GPU work is still running are held back and returned by a
-    /// later call (or by [`Self::flush`]), so the returned frames may stem from
+    /// later call (or by [`Self::flush`]), so the returned frames may come from
     /// earlier access units. Blocks only when [`PIPELINE_DEPTH`] frames are
     /// already in flight. Any error leaves the decoder waiting for an IDR frame,
     /// like [`Parser::push_access_unit`].
@@ -745,8 +745,9 @@ impl TextureDecoder {
         Ok(self.take_completed(completed))
     }
 
-    /// Waits for all in-flight GPU work and returns the finished frames:
-    /// the stream ended.
+    /// Waits for all in-flight GPU work and returns the finished frames.
+    ///
+    /// Call this once the stream ended.
     pub fn flush(&mut self) -> Result<Vec<(i64, DecodedFrame)>, DecodeError> {
         let completed = self.core.drain()?;
         Ok(self.take_completed(completed))
@@ -801,7 +802,7 @@ impl TextureDecoder {
 
 /// Decodes H.264 access units into CPU pixel buffers.
 ///
-/// The permanent debugging path: bit-exact readback of what the hardware decoded,
+/// Kept around for debugging: a bit-exact readback of what the hardware decoded,
 /// for comparison against a software decoder (see `examples/decode_to_yuv.rs`).
 pub struct CpuDecoder {
     core: DecoderCore,

@@ -1,8 +1,8 @@
-//! Golden-trace tests over ffmpeg-generated fixtures, plus synthetic tests for the
-//! bitstream paths no common encoder produces (POC type 1, wraparounds, long-term
-//! references, memory management control operations, `frame_num` gaps).
+//! Snapshot tests of the op traces for ffmpeg-generated test assets, plus synthetic tests
+//! for the bitstream paths no common encoder produces (POC type 1, wraparounds,
+//! long-term references, memory management control operations, `frame_num` gaps).
 //!
-//! The fixtures live in `tests/assets/`, see `generate.sh` there. The traces list
+//! The assets live in `tests/assets/`, see `generate.sh` there. The traces list
 //! every [`DecodeOp`] per access unit. Changes to them must be re-reviewed against
 //! the spec or a reference decoder.
 
@@ -22,11 +22,11 @@ use super::refs::{CurrentFrame, Dpb};
 use super::std_params::{PpsStdParams, SpsStdParams};
 use super::{DecodeOp, ParseError, Parser, ops::ReferenceInfo};
 
-// --- Golden traces over ffmpeg fixtures ---
+// --- Snapshot traces over the ffmpeg assets ---
 
-fn fixture(name: &str) -> Vec<u8> {
+fn asset(name: &str) -> Vec<u8> {
     let path = format!("{}/tests/assets/{name}.h264", env!("CARGO_MANIFEST_DIR"));
-    let data = std::fs::read(&path).expect("fixture missing, run tests/assets/generate.sh");
+    let data = std::fs::read(&path).expect("test asset missing, run tests/assets/generate.sh");
     assert!(
         data.len() > 100,
         "Fixture is a stub, git-lfs checkout needed.\nFile path: {path}"
@@ -35,14 +35,14 @@ fn fixture(name: &str) -> Vec<u8> {
 }
 
 /// Splits an elementary stream into access units on the access unit delimiters
-/// the fixtures are generated with.
+/// the assets are generated with.
 fn split_on_aud(data: &[u8]) -> Vec<&[u8]> {
     let cuts: Vec<usize> = data
         .windows(4)
         .enumerate()
         .filter_map(|(index, window)| (window == [0, 0, 1, 9]).then_some(index))
         .collect();
-    assert!(!cuts.is_empty(), "fixture has no access unit delimiters");
+    assert!(!cuts.is_empty(), "test asset has no access unit delimiters");
 
     let mut units = Vec::new();
     for (index, &cut) in cuts.iter().enumerate() {
@@ -52,10 +52,10 @@ fn split_on_aud(data: &[u8]) -> Vec<&[u8]> {
     units
 }
 
-fn trace_fixture(name: &str) -> String {
+fn trace_asset(name: &str) -> String {
     let mut parser = Parser::new(17);
     let mut trace = String::new();
-    for (index, access_unit) in split_on_aud(&fixture(name)).iter().enumerate() {
+    for (index, access_unit) in split_on_aud(&asset(name)).iter().enumerate() {
         writeln!(trace, "# AU {index}").unwrap();
         for op in parser.push_access_unit(access_unit).unwrap() {
             writeln!(trace, "{op}").unwrap();
@@ -66,40 +66,40 @@ fn trace_fixture(name: &str) -> String {
 }
 
 #[test]
-fn golden_i_only() {
-    insta::assert_snapshot!("i_only", trace_fixture("i_only"));
+fn snapshot_i_only() {
+    insta::assert_snapshot!("i_only", trace_asset("i_only"));
 }
 
 #[test]
-fn golden_ippp() {
-    insta::assert_snapshot!("ippp", trace_fixture("ippp"));
+fn snapshot_ippp() {
+    insta::assert_snapshot!("ippp", trace_asset("ippp"));
 }
 
 #[test]
-fn golden_ipb() {
-    insta::assert_snapshot!("ipb", trace_fixture("ipb"));
+fn snapshot_ipb() {
+    insta::assert_snapshot!("ipb", trace_asset("ipb"));
 }
 
 #[test]
-fn golden_ipb_pyramid() {
-    insta::assert_snapshot!("ipb_pyramid", trace_fixture("ipb_pyramid"));
+fn snapshot_ipb_pyramid() {
+    insta::assert_snapshot!("ipb_pyramid", trace_asset("ipb_pyramid"));
 }
 
 #[test]
-fn golden_multi_slice() {
-    insta::assert_snapshot!("multi_slice", trace_fixture("multi_slice"));
+fn snapshot_multi_slice() {
+    insta::assert_snapshot!("multi_slice", trace_asset("multi_slice"));
 }
 
 #[test]
-fn golden_sps_change() {
-    insta::assert_snapshot!("sps_change", trace_fixture("sps_change"));
+fn snapshot_sps_change() {
+    insta::assert_snapshot!("sps_change", trace_asset("sps_change"));
 }
 
 /// Access unit boundaries are detected from the slices themselves, so pushing a whole
 /// stream at once must decode identically to pushing it one access unit at a time.
 #[test]
 fn single_push_matches_per_access_unit_pushes() {
-    let data = fixture("ipb_pyramid");
+    let data = asset("ipb_pyramid");
 
     let mut parser = Parser::new(17);
     let mut whole = String::new();
@@ -120,17 +120,20 @@ fn single_push_matches_per_access_unit_pushes() {
     assert_eq!(whole, per_au);
 }
 
+/// Decoding must start at an IDR frame, so a stream entered in the middle is an error.
 #[test]
 fn starting_at_a_non_idr_frame_is_an_error() {
-    let data = fixture("ippp");
+    let data = asset("ippp");
     let mut parser = Parser::new(17);
     let result = parser.push_access_unit(split_on_aud(&data)[1]);
     assert!(matches!(result, Err(ParseError::ExpectedIdr)), "{result:?}");
 }
 
+/// A reset puts the parser back to waiting for an IDR frame, and the next IDR
+/// frame gets it decoding again.
 #[test]
 fn reset_requires_an_idr_frame() {
-    let data = fixture("ippp");
+    let data = asset("ippp");
     let units = split_on_aud(&data);
     let mut parser = Parser::new(17);
     parser.push_access_unit(units[0]).unwrap();
@@ -148,10 +151,11 @@ fn reset_requires_an_idr_frame() {
     )));
 }
 
+/// A stream needing more DPB slots than the device offers is rejected up front.
 #[test]
 fn too_small_dpb_is_an_error() {
-    let data = fixture("ippp");
-    // The fixture's SPS wants more reference frames than one slot can hold.
+    let data = asset("ippp");
+    // The asset's SPS wants more reference frames than one slot can hold.
     let mut parser = Parser::new(1);
     let result = parser.push_access_unit(split_on_aud(&data)[0]);
     assert!(
@@ -288,7 +292,7 @@ fn poc_type1_cycle_and_wraparound() {
     assert_eq!(type1_poc(&mut state, &sps, true, 3, 0), 0);
     assert_eq!(type1_poc(&mut state, &sps, false, 3, 1), 2);
     assert_eq!(type1_poc(&mut state, &sps, false, 3, 2), 4);
-    // Non-reference frame: absFrameNum backs up by one, then the offset applies.
+    // Non-reference frame: absFrameNum decrements by one, then the offset applies.
     assert_eq!(type1_poc(&mut state, &sps, false, 0, 3), 3);
     assert_eq!(type1_poc(&mut state, &sps, false, 3, 3), 6);
 
@@ -300,8 +304,8 @@ fn poc_type1_cycle_and_wraparound() {
     assert_eq!(type1_poc(&mut state, &sps, false, 3, 1), 34);
 }
 
-/// POC type 2 mirrors decoding order, with non-reference frames nudged in
-/// front of the reference frame sharing their `frame_num` (spec 8.2.1.3).
+/// POC type 2 mirrors decoding order, with non-reference frames placed just
+/// before the reference frame sharing their `frame_num` (spec 8.2.1.3).
 #[test]
 fn poc_type2() {
     let sps = synthetic_sps(PicOrderCntType::TypeTwo);
@@ -518,7 +522,7 @@ fn ref_list_modification_reorders() {
     assert_eq!(lists.l0, vec![0, 1]);
 }
 
-/// A modification addressing a frame that isn't in the DPB is a hard error.
+/// A modification addressing a frame that isn't in the DPB is an error.
 #[test]
 fn ref_list_modification_to_missing_frame_is_an_error() {
     let dpb = dpb_with_two_refs();
@@ -624,7 +628,7 @@ fn long_term_references() {
         .unwrap();
     assert_eq!(lists.l0, vec![2, 1, 0]);
 
-    // Operation 2 unmarks long-term index 1, operation 4 with plus1 = 0 sweeps the rest.
+    // Operation 2 unmarks long-term index 1, operation 4 with plus1 = 0 removes the rest.
     let outcome = dpb
         .mark(
             &current(3, 6),
@@ -677,8 +681,8 @@ fn frame_num_gap_detection() {
 
 // --- StdVideo parameter conversion ---
 
-fn fixture_parameter_sets(name: &str) -> (SeqParameterSet, PicParameterSet) {
-    let data = fixture(name);
+fn asset_parameter_sets(name: &str) -> (SeqParameterSet, PicParameterSet) {
+    let data = asset(name);
     let mut ctx = h264_reader::Context::new();
     let mut sps = None;
     let mut pps = None;
@@ -705,7 +709,7 @@ fn fixture_parameter_sets(name: &str) -> (SeqParameterSet, PicParameterSet) {
 fn std_parameter_conversion() {
     use ash::vk::native as std_video;
 
-    let (sps, pps) = fixture_parameter_sets("ipb");
+    let (sps, pps) = asset_parameter_sets("ipb");
 
     let std_sps = SpsStdParams::build(&sps);
     let std = std_sps.std();

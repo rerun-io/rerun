@@ -1,6 +1,6 @@
 //! Vulkan Video backend.
 //!
-//! ash/vk types never leave this module tree, see the layering rule in the crate docs.
+//! ash/vk types never leave this module tree, the crate's public API stays wgpu-only.
 
 mod alloc;
 mod caps;
@@ -94,7 +94,7 @@ impl VulkanSetup {
                     .find(|info| info.queue_family_index == family_index)
                 {
                     // wgpu already requests one queue in this family (its own),
-                    // bump the count. `queue_counts` includes wgpu's queue.
+                    // raise the count. `queue_counts` includes wgpu's queue.
                     *create_info = create_info.queue_priorities(priorities);
                 } else {
                     args.queue_create_infos.push(

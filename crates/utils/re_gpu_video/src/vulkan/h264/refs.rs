@@ -116,7 +116,7 @@ impl Dpb {
 
         let num_slots = needed as u8;
         if num_slots < self.num_slots && !self.entries.is_empty() {
-            // Shrinking under live references would invalidate slots. Real streams
+            // Shrinking while reference frames are active would invalidate slots. Real streams
             // change these requirements at IDR frames, where the DPB is empty.
             return Err(ParseError::Unsupported(
                 "SPS shrinking the DPB while reference frames are active",
@@ -395,7 +395,7 @@ impl Dpb {
 
             DecRefPicMarking::SlidingWindow => {
                 // Spec 8.2.5.3: at capacity, the short-term reference with the smallest
-                // `FrameNumWrap` makes room.
+                // `FrameNumWrap` is evicted.
                 if self.entries.len() as u32 >= self.max_num_ref_frames {
                     let oldest = self
                         .entries

@@ -261,7 +261,7 @@ pub(crate) fn wgpu_options(force_wgpu_backend: Option<&str>) -> egui_wgpu::WgpuC
 }
 
 /// The graphics setup used on web and as the fallback on native:
-/// egui-wgpu creates instance, adapter & device itself, steered by `re_renderer`'s preferences.
+/// egui-wgpu creates instance, adapter & device itself, using `re_renderer`'s preferences.
 fn create_new_wgpu_setup(force_wgpu_backend: Option<&str>) -> egui_wgpu::WgpuSetup {
     let instance_descriptor = re_renderer::device_caps::instance_descriptor(force_wgpu_backend);
     let backends = instance_descriptor.backends;
@@ -288,7 +288,7 @@ fn create_new_wgpu_setup(force_wgpu_backend: Option<&str>) -> egui_wgpu::WgpuSet
 /// but with `re_renderer` in control of device creation so it can probe for
 /// GPU video decode support.
 ///
-/// The resulting video context is parked in [`PENDING_GPU_VIDEO_CONTEXT`] for
+/// The resulting video context is stored in [`PENDING_GPU_VIDEO_CONTEXT`] for
 /// [`customize_eframe_and_setup_renderer`] to pick up.
 #[cfg(not(target_arch = "wasm32"))]
 fn create_native_wgpu_setup(

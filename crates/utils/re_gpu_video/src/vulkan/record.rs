@@ -5,7 +5,7 @@
 //! operation wrapped in a result-status query, and the transition of the decode
 //! output to `TRANSFER_SRC` for the copy. The output-copy command buffer runs on
 //! the copy queue and copies the two NV12 planes of the display region either
-//! into a host-visible buffer (the CPU debugging path) or into a fresh NV12
+//! into a host-visible buffer (the CPU debugging path) or into a new NV12
 //! image handed to wgpu (see [`super::output`]).
 
 use ash::vk;
@@ -39,7 +39,7 @@ pub struct CopySource {
     pub image: vk::Image,
     pub layer: u32,
 
-    /// The source doubles as a DPB slot (coincide-mode hardware) and must be
+    /// The source is also a DPB slot (coincide-mode hardware) and must be
     /// transitioned back to the DPB layout after the copy.
     pub restore_dpb_layout: bool,
 
@@ -442,8 +442,8 @@ pub fn record_output_to_buffer(
     }
 }
 
-/// Records the copy of the decoded frame's display region into a fresh NV12 image
-/// destined for wgpu, cropping the coded image down to `dst_extent`.
+/// Records the copy of the decoded frame's display region into a new NV12 image
+/// that is handed to wgpu, cropping the coded image down to `dst_extent`.
 ///
 /// `dst_extent` is the display size rounded up to even (NV12 images need even sizes),
 /// the destination image's own extent. The image's previous content is discarded, and
@@ -538,8 +538,8 @@ pub fn record_output_to_image(
     }
 }
 
-/// In coincide mode the copy source doubles as a DPB slot and stays a valid
-/// reference picture: restore its layout after the copy read.
+/// In coincide mode the copy source is also a DPB slot and stays a valid
+/// reference picture, so its layout is restored after the copy read.
 fn source_restore_barriers(source: &CopySource) -> Vec<vk::ImageMemoryBarrier2<'static>> {
     if !source.restore_dpb_layout {
         return Vec::new();

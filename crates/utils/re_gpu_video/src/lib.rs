@@ -45,8 +45,8 @@
 
 mod context;
 mod decoder;
+mod reorder;
 mod setup;
-mod sorter;
 mod vulkan;
 
 pub use context::GpuVideoContext;
@@ -107,9 +107,10 @@ pub enum SetupError {
     Vulkan(#[from] ash::vk::Result),
 }
 
-/// Decoding failed. The stream can't be decoded by this backend (or is invalid),
-/// or the driver reported an error. Callers fall back to software decoding,
-/// silent corruption is never an option.
+/// Decoding failed: the stream is invalid or this backend can't decode it,
+/// or the driver reported an error.
+///
+/// Callers fall back to software decoding instead of showing corrupt frames.
 #[derive(thiserror::Error, Debug)]
 pub enum DecodeError {
     #[error(transparent)]

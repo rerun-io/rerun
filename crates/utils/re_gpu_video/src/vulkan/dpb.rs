@@ -1,8 +1,8 @@
 //! The decoded-picture-buffer images and the decode output image.
 //!
 //! DPB slots are layers of one NV12 array image (always legal, also on hardware
-//! without `SEPARATE_REFERENCE_IMAGES`), with the parser's slot index doubling as
-//! the layer index. On distinct-mode hardware decode output goes to a ring of
+//! without `SEPARATE_REFERENCE_IMAGES`), where the parser's slot index is also the
+//! layer index. On distinct-mode hardware decode output goes to a ring of
 //! separate single-layer images, one per in-flight frame, so a decode never has
 //! to wait for the previous frame's output copy. On coincide-mode hardware the
 //! DPB layer itself is the output, with one spare layer for non-reference frames
@@ -59,7 +59,7 @@ impl DecodeImages {
         let readback_usage = vk::ImageUsageFlags::TRANSFER_SRC;
 
         // Whichever image the readback copies from is used by both queue families:
-        // CONCURRENT sharing sidesteps ownership transfers between them.
+        // CONCURRENT sharing avoids ownership transfers between them.
         let sharing = |copied_from: bool| {
             if copied_from && decode_queue_family != copy_queue_family {
                 (vk::SharingMode::CONCURRENT, &concurrent_families[..])

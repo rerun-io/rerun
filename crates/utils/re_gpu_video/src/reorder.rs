@@ -5,10 +5,10 @@
 
 /// Buffers decoded frames until their position in presentation order is settled.
 ///
-/// A frame's position is settled once more than `reorder_delay` frames are pending
-/// (at most that many frames can precede a frame in decode order but follow it in
-/// presentation order), or when an IDR frame arrives (no frame is presented across
-/// one in the other order).
+/// A frame's position is settled once more than `reorder_delay` frames are pending,
+/// since at most that many frames can precede a frame in decode order but follow it
+/// in presentation order. An IDR frame settles everything before it too, because
+/// presentation order never crosses an IDR frame.
 pub struct ReorderBuffer<F> {
     /// Pending frames, sorted ascending by key.
     pending: Vec<(i64, F)>,
@@ -43,7 +43,7 @@ impl<F> ReorderBuffer<F> {
         }
     }
 
-    /// Emits all pending frames in presentation order: the stream ended.
+    /// Emits all pending frames in presentation order, for when the stream ended.
     pub fn flush(&mut self, out: &mut Vec<F>) {
         out.extend(self.pending.drain(..).map(|(_, frame)| frame));
     }

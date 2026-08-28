@@ -1,7 +1,7 @@
 //! Runtime probe for Vulkan Video H.264 decode support.
 //!
-//! Everything here must fail soft: a `None` from [`probe`] makes callers fall back to
-//! creating a plain device without video support.
+//! A `None` from [`probe`] is never an error: callers then create a plain device
+//! without video support.
 
 use ash::vk;
 
@@ -69,9 +69,9 @@ pub struct VulkanProbe {
 
 /// Probes the adapter for everything H.264 decode needs.
 ///
-/// Logs the reason at debug level whenever support is missing:
-/// software rasterizers and `MoltenVK` land here, it's not an error.
-#[expect(unsafe_code)] // Naked Vulkan calls on the adapter's physical device.
+/// Logs the reason at debug level whenever support is missing. Software rasterizers
+/// and `MoltenVK` have no support, which is not an error.
+#[expect(unsafe_code)] // Raw Vulkan calls on the adapter's physical device.
 pub fn probe(adapter: &wgpu::Adapter) -> Option<VulkanProbe> {
     re_tracing::profile_function!();
 
@@ -94,7 +94,7 @@ pub fn probe(adapter: &wgpu::Adapter) -> Option<VulkanProbe> {
     // SAFETY: The physical device comes from this instance.
     let properties = unsafe { raw_instance.get_physical_device_properties(physical_device) };
 
-    // Keeps the sync2 story simple (synchronization2 is core in 1.3) and every driver with
+    // Keeps sync2 handling simple (synchronization2 is core in 1.3) and every driver with
     // video decode support in practice is 1.3 anyways.
     if properties.api_version < vk::API_VERSION_1_3 {
         re_log::debug!("No GPU video decode support: Vulkan 1.3 required.");
@@ -282,7 +282,7 @@ fn plan_queues(
             .collect()
     };
 
-    // Queues already spoken for per family: wgpu's own queue.
+    // Queues already taken per family: wgpu's own queue.
     let mut used_queues = vec![0_u32; families.len()];
     if let Some(first) = used_queues.first_mut() {
         *first = 1;

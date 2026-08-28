@@ -31,8 +31,10 @@ use h264_reader::nal::{Nal as _, RefNal, UnitType, sps::SeqParameterSet};
 pub use ops::{DecodeInfo, DecodeOp};
 pub use std_params::{PpsStdParams, SpsStdParams};
 
-/// The pushed data can't be decoded. The decoder gives up and falls back to
-/// software decoding, silent corruption is never an option.
+/// The pushed data can't be decoded.
+///
+/// The decoder gives up and falls back to software decoding instead of showing
+/// corrupt frames.
 #[derive(thiserror::Error, Debug)]
 pub enum ParseError {
     #[error("Data is not an annex-b NAL stream")]
@@ -100,7 +102,7 @@ pub struct Parser {
     ctx: h264_reader::Context,
 
     /// Last emitted parameter sets by id, to skip re-emitting the identical repeats
-    /// encoders put in front of every IDR frame. The PPS is fingerprinted through its
+    /// encoders put in front of every IDR frame. The PPS is compared through its
     /// `Debug` output since `h264-reader` gives it no `PartialEq`.
     emitted_sps: HashMap<u8, SeqParameterSet>,
     emitted_pps: HashMap<u8, String>,
@@ -191,9 +193,9 @@ impl Parser {
                 UnitType::PicParameterSet => {
                     let pps = parse::parse_pps(&self.ctx, &nal)?;
                     let id = pps.pic_parameter_set_id.id();
-                    let fingerprint = format!("{pps:?}");
-                    if self.emitted_pps.get(&id) != Some(&fingerprint) {
-                        self.emitted_pps.insert(id, fingerprint);
+                    let debug_repr = format!("{pps:?}");
+                    if self.emitted_pps.get(&id) != Some(&debug_repr) {
+                        self.emitted_pps.insert(id, debug_repr);
                         self.ctx.put_pic_param_set(pps.clone());
                         ops.push(DecodeOp::Pps(Box::new(pps)));
                     }

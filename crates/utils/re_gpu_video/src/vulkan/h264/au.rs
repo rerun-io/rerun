@@ -1,9 +1,9 @@
 //! Grouping slice NALs into pictures.
 //!
 //! One pushed access unit normally holds exactly one frame, but a frame can consist of
-//! several slices, and defensively one push may hold several frames. A slice with
+//! several slices, and one push is also allowed to hold several frames. A slice with
 //! `first_mb_in_slice == 0` starts a new picture (spec 7.4.1.2.4 lists more conditions,
-//! but they only matter for arbitrary slice order, which [`super::Parser`] rejects by
+//! but they only matter for an arbitrary slice order, which [`super::Parser`] rejects by
 //! requiring slices in raster order).
 
 use super::ParseError;
@@ -17,8 +17,8 @@ pub struct PendingPicture {
 impl PendingPicture {
     pub fn new(first_slice: ParsedSlice) -> Result<Self, ParseError> {
         if first_slice.header.first_mb_in_slice != 0 {
-            // A picture must start at the top: getting its tail first means the pushed
-            // access unit was cut mid-frame.
+            // A picture must start at its first macroblock: getting a later slice first
+            // means the pushed access unit was cut mid-frame.
             return Err(ParseError::IncompletePicture);
         }
         Ok(Self {

@@ -1,7 +1,7 @@
 ---
 source: crates/utils/re_gpu_video/src/vulkan/h264/tests.rs
 assertion_line: 88
-expression: "trace_fixture(\"ipb_pyramid\")"
+expression: "trace_asset(\"ipb_pyramid\")"
 ---
 # AU 0
 Sps { id: 0, 64x64, poc_type: 0, max_num_ref_frames: 4, log2_max_frame_num: 4 }

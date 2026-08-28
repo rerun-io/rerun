@@ -1,7 +1,7 @@
 ---
 source: crates/utils/re_gpu_video/src/vulkan/h264/tests.rs
 assertion_line: 73
-expression: "trace_fixture(\"i_only\")"
+expression: "trace_asset(\"i_only\")"
 ---
 # AU 0
 Sps { id: 0, 64x64, poc_type: 2, max_num_ref_frames: 0, log2_max_frame_num: 4 }

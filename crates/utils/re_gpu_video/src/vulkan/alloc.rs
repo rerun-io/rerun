@@ -2,7 +2,7 @@
 //!
 //! The backend makes a handful of long-lived allocations with no fragmentation
 //! pressure, so every image, buffer, and session memory block gets its own
-//! `vkAllocateMemory` (which also sidesteps drivers reporting alignment 0 for
+//! `vkAllocateMemory` (which also avoids drivers reporting alignment 0 for
 //! video session memory).
 
 use std::sync::Arc;
@@ -176,7 +176,7 @@ impl Buffer {
         unsafe { std::slice::from_raw_parts_mut(self.mapped, self.size as usize) }
     }
 
-    /// The persistently mapped contents, read side.
+    /// The persistently mapped contents, for reading.
     ///
     /// The caller must have waited for the GPU writes to complete.
     #[expect(unsafe_code)]
