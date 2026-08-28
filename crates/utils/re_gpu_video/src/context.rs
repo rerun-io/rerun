@@ -2,8 +2,7 @@ use crate::{DecodeError, H264DecodeCapabilities};
 
 /// Video decode support living alongside a wgpu device.
 ///
-/// Created via [`crate::VideoDeviceSetup::into_context`].
-/// Holds the decode queues and backend function tables, and is the factory for decoders.
+/// Created via [`crate::VideoDeviceSetup::into_context`], and used to create decoders.
 pub struct GpuVideoContext {
     inner: ContextInner,
 }
@@ -44,8 +43,8 @@ impl GpuVideoContext {
 
     /// Creates a decoder reading the decoded frames back into CPU pixel buffers.
     ///
-    /// The permanent debugging path (see `examples/decode_to_yuv.rs`): the texture
-    /// decoder of later milestones is what real callers use. Vulkan backend only.
+    /// For debugging only (see `examples/decode_to_yuv.rs`), real callers want
+    /// [`Self::create_h264_decoder`]. Vulkan backend only.
     #[doc(hidden)]
     pub fn create_h264_cpu_decoder(&self) -> Result<crate::CpuDecoder, DecodeError> {
         match &self.inner {

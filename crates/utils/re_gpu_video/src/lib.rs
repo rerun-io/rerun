@@ -1,21 +1,47 @@
-//! Hardware video decoding straight to `wgpu` textures, without the decoded frames ever leaving the GPU.
+//! Hardware video decoding to `wgpu` textures.
 //!
-//! Two backends, chosen at runtime based on the wgpu backend of the adapter
-//! (see [`VideoDeviceSetup::request`]):
-//! * Vulkan Video: any Vulkan driver exposing the video decode extensions.
-//!   Software rasterizers and `MoltenVK` don't, the probe reports no support there.
-//! * `VideoToolbox` (macOS, not yet implemented)
+//! ```ignore
+//! use re_gpu_video::VideoDeviceSetup;
 //!
-//! Integration happens in two steps:
-//! * At device-creation time, [`VideoDeviceSetup::request`] probes the adapter for decode support.
-//!   On Vulkan, the wgpu device must then be created through
-//!   [`wgpu::hal::vulkan::Adapter::open_with_callback`] with the callback from
-//!   [`VideoDeviceSetup::create_device_callback`], so that the video extensions and queues
-//!   get enabled on it.
-//! * [`VideoDeviceSetup::into_context`] then turns the setup into a [`GpuVideoContext`],
-//!   from which decoders can be created.
+//! // Before creating the device, probe the adapter.
+//! let Some(mut setup) = VideoDeviceSetup::request(&adapter) else {
+//!     // No decode support on this adapter, fall back to a software decoder.
+//!     return;
+//! };
 //!
-//! This crate is native only, web builds must not include it.
+//! // The decoder outputs NV12 textures that get sampled through plane views.
+//! descriptor.required_features |= wgpu::Features::TEXTURE_FORMAT_NV12;
+//!
+//! let (device, queue) = if setup.needs_hal_device_creation() {
+//!     // Vulkan needs extra extensions and queues on the device, which only
+//!     // wgpu's hal layer can add, through the setup's callback.
+//!     unsafe {
+//!         let hal_adapter = adapter.as_hal::<wgpu::hal::api::Vulkan>().unwrap();
+//!         let open_device = hal_adapter.open_with_callback(
+//!             descriptor.required_features,
+//!             &descriptor.required_limits,
+//!             &descriptor.memory_hints,
+//!             Some(setup.create_device_callback()),
+//!         )?;
+//!         adapter.create_device_from_hal(open_device, &descriptor)?
+//!     }
+//! } else {
+//!     pollster::block_on(adapter.request_device(&descriptor))?
+//! };
+//!
+//! let context = setup.into_context(&device)?;
+//!
+//! // On a decoder worker thread, never on the render thread:
+//! let mut decoder = context.create_h264_decoder()?;
+//! for (access_unit, pts) in annex_b_access_units {
+//!     for frame in decoder.push_access_unit(access_unit, pts)? {
+//!         // `frame.y` and `frame.uv` are the NV12 plane views, ready for sampling.
+//!     }
+//! }
+//! for frame in decoder.flush()? {
+//!     // The last frames, once the stream ended.
+//! }
+//! ```
 
 mod context;
 mod decoder;

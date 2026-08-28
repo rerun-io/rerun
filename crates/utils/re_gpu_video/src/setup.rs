@@ -56,11 +56,8 @@ impl VideoDeviceSetup {
 
     /// Vulkan only, see [`Self::needs_hal_device_creation`].
     ///
-    /// The returned callback pushes the video extensions, queue create infos for the decode
-    /// and copy queues, and required feature structs onto the device create info.
-    ///
-    /// Borrows `self` mutably so that structs owned by the setup outlive the create info's
-    /// pnext chain.
+    /// The returned callback adds the video extensions, the decode and copy queues,
+    /// and the required feature structs to the device create info.
     ///
     /// # Panics
     ///
