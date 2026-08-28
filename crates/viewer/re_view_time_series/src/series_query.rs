@@ -9,8 +9,8 @@ use re_log_types::TimeInt;
 use re_log_types::external::arrow::array::AsArray as _;
 use re_log_types::external::arrow::buffer::BooleanBuffer;
 use re_log_types::external::arrow::datatypes::UInt32Type;
-use re_sdk_types::external::arrow::datatypes::DataType as ArrowDatatype;
-use re_sdk_types::{ArrowDatatype as _, ComponentDescriptor, RowId, archetypes, components};
+use re_sdk_types::external::arrow::datatypes::DataType as ArrowDataType;
+use re_sdk_types::{ArrowDataType as _, ComponentDescriptor, RowId, archetypes, components};
 use re_view::clamped_or_nothing;
 use re_viewer_context::{ViewQuery, ViewerReportSeverity};
 
@@ -203,7 +203,7 @@ pub fn collect_colors(
     let query_ctx = query_results.query_context();
     let num_series = points_per_series.len();
 
-    re_log::debug_assert_eq!(components::Color::arrow_datatype(), ArrowDatatype::UInt32);
+    re_log::debug_assert_eq!(components::Color::arrow_data_type(), ArrowDataType::UInt32);
 
     fn map_raw_color(raw: &u32) -> re_renderer::Color32 {
         let [a, b, g, r] = raw.to_le_bytes();

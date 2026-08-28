@@ -10,7 +10,7 @@
 //! [`ComponentBatch`]: the atomic unit of (de)serialization.
 //!
 //! Conversion to and from Arrow is split across five traits, so that each type only implements
-//! the conversions that make sense for it: [`ArrowDatatype`], [`ToArrow`], [`ToArrowOpt`],
+//! the conversions that make sense for it: [`ArrowDataType`], [`ToArrow`], [`ToArrowOpt`],
 //! [`FromArrow`] and [`FromArrowOpt`].
 //! A [`Component`] requires [`ToArrow`] and [`FromArrow`]; the nullable variants are optional
 //! and being phased out.
@@ -61,7 +61,7 @@ pub use self::component_descriptor::{
 pub use self::dynamic_archetype::DynamicArchetype;
 pub use self::layer_name::{InvalidLayerNameError, LayerName};
 pub use self::loggable::{
-    ArrowDatatype, Component, ComponentSet, ComponentType, FromArrow, FromArrowOpt, ToArrow,
+    ArrowDataType, Component, ComponentSet, ComponentType, FromArrow, FromArrowOpt, ToArrow,
     ToArrowOpt, UnorderedComponentSet, from_arrow_opt_via_from_arrow,
     from_arrow_via_from_arrow_opt, to_arrow_via_to_arrow_opt,
 };

@@ -36,9 +36,9 @@ impl ::re_types_core::Component for AffixFuzzer12 {
 
 ::re_types_core::macros::impl_into_cow!(AffixFuzzer12);
 
-impl ::re_types_core::ArrowDatatype for AffixFuzzer12 {
+impl ::re_types_core::ArrowDataType for AffixFuzzer12 {
     #[inline]
-    fn arrow_datatype() -> arrow::datatypes::DataType {
+    fn arrow_data_type() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
         DataType::List(std::sync::Arc::new(Field::new(
             "item",
@@ -57,7 +57,7 @@ impl ::re_types_core::ToArrow for AffixFuzzer12 {
     {
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{
-            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
             arrow_helpers::as_array_ref,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
@@ -108,14 +108,14 @@ impl ::re_types_core::ToArrow for AffixFuzzer12 {
 impl ::re_types_core::FromArrow for AffixFuzzer12 {
     fn from_arrow(arrow_data: &dyn arrow::array::Array) -> DeserializationResult<Vec<Self>> {
         use ::re_types_core::{
-            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            ArrowDataType as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
             arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
         err_on_nulls(arrow_data, "rerun.testing.components.AffixFuzzer12")?;
         Ok({
             let arrow_data = arrow_data
-                .try_cast::<arrow::array::ListArray>(|| Self::arrow_datatype())
+                .try_cast::<arrow::array::ListArray>(|| Self::arrow_data_type())
                 .with_context("rerun.testing.components.AffixFuzzer12#many_strings_required")?;
             if arrow_data.is_empty() {
                 Vec::new()

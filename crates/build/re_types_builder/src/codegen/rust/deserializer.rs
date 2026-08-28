@@ -68,7 +68,7 @@ pub fn quote_arrow_deserializer(
     let data_src = format_ident!("arrow_data");
 
     let datatype = &type_registry.get(&obj.fqname);
-    let quoted_self_datatype = quote! { Self::arrow_datatype() };
+    let quoted_self_datatype = quote! { Self::arrow_data_type() };
 
     let obj_fqname = obj.fqname.as_str();
     let is_enum = obj.is_enum();
@@ -667,7 +667,7 @@ fn quote_arrow_field_deserializer(
                         .with_context(#obj_field_fqname)?
                         .into_iter()
                 } else {
-                    let expected = Self::arrow_datatype();
+                    let expected = Self::arrow_data_type();
                     let actual = arrow_data.data_type().clone();
                     return Err(DeserializationError::datatype_mismatch(expected, actual))
                         .with_context(#obj_field_fqname);

@@ -143,7 +143,7 @@ impl ::re_types_core::Archetype for EntityBehavior {
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{
-            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            ArrowDataType as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
         };
         let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
         let interactive = arrays_by_descr
@@ -193,7 +193,7 @@ impl EntityBehavior {
     /// Clear all the fields of a `EntityBehavior`.
     #[inline]
     pub fn clear_fields() -> Self {
-        use ::re_types_core::ArrowDatatype as _;
+        use ::re_types_core::ArrowDataType as _;
         Self {
             interactive: Some(SerializedComponentBatch::new(
                 crate::components::Interactive::arrow_empty(),

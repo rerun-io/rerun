@@ -34,9 +34,9 @@ pub enum ScalarUnion {
 
 ::re_types_core::macros::impl_into_cow!(ScalarUnion);
 
-impl ::re_types_core::ArrowDatatype for ScalarUnion {
+impl ::re_types_core::ArrowDataType for ScalarUnion {
     #[inline]
-    fn arrow_datatype() -> arrow::datatypes::DataType {
+    fn arrow_data_type() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
         DataType::Union(
             UnionFields::try_new(
@@ -48,7 +48,7 @@ impl ::re_types_core::ArrowDatatype for ScalarUnion {
                         "craziness",
                         DataType::List(std::sync::Arc::new(Field::new(
                             "item",
-                            <crate::testing::encodings::MixedFields>::arrow_datatype(),
+                            <crate::testing::encodings::MixedFields>::arrow_data_type(),
                             false,
                         ))),
                         false,
@@ -79,7 +79,7 @@ impl ::re_types_core::ToArrowOpt for ScalarUnion {
     {
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{
-            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
             arrow_helpers::as_array_ref,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
@@ -100,7 +100,7 @@ impl ::re_types_core::ToArrowOpt for ScalarUnion {
                     "craziness",
                     DataType::List(std::sync::Arc::new(Field::new(
                         "item",
-                        <crate::testing::encodings::MixedFields>::arrow_datatype(),
+                        <crate::testing::encodings::MixedFields>::arrow_data_type(),
                         false,
                     ))),
                     false,
@@ -196,7 +196,7 @@ impl ::re_types_core::ToArrowOpt for ScalarUnion {
                         as_array_ref(ListArray::try_new(
                             std::sync::Arc::new(Field::new(
                                 "item",
-                                <crate::testing::encodings::MixedFields>::arrow_datatype(),
+                                <crate::testing::encodings::MixedFields>::arrow_data_type(),
                                 false,
                             )),
                             offsets,
@@ -259,13 +259,13 @@ impl ::re_types_core::FromArrowOpt for ScalarUnion {
         arrow_data: &dyn arrow::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>> {
         use ::re_types_core::{
-            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            ArrowDataType as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
             arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let arrow_data = arrow_data
-                .try_cast::<arrow::array::UnionArray>(|| Self::arrow_datatype())
+                .try_cast::<arrow::array::UnionArray>(|| Self::arrow_data_type())
                 .with_context("rerun.testing.encodings.ScalarUnion")?;
             if arrow_data.is_empty() {
                 Vec::new()
@@ -274,7 +274,7 @@ impl ::re_types_core::FromArrowOpt for ScalarUnion {
                 let arrow_data_offsets = arrow_data
                     .offsets()
                     .ok_or_else(|| {
-                        let expected = Self::arrow_datatype();
+                        let expected = Self::arrow_data_type();
                         let actual = arrow_data.data_type().clone();
                         DeserializationError::datatype_mismatch(expected, actual)
                     })
@@ -301,7 +301,7 @@ impl ::re_types_core::FromArrowOpt for ScalarUnion {
                             .try_cast::<arrow::array::ListArray>(|| {
                                 DataType::List(std::sync::Arc::new(Field::new(
                                     "item",
-                                    <crate::testing::encodings::MixedFields>::arrow_datatype(),
+                                    <crate::testing::encodings::MixedFields>::arrow_data_type(),
                                     false,
                                 )))
                             })
@@ -502,7 +502,7 @@ impl ::re_types_core::FromArrowOpt for ScalarUnion {
                                         _ => {
                                             return Err(
                                                 DeserializationError::missing_union_arm(
-                                                    Self::arrow_datatype(),
+                                                    Self::arrow_data_type(),
                                                     "<invalid>",
                                                     *typ as _,
                                                 ),

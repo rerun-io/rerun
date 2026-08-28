@@ -12,19 +12,19 @@
 namespace rerun::encodings {}
 
 namespace rerun {
-    const std::shared_ptr<arrow::DataType>& Loggable<encodings::ClassDescription>::arrow_datatype(
+    const std::shared_ptr<arrow::DataType>& Loggable<encodings::ClassDescription>::arrow_data_type(
     ) {
         static const auto datatype = arrow::struct_({
             arrow::field(
                 "info",
-                Loggable<rerun::encodings::AnnotationInfo>::arrow_datatype(),
+                Loggable<rerun::encodings::AnnotationInfo>::arrow_data_type(),
                 false
             ),
             arrow::field(
                 "keypoint_annotations",
                 arrow::list(arrow::field(
                     "item",
-                    Loggable<rerun::encodings::AnnotationInfo>::arrow_datatype(),
+                    Loggable<rerun::encodings::AnnotationInfo>::arrow_data_type(),
                     false
                 )),
                 false
@@ -33,7 +33,7 @@ namespace rerun {
                 "keypoint_connections",
                 arrow::list(arrow::field(
                     "item",
-                    Loggable<rerun::encodings::KeypointPair>::arrow_datatype(),
+                    Loggable<rerun::encodings::KeypointPair>::arrow_data_type(),
                     false
                 )),
                 false
@@ -47,7 +47,7 @@ namespace rerun {
     ) {
         // TODO(andreas): Allow configuring the memory pool.
         arrow::MemoryPool* pool = arrow::default_memory_pool();
-        auto datatype = arrow_datatype();
+        auto datatype = arrow_data_type();
 
         ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(datatype, pool))
         if (instances && num_instances > 0) {

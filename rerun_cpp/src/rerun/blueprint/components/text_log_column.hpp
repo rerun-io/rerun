@@ -49,8 +49,8 @@ namespace rerun {
             "rerun.blueprint.components.TextLogColumn";
 
         /// Returns the arrow data type this type corresponds to.
-        static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
-            return Loggable<rerun::blueprint::encodings::TextLogColumn>::arrow_datatype();
+        static const std::shared_ptr<arrow::DataType>& arrow_data_type() {
+            return Loggable<rerun::blueprint::encodings::TextLogColumn>::arrow_data_type();
         }
 
         /// Serializes an array of `rerun::blueprint:: components::TextLogColumn` into an arrow array.

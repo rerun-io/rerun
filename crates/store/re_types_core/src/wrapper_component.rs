@@ -1,7 +1,7 @@
 use re_byte_size::SizeBytes;
 
 use crate::{
-    ArrowDatatype, Component, ComponentType, DeserializationResult, FromArrow, FromArrowOpt,
+    ArrowDataType, Component, ComponentType, DeserializationResult, FromArrow, FromArrowOpt,
     SerializationResult, ToArrow, ToArrowOpt,
 };
 
@@ -22,7 +22,7 @@ pub trait WrapperComponent:
     + std::ops::Deref<Target = Self::Encoding>
 {
     /// The underlying encoding for this component.
-    type Encoding: ArrowDatatype + Sized;
+    type Encoding: ArrowDataType + Sized;
 
     /// The fully-qualified type of this component, e.g. `rerun.components.Position2D`.
     fn name() -> ComponentType;
@@ -40,10 +40,10 @@ where
     }
 }
 
-impl<T: WrapperComponent> ArrowDatatype for T {
+impl<T: WrapperComponent> ArrowDataType for T {
     #[inline]
-    fn arrow_datatype() -> arrow::datatypes::DataType {
-        <Self as WrapperComponent>::Encoding::arrow_datatype()
+    fn arrow_data_type() -> arrow::datatypes::DataType {
+        <Self as WrapperComponent>::Encoding::arrow_data_type()
     }
 }
 

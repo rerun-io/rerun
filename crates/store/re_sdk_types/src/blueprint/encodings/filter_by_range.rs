@@ -38,17 +38,17 @@ pub struct FilterByRange {
 
 ::re_types_core::macros::impl_into_cow!(FilterByRange);
 
-impl ::re_types_core::ArrowDatatype for FilterByRange {
+impl ::re_types_core::ArrowDataType for FilterByRange {
     #[inline]
-    fn arrow_datatype() -> arrow::datatypes::DataType {
+    fn arrow_data_type() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
         DataType::Struct(Fields::from(vec![
             Field::new(
                 "start",
-                <crate::encodings::TimeInt>::arrow_datatype(),
+                <crate::encodings::TimeInt>::arrow_data_type(),
                 false,
             ),
-            Field::new("end", <crate::encodings::TimeInt>::arrow_datatype(), false),
+            Field::new("end", <crate::encodings::TimeInt>::arrow_data_type(), false),
         ]))
     }
 }
@@ -62,7 +62,7 @@ impl ::re_types_core::ToArrow for FilterByRange {
     {
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{
-            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
             arrow_helpers::as_array_ref,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
@@ -70,10 +70,10 @@ impl ::re_types_core::ToArrow for FilterByRange {
             let fields = Fields::from(vec![
                 Field::new(
                     "start",
-                    <crate::encodings::TimeInt>::arrow_datatype(),
+                    <crate::encodings::TimeInt>::arrow_data_type(),
                     false,
                 ),
-                Field::new("end", <crate::encodings::TimeInt>::arrow_datatype(), false),
+                Field::new("end", <crate::encodings::TimeInt>::arrow_data_type(), false),
             ]);
             let data: Vec<_> = data
                 .into_iter()
@@ -135,7 +135,7 @@ impl ::re_types_core::ToArrow for FilterByRange {
 impl ::re_types_core::FromArrow for FilterByRange {
     fn from_arrow(arrow_data: &dyn arrow::array::Array) -> DeserializationResult<Vec<Self>> {
         use ::re_types_core::{
-            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            ArrowDataType as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
             arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
@@ -143,7 +143,7 @@ impl ::re_types_core::FromArrow for FilterByRange {
         Ok({
             {
                 let arrow_data = arrow_data
-                    .try_cast::<arrow::array::StructArray>(|| Self::arrow_datatype())
+                    .try_cast::<arrow::array::StructArray>(|| Self::arrow_data_type())
                     .with_context("rerun.blueprint.encodings.FilterByRange")?;
                 if arrow_data.is_empty() {
                     Vec::new()
@@ -158,7 +158,7 @@ impl ::re_types_core::FromArrow for FilterByRange {
                     let start = {
                         if !arrays_by_name.contains_key("start") {
                             return Err(DeserializationError::missing_struct_field(
-                                Self::arrow_datatype(),
+                                Self::arrow_data_type(),
                                 "start",
                             ))
                             .with_context("rerun.blueprint.encodings.FilterByRange");
@@ -173,7 +173,7 @@ impl ::re_types_core::FromArrow for FilterByRange {
                     let end = {
                         if !arrays_by_name.contains_key("end") {
                             return Err(DeserializationError::missing_struct_field(
-                                Self::arrow_datatype(),
+                                Self::arrow_data_type(),
                                 "end",
                             ))
                             .with_context("rerun.blueprint.encodings.FilterByRange");

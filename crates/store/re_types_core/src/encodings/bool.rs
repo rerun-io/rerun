@@ -33,9 +33,9 @@ pub struct Bool(pub bool);
 
 crate::macros::impl_into_cow!(Bool);
 
-impl crate::ArrowDatatype for Bool {
+impl crate::ArrowDataType for Bool {
     #[inline]
-    fn arrow_datatype() -> arrow::datatypes::DataType {
+    fn arrow_data_type() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
         DataType::Boolean
     }
@@ -50,7 +50,7 @@ impl crate::ToArrow for Bool {
     {
         #![allow(clippy::manual_is_variant_and)]
         use crate::{
-            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
             arrow_helpers::as_array_ref,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
@@ -74,13 +74,13 @@ impl crate::ToArrow for Bool {
 impl crate::FromArrow for Bool {
     fn from_arrow(arrow_data: &dyn arrow::array::Array) -> DeserializationResult<Vec<Self>> {
         use crate::{
-            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            ArrowDataType as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
             arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
         err_on_nulls(arrow_data, "rerun.encodings.Bool")?;
         Ok(arrow_data
-            .try_cast::<BooleanArray>(|| Self::arrow_datatype())
+            .try_cast::<BooleanArray>(|| Self::arrow_data_type())
             .with_context("rerun.encodings.Bool#value")?
             .values()
             .iter()

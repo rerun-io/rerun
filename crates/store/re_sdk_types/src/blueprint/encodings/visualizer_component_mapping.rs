@@ -52,15 +52,15 @@ pub struct VisualizerComponentMapping {
 
 ::re_types_core::macros::impl_into_cow!(VisualizerComponentMapping);
 
-impl ::re_types_core::ArrowDatatype for VisualizerComponentMapping {
+impl ::re_types_core::ArrowDataType for VisualizerComponentMapping {
     #[inline]
-    fn arrow_datatype() -> arrow::datatypes::DataType {
+    fn arrow_data_type() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
         DataType::Struct(Fields::from(vec![
-            Field::new("target", <crate::encodings::Utf8>::arrow_datatype(), false),
+            Field::new("target", <crate::encodings::Utf8>::arrow_data_type(), false),
             Field::new(
                 "source_kind",
-                <crate::blueprint::encodings::ComponentSourceKind>::arrow_datatype(),
+                <crate::blueprint::encodings::ComponentSourceKind>::arrow_data_type(),
                 false,
             ),
             Field::new("source_component", DataType::Utf8, true),
@@ -78,16 +78,16 @@ impl ::re_types_core::ToArrow for VisualizerComponentMapping {
     {
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{
-            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
             arrow_helpers::as_array_ref,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let fields = Fields::from(vec![
-                Field::new("target", <crate::encodings::Utf8>::arrow_datatype(), false),
+                Field::new("target", <crate::encodings::Utf8>::arrow_data_type(), false),
                 Field::new(
                     "source_kind",
-                    <crate::blueprint::encodings::ComponentSourceKind>::arrow_datatype(),
+                    <crate::blueprint::encodings::ComponentSourceKind>::arrow_data_type(),
                     false,
                 ),
                 Field::new("source_component", DataType::Utf8, true),
@@ -235,7 +235,7 @@ impl ::re_types_core::ToArrow for VisualizerComponentMapping {
 impl ::re_types_core::FromArrow for VisualizerComponentMapping {
     fn from_arrow(arrow_data: &dyn arrow::array::Array) -> DeserializationResult<Vec<Self>> {
         use ::re_types_core::{
-            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            ArrowDataType as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
             arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
@@ -247,7 +247,9 @@ impl ::re_types_core::FromArrow for VisualizerComponentMapping {
             {
                 {
                     let arrow_data = arrow_data
-                        .try_cast::<arrow::array::StructArray>(|| Self::arrow_datatype())
+                        .try_cast::<
+                            arrow::array::StructArray,
+                        >(|| Self::arrow_data_type())
                         .with_context(
                             "rerun.blueprint.encodings.VisualizerComponentMapping",
                         )?;
@@ -267,7 +269,7 @@ impl ::re_types_core::FromArrow for VisualizerComponentMapping {
                             if !arrays_by_name.contains_key("target") {
                                 return Err(
                                         DeserializationError::missing_struct_field(
-                                            Self::arrow_datatype(),
+                                            Self::arrow_data_type(),
                                             "target",
                                         ),
                                     )
@@ -327,7 +329,7 @@ impl ::re_types_core::FromArrow for VisualizerComponentMapping {
                             if !arrays_by_name.contains_key("source_kind") {
                                 return Err(
                                         DeserializationError::missing_struct_field(
-                                            Self::arrow_datatype(),
+                                            Self::arrow_data_type(),
                                             "source_kind",
                                         ),
                                     )
@@ -348,7 +350,7 @@ impl ::re_types_core::FromArrow for VisualizerComponentMapping {
                             if !arrays_by_name.contains_key("source_component") {
                                 return Err(
                                         DeserializationError::missing_struct_field(
-                                            Self::arrow_datatype(),
+                                            Self::arrow_data_type(),
                                             "source_component",
                                         ),
                                     )
@@ -405,7 +407,7 @@ impl ::re_types_core::FromArrow for VisualizerComponentMapping {
                             if !arrays_by_name.contains_key("selector") {
                                 return Err(
                                         DeserializationError::missing_struct_field(
-                                            Self::arrow_datatype(),
+                                            Self::arrow_data_type(),
                                             "selector",
                                         ),
                                     )

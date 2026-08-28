@@ -49,8 +49,8 @@ namespace rerun {
         static constexpr std::string_view ComponentType = "rerun.testing.components.ManyVec3";
 
         /// Returns the arrow data type this type corresponds to.
-        static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
-            return Loggable<rerun::encodings::ManyVec3>::arrow_datatype();
+        static const std::shared_ptr<arrow::DataType>& arrow_data_type() {
+            return Loggable<rerun::encodings::ManyVec3>::arrow_data_type();
         }
 
         /// Serializes an array of `rerun::components::ManyVec3` into an arrow array.

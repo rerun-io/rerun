@@ -48,10 +48,10 @@ impl From<f32> for Confidence {
     }
 }
 
-impl rerun::ArrowDatatype for Confidence {
+impl rerun::ArrowDataType for Confidence {
     #[inline]
-    fn arrow_datatype() -> arrow::datatypes::DataType {
-        <rerun::Float32 as rerun::ArrowDatatype>::arrow_datatype()
+    fn arrow_data_type() -> arrow::datatypes::DataType {
+        <rerun::Float32 as rerun::ArrowDataType>::arrow_data_type()
     }
 }
 

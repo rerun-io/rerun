@@ -233,8 +233,8 @@ mod tests {
 
     crate::macros::impl_into_cow!(MyColor);
 
-    impl crate::ArrowDatatype for MyColor {
-        fn arrow_datatype() -> arrow::datatypes::DataType {
+    impl crate::ArrowDataType for MyColor {
+        fn arrow_data_type() -> arrow::datatypes::DataType {
             arrow::datatypes::DataType::UInt32
         }
     }

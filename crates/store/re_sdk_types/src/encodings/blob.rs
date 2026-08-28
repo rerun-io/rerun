@@ -33,9 +33,9 @@ pub struct Blob(pub ::arrow::buffer::ScalarBuffer<u8>);
 
 ::re_types_core::macros::impl_into_cow!(Blob);
 
-impl ::re_types_core::ArrowDatatype for Blob {
+impl ::re_types_core::ArrowDataType for Blob {
     #[inline]
-    fn arrow_datatype() -> arrow::datatypes::DataType {
+    fn arrow_data_type() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
         DataType::List(std::sync::Arc::new(Field::new(
             "item",
@@ -54,7 +54,7 @@ impl ::re_types_core::ToArrowOpt for Blob {
     {
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{
-            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
             arrow_helpers::as_array_ref,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
@@ -116,13 +116,13 @@ impl ::re_types_core::FromArrowOpt for Blob {
         arrow_data: &dyn arrow::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>> {
         use ::re_types_core::{
-            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            ArrowDataType as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
             arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let arrow_data = arrow_data
-                .try_cast::<arrow::array::ListArray>(|| Self::arrow_datatype())
+                .try_cast::<arrow::array::ListArray>(|| Self::arrow_data_type())
                 .with_context("rerun.encodings.Blob#data")?;
             if arrow_data.is_empty() {
                 Vec::new()

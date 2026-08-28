@@ -36,19 +36,19 @@ pub struct KeypointPair {
 
 ::re_types_core::macros::impl_into_cow!(KeypointPair);
 
-impl ::re_types_core::ArrowDatatype for KeypointPair {
+impl ::re_types_core::ArrowDataType for KeypointPair {
     #[inline]
-    fn arrow_datatype() -> arrow::datatypes::DataType {
+    fn arrow_data_type() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
         DataType::Struct(Fields::from(vec![
             Field::new(
                 "keypoint0",
-                <crate::encodings::KeypointId>::arrow_datatype(),
+                <crate::encodings::KeypointId>::arrow_data_type(),
                 false,
             ),
             Field::new(
                 "keypoint1",
-                <crate::encodings::KeypointId>::arrow_datatype(),
+                <crate::encodings::KeypointId>::arrow_data_type(),
                 false,
             ),
         ]))
@@ -64,7 +64,7 @@ impl ::re_types_core::ToArrowOpt for KeypointPair {
     {
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{
-            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
             arrow_helpers::as_array_ref,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
@@ -72,12 +72,12 @@ impl ::re_types_core::ToArrowOpt for KeypointPair {
             let fields = Fields::from(vec![
                 Field::new(
                     "keypoint0",
-                    <crate::encodings::KeypointId>::arrow_datatype(),
+                    <crate::encodings::KeypointId>::arrow_data_type(),
                     false,
                 ),
                 Field::new(
                     "keypoint1",
-                    <crate::encodings::KeypointId>::arrow_datatype(),
+                    <crate::encodings::KeypointId>::arrow_data_type(),
                     false,
                 ),
             ]);
@@ -149,13 +149,13 @@ impl ::re_types_core::FromArrowOpt for KeypointPair {
         arrow_data: &dyn arrow::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>> {
         use ::re_types_core::{
-            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            ArrowDataType as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
             arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let arrow_data = arrow_data
-                .try_cast::<arrow::array::StructArray>(|| Self::arrow_datatype())
+                .try_cast::<arrow::array::StructArray>(|| Self::arrow_data_type())
                 .with_context("rerun.encodings.KeypointPair")?;
             if arrow_data.is_empty() {
                 Vec::new()
@@ -170,7 +170,7 @@ impl ::re_types_core::FromArrowOpt for KeypointPair {
                 let keypoint0 = {
                     if !arrays_by_name.contains_key("keypoint0") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
+                            Self::arrow_data_type(),
                             "keypoint0",
                         ))
                         .with_context("rerun.encodings.KeypointPair");
@@ -185,7 +185,7 @@ impl ::re_types_core::FromArrowOpt for KeypointPair {
                 let keypoint1 = {
                     if !arrays_by_name.contains_key("keypoint1") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
+                            Self::arrow_data_type(),
                             "keypoint1",
                         ))
                         .with_context("rerun.encodings.KeypointPair");

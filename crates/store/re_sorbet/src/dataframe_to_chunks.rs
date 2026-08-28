@@ -14,7 +14,7 @@ use arrow::datatypes::{Field as ArrowField, Schema as ArrowSchema};
 
 use re_arrow_util::RecordBatchExt as _;
 use re_log_types::{EntityPath, TimelineName};
-use re_types_core::{ArrowDatatype as _, ChunkId, FIELD_METADATA_KEY_COMPONENT, RowId};
+use re_types_core::{ArrowDataType as _, ChunkId, FIELD_METADATA_KEY_COMPONENT, RowId};
 
 use crate::{
     BatchType, ChunkBatch, ComponentColumnDescriptor, IndexColumnDescriptor, MetadataExt as _,
@@ -555,7 +555,7 @@ fn mint_row_ids(count: usize) -> arrow::array::FixedSizeBinaryArray {
         next = next.next();
     }
     re_log::debug_assert_eq!(
-        RowId::arrow_datatype(),
+        RowId::arrow_data_type(),
         arrow::datatypes::DataType::FixedSizeBinary(16)
     );
     RowId::arrow_from_slice(&ids)
@@ -572,7 +572,7 @@ mod tests {
         TimestampNanosecondArray,
     };
     use arrow::datatypes::{
-        DataType as ArrowDatatype, Field as ArrowField, Schema as ArrowSchema, TimeUnit,
+        DataType as ArrowDataType, Field as ArrowField, Schema as ArrowSchema, TimeUnit,
     };
     use re_log_types::{EntityPath, TimelineName};
     use re_types_core::{FromArrow as _, RowId};
@@ -583,7 +583,7 @@ mod tests {
         metadata::{RERUN_CHUNK_ID, RERUN_KIND, SORBET_ENTITY_PATH, SORBET_INDEX_NAME},
     };
 
-    fn field(name: &str, dt: ArrowDatatype, meta: &[(&str, &str)]) -> ArrowField {
+    fn field(name: &str, dt: ArrowDataType, meta: &[(&str, &str)]) -> ArrowField {
         ArrowField::new(name, dt, true).with_metadata(
             meta.iter()
                 .map(|(k, v)| ((*k).to_owned(), (*v).to_owned()))
@@ -625,10 +625,10 @@ mod tests {
     fn auto_temporal() {
         let rb = batch(
             vec![
-                field("frame", ArrowDatatype::Int64, &[(RERUN_KIND, "index")]),
+                field("frame", ArrowDataType::Int64, &[(RERUN_KIND, "index")]),
                 field(
                     "/e:c",
-                    ArrowDatatype::Float32,
+                    ArrowDataType::Float32,
                     &[(SORBET_ENTITY_PATH, "/e")],
                 ),
             ],
@@ -656,12 +656,12 @@ mod tests {
             vec![
                 field(
                     "frame",
-                    ArrowDatatype::Int64,
+                    ArrowDataType::Int64,
                     &[(SORBET_INDEX_NAME, "frame")],
                 ),
                 field(
                     "/e:c",
-                    ArrowDatatype::Float32,
+                    ArrowDataType::Float32,
                     &[(SORBET_ENTITY_PATH, "/e")],
                 ),
             ],
@@ -680,10 +680,10 @@ mod tests {
     fn plain_component_array_is_list_wrapped() {
         let rb = batch(
             vec![
-                field("frame", ArrowDatatype::Int64, &[(RERUN_KIND, "index")]),
+                field("frame", ArrowDataType::Int64, &[(RERUN_KIND, "index")]),
                 field(
                     "/e:c",
-                    ArrowDatatype::Float32,
+                    ArrowDataType::Float32,
                     &[(SORBET_ENTITY_PATH, "/e")],
                 ),
             ],
@@ -694,7 +694,7 @@ mod tests {
             chunk_batches_from_dataframe_record_batch(&rb, &DataframeIndex::Auto, None).unwrap();
         let (_descr, array) = chunks[0].component_columns().next().unwrap();
         assert!(
-            matches!(array.data_type(), ArrowDatatype::List(_)),
+            matches!(array.data_type(), ArrowDataType::List(_)),
             "component column should be list-wrapped, got {:?}",
             array.data_type()
         );
@@ -706,7 +706,7 @@ mod tests {
         let rb = batch(
             vec![field(
                 "/e:c",
-                ArrowDatatype::Float32,
+                ArrowDataType::Float32,
                 &[(SORBET_ENTITY_PATH, "/e")],
             )],
             vec![floats(&[1.0, 2.0])],
@@ -720,14 +720,14 @@ mod tests {
     /// `Columns` promotes the named columns, with their time type taken from the Arrow dtype.
     #[test]
     fn columns_promotion_time_types() {
-        let cases: Vec<(ArrowDatatype, ArrowArrayRef)> = vec![
-            (ArrowDatatype::Int64, int64(&[0, 1])),
+        let cases: Vec<(ArrowDataType, ArrowArrayRef)> = vec![
+            (ArrowDataType::Int64, int64(&[0, 1])),
             (
-                ArrowDatatype::Timestamp(TimeUnit::Nanosecond, None),
+                ArrowDataType::Timestamp(TimeUnit::Nanosecond, None),
                 Arc::new(TimestampNanosecondArray::from(vec![0, 1])),
             ),
             (
-                ArrowDatatype::Duration(TimeUnit::Nanosecond),
+                ArrowDataType::Duration(TimeUnit::Nanosecond),
                 Arc::new(DurationNanosecondArray::from(vec![0, 1])),
             ),
         ];
@@ -737,7 +737,7 @@ mod tests {
                     field("t", dt.clone(), &[]),
                     field(
                         "/e:c",
-                        ArrowDatatype::Float32,
+                        ArrowDataType::Float32,
                         &[(SORBET_ENTITY_PATH, "/e")],
                     ),
                 ],
@@ -762,12 +762,12 @@ mod tests {
             vec![
                 field(
                     "t",
-                    ArrowDatatype::Timestamp(TimeUnit::Microsecond, None),
+                    ArrowDataType::Timestamp(TimeUnit::Microsecond, None),
                     &[],
                 ),
                 field(
                     "/e:c",
-                    ArrowDatatype::Float32,
+                    ArrowDataType::Float32,
                     &[(SORBET_ENTITY_PATH, "/e")],
                 ),
             ],
@@ -798,7 +798,7 @@ mod tests {
         let rb = batch(
             vec![field(
                 "/e:c",
-                ArrowDatatype::Float32,
+                ArrowDataType::Float32,
                 &[(SORBET_ENTITY_PATH, "/e")],
             )],
             vec![floats(&[1.0, 2.0])],
@@ -821,10 +821,10 @@ mod tests {
     fn null_index_value_rejected() {
         let rb = batch(
             vec![
-                field("frame", ArrowDatatype::Int64, &[(RERUN_KIND, "index")]),
+                field("frame", ArrowDataType::Int64, &[(RERUN_KIND, "index")]),
                 field(
                     "/e:c",
-                    ArrowDatatype::Float32,
+                    ArrowDataType::Float32,
                     &[(SORBET_ENTITY_PATH, "/e")],
                 ),
             ],
@@ -848,7 +848,7 @@ mod tests {
         let rb = batch(
             vec![field(
                 "/e:c",
-                ArrowDatatype::Float32,
+                ArrowDataType::Float32,
                 &[(SORBET_ENTITY_PATH, "/e")],
             )],
             vec![floats(&[1.0])],
@@ -861,10 +861,10 @@ mod tests {
 
         let rb = batch(
             vec![
-                field("frame", ArrowDatatype::Int64, &[(RERUN_KIND, "index")]),
+                field("frame", ArrowDataType::Int64, &[(RERUN_KIND, "index")]),
                 field(
                     "/e:c",
-                    ArrowDatatype::Float32,
+                    ArrowDataType::Float32,
                     &[(SORBET_ENTITY_PATH, "/e")],
                 ),
             ],
@@ -884,15 +884,15 @@ mod tests {
     fn multi_entity_split_order() {
         let rb = batch(
             vec![
-                field("frame", ArrowDatatype::Int64, &[(RERUN_KIND, "index")]),
+                field("frame", ArrowDataType::Int64, &[(RERUN_KIND, "index")]),
                 field(
                     "/b:c",
-                    ArrowDatatype::Float32,
+                    ArrowDataType::Float32,
                     &[(SORBET_ENTITY_PATH, "/b")],
                 ),
                 field(
                     "/a:c",
-                    ArrowDatatype::Float32,
+                    ArrowDataType::Float32,
                     &[(SORBET_ENTITY_PATH, "/a")],
                 ),
             ],
@@ -919,9 +919,9 @@ mod tests {
     fn batch_level_entity_path_wins_over_name_convention() {
         let rb = batch(
             vec![
-                field("frame", ArrowDatatype::Int64, &[(RERUN_KIND, "index")]),
+                field("frame", ArrowDataType::Int64, &[(RERUN_KIND, "index")]),
                 // A conventional name that *would* resolve to `/a`, but no own entity metadata.
-                field("/a:c", ArrowDatatype::Float32, &[]),
+                field("/a:c", ArrowDataType::Float32, &[]),
             ],
             vec![int64(&[0, 1]), floats(&[1.0, 2.0])],
             &[(SORBET_ENTITY_PATH, "/batch")],
@@ -937,8 +937,8 @@ mod tests {
     fn name_convention_extracts_component_id() {
         let rb = batch(
             vec![
-                field("frame", ArrowDatatype::Int64, &[(RERUN_KIND, "index")]),
-                field("/points:Points3D:positions", ArrowDatatype::Float32, &[]),
+                field("frame", ArrowDataType::Int64, &[(RERUN_KIND, "index")]),
+                field("/points:Points3D:positions", ArrowDataType::Float32, &[]),
             ],
             vec![int64(&[0, 1]), floats(&[1.0, 2.0])],
             &[],
@@ -962,8 +962,8 @@ mod tests {
         for (name, expected_entity) in cases {
             let rb = batch(
                 vec![
-                    field("frame", ArrowDatatype::Int64, &[(RERUN_KIND, "index")]),
-                    field(name, ArrowDatatype::Float32, &[]),
+                    field("frame", ArrowDataType::Int64, &[(RERUN_KIND, "index")]),
+                    field(name, ArrowDataType::Float32, &[]),
                 ],
                 vec![int64(&[0, 1]), floats(&[1.0, 2.0])],
                 &[],
@@ -984,8 +984,8 @@ mod tests {
     fn entity_path_arg_default() {
         let rb = batch(
             vec![
-                field("frame", ArrowDatatype::Int64, &[(RERUN_KIND, "index")]),
-                field("bare", ArrowDatatype::Float32, &[]),
+                field("frame", ArrowDataType::Int64, &[(RERUN_KIND, "index")]),
+                field("bare", ArrowDataType::Float32, &[]),
             ],
             vec![int64(&[0, 1]), floats(&[1.0, 2.0])],
             &[],
@@ -1005,7 +1005,7 @@ mod tests {
         let rb = batch(
             vec![field(
                 "frame",
-                ArrowDatatype::Int64,
+                ArrowDataType::Int64,
                 &[(RERUN_KIND, "index")],
             )],
             vec![int64(&[0, 1])],
@@ -1043,7 +1043,7 @@ mod tests {
         let schema = Arc::new(ArrowSchema::new_with_metadata(
             vec![
                 RowIdColumnDescriptor::from_sorted(true).to_arrow_field(),
-                field("c", ArrowDatatype::Float32, component_meta),
+                field("c", ArrowDataType::Float32, component_meta),
             ],
             batch_meta.into_iter().collect(),
         ));
@@ -1080,7 +1080,7 @@ mod tests {
         let schema = Arc::new(ArrowSchema::new_with_metadata(
             vec![
                 row_id_field,
-                field("c", ArrowDatatype::Float32, &[(RERUN_KIND, "data")]),
+                field("c", ArrowDataType::Float32, &[(RERUN_KIND, "data")]),
             ],
             [
                 (RERUN_CHUNK_ID.to_owned(), chunk_id.to_string()),
@@ -1135,10 +1135,10 @@ mod tests {
         let schema = Arc::new(ArrowSchema::new_with_metadata(
             vec![
                 RowIdColumnDescriptor::from_sorted(true).to_arrow_field(),
-                field("frame", ArrowDatatype::Int64, &[(RERUN_KIND, "index")]),
+                field("frame", ArrowDataType::Int64, &[(RERUN_KIND, "index")]),
                 field(
                     "c",
-                    ArrowDatatype::Float32,
+                    ArrowDataType::Float32,
                     &[(RERUN_KIND, "data"), (SORBET_ENTITY_PATH, "/foo")],
                 ),
             ],
@@ -1193,15 +1193,15 @@ mod tests {
         let schema = Arc::new(ArrowSchema::new_with_metadata(
             vec![
                 RowIdColumnDescriptor::from_sorted(true).to_arrow_field(),
-                field("frame", ArrowDatatype::Int64, &[(RERUN_KIND, "index")]),
+                field("frame", ArrowDataType::Int64, &[(RERUN_KIND, "index")]),
                 field(
                     "x",
-                    ArrowDatatype::Float32,
+                    ArrowDataType::Float32,
                     &[(RERUN_KIND, "data"), (SORBET_ENTITY_PATH, "/a")],
                 ),
                 field(
                     "y",
-                    ArrowDatatype::Float32,
+                    ArrowDataType::Float32,
                     &[(RERUN_KIND, "data"), (SORBET_ENTITY_PATH, "/b")],
                 ),
             ],
@@ -1238,12 +1238,12 @@ mod tests {
                 RowIdColumnDescriptor::from_sorted(true).to_arrow_field(),
                 field(
                     "x",
-                    ArrowDatatype::Float32,
+                    ArrowDataType::Float32,
                     &[(RERUN_KIND, "data"), (SORBET_ENTITY_PATH, "/a")],
                 ),
                 field(
                     "y",
-                    ArrowDatatype::Float32,
+                    ArrowDataType::Float32,
                     &[(RERUN_KIND, "data"), (SORBET_ENTITY_PATH, "/b")],
                 ),
             ],
@@ -1306,10 +1306,10 @@ mod tests {
     fn assembly_is_a_valid_chunk_batch() {
         let rb = batch(
             vec![
-                field("frame", ArrowDatatype::Int64, &[(RERUN_KIND, "index")]),
+                field("frame", ArrowDataType::Int64, &[(RERUN_KIND, "index")]),
                 field(
                     "/e:c",
-                    ArrowDatatype::Float32,
+                    ArrowDataType::Float32,
                     &[(SORBET_ENTITY_PATH, "/e")],
                 ),
             ],

@@ -541,16 +541,16 @@ impl std::ops::Div<&'static str> for EntityPath {
 
 // ----------------------------------------------------------------------------
 
-use re_types_core::{ArrowDatatype, FromArrow, ToArrow};
+use re_types_core::{ArrowDataType, FromArrow, ToArrow};
 
 use super::entity_path_part::RESERVED_NAMESPACE_PREFIX;
 
 re_types_core::macros::impl_into_cow!(EntityPath);
 
-impl ArrowDatatype for EntityPath {
+impl ArrowDataType for EntityPath {
     #[inline]
-    fn arrow_datatype() -> arrow::datatypes::DataType {
-        re_types_core::encodings::Utf8::arrow_datatype()
+    fn arrow_data_type() -> arrow::datatypes::DataType {
+        re_types_core::encodings::Utf8::arrow_data_type()
     }
 }
 

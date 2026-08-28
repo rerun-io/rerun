@@ -52,9 +52,9 @@ pub struct TensorData {
 
 ::re_types_core::macros::impl_into_cow!(TensorData);
 
-impl ::re_types_core::ArrowDatatype for TensorData {
+impl ::re_types_core::ArrowDataType for TensorData {
     #[inline]
-    fn arrow_datatype() -> arrow::datatypes::DataType {
+    fn arrow_data_type() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
         DataType::Struct(Fields::from(vec![
             Field::new(
@@ -77,7 +77,7 @@ impl ::re_types_core::ArrowDatatype for TensorData {
             ),
             Field::new(
                 "buffer",
-                <crate::encodings::TensorBuffer>::arrow_datatype(),
+                <crate::encodings::TensorBuffer>::arrow_data_type(),
                 true,
             ),
         ]))
@@ -93,7 +93,7 @@ impl ::re_types_core::ToArrow for TensorData {
     {
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{
-            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
             arrow_helpers::as_array_ref,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
@@ -119,7 +119,7 @@ impl ::re_types_core::ToArrow for TensorData {
                 ),
                 Field::new(
                     "buffer",
-                    <crate::encodings::TensorBuffer>::arrow_datatype(),
+                    <crate::encodings::TensorBuffer>::arrow_data_type(),
                     true,
                 ),
             ]);
@@ -248,7 +248,7 @@ impl ::re_types_core::ToArrow for TensorData {
 impl ::re_types_core::FromArrow for TensorData {
     fn from_arrow(arrow_data: &dyn arrow::array::Array) -> DeserializationResult<Vec<Self>> {
         use ::re_types_core::{
-            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            ArrowDataType as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
             arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
@@ -256,7 +256,7 @@ impl ::re_types_core::FromArrow for TensorData {
         Ok({
             {
                 let arrow_data = arrow_data
-                    .try_cast::<arrow::array::StructArray>(|| Self::arrow_datatype())
+                    .try_cast::<arrow::array::StructArray>(|| Self::arrow_data_type())
                     .with_context("rerun.encodings.TensorData")?;
                 if arrow_data.is_empty() {
                     Vec::new()
@@ -271,7 +271,7 @@ impl ::re_types_core::FromArrow for TensorData {
                     let shape = {
                         if !arrays_by_name.contains_key("shape") {
                             return Err(DeserializationError::missing_struct_field(
-                                Self::arrow_datatype(),
+                                Self::arrow_data_type(),
                                 "shape",
                             ))
                             .with_context("rerun.encodings.TensorData");
@@ -326,7 +326,7 @@ impl ::re_types_core::FromArrow for TensorData {
                     let names = {
                         if !arrays_by_name.contains_key("names") {
                             return Err(DeserializationError::missing_struct_field(
-                                Self::arrow_datatype(),
+                                Self::arrow_data_type(),
                                 "names",
                             ))
                             .with_context("rerun.encodings.TensorData");
@@ -424,7 +424,7 @@ impl ::re_types_core::FromArrow for TensorData {
                     let buffer = {
                         if !arrays_by_name.contains_key("buffer") {
                             return Err(DeserializationError::missing_struct_field(
-                                Self::arrow_datatype(),
+                                Self::arrow_data_type(),
                                 "buffer",
                             ))
                             .with_context("rerun.encodings.TensorData");

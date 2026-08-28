@@ -13,12 +13,12 @@ namespace rerun::blueprint::encodings {}
 
 namespace rerun {
     const std::shared_ptr<arrow::DataType>&
-        Loggable<blueprint::encodings::SelectedColumns>::arrow_datatype() {
+        Loggable<blueprint::encodings::SelectedColumns>::arrow_data_type() {
         static const auto datatype = arrow::struct_({
             arrow::field(
                 "time_columns",
                 arrow::list(
-                    arrow::field("item", Loggable<rerun::encodings::Utf8>::arrow_datatype(), false)
+                    arrow::field("item", Loggable<rerun::encodings::Utf8>::arrow_data_type(), false)
                 ),
                 false
             ),
@@ -26,7 +26,7 @@ namespace rerun {
                 "component_columns",
                 arrow::list(arrow::field(
                     "item",
-                    Loggable<rerun::blueprint::encodings::ComponentColumnSelector>::arrow_datatype(
+                    Loggable<rerun::blueprint::encodings::ComponentColumnSelector>::arrow_data_type(
                     ),
                     false
                 )),
@@ -41,7 +41,7 @@ namespace rerun {
     ) {
         // TODO(andreas): Allow configuring the memory pool.
         arrow::MemoryPool* pool = arrow::default_memory_pool();
-        auto datatype = arrow_datatype();
+        auto datatype = arrow_data_type();
 
         ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(datatype, pool))
         if (instances && num_instances > 0) {

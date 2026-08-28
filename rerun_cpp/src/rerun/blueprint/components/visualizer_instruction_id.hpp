@@ -58,8 +58,8 @@ namespace rerun {
             "rerun.blueprint.components.VisualizerInstructionId";
 
         /// Returns the arrow data type this type corresponds to.
-        static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
-            return Loggable<rerun::encodings::Uuid>::arrow_datatype();
+        static const std::shared_ptr<arrow::DataType>& arrow_data_type() {
+            return Loggable<rerun::encodings::Uuid>::arrow_data_type();
         }
 
         /// Serializes an array of `rerun::blueprint:: components::VisualizerInstructionId` into an arrow array.

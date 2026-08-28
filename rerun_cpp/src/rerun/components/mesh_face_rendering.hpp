@@ -51,7 +51,7 @@ namespace rerun {
         static constexpr std::string_view ComponentType = "rerun.components.MeshFaceRendering";
 
         /// Returns the arrow data type this type corresponds to.
-        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
+        static const std::shared_ptr<arrow::DataType>& arrow_data_type();
 
         /// Serializes an array of `rerun::components::MeshFaceRendering` into an arrow array.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(

@@ -36,19 +36,19 @@ pub struct VisibleTimeRange {
 
 crate::macros::impl_into_cow!(VisibleTimeRange);
 
-impl crate::ArrowDatatype for VisibleTimeRange {
+impl crate::ArrowDataType for VisibleTimeRange {
     #[inline]
-    fn arrow_datatype() -> arrow::datatypes::DataType {
+    fn arrow_data_type() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
         DataType::Struct(Fields::from(vec![
             Field::new(
                 "timeline",
-                <crate::encodings::Utf8>::arrow_datatype(),
+                <crate::encodings::Utf8>::arrow_data_type(),
                 false,
             ),
             Field::new(
                 "range",
-                <crate::encodings::TimeRange>::arrow_datatype(),
+                <crate::encodings::TimeRange>::arrow_data_type(),
                 false,
             ),
         ]))
@@ -64,7 +64,7 @@ impl crate::ToArrow for VisibleTimeRange {
     {
         #![allow(clippy::manual_is_variant_and)]
         use crate::{
-            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
             arrow_helpers::as_array_ref,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
@@ -72,12 +72,12 @@ impl crate::ToArrow for VisibleTimeRange {
             let fields = Fields::from(vec![
                 Field::new(
                     "timeline",
-                    <crate::encodings::Utf8>::arrow_datatype(),
+                    <crate::encodings::Utf8>::arrow_data_type(),
                     false,
                 ),
                 Field::new(
                     "range",
-                    <crate::encodings::TimeRange>::arrow_datatype(),
+                    <crate::encodings::TimeRange>::arrow_data_type(),
                     false,
                 ),
             ]);
@@ -152,7 +152,7 @@ impl crate::ToArrow for VisibleTimeRange {
 impl crate::FromArrow for VisibleTimeRange {
     fn from_arrow(arrow_data: &dyn arrow::array::Array) -> DeserializationResult<Vec<Self>> {
         use crate::{
-            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            ArrowDataType as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
             arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
@@ -160,7 +160,7 @@ impl crate::FromArrow for VisibleTimeRange {
         Ok({
             {
                 let arrow_data = arrow_data
-                    .try_cast::<arrow::array::StructArray>(|| Self::arrow_datatype())
+                    .try_cast::<arrow::array::StructArray>(|| Self::arrow_data_type())
                     .with_context("rerun.encodings.VisibleTimeRange")?;
                 if arrow_data.is_empty() {
                     Vec::new()
@@ -175,7 +175,7 @@ impl crate::FromArrow for VisibleTimeRange {
                     let timeline = {
                         if !arrays_by_name.contains_key("timeline") {
                             return Err(DeserializationError::missing_struct_field(
-                                Self::arrow_datatype(),
+                                Self::arrow_data_type(),
                                 "timeline",
                             ))
                             .with_context("rerun.encodings.VisibleTimeRange");
@@ -222,7 +222,7 @@ impl crate::FromArrow for VisibleTimeRange {
                     let range = {
                         if !arrays_by_name.contains_key("range") {
                             return Err(DeserializationError::missing_struct_field(
-                                Self::arrow_datatype(),
+                                Self::arrow_data_type(),
                                 "range",
                             ))
                             .with_context("rerun.encodings.VisibleTimeRange");

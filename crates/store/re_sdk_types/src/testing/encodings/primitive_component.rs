@@ -30,9 +30,9 @@ pub struct PrimitiveComponent(pub u32);
 
 ::re_types_core::macros::impl_into_cow!(PrimitiveComponent);
 
-impl ::re_types_core::ArrowDatatype for PrimitiveComponent {
+impl ::re_types_core::ArrowDataType for PrimitiveComponent {
     #[inline]
-    fn arrow_datatype() -> arrow::datatypes::DataType {
+    fn arrow_data_type() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
         DataType::UInt32
     }
@@ -47,7 +47,7 @@ impl ::re_types_core::ToArrow for PrimitiveComponent {
     {
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{
-            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
             arrow_helpers::as_array_ref,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
@@ -72,7 +72,7 @@ impl ::re_types_core::FromArrow for PrimitiveComponent {
     #[inline]
     fn from_arrow(arrow_data: &dyn arrow::array::Array) -> DeserializationResult<Vec<Self>> {
         use ::re_types_core::{
-            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            ArrowDataType as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
             arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};

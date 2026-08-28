@@ -1,5 +1,5 @@
 use arrow::datatypes::{
-    DataType as ArrowDatatype, Field as ArrowField, FieldRef as ArrowFieldRef,
+    DataType as ArrowDataType, Field as ArrowField, FieldRef as ArrowFieldRef,
     Fields as ArrowFields,
 };
 use re_log_types::EntityPath;
@@ -101,7 +101,7 @@ impl ColumnDescriptor {
     }
 
     #[inline]
-    pub fn arrow_datatype(&self) -> ArrowDatatype {
+    pub fn arrow_data_type(&self) -> ArrowDataType {
         match self {
             Self::RowId(descr) => descr.datatype(),
             Self::Time(descr) => descr.datatype().clone(),

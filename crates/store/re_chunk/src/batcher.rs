@@ -914,7 +914,7 @@ impl PendingRow {
             re_tracing::profile_scope!("iterate per timeline set");
 
             // Then we split the micro batches even further -- one sub-batch per unique set of encodings.
-            let mut per_datatype_set: IntMap<u64 /* ArrowDatatype set */, Vec<Self>> =
+            let mut per_datatype_set: IntMap<u64 /* ArrowDataType set */, Vec<Self>> =
                 Default::default();
             {
                 re_tracing::profile_scope!("compute datatype sets");

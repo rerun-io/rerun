@@ -11,9 +11,10 @@
 namespace rerun::encodings {}
 
 namespace rerun {
-    const std::shared_ptr<arrow::DataType>& Loggable<encodings::ViewCoordinates>::arrow_datatype() {
+    const std::shared_ptr<arrow::DataType>& Loggable<encodings::ViewCoordinates>::arrow_data_type(
+    ) {
         static const auto datatype = arrow::fixed_size_list(
-            arrow::field("item", Loggable<rerun::encodings::ViewDir>::arrow_datatype(), false),
+            arrow::field("item", Loggable<rerun::encodings::ViewDir>::arrow_data_type(), false),
             3
         );
         return datatype;
@@ -24,7 +25,7 @@ namespace rerun {
     ) {
         // TODO(andreas): Allow configuring the memory pool.
         arrow::MemoryPool* pool = arrow::default_memory_pool();
-        auto datatype = arrow_datatype();
+        auto datatype = arrow_data_type();
 
         ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(datatype, pool))
         if (instances && num_instances > 0) {

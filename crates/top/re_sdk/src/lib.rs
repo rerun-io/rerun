@@ -110,7 +110,7 @@ pub mod time {
 
 pub use re_sdk_types::macros;
 pub use re_sdk_types::{
-    Archetype, ArchetypeName, ArrowDatatype, AsComponents, Component, ComponentBatch,
+    Archetype, ArchetypeName, ArrowDataType, AsComponents, Component, ComponentBatch,
     ComponentDescriptor, ComponentIdentifier, ComponentType, DeserializationError,
     DeserializationResult, FromArrow, FromArrowOpt, SerializationError, SerializationResult,
     SerializedComponentBatch, SerializedComponentColumn, ToArrow, ToArrowOpt,

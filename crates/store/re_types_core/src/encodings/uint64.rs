@@ -32,9 +32,9 @@ pub struct UInt64(pub u64);
 
 crate::macros::impl_into_cow!(UInt64);
 
-impl crate::ArrowDatatype for UInt64 {
+impl crate::ArrowDataType for UInt64 {
     #[inline]
-    fn arrow_datatype() -> arrow::datatypes::DataType {
+    fn arrow_data_type() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
         DataType::UInt64
     }
@@ -49,7 +49,7 @@ impl crate::ToArrow for UInt64 {
     {
         #![allow(clippy::manual_is_variant_and)]
         use crate::{
-            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
             arrow_helpers::as_array_ref,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
@@ -74,7 +74,7 @@ impl crate::FromArrow for UInt64 {
     #[inline]
     fn from_arrow(arrow_data: &dyn arrow::array::Array) -> DeserializationResult<Vec<Self>> {
         use crate::{
-            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            ArrowDataType as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
             arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};

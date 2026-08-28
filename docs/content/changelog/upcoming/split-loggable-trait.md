@@ -17,13 +17,15 @@ Types whose Arrow encoding is never nullable had to supply a `to_arrow_opt` that
 
 `Loggable` is gone. The functions now live in separate traits, so a type implements only what makes sense for it:
 
-| Trait           | Function(s)                            | Status                     |
-| --------------- | -------------------------------------- | -------------------------- |
-| `ArrowDatatype` | `arrow_datatype`, `arrow_empty`        | supertrait of the other four |
-| `ToArrow`       | `to_arrow`                             | required by `Component`    |
-| `ToArrowOpt`    | `to_arrow_opt`                         | optional                   |
-| `FromArrow`     | `from_arrow`, `verify_arrow_array`     | required by `Component`    |
-| `FromArrowOpt`  | `from_arrow_opt`                       | optional                   |
+`Loggable::arrow_datatype` is also renamed to `ArrowDataType::arrow_data_type`, to match how Arrow itself spells it.
+
+| Trait           | Function(s)                        | Status                       |
+| --------------- | ---------------------------------- | ---------------------------- |
+| `ArrowDataType` | `arrow_data_type`, `arrow_empty`   | supertrait of the other four |
+| `ToArrow`       | `to_arrow`                         | required by `Component`      |
+| `ToArrowOpt`    | `to_arrow_opt`                     | optional                     |
+| `FromArrow`     | `from_arrow`, `verify_arrow_array` | required by `Component`      |
+| `FromArrowOpt`  | `from_arrow_opt`                   | optional                     |
 
 `Component` now requires `ToArrow + FromArrow`: a component must round-trip, but does not have to be nullable.
 
@@ -61,9 +63,9 @@ impl rerun::Loggable for Confidence {
 After:
 
 ```rust
-impl rerun::ArrowDatatype for Confidence {
-    fn arrow_datatype() -> arrow::datatypes::DataType {
-        <rerun::Float32 as rerun::ArrowDatatype>::arrow_datatype()
+impl rerun::ArrowDataType for Confidence {
+    fn arrow_data_type() -> arrow::datatypes::DataType {
+        <rerun::Float32 as rerun::ArrowDataType>::arrow_data_type()
     }
 }
 

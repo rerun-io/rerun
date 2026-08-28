@@ -137,7 +137,7 @@ impl ::re_types_core::Archetype for PlotLegend {
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{
-            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            ArrowDataType as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
         };
         let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
         let corner = arrays_by_descr
@@ -182,7 +182,7 @@ impl PlotLegend {
     /// Clear all the fields of a `PlotLegend`.
     #[inline]
     pub fn clear_fields() -> Self {
-        use ::re_types_core::ArrowDatatype as _;
+        use ::re_types_core::ArrowDataType as _;
         Self {
             corner: Some(SerializedComponentBatch::new(
                 crate::blueprint::components::Corner2D::arrow_empty(),

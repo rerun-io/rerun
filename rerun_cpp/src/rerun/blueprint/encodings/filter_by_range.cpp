@@ -12,10 +12,10 @@ namespace rerun::blueprint::encodings {}
 
 namespace rerun {
     const std::shared_ptr<arrow::DataType>&
-        Loggable<blueprint::encodings::FilterByRange>::arrow_datatype() {
+        Loggable<blueprint::encodings::FilterByRange>::arrow_data_type() {
         static const auto datatype = arrow::struct_({
-            arrow::field("start", Loggable<rerun::encodings::TimeInt>::arrow_datatype(), false),
-            arrow::field("end", Loggable<rerun::encodings::TimeInt>::arrow_datatype(), false),
+            arrow::field("start", Loggable<rerun::encodings::TimeInt>::arrow_data_type(), false),
+            arrow::field("end", Loggable<rerun::encodings::TimeInt>::arrow_data_type(), false),
         });
         return datatype;
     }
@@ -25,7 +25,7 @@ namespace rerun {
     ) {
         // TODO(andreas): Allow configuring the memory pool.
         arrow::MemoryPool* pool = arrow::default_memory_pool();
-        auto datatype = arrow_datatype();
+        auto datatype = arrow_data_type();
 
         ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(datatype, pool))
         if (instances && num_instances > 0) {

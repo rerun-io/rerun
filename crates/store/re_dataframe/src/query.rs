@@ -31,7 +31,7 @@ use re_sorbet::{
 };
 use re_span::Span;
 use re_types_core::arrow_helpers::as_array_ref;
-use re_types_core::{ArrowDatatype as _, SerializedComponentColumn, archetypes};
+use re_types_core::{ArrowDataType as _, SerializedComponentColumn, archetypes};
 
 // ---
 
@@ -1396,10 +1396,10 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                     iter_state.view_chunks.first().and_then(|vec| vec.first()),
                 )
                 .map(|(cc, cs)| as_array_ref(cc.chunk.row_ids_array().slice(cs.cursor as _, 1)))
-                .unwrap_or_else(|| arrow::array::new_null_array(&RowId::arrow_datatype(), 1)),
+                .unwrap_or_else(|| arrow::array::new_null_array(&RowId::arrow_data_type(), 1)),
 
                 ColumnDescriptor::Time(descr) => resolved.get(descr.timeline().name()).map_or_else(
-                    || arrow::array::new_null_array(&column.arrow_datatype(), 1),
+                    || arrow::array::new_null_array(&column.arrow_data_type(), 1),
                     |(_time, time_sliced)| {
                         descr.timeline().typ().make_arrow_array(time_sliced.clone())
                     },
@@ -1410,7 +1410,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                     .cloned()
                     .flatten()
                     .map(into_arrow_ref)
-                    .unwrap_or_else(|| arrow::array::new_null_array(&column.arrow_datatype(), 1)),
+                    .unwrap_or_else(|| arrow::array::new_null_array(&column.arrow_data_type(), 1)),
             })
             .collect_vec();
 
@@ -2080,7 +2080,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                     // `IndexColumnDescriptor::new_null` produces `datatype = Null`
                     // even though `descr.timeline().typ()` returns the placeholder
                     // `Sequence` (Int64); mirror `_next_row`, which falls back to
-                    // `new_null_array(&column.arrow_datatype(), 1)` and therefore
+                    // `new_null_array(&column.arrow_data_type(), 1)` and therefore
                     // emits a `Null` array whenever the schema says so.
                     if matches!(datatype, ArrowDataType::Null) {
                         columns.push(arrow::array::new_null_array(datatype, num_rows));

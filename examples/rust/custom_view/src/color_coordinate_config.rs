@@ -107,10 +107,10 @@ impl ColorCoordinatesMode {
     }
 }
 
-impl rerun::ArrowDatatype for ColorCoordinatesMode {
+impl rerun::ArrowDataType for ColorCoordinatesMode {
     // Components are stored as Arrow arrays; encode the enum as stable `UInt32` values.
-    fn arrow_datatype() -> rerun::external::arrow::datatypes::DataType {
-        <rerun::encodings::UInt32 as rerun::ArrowDatatype>::arrow_datatype()
+    fn arrow_data_type() -> rerun::external::arrow::datatypes::DataType {
+        <rerun::encodings::UInt32 as rerun::ArrowDataType>::arrow_data_type()
     }
 }
 

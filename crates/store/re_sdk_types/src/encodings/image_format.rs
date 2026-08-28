@@ -51,26 +51,26 @@ pub struct ImageFormat {
 
 ::re_types_core::macros::impl_into_cow!(ImageFormat);
 
-impl ::re_types_core::ArrowDatatype for ImageFormat {
+impl ::re_types_core::ArrowDataType for ImageFormat {
     #[inline]
-    fn arrow_datatype() -> arrow::datatypes::DataType {
+    fn arrow_data_type() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
         DataType::Struct(Fields::from(vec![
             Field::new("width", DataType::UInt32, false),
             Field::new("height", DataType::UInt32, false),
             Field::new(
                 "pixel_format",
-                <crate::encodings::PixelFormat>::arrow_datatype(),
+                <crate::encodings::PixelFormat>::arrow_data_type(),
                 true,
             ),
             Field::new(
                 "color_model",
-                <crate::encodings::ColorModel>::arrow_datatype(),
+                <crate::encodings::ColorModel>::arrow_data_type(),
                 true,
             ),
             Field::new(
                 "channel_datatype",
-                <crate::encodings::ChannelDatatype>::arrow_datatype(),
+                <crate::encodings::ChannelDatatype>::arrow_data_type(),
                 true,
             ),
         ]))
@@ -86,7 +86,7 @@ impl ::re_types_core::ToArrow for ImageFormat {
     {
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{
-            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
             arrow_helpers::as_array_ref,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
@@ -96,17 +96,17 @@ impl ::re_types_core::ToArrow for ImageFormat {
                 Field::new("height", DataType::UInt32, false),
                 Field::new(
                     "pixel_format",
-                    <crate::encodings::PixelFormat>::arrow_datatype(),
+                    <crate::encodings::PixelFormat>::arrow_data_type(),
                     true,
                 ),
                 Field::new(
                     "color_model",
-                    <crate::encodings::ColorModel>::arrow_datatype(),
+                    <crate::encodings::ColorModel>::arrow_data_type(),
                     true,
                 ),
                 Field::new(
                     "channel_datatype",
-                    <crate::encodings::ChannelDatatype>::arrow_datatype(),
+                    <crate::encodings::ChannelDatatype>::arrow_data_type(),
                     true,
                 ),
             ]);
@@ -216,7 +216,7 @@ impl ::re_types_core::ToArrow for ImageFormat {
 impl ::re_types_core::FromArrow for ImageFormat {
     fn from_arrow(arrow_data: &dyn arrow::array::Array) -> DeserializationResult<Vec<Self>> {
         use ::re_types_core::{
-            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            ArrowDataType as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
             arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
@@ -224,7 +224,7 @@ impl ::re_types_core::FromArrow for ImageFormat {
         Ok({
             {
                 let arrow_data = arrow_data
-                    .try_cast::<arrow::array::StructArray>(|| Self::arrow_datatype())
+                    .try_cast::<arrow::array::StructArray>(|| Self::arrow_data_type())
                     .with_context("rerun.encodings.ImageFormat")?;
                 if arrow_data.is_empty() {
                     Vec::new()
@@ -239,7 +239,7 @@ impl ::re_types_core::FromArrow for ImageFormat {
                     let width = {
                         if !arrays_by_name.contains_key("width") {
                             return Err(DeserializationError::missing_struct_field(
-                                Self::arrow_datatype(),
+                                Self::arrow_data_type(),
                                 "width",
                             ))
                             .with_context("rerun.encodings.ImageFormat");
@@ -253,7 +253,7 @@ impl ::re_types_core::FromArrow for ImageFormat {
                     let height = {
                         if !arrays_by_name.contains_key("height") {
                             return Err(DeserializationError::missing_struct_field(
-                                Self::arrow_datatype(),
+                                Self::arrow_data_type(),
                                 "height",
                             ))
                             .with_context("rerun.encodings.ImageFormat");
@@ -267,7 +267,7 @@ impl ::re_types_core::FromArrow for ImageFormat {
                     let pixel_format = {
                         if !arrays_by_name.contains_key("pixel_format") {
                             return Err(DeserializationError::missing_struct_field(
-                                Self::arrow_datatype(),
+                                Self::arrow_data_type(),
                                 "pixel_format",
                             ))
                             .with_context("rerun.encodings.ImageFormat");
@@ -280,7 +280,7 @@ impl ::re_types_core::FromArrow for ImageFormat {
                     let color_model = {
                         if !arrays_by_name.contains_key("color_model") {
                             return Err(DeserializationError::missing_struct_field(
-                                Self::arrow_datatype(),
+                                Self::arrow_data_type(),
                                 "color_model",
                             ))
                             .with_context("rerun.encodings.ImageFormat");
@@ -293,7 +293,7 @@ impl ::re_types_core::FromArrow for ImageFormat {
                     let channel_datatype = {
                         if !arrays_by_name.contains_key("channel_datatype") {
                             return Err(DeserializationError::missing_struct_field(
-                                Self::arrow_datatype(),
+                                Self::arrow_data_type(),
                                 "channel_datatype",
                             ))
                             .with_context("rerun.encodings.ImageFormat");

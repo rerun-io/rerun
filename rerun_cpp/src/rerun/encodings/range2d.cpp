@@ -11,10 +11,10 @@
 namespace rerun::encodings {}
 
 namespace rerun {
-    const std::shared_ptr<arrow::DataType>& Loggable<encodings::Range2D>::arrow_datatype() {
+    const std::shared_ptr<arrow::DataType>& Loggable<encodings::Range2D>::arrow_data_type() {
         static const auto datatype = arrow::struct_({
-            arrow::field("x_range", Loggable<rerun::encodings::Range1D>::arrow_datatype(), false),
-            arrow::field("y_range", Loggable<rerun::encodings::Range1D>::arrow_datatype(), false),
+            arrow::field("x_range", Loggable<rerun::encodings::Range1D>::arrow_data_type(), false),
+            arrow::field("y_range", Loggable<rerun::encodings::Range1D>::arrow_data_type(), false),
         });
         return datatype;
     }
@@ -24,7 +24,7 @@ namespace rerun {
     ) {
         // TODO(andreas): Allow configuring the memory pool.
         arrow::MemoryPool* pool = arrow::default_memory_pool();
-        auto datatype = arrow_datatype();
+        auto datatype = arrow_data_type();
 
         ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(datatype, pool))
         if (instances && num_instances > 0) {

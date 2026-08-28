@@ -10,7 +10,7 @@ namespace rerun {
         type.descriptor.archetype = detail::to_rr_string(descriptor.archetype);
         type.descriptor.component = detail::to_rr_string(descriptor.component);
         type.descriptor.component_type = detail::to_rr_string(descriptor.component_type);
-        ARROW_RETURN_NOT_OK(arrow::ExportType(*arrow_datatype, &type.schema));
+        ARROW_RETURN_NOT_OK(arrow::ExportType(*arrow_data_type, &type.schema));
 
         rr_error error = {};
         auto handle = rr_register_component_type(type, &error);

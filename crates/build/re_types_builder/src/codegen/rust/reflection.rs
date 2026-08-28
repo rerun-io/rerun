@@ -47,7 +47,7 @@ pub fn generate_reflection(
             ArchetypeName,
             ComponentType,
             Component,
-            ArrowDatatype as _,
+            ArrowDataType as _,
             FromArrow as _,
             ComponentBatch as _,
             reflection::{
@@ -196,7 +196,7 @@ fn generate_component_reflection(
                 docstring_md: #docstring_md,
                 deprecation_summary: #deprecation_summary,
                 custom_placeholder: #custom_placeholder,
-                datatype: #type_name::arrow_datatype(),
+                datatype: #type_name::arrow_data_type(),
                 is_enum: #is_enum,
                 own_chunk: #own_chunk,
                 verify_arrow_array: #type_name::verify_arrow_array,

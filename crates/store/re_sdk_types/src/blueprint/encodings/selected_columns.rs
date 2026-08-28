@@ -38,16 +38,16 @@ pub struct SelectedColumns {
 
 ::re_types_core::macros::impl_into_cow!(SelectedColumns);
 
-impl ::re_types_core::ArrowDatatype for SelectedColumns {
+impl ::re_types_core::ArrowDataType for SelectedColumns {
     #[inline]
-    fn arrow_datatype() -> arrow::datatypes::DataType {
+    fn arrow_data_type() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
         DataType::Struct(Fields::from(vec![
             Field::new(
                 "time_columns",
                 DataType::List(std::sync::Arc::new(Field::new(
                     "item",
-                    <crate::encodings::Utf8>::arrow_datatype(),
+                    <crate::encodings::Utf8>::arrow_data_type(),
                     false,
                 ))),
                 false,
@@ -56,7 +56,7 @@ impl ::re_types_core::ArrowDatatype for SelectedColumns {
                 "component_columns",
                 DataType::List(std::sync::Arc::new(Field::new(
                     "item",
-                    <crate::blueprint::encodings::ComponentColumnSelector>::arrow_datatype(),
+                    <crate::blueprint::encodings::ComponentColumnSelector>::arrow_data_type(),
                     false,
                 ))),
                 false,
@@ -74,7 +74,7 @@ impl ::re_types_core::ToArrow for SelectedColumns {
     {
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{
-            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
             arrow_helpers::as_array_ref,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
@@ -84,7 +84,7 @@ impl ::re_types_core::ToArrow for SelectedColumns {
                     "time_columns",
                     DataType::List(std::sync::Arc::new(Field::new(
                         "item",
-                        <crate::encodings::Utf8>::arrow_datatype(),
+                        <crate::encodings::Utf8>::arrow_data_type(),
                         false,
                     ))),
                     false,
@@ -93,7 +93,7 @@ impl ::re_types_core::ToArrow for SelectedColumns {
                     "component_columns",
                     DataType::List(std::sync::Arc::new(Field::new(
                         "item",
-                        <crate::blueprint::encodings::ComponentColumnSelector>::arrow_datatype(),
+                        <crate::blueprint::encodings::ComponentColumnSelector>::arrow_data_type(),
                         false,
                     ))),
                     false,
@@ -134,7 +134,7 @@ impl ::re_types_core::ToArrow for SelectedColumns {
                             as_array_ref(ListArray::try_new(
                                 std::sync::Arc::new(Field::new(
                                     "item",
-                                    <crate::encodings::Utf8>::arrow_datatype(),
+                                    <crate::encodings::Utf8>::arrow_data_type(),
                                     false,
                                 )),
                                 offsets,
@@ -188,7 +188,7 @@ impl ::re_types_core::ToArrow for SelectedColumns {
                             let component_columns_inner_validity = None;
                             as_array_ref(ListArray::try_new(std::sync::Arc::new(Field::new("item",
                         < crate ::blueprint::encodings::ComponentColumnSelector >
-                        ::arrow_datatype(), false)), offsets, { let _ : Option <
+                        ::arrow_data_type(), false)), offsets, { let _ : Option <
                         arrow::buffer::NullBuffer > = component_columns_inner_validity;
                         crate
                         ::blueprint::encodings::ComponentColumnSelector::to_arrow(component_columns_inner_data)
@@ -205,7 +205,7 @@ impl ::re_types_core::ToArrow for SelectedColumns {
 impl ::re_types_core::FromArrow for SelectedColumns {
     fn from_arrow(arrow_data: &dyn arrow::array::Array) -> DeserializationResult<Vec<Self>> {
         use ::re_types_core::{
-            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            ArrowDataType as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
             arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
@@ -214,7 +214,9 @@ impl ::re_types_core::FromArrow for SelectedColumns {
             {
                 {
                     let arrow_data = arrow_data
-                        .try_cast::<arrow::array::StructArray>(|| Self::arrow_datatype())
+                        .try_cast::<
+                            arrow::array::StructArray,
+                        >(|| Self::arrow_data_type())
                         .with_context("rerun.blueprint.encodings.SelectedColumns")?;
                     if arrow_data.is_empty() {
                         Vec::new()
@@ -232,7 +234,7 @@ impl ::re_types_core::FromArrow for SelectedColumns {
                             if !arrays_by_name.contains_key("time_columns") {
                                 return Err(
                                         DeserializationError::missing_struct_field(
-                                            Self::arrow_datatype(),
+                                            Self::arrow_data_type(),
                                             "time_columns",
                                         ),
                                     )
@@ -247,7 +249,7 @@ impl ::re_types_core::FromArrow for SelectedColumns {
                                         std::sync::Arc::new(
                                             Field::new(
                                                 "item",
-                                                <crate::encodings::Utf8>::arrow_datatype(),
+                                                <crate::encodings::Utf8>::arrow_data_type(),
                                                 false,
                                             ),
                                         ),
@@ -350,7 +352,7 @@ impl ::re_types_core::FromArrow for SelectedColumns {
                             if !arrays_by_name.contains_key("component_columns") {
                                 return Err(
                                         DeserializationError::missing_struct_field(
-                                            Self::arrow_datatype(),
+                                            Self::arrow_data_type(),
                                             "component_columns",
                                         ),
                                     )
@@ -365,7 +367,7 @@ impl ::re_types_core::FromArrow for SelectedColumns {
                                         std::sync::Arc::new(
                                             Field::new(
                                                 "item",
-                                                <crate::blueprint::encodings::ComponentColumnSelector>::arrow_datatype(),
+                                                <crate::blueprint::encodings::ComponentColumnSelector>::arrow_data_type(),
                                                 false,
                                             ),
                                         ),

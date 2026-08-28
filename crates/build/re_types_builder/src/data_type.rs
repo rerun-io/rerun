@@ -98,7 +98,7 @@ impl AtomicDataType {
 /// Every variant but [`Self::Object`] is an arrow datatype as arrow means it, so this is mostly a
 /// mirror of `arrow::datatypes::DataType`. `Object` is ours, and is why we do not use arrow's type
 /// directly: it remembers which definition a datatype came from, at every level of nesting, which
-/// is what lets generated code say `<Vec3D>::arrow_datatype()` instead of spelling out the whole
+/// is what lets generated code say `<Vec3D>::arrow_data_type()` instead of spelling out the whole
 /// nested struct. Look through it with [`Self::to_logical_type`].
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum DataType {

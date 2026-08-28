@@ -52,8 +52,8 @@ namespace rerun {
         static constexpr std::string_view ComponentType = "rerun.components.FillRatio";
 
         /// Returns the arrow data type this type corresponds to.
-        static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
-            return Loggable<rerun::encodings::Float32>::arrow_datatype();
+        static const std::shared_ptr<arrow::DataType>& arrow_data_type() {
+            return Loggable<rerun::encodings::Float32>::arrow_data_type();
         }
 
         /// Serializes an array of `rerun::components::FillRatio` into an arrow array.

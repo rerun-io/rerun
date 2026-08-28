@@ -41,9 +41,9 @@ pub struct Float32(pub f32);
 
 crate::macros::impl_into_cow!(Float32);
 
-impl crate::ArrowDatatype for Float32 {
+impl crate::ArrowDataType for Float32 {
     #[inline]
-    fn arrow_datatype() -> arrow::datatypes::DataType {
+    fn arrow_data_type() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
         DataType::Float32
     }
@@ -58,7 +58,7 @@ impl crate::ToArrow for Float32 {
     {
         #![allow(clippy::manual_is_variant_and)]
         use crate::{
-            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
             arrow_helpers::as_array_ref,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
@@ -83,7 +83,7 @@ impl crate::FromArrow for Float32 {
     #[inline]
     fn from_arrow(arrow_data: &dyn arrow::array::Array) -> DeserializationResult<Vec<Self>> {
         use crate::{
-            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            ArrowDataType as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
             arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};

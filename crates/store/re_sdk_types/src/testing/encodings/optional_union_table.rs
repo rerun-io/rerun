@@ -31,13 +31,13 @@ pub struct OptionalUnionTable {
 
 ::re_types_core::macros::impl_into_cow!(OptionalUnionTable);
 
-impl ::re_types_core::ArrowDatatype for OptionalUnionTable {
+impl ::re_types_core::ArrowDataType for OptionalUnionTable {
     #[inline]
-    fn arrow_datatype() -> arrow::datatypes::DataType {
+    fn arrow_data_type() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
         DataType::Struct(Fields::from(vec![Field::new(
             "single_optional_union",
-            <crate::testing::encodings::NestedUnion>::arrow_datatype(),
+            <crate::testing::encodings::NestedUnion>::arrow_data_type(),
             true,
         )]))
     }
@@ -52,14 +52,14 @@ impl ::re_types_core::ToArrow for OptionalUnionTable {
     {
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{
-            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
             arrow_helpers::as_array_ref,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let fields = Fields::from(vec![Field::new(
                 "single_optional_union",
-                <crate::testing::encodings::NestedUnion>::arrow_datatype(),
+                <crate::testing::encodings::NestedUnion>::arrow_data_type(),
                 true,
             )]);
             let data: Vec<_> = data
@@ -98,7 +98,7 @@ impl ::re_types_core::ToArrow for OptionalUnionTable {
 impl ::re_types_core::FromArrow for OptionalUnionTable {
     fn from_arrow(arrow_data: &dyn arrow::array::Array) -> DeserializationResult<Vec<Self>> {
         use ::re_types_core::{
-            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            ArrowDataType as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
             arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
@@ -106,7 +106,7 @@ impl ::re_types_core::FromArrow for OptionalUnionTable {
         Ok({
             {
                 let arrow_data = arrow_data
-                    .try_cast::<arrow::array::StructArray>(|| Self::arrow_datatype())
+                    .try_cast::<arrow::array::StructArray>(|| Self::arrow_data_type())
                     .with_context("rerun.testing.encodings.OptionalUnionTable")?;
                 if arrow_data.is_empty() {
                     Vec::new()
@@ -121,7 +121,7 @@ impl ::re_types_core::FromArrow for OptionalUnionTable {
                     let single_optional_union = {
                         if !arrays_by_name.contains_key("single_optional_union") {
                             return Err(DeserializationError::missing_struct_field(
-                                Self::arrow_datatype(),
+                                Self::arrow_data_type(),
                                 "single_optional_union",
                             ))
                             .with_context("rerun.testing.encodings.OptionalUnionTable");

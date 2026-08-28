@@ -107,7 +107,7 @@ RR_DISABLE_MAYBE_UNINITIALIZED_POP
         }
 
         // Build a new names array and put everything back together.
-        auto datatype = rerun::Loggable<rerun::encodings::TensorData>::arrow_datatype();
+        auto datatype = rerun::Loggable<rerun::encodings::TensorData>::arrow_data_type();
         auto name_field = datatype->field(1);
         arrow::MemoryPool* pool = arrow::default_memory_pool();
         ARROW_ASSIGN_OR_RAISE(auto names_builder, arrow::MakeBuilder(name_field->type(), pool))

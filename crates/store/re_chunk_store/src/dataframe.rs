@@ -3,7 +3,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::ops::{Deref, DerefMut};
 
-use arrow::datatypes::DataType as ArrowDatatype;
+use arrow::datatypes::DataType as ArrowDataType;
 use re_chunk::{ComponentIdentifier, LatestAtQuery, RangeQuery, TimelineName};
 use re_log::ResultExt as _;
 use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt, Timeline};
@@ -339,7 +339,7 @@ impl ChunkStore {
         // TODO(#7699) This currently interns every string ever queried which could be wasteful, especially
         // in long-running servers. In practice this probably doesn't matter.
         let mut result = ComponentColumnDescriptor {
-            store_datatype: ArrowDatatype::Null,
+            store_datatype: ArrowDataType::Null,
             component_type: None,
             entity_path: selector.entity_path.clone(),
             archetype: None,

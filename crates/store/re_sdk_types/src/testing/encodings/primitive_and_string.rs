@@ -32,19 +32,19 @@ pub struct PrimitiveAndString {
 
 ::re_types_core::macros::impl_into_cow!(PrimitiveAndString);
 
-impl ::re_types_core::ArrowDatatype for PrimitiveAndString {
+impl ::re_types_core::ArrowDataType for PrimitiveAndString {
     #[inline]
-    fn arrow_datatype() -> arrow::datatypes::DataType {
+    fn arrow_data_type() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
         DataType::Struct(Fields::from(vec![
             Field::new(
                 "p",
-                <crate::testing::encodings::PrimitiveComponent>::arrow_datatype(),
+                <crate::testing::encodings::PrimitiveComponent>::arrow_data_type(),
                 false,
             ),
             Field::new(
                 "s",
-                <crate::testing::encodings::StringComponent>::arrow_datatype(),
+                <crate::testing::encodings::StringComponent>::arrow_data_type(),
                 false,
             ),
         ]))
@@ -60,7 +60,7 @@ impl ::re_types_core::ToArrow for PrimitiveAndString {
     {
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{
-            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
             arrow_helpers::as_array_ref,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
@@ -68,12 +68,12 @@ impl ::re_types_core::ToArrow for PrimitiveAndString {
             let fields = Fields::from(vec![
                 Field::new(
                     "p",
-                    <crate::testing::encodings::PrimitiveComponent>::arrow_datatype(),
+                    <crate::testing::encodings::PrimitiveComponent>::arrow_data_type(),
                     false,
                 ),
                 Field::new(
                     "s",
-                    <crate::testing::encodings::StringComponent>::arrow_datatype(),
+                    <crate::testing::encodings::StringComponent>::arrow_data_type(),
                     false,
                 ),
             ]);
@@ -149,7 +149,7 @@ impl ::re_types_core::ToArrow for PrimitiveAndString {
 impl ::re_types_core::FromArrow for PrimitiveAndString {
     fn from_arrow(arrow_data: &dyn arrow::array::Array) -> DeserializationResult<Vec<Self>> {
         use ::re_types_core::{
-            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            ArrowDataType as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
             arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
@@ -157,7 +157,7 @@ impl ::re_types_core::FromArrow for PrimitiveAndString {
         Ok({
             {
                 let arrow_data = arrow_data
-                    .try_cast::<arrow::array::StructArray>(|| Self::arrow_datatype())
+                    .try_cast::<arrow::array::StructArray>(|| Self::arrow_data_type())
                     .with_context("rerun.testing.encodings.PrimitiveAndString")?;
                 if arrow_data.is_empty() {
                     Vec::new()
@@ -172,7 +172,7 @@ impl ::re_types_core::FromArrow for PrimitiveAndString {
                     let p = {
                         if !arrays_by_name.contains_key("p") {
                             return Err(DeserializationError::missing_struct_field(
-                                Self::arrow_datatype(),
+                                Self::arrow_data_type(),
                                 "p",
                             ))
                             .with_context("rerun.testing.encodings.PrimitiveAndString");
@@ -189,7 +189,7 @@ impl ::re_types_core::FromArrow for PrimitiveAndString {
                     let s = {
                         if !arrays_by_name.contains_key("s") {
                             return Err(DeserializationError::missing_struct_field(
-                                Self::arrow_datatype(),
+                                Self::arrow_data_type(),
                                 "s",
                             ))
                             .with_context("rerun.testing.encodings.PrimitiveAndString");

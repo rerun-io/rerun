@@ -381,7 +381,7 @@ impl ::re_types_core::Archetype for Capsules3D {
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{
-            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            ArrowDataType as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
         };
         let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
         let lengths = arrays_by_descr
@@ -513,7 +513,7 @@ impl Capsules3D {
     /// Clear all the fields of a `Capsules3D`.
     #[inline]
     pub fn clear_fields() -> Self {
-        use ::re_types_core::ArrowDatatype as _;
+        use ::re_types_core::ArrowDataType as _;
         Self {
             lengths: Some(SerializedComponentBatch::new(
                 crate::components::Length::arrow_empty(),

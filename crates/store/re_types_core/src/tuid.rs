@@ -1,7 +1,7 @@
 use arrow::array::{ArrayRef, AsArray as _, FixedSizeBinaryArray};
 use re_tuid::Tuid;
 
-use crate::{ArrowDatatype, DeserializationError, FromArrow, ToArrow};
+use crate::{ArrowDataType, DeserializationError, FromArrow, ToArrow};
 
 // ---
 
@@ -13,9 +13,9 @@ pub fn tuids_to_arrow(tuids: &[Tuid]) -> FixedSizeBinaryArray {
         .clone()
 }
 
-impl ArrowDatatype for Tuid {
+impl ArrowDataType for Tuid {
     #[inline]
-    fn arrow_datatype() -> arrow::datatypes::DataType {
+    fn arrow_data_type() -> arrow::datatypes::DataType {
         quiver::Column::<Self>::datatype()
     }
 }
@@ -39,7 +39,7 @@ impl FromArrow for Tuid {
     fn from_arrow(array: &dyn ::arrow::array::Array) -> crate::DeserializationResult<Vec<Self>> {
         let Some(array) = array.as_fixed_size_binary_opt() else {
             return Err(DeserializationError::datatype_mismatch(
-                Self::arrow_datatype(),
+                Self::arrow_data_type(),
                 array.data_type().clone(),
             ));
         };
@@ -73,10 +73,10 @@ macro_rules! delegate_arrow_tuid {
             }
         }
 
-        impl $crate::ArrowDatatype for $typ {
+        impl $crate::ArrowDataType for $typ {
             #[inline]
-            fn arrow_datatype() -> ::arrow::datatypes::DataType {
-                <$crate::external::re_tuid::Tuid as $crate::ArrowDatatype>::arrow_datatype()
+            fn arrow_data_type() -> ::arrow::datatypes::DataType {
+                <$crate::external::re_tuid::Tuid as $crate::ArrowDataType>::arrow_data_type()
             }
         }
 

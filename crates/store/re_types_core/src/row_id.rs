@@ -1,6 +1,6 @@
 use arrow::array::Array as _;
 
-use crate::ArrowDatatype as _;
+use crate::ArrowDataType as _;
 
 /// A unique ID for a row's worth of data within a chunk.
 ///
@@ -153,7 +153,7 @@ impl RowId {
 
     /// Panics if the array is of the wrong width
     pub fn slice_from_arrow(array: &arrow::array::FixedSizeBinaryArray) -> &[Self] {
-        re_log::debug_assert_eq!(array.data_type(), &Self::arrow_datatype());
+        re_log::debug_assert_eq!(array.data_type(), &Self::arrow_data_type());
         bytemuck::cast_slice(array.value_data())
     }
 }

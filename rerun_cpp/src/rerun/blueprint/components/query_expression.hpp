@@ -62,8 +62,8 @@ namespace rerun {
             "rerun.blueprint.components.QueryExpression";
 
         /// Returns the arrow data type this type corresponds to.
-        static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
-            return Loggable<rerun::encodings::Utf8>::arrow_datatype();
+        static const std::shared_ptr<arrow::DataType>& arrow_data_type() {
+            return Loggable<rerun::encodings::Utf8>::arrow_data_type();
         }
 
         /// Serializes an array of `rerun::blueprint:: components::QueryExpression` into an arrow array.

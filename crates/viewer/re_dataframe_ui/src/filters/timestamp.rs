@@ -24,7 +24,7 @@ use datafusion::common::{Result as DataFusionResult, exec_err};
 use datafusion::logical_expr::{Expr, TypeSignature, col, not};
 use jiff::{RoundMode, Timestamp, TimestampRound, ToSpan as _};
 use re_log_types::TimestampFormat;
-use re_types_core::ArrowDatatype as _;
+use re_types_core::ArrowDataType as _;
 use re_types_core::encodings::TimeInt;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_ui::{DesignTokens, SyntaxHighlighting, UiExt as _};
@@ -743,7 +743,7 @@ impl FilterUdf for ResolvedTimestampFilter {
 
     fn is_valid_primitive_input_type(data_type: &DataType) -> bool {
         match data_type {
-            _data_type if _data_type == &TimeInt::arrow_datatype() => true,
+            _data_type if _data_type == &TimeInt::arrow_data_type() => true,
             DataType::Timestamp(_, _) => true,
             _ => false,
         }
@@ -761,7 +761,7 @@ impl FilterUdf for ResolvedTimestampFilter {
         }
 
         match array.data_type() {
-            _data_type if _data_type == &TimeInt::arrow_datatype() => {
+            _data_type if _data_type == &TimeInt::arrow_data_type() => {
                 timestamp_case!(apply_nanoseconds, as_int64_array, self)
             }
 

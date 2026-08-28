@@ -1655,7 +1655,7 @@ fn arrow_data_type_method(
             (
                 true,
                 quote! {
-                    return Loggable<#forwarded_type>::arrow_datatype();
+                    return Loggable<#forwarded_type>::arrow_data_type();
                 },
             )
         } else {
@@ -1685,7 +1685,7 @@ fn arrow_data_type_method(
         declaration: MethodDeclaration {
             is_static: true,
             return_type: quote! { const std::shared_ptr<arrow::DataType>& },
-            name_and_parameters: quote! { arrow_datatype() },
+            name_and_parameters: quote! { arrow_data_type() },
         },
         definition_body,
         inline,
@@ -1786,7 +1786,7 @@ fn to_arrow_method(
                 #NEWLINE_TOKEN
                 #todo_pool
                 arrow::MemoryPool* pool = arrow::default_memory_pool();
-                auto datatype = arrow_datatype();
+                auto datatype = arrow_data_type();
                 #NEWLINE_TOKEN
                 #NEWLINE_TOKEN
                 ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(datatype, pool))
@@ -2777,9 +2777,9 @@ fn quote_arrow_datatype(
             // In the future we'll add the extension type here to the schema.
             let obj = &objects[fqname];
             if !is_top_level_type {
-                // If we're not at the top level, we should have already a `arrow_datatype` method that we can relay to.
+                // If we're not at the top level, we should have already a `arrow_data_type` method that we can relay to.
                 let quoted_fqname = quote_fqname_as_type_path(includes, fqname);
-                quote!(Loggable<#quoted_fqname>::arrow_datatype())
+                quote!(Loggable<#quoted_fqname>::arrow_data_type())
             } else if obj.is_arrow_transparent() {
                 quote_arrow_datatype(&obj.fields[0].typ, objects, includes, false)
             } else {

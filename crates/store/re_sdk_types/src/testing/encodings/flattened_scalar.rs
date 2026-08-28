@@ -31,9 +31,9 @@ pub struct FlattenedScalar {
 
 ::re_types_core::macros::impl_into_cow!(FlattenedScalar);
 
-impl ::re_types_core::ArrowDatatype for FlattenedScalar {
+impl ::re_types_core::ArrowDataType for FlattenedScalar {
     #[inline]
-    fn arrow_datatype() -> arrow::datatypes::DataType {
+    fn arrow_data_type() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
         DataType::Struct(Fields::from(vec![Field::new(
             "value",
@@ -52,7 +52,7 @@ impl ::re_types_core::ToArrowOpt for FlattenedScalar {
     {
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{
-            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
             arrow_helpers::as_array_ref,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
@@ -101,13 +101,13 @@ impl ::re_types_core::FromArrowOpt for FlattenedScalar {
         arrow_data: &dyn arrow::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>> {
         use ::re_types_core::{
-            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            ArrowDataType as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
             arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let arrow_data = arrow_data
-                .try_cast::<arrow::array::StructArray>(|| Self::arrow_datatype())
+                .try_cast::<arrow::array::StructArray>(|| Self::arrow_data_type())
                 .with_context("rerun.testing.encodings.FlattenedScalar")?;
             if arrow_data.is_empty() {
                 Vec::new()
@@ -122,7 +122,7 @@ impl ::re_types_core::FromArrowOpt for FlattenedScalar {
                 let value = {
                     if !arrays_by_name.contains_key("value") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
+                            Self::arrow_data_type(),
                             "value",
                         ))
                         .with_context("rerun.testing.encodings.FlattenedScalar");

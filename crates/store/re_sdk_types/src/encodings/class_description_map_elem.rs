@@ -40,19 +40,19 @@ pub struct ClassDescriptionMapElem {
 
 ::re_types_core::macros::impl_into_cow!(ClassDescriptionMapElem);
 
-impl ::re_types_core::ArrowDatatype for ClassDescriptionMapElem {
+impl ::re_types_core::ArrowDataType for ClassDescriptionMapElem {
     #[inline]
-    fn arrow_datatype() -> arrow::datatypes::DataType {
+    fn arrow_data_type() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
         DataType::Struct(Fields::from(vec![
             Field::new(
                 "class_id",
-                <crate::encodings::ClassId>::arrow_datatype(),
+                <crate::encodings::ClassId>::arrow_data_type(),
                 false,
             ),
             Field::new(
                 "class_description",
-                <crate::encodings::ClassDescription>::arrow_datatype(),
+                <crate::encodings::ClassDescription>::arrow_data_type(),
                 false,
             ),
         ]))
@@ -68,7 +68,7 @@ impl ::re_types_core::ToArrowOpt for ClassDescriptionMapElem {
     {
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{
-            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
             arrow_helpers::as_array_ref,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
@@ -76,12 +76,12 @@ impl ::re_types_core::ToArrowOpt for ClassDescriptionMapElem {
             let fields = Fields::from(vec![
                 Field::new(
                     "class_id",
-                    <crate::encodings::ClassId>::arrow_datatype(),
+                    <crate::encodings::ClassId>::arrow_data_type(),
                     false,
                 ),
                 Field::new(
                     "class_description",
-                    <crate::encodings::ClassDescription>::arrow_datatype(),
+                    <crate::encodings::ClassDescription>::arrow_data_type(),
                     false,
                 ),
             ]);
@@ -151,13 +151,13 @@ impl ::re_types_core::FromArrowOpt for ClassDescriptionMapElem {
         arrow_data: &dyn arrow::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>> {
         use ::re_types_core::{
-            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            ArrowDataType as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
             arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let arrow_data = arrow_data
-                .try_cast::<arrow::array::StructArray>(|| Self::arrow_datatype())
+                .try_cast::<arrow::array::StructArray>(|| Self::arrow_data_type())
                 .with_context("rerun.encodings.ClassDescriptionMapElem")?;
             if arrow_data.is_empty() {
                 Vec::new()
@@ -172,7 +172,7 @@ impl ::re_types_core::FromArrowOpt for ClassDescriptionMapElem {
                 let class_id = {
                     if !arrays_by_name.contains_key("class_id") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
+                            Self::arrow_data_type(),
                             "class_id",
                         ))
                         .with_context("rerun.encodings.ClassDescriptionMapElem");
@@ -187,7 +187,7 @@ impl ::re_types_core::FromArrowOpt for ClassDescriptionMapElem {
                 let class_description = {
                     if !arrays_by_name.contains_key("class_description") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
+                            Self::arrow_data_type(),
                             "class_description",
                         ))
                         .with_context("rerun.encodings.ClassDescriptionMapElem");

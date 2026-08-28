@@ -41,13 +41,13 @@ pub struct RotationAxisAngle {
 
 ::re_types_core::macros::impl_into_cow!(RotationAxisAngle);
 
-impl ::re_types_core::ArrowDatatype for RotationAxisAngle {
+impl ::re_types_core::ArrowDataType for RotationAxisAngle {
     #[inline]
-    fn arrow_datatype() -> arrow::datatypes::DataType {
+    fn arrow_data_type() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
         DataType::Struct(Fields::from(vec![
-            Field::new("axis", <crate::encodings::Vec3D>::arrow_datatype(), false),
-            Field::new("angle", <crate::encodings::Angle>::arrow_datatype(), false),
+            Field::new("axis", <crate::encodings::Vec3D>::arrow_data_type(), false),
+            Field::new("angle", <crate::encodings::Angle>::arrow_data_type(), false),
         ]))
     }
 }
@@ -61,14 +61,14 @@ impl ::re_types_core::ToArrow for RotationAxisAngle {
     {
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{
-            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
             arrow_helpers::as_array_ref,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let fields = Fields::from(vec![
-                Field::new("axis", <crate::encodings::Vec3D>::arrow_datatype(), false),
-                Field::new("angle", <crate::encodings::Angle>::arrow_datatype(), false),
+                Field::new("axis", <crate::encodings::Vec3D>::arrow_data_type(), false),
+                Field::new("angle", <crate::encodings::Angle>::arrow_data_type(), false),
             ]);
             let data: Vec<_> = data
                 .into_iter()
@@ -149,7 +149,7 @@ impl ::re_types_core::ToArrow for RotationAxisAngle {
 impl ::re_types_core::FromArrow for RotationAxisAngle {
     fn from_arrow(arrow_data: &dyn arrow::array::Array) -> DeserializationResult<Vec<Self>> {
         use ::re_types_core::{
-            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            ArrowDataType as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
             arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
@@ -157,7 +157,7 @@ impl ::re_types_core::FromArrow for RotationAxisAngle {
         Ok({
             {
                 let arrow_data = arrow_data
-                    .try_cast::<arrow::array::StructArray>(|| Self::arrow_datatype())
+                    .try_cast::<arrow::array::StructArray>(|| Self::arrow_data_type())
                     .with_context("rerun.encodings.RotationAxisAngle")?;
                 if arrow_data.is_empty() {
                     Vec::new()
@@ -172,7 +172,7 @@ impl ::re_types_core::FromArrow for RotationAxisAngle {
                     let axis = {
                         if !arrays_by_name.contains_key("axis") {
                             return Err(DeserializationError::missing_struct_field(
-                                Self::arrow_datatype(),
+                                Self::arrow_data_type(),
                                 "axis",
                             ))
                             .with_context("rerun.encodings.RotationAxisAngle");
@@ -248,7 +248,7 @@ impl ::re_types_core::FromArrow for RotationAxisAngle {
                     let angle = {
                         if !arrays_by_name.contains_key("angle") {
                             return Err(DeserializationError::missing_struct_field(
-                                Self::arrow_datatype(),
+                                Self::arrow_data_type(),
                                 "angle",
                             ))
                             .with_context("rerun.encodings.RotationAxisAngle");

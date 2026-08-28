@@ -39,9 +39,9 @@ pub struct MixedFields {
 
 ::re_types_core::macros::impl_into_cow!(MixedFields);
 
-impl ::re_types_core::ArrowDatatype for MixedFields {
+impl ::re_types_core::ArrowDataType for MixedFields {
     #[inline]
-    fn arrow_datatype() -> arrow::datatypes::DataType {
+    fn arrow_data_type() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
         DataType::Struct(Fields::from(vec![
             Field::new("single_float_optional", DataType::Float32, true),
@@ -77,7 +77,7 @@ impl ::re_types_core::ArrowDatatype for MixedFields {
             Field::new("flattened_scalar", DataType::Float32, false),
             Field::new(
                 "almost_flattened_scalar",
-                <crate::testing::encodings::FlattenedScalar>::arrow_datatype(),
+                <crate::testing::encodings::FlattenedScalar>::arrow_data_type(),
                 false,
             ),
             Field::new("from_parent", DataType::Boolean, true),
@@ -94,7 +94,7 @@ impl ::re_types_core::ToArrowOpt for MixedFields {
     {
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{
-            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
             arrow_helpers::as_array_ref,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
@@ -133,7 +133,7 @@ impl ::re_types_core::ToArrowOpt for MixedFields {
                 Field::new("flattened_scalar", DataType::Float32, false),
                 Field::new(
                     "almost_flattened_scalar",
-                    <crate::testing::encodings::FlattenedScalar>::arrow_datatype(),
+                    <crate::testing::encodings::FlattenedScalar>::arrow_data_type(),
                     false,
                 ),
                 Field::new("from_parent", DataType::Boolean, true),
@@ -491,13 +491,13 @@ impl ::re_types_core::FromArrowOpt for MixedFields {
         arrow_data: &dyn arrow::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>> {
         use ::re_types_core::{
-            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            ArrowDataType as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
             arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let arrow_data = arrow_data
-                .try_cast::<arrow::array::StructArray>(|| Self::arrow_datatype())
+                .try_cast::<arrow::array::StructArray>(|| Self::arrow_data_type())
                 .with_context("rerun.testing.encodings.MixedFields")?;
             if arrow_data.is_empty() {
                 Vec::new()
@@ -512,7 +512,7 @@ impl ::re_types_core::FromArrowOpt for MixedFields {
                 let single_float_optional = {
                     if !arrays_by_name.contains_key("single_float_optional") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
+                            Self::arrow_data_type(),
                             "single_float_optional",
                         ))
                         .with_context("rerun.testing.encodings.MixedFields");
@@ -526,7 +526,7 @@ impl ::re_types_core::FromArrowOpt for MixedFields {
                 let single_string_required = {
                     if !arrays_by_name.contains_key("single_string_required") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
+                            Self::arrow_data_type(),
                             "single_string_required",
                         ))
                         .with_context("rerun.testing.encodings.MixedFields");
@@ -572,7 +572,7 @@ impl ::re_types_core::FromArrowOpt for MixedFields {
                 let single_string_optional = {
                     if !arrays_by_name.contains_key("single_string_optional") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
+                            Self::arrow_data_type(),
                             "single_string_optional",
                         ))
                         .with_context("rerun.testing.encodings.MixedFields");
@@ -618,7 +618,7 @@ impl ::re_types_core::FromArrowOpt for MixedFields {
                 let many_floats_optional = {
                     if !arrays_by_name.contains_key("many_floats_optional") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
+                            Self::arrow_data_type(),
                             "many_floats_optional",
                         ))
                         .with_context("rerun.testing.encodings.MixedFields");
@@ -676,7 +676,7 @@ impl ::re_types_core::FromArrowOpt for MixedFields {
                 let many_strings_required = {
                     if !arrays_by_name.contains_key("many_strings_required") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
+                            Self::arrow_data_type(),
                             "many_strings_required",
                         ))
                         .with_context("rerun.testing.encodings.MixedFields");
@@ -785,7 +785,7 @@ impl ::re_types_core::FromArrowOpt for MixedFields {
                 let many_strings_optional = {
                     if !arrays_by_name.contains_key("many_strings_optional") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
+                            Self::arrow_data_type(),
                             "many_strings_optional",
                         ))
                         .with_context("rerun.testing.encodings.MixedFields");
@@ -894,7 +894,7 @@ impl ::re_types_core::FromArrowOpt for MixedFields {
                 let flattened_scalar = {
                     if !arrays_by_name.contains_key("flattened_scalar") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
+                            Self::arrow_data_type(),
                             "flattened_scalar",
                         ))
                         .with_context("rerun.testing.encodings.MixedFields");
@@ -908,7 +908,7 @@ impl ::re_types_core::FromArrowOpt for MixedFields {
                 let almost_flattened_scalar = {
                     if !arrays_by_name.contains_key("almost_flattened_scalar") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
+                            Self::arrow_data_type(),
                             "almost_flattened_scalar",
                         ))
                         .with_context("rerun.testing.encodings.MixedFields");
@@ -923,7 +923,7 @@ impl ::re_types_core::FromArrowOpt for MixedFields {
                 let from_parent = {
                     if !arrays_by_name.contains_key("from_parent") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
+                            Self::arrow_data_type(),
                             "from_parent",
                         ))
                         .with_context("rerun.testing.encodings.MixedFields");

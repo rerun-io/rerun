@@ -32,9 +32,9 @@ pub struct Float16Fields {
 
 ::re_types_core::macros::impl_into_cow!(Float16Fields);
 
-impl ::re_types_core::ArrowDatatype for Float16Fields {
+impl ::re_types_core::ArrowDataType for Float16Fields {
     #[inline]
-    fn arrow_datatype() -> arrow::datatypes::DataType {
+    fn arrow_data_type() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
         DataType::Struct(Fields::from(vec![
             Field::new("single_half", DataType::Float16, false),
@@ -60,7 +60,7 @@ impl ::re_types_core::ToArrow for Float16Fields {
     {
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{
-            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
             arrow_helpers::as_array_ref,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
@@ -155,7 +155,7 @@ impl ::re_types_core::ToArrow for Float16Fields {
 impl ::re_types_core::FromArrow for Float16Fields {
     fn from_arrow(arrow_data: &dyn arrow::array::Array) -> DeserializationResult<Vec<Self>> {
         use ::re_types_core::{
-            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            ArrowDataType as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
             arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
@@ -163,7 +163,7 @@ impl ::re_types_core::FromArrow for Float16Fields {
         Ok({
             {
                 let arrow_data = arrow_data
-                    .try_cast::<arrow::array::StructArray>(|| Self::arrow_datatype())
+                    .try_cast::<arrow::array::StructArray>(|| Self::arrow_data_type())
                     .with_context("rerun.testing.encodings.Float16Fields")?;
                 if arrow_data.is_empty() {
                     Vec::new()
@@ -178,7 +178,7 @@ impl ::re_types_core::FromArrow for Float16Fields {
                     let single_half = {
                         if !arrays_by_name.contains_key("single_half") {
                             return Err(DeserializationError::missing_struct_field(
-                                Self::arrow_datatype(),
+                                Self::arrow_data_type(),
                                 "single_half",
                             ))
                             .with_context("rerun.testing.encodings.Float16Fields");
@@ -192,7 +192,7 @@ impl ::re_types_core::FromArrow for Float16Fields {
                     let many_halves = {
                         if !arrays_by_name.contains_key("many_halves") {
                             return Err(DeserializationError::missing_struct_field(
-                                Self::arrow_datatype(),
+                                Self::arrow_data_type(),
                                 "many_halves",
                             ))
                             .with_context("rerun.testing.encodings.Float16Fields");

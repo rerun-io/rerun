@@ -11,7 +11,7 @@ pub(crate) mod util {
 
     use arrow::array::{FixedSizeListBuilder, ListBuilder, UInt8Builder};
     use arrow::datatypes::{DataType, Field};
-    use re_sdk_types::{ArrowDatatype as _, components};
+    use re_sdk_types::{ArrowDataType as _, components};
 
     pub(crate) fn fixed_size_list_builder<T: arrow::array::ArrayBuilder + Default>(
         value_length: i32,
@@ -27,7 +27,7 @@ pub(crate) mod util {
     pub(crate) fn blob_list_builder(
         capacity: usize,
     ) -> FixedSizeListBuilder<ListBuilder<UInt8Builder>> {
-        // The bytes of a blob are always present, matching `components::Blob::arrow_datatype()`.
+        // The bytes of a blob are always present, matching `components::Blob::arrow_data_type()`.
         let list_builder = ListBuilder::<UInt8Builder>::default()
             .with_field(Arc::new(Field::new_list_field(DataType::UInt8, false)));
 
@@ -35,7 +35,7 @@ pub(crate) mod util {
         // canonical form, like everywhere else in Rerun. See
         // <https://github.com/rerun-io/rerun/issues/12887> for a case where this was violated.
         FixedSizeListBuilder::with_capacity(list_builder, 1, capacity).with_field(Arc::new(
-            re_arrow_util::canonical_component_list_field(components::Blob::arrow_datatype()),
+            re_arrow_util::canonical_component_list_field(components::Blob::arrow_data_type()),
         ))
     }
 }

@@ -842,7 +842,7 @@ fn quote_trait_impls_for_encoding_or_component(
             };
             quote! {
                 #[inline]
-                fn arrow_datatype() -> arrow::datatypes::DataType {
+                fn arrow_data_type() -> arrow::datatypes::DataType {
                     use arrow::datatypes::*;
                     #datatype
                 }
@@ -853,7 +853,7 @@ fn quote_trait_impls_for_encoding_or_component(
         let quoted_from_arrow = quote_from_arrow(objects, type_registry, obj);
 
         quote! {
-            impl ::re_types_core::ArrowDatatype for #name {
+            impl ::re_types_core::ArrowDataType for #name {
                 #quoted_arrow_datatype
             }
 
@@ -891,7 +891,7 @@ fn quote_to_arrow(objects: &Objects, type_registry: &TypeRegistry, obj: &Object)
 
             #![allow(clippy::manual_is_variant_and)]
             use arrow::{array::*, buffer::*, datatypes::*};
-            use ::re_types_core::{ArrowDatatype as _, ToArrow as _, ToArrowOpt as _, ResultExt as _, arrow_helpers::as_array_ref};
+            use ::re_types_core::{ArrowDataType as _, ToArrow as _, ToArrowOpt as _, ResultExt as _, arrow_helpers::as_array_ref};
 
             Ok(#quoted_serializer)
         }
@@ -957,7 +957,7 @@ fn quote_from_arrow(objects: &Objects, type_registry: &TypeRegistry, obj: &Objec
             // re_tracing::profile_function!();
 
             use arrow::{array::*, buffer::*, datatypes::*};
-            use ::re_types_core::{arrow_helpers::*, arrow_zip_validity::ZipValidity, ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _};
+            use ::re_types_core::{arrow_helpers::*, arrow_zip_validity::ZipValidity, ArrowDataType as _, FromArrow as _, FromArrowOpt as _, ResultExt as _};
 
             #quoted_err_on_nulls
 
@@ -986,7 +986,7 @@ fn quote_from_arrow(objects: &Objects, type_registry: &TypeRegistry, obj: &Objec
                     // re_tracing::profile_function!();
 
                     use arrow::{array::*, buffer::*, datatypes::*};
-                    use ::re_types_core::{arrow_helpers::*, arrow_zip_validity::ZipValidity, ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _};
+                    use ::re_types_core::{arrow_helpers::*, arrow_zip_validity::ZipValidity, ArrowDataType as _, FromArrow as _, FromArrowOpt as _, ResultExt as _};
 
                     // This code-path cannot have null entries.
                     err_on_nulls(arrow_data, #fqname)?;
@@ -1256,7 +1256,7 @@ fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenSt
             ) -> DeserializationResult<Self> {
                 re_tracing::profile_function!();
 
-                use ::re_types_core::{ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _};
+                use ::re_types_core::{ArrowDataType as _, FromArrow as _, FromArrowOpt as _, ResultExt as _};
 
                 let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
                 #(#all_deserializers;)*
@@ -1588,7 +1588,7 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
             #clear_fields_doc
             #[inline]
             pub fn clear_fields() -> Self {
-                use ::re_types_core::ArrowDatatype as _;
+                use ::re_types_core::ArrowDataType as _;
                 Self {
                     #(#fields),*
                 }

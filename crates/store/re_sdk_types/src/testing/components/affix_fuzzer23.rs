@@ -36,19 +36,19 @@ impl ::re_types_core::Component for AffixFuzzer23 {
 
 ::re_types_core::macros::impl_into_cow!(AffixFuzzer23);
 
-impl ::re_types_core::ArrowDatatype for AffixFuzzer23 {
+impl ::re_types_core::ArrowDataType for AffixFuzzer23 {
     #[inline]
-    fn arrow_datatype() -> arrow::datatypes::DataType {
+    fn arrow_data_type() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
         DataType::Struct(Fields::from(vec![
             Field::new(
                 "value1",
-                <crate::testing::encodings::EnumTest>::arrow_datatype(),
+                <crate::testing::encodings::EnumTest>::arrow_data_type(),
                 false,
             ),
             Field::new(
                 "value2",
-                <crate::testing::encodings::ValuedEnum>::arrow_datatype(),
+                <crate::testing::encodings::ValuedEnum>::arrow_data_type(),
                 true,
             ),
         ]))
@@ -64,7 +64,7 @@ impl ::re_types_core::ToArrow for AffixFuzzer23 {
     {
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{
-            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
             arrow_helpers::as_array_ref,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
@@ -92,7 +92,7 @@ impl ::re_types_core::ToArrow for AffixFuzzer23 {
 impl ::re_types_core::FromArrow for AffixFuzzer23 {
     fn from_arrow(arrow_data: &dyn arrow::array::Array) -> DeserializationResult<Vec<Self>> {
         use ::re_types_core::{
-            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            ArrowDataType as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
             arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};

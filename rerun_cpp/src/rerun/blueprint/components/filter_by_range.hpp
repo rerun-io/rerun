@@ -47,8 +47,8 @@ namespace rerun {
             "rerun.blueprint.components.FilterByRange";
 
         /// Returns the arrow data type this type corresponds to.
-        static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
-            return Loggable<rerun::blueprint::encodings::FilterByRange>::arrow_datatype();
+        static const std::shared_ptr<arrow::DataType>& arrow_data_type() {
+            return Loggable<rerun::blueprint::encodings::FilterByRange>::arrow_data_type();
         }
 
         /// Serializes an array of `rerun::blueprint:: components::FilterByRange` into an arrow array.

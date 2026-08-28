@@ -62,7 +62,7 @@ mod tests {
     use re_chunk::{Chunk, RowId};
     use re_entity_db::EntityDb;
     use re_log_types::{StoreId, TimePoint};
-    use re_sdk_types::{ArrowDatatype as _, archetypes::Points3D, components::Radius};
+    use re_sdk_types::{ArrowDataType as _, archetypes::Points3D, components::Radius};
 
     use super::is_valid_blueprint;
 
@@ -112,7 +112,7 @@ mod tests {
     fn matching_datatype_is_valid() {
         let component_reflection = &re_sdk_types::reflection::reflection().components;
         assert_eq!(
-            Radius::arrow_datatype(),
+            Radius::arrow_data_type(),
             arrow::datatypes::DataType::Float32
         );
 

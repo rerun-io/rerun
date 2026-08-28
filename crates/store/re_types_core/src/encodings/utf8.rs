@@ -31,9 +31,9 @@ pub struct Utf8(pub crate::ArrowString);
 
 crate::macros::impl_into_cow!(Utf8);
 
-impl crate::ArrowDatatype for Utf8 {
+impl crate::ArrowDataType for Utf8 {
     #[inline]
-    fn arrow_datatype() -> arrow::datatypes::DataType {
+    fn arrow_data_type() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
         DataType::Utf8
     }
@@ -48,7 +48,7 @@ impl crate::ToArrowOpt for Utf8 {
     {
         #![allow(clippy::manual_is_variant_and)]
         use crate::{
-            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
             arrow_helpers::as_array_ref,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
@@ -96,13 +96,13 @@ impl crate::FromArrowOpt for Utf8 {
         arrow_data: &dyn arrow::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>> {
         use crate::{
-            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            ArrowDataType as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
             arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let arrow_data = arrow_data
-                .try_cast::<StringArray>(|| Self::arrow_datatype())
+                .try_cast::<StringArray>(|| Self::arrow_data_type())
                 .with_context("rerun.encodings.Utf8#value")?;
             let arrow_data_buf = arrow_data.values();
             let offsets = arrow_data.offsets();

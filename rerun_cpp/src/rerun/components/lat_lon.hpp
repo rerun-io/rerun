@@ -62,8 +62,8 @@ namespace rerun {
         static constexpr std::string_view ComponentType = "rerun.components.LatLon";
 
         /// Returns the arrow data type this type corresponds to.
-        static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
-            return Loggable<rerun::encodings::DVec2D>::arrow_datatype();
+        static const std::shared_ptr<arrow::DataType>& arrow_data_type() {
+            return Loggable<rerun::encodings::DVec2D>::arrow_data_type();
         }
 
         /// Serializes an array of `rerun::components::LatLon` into an arrow array.

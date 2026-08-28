@@ -10,7 +10,7 @@ pub struct ArrowDataTypeTokenizer<'a> {
 
     /// If `true`,
     /// then the generated code will often be shorter, as it will
-    /// defer to calling `arrow_datatype()` on the inner type.
+    /// defer to calling `arrow_data_type()` on the inner type.
     pub recursive: bool,
 }
 
@@ -81,7 +81,7 @@ impl quote::ToTokens for ArrowDataTypeTokenizer<'_> {
                     // TODO(emilk): if the datatype is a primitive, then we can just use it directly
                     // so we get shorter generated code.
                     let fqname_use = quote_fqname_as_type_path(fqname);
-                    quote!(<#fqname_use>::arrow_datatype())
+                    quote!(<#fqname_use>::arrow_data_type())
                 } else {
                     let datatype = ArrowDataTypeTokenizer {
                         datatype: datatype.to_logical_type(),

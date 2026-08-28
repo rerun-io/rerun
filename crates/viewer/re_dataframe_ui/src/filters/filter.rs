@@ -1,7 +1,7 @@
 use arrow::datatypes::{DataType, Field, FieldRef};
 use datafusion::logical_expr::Expr;
 use re_log_types::TimestampFormat;
-use re_types_core::{ArrowDatatype as _, Component as _, FIELD_METADATA_KEY_COMPONENT_TYPE};
+use re_types_core::{ArrowDataType as _, Component as _, FIELD_METADATA_KEY_COMPONENT_TYPE};
 use re_ui::SyntaxHighlighting;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 
@@ -115,7 +115,7 @@ impl TypedFilter {
             }
 
             data_type
-                if data_type == &re_sdk_types::components::Timestamp::arrow_datatype()
+                if data_type == &re_sdk_types::components::Timestamp::arrow_data_type()
                     && column_field
                         .metadata()
                         .get(FIELD_METADATA_KEY_COMPONENT_TYPE)

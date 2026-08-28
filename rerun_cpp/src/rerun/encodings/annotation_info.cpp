@@ -12,11 +12,11 @@
 namespace rerun::encodings {}
 
 namespace rerun {
-    const std::shared_ptr<arrow::DataType>& Loggable<encodings::AnnotationInfo>::arrow_datatype() {
+    const std::shared_ptr<arrow::DataType>& Loggable<encodings::AnnotationInfo>::arrow_data_type() {
         static const auto datatype = arrow::struct_({
             arrow::field("id", arrow::uint16(), false),
-            arrow::field("label", Loggable<rerun::encodings::Utf8>::arrow_datatype(), true),
-            arrow::field("color", Loggable<rerun::encodings::Rgba32>::arrow_datatype(), true),
+            arrow::field("label", Loggable<rerun::encodings::Utf8>::arrow_data_type(), true),
+            arrow::field("color", Loggable<rerun::encodings::Rgba32>::arrow_data_type(), true),
         });
         return datatype;
     }
@@ -26,7 +26,7 @@ namespace rerun {
     ) {
         // TODO(andreas): Allow configuring the memory pool.
         arrow::MemoryPool* pool = arrow::default_memory_pool();
-        auto datatype = arrow_datatype();
+        auto datatype = arrow_data_type();
 
         ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(datatype, pool))
         if (instances && num_instances > 0) {

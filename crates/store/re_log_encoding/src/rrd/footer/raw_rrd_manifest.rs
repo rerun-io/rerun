@@ -1367,9 +1367,9 @@ impl RawRrdManifest {
     ];
 
     pub fn field_chunk_id() -> Field {
-        use re_log_types::external::re_types_core::ArrowDatatype as _;
+        use re_log_types::external::re_types_core::ArrowDataType as _;
         let nullable = false; // every chunk has an ID
-        Field::new(Self::FIELD_CHUNK_ID, ChunkId::arrow_datatype(), nullable)
+        Field::new(Self::FIELD_CHUNK_ID, ChunkId::arrow_data_type(), nullable)
     }
 
     pub fn field_chunk_is_static() -> Field {

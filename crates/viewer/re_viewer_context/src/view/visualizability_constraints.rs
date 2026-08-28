@@ -56,7 +56,7 @@ impl SingleRequiredComponentConstraint {
         Self {
             target_component: target_component_descriptor.component,
             semantic_type: C::name(),
-            physical_types: std::iter::once(C::arrow_datatype()).collect(),
+            physical_types: std::iter::once(C::arrow_data_type()).collect(),
             allow_static_data: true,
         }
     }
@@ -130,20 +130,20 @@ impl SingleRequiredComponentConstraint {
                     self.physical_types.contains(dt)
                 })
                 .map(|selectors| DatatypeMatch::PhysicalDatatypeOnly {
-                    arrow_datatype: incoming_arrow_datatype.clone(),
+                    arrow_data_type: incoming_arrow_datatype.clone(),
                     component_type: incoming_component_type,
                     selectors: selectors.into(),
                 })
             }
 
             (true, false) => Some(DatatypeMatch::PhysicalDatatypeOnly {
-                arrow_datatype: incoming_arrow_datatype.clone(),
+                arrow_data_type: incoming_arrow_datatype.clone(),
                 component_type: incoming_component_type,
                 selectors: Vec::new(),
             }),
 
             (true, true) => Some(DatatypeMatch::NativeSemantics {
-                arrow_datatype: incoming_arrow_datatype.clone(),
+                arrow_data_type: incoming_arrow_datatype.clone(),
                 component_type: incoming_component_type,
             }),
 
@@ -151,7 +151,7 @@ impl SingleRequiredComponentConstraint {
                 self.physical_types.contains(dt)
             })
             .map(|selectors| DatatypeMatch::PhysicalDatatypeOnly {
-                arrow_datatype: incoming_arrow_datatype.clone(),
+                arrow_data_type: incoming_arrow_datatype.clone(),
                 component_type: incoming_component_type,
                 selectors: selectors.into(),
             })
@@ -215,7 +215,7 @@ impl BufferAndFormatConstraint {
             Buffer::name(),
             format_descriptor.component,
             Format::name(),
-            Format::arrow_datatype(),
+            Format::arrow_data_type(),
         )
     }
 
@@ -244,7 +244,7 @@ impl BufferAndFormatConstraint {
     /// buffers are opaque byte blobs regardless of the specific image archetype.
     // TODO(andreas): It would be great if we could support `BinaryArray` as well!
     pub fn buffer_arrow_datatype() -> arrow::datatypes::DataType {
-        <re_sdk_types::encodings::Blob as re_types_core::ArrowDatatype>::arrow_datatype()
+        <re_sdk_types::encodings::Blob as re_types_core::ArrowDataType>::arrow_data_type()
     }
 
     /// The buffer component slot on the visualizer.
@@ -273,11 +273,11 @@ impl BufferAndFormatConstraint {
 
         match (is_physical_match, is_semantic) {
             (true, true) => Some(DatatypeMatch::NativeSemantics {
-                arrow_datatype: incoming_arrow_datatype.clone(),
+                arrow_data_type: incoming_arrow_datatype.clone(),
                 component_type: descriptor.component_type,
             }),
             (true, false) => Some(DatatypeMatch::PhysicalDatatypeOnly {
-                arrow_datatype: incoming_arrow_datatype.clone(),
+                arrow_data_type: incoming_arrow_datatype.clone(),
                 component_type: descriptor.component_type,
                 selectors: Vec::new(),
             }),
@@ -287,7 +287,7 @@ impl BufferAndFormatConstraint {
                     *dt == Self::buffer_arrow_datatype()
                 })
                 .map(|selectors| DatatypeMatch::PhysicalDatatypeOnly {
-                    arrow_datatype: incoming_arrow_datatype.clone(),
+                    arrow_data_type: incoming_arrow_datatype.clone(),
                     component_type: descriptor.component_type,
                     selectors: selectors.into(),
                 })

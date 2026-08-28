@@ -60,8 +60,8 @@ namespace rerun {
             "rerun.components.SphericalHarmonicsDegree";
 
         /// Returns the arrow data type this type corresponds to.
-        static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
-            return Loggable<rerun::encodings::UInt32>::arrow_datatype();
+        static const std::shared_ptr<arrow::DataType>& arrow_data_type() {
+            return Loggable<rerun::encodings::UInt32>::arrow_data_type();
         }
 
         /// Serializes an array of `rerun::components::SphericalHarmonicsDegree` into an arrow array.

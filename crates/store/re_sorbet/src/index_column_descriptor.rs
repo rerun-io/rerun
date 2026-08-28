@@ -1,4 +1,4 @@
-use arrow::datatypes::{DataType as ArrowDatatype, Field as ArrowField};
+use arrow::datatypes::{DataType as ArrowDataType, Field as ArrowField};
 use re_log_types::{Timeline, TimelineName};
 
 use crate::MetadataExt as _;
@@ -6,7 +6,7 @@ use crate::MetadataExt as _;
 #[derive(thiserror::Error, Debug)]
 pub enum IndexColumnError {
     #[error("Unsupported time type: {datatype}")]
-    UnsupportedTimeType { datatype: ArrowDatatype },
+    UnsupportedTimeType { datatype: ArrowDataType },
 
     #[error(transparent)]
     InvalidTimelineName(#[from] re_types_core::InvalidTimelineNameError),
@@ -19,7 +19,7 @@ pub struct IndexColumnDescriptor {
     pub timeline: Timeline,
 
     /// The Arrow datatype of the column.
-    pub datatype: ArrowDatatype,
+    pub datatype: ArrowDataType,
 
     /// Are the indices in this column sorted?
     ///
@@ -54,7 +54,7 @@ impl IndexColumnDescriptor {
             // TODO(cmc): I picked a sequence here because I have to pick something.
             // It doesn't matter, only the name will remain in the Arrow schema anyhow.
             timeline: Timeline::new_sequence(name),
-            datatype: ArrowDatatype::Null,
+            datatype: ArrowDataType::Null,
             is_sorted: true,
         }
     }
@@ -84,7 +84,7 @@ impl IndexColumnDescriptor {
     }
 
     #[inline]
-    pub fn datatype(&self) -> &ArrowDatatype {
+    pub fn datatype(&self) -> &ArrowDataType {
         &self.datatype
     }
 

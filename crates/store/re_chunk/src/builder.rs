@@ -1,5 +1,5 @@
 use arrow::array::ArrayRef;
-use arrow::datatypes::DataType as ArrowDatatype;
+use arrow::datatypes::DataType as ArrowDataType;
 use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 use re_log_types::{EntityPath, NonMinI64, TimePoint, Timeline, TimelineName};
@@ -339,7 +339,7 @@ impl ChunkBuilder {
     #[inline]
     pub fn build_with_datatypes(
         self,
-        datatypes: &IntMap<ComponentDescriptor, ArrowDatatype>,
+        datatypes: &IntMap<ComponentDescriptor, ArrowDataType>,
     ) -> ChunkResult<Chunk> {
         let Self {
             id,

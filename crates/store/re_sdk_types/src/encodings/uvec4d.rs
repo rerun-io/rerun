@@ -42,9 +42,9 @@ pub struct UVec4D(pub [u32; 4usize]);
 
 ::re_types_core::macros::impl_into_cow!(UVec4D);
 
-impl ::re_types_core::ArrowDatatype for UVec4D {
+impl ::re_types_core::ArrowDataType for UVec4D {
     #[inline]
-    fn arrow_datatype() -> arrow::datatypes::DataType {
+    fn arrow_data_type() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
         DataType::FixedSizeList(
             std::sync::Arc::new(Field::new("item", DataType::UInt32, false)),
@@ -62,7 +62,7 @@ impl ::re_types_core::ToArrow for UVec4D {
     {
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{
-            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
             arrow_helpers::as_array_ref,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
@@ -96,7 +96,7 @@ impl ::re_types_core::FromArrow for UVec4D {
     #[inline]
     fn from_arrow(arrow_data: &dyn arrow::array::Array) -> DeserializationResult<Vec<Self>> {
         use ::re_types_core::{
-            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            ArrowDataType as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
             arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};

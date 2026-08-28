@@ -55,8 +55,8 @@ namespace rerun {
             "rerun.blueprint.components.ViewerRecommendationHash";
 
         /// Returns the arrow data type this type corresponds to.
-        static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
-            return Loggable<rerun::encodings::UInt64>::arrow_datatype();
+        static const std::shared_ptr<arrow::DataType>& arrow_data_type() {
+            return Loggable<rerun::encodings::UInt64>::arrow_data_type();
         }
 
         /// Serializes an array of `rerun::blueprint:: components::ViewerRecommendationHash` into an arrow array.

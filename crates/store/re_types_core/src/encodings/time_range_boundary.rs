@@ -39,9 +39,9 @@ pub enum TimeRangeBoundary {
 
 crate::macros::impl_into_cow!(TimeRangeBoundary);
 
-impl crate::ArrowDatatype for TimeRangeBoundary {
+impl crate::ArrowDataType for TimeRangeBoundary {
     #[inline]
-    fn arrow_datatype() -> arrow::datatypes::DataType {
+    fn arrow_data_type() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
         DataType::Union(
             UnionFields::try_new(
@@ -50,12 +50,12 @@ impl crate::ArrowDatatype for TimeRangeBoundary {
                     Field::new("_null_markers", DataType::Null, true),
                     Field::new(
                         "CursorRelative",
-                        <crate::encodings::TimeInt>::arrow_datatype(),
+                        <crate::encodings::TimeInt>::arrow_data_type(),
                         false,
                     ),
                     Field::new(
                         "Absolute",
-                        <crate::encodings::TimeInt>::arrow_datatype(),
+                        <crate::encodings::TimeInt>::arrow_data_type(),
                         false,
                     ),
                     Field::new("Infinite", DataType::Null, true),
@@ -76,7 +76,7 @@ impl crate::ToArrowOpt for TimeRangeBoundary {
     {
         #![allow(clippy::manual_is_variant_and)]
         use crate::{
-            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
             arrow_helpers::as_array_ref,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
@@ -94,12 +94,12 @@ impl crate::ToArrowOpt for TimeRangeBoundary {
                 Field::new("_null_markers", DataType::Null, true),
                 Field::new(
                     "CursorRelative",
-                    <crate::encodings::TimeInt>::arrow_datatype(),
+                    <crate::encodings::TimeInt>::arrow_data_type(),
                     false,
                 ),
                 Field::new(
                     "Absolute",
-                    <crate::encodings::TimeInt>::arrow_datatype(),
+                    <crate::encodings::TimeInt>::arrow_data_type(),
                     false,
                 ),
                 Field::new("Infinite", DataType::Null, true),
@@ -198,13 +198,13 @@ impl crate::FromArrowOpt for TimeRangeBoundary {
         arrow_data: &dyn arrow::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>> {
         use crate::{
-            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            ArrowDataType as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
             arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let arrow_data = arrow_data
-                .try_cast::<arrow::array::UnionArray>(|| Self::arrow_datatype())
+                .try_cast::<arrow::array::UnionArray>(|| Self::arrow_data_type())
                 .with_context("rerun.encodings.TimeRangeBoundary")?;
             if arrow_data.is_empty() {
                 Vec::new()
@@ -213,7 +213,7 @@ impl crate::FromArrowOpt for TimeRangeBoundary {
                 let arrow_data_offsets = arrow_data
                     .offsets()
                     .ok_or_else(|| {
-                        let expected = Self::arrow_datatype();
+                        let expected = Self::arrow_data_type();
                         let actual = arrow_data.data_type().clone();
                         DeserializationError::datatype_mismatch(expected, actual)
                     })
@@ -293,7 +293,7 @@ impl crate::FromArrowOpt for TimeRangeBoundary {
                                 3i8 => Self::Infinite,
                                 _ => {
                                     return Err(DeserializationError::missing_union_arm(
-                                        Self::arrow_datatype(),
+                                        Self::arrow_data_type(),
                                         "<invalid>",
                                         *typ as _,
                                     ));

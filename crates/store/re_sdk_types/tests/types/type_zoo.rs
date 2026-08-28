@@ -341,7 +341,7 @@ fn roundtrip() {
 /// Fixed-size array of structs, i.e. a nested Arrow `FixedSizeList<FixedSizeList<Float32, 3>, 2>`.
 #[test]
 fn roundtrip_fixed_size_array_of_structs() {
-    use re_types_core::{ArrowDatatype as _, FromArrow as _, ToArrow as _};
+    use re_types_core::{ArrowDataType as _, FromArrow as _, ToArrow as _};
 
     let expected_datatype = arrow::datatypes::DataType::FixedSizeList(
         std::sync::Arc::new(arrow::datatypes::Field::new(
@@ -363,7 +363,7 @@ fn roundtrip_fixed_size_array_of_structs() {
         expected_datatype.to_string(),
         "FixedSizeList(2 x non-null FixedSizeList(3 x non-null Float32))",
     );
-    assert_eq!(encodings::ManyVec3::arrow_datatype(), expected_datatype);
+    assert_eq!(encodings::ManyVec3::arrow_data_type(), expected_datatype);
 
     let data = vec![
         components::ManyVec3(encodings::ManyVec3([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])),

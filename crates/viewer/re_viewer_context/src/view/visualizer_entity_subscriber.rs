@@ -259,13 +259,13 @@ fn process_entity_components(
                     continue;
                 }
 
-                let Some(arrow_datatype) = &c.inner_arrow_datatype else {
+                let Some(arrow_data_type) = &c.inner_arrow_datatype else {
                     continue;
                 };
 
                 if let Some(match_info) = constraint.check_datatype_match(
                     known_builtin_enum_components,
-                    arrow_datatype,
+                    arrow_data_type,
                     c.descriptor.component_type,
                     c.descriptor.component,
                 ) {
@@ -294,12 +294,12 @@ fn process_entity_components(
 
         VisualizabilityConstraints::BufferAndFormat(constraint) => {
             for c in components {
-                let Some(arrow_datatype) = &c.inner_arrow_datatype else {
+                let Some(arrow_data_type) = &c.inner_arrow_datatype else {
                     continue;
                 };
 
-                let buffer_match = constraint.check_buffer_match(arrow_datatype, &c.descriptor);
-                let is_format_match = constraint.check_format_match(arrow_datatype, &c.descriptor);
+                let buffer_match = constraint.check_buffer_match(arrow_data_type, &c.descriptor);
+                let is_format_match = constraint.check_format_match(arrow_data_type, &c.descriptor);
                 if buffer_match.is_none() && !is_format_match {
                     continue;
                 }
@@ -402,7 +402,7 @@ mod tests {
     };
     use re_log_types::{example_components::MyPoint, example_components::MyPoints};
     use re_sdk_types::ComponentDescriptor;
-    use re_types_core::ArrowDatatype as _;
+    use re_types_core::ArrowDataType as _;
     use std::assert_matches;
 
     const BUFFER_CTYPE: &str = "test.components.Buffer";
@@ -539,7 +539,7 @@ mod tests {
                     entity_path: entity.clone(),
                     components: vec![re_chunk_store::ChunkComponentMeta {
                         descriptor: MyPoints::descriptor_points(),
-                        inner_arrow_datatype: Some(MyPoint::arrow_datatype()),
+                        inner_arrow_datatype: Some(MyPoint::arrow_data_type()),
                         has_data: false, // This would happen if someone logs an entity without any rows!
                         is_static: false,
                     }],

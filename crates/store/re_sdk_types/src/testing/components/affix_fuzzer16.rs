@@ -36,13 +36,13 @@ impl ::re_types_core::Component for AffixFuzzer16 {
 
 ::re_types_core::macros::impl_into_cow!(AffixFuzzer16);
 
-impl ::re_types_core::ArrowDatatype for AffixFuzzer16 {
+impl ::re_types_core::ArrowDataType for AffixFuzzer16 {
     #[inline]
-    fn arrow_datatype() -> arrow::datatypes::DataType {
+    fn arrow_data_type() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
         DataType::List(std::sync::Arc::new(Field::new(
             "item",
-            <crate::testing::encodings::ScalarUnion>::arrow_datatype(),
+            <crate::testing::encodings::ScalarUnion>::arrow_data_type(),
             true,
         )))
     }
@@ -57,7 +57,7 @@ impl ::re_types_core::ToArrow for AffixFuzzer16 {
     {
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{
-            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
             arrow_helpers::as_array_ref,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
@@ -79,7 +79,7 @@ impl ::re_types_core::ToArrow for AffixFuzzer16 {
                 as_array_ref(ListArray::try_new(
                     std::sync::Arc::new(Field::new(
                         "item",
-                        <crate::testing::encodings::ScalarUnion>::arrow_datatype(),
+                        <crate::testing::encodings::ScalarUnion>::arrow_data_type(),
                         true,
                     )),
                     offsets,
@@ -97,14 +97,14 @@ impl ::re_types_core::ToArrow for AffixFuzzer16 {
 impl ::re_types_core::FromArrow for AffixFuzzer16 {
     fn from_arrow(arrow_data: &dyn arrow::array::Array) -> DeserializationResult<Vec<Self>> {
         use ::re_types_core::{
-            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            ArrowDataType as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
             arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
         err_on_nulls(arrow_data, "rerun.testing.components.AffixFuzzer16")?;
         Ok({
             let arrow_data = arrow_data
-                .try_cast::<arrow::array::ListArray>(|| Self::arrow_datatype())
+                .try_cast::<arrow::array::ListArray>(|| Self::arrow_data_type())
                 .with_context("rerun.testing.components.AffixFuzzer16#many_required_unions")?;
             if arrow_data.is_empty() {
                 Vec::new()

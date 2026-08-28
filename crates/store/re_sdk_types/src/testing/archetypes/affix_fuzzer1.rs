@@ -467,7 +467,7 @@ impl ::re_types_core::Archetype for AffixFuzzer1 {
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{
-            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            ArrowDataType as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
         };
         let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
         let fuzz1001 = arrays_by_descr
@@ -661,7 +661,7 @@ impl AffixFuzzer1 {
     /// Clear all the fields of a `AffixFuzzer1`.
     #[inline]
     pub fn clear_fields() -> Self {
-        use ::re_types_core::ArrowDatatype as _;
+        use ::re_types_core::ArrowDataType as _;
         Self {
             fuzz1001: Some(SerializedComponentBatch::new(
                 crate::testing::components::AffixFuzzer1::arrow_empty(),

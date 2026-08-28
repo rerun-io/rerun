@@ -13,12 +13,12 @@ namespace rerun::blueprint::encodings {}
 
 namespace rerun {
     const std::shared_ptr<arrow::DataType>&
-        Loggable<blueprint::encodings::VisualizerComponentMapping>::arrow_datatype() {
+        Loggable<blueprint::encodings::VisualizerComponentMapping>::arrow_data_type() {
         static const auto datatype = arrow::struct_({
-            arrow::field("target", Loggable<rerun::encodings::Utf8>::arrow_datatype(), false),
+            arrow::field("target", Loggable<rerun::encodings::Utf8>::arrow_data_type(), false),
             arrow::field(
                 "source_kind",
-                Loggable<rerun::blueprint::encodings::ComponentSourceKind>::arrow_datatype(),
+                Loggable<rerun::blueprint::encodings::ComponentSourceKind>::arrow_data_type(),
                 false
             ),
             arrow::field("source_component", arrow::utf8(), true),
@@ -33,7 +33,7 @@ namespace rerun {
         ) {
         // TODO(andreas): Allow configuring the memory pool.
         arrow::MemoryPool* pool = arrow::default_memory_pool();
-        auto datatype = arrow_datatype();
+        auto datatype = arrow_data_type();
 
         ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(datatype, pool))
         if (instances && num_instances > 0) {

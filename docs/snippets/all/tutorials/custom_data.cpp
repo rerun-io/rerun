@@ -12,8 +12,8 @@ template <>
 struct rerun::Loggable<Confidence> {
     static constexpr std::string_view ComponentType = "user.Confidence";
 
-    static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
-        return rerun::Loggable<rerun::Float32>::arrow_datatype();
+    static const std::shared_ptr<arrow::DataType>& arrow_data_type() {
+        return rerun::Loggable<rerun::Float32>::arrow_data_type();
     }
 
     // TODO(#4257) should take a rerun::Collection instead of pointer and size.

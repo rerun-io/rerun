@@ -49,7 +49,7 @@ namespace rerun {
             "rerun.blueprint.components.BackgroundKind";
 
         /// Returns the arrow data type this type corresponds to.
-        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
+        static const std::shared_ptr<arrow::DataType>& arrow_data_type();
 
         /// Serializes an array of `rerun::blueprint:: components::BackgroundKind` into an arrow array.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(

@@ -9,8 +9,8 @@ template <>
 struct rerun::Loggable<CustomPosition3D> {
     static constexpr ComponentDescriptor Descriptor = "user.CustomPosition3D";
 
-    static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
-        return rerun::Loggable<rerun::Position3D>::arrow_datatype();
+    static const std::shared_ptr<arrow::DataType>& arrow_data_type() {
+        return rerun::Loggable<rerun::Position3D>::arrow_data_type();
     }
 
     // TODO(#4257) should take a rerun::Collection instead of pointer and size.

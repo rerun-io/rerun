@@ -27,7 +27,7 @@ namespace rerun {
         /// Registers the component type when first encountered.
         Result<ComponentTypeHandle> get_or_register(
             const ComponentDescriptor& descriptor,
-            const std::shared_ptr<arrow::DataType>& arrow_datatype
+            const std::shared_ptr<arrow::DataType>& arrow_data_type
         );
 
       private:

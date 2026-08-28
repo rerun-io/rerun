@@ -1138,29 +1138,29 @@ fn all_scalar_mappings(
         };
 
         match match_info {
-            DatatypeMatch::NativeSemantics { arrow_datatype, .. } => {
-                Either::Left(Either::Left(std::iter::once((
-                    primary_match_order,
-                    is_rerun_native_type,
-                    scalar_datatype_priority(arrow_datatype),
-                    *source_component,
-                    0usize,
-                    String::new(),
-                ))))
-            }
+            DatatypeMatch::NativeSemantics {
+                arrow_data_type, ..
+            } => Either::Left(Either::Left(std::iter::once((
+                primary_match_order,
+                is_rerun_native_type,
+                scalar_datatype_priority(arrow_data_type),
+                *source_component,
+                0usize,
+                String::new(),
+            )))),
             DatatypeMatch::PhysicalDatatypeOnly {
-                arrow_datatype,
+                arrow_data_type,
                 selectors,
                 ..
             } => {
                 if selectors.is_empty() {
                     if is_rerun_native_type
-                        || RECOMMENDED_DATATYPES.contains(match_info.arrow_datatype())
+                        || RECOMMENDED_DATATYPES.contains(match_info.arrow_data_type())
                     {
                         Either::Left(Either::Left(std::iter::once((
                             primary_match_order,
                             is_rerun_native_type,
-                            scalar_datatype_priority(arrow_datatype),
+                            scalar_datatype_priority(arrow_data_type),
                             *source_component,
                             0usize,
                             String::new(),
@@ -1778,7 +1778,7 @@ mod tests {
                 matches: std::iter::once((
                     Scalars::descriptor_scalars().component,
                     DatatypeMatch::PhysicalDatatypeOnly {
-                        arrow_datatype: DataType::Int32,
+                        arrow_data_type: DataType::Int32,
                         component_type: None,
                         selectors: vec![],
                     },
@@ -1806,7 +1806,7 @@ mod tests {
                 matches: std::iter::once((
                     Scalars::descriptor_scalars().component,
                     DatatypeMatch::NativeSemantics {
-                        arrow_datatype: DataType::Float64,
+                        arrow_data_type: DataType::Float64,
                         component_type: None,
                     },
                 ))

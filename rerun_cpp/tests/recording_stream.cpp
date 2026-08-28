@@ -32,8 +32,8 @@ struct rerun::Loggable<BadComponent> {
     static constexpr rerun::ComponentDescriptor Descriptor = "bad!";
     static rerun::Error error;
 
-    static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
-        return rerun::Loggable<rerun::components::Position2D>::arrow_datatype();
+    static const std::shared_ptr<arrow::DataType>& arrow_data_type() {
+        return rerun::Loggable<rerun::components::Position2D>::arrow_data_type();
     }
 
     static rerun::Result<std::shared_ptr<arrow::Array>> to_arrow(const BadComponent*, size_t) {

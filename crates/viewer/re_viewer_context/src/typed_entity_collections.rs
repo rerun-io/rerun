@@ -23,7 +23,7 @@ use crate::ViewSystemIdentifier;
 pub enum DatatypeMatch {
     /// Only the physical datatype was matched, but semantics aren't the native ones.
     PhysicalDatatypeOnly {
-        arrow_datatype: arrow::datatypes::DataType,
+        arrow_data_type: arrow::datatypes::DataType,
 
         /// The semantic component type if any.
         ///
@@ -41,7 +41,7 @@ pub enum DatatypeMatch {
     /// For example the native type for a Rerun point cloud is `rerun.components.Position3D`.
     /// This is *not* concerned with the column name of the data, only the datatype.
     NativeSemantics {
-        arrow_datatype: arrow::datatypes::DataType,
+        arrow_data_type: arrow::datatypes::DataType,
 
         /// The semantic component type if any.
         ///
@@ -58,10 +58,14 @@ impl DatatypeMatch {
         }
     }
 
-    pub fn arrow_datatype(&self) -> &arrow::datatypes::DataType {
+    pub fn arrow_data_type(&self) -> &arrow::datatypes::DataType {
         match self {
-            Self::PhysicalDatatypeOnly { arrow_datatype, .. }
-            | Self::NativeSemantics { arrow_datatype, .. } => arrow_datatype,
+            Self::PhysicalDatatypeOnly {
+                arrow_data_type, ..
+            }
+            | Self::NativeSemantics {
+                arrow_data_type, ..
+            } => arrow_data_type,
         }
     }
 }

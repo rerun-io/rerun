@@ -5,7 +5,7 @@ use std::sync::Arc;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_byte_size::SizeBytes;
 use re_types_core::{
-    ArrowDatatype, Component, ComponentDescriptor, ComponentType, DeserializationError, FromArrow,
+    ArrowDataType, Component, ComponentDescriptor, ComponentType, DeserializationError, FromArrow,
     SerializedComponentBatch, ToArrow,
 };
 
@@ -153,8 +153,8 @@ impl MyPoint {
 
 re_types_core::macros::impl_into_cow!(MyPoint);
 
-impl ArrowDatatype for MyPoint {
-    fn arrow_datatype() -> arrow::datatypes::DataType {
+impl ArrowDataType for MyPoint {
+    fn arrow_data_type() -> arrow::datatypes::DataType {
         use arrow::datatypes::DataType::Float32;
         arrow::datatypes::DataType::Struct(arrow::datatypes::Fields::from(vec![
             arrow::datatypes::Field::new("x", Float32, false),
@@ -258,8 +258,8 @@ impl MyPoint64 {
 
 re_types_core::macros::impl_into_cow!(MyPoint64);
 
-impl ArrowDatatype for MyPoint64 {
-    fn arrow_datatype() -> arrow::datatypes::DataType {
+impl ArrowDataType for MyPoint64 {
+    fn arrow_data_type() -> arrow::datatypes::DataType {
         use arrow::datatypes::DataType::Float64;
         arrow::datatypes::DataType::Struct(arrow::datatypes::Fields::from(vec![
             arrow::datatypes::Field::new("x", Float64, false),
@@ -371,8 +371,8 @@ impl From<u32> for MyColor {
 
 re_types_core::macros::impl_into_cow!(MyColor);
 
-impl ArrowDatatype for MyColor {
-    fn arrow_datatype() -> arrow::datatypes::DataType {
+impl ArrowDataType for MyColor {
+    fn arrow_data_type() -> arrow::datatypes::DataType {
         arrow::datatypes::DataType::UInt32
     }
 }
@@ -416,9 +416,9 @@ pub struct MyLabel(pub String);
 
 re_types_core::macros::impl_into_cow!(MyLabel);
 
-impl ArrowDatatype for MyLabel {
-    fn arrow_datatype() -> arrow::datatypes::DataType {
-        re_types_core::encodings::Utf8::arrow_datatype()
+impl ArrowDataType for MyLabel {
+    fn arrow_data_type() -> arrow::datatypes::DataType {
+        re_types_core::encodings::Utf8::arrow_data_type()
     }
 }
 
@@ -492,8 +492,8 @@ impl MyIndex {
 
 re_types_core::macros::impl_into_cow!(MyIndex);
 
-impl ArrowDatatype for MyIndex {
-    fn arrow_datatype() -> arrow::datatypes::DataType {
+impl ArrowDataType for MyIndex {
+    fn arrow_data_type() -> arrow::datatypes::DataType {
         arrow::datatypes::DataType::UInt64
     }
 }

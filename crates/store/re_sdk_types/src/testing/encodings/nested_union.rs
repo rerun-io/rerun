@@ -32,9 +32,9 @@ pub enum NestedUnion {
 
 ::re_types_core::macros::impl_into_cow!(NestedUnion);
 
-impl ::re_types_core::ArrowDatatype for NestedUnion {
+impl ::re_types_core::ArrowDataType for NestedUnion {
     #[inline]
-    fn arrow_datatype() -> arrow::datatypes::DataType {
+    fn arrow_data_type() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
         DataType::Union(
             UnionFields::try_new(
@@ -43,14 +43,14 @@ impl ::re_types_core::ArrowDatatype for NestedUnion {
                     Field::new("_null_markers", DataType::Null, true),
                     Field::new(
                         "single_required",
-                        <crate::testing::encodings::ScalarUnion>::arrow_datatype(),
+                        <crate::testing::encodings::ScalarUnion>::arrow_data_type(),
                         true,
                     ),
                     Field::new(
                         "many_required",
                         DataType::List(std::sync::Arc::new(Field::new(
                             "item",
-                            <crate::testing::encodings::ScalarUnion>::arrow_datatype(),
+                            <crate::testing::encodings::ScalarUnion>::arrow_data_type(),
                             true,
                         ))),
                         false,
@@ -72,7 +72,7 @@ impl ::re_types_core::ToArrowOpt for NestedUnion {
     {
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{
-            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
             arrow_helpers::as_array_ref,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
@@ -90,14 +90,14 @@ impl ::re_types_core::ToArrowOpt for NestedUnion {
                 Field::new("_null_markers", DataType::Null, true),
                 Field::new(
                     "single_required",
-                    <crate::testing::encodings::ScalarUnion>::arrow_datatype(),
+                    <crate::testing::encodings::ScalarUnion>::arrow_data_type(),
                     true,
                 ),
                 Field::new(
                     "many_required",
                     DataType::List(std::sync::Arc::new(Field::new(
                         "item",
-                        <crate::testing::encodings::ScalarUnion>::arrow_datatype(),
+                        <crate::testing::encodings::ScalarUnion>::arrow_data_type(),
                         true,
                     ))),
                     false,
@@ -170,7 +170,7 @@ impl ::re_types_core::ToArrowOpt for NestedUnion {
                         as_array_ref(ListArray::try_new(
                             std::sync::Arc::new(Field::new(
                                 "item",
-                                <crate::testing::encodings::ScalarUnion>::arrow_datatype(),
+                                <crate::testing::encodings::ScalarUnion>::arrow_data_type(),
                                 true,
                             )),
                             offsets,
@@ -205,13 +205,13 @@ impl ::re_types_core::FromArrowOpt for NestedUnion {
         arrow_data: &dyn arrow::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>> {
         use ::re_types_core::{
-            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            ArrowDataType as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
             arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let arrow_data = arrow_data
-                .try_cast::<arrow::array::UnionArray>(|| Self::arrow_datatype())
+                .try_cast::<arrow::array::UnionArray>(|| Self::arrow_data_type())
                 .with_context("rerun.testing.encodings.NestedUnion")?;
             if arrow_data.is_empty() {
                 Vec::new()
@@ -220,7 +220,7 @@ impl ::re_types_core::FromArrowOpt for NestedUnion {
                 let arrow_data_offsets = arrow_data
                     .offsets()
                     .ok_or_else(|| {
-                        let expected = Self::arrow_datatype();
+                        let expected = Self::arrow_data_type();
                         let actual = arrow_data.data_type().clone();
                         DeserializationError::datatype_mismatch(expected, actual)
                     })
@@ -246,7 +246,7 @@ impl ::re_types_core::FromArrowOpt for NestedUnion {
                             .try_cast::<arrow::array::ListArray>(|| {
                                 DataType::List(std::sync::Arc::new(Field::new(
                                     "item",
-                                    <crate::testing::encodings::ScalarUnion>::arrow_datatype(),
+                                    <crate::testing::encodings::ScalarUnion>::arrow_data_type(),
                                     true,
                                 )))
                             })
@@ -346,7 +346,7 @@ impl ::re_types_core::FromArrowOpt for NestedUnion {
                                 }),
                                 _ => {
                                     return Err(DeserializationError::missing_union_arm(
-                                        Self::arrow_datatype(),
+                                        Self::arrow_data_type(),
                                         "<invalid>",
                                         *typ as _,
                                     ));

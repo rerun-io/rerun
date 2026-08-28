@@ -52,21 +52,21 @@ pub struct ClassDescription {
 
 ::re_types_core::macros::impl_into_cow!(ClassDescription);
 
-impl ::re_types_core::ArrowDatatype for ClassDescription {
+impl ::re_types_core::ArrowDataType for ClassDescription {
     #[inline]
-    fn arrow_datatype() -> arrow::datatypes::DataType {
+    fn arrow_data_type() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
         DataType::Struct(Fields::from(vec![
             Field::new(
                 "info",
-                <crate::encodings::AnnotationInfo>::arrow_datatype(),
+                <crate::encodings::AnnotationInfo>::arrow_data_type(),
                 false,
             ),
             Field::new(
                 "keypoint_annotations",
                 DataType::List(std::sync::Arc::new(Field::new(
                     "item",
-                    <crate::encodings::AnnotationInfo>::arrow_datatype(),
+                    <crate::encodings::AnnotationInfo>::arrow_data_type(),
                     false,
                 ))),
                 false,
@@ -75,7 +75,7 @@ impl ::re_types_core::ArrowDatatype for ClassDescription {
                 "keypoint_connections",
                 DataType::List(std::sync::Arc::new(Field::new(
                     "item",
-                    <crate::encodings::KeypointPair>::arrow_datatype(),
+                    <crate::encodings::KeypointPair>::arrow_data_type(),
                     false,
                 ))),
                 false,
@@ -93,7 +93,7 @@ impl ::re_types_core::ToArrowOpt for ClassDescription {
     {
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{
-            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
             arrow_helpers::as_array_ref,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
@@ -101,14 +101,14 @@ impl ::re_types_core::ToArrowOpt for ClassDescription {
             let fields = Fields::from(vec![
                 Field::new(
                     "info",
-                    <crate::encodings::AnnotationInfo>::arrow_datatype(),
+                    <crate::encodings::AnnotationInfo>::arrow_data_type(),
                     false,
                 ),
                 Field::new(
                     "keypoint_annotations",
                     DataType::List(std::sync::Arc::new(Field::new(
                         "item",
-                        <crate::encodings::AnnotationInfo>::arrow_datatype(),
+                        <crate::encodings::AnnotationInfo>::arrow_data_type(),
                         false,
                     ))),
                     false,
@@ -117,7 +117,7 @@ impl ::re_types_core::ToArrowOpt for ClassDescription {
                     "keypoint_connections",
                     DataType::List(std::sync::Arc::new(Field::new(
                         "item",
-                        <crate::encodings::KeypointPair>::arrow_datatype(),
+                        <crate::encodings::KeypointPair>::arrow_data_type(),
                         false,
                     ))),
                     false,
@@ -183,7 +183,7 @@ impl ::re_types_core::ToArrowOpt for ClassDescription {
                             as_array_ref(ListArray::try_new(
                                 std::sync::Arc::new(Field::new(
                                     "item",
-                                    <crate::encodings::AnnotationInfo>::arrow_datatype(),
+                                    <crate::encodings::AnnotationInfo>::arrow_data_type(),
                                     false,
                                 )),
                                 offsets,
@@ -227,7 +227,7 @@ impl ::re_types_core::ToArrowOpt for ClassDescription {
                             as_array_ref(ListArray::try_new(
                                 std::sync::Arc::new(Field::new(
                                     "item",
-                                    <crate::encodings::KeypointPair>::arrow_datatype(),
+                                    <crate::encodings::KeypointPair>::arrow_data_type(),
                                     false,
                                 )),
                                 offsets,
@@ -256,13 +256,13 @@ impl ::re_types_core::FromArrowOpt for ClassDescription {
         arrow_data: &dyn arrow::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>> {
         use ::re_types_core::{
-            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            ArrowDataType as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
             arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let arrow_data = arrow_data
-                .try_cast::<arrow::array::StructArray>(|| Self::arrow_datatype())
+                .try_cast::<arrow::array::StructArray>(|| Self::arrow_data_type())
                 .with_context("rerun.encodings.ClassDescription")?;
             if arrow_data.is_empty() {
                 Vec::new()
@@ -277,7 +277,7 @@ impl ::re_types_core::FromArrowOpt for ClassDescription {
                 let info = {
                     if !arrays_by_name.contains_key("info") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
+                            Self::arrow_data_type(),
                             "info",
                         ))
                         .with_context("rerun.encodings.ClassDescription");
@@ -290,7 +290,7 @@ impl ::re_types_core::FromArrowOpt for ClassDescription {
                 let keypoint_annotations = {
                     if !arrays_by_name.contains_key("keypoint_annotations") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
+                            Self::arrow_data_type(),
                             "keypoint_annotations",
                         ))
                         .with_context("rerun.encodings.ClassDescription");
@@ -301,7 +301,7 @@ impl ::re_types_core::FromArrowOpt for ClassDescription {
                             .try_cast::<arrow::array::ListArray>(|| {
                                 DataType::List(std::sync::Arc::new(Field::new(
                                     "item",
-                                    <crate::encodings::AnnotationInfo>::arrow_datatype(),
+                                    <crate::encodings::AnnotationInfo>::arrow_data_type(),
                                     false,
                                 )))
                             })
@@ -356,7 +356,7 @@ impl ::re_types_core::FromArrowOpt for ClassDescription {
                 let keypoint_connections = {
                     if !arrays_by_name.contains_key("keypoint_connections") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
+                            Self::arrow_data_type(),
                             "keypoint_connections",
                         ))
                         .with_context("rerun.encodings.ClassDescription");
@@ -367,7 +367,7 @@ impl ::re_types_core::FromArrowOpt for ClassDescription {
                             .try_cast::<arrow::array::ListArray>(|| {
                                 DataType::List(std::sync::Arc::new(Field::new(
                                     "item",
-                                    <crate::encodings::KeypointPair>::arrow_datatype(),
+                                    <crate::encodings::KeypointPair>::arrow_data_type(),
                                     false,
                                 )))
                             })

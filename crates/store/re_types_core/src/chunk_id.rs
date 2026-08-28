@@ -1,7 +1,7 @@
 use arrow::array::Array as _;
 use re_arrow_util::WrongDatatypeError;
 
-use crate::ArrowDatatype as _;
+use crate::ArrowDataType as _;
 
 /// A unique ID for a `Chunk`.
 ///
@@ -137,12 +137,12 @@ impl ChunkId {
     pub fn try_slice_from_arrow(
         array: &arrow::array::FixedSizeBinaryArray,
     ) -> Result<&[Self], WrongDatatypeError> {
-        if array.data_type() == &Self::arrow_datatype() {
+        if array.data_type() == &Self::arrow_data_type() {
             Ok(bytemuck::cast_slice(array.value_data()))
         } else {
             Err(WrongDatatypeError {
                 column_name: None,
-                expected: Self::arrow_datatype().into(),
+                expected: Self::arrow_data_type().into(),
                 actual: array.data_type().clone().into(),
             })
         }

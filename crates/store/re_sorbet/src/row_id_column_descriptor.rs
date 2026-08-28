@@ -1,6 +1,6 @@
-use arrow::datatypes::{DataType as ArrowDatatype, Field as ArrowField};
+use arrow::datatypes::{DataType as ArrowDataType, Field as ArrowField};
 use re_arrow_util::WrongDatatypeError;
-use re_types_core::{ArrowDatatype as _, RowId};
+use re_types_core::{ArrowDataType as _, RowId};
 
 use crate::MetadataExt as _;
 
@@ -63,13 +63,13 @@ impl RowIdColumnDescriptor {
         }
 
         let nullable = false; // All rows has an id
-        ArrowField::new(self.column_name(), RowId::arrow_datatype(), nullable)
+        ArrowField::new(self.column_name(), RowId::arrow_data_type(), nullable)
             .with_metadata(metadata)
     }
 
     #[expect(clippy::unused_self)]
-    pub fn datatype(&self) -> ArrowDatatype {
-        RowId::arrow_datatype()
+    pub fn datatype(&self) -> ArrowDataType {
+        RowId::arrow_data_type()
     }
 }
 
@@ -77,7 +77,7 @@ impl TryFrom<&ArrowField> for RowIdColumnDescriptor {
     type Error = WrongDatatypeError;
 
     fn try_from(field: &ArrowField) -> Result<Self, Self::Error> {
-        WrongDatatypeError::ensure_datatype(field, &RowId::arrow_datatype())?;
+        WrongDatatypeError::ensure_datatype(field, &RowId::arrow_data_type())?;
         Ok(Self {
             is_sorted: field.metadata().get_bool("rerun:is_sorted"),
         })

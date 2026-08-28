@@ -158,7 +158,7 @@ impl ::re_types_core::Archetype for AnnotationContext {
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{
-            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            ArrowDataType as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
         };
         let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
         let context = arrays_by_descr
@@ -196,7 +196,7 @@ impl AnnotationContext {
     /// Clear all the fields of a `AnnotationContext`.
     #[inline]
     pub fn clear_fields() -> Self {
-        use ::re_types_core::ArrowDatatype as _;
+        use ::re_types_core::ArrowDataType as _;
         Self {
             context: Some(SerializedComponentBatch::new(
                 crate::components::AnnotationContext::arrow_empty(),

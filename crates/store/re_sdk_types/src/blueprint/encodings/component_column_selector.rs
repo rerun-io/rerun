@@ -41,19 +41,19 @@ pub struct ComponentColumnSelector {
 
 ::re_types_core::macros::impl_into_cow!(ComponentColumnSelector);
 
-impl ::re_types_core::ArrowDatatype for ComponentColumnSelector {
+impl ::re_types_core::ArrowDataType for ComponentColumnSelector {
     #[inline]
-    fn arrow_datatype() -> arrow::datatypes::DataType {
+    fn arrow_data_type() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
         DataType::Struct(Fields::from(vec![
             Field::new(
                 "entity_path",
-                <crate::encodings::EntityPath>::arrow_datatype(),
+                <crate::encodings::EntityPath>::arrow_data_type(),
                 false,
             ),
             Field::new(
                 "component",
-                <crate::encodings::Utf8>::arrow_datatype(),
+                <crate::encodings::Utf8>::arrow_data_type(),
                 false,
             ),
         ]))
@@ -69,7 +69,7 @@ impl ::re_types_core::ToArrowOpt for ComponentColumnSelector {
     {
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{
-            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
             arrow_helpers::as_array_ref,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
@@ -77,12 +77,12 @@ impl ::re_types_core::ToArrowOpt for ComponentColumnSelector {
             let fields = Fields::from(vec![
                 Field::new(
                     "entity_path",
-                    <crate::encodings::EntityPath>::arrow_datatype(),
+                    <crate::encodings::EntityPath>::arrow_data_type(),
                     false,
                 ),
                 Field::new(
                     "component",
-                    <crate::encodings::Utf8>::arrow_datatype(),
+                    <crate::encodings::Utf8>::arrow_data_type(),
                     false,
                 ),
             ]);
@@ -184,13 +184,13 @@ impl ::re_types_core::FromArrowOpt for ComponentColumnSelector {
         arrow_data: &dyn arrow::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>> {
         use ::re_types_core::{
-            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            ArrowDataType as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
             arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let arrow_data = arrow_data
-                .try_cast::<arrow::array::StructArray>(|| Self::arrow_datatype())
+                .try_cast::<arrow::array::StructArray>(|| Self::arrow_data_type())
                 .with_context("rerun.blueprint.encodings.ComponentColumnSelector")?;
             if arrow_data.is_empty() {
                 Vec::new()
@@ -205,7 +205,7 @@ impl ::re_types_core::FromArrowOpt for ComponentColumnSelector {
                 let entity_path = {
                     if !arrays_by_name.contains_key("entity_path") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
+                            Self::arrow_data_type(),
                             "entity_path",
                         ))
                         .with_context("rerun.blueprint.encodings.ComponentColumnSelector");
@@ -255,7 +255,7 @@ impl ::re_types_core::FromArrowOpt for ComponentColumnSelector {
                 let component = {
                     if !arrays_by_name.contains_key("component") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
+                            Self::arrow_data_type(),
                             "component",
                         ))
                         .with_context("rerun.blueprint.encodings.ComponentColumnSelector");

@@ -36,19 +36,19 @@ pub struct ChannelCountPair {
 
 ::re_types_core::macros::impl_into_cow!(ChannelCountPair);
 
-impl ::re_types_core::ArrowDatatype for ChannelCountPair {
+impl ::re_types_core::ArrowDataType for ChannelCountPair {
     #[inline]
-    fn arrow_datatype() -> arrow::datatypes::DataType {
+    fn arrow_data_type() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
         DataType::Struct(Fields::from(vec![
             Field::new(
                 "channel_id",
-                <crate::encodings::UInt16>::arrow_datatype(),
+                <crate::encodings::UInt16>::arrow_data_type(),
                 false,
             ),
             Field::new(
                 "message_count",
-                <crate::encodings::UInt64>::arrow_datatype(),
+                <crate::encodings::UInt64>::arrow_data_type(),
                 false,
             ),
         ]))
@@ -64,7 +64,7 @@ impl ::re_types_core::ToArrowOpt for ChannelCountPair {
     {
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{
-            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
             arrow_helpers::as_array_ref,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
@@ -72,12 +72,12 @@ impl ::re_types_core::ToArrowOpt for ChannelCountPair {
             let fields = Fields::from(vec![
                 Field::new(
                     "channel_id",
-                    <crate::encodings::UInt16>::arrow_datatype(),
+                    <crate::encodings::UInt16>::arrow_data_type(),
                     false,
                 ),
                 Field::new(
                     "message_count",
-                    <crate::encodings::UInt64>::arrow_datatype(),
+                    <crate::encodings::UInt64>::arrow_data_type(),
                     false,
                 ),
             ]);
@@ -149,13 +149,13 @@ impl ::re_types_core::FromArrowOpt for ChannelCountPair {
         arrow_data: &dyn arrow::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>> {
         use ::re_types_core::{
-            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            ArrowDataType as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
             arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let arrow_data = arrow_data
-                .try_cast::<arrow::array::StructArray>(|| Self::arrow_datatype())
+                .try_cast::<arrow::array::StructArray>(|| Self::arrow_data_type())
                 .with_context("rerun.encodings.ChannelCountPair")?;
             if arrow_data.is_empty() {
                 Vec::new()
@@ -170,7 +170,7 @@ impl ::re_types_core::FromArrowOpt for ChannelCountPair {
                 let channel_id = {
                     if !arrays_by_name.contains_key("channel_id") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
+                            Self::arrow_data_type(),
                             "channel_id",
                         ))
                         .with_context("rerun.encodings.ChannelCountPair");
@@ -185,7 +185,7 @@ impl ::re_types_core::FromArrowOpt for ChannelCountPair {
                 let message_count = {
                     if !arrays_by_name.contains_key("message_count") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
+                            Self::arrow_data_type(),
                             "message_count",
                         ))
                         .with_context("rerun.encodings.ChannelCountPair");

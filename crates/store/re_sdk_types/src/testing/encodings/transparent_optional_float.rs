@@ -29,9 +29,9 @@ pub struct TransparentOptionalFloat(pub Option<f32>);
 
 ::re_types_core::macros::impl_into_cow!(TransparentOptionalFloat);
 
-impl ::re_types_core::ArrowDatatype for TransparentOptionalFloat {
+impl ::re_types_core::ArrowDataType for TransparentOptionalFloat {
     #[inline]
-    fn arrow_datatype() -> arrow::datatypes::DataType {
+    fn arrow_data_type() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
         DataType::Float32
     }
@@ -46,7 +46,7 @@ impl ::re_types_core::ToArrow for TransparentOptionalFloat {
     {
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{
-            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
             arrow_helpers::as_array_ref,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
@@ -74,12 +74,12 @@ impl ::re_types_core::ToArrow for TransparentOptionalFloat {
 impl ::re_types_core::FromArrow for TransparentOptionalFloat {
     fn from_arrow(arrow_data: &dyn arrow::array::Array) -> DeserializationResult<Vec<Self>> {
         use ::re_types_core::{
-            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            ArrowDataType as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
             arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok(arrow_data
-            .try_cast::<Float32Array>(|| Self::arrow_datatype())
+            .try_cast::<Float32Array>(|| Self::arrow_data_type())
             .with_context("rerun.testing.encodings.TransparentOptionalFloat#single_float_optional")?
             .into_iter()
             .map(Ok)

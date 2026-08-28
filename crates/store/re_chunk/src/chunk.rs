@@ -16,7 +16,7 @@ use re_log_types::{
     AbsoluteTimeRange, EntityPath, NonMinI64, TimeInt, TimeType, Timeline, TimelineName,
 };
 use re_types_core::{
-    ArrowDatatype as _, ComponentDescriptor, ComponentIdentifier, ComponentType,
+    ArrowDataType as _, ComponentDescriptor, ComponentIdentifier, ComponentType,
     DeserializationError, SerializationError, SerializedComponentColumn,
 };
 
@@ -1852,11 +1852,11 @@ impl Chunk {
 
         // Row IDs
         {
-            if *row_ids.data_type() != RowId::arrow_datatype() {
+            if *row_ids.data_type() != RowId::arrow_data_type() {
                 return Err(ChunkError::Malformed {
                     reason: format!(
                         "RowId data has the wrong datatype: expected {} but got {} instead",
-                        RowId::arrow_datatype(),
+                        RowId::arrow_data_type(),
                         row_ids.data_type(),
                     ),
                 });

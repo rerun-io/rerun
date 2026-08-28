@@ -54,9 +54,9 @@ pub enum ColorModel {
 
 ::re_types_core::macros::impl_into_cow!(ColorModel);
 
-impl ::re_types_core::ArrowDatatype for ColorModel {
+impl ::re_types_core::ArrowDataType for ColorModel {
     #[inline]
-    fn arrow_datatype() -> arrow::datatypes::DataType {
+    fn arrow_data_type() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
         DataType::UInt8
     }
@@ -71,7 +71,7 @@ impl ::re_types_core::ToArrowOpt for ColorModel {
     {
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{
-            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
             arrow_helpers::as_array_ref,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
@@ -103,12 +103,12 @@ impl ::re_types_core::FromArrowOpt for ColorModel {
         arrow_data: &dyn arrow::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>> {
         use ::re_types_core::{
-            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            ArrowDataType as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
             arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok(arrow_data
-            .try_cast::<UInt8Array>(|| Self::arrow_datatype())
+            .try_cast::<UInt8Array>(|| Self::arrow_data_type())
             .with_context("rerun.encodings.ColorModel#enum")?
             .into_iter()
             .map(|typ| match typ {
@@ -116,7 +116,7 @@ impl ::re_types_core::FromArrowOpt for ColorModel {
                     .map(Some)
                     .ok_or_else(|| {
                         DeserializationError::missing_union_arm(
-                            Self::arrow_datatype(),
+                            Self::arrow_data_type(),
                             "<invalid>",
                             val as _,
                         )

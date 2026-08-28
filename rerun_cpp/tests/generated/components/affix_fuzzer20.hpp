@@ -43,8 +43,8 @@ namespace rerun {
         static constexpr std::string_view ComponentType = "rerun.testing.components.AffixFuzzer20";
 
         /// Returns the arrow data type this type corresponds to.
-        static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
-            return Loggable<rerun::encodings::PrimitiveAndString>::arrow_datatype();
+        static const std::shared_ptr<arrow::DataType>& arrow_data_type() {
+            return Loggable<rerun::encodings::PrimitiveAndString>::arrow_data_type();
         }
 
         /// Serializes an array of `rerun::components::AffixFuzzer20` into an arrow array.

@@ -12,14 +12,14 @@ use crate::{ComponentIdentifier, DeserializationResult, SerializationResult};
 /// This is the base trait of the four (de)serialization traits ([`ToArrow`], [`ToArrowOpt`],
 /// [`FromArrow`], [`FromArrowOpt`]): a type may implement any subset of those, but it must always
 /// agree on a single datatype.
-pub trait ArrowDatatype: Sized {
+pub trait ArrowDataType: Sized {
     /// The underlying [`arrow::datatypes::DataType`], excluding datatype extensions.
-    fn arrow_datatype() -> arrow::datatypes::DataType;
+    fn arrow_data_type() -> arrow::datatypes::DataType;
 
     /// Returns an empty Arrow array that matches this type's underlying datatype.
     #[inline]
     fn arrow_empty() -> arrow::array::ArrayRef {
-        arrow::array::new_empty_array(&Self::arrow_datatype())
+        arrow::array::new_empty_array(&Self::arrow_data_type())
     }
 }
 
@@ -27,7 +27,7 @@ pub trait ArrowDatatype: Sized {
 ///
 /// Most types implement this in terms of [`ToArrowOpt`]; see [`crate::macros::impl_to_arrow_via_to_arrow_opt`].
 /// Types whose Arrow encoding cannot express null values (e.g. `Tuid`) implement this one only.
-pub trait ToArrow: ArrowDatatype + Clone {
+pub trait ToArrow: ArrowDataType + Clone {
     /// Given an iterator of owned or reference values, serializes them into an Arrow array.
     ///
     /// When using Rerun's builtin components & encodings, this can only fail if the data
@@ -41,7 +41,7 @@ pub trait ToArrow: ArrowDatatype + Clone {
 }
 
 /// Serializes an iterator of optional values into a nullable Arrow array.
-pub trait ToArrowOpt: ArrowDatatype + Clone {
+pub trait ToArrowOpt: ArrowDataType + Clone {
     /// Given an iterator of options of owned or reference values, serializes them into an Arrow
     /// array.
     ///
@@ -56,7 +56,7 @@ pub trait ToArrowOpt: ArrowDatatype + Clone {
 }
 
 /// Deserializes an Arrow array into a collection of values, failing on nulls.
-pub trait FromArrow: ArrowDatatype {
+pub trait FromArrow: ArrowDataType {
     /// Given an Arrow array, deserializes it into a collection of values.
     fn from_arrow(data: &dyn arrow::array::Array) -> DeserializationResult<Vec<Self>>;
 
@@ -69,7 +69,7 @@ pub trait FromArrow: ArrowDatatype {
 }
 
 /// Deserializes a nullable Arrow array into a collection of optional values.
-pub trait FromArrowOpt: ArrowDatatype {
+pub trait FromArrowOpt: ArrowDataType {
     /// Given an Arrow array, deserializes it into a collection of optional values.
     fn from_arrow_opt(data: &dyn arrow::array::Array) -> DeserializationResult<Vec<Option<Self>>>;
 }

@@ -42,14 +42,14 @@ pub struct AnnotationInfo {
 
 ::re_types_core::macros::impl_into_cow!(AnnotationInfo);
 
-impl ::re_types_core::ArrowDatatype for AnnotationInfo {
+impl ::re_types_core::ArrowDataType for AnnotationInfo {
     #[inline]
-    fn arrow_datatype() -> arrow::datatypes::DataType {
+    fn arrow_data_type() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
         DataType::Struct(Fields::from(vec![
             Field::new("id", DataType::UInt16, false),
-            Field::new("label", <crate::encodings::Utf8>::arrow_datatype(), true),
-            Field::new("color", <crate::encodings::Rgba32>::arrow_datatype(), true),
+            Field::new("label", <crate::encodings::Utf8>::arrow_data_type(), true),
+            Field::new("color", <crate::encodings::Rgba32>::arrow_data_type(), true),
         ]))
     }
 }
@@ -63,15 +63,15 @@ impl ::re_types_core::ToArrowOpt for AnnotationInfo {
     {
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{
-            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
             arrow_helpers::as_array_ref,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let fields = Fields::from(vec![
                 Field::new("id", DataType::UInt16, false),
-                Field::new("label", <crate::encodings::Utf8>::arrow_datatype(), true),
-                Field::new("color", <crate::encodings::Rgba32>::arrow_datatype(), true),
+                Field::new("label", <crate::encodings::Utf8>::arrow_data_type(), true),
+                Field::new("color", <crate::encodings::Rgba32>::arrow_data_type(), true),
             ]);
             let (somes, data): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -173,13 +173,13 @@ impl ::re_types_core::FromArrowOpt for AnnotationInfo {
         arrow_data: &dyn arrow::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>> {
         use ::re_types_core::{
-            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            ArrowDataType as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
             arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let arrow_data = arrow_data
-                .try_cast::<arrow::array::StructArray>(|| Self::arrow_datatype())
+                .try_cast::<arrow::array::StructArray>(|| Self::arrow_data_type())
                 .with_context("rerun.encodings.AnnotationInfo")?;
             if arrow_data.is_empty() {
                 Vec::new()
@@ -194,7 +194,7 @@ impl ::re_types_core::FromArrowOpt for AnnotationInfo {
                 let id = {
                     if !arrays_by_name.contains_key("id") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
+                            Self::arrow_data_type(),
                             "id",
                         ))
                         .with_context("rerun.encodings.AnnotationInfo");
@@ -208,7 +208,7 @@ impl ::re_types_core::FromArrowOpt for AnnotationInfo {
                 let label = {
                     if !arrays_by_name.contains_key("label") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
+                            Self::arrow_data_type(),
                             "label",
                         ))
                         .with_context("rerun.encodings.AnnotationInfo");
@@ -254,7 +254,7 @@ impl ::re_types_core::FromArrowOpt for AnnotationInfo {
                 let color = {
                     if !arrays_by_name.contains_key("color") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
+                            Self::arrow_data_type(),
                             "color",
                         ))
                         .with_context("rerun.encodings.AnnotationInfo");

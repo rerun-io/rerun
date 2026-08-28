@@ -5,7 +5,7 @@ use arrow::datatypes::{DataType, Field};
 use re_sdk_types::archetypes::ViewCoordinates;
 use re_sdk_types::encodings::{self, ViewDir};
 use re_sdk_types::{
-    Archetype as _, ArrowDatatype as _, AsComponents as _, ComponentBatch as _, FromArrow as _,
+    Archetype as _, ArrowDataType as _, AsComponents as _, ComponentBatch as _, FromArrow as _,
     components,
 };
 
@@ -40,7 +40,7 @@ fn legacy_arrow_layout_is_compatible() {
     let legacy_datatype =
         DataType::FixedSizeList(Arc::new(Field::new("item", DataType::UInt8, false)), 3);
     assert_eq!(
-        encodings::ViewCoordinates::arrow_datatype(),
+        encodings::ViewCoordinates::arrow_data_type(),
         legacy_datatype
     );
 

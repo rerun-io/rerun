@@ -34,14 +34,14 @@ pub struct FixedSizeWideEnumArray(
 
 ::re_types_core::macros::impl_into_cow!(FixedSizeWideEnumArray);
 
-impl ::re_types_core::ArrowDatatype for FixedSizeWideEnumArray {
+impl ::re_types_core::ArrowDataType for FixedSizeWideEnumArray {
     #[inline]
-    fn arrow_datatype() -> arrow::datatypes::DataType {
+    fn arrow_data_type() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
         DataType::FixedSizeList(
             std::sync::Arc::new(Field::new(
                 "item",
-                <crate::testing::encodings::WideEnum>::arrow_datatype(),
+                <crate::testing::encodings::WideEnum>::arrow_data_type(),
                 false,
             )),
             2,
@@ -58,7 +58,7 @@ impl ::re_types_core::ToArrow for FixedSizeWideEnumArray {
     {
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{
-            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
             arrow_helpers::as_array_ref,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
@@ -77,7 +77,7 @@ impl ::re_types_core::ToArrow for FixedSizeWideEnumArray {
                 as_array_ref(FixedSizeListArray::new(
                     std::sync::Arc::new(Field::new(
                         "item",
-                        <crate::testing::encodings::WideEnum>::arrow_datatype(),
+                        <crate::testing::encodings::WideEnum>::arrow_data_type(),
                         false,
                     )),
                     2,
@@ -95,7 +95,7 @@ impl ::re_types_core::ToArrow for FixedSizeWideEnumArray {
 impl ::re_types_core::FromArrow for FixedSizeWideEnumArray {
     fn from_arrow(arrow_data: &dyn arrow::array::Array) -> DeserializationResult<Vec<Self>> {
         use ::re_types_core::{
-            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            ArrowDataType as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
             arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
@@ -105,7 +105,7 @@ impl ::re_types_core::FromArrow for FixedSizeWideEnumArray {
                 let arrow_data = arrow_data
                     .try_cast::<
                         arrow::array::FixedSizeListArray,
-                    >(|| Self::arrow_datatype())
+                    >(|| Self::arrow_data_type())
                     .with_context(
                         "rerun.testing.encodings.FixedSizeWideEnumArray#values",
                     )?;

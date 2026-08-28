@@ -50,8 +50,8 @@ namespace rerun {
             "rerun.blueprint.components.TimelineColumn";
 
         /// Returns the arrow data type this type corresponds to.
-        static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
-            return Loggable<rerun::blueprint::encodings::TimelineColumn>::arrow_datatype();
+        static const std::shared_ptr<arrow::DataType>& arrow_data_type() {
+            return Loggable<rerun::blueprint::encodings::TimelineColumn>::arrow_data_type();
         }
 
         /// Serializes an array of `rerun::blueprint:: components::TimelineColumn` into an arrow array.

@@ -161,7 +161,7 @@ impl crate::Archetype for Clear {
         arrow_data: impl IntoIterator<Item = (ComponentDescriptor, ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
-        use crate::{ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _};
+        use crate::{ArrowDataType as _, FromArrow as _, FromArrowOpt as _, ResultExt as _};
         let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
         let is_recursive = arrays_by_descr
             .get(&Self::descriptor_is_recursive())
@@ -202,7 +202,7 @@ impl Clear {
     /// Clear all the fields of a `Clear`.
     #[inline]
     pub fn clear_fields() -> Self {
-        use crate::ArrowDatatype as _;
+        use crate::ArrowDataType as _;
         Self {
             is_recursive: Some(SerializedComponentBatch::new(
                 crate::components::ClearIsRecursive::arrow_empty(),

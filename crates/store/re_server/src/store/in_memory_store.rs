@@ -25,7 +25,7 @@ use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
 use re_tuid::Tuid;
 #[cfg(not(target_arch = "wasm32"))]
 use re_types_core::LayerName;
-use re_types_core::{ArrowDatatype as _, ComponentBatch as _};
+use re_types_core::{ArrowDataType as _, ComponentBatch as _};
 
 #[cfg(not(target_arch = "wasm32"))]
 use crate::NamedPath;
@@ -743,7 +743,7 @@ fn generate_entries_table(entries: &[EntryDetails]) -> Result<RecordBatch, Error
 
     let schema = Arc::new(Schema::new_with_metadata(
         vec![
-            Field::new("id", Tuid::arrow_datatype(), false),
+            Field::new("id", Tuid::arrow_data_type(), false),
             Field::new("name", DataType::Utf8, false),
             Field::new("entry_kind", DataType::Int32, false),
             Field::new(

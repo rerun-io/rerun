@@ -40,15 +40,19 @@ pub struct TextLogColumn {
 
 ::re_types_core::macros::impl_into_cow!(TextLogColumn);
 
-impl ::re_types_core::ArrowDatatype for TextLogColumn {
+impl ::re_types_core::ArrowDataType for TextLogColumn {
     #[inline]
-    fn arrow_datatype() -> arrow::datatypes::DataType {
+    fn arrow_data_type() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
         DataType::Struct(Fields::from(vec![
-            Field::new("visible", <crate::encodings::Bool>::arrow_datatype(), false),
+            Field::new(
+                "visible",
+                <crate::encodings::Bool>::arrow_data_type(),
+                false,
+            ),
             Field::new(
                 "kind",
-                <crate::blueprint::encodings::TextLogColumnKind>::arrow_datatype(),
+                <crate::blueprint::encodings::TextLogColumnKind>::arrow_data_type(),
                 false,
             ),
         ]))
@@ -64,16 +68,20 @@ impl ::re_types_core::ToArrow for TextLogColumn {
     {
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{
-            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
             arrow_helpers::as_array_ref,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let fields = Fields::from(vec![
-                Field::new("visible", <crate::encodings::Bool>::arrow_datatype(), false),
+                Field::new(
+                    "visible",
+                    <crate::encodings::Bool>::arrow_data_type(),
+                    false,
+                ),
                 Field::new(
                     "kind",
-                    <crate::blueprint::encodings::TextLogColumnKind>::arrow_datatype(),
+                    <crate::blueprint::encodings::TextLogColumnKind>::arrow_data_type(),
                     false,
                 ),
             ]);
@@ -135,7 +143,7 @@ impl ::re_types_core::ToArrow for TextLogColumn {
 impl ::re_types_core::FromArrow for TextLogColumn {
     fn from_arrow(arrow_data: &dyn arrow::array::Array) -> DeserializationResult<Vec<Self>> {
         use ::re_types_core::{
-            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            ArrowDataType as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
             arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
@@ -143,7 +151,7 @@ impl ::re_types_core::FromArrow for TextLogColumn {
         Ok({
             {
                 let arrow_data = arrow_data
-                    .try_cast::<arrow::array::StructArray>(|| Self::arrow_datatype())
+                    .try_cast::<arrow::array::StructArray>(|| Self::arrow_data_type())
                     .with_context("rerun.blueprint.encodings.TextLogColumn")?;
                 if arrow_data.is_empty() {
                     Vec::new()
@@ -158,7 +166,7 @@ impl ::re_types_core::FromArrow for TextLogColumn {
                     let visible = {
                         if !arrays_by_name.contains_key("visible") {
                             return Err(DeserializationError::missing_struct_field(
-                                Self::arrow_datatype(),
+                                Self::arrow_data_type(),
                                 "visible",
                             ))
                             .with_context("rerun.blueprint.encodings.TextLogColumn");
@@ -173,7 +181,7 @@ impl ::re_types_core::FromArrow for TextLogColumn {
                     let kind = {
                         if !arrays_by_name.contains_key("kind") {
                             return Err(DeserializationError::missing_struct_field(
-                                Self::arrow_datatype(),
+                                Self::arrow_data_type(),
                                 "kind",
                             ))
                             .with_context("rerun.blueprint.encodings.TextLogColumn");

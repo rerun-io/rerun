@@ -9,7 +9,7 @@ namespace rerun {
     /// Registers the component type when first encountered.
     Result<ComponentTypeHandle> ComponentTypeRegistry::get_or_register(
         const ComponentDescriptor& descriptor,
-        const std::shared_ptr<arrow::DataType>& arrow_datatype
+        const std::shared_ptr<arrow::DataType>& arrow_data_type
     ) {
         {
             // The read-only operation in this scope can be done concurrently.
@@ -32,7 +32,7 @@ namespace rerun {
         }
 
         const Result<ComponentTypeHandle> comp_type_handle_result =
-            ComponentType(descriptor, arrow_datatype).register_component();
+            ComponentType(descriptor, arrow_data_type).register_component();
         RR_RETURN_NOT_OK(comp_type_handle_result.error);
 
         comp_types_per_descr_.insert({descr_hash, comp_type_handle_result.value});

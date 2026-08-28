@@ -261,7 +261,7 @@ fn visualizer_components(
                 let component_type = store
                     .schema()
                     .lookup_component_type(&data_result.entity_path, component_id);
-                component_type.map(|(_, arrow_datatype)| (component_id, arrow_datatype))
+                component_type.map(|(_, arrow_data_type)| (component_id, arrow_data_type))
             })
             .collect::<Vec<_>>()
     };
@@ -507,7 +507,7 @@ impl<'a> SourceSelectorContext<'a> {
                     let component_type = store
                         .schema()
                         .lookup_component_type(&data_result.entity_path, component_id);
-                    component_type.map(|(_, arrow_datatype)| (component_id, arrow_datatype))
+                    component_type.map(|(_, arrow_data_type)| (component_id, arrow_data_type))
                 })
                 .collect::<Vec<_>>()
         };
@@ -1467,14 +1467,14 @@ mod tests {
     }
 
     fn vec3d() -> DataType {
-        <re_sdk_types::encodings::Vec3D as re_types_core::ArrowDatatype>::arrow_datatype()
+        <re_sdk_types::encodings::Vec3D as re_types_core::ArrowDataType>::arrow_data_type()
     }
 
     fn native(component: ComponentIdentifier) -> (ComponentIdentifier, DatatypeMatch) {
         (
             component,
             DatatypeMatch::NativeSemantics {
-                arrow_datatype: vec3d(),
+                arrow_data_type: vec3d(),
                 component_type: Points3D::descriptor_positions().component_type,
             },
         )
@@ -1484,7 +1484,7 @@ mod tests {
         (
             component,
             DatatypeMatch::PhysicalDatatypeOnly {
-                arrow_datatype: vec3d(),
+                arrow_data_type: vec3d(),
                 component_type: GaussianSplats3D::descriptor_scales().component_type,
                 selectors: Vec::new(),
             },
@@ -1498,7 +1498,7 @@ mod tests {
         (
             component,
             DatatypeMatch::PhysicalDatatypeOnly {
-                arrow_datatype: vec3d(),
+                arrow_data_type: vec3d(),
                 component_type: None,
                 selectors: Vec::new(),
             },

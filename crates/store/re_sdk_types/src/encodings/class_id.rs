@@ -48,9 +48,9 @@ pub struct ClassId(pub u16);
 
 ::re_types_core::macros::impl_into_cow!(ClassId);
 
-impl ::re_types_core::ArrowDatatype for ClassId {
+impl ::re_types_core::ArrowDataType for ClassId {
     #[inline]
-    fn arrow_datatype() -> arrow::datatypes::DataType {
+    fn arrow_data_type() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
         DataType::UInt16
     }
@@ -65,7 +65,7 @@ impl ::re_types_core::ToArrow for ClassId {
     {
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{
-            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
             arrow_helpers::as_array_ref,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
@@ -90,7 +90,7 @@ impl ::re_types_core::FromArrow for ClassId {
     #[inline]
     fn from_arrow(arrow_data: &dyn arrow::array::Array) -> DeserializationResult<Vec<Self>> {
         use ::re_types_core::{
-            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            ArrowDataType as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
             arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};

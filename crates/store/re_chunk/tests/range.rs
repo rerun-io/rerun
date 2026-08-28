@@ -1,19 +1,19 @@
-use arrow::datatypes::DataType as ArrowDatatype;
+use arrow::datatypes::DataType as ArrowDataType;
 use nohash_hasher::IntMap;
 use re_chunk::{Chunk, RangeQuery, RowId, TimePoint, Timeline, TimelineName};
 use re_log_types::AbsoluteTimeRange;
 use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
-use re_types_core::{ArrowDatatype as _, ComponentDescriptor};
+use re_types_core::{ArrowDataType as _, ComponentDescriptor};
 
 // ---
 
 const ENTITY_PATH: &str = "my/entity";
 
-fn datatypes() -> IntMap<ComponentDescriptor, ArrowDatatype> {
+fn datatypes() -> IntMap<ComponentDescriptor, ArrowDataType> {
     [
-        (MyPoints::descriptor_points(), MyPoint::arrow_datatype()),
-        (MyPoints::descriptor_colors(), MyColor::arrow_datatype()),
-        (MyPoints::descriptor_labels(), MyLabel::arrow_datatype()),
+        (MyPoints::descriptor_points(), MyPoint::arrow_data_type()),
+        (MyPoints::descriptor_colors(), MyColor::arrow_data_type()),
+        (MyPoints::descriptor_labels(), MyLabel::arrow_data_type()),
     ]
     .into_iter()
     .collect()

@@ -56,8 +56,8 @@ namespace rerun {
         static constexpr std::string_view ComponentType = "rerun.components.EntityPath";
 
         /// Returns the arrow data type this type corresponds to.
-        static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
-            return Loggable<rerun::encodings::EntityPath>::arrow_datatype();
+        static const std::shared_ptr<arrow::DataType>& arrow_data_type() {
+            return Loggable<rerun::encodings::EntityPath>::arrow_data_type();
         }
 
         /// Serializes an array of `rerun::components::EntityPath` into an arrow array.

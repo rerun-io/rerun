@@ -35,19 +35,19 @@ pub struct MultiEnum {
 
 ::re_types_core::macros::impl_into_cow!(MultiEnum);
 
-impl ::re_types_core::ArrowDatatype for MultiEnum {
+impl ::re_types_core::ArrowDataType for MultiEnum {
     #[inline]
-    fn arrow_datatype() -> arrow::datatypes::DataType {
+    fn arrow_data_type() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
         DataType::Struct(Fields::from(vec![
             Field::new(
                 "value1",
-                <crate::testing::encodings::EnumTest>::arrow_datatype(),
+                <crate::testing::encodings::EnumTest>::arrow_data_type(),
                 false,
             ),
             Field::new(
                 "value2",
-                <crate::testing::encodings::ValuedEnum>::arrow_datatype(),
+                <crate::testing::encodings::ValuedEnum>::arrow_data_type(),
                 true,
             ),
         ]))
@@ -63,7 +63,7 @@ impl ::re_types_core::ToArrowOpt for MultiEnum {
     {
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{
-            ArrowDatatype as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
+            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
             arrow_helpers::as_array_ref,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
@@ -71,12 +71,12 @@ impl ::re_types_core::ToArrowOpt for MultiEnum {
             let fields = Fields::from(vec![
                 Field::new(
                     "value1",
-                    <crate::testing::encodings::EnumTest>::arrow_datatype(),
+                    <crate::testing::encodings::EnumTest>::arrow_data_type(),
                     false,
                 ),
                 Field::new(
                     "value2",
-                    <crate::testing::encodings::ValuedEnum>::arrow_datatype(),
+                    <crate::testing::encodings::ValuedEnum>::arrow_data_type(),
                     true,
                 ),
             ]);
@@ -143,13 +143,13 @@ impl ::re_types_core::FromArrowOpt for MultiEnum {
         arrow_data: &dyn arrow::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>> {
         use ::re_types_core::{
-            ArrowDatatype as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
+            ArrowDataType as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
             arrow_helpers::*, arrow_zip_validity::ZipValidity,
         };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let arrow_data = arrow_data
-                .try_cast::<arrow::array::StructArray>(|| Self::arrow_datatype())
+                .try_cast::<arrow::array::StructArray>(|| Self::arrow_data_type())
                 .with_context("rerun.testing.encodings.MultiEnum")?;
             if arrow_data.is_empty() {
                 Vec::new()
@@ -164,7 +164,7 @@ impl ::re_types_core::FromArrowOpt for MultiEnum {
                 let value1 = {
                     if !arrays_by_name.contains_key("value1") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
+                            Self::arrow_data_type(),
                             "value1",
                         ))
                         .with_context("rerun.testing.encodings.MultiEnum");
@@ -177,7 +177,7 @@ impl ::re_types_core::FromArrowOpt for MultiEnum {
                 let value2 = {
                     if !arrays_by_name.contains_key("value2") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
+                            Self::arrow_data_type(),
                             "value2",
                         ))
                         .with_context("rerun.testing.encodings.MultiEnum");

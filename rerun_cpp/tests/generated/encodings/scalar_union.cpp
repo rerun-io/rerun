@@ -11,7 +11,7 @@
 namespace rerun::encodings {}
 
 namespace rerun {
-    const std::shared_ptr<arrow::DataType>& Loggable<encodings::ScalarUnion>::arrow_datatype() {
+    const std::shared_ptr<arrow::DataType>& Loggable<encodings::ScalarUnion>::arrow_data_type() {
         static const auto datatype = arrow::dense_union({
             arrow::field("_null_markers", arrow::null(), true, nullptr),
             arrow::field("degrees", arrow::float32(), false),
@@ -19,7 +19,7 @@ namespace rerun {
                 "craziness",
                 arrow::list(arrow::field(
                     "item",
-                    Loggable<rerun::encodings::MixedFields>::arrow_datatype(),
+                    Loggable<rerun::encodings::MixedFields>::arrow_data_type(),
                     false
                 )),
                 false
@@ -39,7 +39,7 @@ namespace rerun {
     ) {
         // TODO(andreas): Allow configuring the memory pool.
         arrow::MemoryPool* pool = arrow::default_memory_pool();
-        auto datatype = arrow_datatype();
+        auto datatype = arrow_data_type();
 
         ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(datatype, pool))
         if (instances && num_instances > 0) {
