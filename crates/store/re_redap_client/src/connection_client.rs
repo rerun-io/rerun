@@ -29,7 +29,7 @@ use re_protos::cloud::v1alpha1::{
     GetRrdManifestResponse, GetSegmentTableSchemaRequest, GetSegmentTableSchemaResponse,
     QueryDatasetResponse, QueryTasksOnCompletionResponse, QueryTasksResponse,
     ReadDatasetEntryRequest, ReadTableEntryRequest, RrdManifestKey, ScanSegmentTableRequest,
-    VersionRequest, WriteTableRequest,
+    ScanSegmentTableResponse, VersionRequest, WriteTableRequest,
 };
 use re_protos::common::v1alpha1::ext::{ScanParameters, SegmentId};
 use re_protos::common::v1alpha1::{DataframePart, TaskId};
@@ -924,26 +924,28 @@ where
             })
     }
 
-    /// Get a list of segment IDs for the given dataset entry ID.
-    //TODO(ab): is there a way — and a reason — to not collect and instead return a stream?
-    #[tracing::instrument(level = "info", skip_all)]
-    pub async fn get_dataset_segment_ids(&self, entry_id: EntryId) -> ApiResult<Vec<SegmentId>>
+    /// Open a `/ScanSegmentTable` stream on the given dataset entry ID, projecting one column.
+    ///
+    /// The table holds one row per segment, whichever column is projected.
+    async fn scan_segment_table_column(
+        &self,
+        entry_id: EntryId,
+        column_name: &str,
+    ) -> ApiResult<ApiResponseStream<ScanSegmentTableResponse>>
     where
         T: Clone,
     {
-        const COLUMN_NAME: &str = ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME;
-
         // Retry only the *open*: the server rejects `ScanSegmentTable` with `ResourceExhausted`
         // fail-fast at admission control, before the stream exists, so re-opening is idempotent.
-        // Stream consumption below is intentionally outside the retry (consistent with
-        // `query_dataset_raw`); once the stream is open it can't yield `ResourceExhausted`.
+        // Consumption by the caller is intentionally outside the retry, matching
+        // `query_dataset_raw`. Once the stream is open it can't return `ResourceExhausted`.
         let response = crate::with_retry_resource_exhausted("/ScanSegmentTable", || {
             let mut client = self.clone();
             async move {
                 client
                     .inner()
                     .scan_segment_table(
-                        tonic::Request::new(ScanSegmentTableRequest::with_columns([COLUMN_NAME]))
+                        tonic::Request::new(ScanSegmentTableRequest::with_columns([column_name]))
                             .with_entry_id(entry_id),
                     )
                     .await
@@ -952,35 +954,59 @@ where
         })
         .await?;
 
-        let mut stream = ApiResponseStream::from_tonic_response(
+        Ok(ApiResponseStream::from_tonic_response(
             self.origin.clone(),
             response,
             "/ScanSegmentTable",
-        );
+        ))
+    }
+
+    /// The record batch in one item of a `/ScanSegmentTable` stream.
+    fn segment_table_batch(
+        &self,
+        response: &ScanSegmentTableResponse,
+        trace_id: Option<TraceId>,
+    ) -> ApiResult<RecordBatch> {
+        response
+            .data()
+            .map_err(|err| {
+                ApiError::deserialization_with_source(
+                    &self.origin,
+                    trace_id,
+                    err,
+                    "failed parsing item from /ScanSegmentTable stream",
+                )
+            })?
+            .try_into()
+            .map_err(|err| {
+                ApiError::deserialization_with_source(
+                    &self.origin,
+                    trace_id,
+                    err,
+                    "failed decoding item from /ScanSegmentTable stream",
+                )
+            })
+    }
+
+    /// Get a list of segment IDs for the given dataset entry ID.
+    //TODO(ab): is there a way — and a reason — to not collect and instead return a stream?
+    #[tracing::instrument(level = "info", skip_all)]
+    pub async fn get_dataset_segment_ids(&self, entry_id: EntryId) -> ApiResult<Vec<SegmentId>>
+    where
+        T: Clone,
+    {
+        let mut stream = self
+            .scan_segment_table_column(
+                entry_id,
+                ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
+            )
+            .await?;
         let trace_id = stream.trace_id();
 
         let mut segment_ids = Vec::new();
 
         while let Some(resp) = stream.next().await {
-            let record_batch: RecordBatch = resp?
-                .data()
-                .map_err(|err| {
-                    ApiError::deserialization_with_source(
-                        &self.origin,
-                        trace_id,
-                        err,
-                        "failed parsing item from /ScanSegmentTable stream",
-                    )
-                })?
-                .try_into()
-                .map_err(|err| {
-                    ApiError::deserialization_with_source(
-                        &self.origin,
-                        trace_id,
-                        err,
-                        "failed decoding item from /ScanSegmentTable stream",
-                    )
-                })?;
+            let record_batch = self.segment_table_batch(&resp?, trace_id)?;
 
             let segment_id_column = ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID
                 .extract(&record_batch)
@@ -997,6 +1023,32 @@ where
         }
 
         Ok(segment_ids)
+    }
+
+    /// How many segments the given dataset entry holds.
+    ///
+    /// There is no count endpoint, so this counts the rows of the segment table.
+    #[tracing::instrument(level = "info", skip_all)]
+    pub async fn get_dataset_segment_count(&self, entry_id: EntryId) -> ApiResult<usize>
+    where
+        T: Clone,
+    {
+        // `rerun_last_updated_at` is the narrowest column of the table, a fixed-width timestamp.
+        let mut stream = self
+            .scan_segment_table_column(
+                entry_id,
+                ScanSegmentTableDataframe::COLUMN_RERUN_LAST_UPDATED_AT_NAME,
+            )
+            .await?;
+        let trace_id = stream.trace_id();
+
+        let mut segment_count = 0;
+
+        while let Some(resp) = stream.next().await {
+            segment_count += self.segment_table_batch(&resp?, trace_id)?.num_rows();
+        }
+
+        Ok(segment_count)
     }
 
     //TODO(ab): accept entry name

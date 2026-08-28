@@ -197,14 +197,16 @@ impl Timestamp {
                 let tz = timestamp_format.to_jiff_time_zone();
                 let zoned = timestamp.to_zoned(tz.clone());
 
-                let hide_date = timestamp_format.short()
-                    || match timestamp_format.date_visibility() {
-                        DateVisibility::ShowDate => false,
-                        DateVisibility::HideDate => true,
-                        DateVisibility::HideDateToday => {
-                            zoned.date() == jiff::Timestamp::now().to_zoned(tz.clone()).date()
-                        }
-                    };
+                let hide_date = match timestamp_format.date_visibility() {
+                    // `ShowDate` takes priority over `short`, so a caller can get a date with
+                    // whole seconds, no nanos and no suffix.
+                    DateVisibility::ShowDate => false,
+                    DateVisibility::HideDate => true,
+                    DateVisibility::HideDateToday => {
+                        timestamp_format.short()
+                            || zoned.date() == jiff::Timestamp::now().to_zoned(tz.clone()).date()
+                    }
+                };
                 let formatted = if hide_date {
                     zoned.strftime("%H:%M:%S").to_string()
                 } else {
@@ -390,6 +392,31 @@ mod tests {
         assert_eq!(
             &datetime.format(TimestampFormat::utc()),
             "2022-02-28 22:35:42Z"
+        );
+    }
+
+    /// `short` drops the sub-second digits and the suffix, and hides the date unless the caller
+    /// asks for it.
+    #[test]
+    fn test_short_formatting_keeps_the_date_when_asked() {
+        let datetime = Timestamp::from_str("2026-08-14 14:20:39.020119Z").unwrap();
+
+        assert_eq!(
+            &datetime.format(TimestampFormat::utc().with_short(true)),
+            "14:20:39"
+        );
+        assert_eq!(
+            &datetime.format(
+                TimestampFormat::utc()
+                    .with_short(true)
+                    .with_date_visibility(DateVisibility::ShowDate)
+            ),
+            "2026-08-14 14:20:39"
+        );
+        // Without `short`, the sub-second digits are grouped by a thin space and a suffix is added.
+        assert_eq!(
+            &datetime.format(TimestampFormat::utc()),
+            "2026-08-14 14:20:39.020\u{2009}119Z"
         );
     }
 

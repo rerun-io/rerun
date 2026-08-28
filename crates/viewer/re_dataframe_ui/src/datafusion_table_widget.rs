@@ -181,6 +181,8 @@ pub enum TableStatus {
 
 type ColumnBlueprintFn<'a> = Box<dyn Fn(&ColumnDescriptorRef<'_>) -> ColumnBlueprint + 'a>;
 
+type ToolbarSummaryFn<'a> = Box<dyn Fn(&mut Ui) + 'a>;
+
 pub struct DataFusionTableWidget<'a> {
     session_ctx: Arc<SessionContext>,
 
@@ -191,6 +193,9 @@ pub struct DataFusionTableWidget<'a> {
 
     /// If provided, the toolbar on top of the table shows this as its title.
     title: Option<String>,
+
+    /// If provided, the toolbar on top of the table shows this at its left end.
+    toolbar_summary_fn: Option<ToolbarSummaryFn<'a>>,
 
     /// User-provided closure to provide column blueprint.
     column_blueprint_fn: ColumnBlueprintFn<'a>,
@@ -216,6 +221,20 @@ impl<'a> DataFusionTableWidget<'a> {
             let id = id_from_session_context_and_table(&session_ctx, &table_ref);
             DataFusionAdapter::clear_state(&egui_ctx, id);
         });
+    }
+
+    /// When the client last queried the table, or `None` if it hasn't queried it yet.
+    ///
+    /// This is the age of what the user is looking at, not of the table on the server.
+    /// [`Self::refresh`] resets it.
+    pub fn queried_at(
+        ui: &egui::Ui,
+        session_ctx: &SessionContext,
+        table_ref: impl Into<DataFusionTableReference>,
+    ) -> Option<Timestamp> {
+        let id = id_from_session_context_and_table(session_ctx, &table_ref.into());
+        ui.data(|data| data.get_temp::<DataFusionAdapter>(id))
+            .map(|adapter| adapter.queried_at)
     }
 
     /// Invalidate the streaming cache so the next query re-fetches from the server.
@@ -244,6 +263,7 @@ impl<'a> DataFusionTableWidget<'a> {
             datafusion_table_ref: datafusion_table_ref.into(),
 
             title: None,
+            toolbar_summary_fn: None,
             column_blueprint_fn: Box::new(|_| ColumnBlueprint::default()),
             initial_query_data: Default::default(),
         }
@@ -251,6 +271,16 @@ impl<'a> DataFusionTableWidget<'a> {
 
     pub fn title(mut self, title: impl Into<String>) -> Self {
         self.title = Some(title.into());
+
+        self
+    }
+
+    /// Shows the caller's own UI at the left end of the toolbar, before the loading indicator.
+    ///
+    /// For what the caller knows about the table and the table doesn't, e.g. how many segments the
+    /// dataset holds.
+    pub fn toolbar_summary(mut self, summary_ui: impl Fn(&mut Ui) + 'a) -> Self {
+        self.toolbar_summary_fn = Some(Box::new(summary_ui));
 
         self
     }
@@ -628,6 +658,7 @@ impl<'a> DataFusionTableWidget<'a> {
             &columns,
             &mut table_config,
             self.title.as_deref(),
+            self.toolbar_summary_fn.as_deref(),
             self.table_ref.url().map(|url| url.to_string()).as_deref(),
             should_show_loading_indicator,
             if table_cards_and_blueprints_enabled {
@@ -636,6 +667,12 @@ impl<'a> DataFusionTableWidget<'a> {
                 None
             },
         );
+
+        // Under a tab bar the toolbar's own bottom margin is the whole gap to what follows, so
+        // `item_spacing` must not add to it. A titled table keeps the spacing it had.
+        if self.title.is_none() {
+            ui.spacing_mut().item_spacing.y = 0.0;
+        }
 
         filter_state.filter_bar_ui(
             ui,
@@ -741,15 +778,21 @@ impl<'a> DataFusionTableWidget<'a> {
                     .visible_columns()
                     .filter_map(|config| columns.index_by_physical_name(config.column_name()))
                     .map(|index| (egui::Id::new(columns.columns[index].physical_name()), index));
-                ReTable::new(
-                    ui.ctx(),
-                    session_id,
-                    &mut table_delegate,
-                    visible_columns,
-                    num_rows,
-                )
-                .preview_column(num_preview_views)
-                .show(ui);
+                // The table paints its own background rather than letting the page show through,
+                // so it matches the cards on the other tabs.
+                Frame::new()
+                    .fill(ui.tokens().extreme_bg_color)
+                    .show(ui, |ui| {
+                        ReTable::new(
+                            ui.ctx(),
+                            session_id,
+                            &mut table_delegate,
+                            visible_columns,
+                            num_rows,
+                        )
+                        .preview_column(num_preview_views)
+                        .show(ui);
+                    });
             }
             TableViewMode::Cards => {
                 flag_changes = crate::cards_view::cards_ui(
@@ -869,11 +912,13 @@ fn toolbar_ui(
     columns: &Columns<'_>,
     table_config: &mut UiTableConfig,
     title: Option<&str>,
+    summary_ui: Option<&dyn Fn(&mut Ui)>,
     url: Option<&str>,
     should_show_loading_indicator: bool,
     view_mode: Option<&mut TableViewMode>,
 ) {
-    // A row of small buttons needs less room around it than a heading does.
+    // A row of small buttons needs less room around it than a heading does. Without a title this
+    // is the row under a tab bar, so it uses `TAB_TOOLBAR_MARGIN_Y` like every other tab.
     let inner_margin = if title.is_some() {
         Margin {
             top: 16,
@@ -882,13 +927,20 @@ fn toolbar_ui(
             right: 16,
         }
     } else {
-        Margin::symmetric(16, 8)
+        Margin::symmetric(16, re_ui::TAB_TOOLBAR_MARGIN_Y as i8)
     };
+
+    // Fixed, so the row is the same height whatever it holds.
+    let row_height = title.is_none().then_some(re_ui::TAB_TOOLBAR_HEIGHT);
 
     Frame::new().inner_margin(inner_margin).show(ui, |ui| {
         egui::Sides::new().show(
             ui,
             |ui| {
+                if let Some(row_height) = row_height {
+                    ui.set_height(row_height);
+                }
+
                 if let Some(title) = title {
                     ui.heading(RichText::new(title).strong());
                     if let Some(url) = url
@@ -902,11 +954,19 @@ fn toolbar_ui(
                     }
                 }
 
+                if let Some(summary_ui) = summary_ui {
+                    summary_ui(ui);
+                }
+
                 if should_show_loading_indicator {
                     ui.loading_indicator("Fetching table data");
                 }
             },
             |ui| {
+                if let Some(row_height) = row_height {
+                    ui.set_height(row_height);
+                }
+
                 ui.horizontal_centered(|ui| {
                     if let Some(view_mode) = view_mode {
                         ui.selectable_toggle(|ui| {

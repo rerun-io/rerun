@@ -1,7 +1,7 @@
 use std::ops::Sub as _;
 
 use re_format::format_plural_s;
-use re_log_types::{Timestamp, TimestampFormat};
+use re_log_types::{DateVisibility, Timestamp, TimestampFormat};
 
 /// Formats a duration in a short, readable format, e.g. ("1 hour ago" or "2 minutes ago")
 ///
@@ -68,9 +68,28 @@ pub fn short_duration_ui(
     };
     ui.request_repaint_after(std::time::Duration::from_secs(repaint_in_sec));
 
-    if let Some(short) = try_format_duration_short(timestamp) {
-        show(ui, short).on_hover_text(timestamp.format(format))
+    let text = short_duration_text(timestamp, format);
+    let exact = timestamp.format(format);
+
+    // No hover when the label is already the exact timestamp. It would repeat what is on screen.
+    let response = show(ui, text.clone());
+    if text == exact {
+        response
     } else {
-        show(ui, timestamp.format(format))
+        response.on_hover_text(exact)
     }
+}
+
+/// The text [`short_duration_ui`] labels a timestamp with.
+///
+/// Lets a caller tell whether two timestamps get the same label, and leave one of them out when
+/// they do.
+pub fn short_duration_text(timestamp: Timestamp, format: TimestampFormat) -> String {
+    // Past a week `format_duration_short` shows the timestamp instead of a duration. Whole
+    // seconds are enough there, since the hover shows the exact one.
+    let fallback_format = format
+        .with_short(true)
+        .with_date_visibility(DateVisibility::ShowDate);
+
+    format_duration_short(timestamp, fallback_format)
 }

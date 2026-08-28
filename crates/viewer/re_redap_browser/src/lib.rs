@@ -2,6 +2,7 @@
 //! it.
 
 mod asset_registration;
+mod asset_source_modal;
 mod context;
 mod entries;
 mod entry_meta;
@@ -9,6 +10,7 @@ mod folder_card_ui;
 mod register_asset_modal;
 mod server_modal;
 mod servers;
+mod unregister_asset_modal;
 
 pub use re_viewer_context::open_url::EXAMPLES_ORIGIN;
 

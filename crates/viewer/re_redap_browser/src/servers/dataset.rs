@@ -1,14 +1,14 @@
 use datafusion::sql::TableReference;
 use egui::AtomExt as _;
 use re_dataframe_ui::{ColumnBlueprint, default_display_name_for_column};
-use re_format::format_plural_s;
+use re_format::format_uint;
 use re_log_types::external::re_types_core::SegmentId;
-use re_log_types::{EntityPathPart, EntryId};
+use re_log_types::{EntityPathPart, EntryId, Timestamp};
 use re_protos::cloud::v1alpha1::ext::ScanSegmentTableDataframe;
 use re_quota_channel::send_crossbeam;
 use re_redap_client::{ApiError, Asset, ConnectionHandle, DEFAULT_ASSET_TASK_TIMEOUT};
 use re_ui::egui_ext::card_layout::{CardLayout, CardLayoutItem};
-use re_ui::time::short_duration_ui;
+use re_ui::time::{short_duration_text, short_duration_ui};
 use re_ui::{
     DesignTokens, ReButton, ServerValue, TabBar, TableCommand, TableCommandKind,
     TableCommandSender as _, UiExt as _, icons,
@@ -30,6 +30,35 @@ use crate::{
 };
 
 const PADDING: f32 = 16.0;
+
+/// Font size of a dataset's name.
+const HEADER_FONT_SIZE: f32 = 19.0;
+
+/// The height the dataset's name is fitted into.
+///
+/// The name is centered in it, so the header height does not depend on the font metrics.
+const HEADER_HEIGHT: f32 = 24.0;
+
+/// Space between the breadcrumb path and the dataset's name.
+const BREADCRUMB_TO_NAME_SPACE: f32 = 4.0;
+
+/// Space between the dataset's name and the tabs under it.
+///
+/// `item_spacing.y` is zeroed here, so this is the whole gap apart from the padding a tab keeps
+/// above its label.
+const NAME_TO_TABS_SPACE: f32 = 4.0;
+
+/// Space between the two lines of an asset card: its name and the metadata line under it.
+const CARD_LINE_SPACE: f32 = 8.0;
+
+/// Space between the dataset's name and the refresh button after it.
+const NAME_TO_REFRESH_SPACE: f32 = 8.0;
+
+/// Space between a value and the word naming it in the segment table's toolbar.
+///
+/// The two are separate labels, so they can be colored differently, and the space between them
+/// cannot be part of the text.
+const META_WORD_SPACE: f32 = 4.0;
 
 impl Server {
     /// Where to fetch metadata about one of this server's datasets from.
@@ -62,6 +91,10 @@ impl Server {
         };
 
         ui.push_id((&dataset.origin, dataset.id()), |ui| {
+            // The header, the tabs and the content under them each add their own space around
+            // themselves, so `item_spacing.y` must not add to it.
+            ui.spacing_mut().item_spacing.y = 0.0;
+
             let name = dataset.name();
 
             let path = name
@@ -72,7 +105,10 @@ impl Server {
             ui.horizontal(|ui| {
                 ui.add_space(PADDING);
                 ui.vertical(|ui| {
+                    // Every gap in the header is set explicitly below, not left to `item_spacing`.
+                    ui.spacing_mut().item_spacing.y = 0.0;
                     ui.add_space(PADDING);
+
                     if path.len() > 1 {
                         ui.horizontal(|ui| {
                             ui.spacing_mut().item_spacing.x = 0.0;
@@ -85,16 +121,29 @@ impl Server {
                                 }
                             }
                         });
+                        ui.add_space(BREADCRUMB_TO_NAME_SPACE);
                     }
 
                     if let Some(name) = path.last() {
-                        ui.label(egui::RichText::new(*name).heading().strong());
+                        ui.allocate_ui_with_layout(
+                            egui::vec2(ui.available_width(), HEADER_HEIGHT),
+                            egui::Layout::left_to_right(egui::Align::Center),
+                            |ui| {
+                                ui.spacing_mut().item_spacing.x = NAME_TO_REFRESH_SPACE;
+                                ui.label(
+                                    egui::RichText::new(*name).size(HEADER_FONT_SIZE).strong(),
+                                );
+                                refresh_button_ui(
+                                    ui,
+                                    app_ctx,
+                                    dataset,
+                                    self.segments_queried_at(ui, dataset),
+                                );
+                            },
+                        );
                     }
 
-                    ui.horizontal(|ui| {
-                        self.entry_meta_ui(ui, dataset);
-                        refresh_button_ui(ui, app_ctx, dataset);
-                    });
+                    ui.add_space(NAME_TO_TABS_SPACE);
                 });
             });
 
@@ -126,17 +175,37 @@ impl Server {
         });
     }
 
-    /// The line under a dataset's name, summarizing what the server says about it.
-    fn entry_meta_ui(&self, ui: &mut egui::Ui, dataset: &Dataset) {
-        let EntryMeta { columns } = dataset
+    /// When the client last fetched the segment table shown in the segments tab, or `None` if it
+    /// has not been fetched yet.
+    fn segments_queried_at(&self, ui: &egui::Ui, dataset: &Dataset) -> Option<Timestamp> {
+        re_dataframe_ui::DataFusionTableWidget::queried_at(
+            ui,
+            &self.tables_session_ctx,
+            TableReference::bare(dataset.name().to_string()),
+        )
+    }
+
+    /// How many segments the dataset holds, shown at the left end of the segment table's toolbar.
+    ///
+    /// This counts the whole dataset, not the rows of the table, which a filter can narrow down.
+    fn segment_count_ui(&self, ui: &mut egui::Ui, dataset: &Dataset) {
+        let EntryMeta { segments } = dataset
             .requests()
             .meta(self.entry_meta_query(ui.ctx(), dataset));
 
-        if let Some(&columns) = columns.get() {
-            ui.weak(format_plural_s(columns, "column"));
-        } else {
-            ui.inline_loading_indicator("waiting for schema");
-        }
+        let segments = segments.get().copied();
+
+        tab_meta_line_ui(
+            ui,
+            &[MetaTerm {
+                value: segments.map(format_uint),
+                label: if segments == Some(1) {
+                    "segment"
+                } else {
+                    "segments"
+                },
+            }],
+        );
     }
 
     fn segments_ui(
@@ -157,6 +226,7 @@ impl Server {
                 entry_id: dataset.id(),
             },
         )
+        .toolbar_summary(|ui| self.segment_count_ui(ui, dataset))
         .column_blueprint(|desc| {
             let mut name = default_display_name_for_column(desc);
 
@@ -247,11 +317,19 @@ impl Server {
             .get()
             .is_some_and(|asset_list| asset_list.is_empty() && pending_registrations.is_empty());
 
-        // The card that stands in for the empty list needs room above and below it as well.
-        let vertical_margin = if no_assets_yet { PADDING as i8 } else { 0 };
+        // The toolbar keeps its own space above it, so only the card that stands in for the empty
+        // list needs room at the top.
+        let top_margin = if no_assets_yet { PADDING as i8 } else { 0 };
 
         egui::Frame::new()
-            .inner_margin(egui::Margin::symmetric(PADDING as i8, vertical_margin))
+            .inner_margin(egui::Margin {
+                left: PADDING as i8,
+                right: PADDING as i8,
+                top: top_margin,
+
+                // Keeps the limits line off the bottom edge.
+                bottom: 4,
+            })
             .show(ui, |ui| {
                 if no_assets_yet {
                     no_assets_ui(ui, ctx, &asset_target, &asset_slots);
@@ -320,92 +398,151 @@ impl Server {
     ) {
         let tokens = ui.tokens();
 
-        egui::Sides::new().show(
-            ui,
-            |ui| {
-                // Counted the same way the register button and the modal count it, pending
-                // registrations included.
-                let asset_count = assets.get().map(|_| asset_slots.taken().to_string());
+        // The same toolbar margins the segments tab gets from `DataFusionTableWidget`, so the
+        // content does not move when switching tabs. The horizontal inset is already on the frame
+        // around this.
+        let toolbar_frame = egui::Frame::new().inner_margin(egui::Margin::symmetric(
+            0,
+            re_ui::TAB_TOOLBAR_MARGIN_Y as i8,
+        ));
 
-                let total_bytes = assets
-                    .get()
-                    .map(|a| a.iter().map(|a| a.size as f64).sum::<f64>())
-                    .map(re_format::format_bytes);
+        toolbar_frame.show(ui, |ui| {
+            egui::Sides::new().show(
+                ui,
+                |ui| {
+                    ui.set_height(re_ui::TAB_TOOLBAR_HEIGHT);
 
-                ui.weak(format!(
-                    "{} assets · {} total",
-                    asset_count.as_deref().unwrap_or("?"),
-                    total_bytes.as_deref().unwrap_or("?"),
+                    // Counted like the register button and the modal count it, including pending
+                    // registrations.
+                    let asset_count = assets.get().map(|_| asset_slots.taken().to_string());
+
+                    let total_bytes = assets
+                        .get()
+                        .map(|a| a.iter().map(|a| a.size as f64).sum::<f64>())
+                        .map(re_format::format_bytes);
+
+                    // There is no total size until the asset list has arrived, so while it is
+                    // pending only the count is shown, with its loading indicator.
+                    let mut terms = vec![MetaTerm {
+                        value: asset_count,
+                        label: "assets",
+                    }];
+                    if let Some(total_bytes) = total_bytes {
+                        terms.push(MetaTerm {
+                            value: Some(total_bytes),
+                            label: "total",
+                        });
+                    }
+                    tab_meta_line_ui(ui, &terms);
+
+                    if let Some(err) = assets.get_err() {
+                        ui.error_label(err.to_string());
+                    }
+                },
+                |ui| {
+                    ui.set_height(re_ui::TAB_TOOLBAR_HEIGHT);
+                    register_asset_button(ctx, asset_target, asset_slots, ui);
+                },
+            );
+        });
+
+        // The frame's own bottom margin is the whole gap down to the cards.
+        ui.spacing_mut().item_spacing.y = 0.0;
+
+        // The limits line sits in a bottom panel, so the card list gets the height that is left
+        // and its scroll area scrolls within that height.
+        egui::Panel::bottom(ui.id().with("asset_limits"))
+            .show_separator_line(false)
+            .frame(egui::Frame::NONE)
+            .show(ui, |ui| {
+                ui.add(egui::Label::new(
+                    egui::RichText::new(asset_slots.limit_rules().join(" · "))
+                        .color(ui.visuals().weak_text_color()),
                 ));
+            });
 
-                if matches!(assets, ServerValue::Pending { .. }) {
-                    ui.inline_loading_indicator("asset list pending");
-                }
+        egui::CentralPanel::default()
+            .frame(egui::Frame::NONE)
+            .show(ui, |ui| match assets.get() {
+                // The header already says whether the list is still pending or failed.
+                None => {}
 
-                if let Some(err) = assets.get_err() {
-                    ui.error_label(err.to_string());
-                }
-            },
-            |ui| {
-                register_asset_button(ctx, asset_target, asset_slots, ui);
-            },
-        );
+                Some(assets) => {
+                    let inner_margin =
+                        egui::Margin::same(tokens.table_grid_view_card_inner_margin as i8);
+                    let card_frame = egui::Frame::new()
+                        .inner_margin(inner_margin)
+                        .fill(tokens.card_fill)
+                        .stroke(tokens.card_stroke)
+                        .corner_radius(tokens.table_grid_view_card_corner_radius);
 
-        match assets.get() {
-            // The header already says whether the list is still pending or failed.
-            None => {}
+                    egui::ScrollArea::vertical().show(ui, |ui| {
+                        let old_item_spacing = std::mem::replace(
+                            &mut ui.spacing_mut().item_spacing,
+                            egui::vec2(0.0, 11.0),
+                        );
 
-            Some(assets) => {
-                let inner_margin =
-                    egui::Margin::same(tokens.table_grid_view_card_inner_margin as i8);
-                let card_frame = egui::Frame::new()
-                    .inner_margin(inner_margin)
-                    .fill(tokens.extreme_bg_color)
-                    .stroke(egui::Stroke::new(1.0, tokens.faint_bg_color))
-                    .corner_radius(tokens.table_grid_view_card_corner_radius);
-
-                egui::ScrollArea::vertical().show(ui, |ui| {
-                    let old_item_spacing = std::mem::replace(
-                        &mut ui.spacing_mut().item_spacing,
-                        egui::vec2(0.0, 11.0),
-                    );
-
-                    // Registrations come first, where the user is looking.
-                    let card_width = ui.available_width();
-                    let items = std::iter::chain(
-                        registrations.iter().map(|registration| CardLayoutItem {
-                            min_width: card_width,
-                            frame: Some(card_frame.stroke(egui::Stroke::new(
-                                1.0,
-                                registration_outline_color(&registration.state, tokens),
-                            ))),
-                        }),
-                        assets.iter().map(|asset| CardLayoutItem {
-                            min_width: card_width,
-                            frame: (!asset.is_registered()).then(|| {
-                                card_frame.stroke(egui::Stroke::new(
+                        // Registrations come first, at the top of the list.
+                        let card_width = ui.available_width();
+                        let items = std::iter::chain(
+                            registrations.iter().map(|registration| CardLayoutItem {
+                                min_width: card_width,
+                                frame: Some(card_frame.stroke(egui::Stroke::new(
                                     1.0,
-                                    asset_outline_color(asset, tokens),
-                                ))
+                                    registration_outline_color(&registration.state, tokens),
+                                ))),
+
+                                // A registration has nothing to open yet.
+                                clickable: Some(false),
                             }),
-                        }),
-                    )
-                    .collect();
+                            assets.iter().map(|asset| CardLayoutItem {
+                                min_width: card_width,
+                                frame: (!asset.is_registered()).then(|| {
+                                    card_frame.stroke(egui::Stroke::new(
+                                        1.0,
+                                        asset_outline_color(asset, tokens),
+                                    ))
+                                }),
 
-                    CardLayout::new(items, card_frame).show(ui, |ui, idx, _hovered| {
-                        ui.spacing_mut().item_spacing = old_item_spacing;
+                                // Only a registered asset can be opened.
+                                clickable: Some(asset.is_registered()),
+                            }),
+                        )
+                        .collect();
 
-                        if let Some(registration) = registrations.get(idx) {
-                            asset_registration_ui(ui, ctx, dataset, registration);
-                        } else if let Some(asset) = assets.get(idx - registrations.len()) {
-                            self.asset_ui(ui, app_ctx, ctx, dataset, asset);
+                        let clicked = CardLayout::new(items, card_frame)
+                            .hover_fill(tokens.card_hover_fill)
+                            .hover_stroke(tokens.card_hover_stroke)
+                            .show(ui, |ui, idx, _hovered| {
+                                // The page zeroes `item_spacing` to keep its own gaps explicit,
+                                // but a card lays out its own lines and needs vertical spacing.
+                                ui.spacing_mut().item_spacing = old_item_spacing;
+                                ui.spacing_mut().item_spacing.y = CARD_LINE_SPACE;
+
+                                if let Some(registration) = registrations.get(idx) {
+                                    asset_registration_ui(ui, ctx, dataset, registration);
+                                } else if let Some(asset) = assets.get(idx - registrations.len()) {
+                                    self.asset_ui(ui, app_ctx, ctx, dataset, asset);
+                                }
+                            });
+
+                        // A card's outline is drawn on its edge, so the scroll area keeps the
+                        // outline's width under the last card instead of clipping it in half.
+                        // `item_spacing.y` must not add to that.
+                        ui.spacing_mut().item_spacing.y = 0.0;
+                        ui.add_space(card_frame.stroke.width);
+
+                        // Clicking a card opens the asset. Only registered assets are clickable,
+                        // so the index is always past the registrations.
+                        if let Some(asset) = clicked
+                            .and_then(|idx| idx.checked_sub(registrations.len()))
+                            .and_then(|idx| assets.get(idx))
+                        {
+                            open_asset_ui(ui, dataset, asset, false);
                         }
                     });
-                });
-            }
-        }
-
-        ui.weak(asset_slots.limit_rules().join(" · "));
+                }
+            });
     }
 
     fn asset_ui(
@@ -441,7 +578,7 @@ impl Server {
                         } else if asset.is_registered() {
                             ui.label(egui::RichText::new(asset.id.as_str()).heading().strong());
 
-                            asset_dates_ui(ui, app_ctx, asset);
+                            asset_meta_ui(ui, app_ctx, asset);
                         } else {
                             let color = asset_fg_color(asset, tokens);
                             let pill_text = if asset.has_failed() {
@@ -484,6 +621,8 @@ impl Server {
                             ui.small_icon_button(&re_ui::icons::MORE_VERTICAL, "more");
 
                         egui::Popup::menu(&more_response).show(|ui| {
+                            asset_source_menu_ui(ui, ctx, asset);
+
                             if ui
                                 .button(
                                     egui::RichText::new("Unregister asset")
@@ -491,119 +630,157 @@ impl Server {
                                 )
                                 .clicked()
                             {
-                                let connection = self.connection.clone();
                                 let origin = dataset.origin.clone();
-                                let dataset_id = dataset.id();
+                                let entry_id = dataset.id();
                                 let asset_id = asset.id.clone();
-                                let has_failed = asset.has_failed();
-                                let command_sender = ctx.command_sender.clone();
-                                let egui_ctx = ui.ctx().clone();
 
-                                send_crossbeam(
-                                    ctx.command_sender,
-                                    Command::AssetUnregistrationStarted {
-                                        origin: origin.clone(),
-                                        entry_id: dataset_id,
-                                        asset_id: asset_id.clone(),
-                                    },
-                                )
-                                .ok();
+                                // A failed asset holds no data, so it is unregistered right away.
+                                // Unregistering a registered asset cannot be undone, so that one
+                                // asks for confirmation first.
+                                let command = if asset.has_failed() {
+                                    Command::UnregisterAsset {
+                                        origin,
+                                        entry_id,
+                                        asset_id,
+                                        has_failed: true,
+                                    }
+                                } else {
+                                    Command::OpenUnregisterAssetModal {
+                                        origin,
+                                        entry_id,
+                                        asset_id,
+                                    }
+                                };
 
-                                self.runtime.spawn_future(async move {
-                                    let unregistered = unregister_asset(
-                                        connection,
-                                        dataset_id,
-                                        asset_id.clone(),
-                                        has_failed,
-                                    )
-                                    .await;
+                                send_crossbeam(ctx.command_sender, command).ok();
 
-                                    send_crossbeam(
-                                        &command_sender,
-                                        Command::AssetUnregistrationFinished {
-                                            origin,
-                                            entry_id: dataset_id,
-                                            asset_id,
-                                            unregistered,
-                                        },
-                                    )
-                                    .ok();
-                                    egui_ctx.request_repaint();
-                                });
+                                ui.close();
                             }
                         });
 
-                        // An asset the server is not done with has nothing to open and no size to
-                        // show, so the menu is all it gets.
+                        // An asset that is not registered yet has nothing to open, so it only gets
+                        // the menu.
                         if !asset.is_registered() {
                             return;
                         }
 
-                        let open_button = ui.add(
-                            re_ui::ReButton::from_button(egui::Button::new("Open"))
-                                .ghost()
-                                .stroke(egui::Stroke::new(1.0, ui.tokens().faint_bg_color)),
-                        );
+                        // `outlined` is the `ReButton` variant with a border.
+                        let open_button = ui.add(re_ui::ReButton::new("Open").outlined().small());
 
-                        ui.add_space(4.0);
-
-                        ui.separator();
-
-                        ui.add_space(8.0);
-
-                        if let Ok(url) = re_viewer_context::open_url::ViewerOpenUrl::RedapDataset(
-                            re_uri::DatasetUri {
-                                origin: dataset.origin.clone(),
-                                dataset_id: dataset.id().id,
-                                resource: DatasetResource::Assets,
-                                segment_id: Some(asset.id.clone()),
-                                fragment: Default::default(),
-                            },
-                        )
-                        .sharable_url(None)
-                        {
-                            if open_button.clicked_with_open_in_background() {
-                                ui.open_url(egui::OpenUrl::new_tab(url));
-                            } else if open_button.clicked() {
-                                ui.open_url(egui::OpenUrl::same_tab(url));
-                            }
+                        if open_button.clicked_with_open_in_background() {
+                            open_asset_ui(ui, dataset, asset, true);
+                        } else if open_button.clicked() {
+                            open_asset_ui(ui, dataset, asset, false);
                         }
-
-                        ui.with_layout(egui::Layout::top_down(egui::Align::Max), |ui| {
-                            ui.label(egui::RichText::new("SIZE").weak().monospace());
-                            ui.label(
-                                egui::RichText::new(re_format::format_bytes(asset.size as _))
-                                    .strong()
-                                    .monospace()
-                                    .size(13.0),
-                            );
-                        });
                     });
                 },
             );
     }
 }
 
-/// When an asset was registered and last updated, as one line.
-fn asset_dates_ui(ui: &mut egui::Ui, app_ctx: &AppContext<'_>, asset: &Asset) {
-    let date_format = app_ctx.app_options.timestamp_format;
+/// One term of a tab toolbar's metadata line, e.g. `12 segments`.
+///
+/// A term with no value yet shows a loading indicator in place of the number.
+struct MetaTerm<'a> {
+    value: Option<String>,
+    label: &'a str,
+}
 
-    ui.horizontal_wrapped(|ui| {
-        // Tighter than the default so the labels read as one sentence.
-        ui.spacing_mut().item_spacing.x = 0.0;
+/// The metadata line at the left end of a tab's toolbar, terms separated by a dot.
+///
+/// Every tab uses this, so the toolbars all look alike.
+fn tab_meta_line_ui(ui: &mut egui::Ui, terms: &[MetaTerm<'_>]) {
+    let label_color = ui.tokens().meta_line.label;
+    let value_color = ui.tokens().meta_line.value;
 
-        ui.label("Registered ");
-        short_duration_ui(ui, asset.registered_at, date_format, egui::Ui::label);
-        ui.label(" · Updated ");
-        short_duration_ui(ui, asset.last_updated_at, date_format, egui::Ui::label);
+    ui.horizontal(|ui| {
+        ui.spacing_mut().item_spacing.x = META_WORD_SPACE;
+
+        for (index, MetaTerm { value, label }) in terms.iter().enumerate() {
+            if index > 0 {
+                ui.label(egui::RichText::new("·").color(label_color));
+            }
+
+            match value {
+                Some(value) => {
+                    ui.label(egui::RichText::new(value).color(value_color));
+                }
+                None => {
+                    ui.inline_loading_indicator("waiting for the count");
+                }
+            }
+
+            ui.label(egui::RichText::new(*label).color(label_color));
+        }
     });
 }
 
-/// The height of one card in the asset list: a title with `lines` lines under it.
-fn card_height(ui: &egui::Ui) -> f32 {
-    let line = ui.spacing().item_spacing.y + ui.text_style_height(&egui::TextStyle::Body);
+/// Opens an asset, from its card or from its "Open" button.
+fn open_asset_ui(ui: &egui::Ui, dataset: &Dataset, asset: &Asset, new_tab: bool) {
+    let url = re_viewer_context::open_url::ViewerOpenUrl::RedapDataset(re_uri::DatasetUri {
+        origin: dataset.origin.clone(),
+        dataset_id: dataset.id().id,
+        resource: DatasetResource::Assets,
+        segment_id: Some(asset.id.clone()),
+        fragment: Default::default(),
+    })
+    .sharable_url(None);
 
-    ui.text_style_height(&egui::TextStyle::Heading) + line
+    if let Ok(url) = url {
+        ui.open_url(egui::OpenUrl { url, new_tab });
+    }
+}
+
+/// Menu item opening [`crate::asset_source_modal::AssetSourceModal`] on an asset.
+fn asset_source_menu_ui(ui: &mut egui::Ui, ctx: &Context<'_>, asset: &Asset) {
+    if ui.button("Source URI details").clicked() {
+        send_crossbeam(
+            ctx.command_sender,
+            Command::OpenAssetSourceModal {
+                asset_id: asset.id.clone(),
+                layers: asset.layers.clone(),
+            },
+        )
+        .ok();
+
+        ui.close();
+    }
+}
+
+/// The line under an asset's name: its size, when it was registered, and when it was last updated
+/// if that differs.
+fn asset_meta_ui(ui: &mut egui::Ui, app_ctx: &AppContext<'_>, asset: &Asset) {
+    ui.horizontal_wrapped(|ui| {
+        let date_format = app_ctx.app_options.timestamp_format;
+        ui.spacing_mut().item_spacing.x = 0.0;
+
+        short_duration_ui(ui, asset.registered_at, date_format, |ui, registered_at| {
+            ui.label(format!(
+                "{} · Registered {registered_at}",
+                re_format::format_bytes(asset.size as _)
+            ))
+        });
+
+        // Registering an asset sets both timestamps, and the manifest rows of one asset can be
+        // written a few milliseconds apart, so the two differ slightly even for an asset that was
+        // never updated. Comparing the formatted text instead of the raw timestamps keeps the line
+        // from showing the same moment twice. A re-registration is seconds or more later, see
+        // `ConnectionHandle::register_asset`.
+        if short_duration_text(asset.last_updated_at, date_format)
+            != short_duration_text(asset.registered_at, date_format)
+        {
+            short_duration_ui(ui, asset.last_updated_at, date_format, |ui, updated_at| {
+                ui.label(format!(" · Updated {updated_at}"))
+            });
+        }
+    });
+}
+
+/// The height of one card in the asset list: a title with one line under it.
+fn card_height(ui: &egui::Ui) -> f32 {
+    ui.text_style_height(&egui::TextStyle::Heading)
+        + ui.spacing().item_spacing.y
+        + ui.text_style_height(&egui::TextStyle::Body)
 }
 
 /// One card for a pending or failed registration.
@@ -798,8 +975,11 @@ fn no_assets_ui(
             tokens.table_grid_view_card_inner_margin as i8,
             48,
         ))
-        .fill(tokens.extreme_bg_color)
-        .stroke(egui::Stroke::new(1.0, tokens.faint_bg_color))
+        // The same surface as a card, so the empty state looks like the cards it replaces. It is a
+        // plain frame rather than a `CardLayout` card, so it never reacts to hover or clicks. Only
+        // the buttons inside it are interactive.
+        .fill(tokens.card_fill)
+        .stroke(tokens.card_stroke)
         .corner_radius(tokens.table_grid_view_card_corner_radius)
         .show(ui, |ui| {
             ui.take_available_width();
@@ -875,6 +1055,7 @@ fn no_assets_ui(
                                 icons::EXTERNAL_LINK.as_image().tint(link_color),
                             ))
                             .ghost()
+                            .small()
                             .image_tint_follows_text_color(false),
                         )
                         .on_hover_cursor(egui::CursorIcon::PointingHand)
@@ -939,7 +1120,7 @@ fn register_asset_button(
 
     let response = ui.add_enabled(
         no_room_reason.is_none(),
-        ReButton::new("Register asset").blue(),
+        ReButton::new("Register asset").blue().small(),
     );
 
     if let Some(reason) = no_room_reason {
@@ -959,7 +1140,7 @@ fn register_asset_button(
 /// is dropped on its own terms, so a layer the server is still working on stays.
 ///
 /// Returns whether the server dropped it.
-async fn unregister_asset(
+pub(crate) async fn unregister_asset(
     connection: ConnectionHandle,
     dataset_id: EntryId,
     asset_id: SegmentId,
@@ -986,15 +1167,37 @@ async fn unregister_asset(
 }
 
 /// Button that refetches the dataset from the server.
-fn refresh_button_ui(ui: &mut egui::Ui, app_ctx: &AppContext<'_>, dataset: &Dataset) {
-    let tooltip = match TableCommandKind::Refresh.formatted_kb_shortcut(ui.ctx()) {
-        Some(shortcut) => format!("Refresh dataset ({shortcut})"),
-        None => "Refresh dataset".to_owned(),
-    };
+///
+/// Sits next to the dataset's name, and on hover shows how long ago the dataset was fetched.
+/// `queried_at` is when the client last fetched it, or `None` before the first fetch.
+fn refresh_button_ui(
+    ui: &mut egui::Ui,
+    app_ctx: &AppContext<'_>,
+    dataset: &Dataset,
+    queried_at: Option<Timestamp>,
+) {
+    let shortcut = TableCommandKind::Refresh.formatted_kb_shortcut(ui.ctx());
+    let timestamp_format = app_ctx.app_options.timestamp_format;
 
     if ui
         .small_icon_button(&icons::RESET, "Refresh dataset")
-        .on_hover_text(tooltip)
+        // Only built while hovered, so the duration below is formatted, and requests repaints,
+        // only while the tooltip is on screen.
+        .on_hover_ui(|ui| {
+            match &shortcut {
+                Some(shortcut) => ui.label(format!("Refresh dataset ({shortcut})")),
+                None => ui.label("Refresh dataset"),
+            };
+
+            // Worded and styled like the segment table's bottom bar, which shows the same
+            // timestamp for the same table.
+            if let Some(queried_at) = queried_at {
+                ui.horizontal(|ui| {
+                    ui.label("Last updated:");
+                    short_duration_ui(ui, queried_at, timestamp_format, egui::Ui::strong);
+                });
+            }
+        })
         .clicked()
     {
         app_ctx.command_sender().send_table_command(TableCommand {
@@ -1014,7 +1217,10 @@ mod tests {
     /// keeps the whole uri as its title.
     #[test]
     fn source_uri_file_name_takes_the_last_part_of_the_uri() {
-        assert_eq!(source_uri_file_name("file:///path/to/file.rrd"), "file.rrd");
+        assert_eq!(
+            source_uri_file_name("file:///recordings/data.rrd"),
+            "data.rrd"
+        );
         assert_eq!(
             source_uri_file_name("s3://a-bucket/assets/robot_urdf.rrd"),
             "robot_urdf.rrd"

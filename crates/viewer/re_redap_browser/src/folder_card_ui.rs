@@ -45,7 +45,8 @@ pub fn folder_cards_ui(
     let inner_margin = Margin::same(tokens.table_grid_view_card_inner_margin as i8);
     let card_frame = Frame::new()
         .inner_margin(inner_margin)
-        .fill(tokens.table_grid_view_card_fill)
+        .fill(tokens.card_fill)
+        .stroke(tokens.card_stroke)
         .corner_radius(tokens.table_grid_view_card_corner_radius);
 
     egui::ScrollArea::vertical()
@@ -56,7 +57,8 @@ pub fn folder_cards_ui(
 
             CardLayout::uniform(children.len(), card_min_width + card_spacing, card_frame)
                 .all_rows_use_available_width(false)
-                .hover_fill(tokens.table_grid_view_card_hover_fill)
+                .hover_fill(tokens.card_hover_fill)
+                .hover_stroke(tokens.card_hover_stroke)
                 .show(ui, |ui, index, _hovered| {
                     let Some(child) = children.get(index) else {
                         return;

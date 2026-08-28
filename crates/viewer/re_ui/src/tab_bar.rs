@@ -1,6 +1,6 @@
 use egui::layers::ShapeIdx;
 use egui::{
-    Align, AtomLayout, Frame, IntoAtoms, Layout, Margin, Rect, Response, Sense, Shape, Ui,
+    Align, AtomLayout, Frame, IntoAtoms, Layout, Margin, Rangef, Rect, Response, Sense, Shape, Ui,
     UiBuilder, WidgetInfo, WidgetType,
 };
 
@@ -9,9 +9,6 @@ use crate::UiExt as _;
 /// Thickness of the accent line under the selected tab.
 const UNDERLINE_HEIGHT: i8 = 2;
 
-/// Padding on either side of a tab's content.
-const TAB_PADDING_X: i8 = 16;
-
 /// Padding above a tab's content.
 const TAB_PADDING_TOP: i8 = 8;
 
@@ -19,14 +16,41 @@ const TAB_PADDING_TOP: i8 = 8;
 const TAB_PADDING_BOTTOM: i8 = 4;
 
 /// Gap between neighboring tabs.
-const TAB_SPACING: f32 = 8.0;
+///
+/// A tab is only as wide as its label, so this is the whole gap between two labels.
+const TAB_SPACING: f32 = 24.0;
+
+/// How far the first tab sits from the left edge of the enclosing panel.
+///
+/// Matches the inset the rest of a dataset page uses, so the labels line up with the heading and
+/// the cards below them.
+const BAR_INSET_LEFT: f32 = 16.0;
+
+/// How far short of the right edge of the enclosing panel the separator stops.
+///
+/// Same as [`BAR_INSET_LEFT`], so the line is inset as much as the cards below it. Only the
+/// separator needs this. The tabs are packed against the left.
+const BAR_INSET_RIGHT: f32 = BAR_INSET_LEFT;
+
+/// Font size of a tab's label.
+const TAB_FONT_SIZE: f32 = 12.0;
+
+/// Height of the row between a [`TabBar`] and the content under it. The row summarizes that
+/// content on the left and holds its actions on the right.
+///
+/// Every tab of a page uses this and [`TAB_TOOLBAR_MARGIN_Y`], so switching tabs doesn't move the
+/// content up or down.
+pub const TAB_TOOLBAR_HEIGHT: f32 = 26.0;
+
+/// Space above and below a [`TAB_TOOLBAR_HEIGHT`] row.
+pub const TAB_TOOLBAR_MARGIN_Y: f32 = 12.0;
 
 /// A row of tabs, with the selected one underlined.
 ///
 /// The underline slides over when another tab is selected.
 ///
-/// The tabs sit on a separator that spans the full width of the enclosing panel, see
-/// [`crate::UiExt::full_span`].
+/// The tabs sit on a separator that starts at the first tab and stops short of the right edge of
+/// the enclosing panel.
 ///
 /// ```
 /// # egui::__run_test_ui(|ui| {
@@ -48,8 +72,20 @@ pub struct TabBar<'a> {
 
 impl<'a> TabBar<'a> {
     pub fn new(ui: &'a mut Ui) -> Self {
-        let mut child_ui = ui.new_child(UiBuilder::new().layout(Layout::left_to_right(Align::Min)));
+        // Inset via the child's rect rather than `add_space`, so the tab spacing isn't added on
+        // top of it before the first tab.
+        let mut max_rect = ui.available_rect_before_wrap();
+        max_rect.min.x += BAR_INSET_LEFT;
+
+        let mut child_ui = ui.new_child(
+            UiBuilder::new()
+                .max_rect(max_rect)
+                .layout(Layout::left_to_right(Align::Min)),
+        );
         child_ui.spacing_mut().item_spacing.x = TAB_SPACING;
+
+        // Set here rather than per tab, so the bar keeps its own size if the body text size changes.
+        child_ui.style_mut().override_font_id = Some(egui::FontId::proportional(TAB_FONT_SIZE));
 
         // Reserved up front so the separator ends up below the selected tab's underline.
         let separator = child_ui.painter().add(Shape::Noop);
@@ -82,7 +118,7 @@ impl<'a> TabBar<'a> {
     }
 
     /// Paints the accent line under the selected tab, sliding it over from wherever it was before.
-    fn underline_ui(&self, selected_rect: Rect) {
+    fn underline_ui(&self, selected_rect: Rect, baseline: f32) {
         let ui = &self.child_ui;
         let bar_left = ui.min_rect().left();
 
@@ -104,30 +140,47 @@ impl<'a> TabBar<'a> {
             )
         };
 
-        ui.painter().hline(
-            left..=right,
-            selected_rect.bottom() - (UNDERLINE_HEIGHT as f32) * 0.5,
-            egui::Stroke::new(UNDERLINE_HEIGHT as f32, ui.tokens().selection_bg_fill),
-        );
+        // Same color as the selected label, so the line and the label match.
+        underline(ui, left..=right, baseline, ui.tokens().tab.text_selected);
     }
+}
+
+/// Paints a tab underline sitting on `baseline`, so it is flush with the separator below it.
+///
+/// A stroke is centered on the line it is given, so both lines are offset up by half their own
+/// thickness.
+fn underline(ui: &Ui, x: std::ops::RangeInclusive<f32>, baseline: f32, color: egui::Color32) {
+    let thickness = UNDERLINE_HEIGHT as f32;
+    ui.painter().hline(
+        x,
+        baseline - thickness * 0.5,
+        egui::Stroke::new(thickness, color),
+    );
 }
 
 impl Drop for TabBar<'_> {
     fn drop(&mut self) {
         let rect = self.child_ui.min_rect();
-        let separator_y = rect.bottom() - f32::from(UNDERLINE_HEIGHT) * 0.5;
 
+        // The bottom of the bar is where both the separator and the underlines end, so the
+        // thicker underline grows upwards from the separator instead of sitting across it.
+        let baseline = rect.bottom();
+
+        // Inset at both ends rather than spanning the panel. It starts where the first tab does
+        // and stops as short of the right edge as the content below it.
+        let span = Rangef::new(
+            rect.left(),
+            self.child_ui.max_rect().right() - BAR_INSET_RIGHT,
+        );
+
+        let divider = self.child_ui.visuals().widgets.noninteractive.bg_stroke;
         self.child_ui.painter().set(
             self.separator,
-            Shape::hline(
-                self.child_ui.full_span(),
-                separator_y,
-                self.child_ui.visuals().widgets.noninteractive.bg_stroke,
-            ),
+            Shape::hline(span, baseline - divider.width * 0.5, divider),
         );
 
         if let Some(selected_rect) = self.selected_rect {
-            self.underline_ui(selected_rect);
+            self.underline_ui(selected_rect, baseline);
         }
 
         self.ui.allocate_rect(rect, Sense::hover());
@@ -141,27 +194,33 @@ fn tab_ui<'a>(ui: &mut Ui, atoms: impl IntoAtoms<'a>, selected: bool) -> Respons
     let atoms = atoms.into_atoms();
     let label = atoms.text().map(|text| text.into_owned());
 
+    // A tab is as wide as its label: no horizontal padding, so the underline matches the word and
+    // `TAB_SPACING` is the whole gap between two of them.
     let mut layout = AtomLayout::new(atoms)
         .frame(Frame::new().inner_margin(Margin {
-            left: TAB_PADDING_X,
-            right: TAB_PADDING_X,
+            left: 0,
+            right: 0,
             top: TAB_PADDING_TOP,
             bottom: TAB_PADDING_BOTTOM + UNDERLINE_HEIGHT,
         }))
         .sense(Sense::click())
         .allocate(ui);
 
+    let tokens = ui.tokens();
+    let hovered = layout.response.hovered();
+
     let text_color = if selected || layout.response.has_focus() {
-        ui.visuals().strong_text_color()
-    } else if layout.response.hovered() {
-        ui.visuals().text_color()
+        tokens.tab.text_selected
+    } else if hovered {
+        tokens.tab.text_hovered
     } else {
-        ui.visuals().weak_text_color()
+        tokens.tab.text
     };
     layout.fallback_text_color = text_color;
     layout.map_images(|image| image.tint(text_color));
 
     let response = layout.paint(ui).response;
+
     response.widget_info(|| {
         WidgetInfo::selected(
             WidgetType::SelectableLabel,

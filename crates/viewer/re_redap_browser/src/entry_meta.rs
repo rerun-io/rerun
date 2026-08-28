@@ -2,7 +2,6 @@
 
 use std::sync::Arc;
 
-use datafusion::arrow::datatypes::SchemaRef;
 use re_async::{AsyncRuntimeHandle, WasmNotSend};
 use re_log_types::EntryId;
 use re_mutex::Mutex;
@@ -14,8 +13,8 @@ use re_ui::{RequestedObject, ServerValue};
 /// Each part is fetched in the background, see [`DatasetRequests`].
 #[derive(Clone, Debug)]
 pub struct EntryMeta {
-    /// How many columns the entry's schema has.
-    pub columns: ServerValue<usize, ApiError>,
+    /// How many segments the entry holds.
+    pub segments: ServerValue<usize, ApiError>,
 }
 
 /// Where to fetch a dataset's metadata from.
@@ -41,8 +40,8 @@ pub struct DatasetRequests(Mutex<Requests>);
 /// behind an `Arc`.
 #[derive(Default)]
 struct Requests {
-    /// From the dataset's schema.
-    schema: RequestedObject<SchemaRef, ApiError>,
+    /// From the dataset's segment table. Only the count is kept, see [`EntryMeta::segments`].
+    segment_count: RequestedObject<usize, ApiError>,
 
     /// From the manifest of the dataset's asset dataset.
     assets: RequestedObject<AssetsRef, ApiError>,
@@ -51,21 +50,19 @@ struct Requests {
 impl DatasetRequests {
     /// Everything we know about the dataset, asking for whatever hasn't been asked for yet.
     pub fn meta(&self, query: EntryMetaQuery<'_>) -> EntryMeta {
-        let schema = self
-            .0
-            .lock()
-            .schema
-            .request_value(query.runtime, query.egui_ctx, || {
-                warn_on_failure(
-                    "dataset schema",
-                    query.dataset_id,
-                    dataset_schema(query.connection.clone(), query.dataset_id),
-                )
-            });
+        let segments =
+            self.0
+                .lock()
+                .segment_count
+                .request_value(query.runtime, query.egui_ctx, || {
+                    warn_on_failure(
+                        "dataset segment count",
+                        query.dataset_id,
+                        segment_count(query.connection.clone(), query.dataset_id),
+                    )
+                });
 
-        EntryMeta {
-            columns: schema.map(|s| s.fields().len()),
-        }
+        EntryMeta { segments }
     }
 
     /// The assets registered for the dataset, as they stand in its asset dataset.
@@ -94,8 +91,11 @@ impl DatasetRequests {
     /// Fetch everything again, keeping what we have until the new values arrive.
     pub fn refresh(&self) {
         let mut guard = self.0.lock();
-        let Requests { schema, assets } = &mut *guard;
-        schema.refresh();
+        let Requests {
+            segment_count,
+            assets,
+        } = &mut *guard;
+        segment_count.refresh();
         assets.refresh();
     }
 
@@ -109,7 +109,8 @@ impl DatasetRequests {
     /// Whether the assets we have are older than what the server has.
     ///
     /// True until the first fetch lands, and again from [`Self::clear_assets`] until the fetch
-    /// behind it lands.
+    /// behind it lands. Nothing is fetched until something asks for the assets, so this also stays
+    /// true until then.
     pub fn assets_pending(&self) -> bool {
         matches!(self.0.lock().assets.value(), ServerValue::Pending { .. })
     }
@@ -129,10 +130,12 @@ async fn warn_on_failure<T>(
     result
 }
 
-async fn dataset_schema(connection: ConnectionHandle, entry_id: EntryId) -> ApiResult<SchemaRef> {
-    let mut client = connection.client().await?;
-    let schema = client.get_dataset_schema(entry_id).await?;
-    Ok(SchemaRef::new(schema))
+/// How many segments a dataset holds.
+///
+/// The server has no count endpoint, so this counts the rows of the segment table, one per segment.
+async fn segment_count(connection: ConnectionHandle, entry_id: EntryId) -> ApiResult<usize> {
+    let client = connection.client().await?;
+    client.get_dataset_segment_count(entry_id).await
 }
 
 async fn assets(connection: ConnectionHandle, asset_dataset: EntryId) -> ApiResult<AssetsRef> {

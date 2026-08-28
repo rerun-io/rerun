@@ -213,6 +213,7 @@ impl ModalWrapper {
 
         egui::Modal::new(id.with("modal"))
             .frame(Frame::new())
+            .backdrop_color(tokens.modal_backdrop_color)
             .area(area)
             .show(ctx, |ui| {
                 prevent_shrinking(ui);

@@ -62,8 +62,8 @@ pub use self::command_palette::{
 };
 pub use self::context_ext::ContextExt;
 pub use self::design_tokens::{
-    AlertVisuals, ButtonVisuals, DesignTokens, Outlines, TableStyle, TextEditVisuals,
-    WindowFrameConfig,
+    AlertVisuals, ButtonVisuals, DesignTokens, MetaLineVisuals, Outlines, TabVisuals, TableStyle,
+    TextEditVisuals, WindowFrameConfig,
 };
 pub use self::egui_ext::widget_ext::*;
 pub use self::fuzzy::{FuzzyMatch, FuzzyQuery};
@@ -81,7 +81,7 @@ pub use self::relative_time_range::{
 pub use self::requested_object::{RequestedObject, ServerValue};
 pub use self::section_collapsing_header::SectionCollapsingHeader;
 pub use self::syntax_highlighting::SyntaxHighlighting;
-pub use self::tab_bar::TabBar;
+pub use self::tab_bar::{TAB_TOOLBAR_HEIGHT, TAB_TOOLBAR_MARGIN_Y, TabBar};
 pub use self::time_drag_value::TimeDragValue;
 pub use self::ui_ext::UiExt;
 pub use self::ui_layout::UiLayout;

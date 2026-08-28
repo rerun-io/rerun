@@ -87,6 +87,7 @@ impl IntroItem {
         CardLayoutItem {
             frame: Some(self.frame(ui)),
             min_width,
+            clickable: None,
         }
     }
 

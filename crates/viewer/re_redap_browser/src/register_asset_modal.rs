@@ -161,14 +161,14 @@ impl RegisterAssetModal {
             ui.ctx(),
             || ModalWrapper::new("Register an asset"),
             |ui| {
-                // Parsed before the field is drawn, so the outline and the register button lag the
-                // text by one frame.
-                let source = asset_data_source(&state.target.origin, &state.source_uri);
+                // `style_invalid_field` has to be applied before the field is added, so the outline
+                // lags the text by one frame.
+                let previous_source = asset_data_source(&state.target.origin, &state.source_uri);
 
-                let label = ui.monospace("SOURCE URI");
+                let label = ui.strong("Source URI");
 
                 ui.scope(|ui| {
-                    if source.is_err() && !state.source_uri.is_empty() {
+                    if previous_source.is_err() && !state.source_uri.is_empty() {
                         ui.style_invalid_field();
                     }
 
@@ -185,7 +185,7 @@ impl RegisterAssetModal {
                     }
                 });
 
-                ui.weak(
+                ui.label(
                     "A .rrd file the server can read. For a Rerun Hub server, that can be s3://, az:// or https://. For a local server use file://<file path>",
                 );
 
@@ -203,6 +203,10 @@ impl RegisterAssetModal {
                     ui.warning_label(reason);
                 }
 
+                // Parsed after the field, so the register button and what it sends both use the
+                // text the user sees.
+                let source = asset_data_source(&state.target.origin, &state.source_uri);
+
                 let already_registering = slots.is_registering(&state.source_uri);
                 if already_registering {
                     ui.add_space(4.0);
@@ -210,7 +214,7 @@ impl RegisterAssetModal {
                 }
 
                 ui.add_space(4.0);
-                ui.weak(
+                ui.label(
                     "Registering runs in the background. \
                      The asset list shows how far the server got with it.",
                 );
@@ -294,11 +298,11 @@ async fn register_asset(
         .await
     {
         Ok(asset_id) => {
-            re_log::info!("Successfully registered asset '{source_uri}' as '{asset_id}'");
+            re_log::info!("Registered asset as '{asset_id}'\nSource: {source_uri}");
             Ok(())
         }
         Err(err) => {
-            re_log::error!("Failed registering asset '{source_uri}': {err}");
+            re_log::error!("Failed registering asset: {err}\nSource: {source_uri}");
             Err(err)
         }
     }

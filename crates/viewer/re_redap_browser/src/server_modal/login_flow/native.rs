@@ -29,7 +29,7 @@ impl State {
         } else {
             ui.horizontal(|ui| {
                 if ActionButton::new(&icons::EXTERNAL_LINK, "Log in", "Link opened!")
-                    .variant(Variant::Outlined)
+                    .variant(Variant::Primary)
                     .show(ui, &mut self.show_open_feedback)
                     .clicked()
                 {

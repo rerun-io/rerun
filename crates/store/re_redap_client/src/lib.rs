@@ -23,7 +23,7 @@ pub use self::api_error::{ApiError, ApiErrorKind, ApiResult};
 
 pub use self::api_response_stream::ApiResponseStream;
 pub use self::asset::{
-    Asset, AssetRegistrationError, DEFAULT_ASSET_TASK_TIMEOUT, asset_data_source,
+    Asset, AssetLayer, AssetRegistrationError, DEFAULT_ASSET_TASK_TIMEOUT, asset_data_source,
 };
 pub use self::chunk_cache::{ChunkCache, ChunkCacheHandle};
 pub use self::connection_client::{

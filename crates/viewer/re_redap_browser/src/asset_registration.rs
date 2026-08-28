@@ -104,6 +104,16 @@ impl AssetRegistrations {
         });
     }
 
+    /// The datasets whose asset list has yet to show an asset the server registered.
+    ///
+    /// A dataset appears once per such registration.
+    pub fn datasets_waiting_for_list(&self) -> impl Iterator<Item = EntryId> {
+        self.0
+            .iter()
+            .filter(|registration| matches!(registration.state, RegistrationState::Registered))
+            .map(|registration| registration.dataset_id)
+    }
+
     /// Stops listing the registration that failed with this asset still registered.
     ///
     /// The asset has just been unregistered, so the failure is cleaned up and the registration
@@ -238,6 +248,18 @@ impl AssetUnregistrations {
             matches!(unregistration.state, UnregistrationState::Pending)
                 || !list_caught_up(unregistration.dataset_id)
         });
+    }
+
+    /// The datasets whose asset list still shows an asset the server unregistered.
+    ///
+    /// A dataset appears once per such unregistration.
+    pub fn datasets_waiting_for_list(&self) -> impl Iterator<Item = EntryId> {
+        self.0
+            .iter()
+            .filter(|unregistration| {
+                matches!(unregistration.state, UnregistrationState::Unregistered)
+            })
+            .map(|unregistration| unregistration.dataset_id)
     }
 
     fn find(&self, dataset_id: EntryId, asset_id: &SegmentId) -> Option<usize> {
@@ -375,6 +397,50 @@ mod tests {
         unregistrations.finish(dataset, &asset, false);
 
         assert!(!unregistrations.contains(dataset, &asset));
+    }
+
+    /// A dataset waits for its asset list once the server has answered, until the list has caught
+    /// up. A pending registration or unregistration has nothing for the list to catch up with, and
+    /// neither has a failed registration.
+    #[test]
+    fn a_dataset_waits_for_its_asset_list_once_the_server_has_answered() {
+        let dataset = EntryId::new();
+        let asset = SegmentId::new("room-mesh".to_owned());
+        let mut registrations = AssetRegistrations::default();
+        let mut unregistrations = AssetUnregistrations::default();
+
+        registrations.start(dataset, "s3://bucket/mesh.rrd".to_owned());
+        unregistrations.start(dataset, asset.clone());
+
+        assert_eq!(registrations.datasets_waiting_for_list().count(), 0);
+        assert_eq!(unregistrations.datasets_waiting_for_list().count(), 0);
+
+        registrations.finish(dataset, "s3://bucket/mesh.rrd", Ok(()));
+        unregistrations.finish(dataset, &asset, true);
+
+        assert_eq!(
+            registrations
+                .datasets_waiting_for_list()
+                .collect::<Vec<_>>(),
+            [dataset]
+        );
+        assert_eq!(
+            unregistrations
+                .datasets_waiting_for_list()
+                .collect::<Vec<_>>(),
+            [dataset]
+        );
+
+        registrations.clear_registered(caught_up);
+        unregistrations.clear_unregistered(caught_up);
+
+        assert_eq!(registrations.datasets_waiting_for_list().count(), 0);
+        assert_eq!(unregistrations.datasets_waiting_for_list().count(), 0);
+
+        registrations.start(dataset, "s3://bucket/failed.rrd".to_owned());
+        registrations.finish(dataset, "s3://bucket/failed.rrd", Err(server_said_no()));
+
+        assert_eq!(registrations.datasets_waiting_for_list().count(), 0);
     }
 
     /// A failed registration is listed until it is dismissed or the dataset is refreshed, while a

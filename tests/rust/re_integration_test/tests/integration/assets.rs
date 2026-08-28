@@ -475,7 +475,7 @@ async fn registering_an_asset_through_the_modal_lists_it() {
     let asset_url = file_url(asset.path()).expect("Failed to build the asset url");
 
     harness
-        .get_by_role_and_label(egui::accesskit::Role::TextInput, "SOURCE URI")
+        .get_by_role_and_label(egui::accesskit::Role::TextInput, "Source URI")
         .type_text(&asset_url);
     harness.run_ok();
 
@@ -530,7 +530,7 @@ async fn a_refused_registration_is_listed_as_failed() {
     const REFUSED_ASSET_URI: &str = "s3://bucket/does/not/exist.rrd";
 
     harness
-        .get_by_role_and_label(egui::accesskit::Role::TextInput, "SOURCE URI")
+        .get_by_role_and_label(egui::accesskit::Role::TextInput, "Source URI")
         .type_text(REFUSED_ASSET_URI);
     harness.run_ok();
 
@@ -913,7 +913,7 @@ async fn registering_an_asset_reaches_segments_the_viewer_already_has() {
     let asset_url = file_url(asset.path()).expect("Failed to build the asset url");
 
     harness
-        .get_by_role_and_label(egui::accesskit::Role::TextInput, "SOURCE URI")
+        .get_by_role_and_label(egui::accesskit::Role::TextInput, "Source URI")
         .type_text(&asset_url);
     harness.run_ok();
 
@@ -970,6 +970,14 @@ async fn unregistering_an_asset_drops_it_from_segments_the_viewer_already_has() 
     });
 
     harness.get_by_label("Unregister asset").click();
+    harness.run_ok();
+
+    // The menu item only opens the modal, the modal's own button starts the unregistration.
+    viewer_test_utils::step_until("the modal is asking", &mut harness, |harness| {
+        harness.query_by_label("Unregister").is_some()
+    });
+
+    harness.get_by_label("Unregister").click();
     harness.run_ok();
 
     viewer_test_utils::step_until_with_custom_timeout(

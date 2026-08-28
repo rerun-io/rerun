@@ -9,7 +9,7 @@ use re_log_types::{EntryId, Timestamp};
 use re_protos::cloud::v1alpha1::ext::{
     DataSource, LayerRegistrationStatus, ScanDatasetManifestDataframe,
 };
-use re_types_core::SegmentId;
+use re_types_core::{LayerName, SegmentId};
 
 use crate::{ApiError, ApiErrorKind, ApiResult, ConnectionClient};
 
@@ -26,6 +26,9 @@ pub struct Asset {
 
     /// When any layer of the asset was last touched.
     pub last_updated_at: Timestamp,
+
+    /// Where the asset's data came from, one entry per layer, sorted by layer name.
+    pub layers: Vec<AssetLayer>,
 
     /// How far the server got registering the asset.
     ///
@@ -44,6 +47,15 @@ impl Asset {
     pub fn has_failed(&self) -> bool {
         self.status == LayerRegistrationStatus::Error
     }
+}
+
+/// One layer of an [`Asset`], and where its data is stored.
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct AssetLayer {
+    pub name: LayerName,
+
+    /// The URI the layer was registered from.
+    pub storage_url: String,
 }
 
 /// How long to wait for the server to register or unregister an asset.
@@ -92,11 +104,13 @@ pub fn asset_data_source(
 }
 
 /// The manifest columns an [`Asset`] is built from.
-pub(crate) const ASSET_COLUMNS: [&str; 5] = [
+pub(crate) const ASSET_COLUMNS: [&str; 7] = [
     ScanDatasetManifestDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
     ScanDatasetManifestDataframe::COLUMN_RERUN_SIZE_BYTES_NAME,
     ScanDatasetManifestDataframe::COLUMN_RERUN_REGISTRATION_TIME_NAME,
     ScanDatasetManifestDataframe::COLUMN_RERUN_LAST_UPDATED_AT_NAME,
+    ScanDatasetManifestDataframe::COLUMN_RERUN_LAYER_NAME_NAME,
+    ScanDatasetManifestDataframe::COLUMN_RERUN_STORAGE_URL_NAME,
     ScanDatasetManifestDataframe::COLUMN_RERUN_REGISTRATION_STATUS_NAME,
 ];
 
@@ -155,6 +169,12 @@ pub(crate) fn assets_from_manifest(
         let update_times = ScanDatasetManifestDataframe::COLUMN_RERUN_LAST_UPDATED_AT
             .extract(batch)
             .map_err(decode_failed)?;
+        let layer_names = ScanDatasetManifestDataframe::COLUMN_RERUN_LAYER_NAME
+            .extract(batch)
+            .map_err(decode_failed)?;
+        let storage_urls = ScanDatasetManifestDataframe::COLUMN_RERUN_STORAGE_URL
+            .extract(batch)
+            .map_err(decode_failed)?;
         let statuses = ScanDatasetManifestDataframe::COLUMN_RERUN_REGISTRATION_STATUS
             .extract(batch)
             .map_err(decode_failed)?;
@@ -164,10 +184,12 @@ pub(crate) fn assets_from_manifest(
             sizes.iter_owned(),
             registration_times.iter_owned(),
             update_times.iter_owned(),
+            layer_names.iter_owned(),
+            storage_urls.iter_owned(),
             statuses.iter_owned()
         );
 
-        for (id, size, registered_at, updated_at, status) in rows {
+        for (id, size, registered_at, updated_at, layer_name, storage_url, status) in rows {
             let status = layer_status(&status);
 
             // A layer the server dropped is only kept around until it is cleaned up, so it is not
@@ -180,6 +202,10 @@ pub(crate) fn assets_from_manifest(
             let size = size.unwrap_or(0);
             let created_at = Timestamp::from_nanos_since_epoch(registered_at);
             let last_updated_at = Timestamp::from_nanos_since_epoch(updated_at);
+            let layer = AssetLayer {
+                name: layer_name,
+                storage_url,
+            };
 
             match assets.entry(id.clone()) {
                 hash_map::Entry::Vacant(slot) => {
@@ -188,6 +214,7 @@ pub(crate) fn assets_from_manifest(
                         size,
                         registered_at: created_at,
                         last_updated_at,
+                        layers: vec![layer],
                         status,
                     });
                 }
@@ -204,6 +231,7 @@ pub(crate) fn assets_from_manifest(
                         std::cmp::max_by_key(asset.last_updated_at, last_updated_at, |time| {
                             time.nanos_since_epoch()
                         });
+                    asset.layers.push(layer);
                     asset.status = merged_status(asset.status, status);
                 }
             }
@@ -212,6 +240,9 @@ pub(crate) fn assets_from_manifest(
 
     let mut assets: Vec<_> = assets.into_values().collect();
     assets.sort_by(|left, right| left.id.cmp(&right.id));
+    for asset in &mut assets {
+        asset.layers.sort();
+    }
 
     Ok(assets)
 }
@@ -277,6 +308,8 @@ mod tests {
         size: Option<u64>,
         registered_at: i64,
         updated_at: i64,
+        layer: &'static str,
+        storage_url: &'static str,
         status: LayerRegistrationStatus,
     }
 
@@ -286,12 +319,16 @@ mod tests {
         size: Option<u64>,
         registered_at: i64,
         updated_at: i64,
+        layer: &'static str,
+        storage_url: &'static str,
     ) -> ManifestRow {
         ManifestRow {
             asset,
             size,
             registered_at,
             updated_at,
+            layer,
+            storage_url,
             status: LayerRegistrationStatus::Done,
         }
     }
@@ -301,11 +338,32 @@ mod tests {
     #[test]
     fn layers_of_an_asset_are_folded_together() {
         let first = manifest_batch(&[
-            done("mesh", Some(100), 20, 30),
-            done("texture", Some(7), 40, 40),
+            done(
+                "mesh",
+                Some(100),
+                20,
+                30,
+                "high",
+                "s3://bucket/mesh-high.rrd",
+            ),
+            done(
+                "texture",
+                Some(7),
+                40,
+                40,
+                "base",
+                "s3://bucket/texture.rrd",
+            ),
         ]);
 
-        let second = manifest_batch(&[done("mesh", Some(5), 10, 25)]);
+        let second = manifest_batch(&[done(
+            "mesh",
+            Some(5),
+            10,
+            25,
+            "base",
+            "s3://bucket/mesh-base.rrd",
+        )]);
 
         let assets = assets_from_manifest(&re_uri::Origin::test(), &[first, second]).unwrap();
 
@@ -317,6 +375,17 @@ mod tests {
                     size: 105,
                     registered_at: Timestamp::from_nanos_since_epoch(10),
                     last_updated_at: Timestamp::from_nanos_since_epoch(30),
+                    // Sorted by layer name, whichever batch each one arrived in.
+                    layers: vec![
+                        AssetLayer {
+                            name: LayerName::try_new("base").unwrap(),
+                            storage_url: "s3://bucket/mesh-base.rrd".to_owned(),
+                        },
+                        AssetLayer {
+                            name: LayerName::try_new("high").unwrap(),
+                            storage_url: "s3://bucket/mesh-high.rrd".to_owned(),
+                        },
+                    ],
                     status: LayerRegistrationStatus::Done,
                 },
                 Asset {
@@ -324,6 +393,10 @@ mod tests {
                     size: 7,
                     registered_at: Timestamp::from_nanos_since_epoch(40),
                     last_updated_at: Timestamp::from_nanos_since_epoch(40),
+                    layers: vec![AssetLayer {
+                        name: LayerName::try_new("base").unwrap(),
+                        storage_url: "s3://bucket/texture.rrd".to_owned(),
+                    }],
                     status: LayerRegistrationStatus::Done,
                 },
             ]
@@ -333,7 +406,10 @@ mod tests {
     /// A layer that has no size yet counts as empty instead of hiding the asset it belongs to.
     #[test]
     fn a_layer_without_a_size_counts_as_empty() {
-        let batch = manifest_batch(&[done("mesh", None, 10, 10), done("mesh", Some(9), 10, 10)]);
+        let batch = manifest_batch(&[
+            done("mesh", None, 10, 10, "pending", "s3://bucket/pending.rrd"),
+            done("mesh", Some(9), 10, 10, "base", "s3://bucket/mesh.rrd"),
+        ]);
 
         let assets = assets_from_manifest(&re_uri::Origin::test(), &[batch]).unwrap();
 
@@ -347,12 +423,14 @@ mod tests {
     #[test]
     fn a_layer_that_failed_makes_the_whole_asset_failed() {
         let batch = manifest_batch(&[
-            done("mesh", Some(9), 10, 10),
+            done("mesh", Some(9), 10, 10, "base", "s3://bucket/mesh.rrd"),
             ManifestRow {
                 asset: "mesh",
                 size: None,
                 registered_at: 10,
                 updated_at: 10,
+                layer: "high",
+                storage_url: "s3://bucket/mesh-high.rrd",
                 status: LayerRegistrationStatus::Error,
             },
         ]);
@@ -369,12 +447,14 @@ mod tests {
     #[test]
     fn a_dropped_layer_is_left_out() {
         let batch = manifest_batch(&[
-            done("mesh", Some(9), 10, 10),
+            done("mesh", Some(9), 10, 10, "base", "s3://bucket/mesh.rrd"),
             ManifestRow {
                 asset: "dropped",
                 size: Some(4),
                 registered_at: 10,
                 updated_at: 10,
+                layer: "base",
+                storage_url: "s3://bucket/dropped.rrd",
                 status: LayerRegistrationStatus::Deleted,
             },
         ]);
@@ -393,6 +473,8 @@ mod tests {
                 ScanDatasetManifestDataframe::COLUMN_RERUN_SIZE_BYTES.arrow_field(),
                 ScanDatasetManifestDataframe::COLUMN_RERUN_REGISTRATION_TIME.arrow_field(),
                 ScanDatasetManifestDataframe::COLUMN_RERUN_LAST_UPDATED_AT.arrow_field(),
+                ScanDatasetManifestDataframe::COLUMN_RERUN_LAYER_NAME.arrow_field(),
+                ScanDatasetManifestDataframe::COLUMN_RERUN_STORAGE_URL.arrow_field(),
                 ScanDatasetManifestDataframe::COLUMN_RERUN_REGISTRATION_STATUS.arrow_field(),
             ],
             Default::default(),
@@ -410,6 +492,12 @@ mod tests {
                 )),
                 Arc::new(TimestampNanosecondArray::from_iter_values(
                     rows.iter().map(|row| row.updated_at),
+                )),
+                Arc::new(StringArray::from_iter_values(
+                    rows.iter().map(|row| row.layer),
+                )),
+                Arc::new(StringArray::from_iter_values(
+                    rows.iter().map(|row| row.storage_url),
                 )),
                 Arc::new(StringArray::from_iter_values(
                     rows.iter().map(|row| row.status.as_str()),

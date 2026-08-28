@@ -58,6 +58,63 @@ impl Outlines {
     }
 }
 
+/// The label colors of a tab bar, one per interaction state.
+///
+/// Hover only changes the label color. The underline belongs to the selected tab and never
+/// follows the pointer.
+#[derive(Debug)]
+pub struct TabVisuals {
+    /// A tab that is neither selected nor hovered.
+    pub text: Color32,
+
+    /// The tab under the pointer.
+    pub text_hovered: Color32,
+
+    /// The tab whose contents are shown.
+    pub text_selected: Color32,
+}
+
+impl TabVisuals {
+    fn try_get(color_table: &ColorTable, ron: &ron::Value, name: &str) -> anyhow::Result<Self> {
+        let value = ron.get(name)?;
+
+        Ok(Self {
+            text: color_from_value(color_table, value.get("text")?)?,
+            text_hovered: color_from_value(color_table, value.get("text_hovered")?)?,
+            text_selected: color_from_value(color_table, value.get("text_selected")?)?,
+        })
+    }
+
+    fn get(color_table: &ColorTable, ron: &ron::Value, name: &str) -> Self {
+        Self::try_get(color_table, ron, name).expect("Failed to parse TabVisuals")
+    }
+}
+
+/// A metadata line that pairs each value with the word naming it.
+#[derive(Debug)]
+pub struct MetaLineVisuals {
+    /// The word naming a value, e.g. "segments".
+    pub label: Color32,
+
+    /// The value itself, e.g. the count.
+    pub value: Color32,
+}
+
+impl MetaLineVisuals {
+    fn try_get(color_table: &ColorTable, ron: &ron::Value, name: &str) -> anyhow::Result<Self> {
+        let value = ron.get(name)?;
+
+        Ok(Self {
+            label: color_from_value(color_table, value.get("label")?)?,
+            value: color_from_value(color_table, value.get("value")?)?,
+        })
+    }
+
+    fn get(color_table: &ColorTable, ron: &ron::Value, name: &str) -> Self {
+        Self::try_get(color_table, ron, name).expect("Failed to parse MetaLineVisuals")
+    }
+}
+
 /// Colors for a single button [`crate::Variant`].
 #[derive(Debug)]
 pub struct ButtonVisuals {
@@ -279,6 +336,11 @@ pub struct DesignTokens {
     // ------
     pub panel_bg_color: Color32,
 
+    /// Background of the page on the right: the catalog, a dataset, a table.
+    ///
+    /// Separate from [`Self::panel_bg_color`], so the page is set off from the panels around it.
+    pub page_bg_color: Color32,
+
     pub text_edit_bg_color: Color32,
 
     pub form_field_bg_color: Color32,
@@ -340,11 +402,24 @@ pub struct DesignTokens {
     pub extreme_fg_color: Color32,
     pub widget_hovered_color: Color32,
     pub widget_noninteractive_bg_stroke: Color32,
+
+    /// Text in a field the user cannot edit.
+    ///
+    /// Paler than [`Self::text_default`], so the field reads as a value rather than as something
+    /// to type into.
+    pub text_readonly: Color32,
+
     pub text_subdued: Color32,
     pub text_default: Color32,
     pub text_strong: Color32,
     pub error_fg_color: Color32,
     pub warn_fg_color: Color32,
+
+    /// Dims the page behind an open modal.
+    ///
+    /// A dark theme needs a heavier dim than a light one, since its page is already near black.
+    pub modal_backdrop_color: Color32,
+
     pub popup_shadow_color: Color32,
 
     pub alert_success: AlertVisuals,
@@ -368,6 +443,12 @@ pub struct DesignTokens {
 
     pub text_edit_outlined: TextEditVisuals,
     pub text_edit_filled: TextEditVisuals,
+
+    /// Tab bar labels, see [`crate::TabBar`].
+    pub tab: TabVisuals,
+
+    /// Two-tone metadata lines, e.g. the one under a dataset's name.
+    pub meta_line: MetaLineVisuals,
 
     pub density_graph_selected: Color32,
     pub density_graph_unselected: Color32,
@@ -420,8 +501,28 @@ pub struct DesignTokens {
     pub table_grid_view_card_spacing: f32,
     pub table_grid_view_card_inner_margin: f32,
     pub table_grid_view_card_corner_radius: f32,
-    pub table_grid_view_card_fill: Color32,
-    pub table_grid_view_card_hover_fill: Color32,
+
+    /// Fill of a card at rest.
+    ///
+    /// Lighter than the background behind it in both themes, whichever way the gray scale runs,
+    /// so the card looks raised. Shared by every
+    /// [`crate::egui_ext::card_layout::CardLayout`] card.
+    pub card_fill: Color32,
+
+    /// Outline of a card at rest.
+    ///
+    /// The fill is only a step off the background, so the outline is what marks the card's edge.
+    pub card_stroke: Stroke,
+
+    /// Fill of a card the pointer is over.
+    ///
+    /// Equals [`Self::card_fill`] in the light theme, where only [`Self::card_hover_stroke`]
+    /// changes on hover. The dark theme also makes the fill lighter, since against a near-black
+    /// card an outline alone is too faint.
+    pub card_hover_fill: Color32,
+
+    /// Outline of a card the pointer is over.
+    pub card_hover_stroke: Stroke,
 
     // Flag button — three visual tiers: idle, card-hovered, flag-hovered
     pub flag_untoggled_bg: Color32,
@@ -545,6 +646,7 @@ impl DesignTokens {
             focus_halo_stroke: get_stroke("focus_halo_stroke"),
 
             panel_bg_color: get_color("panel_bg_color"),
+            page_bg_color: get_color("page_bg_color"),
             text_edit_bg_color: get_color("text_edit_bg_color"),
             form_field_bg_color: get_color("form_field_bg_color"),
             form_selectable_bg_color: get_color("form_selectable_bg_color"),
@@ -578,6 +680,7 @@ impl DesignTokens {
             extreme_fg_color: get_color("extreme_fg_color"),
             widget_hovered_color: get_color("widget_hovered_color"),
             widget_noninteractive_bg_stroke: get_color("widget_noninteractive_bg_stroke"),
+            text_readonly: get_color("text_readonly"),
             text_subdued: get_color("text_subdued"),
             text_default: get_color("text_default"),
             text_strong: get_color("text_strong"),
@@ -603,6 +706,10 @@ impl DesignTokens {
             text_edit_outlined: TextEditVisuals::get(&colors, &theme_value, "text_edit_outlined"),
             text_edit_filled: TextEditVisuals::get(&colors, &theme_value, "text_edit_filled"),
 
+            tab: TabVisuals::get(&colors, &theme_value, "tab"),
+            meta_line: MetaLineVisuals::get(&colors, &theme_value, "meta_line"),
+
+            modal_backdrop_color: get_color("modal_backdrop_color"),
             popup_shadow_color: get_color("popup_shadow_color"),
 
             density_graph_selected: get_color("density_graph_selected"),
@@ -656,8 +763,10 @@ impl DesignTokens {
             table_grid_view_card_spacing: get_scalar("table_grid_view_card_spacing")?,
             table_grid_view_card_inner_margin: get_scalar("table_grid_view_card_inner_margin")?,
             table_grid_view_card_corner_radius: get_scalar("table_grid_view_card_corner_radius")?,
-            table_grid_view_card_fill: get_color("table_grid_view_card_fill"),
-            table_grid_view_card_hover_fill: get_color("table_grid_view_card_hover_fill"),
+            card_fill: get_color("card_fill"),
+            card_stroke: get_stroke("card_stroke"),
+            card_hover_fill: get_color("card_hover_fill"),
+            card_hover_stroke: get_stroke("card_hover_stroke"),
 
             flag_untoggled_bg: get_color("flag_untoggled_bg"),
             flag_untoggled_bg_card_hover: get_color("flag_untoggled_bg_card_hover"),
@@ -705,6 +814,7 @@ impl DesignTokens {
             .get_mut(&egui::FontFamily::Proportional)
             .unwrap()
             .insert(0, "Inter-Medium".into());
+
         ctx.set_fonts(font_definitions);
     }
 

@@ -78,7 +78,8 @@ pub fn cards_ui(
     let inner_margin = egui::Margin::same(tokens.table_grid_view_card_inner_margin as i8);
     let card_frame = Frame::new()
         .inner_margin(inner_margin)
-        .fill(tokens.table_grid_view_card_fill)
+        .fill(tokens.card_fill)
+        .stroke(tokens.card_stroke)
         .corner_radius(tokens.table_grid_view_card_corner_radius);
 
     let card_config = CardConfig {
@@ -102,7 +103,8 @@ pub fn cards_ui(
                 card_frame,
             )
             .all_rows_use_available_width(false)
-            .hover_fill(tokens.table_grid_view_card_hover_fill)
+            .hover_fill(tokens.card_hover_fill)
+            .hover_stroke(tokens.card_hover_stroke)
             .show(ui, |ui, index, card_hovered| {
                 flag_changes.extend(card_content_ui(
                     ctx,

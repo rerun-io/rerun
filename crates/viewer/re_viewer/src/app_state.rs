@@ -358,6 +358,13 @@ impl AppState {
             ..Default::default()
         };
 
+        // The catalog, dataset and table pages get their own background, so they don't look like
+        // more panel. The viewport keeps the panel fill.
+        let page_frame = egui::Frame {
+            fill: ui.tokens().page_bg_color,
+            ..Default::default()
+        };
+
         // Only the settings screen edits the app options, so we avoid cloning them every frame.
         let mut new_app_options = None;
 
@@ -715,7 +722,7 @@ impl AppState {
                 );
 
                 egui::CentralPanel::default()
-                    .frame(viewport_frame)
+                    .frame(page_frame)
                     .show(ui, |ui| {
                         if let Some(store) = app_ctx.table_stores().get(table_id) {
                             re_dataframe_ui::DataFusionTableWidget::new(
@@ -754,7 +761,7 @@ impl AppState {
                 );
 
                 egui::CentralPanel::default()
-                    .frame(viewport_frame)
+                    .frame(page_frame)
                     .show(ui, |ui| {
                         if origin == &*re_redap_browser::EXAMPLES_ORIGIN {
                             let origin = self
@@ -813,7 +820,7 @@ impl AppState {
                 );
 
                 egui::CentralPanel::default()
-                    .frame(viewport_frame)
+                    .frame(page_frame)
                     .show(ui, |ui| {
                         self.redap_servers.entry_ui(
                             &app_ctx,
@@ -843,7 +850,7 @@ impl AppState {
                 );
 
                 egui::CentralPanel::default()
-                    .frame(viewport_frame)
+                    .frame(page_frame)
                     .show(ui, |ui| {
                         self.redap_servers.folder_central_panel_ui(
                             &app_ctx,

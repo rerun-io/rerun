@@ -20,7 +20,7 @@ use re_redap_client::{ApiError, ConnectionAnalyticsExporter, ConnectionClient, C
 use re_ui::{Icon, RequestedObject, ServerValue, icons};
 use re_viewer_context::{CommandSender, SystemCommand, SystemCommandSender as _};
 
-use crate::entry_meta::DatasetRequests;
+use crate::entry_meta::{DatasetRequests, EntryMetaQuery};
 
 pub type EntryResult<T = ()> = Result<T, ApiError>;
 
@@ -194,20 +194,43 @@ impl Entries {
 
     /// Clear an entry's assets, so the next access refetches them.
     pub(crate) fn clear_entry_assets(&self, entry_id: EntryId) {
-        if let Some(entry) = self.find_entry(entry_id)
-            && let Ok(EntryInner::Dataset(dataset)) = entry.inner()
-        {
+        if let Some(dataset) = self.find_dataset(entry_id) {
             dataset.requests.clear_assets();
         }
     }
 
+    /// Ask the server for an entry's assets if nothing has yet.
+    ///
+    /// The assets are only shown on a dataset's assets tab, so this is how the list is kept up to
+    /// date while that tab is off screen.
+    pub(crate) fn request_entry_assets(&self, query: EntryMetaQuery<'_>) {
+        if let Some(dataset) = self.find_dataset(query.dataset_id) {
+            // The value is read where the assets are shown. Here we only keep the fetch going.
+            dataset.requests.assets(query, dataset.asset_dataset());
+        }
+    }
+
+    /// The dataset an entry's assets are registered with, as the entry list has it.
+    ///
+    /// This is `None` until the entry's first asset is registered and the new entry list arrives.
+    pub(crate) fn entry_asset_dataset(&self, entry_id: EntryId) -> Option<EntryId> {
+        self.find_dataset(entry_id)?.asset_dataset()
+    }
+
     /// Whether we are waiting for an entry's assets.
     ///
-    /// An entry we don't have counts as waiting, since we have nothing to say about its assets.
+    /// An entry we don't have counts as waiting, since we know nothing about its assets. So does
+    /// one whose assets nothing has asked for yet, until [`Self::request_entry_assets`] starts the
+    /// fetch.
     pub(crate) fn entry_assets_pending(&self, entry_id: EntryId) -> bool {
-        match self.find_entry(entry_id).map(Entry::inner) {
-            Some(Ok(EntryInner::Dataset(dataset))) => dataset.requests.assets_pending(),
-            _ => true,
+        self.find_dataset(entry_id)
+            .is_none_or(|dataset| dataset.requests.assets_pending())
+    }
+
+    fn find_dataset(&self, entry_id: EntryId) -> Option<&Dataset> {
+        match self.find_entry(entry_id)?.inner() {
+            Ok(EntryInner::Dataset(dataset)) => Some(dataset),
+            Ok(EntryInner::Table(_)) | Err(_) => None,
         }
     }
 
