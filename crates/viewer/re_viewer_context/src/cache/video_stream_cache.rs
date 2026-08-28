@@ -263,7 +263,16 @@ impl VideoStreamCache {
                     .codec
                     == new_codec =>
             {
-                occupied_entry.into_mut()
+                let entry = occupied_entry.into_mut();
+
+                // The user may have changed the decode settings since the players were created.
+                entry
+                    .video_stream
+                    .write()
+                    .video_renderer
+                    .set_decode_settings(decode_settings);
+
+                entry
             }
             entry => {
                 // Reloading an existing entry on a codec change keeps the same key.

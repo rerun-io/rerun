@@ -139,6 +139,18 @@ impl Video {
         &mut self.video_description
     }
 
+    /// Applies new decode settings, dropping all active players if they changed.
+    ///
+    /// Players are recreated on demand with the new settings.
+    pub fn set_decode_settings(&mut self, decode_settings: DecodeSettings) {
+        if self.decode_settings == decode_settings {
+            return;
+        }
+
+        self.decode_settings = decode_settings;
+        self.players.lock().clear();
+    }
+
     /// Resets all decoders and purges any cached frames.
     ///
     /// This is useful when the video description has changed since the decoders were created.

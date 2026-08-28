@@ -467,6 +467,26 @@ fn video_section_ui(ui: &mut Ui, options: &mut VideoOptions) {
             });
         }
         _ => {
+            use re_video::DecodeHardwareAcceleration;
+
+            let mut hardware_acceleration =
+                options.hw_acceleration != DecodeHardwareAcceleration::PreferSoftware;
+            if ui
+                .re_checkbox(&mut hardware_acceleration, "Hardware acceleration")
+                .on_hover_ui(|ui| {
+                    ui.markdown_ui(
+                        "Decode video with the GPU's video decoder when the codec is supported.",
+                    );
+                })
+                .changed()
+            {
+                options.hw_acceleration = if hardware_acceleration {
+                    DecodeHardwareAcceleration::Auto
+                } else {
+                    DecodeHardwareAcceleration::PreferSoftware
+                };
+            }
+
             ui.re_checkbox(
                 &mut options.override_ffmpeg_path,
                 "Override the FFmpeg binary path",

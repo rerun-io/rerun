@@ -201,7 +201,10 @@ impl AppOptions {
 #[derive(Debug, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize, Clone)]
 #[serde(default)]
 pub struct VideoOptions {
-    /// Preferred method for video decoding on web.
+    /// Preferred method for video decoding.
+    ///
+    /// On web this selects the WebCodecs decoder, on native it decides whether
+    /// we try the GPU video decoder before falling back to software.
     pub hw_acceleration: DecodeHardwareAcceleration,
 
     /// Override the path to the FFmpeg binary.
