@@ -211,12 +211,20 @@ impl EntityPathPart {
 
 /// Parses e.g. `{262E}`.
 ///
+/// Rust-style unicode escapes: 1-6 hexadecimal digits between the braces,
+/// e.g. `{A}`, `{262E}`, `{1F600}`.
+/// Code points above `U+FFFF` need more than four digits,
+/// so a fixed width of four would reject e.g. emoji.
+///
 /// Returns the consumed input characters on fail.
 fn parse_unicode_escape(input: &mut impl Iterator<Item = char>) -> Result<char, String> {
+    /// `{` + at most six hex digits + `}`
+    const MAX_LEN: usize = 8;
+
     let mut all_chars = String::new();
     for c in input {
         all_chars.push(c);
-        if c == '}' || all_chars.len() == 6 {
+        if c == '}' || MAX_LEN <= all_chars.len() {
             break;
         }
     }
@@ -230,7 +238,7 @@ fn parse_unicode_escape(input: &mut impl Iterator<Item = char>) -> Result<char, 
         return Err(all_chars);
     };
 
-    if chars.len() != 4 {
+    if chars.is_empty() || 6 < chars.len() || !chars.chars().all(|c| c.is_ascii_hexdigit()) {
         return Err(all_chars);
     }
 
@@ -340,6 +348,46 @@ fn test_parse_entity_path_part() {
         assert_eq!(
             EntityPathPart::parse_strict(str).unwrap().escaped_string(),
             str
+        );
+    }
+}
+
+/// Code points above `U+FFFF` are escaped with more than four hex digits,
+/// and must survive a roundtrip through [`EntityPathPart::escaped_string`].
+#[test]
+fn test_parse_entity_path_part_above_bmp() {
+    for unescaped in ["😀", "𝄞", "\u{10FFFF}", "a😀b"] {
+        let escaped = EntityPathPart::new(unescaped).escaped_string();
+
+        assert_eq!(
+            EntityPathPart::parse_strict(&escaped)
+                .expect("should parse")
+                .unescaped_str(),
+            unescaped,
+        );
+        assert_eq!(
+            EntityPathPart::parse_forgiving(&escaped).unescaped_str(),
+            unescaped,
+        );
+    }
+
+    assert_eq!(
+        EntityPathPart::parse_strict(r"\u{1F600}"),
+        Ok(EntityPathPart::from("😀"))
+    );
+    assert_eq!(EntityPathPart::from("😀").escaped_string(), r"\u{1F600}");
+
+    // Rust-style escapes accept 1-6 hex digits:
+    assert_eq!(
+        EntityPathPart::parse_strict(r"\u{A}\u{7F}\u{262E}\u{01F600}").unwrap(),
+        EntityPathPart::from("\u{A}\u{7F}☮😀")
+    );
+
+    // …but not zero digits, more than six, or non-hex:
+    for bad in [r"\u{}", r"\u{1234567}", r"\u{+123}", r"\u{DEAD}"] {
+        assert!(
+            EntityPathPart::parse_strict(bad).is_err(),
+            "{bad:?} should not parse"
         );
     }
 }
