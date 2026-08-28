@@ -68,7 +68,7 @@ impl SyncDecoderWrapper {
                     econtext::econtext_data!("Video", debug_name.clone());
 
                     decoder_thread(sync_decoder.as_mut(), &comms, &command_rx, &output_sender);
-                    re_log::debug!("Closing decoder thread for {debug_name}");
+                    re_log::trace!("Closing decoder thread for {debug_name}");
                 }
             })
             .expect("failed to spawn decoder thread");

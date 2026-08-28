@@ -235,7 +235,7 @@ pub(crate) fn wgpu_options(force_wgpu_backend: Option<&str>) -> egui_wgpu::WgpuC
     let wgpu_setup = match create_native_wgpu_setup(force_wgpu_backend) {
         Ok(setup) => egui_wgpu::WgpuSetup::Existing(setup),
         Err(err) => {
-            re_log::error!(
+            re_log::debug_warn!(
                 "Failed to create a graphics device, leaving device creation to egui-wgpu: {err}"
             );
             create_new_wgpu_setup(force_wgpu_backend)

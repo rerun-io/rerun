@@ -43,14 +43,14 @@ pub fn create_device(
             let gpu_video = match video_setup.into_context(&device) {
                 Ok(context) => Some(context),
                 Err(err) => {
-                    re_log::warn!("Failed to set up GPU video decoding: {err}");
+                    re_log::debug!("Failed to set up GPU video decoding: {err}");
                     None
                 }
             };
             Ok((device, queue, gpu_video))
         }
         Err(err) => {
-            re_log::warn!(
+            re_log::debug_warn!(
                 "Failed to create a device with GPU video decode support, falling back to a device without: {err}"
             );
             let (device, queue) = pollster::block_on(adapter.request_device(&descriptor))?;

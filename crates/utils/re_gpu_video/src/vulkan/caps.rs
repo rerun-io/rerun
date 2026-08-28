@@ -218,7 +218,7 @@ pub fn probe(adapter: &wgpu::Adapter) -> Option<VulkanProbe> {
         max_level_idc: level_idc_number(h264_capabilities.max_level_idc),
     };
 
-    re_log::debug!(
+    re_log::trace!(
         "Vulkan Video H.264 decode support found: {capabilities:?}, {video_caps:?}, queue plan {queue_plan:?}."
     );
 

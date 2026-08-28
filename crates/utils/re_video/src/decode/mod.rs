@@ -362,14 +362,14 @@ pub fn new_decoder(
                             output_sender.clone(),
                         ) {
                             Ok(decoder) => {
-                                re_log::debug!(
+                                re_log::trace!(
                                     "Decoding H.264 on the GPU via {}",
                                     gpu_video.backend_name()
                                 );
                                 return Ok(Box::new(decoder));
                             }
                             Err(err) => {
-                                re_log::warn_once!(
+                                re_log::debug_warn_once!(
                                     "Failed to create GPU video decoder, falling back to software decoding: {err}"
                                 );
                             }

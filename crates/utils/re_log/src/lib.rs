@@ -139,6 +139,8 @@ const CRATES_AT_WARN_LEVEL: &[&str] = &[
 /// These creates are quite spammy on debug, drowning out what we care about:
 #[cfg(any(feature = "setup", not(target_arch = "wasm32")))]
 const CRATES_AT_INFO_LEVEL: &[&str] = &[
+    // spams a parsed-SPS line for every parameter set it sees
+    "cros_codecs",
     "datafusion_optimizer",
     "datafusion",
     "h2",
