@@ -108,3 +108,65 @@ A dataset can be assigned a blueprint.
 This is done by registering a `.rbl` blueprint file typically stored in object storage to the dataset.
 A dedicated API exists for this in the Catalog SDK: [`DatasetEntry.register_blueprint()`](https://ref.rerun.io/docs/python/stable/common/catalog/#rerun.catalog.DatasetEntry.register_blueprint).
 In that case, the blueprint is applied to all segments of the dataset when visualized in the Rerun Viewer.
+
+
+### Assets
+
+An asset is static data registered on a dataset and shared by all of its segments, such as a robot URDF, a room mesh, or a calibration.
+Registering it once as an asset means it does not have to be copied into every recording.
+
+Like blueprints, assets live in their own dataset, owned by the dataset they belong to.
+Deleting the dataset also deletes its asset dataset and the asset storage.
+
+Assets are registered from a `.rrd` file that the server can read, using [`DatasetEntry.register_asset()`](https://ref.rerun.io/docs/python/stable/common/catalog/#rerun.catalog.DatasetEntry.register_asset):
+
+```python
+client = rr.catalog.CatalogClient(…)
+dataset = client.get_dataset("my_dataset")
+
+asset_id = dataset.register_asset("s3://bucket/robot_mesh.rrd")
+print(dataset.assets())
+
+dataset.unregister_asset(asset_id)
+```
+
+Asset datasets have some restrictions to keep them light, and the server rejects registrations that:
+- contains temporal data, since an asset may only contain static data
+- is larger than 300 MiB
+- would bring the dataset above 12 assets
+
+When the Rerun Viewer opens a segment, it loads the dataset's assets along with the segment's own data.
+The asset data is cached, so opening another segment of the same dataset does not download it again.
+The assets tab of a dataset lists the registered assets and their metadata, and lets you register and unregister them right in the viewer.
+
+Assets also show up in the [python chunk processing api](../logging-and-ingestion/chunk-processing-api.md) if `include_assets` is `True`:
+
+```python
+segment_id = dataset.segment_ids()[0]
+
+# Covers the chunks of both the segment and the dataset's assets.
+store = dataset.segment_store(segment_id)
+for chunk in store.stream().to_chunks():
+    print(chunk.entity_path)
+
+# Covers only the segment, and no asset manifests are fetched.
+segment_only = dataset.segment_store(segment_id, include_assets=False)
+```
+
+Fetching an asset's manifest costs one request per asset, so `include_assets=False` is worth it when you only care about the segment's own data.
+
+The [dataframe query APIs](dataframe-queries.md) are the exception: they stay on the dataset's own segments, so assets never show up there.
+[`DatasetEntry.schema()`](https://ref.rerun.io/docs/python/stable/common/catalog/#rerun.catalog.DatasetEntry.schema), [`DatasetEntry.segment_ids()`](https://ref.rerun.io/docs/python/stable/common/catalog/#rerun.catalog.DatasetEntry.segment_ids), [`DatasetEntry.segment_table()`](https://ref.rerun.io/docs/python/stable/common/catalog/#rerun.catalog.DatasetEntry.segment_table) and [`DatasetEntry.reader()`](https://ref.rerun.io/docs/python/stable/common/catalog/#rerun.catalog.DatasetEntry.reader) all ignore the asset dataset.
+The asset dataset is hidden, so it is also left out of [`CatalogClient.datasets()`](https://ref.rerun.io/docs/python/stable/common/catalog/#rerun.catalog.CatalogClient.datasets) unless you pass `include_hidden=True`.
+
+To query asset data, target the asset dataset itself, which is a regular dataset with one segment per registered asset:
+
+```python
+asset_dataset = dataset.asset_dataset()
+
+print(asset_dataset.schema())
+
+# Assets only hold static data, so there is no index to read along.
+df = asset_dataset.reader(index=None)
+```
+

@@ -6,7 +6,7 @@ type: feature
 
 ### Assets
 
-Assets are static data registered on a dataset and shared by its segments, such as a robot mesh that every episode refers to.
+[Assets](../concepts/query-and-transform/catalog-object-model.md#assets) are static data registered on a dataset and shared by its segments, such as a robot mesh that every episode refers to.
 
 When you open a segment that has an asset the viewer downloads the asset, and caches it so other segments in the dataset don't
 have to download the same asset again.
@@ -35,4 +35,4 @@ for chunk in store.stream().to_chunks():
 segment_only = dataset.segment_store(segment_id, include_assets=False)
 ```
 
-// TODO(isse): Add snippet (& docs!) on assets, and how to register them.
+// TODO(isse): Add snippet on assets, and how to register them.
