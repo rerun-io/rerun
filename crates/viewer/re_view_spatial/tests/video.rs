@@ -373,7 +373,6 @@ fn test_video_asset_codec_vp9() {
     test_video(VideoType::AssetVideo, &VideoCodec::VP9);
 }
 
-#[cfg(feature = "nasm")] // Need nasm for Av1 decoding on some platforms, otherwise we error.
 #[test]
 fn test_video_asset_codec_av1() {
     test_video(VideoType::AssetVideo, &VideoCodec::AV1);
@@ -399,7 +398,6 @@ fn test_video_stream_codec_vp9() {
     test_video(VideoType::VideoStream, &VideoCodec::VP9);
 }
 
-#[cfg(feature = "nasm")] // Need nasm for Av1 decoding on some platforms otherwise we error.
 #[test]
 fn test_video_stream_codec_av1() {
     test_video(VideoType::VideoStream, &VideoCodec::AV1);

@@ -82,7 +82,7 @@ impl SyncDav1dDecoder {
                     "The native AV1 video decoder is unnecessarily slow. \
                     Speed it up by compiling Rerun with the `nasm` feature enabled."
                 );
-            } else {
+            } else if !cfg!(test) {
                 // Better to return an error than to be perceived as being slow
                 return Err(DecodeError::Dav1dWithoutNasm);
             }
