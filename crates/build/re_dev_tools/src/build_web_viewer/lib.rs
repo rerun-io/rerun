@@ -93,7 +93,8 @@ pub fn build(
     // Where we tell cargo to build to.
     // We want this to be different from the default target folder
     // in order to support recursive cargo builds (calling `cargo` from within a `build.rs`).
-    let target_wasm_dir = Utf8PathBuf::from(format!("{}_wasm", target_directory()));
+    // Nesting it inside the target folder means `cargo clean` removes it too.
+    let target_wasm_dir = target_directory().join("wasm");
 
     // Workspace root
     let root_dir = workspace_root();

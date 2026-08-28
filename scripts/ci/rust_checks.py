@@ -319,7 +319,7 @@ def wasm(results: list[Result]) -> None:
     results.append(
         run_cargo(
             "clippy",
-            "--all-features --target wasm32-unknown-unknown --target-dir target_wasm -p re_viewer -- --deny warnings",
+            "--all-features --target wasm32-unknown-unknown --target-dir target/wasm -p re_viewer -- --deny warnings",
             clippy_conf="scripts/clippy_wasm",  # Use ./scripts/clippy_wasm/clippy.toml
         ),
     )
@@ -327,7 +327,7 @@ def wasm(results: list[Result]) -> None:
     results.append(
         run_cargo(
             "clippy",
-            "--target wasm32-unknown-unknown --target-dir target_wasm -p re_renderer_examples",
+            "--target wasm32-unknown-unknown --target-dir target/wasm -p re_renderer_examples",
             clippy_conf="scripts/clippy_wasm",  # Use ./scripts/clippy_wasm/clippy.toml
         ),
     )

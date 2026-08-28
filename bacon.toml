@@ -21,7 +21,7 @@ command = [
   "clippy",
   "-p=re_viewer",
   "--target=wasm32-unknown-unknown",
-  "--target-dir=target_wasm",
+  "--target-dir=target/wasm",
   "--all-features",
   "--color=always",
 ]
