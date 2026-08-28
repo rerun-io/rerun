@@ -27,11 +27,16 @@ pub fn create_device(
         return Ok((device, queue, None));
     };
 
-    re_log::debug!(
-        "GPU video decode support found, H.264: {:?}, H.265: {:?}",
-        video_setup.capabilities(re_gpu_video::Codec::H264),
-        video_setup.capabilities(re_gpu_video::Codec::H265),
-    );
+    for codec in [
+        re_gpu_video::Codec::H264,
+        re_gpu_video::Codec::H265,
+        re_gpu_video::Codec::AV1,
+    ] {
+        re_log::debug!(
+            "GPU {codec} decode support: {:?}",
+            video_setup.capabilities(codec)
+        );
+    }
 
     let device_and_queue = if video_setup.needs_hal_device_creation() {
         create_vulkan_device_with_video(adapter, &descriptor, &mut video_setup)

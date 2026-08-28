@@ -11,8 +11,10 @@ pub struct VideoDeviceSetup {
 }
 
 enum SetupInner {
-    Vulkan(crate::vulkan::VulkanSetup),
-    // VideoToolbox variant will be added here for the macOS backend.
+    Vulkan(Box<crate::vulkan::VulkanSetup>),
+
+    #[cfg(target_os = "macos")]
+    VideoToolbox(crate::videotoolbox::VideoToolboxSetup),
 }
 
 impl VideoDeviceSetup {
@@ -20,7 +22,7 @@ impl VideoDeviceSetup {
     ///
     /// Vulkan: `None` if the video extensions are missing (`MoltenVK`, lavapipe),
     /// there is no capable decode queue family, or no usable NV12 decode format.
-    /// Metal: `None` for now, the `VideoToolbox` backend is not implemented yet.
+    /// Metal: always `Some`, `VideoToolbox` decodes H.264 and H.265 on every Mac.
     /// Other backends: `None`.
     pub fn request(adapter: &wgpu::Adapter) -> Option<Self> {
         re_tracing::profile_function!();
@@ -28,11 +30,17 @@ impl VideoDeviceSetup {
         match adapter.get_info().backend {
             wgpu::Backend::Vulkan => {
                 crate::vulkan::VulkanSetup::request(adapter).map(|setup| Self {
-                    inner: SetupInner::Vulkan(setup),
+                    inner: SetupInner::Vulkan(Box::new(setup)),
                 })
             }
 
-            // TODO(isse): VideoToolbox backend on Metal.
+            #[cfg(target_os = "macos")]
+            wgpu::Backend::Metal => {
+                crate::videotoolbox::VideoToolboxSetup::request(adapter).map(|setup| Self {
+                    inner: SetupInner::VideoToolbox(setup),
+                })
+            }
+
             _ => None,
         }
     }
@@ -41,6 +49,9 @@ impl VideoDeviceSetup {
     pub fn capabilities(&self, codec: Codec) -> Option<&DecodeCapabilities> {
         match &self.inner {
             SetupInner::Vulkan(setup) => setup.capabilities(codec),
+
+            #[cfg(target_os = "macos")]
+            SetupInner::VideoToolbox(setup) => setup.capabilities(codec),
         }
     }
 
@@ -52,6 +63,9 @@ impl VideoDeviceSetup {
     pub fn needs_hal_device_creation(&self) -> bool {
         match &self.inner {
             SetupInner::Vulkan(_) => true,
+
+            #[cfg(target_os = "macos")]
+            SetupInner::VideoToolbox(_) => false,
         }
     }
 
@@ -69,6 +83,11 @@ impl VideoDeviceSetup {
     pub fn create_device_callback(&mut self) -> Box<wgpu::hal::vulkan::CreateDeviceCallback<'_>> {
         match &mut self.inner {
             SetupInner::Vulkan(setup) => setup.create_device_callback(),
+
+            #[cfg(target_os = "macos")]
+            SetupInner::VideoToolbox(_) => {
+                panic!("the VideoToolbox backend works against a plainly created device")
+            }
         }
     }
 
@@ -79,6 +98,11 @@ impl VideoDeviceSetup {
     pub fn into_context(self, device: &wgpu::Device) -> Result<Arc<GpuVideoContext>, SetupError> {
         match self.inner {
             SetupInner::Vulkan(setup) => Ok(Arc::new(GpuVideoContext::new_vulkan(
+                setup.into_context(device)?,
+            ))),
+
+            #[cfg(target_os = "macos")]
+            SetupInner::VideoToolbox(setup) => Ok(Arc::new(GpuVideoContext::new_video_toolbox(
                 setup.into_context(device)?,
             ))),
         }

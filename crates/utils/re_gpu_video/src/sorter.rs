@@ -1,7 +1,7 @@
 //! Reorder buffer turning frames from decode order into presentation order.
 //!
 //! Shared by the backends: the Vulkan backend keys frames by picture order count,
-//! the `VideoToolbox` backend will key them by presentation timestamp.
+//! the `VideoToolbox` backend by the caller's presentation timestamp.
 
 /// Buffers decoded frames until their position in presentation order is settled.
 ///

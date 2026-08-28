@@ -1,8 +1,28 @@
 //! Annex-b NAL framing, shared by the codec parsers.
 
+use std::borrow::Cow;
 use std::ops::Range;
 
+use cros_codecs::codec::h264::nalu::Header as _;
+use cros_codecs::codec::h265::parser::{Nalu, NaluHeader};
+
 use crate::ParseError;
+
+/// Builds a `cros-codecs` H.265 NAL over one byte range of the pushed buffer.
+pub fn h265_nalu<'a>(data: &'a [u8], range: &Range<usize>) -> Result<Nalu<'a>, ParseError> {
+    let bytes = &data[range.clone()];
+    let header = NaluHeader::parse(&mut std::io::Cursor::new(bytes))
+        .map_err(|err| ParseError::nal("NAL header", err))?;
+    if bytes.len() < header.len() {
+        return Err(ParseError::Invalid("NAL unit is truncated"));
+    }
+    Ok(Nalu {
+        header,
+        data: Cow::Borrowed(bytes),
+        size: bytes.len(),
+        offset: 0,
+    })
+}
 
 /// Splits an annex-b stream into the byte ranges of its NALs, without start codes.
 ///

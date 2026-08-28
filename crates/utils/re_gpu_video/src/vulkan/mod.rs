@@ -3,7 +3,6 @@
 //! ash/vk types never leave this module tree, see the layering rule in the crate docs.
 
 mod alloc;
-mod annexb;
 mod caps;
 mod codec;
 mod decoder;

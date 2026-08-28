@@ -240,8 +240,8 @@ impl Parser {
         let mut ops = Vec::new();
         let mut parameters_changed = false;
 
-        for range in super::annexb::nal_ranges(data)? {
-            let nalu = parse::nalu(data, &range)?;
+        for range in crate::annexb::nal_ranges(data)? {
+            let nalu = crate::annexb::h265_nalu(data, &range)?;
             let nal_type = nalu.header.type_;
 
             // The id of a parameter set only follows from parsing it, so the
@@ -426,7 +426,7 @@ impl Parser {
             num_delta_pocs_of_ref_rps_idx: short_term.num_delta_pocs_of_ref_rps_idx,
         }));
 
-        self.reorder_delay = usize::from(sps_ordering.max_num_reorder_pics);
+        self.reorder_delay = sps_ordering.max_num_reorder_pics;
         Ok(())
     }
 
@@ -457,7 +457,7 @@ impl Parser {
             .ok_or(ParseError::MissingReference { what: "SPS" })?;
         Ok(SpsOrdering {
             log2_max_pic_order_cnt_lsb_minus4: sps.log2_max_pic_order_cnt_lsb_minus4,
-            max_num_reorder_pics: sps.max_num_reorder_pics[usize::from(sps.max_sub_layers_minus1)],
+            max_num_reorder_pics: crate::reorder_depth::h265(sps),
         })
     }
 
@@ -571,7 +571,7 @@ impl Parser {
 /// The picture order count and reorder fields of an SPS.
 struct SpsOrdering {
     log2_max_pic_order_cnt_lsb_minus4: u8,
-    max_num_reorder_pics: u8,
+    max_num_reorder_pics: usize,
 }
 
 /// One picture's short-term reference picture set, detached from the parser.

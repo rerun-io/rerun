@@ -10,7 +10,7 @@ use h264_reader::nal::{
     sps::{ChromaFormat, FrameMbsFlags, SeqParameterSet},
 };
 
-pub use crate::vulkan::annexb::nal_ranges;
+pub use crate::annexb::nal_ranges;
 
 use super::ParseError;
 

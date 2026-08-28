@@ -84,6 +84,12 @@ pub struct QueuePlan {
 /// Vulkan-level H.264 decode capabilities, needed later for session & image creation.
 #[derive(Clone, Debug)]
 pub struct VulkanVideoCaps {
+    /// Maximum number of decoded-picture-buffer slots.
+    pub max_dpb_slots: u32,
+
+    /// Maximum number of active reference pictures per decode operation.
+    pub max_active_references: u32,
+
     /// DPB images and decode output must be one and the same image (older AMD).
     /// Otherwise we decode with distinct output images (preferred).
     pub dpb_and_output_coincide: bool,
@@ -366,13 +372,14 @@ fn probe_profile(
 
         Some(CodecSupport {
             capabilities: DecodeCapabilities {
-                min_coded_extent,
-                max_coded_extent,
-                max_dpb_slots,
-                max_active_references,
-                max_level_idc,
+                min_coded_extent: Some(min_coded_extent),
+                max_coded_extent: Some(max_coded_extent),
+                max_level_idc: Some(max_level_idc),
+                hardware_accelerated: true,
             },
             video_caps: VulkanVideoCaps {
+                max_dpb_slots,
+                max_active_references,
                 dpb_and_output_coincide,
                 separate_reference_images: capability_flags
                     .contains(vk::VideoCapabilityFlagsKHR::SEPARATE_REFERENCE_IMAGES),

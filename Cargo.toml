@@ -342,6 +342,54 @@ nucleo-matcher = { version = "0.3.1", default-features = false, features = [
 num-derive = "0.4.2" # 0.5 would duplicate the 0.4 that `av-data` (via re_rav1d) requires. Bump once re_rav1d is updated (same blocker as `strum`).
 num-traits = "0.2.19"
 numpy = "0.28.0"
+# The objc2 stack must stay in lockstep with the versions used by wgpu-hal (check on every
+# wgpu upgrade), since re_gpu_video passes `Retained<ProtocolObject<dyn MTLTexture>>` into
+# wgpu-hal's `texture_from_raw`.
+objc2 = "0.6"
+objc2-core-foundation = "0.3"
+objc2-core-media = { version = "0.3", default-features = false, features = [
+  "std",
+  "objc2",
+  "objc2-core-video",
+  "CMBase",
+  "CMBlockBuffer",
+  "CMFormatDescription",
+  "CMSampleBuffer",
+  "CMTime",
+] }
+objc2-core-video = { version = "0.3", default-features = false, features = [
+  "std",
+  "objc2",
+  "objc2-io-surface",
+  "CVBase",
+  "CVBuffer",
+  "CVImageBuffer",
+  "CVPixelBuffer",
+  "CVPixelBufferIOSurface",
+  "CVReturn",
+] }
+objc2-io-surface = "0.3"
+objc2-metal = { version = "0.3", default-features = false, features = [
+  "std",
+  "objc2-io-surface",
+  "MTLAllocation",
+  "MTLDevice",
+  "MTLPixelFormat",
+  "MTLResource",
+  "MTLTexture",
+  "MTLTypes",
+] }
+objc2-video-toolbox = { version = "0.3", default-features = false, features = [
+  "std",
+  "objc2",
+  "objc2-core-media",
+  "objc2-core-video",
+  "VTBase",
+  "VTDecompressionProperties",
+  "VTDecompressionSession",
+  "VTErrors",
+  "VTSession",
+] }
 opentelemetry = { version = "0.32.0", features = ["metrics"] }
 opentelemetry-appender-tracing = "0.32.0"
 opentelemetry-http = "0.32.0"

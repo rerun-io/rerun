@@ -153,7 +153,7 @@ impl DecoderCore {
             semaphore: TimelineSemaphore::new(shared.device.clone())?,
             codec: CodecState::new(
                 codec,
-                capabilities.max_dpb_slots.min(MAX_DPB_SLOTS) as u8,
+                video_caps.max_dpb_slots.min(MAX_DPB_SLOTS) as u8,
                 &video_caps,
             ),
             capabilities,
@@ -241,9 +241,12 @@ impl DecoderCore {
         let facts = self.codec.frame_facts(info)?;
         let coded_extent = facts.coded_extent;
 
-        let capabilities = &self.capabilities;
-        let [min_width, min_height] = capabilities.min_coded_extent;
-        let [max_width, max_height] = capabilities.max_coded_extent;
+        // Vulkan always reports the extents, see `DecodeCapabilities`.
+        let [min_width, min_height] = self.capabilities.min_coded_extent.unwrap_or([0, 0]);
+        let [max_width, max_height] = self
+            .capabilities
+            .max_coded_extent
+            .unwrap_or([u32::MAX, u32::MAX]);
         if coded_extent.width < min_width
             || coded_extent.height < min_height
             || coded_extent.width > max_width
@@ -254,10 +257,10 @@ impl DecoderCore {
                 coded_extent.width, coded_extent.height,
             )));
         }
-        if facts.max_ref_frames > capabilities.max_active_references {
+        if facts.max_ref_frames > self.video_caps.max_active_references {
             return Err(DecodeError::ExceedsDeviceLimits(format!(
                 "the stream uses up to {} reference frames, the device supports {}",
-                facts.max_ref_frames, capabilities.max_active_references,
+                facts.max_ref_frames, self.video_caps.max_active_references,
             )));
         }
 
@@ -418,7 +421,7 @@ impl DecoderCore {
             profile,
             coded_extent,
             dpb_slots,
-            self.capabilities.max_active_references.min(dpb_slots - 1),
+            self.video_caps.max_active_references.min(dpb_slots - 1),
             if queue_plan.decode_supports_result_status {
                 PIPELINE_DEPTH as u32
             } else {

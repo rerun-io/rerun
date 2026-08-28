@@ -4,7 +4,7 @@
 //! (see [`VideoDeviceSetup::request`]):
 //! * Vulkan Video: any Vulkan driver exposing the video decode extensions.
 //!   Software rasterizers and `MoltenVK` don't, the probe reports no support there.
-//! * `VideoToolbox` (macOS, not yet implemented)
+//! * `VideoToolbox`: macOS, whenever wgpu runs on Metal.
 //!
 //! Integration happens in two steps:
 //! * At device-creation time, [`VideoDeviceSetup::request`] probes the adapter for decode support.
@@ -17,11 +17,16 @@
 //!
 //! This crate is native only, web builds must not include it.
 
+mod annexb;
 mod context;
 mod decoder;
+mod reorder_depth;
 mod setup;
 mod sorter;
 mod vulkan;
+
+#[cfg(target_os = "macos")]
+mod videotoolbox;
 
 pub use context::GpuVideoContext;
 pub use decoder::{DecodedFrame, Decoder};
@@ -70,23 +75,26 @@ pub enum MatrixCoefficients {
 }
 
 /// Decode capabilities of a device for one [`Codec`], as reported by the backend.
+///
+/// Vulkan reports all of these, `VideoToolbox` has no capability query beyond which
+/// codecs it decodes, so everything it can't answer is `None`.
 #[derive(Clone, Debug)]
 pub struct DecodeCapabilities {
     /// Smallest supported coded width & height.
-    pub min_coded_extent: [u32; 2],
+    pub min_coded_extent: Option<[u32; 2]>,
 
     /// Largest supported coded width & height.
-    pub max_coded_extent: [u32; 2],
-
-    /// Maximum number of decoded-picture-buffer slots.
-    pub max_dpb_slots: u32,
-
-    /// Maximum number of active reference pictures per decode operation.
-    pub max_active_references: u32,
+    pub max_coded_extent: Option<[u32; 2]>,
 
     /// Maximum supported level, in the codec's own `level_idc` numbering
     /// (e.g. 51 for H.264 level 5.1).
-    pub max_level_idc: u32,
+    pub max_level_idc: Option<u32>,
+
+    /// Decoding runs on dedicated hardware rather than on the CPU.
+    ///
+    /// `VideoToolbox` falls back to a software decoder where the hardware has no
+    /// support, which still beats handing frames to the `FFmpeg` CLI and back.
+    pub hardware_accelerated: bool,
 }
 
 /// The pushed data can't be decoded. The decoder gives up and falls back to
@@ -162,6 +170,9 @@ pub enum SetupError {
 
     #[error("Vulkan error: {0}")]
     Vulkan(#[from] ash::vk::Result),
+
+    #[error("VideoToolbox: {what} (status {status})")]
+    VideoToolbox { what: &'static str, status: i32 },
 }
 
 /// Decoding failed. The stream can't be decoded by this backend (or is invalid),
@@ -183,4 +194,13 @@ pub enum DecodeError {
 
     #[error("The device does not support GPU decoding of {0}")]
     UnsupportedCodec(Codec),
+
+    #[error("VideoToolbox: {what} (status {status})")]
+    VideoToolbox { what: &'static str, status: i32 },
+
+    #[error("Failed to hand the decoded frame to wgpu: {0}")]
+    TextureImport(&'static str),
+
+    #[error("The CPU readback decoder is only available on the Vulkan backend")]
+    CpuDecoderUnavailable,
 }

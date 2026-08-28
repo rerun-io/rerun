@@ -3,32 +3,14 @@
 //!
 //! `cros-codecs` parses NALs found by its own cursor, whose offsets are relative
 //! to each NAL rather than to the pushed buffer. The access unit handling needs
-//! absolute ranges, so the NALs come from [`crate::vulkan::annexb::nal_ranges`]
-//! and are handed to the parser one at a time.
+//! absolute ranges, so the NALs come from [`crate::annexb::nal_ranges`], are wrapped
+//! by [`crate::annexb::h265_nalu`], and are handed to the parser one at a time.
 
-use std::borrow::Cow;
 use std::ops::Range;
 
-use cros_codecs::codec::h264::nalu::Header as _;
-use cros_codecs::codec::h265::parser::{Nalu, NaluHeader, Parser, SliceHeader, Sps};
+use cros_codecs::codec::h265::parser::{Nalu, Parser, SliceHeader, Sps};
 
 use crate::ParseError;
-
-/// Builds a `cros-codecs` NAL over one byte range of the pushed buffer.
-pub fn nalu<'a>(data: &'a [u8], range: &Range<usize>) -> Result<Nalu<'a>, ParseError> {
-    let bytes = &data[range.clone()];
-    let header = NaluHeader::parse(&mut std::io::Cursor::new(bytes))
-        .map_err(|err| ParseError::nal("NAL header", err))?;
-    if bytes.len() < header.len() {
-        return Err(ParseError::Invalid("NAL unit is truncated"));
-    }
-    Ok(Nalu {
-        header,
-        data: Cow::Borrowed(bytes),
-        size: bytes.len(),
-        offset: 0,
-    })
-}
 
 /// Parses a VPS, returning its id.
 pub fn parse_vps(parser: &mut Parser, nalu: &Nalu<'_>) -> Result<u8, ParseError> {
@@ -111,7 +93,7 @@ pub fn parse_slice(
     data: &[u8],
     range: Range<usize>,
 ) -> Result<ParsedSlice, ParseError> {
-    let nalu = nalu(data, &range)?;
+    let nalu = crate::annexb::h265_nalu(data, &range)?;
     let nal_type = nalu.header.type_;
     let temporal_id = nalu.header.nuh_temporal_id();
     if nalu.header.nuh_layer_id != 0 {

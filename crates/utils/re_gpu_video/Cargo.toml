@@ -32,6 +32,15 @@ parking_lot.workspace = true
 thiserror.workspace = true
 wgpu.workspace = true
 
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2.workspace = true
+objc2-core-foundation.workspace = true
+objc2-core-media.workspace = true
+objc2-core-video.workspace = true
+objc2-io-surface.workspace = true
+objc2-metal.workspace = true
+objc2-video-toolbox.workspace = true
+
 [dev-dependencies]
 re_log = { workspace = true, features = ["setup"] }
 
