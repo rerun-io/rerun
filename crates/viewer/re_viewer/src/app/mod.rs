@@ -862,7 +862,7 @@ impl App {
 
     /// Updates the viewer tracked history
     fn update_viewer_history(&mut self, store_hub: &StoreHub) {
-        let route = self.state.navigation.current();
+        let route = self.state.navigation.history_route();
 
         let time_ctrl = route
             .recording_id()
@@ -881,7 +881,7 @@ impl App {
     /// Updates the web address and web history.
     #[cfg(target_arch = "wasm32")]
     fn update_web_history(&self, store_hub: &StoreHub) {
-        let route = self.state.navigation.current();
+        let route = self.state.navigation.history_route();
 
         let time_ctrl = route
             .recording_id()
@@ -928,16 +928,19 @@ impl App {
             let current_entry = history.current_entry().ok_or_log_js_error().flatten();
             let new_entry = HistoryEntry::new(url);
             if Some(&new_entry) != current_entry.as_ref() {
-                // If only the fragment has changed, we replace history instead of pushing it.
-                if current_entry
+                // A browser startup entry has no Rerun state, so replace it to record the stable
+                // route without adding a duplicate history entry.
+                // If only the fragment has changed, replace the current entry as well.
+                let only_fragment_changed = current_entry
+                    .as_ref()
                     .and_then(|entry| {
                         Some((
                             entry.to_query_string().ok_or_log_js_error()?,
                             new_entry.to_query_string().ok_or_log_js_error()?,
                         ))
                     })
-                    .is_some_and(|(current, new)| strip_fragment(&current) == strip_fragment(&new))
-                {
+                    .is_some_and(|(current, new)| strip_fragment(&current) == strip_fragment(&new));
+                if current_entry.is_none() || only_fragment_changed {
                     history.replace_entry(new_entry).ok_or_log_js_error();
                 } else {
                     history.push_entry(new_entry).ok_or_log_js_error();
@@ -1434,13 +1437,11 @@ impl eframe::App for App {
                     self.state.navigation.replace(Route::LocalRecording {
                         recording_id: store_id,
                     });
-                } else if let Some(re_uri::RedapUri::Dataset(uri)) = source.redap_uri()
-                    && self.connection_registry.error_for_uri(uri).is_some()
-                {
-                    // Do nothing, the loading screen will show the error and a button to go back to start screen.
-                } else {
-                    re_log::debug!("No recording found from loading source, resetting navigation");
-                    self.state.navigation.reset();
+                } else if self.state.last_loading_error_for(source).is_none() {
+                    self.state.last_loading_error.insert(
+                        (**source).clone(),
+                        "Data source finished without loading a recording".to_owned(),
+                    );
                 }
             }
         } else if !matches!(

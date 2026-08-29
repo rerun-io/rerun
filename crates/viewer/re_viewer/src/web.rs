@@ -828,12 +828,7 @@ fn create_app(
         }
     }
 
-    // Show in-app back/forth buttons in integration tests so screenshots match native.
-    let enable_history = if integration_test {
-        false
-    } else {
-        enable_history.unwrap_or(false)
-    };
+    let enable_history = enable_history.unwrap_or(false);
 
     let video_decoder_hw_acceleration = video_decoder.and_then(|s| match s.parse() {
         Err(()) => {

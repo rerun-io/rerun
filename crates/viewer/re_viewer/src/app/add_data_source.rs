@@ -4,7 +4,7 @@ use re_log_channel::{LogReceiver, RecordingOpenBehavior};
 use re_log_encoding::RrdMetadata;
 use re_log_types::{EntryId, StoreId};
 use re_uri::DatasetUri;
-use re_viewer_context::{StoreHub, SystemCommand, SystemCommandSender as _};
+use re_viewer_context::{Route, StoreHub, SystemCommand, SystemCommandSender as _};
 
 use super::App;
 
@@ -18,9 +18,11 @@ use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, SegmentId};
 const REGISTRATION_TIMEOUT: Duration = Duration::from_mins(1);
 
 impl App {
-    #[expect(clippy::needless_pass_by_ref_mut)]
     pub fn add_log_receiver(&mut self, rx: LogReceiver) {
         re_log::debug!("Adding new log receiver: {}", rx.source());
+        self.state
+            .last_loading_error
+            .retain(|source, _| !source.is_same_ignoring_uri_fragments(rx.source()));
 
         // Make sure we wake up when a new message is available:
         rx.set_waker({
@@ -251,7 +253,14 @@ impl App {
         match stream {
             Ok(rx) => self.add_log_receiver(rx),
             Err(err) => {
-                re_log::error!("Failed to open data source: {}", re_error::format(err));
+                let error = re_error::format(err);
+                if let Route::Loading(source) = self.state.navigation.current() {
+                    self.state
+                        .last_loading_error
+                        .insert(source.as_ref().clone(), error);
+                } else {
+                    re_log::error!("Failed to open data source: {error}");
+                }
             }
         }
     }

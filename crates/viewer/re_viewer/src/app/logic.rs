@@ -154,9 +154,9 @@ impl App {
         while let Some((channel_source, msg)) = self.rx_log.try_recv() {
             re_log::trace!("Received a message from {channel_source:?}"); // Used by `test_ui_wakeup` test app!
 
-            if let Some(re_uri::RedapUri::Dataset(uri)) = channel_source.redap_uri() {
-                self.connection_registry.clear_uri_error(uri);
-            }
+            self.state
+                .last_loading_error
+                .retain(|source, _| !source.is_same_ignoring_uri_fragments(&channel_source));
 
             let msg = match msg.payload {
                 re_log_channel::SmartMessagePayload::Msg(msg) => msg,
@@ -176,9 +176,10 @@ impl App {
                                 format!("Source: {}", msg.source),
                             )
                         );
-                        if let Some(re_uri::RedapUri::Dataset(uri)) = channel_source.redap_uri() {
-                            self.connection_registry.set_uri_error(uri, err.to_string());
-                        }
+                        let error = err.to_string();
+                        self.state
+                            .last_loading_error
+                            .insert(channel_source.as_ref().clone(), error);
                     } else {
                         re_log::debug!("Data source {} has finished", msg.source);
                     }

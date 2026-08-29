@@ -3,3 +3,4 @@
 mod datasets;
 #[cfg(feature = "browser")]
 mod exports_browser;
+mod navigation;

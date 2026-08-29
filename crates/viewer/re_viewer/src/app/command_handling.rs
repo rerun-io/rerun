@@ -307,12 +307,6 @@ impl App {
                     self.fetch_pending_blueprint(store_hub, recording_id);
                 }
 
-                if matches!(new_route, Route::Loading(_)) {
-                    self.state
-                        .selection_state
-                        .set_selection(re_viewer_context::ItemCollection::default());
-                }
-
                 self.state.navigation.replace(new_route);
 
                 egui_ctx.request_repaint(); // Make sure we actually see the new mode.
@@ -355,6 +349,12 @@ impl App {
 
             SystemCommand::ResetRoute => {
                 self.state.navigation.reset();
+
+                egui_ctx.request_repaint(); // Make sure we actually see the new mode.
+            }
+
+            SystemCommand::ReturnFromLoading => {
+                self.state.navigation.return_from_loading();
 
                 egui_ctx.request_repaint(); // Make sure we actually see the new mode.
             }

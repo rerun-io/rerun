@@ -148,7 +148,7 @@ impl<'a> RecordingPreviewRenderer<'a> {
                 (rec, caches)
             }
             Some(PreviewRecording::Unresolved(uri)) => {
-                if let Some(err) = app_ctx.connection_registry.error_for_uri(uri) {
+                if let Some(err) = app_ctx.last_loading_error_for_uri(&uri) {
                     ui.centered_and_justified(|ui| {
                         ui.error_label(err);
                     });

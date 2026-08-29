@@ -19,16 +19,17 @@ workspace = true
 all-features = true
 
 [dependencies]
-re_async.workspace = true
 re_arrow_util.workspace = true
+re_async.workspace = true
 re_chunk_store.workspace = true
 re_component_ui.workspace = true
 re_data_source.workspace = true
 re_dataframe.workspace = true
 re_entity_db.workspace = true
+re_error.workspace = true
 re_format.workspace = true
-re_log.workspace = true
 re_log_types.workspace = true
+re_log.workspace = true
 re_mutex.workspace = true
 re_protos.workspace = true
 re_quota_channel.workspace = true

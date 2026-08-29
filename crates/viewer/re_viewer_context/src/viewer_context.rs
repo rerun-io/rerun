@@ -274,11 +274,6 @@ impl<'a> ViewerContext<'a> {
             .handle_select_focus_sync(response, interacted_items);
     }
 
-    /// Reverts to the default route.
-    pub fn revert_to_default_route(&self) {
-        self.app_ctx.revert_to_default_route();
-    }
-
     /// Iterates over all entities that are visualizeable for a given view class.
     ///
     /// This is a subset of [`Self::visualizable_entities_per_visualizer`], filtered to only include entities

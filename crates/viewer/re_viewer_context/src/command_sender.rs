@@ -79,6 +79,11 @@ pub enum SystemCommand {
     /// Sets the route to what it is at startup.
     ResetRoute,
 
+    /// Restores the route hidden by the current loading screen.
+    ///
+    /// Does nothing if there is no loading screen active.
+    ReturnFromLoading,
+
     /// Reset the `Viewer` to the default state
     ResetViewer,
 

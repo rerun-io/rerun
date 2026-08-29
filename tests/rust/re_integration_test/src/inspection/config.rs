@@ -1,7 +1,7 @@
 //! Per-test configuration for a spawned viewer.
 
 /// Configuration for [`InspectionHarness::spawn`](super::InspectionHarness::spawn).
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct HarnessConfig {
     /// Logical size of the viewer, in points.
     ///
@@ -13,6 +13,21 @@ pub struct HarnessConfig {
     /// Opened on the in-process viewer via `HarnessOptions::startup_url`, passed as a positional
     /// argument to the `cli` viewer, and via the `?url=` query parameter to the browser viewer.
     pub startup_url: Option<String>,
+
+    /// Whether the browser harness waits for network idleness before connecting to the viewer.
+    ///
+    /// Disable this when a test intentionally keeps a startup request pending.
+    pub browser_wait_until_navigated: bool,
+}
+
+impl Default for HarnessConfig {
+    fn default() -> Self {
+        Self {
+            size: None,
+            startup_url: None,
+            browser_wait_until_navigated: true,
+        }
+    }
 }
 
 impl HarnessConfig {

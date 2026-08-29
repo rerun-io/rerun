@@ -112,6 +112,10 @@ pub struct AppState {
     #[serde(skip)]
     pub(crate) navigation: Navigation,
 
+    /// The latest terminal loading error for each data source.
+    #[serde(skip)]
+    pub(crate) last_loading_error: HashMap<LogSource, String>,
+
     /// A history of urls the viewer has visited.
     ///
     /// This is not updated if this is a web viewer with control over
@@ -168,6 +172,7 @@ impl Default for AppState {
             open_url_modal: Default::default(),
             share_modal: Default::default(),
             navigation: Default::default(),
+            last_loading_error: Default::default(),
             history: Default::default(),
             view_states: Default::default(),
             selection_state: Default::default(),
@@ -203,6 +208,14 @@ fn resolve_entry_kind(
 }
 
 impl AppState {
+    /// Returns the latest terminal loading error for `source`.
+    pub fn last_loading_error_for(&self, source: &LogSource) -> Option<&str> {
+        self.last_loading_error
+            .iter()
+            .find(|(candidate, _)| candidate.is_same_ignoring_uri_fragments(source))
+            .map(|(_, error)| error.as_str())
+    }
+
     /// The active recording [`StoreId`], if any, derived from the current [`Route`].
     pub fn active_recording_id(&self) -> Option<&StoreId> {
         self.navigation.current().recording_id()
@@ -238,20 +251,21 @@ impl AppState {
         }
     }
 
-    /// Whether the entry kind of the current route may still change. Based on
-    /// what's loaded.
+    /// Whether the current route may still change as data or metadata loads.
     pub(crate) fn is_resolving_route(&self) -> bool {
-        let Route::RedapEntry {
-            origin,
-            entry_id,
-            kind,
-        } = self.navigation.current()
-        else {
-            return false;
-        };
-
-        self.redap_servers.is_entry_kind_pending(origin, *entry_id)
-            || resolve_entry_kind(*kind, self.redap_servers.entry_kind(origin, *entry_id)) != *kind
+        match self.navigation.current() {
+            Route::Loading(_) => true,
+            Route::RedapEntry {
+                origin,
+                entry_id,
+                kind,
+            } => {
+                self.redap_servers.is_entry_kind_pending(origin, *entry_id)
+                    || resolve_entry_kind(*kind, self.redap_servers.entry_kind(origin, *entry_id))
+                        != *kind
+            }
+            _ => false,
+        }
     }
 
     pub fn set_examples_manifest_url(&mut self, egui_ctx: &egui::Context, url: String) {
@@ -310,13 +324,17 @@ impl AppState {
 
         let active_route = self.navigation.current().clone();
 
-        self.selection_on_frame_start(
-            storage_context,
-            event_dispatcher,
-            active_store_context,
-            &active_route,
-            viewport_ui.as_ref(),
-        );
+        // Don't mess with the selection state while we're on the loading screen,
+        // this way we can go back.
+        if !matches!(active_route, Route::Loading(_)) {
+            self.selection_on_frame_start(
+                storage_context,
+                event_dispatcher,
+                active_store_context,
+                &active_route,
+                viewport_ui.as_ref(),
+            );
+        }
 
         // App-level context, available for all routes (also those without an active recording).
         let app_ctx = AppContext {
@@ -330,6 +348,7 @@ impl AppState {
             command_sender,
 
             connection_registry,
+            last_loading_error: &self.last_loading_error,
             storage_context,
             active_store_context,
             app_caches: &self.app_caches,
@@ -689,21 +708,16 @@ impl AppState {
                 egui::CentralPanel::default()
                     .frame(viewport_frame)
                     .show(ui, |ui| {
-                        if let Some(re_uri::RedapUri::Dataset(uri)) = log_source.redap_uri()
-                            && let Some(err) = app_ctx.connection_registry.error_for_uri(uri)
-                        {
-                            ui.center("loading error", |ui| {
-                                ui.set_max_width(ui.available_width() * 0.75);
-                                ui.vertical_centered(|ui| {
-                                    ui.error_label(format!("Failed to load {source_name}: {err}"));
-
-                                    if ui.button("Go Back").clicked() {
-                                        command_sender.send_system(SystemCommand::ResetRoute);
-                                    }
-                                })
-                            });
-                        } else {
-                            ui.loading_screen("Loading data source:", &*source_name);
+                        let error = self
+                            .last_loading_error_for(log_source)
+                            .map(|error| format!("Failed to load {source_name}: {error}"));
+                        if ui.loading_screen(
+                            "Loading data source:",
+                            &*source_name,
+                            error.as_deref(),
+                            Some("Go Back"),
+                        ) {
+                            command_sender.send_system(SystemCommand::ReturnFromLoading);
                         }
                     });
             }
@@ -1285,6 +1299,32 @@ mod tests {
     use re_log_types::EntryId;
 
     use super::*;
+
+    #[test]
+    fn loading_error_lookup_ignores_redap_open_behavior() {
+        let entry_id = EntryId::new();
+        let uri: re_uri::DatasetUri =
+            format!("rerun://127.0.0.1:1234/dataset/{entry_id}?segment_id=pid")
+                .parse()
+                .expect("valid dataset URI");
+        let failed_source = LogSource::RedapGrpcStream {
+            uri: uri.clone(),
+            open_behavior: RecordingOpenBehavior::Open,
+        };
+        let loading_source = LogSource::RedapGrpcStream {
+            uri,
+            open_behavior: RecordingOpenBehavior::Background,
+        };
+        let mut state = AppState::default();
+        state
+            .last_loading_error
+            .insert(failed_source, "server error".to_owned());
+
+        assert_eq!(
+            state.last_loading_error_for(&loading_source),
+            Some("server error")
+        );
+    }
 
     /// A url can call an entry a dataset when the catalog knows it to be a table. The route then
     /// shows a table, and the url it shares is an entry url.

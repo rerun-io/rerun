@@ -697,6 +697,7 @@ impl TestContext {
                 render_ctx,
 
                 connection_registry: &self.connection_registry,
+                last_loading_error: &Default::default(),
 
                 storage_context: &storage_context,
                 active_store_context: Some(&store_context),
@@ -949,6 +950,7 @@ impl TestContext {
                 | SystemCommand::OpenSettings
                 | SystemCommand::OpenChunkStoreBrowser { .. }
                 | SystemCommand::ResetRoute
+                | SystemCommand::ReturnFromLoading
                 | SystemCommand::ClearActiveBlueprint
                 | SystemCommand::ClearActiveBlueprintAndEnableHeuristics
                 | SystemCommand::AddRedapServer { .. }

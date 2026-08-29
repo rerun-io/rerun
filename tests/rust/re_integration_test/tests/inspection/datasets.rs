@@ -1,7 +1,7 @@
 use std::str::FromStr as _;
 
 use egui_kittest::SnapshotResults;
-use egui_kittest::kittest::Queryable as _;
+use egui_kittest::kittest::{NodeT as _, Queryable as _};
 use re_integration_test::{HarnessConfig, InspectionHarness, TestServer, ViewerHarnessExt as _};
 use re_sdk::{
     TimeCell, Timeline,
@@ -84,6 +84,14 @@ pub async fn start_with_dataset_url() {
             .is_some()
     });
     harness.step_until_no_loading_indicator();
+
+    let back_button = harness
+        .query_by_label("go back")
+        .expect("The navigation bar should contain a back button");
+    assert!(
+        back_button.accesskit_node().is_disabled(),
+        "A startup URL should be the first history entry"
+    );
 
     let mut snapshot_results = SnapshotResults::new();
     snapshot_results.add(harness.try_snapshot("start_with_dataset_url"));

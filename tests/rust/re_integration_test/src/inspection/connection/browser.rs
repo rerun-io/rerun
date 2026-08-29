@@ -19,7 +19,11 @@ pub(in crate::inspection) struct BrowserConnection {
 }
 
 impl BrowserConnection {
-    pub(super) fn new(size: egui::Vec2, startup_url: Option<&str>) -> Self {
+    pub(super) fn new(
+        size: egui::Vec2,
+        startup_url: Option<&str>,
+        wait_until_navigated: bool,
+    ) -> Self {
         // A real `http://127.0.0.1:{port}` origin is required so the viewer's gRPC-web calls to the
         // redap server pass CORS. We load the assets from disk rather than letting
         // `re_web_viewer_server` embed them, so this crate doesn't need the wasm at compile time.
@@ -55,9 +59,14 @@ impl BrowserConnection {
         connection
             .tab
             .navigate_to(page_url.as_str())
-            .expect("Failed to navigate to the viewer page")
-            .wait_until_navigated()
-            .expect("The viewer page did not finish navigating");
+            .expect("Failed to navigate to the viewer page");
+
+        if wait_until_navigated {
+            connection
+                .tab
+                .wait_until_navigated()
+                .expect("The viewer page did not finish navigating");
+        }
 
         connection.wait_until_ready();
         connection

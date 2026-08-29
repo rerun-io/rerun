@@ -208,6 +208,26 @@ impl InspectionHarness {
         self.connection.evaluate_js_in_browser(script)
     }
 
+    /// Assert that the browser address bar has the expected `url` query parameter.
+    ///
+    /// Does nothing when not running in the browser.
+    #[cfg(feature = "browser")]
+    #[track_caller]
+    pub fn assert_browser_url_parameter(&self, expected: &str) {
+        if Self::is_browser() {
+            let actual = self.evaluate_js_in_browser(
+                "new URL(window.location.href).searchParams.get('url') ?? ''",
+            );
+            assert_eq!(actual, expected);
+        }
+    }
+
+    /// Assert that the browser address bar has the expected `url` query parameter.
+    ///
+    /// Does nothing when not running in the browser.
+    #[cfg(not(feature = "browser"))]
+    pub fn assert_browser_url_parameter(&self, _expected: &str) {}
+
     /// Capture the current frame as an image.
     pub fn screenshot(&mut self) -> image::RgbaImage {
         let png = self.connection.screenshot();

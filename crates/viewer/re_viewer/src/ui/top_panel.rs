@@ -100,7 +100,8 @@ fn top_bar_ui(
 ) {
     app.rerun_menu_button_ui(frame.wgpu_render_state(), store_context, ui);
 
-    if !app.startup_options().web_history_enabled() {
+    // In tests we always show the navigation buttons so that browser and native look the same.
+    if !app.startup_options().web_history_enabled() || app.app_env().is_test() {
         ui.add_space(12.0);
         app.navigation_buttons(ui);
     }

@@ -275,7 +275,7 @@ impl private::Sealed for History {}
 impl HistoryExt for History {
     fn push_entry(&self, entry: HistoryEntry) -> Result<(), JsValue> {
         // Check if this is the exact same entry as before, if so don't do anything.
-        if self.current_entry()?.unwrap_or_default() == entry {
+        if self.current_entry()?.as_ref() == Some(&entry) {
             return Ok(());
         }
 

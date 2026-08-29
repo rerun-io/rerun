@@ -64,6 +64,7 @@ impl Connection {
         Self::Browser(Box::new(BrowserConnection::new(
             config.size(),
             config.startup_url.as_deref(),
+            config.browser_wait_until_navigated,
         )))
     }
 

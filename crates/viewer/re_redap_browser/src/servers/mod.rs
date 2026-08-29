@@ -1331,7 +1331,9 @@ impl RedapServers {
                 view_states,
             );
         } else {
-            app_ctx.revert_to_default_route();
+            app_ctx
+                .command_sender()
+                .send_system(SystemCommand::ResetRoute);
         }
     }
 
@@ -1345,7 +1347,7 @@ impl RedapServers {
         if let Some(server) = self.servers.get(origin) {
             server.folder_ui(ctx, ui, origin, path_prefix);
         } else {
-            ctx.revert_to_default_route();
+            ctx.command_sender().send_system(SystemCommand::ResetRoute);
         }
     }
 

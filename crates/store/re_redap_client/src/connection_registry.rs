@@ -50,9 +50,6 @@ pub struct ConnectionRegistry {
     /// Connections are much cheaper to clone than create (since the latter involves establishing an
     /// actual TCP connection), so we keep them around once created.
     remote_connections: HashMap<re_uri::Origin, Connection>,
-
-    /// Latest errors received for specific redap URIs.
-    uri_errors: HashMap<re_uri::DatasetUri, String>,
 }
 
 impl ConnectionRegistry {
@@ -67,7 +64,6 @@ impl ConnectionRegistry {
                 saved_credentials: HashMap::new(),
                 fallback_token: None,
                 remote_connections: HashMap::new(),
-                uri_errors: Default::default(),
             })),
             internal: Arc::new(OnceLock::new()),
             use_stored_credentials: true,
@@ -85,30 +81,10 @@ impl ConnectionRegistry {
                 saved_credentials: HashMap::new(),
                 fallback_token: None,
                 remote_connections: HashMap::new(),
-                uri_errors: Default::default(),
             })),
             internal: Arc::new(OnceLock::new()),
             use_stored_credentials: false,
         }
-    }
-
-    // URI errors
-
-    /// Clear the latest error for this URI.
-    pub fn clear_uri_error(&mut self, uri: re_uri::DatasetUri) {
-        self.uri_errors.remove(&uri.without_fragment());
-    }
-
-    /// Set the latest error for this URI.
-    pub fn set_uri_error(&mut self, uri: re_uri::DatasetUri, error: String) {
-        self.uri_errors.insert(uri.without_fragment(), error);
-    }
-
-    /// Get the latest error for this URI.
-    pub fn error_for_uri(&self, uri: re_uri::DatasetUri) -> Option<&str> {
-        self.uri_errors
-            .get(&uri.without_fragment())
-            .map(|s| s.as_str())
     }
 }
 
@@ -118,14 +94,12 @@ impl re_byte_size::MemUsageTreeCapture for ConnectionRegistry {
             saved_credentials,
             fallback_token,
             remote_connections,
-            uri_errors,
         } = self;
 
         re_byte_size::MemUsageNode::default()
             .with_child("saved_credentials", saved_credentials.total_size_bytes())
             .with_child("fallback_token", fallback_token.total_size_bytes())
             .with_child("remote_connections", remote_connections.total_size_bytes())
-            .with_child("uri_errors", uri_errors.total_size_bytes())
             .into_tree()
     }
 }
@@ -301,30 +275,6 @@ impl ConnectionRegistryHandle {
         self.internal
             .get()
             .is_some_and(|connection| connection.origin() == origin)
-    }
-
-    /// Clear the latest error for this URI.
-    pub fn clear_uri_error(&self, uri: re_uri::DatasetUri) {
-        wrap_blocking_lock(|| {
-            self.inner.blocking_write().clear_uri_error(uri);
-        });
-    }
-
-    /// Set the latest error for this URI.
-    pub fn set_uri_error(&self, uri: re_uri::DatasetUri, error: String) {
-        wrap_blocking_lock(|| {
-            self.inner.blocking_write().set_uri_error(uri, error);
-        });
-    }
-
-    /// Get the latest error for this URI.
-    pub fn error_for_uri(&self, uri: re_uri::DatasetUri) -> Option<String> {
-        wrap_blocking_lock(|| {
-            self.inner
-                .blocking_read()
-                .error_for_uri(uri)
-                .map(str::to_owned)
-        })
     }
 
     /// Get a connection for the given origin, creating one if it doesn't exist yet.

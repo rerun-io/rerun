@@ -427,22 +427,25 @@ impl<'a> DataFusionTableWidget<'a> {
         table_blueprints: &TableBlueprints,
         view_states: &mut re_viewer_context::ViewStates,
     ) -> TableStatus {
-        match self
+        let table_exist_result = self
             .session_ctx
-            .table_exist(self.datafusion_table_ref.clone())
-        {
-            Ok(true) => {}
-            Ok(false) => {
-                ui.loading_screen("Loading table:", self.display_name().as_ref());
-                return TableStatus::InitialLoading;
-            }
-            Err(err) => {
-                ui.loading_screen(
-                    "Error while loading table:",
-                    RichText::from(err.to_string()).color(ui.style().visuals.error_fg_color),
-                );
-                return TableStatus::Error(err.to_string());
-            }
+            .table_exist(self.datafusion_table_ref.clone());
+
+        if matches!(table_exist_result, Err(_) | Ok(false)) {
+            let error_string = table_exist_result
+                .map_err(|err| re_error::format_ref(&err))
+                .err();
+            ui.loading_screen(
+                "Loading table:",
+                self.display_name().as_ref(),
+                error_string.as_deref(),
+                None,
+            );
+            return if let Some(error) = error_string {
+                TableStatus::Error(error)
+            } else {
+                TableStatus::InitialLoading
+            };
         }
 
         // The TableConfig should be persisted across sessions, so we also need a static id.
@@ -498,7 +501,7 @@ impl<'a> DataFusionTableWidget<'a> {
                 // still processing, nothing yet to show
                 //TODO(ab): it can happen that we're stuck in the state. We should detect it and
                 //produce an error
-                ui.loading_screen("Loading table:", self.display_name().as_ref());
+                ui.loading_screen("Loading table:", self.display_name().as_ref(), None, None);
                 return TableStatus::InitialLoading;
             }
         };

@@ -760,18 +760,45 @@ pub trait UiExt {
         })
     }
 
+    /// Shows a loading screen or a terminal error for the same operation.
+    ///
+    /// Returns whether the optional error action was clicked.
     fn loading_screen(
         &mut self,
         header: impl Into<egui::RichText>,
         source: impl Into<egui::RichText>,
-    ) {
+        error: Option<&str>,
+        error_action: Option<&str>,
+    ) -> bool {
         let header = header.into();
-        // Reuse the header text as the loading reason shown on hover in debug builds.
-        let reason = header.text().to_owned();
-        self.loading_screen_ui(&reason, |ui| {
-            ui.label(header.heading().color(ui.style().visuals.weak_text_color()));
-            ui.strong(source);
-        });
+        let source = source.into();
+
+        if let Some(error) = error {
+            let error = re_error::StructuredError::parse(error);
+            let details = error.details_joined();
+
+            // Derive the limit before `center` inserts space based on the previous frame's content
+            // size. Using the remaining width inside the closure creates a layout feedback loop.
+            let max_width = self.ui().available_width() * 0.75;
+
+            self.ui_mut().center("loading error", |ui| {
+                ui.set_max_width(max_width);
+                ui.vertical_centered(|ui| {
+                    Alert::error().show_text(ui, error.summary, details);
+                    error_action.is_some_and(|label| ui.button(label).clicked())
+                })
+                .inner
+            })
+        } else {
+            // Reuse the header text as the loading reason shown on hover in debug builds.
+            let reason = header.text().to_owned();
+            self.loading_screen_ui(&reason, |ui| {
+                ui.label(header.heading().color(ui.style().visuals.weak_text_color()));
+                ui.strong(source);
+            });
+
+            false
+        }
     }
 
     /// Paints a time cursor for indicating the time on a time axis along x.

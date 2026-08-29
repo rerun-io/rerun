@@ -48,6 +48,9 @@ pub struct AppContext<'a> {
     /// Registry of authenticated redap connections
     pub connection_registry: &'a re_redap_client::ConnectionRegistryHandle,
 
+    /// Latest terminal loading errors, keyed by data source.
+    pub last_loading_error: &'a HashMap<re_log_channel::LogSource, String>,
+
     /// All loaded recordings, blueprints, tables, etc.
     pub storage_context: &'a StorageContext<'a>,
 
@@ -120,6 +123,41 @@ impl AppContext<'_> {
     /// The current route of the viewer.
     pub fn route(&self) -> &Route {
         self.route
+    }
+
+    /// Returns the latest terminal loading error for `source`.
+    pub fn last_loading_error_for(&self, source: &re_log_channel::LogSource) -> Option<&str> {
+        self.last_loading_error
+            .iter()
+            .find(|(candidate, _)| candidate.is_same_ignoring_uri_fragments(source))
+            .map(|(_, error)| error.as_str())
+    }
+
+    /// Returns the latest terminal loading error for a Redap dataset URI.
+    pub fn last_loading_error_for_uri(&self, uri: &re_uri::DatasetUri) -> Option<&str> {
+        // This is a bit silly but for many errors better than iterating.
+        for open_behavior in [
+            re_log_channel::RecordingOpenBehavior::Background,
+            re_log_channel::RecordingOpenBehavior::OpenAndSelect,
+            re_log_channel::RecordingOpenBehavior::Open,
+        ] {
+            let _guard_against_new_open_behaviors = match open_behavior {
+                re_log_channel::RecordingOpenBehavior::Background => 0,
+                re_log_channel::RecordingOpenBehavior::OpenAndSelect => 1,
+                re_log_channel::RecordingOpenBehavior::Open => 2,
+                // If you fail here, update above list.
+            };
+
+            let source = re_log_channel::LogSource::RedapGrpcStream {
+                uri: uri.clone(),
+                open_behavior,
+            };
+            if let Some(error) = self.last_loading_error_for(&source) {
+                return Some(error);
+            }
+        }
+
+        None
     }
 
     /// Returns the current selection.
@@ -412,11 +450,6 @@ impl AppContext<'_> {
                 response.request_focus();
             }
         }
-    }
-
-    /// Reverts to the default route.
-    pub fn revert_to_default_route(&self) {
-        self.command_sender.send_system(SystemCommand::ResetRoute);
     }
 
     /// Append an array to the given store.
