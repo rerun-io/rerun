@@ -11,14 +11,13 @@ type: feature
 When you open a segment that has an asset the viewer downloads the asset, and caches it so other segments in the dataset don't
 have to download the same asset again.
 
+A dataset in the viewer now also list assets and certain metadata about them:
 
-When viewing a dataset in the viewer, one can also list assets and certain metadata about them. As well as view them individually:
+<video width="100%" autoplay loop muted controls>
+    <source src="https://static.rerun.io/ca548403d20f8e39c4756f73851514956aff7345_assets_short.mp4" type="video/mp4" />
+</video>
 
-// TODO(isse): Add video.
-
-Assets can also be registered, and unregistered right in the viewer:
-
-// TODO(isse): Add video.
+As seen in the video, assets can also be registered, and unregistered in the viewer.
 
 From Python, a segment store covers the dataset's assets alongside the segment's own data.
 Pass `include_assets=False` to leave them out, which also skips the requests for their manifests:
@@ -34,5 +33,3 @@ for chunk in store.stream().to_chunks():
 # Describes only the segment, no asset manifests are fetched.
 segment_only = dataset.segment_store(segment_id, include_assets=False)
 ```
-
-// TODO(isse): Add snippet on assets, and how to register them.
