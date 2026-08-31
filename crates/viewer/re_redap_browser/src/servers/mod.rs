@@ -794,6 +794,9 @@ pub enum Command {
         /// Registering or unregistering an asset changes what those segments hold. A registration
         /// that failed before the server wrote the asset's row does not.
         reload_segments: bool,
+
+        /// The asset that was unregistered, whose own recording is closed.
+        unregistered_asset: Option<SegmentId>,
     },
 
     AddServer(AddServerCommand),
@@ -1177,6 +1180,7 @@ impl RedapServers {
                         origin,
                         entry_id,
                         reload_segments,
+                        unregistered_asset: None,
                     },
                 )
                 .ok();
@@ -1227,6 +1231,7 @@ impl RedapServers {
                             origin,
                             entry_id,
                             reload_segments: true,
+                            unregistered_asset: Some(asset_id),
                         },
                     )
                     .ok();
@@ -1237,6 +1242,7 @@ impl RedapServers {
                 origin,
                 entry_id,
                 reload_segments,
+                unregistered_asset,
             } => {
                 let Some(server) = self.servers.get(&origin) else {
                     return;
@@ -1258,6 +1264,7 @@ impl RedapServers {
                     viewer_command_sender.send_system(SystemCommand::ReloadDatasetSegments {
                         origin,
                         dataset_id: entry_id,
+                        unregistered_asset,
                     });
                 }
             }

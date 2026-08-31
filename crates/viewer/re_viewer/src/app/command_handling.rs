@@ -451,8 +451,17 @@ impl App {
                 }
             }
 
-            SystemCommand::ReloadDatasetSegments { origin, dataset_id } => {
-                self.reload_dataset_segments(store_hub, &origin, dataset_id);
+            SystemCommand::ReloadDatasetSegments {
+                origin,
+                dataset_id,
+                unregistered_asset,
+            } => {
+                self.reload_dataset_segments(
+                    store_hub,
+                    &origin,
+                    dataset_id,
+                    unregistered_asset.as_ref(),
+                );
             }
 
             SystemCommand::EditRedapServerModal(command) => {

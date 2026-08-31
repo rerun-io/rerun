@@ -52,6 +52,7 @@ pub enum SystemCommand {
     ReloadDatasetSegments {
         origin: re_uri::Origin,
         dataset_id: re_log_types::EntryId,
+        unregistered_asset: Option<re_types_core::SegmentId>,
     },
 
     /// Open a modal to edit this redap server.

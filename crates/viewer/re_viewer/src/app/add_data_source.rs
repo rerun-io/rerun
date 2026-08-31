@@ -311,24 +311,44 @@ impl App {
         store_hub: &mut StoreHub,
         origin: &re_uri::Origin,
         dataset_id: EntryId,
+        unregistered_asset: Option<&SegmentId>,
     ) {
-        let segments: Vec<(DatasetUri, StoreId, RecordingOpenBehavior)> = store_hub
-            .store_bundle()
-            .recordings()
-            .filter_map(|db| {
-                let Some(LogSource::RedapGrpcStream { uri, open_behavior }) = &db.data_source
-                else {
-                    return None;
-                };
+        let mut segments: Vec<(DatasetUri, StoreId, RecordingOpenBehavior)> = Vec::new();
 
-                if uri.origin != *origin || EntryId::from(uri.dataset_id) != dataset_id {
-                    return None;
-                }
+        // The recording of the unregistered asset, if the viewer has it open.
+        let mut asset_to_close: Option<StoreId> = None;
 
-                // A uri that names no segment is the dataset itself, which has nothing to reload.
-                Some((uri.clone(), uri.store_id()?, *open_behavior))
-            })
-            .collect();
+        for db in store_hub.store_bundle().recordings() {
+            let Some(LogSource::RedapGrpcStream { uri, open_behavior }) = &db.data_source else {
+                continue;
+            };
+
+            if uri.origin != *origin || EntryId::from(uri.dataset_id) != dataset_id {
+                continue;
+            }
+
+            // A uri that names no segment is the dataset itself, which has nothing to reload.
+            let Some(store_id) = uri.store_id() else {
+                continue;
+            };
+
+            if let Some(unregistered_asset) = unregistered_asset
+                && uri.resource == re_uri::DatasetResource::Assets
+                && uri.segment_id.as_ref() == Some(unregistered_asset)
+            {
+                asset_to_close = Some(store_id);
+                continue;
+            }
+
+            segments.push((uri.clone(), store_id, *open_behavior));
+        }
+
+        // The server dropped the segment the asset was streamed from, so there is nothing left to
+        // show.
+        if let Some(store_id) = asset_to_close {
+            self.command_sender
+                .send_system(SystemCommand::CloseRecordingOrTable(store_id.into()));
+        }
 
         for (uri, store_id, open_behavior) in segments {
             // Reusing the source keeps this one segment where the viewer keys off it, like the
