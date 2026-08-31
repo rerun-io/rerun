@@ -12,9 +12,9 @@ UInt64
 ```
 
 ## API reference links
- * 🌊 [C++ API docs for `UInt64`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1UInt64.html?speculative-link)
- * 🐍 [Python API docs for `UInt64`](https://ref.rerun.io/docs/python/stable/common/encodings?speculative-link#rerun.encodings.UInt64)
- * 🦀 [Rust API docs for `UInt64`](https://docs.rs/rerun/latest/rerun/encodings/struct.UInt64.html?speculative-link)
+ * 🌊 [C++ API docs for `UInt64`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1UInt64.html)
+ * 🐍 [Python API docs for `UInt64`](https://ref.rerun.io/docs/python/stable/common/encodings#rerun.encodings.UInt64)
+ * 🦀 [Rust API docs for `UInt64`](https://docs.rs/rerun/latest/rerun/encodings/struct.UInt64.html)
 
 
 ## Used by

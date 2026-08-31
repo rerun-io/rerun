@@ -8,7 +8,7 @@ sort_children: alphabetical
 Data types are the lowest layer of the data model hierarchy. They are re-usable types used by the components.
 
 
-* [`AbsoluteTimeRange`](encodings/absolute_time_range.md): Two [`encodings.TimeInt`](https://rerun.io/docs/reference/types/encodings/time_int?speculative-link) describing a range of time.
+* [`AbsoluteTimeRange`](encodings/absolute_time_range.md): Two [`encodings.TimeInt`](https://rerun.io/docs/reference/types/encodings/time_int) describing a range of time.
 * [`Angle`](encodings/angle.md): Angle in radians.
 * [`AnnotationInfo`](encodings/annotation_info.md): Annotation info annotating a class id or key-point id.
 * [`Blob`](encodings/blob.md): A binary blob of data.
@@ -16,7 +16,7 @@ Data types are the lowest layer of the data model hierarchy. They are re-usable 
 * [`ChannelCountPair`](encodings/channel_count_pair.md): A pair representing a channel ID and its associated message count.
 * [`ChannelDatatype`](encodings/channel_datatype.md): The innermost datatype of an image.
 * [`ClassDescription`](encodings/class_description.md): The description of a semantic Class.
-* [`ClassDescriptionMapElem`](encodings/class_description_map_elem.md): A helper type for mapping [`encodings.ClassId`](https://rerun.io/docs/reference/types/encodings/class_id?speculative-link)s to class descriptions.
+* [`ClassDescriptionMapElem`](encodings/class_description_map_elem.md): A helper type for mapping [`encodings.ClassId`](https://rerun.io/docs/reference/types/encodings/class_id)s to class descriptions.
 * [`ClassId`](encodings/class_id.md): A 16-bit ID representing a type of semantic class.
 * [`ColorModel`](encodings/color_model.md): Specifies what color components are present in an [`archetypes.Image`](https://rerun.io/docs/reference/types/archetypes/image).
 * [`DVec2D`](encodings/dvec2d.md): A double-precision vector in 2D space.
@@ -26,7 +26,7 @@ Data types are the lowest layer of the data model hierarchy. They are re-usable 
 * [`IVec3D`](encodings/ivec3d.md): An int32 vector in 3D space.
 * [`ImageFormat`](encodings/image_format.md): The metadata describing the contents of a [`components.ImageBuffer`](https://rerun.io/docs/reference/types/components/image_buffer).
 * [`KeypointId`](encodings/keypoint_id.md): A 16-bit ID representing a type of semantic keypoint within a class.
-* [`KeypointPair`](encodings/keypoint_pair.md): A connection between two [`encodings.KeypointId`](https://rerun.io/docs/reference/types/encodings/keypoint_id?speculative-link)s.
+* [`KeypointPair`](encodings/keypoint_pair.md): A connection between two [`encodings.KeypointId`](https://rerun.io/docs/reference/types/encodings/keypoint_id)s.
 * [`Mat3x3`](encodings/mat3x3.md): A 3x3 Matrix.
 * [`Mat4x4`](encodings/mat4x4.md): A 4x4 Matrix.
 * [`PixelFormat`](encodings/pixel_format.md): Specifieds a particular format of an [`archetypes.Image`](https://rerun.io/docs/reference/types/archetypes/image).

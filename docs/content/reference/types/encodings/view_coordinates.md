@@ -18,9 +18,9 @@ FixedSizeList(3 x non-null UInt8)
 ```
 
 ## API reference links
- * 🌊 [C++ API docs for `ViewCoordinates`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1ViewCoordinates.html?speculative-link)
- * 🐍 [Python API docs for `ViewCoordinates`](https://ref.rerun.io/docs/python/stable/common/encodings?speculative-link#rerun.encodings.ViewCoordinates)
- * 🦀 [Rust API docs for `ViewCoordinates`](https://docs.rs/rerun/latest/rerun/encodings/struct.ViewCoordinates.html?speculative-link)
+ * 🌊 [C++ API docs for `ViewCoordinates`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1ViewCoordinates.html)
+ * 🐍 [Python API docs for `ViewCoordinates`](https://ref.rerun.io/docs/python/stable/common/encodings#rerun.encodings.ViewCoordinates)
+ * 🦀 [Rust API docs for `ViewCoordinates`](https://docs.rs/rerun/latest/rerun/encodings/struct.ViewCoordinates.html)
 
 
 ## Used by

@@ -31,9 +31,9 @@ Struct(
 ```
 
 ## API reference links
- * 🌊 [C++ API docs for `RotationAxisAngle`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1RotationAxisAngle.html?speculative-link)
- * 🐍 [Python API docs for `RotationAxisAngle`](https://ref.rerun.io/docs/python/stable/common/encodings?speculative-link#rerun.encodings.RotationAxisAngle)
- * 🦀 [Rust API docs for `RotationAxisAngle`](https://docs.rs/rerun/latest/rerun/encodings/struct.RotationAxisAngle.html?speculative-link)
+ * 🌊 [C++ API docs for `RotationAxisAngle`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1RotationAxisAngle.html)
+ * 🐍 [Python API docs for `RotationAxisAngle`](https://ref.rerun.io/docs/python/stable/common/encodings#rerun.encodings.RotationAxisAngle)
+ * 🦀 [Rust API docs for `RotationAxisAngle`](https://docs.rs/rerun/latest/rerun/encodings/struct.RotationAxisAngle.html)
 
 
 ## Used by

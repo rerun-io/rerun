@@ -12,9 +12,9 @@ UInt16
 ```
 
 ## API reference links
- * 🌊 [C++ API docs for `ClassId`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1ClassId.html?speculative-link)
- * 🐍 [Python API docs for `ClassId`](https://ref.rerun.io/docs/python/stable/common/encodings?speculative-link#rerun.encodings.ClassId)
- * 🦀 [Rust API docs for `ClassId`](https://docs.rs/rerun/latest/rerun/encodings/struct.ClassId.html?speculative-link)
+ * 🌊 [C++ API docs for `ClassId`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1ClassId.html)
+ * 🐍 [Python API docs for `ClassId`](https://ref.rerun.io/docs/python/stable/common/encodings#rerun.encodings.ClassId)
+ * 🦀 [Rust API docs for `ClassId`](https://docs.rs/rerun/latest/rerun/encodings/struct.ClassId.html)
 
 
 ## Used by

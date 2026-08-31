@@ -21,9 +21,9 @@ FixedSizeList(9 x non-null Float32)
 ```
 
 ## API reference links
- * 🌊 [C++ API docs for `Mat3x3`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1Mat3x3.html?speculative-link)
- * 🐍 [Python API docs for `Mat3x3`](https://ref.rerun.io/docs/python/stable/common/encodings?speculative-link#rerun.encodings.Mat3x3)
- * 🦀 [Rust API docs for `Mat3x3`](https://docs.rs/rerun/latest/rerun/encodings/struct.Mat3x3.html?speculative-link)
+ * 🌊 [C++ API docs for `Mat3x3`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1Mat3x3.html)
+ * 🐍 [Python API docs for `Mat3x3`](https://ref.rerun.io/docs/python/stable/common/encodings#rerun.encodings.Mat3x3)
+ * 🦀 [Rust API docs for `Mat3x3`](https://docs.rs/rerun/latest/rerun/encodings/struct.Mat3x3.html)
 
 
 ## Used by

@@ -12,9 +12,9 @@ List(non-null UInt8)
 ```
 
 ## API reference links
- * 🌊 [C++ API docs for `Blob`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1Blob.html?speculative-link)
- * 🐍 [Python API docs for `Blob`](https://ref.rerun.io/docs/python/stable/common/encodings?speculative-link#rerun.encodings.Blob)
- * 🦀 [Rust API docs for `Blob`](https://docs.rs/rerun/latest/rerun/encodings/struct.Blob.html?speculative-link)
+ * 🌊 [C++ API docs for `Blob`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1Blob.html)
+ * 🐍 [Python API docs for `Blob`](https://ref.rerun.io/docs/python/stable/common/encodings#rerun.encodings.Blob)
+ * 🦀 [Rust API docs for `Blob`](https://docs.rs/rerun/latest/rerun/encodings/struct.Blob.html)
 
 
 ## Used by

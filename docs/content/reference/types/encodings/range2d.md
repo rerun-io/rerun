@@ -26,8 +26,8 @@ Struct(
 ```
 
 ## API reference links
- * 🌊 [C++ API docs for `Range2D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1Range2D.html?speculative-link)
- * 🐍 [Python API docs for `Range2D`](https://ref.rerun.io/docs/python/stable/common/encodings?speculative-link#rerun.encodings.Range2D)
- * 🦀 [Rust API docs for `Range2D`](https://docs.rs/rerun/latest/rerun/encodings/struct.Range2D.html?speculative-link)
+ * 🌊 [C++ API docs for `Range2D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1Range2D.html)
+ * 🐍 [Python API docs for `Range2D`](https://ref.rerun.io/docs/python/stable/common/encodings#rerun.encodings.Range2D)
+ * 🦀 [Rust API docs for `Range2D`](https://docs.rs/rerun/latest/rerun/encodings/struct.Range2D.html)
 
 

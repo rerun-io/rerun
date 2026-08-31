@@ -12,9 +12,9 @@ FixedSizeList(2 x non-null Float64)
 ```
 
 ## API reference links
- * 🌊 [C++ API docs for `Range1D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1Range1D.html?speculative-link)
- * 🐍 [Python API docs for `Range1D`](https://ref.rerun.io/docs/python/stable/common/encodings?speculative-link#rerun.encodings.Range1D)
- * 🦀 [Rust API docs for `Range1D`](https://docs.rs/rerun/latest/rerun/encodings/struct.Range1D.html?speculative-link)
+ * 🌊 [C++ API docs for `Range1D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1Range1D.html)
+ * 🐍 [Python API docs for `Range1D`](https://ref.rerun.io/docs/python/stable/common/encodings#rerun.encodings.Range1D)
+ * 🦀 [Rust API docs for `Range1D`](https://docs.rs/rerun/latest/rerun/encodings/struct.Range1D.html)
 
 
 ## Used by
