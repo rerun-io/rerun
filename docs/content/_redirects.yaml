@@ -189,3 +189,28 @@ reference/types/datatypes/video_timestamp: reference/types/encodings/video_times
 reference/types/datatypes/view_coordinates: reference/types/encodings/view_coordinates
 reference/types/datatypes/view_dir: reference/types/encodings/view_dir
 reference/types/datatypes/visible_time_range: reference/types/encodings/visible_time_range
+
+# Changelog - 0.37 upcoming entries merged into the release changeset
+changelog/upcoming/a-la-carte-importer-features: changelog/changeset-0-37#a-la-carte-features-for-file-importers
+changelog/upcoming/datafusion-and-dataplatform-extras-removed: changelog/changeset-0-37#rerun-sdkdatafusion-and-rerun-sdkdataplatform-extras-removed
+changelog/upcoming/dataloader-explicit-windows: changelog/changeset-0-37#experimental-dataloader-windows-are-explicit-and-decoder-independent
+changelog/upcoming/dataloader-fetch-decode-pipeline: changelog/changeset-0-37#experimental-dataloader-decoders-now-process-fetch-blocks
+changelog/upcoming/dataloader-manifest-keyframe-scan: changelog/changeset-0-37#faster-manifest-generation-for-video-datasets
+changelog/upcoming/dataloader-skip-missing-samples: changelog/changeset-0-37#experimental-iterable-dataloader-skips-missing-samples
+changelog/upcoming/dataloader-unified-pipeline: changelog/changeset-0-37#experimental-dataloaders-use-a-unified-fetch-and-decode-pipeline
+changelog/upcoming/dataloader-video-decoding-performance: changelog/changeset-0-37#faster-video-decoding-for-training
+changelog/upcoming/dataset-links: changelog/changeset-0-37#links-to-datasets
+changelog/upcoming/datatypes-renamed-to-encodings: changelog/changeset-0-37#datatypes-renamed-to-encodings
+changelog/upcoming/map-dataset-manifest: changelog/changeset-0-37#rerunmapdataset-can-be-built-from-a-manifest
+changelog/upcoming/mp4-reader-sparse-keyframe-marker: changelog/changeset-0-37#mp4reader-emits-is_keyframe-as-a-sparse-marker-chunk
+changelog/upcoming/optimize-own-chunk-components: changelog/changeset-0-37#keyframe-markers-are-kept-out-of-the-video-chunks
+changelog/upcoming/recording-id-no-longer-disables-properties: changelog/changeset-0-37#setting-a-recording-id-no-longer-disables-recording-properties
+changelog/upcoming/rrd-stats-optimization-check: changelog/changeset-0-37#rerun-rrd-stats-tells-you-whether-a-recording-should-be-optimized
+changelog/upcoming/rust-1-96: changelog/changeset-0-37#update-to-rust-196
+changelog/upcoming/selection-panel-navigation: changelog/changeset-0-37#improved-selection-panel-navigation
+changelog/upcoming/split-loggable-trait: changelog/changeset-0-37#loggable-replaced-by-four-deserialization-traits
+changelog/upcoming/state-timeline-cursor-centered: changelog/changeset-0-37#state-timeline-views-keep-the-time-cursor-centered
+changelog/upcoming/state-timeline-entity-drop: changelog/changeset-0-37#drag-entities-onto-state-timeline-views
+changelog/upcoming/state-timeline-visible-time-range: changelog/changeset-0-37#visible-time-range-for-state-timeline-views
+changelog/upcoming/viewer-loads-asset-data: changelog/changeset-0-37#assets
+changelog/upcoming/web-viewer-save-artifacts: changelog/changeset-0-37#export-recordings-and-blueprints-from-the-web-viewer
