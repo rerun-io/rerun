@@ -35,7 +35,7 @@ From Python, a segment store covers the dataset's assets alongside the segment's
 Pass `include_assets=False` to leave them out, which also skips the requests for their manifests:
 
 ```python
-dataset.register_asset("file:///data/robot_mesh.rrd")
+dataset.register_asset("file:///path/to/file.rrd")
 
 # Describes the chunks of both the segment and the asset.
 store = dataset.segment_store(segment_id)
@@ -78,7 +78,7 @@ Docs: ../reference/types/views/state_timeline_view.md
 
 ### Export recordings and blueprints from the web Viewer
 
-The [Web Viewer JavaScript API](../../reference/npm.md) now provides `save_recording()` and `save_blueprint()`.
+The [Web Viewer JavaScript API](../reference/npm.md) now provides `save_recording()` and `save_blueprint()`.
 Each method returns a byte stream that can be saved as an `.rrd` or `.rbl` file.
 The stream is also compatible with `open_channel()`, so applications can restore an exported artifact through normal RRD ingestion.
 
