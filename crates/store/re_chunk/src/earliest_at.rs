@@ -79,7 +79,8 @@ impl Chunk {
     /// the lowest [`RowId`].
     /// Returns `None` if the `query` yields nothing.
     //
-    // NOTE: keep the temporal logic here in sync with `Self::latest_at`.
+    // TODO(RR-5573): We should unify more of the logic but until then,
+    // keep the temporal logic here in sync with `Self::latest_at`.
     pub fn earliest_at(
         &self,
         query: &EarliestAtQuery,

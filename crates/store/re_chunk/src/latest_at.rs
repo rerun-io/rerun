@@ -103,6 +103,9 @@ impl Chunk {
     /// information by inspecting the data, for examples timestamps on other timelines.
     /// See [`Self::timeline_sliced`] and [`Self::component_sliced`] if you do want to filter this
     /// extra data.
+    //
+    // TODO(RR-5573): We should unify more of the logic but until then,
+    // keep the temporal logic here in sync with `Self::earliest_at`.
     pub fn latest_at(
         &self,
         query: &LatestAtQuery,

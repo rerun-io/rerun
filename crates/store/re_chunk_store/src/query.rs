@@ -7,7 +7,8 @@ use re_int::SaturatingCast as _;
 use re_log::debug_assert;
 
 use re_chunk::{
-    Chunk, ChunkId, ComponentIdentifier, LatestAtQuery, RangeQuery, TimeColumn, TimelineName,
+    Chunk, ChunkId, ComponentIdentifier, EarliestAtQuery, LatestAtQuery, RangeQuery, TimeColumn,
+    TimelineName,
 };
 use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt};
 use re_types_core::{ComponentSet, UnorderedComponentSet};
@@ -874,6 +875,17 @@ impl QueryResults {
     }
 }
 
+/// A query that resolves to one point on an index.
+///
+/// The directional queries differ only in which end of the per-time index they walk from.
+trait PointQuery {
+    /// The timeline being queried, or `None` for a static-only query.
+    fn timeline(&self) -> Option<TimelineName>;
+
+    /// The chunks that may hold the result, out of one per-time index.
+    fn relevant_chunk_ids(&self, per_time: &ChunkIdSetPerTime) -> Option<Vec<ChunkId>>;
+}
+
 // LatestAt
 impl ChunkStore {
     /// Returns the most-relevant chunk(s) for the given [`LatestAtQuery`] and [`ComponentIdentifier`].
@@ -897,8 +909,42 @@ impl ChunkStore {
         entity_path: &EntityPath,
         component: ComponentIdentifier,
     ) -> QueryResults {
+        self.point_relevant_chunks(report_mode, query, entity_path, component)
+    }
+
+    /// Returns the most-relevant chunk(s) for the given [`LatestAtQuery`].
+    ///
+    /// Optionally include static data.
+    ///
+    /// The caller should filter the returned chunks further (see [`Chunk::latest_at`]) in order to
+    /// determine what exact row contains the final result.
+    pub fn latest_at_relevant_chunks_for_all_components(
+        &self,
+        report_mode: ChunkTrackingMode,
+        query: &LatestAtQuery,
+        entity_path: &EntityPath,
+        include_static: bool,
+    ) -> QueryResults {
+        re_tracing::profile_function!(format!("{query:?}"));
+
+        self.point_relevant_chunks_for_all_components(
+            report_mode,
+            query,
+            entity_path,
+            include_static,
+        )
+    }
+
+    /// Shared body of [`Self::latest_at_relevant_chunks`] and
+    /// [`Self::earliest_at_relevant_chunks`].
+    fn point_relevant_chunks(
+        &self,
+        report_mode: ChunkTrackingMode,
+        query: &impl PointQuery,
+        entity_path: &EntityPath,
+        component: ComponentIdentifier,
+    ) -> QueryResults {
         // Don't do a profile scope here, this can have a lot of overhead when executing many small queries.
-        //re_tracing::profile_function!(format!("{query:?}"));
 
         // Reminder: if a chunk has been indexed for a given component, then it must contain at
         // least one non-null value for that column.
@@ -920,42 +966,26 @@ impl ChunkStore {
             .temporal_chunk_ids_per_entity_per_component
             .get(entity_path)
             .and_then(|temporal_chunk_ids_per_timeline| {
-                let timeline = query.timeline()?;
-                temporal_chunk_ids_per_timeline.get(&timeline)
+                temporal_chunk_ids_per_timeline.get(&query.timeline()?)
             })
             .and_then(|temporal_chunk_ids_per_component| {
                 temporal_chunk_ids_per_component.get(&component)
             })
-            .and_then(|temporal_chunk_ids_per_time| {
-                Self::latest_at(query, temporal_chunk_ids_per_time)
-            })
+            .and_then(|per_time| query.relevant_chunk_ids(per_time))
             .unwrap_or_default();
 
         QueryResults::from_chunk_ids(self, entity_path, report_mode, chunk_ids.into_iter())
     }
 
-    /// Returns the most-relevant chunk(s) for the given [`LatestAtQuery`].
-    ///
-    /// Optionally include static data.
-    ///
-    /// The [`ChunkStore`] always work at the [`Chunk`] level (as opposed to the row level): it is
-    /// oblivious to the data therein.
-    /// For that reason, and because [`Chunk`]s are allowed to temporally overlap, it is possible
-    /// that a query has more than one relevant chunk.
-    ///
-    /// The returned vector is free of duplicates.
-    ///
-    /// The caller should filter the returned chunks further (see [`Chunk::latest_at`]) in order to
-    /// determine what exact row contains the final result.
-    pub fn latest_at_relevant_chunks_for_all_components(
+    /// Shared body of [`Self::latest_at_relevant_chunks_for_all_components`] and
+    /// [`Self::earliest_at_relevant_chunks_for_all_components`].
+    fn point_relevant_chunks_for_all_components(
         &self,
         report_mode: ChunkTrackingMode,
-        query: &LatestAtQuery,
+        query: &impl PointQuery,
         entity_path: &EntityPath,
         include_static: bool,
     ) -> QueryResults {
-        re_tracing::profile_function!(format!("{query:?}"));
-
         let chunk_ids = if include_static {
             let empty = Default::default();
             let static_chunks_per_component = self
@@ -972,8 +1002,7 @@ impl ChunkStore {
                 .temporal_chunk_ids_per_entity_per_component
                 .get(entity_path)
                 .and_then(|temporal_chunk_ids_per_timeline_per_component| {
-                    let timeline = query.timeline()?;
-                    temporal_chunk_ids_per_timeline_per_component.get(&timeline)
+                    temporal_chunk_ids_per_timeline_per_component.get(&query.timeline()?)
                 })
                 .map(|temporal_chunk_ids_per_component| {
                     temporal_chunk_ids_per_component
@@ -985,9 +1014,7 @@ impl ChunkStore {
                 })
                 .into_iter()
                 .flatten()
-                .filter_map(|temporal_chunk_ids_per_time| {
-                    Self::latest_at(query, temporal_chunk_ids_per_time)
-                })
+                .filter_map(|per_time| query.relevant_chunk_ids(per_time))
                 .flatten();
 
             // Deduplicate before passing it along.
@@ -1001,28 +1028,34 @@ impl ChunkStore {
             self.temporal_chunk_ids_per_entity
                 .get(entity_path)
                 .and_then(|temporal_chunk_ids_per_timeline| {
-                    let timeline = query.timeline()?;
-                    temporal_chunk_ids_per_timeline.get(&timeline)
+                    temporal_chunk_ids_per_timeline.get(&query.timeline()?)
                 })
-                .and_then(|temporal_chunk_ids_per_time| {
-                    Self::latest_at(query, temporal_chunk_ids_per_time)
-                })
+                .and_then(|per_time| query.relevant_chunk_ids(per_time))
                 .unwrap_or_default()
         };
 
         QueryResults::from_chunk_ids(self, entity_path, report_mode, chunk_ids.into_iter())
     }
+}
 
-    fn latest_at(
-        query: &LatestAtQuery,
+impl PointQuery for LatestAtQuery {
+    #[inline]
+    fn timeline(&self) -> Option<TimelineName> {
+        Self::timeline(self)
+    }
+
+    /// The chunks that may hold the latest value at-or-before the query time.
+    //
+    // NOTE: keep this in sync with the `EarliestAtQuery` implementation.
+    fn relevant_chunk_ids(
+        &self,
         temporal_chunk_ids_per_time: &ChunkIdSetPerTime,
     ) -> Option<Vec<ChunkId>> {
         // Don't do a profile scope here, this can have a lot of overhead when executing many small queries.
-        //re_tracing::profile_function!();
 
         let upper_bound = temporal_chunk_ids_per_time
             .per_start_time
-            .range(..=query.at())
+            .range(..=self.at())
             .next_back()
             .map(|(time, _)| *time)?;
 
@@ -1049,9 +1082,95 @@ impl ChunkStore {
 
         let temporal_chunk_ids = temporal_chunk_ids_per_time
             .per_start_time
-            .range(..=query.at())
+            .range(..=self.at())
             .rev()
             .take_while(|(time, _)| time.as_i64() >= lower_bound)
+            .flat_map(|(_time, chunk_ids)| chunk_ids.iter())
+            .copied()
+            .collect_vec();
+
+        Some(temporal_chunk_ids)
+    }
+}
+
+// EarliestAt
+impl ChunkStore {
+    /// Returns the most-relevant chunk(s) for the given [`EarliestAtQuery`] and [`ComponentIdentifier`].
+    ///
+    /// The caller should filter the returned chunks further (see [`Chunk::earliest_at`]) in order to
+    /// determine what exact row contains the final result.
+    pub fn earliest_at_relevant_chunks(
+        &self,
+        report_mode: ChunkTrackingMode,
+        query: &EarliestAtQuery,
+        entity_path: &EntityPath,
+        component: ComponentIdentifier,
+    ) -> QueryResults {
+        self.point_relevant_chunks(report_mode, query, entity_path, component)
+    }
+
+    /// Returns the most-relevant chunk(s) for the given [`EarliestAtQuery`].
+    ///
+    /// The caller should filter the returned chunks further (see [`Chunk::earliest_at`]) in order to
+    /// determine what exact row contains the final result.
+    pub fn earliest_at_relevant_chunks_for_all_components(
+        &self,
+        report_mode: ChunkTrackingMode,
+        query: &EarliestAtQuery,
+        entity_path: &EntityPath,
+        include_static: bool,
+    ) -> QueryResults {
+        re_tracing::profile_function!(format!("{query:?}"));
+
+        self.point_relevant_chunks_for_all_components(
+            report_mode,
+            query,
+            entity_path,
+            include_static,
+        )
+    }
+}
+
+impl PointQuery for EarliestAtQuery {
+    #[inline]
+    fn timeline(&self) -> Option<TimelineName> {
+        Self::timeline(self)
+    }
+
+    /// The chunks that may hold the earliest value at-or-after the query time.
+    //
+    // NOTE: keep this in sync with the `LatestAtQuery` implementation.
+    fn relevant_chunk_ids(
+        &self,
+        temporal_chunk_ids_per_time: &ChunkIdSetPerTime,
+    ) -> Option<Vec<ChunkId>> {
+        // Don't do a profile scope here, this can have a lot of overhead when executing many small queries.
+
+        // The earliest value at-or-after the query time lives in a chunk that *ends* at-or-after
+        // it, so we index by end time, where latest-at indexes by start time.
+        let lower_bound = temporal_chunk_ids_per_time
+            .per_end_time
+            .range(self.at()..)
+            .next()
+            .map(|(time, _)| *time)?;
+
+        // Overlapped chunks
+        // =================
+        //
+        // Same interval-length trick as latest-at, walking forwards instead of backwards: a
+        // chunk that ends at `e` starts no earlier than `e - max_interval_length`, so a chunk
+        // ending after `lower_bound + max_interval_length` cannot reach back far enough to beat
+        // the chunk that ends at `lower_bound`.
+        let upper_bound = lower_bound.as_i64().saturating_add(
+            temporal_chunk_ids_per_time
+                .max_interval_length
+                .saturating_cast(),
+        );
+
+        let temporal_chunk_ids = temporal_chunk_ids_per_time
+            .per_end_time
+            .range(self.at()..)
+            .take_while(|(time, _)| time.as_i64() <= upper_bound)
             .flat_map(|(_time, chunk_ids)| chunk_ids.iter())
             .copied()
             .collect_vec();

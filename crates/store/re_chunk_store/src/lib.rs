@@ -43,8 +43,8 @@ mod writes;
 #[doc(no_inline)]
 pub use {
     re_chunk::{
-        Chunk, ChunkId, ChunkShared, LatestAtQuery, RangeQuery, RangeQueryOptions, RowId, Span,
-        UnitChunkShared,
+        Chunk, ChunkId, ChunkShared, EarliestAtQuery, LatestAtQuery, RangeQuery, RangeQueryOptions,
+        RowId, Span, UnitChunkShared,
     },
     re_log_types::{AbsoluteTimeRange, TimeInt, TimeType, Timeline},
     re_sorbet::{ColumnDescriptor, ComponentColumnDescriptor, IndexColumnDescriptor},

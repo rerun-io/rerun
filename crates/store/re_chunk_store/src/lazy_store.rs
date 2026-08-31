@@ -10,8 +10,8 @@ use re_log_types::{AbsoluteTimeRange, EntityPath, StoreId, TimelineName};
 
 use crate::{
     ChunkStore, ChunkStoreConfig, ChunkStoreHandle, ChunkStoreResult, ChunkTrackingMode,
-    EntityTree, ExtractPropertiesError, LatestAtQuery, QueryResults, RangeQuery, StoreSchema,
-    extract_properties_from_chunks,
+    EarliestAtQuery, EntityTree, ExtractPropertiesError, LatestAtQuery, QueryResults, RangeQuery,
+    StoreSchema, extract_properties_from_chunks,
 };
 
 /// A [`ChunkStore`] backed by a [`ChunkProvider`], with index loaded but chunks loaded on demand.
@@ -229,6 +229,27 @@ impl LazyStore {
         self.store
             .read()
             .latest_at_relevant_chunks_for_all_components(
+                report_mode,
+                query,
+                entity_path,
+                include_static,
+            )
+    }
+
+    /// Run an earliest-at query against the virtual index.
+    ///
+    /// Returns [`QueryResults`] with physical chunks in `chunks` and
+    /// not-yet-loaded chunk IDs in `missing_virtual`.
+    pub fn earliest_at_relevant_chunks_for_all_components(
+        &self,
+        report_mode: ChunkTrackingMode,
+        query: &EarliestAtQuery,
+        entity_path: &EntityPath,
+        include_static: bool,
+    ) -> QueryResults {
+        self.store
+            .read()
+            .earliest_at_relevant_chunks_for_all_components(
                 report_mode,
                 query,
                 entity_path,

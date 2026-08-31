@@ -279,13 +279,13 @@ pub type ChunkIdSet = BTreeSet<ChunkId>;
 pub struct ChunkIdSetPerTime {
     /// Keeps track of the longest interval being currently stored in the two maps below.
     ///
-    /// This is used to bound the backwards linear walk when looking for overlapping chunks in
-    /// latest-at queries.
+    /// This bounds the linear walk for overlapping chunks: backwards through [`Self::per_start_time`]
+    /// for latest-at queries, forwards through [`Self::per_end_time`] for earliest-at queries.
     ///
     /// This is purely additive: this value is never decremented for any reason, whether it's GC,
     /// chunk splitting, or whatever else.
     ///
-    /// See [`ChunkStore::latest_at`] implementation comments for more details.
+    /// See the `PointQuery` implementations in `query.rs` for more details.
     pub(crate) max_interval_length: u64,
 
     /// *Both physical & virtual* [`ChunkId`]s organized by their _most specific_ start time.

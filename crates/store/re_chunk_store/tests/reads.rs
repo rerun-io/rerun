@@ -4,8 +4,8 @@ use arrow::array::ArrayRef;
 use itertools::Itertools as _;
 use re_chunk::{Chunk, ChunkId, RowId, TimePoint, TimelineName};
 use re_chunk_store::{
-    AbsoluteTimeRange, ChunkStore, ChunkStoreConfig, ChunkTrackingMode, LatestAtQuery, RangeQuery,
-    TimeInt,
+    AbsoluteTimeRange, ChunkStore, ChunkStoreConfig, ChunkTrackingMode, EarliestAtQuery,
+    LatestAtQuery, RangeQuery, TimeInt,
 };
 use re_log_types::example_components::{MyColor, MyIndex, MyPoint, MyPoints};
 use re_log_types::{EntityPath, TimeType, Timeline, build_frame_nr};
@@ -39,6 +39,36 @@ fn query_latest_array(
                 .map(|index| (index, chunk))
         })
         .max_by_key(|(index, _chunk)| *index)?;
+
+    unit.component_batch_raw(component_descr.component)
+        .map(|array| (data_time, row_id, array))
+}
+
+#[expect(clippy::unwrap_used)]
+fn query_earliest_array(
+    store: &ChunkStore,
+    entity_path: &EntityPath,
+    component_descr: &ComponentDescriptor,
+    query: &EarliestAtQuery,
+) -> Option<(TimeInt, RowId, ArrayRef)> {
+    re_tracing::profile_function!();
+
+    let ((data_time, row_id), unit) = store
+        .earliest_at_relevant_chunks(
+            ChunkTrackingMode::PanicOnMissing,
+            query,
+            entity_path,
+            component_descr.component,
+        )
+        .to_iter()
+        .unwrap()
+        .filter_map(|chunk| {
+            let chunk = chunk.earliest_at(query, component_descr.component)?;
+            chunk
+                .index(query.timeline().as_ref())
+                .map(|index| (index, chunk))
+        })
+        .min_by_key(|(index, _chunk)| *index)?;
 
     unit.component_batch_raw(component_descr.component)
         .map(|array| (data_time, row_id, array))
@@ -682,6 +712,563 @@ fn latest_at_overlapped_chunks() -> anyhow::Result<()> {
         assert_latest_chunk(frame6, vec![chunk1.id(), chunk2.id(), chunk3.id()]); // overlap
         assert_latest_chunk(frame7, vec![chunk1.id(), chunk2.id(), chunk3.id()]); // overlap
         assert_latest_chunk(frame8, vec![chunk1.id(), chunk2.id(), chunk3.id()]);
+    }
+
+    Ok(())
+}
+
+// ---
+
+/// The mirror of [`latest_at`]: the earliest value at-or-after the query time.
+#[test]
+fn earliest_at() -> anyhow::Result<()> {
+    re_log::setup_logging();
+
+    let mut store = ChunkStore::new(
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
+        ChunkStoreConfig::COMPACTION_DISABLED,
+    );
+
+    let entity_path = EntityPath::from("this/that");
+
+    let frame0 = TimeInt::new_temporal(0);
+    let frame1 = TimeInt::new_temporal(1);
+    let frame2 = TimeInt::new_temporal(2);
+    let frame3 = TimeInt::new_temporal(3);
+    let frame4 = TimeInt::new_temporal(4);
+    let frame5 = TimeInt::new_temporal(5);
+
+    let row_id1 = RowId::new();
+    let (indices1, colors1) = (MyIndex::from_iter(0..3), MyColor::from_iter(0..3));
+    let chunk1 = Chunk::builder(entity_path.clone())
+        .with_component_batches(
+            row_id1,
+            [build_frame_nr(frame1)],
+            [
+                (MyIndex::partial_descriptor(), &indices1 as _),
+                (MyPoints::descriptor_colors(), &colors1 as _),
+            ],
+        )
+        .build()?;
+
+    let row_id2 = RowId::new();
+    let points2 = MyPoint::from_iter(0..3);
+    let chunk2 = Chunk::builder(entity_path.clone())
+        .with_component_batches(
+            row_id2,
+            [build_frame_nr(frame2)],
+            [
+                (MyIndex::partial_descriptor(), &indices1 as _),
+                (MyPoints::descriptor_points(), &points2 as _),
+            ],
+        )
+        .build()?;
+
+    let row_id3 = RowId::new();
+    let points3 = MyPoint::from_iter(0..10);
+    let chunk3 = Chunk::builder(entity_path.clone())
+        .with_component_batches(
+            row_id3,
+            [build_frame_nr(frame3)],
+            [(MyPoints::descriptor_points(), &points3 as _)],
+        )
+        .build()?;
+
+    let row_id4 = RowId::new();
+    let colors4 = MyColor::from_iter(0..5);
+    let chunk4 = Chunk::builder(entity_path.clone())
+        .with_component_batches(
+            row_id4,
+            [build_frame_nr(frame4)],
+            [(MyPoints::descriptor_colors(), &colors4 as _)],
+        )
+        .build()?;
+
+    // injecting some static colors
+    let row_id5 = RowId::new();
+    let colors5 = MyColor::from_iter(0..3);
+    let chunk5 = Chunk::builder(entity_path.clone())
+        .with_component_batches(
+            row_id5,
+            TimePoint::default(),
+            [(MyPoints::descriptor_colors(), &colors5 as _)],
+        )
+        .build()?;
+
+    let chunk1 = Arc::new(chunk1);
+    let chunk2 = Arc::new(chunk2);
+    let chunk3 = Arc::new(chunk3);
+    let chunk4 = Arc::new(chunk4);
+    let chunk5 = Arc::new(chunk5);
+
+    store.insert_chunk(&chunk1)?;
+    store.insert_chunk(&chunk2)?;
+    store.insert_chunk(&chunk3)?;
+    store.insert_chunk(&chunk4)?;
+    store.insert_chunk(&chunk5)?;
+
+    let assert_earliest_components =
+        |frame_nr: TimeInt, rows: &[(ComponentDescriptor, Option<RowId>)]| {
+            let timeline_frame_nr = TimelineName::from("frame_nr");
+
+            for (component_desc, expected_row_id) in rows {
+                let row_id = query_earliest_array(
+                    &store,
+                    &entity_path,
+                    component_desc,
+                    &EarliestAtQuery::new(timeline_frame_nr, frame_nr),
+                )
+                .map(|(_data_time, row_id, _array)| row_id);
+
+                assert_eq!(*expected_row_id, row_id, "{component_desc}");
+            }
+        };
+
+    assert_earliest_components(
+        frame0,
+        &[
+            (MyPoints::descriptor_colors(), Some(row_id5)), // static
+            (MyIndex::partial_descriptor(), Some(row_id1)),
+            (MyPoints::descriptor_points(), Some(row_id2)),
+        ],
+    );
+    assert_earliest_components(
+        frame1,
+        &[
+            (MyPoints::descriptor_colors(), Some(row_id5)), // static
+            (MyIndex::partial_descriptor(), Some(row_id1)),
+            (MyPoints::descriptor_points(), Some(row_id2)),
+        ],
+    );
+    assert_earliest_components(
+        frame2,
+        &[
+            (MyPoints::descriptor_colors(), Some(row_id5)),
+            (MyIndex::partial_descriptor(), Some(row_id2)),
+            (MyPoints::descriptor_points(), Some(row_id2)),
+        ],
+    );
+    // Past the last `MyIndex`, but not past the last `MyPoints::points`.
+    assert_earliest_components(
+        frame3,
+        &[
+            (MyPoints::descriptor_colors(), Some(row_id5)),
+            (MyIndex::partial_descriptor(), None),
+            (MyPoints::descriptor_points(), Some(row_id3)),
+        ],
+    );
+    // Past all temporal data. Static data still answers.
+    assert_earliest_components(
+        frame4,
+        &[
+            (MyPoints::descriptor_colors(), Some(row_id5)),
+            (MyIndex::partial_descriptor(), None),
+            (MyPoints::descriptor_points(), None),
+        ],
+    );
+
+    // Component-less APIs
+    {
+        let assert_earliest_chunk =
+            |query: &EarliestAtQuery,
+             include_static: bool,
+             mut expected_chunk_ids: Vec<ChunkId>| {
+                let mut chunk_ids = store
+                    .earliest_at_relevant_chunks_for_all_components(
+                        ChunkTrackingMode::PanicOnMissing,
+                        query,
+                        &entity_path,
+                        include_static,
+                    )
+                    .to_iter()
+                    .unwrap()
+                    .map(|chunk| chunk.id())
+                    .collect_vec();
+                chunk_ids.sort();
+
+                expected_chunk_ids.sort();
+
+                similar_asserts::assert_eq!(expected_chunk_ids, chunk_ids, "{query:?}");
+            };
+
+        let timeline_frame_nr = TimelineName::from("frame_nr");
+        let at = |frame_nr: TimeInt| EarliestAtQuery::new(timeline_frame_nr, frame_nr);
+
+        // Without static data.
+        assert_earliest_chunk(&at(frame0), false, vec![chunk1.id()]);
+        assert_earliest_chunk(&at(frame1), false, vec![chunk1.id()]);
+        assert_earliest_chunk(&at(frame2), false, vec![chunk2.id()]);
+        assert_earliest_chunk(&at(frame3), false, vec![chunk3.id()]);
+        assert_earliest_chunk(&at(frame4), false, vec![chunk4.id()]);
+        // Past the end of the data.
+        assert_earliest_chunk(&at(frame5), false, vec![]);
+
+        // With static data. Components that have static data are skipped in the temporal walk,
+        // which is why `chunk4` (colors only) never shows up here.
+        assert_earliest_chunk(
+            &at(frame0),
+            true,
+            vec![chunk5.id(), chunk1.id(), chunk2.id()],
+        );
+        assert_earliest_chunk(
+            &at(frame1),
+            true,
+            vec![chunk5.id(), chunk1.id(), chunk2.id()],
+        );
+        assert_earliest_chunk(&at(frame2), true, vec![chunk5.id(), chunk2.id()]);
+        assert_earliest_chunk(&at(frame3), true, vec![chunk5.id(), chunk3.id()]);
+        assert_earliest_chunk(&at(frame4), true, vec![chunk5.id()]);
+        assert_earliest_chunk(&at(frame5), true, vec![chunk5.id()]);
+
+        // A static-only query never touches the temporal indices.
+        assert_earliest_chunk(&EarliestAtQuery::new_static(), true, vec![chunk5.id()]);
+        assert_earliest_chunk(&EarliestAtQuery::new_static(), false, vec![]);
+    }
+
+    Ok(())
+}
+
+#[test]
+fn earliest_at_sparse_component_edge_case() -> anyhow::Result<()> {
+    re_log::setup_logging();
+
+    let mut store = ChunkStore::new(
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
+        ChunkStoreConfig::COMPACTION_DISABLED,
+    );
+
+    let entity_path = EntityPath::from("this/that");
+
+    let frame0 = TimeInt::new_temporal(0);
+    let frame1 = TimeInt::new_temporal(1);
+    let frame2 = TimeInt::new_temporal(2);
+    let frame3 = TimeInt::new_temporal(3);
+    let frame4 = TimeInt::new_temporal(4);
+
+    // This chunk has a time range of `(1, 3)`, but the actual data for `MyIndex` only starts
+    // at `3`.
+
+    let row_id1_1 = RowId::new();
+    let row_id1_2 = RowId::new();
+    let row_id1_3 = RowId::new();
+    let chunk1 = Chunk::builder(entity_path.clone())
+        .with_sparse_component_batches(
+            row_id1_1,
+            [build_frame_nr(frame1)],
+            [
+                (MyIndex::partial_descriptor(), None),
+                (
+                    MyPoints::descriptor_points(),
+                    Some(&MyPoint::from_iter(0..1) as _),
+                ),
+            ],
+        )
+        .with_sparse_component_batches(
+            row_id1_2,
+            [build_frame_nr(frame2)],
+            [
+                (MyIndex::partial_descriptor(), None),
+                (
+                    MyPoints::descriptor_points(),
+                    Some(&MyPoint::from_iter(1..2) as _),
+                ),
+            ],
+        )
+        .with_sparse_component_batches(
+            row_id1_3,
+            [build_frame_nr(frame3)],
+            [
+                (
+                    MyIndex::partial_descriptor(),
+                    Some(&MyIndex::from_iter(2..3) as _),
+                ),
+                (
+                    MyPoints::descriptor_points(),
+                    Some(&MyPoint::from_iter(2..3) as _),
+                ),
+            ],
+        )
+        .build()?;
+
+    let chunk1 = Arc::new(chunk1);
+    store.insert_chunk(&chunk1)?;
+
+    // This chunk on the other hand has a time range of `(2, 2)`, and the data for `MyIndex`
+    // does start at `2`.
+
+    let row_id2_1 = RowId::new();
+    let chunk2 = Chunk::builder(entity_path.clone())
+        .with_sparse_component_batches(
+            row_id2_1,
+            [build_frame_nr(frame2)],
+            [
+                (
+                    MyIndex::partial_descriptor(),
+                    Some(&MyIndex::from_iter(2..3) as _),
+                ),
+                (
+                    MyPoints::descriptor_points(),
+                    Some(&MyPoint::from_iter(1..2) as _),
+                ),
+            ],
+        )
+        .build()?;
+
+    let chunk2 = Arc::new(chunk2);
+    store.insert_chunk(&chunk2)?;
+
+    let assert_earliest_components =
+        |frame_nr: TimeInt, rows: &[(ComponentDescriptor, Option<RowId>)]| {
+            let timeline_frame_nr = TimelineName::from("frame_nr");
+
+            for (component_desc, expected_row_id) in rows {
+                let row_id = query_earliest_array(
+                    &store,
+                    &entity_path,
+                    component_desc,
+                    &EarliestAtQuery::new(timeline_frame_nr, frame_nr),
+                )
+                .map(|(_data_time, row_id, _array)| row_id);
+
+                assert_eq!(*expected_row_id, row_id, "{component_desc} @ {frame_nr:?}");
+            }
+        };
+
+    // `MyIndex` skips the null rows in `chunk1`, so it resolves to `chunk2` until frame 3.
+    // `MyPoints::points` is dense in `chunk1`, so it resolves there first. The tie at frame 2
+    // goes to the lower `RowId`.
+    assert_earliest_components(
+        frame0,
+        &[
+            (MyIndex::partial_descriptor(), Some(row_id2_1)),
+            (MyPoints::descriptor_points(), Some(row_id1_1)),
+        ],
+    );
+    assert_earliest_components(
+        frame1,
+        &[
+            (MyIndex::partial_descriptor(), Some(row_id2_1)),
+            (MyPoints::descriptor_points(), Some(row_id1_1)),
+        ],
+    );
+    assert_earliest_components(
+        frame2,
+        &[
+            (MyIndex::partial_descriptor(), Some(row_id2_1)),
+            (MyPoints::descriptor_points(), Some(row_id1_2)),
+        ],
+    );
+    assert_earliest_components(
+        frame3,
+        &[
+            (MyIndex::partial_descriptor(), Some(row_id1_3)),
+            (MyPoints::descriptor_points(), Some(row_id1_3)),
+        ],
+    );
+    assert_earliest_components(
+        frame4,
+        &[
+            (MyIndex::partial_descriptor(), None),
+            (MyPoints::descriptor_points(), None),
+        ],
+    );
+
+    // Component-less APIs
+    {
+        let assert_earliest_chunk = |frame_nr: TimeInt, mut expected_chunk_ids: Vec<ChunkId>| {
+            let timeline_frame_nr = TimelineName::from("frame_nr");
+
+            let mut chunk_ids = store
+                .earliest_at_relevant_chunks_for_all_components(
+                    ChunkTrackingMode::PanicOnMissing,
+                    &EarliestAtQuery::new(timeline_frame_nr, frame_nr),
+                    &entity_path,
+                    false, /* don't include static data */
+                )
+                .to_iter()
+                .unwrap()
+                .map(|chunk| chunk.id())
+                .collect_vec();
+            chunk_ids.sort();
+
+            expected_chunk_ids.sort();
+
+            similar_asserts::assert_eq!(expected_chunk_ids, chunk_ids, "{frame_nr:?}");
+        };
+
+        assert_earliest_chunk(frame0, vec![chunk1.id(), chunk2.id()]); // overlap
+        assert_earliest_chunk(frame1, vec![chunk1.id(), chunk2.id()]); // overlap
+        assert_earliest_chunk(frame2, vec![chunk1.id(), chunk2.id()]); // overlap
+        assert_earliest_chunk(frame3, vec![chunk1.id()]);
+        assert_earliest_chunk(frame4, vec![]);
+    }
+
+    Ok(())
+}
+
+#[test]
+fn earliest_at_overlapped_chunks() -> anyhow::Result<()> {
+    re_log::setup_logging();
+
+    let mut store = ChunkStore::new(
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
+        ChunkStoreConfig::COMPACTION_DISABLED,
+    );
+
+    let entity_path = EntityPath::from("this/that");
+
+    let frame0 = TimeInt::new_temporal(0);
+    let frame1 = TimeInt::new_temporal(1);
+    let frame2 = TimeInt::new_temporal(2);
+    let frame3 = TimeInt::new_temporal(3);
+    let frame4 = TimeInt::new_temporal(4);
+    let frame5 = TimeInt::new_temporal(5);
+    let frame6 = TimeInt::new_temporal(6);
+    let frame7 = TimeInt::new_temporal(7);
+    let frame8 = TimeInt::new_temporal(8);
+
+    let points1 = MyPoint::from_iter(0..1);
+    let points2 = MyPoint::from_iter(1..2);
+    let points3 = MyPoint::from_iter(2..3);
+    let points4 = MyPoint::from_iter(3..4);
+    let points5 = MyPoint::from_iter(4..5);
+    let points6 = MyPoint::from_iter(5..6);
+    let points7 = MyPoint::from_iter(6..7);
+
+    let row_id1_1 = RowId::new();
+    let row_id1_3 = RowId::new();
+    let row_id1_5 = RowId::new();
+    let row_id1_7 = RowId::new();
+    let chunk1 = Chunk::builder(entity_path.clone())
+        .with_sparse_component_batches(
+            row_id1_1,
+            [build_frame_nr(frame1)],
+            [(MyPoints::descriptor_points(), Some(&points1 as _))],
+        )
+        .with_sparse_component_batches(
+            row_id1_3,
+            [build_frame_nr(frame3)],
+            [(MyPoints::descriptor_points(), Some(&points3 as _))],
+        )
+        .with_sparse_component_batches(
+            row_id1_5,
+            [build_frame_nr(frame5)],
+            [(MyPoints::descriptor_points(), Some(&points5 as _))],
+        )
+        .with_sparse_component_batches(
+            row_id1_7,
+            [build_frame_nr(frame7)],
+            [(MyPoints::descriptor_points(), Some(&points7 as _))],
+        )
+        .build()?;
+
+    let chunk1 = Arc::new(chunk1);
+    store.insert_chunk(&chunk1)?;
+
+    let row_id2_2 = RowId::new();
+    let row_id2_3 = RowId::new();
+    let row_id2_4 = RowId::new();
+    let chunk2 = Chunk::builder(entity_path.clone())
+        .with_sparse_component_batches(
+            row_id2_2,
+            [build_frame_nr(frame2)],
+            [(MyPoints::descriptor_points(), Some(&points2 as _))],
+        )
+        .with_sparse_component_batches(
+            row_id2_3,
+            [build_frame_nr(frame3)],
+            [(MyPoints::descriptor_points(), Some(&points3 as _))],
+        )
+        .with_sparse_component_batches(
+            row_id2_4,
+            [build_frame_nr(frame4)],
+            [(MyPoints::descriptor_points(), Some(&points4 as _))],
+        )
+        .build()?;
+
+    let chunk2 = Arc::new(chunk2);
+    store.insert_chunk(&chunk2)?;
+
+    let row_id3_2 = RowId::new();
+    let row_id3_4 = RowId::new();
+    let row_id3_6 = RowId::new();
+    let chunk3 = Chunk::builder(entity_path.clone())
+        .with_sparse_component_batches(
+            row_id3_2,
+            [build_frame_nr(frame2)],
+            [(MyPoints::descriptor_points(), Some(&points2 as _))],
+        )
+        .with_sparse_component_batches(
+            row_id3_4,
+            [build_frame_nr(frame4)],
+            [(MyPoints::descriptor_points(), Some(&points4 as _))],
+        )
+        .with_sparse_component_batches(
+            row_id3_6,
+            [build_frame_nr(frame6)],
+            [(MyPoints::descriptor_points(), Some(&points6 as _))],
+        )
+        .build()?;
+
+    let chunk3 = Arc::new(chunk3);
+    store.insert_chunk(&chunk3)?;
+
+    // Ties on the data time go to the lowest `RowId`, the opposite end from latest-at.
+    for (at, expected_row_id) in [
+        (TimeInt::MIN, Some(row_id1_1)),
+        (frame0, Some(row_id1_1)),
+        (frame1, Some(row_id1_1)),
+        (frame2, Some(row_id2_2)),
+        (frame3, Some(row_id1_3)),
+        (frame4, Some(row_id2_4)),
+        // `chunk3` ends at 6 and `chunk1` at 7, so `chunk1` is only reachable through the
+        // forward `max_interval_length` walk. Without it this would resolve to frame 6.
+        (frame5, Some(row_id1_5)),
+        (frame6, Some(row_id3_6)),
+        (frame7, Some(row_id1_7)),
+        (frame8, None),
+        (TimeInt::MAX, None),
+    ] {
+        let query = EarliestAtQuery::new(TimelineName::from("frame_nr"), at);
+        let row_id =
+            query_earliest_array(&store, &entity_path, &MyPoints::descriptor_points(), &query)
+                .map(|(_data_time, row_id, _array)| row_id);
+        assert_eq!(expected_row_id, row_id, "{query:?}");
+    }
+
+    // Component-less APIs
+    {
+        let assert_earliest_chunk = |frame_nr: TimeInt, mut expected_chunk_ids: Vec<ChunkId>| {
+            let timeline_frame_nr = TimelineName::from("frame_nr");
+
+            let mut chunk_ids = store
+                .earliest_at_relevant_chunks_for_all_components(
+                    ChunkTrackingMode::PanicOnMissing,
+                    &EarliestAtQuery::new(timeline_frame_nr, frame_nr),
+                    &entity_path,
+                    false, /* don't include static data */
+                )
+                .to_iter()
+                .unwrap()
+                .map(|chunk| chunk.id())
+                .collect_vec();
+            chunk_ids.sort();
+
+            expected_chunk_ids.sort();
+
+            similar_asserts::assert_eq!(expected_chunk_ids, chunk_ids, "{frame_nr:?}");
+        };
+
+        assert_earliest_chunk(frame0, vec![chunk1.id(), chunk2.id(), chunk3.id()]); // overlap
+        assert_earliest_chunk(frame1, vec![chunk1.id(), chunk2.id(), chunk3.id()]); // overlap
+        assert_earliest_chunk(frame2, vec![chunk1.id(), chunk2.id(), chunk3.id()]); // overlap
+        assert_earliest_chunk(frame3, vec![chunk1.id(), chunk2.id(), chunk3.id()]); // overlap
+        assert_earliest_chunk(frame4, vec![chunk1.id(), chunk2.id(), chunk3.id()]); // overlap
+        // `chunk2` ends at 4, so it holds nothing at-or-after 5.
+        assert_earliest_chunk(frame5, vec![chunk1.id(), chunk3.id()]); // overlap
+        assert_earliest_chunk(frame6, vec![chunk1.id(), chunk3.id()]); // overlap
+        assert_earliest_chunk(frame7, vec![chunk1.id()]);
+        assert_earliest_chunk(frame8, vec![]);
     }
 
     Ok(())
