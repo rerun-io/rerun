@@ -12,9 +12,9 @@ UInt16
 ```
 
 ## API reference links
- * 🌊 [C++ API docs for `UInt16`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1UInt16.html?speculative-link)
- * 🐍 [Python API docs for `UInt16`](https://ref.rerun.io/docs/python/stable/common/encodings?speculative-link#rerun.encodings.UInt16)
- * 🦀 [Rust API docs for `UInt16`](https://docs.rs/rerun/latest/rerun/encodings/struct.UInt16.html?speculative-link)
+ * 🌊 [C++ API docs for `UInt16`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1UInt16.html)
+ * 🐍 [Python API docs for `UInt16`](https://ref.rerun.io/docs/python/stable/common/encodings#rerun.encodings.UInt16)
+ * 🦀 [Rust API docs for `UInt16`](https://docs.rs/rerun/latest/rerun/encodings/struct.UInt16.html)
 
 
 ## Used by

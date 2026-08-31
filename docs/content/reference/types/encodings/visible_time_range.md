@@ -39,9 +39,9 @@ Struct(
 ```
 
 ## API reference links
- * 🌊 [C++ API docs for `VisibleTimeRange`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1VisibleTimeRange.html?speculative-link)
- * 🐍 [Python API docs for `VisibleTimeRange`](https://ref.rerun.io/docs/python/stable/common/encodings?speculative-link#rerun.encodings.VisibleTimeRange)
- * 🦀 [Rust API docs for `VisibleTimeRange`](https://docs.rs/rerun/latest/rerun/encodings/struct.VisibleTimeRange.html?speculative-link)
+ * 🌊 [C++ API docs for `VisibleTimeRange`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1VisibleTimeRange.html)
+ * 🐍 [Python API docs for `VisibleTimeRange`](https://ref.rerun.io/docs/python/stable/common/encodings#rerun.encodings.VisibleTimeRange)
+ * 🦀 [Rust API docs for `VisibleTimeRange`](https://docs.rs/rerun/latest/rerun/encodings/struct.VisibleTimeRange.html)
 
 ## Example
 

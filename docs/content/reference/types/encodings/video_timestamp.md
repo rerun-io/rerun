@@ -15,9 +15,9 @@ Int64
 ```
 
 ## API reference links
- * 🌊 [C++ API docs for `VideoTimestamp`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1VideoTimestamp.html?speculative-link)
- * 🐍 [Python API docs for `VideoTimestamp`](https://ref.rerun.io/docs/python/stable/common/encodings?speculative-link#rerun.encodings.VideoTimestamp)
- * 🦀 [Rust API docs for `VideoTimestamp`](https://docs.rs/rerun/latest/rerun/encodings/struct.VideoTimestamp.html?speculative-link)
+ * 🌊 [C++ API docs for `VideoTimestamp`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1VideoTimestamp.html)
+ * 🐍 [Python API docs for `VideoTimestamp`](https://ref.rerun.io/docs/python/stable/common/encodings#rerun.encodings.VideoTimestamp)
+ * 🦀 [Rust API docs for `VideoTimestamp`](https://docs.rs/rerun/latest/rerun/encodings/struct.VideoTimestamp.html)
 
 
 ## Used by

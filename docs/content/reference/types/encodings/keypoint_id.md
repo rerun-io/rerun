@@ -12,9 +12,9 @@ UInt16
 ```
 
 ## API reference links
- * 🌊 [C++ API docs for `KeypointId`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1KeypointId.html?speculative-link)
- * 🐍 [Python API docs for `KeypointId`](https://ref.rerun.io/docs/python/stable/common/encodings?speculative-link#rerun.encodings.KeypointId)
- * 🦀 [Rust API docs for `KeypointId`](https://docs.rs/rerun/latest/rerun/encodings/struct.KeypointId.html?speculative-link)
+ * 🌊 [C++ API docs for `KeypointId`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1KeypointId.html)
+ * 🐍 [Python API docs for `KeypointId`](https://ref.rerun.io/docs/python/stable/common/encodings#rerun.encodings.KeypointId)
+ * 🦀 [Rust API docs for `KeypointId`](https://docs.rs/rerun/latest/rerun/encodings/struct.KeypointId.html)
 
 
 ## Used by

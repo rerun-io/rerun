@@ -26,9 +26,9 @@ Struct(
 ```
 
 ## API reference links
- * 🌊 [C++ API docs for `Utf8Pair`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1Utf8Pair.html?speculative-link)
- * 🐍 [Python API docs for `Utf8Pair`](https://ref.rerun.io/docs/python/stable/common/encodings?speculative-link#rerun.encodings.Utf8Pair)
- * 🦀 [Rust API docs for `Utf8Pair`](https://docs.rs/rerun/latest/rerun/encodings/struct.Utf8Pair.html?speculative-link)
+ * 🌊 [C++ API docs for `Utf8Pair`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1Utf8Pair.html)
+ * 🐍 [Python API docs for `Utf8Pair`](https://ref.rerun.io/docs/python/stable/common/encodings#rerun.encodings.Utf8Pair)
+ * 🦀 [Rust API docs for `Utf8Pair`](https://docs.rs/rerun/latest/rerun/encodings/struct.Utf8Pair.html)
 
 
 ## Used by

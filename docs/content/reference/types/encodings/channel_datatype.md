@@ -48,9 +48,9 @@ UInt8
 ```
 
 ## API reference links
- * 🌊 [C++ API docs for `ChannelDatatype`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1encodings.html?speculative-link)
- * 🐍 [Python API docs for `ChannelDatatype`](https://ref.rerun.io/docs/python/stable/common/encodings?speculative-link#rerun.encodings.ChannelDatatype)
- * 🦀 [Rust API docs for `ChannelDatatype`](https://docs.rs/rerun/latest/rerun/encodings/enum.ChannelDatatype.html?speculative-link)
+ * 🌊 [C++ API docs for `ChannelDatatype`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1encodings.html)
+ * 🐍 [Python API docs for `ChannelDatatype`](https://ref.rerun.io/docs/python/stable/common/encodings#rerun.encodings.ChannelDatatype)
+ * 🦀 [Rust API docs for `ChannelDatatype`](https://docs.rs/rerun/latest/rerun/encodings/enum.ChannelDatatype.html)
 
 
 ## Used by

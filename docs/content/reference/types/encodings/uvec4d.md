@@ -12,8 +12,8 @@ FixedSizeList(4 x non-null UInt32)
 ```
 
 ## API reference links
- * 🌊 [C++ API docs for `UVec4D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1UVec4D.html?speculative-link)
- * 🐍 [Python API docs for `UVec4D`](https://ref.rerun.io/docs/python/stable/common/encodings?speculative-link#rerun.encodings.UVec4D)
- * 🦀 [Rust API docs for `UVec4D`](https://docs.rs/rerun/latest/rerun/encodings/struct.UVec4D.html?speculative-link)
+ * 🌊 [C++ API docs for `UVec4D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1UVec4D.html)
+ * 🐍 [Python API docs for `UVec4D`](https://ref.rerun.io/docs/python/stable/common/encodings#rerun.encodings.UVec4D)
+ * 🦀 [Rust API docs for `UVec4D`](https://docs.rs/rerun/latest/rerun/encodings/struct.UVec4D.html)
 
 

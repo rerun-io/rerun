@@ -12,7 +12,7 @@ The id refers either to a class or key-point id
 #### `id`
 Type: non-null `UInt16`
 
-[`encodings.ClassId`](https://rerun.io/docs/reference/types/encodings/class_id?speculative-link) or [`encodings.KeypointId`](https://rerun.io/docs/reference/types/encodings/keypoint_id?speculative-link) to which this annotation info belongs.
+[`encodings.ClassId`](https://rerun.io/docs/reference/types/encodings/class_id) or [`encodings.KeypointId`](https://rerun.io/docs/reference/types/encodings/keypoint_id) to which this annotation info belongs.
 
 #### `label`
 Type: [`Utf8`](../encodings/utf8.md)
@@ -35,9 +35,9 @@ Struct(
 ```
 
 ## API reference links
- * 🌊 [C++ API docs for `AnnotationInfo`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1AnnotationInfo.html?speculative-link)
- * 🐍 [Python API docs for `AnnotationInfo`](https://ref.rerun.io/docs/python/stable/common/encodings?speculative-link#rerun.encodings.AnnotationInfo)
- * 🦀 [Rust API docs for `AnnotationInfo`](https://docs.rs/rerun/latest/rerun/encodings/struct.AnnotationInfo.html?speculative-link)
+ * 🌊 [C++ API docs for `AnnotationInfo`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1AnnotationInfo.html)
+ * 🐍 [Python API docs for `AnnotationInfo`](https://ref.rerun.io/docs/python/stable/common/encodings#rerun.encodings.AnnotationInfo)
+ * 🦀 [Rust API docs for `AnnotationInfo`](https://docs.rs/rerun/latest/rerun/encodings/struct.AnnotationInfo.html)
 
 
 ## Used by
