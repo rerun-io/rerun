@@ -164,7 +164,7 @@ impl From<ChunkId> for [u8; 16] {
 }
 
 // Make `quiver::Column<ChunkId>` work (backed by a big-endian `FixedSizeBinary(16)` column):
-quiver::newtype_datatype!(ChunkId, quiver::FixedSizeBinary<16>);
+quiver::newtype_data_type!(ChunkId, quiver::FixedSizeBinary<16>);
 
 impl std::ops::Deref for ChunkId {
     type Target = re_tuid::Tuid;

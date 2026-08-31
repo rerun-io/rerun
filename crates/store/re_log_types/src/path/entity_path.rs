@@ -452,7 +452,7 @@ impl From<EntityPath> for String {
 
 // Make `quiver::Column<EntityPath>` work (backed by a `Utf8` column).
 // Reading parses with `parse_forgiving` (via `From<String>`).
-quiver::newtype_datatype!(EntityPath, quiver::Utf8);
+quiver::newtype_data_type!(EntityPath, quiver::Utf8);
 
 impl From<re_types_core::encodings::EntityPath> for EntityPath {
     #[inline]

@@ -442,29 +442,33 @@ impl QueryDatasetResponse {
         chunk_direct_urls_expiry: Vec<Option<i64>>,
         timelines: &std::collections::BTreeMap<String, (DataType, Vec<Option<i64>>)>,
     ) -> arrow::error::Result<RecordBatch> {
-        QueryDatasetDataframe {
-            chunk_id: chunk_ids.into(),
-            chunk_segment_id: chunk_segment_ids.into(),
-            rerun_segment_layer: chunk_layer_names.into(),
-            chunk_key: chunk_keys.into(),
-            chunk_entity_path: chunk_entity_paths.into(),
-            chunk_is_static: chunk_is_static.into(),
-            chunk_byte_len: chunk_byte_lengths.into(),
-            chunk_byte_size_uncompressed: chunk_byte_lengths_uncompressed.into(),
-            rerun_layer_direct_url: quiver::Column::try_from_values(chunk_direct_urls)?,
-            rerun_layer_direct_url_expires_at: quiver::Column::try_from_values(
-                chunk_direct_urls_expiry,
-            )?,
+        type Df = QueryDatasetDataframe;
+        Df {
+            chunk_id: Df::COLUMN_CHUNK_ID.new_from_values(chunk_ids),
+            chunk_segment_id: Df::COLUMN_CHUNK_SEGMENT_ID.new_from_values(chunk_segment_ids),
+            rerun_segment_layer: Df::COLUMN_RERUN_SEGMENT_LAYER.new_from_values(chunk_layer_names),
+            chunk_key: Df::COLUMN_CHUNK_KEY.new_from_values(chunk_keys),
+            chunk_entity_path: Df::COLUMN_CHUNK_ENTITY_PATH.new_from_values(chunk_entity_paths),
+            chunk_is_static: Df::COLUMN_CHUNK_IS_STATIC.new_from_values(chunk_is_static),
+            chunk_byte_len: Df::COLUMN_CHUNK_BYTE_LEN.new_from_values(chunk_byte_lengths),
+            chunk_byte_size_uncompressed: Df::COLUMN_CHUNK_BYTE_SIZE_UNCOMPRESSED
+                .new_from_values(chunk_byte_lengths_uncompressed),
+            rerun_layer_direct_url: Df::COLUMN_RERUN_LAYER_DIRECT_URL
+                .try_new_from_values(chunk_direct_urls)?,
+            rerun_layer_direct_url_expires_at: Df::COLUMN_RERUN_LAYER_DIRECT_URL_EXPIRES_AT
+                .try_new_from_values(chunk_direct_urls_expiry)?,
 
             // Caller is responsible for producing the same `timelines` set for every response of a
             // single query, so all batches share a schema and the client can concatenate them.
             extra_columns: timelines
                 .iter()
-                .map(|(timeline_name, (_data_type, mins))| quiver::DynColumn {
-                    field: Self::field_timeline_start(timeline_name),
-                    array: Arc::new(Int64Array::from(mins.clone())),
+                .map(|(timeline_name, (_data_type, mins))| {
+                    quiver::DynColumn::try_new(
+                        Self::field_timeline_start(timeline_name),
+                        Arc::new(Int64Array::from(mins.clone())),
+                    )
                 })
-                .collect(),
+                .collect::<Result<Vec<_>, _>>()?,
         }
         .into_record_batch()
         .map_err(|err| ArrowError::InvalidArgumentError(err.to_string()))
@@ -2072,13 +2076,15 @@ impl ScanSegmentTableResponse {
         num_chunks: Vec<u64>,
         size_bytes: Vec<u64>,
     ) -> arrow::error::Result<RecordBatch> {
-        ScanSegmentTableDataframe {
-            rerun_segment_id: segment_ids.into(),
-            rerun_layer_names: layer_names.into(),
-            rerun_storage_urls: storage_urls.into(),
-            rerun_last_updated_at: last_updated_at.into(),
-            rerun_num_chunks: num_chunks.into(),
-            rerun_size_bytes: size_bytes.into(),
+        type Df = ScanSegmentTableDataframe;
+        Df {
+            rerun_segment_id: Df::COLUMN_RERUN_SEGMENT_ID.new_from_values(segment_ids),
+            rerun_layer_names: Df::COLUMN_RERUN_LAYER_NAMES.new_from_values(layer_names),
+            rerun_storage_urls: Df::COLUMN_RERUN_STORAGE_URLS.new_from_values(storage_urls),
+            rerun_last_updated_at: Df::COLUMN_RERUN_LAST_UPDATED_AT
+                .new_from_values(last_updated_at),
+            rerun_num_chunks: Df::COLUMN_RERUN_NUM_CHUNKS.new_from_values(num_chunks),
+            rerun_size_bytes: Df::COLUMN_RERUN_SIZE_BYTES.new_from_values(size_bytes),
             extra_columns: vec![],
         }
         .into_record_batch()

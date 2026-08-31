@@ -125,7 +125,7 @@ impl std::str::FromStr for LayerName {
 // Make `quiver::Column<LayerName>` work (backed by a `Utf8` column).
 // `try_*` because reading validates non-emptiness (via `TryFrom<String>`) at
 // column construction, so an empty layer name can't sneak in from storage either.
-quiver::try_newtype_datatype!(LayerName, quiver::Utf8);
+quiver::try_newtype_data_type!(LayerName, quiver::Utf8);
 
 impl AsRef<str> for LayerName {
     #[inline]
@@ -238,12 +238,12 @@ mod tests {
     fn quiver_column_rejects_empty() {
         use arrow::array::StringArray;
 
-        // A non-empty column round-trips.
-        let column = quiver::Column::<LayerName>::from_values([LayerName::base()]);
-        assert_eq!(column.to_vec(), [LayerName::base()]);
+        // A non-empty array round-trips.
+        let array = quiver::TypedArray::<LayerName>::from_values([LayerName::base()]);
+        assert_eq!(array.to_vec(), [LayerName::base()]);
 
-        // A column containing an empty string is rejected at construction.
+        // An array containing an empty string is rejected at construction.
         let array = std::sync::Arc::new(StringArray::from(vec!["base", ""]));
-        assert!(quiver::Column::<LayerName>::try_new(array).is_err());
+        assert!(quiver::TypedArray::<LayerName>::try_new(array).is_err());
     }
 }

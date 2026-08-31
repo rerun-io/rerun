@@ -72,7 +72,7 @@ pub struct QueryDatasetDataframe {
 /// Strongly-typed view of the dataframe in [`crate::cloud::v1alpha1::QueryTasksResponse::data`].
 ///
 /// One row per task. The field names are the column names.
-#[derive(Default, quiver::Quiver)]
+#[derive(quiver::Quiver)]
 pub struct QueryTasksDataframe {
     /// The unique id of the task.
     pub task_id: quiver::Column<TaskId>,
@@ -113,7 +113,7 @@ pub struct QueryTasksDataframe {
 /// Strongly-typed view of the dataframe in [`crate::cloud::v1alpha1::RegisterWithDatasetResponse::data`].
 ///
 /// One row per registered data source. The field names are the column names.
-#[derive(Default, quiver::Quiver)]
+#[derive(quiver::Quiver)]
 pub struct RegisterWithDatasetDataframe {
     /// The id of the segment the data source was registered to.
     pub rerun_segment_id: quiver::Column<SegmentId>,
@@ -137,7 +137,7 @@ pub struct RegisterWithDatasetDataframe {
 ///
 /// One row per segment; all the segment's layers are folded into the list columns.
 /// The field names are the column names.
-#[derive(Default, quiver::Quiver)]
+#[derive(quiver::Quiver)]
 pub struct ScanSegmentTableDataframe {
     /// The unique identifier of the segment.
     pub rerun_segment_id: quiver::Column<SegmentId>,
@@ -174,7 +174,7 @@ pub struct ScanSegmentTableDataframe {
 /// See [`crate::cloud::v1alpha1::ScanDatasetManifestResponse`] for the row semantics
 /// (one row per (layer, segment) pair).
 /// The field names are the column names.
-#[derive(Default, quiver::Quiver)]
+#[derive(quiver::Quiver)]
 pub struct ScanDatasetManifestDataframe {
     /// The name of the layer.
     pub rerun_layer_name: quiver::Column<LayerName>,
@@ -242,20 +242,22 @@ impl ScanDatasetManifestDataframe {
         registration_statuses: Vec<String>,
     ) -> Self {
         Self {
-            rerun_layer_name: layer_names.into(),
-            rerun_segment_id: segment_ids.into(),
-            rerun_storage_url: storage_urls.into(),
-            rerun_layer_type: layer_types.into(),
-            rerun_registration_time: registration_times.into(),
-            rerun_last_updated_at: last_updated_at_times.into(),
-            rerun_num_chunks: num_chunks.into_iter().map(Some).collect::<Vec<_>>().into(),
-            rerun_size_bytes: size_bytes.into_iter().map(Some).collect::<Vec<_>>().into(),
-            rerun_schema_sha256: schema_sha256s
-                .into_iter()
-                .map(Some)
-                .collect::<Vec<_>>()
-                .into(),
-            rerun_registration_status: registration_statuses.into(),
+            rerun_layer_name: Self::COLUMN_RERUN_LAYER_NAME.new_from_values(layer_names),
+            rerun_segment_id: Self::COLUMN_RERUN_SEGMENT_ID.new_from_values(segment_ids),
+            rerun_storage_url: Self::COLUMN_RERUN_STORAGE_URL.new_from_values(storage_urls),
+            rerun_layer_type: Self::COLUMN_RERUN_LAYER_TYPE.new_from_values(layer_types),
+            rerun_registration_time: Self::COLUMN_RERUN_REGISTRATION_TIME
+                .new_from_values(registration_times),
+            rerun_last_updated_at: Self::COLUMN_RERUN_LAST_UPDATED_AT
+                .new_from_values(last_updated_at_times),
+            rerun_num_chunks: Self::COLUMN_RERUN_NUM_CHUNKS
+                .new_from_values(num_chunks.into_iter().map(Some)),
+            rerun_size_bytes: Self::COLUMN_RERUN_SIZE_BYTES
+                .new_from_values(size_bytes.into_iter().map(Some)),
+            rerun_schema_sha256: Self::COLUMN_RERUN_SCHEMA_SHA256
+                .new_from_values(schema_sha256s.into_iter().map(Some)),
+            rerun_registration_status: Self::COLUMN_RERUN_REGISTRATION_STATUS
+                .new_from_values(registration_statuses),
             extra_columns: vec![],
         }
     }

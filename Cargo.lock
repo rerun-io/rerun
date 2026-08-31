@@ -1610,7 +1610,7 @@ checksum = "af491d569909a7e4dee0ad7db7f5341fef5c614d5b8ec8cf765732aba3cff681"
 dependencies = [
  "serde",
  "termcolor",
- "unicode-width 0.2.2",
+ "unicode-width 0.1.14",
 ]
 
 [[package]]
@@ -1641,7 +1641,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "117725a109d387c937a1533ce01b450cbde6b88abceea8473c4d7a85853cda3c"
 dependencies = [
  "lazy_static",
- "windows-sys 0.59.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -3159,7 +3159,7 @@ dependencies = [
  "libc",
  "option-ext",
  "redox_users",
- "windows-sys 0.59.0",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -8437,9 +8437,9 @@ dependencies = [
 
 [[package]]
 name = "quiver"
-version = "0.5.0"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1d45b102e73d519fc2b42a01f7e5ea3703087a84c6ac530f9bc7a013ed187c12"
+checksum = "a2d66553e9ddf66318c8b097a57d0d4731ff3adfe4cf474a96d52d2f5947a6f6"
 dependencies = [
  "quiver_derive",
  "quiver_types",
@@ -8447,9 +8447,9 @@ dependencies = [
 
 [[package]]
 name = "quiver_derive"
-version = "0.5.0"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4908b6ee5c1792ad8fe4c98fa5a4d674205754bbbd4d1f7967e62e820b2add41"
+checksum = "c64f81907f31a1b8cba125f4fd6c9bd78a086496899a72c57f3812685e4a8abf"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -8458,11 +8458,12 @@ dependencies = [
 
 [[package]]
 name = "quiver_types"
-version = "0.5.0"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c1fec5e9c41b28a71f8721ea034c03ac0ef2faf28d461c248b9abfcdfec6a784"
+checksum = "535935292a5baca123f4e5c8d162c297b3feeaf4e2f14f4cd743f66d5c187ca3"
 dependencies = [
  "arrow",
+ "bytemuck",
  "half",
  "thiserror 2.0.19",
 ]
@@ -12058,7 +12059,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys 0.4.15",
- "windows-sys 0.59.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -13726,7 +13727,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c5f7c95348f20c1c913d72157b3c6dee6ea3e30b3d19502c5a7f6d3f160dacbf"
 dependencies = [
  "cc",
- "windows-targets 0.52.6",
+ "windows-targets 0.48.5",
 ]
 
 [[package]]
@@ -15165,7 +15166,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7d6f32a0ff4a9f6f01231eb2059cc85479330739333e0e58cadf03b6af2cca10"
 dependencies = [
  "cfg-if",
- "windows-sys 0.59.0",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]

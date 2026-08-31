@@ -16,7 +16,7 @@ pub fn tuids_to_arrow(tuids: &[Tuid]) -> FixedSizeBinaryArray {
 impl ArrowDataType for Tuid {
     #[inline]
     fn arrow_data_type() -> arrow::datatypes::DataType {
-        quiver::Column::<Self>::datatype()
+        quiver::TypedArray::<Self>::data_type()
     }
 }
 
@@ -28,10 +28,10 @@ impl ToArrow for Tuid {
     where
         Self: 'a,
     {
-        let column = quiver::Column::<Self>::from_values(
+        let array = quiver::TypedArray::<Self>::from_values(
             iter.into_iter().map(|tuid| tuid.into().into_owned()),
         );
-        Ok(column.into_arrow())
+        Ok(array.into_arrow())
     }
 }
 

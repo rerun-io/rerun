@@ -985,12 +985,13 @@ impl RerunCloudService for RerunCloudHandler {
             task_ids,
         } = do_register_with_dataset(&mut store, dataset_id, data_sources, on_duplicate).await?;
 
-        let record_batch = RegisterWithDatasetDataframe {
-            rerun_segment_id: segment_ids.into(),
-            rerun_segment_layer: segment_layers.into(),
-            rerun_segment_type: segment_types.into(),
-            rerun_storage_url: storage_urls.into(),
-            rerun_task_id: task_ids.into(),
+        type Df = RegisterWithDatasetDataframe;
+        let record_batch = Df {
+            rerun_segment_id: Df::COLUMN_RERUN_SEGMENT_ID.new_from_values(segment_ids),
+            rerun_segment_layer: Df::COLUMN_RERUN_SEGMENT_LAYER.new_from_values(segment_layers),
+            rerun_segment_type: Df::COLUMN_RERUN_SEGMENT_TYPE.new_from_values(segment_types),
+            rerun_storage_url: Df::COLUMN_RERUN_STORAGE_URL.new_from_values(storage_urls),
+            rerun_task_id: Df::COLUMN_RERUN_TASK_ID.new_from_values(task_ids),
         }
         .into_record_batch()
         .map_err(|err| tonic::Status::internal(format!("Failed to create dataframe: {err:#}")))?;
@@ -2006,18 +2007,19 @@ impl RerunCloudService for RerunCloudHandler {
         }
 
         let num_tasks = ids.len();
-        let rb = QueryTasksDataframe {
-            task_id: ids.into(),
-            kind: vec![None::<String>; num_tasks].into(),
-            data: vec![None::<String>; num_tasks].into(),
-            exec_status: exec_statuses.into(),
-            msgs: msgs.into(),
-            blob_len: vec![None::<u64>; num_tasks].into(),
-            lease_owner: vec![None::<String>; num_tasks].into(),
-            lease_expiration: vec![None::<i64>; num_tasks].into(),
-            attempts: vec![1_u8; num_tasks].into(),
-            creation_time: vec![None::<i64>; num_tasks].into(),
-            last_update_time: vec![None::<i64>; num_tasks].into(),
+        type Df = QueryTasksDataframe;
+        let rb = Df {
+            task_id: Df::COLUMN_TASK_ID.new_from_values(ids),
+            kind: Df::COLUMN_KIND.new_null(num_tasks),
+            data: Df::COLUMN_DATA.new_null(num_tasks),
+            exec_status: Df::COLUMN_EXEC_STATUS.new_from_values(exec_statuses),
+            msgs: Df::COLUMN_MSGS.new_from_values(msgs),
+            blob_len: Df::COLUMN_BLOB_LEN.new_null(num_tasks),
+            lease_owner: Df::COLUMN_LEASE_OWNER.new_null(num_tasks),
+            lease_expiration: Df::COLUMN_LEASE_EXPIRATION.new_null(num_tasks),
+            attempts: Df::COLUMN_ATTEMPTS.new_from_values(vec![1_u8; num_tasks]),
+            creation_time: Df::COLUMN_CREATION_TIME.new_null(num_tasks),
+            last_update_time: Df::COLUMN_LAST_UPDATE_TIME.new_null(num_tasks),
         }
         .into_record_batch()
         .map_err(|err| tonic::Status::internal(format!("Failed to create dataframe: {err:#}")))?;

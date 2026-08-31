@@ -118,7 +118,7 @@ impl From<Tuid> for [u8; 16] {
 }
 
 // Make `quiver::Column<Tuid>` work (backed by a big-endian `FixedSizeBinary(16)` column):
-quiver::newtype_datatype!(Tuid, quiver::FixedSizeBinary<16>);
+quiver::newtype_data_type!(Tuid, quiver::FixedSizeBinary<16>);
 
 impl From<Tuid> for std::borrow::Cow<'_, Tuid> {
     #[inline]
