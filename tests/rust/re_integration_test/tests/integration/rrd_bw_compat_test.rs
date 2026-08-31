@@ -268,12 +268,18 @@ async fn test_old_rrds_in_current_viewer() {
             ..Default::default()
         });
 
-        // Wait for the loading popup to disappear.
-        step_until("loading popup dismissed", &mut harness, |harness| {
-            !harness
-                .query_all_by_role(Role::Window)
-                .any(|window| window.query_by_label_contains("Loading").is_some())
-        });
+        // The popup may be absent before the asynchronous loader establishes its route, so also
+        // wait for the recording route that loading is expected to produce.
+        step_until(
+            "recording loaded and loading popup dismissed",
+            &mut harness,
+            |harness| {
+                let loading_popup_dismissed = !harness
+                    .query_all_by_role(Role::Window)
+                    .any(|window| window.query_by_label_contains("Loading").is_some());
+                loading_popup_dismissed && harness.state().active_recording_id().is_some()
+            },
+        );
 
         assert!(
             harness.state().active_recording_id().is_some(),

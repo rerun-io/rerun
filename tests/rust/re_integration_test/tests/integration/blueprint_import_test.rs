@@ -67,21 +67,19 @@ fn app_id(harness: &mut Harness<'_>) -> ApplicationId {
         .clone()
 }
 
-fn active_blueprint_id(harness: &mut Harness<'_>) -> Option<StoreId> {
-    let app_id = app_id(harness);
+fn active_blueprint_id(harness: &mut Harness<'_>, app_id: &ApplicationId) -> Option<StoreId> {
     harness
         .state_mut()
         .testonly_get_store_hub()
-        .active_blueprint_id_for_app(&app_id)
+        .active_blueprint_id_for_app(app_id)
         .cloned()
 }
 
-fn default_blueprint_id(harness: &mut Harness<'_>) -> Option<StoreId> {
-    let app_id = app_id(harness);
+fn default_blueprint_id(harness: &mut Harness<'_>, app_id: &ApplicationId) -> Option<StoreId> {
     harness
         .state_mut()
         .testonly_get_store_hub()
-        .default_blueprint_id_for_app(&app_id)
+        .default_blueprint_id_for_app(app_id)
         .cloned()
 }
 
@@ -122,7 +120,7 @@ async fn test_dropped_blueprint_is_applied_to_open_recording() {
         blueprint.add_view_at_root(ViewBlueprint::new_with_root_wildcard(view_class))
     });
 
-    let blueprint_before = active_blueprint_id(&mut harness)
+    let blueprint_before = active_blueprint_id(&mut harness, &opened_app_id)
         .expect("the open recording should have an active blueprint");
     assert_eq!(
         active_view_classes(&mut harness),
@@ -137,16 +135,20 @@ async fn test_dropped_blueprint_is_applied_to_open_recording() {
         .push(std::sync::Arc::new(DroppedPath(rbl_file.path().to_owned())));
 
     // Importing decodes on a dedicated thread, so poll rather than assuming a step count.
+    // The route is temporarily `Loading`, which intentionally has no application id, so keep
+    // querying the application that was open before the import started.
     step_until(
         "the imported blueprint became active",
         &mut harness,
-        |harness| active_blueprint_id(harness).is_some_and(|id| id != blueprint_before),
+        |harness| {
+            active_blueprint_id(harness, &opened_app_id).is_some_and(|id| id != blueprint_before)
+        },
     );
 
     // The imported blueprint must have been filed under the open application, not the one it was
     // saved under.
-    let blueprint_after =
-        active_blueprint_id(&mut harness).expect("there should still be an active blueprint");
+    let blueprint_after = active_blueprint_id(&mut harness, &opened_app_id)
+        .expect("there should still be an active blueprint");
     assert_eq!(
         blueprint_after.application_id(),
         &opened_app_id,
@@ -162,7 +164,7 @@ async fn test_dropped_blueprint_is_applied_to_open_recording() {
 
     // The activation command asks to be made both active and default, so the import must also
     // become the application's default blueprint.
-    let default_after = default_blueprint_id(&mut harness)
+    let default_after = default_blueprint_id(&mut harness, &opened_app_id)
         .expect("the imported blueprint should have become the application's default");
     assert_eq!(
         default_after.application_id(),
