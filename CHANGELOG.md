@@ -6,21 +6,14 @@
 
 ### ✨ Overview & highlights
 
-- Assets
+- Assets in catalogs, data shared across all segments
 - Improved selection panel navigation
-- State timeline views keep the time cursor centered
-- Drag entities onto state timeline views
-- Visible time range for state timeline views
+- State timeline view improvements
 - Export recordings and blueprints from the web Viewer
-- Links to datasets
 - `rerun rrd stats` tells you whether a recording should be optimized
-- Keyframe markers are kept out of the video chunks
-- A la carte features for file importers
 - Experimental dataloaders use a unified fetch and decode pipeline
 - Faster video decoding for training
-- `RerunMapDataset` can be built from a manifest
 - Faster manifest generation for video datasets
-- Experimental iterable dataloader skips missing samples
 
 📖 Release notes: https://rerun.io/docs/changelog/changeset-0-37#highlights
 
