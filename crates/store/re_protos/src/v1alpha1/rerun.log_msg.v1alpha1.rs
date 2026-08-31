@@ -16,11 +16,21 @@
 /// TODO(#8631): Remove `LogMsg`
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct LogMsg {
+    /// Exactly one of the transport-level message kinds.
+    ///
+    /// Required. proto3 lets a `oneof` be unset on the wire; every decoder treats that as an
+    /// error and drops the message. The `.rrd` format never encodes this wrapper (it tags each
+    /// variant with a `MessageHeader` instead), so an unset `msg` can only arrive over SDK comms.
     #[prost(oneof = "log_msg::Msg", tags = "1, 2, 3")]
     pub msg: ::core::option::Option<log_msg::Msg>,
 }
 /// Nested message and enum types in `LogMsg`.
 pub mod log_msg {
+    /// Exactly one of the transport-level message kinds.
+    ///
+    /// Required. proto3 lets a `oneof` be unset on the wire; every decoder treats that as an
+    /// error and drops the message. The `.rrd` format never encodes this wrapper (it tags each
+    /// variant with a `MessageHeader` instead), so an unset `msg` can only arrive over SDK comms.
     #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
     pub enum Msg {
         /// A message that contains a new store info.
@@ -76,6 +86,9 @@ pub struct ArrowMsg {
     /// Compression algorithm used.
     #[prost(enumeration = "super::super::common::v1alpha1::Compression", tag = "2")]
     pub compression: i32,
+    /// Size in bytes of `payload` before it was compressed.
+    ///
+    /// The decoder needs this to size its decompression buffer.
     #[prost(uint64, tag = "3")]
     pub uncompressed_size: u64,
     /// Encoding of the payload.
@@ -141,7 +154,7 @@ pub struct StoreInfo {
     /// Where the recording came from.
     #[prost(message, optional, tag = "5")]
     pub store_source: ::core::option::Option<StoreSource>,
-    /// Version of the store crate.
+    /// The Rerun version used to encode this recording.
     #[prost(message, optional, tag = "6")]
     pub store_version: ::core::option::Option<StoreVersion>,
 }
@@ -180,6 +193,10 @@ impl ::prost::Name for StoreSource {
 /// This exists to that we can implement conversions on the newtype for convenience.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct StoreSourceExtra {
+    /// The encoded payload, whose meaning depends on the accompanying `StoreSourceKind`.
+    ///
+    /// It is either empty, a Protobuf-encoded message of the type named by that kind, or a raw
+    /// UTF-8 string in the case of `STORE_SOURCE_KIND_OTHER`.
     #[prost(bytes = "bytes", tag = "1")]
     pub payload: ::prost::bytes::Bytes,
 }
@@ -193,15 +210,24 @@ impl ::prost::Name for StoreSourceExtra {
         "/rerun.log_msg.v1alpha1.StoreSourceExtra".into()
     }
 }
-/// Version of the Python SDK that created the recording.
+/// Version of the Python interpreter that ran the SDK which created the recording, as reported
+/// by `Py_GetVersion`. The SDK's own version travels in `StoreInfo.store_version` instead.
+///
+/// The three numeric parts are `int32` only because proto3 has no smaller integer type: each one
+/// must be in `0..=255`, and a reader rejects anything outside that range.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct PythonVersion {
+    /// Major version, e.g. `3`.
     #[prost(int32, tag = "1")]
     pub major: i32,
+    /// Minor version, e.g. `11`.
     #[prost(int32, tag = "2")]
     pub minor: i32,
+    /// Patch version, e.g. `0`.
     #[prost(int32, tag = "3")]
     pub patch: i32,
+    /// Everything after the numeric part of the interpreter version, e.g. `a0`, `rc1`, or `+`
+    /// for a dev build. Empty for final releases.
     #[prost(string, tag = "4")]
     pub suffix: ::prost::alloc::string::String,
 }
@@ -238,6 +264,7 @@ impl ::prost::Name for CrateInfo {
 /// A recording which came from a file.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct FileSource {
+    /// How the file made its way into Rerun.
     #[prost(enumeration = "FileSourceKind", tag = "1")]
     pub kind: i32,
 }
@@ -251,6 +278,7 @@ impl ::prost::Name for FileSource {
         "/rerun.log_msg.v1alpha1.FileSource".into()
     }
 }
+/// The Rerun version that encoded the recording.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct StoreVersion {
     /// Crate version encoded using our custom scheme.
@@ -385,11 +413,11 @@ impl Encoding {
 pub enum StoreSourceKind {
     /// We don't know anything about the source of this recording.
     ///
-    /// `extra` is unused.
+    /// `extra` is ignored on read; encoders write it empty.
     Unspecified = 0,
     /// The recording came from the C++ SDK.
     ///
-    /// `extra` is unused.
+    /// `extra` is ignored on read; encoders write it empty.
     CSdk = 1,
     /// The recording came from the Python SDK.
     ///
@@ -405,7 +433,7 @@ pub enum StoreSourceKind {
     File = 4,
     /// The recording came from some action in the viewer.
     ///
-    /// `extra` is unused.
+    /// `extra` is ignored on read; encoders write it empty.
     Viewer = 5,
     /// The recording came from some other source.
     ///

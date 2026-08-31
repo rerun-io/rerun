@@ -1,3 +1,14 @@
+// The transport-level representation of an RRD stream.
+//
+// These are the messages that get written to and read from `.rrd` files, and that the SDKs stream
+// to a viewer: store info, Arrow-encoded chunks, and blueprint activation, plus the footer and
+// manifests that index a finished stream.
+//
+// Read the comment on `LogMsg` first: three different types share that name, and mixing them up is
+// a common source of confusion.
+//
+// This file defines no service.
+
 syntax = "proto3";
 
 package rerun.log_msg.v1alpha1;
@@ -20,6 +31,11 @@ import "rerun/v1alpha1/common.proto";
 //
 // TODO(#8631): Remove `LogMsg`
 message LogMsg {
+  // Exactly one of the transport-level message kinds.
+  //
+  // Required. proto3 lets a `oneof` be unset on the wire; every decoder treats that as an
+  // error and drops the message. The `.rrd` format never encodes this wrapper (it tags each
+  // variant with a `MessageHeader` instead), so an unset `msg` can only arrive over SDK comms.
   oneof msg {
     // A message that contains a new store info.
     SetStoreInfo set_store_info = 1;
@@ -61,6 +77,9 @@ message ArrowMsg {
   // Compression algorithm used.
   rerun.common.v1alpha1.Compression compression = 2;
 
+  // Size in bytes of `payload` before it was compressed.
+  //
+  // The decoder needs this to size its decompression buffer.
   uint64 uncompressed_size = 3;
 
   // Encoding of the payload.
@@ -109,7 +128,7 @@ message StoreInfo {
   // Where the recording came from.
   StoreSource store_source = 5;
 
-  // Version of the store crate.
+  // The Rerun version used to encode this recording.
   StoreVersion store_version = 6;
 }
 
@@ -126,6 +145,10 @@ message StoreSource {
 //
 // This exists to that we can implement conversions on the newtype for convenience.
 message StoreSourceExtra {
+  // The encoded payload, whose meaning depends on the accompanying `StoreSourceKind`.
+  //
+  // It is either empty, a Protobuf-encoded message of the type named by that kind, or a raw
+  // UTF-8 string in the case of `STORE_SOURCE_KIND_OTHER`.
   bytes payload = 1;
 }
 
@@ -133,12 +156,12 @@ message StoreSourceExtra {
 enum StoreSourceKind {
   // We don't know anything about the source of this recording.
   //
-  // `extra` is unused.
+  // `extra` is ignored on read; encoders write it empty.
   STORE_SOURCE_KIND_UNSPECIFIED = 0;
 
   // The recording came from the C++ SDK.
   //
-  // `extra` is unused.
+  // `extra` is ignored on read; encoders write it empty.
   STORE_SOURCE_KIND_C_SDK = 1;
 
   // The recording came from the Python SDK.
@@ -158,7 +181,7 @@ enum StoreSourceKind {
 
   // The recording came from some action in the viewer.
   //
-  // `extra` is unused.
+  // `extra` is ignored on read; encoders write it empty.
   STORE_SOURCE_KIND_VIEWER = 5;
 
   // The recording came from some other source.
@@ -167,11 +190,23 @@ enum StoreSourceKind {
   STORE_SOURCE_KIND_OTHER = 6;
 }
 
-// Version of the Python SDK that created the recording.
+// Version of the Python interpreter that ran the SDK which created the recording, as reported
+// by `Py_GetVersion`. The SDK's own version travels in `StoreInfo.store_version` instead.
+//
+// The three numeric parts are `int32` only because proto3 has no smaller integer type: each one
+// must be in `0..=255`, and a reader rejects anything outside that range.
 message PythonVersion {
+  // Major version, e.g. `3`.
   int32 major = 1;
+
+  // Minor version, e.g. `11`.
   int32 minor = 2;
+
+  // Patch version, e.g. `0`.
   int32 patch = 3;
+
+  // Everything after the numeric part of the interpreter version, e.g. `a0`, `rc1`, or `+`
+  // for a dev build. Empty for final releases.
   string suffix = 4;
 }
 
@@ -186,6 +221,7 @@ message CrateInfo {
 
 // A recording which came from a file.
 message FileSource {
+  // How the file made its way into Rerun.
   FileSourceKind kind = 1;
 }
 
@@ -210,6 +246,7 @@ enum FileSourceKind {
   FILE_SOURCE_KIND_SDK = 5;
 }
 
+// The Rerun version that encoded the recording.
 message StoreVersion {
   // Crate version encoded using our custom scheme.
   //
