@@ -139,12 +139,11 @@ pub mod internal {
                     value = value.clamp(limit.lower, limit.upper);
                 }
 
-                // For a prismatic joint, we translate along the axis by `value` and use the origin rotation.
-                let translation = glam::Vec3::new(
-                    (origin_xyz[0] + axis.xyz[0] * value) as f32,
-                    (origin_xyz[1] + axis.xyz[1] * value) as f32,
-                    (origin_xyz[2] + axis.xyz[2] * value) as f32,
-                );
+                // The axis is expressed in the joint frame, so the slide has to be rotated by the
+                // origin before it joins the parent-frame translation.
+                let axis_vec =
+                    glam::Vec3::new(axis.xyz[0] as f32, axis.xyz[1] as f32, axis.xyz[2] as f32);
+                let translation = origin_translation + origin_quat * (axis_vec * value as f32);
 
                 Ok(JointTransform {
                     quaternion: origin_quat,
@@ -168,5 +167,67 @@ pub mod internal {
                 Err(Error::UnsupportedJointType(joint_type.clone()))
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Tests that the origin rotation of prismatic joint axes is correctly applied.
+    #[test]
+    fn test_prismatic_axis_rotation() {
+        // A parallel gripper with two `y+` prismatic axes pointing in opposite directions w.r.t. the parent link.
+        const URDF: &str = r#"
+            <robot name="gripper">
+              <link name="hand"/><link name="left"/><link name="right"/>
+              <joint name="left_joint" type="prismatic">
+                <parent link="hand"/><child link="left"/>
+                <origin xyz="0 0 0.0584" rpy="0 0 0"/><axis xyz="0 1 0"/>
+                <limit lower="0" upper="0.04" effort="100" velocity="0.2"/>
+              </joint>
+              <joint name="right_joint" type="prismatic">
+                <parent link="hand"/><child link="right"/>
+                <origin xyz="0 0 0.0584" rpy="0 0 3.141592653589793"/><axis xyz="0 1 0"/>
+                <limit lower="0" upper="0.04" effort="100" velocity="0.2"/>
+              </joint>
+            </robot>"#;
+
+        let robot = urdf_rs::read_from_string(URDF).expect("the test URDF should parse");
+        let slide = |name: &str| {
+            let joint = robot
+                .joints
+                .iter()
+                .find(|joint| joint.name == name)
+                .expect("the test URDF declares this joint");
+            internal::compute_joint_transform(joint, 0.04, false)
+                .expect("a prismatic joint is supported")
+                .translation
+        };
+
+        // We expect the two gripper parts to move in opposite direction w.r.t. the parent.
+        let (left, right) = (slide("left_joint"), slide("right_joint"));
+        assert!((left.y - 0.04).abs() < 1e-6, "left finger at {left:?}");
+        assert!((right.y + 0.04).abs() < 1e-6, "right finger at {right:?}");
+    }
+
+    /// A revolute joint with a rotated origin keeps its translation at the origin.
+    #[test]
+    fn test_revolute_translation_stays_at_the_joint_origin() {
+        const URDF: &str = r#"
+            <robot name="arm">
+              <link name="a"/><link name="b"/>
+              <joint name="elbow" type="revolute">
+                <parent link="a"/><child link="b"/>
+                <origin xyz="0.088 0 0" rpy="1.5707963267948966 0 0"/><axis xyz="0 0 1"/>
+                <limit lower="-2.9" upper="2.9" effort="100" velocity="2.0"/>
+              </joint>
+            </robot>"#;
+
+        let robot = urdf_rs::read_from_string(URDF).expect("the test URDF should parse");
+        let joint = &robot.joints[0];
+        let transform =
+            internal::compute_joint_transform(joint, 0.5, false).expect("revolute is supported");
+        assert!((transform.translation - glam::Vec3::new(0.088, 0.0, 0.0)).length() < 1e-6);
     }
 }
