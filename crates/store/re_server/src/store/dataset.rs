@@ -21,6 +21,7 @@ use re_protos::common::v1alpha1::ext::{
     DatasetHandle, DatasetKind, IfDuplicateBehavior, SegmentId,
 };
 use re_types_core::LayerName;
+use url::Url;
 
 #[cfg(not(target_arch = "wasm32"))]
 use crate::store::store_pool::StorePool;
@@ -248,7 +249,7 @@ impl Dataset {
 
             for (layer_name, layer) in segment.iter_sources() {
                 layer_names_row.push(layer_name.clone());
-                storage_urls_row.push(format!("memory:///store/{}", layer.store_slot_id()));
+                storage_urls_row.push(layer.storage_url().to_string());
 
                 let layer_properties = layer.compute_properties().await?;
 
@@ -418,7 +419,7 @@ impl Dataset {
 
         for (layer_name, segment_id, source) in layers {
             layer_names.push(layer_name.clone());
-            storage_urls.push(format!("memory:///store/{}", source.store_slot_id()));
+            storage_urls.push(source.storage_url().to_string());
             segment_ids.push(segment_id.into());
             layer_types.push(source.data_source_kind().to_string());
             registration_times.push(source.registration_time().as_nanosecond() as i64);
@@ -538,6 +539,7 @@ impl Dataset {
         layer_info: Arc<LayerInfo>,
         store_slot_id: StoreSlotId,
         resolved: ResolvedStore,
+        storage_url: Url,
         on_duplicate: IfDuplicateBehavior,
     ) -> Result<(), Error> {
         let layer_name = &layer_info.name;
@@ -575,6 +577,7 @@ impl Dataset {
             store_slot_id,
             resolved,
             DataSourceKind::Rrd,
+            storage_url,
             layer_info,
         ));
 
@@ -683,6 +686,7 @@ impl Dataset {
         let layer_info = Arc::new(LayerInfo {
             name: layer_name.clone(),
         });
+        let storage_url = file_url(path)?;
         let mut new_segment_ids = BTreeSet::default();
 
         for (store_id, resolved) in ResolvedStore::load_rrd_file(path, store_kind).await? {
@@ -694,6 +698,7 @@ impl Dataset {
                 layer_info.clone(),
                 slot_id,
                 resolved,
+                storage_url.clone(),
                 on_duplicate,
             )
             .await?;
@@ -702,4 +707,18 @@ impl Dataset {
 
         Ok(new_segment_ids)
     }
+}
+
+/// The `file://` URL of a path. The path may be relative to the working directory.
+#[cfg(not(target_arch = "wasm32"))]
+fn file_url(path: &Path) -> Result<Url, Error> {
+    let path = std::path::absolute(path)?;
+
+    Url::from_file_path(&path).map_err(|()| {
+        std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            format!("Failed to build a file URL\nFile path: {}", path.display()),
+        )
+        .into()
+    })
 }

@@ -9,6 +9,7 @@ use re_byte_size::SizeBytes as _;
 use re_log_encoding::RawRrdManifest;
 use re_log_types::{AbsoluteTimeRange, Timeline};
 use re_protos::cloud::v1alpha1::ext::DataSourceKind;
+use url::Url;
 
 use crate::store::LayerInfo;
 
@@ -29,6 +30,12 @@ pub struct Source {
     /// .rrd, .mcap, …
     data_source_kind: DataSourceKind,
 
+    /// The URI this layer was registered from.
+    ///
+    /// A layer registered from a file keeps its `file://` URI. A layer written straight into the
+    /// server by `write_chunks` has no file behind it and gets `memory:///store/{store_slot_id}`.
+    storage_url: Url,
+
     /// All sources in the same layer share the same [`LayerInfo`].
     layer_info: Arc<LayerInfo>,
 }
@@ -38,6 +45,7 @@ impl Source {
         store_slot_id: StoreSlotId,
         resolved: ResolvedStore,
         data_source_kind: DataSourceKind,
+        storage_url: Url,
         layer_info: Arc<LayerInfo>,
     ) -> Self {
         Self {
@@ -45,6 +53,7 @@ impl Source {
             resolved,
             registration_time: jiff::Timestamp::now(),
             data_source_kind,
+            storage_url,
             layer_info,
         }
     }
@@ -59,6 +68,10 @@ impl Source {
 
     pub fn store_slot_id(&self) -> StoreSlotId {
         self.store_slot_id
+    }
+
+    pub fn storage_url(&self) -> &Url {
+        &self.storage_url
     }
 
     pub fn resolved_store(&self) -> &ResolvedStore {
@@ -376,6 +389,7 @@ mod tests {
             StoreSlotId::new(),
             ResolvedStore::Eager(ChunkStoreHandle::new(eager_store)),
             DataSourceKind::Rrd,
+            Url::parse("memory:///store/eager").expect("valid url"),
             test_layer_info.clone(),
         );
 
@@ -400,6 +414,7 @@ mod tests {
             StoreSlotId::new(),
             ResolvedStore::Lazy(lazy),
             DataSourceKind::Rrd,
+            Url::from_file_path(&rrd_path).expect("test RRD path should be absolute"),
             test_layer_info,
         );
 

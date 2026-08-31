@@ -377,6 +377,7 @@ async fn register_sources(
                     source.layer_info.clone(),
                     source.store_slot_id,
                     source.resolved,
+                    source.storage_url.clone(),
                     on_duplicate,
                 )
                 .await;

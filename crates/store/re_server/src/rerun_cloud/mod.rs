@@ -1122,6 +1122,12 @@ impl RerunCloudService for RerunCloudHandler {
         let dataset = store.dataset_mut(entry_id)?;
 
         for (entity_path, store_slot_id, resolved) in handles {
+            // These chunks have no file behind them, so the store slot is the layer's only address.
+            let storage_url = url::Url::parse(&format!("memory:///store/{store_slot_id}"))
+                .map_err(|err| {
+                    tonic::Status::internal(format!("failed to build memory URL: {err}"))
+                })?;
+
             dataset
                 .add_source(
                     entity_path,
@@ -1130,6 +1136,7 @@ impl RerunCloudService for RerunCloudHandler {
                     }),
                     store_slot_id,
                     resolved,
+                    storage_url,
                     IfDuplicateBehavior::Error,
                 )
                 .await?;
