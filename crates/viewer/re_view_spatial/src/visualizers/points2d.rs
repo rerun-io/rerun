@@ -322,7 +322,7 @@ impl VisualizerSystem for Points2DVisualizer {
 
 #[cfg(test)]
 mod tests {
-    use re_log_types::TimeInt;
+    use re_log_types::{TimeInt, TimePoint};
     use re_sdk_types::archetypes::{AnnotationContext, Points2D};
     use re_sdk_types::blueprint::{
         archetypes::VisibleTimeRanges, components as blueprint_components,
@@ -419,6 +419,34 @@ mod tests {
         ctx.set_active_timeline(*timeline.name());
     }
 
+    fn setup_keypoint_entity(ctx: &mut TestContext) {
+        let timeline = re_log_types::Timeline::new_sequence("frame");
+
+        ctx.log_entity("/", |builder| {
+            builder.with_archetype_auto_row(
+                TimePoint::STATIC,
+                &AnnotationContext::new([datatypes::ClassDescription {
+                    info: (3, "class", ANN.0).into(),
+                    keypoint_annotations: vec![(7, "keypoint", RED.0).into()],
+                    keypoint_connections: Vec::new(),
+                }]),
+            )
+        });
+        for frame in [1, 2] {
+            ctx.log_entity("points", |builder| {
+                builder.with_archetype_auto_row(
+                    [(timeline, frame)],
+                    &Points2D::new([(10.0, frame as f32)])
+                        .with_show_labels(true)
+                        .with_class_ids([3])
+                        .with_keypoint_ids([7]),
+                )
+            });
+        }
+
+        ctx.set_active_timeline(*timeline.name());
+    }
+
     fn collect_labels(test_context: &TestContext, view_id: ViewId) -> Vec<UiLabel> {
         let labels = std::cell::RefCell::new(Vec::new());
         let mut harness = test_context
@@ -463,6 +491,99 @@ mod tests {
             assert_eq!(*expected_text, label.text);
             assert!(label.style == UiLabelStyle::Color((*expected_color).into()));
         }
+    }
+
+    fn setup_view_with_visible_time_range(test_context: &mut TestContext, end: i64) -> ViewId {
+        test_context.setup_viewport_blueprint(|ctx, blueprint| {
+            let view_id = blueprint.add_view_at_root(ViewBlueprint::new_with_root_wildcard(
+                crate::SpatialView2D::identifier(),
+            ));
+
+            let property = ViewProperty::from_archetype_for_view::<VisibleTimeRanges>(ctx, view_id);
+            property.save_blueprint_component(
+                ctx,
+                &VisibleTimeRanges::descriptor_ranges(),
+                &blueprint_components::VisibleTimeRange(VisibleTimeRange {
+                    timeline: "frame".into(),
+                    range: TimeRange {
+                        start: TimeRangeBoundary::Absolute(
+                            TimeInt::from_sequence(1.try_into().unwrap()).into(),
+                        ),
+                        end: TimeRangeBoundary::Absolute(
+                            TimeInt::from_sequence(end.try_into().unwrap()).into(),
+                        ),
+                    },
+                }),
+            );
+
+            view_id
+        })
+    }
+
+    #[test]
+    fn keypoint_annotations_are_resolved_by_latest_at_query() {
+        let mut test_context = TestContext::new_with_view_class::<crate::SpatialView2D>();
+        setup_keypoint_entity(&mut test_context);
+
+        let view_id = test_context.setup_viewport_blueprint(|_ctx, blueprint| {
+            blueprint.add_view_at_root(ViewBlueprint::new_with_root_wildcard(
+                crate::SpatialView2D::identifier(),
+            ))
+        });
+
+        test_context.set_time(1);
+        assert_labels(
+            &collect_labels(&test_context, view_id),
+            &[("keypoint", RED)],
+        );
+    }
+
+    #[test]
+    fn keypoint_annotations_are_resolved_by_range_query() {
+        let mut test_context = TestContext::new_with_view_class::<crate::SpatialView2D>();
+        setup_keypoint_entity(&mut test_context);
+        let view_id = setup_view_with_visible_time_range(&mut test_context, 2);
+
+        assert_labels(
+            &collect_labels(&test_context, view_id),
+            &[("keypoint", RED); 2],
+        );
+    }
+
+    #[test]
+    fn range_empty_class_id_batch_uses_registered_color_fallback() {
+        let mut test_context = TestContext::new_with_view_class::<crate::SpatialView2D>();
+        let timeline = re_log_types::Timeline::new_sequence("frame");
+        test_context.log_entity("/", |builder| {
+            builder.with_archetype_auto_row(
+                TimePoint::STATIC,
+                &AnnotationContext::new([(3, "annotation-label", ANN.0)]),
+            )
+        });
+
+        // In frame 2 there's no class id which should yield the fallback color.
+        for (frame, class_ids) in [(1, vec![3]), (2, vec![]), (3, vec![3])] {
+            test_context.log_entity("points", |builder| {
+                builder.with_archetype_auto_row(
+                    [(timeline, frame)],
+                    &Points2D::new([(10.0, frame as f32)])
+                        .with_show_labels(true)
+                        .with_labels(["marker"])
+                        .with_class_ids(class_ids),
+                )
+            });
+        }
+        test_context.set_active_timeline(*timeline.name());
+        let view_id = setup_view_with_visible_time_range(&mut test_context, 3);
+
+        let labels = collect_labels(&test_context, view_id);
+        let fallback = re_viewer_context::auto_color_for_entity_path(
+            &re_log_types::EntityPath::from("points"),
+        );
+        assert_labels(
+            &labels,
+            &[("marker", ANN), ("marker", fallback), ("marker", ANN)],
+        );
     }
 
     #[test]
@@ -516,30 +637,7 @@ mod tests {
         let mut test_context = TestContext::new_with_view_class::<crate::SpatialView2D>();
         setup_entities(&mut test_context);
 
-        let view_id = test_context.setup_viewport_blueprint(|ctx, blueprint| {
-            let view_id = blueprint.add_view_at_root(ViewBlueprint::new_with_root_wildcard(
-                crate::SpatialView2D::identifier(),
-            ));
-
-            let property = ViewProperty::from_archetype_for_view::<VisibleTimeRanges>(ctx, view_id);
-            property.save_blueprint_component(
-                ctx,
-                &VisibleTimeRanges::descriptor_ranges(),
-                &blueprint_components::VisibleTimeRange(VisibleTimeRange {
-                    timeline: "frame".into(),
-                    range: TimeRange {
-                        start: TimeRangeBoundary::Absolute(
-                            TimeInt::from_sequence(1.try_into().unwrap()).into(),
-                        ),
-                        end: TimeRangeBoundary::Absolute(
-                            TimeInt::from_sequence(5.try_into().unwrap()).into(),
-                        ),
-                    },
-                }),
-            );
-
-            view_id
-        });
+        let view_id = setup_view_with_visible_time_range(&mut test_context, 5);
 
         // Range covers the end-to-end range-zip path: optional colors and class IDs must carry
         // forward when omitted and reset when logged as empty, independently of one another.
