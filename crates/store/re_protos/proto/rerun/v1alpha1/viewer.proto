@@ -1,10 +1,30 @@
+// Remote control of a running viewer.
+//
+// Defines `ViewerControlService`: screenshots, moving the time cursor, opening URLs, driving the
+// UI, and reading back what the viewer is currently showing. `re_viewer_mcp` is the main client.
+//
+// This shares the `rerun.sdk_comms.v1alpha1` package with `rerun/v1alpha1/sdk_comms.proto`, since
+// the viewer serves both on the same endpoint.
+
 syntax = "proto3";
 
 package rerun.sdk_comms.v1alpha1;
 
 import "rerun/v1alpha1/common.proto";
 
+// Remote control of a running viewer.
+//
+// The viewer serves this alongside its SDK comms endpoint. `re_viewer_mcp` is the main client:
+// it drives the viewer on behalf of an agent.
 service ViewerControlService {
+  // Take a screenshot of the viewer, or of a single view within it, and write it to disk.
+  //
+  // The screenshot is saved by the viewer process, so the path is resolved on the machine
+  // running the viewer, not on the machine making the request.
+  //
+  // Failures come back as gRPC status codes: `INVALID_ARGUMENT` if `view_id` is not a UUID,
+  // `NOT_FOUND` if no such view is currently visible, `FAILED_PRECONDITION` if the view is too
+  // small to capture, and `INTERNAL` if the capture itself or the write to disk failed.
   rpc SaveScreenshot(SaveScreenshotRequest) returns (SaveScreenshotResponse) {}
 
   // Move the time cursor (timeline position) of a recording in the viewer.
@@ -23,6 +43,7 @@ service ViewerControlService {
 
 // SaveScreenshot
 
+// Request for `SaveScreenshot`.
 message SaveScreenshotRequest {
   // Optional view ID to screenshot. If omitted, screenshots the entire viewer.
   optional string view_id = 1;
@@ -32,10 +53,14 @@ message SaveScreenshotRequest {
   string file_path = 2;
 }
 
+// Response for `SaveScreenshot`. Empty: an error is reported as a gRPC status instead.
+//
+// The response is only sent once the screenshot has actually been written to disk.
 message SaveScreenshotResponse {}
 
 // SetTimeCursor
 
+// Request for `SetTimeCursor`.
 message SetTimeCursorRequest {
   // Recording to seek. If omitted, the active recording is used.
   optional rerun.common.v1alpha1.StoreId store_id = 1;
@@ -51,6 +76,7 @@ message SetTimeCursorRequest {
   bool play = 4;
 }
 
+// Response for `SetTimeCursor`, echoing back what the request resolved to.
 message SetTimeCursorResponse {
   // The recording the cursor was moved in (resolved from the request, or the active recording).
   rerun.common.v1alpha1.StoreId store_id = 1;
@@ -67,21 +93,25 @@ message SetTimeCursorResponse {
 
 // OpenUrl
 
+// Request for `OpenUrl`.
 message OpenUrlRequest {
   // The URL to open in the viewer. This can be a recording/blueprint file URL, a `rerun://`
   // dataset URI, a redap server/catalog URL, or an intra-recording link.
   string url = 1;
 }
 
+// Response for `OpenUrl`. Empty: an error is reported as a gRPC status instead.
 message OpenUrlResponse {}
 
 // Inspect
 
+// Request for `Inspect`, wrapping one opaque `egui_inspection` request.
 message InspectRequest {
   // `egui_inspection` request.
   bytes request = 1;
 }
 
+// Response for `Inspect`, wrapping one opaque `egui_inspection` response.
 message InspectResponse {
   // `egui_inspection` response.
   bytes response = 1;
@@ -89,8 +119,10 @@ message InspectResponse {
 
 // GetViewerState
 
+// Request for `GetViewerState`. Empty: the whole state is always returned.
 message GetViewerStateRequest {}
 
+// Response for `GetViewerState`: a snapshot of what the viewer is currently showing.
 message GetViewerStateResponse {
   // The current viewer page/route (e.g. which recording or hub page is shown).
   string url = 1;
@@ -116,6 +148,7 @@ message ViewerRecording {
 
 // A timeline of a recording, with its time range.
 message ViewerTimeline {
+  // The timeline this describes.
   rerun.common.v1alpha1.Timeline timeline = 1;
 
   // Timeline type, e.g. `"timestamp"`, `"duration"`, or `"sequence"`.
@@ -127,6 +160,7 @@ message ViewerTimeline {
 
 // A position on a timeline.
 message TimeCursor {
+  // The timeline the cursor sits on.
   rerun.common.v1alpha1.Timeline timeline = 1;
 
   // Timeline type. May be absent if the recording is still loading.

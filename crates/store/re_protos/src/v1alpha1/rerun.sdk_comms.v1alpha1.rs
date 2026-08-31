@@ -672,6 +672,7 @@ pub mod message_proxy_service_server {
         const NAME: &'static str = SERVICE_NAME;
     }
 }
+/// Request for `SaveScreenshot`.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct SaveScreenshotRequest {
     /// Optional view ID to screenshot. If omitted, screenshots the entire viewer.
@@ -692,6 +693,9 @@ impl ::prost::Name for SaveScreenshotRequest {
         "/rerun.sdk_comms.v1alpha1.SaveScreenshotRequest".into()
     }
 }
+/// Response for `SaveScreenshot`. Empty: an error is reported as a gRPC status instead.
+///
+/// The response is only sent once the screenshot has actually been written to disk.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct SaveScreenshotResponse {}
 impl ::prost::Name for SaveScreenshotResponse {
@@ -704,6 +708,7 @@ impl ::prost::Name for SaveScreenshotResponse {
         "/rerun.sdk_comms.v1alpha1.SaveScreenshotResponse".into()
     }
 }
+/// Request for `SetTimeCursor`.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct SetTimeCursorRequest {
     /// Recording to seek. If omitted, the active recording is used.
@@ -730,6 +735,7 @@ impl ::prost::Name for SetTimeCursorRequest {
         "/rerun.sdk_comms.v1alpha1.SetTimeCursorRequest".into()
     }
 }
+/// Response for `SetTimeCursor`, echoing back what the request resolved to.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct SetTimeCursorResponse {
     /// The recording the cursor was moved in (resolved from the request, or the active recording).
@@ -755,6 +761,7 @@ impl ::prost::Name for SetTimeCursorResponse {
         "/rerun.sdk_comms.v1alpha1.SetTimeCursorResponse".into()
     }
 }
+/// Request for `OpenUrl`.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct OpenUrlRequest {
     /// The URL to open in the viewer. This can be a recording/blueprint file URL, a `rerun://`
@@ -772,6 +779,7 @@ impl ::prost::Name for OpenUrlRequest {
         "/rerun.sdk_comms.v1alpha1.OpenUrlRequest".into()
     }
 }
+/// Response for `OpenUrl`. Empty: an error is reported as a gRPC status instead.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct OpenUrlResponse {}
 impl ::prost::Name for OpenUrlResponse {
@@ -784,6 +792,7 @@ impl ::prost::Name for OpenUrlResponse {
         "/rerun.sdk_comms.v1alpha1.OpenUrlResponse".into()
     }
 }
+/// Request for `Inspect`, wrapping one opaque `egui_inspection` request.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct InspectRequest {
     /// `egui_inspection` request.
@@ -800,6 +809,7 @@ impl ::prost::Name for InspectRequest {
         "/rerun.sdk_comms.v1alpha1.InspectRequest".into()
     }
 }
+/// Response for `Inspect`, wrapping one opaque `egui_inspection` response.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct InspectResponse {
     /// `egui_inspection` response.
@@ -816,6 +826,7 @@ impl ::prost::Name for InspectResponse {
         "/rerun.sdk_comms.v1alpha1.InspectResponse".into()
     }
 }
+/// Request for `GetViewerState`. Empty: the whole state is always returned.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetViewerStateRequest {}
 impl ::prost::Name for GetViewerStateRequest {
@@ -828,6 +839,7 @@ impl ::prost::Name for GetViewerStateRequest {
         "/rerun.sdk_comms.v1alpha1.GetViewerStateRequest".into()
     }
 }
+/// Response for `GetViewerState`: a snapshot of what the viewer is currently showing.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetViewerStateResponse {
     /// The current viewer page/route (e.g. which recording or hub page is shown).
@@ -876,6 +888,7 @@ impl ::prost::Name for ViewerRecording {
 /// A timeline of a recording, with its time range.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ViewerTimeline {
+    /// The timeline this describes.
     #[prost(message, optional, tag = "1")]
     pub timeline: ::core::option::Option<super::super::common::v1alpha1::Timeline>,
     /// Timeline type, e.g. `"timestamp"`, `"duration"`, or `"sequence"`.
@@ -898,6 +911,7 @@ impl ::prost::Name for ViewerTimeline {
 /// A position on a timeline.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct TimeCursor {
+    /// The timeline the cursor sits on.
     #[prost(message, optional, tag = "1")]
     pub timeline: ::core::option::Option<super::super::common::v1alpha1::Timeline>,
     /// Timeline type. May be absent if the recording is still loading.
@@ -932,6 +946,10 @@ pub mod viewer_control_service_client {
     )]
     use tonic::codegen::http::Uri;
     use tonic::codegen::*;
+    /// Remote control of a running viewer.
+    ///
+    /// The viewer serves this alongside its SDK comms endpoint. `re_viewer_mcp` is the main client:
+    /// it drives the viewer on behalf of an agent.
     #[derive(Debug, Clone)]
     pub struct ViewerControlServiceClient<T> {
         inner: tonic::client::Grpc<T>,
@@ -1000,6 +1018,14 @@ pub mod viewer_control_service_client {
             self.inner = self.inner.max_encoding_message_size(limit);
             self
         }
+        /// Take a screenshot of the viewer, or of a single view within it, and write it to disk.
+        ///
+        /// The screenshot is saved by the viewer process, so the path is resolved on the machine
+        /// running the viewer, not on the machine making the request.
+        ///
+        /// Failures come back as gRPC status codes: `INVALID_ARGUMENT` if `view_id` is not a UUID,
+        /// `NOT_FOUND` if no such view is currently visible, `FAILED_PRECONDITION` if the view is too
+        /// small to capture, and `INTERNAL` if the capture itself or the write to disk failed.
         pub async fn save_screenshot(
             &mut self,
             request: impl tonic::IntoRequest<super::SaveScreenshotRequest>,
@@ -1113,6 +1139,14 @@ pub mod viewer_control_service_server {
     /// Generated trait containing gRPC methods that should be implemented for use with ViewerControlServiceServer.
     #[async_trait]
     pub trait ViewerControlService: std::marker::Send + std::marker::Sync + 'static {
+        /// Take a screenshot of the viewer, or of a single view within it, and write it to disk.
+        ///
+        /// The screenshot is saved by the viewer process, so the path is resolved on the machine
+        /// running the viewer, not on the machine making the request.
+        ///
+        /// Failures come back as gRPC status codes: `INVALID_ARGUMENT` if `view_id` is not a UUID,
+        /// `NOT_FOUND` if no such view is currently visible, `FAILED_PRECONDITION` if the view is too
+        /// small to capture, and `INTERNAL` if the capture itself or the write to disk failed.
         async fn save_screenshot(
             &self,
             request: tonic::Request<super::SaveScreenshotRequest>,
@@ -1139,6 +1173,10 @@ pub mod viewer_control_service_server {
             request: tonic::Request<super::GetViewerStateRequest>,
         ) -> std::result::Result<tonic::Response<super::GetViewerStateResponse>, tonic::Status>;
     }
+    /// Remote control of a running viewer.
+    ///
+    /// The viewer serves this alongside its SDK comms endpoint. `re_viewer_mcp` is the main client:
+    /// it drives the viewer on behalf of an agent.
     #[derive(Debug)]
     pub struct ViewerControlServiceServer<T> {
         inner: Arc<T>,
