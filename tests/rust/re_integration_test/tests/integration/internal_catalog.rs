@@ -109,6 +109,18 @@ fn test_rbl() -> (tempfile::TempDir, PathBuf) {
     (dir, path)
 }
 
+fn mask_source_rrd_version(harness: &mut egui_kittest::Harness<'_, re_viewer::App>) {
+    let selection_panel = harness.selection_panel();
+    let selection_panel_rect = selection_panel.root().rect();
+    if let Some(label) = selection_panel.root().query_by_label("Source RRD version") {
+        let label_rect = label.rect();
+        harness.mask(egui::Rect::from_min_max(
+            egui::pos2(label_rect.right(), label_rect.top()),
+            egui::pos2(selection_panel_rect.right(), label_rect.bottom()),
+        ));
+    }
+}
+
 fn mask_internal_catalog_app_id(harness: &mut egui_kittest::Harness<'_, re_viewer::App>) {
     // TODO(RR-4929): Remove this mask once the catalog app id matches recording app id.
     let app_id = harness
@@ -364,6 +376,8 @@ async fn internal_catalog_load_rrd() {
         });
 
         harness.set_time_panel_opened(false);
+
+        mask_source_rrd_version(&mut harness);
 
         if use_viewer_catalog {
             mask_internal_catalog_app_id(&mut harness);
