@@ -13,6 +13,9 @@
 //!
 //! The first and last output points are time-aligned to the input's time bounds
 //! to prevent visual glitches at the edges.
+//!
+//! Variances are aggregated exactly like the value they belong to, so the band always
+//! wraps the line that is actually drawn.
 
 use egui::emath::fast_midpoint;
 
@@ -54,6 +57,7 @@ impl AverageAggregator {
             let mut acc = points[i + j].clone();
             acc.value = 0.0;
             acc.attrs.radius_ui = 0.0;
+            acc.variance = 0.0;
 
             while i + j < points.len()
                 && points[i + j].value.is_finite()
@@ -63,6 +67,7 @@ impl AverageAggregator {
 
                 acc.value += point.value;
                 acc.attrs.radius_ui += point.attrs.radius_ui;
+                acc.variance += point.variance;
 
                 ratio += 1.0;
                 j += 1;
@@ -79,6 +84,7 @@ impl AverageAggregator {
                 let w = aggregation_factor_fract;
                 acc.value += point.value * w;
                 acc.attrs.radius_ui += (point.attrs.radius_ui as f64 * w) as f32;
+                acc.variance += (point.variance as f64 * w) as f32;
 
                 ratio += aggregation_factor_fract;
                 j += 1;
@@ -86,6 +92,7 @@ impl AverageAggregator {
 
             acc.value /= ratio;
             acc.attrs.radius_ui = (acc.attrs.radius_ui as f64 / ratio) as _;
+            acc.variance = (acc.variance as f64 / ratio) as _;
 
             aggregated.push(acc);
 
@@ -160,25 +167,32 @@ impl MinMaxAggregator {
             {
                 let point = &points[i + j];
 
+                // The variance follows the value: whichever point wins the min/max is the
+                // point whose band we draw.
+                let accumulate_min = |acc_min: &mut PlotPoint| {
+                    if point.value < acc_min.value {
+                        acc_min.variance = point.variance;
+                    }
+                    acc_min.value = f64::min(acc_min.value, point.value);
+                    acc_min.attrs.radius_ui =
+                        f32::min(acc_min.attrs.radius_ui, point.attrs.radius_ui);
+                };
+                let accumulate_max = |acc_max: &mut PlotPoint| {
+                    if point.value > acc_max.value {
+                        acc_max.variance = point.variance;
+                    }
+                    acc_max.value = f64::max(acc_max.value, point.value);
+                    acc_max.attrs.radius_ui =
+                        f32::max(acc_max.attrs.radius_ui, point.attrs.radius_ui);
+                };
+
                 match self {
                     Self::MinMax | Self::MinMaxAverage => {
-                        acc_min.value = f64::min(acc_min.value, point.value);
-                        acc_min.attrs.radius_ui =
-                            f32::min(acc_min.attrs.radius_ui, point.attrs.radius_ui);
-                        acc_max.value = f64::max(acc_max.value, point.value);
-                        acc_max.attrs.radius_ui =
-                            f32::max(acc_max.attrs.radius_ui, point.attrs.radius_ui);
+                        accumulate_min(&mut acc_min);
+                        accumulate_max(&mut acc_max);
                     }
-                    Self::Min => {
-                        acc_min.value = f64::min(acc_min.value, point.value);
-                        acc_min.attrs.radius_ui =
-                            f32::min(acc_min.attrs.radius_ui, point.attrs.radius_ui);
-                    }
-                    Self::Max => {
-                        acc_max.value = f64::max(acc_max.value, point.value);
-                        acc_max.attrs.radius_ui =
-                            f32::max(acc_max.attrs.radius_ui, point.attrs.radius_ui);
-                    }
+                    Self::Min => accumulate_min(&mut acc_min),
+                    Self::Max => accumulate_max(&mut acc_max),
                 }
 
                 j += 1;
@@ -198,6 +212,7 @@ impl MinMaxAggregator {
                         acc_min.value = fast_midpoint(acc_min.value, acc_max.value);
                         acc_min.attrs.radius_ui =
                             fast_midpoint(acc_min.attrs.radius_ui, acc_max.attrs.radius_ui);
+                        acc_min.variance = fast_midpoint(acc_min.variance, acc_max.variance);
                     }
                     aggregated.push(acc_min);
                 }
@@ -229,6 +244,7 @@ fn are_aggregatable(point1: &PlotPoint, point2: &PlotPoint, window_size: usize) 
     let PlotPoint {
         time,
         value: _,
+        variance: _,
         attrs,
     } = point1;
     let PlotPointAttrs {
@@ -253,11 +269,19 @@ mod tests {
         PlotPoint {
             time,
             value,
+            variance: 0.0,
             attrs: PlotPointAttrs {
                 color: egui::Color32::WHITE,
                 radius_ui: 1.0,
                 kind: PlotSeriesKind::Continuous,
             },
+        }
+    }
+
+    fn pt_with_variance(time: i64, value: f64, variance: f32) -> PlotPoint {
+        PlotPoint {
+            variance,
+            ..pt(time, value)
         }
     }
 
@@ -446,6 +470,24 @@ mod tests {
     // =======================================================================
     // Average-specific tests
     // =======================================================================
+
+    /// Aggregation works in variance space: the square root is only taken when the band mesh is
+    /// built. Averaging therefore pools the variances rather than the standard deviations.
+    ///
+    /// The min/max aggregators are covered by the `measurements_band_aggregation` snapshot, but
+    /// nothing exercises `Average` with variances.
+    #[test]
+    fn average_pools_variances_not_standard_deviations() {
+        let points = vec![
+            pt_with_variance(0, 4.0, 4.0),
+            pt_with_variance(1, 6.0, 16.0),
+        ];
+        let result = AverageAggregator::aggregate(2.0, &points);
+
+        assert_eq!(values(&result), vec![5.0]);
+        // Mean of the variances, i.e. (4 + 16) / 2 -- not the mean of the deviations 2 and 4.
+        assert_eq!(result[0].variance, 10.0);
+    }
 
     #[test]
     fn average_window_of_two() {

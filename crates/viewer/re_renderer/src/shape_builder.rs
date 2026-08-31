@@ -17,6 +17,10 @@ pub struct ShapeBuilder {
 }
 
 impl ShapeBuilder {
+    pub fn is_empty(&self) -> bool {
+        self.indices.is_empty()
+    }
+
     pub fn add_convex_polygon(&mut self, points: &[Vec2]) {
         re_log::debug_assert!(points.len() >= 3);
         let base = self.positions.len() as u32;
@@ -72,9 +76,7 @@ impl ShapeBuilder {
         // The index buffer in `CpuMesh` is `Vec<UVec3>` (one entry per triangle), but
         // `Material::index_range` is in units of scalar u32 indices, hence ×3.
         let index_count = (indices.len() * 3) as u32;
-        // Unit-radius shapes are bounded by [-1, 1] in xy. Give the bbox a tiny z extent so
-        // it doesn't fail `BoundingBox::is_nothing`.
-        let bbox = macaw::BoundingBox::from_min_max(vec3(-1.0, -1.0, 0.0), vec3(1.0, 1.0, 0.0));
+        let bbox = crate::util::bounding_box_from_points(positions.iter().copied());
         let albedo = render_ctx
             .texture_manager_2d
             .white_texture_unorm_handle()

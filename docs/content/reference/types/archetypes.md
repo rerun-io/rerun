@@ -40,6 +40,7 @@ This page lists all built-in archetypes.
 ## Plotting
 
 * [`BarChart`](archetypes/bar_chart.md): A bar chart.
+* [`Measurements`](archetypes/measurements.md): One or more scalar measurements, each with a variance and a unit.
 * [`Scalars`](archetypes/scalars.md): One or more double-precision scalar values, e.g. for use for time-series plots.
 * [`SeriesLines`](archetypes/series_lines.md): Define the style properties for one or more line series in a chart.
 * [`SeriesPoints`](archetypes/series_points.md): Define the style properties for one or more point series (scatter plot) in a chart.

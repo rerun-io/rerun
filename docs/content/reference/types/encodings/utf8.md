@@ -26,5 +26,6 @@ Utf8
 * [`TextLogLevel`](../components/text_log_level.md)
 * [`Text`](../components/text.md)
 * [`TransformFrameId`](../components/transform_frame_id.md)
+* [`Unit`](../components/unit.md?speculative-link)
 * [`Utf8Pair`](../encodings/utf8pair.md)
 * [`VisibleTimeRange`](../encodings/visible_time_range.md)

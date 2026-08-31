@@ -112,7 +112,9 @@ from .transform_relation import (
 )
 from .translation3d import Translation3D, Translation3DBatch
 from .triangle_indices import TriangleIndices, TriangleIndicesBatch
+from .unit import Unit, UnitBatch
 from .value_range import ValueRange, ValueRangeBatch
+from .variance import Variance, VarianceBatch
 from .vector2d import Vector2D, Vector2DBatch
 from .vector3d import Vector3D, Vector3DBatch
 from .video_codec import VideoCodec, VideoCodecArrayLike, VideoCodecBatch, VideoCodecLike
@@ -307,8 +309,12 @@ __all__ = [
     "Translation3DBatch",
     "TriangleIndices",
     "TriangleIndicesBatch",
+    "Unit",
+    "UnitBatch",
     "ValueRange",
     "ValueRangeBatch",
+    "Variance",
+    "VarianceBatch",
     "Vector2D",
     "Vector2DBatch",
     "Vector3D",

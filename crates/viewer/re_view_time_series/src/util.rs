@@ -8,7 +8,7 @@ use re_viewer_context::{ViewContext, ViewQuery, ViewerContext};
 use re_viewport_blueprint::{ViewProperty, ViewPropertyQueryError};
 
 use crate::aggregation::{AverageAggregator, MinMaxAggregator};
-use crate::{PlotPoint, PlotSeries, PlotSeriesKind};
+use crate::{PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind};
 
 pub fn series_supported_encodings() -> impl IntoIterator<Item = arrow::datatypes::DataType> {
     [
@@ -98,22 +98,39 @@ pub fn determine_query_range(
         .unwrap_or(AbsoluteTimeRange::EMPTY))
 }
 
+/// Everything about one series that a run of points inherits.
+///
+/// A series may be split into several [`PlotSeries`] runs, each of which is built from this.
+pub struct SeriesProperties {
+    pub instance_path: InstancePath,
+    pub label: String,
+
+    /// Unit of the values, e.g. `"Pa"`, shown in the legend and in tooltips.
+    pub unit: Option<String>,
+
+    pub visible: bool,
+
+    /// Whether this series has any non-zero variance, and therefore an error band.
+    ///
+    /// Known from the variance column, so runs never have to look for it point by point.
+    pub has_variances: bool,
+
+    pub visualizer_instruction_id: VisualizerInstructionId,
+}
+
 // We have a bunch of raw points, and now we need to group them into individual series.
 // A series is a continuous run of points with identical attributes: each time
 // we notice a change in attributes, we need a new series.
 pub fn points_to_series(
-    instance_path: InstancePath,
+    run: SeriesProperties,
     time_per_pixel: f64,
-    visible: bool,
     points: Vec<PlotPoint>,
     store: &re_chunk_store::ChunkStore,
     query: &ViewQuery<'_>,
-    series_label: String,
     aggregator: AggregationPolicy,
     all_series: &mut Vec<PlotSeries>,
-    visualizer_instruction_id: VisualizerInstructionId,
 ) {
-    re_tracing::profile_function!(&instance_path.to_string());
+    re_tracing::profile_function!(&run.instance_path.to_string());
 
     if points.is_empty() {
         // No values being present is not an error, maybe data comes in later!
@@ -122,22 +139,19 @@ pub fn points_to_series(
 
     let (aggregation_factor, points) = apply_aggregation(aggregator, time_per_pixel, points, query);
     let min_time = store
-        .entity_min_time(&query.timeline, &instance_path.entity_path)
+        .entity_min_time(&query.timeline, &run.instance_path.entity_path)
         .map_or_else(
             || points.first().map_or(0, |p| p.time),
             |time| time.as_i64(),
         );
 
     add_series_runs(
-        instance_path,
-        visible,
-        series_label,
+        run,
         points,
         aggregator,
         aggregation_factor,
         min_time,
         all_series,
-        visualizer_instruction_id,
     );
 }
 
@@ -209,62 +223,56 @@ pub fn apply_aggregation(
 #[expect(clippy::needless_pass_by_value)]
 #[inline(never)] // Better callstacks on crashes
 fn add_series_runs(
-    instance_path: InstancePath,
-    visible: bool,
-    series_label: String,
+    run: SeriesProperties,
     points: Vec<PlotPoint>,
     aggregator: AggregationPolicy,
     aggregation_factor: f64,
     min_time: i64,
     all_series: &mut Vec<PlotSeries>,
-    visualizer_instruction_id: VisualizerInstructionId,
 ) {
     re_tracing::profile_function!();
 
     let num_points = points.len();
-    let mut attrs = points[0].attrs.clone();
-    let mut series: PlotSeries = PlotSeries {
-        instance_path: instance_path.clone(),
-        visible,
-        label: series_label.clone(),
+
+    // Series without a band carry no variances at all.
+    let push = |series: &mut PlotSeries, time: i64, value: f64, variance: f32| {
+        series.push_point(time, value);
+        if run.has_variances {
+            series.variances.push(variance);
+        }
+    };
+
+    let new_series = |attrs: &PlotPointAttrs, capacity: usize| PlotSeries {
+        instance_path: run.instance_path.clone(),
+        visible: run.visible,
+        label: run.label.clone(),
         color: attrs.color,
         radius_ui: attrs.radius_ui,
-        points: Vec::with_capacity(num_points),
-        value_range: None,
         kind: attrs.kind,
+        points: Vec::with_capacity(capacity),
+        value_range: None,
         aggregator,
         aggregation_factor,
         min_time,
-        visualizer_instruction_id,
+        visualizer_instruction_id: run.visualizer_instruction_id,
+        variances: Vec::new(),
+        unit: run.unit.clone(),
     };
 
+    let mut attrs = points[0].attrs.clone();
+    let mut series: PlotSeries = new_series(&attrs, num_points);
+
     for (i, p) in points.into_iter().enumerate() {
-        #[expect(clippy::branches_sharing_code)]
         if p.attrs == attrs {
             // Same attributes, just add to the current series.
-            series.push_point(p.time, p.value);
+            push(&mut series, p.time, p.value, p.variance);
         } else {
             // Attributes changed since last point, break up the current run into a
             // its own series, and start the next one.
 
+            let variance = p.variance;
             attrs = p.attrs;
-            let prev_series = std::mem::replace(
-                &mut series,
-                PlotSeries {
-                    instance_path: instance_path.clone(),
-                    visible,
-                    label: series_label.clone(),
-                    color: attrs.color,
-                    radius_ui: attrs.radius_ui,
-                    kind: attrs.kind,
-                    points: Vec::with_capacity(num_points - i),
-                    value_range: None,
-                    aggregator,
-                    aggregation_factor,
-                    min_time,
-                    visualizer_instruction_id,
-                },
-            );
+            let prev_series = std::mem::replace(&mut series, new_series(&attrs, num_points - i));
 
             let cur_continuous = matches!(
                 attrs.kind,
@@ -277,17 +285,18 @@ fn add_series_runs(
 
             #[expect(clippy::unwrap_used)] // prev_series.points can't be empty here
             let prev_point = *prev_series.points.last().unwrap();
+            let prev_variance = prev_series.variances.last().copied().unwrap_or(0.0);
             all_series.push(prev_series);
 
             // If the previous point was continuous and the current point is continuous
             // too, then we want the 2 segments to appear continuous even though they
             // are actually split from a data standpoint.
             if cur_continuous && prev_continuous {
-                series.push_point(prev_point.0, prev_point.1);
+                push(&mut series, prev_point.0, prev_point.1, prev_variance);
             }
 
             // Add the point that triggered the split to the new segment.
-            series.push_point(p.time, p.value);
+            push(&mut series, p.time, p.value, variance);
         }
     }
 

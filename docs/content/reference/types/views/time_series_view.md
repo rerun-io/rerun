@@ -56,6 +56,7 @@ snippet: views/timeseries
 ## Visualized archetypes
 
 * [`Clear`](../archetypes/clear.md)
+* [`Measurements`](../archetypes/measurements.md)
 * [`Scalars`](../archetypes/scalars.md)
 * [`SeriesLines`](../archetypes/series_lines.md)
 * [`SeriesPoints`](../archetypes/series_points.md)

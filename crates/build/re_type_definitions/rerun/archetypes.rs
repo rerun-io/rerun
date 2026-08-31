@@ -62,6 +62,8 @@ mod mcap_message;
 mod mcap_schema;
 #[path = "archetypes/mcap_statistics.def.rs"]
 mod mcap_statistics;
+#[path = "archetypes/measurements.def.rs"]
+mod measurements;
 #[path = "archetypes/mesh3d.def.rs"]
 mod mesh3d;
 #[path = "archetypes/pinhole.def.rs"]
@@ -134,6 +136,7 @@ pub use self::mcap_channel::*;
 pub use self::mcap_message::*;
 pub use self::mcap_schema::*;
 pub use self::mcap_statistics::*;
+pub use self::measurements::*;
 pub use self::mesh3d::*;
 pub use self::pinhole::*;
 pub use self::points2d::*;

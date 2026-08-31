@@ -10,7 +10,9 @@ use re_log_types::external::arrow::array::AsArray as _;
 use re_log_types::external::arrow::buffer::BooleanBuffer;
 use re_log_types::external::arrow::datatypes::UInt32Type;
 use re_sdk_types::external::arrow::datatypes::DataType as ArrowDataType;
-use re_sdk_types::{ArrowDataType as _, ComponentDescriptor, RowId, archetypes, components};
+use re_sdk_types::{
+    ArrowDataType as _, ComponentDescriptor, ComponentIdentifier, RowId, components,
+};
 use re_view::clamped_or_nothing;
 use re_viewer_context::{ViewQuery, ViewerReportSeverity};
 
@@ -35,18 +37,18 @@ fn iter_scalar_slices<'a>(
 /// If the scalar component has a non-identity mapping (i.e. it's sourced from a different
 /// component or uses a selector), the number of series is capped at
 /// [`MAX_NUM_SERIES_FOR_REMAPPED_SCALARS`].
-/// Identity mappings (direct `Scalars` data) are not capped since the user explicitly
+/// Identity mappings (direct logged data) are not capped since the user explicitly
 /// logged that data.
 pub fn determine_num_series(
     all_scalar_chunks: &re_view::ChunksWithComponent<'_>,
     results: &re_view::VisualizerInstructionQueryResults<'_>,
+    value_component: ComponentIdentifier,
 ) -> usize {
     let count = iter_scalar_slices(all_scalar_chunks)
         .find_map(|slice| (!slice.is_empty()).then_some(slice.len()))
         .unwrap_or(1);
 
-    let scalar_component = archetypes::Scalars::descriptor_scalars().component;
-    let is_identity = results.has_identity_mapping_for_component(scalar_component);
+    let is_identity = results.has_identity_mapping_for_component(value_component);
 
     let limits_enabled = results
         .query_context()
@@ -290,6 +292,24 @@ pub fn collect_colors(
 
 /// Expands names to match `num_series`, adding indices for additional series.
 /// For selectors like `data[]`, strips the `[]` suffix before adding indices.
+/// First non-empty string batch logged for a per-series component.
+///
+/// Per-series strings (names, units) are expected to be unchanging over time, so the first
+/// non-empty reading wins.
+fn first_string_batch(
+    query_results: &re_view::VisualizerInstructionQueryResults<'_>,
+    descriptor: &ComponentDescriptor,
+) -> Option<Vec<String>> {
+    let iter = query_results.iter_optional(descriptor.component);
+    let slice = iter
+        .chunks()
+        .iter()
+        .flat_map(|chunk| chunk.iter_slices::<String>())
+        .find(|slice| !slice.is_empty())?;
+
+    Some(slice.iter().map(|s| s.to_string()).collect())
+}
+
 fn expand_series_names(names: &[String], num_series: usize) -> Vec<String> {
     let name_count = names.len();
     std::iter::zip(0..num_series, clamped_or_nothing(names, num_series))
@@ -312,17 +332,9 @@ pub fn collect_series_name(
     re_tracing::profile_function!();
 
     let query_ctx = query_results.query_context();
-    let name_iter = query_results.iter_optional(name_descriptor.component);
-    let all_name_chunks = name_iter.chunks().iter().collect_vec();
 
-    if let Some(slice) = all_name_chunks
-        .iter()
-        .find(|chunk| !chunk.chunk.is_empty())
-        .and_then(|chunk| chunk.iter_slices::<String>().next())
-        .filter(|slice| !slice.is_empty())
-    {
+    if let Some(names) = first_string_batch(query_results, name_descriptor) {
         re_tracing::profile_scope!("logged names");
-        let names: Vec<String> = slice.iter().map(|s| s.to_string()).collect();
         expand_series_names(&names, num_series)
     } else {
         re_tracing::profile_scope!("fallback names");
@@ -447,4 +459,101 @@ pub(crate) fn is_series_highlighted(query: &ViewQuery<'_>, series: &crate::PlotS
             series.visualizer_instruction_id,
         )
         .any()
+}
+
+/// Collects per-point variances (σ²) for the series into pre-allocated plot points.
+///
+/// Stored as logged: the square root that turns a variance into a band offset is only taken when
+/// the band mesh is built, which is after aggregation has collapsed most of the points.
+///
+/// Returns whether a variance column was found at all, i.e. whether the series get a band. The
+/// column is broadcast across all series of the entity, so this is the same answer for each.
+pub fn collect_variances(
+    query: &RangeQuery,
+    query_results: &re_view::VisualizerInstructionQueryResults<'_>,
+    all_scalar_chunks: &re_view::ChunksWithComponent<'_>,
+    points_per_series: &mut PlotPointsPerSeries,
+    variance_descriptor: &ComponentDescriptor,
+) -> bool {
+    re_tracing::profile_function!();
+
+    let num_series = points_per_series.len();
+
+    let variance_iter = query_results.iter_optional(variance_descriptor.component);
+    let all_variance_chunks = variance_iter.chunks().iter().collect_vec();
+    if all_variance_chunks.is_empty() {
+        return false;
+    }
+
+    if all_variance_chunks.len() == 1 && all_variance_chunks[0].chunk.num_rows() == 1 {
+        re_tracing::profile_scope!("override/default fast path");
+
+        let Some(variances) = all_variance_chunks[0].iter_slices::<f64>().next() else {
+            return false;
+        };
+
+        // A single broadcast row is cheap to inspect, and an all-zero one (e.g. a blueprint
+        // default) would otherwise build a band mesh that draws nothing.
+        let mut has_variances = false;
+        for (points, variance) in std::iter::zip(
+            points_per_series.iter_mut(),
+            clamped_or_nothing(variances, num_series),
+        ) {
+            let variance = *variance as f32;
+            has_variances |= variance > 0.0;
+            for point in points {
+                point.variance = variance;
+            }
+        }
+        return has_variances;
+    }
+
+    {
+        re_tracing::profile_scope!("standard path");
+
+        let all_variances = all_variance_chunks.iter().flat_map(|chunk| {
+            itertools::izip!(
+                chunk.iter_component_indices(*query.timeline()),
+                chunk.iter_slices::<f64>()
+            )
+        });
+
+        let all_frames =
+            re_query::range_zip_1x1(all_scalars_indices(query, all_scalar_chunks), all_variances)
+                .enumerate();
+
+        all_frames.for_each(|(i, (_index, _scalars, variances))| {
+            let Some(variances) = variances else {
+                return;
+            };
+            for (points, variance) in std::iter::zip(
+                points_per_series.iter_mut(),
+                clamped_or_nothing(variances, num_series),
+            ) {
+                points[i].variance = *variance as f32;
+            }
+        });
+    }
+
+    true
+}
+
+/// Collects units for the series, from an optional unit column.
+///
+/// An empty string means "no unit".
+pub fn collect_series_units(
+    query_results: &re_view::VisualizerInstructionQueryResults<'_>,
+    num_series: usize,
+    unit_descriptor: &ComponentDescriptor,
+) -> Vec<Option<String>> {
+    re_tracing::profile_function!();
+
+    let Some(units) = first_string_batch(query_results, unit_descriptor) else {
+        return vec![None; num_series];
+    };
+
+    // Like the other per-series components, a short column repeats its last entry.
+    clamped_or_nothing(&units, num_series)
+        .map(|unit| (!unit.is_empty()).then(|| unit.clone()))
+        .collect()
 }

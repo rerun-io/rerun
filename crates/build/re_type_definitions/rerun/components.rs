@@ -146,8 +146,12 @@ mod transform_relation;
 mod translation3d;
 #[path = "components/triangle_indices.def.rs"]
 mod triangle_indices;
+#[path = "components/unit.def.rs"]
+mod unit;
 #[path = "components/value_range.def.rs"]
 mod value_range;
+#[path = "components/variance.def.rs"]
+mod variance;
 #[path = "components/vector2d.def.rs"]
 mod vector2d;
 #[path = "components/vector3d.def.rs"]
@@ -242,7 +246,9 @@ pub use self::transform_mat3x3::*;
 pub use self::transform_relation::*;
 pub use self::translation3d::*;
 pub use self::triangle_indices::*;
+pub use self::unit::*;
 pub use self::value_range::*;
+pub use self::variance::*;
 pub use self::vector2d::*;
 pub use self::vector3d::*;
 pub use self::video_codec::*;

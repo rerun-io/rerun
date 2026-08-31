@@ -21,3 +21,4 @@ Float64
 
 * [`LinearSpeed`](../components/linear_speed.md)
 * [`Scalar`](../components/scalar.md)
+* [`Variance`](../components/variance.md?speculative-link)

@@ -89,7 +89,9 @@ on [Entities and Components](../../concepts/logging-and-ingestion/entity-compone
 * [`TransformRelation`](components/transform_relation.md): Specifies relation a spatial transform describes.
 * [`Translation3D`](components/translation3d.md): A translation vector in 3D space.
 * [`TriangleIndices`](components/triangle_indices.md): The three indices of a triangle in a triangle mesh.
+* [`Unit`](components/unit.md): Unit of a measured value, e.g. `"Pa"`, `"lux"`, `"°C"`, `"m"`.
 * [`ValueRange`](components/value_range.md): Range of expected or valid values, specifying a lower and upper bound.
+* [`Variance`](components/variance.md): Variance of a scalar measurement, i.e. σ², in the units of the value squared.
 * [`Vector2D`](components/vector2d.md): A vector in 2D space.
 * [`Vector3D`](components/vector3d.md): A vector in 3D space.
 * [`VideoCodec`](components/video_codec.md): The codec used to encode video stored in [`components.VideoSample`](https://rerun.io/docs/reference/types/components/video_sample).

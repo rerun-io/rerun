@@ -565,6 +565,12 @@ pub fn archetype_field_fallbacks(registry: &mut FallbackProviderRegistry) {
         |_| components::StrokeWidth::from(0.75),
     );
 
+    // Measurements
+    registry.register_component_fallback_provider(
+        archetypes::Measurements::descriptor_widths().component,
+        |_| components::StrokeWidth::from(0.75),
+    );
+
     // SeriesPoints
     registry.register_component_fallback_provider(
         archetypes::SeriesPoints::descriptor_marker_sizes().component,

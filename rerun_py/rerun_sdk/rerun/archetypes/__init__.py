@@ -33,6 +33,7 @@ from .mcap_channel import McapChannel
 from .mcap_message import McapMessage
 from .mcap_schema import McapSchema
 from .mcap_statistics import McapStatistics
+from .measurements import Measurements
 from .mesh3d import Mesh3D
 from .pinhole import Pinhole
 from .points2d import Points2D
@@ -86,6 +87,7 @@ __all__ = [
     "McapMessage",
     "McapSchema",
     "McapStatistics",
+    "Measurements",
     "Mesh3D",
     "Pinhole",
     "Points2D",

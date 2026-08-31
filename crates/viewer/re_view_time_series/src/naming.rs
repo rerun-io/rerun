@@ -1,6 +1,5 @@
 use re_log_types::EntityPath;
 use re_sdk_types::ComponentIdentifier;
-use re_sdk_types::archetypes::Scalars;
 use re_sdk_types::blueprint::components::VisualizerInstructionId;
 
 #[derive(Clone, Default)]
@@ -12,12 +11,20 @@ pub struct SeriesNamesContext {
 pub struct SeriesInfo {
     pub entity_path: EntityPath,
 
-    /// Empty string if the component was [`Scalars::descriptor_scalars`].
+    /// Empty string if the series reads its visualizer's own value component directly.
     pub component_with_selector: String,
 }
 
 impl SeriesInfo {
-    pub fn new(entity_path: EntityPath, component: ComponentIdentifier, selector: &str) -> Self {
+    /// `value_component` is the component this visualizer plots, e.g. `Scalars:scalars` or
+    /// `Measurements:values`. Reading it directly is the default and needs no disambiguation;
+    /// anything else is a remapping and is named after its source.
+    pub fn new(
+        entity_path: EntityPath,
+        component: ComponentIdentifier,
+        selector: &str,
+        value_component: ComponentIdentifier,
+    ) -> Self {
         fn extract_component_name(component: &ComponentIdentifier) -> String {
             let mut full_name = component.to_string();
             if let Some(idx) = full_name.rfind(':') {
@@ -27,13 +34,12 @@ impl SeriesInfo {
             }
         }
 
-        let component_with_selector =
-            if component == Scalars::descriptor_scalars().component && selector.is_empty() {
-                Default::default()
-            } else {
-                let component_name = extract_component_name(&component);
-                format!("{component_name}{selector}")
-            };
+        let component_with_selector = if component == value_component && selector.is_empty() {
+            Default::default()
+        } else {
+            let component_name = extract_component_name(&component);
+            format!("{component_name}{selector}")
+        };
 
         Self {
             entity_path,
@@ -108,6 +114,7 @@ impl SeriesNamesContext {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use re_sdk_types::archetypes::Scalars;
 
     #[test]
     fn test_dissambiguated_names_unique_components() {
@@ -123,6 +130,7 @@ mod tests {
                 EntityPath::from("left/gripper"),
                 ComponentIdentifier::from("MyArchetype:temperature"),
                 "",
+                Scalars::descriptor_scalars().component,
             ),
         );
 
@@ -132,6 +140,7 @@ mod tests {
                 EntityPath::from("right/gripper"),
                 ComponentIdentifier::from("MyArchetype:pressure"),
                 "",
+                Scalars::descriptor_scalars().component,
             ),
         );
 
@@ -156,6 +165,7 @@ mod tests {
                 EntityPath::from("left/gripper"),
                 ComponentIdentifier::from("MyArchetype:message"),
                 ".joints[]",
+                Scalars::descriptor_scalars().component,
             ),
         );
 
@@ -165,6 +175,7 @@ mod tests {
                 EntityPath::from("right/gripper"),
                 ComponentIdentifier::from("MyArchetype:message"),
                 ".joints[]",
+                Scalars::descriptor_scalars().component,
             ),
         );
 
@@ -195,6 +206,7 @@ mod tests {
                 EntityPath::from("sensor/temperature"),
                 Scalars::descriptor_scalars().component,
                 "",
+                Scalars::descriptor_scalars().component,
             ),
         );
 
@@ -204,6 +216,7 @@ mod tests {
                 EntityPath::from("sensor/pressure"),
                 Scalars::descriptor_scalars().component,
                 "",
+                Scalars::descriptor_scalars().component,
             ),
         );
 
@@ -230,6 +243,7 @@ mod tests {
                 EntityPath::from("left/gripper"),
                 ComponentIdentifier::from("MyArchetype:message"),
                 ".joints[]",
+                Scalars::descriptor_scalars().component,
             ),
         );
 
@@ -239,6 +253,7 @@ mod tests {
                 EntityPath::from("right/gripper"),
                 ComponentIdentifier::from("MyArchetype:message"),
                 ".joints[]",
+                Scalars::descriptor_scalars().component,
             ),
         );
 
@@ -249,6 +264,7 @@ mod tests {
                 EntityPath::from("system/controller"),
                 ComponentIdentifier::from("MyArchetype:status"),
                 ".code",
+                Scalars::descriptor_scalars().component,
             ),
         );
 

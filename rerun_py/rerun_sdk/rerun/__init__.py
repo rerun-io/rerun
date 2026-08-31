@@ -130,6 +130,7 @@ from .archetypes import (
     McapMessage as McapMessage,
     McapSchema as McapSchema,
     McapStatistics as McapStatistics,
+    Measurements as Measurements,
     Mesh3D as Mesh3D,
     Pinhole as Pinhole,
     Points2D as Points2D,

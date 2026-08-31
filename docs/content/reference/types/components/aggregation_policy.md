@@ -44,4 +44,5 @@ UInt8
 
 ## Used by
 
+* [`Measurements`](../archetypes/measurements.md?speculative-link)
 * [`SeriesLines`](../archetypes/series_lines.md)

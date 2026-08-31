@@ -7,7 +7,7 @@ use re_chunk_store::TimeType;
 use re_format::time::next_grid_tick_magnitude_nanos;
 use re_log_types::external::arrow::datatypes::DataType;
 use re_log_types::{AbsoluteTimeRange, ComponentPath, EntityPath};
-use re_sdk_types::archetypes::{Scalars, SeriesLines, SeriesPoints};
+use re_sdk_types::archetypes::{Measurements, Scalars, SeriesLines, SeriesPoints};
 use re_sdk_types::blueprint::archetypes::{PlotBackground, PlotLegend, ScalarAxis, TimeAxis};
 use re_sdk_types::blueprint::components::{
     Corner2D, Enabled, LinkAxis, LockRangeDuringZoom, VisualizerInstructionId,
@@ -31,6 +31,7 @@ use smallvec::SmallVec;
 use vec1::Vec1;
 
 use crate::line_visualizer_system::{SeriesLinesOutput, SeriesLinesSystem};
+use crate::measurements_visualizer_system::{MeasurementsSeriesOutput, MeasurementsSeriesSystem};
 use crate::naming::{SeriesInfo, SeriesNamesContext};
 use crate::point_visualizer_system::{SeriesPointsOutput, SeriesPointsSystem};
 use crate::util::data_result_time_range;
@@ -191,6 +192,7 @@ impl ViewClass for TimeSeriesView {
 
         system_registry.register_visualizer::<SeriesLinesSystem>()?;
         system_registry.register_visualizer::<SeriesPointsSystem>()?;
+        system_registry.register_visualizer::<MeasurementsSeriesSystem>()?;
         Ok(())
     }
 
@@ -457,14 +459,21 @@ impl ViewClass for TimeSeriesView {
             .visualizer_data_or_default::<SeriesLinesOutput>(SeriesLinesSystem::identifier())?;
         let point_series = system_output
             .visualizer_data_or_default::<SeriesPointsOutput>(SeriesPointsSystem::identifier())?;
+        let measurements_series = system_output
+            .visualizer_data_or_default::<MeasurementsSeriesOutput>(
+                MeasurementsSeriesSystem::identifier(),
+            )?;
 
-        let all_plot_series: Vec<_> =
-            chain!(&line_series.all_series, &point_series.all_series).collect();
+        let all_plot_series: Vec<_> = chain!(
+            &line_series.all_series,
+            &point_series.all_series,
+            &measurements_series.all_series
+        )
+        .collect();
 
         state.num_time_series_last_frame_per_instruction.clear();
 
         let view_query_result = ctx.lookup_query_result(query.view_id);
-        let scalar_component = Scalars::descriptor_scalars().component;
 
         let mut series_names = SeriesNamesContext::default();
 
@@ -482,9 +491,18 @@ impl ViewClass for TimeSeriesView {
                         .iter()
                         .find(|instr| instr.id == instruction_id)
                 {
+                    // Each visualizer maps into its own value component; look up the one this
+                    // instruction actually keys its mapping on.
+                    let value_component =
+                        if instruction.visualizer_type == MeasurementsSeriesSystem::identifier() {
+                            Measurements::descriptor_values().component
+                        } else {
+                            Scalars::descriptor_scalars().component
+                        };
+
                     let (component, selector) = instruction
                         .component_mappings
-                        .get(&scalar_component)
+                        .get(&value_component)
                         .and_then(|mapping| match mapping {
                             re_viewer_context::VisualizerComponentSource::SourceComponent {
                                 source_component,
@@ -492,11 +510,16 @@ impl ViewClass for TimeSeriesView {
                             } => Some((*source_component, selector.clone())),
                             _ => None,
                         })
-                        .unwrap_or((scalar_component, String::new()));
+                        .unwrap_or((value_component, String::new()));
 
                     series_names.insert(
                         instruction_id,
-                        SeriesInfo::new(data_result.entity_path.clone(), component, &selector),
+                        SeriesInfo::new(
+                            data_result.entity_path.clone(),
+                            component,
+                            &selector,
+                            value_component,
+                        ),
                     );
                 }
 
@@ -944,7 +967,13 @@ impl ViewClass for TimeSeriesView {
                         .filter(|s| !matches!(s.kind, PlotSeriesKind::Clear))
                         .map(|s| re_plot::legend::LegendEntry {
                             id: s.id(),
-                            label: s.label.clone(),
+                            label: match &s.unit {
+                                Some(unit) if !s.label.is_empty() => {
+                                    let label = &s.label;
+                                    format!("{label} [{unit}]")
+                                }
+                                _ => s.label.clone(),
+                            },
                             color: s.color,
                             visible: s.visible,
                             hovered: label_hovered
@@ -1107,12 +1136,15 @@ fn all_scalar_mappings(
     };
     let matches = &m.matches;
 
-    let target = Scalars::descriptor_scalars();
+    // Every scalar-valued target shares the rerun-native `Scalar` semantic type, so the type check
+    // below can use `Scalars.scalars` for any visualizer.
+    let target_component = m.target_component;
+    let target_component_type = Scalars::descriptor_scalars().component_type;
 
     // Flatten all (component, selector) pairs into a single comparable list
     // to find the globally best match across all components.
     let candidates = matches.iter().flat_map(|(source_component, match_info)| {
-        let is_rerun_native_type = match_info.component_type() == target.component_type.as_ref();
+        let is_rerun_native_type = match_info.component_type() == target_component_type.as_ref();
 
         // If it's not the exact semantic type that we're looking for,
         // but it is a Rerun-builtin semantic type then we don't consider it at all.
@@ -1126,10 +1158,10 @@ fn all_scalar_mappings(
 
         let primary_match_order = match match_info {
             DatatypeMatch::NativeSemantics { .. } => {
-                i32::from(*source_component != target.component)
+                i32::from(*source_component != target_component)
             }
             DatatypeMatch::PhysicalDatatypeOnly { .. } => {
-                if *source_component == target.component {
+                if *source_component == target_component {
                     0
                 } else {
                     2
@@ -1210,7 +1242,7 @@ fn all_scalar_mappings(
             )
             .map(move |(_, _, _, source_component, _, selector)| {
                 (
-                    target.component,
+                    target_component,
                     VisualizerComponentSource::SourceComponent {
                         source_component,
                         selector,
@@ -1304,7 +1336,10 @@ fn find_nearest_data_point_and_show_tooltip(
             tooltip_format,
         )
     };
-    let y_value_text = re_format::format_f64(closest_value);
+    let mut y_value_text = re_format::format_f64(closest_value);
+    if let Some(unit) = &series.unit {
+        y_value_text = format!("{y_value_text} {unit}");
+    }
     let series_name = if series.label.is_empty() {
         "y".to_owned()
     } else {
@@ -1505,26 +1540,23 @@ fn update_series_visibility_from_legend(
             continue;
         };
 
-        let descriptor = match series.kind {
-            PlotSeriesKind::Continuous | PlotSeriesKind::Stepped(_) => {
-                Some(SeriesLines::descriptor_visible_series())
-            }
-            PlotSeriesKind::Scatter(_) => Some(SeriesPoints::descriptor_visible_series()),
-            PlotSeriesKind::Clear => {
-                if cfg!(debug_assertions) {
-                    unreachable!(
-                        "Clear series can't be hidden since it doesn't show in the first place"
-                    );
-                }
-                None
-            }
-        };
-
         if let Some(visualizer_instruction) = result
             .visualizer_instructions
             .iter()
             .find(|instr| instr.id == series.visualizer_instruction_id)
         {
+            let visualizer = visualizer_instruction.visualizer_type;
+            let descriptor = if visualizer == SeriesLinesSystem::identifier() {
+                Some(SeriesLines::descriptor_visible_series())
+            } else if visualizer == SeriesPointsSystem::identifier() {
+                Some(SeriesPoints::descriptor_visible_series())
+            } else if visualizer == MeasurementsSeriesSystem::identifier() {
+                Some(Measurements::descriptor_visible_series())
+            } else {
+                re_log::debug_panic!("Unexpected time series visualizer `{visualizer}`");
+                None
+            };
+
             let override_path = &visualizer_instruction.override_path;
 
             let component_array = visibility_state

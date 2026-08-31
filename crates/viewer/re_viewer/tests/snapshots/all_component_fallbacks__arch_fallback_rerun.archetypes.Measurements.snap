@@ -1,0 +1,13 @@
+---
+source: crates/viewer/re_viewer/tests/all_component_fallbacks.rs
+expression: arch_display
+---
+values: [0.0]
+variances: [0.0]
+units: []
+colors: [3161148927]
+widths: [0.75]
+names: [<name>]
+visible_series: [true]
+aggregation_policy: [5]
+interpolation_mode: [1]

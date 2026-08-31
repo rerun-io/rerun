@@ -33,6 +33,7 @@
 #include "archetypes/mcap_message.hpp"
 #include "archetypes/mcap_schema.hpp"
 #include "archetypes/mcap_statistics.hpp"
+#include "archetypes/measurements.hpp"
 #include "archetypes/mesh3d.hpp"
 #include "archetypes/pinhole.hpp"
 #include "archetypes/points2d.hpp"

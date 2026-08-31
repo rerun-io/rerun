@@ -40,6 +40,7 @@ UInt32
 * [`GraphNodes`](../archetypes/graph_nodes.md)
 * [`LineStrips2D`](../archetypes/line_strips2d.md)
 * [`LineStrips3D`](../archetypes/line_strips3d.md)
+* [`Measurements`](../archetypes/measurements.md?speculative-link)
 * [`Mesh3D`](../archetypes/mesh3d.md)
 * [`Pinhole`](../archetypes/pinhole.md)
 * [`Points2D`](../archetypes/points2d.md)

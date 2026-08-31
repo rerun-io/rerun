@@ -3,9 +3,12 @@
 //! A View that shows plots over Rerun timelines.
 
 mod aggregation;
+mod error_bands;
 mod fallbacks;
+mod line_series_loader;
 mod line_visualizer_system;
 mod markers;
+mod measurements_visualizer_system;
 mod naming;
 mod point_visualizer_system;
 mod series_query;
@@ -30,7 +33,10 @@ pub const MAX_NUM_NON_INDICATED_RECOMMENDED_VISUALIZERS_PER_ENTITY: usize = 4;
 
 // ---
 
-#[derive(Clone, Debug)]
+/// Attributes shared by a whole run of points, i.e. by one [`PlotSeries`].
+///
+/// A change in any of these starts a new series. Per-point data belongs on `PlotPoint`.
+#[derive(Clone, Debug, PartialEq)]
 pub struct PlotPointAttrs {
     pub color: egui::Color32,
 
@@ -45,23 +51,16 @@ pub struct ScatterAttrs {
     pub marker: MarkerShape,
 }
 
-impl PartialEq for PlotPointAttrs {
-    fn eq(&self, rhs: &Self) -> bool {
-        let Self {
-            color,
-            radius_ui,
-            kind,
-        } = self;
-        color.eq(&rhs.color) && radius_ui.total_cmp(&rhs.radius_ui).is_eq() && kind.eq(&rhs.kind)
-    }
-}
-
-impl Eq for PlotPointAttrs {}
-
 #[derive(Clone, Debug, PartialEq)]
 struct PlotPoint {
     time: i64,
     value: f64,
+
+    /// Variance (σ²) of `value`, drawn as an error band around the line.
+    ///
+    /// `0` means no band.
+    variance: f32,
+
     attrs: PlotPointAttrs,
 }
 
@@ -124,6 +123,15 @@ pub struct PlotSeries {
     /// How many raw data points were aggregated into a single step of the graph?
     /// This is an average.
     pub aggregation_factor: f64,
+
+    /// Per-point variance (σ²), drawn as an error band around the line.
+    ///
+    /// Empty means no band. Otherwise the length matches [`PlotSeries::points`].
+    /// Not part of [`PlotSeries::value_range`]: the y-axis tracks the values, not the band.
+    pub variances: Vec<f32>,
+
+    /// Unit of the values, e.g. `"Pa"`, shown in the legend and in tooltips.
+    pub unit: Option<String>,
 }
 
 impl PlotSeries {

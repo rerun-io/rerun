@@ -1,4 +1,4 @@
-use re_sdk_types::archetypes::Scalars;
+use re_sdk_types::archetypes::{Measurements, Scalars};
 use re_sdk_types::blueprint::archetypes::{PlotLegend, ScalarAxis, TimeAxis};
 use re_sdk_types::encodings::TimeRange;
 use re_sdk_types::{
@@ -14,6 +14,7 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
     for component in [
         SeriesLines::descriptor_names().component,
         SeriesPoints::descriptor_names().component,
+        Measurements::descriptor_names().component,
     ] {
         system_registry.register_array_fallback_provider::<re_sdk_types::components::Name, _>(
             component,
@@ -66,13 +67,25 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
         );
     }
 
-    for component in [
-        SeriesLines::descriptor_colors().component,
-        SeriesPoints::descriptor_colors().component,
+    // Each color column is paired with the value column of the visualizer that reads it,
+    // so that two visualizers on the same entity get different auto-colors.
+    for (color_component, value_component) in [
+        (
+            SeriesLines::descriptor_colors().component,
+            Scalars::descriptor_scalars().component,
+        ),
+        (
+            SeriesPoints::descriptor_colors().component,
+            Scalars::descriptor_scalars().component,
+        ),
+        (
+            Measurements::descriptor_colors().component,
+            Measurements::descriptor_values().component,
+        ),
     ] {
         system_registry.register_array_fallback_provider::<re_sdk_types::components::Color, _>(
-            component,
-            |ctx| {
+            color_component,
+            move |ctx| {
                 let state = ctx.view_state().downcast_ref::<TimeSeriesViewState>();
                 let Ok(state) = state else {
                     return vec![re_viewer_context::auto_color_for_entity_path(
@@ -98,10 +111,7 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
                         .visualizer_instructions
                         .iter()
                         .find(|instr| instr.id == id)?;
-                    match instruction
-                        .component_mappings
-                        .get(&Scalars::descriptor_scalars().component)?
-                    {
+                    match instruction.component_mappings.get(&value_component)? {
                         VisualizerComponentSource::SourceComponent {
                             source_component,
                             selector,
