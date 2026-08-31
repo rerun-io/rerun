@@ -4,11 +4,11 @@ Guidance for LLMs working in this repo.
 
 ## Project overview
 
-Rerun: time-aware multimodal data stack + visualization for robotics, spatial AI, computer vision. SDKs (Python, Rust, C++) log rich data (images, point clouds, tensors, etc.). Viewer for visualization.
+Rerun is a time-aware multimodal data stack and visualizations tool used in robotics, spatial AI, computer vision, and similar domains. It provides SDKs (Python, Rust, C++) for logging rich data (images, point clouds, tensors, etc.) and a Viewer for visualization.
 
 ## Build system
 
-`pixi` for task management + deps. See `pixi.toml` for full task list.
+We use `pixi` for task management and dependency installation. Check `pixi.toml` for a full list of tasks.
 
 ### Essential commands
 
@@ -19,7 +19,7 @@ Rerun: time-aware multimodal data stack + visualization for robotics, spatial AI
 - `pixi run cpp-build-all` - Build all C++ artifacts
 
 **Running:**
-- `pixi run rerun` - Run viewer
+- `pixi run rerun` - Run the viewer
 - `pixi run uvpy script.py` - Run Python scripts with rerun SDK
 - `cargo run -p <package_name>` - Run specific Rust example (e.g., `cargo run -p dna`)
 
@@ -27,7 +27,7 @@ Rerun: time-aware multimodal data stack + visualization for robotics, spatial AI
 - `pixi run codegen` - Generate Rust/Python/C++ code from the `re_type_definitions` crate
 
 **Formatting:**
-- `pixi run rs-fmt` - Format Rust files. **Always run after editing Rust files, before committing.**
+- `pixi run rs-fmt` - Format all Rust files. Always run this after making changes.
 - `pixi run py-fmt` - Format Python files
 - `pixi run cpp-fmt` - Format C++ files
 - `pixi run toml-fmt` - Format TOML files
@@ -50,7 +50,7 @@ Rerun: time-aware multimodal data stack + visualization for robotics, spatial AI
 
 ## Code generation system
 
-**Critical: Never edit generated files directly.** All generated files marked "DO NOT EDIT" at top.
+**Critical: Never edit generated files directly.** All generated files are marked "DO NOT EDIT" at the top.
 
 ### Type definition flow
 
@@ -58,30 +58,32 @@ Rerun: time-aware multimodal data stack + visualization for robotics, spatial AI
 re_type_definitions → pixi run codegen → Generated code (Rust/Python/C++) + docs (docs/content/reference/types/)
 ```
 
-- Type definitions in `crates/build/re_type_definitions/rerun/`
+- Type definitions live in `crates/build/re_type_definitions/rerun/`
   - `encodings/*.def.rs` - Low-level types (Vec3D, Mat4x4, etc.)
   - `components/*.def.rs` - Component types (Position3D, Color, etc.)
   - `archetypes/*.def.rs` - Archetypes (Points3D, Image, etc.)
   - `blueprint/*.def.rs` - Blueprint system types
-- Codegen implementation in `crates/build/re_types_builder/`
-- After modifying a definition, run `pixi run codegen` to regenerate
+- Codegen implementation is in `crates/build/re_types_builder/`
+- After modifying a definition, run `pixi run codegen` to regenerate code
 
 ### Extension pattern
 
-Add custom functionality to generated types via `_ext` files:
-- Rust: `filename_ext.rs` (auto-imported by codegen)
-- Python: `filename_ext.py` (mixed into generated class)
-- C++: `filename_ext.cpp` (compiled + included auto, parts may be marked for copy into header by codegen)
+To add custom functionality to generated types, create `_ext` files:
+- Rust: `filename_ext.rs` (automatically imported by codegen)
+- Python: `filename_ext.py` (mixed in with generated class)
+- C++: `filename_ext.cpp` (compiled and included automatically, parts of it may be marked for copy into the header by codegen)
 
 ## Code conventions
 
 ### General
 
 - use `…` instead of `...` <!-- NOLINT -->
-- Validate conventions via `pixi run lint-rerun <file>` (no file = check everything)
-- Prose style (em vs en dash, sentence endings, casing) — see [`DESIGN.md`](DESIGN.md). In short: spaced em dash ` — `, never unspaced `word—word`, and don't use `–` as a sentence dash (it's for numeric ranges only) <!-- NOLINT -->
+- validate various custom conventions via `pixi run lint-rerun <file>` (not passing any file will check everything)
+- Use `format!("{x}")` over `format!("{}, x)` (same in log calls etc)
+- Don't write trivial comments that add nothing new
 - In error and log messages, put the error first and any file path at the end (e.g. `Failed to import: {err}\nFile path: {path}`), never in the middle.
   Paths can be long or sensitive, so trailing placement makes them easy to strip when copy-pasting.
+- Prose style (em vs en dash, sentence endings, casing) — see [`DESIGN.md`](DESIGN.md). In short: spaced em dash ` — `, never unspaced `word—word`, and don't use `–` as a sentence dash (it's for numeric ranges only) <!-- NOLINT -->
 - One sentence per line in markdown files.
   Markdown joins consecutive lines into a paragraph, so rendering is unchanged — but diffs become much easier to review.
 
@@ -97,25 +99,25 @@ crates/
 └── viewer/    # Viewer UI and rendering
 ```
 
-More details in `ARCHITECTURE.md`.
+For more details about the architecture see `ARCHITECTURE.md`.
 
 **When adding, removing, or renaming a crate**, update `ARCHITECTURE.md`:
 add the crate to the appropriate crate table, and flag for the author that the crate-organization diagram (FigJam) needs a manual update — see the HTML comment next to the diagram in `ARCHITECTURE.md` for instructions.
 
 ### Type system hierarchy
 
-Three levels (generated from `re_type_definitions`):
+The type system has three levels (generated from `re_type_definitions`):
 
 1. **Encodings** (`rerun.encodings.*`) - Basic types like Vec3D, Color
 2. **Components** (`rerun.components.*`) - Named semantic wrappers (Position3D, Radius)
 3. **Archetypes** (`rerun.archetypes.*`) - Collections of components (Points3D, Image)
 
 Each archetype specifies:
-- Required components (must provide)
-- Recommended components (good defaults)
-- Optional components
+- Required components (must be provided)
+- Recommended components (have good defaults)
+- Optional components (purely optional)
 
-Example: `Points3D` requires `positions`, recommends `colors` and `radii`, optional `labels`.
+Example: `Points3D` archetype requires `positions`, recommends `colors` and `radii`, allows optional `labels`.
 
 ### Data flow
 
@@ -131,11 +133,11 @@ Viewer (immediate mode rendering)
 
 ### Blueprint system
 
-Viewer's configuration layer:
-- Stored as separate store (`re_entity_db`) with "blueprint" timeline
+The blueprint is the viewer's configuration layer:
+- Stored as a separate store (`re_entity_db`) with "blueprint" timeline
 - Defines: view layout, visibility, per-entity overrides, view properties
-- Uses same type system as logged data
-- Path hierarchy: `/viewport/`, `/view/{uuid}/`, `/container/{uuid}/`
+- Uses the same type system as logged data
+- Basic blueprint path hierarchy: `/viewport/`, `/view/{uuid}/`, `/container/{uuid}/`
 
 ### Visualizers
 
@@ -144,7 +146,7 @@ Each view type (Spatial3D, TimeSeries, etc.) has registered visualizers:
 - Execute per-frame: query data → process → generate render commands
 - Examples: Points3DVisualizer, LineStripsVisualizer, MeshVisualizer
 
-Viewer uses **immediate mode**: every frame, query store + re-render from scratch.
+The viewer uses **immediate mode**: every frame, query the store and re-render from scratch.
 
 ## Documentation snippets
 
@@ -152,7 +154,7 @@ See [`docs/snippets/README.md`](docs/snippets/README.md) for running, building, 
 
 ## Python development workflow
 
-Python uses separate uv-managed .venv (not pixi's conda env):
+Python uses a separate uv-managed .venv (not pixi's conda env):
 
 ```bash
 pixi run py-build              # Build rerun-sdk into .venv
@@ -160,44 +162,45 @@ pixi run uvpy script.py        # Run Python scripts via uv
 pixi run uv run script.py      # Explicit uv run
 ```
 
-`uv` wrapper unsets `CONDA_PREFIX` for isolation from pixi's env.
+The `uv` wrapper script unsets `CONDA_PREFIX` to ensure isolation from pixi's environment.
 
 ## Important notes
 
-- **PyO3 Configuration**: PyO3 config errors → run `pixi run ensure-pyo3-build-cfg`
-- **git-lfs**: Required for test snapshots. Install + run `git lfs install`
-- **Immediate Mode**: Entire viewer rendered from scratch each frame (no state management callbacks)
-- **Arrow Native**: Data stored, transmitted, queried as Apache Arrow arrays
-- **Multi-language**: definition changes affect Rust, Python, C++ simultaneously
+- **PyO3 Configuration**: If you see PyO3 config errors, run `pixi run ensure-pyo3-build-cfg`
+- **git-lfs**: Required for test snapshots. Install with your package manager and run `git lfs install`
+- **Immediate Mode**: The entire viewer is rendered from scratch each frame (no state management callbacks)
+- **Arrow Native**: Data is stored, transmitted, and queried as Apache Arrow arrays
+- **Multi-language**: Changes to `re_type_definitions` affect Rust, Python, and C++ simultaneously
 
 ## Python docstring formatting
 
-Python API docs use **MkDocs + mkdocstrings** (NOT Sphinx). Never use reStructuredText (rST) in Python docstrings. Use markdown:
+Python API docs are built with **MkDocs + mkdocstrings** (NOT Sphinx). Never use reStructuredText (rST) syntax in Python docstrings or documentation. Use markdown instead:
 
-- Cross-refs: `[`ClassName`][]` not `:class:`ClassName`` / `:func:` / `:meth:`
-- Warnings: `!!! warning` (MkDocs admonition with indented body) not `.. warning::`
-- Deprecation: use `@deprecated` decorator (mkdocstrings renders it), don't duplicate in docstring
-- Code blocks: markdown fenced blocks, not `.. code-block::`
-- Params: numpy-style (`Parameters`, `Returns` with `----------`)
+- **Cross-references:** Use `[`ClassName`][]` (mkdocstrings syntax), NOT `:class:`ClassName`` / `:func:` / `:meth:` (rST roles)
+- **Warnings/notes:** Use MkDocs admonitions (`!!! warning` with indented body), NOT `.. warning::` (rST directives)
+- **Deprecation notices:** Use the `@deprecated` decorator (mkdocstrings renders it automatically). Do NOT duplicate in the docstring with `.. deprecated::` or `**Deprecated:**`
+- **Code blocks:** Use markdown fenced blocks (`` ``` ``), NOT `.. code-block::`
+- **Parameter docs:** Use numpy-style sections (`Parameters`, `Returns` with `----------`), which is what the codebase already uses
 
 ## Documentation system
 
-See [`docs/README.md`](docs/README.md) for full docs architecture.
+See [`docs/README.md`](docs/README.md) for the full documentation architecture.
 
-Docs span multiple sites: main docs at `rerun.io/docs` (from `docs/content/`), API refs for Python (MkDocs), C++ (Doxygen), JS (TypeDoc) at `ref.rerun.io/docs/{python,cpp,js}/`.
+The docs span multiple sites: the main docs at `rerun.io/docs` (built from `docs/content/`), plus API reference sites for Python (MkDocs), C++ (Doxygen), and JS (TypeDoc) at `ref.rerun.io/docs/{python,cpp,js}/`.
 
-Key points:
-- **`docs/content/reference/types/`** auto-generated by `pixi run codegen` from `re_type_definitions` - don't edit
-- **`docs/content/reference/cli.md`** auto-generated by `pixi run man` - don't edit
-- **Code snippets** in `docs/snippets/all/` with Python, Rust, C++ implementations
+Key things to know:
+- **`docs/content/reference/types/`** is auto-generated by `pixi run codegen` from `re_type_definitions` - do not edit directly
+- **`docs/content/reference/cli.md`** is auto-generated by `pixi run man` - do not edit directly
+- **Code snippets** live in `docs/snippets/all/` with implementations in Python, Rust, and C++
 - `pixi run py-docs-serve` previews Python API docs locally
 - `pixi run -e cpp cpp-docs` builds C++ docs
 
 ## Development references
 
-- [`ARCHITECTURE.md`](ARCHITECTURE.md) - Detailed architecture docs
+- [`ARCHITECTURE.md`](ARCHITECTURE.md) - Detailed architecture documentation
 - [`BUILD.md`](BUILD.md) - Full build instructions
 - [`CODE_STYLE.md`](CODE_STYLE.md) - Code style guidelines
+- [`CONTRIBUTING.md`](CONTRIBUTING.md) - Contribution guidelines
 - [`DESIGN.md`](DESIGN.md) - UI design guidelines (GUI, CLI, docs, log messages)
 - [`docs/README.md`](docs/README.md) - Documentation system (sites, builds, deployment)
 - [`rerun_py/README.md`](rerun_py/README.md) - Python SDK instructions
