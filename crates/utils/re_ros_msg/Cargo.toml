@@ -16,7 +16,12 @@ workspace = true
 
 [dependencies]
 anyhow.workspace = true
+arrow.workspace = true
+byteorder.workspace = true
 itertools.workspace = true
+re_arrow_util.workspace = true
 re_cdr.workspace = true
+re_log.workspace = true
 re_span.workspace = true
+strum.workspace = true
 thiserror.workspace = true

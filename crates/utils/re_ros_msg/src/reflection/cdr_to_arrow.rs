@@ -5,6 +5,8 @@
 
 use std::sync::Arc;
 
+use crate::dds;
+use crate::message_spec::{ArraySize, BuiltInType};
 use anyhow::Context as _;
 use arrow::array::{
     Array as _, ArrayBuilder, ArrowPrimitiveType, BooleanArray, BooleanBuilder, FixedSizeListArray,
@@ -16,11 +18,7 @@ use arrow::datatypes::{
     DataType, Field, Fields, Float32Type, Float64Type, Int8Type, Int16Type, Int32Type, Int64Type,
     UInt8Type, UInt16Type, UInt32Type, UInt64Type,
 };
-use re_ros_msg::message_spec::{ArraySize, BuiltInType};
 
-use crate::parsers::dds;
-
-use super::Ros2ReflectionError;
 use super::decode_plan::{FieldLayout, MessageDecodePlan, ValueLayout};
 
 /// CDR has no notion of an unset field: every field of every message is always present on the
@@ -32,18 +30,27 @@ use super::decode_plan::{FieldLayout, MessageDecodePlan, ValueLayout};
 /// survives into the returned array.
 const FIELD_NULLABLE: bool = false;
 
+/// An Arrow builder did not have the type its decode plan called for.
+///
+/// Only reachable through a plan/builder mismatch, which is a bug here rather than bad data.
+#[derive(Debug, thiserror::Error)]
+#[error("Failed to downcast builder to expected type: {0}")]
+pub struct ReflectionBuilderError(pub &'static str);
+
 /// Why [`CdrArrowDecoder::decode_message`] rejected a message.
-#[derive(Debug)]
-pub(super) enum CdrDecodeError {
+#[derive(Debug, thiserror::Error)]
+pub enum CdrDecodeError {
     /// The message was rejected. Its row is cancelled, so decoding can continue.
+    #[error("{0}")]
     Message(anyhow::Error),
 
     /// The Arrow builders could not be returned to a row boundary, so the decoder is unusable.
-    Unrecoverable(Ros2ReflectionError),
+    #[error(transparent)]
+    Unrecoverable(ReflectionBuilderError),
 }
 
 /// Decodes CDR messages into one Arrow column, owning the builders its plan maps to.
-pub(super) struct CdrArrowDecoder {
+pub struct CdrArrowDecoder {
     plan: Arc<MessageDecodePlan>,
 
     /// One row per message, each holding a single decoded message struct.
@@ -57,7 +64,7 @@ pub(super) struct CdrArrowDecoder {
 
 impl CdrArrowDecoder {
     /// Creates the Arrow builders that `plan` maps to, with room for `num_rows` messages.
-    pub(super) fn new(plan: Arc<MessageDecodePlan>, num_rows: usize) -> Self {
+    pub fn new(plan: Arc<MessageDecodePlan>, num_rows: usize) -> Self {
         let struct_builder = struct_builder_for_message(&plan, MessageDecodePlan::ROOT_ID);
 
         Self {
@@ -68,7 +75,7 @@ impl CdrArrowDecoder {
     }
 
     /// The plan these builders were derived from.
-    pub(super) fn plan(&self) -> &MessageDecodePlan {
+    pub fn plan(&self) -> &MessageDecodePlan {
         &self.plan
     }
 
@@ -76,7 +83,7 @@ impl CdrArrowDecoder {
     ///
     /// A message that fails to decode has its row cancelled, so decoding can carry on with the
     /// next one.
-    pub(super) fn decode_message(&mut self, buf: &[u8]) -> Result<(), CdrDecodeError> {
+    pub fn decode_message(&mut self, buf: &[u8]) -> Result<(), CdrDecodeError> {
         if let Err(source) =
             decode_bytes_into_arrow(&self.plan, buf, &mut self.builder.values().builder)
         {
@@ -93,7 +100,7 @@ impl CdrArrowDecoder {
     /// Decoding writes into the Arrow builders as it walks the CDR stream, so a failure can leave
     /// the field builders at unequal lengths — which [`StructBuilder::finish`] rejects outright.
     /// This brings them back to a row boundary and marks the row for removal.
-    fn cancel_row(&mut self) -> Result<(), Ros2ReflectionError> {
+    fn cancel_row(&mut self) -> Result<(), ReflectionBuilderError> {
         append_null_for_message(
             &self.plan,
             MessageDecodePlan::ROOT_ID,
@@ -107,7 +114,7 @@ impl CdrArrowDecoder {
     }
 
     /// The decoded messages, with any cancelled rows removed.
-    pub(super) fn finish(&mut self) -> FixedSizeListArray {
+    pub fn finish(&mut self) -> FixedSizeListArray {
         let messages = self.builder.finish();
         if self.cancelled_rows.is_empty() {
             return messages;
@@ -421,7 +428,7 @@ fn decode_builtin_into_arrow<BO: re_cdr::CdrEndian>(
 fn append_primitive_slice<T>(
     builder: &mut dyn ArrayBuilder,
     values: &[T::Native],
-) -> Result<(), Ros2ReflectionError>
+) -> Result<(), ReflectionBuilderError>
 where
     T: ArrowPrimitiveType,
     PrimitiveBuilder<T>: 'static,
@@ -504,10 +511,10 @@ fn decode_builtin_array_into_arrow<BO: re_cdr::CdrEndian>(
 /// Downcasts a builder to the concrete type its layout calls for.
 fn downcast_builder<T: std::any::Any>(
     builder: &mut dyn ArrayBuilder,
-) -> Result<&mut T, Ros2ReflectionError> {
+) -> Result<&mut T, ReflectionBuilderError> {
     builder.as_any_mut().downcast_mut::<T>().ok_or_else(|| {
         let type_name = std::any::type_name::<T>();
-        Ros2ReflectionError::Downcast(type_name.strip_suffix("Builder").unwrap_or(type_name))
+        ReflectionBuilderError(type_name.strip_suffix("Builder").unwrap_or(type_name))
     })
 }
 
@@ -519,7 +526,7 @@ fn append_null_for_message(
     plan: &MessageDecodePlan,
     message_id: usize,
     builder: &mut StructBuilder,
-) -> Result<(), Ros2ReflectionError> {
+) -> Result<(), ReflectionBuilderError> {
     let fields = plan.message(message_id).fields();
     let row_len = builder.len() + 1;
 
@@ -542,7 +549,7 @@ fn cancel_partial_struct_row(
     plan: &MessageDecodePlan,
     message_id: usize,
     builder: &mut StructBuilder,
-) -> Result<(), Ros2ReflectionError> {
+) -> Result<(), ReflectionBuilderError> {
     let row_len = builder.len() + 1;
     let is_partial = builder
         .field_builders()
@@ -561,7 +568,7 @@ fn append_null_for_layout(
     plan: &MessageDecodePlan,
     value_layout: &ValueLayout,
     builder: &mut dyn ArrayBuilder,
-) -> Result<(), Ros2ReflectionError> {
+) -> Result<(), ReflectionBuilderError> {
     match value_layout {
         ValueLayout::BuiltIn(ty) => append_null_for_builtin(ty, builder)?,
 
@@ -590,7 +597,7 @@ fn append_null_for_layout(
 fn append_null_for_builtin(
     ty: &BuiltInType,
     builder: &mut dyn ArrayBuilder,
-) -> Result<(), Ros2ReflectionError> {
+) -> Result<(), ReflectionBuilderError> {
     match ty {
         BuiltInType::Bool => downcast_builder::<BooleanBuilder>(builder)?.append_null(),
         BuiltInType::Byte | BuiltInType::Char | BuiltInType::UInt8 => {
@@ -611,4 +618,344 @@ fn append_null_for_builtin(
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use arrow::array::{
+        Float32Array, Float64Array, Int32Array, ListArray, StructArray, UInt16Array,
+    };
+    use re_arrow_util::ArrowArrayDowncastRef as _;
+
+    use super::*;
+    use crate::MessageSchema;
+    use crate::reflection::MessageDecodePlan;
+
+    /// Decodes one CDR message into a single-row message array.
+    fn decode_one(plan: &Arc<MessageDecodePlan>, data: &[u8]) -> FixedSizeListArray {
+        let mut decoder = CdrArrowDecoder::new(Arc::clone(plan), 1);
+        decoder.decode_message(data).expect("failed to decode");
+        decoder.finish()
+    }
+
+    /// The decoded message struct of a message array, for inspecting its fields.
+    fn root_struct(messages: &FixedSizeListArray) -> StructArray {
+        messages
+            .values()
+            .try_downcast_array_ref::<StructArray>()
+            .expect("messages should be structs")
+            .clone()
+    }
+
+    #[test]
+    fn decodes_directly_into_arrow() {
+        let schema = MessageSchema::parse(
+            "test/Outer",
+            r#"
+builtin_interfaces/Time stamp
+int32 number
+float32[] values
+test/Inner inner
+
+================================================================================
+MSG: builtin_interfaces/Time
+int32 sec
+uint32 nanosec
+
+================================================================================
+MSG: test/Inner
+uint16 value
+"#,
+        )
+        .unwrap();
+        let plan = Arc::new(MessageDecodePlan::from_schema(&schema).unwrap());
+
+        let array = decode_one(
+            &plan,
+            &[
+                0x00, 0x01, 0x00, 0x00, // CDR LE header
+                2, 0, 0, 0, // stamp.sec
+                0x00, 0x65, 0xCD, 0x1D, // stamp.nanosec
+                7, 0, 0, 0, // number
+                2, 0, 0, 0, // values length
+                0, 0, 0xC0, 0x3F, // values[0] = 1.5
+                0, 0, 0x20, 0x40, // values[1] = 2.5
+                9, 0, // inner.value
+            ],
+        );
+        let decoded_timestamp = plan.timestamp_nanos(&array).unwrap().map(|nanos| nanos[0]);
+
+        let root = root_struct(&array);
+        let number = root
+            .column_by_name("number")
+            .unwrap()
+            .try_downcast_array_ref::<Int32Array>()
+            .unwrap();
+        let values = root
+            .column_by_name("values")
+            .unwrap()
+            .try_downcast_array_ref::<ListArray>()
+            .unwrap();
+        let values = values.value(0);
+        let values = values.try_downcast_array_ref::<Float32Array>().unwrap();
+        let inner = root
+            .column_by_name("inner")
+            .unwrap()
+            .try_downcast_array_ref::<StructArray>()
+            .unwrap();
+        let inner_value = inner
+            .column_by_name("value")
+            .unwrap()
+            .try_downcast_array_ref::<UInt16Array>()
+            .unwrap();
+
+        assert_eq!(decoded_timestamp, Some(2_500_000_000));
+        assert_eq!(number.value(0), 7);
+        assert_eq!(values.values(), &[1.5, 2.5]);
+        assert_eq!(inner_value.value(0), 9);
+    }
+
+    /// Checks that arrays of nested messages decode into a list of structs, and that fixed-size
+    /// arrays (e.g. `float64[9]` covariances) decode without a length prefix — CDR omits it,
+    /// because the length is already known from the schema.
+    #[test]
+    fn decodes_covariance_block_and_array_of_messages() {
+        let schema = MessageSchema::parse(
+            "test/Message",
+            r#"
+geometry_msgs/Point[] points
+float64[9] orientation_covariance
+
+================================================================================
+MSG: geometry_msgs/Point
+float64 x
+float64 y
+float64 z
+"#,
+        )
+        .unwrap();
+        let plan = Arc::new(MessageDecodePlan::from_schema(&schema).unwrap());
+
+        let mut data = vec![0x00, 0x01, 0x00, 0x00]; // CDR LE header
+        data.extend_from_slice(&2_u32.to_le_bytes()); // `points` length
+        data.extend_from_slice(&[0, 0, 0, 0]); // padding to the f64 alignment
+        for value in 1..=6 {
+            data.extend_from_slice(&f64::from(value).to_le_bytes()); // points[0..2].x/y/z
+        }
+        for value in 1..=9 {
+            data.extend_from_slice(&f64::from(value).to_le_bytes()); // covariance, unprefixed
+        }
+
+        let root = root_struct(&decode_one(&plan, &data));
+
+        let points = root
+            .column_by_name("points")
+            .unwrap()
+            .try_downcast_array_ref::<ListArray>()
+            .unwrap()
+            .value(0);
+        let points = points.try_downcast_array_ref::<StructArray>().unwrap();
+        let axis = |name: &str| {
+            points
+                .column_by_name(name)
+                .unwrap()
+                .try_downcast_array_ref::<Float64Array>()
+                .unwrap()
+                .values()
+                .to_vec()
+        };
+
+        assert_eq!(axis("x"), [1.0, 4.0]);
+        assert_eq!(axis("y"), [2.0, 5.0]);
+        assert_eq!(axis("z"), [3.0, 6.0]);
+
+        let covariance = root
+            .column_by_name("orientation_covariance")
+            .unwrap()
+            .try_downcast_array_ref::<ListArray>()
+            .unwrap()
+            .value(0);
+        let covariance = covariance.try_downcast_array_ref::<Float64Array>().unwrap();
+
+        assert_eq!(
+            covariance.values(),
+            &[1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0]
+        );
+    }
+
+    /// Checks that a decode failing on the very first field still leaves every builder at a row
+    /// boundary, so the row can be cancelled and the next message decoded.
+    #[test]
+    fn decode_failure_on_the_first_field_is_recoverable() {
+        let schema = MessageSchema::parse("test/Message", "int32 first\nint32 second\n").unwrap();
+        let plan = Arc::new(MessageDecodePlan::from_schema(&schema).unwrap());
+        let mut decoder = CdrArrowDecoder::new(Arc::clone(&plan), 2);
+
+        // A bare encapsulation header: the body is empty, so `first` cannot be read.
+        assert!(decoder.decode_message(&[0x00, 0x01, 0x00, 0x00]).is_err());
+
+        decoder
+            .decode_message(
+                &[
+                    &[0x00, 0x01, 0x00, 0x00][..],
+                    &7_i32.to_le_bytes(),
+                    &8_i32.to_le_bytes(),
+                ]
+                .concat(),
+            )
+            .expect("decoding must continue after a cancelled row");
+
+        let messages = decoder.finish();
+        let root = root_struct(&messages);
+        let first = root
+            .column_by_name("first")
+            .unwrap()
+            .try_downcast_array_ref::<Int32Array>()
+            .unwrap();
+
+        assert_eq!(messages.len(), 1);
+        assert_eq!(first.values(), &[7]);
+    }
+
+    /// Checks that a decode failing part-way through an array of messages is recoverable.
+    ///
+    /// Cancelling that row closes the half-written element with a null, which lands in the list's
+    /// values array before `finish` drops the row. `ListArray` rejects such an element under a
+    /// non-nullable item field, so this is what keeps arrays of messages nullable.
+    #[test]
+    fn decode_failure_inside_an_array_of_messages_is_recoverable() {
+        let schema = MessageSchema::parse(
+            "test/Message",
+            r#"
+test/Inner[] items
+
+================================================================================
+MSG: test/Inner
+int32 a
+int32 b
+"#,
+        )
+        .unwrap();
+        let plan = Arc::new(MessageDecodePlan::from_schema(&schema).unwrap());
+        let mut decoder = CdrArrowDecoder::new(Arc::clone(&plan), 2);
+
+        // Two elements promised, but the second one is truncated after `a`, leaving the element
+        // struct mid-row.
+        assert!(
+            decoder
+                .decode_message(
+                    &[
+                        &[0x00, 0x01, 0x00, 0x00][..],
+                        &2_u32.to_le_bytes(),
+                        &1_i32.to_le_bytes(),
+                        &2_i32.to_le_bytes(),
+                        &3_i32.to_le_bytes(),
+                    ]
+                    .concat(),
+                )
+                .is_err()
+        );
+
+        decoder
+            .decode_message(
+                &[
+                    &[0x00, 0x01, 0x00, 0x00][..],
+                    &1_u32.to_le_bytes(),
+                    &7_i32.to_le_bytes(),
+                    &8_i32.to_le_bytes(),
+                ]
+                .concat(),
+            )
+            .expect("decoding must continue after a cancelled row");
+
+        // Panics if the null element ended up under a non-nullable list item field.
+        let messages = decoder.finish();
+        assert_eq!(messages.len(), 1);
+
+        let items = root_struct(&messages)
+            .column_by_name("items")
+            .unwrap()
+            .try_downcast_array_ref::<ListArray>()
+            .unwrap()
+            .clone();
+        assert_eq!(items.len(), 1);
+
+        let inner = items
+            .values()
+            .try_downcast_array_ref::<StructArray>()
+            .unwrap();
+        assert_eq!(inner.null_count(), 0, "the cancelled element must be gone");
+        for (name, expected) in [("a", 7_i32), ("b", 8)] {
+            let column = inner
+                .column_by_name(name)
+                .unwrap()
+                .try_downcast_array_ref::<Int32Array>()
+                .unwrap()
+                .clone();
+            assert_eq!(column.values(), &[expected], "unexpected values for {name}");
+        }
+    }
+
+    /// Checks that an empty sequence writes only its length, leaving the alignment of the next
+    /// field untouched — CDR aligns a payload, and an empty sequence has none.
+    #[test]
+    fn empty_numeric_sequence_does_not_align_the_next_field() {
+        let schema =
+            MessageSchema::parse("test/Message", "float64[] empty\nfloat64[] values\n").unwrap();
+        let plan = Arc::new(MessageDecodePlan::from_schema(&schema).unwrap());
+
+        let array = decode_one(
+            &plan,
+            &[
+                0x00, 0x01, 0x00, 0x00, // CDR LE header
+                0, 0, 0, 0, // empty length
+                1, 0, 0, 0, // values length
+                0, 0, 0, 0, 0, 0, 0xF8, 0x3F, // values[0] = 1.5
+            ],
+        );
+        let values = root_struct(&array)
+            .column_by_name("values")
+            .unwrap()
+            .try_downcast_array_ref::<ListArray>()
+            .unwrap()
+            .value(0);
+        let values = values.try_downcast_array_ref::<Float64Array>().unwrap();
+        assert_eq!(values.values(), &[1.5]);
+    }
+
+    #[test]
+    fn header_stamp_has_exclusive_precedence() {
+        let schema = MessageSchema::parse(
+            "test/Message",
+            r#"
+test/Header header
+builtin_interfaces/Time stamp
+
+================================================================================
+MSG: test/Header
+builtin_interfaces/Time stamp
+
+================================================================================
+MSG: builtin_interfaces/Time
+int32 sec
+uint32 nanosec
+"#,
+        )
+        .unwrap();
+        let plan = Arc::new(MessageDecodePlan::from_schema(&schema).unwrap());
+
+        let array = decode_one(
+            &plan,
+            &[
+                0x00, 0x01, 0x00, 0x00, // CDR LE header
+                2, 0, 0, 0, // header.stamp.sec
+                0x00, 0x65, 0xCD, 0x1D, // header.stamp.nanosec
+                9, 0, 0, 0, // top-level stamp.sec
+                0, 0, 0, 0, // top-level stamp.nanosec
+            ],
+        );
+        let decoded_timestamp = plan.timestamp_nanos(&array).unwrap().map(|nanos| nanos[0]);
+
+        assert_eq!(decoded_timestamp, Some(2_500_000_000));
+    }
 }

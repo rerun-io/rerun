@@ -27,7 +27,7 @@ use anyhow::anyhow;
 use serde::Deserialize;
 use thiserror::Error;
 
-use super::dds::RepresentationIdentifier;
+use re_ros_msg::dds::RepresentationIdentifier;
 
 /// Decode a CDR-encoded DDS message into a `T`.
 ///
@@ -69,7 +69,7 @@ pub enum CdrError {
     CdrEncoding(#[from] re_cdr::Error),
 
     #[error("Failed to parse DDS message: {0}")]
-    Dds(#[from] super::dds::DdsError),
+    Dds(#[from] re_ros_msg::dds::DdsError),
 
     #[error("Message is not encoded using a CDR representation: `{0:?}`")]
     UnsupportedRepresentation(RepresentationIdentifier),

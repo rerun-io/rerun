@@ -10223,9 +10223,14 @@ name = "re_ros_msg"
 version = "0.37.0-alpha.1+dev"
 dependencies = [
  "anyhow",
+ "arrow",
+ "byteorder",
  "itertools 0.15.0",
+ "re_arrow_util",
  "re_cdr",
+ "re_log",
  "re_span",
+ "strum",
  "thiserror 2.0.19",
 ]
 

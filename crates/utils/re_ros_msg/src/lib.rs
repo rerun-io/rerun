@@ -9,8 +9,11 @@ use anyhow::Context as _;
 
 use crate::message_spec::MessageSpecification;
 
+pub mod dds;
 pub mod deserialize;
 pub mod message_spec;
+
+pub mod reflection;
 
 /// Parse a schema name from a line starting with "MSG: ".
 fn parse_schema_name(line: &str) -> Option<&str> {

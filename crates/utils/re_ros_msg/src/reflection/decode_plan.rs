@@ -1,30 +1,28 @@
-//! Decode plans derived from the ROS schemas parsed by `re_ros_msg`.
+//! Decode plans derived from parsed ROS schemas.
 //!
-//! A [`MessageDecodePlan`] closely mirrors an [`re_ros_msg::MessageSchema`], with every type
+//! A [`MessageDecodePlan`] closely mirrors an [`MessageSchema`], with every type
 //! reference resolved to a message ID instead of a type name.
 //!
 //! This provides decoding a lightweight, immutable plan containing the order and types for
 //! traversing the CDR stream without requiring name/type resolution for every message.
 //!
-//! See [`super::cdr_to_arrow::CdrArrowDecoder`] for how this gets used to map directly from CDR to Arrow.
-
-// TODO(michael): consider making this module a part of `re_ros_msg`, iff it's generic enough.
+//! See [`super::CdrArrowDecoder`] for how this gets used to map directly from CDR to Arrow.
 
 use anyhow::Context as _;
 
-use re_ros_msg::MessageSchema;
-
-use super::timestamp::TimestampLocation;
-use re_ros_msg::message_spec::{
+use crate::MessageSchema;
+use crate::message_spec::{
     ArraySize, BuiltInType, ComplexType, MessageSpecification, Type, message_package,
 };
+
+use super::timestamp::TimestampLocation;
 
 /// Immutable, schema-derived instructions for decoding one ROS message type.
 ///
 /// Complex ROS types are resolved to message indexes while this plan is built, so the message
 /// decoding hot path neither parses nor looks up schema types.
 #[derive(Debug)]
-pub(super) struct MessageDecodePlan {
+pub struct MessageDecodePlan {
     /// The ROS type name of the root message, e.g. `sensor_msgs/msg/Imu`.
     schema_name: String,
 
@@ -37,12 +35,12 @@ pub(super) struct MessageDecodePlan {
 
 impl MessageDecodePlan {
     /// The ID of a plan's top-level message type.
-    pub(super) const ROOT_ID: usize = 0;
+    pub const ROOT_ID: usize = 0;
 
     /// Builds a plan by resolving every message reference in `schema`.
     ///
     /// The returned plan retains no references to `schema`, so it can be cached independently.
-    pub(super) fn from_schema(schema: &MessageSchema) -> anyhow::Result<Self> {
+    pub fn from_schema(schema: &MessageSchema) -> anyhow::Result<Self> {
         // The schema's own spec goes first, which is what makes the root message `ROOT_ID`.
         let specs = std::iter::chain(std::iter::once(&schema.spec), &schema.dependencies)
             .collect::<Vec<_>>();
@@ -85,14 +83,14 @@ impl MessageDecodePlan {
     }
 
     /// The root ROS message type name represented by this plan.
-    pub(super) fn schema_name(&self) -> &str {
+    pub fn schema_name(&self) -> &str {
         &self.schema_name
     }
 
     /// Returns the layout of the message with `id`.
     ///
     /// IDs originate from [`Self::ROOT_ID`] or [`ValueLayout::Message`].
-    pub(super) fn message(&self, id: usize) -> &MessageLayout {
+    pub fn message(&self, id: usize) -> &MessageLayout {
         &self.messages[id]
     }
 
@@ -104,39 +102,39 @@ impl MessageDecodePlan {
 
 /// The resolved fields of one ROS message type.
 #[derive(Debug)]
-pub(super) struct MessageLayout {
+pub struct MessageLayout {
     fields: Vec<FieldLayout>,
 }
 
 impl MessageLayout {
     /// Fields in ROS wire-order.
-    pub(super) fn fields(&self) -> &[FieldLayout] {
+    pub fn fields(&self) -> &[FieldLayout] {
         &self.fields
     }
 }
 
 /// The name and resolved type of one ROS message field.
 #[derive(Debug)]
-pub(super) struct FieldLayout {
+pub struct FieldLayout {
     name: String,
     value: ValueLayout,
 }
 
 impl FieldLayout {
     /// The ROS field name.
-    pub(super) fn name(&self) -> &str {
+    pub fn name(&self) -> &str {
         &self.name
     }
 
     /// The resolved type of this field.
-    pub(super) fn value(&self) -> &ValueLayout {
+    pub fn value(&self) -> &ValueLayout {
         &self.value
     }
 }
 
 /// The resolved type of a ROS field value.
 #[derive(Debug)]
-pub(super) enum ValueLayout {
+pub enum ValueLayout {
     /// A scalar ROS built-in type.
     BuiltIn(BuiltInType),
 

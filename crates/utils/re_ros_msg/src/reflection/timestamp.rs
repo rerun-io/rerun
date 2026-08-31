@@ -1,19 +1,31 @@
-//! Utilities for assembling the `ros2_timestamp` timeline during schema reflection.
+//! Reads the conventional ROS message timestamp off decoded Arrow columns.
 //!
 //! ROS messages conventionally carry their own acquisition time, either in a `header` or in a
 //! top-level `stamp` field. [`TimestampLocation`] resolves where that sits while a decode plan is
-//! built, so the timeline can be read straight off the decoded Arrow columns afterwards.
+//! built, so [`MessageDecodePlan::timestamp_nanos`] can read it straight off the decoded columns
+//! afterwards without walking the schema again.
 
 use arrow::array::{FixedSizeListArray, Int32Array, StructArray, UInt32Array};
 use re_arrow_util::ArrowArrayDowncastRef as _;
-use re_ros_msg::message_spec::BuiltInType;
 
-use crate::parsers::ParserContext;
+use crate::message_spec::BuiltInType;
 
-use super::decode_plan::{FieldLayout, MessageLayout, ValueLayout};
+use super::decode_plan::{FieldLayout, MessageDecodePlan, MessageLayout, ValueLayout};
+
+/// Why [`MessageDecodePlan::timestamp_nanos`] could not read a message's ROS timestamp.
+#[derive(Debug, thiserror::Error)]
+pub enum TimestampError {
+    /// The schema declared a stamp, so the decoded columns were expected to match it.
+    #[error("The decoded Arrow columns do not match the ROS {location} stamp of the schema")]
+    ColumnMismatch { location: &'static str },
+
+    /// A `sec`/`nanosec` pair that does not fit in nanoseconds since the Unix epoch.
+    #[error("The ROS {location} timestamp cannot be represented in nanoseconds")]
+    Unrepresentable { location: &'static str },
+}
 
 /// Pre-resolved Arrow column indexes for the conventional ROS timestamp fields.
-#[derive(Debug, strum::AsRefStr)]
+#[derive(Debug, strum::IntoStaticStr)]
 #[strum(serialize_all = "kebab-case")]
 pub(super) enum TimestampLocation {
     None,
@@ -101,8 +113,46 @@ fn stamp_indexes(messages: &[MessageLayout], message_id: usize) -> Option<(usize
     Some((stamp_index, sec, nanosec))
 }
 
+impl MessageDecodePlan {
+    /// The ROS timestamp of every row of `messages`, in nanoseconds since the Unix epoch.
+    ///
+    /// `messages` is the array that [`CdrArrowDecoder::finish`](super::CdrArrowDecoder::finish)
+    /// returns. `Ok(None)` means this message type carries no conventional timestamp.
+    ///
+    /// Timestamps are all-or-nothing: a single unreadable row fails the whole array, because a
+    /// timeline that is shorter than the data cannot be indexed by row.
+    pub fn timestamp_nanos(
+        &self,
+        messages: &FixedSizeListArray,
+    ) -> Result<Option<Vec<u64>>, TimestampError> {
+        let location = self.timestamp_location();
+        if matches!(location, TimestampLocation::None) {
+            return Ok(None);
+        }
+
+        let (secs, nanosecs) = messages
+            .values()
+            .downcast_array_ref::<StructArray>()
+            .and_then(|root| timestamp_columns(location, root))
+            .ok_or_else(|| TimestampError::ColumnMismatch {
+                location: location.into(),
+            })?;
+
+        std::iter::zip(secs.iter(), nanosecs.iter())
+            .map(|(sec, nanosec)| {
+                let (sec, nanosec) = Option::zip(sec, nanosec)?;
+                nanos_from_stamp(sec, nanosec)
+            })
+            .collect::<Option<Vec<u64>>>()
+            .map(Some)
+            .ok_or_else(|| TimestampError::Unrepresentable {
+                location: location.into(),
+            })
+    }
+}
+
 /// Returns the timestamp columns selected by `location` from the finished message data.
-pub(super) fn timestamp_columns<'a>(
+fn timestamp_columns<'a>(
     location: &TimestampLocation,
     root: &'a StructArray,
 ) -> Option<(&'a Int32Array, &'a UInt32Array)> {
@@ -138,58 +188,39 @@ pub(super) fn timestamp_columns<'a>(
     Some((sec, nanosec))
 }
 
-pub(super) fn timestamp_nanos(sec: i32, nanosec: u32) -> Option<u64> {
+/// Flattens a `builtin_interfaces/Time` pair into nanoseconds since the Unix epoch.
+fn nanos_from_stamp(sec: i32, nanosec: u32) -> Option<u64> {
     u64::try_from(i64::from(sec) * 1_000_000_000 + i64::from(nanosec)).ok()
 }
 
-/// Adds one ROS timestamp timeline row for each decoded Arrow message row.
-pub(super) fn add_ros2_timestamps(
-    ctx: &mut ParserContext,
-    location: &TimestampLocation,
-    messages: &FixedSizeListArray,
-) {
-    if matches!(location, TimestampLocation::None) {
-        // This message doesn't carry a header or top-level timestamp.
-        return;
-    }
+#[cfg(test)]
+mod tests {
+    use std::assert_matches;
 
-    let columns = messages
-        .values()
-        .downcast_array_ref::<StructArray>()
-        .and_then(|root| timestamp_columns(location, root));
+    use super::*;
+    use crate::MessageSchema;
 
-    let Some((secs, nanosecs)) = columns else {
-        // The plan found a stamp in the schema, so the Arrow columns are expected to match it.
-        re_log::warn_once!(
-            "MCAP channel '{}' has a ROS 2 {} stamp that does not match its Arrow columns, so it will not appear on the `ros2_timestamp` timeline.",
-            ctx.channel_topic(),
-            location.as_ref()
-        );
-        return;
-    };
+    #[test]
+    fn top_level_stamp_is_ignored_when_header_has_no_stamp() {
+        let schema = MessageSchema::parse(
+            "test/Message",
+            r#"
+test/Header header
+builtin_interfaces/Time stamp
 
-    // `Chunk::from_auto_row_ids` indexes every timeline by the message's row count.
-    // Drop the `ros2_timestamp` timeline in case we have a corrupt timestamp to avoid a panic there.
-    let nanos: Option<Vec<u64>> = std::iter::zip(secs.iter(), nanosecs.iter())
-        .map(|(sec, nanosec)| {
-            let (sec, nanosec) = Option::zip(sec, nanosec)?;
-            timestamp_nanos(sec, nanosec)
-        })
-        .collect();
+================================================================================
+MSG: test/Header
+int32 value
 
-    let Some(nanos) = nanos else {
-        re_log::warn_once!(
-            "MCAP channel '{}' has a ROS 2 {} timestamp that cannot be represented, so it will not appear on the `ros2_timestamp` timeline.",
-            ctx.channel_topic(),
-            location.as_ref()
-        );
-        return;
-    };
+================================================================================
+MSG: builtin_interfaces/Time
+int32 sec
+uint32 nanosec
+"#,
+        )
+        .unwrap();
+        let plan = MessageDecodePlan::from_schema(&schema).unwrap();
 
-    let time_type = ctx.time_type();
-    for nanos in nanos {
-        ctx.add_timestamp_cell(crate::util::TimestampCell::from_nanos_ros2(
-            nanos, time_type,
-        ));
+        assert_matches!(plan.timestamp_location(), TimestampLocation::None);
     }
 }
