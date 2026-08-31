@@ -67,7 +67,7 @@ impl VideoAssetCache {
             return Arc::new(Err(VideoLoadError::UnrecognizedMimeType));
         };
 
-        let inner_key = Hash64::hash((media_type.as_str(), decode_settings.hw_acceleration));
+        let inner_key = Hash64::hash((media_type.as_str(), &decode_settings));
 
         let entry = self
             .0

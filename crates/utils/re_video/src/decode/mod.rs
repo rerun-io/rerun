@@ -318,7 +318,10 @@ pub fn new_decoder(
                         re_log::trace!("Decoding AV1…");
                         return Ok(Box::new(sync_decoder_wrapper::SyncDecoderWrapper::new(
                             debug_name.to_owned(),
-                            Box::new(av1::SyncDav1dDecoder::new(debug_name.to_owned())?),
+                            Box::new(av1::SyncDav1dDecoder::new(
+                                debug_name.to_owned(),
+                                decode_settings.allow_slow_av1_decoding,
+                            )?),
                             output_sender,
                         )));
                     }
@@ -657,6 +660,10 @@ pub enum DecodeHardwareAcceleration {
 pub struct DecodeSettings {
     /// How the video should be decoded.
     pub hw_acceleration: DecodeHardwareAcceleration,
+
+    /// Allow native AV1 decoding without assembly optimizations.
+    #[serde(default)]
+    pub allow_slow_av1_decoding: bool,
 
     /// Custom path for the ffmpeg binary.
     ///

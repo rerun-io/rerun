@@ -76,8 +76,8 @@ fn playable_stream(cache: &mut VideoStreamCache, store: &EntityDb) -> SharablePl
             &re_chunk::EntityPath::from(STREAM_ENTITY),
             TIMELINE_NAME.into(),
             re_video::DecodeSettings {
-                hw_acceleration: Default::default(),
                 ffmpeg_path: Some(std::path::PathBuf::from("/not/used")),
+                ..Default::default()
             },
             blob_component,
             re_video::VideoCodec::ImageSequence(media_type),
@@ -256,6 +256,7 @@ fn guesses_png_media_type() {
         TIMELINE_NAME.into(),
         re_video::DecodeSettings {
             hw_acceleration: Default::default(),
+            allow_slow_av1_decoding: false,
             ffmpeg_path: Some(std::path::PathBuf::from("/not/used")),
         },
         blob_component,

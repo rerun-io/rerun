@@ -915,8 +915,8 @@ pub(super) fn playable_stream(
             &re_chunk::EntityPath::from(STREAM_ENTITY),
             TIMELINE_NAME.into(),
             re_video::DecodeSettings {
-                hw_acceleration: Default::default(),
                 ffmpeg_path: Some(std::path::PathBuf::from("/not/used")),
+                ..Default::default()
             },
             re_chunk_store::ChunkTrackingMode::Report,
         )

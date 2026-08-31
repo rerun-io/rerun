@@ -67,10 +67,16 @@ impl SyncDecoder for SyncDav1dDecoder {
 }
 
 impl SyncDav1dDecoder {
-    pub fn new(debug_name: String) -> Result<Self> {
+    /// Creates an AV1 decoder.
+    ///
+    /// When assembly optimizations are unavailable, `allow_slow_av1_decoding` permits using the
+    /// portable decoder implementation despite its significantly lower performance.
+    /// Without this opt-in, unoptimized decoding emits a warning on Apple silicon and returns
+    /// [`DecodeError::Dav1dWithoutNasm`] on other supported native platforms.
+    pub fn new(debug_name: String, allow_slow_av1_decoding: bool) -> Result<Self> {
         re_tracing::profile_function!();
 
-        if !cfg!(feature = "nasm") {
+        if !cfg!(feature = "nasm") && !allow_slow_av1_decoding {
             // The `nasm` feature makes AV1 decoding much faster.
             // On Linux the difference is huge (~25x).
             // On Windows, the difference was also pretty big (unsure how big).
@@ -82,7 +88,7 @@ impl SyncDav1dDecoder {
                     "The native AV1 video decoder is unnecessarily slow. \
                     Speed it up by compiling Rerun with the `nasm` feature enabled."
                 );
-            } else if !cfg!(test) {
+            } else {
                 // Better to return an error than to be perceived as being slow
                 return Err(DecodeError::Dav1dWithoutNasm);
             }
@@ -428,7 +434,9 @@ mod tests {
 
         let (frame_tx, frame_rx) = crate::channel("av1 round trip");
         let should_stop = AtomicBool::new(false);
-        let mut decoder = SyncDav1dDecoder::new("av1 round trip".to_owned()).unwrap();
+        let allow_slow_decode = true;
+        let mut decoder =
+            SyncDav1dDecoder::new("av1 round trip".to_owned(), allow_slow_decode).unwrap();
 
         // A handful of frames is enough to see the round trip work, no need to decode the whole video.
         const NUM_SAMPLES_TO_DECODE: usize = 4;

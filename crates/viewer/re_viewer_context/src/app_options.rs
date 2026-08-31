@@ -140,6 +140,7 @@ impl AppOptions {
                 // Force the FFmpeg path to be wrong so we have a reproducible behavior.
                 ffmpeg_path: "/fake/ffmpeg/path".to_owned(),
                 override_ffmpeg_path: true,
+                allow_slow_av1_decoding: true,
                 ..Default::default()
             },
 
@@ -185,6 +186,7 @@ impl AppOptions {
     pub fn video_decoder_settings(&self) -> DecodeSettings {
         DecodeSettings {
             hw_acceleration: self.video.hw_acceleration,
+            allow_slow_av1_decoding: self.video.allow_slow_av1_decoding,
 
             #[cfg(not(target_arch = "wasm32"))]
             ffmpeg_path: self
@@ -200,6 +202,9 @@ impl AppOptions {
 pub struct VideoOptions {
     /// Preferred method for video decoding on web.
     pub hw_acceleration: DecodeHardwareAcceleration,
+
+    /// Allow native AV1 decoding without assembly optimizations.
+    pub allow_slow_av1_decoding: bool,
 
     /// Override the path to the FFmpeg binary.
     ///
