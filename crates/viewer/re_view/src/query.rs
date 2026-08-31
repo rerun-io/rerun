@@ -16,6 +16,9 @@ use re_viewer_context::{DataResult, QueryRange, ViewContext, ViewQuery, ViewerCo
 use crate::blueprint_resolved_results::{
     BlueprintResolvedLatestAtResults, BlueprintResolvedRangeResults, ComponentSourcesMap,
 };
+use crate::component_mapping_query_plan::{
+    ActiveRemapping, ComponentMappingQueryPlan, has_non_empty_override,
+};
 use crate::{BlueprintResolvedResults, ComponentMappingError};
 
 /// Resolve a visible time range — the range of a [`QueryRange::TimeRange`] — into absolute times.
@@ -78,15 +81,14 @@ enum CastTarget {
 
 /// Applies a selector (if present) and casts the component for known datatypes (if required).
 fn transform_chunk(
-    target: &ComponentIdentifier,
-    source: &ComponentIdentifier,
-    selector: Option<&re_lenses_core::Selector>,
+    mapping: &ActiveRemapping,
     cast: &CastTarget,
     chunk: &re_chunk_store::Chunk,
 ) -> Result<re_chunk_store::Chunk, ComponentMappingError> {
-    chunk.with_shadowed_component(*source, *target, |arr| {
-        let transformed = if let Some(sel) = selector {
-            sel.execute_per_row(&arr)
+    chunk.with_shadowed_component(mapping.source, mapping.target, |arr| {
+        let transformed = if let Some(selector) = &mapping.selector {
+            selector
+                .execute_per_row(&arr)
                 .map_err(ComponentMappingError::SelectorExecutionFailed)?
                 .unwrap_or_else(|| {
                     arrow::array::ListArray::new_null(
@@ -122,16 +124,6 @@ fn transform_chunk(
             Ok(transformed)
         }
     })
-}
-
-/// All information required to rewrite a source component into a target component.
-///
-/// Also applies a [`re_lenses_core::Selector`], if specified.
-#[derive(Debug, PartialEq, Eq, Hash)]
-struct ActiveRemapping {
-    target: ComponentIdentifier,
-    source: ComponentIdentifier,
-    selector: Option<re_lenses_core::Selector>,
 }
 
 /// Decide how the cast destination is chosen for one remapped target slot.
@@ -259,7 +251,7 @@ pub fn range_with_blueprint_resolved_data_polymorphic<'a>(
     // TODO(andreas): It would be great to avoid querying for overrides & store values that aren't used due to explicit source components.
     // Logic gets surprisingly complicated quickly though.
 
-    let mut queried_components = components.into_iter().collect::<IntSet<_>>();
+    let queried_components = components.into_iter().collect::<IntSet<_>>();
 
     let overrides = query_overrides(
         ctx.viewer_ctx,
@@ -267,109 +259,78 @@ pub fn range_with_blueprint_resolved_data_polymorphic<'a>(
         queried_components.iter().copied(),
     );
 
-    // Apply component mappings when querying the recording.
-    let mut active_remappings = Vec::new();
-    let mut component_sources = IntMap::default();
-    let store_results = {
-        // Apply component mappings when querying the recording.
-        for (target_component, source) in &visualizer_instruction.component_mappings {
-            let source = if let re_viewer_context::VisualizerComponentSource::SourceComponent {
-                source_component,
-                selector,
-            } = source
-                && queried_components.remove(target_component)
-            {
-                queried_components.insert(*source_component);
+    let ComponentMappingQueryPlan {
+        recording_queried_components,
+        active_remappings,
+        mut component_sources,
+    } = ComponentMappingQueryPlan::new(
+        Some(&visualizer_instruction.component_mappings),
+        &overrides,
+        queried_components,
+    );
 
-                if selector.is_empty() {
-                    active_remappings.push(ActiveRemapping {
-                        target: *target_component,
-                        source: *source_component,
-                        selector: None,
-                    });
-                    Ok(source.source_kind())
-                } else {
-                    match selector.parse::<re_lenses_core::Selector>() {
-                        Ok(selector) => {
-                            active_remappings.push(ActiveRemapping {
-                                target: *target_component,
-                                source: *source_component,
-                                selector: Some(selector),
-                            });
-                            Ok(source.source_kind())
-                        }
-                        Err(err) => Err(ComponentMappingError::SelectorParseFailed(err)),
-                    }
-                }
-            } else {
-                Ok(source.source_kind())
-            };
+    let engine = ctx.recording_engine();
+    let mut store_results = engine.cache().range(
+        re_chunk_store::ChunkTrackingMode::Report,
+        range_query,
+        &data_result.entity_path,
+        recording_queried_components.iter().copied(),
+    );
 
-            component_sources.insert(*target_component, source);
-        }
-
-        let engine = ctx.recording_engine();
-        let mut results = engine.cache().range(
-            re_chunk_store::ChunkTrackingMode::Report,
-            range_query,
-            &data_result.entity_path,
-            queried_components.iter().copied(),
-        );
-
-        // Apply mapping to the results.
-        let reflection = ctx.viewer_ctx.reflection();
-        for ActiveRemapping {
-            target,
-            source,
-            selector,
-        } in &active_remappings
-        {
-            let cast =
-                cast_target_for_remapping(cast_rules.get(target).copied(), target, reflection);
-
-            // NOTE: We clone the chunks instead of removing them, because multiple mappings may
-            // reference the same source component.
-            if let Some(mut chunks) = results.components.get(source).cloned() {
-                'ctx: {
-                    for chunk in &mut chunks {
-                        let result =
-                            transform_chunk(target, source, selector.as_ref(), &cast, chunk);
-
-                        match result {
-                            Ok(modified_chunk) => *chunk = modified_chunk,
-                            Err(err) => {
-                                component_sources.insert(*target, Err(err));
-                                break 'ctx;
-                            }
-                        }
-                    }
-                    results.components.insert(*target, chunks);
-                }
-            } else {
-                component_sources.insert(
-                    *target,
-                    Err(component_not_found_error(
-                        *source,
-                        &data_result.entity_path,
-                        &results.missing_virtual,
-                        ctx.recording(),
-                        &engine,
-                        Some(range_query.timeline),
-                    )),
-                );
-            }
-        }
-
-        results
-    };
-
-    // Auto-determine remaining mapping sources.
+    // Now that we know which store components are present, we can auto-determine all component sources that haven't been explicitly assigned yet.
     auto_determine_remaining_sources(
         &mut component_sources,
-        queried_components,
+        recording_queried_components,
         |component| store_results.components.contains_key(&component),
         &overrides,
     );
+
+    // Buffer remapped components so every mapping reads the original query results.
+    // This keeps chained mappings independent of their iteration order.
+    let mut remapped_store_results = Vec::with_capacity(active_remappings.len());
+
+    for mapping in &active_remappings {
+        if let Some(chunks) = store_results.components.get(&mapping.source) {
+            if mapping.is_identity() && !cast_rules.contains_key(&mapping.target) {
+                continue;
+            }
+
+            // Clone instead of removing because multiple mappings may reference the same source.
+            let mut chunks = chunks.clone();
+            let cast = cast_target_for_remapping(
+                cast_rules.get(&mapping.target).copied(),
+                &mapping.target,
+                ctx.viewer_ctx.reflection(),
+            );
+            'ctx: {
+                for chunk in &mut chunks {
+                    let result = transform_chunk(mapping, &cast, chunk);
+
+                    match result {
+                        Ok(modified_chunk) => *chunk = modified_chunk,
+                        Err(err) => {
+                            component_sources.insert(mapping.target, Err(err));
+                            break 'ctx;
+                        }
+                    }
+                }
+                remapped_store_results.push((mapping.target, chunks));
+            }
+        } else {
+            component_sources.insert(
+                mapping.target,
+                Err(component_not_found_error(
+                    mapping.source,
+                    &data_result.entity_path,
+                    &store_results.missing_virtual,
+                    ctx.recording(),
+                    &engine,
+                    Some(range_query.timeline),
+                )),
+            );
+        }
+    }
+    store_results.components.extend(remapped_store_results);
 
     // TODO(andreas): Rather strange to have a latest-at query in here.
     let query_context = ctx.query_context(
@@ -435,7 +396,7 @@ pub fn latest_at_with_blueprint_resolved_data_polymorphic<'a>(
     // TODO(andreas): It would be great to avoid querying for overrides & store values that aren't used due to explicit source components.
     // Logic gets surprisingly complicated quickly though.
 
-    let mut queried_components = components.into_iter().collect::<IntSet<_>>();
+    let queried_components = components.into_iter().collect::<IntSet<_>>();
     let overrides = if let Some(visualizer_instruction) = visualizer_instruction {
         query_overrides(
             ctx.viewer_ctx,
@@ -450,47 +411,15 @@ pub fn latest_at_with_blueprint_resolved_data_polymorphic<'a>(
         )
     };
 
-    // Apply component mappings when querying the recording.
-    let mut active_remappings = Vec::new();
-    let mut component_sources = IntMap::default();
-    if let Some(visualizer_instruction) = visualizer_instruction {
-        for (target_component, source) in &visualizer_instruction.component_mappings {
-            let source_result =
-                if let re_viewer_context::VisualizerComponentSource::SourceComponent {
-                    source_component,
-                    selector,
-                } = source
-                    && queried_components.remove(target_component)
-                {
-                    queried_components.insert(*source_component);
-
-                    if selector.is_empty() {
-                        active_remappings.push(ActiveRemapping {
-                            target: *target_component,
-                            source: *source_component,
-                            selector: None,
-                        });
-                        Ok(source.source_kind())
-                    } else {
-                        match selector.parse::<re_lenses_core::Selector>() {
-                            Ok(selector) => {
-                                active_remappings.push(ActiveRemapping {
-                                    target: *target_component,
-                                    source: *source_component,
-                                    selector: Some(selector),
-                                });
-                                Ok(source.source_kind())
-                            }
-                            Err(err) => Err(ComponentMappingError::SelectorParseFailed(err)),
-                        }
-                    }
-                } else {
-                    Ok(source.source_kind())
-                };
-
-            component_sources.insert(*target_component, source_result);
-        }
-    }
+    let ComponentMappingQueryPlan {
+        recording_queried_components: queried_components,
+        active_remappings,
+        mut component_sources,
+    } = ComponentMappingQueryPlan::new(
+        visualizer_instruction.map(|instruction| &instruction.component_mappings),
+        &overrides,
+        queried_components,
+    );
 
     let engine = ctx.viewer_ctx.recording_engine();
     let mut store_results = engine.cache().latest_at(
@@ -500,36 +429,46 @@ pub fn latest_at_with_blueprint_resolved_data_polymorphic<'a>(
         queried_components.iter().copied(),
     );
 
-    // Apply mapping to the results.
-    let reflection = ctx.viewer_ctx.reflection();
-    for ActiveRemapping {
-        target,
-        source,
-        selector,
-    } in &active_remappings
-    {
-        let cast = cast_target_for_remapping(cast_rules.get(target).copied(), target, reflection);
+    // Now that we know which store components are present, we can auto-determine all component sources that haven't been explicitly assigned yet.
+    auto_determine_remaining_sources(
+        &mut component_sources,
+        queried_components,
+        |component| store_results.components.contains_key(&component),
+        &overrides,
+    );
 
-        // NOTE: We borrow the chunk instead of removing it, because multiple mappings may
-        // reference the same source component.
-        if let Some(chunk) = store_results.components.get(source) {
-            let result = transform_chunk(target, source, selector.as_ref(), &cast, chunk);
+    // Buffer remapped components so every mapping reads the original query results.
+    // This keeps chained mappings independent of their iteration order.
+    let mut remapped_store_results = Vec::with_capacity(active_remappings.len());
+
+    for mapping in &active_remappings {
+        // Borrow instead of removing because multiple mappings may reference the same source.
+        if let Some(chunk) = store_results.components.get(&mapping.source) {
+            if mapping.is_identity() && !cast_rules.contains_key(&mapping.target) {
+                continue;
+            }
+            let cast = cast_target_for_remapping(
+                cast_rules.get(&mapping.target).copied(),
+                &mapping.target,
+                ctx.viewer_ctx.reflection(),
+            );
+            let result = transform_chunk(mapping, &cast, chunk);
             match result {
                 Ok(modified_chunk) => {
                     let chunk = std::sync::Arc::new(modified_chunk)
                         .to_unit()
                         .expect("The source chunk was a unit chunk.");
-                    store_results.components.insert(*target, chunk);
+                    remapped_store_results.push((mapping.target, chunk));
                 }
                 Err(err) => {
-                    component_sources.insert(*target, Err(err));
+                    component_sources.insert(mapping.target, Err(err));
                 }
             }
         } else {
             component_sources.insert(
-                *target,
+                mapping.target,
                 Err(component_not_found_error(
-                    *source,
+                    mapping.source,
                     &data_result.entity_path,
                     &store_results.missing_virtual,
                     ctx.viewer_ctx.recording(),
@@ -539,13 +478,7 @@ pub fn latest_at_with_blueprint_resolved_data_polymorphic<'a>(
             );
         }
     }
-
-    auto_determine_remaining_sources(
-        &mut component_sources,
-        queried_components,
-        |component| store_results.components.contains_key(&component),
-        &overrides,
-    );
+    store_results.components.extend(remapped_store_results);
 
     let query_context = ctx.query_context(
         data_result,
@@ -589,19 +522,6 @@ fn auto_determine_remaining_sources(
 
         entry.insert(Ok(source));
     }
-}
-
-/// Returns `true` if the given component has a non-empty override.
-///
-/// When overrides are cleared, they are set to `[]` (an empty arrow array),
-/// so we must treat empty overrides as if the override never existed.
-/// Note that this is only relevant for auto-determined sources:
-/// if the override was explicitly selected, this distinction doesn't matter.
-fn has_non_empty_override(overrides: &LatestAtResults, component: ComponentIdentifier) -> bool {
-    overrides
-        .get(component)
-        .and_then(|chunk| chunk.non_empty_component_batch_raw(component))
-        .is_some()
 }
 
 fn query_overrides(
@@ -778,34 +698,208 @@ impl DataResultQuery for DataResult {
 
 #[cfg(test)]
 mod tests {
-    use re_chunk_store::RangeQuery;
-    use re_log_types::{AbsoluteTimeRange, EntityPath, TimelineName};
+    use nohash_hasher::IntMap;
+    use re_chunk_store::{LatestAtQuery, RangeQuery, RowId};
+    use re_log_types::{
+        AbsoluteTimeRange, EntityPath, TimePoint, TimelineName,
+        external::arrow::datatypes::DataType,
+    };
     use re_sdk_types::blueprint::components::VisualizerInstructionId;
+    use re_sdk_types::components::Color;
     use re_test_context::TestContext;
-    use re_types_core::ViewClassIdentifier;
+    use re_types_core::{Component as _, ComponentDescriptor, ViewClassIdentifier};
     use re_viewer_context::{
         DataQueryResult, DataResult, QueryRange, ViewContext, ViewId, ViewSystemIdentifier,
         VisualizerComponentMappings, VisualizerComponentSource, VisualizerInstruction,
     };
 
-    use super::{latest_at_with_blueprint_resolved_data, range_with_blueprint_resolved_data};
+    use super::{
+        ComponentCastRule, latest_at_with_blueprint_resolved_data,
+        latest_at_with_blueprint_resolved_data_polymorphic, range_with_blueprint_resolved_data,
+        range_with_blueprint_resolved_data_polymorphic,
+    };
     use crate::BlueprintResolvedResults;
 
-    #[test]
-    fn query_result_hash_changes_with_component_mappings() {
-        let test_context = TestContext::new();
-        let egui_ctx = egui::Context::default();
-
-        let data_result = DataResult {
-            entity_path: EntityPath::from("entity"),
+    fn test_data_result(entity_path: impl Into<EntityPath>) -> DataResult {
+        DataResult {
+            entity_path: entity_path.into(),
             any_visualizers_available: true,
             visualizer_instructions: Vec::new(),
             tree_prefix_only: false,
             visible: true,
             interactive: true,
-            override_base_path: EntityPath::from("override").clone(),
+            override_base_path: EntityPath::from("override"),
             query_range: QueryRange::LatestAt,
-        };
+        }
+    }
+
+    fn run_with_test_view_context(test_context: &TestContext, func: impl FnOnce(&ViewContext<'_>)) {
+        test_context.run(&egui::Context::default(), |viewer_ctx| {
+            let ctx = ViewContext {
+                viewer_ctx,
+                view_id: ViewId::invalid(),
+                view_class_identifier: ViewClassIdentifier::from_static_str("Test"),
+                space_origin: &EntityPath::root(),
+                view_state: &(),
+                query_result: &DataQueryResult::default(),
+            };
+            func(&ctx);
+        });
+    }
+
+    // Component mappings are parallel assignments, not sequential transformations.
+    //
+    // Given A ← B and B ← C, A must resolve to the original B rather than the remapped B
+    // for both latest-at and range queries, regardless of mapping iteration order.
+    #[test]
+    fn chained_mappings_read_original_components_independent_of_mapping_order() {
+        let mut test_context = TestContext::new();
+
+        let entity_path = EntityPath::from("entity");
+        let descriptors = ["a", "b", "c"]
+            .map(|name| ComponentDescriptor::partial(name).with_component_type(Color::name()));
+        let [a, b, c] = descriptors
+            .each_ref()
+            .map(|descriptor| descriptor.component);
+        let original_b = Color::from_rgb(1, 2, 3);
+        let original_c = Color::from_rgb(4, 5, 6);
+
+        test_context.log_entity(entity_path.clone(), |builder| {
+            builder.with_component_batches(
+                RowId::new(),
+                TimePoint::STATIC,
+                [
+                    (descriptors[1].clone(), &[original_b] as _),
+                    (descriptors[2].clone(), &[original_c] as _),
+                ],
+            )
+        });
+
+        let data_result = test_data_result(entity_path);
+
+        let range_query = RangeQuery::new(TimelineName::log_tick(), AbsoluteTimeRange::EVERYTHING);
+        let mapping_pairs = [
+            (a, VisualizerComponentSource::simple_map(b)),
+            (b, VisualizerComponentSource::simple_map(c)),
+        ];
+
+        run_with_test_view_context(&test_context, move |ctx| {
+            for mappings in [
+                VisualizerComponentMappings::from(mapping_pairs.clone()),
+                VisualizerComponentMappings::from([
+                    mapping_pairs[1].clone(),
+                    mapping_pairs[0].clone(),
+                ]),
+            ] {
+                let instruction = VisualizerInstruction::new(
+                    VisualizerInstructionId::new_random(),
+                    ViewSystemIdentifier::from_static_str("Test"),
+                    &EntityPath::from("override"),
+                    mappings,
+                );
+                let latest = latest_at_with_blueprint_resolved_data(
+                    ctx,
+                    None,
+                    &LatestAtQuery::new_static(),
+                    &data_result,
+                    [a, b],
+                    Some(&instruction),
+                );
+                assert_eq!(latest.get_mono::<Color>(a), Some(original_b));
+
+                let range = range_with_blueprint_resolved_data(
+                    ctx,
+                    None,
+                    &range_query,
+                    &data_result,
+                    [a, b],
+                    &instruction,
+                );
+                let range_color = range.store_results.components[&a][0]
+                    .iter_component::<Color>(a)
+                    .next()
+                    .unwrap()
+                    .as_slice()[0];
+                assert_eq!(range_color, original_b);
+            }
+        });
+    }
+
+    // Make sure that even if there's an identity mapping (which looks like no mapping at all in many regards!),
+    // we still apply the cast rules.
+    #[test]
+    fn identity_mapping_applies_cast_rule() {
+        fn cast_to_float64(datatype: &DataType) -> Option<DataType> {
+            (datatype == &DataType::UInt32).then_some(DataType::Float64)
+        }
+
+        let mut test_context = TestContext::new();
+        let entity_path = EntityPath::from("entity");
+        let descriptor =
+            ComponentDescriptor::partial("identity").with_component_type(Color::name());
+        let component = descriptor.component;
+
+        test_context.log_entity(entity_path.clone(), |builder| {
+            builder.with_component_batches(
+                RowId::new(),
+                TimePoint::STATIC,
+                [(descriptor, &[Color::from_rgb(1, 2, 3)] as _)],
+            )
+        });
+
+        let data_result = test_data_result(entity_path);
+        let instruction = VisualizerInstruction::new(
+            VisualizerInstructionId::new_random(),
+            ViewSystemIdentifier::from_static_str("Test"),
+            &EntityPath::from("override"),
+            VisualizerComponentMappings::from([(
+                component,
+                VisualizerComponentSource::identity(component),
+            )]),
+        );
+        let cast_rules: IntMap<_, ComponentCastRule> =
+            std::iter::once((component, cast_to_float64 as ComponentCastRule)).collect();
+
+        run_with_test_view_context(&test_context, move |ctx| {
+            let latest = latest_at_with_blueprint_resolved_data_polymorphic(
+                ctx,
+                None,
+                &LatestAtQuery::new_static(),
+                &data_result,
+                [component],
+                Some(&instruction),
+                &cast_rules,
+            );
+            assert_eq!(
+                latest.get_raw_cell(component).unwrap().data_type(),
+                &DataType::Float64
+            );
+
+            let range = range_with_blueprint_resolved_data_polymorphic(
+                ctx,
+                None,
+                &RangeQuery::new(TimelineName::log_tick(), AbsoluteTimeRange::EVERYTHING),
+                &data_result,
+                [component],
+                &instruction,
+                &cast_rules,
+            );
+            assert_eq!(
+                range.store_results.components[&component][0]
+                    .components()
+                    .get_array(component)
+                    .unwrap()
+                    .value_type(),
+                DataType::Float64
+            );
+        });
+    }
+
+    #[test]
+    fn query_result_hash_changes_with_component_mappings() {
+        let test_context = TestContext::new();
+
+        let data_result = test_data_result("entity");
 
         let target_a = "target_a".into();
         let target_b = "target_b".into();
@@ -831,10 +925,7 @@ mod tests {
                 "source",
                 VisualizerComponentMappings::from([(
                     target_a,
-                    VisualizerComponentSource::SourceComponent {
-                        source_component: source_a,
-                        selector: String::new(),
-                    },
+                    VisualizerComponentSource::simple_map(source_a),
                 )]),
             ),
             (
@@ -869,15 +960,7 @@ mod tests {
             ),
         ];
 
-        test_context.run(&egui_ctx, move |viewer_ctx| {
-            let ctx = ViewContext {
-                viewer_ctx,
-                view_id: ViewId::invalid(),
-                view_class_identifier: ViewClassIdentifier::from_static_str("Test"),
-                space_origin: &EntityPath::root(),
-                view_state: &(),
-                query_result: &DataQueryResult::default(),
-            };
+        run_with_test_view_context(&test_context, move |ctx| {
             let range_query =
                 RangeQuery::new(TimelineName::log_tick(), AbsoluteTimeRange::EVERYTHING);
 
@@ -889,7 +972,7 @@ mod tests {
                     component_mappings,
                 );
                 let latest_results = latest_at_with_blueprint_resolved_data(
-                    &ctx,
+                    ctx,
                     None,
                     &ctx.current_query(),
                     &data_result,
@@ -897,7 +980,7 @@ mod tests {
                     Some(&instruction),
                 );
                 let range_results = range_with_blueprint_resolved_data(
-                    &ctx,
+                    ctx,
                     None,
                     &range_query,
                     &data_result,

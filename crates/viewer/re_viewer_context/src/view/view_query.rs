@@ -71,12 +71,17 @@ impl VisualizerComponentSource {
         }
     }
 
-    /// The identity mapping for the given target component.
-    pub fn identity(target: ComponentIdentifier) -> Self {
+    /// Maps directly from the given source component without a selector.
+    pub fn simple_map(source_component: ComponentIdentifier) -> Self {
         Self::SourceComponent {
-            source_component: target,
+            source_component,
             selector: String::new(),
         }
+    }
+
+    /// The identity mapping for the given target component.
+    pub fn identity(target: ComponentIdentifier) -> Self {
+        Self::simple_map(target)
     }
 
     /// True if the mapping have no effect on the target.

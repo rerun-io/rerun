@@ -1016,10 +1016,7 @@ fn all_scalar_mappings_for(
             DatatypeMatch::NativeSemantics { .. } => {
                 Either::Left(std::iter::once(RecommendedMappings::new(
                     target,
-                    VisualizerComponentSource::SourceComponent {
-                        source_component: *source_component,
-                        selector: String::new(),
-                    },
+                    VisualizerComponentSource::simple_map(*source_component),
                 )))
             }
 
@@ -1027,10 +1024,7 @@ fn all_scalar_mappings_for(
                 if selectors.is_empty() {
                     Either::Left(std::iter::once(RecommendedMappings::new(
                         target,
-                        VisualizerComponentSource::SourceComponent {
-                            source_component: *source_component,
-                            selector: String::new(),
-                        },
+                        VisualizerComponentSource::simple_map(*source_component),
                     )))
                 } else {
                     Either::Right(selectors.iter().map(|(selector, _datatype)| {

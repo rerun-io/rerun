@@ -647,10 +647,7 @@ fn collect_source_component_options(
 ) -> Vec<VisualizerComponentSource> {
     let component_descr = mapping_ctx.target_component_descr;
 
-    let no_mapping_mapping = VisualizerComponentSource::SourceComponent {
-        source_component: component_descr.component,
-        selector: String::new(),
-    };
+    let no_mapping_mapping = VisualizerComponentSource::simple_map(component_descr.component);
 
     let Some(target_component_type) = &component_descr.component_type else {
         return vec![no_mapping_mapping];
@@ -702,10 +699,7 @@ fn collect_source_component_options(
             // Direct match?
             if allowed_physical_types.contains(datatype) {
                 Either::Left(Either::Left(std::iter::once(
-                    VisualizerComponentSource::SourceComponent {
-                        source_component,
-                        selector: String::new(),
-                    },
+                    VisualizerComponentSource::simple_map(source_component),
                 )))
             }
             // Match fields in the struct?
@@ -1057,20 +1051,14 @@ fn current_component_source(
     match query_result.component_source_kind_for(component) {
         Some(Ok(ComponentSourceKind::SourceComponent)) => {
             // The query resolved to a source component, but there is no explicit mapping, so it must be a builtin source.
-            VisualizerComponentSource::SourceComponent {
-                source_component: component,
-                selector: String::new(),
-            }
+            VisualizerComponentSource::simple_map(component)
         }
         Some(Ok(ComponentSourceKind::Override)) => VisualizerComponentSource::Override,
         Some(Ok(ComponentSourceKind::Default)) => VisualizerComponentSource::Default,
         Some(Err(_)) => {
             // There's no explicit mapping and there was a component mapping error. Can only mean that this was the standard source component.
             // TODO(andreas): Shaky argumentation. Override and default could also fail? If not now, maybe in the future?
-            VisualizerComponentSource::SourceComponent {
-                source_component: component,
-                selector: String::new(),
-            }
+            VisualizerComponentSource::simple_map(component)
         }
         None => {
             re_log::debug_panic!(
@@ -1355,12 +1343,9 @@ fn component_mappings_for_required_components_from_visualizability(
                     }))
                 }
 
-                _ => Either::Right(std::iter::once(
-                    VisualizerComponentSource::SourceComponent {
-                        source_component: *source_component,
-                        selector: String::new(),
-                    },
-                )),
+                _ => Either::Right(std::iter::once(VisualizerComponentSource::simple_map(
+                    *source_component,
+                ))),
             })
             .map(|mapping| std::iter::once((matches.target_component, mapping)).collect())
             .collect(),
@@ -1371,12 +1356,7 @@ fn component_mappings_for_required_components_from_visualizability(
             let format_mappings: Vec<_> = matches
                 .format_matches
                 .iter()
-                .map(
-                    |format_component| VisualizerComponentSource::SourceComponent {
-                        source_component: *format_component,
-                        selector: String::new(),
-                    },
-                )
+                .map(|format_component| VisualizerComponentSource::simple_map(*format_component))
                 .collect();
 
             matches
@@ -1395,10 +1375,7 @@ fn component_mappings_for_required_components_from_visualizability(
                                 })
                                 .collect()
                         }
-                        _ => vec![VisualizerComponentSource::SourceComponent {
-                            source_component: *source_component,
-                            selector: String::new(),
-                        }],
+                        _ => vec![VisualizerComponentSource::simple_map(*source_component)],
                     };
                     buffer_sources.into_iter().flat_map(|buffer_mapping| {
                         format_mappings.iter().map(move |format_mapping| {
@@ -1515,10 +1492,7 @@ mod tests {
     }
 
     fn source(component: ComponentIdentifier) -> VisualizerComponentSource {
-        VisualizerComponentSource::SourceComponent {
-            source_component: component,
-            selector: String::new(),
-        }
+        VisualizerComponentSource::simple_map(component)
     }
 
     /// A single `positions` mapping.

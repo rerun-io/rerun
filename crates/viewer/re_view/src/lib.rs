@@ -10,6 +10,7 @@ mod blueprint_resolved_results;
 mod chunks_with_component;
 mod clears;
 mod component_drop;
+mod component_mapping_query_plan;
 mod instance_hash_conversions;
 mod outlines;
 mod query;
@@ -77,6 +78,9 @@ pub enum ComponentMappingError {
         err: Arc<arrow::error::ArrowError>,
     },
 
+    #[error("No override is available for component '{0}'.")]
+    OverrideUnavailable(re_types_core::ComponentIdentifier),
+
     #[error("Component '{0}' does not exist on the entity.")]
     ComponentNotPresentOnEntity(re_types_core::ComponentIdentifier),
 
@@ -100,7 +104,8 @@ impl ComponentMappingError {
             } => {
                 format!("Failed to cast from {source_datatype} to {target_datatype}.")
             }
-            Self::ComponentNotPresentOnEntity(_)
+            Self::OverrideUnavailable(_)
+            | Self::ComponentNotPresentOnEntity(_)
             | Self::NoComponentDataForQuery(_)
             | Self::NoComponentDataForQueryButIsFetchable(_) => self.to_string(),
         }
@@ -112,7 +117,8 @@ impl ComponentMappingError {
                 Some(err.to_string())
             }
             Self::CastFailed { err, .. } => Some(err.to_string()),
-            Self::ComponentNotPresentOnEntity(_)
+            Self::OverrideUnavailable(_)
+            | Self::ComponentNotPresentOnEntity(_)
             | Self::NoComponentDataForQuery(_)
             | Self::NoComponentDataForQueryButIsFetchable(_) => None,
         }

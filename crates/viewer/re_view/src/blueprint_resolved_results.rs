@@ -161,7 +161,8 @@ impl BlueprintResolvedRangeResults<'_> {
                         Err(
                             ComponentMappingError::SelectorParseFailed(_)
                             | ComponentMappingError::SelectorExecutionFailed(_)
-                            | ComponentMappingError::CastFailed { .. },
+                            | ComponentMappingError::CastFailed { .. }
+                            | ComponentMappingError::OverrideUnavailable(_),
                         ) => {
                             // All these errors are likely to occur in the range query as well.
                             // However, in case they don't we treat it as-if we failed first and then never executed the range query.
