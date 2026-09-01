@@ -75,7 +75,6 @@ impl Alert {
             .fill(colors.fill)
             .corner_radius(6)
             .inner_margin(6.0)
-            .outer_margin(1.0) // Needed because we set clip_rect_margin. TODO(emilk/egui#5605): remove clip_rect_margin
     }
 
     pub fn show<T>(self, ui: &mut Ui, content: impl FnOnce(&mut Ui) -> T) -> InnerResponse<T> {
