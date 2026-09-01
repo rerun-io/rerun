@@ -40,15 +40,15 @@ mod meta {
 /// - `11NNNNNN` -> `-alpha.N+dev`
 /// - `01NNNNNN` -> `-rc.N`
 /// - `00000000` -> none of the above
-#[derive(Clone, Copy, Debug, PartialEq, Eq, re_byte_size::SizeBytes)]
-pub struct CrateVersion {
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct CrateVersion<'a> {
     pub major: u8,
     pub minor: u8,
     pub patch: u8,
-    pub meta: Option<Meta>,
+    pub meta: Option<Meta<'a>>,
 }
 
-impl Ord for CrateVersion {
+impl Ord for CrateVersion<'_> {
     #[inline]
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         let Self {
@@ -70,14 +70,14 @@ impl Ord for CrateVersion {
     }
 }
 
-impl PartialOrd for CrateVersion {
+impl PartialOrd for CrateVersion<'_> {
     #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl CrateVersion {
+impl CrateVersion<'_> {
     pub const LOCAL: Self = Self::parse(env!("CARGO_PKG_VERSION"));
 
     /// If this version is stable returns it, otherwise returns the version prior to that.
@@ -127,10 +127,8 @@ impl CrateVersion {
     }
 }
 
-#[derive(
-    Clone, Copy, Debug, PartialEq, Eq, re_byte_size::SizeBytes, serde::Deserialize, serde::Serialize,
-)]
-pub enum Meta {
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+pub enum Meta<'a> {
     Rc(u8),
     Alpha(u8),
 
@@ -143,17 +141,29 @@ pub enum Meta {
         /// `None` corresponds to `+dev`.
         ///
         /// In order to support compile-time parsing of versions strings
-        /// this needs to be `&'static` and `[u8]` instead of `String`.
-        /// But in practice this is guaranteed to be valid UTF-8.
+        /// (where `'a == 'static`), this needs to be `[u8]` instead of `String`.
+        /// In practice this is guaranteed to be valid UTF-8.
         ///
         /// The commit hash is NOT sent over the wire,
         /// so `0.19.1-alpha.2+aab0b4e` will end up as `0.19.1-alpha.2+dev`
         /// on the other end.
-        commit: Option<&'static [u8]>,
+        commit: Option<&'a [u8]>,
     },
 }
 
-impl Meta {
+impl re_byte_size::SizeBytes for CrateVersion<'_> {
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+}
+
+impl re_byte_size::SizeBytes for Meta<'_> {
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+}
+
+impl Meta<'_> {
     pub fn to_byte(self) -> u8 {
         match self {
             Self::Rc(value) => value | meta::RC,
@@ -249,7 +259,7 @@ const fn split_at(s: &[u8], i: usize) -> (&[u8], &[u8]) {
     (slice!(s, .., i), slice!(s, i, ..))
 }
 
-impl CrateVersion {
+impl CrateVersion<'_> {
     pub const fn new(major: u8, minor: u8, patch: u8) -> Self {
         Self {
             major,
@@ -331,7 +341,7 @@ impl CrateVersion {
     }
 }
 
-impl CrateVersion {
+impl CrateVersion<'_> {
     /// Parse a version string according to our subset of semver.
     ///
     /// See [`CrateVersion`] for more information.
@@ -348,8 +358,9 @@ impl CrateVersion {
 
     /// Parse a version string according to our subset of semver.
     ///
+    /// The returned version borrows any commit hash in the build metadata from `version_string`.
     /// See [`CrateVersion`] for more information.
-    pub const fn try_parse(version_string: &'static str) -> Result<Self, &'static str> {
+    pub const fn try_parse<'a>(version_string: &'a str) -> Result<CrateVersion<'a>, &'static str> {
         // Note that this is a const function, which means we are extremely limited in what we can do!
 
         const fn maybe(s: &[u8], c: u8) -> (bool, &[u8]) {
@@ -458,7 +469,7 @@ impl CrateVersion {
                     } else if s.is_empty() {
                         return Err("expected `dev` after `+`");
                     } else {
-                        let commit_hash = s;
+                        let commit_hash: &'a [u8] = s;
                         s = &[];
                         meta = Some(Meta::DevAlpha {
                             alpha: build,
@@ -475,7 +486,7 @@ impl CrateVersion {
             return Err("expected end of string");
         }
 
-        Ok(Self {
+        Ok(CrateVersion {
             major,
             minor,
             patch,
@@ -484,7 +495,7 @@ impl CrateVersion {
     }
 }
 
-impl std::fmt::Display for Meta {
+impl std::fmt::Display for Meta<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Rc(build) => write!(f, "-rc.{build}"),
@@ -500,7 +511,7 @@ impl std::fmt::Display for Meta {
     }
 }
 
-impl std::fmt::Display for CrateVersion {
+impl std::fmt::Display for CrateVersion<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
             major,
@@ -571,6 +582,14 @@ fn test_parse_version() {
                 commit: Some(b"aab0b4e")
             }),
         }
+    );
+
+    let runtime_version = "12.23.24-alpha.63+aab0b4e".to_owned();
+    assert_eq!(
+        CrateVersion::try_parse(&runtime_version)
+            .expect("valid runtime version")
+            .to_string(),
+        runtime_version
     );
 }
 

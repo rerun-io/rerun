@@ -23,6 +23,9 @@ pub struct AppOptions {
     /// If false, you can still view them in the notifications panel.
     pub show_notification_toasts: bool,
 
+    /// Check for a newer Rerun version when the Viewer starts.
+    pub check_for_updates_on_startup: bool,
+
     /// Use Rerun's custom window decorations instead of the native OS decorations.
     pub custom_window_decorations: bool,
 
@@ -97,6 +100,8 @@ impl AppOptions {
             show_metrics: cfg!(debug_assertions),
 
             show_notification_toasts: true,
+
+            check_for_updates_on_startup: true,
 
             custom_window_decorations,
 

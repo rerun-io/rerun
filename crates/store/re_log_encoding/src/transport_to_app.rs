@@ -102,7 +102,10 @@ pub trait ToApplication {
 
 impl ToApplication for re_protos::log_msg::v1alpha1::log_msg::Msg {
     type Output = re_log_types::LogMsg;
-    type Context<'a> = (&'a mut dyn ApplicationIdInjector, Option<CrateVersion>);
+    type Context<'a> = (
+        &'a mut dyn ApplicationIdInjector,
+        Option<CrateVersion<'static>>,
+    );
 
     fn to_application(
         &self,
@@ -126,7 +129,10 @@ impl ToApplication for re_protos::log_msg::v1alpha1::log_msg::Msg {
 
 impl ToApplication for re_protos::log_msg::v1alpha1::LogMsg {
     type Output = re_log_types::LogMsg;
-    type Context<'a> = (&'a mut dyn ApplicationIdInjector, Option<CrateVersion>);
+    type Context<'a> = (
+        &'a mut dyn ApplicationIdInjector,
+        Option<CrateVersion<'static>>,
+    );
 
     fn to_application(
         &self,

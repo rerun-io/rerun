@@ -81,6 +81,7 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
         warn_e2e_latency: _, // not yet exposed
         show_metrics,
         show_notification_toasts,
+        check_for_updates_on_startup,
         custom_window_decorations,
         include_rerun_examples_button_in_recordings_panel,
         show_picking_debug_overlay: _, // not yet exposed
@@ -133,9 +134,9 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
     )
     .on_hover_text(
         "Caps the number of elements individual visualizers process \
-             (e.g. instance caps for 3D shapes, line limits for time series). \
-             Disabling this may cause the viewer to become unresponsive \
-             with very large data sets.",
+        (e.g. instance caps for 3D shapes, line limits for time series). \
+        Disabling this may cause the viewer to become unresponsive \
+        with very large data sets.",
     );
 
     ui.collapsing_header("Timestamp format", false, |ui| {
@@ -149,7 +150,7 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
         ui.re_checkbox(custom_window_decorations, "Use custom window decorations")
             .on_hover_text(
                 "Hide the native title bar and draw Rerun's top bar as the window frame.\n\n\
-             Opt out of this if you experience any issues with the window's behavior.",
+            Opt out of this if you experience any issues with the window's behavior.",
             );
     }
 
@@ -158,6 +159,8 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
 
     ui.re_checkbox(show_notification_toasts, "Show notification toasts")
         .on_hover_text("Show toasts for log messages and other notifications");
+
+    ui.re_checkbox(check_for_updates_on_startup, "Check for updates on startup");
 
     separator_with_some_space(ui);
     ui.strong("Map view");

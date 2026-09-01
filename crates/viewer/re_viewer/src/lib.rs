@@ -45,6 +45,7 @@ mod screenshotter;
 mod startup_options;
 mod texture_readback;
 mod ui;
+mod version_check;
 
 #[cfg(feature = "analytics")]
 mod viewer_analytics;

@@ -988,8 +988,8 @@ impl From<crate::common::v1alpha1::BuildInfo> for re_build_info::BuildInfo {
     }
 }
 
-impl From<re_build_info::CrateVersion> for crate::common::v1alpha1::SemanticVersion {
-    fn from(version: re_build_info::CrateVersion) -> Self {
+impl From<re_build_info::CrateVersion<'_>> for crate::common::v1alpha1::SemanticVersion {
+    fn from(version: re_build_info::CrateVersion<'_>) -> Self {
         crate::common::v1alpha1::SemanticVersion {
             major: Some(version.major.into()),
             minor: Some(version.minor.into()),
@@ -999,7 +999,7 @@ impl From<re_build_info::CrateVersion> for crate::common::v1alpha1::SemanticVers
     }
 }
 
-impl From<crate::common::v1alpha1::SemanticVersion> for re_build_info::CrateVersion {
+impl From<crate::common::v1alpha1::SemanticVersion> for re_build_info::CrateVersion<'static> {
     fn from(version: crate::common::v1alpha1::SemanticVersion) -> Self {
         Self {
             major: version.major() as u8,
@@ -1010,8 +1010,8 @@ impl From<crate::common::v1alpha1::SemanticVersion> for re_build_info::CrateVers
     }
 }
 
-impl From<re_build_info::Meta> for crate::common::v1alpha1::semantic_version::Meta {
-    fn from(version_meta: re_build_info::Meta) -> Self {
+impl From<re_build_info::Meta<'_>> for crate::common::v1alpha1::semantic_version::Meta {
+    fn from(version_meta: re_build_info::Meta<'_>) -> Self {
         match version_meta {
             re_build_info::Meta::Rc(v) => Self::Rc(v.into()),
 
@@ -1027,7 +1027,7 @@ impl From<re_build_info::Meta> for crate::common::v1alpha1::semantic_version::Me
     }
 }
 
-impl From<crate::common::v1alpha1::semantic_version::Meta> for re_build_info::Meta {
+impl From<crate::common::v1alpha1::semantic_version::Meta> for re_build_info::Meta<'static> {
     fn from(version_meta: crate::common::v1alpha1::semantic_version::Meta) -> Self {
         match version_meta {
             crate::common::v1alpha1::semantic_version::Meta::Rc(v) => Self::Rc(v as _),

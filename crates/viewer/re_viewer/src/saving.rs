@@ -11,7 +11,7 @@ use re_viewer_context::store_hub::BlueprintPersistenceKey;
 /// Keeping the snapshot separate from its encoding lets native saves write it in a background task
 /// while web APIs can encode it into bytes for browser clients.
 pub struct RrdSnapshot {
-    pub version: re_build_info::CrateVersion,
+    pub version: re_build_info::CrateVersion<'static>,
     pub messages: Vec<re_chunk::ChunkResult<LogMsg>>,
 }
 
@@ -180,7 +180,7 @@ pub fn delete_blueprint(key: &BlueprintPersistenceKey) -> anyhow::Result<()> {
 
 #[cfg(not(target_arch = "wasm32"))]
 pub fn encode_to_file(
-    version: re_build_info::CrateVersion,
+    version: re_build_info::CrateVersion<'static>,
     path: &std::path::Path,
     messages: impl Iterator<Item = re_chunk::ChunkResult<re_log_types::LogMsg>>,
 ) -> anyhow::Result<()> {

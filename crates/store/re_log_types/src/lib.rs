@@ -581,7 +581,7 @@ pub struct StoreInfo {
     ///
     // NOTE: The version comes directly from the decoded RRD stream's header, duplicating it here
     // would probably only lead to more issues down the line.
-    pub store_version: Option<CrateVersion>,
+    pub store_version: Option<CrateVersion<'static>>,
 }
 
 impl StoreInfo {

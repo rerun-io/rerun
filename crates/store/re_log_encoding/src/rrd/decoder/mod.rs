@@ -47,7 +47,7 @@ pub trait DecoderEntrypoint: Sized {
         byte_span_excluding_headers: re_chunk::Span<u64>,
         message_kind: crate::rrd::MessageKind,
         app_id_injector: &mut impl ApplicationIdInjector,
-        patched_version: Option<CrateVersion>,
+        patched_version: Option<CrateVersion<'static>>,
     ) -> Result<Option<Self>, crate::rrd::CodecError>;
 }
 
@@ -57,7 +57,7 @@ impl DecoderEntrypoint for re_log_types::LogMsg {
         byte_span_excluding_headers: re_chunk::Span<u64>,
         message_kind: crate::rrd::MessageKind,
         app_id_injector: &mut impl ApplicationIdInjector,
-        patched_version: Option<CrateVersion>,
+        patched_version: Option<CrateVersion<'static>>,
     ) -> Result<Option<Self>, crate::rrd::CodecError> {
         let Some(log_msg) = re_protos::log_msg::v1alpha1::log_msg::Msg::decode(
             data_excluding_headers,
@@ -82,7 +82,7 @@ impl DecoderEntrypoint for re_protos::log_msg::v1alpha1::log_msg::Msg {
         _byte_span_excluding_headers: re_chunk::Span<u64>,
         message_kind: crate::rrd::MessageKind,
         _app_id_injector: &mut impl ApplicationIdInjector,
-        _patched_version: Option<CrateVersion>,
+        _patched_version: Option<CrateVersion<'static>>,
     ) -> Result<Option<Self>, crate::rrd::CodecError> {
         let data = &data_excluding_headers;
 

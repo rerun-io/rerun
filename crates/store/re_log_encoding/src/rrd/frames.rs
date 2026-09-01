@@ -112,7 +112,7 @@ impl StreamHeader {
 impl StreamHeader {
     pub fn to_version_and_options(
         self,
-    ) -> Result<(CrateVersion, EncodingOptions), crate::rrd::CodecError> {
+    ) -> Result<(CrateVersion<'static>, EncodingOptions), crate::rrd::CodecError> {
         {
             // We used 0000 for all .rrd files up until 2023-02-27, post 0.2.0 release:
             let encoded_version = if self.version == [0, 0, 0, 0] {

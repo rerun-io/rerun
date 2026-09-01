@@ -20,7 +20,7 @@ pub struct BuildInfo {
     pub features: Cow<'static, str>,
 
     /// Crate version, parsed from `CARGO_PKG_VERSION`, ignoring any `+metadata` suffix.
-    pub version: super::CrateVersion,
+    pub version: super::CrateVersion<'static>,
 
     /// The raw version string of the Rust compiler used, or an empty string.
     pub rustc_version: Cow<'static, str>,
@@ -139,7 +139,7 @@ impl std::fmt::Display for BuildInfo {
 
 use crate::CrateVersion;
 
-impl CrateVersion {
+impl CrateVersion<'_> {
     /// Attempts to parse a [`CrateVersion`] from a [`BuildInfo`]'s string representation (`rerun --version`).
     ///
     /// Refer to `BuildInfo as std::fmt::Display>::fmt` to see what the string representation is
@@ -147,16 +147,12 @@ impl CrateVersion {
     /// ```ignore
     /// <name> <semver> [<rust_info>] <target> <branch> <commit> <build_date>
     /// ```
-    pub fn try_parse_from_build_info_string(s: impl AsRef<str>) -> Result<Self, String> {
-        // `CrateVersion::try_parse` is `const` (for good reasons), and needs a `&'static str`.
-        // In order to accomplish this, we need to leak the string here.
-        let s = Box::leak(s.as_ref().to_owned().into_boxed_str());
-
+    pub fn try_parse_from_build_info_string(s: &str) -> Result<CrateVersion<'_>, String> {
         let parts = s.split_whitespace().collect::<Vec<_>>();
         if parts.len() < 2 {
             return Err(format!("{s:?} is not a valid BuildInfo string"));
         }
-        Self::try_parse(parts[1]).map_err(ToOwned::to_owned)
+        CrateVersion::try_parse(parts[1]).map_err(ToOwned::to_owned)
     }
 }
 

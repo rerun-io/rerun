@@ -42,7 +42,7 @@ pub struct Decoder<T> {
     /// The Rerun version used to encode the RRD data.
     ///
     /// `None` until a Rerun header has been processed.
-    pub(crate) version: Option<CrateVersion>,
+    pub(crate) version: Option<CrateVersion<'static>>,
 
     pub(crate) options: EncodingOptions,
 

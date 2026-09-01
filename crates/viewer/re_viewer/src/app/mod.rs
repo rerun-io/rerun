@@ -281,7 +281,7 @@ impl App {
             // Check if the user has recently upgraded Rerun.
             if let Some(storage) = creation_context.storage {
                 let current_version = build_info.version;
-                let previous_version: Option<CrateVersion> =
+                let previous_version: Option<CrateVersion<'_>> =
                     storage.get_string(RERUN_VERSION_KEY).and_then(|version| {
                         // `CrateVersion::try_parse` is `const` (for good reasons), and needs a `&'static str`.
                         // In order to accomplish this, we need to leak the string here.
@@ -320,6 +320,10 @@ impl App {
                 style.scroll_animation = egui::style::ScrollAnimation::none();
                 style.animation_time = 0.0;
             });
+        }
+
+        if state.app_options.check_for_updates_on_startup {
+            crate::version_check::check_for_new_version(build_info.version, &app_env, ehttp::fetch);
         }
 
         let connection_registry = {

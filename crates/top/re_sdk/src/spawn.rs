@@ -320,7 +320,11 @@ pub fn spawn(opts: &SpawnOptions) -> Result<SpawnInfo, SpawnError> {
         .ok()
         .and_then(|output| {
             let output = String::from_utf8_lossy(&output.stdout);
-            re_build_info::CrateVersion::try_parse_from_build_info_string(output).ok()
+            let version =
+                re_build_info::CrateVersion::try_parse_from_build_info_string(&output).ok()?;
+            Some(re_build_info::CrateVersion::<'static>::from_bytes(
+                version.to_bytes(),
+            ))
         });
 
     if let Some(viewer_version) = viewer_version {

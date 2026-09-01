@@ -1925,7 +1925,7 @@ fn save_entity_db(
 
 #[cfg(target_arch = "wasm32")]
 async fn async_save_dialog(
-    rrd_version: re_build_info::CrateVersion,
+    rrd_version: re_build_info::CrateVersion<'static>,
     file_name: &str,
     title: &str,
     messages: impl Iterator<Item = re_chunk::ChunkResult<re_log_types::LogMsg>>,

@@ -200,7 +200,7 @@ impl<W: std::io::Write> Encoder<W> {
     ///
     /// There is no `_lazy` version. Make one if you need one.
     pub fn new_eager(
-        version: CrateVersion,
+        version: CrateVersion<'static>,
         options: EncodingOptions,
         mut write: W,
     ) -> Result<Self, EncodeError> {
@@ -461,7 +461,7 @@ impl<W: std::io::Write> Encoder<W> {
     ///
     /// Returns the size in bytes of the encoded data.
     pub fn encode_into(
-        version: CrateVersion,
+        version: CrateVersion<'static>,
         options: EncodingOptions,
         messages: impl IntoIterator<Item = ChunkResult<impl Borrow<LogMsg>>>,
         write: &mut W,

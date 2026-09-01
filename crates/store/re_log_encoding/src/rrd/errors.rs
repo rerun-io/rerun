@@ -19,8 +19,8 @@ pub enum CodecError {
         "Data from Rerun version {file}, which is incompatible with the local Rerun version {local}"
     )]
     IncompatibleRerunVersion {
-        file: Box<CrateVersion>,
-        local: Box<CrateVersion>,
+        file: Box<CrateVersion<'static>>,
+        local: Box<CrateVersion<'static>>,
     },
 
     #[error("{0}")]

@@ -188,7 +188,7 @@ pub struct EncodeStats {
 /// A single stream carries a single version, so we take the newest one we saw: a reader that can
 /// handle it can handle the older stores too. Stores that never declared a version are ignored,
 /// and if none of them did, we claim to be the version that wrote the file.
-fn output_version(entity_dbs: &HashMap<StoreId, EntityDb>) -> re_build_info::CrateVersion {
+fn output_version(entity_dbs: &HashMap<StoreId, EntityDb>) -> re_build_info::CrateVersion<'static> {
     entity_dbs
         .values()
         .filter_map(|db| db.store_info()?.store_version)
@@ -251,7 +251,7 @@ mod tests {
     /// An empty recording whose store info carries `store_version`.
     fn versioned_entity_db(
         recording_id: &str,
-        store_version: Option<CrateVersion>,
+        store_version: Option<CrateVersion<'static>>,
     ) -> anyhow::Result<(StoreId, EntityDb)> {
         let store_id = StoreId::recording("rerun_example_optimize", recording_id);
         let mut db = EntityDb::new(store_id.clone());

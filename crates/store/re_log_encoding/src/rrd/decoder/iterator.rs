@@ -234,7 +234,7 @@ mod tests {
         /// Like [`Self::encode_into`], but intentionally omits the end-of-stream marker, for
         /// testing purposes.
         fn encode_into_without_eos(
-            version: CrateVersion,
+            version: CrateVersion<'static>,
             options: EncodingOptions,
             messages: impl IntoIterator<Item = re_chunk::ChunkResult<impl std::borrow::Borrow<LogMsg>>>,
             write: &mut W,
