@@ -49,5 +49,5 @@ type: feature # highlight | breaking | feature
 
 Short description of what changed and why a user should care.
 
-Docs: TODO(name): add docs link
-Example: TODO(name): add example link
+TODO(name): add docs link
+TODO(name): add example link
