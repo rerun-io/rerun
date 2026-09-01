@@ -6,28 +6,28 @@ title: "ClassDescription"
 The description of a semantic Class.
 
 If an entity is annotated with a corresponding [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id), Rerun will use
-the attached [`encodings.AnnotationInfo`](https://rerun.io/docs/reference/types/encodings/annotation_info?speculative-link) to derive labels and colors.
+the attached [`encodings.AnnotationInfo`](https://rerun.io/docs/reference/types/encodings/annotation_info) to derive labels and colors.
 
 Keypoints within an annotation class can similarly be annotated with a
 [`components.KeypointId`](https://rerun.io/docs/reference/types/components/keypoint_id) in which case we should defer to the label and color for the
-[`encodings.AnnotationInfo`](https://rerun.io/docs/reference/types/encodings/annotation_info?speculative-link) specifically associated with the Keypoint.
+[`encodings.AnnotationInfo`](https://rerun.io/docs/reference/types/encodings/annotation_info) specifically associated with the Keypoint.
 
 Keypoints within the class can also be decorated with skeletal edges.
 Keypoint-connections are pairs of [`components.KeypointId`](https://rerun.io/docs/reference/types/components/keypoint_id)s. If an edge is
 defined, and both keypoints exist within the instance of the class, then the
 keypoints should be connected with an edge. The edge should be labeled and
-colored as described by the class's [`encodings.AnnotationInfo`](https://rerun.io/docs/reference/types/encodings/annotation_info?speculative-link).
+colored as described by the class's [`encodings.AnnotationInfo`](https://rerun.io/docs/reference/types/encodings/annotation_info).
 
 ## Fields
 #### `info`
 Type: non-null [`AnnotationInfo`](../encodings/annotation_info.md)
 
-The [`encodings.AnnotationInfo`](https://rerun.io/docs/reference/types/encodings/annotation_info?speculative-link) for the class.
+The [`encodings.AnnotationInfo`](https://rerun.io/docs/reference/types/encodings/annotation_info) for the class.
 
 #### `keypoint_annotations`
 Type: non-null List of [`AnnotationInfo`](../encodings/annotation_info.md)
 
-The [`encodings.AnnotationInfo`](https://rerun.io/docs/reference/types/encodings/annotation_info?speculative-link) for all of the keypoints.
+The [`encodings.AnnotationInfo`](https://rerun.io/docs/reference/types/encodings/annotation_info) for all of the keypoints.
 
 #### `keypoint_connections`
 Type: non-null List of [`KeypointPair`](../encodings/keypoint_pair.md)
@@ -56,9 +56,9 @@ Struct(
 ```
 
 ## API reference links
- * 🌊 [C++ API docs for `ClassDescription`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1ClassDescription.html?speculative-link)
- * 🐍 [Python API docs for `ClassDescription`](https://ref.rerun.io/docs/python/stable/common/encodings?speculative-link#rerun.encodings.ClassDescription)
- * 🦀 [Rust API docs for `ClassDescription`](https://docs.rs/rerun/latest/rerun/encodings/struct.ClassDescription.html?speculative-link)
+ * 🌊 [C++ API docs for `ClassDescription`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1ClassDescription.html)
+ * 🐍 [Python API docs for `ClassDescription`](https://ref.rerun.io/docs/python/stable/common/encodings#rerun.encodings.ClassDescription)
+ * 🦀 [Rust API docs for `ClassDescription`](https://docs.rs/rerun/latest/rerun/encodings/struct.ClassDescription.html)
 
 
 ## Used by

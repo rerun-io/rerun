@@ -12,9 +12,9 @@ FixedSizeList(3 x non-null Int32)
 ```
 
 ## API reference links
- * 🌊 [C++ API docs for `IVec3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1IVec3D.html?speculative-link)
- * 🐍 [Python API docs for `IVec3D`](https://ref.rerun.io/docs/python/stable/common/encodings?speculative-link#rerun.encodings.IVec3D)
- * 🦀 [Rust API docs for `IVec3D`](https://docs.rs/rerun/latest/rerun/encodings/struct.IVec3D.html?speculative-link)
+ * 🌊 [C++ API docs for `IVec3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1IVec3D.html)
+ * 🐍 [Python API docs for `IVec3D`](https://ref.rerun.io/docs/python/stable/common/encodings#rerun.encodings.IVec3D)
+ * 🦀 [Rust API docs for `IVec3D`](https://docs.rs/rerun/latest/rerun/encodings/struct.IVec3D.html)
 
 
 ## Used by

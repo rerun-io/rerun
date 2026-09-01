@@ -258,7 +258,7 @@ impl ::re_types_core::reflection::Enum for PixelFormat {
                 "`YUY2` (aka 'YUYV', 'YUYV16' or 'NV21'), is a YUV 4:2:2 chroma downsampled format with 16 bits per pixel and 8 bits per channel.\n\nThis uses limited range YUV, i.e. Y is expected to be within [16, 235] and U/V within [16, 240].\n\nThe order of the channels is Y0, U0, Y1, V0, all in the same plane."
             }
             Self::Y8_FullRange => {
-                "Monochrome Y plane only, essentially a YUV 4:0:0 planar format.\n\nAlso known as just \"gray\". This is virtually identical to a 8bit luminance/grayscale (see [`encodings.ColorModel`](https://rerun.io/docs/reference/types/encodings/color_model?speculative-link)).\n\nThis uses entire range YUV, i.e. Y is expected to be within [0, 255].\n(as opposed to \"limited range\" YUV as used e.g. in NV12)."
+                "Monochrome Y plane only, essentially a YUV 4:0:0 planar format.\n\nAlso known as just \"gray\". This is virtually identical to a 8bit luminance/grayscale (see [`encodings.ColorModel`](https://rerun.io/docs/reference/types/encodings/color_model)).\n\nThis uses entire range YUV, i.e. Y is expected to be within [0, 255].\n(as opposed to \"limited range\" YUV as used e.g. in NV12)."
             }
             Self::Y_U_V24_LimitedRange => {
                 "`Y_U_V24` is a YUV 4:4:4 fully planar YUV format without chroma downsampling, also known as `I444`.\n\nThis uses limited range YUV, i.e. Y is expected to be within [16, 235] and U/V within [16, 240].\n\nFirst comes entire image in Y in one plane, followed by the U and V planes."
@@ -267,7 +267,7 @@ impl ::re_types_core::reflection::Enum for PixelFormat {
                 "`Y_U_V24` is a YUV 4:4:4 fully planar YUV format without chroma downsampling, also known as `I444`.\n\nThis uses full range YUV with all components ranging from 0 to 255\n(as opposed to \"limited range\" YUV as used e.g. in NV12).\n\nFirst comes entire image in Y in one plane, followed by the U and V planes."
             }
             Self::Y8_LimitedRange => {
-                "Monochrome Y plane only, essentially a YUV 4:0:0 planar format.\n\nAlso known as just \"gray\".\n\nThis uses limited range YUV, i.e. Y is expected to be within [16, 235].\nIf not for this range limitation/remapping, this is almost identical to 8bit luminace/grayscale (see [`encodings.ColorModel`](https://rerun.io/docs/reference/types/encodings/color_model?speculative-link))."
+                "Monochrome Y plane only, essentially a YUV 4:0:0 planar format.\n\nAlso known as just \"gray\".\n\nThis uses limited range YUV, i.e. Y is expected to be within [16, 235].\nIf not for this range limitation/remapping, this is almost identical to 8bit luminace/grayscale (see [`encodings.ColorModel`](https://rerun.io/docs/reference/types/encodings/color_model))."
             }
             Self::Y_U_V12_FullRange => {
                 "`Y_U_V12` is a YUV 4:2:0 fully planar YUV format without chroma downsampling, also known as `I420`.\n\nThis uses full range YUV with all components ranging from 0 to 255\n(as opposed to \"limited range\" YUV as used e.g. in NV12).\n\nFirst comes entire image in Y in one plane, followed by the U and V planes, which each only have half\nthe resolution of the Y plane."

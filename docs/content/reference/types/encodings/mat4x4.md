@@ -22,8 +22,8 @@ FixedSizeList(16 x non-null Float32)
 ```
 
 ## API reference links
- * 🌊 [C++ API docs for `Mat4x4`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1Mat4x4.html?speculative-link)
- * 🐍 [Python API docs for `Mat4x4`](https://ref.rerun.io/docs/python/stable/common/encodings?speculative-link#rerun.encodings.Mat4x4)
- * 🦀 [Rust API docs for `Mat4x4`](https://docs.rs/rerun/latest/rerun/encodings/struct.Mat4x4.html?speculative-link)
+ * 🌊 [C++ API docs for `Mat4x4`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1Mat4x4.html)
+ * 🐍 [Python API docs for `Mat4x4`](https://ref.rerun.io/docs/python/stable/common/encodings#rerun.encodings.Mat4x4)
+ * 🦀 [Rust API docs for `Mat4x4`](https://docs.rs/rerun/latest/rerun/encodings/struct.Mat4x4.html)
 
 

@@ -321,12 +321,11 @@ fn object_page(
 fn list_links(page: &mut String, object: &Object) {
     // The per-language API docs are published per release, so a whole kind of page can be
     // unreachable even when the object itself is old.
-    let speculative_marker =
-        if object.is_attr_set(crate::DocsAttr::Unreleased) || object.kind.has_unpublished_docs() {
-            "?speculative-link"
-        } else {
-            ""
-        };
+    let speculative_marker = if object.is_attr_set(crate::DocsAttr::Unreleased) {
+        "?speculative-link"
+    } else {
+        ""
+    };
 
     if object.kind == ObjectKind::View {
         // More complicated link due to scope

@@ -12,8 +12,8 @@ FixedSizeList(16 x non-null UInt8)
 ```
 
 ## API reference links
- * 🌊 [C++ API docs for `Uuid`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1Uuid.html?speculative-link)
- * 🐍 [Python API docs for `Uuid`](https://ref.rerun.io/docs/python/stable/common/encodings?speculative-link#rerun.encodings.Uuid)
- * 🦀 [Rust API docs for `Uuid`](https://docs.rs/rerun/latest/rerun/encodings/struct.Uuid.html?speculative-link)
+ * 🌊 [C++ API docs for `Uuid`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1Uuid.html)
+ * 🐍 [Python API docs for `Uuid`](https://ref.rerun.io/docs/python/stable/common/encodings#rerun.encodings.Uuid)
+ * 🦀 [Rust API docs for `Uuid`](https://docs.rs/rerun/latest/rerun/encodings/struct.Uuid.html)
 
 

@@ -5,7 +5,7 @@ title: "ColorModel"
 
 Specifies what color components are present in an [`archetypes.Image`](https://rerun.io/docs/reference/types/archetypes/image).
 
-This combined with [`encodings.ChannelDatatype`](https://rerun.io/docs/reference/types/encodings/channel_datatype?speculative-link) determines the pixel format of an image.
+This combined with [`encodings.ChannelDatatype`](https://rerun.io/docs/reference/types/encodings/channel_datatype) determines the pixel format of an image.
 
 ## Variants
 #### `L` = 1
@@ -30,9 +30,9 @@ UInt8
 ```
 
 ## API reference links
- * 🌊 [C++ API docs for `ColorModel`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1encodings.html?speculative-link)
- * 🐍 [Python API docs for `ColorModel`](https://ref.rerun.io/docs/python/stable/common/encodings?speculative-link#rerun.encodings.ColorModel)
- * 🦀 [Rust API docs for `ColorModel`](https://docs.rs/rerun/latest/rerun/encodings/enum.ColorModel.html?speculative-link)
+ * 🌊 [C++ API docs for `ColorModel`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1encodings.html)
+ * 🐍 [Python API docs for `ColorModel`](https://ref.rerun.io/docs/python/stable/common/encodings#rerun.encodings.ColorModel)
+ * 🦀 [Rust API docs for `ColorModel`](https://docs.rs/rerun/latest/rerun/encodings/enum.ColorModel.html)
 
 
 ## Used by

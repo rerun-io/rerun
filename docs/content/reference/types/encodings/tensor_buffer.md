@@ -83,9 +83,9 @@ Union(Dense,
 ```
 
 ## API reference links
- * 🌊 [C++ API docs for `TensorBuffer`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1TensorBuffer.html?speculative-link)
- * 🐍 [Python API docs for `TensorBuffer`](https://ref.rerun.io/docs/python/stable/common/encodings?speculative-link#rerun.encodings.TensorBuffer)
- * 🦀 [Rust API docs for `TensorBuffer`](https://docs.rs/rerun/latest/rerun/encodings/enum.TensorBuffer.html?speculative-link)
+ * 🌊 [C++ API docs for `TensorBuffer`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1TensorBuffer.html)
+ * 🐍 [Python API docs for `TensorBuffer`](https://ref.rerun.io/docs/python/stable/common/encodings#rerun.encodings.TensorBuffer)
+ * 🦀 [Rust API docs for `TensorBuffer`](https://docs.rs/rerun/latest/rerun/encodings/enum.TensorBuffer.html)
 
 
 ## Used by

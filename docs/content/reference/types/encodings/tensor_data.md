@@ -23,7 +23,7 @@ Type: List of `Utf8`
 
 The names of the dimensions of the tensor (optional).
 
-If set, should be the same length as [`encodings.TensorData#shape`](https://rerun.io/docs/reference/types/encodings/tensor_data?speculative-link).
+If set, should be the same length as [`encodings.TensorData#shape`](https://rerun.io/docs/reference/types/encodings/tensor_data).
 If it has a different length your names may show up improperly,
 and some constructors may produce a warning or even an error.
 
@@ -58,9 +58,9 @@ Struct(
 ```
 
 ## API reference links
- * 🌊 [C++ API docs for `TensorData`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1TensorData.html?speculative-link)
- * 🐍 [Python API docs for `TensorData`](https://ref.rerun.io/docs/python/stable/common/encodings?speculative-link#rerun.encodings.TensorData)
- * 🦀 [Rust API docs for `TensorData`](https://docs.rs/rerun/latest/rerun/encodings/struct.TensorData.html?speculative-link)
+ * 🌊 [C++ API docs for `TensorData`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1TensorData.html)
+ * 🐍 [Python API docs for `TensorData`](https://ref.rerun.io/docs/python/stable/common/encodings#rerun.encodings.TensorData)
+ * 🦀 [Rust API docs for `TensorData`](https://docs.rs/rerun/latest/rerun/encodings/struct.TensorData.html)
 
 
 ## Used by

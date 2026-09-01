@@ -304,32 +304,6 @@ impl ObjectKind {
             Self::View => "Views",
         }
     }
-
-    /// Are the docs pages for this kind still missing from the live site, so that any link to
-    /// one of them would 404?
-    ///
-    /// True for [`Self::Encoding`] until 0.37: `datatypes` was renamed to `encodings`, which
-    /// moves every `reference/types/encodings/…` page, and every `encodings` anchor in the
-    /// per-language API docs, to a URL that is only published when 0.37 is released.
-    ///
-    /// TODO(RR-5430): remove once 0.37 is released.
-    pub fn has_unpublished_docs(&self) -> bool {
-        match self {
-            Self::Encoding => {
-                // E.g. `CARGO_PKG_VERSION` = "0.37.0-alpha.1+dev",
-                // `CARGO_PKG_VERSION_MINOR` = "37", `CARGO_PKG_VERSION_PRE` = "alpha.1".
-                // A non-empty pre-release means 0.37 is still cooking.
-                let Ok(minor) = env!("CARGO_PKG_VERSION_MINOR").parse::<u32>() else {
-                    // Assume published rather than littering every link with a marker.
-                    return false;
-                };
-                let is_pre_release = !env!("CARGO_PKG_VERSION_PRE").is_empty();
-
-                minor < 37 || (minor == 37 && is_pre_release)
-            }
-            Self::Component | Self::Archetype | Self::View => false,
-        }
-    }
 }
 
 pub struct ViewReference {

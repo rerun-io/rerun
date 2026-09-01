@@ -5,11 +5,11 @@ title: "PixelFormat"
 
 Specifieds a particular format of an [`archetypes.Image`](https://rerun.io/docs/reference/types/archetypes/image).
 
-Most images can be described by a [`encodings.ColorModel`](https://rerun.io/docs/reference/types/encodings/color_model?speculative-link) and a [`encodings.ChannelDatatype`](https://rerun.io/docs/reference/types/encodings/channel_datatype?speculative-link),
+Most images can be described by a [`encodings.ColorModel`](https://rerun.io/docs/reference/types/encodings/color_model) and a [`encodings.ChannelDatatype`](https://rerun.io/docs/reference/types/encodings/channel_datatype),
 e.g. `RGB` and `U8` respectively.
 
 However, some image formats has chroma downsampling and/or
-use differing number of bits per channel, and that is what this [`encodings.PixelFormat`](https://rerun.io/docs/reference/types/encodings/pixel_format?speculative-link) is for.
+use differing number of bits per channel, and that is what this [`encodings.PixelFormat`](https://rerun.io/docs/reference/types/encodings/pixel_format) is for.
 
 All these formats support random access.
 
@@ -42,7 +42,7 @@ The order of the channels is Y0, U0, Y1, V0, all in the same plane.
 #### `Y8_FullRange` = 30
 Monochrome Y plane only, essentially a YUV 4:0:0 planar format.
 
-Also known as just "gray". This is virtually identical to a 8bit luminance/grayscale (see [`encodings.ColorModel`](https://rerun.io/docs/reference/types/encodings/color_model?speculative-link)).
+Also known as just "gray". This is virtually identical to a 8bit luminance/grayscale (see [`encodings.ColorModel`](https://rerun.io/docs/reference/types/encodings/color_model)).
 
 This uses entire range YUV, i.e. Y is expected to be within [0, 255].
 (as opposed to "limited range" YUV as used e.g. in NV12).
@@ -68,7 +68,7 @@ Monochrome Y plane only, essentially a YUV 4:0:0 planar format.
 Also known as just "gray".
 
 This uses limited range YUV, i.e. Y is expected to be within [16, 235].
-If not for this range limitation/remapping, this is almost identical to 8bit luminace/grayscale (see [`encodings.ColorModel`](https://rerun.io/docs/reference/types/encodings/color_model?speculative-link)).
+If not for this range limitation/remapping, this is almost identical to 8bit luminace/grayscale (see [`encodings.ColorModel`](https://rerun.io/docs/reference/types/encodings/color_model)).
 
 #### `Y_U_V12_FullRange` = 44
 `Y_U_V12` is a YUV 4:2:0 fully planar YUV format without chroma downsampling, also known as `I420`.
@@ -103,9 +103,9 @@ UInt8
 ```
 
 ## API reference links
- * 🌊 [C++ API docs for `PixelFormat`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1encodings.html?speculative-link)
- * 🐍 [Python API docs for `PixelFormat`](https://ref.rerun.io/docs/python/stable/common/encodings?speculative-link#rerun.encodings.PixelFormat)
- * 🦀 [Rust API docs for `PixelFormat`](https://docs.rs/rerun/latest/rerun/encodings/enum.PixelFormat.html?speculative-link)
+ * 🌊 [C++ API docs for `PixelFormat`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1encodings.html)
+ * 🐍 [Python API docs for `PixelFormat`](https://ref.rerun.io/docs/python/stable/common/encodings#rerun.encodings.PixelFormat)
+ * 🦀 [Rust API docs for `PixelFormat`](https://docs.rs/rerun/latest/rerun/encodings/enum.PixelFormat.html)
 
 
 ## Used by
