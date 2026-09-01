@@ -179,7 +179,7 @@ emits (a `frame_transforms` topic → `Transform3D`) or that FK derives:
 
 ```python
 import rerun as rr
-from rerun.experimental import Chunk, LazyChunkStream
+from rerun.chunk import Chunk, LazyChunkStream
 
 # world -> this robot's base, from your calibration (translation + xyzw quaternion)
 edge = Chunk.from_columns(
@@ -203,7 +203,7 @@ into the same recording as the model and FK streams so they share the graph.
 
 ```python
 import rerun as rr
-from rerun.experimental import DeriveLens, LazyChunkStream, OptimizationProfile, Selector
+from rerun.chunk import DeriveLens, LazyChunkStream, OptimizationProfile, Selector
 from rerun.urdf import UrdfTree
 
 urdf = UrdfTree.from_file_path(urdf_path, entity_path_prefix="robot", static_transform_entity_path="robot/tf_static")

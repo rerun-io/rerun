@@ -26,6 +26,7 @@ import rerun_bindings as bindings
 from . import (
     blueprint as blueprint,
     catalog as catalog,
+    chunk as chunk,
     experimental as experimental,
     server as server,
     urdf as urdf,
@@ -68,6 +69,7 @@ from ._script_helpers import (
     script_setup as script_setup,
     script_teardown as script_teardown,
 )
+from ._send_chunks import send_chunks as send_chunks
 from ._send_columns import (
     TimeColumn as TimeColumn,
     TimeColumnLike as TimeColumnLike,

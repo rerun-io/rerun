@@ -7,12 +7,12 @@ from typing import TYPE_CHECKING
 
 from rerun_bindings import Hdf5ReaderInternal
 
-from ._lazy_chunk_stream import LazyChunkStream
+from ..chunk import LazyChunkStream
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from ._index_column import IndexColumn
+    from ..chunk import IndexColumn
 
 
 @dataclass(frozen=True)
@@ -134,7 +134,7 @@ class Hdf5Reader:
             Optional prefix prepended to every entity path (for example `"/world"`).
         index_column:
             Dataset to use as the file-wide timeline index, built with
-            [`IndexColumn`][rerun.experimental.IndexColumn], e.g.
+            [`IndexColumn`][rerun.chunk.IndexColumn], e.g.
             `IndexColumn.timestamp("/time", input_unit="s")` or
             `IndexColumn.sequence("/frame_id")`. Interpreted relative to
             `root_group`.

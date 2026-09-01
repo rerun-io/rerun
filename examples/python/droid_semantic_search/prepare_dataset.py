@@ -29,7 +29,7 @@ from pathlib import Path
 from tqdm import tqdm
 
 import rerun as rr
-from rerun.experimental import OptimizationProfile, RrdReader
+from rerun.chunk import OptimizationProfile, RrdReader
 
 # `tests/assets/rrd/sample_5`, relative to this file at `examples/python/droid_semantic_search/`.
 BUNDLED_SAMPLE_DIR = Path(__file__).resolve().parents[3] / "tests" / "assets" / "rrd" / "sample_5"

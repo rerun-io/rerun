@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     import pyarrow as pa
 
-    from .experimental._chunk import DataframeLike
+    from .chunk._chunk import DataframeLike
     from .recording_stream import RecordingStream
 
 
@@ -43,8 +43,8 @@ def send_record_batch(
     """
     Coerce a single pyarrow `RecordBatch` to Rerun structure and log it.
 
-    A thin wrapper over [`Chunk.from_record_batch`][rerun.experimental.Chunk.from_record_batch]
-    followed by [`send_chunks`][rerun.experimental.send_chunks]. See `Chunk.from_record_batch` for
+    A thin wrapper over [`Chunk.from_record_batch`][rerun.chunk.Chunk.from_record_batch]
+    followed by [`send_chunks`][rerun.send_chunks]. See `Chunk.from_record_batch` for
     the full column-classification semantics and the conditions under which a `ValueError` is raised.
 
     Parameters
@@ -57,14 +57,14 @@ def send_record_batch(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
     index:
         Determines which columns are index (timeline) columns. See
-        [`Chunk.from_record_batch`][rerun.experimental.Chunk.from_record_batch] for the full
+        [`Chunk.from_record_batch`][rerun.chunk.Chunk.from_record_batch] for the full
         semantics. Defaults to deriving the index from the batch's Rerun metadata.
     entity_path:
         Default entity path for component columns that do not otherwise specify one.
 
     """
-    from .experimental._chunk import Chunk
-    from .experimental._send_chunks import send_chunks
+    from ._send_chunks import send_chunks
+    from .chunk._chunk import Chunk
 
     chunks = Chunk.from_record_batch(batch, index=index, entity_path=entity_path)
     send_chunks(chunks, recording=recording)  # NOLINT: send_chunks casts the RecordingStream itself
@@ -80,8 +80,8 @@ def send_dataframe(
     """
     Coerce a pyarrow `Table` / `RecordBatch` / `RecordBatchReader`, or a datafusion `DataFrame`, to Rerun structure and log it.
 
-    A thin wrapper over [`Chunk.from_dataframe`][rerun.experimental.Chunk.from_dataframe] followed by
-    [`send_chunks`][rerun.experimental.send_chunks]. See `Chunk.from_dataframe` for the accepted input
+    A thin wrapper over [`Chunk.from_dataframe`][rerun.chunk.Chunk.from_dataframe] followed by
+    [`send_chunks`][rerun.send_chunks]. See `Chunk.from_dataframe` for the accepted input
     types, and `Chunk.from_record_batch` for the full column-classification semantics and the
     conditions under which a `ValueError` is raised.
 
@@ -97,14 +97,14 @@ def send_dataframe(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
     index:
         Determines which columns are index (timeline) columns. See
-        [`Chunk.from_record_batch`][rerun.experimental.Chunk.from_record_batch] for the full
+        [`Chunk.from_record_batch`][rerun.chunk.Chunk.from_record_batch] for the full
         semantics. Defaults to deriving the index from the dataframe's Rerun metadata.
     entity_path:
         Default entity path for component columns that do not otherwise specify one.
 
     """
-    from .experimental._chunk import Chunk
-    from .experimental._send_chunks import send_chunks
+    from ._send_chunks import send_chunks
+    from .chunk._chunk import Chunk
 
     chunks = Chunk.from_dataframe(df, index=index, entity_path=entity_path)
     send_chunks(chunks, recording=recording)  # NOLINT: send_chunks casts the RecordingStream itself

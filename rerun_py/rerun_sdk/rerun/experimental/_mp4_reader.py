@@ -6,8 +6,8 @@ from typing import Literal, overload
 
 from rerun_bindings import Mp4ReaderInternal, Mp4TranscodeOptionsInternal
 
+from ..chunk import LazyChunkStream
 from ..components import VideoCodec
-from ._lazy_chunk_stream import LazyChunkStream
 
 
 @dataclass(frozen=True, kw_only=True)

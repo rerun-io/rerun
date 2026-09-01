@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, NamedTuple
 import pytest
 import rerun as rr
 from rerun.catalog import DatasetEntry, NotFoundError
-from rerun.experimental import LazyStore, RrdReader
+from rerun.chunk import LazyStore, RrdReader
 
 if TYPE_CHECKING:
     from pathlib import Path

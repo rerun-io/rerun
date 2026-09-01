@@ -52,6 +52,7 @@ DOCUMENTED_PACKAGES: Final[dict[str, tuple[str, ...]]] = {
     "rerun.blueprint.encodings": ("Blueprint", "Encodings"),
     "rerun.blueprint.views": ("Blueprint", "Views"),
     "rerun.catalog": ("Catalog",),
+    "rerun.chunk": ("Chunk",),
     "rerun.experimental": ("Experimental",),
     "rerun.experimental.dataloader": ("Experimental", "Dataloader"),
     "rerun.server": ("Server",),

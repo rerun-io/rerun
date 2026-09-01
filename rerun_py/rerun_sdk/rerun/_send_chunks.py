@@ -4,10 +4,10 @@ from typing import TYPE_CHECKING
 
 import rerun_bindings as bindings
 
-from ._chunk import Chunk
-from ._chunk_store import ChunkStore
-from ._lazy_chunk_stream import LazyChunkStream
-from ._lazy_store import LazyStore
+from .chunk._chunk import Chunk
+from .chunk._chunk_store import ChunkStore
+from .chunk._lazy_chunk_stream import LazyChunkStream
+from .chunk._lazy_store import LazyStore
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -42,12 +42,12 @@ def send_chunks(
     chunks:
         One of:
 
-        - A single [`Chunk`][rerun.experimental.Chunk].
-        - A [`LazyChunkStream`][rerun.experimental.LazyChunkStream] — consume
+        - A single [`Chunk`][rerun.chunk.Chunk].
+        - A [`LazyChunkStream`][rerun.chunk.LazyChunkStream] — consume
           the stream and forward all chunks to the recording stream.
-        - A [`LazyStore`][rerun.experimental.LazyStore] — send all chunks to the
+        - A [`LazyStore`][rerun.chunk.LazyStore] — send all chunks to the
           recording stream. This triggers loading all chunks from the source.
-        - A [`ChunkStore`][rerun.experimental.ChunkStore] — send all chunks to
+        - A [`ChunkStore`][rerun.chunk.ChunkStore] — send all chunks to
           the recording stream (fast since all chunks are already loaded).
         - Any iterable of `Chunk` objects.
 

@@ -24,7 +24,7 @@ class LazyStore:
 
     Use `stream()` to process chunks through the lazy pipeline, or `write_rrd()`
     to persist to disk. To fully materialize into a
-    [`ChunkStore`][rerun.experimental.ChunkStore], call `lazy.stream().collect()`.
+    [`ChunkStore`][rerun.chunk.ChunkStore], call `lazy.stream().collect()`.
 
     """
 

@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
     from . import Transform3D
     from ._baseclasses import ComponentColumnList
-    from .experimental import LazyChunkStream
+    from .chunk import LazyChunkStream
     from .recording_stream import RecordingStream
 
 __all__ = ["UrdfJoint", "UrdfLink", "UrdfMimic", "UrdfTree"]
@@ -363,7 +363,7 @@ class UrdfTree:
 
         !!! warning
             This method is experimental and returns the experimental
-            `rerun.experimental.LazyChunkStream` API.
+            `rerun.chunk.LazyChunkStream` API.
 
         Parameters
         ----------
@@ -371,7 +371,7 @@ class UrdfTree:
             Whether to include the static joint transforms from the URDF.
 
         """
-        from .experimental import LazyChunkStream
+        from .chunk import LazyChunkStream
 
         return LazyChunkStream(self._inner.stream(include_joint_transforms=include_joint_transforms))
 

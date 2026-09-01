@@ -58,8 +58,8 @@ def split_into_episode_rrds(combined_rrd: Path, rrd_dir: Path) -> list[Path]:
     """
     rrd_dir.mkdir(parents=True, exist_ok=True)
 
-    profile = replace(rr.experimental.OptimizationProfile.OBJECT_STORE, fix_keyframe=True)
-    reader = rr.experimental.RrdReader(str(combined_rrd))
+    profile = replace(rr.chunk.OptimizationProfile.OBJECT_STORE, fix_keyframe=True)
+    reader = rr.chunk.RrdReader(str(combined_rrd))
     recordings = reader.recordings()
     print(f"Archive contains {len(recordings)} recordings")
 

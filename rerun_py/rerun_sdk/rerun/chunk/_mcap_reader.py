@@ -188,7 +188,7 @@ class McapReader:
         decoders:
             Optional list of MCAP decoder identifiers to enable. If omitted, all
             available decoders are enabled. Use
-            [`McapReader.available_decoders`][rerun.experimental.McapReader.available_decoders]
+            [`McapReader.available_decoders`][rerun.chunk.McapReader.available_decoders]
             to enumerate them.
         include_topic_regex:
             Optional list of regex patterns. If provided, only topics matching at

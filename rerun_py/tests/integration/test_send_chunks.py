@@ -1,4 +1,4 @@
-"""Tests for rerun.experimental.send_chunks."""
+"""Tests for rerun.send_chunks."""
 
 from __future__ import annotations
 
@@ -6,13 +6,13 @@ from typing import TYPE_CHECKING, Protocol
 
 import pytest
 import rerun as rr
-from rerun.experimental import Chunk, RrdReader
+from rerun.chunk import Chunk, RrdReader
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
     from pathlib import Path
 
-    from rerun.experimental import ChunkStore, LazyChunkStream, LazyStore
+    from rerun.chunk import ChunkStore, LazyChunkStream, LazyStore
 
 
 class SendChunksAndRead(Protocol):

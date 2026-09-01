@@ -27,7 +27,8 @@ columnar.
 ## The API
 
 ```python
-from rerun.experimental import ParquetReader, DeriveLens, IndexColumn
+from rerun.chunk import DeriveLens, IndexColumn
+from rerun.experimental import ParquetReader
 
 reader = ParquetReader(table_path)  # a lightweight handle over the file
 stream = reader.stream(
@@ -155,7 +156,8 @@ struct at `/A`; the lens reads the prefix-stripped field names (`pos_x`,
 `quat_w`), packs and casts them, and writes a full `Transform3D` to `/pose`:
 
 ```python
-from rerun.experimental import DeriveLens, IndexColumn, ParquetReader
+from rerun.chunk import DeriveLens, IndexColumn
+from rerun.experimental import ParquetReader
 
 lens = (
     DeriveLens("data", output_entity="/pose")
@@ -179,7 +181,8 @@ component, pass the descriptor to `to_packed_component`:
 
 ```python
 import rerun as rr
-from rerun.experimental import DeriveLens, ParquetReader
+from rerun.chunk import DeriveLens
+from rerun.experimental import ParquetReader
 
 lens = DeriveLens("data", output_entity="/points").to_packed_component(
     rr.Points3D.descriptor_positions(), "x", "y", "z"

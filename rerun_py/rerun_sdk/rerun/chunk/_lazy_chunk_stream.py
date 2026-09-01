@@ -168,7 +168,7 @@ class LazyChunkStream:
         Parameters
         ----------
         lenses:
-            One or more [`Lens`][rerun.experimental.Lens] objects.
+            One or more [`Lens`][rerun.chunk.Lens] objects.
         output_mode:
             How to handle unmatched chunks:
 

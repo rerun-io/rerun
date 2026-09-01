@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from rerun.experimental import McapReader, OptimizationProfile
+from rerun.chunk import McapReader, OptimizationProfile
 
 mcap_path = (
     Path(__file__).resolve().parents[4]

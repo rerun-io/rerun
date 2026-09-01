@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import dataclasses
 
-from rerun.experimental import OptimizationProfile
+from rerun.chunk import OptimizationProfile
 
 
 def test_optimization_profile_custom() -> None:

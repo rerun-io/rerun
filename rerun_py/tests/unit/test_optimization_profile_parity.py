@@ -10,7 +10,7 @@ from __future__ import annotations
 import math
 
 import pytest
-from rerun.experimental import OptimizationProfile
+from rerun.chunk import OptimizationProfile
 
 from rerun_bindings import _optimization_profile_values  # noqa: TID251
 

@@ -20,4 +20,4 @@ chunk = rrx.Chunk.from_columns(
 # its content
 print(chunk)
 
-rrx.send_chunks(chunk)
+rr.send_chunks(chunk)

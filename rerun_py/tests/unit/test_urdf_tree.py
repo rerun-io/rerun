@@ -7,7 +7,7 @@ import pyarrow as pa
 import pytest
 import rerun as rr
 import rerun.urdf as rru
-from rerun.experimental import Chunk, DeriveLens, LazyChunkStream, RrdReader, Selector, StreamingReader
+from rerun.chunk import Chunk, DeriveLens, LazyChunkStream, RrdReader, Selector, StreamingReader
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 URDF_PATH = REPO_ROOT / "examples" / "rust" / "animated_urdf" / "data" / "so100.urdf"

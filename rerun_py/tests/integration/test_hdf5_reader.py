@@ -18,7 +18,8 @@ from pathlib import Path
 
 import pyarrow as pa
 import pytest
-from rerun.experimental import Chunk, DatasetInfo, Hdf5Reader, IndexColumn
+from rerun.chunk import Chunk, IndexColumn
+from rerun.experimental import DatasetInfo, Hdf5Reader
 
 HDF5_ASSETS_DIR = Path(__file__).resolve().parents[1] / "assets" / "hdf5"
 TEST_DATA = HDF5_ASSETS_DIR / "test_data.h5"

@@ -13,7 +13,7 @@ class StreamingReader(Protocol):
 
     All readers provide `stream() -> LazyChunkStream`. Readers for indexable
     formats will additionally satisfy
-    [`IndexedReader`][rerun.experimental.IndexedReader], which adds
+    [`IndexedReader`][rerun.chunk.IndexedReader], which adds
     `store() -> LazyStore` and `load() -> ChunkStore`.
     """
 

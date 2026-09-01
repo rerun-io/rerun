@@ -41,7 +41,7 @@ The body of an RRD is a sequence of `LogMsg`s. There are three variants:
 
 Every `ArrowMsg` carries a single **chunk** — an Apache Arrow `RecordBatch` with Rerun-specific schema metadata. A chunk belongs to one entity path and holds a contiguous run of rows for that entity, with one column per timeline and one column per component. See [Chunks](chunks.md) for the conceptual deep-dive (how chunks are built, batched, sorted, compacted); this section just shows what a chunk looks like when you crack one open.
 
-The schema is laid out per **Sorbet**, Rerun's object-model spec — it defines how chunks, archetypes, components, and timelines map onto Arrow column names, types, and metadata. The easiest way to see it concretely is to save a recording and reopen it with [`RrdReader`](https://ref.rerun.io/docs/python/stable/experimental/#rerun.experimental.RrdReader).
+The schema is laid out per **Sorbet**, Rerun's object-model spec — it defines how chunks, archetypes, components, and timelines map onto Arrow column names, types, and metadata. The easiest way to see it concretely is to save a recording and reopen it with [`RrdReader`](https://ref.rerun.io/docs/python/stable/experimental/#rerun.chunk.RrdReader).
 
 First, let's create an RRD file with some content:
 

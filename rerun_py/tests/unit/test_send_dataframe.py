@@ -19,13 +19,13 @@ from rerun import (
     SORBET_ENTITY_PATH,
     SORBET_INDEX_NAME,
 )
-from rerun.experimental import RrdReader
+from rerun.chunk import RrdReader
 
 if TYPE_CHECKING:
     from collections.abc import Callable
     from pathlib import Path
 
-    from rerun.experimental import Chunk
+    from rerun.chunk import Chunk
     from syrupy import SnapshotAssertion
 
 APP_ID = "rerun_example_test_send_dataframe"
@@ -226,7 +226,7 @@ def test_control_kind_is_treated_as_row_id() -> None:
     Without a chunk id the batch is only *partially* identified, so it takes the mint path: the
     control column is dropped (rather than carried as a component) and fresh row ids are minted.
     """
-    from rerun.experimental import Chunk
+    from rerun.chunk import Chunk
 
     index = pa.array([0, 1], type=pa.int64())
     control = pa.array([10, 20], type=pa.int64())
@@ -268,7 +268,7 @@ def test_no_component_type_is_left_unset(
 
 def test_no_index_is_ambiguous() -> None:
     """With `index` left at the default (AUTO) and no index metadata, the batch is rejected."""
-    from rerun.experimental import Chunk
+    from rerun.chunk import Chunk
 
     schema = pa.schema([
         pa.field(

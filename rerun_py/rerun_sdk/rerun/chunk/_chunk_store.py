@@ -20,10 +20,10 @@ class ChunkStore:
     A fully-materialized, in-memory chunk store.
 
     Build one from chunks via
-    [`ChunkStore.from_chunks`][rerun.experimental.ChunkStore.from_chunks], or
-    fully materialize an [`IndexedReader`][rerun.experimental.IndexedReader]
+    [`ChunkStore.from_chunks`][rerun.chunk.ChunkStore.from_chunks], or
+    fully materialize an [`IndexedReader`][rerun.chunk.IndexedReader]
     via `reader.stream().collect()`.
-    For lazy, on-demand chunk loading, see [`LazyStore`][rerun.experimental.LazyStore].
+    For lazy, on-demand chunk loading, see [`LazyStore`][rerun.chunk.LazyStore].
 
     Use `stream()` to process chunks through the lazy pipeline, or
     `write_rrd()` to persist to disk.

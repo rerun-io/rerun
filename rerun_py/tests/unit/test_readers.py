@@ -3,11 +3,7 @@
 from __future__ import annotations
 
 import pytest
-from rerun.experimental import (
-    IndexedReader,
-    RrdReader,
-    StreamingReader,
-)
+from rerun.chunk import IndexedReader, RrdReader, StreamingReader
 
 
 @pytest.mark.local_only

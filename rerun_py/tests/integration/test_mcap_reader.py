@@ -1,4 +1,4 @@
-"""Tests for rerun.experimental.McapReader and StreamingReader protocol."""
+"""Tests for rerun.chunk.McapReader and StreamingReader protocol."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 import pyarrow as pa
 import pytest
-from rerun.experimental import Chunk, McapInfo, McapReader, StreamingReader
+from rerun.chunk import Chunk, McapInfo, McapReader, StreamingReader
 
 if TYPE_CHECKING:
     from syrupy import SnapshotAssertion

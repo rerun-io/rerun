@@ -108,7 +108,8 @@ and never applies the blueprint.
 import time
 import rerun as rr
 import rerun.blueprint as rrb
-from rerun.experimental import ViewerClient, RrdReader
+from rerun.chunk import RrdReader
+from rerun.experimental import ViewerClient
 
 store = RrdReader("segment.rrd").recordings()[0]  # the rrd's application id + recording id
 

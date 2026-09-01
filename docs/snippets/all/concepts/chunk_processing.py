@@ -10,13 +10,7 @@ import pyarrow as pa
 import pyarrow.compute as pc
 
 import rerun as rr
-from rerun.experimental import (
-    Chunk,
-    DeriveLens,
-    LazyChunkStream,
-    McapReader,
-    Selector,
-)
+from rerun.chunk import Chunk, DeriveLens, LazyChunkStream, McapReader, Selector
 
 MCAP = (
     Path(__file__).resolve().parents[4]

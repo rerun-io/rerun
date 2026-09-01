@@ -3,13 +3,12 @@
 import pyarrow as pa
 
 import rerun as rr
-from rerun.experimental import (
+from rerun.chunk import (
     Chunk,
     DeriveLens,
     LazyChunkStream,
     MutateLens,
     Selector,
-    send_chunks,
 )
 
 rr.init("rerun_example_lenses", spawn=True)
@@ -70,4 +69,4 @@ results = stream.lenses(
     [extract_x, extract_y, simplify_accel, extract_scaled_x],
     output_mode="forward_unmatched",
 )
-send_chunks(results)
+rr.send_chunks(results)

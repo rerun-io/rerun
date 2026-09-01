@@ -8,12 +8,7 @@ from typing import TYPE_CHECKING
 import pytest
 import rerun as rr
 from inline_snapshot import snapshot as inline_snapshot
-from rerun.experimental import (
-    ChunkStore,
-    LazyChunkStream,
-    OptimizationProfile,
-    RrdReader,
-)
+from rerun.chunk import ChunkStore, LazyChunkStream, OptimizationProfile, RrdReader
 
 from .conftest import TEST_APP_ID as APP_ID, TEST_RECORDING_ID as RECORDING_ID
 

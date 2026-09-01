@@ -20,7 +20,7 @@ from pathlib import Path
 import pyarrow as pa
 
 import rerun as rr
-from rerun.experimental import Chunk, DeriveLens, LazyChunkStream, McapReader, MutateLens, OptimizationProfile, Selector
+from rerun.chunk import Chunk, DeriveLens, LazyChunkStream, McapReader, MutateLens, OptimizationProfile, Selector
 from rerun.urdf import UrdfTree
 
 PARENT_DIR = Path(__file__).parent

@@ -142,11 +142,11 @@ You can build a chunk from, e.g., time/component columns, inspect or transform e
 
 snippet: concepts/build_chunk
 
-Alternatively, chunks can be created from an existing Arrow [`RecordBatch`](https://arrow.apache.org/docs/python/generated/pyarrow.RecordBatch.html) using [`Chunk.from_record_batch`](https://ref.rerun.io/docs/python/stable/experimental/#rerun.experimental.Chunk.from_record_batch):
+Alternatively, chunks can be created from an existing Arrow [`RecordBatch`](https://arrow.apache.org/docs/python/generated/pyarrow.RecordBatch.html) using [`Chunk.from_record_batch`](https://ref.rerun.io/docs/python/stable/experimental/#rerun.chunk.Chunk.from_record_batch):
 
 snippet: concepts/build_chunk_from_record_batch[body]
 
-`send_chunks` also accepts iterables of chunks, as well as instances of [`LazyChunkStream`](https://ref.rerun.io/docs/python/stable/experimental/#rerun.experimental.LazyChunkStream), [`ChunkStore`](https://ref.rerun.io/docs/python/stable/experimental/#rerun.experimental.ChunkStore), and [`LazyStore`](https://ref.rerun.io/docs/python/stable/experimental/#rerun.experimental.LazyStore).
+`send_chunks` also accepts iterables of chunks, as well as instances of [`LazyChunkStream`](https://ref.rerun.io/docs/python/stable/experimental/#rerun.chunk.LazyChunkStream), [`ChunkStore`](https://ref.rerun.io/docs/python/stable/experimental/#rerun.chunk.ChunkStore), and [`LazyStore`](https://ref.rerun.io/docs/python/stable/experimental/#rerun.chunk.LazyStore).
 For example, to forward every chunk of an existing RRD into a new recording stream:
 
 snippet: concepts/send_chunks
@@ -155,15 +155,15 @@ Like `send_columns`, this path bypasses the time context and the [micro-batcher]
 See the [Chunk Processing API](chunk-processing-api.md) for building ingestion, transformation, and conversion pipelines out of these primitives.
 
 Reference:
-* [🐍 Python `Chunk`](https://ref.rerun.io/docs/python/stable/experimental/#rerun.experimental.Chunk)
-* [🐍 Python `Chunk.from_columns`](https://ref.rerun.io/docs/python/stable/experimental/#rerun.experimental.Chunk.from_columns)
-* [🐍 Python `Chunk.from_record_batch`](https://ref.rerun.io/docs/python/stable/experimental/#rerun.experimental.Chunk.from_record_batch)
-* [🐍 Python `send_chunks`](https://ref.rerun.io/docs/python/stable/experimental/#rerun.experimental.send_chunks)
+* [🐍 Python `Chunk`](https://ref.rerun.io/docs/python/stable/experimental/#rerun.chunk.Chunk)
+* [🐍 Python `Chunk.from_columns`](https://ref.rerun.io/docs/python/stable/experimental/#rerun.chunk.Chunk.from_columns)
+* [🐍 Python `Chunk.from_record_batch`](https://ref.rerun.io/docs/python/stable/experimental/#rerun.chunk.Chunk.from_record_batch)
+* [🐍 Python `send_chunks`](https://ref.rerun.io/docs/python/stable/experimental/#rerun.send_chunks)
 
 
 ### Dataframe logging: `Chunk.from_dataframe` and `send_dataframe`
 
-[`rr.send_dataframe`](https://ref.rerun.io/docs/python/stable/common/columnar_api/#rerun.send_dataframe) and the related [`Chunk.from_dataframe`](https://ref.rerun.io/docs/python/stable/experimental/#rerun.experimental.Chunk.from_dataframe) extend the single record batch equivalent and accept a full PyArrow [`Table`](https://arrow.apache.org/docs/python/generated/pyarrow.Table.html) (or a [`RecordBatchReader`](https://arrow.apache.org/docs/python/generated/pyarrow.RecordBatchReader.html), or any Arrow-C-stream object such as a `datafusion.DataFrame`) carrying any number of entities, and yields the chunks of each record batch in turn.
+[`rr.send_dataframe`](https://ref.rerun.io/docs/python/stable/common/columnar_api/#rerun.send_dataframe) and the related [`Chunk.from_dataframe`](https://ref.rerun.io/docs/python/stable/experimental/#rerun.chunk.Chunk.from_dataframe) extend the single record batch equivalent and accept a full PyArrow [`Table`](https://arrow.apache.org/docs/python/generated/pyarrow.Table.html) (or a [`RecordBatchReader`](https://arrow.apache.org/docs/python/generated/pyarrow.RecordBatchReader.html), or any Arrow-C-stream object such as a `datafusion.DataFrame`) carrying any number of entities, and yields the chunks of each record batch in turn.
 
 To map columns of the dataframe to Rerun timelines and components, the dataframe must carry the same `rerun:*` metadata as above.
 For example, here we hand-craft a dataframe containing a Points3D entity:
@@ -184,7 +184,7 @@ Manually crafting the required metadata is obviously inconvenient.
 This API is instead designed to compose with [dataframe queries](../query-and-transform/dataframe-queries.md), which produce dataframes already populated with metadata derived from the originally queried data.
 
 Reference:
-* [🐍 Python `Chunk.from_dataframe`](https://ref.rerun.io/docs/python/stable/experimental/#rerun.experimental.Chunk.from_dataframe)
+* [🐍 Python `Chunk.from_dataframe`](https://ref.rerun.io/docs/python/stable/experimental/#rerun.chunk.Chunk.from_dataframe)
 * [🐍 Python `send_dataframe`](https://ref.rerun.io/docs/python/stable/common/columnar_api/#rerun.send_dataframe)
 * [🐍 Python `send_record_batch`](https://ref.rerun.io/docs/python/stable/common/columnar_api/#rerun.send_record_batch)
 

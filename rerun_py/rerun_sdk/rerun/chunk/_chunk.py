@@ -88,7 +88,7 @@ class Chunk:
         as well as the entity/archetype/component type for component columns.
 
         If present, the row id column and chunk id metadata indicate that the batch represents
-        a fully identified chunk, e.g. as produced by [`Chunk.to_record_batch`][rerun.experimental.Chunk.to_record_batch].
+        a fully identified chunk, e.g. as produced by [`Chunk.to_record_batch`][rerun.chunk.Chunk.to_record_batch].
         Both the row ids and chunk id are preserved under the following conditions:
         - both are present in the input batch
         - `index` is omitted
@@ -199,7 +199,7 @@ class Chunk:
         dependency).
 
         Yields each chunk of
-        [`Chunk.from_record_batch`][rerun.experimental.Chunk.from_record_batch] applied to every
+        [`Chunk.from_record_batch`][rerun.chunk.Chunk.from_record_batch] applied to every
         record batch in turn. See that method for the `index` and `entity_path` semantics.
 
 
@@ -209,7 +209,7 @@ class Chunk:
             If `dataframe` is not a pyarrow `Table`, a pyarrow `RecordBatch`, a pyarrow
             `RecordBatchReader`, or an Arrow-C-stream object (such as a `datafusion.DataFrame`).
         ValueError
-            See [`Chunk.from_record_batch`][rerun.experimental.Chunk.from_record_batch].
+            See [`Chunk.from_record_batch`][rerun.chunk.Chunk.from_record_batch].
 
         """
 
@@ -376,8 +376,8 @@ class Chunk:
         All other columns (timelines, other components) are preserved unchanged.
         The source component's existing descriptor is preserved.
 
-        For better performance, prefer [`MutateLens`][rerun.experimental.MutateLens]
-        with [`apply_lenses`][rerun.experimental.Chunk.apply_lenses]
+        For better performance, prefer [`MutateLens`][rerun.chunk.MutateLens]
+        with [`apply_lenses`][rerun.chunk.Chunk.apply_lenses]
         which processes multiple transformations in a single pass.
 
         Parameters
@@ -386,11 +386,11 @@ class Chunk:
             A `ComponentDescriptor` or component identifier string for the
             input column to transform.
         selector:
-            A [`Selector`][rerun.experimental.Selector] or selector query string to apply to the component.
+            A [`Selector`][rerun.chunk.Selector] or selector query string to apply to the component.
 
         Returns
         -------
-        A new [`Chunk`][rerun.experimental.Chunk] with the component transformed.
+        A new [`Chunk`][rerun.chunk.Chunk] with the component transformed.
 
         Raises
         ------
@@ -426,7 +426,7 @@ class Chunk:
         Parameters
         ----------
         lenses:
-            One or more [`Lens`][rerun.experimental.Lens] objects.
+            One or more [`Lens`][rerun.chunk.Lens] objects.
 
         Returns
         -------

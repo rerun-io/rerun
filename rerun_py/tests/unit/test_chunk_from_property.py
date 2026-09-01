@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 import rerun as rr
-from rerun.experimental import Chunk
+from rerun.chunk import Chunk
 
 
 def test_chunk_from_property_batches() -> None:

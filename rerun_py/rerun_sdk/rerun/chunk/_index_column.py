@@ -14,9 +14,9 @@ class IndexColumn:
     """
     A dataset/column to use as a timeline index, and how to interpret it.
 
-    Construct one with [`timestamp`][rerun.experimental.IndexColumn.timestamp],
-    [`duration`][rerun.experimental.IndexColumn.duration], or
-    [`sequence`][rerun.experimental.IndexColumn.sequence] — the timeline kind is
+    Construct one with [`timestamp`][rerun.chunk.IndexColumn.timestamp],
+    [`duration`][rerun.chunk.IndexColumn.duration], or
+    [`sequence`][rerun.chunk.IndexColumn.sequence] — the timeline kind is
     the constructor you pick, so there is nothing to mistype:
 
     ```python

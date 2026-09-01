@@ -81,7 +81,7 @@ class DeriveLens:
             A `ComponentDescriptor` or a component identifier string
             for the output column (e.g. `"Scalars:scalars"`).
         selector:
-            A [`Selector`][rerun.experimental.Selector] or selector query string to apply to the
+            A [`Selector`][rerun.chunk.Selector] or selector query string to apply to the
             input column.
         cast_to:
             How to cast the produced column to match the target component. By default
@@ -91,7 +91,7 @@ class DeriveLens:
 
         Returns
         -------
-        A new [`DeriveLens`][rerun.experimental.DeriveLens] with the component added.
+        A new [`DeriveLens`][rerun.chunk.DeriveLens] with the component added.
 
         """
         sel = _normalize_selector(selector)
@@ -118,12 +118,12 @@ class DeriveLens:
             Type of the timeline: `"sequence"`, `"duration_ns"`,
             or `"timestamp_ns"`.
         selector:
-            A [`Selector`][rerun.experimental.Selector] or selector query string to extract time
+            A [`Selector`][rerun.chunk.Selector] or selector query string to extract time
             values (must produce `Int64` arrays).
 
         Returns
         -------
-        A new [`DeriveLens`][rerun.experimental.DeriveLens] with the time column added.
+        A new [`DeriveLens`][rerun.chunk.DeriveLens] with the time column added.
 
         """
         sel = _normalize_selector(selector)
@@ -155,7 +155,7 @@ class DeriveLens:
 
         Returns
         -------
-        A new [`DeriveLens`][rerun.experimental.DeriveLens] with the packed component added.
+        A new [`DeriveLens`][rerun.chunk.DeriveLens] with the packed component added.
 
         """
         if not fields:
@@ -175,7 +175,7 @@ class DeriveLens:
 
         Returns
         -------
-        A new [`DeriveLens`][rerun.experimental.DeriveLens] with the translation added.
+        A new [`DeriveLens`][rerun.chunk.DeriveLens] with the translation added.
 
         """
         from rerun.archetypes import Transform3D
@@ -194,7 +194,7 @@ class DeriveLens:
 
         Returns
         -------
-        A new [`DeriveLens`][rerun.experimental.DeriveLens] with the quaternion added.
+        A new [`DeriveLens`][rerun.chunk.DeriveLens] with the quaternion added.
 
         """
         from rerun.archetypes import Transform3D
@@ -213,7 +213,7 @@ class DeriveLens:
 
         Returns
         -------
-        A new [`DeriveLens`][rerun.experimental.DeriveLens] with the scale added.
+        A new [`DeriveLens`][rerun.chunk.DeriveLens] with the scale added.
 
         """
         from rerun.archetypes import Transform3D
@@ -234,7 +234,7 @@ class DeriveLens:
 
         Returns
         -------
-        A new [`DeriveLens`][rerun.experimental.DeriveLens] with the rotation added.
+        A new [`DeriveLens`][rerun.chunk.DeriveLens] with the rotation added.
 
         """
         from rerun.archetypes import Transform3D
@@ -260,7 +260,7 @@ class DeriveLens:
 
         Returns
         -------
-        A new [`DeriveLens`][rerun.experimental.DeriveLens] with the scalars added.
+        A new [`DeriveLens`][rerun.chunk.DeriveLens] with the scalars added.
 
         """
         from rerun.archetypes import Scalars
@@ -307,7 +307,7 @@ class MutateLens:
         input_component:
             The component identifier to modify in-place.
         selector:
-            A [`Selector`][rerun.experimental.Selector] or selector query string to apply.
+            A [`Selector`][rerun.chunk.Selector] or selector query string to apply.
         keep_row_ids:
             When `True`, preserve the original row IDs.
 

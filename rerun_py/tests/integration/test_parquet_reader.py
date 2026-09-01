@@ -16,7 +16,8 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 import rerun as rr
-from rerun.experimental import Chunk, DeriveLens, IndexColumn, LazyChunkStream, ParquetReader, StreamingReader
+from rerun.chunk import Chunk, DeriveLens, IndexColumn, LazyChunkStream, StreamingReader
+from rerun.experimental import ParquetReader
 
 if TYPE_CHECKING:
     from collections.abc import Callable

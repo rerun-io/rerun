@@ -8,7 +8,7 @@ import pyarrow as pa
 import pytest
 import rerun as rr
 from rerun import AUTO_INDEX
-from rerun.experimental import Chunk, RrdReader
+from rerun.chunk import Chunk, RrdReader
 
 if TYPE_CHECKING:
     from pathlib import Path

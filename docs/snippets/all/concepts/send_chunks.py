@@ -17,4 +17,4 @@ reader = rrx.RrdReader(path_to_rrd)
 entry = reader.recordings()[0]
 
 rr.init(entry.application_id, recording_id=entry.recording_id, spawn=True)
-rrx.send_chunks(reader.store())
+rr.send_chunks(reader.store())

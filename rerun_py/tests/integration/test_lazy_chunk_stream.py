@@ -1,4 +1,4 @@
-"""Tests for rerun.experimental.LazyChunkStream and RrdReader."""
+"""Tests for rerun.chunk.LazyChunkStream and RrdReader."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ import pyarrow.compute as pc
 import pytest
 import rerun as rr
 from inline_snapshot import snapshot as inline_snapshot
-from rerun.experimental import Chunk, DeriveLens, LazyChunkStream, MutateLens, RrdReader, Selector
+from rerun.chunk import Chunk, DeriveLens, LazyChunkStream, MutateLens, RrdReader, Selector
 
 from .conftest import TEST_APP_ID as APP_ID, TEST_RECORDING_ID as RECORDING_ID
 

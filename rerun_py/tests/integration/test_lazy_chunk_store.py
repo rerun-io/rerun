@@ -6,11 +6,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 import rerun as rr
-from rerun.experimental import (
-    LazyStore,
-    OptimizationProfile,
-    RrdReader,
-)
+from rerun.chunk import LazyStore, OptimizationProfile, RrdReader
 
 if TYPE_CHECKING:
     from pathlib import Path

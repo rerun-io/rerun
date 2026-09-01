@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from rerun.catalog._entry import DatasetEntry
-    from rerun.experimental._selector import Selector
+    from rerun.chunk._selector import Selector
 
     from .decoders._base import ColumnDecoder, DecodedValue
 
@@ -30,7 +30,7 @@ class Field:
         A [`ColumnDecoder`][rerun.experimental.dataloader.ColumnDecoder]
         that turns the Arrow column into a training value.
     select
-        Optional jq-like [`Selector`][rerun.experimental.Selector] applied
+        Optional jq-like [`Selector`][rerun.chunk.Selector] applied
         client-side to the Arrow column before `decode`. Used for nested
         struct/list access. The server-side projection is unaffected.
 

@@ -55,7 +55,7 @@ class RrdReader:
 
     def store(self, *, store: StoreEntry | None = None) -> LazyStore:
         """
-        Open a specific store as a [`LazyStore`][rerun.experimental.LazyStore].
+        Open a specific store as a [`LazyStore`][rerun.chunk.LazyStore].
 
         Reads the manifest immediately; chunk data is loaded on demand.
         Legacy RRDs without a footer/manifest are not supported here — use

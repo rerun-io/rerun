@@ -26,8 +26,8 @@ if TYPE_CHECKING:
 
     from rerun import AsComponents, BlueprintLike, ComponentColumn, DescribedComponentBatch as DescribedComponentBatch
     from rerun._memory import MemoryRecording
-    from rerun.experimental import Chunk, ChunkStore, LazyChunkStream, LazyStore
-    from rerun.experimental._chunk import DataframeLike
+    from rerun.chunk import Chunk, ChunkStore, LazyChunkStream, LazyStore
+    from rerun.chunk._chunk import DataframeLike
     from rerun.sinks import LogSinkLike
 
     from ._send_columns import TimeColumnLike as TimeColumnLike
@@ -1228,7 +1228,7 @@ class RecordingStream:
         """
         Send chunks to this recording stream. Blocks until every chunk has been queued.
 
-        See [`rerun.experimental.send_chunks`][].
+        See [`rerun.send_chunks`][].
 
         !!! note
             For a `LazyChunkStream` and `LazyStore` inputs, this call triggers execution
@@ -1239,12 +1239,12 @@ class RecordingStream:
         chunks:
             One of:
 
-            - A single [`Chunk`][rerun.experimental.Chunk].
-            - A [`LazyChunkStream`][rerun.experimental.LazyChunkStream] — consume
+            - A single [`Chunk`][rerun.chunk.Chunk].
+            - A [`LazyChunkStream`][rerun.chunk.LazyChunkStream] — consume
               the stream and forward all chunks to this recording stream.
-            - A [`LazyStore`][rerun.experimental.LazyStore] — send all chunks to this
+            - A [`LazyStore`][rerun.chunk.LazyStore] — send all chunks to this
               recording stream. This triggers loading all chunks from the source.
-            - A [`ChunkStore`][rerun.experimental.ChunkStore] — send all chunks to
+            - A [`ChunkStore`][rerun.chunk.ChunkStore] — send all chunks to
               this recording stream (fast since all chunks are already loaded).
             - Any iterable of `Chunk` objects.
 
@@ -1252,7 +1252,7 @@ class RecordingStream:
             preserved: chunks adopt this recording's identity.
 
         """
-        from .experimental._send_chunks import send_chunks
+        from ._send_chunks import send_chunks
 
         send_chunks(chunks, recording=self)
 
@@ -1266,8 +1266,8 @@ class RecordingStream:
         """
         Coerce a single pyarrow `RecordBatch` to Rerun structure and log it.
 
-        A thin wrapper over [`Chunk.from_record_batch`][rerun.experimental.Chunk.from_record_batch]
-        followed by [`send_chunks`][rerun.experimental.send_chunks]. See `Chunk.from_record_batch` for
+        A thin wrapper over [`Chunk.from_record_batch`][rerun.chunk.Chunk.from_record_batch]
+        followed by [`send_chunks`][rerun.send_chunks]. See `Chunk.from_record_batch` for
         the full column-classification semantics and the conditions under which a `ValueError` is raised.
 
         Parameters
@@ -1276,7 +1276,7 @@ class RecordingStream:
             The Arrow record batch to interpret.
         index:
             Determines which columns are index (timeline) columns. See
-            [`Chunk.from_record_batch`][rerun.experimental.Chunk.from_record_batch] for the full
+            [`Chunk.from_record_batch`][rerun.chunk.Chunk.from_record_batch] for the full
             semantics. Defaults to deriving the index from the batch's Rerun metadata.
         entity_path:
             Default entity path for component columns that do not otherwise specify one.
@@ -1296,8 +1296,8 @@ class RecordingStream:
         """
         Coerce a pyarrow `Table` / `RecordBatch` / `RecordBatchReader`, or a datafusion `DataFrame`, to Rerun structure and log it.
 
-        A thin wrapper over [`Chunk.from_dataframe`][rerun.experimental.Chunk.from_dataframe] followed by
-        [`send_chunks`][rerun.experimental.send_chunks]. See `Chunk.from_dataframe` for the accepted input
+        A thin wrapper over [`Chunk.from_dataframe`][rerun.chunk.Chunk.from_dataframe] followed by
+        [`send_chunks`][rerun.send_chunks]. See `Chunk.from_dataframe` for the accepted input
         types, and `Chunk.from_record_batch` for the full column-classification semantics and the
         conditions under which a `ValueError` is raised.
 
@@ -1309,7 +1309,7 @@ class RecordingStream:
             single fixed schema.
         index:
             Determines which columns are index (timeline) columns. See
-            [`Chunk.from_record_batch`][rerun.experimental.Chunk.from_record_batch] for the full
+            [`Chunk.from_record_batch`][rerun.chunk.Chunk.from_record_batch] for the full
             semantics. Defaults to deriving the index from the dataframe's Rerun metadata.
         entity_path:
             Default entity path for component columns that do not otherwise specify one.

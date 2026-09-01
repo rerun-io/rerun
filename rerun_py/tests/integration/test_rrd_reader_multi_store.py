@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 import pytest
 import rerun as rr
 from inline_snapshot import snapshot as inline_snapshot
-from rerun.experimental import RrdReader
+from rerun.chunk import RrdReader
 
 if TYPE_CHECKING:
     from pathlib import Path

@@ -4,7 +4,7 @@ from datafusion import col
 
 # region: build_store
 import rerun as rr
-from rerun.experimental import Chunk, ChunkStore
+from rerun.chunk import Chunk, ChunkStore
 
 chunk = Chunk.from_columns(
     "/sensor",

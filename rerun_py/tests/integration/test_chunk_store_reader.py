@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 import rerun as rr
-from rerun.experimental import ChunkStore, RrdReader
+from rerun.chunk import ChunkStore, RrdReader
 
 if TYPE_CHECKING:
     from collections.abc import Iterator

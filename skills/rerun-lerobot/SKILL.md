@@ -36,7 +36,7 @@ Catalog segments are one-recording-per-file, and `recording_id` becomes the segm
 Split with `RrdReader`:
 
 ```python
-reader = rr.experimental.RrdReader(str(combined_rrd))
+reader = rr.chunk.RrdReader(str(combined_rrd))
 for entry in reader.recordings():
     store = reader.store(store=entry)
     if not store.schema().entity_paths():  # skip the metadata-only root recording

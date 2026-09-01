@@ -30,7 +30,7 @@ with rr.RecordingStream(
 # endregion: write
 
 # region: inspect
-from rerun.experimental import RrdReader
+from rerun.chunk import RrdReader
 
 reader = RrdReader(output_path)
 for chunk in reader.stream():

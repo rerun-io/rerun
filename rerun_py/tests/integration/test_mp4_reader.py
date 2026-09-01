@@ -7,8 +7,9 @@ from pathlib import Path
 
 import pyarrow as pa
 import pytest
+from rerun.chunk import Chunk, OptimizationProfile, StreamingReader
 from rerun.components import VideoCodec
-from rerun.experimental import Chunk, Mp4Reader, Mp4TranscodeOptions, OptimizationProfile, StreamingReader
+from rerun.experimental import Mp4Reader, Mp4TranscodeOptions
 
 VIDEO_ASSETS_DIR = Path(__file__).resolve().parents[3] / "tests" / "assets" / "video"
 

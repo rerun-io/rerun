@@ -6,12 +6,12 @@ from typing import TYPE_CHECKING
 
 from rerun_bindings import ParquetReaderInternal
 
-from ._lazy_chunk_stream import LazyChunkStream
+from ..chunk import LazyChunkStream
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from ._index_column import IndexColumn
+    from ..chunk import IndexColumn
 
 
 class ParquetReader:
@@ -19,15 +19,16 @@ class ParquetReader:
     Read chunks from a Parquet file.
 
     The reader turns raw parquet columns into grouped, time-indexed
-    [`Chunk`][rerun.experimental.Chunk]s of struct/scalar components. To map those
+    [`Chunk`][rerun.chunk.Chunk]s of struct/scalar components. To map those
     struct fields into Rerun archetypes (translation, rotation, scalars, …), apply
     lenses to the resulting `.stream()` — see
-    [`DeriveLens`][rerun.experimental.DeriveLens]:
+    [`DeriveLens`][rerun.chunk.DeriveLens]:
 
     Example
     -------
     ```python
-    from rerun.experimental import ParquetReader, DeriveLens, IndexColumn
+    from rerun.chunk import DeriveLens, IndexColumn
+    from rerun.experimental import ParquetReader
 
     store = (
         ParquetReader(path)
@@ -104,7 +105,7 @@ class ParquetReader:
             listed column contains varying values.
         index_columns:
             Columns to use as timeline indices, each built with
-            [`IndexColumn`][rerun.experimental.IndexColumn], e.g.
+            [`IndexColumn`][rerun.chunk.IndexColumn], e.g.
             `IndexColumn.timestamp("ts", input_unit="ms")` or
             `IndexColumn.sequence("frame_index")`.
 

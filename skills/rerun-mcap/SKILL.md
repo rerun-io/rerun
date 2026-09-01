@@ -1,6 +1,6 @@
 ---
 name: rerun-mcap
-description: Ingest MCAP files into Rerun chunk streams with rerun.experimental.McapReader. Read when converting an MCAP recording, selecting topics or decoders, decoding custom protobuf messages, or when an MCAP-derived stream comes out empty. Builds on rerun-chunk-processing (stream mechanics) and rerun-data-model (what the topics should become).
+description: Ingest MCAP files into Rerun chunk streams with rerun.chunk.McapReader. Read when converting an MCAP recording, selecting topics or decoders, decoding custom protobuf messages, or when an MCAP-derived stream comes out empty. Builds on rerun-chunk-processing (stream mechanics) and rerun-data-model (what the topics should become).
 user_invocable: true
 allowed-tools: Read, Grep, Bash, WebFetch
 ---
@@ -16,7 +16,7 @@ lenses, merge, write) are in `rerun-chunk-processing`.
 ## The API
 
 ```python
-from rerun.experimental import McapReader
+from rerun.chunk import McapReader
 
 reader = McapReader(mcap_path)  # see help(McapReader) for the full option set
 stream = reader.stream()

@@ -6,7 +6,7 @@ import threading
 from typing import TYPE_CHECKING
 
 import rerun as rr
-from rerun.experimental import RrdReader
+from rerun.chunk import RrdReader
 
 if TYPE_CHECKING:
     from pathlib import Path

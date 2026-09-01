@@ -14,7 +14,7 @@ from .._yuv import Yuv420Frame
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from rerun.experimental._selector import Selector
+    from rerun.chunk._selector import Selector
 
     from .._sample_index import IndexValue
 

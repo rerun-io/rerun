@@ -16,12 +16,12 @@ class IndexedReader(StreamingReader, Protocol):
     Extends `StreamingReader`: every `IndexedReader` also supports
     `stream() -> LazyChunkStream` for pure-streaming processing.
 
-    Indexed readers expose a [`LazyStore`][rerun.experimental.LazyStore] view
+    Indexed readers expose a [`LazyStore`][rerun.chunk.LazyStore] view
     over the source via `store()` — the manifest is read up-front; chunks load
     on demand. To fully materialize into a
-    [`ChunkStore`][rerun.experimental.ChunkStore], call `stream().collect()`.
+    [`ChunkStore`][rerun.chunk.ChunkStore], call `stream().collect()`.
     """
 
     def store(self) -> LazyStore:
-        """Return a [`LazyStore`][rerun.experimental.LazyStore] view of this source."""
+        """Return a [`LazyStore`][rerun.chunk.LazyStore] view of this source."""
         ...

@@ -30,7 +30,7 @@ if TYPE_CHECKING:
 
     import datafusion
 
-    from rerun.experimental import LazyStore
+    from rerun.chunk import LazyStore
 
     from . import (
         CatalogClient,
@@ -641,11 +641,11 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
     def segment_store(self, segment_id: str, *, include_assets: bool = True) -> LazyStore:
         """
-        Open a remote segment as a [`LazyStore`][rerun.experimental.LazyStore].
+        Open a remote segment as a [`LazyStore`][rerun.chunk.LazyStore].
 
         The manifest is fetched immediately; chunk data is loaded on demand
-        via [`LazyStore.stream`][rerun.experimental.LazyStore.stream]. To fully
-        materialize into a [`ChunkStore`][rerun.experimental.ChunkStore], call
+        via [`LazyStore.stream`][rerun.chunk.LazyStore.stream]. To fully
+        materialize into a [`ChunkStore`][rerun.chunk.ChunkStore], call
         `lazy.stream().collect()`.
 
         Parameters
@@ -658,7 +658,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
             request to list the assets and one for each of their manifests.
 
         """
-        from rerun.experimental import LazyStore
+        from rerun.chunk import LazyStore
 
         return LazyStore(self._internal.segment_store(segment_id, include_assets=include_assets))
 

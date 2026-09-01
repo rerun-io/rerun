@@ -13,7 +13,7 @@ import pyarrow as pa
 import pytest
 import torch
 from PIL import Image
-from rerun.experimental import Selector
+from rerun.chunk import Selector
 from rerun.experimental.dataloader import Field, Yuv420Frame
 from rerun.experimental.dataloader._sample_index import SegmentMetadata
 from rerun.experimental.dataloader._utils import (
