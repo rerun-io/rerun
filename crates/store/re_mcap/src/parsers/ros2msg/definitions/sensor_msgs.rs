@@ -9,37 +9,6 @@ use serde::{Deserialize, Serialize};
 use super::geometry_msgs;
 use super::std_msgs::Header;
 
-/// This message contains an uncompressed image.
-///
-/// The pixel at coordinate (0, 0) is at the top-left corner of the image.
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Image<'a> {
-    /// Metadata including timestamp and coordinate frame.
-    pub header: Header,
-
-    /// Image height in pixels (number of rows).
-    pub height: u32,
-
-    /// Image width in pixels (number of columns).
-    pub width: u32,
-
-    /// Encoding of the pixel data (e.g., `rgb8`, `mono8`, `bgr16`, etc.).
-    ///
-    /// Taken from the list of strings in [include/sensor_msgs/image_encodings](https://github.com/ros2/common_interfaces/blob/rolling/sensor_msgs/include/sensor_msgs/image_encodings.hpp)
-    pub encoding: String,
-
-    /// Whether the data is big-endian.
-    pub is_bigendian: u8,
-
-    /// Full row length in bytes.
-    pub step: u32,
-
-    #[serde(with = "serde_bytes")]
-    #[serde(borrow)]
-    /// Actual pixel data matrix, size is `step * height` bytes.
-    pub data: Cow<'a, [u8]>,
-}
-
 /// This message contains a compressed image.
 ///
 /// `format` encodes the compression scheme and pixel format, and must be interpreted

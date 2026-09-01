@@ -26,9 +26,6 @@ pub use info::{
     McapSummarySource,
 };
 pub use mcap::Summary;
-pub use parsers::ros2msg::sensor_msgs::{
-    ImageEncoding, decode_image_encoding, decode_image_format,
-};
 pub use parsers::{MessageParser, ParserContext, cdr};
 pub use recover::{ScanResult, build_chunk_index, read_or_reconstruct_summary};
 pub use util::read_summary;

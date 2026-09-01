@@ -37,6 +37,8 @@ re_tracing.workspace = true
 arrow.workspace = true
 document-features.workspace = true
 itertools.workspace = true
+strum.workspace = true
 
 [dev-dependencies]
 insta.workspace = true
+re_chunk.workspace = true

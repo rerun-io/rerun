@@ -9543,6 +9543,7 @@ dependencies = [
  "insta",
  "itertools 0.15.0",
  "re_arrow_util",
+ "re_chunk",
  "re_int",
  "re_lenses_core",
  "re_log",
@@ -9550,6 +9551,7 @@ dependencies = [
  "re_mcap",
  "re_sdk_types",
  "re_tracing",
+ "strum",
 ]
 
 [[package]]
@@ -9745,7 +9747,6 @@ dependencies = [
  "serde",
  "serde_bytes",
  "serde_json",
- "strum",
  "thiserror 2.0.19",
 ]
 

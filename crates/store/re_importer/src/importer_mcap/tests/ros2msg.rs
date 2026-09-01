@@ -8,6 +8,8 @@ fn test_ros2msg_import() {
     // This makes it easier to add/remove individual tests.
     McapTestHarness::new()
         .add("ros_camera_info.mcap", "/camera/camera_info")
+        .add("ros_image.mcap", "/camera/image")
+        .add("ros_image.mcap", "/camera/depth_image")
         .add("ros_log.mcap", "/rosout")
         .add("ros_magnetic_field.mcap", "/imu/mag")
         .add("ros_nav2_voxel_grid.mcap", "/voxel_grid")
