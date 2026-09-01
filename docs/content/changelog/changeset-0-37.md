@@ -59,14 +59,14 @@ around the tree of entities, and there's a selection history now!
 
 Long recordings no longer start out zoomed all the way out in a state timeline view: the view shows a window around the time cursor and keeps it centered while playing, like time series views do.
 
-Docs: ../reference/types/views/state_timeline_view.md
+[Docs here.](../reference/types/views/state_timeline_view.md)
 Example: https://github.com/rerun-io/rerun/blob/latest/examples/python/state_timeline
 
 ### Drag entities onto state timeline views
 
 Entities that log a [`StateChange`](../reference/types/archetypes/state_change.md) can now be dragged from the streams panel onto a state timeline view.
 
-Docs: ../reference/types/views/state_timeline_view.md
+[Docs here.](../reference/types/views/state_timeline_view.md)
 
 ### Visible time range for state timeline views
 
@@ -74,7 +74,7 @@ State timeline views now have a **Visible time range** setting in the selection 
 
 It is also available from the SDK as `StateTimelineView(time_ranges=…)`.
 
-Docs: ../reference/types/views/state_timeline_view.md
+[Docs here.](../reference/types/views/state_timeline_view.md)
 
 ### Export recordings and blueprints from the web Viewer
 
@@ -120,7 +120,7 @@ When both the relative and absolute excess cross a threshold, the output warns a
 
 The analysis requires a chunk index; run `rerun rrd migrate` first on files written before those existed.
 
-Docs: ../howto/logging-and-ingestion/optimize-chunks
+[Docs here.](../howto/logging-and-ingestion/optimize-chunks)
 
 ### Keyframe markers are kept out of the video chunks
 
@@ -162,7 +162,7 @@ This makes behavior consistent across iterable and map-style datasets as well as
 OpenTelemetry tracing for `RerunIterableDataset` now covers both fetch paths and distinguishes block fetching, batch decoding, exposed fetch latency, and downstream pull delays.
 Decode spans end before samples are yielded, so training-loop behavior no longer inflates decode durations.
 
-Docs: ../howto/train/dataloader.md
+[Docs here.](../howto/train/dataloader.md)
 
 ### Faster video decoding for training
 
@@ -189,7 +189,7 @@ for batch in loader:
     batch["video"] = batch["video"].to_rgb("cuda", non_blocking=True)
 ```
 
-Docs: ../howto/train/dataloader.md
+[Docs here.](../howto/train/dataloader.md)
 
 ### `RerunMapDataset` can be built from a manifest
 
@@ -206,7 +206,7 @@ loader = DataLoader(dataset, batch_size=8, sampler=DistributedSampler(dataset))
 The manifest's recorded order is **not** replayed here.
 Ordering and cross-worker sharding stay with the `DataLoader`'s sampler, as for any map-style dataset, so this cannot reproduce a manifest's run, use `RerunIterableDataset.from_manifest` for reproducible, resumable training.
 
-Docs: ../howto/train/dataloader.md
+[Docs here.](../howto/train/dataloader.md)
 
 ### Faster manifest generation for video datasets
 
@@ -214,7 +214,7 @@ Manifest generation for the experimental PyTorch dataloader now uses sparse `Vid
 It no longer scans `VideoStream:sample` timestamps, avoiding the transfer of expensive encoded video data while building a manifest.
 For compressed video, `max_staleness` is conservatively measured from the latest prior keyframe, so a sample may be omitted even when a fresher non-keyframe exists.
 
-Docs: ../howto/train/dataloader.md
+[Docs here.](../howto/train/dataloader.md)
 
 ### Experimental iterable dataloader skips missing samples
 
@@ -228,7 +228,7 @@ Because missing samples are skipped after rank sharding, finite DDP training loo
 Manifest replay remains strict: if a field recorded as required no longer resolves, iteration raises an error asking the user to regenerate the manifest rather than silently changing its frozen sample order.
 Valid zero-sized tensors are preserved; only `None` denotes missing data.
 
-Docs: ../howto/train/dataloader.md
+[Docs here.](../howto/train/dataloader.md)
 
 ## Breaking changes
 
@@ -262,7 +262,7 @@ C++ — the namespace alias keeps working, but the per-type include paths moved:
 
 Reference pages moved from `reference/types/datatypes/…` to `reference/types/encodings/…`; the old URLs redirect.
 
-Docs: ../reference/types/encodings.md
+[Docs here.](../reference/types/encodings.md)
 
 ### Update to Rust 1.96
 
@@ -303,7 +303,7 @@ const auto rec = rerun::RecordingStream("rerun_example_my_app", "run-1");
 const auto rec = rerun::RecordingStream("rerun_example_my_app", "run-1", rerun::StoreKind::Recording, false);
 ```
 
-Docs: ../concepts/query-and-transform/properties-and-segments.md
+[Docs here.](../concepts/query-and-transform/properties-and-segments.md)
 
 ### `rerun-sdk[datafusion]` and `rerun-sdk[dataplatform]` extras removed
 
@@ -317,7 +317,7 @@ Both extras were deprecated in 0.33 in favor of `rerun-sdk[catalog]`, and are no
 
 The dependency set is unchanged — `catalog` installs the same `datafusion` and `pandas` versions the old extras did.
 
-Docs: ../getting-started/install-rerun/python.md
+[Docs here.](../getting-started/install-rerun/python.md)
 
 ### `Loggable` replaced by four (de)serialization traits
 
@@ -489,7 +489,7 @@ def decode(self, batch, requests):
 
 The `fetch_size` argument and manifest metadata field have also been renamed to `fetch_block_size` to clarify that fetching and decoding use the same block.
 
-Docs: ../howto/train/dataloader.md
+[Docs here.](../howto/train/dataloader.md)
 
 ### Experimental dataloader Windows are explicit and decoder-independent
 
@@ -528,7 +528,7 @@ Field(
 Compressed-video fields now require their sibling `VideoStream:is_keyframe` component so decode ranges can reliably begin at a keyframe.
 Custom decoders should use `DecodeRequest.decode_row_indices` and `DecodeRequest.output_row_indices`; the decoder-owned `context_range` hook has been removed because fetch requirements are now resolved by the field pipeline.
 
-Docs: ../howto/train/dataloader.md
+[Docs here.](../howto/train/dataloader.md)
 
 ---
 
