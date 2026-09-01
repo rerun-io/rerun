@@ -133,11 +133,6 @@ pub enum DecodeError {
     #[error("To enabled native AV1 decoding, compile Rerun with the `nasm` feature enabled.")]
     Dav1dWithoutNasm,
 
-    #[error(
-        "Rerun does not yet support native AV1 decoding on Linux ARM64. See https://github.com/rerun-io/rerun/issues/7755"
-    )]
-    NoDav1dOnLinuxArm64,
-
     #[error("Image decode error: {0}")]
     ImageDecoder(#[size_bytes(ignore)] String),
 
@@ -169,7 +164,6 @@ impl DecodeError {
             Self::WaitingForCodecDetails
             | Self::UnsupportedCodec(_)
             | Self::Dav1dWithoutNasm
-            | Self::NoDav1dOnLinuxArm64
             | Self::RvlDecoder(_) => false,
 
             // Issue with AV1 decoding.
@@ -207,7 +201,6 @@ impl DecodeError {
 
             Self::UnsupportedCodec(_)
             | Self::Dav1dWithoutNasm
-            | Self::NoDav1dOnLinuxArm64
             | Self::BadBitsPerComponent(_)
             | Self::RvlDecoder(_) => VideoPlaybackIssueSeverity::Error,
         }
@@ -308,11 +301,6 @@ pub fn new_decoder(
             match &video.codec {
                 #[cfg(feature = "av1")]
                 crate::VideoCodec::AV1 => {
-                    #[cfg(linux_arm64)]
-                    {
-                        return Err(DecodeError::NoDav1dOnLinuxArm64);
-                    }
-
                     #[cfg(with_dav1d)]
                     {
                         re_log::trace!("Decoding AV1…");
