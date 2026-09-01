@@ -449,11 +449,14 @@ fn print_chunk_index_stats(
         };
 
         let num_chunks = chunk_index.data.num_rows() as u64;
-        let num_static_chunks = chunk_index.col_chunk_is_static()?.filter(|s| *s).count() as u64;
-        let num_entity_paths = chunk_index.col_chunk_entity_path()?.unique().count();
-        let byte_size_total: u64 = chunk_index.col_chunk_byte_size()?.sum();
+        let num_static_chunks = chunk_index
+            .col_chunk_is_static_iter()?
+            .filter(|s| *s)
+            .count() as u64;
+        let num_entity_paths = chunk_index.col_chunk_entity_path_iter()?.unique().count();
+        let byte_size_total: u64 = chunk_index.col_chunk_byte_size_iter()?.sum();
         let byte_size_uncompressed_total: u64 =
-            chunk_index.col_chunk_byte_size_uncompressed()?.sum();
+            chunk_index.col_chunk_byte_size_uncompressed_iter()?.sum();
 
         let sha256 = re_log_encoding::sha256_to_hex(&chunk_index.sorbet_schema_sha256);
 

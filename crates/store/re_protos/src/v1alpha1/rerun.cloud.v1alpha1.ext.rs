@@ -468,7 +468,8 @@ impl QueryDatasetResponse {
                         Arc::new(Int64Array::from(mins.clone())),
                     )
                 })
-                .collect::<Result<Vec<_>, _>>()?,
+                .collect::<Result<Vec<_>, _>>()
+                .map_err(|err| ArrowError::InvalidArgumentError(err.to_string()))?,
         }
         .into_record_batch()
         .map_err(|err| ArrowError::InvalidArgumentError(err.to_string()))
@@ -512,24 +513,21 @@ impl ScanDatasetManifestRequest {
 }
 
 impl FetchChunksRequest {
-    // This is the only required column in the request.
-    pub const FIELD_CHUNK_KEY: &str = QueryDatasetDataframe::COLUMN_CHUNK_KEY_NAME;
-
-    //TODO(RR-2677): actually, these are also required for now.
-    pub const FIELD_CHUNK_ID: &str = QueryDatasetDataframe::COLUMN_CHUNK_ID_NAME;
-    pub const FIELD_CHUNK_SEGMENT_ID: &str = QueryDatasetDataframe::COLUMN_CHUNK_SEGMENT_ID_NAME;
-    pub const FIELD_CHUNK_LAYER_NAME: &str = QueryDatasetDataframe::COLUMN_RERUN_SEGMENT_LAYER_NAME;
-    pub const FIELD_CHUNK_BYTE_LENGTH: &str = QueryDatasetDataframe::COLUMN_CHUNK_BYTE_LEN_NAME;
+    /// The only column a `FetchChunks` request truly requires.
+    pub const COLUMN_CHUNK_KEY: quiver::ColumnDesc<quiver::Binary> =
+        QueryDatasetDataframe::COLUMN_CHUNK_KEY;
 
     pub fn required_column_names() -> Vec<String> {
-        vec![
-            Self::FIELD_CHUNK_KEY.to_owned(),
-            //TODO(RR-2677): remove these
-            Self::FIELD_CHUNK_ID.to_owned(),
-            Self::FIELD_CHUNK_SEGMENT_ID.to_owned(),
-            Self::FIELD_CHUNK_LAYER_NAME.to_owned(),
-            Self::FIELD_CHUNK_BYTE_LENGTH.to_owned(),
+        [
+            Self::COLUMN_CHUNK_KEY.name,
+            //TODO(RR-2677): remove these, they are only required for old clients.
+            QueryDatasetDataframe::COLUMN_CHUNK_ID.name,
+            QueryDatasetDataframe::COLUMN_CHUNK_SEGMENT_ID.name,
+            QueryDatasetDataframe::COLUMN_RERUN_SEGMENT_LAYER.name,
+            QueryDatasetDataframe::COLUMN_CHUNK_BYTE_LEN.name,
         ]
+        .map(str::to_owned)
+        .to_vec()
     }
 }
 

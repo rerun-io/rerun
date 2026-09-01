@@ -274,15 +274,15 @@ impl RrdManifestBuilder {
     pub fn fields(&self) -> Vec<Field> {
         itertools::chain!(
             [
-                RawRrdManifest::field_chunk_entity_path(),
-                RawRrdManifest::field_chunk_id(),
-                RawRrdManifest::field_chunk_is_static(),
-                RawRrdManifest::field_chunk_num_rows(),
+                RawRrdManifest::COLUMN_CHUNK_ENTITY_PATH.arrow_field(),
+                RawRrdManifest::COLUMN_CHUNK_ID.arrow_field(),
+                RawRrdManifest::COLUMN_CHUNK_IS_STATIC.arrow_field(),
+                RawRrdManifest::COLUMN_CHUNK_NUM_ROWS.arrow_field(),
             ],
             [
-                RawRrdManifest::field_chunk_byte_offset(), //
-                RawRrdManifest::field_chunk_byte_size(),
-                RawRrdManifest::field_chunk_byte_size_uncompressed(),
+                RawRrdManifest::COLUMN_CHUNK_BYTE_OFFSET.arrow_field(), //
+                RawRrdManifest::COLUMN_CHUNK_BYTE_SIZE.arrow_field(),
+                RawRrdManifest::COLUMN_CHUNK_BYTE_SIZE_UNCOMPRESSED.arrow_field(),
             ],
             self.index_fields(),
         )

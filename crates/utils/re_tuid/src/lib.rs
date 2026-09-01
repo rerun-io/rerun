@@ -31,9 +31,6 @@
 //!
 //! When storing the TUID in e.g. an Arrow column, use 16 bytes for each id.
 //!
-//! ## Feature flags
-#![doc = document_features::document_features!()]
-//!
 
 /// TUID: Time-based Unique Identifier.
 ///
@@ -42,10 +39,17 @@
 /// The raw bytes of the `Tuid` sorts in time order as the `Tuid` itself,
 /// and the `Tuid` is byte-aligned so you can just transmute between `Tuid` and raw bytes.
 #[repr(C, align(1))]
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd, re_byte_size::SizeBytes)]
-#[cfg_attr(
-    feature = "bytemuck",
-    derive(bytemuck::AnyBitPattern, bytemuck::NoUninit)
+#[derive(
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    Ord,
+    PartialOrd,
+    re_byte_size::SizeBytes,
+    bytemuck::AnyBitPattern,
+    bytemuck::NoUninit,
 )]
 pub struct Tuid {
     /// Approximate nanoseconds since epoch.
@@ -118,7 +122,7 @@ impl From<Tuid> for [u8; 16] {
 }
 
 // Make `quiver::Column<Tuid>` work (backed by a big-endian `FixedSizeBinary(16)` column):
-quiver::newtype_data_type!(Tuid, quiver::FixedSizeBinary<16>);
+quiver::newtype_data_type!(Tuid, quiver::FixedSizeBinary<16>, primitive);
 
 impl From<Tuid> for std::borrow::Cow<'_, Tuid> {
     #[inline]
@@ -193,7 +197,6 @@ impl Tuid {
         Self::from_nanos_and_inc((id >> 64) as u64, (id & (!0 >> 64)) as u64)
     }
 
-    #[cfg(feature = "bytemuck")]
     #[inline]
     pub fn slice_from_bytes(bytes: &[u8]) -> Result<&[Self], bytemuck::PodCastError> {
         bytemuck::try_cast_slice(bytes)

@@ -1199,7 +1199,7 @@ impl ChunkFetcher<'_> {
             self.state.all_required_are_loaded = Some(true);
         }
 
-        let entity_paths = batcher.manifest.col_chunk_entity_path_raw();
+        let entity_paths = batcher.manifest.col_chunk_entity_path();
 
         loop {
             // Peek before consuming so we can stop without eating the first optional
@@ -1381,7 +1381,7 @@ pub struct ChunkFetchResult {
 
 #[cfg(test)]
 mod tests {
-    use re_arrow_util::{ArrowArrayDowncastRef as _, RecordBatchExt as _};
+
     use std::collections::HashSet;
     use std::sync::Arc;
 
@@ -1448,11 +1448,8 @@ mod tests {
 
     /// Chunk IDs in a batch passed to the load callback, in the order the manifest gave us.
     fn chunk_ids_in_batch(rb: &RecordBatch) -> Vec<ChunkId> {
-        let col = rb.try_get_column(RrdManifest::FIELD_CHUNK_ID).unwrap();
-        let arr = col
-            .try_downcast_array_ref::<arrow::array::FixedSizeBinaryArray>()
-            .expect("chunk_id column should be FixedSizeBinaryArray");
-        ChunkId::try_slice_from_arrow(arr)
+        RrdManifest::COLUMN_CHUNK_ID
+            .extract(rb)
             .expect("chunk_id should decode")
             .to_vec()
     }

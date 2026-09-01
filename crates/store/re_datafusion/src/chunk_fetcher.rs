@@ -5,17 +5,12 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 use std::{error::Error as _, fmt::Write as _};
 
-use arrow::array::{
-    Array as _, ArrayAccessor as _, BinaryArray, DictionaryArray, RecordBatch, StringArray,
-    UInt64Array,
-};
-use arrow::datatypes::Int32Type;
+use arrow::array::{Array as _, RecordBatch};
 use futures::StreamExt as _;
 use itertools::Itertools as _;
 use tonic::IntoRequest as _;
 use tracing::Instrument as _;
 
-use re_arrow_util::{ArrowArrayDowncastRef as _, RecordBatchExt as _};
 use re_dataframe::external::re_chunk::Chunk;
 use re_protos::cloud::v1alpha1::FetchChunksRequest;
 use re_protos::cloud::v1alpha1::ext::QueryDatasetDataframe;
@@ -245,12 +240,15 @@ pub fn split_batch_by_direct_url(
 }
 
 /// Sum of `chunk_byte_len` values in a batch (best-effort, returns 0 on missing column).
+///
+/// Read as optional so that a stray null costs us that one row, rather than the whole batch:
+/// this only feeds byte accounting, and silently reporting 0 bytes would be worse than
+/// undercounting by a row.
 pub fn batch_byte_size(batch: &RecordBatch) -> u64 {
-    batch
-        .column_by_name(QueryDatasetDataframe::COLUMN_CHUNK_BYTE_LEN_NAME)
-        .and_then(|c| c.downcast_array_ref::<UInt64Array>())
-        .map(|arr| arr.iter().map(|v| v.unwrap_or(0)).sum())
-        .unwrap_or(0)
+    QueryDatasetDataframe::COLUMN_CHUNK_BYTE_LEN
+        .optional()
+        .extract(batch)
+        .map_or(0, |column| column.iter().flatten().sum())
 }
 
 /// Sum of `chunk_byte_size_uncompressed` values in a batch, if the column is present.
@@ -258,10 +256,11 @@ pub fn batch_byte_size(batch: &RecordBatch) -> u64 {
 /// Returns `None` when the server did not supply uncompressed sizes (older server or
 /// the column was not projected).
 pub fn batch_byte_size_uncompressed(batch: &RecordBatch) -> Option<u64> {
-    batch
-        .column_by_name(QueryDatasetDataframe::COLUMN_CHUNK_BYTE_SIZE_UNCOMPRESSED_NAME)
-        .and_then(|c| c.downcast_array_ref::<UInt64Array>())
-        .map(|arr| arr.iter().map(|v| v.unwrap_or(0)).sum())
+    let column = QueryDatasetDataframe::COLUMN_CHUNK_BYTE_SIZE_UNCOMPRESSED
+        .optional()
+        .extract(batch)
+        .ok()?;
+    Some(column.iter().flatten().sum())
 }
 
 /// Fetch a batch of chunks via direct URLs.
@@ -632,29 +631,18 @@ async fn fetch_batch_via_direct_urls(
     request_counter: &AtomicU64,
     stats: &mut TaskFetchStats,
 ) -> Result<Vec<ChunksWithSegment>, DirectFetchError> {
-    fn batch_column<'a, T: arrow::array::Array + 'static>(
-        batch: &'a RecordBatch,
-        column_name: &'static str,
-    ) -> Result<&'a T, DirectFetchError> {
-        batch
-            .try_get_column_as::<T>(column_name)
-            .map_err(|err| DirectFetchError::new(err.to_string(), false))
-    }
+    let column = |err: quiver::Error| DirectFetchError::new(err.to_string(), false);
 
     // The fetchable URL comes from `direct_url` (presigned `https://`),
     // populated by the server. `chunk_key` carries the canonical source URL
     // (e.g. `s3://`) plus per-source-object metadata (etag, registration_time)
     // used here purely for drift detection — never as the transport URL.
-    let chunk_keys: &BinaryArray =
-        batch_column(batch, QueryDatasetDataframe::COLUMN_CHUNK_KEY_NAME)?;
-    let direct_urls = batch_column::<DictionaryArray<Int32Type>>(
-        batch,
-        QueryDatasetDataframe::COLUMN_RERUN_LAYER_DIRECT_URL_NAME,
-    )?
-    .downcast_dict::<StringArray>()
-    .ok_or_else(|| {
-        DirectFetchError::new("direct_url dict values must be strings".to_owned(), false)
-    })?;
+    let chunk_keys = QueryDatasetDataframe::COLUMN_CHUNK_KEY
+        .extract(batch)
+        .map_err(column)?;
+    let direct_urls = QueryDatasetDataframe::COLUMN_RERUN_LAYER_DIRECT_URL
+        .extract(batch)
+        .map_err(column)?;
     // Segment IDs are required on QueryDatasetResponse, but treat them as
     // optional here: we use them purely for diagnostic logging on the decode
     // failure path, and a missing column should never break the fetch path.
@@ -676,14 +664,15 @@ async fn fetch_batch_via_direct_urls(
     let mut url_groups: BTreeMap<String, UrlGroup> = BTreeMap::new();
     let mut all_ranges: Vec<Span<u64>> = Vec::with_capacity(num_rows);
 
-    for i in 0..num_rows {
-        if chunk_keys.is_null(i) || direct_urls.is_null(i) {
+    // `chunk_key` is non-nullable, so `extract` has already rejected any nulls there.
+    for (i, (chunk_key, direct_url)) in std::iter::zip(&chunk_keys, &direct_urls).enumerate() {
+        let Some(direct_url) = direct_url else {
             return Err(DirectFetchError::new(
-                format!("null chunk_key or direct_url at row {i}"),
+                format!("null direct_url at row {i}"),
                 false,
             ));
-        }
-        let chunk_key = ChunkKey::try_from(chunk_keys.value(i)).map_err(|err| {
+        };
+        let chunk_key = ChunkKey::try_from(chunk_key).map_err(|err| {
             DirectFetchError::new(
                 format!("failed to decode chunk_key at row {i}: {err}"),
                 false,
@@ -697,7 +686,7 @@ async fn fetch_batch_via_direct_urls(
                 )
             })?;
 
-        let url = direct_urls.value(i).to_owned();
+        let url = direct_url.to_owned();
 
         url_groups
             .entry(url)

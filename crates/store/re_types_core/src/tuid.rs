@@ -28,10 +28,10 @@ impl ToArrow for Tuid {
     where
         Self: 'a,
     {
-        let array = quiver::TypedArray::<Self>::from_values(
+        let column = quiver::TypedArray::<Self>::from_values(
             iter.into_iter().map(|tuid| tuid.into().into_owned()),
         );
-        Ok(array.into_arrow())
+        Ok(column.into_arrow())
     }
 }
 

@@ -15,7 +15,7 @@ use crate::dataframe_query_common::{
     segment_partition_hash,
 };
 use crate::pipeline_budget::{PipelineBudget, SegmentAdmissionPolicy, SegmentAdmissionProfile};
-use arrow::array::{Array as _, RecordBatch, UInt64Array};
+use arrow::array::RecordBatch;
 use arrow::compute::SortOptions;
 use arrow::datatypes::{Schema, SchemaRef};
 use cpu_worker::{CpuWorkerMsg, chunk_store_cpu_worker_thread};
@@ -34,7 +34,6 @@ use futures::FutureExt as _;
 use futures_util::Stream;
 use io_loop::chunk_stream_io_loop;
 use itertools::Itertools as _;
-use re_arrow_util::RecordBatchExt as _;
 use re_dataframe::{Index, QueryExpression, TimelineName};
 use re_protos::cloud::v1alpha1::ext::{QueryDatasetDataframe, ScanSegmentTableDataframe};
 use re_types_core::SegmentId;
@@ -455,30 +454,26 @@ impl<T: DataframeClientAPI> Drop for DataframeSegmentStreamInner<T> {
 /// at all" and "the column is there but carries nulls or zeros" is what tells
 /// you whether to look at the manifest schema or at the stored sizes.
 fn queried_uncompressed_segment_size(batches: &[RecordBatch]) -> Option<u64> {
-    let column_name = QueryDatasetDataframe::COLUMN_CHUNK_BYTE_SIZE_UNCOMPRESSED_NAME;
+    // The column is declared nullable, but a null is exactly as unusable here as a missing
+    // column, so read it as required and let quiver's error say which of the two happened.
+    let column = QueryDatasetDataframe::COLUMN_CHUNK_BYTE_SIZE_UNCOMPRESSED.required();
+    let column_name = column.name;
+
     let mut segment_size = 0u64;
     for batch in batches {
-        let sizes = match batch.try_get_column_as::<UInt64Array>(column_name) {
+        let sizes = match column.extract(batch) {
             Ok(sizes) => sizes,
             Err(err) => {
                 re_log::debug!("adaptive segment admission: {err}");
                 return None;
             }
         };
-        if sizes.null_count() > 0 {
-            re_log::debug!(
-                "adaptive segment admission: {column_name} has {} null of {} rows",
-                sizes.null_count(),
-                sizes.len(),
-            );
-            return None;
-        }
-        for size in sizes.values() {
-            if *size == 0 {
+        for size in &sizes {
+            if size == 0 {
                 re_log::debug!("adaptive segment admission: {column_name} contains a zero size");
                 return None;
             }
-            let Some(next) = segment_size.checked_add(*size) else {
+            let Some(next) = segment_size.checked_add(size) else {
                 re_log::debug!(
                     "adaptive segment admission: {column_name} sum overflows u64 at {segment_size}"
                 );
@@ -993,7 +988,7 @@ impl CpuRuntime {
 
 #[cfg(test)]
 mod segment_admission_profile_tests {
-    use arrow::array::ArrayRef;
+    use arrow::array::{ArrayRef, UInt64Array};
 
     use super::*;
 

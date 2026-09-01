@@ -44,10 +44,12 @@ impl ChunkCacheHandle {
         &self,
         record_batch: &'batch RecordBatch,
     ) -> (Vec<ArrowMsg>, Cow<'batch, RecordBatch>) {
-        let Some(chunk_ids) = re_log_encoding::RrdManifest::col_chunk_ids_of(record_batch) else {
+        let Some(chunk_id_col) = re_log_encoding::RrdManifest::col_chunk_ids_of(record_batch)
+        else {
             re_log::debug_panic!("Failed to read chunk_id field in chunk request");
             return (Vec::new(), Cow::Borrowed(record_batch));
         };
+        let chunk_ids = chunk_id_col.as_slice();
 
         let cache = self.read();
 
@@ -168,7 +170,6 @@ impl ChunkCache {
 
 #[cfg(test)]
 mod tests {
-    use arrow::array::Array as _;
 
     use super::*;
 
@@ -189,11 +190,7 @@ mod tests {
     fn chunk_request(chunk_ids: &[re_chunk::ChunkId]) -> RecordBatch {
         let column = re_chunk::ChunkId::arrow_from_slice(chunk_ids);
         let schema = arrow::datatypes::Schema::new_with_metadata(
-            vec![arrow::datatypes::Field::new(
-                re_log_encoding::RrdManifest::FIELD_CHUNK_ID,
-                column.data_type().clone(),
-                false,
-            )],
+            vec![re_log_encoding::RrdManifest::COLUMN_CHUNK_ID.arrow_field()],
             Default::default(),
         );
 

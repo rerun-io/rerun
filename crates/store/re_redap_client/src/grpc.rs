@@ -3,7 +3,7 @@ use std::sync::Arc;
 #[cfg(not(target_arch = "wasm32"))]
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use arrow::array::{AsArray as _, RecordBatch};
+use arrow::array::RecordBatch;
 use arrow::error::ArrowError;
 use itertools::Itertools as _;
 use re_auth::client::AuthDecorator;
@@ -1057,8 +1057,8 @@ async fn stream_segment_from_server(
                 )
             })?;
 
-            if let Some(chunk_ids) = re_log_encoding::RrdManifest::col_chunk_ids_of(&batch) {
-                already_loaded_chunk_ids = chunk_ids.iter().copied().collect();
+            if let Some(chunk_id_col) = re_log_encoding::RrdManifest::col_chunk_ids_of(&batch) {
+                already_loaded_chunk_ids = chunk_id_col.iter_owned().collect();
             } else {
                 re_log::warn_once!(
                     "Failed to find 'chunk_id' column in chunk index response. Schema: {}",
@@ -1112,15 +1112,15 @@ async fn stream_segment_from_server(
         )
     })?;
 
-    if let Some(chunk_ids) = re_log_encoding::RrdManifest::col_chunk_ids_of(&batch)
+    if let Some(chunk_id_col) = re_log_encoding::RrdManifest::col_chunk_ids_of(&batch)
         && !already_loaded_chunk_ids.is_empty()
     {
         // Filter out already loaded chunk IDs:
-        let filtered_indices: Vec<usize> = chunk_ids
-            .iter()
+        let filtered_indices: Vec<usize> = chunk_id_col
+            .iter_owned()
             .enumerate()
             .filter_map(|(idx, chunk_id)| {
-                if already_loaded_chunk_ids.contains(chunk_id) {
+                if already_loaded_chunk_ids.contains(&chunk_id) {
                     None
                 } else {
                     Some(idx)
@@ -1414,9 +1414,10 @@ async fn load_chunks(
 
 /// Try to extract total deflated size from the batch's `chunk_byte_size` column.
 fn total_size_bytes_from_batch(batch: &RecordBatch) -> Option<u64> {
-    let col = batch.column_by_name(re_log_encoding::RawRrdManifest::FIELD_CHUNK_BYTE_SIZE)?;
-    let array = col.as_primitive_opt::<arrow::datatypes::UInt64Type>()?;
-    Some(array.iter().map(|v| v.unwrap_or(0)).sum())
+    let column = re_log_encoding::RawRrdManifest::COLUMN_CHUNK_BYTE_SIZE
+        .extract(batch)
+        .ok()?;
+    Some(column.iter().sum())
 }
 
 /// Returns `(control_flow, bytes_downloaded)`.
@@ -1479,18 +1480,14 @@ async fn load_small_chunk_batch(
 }
 
 fn sort_batch(batch: &RecordBatch) -> Result<RecordBatch, ArrowError> {
-    use std::sync::Arc;
-
-    let schema = batch.schema();
-
-    // Get column indices (these are guaranteed to exist in the pruned batch):
-    let chunk_is_static = schema.index_of(re_log_encoding::RrdManifest::FIELD_CHUNK_IS_STATIC)?;
-    let chunk_id = schema.index_of(re_log_encoding::RrdManifest::FIELD_CHUNK_ID)?;
+    // Both columns are guaranteed to exist in the pruned batch:
+    let chunk_is_static = re_log_encoding::RrdManifest::COLUMN_CHUNK_IS_STATIC.extract(batch)?;
+    let chunk_id = re_log_encoding::RrdManifest::COLUMN_CHUNK_ID.extract(batch)?;
 
     let sort_keys = vec![
         // Static first:
         arrow::compute::SortColumn {
-            values: Arc::new(batch.column(chunk_is_static).clone()),
+            values: chunk_is_static.into_arrow(),
             options: Some(arrow::compute::SortOptions {
                 descending: true,
                 nulls_first: true,
@@ -1498,7 +1495,7 @@ fn sort_batch(batch: &RecordBatch) -> Result<RecordBatch, ArrowError> {
         },
         // Then sort by chunk id (~time)
         arrow::compute::SortColumn {
-            values: Arc::new(batch.column(chunk_id).clone()),
+            values: chunk_id.into_arrow(),
             options: Some(arrow::compute::SortOptions {
                 descending: false,
                 nulls_first: true,

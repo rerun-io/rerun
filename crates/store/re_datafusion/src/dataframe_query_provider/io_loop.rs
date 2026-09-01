@@ -8,7 +8,7 @@ use std::sync::atomic::Ordering;
 use std::sync::{Arc, LazyLock};
 use std::time::Duration;
 
-use arrow::array::{RecordBatch, StringArray};
+use arrow::array::RecordBatch;
 use futures::StreamExt as _;
 use re_arrow_util::RecordBatchExt as _;
 use re_dataframe::TimelineName;
@@ -265,14 +265,13 @@ fn extend_distinct_segment_ids(
     seen: &mut HashSet<String>,
     order: &mut Vec<String>,
 ) -> ApiResult<()> {
-    let seg_col = batch
-        .try_get_column_as::<StringArray>(QueryDatasetDataframe::COLUMN_CHUNK_SEGMENT_ID_NAME)
+    let segment_ids = QueryDatasetDataframe::COLUMN_CHUNK_SEGMENT_ID
+        .extract(batch)
         .map_err(|err| ApiError::internal(origin, err.to_string()))?;
-    for i in 0..batch.num_rows() {
-        let s = seg_col.value(i);
-        if !seen.contains(s) {
-            seen.insert(s.to_owned());
-            order.push(s.to_owned());
+    for segment_id in &segment_ids {
+        if !seen.contains(segment_id) {
+            seen.insert(segment_id.to_owned());
+            order.push(segment_id.to_owned());
         }
     }
     Ok(())
@@ -1342,8 +1341,8 @@ mod tests {
     use std::collections::HashMap;
 
     use arrow::array::{
-        Array as _, BooleanArray, FixedSizeBinaryBuilder, Int64Array, RecordBatchOptions,
-        StringArray, UInt64Array,
+        BooleanArray, FixedSizeBinaryBuilder, Int64Array, RecordBatchOptions, StringArray,
+        UInt64Array,
     };
     use arrow::datatypes::{Field, Schema};
     use re_log_types::EntityPath;
@@ -1475,12 +1474,10 @@ mod tests {
         assert_eq!(batches.len(), 2);
         // Each batch's distinct-segment count must not exceed the cap.
         for batch in &batches {
-            let seg_col = batch
-                .try_get_column_as::<StringArray>(
-                    QueryDatasetDataframe::COLUMN_CHUNK_SEGMENT_ID_NAME,
-                )
-                .unwrap();
-            let distinct: HashSet<&str> = (0..seg_col.len()).map(|i| seg_col.value(i)).collect();
+            let seg_col = QueryDatasetDataframe::COLUMN_CHUNK_SEGMENT_ID
+                .extract(batch)
+                .expect("segment-id column");
+            let distinct: HashSet<&str> = seg_col.iter().collect();
             assert!(
                 distinct.len() <= MAX_CONCURRENT_SEGMENTS,
                 "batch has {} distinct segments, cap is {}",

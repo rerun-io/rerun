@@ -183,7 +183,7 @@ impl RrdManifestIndex {
             .map_or(0, |manifest| manifest.chunk_fetcher_rb().num_rows());
 
         for (delta_row_idx, (&root_chunk_id, entity_path)) in
-            izip!(delta.col_chunk_ids(), delta.col_chunk_entity_path()).enumerate()
+            izip!(delta.col_chunk_ids(), delta.col_chunk_entity_path_iter()).enumerate()
         {
             self.root_chunks.insert(
                 root_chunk_id,

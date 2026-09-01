@@ -235,14 +235,14 @@ mod tests {
     }
 
     #[test]
-    fn quiver_column_rejects_empty() {
+    fn quiver_rejects_empty() {
         use arrow::array::StringArray;
 
-        // A non-empty array round-trips.
-        let array = quiver::TypedArray::<LayerName>::from_values([LayerName::base()]);
-        assert_eq!(array.to_vec(), [LayerName::base()]);
+        // Non-empty values round-trip.
+        let values = quiver::TypedArray::<LayerName>::from_values([LayerName::base()]);
+        assert_eq!(values.to_vec(), [LayerName::base()]);
 
-        // An array containing an empty string is rejected at construction.
+        // An empty string is rejected at construction.
         let array = std::sync::Arc::new(StringArray::from(vec!["base", ""]));
         assert!(quiver::TypedArray::<LayerName>::try_new(array).is_err());
     }

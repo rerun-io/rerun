@@ -1,8 +1,3 @@
-use arrow::array::Array as _;
-use re_arrow_util::WrongDatatypeError;
-
-use crate::ArrowDataType as _;
-
 /// A unique ID for a `Chunk`.
 ///
 /// `Chunk`s are the atomic unit of ingestion, transport, storage, events and GC in Rerun.
@@ -132,21 +127,6 @@ impl ChunkId {
     pub fn arrow_from_slice(slice: &[Self]) -> arrow::array::FixedSizeBinaryArray {
         crate::tuids_to_arrow(bytemuck::cast_slice(slice))
     }
-
-    /// None if it is the wrong datatype
-    pub fn try_slice_from_arrow(
-        array: &arrow::array::FixedSizeBinaryArray,
-    ) -> Result<&[Self], WrongDatatypeError> {
-        if array.data_type() == &Self::arrow_data_type() {
-            Ok(bytemuck::cast_slice(array.value_data()))
-        } else {
-            Err(WrongDatatypeError {
-                column_name: None,
-                expected: Self::arrow_data_type().into(),
-                actual: array.data_type().clone().into(),
-            })
-        }
-    }
 }
 
 impl From<[u8; 16]> for ChunkId {
@@ -164,7 +144,7 @@ impl From<ChunkId> for [u8; 16] {
 }
 
 // Make `quiver::Column<ChunkId>` work (backed by a big-endian `FixedSizeBinary(16)` column):
-quiver::newtype_data_type!(ChunkId, quiver::FixedSizeBinary<16>);
+quiver::newtype_data_type!(ChunkId, quiver::FixedSizeBinary<16>, primitive);
 
 impl std::ops::Deref for ChunkId {
     type Target = re_tuid::Tuid;

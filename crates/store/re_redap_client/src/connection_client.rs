@@ -2193,9 +2193,9 @@ mod tests {
         .into_raw();
         assert_eq!(fetched.data, expected.data);
         for hub_column in [
-            re_log_encoding::HubRrdManifest::FIELD_CHUNK_PARTITION_ID,
-            re_log_encoding::HubRrdManifest::FIELD_RERUN_PARTITION_LAYER,
-            re_log_encoding::HubRrdManifest::FIELD_CHUNK_KEY,
+            re_log_encoding::HubRrdManifest::COLUMN_CHUNK_PARTITION_ID.name,
+            re_log_encoding::HubRrdManifest::COLUMN_RERUN_PARTITION_LAYER.name,
+            re_log_encoding::HubRrdManifest::COLUMN_CHUNK_KEY.name,
         ] {
             assert!(
                 fetched.data.column_by_name(hub_column).is_some(),

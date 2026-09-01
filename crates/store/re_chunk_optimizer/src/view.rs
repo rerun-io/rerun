@@ -114,21 +114,28 @@ impl ChunkIndexView {
 
     pub fn try_from_raw(raw: &RawRrdManifest) -> Result<Self, Error> {
         let rows = izip!(
-            raw.col_chunk_id()
-                .map_err(Error::read_column(RawRrdManifest::FIELD_CHUNK_ID))?,
-            raw.col_chunk_entity_path()
-                .map_err(Error::read_column(RawRrdManifest::FIELD_CHUNK_ENTITY_PATH))?,
-            raw.col_chunk_is_static()
-                .map_err(Error::read_column(RawRrdManifest::FIELD_CHUNK_IS_STATIC))?,
-            raw.col_chunk_num_rows()
-                .map_err(Error::read_column(RawRrdManifest::FIELD_CHUNK_NUM_ROWS))?,
-            raw.col_chunk_byte_offset()
-                .map_err(Error::read_column(RawRrdManifest::FIELD_CHUNK_BYTE_OFFSET))?,
-            raw.col_chunk_byte_size()
-                .map_err(Error::read_column(RawRrdManifest::FIELD_CHUNK_BYTE_SIZE))?,
-            raw.col_chunk_byte_size_uncompressed()
+            raw.col_chunk_id_iter()
+                .map_err(Error::read_column(RawRrdManifest::COLUMN_CHUNK_ID.name))?,
+            raw.col_chunk_entity_path_iter()
                 .map_err(Error::read_column(
-                    RawRrdManifest::FIELD_CHUNK_BYTE_SIZE_UNCOMPRESSED,
+                    RawRrdManifest::COLUMN_CHUNK_ENTITY_PATH.name
+                ))?,
+            raw.col_chunk_is_static_iter().map_err(Error::read_column(
+                RawRrdManifest::COLUMN_CHUNK_IS_STATIC.name
+            ))?,
+            raw.col_chunk_num_rows_iter().map_err(Error::read_column(
+                RawRrdManifest::COLUMN_CHUNK_NUM_ROWS.name
+            ))?,
+            raw.col_chunk_byte_offset_iter()
+                .map_err(Error::read_column(
+                    RawRrdManifest::COLUMN_CHUNK_BYTE_OFFSET.name
+                ))?,
+            raw.col_chunk_byte_size_iter().map_err(Error::read_column(
+                RawRrdManifest::COLUMN_CHUNK_BYTE_SIZE.name
+            ))?,
+            raw.col_chunk_byte_size_uncompressed_iter()
+                .map_err(Error::read_column(
+                    RawRrdManifest::COLUMN_CHUNK_BYTE_SIZE_UNCOMPRESSED.name,
                 ))?,
         );
 

@@ -76,8 +76,8 @@ impl PyLazyStoreInternal {
     fn summary(&self) -> String {
         let manifest = self.inner.manifest();
         let chunk_ids = manifest.col_chunk_ids();
-        let entity_paths = manifest.col_chunk_entity_path_raw();
-        let is_static_iter: Vec<bool> = manifest.col_chunk_is_static().collect();
+        let entity_paths = manifest.col_chunk_entity_path();
+        let is_static_iter: Vec<bool> = manifest.col_chunk_is_static_iter().collect();
         let num_rows = manifest.col_chunk_num_rows();
 
         // Per-chunk (timelines, cols), using BTreeSet for sorted-by-construction order.
@@ -160,13 +160,13 @@ fn evaluate_filter_on_manifest(
 ) -> (Vec<ChunkId>, Option<StructuredFilter>) {
     let chunk_ids = manifest.col_chunk_ids();
 
-    //TODO(perf): `col_chunk_entity_path()` parses+interns one `EntityPath` per chunk.
+    //TODO(perf): `col_chunk_entity_path_iter()` parses+interns one `EntityPath` per chunk.
     // When `filter.content.is_none()`, we don't need the parsed form at all, and could
-    // iterate `col_chunk_entity_path_raw()` (a `&StringArray`) instead, parsing only when
+    // iterate `col_chunk_entity_path()` (a `&StringArray`) instead, parsing only when
     // a temporal/static_map lookup actually requires it. Skipped for v1; revisit when
     // profiling points here.
-    let entity_paths: Vec<EntityPath> = manifest.col_chunk_entity_path().collect();
-    let is_static_col: Vec<bool> = manifest.col_chunk_is_static().collect();
+    let entity_paths: Vec<EntityPath> = manifest.col_chunk_entity_path_iter().collect();
+    let is_static_col: Vec<bool> = manifest.col_chunk_is_static_iter().collect();
 
     let temporal_map = manifest.temporal_map();
     let static_map = manifest.static_map();
@@ -500,7 +500,7 @@ mod pushdown_tests {
     fn ids_for_entity(store: &LazyStore, entity: &str) -> Vec<ChunkId> {
         let path = EntityPath::from(entity);
         let manifest = store.manifest();
-        let entity_paths: Vec<EntityPath> = manifest.col_chunk_entity_path().collect();
+        let entity_paths: Vec<EntityPath> = manifest.col_chunk_entity_path_iter().collect();
         std::iter::zip(manifest.col_chunk_ids(), &entity_paths)
             .filter_map(|(id, p)| if p == &path { Some(*id) } else { None })
             .collect()
@@ -670,8 +670,8 @@ mod pushdown_tests {
         let (matching, _) = evaluate_filter_on_manifest(&filter, store.manifest());
 
         let manifest = store.manifest();
-        let is_static_col: Vec<bool> = manifest.col_chunk_is_static().collect();
-        let entity_paths: Vec<EntityPath> = manifest.col_chunk_entity_path().collect();
+        let is_static_col: Vec<bool> = manifest.col_chunk_is_static_iter().collect();
+        let entity_paths: Vec<EntityPath> = manifest.col_chunk_entity_path_iter().collect();
         let expected: Vec<ChunkId> =
             itertools::izip!(manifest.col_chunk_ids(), &entity_paths, &is_static_col)
                 .filter_map(|(id, ep, &is_static)| {

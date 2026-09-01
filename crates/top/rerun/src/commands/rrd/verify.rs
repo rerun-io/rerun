@@ -269,9 +269,9 @@ fn load_from_rrd_filepath_with_rrd_manifest(
 
     let mut file = std::fs::File::open(path_to_rrd)?;
 
-    let chunk_ids = rrd_manifest.col_chunk_id()?;
-    let byte_offsets = rrd_manifest.col_chunk_byte_offset()?;
-    let byte_sizes = rrd_manifest.col_chunk_byte_size()?;
+    let chunk_ids = rrd_manifest.col_chunk_id_iter()?;
+    let byte_offsets = rrd_manifest.col_chunk_byte_offset_iter()?;
+    let byte_sizes = rrd_manifest.col_chunk_byte_size_iter()?;
 
     let mut buf = Vec::new();
     for (chunk_id, offset, size) in itertools::izip!(chunk_ids, byte_offsets, byte_sizes) {

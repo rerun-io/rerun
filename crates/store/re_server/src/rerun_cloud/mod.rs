@@ -3,12 +3,11 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use arrow::array::{BinaryArray, BooleanArray, StringArray};
+use arrow::array::BooleanArray;
 use arrow::record_batch::RecordBatch;
 use datafusion::prelude::SessionContext;
 use futures::StreamExt as _;
 use nohash_hasher::{IntMap, IntSet};
-use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_protos::common::v1alpha1::TaskId;
 use tonic::{Code, Request, Response, Status};
 
@@ -102,12 +101,12 @@ fn apply_segment_id_filter(
     };
     let ids = ids.iter().map(String::as_str).collect::<HashSet<_>>();
 
-    let segment_ids = batch
-        .try_get_column_as::<StringArray>(ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME)
+    let segment_ids = ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID
+        .extract(&batch)
         .map_err(|err| Status::internal(err.to_string()))?;
     let mask = segment_ids
         .iter()
-        .map(|segment_id| segment_id.map(|segment_id| ids.contains(segment_id) == scan_only))
+        .map(|segment_id| ids.contains(segment_id) == scan_only)
         .collect::<BooleanArray>();
 
     arrow::compute::filter_record_batch(&batch, &mask)
@@ -985,14 +984,13 @@ impl RerunCloudService for RerunCloudHandler {
             task_ids,
         } = do_register_with_dataset(&mut store, dataset_id, data_sources, on_duplicate).await?;
 
-        type Df = RegisterWithDatasetDataframe;
-        let record_batch = Df {
-            rerun_segment_id: Df::COLUMN_RERUN_SEGMENT_ID.new_from_values(segment_ids),
-            rerun_segment_layer: Df::COLUMN_RERUN_SEGMENT_LAYER.new_from_values(segment_layers),
-            rerun_segment_type: Df::COLUMN_RERUN_SEGMENT_TYPE.new_from_values(segment_types),
-            rerun_storage_url: Df::COLUMN_RERUN_STORAGE_URL.new_from_values(storage_urls),
-            rerun_task_id: Df::COLUMN_RERUN_TASK_ID.new_from_values(task_ids),
-        }
+        let record_batch = RegisterWithDatasetDataframe::new(
+            segment_ids,
+            segment_layers,
+            segment_types,
+            storage_urls,
+            task_ids,
+        )
         .into_record_batch()
         .map_err(|err| tonic::Status::internal(format!("Failed to create dataframe: {err:#}")))?;
         Ok(tonic::Response::new(
@@ -1780,38 +1778,13 @@ impl RerunCloudService for RerunCloudHandler {
                 tonic::Status::internal(format!("Failed to decode chunk_info: {err:#}"))
             })?;
 
-            let schema = chunk_info_batch.schema();
+            // Checks that the column is present, is `Binary`, and has no nulls:
+            let chunk_key_col = FetchChunksRequest::COLUMN_CHUNK_KEY
+                .extract(&chunk_info_batch)
+                .map_err(|err| tonic::Status::invalid_argument(err.to_string()))?;
 
-            let chunk_key_col_idx = schema
-                .column_with_name(FetchChunksRequest::FIELD_CHUNK_KEY)
-                .ok_or_else(|| {
-                    tonic::Status::invalid_argument(format!(
-                        "Missing {} column",
-                        FetchChunksRequest::FIELD_CHUNK_KEY
-                    ))
-                })?
-                .0;
-
-            let chunk_keys_arr = chunk_info_batch
-                .column(chunk_key_col_idx)
-                .try_downcast_array_ref::<BinaryArray>()
-                .map_err(|err| {
-                    tonic::Status::invalid_argument(format!(
-                        "{}: {err}",
-                        FetchChunksRequest::FIELD_CHUNK_KEY
-                    ))
-                })?;
-
-            for chunk_key in chunk_keys_arr {
-                let chunk_key = chunk_key.ok_or_else(|| {
-                    tonic::Status::invalid_argument(format!(
-                        "{} must not be null",
-                        FetchChunksRequest::FIELD_CHUNK_KEY
-                    ))
-                })?;
-
-                let chunk_key = ChunkKey::decode(chunk_key)?;
-                chunk_keys.push(chunk_key);
+            for chunk_key in &chunk_key_col {
+                chunk_keys.push(ChunkKey::decode(chunk_key)?);
             }
         }
 
@@ -2008,6 +1981,8 @@ impl RerunCloudService for RerunCloudHandler {
 
         let num_tasks = ids.len();
         type Df = QueryTasksDataframe;
+        // The OSS server runs every task to completion synchronously, so it has nothing to say
+        // about kind, payload, leases, or timing: those columns are all-null.
         let rb = Df {
             task_id: Df::COLUMN_TASK_ID.new_from_values(ids),
             kind: Df::COLUMN_KIND.new_null(num_tasks),
@@ -2017,7 +1992,7 @@ impl RerunCloudService for RerunCloudHandler {
             blob_len: Df::COLUMN_BLOB_LEN.new_null(num_tasks),
             lease_owner: Df::COLUMN_LEASE_OWNER.new_null(num_tasks),
             lease_expiration: Df::COLUMN_LEASE_EXPIRATION.new_null(num_tasks),
-            attempts: Df::COLUMN_ATTEMPTS.new_from_values(vec![1_u8; num_tasks]),
+            attempts: Df::COLUMN_ATTEMPTS.new_from_values(std::iter::repeat_n(1_u8, num_tasks)),
             creation_time: Df::COLUMN_CREATION_TIME.new_null(num_tasks),
             last_update_time: Df::COLUMN_LAST_UPDATE_TIME.new_null(num_tasks),
         }
@@ -2219,8 +2194,8 @@ impl ChunkMetadata {
     ) -> Self {
         Self {
             chunk_id,
-            entity_path: EntityPath::from(manifest.col_chunk_entity_path_raw().value(row_idx)),
-            is_static: manifest.col_chunk_is_static_raw().value(row_idx),
+            entity_path: EntityPath::from(manifest.col_chunk_entity_path().value(row_idx)),
+            is_static: manifest.col_chunk_is_static().value(row_idx),
             byte_size: manifest.col_chunk_byte_size_uncompressed()[row_idx],
             timelines: chunk_timelines.cloned().unwrap_or_default(),
         }

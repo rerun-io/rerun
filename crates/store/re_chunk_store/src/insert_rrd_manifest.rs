@@ -22,13 +22,12 @@ fn segment_id_per_chunk(
 
     Some(
         std::iter::zip(rrd_manifest.col_chunk_ids(), partition_ids.iter())
-            .filter_map(|(chunk_id, partition_id)| {
-                let partition_id = partition_id?;
+            .map(|(chunk_id, partition_id)| {
                 let segment_id = per_partition_id
                     .entry(partition_id)
                     .or_insert_with(|| Arc::new(re_sdk_types::SegmentId::from(partition_id)))
                     .clone();
-                Some((*chunk_id, segment_id))
+                (*chunk_id, segment_id)
             })
             .collect(),
     )
@@ -495,9 +494,7 @@ mod tests {
 
         let (schema, mut columns, row_count) = raw.data.clone().into_parts();
         let mut fields = schema.fields.to_vec();
-        fields.push(Arc::new(
-            re_log_encoding::HubRrdManifest::field_chunk_partition_id(),
-        ));
+        fields.push(re_log_encoding::HubRrdManifest::COLUMN_CHUNK_PARTITION_ID.arrow_field_ref());
         columns.push(Arc::new(arrow::array::StringArray::from_iter_values(
             std::iter::repeat_n(segment, row_count),
         )));

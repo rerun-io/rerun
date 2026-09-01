@@ -19,25 +19,15 @@ workspace = true
 all-features = true
 
 
-[features]
-default = []
-
-## Enable bytemuck support.
-bytemuck = ["dep:bytemuck"]
-
-
 [dependencies]
 re_byte_size.workspace = true
 re_log.workspace = true
 
-document-features.workspace = true
+bytemuck = { workspace = true, features = ["derive"] }
 getrandom.workspace = true
 quiver.workspace = true
 serde = { workspace = true, features = ["derive"] }
 web-time.workspace = true
-
-# Optional dependencies
-bytemuck = { workspace = true, optional = true, features = ["derive"] }
 
 [dev-dependencies]
 criterion.workspace = true

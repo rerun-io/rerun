@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use arrow::array::{ArrayRef, BinaryArray, RecordBatch, StringArray, UInt64Array};
-use arrow::datatypes::{Field, Schema};
+use arrow::datatypes::Schema;
 use arrow::error::ArrowError;
 use re_chunk::external::re_byte_size;
 use re_log_types::StoreId;
@@ -22,42 +22,24 @@ pub struct HubRrdManifest {
 }
 
 impl HubRrdManifest {
-    pub const FIELD_CHUNK_PARTITION_ID: &str = "chunk_partition_id";
-    pub const FIELD_RERUN_PARTITION_LAYER: &str = "rerun_partition_layer";
-    pub const FIELD_CHUNK_KEY: &str = RawRrdManifest::FIELD_CHUNK_KEY;
+    /// The segment the chunk belongs to, repeated on every row.
+    pub const COLUMN_CHUNK_PARTITION_ID: quiver::ColumnDesc<re_types_core::SegmentId> =
+        quiver::ColumnDesc::new_with_metadata(
+            "HubRrdManifest",
+            "chunk_partition_id",
+            &[("rerun:kind", "control")],
+        );
+
+    /// The layer the chunk belongs to, repeated on every row.
+    pub const COLUMN_RERUN_PARTITION_LAYER: quiver::ColumnDesc<re_types_core::LayerName> =
+        quiver::ColumnDesc::new("HubRrdManifest", "rerun_partition_layer");
+
+    /// Opaque key encoding where to fetch the chunk.
+    pub const COLUMN_CHUNK_KEY: quiver::ColumnDesc<quiver::Binary> =
+        RawRrdManifest::COLUMN_CHUNK_KEY;
 
     /// The number of trailing hub columns in [`Self::data`].
     const NUM_HUB_COLUMNS: usize = 3;
-
-    pub fn field_chunk_partition_id() -> Field {
-        let nullable = false;
-        #[expect(clippy::iter_on_single_items)]
-        Field::new(
-            Self::FIELD_CHUNK_PARTITION_ID,
-            arrow::datatypes::DataType::Utf8,
-            nullable,
-        )
-        .with_metadata(
-            [
-                ("rerun:kind".to_owned(), "control".to_owned()), //
-            ]
-            .into_iter()
-            .collect(),
-        )
-    }
-
-    pub fn field_rerun_partition_layer() -> Field {
-        let nullable = false;
-        Field::new(
-            Self::FIELD_RERUN_PARTITION_LAYER,
-            arrow::datatypes::DataType::Utf8,
-            nullable,
-        )
-    }
-
-    pub fn field_chunk_key() -> Field {
-        RawRrdManifest::field_chunk_key()
-    }
 }
 
 impl HubRrdManifest {
@@ -71,9 +53,9 @@ impl HubRrdManifest {
         registration_time: Option<jiff::Timestamp>,
     ) -> CodecResult<Self> {
         for name in [
-            Self::FIELD_CHUNK_PARTITION_ID,
-            Self::FIELD_RERUN_PARTITION_LAYER,
-            Self::FIELD_CHUNK_KEY,
+            Self::COLUMN_CHUNK_PARTITION_ID.name,
+            Self::COLUMN_RERUN_PARTITION_LAYER.name,
+            Self::COLUMN_CHUNK_KEY.name,
         ] {
             if raw.data.schema_ref().column_with_name(name).is_some() {
                 return Err(CodecError::ArrowDeserialization(ArrowError::SchemaError(
@@ -94,13 +76,13 @@ impl HubRrdManifest {
         let (schema, mut columns, row_count) = raw.data.clone().into_parts();
         let mut fields = schema.fields.to_vec();
 
-        fields.push(Arc::new(Self::field_chunk_partition_id()));
+        fields.push(Self::COLUMN_CHUNK_PARTITION_ID.arrow_field_ref());
         columns.push(Arc::new(partition_ids) as ArrayRef);
 
-        fields.push(Arc::new(Self::field_rerun_partition_layer()));
+        fields.push(Self::COLUMN_RERUN_PARTITION_LAYER.arrow_field_ref());
         columns.push(Arc::new(layers) as ArrayRef);
 
-        fields.push(Arc::new(Self::field_chunk_key()));
+        fields.push(Self::COLUMN_CHUNK_KEY.arrow_field_ref());
         columns.push(Arc::new(chunk_keys) as ArrayRef);
 
         let schema = Arc::new(Schema::new_with_metadata(fields, schema.metadata.clone()));
@@ -180,11 +162,6 @@ impl HubRrdManifest {
     }
 }
 
-fn downcast_u64_column<'a>(data: &'a RecordBatch, name: &str) -> CodecResult<&'a UInt64Array> {
-    use re_arrow_util::RecordBatchExt as _;
-    Ok(data.try_get_column_as::<UInt64Array>(name)?)
-}
-
 /// Extends `data`'s payload-only offset/size columns to cover the RRD message header.
 //
 // TODO(RR-5382): confine this offsetting to the chunk scanner.
@@ -193,23 +170,31 @@ fn header_inclusive_offsets_and_sizes(
 ) -> CodecResult<(UInt64Array, UInt64Array)> {
     let header_size = crate::MessageHeader::ENCODED_SIZE_BYTES as u64;
 
-    let offsets = downcast_u64_column(data, RawRrdManifest::FIELD_CHUNK_BYTE_OFFSET)?;
-    let offsets: UInt64Array = offsets.try_unary(|offset| {
-        offset.checked_sub(header_size).ok_or_else(|| {
-            CodecError::FrameDecoding(format!(
-                "chunk byte offset {offset} is smaller than the RRD message header ({header_size} bytes)"
-            ))
+    let offsets = RawRrdManifest::COLUMN_CHUNK_BYTE_OFFSET.extract(data)?;
+    let offsets: UInt64Array = offsets
+        .iter()
+        .map(|offset| {
+            offset.checked_sub(header_size).ok_or_else(|| {
+                CodecError::FrameDecoding(format!(
+                    "chunk byte offset {offset} is smaller than the RRD message header ({header_size} bytes)"
+                ))
+            })
         })
-    })?;
+        .collect::<CodecResult<Vec<_>>>()?
+        .into();
 
-    let sizes = downcast_u64_column(data, RawRrdManifest::FIELD_CHUNK_BYTE_SIZE)?;
-    let sizes: UInt64Array = sizes.try_unary(|size| {
-        size.checked_add(header_size).ok_or_else(|| {
-            CodecError::FrameDecoding(format!(
-                "chunk byte size {size} overflows when extended by the RRD message header ({header_size} bytes)"
-            ))
+    let sizes = RawRrdManifest::COLUMN_CHUNK_BYTE_SIZE.extract(data)?;
+    let sizes: UInt64Array = sizes
+        .iter()
+        .map(|size| {
+            size.checked_add(header_size).ok_or_else(|| {
+                CodecError::FrameDecoding(format!(
+                    "chunk byte size {size} overflows when extended by the RRD message header ({header_size} bytes)"
+                ))
+            })
         })
-    })?;
+        .collect::<CodecResult<Vec<_>>>()?
+        .into();
 
     Ok((offsets, sizes))
 }
@@ -225,7 +210,7 @@ fn build_chunk_key_column(
     use re_protos::cloud::v1alpha1::ext::{ChunkKey, DataSourceKind, RrdChunkLocation};
 
     let chunk_keys: Vec<Vec<u8>> = itertools::izip!(
-        raw.col_chunk_id()?,
+        raw.col_chunk_id_iter()?,
         offsets.values().iter().copied(),
         sizes.values().iter().copied(),
     )
@@ -302,43 +287,35 @@ mod tests {
             .expect("projecting a batch's own leading columns cannot fail");
         assert_eq!(projected, raw.data, "raw columns must be untouched");
 
-        let partition_ids = hub
-            .data()
-            .try_get_column_as::<arrow::array::StringArray>(
-                HubRrdManifest::FIELD_CHUNK_PARTITION_ID,
-            )
+        let partition_ids = HubRrdManifest::COLUMN_CHUNK_PARTITION_ID
+            .extract(hub.data())
             .unwrap();
-        for value in partition_ids.iter().flatten() {
+        for value in &partition_ids {
             assert_eq!(value, segment_id.as_str());
         }
 
-        let layers = hub
-            .data()
-            .try_get_column_as::<arrow::array::StringArray>(
-                HubRrdManifest::FIELD_RERUN_PARTITION_LAYER,
-            )
+        let layers = HubRrdManifest::COLUMN_RERUN_PARTITION_LAYER
+            .extract(hub.data())
             .unwrap();
-        for value in layers.iter().flatten() {
+        for value in &layers {
             assert_eq!(value, layer.as_str());
         }
 
         let raw_offsets: Vec<u64> = raw
-            .col_chunk_byte_offset()
+            .col_chunk_byte_offset_iter()
             .expect("manifest built from real chunks has this column")
             .collect();
         let raw_sizes: Vec<u64> = raw
-            .col_chunk_byte_size()
+            .col_chunk_byte_size_iter()
             .expect("manifest built from real chunks has this column")
             .collect();
 
-        let chunk_keys = hub
-            .data()
-            .try_get_column_as::<arrow::array::BinaryArray>(HubRrdManifest::FIELD_CHUNK_KEY)
+        let chunk_keys = HubRrdManifest::COLUMN_CHUNK_KEY
+            .extract(hub.data())
             .unwrap();
 
         let header_size = MessageHeader::ENCODED_SIZE_BYTES as u64;
         for (i, key_bytes) in chunk_keys.iter().enumerate() {
-            let key_bytes = key_bytes.expect("every chunk has a key");
             let chunk_key: ChunkKey = key_bytes
                 .try_into()
                 .expect("chunk_key must decode to a valid ChunkKey");
@@ -359,13 +336,13 @@ mod tests {
         for (positional, name) in [
             (
                 hub.col_chunk_partition_id(),
-                HubRrdManifest::FIELD_CHUNK_PARTITION_ID,
+                HubRrdManifest::COLUMN_CHUNK_PARTITION_ID.name,
             ),
             (
                 hub.col_rerun_partition_layer(),
-                HubRrdManifest::FIELD_RERUN_PARTITION_LAYER,
+                HubRrdManifest::COLUMN_RERUN_PARTITION_LAYER.name,
             ),
-            (hub.col_chunk_key(), HubRrdManifest::FIELD_CHUNK_KEY),
+            (hub.col_chunk_key(), HubRrdManifest::COLUMN_CHUNK_KEY.name),
         ] {
             let by_name = hub.data().try_get_column(name).unwrap();
             assert_eq!(positional, by_name, "accessor for '{name}' is misaligned");

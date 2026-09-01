@@ -166,7 +166,7 @@ impl Source {
         let mut manifest = (**lazy.raw_manifest()).clone();
 
         let chunk_keys: Vec<_> = manifest
-            .col_chunk_id()
+            .col_chunk_id_iter()
             .map_err(|err| super::Error::RrdLoadingError(err.into()))?
             .map(|chunk_id| {
                 super::ChunkKey {
@@ -273,7 +273,7 @@ fn append_chunk_key_column(
     let schema = {
         let mut schema = Arc::unwrap_or_clone(schema);
         let mut fields = schema.fields.to_vec();
-        fields.push(Arc::new(RawRrdManifest::field_chunk_key()));
+        fields.push(RawRrdManifest::COLUMN_CHUNK_KEY.arrow_field_ref());
         schema.fields = fields.into();
         schema
     };
@@ -295,8 +295,6 @@ mod tests {
     use std::collections::BTreeSet;
     use std::path::Path;
 
-    use arrow::array::Array as _;
-    use re_arrow_util::RecordBatchExt as _;
     use re_chunk_store::external::re_chunk;
     use re_chunk_store::{Chunk, ChunkStore, ChunkStoreConfig, ChunkStoreHandle, LazyStore};
     use re_log_encoding::EncodingOptions;
@@ -434,11 +432,11 @@ mod tests {
 
         // Chunk IDs match as sets (per-row order is not part of the contract).
         let lazy_ids: BTreeSet<ChunkId> = lazy_manifest
-            .col_chunk_id()
+            .col_chunk_id_iter()
             .expect("lazy manifest should contain chunk IDs")
             .collect();
         let eager_ids: BTreeSet<ChunkId> = eager_manifest
-            .col_chunk_id()
+            .col_chunk_id_iter()
             .expect("eager manifest should contain chunk IDs")
             .collect();
         assert_eq!(lazy_ids, eager_ids, "chunk IDs differ");
@@ -447,7 +445,7 @@ mod tests {
         // sort by chunk_id first.
         let sort_by_chunk_id = |manifest: &RawRrdManifest| -> Vec<usize> {
             let mut indexed: Vec<(usize, ChunkId)> = manifest
-                .col_chunk_id()
+                .col_chunk_id_iter()
                 .expect("manifest should contain chunk IDs")
                 .enumerate()
                 .collect();
@@ -458,22 +456,22 @@ mod tests {
         let eager_order = sort_by_chunk_id(&eager_manifest);
 
         let lazy_entity_paths = lazy_manifest
-            .col_chunk_entity_path_raw()
+            .col_chunk_entity_path()
             .expect("lazy manifest should contain entity paths");
         let eager_entity_paths = eager_manifest
-            .col_chunk_entity_path_raw()
+            .col_chunk_entity_path()
             .expect("eager manifest should contain entity paths");
         let lazy_is_static = lazy_manifest
-            .col_chunk_is_static_raw()
+            .col_chunk_is_static()
             .expect("lazy manifest should contain static flags");
         let eager_is_static = eager_manifest
-            .col_chunk_is_static_raw()
+            .col_chunk_is_static()
             .expect("eager manifest should contain static flags");
         let lazy_num_rows = lazy_manifest
-            .col_chunk_num_rows_raw()
+            .col_chunk_num_rows()
             .expect("lazy manifest should contain row counts");
         let eager_num_rows = eager_manifest
-            .col_chunk_num_rows_raw()
+            .col_chunk_num_rows()
             .expect("eager manifest should contain row counts");
 
         for (li, ei) in std::iter::zip(&lazy_order, &eager_order) {
@@ -511,13 +509,12 @@ mod tests {
 
         // `chunk_key` column is present on both and decodes to in-manifest chunk IDs.
         let decode_keys = |manifest: &RawRrdManifest| -> BTreeSet<ChunkId> {
-            let keys: &BinaryArray = manifest
-                .data
-                .try_get_column_as::<BinaryArray>(RawRrdManifest::FIELD_CHUNK_KEY)
+            let keys = RawRrdManifest::COLUMN_CHUNK_KEY
+                .extract(&manifest.data)
                 .unwrap();
-            (0..keys.len())
-                .map(|i| {
-                    ChunkKey::decode(keys.value(i))
+            keys.iter()
+                .map(|key| {
+                    ChunkKey::decode(key)
                         .expect("chunk_key should decode")
                         .chunk_id
                 })

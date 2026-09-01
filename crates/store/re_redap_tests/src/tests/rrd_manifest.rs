@@ -346,10 +346,10 @@ async fn dataset_rrd_manifest_snapshot(
             // The actual values don't matter in any case, as long as we're able to use the
             // returned data to fetch the associated chunks, which we check above.
             .redact(&[
-                RawRrdManifest::FIELD_CHUNK_KEY,
-                RawRrdManifest::FIELD_CHUNK_BYTE_OFFSET,
-                RawRrdManifest::FIELD_CHUNK_BYTE_SIZE,
-                RawRrdManifest::FIELD_CHUNK_BYTE_SIZE_UNCOMPRESSED,
+                RawRrdManifest::COLUMN_CHUNK_KEY.name,
+                RawRrdManifest::COLUMN_CHUNK_BYTE_OFFSET.name,
+                RawRrdManifest::COLUMN_CHUNK_BYTE_SIZE.name,
+                RawRrdManifest::COLUMN_CHUNK_BYTE_SIZE_UNCOMPRESSED.name,
             ])
             // Implementation-specific fields shouldn't be compared at all.
             .filter_columns_by(

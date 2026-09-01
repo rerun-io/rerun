@@ -1594,8 +1594,8 @@ mod tests {
     fn test_batches_grouping() {
         let schema = Arc::new(Schema::new_with_metadata(
             vec![
-                Arc::new(ext::QueryDatasetDataframe::COLUMN_CHUNK_SEGMENT_ID.arrow_field()),
-                Arc::new(ext::QueryDatasetDataframe::COLUMN_CHUNK_ID.arrow_field()),
+                ext::QueryDatasetDataframe::COLUMN_CHUNK_SEGMENT_ID.arrow_field_ref(),
+                ext::QueryDatasetDataframe::COLUMN_CHUNK_ID.arrow_field_ref(),
             ],
             HashMap::default(),
         ));
@@ -2115,9 +2115,9 @@ mod tests {
 
         let schema = Arc::new(Schema::new_with_metadata(
             vec![
-                Arc::new(ext::QueryDatasetDataframe::COLUMN_CHUNK_SEGMENT_ID.arrow_field()),
-                Arc::new(ext::QueryDatasetDataframe::COLUMN_RERUN_SEGMENT_LAYER.arrow_field()),
-                Arc::new(ext::QueryDatasetDataframe::COLUMN_CHUNK_BYTE_LEN.arrow_field()),
+                ext::QueryDatasetDataframe::COLUMN_CHUNK_SEGMENT_ID.arrow_field_ref(),
+                ext::QueryDatasetDataframe::COLUMN_RERUN_SEGMENT_LAYER.arrow_field_ref(),
+                ext::QueryDatasetDataframe::COLUMN_CHUNK_BYTE_LEN.arrow_field_ref(),
             ],
             HashMap::default(),
         ));

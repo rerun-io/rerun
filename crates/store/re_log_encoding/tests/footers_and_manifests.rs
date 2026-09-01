@@ -3,8 +3,7 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use arrow::array::{Array as _, BinaryArray, RecordBatch};
-use arrow::datatypes::Field;
+use arrow::array::{BinaryArray, RecordBatch};
 use itertools::{Itertools as _, chain};
 use re_arrow_util::RecordBatchTestExt as _;
 use re_chunk::{Chunk, ChunkId, RowId, TimePoint};
@@ -734,11 +733,13 @@ fn add_chunk_keys_to_raw(raw: &RawRrdManifest) -> RawRrdManifest {
     let mut fields: Vec<_> = schema.fields().iter().cloned().collect();
     let mut columns: Vec<_> = raw.data.columns().to_vec();
 
-    fields.push(Arc::new(Field::new(
-        RawRrdManifest::FIELD_CHUNK_KEY,
-        arrow::datatypes::DataType::Binary,
-        true,
-    )));
+    // Nullable: this manifest gets merged with one that has no keys at all, and
+    // `concat` takes its nullability from the first schema.
+    fields.push(
+        RawRrdManifest::COLUMN_CHUNK_KEY
+            .optional()
+            .arrow_field_ref(),
+    );
     columns.push(Arc::new(chunk_key_array));
 
     let new_schema = Arc::new(arrow::datatypes::Schema::new_with_metadata(
@@ -800,8 +801,8 @@ fn merge_with_mixed_chunk_keys() {
     let m1 = RrdManifest::try_new(&raw1_with_keys).unwrap();
     let m2 = RrdManifest::try_new(&raw2).unwrap();
 
-    assert!(m1.col_chunk_key_raw().is_some());
-    assert!(m2.col_chunk_key_raw().is_none());
+    assert!(m1.col_chunk_key().is_some());
+    assert!(m2.col_chunk_key().is_none());
 
     // Merging should handle mixed chunk_keys gracefully
     let combined = RrdManifest::merge(&[&m1, &m2]).unwrap();
@@ -811,20 +812,15 @@ fn merge_with_mixed_chunk_keys() {
 
     // chunk_keys should be present and aligned with the total number of chunks
     let combined_keys = combined
-        .col_chunk_key_raw()
+        .col_chunk_key()
         .expect("combined manifest should have chunk_keys when any part has them");
-    assert_eq!(
-        combined_keys.len(),
-        4,
-        "chunk_keys array must have one entry per chunk"
-    );
 
-    // First two entries (from m1) should be non-null
-    assert!(!combined_keys.is_null(0));
-    assert!(!combined_keys.is_null(1));
-    // Last two entries (from m2, which had no keys) should be null
-    assert!(combined_keys.is_null(2));
-    assert!(combined_keys.is_null(3));
+    // The first two rows come from m1 and have keys; the last two come from m2 and do not.
+    let combined_keys: Vec<bool> = combined_keys
+        .iter()
+        .map(|chunk_key| chunk_key.is_some())
+        .collect();
+    assert_eq!(combined_keys, vec![true, true, false, false]);
 }
 
 /// Two manifests that disagree on the type of a column they both have cannot have their schemas
@@ -1058,12 +1054,12 @@ fn concat_raw_then_validate_vs_validate_then_merge() {
 
     similar_asserts::assert_eq!(path_a.col_chunk_ids(), path_b.col_chunk_ids());
     similar_asserts::assert_eq!(
-        path_a.col_chunk_entity_path().collect::<Vec<_>>(),
-        path_b.col_chunk_entity_path().collect::<Vec<_>>(),
+        path_a.col_chunk_entity_path_iter().collect::<Vec<_>>(),
+        path_b.col_chunk_entity_path_iter().collect::<Vec<_>>(),
     );
     similar_asserts::assert_eq!(
-        path_a.col_chunk_is_static().collect::<Vec<_>>(),
-        path_b.col_chunk_is_static().collect::<Vec<_>>(),
+        path_a.col_chunk_is_static_iter().collect::<Vec<_>>(),
+        path_b.col_chunk_is_static_iter().collect::<Vec<_>>(),
     );
     similar_asserts::assert_eq!(path_a.col_chunk_num_rows(), path_b.col_chunk_num_rows());
     similar_asserts::assert_eq!(

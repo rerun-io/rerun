@@ -251,14 +251,14 @@ fn process_messages<W: std::io::Write>(
             // Still, we double check the chunk IDs in order to make sure that they still align.
             let chunk_ids = &chunk_ids[window.range()];
             for (chunk_id, expected_chunk_id) in
-                itertools::izip!(chunk_ids, manifest.col_chunk_id()?)
+                itertools::izip!(chunk_ids, manifest.col_chunk_id_iter()?)
             {
                 assert_eq!(
                     *chunk_id,
                     (*expected_chunk_id).into(),
                     "[i={i}] {expected_chunk_id} != {}: {:#?}",
                     ChunkId::from_tuid((*chunk_id).try_into().expect("must be valid TUID")),
-                    manifest.col_chunk_id()?.take(5).collect_vec(),
+                    manifest.col_chunk_id_iter()?.take(5).collect_vec(),
                 );
             }
 
@@ -274,20 +274,13 @@ fn process_messages<W: std::io::Write>(
 
             let (schema, mut columns, num_rows) = data.into_parts();
             for (field, column) in itertools::izip!(schema.fields(), &mut columns) {
-                match field.name().as_str() {
-                    RawRrdManifest::FIELD_CHUNK_BYTE_OFFSET => {
-                        *column = column_byte_offsets.clone();
-                    }
-
-                    RawRrdManifest::FIELD_CHUNK_BYTE_SIZE => {
-                        *column = column_byte_sizes.clone();
-                    }
-
-                    RawRrdManifest::FIELD_CHUNK_BYTE_SIZE_UNCOMPRESSED => {
-                        *column = column_byte_sizes_uncompressed.clone();
-                    }
-
-                    _ => {}
+                let name = field.name().as_str();
+                if name == RawRrdManifest::COLUMN_CHUNK_BYTE_OFFSET.name {
+                    *column = column_byte_offsets.clone();
+                } else if name == RawRrdManifest::COLUMN_CHUNK_BYTE_SIZE.name {
+                    *column = column_byte_sizes.clone();
+                } else if name == RawRrdManifest::COLUMN_CHUNK_BYTE_SIZE_UNCOMPRESSED.name {
+                    *column = column_byte_sizes_uncompressed.clone();
                 }
             }
 

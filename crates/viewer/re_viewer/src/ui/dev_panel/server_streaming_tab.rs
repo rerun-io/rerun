@@ -249,7 +249,7 @@ fn manifest_ui(ui: &mut egui::Ui, recording: &re_entity_db::EntityDb) {
 
     ui.list_item_collapsible_noninteractive_label("Manifest", false, |ui| {
         let num_chunks = manifest.num_chunks();
-        let num_static = manifest.col_chunk_is_static().filter(|s| *s).count();
+        let num_static = manifest.col_chunk_is_static_iter().filter(|s| *s).count();
         let num_temporal = num_chunks.saturating_sub(num_static);
         ui.list_item()
             .interactive(false)
@@ -271,9 +271,8 @@ fn manifest_ui(ui: &mut egui::Ui, recording: &re_entity_db::EntityDb) {
             );
 
         let num_entities = manifest
-            .col_chunk_entity_path_raw()
+            .col_chunk_entity_path()
             .iter()
-            .flatten()
             .collect::<BTreeSet<_>>()
             .len();
         ui.list_item_flat_noninteractive(
@@ -445,7 +444,7 @@ fn in_flight_entities_ui(ui: &mut egui::Ui, recording: &re_entity_db::EntityDb) 
 
     let mut entities = BTreeSet::<EntityPath>::new();
     if let Some(manifest) = manifest_index.manifest() {
-        let col = manifest.col_chunk_entity_path_raw();
+        let col = manifest.col_chunk_entity_path();
         for request in &pending {
             for &row_idx in &request.row_indices {
                 entities.insert(EntityPath::parse_forgiving(col.value(row_idx)));

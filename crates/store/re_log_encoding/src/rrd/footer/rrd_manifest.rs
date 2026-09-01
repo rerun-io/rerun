@@ -1,9 +1,6 @@
 use std::sync::Arc;
 
-use arrow::array::{Array as _, BinaryArray, FixedSizeBinaryArray, RecordBatch, StringArray};
-use arrow::buffer::{BooleanBuffer, ScalarBuffer};
-use arrow::datatypes::Field;
-use re_arrow_util::{ArrowArrayDowncastRef as _, RecordBatchExt as _};
+use arrow::array::RecordBatch;
 use re_chunk::external::re_byte_size;
 use re_chunk::{ChunkId, EntityPath};
 use re_log_types::StoreId;
@@ -11,6 +8,37 @@ use re_sorbet::SorbetSchema;
 
 use super::{HubRrdManifest, RawRrdManifest, RrdManifestStaticMap, RrdManifestTemporalMap};
 use crate::{CodecError, CodecResult};
+
+/// Concatenates one typed column per manifest, keeping the logical type and the column name.
+fn concat_columns<'a, L: quiver::LogicalType + 'a>(
+    columns: impl IntoIterator<Item = &'a quiver::Column<L>>,
+) -> CodecResult<quiver::Column<L>> {
+    let columns = columns.into_iter().collect::<Vec<_>>();
+
+    let Some(first_column) = columns.first() else {
+        return Err(CodecError::FrameDecoding(
+            "concat_columns: no columns to concatenate".to_owned(),
+        ));
+    };
+    // Each input is the same column of a different manifest, so they should all carry the same name.
+    let name = first_column.name().to_owned();
+
+    let arrays: Vec<&dyn arrow::array::Array> = columns
+        .iter()
+        .map(|column| column.as_arrow().as_ref())
+        .collect();
+
+    let concatenated = re_arrow_util::concat_arrays(&arrays)
+        .map_err(|err| CodecError::FrameDecoding(format!("concat {name:?}: {err}")))?;
+
+    quiver::Column::try_new(name.as_str(), concatenated)
+        .map_err(|err| CodecError::FrameDecoding(format!("concat {name:?}: {err}")))
+}
+
+/// The heap size of a column's arrow array.
+fn column_heap_size_bytes<L: quiver::LogicalType>(column: &quiver::Column<L>) -> u64 {
+    re_byte_size::SizeBytes::heap_size_bytes(column.as_arrow().as_ref())
+}
 
 /// A pre-validated and parsed [`RawRrdManifest`].
 ///
@@ -38,14 +66,16 @@ pub struct RrdManifest {
     /// See [`RawRrdManifest::compute_sorbet_schema_sha256`].
     sorbet_schema_sha256: [u8; 32],
 
-    chunk_ids: FixedSizeBinaryArray,
-    chunk_entity_paths: StringArray,
-    chunk_is_static: BooleanBuffer,
-    chunk_num_rows: ScalarBuffer<u64>,
-    chunk_byte_offsets: ScalarBuffer<u64>,
-    chunk_byte_sizes: ScalarBuffer<u64>,
-    chunk_byte_sizes_uncompressed: ScalarBuffer<u64>,
-    chunk_keys: Option<BinaryArray>,
+    chunk_ids: quiver::Column<ChunkId>,
+    chunk_entity_paths: quiver::Column<EntityPath>,
+    chunk_is_static: quiver::Column<bool>,
+    chunk_num_rows: quiver::Column<u64>,
+    chunk_byte_offsets: quiver::Column<u64>,
+    chunk_byte_sizes: quiver::Column<u64>,
+    chunk_byte_sizes_uncompressed: quiver::Column<u64>,
+
+    /// The values are optional: merging a keyed manifest with an unkeyed one leaves nulls behind.
+    chunk_keys: Option<quiver::Column<Option<quiver::Binary>>>,
 
     static_data_map: RrdManifestStaticMap,
     temporal_data_map: RrdManifestTemporalMap,
@@ -111,12 +141,10 @@ impl re_byte_size::SizeBytes for RrdManifest {
         //
         // Fields that are never in the pruned batch must always be counted separately:
         self.chunk_fetcher_rb.heap_size_bytes()
-            + re_byte_size::SizeBytes::heap_size_bytes(
-                &self.chunk_entity_paths as &dyn arrow::array::Array,
-            )
-            + self.chunk_num_rows.heap_size_bytes()
-            + self.chunk_byte_sizes.heap_size_bytes()
-            + self.chunk_byte_sizes_uncompressed.heap_size_bytes()
+            + column_heap_size_bytes(&self.chunk_entity_paths)
+            + column_heap_size_bytes(&self.chunk_num_rows)
+            + column_heap_size_bytes(&self.chunk_byte_sizes)
+            + column_heap_size_bytes(&self.chunk_byte_sizes_uncompressed)
             + self.sorbet_schema.heap_size_bytes()
             + self.static_data_map.heap_size_bytes()
             + self.temporal_data_map.heap_size_bytes()
@@ -132,21 +160,26 @@ impl re_byte_size::SizeBytes for RrdManifest {
 // [`RawRrdManifest::chunk_fetcher_record_batch`] to do the pruning, and should be
 // referenced by any code that accesses the pruned batch (e.g. sorting, sending over gRPC).
 impl RrdManifest {
-    pub const FIELD_CHUNK_ID: &str = RawRrdManifest::FIELD_CHUNK_ID;
-    pub const FIELD_CHUNK_KEY: &str = RawRrdManifest::FIELD_CHUNK_KEY;
-    pub const FIELD_CHUNK_IS_STATIC: &str = RawRrdManifest::FIELD_CHUNK_IS_STATIC;
-    pub const FIELD_CHUNK_BYTE_OFFSET: &str = RawRrdManifest::FIELD_CHUNK_BYTE_OFFSET;
-    pub const FIELD_CHUNK_PARTITION_ID: &str = HubRrdManifest::FIELD_CHUNK_PARTITION_ID;
-    pub const FIELD_RERUN_PARTITION_LAYER: &str = HubRrdManifest::FIELD_RERUN_PARTITION_LAYER;
+    pub const COLUMN_CHUNK_ID: quiver::ColumnDesc<ChunkId> = RawRrdManifest::COLUMN_CHUNK_ID;
+    pub const COLUMN_CHUNK_KEY: quiver::ColumnDesc<quiver::Binary> =
+        RawRrdManifest::COLUMN_CHUNK_KEY;
+    pub const COLUMN_CHUNK_IS_STATIC: quiver::ColumnDesc<bool> =
+        RawRrdManifest::COLUMN_CHUNK_IS_STATIC;
+    pub const COLUMN_CHUNK_BYTE_OFFSET: quiver::ColumnDesc<u64> =
+        RawRrdManifest::COLUMN_CHUNK_BYTE_OFFSET;
+    pub const COLUMN_CHUNK_PARTITION_ID: quiver::ColumnDesc<re_types_core::SegmentId> =
+        HubRrdManifest::COLUMN_CHUNK_PARTITION_ID;
+    pub const COLUMN_RERUN_PARTITION_LAYER: quiver::ColumnDesc<re_types_core::LayerName> =
+        HubRrdManifest::COLUMN_RERUN_PARTITION_LAYER;
 
     /// All columns present in the pruned batch returned by [`Self::chunk_fetcher_rb()`].
     pub const CHUNK_FETCHER_COLUMNS: &[&str] = &[
-        Self::FIELD_CHUNK_ID,
-        Self::FIELD_CHUNK_KEY,
-        Self::FIELD_CHUNK_IS_STATIC,
-        Self::FIELD_CHUNK_BYTE_OFFSET,
-        Self::FIELD_CHUNK_PARTITION_ID,
-        Self::FIELD_RERUN_PARTITION_LAYER,
+        Self::COLUMN_CHUNK_ID.name,
+        Self::COLUMN_CHUNK_KEY.name,
+        Self::COLUMN_CHUNK_IS_STATIC.name,
+        Self::COLUMN_CHUNK_BYTE_OFFSET.name,
+        Self::COLUMN_CHUNK_PARTITION_ID.name,
+        Self::COLUMN_RERUN_PARTITION_LAYER.name,
     ];
 }
 
@@ -166,83 +199,24 @@ impl RrdManifest {
             manifest.sanity_check_cheap()?;
         }
 
-        let chunk_ids = manifest.col_chunk_id_raw()?.clone();
+        let chunk_ids = manifest.col_chunk_id()?;
+        let chunk_entity_paths = manifest.col_chunk_entity_path()?;
+        let chunk_is_static = manifest.col_chunk_is_static()?;
+        let chunk_num_rows = manifest.col_chunk_num_rows()?;
+        let chunk_byte_offsets = manifest.col_chunk_byte_offset()?;
+        let chunk_byte_sizes = manifest.col_chunk_byte_size()?;
+        let chunk_byte_sizes_uncompressed = manifest.col_chunk_byte_size_uncompressed()?;
 
-        // Validate:
-        ChunkId::try_slice_from_arrow(&chunk_ids).map_err(|err| {
-            crate::CodecError::FrameDecoding(format!("chunk_id column has wrong datatype: {err}"))
-        })?;
-
-        let chunk_entity_paths = manifest.col_chunk_entity_path_raw()?.clone();
-
-        let chunk_is_static_array = manifest.col_chunk_is_static_raw()?;
-        let chunk_num_rows_array = manifest.col_chunk_num_rows_raw()?;
-        let chunk_byte_offsets_array = manifest.col_chunk_byte_offset_raw()?;
-        let chunk_byte_sizes_array = manifest.col_chunk_byte_size_raw()?;
-        let chunk_byte_sizes_uncompressed_array =
-            manifest.col_chunk_byte_size_uncompressed_raw()?;
-
-        // Validate that required arrays have no nulls
-        if chunk_ids.null_count() > 0 {
-            return Err(crate::CodecError::FrameDecoding(format!(
-                "chunk_id column has {} nulls",
-                chunk_ids.null_count()
-            )));
-        }
-        if chunk_entity_paths.null_count() > 0 {
-            return Err(crate::CodecError::FrameDecoding(format!(
-                "chunk_entity_path column has {} nulls",
-                chunk_entity_paths.null_count()
-            )));
-        }
-        if chunk_is_static_array.null_count() > 0 {
-            return Err(crate::CodecError::FrameDecoding(format!(
-                "chunk_is_static column has {} nulls",
-                chunk_is_static_array.null_count()
-            )));
-        }
-        if chunk_num_rows_array.null_count() > 0 {
-            return Err(crate::CodecError::FrameDecoding(format!(
-                "chunk_num_rows column has {} nulls",
-                chunk_num_rows_array.null_count()
-            )));
-        }
-        if chunk_byte_offsets_array.null_count() > 0 {
-            return Err(crate::CodecError::FrameDecoding(format!(
-                "chunk_byte_offset column has {} nulls",
-                chunk_byte_offsets_array.null_count()
-            )));
-        }
-        if chunk_byte_sizes_array.null_count() > 0 {
-            return Err(crate::CodecError::FrameDecoding(format!(
-                "chunk_byte_size column has {} nulls",
-                chunk_byte_sizes_array.null_count()
-            )));
-        }
-        if chunk_byte_sizes_uncompressed_array.null_count() > 0 {
-            return Err(crate::CodecError::FrameDecoding(format!(
-                "chunk_byte_size_uncompressed column has {} nulls",
-                chunk_byte_sizes_uncompressed_array.null_count()
-            )));
-        }
-
-        // Extract scalar buffers (safe after null validation)
-        let chunk_is_static = chunk_is_static_array.values().clone();
-        let chunk_num_rows = chunk_num_rows_array.values().clone();
-        let chunk_byte_offsets = chunk_byte_offsets_array.values().clone();
-        let chunk_byte_sizes = chunk_byte_sizes_array.values().clone();
-        let chunk_byte_sizes_uncompressed = chunk_byte_sizes_uncompressed_array.values().clone();
-
-        let chunk_keys = if manifest
+        // The chunk-key column is optional: local RRDs have no keys, and merging a keyed manifest
+        // with an unkeyed one leaves nulls behind. A column that is present but malformed is an
+        // error though, not a manifest without keys.
+        let chunk_keys = manifest
             .data
             .schema_ref()
-            .column_with_name(RawRrdManifest::FIELD_CHUNK_KEY)
+            .column_with_name(RawRrdManifest::COLUMN_CHUNK_KEY.name)
             .is_some()
-        {
-            Some(manifest.col_chunk_key_raw()?.clone())
-        } else {
-            None
-        };
+            .then(|| manifest.col_chunk_key())
+            .transpose()?;
 
         let static_data_map = manifest.calc_static_map()?;
         let temporal_data_map = manifest.calc_temporal_map()?;
@@ -420,89 +394,45 @@ impl RrdManifest {
 
         let combined_batches = Self::concat_chunk_fetcher_rb(manifests)?;
 
-        // Concatenate pre-extracted Arrow arrays directly, avoiding a round-trip
-        // through `try_new` which would fail on pruned data (missing sparse columns).
-        let chunk_ids = {
-            let arrays: Vec<&dyn arrow::array::Array> =
-                manifests.iter().map(|m| &m.chunk_ids as _).collect();
-            re_arrow_util::concat_arrays(&arrays)
-                .map_err(|err| CodecError::FrameDecoding(format!("concat chunk_ids: {err}")))?
-                .try_downcast_array_ref::<FixedSizeBinaryArray>()
-                .expect("concat of FixedSizeBinaryArray should yield FixedSizeBinaryArray")
-                .clone()
-        };
-        let chunk_entity_paths = {
-            let arrays: Vec<&dyn arrow::array::Array> = manifests
-                .iter()
-                .map(|m| &m.chunk_entity_paths as _)
-                .collect();
-            re_arrow_util::concat_arrays(&arrays)
-                .map_err(|err| {
-                    CodecError::FrameDecoding(format!("concat chunk_entity_paths: {err}"))
-                })?
-                .try_downcast_array_ref::<StringArray>()
-                .expect("concat of StringArray should yield StringArray")
-                .clone()
-        };
-        let chunk_is_static = manifests
+        // Concatenate pre-extracted columns directly, avoiding a round-trip through `try_new`
+        // which would fail on pruned data (missing sparse columns).
+        let chunk_ids = concat_columns(manifests.iter().map(|m| &m.chunk_ids))?;
+        let chunk_entity_paths = concat_columns(manifests.iter().map(|m| &m.chunk_entity_paths))?;
+        let chunk_is_static = concat_columns(manifests.iter().map(|m| &m.chunk_is_static))?;
+        let chunk_num_rows = concat_columns(manifests.iter().map(|m| &m.chunk_num_rows))?;
+        let chunk_byte_offsets = concat_columns(manifests.iter().map(|m| &m.chunk_byte_offsets))?;
+        let chunk_byte_sizes = concat_columns(manifests.iter().map(|m| &m.chunk_byte_sizes))?;
+        let chunk_byte_sizes_uncompressed =
+            concat_columns(manifests.iter().map(|m| &m.chunk_byte_sizes_uncompressed))?;
+
+        // When some manifests have chunk keys and others don't, the keyless ones contribute
+        // all-null columns, to keep the rows aligned.
+        //
+        let null_keys: Vec<quiver::Column<Option<quiver::Binary>>> = manifests
             .iter()
-            .flat_map(|m| m.chunk_is_static.iter())
-            .collect::<BooleanBuffer>();
-        let chunk_num_rows = ScalarBuffer::from(
-            manifests
-                .iter()
-                .flat_map(|m| m.chunk_num_rows.iter().copied())
-                .collect::<Vec<_>>(),
-        );
-        let chunk_byte_offsets = ScalarBuffer::from(
-            manifests
-                .iter()
-                .flat_map(|m| m.chunk_byte_offsets.iter().copied())
-                .collect::<Vec<_>>(),
-        );
-        let chunk_byte_sizes = ScalarBuffer::from(
-            manifests
-                .iter()
-                .flat_map(|m| m.chunk_byte_sizes.iter().copied())
-                .collect::<Vec<_>>(),
-        );
-        let chunk_byte_sizes_uncompressed = ScalarBuffer::from(
-            manifests
-                .iter()
-                .flat_map(|m| m.chunk_byte_sizes_uncompressed.iter().copied())
-                .collect::<Vec<_>>(),
-        );
-        // When some manifests have chunk_keys and others don't, create all-null
-        // BinaryArrays for the keyless manifests to maintain row alignment.
-        let chunk_keys = if any_has_chunk_keys {
-            let null_arrays: Vec<BinaryArray> = manifests
-                .iter()
-                .filter(|m| m.chunk_keys.is_none())
-                .map(|m| BinaryArray::new_null(m.num_chunks()))
-                .collect();
-            let mut null_idx = 0;
-            let arrays: Vec<&dyn arrow::array::Array> = manifests
-                .iter()
-                .map(|m| {
-                    if let Some(keys) = &m.chunk_keys {
-                        keys as &dyn arrow::array::Array
-                    } else {
-                        let arr = &null_arrays[null_idx] as &dyn arrow::array::Array;
-                        null_idx += 1;
-                        arr
-                    }
-                })
-                .collect();
-            Some(
-                re_arrow_util::concat_arrays(&arrays)
-                    .map_err(|err| CodecError::FrameDecoding(format!("concat chunk_keys: {err}")))?
-                    .try_downcast_array_ref::<BinaryArray>()
-                    .expect("concat of BinaryArray should yield BinaryArray")
-                    .clone(),
-            )
-        } else {
-            None
-        };
+            .filter(|m| m.chunk_keys.is_none())
+            .map(|m| {
+                RawRrdManifest::COLUMN_CHUNK_KEY
+                    .optional()
+                    .new_null(m.num_chunks())
+            })
+            .collect();
+        let mut null_keys = null_keys.iter();
+        let chunk_keys = any_has_chunk_keys
+            .then(|| {
+                let columns = manifests.iter().map(|m| {
+                    m.chunk_keys
+                        .as_ref()
+                        .or_else(|| null_keys.next())
+                        .ok_or_else(|| {
+                            CodecError::FrameDecoding(
+                                "concat chunk_keys: row count mismatch".to_owned(),
+                            )
+                        })
+                });
+                concat_columns(columns.collect::<CodecResult<Vec<_>>>()?)
+            })
+            .transpose()?;
 
         // Merge pre-computed maps.
         let mut static_data_map = first.static_data_map.clone();
@@ -596,43 +526,38 @@ impl RrdManifest {
     /// Returns all the chunk ids
     #[inline]
     pub fn col_chunk_ids(&self) -> &[ChunkId] {
-        #[expect(clippy::unwrap_used)] // Validated in constructor
-        ChunkId::try_slice_from_arrow(&self.chunk_ids).unwrap()
+        self.chunk_ids.as_slice()
     }
 
-    /// Returns all the chunk ids of a batch that has a [`Self::FIELD_CHUNK_ID`] column.
-    pub fn col_chunk_ids_of(batch: &RecordBatch) -> Option<&[ChunkId]> {
-        let array = batch
-            .try_get_column_as::<FixedSizeBinaryArray>(Self::FIELD_CHUNK_ID)
-            .ok()?;
-        ChunkId::try_slice_from_arrow(array).ok()
+    /// Returns the chunk id column of a batch that has a [`Self::COLUMN_CHUNK_ID`] column.
+    ///
+    /// Use [`quiver::Column::as_slice`] for a zero-copy `&[ChunkId]` view of the result.
+    pub fn col_chunk_ids_of(batch: &RecordBatch) -> Option<quiver::Column<ChunkId>> {
+        Self::COLUMN_CHUNK_ID.extract(batch).ok()
     }
 
-    /// Returns the raw Arrow array for entity paths.
+    /// Returns the entity path column.
     #[inline]
-    pub fn col_chunk_entity_path_raw(&self) -> &StringArray {
+    pub fn col_chunk_entity_path(&self) -> &quiver::Column<EntityPath> {
         &self.chunk_entity_paths
     }
 
     /// Returns an iterator over the decoded Arrow data for the entity path column.
     ///
     /// This might incur interning costs, but is otherwise basically free.
-    pub fn col_chunk_entity_path(&self) -> impl Iterator<Item = EntityPath> {
-        self.chunk_entity_paths
-            .iter()
-            .flatten()
-            .map(EntityPath::parse_forgiving)
+    pub fn col_chunk_entity_path_iter(&self) -> impl Iterator<Item = EntityPath> {
+        self.chunk_entity_paths.iter_owned()
     }
 
-    /// Returns the buffer for the is-static column.
+    /// Returns the is-static column.
     #[inline]
-    pub fn col_chunk_is_static_raw(&self) -> &BooleanBuffer {
+    pub fn col_chunk_is_static(&self) -> &quiver::Column<bool> {
         &self.chunk_is_static
     }
 
     /// Returns an iterator over the is-static values.
     #[inline]
-    pub fn col_chunk_is_static(&self) -> impl Iterator<Item = bool> + '_ {
+    pub fn col_chunk_is_static_iter(&self) -> impl Iterator<Item = bool> + '_ {
         self.chunk_is_static.iter()
     }
 
@@ -664,11 +589,11 @@ impl RrdManifest {
         &self.chunk_byte_sizes_uncompressed
     }
 
-    /// Returns the raw Arrow array for chunk keys, if present.
+    /// Returns the chunk key column, if present.
     ///
     /// Chunk keys are backend-specific identifiers that can be used to fetch chunk data.
     #[inline]
-    pub fn col_chunk_key_raw(&self) -> Option<&BinaryArray> {
+    pub fn col_chunk_key(&self) -> Option<&quiver::Column<Option<quiver::Binary>>> {
         self.chunk_keys.as_ref()
     }
 
@@ -676,13 +601,10 @@ impl RrdManifest {
     ///
     /// A manifest served from a server always has this column, since `FetchChunks`
     /// needs it. One read from an RRD file doesn't.
-    pub fn col_chunk_partition_id(&self) -> Option<&StringArray> {
-        use re_arrow_util::ArrowArrayDowncastRef as _;
-
-        let column = self
-            .chunk_fetcher_rb
-            .column_by_name(Self::FIELD_CHUNK_PARTITION_ID)?;
-        column.downcast_array_ref::<StringArray>()
+    pub fn col_chunk_partition_id(&self) -> Option<quiver::Column<re_types_core::SegmentId>> {
+        Self::COLUMN_CHUNK_PARTITION_ID
+            .extract(&self.chunk_fetcher_rb)
+            .ok()
     }
 
     /// Returns the map-based representation of the static data in this RRD manifest.
@@ -703,18 +625,20 @@ impl RrdManifest {
     /// and others don't.
     fn add_null_chunk_key_column(batch: &RecordBatch) -> RecordBatch {
         let num_rows = batch.num_rows();
-        let null_keys = BinaryArray::new_null(num_rows);
 
         let schema = batch.schema();
         let mut fields: Vec<_> = schema.fields().iter().cloned().collect();
         let mut columns: Vec<_> = batch.columns().to_vec();
 
-        fields.push(Arc::new(Field::new(
-            Self::FIELD_CHUNK_KEY,
-            arrow::datatypes::DataType::Binary,
-            true,
-        )));
-        columns.push(Arc::new(null_keys));
+        // The field comes off the same descriptor as the array, so the two cannot disagree.
+        // It is nullable because every row of the added column is null.
+        let (field, array) = Self::COLUMN_CHUNK_KEY
+            .optional()
+            .new_null(num_rows)
+            .into_dyn()
+            .into_parts();
+        fields.push(field);
+        columns.push(array);
 
         RecordBatch::try_new_with_options(
             Arc::new(arrow::datatypes::Schema::new_with_metadata(

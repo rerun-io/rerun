@@ -4,15 +4,13 @@ use arrow::array::RecordBatch;
 use arrow::buffer::NullBuffer;
 use arrow::datatypes::Field;
 use arrow::{
-    array::{BinaryArray, BooleanArray, FixedSizeBinaryArray, StringArray, UInt64Array},
+    array::{BooleanArray, UInt64Array},
     error::ArrowError,
 };
 use itertools::Itertools as _;
-use re_arrow_util::RecordBatchExt as _;
 use re_chunk::external::nohash_hasher::IntMap;
 use re_chunk::external::re_byte_size;
 use re_chunk::{ArchetypeName, ChunkError, ChunkId, ComponentIdentifier, ComponentType, Timeline};
-use re_log_types::external::re_tuid::Tuid;
 use re_log_types::{AbsoluteTimeRange, EntityPath, StoreId, TimeType, TimelineName};
 use re_types_core::ComponentDescriptor;
 
@@ -272,14 +270,9 @@ impl RawRrdManifest {
         re_tracing::profile_function!();
 
         let keep: BooleanArray = self
-            .col_chunk_entity_path_raw()?
+            .col_chunk_entity_path()?
             .iter()
-            .map(|entity_path| {
-                let is_property = entity_path.is_some_and(|entity_path| {
-                    EntityPath::parse_forgiving(entity_path).is_property()
-                });
-                Some(!is_property)
-            })
+            .map(|entity_path| Some(!EntityPath::parse_forgiving(entity_path).is_property()))
             .collect();
 
         if keep.true_count() == keep.len() {
@@ -502,9 +495,9 @@ impl RawRrdManifest {
 
         let mut per_entity: RrdManifestStaticMap = IntMap::default();
 
-        let chunk_ids = self.col_chunk_id()?;
-        let chunk_entity_paths = self.col_chunk_entity_path()?;
-        let chunk_is_static = self.col_chunk_is_static()?;
+        let chunk_ids = self.col_chunk_id_iter()?;
+        let chunk_entity_paths = self.col_chunk_entity_path_iter()?;
+        let chunk_is_static = self.col_chunk_is_static_iter()?;
 
         let has_static_component_data: Vec<_> =
             itertools::izip!(self.data.schema_ref().fields(), self.data.columns(),)
@@ -582,9 +575,9 @@ impl RawRrdManifest {
 
         let mut per_entity: RrdManifestTemporalMap = Default::default();
 
-        let chunk_ids = self.col_chunk_id()?;
-        let chunk_entity_paths = self.col_chunk_entity_path()?;
-        let chunk_is_static = self.col_chunk_is_static()?;
+        let chunk_ids = self.col_chunk_id_iter()?;
+        let chunk_entity_paths = self.col_chunk_entity_path_iter()?;
+        let chunk_is_static = self.col_chunk_is_static_iter()?;
 
         struct IndexColumns<'a> {
             index: &'a str,
@@ -968,10 +961,10 @@ impl RawRrdManifest {
         if self
             .data
             .schema_ref()
-            .column_with_name(Self::FIELD_CHUNK_KEY)
+            .column_with_name(Self::COLUMN_CHUNK_KEY.name)
             .is_some()
         {
-            _ = self.col_chunk_key_raw()?;
+            _ = self.col_chunk_key()?;
         }
 
         Ok(())
@@ -989,12 +982,12 @@ impl RawRrdManifest {
                         }
 
                         "has_static_data" => {
-                            if field.data_type() != Self::field_chunk_is_static().data_type() {
+                            if *field.data_type() != Self::COLUMN_CHUNK_IS_STATIC.data_type() {
                                 return Err(CodecError::from(ChunkError::Malformed {
                                     reason: format!(
                                         "field '{}' should be {} but is actually {}",
                                         field.name(),
-                                        Self::field_chunk_is_static().data_type(),
+                                        Self::COLUMN_CHUNK_IS_STATIC.data_type(),
                                         field.data_type(),
                                     ),
                                 }));
@@ -1002,12 +995,12 @@ impl RawRrdManifest {
                         }
 
                         "num_rows" => {
-                            if field.data_type() != Self::field_chunk_num_rows().data_type() {
+                            if *field.data_type() != Self::COLUMN_CHUNK_NUM_ROWS.data_type() {
                                 return Err(CodecError::from(ChunkError::Malformed {
                                     reason: format!(
                                         "field '{}' should be {} but is actually {}",
                                         field.name(),
-                                        Self::field_chunk_num_rows().data_type(),
+                                        Self::COLUMN_CHUNK_NUM_ROWS.data_type(),
                                         field.data_type(),
                                     ),
                                 }));
@@ -1026,14 +1019,7 @@ impl RawRrdManifest {
                 } else {
                     // Global column
                     match field.name().as_str() {
-                        Self::FIELD_CHUNK_ID
-                        | Self::FIELD_CHUNK_IS_STATIC
-                        | Self::FIELD_CHUNK_NUM_ROWS
-                        | Self::FIELD_CHUNK_BYTE_SIZE
-                        | Self::FIELD_CHUNK_BYTE_SIZE_UNCOMPRESSED
-                        | Self::FIELD_CHUNK_BYTE_OFFSET
-                        | Self::FIELD_CHUNK_KEY
-                        | Self::FIELD_CHUNK_ENTITY_PATH => {}
+                        name if Self::GLOBAL_COLUMN_NAMES.contains(&name) => {}
 
                         name if Self::COMMON_IMPL_SPECIFIC_FIELDS.contains(&name) => {}
 
@@ -1140,7 +1126,7 @@ impl RawRrdManifest {
 
     /// Cheap.
     fn check_manifest_schema_matches_sorbet_schema(&self) -> CodecResult<()> {
-        let any_static_chunks = self.col_chunk_is_static()?.any(|b| b);
+        let any_static_chunks = self.col_chunk_is_static_iter()?.any(|b| b);
 
         let sorbet_indexes = self
             .sorbet_schema
@@ -1342,14 +1328,58 @@ impl RawRrdManifest {
 
 // Fields
 impl RawRrdManifest {
-    pub const FIELD_CHUNK_ID: &str = "chunk_id";
-    pub const FIELD_CHUNK_IS_STATIC: &str = "chunk_is_static";
-    pub const FIELD_CHUNK_NUM_ROWS: &str = "chunk_num_rows";
-    pub const FIELD_CHUNK_ENTITY_PATH: &str = "chunk_entity_path";
-    pub const FIELD_CHUNK_BYTE_OFFSET: &str = "chunk_byte_offset";
-    pub const FIELD_CHUNK_BYTE_SIZE: &str = "chunk_byte_size";
-    pub const FIELD_CHUNK_BYTE_SIZE_UNCOMPRESSED: &str = "chunk_byte_size_uncompressed";
-    pub const FIELD_CHUNK_KEY: &str = "chunk_key";
+    /// The ID of the chunk. Every chunk has one.
+    pub const COLUMN_CHUNK_ID: quiver::ColumnDesc<ChunkId> =
+        quiver::ColumnDesc::new("RawRrdManifest", "chunk_id");
+
+    /// Does the chunk hold static data? Every chunk is either static or temporal.
+    pub const COLUMN_CHUNK_IS_STATIC: quiver::ColumnDesc<bool> =
+        quiver::ColumnDesc::new("RawRrdManifest", "chunk_is_static");
+
+    /// How many rows the chunk holds. Every chunk has a row count.
+    pub const COLUMN_CHUNK_NUM_ROWS: quiver::ColumnDesc<u64> =
+        quiver::ColumnDesc::new("RawRrdManifest", "chunk_num_rows");
+
+    /// The entity path of the chunk. Every chunk has one.
+    pub const COLUMN_CHUNK_ENTITY_PATH: quiver::ColumnDesc<EntityPath> =
+        quiver::ColumnDesc::new("RawRrdManifest", "chunk_entity_path");
+
+    /// Where the chunk's payload starts.
+    ///
+    /// See the `Understand size/offset columns` section of the [`RawRrdManifest`] documentation.
+    pub const COLUMN_CHUNK_BYTE_OFFSET: quiver::ColumnDesc<u64> =
+        quiver::ColumnDesc::new("RawRrdManifest", "chunk_byte_offset");
+
+    /// How long the chunk's payload is.
+    ///
+    /// See the `Understand size/offset columns` section of the [`RawRrdManifest`] documentation.
+    pub const COLUMN_CHUNK_BYTE_SIZE: quiver::ColumnDesc<u64> =
+        quiver::ColumnDesc::new("RawRrdManifest", "chunk_byte_size");
+
+    /// How long the chunk's payload would be, uncompressed.
+    ///
+    /// See the `Understand size/offset columns` section of the [`RawRrdManifest`] documentation.
+    pub const COLUMN_CHUNK_BYTE_SIZE_UNCOMPRESSED: quiver::ColumnDesc<u64> =
+        quiver::ColumnDesc::new("RawRrdManifest", "chunk_byte_size_uncompressed");
+
+    /// Opaque key encoding where to fetch the chunk. Every chunk has one.
+    pub const COLUMN_CHUNK_KEY: quiver::ColumnDesc<quiver::Binary> =
+        quiver::ColumnDesc::new("RawRrdManifest", "chunk_key");
+
+    /// The names of every global (i.e. non-index) column of an RRD manifest.
+    ///
+    /// Index columns are named after the timeline and component they describe,
+    /// so they cannot be listed here (see [`Self::compute_column_name`]).
+    pub const GLOBAL_COLUMN_NAMES: &[&str] = &[
+        Self::COLUMN_CHUNK_ID.name,
+        Self::COLUMN_CHUNK_IS_STATIC.name,
+        Self::COLUMN_CHUNK_NUM_ROWS.name,
+        Self::COLUMN_CHUNK_ENTITY_PATH.name,
+        Self::COLUMN_CHUNK_BYTE_OFFSET.name,
+        Self::COLUMN_CHUNK_BYTE_SIZE.name,
+        Self::COLUMN_CHUNK_BYTE_SIZE_UNCOMPRESSED.name,
+        Self::COLUMN_CHUNK_KEY.name,
+    ];
 
     /// These fields might be returned by some implementations (such as Rerun Hub) that do not
     /// support fetching chunks with only a set of chunk-keys.
@@ -1365,60 +1395,6 @@ impl RawRrdManifest {
         "rerun_segment_id",
         "rerun_segment_layer",
     ];
-
-    pub fn field_chunk_id() -> Field {
-        use re_log_types::external::re_types_core::ArrowDataType as _;
-        let nullable = false; // every chunk has an ID
-        Field::new(Self::FIELD_CHUNK_ID, ChunkId::arrow_data_type(), nullable)
-    }
-
-    pub fn field_chunk_is_static() -> Field {
-        let nullable = false; // every chunk is either static or temporal
-        Field::new(
-            Self::FIELD_CHUNK_IS_STATIC,
-            arrow::datatypes::DataType::Boolean,
-            nullable,
-        )
-    }
-
-    pub fn field_chunk_num_rows() -> Field {
-        let nullable = false; // every chunk has a number of rows
-        Field::new(
-            Self::FIELD_CHUNK_NUM_ROWS,
-            arrow::datatypes::DataType::UInt64,
-            nullable,
-        )
-    }
-
-    pub fn field_chunk_entity_path() -> Field {
-        let nullable = false; // every chunk has an entity path
-        Field::new(
-            Self::FIELD_CHUNK_ENTITY_PATH,
-            arrow::datatypes::DataType::Utf8,
-            nullable,
-        )
-    }
-
-    pub fn field_chunk_byte_offset() -> Field {
-        Self::any_byte_field(Self::FIELD_CHUNK_BYTE_OFFSET)
-    }
-
-    pub fn field_chunk_byte_size() -> Field {
-        Self::any_byte_field(Self::FIELD_CHUNK_BYTE_SIZE)
-    }
-
-    pub fn field_chunk_byte_size_uncompressed() -> Field {
-        Self::any_byte_field(Self::FIELD_CHUNK_BYTE_SIZE_UNCOMPRESSED)
-    }
-
-    pub fn field_chunk_key() -> Field {
-        let nullable = false; // every chunk has a location key
-        Field::new(
-            Self::FIELD_CHUNK_KEY,
-            arrow::datatypes::DataType::Binary,
-            nullable,
-        )
-    }
 
     pub fn field_index_start(timeline: &Timeline, desc: Option<&ComponentDescriptor>) -> Field {
         Self::any_index_field(timeline, timeline.datatype(), desc, "start")
@@ -1511,110 +1487,77 @@ impl RawRrdManifest {
         let nullable = true; // A) static B) not all chunks belong to all timelines
         Field::new(field_name, datatype, nullable).with_metadata(metadata)
     }
-
-    fn any_byte_field(name: &str) -> Field {
-        let nullable = false; // every chunk has an offset and size
-        Field::new(name, arrow::datatypes::DataType::UInt64, nullable)
-    }
 }
 
 // Column accessors
 impl RawRrdManifest {
-    /// Returns the raw Arrow data for the entity path column.
-    pub fn col_chunk_entity_path_raw(&self) -> CodecResult<&StringArray> {
-        Ok(self
-            .data
-            .try_get_column_as::<StringArray>(Self::FIELD_CHUNK_ENTITY_PATH)?)
+    /// The entity path column.
+    pub fn col_chunk_entity_path(&self) -> CodecResult<quiver::Column<EntityPath>> {
+        Ok(Self::COLUMN_CHUNK_ENTITY_PATH.extract(&self.data)?)
     }
 
     /// Returns an iterator over the decoded Arrow data for the entity path column.
     ///
     /// This might incur interning costs, but is otherwise basically free.
-    pub fn col_chunk_entity_path(&self) -> CodecResult<impl Iterator<Item = EntityPath>> {
-        let col_raw = self.col_chunk_entity_path_raw()?;
-
-        Ok(col_raw.iter().flatten().map(EntityPath::parse_forgiving))
+    pub fn col_chunk_entity_path_iter(&self) -> CodecResult<impl Iterator<Item = EntityPath>> {
+        Ok(self.col_chunk_entity_path()?.into_iter_owned())
     }
 
-    /// Returns the raw Arrow data for the chunk ID column.
-    pub fn col_chunk_id_raw(&self) -> CodecResult<&FixedSizeBinaryArray> {
-        Ok(self
-            .data
-            .try_get_column_as::<FixedSizeBinaryArray>(Self::FIELD_CHUNK_ID)?)
+    /// The chunk ID column.
+    pub fn col_chunk_id(&self) -> CodecResult<quiver::Column<ChunkId>> {
+        Ok(Self::COLUMN_CHUNK_ID.extract(&self.data)?)
     }
 
     /// Returns an iterator over the decoded Arrow data for the chunk ID column.
     ///
-    /// This incurs a very cheap copy, but is otherwise basically free.
-    pub fn col_chunk_id(&self) -> CodecResult<impl Iterator<Item = ChunkId>> {
-        Ok(self
-            .col_chunk_id_raw()?
-            .iter()
-            .flatten()
-            .filter_map(|bytes| {
-                let bytes: [u8; 16] = bytes
-                    .try_into()
-                    .inspect_err(|err| {
-                        tracing::error!(
-                            %err,
-                            ?bytes,
-                            "failed to parse chunk ID from fixed-size binary array"
-                        );
-                    })
-                    .ok()?;
-                Some(ChunkId::from_tuid(Tuid::from_bytes(bytes)))
-            }))
+    /// This is free.
+    pub fn col_chunk_id_iter(&self) -> CodecResult<impl Iterator<Item = ChunkId>> {
+        Ok(self.col_chunk_id()?.into_iter_owned())
     }
 
-    /// Returns the raw Arrow data for the is-static column.
-    pub fn col_chunk_is_static_raw(&self) -> CodecResult<&BooleanArray> {
-        Ok(self
-            .data
-            .try_get_column_as::<BooleanArray>(Self::FIELD_CHUNK_IS_STATIC)?)
+    /// The is-static column.
+    pub fn col_chunk_is_static(&self) -> CodecResult<quiver::Column<bool>> {
+        Ok(Self::COLUMN_CHUNK_IS_STATIC.extract(&self.data)?)
     }
 
     /// Returns an iterator over the decoded Arrow data for the is-static column.
     ///
     /// This is free.
-    pub fn col_chunk_is_static(&self) -> CodecResult<impl Iterator<Item = bool>> {
-        Ok(self.col_chunk_is_static_raw()?.iter().flatten())
+    pub fn col_chunk_is_static_iter(&self) -> CodecResult<impl Iterator<Item = bool>> {
+        Ok(self.col_chunk_is_static()?.into_iter_owned())
     }
 
-    /// Returns the raw Arrow data for the num-rows column.
-    pub fn col_chunk_num_rows_raw(&self) -> CodecResult<&UInt64Array> {
-        Ok(self
-            .data
-            .try_get_column_as::<UInt64Array>(Self::FIELD_CHUNK_NUM_ROWS)?)
+    /// The num-rows column.
+    pub fn col_chunk_num_rows(&self) -> CodecResult<quiver::Column<u64>> {
+        Ok(Self::COLUMN_CHUNK_NUM_ROWS.extract(&self.data)?)
     }
 
     /// Returns an iterator over the decoded Arrow data for the num-rows column.
     ///
     /// This is free.
-    pub fn col_chunk_num_rows(&self) -> CodecResult<impl Iterator<Item = u64>> {
-        Ok(self.col_chunk_num_rows_raw()?.iter().flatten())
+    pub fn col_chunk_num_rows_iter(&self) -> CodecResult<impl Iterator<Item = u64>> {
+        Ok(self.col_chunk_num_rows()?.into_iter_owned())
     }
 
-    /// Returns the raw Arrow data for the byte-offset column.
-    pub fn col_chunk_byte_offset_raw(&self) -> CodecResult<&UInt64Array> {
-        Ok(self
-            .data
-            .try_get_column_as::<UInt64Array>(Self::FIELD_CHUNK_BYTE_OFFSET)?)
+    /// The byte-offset column.
+    ///
+    /// See also the `Understand size/offset columns` section of the [`RawRrdManifest`] documentation.
+    pub fn col_chunk_byte_offset(&self) -> CodecResult<quiver::Column<u64>> {
+        Ok(Self::COLUMN_CHUNK_BYTE_OFFSET.extract(&self.data)?)
     }
 
     /// Returns an iterator over the decoded Arrow data for the byte-offset column.
     ///
     /// This is free.
-    pub fn col_chunk_byte_offset(&self) -> CodecResult<impl Iterator<Item = u64>> {
-        Ok(self.col_chunk_byte_offset_raw()?.iter().flatten())
+    pub fn col_chunk_byte_offset_iter(&self) -> CodecResult<impl Iterator<Item = u64>> {
+        Ok(self.col_chunk_byte_offset()?.into_iter_owned())
     }
 
-    /// Returns the raw Arrow data for the byte-size column.
+    /// The byte-size column.
     ///
     /// See also the `Understand size/offset columns` section of the [`RawRrdManifest`] documentation.
-    pub fn col_chunk_byte_size_raw(&self) -> CodecResult<&UInt64Array> {
-        Ok(self
-            .data
-            .try_get_column_as::<UInt64Array>(Self::FIELD_CHUNK_BYTE_SIZE)?)
+    pub fn col_chunk_byte_size(&self) -> CodecResult<quiver::Column<u64>> {
+        Ok(Self::COLUMN_CHUNK_BYTE_SIZE.extract(&self.data)?)
     }
 
     /// Returns an iterator over the decoded Arrow data for the byte-size column.
@@ -1622,17 +1565,15 @@ impl RawRrdManifest {
     /// See also the `Understand size/offset columns` section of the [`RawRrdManifest`] documentation.
     ///
     /// This is free.
-    pub fn col_chunk_byte_size(&self) -> CodecResult<impl Iterator<Item = u64>> {
-        Ok(self.col_chunk_byte_size_raw()?.iter().flatten())
+    pub fn col_chunk_byte_size_iter(&self) -> CodecResult<impl Iterator<Item = u64>> {
+        Ok(self.col_chunk_byte_size()?.into_iter_owned())
     }
 
-    /// Returns the raw Arrow data for the *uncompressed* byte-size column.
+    /// The *uncompressed* byte-size column.
     ///
     /// See also the `Understand size/offset columns` section of the [`RawRrdManifest`] documentation.
-    pub fn col_chunk_byte_size_uncompressed_raw(&self) -> CodecResult<&UInt64Array> {
-        Ok(self
-            .data
-            .try_get_column_as::<UInt64Array>(Self::FIELD_CHUNK_BYTE_SIZE_UNCOMPRESSED)?)
+    pub fn col_chunk_byte_size_uncompressed(&self) -> CodecResult<quiver::Column<u64>> {
+        Ok(Self::COLUMN_CHUNK_BYTE_SIZE_UNCOMPRESSED.extract(&self.data)?)
     }
 
     /// Returns an iterator over the decoded Arrow data for the *uncompressed* byte-size column.
@@ -1640,18 +1581,17 @@ impl RawRrdManifest {
     /// See also the `Understand size/offset columns` section of the [`RawRrdManifest`] documentation.
     ///
     /// This is free.
-    pub fn col_chunk_byte_size_uncompressed(&self) -> CodecResult<impl Iterator<Item = u64>> {
-        Ok(self
-            .col_chunk_byte_size_uncompressed_raw()?
-            .iter()
-            .flatten())
+    pub fn col_chunk_byte_size_uncompressed_iter(&self) -> CodecResult<impl Iterator<Item = u64>> {
+        Ok(self.col_chunk_byte_size_uncompressed()?.into_iter_owned())
     }
 
-    /// Returns the raw Arrow data for chunk-key column, if present.
-    pub fn col_chunk_key_raw(&self) -> CodecResult<&BinaryArray> {
-        Ok(self
-            .data
-            .try_get_column_as::<BinaryArray>(Self::FIELD_CHUNK_KEY)?)
+    /// The chunk-key column, if present.
+    ///
+    /// Read as optional: a merged manifest can have nulls here, since concatenating a manifest
+    /// that has chunk keys with one that does not leaves the rows of the latter null (see
+    /// `RrdManifest::add_null_chunk_key_column`).
+    pub fn col_chunk_key(&self) -> CodecResult<quiver::Column<Option<quiver::Binary>>> {
+        Ok(Self::COLUMN_CHUNK_KEY.optional().extract(&self.data)?)
     }
 }
 

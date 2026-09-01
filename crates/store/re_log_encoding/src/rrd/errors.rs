@@ -47,6 +47,10 @@ pub enum CodecError {
     #[error(transparent)]
     GetColumn(#[from] re_arrow_util::GetColumnError),
 
+    /// A column was missing, had the wrong datatype, or had unexpected nulls.
+    #[error(transparent)]
+    Quiver(#[from] quiver::Error),
+
     #[error("Arrow IPC serialization error: {0}")]
     ArrowSerialization(::arrow::error::ArrowError),
 

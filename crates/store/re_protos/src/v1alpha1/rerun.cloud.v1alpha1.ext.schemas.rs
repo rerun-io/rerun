@@ -131,6 +131,25 @@ pub struct RegisterWithDatasetDataframe {
     pub rerun_task_id: quiver::Column<TaskId>,
 }
 
+impl RegisterWithDatasetDataframe {
+    /// One row per registered data source; all columns must have the same length.
+    pub fn new(
+        segment_ids: impl IntoIterator<Item = SegmentId>,
+        segment_layers: impl IntoIterator<Item = LayerName>,
+        segment_types: impl IntoIterator<Item = impl Into<String>>,
+        storage_urls: impl IntoIterator<Item = impl Into<String>>,
+        task_ids: impl IntoIterator<Item = TaskId>,
+    ) -> Self {
+        Self {
+            rerun_segment_id: Self::COLUMN_RERUN_SEGMENT_ID.new_from_values(segment_ids),
+            rerun_segment_layer: Self::COLUMN_RERUN_SEGMENT_LAYER.new_from_values(segment_layers),
+            rerun_segment_type: Self::COLUMN_RERUN_SEGMENT_TYPE.new_from_values(segment_types),
+            rerun_storage_url: Self::COLUMN_RERUN_STORAGE_URL.new_from_values(storage_urls),
+            rerun_task_id: Self::COLUMN_RERUN_TASK_ID.new_from_values(task_ids),
+        }
+    }
+}
+
 // --- ScanSegmentTableResponse ---
 
 /// Strongly-typed view of the dataframe in [`crate::cloud::v1alpha1::ScanSegmentTableResponse::data`].

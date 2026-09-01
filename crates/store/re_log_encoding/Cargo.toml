@@ -65,6 +65,7 @@ itertools.workspace = true
 jiff.workspace = true
 lz4_flex = { workspace = true }
 parking_lot.workspace = true
+quiver.workspace = true
 sha2.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
