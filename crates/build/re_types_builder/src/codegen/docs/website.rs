@@ -319,6 +319,8 @@ fn object_page(
 }
 
 fn list_links(page: &mut String, object: &Object) {
+    // The per-language API docs are published per release, so a whole kind of page can be
+    // unreachable even when the object itself is old.
     let speculative_marker = if object.is_attr_set(crate::DocsAttr::Unreleased) {
         "?speculative-link"
     } else {
