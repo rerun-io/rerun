@@ -34,6 +34,7 @@ from .archetypes import (
     EntityBehavior as EntityBehavior,
     EyeControls3D as EyeControls3D,
     LineGrid3D as LineGrid3D,
+    PlotInteraction as PlotInteraction,
     PlotLegend as PlotLegend,
     ScalarAxis as ScalarAxis,
     SpatialInformation as SpatialInformation,

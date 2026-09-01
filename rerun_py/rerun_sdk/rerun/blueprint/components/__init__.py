@@ -36,6 +36,7 @@ from .near_clip_plane import NearClipPlane, NearClipPlaneBatch
 from .panel_state import PanelState, PanelStateArrayLike, PanelStateBatch, PanelStateLike
 from .play_state import PlayState, PlayStateArrayLike, PlayStateBatch, PlayStateLike
 from .playback_speed import PlaybackSpeed, PlaybackSpeedBatch
+from .points_display import PointsDisplay, PointsDisplayArrayLike, PointsDisplayBatch, PointsDisplayLike
 from .query_expression import QueryExpression, QueryExpressionBatch
 from .root_container import RootContainer, RootContainerBatch
 from .row_share import RowShare, RowShareBatch
@@ -48,6 +49,7 @@ from .time_int import TimeInt, TimeIntBatch
 from .time_range import TimeRange, TimeRangeBatch
 from .timeline_column import TimelineColumn, TimelineColumnBatch
 from .timeline_name import TimelineName, TimelineNameBatch
+from .tooltip_mode import TooltipMode, TooltipModeArrayLike, TooltipModeBatch, TooltipModeLike
 from .view_class import ViewClass, ViewClassBatch
 from .view_fit import ViewFit, ViewFitArrayLike, ViewFitBatch, ViewFitLike
 from .view_maximized import ViewMaximized, ViewMaximizedBatch
@@ -149,6 +151,10 @@ __all__ = [
     "PlayStateLike",
     "PlaybackSpeed",
     "PlaybackSpeedBatch",
+    "PointsDisplay",
+    "PointsDisplayArrayLike",
+    "PointsDisplayBatch",
+    "PointsDisplayLike",
     "QueryExpression",
     "QueryExpressionBatch",
     "RootContainer",
@@ -177,6 +183,10 @@ __all__ = [
     "TimelineColumnBatch",
     "TimelineName",
     "TimelineNameBatch",
+    "TooltipMode",
+    "TooltipModeArrayLike",
+    "TooltipModeBatch",
+    "TooltipModeLike",
     "ViewClass",
     "ViewClassBatch",
     "ViewFit",

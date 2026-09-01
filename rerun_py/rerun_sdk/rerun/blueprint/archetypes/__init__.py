@@ -21,6 +21,7 @@ from .map_zoom import MapZoom
 from .near_clip_plane import NearClipPlane
 from .panel_blueprint import PanelBlueprint
 from .plot_background import PlotBackground
+from .plot_interaction import PlotInteraction
 from .plot_legend import PlotLegend
 from .previews_config import PreviewsConfig
 from .scalar_axis import ScalarAxis
@@ -66,6 +67,7 @@ __all__ = [
     "NearClipPlane",
     "PanelBlueprint",
     "PlotBackground",
+    "PlotInteraction",
     "PlotLegend",
     "PreviewsConfig",
     "ScalarAxis",

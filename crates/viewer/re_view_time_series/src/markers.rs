@@ -23,6 +23,12 @@ use re_viewer_context::Cache;
 /// Matches `egui_plot`'s highlight behavior: the marker area doubles, so the radius scales by √2.
 pub const HIGHLIGHT_RADIUS_EXPANSION: f32 = 1.0;
 
+/// Minimum radius of always-on line data markers in UI points.
+pub const ALWAYS_ON_LINE_MARKER_MIN_RADIUS_UI: f32 = 1.5;
+
+/// Marker-to-line-radius ratio that keeps markers visible on thick lines.
+pub const ALWAYS_ON_LINE_MARKER_RADIUS_MULTIPLIER: f32 = 1.5;
+
 /// Triangle-fan resolution for the [`MarkerShape::Circle`] mesh.
 const CIRCLE_SEGMENTS: usize = 32;
 

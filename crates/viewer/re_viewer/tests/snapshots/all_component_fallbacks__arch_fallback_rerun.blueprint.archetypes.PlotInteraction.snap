@@ -1,0 +1,6 @@
+---
+source: crates/viewer/re_viewer/tests/all_component_fallbacks.rs
+expression: arch_display
+---
+tooltip_mode: [1]
+points_display: [1]

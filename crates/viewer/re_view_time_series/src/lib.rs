@@ -118,6 +118,11 @@ pub struct PlotSeries {
     /// What kind of aggregation was used to compute the graph?
     pub aggregator: AggregationPolicy,
 
+    /// Whether the first point only bridges this run to the preceding styled run.
+    ///
+    /// Continuity bridges participate in line rendering but must not be treated as logged samples.
+    pub first_point_is_continuity_bridge: bool,
+
     /// `1.0` for raw data.
     ///
     /// How many raw data points were aggregated into a single step of the graph?
@@ -141,6 +146,11 @@ impl PlotSeries {
     /// so we use the instance path number as an additional differentiator.
     pub fn id(&self) -> egui::Id {
         egui::Id::new((&self.visualizer_instruction_id, self.instance_path.instance))
+    }
+
+    /// Whether aggregation reduced the number of rendered points.
+    pub fn is_aggregated(&self) -> bool {
+        self.aggregation_factor > 1.0 && self.aggregator != AggregationPolicy::Off
     }
 
     /// Push a point and update [`PlotSeries::value_range`] if `value` is finite.

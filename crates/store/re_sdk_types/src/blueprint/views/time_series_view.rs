@@ -41,6 +41,9 @@ pub struct TimeSeriesView {
     /// Configures the background of the plot.
     pub background: crate::blueprint::archetypes::PlotBackground,
 
+    /// Configures tooltip and data point marker behavior.
+    pub interaction: crate::blueprint::archetypes::PlotInteraction,
+
     /// Configures which range on each timeline is shown by this view (unless specified differently per entity).
     ///
     /// If not specified, the default is to show the entire timeline.

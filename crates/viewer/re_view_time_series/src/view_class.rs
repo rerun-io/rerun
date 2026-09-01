@@ -8,11 +8,14 @@ use re_format::time::next_grid_tick_magnitude_nanos;
 use re_log_types::external::arrow::datatypes::DataType;
 use re_log_types::{AbsoluteTimeRange, ComponentPath, EntityPath};
 use re_sdk_types::archetypes::{Measurements, Scalars, SeriesLines, SeriesPoints};
-use re_sdk_types::blueprint::archetypes::{PlotBackground, PlotLegend, ScalarAxis, TimeAxis};
-use re_sdk_types::blueprint::components::{
-    Corner2D, Enabled, LinkAxis, LockRangeDuringZoom, VisualizerInstructionId,
+use re_sdk_types::blueprint::archetypes::{
+    PlotBackground, PlotInteraction, PlotLegend, ScalarAxis, TimeAxis,
 };
-use re_sdk_types::components::{AggregationPolicy, Color, Range1D, Visible};
+use re_sdk_types::blueprint::components::{
+    Corner2D, Enabled, LinkAxis, LockRangeDuringZoom, PointsDisplay, TooltipMode,
+    VisualizerInstructionId,
+};
+use re_sdk_types::components::{Color, Range1D, Visible};
 use re_sdk_types::encodings::TimeRange;
 use re_sdk_types::{ComponentBatch as _, ComponentIdentifier, View as _, ViewClassIdentifier};
 use re_ui::{Help, IconText, MouseButtonText, UiExt as _, icons, list_item};
@@ -84,6 +87,9 @@ pub struct TimeSeriesViewState {
     /// This avoids relying on `egui_plot::PlotMemory` keyed by view id, which breaks
     /// when the same blueprint view is shown multiple times.
     pub time_per_pixel: f64,
+
+    /// Whether line-series data point markers are always displayed.
+    pub always_show_line_data_markers: bool,
 }
 
 impl Default for TimeSeriesViewState {
@@ -96,6 +102,7 @@ impl Default for TimeSeriesViewState {
             num_time_series_last_frame_per_instruction: Default::default(),
             plot_transform: None,
             time_per_pixel: 1.0,
+            always_show_line_data_markers: false,
         }
     }
 }
@@ -230,6 +237,7 @@ impl ViewClass for TimeSeriesView {
             let ctx = self.view_context(viewer_ctx, view_id, state, space_origin);
             view_property_ui::<PlotBackground>(&ctx, ui);
             view_property_ui::<PlotLegend>(&ctx, ui);
+            view_property_ui::<PlotInteraction>(&ctx, ui);
 
             let link_x_axis = ViewProperty::from_archetype::<TimeAxis>(&ctx)
                 .component_or_fallback::<LinkAxis>(&ctx, TimeAxis::descriptor_link().component)?;
@@ -602,6 +610,25 @@ impl ViewClass for TimeSeriesView {
 
         let view_id = query.view_id;
 
+        let (always_show_line_data_markers, tooltip_mode) = {
+            let view_ctx = self.view_context(ctx, view_id, state, query.space_origin);
+            let plot_interaction = ViewProperty::from_archetype::<PlotInteraction>(&view_ctx);
+
+            let always_show_line_data_markers =
+                plot_interaction.component_or_fallback::<PointsDisplay>(
+                    &view_ctx,
+                    PlotInteraction::descriptor_points_display().component,
+                )? == PointsDisplay::Always;
+
+            let tooltip_mode = plot_interaction.component_or_fallback::<TooltipMode>(
+                &view_ctx,
+                PlotInteraction::descriptor_tooltip_mode().component,
+            )?;
+
+            (always_show_line_data_markers, tooltip_mode)
+        };
+        state.always_show_line_data_markers = always_show_line_data_markers;
+
         let view_ctx = self.view_context(ctx, view_id, state, query.space_origin);
         let background = ViewProperty::from_archetype::<PlotBackground>(&view_ctx);
         let background_color = background.component_or_fallback::<Color>(
@@ -832,10 +859,10 @@ impl ViewClass for TimeSeriesView {
                 re_renderer_draw_data,
             );
 
-            // Custom hover detection: find nearest actual data point and show tooltip.
+            // Render the configured tooltip and use its closest series for interaction.
             let hovered_data_result = (!legend_hovered)
                 .then(|| {
-                    find_nearest_data_point_and_show_tooltip(
+                    show_time_series_tooltip(
                         ui,
                         &response,
                         &transform,
@@ -844,6 +871,7 @@ impl ViewClass for TimeSeriesView {
                         time_type,
                         timestamp_format,
                         &plot_item_id_to_data_result_address,
+                        tooltip_mode,
                     )
                 })
                 .flatten();
@@ -1246,11 +1274,48 @@ fn all_scalar_mappings(
     )
 }
 
-/// Find the nearest actual data point to the cursor and show a custom tooltip.
+/// Shows the configured time-series tooltip and returns the closest data result for interaction.
 ///
 /// Returns the hovered data result item for selection/highlighting, or `None` if
 /// no data point is close enough.
-fn find_nearest_data_point_and_show_tooltip(
+#[expect(clippy::too_many_arguments)]
+fn show_time_series_tooltip(
+    ui: &egui::Ui,
+    response: &egui::Response,
+    transform: &egui_plot::PlotTransform,
+    all_plot_series: &[&crate::PlotSeries],
+    time_offset: i64,
+    time_type: TimeType,
+    timestamp_format: re_log_types::TimestampFormat,
+    plot_item_id_to_data_result_address: &ahash::HashMap<egui::Id, DataResultInteractionAddress>,
+    tooltip_mode: TooltipMode,
+) -> Option<re_viewer_context::Item> {
+    match tooltip_mode {
+        TooltipMode::Nearest => nearest_data_point_tooltip(
+            ui,
+            response,
+            transform,
+            all_plot_series,
+            time_offset,
+            time_type,
+            timestamp_format,
+            plot_item_id_to_data_result_address,
+        ),
+        TooltipMode::All => all_series_tooltip(
+            ui,
+            response,
+            transform,
+            all_plot_series,
+            time_offset,
+            time_type,
+            timestamp_format,
+            plot_item_id_to_data_result_address,
+        ),
+    }
+}
+
+#[expect(clippy::too_many_arguments)]
+fn nearest_data_point_tooltip(
     ui: &egui::Ui,
     response: &egui::Response,
     transform: &egui_plot::PlotTransform,
@@ -1279,7 +1344,10 @@ fn find_nearest_data_point_and_show_tooltip(
     let mut closest_value: f64 = 0.0;
 
     for (series_idx, series) in all_plot_series.iter().enumerate() {
-        if !series.visible || series.points.is_empty() {
+        if !series.visible
+            || series.points.is_empty()
+            || matches!(series.kind, PlotSeriesKind::Clear)
+        {
             continue;
         }
 
@@ -1291,7 +1359,9 @@ fn find_nearest_data_point_and_show_tooltip(
         // Check the point at `idx` and the one before it (the two nearest candidates).
         let candidates = [idx.saturating_sub(1), idx.min(series.points.len() - 1)];
         for &candidate_idx in &candidates {
-            if candidate_idx >= series.points.len() {
+            if candidate_idx >= series.points.len()
+                || (candidate_idx == 0 && series.first_point_is_continuity_bridge)
+            {
                 continue;
             }
             let (t, v) = series.points[candidate_idx];
@@ -1330,23 +1400,8 @@ fn find_nearest_data_point_and_show_tooltip(
             tooltip_format,
         )
     };
-    let mut y_value_text = re_format::format_f64(closest_value);
-    if let Some(unit) = &series.unit {
-        y_value_text = format!("{y_value_text} {unit}");
-    }
-    let series_name = if series.label.is_empty() {
-        "y".to_owned()
-    } else {
-        series.label.clone()
-    };
-    // Append aggregation policy to the label when data is aggregated.
-    let is_aggregated =
-        series.aggregator != AggregationPolicy::Off && series.aggregation_factor > 1.0;
-    let display_label = if is_aggregated {
-        format!("{series_name}, {}", series.aggregator)
-    } else {
-        series_name
-    };
+    let y_value_text = tooltip_series_value(series, closest_value);
+    let display_label = tooltip_series_label(series);
 
     re_plot::tooltip::show_plot_tooltip(
         ui,
@@ -1362,6 +1417,275 @@ fn find_nearest_data_point_and_show_tooltip(
     plot_item_id_to_data_result_address
         .get(&series.id())
         .map(|address| re_viewer_context::Item::DataResult(address.clone()))
+}
+
+/// Interpolates a series value at `time` using the rendered line semantics.
+fn interpolated_series_value(
+    kind: PlotSeriesKind,
+    time: i64,
+    time0: i64,
+    value0: f64,
+    time1: i64,
+    value1: f64,
+) -> f64 {
+    match kind {
+        PlotSeriesKind::Continuous => {
+            if time1 == time0 {
+                value0
+            } else {
+                let elapsed = (time as i128 - time0 as i128) as f64;
+                let duration = (time1 as i128 - time0 as i128) as f64;
+                egui::lerp(value0..=value1, elapsed / duration)
+            }
+        }
+        PlotSeriesKind::Stepped(crate::StepMode::After) => value0,
+        PlotSeriesKind::Stepped(crate::StepMode::Before) => value1,
+        PlotSeriesKind::Stepped(crate::StepMode::Mid) => {
+            if 2 * (time as i128) < time0 as i128 + time1 as i128 {
+                value0
+            } else {
+                value1
+            }
+        }
+        PlotSeriesKind::Scatter(_) | PlotSeriesKind::Clear => {
+            if time.abs_diff(time0) <= time.abs_diff(time1) {
+                value0
+            } else {
+                value1
+            }
+        }
+    }
+}
+
+struct TooltipSample {
+    marker_point: egui::Pos2,
+    value: f64,
+    distance_sq: f32,
+}
+
+fn tooltip_value_at_hover(
+    points: &[(i64, f64)],
+    kind: PlotSeriesKind,
+    hover_time: i64,
+) -> Option<f64> {
+    let index = match points.binary_search_by_key(&hover_time, |&(time, _)| time) {
+        Ok(index) => return Some(points[index].1),
+        Err(index) => index,
+    };
+
+    match kind {
+        PlotSeriesKind::Continuous | PlotSeriesKind::Stepped(_) => {
+            if index == 0 {
+                points.first().map(|(_, value)| *value)
+            } else if index == points.len() {
+                points.last().map(|(_, value)| *value)
+            } else {
+                let (time0, value0) = points[index - 1];
+                let (time1, value1) = points[index];
+                Some(interpolated_series_value(
+                    kind, hover_time, time0, value0, time1, value1,
+                ))
+            }
+        }
+        PlotSeriesKind::Scatter(_) | PlotSeriesKind::Clear => None,
+    }
+}
+
+fn tooltip_sample_at_hover(
+    series: &crate::PlotSeries,
+    hover_time: i64,
+    hover_pos: egui::Pos2,
+    transform: &egui_plot::PlotTransform,
+    time_offset: i64,
+) -> Option<TooltipSample> {
+    let index = series
+        .points
+        .binary_search_by_key(&hover_time, |&(time, _)| time)
+        .unwrap_or_else(|index| index);
+
+    let sample = match series.kind {
+        PlotSeriesKind::Continuous | PlotSeriesKind::Stepped(_) => {
+            let value = tooltip_value_at_hover(&series.points, series.kind, hover_time)?;
+            let marker_point = transform.position_from_point(&PlotPoint::new(
+                (hover_time.saturating_sub(time_offset)) as f64,
+                value,
+            ));
+            TooltipSample {
+                marker_point,
+                value,
+                distance_sq: (hover_pos.y - marker_point.y).powi(2),
+            }
+        }
+
+        PlotSeriesKind::Scatter(_) => {
+            struct ScatterCandidate {
+                horizontal_distance: f32,
+                sample: TooltipSample,
+            }
+
+            const SAMPLE_PROXIMITY: f32 = 16.0;
+
+            let candidate_indices = [index.saturating_sub(1), index.min(series.points.len() - 1)];
+            let mut closest_sample = None;
+            for candidate_index in candidate_indices {
+                if candidate_index == 0 && series.first_point_is_continuity_bridge {
+                    continue;
+                }
+                let (time, value) = series.points[candidate_index];
+                if !value.is_finite() {
+                    continue;
+                }
+                let marker_point = transform.position_from_point(&PlotPoint::new(
+                    (time.saturating_sub(time_offset)) as f64,
+                    value,
+                ));
+                let horizontal_distance = (hover_pos.x - marker_point.x).abs();
+                if closest_sample
+                    .as_ref()
+                    .is_none_or(|best: &ScatterCandidate| {
+                        horizontal_distance < best.horizontal_distance
+                    })
+                {
+                    closest_sample = Some(ScatterCandidate {
+                        horizontal_distance,
+                        sample: TooltipSample {
+                            marker_point,
+                            value,
+                            distance_sq: hover_pos.distance_sq(marker_point),
+                        },
+                    });
+                }
+            }
+            let closest_sample = closest_sample?;
+            if closest_sample.horizontal_distance > SAMPLE_PROXIMITY {
+                return None;
+            }
+            closest_sample.sample
+        }
+        PlotSeriesKind::Clear => return None,
+    };
+
+    sample.value.is_finite().then_some(sample)
+}
+
+fn tooltip_series_label(series: &crate::PlotSeries) -> String {
+    let label = if series.label.is_empty() {
+        "y".to_owned()
+    } else {
+        series.label.clone()
+    };
+    if series.is_aggregated() {
+        format!("{label}, {}", series.aggregator)
+    } else {
+        label
+    }
+}
+
+fn tooltip_series_value(series: &crate::PlotSeries, value: f64) -> String {
+    let value = re_format::format_f64(value);
+    series
+        .unit
+        .as_ref()
+        .map_or_else(|| value.clone(), |unit| format!("{value} {unit}"))
+}
+
+#[expect(clippy::too_many_arguments)]
+fn all_series_tooltip(
+    ui: &egui::Ui,
+    response: &egui::Response,
+    transform: &egui_plot::PlotTransform,
+    all_plot_series: &[&crate::PlotSeries],
+    time_offset: i64,
+    time_type: TimeType,
+    timestamp_format: re_log_types::TimestampFormat,
+    plot_item_id_to_data_result_address: &ahash::HashMap<egui::Id, DataResultInteractionAddress>,
+) -> Option<re_viewer_context::Item> {
+    re_tracing::profile_function!();
+
+    let hover_pos = response
+        .hover_pos()
+        .filter(|position| response.rect.contains(*position))?;
+    let hover_time =
+        (transform.value_from_position(hover_pos).x as i64).saturating_add(time_offset);
+
+    const MAX_TOOLTIP_ROWS: usize = 10;
+
+    let mut rows = Vec::new();
+    let mut num_displayed_series = 0_usize;
+    let mut closest_series = None;
+    let mut displayed_series = ahash::HashSet::default();
+    for (series_idx, series) in all_plot_series.iter().enumerate() {
+        let Some(&(first_time, _)) = series.points.first() else {
+            continue;
+        };
+        let Some(&(last_time, _)) = series.points.last() else {
+            continue;
+        };
+        if !series.visible || hover_time < first_time || hover_time > last_time {
+            continue;
+        }
+
+        let Some(sample) =
+            tooltip_sample_at_hover(series, hover_time, hover_pos, transform, time_offset)
+        else {
+            continue;
+        };
+        if !displayed_series.insert(series.id()) {
+            continue;
+        }
+
+        ui.painter()
+            .circle_filled(sample.marker_point, 3.0, series.color);
+
+        if closest_series.is_none_or(|(closest, _)| sample.distance_sq < closest) {
+            closest_series = Some((sample.distance_sq, series_idx));
+        }
+
+        num_displayed_series += 1;
+        if rows.len() < MAX_TOOLTIP_ROWS {
+            rows.push((
+                tooltip_series_label(series),
+                tooltip_series_value(series, sample.value),
+                series.color,
+            ));
+        }
+    }
+
+    if rows.is_empty() {
+        return None;
+    }
+
+    let time_label = format_time_for_tooltip(hover_time, time_type, timestamp_format);
+    let num_omitted_rows = num_displayed_series.saturating_sub(rows.len());
+    re_plot::tooltip::show_plot_tooltip_rows(
+        ui,
+        response,
+        response.id.with("all_series"),
+        &time_label,
+        rows.iter()
+            .map(|(label, value, color)| (label.as_str(), value.as_str(), *color)),
+        num_omitted_rows,
+    );
+
+    const LINE_PROXIMITY_RADIUS_SQ: f32 = 48.0 * 48.0;
+    let (_, series_idx) =
+        closest_series.filter(|(distance_sq, _)| *distance_sq <= LINE_PROXIMITY_RADIUS_SQ)?;
+    plot_item_id_to_data_result_address
+        .get(&all_plot_series[series_idx].id())
+        .map(|address| re_viewer_context::Item::DataResult(address.clone()))
+}
+
+fn format_time_for_tooltip(
+    time: i64,
+    time_type: TimeType,
+    timestamp_format: re_log_types::TimestampFormat,
+) -> String {
+    let tooltip_format = if time_type == TimeType::TimestampNs {
+        timestamp_format.with_date_visibility(re_log_types::DateVisibility::HideDate)
+    } else {
+        timestamp_format
+    };
+    time_type.format(re_log_types::TimeInt::new_temporal(time), tooltip_format)
 }
 
 fn paint_time_range_highlight(
@@ -1786,7 +2110,126 @@ fn render_re_renderer_draw_data(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::StepMode;
     use re_viewer_context::SingleRequiredComponentMatch;
+
+    #[test]
+    fn test_interpolated_series_value_respects_line_modes() {
+        assert_eq!(
+            interpolated_series_value(PlotSeriesKind::Continuous, 5, 0, 0.0, 10, 10.0),
+            5.0
+        );
+        assert_eq!(
+            interpolated_series_value(PlotSeriesKind::Continuous, 5, 5, 1.0, 5, 2.0),
+            1.0
+        );
+        assert_eq!(
+            interpolated_series_value(PlotSeriesKind::Stepped(StepMode::After), 5, 0, 1.0, 10, 2.0),
+            1.0
+        );
+        assert_eq!(
+            interpolated_series_value(
+                PlotSeriesKind::Stepped(StepMode::Before),
+                5,
+                0,
+                1.0,
+                10,
+                2.0
+            ),
+            2.0
+        );
+        assert_eq!(
+            interpolated_series_value(PlotSeriesKind::Stepped(StepMode::Mid), 4, 0, 1.0, 10, 2.0),
+            1.0
+        );
+        assert_eq!(
+            interpolated_series_value(PlotSeriesKind::Stepped(StepMode::Mid), 5, 0, 1.0, 10, 2.0),
+            2.0
+        );
+        assert_eq!(
+            interpolated_series_value(
+                PlotSeriesKind::Scatter(Default::default()),
+                8,
+                0,
+                1.0,
+                10,
+                2.0
+            ),
+            2.0
+        );
+
+        let timestamp = 1_700_000_000_000_000_000;
+        assert_eq!(
+            interpolated_series_value(
+                PlotSeriesKind::Continuous,
+                timestamp + 50,
+                timestamp,
+                0.0,
+                timestamp + 100,
+                10.0,
+            ),
+            5.0
+        );
+        assert_eq!(
+            interpolated_series_value(
+                PlotSeriesKind::Scatter(Default::default()),
+                i64::MAX,
+                i64::MIN,
+                1.0,
+                i64::MAX - 1,
+                2.0,
+            ),
+            2.0
+        );
+        assert_eq!(
+            interpolated_series_value(PlotSeriesKind::Continuous, 0, i64::MIN, 0.0, i64::MAX, 10.0,),
+            5.0
+        );
+        assert_eq!(
+            interpolated_series_value(PlotSeriesKind::Stepped(StepMode::Mid), 1, 0, 1.0, 3, 2.0),
+            1.0
+        );
+        assert_eq!(
+            interpolated_series_value(PlotSeriesKind::Stepped(StepMode::Mid), 2, 0, 1.0, 3, 2.0),
+            2.0
+        );
+        assert_eq!(
+            interpolated_series_value(
+                PlotSeriesKind::Stepped(StepMode::Mid),
+                -1,
+                i64::MIN,
+                1.0,
+                i64::MAX,
+                2.0,
+            ),
+            1.0
+        );
+        assert_eq!(
+            interpolated_series_value(
+                PlotSeriesKind::Stepped(StepMode::Mid),
+                0,
+                i64::MIN,
+                1.0,
+                i64::MAX,
+                2.0,
+            ),
+            2.0
+        );
+    }
+
+    #[test]
+    fn test_tooltip_value_at_hover_uses_exact_finite_sample() {
+        let points = [(0, f64::NAN), (1, 5.0), (2, f64::NAN)];
+
+        for kind in [
+            PlotSeriesKind::Continuous,
+            PlotSeriesKind::Stepped(StepMode::After),
+            PlotSeriesKind::Stepped(StepMode::Before),
+            PlotSeriesKind::Stepped(StepMode::Mid),
+        ] {
+            assert_eq!(tooltip_value_at_hover(&points, kind, 1), Some(5.0));
+        }
+    }
 
     #[test]
     fn test_help_view() {

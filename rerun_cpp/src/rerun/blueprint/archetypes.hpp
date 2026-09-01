@@ -21,6 +21,7 @@
 #include "blueprint/archetypes/near_clip_plane.hpp"
 #include "blueprint/archetypes/panel_blueprint.hpp"
 #include "blueprint/archetypes/plot_background.hpp"
+#include "blueprint/archetypes/plot_interaction.hpp"
 #include "blueprint/archetypes/plot_legend.hpp"
 #include "blueprint/archetypes/previews_config.hpp"
 #include "blueprint/archetypes/scalar_axis.hpp"

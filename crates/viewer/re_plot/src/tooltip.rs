@@ -15,6 +15,18 @@ pub fn show_plot_tooltip(
     value: &str,
     color: egui::Color32,
 ) {
+    show_plot_tooltip_rows(ui, response, id_salt, header, [(label, value, color)], 0);
+}
+
+/// Shows a plot tooltip with a header, one value row per series, and an omitted-row count.
+pub fn show_plot_tooltip_rows<'a>(
+    ui: &egui::Ui,
+    response: &egui::Response,
+    id_salt: egui::Id,
+    header: &str,
+    rows: impl IntoIterator<Item = (&'a str, &'a str, egui::Color32)>,
+    omitted_rows: usize,
+) {
     plot_tooltip(ui, response, id_salt).show(|ui| {
         let tokens = ui.tokens();
 
@@ -26,7 +38,16 @@ pub fn show_plot_tooltip(
 
         ui.add_space(tokens.text_to_icon_padding());
 
-        plot_tooltip_label_value(ui, label, value, color);
+        for (label, value, color) in rows {
+            plot_tooltip_label_value(ui, label, value, color);
+        }
+
+        if omitted_rows > 0 {
+            ui.label(
+                egui::RichText::new(format!("… and {omitted_rows} more"))
+                    .color(tokens.list_item_noninteractive_text),
+            );
+        }
     });
 }
 

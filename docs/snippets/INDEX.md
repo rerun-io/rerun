@@ -354,6 +354,7 @@ _All snippets, organized by the blueprint-related [`Archetype`](https://rerun.io
 | **`LineGrid3D`** | `views⁠/⁠spatial3d` | Use a blueprint to customize a Spatial3DView | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/views/spatial3d.py) |  |  |
 | **`PlotBackground`** | `views⁠/⁠bar_chart` | Use a blueprint to show a bar chart | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/views/bar_chart.py) |  |  |
 | **`PlotBackground`** | `views⁠/⁠timeseries` | Use a blueprint to customize a TimeSeriesView | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/views/timeseries.py) |  |  |
+| **`PlotInteraction`** | `views⁠/⁠timeseries` | Use a blueprint to customize a TimeSeriesView | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/views/timeseries.py) |  |  |
 | **`PlotLegend`** | `views⁠/⁠timeseries` | Use a blueprint to customize a TimeSeriesView | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/views/timeseries.py) |  |  |
 | **`ScalarAxis`** | `views⁠/⁠timeseries` | Use a blueprint to customize a TimeSeriesView | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/views/timeseries.py) |  |  |
 | **`SpatialInformation`** | `views⁠/⁠spatial3d` | Use a blueprint to customize a Spatial3DView | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/views/spatial3d.py) |  |  |

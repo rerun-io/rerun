@@ -70,7 +70,7 @@ pub fn own_chunk_components() -> &'static ComponentTypeSet {
 
 fn generate_component_reflection() -> Result<ComponentReflectionMap, SerializationError> {
     re_tracing::profile_function!();
-    let array = [
+    let entries = vec![
         (
             <AbsoluteTimeRange as Component>::name(),
             ComponentReflection {
@@ -480,6 +480,18 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <PointsDisplay as Component>::name(),
+            ComponentReflection {
+                docstring_md: "Controls when data point markers are displayed on line series.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: Some(PointsDisplay::default().to_arrow()?),
+                datatype: PointsDisplay::arrow_data_type(),
+                is_enum: true,
+                own_chunk: false,
+                verify_arrow_array: PointsDisplay::verify_arrow_array,
+            },
+        ),
+        (
             <QueryExpression as Component>::name(),
             ComponentReflection {
                 docstring_md: "An individual query expression used to filter a set of [`encodings.EntityPath`](https://rerun.io/docs/reference/types/encodings/entity_path)s.\n\nEach expression is either an inclusion or an exclusion expression.\nInclusions start with an optional `+` and exclusions must start with a `-`.\n\nMultiple expressions are combined together as part of archetypes.ViewContents.\n\nThe `/**` suffix matches the whole subtree, i.e. self and any child, recursively\n(`/world/**` matches both `/world` and `/world/car/driver`).\nOther uses of `*` are not (yet) supported.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
@@ -621,6 +633,18 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
                 is_enum: false,
                 own_chunk: false,
                 verify_arrow_array: TimelineName::verify_arrow_array,
+            },
+        ),
+        (
+            <TooltipMode as Component>::name(),
+            ComponentReflection {
+                docstring_md: "Controls how the plot tooltip behaves when hovering over data.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: Some(TooltipMode::default().to_arrow()?),
+                datatype: TooltipMode::arrow_data_type(),
+                is_enum: true,
+                own_chunk: false,
+                verify_arrow_array: TooltipMode::verify_arrow_array,
             },
         ),
         (
@@ -1812,7 +1836,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
     ];
-    Ok(ComponentReflectionMap::from_iter(array))
+    Ok(ComponentReflectionMap::from_iter(entries))
 }
 
 /// Generates reflection about all known archetypes.
@@ -4977,6 +5001,31 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Show grid",
                         component_type: "rerun.blueprint.components.Enabled".into(),
                         docstring_md: "Should the grid be drawn?",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::from("rerun.blueprint.archetypes.PlotInteraction"),
+            ArchetypeReflection {
+                display_name: "Plot interaction",
+                deprecation_summary: None,
+                scope: Some("blueprint"),
+                view_types: &[],
+                fields: vec![
+                    ArchetypeFieldReflection {
+                        name: "tooltip_mode",
+                        display_name: "Tooltip mode",
+                        component_type: "rerun.blueprint.components.TooltipMode".into(),
+                        docstring_md: "How the tooltip behaves when hovering over the plot.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "points_display",
+                        display_name: "Points display",
+                        component_type: "rerun.blueprint.components.PointsDisplay".into(),
+                        docstring_md: "When data point markers are displayed on line series.",
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                 ],

@@ -34,6 +34,8 @@ mod map_zoom;
 mod near_clip_plane;
 #[path = "archetypes/panel_blueprint.def.rs"]
 mod panel_blueprint;
+#[path = "archetypes/plot_interaction.def.rs"]
+mod plot_interaction;
 #[path = "archetypes/plot_legend.def.rs"]
 mod plot_legend;
 #[path = "archetypes/previews_config.def.rs"]
@@ -96,6 +98,7 @@ pub use self::map_background::*;
 pub use self::map_zoom::*;
 pub use self::near_clip_plane::*;
 pub use self::panel_blueprint::*;
+pub use self::plot_interaction::*;
 pub use self::plot_legend::*;
 pub use self::previews_config::*;
 pub use self::scalar_axis::*;

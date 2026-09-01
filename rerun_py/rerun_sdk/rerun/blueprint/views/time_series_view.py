@@ -72,6 +72,11 @@ class TimeSeriesView(View):
                     origin="/trig",
                     # Set a custom Y axis.
                     axis_y=rrb.ScalarAxis(range=(-1.0, 1.0), zoom_lock=True),
+                    # Configure plot interaction to show every visible series at the
+                    # hovered time and keep raw data point markers visible.
+                    interaction=rrb.PlotInteraction(
+                        tooltip_mode="All", points_display="Always"
+                    ),
                     # Configure the legend.
                     plot_legend=rrb.PlotLegend(visible=False),
                     # Set time different time ranges for different timelines.
@@ -141,6 +146,7 @@ class TimeSeriesView(View):
         axis_y: blueprint_archetypes.ScalarAxis | None = None,
         plot_legend: blueprint_archetypes.PlotLegend | blueprint_components.Corner2D | None = None,
         background: blueprint_archetypes.PlotBackground | None = None,
+        interaction: blueprint_archetypes.PlotInteraction | None = None,
         time_ranges: blueprint_archetypes.VisibleTimeRanges
         | encodings.VisibleTimeRangeLike
         | Sequence[encodings.VisibleTimeRangeLike]
@@ -191,6 +197,8 @@ class TimeSeriesView(View):
             Configures the legend of the plot.
         background:
             Configures the background of the plot.
+        interaction:
+            Configures tooltip and data point marker behavior.
         time_ranges:
             Configures which range on each timeline is shown by this view (unless specified differently per entity).
 
@@ -219,6 +227,11 @@ class TimeSeriesView(View):
             if not isinstance(background, blueprint_archetypes.PlotBackground):
                 background = blueprint_archetypes.PlotBackground(background)
             properties["PlotBackground"] = background
+
+        if interaction is not None:
+            if not isinstance(interaction, blueprint_archetypes.PlotInteraction):
+                interaction = blueprint_archetypes.PlotInteraction(interaction)
+            properties["PlotInteraction"] = interaction
 
         if time_ranges is not None:
             if not isinstance(time_ranges, blueprint_archetypes.VisibleTimeRanges):

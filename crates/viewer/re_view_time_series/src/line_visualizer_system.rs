@@ -249,7 +249,89 @@ pub(crate) fn build_line_draw_data(
         vec![line_builder.into_draw_data()?.into()];
     draw_data.extend(nan_island_draw_data);
     draw_data.extend(band_draw_data);
+    draw_data.extend(build_always_on_marker_draw_data(
+        ctx,
+        query,
+        all_series,
+        &plot_transform,
+        time_offset,
+        render_ctx,
+    ));
     Ok(draw_data)
+}
+
+fn build_always_on_marker_draw_data(
+    ctx: &ViewContext<'_>,
+    query: &ViewQuery<'_>,
+    all_series: &[PlotSeries],
+    plot_transform: &egui_plot::PlotTransform,
+    time_offset: i64,
+    render_ctx: &re_renderer::RenderContext,
+) -> Option<re_renderer::QueueableDrawData> {
+    if !ctx
+        .view_state
+        .downcast_ref::<crate::view_class::TimeSeriesViewState>()
+        .is_ok_and(|state| state.always_show_line_data_markers)
+    {
+        return None;
+    }
+
+    let marker_meshes = ctx
+        .viewer_ctx
+        .store_context
+        .memoizer(|cache: &mut crate::markers::MarkerMeshCache| cache.get_or_build(render_ctx))?;
+    let circle_mesh = marker_meshes.for_shape(re_sdk_types::components::MarkerShape::Circle);
+
+    let mut instances = Vec::new();
+    for series in all_series {
+        if !series.visible
+            || series.is_aggregated()
+            || !matches!(
+                series.kind,
+                PlotSeriesKind::Continuous | PlotSeriesKind::Stepped(_)
+            )
+        {
+            continue;
+        }
+
+        let mut radius = crate::markers::ALWAYS_ON_LINE_MARKER_MIN_RADIUS_UI
+            .max(series.radius_ui * crate::markers::ALWAYS_ON_LINE_MARKER_RADIUS_MULTIPLIER);
+        if crate::series_query::is_series_highlighted(query, series) {
+            radius += crate::markers::HIGHLIGHT_RADIUS_EXPANSION;
+        }
+
+        let sample_points = series
+            .points
+            .iter()
+            .skip(usize::from(series.first_point_is_continuity_bridge));
+        for &(time, value) in sample_points {
+            if !value.is_finite() {
+                continue;
+            }
+            let center = plot_transform.position_from_point(&egui_plot::PlotPoint::new(
+                (time.saturating_sub(time_offset)) as f64,
+                value,
+            ));
+            instances.push(crate::markers::marker_instance(
+                circle_mesh.clone(),
+                glam::vec2(center.x, center.y),
+                radius,
+                series.color,
+            ));
+        }
+    }
+
+    if instances.is_empty() {
+        return None;
+    }
+
+    match re_renderer::renderer::MeshDrawData::new(render_ctx, &instances) {
+        Ok(draw_data) => Some(draw_data.into()),
+        Err(err) => {
+            re_log::error_once!("Failed to build always-on marker MeshDrawData: {err}");
+            None
+        }
+    }
 }
 
 fn build_nan_island_marker_draw_data(

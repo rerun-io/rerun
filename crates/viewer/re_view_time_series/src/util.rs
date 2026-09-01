@@ -252,6 +252,7 @@ fn add_series_runs(
         points: Vec::with_capacity(capacity),
         value_range: None,
         aggregator,
+        first_point_is_continuity_bridge: false,
         aggregation_factor,
         min_time,
         visualizer_instruction_id: run.visualizer_instruction_id,
@@ -292,6 +293,7 @@ fn add_series_runs(
             // too, then we want the 2 segments to appear continuous even though they
             // are actually split from a data standpoint.
             if cur_continuous && prev_continuous {
+                series.first_point_is_continuity_bridge = true;
                 push(&mut series, prev_point.0, prev_point.1, prev_variance);
             }
 

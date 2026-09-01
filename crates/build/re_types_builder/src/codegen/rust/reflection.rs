@@ -211,10 +211,10 @@ fn generate_component_reflection(
         #[doc = "Call only once and reuse the results."]
         fn generate_component_reflection() -> Result<ComponentReflectionMap, SerializationError> {
             re_tracing::profile_function!();
-            let array = [
+            let entries = vec![
                 #(#quoted_pairs,)*
             ];
-            Ok(ComponentReflectionMap::from_iter(array))
+            Ok(ComponentReflectionMap::from_iter(entries))
         }
     }
 }

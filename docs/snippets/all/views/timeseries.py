@@ -38,6 +38,11 @@ blueprint = rrb.Blueprint(
                 origin="/trig",
                 # Set a custom Y axis.
                 axis_y=rrb.ScalarAxis(range=(-1.0, 1.0), zoom_lock=True),
+                # Configure plot interaction to show every visible series at the
+                # hovered time and keep raw data point markers visible.
+                interaction=rrb.PlotInteraction(
+                    tooltip_mode="All", points_display="Always"
+                ),
                 # Configure the legend.
                 plot_legend=rrb.PlotLegend(visible=False),
                 # Set time different time ranges for different timelines.

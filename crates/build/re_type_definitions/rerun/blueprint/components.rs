@@ -68,6 +68,8 @@ mod panel_state;
 mod play_state;
 #[path = "components/playback_speed.def.rs"]
 mod playback_speed;
+#[path = "components/points_display.def.rs"]
+mod points_display;
 #[path = "components/query_expression.def.rs"]
 mod query_expression;
 #[path = "components/root_container.def.rs"]
@@ -92,6 +94,8 @@ mod time_range;
 mod timeline_column;
 #[path = "components/timeline_name.def.rs"]
 mod timeline_name;
+#[path = "components/tooltip_mode.def.rs"]
+mod tooltip_mode;
 #[path = "components/view_class.def.rs"]
 mod view_class;
 #[path = "components/view_fit.def.rs"]
@@ -149,6 +153,7 @@ pub use self::near_clip_plane::*;
 pub use self::panel_state::*;
 pub use self::play_state::*;
 pub use self::playback_speed::*;
+pub use self::points_display::*;
 pub use self::query_expression::*;
 pub use self::root_container::*;
 pub use self::row_share::*;
@@ -161,6 +166,7 @@ pub use self::time_int::*;
 pub use self::time_range::*;
 pub use self::timeline_column::*;
 pub use self::timeline_name::*;
+pub use self::tooltip_mode::*;
 pub use self::view_class::*;
 pub use self::view_fit::*;
 pub use self::view_maximized::*;
