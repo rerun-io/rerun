@@ -558,7 +558,7 @@ jobs:
             py_docs_link="https://ref.rerun.io/docs/python/${{ needs.version.outputs.final }}"
           else
             web_app_link="https://rerun.io/viewer/commit/$short_commit_hash"
-            rerun_io_docs_link="https://rerun.io/preview/$short_commit_hash/docs"
+            rerun_io_docs_link="https://rerun.io/docs/pr-$pr_number"
             py_docs_link="https://ref.rerun.io/docs/python/dev"
           fi
           wheels_link="https://pypi.org/project/rerun-sdk/${{ needs.version.outputs.current }}"

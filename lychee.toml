@@ -91,6 +91,7 @@ exclude = [
   # Strings with replacements.
   '/__VIEWER_VERSION__/', # Replacement variable __VIEWER_VERSION__.
   '/\$', # Replacement variable $.
+  '\$pr_number', # Shell variable in release workflow.
   '\$$', # URL ending in `$`: stripped template variable (e.g. `${{ inputs.X }}`).
   '/GIT_HASH/', # Replacement variable GIT_HASH.
   '\{\}', # Ignore links with string interpolation.
