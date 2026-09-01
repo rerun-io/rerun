@@ -642,7 +642,7 @@ impl ChunkPrioritizer {
                 }
             }
         }
-        for missing_virtual_chunk_id in chain!(missing_virtual, indicated_virtual) {
+        for missing_virtual_chunk_id in chain!(missing_virtual.keys(), indicated_virtual) {
             for root_id in store.find_root_chunks(missing_virtual_chunk_id) {
                 if let Some(components) = self.component_paths_from_root_id.get(&root_id) {
                     self.components_of_interest
@@ -674,7 +674,7 @@ impl ChunkPrioritizer {
         }
 
         for chunk_id in chain!(
-            missing_virtual,
+            missing_virtual.keys(),
             transient_missing_virtual,
             indicated_virtual,
         ) {
@@ -887,7 +887,7 @@ impl ChunkFetcher<'_> {
             match &mut self.fetch_stage {
                 ChunkPriorityStage::Start => {
                     let mut missing_roots = Vec::new();
-                    for missing_virtual_chunk_id in &self.tracker.missing_virtual {
+                    for missing_virtual_chunk_id in self.tracker.missing_virtual.keys() {
                         self.store
                             .collect_root_ids(missing_virtual_chunk_id, &mut missing_roots);
                     }

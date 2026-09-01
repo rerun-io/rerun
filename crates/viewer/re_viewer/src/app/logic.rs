@@ -848,14 +848,16 @@ impl App {
                 let store = storage_engine.store();
 
                 #[expect(clippy::iter_over_hash_type)] // sanity checks don't care about order
-                for missing_chunk_id in store.tracked_chunk_ids().missing_virtual {
+                for (missing_chunk_id, reported_at) in store.tracked_chunk_ids().missing_virtual {
                     let roots = store.find_root_chunks(&missing_chunk_id);
                     re_log::debug_assert!(!roots.is_empty(), "Missing chunk has no roots");
 
+                    // An entry can outlive the chunk being loaded, so only count the roots
+                    // that were already loaded when the query ran.
                     let all_roots_are_fully_loaded = roots.iter().all(|root_id| {
                         let root_info = db.rrd_manifest_index().root_chunk_info(root_id);
                         if let Some(root_info) = root_info {
-                            root_info.is_fully_loaded()
+                            root_info.was_fully_loaded_at(reported_at)
                         } else {
                             re_log::debug_warn_once!("Failed to find root chunk");
                             false

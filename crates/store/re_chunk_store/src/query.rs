@@ -781,9 +781,10 @@ impl QueryResults {
             }
 
             if report_mode == ChunkTrackingMode::Report {
+                let generation = store.generation();
                 tracker
                     .missing_virtual
-                    .extend(this.missing_virtual.iter().copied());
+                    .extend(this.missing_virtual.iter().map(|id| (*id, generation)));
 
                 tracker
                     .used_physical
@@ -1578,7 +1579,11 @@ mod tests {
             assert_eq!(expected, results_range);
 
             assert_eq!(
-                store.take_tracked_chunk_ids().missing_virtual,
+                store
+                    .take_tracked_chunk_ids()
+                    .missing_virtual
+                    .into_keys()
+                    .collect::<ahash::HashSet<_>>(),
                 itertools::chain!(
                     results_latest_at.missing_virtual,
                     results_range.missing_virtual
@@ -1618,7 +1623,11 @@ mod tests {
             assert_eq!(expected, results_range);
 
             assert_eq!(
-                store.take_tracked_chunk_ids().missing_virtual,
+                store
+                    .take_tracked_chunk_ids()
+                    .missing_virtual
+                    .into_keys()
+                    .collect::<ahash::HashSet<_>>(),
                 itertools::chain!(
                     results_latest_at.missing_virtual,
                     results_range.missing_virtual

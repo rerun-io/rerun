@@ -365,7 +365,12 @@ pub struct ColumnMetadataState {
 }
 
 /// Incremented on each edit.
-#[derive(Clone, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
+///
+/// Both counters only ever increase, so comparing two generations of the same store
+/// tells you which one was taken first.
+#[derive(
+    Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd, re_byte_size::SizeBytes,
+)]
 pub struct ChunkStoreGeneration {
     insert_id: u64,
     gc_id: u64,
@@ -478,11 +483,14 @@ pub struct QueriedChunkIdTracker {
     ///
     /// Note, these are NOT necessarily _root_ chunks.
     /// Use [`ChunkStore::find_root_chunks`] to get those.
+    ///
+    /// Chunks could've become loaded since the tracker was last cleared, so we track the `ChunkStoreGeneration`
+    /// it was reported missing at.
     //
     // TODO(cmc): Once lineage tracking is in place, make sure that this only reports missing
     // chunks using their root-level IDs, so downstream consumers don't have to redundantly build
     // their own tracking. And document it so.
-    pub missing_virtual: HashSet<ChunkId>,
+    pub missing_virtual: HashMap<ChunkId, ChunkStoreGeneration>,
 
     /// Chunks that are reported as missing, but we shouldn't indicate their entity/componetns as used.
     pub transient_missing_virtual: HashSet<ChunkId>,
@@ -1084,10 +1092,12 @@ impl ChunkStore {
             "A chunk was reported missing, with no known lineage: {chunk_id}"
         );
 
+        let generation = self.generation();
+
         self.queried_chunk_id_tracker
             .write()
             .missing_virtual
-            .insert(chunk_id);
+            .insert(chunk_id, generation);
     }
 
     /// Signal that the chunk was used and should not be evicted by gc.

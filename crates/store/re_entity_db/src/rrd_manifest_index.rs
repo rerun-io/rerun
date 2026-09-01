@@ -6,7 +6,7 @@ use itertools::izip;
 use nohash_hasher::IntSet;
 use re_byte_size::{MemUsageTree, MemUsageTreeCapture};
 use re_chunk::{ChunkId, EntityPath, Timeline, TimelineName};
-use re_chunk_store::{ChunkStore, ChunkStoreDiff, ChunkStoreEvent};
+use re_chunk_store::{ChunkStore, ChunkStoreDiff, ChunkStoreEvent, ChunkStoreGeneration};
 use re_log_encoding::{CodecResult, RrdManifest};
 use re_log_types::{AbsoluteTimeRange, StoreKind};
 
@@ -63,6 +63,14 @@ pub struct RootChunkInfo {
 
     state: LoadState,
 
+    /// The store generation at which this chunk became fully loaded.
+    ///
+    /// When the chunk is unloaded this is set to `None`.
+    ///
+    /// Compare it against the generation a query reported a missing chunk at to see
+    /// which of the two came first.
+    loaded_at: Option<ChunkStoreGeneration>,
+
     /// Empty for static chunks
     pub temporals: HashMap<TimelineName, TemporalChunkInfo>,
 }
@@ -72,6 +80,7 @@ impl RootChunkInfo {
         Self {
             entity_path,
             state: LoadState::Unloaded,
+            loaded_at: None,
             row_id: row_idx,
             temporals: Default::default(),
         }
@@ -79,6 +88,13 @@ impl RootChunkInfo {
 
     pub fn is_fully_loaded(&self) -> bool {
         self.state.is_fully_loaded()
+    }
+
+    /// Was this chunk already fully loaded when a query at `generation` ran?
+    pub fn was_fully_loaded_at(&self, generation: ChunkStoreGeneration) -> bool {
+        self.loaded_at
+            .is_some_and(|loaded_at| loaded_at <= generation)
+            && self.is_fully_loaded()
     }
 }
 
@@ -433,6 +449,7 @@ impl RrdManifestIndex {
         re_tracing::profile_function!();
 
         let store_kind = store.id().kind();
+        let generation = store.generation();
 
         let root_chunk_ids = store.find_root_chunks(chunk_id);
 
@@ -449,6 +466,13 @@ impl RrdManifestIndex {
                 if let Some(chunk_info) = self.root_chunks.get_mut(&chunk_id) {
                     let old_state = chunk_info.state;
                     chunk_info.state = new_state;
+
+                    // Only the transition into loaded records the generation.
+                    if !new_state.is_fully_loaded() {
+                        chunk_info.loaded_at = None;
+                    } else if !old_state.is_fully_loaded() {
+                        chunk_info.loaded_at = Some(generation);
+                    }
 
                     // Only update loaded ranges when a chunk actually became loaded or unloaded, to
                     // avoid mismatched increments/decrements. Note that `InTransit` counts as
