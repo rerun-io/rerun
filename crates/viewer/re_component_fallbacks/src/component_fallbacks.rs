@@ -455,6 +455,12 @@ pub fn archetype_field_fallbacks(registry: &mut FallbackProviderRegistry) {
         |_| components::CellSize::from(0.01),
     );
 
+    // Volume3D
+    registry.register_component_fallback_provider(
+        archetypes::Volume3D::descriptor_voxel_size().component,
+        |_| components::VoxelSize::from([1.0, 1.0, 1.0]),
+    );
+
     // VoxelGridMap
     registry.register_component_fallback_provider(
         archetypes::VoxelGridMap::descriptor_voxel_size().component,

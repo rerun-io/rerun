@@ -4260,6 +4260,66 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
+            ArchetypeName::from("rerun.archetypes.Volume3D"),
+            ArchetypeReflection {
+                display_name: "Volume 3D",
+                deprecation_summary: None,
+                scope: None,
+                view_types: &["Spatial3DView"],
+                fields: vec![
+                    ArchetypeFieldReflection {
+                        name: "values",
+                        display_name: "Values",
+                        component_type: "rerun.components.TensorData".into(),
+                        docstring_md: "The scalar value of each voxel, as a 3D tensor with dimensions ordered `[z, y, x]`.\n\nCurrently only `f16` are supported.",
+                        flags: ArchetypeFieldFlags::REQUIRED,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "voxel_size",
+                        display_name: "Voxel size",
+                        component_type: "rerun.components.VoxelSize".into(),
+                        docstring_md: "The scene-unit dimensions of a single voxel cell.\n\nThis defines the voxel size along the local grid X/Y/Z axes, and thus the total extent of the\nvolume: `[width, height, depth] * voxel_size`.\nAnisotropic spacing (as is common for medical scans) is expressed here.\nEach dimension must be finite and positive.\n\nDefaults to `[1.0, 1.0, 1.0]`.",
+                        flags: ArchetypeFieldFlags::empty(),
+                    },
+                    ArchetypeFieldReflection {
+                        name: "translation",
+                        display_name: "Translation",
+                        component_type: "rerun.components.Translation3D".into(),
+                        docstring_md: "Translation of the minimum corner of voxel `[0, 0, 0]`.\n\nTogether with [`components.RotationQuat`](https://rerun.io/docs/reference/types/components/rotation_quat), this defines the pose of the volume\nrelative to the entity's coordinate frame.\n\nIf not set, the minimum corner is placed at the origin of the entity's coordinate frame.",
+                        flags: ArchetypeFieldFlags::empty(),
+                    },
+                    ArchetypeFieldReflection {
+                        name: "quaternion",
+                        display_name: "Quaternion",
+                        component_type: "rerun.components.RotationQuat".into(),
+                        docstring_md: "Rotation of the volume via quaternion.\n\nTogether with [`components.Translation3D`](https://rerun.io/docs/reference/types/components/translation3d), this defines the pose of the volume\nrelative to the entity's coordinate frame.\nThe rotation is around the minimum corner of voxel `[0, 0, 0]`, and is applied before the\ntranslation.",
+                        flags: ArchetypeFieldFlags::empty(),
+                    },
+                    ArchetypeFieldReflection {
+                        name: "value_range",
+                        display_name: "Value range",
+                        component_type: "rerun.components.ValueRange".into(),
+                        docstring_md: "How to map `values` to opacity and color.\n\nIf not specified, the range is estimated from the data.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "colormap",
+                        display_name: "Colormap",
+                        component_type: "rerun.components.Colormap".into(),
+                        docstring_md: "Colormap applied to the values after mapping them through `value_range`.\n\nDefaults to Turbo.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "opacity",
+                        display_name: "Opacity",
+                        component_type: "rerun.components.Opacity".into(),
+                        docstring_md: "Overall opacity of the volume.\n\nThe opacity of a single voxel is its value (normalized through `value_range`) scaled by\nthis, i.e. a linear ramp: low values are transparent, high values are opaque.\nLowering this makes the interior of the volume visible.\n\nDefaults to 1.0.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                ],
+            },
+        ),
+        (
             ArchetypeName::from("rerun.archetypes.VoxelGridMap"),
             ArchetypeReflection {
                 display_name: "Voxel grid map",

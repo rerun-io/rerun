@@ -149,6 +149,7 @@ from .archetypes import (
     VideoFrameReference as VideoFrameReference,
     VideoStream as VideoStream,
     ViewCoordinates as ViewCoordinates,
+    Volume3D as Volume3D,
     VoxelGridMap as VoxelGridMap,
 )
 from .archetypes.boxes2d_ext import (

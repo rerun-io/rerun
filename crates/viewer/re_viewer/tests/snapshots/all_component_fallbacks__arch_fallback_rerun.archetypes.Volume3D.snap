@@ -1,0 +1,11 @@
+---
+source: crates/viewer/re_viewer/tests/all_component_fallbacks.rs
+expression: arch_display
+---
+values: [{shape: [], names: null, buffer: {U8=[]}}]
+voxel_size: [[1.0, 1.0, 1.0]]
+translation: [[0.0, 0.0, 0.0]]
+quaternion: [[0.0, 0.0, 0.0, 1.0]]
+value_range: [[0.0, 1.0]]
+colormap: [5]
+opacity: [1.0]

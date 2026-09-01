@@ -53,6 +53,7 @@ from .transform_axes3d import TransformAxes3D
 from .video_frame_reference import VideoFrameReference
 from .video_stream import VideoStream
 from .view_coordinates import ViewCoordinates
+from .volume3d import Volume3D
 from .voxel_grid_map import VoxelGridMap
 
 __all__ = [
@@ -107,5 +108,6 @@ __all__ = [
     "VideoFrameReference",
     "VideoStream",
     "ViewCoordinates",
+    "Volume3D",
     "VoxelGridMap",
 ]

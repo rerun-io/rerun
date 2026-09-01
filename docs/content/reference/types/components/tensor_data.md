@@ -48,3 +48,4 @@ Struct(
 
 * [`BarChart`](../archetypes/bar_chart.md)
 * [`Tensor`](../archetypes/tensor.md)
+* [`Volume3D`](../archetypes/volume3d.md?speculative-link)

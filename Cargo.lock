@@ -12706,6 +12706,7 @@ name = "snippets"
 version = "0.37.0-alpha.1+dev"
 dependencies = [
  "crossbeam",
+ "half",
  "itertools 0.15.0",
  "ndarray",
  "rand 0.9.5",
