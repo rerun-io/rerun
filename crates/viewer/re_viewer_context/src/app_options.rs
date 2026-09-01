@@ -136,13 +136,7 @@ impl AppOptions {
                 ..Default::default()
             },
 
-            video: VideoOptions {
-                // Force the FFmpeg path to be wrong so we have a reproducible behavior.
-                ffmpeg_path: "/fake/ffmpeg/path".to_owned(),
-                override_ffmpeg_path: true,
-                allow_slow_av1_decoding: true,
-                ..Default::default()
-            },
+            video: VideoOptions::test(),
 
             // Always show the full date so timestamps render as `YYYY-MM-DD HH:MM:SS`
             // regardless of when the test runs. The default `HideDateToday` would
@@ -221,6 +215,18 @@ pub struct VideoOptions {
     /// Don't use this field directly, use [`AppOptions::video_decoder_settings`] instead.
     #[expect(clippy::doc_markdown)]
     pub ffmpeg_path: String,
+}
+
+impl VideoOptions {
+    pub fn test() -> Self {
+        Self {
+            hw_acceleration: DecodeHardwareAcceleration::default(),
+            allow_slow_av1_decoding: true,
+            override_ffmpeg_path: true,
+            // Force the FFmpeg path to be wrong so we have a reproducible behavior.
+            ffmpeg_path: "/fake/ffmpeg/path".to_owned(),
+        }
+    }
 }
 
 #[derive(Debug, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize, Clone)]

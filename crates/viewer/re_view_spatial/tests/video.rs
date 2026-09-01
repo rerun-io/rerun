@@ -146,8 +146,9 @@ fn test_video(video_type: VideoType, codec: &VideoCodec) {
         // End up using system install. Fine usually, no need to force a pixi environment here.
         re_log::info!("Pixi ffmpeg not found at {pixi_ffmpeg_path:?}");
 
-        // Still have to reset the video settings to their default - by default we deny ffmpeg access in test-options!
-        test_context.app_options.video = Default::default();
+        // Still have to reset the ffmpeg path - by default we deny ffmpeg access in test-options!
+        test_context.app_options.video.override_ffmpeg_path = false;
+        test_context.app_options.video.ffmpeg_path = String::new();
     }
 
     let need_dts_equal_pts = video_type != VideoType::AssetVideo; // TODO(#10090): Video stream doesn't support bframes
