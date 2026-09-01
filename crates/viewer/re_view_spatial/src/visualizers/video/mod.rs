@@ -261,25 +261,6 @@ fn execute_video_stream_like(
             Ok(video) => video,
 
             Err(err) => {
-                let (description, severity) = match err {
-                    VideoStreamProcessingError::NoVideoSamplesFound => (
-                        format!("No video samples available for {entity_path:?}"),
-                        VideoPlaybackIssueSeverity::Informational,
-                    ),
-                    VideoStreamProcessingError::UnloadedCodec => (
-                        "Codec not loaded yet".to_owned(),
-                        VideoPlaybackIssueSeverity::Loading,
-                    ),
-                    VideoStreamProcessingError::InvalidVideoSampleType(_)
-                    | VideoStreamProcessingError::MissingCodec
-                    | VideoStreamProcessingError::FailedReadingCodec(_)
-                    | VideoStreamProcessingError::OutOfOrderSamples
-                    | VideoStreamProcessingError::UnexpectedChunkChanges => (
-                        format!("Failed to play video at {entity_path:?}: {err}"),
-                        VideoPlaybackIssueSeverity::Error,
-                    ),
-                };
-
                 show_video_frame(
                     ctx.view_context,
                     ctx.data,
@@ -289,7 +270,7 @@ fn execute_video_stream_like(
                     video_resolution,
                     instruction.id,
                     None,
-                    Some(VideoPlaybackIssue::custom(description, severity)),
+                    Some(video_stream_processing_issue(entity_path, &err)),
                     None,
                     None,
                 );
@@ -517,6 +498,32 @@ impl VideoPlaybackIssue {
             show_frame: false,
         }
     }
+}
+
+fn video_stream_processing_issue(
+    entity_path: &EntityPath,
+    err: &VideoStreamProcessingError,
+) -> VideoPlaybackIssue {
+    let (message, severity) = match err {
+        VideoStreamProcessingError::NoVideoSamplesFound => (
+            format!("No video samples available for {entity_path:?}"),
+            VideoPlaybackIssueSeverity::Informational,
+        ),
+        VideoStreamProcessingError::UnloadedCodec => (
+            "Codec not loaded yet".to_owned(),
+            VideoPlaybackIssueSeverity::Loading,
+        ),
+        VideoStreamProcessingError::InvalidVideoSampleType(_)
+        | VideoStreamProcessingError::MissingCodec
+        | VideoStreamProcessingError::FailedReadingCodec(_)
+        | VideoStreamProcessingError::OutOfOrderSamples
+        | VideoStreamProcessingError::UnexpectedChunkChanges => (
+            format!("Failed to play video at {entity_path:?}: {err}"),
+            VideoPlaybackIssueSeverity::Error,
+        ),
+    };
+
+    VideoPlaybackIssue::custom(message, severity)
 }
 
 impl From<VideoPlayerError> for VideoPlaybackIssue {

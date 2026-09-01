@@ -2,7 +2,9 @@
 
 use re_chunk_store::RowId;
 use re_log_types::TimePoint;
-use re_sdk_types::archetypes::{AssetVideo, TextLog, VideoFrameReference, VideoStream};
+use re_sdk_types::archetypes::{
+    AssetVideo, TextLog, Transform3D, VideoFrameReference, VideoStream,
+};
 use re_sdk_types::components::{self, MediaType, VideoTimestamp};
 use re_sdk_types::encodings;
 use re_test_context::TestContext;
@@ -82,7 +84,7 @@ impl VideoTestSeekLocation {
         }
     }
 
-    fn get_label(&self) -> &str {
+    fn get_label(&self) -> &'static str {
         match self {
             Self::BeforeStart => "before_start",
             Self::Start => "start",
@@ -96,6 +98,7 @@ impl VideoTestSeekLocation {
 enum VideoType {
     AssetVideo,
     VideoStream,
+    VideoStreamFrameReference,
 }
 
 impl std::fmt::Display for VideoType {
@@ -103,6 +106,7 @@ impl std::fmt::Display for VideoType {
         match self {
             Self::AssetVideo => write!(f, "asset"),
             Self::VideoStream => write!(f, "stream"),
+            Self::VideoStreamFrameReference => write!(f, "stream_reference"),
         }
     }
 }
@@ -146,7 +150,7 @@ fn test_video(video_type: VideoType, codec: &VideoCodec) {
         test_context.app_options.video = Default::default();
     }
 
-    let need_dts_equal_pts = video_type == VideoType::VideoStream; // TODO(#10090): Video stream doesn't support bframes
+    let need_dts_equal_pts = video_type != VideoType::AssetVideo; // TODO(#10090): Video stream doesn't support bframes
     let video_path = video_test_file_mp4(codec, need_dts_equal_pts);
 
     let video_asset = AssetVideo::from_file_path(&video_path).unwrap();
@@ -183,7 +187,7 @@ fn test_video(video_type: VideoType, codec: &VideoCodec) {
             });
         }
 
-        VideoType::VideoStream => {
+        VideoType::VideoStream | VideoType::VideoStreamFrameReference => {
             // Pretend the file is a video stream.
             let blob_bytes =
                 encodings::Blob::serialized_blob_as_slice(video_asset.blob.as_ref().unwrap())
@@ -276,18 +280,45 @@ fn test_video(video_type: VideoType, codec: &VideoCodec) {
                     VideoCodec::ImageSequence(_) => panic!("Won't be created from a video"),
                 };
 
-                let time_ns = sample
+                let sample_time_ns = sample
                     .sample()
                     .unwrap()
                     .presentation_timestamp
                     .into_nanos(video_data_description.timescale.unwrap());
+                let time_ns = if video_type == VideoType::VideoStreamFrameReference {
+                    100_000_000_000 + sample_time_ns * 3
+                } else {
+                    sample_time_ns
+                };
+                let entity_path = if video_type == VideoType::VideoStreamFrameReference {
+                    "camera/live"
+                } else {
+                    "video"
+                };
 
-                test_context.log_entity("video", |builder| {
+                test_context.log_entity(entity_path, |builder| {
                     builder.with_archetype(
                         RowId::new(),
                         [(timeline, time_ns)],
                         &VideoStream::new(codec).with_sample(sample_bytes),
                     )
+                });
+            }
+
+            if video_type == VideoType::VideoStreamFrameReference {
+                test_context.log_entity("keyframe", |builder| {
+                    builder
+                        .with_archetype(
+                            RowId::new(),
+                            TimePoint::STATIC,
+                            &VideoFrameReference::new(VideoTimestamp::from_secs(2.0))
+                                .with_video_reference("/camera/live"),
+                        )
+                        .with_archetype(
+                            RowId::new(),
+                            TimePoint::STATIC,
+                            &Transform3D::from_translation([1920.0, 0.0, 0.0]),
+                        )
                 });
             }
         }
@@ -320,7 +351,18 @@ fn test_video(video_type: VideoType, codec: &VideoCodec) {
     let step_dt_seconds = 1.0 / 4.0; // This is also the current egui_kittest default, but let's be explicit since we use `try_run_realtime`.
     let max_total_time_seconds = 60.0;
 
-    let viewport_size = [300.0, 200.0].into();
+    let viewport_size = if video_type == VideoType::VideoStreamFrameReference {
+        [600.0, 200.0].into()
+    } else {
+        [300.0, 200.0].into()
+    };
+    let snapshot_options = snapshot_options_for_codec(codec, viewport_size);
+    let snapshot_options = if video_type == VideoType::VideoStreamFrameReference {
+        // This snapshot contains two independently decoded frames, so allow roughly twice the usual per-frame pixel variance.
+        snapshot_options.max_failed_pixels(700)
+    } else {
+        snapshot_options
+    };
     let mut harness = test_context
         .setup_kittest_for_rendering_3d(viewport_size)
         .with_step_dt(step_dt_seconds)
@@ -331,10 +373,23 @@ fn test_video(video_type: VideoType, codec: &VideoCodec) {
             std::thread::sleep(std::time::Duration::from_millis(20));
         });
 
-    for seek_location in VideoTestSeekLocation::ALL {
+    let seek_locations = if video_type == VideoType::VideoStreamFrameReference {
+        vec![("at_reference", 102_000_000_000)]
+    } else {
+        VideoTestSeekLocation::ALL
+            .into_iter()
+            .map(|location| {
+                (
+                    location.get_label(),
+                    location.get_time_ns(&frame_timestamps_nanos),
+                )
+            })
+            .collect()
+    };
+
+    for (seek_label, desired_seek_ns) in seek_locations {
         // Using a single harness for all frames - we want to make sure that we use the same decoder,
         // not tearing down the video player!
-        let desired_seek_ns = seek_location.get_time_ns(&frame_timestamps_nanos);
         test_context.send_time_commands(
             test_context.active_store_id(),
             [
@@ -347,8 +402,8 @@ fn test_video(video_type: VideoType, codec: &VideoCodec) {
         // and don't busy loop.
         harness.try_run_realtime().unwrap();
         harness.snapshot_options(
-            format!("video_{video_type}_{codec:?}_{}", seek_location.get_label()),
-            &snapshot_options_for_codec(codec, viewport_size),
+            format!("video_{video_type}_{codec:?}_{seek_label}"),
+            &snapshot_options,
         );
     }
 }
@@ -381,6 +436,11 @@ fn test_video_asset_codec_av1() {
 #[test]
 fn test_video_stream_codec_h264() {
     test_video(VideoType::VideoStream, &VideoCodec::H264);
+}
+
+#[test]
+fn test_video_stream_frame_reference_h264() {
+    test_video(VideoType::VideoStreamFrameReference, &VideoCodec::H264);
 }
 
 #[test]

@@ -5,12 +5,11 @@ title: "VideoFrameReference"
 
 References a single video frame.
 
-Used to display individual video frames from a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video).
+Used to display individual video frames from an [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video) or [`archetypes.VideoStream`](https://rerun.io/docs/reference/types/archetypes/video_stream).
 To show an entire video, a video frame reference for each frame of the video should be logged.
+References to a [`archetypes.VideoStream`](https://rerun.io/docs/reference/types/archetypes/video_stream) use the active Viewer timeline.
 
 See <https://rerun.io/docs/reference/video> for details of what is and isn't supported.
-
-TODO(#10422): [`archetypes.VideoFrameReference`](https://rerun.io/docs/reference/types/archetypes/video_frame_reference) does not yet work with [`archetypes.VideoStream`](https://rerun.io/docs/reference/types/archetypes/video_stream).
 
 ## Fields
 ### Required

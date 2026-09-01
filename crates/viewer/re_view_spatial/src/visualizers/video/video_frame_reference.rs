@@ -5,13 +5,14 @@ use re_log_types::EntityPath;
 use re_renderer::external::re_video::VideoLoadError;
 use re_renderer::video::Video;
 use re_sdk_types::Archetype as _;
-use re_sdk_types::archetypes::{AssetVideo, VideoFrameReference};
+use re_sdk_types::archetypes::{AssetVideo, VideoFrameReference, VideoStream};
 use re_sdk_types::components::{Blob, MediaType, Opacity, VideoTimestamp};
 use re_video::player::VideoSliceSource;
 use re_viewer_context::{
-    IdentifiedViewSystem, VideoAssetCache, ViewClass as _, ViewContext, ViewContextCollection,
-    ViewQuery, ViewSystemExecutionError, ViewerContext, VisualizerExecutionOutput,
-    VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
+    IdentifiedViewSystem, SharablePlayableVideoStream, VideoAssetCache, VideoStoreSource,
+    VideoStreamCache, VideoStreamProcessingError, ViewClass as _, ViewContext,
+    ViewContextCollection, ViewQuery, ViewSystemExecutionError, ViewerContext,
+    VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
 };
 
 use crate::PickableTexturedRect;
@@ -20,7 +21,7 @@ use crate::visualizers::SpatialViewVisualizerData;
 use crate::visualizers::entity_iterator::process_archetype;
 use crate::visualizers::video::{
     AT_TIME_CURSOR_SALT, VideoFrameRenderInfo, VideoPlaybackIssue, VideoPlaybackIssueSeverity,
-    show_video_frame, video_stream_id,
+    show_video_frame, video_stream_id, video_stream_processing_issue,
 };
 
 #[derive(Default)]
@@ -146,11 +147,10 @@ impl VideoFrameReferenceVisualizer {
             AT_TIME_CURSOR_SALT,
         );
 
-        // Follow the reference to the video asset.
+        // The referenced entity can hold either an asset or a stream.
         let video_reference: EntityPath = video_references
             .and_then(|v| v.first().map(|e| e.as_str().into()))
             .unwrap_or_else(|| ctx.target_entity_path.clone());
-        let query_result = latest_at_query_video_from_datastore(ctx.viewer_ctx(), &video_reference);
 
         let world_from_entity = spatial_ctx
             .transform_info
@@ -166,27 +166,10 @@ impl VideoFrameReferenceVisualizer {
         // Note that this area is also used for the bounding box which is important for the 2D view to determine default bounds.
         let mut video_resolution = glam::vec2(1280.0, 720.0);
 
-        match query_result {
-            None => {
-                show_video_frame(
-                    ctx.view_ctx,
-                    data,
-                    entity_path,
-                    world_from_entity,
-                    spatial_ctx.highlight,
-                    video_resolution,
-                    spatial_ctx.visualizer_instruction,
-                    None,
-                    Some(VideoPlaybackIssue::custom(
-                        format!("No video asset at {video_reference:?}"),
-                        VideoPlaybackIssueSeverity::Informational,
-                    )),
-                    None,
-                    None,
-                );
-            }
-
-            Some((video, video_buffer)) => match video.as_ref() {
+        let frame = if let Some((video, video_buffer)) =
+            latest_at_query_video_from_datastore(ctx.viewer_ctx(), &video_reference)
+        {
+            match video.as_ref() {
                 Ok(video) => {
                     if let Some([w, h]) = video.dimensions() {
                         video_resolution = glam::vec2(w as _, h as _);
@@ -205,54 +188,110 @@ impl VideoFrameReferenceVisualizer {
                         &VideoSliceSource(&video_buffer),
                     );
 
-                    #[expect(clippy::disallowed_methods)] // This is not a hard-coded color.
-                    let multiplicative_tint =
-                        re_renderer::Rgba::from_white_alpha(opacity.0.clamp(0.0, 1.0));
-
                     let bit_depth = video
                         .data_descr()
                         .encoding_details
                         .as_ref()
                         .and_then(|d| d.bit_depth);
-
-                    show_video_frame(
-                        ctx.view_ctx,
-                        data,
-                        entity_path,
-                        world_from_entity,
-                        spatial_ctx.highlight,
-                        video_resolution,
-                        spatial_ctx.visualizer_instruction,
-                        frame_output.output.map(|texture| VideoFrameRenderInfo {
-                            texture,
-                            depth_offset: spatial_ctx.depth_offset,
-                            multiplicative_tint,
-                        }),
-                        frame_output.error.map(VideoPlaybackIssue::from),
-                        None,
-                        bit_depth,
-                    );
+                    Ok((frame_output, bit_depth))
                 }
-                Err(err) => {
-                    show_video_frame(
-                        ctx.view_ctx,
-                        data,
-                        entity_path,
-                        world_from_entity,
-                        spatial_ctx.highlight,
-                        video_resolution,
-                        spatial_ctx.visualizer_instruction,
-                        None,
-                        Some(VideoPlaybackIssue::custom(
-                            err.to_string(),
-                            VideoPlaybackIssueSeverity::Error,
+                Err(err) => Err(VideoPlaybackIssue::custom(
+                    err.to_string(),
+                    VideoPlaybackIssueSeverity::Error,
+                )),
+            }
+        } else {
+            match latest_at_query_video_stream_from_datastore(
+                ctx.viewer_ctx(),
+                &video_reference,
+                &ctx.query,
+            ) {
+                None => Err(VideoPlaybackIssue::custom(
+                    format!("No video asset or stream at {video_reference:?}"),
+                    VideoPlaybackIssueSeverity::Informational,
+                )),
+                Some(Err(err)) => Err(video_stream_processing_issue(&video_reference, &err)),
+                Some(Ok(video)) => {
+                    let sample_component = VideoStream::descriptor_sample().component;
+                    let video = video.read();
+                    let video_description = video.video_descr();
+                    match video_description.samples.front() {
+                        None => Err(video_stream_processing_issue(
+                            &video_reference,
+                            &VideoStreamProcessingError::NoVideoSamplesFound,
                         )),
-                        None,
-                        None,
-                    );
+                        Some(first_stream_timestamp) => {
+                            if let Some([w, h]) = video.video_renderer.dimensions() {
+                                video_resolution = glam::vec2(w as _, h as _);
+                            }
+
+                            let video_time = first_stream_timestamp.decode_timestamp()
+                                + re_viewer_context::video_timestamp_component_to_video_time(
+                                    Some(ctx.viewer_ctx().time_ctrl),
+                                    *video_timestamp,
+                                    video_description.timescale,
+                                );
+                            let storage_engine = ctx.recording().storage_engine();
+                            let frame_output = video.video_renderer.frame_at(
+                                ctx.render_ctx(),
+                                player_stream_id,
+                                video_time,
+                                &VideoStoreSource {
+                                    store: storage_engine.store(),
+                                    sample_component,
+                                    indicate: true,
+                                },
+                            );
+                            let bit_depth = video_description
+                                .encoding_details
+                                .as_ref()
+                                .and_then(|details| details.bit_depth);
+                            Ok((frame_output, bit_depth))
+                        }
+                    }
                 }
-            },
-        }
+            }
+        };
+        let (frame_output, bit_depth) = match frame {
+            Ok(frame) => frame,
+            Err(issue) => {
+                show_video_frame(
+                    ctx.view_ctx,
+                    data,
+                    entity_path,
+                    world_from_entity,
+                    spatial_ctx.highlight,
+                    video_resolution,
+                    spatial_ctx.visualizer_instruction,
+                    None,
+                    Some(issue),
+                    None,
+                    None,
+                );
+                return;
+            }
+        };
+
+        #[expect(clippy::disallowed_methods)] // This is not a hard-coded color.
+        let multiplicative_tint = re_renderer::Rgba::from_white_alpha(opacity.0.clamp(0.0, 1.0));
+
+        show_video_frame(
+            ctx.view_ctx,
+            data,
+            entity_path,
+            world_from_entity,
+            spatial_ctx.highlight,
+            video_resolution,
+            spatial_ctx.visualizer_instruction,
+            frame_output.output.map(|texture| VideoFrameRenderInfo {
+                texture,
+                depth_offset: spatial_ctx.depth_offset,
+                multiplicative_tint,
+            }),
+            frame_output.error.map(VideoPlaybackIssue::from),
+            None,
+            bit_depth,
+        );
     }
 }
 
@@ -294,4 +333,34 @@ fn latest_at_query_video_from_datastore(
         )
     });
     Some((video, blob))
+}
+
+/// Queries a video stream from the datastore and caches it in the video stream cache.
+///
+/// Returns `None` if there was no video stream at the referenced path.
+/// Returns `Some(Err(_))` if there was a video stream but it failed to load.
+fn latest_at_query_video_stream_from_datastore(
+    ctx: &ViewerContext<'_>,
+    entity_path: &EntityPath,
+    query: &re_chunk_store::LatestAtQuery,
+) -> Option<Result<SharablePlayableVideoStream, VideoStreamProcessingError>> {
+    let timeline = query.timeline()?;
+    let codec_component = VideoStream::descriptor_codec().component;
+    let results = ctx.recording_engine().cache().latest_at(
+        ChunkTrackingMode::Report,
+        query,
+        entity_path,
+        [codec_component],
+    );
+    results.component_row_id(codec_component)?;
+
+    Some(ctx.store_context.memoizer(|cache: &mut VideoStreamCache| {
+        cache.video_entry(
+            ctx.recording(),
+            entity_path,
+            timeline,
+            ctx.app_options().video_decoder_settings(),
+            ChunkTrackingMode::Report,
+        )
+    }))
 }
