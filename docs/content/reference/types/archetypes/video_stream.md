@@ -11,8 +11,7 @@ To learn more about video support in Rerun, check the [video reference](https://
 
 All components except `sample` are typically logged statically once per entity.
 `sample` is then logged repeatedly for each frame on the timeline.
-
-TODO(#10422): [`archetypes.VideoFrameReference`](https://rerun.io/docs/reference/types/archetypes/video_frame_reference) does not yet work with [`archetypes.VideoStream`](https://rerun.io/docs/reference/types/archetypes/video_stream).
+Individual frames can be displayed with [`archetypes.VideoFrameReference`](https://rerun.io/docs/reference/types/archetypes/video_frame_reference), which uses the active Viewer timeline.
 
 ## Fields
 ### Required

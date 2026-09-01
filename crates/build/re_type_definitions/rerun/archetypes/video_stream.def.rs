@@ -8,8 +8,7 @@
 ///
 /// All components except `sample` are typically logged statically once per entity.
 /// `sample` is then logged repeatedly for each frame on the timeline.
-///
-/// TODO(#10422): [`rerun::archetypes::VideoFrameReference`] does not yet work with [`rerun::archetypes::VideoStream`].
+/// Individual frames can be displayed with [`rerun::archetypes::VideoFrameReference`], which uses the active Viewer timeline.
 ///
 /// \example archetypes/video_stream_synthetic missing="cpp,rs" title="Live streaming of on-the-fly encoded video" image="https://static.rerun.io/video_stream_synthetic/4dd34da01980afa5604994fa4cce34d7573b0763/1200w.png"
 #[rerun::rerun_type]

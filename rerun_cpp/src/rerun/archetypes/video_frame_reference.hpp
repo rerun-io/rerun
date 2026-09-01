@@ -20,12 +20,11 @@
 namespace rerun::archetypes {
     /// **Archetype**: References a single video frame.
     ///
-    /// Used to display individual video frames from a `archetypes::AssetVideo`.
+    /// Used to display individual video frames from an `archetypes::AssetVideo` or `archetypes::VideoStream`.
     /// To show an entire video, a video frame reference for each frame of the video should be logged.
+    /// References to a `archetypes::VideoStream` use the active Viewer timeline.
     ///
     /// See <https://rerun.io/docs/reference/video> for details of what is and isn't supported.
-    ///
-    /// TODO(#10422): `archetypes::VideoFrameReference` does not yet work with `archetypes::VideoStream`.
     ///
     /// ## Examples
     ///
@@ -138,7 +137,7 @@ namespace rerun::archetypes {
         /// (bidirectionally predicted frames) there may be an offset on the first presentation timestamp in the video.
         std::optional<ComponentBatch> timestamp;
 
-        /// Optional reference to an entity with a `archetypes::AssetVideo`.
+        /// Optional reference to an entity with an `archetypes::AssetVideo` or `archetypes::VideoStream`.
         ///
         /// If none is specified, the video is assumed to be at the same entity.
         /// Note that blueprint overrides on the referenced video will be ignored regardless,
@@ -230,7 +229,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// Optional reference to an entity with a `archetypes::AssetVideo`.
+        /// Optional reference to an entity with an `archetypes::AssetVideo` or `archetypes::VideoStream`.
         ///
         /// If none is specified, the video is assumed to be at the same entity.
         /// Note that blueprint overrides on the referenced video will be ignored regardless,
