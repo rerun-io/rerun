@@ -112,14 +112,6 @@ In cases where encoding time matters, we recommend H.264/avc.
 
 AV1 is supported out of the box using a software decoder paired with gpu based image conversion.
 
-Current limitations:
-* [#7755](https://github.com/rerun-io/rerun/issues/7755): AV1 is supported on all native builds exception on Linux ARM.
-
-<!--
-Discoverable for scripts/zombie_todos.py:
-TODO(#7755): fix above if ticket is outdated.
--->
-
 #### H.264/avc, H.265/hevc, VP8 & VP9
 
 H.264/avc, H.265/hevc, VP8, and VP9 are supported via a separately installed `FFmpeg` binary, requiring a minimum version of `5.1`.
