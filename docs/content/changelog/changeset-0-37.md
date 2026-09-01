@@ -120,7 +120,7 @@ When both the relative and absolute excess cross a threshold, the output warns a
 
 The analysis requires a chunk index; run `rerun rrd migrate` first on files written before those existed.
 
-[Docs here.](../howto/logging-and-ingestion/optimize-chunks)
+[Docs here.](../howto/logging-and-ingestion/optimize-chunks.md)
 
 ### Keyframe markers are kept out of the video chunks
 
