@@ -5,7 +5,6 @@ mod definitions;
 pub mod scalar_parser;
 pub mod sensor_msgs;
 pub mod std_msgs;
-pub mod tf2_msgs;
 
 pub(crate) mod util;
 

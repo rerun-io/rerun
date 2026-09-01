@@ -11,6 +11,7 @@ mod occupancy_grid;
 mod pose_stamped;
 mod ros_map_helpers;
 mod string;
+mod tf_message;
 mod voxel_grid;
 
 pub use camera_info::camera_info;
@@ -19,6 +20,7 @@ pub use magnetic_field::magnetic_field;
 pub use occupancy_grid::occupancy_grid;
 pub use pose_stamped::pose_stamped;
 pub use string::string;
+pub use tf_message::tf_message;
 pub use voxel_grid::voxel_grid;
 
 /// Builds all ROS 2 message lenses.
@@ -30,6 +32,7 @@ pub fn all() -> Result<Vec<Lens>, LensBuilderError> {
         occupancy_grid()?,
         pose_stamped()?,
         string()?,
+        tf_message()?,
         voxel_grid()?,
     ])
 }

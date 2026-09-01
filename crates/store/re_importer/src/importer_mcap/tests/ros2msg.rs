@@ -14,5 +14,6 @@ fn test_ros2msg_import() {
         .add("ros_occupancy_grid.mcap", "/map")
         .add("ros_pose_stamped.mcap", "/pose_stamped")
         .add("ros_string.mcap", "/chatter")
+        .add("ros_tfmessage.mcap", "/tf_static")
         .run();
 }

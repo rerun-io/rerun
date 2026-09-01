@@ -12,7 +12,6 @@ use crate::parsers::ros2msg::sensor_msgs::{
 use crate::parsers::ros2msg::std_msgs::{
     Float64ArrayMessageParser, Float64MultiArrayMessageParser,
 };
-use crate::parsers::ros2msg::tf2_msgs::tf_message::TfMessageParser;
 
 type ParserFactory = fn(usize) -> Box<dyn MessageParser>;
 
@@ -50,8 +49,6 @@ impl McapRos2Decoder {
             // std_msgs
             .register_parser::<Float64ArrayMessageParser>("std_msgs/msg/Float64Array")
             .register_parser::<Float64MultiArrayMessageParser>("std_msgs/msg/Float64MultiArray")
-            // tf2_msgs
-            .register_parser::<TfMessageParser>("tf2_msgs/msg/TFMessage")
     }
 
     /// Registers a new message parser for the given schema name
