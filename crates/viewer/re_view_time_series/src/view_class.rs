@@ -857,7 +857,7 @@ impl ViewClass for TimeSeriesView {
                 &response,
                 query.view_id.render_view_id(),
                 re_renderer_draw_data,
-            );
+            )?;
 
             // Render the configured tooltip and use its closest series for interaction.
             let hovered_data_result = (!legend_hovered)
@@ -2047,9 +2047,9 @@ fn render_re_renderer_draw_data(
     response: &egui::Response,
     view_id: re_renderer::ViewBuilderId,
     draw_data: Vec<re_renderer::QueueableDrawData>,
-) {
+) -> Result<(), re_renderer::view_builder::ViewBuilderError> {
     if draw_data.is_empty() {
-        return;
+        return Ok(());
     }
 
     let render_ctx = ctx.render_ctx();
@@ -2063,7 +2063,7 @@ fn render_re_renderer_draw_data(
         re_viewer_context::gpu_bridge::viewport_resolution_in_pixels(plot_rect, pixels_per_point);
 
     if resolution_in_pixel[0] == 0 || resolution_in_pixel[1] == 0 {
-        return;
+        return Ok(());
     }
 
     let height = plot_rect.height();
@@ -2090,13 +2090,10 @@ fn render_re_renderer_draw_data(
         ..Default::default()
     };
 
-    let Ok(mut view_builder) = re_renderer::ViewBuilder::new(render_ctx, target_config, view_id)
-    else {
-        return;
-    };
+    let mut view_builder = re_renderer::ViewBuilder::new(render_ctx, target_config, view_id)?;
 
     for dd in draw_data {
-        view_builder.queue_draw(render_ctx, dd);
+        view_builder.queue_draw(render_ctx, dd)?;
     }
 
     let painter = ui.painter_at(plot_rect);
@@ -2105,6 +2102,8 @@ fn render_re_renderer_draw_data(
         plot_rect,
         re_renderer::Rgba::TRANSPARENT,
     ));
+
+    Ok(())
 }
 
 #[cfg(test)]

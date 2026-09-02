@@ -200,10 +200,10 @@ impl DrawData for GaussianSplatDrawData {
     ) {
         // TODO(#1611): gaussians don't sort against other primitives yet.
 
-        let lookup_bind_group_layout = collector
-            .render_ctx()
-            .renderer::<GaussianSplatRenderer>()
-            .bind_group_layout_lookup;
+        let Ok(renderer) = collector.render_ctx().renderer::<GaussianSplatRenderer>() else {
+            return;
+        };
+        let lookup_bind_group_layout = renderer.bind_group_layout_lookup;
 
         for (batch_index, batch) in self.batches.iter().enumerate() {
             let lookup_bind_group = if let Some(sort) = &batch.sort {
@@ -325,6 +325,9 @@ impl Default for GaussianSplatBatchInfo {
 pub enum GaussianSplatDrawDataError {
     #[error("Failed to transfer data to the GPU: {0}")]
     FailedTransferringDataToGpu(#[from] crate::allocator::CpuWriteGpuReadError),
+
+    #[error(transparent)]
+    Renderer(#[from] crate::RendererRegistrationError),
 }
 
 impl GaussianSplatDrawData {
@@ -345,7 +348,7 @@ impl GaussianSplatDrawData {
             batches,
         } = builder;
 
-        let renderer = ctx.renderer::<GaussianSplatRenderer>();
+        let renderer = ctx.renderer::<GaussianSplatRenderer>()?;
         let batches = batches.as_slice();
 
         if position_scale_x_buffer.is_empty() {
@@ -938,7 +941,9 @@ mod tests {
                 0,
                 &[instance_id],
             );
-        view_builder.queue_draw(&ctx, builder.into_draw_data().expect("draw data"));
+        view_builder
+            .queue_draw(&ctx, builder.into_draw_data().unwrap())
+            .unwrap();
 
         let command_buffer = view_builder.draw(&ctx, Rgba::BLACK).expect("draw");
         ctx.before_submit();

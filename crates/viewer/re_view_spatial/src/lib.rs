@@ -31,8 +31,8 @@ use re_sdk_types::blueprint::archetypes::Background;
 use re_sdk_types::blueprint::components::BackgroundKind;
 use re_sdk_types::components::Color;
 // ---
-use re_viewer_context::ViewContext;
-use re_viewport_blueprint::{ViewProperty, ViewPropertyQueryError};
+use re_viewer_context::{ViewContext, ViewSystemExecutionError};
+use re_viewport_blueprint::ViewProperty;
 pub use ui::SpatialViewState;
 pub use view_2d::SpatialView2D;
 pub use view_3d::SpatialView3D;
@@ -51,7 +51,7 @@ pub enum SpaceKind {
 pub fn configure_background(
     ctx: &ViewContext<'_>,
     background: &ViewProperty,
-) -> Result<(Option<re_renderer::QueueableDrawData>, re_renderer::Rgba), ViewPropertyQueryError> {
+) -> Result<(Option<re_renderer::QueueableDrawData>, re_renderer::Rgba), ViewSystemExecutionError> {
     use re_renderer::renderer;
 
     let kind: BackgroundKind =
@@ -63,7 +63,7 @@ pub fn configure_background(
                 renderer::GenericSkyboxDrawData::new(
                     ctx.render_ctx(),
                     renderer::GenericSkyboxType::GradientDark,
-                )
+                )?
                 .into(),
             ),
             re_renderer::Rgba::TRANSPARENT, // All zero is slightly faster to clear usually.
@@ -74,7 +74,7 @@ pub fn configure_background(
                 renderer::GenericSkyboxDrawData::new(
                     ctx.render_ctx(),
                     renderer::GenericSkyboxType::GradientBright,
-                )
+                )?
                 .into(),
             ),
             re_renderer::Rgba::TRANSPARENT, // All zero is slightly faster to clear usually.

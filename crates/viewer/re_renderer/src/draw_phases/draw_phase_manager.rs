@@ -3,10 +3,10 @@ use enumset::EnumSet;
 use re_log::{debug_assert, debug_panic};
 
 use super::DrawPhase;
-use crate::context::Renderers;
 use crate::renderer::{
     DrawDataDrawable, DrawDataDrawablePayload, DrawInstruction, DrawableCollectionViewInfo,
 };
+use crate::renderers::Renderers;
 use crate::{GpuRenderPipelinePoolAccessor, QueueableDrawData, RenderContext, RendererTypeId};
 
 /// Draw data id within the [`DrawPhaseManager`].
@@ -26,7 +26,7 @@ type DrawDataIndex = u32;
 /// expressed in the [`RendererTypeId`] such that 8 bit are no longer sufficient.
 ///
 /// The packed [`RendererTypeId`] is session-local (assigned on registration); for deterministic
-/// cross-session sort order, remap it via [`crate::context::Renderers::name_sort_remap`].
+/// cross-session sort order, remap it via [`crate::renderers::Renderers::name_sort_remap`].
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 struct PackedRenderingKeyAndDrawDataIndex(u32);
 
@@ -100,7 +100,7 @@ impl Drawable {
     /// Sort key for this drawable under the given name-sort remap.
     ///
     /// `name_sort_remap[key]` is the name-sorted rank of each registration-order
-    /// [`RendererTypeId`] — see [`crate::context::Renderers::name_sort_remap`].
+    /// [`RendererTypeId`] — see [`crate::renderers::Renderers::name_sort_remap`].
     #[inline]
     fn renderer_sort_key(&self, name_sort_remap: &[u8; 256]) -> u8 {
         name_sort_remap[self.renderer_key().bits() as usize]
@@ -175,11 +175,11 @@ impl DrawPhaseManager {
         ctx: &RenderContext,
         draw_data: QueueableDrawData,
         view_info: &DrawableCollectionViewInfo,
-    ) {
+    ) -> Result<(), crate::RendererRegistrationError> {
         re_tracing::profile_function!();
 
         let draw_data_index = self.draw_data.len() as _;
-        let renderer_key = draw_data.renderer_key(ctx);
+        let renderer_key = draw_data.renderer_key(ctx)?;
 
         {
             let mut collector = DrawableCollector::new(ctx, self, draw_data_index, renderer_key);
@@ -188,6 +188,7 @@ impl DrawPhaseManager {
         }
 
         self.draw_data.push(draw_data);
+        Ok(())
     }
 
     /// Sorts all drawables for all active phases.
@@ -249,7 +250,7 @@ impl DrawPhaseManager {
                     }),
             );
 
-            let Some(renderer) = renderers.get_by_key(renderer_key) else {
+            let Some((renderer_name, renderer)) = renderers.get_by_key(renderer_key) else {
                 debug_panic!(
                     "Previously acquired renderer not found by key. Since renderers are never deleted this should be impossible."
                 );
@@ -260,7 +261,7 @@ impl DrawPhaseManager {
                 renderer.run_draw_instructions(gpu_resources, phase, pass, &draw_instructions);
 
             if let Err(err) = draw_result {
-                re_log::error!("Error drawing with {}: {err}", renderer.name());
+                re_log::error!("Error drawing with {renderer_name}: {err}");
             }
         }
     }

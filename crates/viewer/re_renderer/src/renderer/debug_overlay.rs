@@ -49,6 +49,9 @@ pub struct DebugOverlayRenderer {
 pub enum DebugOverlayError {
     #[error("Can't display texture with format: {0:?}")]
     UnsupportedTextureFormat(wgpu::TextureFormat),
+
+    #[error(transparent)]
+    Renderer(#[from] crate::RendererRegistrationError),
 }
 
 /// Debug overlay for quick & dirty display of texture contents.
@@ -88,7 +91,7 @@ impl DebugOverlayDrawData {
         screen_resolution: glam::UVec2,
         overlay_rect: RectInt,
     ) -> Result<Self, DebugOverlayError> {
-        let debug_overlay = ctx.renderer::<DebugOverlayRenderer>();
+        let debug_overlay = ctx.renderer::<DebugOverlayRenderer>()?;
 
         let mode = match debug_texture
             .texture

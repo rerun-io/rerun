@@ -168,6 +168,9 @@ pub enum MeshError {
 
     #[error(transparent)]
     CpuWriteGpuReadError(#[from] crate::allocator::CpuWriteGpuReadError),
+
+    #[error(transparent)]
+    Renderer(#[from] crate::RendererRegistrationError),
 }
 
 const _: () = assert!(
@@ -365,7 +368,7 @@ impl GpuMesh {
             let mut materials = SmallVec::with_capacity(data.materials.len());
 
             // The bind group layout must be in sync with the mesh renderer.
-            let mesh_bind_group_layout = ctx.renderer::<MeshRenderer>().bind_group_layout;
+            let mesh_bind_group_layout = ctx.renderer::<MeshRenderer>()?.bind_group_layout;
 
             for (material, uniform_buffer_binding) in
                 std::iter::zip(&data.materials, uniform_buffer_bindings)

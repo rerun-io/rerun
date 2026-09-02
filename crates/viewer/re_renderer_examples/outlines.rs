@@ -124,12 +124,12 @@ impl framework::Example for Outlines {
 
         view_builder.queue_draw(
             re_ctx,
-            re_renderer::renderer::GenericSkyboxDrawData::new(re_ctx, Default::default()),
-        );
+            re_renderer::renderer::GenericSkyboxDrawData::new(re_ctx, Default::default())?,
+        )?;
         view_builder.queue_draw(
             re_ctx,
             re_renderer::renderer::MeshDrawData::new(re_ctx, &instances)?,
-        );
+        )?;
 
         let command_buffer = view_builder.draw(re_ctx, re_renderer::Rgba::TRANSPARENT)?;
 

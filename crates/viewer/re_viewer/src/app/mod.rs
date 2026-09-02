@@ -87,6 +87,7 @@ pub struct App {
     start_time: web_time::Instant,
     ram_limit_warner: re_memory::RamLimitWarner,
     pub(crate) egui_ctx: egui::Context,
+    egui_renderer: Option<Arc<egui::epaint::mutex::RwLock<egui_wgpu::Renderer>>>,
     screenshotter: crate::screenshotter::Screenshotter,
     texture_readback: crate::texture_readback::TextureReadbacks,
 
@@ -223,6 +224,10 @@ impl App {
         re_tracing::profile_function!();
 
         let is_test = app_env.is_test();
+        let egui_renderer = creation_context
+            .wgpu_render_state
+            .as_ref()
+            .map(|render_state| render_state.renderer.clone());
 
         let connection_registry_was_provided = connection_registry.is_some();
         let connection_registry = connection_registry
@@ -484,6 +489,7 @@ impl App {
             start_time: web_time::Instant::now(),
             ram_limit_warner: re_memory::RamLimitWarner::warn_at_fraction_of_max(0.75),
             egui_ctx: creation_context.egui_ctx.clone(),
+            egui_renderer,
             screenshotter,
             texture_readback: Default::default(),
             pending_screenshot_notifiers: Default::default(),
@@ -558,6 +564,21 @@ impl App {
 
     pub fn connection_registry(&self) -> &ConnectionRegistryHandle {
         &self.connection_registry
+    }
+
+    /// Calls `callback` with the renderer context if WGPU rendering is available.
+    ///
+    /// The callback executes while the egui renderer lock is held, so it must not access the egui
+    /// renderer recursively.
+    pub fn with_render_ctx_mut<T>(
+        &self,
+        callback: impl FnOnce(&mut re_renderer::RenderContext) -> T,
+    ) -> Option<T> {
+        let mut egui_renderer = self.egui_renderer.as_ref()?.write();
+        let render_ctx = egui_renderer
+            .callback_resources
+            .get_mut::<re_renderer::RenderContext>()?;
+        Some(callback(render_ctx))
     }
 
     pub fn set_examples_manifest_url(&mut self, url: String) {

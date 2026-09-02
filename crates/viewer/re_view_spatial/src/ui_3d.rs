@@ -399,7 +399,7 @@ impl SpatialView3D {
         );
 
         for draw_data in system_output.drain_draw_data() {
-            view_builder.queue_draw(ctx.render_ctx(), draw_data);
+            view_builder.queue_draw(ctx.render_ctx(), draw_data)?;
         }
 
         let view_ctx = self.view_context(ctx, query.view_id, state, query.space_origin);
@@ -407,17 +407,17 @@ impl SpatialView3D {
         // Optional 3D line grid.
         let grid_config = ViewProperty::from_archetype::<LineGrid3D>(&view_ctx);
         if let Some(draw_data) = Self::setup_grid_3d(&view_ctx, &grid_config)? {
-            view_builder.queue_draw(ctx.render_ctx(), draw_data);
+            view_builder.queue_draw(ctx.render_ctx(), draw_data)?;
         }
 
         // Commit ui induced lines.
-        view_builder.queue_draw(ctx.render_ctx(), line_builder.into_draw_data()?);
+        view_builder.queue_draw(ctx.render_ctx(), line_builder.into_draw_data()?)?;
 
         let background = ViewProperty::from_archetype::<Background>(&view_ctx);
         let (background_drawable, clear_color) =
             crate::configure_background(&view_ctx, &background)?;
         if let Some(background_drawable) = background_drawable {
-            view_builder.queue_draw(ctx.render_ctx(), background_drawable);
+            view_builder.queue_draw(ctx.render_ctx(), background_drawable)?;
         }
 
         ui.painter().add(gpu_bridge::new_renderer_callback(
@@ -477,7 +477,7 @@ impl SpatialView3D {
                 spacing,
                 thickness_ui,
             },
-        )))
+        )?))
     }
 }
 

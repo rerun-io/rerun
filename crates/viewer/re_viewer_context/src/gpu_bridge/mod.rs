@@ -153,7 +153,7 @@ pub fn render_image(
     view_builder.queue_draw(
         render_ctx,
         re_renderer::renderer::RectangleDrawData::new(render_ctx, &[textured_rectangle])?,
-    );
+    )?;
 
     egui_painter.add(new_renderer_callback(
         view_builder,

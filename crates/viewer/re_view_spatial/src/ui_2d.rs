@@ -360,16 +360,16 @@ impl SpatialView2D {
         draw_bounding_boxes(ctx.tokens(), &mut line_builder, state);
 
         for draw_data in system_output.drain_draw_data() {
-            view_builder.queue_draw(ctx.render_ctx(), draw_data);
+            view_builder.queue_draw(ctx.render_ctx(), draw_data)?;
         }
-        view_builder.queue_draw(ctx.render_ctx(), line_builder.into_draw_data()?);
+        view_builder.queue_draw(ctx.render_ctx(), line_builder.into_draw_data()?)?;
 
         let view_ctx = self.view_context(ctx, query.view_id, state, query.space_origin);
         let background = ViewProperty::from_archetype::<Background>(&view_ctx);
         let (background_drawable, clear_color) =
             crate::configure_background(&view_ctx, &background)?;
         if let Some(background_drawable) = background_drawable {
-            view_builder.queue_draw(ctx.render_ctx(), background_drawable);
+            view_builder.queue_draw(ctx.render_ctx(), background_drawable)?;
         }
 
         // ------------------------------------------------------------------------

@@ -85,7 +85,6 @@ slotmap.workspace = true
 smallvec.workspace = true
 static_assertions.workspace = true
 thiserror.workspace = true
-type-map.workspace = true
 wgpu.workspace = true
 
 # optional

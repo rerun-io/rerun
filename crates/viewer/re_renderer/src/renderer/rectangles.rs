@@ -285,6 +285,9 @@ pub enum RectangleError {
 
     #[error("decode_srgb set to true, but the texture was already sRGB aware")]
     DoubleDecodingSrgbTexture,
+
+    #[error(transparent)]
+    Renderer(#[from] crate::RendererRegistrationError),
 }
 
 mod gpu_data {
@@ -502,7 +505,7 @@ impl RectangleDrawData {
     pub fn new(ctx: &RenderContext, rectangles: &[TexturedRect]) -> Result<Self, RectangleError> {
         re_tracing::profile_function!();
 
-        let rectangle_renderer = ctx.renderer::<RectangleRenderer>();
+        let rectangle_renderer = ctx.renderer::<RectangleRenderer>()?;
 
         if rectangles.is_empty() {
             return Ok(Self {

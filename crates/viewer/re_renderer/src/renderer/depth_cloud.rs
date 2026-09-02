@@ -245,6 +245,9 @@ impl DrawData for DepthCloudDrawData {
 pub enum DepthCloudDrawDataError {
     #[error("Texture format not supported: {0:?} - use float or integer textures instead.")]
     TextureFormatNotSupported(wgpu::TextureFormat),
+
+    #[error(transparent)]
+    Renderer(#[from] crate::RendererRegistrationError),
 }
 
 impl DepthCloudDrawData {
@@ -259,7 +262,7 @@ impl DepthCloudDrawData {
             radius_boost_in_ui_points_for_outlines,
         } = depth_clouds;
 
-        let renderer = ctx.renderer::<DepthCloudRenderer>();
+        let renderer = ctx.renderer::<DepthCloudRenderer>()?;
         let bg_layout = renderer.bind_group_layout;
 
         if depth_clouds.is_empty() {

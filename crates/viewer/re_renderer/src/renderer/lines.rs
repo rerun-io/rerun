@@ -366,6 +366,9 @@ pub enum LineDrawDataError {
 
     #[error(transparent)]
     DataTextureSourceWriteError(#[from] crate::allocator::DataTextureSourceWriteError),
+
+    #[error(transparent)]
+    Renderer(#[from] crate::RendererRegistrationError),
 }
 
 impl LineDrawData {
@@ -386,7 +389,7 @@ impl LineDrawData {
             alpha_blending,
         } = line_builder;
 
-        let line_renderer = ctx.renderer::<LineRenderer>();
+        let line_renderer = ctx.renderer::<LineRenderer>()?;
 
         if strips_buffer.is_empty() || vertices_buffer.is_empty() {
             return Ok(Self {
@@ -864,7 +867,8 @@ mod tests {
                     .unwrap();
 
             let empty = LineDrawableBuilder::new(ctx);
-            view.queue_draw(ctx, empty.into_draw_data().unwrap());
+            view.queue_draw(ctx, empty.into_draw_data().unwrap())
+                .unwrap();
 
             // This is the case that triggered
             // https://github.com/rerun-io/rerun/issues/8639
@@ -873,7 +877,8 @@ mod tests {
             empty_batch
                 .batch("empty batch")
                 .add_strip(std::iter::empty());
-            view.queue_draw(ctx, empty_batch.into_draw_data().unwrap());
+            view.queue_draw(ctx, empty_batch.into_draw_data().unwrap())
+                .unwrap();
 
             let mut empty_batch_between_non_empty = LineDrawableBuilder::new(ctx);
             empty_batch_between_non_empty
@@ -885,7 +890,8 @@ mod tests {
             empty_batch_between_non_empty
                 .batch("non-empty batch")
                 .add_strip([glam::Vec3::ZERO, glam::Vec3::ZERO].into_iter());
-            view.queue_draw(ctx, empty_batch_between_non_empty.into_draw_data().unwrap());
+            view.queue_draw(ctx, empty_batch_between_non_empty.into_draw_data().unwrap())
+                .unwrap();
 
             [view.draw(ctx, Rgba::BLACK).unwrap()]
         });

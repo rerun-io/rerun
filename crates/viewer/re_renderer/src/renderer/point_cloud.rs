@@ -191,10 +191,10 @@ impl DrawData for PointCloudDrawData {
         // TODO(#1611): point clouds don't sort against other primitives yet.
         // TODO(#1025, #4787): Better handling of 2D objects, use per-2D layer sorting instead of depth offsets.
 
-        let lookup_bind_group_layout = collector
-            .render_ctx()
-            .renderer::<PointCloudRenderer>()
-            .bind_group_layout_lookup;
+        let Ok(renderer) = collector.render_ctx().renderer::<PointCloudRenderer>() else {
+            return;
+        };
+        let lookup_bind_group_layout = renderer.bind_group_layout_lookup;
 
         for (batch_index, batch) in self.batches.iter().enumerate() {
             // TODO(andreas, emilk): Sort points on the GPU immediately before drawing instead of creating
@@ -321,6 +321,9 @@ impl Default for PointCloudBatchInfo {
 pub enum PointCloudDrawDataError {
     #[error("Failed to transfer data to the GPU: {0}")]
     FailedTransferringDataToGpu(#[from] crate::allocator::CpuWriteGpuReadError),
+
+    #[error(transparent)]
+    Renderer(#[from] crate::RendererRegistrationError),
 }
 
 impl PointCloudDrawData {
@@ -342,7 +345,7 @@ impl PointCloudDrawData {
             radius_boost_in_ui_points_for_outlines,
         } = builder;
 
-        let point_renderer = ctx.renderer::<PointCloudRenderer>();
+        let point_renderer = ctx.renderer::<PointCloudRenderer>()?;
         let batches = batches.as_slice();
 
         if vertices_buffer.is_empty() {

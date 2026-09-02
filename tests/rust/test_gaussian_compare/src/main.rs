@@ -165,7 +165,7 @@ fn main() -> anyhow::Result<()> {
         &[],
     );
 
-    view_builder.queue_draw(&ctx, splat_builder.into_draw_data()?);
+    view_builder.queue_draw(&ctx, splat_builder.into_draw_data()?)?;
     view_builder.schedule_screenshot(&ctx, 42, ())?;
 
     let command_buffer = view_builder.draw(&ctx, Rgba::BLACK)?;

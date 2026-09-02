@@ -237,8 +237,8 @@ impl Multiview {
         }
 
         let command_buffer = view_builder
-            .queue_draw(re_ctx, skybox)
-            .queue_draw(re_ctx, draw_data)
+            .queue_draw(re_ctx, skybox)?
+            .queue_draw(re_ctx, draw_data)?
             .draw(re_ctx, Rgba::TRANSPARENT)?;
 
         Ok((view_builder, command_buffer))
@@ -322,7 +322,7 @@ impl Example for Multiview {
         let view_from_world = IsoTransform::look_at_rh(self.camera_position, Vec3::ZERO, Vec3::Y)
             .ok_or_else(|| anyhow::format_err!("invalid camera"))?;
         let triangle = TestTriangleDrawData::new(re_ctx);
-        let skybox = GenericSkyboxDrawData::new(re_ctx, Default::default());
+        let skybox = GenericSkyboxDrawData::new(re_ctx, Default::default())?;
         let lines = build_lines(re_ctx, secs_since_startup)?;
 
         let mut builder = PointCloudBuilder::new(re_ctx);

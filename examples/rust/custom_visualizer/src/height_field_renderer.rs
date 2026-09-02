@@ -133,9 +133,11 @@ impl re_renderer::renderer::DrawData for HeightFieldDrawData {
 }
 
 impl HeightFieldDrawData {
-    pub fn new(ctx: &re_renderer::RenderContext) -> Self {
-        let _ = ctx.renderer::<HeightFieldRenderer>();
-        Self { meshes: Vec::new() }
+    pub fn new(
+        ctx: &re_renderer::RenderContext,
+    ) -> Result<Self, re_renderer::RendererRegistrationError> {
+        ctx.renderer::<HeightFieldRenderer>()?;
+        Ok(Self { meshes: Vec::new() })
     }
 
     /// Adds a heightfield mesh to the draw data.
@@ -146,12 +148,12 @@ impl HeightFieldDrawData {
         ctx: &re_renderer::RenderContext,
         label: &str,
         config: &HeightFieldConfig<'_>,
-    ) {
+    ) -> Result<(), re_renderer::RendererRegistrationError> {
         if config.grid_cols < 2 || config.grid_rows < 2 {
-            return;
+            return Ok(());
         }
 
-        let renderer = ctx.renderer::<HeightFieldRenderer>();
+        let renderer = ctx.renderer::<HeightFieldRenderer>()?;
 
         // --- Uniform buffer (via re_renderer helper) ----------------------------
 
@@ -241,6 +243,8 @@ impl HeightFieldDrawData {
             num_indices,
             has_outline: config.outline_mask.is_some(),
         });
+
+        Ok(())
     }
 }
 

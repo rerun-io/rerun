@@ -560,16 +560,16 @@ impl framework::Example for PointCloudBench {
 
         view_builder.queue_draw(
             re_ctx,
-            GenericSkyboxDrawData::new(re_ctx, Default::default()),
-        );
+            GenericSkyboxDrawData::new(re_ctx, Default::default())?,
+        )?;
         if let Some(occluder_draw_data) = occluder_draw_data {
             // Use an opaque mesh occluder and queue it before the point cloud.
             // The opaque phase sorts by renderer first, and `MeshRenderer` currently sorts before
             // `PointCloudRenderer`, so this gets depth into the buffer before the points are drawn.
-            view_builder.queue_draw(re_ctx, occluder_draw_data);
+            view_builder.queue_draw(re_ctx, occluder_draw_data)?;
         }
         let command_buffer = view_builder
-            .queue_draw(re_ctx, draw_data)
+            .queue_draw(re_ctx, draw_data)?
             .draw(re_ctx, re_renderer::Rgba::TRANSPARENT)?;
 
         Ok(vec![framework::ViewDrawResult {

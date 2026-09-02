@@ -22,3 +22,7 @@ pub use texture_manager::{
     AlphaChannelUsage, GpuTexture2D, TextureManager2D, TextureManager2DError,
 };
 pub use yuv_converter::{YuvMatrixCoefficients, YuvPixelLayout, YuvRange};
+
+pub fn register_renderers(renderers: &mut crate::Renderers) {
+    renderers.register::<yuv_converter::YuvFormatConverter>();
+}

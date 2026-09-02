@@ -2,15 +2,14 @@ use std::fmt::Write as _;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use parking_lot::{MappedRwLockReadGuard, RwLock, RwLockReadGuard};
 use re_mutex::Mutex;
-use type_map::concurrent::TypeMap;
 
 use crate::allocator::{CpuWriteGpuReadBelt, GpuReadbackBelt};
 use crate::device_caps::DeviceCaps;
 use crate::error_handling::ErrorTracker;
 use crate::global_bindings::GlobalBindings;
-use crate::renderer::{Renderer, RendererExt};
+use crate::renderer::Renderer;
+use crate::renderers::{RendererRegistrationError, Renderers};
 use crate::resource_managers::TextureManager2D;
 use crate::wgpu_resources::WgpuResourcePools;
 use crate::{FileServer, RecommendedFileResolver};
@@ -104,7 +103,7 @@ pub struct RenderContext {
     /// [`Renderer`] are not allowed to use bind group 0 themselves!
     pub global_bindings: GlobalBindings,
 
-    renderers: RwLock<Renderers>,
+    renderers: Renderers,
     pub(crate) resolver: RecommendedFileResolver,
 
     pub texture_manager_2d: TextureManager2D,
@@ -132,126 +131,6 @@ pub struct RenderContext {
     top_level_error_tracker: Arc<ErrorTracker>,
 
     pub gpu_resources: WgpuResourcePools, // Last due to drop order.
-}
-
-/// Struct owning *all* [`Renderer`].
-/// [`Renderer`] are created lazily and stay around indefinitely.
-#[derive(Default)]
-pub struct Renderers {
-    renderers: TypeMap,
-    renderers_by_key: Vec<Arc<dyn RendererExt>>,
-}
-
-/// Unique identifier for a [`Renderer`] type.
-///
-/// We generally don't expect many different distinct types of renderers,
-/// therefore 255 should be more than enough.
-/// This limitation simplifies sorting of drawables a bit.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub struct RendererTypeId(u8);
-
-impl RendererTypeId {
-    #[inline]
-    pub const fn bits(&self) -> u8 {
-        self.0
-    }
-
-    #[inline]
-    pub const fn from_bits(bits: u8) -> Self {
-        Self(bits)
-    }
-}
-
-pub struct RendererWithKey<T: Renderer> {
-    renderer: Arc<T>,
-    key: RendererTypeId,
-}
-
-impl<T: Renderer> std::ops::Deref for RendererWithKey<T> {
-    type Target = T;
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        self.renderer.as_ref()
-    }
-}
-
-impl<T: Renderer> RendererWithKey<T> {
-    /// Returns the key of the renderer.
-    ///
-    /// The key is guaranteed to be unique and constant for the lifetime of the renderer.
-    /// It is kept as small as possible to aid with sorting drawables.
-    #[inline]
-    pub fn key(&self) -> RendererTypeId {
-        self.key
-    }
-}
-
-impl Renderers {
-    pub fn get_or_create<R: 'static + Renderer + Send + Sync>(
-        &mut self,
-        ctx: &RenderContext,
-    ) -> &RendererWithKey<R> {
-        self.renderers.entry().or_insert_with(|| {
-            re_tracing::profile_scope!("create_renderer", std::any::type_name::<R>());
-
-            let key = RendererTypeId(u8::try_from(self.renderers_by_key.len()).unwrap_or_else(
-                |_| {
-                    re_log::error!("Supporting at most {} distinct renderer types.", u8::MAX);
-                    u8::MAX
-                },
-            ));
-
-            let renderer = Arc::new(R::create_renderer(ctx));
-            self.renderers_by_key.push(renderer.clone());
-
-            RendererWithKey { renderer, key }
-        })
-    }
-
-    pub fn get<R: 'static + Renderer>(&self) -> Option<&RendererWithKey<R>> {
-        self.renderers.get::<RendererWithKey<R>>()
-    }
-
-    /// Gets a renderer by its key.
-    ///
-    /// For this to succeed, the renderer must have been initialized prior.
-    /// (there would be no key otherwise anyways!)
-    /// The returned type is the type erased [`RendererExt`] rather than a concrete renderer type.
-    pub(crate) fn get_by_key(&self, key: RendererTypeId) -> Option<&dyn RendererExt> {
-        self.renderers_by_key
-            .get(key.0 as usize)
-            .map(|r| r.as_ref())
-    }
-
-    /// Returns a remap table where `remap[key.bits()]` is the `u8` sort key for that renderer.
-    ///
-    /// The sort key is the rank of each renderer's Rust type name ([`RendererExt::name`])
-    /// among all currently registered renderers, compared lexicographically. Because type
-    /// names are stable within a build, the relative ordering of any two renderers is too —
-    /// regardless of which was registered first in this session. This is what makes draw
-    /// order deterministic across sessions.
-    ///
-    /// Intended for use at sort time on packed `u8` [`RendererTypeId`] values.
-    pub(crate) fn name_sort_remap(&self) -> [u8; 256] {
-        // Unused slots remain 0; they won't appear in any drawable.
-        let mut remap = [0u8; 256];
-
-        // Sort (name, key) pairs by renderer type name.
-        let mut pairs: smallvec::SmallVec<[(&'static str, u8); 16]> = self
-            .renderers_by_key
-            .iter()
-            .enumerate()
-            .map(|(key, r)| (r.name(), key as u8))
-            .collect();
-        pairs.sort_by_key(|&(name, _)| name);
-
-        for (rank, (_name, key)) in pairs.into_iter().enumerate() {
-            remap[key as usize] = rank as u8;
-        }
-
-        remap
-    }
 }
 
 impl RenderContext {
@@ -360,6 +239,10 @@ impl RenderContext {
             Self::GPU_READBACK_BELT_DEFAULT_CHUNK_SIZE,
         ));
 
+        let mut renderers = Renderers::default();
+        crate::renderer::register_renderers(&mut renderers);
+        crate::resource_managers::register_renderers(&mut renderers);
+
         Ok(Self {
             device,
             queue,
@@ -368,7 +251,7 @@ impl RenderContext {
             config,
             output_format_color,
             global_bindings,
-            renderers: RwLock::new(Renderers::default()),
+            renderers,
             resolver,
             top_level_error_tracker,
             texture_manager_2d,
@@ -541,30 +424,21 @@ This means, either a call to RenderContext::before_submit was omitted, or the pr
         }
     }
 
-    /// Gets a renderer with the specified type, initializing it if necessary.
-    pub fn renderer<R: 'static + Renderer + Send + Sync>(
+    /// Convenience method to get a registered renderer, initializing it on first access.
+    pub fn renderer<R: Renderer + Send + Sync + 'static>(
         &self,
-    ) -> MappedRwLockReadGuard<'_, RendererWithKey<R>> {
-        // Most likely we already have the renderer. Take a read lock and return it.
-        if let Ok(renderer) =
-            parking_lot::RwLockReadGuard::try_map(self.renderers.read(), |r| r.get::<R>())
-        {
-            return renderer;
-        }
-
-        // If it wasn't there we have to add it.
-        // This path is rare since it happens only once per renderer type in the lifetime of the ctx.
-        // (we don't discard renderers ever)
-        self.renderers.write().get_or_create::<R>(self);
-
-        // Release write lock again and only take a read lock.
-        // safe to unwrap since we just created it and nobody removes elements from the renderer.
-        parking_lot::RwLockReadGuard::map(self.renderers.read(), |r| r.get::<R>().unwrap())
+    ) -> Result<&R, RendererRegistrationError> {
+        self.renderers.get::<R>(self)
     }
 
-    /// Read access to renderers.
-    pub(crate) fn read_lock_renderers(&self) -> RwLockReadGuard<'_, Renderers> {
-        self.renderers.read()
+    /// Returns the renderer registry.
+    pub fn renderers(&self) -> &Renderers {
+        &self.renderers
+    }
+
+    /// Returns mutable access to the renderer registry for registering renderer types.
+    pub fn renderers_mut(&mut self) -> &mut Renderers {
+        &mut self.renderers
     }
 
     /// Returns the device's capabilities.

@@ -203,7 +203,7 @@ impl GeoPointsOutput {
             point_batch.add_points_2d(&positions, &radii, &batch.colors, &batch.instance_id);
         }
 
-        view_builder.queue_draw(render_ctx, points.into_draw_data()?);
+        view_builder.queue_draw(render_ctx, points.into_draw_data()?)?;
 
         Ok(())
     }

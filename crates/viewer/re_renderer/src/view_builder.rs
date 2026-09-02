@@ -18,6 +18,9 @@ pub enum ViewBuilderError {
 
     #[error(transparent)]
     InvalidDebugOverlay(#[from] crate::renderer::DebugOverlayError),
+
+    #[error(transparent)]
+    Renderer(#[from] crate::RendererRegistrationError),
 }
 
 /// The highest level rendering block in `re_renderer`.
@@ -696,11 +699,11 @@ impl ViewBuilder {
                     .map(|p| p.final_voronoi_texture()),
                 config.outline_config.as_ref(),
                 config.blend_with_background,
-            ),
-        );
+            )?,
+        )?;
 
         for debug_overlay in debug_overlays {
-            view_builder.queue_draw(ctx, debug_overlay);
+            view_builder.queue_draw(ctx, debug_overlay)?;
         }
 
         Ok(view_builder)
@@ -715,14 +718,14 @@ impl ViewBuilder {
         &mut self,
         ctx: &RenderContext,
         draw_data: impl Into<QueueableDrawData>,
-    ) -> &mut Self {
+    ) -> Result<&mut Self, crate::RendererRegistrationError> {
         let view_info = DrawableCollectionViewInfo {
             view_id: self.setup.view_id,
             camera_world_position: self.setup.camera_position,
         };
         self.draw_phase_manager
-            .add_draw_data(ctx, draw_data.into(), &view_info);
-        self
+            .add_draw_data(ctx, draw_data.into(), &view_info)?;
+        Ok(self)
     }
 
     /// Draws the frame as instructed to a temporary HDR target.
@@ -733,26 +736,12 @@ impl ViewBuilder {
     ) -> Result<wgpu::CommandBuffer, PoolError> {
         re_tracing::profile_function!();
 
-        // Renderers and render pipelines are locked for the entirety of this method:
-        // This means it's *not* possible to add renderers or pipelines while drawing is in progress!
-        // Renderers can't be added anyways at this point (RendererData add their Renderer on creation),
-        // so no point in taking the lock repeatedly.
-        //
-        // This used to be due to the lifetime association render passes had all passed in resources,
-        // this restriction has been lifted by now in wgpu.
-        // However, having our locking concentrated for the duration of a view draw
-        // is also beneficial since it enforces the model of prepare->draw which avoids a lot of repeated
-        // locking and unlocking.
-        //
-        // TODO(andreas): No longer having those lifetime issues with wgpu may still save us some locking though?
-
-        let renderers = ctx.read_lock_renderers();
         let pipelines = ctx.gpu_resources.render_pipelines.resources();
 
         let setup = &self.setup;
 
         // Prepare the drawables for drawing!
-        self.draw_phase_manager.sort_drawables(&renderers);
+        self.draw_phase_manager.sort_drawables(ctx.renderers());
 
         let mut encoder = ctx
             .device
@@ -810,7 +799,7 @@ impl ViewBuilder {
                 DrawPhase::Transparent,
             ] {
                 self.draw_phase_manager
-                    .draw(&renderers, &pipelines, phase, &mut pass);
+                    .draw(ctx.renderers(), &pipelines, phase, &mut pass);
             }
         }
 
@@ -829,7 +818,7 @@ impl ViewBuilder {
                 //
                 //pass.set_bind_group(0, &setup.bind_group_0, &[]);
                 self.draw_phase_manager.draw(
-                    &renderers,
+                    ctx.renderers(),
                     &pipelines,
                     DrawPhase::PickingLayer,
                     &mut pass,
@@ -853,13 +842,13 @@ impl ViewBuilder {
                 let mut pass = outline_mask_processor.start_mask_render_pass(&mut encoder);
                 pass.set_bind_group(0, &setup.bind_group_0, &[]);
                 self.draw_phase_manager.draw(
-                    &renderers,
+                    ctx.renderers(),
                     &pipelines,
                     DrawPhase::OutlineMask,
                     &mut pass,
                 );
                 self.draw_phase_manager.draw(
-                    &renderers,
+                    ctx.renderers(),
                     &pipelines,
                     DrawPhase::OutlineMaskNoDepth,
                     &mut pass,
@@ -873,7 +862,7 @@ impl ViewBuilder {
                 let mut pass = screenshot_processor.begin_render_pass(&setup.name, &mut encoder);
                 pass.set_bind_group(0, &setup.bind_group_0, &[]);
                 self.draw_phase_manager.draw(
-                    &renderers,
+                    ctx.renderers(),
                     &pipelines,
                     DrawPhase::CompositingScreenshot,
                     &mut pass,
@@ -943,7 +932,7 @@ impl ViewBuilder {
         pass.set_bind_group(0, &self.setup.bind_group_0, &[]);
 
         self.draw_phase_manager.draw(
-            &ctx.read_lock_renderers(),
+            ctx.renderers(),
             &ctx.gpu_resources.render_pipelines.resources(),
             DrawPhase::Compositing,
             pass,

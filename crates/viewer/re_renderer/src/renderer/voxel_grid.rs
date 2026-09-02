@@ -140,13 +140,22 @@ impl DrawData for VoxelGridDrawData {
     }
 }
 
+#[derive(thiserror::Error, Debug, PartialEq, Eq)]
+pub enum VoxelGridDrawDataError {
+    #[error(transparent)]
+    CpuWriteGpuRead(#[from] CpuWriteGpuReadError),
+
+    #[error(transparent)]
+    Renderer(#[from] crate::RendererRegistrationError),
+}
+
 impl VoxelGridDrawData {
     /// Creates compact GPU draw data for a sparse voxel grid.
     pub fn new(
         ctx: &RenderContext,
         instances: &[VoxelGridInstance],
         options: VoxelGridOptions,
-    ) -> Result<Self, CpuWriteGpuReadError> {
+    ) -> Result<Self, VoxelGridDrawDataError> {
         re_tracing::profile_function!();
 
         let VoxelGridOptions {
@@ -159,7 +168,7 @@ impl VoxelGridDrawData {
             depth_offset,
         } = options;
 
-        let renderer = ctx.renderer::<VoxelGridRenderer>();
+        let renderer = ctx.renderer::<VoxelGridRenderer>()?;
         let voxel_count = instances.len() as u32;
         let draw_phase = if instances.iter().any(|instance| instance.color.a() < 255) {
             DrawPhase::Transparent
@@ -482,14 +491,16 @@ mod tests {
         assert_eq!(draw_data.voxel_count(), 2);
 
         let mut draw_phase_manager = DrawPhaseManager::new(EnumSet::all());
-        draw_phase_manager.add_draw_data(
-            &ctx,
-            draw_data.into(),
-            &DrawableCollectionViewInfo {
-                view_id: crate::ViewBuilderId::new(0),
-                camera_world_position: glam::Vec3A::ZERO,
-            },
-        );
+        draw_phase_manager
+            .add_draw_data(
+                &ctx,
+                draw_data.into(),
+                &DrawableCollectionViewInfo {
+                    view_id: crate::ViewBuilderId::new(0),
+                    camera_world_position: glam::Vec3A::ZERO,
+                },
+            )
+            .unwrap();
 
         assert_eq!(
             draw_phase_manager
@@ -541,14 +552,16 @@ mod tests {
         assert_eq!(draw_data.voxel_count(), 1);
 
         let mut draw_phase_manager = DrawPhaseManager::new(EnumSet::all());
-        draw_phase_manager.add_draw_data(
-            &ctx,
-            draw_data.into(),
-            &DrawableCollectionViewInfo {
-                view_id: crate::ViewBuilderId::new(0),
-                camera_world_position: glam::Vec3A::ZERO,
-            },
-        );
+        draw_phase_manager
+            .add_draw_data(
+                &ctx,
+                draw_data.into(),
+                &DrawableCollectionViewInfo {
+                    view_id: crate::ViewBuilderId::new(0),
+                    camera_world_position: glam::Vec3A::ZERO,
+                },
+            )
+            .unwrap();
 
         assert!(
             draw_phase_manager
@@ -617,14 +630,16 @@ mod tests {
         .unwrap();
 
         let mut draw_phase_manager = DrawPhaseManager::new(EnumSet::all());
-        draw_phase_manager.add_draw_data(
-            &ctx,
-            draw_data.into(),
-            &DrawableCollectionViewInfo {
-                view_id: crate::ViewBuilderId::new(0),
-                camera_world_position: glam::Vec3A::ZERO,
-            },
-        );
+        draw_phase_manager
+            .add_draw_data(
+                &ctx,
+                draw_data.into(),
+                &DrawableCollectionViewInfo {
+                    view_id: crate::ViewBuilderId::new(0),
+                    camera_world_position: glam::Vec3A::ZERO,
+                },
+            )
+            .unwrap();
 
         // No overall mask, so the only outline drawables are the two per-instance ones.
         assert_eq!(

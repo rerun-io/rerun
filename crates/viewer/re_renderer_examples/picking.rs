@@ -168,7 +168,7 @@ impl framework::Example for Picking {
                     &point_set.picking_ids,
                 );
         }
-        view_builder.queue_draw(re_ctx, point_builder.into_draw_data()?);
+        view_builder.queue_draw(re_ctx, point_builder.into_draw_data()?)?;
 
         let instances = self
             .model_mesh_instances
@@ -189,12 +189,12 @@ impl framework::Example for Picking {
 
         view_builder.queue_draw(
             re_ctx,
-            re_renderer::renderer::GenericSkyboxDrawData::new(re_ctx, Default::default()),
-        );
+            re_renderer::renderer::GenericSkyboxDrawData::new(re_ctx, Default::default())?,
+        )?;
         view_builder.queue_draw(
             re_ctx,
             re_renderer::renderer::MeshDrawData::new(re_ctx, &instances)?,
-        );
+        )?;
 
         let command_buffer = view_builder.draw(re_ctx, re_renderer::Rgba::TRANSPARENT)?;
 

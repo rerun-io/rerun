@@ -916,7 +916,9 @@ mod tests {
         assert_eq!(draw_data.batches[1].draw_phase, DrawPhase::PickingLayer);
 
         let mut draw_phase_manager = DrawPhaseManager::new(EnumSet::all());
-        draw_phase_manager.add_draw_data(&ctx, draw_data.into(), &test_view_info());
+        draw_phase_manager
+            .add_draw_data(&ctx, draw_data.into(), &test_view_info())
+            .unwrap();
 
         let opaque_drawables = draw_phase_manager.drawables_for_phase(DrawPhase::Opaque);
         assert_eq!(opaque_drawables.len(), 1);
@@ -961,7 +963,9 @@ mod tests {
         assert_eq!(draw_data.batches[3].draw_phase, DrawPhase::PickingLayer);
 
         let mut draw_phase_manager = DrawPhaseManager::new(EnumSet::all());
-        draw_phase_manager.add_draw_data(&ctx, draw_data.into(), &test_view_info());
+        draw_phase_manager
+            .add_draw_data(&ctx, draw_data.into(), &test_view_info())
+            .unwrap();
 
         let opaque_drawables = draw_phase_manager.drawables_for_phase(DrawPhase::Opaque);
         assert_eq!(opaque_drawables.len(), 1);
@@ -1007,7 +1011,9 @@ mod tests {
         assert_eq!(draw_data.batches[2].draw_phase, DrawPhase::PickingLayer);
 
         let mut draw_phase_manager = DrawPhaseManager::new(EnumSet::all());
-        draw_phase_manager.add_draw_data(&ctx, draw_data.into(), &test_view_info());
+        draw_phase_manager
+            .add_draw_data(&ctx, draw_data.into(), &test_view_info())
+            .unwrap();
 
         let opaque_drawables = draw_phase_manager.drawables_for_phase(DrawPhase::Opaque);
         assert_eq!(opaque_drawables.len(), 1);
@@ -1047,7 +1053,9 @@ mod tests {
         assert_eq!(draw_data.batches[3].draw_phase, DrawPhase::PickingLayer);
 
         let mut draw_phase_manager = DrawPhaseManager::new(EnumSet::all());
-        draw_phase_manager.add_draw_data(&ctx, draw_data.into(), &test_view_info());
+        draw_phase_manager
+            .add_draw_data(&ctx, draw_data.into(), &test_view_info())
+            .unwrap();
 
         let opaque_drawables = draw_phase_manager.drawables_for_phase(DrawPhase::Opaque);
         assert_eq!(opaque_drawables.len(), 1);

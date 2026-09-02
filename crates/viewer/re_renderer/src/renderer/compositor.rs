@@ -74,8 +74,8 @@ impl CompositorDrawData {
         outline_final_voronoi: Option<&GpuTexture>,
         outline_config: Option<&OutlineConfig>,
         blend_with_background: BlendWithBackground,
-    ) -> Self {
-        let compositor = ctx.renderer::<Compositor>();
+    ) -> Result<Self, crate::RendererRegistrationError> {
+        let compositor = ctx.renderer::<Compositor>()?;
 
         let outline_config = outline_config.cloned().unwrap_or(OutlineConfig {
             outline_radius_pixel: 0.0,
@@ -101,7 +101,7 @@ impl CompositorDrawData {
             |t| t.handle,
         );
 
-        Self {
+        Ok(Self {
             bind_group: ctx.gpu_resources.bind_groups.alloc(
                 &ctx.device,
                 &ctx.gpu_resources,
@@ -116,7 +116,7 @@ impl CompositorDrawData {
                 },
             ),
             blend_with_background,
-        }
+        })
     }
 }
 

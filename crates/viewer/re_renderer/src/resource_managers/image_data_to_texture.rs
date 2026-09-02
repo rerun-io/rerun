@@ -66,6 +66,9 @@ pub enum ImageDataToTextureError {
     #[error(transparent)]
     CpuWriteGpuReadError(#[from] crate::allocator::CpuWriteGpuReadError),
 
+    #[error(transparent)]
+    Renderer(#[from] crate::RendererRegistrationError),
+
     #[error("Texture {label:?} has a format {format:?} that data can't be transferred to!")]
     UnsupportedFormatForTransfer {
         label: Label,
@@ -345,7 +348,7 @@ pub fn transfer_image_data_to_texture(
             coefficients,
             &data_texture,
             target_texture,
-        ),
+        )?,
     };
 
     // Once there's different gpu based conversions, we should probably trait-ify this so we can keep the basic steps.

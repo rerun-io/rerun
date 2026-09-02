@@ -68,8 +68,11 @@ impl DrawData for GenericSkyboxDrawData {
 }
 
 impl GenericSkyboxDrawData {
-    pub fn new(ctx: &RenderContext, typ: GenericSkyboxType) -> Self {
-        let skybox_renderer = ctx.renderer::<GenericSkybox>();
+    pub fn new(
+        ctx: &RenderContext,
+        typ: GenericSkyboxType,
+    ) -> Result<Self, crate::RendererRegistrationError> {
+        let skybox_renderer = ctx.renderer::<GenericSkybox>()?;
 
         let uniform_buffer = gpu_data::UniformBuffer {
             background_type: (typ as u32).into(),
@@ -89,7 +92,7 @@ impl GenericSkyboxDrawData {
             },
         );
 
-        Self { bind_group }
+        Ok(Self { bind_group })
     }
 }
 

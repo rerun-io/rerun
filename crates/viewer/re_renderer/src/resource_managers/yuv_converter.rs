@@ -384,9 +384,9 @@ impl YuvFormatConversionTask {
         yuv_matrix_coefficients: YuvMatrixCoefficients,
         input_data: &GpuTexture,
         target_texture: &GpuTexture,
-    ) -> Self {
+    ) -> Result<Self, crate::RendererRegistrationError> {
         let target_label = target_texture.creation_desc.label.clone();
-        let renderer = ctx.renderer::<YuvFormatConverter>();
+        let renderer = ctx.renderer::<YuvFormatConverter>()?;
 
         let uniform_buffer = create_and_fill_uniform_buffer(
             ctx,
@@ -417,10 +417,10 @@ impl YuvFormatConversionTask {
             },
         );
 
-        Self {
+        Ok(Self {
             bind_group,
             target_texture: target_texture.clone(),
-        }
+        })
     }
 
     /// Runs the conversion from the input texture data.
@@ -446,7 +446,7 @@ impl YuvFormatConversionTask {
                 ..Default::default()
             });
 
-        ctx.renderer::<YuvFormatConverter>().draw(
+        ctx.renderer::<YuvFormatConverter>()?.draw(
             &ctx.gpu_resources.render_pipelines.resources(),
             crate::draw_phases::DrawPhase::Opaque, // Don't care about the phase.
             &mut pass,
