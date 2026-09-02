@@ -11,25 +11,24 @@ fn main() {
         // symbol will remain close enough for the assembly's direct relocation and rejects the
         // link with an `R_AARCH64_ADR_PREL_PG_HI21`/"recompile with -fPIC" error.
         //
-        // An ELF linker version script can mark selected symbols as local to the shared object.
-        // Local `dav1d_*` symbols cannot be preempted, so the linker knows that the direct
-        // relocations are safe. Symbols not matched by this wildcard retain their normal
-        // visibility. This is intentionally narrower than `--exclude-libs,ALL`, which would hide
-        // symbols extracted from every static archive participating in the link.
+        // Hiding matching names with a linker version script is not sufficient here: GNU ld.bfd
+        // validates these relocations while it is still processing the input archive, before the
+        // output's dynamic symbol visibility from a version script can make the references safe.
+        // `--exclude-libs,ALL` instead marks symbols originating in static archives as hidden for
+        // the purpose of the static link itself. This guarantees that the rav1d globals bind to
+        // their definitions in this shared object, allowing the linker to resolve the direct
+        // relocations.
         //
-        // The script is generated in `OUT_DIR` because it is a build artifact. `-Wl,` tells the
-        // compiler's linker driver to pass `--version-script=…` to the ELF linker. The Cargo
-        // directive applies only when this package is linked as a `cdylib`; it is not embedded in
-        // the `re_viewer` rlib and does not propagate to downstream shared libraries.
-        let linker_script =
-            std::path::PathBuf::from(std::env::var_os("OUT_DIR").expect("OUT_DIR should be set"))
-                .join("hide-rav1d-symbols.map");
-        std::fs::write(&linker_script, "{\n    local:\n        dav1d_*;\n};\n")
-            .expect("failed to write rav1d linker version script");
-
-        println!(
-            "cargo::rustc-link-arg-cdylib=-Wl,--version-script={}",
-            linker_script.display()
-        );
+        // `ALL` applies to every static archive in this link because Cargo gives rlibs hashed file
+        // names, such as `libre_rav1d-<hash>.rlib`; GNU ld requires exact archive names and cannot
+        // select that archive with a crate-name wildcard. This does not hide symbols defined by
+        // the cdylib itself. Rust cdylibs also generally should not re-export implementation
+        // details pulled in from their statically linked dependencies.
+        //
+        // `-Wl,` tells the compiler's linker driver to pass the remaining comma-separated options
+        // to the ELF linker. The Cargo directive applies only when this package is linked as a
+        // `cdylib`; it is not embedded in the `re_viewer` rlib and does not propagate to downstream
+        // shared libraries.
+        println!("cargo::rustc-link-arg-cdylib=-Wl,--exclude-libs,ALL");
     }
 }
