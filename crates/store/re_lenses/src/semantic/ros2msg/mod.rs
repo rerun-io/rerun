@@ -5,6 +5,7 @@ use crate::{Lens, LensBuilderError};
 use super::IMAGE_PLANE_SUFFIX;
 
 mod camera_info;
+mod compressed_image;
 mod fluid_pressure;
 mod illuminance;
 mod image;
@@ -21,6 +22,7 @@ mod tf_message;
 mod voxel_grid;
 
 pub use camera_info::camera_info;
+pub use compressed_image::compressed_image;
 pub use fluid_pressure::fluid_pressure;
 pub use illuminance::illuminance;
 pub use image::image;
@@ -38,6 +40,7 @@ pub use voxel_grid::voxel_grid;
 pub fn all() -> Result<Vec<Lens>, LensBuilderError> {
     Ok(vec![
         camera_info()?,
+        compressed_image()?,
         fluid_pressure()?,
         illuminance()?,
         image()?,

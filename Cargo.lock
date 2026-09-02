@@ -9751,7 +9751,6 @@ dependencies = [
  "re_tracing",
  "regex-lite",
  "serde",
- "serde_bytes",
  "serde_json",
  "thiserror 2.0.19",
 ]

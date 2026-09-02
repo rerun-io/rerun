@@ -17,6 +17,17 @@ use crate::semantic::helpers::{get_blob_field_as_binary, get_field_as};
 
 const ENCODING_FIELD: &str = "encoding";
 
+pub(crate) fn extract_blob_data(source: &StructArray) -> Result<Option<ArrayRef>, Error> {
+    let data = source
+        .column_by_name("data")
+        .ok_or_else(|| Error::FieldNotFound {
+            field_name: "data".to_owned(),
+            available_fields: source.fields().iter().map(|f| f.name().clone()).collect(),
+        })?
+        .clone();
+    crate::op::binary_to_list_uint8()(&data)
+}
+
 /// The supported raw-image encodings shared by the ROS and Foxglove conversion paths.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, strum::EnumString, strum::VariantNames)]
 #[strum(serialize_all = "lowercase")]

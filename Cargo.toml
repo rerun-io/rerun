@@ -404,7 +404,6 @@ scuffle-bytes-util = "0.1.5"
 semver = "1.0"
 seq-macro = "0.3.6"
 serde = { version = "1.0", features = ["derive"] }
-serde_bytes = "0.11.19"
 serde_json = { version = "1.0", default-features = false, features = ["std"] }
 serde-wasm-bindgen = "0.6.5"
 sha2 = "0.10.9" # pinned by `jsonwebtoken` (RustCrypto family); see hmac note.

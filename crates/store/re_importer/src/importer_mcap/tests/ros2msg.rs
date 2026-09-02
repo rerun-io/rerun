@@ -10,6 +10,12 @@ fn test_ros2msg_import() {
         .add("ros_camera_info.mcap", "/camera/camera_info")
         .add("ros_fluid_pressure.mcap", "/env/pressure")
         .add("ros_illuminance.mcap", "/env/illuminance")
+        .add("ros_compressed_image.mcap", "/camera/compressed_image")
+        .add(
+            "ros_compressed_image.mcap",
+            "/camera/compressed_depth_image",
+        )
+        .add("ros_compressed_image.mcap", "/camera/h264")
         .add("ros_image.mcap", "/camera/image")
         .add("ros_image.mcap", "/camera/depth_image")
         .add("ros_log.mcap", "/rosout")

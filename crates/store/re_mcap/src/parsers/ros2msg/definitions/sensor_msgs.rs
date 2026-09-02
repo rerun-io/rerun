@@ -2,54 +2,10 @@
 //!
 //! Based on definitions taken from <https://github.com/ros2/common_interfaces/tree/rolling/sensor_msgs>
 
-use std::borrow::Cow;
-
 use serde::{Deserialize, Serialize};
 
 use super::geometry_msgs;
 use super::std_msgs::Header;
-
-/// This message contains a compressed image.
-///
-/// `format` encodes the compression scheme and pixel format, and must be interpreted
-/// according to the transport used (e.g., `compressed_image_transport`, `compressed_depth_image_transport`, etc.).
-///
-/// # Format rules
-///
-/// ### `compressed_image_transport`
-/// - Format: `ORIG_PIXFMT; CODEC [COMPRESSED_PIXFMT]`
-/// - `ORIG_PIXFMT`: e.g., `rgb8`, `mono8`, etc.
-/// - `CODEC`: `jpeg` or `png`
-/// - `COMPRESSED_PIXFMT` (for color images only):
-///     - JPEG: `bgr8`, `rgb8`
-///     - PNG: `bgr8`, `rgb8`, `bgr16`, `rgb16`
-///
-/// If the field is empty or doesn't match, assume a `bgr8` or `mono8` JPEG.
-///
-/// ### `compressed_depth_image_transport`
-///
-/// - Format: `ORIG_PIXFMT; compressedDepth CODEC`
-/// - `ORIG_PIXFMT`: typically `16UC1` or `32FC1`
-/// - `CODEC`: `png` or `rvl`
-///
-/// If the field is empty or doesn't match, assume a PNG image.
-///
-/// ### Other Transports
-///
-/// Users may define their own formats.
-#[derive(Debug, Serialize, Deserialize)]
-pub struct CompressedImage<'a> {
-    /// Metadata including timestamp and coordinate frame.
-    pub header: Header,
-
-    /// Format string indicating codec and pixel format. See format rules above.
-    pub format: String,
-
-    #[serde(with = "serde_bytes")]
-    #[serde(borrow)]
-    /// Byte buffer containing the compressed image.
-    pub data: Cow<'a, [u8]>,
-}
 
 /// This is a message to hold data from an IMU (Inertial Measurement Unit)
 ///

@@ -4,9 +4,8 @@ use super::MessageDecoder;
 use crate::parsers::MessageParser;
 use crate::parsers::ros2msg::Ros2MessageParser;
 use crate::parsers::ros2msg::sensor_msgs::{
-    BatteryStateMessageParser, CompressedImageMessageParser, ImuMessageParser,
-    JointStateMessageParser, JoyMessageParser, NavSatFixMessageParser, PointCloud2MessageParser,
-    RangeMessageParser,
+    BatteryStateMessageParser, ImuMessageParser, JointStateMessageParser, JoyMessageParser,
+    NavSatFixMessageParser, PointCloud2MessageParser, RangeMessageParser,
 };
 use crate::parsers::ros2msg::std_msgs::{
     Float64ArrayMessageParser, Float64MultiArrayMessageParser,
@@ -33,7 +32,6 @@ impl McapRos2Decoder {
         Self::empty()
             // sensor_msgs
             .register_parser::<BatteryStateMessageParser>("sensor_msgs/msg/BatteryState")
-            .register_parser::<CompressedImageMessageParser>("sensor_msgs/msg/CompressedImage")
             .register_parser::<ImuMessageParser>("sensor_msgs/msg/Imu")
             .register_parser::<JoyMessageParser>("sensor_msgs/msg/Joy")
             .register_parser::<JointStateMessageParser>("sensor_msgs/msg/JointState")

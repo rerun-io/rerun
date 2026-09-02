@@ -1,4 +1,3 @@
-mod compressed_image;
 mod imu;
 mod joint_state;
 mod joy;
@@ -6,7 +5,6 @@ mod nav_sat_fix;
 mod point_cloud_2;
 mod scalar_msgs;
 
-pub use compressed_image::*;
 pub use imu::*;
 pub use joint_state::*;
 pub use joy::*;
