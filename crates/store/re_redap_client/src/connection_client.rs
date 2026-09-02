@@ -4,6 +4,7 @@ use itertools::Itertools as _;
 use re_log_encoding::{Decodable as _, RawRrdManifest, ToApplication as _};
 use re_log_types::EntryId;
 use re_protos::EntryName;
+use re_protos::capabilities::ServerCapabilities;
 use re_protos::cloud::v1alpha1::ext::ScanSegmentTableDataframe;
 use re_protos::cloud::v1alpha1::ext::{
     self as cloud_ext, ETag, RrdManifestKey as RrdManifestKeyExt, SOURCE_CHANGED_MESSAGE,
@@ -422,16 +423,25 @@ impl<T> std::fmt::Debug for RedapClient<T> {
 /// Application code should acquire this from [`crate::ConnectionHandle::client`].
 pub type ConnectionClient = RedapClient<BoxedRedapClientStack>;
 
-/// Connection capabilities for a redap origin.
+/// An established connection to a redap origin.
 #[derive(Clone, Debug, re_byte_size::SizeBytes)]
 pub struct Connection {
     pub client: ConnectionClient,
     pub analytics: Option<crate::ConnectionAnalyticsExporter>,
+
+    /// What the server advertised on `/WhoAmI` when the connection was made.
+    pub(crate) capabilities: ServerCapabilities,
 }
 
 impl Connection {
     /// Create a connection backed by an in-process Rerun catalog implementation.
-    pub fn from_service<T>(origin: re_uri::Origin, handler: Arc<T>) -> Self
+    ///
+    /// No `/WhoAmI` call is made, so the handler's capabilities are passed in directly.
+    pub fn from_service<T>(
+        origin: re_uri::Origin,
+        handler: Arc<T>,
+        capabilities: ServerCapabilities,
+    ) -> Self
     where
         T: RerunCloudService,
     {
@@ -446,12 +456,20 @@ impl Connection {
         Self {
             client: RedapClient::new(origin, client, None),
             analytics: None,
+            capabilities,
         }
     }
 
     /// The server we are connected to
     pub fn origin(&self) -> &re_uri::Origin {
         self.client.origin()
+    }
+
+    /// What this server implements and supports, for any caller.
+    ///
+    /// This says nothing about what the caller is allowed to do.
+    pub fn capabilities(&self) -> &ServerCapabilities {
+        &self.capabilities
     }
 }
 

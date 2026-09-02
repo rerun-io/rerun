@@ -52,7 +52,7 @@ pub fn build(proxy_addr: SocketAddr) -> InternalCatalog {
     let origin = re_uri::Origin::http_local_host(proxy_addr.port());
 
     let handler = Arc::new(RerunCloudHandlerBuilder::new().build());
-    let connection = Connection::from_service(origin, handler.clone());
+    let connection = Connection::from_service(origin, handler.clone(), re_server::capabilities());
 
     InternalCatalog {
         connection,
@@ -69,7 +69,7 @@ pub fn build() -> InternalCatalog {
     // in-memory handler (matching the native construction), not a reachable endpoint.
     let origin = re_uri::Origin::http_local_host(0);
 
-    let connection = Connection::from_service(origin, handler);
+    let connection = Connection::from_service(origin, handler, re_server::capabilities());
 
     InternalCatalog { connection }
 }

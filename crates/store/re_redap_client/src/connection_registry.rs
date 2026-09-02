@@ -7,6 +7,7 @@ use std::sync::{Arc, OnceLock};
 use re_auth::Jwt;
 use re_auth::credentials::CredentialsProviderError;
 use re_byte_size::SizeBytes as _;
+use re_protos::capabilities::ServerCapabilities;
 use re_protos::cloud::v1alpha1::{EntryFilter, FindEntriesRequest, WhoAmIRequest};
 use re_uri::Origin;
 use tokio::sync::RwLock;
@@ -203,6 +204,12 @@ pub struct SourcedCredentials {
     pub credentials: Credentials,
 }
 
+/// A client stack that passed the `/WhoAmI` check, and the capabilities that call returned.
+struct ValidatedClientStack {
+    client_stack: RedapClientStack,
+    capabilities: ServerCapabilities,
+}
+
 impl ConnectionRegistryHandle {
     pub fn set_credentials(&self, origin: &re_uri::Origin, credentials: Credentials) {
         wrap_blocking_lock(|| {
@@ -216,6 +223,29 @@ impl ConnectionRegistryHandle {
         wrap_blocking_lock(|| {
             let inner = self.inner.blocking_read();
             inner.saved_credentials.get(origin).cloned()
+        })
+    }
+
+    /// What the server at this origin implements and supports, for any caller.
+    ///
+    /// This says nothing about what the caller is allowed to do. Capabilities arrive when the
+    /// connection is made, so an origin we have not connected to yet is
+    /// [`ServerCapabilities::unknown`].
+    pub fn capabilities(&self, origin: &re_uri::Origin) -> ServerCapabilities {
+        if let Some(connection) = self.internal.get()
+            && connection.origin() == origin
+        {
+            return connection.capabilities().clone();
+        }
+
+        wrap_blocking_lock(|| {
+            self.inner
+                .blocking_read()
+                .remote_connections
+                .get(origin)
+                .map_or_else(ServerCapabilities::unknown, |connection| {
+                    connection.capabilities().clone()
+                })
         })
     }
 
@@ -345,8 +375,13 @@ impl ConnectionRegistryHandle {
             add_cred(&mut credentials_to_try, cred);
         }
 
-        let (client_stack, successful_credentials) =
-            Self::try_connect_client_stack(origin.clone(), credentials_to_try.into_iter()).await?;
+        let (
+            ValidatedClientStack {
+                client_stack,
+                capabilities,
+            },
+            successful_credentials,
+        ) = Self::try_connect_client_stack(origin.clone(), credentials_to_try.into_iter()).await?;
 
         // We have a successful connection, so we cache it and remember about the successful token.
         //
@@ -367,6 +402,7 @@ impl ConnectionRegistryHandle {
                     origin.clone(),
                     client_stack,
                 )),
+                capabilities,
             };
 
             inner
@@ -398,7 +434,7 @@ impl ConnectionRegistryHandle {
     async fn try_connect_client_stack(
         origin: re_uri::Origin,
         possible_credentials: impl Iterator<Item = SourcedCredentials>,
-    ) -> ApiResult<(RedapClientStack, Option<SourcedCredentials>)> {
+    ) -> ApiResult<(ValidatedClientStack, Option<SourcedCredentials>)> {
         let mut first_failed_attempt = None;
 
         for credentials in possible_credentials {
@@ -407,8 +443,8 @@ impl ConnectionRegistryHandle {
                     .await;
 
             match result {
-                Ok(client_stack) => {
-                    return Ok((client_stack, Some(credentials)));
+                Ok(validated) => {
+                    return Ok((validated, Some(credentials)));
                 }
 
                 Err(err) if err.is_client_credentials_error() => {
@@ -427,7 +463,7 @@ impl ConnectionRegistryHandle {
         let result = Self::connect_and_validate_client_stack(origin.clone(), None).await;
 
         match result {
-            Ok(client_stack) => Ok((client_stack, None)),
+            Ok(validated) => Ok((validated, None)),
 
             Err(err) => {
                 // If we actually tried tokens, this error is more relevant.
@@ -494,7 +530,7 @@ impl ConnectionRegistryHandle {
     async fn connect_and_validate_client_stack(
         origin: re_uri::Origin,
         credentials: Option<SourcedCredentials>,
-    ) -> ApiResult<RedapClientStack> {
+    ) -> ApiResult<ValidatedClientStack> {
         // Check the token's allowed hosts before wrapping it in a provider that
         // would blindly attach it to every outgoing request. If the host
         // doesn't match, return a credentials error so the caller can skip
@@ -567,7 +603,7 @@ impl ConnectionRegistryHandle {
                         }),
                     })
                     .await
-                    .map(drop)
+                    .map(|_| ServerCapabilities::unknown())
             }
             Ok(resp) => {
                 let trace_id = crate::extract_trace_id(resp.metadata());
@@ -575,11 +611,14 @@ impl ConnectionRegistryHandle {
                     user_id,
                     can_read,
                     can_write,
+                    capabilities,
                 } = resp.into_inner();
                 let is_anonymous = user_id.is_none();
                 let user_id = user_id.as_deref().unwrap_or("<anonymous>");
+                let capabilities =
+                    capabilities.map_or_else(ServerCapabilities::unknown, Into::into);
                 re_log::debug_once!(
-                    "Connected to {origin}: {user_id}, can_read={can_read}, can_write={can_write}",
+                    "Connected to {origin}: {user_id}, can_read={can_read}, can_write={can_write}, capabilities={capabilities:?}",
                 );
                 if !can_read {
                     if is_anonymous {
@@ -598,13 +637,16 @@ impl ConnectionRegistryHandle {
                         "the server reports that you do not have read access",
                     ));
                 }
-                Ok(())
+                Ok(capabilities)
             }
             Err(err) => Err(err),
         };
 
         match request_result {
-            Ok(()) => Ok(client_stack),
+            Ok(capabilities) => Ok(ValidatedClientStack {
+                client_stack,
+                capabilities,
+            }),
 
             // catch unauthenticated errors and forget the token if they happen
             Err(err) if err.code() == Code::Unauthenticated => {

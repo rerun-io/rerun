@@ -267,6 +267,20 @@ message VersionResponse {
   repeated string features = 5;
 }
 
+// Capability names describing what a server implements and supports.
+//
+// A capability does not depend on the caller. Whether the caller is allowed to
+// use one is answered by `can_read` and `can_write`.
+//
+// A name is lowercase segments separated by `:`, most general segment first, so
+// a client can query a whole group by prefix. A server advertises full names
+// only, never a prefix and never a `*`. Clients ignore names they do not know,
+// so a new name never breaks an older client.
+message ServerCapabilities {
+  // Every capability this server implements and supports.
+  repeated string capabilities = 1;
+}
+
 message WhoAmIRequest {}
 
 message WhoAmIResponse {
@@ -278,6 +292,14 @@ message WhoAmIResponse {
 
   // Whether the user has write access.
   bool can_write = 3;
+
+  // What this server implements and supports, for any caller.
+  //
+  // Always set, empty when the server advertises none. Only a server from
+  // before capabilities existed leaves it unset, which is not the same as
+  // advertising none. Clients must tell the two apart, and send the request
+  // anyway rather than treat everything as unsupported.
+  optional ServerCapabilities capabilities = 4;
 }
 
 message DoBandwidthTestRequest {

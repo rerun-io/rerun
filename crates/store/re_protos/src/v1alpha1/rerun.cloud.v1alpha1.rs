@@ -51,6 +51,31 @@ impl ::prost::Name for VersionResponse {
         "/rerun.cloud.v1alpha1.VersionResponse".into()
     }
 }
+/// Capability names describing what a server implements and supports.
+///
+/// A capability does not depend on the caller. Whether the caller is allowed to
+/// use one is answered by `can_read` and `can_write`.
+///
+/// A name is lowercase segments separated by `:`, most general segment first, so
+/// a client can query a whole group by prefix. A server advertises full names
+/// only, never a prefix and never a `*`. Clients ignore names they do not know,
+/// so a new name never breaks an older client.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct ServerCapabilities {
+    /// Every capability this server implements and supports.
+    #[prost(string, repeated, tag = "1")]
+    pub capabilities: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+}
+impl ::prost::Name for ServerCapabilities {
+    const NAME: &'static str = "ServerCapabilities";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.ServerCapabilities".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.ServerCapabilities".into()
+    }
+}
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct WhoAmIRequest {}
 impl ::prost::Name for WhoAmIRequest {
@@ -74,6 +99,14 @@ pub struct WhoAmIResponse {
     /// Whether the user has write access.
     #[prost(bool, tag = "3")]
     pub can_write: bool,
+    /// What this server implements and supports, for any caller.
+    ///
+    /// Always set, empty when the server advertises none. Only a server from
+    /// before capabilities existed leaves it unset, which is not the same as
+    /// advertising none. Clients must tell the two apart, and send the request
+    /// anyway rather than treat everything as unsupported.
+    #[prost(message, optional, tag = "4")]
+    pub capabilities: ::core::option::Option<ServerCapabilities>,
 }
 impl ::prost::Name for WhoAmIResponse {
     const NAME: &'static str = "WhoAmIResponse";

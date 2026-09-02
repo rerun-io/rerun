@@ -9,6 +9,8 @@ pub mod external {
     pub use {prost, re_span};
 }
 
+pub mod capabilities;
+
 pub mod headers;
 pub mod trace_id_layer;
 
@@ -81,6 +83,8 @@ pub mod cloud {
             pub use crate::v1alpha1::rerun_cloud_v1alpha1_ext_chunk_key::*;
             pub use crate::v1alpha1::rerun_cloud_v1alpha1_ext_schemas::*;
         }
+
+        pub use crate::capabilities;
 
         /// Server-supported feature flags advertised via `VersionResponse.features`.
         ///

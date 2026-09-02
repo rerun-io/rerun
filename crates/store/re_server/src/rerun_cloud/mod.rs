@@ -590,6 +590,9 @@ impl RerunCloudService for RerunCloudHandler {
                 user_id: None,
                 can_read: true,
                 can_write: true,
+                capabilities: Some(re_protos::cloud::v1alpha1::ServerCapabilities {
+                    capabilities: crate::capability_names(),
+                }),
             },
         ))
     }

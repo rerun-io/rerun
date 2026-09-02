@@ -53,6 +53,7 @@ fn in_process_connection<T: RerunCloudService>(service: Arc<T>) -> ConnectionHan
     registry.set_internal(Connection::from_service(
         re_uri::Origin::http_local_host(1),
         service,
+        re_server::capabilities(),
     ));
     registry
         .internal_connection_handle()
