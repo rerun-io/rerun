@@ -21,20 +21,11 @@ use re_sdk_types::{
 };
 
 use crate::config::{ColumnGrouping, ParquetConfig};
+use crate::error::ParquetError;
 use crate::grouping::{ColumnEntry, ColumnGroup, compute_column_groups};
 use crate::timeline::{self, TimelineInfo};
 
 const PARQUET_METADATA_ARCHETYPE: &str = "ParquetMetadata";
-
-/// Errors that can occur during parquet loading.
-#[derive(Debug, thiserror::Error)]
-pub enum ParquetError {
-    #[error(transparent)]
-    Arrow(#[from] arrow::error::ArrowError),
-
-    #[error("{0:#}")]
-    Other(#[from] anyhow::Error),
-}
 
 /// Validate `config` against the file's schema without reading any row data.
 ///
@@ -45,20 +36,21 @@ pub(crate) fn validate_from_path(
 ) -> Result<(), ParquetError> {
     use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
 
-    let file =
-        std::fs::File::open(path).map_err(|err| ParquetError::from(anyhow::Error::from(err)))?;
-    let builder = ParquetRecordBatchReaderBuilder::try_new(file)
-        .map_err(|err| ParquetError::from(anyhow::Error::from(err)))?;
+    let file = std::fs::File::open(path).map_err(ParquetError::open)?;
+    let builder =
+        ParquetRecordBatchReaderBuilder::try_new(file).map_err(ParquetError::open_reader)?;
     let schema = builder.schema();
 
     timeline::resolve_explicit_index_columns(schema, &config.index_columns)?;
 
     for name in &config.static_columns {
         if !schema.fields().iter().any(|f| f.name() == name) {
-            return Err(
-                anyhow::anyhow!("Static column '{name}' not found in parquet schema").into(),
-            );
+            return Err(ParquetError::static_column_not_found(name));
         }
+    }
+
+    if let Some(window) = config.row_window {
+        crate::read::check_row_window(window, builder.metadata().file_metadata().num_rows())?;
     }
 
     Ok(())
@@ -70,26 +62,8 @@ pub(crate) fn load_from_path(
     config: &ParquetConfig,
     entity_path_prefix: &EntityPath,
 ) -> Result<ParquetChunkIterator, ParquetError> {
-    use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
-
-    let file =
-        std::fs::File::open(path).map_err(|err| ParquetError::from(anyhow::Error::from(err)))?;
-    let builder = ParquetRecordBatchReaderBuilder::try_new(file)
-        .map_err(|err| ParquetError::from(anyhow::Error::from(err)))?;
-
-    let metadata = builder.metadata().clone();
-    let reader = builder
-        .build()
-        .map_err(|err| ParquetError::from(anyhow::Error::from(err)))?;
-    let schema = reader.schema().clone();
-
-    build_iterator(
-        Box::new(reader),
-        schema,
-        &metadata,
-        config,
-        entity_path_prefix.clone(),
-    )
+    let file = std::fs::File::open(path).map_err(ParquetError::open)?;
+    load_from_reader(file, config, entity_path_prefix)
 }
 
 /// Load parquet from in-memory bytes and return a chunk iterator.
@@ -98,23 +72,32 @@ pub(crate) fn load_from_bytes(
     config: &ParquetConfig,
     entity_path_prefix: &EntityPath,
 ) -> Result<ParquetChunkIterator, ParquetError> {
-    use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
+    load_from_reader(
+        bytes::Bytes::copy_from_slice(bytes),
+        config,
+        entity_path_prefix,
+    )
+}
 
-    let builder = ParquetRecordBatchReaderBuilder::try_new(bytes::Bytes::copy_from_slice(bytes))
-        .map_err(|err| ParquetError::from(anyhow::Error::from(err)))?;
-
-    let metadata = builder.metadata().clone();
-    let reader = builder
-        .build()
-        .map_err(|err| ParquetError::from(anyhow::Error::from(err)))?;
-    let schema = reader.schema().clone();
+fn load_from_reader<R: parquet::file::reader::ChunkReader + 'static>(
+    input: R,
+    config: &ParquetConfig,
+    entity_path_prefix: &EntityPath,
+) -> Result<ParquetChunkIterator, ParquetError> {
+    let opened = crate::read::open(input, config)?;
+    let schema = opened.reader.schema();
+    let metadata_chunk = build_metadata_chunk(&opened.metadata);
+    // `open` checked the window is inside the file, whose row count is an `i64`.
+    #[expect(clippy::cast_possible_wrap)]
+    let row_index_offset = config.row_window.map_or(0, |window| window.start as i64);
 
     build_iterator(
-        Box::new(reader),
+        Box::new(opened.reader),
         schema,
-        &metadata,
+        metadata_chunk,
         config,
         entity_path_prefix.clone(),
+        row_index_offset,
     )
 }
 
@@ -122,9 +105,10 @@ pub(crate) fn load_from_bytes(
 fn build_iterator(
     reader: Box<dyn Iterator<Item = Result<RecordBatch, arrow::error::ArrowError>>>,
     schema: Arc<arrow::datatypes::Schema>,
-    parquet_metadata: &parquet::file::metadata::ParquetMetaData,
+    metadata_chunk: Option<Chunk>,
     config: &ParquetConfig,
     entity_path_prefix: EntityPath,
+    row_index_offset: i64,
 ) -> Result<ParquetChunkIterator, ParquetError> {
     re_tracing::profile_function!();
 
@@ -172,10 +156,8 @@ fn build_iterator(
         }
     );
 
-    let metadata_chunk = build_metadata_chunk(parquet_metadata).map(Box::new);
-
     Ok(ParquetChunkIterator {
-        phase: Phase::Metadata(metadata_chunk),
+        phase: Phase::Metadata(metadata_chunk.map(Box::new)),
         reader,
         column_groups,
         timeline_infos,
@@ -184,7 +166,7 @@ fn build_iterator(
         static_col_map,
         static_reference: None,
         use_structs,
-        row_offset: 0,
+        row_index_offset,
         pending: VecDeque::new(),
     })
 }
@@ -223,8 +205,12 @@ pub(crate) struct ParquetChunkIterator {
     /// Used to verify consistency across subsequent batches.
     static_reference: Option<Vec<(String, Arc<dyn Array>)>>,
 
-    /// Running row count across batches, used as offset for fallback `row_index` timeline.
-    row_offset: i64,
+    /// File-absolute index of the next unread row.
+    ///
+    /// When no index column resolves, chunks get a `row_index` sequence timeline
+    /// built from row numbers, and this is where the numbering continues from.
+    /// Starts at the row window's start, so windowed rows keep their file-absolute numbers.
+    row_index_offset: i64,
 
     /// Whether multi-entry prefix groups should be wrapped in a `StructArray`.
     /// When false, each entry becomes its own chunk (flat/pre-struct layout).
@@ -270,11 +256,11 @@ impl Iterator for ParquetChunkIterator {
 
                         #[expect(clippy::cast_possible_wrap)]
                         {
-                            self.row_offset += batch.num_rows() as i64;
+                            self.row_index_offset += batch.num_rows() as i64;
                         }
                     }
                     Some(Err(err)) => {
-                        return Some(Err(err.into()));
+                        return Some(Err(ParquetError::read_batch(err)));
                     }
                     None => {
                         self.build_finalization_chunks();
@@ -304,11 +290,11 @@ impl ParquetChunkIterator {
                 let current_first = format_first_value(array.as_ref());
                 let stored_first = format_first_value(ref_val.as_ref());
                 if current_first != stored_first {
-                    return Err(anyhow::anyhow!(
-                        "Static column '{col_name}' changed between batches: \
-                         '{stored_first}' → '{current_first}'"
-                    )
-                    .into());
+                    return Err(ParquetError::static_column_changed(
+                        col_name,
+                        stored_first,
+                        current_first,
+                    ));
                 }
             }
         }
@@ -340,7 +326,7 @@ impl ParquetChunkIterator {
             }
         }
         if tls.is_empty() {
-            timeline::fallback_sequence_timeline(self.row_offset, batch.num_rows())
+            timeline::fallback_sequence_timeline(self.row_index_offset, batch.num_rows())
         } else {
             tls
         }
@@ -455,10 +441,7 @@ fn emit_chunk(
 ) {
     match Chunk::from_auto_row_ids(ChunkId::new(), entity_path, timelines.clone(), components) {
         Ok(chunk) => pending.push_back(Ok(chunk)),
-        Err(err) => pending.push_back(Err(anyhow::anyhow!(
-            "Failed to build chunk from Parquet batch: {err}"
-        )
-        .into())),
+        Err(source) => pending.push_back(Err(ParquetError::build_chunk(source))),
     }
 }
 
@@ -519,9 +502,7 @@ fn verify_column_uniform(array: &dyn Array, col_name: &str) -> Result<(), Parque
         return Ok(());
     }
     if !is_array_uniform(array) {
-        return Err(
-            anyhow::anyhow!("Static column '{col_name}' contains non-uniform values").into(),
-        );
+        return Err(ParquetError::static_column_not_uniform(col_name));
     }
     Ok(())
 }

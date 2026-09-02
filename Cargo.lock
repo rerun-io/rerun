@@ -9826,10 +9826,10 @@ dependencies = [
 name = "re_parquet"
 version = "0.37.0-alpha.1+dev"
 dependencies = [
- "anyhow",
  "arrow",
  "bytes",
  "itertools 0.15.0",
+ "parking_lot",
  "parquet",
  "re_arrow_util",
  "re_chunk",
@@ -9838,7 +9838,9 @@ dependencies = [
  "re_log",
  "re_log_types",
  "re_sdk_types",
+ "re_span",
  "re_tracing",
+ "tempfile",
  "thiserror 2.0.19",
 ]
 

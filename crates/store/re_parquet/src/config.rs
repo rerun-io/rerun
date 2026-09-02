@@ -61,6 +61,18 @@ pub struct ParquetConfig {
 
     /// Column names with constant values — emitted as static data.
     pub static_columns: Vec<String>,
+
+    /// Read only the named top-level columns; `None` reads every column.
+    ///
+    /// Index and static columns are always read on top of this list, so they do not
+    /// need to be named here. Names the file does not have are skipped.
+    pub columns: Option<Vec<String>>,
+
+    /// Read only this span of the file's rows; `None` reads every row.
+    ///
+    /// Only the row groups intersecting the span are decoded. An empty span, or one
+    /// that reaches outside the file, is an error.
+    pub row_window: Option<re_span::Span<u64>>,
 }
 
 impl ParquetConfig {
@@ -78,6 +90,9 @@ pub struct IndexColumn {
 
     /// What kind of timeline this represents.
     pub index_type: IndexType,
+
+    /// Timeline name to emit; `None` uses the column name.
+    pub output_name: Option<String>,
 }
 
 /// The type and scale of an index column.

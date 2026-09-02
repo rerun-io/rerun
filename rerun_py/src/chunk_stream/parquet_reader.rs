@@ -126,7 +126,11 @@ impl PyParquetReaderInternal {
                         )));
                     }
                 };
-                Ok(IndexColumn { name, index_type })
+                Ok(IndexColumn {
+                    name,
+                    index_type,
+                    output_name: None,
+                })
             })
             .collect::<PyResult<Vec<_>>>()?;
 
@@ -134,6 +138,7 @@ impl PyParquetReaderInternal {
             column_grouping: grouping,
             index_columns: index_cols,
             static_columns: static_columns.unwrap_or_default(),
+            ..Default::default()
         };
 
         let prefix = entity_path_prefix

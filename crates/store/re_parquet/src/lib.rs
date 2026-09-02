@@ -5,16 +5,19 @@
 //! pull-based iterator to reduce peak memory usage.
 
 mod config;
+mod error;
 mod grouping;
+mod read;
 mod streaming;
 mod timeline;
 
 pub use config::{ColumnGrouping, IndexColumn, IndexType, ParquetConfig, TimeUnit};
-pub use streaming::ParquetError;
+pub use error::ParquetError;
 
 use re_chunk::{Chunk, EntityPath};
 
-/// Validate `config` against the parquet file's schema without reading any row data.
+/// Validate `config` against the parquet file's schema and row count without reading
+/// any row data.
 ///
 /// Cheap (only the file footer is decoded), so can be called eagerly — e.g. when a
 /// stream is configured rather than when it is first polled.
@@ -34,7 +37,9 @@ pub fn load_parquet(
     path: &std::path::Path,
     config: &ParquetConfig,
     entity_path_prefix: &EntityPath,
-) -> Result<impl Iterator<Item = Result<Chunk, ParquetError>>, ParquetError> {
+) -> Result<impl Iterator<Item = Result<Chunk, ParquetError>> + use<>, ParquetError> {
+    // `use<>` drops the argument lifetimes from the opaque type: the iterator owns
+    // everything it needs, so callers can outlive the borrows.
     streaming::load_from_path(path, config, entity_path_prefix)
 }
 
@@ -45,6 +50,6 @@ pub fn load_parquet_from_bytes(
     bytes: &[u8],
     config: &ParquetConfig,
     entity_path_prefix: &EntityPath,
-) -> Result<impl Iterator<Item = Result<Chunk, ParquetError>>, ParquetError> {
+) -> Result<impl Iterator<Item = Result<Chunk, ParquetError>> + use<>, ParquetError> {
     streaming::load_from_bytes(bytes, config, entity_path_prefix)
 }
