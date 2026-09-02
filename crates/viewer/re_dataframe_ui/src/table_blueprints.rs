@@ -1,8 +1,10 @@
+use std::sync::LazyLock;
+
 use ahash::HashMap;
-use re_entity_db::StoreBundle;
+use re_entity_db::{EntityDb, StoreBundle};
 use re_log_types::{StoreId, StoreKind};
-use re_viewer_context::TableReference;
 use re_viewer_context::store_hub::{BlueprintPersistenceKey, StoreHub};
+use re_viewer_context::{AppBlueprintCtx, AppContext, TableReference};
 
 #[derive(Debug, thiserror::Error)]
 pub enum TableBlueprintError {
@@ -122,6 +124,43 @@ impl TableBlueprints {
             .insert(table_ref.clone(), latest_row_id);
 
         Ok(())
+    }
+
+    /// Returns the blueprint context for the given table reference.
+    pub fn blueprint_context_for<'a>(
+        &self,
+        ctx: &AppContext<'a>,
+        table_ref: &TableReference,
+    ) -> AppBlueprintCtx<'a> {
+        static EMPTY_BLUEPRINT: LazyLock<EntityDb> = LazyLock::new(|| {
+            EntityDb::new(StoreId::random(
+                StoreKind::Blueprint,
+                "missing-table-blueprint",
+            ))
+        });
+
+        let current_blueprint = self
+            .active_id(table_ref)
+            .and_then(|active_id| ctx.storage_context.bundle.get(active_id))
+            .unwrap_or_else(|| {
+                re_log::debug_warn_once!(
+                    "Table {table_ref:?} has no active blueprint. An active table blueprint should already have been set."
+                );
+                &EMPTY_BLUEPRINT
+            });
+
+        AppBlueprintCtx {
+            command_sender: ctx.command_sender,
+            current_blueprint,
+            default_blueprint: self
+                .default_id(table_ref)
+                .and_then(|store_id| ctx.storage_context.bundle.get(store_id)),
+
+            // TODO(andreas): We should establish undo/redo for table blueprint edits.
+            blueprint_query: re_chunk_store::LatestAtQuery::latest(
+                re_viewer_context::blueprint_timeline(),
+            ),
+        }
     }
 
     /// Reset an active table blueprint to the current default.

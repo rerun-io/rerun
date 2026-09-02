@@ -26,93 +26,35 @@ use ::std::borrow::Cow;
 
 /// **Archetype**: Blueprint for configuring the styling of a table.
 ///
+/// The table blueprint as a whole is distributed across these entity paths:
+/// * `/table` for this archetype and [`archetypes::PreviewsConfig`][crate::blueprint::archetypes::PreviewsConfig].
+/// * `/table/layouts/table` for [`archetypes::TableLayout`][crate::blueprint::archetypes::TableLayout].
+/// * `/table/layouts/table/columns/{column_name}` for table [`archetypes::TableColumn`][crate::blueprint::archetypes::TableColumn] archetypes and per-column options such as [`archetypes::TableColumnPreview`][crate::blueprint::archetypes::TableColumnPreview].
+/// * `/table/layouts/cards` for [`archetypes::CardLayout`][crate::blueprint::archetypes::CardLayout].
+/// * `/table/layouts/cards/fields/{column_name}` for card [`archetypes::TableColumn`][crate::blueprint::archetypes::TableColumn] archetypes and per-field options such as [`archetypes::TableColumnPreview`][crate::blueprint::archetypes::TableColumnPreview].
+/// * `/view/{view_id}` for preview [`archetypes::ViewBlueprint`][crate::blueprint::archetypes::ViewBlueprint] definitions.
+///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Debug, Default, ::re_byte_size::SizeBytes)]
 pub struct TableBlueprint {
-    /// The name of the column that contains recording URIs for segment previews.
+    /// The currently selected layout.
     ///
-    /// Every row can at most preview a single segment.
-    ///
-    /// For the preview, the rest of the blueprint data is read it as it would be with regular recording blueprints,
-    /// meaning that the regular structure of [`archetypes::ViewportBlueprint`][crate::blueprint::archetypes::ViewportBlueprint], and [`archetypes::ViewBlueprint`][crate::blueprint::archetypes::ViewBlueprint] structure applies.
-    /// However, this mostly ignores layout container types as well as automatic spawning.
-    ///
-    /// If unset, defaults to the first URL column in the table that points to the same Rerun server
-    pub segment_preview_column: Option<SerializedComponentBatch>,
-
-    /// The name of the boolean column used for flag/annotation toggles.
-    ///
-    /// Must be set for flagging to be available. The named column must exist in the
-    /// table and be of boolean type.
-    /// Additionally, the table must be remote and have another column with
-    /// `rerun:is_table_index` metadata since flag changes are persisted to the server
-    /// via upsert.
-    pub flag_column: Option<SerializedComponentBatch>,
-
-    /// The name of the column to use as the card title in grid view.
-    ///
-    /// If unset, the first visible string column is used as the title.
-    pub grid_view_card_title: Option<SerializedComponentBatch>,
-
-    /// The name of the column containing URLs to open when a card is clicked in grid view.
-    ///
-    /// If unset, defaults to the segment preview column.
-    pub url_column: Option<SerializedComponentBatch>,
+    /// If unset, defaults to card layout if available.
+    /// `Cards` falls back to table layout when no [`archetypes::CardLayout`][crate::blueprint::archetypes::CardLayout] is configured.
+    pub layout: Option<SerializedComponentBatch>,
 }
 
 impl TableBlueprint {
-    /// Returns the [`ComponentDescriptor`] for [`Self::segment_preview_column`].
+    /// Returns the [`ComponentDescriptor`] for [`Self::layout`].
     ///
-    /// The corresponding component is [`crate::blueprint::components::ColumnName`].
+    /// The corresponding component is [`crate::blueprint::components::TableLayoutKind`].
     #[inline]
-    pub fn descriptor_segment_preview_column() -> ComponentDescriptor {
+    pub fn descriptor_layout() -> ComponentDescriptor {
         static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
             std::sync::LazyLock::new(|| ComponentDescriptor {
                 archetype: Some("rerun.blueprint.archetypes.TableBlueprint".into()),
-                component: "TableBlueprint:segment_preview_column".into(),
-                component_type: Some("rerun.blueprint.components.ColumnName".into()),
-            });
-        (*DESCRIPTOR).clone()
-    }
-
-    /// Returns the [`ComponentDescriptor`] for [`Self::flag_column`].
-    ///
-    /// The corresponding component is [`crate::blueprint::components::ColumnName`].
-    #[inline]
-    pub fn descriptor_flag_column() -> ComponentDescriptor {
-        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
-            std::sync::LazyLock::new(|| ComponentDescriptor {
-                archetype: Some("rerun.blueprint.archetypes.TableBlueprint".into()),
-                component: "TableBlueprint:flag_column".into(),
-                component_type: Some("rerun.blueprint.components.ColumnName".into()),
-            });
-        (*DESCRIPTOR).clone()
-    }
-
-    /// Returns the [`ComponentDescriptor`] for [`Self::grid_view_card_title`].
-    ///
-    /// The corresponding component is [`crate::blueprint::components::ColumnName`].
-    #[inline]
-    pub fn descriptor_grid_view_card_title() -> ComponentDescriptor {
-        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
-            std::sync::LazyLock::new(|| ComponentDescriptor {
-                archetype: Some("rerun.blueprint.archetypes.TableBlueprint".into()),
-                component: "TableBlueprint:grid_view_card_title".into(),
-                component_type: Some("rerun.blueprint.components.ColumnName".into()),
-            });
-        (*DESCRIPTOR).clone()
-    }
-
-    /// Returns the [`ComponentDescriptor`] for [`Self::url_column`].
-    ///
-    /// The corresponding component is [`crate::blueprint::components::ColumnName`].
-    #[inline]
-    pub fn descriptor_url_column() -> ComponentDescriptor {
-        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
-            std::sync::LazyLock::new(|| ComponentDescriptor {
-                archetype: Some("rerun.blueprint.archetypes.TableBlueprint".into()),
-                component: "TableBlueprint:url_column".into(),
-                component_type: Some("rerun.blueprint.components.ColumnName".into()),
+                component: "TableBlueprint:layout".into(),
+                component_type: Some("rerun.blueprint.components.TableLayoutKind".into()),
             });
         (*DESCRIPTOR).clone()
     }
@@ -124,29 +66,15 @@ static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
 static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
     std::sync::LazyLock::new(|| []);
 
-static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 4usize]> =
-    std::sync::LazyLock::new(|| {
-        [
-            TableBlueprint::descriptor_segment_preview_column(),
-            TableBlueprint::descriptor_flag_column(),
-            TableBlueprint::descriptor_grid_view_card_title(),
-            TableBlueprint::descriptor_url_column(),
-        ]
-    });
+static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
+    std::sync::LazyLock::new(|| [TableBlueprint::descriptor_layout()]);
 
-static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 4usize]> =
-    std::sync::LazyLock::new(|| {
-        [
-            TableBlueprint::descriptor_segment_preview_column(),
-            TableBlueprint::descriptor_flag_column(),
-            TableBlueprint::descriptor_grid_view_card_title(),
-            TableBlueprint::descriptor_url_column(),
-        ]
-    });
+static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
+    std::sync::LazyLock::new(|| [TableBlueprint::descriptor_layout()]);
 
 impl TableBlueprint {
-    /// The total number of components in the archetype: 0 required, 0 recommended, 4 optional
-    pub const NUM_COMPONENTS: usize = 4usize;
+    /// The total number of components in the archetype: 0 required, 0 recommended, 1 optional
+    pub const NUM_COMPONENTS: usize = 1usize;
 }
 
 impl ::re_types_core::Archetype for TableBlueprint {
@@ -192,38 +120,10 @@ impl ::re_types_core::Archetype for TableBlueprint {
             ArrowDataType as _, FromArrow as _, FromArrowOpt as _, ResultExt as _,
         };
         let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
-        let segment_preview_column = arrays_by_descr
-            .get(&Self::descriptor_segment_preview_column())
-            .map(|array| {
-                SerializedComponentBatch::new(
-                    array.clone(),
-                    Self::descriptor_segment_preview_column(),
-                )
-            });
-        let flag_column = arrays_by_descr
-            .get(&Self::descriptor_flag_column())
-            .map(|array| {
-                SerializedComponentBatch::new(array.clone(), Self::descriptor_flag_column())
-            });
-        let grid_view_card_title = arrays_by_descr
-            .get(&Self::descriptor_grid_view_card_title())
-            .map(|array| {
-                SerializedComponentBatch::new(
-                    array.clone(),
-                    Self::descriptor_grid_view_card_title(),
-                )
-            });
-        let url_column = arrays_by_descr
-            .get(&Self::descriptor_url_column())
-            .map(|array| {
-                SerializedComponentBatch::new(array.clone(), Self::descriptor_url_column())
-            });
-        Ok(Self {
-            segment_preview_column,
-            flag_column,
-            grid_view_card_title,
-            url_column,
-        })
+        let layout = arrays_by_descr
+            .get(&Self::descriptor_layout())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_layout()));
+        Ok(Self { layout })
     }
 }
 
@@ -231,15 +131,7 @@ impl ::re_types_core::AsComponents for TableBlueprint {
     #[inline]
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
-        [
-            self.segment_preview_column.clone(),
-            self.flag_column.clone(),
-            self.grid_view_card_title.clone(),
-            self.url_column.clone(),
-        ]
-        .into_iter()
-        .flatten()
-        .collect()
+        std::iter::once(self.layout.clone()).flatten().collect()
     }
 }
 
@@ -249,12 +141,7 @@ impl TableBlueprint {
     /// Create a new `TableBlueprint`.
     #[inline]
     pub fn new() -> Self {
-        Self {
-            segment_preview_column: None,
-            flag_column: None,
-            grid_view_card_title: None,
-            url_column: None,
-        }
+        Self { layout: None }
     }
 
     /// Update only some specific fields of a `TableBlueprint`.
@@ -268,86 +155,23 @@ impl TableBlueprint {
     pub fn clear_fields() -> Self {
         use ::re_types_core::ArrowDataType as _;
         Self {
-            segment_preview_column: Some(SerializedComponentBatch::new(
-                crate::blueprint::components::ColumnName::arrow_empty(),
-                Self::descriptor_segment_preview_column(),
-            )),
-            flag_column: Some(SerializedComponentBatch::new(
-                crate::blueprint::components::ColumnName::arrow_empty(),
-                Self::descriptor_flag_column(),
-            )),
-            grid_view_card_title: Some(SerializedComponentBatch::new(
-                crate::blueprint::components::ColumnName::arrow_empty(),
-                Self::descriptor_grid_view_card_title(),
-            )),
-            url_column: Some(SerializedComponentBatch::new(
-                crate::blueprint::components::ColumnName::arrow_empty(),
-                Self::descriptor_url_column(),
+            layout: Some(SerializedComponentBatch::new(
+                crate::blueprint::components::TableLayoutKind::arrow_empty(),
+                Self::descriptor_layout(),
             )),
         }
     }
 
-    /// The name of the column that contains recording URIs for segment previews.
+    /// The currently selected layout.
     ///
-    /// Every row can at most preview a single segment.
-    ///
-    /// For the preview, the rest of the blueprint data is read it as it would be with regular recording blueprints,
-    /// meaning that the regular structure of [`archetypes::ViewportBlueprint`][crate::blueprint::archetypes::ViewportBlueprint], and [`archetypes::ViewBlueprint`][crate::blueprint::archetypes::ViewBlueprint] structure applies.
-    /// However, this mostly ignores layout container types as well as automatic spawning.
-    ///
-    /// If unset, defaults to the first URL column in the table that points to the same Rerun server
+    /// If unset, defaults to card layout if available.
+    /// `Cards` falls back to table layout when no [`archetypes::CardLayout`][crate::blueprint::archetypes::CardLayout] is configured.
     #[inline]
-    pub fn with_segment_preview_column(
+    pub fn with_layout(
         mut self,
-        segment_preview_column: impl Into<crate::blueprint::components::ColumnName>,
+        layout: impl Into<crate::blueprint::components::TableLayoutKind>,
     ) -> Self {
-        self.segment_preview_column = try_serialize_field(
-            Self::descriptor_segment_preview_column(),
-            [segment_preview_column],
-        );
-        self
-    }
-
-    /// The name of the boolean column used for flag/annotation toggles.
-    ///
-    /// Must be set for flagging to be available. The named column must exist in the
-    /// table and be of boolean type.
-    /// Additionally, the table must be remote and have another column with
-    /// `rerun:is_table_index` metadata since flag changes are persisted to the server
-    /// via upsert.
-    #[inline]
-    pub fn with_flag_column(
-        mut self,
-        flag_column: impl Into<crate::blueprint::components::ColumnName>,
-    ) -> Self {
-        self.flag_column = try_serialize_field(Self::descriptor_flag_column(), [flag_column]);
-        self
-    }
-
-    /// The name of the column to use as the card title in grid view.
-    ///
-    /// If unset, the first visible string column is used as the title.
-    #[inline]
-    pub fn with_grid_view_card_title(
-        mut self,
-        grid_view_card_title: impl Into<crate::blueprint::components::ColumnName>,
-    ) -> Self {
-        self.grid_view_card_title = try_serialize_field(
-            Self::descriptor_grid_view_card_title(),
-            [grid_view_card_title],
-        );
-        self
-    }
-
-    /// The name of the column containing URLs to open when a card is clicked in grid view.
-    ///
-    /// If unset, defaults to the segment preview column.
-    #[inline]
-    pub fn with_url_column(
-        mut self,
-        url_column: impl Into<crate::blueprint::components::ColumnName>,
-    ) -> Self {
-        self.url_column = try_serialize_field(Self::descriptor_url_column(), [url_column]);
+        self.layout = try_serialize_field(Self::descriptor_layout(), [layout]);
         self
     }
 }

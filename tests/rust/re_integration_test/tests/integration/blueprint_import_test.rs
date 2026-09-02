@@ -103,7 +103,15 @@ async fn test_dropped_blueprint_is_applied_to_open_recording() {
     save_source_blueprint(rbl_file.path());
 
     // A viewer with a recording of a *different* application open.
-    let mut harness = viewer_test_utils::viewer_harness(&Default::default());
+    // Catalog-backed `.rbl` loading is covered by `internal_catalog_load_rbl`; this test exercises
+    // direct import, which applies the dropped blueprint to the open recording.
+    let mut harness = viewer_test_utils::viewer_harness(&viewer_test_utils::HarnessOptions {
+        app_options_editor: Some(Box::new(|app_options| {
+            // TODO(grtlr): Removing the flag will break this test since it implies a change in behavior.
+            app_options.experimental.use_viewer_catalog = false;
+        })),
+        ..Default::default()
+    });
     harness.init_recording();
 
     let opened_app_id = app_id(&mut harness);

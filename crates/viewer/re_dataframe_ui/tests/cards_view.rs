@@ -4,80 +4,37 @@ mod common;
 
 use std::sync::Arc;
 
-use arrow::array::{BooleanArray, Float64Array, RecordBatch, StringArray};
+use arrow::array::{BooleanArray, Float64Array, StringArray};
 use arrow::datatypes::{DataType, Field, Schema};
 use datafusion::prelude::SessionContext;
-use egui::accesskit::Role;
 use egui_kittest::SnapshotResults;
 use egui_kittest::kittest::Queryable as _;
 use re_async::AsyncRuntimeHandle;
+use re_chunk_store::external::re_chunk::Chunk;
 use re_dataframe_ui::{DataFusionTableWidget, TableBlueprints};
+use re_log_types::{StoreId, StoreKind};
+use re_sdk_types::blueprint::archetypes::CardLayout;
 use re_test_context::TestContext;
-use re_viewer_context::TableReference;
+use re_viewer_context::{TableReference, blueprint_timepoint_for_writes};
 
 use common::run_async_harness;
-
-/// Basic card layout rendering in dark and light theme.
-#[tokio::test(flavor = "multi_thread")] // `multi_thread` required because `ConnectionRegistryHandle::credentials` uses `block_in_place`.
-async fn test_cards_view() {
-    let (session_context, table_ref) = setup_test_table(false);
-    let mut snapshot_results = SnapshotResults::new();
-
-    for (theme, suffix) in [(egui::Theme::Dark, "dark"), (egui::Theme::Light, "light")] {
-        let mut test_context = TestContext::new();
-        test_context
-            .app_options
-            .experimental
-            .table_cards_and_blueprints = true;
-        let runtime_handle =
-            AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen().unwrap();
-
-        let mut harness = test_context
-            .setup_kittest_for_rendering_ui([800.0, 600.0])
-            .with_theme(theme)
-            .build_ui(|ui| {
-                test_context.run_recording(&ui.ctx().clone(), |ctx| {
-                    DataFusionTableWidget::new(
-                        Arc::clone(&session_context),
-                        table_ref,
-                        TableReference::local("test_table"),
-                    )
-                    .title("Cards view test")
-                    .show(
-                        ctx.app_ctx,
-                        &runtime_handle,
-                        ui,
-                        &TableBlueprints::default(),
-                        &mut test_context.view_states.lock(),
-                    );
-                });
-            });
-
-        run_async_harness(&mut harness).await;
-
-        // Switch to card layout.
-        harness.get_by_label("Cards view").click();
-        run_async_harness(&mut harness).await;
-
-        harness.snapshot(format!("cards_view_basic_{suffix}"));
-        snapshot_results.extend_harness(&mut harness);
-    }
-}
 
 /// Test that the card layout reflows when rendered at different widths.
 #[tokio::test(flavor = "multi_thread")] // `multi_thread` required because `ConnectionRegistryHandle::credentials` uses `block_in_place`.
 async fn test_cards_view_resize() {
-    let (session_context, table_ref) = setup_test_table(false);
+    let (session_context, table_ref) = setup_test_table();
     let mut snapshot_results = SnapshotResults::new();
 
     for (width, suffix) in [(400.0, "narrow"), (1200.0, "wide")] {
-        let mut test_context = TestContext::new();
-        test_context
-            .app_options
-            .experimental
-            .table_cards_and_blueprints = true;
+        let test_context = TestContext::new();
         let runtime_handle =
             AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen().unwrap();
+        let table_blueprints = setup_table_blueprint(
+            &test_context,
+            TableReference::local("test_table"),
+            &["id", "score", "name", "flagged", "notes"],
+            "category",
+        );
 
         let mut harness = test_context
             .setup_kittest_for_rendering_ui([width, 600.0])
@@ -93,84 +50,19 @@ async fn test_cards_view_resize() {
                         ctx.app_ctx,
                         &runtime_handle,
                         ui,
-                        &TableBlueprints::default(),
+                        &table_blueprints,
                         &mut test_context.view_states.lock(),
                     );
                 });
             });
 
-        run_async_harness(&mut harness).await;
+        run_async_harness(&test_context, &mut harness).await;
 
         // Switch to card layout.
         harness.get_by_label("Cards view").click();
-        run_async_harness(&mut harness).await;
+        run_async_harness(&test_context, &mut harness).await;
 
         harness.snapshot(format!("cards_view_resize_{suffix}"));
-        snapshot_results.extend_harness(&mut harness);
-    }
-}
-
-/// Test flag toggle interaction in dark and light theme (in-memory only).
-///
-/// Verifies that flag buttons appear and clicking toggles the visual state.
-/// Server-side persistence of flag changes is tested in
-/// `re_integration_test::tests::cards_view_flagging`.
-#[tokio::test(flavor = "multi_thread")] // `multi_thread` required because `ConnectionRegistryHandle::credentials` uses `block_in_place`.
-async fn test_cards_view_flagging() {
-    let (session_context, table_ref) = setup_test_table(true);
-    let mut snapshot_results = SnapshotResults::new();
-
-    // Fake remote URI — flagging requires remote_table + table index to be enabled.
-    let remote_uri: re_uri::EntryUri =
-        "rerun+http://localhost:1234/entry/00000000000000000000000000000001"
-            .parse()
-            .unwrap();
-
-    for (theme, suffix) in [(egui::Theme::Dark, "dark"), (egui::Theme::Light, "light")] {
-        let mut test_context = TestContext::new();
-        test_context
-            .app_options
-            .experimental
-            .table_cards_and_blueprints = true;
-        test_context.component_ui_registry = re_component_ui::create_component_ui_registry();
-        let runtime_handle =
-            AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen().unwrap();
-
-        let mut harness = test_context
-            .setup_kittest_for_rendering_ui([800.0, 600.0])
-            .with_theme(theme)
-            .build_ui(|ui| {
-                test_context.run_recording(&ui.ctx().clone(), |ctx| {
-                    DataFusionTableWidget::new(
-                        Arc::clone(&session_context),
-                        table_ref,
-                        TableReference::from(remote_uri.clone()),
-                    )
-                    .title("Flag test")
-                    .show(
-                        ctx.app_ctx,
-                        &runtime_handle,
-                        ui,
-                        &TableBlueprints::default(),
-                        &mut test_context.view_states.lock(),
-                    );
-                });
-            });
-
-        run_async_harness(&mut harness).await;
-        harness.get_by_label("Cards view").click();
-        run_async_harness(&mut harness).await;
-        harness.snapshot(format!("cards_view_flagging_{suffix}"));
-
-        // Toggle the first flag.
-        harness
-            .query_all_by_role_and_label(Role::CheckBox, "Flag")
-            .next()
-            .expect("Expected at least one flag button.")
-            .click();
-        run_async_harness(&mut harness).await;
-        harness.snapshot(format!("cards_view_flagging_toggled_{suffix}"));
-
         snapshot_results.extend_harness(&mut harness);
     }
 }
@@ -182,12 +74,22 @@ async fn test_cards_view_flagging() {
 #[tokio::test(flavor = "multi_thread")] // `multi_thread` required because `ConnectionRegistryHandle::credentials` uses `block_in_place`.
 async fn test_cards_view_non_uniform_cards() {
     let (session_context, table_ref) = setup_non_uniform_table();
-    let mut test_context = TestContext::new();
-    test_context
-        .app_options
-        .experimental
-        .table_cards_and_blueprints = true;
+    let test_context = TestContext::new();
     let runtime_handle = AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen().unwrap();
+    let table_blueprints = setup_table_blueprint(
+        &test_context,
+        TableReference::local("test_table"),
+        &[
+            "id",
+            "score",
+            "category",
+            "status",
+            "description",
+            "tags",
+            "location",
+        ],
+        "name",
+    );
 
     let mut harness = test_context
         .setup_kittest_for_rendering_ui([800.0, 600.0])
@@ -203,62 +105,72 @@ async fn test_cards_view_non_uniform_cards() {
                     ctx.app_ctx,
                     &runtime_handle,
                     ui,
-                    &TableBlueprints::default(),
+                    &table_blueprints,
                     &mut test_context.view_states.lock(),
                 );
             });
         });
 
-    run_async_harness(&mut harness).await;
+    run_async_harness(&test_context, &mut harness).await;
 
     // Switch to card layout.
     harness.get_by_label("Cards view").click();
-    run_async_harness(&mut harness).await;
+    run_async_harness(&test_context, &mut harness).await;
 
     harness.snapshot("cards_view_non_uniform_cards");
 }
 
 // ---
 
-/// Sets up a test table.
-///
-/// When `with_flagging` is true, the schema is configured for flagging:
-/// - `id` column gets `rerun:is_table_index` metadata (required for upsert)
-/// - Schema gets `rerun:flag_column` metadata pointing at the `flagged` column
-fn setup_test_table(with_flagging: bool) -> (Arc<SessionContext>, &'static str) {
-    let mut id_field = Field::new("id", DataType::Int64, false);
-    let mut flagged_field = Field::new("flagged", DataType::Boolean, true);
+#[expect(clippy::needless_pass_by_value)]
+fn setup_table_blueprint(
+    test_context: &TestContext,
+    table_ref: TableReference,
+    field_order: &[&str],
+    title: &str,
+) -> TableBlueprints {
+    let blueprint_id = StoreId::random(StoreKind::Blueprint, "table-blueprint-test");
+    let mut store_hub = test_context.store_hub.lock();
+    let stores = store_hub.store_bundle_mut();
+    let store = stores.blueprint_entry(&blueprint_id);
+    let timepoint = blueprint_timepoint_for_writes(store);
 
-    if with_flagging {
-        id_field = id_field.with_metadata(
-            [(
-                re_sorbet::metadata::SORBET_IS_TABLE_INDEX.to_owned(),
-                "true".to_owned(),
-            )]
-            .into(),
-        );
-        flagged_field = flagged_field.with_metadata(
-            [(
-                re_dataframe_ui::experimental_field_metadata::IS_FLAG_COLUMN.to_owned(),
-                "true".to_owned(),
-            )]
-            .into(),
-        );
-    }
+    let card_layout = Arc::new(
+        Chunk::builder("table/layouts/cards")
+            .with_archetype_auto_row(
+                timepoint,
+                &CardLayout::new(field_order.iter().copied()).with_title(title),
+            )
+            .build()
+            .expect("card layout chunk should build"),
+    );
+    store
+        .add_chunk(&card_layout)
+        .expect("card layout chunk should be added");
 
+    let mut table_blueprints = TableBlueprints::default();
+    table_blueprints
+        .set_default_blueprint(&table_ref, &blueprint_id, &mut store_hub)
+        .expect("default table blueprint should be set");
+    table_blueprints
+}
+
+/// Sets up the compact table used by card sizing tests.
+fn setup_test_table() -> (Arc<SessionContext>, &'static str) {
     let schema = Arc::new(Schema::new_with_metadata(
         vec![
-            id_field,
+            Field::new("id", DataType::Int64, false),
             Field::new("score", DataType::Float64, false),
             Field::new("category", DataType::Utf8, false),
             Field::new("name", DataType::Utf8, false),
-            flagged_field,
+            Field::new("flagged", DataType::Boolean, true),
             Field::new("notes", DataType::Utf8, true),
         ],
         Default::default(),
     ));
-    let batch = RecordBatch::try_new_with_options(
-        schema.clone(),
+    common::register_test_table(
+        "test_table",
+        schema,
         vec![
             Arc::new(arrow::array::Int64Array::from(vec![1, 2, 3, 4, 5])),
             Arc::new(Float64Array::from(vec![95.0, 82.5, 91.0, 88.0, 76.5])),
@@ -283,17 +195,7 @@ fn setup_test_table(with_flagging: bool) -> (Arc<SessionContext>, &'static str) 
                 None,
             ])),
         ],
-        &Default::default(),
     )
-    .expect("Failed to create a record batch");
-
-    let session_context = Arc::new(SessionContext::new());
-    let table_ref = "test_table";
-    session_context
-        .register_batch(table_ref, batch)
-        .expect("Failed to register the table");
-
-    (session_context, table_ref)
 }
 
 /// Sets up a table with 30 rows of wildly varying content lengths.
@@ -413,7 +315,8 @@ fn setup_non_uniform_table() -> (Arc<SessionContext>, &'static str) {
         Default::default(),
     ));
 
-    let batch = RecordBatch::try_new_with_options(
+    common::register_test_table(
+        "non_uniform_table",
         schema,
         vec![
             Arc::new(arrow::array::Int64Array::from(ids)),
@@ -425,15 +328,5 @@ fn setup_non_uniform_table() -> (Arc<SessionContext>, &'static str) {
             Arc::new(StringArray::from(tags)),
             Arc::new(StringArray::from(locations)),
         ],
-        &Default::default(),
     )
-    .expect("Failed to create a record batch");
-
-    let session_context = Arc::new(SessionContext::new());
-    let table_ref = "non_uniform_table";
-    session_context
-        .register_batch(table_ref, batch)
-        .expect("Failed to register the table");
-
-    (session_context, table_ref)
 }

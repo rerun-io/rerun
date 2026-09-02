@@ -6,7 +6,7 @@ use datafusion::prelude::{SessionConfig, SessionContext, col, lit};
 use datafusion::sql::TableReference;
 use egui::{Frame, Margin, RichText};
 use re_async::AsyncRuntimeHandle;
-use re_dataframe_ui::ColumnBlueprint;
+use re_dataframe_ui::TableCellKind;
 use re_log_types::EntryId;
 use re_log_types::external::re_types_core::SegmentId;
 use re_protos::cloud::v1alpha1::EntryKind;
@@ -15,7 +15,6 @@ use re_redap_client::{
     AssetLayer, AssetRegistrationError, ClientCredentialsError, ConnectionHandle,
     ConnectionRegistryHandle, CredentialSource, Credentials,
 };
-use re_sorbet::ColumnDescriptorRef;
 use re_ui::alert::Alert;
 use re_ui::{UiExt as _, icons};
 use re_uri::DATASET_HIERARCHY_SEPARATOR;
@@ -266,34 +265,21 @@ impl Server {
             },
         )
         .title(self.origin().host.to_string())
-        .column_blueprint(|desc| {
-            let mut blueprint = ColumnBlueprint::default();
-
-            if let ColumnDescriptorRef::Component(component) = desc
-                && component.component == "entry_kind"
-            {
-                blueprint = blueprint.variant_ui(re_component_ui::REDAP_ENTRY_KIND_VARIANT);
-            }
-
-            let column_sort_key = match desc.display_name().as_str() {
-                "name" => 0,
-                ENTRY_LINK_COLUMN_NAME => 1,
-                _ => 2,
-            };
-
-            blueprint = blueprint.sort_key(column_sort_key);
+        .additional_column_heuristics(|desc, mut column| {
+            // TODO(andreas): we should not operate on display name as much since this can be very brittle.
+            // TODO(andreas): Most of these heuristics could just be always applied so all tables profit from then.
 
             // The link column renders a button with the resolved entry name, so the raw
             // `name` column is redundant — hide it by default.
             if desc.display_name().as_str() == "name" {
-                blueprint = blueprint.default_visibility(false);
+                column = column.with_default_visibility(false);
             }
 
             if desc.display_name().as_str() == ENTRY_LINK_COLUMN_NAME {
-                blueprint = blueprint.variant_ui(re_component_ui::REDAP_URI_BUTTON_VARIANT);
+                column = column.with_default_cell_kind(TableCellKind::Link);
             }
 
-            blueprint
+            column
         })
         .generate_entry_links(
             ENTRY_LINK_COLUMN_NAME.into(),

@@ -7,14 +7,12 @@ include_in_manifest = false
 ## Table grid with flags
 
 Starts a local server with a table containing an index column and a boolean flag column.
-The flag column is marked with Arrow metadata so the viewer's card/grid view can toggle flags
-and persist them back to the server.
+A registered table blueprint enables the card view and configures the boolean column as an editable flag field.
 
 The flag column remains part of the table data. Its current boolean value controls the flag icon shown on each grid card. Clicking the icon immediately updates the visible table state and sends an upsert back to the server containing the row's table-index value plus the new flag value. The `rerun:is_table_index` column is required so the server knows which row to update.
 
 <!-- TODO(#12745): this is still experimental -->
-Enable `Settings > Experimental > Table cards and blueprints` in the viewer, then open the
-printed URL.
+Open the printed URL in the viewer.
 
 Flagging works on regular tables, but does **not** yet work on the segment tables of datasets:
 segment tables have no write operations yet, so flag changes cannot be persisted back to the server.

@@ -9,8 +9,8 @@ use re_chunk_store::ColumnDescriptor;
 use re_dataframe::QueryHandle;
 use re_dataframe::external::re_query::StorageEngineArcReadGuard;
 use re_dataframe_ui::{
-    CELL_SEPARATOR_STROKE_OFFSET, ColumnBlueprint, DisplayRecordBatch, DisplayRecordBatchError,
-    apply_table_style_fixes, cell_ui, header_ui,
+    CELL_SEPARATOR_STROKE_OFFSET, DisplayRecordBatch, DisplayRecordBatchError, TableCellKind,
+    TableColumn, apply_table_style_fixes, cell_ui, header_ui,
 };
 use re_log_types::{EntityPath, TimeInt, TimelineName};
 use re_sdk_types::ComponentDescriptor;
@@ -170,10 +170,10 @@ impl RowsDisplayData {
         let display_record_batches: Vec<_> = row_data
             .into_iter()
             .map(|data| {
-                DisplayRecordBatch::try_new(
-                    std::iter::zip(selected_columns.iter().map(|desc| desc.into()), data)
-                        .map(|(desc, data)| (desc, ColumnBlueprint::default_ref(), data)),
-                )
+                DisplayRecordBatch::try_new(itertools::izip!(
+                    selected_columns.iter().map(|desc| desc.into()),
+                    data
+                ))
             })
             .try_collect()?;
 
@@ -493,6 +493,16 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
                         .rect_filled(ui.max_rect(), 0.0, ui.visuals().faint_bg_color);
                 }
 
+                let cell_kind = self
+                    .selected_columns
+                    .get(cell.col_nr)
+                    .map(|desc| {
+                        let desc: re_sorbet::ColumnDescriptorRef<'_> = desc.into();
+                        TableColumn::new_without_blueprint(desc.display_name().into(), desc)
+                            .value_resolved_cell_kind(Some(column), batch_row_idx)
+                    })
+                    .unwrap_or(TableCellKind::Auto);
+
                 // This is called when data actually needs to be drawn (as opposed to summaries like
                 // "N instances" or "N more…").
                 let data_content = |ui: &mut egui::Ui| {
@@ -502,7 +512,7 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
                         batch_row_idx,
                         instance_index,
                         UiLayout::List,
-                        None,
+                        cell_kind,
                         false,
                     );
                 };

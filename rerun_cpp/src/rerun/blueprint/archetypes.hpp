@@ -27,7 +27,6 @@
 #include "blueprint/archetypes/scalar_axis.hpp"
 #include "blueprint/archetypes/spatial_information.hpp"
 #include "blueprint/archetypes/table_blueprint.hpp"
-#include "blueprint/archetypes/table_blueprint_v2.hpp"
 #include "blueprint/archetypes/table_column.hpp"
 #include "blueprint/archetypes/table_column_preview.hpp"
 #include "blueprint/archetypes/table_layout.hpp"

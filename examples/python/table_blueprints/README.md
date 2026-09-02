@@ -9,8 +9,9 @@ include_in_manifest = false
 Creates tables whose rows link to recording segment URIs.
 The viewer can load those recordings on demand and render row previews with a registered `.rbl` table blueprint.
 
-The example also adds a boolean `marker_flag` column and names it in the table blueprint.
-That column is the per-row flag state: the Viewer renders it as a clickable flag on each grid card, updates the visible table immediately when toggled, and upserts the changed boolean value back to the server using the `rerun:is_table_index` column as the row key.
+The example also adds a boolean `marker_flag` column and configures its `TableColumn` with editing enabled and the `Flag` cell kind.
+The `CardLayout` archetype includes that column as a field alongside the preview field.
+The Viewer renders it as a clickable flag on each card, updates the visible table immediately when toggled, and upserts the changed boolean value back to the server using the `rerun:is_table_index` column as the row key.
 The column is still regular table data, so its saved values are what you get back when you query the table later.
 
 Blueprints can also be registered on a dataset's **own segment table** instead of on a separate demo table, using `DatasetEntry.register_blueprint(..., segment_table=True)`. <!-- NOLINT -->
@@ -20,12 +21,11 @@ Use `--target` to choose (see [Run the code](#run-the-code)):
 - `dataset`: register a blueprint on the dataset's segment table (no tables created).
 - `both`: do both.
 
-The segment-table blueprint leaves `segment_preview_column` and `flag_column` unset — the viewer auto-picks the column to preview, and segment tables have no demo flag column.
+The segment-table blueprint configures the generated `recording link` column as a preview and does not configure an interactive flag because segment tables have no demo flag column.
 Flagging does **not** yet work on dataset segment tables: segment tables have no write operations yet, so flag changes cannot be persisted back to the server. Flagging therefore only works on the demo tables created with `--target tables`.
 
 <!-- TODO(#12746): this is still experimental -->
 Table cards and blueprints are experimental.
-Enable `Settings > Experimental > Table cards and blueprints` in the viewer.
 
 ## Dataset-specific setup
 
@@ -34,7 +34,7 @@ Please edit these functions before using it with your own data — the defaults 
 
 - `extract_dataset_property_columns` — which segment-table columns get copied into the demo tables.
 - `setup_preview_views` — all views (plot, 3D, 2D) shared by the table and segment-table blueprints. Any view type can be used for previews!
-- `make_dataset_blueprints` — the table blueprints (preview/flag/card-title columns, timeline).
+- `make_dataset_blueprints` — the table, card, column, and column-preview archetypes.
 - `make_segment_table_blueprint` — the blueprint registered on the dataset's own segment table (views, timeline).
 
 ## Run the code
@@ -61,7 +61,7 @@ Or pass any dataset directory containing `.rrd` files:
 table_blueprints /path/to/dataset
 ```
 
-Choose what the blueprints apply to with `--target` (`tables` by default):
+Choose what the blueprints apply to with `--target` (`both` by default):
 
 ```bash
 table_blueprints --target dataset   # only the dataset's segment table

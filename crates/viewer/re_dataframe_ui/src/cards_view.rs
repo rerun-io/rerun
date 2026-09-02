@@ -4,35 +4,32 @@ use arrow::array::Array as _;
 use egui::{Frame, RichText, Ui};
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
-use re_component_ui::TABLE_FLAG_VARIANT;
-use re_sdk_types::blueprint::components::ColumnName;
-use re_ui::egui_ext::card_layout::CardLayout;
+use re_sdk_types::blueprint::components::{ColumnName, TableCellKind, TableLayoutKind};
 use re_ui::{UiExt as _, UiLayout};
-use re_viewer_context::{AppContext, VariantName, ViewStates};
+use re_viewer_context::{AppContext, ViewStates};
 
 use crate::DisplayRecordBatch;
-use crate::datafusion_table_widget::{Columns, find_row_batch, resolve_recording_for_row};
+use crate::blueprint::CardLayout;
+use crate::datafusion_table_widget::{DataColumns, ResolvedFlagColumn, find_row_batch};
 use crate::display_record_batch::DisplayColumn;
 use crate::preview_renderer::RecordingPreviewRenderer;
-use crate::re_table_utils::UiTableConfig;
-use crate::table_blueprint::TableBlueprint;
 
 /// Height of the segment preview area inside each card.
 const PREVIEW_HEIGHT: f32 = 200.0;
 
 pub struct FlagChangeEvent {
     pub row: u64,
+    pub physical_column: ColumnName,
     pub new_value: bool,
 }
 
 /// Shared parameters that are the same for every card in the grid.
 struct CardConfig<'a> {
-    table_config: &'a UiTableConfig,
     title_col_index: Option<usize>,
     url_col_index: Option<usize>,
-    segment_preview_column: Option<&'a ColumnName>,
-    table_blueprint: &'a TableBlueprint,
-    flagging_enabled: bool,
+    card_layout: &'a CardLayout<'a>,
+    flag_column: Option<&'a ColumnName>,
+    flag_editable: bool,
 }
 
 /// Render the data using the card layout.
@@ -41,39 +38,36 @@ struct CardConfig<'a> {
 pub fn cards_ui(
     ctx: &AppContext<'_>,
     ui: &mut Ui,
-    columns: &Columns<'_>,
+    columns: &DataColumns<'_>,
     display_record_batches: &[DisplayRecordBatch],
-    table_config: &UiTableConfig,
-    table_blueprint: &TableBlueprint,
-    view_renderer: Option<&RecordingPreviewRenderer<'_>>,
+    card_layout: &CardLayout<'_>,
+    view_renderers: &[RecordingPreviewRenderer<'_>],
     view_states: &mut ViewStates,
     num_table_rows: u64,
-    flagging_enabled: bool,
+    editable_flag_columns: &[ResolvedFlagColumn],
 ) -> Vec<FlagChangeEvent> {
     let mut flag_changes = Vec::new();
 
     // Blueprint fields are expected to be resolved upstream via `TableBlueprint::apply_heuristics`,
     // so we only need a direct name lookup here.
-    let title_col_index = table_blueprint
-        .grid_view_card_title
-        .as_ref()
+    let title_col_index = card_layout
+        .title()
         .and_then(|name| lookup_column(columns, name, "Title"));
-    let url_col_index = table_blueprint
-        .url_column
-        .as_ref()
-        .and_then(|name| lookup_column(columns, name, "URL"));
-    let segment_preview_column = table_blueprint
-        .segment_preview_column
-        .as_ref()
-        .filter(|name| columns.index_by_physical_name(name).is_some());
+    let url_col_index = card_layout
+        .link()
+        .and_then(|name| lookup_column(columns, name, "Link"));
 
     let tokens = ui.tokens();
     let card_spacing = tokens.table_grid_view_card_spacing;
 
     // Scale the card width with the number of views so each view keeps roughly the same
     // footprint as a single-view card.
-    let num_views = view_renderer.map_or(1, |r| r.num_views()).max(1);
-    let card_min_width = tokens.table_grid_view_card_min_width * num_views as f32;
+    let max_num_views_horizontal = view_renderers
+        .iter()
+        .map(RecordingPreviewRenderer::num_views)
+        .max()
+        .unwrap_or(1);
+    let card_min_width = tokens.table_grid_view_card_min_width * max_num_views_horizontal as f32;
 
     let inner_margin = egui::Margin::same(tokens.table_grid_view_card_inner_margin as i8);
     let card_frame = Frame::new()
@@ -82,13 +76,18 @@ pub fn cards_ui(
         .stroke(tokens.card_stroke)
         .corner_radius(tokens.table_grid_view_card_corner_radius);
 
+    let flag_column = card_layout.flag().map(|field| field.physical_name());
+    let flag_editable = flag_column.is_some_and(|field| {
+        editable_flag_columns
+            .iter()
+            .any(|column| column.physical_name == *field)
+    });
     let card_config = CardConfig {
-        table_config,
         title_col_index,
         url_col_index,
-        segment_preview_column,
-        table_blueprint,
-        flagging_enabled,
+        card_layout,
+        flag_column,
+        flag_editable,
     };
 
     egui::ScrollArea::vertical()
@@ -97,7 +96,7 @@ pub fn cards_ui(
         .show(ui, |ui| {
             ui.spacing_mut().item_spacing = egui::vec2(card_spacing, card_spacing);
 
-            CardLayout::uniform(
+            re_ui::egui_ext::card_layout::CardLayout::uniform(
                 num_table_rows as usize,
                 card_min_width + card_spacing,
                 card_frame,
@@ -110,7 +109,7 @@ pub fn cards_ui(
                     ctx,
                     &card_config,
                     ui,
-                    view_renderer,
+                    view_renderers,
                     view_states,
                     index as u64,
                     columns,
@@ -124,7 +123,7 @@ pub fn cards_ui(
 }
 
 /// Look up a column by its physical name, warning once if it is missing.
-fn lookup_column(columns: &Columns<'_>, name: &ColumnName, kind: &str) -> Option<usize> {
+fn lookup_column(columns: &DataColumns<'_>, name: &ColumnName, kind: &str) -> Option<usize> {
     let found = columns.index_by_physical_name(name);
     if found.is_none() {
         re_log::warn_once!("{kind} column {name:?} was not found in the table.");
@@ -139,22 +138,21 @@ fn card_content_ui(
     ctx: &AppContext<'_>,
     config: &CardConfig<'_>,
     ui: &mut Ui,
-    view_renderer: Option<&RecordingPreviewRenderer<'_>>,
+    view_renderers: &[RecordingPreviewRenderer<'_>],
     view_states: &mut ViewStates,
     row_idx: u64,
-    columns: &Columns<'_>,
+    data_columns: &DataColumns<'_>,
     display_record_batches: &[DisplayRecordBatch],
     card_hovered: bool,
 ) -> Option<FlagChangeEvent> {
     re_tracing::profile_function!();
 
     let &CardConfig {
-        table_config,
         title_col_index,
         url_col_index,
-        segment_preview_column,
-        table_blueprint,
-        flagging_enabled,
+        card_layout,
+        flag_column,
+        flag_editable,
     } = config;
 
     let (display_record_batch, batch_index) =
@@ -196,33 +194,42 @@ fn card_content_ui(
                 }
             },
             |ui| {
-                if let Some(flag_column) = &table_blueprint.flag_column
-                    && let Some(column_index) = columns.index_by_physical_name(flag_column)
+                if let Some(flag_column) = flag_column
+                    && let Some(column_index) = data_columns.index_by_physical_name(flag_column)
                 {
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        if let Some(column) = display_record_batch.columns().get(column_index)
-                            && let Some(edited) = column.data_ui(
+                        if let Some(column) = display_record_batch.columns().get(column_index) {
+                            let cell_kind = card_layout
+                                .fields()
+                                .iter()
+                                .find(|field| field.physical_name() == flag_column)
+                                .map_or(TableCellKind::Auto, |field| {
+                                    field.value_resolved_cell_kind(Some(column), batch_index)
+                                });
+
+                            if let Some(edited) = column.data_ui(
                                 ctx,
                                 ui,
                                 batch_index,
                                 None,
                                 UiLayout::List,
-                                Some(VariantName::from_static_str(TABLE_FLAG_VARIANT)),
-                                flagging_enabled,
-                            )
-                        {
-                            let new_value = edited
-                                .downcast_array_ref::<arrow::array::BooleanArray>()
-                                .and_then(|edited| {
-                                    (!edited.is_empty() && !edited.is_null(0))
-                                        .then(|| edited.value(0))
-                                });
+                                cell_kind,
+                                flag_editable,
+                            ) {
+                                let new_value = edited
+                                    .downcast_array_ref::<arrow::array::BooleanArray>()
+                                    .and_then(|edited| {
+                                        (!edited.is_empty() && !edited.is_null(0))
+                                            .then(|| edited.value(0))
+                                    });
 
-                            if let Some(new_value) = new_value {
-                                flag_change_event = Some(FlagChangeEvent {
-                                    row: row_idx,
-                                    new_value,
-                                });
+                                if let Some(new_value) = new_value {
+                                    flag_change_event = Some(FlagChangeEvent {
+                                        row: row_idx,
+                                        physical_column: flag_column.clone(),
+                                        new_value,
+                                    });
+                                }
                             }
                         }
                     });
@@ -230,24 +237,11 @@ fn card_content_ui(
             },
         );
 
-        // Segment preview if any.
         // TODO(RR-4510): loading indication if we're not ready to draw
-        if let Some(renderer) = view_renderer
-            && let Some(preview_column) = segment_preview_column
-        {
-            let preview_state = view_states.preview_state.get_or_insert_default();
+        for renderer in view_renderers {
             let (rect, _response) = ui.allocate_exact_size(
                 egui::vec2(ui.available_width(), PREVIEW_HEIGHT),
                 egui::Sense::hover(),
-            );
-
-            let recording = resolve_recording_for_row(
-                ctx,
-                preview_column,
-                columns,
-                display_record_batches,
-                row_idx,
-                &mut preview_state.requested_uris,
             );
 
             let mut child_ui = ui.new_child(
@@ -256,32 +250,47 @@ fn card_content_ui(
                     .layout(egui::Layout::left_to_right(egui::Align::Center)),
             );
 
-            renderer.show_preview(
+            renderer.show_preview_for_row(
                 ctx,
                 &mut child_ui,
                 row_idx,
                 card_hovered,
-                recording,
+                display_record_batches,
                 view_states,
             );
         }
 
         ui.horizontal_wrapped(|ui| {
-            for column_name in table_config.visible_column_names() {
-                let Some(col_idx) = columns.index_by_physical_name(column_name) else {
+            for field in card_layout.fields() {
+                let Some(col_idx) = data_columns.index_by_physical_name(field.physical_name())
+                else {
                     continue;
                 };
-                if Some(col_idx) == title_col_index {
-                    continue; // already shown as the title
+                if !field.is_visible(TableLayoutKind::Cards) {
+                    continue;
                 }
-                let col_name = columns.columns[col_idx].display_name();
+                let Some(column) = display_record_batch.columns().get(col_idx) else {
+                    continue;
+                };
 
-                if let Some(column) = display_record_batch.columns().get(col_idx) {
-                    ui.spacing_mut().item_spacing.x = 8.0;
-                    ui.label(RichText::new(&col_name).monospace());
-                    ui.spacing_mut().item_spacing.x = 20.0;
-                    column.data_ui(ctx, ui, batch_index, None, UiLayout::Inline, None, false);
+                // Skip preview and flag cells as they are handled separately.
+                let cell_kind = field.value_resolved_cell_kind(Some(column), batch_index);
+                if matches!(cell_kind, TableCellKind::Preview | TableCellKind::Flag) {
+                    continue;
                 }
+
+                ui.spacing_mut().item_spacing.x = 8.0;
+                ui.label(RichText::new(field.display_name()).monospace());
+                ui.spacing_mut().item_spacing.x = 20.0;
+                column.data_ui(
+                    ctx,
+                    ui,
+                    batch_index,
+                    None,
+                    UiLayout::Inline,
+                    cell_kind,
+                    false,
+                );
             }
         });
     });

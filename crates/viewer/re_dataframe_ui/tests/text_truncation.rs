@@ -2,7 +2,7 @@ mod common;
 
 use std::sync::Arc;
 
-use arrow::array::{Int32Array, RecordBatch, StringArray, StructArray};
+use arrow::array::{Int32Array, StringArray, StructArray};
 use arrow::datatypes::{DataType, Field, Fields, Schema};
 use datafusion::prelude::SessionContext;
 use re_async::AsyncRuntimeHandle;
@@ -38,7 +38,7 @@ async fn test_text_truncation() {
             });
         });
 
-    run_async_harness(&mut harness).await;
+    run_async_harness(&test_context, &mut harness).await;
     // TODO(rerun-io/egui_table#50): We should add a `max_default_width` field to egui_table
     // to truncate the root-level arrow strings
     harness.snapshot("test_text_truncation");
@@ -66,22 +66,13 @@ fn prepare_session_context() -> (Arc<SessionContext>, &'static str) {
         None,
     );
 
-    let batch = RecordBatch::try_new_with_options(
-        schema.clone(),
+    common::register_test_table(
+        "test_table",
+        schema,
         vec![
             Arc::new(StringArray::from(vec![lorem])),
             Arc::new(Int32Array::from(vec![42])),
             Arc::new(struct_array),
         ],
-        &Default::default(),
     )
-    .expect("Failed to create a record batch");
-
-    let session_context = Arc::new(SessionContext::new());
-    let table_ref = "test_table";
-    session_context
-        .register_batch(table_ref, batch)
-        .expect("Failed to register the table");
-
-    (session_context, table_ref)
 }

@@ -27,7 +27,6 @@ previews_config.rs linguist-generated=true
 scalar_axis.rs linguist-generated=true
 spatial_information.rs linguist-generated=true
 table_blueprint.rs linguist-generated=true
-table_blueprint_v2.rs linguist-generated=true
 table_column.rs linguist-generated=true
 table_column_preview.rs linguist-generated=true
 table_layout.rs linguist-generated=true

@@ -27,7 +27,6 @@ from .previews_config import PreviewsConfig
 from .scalar_axis import ScalarAxis
 from .spatial_information import SpatialInformation
 from .table_blueprint import TableBlueprint
-from .table_blueprint_v2 import TableBlueprintV2
 from .table_column import TableColumn
 from .table_column_preview import TableColumnPreview
 from .table_layout import TableLayout
@@ -73,7 +72,6 @@ __all__ = [
     "ScalarAxis",
     "SpatialInformation",
     "TableBlueprint",
-    "TableBlueprintV2",
     "TableColumn",
     "TableColumnPreview",
     "TableLayout",

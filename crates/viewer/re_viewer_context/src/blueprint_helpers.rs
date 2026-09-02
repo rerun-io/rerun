@@ -209,6 +209,15 @@ pub trait BlueprintContext {
             ));
     }
 
+    fn latest_at_in_current_blueprint(
+        &self,
+        entity_path: &EntityPath,
+        components: impl IntoIterator<Item = ComponentIdentifier>,
+    ) -> re_query::LatestAtResults {
+        self.current_blueprint()
+            .latest_at(self.blueprint_query(), entity_path, components)
+    }
+
     /// Queries a raw component from the currently active blueprint.
     ///
     /// Returns `None` for empty arrays, which are written by

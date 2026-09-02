@@ -18,16 +18,16 @@ pub struct TableColumn {
     /// Whether the column's values can be edited.
     ///
     /// If unset, editing is disabled.
-    /// Edits requires a remote table with a column marked by `rerun:is_table_index` metadata and write permission.
-    /// ⚠ Currently only boolean values are supported.
+    /// Edits require a remote table with a column marked by `rerun:is_table_index` metadata and write permission.
+    /// ⚠ Currently only boolean values with `cell_kind` set to `Flag` are supported.
     #[rerun(optional)]
     pub editable: Option<rerun::blueprint::components::Editable>,
 
     /// Whether the column is visible in this layout.
     ///
     /// If unset, the enclosing layout determines visibility.
-    /// Table layouts use the viewer default for the source column.
-    /// Card layouts show sources listed in `field_order` and hide unlisted sources.
+    /// Columns listed in the enclosing layout's `column_order` or `field_order` are shown.
+    /// Unlisted columns use the viewer default for table layouts and are hidden in card layouts.
     #[rerun(optional)]
     pub visible: Option<rerun::components::Visible>,
 

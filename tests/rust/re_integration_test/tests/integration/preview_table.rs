@@ -1,9 +1,9 @@
 //! End-to-end test for table segment previews.
 //!
-//! Builds a remote table whose rows carry a recording URI and an embedded table blueprint
-//! that defines a `Spatial3DView`. The viewer loads the referenced recording on demand and
-//! renders it inline in the table's sticky preview column. We then verify both that the
-//! recording was actually loaded and that the rendered preview matches a snapshot.
+//! Builds remote tables whose rows carry recording URIs and an embedded table blueprint
+//! that defines `Spatial3DView`s.
+//! The viewer loads the referenced recordings on demand and renders them in preview columns.
+//! The tests verify that the recordings load and that the rendered previews match snapshots.
 //!
 //! The referenced recording logs its `Points3D` statically, so the preview renders the same
 //! at every point on its looping preview timeline and the snapshot stays stable.
@@ -12,7 +12,7 @@ use std::str::FromStr as _;
 use std::sync::Arc;
 use std::time::Duration;
 
-use arrow::array::{Int64Array, RecordBatch, RecordBatchOptions, StringArray};
+use arrow::array::{ArrayRef, Int64Array, RecordBatch, RecordBatchOptions, StringArray};
 use arrow::datatypes::{DataType, Field, Schema};
 use egui_kittest::kittest::Queryable as _;
 
@@ -21,7 +21,8 @@ use re_integration_test::{HarnessExt as _, TestServer};
 use re_sdk::RecordingStreamBuilder;
 use re_sdk::external::{re_log_types, re_tuid};
 use re_sdk_types::blueprint::archetypes::{
-    ContainerBlueprint, TableBlueprint, ViewBlueprint, ViewContents, ViewportBlueprint,
+    CardLayout, ContainerBlueprint, TableColumn, TableColumnPreview, TableLayout, ViewBlueprint,
+    ViewContents, ViewportBlueprint,
 };
 use re_sdk_types::blueprint::components::{
     ContainerKind, IncludedContent, QueryExpression, RootContainer, ViewClass,
@@ -30,149 +31,57 @@ use re_viewer::viewer_test_utils::{self, HarnessOptions};
 
 const DATASET_ID: &str = "187b552b95a5c2f73f37894708825ba5";
 const PREVIEW_COLUMN: &str = "recording_uri";
+const SECOND_PREVIEW_COLUMN: &str = "recording_uri_2";
 const TITLE_COLUMN: &str = "name";
 const SEGMENT_COUNT: usize = 4;
 
+#[derive(Clone, Copy)]
+struct PreviewColumnSpec {
+    name: &'static str,
+    num_views: usize,
+}
+
+struct PreviewTableFixture {
+    _server: TestServer,
+    startup_url: String,
+    segment_uris: Vec<re_uri::DatasetUri>,
+}
+
 #[tokio::test(flavor = "multi_thread")]
 pub async fn preview_table() {
-    let (server, segment_ids) = TestServer::spawn()
-        .await
-        .with_static_preview_data(
-            "preview_dataset",
-            DATASET_ID,
-            "preview_recording",
-            SEGMENT_COUNT,
-        )
-        .await;
-
-    // One row per segment, each pointing at its segment's recording URI.
-    let dataset_id = re_tuid::Tuid::from_str(DATASET_ID).expect("Failed to parse TUID");
-    let segment_uris: Vec<re_uri::DatasetUri> = segment_ids
-        .iter()
-        .map(|segment_id| re_uri::DatasetUri {
-            origin: re_uri::Origin {
-                scheme: re_uri::Scheme::RerunHttp,
-                host: re_uri::external::url::Host::Domain("localhost".to_owned()),
-                port: server.port(),
-            },
-            dataset_id,
-            resource: re_uri::DatasetResource::Segments,
-            segment_id: Some(segment_id.clone()),
-            fragment: Default::default(),
-        })
-        .collect();
-
-    // Create a remote table with a recording-URI column. A registered blueprint (set up below)
-    // renders each recording in a 3D preview. The `name` column gives cards stable titles.
-    let schema = Arc::new(Schema::new_with_metadata(
-        vec![
-            Field::new("id", DataType::Int64, false)
-                .with_metadata([("rerun:is_table_index".to_owned(), "true".to_owned())].into()),
-            Field::new(TITLE_COLUMN, DataType::Utf8, false),
-            Field::new(PREVIEW_COLUMN, DataType::Utf8, false),
-        ],
-        Default::default(),
-    ));
-
-    let connection = server.connection_handle();
-    let mut client = connection
-        .client()
-        .await
-        .expect("Failed to connect to server");
-    let table = client
-        .create_table_entry(
-            re_log_types::EntryName::new("preview_table").expect("valid entry name"),
-            None,
-            schema.clone(),
-        )
-        .await
-        .expect("Failed to create table");
-
-    let names: Vec<String> = (0..SEGMENT_COUNT).map(|i| format!("segment {i}")).collect();
-    let batch = RecordBatch::try_new_with_options(
-        schema,
-        vec![
-            Arc::new(Int64Array::from_iter_values(
-                (0..SEGMENT_COUNT).map(|i| i64::try_from(i).expect("segment index fits in i64")),
-            )),
-            Arc::new(StringArray::from(names)),
-            Arc::new(StringArray::from(
-                segment_uris
-                    .iter()
-                    .map(|uri| uri.to_string())
-                    .collect::<Vec<_>>(),
-            )),
-        ],
-        &RecordBatchOptions::new().with_row_count(Some(SEGMENT_COUNT)),
-    )
-    .expect("Failed to build table batch");
-    client
-        .write_table(
-            futures::stream::once(async { batch }),
-            table.details.id,
-            re_protos::cloud::v1alpha1::ext::TableInsertMode::Append,
-        )
-        .await
-        .expect("Failed to write table data");
-
-    // Register the table blueprint with the table's implicit blueprint dataset and set it as the default.
-    let blueprint_rbl = blueprint_rbl_file(PREVIEW_COLUMN, TITLE_COLUMN);
-    re_integration_test::register_table_blueprint(&connection, &table, blueprint_rbl.path())
-        .await
-        .expect("Failed to register table blueprint");
+    let fixture = preview_table_fixture(&[PreviewColumnSpec {
+        name: PREVIEW_COLUMN,
+        num_views: 1,
+    }])
+    .await;
 
     // Open the viewer directly at the table entry. Make the window tall enough that all rows
     // are on screen at once, so every preview loads.
     let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions {
         window_size: Some(egui::vec2(1024.0, 1000.0)),
-        startup_url: Some(format!(
-            "rerun+http://localhost:{}/entry/{}",
-            server.port(),
-            table.details.id
-        )),
+        startup_url: Some(fixture.startup_url),
+        snapshot_test_options: re_ui::testing::TestOptions::Rendering3D, // Need higher thresholds for the 3D content.
         ..Default::default()
     });
+    let segment_uris = fixture.segment_uris;
 
     // Step until every preview recording has actually streamed in its point data. Rendering the
     // preview column is what triggers the background loads, so this also exercises the column.
-    let preview_uris: Vec<re_uri::DatasetUri> = segment_uris
-        .iter()
-        .map(|uri| uri.clone().without_fragment())
-        .collect();
-    let preview_entity = re_log_types::EntityPath::from("test_entity");
-    viewer_test_utils::step_until_with_custom_timeout(
-        "All preview recordings loaded",
-        &mut harness,
-        |harness| {
-            let uris = preview_uris.clone();
-            let entity = preview_entity.clone();
-            harness.run_with_app_context(move |app_context| {
-                uris.iter().all(|uri| {
-                    app_context
-                        .storage_context
-                        .hub
-                        .find_recording_by_uri(uri)
-                        .is_some_and(|db| {
-                            // Not only needs the recording be loaded, we also need the data to arrive.
-                            db.storage_engine()
-                                .store()
-                                .entity_has_physical_static_data(&entity)
-                        })
-                })
-            })
-        },
-        Duration::from_millis(100),
-        Duration::from_secs(30),
-    );
+    let preview_uris = wait_for_preview_recordings(&mut harness, &segment_uris);
 
+    // Card layout is the default when configured.
     // Let the 3D views' camera framing settle before snapshotting.
     harness.run_ok();
-    harness.snapshot("preview_table");
+    harness.snapshot("previews_cards");
 
-    // Switch to card layout and snapshot the same previews as cards.
+    // Switch to the table layout and snapshot the same previews as table columns.
+    harness.get_by_label("Table view").click();
+    harness.run_ok();
+    harness.snapshot("previews_table");
+
+    // Return to cards before testing card activation.
     harness.get_by_label("Cards view").click();
     harness.run_ok();
-    harness.snapshot("preview_table_grid");
 
     // Clicking the first card opens its recording, navigating away from the table.
     //
@@ -231,10 +140,191 @@ pub async fn preview_table() {
     harness.snapshot("preview_table_opened_recording");
 }
 
-/// Build a `.rbl` blueprint file holding a `Spatial3DView` over `/test_entity` plus a
-/// `TableBlueprint` archetype pointing segment previews at `preview_column` and grid-view card
-/// titles at `title_column`.
-fn blueprint_rbl_file(preview_column: &str, title_column: &str) -> tempfile::NamedTempFile {
+#[tokio::test(flavor = "multi_thread")]
+pub async fn preview_table_with_multiple_preview_columns() {
+    // The first column selects the only view in the viewport, while the second also selects a
+    // view outside the viewport. This verifies that each renderer uses its column configuration.
+    let fixture = preview_table_fixture(&[
+        PreviewColumnSpec {
+            name: PREVIEW_COLUMN,
+            num_views: 1,
+        },
+        PreviewColumnSpec {
+            name: SECOND_PREVIEW_COLUMN,
+            num_views: 2,
+        },
+    ])
+    .await;
+
+    let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions {
+        window_size: Some(egui::vec2(1400.0, 1000.0)),
+        startup_url: Some(fixture.startup_url),
+        snapshot_test_options: re_ui::testing::TestOptions::Rendering3D,
+        ..Default::default()
+    });
+    let segment_uris = fixture.segment_uris;
+    viewer_test_utils::step_until("table layout toggle appears", &mut harness, |harness| {
+        harness.query_by_label("Table view").is_some()
+    });
+
+    // Two preview fields are stacked vertically in each card. The second field contains two views,
+    // which are laid out side by side. The taller cards leave only the first two rows on screen.
+    wait_for_preview_recordings(&mut harness, &segment_uris[..2]);
+    harness.run_ok();
+    harness.snapshot("preview_cards_multiple_preview_columns");
+
+    harness.get_by_label("Table view").click();
+    harness.run_ok();
+    wait_for_preview_recordings(&mut harness, &segment_uris);
+    harness.snapshot("preview_table_multiple_preview_columns");
+}
+
+fn wait_for_preview_recordings(
+    harness: &mut egui_kittest::Harness<'_, re_viewer::App>,
+    segment_uris: &[re_uri::DatasetUri],
+) -> Vec<re_uri::DatasetUri> {
+    let preview_uris = segment_uris
+        .iter()
+        .map(|uri| uri.clone().without_fragment())
+        .collect::<Vec<_>>();
+    let preview_entity = re_log_types::EntityPath::from("test_entity");
+    viewer_test_utils::step_until_with_custom_timeout(
+        "All preview recordings loaded",
+        harness,
+        |harness| {
+            let uris = preview_uris.clone();
+            let entity = preview_entity.clone();
+            harness.run_with_app_context(move |app_context| {
+                uris.iter().all(|uri| {
+                    app_context
+                        .storage_context
+                        .hub
+                        .find_recording_by_uri(uri)
+                        .is_some_and(|db| {
+                            db.storage_engine()
+                                .store()
+                                .entity_has_physical_static_data(&entity)
+                        })
+                })
+            })
+        },
+        Duration::from_millis(100),
+        Duration::from_secs(30),
+    );
+    preview_uris
+}
+
+async fn preview_table_fixture(preview_columns: &[PreviewColumnSpec]) -> PreviewTableFixture {
+    let (server, segment_ids) = TestServer::spawn()
+        .await
+        .with_static_preview_data(
+            "preview_dataset",
+            DATASET_ID,
+            "preview_recording",
+            SEGMENT_COUNT,
+        )
+        .await;
+
+    let dataset_id = re_tuid::Tuid::from_str(DATASET_ID).expect("Failed to parse TUID");
+    let segment_uris = segment_ids
+        .iter()
+        .map(|segment_id| re_uri::DatasetUri {
+            origin: re_uri::Origin {
+                scheme: re_uri::Scheme::RerunHttp,
+                host: re_uri::external::url::Host::Domain("localhost".to_owned()),
+                port: server.port(),
+            },
+            dataset_id,
+            resource: re_uri::DatasetResource::Segments,
+            segment_id: Some(segment_id.clone()),
+            fragment: Default::default(),
+        })
+        .collect::<Vec<_>>();
+
+    let mut fields = vec![
+        Field::new("id", DataType::Int64, false)
+            .with_metadata([("rerun:is_table_index".to_owned(), "true".to_owned())].into()),
+        Field::new(TITLE_COLUMN, DataType::Utf8, false),
+    ];
+    fields.extend(
+        preview_columns
+            .iter()
+            .map(|preview| Field::new(preview.name, DataType::Utf8, false)),
+    );
+    let schema = Arc::new(Schema::new_with_metadata(fields, Default::default()));
+
+    let connection = server.connection_handle();
+    let mut client = connection
+        .client()
+        .await
+        .expect("Failed to connect to server");
+    let table = client
+        .create_table_entry(
+            re_log_types::EntryName::new("preview_table").expect("valid entry name"),
+            None,
+            schema.clone(),
+        )
+        .await
+        .expect("Failed to create table");
+
+    let names = (0..SEGMENT_COUNT)
+        .map(|i| format!("segment {i}"))
+        .collect::<Vec<_>>();
+    let mut columns: Vec<ArrayRef> = vec![
+        Arc::new(Int64Array::from_iter_values(
+            (0..SEGMENT_COUNT).map(|i| i64::try_from(i).expect("segment index fits in i64")),
+        )),
+        Arc::new(StringArray::from(names)),
+    ];
+    let uri_strings = segment_uris
+        .iter()
+        .map(ToString::to_string)
+        .collect::<Vec<_>>();
+    columns.extend(
+        preview_columns
+            .iter()
+            .map(|_| Arc::new(StringArray::from(uri_strings.clone())) as ArrayRef),
+    );
+    let batch = RecordBatch::try_new_with_options(
+        schema,
+        columns,
+        &RecordBatchOptions::new().with_row_count(Some(SEGMENT_COUNT)),
+    )
+    .expect("Failed to build table batch");
+    client
+        .write_table(
+            futures::stream::once(async { batch }),
+            table.details.id,
+            re_protos::cloud::v1alpha1::ext::TableInsertMode::Append,
+        )
+        .await
+        .expect("Failed to write table data");
+
+    let blueprint_rbl = blueprint_rbl_file(preview_columns, TITLE_COLUMN);
+    re_integration_test::register_table_blueprint(&connection, &table, blueprint_rbl.path())
+        .await
+        .expect("Failed to register table blueprint");
+
+    PreviewTableFixture {
+        startup_url: format!(
+            "rerun+http://localhost:{}/entry/{}",
+            server.port(),
+            table.details.id
+        ),
+        _server: server,
+        segment_uris,
+    }
+}
+
+/// Build a `.rbl` blueprint file holding `Spatial3DView`s over `/test_entity` plus
+/// table layout archetypes pointing previews at the configured columns and card titles at
+/// `title_column`.
+///
+/// TODO(andreas): Should use a higher level rust blueprint api.
+fn blueprint_rbl_file(
+    preview_columns: &[PreviewColumnSpec],
+    title_column: &str,
+) -> tempfile::NamedTempFile {
     let file = tempfile::Builder::new()
         .suffix(".rbl")
         .tempfile()
@@ -246,30 +336,38 @@ fn blueprint_rbl_file(preview_column: &str, title_column: &str) -> tempfile::Nam
         .expect("Failed to create blueprint memory stream");
     stream.set_time_sequence("blueprint", 0);
 
-    let view_id = uuid::Uuid::new_v4();
-    let view_path = format!("view/{view_id}");
-    stream
-        .log(
-            format!("{view_path}/ViewContents"),
-            &ViewContents::new([QueryExpression("/test_entity/**".into())]),
-        )
-        .expect("Failed to log view contents");
-    stream
-        .log(
-            view_path.clone(),
-            &ViewBlueprint::new(ViewClass("3D".into())).with_space_origin("/test_entity"),
-        )
-        .expect("Failed to log view blueprint");
+    let num_views = preview_columns
+        .iter()
+        .map(|preview| preview.num_views)
+        .max()
+        .expect("At least one preview column is required");
+    let view_paths = (0..num_views)
+        .map(|_| {
+            let view_path = format!("view/{}", uuid::Uuid::new_v4());
+            stream
+                .log(
+                    format!("{view_path}/ViewContents"),
+                    &ViewContents::new([QueryExpression("/test_entity/**".into())]),
+                )
+                .expect("Failed to log view contents");
+            stream
+                .log(
+                    view_path.clone(),
+                    &ViewBlueprint::new(ViewClass("3D".into())).with_space_origin("/test_entity"),
+                )
+                .expect("Failed to log view blueprint");
+            view_path
+        })
+        .collect::<Vec<_>>();
 
     let container_id = uuid::Uuid::new_v4();
     stream
         .log(
             format!("container/{container_id}"),
             &ContainerBlueprint::new(ContainerKind::Tabs)
-                .with_contents([IncludedContent(view_path.into())]),
+                .with_contents([IncludedContent(view_paths[0].clone().into())]),
         )
         .expect("Failed to log container blueprint");
-
     stream
         .log(
             "viewport",
@@ -277,16 +375,45 @@ fn blueprint_rbl_file(preview_column: &str, title_column: &str) -> tempfile::Nam
         )
         .expect("Failed to log viewport blueprint");
 
+    for preview in preview_columns {
+        let views = view_paths
+            .iter()
+            .take(preview.num_views)
+            .cloned()
+            .map(|path| IncludedContent(path.into()))
+            .collect::<Vec<_>>();
+        for base_path in ["table/layouts/table/columns", "table/layouts/cards/fields"] {
+            let preview_path = re_log_types::EntityPath::from(base_path)
+                / re_log_types::EntityPathPart::new(preview.name);
+            stream
+                .log(
+                    preview_path.clone(),
+                    &TableColumn::new().with_cell_kind(
+                        re_sdk_types::blueprint::components::TableCellKind::Preview,
+                    ),
+                )
+                .expect("Failed to log preview column blueprint");
+            stream
+                .log(preview_path, &TableColumnPreview::new(views.clone()))
+                .expect("Failed to log preview configuration");
+        }
+    }
+
     stream
         .log(
-            "table",
-            &TableBlueprint::new()
-                .with_segment_preview_column(preview_column)
-                .with_grid_view_card_title(title_column)
-                // Clicking a card opens the recording referenced by this column.
-                .with_url_column(preview_column),
+            "table/layouts/table",
+            &TableLayout::new()
+                .with_column_order(preview_columns.iter().map(|preview| preview.name)),
         )
-        .expect("Failed to log table blueprint");
+        .expect("Failed to log table layout");
+    stream
+        .log(
+            "table/layouts/cards",
+            &CardLayout::new(preview_columns.iter().map(|preview| preview.name))
+                .with_title(title_column)
+                .with_link(preview_columns[0].name),
+        )
+        .expect("Failed to log card layout");
 
     file
 }

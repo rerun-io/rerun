@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import Any, ClassVar
 
 from attrs import define, field
 
@@ -16,9 +16,6 @@ from ..._baseclasses import (
 from ...blueprint import components as blueprint_components
 from ...error_utils import catch_and_log_exceptions
 
-if TYPE_CHECKING:
-    from ... import encodings
-
 __all__ = ["TableBlueprint"]
 
 
@@ -27,71 +24,43 @@ class TableBlueprint(Archetype):
     """
     **Archetype**: Blueprint for configuring the styling of a table.
 
+    The table blueprint as a whole is distributed across these entity paths:
+    * `/table` for this archetype and [`archetypes.PreviewsConfig`][rerun.blueprint.archetypes.PreviewsConfig].
+    * `/table/layouts/table` for [`archetypes.TableLayout`][rerun.blueprint.archetypes.TableLayout].
+    * `/table/layouts/table/columns/{column_name}` for table [`archetypes.TableColumn`][rerun.blueprint.archetypes.TableColumn] archetypes and per-column options such as [`archetypes.TableColumnPreview`][rerun.blueprint.archetypes.TableColumnPreview].
+    * `/table/layouts/cards` for [`archetypes.CardLayout`][rerun.blueprint.archetypes.CardLayout].
+    * `/table/layouts/cards/fields/{column_name}` for card [`archetypes.TableColumn`][rerun.blueprint.archetypes.TableColumn] archetypes and per-field options such as [`archetypes.TableColumnPreview`][rerun.blueprint.archetypes.TableColumnPreview].
+    * `/view/{view_id}` for preview [`archetypes.ViewBlueprint`][rerun.blueprint.archetypes.ViewBlueprint] definitions.
+
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
 
     NAME: ClassVar[str] = "rerun.blueprint.archetypes.TableBlueprint"
 
-    def __init__(
-        self: Any,
-        *,
-        segment_preview_column: encodings.Utf8Like | None = None,
-        flag_column: encodings.Utf8Like | None = None,
-        grid_view_card_title: encodings.Utf8Like | None = None,
-        url_column: encodings.Utf8Like | None = None,
-    ) -> None:
+    def __init__(self: Any, *, layout: blueprint_components.TableLayoutKindLike | None = None) -> None:
         """
         Create a new instance of the TableBlueprint archetype.
 
         Parameters
         ----------
-        segment_preview_column:
-            The name of the column that contains recording URIs for segment previews.
+        layout:
+            The currently selected layout.
 
-            Every row can at most preview a single segment.
-
-            For the preview, the rest of the blueprint data is read it as it would be with regular recording blueprints,
-            meaning that the regular structure of [`archetypes.ViewportBlueprint`][rerun.blueprint.archetypes.ViewportBlueprint], and [`archetypes.ViewBlueprint`][rerun.blueprint.archetypes.ViewBlueprint] structure applies.
-            However, this mostly ignores layout container types as well as automatic spawning.
-
-            If unset, defaults to the first URL column in the table that points to the same Rerun server
-        flag_column:
-            The name of the boolean column used for flag/annotation toggles.
-
-            Must be set for flagging to be available. The named column must exist in the
-            table and be of boolean type.
-            Additionally, the table must be remote and have another column with
-            `rerun:is_table_index` metadata since flag changes are persisted to the server
-            via upsert.
-        grid_view_card_title:
-            The name of the column to use as the card title in grid view.
-
-            If unset, the first visible string column is used as the title.
-        url_column:
-            The name of the column containing URLs to open when a card is clicked in grid view.
-
-            If unset, defaults to the segment preview column.
+            If unset, defaults to card layout if available.
+            `Cards` falls back to table layout when no [`archetypes.CardLayout`][rerun.blueprint.archetypes.CardLayout] is configured.
 
         """
 
         # You can define your own __init__ function as a member of TableBlueprintExt in table_blueprint_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(
-                segment_preview_column=segment_preview_column,
-                flag_column=flag_column,
-                grid_view_card_title=grid_view_card_title,
-                url_column=url_column,
-            )
+            self.__attrs_init__(layout=layout)
             return
         self.__attrs_clear__()
 
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            segment_preview_column=None,
-            flag_column=None,
-            grid_view_card_title=None,
-            url_column=None,
+            layout=None,
         )
 
     @classmethod
@@ -106,10 +75,7 @@ class TableBlueprint(Archetype):
         cls,
         *,
         clear_unset: bool = False,
-        segment_preview_column: encodings.Utf8Like | None = None,
-        flag_column: encodings.Utf8Like | None = None,
-        grid_view_card_title: encodings.Utf8Like | None = None,
-        url_column: encodings.Utf8Like | None = None,
+        layout: blueprint_components.TableLayoutKindLike | None = None,
     ) -> TableBlueprint:
         """
         Update only some specific fields of a `TableBlueprint`.
@@ -118,42 +84,18 @@ class TableBlueprint(Archetype):
         ----------
         clear_unset:
             If true, all unspecified fields will be explicitly cleared.
-        segment_preview_column:
-            The name of the column that contains recording URIs for segment previews.
+        layout:
+            The currently selected layout.
 
-            Every row can at most preview a single segment.
-
-            For the preview, the rest of the blueprint data is read it as it would be with regular recording blueprints,
-            meaning that the regular structure of [`archetypes.ViewportBlueprint`][rerun.blueprint.archetypes.ViewportBlueprint], and [`archetypes.ViewBlueprint`][rerun.blueprint.archetypes.ViewBlueprint] structure applies.
-            However, this mostly ignores layout container types as well as automatic spawning.
-
-            If unset, defaults to the first URL column in the table that points to the same Rerun server
-        flag_column:
-            The name of the boolean column used for flag/annotation toggles.
-
-            Must be set for flagging to be available. The named column must exist in the
-            table and be of boolean type.
-            Additionally, the table must be remote and have another column with
-            `rerun:is_table_index` metadata since flag changes are persisted to the server
-            via upsert.
-        grid_view_card_title:
-            The name of the column to use as the card title in grid view.
-
-            If unset, the first visible string column is used as the title.
-        url_column:
-            The name of the column containing URLs to open when a card is clicked in grid view.
-
-            If unset, defaults to the segment preview column.
+            If unset, defaults to card layout if available.
+            `Cards` falls back to table layout when no [`archetypes.CardLayout`][rerun.blueprint.archetypes.CardLayout] is configured.
 
         """
 
         inst = cls.__new__(cls)
         with catch_and_log_exceptions(context=cls.__name__):
             kwargs = {
-                "segment_preview_column": segment_preview_column,
-                "flag_column": flag_column,
-                "grid_view_card_title": grid_view_card_title,
-                "url_column": url_column,
+                "layout": layout,
             }
 
             if clear_unset:
@@ -171,88 +113,22 @@ class TableBlueprint(Archetype):
         return cls.from_fields(clear_unset=True)
 
     @staticmethod
-    def descriptor_segment_preview_column() -> ComponentDescriptor:
+    def descriptor_layout() -> ComponentDescriptor:
         return ComponentDescriptor(
-            "TableBlueprint:segment_preview_column",
+            "TableBlueprint:layout",
             archetype=TableBlueprint.NAME,
-            component_type=blueprint_components.ColumnNameBatch._COMPONENT_TYPE,
+            component_type=blueprint_components.TableLayoutKindBatch._COMPONENT_TYPE,
         )
 
-    @staticmethod
-    def descriptor_flag_column() -> ComponentDescriptor:
-        return ComponentDescriptor(
-            "TableBlueprint:flag_column",
-            archetype=TableBlueprint.NAME,
-            component_type=blueprint_components.ColumnNameBatch._COMPONENT_TYPE,
-        )
-
-    @staticmethod
-    def descriptor_grid_view_card_title() -> ComponentDescriptor:
-        return ComponentDescriptor(
-            "TableBlueprint:grid_view_card_title",
-            archetype=TableBlueprint.NAME,
-            component_type=blueprint_components.ColumnNameBatch._COMPONENT_TYPE,
-        )
-
-    @staticmethod
-    def descriptor_url_column() -> ComponentDescriptor:
-        return ComponentDescriptor(
-            "TableBlueprint:url_column",
-            archetype=TableBlueprint.NAME,
-            component_type=blueprint_components.ColumnNameBatch._COMPONENT_TYPE,
-        )
-
-    segment_preview_column: blueprint_components.ColumnNameBatch | None = field(
+    layout: blueprint_components.TableLayoutKindBatch | None = field(
         metadata={"component": True},
         default=None,
-        converter=blueprint_components.ColumnNameBatch._converter,  # type: ignore[misc]
+        converter=blueprint_components.TableLayoutKindBatch._converter,  # type: ignore[misc]
     )
-    # The name of the column that contains recording URIs for segment previews.
+    # The currently selected layout.
     #
-    # Every row can at most preview a single segment.
-    #
-    # For the preview, the rest of the blueprint data is read it as it would be with regular recording blueprints,
-    # meaning that the regular structure of [`archetypes.ViewportBlueprint`][rerun.blueprint.archetypes.ViewportBlueprint], and [`archetypes.ViewBlueprint`][rerun.blueprint.archetypes.ViewBlueprint] structure applies.
-    # However, this mostly ignores layout container types as well as automatic spawning.
-    #
-    # If unset, defaults to the first URL column in the table that points to the same Rerun server
-    #
-    # (Docstring intentionally commented out to hide this field from the docs)
-
-    flag_column: blueprint_components.ColumnNameBatch | None = field(
-        metadata={"component": True},
-        default=None,
-        converter=blueprint_components.ColumnNameBatch._converter,  # type: ignore[misc]
-    )
-    # The name of the boolean column used for flag/annotation toggles.
-    #
-    # Must be set for flagging to be available. The named column must exist in the
-    # table and be of boolean type.
-    # Additionally, the table must be remote and have another column with
-    # `rerun:is_table_index` metadata since flag changes are persisted to the server
-    # via upsert.
-    #
-    # (Docstring intentionally commented out to hide this field from the docs)
-
-    grid_view_card_title: blueprint_components.ColumnNameBatch | None = field(
-        metadata={"component": True},
-        default=None,
-        converter=blueprint_components.ColumnNameBatch._converter,  # type: ignore[misc]
-    )
-    # The name of the column to use as the card title in grid view.
-    #
-    # If unset, the first visible string column is used as the title.
-    #
-    # (Docstring intentionally commented out to hide this field from the docs)
-
-    url_column: blueprint_components.ColumnNameBatch | None = field(
-        metadata={"component": True},
-        default=None,
-        converter=blueprint_components.ColumnNameBatch._converter,  # type: ignore[misc]
-    )
-    # The name of the column containing URLs to open when a card is clicked in grid view.
-    #
-    # If unset, defaults to the segment preview column.
+    # If unset, defaults to card layout if available.
+    # `Cards` falls back to table layout when no [`archetypes.CardLayout`][rerun.blueprint.archetypes.CardLayout] is configured.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

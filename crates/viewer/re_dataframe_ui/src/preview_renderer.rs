@@ -10,16 +10,23 @@ use std::cell::RefCell;
 
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
-use re_log_types::{StoreId, StoreKind};
+use re_log_types::{EntityPath, StoreId, StoreKind};
+use re_sdk_types::blueprint::components::ColumnName;
 use re_ui::UiExt as _;
 
 use re_viewer_context::{
     ActiveStoreContext, ApplicationSelectionState, Contents, MissingChunkReporter, StoreCache,
-    SystemCommandSender as _, TimeControl, ViewClass, ViewContextSystemOncePerFrameResult, ViewId,
-    ViewStates, ViewSystemIdentifier, ViewerContext, VisitorControlFlow, blueprint_timeline,
+    SystemCommand, SystemCommandSender as _, TimeControl, TimeControlCommand, ViewClass,
+    ViewContextSystemOncePerFrameResult, ViewId, ViewStates, ViewSystemIdentifier, ViewerContext,
+    blueprint_timeline,
 };
 use re_viewport::execute_systems_for_view;
-use re_viewport_blueprint::{ViewBlueprint, ViewportBlueprint};
+use re_viewport_blueprint::ViewBlueprint;
+
+use crate::DisplayRecordBatch;
+use crate::blueprint::PreviewsConfig;
+use crate::datafusion_table_widget::find_row_batch;
+use crate::display_record_batch::DisplayColumn;
 
 /// Result of running all once-per-frame context systems for a given recording.
 type OncePerFrameResults = IntMap<ViewSystemIdentifier, ViewContextSystemOncePerFrameResult>;
@@ -34,12 +41,9 @@ pub(crate) enum PreviewRecording<'a> {
 /// Renders views from a blueprint [`EntityDb`], independent of the main viewport.
 ///
 /// Used to embed small view previews (e.g. in table rows) without going through the full
-/// viewport layout system. Each call to [`Self::show_preview`] receives a recording to render
-/// against, while the blueprint (defining *what* to show) is borrowed from the
-/// [`StoreHub`](re_viewer_context::StoreHub).
-///
-/// If the blueprint contains multiple views, they are rendered left-to-right in the
-/// depth-first order defined by the blueprint's container hierarchy.
+/// viewport layout system.
+/// Each renderer owns one source column and its ordered view selection while borrowing the view
+/// definitions from the table blueprint.
 ///
 /// A [`RecordingPreviewRenderer`] is constructed fresh at the start of each UI frame; the
 /// cached once-per-frame context-system results live for exactly that long, so
@@ -52,8 +56,17 @@ pub(crate) struct RecordingPreviewRenderer<'a> {
     /// Blueprint query for resolving the view blueprint.
     blueprint_query: LatestAtQuery,
 
+    /// Source column containing the recording reference rendered by this renderer.
+    column_name: ColumnName,
+
+    /// Index of the source column in the table data.
+    data_column_index: usize,
+
     /// Ordered list of views to render (left-to-right).
     view_ids: Vec<ViewId>,
+
+    /// Timeline selected for every preview recording.
+    timeline: Option<re_log_types::TimelineName>,
 
     /// Per-frame cache of once-per-frame context-system results, keyed by the recording's
     /// [`StoreId`]. Populated lazily on the first preview of each recording.
@@ -61,23 +74,30 @@ pub(crate) struct RecordingPreviewRenderer<'a> {
 }
 
 impl<'a> RecordingPreviewRenderer<'a> {
-    /// Create a [`RecordingPreviewRenderer`] from a pre-decoded blueprint [`EntityDb`].
-    ///
-    /// Returns `None` if the blueprint does not contain any views.
-    /// View ordering follows a depth-first traversal of the blueprint's container tree,
-    /// matching the order in which containers list their children.
-    pub fn from_blueprint(blueprint: &'a EntityDb) -> Option<Self> {
+    /// Create a renderer for one preview column.
+    pub fn from_previews_config(
+        blueprint: &'a EntityDb,
+        column_name: ColumnName,
+        data_column_index: usize,
+        view_paths: &[EntityPath],
+        config: &PreviewsConfig,
+    ) -> Option<Self> {
+        if view_paths.is_empty() {
+            re_log::warn_once!("Table preview column has no configured views: {column_name:?}");
+            return None;
+        }
+
         let blueprint_query = LatestAtQuery::latest(blueprint_timeline());
-
-        let viewport = ViewportBlueprint::from_db(blueprint, &blueprint_query);
-
-        let mut view_ids: Vec<ViewId> = Vec::new();
-        let _ignored = viewport.visit_contents::<()>(&mut |contents, _| {
-            if let Contents::View(view_id) = contents {
-                view_ids.push(*view_id);
-            }
-            VisitorControlFlow::Continue
-        });
+        let view_ids = view_paths
+            .iter()
+            .filter_map(|path| match Contents::try_from(path) {
+                Some(Contents::View(view_id)) => Some(view_id),
+                Some(Contents::Container(_)) | None => {
+                    re_log::warn_once!("Table preview references content that is not a view");
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
 
         if view_ids.is_empty() {
             return None;
@@ -86,14 +106,82 @@ impl<'a> RecordingPreviewRenderer<'a> {
         Some(Self {
             blueprint,
             blueprint_query,
+            column_name,
+            data_column_index,
             view_ids,
+            timeline: config.timeline,
             once_per_frame_cache: RefCell::default(),
         })
+    }
+
+    pub fn data_column_index(&self) -> usize {
+        self.data_column_index
     }
 
     /// Number of views this renderer will draw side-by-side.
     pub fn num_views(&self) -> usize {
         self.view_ids.len()
+    }
+
+    pub fn show_preview_for_row(
+        &self,
+        app_ctx: &re_viewer_context::AppContext<'_>,
+        ui: &mut egui::Ui,
+        row_nr: u64,
+        row_hovered: bool,
+        display_record_batches: &[DisplayRecordBatch],
+        view_states: &mut ViewStates,
+    ) {
+        let recording = {
+            let preview_state = view_states.preview_state.get_or_insert_default();
+            self.resolve_recording_for_row(
+                app_ctx,
+                display_record_batches,
+                row_nr,
+                &mut preview_state.requested_uris,
+            )
+        };
+
+        self.show_preview(app_ctx, ui, row_nr, row_hovered, recording, view_states);
+    }
+
+    fn resolve_recording_for_row<'ctx>(
+        &self,
+        ctx: &'ctx re_viewer_context::AppContext<'ctx>,
+        display_record_batches: &[DisplayRecordBatch],
+        row_idx: u64,
+        already_requested_uris: &mut ahash::HashSet<re_uri::DatasetUri>,
+    ) -> Option<PreviewRecording<'ctx>> {
+        let (display_record_batch, batch_index) =
+            find_row_batch(display_record_batches, row_idx as usize)?;
+        let DisplayColumn::Component(column) =
+            display_record_batch.columns().get(self.data_column_index)?
+        else {
+            return None;
+        };
+        let uri_str = column.string_value_at(batch_index)?;
+        let uri = uri_str
+            .parse::<re_uri::DatasetUri>()
+            .ok()
+            .filter(|uri| uri.segment_id.is_some())?;
+
+        if let Some(recording) = ctx.storage_context.hub.find_recording_by_uri(&uri) {
+            ctx.storage_context.hub.mark_preview(recording.store_id());
+            return Some(PreviewRecording::Resolved(recording));
+        }
+
+        let uri = uri.without_fragment();
+        if already_requested_uris.insert(uri.clone()) {
+            ctx.command_sender
+                .send_system(SystemCommand::LoadDataSource(
+                    re_data_source::LogDataSource::RedapDatasetSegment {
+                        uri: uri.clone(),
+                        open_behavior: re_data_source::RecordingOpenBehavior::Background,
+                    },
+                ));
+        }
+
+        Some(PreviewRecording::Unresolved(uri))
     }
 
     /// Render the view(s) into the given UI area.
@@ -105,7 +193,7 @@ impl<'a> RecordingPreviewRenderer<'a> {
     /// Otherwise an empty recording is used as a placeholder.
     ///
     /// This also renders a timeline at the bottom of hovered preview columns.
-    pub fn show_preview(
+    fn show_preview(
         &self,
         app_ctx: &re_viewer_context::AppContext<'_>,
         ui: &mut egui::Ui,
@@ -186,10 +274,15 @@ impl<'a> RecordingPreviewRenderer<'a> {
         let indicated_entities_per_visualizer = caches.indicated_entities_per_visualizer();
 
         let store_id = recording.store_id();
-        let time_ctrl = preview_state
-            .recording_time_control(store_id)
-            .cloned()
-            .unwrap_or_else(TimeControl::preview_time_control);
+        let time_ctrl =
+            if let Some(time_control) = preview_state.recording_time_control_mut(store_id) {
+                apply_configured_timeline(time_control, self.timeline, recording);
+                time_control.clone()
+            } else {
+                let mut time_control = TimeControl::preview_time_control();
+                apply_configured_timeline(&mut time_control, self.timeline, recording);
+                time_control
+            };
 
         let store_context = ActiveStoreContext {
             blueprint: self.blueprint,
@@ -335,7 +428,8 @@ impl<'a> RecordingPreviewRenderer<'a> {
 
                     input_before
                 });
-                let _result = col_ui.push_id((row_nr, view_id), |ui| {
+                let preview_id = (&self.column_name, row_nr, view_id);
+                let _result = col_ui.push_id(preview_id, |ui| {
                     ui.disable();
                     view_class.ui(
                         &ctx,
@@ -352,7 +446,7 @@ impl<'a> RecordingPreviewRenderer<'a> {
 
                 re_viewport::paint_view_loading_indicator(
                     col_ui,
-                    (row_nr, view_id),
+                    preview_id,
                     view_rect,
                     missing_chunk_reporter.any_missing(),
                     recording,
@@ -364,6 +458,7 @@ impl<'a> RecordingPreviewRenderer<'a> {
             app_ctx,
             view_states,
             ui,
+            &self.column_name,
             row_nr,
             row_hovered,
             recording,
@@ -373,6 +468,25 @@ impl<'a> RecordingPreviewRenderer<'a> {
     }
 }
 
+fn apply_configured_timeline(
+    time_control: &mut TimeControl,
+    configured_timeline: Option<re_log_types::TimelineName>,
+    recording: &EntityDb,
+) {
+    let Some(configured_timeline) = configured_timeline else {
+        return;
+    };
+    if time_control.timeline_name() == &configured_timeline {
+        return;
+    }
+
+    let _response = time_control.handle_time_commands(
+        None::<&ViewerContext<'_>>,
+        recording,
+        &[TimeControlCommand::SetActiveTimeline(configured_timeline)],
+    );
+}
+
 /// Shows a preview timeline when the grid card/row is hovered.
 ///
 /// This timeline can be interacted with to set the time of the preview.
@@ -380,13 +494,14 @@ fn preview_timeline(
     app_ctx: &re_viewer_context::AppContext<'_>,
     view_states: &ViewStates,
     ui: &egui::Ui,
+    column_name: &ColumnName,
     row_nr: u64,
     row_hovered: bool,
     recording: &EntityDb,
     time_ctrl: &TimeControl,
     views_rect: egui::Rect,
 ) {
-    let id = ui.id().with(("timeline", row_nr));
+    let id = ui.id().with(("timeline", column_name, row_nr));
 
     // Do this outside the if to keep showing the timeline when dragged.
     let was_active = ui.read_response(id).is_some_and(|last_response| {
@@ -468,5 +583,54 @@ fn preview_timeline(
                 );
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn renderer_keeps_column_specific_views() {
+        let blueprint = EntityDb::new(StoreId::random(StoreKind::Blueprint, "test"));
+        let first_views = [ViewId::random().as_entity_path()];
+        let second_views = [
+            ViewId::random().as_entity_path(),
+            ViewId::random().as_entity_path(),
+        ];
+        let config = PreviewsConfig::default();
+
+        let first = RecordingPreviewRenderer::from_previews_config(
+            &blueprint,
+            "first".into(),
+            3,
+            &first_views,
+            &config,
+        )
+        .unwrap();
+        let second = RecordingPreviewRenderer::from_previews_config(
+            &blueprint,
+            "second".into(),
+            5,
+            &second_views,
+            &config,
+        )
+        .unwrap();
+
+        assert_eq!(first.data_column_index(), 3);
+        assert_eq!(first.num_views(), 1);
+        assert_eq!(second.data_column_index(), 5);
+        assert_eq!(second.num_views(), 2);
+    }
+
+    #[test]
+    fn preview_uses_configured_timeline() {
+        let recording = EntityDb::new(StoreId::random(StoreKind::Recording, "test"));
+        let configured_timeline = re_log_types::TimelineName::try_new("configured").unwrap();
+        let mut time_control = TimeControl::preview_time_control();
+
+        apply_configured_timeline(&mut time_control, Some(configured_timeline), &recording);
+
+        assert_eq!(time_control.timeline_name(), &configured_timeline);
     }
 }

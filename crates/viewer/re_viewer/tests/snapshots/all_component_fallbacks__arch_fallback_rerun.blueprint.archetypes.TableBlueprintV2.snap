@@ -2,4 +2,4 @@
 source: crates/viewer/re_viewer/tests/all_component_fallbacks.rs
 expression: arch_display
 ---
-default_layout: [1]
+layout: [1]

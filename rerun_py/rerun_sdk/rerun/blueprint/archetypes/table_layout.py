@@ -41,9 +41,9 @@ class TableLayout(Archetype):
         Parameters
         ----------
         column_order:
-            Source columns to show first, in display order.
+            Source columns visible by default and shown first, in display order.
 
-            Unmentioned columns retain the viewer defaults and follow in default order.
+            Unmentioned columns retain the viewer visibility defaults and follow in default order.
             Each source column may appear at most once.
 
         """
@@ -82,9 +82,9 @@ class TableLayout(Archetype):
         clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         column_order:
-            Source columns to show first, in display order.
+            Source columns visible by default and shown first, in display order.
 
-            Unmentioned columns retain the viewer defaults and follow in default order.
+            Unmentioned columns retain the viewer visibility defaults and follow in default order.
             Each source column may appear at most once.
 
         """
@@ -122,9 +122,9 @@ class TableLayout(Archetype):
         default=None,
         converter=blueprint_components.ColumnNameBatch._converter,  # type: ignore[misc]
     )
-    # Source columns to show first, in display order.
+    # Source columns visible by default and shown first, in display order.
     #
-    # Unmentioned columns retain the viewer defaults and follow in default order.
+    # Unmentioned columns retain the viewer visibility defaults and follow in default order.
     # Each source column may appear at most once.
     #
     # (Docstring intentionally commented out to hide this field from the docs)

@@ -51,16 +51,15 @@ url = { workspace = true, optional = true }
 
 [dev-dependencies]
 re_arrow_util.workspace = true
-re_dataframe_ui.workspace = true
 re_datafusion.workspace = true
 re_entity_db.workspace = true
 re_log_channel.workspace = true
 re_log_types.workspace = true
 re_test_context.workspace = true
 re_view_bar_chart.workspace = true
+re_view_state_timeline.workspace = true
 re_view_tensor.workspace = true
 re_view_text_document.workspace = true
-re_view_state_timeline.workspace = true
 re_view_text_log.workspace = true
 re_view_time_series.workspace = true
 

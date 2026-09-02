@@ -136,12 +136,13 @@ impl AppOptions {
             show_metrics: false, // flaky in snapshot tests
             #[cfg(any(target_os = "windows", target_os = "linux"))]
             custom_window_decorations: false,
+            video: VideoOptions::test(),
+
             experimental: ExperimentalAppOptions {
-                table_cards_and_blueprints: true,
+                // Currently depends on debug vs release build. We musn't have this distinction on tests since our web builds are sometimes release and sometimes debug.
+                use_viewer_catalog: false,
                 ..Default::default()
             },
-
-            video: VideoOptions::test(),
 
             // Always show the full date so timestamps render as `YYYY-MM-DD HH:MM:SS`
             // regardless of when the test runs. The default `HideDateToday` would
@@ -237,12 +238,6 @@ impl VideoOptions {
 #[derive(Debug, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize, Clone)]
 #[serde(default)]
 pub struct ExperimentalAppOptions {
-    /// Enable table cards and blueprints.
-    ///
-    /// This enables registered table blueprints,
-    /// plus the table/card layout toggle for server-supplied tables.
-    pub table_cards_and_blueprints: bool,
-
     /// Enable gamepad navigation in 3D spatial views.
     pub gamepad_navigation: bool,
 

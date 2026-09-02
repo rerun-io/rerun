@@ -2,7 +2,7 @@ mod common;
 
 use std::sync::Arc;
 
-use arrow::array::{Array as _, ListArray, RecordBatch, StringBuilder};
+use arrow::array::{Array as _, ListArray, StringBuilder};
 use arrow::datatypes::{Field, Schema};
 use datafusion::prelude::SessionContext;
 use egui::accesskit::Role;
@@ -40,7 +40,7 @@ async fn test_no_sort() {
             });
         });
 
-    run_async_harness(&mut harness).await;
+    run_async_harness(&test_context, &mut harness).await;
     harness.snapshot("test_no_sort");
 }
 
@@ -71,7 +71,7 @@ async fn test_ascending() {
             });
         });
 
-    run_async_harness(&mut harness).await;
+    run_async_harness(&test_context, &mut harness).await;
     harness.snapshot("test_ascending");
 }
 
@@ -102,7 +102,7 @@ async fn test_descending() {
             });
         });
 
-    run_async_harness(&mut harness).await;
+    run_async_harness(&test_context, &mut harness).await;
     harness.snapshot("test_descending");
 }
 
@@ -132,13 +132,13 @@ async fn test_column_menu_button() {
             });
         });
 
-    run_async_harness(&mut harness).await;
+    run_async_harness(&test_context, &mut harness).await;
     let node = harness
         .query_all_by_role_and_label(Role::Button, "More options")
         .next()
         .unwrap();
     node.click();
-    run_async_harness(&mut harness).await;
+    run_async_harness(&test_context, &mut harness).await;
     harness.snapshot("test_column_menu_button");
 }
 
@@ -159,19 +159,5 @@ fn prepare_session_context() -> (Arc<SessionContext>, &'static str) {
         vec![Field::new("col", column.data_type().clone(), true)],
         Default::default(),
     ));
-    let batch = RecordBatch::try_new_with_options(
-        schema.clone(),
-        vec![Arc::new(column)],
-        &Default::default(),
-    )
-    .expect("Failed to create a record batch");
-
-    // create a datafusion session context with that table
-    let session_context = Arc::new(SessionContext::new());
-    let table_ref = "test_table";
-    session_context
-        .register_batch(table_ref, batch)
-        .expect("Failed to register the table");
-
-    (session_context, table_ref)
+    common::register_test_table("test_table", schema, vec![Arc::new(column)])
 }

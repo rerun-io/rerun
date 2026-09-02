@@ -1,6 +1,6 @@
 use datafusion::sql::TableReference;
 use egui::AtomExt as _;
-use re_dataframe_ui::{ColumnBlueprint, default_display_name_for_column};
+use re_dataframe_ui::TableCellKind;
 use re_format::format_uint;
 use re_log_types::external::re_types_core::SegmentId;
 use re_log_types::{EntityPathPart, EntryId, Timestamp};
@@ -227,11 +227,13 @@ impl Server {
             },
         )
         .toolbar_summary(|ui| self.segment_count_ui(ui, dataset))
-        .column_blueprint(|desc| {
-            let mut name = default_display_name_for_column(desc);
+        .additional_column_heuristics(|desc, mut column| {
+            // TODO(andreas): we should not operate on display name as much since this can be very brittle.
+            // TODO(andreas): Most of these heuristics could just be always applied so all tables profit from then.
 
-            // strip prefix and remove underscores, _only_ for the base columns (aka not the
-            // properties)
+            let mut name = column.display_name();
+
+            // Strip the prefix and remove underscores only for base columns, not properties.
             name = name
                 .strip_prefix("rerun_")
                 .map(|name| name.replace('_', " "))
@@ -240,28 +242,20 @@ impl Server {
             let default_visible = if desc.entity_path().is_some_and(|entity_path| {
                 entity_path.starts_with(&std::iter::once(EntityPathPart::properties()).collect())
             }) {
-                // Property columns are visible by default
                 true
             } else {
                 desc.display_name().as_str() == RECORDING_LINK_COLUMN_NAME
             };
 
-            let column_sort_key = match desc.display_name().as_str() {
-                ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME => 0,
-                RECORDING_LINK_COLUMN_NAME => 1,
-                _ => 2,
-            };
-
-            let mut blueprint = ColumnBlueprint::default()
-                .display_name(name)
-                .default_visibility(default_visible)
-                .sort_key(column_sort_key);
+            column = column
+                .with_default_display_name(name)
+                .with_default_visibility(default_visible);
 
             if desc.display_name().as_str() == RECORDING_LINK_COLUMN_NAME {
-                blueprint = blueprint.variant_ui(re_component_ui::REDAP_URI_BUTTON_VARIANT);
+                column = column.with_default_cell_kind(TableCellKind::Link);
             }
 
-            blueprint
+            column
         })
         .generate_segment_links(
             RECORDING_LINK_COLUMN_NAME.into(),

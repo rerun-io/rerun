@@ -179,18 +179,12 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
 
     {
         let ExperimentalAppOptions {
-            table_cards_and_blueprints,
             gamepad_navigation,
             point_cloud_transparency,
             use_viewer_catalog,
         } = experimental;
         separator_with_some_space(ui);
         ui.strong("Experimental");
-        ui.re_checkbox(table_cards_and_blueprints, "Table cards and blueprints")
-            .on_hover_text(
-                "Enable registered table blueprints and the card layout for server-supplied tables.\n\n\
-                 When enabled, tables can use registered view definitions for segment previews, and a list/grid toggle appears in the table title bar.",
-            );
         ui.re_checkbox(point_cloud_transparency, "Point cloud transparency")
             .on_hover_text(
                 "Alpha-blend semi-transparent point clouds, sorting them back-to-front.\n\n\

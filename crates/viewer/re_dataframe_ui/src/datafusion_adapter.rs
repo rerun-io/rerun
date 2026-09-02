@@ -15,13 +15,42 @@ use re_log::{error, warn};
 use re_log_types::Timestamp;
 use re_mutex::Mutex;
 use re_quota_channel::send_crossbeam;
+use re_sdk_types::blueprint::components::ColumnName;
 use re_sorbet::{BatchType, SorbetBatch, SorbetSchema};
 
 use crate::ColumnFilter;
 use crate::cards_view::FlagChangeEvent;
 use crate::column_sorting::SortBy;
-use crate::table_blueprint::{EntryLinksSpec, SegmentLinksSpec};
 use crate::table_selection::TableSelectionState;
+
+/// Information required to generate a segment link column.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct SegmentLinksSpec {
+    /// Name of the column to generate.
+    pub column_name: ColumnName,
+
+    /// Name of the existing column containing the segment id.
+    pub segment_id_column_name: ColumnName,
+
+    /// Origin to use for the links.
+    pub origin: re_uri::Origin,
+
+    /// The id of the dataset to use for the links.
+    pub dataset_id: re_log_types::EntryId,
+}
+
+/// Information required to generate an entry link column.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct EntryLinksSpec {
+    /// Name of the column to generate.
+    pub column_name: ColumnName,
+
+    /// Name of the existing column containing the entry id.
+    pub entry_id_column_name: ColumnName,
+
+    /// Origin to use for the links.
+    pub origin: re_uri::Origin,
+}
 
 /// Make sure we escape column names correctly for datafusion.
 ///
@@ -472,24 +501,19 @@ impl DataFusionAdapter {
         });
     }
 
-    /// Apply flag toggle changes to the in-memory query results.
+    /// Apply flag changes to the in-memory query results.
     ///
     /// Note that this only manipulates in-memory state.
     /// Sending this to wherever we got the data from has to happen separately.
     ///
-    /// The flag column must already exist as a boolean column in the sorbet schema.
+    /// Each edited column must already exist as a boolean column in the Sorbet schema.
     /// Does nothing otherwise.
-    pub fn apply_flag_changes(
-        &mut self,
-        ui: &egui::Ui,
-        display_column_index: usize,
-        changes: &[FlagChangeEvent],
-    ) {
+    pub fn apply_flag_changes(&mut self, ui: &egui::Ui, changes: &[FlagChangeEvent]) {
         let Some(Ok(results)) = &mut self.results else {
             return;
         };
 
-        update_existing_flag_column(results, display_column_index, changes);
+        update_flag_columns(results, changes);
 
         ui.data_mut(|data| {
             data.insert_temp(self.id, self.clone());
@@ -497,17 +521,25 @@ impl DataFusionAdapter {
     }
 }
 
-/// Update an existing boolean flag column with the given changes.
+/// Update existing flag columns with the given changes.
 ///
 /// Since Arrow arrays are immutable, we must rebuild the entire column even for single-cell changes.
-fn update_existing_flag_column(
-    results: &mut DataFusionQueryResult,
-    col_idx: usize,
-    changes: &[FlagChangeEvent],
-) {
+fn update_flag_columns(results: &mut DataFusionQueryResult, changes: &[FlagChangeEvent]) {
     use arrow::array::{Array as _, BooleanArray};
 
     for change in changes {
+        let Some(col_idx) = results
+            .original_schema
+            .fields()
+            .iter()
+            .position(|field| field.name() == change.physical_column.as_str())
+        else {
+            re_log::warn_once!(
+                "Flag column {:?} is missing from the original schema",
+                change.physical_column
+            );
+            continue;
+        };
         let Some((batch, row_offset)) = results.find_row_batch_mut(change.row) else {
             continue;
         };
@@ -565,41 +597,9 @@ mod tests {
     use arrow::datatypes::{DataType, Field};
     use re_log_types::EntryId;
 
-    use super::DataFusionQueryData;
+    use super::{DataFusionQueryData, EntryLinksSpec, SegmentLinksSpec};
     use crate::column_sorting::SortBy;
     use crate::filters::{ColumnFilter, StringFilter, StringOperator};
-    use crate::table_blueprint::{EntryLinksSpec, SegmentLinksSpec, TableBlueprint};
-
-    #[test]
-    fn display_roles_do_not_change_query_fingerprint() {
-        fn query_fingerprint(
-            state: &(DataFusionQueryData, TableBlueprint),
-        ) -> &DataFusionQueryData {
-            &state.0
-        }
-
-        let first = (
-            DataFusionQueryData::default(),
-            TableBlueprint {
-                segment_preview_column: Some("preview_a".into()),
-                flag_column: Some("flag_a".into()),
-                grid_view_card_title: Some("title_a".into()),
-                url_column: Some("url_a".into()),
-            },
-        );
-        let second = (
-            first.0.clone(),
-            TableBlueprint {
-                segment_preview_column: Some("preview_b".into()),
-                flag_column: None,
-                grid_view_card_title: Some("title_b".into()),
-                url_column: None,
-            },
-        );
-
-        assert_ne!(first.1, second.1);
-        assert_eq!(query_fingerprint(&first), query_fingerprint(&second));
-    }
 
     #[test]
     fn query_inputs_change_query_fingerprint() {

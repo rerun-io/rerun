@@ -15,37 +15,33 @@ use re_format::{format_plural_s, format_uint};
 use re_log::error;
 use re_log_types::{EntryId, Timestamp};
 use re_protos::cloud::v1alpha1::ext;
-use re_sdk_types::blueprint::components::ColumnName;
+use re_sdk_types::blueprint::components::{ColumnName, TableCellKind, TableLayoutKind};
 use re_sorbet::{ColumnDescriptorRef, SorbetSchema};
 use re_ui::egui_ext::response_ext::ResponseExt as _;
 use re_ui::menu::menu_style;
 use re_ui::{UiExt as _, UiLayout, icons};
-use re_viewer_context::{AppContext, SystemCommand, SystemCommandSender as _, TableReference};
+use re_viewer_context::{
+    AppBlueprintCtx, AppContext, BlueprintContext as _, MaybeMutRef, SystemCommand,
+    SystemCommandSender as _, TableReference,
+};
 
+use crate::DisplayRecordBatch;
+use crate::blueprint::{TableBlueprint, TableColumn};
 use crate::cards_view::FlagChangeEvent;
 use crate::column_sorting::{SortBy, SortDirection};
-use crate::datafusion_adapter::{DataFusionAdapter, DataFusionQueryData, DataFusionQueryResult};
+use crate::datafusion_adapter::{
+    DataFusionAdapter, DataFusionQueryData, DataFusionQueryResult, EntryLinksSpec, SegmentLinksSpec,
+};
 use crate::display_record_batch::DisplayColumn;
 use crate::filters::{ColumnFilter, FilterState};
 use crate::header_tooltip::column_header_tooltip_ui;
-use crate::preview_renderer::PreviewRecording;
-use crate::re_table::ReTable;
-use crate::re_table_utils::UiTableConfig;
-use crate::table_blueprint::{EntryLinksSpec, SegmentLinksSpec, TableBlueprint};
+use crate::re_table::{PreviewColumn, ReTable};
+use crate::re_table_utils::columns_edit_menu_ui;
 use crate::table_selection::TableSelectionState;
-use crate::{ColumnBlueprint, DisplayRecordBatch, default_display_name_for_column};
 use crate::{StreamingCacheTableProvider, TableBlueprints};
 
 /// Minimum row height (in points) when segment preview views are shown.
 const SEGMENT_PREVIEW_SIZE: f32 = 200.0;
-
-/// Whether the table is shown as a traditional table or as cards.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub(crate) enum TableViewMode {
-    #[default]
-    Table,
-    Cards,
-}
 
 /// Output produced by [`DataFusionTableWidget::table_ui`].
 struct TableUiOutput {
@@ -53,19 +49,22 @@ struct TableUiOutput {
     query_data: DataFusionQueryData,
 
     /// Resolved source information for flag mutation and write-back.
-    flag_column: Option<ResolvedFlagColumn>,
+    flag_columns: Vec<ResolvedFlagColumn>,
 
-    /// Flag toggle changes from the card layout.
+    /// Flag changes from either layout.
     flag_changes: Vec<FlagChangeEvent>,
 }
 
-struct ResolvedFlagColumn {
-    display_index: usize,
+pub struct ResolvedFlagColumn {
+    pub physical_name: ColumnName,
     flag_field: Arc<Field>,
     index_field: Arc<Field>,
 }
 
-pub struct Column<'a> {
+/// Represents a single column in the data, including its original Arrow field name and descriptor.
+///
+/// This is related, but independent of its blueprint representation [`TableColumn`].
+pub struct DataColumn<'a> {
     /// The original Arrow field name used by DataFusion to identify the column.
     ///
     /// [`ColumnName`] always refers to this original name, never a name produced by Sorbet
@@ -74,46 +73,22 @@ pub struct Column<'a> {
 
     /// Reference to the descriptor of this column.
     pub desc: ColumnDescriptorRef<'a>,
-
-    /// The blueprint of this column.
-    pub blueprint: ColumnBlueprint,
 }
 
-impl Column<'_> {
+impl DataColumn<'_> {
     /// Returns the original Arrow field name used by DataFusion.
     pub fn physical_name(&self) -> &ColumnName {
         &self.physical_name
     }
-
-    /// Returns the display name of the column.
-    ///
-    /// Do not use it to identify the column; use [`Self::physical_name`] instead.
-    pub fn display_name(&self) -> String {
-        self.blueprint
-            .display_name
-            .clone()
-            .unwrap_or_else(|| default_display_name_for_column(&self.desc))
-    }
-
-    fn sort_by(&self, direction: SortDirection) -> SortBy {
-        SortBy {
-            column_name: self.physical_name.clone(),
-            direction,
-        }
-    }
 }
 
-/// Keep track of a [`re_sorbet::SorbetBatch`]'s columns, along with their order and their blueprint.
-pub struct Columns<'a> {
-    pub columns: Vec<Column<'a>>,
+/// Keep track of a [`re_sorbet::SorbetBatch`]'s columns, along with their original order.
+pub struct DataColumns<'a> {
+    pub columns: Vec<DataColumn<'a>>,
 }
 
-impl<'a> Columns<'a> {
-    fn from(
-        sorbet_schema: &'a SorbetSchema,
-        original_schema: &arrow::datatypes::Schema,
-        column_blueprint_fn: &ColumnBlueprintFn<'_>,
-    ) -> Self {
+impl<'a> DataColumns<'a> {
+    fn from(sorbet_schema: &'a SorbetSchema, original_schema: &arrow::datatypes::Schema) -> Self {
         re_log::debug_assert_eq!(original_schema.fields().len(), sorbet_schema.columns.len());
 
         // TODO(andreas): Preserve the DataFusion field name in the Sorbet schema so this mapping
@@ -125,12 +100,10 @@ impl<'a> Columns<'a> {
             .map(|(index, desc)| {
                 let physical_name = original_schema.fields()[index].name().clone().into();
                 let desc = desc.into();
-                let blueprint = column_blueprint_fn(&desc);
 
-                Column {
+                DataColumn {
                     physical_name,
                     desc,
-                    blueprint,
                 }
             })
             .collect();
@@ -139,13 +112,13 @@ impl<'a> Columns<'a> {
     }
 }
 
-impl Columns<'_> {
-    pub fn iter(&self) -> impl Iterator<Item = &Column<'_>> + use<'_> {
+impl DataColumns<'_> {
+    pub fn iter(&self) -> impl Iterator<Item = &DataColumn<'_>> + use<'_> {
         self.columns.iter()
     }
 
     /// Find a column by its physical name.
-    pub fn find_by_physical_name(&self, name: &ColumnName) -> Option<(usize, &Column<'_>)> {
+    pub fn find_by_physical_name(&self, name: &ColumnName) -> Option<(usize, &DataColumn<'_>)> {
         self.columns
             .iter()
             .enumerate()
@@ -179,7 +152,10 @@ pub enum TableStatus {
     Error(String),
 }
 
-type ColumnBlueprintFn<'a> = Box<dyn Fn(&ColumnDescriptorRef<'_>) -> ColumnBlueprint + 'a>;
+pub type TableColumnHeuristic<'a> = Box<
+    dyn for<'column> Fn(&ColumnDescriptorRef<'column>, TableColumn<'column>) -> TableColumn<'column>
+        + 'a,
+>;
 
 type ToolbarSummaryFn<'a> = Box<dyn Fn(&mut Ui) + 'a>;
 
@@ -197,8 +173,8 @@ pub struct DataFusionTableWidget<'a> {
     /// If provided, the toolbar on top of the table shows this at its left end.
     toolbar_summary_fn: Option<ToolbarSummaryFn<'a>>,
 
-    /// User-provided closure to provide column blueprint.
-    column_blueprint_fn: ColumnBlueprintFn<'a>,
+    /// Runtime defaults applied after stored table blueprint values are resolved.
+    additional_column_heuristics: TableColumnHeuristic<'a>,
 
     /// Query state used only when creating the egui-owned adapter for the first time.
     initial_query_data: DataFusionQueryData,
@@ -264,7 +240,7 @@ impl<'a> DataFusionTableWidget<'a> {
 
             title: None,
             toolbar_summary_fn: None,
-            column_blueprint_fn: Box::new(|_| ColumnBlueprint::default()),
+            additional_column_heuristics: Box::new(|_, column| column),
             initial_query_data: Default::default(),
         }
     }
@@ -285,12 +261,15 @@ impl<'a> DataFusionTableWidget<'a> {
         self
     }
 
-    pub fn column_blueprint(
+    pub fn additional_column_heuristics(
         mut self,
-        column_blueprint_fn: impl Fn(&ColumnDescriptorRef<'_>) -> ColumnBlueprint + 'a,
+        heuristic: impl for<'column> Fn(
+            &ColumnDescriptorRef<'column>,
+            TableColumn<'column>,
+        ) -> TableColumn<'column>
+        + 'a,
     ) -> Self {
-        self.column_blueprint_fn = Box::new(column_blueprint_fn);
-
+        self.additional_column_heuristics = Box::new(heuristic);
         self
     }
 
@@ -345,57 +324,62 @@ impl<'a> DataFusionTableWidget<'a> {
             .unwrap_or_default()
     }
 
-    /// Resolve the original Arrow field for the configured flag column if flagging is available.
-    ///
-    /// Requires all of:
-    /// - `flag_column` set in the blueprint
-    /// - The named column exists in the table as a boolean
-    /// - Remote tables have a table-index column for write-back upserts
-    /// - The token for the remote table (if any) has write permission
-    fn resolve_flag_column(
-        blueprint: &TableBlueprint,
-        columns: &Columns<'_>,
+    fn resolve_flag_columns(
+        blueprint: &TableBlueprint<'_>,
+        layout_kind: TableLayoutKind,
+        columns: &DataColumns<'_>,
+        original_schema: &arrow::datatypes::Schema,
+        remote_table: Option<&re_uri::EntryUri>,
+        connection_registry: &re_redap_client::ConnectionRegistryHandle,
+    ) -> Vec<ResolvedFlagColumn> {
+        blueprint
+            .iter_columns(layout_kind)
+            .filter(|column| {
+                column.configured_cell_kind() == TableCellKind::Flag && column.editable()
+            })
+            .filter_map(|flag_column| {
+                let name = flag_column.physical_name();
+                if columns.find_by_physical_name(name).is_none() {
+                    re_log::warn_once!("Flag column {name:?} does not exist in the table");
+                    return None;
+                }
+                Self::resolve_flag_column_source(
+                    name,
+                    original_schema,
+                    remote_table,
+                    connection_registry,
+                )
+            })
+            .collect()
+    }
+
+    fn resolve_flag_column_source(
+        name: &ColumnName,
         original_schema: &arrow::datatypes::Schema,
         remote_table: Option<&re_uri::EntryUri>,
         connection_registry: &re_redap_client::ConnectionRegistryHandle,
     ) -> Option<ResolvedFlagColumn> {
-        let Some(flag_column_name) = &blueprint.flag_column else {
-            return None;
-        };
-
         let Some(remote_table) = remote_table else {
-            // Local tables don't support flagging for now.
-            return None;
-        };
-
-        let Some((display_index, column)) = columns.find_by_physical_name(flag_column_name) else {
-            re_log::warn_once!("Flag column {flag_column_name:?} does not exist in the table");
-            return None;
-        };
-
-        if !matches!(&column.desc, re_sorbet::ColumnDescriptorRef::Component(component)
-                    if component.store_datatype == arrow::datatypes::DataType::Boolean)
-        {
             re_log::warn_once!(
-                "Flag column {flag_column_name:?} is not a boolean column or does not exist in the table"
+                "Flag column {name:?} is not editable because the table is not a writable remote table"
             );
             return None;
-        }
-
+        };
         let Some(flag_field) = original_schema
             .fields()
             .iter()
-            .find(|field| field.name() == flag_column_name.as_str())
+            .find(|field| field.name() == name.as_str())
         else {
-            re_log::warn_once!(
-                "Flag column {flag_column_name:?} is missing from the original schema"
-            );
+            re_log::warn_once!("Flag column {name:?} is missing from the original schema");
             return None;
         };
-
+        if flag_field.data_type() != &arrow::datatypes::DataType::Boolean {
+            re_log::warn_once!("Flag column {name:?} is not boolean");
+            return None;
+        }
         let Some((_, index_field)) = table_index_column(original_schema) else {
             re_log::warn_once!(
-                "Flagging is disabled because remote table has no rerun:is_table_index column for upserts"
+                "Flag column {name:?} is not editable because the table has no rerun:is_table_index column"
             );
             return None;
         };
@@ -412,7 +396,7 @@ impl<'a> DataFusionTableWidget<'a> {
         }
 
         Some(ResolvedFlagColumn {
-            display_index,
+            physical_name: name.clone(),
             flag_field: Arc::clone(flag_field),
             index_field: Arc::clone(index_field),
         })
@@ -506,7 +490,11 @@ impl<'a> DataFusionTableWidget<'a> {
             }
         };
 
-        let output = self.table_ui(
+        let TableUiOutput {
+            query_data,
+            flag_columns,
+            flag_changes,
+        } = self.table_ui(
             app_ctx,
             runtime,
             ui,
@@ -519,24 +507,25 @@ impl<'a> DataFusionTableWidget<'a> {
             view_states,
         );
 
-        // Flag changes are only produced when flagging_enabled was true in table_ui,
-        // which already validated: flag_column is Some and column exists as boolean.
-        if !output.flag_changes.is_empty()
-            && let Some(flag_col) = &output.flag_column
-        {
-            table_state.apply_flag_changes(ui, flag_col.display_index, &output.flag_changes);
+        if !flag_changes.is_empty() {
+            table_state.apply_flag_changes(ui, &flag_changes);
 
             if let Some(re_uri::RedapUri::Entry(entry_uri)) = &self.table_ref.url()
                 && let Some(Ok(results)) = &table_state.results
             {
-                upsert_flag_changes(
-                    app_ctx,
-                    runtime,
-                    entry_uri,
-                    results,
-                    flag_col,
-                    &output.flag_changes,
-                );
+                for change in flag_changes {
+                    let Some(flag_column) = flag_columns
+                        .iter()
+                        .find(|column| column.physical_name == change.physical_column)
+                    else {
+                        re_log::warn_once!(
+                            "Flag column {:?} is not editable",
+                            change.physical_column
+                        );
+                        continue;
+                    };
+                    upsert_flag_change(app_ctx, runtime, entry_uri, results, flag_column, &change);
+                }
             }
 
             // Invalidate the streaming cache so the next re-query (e.g. filter/sort change)
@@ -548,8 +537,8 @@ impl<'a> DataFusionTableWidget<'a> {
             });
         }
 
-        if table_state.query_data() != &output.query_data {
-            table_state.update_query(runtime, ui, output.query_data);
+        if table_state.query_data() != &query_data {
+            table_state.update_query(runtime, ui, query_data);
         }
 
         if is_table_update_in_progress {
@@ -573,8 +562,6 @@ impl<'a> DataFusionTableWidget<'a> {
         table_blueprints: &TableBlueprints,
         view_states: &mut re_viewer_context::ViewStates,
     ) -> TableUiOutput {
-        let static_id = Id::new(&self.datafusion_table_ref);
-
         let mut query_data = query_data.clone();
 
         let mut filter_state = FilterState::load_or_init_from_filters(
@@ -589,19 +576,27 @@ impl<'a> DataFusionTableWidget<'a> {
             .map(|record_batch| record_batch.num_rows() as u64)
             .sum();
 
-        let columns = Columns::from(
-            &query_result.sorbet_schema,
-            &query_result.original_schema,
-            &self.column_blueprint_fn,
+        let data_columns =
+            DataColumns::from(&query_result.sorbet_schema, &query_result.original_schema);
+
+        let blueprint_ctx = table_blueprints.blueprint_context_for(ctx, &self.table_ref);
+        let blueprint = TableBlueprint::load_and_resolve(
+            &blueprint_ctx,
+            &data_columns,
+            &self.additional_column_heuristics,
         );
+
+        let mut layout_kind = blueprint.layout();
+        let card_layout_available = blueprint.card_layout.is_some();
 
         let display_record_batches: Result<Vec<_>, _> = query_result
             .sorbet_batches
             .iter()
             .map(|record_batch| {
+                // The order in which we query should be the same order in which we receive, so we should be able to zip things up just fine.
+                // TODO(andreas): seems brittle with sorbet migrations?
                 DisplayRecordBatch::try_new(itertools::izip!(
                     query_result.sorbet_schema.columns.iter().map(|x| x.into()),
-                    columns.iter().map(|column| &column.blueprint),
                     record_batch.columns().iter().map(Arc::clone)
                 ))
             })
@@ -614,62 +609,32 @@ impl<'a> DataFusionTableWidget<'a> {
                 ui.error_label(err.to_string());
                 return TableUiOutput {
                     query_data,
-                    flag_column: None,
+                    flag_columns: Vec::new(),
                     flag_changes: Vec::new(),
                 };
             }
         };
 
-        let mut table_config =
-            UiTableConfig::from_egui_state_merged_with_data_columns(ui.ctx(), static_id, &columns);
-
-        let table_cards_and_blueprints_enabled =
-            ctx.app_options.experimental.table_cards_and_blueprints;
-
-        let blueprint_db = table_blueprints
-            .active_id(&self.table_ref)
-            .and_then(|store_id| ctx.storage_context.bundle.get(store_id));
-        let blueprint = blueprint_db
-            .map(TableBlueprint::load)
-            .unwrap_or_default()
-            .apply_heuristics(
-                &query_result.original_schema,
-                &columns,
-                &display_record_batches,
-                &table_config,
-                self.table_ref.url().as_ref().map(|uri| uri.origin()),
-            );
-
-        let view_renderer = if table_cards_and_blueprints_enabled {
-            blueprint_db.and_then(crate::preview_renderer::RecordingPreviewRenderer::from_blueprint)
+        let blueprint_columns = blueprint.iter_columns(layout_kind);
+        let layout_kind_ref = if card_layout_available {
+            MaybeMutRef::MutRef(&mut layout_kind)
         } else {
-            None
+            MaybeMutRef::Ref(&layout_kind)
         };
-
-        let view_mode_id = session_id.with("view_mode");
-        let mut view_mode = if table_cards_and_blueprints_enabled {
-            ui.ctx()
-                .data(|d| d.get_temp::<TableViewMode>(view_mode_id))
-                .unwrap_or_default()
-        } else {
-            TableViewMode::Table
-        };
-
         toolbar_ui(
             ui,
             ctx,
-            &columns,
-            &mut table_config,
+            &blueprint_ctx,
+            blueprint_columns,
             self.title.as_deref(),
             self.toolbar_summary_fn.as_deref(),
             self.table_ref.url().map(|url| url.to_string()).as_deref(),
             should_show_loading_indicator,
-            if table_cards_and_blueprints_enabled {
-                Some(&mut view_mode)
-            } else {
-                None
-            },
+            layout_kind_ref,
         );
+        if layout_kind != blueprint.layout() {
+            TableBlueprint::save_layout(&blueprint_ctx, layout_kind);
+        }
 
         // Under a tab bar the toolbar's own bottom margin is the whole gap to what follows, so
         // `item_spacing` must not add to it. A titled table keeps the spacing it had.
@@ -683,62 +648,55 @@ impl<'a> DataFusionTableWidget<'a> {
             &mut query_data.column_filters,
         );
 
-        let table_style = re_ui::TableStyle::Spacious;
-
-        let mut row_height = ctx.tokens().table_row_height(table_style);
-
-        // If the first column is a blob, we treat it as a thumbnail and increase the row height.
-        // TODO(lucas): This is a band-aid fix and should be replaced with proper table blueprint
-        let first_column = table_config
-            .visible_column_names()
-            .next()
-            .and_then(|name| columns.find_by_physical_name(name))
-            .and_then(|(index, _)| display_record_batches.first()?.columns().get(index));
-        if let Some(DisplayColumn::Component(component)) = first_column
-            && component.is_image()
-        {
-            row_height *= 3.0;
-        }
+        let blueprint_db = blueprint_ctx.current_blueprint();
+        let view_renderers = blueprint
+            .iter_visible_columns(layout_kind)
+            .filter(|column| column.configured_cell_kind() == TableCellKind::Preview)
+            .filter_map(|column| {
+                let data_column_index =
+                    data_columns.index_by_physical_name(column.physical_name())?;
+                crate::preview_renderer::RecordingPreviewRenderer::from_previews_config(
+                    blueprint_db,
+                    column.physical_name().clone(),
+                    data_column_index,
+                    column.preview_views_blueprint_paths(),
+                    &blueprint.previews_config,
+                )
+            })
+            .collect::<Vec<_>>();
 
         let migrated_fields = query_result
             .sorbet_schema
             .columns
             .arrow_fields(re_sorbet::BatchType::Dataframe);
 
-        let show_segment_previews = view_mode == TableViewMode::Table
-            && view_renderer.is_some()
-            && blueprint
-                .segment_preview_column
-                .as_ref()
-                .is_some_and(|name| columns.index_by_physical_name(name).is_some());
-
-        let entry_uri = if let Some(re_uri::RedapUri::Entry(entry_uri)) = self.table_ref.url() {
-            Some(entry_uri)
+        let potentially_writable_remote_table = self.table_ref.url().and_then(|uri| match uri {
+            re_uri::RedapUri::Entry(entry) => Some(entry),
+            _ => None,
+        });
+        let flag_columns = if should_show_loading_indicator {
+            Vec::new()
         } else {
-            None
+            Self::resolve_flag_columns(
+                &blueprint,
+                layout_kind,
+                &data_columns,
+                &query_result.original_schema,
+                potentially_writable_remote_table.as_ref(),
+                ctx.connection_registry,
+            )
         };
-        let flag_column = Self::resolve_flag_column(
-            &blueprint,
-            &columns,
-            &query_result.original_schema,
-            entry_uri.as_ref(),
-            ctx.connection_registry,
-        );
-        if show_segment_previews {
-            // Ensure rows are tall enough for the segment preview.
-            row_height = row_height.max(SEGMENT_PREVIEW_SIZE);
-        }
 
-        let visible_columns = table_config.visible_columns().count();
-        let total_columns = columns.columns.len();
+        let num_visible_columns = blueprint.iter_visible_columns(layout_kind).count();
+        let num_total_columns = data_columns.columns.len();
 
         let action = Self::bottom_bar_ui(
             ui,
             ctx,
             session_id,
             num_rows,
-            visible_columns,
-            total_columns,
+            num_visible_columns,
+            num_total_columns,
             queried_at,
         );
 
@@ -755,10 +713,56 @@ impl<'a> DataFusionTableWidget<'a> {
         }
 
         let mut flag_changes = Vec::new();
-        match view_mode {
-            TableViewMode::Table => {
-                let num_preview_views = show_segment_previews
-                    .then(|| view_renderer.as_ref().map_or(1, |r| r.num_views()));
+        match layout_kind {
+            TableLayoutKind::Table => {
+                let table_style = re_ui::TableStyle::Spacious;
+
+                let mut row_height = ctx.tokens().table_row_height(table_style);
+
+                let first_column_kind =
+                    blueprint
+                        .iter_visible_columns(layout_kind)
+                        .next()
+                        .map(|column| {
+                            let display_column = data_columns
+                                .index_by_physical_name(column.physical_name())
+                                .and_then(|index| {
+                                    display_record_batches.first()?.columns().get(index)
+                                });
+                            // Probe row 0 to determine the cell kind.
+                            // TODO(andreas): this is brittle! What if the first one is null and the next is a thumbnail.
+                            column.value_resolved_cell_kind(display_column, 0)
+                        });
+                if first_column_kind == Some(TableCellKind::Thumbnail) {
+                    row_height *= 3.0;
+                }
+
+                let preview_columns = view_renderers
+                    .iter()
+                    .map(|renderer| PreviewColumn {
+                        data_column_index: renderer.data_column_index(),
+                        num_views: renderer.num_views(),
+                        preview_height: SEGMENT_PREVIEW_SIZE,
+                    })
+                    .collect::<Vec<_>>();
+                if !preview_columns.is_empty() {
+                    row_height = row_height.max(
+                        SEGMENT_PREVIEW_SIZE
+                            + ctx.tokens().table_row_height(table_style)
+                            + ui.spacing().item_spacing.y,
+                    );
+                }
+                let visible_columns = blueprint
+                    .iter_visible_columns(layout_kind)
+                    .filter_map(|column| {
+                        data_columns.index_by_physical_name(column.physical_name())
+                    })
+                    .map(|index| {
+                        (
+                            egui::Id::new(data_columns.columns[index].physical_name()),
+                            index,
+                        )
+                    });
 
                 let mut table_delegate = DataFusionTableDelegate {
                     session_id,
@@ -767,20 +771,17 @@ impl<'a> DataFusionTableWidget<'a> {
                     query_result,
                     migrated_fields: &migrated_fields,
                     display_record_batches: &display_record_batches,
-                    columns: &columns,
+                    columns: &data_columns,
                     blueprint: &blueprint,
                     query_data: &mut query_data,
                     filter_state: &mut filter_state,
                     row_height,
-                    num_preview_views,
-                    view_renderer,
+                    view_renderers,
                     view_states,
+                    flag_columns: &flag_columns,
+                    flag_changes: &mut flag_changes,
                 };
 
-                let visible_columns = table_config
-                    .visible_columns()
-                    .filter_map(|config| columns.index_by_physical_name(config.column_name()))
-                    .map(|index| (egui::Id::new(columns.columns[index].physical_name()), index));
                 // The table paints its own background rather than letting the page show through,
                 // so it matches the cards on the other tabs.
                 Frame::new()
@@ -793,34 +794,35 @@ impl<'a> DataFusionTableWidget<'a> {
                             visible_columns,
                             num_rows,
                         )
-                        .preview_column(num_preview_views)
+                        .with_preview_columns(preview_columns)
                         .show(ui);
                     });
             }
-            TableViewMode::Cards => {
-                flag_changes = crate::cards_view::cards_ui(
-                    ctx,
-                    ui,
-                    &columns,
-                    &display_record_batches,
-                    &table_config,
-                    &blueprint,
-                    view_renderer.as_ref(),
-                    view_states,
-                    num_rows,
-                    flag_column.is_some(),
-                );
+            TableLayoutKind::Cards => {
+                if let Some(card_layout) = blueprint.card_layout {
+                    flag_changes = crate::cards_view::cards_ui(
+                        ctx,
+                        ui,
+                        &data_columns,
+                        &display_record_batches,
+                        &card_layout,
+                        &view_renderers,
+                        view_states,
+                        num_rows,
+                        &flag_columns,
+                    );
+                } else {
+                    // Should never happen.
+                    ui.error_label("No card layout defined in the table blueprint");
+                }
             }
         }
 
-        table_config.store(ui.ctx());
         filter_state.store(ui.ctx(), session_id);
-        ui.ctx()
-            .data_mut(|d| d.insert_temp(view_mode_id, view_mode));
 
         TableUiOutput {
             query_data,
-            flag_column,
+            flag_columns,
             flag_changes,
         }
     }
@@ -906,19 +908,17 @@ fn id_from_session_context_and_table(
     egui::Id::new((session_ctx.session_id(), table_ref))
 }
 
-/// The row on top of the table, with the title, if any, and the controls for how it is displayed.
-///
-/// Callers that show the table's name themselves pass no title, and still get the controls.
-fn toolbar_ui(
+/// The row above the table, with an optional title and the display controls.
+fn toolbar_ui<'a>(
     ui: &mut egui::Ui,
     ctx: &AppContext<'_>,
-    columns: &Columns<'_>,
-    table_config: &mut UiTableConfig,
+    blueprint_ctx: &AppBlueprintCtx<'_>,
+    blueprint_columns: impl Iterator<Item = &'a TableColumn<'a>>,
     title: Option<&str>,
     summary_ui: Option<&dyn Fn(&mut Ui)>,
     url: Option<&str>,
     should_show_loading_indicator: bool,
-    view_mode: Option<&mut TableViewMode>,
+    mut layout_kind: MaybeMutRef<'_, TableLayoutKind>,
 ) {
     // A row of small buttons needs less room around it than a heading does. Without a title this
     // is the row under a tab bar, so it uses `TAB_TOOLBAR_MARGIN_Y` like every other tab.
@@ -971,24 +971,24 @@ fn toolbar_ui(
                 }
 
                 ui.horizontal_centered(|ui| {
-                    if let Some(view_mode) = view_mode {
+                    if let Some(layout_kind) = layout_kind.as_mut() {
                         ui.selectable_toggle(|ui| {
                             ui.icon_selectable_value(
                                 &icons::TABLE_ROW_VIEW,
                                 "Table view",
-                                view_mode,
-                                TableViewMode::Table,
+                                layout_kind,
+                                TableLayoutKind::Table,
                             );
                             ui.icon_selectable_value(
                                 &icons::TABLE_GRID_VIEW,
                                 "Cards view",
-                                view_mode,
-                                TableViewMode::Cards,
+                                layout_kind,
+                                TableLayoutKind::Cards,
                             );
                         });
                     }
 
-                    table_config.button_ui(ui, columns);
+                    columns_edit_menu_ui(ui, blueprint_ctx, *layout_kind, blueprint_columns);
                 });
             },
         );
@@ -1011,7 +1011,7 @@ pub fn find_row_batch(
 }
 
 pub fn value_at(
-    columns: &Columns<'_>,
+    columns: &DataColumns<'_>,
     display_record_batches: &[DisplayRecordBatch],
     row: u64,
     column_name: &ColumnName,
@@ -1029,7 +1029,7 @@ pub fn value_at(
 
 /// Extract a string value from a named column at the given row.
 pub fn string_value_at(
-    columns: &Columns<'_>,
+    columns: &DataColumns<'_>,
     display_record_batches: &[DisplayRecordBatch],
     row: u64,
     column_name: &ColumnName,
@@ -1042,54 +1042,6 @@ pub fn string_value_at(
     Some(string_array.value(0).to_owned())
 }
 
-/// Resolve the recording for a row's segment URI, triggering async loading if needed.
-///
-/// Shared between the regular table and card layouts.
-pub fn resolve_recording_for_row<'a>(
-    ctx: &'a AppContext<'a>,
-    segment_preview_column: &ColumnName,
-    columns: &Columns<'_>,
-    display_record_batches: &[DisplayRecordBatch],
-    row_idx: u64,
-    already_requested_uris: &mut ahash::HashSet<re_uri::DatasetUri>,
-) -> Option<PreviewRecording<'a>> {
-    let uri_str = string_value_at(
-        columns,
-        display_record_batches,
-        row_idx,
-        segment_preview_column,
-    )?;
-
-    // A preview cell has to name the segment to load.
-    let uri = uri_str
-        .parse::<re_uri::DatasetUri>()
-        .ok()
-        .filter(|uri| uri.segment_id.is_some())?;
-
-    if let Some(recording) = ctx.storage_context.hub.find_recording_by_uri(&uri) {
-        // Keep this recording in the preview prefetch set so chunks get streamed in.
-        // Without this, the recording sits in the hub with no active query pressure
-        // and the chunk prioritizer never schedules it for download.
-        ctx.storage_context.hub.mark_preview(recording.store_id());
-        return Some(PreviewRecording::Resolved(recording));
-    }
-
-    let uri = uri.without_fragment();
-
-    // Not loaded yet — request loading if we haven't already.
-    if already_requested_uris.insert(uri.clone()) {
-        ctx.command_sender
-            .send_system(SystemCommand::LoadDataSource(
-                re_data_source::LogDataSource::RedapDatasetSegment {
-                    uri: uri.clone(),
-                    open_behavior: re_data_source::RecordingOpenBehavior::Background,
-                },
-            ));
-    }
-
-    Some(PreviewRecording::Unresolved(uri))
-}
-
 fn table_index_column(schema: &arrow::datatypes::Schema) -> Option<(usize, &Arc<Field>)> {
     schema.fields.iter().enumerate().find(|(_, field)| {
         field
@@ -1100,64 +1052,40 @@ fn table_index_column(schema: &arrow::datatypes::Schema) -> Option<(usize, &Arc<
     })
 }
 
-/// Asynchronously write flag changes back to the remote server.
+/// Asynchronously writes a flag change back to the remote server.
 ///
-/// Constructs a minimal `RecordBatch` with the table index column + flag column for each
-/// changed row and sends it via `WriteTable` with `Update` semantics: rows are matched on
-/// the table index and only their flag column is updated. Because every changed row already
-/// exists in the table, the subset schema (index + flag) and `Update`'s drop-unmatched
-/// behavior are exactly what we want — we never want to insert new rows here.
-///
-/// This is fire-and-forget: errors are logged but don't block the UI.
-fn upsert_flag_changes(
+/// The update contains the table index and flag column only, so it can update the existing row
+/// without replacing its other values.
+fn upsert_flag_change(
     ctx: &AppContext<'_>,
     runtime: &AsyncRuntimeHandle,
     remote: &re_uri::EntryUri,
     results: &crate::datafusion_adapter::DataFusionQueryResult,
     flag_column: &ResolvedFlagColumn,
-    changes: &[crate::cards_view::FlagChangeEvent],
+    change: &crate::cards_view::FlagChangeEvent,
 ) {
-    // Collect index + flag values for each changed row.
-    let mut index_arrays = Vec::new();
-    let mut flag_values = Vec::new();
-    for change in changes {
-        if let Some((batch, row_offset)) = results.find_row_batch(change.row) {
-            let Some((index_col_idx, _)) = table_index_column(batch.schema_ref()) else {
-                continue;
-            };
-
-            index_arrays.push(batch.column(index_col_idx).slice(row_offset, 1));
-            flag_values.push(change.new_value);
-        }
-    }
-    if index_arrays.is_empty() {
+    let Some((batch, row_offset)) = results.find_row_batch(change.row) else {
         return;
-    }
-
-    // Build a minimal upsert record batch: [index_column, flag_column].
-    let build_upsert_batch = || -> Option<arrow::array::RecordBatch> {
-        let index_refs: Vec<_> = index_arrays.iter().map(|a| a.as_ref()).collect();
-        let index_array = re_arrow_util::concat_arrays(&index_refs).ok()?;
-        let flag_array = Arc::new(BooleanArray::from(flag_values));
-
-        let schema = arrow::datatypes::Schema::new_with_metadata(
-            vec![
-                flag_column.index_field.clone(),
-                flag_column.flag_field.clone(),
-            ],
-            Default::default(),
-        );
-
-        let num_rows = index_array.len();
-        arrow::array::RecordBatch::try_new_with_options(
-            Arc::new(schema),
-            vec![index_array, flag_array],
-            &arrow::array::RecordBatchOptions::new().with_row_count(Some(num_rows)),
-        )
-        .ok()
     };
-    let Some(upsert_batch) = build_upsert_batch() else {
-        re_log::warn_once!("Failed to build upsert RecordBatch for flag changes");
+    let Some((index_col_idx, _)) = table_index_column(batch.schema_ref()) else {
+        return;
+    };
+
+    let index_array = batch.column(index_col_idx).slice(row_offset, 1);
+    let flag_array = Arc::new(BooleanArray::from(vec![change.new_value]));
+    let schema = arrow::datatypes::Schema::new_with_metadata(
+        vec![
+            flag_column.index_field.clone(),
+            flag_column.flag_field.clone(),
+        ],
+        Default::default(),
+    );
+    let Ok(upsert_batch) = arrow::array::RecordBatch::try_new_with_options(
+        Arc::new(schema),
+        vec![index_array, flag_array],
+        &arrow::array::RecordBatchOptions::new().with_row_count(Some(1)),
+    ) else {
+        re_log::warn_once!("Failed to build upsert RecordBatch for a flag change");
         return;
     };
 
@@ -1200,21 +1128,19 @@ struct DataFusionTableDelegate<'a> {
     query_result: &'a DataFusionQueryResult,
     migrated_fields: &'a Vec<Field>,
     display_record_batches: &'a Vec<DisplayRecordBatch>,
-    columns: &'a Columns<'a>,
-    blueprint: &'a TableBlueprint,
+    columns: &'a DataColumns<'a>,
+    blueprint: &'a TableBlueprint<'a>,
     query_data: &'a mut DataFusionQueryData,
     filter_state: &'a mut FilterState,
     row_height: f32,
 
-    /// Number of preview views to show per row, if previews are enabled.
-    num_preview_views: Option<usize>,
-
-    /// Renderer for the segment preview column (column 0 in the delegate's column space).
-    /// `None` when no table blueprint is registered for this table.
-    view_renderer: Option<crate::preview_renderer::RecordingPreviewRenderer<'a>>,
+    /// Renderers for the configured preview columns.
+    view_renderers: Vec<crate::preview_renderer::RecordingPreviewRenderer<'a>>,
 
     /// Shared view states for segment preview views, persisted across frames.
     view_states: &'a mut re_viewer_context::ViewStates,
+    flag_columns: &'a [ResolvedFlagColumn],
+    flag_changes: &'a mut Vec<FlagChangeEvent>,
 }
 
 impl DataFusionTableDelegate<'_> {
@@ -1272,17 +1198,26 @@ impl DataFusionTableDelegate<'_> {
 
 impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
     fn header_cell_ui(&mut self, ui: &mut egui::Ui, cell: &HeaderCellInfo) {
-        let num_extra = self.num_preview_views.is_some() as usize;
-        if cell.group_index < num_extra {
-            // Segment preview header -- empty.
-            return;
-        }
-
         let tokens = ui.tokens();
         let table_style = self.table_style;
-        let col_index = cell.group_index - num_extra;
-        if let Some(column) = self.columns.columns.get(col_index) {
+        let col_index = cell.group_index;
+        if let Some(data_column) = self.columns.columns.get(col_index) {
             let column_field = &self.query_result.original_schema.fields[col_index];
+
+            let Some(column) = self
+                .blueprint
+                .column_by_physical_name(TableLayoutKind::Table, data_column.physical_name())
+            else {
+                re_log::debug_panic!(
+                    "Blueprint column not found for physical name {:?}. All names should be filled out in the blueprint. This is a bug in the blueprint resolver.",
+                    data_column.physical_name()
+                );
+                return;
+            };
+            if !column.is_visible(TableLayoutKind::Table) {
+                return;
+            }
+
             let column_physical_name = column.physical_name();
             let column_display_name = column.display_name();
 
@@ -1328,19 +1263,17 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                                     .inner
                                     .clicked()
                                 {
-                                    self.query_data.sort_by = Some(column.sort_by(sort_direction));
+                                    self.query_data.sort_by = Some(SortBy {
+                                        column_name: column.physical_name().clone(),
+                                        direction: sort_direction,
+                                    });
                                     ui.close();
                                 }
                             }
 
-                            // TODO(ab): for now, we disable filtering on any column with a
-                            // variant UI, because chances are the filter will not be
-                            // relevant to what's displayed (e.g. recording link column).
-                            // In the future, we'll probably need to be more fine-grained.
                             #[expect(clippy::collapsible_if)]
-                            if column.blueprint.variant_ui.is_none()
-                                && let Some(column_filter) =
-                                    ColumnFilter::default_for_column(Arc::clone(column_field))
+                            if let Some(column_filter) =
+                                ColumnFilter::default_for_column(Arc::clone(column_field))
                             {
                                 if ui
                                     .icon_and_text_menu_item(&re_ui::icons::FILTER, "Filter")
@@ -1357,7 +1290,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                     ui.with_optional_extras(|ui, show_extras| {
                         column_header_tooltip_ui(
                             ui,
-                            &column.desc,
+                            &data_column.desc,
                             column_field,
                             &self.migrated_fields[col_index],
                             show_extras,
@@ -1368,43 +1301,89 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
     }
 
     fn cell_ui(&mut self, ui: &mut egui::Ui, cell: &CellInfo) {
-        // Column 1 is reserved for the preview column if enabled.
-        let has_preview_column = self.num_preview_views.is_some();
-        if cell.col_nr == 0
-            && has_preview_column
-            && let Some(renderer) = &self.view_renderer
-            && let Some(segment_preview_column) = &self.blueprint.segment_preview_column
-        {
-            let preview_state = self.view_states.preview_state.get_or_insert_default();
-            let recording = resolve_recording_for_row(
-                self.ctx,
-                segment_preview_column,
-                self.columns,
-                self.display_record_batches,
-                cell.row_nr,
-                &mut preview_state.requested_uris,
-            );
+        let Some((display_record_batch, batch_index)) =
+            find_row_batch(self.display_record_batches, cell.row_nr as usize)
+        else {
+            // We don't have any data for this cell. That's weird!
+            return;
+        };
 
+        let Some(column) = &display_record_batch.columns().get(cell.col_nr) else {
+            return;
+        };
+
+        if let Some(renderer) = self
+            .view_renderers
+            .iter()
+            .find(|renderer| renderer.data_column_index() == cell.col_nr)
+        {
             let row_hovered = TableSelectionState::load(ui.ctx(), self.session_id).hovered_row
                 == Some(cell.row_nr);
 
-            renderer.show_preview(
+            ui.vertical(|ui| {
+                // Show link alongside the preview.
+                column.data_ui(
+                    self.ctx,
+                    ui,
+                    batch_index,
+                    None,
+                    UiLayout::List,
+                    TableCellKind::Link,
+                    false,
+                );
+
+                ui.allocate_ui_with_layout(
+                    egui::vec2(ui.available_width(), SEGMENT_PREVIEW_SIZE),
+                    egui::Layout::left_to_right(egui::Align::Center),
+                    |ui| {
+                        renderer.show_preview_for_row(
+                            self.ctx,
+                            ui,
+                            cell.row_nr,
+                            row_hovered,
+                            self.display_record_batches,
+                            self.view_states,
+                        );
+                    },
+                );
+            });
+        } else {
+            let Some(data_column) = &self.columns.columns.get(cell.col_nr) else {
+                return;
+            };
+            let editable = self
+                .flag_columns
+                .iter()
+                .any(|column| column.physical_name == *data_column.physical_name());
+            let cell_kind = self
+                .blueprint
+                .column_by_physical_name(TableLayoutKind::Table, data_column.physical_name())
+                .map_or(TableCellKind::Auto, |table_column| {
+                    table_column.value_resolved_cell_kind(Some(column), batch_index)
+                });
+
+            let instance_index = None; // Only used in dataframe views.
+            let edited = column.data_ui(
                 self.ctx,
                 ui,
-                cell.row_nr,
-                row_hovered,
-                recording,
-                self.view_states,
+                batch_index,
+                instance_index,
+                UiLayout::List,
+                cell_kind,
+                editable,
             );
-        } else {
-            let col_index = cell.col_nr.saturating_sub(has_preview_column as usize);
 
-            if let Some((display_record_batch, batch_index)) =
-                find_row_batch(self.display_record_batches, cell.row_nr as usize)
+            // Create an edit event if any edit occurred.
+            if let Some(edited) = edited
+                && let Some(edited) = edited.downcast_array_ref::<arrow::array::BooleanArray>()
+                && !edited.is_empty()
+                && !edited.is_null(0)
             {
-                let column = &display_record_batch.columns()[col_index];
-
-                column.data_ui(self.ctx, ui, batch_index, None, UiLayout::List, None, false);
+                self.flag_changes.push(FlagChangeEvent {
+                    row: cell.row_nr,
+                    physical_column: data_column.physical_name().clone(),
+                    new_value: edited.value(0),
+                });
             }
         }
     }
@@ -1415,5 +1394,89 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
 
     fn default_row_height(&self) -> f32 {
         self.row_height
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn remote_table() -> re_uri::EntryUri {
+        "rerun+http://localhost:1234/entry/1".parse().unwrap()
+    }
+
+    fn connection_registry() -> re_redap_client::ConnectionRegistryHandle {
+        re_redap_client::ConnectionRegistry::new_without_stored_credentials()
+    }
+
+    fn index_field() -> Field {
+        Field::new("id", arrow::datatypes::DataType::Int64, false).with_metadata(
+            [(
+                re_sorbet::metadata::SORBET_IS_TABLE_INDEX.to_owned(),
+                "true".to_owned(),
+            )]
+            .into(),
+        )
+    }
+
+    #[test]
+    fn non_boolean_flag_is_rejected() {
+        let schema = arrow::datatypes::Schema::new_with_metadata(
+            vec![
+                index_field(),
+                Field::new("value", arrow::datatypes::DataType::Utf8, false),
+            ],
+            Default::default(),
+        );
+        assert!(
+            DataFusionTableWidget::resolve_flag_column_source(
+                &"value".into(),
+                &schema,
+                Some(&remote_table()),
+                &connection_registry(),
+            )
+            .is_none()
+        );
+    }
+
+    #[test]
+    fn flag_without_table_index_is_rejected() {
+        let schema = arrow::datatypes::Schema::new_with_metadata(
+            vec![Field::new(
+                "value",
+                arrow::datatypes::DataType::Boolean,
+                false,
+            )],
+            Default::default(),
+        );
+        assert!(
+            DataFusionTableWidget::resolve_flag_column_source(
+                &"value".into(),
+                &schema,
+                Some(&remote_table()),
+                &connection_registry(),
+            )
+            .is_none()
+        );
+    }
+
+    #[test]
+    fn flag_with_table_index_is_resolved() {
+        let schema = arrow::datatypes::Schema::new_with_metadata(
+            vec![
+                index_field(),
+                Field::new("value", arrow::datatypes::DataType::Boolean, true),
+            ],
+            Default::default(),
+        );
+        assert!(
+            DataFusionTableWidget::resolve_flag_column_source(
+                &"value".into(),
+                &schema,
+                Some(&remote_table()),
+                &connection_registry(),
+            )
+            .is_some()
+        );
     }
 }

@@ -59,7 +59,6 @@ itertools.workspace = true
 jiff.workspace = true
 nohash-hasher.workspace = true
 ordered-float.workspace = true
-serde.workspace = true
 strum.workspace = true
 thiserror.workspace = true
 

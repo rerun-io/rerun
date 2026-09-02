@@ -54,14 +54,14 @@ class TableColumn(Archetype):
             Whether the column's values can be edited.
 
             If unset, editing is disabled.
-            Edits requires a remote table with a column marked by `rerun:is_table_index` metadata and write permission.
-            ⚠ Currently only boolean values are supported.
+            Edits require a remote table with a column marked by `rerun:is_table_index` metadata and write permission.
+            ⚠ Currently only boolean values with `cell_kind` set to `Flag` are supported.
         visible:
             Whether the column is visible in this layout.
 
             If unset, the enclosing layout determines visibility.
-            Table layouts use the viewer default for the source column.
-            Card layouts show sources listed in `field_order` and hide unlisted sources.
+            Columns listed in the enclosing layout's `column_order` or `field_order` are shown.
+            Unlisted columns use the viewer default for table layouts and are hidden in card layouts.
         cell_kind:
             How to render the column's values.
 
@@ -116,14 +116,14 @@ class TableColumn(Archetype):
             Whether the column's values can be edited.
 
             If unset, editing is disabled.
-            Edits requires a remote table with a column marked by `rerun:is_table_index` metadata and write permission.
-            ⚠ Currently only boolean values are supported.
+            Edits require a remote table with a column marked by `rerun:is_table_index` metadata and write permission.
+            ⚠ Currently only boolean values with `cell_kind` set to `Flag` are supported.
         visible:
             Whether the column is visible in this layout.
 
             If unset, the enclosing layout determines visibility.
-            Table layouts use the viewer default for the source column.
-            Card layouts show sources listed in `field_order` and hide unlisted sources.
+            Columns listed in the enclosing layout's `column_order` or `field_order` are shown.
+            Unlisted columns use the viewer default for table layouts and are hidden in card layouts.
         cell_kind:
             How to render the column's values.
 
@@ -205,8 +205,8 @@ class TableColumn(Archetype):
     # Whether the column's values can be edited.
     #
     # If unset, editing is disabled.
-    # Edits requires a remote table with a column marked by `rerun:is_table_index` metadata and write permission.
-    # ⚠ Currently only boolean values are supported.
+    # Edits require a remote table with a column marked by `rerun:is_table_index` metadata and write permission.
+    # ⚠ Currently only boolean values with `cell_kind` set to `Flag` are supported.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -218,8 +218,8 @@ class TableColumn(Archetype):
     # Whether the column is visible in this layout.
     #
     # If unset, the enclosing layout determines visibility.
-    # Table layouts use the viewer default for the source column.
-    # Card layouts show sources listed in `field_order` and hide unlisted sources.
+    # Columns listed in the enclosing layout's `column_order` or `field_order` are shown.
+    # Unlisted columns use the viewer default for table layouts and are hidden in card layouts.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

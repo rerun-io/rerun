@@ -8,9 +8,9 @@
 #[rerun(scope = "blueprint")]
 #[rerun(state = "unstable")]
 pub struct TableLayout {
-    /// Source columns to show first, in display order.
+    /// Source columns visible by default and shown first, in display order.
     ///
-    /// Unmentioned columns retain the viewer defaults and follow in default order.
+    /// Unmentioned columns retain the viewer visibility defaults and follow in default order.
     /// Each source column may appear at most once.
     #[rerun(optional)]
     pub column_order: Option<Vec<rerun::blueprint::components::ColumnName>>,

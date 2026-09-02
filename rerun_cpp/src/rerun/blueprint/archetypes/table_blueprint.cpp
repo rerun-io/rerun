@@ -8,56 +8,24 @@
 namespace rerun::blueprint::archetypes {
     TableBlueprint TableBlueprint::clear_fields() {
         auto archetype = TableBlueprint();
-        archetype.segment_preview_column =
-            ComponentBatch::empty<rerun::blueprint::components::ColumnName>(
-                Descriptor_segment_preview_column
-            )
-                .value_or_throw();
-        archetype.flag_column =
-            ComponentBatch::empty<rerun::blueprint::components::ColumnName>(Descriptor_flag_column)
-                .value_or_throw();
-        archetype.grid_view_card_title =
-            ComponentBatch::empty<rerun::blueprint::components::ColumnName>(
-                Descriptor_grid_view_card_title
-            )
-                .value_or_throw();
-        archetype.url_column =
-            ComponentBatch::empty<rerun::blueprint::components::ColumnName>(Descriptor_url_column)
+        archetype.layout =
+            ComponentBatch::empty<rerun::blueprint::components::TableLayoutKind>(Descriptor_layout)
                 .value_or_throw();
         return archetype;
     }
 
     Collection<ComponentColumn> TableBlueprint::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(4);
-        if (segment_preview_column.has_value()) {
-            columns.push_back(segment_preview_column.value().partitioned(lengths_).value_or_throw()
-            );
-        }
-        if (flag_column.has_value()) {
-            columns.push_back(flag_column.value().partitioned(lengths_).value_or_throw());
-        }
-        if (grid_view_card_title.has_value()) {
-            columns.push_back(grid_view_card_title.value().partitioned(lengths_).value_or_throw());
-        }
-        if (url_column.has_value()) {
-            columns.push_back(url_column.value().partitioned(lengths_).value_or_throw());
+        columns.reserve(1);
+        if (layout.has_value()) {
+            columns.push_back(layout.value().partitioned(lengths_).value_or_throw());
         }
         return columns;
     }
 
     Collection<ComponentColumn> TableBlueprint::columns() {
-        if (segment_preview_column.has_value()) {
-            return columns(std::vector<uint32_t>(segment_preview_column.value().length(), 1));
-        }
-        if (flag_column.has_value()) {
-            return columns(std::vector<uint32_t>(flag_column.value().length(), 1));
-        }
-        if (grid_view_card_title.has_value()) {
-            return columns(std::vector<uint32_t>(grid_view_card_title.value().length(), 1));
-        }
-        if (url_column.has_value()) {
-            return columns(std::vector<uint32_t>(url_column.value().length(), 1));
+        if (layout.has_value()) {
+            return columns(std::vector<uint32_t>(layout.value().length(), 1));
         }
         return Collection<ComponentColumn>();
     }
@@ -71,19 +39,10 @@ namespace rerun {
         ) {
         using namespace blueprint::archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(4);
+        cells.reserve(1);
 
-        if (archetype.segment_preview_column.has_value()) {
-            cells.push_back(archetype.segment_preview_column.value());
-        }
-        if (archetype.flag_column.has_value()) {
-            cells.push_back(archetype.flag_column.value());
-        }
-        if (archetype.grid_view_card_title.has_value()) {
-            cells.push_back(archetype.grid_view_card_title.value());
-        }
-        if (archetype.url_column.has_value()) {
-            cells.push_back(archetype.url_column.value());
+        if (archetype.layout.has_value()) {
+            cells.push_back(archetype.layout.value());
         }
 
         return rerun::take_ownership(std::move(cells));

@@ -245,6 +245,11 @@ impl StoreId {
     }
 
     #[inline]
+    pub fn empty_blueprint() -> Self {
+        Self::new(StoreKind::Blueprint, "-EMPTY-", "<EMPTY>")
+    }
+
+    #[inline]
     pub fn with_recording_id(self, recording_id: impl Into<RecordingId>) -> Self {
         Self {
             kind: self.kind,

@@ -31,9 +31,9 @@ use ::std::borrow::Cow;
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Debug, Default, ::re_byte_size::SizeBytes)]
 pub struct TableLayout {
-    /// Source columns to show first, in display order.
+    /// Source columns visible by default and shown first, in display order.
     ///
-    /// Unmentioned columns retain the viewer defaults and follow in default order.
+    /// Unmentioned columns retain the viewer visibility defaults and follow in default order.
     /// Each source column may appear at most once.
     pub column_order: Option<SerializedComponentBatch>,
 }
@@ -160,9 +160,9 @@ impl TableLayout {
         }
     }
 
-    /// Source columns to show first, in display order.
+    /// Source columns visible by default and shown first, in display order.
     ///
-    /// Unmentioned columns retain the viewer defaults and follow in default order.
+    /// Unmentioned columns retain the viewer visibility defaults and follow in default order.
     /// Each source column may appear at most once.
     #[inline]
     pub fn with_column_order(

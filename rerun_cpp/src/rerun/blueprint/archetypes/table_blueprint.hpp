@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "../../blueprint/components/column_name.hpp"
+#include "../../blueprint/components/table_layout_kind.hpp"
 #include "../../collection.hpp"
 #include "../../component_batch.hpp"
 #include "../../component_column.hpp"
@@ -17,62 +17,31 @@
 namespace rerun::blueprint::archetypes {
     /// **Archetype**: Blueprint for configuring the styling of a table.
     ///
+    /// The table blueprint as a whole is distributed across these entity paths:
+    /// * `/table` for this archetype and `archetypes::PreviewsConfig`.
+    /// * `/table/layouts/table` for `archetypes::TableLayout`.
+    /// * `/table/layouts/table/columns/{column_name}` for table `archetypes::TableColumn` archetypes and per-column options such as `archetypes::TableColumnPreview`.
+    /// * `/table/layouts/cards` for `archetypes::CardLayout`.
+    /// * `/table/layouts/cards/fields/{column_name}` for card `archetypes::TableColumn` archetypes and per-field options such as `archetypes::TableColumnPreview`.
+    /// * `/view/{view_id}` for preview `archetypes::ViewBlueprint` definitions.
+    ///
     /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     ///
     struct TableBlueprint {
-        /// The name of the column that contains recording URIs for segment previews.
+        /// The currently selected layout.
         ///
-        /// Every row can at most preview a single segment.
-        ///
-        /// For the preview, the rest of the blueprint data is read it as it would be with regular recording blueprints,
-        /// meaning that the regular structure of `archetypes::ViewportBlueprint`, and `archetypes::ViewBlueprint` structure applies.
-        /// However, this mostly ignores layout container types as well as automatic spawning.
-        ///
-        /// If unset, defaults to the first URL column in the table that points to the same Rerun server
-        std::optional<ComponentBatch> segment_preview_column;
-
-        /// The name of the boolean column used for flag/annotation toggles.
-        ///
-        /// Must be set for flagging to be available. The named column must exist in the
-        /// table and be of boolean type.
-        /// Additionally, the table must be remote and have another column with
-        /// `rerun:is_table_index` metadata since flag changes are persisted to the server
-        /// via upsert.
-        std::optional<ComponentBatch> flag_column;
-
-        /// The name of the column to use as the card title in grid view.
-        ///
-        /// If unset, the first visible string column is used as the title.
-        std::optional<ComponentBatch> grid_view_card_title;
-
-        /// The name of the column containing URLs to open when a card is clicked in grid view.
-        ///
-        /// If unset, defaults to the segment preview column.
-        std::optional<ComponentBatch> url_column;
+        /// If unset, defaults to card layout if available.
+        /// `Cards` falls back to table layout when no `archetypes::CardLayout` is configured.
+        std::optional<ComponentBatch> layout;
 
       public:
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.blueprint.archetypes.TableBlueprint";
 
-        /// `ComponentDescriptor` for the `segment_preview_column` field.
-        static constexpr auto Descriptor_segment_preview_column = ComponentDescriptor(
-            ArchetypeName, "TableBlueprint:segment_preview_column",
-            Loggable<rerun::blueprint::components::ColumnName>::ComponentType
-        );
-        /// `ComponentDescriptor` for the `flag_column` field.
-        static constexpr auto Descriptor_flag_column = ComponentDescriptor(
-            ArchetypeName, "TableBlueprint:flag_column",
-            Loggable<rerun::blueprint::components::ColumnName>::ComponentType
-        );
-        /// `ComponentDescriptor` for the `grid_view_card_title` field.
-        static constexpr auto Descriptor_grid_view_card_title = ComponentDescriptor(
-            ArchetypeName, "TableBlueprint:grid_view_card_title",
-            Loggable<rerun::blueprint::components::ColumnName>::ComponentType
-        );
-        /// `ComponentDescriptor` for the `url_column` field.
-        static constexpr auto Descriptor_url_column = ComponentDescriptor(
-            ArchetypeName, "TableBlueprint:url_column",
-            Loggable<rerun::blueprint::components::ColumnName>::ComponentType
+        /// `ComponentDescriptor` for the `layout` field.
+        static constexpr auto Descriptor_layout = ComponentDescriptor(
+            ArchetypeName, "TableBlueprint:layout",
+            Loggable<rerun::blueprint::components::TableLayoutKind>::ComponentType
         );
 
       public:
@@ -90,61 +59,13 @@ namespace rerun::blueprint::archetypes {
         /// Clear all the fields of a `TableBlueprint`.
         static TableBlueprint clear_fields();
 
-        /// The name of the column that contains recording URIs for segment previews.
+        /// The currently selected layout.
         ///
-        /// Every row can at most preview a single segment.
-        ///
-        /// For the preview, the rest of the blueprint data is read it as it would be with regular recording blueprints,
-        /// meaning that the regular structure of `archetypes::ViewportBlueprint`, and `archetypes::ViewBlueprint` structure applies.
-        /// However, this mostly ignores layout container types as well as automatic spawning.
-        ///
-        /// If unset, defaults to the first URL column in the table that points to the same Rerun server
-        TableBlueprint with_segment_preview_column(
-            const rerun::blueprint::components::ColumnName& _segment_preview_column
+        /// If unset, defaults to card layout if available.
+        /// `Cards` falls back to table layout when no `archetypes::CardLayout` is configured.
+        TableBlueprint with_layout(const rerun::blueprint::components::TableLayoutKind& _layout
         ) && {
-            segment_preview_column = ComponentBatch::from_loggable(
-                                         _segment_preview_column,
-                                         Descriptor_segment_preview_column
-            )
-                                         .value_or_throw();
-            return std::move(*this);
-        }
-
-        /// The name of the boolean column used for flag/annotation toggles.
-        ///
-        /// Must be set for flagging to be available. The named column must exist in the
-        /// table and be of boolean type.
-        /// Additionally, the table must be remote and have another column with
-        /// `rerun:is_table_index` metadata since flag changes are persisted to the server
-        /// via upsert.
-        TableBlueprint with_flag_column(const rerun::blueprint::components::ColumnName& _flag_column
-        ) && {
-            flag_column = ComponentBatch::from_loggable(_flag_column, Descriptor_flag_column)
-                              .value_or_throw();
-            return std::move(*this);
-        }
-
-        /// The name of the column to use as the card title in grid view.
-        ///
-        /// If unset, the first visible string column is used as the title.
-        TableBlueprint with_grid_view_card_title(
-            const rerun::blueprint::components::ColumnName& _grid_view_card_title
-        ) && {
-            grid_view_card_title = ComponentBatch::from_loggable(
-                                       _grid_view_card_title,
-                                       Descriptor_grid_view_card_title
-            )
-                                       .value_or_throw();
-            return std::move(*this);
-        }
-
-        /// The name of the column containing URLs to open when a card is clicked in grid view.
-        ///
-        /// If unset, defaults to the segment preview column.
-        TableBlueprint with_url_column(const rerun::blueprint::components::ColumnName& _url_column
-        ) && {
-            url_column =
-                ComponentBatch::from_loggable(_url_column, Descriptor_url_column).value_or_throw();
+            layout = ComponentBatch::from_loggable(_layout, Descriptor_layout).value_or_throw();
             return std::move(*this);
         }
 

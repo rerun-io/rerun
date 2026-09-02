@@ -22,9 +22,9 @@ namespace rerun::blueprint::archetypes {
     /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     ///
     struct TableLayout {
-        /// Source columns to show first, in display order.
+        /// Source columns visible by default and shown first, in display order.
         ///
-        /// Unmentioned columns retain the viewer defaults and follow in default order.
+        /// Unmentioned columns retain the viewer visibility defaults and follow in default order.
         /// Each source column may appear at most once.
         std::optional<ComponentBatch> column_order;
 
@@ -53,9 +53,9 @@ namespace rerun::blueprint::archetypes {
         /// Clear all the fields of a `TableLayout`.
         static TableLayout clear_fields();
 
-        /// Source columns to show first, in display order.
+        /// Source columns visible by default and shown first, in display order.
         ///
-        /// Unmentioned columns retain the viewer defaults and follow in default order.
+        /// Unmentioned columns retain the viewer visibility defaults and follow in default order.
         /// Each source column may appear at most once.
         TableLayout with_column_order(
             const Collection<rerun::blueprint::components::ColumnName>& _column_order

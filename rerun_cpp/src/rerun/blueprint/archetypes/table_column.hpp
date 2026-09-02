@@ -34,15 +34,15 @@ namespace rerun::blueprint::archetypes {
         /// Whether the column's values can be edited.
         ///
         /// If unset, editing is disabled.
-        /// Edits requires a remote table with a column marked by `rerun:is_table_index` metadata and write permission.
-        /// ⚠ Currently only boolean values are supported.
+        /// Edits require a remote table with a column marked by `rerun:is_table_index` metadata and write permission.
+        /// ⚠ Currently only boolean values with `cell_kind` set to `Flag` are supported.
         std::optional<ComponentBatch> editable;
 
         /// Whether the column is visible in this layout.
         ///
         /// If unset, the enclosing layout determines visibility.
-        /// Table layouts use the viewer default for the source column.
-        /// Card layouts show sources listed in `field_order` and hide unlisted sources.
+        /// Columns listed in the enclosing layout's `column_order` or `field_order` are shown.
+        /// Unlisted columns use the viewer default for table layouts and are hidden in card layouts.
         std::optional<ComponentBatch> visible;
 
         /// How to render the column's values.
@@ -100,8 +100,8 @@ namespace rerun::blueprint::archetypes {
         /// Whether the column's values can be edited.
         ///
         /// If unset, editing is disabled.
-        /// Edits requires a remote table with a column marked by `rerun:is_table_index` metadata and write permission.
-        /// ⚠ Currently only boolean values are supported.
+        /// Edits require a remote table with a column marked by `rerun:is_table_index` metadata and write permission.
+        /// ⚠ Currently only boolean values with `cell_kind` set to `Flag` are supported.
         TableColumn with_editable(const rerun::blueprint::components::Editable& _editable) && {
             editable =
                 ComponentBatch::from_loggable(_editable, Descriptor_editable).value_or_throw();
@@ -111,8 +111,8 @@ namespace rerun::blueprint::archetypes {
         /// Whether the column is visible in this layout.
         ///
         /// If unset, the enclosing layout determines visibility.
-        /// Table layouts use the viewer default for the source column.
-        /// Card layouts show sources listed in `field_order` and hide unlisted sources.
+        /// Columns listed in the enclosing layout's `column_order` or `field_order` are shown.
+        /// Unlisted columns use the viewer default for table layouts and are hidden in card layouts.
         TableColumn with_visible(const rerun::components::Visible& _visible) && {
             visible = ComponentBatch::from_loggable(_visible, Descriptor_visible).value_or_throw();
             return std::move(*this);

@@ -11,18 +11,19 @@ use arrow::buffer::{NullBuffer as ArrowNullBuffer, ScalarBuffer as ArrowScalarBu
 use arrow::datatypes::DataType as ArrowDataType;
 use itertools::Itertools as _;
 use re_arrow_util::ArrowArrayDowncastRef as _;
-use re_component_ui::REDAP_THUMBNAIL_VARIANT;
+use re_component_ui::{
+    REDAP_ENTRY_KIND_VARIANT, REDAP_THUMBNAIL_VARIANT, REDAP_URI_BUTTON_VARIANT, TABLE_FLAG_VARIANT,
+};
 use re_dataframe::external::re_chunk::{TimeColumn, TimeColumnError};
 use re_log_types::hash::Hash64;
 use re_log_types::{EntityPath, TimeInt, Timeline};
 use re_sdk_types::ComponentDescriptor;
+use re_sdk_types::blueprint::components::TableCellKind;
 use re_sdk_types::components::{Blob, MediaType};
 use re_sorbet::ColumnDescriptorRef;
 use re_types_core::{Component as _, DeserializationError, FromArrow as _, RowId};
 use re_ui::UiExt as _;
 use re_viewer_context::{AppContext, UiLayout, VariantName};
-
-use crate::column_blueprint::ColumnBlueprint;
 
 #[derive(thiserror::Error, Debug)]
 pub enum DisplayRecordBatchError {
@@ -162,6 +163,18 @@ fn quick_partial_hash(data: &[u8], section_length: usize) -> Hash64 {
     Hash64::from_u64(hasher.finish())
 }
 
+fn variant_name_for_cell_kind(cell_kind: TableCellKind) -> Option<VariantName> {
+    match cell_kind {
+        TableCellKind::Link => Some(VariantName::from_static_str(REDAP_URI_BUTTON_VARIANT)),
+        TableCellKind::Thumbnail => Some(VariantName::from_static_str(REDAP_THUMBNAIL_VARIANT)),
+        TableCellKind::EntryKind => Some(VariantName::from_static_str(REDAP_ENTRY_KIND_VARIANT)),
+        TableCellKind::Flag => Some(VariantName::from_static_str(TABLE_FLAG_VARIANT)),
+
+        // TODO(andreas): express other cell kinds also as variant names.
+        _ => None,
+    }
+}
+
 /// Data related to a single component column.
 #[derive(Debug)]
 pub struct DisplayComponentColumn {
@@ -171,9 +184,6 @@ pub struct DisplayComponentColumn {
 
     // if available, used to pass a row id to the component UI (e.g. to cache image)
     row_ids: Option<Arc<Vec<RowId>>>,
-
-    /// The UI variant to use for this column, if any.
-    variant_name: Option<VariantName>,
 }
 
 impl DisplayComponentColumn {
@@ -182,23 +192,17 @@ impl DisplayComponentColumn {
             return None;
         }
 
-        self.component_data
-            .row_data(row)
+        let data = self.component_data.row_data(row)?;
+        Blob::from_arrow(&data).ok()
+    }
+
+    pub fn is_image(&self, row: usize) -> bool {
+        self.blobs(row)
             .as_ref()
-            .and_then(|data| Blob::from_arrow(data).ok())
-    }
-
-    fn is_blob_image(blob: &Blob) -> bool {
-        MediaType::guess_from_data(blob.as_ref()).is_some_and(|t| t.starts_with("image/"))
-    }
-
-    pub fn is_image(&self) -> bool {
-        self.component_descr.component_type == Some(re_sdk_types::components::Blob::name())
-            && self
-                .blobs(0)
-                .as_ref()
-                .and_then(|blobs| blobs.first())
-                .is_some_and(Self::is_blob_image)
+            .and_then(|blobs| blobs.first())
+            .is_some_and(|blob| {
+                MediaType::guess_from_data(blob.as_ref()).is_some_and(|t| t.starts_with("image/"))
+            })
     }
 
     pub fn row_value_at(&self, row: usize) -> Option<ArrowArrayRef> {
@@ -224,7 +228,7 @@ impl DisplayComponentColumn {
         row_index: usize,
         instance_index: Option<u64>,
         ui_layout: UiLayout,
-        force_variant_name: Option<VariantName>,
+        cell_kind: TableCellKind,
         editable: bool,
     ) -> Option<ArrowArrayRef> {
         // handle null columns
@@ -253,35 +257,25 @@ impl DisplayComponentColumn {
                 .and_then(|row_ids| row_ids.get(row_index))
                 .copied();
 
-            let mut inferred_variant_name = self.variant_name;
+            let blobs = Blob::from_arrow(&data_to_display).ok();
 
-            let blob = Blob::from_arrow(&data_to_display).ok();
-
-            if let Some(blob) = blob.as_ref().and_then(|b| b.first())
-                && Self::is_blob_image(blob)
+            // Generate a content-based cache key for thumbnails without a row ID.
+            if cell_kind == TableCellKind::Thumbnail
+                && row_id.is_none()
+                && let Some(blob) = blobs.as_ref().and_then(|blobs| blobs.first())
             {
-                inferred_variant_name = Some(VariantName::from_static_str(REDAP_THUMBNAIL_VARIANT));
+                re_tracing::profile_scope!("Blob hash");
 
-                // TODO(ab): we should find an alternative to using content-hashing to generate cache
-                // keys.
-                //
-                // Generate a content-based cache key if we don't have one already. This is needed
-                // because without cache key, the image thumbnail will no be displayed by the component
-                // ui.
-                if row_id.is_none() {
-                    re_tracing::profile_scope!("Blob hash");
+                // cap the max amount of data to hash to 9 KiB
+                const SECTION_LENGTH: usize = 3 * 1024;
 
-                    // cap the max amount of data to hash to 9 KiB
-                    const SECTION_LENGTH: usize = 3 * 1024;
-
-                    // TODO(andreas, ab): This is a hack to create a pretend-row-id from the content hash.
-                    row_id = Some(RowId::from_u128(
-                        quick_partial_hash(blob.as_ref(), SECTION_LENGTH).hash64() as _,
-                    ));
-                }
+                // TODO(andreas, ab): This is a hack to create a pretend-row-id from the content hash.
+                row_id = Some(RowId::from_u128(
+                    quick_partial_hash(blob.as_ref(), SECTION_LENGTH).hash64() as _,
+                ));
             }
 
-            if let Some(variant_name) = force_variant_name.or(inferred_variant_name) {
+            if let Some(variant_name) = variant_name_for_cell_kind(cell_kind) {
                 if editable {
                     return ctx.component_ui_registry.variant_edit_ui_raw(
                         ctx,
@@ -338,7 +332,6 @@ pub enum DisplayColumn {
 impl DisplayColumn {
     fn try_new(
         column_descriptor: &ColumnDescriptorRef<'_>,
-        column_blueprint: &ColumnBlueprint,
         column_data: &ArrowArrayRef,
     ) -> Result<Self, DisplayRecordBatchError> {
         match column_descriptor {
@@ -367,7 +360,6 @@ impl DisplayColumn {
                     component_descr: desc.component_descriptor(),
                     component_data: ComponentData::new(column_data),
                     row_ids: None,
-                    variant_name: column_blueprint.variant_ui,
                 })))
             }
         }
@@ -388,7 +380,7 @@ impl DisplayColumn {
     /// - Argument `instance_index` is the specific instance within the row to display. If `None`,
     ///   a summary of all instances is displayed. If the instance is out-of-bound (aka greater than
     ///   [`Self::instance_count`]), nothing is displayed.
-    /// - Argument `force_variant_name` overrides the configured variant UI when set.
+    /// - Argument `cell_kind` determines how the cell is displayed.
     ///
     /// Returns edited data if the cell was edited, otherwise returns `None`.
     pub fn data_ui(
@@ -398,7 +390,7 @@ impl DisplayColumn {
         row_index: usize,
         instance_index: Option<u64>,
         ui_layout: UiLayout,
-        force_variant_name: Option<VariantName>,
+        cell_kind: TableCellKind,
         editable: bool,
     ) -> Option<ArrowArrayRef> {
         if let Some(instance_index) = instance_index
@@ -456,7 +448,7 @@ impl DisplayColumn {
                     row_index,
                     instance_index,
                     ui_layout,
-                    force_variant_name,
+                    cell_kind,
                     editable,
                 );
             }
@@ -490,19 +482,18 @@ impl DisplayRecordBatch {
     /// The columns in the record batch must match the selected columns. This is guaranteed by
     /// `re_datastore`.
     pub fn try_new<'a>(
-        data: impl Iterator<Item = (ColumnDescriptorRef<'a>, &'a ColumnBlueprint, ArrowArrayRef)>,
+        data: impl Iterator<Item = (ColumnDescriptorRef<'a>, ArrowArrayRef)>,
     ) -> Result<Self, DisplayRecordBatchError> {
         let mut num_rows = None;
         let mut batch_row_ids = None;
 
         let mut columns: Vec<DisplayColumn> = data
-            .map(|(column_descriptor, column_blueprint, column_data)| {
+            .map(|(column_descriptor, column_data)| {
                 if num_rows.is_none() {
                     num_rows = Some(column_data.len());
                 }
 
-                let column =
-                    DisplayColumn::try_new(&column_descriptor, column_blueprint, &column_data);
+                let column = DisplayColumn::try_new(&column_descriptor, &column_data);
 
                 // find the batch row ids, if any
                 if batch_row_ids.is_none()

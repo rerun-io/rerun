@@ -1,10 +1,4 @@
-//! Integration test for card layout flag toggling with server persistence.
-//!
-//! Verifies that flag buttons appear in card layout for a remote table and that
-//! clicking a flag visually toggles it.
-//!
-//! See also: `re_dataframe_ui::tests::cards_view::test_cards_view_flagging` for
-//! the widget-level (in-memory only) version of this test.
+//! Integration test for boolean editing in table and card layouts with server persistence.
 
 use std::sync::Arc;
 
@@ -17,7 +11,10 @@ use re_integration_test::TestServer;
 use re_integration_test::ViewerHarnessExt as _;
 use re_protos::cloud::v1alpha1::ScanTableRequest;
 use re_protos::cloud::v1alpha1::ext::TableInsertMode;
+use re_sdk::RecordingStreamBuilder;
 use re_sdk::external::re_log_types;
+use re_sdk_types::blueprint::archetypes::{CardLayout, TableColumn, TableLayout};
+use re_sdk_types::blueprint::components::TableCellKind;
 use re_viewer::viewer_test_utils::{self, HarnessOptions};
 
 #[tokio::test(flavor = "multi_thread")]
@@ -31,13 +28,7 @@ pub async fn cards_view_flagging() {
             Field::new("id", DataType::Int64, false)
                 .with_metadata([("rerun:is_table_index".to_owned(), "true".to_owned())].into()),
             Field::new("name", DataType::Utf8, false),
-            Field::new("flagged", DataType::Boolean, true).with_metadata(
-                [(
-                    re_dataframe_ui::experimental_field_metadata::IS_FLAG_COLUMN.to_owned(),
-                    "true".to_owned(),
-                )]
-                .into(),
-            ),
+            Field::new("flagged", DataType::Boolean, true),
         ],
         Default::default(),
     ));
@@ -70,6 +61,15 @@ pub async fn cards_view_flagging() {
         .await
         .expect("Failed to write initial data");
 
+    let blueprint_rbl = flag_blueprint_rbl_file();
+    re_integration_test::register_table_blueprint(
+        &server.connection_handle(),
+        &table,
+        blueprint_rbl.path(),
+    )
+    .await
+    .expect("Failed to register table blueprint");
+
     // Open the viewer directly at the table entry.
     let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions {
         startup_url: Some(format!(
@@ -86,13 +86,12 @@ pub async fn cards_view_flagging() {
     harness.set_selection_panel_opened(false);
     harness.set_time_panel_opened(false);
 
-    // Switch to card layout.
-    harness.get_by_label("Cards view").click();
+    // Edit the first row in table layout, then wait for the asynchronous upsert.
+    harness.get_by_label("Table view").click();
     harness.run_ok();
 
-    // Wait for flag buttons to appear.
     viewer_test_utils::step_until(
-        "card layout renders with flag buttons",
+        "table layout renders with flag buttons",
         &mut harness,
         |harness| {
             harness
@@ -102,9 +101,8 @@ pub async fn cards_view_flagging() {
         },
     );
 
-    harness.snapshot("cards_view_flagging_before");
+    harness.snapshot("boolean_editing_table_before");
 
-    // Toggle Alice's flag (first checkbox).
     harness
         .query_all_by_role_and_label(Role::CheckBox, "Flag")
         .next()
@@ -112,9 +110,8 @@ pub async fn cards_view_flagging() {
         .click();
     harness.run_ok();
 
-    harness.snapshot("cards_view_flagging_after");
+    harness.snapshot("boolean_editing_table_after");
 
-    // Wait for the async upsert to reach the server, then verify the flag was persisted.
     viewer_test_utils::step_until(
         "flag upsert persisted to server",
         &mut harness,
@@ -127,6 +124,80 @@ pub async fn cards_view_flagging() {
             }) == Some(true)
         },
     );
+
+    // Switching layouts must show the server-backed value before the card edits it again.
+    harness.get_by_label("Cards view").click();
+    harness.run_ok();
+    viewer_test_utils::step_until(
+        "card layout shows the persisted edit",
+        &mut harness,
+        |harness| {
+            harness
+                .query_all_by_role_and_label(Role::CheckBox, "Flag")
+                .next()
+                .is_some()
+        },
+    );
+    harness.snapshot("boolean_editing_cards_before");
+
+    harness
+        .query_all_by_role_and_label(Role::CheckBox, "Flag")
+        .next()
+        .expect("flag button should be present")
+        .click();
+    harness.run_ok();
+    harness.snapshot("boolean_editing_cards_after");
+
+    // The card edit uses the same index-plus-value upsert path and restores the initial value.
+    viewer_test_utils::step_until("card edit persisted to server", &mut harness, |_harness| {
+        tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current()
+                .block_on(async { scan_flag_value(&server, table.details.id, 1).await })
+        }) == Some(false)
+    });
+}
+
+fn flag_blueprint_rbl_file() -> tempfile::NamedTempFile {
+    let file = tempfile::Builder::new()
+        .suffix(".rbl")
+        .tempfile()
+        .expect("Failed to create blueprint temp file");
+
+    let stream = RecordingStreamBuilder::new("rerun_example_table_flag_blueprint")
+        .blueprint()
+        .save(file.path())
+        .expect("Failed to create blueprint stream");
+    stream.set_time_sequence("blueprint", 0);
+    stream
+        .log(
+            "table/layouts/table/columns/flagged",
+            &TableColumn::new()
+                .with_editable(true)
+                .with_cell_kind(TableCellKind::Flag),
+        )
+        .expect("Failed to log table column blueprint");
+    stream
+        .log(
+            "table/layouts/table",
+            &TableLayout::new().with_column_order(["name", "flagged"]),
+        )
+        .expect("Failed to log table layout");
+    stream
+        .log(
+            "table/layouts/cards/fields/flagged",
+            &TableColumn::new()
+                .with_editable(true)
+                .with_cell_kind(TableCellKind::Flag),
+        )
+        .expect("Failed to log flag field blueprint");
+    stream
+        .log(
+            "table/layouts/cards",
+            &CardLayout::new(["flagged"]).with_title("name"),
+        )
+        .expect("Failed to log card layout");
+
+    file
 }
 
 /// Read back flag value at a specific row from the server by scanning the table.
