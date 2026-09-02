@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pyarrow as pa
 
-import rerun.experimental as rrx
+from rerun.chunk import Chunk
 
 # region: body
 # Create an index column.
@@ -30,7 +30,7 @@ batch = pa.RecordBatch.from_arrays(
     names=["frame", "/left:Points3D:positions", "/right:Points3D:positions"],
 )
 
-chunks = rrx.Chunk.from_record_batch(batch, index="frame")
+chunks = Chunk.from_record_batch(batch, index="frame")
 
 for chunk in chunks:
     print(chunk)

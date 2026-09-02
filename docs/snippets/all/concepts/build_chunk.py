@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import rerun as rr
-import rerun.experimental as rrx
+from rerun.chunk import Chunk
 
 rr.init("rerun_example_build_chunk")
 
-chunk = rrx.Chunk.from_columns(
+chunk = Chunk.from_columns(
     "/points",
     indexes=[rr.TimeColumn("frame", sequence=[0, 1, 2])],
     columns=rr.Points3D.columns(

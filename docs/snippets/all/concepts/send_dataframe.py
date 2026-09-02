@@ -3,7 +3,7 @@ from __future__ import annotations
 import pyarrow as pa
 
 import rerun as rr
-import rerun.experimental as rrx
+from rerun.chunk import Chunk
 
 rr.init("rerun_example_send_dataframe")
 
@@ -46,7 +46,7 @@ table = pa.Table.from_arrays([index, positions], schema=schema)
 # endregion: build_table
 
 # region: from_dataframe
-chunks = list(rrx.Chunk.from_dataframe(table))
+chunks = list(Chunk.from_dataframe(table))
 for chunk in chunks:
     print(chunk)
 # endregion: from_dataframe
