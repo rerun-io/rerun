@@ -4,15 +4,18 @@ import os
 import signal
 import subprocess
 import warnings
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, overload
 
 from rerun._arrow import to_record_batch
+from rerun.time import to_nanos, to_nanos_since_epoch
 
 if TYPE_CHECKING:
+    from datetime import datetime, timedelta
     from types import TracebackType
     from uuid import UUID
 
     import datafusion
+    import numpy as np
     import pyarrow as pa
 
     from rerun_bindings import ViewerClientInternal
@@ -238,6 +241,74 @@ class ViewerClient:
         """
         view_id_str = str(view_id) if view_id is not None else None
         self._internal.save_screenshot(file_path, view_id_str)
+
+    @overload
+    def set_time(
+        self,
+        timeline: str | None = None,
+        *,
+        sequence: int,
+        play: bool = False,
+    ) -> None: ...
+
+    @overload
+    def set_time(
+        self,
+        timeline: str | None = None,
+        *,
+        duration: int | float | timedelta | np.timedelta64,
+        play: bool = False,
+    ) -> None: ...
+
+    @overload
+    def set_time(
+        self,
+        timeline: str | None = None,
+        *,
+        timestamp: int | float | datetime | np.datetime64,
+        play: bool = False,
+    ) -> None: ...
+
+    def set_time(
+        self,
+        timeline: str | None = None,
+        *,
+        sequence: int | None = None,
+        duration: int | float | timedelta | np.timedelta64 | None = None,
+        timestamp: int | float | datetime | np.datetime64 | None = None,
+        play: bool = False,
+    ) -> None:
+        """
+        Set the viewer's time cursor.
+
+        Parameters
+        ----------
+        timeline:
+            The timeline to seek on.
+            If omitted, the viewer uses its active timeline.
+        sequence:
+            A sequence index.
+        duration:
+            A duration in seconds, or a duration value with nanosecond precision.
+        timestamp:
+            Seconds since Unix epoch, or a timestamp value with nanosecond precision.
+        play:
+            Start playing from the new position.
+            The viewer pauses by default.
+
+        """
+        if sum(value is not None for value in (sequence, duration, timestamp)) != 1:
+            raise ValueError("ViewerClient.set_time expects exactly one of sequence, duration, or timestamp")
+
+        if sequence is not None:
+            time = sequence
+        elif duration is not None:
+            time = to_nanos(duration)
+        else:
+            assert timestamp is not None
+            time = to_nanos_since_epoch(timestamp)
+
+        self._internal.set_time_cursor(timeline, time, play)
 
     def close(self) -> None:
         """

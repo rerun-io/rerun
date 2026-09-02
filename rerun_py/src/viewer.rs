@@ -65,12 +65,21 @@ impl PyViewerClientInternal {
 
         conn.save_screenshot(py, file_path, view_id_str)
     }
+
+    fn set_time_cursor(
+        self_: Py<Self>,
+        timeline: Option<String>,
+        time: i64,
+        play: bool,
+        py: Python<'_>,
+    ) -> PyResult<()> {
+        let mut conn = self_.borrow(py).conn.clone();
+
+        conn.set_time_cursor(py, timeline, time, play)
+    }
 }
 
-/// Connection handle to the message proxy service.
-///
-/// This handle is modelled after [`crate::catalog::PyConnectionHandle`] and only concerned with
-/// table-related operations, most importantly `WriteTable`.
+/// Connection handle for sending data to and controlling a viewer.
 // TODO(grtlr): In the future, we probably want to merge this with the other APIs.
 #[derive(Clone)]
 pub struct ViewerConnectionHandle {
@@ -124,6 +133,29 @@ impl ViewerConnectionHandle {
             py,
             self.control_client.save_screenshot(
                 re_protos::sdk_comms::v1alpha1::SaveScreenshotRequest { view_id, file_path },
+            ),
+        )
+        .map_err(to_py_err)?;
+
+        Ok(())
+    }
+
+    fn set_time_cursor(
+        &mut self,
+        py: Python<'_>,
+        timeline: Option<String>,
+        time: i64,
+        play: bool,
+    ) -> PyResult<()> {
+        wait_for_future(
+            py,
+            self.control_client.set_time_cursor(
+                re_protos::sdk_comms::v1alpha1::SetTimeCursorRequest {
+                    store_id: None,
+                    timeline: timeline.map(|name| re_protos::common::v1alpha1::Timeline { name }),
+                    time: Some(time.into()),
+                    play,
+                },
             ),
         )
         .map_err(to_py_err)?;
