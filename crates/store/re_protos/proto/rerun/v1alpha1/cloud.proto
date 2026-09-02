@@ -1164,6 +1164,8 @@ message EntryDetailsUpdate {
 message DatasetDetails {
   // The blueprint dataset associated with this dataset (if any).
   // This association is owned for lifecycle purposes: deleting this dataset also deletes the associated blueprint dataset.
+  //
+  // Unlike `asset_dataset`, this is not server-managed on `UpdateDatasetEntry`: leaving it unset clears the association.
   optional rerun.common.v1alpha1.EntryId blueprint_dataset = 3;
 
   // The segment of the blueprint dataset corresponding to the default blueprint (if any).
@@ -1175,6 +1177,10 @@ message DatasetDetails {
 
   // The asset dataset associated with this dataset (if any).
   // This association is owned for lifecycle purposes: deleting this dataset also deletes the associated asset dataset.
+  //
+  // Server-managed on `UpdateDatasetEntry` for recording datasets: leaving it unset keeps the stored association instead of
+  // clearing it, and creates the asset dataset if the recording dataset does not have one yet.
+  // Setting it to a different dataset re-points the association.
   optional rerun.common.v1alpha1.EntryId asset_dataset = 7;
 
   reserved 4;
@@ -1199,6 +1205,9 @@ message TableDetails {
   // This association is owned for lifecycle purposes: deleting this table also deletes the associated blueprint dataset.
   //
   // Like recording datasets, tables get an associated blueprint dataset automatically when they are created.
+  //
+  // Server-managed on `UpdateTableEntry`: leaving it unset keeps the stored association instead of clearing it, and creates
+  // the blueprint dataset if the table does not have one yet.
   optional rerun.common.v1alpha1.EntryId blueprint_dataset = 1;
 
   // Segment of the blueprint dataset corresponding to the default table blueprint.

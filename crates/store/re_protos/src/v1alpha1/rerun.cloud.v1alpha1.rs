@@ -1717,6 +1717,8 @@ impl ::prost::Name for EntryDetailsUpdate {
 pub struct DatasetDetails {
     /// The blueprint dataset associated with this dataset (if any).
     /// This association is owned for lifecycle purposes: deleting this dataset also deletes the associated blueprint dataset.
+    ///
+    /// Unlike `asset_dataset`, this is not server-managed on `UpdateDatasetEntry`: leaving it unset clears the association.
     #[prost(message, optional, tag = "3")]
     pub blueprint_dataset: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
     /// The segment of the blueprint dataset corresponding to the default blueprint (if any).
@@ -1730,6 +1732,10 @@ pub struct DatasetDetails {
         ::core::option::Option<super::super::common::v1alpha1::SegmentId>,
     /// The asset dataset associated with this dataset (if any).
     /// This association is owned for lifecycle purposes: deleting this dataset also deletes the associated asset dataset.
+    ///
+    /// Server-managed on `UpdateDatasetEntry` for recording datasets: leaving it unset keeps the stored association instead of
+    /// clearing it, and creates the asset dataset if the recording dataset does not have one yet.
+    /// Setting it to a different dataset re-points the association.
     #[prost(message, optional, tag = "7")]
     pub asset_dataset: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
 }
@@ -1770,6 +1776,9 @@ pub struct TableDetails {
     /// This association is owned for lifecycle purposes: deleting this table also deletes the associated blueprint dataset.
     ///
     /// Like recording datasets, tables get an associated blueprint dataset automatically when they are created.
+    ///
+    /// Server-managed on `UpdateTableEntry`: leaving it unset keeps the stored association instead of clearing it, and creates
+    /// the blueprint dataset if the table does not have one yet.
     #[prost(message, optional, tag = "1")]
     pub blueprint_dataset: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
     /// Segment of the blueprint dataset corresponding to the default table blueprint.

@@ -184,6 +184,15 @@ impl DatasetKind {
         }
     }
 
+    /// The kind of catalog entry that a dataset of this kind is stored as.
+    pub fn entry_kind(self) -> super::rerun_cloud_v1alpha1::EntryKind {
+        match self {
+            Self::Recording => super::rerun_cloud_v1alpha1::EntryKind::Dataset,
+            Self::Blueprint => super::rerun_cloud_v1alpha1::EntryKind::BlueprintDataset,
+            Self::Asset => super::rerun_cloud_v1alpha1::EntryKind::AssetDataset,
+        }
+    }
+
     pub fn store_kind(self) -> re_log_types::StoreKind {
         match self {
             Self::Recording | Self::Asset => re_log_types::StoreKind::Recording,
