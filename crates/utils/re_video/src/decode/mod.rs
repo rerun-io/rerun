@@ -355,23 +355,32 @@ pub fn new_decoder(
                             != DecodeHardwareAcceleration::PreferSoftware
                         && let Some(gpu_video) = &decode_settings.gpu_video.0
                     {
-                        match gpu_video::GpuDecoder::new(
-                            debug_name.to_owned(),
-                            gpu_video,
-                            video,
-                            output_sender.clone(),
+                        if let Some(reason) = gpu_video::h264_unsupported_reason(
+                            video.encoding_details.as_ref(),
+                            gpu_video.h264_capabilities(),
                         ) {
-                            Ok(decoder) => {
-                                re_log::trace!(
-                                    "Decoding H.264 on the GPU via {}",
-                                    gpu_video.backend_name()
-                                );
-                                return Ok(Box::new(decoder));
-                            }
-                            Err(err) => {
-                                re_log::debug_warn_once!(
-                                    "Failed to create GPU video decoder, falling back to software decoding: {err}"
-                                );
+                            re_log::debug_warn_once!(
+                                "The GPU video decoder doesn't support this stream: {reason}. Using software decoding instead."
+                            );
+                        } else {
+                            match gpu_video::GpuDecoder::new(
+                                debug_name.to_owned(),
+                                gpu_video,
+                                video,
+                                output_sender.clone(),
+                            ) {
+                                Ok(decoder) => {
+                                    re_log::trace!(
+                                        "Decoding H.264 on the GPU via {}",
+                                        gpu_video.backend_name()
+                                    );
+                                    return Ok(Box::new(decoder));
+                                }
+                                Err(err) => {
+                                    re_log::debug_warn_once!(
+                                        "Failed to create GPU video decoder, falling back to software decoding: {err}"
+                                    );
+                                }
                             }
                         }
                     }

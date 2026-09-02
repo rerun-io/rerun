@@ -4,13 +4,83 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
-use re_gpu_video::GpuVideoContext;
+use re_gpu_video::{GpuVideoContext, H264DecodeCapabilities};
 
 use super::sync_decoder_wrapper::{SyncDecoder, SyncDecoderWrapper};
 use super::{AsyncDecoder, Chunk, DecodeError, Frame, FrameContent, FrameInfo, FrameResult};
 use crate::h264::write_avc_chunk_to_nalu_stream;
 use crate::nalu::AnnexBStreamState;
-use crate::{FrameNumber, Sender, Time, VideoDataDescription, VideoSource};
+use crate::{
+    ChromaSubsamplingModes, FrameNumber, Sender, Time, VideoDataDescription, VideoEncodingDetails,
+    VideoSource,
+};
+
+/// Why the GPU decoder can't handle a stream, judging from the encoding details of the demuxer.
+///
+/// `None` means the stream is supported, or the details don't say enough to rule it out.
+/// The GPU decoder does its own check of the stream's SPS when it starts decoding.
+pub fn h264_unsupported_reason(
+    encoding_details: Option<&VideoEncodingDetails>,
+    capabilities: &H264DecodeCapabilities,
+) -> Option<String> {
+    let details = encoding_details?;
+
+    if let Some(chroma_subsampling) = details.chroma_subsampling
+        && chroma_subsampling != ChromaSubsamplingModes::Yuv420
+    {
+        return Some(format!(
+            "chroma subsampling {chroma_subsampling} instead of 4:2:0"
+        ));
+    }
+
+    if let Some(bit_depth) = details.bit_depth
+        && bit_depth != 8
+    {
+        return Some(format!("{bit_depth} bits per color component instead of 8"));
+    }
+
+    if details.frames_only == Some(false) {
+        return Some("interlaced video".to_owned());
+    }
+
+    if let Some((profile_idc, level_idc)) = h264_profile_and_level(&details.codec_string) {
+        if !matches!(profile_idc, 66 | 77 | 100) {
+            return Some(format!(
+                "profile {profile_idc}, only Baseline, Main and High are supported"
+            ));
+        }
+        if u32::from(level_idc) > capabilities.max_level_idc {
+            return Some(format!(
+                "level {level_idc}, the device supports up to {}",
+                capabilities.max_level_idc
+            ));
+        }
+    }
+
+    let [width, height] = details.coded_dimensions.map(u32::from);
+    let [min_width, min_height] = capabilities.min_coded_extent;
+    let [max_width, max_height] = capabilities.max_coded_extent;
+    if width < min_width || height < min_height || width > max_width || height > max_height {
+        return Some(format!(
+            "coded size {width}x{height} outside the supported range {min_width}x{min_height} to {max_width}x{max_height}"
+        ));
+    }
+
+    None
+}
+
+/// `profile_idc` and `level_idc` of an `avc1.PPCCLL` codec string, where each pair is hex.
+///
+/// `None` for any string that doesn't have that shape.
+fn h264_profile_and_level(codec_string: &str) -> Option<(u8, u8)> {
+    let digits = codec_string.strip_prefix("avc1.")?;
+    if digits.len() != 6 {
+        return None;
+    }
+    let profile_idc = u8::from_str_radix(digits.get(0..2)?, 16).ok()?;
+    let level_idc = u8::from_str_radix(digits.get(4..6)?, 16).ok()?;
+    Some((profile_idc, level_idc))
+}
 
 /// Decodes H.264 to GPU textures using the [`re_gpu_video`] backend of the render device.
 ///
@@ -220,5 +290,90 @@ impl SyncDecoder for GpuSyncDecoder {
         self.decoder.reset();
         self.input_format = InputFormat::from_descr(video_descr);
         self.pending_frame_infos.clear();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn test_capabilities() -> H264DecodeCapabilities {
+        H264DecodeCapabilities {
+            min_coded_extent: [16, 16],
+            max_coded_extent: [4096, 4096],
+            max_dpb_slots: 17,
+            max_active_references: 16,
+            max_level_idc: 51,
+        }
+    }
+
+    fn test_encoding_details() -> VideoEncodingDetails {
+        VideoEncodingDetails {
+            codec_string: "avc1.64002A".to_owned(),
+            coded_dimensions: [1920, 1080],
+            bit_depth: Some(8),
+            chroma_subsampling: Some(ChromaSubsamplingModes::Yuv420),
+            frames_only: Some(true),
+            stsd: None,
+        }
+    }
+
+    #[test]
+    fn high_profile_4_2_0_stream_is_supported() {
+        let details = test_encoding_details();
+        assert_eq!(
+            h264_unsupported_reason(Some(&details), &test_capabilities()),
+            None
+        );
+    }
+
+    #[test]
+    fn stream_without_encoding_details_is_not_ruled_out() {
+        assert_eq!(h264_unsupported_reason(None, &test_capabilities()), None);
+    }
+
+    #[test]
+    fn chroma_subsampling_other_than_4_2_0_is_unsupported() {
+        let details = VideoEncodingDetails {
+            chroma_subsampling: Some(ChromaSubsamplingModes::Yuv422),
+            ..test_encoding_details()
+        };
+        assert!(
+            h264_unsupported_reason(Some(&details), &test_capabilities())
+                .is_some_and(|reason| reason.contains("4:2:2"))
+        );
+    }
+
+    #[test]
+    fn interlaced_video_is_unsupported() {
+        let details = VideoEncodingDetails {
+            frames_only: Some(false),
+            ..test_encoding_details()
+        };
+        assert!(
+            h264_unsupported_reason(Some(&details), &test_capabilities())
+                .is_some_and(|reason| reason.contains("interlaced"))
+        );
+    }
+
+    #[test]
+    fn level_above_the_device_maximum_is_unsupported() {
+        // `avc1.640034` is High profile at level 5.2, one step above the device's 5.1.
+        let details = VideoEncodingDetails {
+            codec_string: "avc1.640034".to_owned(),
+            ..test_encoding_details()
+        };
+        assert!(
+            h264_unsupported_reason(Some(&details), &test_capabilities())
+                .is_some_and(|reason| reason.contains("level 52"))
+        );
+    }
+
+    #[test]
+    fn codec_string_of_unexpected_shape_leaves_profile_and_level_unknown() {
+        assert_eq!(h264_profile_and_level("avc1"), None);
+        assert_eq!(h264_profile_and_level("avc1.64"), None);
+        assert_eq!(h264_profile_and_level("hvc1.1.6.L93.B0"), None);
+        assert_eq!(h264_profile_and_level("avc1.64002A"), Some((100, 42)));
     }
 }

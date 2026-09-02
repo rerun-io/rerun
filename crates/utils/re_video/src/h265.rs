@@ -35,6 +35,7 @@ pub fn encoding_details_from_h265_sps(sps: &Sps) -> VideoEncodingDetails {
         coded_dimensions,
         bit_depth,
         chroma_subsampling,
+        frames_only: None,
         stsd: None,
     }
 }
@@ -234,6 +235,7 @@ mod test {
                 coded_dimensions: [1920, 1080],
                 bit_depth: Some(8),
                 chroma_subsampling: Some(ChromaSubsamplingModes::Yuv420),
+                frames_only: None,
                 stsd: None,
             }))
         );

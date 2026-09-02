@@ -464,6 +464,12 @@ pub struct VideoEncodingDetails {
     /// or missing information at this point.
     pub chroma_subsampling: Option<ChromaSubsamplingModes>,
 
+    /// Whether every picture is coded as a full frame, rather than as interlaced fields.
+    ///
+    /// `None` if this couldn't be determined, either because of lack of implementation
+    /// or missing information at this point.
+    pub frames_only: Option<bool>,
+
     /// Optional mp4 stsd box from which this data was derived.
     ///
     /// Used by some decoders directly for configuration.

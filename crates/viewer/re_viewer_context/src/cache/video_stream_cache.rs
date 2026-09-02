@@ -2345,6 +2345,7 @@ mod tests {
             coded_dimensions,
             bit_depth,
             chroma_subsampling,
+            frames_only,
             stsd,
         } = encoding_details.unwrap();
         assert_eq!(codec_string, "avc1.64000A");
@@ -2354,6 +2355,7 @@ mod tests {
             chroma_subsampling,
             Some(re_video::ChromaSubsamplingModes::Yuv420)
         );
+        assert_eq!(frames_only, Some(true));
         assert_eq!(stsd, None);
 
         assert_eq!(samples.num_elements(), num_frames_submitted);

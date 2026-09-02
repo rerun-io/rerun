@@ -50,6 +50,10 @@ pub fn encoding_details_from_h264_sps(
         coded_dimensions: [coded_dimensions.0 as _, coded_dimensions.1 as _],
         bit_depth: Some(bit_depth),
         chroma_subsampling,
+        frames_only: Some(matches!(
+            sps.frame_mbs_flags,
+            nal::sps::FrameMbsFlags::Frames
+        )),
         stsd: None,
     })
 }
@@ -218,6 +222,7 @@ mod test {
                 coded_dimensions: [64, 64],
                 bit_depth: Some(8),
                 chroma_subsampling: Some(ChromaSubsamplingModes::Yuv420),
+                frames_only: Some(true),
                 stsd: None,
             }))
         );
