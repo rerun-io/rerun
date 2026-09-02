@@ -3,15 +3,18 @@ use std::sync::Arc;
 use pyo3::exceptions::PyRuntimeError;
 use pyo3::prelude::*;
 
+use arrow::pyarrow::ToPyArrow as _;
 use re_chunk::Chunk;
 use re_chunk_store::{
     ChunkStore, ChunkStoreConfig, ChunkStoreHandle, QueryExpression, SparseFillStrategy,
     StaticColumnSelection, ViewContentsSelector,
 };
 use re_datafusion::LocalChunkStoreTableProvider;
+use re_log_encoding::{InMemoryChunkProvider, RawRrdManifest};
 use re_log_types::{EntityPathFilter, StoreId, StoreKind};
 
 use super::error::ChunkPipelineError;
+use super::optimized_stream::{OptimizedStreamFactory, build_optimization_settings};
 use super::py_stream::PyLazyChunkStreamInternal;
 use super::stream::LazyChunkStream;
 use super::summary::{SummaryRow, format_summary};
@@ -121,6 +124,64 @@ impl PyChunkStoreInternal {
     fn stream(&self) -> PyLazyChunkStreamInternal {
         // Each compile() snapshots the store's current physical chunks.
         PyLazyChunkStreamInternal::new(LazyChunkStream::from_factory(self.clone()))
+    }
+
+    /// Build this store's chunk index (an in-memory raw RRD manifest), as `(store_id, RecordBatch)`.
+    ///
+    /// Costs a full pass over the store, including the heavy manifest
+    /// sanity checks; byte offsets are synthesized in `ChunkId` (TUID) order — the store's
+    /// iteration order, which the optimizer's file-order sweep therefore follows — and
+    /// `chunk_byte_size_uncompressed` holds heap sizes (not IPC payload sizes as on a file).
+    //TODO(RR-5531): stabilize and make this API public (currently private).
+    fn _chunk_index(&self, py: Python<'_>) -> PyResult<(String, Py<PyAny>)> {
+        let handle = self.handle.clone();
+        let (store_id, raw) = py
+            .detach(move || {
+                let store = handle.read();
+                RawRrdManifest::build_in_memory_from_chunks(
+                    store.id(),
+                    store.iter_physical_chunks().map(|chunk| chunk.as_ref()),
+                )
+                .map(|raw| (store.id(), raw))
+            })
+            .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+        Ok((store_id.to_string(), raw.data.to_pyarrow(py)?.unbind()))
+    }
+
+    /// Return a lazy stream of vertically optimized (merged/split) chunks.
+    //TODO(ab): this is the new WIP optimizer. We will clean up this API and make it public when it
+    //stabilizes.
+    #[pyo3(signature = (*, chunk_max_bytes=None, chunk_max_rows=None, chunk_max_rows_if_unsorted=None, target_timeline=None))]
+    fn _optimized_stream(
+        &self,
+        py: Python<'_>,
+        chunk_max_bytes: Option<u64>,
+        chunk_max_rows: Option<u64>,
+        chunk_max_rows_if_unsorted: Option<u64>,
+        target_timeline: Option<String>,
+    ) -> PyResult<PyLazyChunkStreamInternal> {
+        // Building the provider synthesizes a full manifest (including its heavy sanity checks),
+        // so release the GIL for it, like `_chunk_index` does for the same work.
+        let handle = self.handle.clone();
+        let provider = py
+            .detach(move || {
+                let store = handle.read();
+                InMemoryChunkProvider::new(&store.id(), store.iter_physical_chunks().cloned())
+            })
+            .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+
+        let factory = OptimizedStreamFactory {
+            provider: Arc::new(provider),
+            settings: build_optimization_settings(
+                chunk_max_bytes,
+                chunk_max_rows,
+                chunk_max_rows_if_unsorted,
+                target_timeline,
+            )?,
+        };
+        Ok(PyLazyChunkStreamInternal::new(
+            LazyChunkStream::from_factory(factory),
+        ))
     }
 
     /// Build a `TableProvider` for an in-process DataFusion query over this store.

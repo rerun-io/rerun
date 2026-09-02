@@ -6,6 +6,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from rerun.catalog import Schema
+    from rerun.experimental._chunk_index import ChunkIndex
     from rerun_bindings import LazyStoreInternal
 
     from ._lazy_chunk_stream import LazyChunkStream
@@ -56,6 +57,47 @@ class LazyStore:
         from ._lazy_chunk_stream import LazyChunkStream
 
         return LazyChunkStream(self._internal.stream())
+
+    def _chunk_index(self) -> ChunkIndex:
+        """
+        The store's chunk index (its raw RRD manifest), one row per chunk.
+
+        Private and experimental. The manifest is already in memory, so this loads no
+        chunk data.
+        """
+        from rerun.experimental._chunk_index import ChunkIndex
+
+        store_id, batch = self._internal._chunk_index()
+        return ChunkIndex(store_id, batch)
+
+    def _optimized_stream(
+        self,
+        *,
+        chunk_max_bytes: int | None = None,
+        chunk_max_rows: int | None = None,
+        chunk_max_rows_if_unsorted: int | None = None,
+        target_timeline: str | None = None,
+    ) -> LazyChunkStream:
+        """
+        Return a lazy stream of vertically optimized (merged/split) chunks.
+
+        Private and experimental. The only optimization is vertical: merge and split
+        chunks toward `chunk_max_bytes`, with `chunk_max_rows` as a row guard (`0`
+        disables a limit). `chunk_max_rows_if_unsorted` replaces the row guard for
+        outputs with at least one time-unsorted timeline. It is video-unaware and can
+        undo GoP alignment. Defaults are the object-store profile. `target_timeline`
+        orders the merge sweep by time; `None` means file order.
+        """
+        from ._lazy_chunk_stream import LazyChunkStream
+
+        return LazyChunkStream(
+            self._internal._optimized_stream(
+                chunk_max_bytes=chunk_max_bytes,
+                chunk_max_rows=chunk_max_rows,
+                chunk_max_rows_if_unsorted=chunk_max_rows_if_unsorted,
+                target_timeline=target_timeline,
+            )
+        )
 
     @property
     def _chunks_loaded(self) -> int:

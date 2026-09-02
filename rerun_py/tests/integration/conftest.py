@@ -1,4 +1,4 @@
-"""Shared fixtures for integration tests."""
+"""Shared fixtures for integration tests (plain helpers live in `util.py`)."""
 
 from __future__ import annotations
 

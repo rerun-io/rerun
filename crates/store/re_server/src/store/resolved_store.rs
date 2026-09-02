@@ -6,7 +6,7 @@ use nohash_hasher::IntSet;
 use re_chunk_store::{
     ChunkStoreHandle, ChunkStoreHandleWeak, ChunkTrackingMode, LazyStore, QueryResults, StoreSchema,
 };
-use re_log_encoding::{RrdChunkProvider, RrdManifest};
+use re_log_encoding::{ChunkProvider as _, RrdChunkProvider, RrdManifest};
 use re_log_types::{EntityPath, StoreId, StoreKind};
 
 /// A store backend: either an in-memory eager store or a provider-backed lazy store.

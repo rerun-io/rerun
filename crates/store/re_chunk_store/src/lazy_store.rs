@@ -5,7 +5,7 @@ use ahash::{HashMap, HashMapExt as _};
 use nohash_hasher::{IntMap, IntSet};
 
 use re_chunk::{Chunk, ChunkId};
-use re_log_encoding::{ChunkProvider, RawRrdManifest, RrdManifest};
+use re_log_encoding::{ChunkProvider, ChunkProviderError, RawRrdManifest, RrdManifest};
 use re_log_types::{AbsoluteTimeRange, EntityPath, StoreId, TimelineName};
 
 use crate::{
@@ -141,24 +141,6 @@ impl LazyStore {
         self.manifest().num_chunks()
     }
 
-    /// The parsed manifest of every chunk this store can serve.
-    pub fn manifest(&self) -> &Arc<RrdManifest> {
-        self.provider.manifest()
-    }
-
-    /// Human-readable source identifier of the underlying provider, for diagnostics.
-    pub fn source(&self) -> String {
-        self.provider.source()
-    }
-
-    /// The raw manifest as-parsed from the RRD footer, before validation/extraction.
-    ///
-    /// Kept around so the server can synthesize `GetRrdManifest` responses without materializing
-    /// chunks: the footer already contains everything a client needs to pick which chunks to fetch.
-    pub fn raw_manifest(&self) -> &Arc<RawRrdManifest> {
-        self.provider.raw_manifest()
-    }
-
     /// The underlying chunk provider.
     pub fn provider(&self) -> &Arc<dyn ChunkProvider> {
         &self.provider
@@ -274,6 +256,29 @@ impl LazyStore {
             entity_path,
             include_static,
         )
+    }
+}
+
+// `LazyStore` is itself a provider.
+#[async_trait::async_trait]
+impl ChunkProvider for LazyStore {
+    fn manifest(&self) -> &Arc<RrdManifest> {
+        self.provider.manifest()
+    }
+
+    fn raw_manifest(&self) -> &Arc<RawRrdManifest> {
+        self.provider.raw_manifest()
+    }
+
+    fn source(&self) -> String {
+        self.provider().source()
+    }
+
+    async fn load_chunks(&self, ids: &[ChunkId]) -> Result<Vec<Arc<Chunk>>, ChunkProviderError> {
+        // We delegate to the inherant method, which tracks loaded chunks.
+        Self::load_chunks(self, ids)
+            .await
+            .map_err(|err| ChunkProviderError(Box::new(err)))
     }
 }
 

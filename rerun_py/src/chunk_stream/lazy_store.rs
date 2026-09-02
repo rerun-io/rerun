@@ -1,16 +1,20 @@
 use std::collections::{BTreeSet, HashMap, VecDeque};
 use std::sync::Arc;
 
+use arrow::pyarrow::ToPyArrow as _;
 use pyo3::prelude::*;
 
 use re_chunk::{Chunk, ChunkId};
 use re_chunk_store::LazyStore;
-use re_log_encoding::{RrdManifest, RrdManifestStaticMap, RrdManifestTemporalMap};
+use re_log_encoding::{
+    ChunkProvider as _, RrdManifest, RrdManifestStaticMap, RrdManifestTemporalMap,
+};
 use re_log_types::EntityPath;
 use re_types_core::{ComponentIdentifier, TimelineName};
 
 use super::engine::FilterStream;
 use super::error::ChunkPipelineError;
+use super::optimized_stream::{OptimizedStreamFactory, build_optimization_settings};
 use super::py_stream::PyLazyChunkStreamInternal;
 use super::stream::{ChunkPredicateView, LazyChunkStream, StructuredFilter};
 use super::summary::{SummaryRow, format_summary};
@@ -121,6 +125,38 @@ impl PyLazyStoreInternal {
     /// Return a lazy stream over all chunks in this store.
     fn stream(&self) -> PyLazyChunkStreamInternal {
         PyLazyChunkStreamInternal::new(LazyChunkStream::from_factory(Arc::clone(&self.inner)))
+    }
+
+    /// The store's chunk index (its raw RRD manifest), as `(store_id, RecordBatch)`.
+    //TODO(RR-5531): make this API public when it stabilizes.
+    fn _chunk_index(&self, py: Python<'_>) -> PyResult<(String, Py<PyAny>)> {
+        let raw = self.inner.raw_manifest();
+        Ok((raw.store_id.to_string(), raw.data.to_pyarrow(py)?.unbind()))
+    }
+
+    /// Return a lazy stream of vertically optimized chunks.
+    //TODO(ab): this is the new WIP optimizer. We will clean up this API and make it public when it
+    //stabilizes.
+    #[pyo3(signature = (*, chunk_max_bytes=None, chunk_max_rows=None, chunk_max_rows_if_unsorted=None, target_timeline=None))]
+    fn _optimized_stream(
+        &self,
+        chunk_max_bytes: Option<u64>,
+        chunk_max_rows: Option<u64>,
+        chunk_max_rows_if_unsorted: Option<u64>,
+        target_timeline: Option<String>,
+    ) -> PyResult<PyLazyChunkStreamInternal> {
+        let factory = OptimizedStreamFactory {
+            provider: Arc::clone(&self.inner) as _,
+            settings: build_optimization_settings(
+                chunk_max_bytes,
+                chunk_max_rows,
+                chunk_max_rows_if_unsorted,
+                target_timeline,
+            )?,
+        };
+        Ok(PyLazyChunkStreamInternal::new(
+            LazyChunkStream::from_factory(factory),
+        ))
     }
 }
 

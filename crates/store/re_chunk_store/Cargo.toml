@@ -45,6 +45,7 @@ re_types_core.workspace = true
 ahash.workspace = true
 anyhow.workspace = true
 arrow.workspace = true
+async-trait.workspace = true
 document-features.workspace = true
 futures.workspace = true
 indent.workspace = true

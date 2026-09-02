@@ -12,6 +12,12 @@ use crate::Error;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ChunkIdx(usize);
 
+impl ChunkIdx {
+    pub fn as_usize(self) -> usize {
+        self.0
+    }
+}
+
 /// Everything the chunk index records about one chunk, minus the per-timeline columns.
 ///
 /// The per-timeline data lives in [`EntityView::timeline_sets`].
@@ -28,7 +34,9 @@ pub struct ChunkMeta {
     /// Size of the chunk in the RRD file.
     pub rrd_byte_size: u64,
 
-    /// In-memory (heap) size of the decoded chunk.
+    /// Uncompressed size of the chunk. What this measures depends on the source: the length of
+    /// the uncompressed Arrow IPC stream on the file path (which charges each chunk a
+    /// schema-dependent framing constant), and the decoded heap size on the in-memory path.
     pub byte_size_uncompressed: u64,
 }
 
@@ -115,27 +123,36 @@ impl ChunkIndexView {
     pub fn try_from_raw(raw: &RawRrdManifest) -> Result<Self, Error> {
         let rows = izip!(
             raw.col_chunk_id_iter()
-                .map_err(Error::read_column(RawRrdManifest::COLUMN_CHUNK_ID.name))?,
+                .map_err(|err| Error::read_column(RawRrdManifest::COLUMN_CHUNK_ID.name, err))?,
             raw.col_chunk_entity_path_iter()
-                .map_err(Error::read_column(
-                    RawRrdManifest::COLUMN_CHUNK_ENTITY_PATH.name
+                .map_err(|err| Error::read_column(
+                    RawRrdManifest::COLUMN_CHUNK_ENTITY_PATH.name,
+                    err
                 ))?,
-            raw.col_chunk_is_static_iter().map_err(Error::read_column(
-                RawRrdManifest::COLUMN_CHUNK_IS_STATIC.name
-            ))?,
-            raw.col_chunk_num_rows_iter().map_err(Error::read_column(
-                RawRrdManifest::COLUMN_CHUNK_NUM_ROWS.name
-            ))?,
+            raw.col_chunk_is_static_iter()
+                .map_err(|err| Error::read_column(
+                    RawRrdManifest::COLUMN_CHUNK_IS_STATIC.name,
+                    err
+                ))?,
+            raw.col_chunk_num_rows_iter()
+                .map_err(|err| Error::read_column(
+                    RawRrdManifest::COLUMN_CHUNK_NUM_ROWS.name,
+                    err
+                ))?,
             raw.col_chunk_byte_offset_iter()
-                .map_err(Error::read_column(
-                    RawRrdManifest::COLUMN_CHUNK_BYTE_OFFSET.name
+                .map_err(|err| Error::read_column(
+                    RawRrdManifest::COLUMN_CHUNK_BYTE_OFFSET.name,
+                    err
                 ))?,
-            raw.col_chunk_byte_size_iter().map_err(Error::read_column(
-                RawRrdManifest::COLUMN_CHUNK_BYTE_SIZE.name
-            ))?,
+            raw.col_chunk_byte_size_iter()
+                .map_err(|err| Error::read_column(
+                    RawRrdManifest::COLUMN_CHUNK_BYTE_SIZE.name,
+                    err
+                ))?,
             raw.col_chunk_byte_size_uncompressed_iter()
-                .map_err(Error::read_column(
+                .map_err(|err| Error::read_column(
                     RawRrdManifest::COLUMN_CHUNK_BYTE_SIZE_UNCOMPRESSED.name,
+                    err
                 ))?,
         );
 
@@ -190,12 +207,9 @@ impl ChunkIndexView {
             for (timeline, per_component) in per_timeline {
                 for per_chunk_entries in per_component.into_values() {
                     for (chunk_id, entry) in per_chunk_entries {
-                        let idx = *idx_by_chunk_id.get(&chunk_id).ok_or_else(|| {
-                            Error::UnknownChunkId {
-                                chunk_id,
-                                entity_path: entity_path.clone(),
-                            }
-                        })?;
+                        let idx = *idx_by_chunk_id
+                            .get(&chunk_id)
+                            .ok_or_else(|| Error::unknown_chunk_id(chunk_id, &entity_path))?;
 
                         per_chunk
                             .entry(idx)

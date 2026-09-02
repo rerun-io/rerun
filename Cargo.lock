@@ -8927,13 +8927,19 @@ name = "re_chunk_optimizer"
 version = "0.37.0-alpha.1+dev"
 dependencies = [
  "anyhow",
+ "arrow",
+ "async-trait",
+ "futures",
  "insta",
  "itertools 0.15.0",
+ "re_byte_size",
  "re_chunk",
  "re_chunk_store",
+ "re_log",
  "re_log_encoding",
  "re_log_types",
  "re_types_core",
+ "tempfile",
  "thiserror 2.0.19",
 ]
 
@@ -8944,6 +8950,7 @@ dependencies = [
  "ahash",
  "anyhow",
  "arrow",
+ "async-trait",
  "criterion",
  "document-features",
  "futures",
@@ -9634,6 +9641,7 @@ dependencies = [
 name = "re_log_encoding"
 version = "0.37.0-alpha.1+dev"
 dependencies = [
+ "ahash",
  "arrow",
  "async-trait",
  "bytes",
@@ -11796,6 +11804,7 @@ dependencies = [
  "re_build_info",
  "re_build_tools",
  "re_chunk",
+ "re_chunk_optimizer",
  "re_chunk_store",
  "re_datafusion",
  "re_error",

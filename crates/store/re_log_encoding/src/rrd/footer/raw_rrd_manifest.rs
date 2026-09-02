@@ -120,8 +120,10 @@ use crate::{CodecError, CodecResult, Decodable as _, StreamFooterEntry, ToApplic
 ///   compression enabled, these sizes are therefore compressed. For a backend that doesn't do any
 ///   kind of compression, such as the OSS server that stores everything already decoded in memory,
 ///   these sizes will correspond to heap memory usage.
-/// * `chunk_byte_size_uncompressed` always corresponds to the size on the heap that the data would
-///   require once fully decoded, regardless of the backend.
+/// * `chunk_byte_size_uncompressed` reports the chunk's uncompressed size, whose exact meaning
+///   depends on the writer: the length of the uncompressed Arrow IPC stream when written to an RRD
+///   file, and the decoded heap size when synthesized in memory
+///   (see [`RawRrdManifest::build_in_memory_from_chunks`]).
 /// * `chunk_key`, if specified, should always be used to fetch the associated data.
 ///
 /// ## A note on filtering

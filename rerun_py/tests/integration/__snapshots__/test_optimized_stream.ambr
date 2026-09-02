@@ -1,0 +1,19 @@
+# serializer version: 1
+# name: test_layout_snapshot
+  '''
+  /__properties rows=1 static=True timelines=[] cols=['RecordingInfo:start_time']
+  /out_of_order rows=3650 static=False timelines=['tick'] cols=['data', 'tick']
+  /out_of_order rows=3650 static=False timelines=['tick'] cols=['data', 'tick']
+  /out_of_order rows=3650 static=False timelines=['tick'] cols=['data', 'tick']
+  /out_of_order rows=3650 static=False timelines=['tick'] cols=['data', 'tick']
+  /out_of_order rows=3650 static=False timelines=['tick'] cols=['data', 'tick']
+  /out_of_order rows=3650 static=False timelines=['tick'] cols=['data', 'tick']
+  /oversized rows=3883 static=False timelines=['tick'] cols=['data', 'tick']
+  /oversized rows=2117 static=False timelines=['tick'] cols=['data', 'tick']
+  /static rows=1 static=True timelines=[] cols=['TextLog:text']
+  /two_timelines rows=150 static=False timelines=['tick', 'tock'] cols=['data', 'tick', 'tock']
+  /uniform rows=3600 static=False timelines=['tick'] cols=['data', 'tick']
+  /uniform rows=3600 static=False timelines=['tick'] cols=['data', 'tick']
+  /uniform rows=3600 static=False timelines=['tick'] cols=['data', 'tick']
+  '''
+# ---

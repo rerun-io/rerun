@@ -6,7 +6,7 @@ use arrow::datatypes::Schema;
 use arrow::error::ArrowError;
 use itertools::Itertools as _;
 use re_byte_size::SizeBytes as _;
-use re_log_encoding::RawRrdManifest;
+use re_log_encoding::{ChunkProvider as _, RawRrdManifest};
 use re_log_types::{AbsoluteTimeRange, Timeline};
 use re_protos::cloud::v1alpha1::ext::DataSourceKind;
 use url::Url;

@@ -15,7 +15,7 @@ use re_arrow_util::RecordBatchExt as _;
 use re_chunk_store::{
     Chunk, ChunkId, ChunkStore, ChunkStoreHandle, ChunkTrackingMode, LatestAtQuery, RangeQuery,
 };
-use re_log_encoding::ToTransport as _;
+use re_log_encoding::{ChunkProvider as _, ToTransport as _};
 use re_log_types::{AbsoluteTimeRange, EntityPath, EntryId, StoreId, StoreKind, TimelineName};
 #[cfg(not(target_arch = "wasm32"))]
 use re_protos::cloud::v1alpha1::ext::{CreateTableEntryResponse, ProviderDetails};

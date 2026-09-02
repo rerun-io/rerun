@@ -11,11 +11,12 @@ import pytest
 import rerun as rr
 from rerun.chunk import ChunkStore, RrdReader
 
+from .util import normalized_fields, row_multiset
+
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
     import datafusion
-    import pyarrow as pa
     from rerun.catalog import ContentFilter, DatasetEntry, IndexValuesLike
 
 
@@ -124,39 +125,15 @@ def _drop_segment_id(df: datafusion.DataFrame) -> datafusion.DataFrame:
     return df.drop("rerun_segment_id")
 
 
-def _normalized_fields(schema: pa.Schema) -> list[tuple[str, pa.DataType, dict[bytes, bytes]]]:
-    return sorted([(f.name, f.type, dict(f.metadata or {})) for f in schema])
-
-
 def _assert_field_parity(chunk_df: datafusion.DataFrame, dataset_df: datafusion.DataFrame) -> None:
     """Compare `(name, type, per-field metadata)` triplets sorted by name; ignore table-level metadata."""
-    chunk_fields = _normalized_fields(chunk_df.schema())
-    dataset_fields = _normalized_fields(_drop_segment_id(dataset_df).schema())
+    chunk_fields = normalized_fields(chunk_df.schema())
+    dataset_fields = normalized_fields(_drop_segment_id(dataset_df).schema())
     assert chunk_fields == dataset_fields
 
 
-def _row_multiset(df: datafusion.DataFrame) -> list[str]:
-    """
-    Convert every row to a deterministic Python `repr` and return sorted.
-
-    Columns are read in alphabetical order so the two sides compare regardless
-    of physical column ordering — the schema-parity contract only guarantees
-    same fields (sorted by name), not same field order.
-
-    `pyarrow.Table.sort_by` does not support List/Struct sort keys (which is
-    every component column), so we cannot use a column-sort comparison.
-    `to_pylist()` returns nested Python objects that `repr()` formats
-    deterministically, so a sorted multiset of repr-strings is a robust
-    row-set equality check. The fixture avoids NaN.
-    """
-    tbl = df.to_arrow_table().combine_chunks()
-    names = sorted(tbl.column_names)
-    cols = [tbl.column(n).to_pylist() for n in names]
-    return sorted(repr(row) for row in zip(*cols, strict=True))
-
-
 def _assert_data_parity(chunk_df: datafusion.DataFrame, dataset_df: datafusion.DataFrame) -> None:
-    assert _row_multiset(chunk_df) == _row_multiset(_drop_segment_id(dataset_df))
+    assert row_multiset(chunk_df) == row_multiset(_drop_segment_id(dataset_df))
 
 
 # --- Parameterized roundtrip cases ----------------------------------------

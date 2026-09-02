@@ -4,9 +4,11 @@ use re_chunk::{Chunk, ChunkId};
 
 use crate::{RawRrdManifest, RrdManifest};
 
+mod in_memory;
 #[cfg(feature = "decoder")]
 mod rrd;
 
+pub use self::in_memory::InMemoryChunkProvider;
 #[cfg(feature = "decoder")]
 pub use self::rrd::RrdChunkProvider;
 

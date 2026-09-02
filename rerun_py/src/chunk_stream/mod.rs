@@ -24,6 +24,7 @@ mod hdf5_reader;
 pub mod lazy_store;
 mod mcap_reader;
 mod mp4_reader;
+mod optimized_stream;
 mod parquet_reader;
 mod py_stream;
 pub mod rrd_reader;

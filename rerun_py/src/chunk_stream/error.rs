@@ -84,6 +84,9 @@ pub enum ChunkPipelineError {
     #[error("Failed to load chunks from {from}: {reason}")]
     IndexedLoad { from: String, reason: String },
 
+    #[error("Failed to stream optimized chunks from {from}: {reason}")]
+    Optimize { from: String, reason: String },
+
     #[error("{0}")]
     PythonIterator(PythonException),
 
@@ -113,7 +116,8 @@ impl From<ChunkPipelineError> for pyo3::PyErr {
             | ChunkPipelineError::Urdf { .. }
             | ChunkPipelineError::ChunkStoreInsert { .. }
             | ChunkPipelineError::Lenses { .. }
-            | ChunkPipelineError::IndexedLoad { .. } => PyRuntimeError::new_err(err.to_string()),
+            | ChunkPipelineError::IndexedLoad { .. }
+            | ChunkPipelineError::Optimize { .. } => PyRuntimeError::new_err(err.to_string()),
         }
     }
 }

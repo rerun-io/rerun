@@ -57,6 +57,7 @@ re_tracing.workspace = true
 re_types_core.workspace = true
 
 # External:
+ahash.workspace = true
 arrow = { workspace = true, features = ["ipc"] }
 async-trait.workspace = true
 crossbeam.workspace = true

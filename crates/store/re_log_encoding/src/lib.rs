@@ -83,6 +83,6 @@ pub use self::app_id_injector::{
 };
 #[cfg(feature = "decoder")]
 pub use self::chunk_provider::RrdChunkProvider;
-pub use self::chunk_provider::{ChunkProvider, ChunkProviderError};
+pub use self::chunk_provider::{ChunkProvider, ChunkProviderError, InMemoryChunkProvider};
 pub use self::rrd::*;
 pub use self::transport_to_app::{ToApplication, ToTransport};
