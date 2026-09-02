@@ -11,7 +11,7 @@ use re_integration_test::HarnessExt as _;
 use re_integration_test::ViewerHarnessExt as _;
 use re_viewer::external::re_log_types::TimelineName;
 use re_viewer::external::re_ui::notifications::NotificationLevel;
-use re_viewer::viewer_test_utils::{self, AppTestingExt as _, HarnessOptions, step_until};
+use re_viewer::viewer_test_utils::{self, AppTestingExt as _, HarnessOptions};
 use re_viewer::{SystemCommand, SystemCommandSender as _};
 use re_viewer_context::TimeControlCommand;
 use std::io::Write as _;
@@ -268,18 +268,7 @@ async fn test_old_rrds_in_current_viewer() {
             ..Default::default()
         });
 
-        // The popup may be absent before the asynchronous loader establishes its route, so also
-        // wait for the recording route that loading is expected to produce.
-        step_until(
-            "recording loaded and loading popup dismissed",
-            &mut harness,
-            |harness| {
-                let loading_popup_dismissed = !harness
-                    .query_all_by_role(Role::Window)
-                    .any(|window| window.query_by_label_contains("Loading").is_some());
-                loading_popup_dismissed && harness.state().active_recording_id().is_some()
-            },
-        );
+        harness.step_until_active_recording_fully_loaded();
 
         assert!(
             harness.state().active_recording_id().is_some(),

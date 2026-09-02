@@ -80,6 +80,10 @@ pub trait HarnessExt<'h>: ViewerHarnessExt {
     // Sends time control commands to the active recording, then lets the app settle.
     fn send_time_commands(&mut self, commands: impl IntoIterator<Item = TimeControlCommand>);
 
+    /// Waits for the active recording's receiver to disconnect so all of its data is available.
+    #[track_caller]
+    fn step_until_active_recording_fully_loaded(&mut self);
+
     // Runs a function with the `TimeControl` of the active recording.
     fn with_active_time_ctrl<R: 'static>(
         &mut self,
@@ -180,6 +184,21 @@ impl<'h> HarnessExt<'h> for egui_kittest::Harness<'h, re_viewer::App> {
             ctx.send_time_commands_to_active_recording(commands);
         });
         self.run_ok();
+    }
+
+    #[track_caller]
+    fn step_until_active_recording_fully_loaded(&mut self) {
+        self.step_until("active recording fully loaded", |harness| {
+            let app = harness.state();
+            let Some(source) = app
+                .recording_db()
+                .and_then(|recording| recording.data_source.as_ref())
+            else {
+                return false;
+            };
+
+            !app.msg_receive_set().contains(source)
+        });
     }
 
     fn with_active_time_ctrl<R: 'static>(
