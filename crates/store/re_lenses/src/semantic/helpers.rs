@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use arrow::array::{
-    Array, ArrayRef, BinaryArray, Float32Array, Float64Array, ListArray, StructArray,
+    Array, ArrayRef, BinaryArray, Float32Array, Float64Array, ListArray, StringArray, StructArray,
 };
 use re_lenses_core::combinators::{
     Error, GetField, ListToFixedSizeList, MapFixedSizeList, PrimitiveCast, RowMajorToColumnMajor,
@@ -56,6 +56,17 @@ pub fn get_blob_field_as_binary(source: &StructArray, name: &str) -> Result<Bina
         actual: array_ref.data_type().clone(),
         context: name.to_owned(),
     })
+}
+
+/// Returns a pipe-compatible function that emits the given string as a constant column, one value per input row.
+pub fn constant_string(
+    value: &'static str,
+) -> impl Fn(&ArrayRef) -> Result<Option<ArrayRef>, Error> + Send + Sync {
+    move |source: &ArrayRef| {
+        Ok(Some(
+            Arc::new(StringArray::from(vec![value; source.len()])) as ArrayRef
+        ))
+    }
 }
 
 /// Converts a struct with `latitude`, `longitude` fields to a fixed-size list with two f64 values.
