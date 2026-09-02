@@ -3,16 +3,34 @@ title: "0.37"
 order: 973
 ---
 
-## Highlights
+**New features**
 
-Rerun 0.37 teaches the Viewer about **assets**: static data registered on a dataset and shared by all of its segments, such as the robot mesh every episode refers to.
-Open a segment and the Viewer downloads its dataset's assets once, then reuses them for every other segment, and you can register and unregister assets straight from the Viewer.
-The selection panel got a full overhaul with a readable heading, chevrons for walking the entity tree, and a selection history, while state timeline views now keep the time cursor centered, accept entities dropped from the streams panel, and have a **Visible time range** setting.
+- [Assets](#assets)
+- [Improved selection panel navigation](#improved-selection-panel-navigation)
+- [State timeline views keep the time cursor centered](#state-timeline-views-keep-the-time-cursor-centered)
+- [Drag entities onto state timeline views](#drag-entities-onto-state-timeline-views)
+- [Visible time range for state timeline views](#visible-time-range-for-state-timeline-views)
+- [Export recordings and blueprints from the web Viewer](#export-recordings-and-blueprints-from-the-web-viewer)
+- [Links to datasets](#links-to-datasets)
+- [`rerun rrd stats` tells you whether a recording should be optimized](#rerun-rrd-stats-tells-you-whether-a-recording-should-be-optimized)
+- [Keyframe markers are kept out of the video chunks](#keyframe-markers-are-kept-out-of-the-video-chunks)
+- [A la carte features for file importers](#a-la-carte-features-for-file-importers)
+- [Experimental dataloaders use a unified fetch and decode pipeline](#experimental-dataloaders-use-a-unified-fetch-and-decode-pipeline)
+- [Faster video decoding for training](#faster-video-decoding-for-training)
+- [`RerunMapDataset` can be built from a manifest](#rerunmapdataset-can-be-built-from-a-manifest)
+- [Faster manifest generation for video datasets](#faster-manifest-generation-for-video-datasets)
+- [Experimental iterable dataloader skips missing samples](#experimental-iterable-dataloader-skips-missing-samples)
 
-The experimental PyTorch dataloader was rebuilt around a single fetch-and-decode pipeline shared by the iterable and map-style datasets, with explicit windows that work across every decoder, opt-in controls that cut the cost of decoding overlapping video windows, and manifests that can now back a `RerunMapDataset`.
-On the ingestion side, `rerun rrd stats` tells you whether a recording is worth optimizing, `VideoStream:is_keyframe` always gets a chunk of its own so a reader can scan a video's keyframes without downloading any samples, and Rust users can now pick their file importers a la carte.
+**Breaking changes**
 
-Finally, `rerun.datatypes` is now `rerun.encodings` across all three SDKs, with the old spelling deprecated but still working.
+- [`datatypes` renamed to `encodings`](#datatypes-renamed-to-encodings)
+- [Update to Rust 1.96](#update-to-rust-196)
+- [Setting a recording id no longer disables recording properties](#setting-a-recording-id-no-longer-disables-recording-properties)
+- [`rerun-sdk[datafusion]` and `rerun-sdk[dataplatform]` extras removed](#rerun-sdkdatafusion-and-rerun-sdkdataplatform-extras-removed) <!-- NOLINT -->
+- [`Loggable` replaced by four (de)serialization traits](#loggable-replaced-by-four-deserialization-traits)
+- [`Mp4Reader` emits `is_keyframe` as a sparse marker chunk](#mp4reader-emits-is_keyframe-as-a-sparse-marker-chunk)
+- [Experimental dataloader decoders now process fetch blocks](#experimental-dataloader-decoders-now-process-fetch-blocks)
+- [Experimental dataloader Windows are explicit and decoder-independent](#experimental-dataloader-windows-are-explicit-and-decoder-independent)
 
 ## New features
 

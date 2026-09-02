@@ -29,11 +29,13 @@ hidden: true
 ══════════════════════════════════════════════════════════════════════════════
 -->
 
-## Highlights
+<!--
+A table of contents with no heading of its own: one bullet per `### ` heading below,
+in the order the headings appear, grouped under a bold `**New features**` /
+`**Breaking changes**` label.
+-->
 
-<!-- A few sentences selling the release. Feature leads can fill in their item. -->
-
-TODO(release_manager): write the highlights
+TODO(release_manager): write the table of contents
 
 ## New features
 

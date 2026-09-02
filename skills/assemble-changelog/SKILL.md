@@ -45,8 +45,8 @@ frontmatter. Merge them into `docs/content/changelog/changeset-0-XX.md`, creatin
 `docs/content/changelog/_template.md` if it does not exist yet (set `title` to the version — keep it
 quoted, e.g. `title: "0.36"`, so YAML keeps it a string — and `order` one lower than the previous release):
 
-- `highlight` → fold into the `## Highlights` prose (write a cohesive few sentences
-  selling the release; use the entries as raw material, don't just concatenate).
+- `highlight` → one `### ` subsection each under `## New features`, listed before the
+  `feature` ones.
 - `feature`   → one `### ` subsection each under `## New features`.
 - `breaking`  → one `### ` subsection each under `## Breaking changes`. If none, write `None.`.
 
@@ -54,12 +54,37 @@ Keep the sections in that order. The changelog is user-facing (it's part of the 
 so it leads with what's new; the verbose, developer-only breaking-change migration guides
 go last so most readers don't have to scroll past them.
 
+The changeset opens with a table of contents, not prose, and it carries no heading of its own.
+Write one bullet per `### ` heading in the changeset, in the order the headings appear,
+linking to the heading's anchor, grouped under a bold label per `## ` section:
+
+```markdown
+**New features**
+
+- [Assets](#assets)
+- [Improved selection panel navigation](#improved-selection-panel-navigation)
+
+**Breaking changes**
+
+- [`datatypes` renamed to `encodings`](#datatypes-renamed-to-encodings)
+```
+
+The labels are bold text, not headings, so the ToC does not list itself and the page's
+first `## ` heading is still `New features`.
+Skip a group whose section has no `### ` headings.
+The anchor is derived the same way as in step 4.
+Stripping the punctuation can leave a word that `pixi run lint-rerun` rejects, such as
+`sdkdataplatform` from `rerun-sdk[dataplatform]`, so append `<!-- NOLINT -->` to a bullet
+whose anchor trips the linter.
+Do not write a summary paragraph above or below the list, and do not describe an entry
+beyond its heading text — a reader who wants the detail clicks through.
+
 Tailor the output to the release type:
 
-- Patch release (`0.x.Y`, Y > 0) → typically only bug fixes. Skip `Highlights` and
+- Patch release (`0.x.Y`, Y > 0) → typically only bug fixes. Skip the table of contents and
   `New features` (there usually won't be `upcoming/` entries anyway); keep `Breaking
   changes` only if there are any.
-- Minor release (`0.X.0`) → the full template: highlights, new features, breaking changes.
+- Minor release (`0.X.0`) → the full template: table of contents, new features, breaking changes.
 
 Preserve each entry's prose and structure (migration guides, tables, `snippet:` directives,
 screenshots, links).
@@ -127,7 +152,7 @@ dashes, so the heading `` ### `ParquetReader` loading options moved to `stream()
 
 - [ ] Every non-template `upcoming/` entry is represented in the changeset.
 - [ ] No `TODO(name)` remains in the changeset.
-- [ ] `## Highlights` reads as a coherent whole, not a list of fragments.
+- [ ] The table of contents lists every `### ` heading of the changeset, and every link resolves.
 - [ ] `upcoming/` contains only `_template.md`.
 - [ ] `python scripts/ci/check_changelog_redirect.py` passes (redirect points at this changeset).
 - [ ] `python scripts/ci/check_doc_redirects.py --base origin/main` passes (every deleted `upcoming/` entry has a redirect).
