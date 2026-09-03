@@ -50,6 +50,19 @@ def test_server_random_port() -> None:
         assert server1.url() != server2.url()
 
 
+def test_server_ephemeral_port() -> None:
+    """Regression test: `port=0` must report the OS-assigned port, not `:0`."""
+    with Server(host="127.0.0.1", port=0) as server:
+        url = server.url()
+        assert not url.endswith(":0")
+
+        port = int(url.rsplit(":", 1)[1])
+        assert 0 < port
+
+        # The reported URL must actually be connectable:
+        server.client().version_info()
+
+
 def test_server_shutdown_twice_raises() -> None:
     """Test that shutting down a server twice raises an error."""
     server = Server()

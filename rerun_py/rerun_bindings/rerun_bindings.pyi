@@ -1402,7 +1402,7 @@ class _ServerInternal:
         host:
             The IP address to bind the server to.
         port:
-            The port to bind the server to.
+            The port to bind the server to, or `0` to let the OS pick a free port.
         datasets:
             Optional dictionary mapping dataset names to lists of RRD file paths.
         dataset_prefixes:

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import socket
 from os import PathLike
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -68,7 +67,8 @@ class Server:
         host:
             The IP address to bind the server to.
         port:
-            The port to bind the server to, or `None` to select a random available port.
+            The port to bind the server to, or `None` (or `0`) to let the OS select a random
+            available port. Use `url()` to get the address of the running server.
         datasets:
             Optional dictionary specifying dataset to load in the server at startup. Values in the dictionary may be
             either of:
@@ -90,14 +90,8 @@ class Server:
                 warning_type=DeprecationWarning,
             )
 
-        # Select a random open port if none is specified
-        resolved_port: int
-        if port is None:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                s.bind(("", 0))
-                resolved_port = s.getsockname()[1]
-        else:
-            resolved_port = port
+        # Port 0 lets the OS pick a free port for us. `url()` reports the actual port.
+        resolved_port = 0 if port is None else port
 
         all_datasets = {}
         all_dataset_prefixes = {}
