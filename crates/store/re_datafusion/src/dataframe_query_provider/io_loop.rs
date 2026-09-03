@@ -100,6 +100,7 @@ static DIRECT_FETCH_HTTP_CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
         .connect_timeout(DIRECT_FETCH_CONNECT_TIMEOUT)
         .read_timeout(DIRECT_FETCH_READ_TIMEOUT)
         .pool_idle_timeout(DIRECT_FETCH_POOL_IDLE_TIMEOUT)
+        .http1_only()
         .build()
         .expect("static reqwest client config is valid")
 });
