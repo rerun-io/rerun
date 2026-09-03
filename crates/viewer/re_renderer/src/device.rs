@@ -10,6 +10,12 @@ pub use re_gpu_video::GpuVideoContext;
 
 use crate::device_caps::DeviceCaps;
 
+/// Whether the adapter supports GPU video decoding.
+pub fn supports_gpu_video_decode(adapter: &wgpu::Adapter) -> bool {
+    re_tracing::profile_function!();
+    re_gpu_video::VideoDeviceSetup::request(adapter).is_some()
+}
+
 /// Creates a device (and queue) for the given adapter the way `re_renderer` wants it,
 /// probing for GPU video decode support along the way.
 ///

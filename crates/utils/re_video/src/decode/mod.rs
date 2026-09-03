@@ -196,9 +196,12 @@ impl DecodeError {
             #[cfg(with_ffmpeg)]
             Self::Ffmpeg(err) => err.should_request_more_frames(),
 
-            // The GPU decoder recovers at the next IDR frame.
+            // The GPU decoder recovers at the next IDR frame, unless the stream
+            // exceeds what the device supports, which no later frame changes.
             #[cfg(with_gpu_video)]
-            Self::GpuVideo(_) => true,
+            Self::GpuVideo(err) => {
+                !matches!(**err, re_gpu_video::DecodeError::ExceedsDeviceLimits(_))
+            }
 
             // Unsupported format.
             Self::BadBitsPerComponent(_) | Self::BadAvccData(_) => false,

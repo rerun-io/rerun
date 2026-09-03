@@ -500,6 +500,40 @@ fn sliding_window_eviction() {
     );
 }
 
+/// An SPS declaring no reference frames still keeps one reference around, so decoding
+/// a run of reference frames needs a slot for the frame being decoded on top of it.
+#[test]
+fn sliding_window_with_zero_declared_ref_frames() {
+    let mut sps = type0_sps();
+    sps.max_num_ref_frames = 0;
+    let mut dpb = Dpb::default();
+    dpb.configure(&sps, 17).unwrap();
+
+    let outcome = dpb
+        .mark(
+            &current(0, 0),
+            Some(&DecRefPicMarking::Idr {
+                no_output_of_prior_pics_flag: false,
+                long_term_reference_flag: false,
+            }),
+        )
+        .unwrap();
+    assert_eq!(outcome.setup_slot, Some(0));
+
+    // Each following frame takes the slot the eviction of its predecessor frees.
+    let outcome = dpb
+        .mark(&current(1, 2), Some(&DecRefPicMarking::SlidingWindow))
+        .unwrap();
+    assert_eq!(outcome.setup_slot, Some(1));
+    assert_eq!(outcome.freed, vec![0]);
+
+    let outcome = dpb
+        .mark(&current(2, 4), Some(&DecRefPicMarking::SlidingWindow))
+        .unwrap();
+    assert_eq!(outcome.setup_slot, Some(0));
+    assert_eq!(outcome.freed, vec![1]);
+}
+
 /// Non-reference frames get no DPB slot and evict nothing.
 #[test]
 fn non_reference_frames_stay_out_of_the_dpb() {

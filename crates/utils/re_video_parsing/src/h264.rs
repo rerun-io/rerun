@@ -78,6 +78,12 @@ impl SpsInfo {
         // Luckily h264-reader has a utility for this!
         let (width, height) = sps.pixel_dimensions()?;
 
+        // `FrameHeightInMbs = (2 - frame_mbs_only_flag) * PicHeightInMapUnits` (spec 7-18):
+        // for an interlaced SPS a map unit is a field macroblock pair, not a macroblock row.
+        let frames_only = matches!(sps.frame_mbs_flags, FrameMbsFlags::Frames);
+        let map_units_per_mb_row = if frames_only { 1 } else { 2 };
+        let frame_height_in_mbs = (sps.pic_height_in_map_units_minus1 + 1) * map_units_per_mb_row;
+
         Ok(Self {
             profile_idc: u8::from(sps.profile_idc),
             constraint_flags: u8::from(sps.constraint_flags),
@@ -85,12 +91,12 @@ impl SpsInfo {
             pixel_dimensions: [width as _, height as _],
             coded_extent: [
                 ((sps.pic_width_in_mbs_minus1 + 1) * 16) as _,
-                ((sps.pic_height_in_map_units_minus1 + 1) * 16) as _,
+                (frame_height_in_mbs * 16) as _,
             ],
             chroma_format_idc: chroma_format_idc(sps.chroma_info.chroma_format),
             bit_depth_luma: sps.chroma_info.bit_depth_luma_minus8 + 8,
             bit_depth_chroma: sps.chroma_info.bit_depth_chroma_minus8 + 8,
-            frames_only: matches!(sps.frame_mbs_flags, FrameMbsFlags::Frames),
+            frames_only,
             max_num_ref_frames: sps.max_num_ref_frames,
             max_num_reorder_frames: max_num_reorder_frames(sps),
         })

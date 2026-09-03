@@ -226,21 +226,15 @@ static PENDING_GPU_VIDEO_CONTEXT: parking_lot::Mutex<
 pub(crate) fn wgpu_options(force_wgpu_backend: Option<&str>) -> egui_wgpu::WgpuConfiguration {
     re_tracing::profile_function!();
 
-    // On native, create instance, adapter & device eagerly through re_renderer:
-    // probing for GPU video decode support needs control over device creation,
-    // which egui-wgpu's own device creation doesn't offer.
-    // On web, keep letting egui-wgpu create everything
-    // (there is no video decode backend there and setup is async).
+    // On native, create instance, adapter & device eagerly through re_renderer when the
+    // preferred adapter can decode video on the GPU: probing for that needs control over
+    // device creation, which egui-wgpu's own device creation doesn't offer.
+    // Everything else, web included, lets egui-wgpu create instance, adapter & device.
     #[cfg(not(target_arch = "wasm32"))]
-    let wgpu_setup = match create_native_wgpu_setup(force_wgpu_backend) {
-        Ok(setup) => egui_wgpu::WgpuSetup::Existing(setup),
-        Err(err) => {
-            re_log::debug_warn!(
-                "Failed to create a graphics device, leaving device creation to egui-wgpu: {err}"
-            );
-            create_new_wgpu_setup(force_wgpu_backend)
-        }
-    };
+    let wgpu_setup = create_native_wgpu_setup(force_wgpu_backend).map_or_else(
+        || create_new_wgpu_setup(force_wgpu_backend),
+        egui_wgpu::WgpuSetup::Existing,
+    );
 
     #[cfg(target_arch = "wasm32")]
     let wgpu_setup = create_new_wgpu_setup(force_wgpu_backend);
@@ -262,6 +256,9 @@ pub(crate) fn wgpu_options(force_wgpu_backend: Option<&str>) -> egui_wgpu::WgpuC
 
 /// The graphics setup used on web and as the fallback on native:
 /// egui-wgpu creates instance, adapter & device itself, using `re_renderer`'s preferences.
+/// It picks the adapter once the window's surface exists, so adapters that can't present to it
+/// are filtered out, and eframe fills in the display handle of its event loop before the
+/// instance is created.
 fn create_new_wgpu_setup(force_wgpu_backend: Option<&str>) -> egui_wgpu::WgpuSetup {
     let instance_descriptor = re_renderer::device_caps::instance_descriptor(force_wgpu_backend);
     let backends = instance_descriptor.backends;
@@ -290,10 +287,13 @@ fn create_new_wgpu_setup(force_wgpu_backend: Option<&str>) -> egui_wgpu::WgpuSet
 ///
 /// The resulting video context is stored in [`PENDING_GPU_VIDEO_CONTEXT`] for
 /// [`customize_eframe_and_setup_renderer`] to pick up.
+///
+/// Returns `None` if the adapter doesn't support GPU video decoding, leaving the setup to
+/// [`create_new_wgpu_setup`].
 #[cfg(not(target_arch = "wasm32"))]
 fn create_native_wgpu_setup(
     force_wgpu_backend: Option<&str>,
-) -> Result<egui_wgpu::WgpuSetupExisting, String> {
+) -> Option<egui_wgpu::WgpuSetupExisting> {
     re_tracing::profile_function!();
 
     let instance_descriptor = re_renderer::device_caps::instance_descriptor(force_wgpu_backend);
@@ -304,12 +304,27 @@ fn create_native_wgpu_setup(
 
     // TODO(#8475): Add the ability to pick adapter by name (see `create_new_wgpu_setup`).
     //
-    // No window exists yet, so no surface to check compatibility against. Same as before,
-    // the instance never had a display handle on native.
-    let adapter = re_renderer::device_caps::select_adapter(&adapters, backends, None)?;
+    // No window exists yet, so there is no surface to check the adapters against.
+    let adapter = re_renderer::device_caps::select_adapter(&adapters, backends, None)
+        .inspect_err(|err| {
+            re_log::debug!("Leaving device creation to egui-wgpu: {err}");
+        })
+        .ok()?;
 
-    let (device, queue, gpu_video) =
-        re_renderer::device::create_device(&adapter).map_err(|err| err.to_string())?;
+    if !re_renderer::device::supports_gpu_video_decode(&adapter) {
+        re_log::debug!(
+            "No GPU video decode support on the preferred adapter, leaving device creation to egui-wgpu."
+        );
+        return None;
+    }
+
+    let (device, queue, gpu_video) = re_renderer::device::create_device(&adapter)
+        .inspect_err(|err| {
+            re_log::debug_warn!(
+                "Failed to create a graphics device, leaving device creation to egui-wgpu: {err}"
+            );
+        })
+        .ok()?;
 
     if let Some(gpu_video) = &gpu_video {
         re_log::debug!(
@@ -319,7 +334,7 @@ fn create_native_wgpu_setup(
     }
     *PENDING_GPU_VIDEO_CONTEXT.lock() = gpu_video;
 
-    Ok(egui_wgpu::WgpuSetupExisting {
+    Some(egui_wgpu::WgpuSetupExisting {
         instance,
         adapter,
         device,

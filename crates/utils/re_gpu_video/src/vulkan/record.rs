@@ -340,7 +340,7 @@ pub fn record_decode(
 
     // Hand the decode output to the copy queue. Visibility across the queues comes
     // from the timeline semaphore, the barrier only performs the layout transition.
-    let (readback_image, readback_layer) = images.readback_source(info.setup_slot);
+    let (readback_image, readback_layer) = images.readback_source(activated_slot);
     let old_layout = if images.coincide {
         vk::ImageLayout::VIDEO_DECODE_DPB_KHR
     } else {

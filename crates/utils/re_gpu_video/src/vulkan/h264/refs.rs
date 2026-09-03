@@ -106,7 +106,8 @@ impl Dpb {
         sps: &SeqParameterSet,
         max_dpb_slots: u8,
     ) -> Result<(), ParseError> {
-        let needed = sps.max_num_ref_frames + 1;
+        let max_num_ref_frames = sps.max_num_ref_frames.max(1);
+        let needed = max_num_ref_frames + 1;
         if needed > u32::from(max_dpb_slots) {
             return Err(ParseError::TooManyRefFrames {
                 needed,
@@ -123,7 +124,7 @@ impl Dpb {
             ));
         }
         self.num_slots = self.num_slots.max(num_slots);
-        self.max_num_ref_frames = sps.max_num_ref_frames.max(1);
+        self.max_num_ref_frames = max_num_ref_frames;
         Ok(())
     }
 
