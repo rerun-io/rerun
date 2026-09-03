@@ -1379,7 +1379,7 @@ mod tests {
     /// field, and this worker builds its intermediate batch from the actual column data types
     /// rather than from `QueryHandle::schema()`. The latter is what keeps the worker honest
     /// about whatever it is actually handed, and is covered directly by
-    /// `dataframe_query_common::tests::schema_with_array_datatypes_follows_the_arrays`.
+    /// `dataframe_query_common::segment_stream_common::tests::schema_with_array_datatypes_follows_the_arrays`.
     ///
     /// See <https://github.com/rerun-io/rerun/issues/12887>.
     #[tokio::test]

@@ -7,10 +7,9 @@ use std::task::{Context, Poll};
 use crate::DataframeClientAPI;
 use crate::dataframe_query_common::{
     IndexValuesMap, PlanSummary, group_chunk_infos_by_segment_id, schema_with_array_datatypes,
-    segment_partition_hash,
+    segment_belongs_to_partition,
 };
 use arrow::array::{Array, RecordBatch, RecordBatchOptions, StringArray};
-use arrow::compute::SortOptions;
 use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
 use datafusion::common::plan_err;
 use datafusion::config::ConfigOptions;
@@ -19,11 +18,7 @@ use re_redap_client::{ApiError, ApiResult};
 
 use crate::IntoDfError as _;
 use datafusion::execution::{RecordBatchStream, SendableRecordBatchStream, TaskContext};
-use datafusion::physical_expr::expressions::Column;
-use datafusion::physical_expr::{
-    EquivalenceProperties, LexOrdering, Partitioning, PhysicalExpr, PhysicalSortExpr,
-};
-use datafusion::physical_plan::execution_plan::{Boundedness, EmissionType};
+use datafusion::physical_expr::Partitioning;
 use datafusion::physical_plan::metrics::MetricsSet;
 
 use crate::analytics::build_metrics_set_for_explain;
@@ -316,60 +311,13 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
             None => Arc::clone(table_schema),
         };
 
-        let partition_col = Arc::new(Column::new(
-            ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
-            0,
-        )) as Arc<dyn PhysicalExpr>;
-        let order_col = sort_index
-            .and_then(|index| {
-                let index_name = index.as_str();
-                projected_schema
-                    .fields()
-                    .iter()
-                    .enumerate()
-                    .find(|(_idx, field)| field.name() == index_name)
-                    .map(|(index_col, _)| Column::new(index_name, index_col))
-            })
-            .map(|expr| Arc::new(expr) as Arc<dyn PhysicalExpr>);
-
-        let mut physical_ordering = vec![PhysicalSortExpr::new(
-            partition_col,
-            SortOptions::new(false, true),
-        )];
-        if let Some(col_expr) = order_col {
-            physical_ordering.push(PhysicalSortExpr::new(
-                col_expr,
-                SortOptions::new(false, true),
-            ));
-        }
-
-        let orderings = vec![
-            LexOrdering::new(physical_ordering)
-                .expect("LexOrdering should return Some when non-empty vec is passed"),
-        ];
-
-        let eq_properties =
-            EquivalenceProperties::new_with_orderings(Arc::clone(&projected_schema), orderings);
-
-        let partition_in_output_schema = projection.map(|p| p.contains(&0)).unwrap_or(false);
-
-        let output_partitioning = if partition_in_output_schema {
-            Partitioning::Hash(
-                vec![Arc::new(Column::new(
-                    ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
-                    0,
-                ))],
-                num_partitions,
-            )
-        } else {
-            Partitioning::UnknownPartitioning(num_partitions)
-        };
-
-        let props = PlanProperties::new(
-            eq_properties,
-            output_partitioning,
-            EmissionType::Incremental,
-            Boundedness::Bounded,
+        // Same claims as the native provider, including the projection guard:
+        // claiming an ordering the output can't honor is silently wrong for
+        // downstream sorted-mode operators.
+        let props = crate::dataframe_query_common::segment_stream_plan_properties(
+            &projected_schema,
+            sort_index,
+            num_partitions,
         )
         .into();
 
@@ -530,8 +478,7 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
             .chunk_info
             .keys()
             .filter(|segment_id| {
-                let hash_value = segment_partition_hash(segment_id) as usize;
-                hash_value % self.target_partitions == partition
+                segment_belongs_to_partition(segment_id, partition, self.target_partitions)
             })
             .cloned()
             .collect::<Vec<_>>();

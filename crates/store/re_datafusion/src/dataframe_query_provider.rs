@@ -12,22 +12,17 @@ use crate::analytics::{QueryErrorKind, build_metrics_set_for_explain};
 use crate::chunk_fetcher::{batch_byte_size, batch_byte_size_uncompressed};
 use crate::dataframe_query_common::{
     DataframeClientAPI, IndexValuesMap, PlanSummary, group_chunk_infos_by_segment_id,
-    segment_partition_hash,
+    segment_belongs_to_partition, segment_stream_plan_properties,
 };
 use crate::pipeline_budget::{PipelineBudget, SegmentAdmissionPolicy, SegmentAdmissionProfile};
 use arrow::array::RecordBatch;
-use arrow::compute::SortOptions;
 use arrow::datatypes::{Schema, SchemaRef};
 use cpu_worker::{CpuWorkerMsg, chunk_store_cpu_worker_thread};
 use datafusion::common::{exec_datafusion_err, exec_err, plan_err};
 use datafusion::config::ConfigOptions;
 use datafusion::error::DataFusionError;
 use datafusion::execution::{RecordBatchStream, SendableRecordBatchStream, TaskContext};
-use datafusion::physical_expr::expressions::Column;
-use datafusion::physical_expr::{
-    EquivalenceProperties, LexOrdering, Partitioning, PhysicalExpr, PhysicalSortExpr,
-};
-use datafusion::physical_plan::execution_plan::{Boundedness, EmissionType};
+use datafusion::physical_expr::Partitioning;
 use datafusion::physical_plan::metrics::MetricsSet;
 use datafusion::physical_plan::{DisplayAs, DisplayFormatType, ExecutionPlan, PlanProperties};
 use futures::FutureExt as _;
@@ -35,7 +30,7 @@ use futures_util::Stream;
 use io_loop::chunk_stream_io_loop;
 use itertools::Itertools as _;
 use re_dataframe::{Index, QueryExpression, TimelineName};
-use re_protos::cloud::v1alpha1::ext::{QueryDatasetDataframe, ScanSegmentTableDataframe};
+use re_protos::cloud::v1alpha1::ext::QueryDatasetDataframe;
 use re_types_core::SegmentId;
 
 use re_redap_client::{ApiError, ApiResult};
@@ -549,69 +544,8 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
         // The output ordering of this table provider should always be rerun
         // segment ID and then time index. If the output does not have rerun
         // segment ID included, we cannot specify any output ordering.
-
-        let orderings =
-            if projected_schema.fields().iter().any(|f| {
-                f.name().as_str() == ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME
-            }) {
-                let segment_col = Arc::new(Column::new(
-                    ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
-                    0,
-                )) as Arc<dyn PhysicalExpr>;
-                let order_col = sort_index
-                    .and_then(|index| {
-                        let index_name = index.as_str();
-                        projected_schema
-                            .fields()
-                            .iter()
-                            .enumerate()
-                            .find(|(_idx, field)| field.name() == index_name)
-                            .map(|(index_col, _)| Column::new(index_name, index_col))
-                    })
-                    .map(|expr| Arc::new(expr) as Arc<dyn PhysicalExpr>);
-
-                let mut physical_ordering = vec![PhysicalSortExpr::new(
-                    segment_col,
-                    SortOptions::new(false, true),
-                )];
-                if let Some(col_expr) = order_col {
-                    physical_ordering.push(PhysicalSortExpr::new(
-                        col_expr,
-                        SortOptions::new(false, true),
-                    ));
-                }
-                vec![
-                    LexOrdering::new(physical_ordering)
-                        .expect("LexOrdering should return Some since input is not empty"),
-                ]
-            } else {
-                vec![]
-            };
-
-        let eq_properties =
-            EquivalenceProperties::new_with_orderings(Arc::clone(&projected_schema), orderings);
-
-        let partition_in_output_schema = projection.map(|p| p.contains(&0)).unwrap_or(false);
-
-        let output_partitioning = if partition_in_output_schema {
-            Partitioning::Hash(
-                vec![Arc::new(Column::new(
-                    ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
-                    0,
-                ))],
-                num_partitions,
-            )
-        } else {
-            Partitioning::UnknownPartitioning(num_partitions)
-        };
-
-        let props = PlanProperties::new(
-            eq_properties,
-            output_partitioning,
-            EmissionType::Incremental,
-            Boundedness::Bounded,
-        )
-        .into();
+        let props: Arc<PlanProperties> =
+            segment_stream_plan_properties(&projected_schema, sort_index, num_partitions).into();
 
         // Compute total uncompressed size for adaptive budget before consuming the batches.
         let total_uncompressed: usize = chunk_info_batches
@@ -719,8 +653,7 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
             self.chunk_info
                 .iter()
                 .filter(|(segment_id, _)| {
-                    let hash_value = segment_partition_hash(segment_id) as usize;
-                    hash_value % self.target_partitions == partition
+                    segment_belongs_to_partition(segment_id, partition, self.target_partitions)
                 })
                 // Drop segments not referenced by `index_values` before
                 // they reach the IO loop. Otherwise the IO loop would
@@ -1042,5 +975,162 @@ mod segment_admission_profile_tests {
             segment_admission_profile(&chunk_info, &index_values),
             SegmentAdmissionProfile::new(1, Some(vec![10]))
         );
+    }
+}
+
+#[cfg(test)]
+mod plan_properties_tests {
+    use std::time::{Instant, SystemTime};
+
+    use arrow::datatypes::{DataType, Field};
+    use re_protos::cloud::v1alpha1::ext::ScanSegmentTableDataframe;
+    use re_protos::cloud::v1alpha1::{
+        FetchChunksRequest, FetchChunksResponse, GetDatasetSchemaRequest, GetDatasetSchemaResponse,
+        QueryDatasetRequest, QueryDatasetResponse,
+    };
+    use tonic::{Request, Response, Status};
+
+    use super::*;
+    use crate::analytics::{QueryInfo, QueryType, begin_query};
+
+    /// `try_new` never touches the client — it only builds the plan node.
+    #[derive(Clone, Debug)]
+    struct UnusedClient {
+        origin: re_uri::Origin,
+    }
+
+    impl Default for UnusedClient {
+        fn default() -> Self {
+            Self {
+                origin: re_uri::Origin::test(),
+            }
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl DataframeClientAPI for UnusedClient {
+        fn origin(&self) -> &re_uri::Origin {
+            &self.origin
+        }
+
+        async fn get_dataset_schema(
+            &mut self,
+            _request: Request<GetDatasetSchemaRequest>,
+        ) -> tonic::Result<Response<GetDatasetSchemaResponse>> {
+            Err(Status::unimplemented("unused by test"))
+        }
+
+        async fn query_dataset(
+            &mut self,
+            _request: Request<QueryDatasetRequest>,
+        ) -> tonic::Result<Response<tonic::codec::Streaming<QueryDatasetResponse>>> {
+            Err(Status::unimplemented("unused by test"))
+        }
+
+        async fn fetch_chunks(
+            &mut self,
+            _request: Request<FetchChunksRequest>,
+        ) -> tonic::Result<Response<tonic::codec::Streaming<FetchChunksResponse>>> {
+            Err(Status::unimplemented("unused by test"))
+        }
+    }
+
+    /// Target partition count for the scan under test.
+    const TEST_PARTITIONS: usize = 4;
+
+    fn query_info() -> QueryInfo {
+        QueryInfo {
+            dataset_id: "ds-test".to_owned(),
+            query_chunks: 0,
+            query_segments: 0,
+            query_layers: 0,
+            query_columns: 0,
+            query_entities: 0,
+            query_bytes: 0,
+            query_chunks_per_segment_min: 0,
+            query_chunks_per_segment_max: 0,
+            query_chunks_per_segment_mean: 0.0,
+            query_type: QueryType::Range,
+            target_partitions: TEST_PARTITIONS,
+            primary_index_name: None,
+            time_to_first_chunk_info: None,
+            trace_id: None,
+            filters_pushed_down: 0,
+            filters_applied_client_side: 0,
+            entity_path_narrowing_applied: false,
+            filters_total: 0,
+            filters_signatures: String::new(),
+            filters_signatures_exact: String::new(),
+            filters_signatures_inexact: String::new(),
+            filters_signatures_unsupported: String::new(),
+        }
+    }
+
+    /// A scan with no projection must claim *both* the ordering and the hash
+    /// partitioning.
+    ///
+    /// The claims used to be gated differently: the ordering was made whenever
+    /// the schema carried `rerun_segment_id`, but the Hash claim was gated on
+    /// `projection.contains(&0)`, which is `false` for `projection: None`. So an
+    /// unprojected scan — `SELECT *`, the shape most window and join plans see
+    /// — declared an ordering while reporting `UnknownPartitioning`: an
+    /// inconsistent pair, and a missed optimization. Both now derive from the
+    /// same by-name lookup against the projected schema, so they cannot
+    /// disagree.
+    #[test]
+    fn unprojected_scan_claims_both_ordering_and_hash_partitioning() {
+        let segment_id = ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME;
+        let table_schema: SchemaRef = Arc::new(Schema::new_with_metadata(
+            vec![
+                Field::new(segment_id, DataType::Utf8, false),
+                Field::new("log_time", DataType::Int64, true),
+            ],
+            Default::default(),
+        ));
+
+        let exec = SegmentStreamExec::try_new(
+            &table_schema,
+            Some(Index::from("log_time")),
+            None, // no projection: the case that used to lose the Hash claim
+            TEST_PARTITIONS,
+            None,
+            QueryExpression::default(),
+            None,
+            UnusedClient::default(),
+            None,
+            None,
+            None,
+            begin_query(None, query_info(), Instant::now(), SystemTime::now()),
+            vec![],
+        )
+        .unwrap();
+
+        let props = exec.properties();
+
+        let ordering = props
+            .eq_properties
+            .oeq_class()
+            .iter()
+            .next()
+            .expect("an unprojected scan should declare an output ordering");
+        // Physical `Column` displays as `name@index`.
+        let ordering: Vec<String> = ordering
+            .iter()
+            .map(|sort_expr| sort_expr.expr.to_string())
+            .collect();
+        assert_eq!(
+            ordering,
+            vec![format!("{segment_id}@0"), "log_time@1".to_owned()]
+        );
+
+        let Partitioning::Hash(exprs, num_partitions) = props.partitioning.clone() else {
+            panic!(
+                "expected hash partitioning, got {:?}",
+                props.partitioning.clone()
+            );
+        };
+        assert_eq!(num_partitions, TEST_PARTITIONS);
+        assert_eq!(exprs.len(), 1);
+        assert_eq!(exprs[0].to_string(), format!("{segment_id}@0"));
     }
 }

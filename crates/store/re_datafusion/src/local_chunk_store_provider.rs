@@ -9,6 +9,7 @@
 use std::sync::Arc;
 
 use arrow::array::{RecordBatch, RecordBatchOptions};
+use arrow::compute::SortOptions;
 use arrow::datatypes::{Fields as ArrowFields, Schema as ArrowSchema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::catalog::{Session, TableProvider};
@@ -16,7 +17,7 @@ use datafusion::common::DataFusionError;
 use datafusion::datasource::TableType;
 use datafusion::execution::{SendableRecordBatchStream, TaskContext};
 use datafusion::logical_expr::Expr;
-use datafusion::physical_expr::{EquivalenceProperties, Partitioning};
+use datafusion::physical_expr::{EquivalenceProperties, Partitioning, PhysicalSortExpr};
 use datafusion::physical_plan::execution_plan::{Boundedness, EmissionType};
 use datafusion::physical_plan::stream::RecordBatchStreamAdapter;
 use datafusion::physical_plan::{DisplayAs, DisplayFormatType, ExecutionPlan, PlanProperties};
@@ -26,7 +27,9 @@ use re_dataframe::utils::align_record_batch_to_schema;
 use re_dataframe::{QueryEngine, QueryExpression, StorageEngine};
 use re_sorbet::BatchType;
 
-use crate::dataframe_query_common::{DEFAULT_BATCH_BYTES, DEFAULT_BATCH_ROWS};
+use crate::dataframe_query_common::{
+    DEFAULT_BATCH_BYTES, DEFAULT_BATCH_ROWS, physical_column_by_name,
+};
 
 /// `TableProvider` that runs a [`QueryExpression`] in-process against a
 /// [`ChunkStoreHandle`].
@@ -115,8 +118,52 @@ impl TableProvider for LocalChunkStoreTableProvider {
         // `RecordBatch::project` after we align each batch to `full_schema`.
         let projection_indices: Option<Vec<usize>> = projection.cloned();
 
+        // The QueryHandle emits rows in filtered-index order, so claim
+        // `[<filtered_index> ASC]` when the index column survives the
+        // projection unambiguously (`physical_column_by_name` also declines an
+        // index resolved by a repeated field name). Without the claim,
+        // `ORDER BY <index>` pays a full sort the remote path skips. There is
+        // no `rerun_segment_id` column here (single segment, single
+        // partition).
+        //
+        // The claim rests on three `re_dataframe::QueryHandle` invariants —
+        // a violated ordering claim is silently wrong output, not a slowdown,
+        // so any change to these must revisit this claim (see the
+        // `filtered_index_column_is_non_null_and_strictly_increasing` test):
+        //
+        // 1. Row order follows `unique_index_values`, which is built from a
+        //    `BTreeSet` (sorted, dedup'd) and never revisited, so the index is
+        //    *strictly* increasing — stronger than the claim needs.
+        // 2. The filtered-index column is never null: the bulk path emits it
+        //    from `unique_index_values` with `valid = true`, and the row path
+        //    unconditionally resolves it from the current index value. The
+        //    schema still declares the field nullable, though (`re_sorbet`
+        //    hardcodes that), so DataFusion demands an exact `nulls_first`
+        //    match and this claim only elides the sort for `NULLS FIRST`
+        //    consumers — SQL's bare `ORDER BY <index>` still pays one. See the
+        //    note on `segment_stream_plan_properties` for why declaring it
+        //    non-nullable is currently blocked.
+        // 3. Static index values are filtered out of `unique_index_values`
+        //    whenever `filtered_index` is set, so no static row can appear
+        //    among the temporal ones (and with no `filtered_index` we claim
+        //    nothing at all).
+        let ordering = self
+            .query
+            .filtered_index
+            .as_ref()
+            .and_then(|index| physical_column_by_name(&projected_schema, index.as_str()))
+            .map(|index_col| {
+                [PhysicalSortExpr::new(
+                    Arc::new(index_col),
+                    SortOptions {
+                        descending: false,
+                        nulls_first: true,
+                    },
+                )]
+            });
+
         let props = Arc::new(PlanProperties::new(
-            EquivalenceProperties::new(Arc::clone(&projected_schema)),
+            EquivalenceProperties::new_with_orderings(Arc::clone(&projected_schema), ordering),
             Partitioning::UnknownPartitioning(1),
             EmissionType::Incremental,
             Boundedness::Bounded,
@@ -299,7 +346,7 @@ impl ExecutionPlan for LocalChunkStoreExec {
 mod tests {
     use super::*;
 
-    use arrow::array::{Int64Array, RecordBatch};
+    use arrow::array::{Array as _, Int64Array, RecordBatch};
     use datafusion::prelude::SessionContext;
     use futures::StreamExt as _;
     use re_arrow_util::ArrowArrayDowncastRef as _;
@@ -328,10 +375,22 @@ mod tests {
         builder.build().unwrap()
     }
 
+    /// A chunk with an empty timepoint, i.e. static data.
+    fn build_static_point_chunk(path: &str) -> Chunk {
+        Chunk::builder(EntityPath::from(path))
+            .with_archetype(
+                RowId::new(),
+                TimePoint::default(),
+                &MyPoints::new(MyPoint::from_iter(0u32..1)),
+            )
+            .build()
+            .unwrap()
+    }
+
     async fn collect_all(provider: LocalChunkStoreTableProvider) -> Vec<RecordBatch> {
         let ctx = SessionContext::new();
-        ctx.register_table("t", Arc::new(provider)).unwrap();
-        let df = ctx.sql("SELECT * FROM t").await.unwrap();
+        ctx.register_table("data", Arc::new(provider)).unwrap();
+        let df = ctx.sql("SELECT * FROM data").await.unwrap();
         df.collect().await.unwrap()
     }
 
@@ -366,6 +425,103 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn declares_filtered_index_ordering() {
+        let store = new_store();
+        store
+            .write()
+            .insert_chunk(&Arc::new(build_point_chunk("/a", &[1, 2, 3])))
+            .unwrap();
+
+        let query = QueryExpression {
+            filtered_index: Some("t".into()),
+            include_static_columns: StaticColumnSelection::Both,
+            ..Default::default()
+        };
+        let provider = LocalChunkStoreTableProvider::try_new(store, query).unwrap();
+
+        let ctx = SessionContext::new();
+        let state = ctx.state();
+        let plan = TableProvider::scan(&provider, &state, None, &[], None)
+            .await
+            .unwrap();
+
+        let ordering = plan
+            .properties()
+            .eq_properties
+            .oeq_class()
+            .iter()
+            .next()
+            .expect("scan should declare an output ordering");
+        // Physical `Column` displays as `name@index`.
+        assert!(
+            ordering[0].expr.to_string().starts_with("t@"),
+            "expected the `t` index column, got {}",
+            ordering[0].expr
+        );
+
+        // The claim must vanish when the index column is projected away.
+        let schema = provider.schema();
+        let non_index: Vec<usize> = schema
+            .fields()
+            .iter()
+            .enumerate()
+            .filter(|(_idx, f)| f.name() != "t")
+            .map(|(idx, _f)| idx)
+            .collect();
+        let plan = TableProvider::scan(&provider, &state, Some(&non_index), &[], None)
+            .await
+            .unwrap();
+        assert!(
+            plan.properties().eq_properties.oeq_class().is_empty(),
+            "no ordering claim without the index column"
+        );
+    }
+
+    /// The ordering claim in `scan` exists so that `ORDER BY <index>` plans
+    /// without a sort. On a nullable index field DataFusion demands an exact
+    /// `nulls_first` match, so today that only holds for `NULLS FIRST` (e.g.
+    /// datafusion-python's `Expr.sort` default) and not for SQL's bare `ASC`,
+    /// which is `NULLS LAST`.
+    ///
+    /// If the `NULLS LAST` case starts eliding too, the blocked work described
+    /// on `segment_stream_plan_properties` has landed — collapse this back to
+    /// asserting no sort under any placement.
+    #[tokio::test]
+    async fn order_by_filtered_index_elides_sort_only_for_nulls_first() {
+        let store = new_store();
+        store
+            .write()
+            .insert_chunk(&Arc::new(build_point_chunk("/a", &[1, 2, 3])))
+            .unwrap();
+
+        let query = QueryExpression {
+            filtered_index: Some("t".into()),
+            include_static_columns: StaticColumnSelection::Both,
+            ..Default::default()
+        };
+        let provider = LocalChunkStoreTableProvider::try_new(store, query).unwrap();
+        let ctx = SessionContext::new();
+        ctx.register_table("data", Arc::new(provider)).unwrap();
+
+        // (suffix, expected to still plan a sort)
+        for (order, expect_sort) in [("", true), (" NULLS FIRST", false), (" NULLS LAST", true)] {
+            let df = ctx
+                .sql(&format!("SELECT * FROM data ORDER BY t{order}"))
+                .await
+                .unwrap();
+            let physical = df.create_physical_plan().await.unwrap();
+            let plan = datafusion::physical_plan::displayable(physical.as_ref())
+                .indent(false)
+                .to_string();
+            assert_eq!(
+                plan.contains("SortExec"),
+                expect_sort,
+                "ORDER BY t{order}, got plan:\n{plan}"
+            );
+        }
+    }
+
+    #[tokio::test]
     async fn limit() {
         let store = new_store();
         let ts: Vec<i64> = (0..100).collect();
@@ -382,8 +538,8 @@ mod tests {
         let provider = LocalChunkStoreTableProvider::try_new(store, query).unwrap();
 
         let ctx = SessionContext::new();
-        ctx.register_table("t", Arc::new(provider)).unwrap();
-        let df = ctx.sql("SELECT * FROM t LIMIT 3").await.unwrap();
+        ctx.register_table("data", Arc::new(provider)).unwrap();
+        let df = ctx.sql("SELECT * FROM data LIMIT 3").await.unwrap();
         let batches = df.collect().await.unwrap();
         let total: usize = batches.iter().map(|b| b.num_rows()).sum();
         assert_eq!(total, 3);
@@ -414,8 +570,11 @@ mod tests {
             .clone();
 
         let ctx = SessionContext::new();
-        ctx.register_table("t", Arc::new(provider)).unwrap();
-        let df = ctx.sql(&format!("SELECT {t_name:?} FROM t")).await.unwrap();
+        ctx.register_table("data", Arc::new(provider)).unwrap();
+        let df = ctx
+            .sql(&format!("SELECT {t_name:?} FROM data"))
+            .await
+            .unwrap();
         let batches = df.collect().await.unwrap();
         assert!(!batches.is_empty());
         let total: usize = batches.iter().map(|b| b.num_rows()).sum();
@@ -522,11 +681,11 @@ mod tests {
         };
         let provider = LocalChunkStoreTableProvider::try_new(store, query).unwrap();
         let ctx = SessionContext::new();
-        ctx.register_table("t", Arc::new(provider)).unwrap();
+        ctx.register_table("data", Arc::new(provider)).unwrap();
 
         // `df.collect()` runs through `SizedCoalesceBatchesExec` which would
         // mask source-side batching. Drive the physical plan directly.
-        let df = ctx.sql("SELECT * FROM t").await.unwrap();
+        let df = ctx.sql("SELECT * FROM data").await.unwrap();
         let physical = df.create_physical_plan().await.unwrap();
         let mut stream = physical.execute(0, ctx.task_ctx()).unwrap();
         let mut batches = Vec::new();
@@ -552,5 +711,88 @@ mod tests {
                 b.num_rows()
             );
         }
+    }
+
+    /// The `[<filtered_index> ASC]` claim declared in `scan` is only sound if
+    /// the emitted index column is non-null and ordered across *all* batches.
+    /// Guards the sparse, multi-batch, statics-present case: entities logged on
+    /// disjoint timestamps make component columns go null, which is where a
+    /// null index value would be most likely to leak in.
+    #[tokio::test]
+    async fn filtered_index_column_is_non_null_and_strictly_increasing() {
+        let store = new_store();
+        let n: i64 = 5000;
+        let evens: Vec<i64> = (0..n).step_by(2).collect();
+        let odds: Vec<i64> = (1..n).step_by(2).collect();
+        store
+            .write()
+            .insert_chunk(&Arc::new(build_point_chunk("/a", &evens)))
+            .unwrap();
+        store
+            .write()
+            .insert_chunk(&Arc::new(build_point_chunk("/b", &odds)))
+            .unwrap();
+        store
+            .write()
+            .insert_chunk(&Arc::new(build_static_point_chunk("/s")))
+            .unwrap();
+
+        let query = QueryExpression {
+            filtered_index: Some("t".into()),
+            include_static_columns: StaticColumnSelection::Both,
+            ..Default::default()
+        };
+        let provider = LocalChunkStoreTableProvider::try_new(store, query).unwrap();
+        let ctx = SessionContext::new();
+        ctx.register_table("data", Arc::new(provider)).unwrap();
+
+        // Drive the physical plan directly: `df.collect()` coalesces batches,
+        // which would hide a cross-batch ordering violation.
+        let df = ctx.sql("SELECT * FROM data").await.unwrap();
+        let physical = df.create_physical_plan().await.unwrap();
+        let mut stream = physical.execute(0, ctx.task_ctx()).unwrap();
+
+        let mut prev: Option<i64> = None;
+        let mut num_rows = 0usize;
+        let mut num_batches = 0usize;
+        let mut saw_null_component = false;
+        while let Some(batch) = stream.next().await {
+            let batch = batch.unwrap();
+            num_batches += 1;
+            num_rows += batch.num_rows();
+
+            let index_col = batch
+                .schema()
+                .index_of("t")
+                .expect("`t` index column present");
+            let times = batch
+                .column(index_col)
+                .try_downcast_array_ref::<Int64Array>()
+                .expect("`t` is Int64");
+            assert_eq!(
+                times.null_count(),
+                0,
+                "the filtered-index column must never be null"
+            );
+            for i in 0..times.len() {
+                let t = times.value(i);
+                if let Some(prev) = prev {
+                    assert!(t > prev, "index must be increasing, got {prev} then {t}");
+                }
+                prev = Some(t);
+            }
+
+            saw_null_component |= (0..batch.num_columns())
+                .filter(|col| *col != index_col)
+                .any(|col| batch.column(col).null_count() > 0);
+        }
+
+        assert_eq!(num_rows, n as usize);
+        assert!(num_batches >= 2, "expected >= 2 batches, got {num_batches}");
+        assert!(
+            saw_null_component,
+            "sparse case not exercised: without null component values this test \
+             would not catch a null index value leaking from the sparse path"
+        );
     }
 }
