@@ -11,7 +11,7 @@ workspace = true
 
 [dependencies]
 re_tracing = { path = "../../../crates/utils/re_tracing", features = ["server"] }
-rerun = { path = "../../../crates/top/rerun" }
+rerun = { path = "../../../crates/top/rerun", features = ["log_setup"] }
 
 anyhow.workspace = true
 clap = { workspace = true, features = ["derive"] }
