@@ -552,6 +552,9 @@ overview of what's possible and how.
 Rerun will typically support Python version up until their end-of-life. If you are using an older version
 of Python, you can use the table below to make sure you choose the proper Rerun version for your Python installation.
 
+Python 3.10 is deprecated and reaches end-of-life in October 2026. Rerun 0.39 will move the minimum
+supported version to Python 3.11.
+
 | **Rerun Version** | **Release Date** | **Supported Python Version** |
 |-------------------|------------------|------------------------------|
 | 0.37              | Aug. 31, 2026    | 3.10+                        |

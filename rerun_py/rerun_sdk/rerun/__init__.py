@@ -12,6 +12,14 @@ import numpy as np
 __version__ = "0.38.0-alpha.1+dev"
 __version_info__ = (0, 38, 0, "alpha.1")
 
+if sys.version_info < (3, 11):
+    warnings.warn(
+        "Python 3.10 reaches end-of-life in October 2026 (https://devguide.python.org/versions/). "
+        "Rerun version 0.39 will drop support/testing of Python 3.10.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+
 if sys.version_info < (3, 10):  # noqa: UP036
     raise RuntimeError("Rerun SDK requires Python 3.10 or later.")
 
