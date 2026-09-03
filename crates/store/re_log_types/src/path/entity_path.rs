@@ -325,8 +325,21 @@ impl EntityPath {
 
     /// Returns the first common ancestor of a list of entity paths.
     pub fn common_ancestor_of<'a>(mut entities: impl Iterator<Item = &'a Self>) -> Self {
-        let first = entities.next().cloned().unwrap_or_else(Self::root);
-        entities.fold(first, |acc, e| acc.common_ancestor(e))
+        let Some(first) = entities.next() else {
+            return Self::root();
+        };
+
+        let common_len = entities.fold(first.len(), |common_len, entity| {
+            std::iter::zip(&first.parts[..common_len], entity.iter())
+                .take_while(|(a, b)| a == b)
+                .count()
+        });
+
+        if common_len == first.len() {
+            first.clone()
+        } else {
+            Self::from(&first.parts[..common_len])
+        }
     }
 
     /// Returns short names for a collection of entities based on the last part(s), ensuring
@@ -736,6 +749,28 @@ mod tests {
             EntityPath::from("mario/bowser").common_ancestor(&EntityPath::from("luigi/bowser")),
             EntityPath::root()
         );
+    }
+
+    #[test]
+    fn test_common_ancestor_of() {
+        for (paths, expected) in [
+            (&[][..], "/"),
+            (
+                &["foo/bar/mario", "foo/bar/luigi/kart", "foo/bar/toad"][..],
+                "foo/bar",
+            ),
+            (&["foo", "foo/bar/baz"][..], "foo"),
+            (&["foo/bar", "other/bar"][..], "/"),
+        ] {
+            let entities = paths
+                .iter()
+                .map(|path| EntityPath::from(*path))
+                .collect_vec();
+            assert_eq!(
+                EntityPath::common_ancestor_of(entities.iter()),
+                EntityPath::from(expected)
+            );
+        }
     }
 
     #[test]
