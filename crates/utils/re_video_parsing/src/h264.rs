@@ -4,6 +4,37 @@
 //! <https://www.itu.int/rec/T-REC-H.264-202606-I>.
 
 use h264_reader::nal::sps::{ChromaFormat, FrameMbsFlags, SeqParameterSet, SpsError};
+use h264_reader::nal::{Nal as _, RefNal};
+
+/// An H.264 SPS: the NAL unit it was read from, its syntax elements, and what
+/// decoders read out of it.
+///
+/// Carrying the NAL unit along lets everyone downstream recognize the SPS by its
+/// bytes, which is cheaper than parsing it again.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ParsedSps {
+    /// The SPS NAL unit, without the annex-b start code.
+    pub nal: Vec<u8>,
+
+    pub sps: SeqParameterSet,
+
+    pub info: SpsInfo,
+}
+
+impl ParsedSps {
+    /// Parses an SPS NAL unit, given without the annex-b start code.
+    pub fn new(nal: &[u8]) -> Result<Self, SpsError> {
+        let complete = true;
+        let sps = SeqParameterSet::from_bits(RefNal::new(nal, &[], complete).rbsp_bits())?;
+        let info = SpsInfo::new(&sps)?;
+
+        Ok(Self {
+            nal: nal.to_vec(),
+            sps,
+            info,
+        })
+    }
+}
 
 /// What decoders read out of an H.264 SPS.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -42,6 +73,9 @@ pub struct SpsInfo {
 
 impl SpsInfo {
     pub fn new(sps: &SeqParameterSet) -> Result<Self, SpsError> {
+        // Calculating the dimensions of the frame in pixels from the SPS is quite complicated
+        // as it has to take into account cropping and concepts like macro block sizes.
+        // Luckily h264-reader has a utility for this!
         let (width, height) = sps.pixel_dimensions()?;
 
         Ok(Self {

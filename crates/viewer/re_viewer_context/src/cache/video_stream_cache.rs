@@ -1214,7 +1214,7 @@ fn is_sample_sync(
     encoding_details: &mut Option<re_video::VideoEncodingDetails>,
     sample_bytes: &[u8],
 ) -> bool {
-    match re_video::detect_gop_start(sample_bytes, codec.clone()) {
+    match re_video::detect_gop_start(sample_bytes, codec.clone(), encoding_details.as_ref()) {
         Ok(re_video::GopStartDetection::StartOfGop(new_encoding_details)) => {
             if encoding_details.as_ref() != Some(&new_encoding_details) {
                 if let Some(old_encoding_details) = encoding_details.as_ref() {
@@ -1233,6 +1233,9 @@ fn is_sample_sync(
 
             true
         }
+        // The known details already describe this sample's encoding.
+        Ok(re_video::GopStartDetection::StartOfGopSameEncoding) => true,
+
         Ok(re_video::GopStartDetection::NotStartOfGop) => false,
 
         Err(err) => {
@@ -2356,8 +2359,8 @@ mod tests {
             Some(re_video::ChromaSubsamplingModes::Yuv420)
         );
         let h264 = h264.unwrap();
-        assert!(h264.frames_only);
-        assert_eq!(h264.max_num_reorder_frames, 0);
+        assert!(h264.info.frames_only);
+        assert_eq!(h264.info.max_num_reorder_frames, 0);
         assert_eq!(stsd, None);
 
         assert_eq!(samples.num_elements(), num_frames_submitted);

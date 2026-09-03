@@ -19,6 +19,7 @@ use std::sync::Arc;
 
 use ash::vk;
 use h264_reader::nal::sps::SeqParameterSet;
+use re_video_parsing::ParsedSps;
 
 use crate::{ColorProperties, DecodeError, DecodedFrame, MatrixCoefficients};
 
@@ -59,7 +60,7 @@ pub struct CpuFrame {
 }
 
 struct SpsEntry {
-    parsed: SeqParameterSet,
+    parsed: Arc<ParsedSps>,
     std: SpsStdParams,
 }
 
@@ -167,16 +168,7 @@ impl DecoderCore {
         let mut frames = Vec::new();
         for op in self.parser.push_access_unit(data)? {
             match op {
-                DecodeOp::Sps(sps) => {
-                    self.sps.insert(
-                        sps.seq_parameter_set_id.id(),
-                        SpsEntry {
-                            std: SpsStdParams::build(&sps),
-                            parsed: *sps,
-                        },
-                    );
-                    self.parameters_dirty = true;
-                }
+                DecodeOp::Sps(parsed) => self.activate_sps(parsed)?,
 
                 DecodeOp::Pps(pps) => {
                     self.pps
@@ -192,6 +184,27 @@ impl DecoderCore {
             }
         }
         Ok(frames)
+    }
+
+    /// Tracks a new or changed SPS, checking it against the device limits first.
+    fn activate_sps(&mut self, parsed: Arc<ParsedSps>) -> Result<(), DecodeError> {
+        if let Some(unsupported) =
+            crate::h264_unsupported_by_device(&parsed.info, &self.shared.capabilities)
+        {
+            return Err(DecodeError::ExceedsDeviceLimits(unsupported.to_string()));
+        }
+
+        self.sps.insert(
+            parsed.sps.seq_parameter_set_id.id(),
+            SpsEntry {
+                std: SpsStdParams::build(&parsed.sps),
+                parsed: parsed.clone(),
+            },
+        );
+        self.parameters_dirty = true;
+        self.parser.preset_sps(parsed);
+
+        Ok(())
     }
 
     /// Drops all frame state for a seek. The next access unit must hold an IDR frame.
@@ -263,22 +276,15 @@ impl DecoderCore {
             .get(&info.sps_id)
             .ok_or(ParseError::MissingReference { what: "SPS" })?;
         let std_profile_idc = sps_entry.std.std().profile_idc;
-        let parsed = &sps_entry.parsed;
+        let parsed = &sps_entry.parsed.sps;
         let color = color_properties(parsed);
 
+        let [coded_width, coded_height] = sps_entry.parsed.info.coded_extent.map(u32::from);
         let coded_extent = vk::Extent2D {
-            width: (parsed.pic_width_in_mbs_minus1 + 1) * 16,
-            height: (parsed.pic_height_in_map_units_minus1 + 1) * 16,
+            width: coded_width,
+            height: coded_height,
         };
-        let dpb_slots = parsed.max_num_ref_frames + 1;
-
-        let sps_info =
-            re_video_parsing::SpsInfo::new(parsed).map_err(|err| ParseError::nal("SPS", err))?;
-        if let Some(unsupported) =
-            crate::h264_unsupported_by_device(&sps_info, &self.shared.capabilities)
-        {
-            return Err(DecodeError::ExceedsDeviceLimits(unsupported.to_string()));
-        }
+        let dpb_slots = sps_entry.parsed.info.max_num_ref_frames + 1;
 
         // The display region: the coded size minus the SPS frame cropping.
         // 4:2:0 progressive crop offsets are in units of two luma samples.
@@ -688,6 +694,11 @@ impl TextureDecoder {
             pool,
             pending: VecDeque::new(),
         })
+    }
+
+    /// See [`crate::H264Decoder::preset_sps`].
+    pub fn preset_sps(&mut self, sps: Arc<ParsedSps>) -> Result<(), DecodeError> {
+        self.core.activate_sps(sps)
     }
 
     /// Decodes one annex-b access unit, returning finished frames in decode order,

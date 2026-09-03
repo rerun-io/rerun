@@ -172,9 +172,7 @@ mod test {
                 assert_eq!(details.bit_depth, Some(8));
             }
             Err(err) => panic!("Failed to parse valid AV1 data: {err}"),
-            Ok(GopStartDetection::NotStartOfGop) => {
-                panic!("Expected to detect GOP start but got `NotStartOfGop`")
-            }
+            Ok(other) => panic!("Expected to detect GOP start but got `{other:?}`"),
         }
     }
 
@@ -224,13 +222,8 @@ mod test {
         let result = detect_av1_keyframe_start(super::AV1_TEST_INTER_FRAME);
 
         // Should return a `NotStartOfGop` or error
-        match result {
-            Ok(GopStartDetection::StartOfGop(_)) => {
-                panic!("Should not detect GOP start without keyframe");
-            }
-            Err(_) | Ok(GopStartDetection::NotStartOfGop) => {
-                // Expected outcome
-            }
+        if let Ok(GopStartDetection::StartOfGop(_)) = result {
+            panic!("Should not detect GOP start without keyframe");
         }
     }
 }

@@ -905,8 +905,8 @@ impl FFmpegCliDecoder {
             ffmpeg_path,
             codec: codec.clone(),
             max_num_reorder_frames: encoding_details
-                .and_then(|e| e.h264)
-                .map(|h264| h264.max_num_reorder_frames),
+                .and_then(|e| e.h264.as_ref())
+                .map(|h264| h264.info.max_num_reorder_frames),
         })
     }
 }
@@ -974,8 +974,8 @@ impl AsyncDecoder for FFmpegCliDecoder {
         self.max_num_reorder_frames = video_descr
             .encoding_details
             .as_ref()
-            .and_then(|e| e.h264)
-            .map(|h264| h264.max_num_reorder_frames);
+            .and_then(|e| e.h264.as_ref())
+            .map(|h264| h264.info.max_num_reorder_frames);
         Ok(())
     }
 

@@ -25,8 +25,10 @@ mod std_params;
 mod tests;
 
 use std::collections::HashMap;
+use std::sync::Arc;
 
-use h264_reader::nal::{Nal as _, RefNal, UnitType, sps::SeqParameterSet};
+use h264_reader::nal::{Nal as _, RefNal, UnitType};
+use re_video_parsing::ParsedSps;
 
 pub use ops::{DecodeInfo, DecodeOp};
 pub use std_params::{PpsStdParams, SpsStdParams};
@@ -107,7 +109,10 @@ pub struct Parser {
     /// Last emitted parameter sets by id, to skip re-emitting the identical repeats
     /// encoders put in front of every IDR frame. The PPS is compared through its
     /// `Debug` output since `h264-reader` gives it no `PartialEq`.
-    emitted_sps: HashMap<u8, SeqParameterSet>,
+    ///
+    /// The SPS entries are also what [`Self::finalize_picture`] reads the active
+    /// SPS out of, and what recognizes a repeated SPS NAL by its bytes.
+    active_sps: HashMap<u8, Arc<ParsedSps>>,
     emitted_pps: HashMap<u8, String>,
 
     poc: poc::PocState,
@@ -130,7 +135,7 @@ impl Parser {
     pub fn new(max_dpb_slots: u8) -> Self {
         Self {
             ctx: h264_reader::Context::new(),
-            emitted_sps: HashMap::new(),
+            active_sps: HashMap::new(),
             emitted_pps: HashMap::new(),
             poc: poc::PocState::default(),
             dpb: refs::Dpb::default(),
@@ -155,6 +160,14 @@ impl Parser {
         result
     }
 
+    /// Makes an SPS the active one without reading it out of the bitstream, so that
+    /// the stream's own copy of it is recognized by its bytes instead of parsed again.
+    pub fn preset_sps(&mut self, parsed: Arc<ParsedSps>) {
+        self.ctx.put_seq_param_set(parsed.sps.clone());
+        self.active_sps
+            .insert(parsed.sps.seq_parameter_set_id.id(), parsed);
+    }
+
     /// Drops all frame state for a seek. Parameter sets are kept:
     /// the next access unit must hold an IDR frame, which re-sends them anyway.
     pub fn reset(&mut self) {
@@ -177,19 +190,35 @@ impl Parser {
         let mut ops = Vec::new();
 
         for range in re_video_parsing::nal_ranges(data)? {
-            let nal = RefNal::new(&data[range.clone()], &[], true);
+            let nal_bytes = &data[range.clone()];
+            let nal = RefNal::new(nal_bytes, &[], true);
             let nal_header = nal
                 .header()
                 .map_err(|err| ParseError::nal("NAL header", err))?;
 
             match nal_header.nal_unit_type() {
                 UnitType::SeqParameterSet => {
-                    let sps = parse::parse_sps(&nal)?;
-                    let id = sps.seq_parameter_set_id.id();
-                    if self.emitted_sps.get(&id) != Some(&sps) {
-                        self.emitted_sps.insert(id, sps.clone());
-                        self.ctx.put_seq_param_set(sps.clone());
-                        ops.push(DecodeOp::Sps(Box::new(sps)));
+                    // Encoders put the SPS in front of every IDR frame. The same bytes
+                    // parse to an SPS that is already active.
+                    if self
+                        .active_sps
+                        .values()
+                        .any(|active| active.nal == nal_bytes)
+                    {
+                        continue;
+                    }
+
+                    let parsed = Arc::new(parse::parse_sps(nal_bytes)?);
+                    let id = parsed.sps.seq_parameter_set_id.id();
+
+                    // Different bytes can still carry the same syntax elements.
+                    let unchanged = self
+                        .active_sps
+                        .insert(id, parsed.clone())
+                        .is_some_and(|previous| previous.sps == parsed.sps);
+                    if !unchanged {
+                        self.ctx.put_seq_param_set(parsed.sps.clone());
+                        ops.push(DecodeOp::Sps(parsed));
                     }
                 }
 
@@ -278,17 +307,17 @@ impl Parser {
             return Err(ParseError::Invalid("IDR frame with nal_ref_idc 0"));
         }
 
-        // Clone the active parameter sets out of the context, ending its borrow.
+        // Take the active parameter sets out of the parser state, ending its borrow.
         // They exist, otherwise the slice headers wouldn't have parsed.
-        let sps_id = h264_reader::nal::sps::SeqParamSetId::from_u32(u32::from(first.sps_id))
-            .map_err(|err| ParseError::nal("SPS id", err))?;
         let pps_id = h264_reader::nal::pps::PicParamSetId::from_u32(u32::from(first.pps_id))
             .map_err(|err| ParseError::nal("PPS id", err))?;
-        let sps = self
-            .ctx
-            .sps_by_id(sps_id)
+        let active_sps = self
+            .active_sps
+            .get(&first.sps_id)
             .ok_or(ParseError::Invalid("slice references an unknown SPS"))?
             .clone();
+        let info = active_sps.info;
+        let sps = &active_sps.sps;
         let pps = self
             .ctx
             .pps_by_id(pps_id)
@@ -304,15 +333,15 @@ impl Parser {
                 ops.push(DecodeOp::FreeSlots(freed));
             }
         }
-        self.dpb.configure(&sps, self.max_dpb_slots)?;
+        self.dpb.configure(sps, self.max_dpb_slots)?;
 
         if !is_idr {
-            self.dpb.check_frame_num(&sps, first.header.frame_num)?;
+            self.dpb.check_frame_num(sps, first.header.frame_num)?;
         }
 
         let marking = first.header.dec_ref_pic_marking.as_ref();
         let poc = self.poc.compute(
-            &sps,
+            sps,
             &poc::PocInput {
                 is_idr,
                 nal_ref_idc: first.nal_ref_idc,
@@ -335,7 +364,7 @@ impl Parser {
         for (index, slice) in picture.slices.iter().enumerate() {
             let lists = self
                 .dpb
-                .ref_lists(&sps, &pps, &slice.header, &current, &mut references)?;
+                .ref_lists(sps, &pps, &slice.header, &current, &mut references)?;
             if index == 0 {
                 ref_lists = lists;
             }
@@ -375,7 +404,7 @@ impl Parser {
             ops.push(DecodeOp::FreeSlots(outcome.freed));
         }
 
-        self.reorder_delay = re_video_parsing::max_num_reorder_frames(&sps) as usize;
+        self.reorder_delay = info.max_num_reorder_frames as usize;
         self.awaiting_idr = false;
         Ok(())
     }

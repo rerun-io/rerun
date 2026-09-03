@@ -317,11 +317,13 @@ fn try_size_from_video_stream_sample(
         components::VideoCodec::VP9 => re_video::VideoCodec::VP9,
     };
 
-    match re_video::detect_gop_start(sample, codec).ok()? {
+    // No details are known here, so every sample's parameter sets get read.
+    match re_video::detect_gop_start(sample, codec, None).ok()? {
         re_video::GopStartDetection::StartOfGop(descr) => Some([
             descr.coded_dimensions[0] as _,
             descr.coded_dimensions[1] as _,
         ]),
-        re_video::GopStartDetection::NotStartOfGop => None,
+        re_video::GopStartDetection::StartOfGopSameEncoding
+        | re_video::GopStartDetection::NotStartOfGop => None,
     }
 }

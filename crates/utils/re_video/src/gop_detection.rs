@@ -44,6 +44,10 @@ pub enum GopStartDetection {
     /// The sample is the start of a GOP and encoding details have been extracted.
     StartOfGop(VideoEncodingDetails),
 
+    /// The sample is the start of a GOP whose parameter sets are the ones the
+    /// already known encoding details were derived from, so those still describe it.
+    StartOfGopSameEncoding,
+
     /// The sample is not the start of a GOP.
     #[default]
     NotStartOfGop,
@@ -52,20 +56,26 @@ pub enum GopStartDetection {
 impl GopStartDetection {
     #[inline]
     pub fn is_start_of_gop(&self) -> bool {
-        matches!(self, Self::StartOfGop(_))
+        matches!(self, Self::StartOfGop(_) | Self::StartOfGopSameEncoding)
     }
 }
 
 /// Try to determine whether a frame chunk is the start of a GOP.
 ///
 /// This is a best effort attempt to determine this, but we won't always be able to.
+///
+/// `known_details` are the encoding details of the stream so far, if any. A sample
+/// repeating the parameter sets they were derived from is reported as
+/// [`GopStartDetection::StartOfGopSameEncoding`], without parsing them again.
+/// Only H.264 makes use of this so far.
 #[inline]
 pub fn detect_gop_start(
     sample_data: &[u8],
     codec: VideoCodec,
+    known_details: Option<&VideoEncodingDetails>,
 ) -> Result<GopStartDetection, DetectGopStartError> {
     match codec {
-        VideoCodec::H264 => detect_h264_annexb_gop(sample_data),
+        VideoCodec::H264 => detect_h264_annexb_gop(sample_data, known_details),
         VideoCodec::H265 => detect_h265_annexb_gop(sample_data),
         VideoCodec::AV1 => detect_av1_keyframe_start(sample_data),
         VideoCodec::VP8 => Ok(detect_vp8_gop(sample_data)),
@@ -99,7 +109,7 @@ pub fn detect_gop_start(
 
 /// Is the given sample the start of a GOP (i.e. a keyframe/sync).
 pub fn is_start_of_gop(sample_data: &[u8], codec: VideoCodec) -> Result<bool, DetectGopStartError> {
-    Ok(detect_gop_start(sample_data, codec)?.is_start_of_gop())
+    Ok(detect_gop_start(sample_data, codec, None)?.is_start_of_gop())
 }
 
 /// Try getting the metadata of the image as all supported formats.
@@ -292,6 +302,7 @@ mod tests {
             detect_gop_start(
                 &jpeg_with_zero_length_segment,
                 VideoCodec::ImageSequence(Some("image/jpeg".to_owned())),
+                None,
             ),
             Err(DetectGopStartError::FailedToExtractEncodingDetails(_))
         );

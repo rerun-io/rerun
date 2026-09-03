@@ -357,10 +357,10 @@ pub fn new_decoder(
                     {
                         let unsupported =
                             video.encoding_details.as_ref().and_then(|details| {
-                                let info = details.h264?;
-                                re_gpu_video::h264_unsupported_bitstream(&info).or_else(|| {
+                                let info = &details.h264.as_ref()?.info;
+                                re_gpu_video::h264_unsupported_bitstream(info).or_else(|| {
                                     re_gpu_video::h264_unsupported_by_device(
-                                        &info,
+                                        info,
                                         gpu_video.h264_capabilities(),
                                     )
                                 })

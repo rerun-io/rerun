@@ -30,7 +30,15 @@ impl GpuDecoder {
         video_descr: &VideoDataDescription,
         output_sender: Sender<FrameResult>,
     ) -> Result<Self, re_gpu_video::DecodeError> {
-        let decoder = context.create_h264_decoder()?;
+        let mut decoder = context.create_h264_decoder()?;
+        if let Some(sps) = video_descr
+            .encoding_details
+            .as_ref()
+            .and_then(|details| details.h264.clone())
+        {
+            decoder.preset_sps(sps)?;
+        }
+
         let reorder_delay = Arc::new(AtomicUsize::new(0));
 
         let sync_decoder = GpuSyncDecoder {

@@ -151,6 +151,46 @@ fn reset_requires_an_idr_frame() {
     )));
 }
 
+/// The SPS NAL unit of an access unit, as the demuxer would have read it.
+fn sps_nal(access_unit: &[u8]) -> &[u8] {
+    use h264_reader::nal::{Nal as _, RefNal, UnitType};
+    re_video_parsing::nal_ranges(access_unit)
+        .unwrap()
+        .into_iter()
+        .map(|range| &access_unit[range])
+        .find(|nal| {
+            RefNal::new(nal, &[], true)
+                .header()
+                .unwrap()
+                .nal_unit_type()
+                == UnitType::SeqParameterSet
+        })
+        .expect("access unit without an SPS")
+}
+
+/// An SPS handed over up front is recognized by its bytes when the stream repeats it,
+/// so it stays out of the ops.
+#[test]
+fn a_preset_sps_is_not_emitted_again() {
+    let data = asset("ippp");
+    let units = split_on_aud(&data);
+
+    let mut parser = Parser::new(17);
+    let sps = re_video_parsing::ParsedSps::new(sps_nal(units[0])).unwrap();
+    parser.preset_sps(std::sync::Arc::new(sps));
+
+    let ops = parser.push_access_unit(units[0]).unwrap();
+    assert!(
+        !ops.iter().any(|op| matches!(op, DecodeOp::Sps(_))),
+        "{ops:?}"
+    );
+    assert!(
+        ops.iter()
+            .any(|op| matches!(op, DecodeOp::DecodeFrame(info) if info.is_idr)),
+        "{ops:?}"
+    );
+}
+
 /// A stream needing more DPB slots than the device offers is rejected up front.
 #[test]
 fn too_small_dpb_is_an_error() {
@@ -688,12 +728,13 @@ fn asset_parameter_sets(name: &str) -> (SeqParameterSet, PicParameterSet) {
     let mut pps = None;
     for range in re_video_parsing::nal_ranges(&data).unwrap() {
         use h264_reader::nal::{Nal as _, RefNal, UnitType};
-        let nal = RefNal::new(&data[range], &[], true);
+        let nal_bytes = &data[range];
+        let nal = RefNal::new(nal_bytes, &[], true);
         match nal.header().unwrap().nal_unit_type() {
             UnitType::SeqParameterSet => {
-                let parsed = super::parse::parse_sps(&nal).unwrap();
-                ctx.put_seq_param_set(parsed.clone());
-                sps = Some(parsed);
+                let parsed = super::parse::parse_sps(nal_bytes).unwrap();
+                ctx.put_seq_param_set(parsed.sps.clone());
+                sps = Some(parsed.sps);
             }
             UnitType::PicParameterSet => {
                 pps = Some(super::parse::parse_pps(&ctx, &nal).unwrap());

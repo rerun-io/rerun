@@ -464,10 +464,10 @@ pub struct VideoEncodingDetails {
     /// or missing information at this point.
     pub chroma_subsampling: Option<ChromaSubsamplingModes>,
 
-    /// What the H.264 SPS says about the stream.
+    /// The H.264 SPS of the stream, as parsed when these details were derived.
     ///
     /// `None` for other codecs, and for H.264 streams whose SPS we haven't read.
-    pub h264: Option<re_video_parsing::SpsInfo>,
+    pub h264: Option<std::sync::Arc<re_video_parsing::ParsedSps>>,
 
     /// Optional mp4 stsd box from which this data was derived.
     ///

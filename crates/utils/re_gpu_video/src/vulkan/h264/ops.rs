@@ -5,8 +5,10 @@
 //! that the backend executes in order.
 
 use std::ops::Range;
+use std::sync::Arc;
 
-use h264_reader::nal::{pps::PicParameterSet, sps::SeqParameterSet};
+use h264_reader::nal::pps::PicParameterSet;
+use re_video_parsing::ParsedSps;
 
 /// One instruction for the GPU backend.
 #[derive(Debug)]
@@ -15,7 +17,7 @@ pub enum DecodeOp {
     ///
     /// The backend (re)creates its session parameters from it, and the session itself
     /// when the coded size, level, or DPB requirements changed.
-    Sps(Box<SeqParameterSet>),
+    Sps(Arc<ParsedSps>),
 
     /// A new or changed PPS.
     Pps(Box<PicParameterSet>),
@@ -112,8 +114,9 @@ pub struct RefLists {
 impl std::fmt::Display for DecodeOp {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Sps(sps) => {
-                let (width, height) = sps.pixel_dimensions().unwrap_or((0, 0));
+            Self::Sps(parsed) => {
+                let sps = &parsed.sps;
+                let [width, height] = parsed.info.pixel_dimensions;
                 write!(
                     f,
                     "Sps {{ id: {id}, {width}x{height}, poc_type: {poc_type}, max_num_ref_frames: {refs}, log2_max_frame_num: {frame_num_bits} }}",

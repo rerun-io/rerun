@@ -7,9 +7,8 @@ use h264_reader::nal::{
     Nal as _, NalHeader, RefNal, UnitType,
     pps::PicParameterSet,
     slice::{FieldPic, SliceHeader},
-    sps::SeqParameterSet,
 };
-use re_video_parsing::SpsInfo;
+use re_video_parsing::ParsedSps;
 
 use super::ParseError;
 
@@ -52,17 +51,15 @@ pub fn parse_slice(
     })
 }
 
-/// Parses an SPS and rejects streams the Vulkan H.264 decode profile can't handle.
-pub fn parse_sps(nal: &RefNal<'_>) -> Result<SeqParameterSet, ParseError> {
-    let sps =
-        SeqParameterSet::from_bits(nal.rbsp_bits()).map_err(|err| ParseError::nal("SPS", err))?;
+/// Parses an SPS NAL unit and rejects streams the Vulkan H.264 decode profile can't handle.
+pub fn parse_sps(nal: &[u8]) -> Result<ParsedSps, ParseError> {
+    let parsed = ParsedSps::new(nal).map_err(|err| ParseError::nal("SPS", err))?;
 
-    let info = SpsInfo::new(&sps).map_err(|err| ParseError::nal("SPS", err))?;
-    if let Some(unsupported) = crate::h264_unsupported_bitstream(&info) {
+    if let Some(unsupported) = crate::h264_unsupported_bitstream(&parsed.info) {
         return Err(ParseError::UnsupportedStream(unsupported));
     }
 
-    Ok(sps)
+    Ok(parsed)
 }
 
 /// Parses a PPS and rejects streams the Vulkan H.264 decode profile can't handle.

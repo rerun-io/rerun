@@ -81,6 +81,21 @@ impl H264Decoder {
         }
     }
 
+    /// Makes an SPS the decoder's active one, ahead of the stream's own copy of it.
+    ///
+    /// Streams repeat their SPS in front of every IDR frame. Handing over the SPS that
+    /// the demuxer already parsed lets the decoder recognize those repeats by their
+    /// bytes rather than parsing them again. Rejected the same way a stream's own SPS
+    /// is when the device can't decode it.
+    pub fn preset_sps(
+        &mut self,
+        sps: std::sync::Arc<re_video_parsing::ParsedSps>,
+    ) -> Result<(), DecodeError> {
+        match &mut self.inner {
+            DecoderInner::Vulkan(decoder) => decoder.preset_sps(sps),
+        }
+    }
+
     /// Decodes one annex-b access unit, returning zero or more frames in presentation order.
     ///
     /// Decoding must start at an IDR frame carrying its SPS/PPS. `pts` travels into
