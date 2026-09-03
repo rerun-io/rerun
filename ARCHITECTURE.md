@@ -268,6 +268,7 @@ Update instructions:
 | re_tuid              | 128-bit Time-based Unique Identifier                                                          |
 | re_uri               | Parsing and constructing of Rerun URIs                                                        |
 | re_video             | Video decoding library                                                                        |
+| re_video_parsing     | Bitstream utilities shared by the video decoders                                              |
 | re_web               | Utilities for interacting with Web APIs                                                       |
 
 ### Test crates

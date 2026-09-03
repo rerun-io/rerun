@@ -47,11 +47,13 @@ mod context;
 mod decoder;
 mod reorder;
 mod setup;
+mod support;
 mod vulkan;
 
 pub use context::GpuVideoContext;
 pub use decoder::{DecodedFrame, H264Decoder};
 pub use setup::VideoDeviceSetup;
+pub use support::{UnsupportedH264Stream, h264_unsupported_bitstream, h264_unsupported_by_device};
 pub use vulkan::h264::ParseError;
 
 #[doc(hidden)]

@@ -64,7 +64,7 @@ pub fn detect_av1_keyframe_start(data: &[u8]) -> Result<GopStartDetection, Detec
                     coded_dimensions: [seq.max_frame_width as u16, seq.max_frame_height as u16],
                     bit_depth: Some(bit_depth),
                     chroma_subsampling: Some(chroma_mode_from_color_config(&seq.color_config)),
-                    frames_only: None,
+                    h264: None,
                     stsd: None,
                 });
             }

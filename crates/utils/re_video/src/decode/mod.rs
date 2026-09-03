@@ -355,12 +355,19 @@ pub fn new_decoder(
                             != DecodeHardwareAcceleration::PreferSoftware
                         && let Some(gpu_video) = &decode_settings.gpu_video.0
                     {
-                        if let Some(reason) = gpu_video::h264_unsupported_reason(
-                            video.encoding_details.as_ref(),
-                            gpu_video.h264_capabilities(),
-                        ) {
+                        let unsupported =
+                            video.encoding_details.as_ref().and_then(|details| {
+                                let info = details.h264?;
+                                re_gpu_video::h264_unsupported_bitstream(&info).or_else(|| {
+                                    re_gpu_video::h264_unsupported_by_device(
+                                        &info,
+                                        gpu_video.h264_capabilities(),
+                                    )
+                                })
+                            });
+                        if let Some(unsupported) = unsupported {
                             re_log::debug_warn_once!(
-                                "The GPU video decoder doesn't support this stream: {reason}. Using software decoding instead."
+                                "The GPU video decoder doesn't support this stream: {unsupported}. Using software decoding instead."
                             );
                         } else {
                             match gpu_video::GpuDecoder::new(

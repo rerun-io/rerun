@@ -2345,7 +2345,7 @@ mod tests {
             coded_dimensions,
             bit_depth,
             chroma_subsampling,
-            frames_only,
+            h264,
             stsd,
         } = encoding_details.unwrap();
         assert_eq!(codec_string, "avc1.64000A");
@@ -2355,7 +2355,9 @@ mod tests {
             chroma_subsampling,
             Some(re_video::ChromaSubsamplingModes::Yuv420)
         );
-        assert_eq!(frames_only, Some(true));
+        let h264 = h264.unwrap();
+        assert!(h264.frames_only);
+        assert_eq!(h264.max_num_reorder_frames, 0);
         assert_eq!(stsd, None);
 
         assert_eq!(samples.num_elements(), num_frames_submitted);

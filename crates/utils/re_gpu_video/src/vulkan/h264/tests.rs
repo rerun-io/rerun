@@ -686,7 +686,7 @@ fn asset_parameter_sets(name: &str) -> (SeqParameterSet, PicParameterSet) {
     let mut ctx = h264_reader::Context::new();
     let mut sps = None;
     let mut pps = None;
-    for range in super::parse::nal_ranges(&data).unwrap() {
+    for range in re_video_parsing::nal_ranges(&data).unwrap() {
         use h264_reader::nal::{Nal as _, RefNal, UnitType};
         let nal = RefNal::new(&data[range], &[], true);
         match nal.header().unwrap().nal_unit_type() {

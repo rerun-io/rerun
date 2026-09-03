@@ -464,11 +464,10 @@ pub struct VideoEncodingDetails {
     /// or missing information at this point.
     pub chroma_subsampling: Option<ChromaSubsamplingModes>,
 
-    /// Whether every picture is coded as a full frame, rather than as interlaced fields.
+    /// What the H.264 SPS says about the stream.
     ///
-    /// `None` if this couldn't be determined, either because of lack of implementation
-    /// or missing information at this point.
-    pub frames_only: Option<bool>,
+    /// `None` for other codecs, and for H.264 streams whose SPS we haven't read.
+    pub h264: Option<re_video_parsing::SpsInfo>,
 
     /// Optional mp4 stsd box from which this data was derived.
     ///

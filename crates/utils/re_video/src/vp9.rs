@@ -23,7 +23,7 @@ pub fn detect_vp9_gop(data: &[u8]) -> GopStartDetection {
         coded_dimensions: [header.width, header.height],
         bit_depth: Some(header.bit_depth),
         chroma_subsampling,
-        frames_only: None,
+        h264: None,
         stsd: None,
     })
 }

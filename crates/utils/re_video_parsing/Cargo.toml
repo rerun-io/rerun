@@ -1,0 +1,28 @@
+[package]
+name = "re_video_parsing"
+authors.workspace = true
+description = "Bitstream utilities shared by Rerun's video decoders."
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+license.workspace = true
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+
+[dependencies]
+re_tracing.workspace = true
+
+h264-reader.workspace = true
+thiserror.workspace = true
+
+[lib]
+bench = false

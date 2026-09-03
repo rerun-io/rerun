@@ -53,6 +53,7 @@ re_rvl.workspace = true
 re_span.workspace = true
 re_tracing.workspace = true
 re_tuid.workspace = true
+re_video_parsing.workspace = true
 
 ahash.workspace = true
 bit-vec.workspace = true

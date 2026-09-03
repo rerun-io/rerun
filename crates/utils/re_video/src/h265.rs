@@ -2,7 +2,6 @@
 //!
 use std::fmt::Write as _;
 
-use cros_codecs::codec::h264::nalu::Header as _;
 use cros_codecs::codec::h265::parser::{Nalu, NaluType, Parser, ProfileTierLevel, Sps};
 
 use crate::nalu::{
@@ -35,7 +34,7 @@ pub fn encoding_details_from_h265_sps(sps: &Sps) -> VideoEncodingDetails {
         coded_dimensions,
         bit_depth,
         chroma_subsampling,
-        frames_only: None,
+        h264: None,
         stsd: None,
     }
 }
@@ -104,21 +103,44 @@ fn hevc_codec_string(profile_tier_level: &ProfileTierLevel) -> String {
     codec
 }
 
+/// Number of bytes in an H.265 NAL unit header, see 7.3.1.2.
+const H265_NAL_HEADER_LEN: usize = 2;
+
 pub fn detect_h265_annexb_gop(data: &[u8]) -> Result<GopStartDetection, DetectGopStartError> {
+    let Ok(nal_ranges) = re_video_parsing::nal_ranges(data) else {
+        // Data without any NAL start code has no NAL units to inspect.
+        return Ok(GopStartDetection::NotStartOfGop);
+    };
+
     let mut parser = Parser::default();
     let mut details: Option<VideoEncodingDetails> = None;
     let mut irap_found = false;
-    let mut cursor = std::io::Cursor::new(data);
 
-    while let Ok(nalu) = Nalu::next(&mut cursor) {
-        match nalu.header.type_ {
+    for range in nal_ranges {
+        let nal = &data[range];
+
+        // The NAL unit type sits in bits 1..6 of the first header byte.
+        let Ok(nalu_type) = NaluType::try_from(u32::from((nal[0] >> 1) & 0x3F)) else {
+            continue;
+        };
+
+        match nalu_type {
             NaluType::SpsNut if details.is_none() => {
-                if nalu.as_ref().len() < nalu.header.len() {
+                if nal.len() < H265_NAL_HEADER_LEN {
                     // Prevent panic inside of `parse_sps`.
                     return Err(DetectGopStartError::FailedToExtractEncodingDetails(
                         "SPS NALU is incomplete".to_owned(),
                     ));
                 }
+
+                // `parse_sps` wants a `cros_codecs` NAL unit, which is read out of an annex-b stream.
+                let mut annexb = Vec::with_capacity(ANNEXB_NAL_START_CODE.len() + nal.len());
+                annexb.extend_from_slice(ANNEXB_NAL_START_CODE);
+                annexb.extend_from_slice(nal);
+                let mut cursor = std::io::Cursor::new(annexb.as_slice());
+                let Ok(nalu) = Nalu::next(&mut cursor) else {
+                    continue;
+                };
 
                 // parse_sps returns &Sps, so bind to a reference
                 let sps_ref: &Sps = parser
@@ -235,7 +257,7 @@ mod test {
                 coded_dimensions: [1920, 1080],
                 bit_depth: Some(8),
                 chroma_subsampling: Some(ChromaSubsamplingModes::Yuv420),
-                frames_only: None,
+                h264: None,
                 stsd: None,
             }))
         );

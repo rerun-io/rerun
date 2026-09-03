@@ -1,8 +1,6 @@
 //! General H.264 utilities.
 
-use h264_reader::annexb::AnnexBReader;
 use h264_reader::nal::{self, Nal as _};
-use h264_reader::push::NalInterest;
 
 use crate::nalu::{
     ANNEXB_NAL_START_CODE, AnnexBStreamState, AnnexBStreamWriteError,
@@ -16,119 +14,95 @@ use crate::{
 pub fn encoding_details_from_h264_sps(
     sps: &nal::sps::SeqParameterSet,
 ) -> Result<VideoEncodingDetails, nal::sps::SpsError> {
-    let bit_depth = sps.chroma_info.bit_depth_chroma_minus8 + 8;
+    // Calculating the dimensions of the frame in pixels from the SPS is quite complicated
+    // as it has to take into account cropping and concepts like macro block sizes.
+    // Luckily h264-reader has a utility for this!
+    let info = re_video_parsing::SpsInfo::new(sps)?;
 
     // Codec string defined by WebCodec points to various spec documents.
     // https://www.w3.org/TR/webcodecs-avc-codec-registration/#fully-qualified-codec-strings
     // Not having read those, this is what we use in `re_mp4` and it works fine.
     // Also as of writing, Claude 4 agrees and is able to nicely explain its meaning.
-    let profile = u8::from(sps.profile_idc);
-    let constraint = u8::from(sps.constraint_flags);
-    let level = sps.level_idc;
+    let profile = info.profile_idc;
+    let constraint = info.constraint_flags;
+    let level = info.level_idc;
     let codec_string = format!("avc1.{profile:02X}{constraint:02X}{level:02X}");
 
-    // Calculating the dimensions of the frame in pixels from the SPS is quite complicated
-    // as it has to take into account cropping and concepts like macro block sizes.
-    // Luckily h264-reader has a utility for this!
-    let coded_dimensions = sps.pixel_dimensions()?;
-    let chroma_subsampling = match sps.chroma_info.chroma_format {
-        nal::sps::ChromaFormat::Monochrome => Some(ChromaSubsamplingModes::Monochrome),
-        nal::sps::ChromaFormat::YUV420 => Some(ChromaSubsamplingModes::Yuv420),
-        nal::sps::ChromaFormat::YUV422 => Some(ChromaSubsamplingModes::Yuv422),
-        nal::sps::ChromaFormat::YUV444 => Some(ChromaSubsamplingModes::Yuv444),
-        nal::sps::ChromaFormat::Invalid(_) => {
-            re_log::error_once!(
-                "Invalid chroma format in H264 SPS: {:?}",
-                sps.chroma_info.chroma_format
-            );
+    let chroma_subsampling = match info.chroma_format_idc {
+        0 => Some(ChromaSubsamplingModes::Monochrome),
+        1 => Some(ChromaSubsamplingModes::Yuv420),
+        2 => Some(ChromaSubsamplingModes::Yuv422),
+        3 => Some(ChromaSubsamplingModes::Yuv444),
+        idc => {
+            re_log::error_once!("Invalid chroma format in H264 SPS: {idc}");
             None
         }
     };
 
     Ok(VideoEncodingDetails {
         codec_string,
-        coded_dimensions: [coded_dimensions.0 as _, coded_dimensions.1 as _],
-        bit_depth: Some(bit_depth),
+        coded_dimensions: info.pixel_dimensions,
+        bit_depth: Some(info.bit_depth_chroma),
         chroma_subsampling,
-        frames_only: Some(matches!(
-            sps.frame_mbs_flags,
-            nal::sps::FrameMbsFlags::Frames
-        )),
+        h264: Some(info),
         stsd: None,
     })
 }
 
-#[derive(Default)]
-struct H264GopDetectionState {
-    coding_details_from_sps: Option<Result<VideoEncodingDetails, String>>,
-    idr_frame_found: bool,
-}
-
-impl h264_reader::push::AccumulatedNalHandler for H264GopDetectionState {
-    fn nal(&mut self, nal: nal::RefNal<'_>) -> NalInterest {
-        let Ok(nal_header) = nal.header() else {
-            return NalInterest::Ignore;
-        };
-        let nal_unit_type = nal_header.nal_unit_type();
-
-        if nal_unit_type == nal::UnitType::SeqParameterSet {
-            if !nal.is_complete() {
-                // Want full SPS, not just a partial one in order to extract the encoding details.
-                return NalInterest::Buffer;
-            }
-
-            // Note that if we find several SPS, we'll always use the latest one.
-            self.coding_details_from_sps = Some(
-                match nal::sps::SeqParameterSet::from_bits(nal.rbsp_bits())
-                    .and_then(|sps| encoding_details_from_h264_sps(&sps))
-                {
-                    Ok(coding_details) => {
-                        // A bit too much string concatenation something that frequent, better to enable this only for debug builds.
-                        if cfg!(debug_assertions) {
-                            re_log::trace!(
-                                "Parsed SPS to coding details for video stream: {coding_details:?}"
-                            );
-                        }
-                        Ok(coding_details)
-                    }
-                    Err(sps_err) => Err(format!("Failed reading SPS: {sps_err:?}")), // NOLINT: h264 errors don't implement display
-                },
-            );
-        } else if nal_unit_type == nal::UnitType::SliceLayerWithoutPartitioningIdr {
-            self.idr_frame_found = true;
-        }
-
-        NalInterest::Ignore
-    }
-}
-
 /// Try to determine whether a frame chunk is the start of a closed GOP in an h264 Annex B encoded stream.
 pub fn detect_h264_annexb_gop(
-    mut sample_data: &[u8],
+    sample_data: &[u8],
 ) -> Result<GopStartDetection, DetectGopStartError> {
-    let mut reader = AnnexBReader::accumulate(H264GopDetectionState::default());
+    let Ok(nal_ranges) = re_video_parsing::nal_ranges(sample_data) else {
+        // Data without any NAL start code has no NAL units to inspect.
+        return Ok(GopStartDetection::NotStartOfGop);
+    };
 
-    while !sample_data.is_empty() {
-        // Don't parse everything at once.
-        const MAX_CHUNK_SIZE: usize = 256;
-        let chunk_size = MAX_CHUNK_SIZE.min(sample_data.len());
+    let mut coding_details_from_sps: Option<Result<VideoEncodingDetails, String>> = None;
+    let mut idr_frame_found = false;
 
-        reader.push(&sample_data[..chunk_size]);
+    for range in nal_ranges {
+        let nal = nal::RefNal::new(&sample_data[range], &[], true);
+        let Ok(nal_header) = nal.header() else {
+            continue;
+        };
+
+        match nal_header.nal_unit_type() {
+            nal::UnitType::SeqParameterSet => {
+                // Note that if we find several SPS, we'll always use the latest one.
+                coding_details_from_sps = Some(
+                    match nal::sps::SeqParameterSet::from_bits(nal.rbsp_bits())
+                        .and_then(|sps| encoding_details_from_h264_sps(&sps))
+                    {
+                        Ok(coding_details) => {
+                            // A bit too much string concatenation something that frequent, better to enable this only for debug builds.
+                            if cfg!(debug_assertions) {
+                                re_log::trace!(
+                                    "Parsed SPS to coding details for video stream: {coding_details:?}"
+                                );
+                            }
+                            Ok(coding_details)
+                        }
+                        Err(sps_err) => Err(format!("Failed reading SPS: {sps_err:?}")), // NOLINT: h264 errors don't implement display
+                    },
+                );
+            }
+            nal::UnitType::SliceLayerWithoutPartitioningIdr => {
+                idr_frame_found = true;
+            }
+            _ => {}
+        }
 
         // In case of SPS parsing failure keep going.
         // It's unlikely, but maybe there's another SPS in the chunk that succeeds parsing.
-        let handler = reader.nal_handler_ref();
-        if handler.idr_frame_found && matches!(handler.coding_details_from_sps, Some(Ok(_))) {
+        if idr_frame_found && matches!(coding_details_from_sps, Some(Ok(_))) {
             break;
         }
-
-        sample_data = &sample_data[chunk_size..];
     }
 
-    let handler = reader.into_nal_handler();
-    match handler.coding_details_from_sps {
+    match coding_details_from_sps {
         Some(Ok(decoding_details)) => {
-            if handler.idr_frame_found {
+            if idr_frame_found {
                 Ok(GopStartDetection::StartOfGop(decoding_details))
             } else {
                 // In theory it could happen that we got an SPS but no IDR frame.
@@ -222,7 +196,19 @@ mod test {
                 coded_dimensions: [64, 64],
                 bit_depth: Some(8),
                 chroma_subsampling: Some(ChromaSubsamplingModes::Yuv420),
-                frames_only: Some(true),
+                h264: Some(re_video_parsing::SpsInfo {
+                    profile_idc: 100,
+                    constraint_flags: 0,
+                    level_idc: 10,
+                    pixel_dimensions: [64, 64],
+                    coded_extent: [64, 64],
+                    chroma_format_idc: 1,
+                    bit_depth_luma: 8,
+                    bit_depth_chroma: 8,
+                    frames_only: true,
+                    max_num_ref_frames: 16,
+                    max_num_reorder_frames: 2,
+                }),
                 stsd: None,
             }))
         );

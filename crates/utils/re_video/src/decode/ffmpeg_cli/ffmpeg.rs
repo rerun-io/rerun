@@ -866,6 +866,9 @@ pub struct FFmpegCliDecoder {
     output_sender: Sender<FrameResult>,
     ffmpeg_path: Option<std::path::PathBuf>,
     codec: crate::VideoCodec,
+
+    /// `max_num_reorder_frames` of the stream, as reported by its encoding details.
+    max_num_reorder_frames: Option<u32>,
 }
 
 impl FFmpegCliDecoder {
@@ -901,6 +904,9 @@ impl FFmpegCliDecoder {
             output_sender,
             ffmpeg_path,
             codec: codec.clone(),
+            max_num_reorder_frames: encoding_details
+                .and_then(|e| e.h264)
+                .map(|h264| h264.max_num_reorder_frames),
         })
     }
 }
@@ -965,6 +971,11 @@ impl AsyncDecoder for FFmpegCliDecoder {
             self.ffmpeg_path.as_deref(),
             &self.codec,
         )?;
+        self.max_num_reorder_frames = video_descr
+            .encoding_details
+            .as_ref()
+            .and_then(|e| e.h264)
+            .map(|h264| h264.max_num_reorder_frames);
         Ok(())
     }
 
@@ -973,7 +984,9 @@ impl AsyncDecoder for FFmpegCliDecoder {
         // By supplying more than we need we can workaround this a bit.
         //
         // *: N is 16 for ffmpeg 7.1, tested on Mac & Windows. For ffmpeg 6.1.2 on Linux it was found to be 18.
-        18
+        //
+        // A stream that reorders more frames than that needs the larger of the two.
+        18.max(self.max_num_reorder_frames.unwrap_or(0) as usize)
     }
 }
 

@@ -37,8 +37,8 @@ pub use std_params::{PpsStdParams, SpsStdParams};
 /// corrupt frames.
 #[derive(thiserror::Error, Debug)]
 pub enum ParseError {
-    #[error("Data is not an annex-b NAL stream")]
-    NotAnnexB,
+    #[error(transparent)]
+    NotAnnexB(#[from] re_video_parsing::NotAnnexBError),
 
     // `h264-reader` errors implement neither `Display` nor `Error`.
     #[error("Failed to parse {what}: {details}")]
@@ -46,6 +46,9 @@ pub enum ParseError {
 
     #[error("Unsupported H.264 feature: {0}")]
     Unsupported(&'static str),
+
+    #[error("Unsupported H.264 stream: {0}")]
+    UnsupportedStream(#[from] crate::UnsupportedH264Stream),
 
     #[error("Invalid bitstream: {0}")]
     Invalid(&'static str),
@@ -86,7 +89,7 @@ pub enum ParseError {
 }
 
 impl ParseError {
-    fn nal(what: &'static str, err: impl std::fmt::Debug) -> Self {
+    pub(crate) fn nal(what: &'static str, err: impl std::fmt::Debug) -> Self {
         Self::Nal {
             what,
             details: format!("{err:?}"), // NOLINT: `h264-reader` errors only implement `Debug`
@@ -173,7 +176,7 @@ impl Parser {
 
         let mut ops = Vec::new();
 
-        for range in parse::nal_ranges(data)? {
+        for range in re_video_parsing::nal_ranges(data)? {
             let nal = RefNal::new(&data[range.clone()], &[], true);
             let nal_header = nal
                 .header()
@@ -372,53 +375,8 @@ impl Parser {
             ops.push(DecodeOp::FreeSlots(outcome.freed));
         }
 
-        self.reorder_delay = max_num_reorder_frames(&sps) as usize;
+        self.reorder_delay = re_video_parsing::max_num_reorder_frames(&sps) as usize;
         self.awaiting_idr = false;
         Ok(())
-    }
-}
-
-/// `max_num_reorder_frames` of an SPS: from the VUI when present,
-/// otherwise the level-based `MaxDpbFrames` default (spec E.2.1).
-fn max_num_reorder_frames(sps: &SeqParameterSet) -> u32 {
-    if let Some(restrictions) = sps
-        .vui_parameters
-        .as_ref()
-        .and_then(|vui| vui.bitstream_restrictions.as_ref())
-    {
-        return restrictions.max_num_reorder_frames;
-    }
-
-    let profile_idc = u8::from(sps.profile_idc);
-    if matches!(profile_idc, 44 | 86 | 100 | 110 | 122 | 244) && sps.constraint_flags.flag3() {
-        return 0;
-    }
-
-    let frame_size_in_mbs =
-        (sps.pic_width_in_mbs_minus1 + 1) * (sps.pic_height_in_map_units_minus1 + 1);
-    (max_dpb_mbs(sps) / frame_size_in_mbs.max(1)).min(16)
-}
-
-/// `MaxDpbMbs` for the SPS's level (spec Table A-1).
-fn max_dpb_mbs(sps: &SeqParameterSet) -> u32 {
-    // Level 1b is signaled as level 1.1 plus constraint_set3_flag
-    // (or as level_idc 9 where profiles allow).
-    if sps.level_idc == 11 && sps.constraint_flags.flag3() {
-        return 396;
-    }
-    match sps.level_idc {
-        0..=10 => 396,
-        11 => 900,
-        12..=20 => 2376,
-        21 => 4752,
-        22..=30 => 8100,
-        31 => 18000,
-        32 => 20480,
-        33..=41 => 32768,
-        42 => 34816,
-        43..=50 => 110400,
-        51..=52 => 184320,
-        // Levels 6 to 6.2, and a permissive default for whatever comes after.
-        _ => 696320,
     }
 }

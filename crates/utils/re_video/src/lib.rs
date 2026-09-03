@@ -6,7 +6,6 @@ mod demux;
 mod gop_detection;
 mod h264;
 mod h265;
-mod nalu;
 pub mod player;
 mod stable_index_deque;
 mod time;
@@ -36,7 +35,8 @@ pub use gop_detection::{
 // AnnexB conversions are useful for testing.
 pub use h264::{write_avc_chunk_to_annexb, write_avc_chunk_to_nalu_stream};
 pub use h265::{write_hevc_chunk_to_annexb, write_hevc_chunk_to_nalu_stream};
-pub use nalu::{
+pub use re_video_parsing::nalu;
+pub use re_video_parsing::nalu::{
     AnnexBStreamState, AnnexBStreamWriteError, write_length_prefixed_nalus_to_annexb_stream,
 };
 // Re-export:

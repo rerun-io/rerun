@@ -272,24 +272,12 @@ impl DecoderCore {
         };
         let dpb_slots = parsed.max_num_ref_frames + 1;
 
-        let capabilities = &self.shared.capabilities;
-        let [min_width, min_height] = capabilities.min_coded_extent;
-        let [max_width, max_height] = capabilities.max_coded_extent;
-        if coded_extent.width < min_width
-            || coded_extent.height < min_height
-            || coded_extent.width > max_width
-            || coded_extent.height > max_height
+        let sps_info =
+            re_video_parsing::SpsInfo::new(parsed).map_err(|err| ParseError::nal("SPS", err))?;
+        if let Some(unsupported) =
+            crate::h264_unsupported_by_device(&sps_info, &self.shared.capabilities)
         {
-            return Err(DecodeError::ExceedsDeviceLimits(format!(
-                "coded size {}x{} is outside the supported range {min_width}x{min_height} to {max_width}x{max_height}",
-                coded_extent.width, coded_extent.height,
-            )));
-        }
-        if parsed.max_num_ref_frames > capabilities.max_active_references {
-            return Err(DecodeError::ExceedsDeviceLimits(format!(
-                "the stream uses up to {} reference frames, the device supports {}",
-                parsed.max_num_ref_frames, capabilities.max_active_references,
-            )));
+            return Err(DecodeError::ExceedsDeviceLimits(unsupported.to_string()));
         }
 
         // The display region: the coded size minus the SPS frame cropping.

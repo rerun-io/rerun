@@ -9362,6 +9362,7 @@ dependencies = [
  "pollster 1.0.1",
  "re_log",
  "re_tracing",
+ "re_video_parsing",
  "thiserror 2.0.19",
  "wgpu",
 ]
@@ -10850,6 +10851,7 @@ dependencies = [
  "re_span",
  "re_tracing",
  "re_tuid",
+ "re_video_parsing",
  "re_web",
  "scuffle-av1",
  "scuffle-bytes-util",
@@ -10859,6 +10861,15 @@ dependencies = [
  "wasm-bindgen",
  "web-sys",
  "web-time",
+]
+
+[[package]]
+name = "re_video_parsing"
+version = "0.38.0-alpha.1+dev"
+dependencies = [
+ "h264-reader",
+ "re_tracing",
+ "thiserror 2.0.19",
 ]
 
 [[package]]
