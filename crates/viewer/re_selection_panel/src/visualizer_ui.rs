@@ -87,17 +87,17 @@ This section lists the active visualizers for the selected entity. Visualizers u
 components to display it in the current view.
 
 Each visualizer lists the components it uses and their values. The component values may come from \
-a variety of sources and can be overridden in place.
+a variety of sources. Use the source selector to choose where a component's value comes from.
 
-The final component value is determined using the following priority order:
-- **Override**: A value set from the UI and/or the blueprint. It has the highest precedence and is \
-always used if set.
-- **Store**: If any, the value logged to the data store for this entity, e.g. via the SDK's `log` \
-function.
-- **Default**: If set, the default value for this component in the current view, which can be set \
-in the blueprint or in the UI by selecting the view.
-- **Fallback**: A context-sensitive value that is used if no other value is available. It is \
-specific to the visualizer and the current view type.";
+A component can use one of the following sources:
+- **Recording component**: A component logged on this entity. The source may be the component the \
+visualizer normally uses or another compatible component selected in the UI.
+- **Custom**: A value set in the UI and stored in the blueprint for this visualizer.
+- **View default**: A value set for the current view. If none was set, the visualizer provides a \
+context-sensitive default.
+
+When no source has been selected explicitly, the Viewer automatically chooses an available source, \
+preferring recording data before the view default.";
 
     ui.section_collapsing_header("Visualizers")
         .with_button(button)

@@ -33,8 +33,7 @@ pub enum ComponentSourceKind {
     ///
     /// May or may not make use of a selector string.
     ///
-    /// If the source component is not found on the entity,
-    /// a heuristically determined value will be used instead.
+    /// Selecting a source component that is not found on the entity is an error.
     SourceComponent = 1,
 
     /// Use a timeless override value that is defined in the blueprint.
@@ -42,8 +41,7 @@ pub enum ComponentSourceKind {
     /// The override value is stored on the same entity as the visualizer instruction
     /// and uses the `target` as its component name.
     ///
-    /// If there is no override value with the target component name,
-    /// a heuristically determined value will be used instead.
+    /// Selecting this source without an override value for the target component is an error.
     Override = 2,
 
     /// Default as specified on the view's blueprint.
@@ -153,10 +151,10 @@ impl ::re_types_core::reflection::Enum for ComponentSourceKind {
     fn docstring_md(self) -> &'static str {
         match self {
             Self::SourceComponent => {
-                "Use an explicit selection defined by `source_component`.\n\nMay or may not make use of a selector string.\n\nIf the source component is not found on the entity,\na heuristically determined value will be used instead."
+                "Use an explicit selection defined by `source_component`.\n\nMay or may not make use of a selector string.\n\nSelecting a source component that is not found on the entity is an error."
             }
             Self::Override => {
-                "Use a timeless override value that is defined in the blueprint.\n\nThe override value is stored on the same entity as the visualizer instruction\nand uses the `target` as its component name.\n\nIf there is no override value with the target component name,\na heuristically determined value will be used instead."
+                "Use a timeless override value that is defined in the blueprint.\n\nThe override value is stored on the same entity as the visualizer instruction\nand uses the `target` as its component name.\n\nSelecting this source without an override value for the target component is an error."
             }
             Self::Default => {
                 "Default as specified on the view's blueprint.\n\nIf the view doesn't specify a default for the target component name,\na heuristically determined value will be used instead."

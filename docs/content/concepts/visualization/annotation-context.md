@@ -63,7 +63,7 @@ snippet: tutorials/annotation_context
 ## Affected entities
 
 Each entity that uses a Class ID component (and optionally Keypoint ID components) will look for
-the nearest ancestor that in the [entity path hierarchy](../logging-and-ingestion/entity-path.md#path-hierarchy-functions) that has an Annotation Context defined.
+the nearest ancestor in the [entity path hierarchy](../logging-and-ingestion/entity-path.md#path-hierarchy-functions) that has an Annotation Context defined.
 
 
 ## Segmentation images

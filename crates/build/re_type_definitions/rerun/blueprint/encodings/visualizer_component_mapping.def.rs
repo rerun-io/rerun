@@ -12,9 +12,7 @@ pub enum ComponentSourceKind {
     ///
     /// May or may not make use of a selector string.
     ///
-    /// If the source component is not found on the entity,
-    /// a heuristically determined value will be used instead.
-    // TODO(andreas): this should probably be an error instead (unlike in override/default)?
+    /// Selecting a source component that is not found on the entity is an error.
     SourceComponent = 1,
 
     /// Use a timeless override value that is defined in the blueprint.
@@ -22,8 +20,7 @@ pub enum ComponentSourceKind {
     /// The override value is stored on the same entity as the visualizer instruction
     /// and uses the `target` as its component name.
     ///
-    /// If there is no override value with the target component name,
-    /// a heuristically determined value will be used instead.
+    /// Selecting this source without an override value for the target component is an error.
     Override = 2,
 
     /// Default as specified on the view's blueprint.

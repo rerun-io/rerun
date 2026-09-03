@@ -29,8 +29,7 @@ class ComponentSourceKind(Enum):
 
     May or may not make use of a selector string.
 
-    If the source component is not found on the entity,
-    a heuristically determined value will be used instead.
+    Selecting a source component that is not found on the entity is an error.
     """
 
     Override = 2
@@ -40,8 +39,7 @@ class ComponentSourceKind(Enum):
     The override value is stored on the same entity as the visualizer instruction
     and uses the `target` as its component name.
 
-    If there is no override value with the target component name,
-    a heuristically determined value will be used instead.
+    Selecting this source without an override value for the target component is an error.
     """
 
     Default = 3
