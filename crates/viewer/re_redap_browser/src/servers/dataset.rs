@@ -22,7 +22,7 @@ use re_viewer_context::{
 use crate::asset_registration::{AssetRegistration, RegistrationState};
 use crate::context::Context;
 use crate::entry_meta::{AssetsRef, EntryMeta, EntryMetaQuery};
-use crate::register_asset_modal::{AssetSlots, AssetTarget};
+use crate::register_asset_modal::{AssetSlots, AssetSourcesCapabilities, AssetTarget};
 use crate::servers::Command;
 use crate::{
     Server,
@@ -85,6 +85,9 @@ impl Server {
         view_states: &mut ViewStates,
         kind: Option<re_viewer_context::EntryKind>,
     ) {
+        let asset_sources =
+            AssetSourcesCapabilities::new(app_ctx.connection_registry, &dataset.origin);
+
         let resource = match kind {
             Some(re_viewer_context::EntryKind::Dataset(resource)) => resource,
             Some(re_viewer_context::EntryKind::Table) | None => DatasetResource::default(),
@@ -169,7 +172,7 @@ impl Server {
                     self.segments_ui(app_ctx, ui, dataset, table_blueprints, view_states);
                 }
                 DatasetResource::Assets => {
-                    self.assets_ui(ui, app_ctx, ctx, dataset);
+                    self.assets_ui(ui, app_ctx, ctx, dataset, &asset_sources);
                 }
             }
         });
@@ -273,6 +276,7 @@ impl Server {
         app_ctx: &AppContext<'_>,
         ctx: &Context<'_>,
         dataset: &Dataset,
+        asset_sources: &AssetSourcesCapabilities,
     ) {
         let assets = dataset.requests().assets(
             self.entry_meta_query(ui.ctx(), dataset),
@@ -326,7 +330,7 @@ impl Server {
             })
             .show(ui, |ui| {
                 if no_assets_yet {
-                    no_assets_ui(ui, ctx, &asset_target, &asset_slots);
+                    no_assets_ui(ui, ctx, &asset_target, &asset_slots, asset_sources);
                 } else if assets.get().is_some() {
                     self.asset_card_list(
                         ui,
@@ -950,6 +954,7 @@ fn no_assets_ui(
     ctx: &Context<'_>,
     asset_target: &AssetTarget,
     asset_slots: &AssetSlots,
+    asset_sources: &AssetSourcesCapabilities,
 ) {
     /// The explanation wraps within this width, so it stays readable on a wide screen.
     const EXPLANATION_WIDTH: f32 = 460.0;
@@ -963,6 +968,16 @@ fn no_assets_ui(
         "https://rerun.io/docs/concepts/query-and-transform/catalog-object-model#assets";
 
     let tokens = ui.tokens();
+
+    // A server that takes no asset has nothing to walk the reader through, so the empty list only
+    // says that it is empty.
+    if !asset_sources.registers_assets() {
+        ui.add_space(48.0);
+        ui.vertical_centered(|ui| {
+            ui.label(egui::RichText::new("This dataset has no assets").color(tokens.text_subdued));
+        });
+        return;
+    }
 
     egui::Frame::new()
         .inner_margin(egui::Margin::symmetric(
@@ -1062,9 +1077,12 @@ fn no_assets_ui(
                 ui.add_space(16.0);
 
                 ui.label(
-                    egui::RichText::new("dataset.register_asset(\"s3://path/to/asset.rrd\")")
-                        .monospace()
-                        .weak(),
+                    egui::RichText::new(format!(
+                        "dataset.register_asset(\"{}\")",
+                        asset_sources.source_example()
+                    ))
+                    .monospace()
+                    .weak(),
                 );
             });
         });

@@ -229,6 +229,15 @@ async fn validate_file_source(
 }
 
 fn rrd_path_from_url(storage_url: &url::Url) -> tonic::Result<PathBuf> {
+    // A host in a `file://` uri is refused on every platform. `Url::to_file_path` reads it as the
+    // server of a UNC path on Windows, which would take uris that no other platform reads.
+    if storage_url.scheme() == "file" && storage_url.host().is_some() {
+        return Err(tonic::Status::not_found(format!(
+            "RRD file not found, file URI should not have a host: {storage_url} \
+             (this may be caused by invalid relative-path URI)"
+        )));
+    }
+
     let rrd_path = cfg_select! {
         target_arch = "wasm32" => {
             // NOTE: `Url::to_file_path` is not available on browser Wasm targets, so keep the
@@ -255,16 +264,9 @@ fn rrd_path_from_url(storage_url: &url::Url) -> tonic::Result<PathBuf> {
     };
 
     let Ok(rrd_path) = rrd_path else {
-        return if storage_url.scheme() == "file" && storage_url.host().is_some() {
-            Err(tonic::Status::not_found(format!(
-                "RRD file not found, file URI should not have a host: {storage_url} \
-                 (this may be caused by invalid relative-path URI)"
-            )))
-        } else {
-            Err(tonic::Status::not_found(format!(
-                "RRD file not found, could not load URI: {storage_url}"
-            )))
-        };
+        return Err(tonic::Status::not_found(format!(
+            "RRD file not found, could not load URI: {storage_url}"
+        )));
     };
 
     Ok(rrd_path)

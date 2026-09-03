@@ -524,10 +524,11 @@ async fn a_refused_registration_is_listed_as_failed() {
 
     open_register_asset_modal(&mut harness);
 
+    // The local server only reads `file://`, so any other scheme is refused before it is sent.
     // The card shows the reason the server gave, and the snapshot has to look the same on every
-    // machine, so this is an object storage uri the local server cannot read at all. A `file://`
-    // uri would put a local path in the reason, and that path reads differently on Windows.
-    const REFUSED_ASSET_URI: &str = "s3://bucket/does/not/exist.rrd";
+    // machine, so this is a `file://` uri with a host: the server refuses it on the uri itself and
+    // its reason carries no local path, which would read differently on Windows.
+    const REFUSED_ASSET_URI: &str = "file://somehost/file/path.rrd";
 
     harness
         .get_by_role_and_label(egui::accesskit::Role::TextInput, "Source URI")
@@ -549,7 +550,7 @@ async fn a_refused_registration_is_listed_as_failed() {
 
     assert!(
         harness
-            .query_all_by_label_contains("does/not/exist.rrd")
+            .query_all_by_label_contains("somehost/file/path.rrd")
             .count()
             > 0,
         "the card should say which source uri the server refused"

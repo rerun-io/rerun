@@ -52,6 +52,9 @@ webbrowser.workspace = true
 [dev-dependencies]
 re_ui = { workspace = true, features = ["testing"] }
 
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+rfd.workspace = true
+
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 re_web.workspace = true
 # TODO(#8766): `rerun_js/web-viewer/build-wasm.mjs` is HIGHLY sensitive to changes in `wasm-bindgen`.

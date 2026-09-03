@@ -254,6 +254,7 @@ pub const DND_HANDLE: Icon = icon_from_path!("../data/icons/dnd_handle.svg");
 /// `>`
 pub const BREADCRUMBS_SEPARATOR: Icon = icon_from_path!("../data/icons/breadcrumbs_separator.svg");
 
+pub const FOLDER: Icon = icon_from_path!("../data/icons/folder.svg");
 pub const SEARCH: Icon = icon_from_path!("../data/icons/search.svg");
 pub const SETTINGS: Icon = icon_from_path!("../data/icons/settings.svg");
 

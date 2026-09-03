@@ -10056,6 +10056,7 @@ dependencies = [
  "re_uri",
  "re_viewer_context",
  "re_web",
+ "rfd",
  "serde",
  "serde_json",
  "url",
