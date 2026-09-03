@@ -690,6 +690,19 @@ mod tests {
     }
 
     #[test]
+    fn test_roundtrip_above_bmp() {
+        // Code points above `U+FFFF` (emoji, …) are escaped with more than four
+        // hex digits, and must survive a roundtrip through `Display`.
+        let path = EntityPath::new(vec!["camera".into(), "😀".into()]);
+        assert_eq!(path.to_string(), r"/camera/\u{1F600}");
+        assert_eq!(
+            EntityPath::parse_strict(&path.to_string()),
+            Ok(path.clone())
+        );
+        assert_eq!(EntityPath::from(path.to_string().as_str()), path);
+    }
+
+    #[test]
     fn test_incremental_walk() {
         assert_eq!(
             EntityPath::incremental_walk(None, &EntityPath::root()).collect::<Vec<_>>(),
