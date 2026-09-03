@@ -20,6 +20,7 @@ fn test_ros2msg_import() {
         .add("ros_image.mcap", "/camera/depth_image")
         .add("ros_log.mcap", "/rosout")
         .add("ros_magnetic_field.mcap", "/imu/mag")
+        .add("ros_nav_sat_fix.mcap", "/gps/fix")
         .add("ros_nav2_voxel_grid.mcap", "/voxel_grid")
         .add("ros_occupancy_grid.mcap", "/map")
         .add("ros_pose_stamped.mcap", "/pose_stamped")

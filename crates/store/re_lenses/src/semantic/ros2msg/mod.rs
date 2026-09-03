@@ -11,6 +11,7 @@ mod illuminance;
 mod image;
 mod log;
 mod magnetic_field;
+mod nav_sat_fix;
 mod occupancy_grid;
 mod pose_stamped;
 mod relative_humidity;
@@ -28,6 +29,7 @@ pub use illuminance::illuminance;
 pub use image::image;
 pub use log::log;
 pub use magnetic_field::magnetic_field;
+pub use nav_sat_fix::nav_sat_fix;
 pub use occupancy_grid::occupancy_grid;
 pub use pose_stamped::pose_stamped;
 pub use relative_humidity::relative_humidity;
@@ -46,6 +48,7 @@ pub fn all() -> Result<Vec<Lens>, LensBuilderError> {
         image()?,
         log()?,
         magnetic_field()?,
+        nav_sat_fix()?,
         occupancy_grid()?,
         pose_stamped()?,
         relative_humidity()?,
