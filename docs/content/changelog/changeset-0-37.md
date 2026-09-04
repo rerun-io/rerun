@@ -20,6 +20,7 @@ order: 973
 - [`RerunMapDataset` can be built from a manifest](#rerunmapdataset-can-be-built-from-a-manifest)
 - [Faster manifest generation for video datasets](#faster-manifest-generation-for-video-datasets)
 - [Experimental iterable dataloader skips missing samples](#experimental-iterable-dataloader-skips-missing-samples)
+- [`VideoFrameReference` works with `VideoStream`](#videoframereference-works-with-videostream)
 
 **Breaking changes**
 
@@ -247,6 +248,16 @@ Manifest replay remains strict: if a field recorded as required no longer resolv
 Valid zero-sized tensors are preserved; only `None` denotes missing data.
 
 [Docs here.](../howto/train/dataloader.md)
+
+### `VideoFrameReference` works with `VideoStream`
+
+[`VideoFrameReference`](../reference/types/archetypes/video_frame_reference.md) can now show frames from a [`VideoStream`](../reference/types/archetypes/video_stream.md), not just from an [`AssetVideo`](../reference/types/archetypes/asset_video.md).
+As before, `video_reference` points at the entity holding the video, and defaults to the entity of the frame reference itself.
+
+Frames of a `VideoStream` are looked up on the active timeline in the viewer, so the same stream can be shown at different timestamps in several views.
+
+Available from 0.37.1.
+[Docs here.](../concepts/logging-and-ingestion/video.md)
 
 ## Breaking changes
 
