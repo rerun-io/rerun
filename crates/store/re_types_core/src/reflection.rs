@@ -484,7 +484,8 @@ impl ComponentDescriptorExt for ComponentDescriptor {
         self.archetype
             .and_then(|archetype| {
                 self.component
-                    .strip_prefix(&format!("{}:", archetype.short_name()))
+                    .strip_prefix(archetype.short_name())?
+                    .strip_prefix(':')
             })
             .unwrap_or_else(|| self.component.as_str())
     }
@@ -532,5 +533,15 @@ mod test {
         let descr = descr.with_builtin_archetype(archetype_name);
         assert_eq!(descr.archetype_field_name(), "test");
         assert_eq!(descr.display_name(), "MyOtherExample:test");
+
+        let similarly_named_component = ComponentDescriptor {
+            archetype: Some(archetype_name),
+            component: "MyOtherExampleExtra:test".into(),
+            component_type: None,
+        };
+        assert_eq!(
+            similarly_named_component.archetype_field_name(),
+            "MyOtherExampleExtra:test"
+        );
     }
 }
