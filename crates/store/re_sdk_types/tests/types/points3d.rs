@@ -59,3 +59,220 @@ fn roundtrip() {
     let deserialized = Points3D::from_arrow(serialized).unwrap();
     similar_asserts::assert_eq!(expected, deserialized);
 }
+
+/// The example `.ply` fixture, embedded so that moving it is a compile error.
+const EXAMPLE_PLY: &str = include_str!("../../../../../examples/assets/example.ply");
+
+#[cfg(not(target_arch = "wasm32"))]
+#[test]
+fn ply_from_path_matches_contents_for_example_fixture() {
+    let mut file = tempfile::NamedTempFile::new().unwrap();
+    std::io::Write::write_all(&mut file, EXAMPLE_PLY.as_bytes()).unwrap();
+
+    let from_path = Points3D::from_file_path(file.path()).unwrap();
+    let from_contents = Points3D::from_file_contents(EXAMPLE_PLY.as_bytes()).unwrap();
+
+    similar_asserts::assert_eq!(from_path, from_contents);
+}
+
+#[test]
+fn ply_parses_optional_properties_and_ignores_extra_data() {
+    // NOLINT_START ("uchar uchar" is valid PLY, not a double word)
+    let contents = br#"ply
+format ascii 1.0
+element vertex 2
+property float x
+property float y
+property float z
+property uchar red
+property uchar green
+property uchar blue
+property float radius
+property list uchar uchar label
+property float temperature
+element face 1
+property list uchar int vertex_index
+end_header
+1 2 3 10 20 30 0.5 2 72 105 42
+4 5 6 11 21 31 1.5 3 66 121 101 43
+3 0 1 1
+"#;
+    // NOLINT_END
+
+    let parsed = Points3D::from_file_contents(contents).unwrap();
+    let expected = Points3D::new([(1.0, 2.0, 3.0), (4.0, 5.0, 6.0)])
+        .with_colors([0x0A141EFF, 0x0B151FFF])
+        .with_radii([0.5, 1.5])
+        .with_labels(["Hi", "Bye"]);
+
+    similar_asserts::assert_eq!(parsed, expected);
+}
+
+#[test]
+fn ply_ignores_unsupported_optional_vertex_property_types() {
+    let contents = br#"ply
+format ascii 1.0
+element vertex 1
+property float x
+property float y
+property float z
+property int label
+end_header
+1 2 3 42
+"#;
+
+    let parsed = Points3D::from_file_contents(contents).unwrap();
+    let expected = Points3D::new([(1.0, 2.0, 3.0)]);
+
+    similar_asserts::assert_eq!(parsed, expected);
+}
+
+#[test]
+fn ply_ignores_non_vertex_elements_even_when_they_reuse_known_property_names() {
+    let contents = br#"ply
+format ascii 1.0
+element vertex 1
+property float x
+property float y
+property float z
+element face 1
+property int label
+end_header
+1 2 3
+42
+"#;
+
+    let parsed = Points3D::from_file_contents(contents).unwrap();
+    let expected = Points3D::new([(1.0, 2.0, 3.0)]);
+
+    similar_asserts::assert_eq!(parsed, expected);
+}
+
+#[test]
+fn ply_without_z_loads_as_a_flat_cloud() {
+    let contents = br#"ply
+format ascii 1.0
+element vertex 2
+property float x
+property float y
+property uchar red
+property uchar green
+property uchar blue
+end_header
+1 2 10 20 30
+4 5 40 50 60
+"#;
+
+    let parsed = Points3D::from_file_contents(contents).unwrap();
+    let expected =
+        Points3D::new([(1.0, 2.0, 0.0), (4.0, 5.0, 0.0)]).with_colors([0x0A141EFF, 0x28323CFF]);
+
+    similar_asserts::assert_eq!(parsed, expected);
+}
+
+/// `x` and `y` are the two we cannot make up.
+#[test]
+fn ply_skips_vertices_missing_required_positions() {
+    let contents = br#"ply
+format ascii 1.0
+element vertex 2
+property float x
+property float z
+end_header
+1 3
+4 6
+"#;
+
+    let parsed = Points3D::from_file_contents(contents).unwrap();
+    let expected = Points3D::new([] as [(f32, f32, f32); 0]);
+
+    similar_asserts::assert_eq!(parsed, expected);
+}
+
+#[test]
+fn ply_reports_absolute_payload_line_numbers() {
+    let contents = br#"ply
+format ascii 1.0
+element vertex 2
+property float x
+property float y
+property float z
+end_header
+1 2 3
+4 5
+"#;
+
+    let err = Points3D::from_file_contents(contents).unwrap_err();
+
+    assert_eq!(err.kind(), std::io::ErrorKind::InvalidInput);
+    assert!(err.to_string().contains("Line 9:"));
+}
+
+#[test]
+fn ply_ignores_gaussian_splat_properties() {
+    let contents = br#"ply
+format ascii 1.0
+element vertex 1
+property float x
+property float y
+property float z
+property float f_dc_0
+property float f_dc_1
+property float f_dc_2
+property float opacity
+property float scale_0
+property float scale_1
+property float scale_2
+end_header
+0 0 0 0 0 0 0 0 0 0
+"#;
+
+    // A reconstruction is `GaussianSplats3D`'s job; as a point cloud this is just a position.
+    let parsed = Points3D::from_file_contents(contents).unwrap();
+    let expected = Points3D::new([(0.0, 0.0, 0.0)]);
+
+    similar_asserts::assert_eq!(parsed, expected);
+}
+
+#[test]
+fn ply_rejects_supported_vertex_properties_with_unsupported_types() {
+    // NOLINT_START ("uchar uchar" is valid PLY, not a double word)
+    let contents = br#"ply
+format ascii 1.0
+element vertex 1
+property float x
+property float y
+property list uchar uchar z
+end_header
+1 2 1 255
+"#;
+    // NOLINT_END
+
+    let err = Points3D::from_file_contents(contents).unwrap_err();
+
+    assert_eq!(err.kind(), std::io::ErrorKind::InvalidData);
+    assert!(err.to_string().contains("PLY property 'z'"));
+}
+
+/// The header is ASCII either way, so nothing above catches a mis-decoded binary payload.
+#[test]
+fn ply_reads_binary_little_endian_payloads() {
+    let mut contents = b"\
+ply
+format binary_little_endian 1.0
+element vertex 2
+property float x
+property float y
+property float z
+end_header
+"
+    .to_vec();
+    for value in [1.0f32, 2.0, 3.0, -4.0, 5.5, 6.0] {
+        contents.extend_from_slice(&value.to_le_bytes());
+    }
+
+    let parsed = Points3D::from_file_contents(&contents).unwrap();
+    let expected = Points3D::new([(1.0, 2.0, 3.0), (-4.0, 5.5, 6.0)]);
+
+    similar_asserts::assert_eq!(parsed, expected);
+}

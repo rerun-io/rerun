@@ -7912,13 +7912,22 @@ dependencies = [
 
 [[package]]
 name = "ply-rs-bw"
-version = "3.0.0"
+version = "4.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fe55bbee2b70d1c1e58d8340eda9a80c5ce11fb9b1bc10b5fc1575c490d38fa9"
+checksum = "65841c1e3a10c38a78ae2cb2bf14f21832e3b0895680361675745749bfb2578e"
 dependencies = [
  "byteorder",
  "indexmap 2.14.0",
  "peg",
+]
+
+[[package]]
+name = "ply_stl_tetrahedrons"
+version = "0.37.0-alpha.1+dev"
+dependencies = [
+ "anyhow",
+ "clap",
+ "rerun",
 ]
 
 [[package]]
@@ -10176,6 +10185,7 @@ dependencies = [
  "ordered-float 5.3.0",
  "parking_lot",
  "pathdiff",
+ "ply-rs-bw",
  "pollster 1.0.1",
  "profiling",
  "re_build_tools",
@@ -10334,6 +10344,7 @@ dependencies = [
  "serde",
  "similar-asserts",
  "smallvec",
+ "tempfile",
  "thiserror 2.0.19",
  "tiff",
  "uuid",

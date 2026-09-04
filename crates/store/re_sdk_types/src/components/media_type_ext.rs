@@ -85,7 +85,7 @@ impl MediaType {
     pub const MCAP: &'static str = "application/x-mcap";
 
     // -------------------------------------------------------
-    // Point clouds:
+    // Geometry:
 
     /// [PLY (Polygon File Format)](https://en.wikipedia.org/wiki/PLY_(file_format)): `application/x-ply`.
     ///
@@ -195,7 +195,7 @@ impl MediaType {
     }
 
     // -------------------------------------------------------
-    // Point clouds:
+    // Geometry:
 
     /// `application/x-ply`
     ///
@@ -228,6 +228,10 @@ impl MediaType {
             // `mime_guess2` considers `.obj` to be a tgif… but really it's way more likely to be an obj.
             Some("obj") => {
                 return Some(Self::obj());
+            }
+            // `mime_guess2` doesn't know about PLY, but we use `application/x-ply`.
+            Some("ply") => {
+                return Some(Self::ply());
             }
             // `mime_guess2` considers `.stl` to be a `application/vnd.ms-pki.stl`.
             Some("stl") => {
@@ -401,8 +405,17 @@ fn test_media_type_extension() {
     assert_eq!(MediaType::markdown().file_extension(), Some("md"));
     assert_eq!(MediaType::plain_text().file_extension(), Some("txt"));
     assert_eq!(MediaType::png().file_extension(), Some("png"));
+    assert_eq!(MediaType::ply().file_extension(), Some("ply"));
     assert_eq!(MediaType::rvl().file_extension(), Some("rvl"));
     assert_eq!(MediaType::stl().file_extension(), Some("stl"));
+}
+
+#[test]
+fn test_guess_from_path_ply() {
+    assert_eq!(
+        MediaType::guess_from_path("mesh.ply"),
+        Some(MediaType::ply())
+    );
 }
 
 #[test]

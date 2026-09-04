@@ -3,6 +3,9 @@ mod cpu_model;
 #[cfg(feature = "import-obj")]
 pub mod obj;
 
+#[cfg(feature = "import-ply")]
+pub mod ply;
+
 #[cfg(feature = "import-gltf")]
 pub mod gltf;
 
