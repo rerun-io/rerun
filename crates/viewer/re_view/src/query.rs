@@ -194,7 +194,17 @@ fn component_not_found_error(
         }
 
         // Seems the lack of data is just specific to our current query.
-        ComponentMappingError::ComponentNotPresentOnEntity(component)
+        let available_components = store_engine.schema().all_components_for_entity(entity_path);
+        if available_components.is_some_and(|components| components.contains(&component)) {
+            // The component exists on the entity, but there is no data for it in the current query.
+            ComponentMappingError::NoComponentDataForQuery(component)
+        } else {
+            // The component does not exist on the entity - maybe it's a typo, so provide similar.
+            ComponentMappingError::component_not_present_on_entity(
+                component,
+                available_components.into_iter().flatten().copied(),
+            )
+        }
     }
 }
 
@@ -701,9 +711,10 @@ mod tests {
     use nohash_hasher::IntMap;
     use re_chunk_store::{LatestAtQuery, RangeQuery, RowId};
     use re_log_types::{
-        AbsoluteTimeRange, EntityPath, TimePoint, TimelineName,
+        AbsoluteTimeRange, EntityPath, TimePoint, TimelineName, build_frame_nr,
         external::arrow::datatypes::DataType,
     };
+    use re_sdk_types::archetypes;
     use re_sdk_types::blueprint::components::VisualizerInstructionId;
     use re_sdk_types::components::Color;
     use re_test_context::TestContext;
@@ -718,7 +729,91 @@ mod tests {
         latest_at_with_blueprint_resolved_data_polymorphic, range_with_blueprint_resolved_data,
         range_with_blueprint_resolved_data_polymorphic,
     };
-    use crate::BlueprintResolvedResults;
+    use crate::{BlueprintResolvedResults, ComponentMappingError};
+
+    #[test]
+    fn mapped_component_without_data_for_query_reports_specific_error() {
+        let mut test_context = TestContext::new();
+        let egui_ctx = egui::Context::default();
+        let entity_path = EntityPath::from("entity");
+        let source = archetypes::Scalars::descriptor_scalars().component;
+        let target = "target".into();
+
+        test_context.log_entity(entity_path.clone(), |builder| {
+            builder.with_archetype_auto_row([build_frame_nr(10)], &archetypes::Scalars::single(1.0))
+        });
+
+        let data_result = DataResult {
+            entity_path,
+            any_visualizers_available: true,
+            visualizer_instructions: Vec::new(),
+            tree_prefix_only: false,
+            visible: true,
+            interactive: true,
+            override_base_path: EntityPath::from("override"),
+            query_range: QueryRange::LatestAt,
+        };
+        let instruction = VisualizerInstruction::new(
+            VisualizerInstructionId::new_random(),
+            ViewSystemIdentifier::from_static_str("Test"),
+            &EntityPath::from("override"),
+            VisualizerComponentMappings::from([(
+                target,
+                VisualizerComponentSource::SourceComponent {
+                    source_component: source,
+                    selector: String::new(),
+                },
+            )]),
+        );
+
+        test_context.run(&egui_ctx, move |viewer_ctx| {
+            let query_result = DataQueryResult::default();
+            let ctx = ViewContext {
+                viewer_ctx,
+                view_id: ViewId::invalid(),
+                view_class_identifier: ViewClassIdentifier::from_static_str("Test"),
+                space_origin: &EntityPath::root(),
+                view_state: &(),
+                query_result: &query_result,
+            };
+
+            let latest_query = LatestAtQuery::new(TimelineName::log_tick(), 0);
+            let latest_results = latest_at_with_blueprint_resolved_data(
+                &ctx,
+                None,
+                &latest_query,
+                &data_result,
+                [target],
+                Some(&instruction),
+            );
+            let latest_result = latest_results.component_sources.get(&target);
+            let Some(Err(ComponentMappingError::NoComponentDataForQuery(component))) =
+                latest_result
+            else {
+                panic!(
+                    "Expected NoComponentDataForQuery from latest-at query, got {latest_result:?}"
+                );
+            };
+            assert_eq!(*component, source);
+
+            let range_query =
+                RangeQuery::new(TimelineName::log_tick(), AbsoluteTimeRange::new(0, 0));
+            let range_results = range_with_blueprint_resolved_data(
+                &ctx,
+                None,
+                &range_query,
+                &data_result,
+                [target],
+                &instruction,
+            );
+            let range_result = range_results.component_sources.get(&target);
+            let Some(Err(ComponentMappingError::NoComponentDataForQuery(component))) = range_result
+            else {
+                panic!("Expected NoComponentDataForQuery from range query, got {range_result:?}");
+            };
+            assert_eq!(*component, source);
+        });
+    }
 
     fn test_data_result(entity_path: impl Into<EntityPath>) -> DataResult {
         DataResult {

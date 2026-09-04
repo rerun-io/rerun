@@ -9,7 +9,7 @@ use re_log_types::hash::Hash64;
 use re_query::{LatestAtResults, RangeResults};
 use re_sdk_types::ComponentIdentifier;
 use re_sdk_types::blueprint::encodings::ComponentSourceKind;
-use re_viewer_context::{QueryContext, typed_fallback_for};
+use re_viewer_context::{QueryContext, VisualizerComponentSource, typed_fallback_for};
 
 use crate::{
     ComponentMappingError,
@@ -150,7 +150,7 @@ impl BlueprintResolvedRangeResults<'_> {
                         }
 
                         Err(
-                            ComponentMappingError::ComponentNotPresentOnEntity(_)
+                            ComponentMappingError::ComponentNotPresentOnEntity { .. }
                             | ComponentMappingError::NoComponentDataForQuery(_)
                             | ComponentMappingError::NoComponentDataForQueryButIsFetchable(_),
                         ) => {
@@ -440,13 +440,14 @@ pub trait BlueprintResolvedResultsExt<'a> {
     /// Use this for required components where row IDs are needed for caching or identification.
     ///
     /// Blueprint row IDs are always discarded.
-    #[inline]
+    ///
+    /// `explicit_mapping` is the explicit mapping for this component, if any.
+    /// An empty result is an error when its recording source does not exist on the entity.
     fn get_required_chunks(
         &'a self,
         component: ComponentIdentifier,
-    ) -> MaybeChunksWithComponent<'a> {
-        self.get_chunks(component, true)
-    }
+        explicit_mapping: Option<&VisualizerComponentSource>,
+    ) -> MaybeChunksWithComponent<'a>;
 
     /// Returns optional component chunks with zeroed store row IDs.
     ///
@@ -477,8 +478,12 @@ pub trait BlueprintResolvedResultsExt<'a> {
         mut reporter: impl FnMut(&ComponentMappingError),
         timeline: TimelineName,
         component: ComponentIdentifier,
+        explicit_mapping: Option<&VisualizerComponentSource>,
     ) -> HybridResultsChunkIter<'a> {
-        let chunks_with_component = match self.get_required_chunks(component).try_into() {
+        let chunks_with_component = match self
+            .get_required_chunks(component, explicit_mapping)
+            .try_into()
+        {
             Ok(chunks) => chunks,
             Err(err) => {
                 reporter(&err);
@@ -526,6 +531,20 @@ pub trait BlueprintResolvedResultsExt<'a> {
 }
 
 impl BlueprintResolvedResultsExt<'_> for BlueprintResolvedRangeResults<'_> {
+    #[inline]
+    fn get_required_chunks(
+        &self,
+        component: ComponentIdentifier,
+        explicit_mapping: Option<&VisualizerComponentSource>,
+    ) -> MaybeChunksWithComponent<'_> {
+        self.get_chunks(component, true)
+            .ensure_required_component_present(
+                self.any_missing_chunks(),
+                self.query_context(),
+                explicit_mapping,
+            )
+    }
+
     #[inline]
     fn get_chunks(
         &self,
@@ -593,6 +612,20 @@ impl BlueprintResolvedResultsExt<'_> for BlueprintResolvedRangeResults<'_> {
 
 impl<'a> BlueprintResolvedResultsExt<'a> for BlueprintResolvedLatestAtResults<'_> {
     #[inline]
+    fn get_required_chunks(
+        &'a self,
+        component: ComponentIdentifier,
+        explicit_mapping: Option<&VisualizerComponentSource>,
+    ) -> MaybeChunksWithComponent<'a> {
+        self.get_chunks(component, true)
+            .ensure_required_component_present(
+                self.any_missing_chunks(),
+                self.query_context(),
+                explicit_mapping,
+            )
+    }
+
+    #[inline]
     fn get_chunks(
         &'a self,
         component: ComponentIdentifier,
@@ -616,6 +649,20 @@ impl<'a> BlueprintResolvedResultsExt<'a> for BlueprintResolvedLatestAtResults<'_
 }
 
 impl<'a> BlueprintResolvedResultsExt<'a> for BlueprintResolvedResults<'_> {
+    #[inline]
+    fn get_required_chunks(
+        &'a self,
+        component: ComponentIdentifier,
+        explicit_mapping: Option<&VisualizerComponentSource>,
+    ) -> MaybeChunksWithComponent<'a> {
+        self.get_chunks(component, true)
+            .ensure_required_component_present(
+                self.any_missing_chunks(),
+                self.query_context(),
+                explicit_mapping,
+            )
+    }
+
     #[inline]
     fn get_chunks(
         &'a self,

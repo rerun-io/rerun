@@ -14,11 +14,10 @@ use re_sdk_types::{View as _, ViewClassIdentifier};
 use re_ui::{Help, UiExt as _, list_item};
 use re_view::view_property_ui;
 use re_viewer_context::{
-    ColormapWithRange, IdentifiedViewSystem as _, IndicatedEntities, Item, PerVisualizerType,
-    RecommendedVisualizers, SystemCommand, SystemCommandSender as _, TensorStatsCache, ViewClass,
-    ViewClassExt as _, ViewClassRegistryError, ViewContext, ViewId, ViewQuery, ViewState,
-    ViewStateExt as _, ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext,
-    VisualizableReason, gpu_bridge, suggest_view_for_each_entity,
+    ColormapWithRange, IdentifiedViewSystem as _, Item, SystemCommand, SystemCommandSender as _,
+    TensorStatsCache, ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewContext, ViewId,
+    ViewQuery, ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext, gpu_bridge,
+    suggest_view_for_each_entity,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -98,27 +97,6 @@ Set the displayed dimensions in a selection panel.",
 
     fn new_state(&self) -> Box<dyn ViewState> {
         Box::<ViewTensorState>::default()
-    }
-
-    fn recommended_visualizers_for_entity(
-        &self,
-        _entity_path: &EntityPath,
-        visualizers_with_reason: &[(ViewSystemIdentifier, &VisualizableReason)],
-        _indicated_entities_per_visualizer: &PerVisualizerType<&IndicatedEntities>,
-    ) -> RecommendedVisualizers {
-        // Default implementation would not suggest the Tensor visualizer for images,
-        // since they're not indicated with a Tensor indicator.
-        // (and as of writing, something needs to be both visualizable and indicated to be shown in a visualizer)
-
-        // Keeping this implementation simple: We know there's only a single visualizer here.
-        if visualizers_with_reason
-            .iter()
-            .any(|(viz, _)| *viz == TensorSystem::identifier())
-        {
-            RecommendedVisualizers::default(TensorSystem::identifier())
-        } else {
-            RecommendedVisualizers::empty()
-        }
     }
 
     fn selection_ui(

@@ -64,21 +64,21 @@ pub async fn per_visualizer_instruction_errors() {
     harness.snapshot_app("per_visualizer_instruction_errors_1b_warnings_only_menu");
 
     // Now add a visualizer with an error and keep the warning.
-    let broken_scalar_mapping = VisualizerComponentMapping {
+    let missing_scalar_mapping = VisualizerComponentMapping {
         target: Scalars::descriptor_scalars().component.as_str().into(),
         source_kind: ComponentSourceKind::SourceComponent,
         source_component: Some("non_existent_scalars".into()),
         selector: None,
     };
     {
-        let broken_scalar_mapping = broken_scalar_mapping.clone();
+        let missing_scalar_mapping = missing_scalar_mapping.clone();
         harness.setup_viewport_blueprint(move |viewer_context, _blueprint| {
             viewer_context.save_visualizers(
                 &"scalars".into(),
                 view_id,
                 [SeriesPoints::default()
                     .visualizer()
-                    .with_mappings([broken_color_mapping.into(), broken_scalar_mapping.into()])],
+                    .with_mappings([broken_color_mapping.into(), missing_scalar_mapping.into()])],
             );
         });
     }
@@ -98,7 +98,7 @@ pub async fn per_visualizer_instruction_errors() {
                 view_id,
                 [SeriesLines::default()
                     .visualizer()
-                    .with_mappings([broken_scalar_mapping.into()])],
+                    .with_mappings([missing_scalar_mapping.into()])],
             );
         });
     }
@@ -109,6 +109,87 @@ pub async fn per_visualizer_instruction_errors() {
     // Open it up again.
     harness.click_label("View errors");
     harness.snapshot_app("per_visualizer_instruction_errors_3b_errors_only_menu");
+
+    // Replace the missing component error with a malformed selector error.
+    let malformed_selector_mapping = VisualizerComponentMapping {
+        target: Scalars::descriptor_scalars().component.as_str().into(),
+        source_kind: ComponentSourceKind::SourceComponent,
+        source_component: Some(Scalars::descriptor_scalars().component.as_str().into()),
+        selector: Some(".foo @".into()),
+    };
+    harness.setup_viewport_blueprint(move |viewer_context, _blueprint| {
+        viewer_context.save_visualizers(
+            &"scalars".into(),
+            view_id,
+            [SeriesLines::default()
+                .visualizer()
+                .with_mappings([malformed_selector_mapping.into()])],
+        );
+    });
+
+    // The errors menu should remain open and show the selector parsing error.
+    harness.snapshot_app("per_visualizer_instruction_errors_4_selector_error_menu");
+
+    harness.click_label("Details");
+    harness.snapshot_app("per_visualizer_instruction_errors_4b_selector_error_details");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+pub async fn missing_identity_mapped_required_component_is_reported_as_error() {
+    use std::sync::Arc;
+
+    use re_sdk::external::arrow::array::Float64Array;
+    use re_viewer::external::re_sdk_types::DynamicArchetype;
+
+    let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions::default());
+    harness.init_recording();
+    harness.set_blueprint_panel_opened(true);
+    harness.set_selection_panel_opened(true);
+    harness.set_time_panel_opened(false);
+
+    let timeline = Timeline::new_sequence("t");
+
+    // The unrelated component makes the entity queryable without satisfying the visualizer's required scalar component.
+    harness.log_entity("custom_component", |builder| {
+        builder.with_archetype_auto_row(
+            [(timeline, 0)],
+            &DynamicArchetype::new_without_archetype()
+                .with_component_from_data("value", Arc::new(Float64Array::from(vec![1.0]))),
+        )
+    });
+
+    let view_id = harness.setup_viewport_blueprint(|_viewer_context, blueprint| {
+        let mut view = ViewBlueprint::new(
+            TimeSeriesView::identifier(),
+            RecommendedView::new_single_entity("custom_component"),
+        );
+        view.display_name = Some("Missing component view".into());
+        blueprint.add_view_at_root(view)
+    });
+
+    harness.setup_viewport_blueprint(move |viewer_context, _blueprint| {
+        // Naming the series forces the visualizer without adding an automatic component mapping.
+        viewer_context.save_visualizers(
+            &"custom_component".into(),
+            view_id,
+            [SeriesLines::new()
+                .with_names(["custom_component"])
+                .visualizer()],
+        );
+    });
+
+    harness
+        .blueprint_tree()
+        .right_click_label("Viewport (Grid container)");
+    harness.click_label("Expand all");
+    harness
+        .blueprint_tree()
+        .click_label("Missing component view");
+    harness
+        .selection_panel()
+        .click_nth_label("custom_component", 0);
+
+    harness.snapshot_app("missing_required_component_error");
 }
 
 /// Tests that logging more series than `MAX_NUM_SERIES_FOR_REMAPPED_SCALARS` via a non-identity

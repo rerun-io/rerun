@@ -188,11 +188,7 @@ def main() -> None:
             rrb.Vertical(
                 # Put the origin for both 2D spaces where the pinhole is logged. Doing so allows them to understand how they're connected to the 3D space.
                 # This enables interactions like clicking on a point in the 3D space to show the corresponding point in the 2D spaces and vice versa.
-                rrb.Spatial2DView(
-                    name="RGB & Depth",
-                    origin="world/camera/image",
-                    overrides={"world/camera/image/rgb": rr.Image.from_fields(opacity=0.5)},
-                ),
+                rrb.Spatial2DView(name="RGB & Depth", origin="world/camera/image"),
                 rrb.Tabs(
                     rrb.Spatial2DView(name="RGB", origin="world/camera/image", contents="world/camera/image/rgb"),
                     rrb.Spatial2DView(name="Depth", origin="world/camera/image", contents="world/camera/image/depth"),

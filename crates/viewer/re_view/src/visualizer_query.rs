@@ -66,8 +66,10 @@ impl<'a> VisualizerInstructionQueryResults<'a> {
         &self,
         component: re_sdk_types::ComponentIdentifier,
     ) -> HybridResultsChunkIter<'a> {
+        let explicit_mapping = self.instruction.component_mappings.get(&component);
         let chunks_with_component = match ChunksWithComponent::try_from(
-            self.query_results.get_required_chunks(component),
+            self.query_results
+                .get_required_chunks(component, explicit_mapping),
         ) {
             Ok(chunks) => chunks,
             Err(err) => {
@@ -79,6 +81,7 @@ impl<'a> VisualizerInstructionQueryResults<'a> {
                 ) {
                     let report = VisualizerInstructionReport {
                         diagnostic: ViewerDiagnostic {
+                            // Missing a **required** component is always a full error.
                             severity: ViewerReportSeverity::Error,
                             summary: err.summary(),
                             details: err.details(),
