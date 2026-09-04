@@ -730,6 +730,28 @@ async fn dataset_assets_tab() {
         ));
     }
 
+    // Each asset's size is the compressed size of its chunks, which varies by a few bytes between
+    // runs and is enough to change the rounded total. The mask starts where the asset count ends
+    // and is wider than the rest of the line, so its own width stays fixed.
+    const SIZE_MASK_WIDTH: f32 = 240.0;
+    let asset_count = harness
+        .query_by_label("assets")
+        .expect("the toolbar should say how many assets there are")
+        .rect();
+    let size_mask = egui::Rect::from_min_size(
+        egui::pos2(asset_count.max.x, asset_count.min.y),
+        egui::vec2(SIZE_MASK_WIDTH, asset_count.height()),
+    );
+    let total_label = harness
+        .query_by_label("total")
+        .expect("the toolbar should say the assets' total size")
+        .rect();
+    assert!(
+        size_mask.contains_rect(total_label),
+        "the mask should cover the rest of the line"
+    );
+    harness.mask(size_mask);
+
     harness.snapshot("dataset_assets_tab");
 }
 
