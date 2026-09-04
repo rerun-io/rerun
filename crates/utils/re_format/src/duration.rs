@@ -96,7 +96,7 @@ impl DurationFormatOptions {
 
     /// Formats nanoseconds in a pretty way, as specific.
     ///
-    /// This function is NOT optimized for performance (and does many small allocations).
+    /// The common seconds-only path writes directly into the output string.
     pub fn format_nanos(self, ns: i64) -> String {
         const SEC_PER_MINUTE: u64 = 60;
         const SEC_PER_HOUR: u64 = 60 * SEC_PER_MINUTE;
@@ -110,6 +110,10 @@ impl DurationFormatOptions {
             max_decimals,
             rounding,
         } = self;
+
+        if only_seconds {
+            return format_nanos_as_seconds(ns, always_sign, min_decimals, max_decimals, &rounding);
+        }
 
         let mut front = vec![];
         let ns = if ns < 0 {
@@ -225,6 +229,97 @@ impl DurationFormatOptions {
     }
 }
 
+fn format_nanos_as_seconds(
+    ns: i64,
+    always_sign: bool,
+    min_decimals: usize,
+    max_decimals: usize,
+    rounding: &Rounding,
+) -> String {
+    let mut formatted = String::with_capacity(48);
+    let ns = if ns < 0 {
+        formatted.push(crate::MINUS);
+        ns.unsigned_abs()
+    } else {
+        if always_sign {
+            formatted.push('+');
+        }
+        ns as u64
+    };
+
+    let round = |value: u64, divisor: u64| match rounding {
+        Rounding::Closest => (value + divisor / 2) / divisor,
+        Rounding::TowardsZero => value / divisor,
+    };
+
+    let (value, decimals) = if 9 <= min_decimals || (9 <= max_decimals && !ns.is_multiple_of(1_000))
+    {
+        (ns, 9)
+    } else {
+        let us = round(ns, 1_000);
+        if 6 <= min_decimals || (6 <= max_decimals && !us.is_multiple_of(1_000)) {
+            (us, 6)
+        } else {
+            let ms = round(us, 1_000);
+            if 3 <= min_decimals || (3 <= max_decimals && !ms.is_multiple_of(100)) {
+                (ms, 3)
+            } else {
+                let ds = round(ms, 100);
+                if 1 <= min_decimals || (1 <= max_decimals && !ds.is_multiple_of(10)) {
+                    (ds, 1)
+                } else {
+                    (round(ds, 10), 0)
+                }
+            }
+        }
+    };
+
+    let scale = 10_u64.pow(decimals);
+    push_uint(&mut formatted, value / scale);
+    if decimals != 0 {
+        formatted.push('.');
+        push_fraction(&mut formatted, value % scale, decimals);
+    }
+    formatted.push('s');
+    formatted
+}
+
+#[inline]
+fn push_digit(output: &mut String, digit: u64) {
+    output.push((b'0' + digit as u8) as char);
+}
+
+fn push_uint(output: &mut String, value: u64) {
+    if 1_000 <= value {
+        push_uint(output, value / 1_000);
+        output.push(THIN_SPACE);
+        push_three_digits(output, value % 1_000);
+    } else {
+        if 100 <= value {
+            push_digit(output, value / 100);
+        }
+        if 10 <= value {
+            push_digit(output, value / 10 % 10);
+        }
+        push_digit(output, value % 10);
+    }
+}
+
+fn push_three_digits(output: &mut String, value: u64) {
+    push_digit(output, value / 100);
+    push_digit(output, value / 10 % 10);
+    push_digit(output, value % 10);
+}
+
+fn push_fraction(output: &mut String, value: u64, decimals: u32) {
+    for exponent in (0..decimals).rev() {
+        push_digit(output, value / 10_u64.pow(exponent) % 10);
+        if exponent > 0 && exponent.is_multiple_of(3) {
+            output.push(THIN_SPACE);
+        }
+    }
+}
+
 #[test]
 fn test_format_duration() {
     assert_eq!(
@@ -333,4 +428,18 @@ fn test_format_duration() {
     assert_eq!(format_as_secs(12_120_000_000), "12.120s");
     assert_eq!(format_as_secs(12_120_340_001), "12.120 340s");
     assert_eq!(format_as_secs(12_100_000_001), "12.1s");
+
+    assert_eq!(
+        DurationFormatOptions::default()
+            .with_max_decimals(9)
+            .with_always_sign(true)
+            .format_nanos(12_100_000_000),
+        "+12.1s"
+    );
+    assert_eq!(
+        DurationFormatOptions::default()
+            .with_max_decimals(9)
+            .format_nanos(i64::MIN),
+        "−9 223 372 036.854 775 808s"
+    );
 }
