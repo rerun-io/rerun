@@ -1,5 +1,22 @@
 # Rerun changelog
 
+## [0.37.1](https://github.com/rerun-io/rerun/compare/0.37.0...0.37.1) - 2026-09-04
+
+### ✨ Overview & highlights
+
+- `VideoFrameReference` works with `VideoStream`
+
+📖 Release notes: https://rerun.io/docs/changelog/changeset-0-37#videoframereference-works-with-videostream
+
+### 🔎 Details
+
+#### 🌁 Viewer improvements
+- Support VideoFrameReference for VideoStream [be0dfac](https://github.com/rerun-io/rerun/commit/be0dfac3c6c597a482b6438ba0c16e51a952c1b5) (thanks [@pablovela5620](https://github.com/pablovela5620)!)
+
+#### 🚀 Performance improvements
+- Always use http 1 when fetching chunks [d395896](https://github.com/rerun-io/rerun/commit/d3958966eb0c89641fcb7a66c3821d63fd406e7a)
+
+
 ## [0.37.0](https://github.com/rerun-io/rerun/compare/0.36.3...0.37.0) - 2026-08-31
 
 🧳 Migration guide: https://rerun.io/docs/changelog/changeset-0-37#breaking-changes
