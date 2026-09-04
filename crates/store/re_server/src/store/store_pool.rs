@@ -31,7 +31,7 @@ impl std::fmt::Display for StoreSlotId {
 }
 
 impl std::str::FromStr for StoreSlotId {
-    type Err = std::num::ParseIntError;
+    type Err = re_tuid::ParseTuidError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Tuid::from_str(s).map(Self)

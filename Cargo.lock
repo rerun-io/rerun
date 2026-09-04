@@ -10641,6 +10641,7 @@ dependencies = [
  "re_byte_size",
  "re_log",
  "serde",
+ "thiserror 2.0.19",
  "web-time",
 ]
 

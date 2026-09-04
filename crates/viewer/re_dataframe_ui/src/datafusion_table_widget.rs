@@ -1402,7 +1402,9 @@ mod tests {
     use super::*;
 
     fn remote_table() -> re_uri::EntryUri {
-        "rerun+http://localhost:1234/entry/1".parse().unwrap()
+        "rerun+http://localhost:1234/entry/00000000000000000000000000000001"
+            .parse()
+            .unwrap()
     }
 
     fn connection_registry() -> re_redap_client::ConnectionRegistryHandle {

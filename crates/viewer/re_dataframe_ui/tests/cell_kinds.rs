@@ -47,9 +47,10 @@ async fn run_forced_cell_kinds_test() {
     let (session_context, table_ref) = setup_cell_kind_table();
 
     // Editing requires a remote table reference, while the test data remains in-memory.
-    let remote_uri: re_uri::EntryUri = "rerun+http://localhost:1234/entry/1"
-        .parse()
-        .expect("test entry URI should be valid");
+    let remote_uri: re_uri::EntryUri =
+        "rerun+http://localhost:1234/entry/00000000000000000000000000000001"
+            .parse()
+            .expect("test entry URI should be valid");
     let mut test_context = TestContext::new();
     test_context.component_ui_registry = re_component_ui::create_component_ui_registry();
     let runtime_handle = AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen()
@@ -286,9 +287,9 @@ fn setup_cell_kind_table() -> (Arc<SessionContext>, &'static str) {
             Arc::new(BooleanArray::from(vec![false, true, false])),
             Arc::new(thumbnails),
             Arc::new(StringArray::from(vec![
-                "rerun+http://localhost:1234/entry/1",
-                "rerun+http://localhost:1234/entry/2",
-                "rerun+http://localhost:1234/entry/3",
+                "rerun+http://localhost:1234/entry/00000000000000000000000000000001",
+                "rerun+http://localhost:1234/entry/00000000000000000000000000000002",
+                "rerun+http://localhost:1234/entry/00000000000000000000000000000003",
             ])),
             Arc::new(Int32Array::from(vec![1, 2, 3])),
             Arc::new(StringArray::from(vec!["one", "two", "three"])),

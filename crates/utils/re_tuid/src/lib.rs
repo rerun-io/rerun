@@ -93,11 +93,34 @@ impl std::fmt::Display for Tuid {
     }
 }
 
+/// Error from parsing a [`Tuid`] out of its string form.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
+pub enum ParseTuidError {
+    #[error("expected exactly 32 hex characters, got {found_len} bytes")]
+    InvalidLength { found_len: usize },
+
+    #[error("expected 32 hex characters (0-9A-Fa-f), found a non-hex character")]
+    InvalidCharacter,
+}
+
 impl std::str::FromStr for Tuid {
-    type Err = std::num::ParseIntError;
+    type Err = ParseTuidError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        u128::from_str_radix(s, 16).map(Self::from_u128)
+        // Only the canonical width parses: exactly 32 hex chars, any case. Anything
+        // shorter would zero-extend into a *different* valid id, so a truncated or
+        // sign-prefixed input (both accepted by `from_str_radix` alone) must fail
+        // loudly rather than silently alias another id.
+        if s.len() != 32 {
+            return Err(ParseTuidError::InvalidLength { found_len: s.len() });
+        }
+        if !s.bytes().all(|b| b.is_ascii_hexdigit()) {
+            return Err(ParseTuidError::InvalidCharacter);
+        }
+        let Ok(value) = u128::from_str_radix(s, 16) else {
+            return Err(ParseTuidError::InvalidCharacter);
+        };
+        Ok(Self::from_u128(value))
     }
 }
 
@@ -365,6 +388,51 @@ fn test_tuid_formatting() {
         Tuid::from_u128(0x182342300c5f8c327a7b4a6e5a379ac4).to_string(),
         "182342300C5F8C327a7b4a6e5a379ac4"
     );
+}
+
+#[test]
+fn test_tuid_parsing_ok() {
+    let id = Tuid::from_u128(0x182342300c5f8c327a7b4a6e5a379ac4);
+
+    // The `Display` form roundtrips, in any case combination (`Display` itself mixes
+    // upper and lower case).
+    assert_eq!("182342300C5F8C327a7b4a6e5a379ac4".parse(), Ok(id));
+    assert_eq!("182342300c5f8c327a7b4a6e5a379ac4".parse(), Ok(id));
+    assert_eq!("182342300C5F8C327A7B4A6E5A379AC4".parse(), Ok(id));
+}
+
+#[test]
+fn test_tuid_parsing_errors() {
+    // Anything that is not exactly 32 hex chars must fail: short hex would
+    // zero-extend into a different valid id, and `from_str_radix` alone would also
+    // accept a sign prefix.
+    for bad in [
+        "",
+        "182342300C5F8C32",                  // truncated
+        "182342300C5F8C327a7b4a6e5a379ac",   // 31 chars
+        "182342300C5F8C327a7b4a6e5a379ac44", // 33 chars
+    ] {
+        assert_eq!(
+            bad.parse::<Tuid>(),
+            Err(ParseTuidError::InvalidLength {
+                found_len: bad.len(),
+            }),
+            "{bad:?} must not parse as a Tuid"
+        );
+    }
+
+    for bad in [
+        "+82342300C5F8C327a7b4a6e5a379ac4", // sign prefix, len 32
+        "0x2342300C5F8C327a7b4a6e5a379ac4", // 0x prefix, len 32
+        "182342300C5F8C327a7b4a6e5a379agz", // non-hex chars, len 32
+        "αααααααααααααααα",                 // non-ASCII, but exactly 32 *bytes*
+    ] {
+        assert_eq!(
+            bad.parse::<Tuid>(),
+            Err(ParseTuidError::InvalidCharacter),
+            "{bad:?} must not parse as a Tuid"
+        );
+    }
 }
 
 // -------------------------------------------------------------------------------

@@ -27,6 +27,7 @@ bytemuck = { workspace = true, features = ["derive"] }
 getrandom.workspace = true
 quiver.workspace = true
 serde = { workspace = true, features = ["derive"] }
+thiserror.workspace = true
 web-time.workspace = true
 
 [dev-dependencies]

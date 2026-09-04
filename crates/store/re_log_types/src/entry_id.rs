@@ -50,7 +50,7 @@ impl From<re_tuid::Tuid> for EntryId {
 }
 
 impl FromStr for EntryId {
-    type Err = std::num::ParseIntError;
+    type Err = re_tuid::ParseTuidError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         re_tuid::Tuid::from_str(s).map(|id| Self { id })
