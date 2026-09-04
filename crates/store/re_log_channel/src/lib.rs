@@ -218,7 +218,23 @@ impl LogSource {
     pub fn is_same_ignoring_uri_fragments(&self, other: &Self) -> bool {
         match (self, other) {
             (Self::RedapGrpcStream { uri: uri1, .. }, Self::RedapGrpcStream { uri: uri2, .. }) => {
-                uri1.clone().without_fragment() == uri2.clone().without_fragment()
+                let re_uri::DatasetUri {
+                    origin: origin1,
+                    dataset_id: dataset_id1,
+                    resource: resource1,
+                    segment_id: segment_id1,
+                    fragment: _,
+                } = uri1;
+                let re_uri::DatasetUri {
+                    origin: origin2,
+                    dataset_id: dataset_id2,
+                    resource: resource2,
+                    segment_id: segment_id2,
+                    fragment: _,
+                } = uri2;
+
+                (origin1, dataset_id1, resource1, segment_id1)
+                    == (origin2, dataset_id2, resource2, segment_id2)
             }
             (Self::HttpStream { url: url1 }, Self::HttpStream { url: url2 }) => url1 == url2,
             _ => self == other,
@@ -321,7 +337,34 @@ impl SmartMessage {
 
 #[cfg(test)]
 mod tests {
-    use super::url_display_name;
+    use super::{LogSource, RecordingOpenBehavior, url_display_name};
+
+    fn redap_source(uri: &str) -> LogSource {
+        LogSource::RedapGrpcStream {
+            uri: uri.parse().expect("test URI should be valid"),
+            open_behavior: RecordingOpenBehavior::OpenAndSelect,
+        }
+    }
+
+    #[test]
+    fn log_source_comparison_ignores_only_uri_fragments() {
+        let left = redap_source(
+            "rerun://example.com/dataset/1830B33B45B963E7774455beb91701ae/data?segment_id=a#selection=/left",
+        );
+        let right = redap_source(
+            "rerun://example.com/dataset/1830B33B45B963E7774455beb91701ae/data?segment_id=a#selection=/right",
+        );
+        assert!(left.is_same_ignoring_uri_fragments(&right));
+
+        for uri in [
+            "rerun://other.com/dataset/1830B33B45B963E7774455beb91701ae/data?segment_id=a",
+            "rerun://example.com/dataset/1830B33B45B963E7774455beb91701af/data?segment_id=a",
+            "rerun://example.com/dataset/1830B33B45B963E7774455beb91701ae/assets?segment_id=a",
+            "rerun://example.com/dataset/1830B33B45B963E7774455beb91701ae/data?segment_id=b",
+        ] {
+            assert!(!left.is_same_ignoring_uri_fragments(&redap_source(uri)));
+        }
+    }
 
     #[test]
     fn url_display_name_keeps_short_urls() {
