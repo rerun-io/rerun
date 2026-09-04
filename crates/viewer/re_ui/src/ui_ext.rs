@@ -887,6 +887,12 @@ pub trait UiExt {
 
         let text_size: Option<TextSize> = ui.data(|reader| reader.get_temp(id));
 
+        if text_size.is_none() {
+            // The first pass measures the content. Rerun it with the measurement so the displayed
+            // frame is centered.
+            ui.ctx().request_discard("UiExt::center is measuring");
+        }
+
         // ensure the current ui has a vertical orientation so the space we add is in the correct
         // direction
         ui.vertical(|ui| {

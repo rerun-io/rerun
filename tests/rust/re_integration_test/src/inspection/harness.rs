@@ -239,6 +239,8 @@ impl InspectionHarness {
     /// Capture a screenshot and compare it against the snapshot named `name`.
     pub fn try_snapshot(&mut self, name: &str) -> egui_kittest::SnapshotResult {
         let image = self.screenshot();
+        // A screenshot advances the viewer, so update the interaction tree to match it.
+        self.refresh_tree();
         egui_kittest::try_image_snapshot_options(&image, name, &Self::snapshot_options())
     }
 
