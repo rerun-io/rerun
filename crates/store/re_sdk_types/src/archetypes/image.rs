@@ -39,6 +39,8 @@ use ::std::borrow::Cow;
 /// The order of dimensions in the underlying [`components::Blob`][crate::components::Blob] follows the typical
 /// row-major, interleaved-pixel image format.
 ///
+/// To show an image as a 3D quad in a [`views::Spatial3DView`][crate::blueprint::views::Spatial3DView] without a projection, see the "Image as a 3D quad" example on [`archetypes::Mesh3D`][crate::archetypes::Mesh3D].
+///
 /// ## Examples
 ///
 /// ### `image_simple`:

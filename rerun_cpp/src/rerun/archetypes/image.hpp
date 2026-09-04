@@ -39,6 +39,8 @@ namespace rerun::archetypes {
     /// data can be passed in without a copy from raw pointers or by reference from `std::vector`/`std::array`/c-arrays.
     /// If needed, this "borrow-behavior" can be extended by defining your own `rerun::CollectionAdapter`.
     ///
+    /// To show an image as a 3D quad in a `views::Spatial3DView` without a projection, see the "Image as a 3D quad" example on `archetypes::Mesh3D`.
+    ///
     /// ## Examples
     ///
     /// ### image_simple:
