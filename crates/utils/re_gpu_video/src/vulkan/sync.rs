@@ -39,18 +39,18 @@ impl TimelineSemaphore {
         &mut self,
         queue: vk::Queue,
         command_buffer: vk::CommandBuffer,
-        wait_value: Option<u64>,
+        wait: Option<(&Self, u64)>,
     ) -> Result<u64, vk::Result> {
         let signal_value = self.value + 1;
-
-        let wait_infos: Vec<vk::SemaphoreSubmitInfo<'_>> = wait_value
-            .map(|value| {
+        let wait_infos: Vec<vk::SemaphoreSubmitInfo<'_>> = wait
+            .into_iter()
+            .chain((self.value > 0).then_some((&*self, self.value)))
+            .map(|(semaphore, value)| {
                 vk::SemaphoreSubmitInfo::default()
-                    .semaphore(self.raw)
+                    .semaphore(semaphore.raw)
                     .value(value)
                     .stage_mask(vk::PipelineStageFlags2::ALL_COMMANDS)
             })
-            .into_iter()
             .collect();
         let signal_infos = [vk::SemaphoreSubmitInfo::default()
             .semaphore(self.raw)

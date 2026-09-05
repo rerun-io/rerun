@@ -6,9 +6,9 @@
 //! images handed to wgpu, [`CpuDecoder`] reads them back into CPU pixel buffers.
 //!
 //! Sync model: one decode submission and one output-copy submission per frame,
-//! ordered by a timeline semaphore. [`TextureDecoder`] keeps up to
+//! ordered by separate decode and copy timeline semaphores. [`TextureDecoder`] keeps up to
 //! [`PIPELINE_DEPTH`] frames in flight and only hands a frame to wgpu once the
-//! semaphore confirms its copy completed, so the host rarely blocks. The
+//! copy semaphore confirms its copy completed, so the host rarely blocks. The
 //! per-frame resources (command pools, bitstream buffer, result-status query)
 //! live in slots reused round-robin, and reusing a slot whose work is still
 //! running is what blocks. [`CpuDecoder`] waits for every frame. All of this
@@ -31,6 +31,10 @@ use super::output::{OutputImage, OutputPool};
 use super::record::{self, CopySource};
 use super::session::{SessionParameters, VideoSession, with_profile_list};
 use super::sync::TimelineSemaphore;
+
+#[cfg(test)]
+#[path = "decoder_tests.rs"]
+mod tests;
 
 /// H.264 streams never need more DPB slots than 16 reference frames plus the
 /// current one, whatever the hardware would offer.
@@ -74,7 +78,7 @@ struct ActiveSession {
 
 /// One frame's decode work, submitted to the decode queue.
 ///
-/// The output copy must wait for `decode_value` on the core's semaphore.
+/// The output copy must wait for `decode_value` on the core's decode semaphore.
 struct SubmittedDecode {
     decode_value: u64,
     slot_index: usize,
@@ -105,7 +109,10 @@ struct InFlightDecode {
 /// The session, parsing, and decode submission shared by the two decoder types.
 struct DecoderCore {
     shared: Arc<Shared>,
+
+    /// Tracks completed output copies and the resources they release.
     semaphore: TimelineSemaphore,
+    decode_semaphore: TimelineSemaphore,
     parser: Parser,
 
     sps: HashMap<u8, SpsEntry>,
@@ -149,6 +156,7 @@ impl DecoderCore {
 
         Ok(Self {
             semaphore: TimelineSemaphore::new(shared.device.clone())?,
+            decode_semaphore: TimelineSemaphore::new(shared.device.clone())?,
             parser: Parser::new(shared.capabilities.max_dpb_slots.min(MAX_DPB_SLOTS) as u8),
             sps: HashMap::new(),
             pps: HashMap::new(),
@@ -208,10 +216,15 @@ impl DecoderCore {
     }
 
     /// Drops all frame state for a seek. The next access unit must hold an IDR frame.
-    fn reset(&mut self) {
+    fn reset(&mut self) -> Result<(), DecodeError> {
+        self.decode_semaphore.wait_idle()?;
+        self.semaphore.wait_idle()?;
+        self.in_flight.clear();
+        self.pending_layer_copies.clear();
         self.parser.reset();
         // The session and images survive: an IDR re-activates the DPB slots,
         // and a changed SPS recreates them anyway.
+        Ok(())
     }
 
     /// Releases in-flight decodes the semaphore already passed: reads their
@@ -222,9 +235,8 @@ impl DecoderCore {
             if front.copy_value > completed {
                 break;
             }
-            let query_index = front.query_index;
+            self.check_decode_status(front.query_index)?;
             self.in_flight.pop_front();
-            self.check_decode_status(query_index)?;
         }
         self.pending_layer_copies
             .retain(|&(_, _, value)| value > completed);
@@ -284,7 +296,7 @@ impl DecoderCore {
             width: coded_width,
             height: coded_height,
         };
-        let dpb_slots = sps_entry.parsed.info.max_num_ref_frames + 1;
+        let dpb_slots = sps_entry.parsed.info.max_num_ref_frames.max(1) + 1;
 
         // The display region: the coded size minus the SPS frame cropping.
         // 4:2:0 progressive crop offsets are in units of two luma samples.
@@ -361,7 +373,11 @@ impl DecoderCore {
         self.slots[slot_index].decode_pool.end()?;
         let decode_value = {
             let queue = self.shared.decode_queue.lock();
-            self.semaphore.submit(*queue, cmd, wait_value)?
+            self.decode_semaphore.submit(
+                *queue,
+                cmd,
+                wait_value.map(|value| (&self.semaphore, value)),
+            )?
         };
 
         let (source_image, source_layer) = write_target;
@@ -399,8 +415,11 @@ impl DecoderCore {
                 .as_ref()
                 .unwrap_or(&self.shared.decode_queue)
                 .lock();
-            self.semaphore
-                .submit(*queue, cmd, Some(decode.decode_value))?
+            self.semaphore.submit(
+                *queue,
+                cmd,
+                Some((&self.decode_semaphore, decode.decode_value)),
+            )?
         };
 
         self.slots[decode.slot_index].copy_value = copy_value;
@@ -636,6 +655,9 @@ impl DecoderCore {
 impl Drop for DecoderCore {
     fn drop(&mut self) {
         // Frames may still be in flight: never destroy resources the GPU is still using.
+        if let Err(err) = self.decode_semaphore.wait_idle() {
+            re_log::warn!("Failed to wait for the video decoder to go idle: {err}");
+        }
         if let Err(err) = self.semaphore.wait_idle() {
             re_log::warn!("Failed to wait for the video decoder to go idle: {err}");
         }
@@ -777,13 +799,13 @@ impl TextureDecoder {
     pub fn reset(&mut self) {
         // Finish in-flight work so the pending images are safe to recycle.
         // A decode failure of a stale frame doesn't matter here, only wait errors.
-        if let Err(err) = self.core.drain() {
+        if let Err(err) = self.core.reset() {
             re_log::warn_once!("Error while draining the video decoder for a seek: {err}");
+            return;
         }
         for frame in self.pending.drain(..) {
             self.pool.recycle(frame.image);
         }
-        self.core.reset();
     }
 
     /// See [`Parser::reorder_delay`].
@@ -832,7 +854,9 @@ impl CpuDecoder {
 
     /// Drops all frame state for a seek. The next access unit must hold an IDR frame.
     pub fn reset(&mut self) {
-        self.core.reset();
+        if let Err(err) = self.core.reset() {
+            re_log::warn_once!("Error while draining the video decoder for a seek: {err}");
+        }
     }
 
     fn decode_frame(&mut self, info: &DecodeInfo, data: &[u8]) -> Result<CpuFrame, DecodeError> {

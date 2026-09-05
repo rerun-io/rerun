@@ -10838,6 +10838,7 @@ dependencies = [
  "itertools 0.15.0",
  "js-sys",
  "poll-promise",
+ "pollster 1.0.1",
  "re_async",
  "re_byte_size",
  "re_gpu_video",
@@ -10861,6 +10862,7 @@ dependencies = [
  "wasm-bindgen",
  "web-sys",
  "web-time",
+ "wgpu",
 ]
 
 [[package]]

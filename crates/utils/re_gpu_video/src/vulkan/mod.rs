@@ -12,6 +12,9 @@ mod record;
 mod session;
 mod sync;
 
+#[cfg(test)]
+mod test_device;
+
 // The safe H.264 bitstream parser: pure CPU code producing the plain-data `DecodeOp` IR
 // the rest of the backend executes. Fully covered by tests on all platforms.
 pub(crate) mod h264;

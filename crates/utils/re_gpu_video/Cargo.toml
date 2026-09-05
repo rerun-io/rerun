@@ -37,6 +37,7 @@ re_log = { workspace = true, features = ["setup"] }
 
 insta.workspace = true
 pollster.workspace = true
+wgpu = { workspace = true, features = ["noop"] }
 
 [lib]
 bench = false

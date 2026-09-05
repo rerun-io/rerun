@@ -191,6 +191,90 @@ fn a_preset_sps_is_not_emitted_again() {
     );
 }
 
+/// An access unit carries valid parameter sets followed by a truncated IDR slice.
+/// The next complete IDR repeats those sets and supplies everything the backend needs to decode it.
+#[test]
+fn parameter_sets_are_emitted_after_a_damaged_idr() {
+    let data = asset("ippp");
+    let unit = split_on_aud(&data)[0];
+    let mut damaged = Vec::new();
+    for range in re_video_parsing::nal_ranges(unit).unwrap() {
+        let nal = &unit[range];
+        if matches!(nal[0] & 31, 7 | 8) {
+            damaged.extend_from_slice(&[0, 0, 1]);
+            damaged.extend_from_slice(nal);
+        }
+    }
+    damaged.extend_from_slice(&[0, 0, 1, 0x65]);
+
+    let mut parser = Parser::new(17);
+    assert!(matches!(
+        parser.push_access_unit(&damaged),
+        Err(ParseError::Nal {
+            what: "slice header",
+            ..
+        })
+    ));
+
+    let ops = parser.push_access_unit(unit).unwrap();
+    let mut sps_ids = Vec::new();
+    let mut pps_ids = Vec::new();
+    let mut frames = 0;
+    for op in ops {
+        match op {
+            DecodeOp::Sps(sps) => sps_ids.push(sps.sps.seq_parameter_set_id.id()),
+            DecodeOp::Pps(pps) => pps_ids.push(pps.pic_parameter_set_id.id()),
+            DecodeOp::DecodeFrame(frame) => {
+                assert!(
+                    sps_ids.contains(&frame.sps_id) && pps_ids.contains(&frame.pps_id),
+                    "the backend needs SPS {} and PPS {} before decoding the recovery IDR, got SPS {sps_ids:?} and PPS {pps_ids:?}",
+                    frame.sps_id,
+                    frame.pps_id
+                );
+                frames += 1;
+            }
+            DecodeOp::FreeSlots(_) => {}
+        }
+    }
+    assert_eq!(frames, 1);
+}
+
+/// A damaged access unit replaces existing parameter sets before its slice fails.
+/// Repeating the original IDR uses the original parameter sets in both the parser and backend.
+#[test]
+fn damaged_parameter_set_change_restores_the_parser_context() {
+    let original = asset("ippp");
+    let original = split_on_aud(&original)[0];
+    let changed = asset("i_only");
+    let changed = split_on_aud(&changed)[0];
+    assert_ne!(sps_nal(original), sps_nal(changed));
+    let mut damaged = Vec::new();
+    for range in re_video_parsing::nal_ranges(changed).unwrap() {
+        let nal = &changed[range];
+        if matches!(nal[0] & 31, 7 | 8) {
+            damaged.extend_from_slice(&[0, 0, 1]);
+            damaged.extend_from_slice(nal);
+        }
+    }
+    damaged.extend_from_slice(&[0, 0, 1, 0x65]);
+
+    let mut parser = Parser::new(17);
+    parser.push_access_unit(original).unwrap();
+    let context = format!("{:?}", parser.ctx);
+    assert!(parser.push_access_unit(&damaged).is_err());
+    assert_eq!(format!("{:?}", parser.ctx), context);
+    let ops = parser.push_access_unit(original).unwrap();
+    assert_eq!(format!("{:?}", parser.ctx), context);
+    assert!(
+        ops.iter()
+            .any(|op| matches!(op, DecodeOp::DecodeFrame(info) if info.is_idr))
+    );
+    assert!(
+        !ops.iter()
+            .any(|op| matches!(op, DecodeOp::Sps(_) | DecodeOp::Pps(_)))
+    );
+}
+
 /// A stream needing more DPB slots than the device offers is rejected up front.
 #[test]
 fn too_small_dpb_is_an_error() {

@@ -152,8 +152,24 @@ impl Parser {
     /// On error the access unit produces nothing and the parser waits for the next
     /// IDR frame, any frames it tracked before stay valid.
     pub fn push_access_unit(&mut self, data: &[u8]) -> Result<Vec<DecodeOp>, ParseError> {
+        let active_sps = self.active_sps.clone();
+        let emitted_pps = self.emitted_pps.clone();
+        let pps: Vec<_> = self.ctx.pps().cloned().collect();
         let result = self.push_inner(data);
         if result.is_err() {
+            self.active_sps = active_sps;
+            self.emitted_pps = emitted_pps;
+            self.ctx = h264_reader::Context::new();
+            #[expect(
+                clippy::iter_over_hash_type,
+                reason = "Parameter sets are stored by ID"
+            )]
+            for sps in self.active_sps.values() {
+                self.ctx.put_seq_param_set(sps.sps.clone());
+            }
+            for pps in pps {
+                self.ctx.put_pic_param_set(pps);
+            }
             self.pending = None;
             self.awaiting_idr = true;
         }

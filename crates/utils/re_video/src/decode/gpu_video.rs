@@ -12,6 +12,10 @@ use crate::h264::write_avc_chunk_to_nalu_stream;
 use crate::nalu::AnnexBStreamState;
 use crate::{FrameNumber, Sender, Time, VideoDataDescription, VideoSource};
 
+#[cfg(test)]
+#[path = "gpu_video_tests.rs"]
+mod tests;
+
 /// Decodes H.264 to GPU textures using the [`re_gpu_video`] backend of the render device.
 ///
 /// The backend work runs on a dedicated decoder thread via [`SyncDecoderWrapper`],
@@ -45,7 +49,7 @@ impl GpuDecoder {
             decoder,
             input_format: InputFormat::from_descr(video_descr),
             annexb_buffer: Vec::new(),
-            pending_frame_infos: BTreeMap::new(),
+            pending_frame_infos: PendingFrameInfos::default(),
             reorder_delay: reorder_delay.clone(),
         };
 
@@ -114,6 +118,34 @@ struct PendingFrameInfo {
     duration: Option<Time>,
 }
 
+/// Matches decoded frames to submitted samples independently of their timestamps.
+#[derive(Default)]
+struct PendingFrameInfos {
+    next_id: i64,
+    frames: BTreeMap<i64, PendingFrameInfo>,
+}
+
+impl PendingFrameInfos {
+    fn insert(&mut self, info: PendingFrameInfo) -> i64 {
+        let id = self.next_id;
+        self.next_id = self.next_id.wrapping_add(1);
+        self.frames.insert(id, info);
+        id
+    }
+
+    fn remove(&mut self, id: i64) -> Option<PendingFrameInfo> {
+        let info = self.frames.remove(&id)?;
+        // Frames come out in presentation order. Keep samples at the same timestamp.
+        self.frames
+            .retain(|_, pending| pending.presentation_timestamp >= info.presentation_timestamp);
+        Some(info)
+    }
+
+    fn clear(&mut self) {
+        self.frames.clear();
+    }
+}
+
 struct GpuSyncDecoder {
     decoder: re_gpu_video::H264Decoder,
     input_format: InputFormat,
@@ -121,11 +153,8 @@ struct GpuSyncDecoder {
     /// Reused conversion buffer for AVCC input.
     annexb_buffer: Vec<u8>,
 
-    /// Chunk metadata keyed by presentation timestamp, waiting for the decoded frame.
-    ///
-    /// Frames come out in presentation order, so everything at an earlier
-    /// timestamp than an emitted frame is stale and gets pruned.
-    pending_frame_infos: BTreeMap<i64, PendingFrameInfo>,
+    /// Chunk metadata keyed by a unique submission ID, waiting for the decoded frame.
+    pending_frame_infos: PendingFrameInfos,
 
     /// Shared with [`GpuDecoder::min_num_samples_to_enqueue_ahead`].
     reorder_delay: Arc<AtomicUsize>,
@@ -137,16 +166,16 @@ impl GpuSyncDecoder {
         frames: Vec<re_gpu_video::DecodedFrame>,
         output_sender: &Sender<FrameResult>,
     ) {
-        for frame in frames {
-            let Some(info) = self.pending_frame_infos.remove(&frame.pts) else {
-                // Can't happen: every frame's timestamp comes from a submitted chunk.
+        for mut frame in frames {
+            let Some(info) = self.pending_frame_infos.remove(frame.pts) else {
+                // Every frame's ID comes from a submitted chunk.
                 re_log::warn_once!(
-                    "GPU-decoded video frame at timestamp {} has no matching chunk metadata",
+                    "GPU-decoded video frame with submission ID {} has no matching chunk metadata",
                     frame.pts
                 );
                 continue;
             };
-            self.pending_frame_infos = self.pending_frame_infos.split_off(&frame.pts);
+            frame.pts = info.presentation_timestamp.0;
 
             let _send_error = output_sender.send(Ok(Frame {
                 content: FrameContent::GpuTexture(Box::new(frame)),
@@ -191,20 +220,17 @@ impl SyncDecoder for GpuSyncDecoder {
             }
         };
 
-        let pts = chunk.presentation_timestamp.0;
-        self.pending_frame_infos.insert(
-            pts,
-            PendingFrameInfo {
-                is_sync: chunk.is_sync,
-                frame_nr: chunk.frame_nr,
-                source: chunk.source,
-                presentation_timestamp: chunk.presentation_timestamp,
-                decode_timestamp: chunk.decode_timestamp,
-                duration: chunk.duration,
-            },
-        );
+        // The backend passes this ID through `pts` and reorders by picture order count.
+        let id = self.pending_frame_infos.insert(PendingFrameInfo {
+            is_sync: chunk.is_sync,
+            frame_nr: chunk.frame_nr,
+            source: chunk.source,
+            presentation_timestamp: chunk.presentation_timestamp,
+            decode_timestamp: chunk.decode_timestamp,
+            duration: chunk.duration,
+        });
 
-        match self.decoder.push_access_unit(data, pts) {
+        match self.decoder.push_access_unit(data, id) {
             Ok(frames) => self.emit_frames(frames, output_sender),
             Err(err) => {
                 let _send_error = output_sender.send(Err(DecodeError::GpuVideo(Arc::new(err))));

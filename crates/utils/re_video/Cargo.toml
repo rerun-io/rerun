@@ -125,6 +125,10 @@ indicatif.workspace = true
 criterion.workspace = true
 re_log = { workspace = true, features = ["setup"] }
 
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+pollster.workspace = true
+wgpu.workspace = true
+
 # For build.rs:
 [build-dependencies]
 cfg_aliases.workspace = true
