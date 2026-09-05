@@ -1,4 +1,4 @@
-# re_view_bar_chart
+# re_view_time_series
 
 Part of the [`rerun`](https://github.com/rerun-io/rerun) family of crates.
 
