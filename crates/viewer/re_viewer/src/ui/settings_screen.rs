@@ -432,39 +432,37 @@ fn map_view_section_ui(ui: &mut Ui, mapbox_access_token: &mut String) {
 }
 
 fn video_section_ui(ui: &mut Ui, options: &mut VideoOptions) {
-    cfg_select! {
-        target_arch = "wasm32" => {
-            // This affects only the web target, so we don't need to show it on native.
-            use re_video::DecodeHardwareAcceleration;
+    use re_video::DecodeHardwareAcceleration;
 
-            let hardware_acceleration = &mut options.hw_acceleration;
-            ui.horizontal(|ui| {
-                ui.label("Decoder:");
-                egui::ComboBox::from_id_salt("video_decoder_hw_acceleration")
-                    .selected_text(hardware_acceleration.to_string())
-                    .show_ui(ui, |ui| {
-                        ui.selectable_value(
-                            hardware_acceleration,
-                            DecodeHardwareAcceleration::Auto,
-                            DecodeHardwareAcceleration::Auto.to_string(),
-                        );
-                        ui.selectable_value(
-                            hardware_acceleration,
-                            DecodeHardwareAcceleration::PreferSoftware,
-                            DecodeHardwareAcceleration::PreferSoftware.to_string(),
-                        );
-                        ui.selectable_value(
-                            hardware_acceleration,
-                            DecodeHardwareAcceleration::PreferHardware,
-                            DecodeHardwareAcceleration::PreferHardware.to_string(),
-                        );
-                    });
-                // Note that the setting is part of the video's cache key, so, if it changes, the cache
-                // entries outdate automatically.
+    let hardware_acceleration = &mut options.hw_acceleration;
+    ui.horizontal(|ui| {
+        ui.label("Decoder:");
+        egui::ComboBox::from_id_salt("video_decoder_hw_acceleration")
+            .selected_text(hardware_acceleration.to_string())
+            .show_ui(ui, |ui| {
+                ui.selectable_value(
+                    hardware_acceleration,
+                    DecodeHardwareAcceleration::Auto,
+                    DecodeHardwareAcceleration::Auto.to_string(),
+                );
+                ui.selectable_value(
+                    hardware_acceleration,
+                    DecodeHardwareAcceleration::PreferSoftware,
+                    DecodeHardwareAcceleration::PreferSoftware.to_string(),
+                );
+                ui.selectable_value(
+                    hardware_acceleration,
+                    DecodeHardwareAcceleration::PreferHardware,
+                    DecodeHardwareAcceleration::PreferHardware.to_string(),
+                );
             });
-        }
-        _ => {
-            ui.re_checkbox(
+        // Note that the setting is part of the video's cache key, so, if it changes, the cache
+        // entries outdate automatically.
+    });
+
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        ui.re_checkbox(
                 &mut options.override_ffmpeg_path,
                 "Override the FFmpeg binary path",
             )
@@ -476,19 +474,18 @@ fn video_section_ui(ui: &mut Ui, options: &mut VideoOptions) {
                 );
             });
 
-            ui.add_enabled_ui(options.override_ffmpeg_path, |ui| {
-                ui.horizontal(|ui| {
-                    // TODO(ab): needed for alignment, we should use egui flex instead
-                    ui.set_height(19.0);
+        ui.add_enabled_ui(options.override_ffmpeg_path, |ui| {
+            ui.horizontal(|ui| {
+                // TODO(ab): needed for alignment, we should use egui flex instead
+                ui.set_height(19.0);
 
-                    ui.label("Path:");
+                ui.label("Path:");
 
-                    ui.add(egui::TextEdit::singleline(&mut options.ffmpeg_path));
-                });
+                ui.add(egui::TextEdit::singleline(&mut options.ffmpeg_path));
             });
+        });
 
-            ffmpeg_path_status_ui(ui, options);
-        }
+        ffmpeg_path_status_ui(ui, options);
     }
 }
 
