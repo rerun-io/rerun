@@ -24,11 +24,8 @@ fn codec_from_fourcc(fourcc: u32) -> PyResult<re_video::VideoCodec> {
 #[pyfunction]
 #[pyo3(signature = (sample, codec_fourcc))]
 pub fn video_detect_gop_start(sample: &[u8], codec_fourcc: u32) -> PyResult<bool> {
-    match re_video::detect_gop_start(sample, codec_from_fourcc(codec_fourcc)?) {
-        Ok(re_video::GopStartDetection::StartOfGop(_)) => Ok(true),
-        Ok(re_video::GopStartDetection::NotStartOfGop) => Ok(false),
-        Err(err) => Err(PyValueError::new_err(err.to_string())),
-    }
+    re_video::is_start_of_gop(sample, codec_from_fourcc(codec_fourcc)?)
+        .map_err(|err| PyValueError::new_err(err.to_string()))
 }
 
 /// Convert a length-prefixed (AVCC-style) NAL unit sample to Annex B (start-code-prefixed).
