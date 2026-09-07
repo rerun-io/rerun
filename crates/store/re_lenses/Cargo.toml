@@ -21,7 +21,7 @@ all-features = true
 default = ["semantic"]
 
 ## Builtin lens pipelines for known MCAP topic conventions.
-semantic = ["dep:re_mcap"]
+semantic = []
 
 [dependencies]
 re_arrow_util.workspace = true
@@ -29,8 +29,6 @@ re_int.workspace = true
 re_lenses_core.workspace = true
 re_log.workspace = true
 re_log_types.workspace = true
-# TODO(RR-5373): Remove this `re_mcap` dependency once all remaining MCAP semantic conversions use lenses.
-re_mcap = { workspace = true, optional = true }
 re_sdk_types.workspace = true
 re_tracing.workspace = true
 
