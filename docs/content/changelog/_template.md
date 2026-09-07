@@ -29,13 +29,12 @@ hidden: true
 ══════════════════════════════════════════════════════════════════════════════
 -->
 
-<!--
-A table of contents with no heading of its own: one bullet per `### ` heading below,
-in the order the headings appear, grouped under a bold `**New features**` /
-`**Breaking changes**` label.
--->
+## Highlights
 
-TODO(release_manager): write the table of contents
+<!--
+One `### <heading>` per flagship change.
+Remove this section if there are no highlights.
+-->
 
 ## New features
 
