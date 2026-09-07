@@ -212,5 +212,6 @@ changelog/upcoming/split-loggable-trait: changelog/changeset-0-37#loggable-repla
 changelog/upcoming/state-timeline-cursor-centered: changelog/changeset-0-37#state-timeline-views-keep-the-time-cursor-centered
 changelog/upcoming/state-timeline-entity-drop: changelog/changeset-0-37#drag-entities-onto-state-timeline-views
 changelog/upcoming/state-timeline-visible-time-range: changelog/changeset-0-37#visible-time-range-for-state-timeline-views
+changelog/upcoming/video-frame-reference-video-stream: changelog/changeset-0-37#videoframereference-works-with-videostream
 changelog/upcoming/viewer-loads-asset-data: changelog/changeset-0-37#assets
 changelog/upcoming/web-viewer-save-artifacts: changelog/changeset-0-37#export-recordings-and-blueprints-from-the-web-viewer
