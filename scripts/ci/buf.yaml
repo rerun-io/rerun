@@ -5,11 +5,13 @@ modules:
 lint:
   use:
     - STANDARD
+    - COMMENTS # Every message/field/rpc/enum/oneof must be documented.
   except:
     - DIRECTORY_SAME_PACKAGE
     - PACKAGE_DIRECTORY_MATCH
   ignore:
-    - examples/python/objectron/objectron/proto
+    - examples/python/objectron/objectron/proto # Third-party protos, not ours to document.
+  disallow_comment_ignores: true # Forbid `// buf:lint:ignore …` for comments.
 breaking:
   use:
     - FILE

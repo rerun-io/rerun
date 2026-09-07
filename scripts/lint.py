@@ -53,6 +53,8 @@ ellipsis = re.compile(r"[^.]\.\.\.([^\-.0-9a-zA-Z]|$)")
 ellipsis_expression = re.compile(r"[\[\]\(\)<>\{\}]?.*\.\.\..*[\[\]\(\)<>\{\}]")
 anyhow_result = re.compile(r"Result<.*, anyhow::Error>")
 tonic_result = re.compile(r"Result<.*?,\s*tonic::Status\s*,?\s*>", re.DOTALL)
+# A `///` comment, either opening a line or trailing a declaration. `////` separator lines are fine.
+triple_slash_comment = re.compile(r"(?:^|\s)///(?!/)")
 
 double_space = re.compile(r"[.a-zA-Z]  [a-zA-Z]")
 double_the = re.compile(r"\bthe the\b")
@@ -1720,9 +1722,16 @@ def lint_file(filepath: str, args: Any) -> int:
         for line_nr, line in enumerate(source.lines):
             if source.should_ignore(line_nr):
                 continue
-            if "/// " in line:
+            if triple_slash_comment.search(line):
                 print(source.error("Use `//` not `///` for comments in .proto files", line_nr=line_nr))
                 num_errors += 1
+
+        # `buf lint` has a COMMENTS category for messages, fields, RPCs and so on, but no rule for
+        # the file itself, so we check that here: every .proto starts with a comment saying what
+        # lives in it.
+        if not source.should_ignore(0) and not (source.lines and source.lines[0].startswith("//")):
+            print(source.error("A .proto file must start with a comment explaining what it defines", line_nr=0))
+            num_errors += 1
 
     if filepath.endswith(".rs"):
         errors, lines_out = lint_vertical_spacing(source.lines)

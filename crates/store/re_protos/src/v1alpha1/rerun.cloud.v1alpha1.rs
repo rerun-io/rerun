@@ -1049,11 +1049,13 @@ impl ::prost::Name for QueryRange {
 /// Request for `FetchChunks`.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct FetchChunksRequest {
-    /// Information about the chunks to fetch. These dataframes have to include the following columns:
-    /// * `chunk_id` - Chunk unique identifier
-    /// * `segment_id` - segment this chunk belongs to. Currently needed as we pass this metadata back and forth
-    /// * `segment_layer` - specific segment layer. Currently needed as we pass this metadata back and forth
-    /// * `chunk_key` - chunk location details
+    /// Information about the chunks to fetch, concatenated across parts.
+    ///
+    /// These are a subset of the columns of
+    /// [`QueryDatasetDataframe`](crate::cloud::v1alpha1::ext::QueryDatasetDataframe), which pins
+    /// their exact types.
+    /// See [`Self::required_column_names`](crate::cloud::v1alpha1::FetchChunksRequest::required_column_names)
+    /// for the required column names. Any other column is ignored.
     #[prost(message, repeated, tag = "1")]
     pub chunk_infos: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::DataframePart>,
 }
