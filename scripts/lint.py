@@ -811,8 +811,8 @@ def is_missing_blank_line_between(prev_line: str, line: str) -> bool:
         if is_empty(prev_line) or prev_line.strip().startswith("```"):
             return False
 
-        if line.startswith("fn ") and line.endswith(";"):
-            return False  # maybe a trait function
+        if re.match(r"fn\b.*;$", line):
+            return False  # maybe a trait function or function pointer type
 
         if line.startswith("type ") and prev_line.endswith(";"):
             return False  # many type declarations in a row is fine
@@ -882,6 +882,10 @@ def test_lint_vertical_spacing() -> None:
         """
         type Response = Response<Body>;
         type Error = hyper::Error;
+        """,
+        """
+        type Callback =
+            fn(&mut egui::Ui, UiLayout, TimestampFormat, &dyn arrow::array::Array);
         """,
         """
         template<typename T>

@@ -117,6 +117,10 @@ pub type UntypedComponentEditOrViewCallback = Box<
         + Sync,
 >;
 
+/// Callback used to display Arrow data without a registered component UI.
+pub type FallbackComponentUiCallback =
+    fn(&mut egui::Ui, UiLayout, re_log_types::TimestampFormat, &dyn arrow::array::Array);
+
 /// Result of trying to show an edit UI.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TryShowEditUiResult {
@@ -151,20 +155,17 @@ pub struct ComponentUiRegistry {
     /// Implements viewing and probably editing
     component_multiline_edit_or_view:
         HashMap<ComponentUiIdentifier, UntypedComponentEditOrViewCallback>,
-}
 
-impl Default for ComponentUiRegistry {
-    fn default() -> Self {
-        Self::new()
-    }
+    fallback_ui: FallbackComponentUiCallback,
 }
 
 impl ComponentUiRegistry {
-    pub fn new() -> Self {
+    pub fn new(fallback_ui: FallbackComponentUiCallback) -> Self {
         Self {
             legacy_display_component_uis: Default::default(),
             component_singleline_edit_or_view: Default::default(),
             component_multiline_edit_or_view: Default::default(),
+            fallback_ui,
         }
     }
 
@@ -474,6 +475,7 @@ impl ComponentUiRegistry {
         + 'static,
     ) {
         let variant_name = variant_name.into();
+        let fallback_ui = self.fallback_ui;
         let untyped_callback: UntypedComponentEditOrViewCallback = Box::new(
             move |ctx, ui, component_descriptor, row_id, value, _edit_or_view| {
                 let res = callback(ctx, ui, component_descriptor.component, row_id, value);
@@ -510,6 +512,7 @@ impl ComponentUiRegistry {
         + 'static,
     ) {
         let variant_name = variant_name.into();
+        let fallback_ui = self.fallback_ui;
         let untyped_callback: UntypedComponentEditOrViewCallback = Box::new(
             move |ctx, ui, component_descriptor, row_id, value, edit_or_view| {
                 let mut current_value = arrow::array::make_array(value.to_data());
@@ -613,7 +616,7 @@ impl ComponentUiRegistry {
 
         // Component UI can only show a single instance.
         if array.is_empty() || (instance.is_all() && array.len() > 1) {
-            fallback_ui(
+            (self.fallback_ui)(
                 ui,
                 ui_layout,
                 ctx.app_options().timestamp_format,
@@ -755,7 +758,7 @@ impl ComponentUiRegistry {
             }
         }
 
-        fallback_ui(
+        (self.fallback_ui)(
             ui,
             ui_layout,
             ctx.app_options.timestamp_format,
@@ -805,7 +808,7 @@ impl ComponentUiRegistry {
 
         //TODO(ab): should we instead revert to using the component based ui?
 
-        fallback_ui(
+        (self.fallback_ui)(
             ui,
             ui_layout,
             ctx.app_options.timestamp_format,
@@ -830,7 +833,7 @@ impl ComponentUiRegistry {
             re_log::debug_once!(
                 "Variant name {variant_name} was not found, using fallback ui instead"
             );
-            fallback_ui(
+            (self.fallback_ui)(
                 ui,
                 UiLayout::List,
                 ctx.app_options.timestamp_format,
@@ -1073,14 +1076,4 @@ fn try_deserialize<C: re_sdk_types::Component>(value: &dyn arrow::array::Array) 
         re_log::warn_once!("Editor UI for {component_type} needs a start value to operate on.");
         None
     }
-}
-
-/// The ui we fall back to if everything else fails.
-fn fallback_ui(
-    ui: &mut egui::Ui,
-    ui_layout: UiLayout,
-    timestamp_format: re_log_types::TimestampFormat,
-    component: &dyn arrow::array::Array,
-) {
-    re_arrow_ui::arrow_ui(ui, ui_layout, timestamp_format, component);
 }

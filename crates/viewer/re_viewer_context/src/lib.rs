@@ -85,7 +85,8 @@ pub use self::component_fallbacks::{
     ComponentFallbackError, FallbackProviderRegistry, typed_fallback_for,
 };
 pub use self::component_ui_registry::{
-    ComponentUiRegistry, ComponentUiTypes, EditTarget, TryShowEditUiResult, VariantName,
+    ComponentUiRegistry, ComponentUiTypes, EditTarget, FallbackComponentUiCallback,
+    TryShowEditUiResult, VariantName,
 };
 pub use self::contents::{Contents, ContentsName, blueprint_id_to_tile_id};
 pub use self::drag_and_drop::{DragAndDropFeedback, DragAndDropManager, DragAndDropPayload};

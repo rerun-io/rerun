@@ -77,7 +77,7 @@ pub const REDAP_THUMBNAIL_VARIANT: &str = "redap_thumbnail";
 pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry {
     re_tracing::profile_function!();
 
-    let mut registry = re_viewer_context::ComponentUiRegistry::new();
+    let mut registry = re_viewer_context::ComponentUiRegistry::new(re_arrow_ui::arrow_ui);
 
     // Color components:
     registry.add_singleline_edit_or_view::<Color>(color::edit_rgba32);

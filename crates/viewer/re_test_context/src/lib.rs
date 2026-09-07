@@ -302,7 +302,7 @@ impl TestContext {
             TimeControl::from_blueprint(&ctx)
         };
 
-        let component_ui_registry = ComponentUiRegistry::new();
+        let component_ui_registry = ComponentUiRegistry::new(re_arrow_ui::arrow_ui);
 
         let component_fallback_registry =
             re_component_fallbacks::create_component_fallback_registry();
