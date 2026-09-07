@@ -1807,10 +1807,9 @@ impl Chunk {
                     self.entity_path, unsorted_timelines
                 );
             } else {
+                // We don't mention the entity path here to avoid log spam
                 re_log::debug_warn_once!(
-                    "Found out-of-order timelines for entity '{}': {:?}. Out-of-order timelines are sometimes unavoidable, but they may cause performance problems",
-                    self.entity_path,
-                    unsorted_timelines
+                    "Found out-of-order timelines: {unsorted_timelines:?}. Out-of-order timelines are sometimes unavoidable, but they may cause performance problems",
                 );
             }
         }

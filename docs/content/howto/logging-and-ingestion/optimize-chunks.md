@@ -31,6 +31,7 @@ This reduces metadata overhead (fewer chunks), which improves network and CPU ef
 * when the batch reaches ~1 MiB.
 
 These defaults aim to balance latency and throughput. To adjust them, see the [micro-batching documentation](../../reference/sdk/micro-batching.md).
+To measure how much latency each step of the pipeline actually adds, see [Diagnose latency and performance](../visualization/diagnose-performance.md).
 
 Micro-batching trades a bit of latency for significantly fewer chunks, improving ingestion throughput and downstream performance. While lightweight to compute, it operates with minimal context — all it sees is a small rolling window of logs — so compaction is far from optimal.
 

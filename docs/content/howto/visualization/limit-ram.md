@@ -11,3 +11,5 @@ The Rerun Viewer can not yet view more data than fits in RAM. The more data you 
 You can set the limit with the `--memory-limit` command-line argument, or the `memory_limit` argument of [`rr.spawn`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.spawn).
 
 Alternatively, you can adjust the limit for an active session also in the viewer's settings. It will be reset to the default the next time you open the viewer.
+
+To find out what is using up the memory, see [Diagnose latency and performance](diagnose-performance.md).

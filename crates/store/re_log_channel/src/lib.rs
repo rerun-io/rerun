@@ -117,6 +117,22 @@ impl LogSource {
         matches!(self, Self::RedapGrpcStream { .. })
     }
 
+    /// Could data from this source have been logged just now?
+    ///
+    /// `false` for sources that always replay data that was stored earlier,
+    /// which is what makes latency measurements meaningless.
+    /// `true` is no guarantee of liveness: stdin and the message proxy can
+    /// also carry a previously recorded stream.
+    pub fn may_be_live(&self) -> bool {
+        match self {
+            Self::File { .. }
+            | Self::HttpStream { .. }
+            | Self::RrdWebEvent
+            | Self::RedapGrpcStream { .. } => false,
+            Self::JsChannel { .. } | Self::MessageProxy { .. } | Self::Sdk | Self::Stdin => true,
+        }
+    }
+
     pub fn is_network(&self) -> bool {
         match self {
             Self::File { .. } | Self::Sdk | Self::RrdWebEvent | Self::Stdin => false,

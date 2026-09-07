@@ -4,12 +4,12 @@ use egui::{
 use emath::{Rect, RectAlign, Vec2};
 use re_format::format_uint;
 use re_renderer::WgpuResourcePoolStatistics;
-use re_sorbet::TimestampLocation;
 use re_ui::{ContextExt as _, UICommand, UiExt as _, icons};
 use re_viewer_context::{ActiveStoreContext, StoreHub, SystemCommand, SystemCommandSender as _};
 
 use crate::App;
 use crate::app_blueprint::AppBlueprint;
+use crate::dev_panel::{DevPanelTab, MAX_PLAUSIBLE_LATENCY_SEC, latency_text};
 use crate::latency_tracker::{LatencyResult, ServerLatencyTrackers};
 
 pub fn top_panel(
@@ -109,8 +109,19 @@ fn top_bar_ui(
     if !app.is_screenshotting() && !app.app_env().is_test() {
         show_warnings(frame, ui, app.app_env()); // Fixed width: put first
 
+        // Latency is only meaningful for data that could have been logged just now:
         let latency_snapshot = store_context
+            .filter(|store_context| {
+                store_context
+                    .recording
+                    .data_source
+                    .as_ref()
+                    .is_some_and(re_log_channel::LogSource::may_be_live)
+            })
             .map(|store_context| store_context.recording.ingestion_stats().latency_snapshot());
+
+        let mut show_latency_tab = false;
+        let mut show_memory_tab = false;
 
         if app.app_options().show_metrics {
             ui.separator();
@@ -119,13 +130,14 @@ fn top_bar_ui(
                 ui.spacing_mut().item_spacing.x = 12.0;
 
                 // Varying widths:
-                memory_use_label_ui(ui, gpu_resource_stats, &app.external_memory_users);
+                show_memory_tab |=
+                    memory_use_label_ui(ui, gpu_resource_stats, &app.external_memory_users);
                 frame_time_label_ui(ui, app);
                 fps_ui(ui, app);
 
                 if let Some(latency_snapshot) = latency_snapshot {
                     // Always show latency when metrics are enabled:
-                    latency_snapshot_button_ui(ui, latency_snapshot);
+                    show_latency_tab |= latency_snapshot_button_ui(ui, &latency_snapshot);
                 }
             });
         } else {
@@ -134,9 +146,9 @@ fn top_bar_ui(
                 // Should we show the e2e latency?
 
                 // High enough to be concerning; low enough to be believable (and almost realtime).
-                let is_latency_interesting = latency_snapshot
-                    .e2e()
-                    .is_some_and(|e2e| app.app_options().warn_e2e_latency < e2e && e2e < 60.0);
+                let is_latency_interesting = latency_snapshot.e2e().is_some_and(|e2e| {
+                    app.app_options().warn_e2e_latency < e2e && e2e < MAX_PLAUSIBLE_LATENCY_SEC
+                });
 
                 // Avoid flicker by showing the latency for 1 second since it was last deemed interesting:
                 if is_latency_interesting {
@@ -148,9 +160,16 @@ fn top_bar_ui(
                     .is_some_and(|instant| instant.elapsed().as_secs_f32() < 1.0)
                 {
                     ui.separator();
-                    latency_snapshot_button_ui(ui, latency_snapshot);
+                    show_latency_tab |= latency_snapshot_button_ui(ui, &latency_snapshot);
                 }
             }
+        }
+
+        if show_latency_tab {
+            app.show_dev_panel_tab(DevPanelTab::Latency);
+        }
+        if show_memory_tab {
+            app.show_dev_panel_tab(DevPanelTab::MemoryFlamegraph);
         }
 
         #[cfg(debug_assertions)]
@@ -572,11 +591,13 @@ fn fps_ui(ui: &mut egui::Ui, app: &App) {
     }
 }
 
+/// Shows the memory use of the viewer. Returns `true` if the user clicked it.
+#[must_use]
 fn memory_use_label_ui(
     ui: &mut egui::Ui,
     gpu_resource_stats: &WgpuResourcePoolStatistics,
     external_usage: &crate::external_memory::ExternalMemoryUsers,
-) {
+) -> bool {
     const CODE: &str = "use re_memory::AccountingAllocator;\n\
                         #[global_allocator]\n\
                         static GLOBAL: AccountingAllocator<std::alloc::System> =\n    \
@@ -610,11 +631,15 @@ fn memory_use_label_ui(
         // we use monospace so the width doesn't fluctuate as the numbers change.
         let bytes_used_text = re_format::format_bytes(count.size as _);
 
-        ui.label(
-            egui::RichText::new(&bytes_used_text)
-                .monospace()
-                .color(ui.visuals().weak_text_color()),
+        ui.add(
+            egui::Label::new(
+                egui::RichText::new(&bytes_used_text)
+                    .monospace()
+                    .color(ui.visuals().weak_text_color()),
+            )
+            .sense(egui::Sense::click()),
         )
+        .on_hover_cursor(egui::CursorIcon::PointingHand)
         .on_hover_ui(|ui| {
             egui::Grid::new("memory usage hover")
                 .num_columns(2)
@@ -652,8 +677,9 @@ fn memory_use_label_ui(
                     ui.end_row();
                 });
 
-            ui.weak("See dev panel for more info");
-        });
+            ui.weak("Click for a full memory breakdown");
+        })
+        .clicked()
     } else if let Some(rss) = mem.resident {
         let bytes_used_text = re_format::format_bytes(rss as _);
         click_to_copy(ui, &bytes_used_text, |ui| {
@@ -673,6 +699,7 @@ fn memory_use_label_ui(
             ui.code(CODE);
             ui.label("(click to copy to clipboard)");
         });
+        false
     } else {
         click_to_copy(ui, "N/A MiB", |ui| {
             ui.label(
@@ -682,92 +709,29 @@ fn memory_use_label_ui(
             ui.code(CODE);
             ui.label("(click to copy to clipboard)");
         });
+        false
     }
 }
 
-/// Shows the e2e latency.
-fn latency_snapshot_button_ui(
-    ui: &mut egui::Ui,
-    latency: re_entity_db::LatencySnapshot,
-) -> Option<egui::Response> {
+/// Shows the e2e latency. Returns `true` if the user clicked it.
+#[must_use]
+fn latency_snapshot_button_ui(ui: &mut egui::Ui, latency: &re_entity_db::LatencySnapshot) -> bool {
     let Some(e2e) = latency.e2e() else {
-        return None; // No e2e latency, nothing to show as a summary
+        return false; // No e2e latency, nothing to show as a summary
     };
 
-    // Unit: seconds
-    if 60.0 < e2e {
-        return None; // Probably an old recording and not live data.
+    if MAX_PLAUSIBLE_LATENCY_SEC < e2e {
+        // Either the sender's clock is off, or this is not live data.
+        return false;
     }
 
-    let text = format!("Latency: {}", latency_text(ui.visuals(), e2e).text());
-    let response = ui.weak(text);
+    let text = format!("{} latency", latency_text(ui.visuals(), e2e).text());
 
-    let response = response.on_hover_ui(|ui| {
-        latency_details_ui(ui, latency);
-    });
-
-    Some(response)
-}
-
-fn latency_details_ui(ui: &mut egui::Ui, latency: re_entity_db::LatencySnapshot) {
-    let Some(e2e) = latency.e2e() else {
-        ui.label("No latency data available.");
-        return;
-    };
-
-    // The user is interested in the latency, so keep it updated.
-    ui.request_repaint();
-
-    let e2e_hover_text = "End-to-end latency from when the data was logged by the SDK to when it is shown in the viewer.\n\
-    This includes time for encoding, network latency, and decoding.\n\
-    It is also affected by the frame rate of the viewer.\n\
-    This latency is inaccurate if the logging was done on a different machine, since it is clock-based.";
-
-    let re_entity_db::LatencySnapshot { secs_since_log } = latency;
-
-    ui.horizontal(|ui| {
-        ui.label("end-to-end:").on_hover_text(e2e_hover_text);
-        latency_label(ui, e2e);
-    });
-    ui.separator();
-
-    ui.vertical_centered(|ui| {
-        fn small_and_weak(text: &str) -> egui::RichText {
-            egui::RichText::new(text).small().weak()
-        }
-
-        ui.spacing_mut().item_spacing.y = 0.0;
-
-        let mut previous = 0.0;
-
-        ui.label(TimestampLocation::Log.to_string());
-
-        for (&location, &latency_sec) in &secs_since_log {
-            if location == TimestampLocation::Log {
-                re_log::debug_assert_eq!(latency_sec, 0.0);
-            } else {
-                let latency_since_previous = latency_sec - previous;
-                previous = latency_sec;
-
-                ui.label(small_and_weak("↓"));
-                latency_label(ui, latency_since_previous);
-                ui.label(small_and_weak("|"));
-                ui.label(location.to_string());
-            }
-        }
-    });
-}
-
-fn latency_label(ui: &mut egui::Ui, latency_sec: f32) -> egui::Response {
-    ui.label(latency_text(ui.visuals(), latency_sec))
-}
-
-fn latency_text(visuals: &egui::Visuals, latency_sec: f32) -> egui::RichText {
-    if latency_sec < 0.001 {
-        egui::RichText::new(format!("{:.0} µs", 1e6 * latency_sec))
-    } else if latency_sec < 1.0 {
-        egui::RichText::new(format!("{:.0} ms", 1e3 * latency_sec))
-    } else {
-        egui::RichText::new(format!("{latency_sec:.1} s")).color(visuals.warn_fg_color)
-    }
+    ui.add(
+        egui::Label::new(egui::RichText::new(text).color(ui.visuals().weak_text_color()))
+            .sense(egui::Sense::click()),
+    )
+    .on_hover_cursor(egui::CursorIcon::PointingHand)
+    .on_hover_text("End-to-end latency, from the `log` call in the SDK to ingestion in the viewer.\nClick for a breakdown.")
+    .clicked()
 }

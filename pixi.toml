@@ -13,7 +13,7 @@
 # dependencies in a separate .venv directory. To work with Python:
 #
 #   pixi run py-build                              # Build the rerun-sdk
-#   pixi run uv run examples/python/minimal/…   # Run Python scripts via uv
+#   pixi run uv run examples/python/minimal/….py   # Run Python scripts via uv
 #   pixi run uvpy script.py                        # Shorthand for running Python scripts
 #
 # See the [environments] section below for more details.

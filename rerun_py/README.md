@@ -130,3 +130,5 @@ RERUN_PUFFIN=1 pixi run uvpy your_script.py
 ```
 
 Save a recording from the viewer for offline analysis (use the `investigate-puffin` skill in `.claude/skills/`).
+
+For the Viewer side of things, and for tracking down streaming latency, see [Diagnose latency and performance](../docs/content/howto/visualization/diagnose-performance.md).

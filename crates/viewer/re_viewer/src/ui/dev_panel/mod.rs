@@ -1,4 +1,5 @@
 mod chunk_event_stats;
+mod latency_tab;
 mod memory_history;
 mod plot_utils;
 mod server_streaming_tab;
@@ -24,21 +25,25 @@ use crate::env_vars::RERUN_TRACK_ALLOCATIONS;
 use memory_history::MemoryHistory;
 use streaming_history::StreamingHistory;
 
+pub use latency_tab::{MAX_PLAUSIBLE_LATENCY_SEC, latency_text};
+
 // ----------------------------------------------------------------------------
 
 /// Which view to show in the dev panel.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, strum_macros::EnumIter)]
-enum DevPanelTab {
+pub enum DevPanelTab {
+    Latency,
+
     #[default]
-    Flamegraph,
+    MemoryFlamegraph,
 
-    TimeGraph,
-
-    Stores,
-
-    Streaming,
+    MemoryPlot,
 
     AllocationTracking,
+
+    Recordings,
+
+    Streaming,
 
     Gpu,
 
@@ -48,11 +53,12 @@ enum DevPanelTab {
 impl DevPanelTab {
     fn label(&self) -> &'static str {
         match self {
-            Self::Flamegraph => "Flamegraph",
-            Self::TimeGraph => "Over time",
-            Self::Stores => "Recordings",
+            Self::Latency => "Latency",
+            Self::MemoryFlamegraph => "Memory flamegraph",
+            Self::MemoryPlot => "Memory plot",
+            Self::AllocationTracking => "Allocations",
+            Self::Recordings => "Recordings",
             Self::Streaming => "Server streaming",
-            Self::AllocationTracking => "Allocation tracking",
             Self::Gpu => "GPU",
             Self::TransformCache => "Transform cache",
         }
@@ -92,6 +98,12 @@ impl DevPanel {
         if let Some(store_bundle) = store_bundle {
             self.streaming_history.capture(store_bundle);
         }
+    }
+
+    /// Show the given tab the next time the dev panel is drawn.
+    #[inline]
+    pub fn select_tab(&mut self, tab: DevPanelTab) {
+        self.selected_tab = tab;
     }
 
     /// Note that we purged memory at this time, to show in stats.
@@ -138,7 +150,7 @@ impl DevPanel {
         ui.separator();
 
         match self.selected_tab {
-            DevPanelTab::Flamegraph => {
+            DevPanelTab::MemoryFlamegraph => {
                 memory_tree_ui(
                     ui,
                     mem_usage_tree,
@@ -146,11 +158,11 @@ impl DevPanel {
                     &mut self.include_rss_in_flamegraph,
                 );
             }
-            DevPanelTab::TimeGraph => {
+            DevPanelTab::MemoryPlot => {
                 ui.label("🗠 Rerun Viewer memory use over time");
                 self.plot(ui, limit);
             }
-            DevPanelTab::Stores => {
+            DevPanelTab::Recordings => {
                 egui::ScrollArea::vertical()
                     .auto_shrink(false)
                     .show(ui, |ui| {
@@ -169,6 +181,9 @@ impl DevPanel {
                     storage_context,
                     &self.streaming_history,
                 );
+            }
+            DevPanelTab::Latency => {
+                latency_tab::latency_tab_ui(ui, store_context.map(|ctx| ctx.recording));
             }
             DevPanelTab::AllocationTracking => {
                 egui::ScrollArea::vertical()

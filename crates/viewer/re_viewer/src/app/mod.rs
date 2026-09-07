@@ -606,6 +606,12 @@ impl App {
         self.state.app_options_mut()
     }
 
+    /// Open the dev panel, showing the given tab.
+    pub fn show_dev_panel_tab(&mut self, tab: crate::dev_panel::DevPanelTab) {
+        self.dev_panel_open = true;
+        self.dev_panel.select_tab(tab);
+    }
+
     pub fn app_env(&self) -> &crate::AppEnvironment {
         &self.app_env
     }

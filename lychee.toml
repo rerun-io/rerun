@@ -85,7 +85,12 @@ exclude_path = [
 ]
 # Exclude URLs and mail addresses from checking (supports regex).
 exclude = [
-  # Skip speculative links
+  # Skip speculative links.
+  #
+  # Append `?speculative-link` to a link that is correct but not live yet,
+  # e.g. a rerun.io/docs page added by the same PR, or an API reference for an
+  # unreleased type. The release process strips these markers again,
+  # see the "Clean up documentation links" step in `RELEASES.md`.
   '.*?speculative-link',
 
   # Strings with replacements.
