@@ -121,6 +121,23 @@ impl H264Decoder {
         Ok(out)
     }
 
+    /// Collects completed frames and reports whether another frame slot is available.
+    pub fn poll(&mut self) -> Result<(bool, Vec<DecodedFrame>), DecodeError> {
+        let mut out = Vec::new();
+        let ready = match &mut self.inner {
+            DecoderInner::Vulkan(decoder) => {
+                let reorder_delay = decoder.reorder_delay();
+                let (ready, frames) = decoder.poll()?;
+                for (key, frame) in frames {
+                    self.reorder
+                        .push(key, frame.is_idr, frame, reorder_delay, &mut out);
+                }
+                ready
+            }
+        };
+        Ok((ready, out))
+    }
+
     /// Waits for the in-flight GPU work and returns the remaining buffered frames.
     ///
     /// Call this once the stream ended.

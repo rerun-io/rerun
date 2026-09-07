@@ -119,6 +119,10 @@ use crate::{
 
 #[derive(thiserror::Error, Debug, Clone, re_byte_size::SizeBytes)]
 pub enum DecodeError {
+    /// The input was not accepted. Retry it once the decoder has capacity.
+    #[error("The decoder input queue is full")]
+    Stalling,
+
     #[error("Waiting for encoding details")]
     WaitingForCodecDetails,
 
@@ -182,6 +186,8 @@ impl DecodeError {
             | Self::NoDav1dOnLinuxArm64
             | Self::RvlDecoder(_) => false,
 
+            Self::Stalling => true,
+
             // Issue with AV1 decoding.
             #[cfg(with_dav1d)]
             Self::Dav1d(_) => true,
@@ -210,7 +216,9 @@ impl DecodeError {
 
     pub fn severity(&self) -> VideoPlaybackIssueSeverity {
         match self {
-            Self::WaitingForCodecDetails => VideoPlaybackIssueSeverity::Informational,
+            Self::WaitingForCodecDetails | Self::Stalling => {
+                VideoPlaybackIssueSeverity::Informational
+            }
             #[cfg(with_dav1d)]
             Self::Dav1d(err) => match err {
                 dav1d::Error::Again => VideoPlaybackIssueSeverity::Loading,
@@ -245,6 +253,7 @@ pub trait AsyncDecoder: Send + Sync {
     /// Submits a chunk for decoding in the background.
     ///
     /// Chunks are expected to come in the order of their decoding timestamp.
+    /// [`DecodeError::Stalling`] leaves the input unaccepted and the decoder state unchanged.
     fn submit_chunk(&mut self, chunk: Chunk) -> Result<()>;
 
     /// Called after submitting the last chunk.

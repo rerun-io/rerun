@@ -2,6 +2,9 @@
 
 mod sample_decoder;
 
+#[cfg(test)]
+mod tests;
+
 use std::time::Duration;
 
 use web_time::Instant;
@@ -530,7 +533,13 @@ impl<T: Default> VideoPlayer<T> {
 
         // Ensure we have enough samples enqueued to the decoder to cover the request.
         // (This method also makes sure that the next few frames become available, so call this even if we already have the frame we want.)
-        self.enqueue_samples(video_description, requested_sample_idx, video_source)?;
+        match self.enqueue_samples(video_description, requested_sample_idx, video_source) {
+            Ok(()) => {}
+            Err(VideoPlayerError::Decoding(crate::DecodeError::Stalling)) => {
+                self.last_requested = Some(requested_sample_idx);
+            }
+            Err(err) => return Err(err),
+        }
 
         // Grab best decoded frame for the requested PTS and discard all earlier frames to save memory.
         self.sample_decoder

@@ -6,11 +6,14 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
 use re_gpu_video::GpuVideoContext;
 
-use super::sync_decoder_wrapper::{SyncDecoder, SyncDecoderWrapper};
+use super::sync_decoder_wrapper::SyncDecoder;
+
+mod worker;
 use super::{AsyncDecoder, Chunk, DecodeError, Frame, FrameContent, FrameInfo, FrameResult};
 use crate::h264::write_avc_chunk_to_nalu_stream;
 use crate::nalu::AnnexBStreamState;
 use crate::{FrameNumber, Sender, Time, VideoDataDescription, VideoSource};
+use worker::GpuDecoderWorker;
 
 #[cfg(test)]
 #[path = "gpu_video_tests.rs"]
@@ -18,10 +21,10 @@ mod tests;
 
 /// Decodes H.264 to GPU textures using the [`re_gpu_video`] backend of the render device.
 ///
-/// The backend work runs on a dedicated decoder thread via [`SyncDecoderWrapper`],
+/// The backend work runs on a dedicated decoder thread via [`GpuDecoderWorker`],
 /// frames cross the output channel as [`FrameContent::GpuTexture`].
 pub struct GpuDecoder {
-    wrapper: SyncDecoderWrapper,
+    wrapper: GpuDecoderWorker,
 
     /// `max_num_reorder_frames` of the stream's active SPS, updated by the decoder thread.
     reorder_delay: Arc<AtomicUsize>,
@@ -54,7 +57,7 @@ impl GpuDecoder {
         };
 
         Ok(Self {
-            wrapper: SyncDecoderWrapper::new(debug_name, Box::new(sync_decoder), output_sender),
+            wrapper: GpuDecoderWorker::new(debug_name, sync_decoder, output_sender),
             reorder_delay,
         })
     }

@@ -10829,6 +10829,7 @@ dependencies = [
  "cfg_aliases",
  "criterion",
  "cros-codecs",
+ "crossbeam",
  "econtext",
  "ffmpeg-sidecar",
  "getrandom 0.3.4",

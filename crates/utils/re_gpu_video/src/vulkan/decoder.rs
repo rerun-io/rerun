@@ -766,6 +766,13 @@ impl TextureDecoder {
         Ok(self.take_completed(completed))
     }
 
+    /// Collects completed frames and reports whether another frame slot is available.
+    pub fn poll(&mut self) -> Result<(bool, Vec<(i64, DecodedFrame)>), DecodeError> {
+        let completed = self.core.poll_completed()?;
+        let ready = self.core.slots[self.core.next_slot].copy_value <= completed;
+        Ok((ready, self.take_completed(completed)))
+    }
+
     /// Waits for all in-flight GPU work and returns the finished frames.
     ///
     /// Call this once the stream ended.
