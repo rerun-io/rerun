@@ -32,7 +32,7 @@ fn output_components_iter<'a>(
                 .map(|list_array| (output.component_descr.clone(), list_array)),
             ),
             Ok(None) => {
-                re_log::debug_once!(
+                re_log::trace_once!(
                     "Lens suppressed for `{target_entity}` component `{}`",
                     output.component_descr.component
                 );
@@ -59,7 +59,7 @@ fn output_timelines_iter<'a>(
         match runtime.execute_per_row(&time.selector, &input.list_array) {
             Ok(Some(list_array)) => Some(Ok((time.timeline_name, time.timeline_type, list_array))),
             Ok(None) => {
-                re_log::debug_once!(
+                re_log::trace_once!(
                     "Lens suppressed for `{target_entity}` timeline `{}`",
                     time.timeline_name,
                 );
@@ -366,7 +366,7 @@ pub fn execute<'a>(
                     ));
                 }
                 Ok(None) => {
-                    re_log::debug_once!(
+                    re_log::trace_once!(
                         "Mutate lens suppressed for `{entity_path}` component `{id}`",
                     );
                     components.remove(id);
