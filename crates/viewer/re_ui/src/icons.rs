@@ -130,6 +130,7 @@ pub const HELP: Icon = icon_from_path!("../data/icons/help.svg");
 pub const PLAY: Icon = icon_from_path!("../data/icons/play.svg");
 pub const PLAYHEAD_NAV: Icon = icon_from_path!("../data/icons/playhead_nav.svg");
 pub const PAUSE: Icon = icon_from_path!("../data/icons/pause.svg");
+pub const SKIP_TO_END: Icon = icon_from_path!("../data/icons/skip_to_end.svg");
 pub const CHEVRON: Icon = icon_from_path!("../data/icons/chevron.svg");
 pub const ARROW_LEFT: Icon = icon_from_path!("../data/icons/arrow_left.svg");
 pub const ARROW_RIGHT: Icon = icon_from_path!("../data/icons/arrow_right.svg");

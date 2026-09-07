@@ -134,6 +134,7 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
         ui.horizontal(|ui| {
             ui.spacing_mut().item_spacing.x = 5.0; // from figma
             self.play_pause_button_ui(time_ctrl, ui, time_commands);
+            self.skip_to_end_button_ui(ui, time_commands);
             self.playhead_nav_ui(ui, time_commands);
             self.loop_button_ui(time_ctrl, ui, time_commands);
         });
@@ -158,6 +159,25 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
             .clicked()
         {
             time_commands.push(TimeControlCommand::TogglePlayPause);
+        }
+    }
+
+    #[expect(clippy::unused_self)]
+    fn skip_to_end_button_ui(
+        &self,
+        ui: &mut egui::Ui,
+        time_commands: &mut Vec<TimeControlCommand>,
+    ) {
+        if ui
+            .add(
+                ReButton::icon(icons::SKIP_TO_END)
+                    .size(TIME_CONTROL_ROW_SIZE)
+                    .secondary(),
+            )
+            .on_hover_ui(|ui| RecordingCommandKind::PlaybackEndAndFollow.tooltip_ui(ui))
+            .clicked()
+        {
+            time_commands.push(TimeControlCommand::MoveEndAndFollow);
         }
     }
 

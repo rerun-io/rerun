@@ -116,7 +116,7 @@ impl RecordingCommand {
 }
 
 impl RecordingCommandKind {
-    /// Is this a "timeline" command, i.e. playback bound to a space/arrow/home/end key
+    /// Is this a "timeline" command, i.e. playback bound to a space/arrow key
     /// (or the playback-speed chord)?
     ///
     /// These keys must be consumed early (in `on_begin_pass`) so egui doesn't first use
@@ -216,20 +216,30 @@ impl RecordingCommandKind {
 
             Self::PlaybackTogglePlayPause => ("Toggle play/pause", "Either play or pause the time"),
             Self::PlaybackStepBack => (
-                "Step backwards",
-                "Move the time marker back to the previous point in time with any data",
+                "Previous event",
+                "Move the time marker back to the previous point in time that has any logged data",
             ),
             Self::PlaybackStepForward => (
-                "Step forwards",
-                "Move the time marker to the next point in time with any data",
+                "Next event",
+                "Move the time marker forward to the next point in time that has any logged data",
             ),
-            Self::PlaybackBack => ("Backward 1", "Move the time marker backward by 1 second"),
-            Self::PlaybackForward => ("Forward 1", "Move the time marker forward by 0.1 seconds"),
-            Self::PlaybackBackFast => ("Backward 10", "Move the time marker backwards by 1 second"),
-            Self::PlaybackForwardFast => {
-                ("Forward 10", "Move the time marker forwards by 0.1 seconds")
-            }
-            Self::PlaybackBeginning => ("Start of timeline", "Go to beginning of timeline"),
+            Self::PlaybackBack => (
+                "Backward 0.1s",
+                "Move the time marker backward by 0.1 seconds, or by 1 tick on a sequence timeline",
+            ),
+            Self::PlaybackForward => (
+                "Forward 0.1s",
+                "Move the time marker forward by 0.1 seconds, or by 1 tick on a sequence timeline",
+            ),
+            Self::PlaybackBackFast => (
+                "Backward 1s",
+                "Move the time marker backward by 1 second, or by 10 ticks on a sequence timeline",
+            ),
+            Self::PlaybackForwardFast => (
+                "Forward 1s",
+                "Move the time marker forward by 1 second, or by 10 ticks on a sequence timeline",
+            ),
+            Self::PlaybackBeginning => ("Start of timeline", "Go to the beginning of the timeline"),
             Self::PlaybackEndAndFollow => (
                 "End of timeline",
                 "Go to end of timeline and follow the latest data as it streams in",
@@ -282,10 +292,6 @@ impl RecordingCommandKind {
             KeyboardShortcut::new(Modifiers::COMMAND, key)
         }
 
-        fn alt(key: Key) -> KeyboardShortcut {
-            KeyboardShortcut::new(Modifiers::ALT, key)
-        }
-
         fn shift(key: Key) -> KeyboardShortcut {
             KeyboardShortcut::new(Modifiers::SHIFT, key)
         }
@@ -333,8 +339,8 @@ impl RecordingCommandKind {
             Self::PlaybackForward => smallvec![key(Key::ArrowRight)],
             Self::PlaybackBackFast => smallvec![shift(Key::ArrowLeft)],
             Self::PlaybackForwardFast => smallvec![shift(Key::ArrowRight)],
-            Self::PlaybackBeginning => smallvec![key(Key::Home)],
-            Self::PlaybackEndAndFollow => smallvec![key(Key::End), alt(Key::ArrowRight)],
+            Self::PlaybackBeginning => smallvec![cmd_shift(Key::ArrowLeft)],
+            Self::PlaybackEndAndFollow => smallvec![cmd_shift(Key::ArrowRight)],
 
             Self::PlaybackSpeed(_) => {
                 // This is a chord, so no single shortcut.
@@ -425,22 +431,18 @@ impl RecordingCommandKind {
         button
     }
 
-    /// Show name of command and how to activate it
+    /// Show what the command does and how to activate it
     pub fn tooltip_ui(self, ui: &mut egui::Ui) {
         let os = ui.os();
 
-        let (label, details) = self.text_and_tooltip();
+        ui.set_max_width(220.0);
+        ui.label(self.tooltip());
 
         if let Some(shortcut) = self.primary_kb_shortcut(os) {
             crate::Help::new_without_title()
-                .control(label, crate::IconText::from_keyboard_shortcut(os, shortcut))
+                .control("", crate::IconText::from_keyboard_shortcut(os, shortcut))
                 .ui(ui);
-        } else {
-            ui.label(label);
         }
-
-        ui.set_max_width(220.0);
-        ui.label(details);
     }
 
     /// A chord for setting the playback speed: type e.g. `5` then `0` for 50x speed.

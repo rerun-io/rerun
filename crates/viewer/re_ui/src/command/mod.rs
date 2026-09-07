@@ -107,7 +107,7 @@ pub fn listen_for_kb_shortcuts(
                 .into_iter()
                 .map(move |kb_shortcut| (kb_shortcut, Matched::Ui(cmd)))
         }),
-        // Timeline commands (space/arrows/home/end) are consumed earlier, in `on_begin_pass`
+        // Timeline commands (space/arrows) are consumed earlier, in `on_begin_pass`
         // via `consume_timeline_shortcut`, so exclude them here to avoid handling them twice.
         RecordingCommandKind::iter()
             .filter(|kind| !kind.is_timeline())
