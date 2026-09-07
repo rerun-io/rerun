@@ -199,14 +199,6 @@ pub fn icon_for_container_kind(kind: &egui_tiles::ContainerKind) -> &'static re_
     }
 }
 
-/// The style to use for displaying this view name in the UI.
-pub fn contents_name_style(name: &ContentsName) -> re_ui::LabelStyle {
-    match name {
-        ContentsName::Named(_) => re_ui::LabelStyle::Normal,
-        ContentsName::Placeholder(_) => re_ui::LabelStyle::Unnamed,
-    }
-}
-
 /// Info given to egui when taking a screenshot.
 ///
 /// Specified what we are screenshotting.

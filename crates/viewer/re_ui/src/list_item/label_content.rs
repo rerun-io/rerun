@@ -7,7 +7,7 @@ use super::{
     ContentContext, DesiredWidth, ListItemContent, ListItemContentButtonsExt, ListVisuals,
 };
 use crate::list_item::item_buttons::ItemButtons;
-use crate::{DesignTokens, Icon, LabelStyle, UiExt as _};
+use crate::{DesignTokens, Icon, UiExt as _};
 
 /// [`ListItemContent`] that displays a simple label with optional icon and buttons.
 #[expect(clippy::type_complexity)]
@@ -20,7 +20,6 @@ pub struct LabelContent<'a> {
     italics: bool,
     strong: bool,
 
-    label_style: LabelStyle,
     icon_fn: Option<Box<dyn FnOnce(&mut egui::Ui, egui::Rect, ListVisuals) + 'a>>,
     buttons: ItemButtons<'a>,
 
@@ -38,7 +37,6 @@ impl<'a> LabelContent<'a> {
             italics: false,
             strong: false,
 
-            label_style: Default::default(),
             icon_fn: None,
             buttons: ItemButtons::default(),
 
@@ -90,16 +88,6 @@ impl<'a> LabelContent<'a> {
     #[inline]
     pub fn strong(mut self, strong: bool) -> Self {
         self.strong = strong;
-        self
-    }
-
-    /// Style the label for an unnamed items.
-    ///
-    /// The styling is applied on top of to [`Self::weak`] and [`Self::subdued`]. It also implies [`Self::italics`].
-    // TODO(ab): should use design token instead
-    #[inline]
-    pub fn label_style(mut self, style: crate::LabelStyle) -> Self {
-        self.label_style = style;
         self
     }
 
@@ -162,7 +150,6 @@ impl ListItemContent for LabelContent<'_> {
             weak,
             italics,
             strong,
-            label_style,
             icon_fn,
             buttons,
             text_wrap_mode: _,
@@ -182,7 +169,7 @@ impl ListItemContent for LabelContent<'_> {
         }
 
         // text styling
-        if italics || label_style == LabelStyle::Unnamed {
+        if italics {
             text = text.italics();
         }
 
@@ -238,7 +225,7 @@ impl ListItemContent for LabelContent<'_> {
         let measured_width = {
             //TODO(ab): ideally there wouldn't be as much code duplication with `Self::ui`
             let mut text = self.text.clone();
-            if self.italics || self.label_style == LabelStyle::Unnamed {
+            if self.italics {
                 text = text.italics();
             }
 

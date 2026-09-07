@@ -11,7 +11,7 @@ use re_ui::syntax_highlighting::{
 use re_ui::{HasDesignTokens as _, SyntaxHighlighting as _, icons};
 use re_viewer_context::{
     ContainerId, Contents, DataResultInteractionAddress, Item, RedapEntryKind, ViewId,
-    ViewerContext, contents_name_style,
+    ViewerContext,
 };
 use re_viewport_blueprint::ViewportBlueprint;
 
@@ -33,7 +33,6 @@ pub fn is_component_static(ctx: &ViewerContext<'_>, component_path: &ComponentPa
 pub struct ItemTitle {
     pub icon: &'static re_ui::Icon,
     pub label: egui::WidgetText,
-    pub label_style: Option<re_ui::LabelStyle>,
     pub tooltip: Option<WidgetText>,
 }
 
@@ -216,7 +215,6 @@ impl ItemTitle {
                 container_name.as_ref(),
                 re_viewer_context::icon_for_container_kind(&container_blueprint.container_kind),
             )
-            .with_label_style(contents_name_style(&container_name))
             .with_tooltip(hover_text)
         } else {
             Self::new(
@@ -247,7 +245,6 @@ impl ItemTitle {
                 view_name.as_ref(),
                 view.class(ctx.view_class_registry()).icon(),
             )
-            .with_label_style(contents_name_style(&view_name))
             .with_tooltip(hover_text)
         } else {
             Self::new(format!("Unknown view {view_id}"), &icons::VIEW_UNKNOWN)
@@ -257,11 +254,7 @@ impl ItemTitle {
 
     /// The icon, label and label style as the content of a list item.
     pub fn to_label_content(&self) -> LabelContent<'static> {
-        let mut content = LabelContent::new(self.label.clone()).with_icon(self.icon);
-        if let Some(label_style) = self.label_style {
-            content = content.label_style(label_style);
-        }
-        content
+        LabelContent::new(self.label.clone()).with_icon(self.icon)
     }
 
     /// The icon and the label as atoms, ready for a button or a label.
@@ -280,19 +273,12 @@ impl ItemTitle {
             label: name.into(),
             tooltip: None,
             icon,
-            label_style: None,
         }
     }
 
     #[inline]
     fn with_tooltip(mut self, tooltip: impl Into<WidgetText>) -> Self {
         self.tooltip = Some(tooltip.into());
-        self
-    }
-
-    #[inline]
-    fn with_label_style(mut self, label_style: re_ui::LabelStyle) -> Self {
-        self.label_style = Some(label_style);
         self
     }
 }

@@ -216,7 +216,6 @@ fn instance_path_button_to_ex(
             instance_path_icon(ctx, instance_path),
             text,
             ctx.is_selected_or_loading(&item),
-            re_ui::LabelStyle::Normal,
         )
     } else {
         ui.selectable_label(ctx.is_selected_or_loading(&item), text)
@@ -487,7 +486,6 @@ pub fn app_id_button_ui(
         &icons::APPLICATION,
         app_id.to_string(),
         ctx.is_selected_or_loading(&item),
-        re_ui::LabelStyle::Normal,
     );
 
     let response = response.on_hover_ui(|ui| {
@@ -508,7 +506,6 @@ pub fn data_source_button_ui(
         &icons::DATA_SOURCE,
         data_source.to_string(),
         ctx.is_selected_or_loading(&item),
-        re_ui::LabelStyle::Normal,
     );
 
     let response = response.on_hover_ui(|ui| {

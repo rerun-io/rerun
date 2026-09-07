@@ -18,7 +18,7 @@ use re_viewer_context::{
     DataResultInteractionAddress, HoverHighlight, Item, RecommendedVisualizers, StoreViewContext,
     SystemCommand, SystemCommandSender as _, UiLayout, ViewContext, ViewId, ViewStates,
     ViewSystemIdentifier, ViewerContext, VisualizerInstruction, VisualizerViewReport,
-    contents_name_style, icon_for_container_kind,
+    icon_for_container_kind,
 };
 use re_viewport_blueprint::ViewportBlueprint;
 use re_viewport_blueprint::ui::show_add_view_or_container_modal;
@@ -1180,7 +1180,6 @@ fn list_existing_data_blueprints(
                                 class.icon(),
                                 view_name.as_ref(),
                                 is_selected,
-                                contents_name_style(&view_name),
                             )
                             .on_hover_text(format!("{} view", class.display_name()));
 
@@ -1399,7 +1398,6 @@ fn show_list_item_for_container_child(
             (
                 Item::View(*view_id),
                 list_item::LabelContent::new(view_name.as_ref())
-                    .label_style(contents_name_style(&view_name))
                     .with_icon(view.class(ctx.view_class_registry()).icon())
                     .with_buttons(|ui| {
                         let response = ui
@@ -1423,7 +1421,6 @@ fn show_list_item_for_container_child(
             (
                 Item::Container(*container_id),
                 list_item::LabelContent::new(container_name.as_ref())
-                    .label_style(contents_name_style(&container_name))
                     .with_icon(icon_for_container_kind(&container.container_kind))
                     .with_buttons(|ui| {
                         let response = ui

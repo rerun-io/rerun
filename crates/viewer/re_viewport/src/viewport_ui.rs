@@ -513,7 +513,6 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
 
     fn tab_title_for_pane(&mut self, view_id: &ViewId) -> egui::WidgetText {
         if let Some(view) = self.viewport_blueprint.view(view_id) {
-            // Note: the formatting for unnamed views is handled by `TabWidget::new()`
             view.display_name_or_default().as_ref().into()
         } else {
             // All panes are views, so this shouldn't happen unless we have a bug
@@ -970,7 +969,6 @@ struct TabWidget {
     icon_rect: egui::Rect,
     bg_color: egui::Color32,
     text_color: egui::Color32,
-    unnamed_style: bool,
     label: Option<String>,
 }
 
@@ -987,7 +985,6 @@ impl TabWidget {
 
         struct TabDesc {
             widget_text: egui::WidgetText,
-            user_named: bool,
             icon: &'static re_ui::Icon,
             item: Option<Item>,
             label: Option<String>,
@@ -998,7 +995,6 @@ impl TabWidget {
                 if let Some(view) = tab_viewer.viewport_blueprint.view(view_id) {
                     TabDesc {
                         widget_text: tab_viewer.tab_title_for_pane(view_id),
-                        user_named: view.display_name.is_some(),
                         icon: view.class(tab_viewer.ctx.view_class_registry()).icon(),
                         item: Some(Item::View(*view_id)),
                         label: Some(view.display_name_or_default().into()),
@@ -1009,7 +1005,6 @@ impl TabWidget {
                     TabDesc {
                         widget_text: tab_viewer.ctx.egui_ctx().error_text("Unknown view").into(),
                         icon: &re_ui::icons::VIEW_GENERIC,
-                        user_named: false,
                         item: None,
                         label: None,
                     }
@@ -1019,31 +1014,24 @@ impl TabWidget {
                 if let Some(Contents::Container(container_id)) =
                     tab_viewer.contents_per_tile_id.get(&tile_id)
                 {
-                    let (label, user_named) = if let Some(container_blueprint) =
+                    let label = if let Some(container_blueprint) =
                         tab_viewer.viewport_blueprint.container(container_id)
                     {
-                        (
-                            container_blueprint
-                                .display_name_or_default()
-                                .as_ref()
-                                .into(),
-                            container_blueprint.display_name.is_some(),
-                        )
+                        container_blueprint
+                            .display_name_or_default()
+                            .as_ref()
+                            .into()
                     } else {
                         re_log::warn_once!("Container {container_id} missing during egui_tiles");
-                        (
-                            tab_viewer
-                                .ctx
-                                .egui_ctx()
-                                .error_text("Internal error")
-                                .into(),
-                            false,
-                        )
+                        tab_viewer
+                            .ctx
+                            .egui_ctx()
+                            .error_text("Internal error")
+                            .into()
                     };
 
                     TabDesc {
                         widget_text: label,
-                        user_named,
                         icon: icon_for_container_kind(&container.kind()),
                         item: Some(Item::Container(*container_id)),
                         label: None,
@@ -1067,7 +1055,6 @@ impl TabWidget {
                             .error_text("Unknown container")
                             .into(),
                         icon: &re_ui::icons::VIEW_GENERIC,
-                        user_named: false,
                         item: None,
                         label: None,
                     }
@@ -1083,7 +1070,6 @@ impl TabWidget {
                         .error_text("Internal error")
                         .into(),
                     icon: &re_ui::icons::VIEW_UNKNOWN,
-                    user_named: false,
                     item: None,
                     label: None,
                 }
@@ -1104,11 +1090,20 @@ impl TabWidget {
         let icon_width_plus_padding = icon_size.x + tokens.text_to_icon_padding();
 
         // tab title
-        let text = if tab_desc.user_named {
-            tab_desc.widget_text
+        //
+        // Note that we used to distinguish named & unnamed tabs:
+        // But we concluded by now that whether someone typed the name or it came from the
+        // origin is not something the reader is trying to tell apart.
+        //
+        // `strong` bakes its own color into the galley, which the painter cannot override
+        // afterwards, so the tab's color has to be stated here.
+        let text_color = if selected {
+            tokens.viewport_tab_selected_text_color
         } else {
-            tab_desc.widget_text.italics() // TODO(ab): use design tokens
-        };
+            tab_viewer.tab_text_color(ui.visuals(), tiles, tile_id, tab_state)
+        }
+        .gamma_multiply(alpha);
+        let text = tab_desc.widget_text.strong().color(text_color);
 
         let font_id = egui::TextStyle::Button.resolve(ui.style());
         let galley = text.into_galley(ui, Some(egui::TextWrapMode::Extend), f32::INFINITY, font_id);
@@ -1137,18 +1132,7 @@ impl TabWidget {
             tab_viewer.tab_bar_color(ui.visuals())
         };
 
-        let text_color = if selected {
-            if hovered {
-                ui.tokens().text_color_on_primary_hovered
-            } else {
-                ui.tokens().text_color_on_primary
-            }
-        } else {
-            tab_viewer.tab_text_color(ui.visuals(), tiles, tile_id, tab_state)
-        };
-
         let bg_color = bg_color.gamma_multiply(alpha);
-        let text_color = text_color.gamma_multiply(alpha);
 
         Self {
             galley,
@@ -1159,7 +1143,6 @@ impl TabWidget {
             icon_rect,
             bg_color,
             text_color,
-            unnamed_style: !tab_desc.user_named,
             label: tab_desc.label,
         }
     }
@@ -1174,19 +1157,12 @@ impl TabWidget {
             .tint(self.text_color);
         icon_image.paint_at(ui, self.icon_rect);
 
-        //TODO(ab): use design tokens
-        let label_color = if self.unnamed_style {
-            self.text_color.gamma_multiply(0.5)
-        } else {
-            self.text_color
-        };
-
         ui.painter().galley(
             egui::Align2::CENTER_CENTER
                 .align_size_within_rect(self.galley.size(), self.galley_rect)
                 .min,
             self.galley,
-            label_color,
+            self.text_color,
         );
     }
 }

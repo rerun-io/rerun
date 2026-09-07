@@ -217,15 +217,6 @@ impl RightPanel {
                     )
                     .on_hover_text("The styling applies to the icon.");
 
-                ui.list_item()
-                    .show_hierarchical(
-                        ui,
-                        list_item::LabelContent::new("LabelContent with LabelStyle")
-                            .label_style(re_ui::LabelStyle::Unnamed)
-                            .with_icon(&re_ui::icons::VIEW_2D),
-                    )
-                    .on_hover_text("The LabelStyle doesn't apply to the icon.");
-
                 ui.list_item().show_hierarchical(
                     ui,
                     list_item::LabelContent::new("LabelContent with buttons").with_buttons(|ui| {

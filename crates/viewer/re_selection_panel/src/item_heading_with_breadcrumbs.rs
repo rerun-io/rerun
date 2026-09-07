@@ -596,7 +596,6 @@ fn selected_crumb_ui(
     let ItemTitle {
         icon,
         label,
-        label_style: _,
         tooltip,
     } = ItemTitle::from_item(ctx, viewport, ui.style(), item);
 
@@ -656,8 +655,7 @@ fn viewport_breadcrumbs(
 
     let ItemTitle {
         icon,
-        label: _,       // ignored: we just show the icon for breadcrumbs
-        label_style: _, // no label
+        label: _, // ignored: we just show the icon for breadcrumbs
         tooltip,
     } = ItemTitle::from_contents(ctx, viewport, &contents);
 

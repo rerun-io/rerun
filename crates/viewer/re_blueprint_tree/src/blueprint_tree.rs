@@ -11,7 +11,7 @@ use re_viewer_context::{
     CollapseScope, ContainerId, Contents, DataResultInteractionAddress, DragAndDropFeedback,
     DragAndDropPayload, HoverHighlight, Item, ItemCollection, ItemContext, SystemCommand,
     SystemCommandSender as _, ViewId, ViewStates, ViewerContext, ViewerReportSeverity,
-    VisitorControlFlow, VisualizerViewReport, contents_name_style, icon_for_container_kind,
+    VisitorControlFlow, VisualizerViewReport, icon_for_container_kind,
 };
 use re_viewport_blueprint::ViewportBlueprint;
 use smallvec::SmallVec;
@@ -227,7 +227,7 @@ impl BlueprintTree {
                     "Viewport ({})",
                     container_data.name.as_ref()
                 ))
-                .label_style(contents_name_style(&container_data.name))
+                .strong(true)
                 .with_icon(icon_for_container_kind(&container_data.kind))
                 .subdued(!container_data.visible)
                 .with_buttons(|ui| {
@@ -333,7 +333,7 @@ impl BlueprintTree {
 
         let item_content = list_item::LabelContent::new(container_data.name.as_ref())
             .subdued(!container_visible)
-            .label_style(contents_name_style(&container_data.name))
+            .strong(true)
             .with_icon(icon_for_container_kind(&container_data.kind))
             .with_buttons(|ui| {
                 visibility_button_ui(ui, parent_visible, &mut visible);
@@ -432,7 +432,7 @@ impl BlueprintTree {
         };
 
         let item_content = item_content
-            .label_style(contents_name_style(&view_data.name))
+            .strong(true)
             .with_icon(class.icon())
             .subdued(!view_visible)
             .with_buttons(|ui| {

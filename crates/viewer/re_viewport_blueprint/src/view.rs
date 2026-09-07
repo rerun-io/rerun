@@ -125,10 +125,9 @@ impl ViewBlueprint {
         }
     }
 
-    /// Returns this view's display name
+    /// Returns this view's display name.
     ///
-    /// When returning [`ContentsName::Placeholder`], the UI should display the resulting name using
-    /// `re_ui::LabelStyle::Unnamed`.
+    /// Returns [`ContentsName::Placeholder`] when no display name has been set.
     pub fn display_name_or_default(&self) -> ContentsName {
         self.display_name.clone().map_or_else(
             || ContentsName::Placeholder(self.missing_name_placeholder()),

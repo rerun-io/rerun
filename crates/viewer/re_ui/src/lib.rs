@@ -183,19 +183,6 @@ pub struct TopBarStyle {
     pub indent: f32,
 }
 
-/// The style of a label.
-///
-/// This should be used for all UI widgets that support these styles.
-#[derive(Default, Clone, Copy, Debug, PartialEq, Eq)]
-pub enum LabelStyle {
-    /// Regular style for a label.
-    #[default]
-    Normal,
-
-    /// Label displaying the placeholder text for a yet unnamed item (e.g. an unnamed view).
-    Unnamed,
-}
-
 // ----------------------------------------------------------------------------
 
 pub fn design_tokens_of_visuals(visuals: &egui::Visuals) -> &'static DesignTokens {

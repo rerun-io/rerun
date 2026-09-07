@@ -265,6 +265,7 @@ pub struct DesignTokens {
     pub bottom_bar_color: Color32,
     pub shadow_gradient_dark_start: Color32,
     pub tab_bar_color: Color32,
+    pub viewport_tab_selected_text_color: Color32,
     pub native_frame_stroke: Stroke,
     pub windows_close_button_hover_color: Color32,
 
@@ -600,6 +601,7 @@ impl DesignTokens {
             bottom_bar_color: get_color("bottom_bar_color"),
             shadow_gradient_dark_start: get_color("shadow_gradient_dark_start"),
             tab_bar_color: get_color("tab_bar_color"),
+            viewport_tab_selected_text_color: get_color("viewport_tab_selected_text_color"),
             native_frame_stroke: get_stroke("native_frame_stroke"),
             windows_close_button_hover_color: get_color("windows_close_button_hover_color"),
             strong_fg_color: get_color("strong_fg_color"),

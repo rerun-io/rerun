@@ -33,6 +33,9 @@
     "tab_bar_color": {
       "color": "{Gray.200}"
     },
+    "viewport_tab_selected_text_color": {
+      "color": "{Gray.1000}"
+    },
     "bottom_bar_color": {
       "color": "{Gray.150}"
     },

@@ -326,10 +326,9 @@ impl ContainerBlueprint {
         .to_owned()
     }
 
-    /// Returns this container's display name
+    /// Returns this container's display name.
     ///
-    /// When returning [`ContentsName::Placeholder`], the UI should display the resulting name using
-    /// `re_ui::LabelStyle::Unnamed`.
+    /// Returns [`ContentsName::Placeholder`] when no display name has been set.
     #[inline]
     pub fn display_name_or_default(&self) -> ContentsName {
         self.display_name.clone().map_or_else(

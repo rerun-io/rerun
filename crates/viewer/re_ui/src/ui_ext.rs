@@ -7,7 +7,7 @@ use egui::{CornerRadius, emath::GuiRounding as _};
 use crate::alert::Alert;
 use crate::button::ReButton;
 use crate::list_item::{self, LabelContent};
-use crate::{ContextExt as _, DesignTokens, Icon, LabelStyle, Size, Variant, icons};
+use crate::{ContextExt as _, DesignTokens, Icon, Size, Variant, icons};
 
 static FULL_SPAN_TAG: &str = "rerun_full_span";
 
@@ -706,19 +706,9 @@ pub trait UiExt {
         icon: &Icon,
         text: impl Into<egui::WidgetText>,
         selected: bool,
-        style: LabelStyle,
     ) -> egui::Response {
-        let mut text = text.into();
+        let text = text.into();
         let ui = self.ui_mut();
-        let text_color = ui.visuals().text_color();
-        match style {
-            LabelStyle::Normal => {}
-            LabelStyle::Unnamed => {
-                // TODO(ab): use design tokens
-                let text_color = text_color.gamma_multiply(0.5);
-                text = text.italics().color(text_color);
-            }
-        }
         let raw_text = text.text().to_owned();
 
         let button = || {
