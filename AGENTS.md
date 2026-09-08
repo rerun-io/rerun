@@ -48,6 +48,19 @@ We use `pixi` for task management and dependency installation. Check `pixi.toml`
   - Update from failed CI run: `./scripts/update_snapshots_from_ci.sh`
   - Best practices: see [egui_kittest README](https://github.com/emilk/egui/tree/master/crates/egui_kittest#snapshot-testing)
 
+### Driving a running egui UI (for agents)
+
+Two MCP servers let an agent see and click a running UI instead of guessing from code:
+
+- `rerun viewer-mcp` drives a running Rerun Viewer over gRPC. See `docs/content/reference/viewer/mcp.md`.
+- `egui-mcp` drives *any* egui app started with `EGUI_INSPECTION=1`, including our example apps and headless `egui_kittest` harnesses.
+  It exposes `attach`, `query_tree`, `click`, `type_text`, `screenshot`, `wait_for`, and friends.
+  Both are configured in the repo-root `.mcp.json`; install with `cargo install --git https://github.com/rerun-io/kittest_inspector egui_mcp`.
+
+Typical loop: start the app with `EGUI_INSPECTION=1`, call `attach` (host `127.0.0.1`, port `5719`), `query_tree` to find widgets, `click`/`type_text`, then `screenshot` with a `save_path` and look at the image.
+`egui-mcp` needs the app to paint frames: windowed apps must not be occluded on macOS, so prefer a headless harness where one exists.
+A headless `egui_kittest` harness can opt in with `egui_inspection::attach_from_env(&harness.ctx, label)`.
+
 ## Code generation system
 
 **Critical: Never edit generated files directly.** All generated files are marked "DO NOT EDIT" at the top.
