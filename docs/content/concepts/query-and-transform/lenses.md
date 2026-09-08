@@ -4,9 +4,6 @@ order: 400
 description: Extract, reshape, and reroute component data on the fly
 ---
 
-> [!NOTE]
-> The Lenses API is currently experimental and may change in future releases.
-
 Lenses transform data by extracting, reshaping, and rerouting components.
 They produce new component columns, entity paths, or timelines from existing data.
 
