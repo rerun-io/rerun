@@ -1,7 +1,7 @@
 ---
 title: Chunk Processing API
 order: 750
-description: Pipelines for ingesting, transforming, and converting chunks (experimental)
+description: Pipelines for ingesting, transforming, and converting chunks
 ---
 
 The Chunk Processing API is a flexible, [chunk](chunks.md)-centric API for data ingestion, transformation, and conversion pipelines.
@@ -9,7 +9,8 @@ It covers I/O from common robotics file formats, powerful declarative data wrang
 The API is designed to support distributed execution in the future.
 
 > [!NOTE]
-> The Chunk Processing API is currently experimental and may change in future releases. It is available in the Python SDK under `rerun.experimental`.
+> The core Chunk Processing API, including `McapReader` and `RrdReader`, is available in the Python SDK under `rerun.chunk`.
+> Readers that are still experimental, such as `Hdf5Reader`, `ParquetReader`, and `Mp4Reader`, remain under `rerun.experimental`.
 
 ## Building blocks
 
@@ -24,16 +25,16 @@ The Chunk Processing API is built from three kinds of primitives — readers, st
 
 Readers produce [`Chunk`](chunks.md)s from external sources such as files, or datasets hosted on a catalog server.
 
-In some cases, readers are classes provided by the Chunk Processing API, such as [`RrdReader`](https://ref.rerun.io/docs/python/stable/experimental/#rerun.chunk.RrdReader) and [`McapReader`](https://ref.rerun.io/docs/python/stable/experimental/#rerun.chunk.McapReader).
+In some cases, readers are classes provided by the Chunk Processing API, such as [`RrdReader`](https://ref.rerun.io/docs/python/stable/chunk?speculative-link#rerun.chunk.RrdReader) and [`McapReader`](https://ref.rerun.io/docs/python/stable/chunk?speculative-link#rerun.chunk.McapReader).
 The reader functionality can also be provided by classes from other parts of the Rerun SDK.
-For example, [`DatasetEntry`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.DatasetEntry) has a [`segment_store`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.DatasetEntry.segment_store) method which returns a [`LazyStore`](https://ref.rerun.io/docs/python/stable/experimental/#rerun.chunk.LazyStore) for the corresponding segment (see the [catalog object model](../query-and-transform/catalog-object-model.md) for more information on datasets).
+For example, [`DatasetEntry`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.DatasetEntry) has a [`segment_store`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.DatasetEntry.segment_store) method which returns a [`LazyStore`](https://ref.rerun.io/docs/python/stable/chunk?speculative-link#rerun.chunk.LazyStore) for the corresponding segment (see the [catalog object model](../query-and-transform/catalog-object-model.md) for more information on datasets).
 [`UrdfTree`](https://ref.rerun.io/docs/python/stable/urdf/#rerun.urdf.UrdfTree) is another example of a class that offers reader functionality in addition to a larger feature set.
 
 There are two ways in which a reader may provide chunks.
 All readers can sequentially stream all their source's chunks, typically via the `stream()` method.
 Internally, such readers typically parse the source file, convert data to chunks as it is extracted, and yield those chunks as they are produced.
 
-Some readers, called [`IndexedReader`](https://ref.rerun.io/docs/python/stable/experimental/#rerun.chunk.IndexedReader), can also provide indexed, random access to chunks via a [`LazyStore`](https://ref.rerun.io/docs/python/stable/experimental/#rerun.chunk.LazyStore).
+Some readers, called [`IndexedReader`](https://ref.rerun.io/docs/python/stable/chunk?speculative-link#rerun.chunk.IndexedReader), can also provide indexed, random access to chunks via a [`LazyStore`](https://ref.rerun.io/docs/python/stable/chunk?speculative-link#rerun.chunk.LazyStore).
 This is typically implemented on top of an existing chunk index, and is currently available for the following readers:
 - `RrdReader` (relies on the RRD footer index) <!-- TODO(ab) link doc page about that when we have it -->
 - `DatasetEntry.segment_store()` (relies on the chunk index maintained by the catalog server)
@@ -50,8 +51,8 @@ In all cases, readers typically act as the root of a processing pipeline and pro
 
 A store is a collection of chunks and comes in two complementary flavors:
 
-- **[`LazyStore`](https://ref.rerun.io/docs/python/stable/experimental/#rerun.chunk.LazyStore)** — index-based, on-demand. Returned by indexed loaders such as `RrdReader(path).store()` and `DatasetEntry.segment_store()`.
-- **[`ChunkStore`](https://ref.rerun.io/docs/python/stable/experimental/#rerun.chunk.ChunkStore)** — fully materialized, all chunks held in memory. Build one with `ChunkStore.from_chunks([...])`, or materialize a stream via `stream.collect()`.
+- **[`LazyStore`](https://ref.rerun.io/docs/python/stable/chunk?speculative-link#rerun.chunk.LazyStore)** — index-based, on-demand. Returned by indexed loaders such as `RrdReader(path).store()` and `DatasetEntry.segment_store()`.
+- **[`ChunkStore`](https://ref.rerun.io/docs/python/stable/chunk?speculative-link#rerun.chunk.ChunkStore)** — fully materialized, all chunks held in memory. Build one with `ChunkStore.from_chunks([...])`, or materialize a stream via `stream.collect()`.
 
 
 The previous section already hinted at the perks of `LazyStore`. Being index-based, it is cheap to create and takes limited amounts of memory.
@@ -67,7 +68,7 @@ Both kinds of stores share a common API surface, including:
 
 One common reason to materialize a `ChunkStore` is to run chunk optimization; see [Optimize chunk count](../../howto/logging-and-ingestion/optimize-chunks.md#compacting-chunks-with-the-chunk-processing-api) for details.
 
-A materialized `ChunkStore` can also be queried directly as a dataframe with [`ChunkStore.reader`](https://ref.rerun.io/docs/python/stable/experimental/#rerun.chunk.ChunkStore.reader), without spinning up a catalog server.
+A materialized `ChunkStore` can also be queried directly as a dataframe with [`ChunkStore.reader`](https://ref.rerun.io/docs/python/stable/chunk?speculative-link#rerun.chunk.ChunkStore.reader), without spinning up a catalog server.
 The returned [DataFusion](https://datafusion.apache.org/) dataframe is data-equivalent to loading the same chunks into a dataset and calling its `reader()`, so the full [dataframe query API](../query-and-transform/dataframe-queries.md) applies — modulo the `rerun_segment_id` column (see the [catalog object model](../query-and-transform/catalog-object-model.md) for more information about datasets and segments).
 
 For example, first materialize a store (here built a single chunk, for illustration):
@@ -139,7 +140,7 @@ Full source: [Python](https://github.com/rerun-io/rerun/blob/main/docs/snippets/
 
 snippet: concepts/chunk_processing[setup]
 
-- Imports the experimental entry points: readers (`McapReader`), chunk and stream types (`Chunk`, `LazyChunkStream`), lens primitives (`DeriveLens`, `Selector`).
+- Imports the Chunk Processing API entry points: readers (`McapReader`), chunk and stream types (`Chunk`, `LazyChunkStream`), lens primitives (`DeriveLens`, `Selector`).
 - Locates the input MCAP relative to the repo root and picks a CWD-relative output path. Nothing here touches Rerun yet.
 
 ### Reading
