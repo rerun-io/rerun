@@ -76,8 +76,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 );
 
             // Register the custom view class and its visualizer/fallbacks.
-            app.add_view_class::<points3d_color_view::ColorCoordinatesView>()
-                .unwrap();
+            app.add_view_class::<points3d_color_view::ColorCoordinatesView>(
+                rerun::reflection::ViewReflection {
+                    applicability: rerun::reflection::ViewApplicability::Archetypes(vec![
+                        <rerun::archetypes::Points3D as rerun::Archetype>::name(),
+                    ]),
+                },
+            )
+            .unwrap();
 
             Ok(Box::new(app))
         }),

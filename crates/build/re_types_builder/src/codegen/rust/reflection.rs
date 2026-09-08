@@ -2,15 +2,14 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fmt::Write as _;
 
 use camino::Utf8PathBuf;
-use itertools::Itertools as _;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
 use super::util::{append_tokens, doc_as_lines};
 use crate::codegen::{Target, autogen_warning};
-use crate::{ObjectKind, Objects, Reporter, RerunAttr, RustAttr};
+use crate::{DocsAttr, ObjectKind, Objects, Reporter, RerunAttr, RustAttr};
 
-/// Generate reflection about components and archetypes.
+/// Generate reflection about components, archetypes, and views.
 pub fn generate_reflection(
     reporter: &Reporter,
     objects: &Objects,
@@ -30,6 +29,7 @@ pub fn generate_reflection(
         &mut imports,
     );
     let archetype_reflection = generate_archetype_reflection(reporter, objects);
+    let view_reflection = generate_view_reflection(objects);
 
     let mut code = format!("// {}\n\n", autogen_warning!());
     code.push_str("#![allow(clippy::allow_attributes)]\n");
@@ -46,6 +46,7 @@ pub fn generate_reflection(
         use re_types_core::{
             ArchetypeName,
             ComponentType,
+            ViewClassIdentifier,
             Component,
             ArrowDataType as _,
             FromArrow as _,
@@ -60,11 +61,14 @@ pub fn generate_reflection(
                 ComponentReflectionMap,
                 ComponentTypeSet,
                 Reflection,
+                ViewApplicability,
+                ViewReflection,
+                ViewReflectionMap,
             },
             SerializationError,
         };
 
-        #[doc = "Reflection about all known components and archetypes."]
+        #[doc = "Reflection about all known components, archetypes, and views."]
         #[doc = ""]
         #[doc = "Built on first use and shared from then on."]
         #[doc = "Clone it if you need to extend it, as the viewer does for custom archetypes."]
@@ -88,7 +92,8 @@ pub fn generate_reflection(
                 components: generate_component_reflection()
                     .expect("Failed to serialize the component placeholders — this is a bug in Rerun"),
                 component_identifiers: generate_component_identifier_reflection(&archetypes),
-                archetypes
+                archetypes,
+                views: generate_view_reflection(),
             }
         }
 
@@ -111,6 +116,8 @@ pub fn generate_reflection(
         #component_reflection
 
         #archetype_reflection
+
+        #view_reflection
     };
 
     let code = append_tokens(reporter, code, &quoted_reflection, &path);
@@ -303,16 +310,6 @@ fn generate_archetype_reflection(reporter: &Reporter, objects: &Objects) -> Toke
             quote!(None)
         };
 
-        let quoted_view_types = obj
-            .archetype_view_types()
-            .unwrap_or_default()
-            .iter()
-            .map(|view_type| {
-                let view_name = &view_type.view_name;
-                quote! { #view_name }
-            })
-            .collect_vec();
-
         let deprecation_summary = if let Some(notice) = obj.deprecation_summary() {
             quote! { Some(#notice) }
         } else {
@@ -326,10 +323,6 @@ fn generate_archetype_reflection(reporter: &Reporter, objects: &Objects) -> Toke
                 deprecation_summary: #deprecation_summary,
 
                 scope: #scope,
-
-                view_types: &[
-                    #(#quoted_view_types,)*
-                ],
 
                 fields: vec![
                     #(#quoted_field_reflections,)*
@@ -349,6 +342,58 @@ fn generate_archetype_reflection(reporter: &Reporter, objects: &Objects) -> Toke
                 #(#quoted_pairs,)*
             ];
             ArchetypeReflectionMap::from_iter(array)
+        }
+    }
+}
+
+/// Generate reflection about views.
+fn generate_view_reflection(objects: &Objects) -> TokenStream {
+    let quoted_pairs = objects
+        .objects_of_kind(ObjectKind::View)
+        .filter(|view| !view.is_testing())
+        .map(|view| {
+            let identifier = view.get_attr::<String>(RerunAttr::ViewIdentifier);
+            let quoted_identifier = quote!(ViewClassIdentifier::from_static_str(#identifier));
+
+            let applicability = if view.is_attr_set(DocsAttr::ArchetypeAgnostic) {
+                quote!(ViewApplicability::AllArchetypes)
+            } else {
+                let archetypes = objects
+                    .objects_of_kind(ObjectKind::Archetype)
+                    .filter(|archetype| !archetype.is_testing())
+                    .filter(|archetype| {
+                        archetype
+                            .archetype_view_types()
+                            .unwrap_or_default()
+                            .iter()
+                            .any(|reference| reference.view_name == view.name)
+                    })
+                    .map(|archetype| {
+                        let fqname = &archetype.fqname;
+                        quote!(ArchetypeName::from(#fqname))
+                    });
+                quote!(ViewApplicability::Archetypes(vec![#(#archetypes),*]))
+            };
+
+            quote! {
+                (
+                    #quoted_identifier,
+                    ViewReflection {
+                        applicability: #applicability,
+                    },
+                )
+            }
+        });
+
+    quote! {
+        #[doc = "Generates reflection about all known views."]
+        #[doc = ""]
+        #[doc = "Call only once and reuse the results."]
+        fn generate_view_reflection() -> ViewReflectionMap {
+            let entries = [
+                #(#quoted_pairs),*
+            ];
+            ViewReflectionMap::from_iter(entries)
         }
     }
 }

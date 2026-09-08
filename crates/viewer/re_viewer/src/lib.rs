@@ -72,6 +72,7 @@ pub use event::{SelectionChangeItem, ViewerEvent, ViewerEventKind};
 pub use external_memory::ExternalMemoryUser;
 pub use re_async::AsyncRuntimeHandle;
 pub use re_capabilities::MainThreadToken;
+pub use re_sdk_types::reflection::{ViewApplicability, ViewReflection};
 pub use re_viewer_context::{
     CommandReceiver, CommandSender, SystemCommand, SystemCommandSender, command_channel,
 };

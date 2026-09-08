@@ -9,6 +9,7 @@
 ///
 /// \example views/dataframe title="Use a blueprint to customize a DataframeView." image="https://static.rerun.io/dataframe_view/f89ae330b04baaa9b7576765dce37b5d4e7cef4e/1200w.png"
 #[rerun::rerun_type]
+#[docs(archetype_agnostic)]
 #[rerun(view_identifier = "Dataframe")]
 #[rerun(state = "unstable")]
 pub struct DataframeView {

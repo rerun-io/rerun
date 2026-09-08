@@ -46,6 +46,10 @@ pub enum CppAttr {
 /// How a type is presented in the documentation.
 #[derive(AsRefStr, Clone, Copy, Debug, Display, EnumIter, PartialEq, Eq, PartialOrd, Ord)]
 pub enum DocsAttr {
+    /// The view can display data regardless of which archetype it belongs to.
+    #[strum(serialize = "attr.docs.archetype_agnostic")]
+    ArchetypeAgnostic,
+
     /// The heading the type is listed under, e.g. `Spatial 3D`.
     #[strum(serialize = "attr.docs.category")]
     Category,

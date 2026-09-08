@@ -6,13 +6,13 @@
 
 pub(crate) mod from_rust;
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 
 use anyhow::Context as _;
 use camino::{Utf8Path, Utf8PathBuf};
 
 use crate::data_type::AtomicDataType;
-use crate::{Docs, Reporter, RerunAttr};
+use crate::{Docs, DocsAttr, Reporter, RerunAttr};
 
 // ---
 
@@ -31,6 +31,15 @@ impl Objects {
     pub(crate) fn validate(&self, reporter: &Reporter) {
         // Validate field types: archetypes consist of components, Views (aka SuperArchetypes) consist of archetypes, everything else consists of encodings.
         for obj in self.objects.values() {
+            // Validate that archetype agnostic attribute is only used on views.
+            if obj.is_attr_set(DocsAttr::ArchetypeAgnostic) && obj.kind != ObjectKind::View {
+                reporter.error(
+                    &obj.virtpath,
+                    &obj.fqname,
+                    "`#[docs(archetype_agnostic)]` is only valid on views",
+                );
+            }
+
             for field in &obj.fields {
                 let virtpath = &field.virtpath;
                 if let Some(field_type_fqname) = field.typ.fqname() {
@@ -101,6 +110,27 @@ impl Objects {
                                 ),
                             );
                     }
+                }
+            }
+        }
+
+        // Validate that archetype agnostic views are not redundantly included in archetypes
+        let archetype_agnostic_views = self
+            .objects_of_kind(ObjectKind::View)
+            .filter(|view| view.is_attr_set(DocsAttr::ArchetypeAgnostic))
+            .map(|view| view.name.as_str())
+            .collect::<HashSet<_>>();
+        for archetype in self.objects_of_kind(ObjectKind::Archetype) {
+            for view in archetype.archetype_view_types().unwrap_or_default() {
+                if archetype_agnostic_views.contains(view.view_name.as_str()) {
+                    reporter.error(
+                        &archetype.virtpath,
+                        &archetype.fqname,
+                        format!(
+                            "View `{}` is already included by its `#[docs(archetype_agnostic)]` attribute",
+                            view.view_name
+                        ),
+                    );
                 }
             }
         }

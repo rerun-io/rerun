@@ -42,7 +42,6 @@ impl ColorCoordinatesConfiguration {
         ArchetypeReflection {
             display_name: <Self as rerun::Archetype>::display_name(),
             deprecation_summary: None,
-            view_types: &[],
             scope: Some("blueprint"),
             fields: vec![Self::field_mode()],
         }

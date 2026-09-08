@@ -961,16 +961,17 @@ impl App {
             // For speed, we don't care about the order of the following log statements, so we silence this warning
             for component_descr in chunk.components().component_descriptors() {
                 if let Some(archetype_name) = component_descr.archetype {
-                    if let Some(archetype) = self.reflection.archetypes.get(&archetype_name) {
-                        for &view_type in archetype.view_types {
-                            if !cfg!(feature = "map_view") && view_type == "MapView" {
-                                re_log::warn_once!(
-                                    "Found map-related archetype, but viewer was not compiled with the `map_view` feature."
-                                );
-                            }
-                        }
-                    } else {
+                    if !self.reflection.archetypes.contains_key(&archetype_name) {
                         re_log::trace_once!("Unknown archetype: {archetype_name}");
+                        continue;
+                    }
+
+                    for view_class in self.reflection.views_for_archetype(archetype_name) {
+                        if self.view_class_registry.class_entry(view_class).is_none() {
+                            re_log::warn_once!(
+                                "Found data associated with unavailable view class {view_class}. This viewer was compiled without support for that view class."
+                            );
+                        }
                     }
                 }
             }

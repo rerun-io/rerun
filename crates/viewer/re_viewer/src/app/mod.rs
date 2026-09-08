@@ -829,15 +829,28 @@ impl App {
             .insert(archetype_name, archetype_reflection);
     }
 
-    /// Adds a new view class to the viewer.
+    /// Adds a new view class to the viewer and sets its reflection metadata.
     pub fn add_view_class<T: ViewClass + Default + 'static>(
         &mut self,
+        view_reflection: re_sdk_types::reflection::ViewReflection,
     ) -> Result<(), ViewClassRegistryError> {
         self.view_class_registry.add_class::<T>(
             &self.reflection,
             &self.state.app_options,
             &mut self.component_fallback_registry,
-        )
+        )?;
+        self.reflection
+            .views
+            .insert(T::identifier(), view_reflection);
+        Ok(())
+    }
+
+    /// Edits the viewer's runtime reflection metadata.
+    pub fn edit_reflection(
+        &mut self,
+        edit: impl FnOnce(&mut re_sdk_types::reflection::Reflection),
+    ) {
+        edit(&mut self.reflection);
     }
 
     /// Extends an already registered view class with additional systems (visualizers, context systems, fallbacks, etc.).

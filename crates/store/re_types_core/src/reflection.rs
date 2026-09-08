@@ -1,11 +1,13 @@
-//! Run-time reflection for reading meta-data about components and archetypes.
+//! Run-time reflection for reading meta-data about components, archetypes, and views.
 
 use std::sync::Arc;
 
 use arrow::array::{Array as _, ArrayRef};
 use arrow::datatypes::TimeUnit;
 
-use crate::{ArchetypeName, ComponentDescriptor, ComponentIdentifier, ComponentType};
+use crate::{
+    ArchetypeName, ComponentDescriptor, ComponentIdentifier, ComponentType, ViewClassIdentifier,
+};
 
 /// A trait for code-generated enums.
 pub trait Enum:
@@ -33,15 +35,26 @@ pub trait Enum:
     }
 }
 
-/// Runtime reflection about components and archetypes.
+/// Runtime reflection about components, archetypes, and views.
 #[derive(Clone, Debug, Default)]
 pub struct Reflection {
     pub components: ComponentReflectionMap,
     pub component_identifiers: ComponentIdentifierReflectionMap,
     pub archetypes: ArchetypeReflectionMap,
+    pub views: ViewReflectionMap,
 }
 
 impl Reflection {
+    /// Iterates over the views that statically support the given archetype.
+    pub fn views_for_archetype(
+        &self,
+        archetype: ArchetypeName,
+    ) -> impl Iterator<Item = ViewClassIdentifier> + '_ {
+        self.views.iter().filter_map(move |(identifier, view)| {
+            view.supports_archetype(archetype).then_some(*identifier)
+        })
+    }
+
     /// Looks up the expected Arrow datatype for a given [`ComponentIdentifier`] using reflection.
     pub fn lookup_datatype(
         &self,
@@ -340,6 +353,69 @@ pub struct ComponentReflection {
     pub verify_arrow_array: fn(&dyn arrow::array::Array) -> crate::DeserializationResult<()>,
 }
 
+/// Runtime reflection about views.
+pub type ViewReflectionMap = nohash_hasher::IntMap<ViewClassIdentifier, ViewReflection>;
+
+/// Describes the archetypes statically associated with a view.
+///
+/// This is a coarse type-level hint and does not account for runtime visualizer availability,
+/// required components, topology, or other contextual constraints.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ViewApplicability {
+    /// The view is applicable regardless of which archetype the data belongs to.
+    AllArchetypes,
+
+    /// The view is statically associated with the listed archetypes.
+    Archetypes(Vec<ArchetypeName>),
+}
+
+impl ViewApplicability {
+    /// Whether the view is associated with the given archetype.
+    pub fn supports_archetype(&self, archetype: ArchetypeName) -> bool {
+        match self {
+            Self::AllArchetypes => true,
+            Self::Archetypes(archetypes) => archetypes.contains(&archetype),
+        }
+    }
+
+    /// Merges another set of archetype associations into this one.
+    pub fn merge(&mut self, other: Self) {
+        match (self, other) {
+            (Self::AllArchetypes, _) => {}
+            (this, Self::AllArchetypes) => *this = Self::AllArchetypes,
+            (Self::Archetypes(this), Self::Archetypes(other)) => {
+                for archetype in other {
+                    if !this.contains(&archetype) {
+                        this.push(archetype);
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Runtime reflection about a view.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ViewReflection {
+    /// What archetypes this view is applicable to.
+    pub applicability: ViewApplicability,
+}
+
+impl ViewReflection {
+    /// Whether this view supports showing the given archetype.
+    pub fn supports_archetype(&self, archetype: ArchetypeName) -> bool {
+        self.applicability.supports_archetype(archetype)
+    }
+}
+
+impl Default for ViewReflection {
+    fn default() -> Self {
+        Self {
+            applicability: ViewApplicability::Archetypes(Vec::new()),
+        }
+    }
+}
+
 /// Runtime reflection about archetypes.
 pub type ArchetypeReflectionMap = nohash_hasher::IntMap<ArchetypeName, ArchetypeReflection>;
 
@@ -351,11 +427,6 @@ pub struct ArchetypeReflection {
 
     /// If deprecated, this explains since when, and what to use instead.
     pub deprecation_summary: Option<&'static str>,
-
-    /// The views that this archetype can be added to.
-    ///
-    /// e.g. `Spatial3DView`.
-    pub view_types: &'static [&'static str],
 
     /// Does this have a particular scope?
     ///

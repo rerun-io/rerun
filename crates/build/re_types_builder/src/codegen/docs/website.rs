@@ -10,11 +10,9 @@ use crate::codegen::common::ExampleInfo;
 use crate::codegen::{Target, autogen_warning};
 use crate::objects::{FieldKind, ViewReference};
 use crate::{
-    AtomicDataType, CodeGenerator, GeneratedFiles, Object, ObjectField, ObjectKind, Objects,
-    Reporter, Type,
+    AtomicDataType, CodeGenerator, DocsAttr, GeneratedFiles, Object, ObjectField, ObjectKind,
+    Objects, Reporter, Type,
 };
-
-pub const DATAFRAME_VIEW_FQNAME: &str = "rerun.blueprint.views.DataframeView";
 
 /// Like [`writeln!`], but without a [`Result`].
 macro_rules! putln {
@@ -321,7 +319,7 @@ fn object_page(
 fn list_links(page: &mut String, object: &Object) {
     // The per-language API docs are published per release, so a whole kind of page can be
     // unreachable even when the object itself is old.
-    let speculative_marker = if object.is_attr_set(crate::DocsAttr::Unreleased) {
+    let speculative_marker = if object.is_attr_set(DocsAttr::Unreleased) {
         "?speculative-link"
     } else {
         ""
@@ -532,7 +530,7 @@ fn write_used_by(o: &mut String, reporter: &Reporter, objects: &Objects, object:
         }
         for field in &ty.fields {
             if field.typ.fqname() == Some(object.fqname.as_str()) {
-                let is_unreleased = ty.is_attr_set(crate::DocsAttr::Unreleased);
+                let is_unreleased = ty.is_attr_set(DocsAttr::Unreleased);
                 let speculative_marker = if is_unreleased {
                     "?speculative-link"
                 } else {
@@ -636,8 +634,17 @@ fn write_archetype_fields(
         }
     }
 
-    // Special case for dataframe view: it can display anything.
-    putln!(page, "* [DataframeView](../views/dataframe_view.md)");
+    for view in objects
+        .objects_of_kind(ObjectKind::View)
+        .filter(|view| view.is_attr_set(DocsAttr::ArchetypeAgnostic))
+    {
+        putln!(
+            page,
+            "* [{}](../views/{}.md)",
+            view.name,
+            view.snake_case_name()
+        );
+    }
 }
 
 fn write_visualized_archetypes(
@@ -660,7 +667,9 @@ fn write_visualized_archetypes(
         }
     }
 
-    if archetype_fqnames.is_empty() && view.fqname != DATAFRAME_VIEW_FQNAME {
+    let is_archetype_agnostic = view.is_attr_set(DocsAttr::ArchetypeAgnostic);
+
+    if archetype_fqnames.is_empty() && !is_archetype_agnostic {
         reporter.error(&view.virtpath, &view.fqname, "No archetypes use this view.");
         return;
     }
@@ -671,9 +680,8 @@ fn write_visualized_archetypes(
     putln!(page, "## Visualized archetypes");
     putln!(page);
 
-    // special case for dataframe view
-    if view.fqname == DATAFRAME_VIEW_FQNAME {
-        putln!(page, "Any data can be displayed by the Dataframe view.");
+    if is_archetype_agnostic {
+        putln!(page, "Any data can be displayed by the {}.", view.name);
     } else {
         for (fqname, explanation) in archetype_fqnames {
             let object = &objects[&fqname];

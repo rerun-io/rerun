@@ -11,15 +11,16 @@ use crate::components::*;
 use re_types_core::components::*;
 use re_types_core::{
     ArchetypeName, ArrowDataType as _, Component, ComponentBatch as _, ComponentType,
-    FromArrow as _, SerializationError,
+    FromArrow as _, SerializationError, ViewClassIdentifier,
     reflection::{
         ArchetypeFieldFlags, ArchetypeFieldReflection, ArchetypeReflection, ArchetypeReflectionMap,
         ComponentReflection, ComponentReflectionMap, ComponentTypeSet, Reflection,
+        ViewApplicability, ViewReflection, ViewReflectionMap,
         generate_component_identifier_reflection,
     },
 };
 
-/// Reflection about all known components and archetypes.
+/// Reflection about all known components, archetypes, and views.
 ///
 /// Built on first use and shared from then on.
 /// Clone it if you need to extend it, as the viewer does for custom archetypes.
@@ -44,6 +45,7 @@ fn generate_reflection() -> Reflection {
             .expect("Failed to serialize the component placeholders — this is a bug in Rerun"),
         component_identifiers: generate_component_identifier_reflection(&archetypes),
         archetypes,
+        views: generate_view_reflection(),
     }
 }
 
@@ -1852,7 +1854,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Annotation context",
                 deprecation_summary: None,
                 scope: None,
-                view_types: &["Spatial2DView", "Spatial3DView"],
                 fields: vec![ArchetypeFieldReflection {
                     name: "context",
                     display_name: "Context",
@@ -1868,7 +1869,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Arrows 2D",
                 deprecation_summary: None,
                 scope: None,
-                view_types: &["Spatial2DView", "Spatial3DView"],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "vectors",
@@ -1935,7 +1935,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Arrows 3D",
                 deprecation_summary: None,
                 scope: None,
-                view_types: &["Spatial3DView", "Spatial2DView"],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "vectors",
@@ -1995,7 +1994,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Asset 3D",
                 deprecation_summary: None,
                 scope: None,
-                view_types: &["Spatial3DView", "Spatial2DView"],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "blob",
@@ -2027,7 +2025,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Asset video",
                 deprecation_summary: None,
                 scope: None,
-                view_types: &["Spatial2DView", "Spatial3DView"],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "blob",
@@ -2052,7 +2049,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Bar chart",
                 deprecation_summary: None,
                 scope: None,
-                view_types: &["BarChartView"],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "values",
@@ -2091,7 +2087,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Boxes 2D",
                 deprecation_summary: None,
                 scope: None,
-                view_types: &["Spatial2DView", "Spatial3DView"],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "half_sizes",
@@ -2158,7 +2153,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Boxes 3D",
                 deprecation_summary: None,
                 scope: None,
-                view_types: &["Spatial3DView", "Spatial2DView"],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "half_sizes",
@@ -2239,7 +2233,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Capsules 3D",
                 deprecation_summary: None,
                 scope: None,
-                view_types: &["Spatial3DView", "Spatial2DView"],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "lengths",
@@ -2327,7 +2320,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Clear",
                 deprecation_summary: None,
                 scope: None,
-                view_types: &["Spatial2DView", "Spatial3DView", "TimeSeriesView"],
                 fields: vec![ArchetypeFieldReflection {
                     name: "is_recursive",
                     display_name: "Is recursive",
@@ -2343,7 +2335,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Coordinate frame",
                 deprecation_summary: None,
                 scope: None,
-                view_types: &["Spatial3DView", "Spatial2DView"],
                 fields: vec![ArchetypeFieldReflection {
                     name: "frame",
                     display_name: "Frame",
@@ -2359,7 +2350,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Cylinders 3D",
                 deprecation_summary: None,
                 scope: None,
-                view_types: &["Spatial3DView", "Spatial2DView"],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "lengths",
@@ -2447,7 +2437,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Depth image",
                 deprecation_summary: None,
                 scope: None,
-                view_types: &["Spatial2DView", "Spatial3DView"],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "buffer",
@@ -2514,7 +2503,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Ellipses 2D",
                 deprecation_summary: None,
                 scope: None,
-                view_types: &["Spatial2DView", "Spatial3DView"],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "half_sizes",
@@ -2581,7 +2569,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Ellipsoids 3D",
                 deprecation_summary: None,
                 scope: None,
-                view_types: &["Spatial3DView", "Spatial2DView"],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "half_sizes",
@@ -2662,7 +2649,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Encoded depth image",
                 deprecation_summary: None,
                 scope: None,
-                view_types: &["Spatial2DView", "Spatial3DView"],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "blob",
@@ -2729,7 +2715,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Encoded image",
                 deprecation_summary: None,
                 scope: None,
-                view_types: &["Spatial2DView", "Spatial3DView"],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "blob",
@@ -2775,7 +2760,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Gaussian splats 3D",
                 deprecation_summary: None,
                 scope: None,
-                view_types: &["Spatial3DView"],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "centers",
@@ -2828,7 +2812,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Geo line strings",
                 deprecation_summary: None,
                 scope: None,
-                view_types: &["MapView"],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "line_strings",
@@ -2860,7 +2843,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Geo points",
                 deprecation_summary: None,
                 scope: None,
-                view_types: &["MapView"],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "positions",
@@ -2899,7 +2881,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Graph edges",
                 deprecation_summary: None,
                 scope: None,
-                view_types: &["GraphView"],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "edges",
@@ -2924,7 +2905,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Graph nodes",
                 deprecation_summary: None,
                 scope: None,
-                view_types: &["GraphView"],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "node_ids",
@@ -2977,7 +2957,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Grid map",
                 deprecation_summary: None,
                 scope: None,
-                view_types: &["Spatial3DView", "Spatial2DView"],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "data",
@@ -3051,7 +3030,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Image",
                 deprecation_summary: None,
                 scope: None,
-                view_types: &["Spatial2DView", "Spatial3DView"],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "buffer",
@@ -3097,7 +3075,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Instance poses 3D",
                 deprecation_summary: None,
                 scope: None,
-                view_types: &["Spatial3DView", "Spatial2DView"],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "translations",
@@ -3143,7 +3120,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Line strips 2D",
                 deprecation_summary: None,
                 scope: None,
-                view_types: &["Spatial2DView", "Spatial3DView"],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "strips",
@@ -3203,7 +3179,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Line strips 3D",
                 deprecation_summary: None,
                 scope: None,
-                view_types: &["Spatial3DView", "Spatial2DView"],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "strips",
@@ -3256,7 +3231,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Mcap channel",
                 deprecation_summary: None,
                 scope: None,
-                view_types: &[],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "id",
@@ -3295,7 +3269,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Mcap message",
                 deprecation_summary: None,
                 scope: None,
-                view_types: &[],
                 fields: vec![ArchetypeFieldReflection {
                     name: "data",
                     display_name: "Data",
@@ -3311,7 +3284,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Mcap schema",
                 deprecation_summary: None,
                 scope: None,
-                view_types: &[],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "id",
@@ -3350,7 +3322,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Mcap statistics",
                 deprecation_summary: None,
                 scope: None,
-                view_types: &[],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "message_count",
@@ -3424,7 +3395,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Measurements",
                 deprecation_summary: None,
                 scope: None,
-                view_types: &["TimeSeriesView"],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "values",
@@ -3498,7 +3468,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Mesh 3D",
                 deprecation_summary: None,
                 scope: None,
-                view_types: &["Spatial3DView", "Spatial2DView"],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "vertex_positions",
@@ -3579,7 +3548,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Pinhole",
                 deprecation_summary: None,
                 scope: None,
-                view_types: &["Spatial2DView", "Spatial3DView"],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "image_from_camera",
@@ -3646,7 +3614,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Points 2D",
                 deprecation_summary: None,
                 scope: None,
-                view_types: &["Spatial2DView", "Spatial3DView"],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "positions",
@@ -3713,7 +3680,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Points 3D",
                 deprecation_summary: None,
                 scope: None,
-                view_types: &["Spatial3DView", "Spatial2DView"],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "positions",
@@ -3780,7 +3746,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Recording info",
                 deprecation_summary: None,
                 scope: None,
-                view_types: &[],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "start_time",
@@ -3805,7 +3770,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Scalars",
                 deprecation_summary: None,
                 scope: None,
-                view_types: &["TimeSeriesView"],
                 fields: vec![ArchetypeFieldReflection {
                     name: "scalars",
                     display_name: "Scalars",
@@ -3821,7 +3785,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Segmentation image",
                 deprecation_summary: None,
                 scope: None,
-                view_types: &["Spatial2DView", "Spatial3DView"],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "buffer",
@@ -3860,7 +3823,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Series lines",
                 deprecation_summary: None,
                 scope: None,
-                view_types: &["TimeSeriesView"],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "colors",
@@ -3913,7 +3875,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Series points",
                 deprecation_summary: None,
                 scope: None,
-                view_types: &["TimeSeriesView"],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "colors",
@@ -3959,7 +3920,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "State change",
                 deprecation_summary: None,
                 scope: None,
-                view_types: &["StateTimelineView"],
                 fields: vec![ArchetypeFieldReflection {
                     name: "state",
                     display_name: "State",
@@ -3975,7 +3935,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "State configuration",
                 deprecation_summary: None,
                 scope: None,
-                view_types: &["StateTimelineView"],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "values",
@@ -4014,7 +3973,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Tensor",
                 deprecation_summary: None,
                 scope: None,
-                view_types: &["TensorView", "BarChartView"],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "data",
@@ -4039,7 +3997,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Text document",
                 deprecation_summary: None,
                 scope: None,
-                view_types: &["TextDocumentView"],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "text",
@@ -4064,7 +4021,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Text log",
                 deprecation_summary: None,
                 scope: None,
-                view_types: &["TextLogView"],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "text",
@@ -4096,7 +4052,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Transform 3D",
                 deprecation_summary: None,
                 scope: None,
-                view_types: &["Spatial3DView", "Spatial2DView"],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "translation",
@@ -4163,7 +4118,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Transform axes 3D",
                 deprecation_summary: None,
                 scope: None,
-                view_types: &["Spatial3DView"],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "axis_length",
@@ -4188,7 +4142,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Video frame reference",
                 deprecation_summary: None,
                 scope: None,
-                view_types: &["Spatial2DView", "Spatial3DView"],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "timestamp",
@@ -4227,7 +4180,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Video stream",
                 deprecation_summary: None,
                 scope: None,
-                view_types: &["Spatial2DView", "Spatial3DView"],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "codec",
@@ -4273,7 +4225,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "View coordinates",
                 deprecation_summary: None,
                 scope: None,
-                view_types: &["Spatial3DView"],
                 fields: vec![ArchetypeFieldReflection {
                     name: "xyz",
                     display_name: "Xyz",
@@ -4289,7 +4240,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Volume 3D",
                 deprecation_summary: None,
                 scope: None,
-                view_types: &["Spatial3DView"],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "values",
@@ -4349,7 +4299,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Voxel grid map",
                 deprecation_summary: None,
                 scope: None,
-                view_types: &["Spatial3DView"],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "voxel_indices",
@@ -4430,7 +4379,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Active visualizers",
                 deprecation_summary: None,
                 scope: Some("blueprint"),
-                view_types: &[],
                 fields: vec![ArchetypeFieldReflection {
                     name: "instruction_ids",
                     display_name: "Instruction ids",
@@ -4446,7 +4394,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Background",
                 deprecation_summary: None,
                 scope: Some("blueprint"),
-                view_types: &[],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "kind",
@@ -4471,7 +4418,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Card layout",
                 deprecation_summary: None,
                 scope: Some("blueprint"),
-                view_types: &[],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "title",
@@ -4503,7 +4449,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Container blueprint",
                 deprecation_summary: None,
                 scope: Some("blueprint"),
-                view_types: &[],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "container_kind",
@@ -4570,7 +4515,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Dataframe query",
                 deprecation_summary: None,
                 scope: Some("blueprint"),
-                view_types: &[],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "timeline",
@@ -4630,7 +4574,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Entity behavior",
                 deprecation_summary: None,
                 scope: Some("blueprint"),
-                view_types: &[],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "interactive",
@@ -4655,7 +4598,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Eye controls 3D",
                 deprecation_summary: None,
                 scope: Some("blueprint"),
-                view_types: &[],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "kind",
@@ -4715,7 +4657,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Force center",
                 deprecation_summary: None,
                 scope: Some("blueprint"),
-                view_types: &[],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "enabled",
@@ -4740,7 +4681,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Force collision radius",
                 deprecation_summary: None,
                 scope: Some("blueprint"),
-                view_types: &[],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "enabled",
@@ -4772,7 +4712,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Force link",
                 deprecation_summary: None,
                 scope: Some("blueprint"),
-                view_types: &[],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "enabled",
@@ -4804,7 +4743,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Force many body",
                 deprecation_summary: None,
                 scope: Some("blueprint"),
-                view_types: &[],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "enabled",
@@ -4829,7 +4767,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Force position",
                 deprecation_summary: None,
                 scope: Some("blueprint"),
-                view_types: &[],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "enabled",
@@ -4861,7 +4798,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Graph background",
                 deprecation_summary: None,
                 scope: Some("blueprint"),
-                view_types: &[],
                 fields: vec![ArchetypeFieldReflection {
                     name: "color",
                     display_name: "Color",
@@ -4877,7 +4813,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Line grid 3D",
                 deprecation_summary: None,
                 scope: Some("blueprint"),
-                view_types: &[],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "visible",
@@ -4923,7 +4858,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Map background",
                 deprecation_summary: None,
                 scope: Some("blueprint"),
-                view_types: &[],
                 fields: vec![ArchetypeFieldReflection {
                     name: "provider",
                     display_name: "Provider",
@@ -4939,7 +4873,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Map zoom",
                 deprecation_summary: None,
                 scope: Some("blueprint"),
-                view_types: &[],
                 fields: vec![ArchetypeFieldReflection {
                     name: "zoom",
                     display_name: "Zoom",
@@ -4955,7 +4888,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Near clip plane",
                 deprecation_summary: None,
                 scope: Some("blueprint"),
-                view_types: &[],
                 fields: vec![ArchetypeFieldReflection {
                     name: "near_clip_plane",
                     display_name: "Near clip plane",
@@ -4971,7 +4903,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Panel blueprint",
                 deprecation_summary: None,
                 scope: Some("blueprint"),
-                view_types: &[],
                 fields: vec![ArchetypeFieldReflection {
                     name: "state",
                     display_name: "State",
@@ -4987,7 +4918,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Plot background",
                 deprecation_summary: None,
                 scope: Some("blueprint"),
-                view_types: &[],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "color",
@@ -5012,7 +4942,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Plot interaction",
                 deprecation_summary: None,
                 scope: Some("blueprint"),
-                view_types: &[],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "tooltip_mode",
@@ -5037,7 +4966,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Plot legend",
                 deprecation_summary: None,
                 scope: Some("blueprint"),
-                view_types: &[],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "corner",
@@ -5062,7 +4990,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Previews config",
                 deprecation_summary: None,
                 scope: Some("blueprint"),
-                view_types: &[],
                 fields: vec![ArchetypeFieldReflection {
                     name: "timeline",
                     display_name: "Timeline",
@@ -5078,7 +5005,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Scalar axis",
                 deprecation_summary: None,
                 scope: Some("blueprint"),
-                view_types: &[],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "range",
@@ -5103,7 +5029,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Spatial information",
                 deprecation_summary: None,
                 scope: Some("blueprint"),
-                view_types: &[],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "target_frame",
@@ -5142,7 +5067,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Table blueprint",
                 deprecation_summary: None,
                 scope: Some("blueprint"),
-                view_types: &[],
                 fields: vec![ArchetypeFieldReflection {
                     name: "layout",
                     display_name: "Layout",
@@ -5158,7 +5082,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Table column",
                 deprecation_summary: None,
                 scope: Some("blueprint"),
-                view_types: &[],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "name",
@@ -5197,7 +5120,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Table column preview",
                 deprecation_summary: None,
                 scope: Some("blueprint"),
-                view_types: &[],
                 fields: vec![ArchetypeFieldReflection {
                     name: "views",
                     display_name: "Views",
@@ -5213,7 +5135,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Table layout",
                 deprecation_summary: None,
                 scope: Some("blueprint"),
-                view_types: &[],
                 fields: vec![ArchetypeFieldReflection {
                     name: "column_order",
                     display_name: "Column order",
@@ -5229,7 +5150,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Tensor scalar mapping",
                 deprecation_summary: None,
                 scope: Some("blueprint"),
-                view_types: &[],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "mag_filter",
@@ -5261,7 +5181,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Tensor slice selection",
                 deprecation_summary: None,
                 scope: Some("blueprint"),
-                view_types: &[],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "width",
@@ -5301,7 +5220,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Tensor view fit",
                 deprecation_summary: None,
                 scope: Some("blueprint"),
-                view_types: &[],
                 fields: vec![ArchetypeFieldReflection {
                     name: "scaling",
                     display_name: "Scaling",
@@ -5317,7 +5235,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Text document format",
                 deprecation_summary: None,
                 scope: Some("blueprint"),
-                view_types: &[],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "monospace",
@@ -5342,7 +5259,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Text log columns",
                 deprecation_summary: None,
                 scope: Some("blueprint"),
-                view_types: &[],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "timeline_columns",
@@ -5367,7 +5283,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Text log format",
                 deprecation_summary: None,
                 scope: Some("blueprint"),
-                view_types: &[],
                 fields: vec![ArchetypeFieldReflection {
                     name: "monospace_body",
                     display_name: "Monospace body",
@@ -5383,7 +5298,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Text log rows",
                 deprecation_summary: None,
                 scope: Some("blueprint"),
-                view_types: &[],
                 fields: vec![ArchetypeFieldReflection {
                     name: "filter_by_log_level",
                     display_name: "Filter by log level",
@@ -5399,7 +5313,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Time axis",
                 deprecation_summary: None,
                 scope: Some("blueprint"),
-                view_types: &[],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "link",
@@ -5431,7 +5344,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Time panel blueprint",
                 deprecation_summary: None,
                 scope: Some("blueprint"),
-                view_types: &[],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "state",
@@ -5491,7 +5403,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "View blueprint",
                 deprecation_summary: None,
                 scope: Some("blueprint"),
-                view_types: &[],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "class_identifier",
@@ -5530,7 +5441,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "View contents",
                 deprecation_summary: None,
                 scope: Some("blueprint"),
-                view_types: &[],
                 fields: vec![ArchetypeFieldReflection {
                     name: "query",
                     display_name: "Query",
@@ -5546,7 +5456,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Viewport blueprint",
                 deprecation_summary: None,
                 scope: Some("blueprint"),
-                view_types: &[],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "root_container",
@@ -5593,7 +5502,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Visible time ranges",
                 deprecation_summary: None,
                 scope: Some("blueprint"),
-                view_types: &[],
                 fields: vec![ArchetypeFieldReflection {
                     name: "ranges",
                     display_name: "Ranges",
@@ -5609,7 +5517,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Visual bounds 2D",
                 deprecation_summary: None,
                 scope: Some("blueprint"),
-                view_types: &[],
                 fields: vec![ArchetypeFieldReflection {
                     name: "range",
                     display_name: "Range",
@@ -5625,7 +5532,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Visualizer instruction",
                 deprecation_summary: None,
                 scope: Some("blueprint"),
-                view_types: &[],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "visualizer_type",
@@ -5647,4 +5553,169 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
         ),
     ];
     ArchetypeReflectionMap::from_iter(array)
+}
+
+/// Generates reflection about all known views.
+///
+/// Call only once and reuse the results.
+
+fn generate_view_reflection() -> ViewReflectionMap {
+    let entries = [
+        (
+            ViewClassIdentifier::from_static_str("BarChart"),
+            ViewReflection {
+                applicability: ViewApplicability::Archetypes(vec![
+                    ArchetypeName::from("rerun.archetypes.BarChart"),
+                    ArchetypeName::from("rerun.archetypes.Tensor"),
+                ]),
+            },
+        ),
+        (
+            ViewClassIdentifier::from_static_str("Dataframe"),
+            ViewReflection {
+                applicability: ViewApplicability::AllArchetypes,
+            },
+        ),
+        (
+            ViewClassIdentifier::from_static_str("Graph"),
+            ViewReflection {
+                applicability: ViewApplicability::Archetypes(vec![
+                    ArchetypeName::from("rerun.archetypes.GraphEdges"),
+                    ArchetypeName::from("rerun.archetypes.GraphNodes"),
+                ]),
+            },
+        ),
+        (
+            ViewClassIdentifier::from_static_str("Map"),
+            ViewReflection {
+                applicability: ViewApplicability::Archetypes(vec![
+                    ArchetypeName::from("rerun.archetypes.GeoLineStrings"),
+                    ArchetypeName::from("rerun.archetypes.GeoPoints"),
+                ]),
+            },
+        ),
+        (
+            ViewClassIdentifier::from_static_str("2D"),
+            ViewReflection {
+                applicability: ViewApplicability::Archetypes(vec![
+                    ArchetypeName::from("rerun.archetypes.AnnotationContext"),
+                    ArchetypeName::from("rerun.archetypes.Arrows2D"),
+                    ArchetypeName::from("rerun.archetypes.Arrows3D"),
+                    ArchetypeName::from("rerun.archetypes.Asset3D"),
+                    ArchetypeName::from("rerun.archetypes.AssetVideo"),
+                    ArchetypeName::from("rerun.archetypes.Boxes2D"),
+                    ArchetypeName::from("rerun.archetypes.Boxes3D"),
+                    ArchetypeName::from("rerun.archetypes.Capsules3D"),
+                    ArchetypeName::from("rerun.archetypes.Clear"),
+                    ArchetypeName::from("rerun.archetypes.CoordinateFrame"),
+                    ArchetypeName::from("rerun.archetypes.Cylinders3D"),
+                    ArchetypeName::from("rerun.archetypes.DepthImage"),
+                    ArchetypeName::from("rerun.archetypes.Ellipses2D"),
+                    ArchetypeName::from("rerun.archetypes.Ellipsoids3D"),
+                    ArchetypeName::from("rerun.archetypes.EncodedDepthImage"),
+                    ArchetypeName::from("rerun.archetypes.EncodedImage"),
+                    ArchetypeName::from("rerun.archetypes.GridMap"),
+                    ArchetypeName::from("rerun.archetypes.Image"),
+                    ArchetypeName::from("rerun.archetypes.InstancePoses3D"),
+                    ArchetypeName::from("rerun.archetypes.LineStrips2D"),
+                    ArchetypeName::from("rerun.archetypes.LineStrips3D"),
+                    ArchetypeName::from("rerun.archetypes.Mesh3D"),
+                    ArchetypeName::from("rerun.archetypes.Pinhole"),
+                    ArchetypeName::from("rerun.archetypes.Points2D"),
+                    ArchetypeName::from("rerun.archetypes.Points3D"),
+                    ArchetypeName::from("rerun.archetypes.SegmentationImage"),
+                    ArchetypeName::from("rerun.archetypes.Transform3D"),
+                    ArchetypeName::from("rerun.archetypes.VideoFrameReference"),
+                    ArchetypeName::from("rerun.archetypes.VideoStream"),
+                ]),
+            },
+        ),
+        (
+            ViewClassIdentifier::from_static_str("3D"),
+            ViewReflection {
+                applicability: ViewApplicability::Archetypes(vec![
+                    ArchetypeName::from("rerun.archetypes.AnnotationContext"),
+                    ArchetypeName::from("rerun.archetypes.Arrows2D"),
+                    ArchetypeName::from("rerun.archetypes.Arrows3D"),
+                    ArchetypeName::from("rerun.archetypes.Asset3D"),
+                    ArchetypeName::from("rerun.archetypes.AssetVideo"),
+                    ArchetypeName::from("rerun.archetypes.Boxes2D"),
+                    ArchetypeName::from("rerun.archetypes.Boxes3D"),
+                    ArchetypeName::from("rerun.archetypes.Capsules3D"),
+                    ArchetypeName::from("rerun.archetypes.Clear"),
+                    ArchetypeName::from("rerun.archetypes.CoordinateFrame"),
+                    ArchetypeName::from("rerun.archetypes.Cylinders3D"),
+                    ArchetypeName::from("rerun.archetypes.DepthImage"),
+                    ArchetypeName::from("rerun.archetypes.Ellipses2D"),
+                    ArchetypeName::from("rerun.archetypes.Ellipsoids3D"),
+                    ArchetypeName::from("rerun.archetypes.EncodedDepthImage"),
+                    ArchetypeName::from("rerun.archetypes.EncodedImage"),
+                    ArchetypeName::from("rerun.archetypes.GaussianSplats3D"),
+                    ArchetypeName::from("rerun.archetypes.GridMap"),
+                    ArchetypeName::from("rerun.archetypes.Image"),
+                    ArchetypeName::from("rerun.archetypes.InstancePoses3D"),
+                    ArchetypeName::from("rerun.archetypes.LineStrips2D"),
+                    ArchetypeName::from("rerun.archetypes.LineStrips3D"),
+                    ArchetypeName::from("rerun.archetypes.Mesh3D"),
+                    ArchetypeName::from("rerun.archetypes.Pinhole"),
+                    ArchetypeName::from("rerun.archetypes.Points2D"),
+                    ArchetypeName::from("rerun.archetypes.Points3D"),
+                    ArchetypeName::from("rerun.archetypes.SegmentationImage"),
+                    ArchetypeName::from("rerun.archetypes.Transform3D"),
+                    ArchetypeName::from("rerun.archetypes.TransformAxes3D"),
+                    ArchetypeName::from("rerun.archetypes.VideoFrameReference"),
+                    ArchetypeName::from("rerun.archetypes.VideoStream"),
+                    ArchetypeName::from("rerun.archetypes.ViewCoordinates"),
+                    ArchetypeName::from("rerun.archetypes.Volume3D"),
+                    ArchetypeName::from("rerun.archetypes.VoxelGridMap"),
+                ]),
+            },
+        ),
+        (
+            ViewClassIdentifier::from_static_str("StateTimeline"),
+            ViewReflection {
+                applicability: ViewApplicability::Archetypes(vec![
+                    ArchetypeName::from("rerun.archetypes.StateChange"),
+                    ArchetypeName::from("rerun.archetypes.StateConfiguration"),
+                ]),
+            },
+        ),
+        (
+            ViewClassIdentifier::from_static_str("Tensor"),
+            ViewReflection {
+                applicability: ViewApplicability::Archetypes(vec![ArchetypeName::from(
+                    "rerun.archetypes.Tensor",
+                )]),
+            },
+        ),
+        (
+            ViewClassIdentifier::from_static_str("TextDocument"),
+            ViewReflection {
+                applicability: ViewApplicability::Archetypes(vec![ArchetypeName::from(
+                    "rerun.archetypes.TextDocument",
+                )]),
+            },
+        ),
+        (
+            ViewClassIdentifier::from_static_str("TextLog"),
+            ViewReflection {
+                applicability: ViewApplicability::Archetypes(vec![ArchetypeName::from(
+                    "rerun.archetypes.TextLog",
+                )]),
+            },
+        ),
+        (
+            ViewClassIdentifier::from_static_str("TimeSeries"),
+            ViewReflection {
+                applicability: ViewApplicability::Archetypes(vec![
+                    ArchetypeName::from("rerun.archetypes.Clear"),
+                    ArchetypeName::from("rerun.archetypes.Measurements"),
+                    ArchetypeName::from("rerun.archetypes.Scalars"),
+                    ArchetypeName::from("rerun.archetypes.SeriesLines"),
+                    ArchetypeName::from("rerun.archetypes.SeriesPoints"),
+                ]),
+            },
+        ),
+    ];
+    ViewReflectionMap::from_iter(entries)
 }

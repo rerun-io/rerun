@@ -122,6 +122,12 @@ pub mod clap;
 #[cfg(all(feature = "sdk", feature = "native_viewer"))]
 pub mod native_viewer;
 
+/// Runtime reflection types used when extending the viewer.
+#[cfg(feature = "native_viewer")]
+pub mod reflection {
+    pub use re_viewer::{ViewApplicability, ViewReflection};
+}
+
 #[cfg(feature = "demo")]
 pub mod demo_util;
 
