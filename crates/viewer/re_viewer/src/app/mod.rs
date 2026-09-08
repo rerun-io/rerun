@@ -966,8 +966,8 @@ impl App {
                     .as_ref()
                     .and_then(|entry| {
                         Some((
-                            entry.to_query_string().ok_or_log_js_error()?,
-                            new_entry.to_query_string().ok_or_log_js_error()?,
+                            entry.to_url().ok_or_log_js_error()?,
+                            new_entry.to_url().ok_or_log_js_error()?,
                         ))
                     })
                     .is_some_and(|(current, new)| strip_fragment(&current) == strip_fragment(&new));
