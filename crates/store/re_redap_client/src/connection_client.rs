@@ -1329,6 +1329,7 @@ where
                 let GetRrdManifestResponse {
                     rrd_manifest,
                     manifest_key,
+                    ..
                 } = resp?;
 
                 match (rrd_manifest, manifest_key) {

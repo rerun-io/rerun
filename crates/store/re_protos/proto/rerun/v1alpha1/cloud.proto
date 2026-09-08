@@ -611,6 +611,14 @@ message WriteChunksResponse {}
 
 /* Query schemas */
 
+// Identifies the dataset and revision associated with this response.
+message DatasetResponseMeta {
+  // The dataset entry this response belongs to.
+  rerun.common.v1alpha1.EntryId entry_id = 1;
+  // The dataset revision associated with this response.
+  uint64 dataset_revision = 2;
+}
+
 // Request for `GetSegmentTableSchema`.
 //
 // Empty: the dataset is identified by the standard dataset headers (see the `Headers` section at the top of this file).
@@ -620,6 +628,8 @@ message GetSegmentTableSchemaRequest {}
 message GetSegmentTableSchemaResponse {
   // Schema of the segment table.
   rerun.common.v1alpha1.Schema schema = 1;
+  // Dataset identity and revision metadata for this response.
+  DatasetResponseMeta meta = 100;
 }
 
 // A plain list of segment IDs.
@@ -672,6 +682,8 @@ message ScanSegmentTableResponse {
   // Segments metadata as Arrow RecordBatch, with the columns pinned by
   // [`ScanSegmentTableDataframe`](crate::cloud::v1alpha1::ext::ScanSegmentTableDataframe).
   rerun.common.v1alpha1.DataframePart data = 1;
+  // Dataset identity and revision metadata for this response.
+  DatasetResponseMeta meta = 100;
 }
 
 // Request for `GetDatasetManifestSchema`.
@@ -683,6 +695,8 @@ message GetDatasetManifestSchemaRequest {}
 message GetDatasetManifestSchemaResponse {
   // Schema of the dataset manifest.
   rerun.common.v1alpha1.Schema schema = 1;
+  // Dataset identity and revision metadata for this response.
+  DatasetResponseMeta meta = 100;
 }
 
 // Request for `ScanDatasetManifest`.
@@ -716,6 +730,8 @@ message ScanDatasetManifestResponse {
   // with the columns pinned by
   // [`ScanDatasetManifestDataframe`](crate::cloud::v1alpha1::ext::ScanDatasetManifestDataframe).
   rerun.common.v1alpha1.DataframePart data = 1;
+  // Dataset identity and revision metadata for this response.
+  DatasetResponseMeta meta = 100;
 }
 
 // Request for `GetDatasetSchema`.
@@ -736,6 +752,8 @@ message GetDatasetSchemaResponse {
   // `RematerializeDatasetSchema` recomputes it. A dataset with no registered segments yields
   // an empty schema rather than an error.
   rerun.common.v1alpha1.Schema schema = 1;
+  // Dataset identity and revision metadata for this response.
+  DatasetResponseMeta meta = 100;
 }
 
 // Request for `GetRrdManifest`.
@@ -761,6 +779,9 @@ message GetRrdManifestResponse {
 
   // Points at an encoded `rerun.log_msg.v1alpha1.RrdFooter` payload for the client to fetch and decode.
   RrdManifestKey manifest_key = 2;
+
+  // Dataset identity and revision metadata for this response.
+  DatasetResponseMeta meta = 100;
 }
 
 // Request for `GetAssetsForSegment`.
@@ -867,6 +888,8 @@ message QueryDatasetResponse {
   //
   // Every batch of one stream carries the same schema, so clients can concatenate them.
   rerun.common.v1alpha1.DataframePart data = 1;
+  // Dataset identity and revision metadata for this response.
+  DatasetResponseMeta meta = 100;
 }
 
 // A Rerun-native query over a dataset's chunks.

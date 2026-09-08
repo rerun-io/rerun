@@ -1235,6 +1235,7 @@ impl RerunCloudService for RerunCloudHandler {
                         ))
                     })?,
             ),
+            meta: None,
         }))
     }
 
@@ -1268,6 +1269,7 @@ impl RerunCloudService for RerunCloudHandler {
         let stream = futures::stream::once(async move {
             Ok(ScanSegmentTableResponse {
                 data: Some(record_batch.into()),
+                meta: None,
             })
         });
 
@@ -1298,6 +1300,7 @@ impl RerunCloudService for RerunCloudHandler {
                         ))
                     })?,
             ),
+            meta: None,
         }))
     }
 
@@ -1329,6 +1332,7 @@ impl RerunCloudService for RerunCloudHandler {
         let stream = futures::stream::once(async move {
             Ok(ScanDatasetManifestResponse {
                 data: Some(record_batch.into()),
+                meta: None,
             })
         });
 
@@ -1353,6 +1357,7 @@ impl RerunCloudService for RerunCloudHandler {
             schema: Some((&schema).try_into().map_err(|err| {
                 tonic::Status::internal(format!("Unable to serialize Arrow schema: {err:#}"))
             })?),
+            meta: None,
         }))
     }
 
@@ -1385,6 +1390,7 @@ impl RerunCloudService for RerunCloudHandler {
                     tonic::Status::internal(format!("Unable to compute RRD manifest: {err:#}"))
                 })?),
                 manifest_key: None,
+                meta: None,
             }));
 
         Ok(tonic::Response::new(
@@ -1519,7 +1525,7 @@ impl RerunCloudService for RerunCloudHandler {
             let stream = futures::stream::iter([{
                 let batch = QueryDatasetDataframe::empty_record_batch();
                 let data = Some(batch.into());
-                Ok(QueryDatasetResponse { data })
+                Ok(QueryDatasetResponse { data, meta: None })
             }]);
 
             return Ok(tonic::Response::new(
@@ -1754,7 +1760,7 @@ impl RerunCloudService for RerunCloudHandler {
 
                 let data = Some(batch.into());
 
-                Ok(QueryDatasetResponse { data })
+                Ok(QueryDatasetResponse { data, meta: None })
             },
         ));
 

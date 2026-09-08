@@ -477,6 +477,26 @@ impl ::prost::Name for WriteChunksResponse {
         "/rerun.cloud.v1alpha1.WriteChunksResponse".into()
     }
 }
+/// Identifies the dataset and revision associated with this response.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct DatasetResponseMeta {
+    /// The dataset entry this response belongs to.
+    #[prost(message, optional, tag = "1")]
+    pub entry_id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
+    /// The dataset revision associated with this response.
+    #[prost(uint64, tag = "2")]
+    pub dataset_revision: u64,
+}
+impl ::prost::Name for DatasetResponseMeta {
+    const NAME: &'static str = "DatasetResponseMeta";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.DatasetResponseMeta".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.DatasetResponseMeta".into()
+    }
+}
 /// Request for `GetSegmentTableSchema`.
 ///
 /// Empty: the dataset is identified by the standard dataset headers (see the `Headers` section at the top of this file).
@@ -498,6 +518,9 @@ pub struct GetSegmentTableSchemaResponse {
     /// Schema of the segment table.
     #[prost(message, optional, tag = "1")]
     pub schema: ::core::option::Option<super::super::common::v1alpha1::Schema>,
+    /// Dataset identity and revision metadata for this response.
+    #[prost(message, optional, tag = "100")]
+    pub meta: ::core::option::Option<DatasetResponseMeta>,
 }
 impl ::prost::Name for GetSegmentTableSchemaResponse {
     const NAME: &'static str = "GetSegmentTableSchemaResponse";
@@ -598,6 +621,9 @@ pub struct ScanSegmentTableResponse {
     /// [`ScanSegmentTableDataframe`](crate::cloud::v1alpha1::ext::ScanSegmentTableDataframe).
     #[prost(message, optional, tag = "1")]
     pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
+    /// Dataset identity and revision metadata for this response.
+    #[prost(message, optional, tag = "100")]
+    pub meta: ::core::option::Option<DatasetResponseMeta>,
 }
 impl ::prost::Name for ScanSegmentTableResponse {
     const NAME: &'static str = "ScanSegmentTableResponse";
@@ -630,6 +656,9 @@ pub struct GetDatasetManifestSchemaResponse {
     /// Schema of the dataset manifest.
     #[prost(message, optional, tag = "1")]
     pub schema: ::core::option::Option<super::super::common::v1alpha1::Schema>,
+    /// Dataset identity and revision metadata for this response.
+    #[prost(message, optional, tag = "100")]
+    pub meta: ::core::option::Option<DatasetResponseMeta>,
 }
 impl ::prost::Name for GetDatasetManifestSchemaResponse {
     const NAME: &'static str = "GetDatasetManifestSchemaResponse";
@@ -682,6 +711,9 @@ pub struct ScanDatasetManifestResponse {
     /// [`ScanDatasetManifestDataframe`](crate::cloud::v1alpha1::ext::ScanDatasetManifestDataframe).
     #[prost(message, optional, tag = "1")]
     pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
+    /// Dataset identity and revision metadata for this response.
+    #[prost(message, optional, tag = "100")]
+    pub meta: ::core::option::Option<DatasetResponseMeta>,
 }
 impl ::prost::Name for ScanDatasetManifestResponse {
     const NAME: &'static str = "ScanDatasetManifestResponse";
@@ -720,6 +752,9 @@ pub struct GetDatasetSchemaResponse {
     /// an empty schema rather than an error.
     #[prost(message, optional, tag = "1")]
     pub schema: ::core::option::Option<super::super::common::v1alpha1::Schema>,
+    /// Dataset identity and revision metadata for this response.
+    #[prost(message, optional, tag = "100")]
+    pub meta: ::core::option::Option<DatasetResponseMeta>,
 }
 impl ::prost::Name for GetDatasetSchemaResponse {
     const NAME: &'static str = "GetDatasetSchemaResponse";
@@ -767,6 +802,9 @@ pub struct GetRrdManifestResponse {
     /// Points at an encoded `rerun.log_msg.v1alpha1.RrdFooter` payload for the client to fetch and decode.
     #[prost(message, optional, tag = "2")]
     pub manifest_key: ::core::option::Option<RrdManifestKey>,
+    /// Dataset identity and revision metadata for this response.
+    #[prost(message, optional, tag = "100")]
+    pub meta: ::core::option::Option<DatasetResponseMeta>,
 }
 impl ::prost::Name for GetRrdManifestResponse {
     const NAME: &'static str = "GetRrdManifestResponse";
@@ -900,6 +938,9 @@ pub struct QueryDatasetResponse {
     /// Every batch of one stream carries the same schema, so clients can concatenate them.
     #[prost(message, optional, tag = "1")]
     pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
+    /// Dataset identity and revision metadata for this response.
+    #[prost(message, optional, tag = "100")]
+    pub meta: ::core::option::Option<DatasetResponseMeta>,
 }
 impl ::prost::Name for QueryDatasetResponse {
     const NAME: &'static str = "QueryDatasetResponse";
