@@ -52,15 +52,20 @@ impl HistoryEntry {
         }
     }
 
-    pub fn to_query_string(&self) -> Result<String, JsValue> {
-        use std::fmt::Write as _;
+    /// The address bar URL for this entry.
+    ///
+    /// An entry with no url resolves to the bare path, without a query string.
+    pub fn to_url(&self) -> Result<String, JsValue> {
+        if self.url.is_empty() {
+            let location =
+                re_web::browser::location().map_err(|err| JsError::new(&err.to_string()))?;
+            return location.pathname();
+        }
 
         let params = UrlSearchParams::new()?;
         params.append("url", &self.url);
-        let mut out = "?".to_owned();
-        write!(&mut out, "{}", params.to_string()).ok();
 
-        Ok(out)
+        Ok(format!("?{}", params.to_string()))
     }
 }
 
@@ -280,7 +285,7 @@ impl HistoryExt for History {
         }
 
         let state = get_updated_state(self, &entry)?;
-        let url = entry.to_query_string()?;
+        let url = entry.to_url()?;
         self.push_state_with_url(&state, "", Some(&url))?;
         set_stored_history_entry(Some(entry));
 
@@ -289,7 +294,7 @@ impl HistoryExt for History {
 
     fn replace_entry(&self, entry: HistoryEntry) -> Result<(), JsValue> {
         let state = get_updated_state(self, &entry)?;
-        let url = entry.to_query_string()?;
+        let url = entry.to_url()?;
         self.replace_state_with_url(&state, "", Some(&url))?;
         set_stored_history_entry(Some(entry));
 

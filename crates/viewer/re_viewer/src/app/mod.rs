@@ -935,8 +935,8 @@ impl App {
                     .as_ref()
                     .and_then(|entry| {
                         Some((
-                            entry.to_query_string().ok_or_log_js_error()?,
-                            new_entry.to_query_string().ok_or_log_js_error()?,
+                            entry.to_url().ok_or_log_js_error()?,
+                            new_entry.to_url().ok_or_log_js_error()?,
                         ))
                     })
                     .is_some_and(|(current, new)| strip_fragment(&current) == strip_fragment(&new));
@@ -1787,19 +1787,6 @@ fn blueprint_loader(component_reflection: Arc<ComponentReflectionMap>) -> Bluepr
     noop_blueprint_loader(component_reflection)
 }
 
-/// No-op blueprint persistence used on wasm. Also used in tests so that on-disk blueprints from
-/// the developer's running viewer don't leak into the test environment.
-fn noop_blueprint_loader(
-    component_reflection: Arc<ComponentReflectionMap>,
-) -> BlueprintPersistence {
-    BlueprintPersistence {
-        validator: Some(Box::new(move |blueprint| {
-            crate::blueprint::is_valid_blueprint(blueprint, &component_reflection)
-        })),
-        ..Default::default()
-    }
-}
-
 #[cfg(not(target_arch = "wasm32"))]
 fn blueprint_loader(component_reflection: Arc<ComponentReflectionMap>) -> BlueprintPersistence {
     use anyhow::Context as _;
@@ -1861,5 +1848,18 @@ fn blueprint_loader(component_reflection: Arc<ComponentReflectionMap>) -> Bluepr
         })),
         deleter: Some(Box::new(crate::saving::delete_blueprint)),
         table_blueprint_clearer: Some(Box::new(crate::saving::clear_table_blueprints)),
+    }
+}
+
+/// No-op blueprint persistence used on wasm. Also used in tests so that on-disk blueprints from
+/// the developer's running viewer don't leak into the test environment.
+fn noop_blueprint_loader(
+    component_reflection: Arc<ComponentReflectionMap>,
+) -> BlueprintPersistence {
+    BlueprintPersistence {
+        validator: Some(Box::new(move |blueprint| {
+            crate::blueprint::is_valid_blueprint(blueprint, &component_reflection)
+        })),
+        ..Default::default()
     }
 }

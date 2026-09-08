@@ -56,6 +56,8 @@ pub async fn rejected_startup_url_does_not_create_history() {
             .is_some()
     });
     harness.assert_browser_url_parameter("");
+    // An entry without a url leaves the address bar on the bare path.
+    harness.assert_browser_query_string("");
 
     assert!(
         harness.query_by_label("Loading data source:").is_none(),
@@ -113,4 +115,5 @@ pub async fn failed_loading_returns_to_the_previous_route_without_history() {
     });
     assert_back_is_disabled(&harness);
     harness.assert_browser_url_parameter("");
+    harness.assert_browser_query_string("");
 }

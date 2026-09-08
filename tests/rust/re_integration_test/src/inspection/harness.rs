@@ -228,6 +228,26 @@ impl InspectionHarness {
     #[cfg(not(feature = "browser"))]
     pub fn assert_browser_url_parameter(&self, _expected: &str) {}
 
+    /// Assert that the browser address bar has the expected query string, including the leading `?`.
+    ///
+    /// An empty expectation means the address bar is on the bare path, with no `url` parameter at all.
+    ///
+    /// Does nothing when not running in the browser.
+    #[cfg(feature = "browser")]
+    #[track_caller]
+    pub fn assert_browser_query_string(&self, expected: &str) {
+        if Self::is_browser() {
+            let actual = self.evaluate_js_in_browser("window.location.search");
+            assert_eq!(actual, expected);
+        }
+    }
+
+    /// Assert that the browser address bar has the expected query string, including the leading `?`.
+    ///
+    /// Does nothing when not running in the browser.
+    #[cfg(not(feature = "browser"))]
+    pub fn assert_browser_query_string(&self, _expected: &str) {}
+
     /// Capture the current frame as an image.
     pub fn screenshot(&mut self) -> image::RgbaImage {
         let png = self.connection.screenshot();
