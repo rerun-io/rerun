@@ -7,7 +7,7 @@ kind: nullable Utf8
 data: nullable Utf8
 exec_status: non-null Utf8
 msgs: nullable Utf8
-blob_len: nullable UInt64
+blob: nullable Binary
 lease_owner: nullable Utf8
 lease_expiration: nullable Timestamp(ns)
 attempts: non-null UInt8

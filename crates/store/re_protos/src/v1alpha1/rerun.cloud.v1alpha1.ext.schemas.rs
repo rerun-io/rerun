@@ -89,8 +89,8 @@ pub struct QueryTasksDataframe {
     /// Any messages produced by the task, e.g. the error message if it failed.
     pub msgs: quiver::Column<Option<quiver::Utf8>>,
 
-    /// The size of the task blob, in bytes.
-    pub blob_len: quiver::Column<Option<u64>>,
+    /// Task output bytes. Null for tasks without output.
+    pub blob: quiver::Column<Option<quiver::Binary>>,
 
     /// Who currently holds the lease on this task, if anyone.
     pub lease_owner: quiver::Column<Option<quiver::Utf8>>,

@@ -1998,7 +1998,7 @@ impl RerunCloudService for RerunCloudHandler {
             data: Df::COLUMN_DATA.new_null(num_tasks),
             exec_status: Df::COLUMN_EXEC_STATUS.new_from_values(exec_statuses),
             msgs: Df::COLUMN_MSGS.new_from_values(msgs),
-            blob_len: Df::COLUMN_BLOB_LEN.new_null(num_tasks),
+            blob: Df::COLUMN_BLOB.new_null(num_tasks),
             lease_owner: Df::COLUMN_LEASE_OWNER.new_null(num_tasks),
             lease_expiration: Df::COLUMN_LEASE_EXPIRATION.new_null(num_tasks),
             attempts: Df::COLUMN_ATTEMPTS.new_from_values(std::iter::repeat_n(1_u8, num_tasks)),
