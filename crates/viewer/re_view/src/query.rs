@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::sync::Arc;
 
 use nohash_hasher::{IntMap, IntSet};
@@ -9,16 +10,17 @@ use re_log_types::{
     hash::Hash64,
 };
 use re_query::LatestAtResults;
-use re_sdk_types::blueprint::encodings::ComponentSourceKind;
 use re_types_core::{Archetype, ComponentIdentifier};
-use re_viewer_context::{DataResult, QueryRange, ViewContext, ViewQuery, ViewerContext};
+use re_viewer_context::{
+    DataResult, QueryRange, ViewContext, ViewQuery, ViewerContext, VisualizabilityConstraints,
+    VisualizerComponentSource,
+};
 
 use crate::blueprint_resolved_results::{
-    BlueprintResolvedLatestAtResults, BlueprintResolvedRangeResults, ComponentSourcesMap,
+    ActiveRemapping, BlueprintResolvedLatestAtResults, BlueprintResolvedRangeResults,
+    CheckedComponentSource, ComponentSourcesMap,
 };
-use crate::component_mapping_query_plan::{
-    ActiveRemapping, ComponentMappingQueryPlan, has_non_empty_override,
-};
+use crate::component_mapping_query_plan::{ComponentMappingQueryPlan, has_non_empty_override};
 use crate::{BlueprintResolvedResults, ComponentMappingError};
 
 /// Resolve a visible time range — the range of a [`QueryRange::TimeRange`] — into absolute times.
@@ -81,11 +83,12 @@ enum CastTarget {
 
 /// Applies a selector (if present) and casts the component for known datatypes (if required).
 fn transform_chunk(
+    target: ComponentIdentifier,
     mapping: &ActiveRemapping,
     cast: &CastTarget,
     chunk: &re_chunk_store::Chunk,
 ) -> Result<re_chunk_store::Chunk, ComponentMappingError> {
-    chunk.with_shadowed_component(mapping.source, mapping.target, |arr| {
+    chunk.with_shadowed_component(mapping.source, target, |arr| {
         let transformed = if let Some(selector) = &mapping.selector {
             selector
                 .execute_per_row(&arr)
@@ -225,7 +228,7 @@ pub fn range_with_blueprint_resolved_data<'a>(
     range_query: &RangeQuery,
     data_result: &'a re_viewer_context::DataResult,
     components: impl IntoIterator<Item = ComponentIdentifier>,
-    visualizer_instruction: &re_viewer_context::VisualizerInstruction,
+    visualizer_instruction: &'a re_viewer_context::VisualizerInstruction,
 ) -> BlueprintResolvedRangeResults<'a> {
     range_with_blueprint_resolved_data_polymorphic(
         ctx,
@@ -253,7 +256,7 @@ pub fn range_with_blueprint_resolved_data_polymorphic<'a>(
     range_query: &RangeQuery,
     data_result: &'a re_viewer_context::DataResult,
     components: impl IntoIterator<Item = ComponentIdentifier>,
-    visualizer_instruction: &re_viewer_context::VisualizerInstruction,
+    visualizer_instruction: &'a re_viewer_context::VisualizerInstruction,
     cast_rules: &IntMap<ComponentIdentifier, ComponentCastRule>,
 ) -> BlueprintResolvedRangeResults<'a> {
     re_tracing::profile_function!(data_result.entity_path.to_string());
@@ -271,7 +274,6 @@ pub fn range_with_blueprint_resolved_data_polymorphic<'a>(
 
     let ComponentMappingQueryPlan {
         recording_queried_components,
-        active_remappings,
         mut component_sources,
     } = ComponentMappingQueryPlan::new(
         Some(&visualizer_instruction.component_mappings),
@@ -288,56 +290,75 @@ pub fn range_with_blueprint_resolved_data_polymorphic<'a>(
     );
 
     // Now that we know which store components are present, we can auto-determine all component sources that haven't been explicitly assigned yet.
+    let visualizer_constraints = ctx
+        .viewer_ctx
+        .view_class_registry()
+        .visualizer_constraints(visualizer_instruction.visualizer_type);
     auto_determine_remaining_sources(
         &mut component_sources,
         recording_queried_components,
         |component| store_results.components.contains_key(&component),
+        visualizer_constraints,
         &overrides,
     );
 
     // Buffer remapped components so every mapping reads the original query results.
     // This keeps chained mappings independent of their iteration order.
-    let mut remapped_store_results = Vec::with_capacity(active_remappings.len());
+    let mut remapped_store_results = Vec::new();
 
-    for mapping in &active_remappings {
-        if let Some(chunks) = store_results.components.get(&mapping.source) {
-            if mapping.is_identity() && !cast_rules.contains_key(&mapping.target) {
-                continue;
-            }
+    // Process sources - find missing components in the store and apply remappings.
+    #[expect(clippy::iter_over_hash_type)]
+    for (target, checked_source) in &mut component_sources {
+        if checked_source.error().is_some() {
+            continue;
+        }
 
-            // Clone instead of removing because multiple mappings may reference the same source.
-            let mut chunks = chunks.clone();
-            let cast = cast_target_for_remapping(
-                cast_rules.get(&mapping.target).copied(),
-                &mapping.target,
-                ctx.viewer_ctx.reflection(),
-            );
-            'ctx: {
-                for chunk in &mut chunks {
-                    let result = transform_chunk(mapping, &cast, chunk);
+        let source = match checked_source.source() {
+            VisualizerComponentSource::SourceComponent {
+                source_component, ..
+            } => *source_component,
+            VisualizerComponentSource::Override | VisualizerComponentSource::Default => continue,
+        };
 
-                    match result {
-                        Ok(modified_chunk) => *chunk = modified_chunk,
-                        Err(err) => {
-                            component_sources.insert(mapping.target, Err(err));
-                            break 'ctx;
-                        }
+        // Do we have the source component in the store results?
+        let Some(chunks) = store_results.components.get(&source) else {
+            checked_source.set_error(component_not_found_error(
+                source,
+                &data_result.entity_path,
+                &store_results.missing_virtual,
+                ctx.recording(),
+                &engine,
+                Some(range_query.timeline),
+            ));
+            continue;
+        };
+
+        // Process mapping if necessary.
+        let Some(mapping) = checked_source.remapping() else {
+            continue;
+        };
+        if mapping.is_identity(*target) && !cast_rules.contains_key(target) {
+            continue;
+        }
+
+        // Clone instead of removing because multiple mappings may reference the same source.
+        let mut chunks = chunks.clone();
+        let cast = cast_target_for_remapping(
+            cast_rules.get(target).copied(),
+            target,
+            ctx.viewer_ctx.reflection(),
+        );
+        'ctx: {
+            for chunk in &mut chunks {
+                match transform_chunk(*target, mapping, &cast, chunk) {
+                    Ok(modified_chunk) => *chunk = modified_chunk,
+                    Err(err) => {
+                        checked_source.set_error(err);
+                        break 'ctx;
                     }
                 }
-                remapped_store_results.push((mapping.target, chunks));
             }
-        } else {
-            component_sources.insert(
-                mapping.target,
-                Err(component_not_found_error(
-                    mapping.source,
-                    &data_result.entity_path,
-                    &store_results.missing_virtual,
-                    ctx.recording(),
-                    &engine,
-                    Some(range_query.timeline),
-                )),
-            );
+            remapped_store_results.push((*target, chunks));
         }
     }
     store_results.components.extend(remapped_store_results);
@@ -376,7 +397,7 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
     latest_at_query: &LatestAtQuery,
     data_result: &'a re_viewer_context::DataResult,
     components: impl IntoIterator<Item = ComponentIdentifier>,
-    visualizer_instruction: Option<&re_viewer_context::VisualizerInstruction>,
+    visualizer_instruction: Option<&'a re_viewer_context::VisualizerInstruction>,
 ) -> BlueprintResolvedLatestAtResults<'a> {
     latest_at_with_blueprint_resolved_data_polymorphic(
         ctx,
@@ -398,7 +419,7 @@ pub fn latest_at_with_blueprint_resolved_data_polymorphic<'a>(
     latest_at_query: &LatestAtQuery,
     data_result: &'a re_viewer_context::DataResult,
     components: impl IntoIterator<Item = ComponentIdentifier>,
-    visualizer_instruction: Option<&re_viewer_context::VisualizerInstruction>,
+    visualizer_instruction: Option<&'a re_viewer_context::VisualizerInstruction>,
     cast_rules: &IntMap<ComponentIdentifier, ComponentCastRule>,
 ) -> BlueprintResolvedLatestAtResults<'a> {
     // This is called very frequently, don't put a profile scope here.
@@ -423,7 +444,6 @@ pub fn latest_at_with_blueprint_resolved_data_polymorphic<'a>(
 
     let ComponentMappingQueryPlan {
         recording_queried_components: queried_components,
-        active_remappings,
         mut component_sources,
     } = ComponentMappingQueryPlan::new(
         visualizer_instruction.map(|instruction| &instruction.component_mappings),
@@ -440,52 +460,74 @@ pub fn latest_at_with_blueprint_resolved_data_polymorphic<'a>(
     );
 
     // Now that we know which store components are present, we can auto-determine all component sources that haven't been explicitly assigned yet.
+    let visualizer_constraints = visualizer_instruction.and_then(|instruction| {
+        ctx.viewer_ctx
+            .view_class_registry()
+            .visualizer_constraints(instruction.visualizer_type)
+    });
     auto_determine_remaining_sources(
         &mut component_sources,
         queried_components,
         |component| store_results.components.contains_key(&component),
+        visualizer_constraints,
         &overrides,
     );
 
     // Buffer remapped components so every mapping reads the original query results.
     // This keeps chained mappings independent of their iteration order.
-    let mut remapped_store_results = Vec::with_capacity(active_remappings.len());
+    let mut remapped_store_results = Vec::new();
 
-    for mapping in &active_remappings {
-        // Borrow instead of removing because multiple mappings may reference the same source.
-        if let Some(chunk) = store_results.components.get(&mapping.source) {
-            if mapping.is_identity() && !cast_rules.contains_key(&mapping.target) {
-                continue;
-            }
-            let cast = cast_target_for_remapping(
-                cast_rules.get(&mapping.target).copied(),
-                &mapping.target,
+    // Process sources - find missing components in the store and apply remappings.
+    #[expect(clippy::iter_over_hash_type)]
+    for (target, checked_source) in &mut component_sources {
+        if checked_source.error().is_some() {
+            continue;
+        }
+
+        let source = match checked_source.source() {
+            VisualizerComponentSource::SourceComponent {
+                source_component, ..
+            } => *source_component,
+            VisualizerComponentSource::Override | VisualizerComponentSource::Default => continue,
+        };
+
+        let Some(chunk) = store_results.components.get(&source) else {
+            checked_source.set_error(component_not_found_error(
+                source,
+                &data_result.entity_path,
+                &store_results.missing_virtual,
+                ctx.viewer_ctx.recording(),
+                &engine,
+                latest_at_query.timeline(),
+            ));
+            continue;
+        };
+
+        // Process mapping if necessary.
+        let Some(mapping) = checked_source.remapping() else {
+            continue;
+        };
+        if mapping.is_identity(*target) && !cast_rules.contains_key(target) {
+            continue;
+        }
+
+        match transform_chunk(
+            *target,
+            mapping,
+            &cast_target_for_remapping(
+                cast_rules.get(target).copied(),
+                target,
                 ctx.viewer_ctx.reflection(),
-            );
-            let result = transform_chunk(mapping, &cast, chunk);
-            match result {
-                Ok(modified_chunk) => {
-                    let chunk = std::sync::Arc::new(modified_chunk)
-                        .to_unit()
-                        .expect("The source chunk was a unit chunk.");
-                    remapped_store_results.push((mapping.target, chunk));
-                }
-                Err(err) => {
-                    component_sources.insert(mapping.target, Err(err));
-                }
+            ),
+            chunk,
+        ) {
+            Ok(modified_chunk) => {
+                let chunk = std::sync::Arc::new(modified_chunk)
+                    .to_unit()
+                    .expect("The source chunk was a unit chunk.");
+                remapped_store_results.push((*target, chunk));
             }
-        } else {
-            component_sources.insert(
-                mapping.target,
-                Err(component_not_found_error(
-                    mapping.source,
-                    &data_result.entity_path,
-                    &store_results.missing_virtual,
-                    ctx.viewer_ctx.recording(),
-                    &engine,
-                    latest_at_query.timeline(),
-                )),
-            );
+            Err(err) => checked_source.set_error(err),
         }
     }
     store_results.components.extend(remapped_store_results);
@@ -510,9 +552,10 @@ pub fn latest_at_with_blueprint_resolved_data_polymorphic<'a>(
 
 /// Computes the component sources for all components not yet present in `component_sources` by checking for overrides and store results.
 fn auto_determine_remaining_sources(
-    component_sources: &mut ComponentSourcesMap,
+    component_sources: &mut ComponentSourcesMap<'_>,
     queried_components: IntSet<ComponentIdentifier>,
     has_store_result: impl Fn(ComponentIdentifier) -> bool,
+    visualizer_constraints: Option<&VisualizabilityConstraints>,
     overrides: &LatestAtResults,
 ) {
     #[expect(clippy::iter_over_hash_type)] // Doing that to fill another hashmap.
@@ -522,15 +565,20 @@ fn auto_determine_remaining_sources(
             continue;
         };
 
+        let has_store_result = has_store_result(component);
+        let is_required = visualizer_constraints
+            .is_some_and(|constraints| constraints.is_required_component(component));
         let source = if has_non_empty_override(overrides, component) {
-            ComponentSourceKind::Override
-        } else if has_store_result(component) {
-            ComponentSourceKind::SourceComponent
+            VisualizerComponentSource::Override
+        } else if has_store_result || is_required {
+            // Required components must remain recording-backed when auto-mapped: a view default
+            // cannot make an otherwise incompatible entity satisfy a visualizer's requirements.
+            VisualizerComponentSource::simple_map(component)
         } else {
-            ComponentSourceKind::Default
+            VisualizerComponentSource::Default
         };
 
-        entry.insert(Ok(source));
+        entry.insert(CheckedComponentSource::new(Cow::Owned(source)));
     }
 }
 
@@ -590,7 +638,7 @@ pub trait DataResultQuery {
         &'a self,
         ctx: &'a ViewContext<'a>,
         latest_at_query: &'a LatestAtQuery,
-        visualizer_instruction: Option<&re_viewer_context::VisualizerInstruction>,
+        visualizer_instruction: Option<&'a re_viewer_context::VisualizerInstruction>,
     ) -> BlueprintResolvedLatestAtResults<'a>;
 
     fn latest_at_with_blueprint_resolved_data_for_component<'a>(
@@ -598,7 +646,7 @@ pub trait DataResultQuery {
         ctx: &'a ViewContext<'a>,
         latest_at_query: &'a LatestAtQuery,
         component: ComponentIdentifier,
-        visualizer_instruction: Option<&re_viewer_context::VisualizerInstruction>,
+        visualizer_instruction: Option<&'a re_viewer_context::VisualizerInstruction>,
     ) -> BlueprintResolvedLatestAtResults<'a>;
 
     /// Queries for the given components, taking into account:
@@ -609,7 +657,7 @@ pub trait DataResultQuery {
         ctx: &'a ViewContext<'a>,
         view_query: &ViewQuery<'_>,
         component_descriptors: impl IntoIterator<Item = ComponentIdentifier>,
-        visualizer_instruction: &re_viewer_context::VisualizerInstruction,
+        visualizer_instruction: &'a re_viewer_context::VisualizerInstruction,
     ) -> BlueprintResolvedResults<'a>;
 
     /// Queries for all components of an archetype, taking into account:
@@ -619,7 +667,7 @@ pub trait DataResultQuery {
         &'a self,
         ctx: &'a ViewContext<'a>,
         view_query: &ViewQuery<'_>,
-        visualizer_instruction: &re_viewer_context::VisualizerInstruction,
+        visualizer_instruction: &'a re_viewer_context::VisualizerInstruction,
     ) -> BlueprintResolvedResults<'a> {
         self.query_components_with_history(
             ctx,
@@ -635,7 +683,7 @@ impl DataResultQuery for DataResult {
         &'a self,
         ctx: &'a ViewContext<'a>,
         latest_at_query: &'a LatestAtQuery,
-        visualizer_instruction: Option<&re_viewer_context::VisualizerInstruction>,
+        visualizer_instruction: Option<&'a re_viewer_context::VisualizerInstruction>,
     ) -> BlueprintResolvedLatestAtResults<'a> {
         latest_at_with_blueprint_resolved_data(
             ctx,
@@ -652,7 +700,7 @@ impl DataResultQuery for DataResult {
         ctx: &'a ViewContext<'a>,
         latest_at_query: &'a LatestAtQuery,
         component: ComponentIdentifier,
-        visualizer_instruction: Option<&re_viewer_context::VisualizerInstruction>,
+        visualizer_instruction: Option<&'a re_viewer_context::VisualizerInstruction>,
     ) -> BlueprintResolvedLatestAtResults<'a> {
         latest_at_with_blueprint_resolved_data(
             ctx,
@@ -669,7 +717,7 @@ impl DataResultQuery for DataResult {
         ctx: &'a ViewContext<'a>,
         view_query: &ViewQuery<'_>,
         components: impl IntoIterator<Item = ComponentIdentifier>,
-        visualizer_instruction: &re_viewer_context::VisualizerInstruction,
+        visualizer_instruction: &'a re_viewer_context::VisualizerInstruction,
     ) -> BlueprintResolvedResults<'a> {
         match self.query_range() {
             QueryRange::TimeRange(time_range) => {
@@ -714,22 +762,53 @@ mod tests {
         AbsoluteTimeRange, EntityPath, TimePoint, TimelineName, build_frame_nr,
         external::arrow::datatypes::DataType,
     };
-    use re_sdk_types::archetypes;
+    use re_query::LatestAtResults;
     use re_sdk_types::blueprint::components::VisualizerInstructionId;
     use re_sdk_types::components::Color;
+    use re_sdk_types::{archetypes, components};
     use re_test_context::TestContext;
     use re_types_core::{Component as _, ComponentDescriptor, ViewClassIdentifier};
     use re_viewer_context::{
-        DataQueryResult, DataResult, QueryRange, ViewContext, ViewId, ViewSystemIdentifier,
-        VisualizerComponentMappings, VisualizerComponentSource, VisualizerInstruction,
+        DataQueryResult, DataResult, QueryRange, SingleRequiredComponentConstraint, ViewContext,
+        ViewId, ViewSystemIdentifier, VisualizerComponentMappings, VisualizerComponentSource,
+        VisualizerInstruction,
     };
 
     use super::{
-        ComponentCastRule, latest_at_with_blueprint_resolved_data,
-        latest_at_with_blueprint_resolved_data_polymorphic, range_with_blueprint_resolved_data,
-        range_with_blueprint_resolved_data_polymorphic,
+        ComponentCastRule, auto_determine_remaining_sources,
+        latest_at_with_blueprint_resolved_data, latest_at_with_blueprint_resolved_data_polymorphic,
+        range_with_blueprint_resolved_data, range_with_blueprint_resolved_data_polymorphic,
     };
+    use crate::blueprint_resolved_results::ComponentSourcesMap;
     use crate::{BlueprintResolvedResults, ComponentMappingError};
+
+    #[test]
+    fn auto_determination_keeps_required_components_recording_backed() {
+        let component_desc = archetypes::Scalars::descriptor_scalars();
+        let constraints =
+            SingleRequiredComponentConstraint::new::<components::Scalar>(&component_desc).into();
+        let overrides = LatestAtResults::empty(EntityPath::root(), LatestAtQuery::new_static());
+
+        // Even if there's no store results, required components should still be backed by the recording.
+        // (down the line this becomes an error)
+        for has_store_result in [false, true] {
+            let mut component_sources = ComponentSourcesMap::default();
+            auto_determine_remaining_sources(
+                &mut component_sources,
+                std::iter::once(component_desc.component).collect(),
+                |_| has_store_result,
+                Some(&constraints),
+                &overrides,
+            );
+
+            let checked_source = &component_sources[&component_desc.component];
+            assert_eq!(
+                checked_source.source(),
+                &VisualizerComponentSource::simple_map(component_desc.component)
+            );
+            assert!(checked_source.error().is_none());
+        }
+    }
 
     #[test]
     fn mapped_component_without_data_for_query_reports_specific_error() {
@@ -786,15 +865,21 @@ mod tests {
                 [target],
                 Some(&instruction),
             );
-            let latest_result = latest_results.component_sources.get(&target);
-            let Some(Err(ComponentMappingError::NoComponentDataForQuery(component))) =
-                latest_result
-            else {
-                panic!(
-                    "Expected NoComponentDataForQuery from latest-at query, got {latest_result:?}"
-                );
-            };
-            assert_eq!(*component, source);
+            let (latest_source, latest_result) = latest_results
+                .get_unit_chunk_with_source(target, true)
+                .expect("Expected a component source from latest-at query");
+            assert_eq!(
+                latest_source,
+                &VisualizerComponentSource::simple_map(source)
+            );
+            assert!(
+                matches!(
+                    latest_result,
+                    Err(ComponentMappingError::NoComponentDataForQuery(component))
+                        if *component == source
+                ),
+                "Expected NoComponentDataForQuery from latest-at query, got {latest_result:?}"
+            );
 
             let range_query =
                 RangeQuery::new(TimelineName::log_tick(), AbsoluteTimeRange::new(0, 0));
@@ -806,12 +891,22 @@ mod tests {
                 [target],
                 &instruction,
             );
-            let range_result = range_results.component_sources.get(&target);
-            let Some(Err(ComponentMappingError::NoComponentDataForQuery(component))) = range_result
-            else {
-                panic!("Expected NoComponentDataForQuery from range query, got {range_result:?}");
-            };
-            assert_eq!(*component, source);
+            let range_result = range_results
+                .component_sources
+                .get(&target)
+                .expect("Expected a component source from range query");
+            assert_eq!(
+                range_result.source(),
+                &VisualizerComponentSource::simple_map(source)
+            );
+            assert!(
+                matches!(
+                    range_result.error(),
+                    Some(ComponentMappingError::NoComponentDataForQuery(component))
+                        if *component == source
+                ),
+                "Expected NoComponentDataForQuery from range query, got {range_result:?}"
+            );
         });
     }
 

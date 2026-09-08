@@ -40,6 +40,14 @@ pub enum ComponentMappingError {
 }
 
 impl ComponentMappingError {
+    /// Whether the mapping is valid but its source data is unavailable for the current query.
+    pub fn is_data_unavailable_for_query(&self) -> bool {
+        matches!(
+            self,
+            Self::NoComponentDataForQuery(_) | Self::NoComponentDataForQueryButIsFetchable(_)
+        )
+    }
+
     pub fn component_not_present_on_entity(
         component: ComponentIdentifier,
         available_components: impl IntoIterator<Item = ComponentIdentifier>,

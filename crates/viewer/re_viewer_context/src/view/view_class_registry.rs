@@ -209,6 +209,16 @@ pub struct ViewClassRegistry {
 }
 
 impl ViewClassRegistry {
+    /// Returns the visualizability constraints registered for a visualizer.
+    pub fn visualizer_constraints(
+        &self,
+        visualizer: ViewSystemIdentifier,
+    ) -> Option<&crate::VisualizabilityConstraints> {
+        self.visualizers
+            .get(&visualizer)
+            .map(|entry| entry.entity_config.constraints.as_ref())
+    }
+
     /// Adds a new view class.
     ///
     /// Fails if a view class with the same name was already registered.

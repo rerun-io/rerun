@@ -16,8 +16,76 @@ use crate::{
     chunks_with_component::{ChunksWithComponent, MaybeChunksWithComponent},
 };
 
-pub type ComponentSourcesMap =
-    IntMap<ComponentIdentifier, Result<ComponentSourceKind, ComponentMappingError>>;
+/// A parsed source-component remapping ready to execute against query results.
+#[derive(Debug, PartialEq, Eq, Hash)]
+pub struct ActiveRemapping {
+    pub source: ComponentIdentifier,
+    pub selector: Option<re_lenses_core::Selector>,
+}
+
+impl ActiveRemapping {
+    pub fn is_identity(&self, target: ComponentIdentifier) -> bool {
+        self.selector.is_none() && target == self.source
+    }
+}
+
+/// The selected source for a visualizer component and any error encountered while checking it.
+#[derive(Debug)]
+#[must_use = "component source checking errors must be handled"]
+pub struct CheckedComponentSource<'a> {
+    /// The source selected explicitly or inferred by the query.
+    source: Cow<'a, VisualizerComponentSource>,
+
+    /// The error encountered while checking `source`, if any.
+    ///
+    /// It's boxed to reduce the size of the [`CheckedComponentSource`] struct:
+    /// we expect this to be rarely used and [`ComponentMappingError`] is quite large.
+    error: Option<Box<ComponentMappingError>>,
+
+    /// Parsed execution state for an explicit source-component mapping.
+    remapping: Option<ActiveRemapping>,
+}
+
+impl<'a> CheckedComponentSource<'a> {
+    pub fn new(source: Cow<'a, VisualizerComponentSource>) -> Self {
+        Self {
+            source,
+            error: None,
+            remapping: None,
+        }
+    }
+
+    pub fn with_remapping(mut self, remapping: ActiveRemapping) -> Self {
+        self.remapping = Some(remapping);
+        self
+    }
+
+    pub fn with_error(mut self, error: ComponentMappingError) -> Self {
+        self.error = Some(Box::new(error));
+        self
+    }
+
+    pub fn set_error(&mut self, error: ComponentMappingError) {
+        self.error = Some(Box::new(error));
+    }
+
+    #[inline]
+    pub fn source(&self) -> &VisualizerComponentSource {
+        self.source.as_ref()
+    }
+
+    #[inline]
+    pub fn error(&self) -> Option<&ComponentMappingError> {
+        self.error.as_deref()
+    }
+
+    #[inline]
+    pub fn remapping(&self) -> Option<&ActiveRemapping> {
+        self.remapping.as_ref()
+    }
+}
+
+pub type ComponentSourcesMap<'a> = IntMap<ComponentIdentifier, CheckedComponentSource<'a>>;
 
 /// Wrapper that contains the results of a latest-at query with possible overrides.
 ///
@@ -32,11 +100,14 @@ pub struct BlueprintResolvedLatestAtResults<'a> {
 
     pub(crate) query_context: QueryContext<'a>,
 
-    pub(crate) component_sources: ComponentSourcesMap,
+    pub(crate) component_sources: ComponentSourcesMap<'a>,
 
     /// Hash of the visualizer instruction's component mappings.
     pub(crate) component_mappings_hash: Hash64,
 }
+
+pub type ResolvedUnitChunkResult<'a> =
+    Result<Option<Cow<'a, UnitChunkShared>>, &'a ComponentMappingError>;
 
 impl<'a> BlueprintResolvedLatestAtResults<'a> {
     /// Are there any chunks that need to be fetched from a remote store?
@@ -51,17 +122,34 @@ impl<'a> BlueprintResolvedLatestAtResults<'a> {
     /// `force_preserve_store_row_ids`: If true, preserves row IDs from store data.
     /// If false, results are re-indexed to static with zeroed row IDs to allow range zipping.
     /// Blueprint data (overrides/defaults) is **always** re-indexed regardless of this setting.
-    pub fn get_unit_chunk(
+    fn get_unit_chunk(
         &'a self,
         component: ComponentIdentifier,
         force_preserve_store_row_ids: bool,
-    ) -> Result<Option<Cow<'a, UnitChunkShared>>, ComponentMappingError> {
-        let Some(source) = self.component_sources.get(&component) else {
-            return Ok(None);
-        };
-        let source = source.clone()?;
+    ) -> ResolvedUnitChunkResult<'a> {
+        self.get_unit_chunk_with_source(component, force_preserve_store_row_ids)
+            .map_or(Ok(None), |(_, unit_chunk)| unit_chunk)
+    }
 
-        let blueprint_unit_chunk = match source {
+    /// Returns the selected source together with the [`UnitChunkShared`] for the given component.
+    ///
+    /// `force_preserve_store_row_ids`: If true, preserves row IDs from store data.
+    /// If false, results are re-indexed to static with zeroed row IDs to allow range zipping.
+    /// Blueprint data (overrides/defaults) is **always** re-indexed regardless of this setting.
+    ///
+    /// Returns `None` if the component isn't in use at all.
+    pub fn get_unit_chunk_with_source(
+        &'a self,
+        component: ComponentIdentifier,
+        force_preserve_store_row_ids: bool,
+    ) -> Option<(&'a VisualizerComponentSource, ResolvedUnitChunkResult<'a>)> {
+        let checked_source = self.component_sources.get(&component)?;
+        let source = checked_source.source();
+        if let Some(err) = checked_source.error() {
+            return Some((source, Err(err)));
+        }
+
+        let blueprint_unit_chunk = match source.source_kind() {
             ComponentSourceKind::SourceComponent => {
                 if let Some(unit_chunk) = self.store_results.get(component) {
                     let unit_chunk = if force_preserve_store_row_ids {
@@ -73,7 +161,7 @@ impl<'a> BlueprintResolvedLatestAtResults<'a> {
                             "This was a unit chunk to begin with, so converting it back can't fail",
                         ))
                     };
-                    return Ok(Some(unit_chunk));
+                    return Some((source, Ok(Some(unit_chunk))));
                 }
                 None
             }
@@ -91,9 +179,9 @@ impl<'a> BlueprintResolvedLatestAtResults<'a> {
                     "This was a unit chunk to begin with, so converting it back can't fail",
                 ));
 
-            Ok(Some(unit_chunk))
+            Some((source, Ok(Some(unit_chunk))))
         } else {
-            Ok(None)
+            Some((source, Ok(None)))
         }
     }
 }
@@ -109,13 +197,13 @@ pub struct BlueprintResolvedRangeResults<'a> {
 
     pub(crate) query_context: QueryContext<'a>,
 
-    pub(crate) component_sources: ComponentSourcesMap,
+    pub(crate) component_sources: ComponentSourcesMap<'a>,
 
     /// Hash of the visualizer instruction's component mappings.
     pub(crate) component_mappings_hash: Hash64,
 }
 
-impl BlueprintResolvedRangeResults<'_> {
+impl<'a> BlueprintResolvedRangeResults<'a> {
     /// Are there any chunks that need to be fetched from a remote store?
     fn any_missing_chunks(&self) -> bool {
         0 < self.overrides.missing_virtual.len()
@@ -137,19 +225,19 @@ impl BlueprintResolvedRangeResults<'_> {
     /// zeroed chunks to allow proper range zipping. Any errors from the bootstrap query
     /// are also merged into the component sources.
     // TODO(andreas): It's a bit overkill to do a full blueprint resolved query for both the range & latest-at part. This can be optimized!
-    pub fn merge_bootstrapped_data(&mut self, bootstrapped: BlueprintResolvedLatestAtResults<'_>) {
+    pub fn merge_bootstrapped_data(&mut self, bootstrapped: BlueprintResolvedLatestAtResults<'a>) {
         // Merge component source from bootstrap into the range results.
         #[expect(clippy::iter_over_hash_type)] // Fills up another hash type.
         for (component, bootstrap_source) in bootstrapped.component_sources {
             match self.component_sources.entry(component) {
                 std::collections::hash_map::Entry::Occupied(mut range_query_source) => {
                     #[expect(clippy::match_same_arms)]
-                    match bootstrap_source {
-                        Ok(_) => {
+                    match bootstrap_source.error() {
+                        None => {
                             // Don't override the source, let the range result take precedence.
                         }
 
-                        Err(
+                        Some(
                             ComponentMappingError::ComponentNotPresentOnEntity { .. }
                             | ComponentMappingError::NoComponentDataForQuery(_)
                             | ComponentMappingError::NoComponentDataForQueryButIsFetchable(_),
@@ -158,7 +246,7 @@ impl BlueprintResolvedRangeResults<'_> {
                             // Data may only exist within the range actual range, if not it has the error already!
                         }
 
-                        Err(
+                        Some(
                             ComponentMappingError::SelectorParseFailed(_)
                             | ComponentMappingError::SelectorExecutionFailed(_)
                             | ComponentMappingError::CastFailed { .. }
@@ -276,16 +364,6 @@ impl BlueprintResolvedLatestAtResults<'_> {
     /// Returns the query used to produce this result.
     pub fn query(&self) -> &LatestAtQuery {
         &self.query_context.query
-    }
-
-    /// Returns the source of the given component, i.e. whether it came from an override, the store results, or defaults.
-    ///
-    /// Returns `None` if the component isn't in use at all.
-    pub fn component_source_kind_for(
-        &self,
-        component: ComponentIdentifier,
-    ) -> Option<&Result<ComponentSourceKind, ComponentMappingError>> {
-        self.component_sources.get(&component)
     }
 }
 
@@ -440,13 +518,9 @@ pub trait BlueprintResolvedResultsExt<'a> {
     /// Use this for required components where row IDs are needed for caching or identification.
     ///
     /// Blueprint row IDs are always discarded.
-    ///
-    /// `explicit_mapping` is the explicit mapping for this component, if any.
-    /// An empty result is an error when its recording source does not exist on the entity.
     fn get_required_chunks(
         &'a self,
         component: ComponentIdentifier,
-        explicit_mapping: Option<&VisualizerComponentSource>,
     ) -> MaybeChunksWithComponent<'a>;
 
     /// Returns optional component chunks with zeroed store row IDs.
@@ -478,15 +552,11 @@ pub trait BlueprintResolvedResultsExt<'a> {
         mut reporter: impl FnMut(&ComponentMappingError),
         timeline: TimelineName,
         component: ComponentIdentifier,
-        explicit_mapping: Option<&VisualizerComponentSource>,
     ) -> HybridResultsChunkIter<'a> {
-        let chunks_with_component = match self
-            .get_required_chunks(component, explicit_mapping)
-            .try_into()
-        {
+        let chunks_with_component = match self.get_required_chunks(component).try_into() {
             Ok(chunks) => chunks,
             Err(err) => {
-                reporter(&err);
+                reporter(err);
                 ChunksWithComponent::empty(component)
             }
         };
@@ -518,7 +588,7 @@ pub trait BlueprintResolvedResultsExt<'a> {
         let chunks_with_component = match self.get_optional_chunks(component).try_into() {
             Ok(chunks) => chunks,
             Err(err) => {
-                reporter(&err);
+                reporter(err);
                 ChunksWithComponent::empty(component)
             }
         };
@@ -532,17 +602,8 @@ pub trait BlueprintResolvedResultsExt<'a> {
 
 impl BlueprintResolvedResultsExt<'_> for BlueprintResolvedRangeResults<'_> {
     #[inline]
-    fn get_required_chunks(
-        &self,
-        component: ComponentIdentifier,
-        explicit_mapping: Option<&VisualizerComponentSource>,
-    ) -> MaybeChunksWithComponent<'_> {
+    fn get_required_chunks(&self, component: ComponentIdentifier) -> MaybeChunksWithComponent<'_> {
         self.get_chunks(component, true)
-            .ensure_required_component_present(
-                self.any_missing_chunks(),
-                self.query_context(),
-                explicit_mapping,
-            )
     }
 
     #[inline]
@@ -551,15 +612,15 @@ impl BlueprintResolvedResultsExt<'_> for BlueprintResolvedRangeResults<'_> {
         component: ComponentIdentifier,
         _force_preserve_store_row_ids: bool,
     ) -> MaybeChunksWithComponent<'_> {
-        let source = match self.component_sources.get(&component) {
-            Some(Ok(source)) => source,
-            // TODO(grtlr,andreas): Not all of our errors implement clone (looking at you `ArrowError`)!
-            Some(Err(err)) => return MaybeChunksWithComponent::error(component, err.clone()),
-            None => return MaybeChunksWithComponent::empty(component),
+        let Some(checked_source) = self.component_sources.get(&component) else {
+            return MaybeChunksWithComponent::empty(component);
         };
+        if let Some(err) = checked_source.error() {
+            return MaybeChunksWithComponent::error(component, err);
+        }
 
-        let chunks = match source {
-            ComponentSourceKind::SourceComponent => {
+        let chunks = match checked_source.source() {
+            VisualizerComponentSource::SourceComponent { .. } => {
                 // NOTE: Because this is a range query, we always need the defaults to come first,
                 // since range queries don't have any state to bootstrap from.
                 let defaults = self.view_defaults.get(component).map(|unit| {
@@ -576,7 +637,7 @@ impl BlueprintResolvedResultsExt<'_> for BlueprintResolvedRangeResults<'_> {
                 // becomes an issue.
                 Cow::Owned(std::iter::chain(defaults, results_chunks.iter().cloned()).collect_vec())
             }
-            ComponentSourceKind::Override => {
+            VisualizerComponentSource::Override => {
                 self.overrides
                     .get(component)
                     .map_or(Cow::Owned(Vec::new()), |unit| {
@@ -588,7 +649,7 @@ impl BlueprintResolvedResultsExt<'_> for BlueprintResolvedRangeResults<'_> {
                         Cow::Owned(vec![chunk])
                     })
             }
-            ComponentSourceKind::Default => {
+            VisualizerComponentSource::Default => {
                 self.view_defaults
                     .get(component)
                     .map_or(Cow::Owned(Vec::new()), |unit| {
@@ -615,14 +676,8 @@ impl<'a> BlueprintResolvedResultsExt<'a> for BlueprintResolvedLatestAtResults<'_
     fn get_required_chunks(
         &'a self,
         component: ComponentIdentifier,
-        explicit_mapping: Option<&VisualizerComponentSource>,
     ) -> MaybeChunksWithComponent<'a> {
         self.get_chunks(component, true)
-            .ensure_required_component_present(
-                self.any_missing_chunks(),
-                self.query_context(),
-                explicit_mapping,
-            )
     }
 
     #[inline]
@@ -653,14 +708,8 @@ impl<'a> BlueprintResolvedResultsExt<'a> for BlueprintResolvedResults<'_> {
     fn get_required_chunks(
         &'a self,
         component: ComponentIdentifier,
-        explicit_mapping: Option<&VisualizerComponentSource>,
     ) -> MaybeChunksWithComponent<'a> {
         self.get_chunks(component, true)
-            .ensure_required_component_present(
-                self.any_missing_chunks(),
-                self.query_context(),
-                explicit_mapping,
-            )
     }
 
     #[inline]

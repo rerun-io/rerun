@@ -90,6 +90,21 @@ pub async fn per_visualizer_instruction_errors() {
     harness.click_label("/scalars");
     harness.snapshot_app("per_visualizer_instruction_errors_2b_warnings_and_errors_dataresult");
 
+    // The invalid source should remain selected and show its resolution error.
+    harness
+        .selection_panel()
+        .toggle_nth_hierarchical_list("scalars", 2);
+    harness
+        .selection_panel()
+        .click_label("Scalars:scalars_$source");
+    harness.snapshot_app("per_visualizer_instruction_errors_2c_invalid_source_selected");
+    harness
+        .selection_panel()
+        .click_label("Scalars:scalars_$source");
+    harness
+        .selection_panel()
+        .toggle_nth_hierarchical_list("scalars", 2);
+
     // Now test errors only - remove the warning visualizer.
     {
         harness.setup_viewport_blueprint(move |viewer_context, _blueprint| {
@@ -188,6 +203,9 @@ pub async fn missing_identity_mapped_required_component_is_reported_as_error() {
     harness
         .selection_panel()
         .click_nth_label("custom_component", 0);
+    harness
+        .selection_panel()
+        .toggle_nth_hierarchical_list("scalars", 0);
 
     harness.snapshot_app("missing_required_component_error");
 }

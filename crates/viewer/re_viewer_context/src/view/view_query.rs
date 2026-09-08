@@ -90,6 +90,24 @@ impl VisualizerComponentSource {
     pub fn is_identity_mapping(&self, target: ComponentIdentifier) -> bool {
         self == &Self::identity(target)
     }
+
+    /// Returns a human-readable description of the component source.
+    pub fn summary(&self) -> String {
+        match self {
+            Self::SourceComponent {
+                source_component,
+                selector,
+            } => {
+                if selector.is_empty() {
+                    source_component.as_str().to_owned()
+                } else {
+                    format!("{}{}", source_component.as_str(), selector)
+                }
+            }
+            Self::Override => "Custom".to_owned(),
+            Self::Default => "View default".to_owned(),
+        }
+    }
 }
 
 /// Component mappings for a visualizer instruction.

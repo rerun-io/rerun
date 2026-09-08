@@ -286,8 +286,8 @@ impl VisualizerSystem for StateVisualizer {
             type_report,
         );
         // For state values, default and override options aren't meaningful.
-        selectors.render(ui, &StateChange::descriptor_state(), false);
-        selectors.render(ui, &StateConfiguration::descriptor_labels(), true);
+        selectors.source_selector_ui(ui, &StateChange::descriptor_state(), false);
+        selectors.source_selector_ui(ui, &StateConfiguration::descriptor_labels(), true);
 
         crate::visualizer_ui::state_config_editor(ui, ctx, data_result, instruction);
         true

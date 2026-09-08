@@ -335,3 +335,16 @@ pub enum VisualizabilityConstraints {
     /// See [`BufferAndFormatConstraint`] for details.
     BufferAndFormat(BufferAndFormatConstraint),
 }
+
+impl VisualizabilityConstraints {
+    /// Whether this component is a required input slot of the visualizer.
+    pub fn is_required_component(&self, component: ComponentIdentifier) -> bool {
+        match self {
+            Self::SingleRequiredComponent(constraint) => constraint.target_component() == component,
+            Self::BufferAndFormat(constraint) => {
+                constraint.buffer_target() == component || constraint.format_target() == component
+            }
+            Self::None | Self::AnyBuiltinComponent(_) => false,
+        }
+    }
+}
