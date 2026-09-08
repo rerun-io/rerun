@@ -48,7 +48,7 @@ def get_python_config() -> dict[str, Any]:
     if sys.platform == "win32":
         lib_name = "python3"
     else:
-        lib_name = config.get("LDLIBRARY", "").replace(".so", "").replace("lib", "", 1)
+        lib_name = config.get("LDLIBRARY", "").removeprefix("lib").removesuffix(".so").removesuffix(".a")
         if not lib_name:
             lib_name = f"python{sys.version_info.major}.{sys.version_info.minor}"
 
