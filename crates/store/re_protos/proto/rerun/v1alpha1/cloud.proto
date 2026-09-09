@@ -152,6 +152,14 @@ service RerunCloudService {
   // body `id` field (see the `Headers` section at the top of this file).
   rpc UpdateTableEntry(UpdateTableEntryRequest) returns (UpdateTableEntryResponse) {}
 
+  // --- Grants ---
+
+  // Returns authorization to write one object at the requested key.
+  //
+  // The grant applies to exactly `size_bytes` bytes and expires at the time in the response.
+  // TODO(grtlr): Add a `GetReadAccessGrant` when clients need direct read access.
+  rpc GetWriteAccessGrant(GetWriteAccessGrantRequest) returns (GetWriteAccessGrantResponse) {}
+
   // --- Manifest Registry ---
 
   /* Write data */
@@ -495,6 +503,73 @@ enum ErrorCode {
 
   // Encoding / decoding error
   ERROR_CODE_CODEC_ERROR = 3;
+}
+
+// --- Grants ---
+
+// Requests authorization to write one object.
+message GetWriteAccessGrantRequest {
+  // The exact size of the object in bytes.
+  // The client may upload incrementally, but it must send exactly this many bytes.
+  uint64 size_bytes = 1;
+
+  // The full object key, including the file name, relative to the location's base.
+  string key = 2;
+
+  // The requested storage location.
+  // The request fails if this is absent and the server has no default location.
+  optional Location location = 3;
+}
+
+// Selects a cloud location for an object.
+//
+// TODO(grtlr): Define provider, region, and network constraints.
+message Location {}
+
+// Contains the URL that identifies the object and the authorization needed to write it.
+message GetWriteAccessGrantResponse {
+  // Stable, credential-free URL naming the object.
+  //
+  // Pass this URL to `RegisterWithDataset` after writing the object.
+  string storage_url = 1;
+
+  // Authorization for the write operation.
+  AccessGrant grant = 2;
+}
+
+// Authorizes one storage operation until `expires_at`.
+message AccessGrant {
+  // The time after which the caller must not redeem this grant.
+  google.protobuf.Timestamp expires_at = 1;
+
+  // How the caller redeems this grant.
+  // TODO(grtlr): Add data-plane and client-side SDK redemption mechanisms when needed.
+  oneof redemption {
+    // The HTTP request that redeems this grant.
+    HttpRequest http_request = 2;
+  }
+}
+
+// Describes an HTTP request that the caller can perform directly.
+message HttpRequest {
+  // Uppercase HTTP method.
+  string method = 1;
+
+  // Absolute HTTP(S) URL.
+  string url = 2;
+
+  // Headers the caller must send exactly as returned.
+  // A name may appear more than once.
+  repeated HttpHeader headers = 3;
+}
+
+// Describes one HTTP header field.
+message HttpHeader {
+  // Field name, matched case-insensitively.
+  string name = 1;
+
+  // Field value, sent verbatim.
+  string value = 2;
 }
 
 // --- Manifest Registry ---

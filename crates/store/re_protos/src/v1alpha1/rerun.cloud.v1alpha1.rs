@@ -306,6 +306,144 @@ impl ::prost::Name for Error {
         "/rerun.cloud.v1alpha1.Error".into()
     }
 }
+/// Requests authorization to write one object.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct GetWriteAccessGrantRequest {
+    /// The exact size of the object in bytes.
+    /// The client may upload incrementally, but it must send exactly this many bytes.
+    #[prost(uint64, tag = "1")]
+    pub size_bytes: u64,
+    /// The full object key, including the file name, relative to the location's base.
+    #[prost(string, tag = "2")]
+    pub key: ::prost::alloc::string::String,
+    /// The requested storage location.
+    /// The request fails if this is absent and the server has no default location.
+    #[prost(message, optional, tag = "3")]
+    pub location: ::core::option::Option<Location>,
+}
+impl ::prost::Name for GetWriteAccessGrantRequest {
+    const NAME: &'static str = "GetWriteAccessGrantRequest";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.GetWriteAccessGrantRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.GetWriteAccessGrantRequest".into()
+    }
+}
+/// Selects a cloud location for an object.
+///
+/// TODO(grtlr): Define provider, region, and network constraints.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct Location {}
+impl ::prost::Name for Location {
+    const NAME: &'static str = "Location";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.Location".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.Location".into()
+    }
+}
+/// Contains the URL that identifies the object and the authorization needed to write it.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetWriteAccessGrantResponse {
+    /// Stable, credential-free URL naming the object.
+    ///
+    /// Pass this URL to `RegisterWithDataset` after writing the object.
+    #[prost(string, tag = "1")]
+    pub storage_url: ::prost::alloc::string::String,
+    /// Authorization for the write operation.
+    #[prost(message, optional, tag = "2")]
+    pub grant: ::core::option::Option<AccessGrant>,
+}
+impl ::prost::Name for GetWriteAccessGrantResponse {
+    const NAME: &'static str = "GetWriteAccessGrantResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.GetWriteAccessGrantResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.GetWriteAccessGrantResponse".into()
+    }
+}
+/// Authorizes one storage operation until `expires_at`.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct AccessGrant {
+    /// The time after which the caller must not redeem this grant.
+    #[prost(message, optional, tag = "1")]
+    pub expires_at: ::core::option::Option<::prost_types::Timestamp>,
+    /// How the caller redeems this grant.
+    /// TODO(grtlr): Add data-plane and client-side SDK redemption mechanisms when needed.
+    #[prost(oneof = "access_grant::Redemption", tags = "2")]
+    pub redemption: ::core::option::Option<access_grant::Redemption>,
+}
+/// Nested message and enum types in `AccessGrant`.
+pub mod access_grant {
+    /// How the caller redeems this grant.
+    /// TODO(grtlr): Add data-plane and client-side SDK redemption mechanisms when needed.
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Redemption {
+        /// The HTTP request that redeems this grant.
+        #[prost(message, tag = "2")]
+        HttpRequest(super::HttpRequest),
+    }
+}
+impl ::prost::Name for AccessGrant {
+    const NAME: &'static str = "AccessGrant";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.AccessGrant".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.AccessGrant".into()
+    }
+}
+/// Describes an HTTP request that the caller can perform directly.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct HttpRequest {
+    /// Uppercase HTTP method.
+    #[prost(string, tag = "1")]
+    pub method: ::prost::alloc::string::String,
+    /// Absolute HTTP(S) URL.
+    #[prost(string, tag = "2")]
+    pub url: ::prost::alloc::string::String,
+    /// Headers the caller must send exactly as returned.
+    /// A name may appear more than once.
+    #[prost(message, repeated, tag = "3")]
+    pub headers: ::prost::alloc::vec::Vec<HttpHeader>,
+}
+impl ::prost::Name for HttpRequest {
+    const NAME: &'static str = "HttpRequest";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.HttpRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.HttpRequest".into()
+    }
+}
+/// Describes one HTTP header field.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct HttpHeader {
+    /// Field name, matched case-insensitively.
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
+    /// Field value, sent verbatim.
+    #[prost(string, tag = "2")]
+    pub value: ::prost::alloc::string::String,
+}
+impl ::prost::Name for HttpHeader {
+    const NAME: &'static str = "HttpHeader";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.HttpHeader".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.HttpHeader".into()
+    }
+}
 /// One place to read data from when registering it with a dataset.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct DataSource {
@@ -2829,6 +2967,29 @@ pub mod rerun_cloud_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
+        /// Returns authorization to write one object at the requested key.
+        ///
+        /// The grant applies to exactly `size_bytes` bytes and expires at the time in the response.
+        /// TODO(grtlr): Add a `GetReadAccessGrant` when clients need direct read access.
+        pub async fn get_write_access_grant(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetWriteAccessGrantRequest>,
+        ) -> std::result::Result<tonic::Response<super::GetWriteAccessGrantResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic_prost::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.cloud.v1alpha1.RerunCloudService/GetWriteAccessGrant",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.cloud.v1alpha1.RerunCloudService",
+                "GetWriteAccessGrant",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
         /// Register new segments with the Dataset.
         ///
         /// This endpoint requires the standard dataset headers (see the `Headers` section at the top of this file).
@@ -3529,6 +3690,14 @@ pub mod rerun_cloud_service_server {
             &self,
             request: tonic::Request<super::UpdateTableEntryRequest>,
         ) -> std::result::Result<tonic::Response<super::UpdateTableEntryResponse>, tonic::Status>;
+        /// Returns authorization to write one object at the requested key.
+        ///
+        /// The grant applies to exactly `size_bytes` bytes and expires at the time in the response.
+        /// TODO(grtlr): Add a `GetReadAccessGrant` when clients need direct read access.
+        async fn get_write_access_grant(
+            &self,
+            request: tonic::Request<super::GetWriteAccessGrantRequest>,
+        ) -> std::result::Result<tonic::Response<super::GetWriteAccessGrantResponse>, tonic::Status>;
         /// Register new segments with the Dataset.
         ///
         /// This endpoint requires the standard dataset headers (see the `Headers` section at the top of this file).
@@ -4401,6 +4570,49 @@ pub mod rerun_cloud_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = UpdateTableEntrySvc(inner);
+                        let codec = tonic_prost::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.cloud.v1alpha1.RerunCloudService/GetWriteAccessGrant" => {
+                    #[allow(non_camel_case_types)]
+                    struct GetWriteAccessGrantSvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
+                        tonic::server::UnaryService<super::GetWriteAccessGrantRequest>
+                        for GetWriteAccessGrantSvc<T>
+                    {
+                        type Response = super::GetWriteAccessGrantResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::GetWriteAccessGrantRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as RerunCloudService>::get_write_access_grant(&inner, request)
+                                    .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = GetWriteAccessGrantSvc(inner);
                         let codec = tonic_prost::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

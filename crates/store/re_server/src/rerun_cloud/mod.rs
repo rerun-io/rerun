@@ -957,7 +957,20 @@ impl RerunCloudService for RerunCloudHandler {
         ))
     }
 
+    // --- Grants ---
+
+    async fn get_write_access_grant(
+        &self,
+        _request: tonic::Request<re_protos::cloud::v1alpha1::GetWriteAccessGrantRequest>,
+    ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::GetWriteAccessGrantResponse>>
+    {
+        Err(tonic::Status::unimplemented(
+            "write access grants are not implemented",
+        ))
+    }
+
     // --- Manifest Registry ---
+
     async fn register_with_dataset(
         &self,
         request: tonic::Request<re_protos::cloud::v1alpha1::RegisterWithDatasetRequest>,
