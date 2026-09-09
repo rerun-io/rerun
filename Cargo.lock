@@ -10393,6 +10393,7 @@ dependencies = [
  "http-body",
  "itertools 0.15.0",
  "jiff",
+ "js-sys",
  "lance",
  "nohash-hasher",
  "opentelemetry",
@@ -10433,6 +10434,7 @@ dependencies = [
  "tracing",
  "url",
  "wasm-bindgen-test",
+ "web-sys",
 ]
 
 [[package]]

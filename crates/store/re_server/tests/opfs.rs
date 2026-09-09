@@ -60,6 +60,18 @@ fn in_process_connection<T: RerunCloudService>(service: Arc<T>) -> ConnectionHan
         .expect("internal connection is configured")
 }
 
+async fn write_bytes_to_opfs(path: &str, contents: &[u8]) -> std::io::Result<()> {
+    // TODO(grtlr): https://bugs.webkit.org/show_bug.cgi?id=302733
+    // Write the Wasm-backed bytes directly once WebKit respects typed-array
+    // view bounds in `FileSystemWritableFileStream.write`.
+    let bytes = js_sys::Uint8Array::from(contents);
+    let parts = js_sys::Array::new();
+    parts.push(&bytes);
+    let file = web_sys::File::new_with_u8_array_sequence(&parts, path)
+        .map_err(|err| std::io::Error::other(re_web::Error::from(err)))?;
+    re_web::fs::write_file(path, file).await
+}
+
 async fn register_rrd_from_file_url_in_opfs(with_footer: bool) {
     let service = Arc::new(RerunCloudHandlerBuilder::new().build());
     let connection = in_process_connection(service);
@@ -74,7 +86,7 @@ async fn register_rrd_from_file_url_in_opfs(with_footer: bool) {
     let file_name = format!("{}.rrd", re_tuid::Tuid::new());
     let url = format!("file:///{file_name}");
 
-    re_web::fs::write(&file_name, encode_rrd(with_footer).into())
+    write_bytes_to_opfs(&file_name, &encode_rrd(with_footer))
         .await
         .expect("failed to write OPFS file");
 

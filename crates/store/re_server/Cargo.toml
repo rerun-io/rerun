@@ -116,7 +116,9 @@ re_uri.workspace = true
 ehttp = { workspace = true, features = ["native-async"] }
 
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
+js-sys.workspace = true
 wasm-bindgen-test.workspace = true
+web-sys = { workspace = true, features = ["File"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 re_redap_tests.workspace = true
