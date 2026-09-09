@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from collections.abc import Callable, Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator, Sequence
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Literal
@@ -13,6 +13,8 @@ import pyarrow as pa
 
 from .types import (
     IndexValuesLike as IndexValuesLike,
+    MergeSplitSettingsDict as MergeSplitSettingsDict,
+    OwnChunkRuleDict as OwnChunkRuleDict,
 )
 
 # NOTE
@@ -1560,6 +1562,7 @@ class ChunkStoreInternal:
         chunk_max_rows: int | None = None,
         chunk_max_rows_if_unsorted: int | None = None,
         target_timeline: str | None = None,
+        own_chunk: Sequence[OwnChunkRuleDict] | None = None,
     ) -> LazyChunkStreamInternal: ...
     def reader(
         self,
@@ -1587,6 +1590,7 @@ class LazyStoreInternal:
         chunk_max_rows: int | None = None,
         chunk_max_rows_if_unsorted: int | None = None,
         target_timeline: str | None = None,
+        own_chunk: Sequence[OwnChunkRuleDict] | None = None,
     ) -> LazyChunkStreamInternal: ...
     @property
     def _chunks_loaded(self) -> int: ...

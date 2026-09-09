@@ -11,8 +11,9 @@ use re_chunk::{Chunk, SplitRowsOptions};
 use re_log_encoding::ChunkProvider;
 
 use crate::Error;
+use crate::plan::ChunkSlice;
 use crate::settings::MergeSplitSettings;
-use crate::view::{ChunkIdx, ChunkIndexView};
+use crate::view::ChunkIndexView;
 
 use super::load_in_order;
 
@@ -49,16 +50,16 @@ pub fn smallest_non_splitting_target(size: u64) -> u64 {
 
 /// Executor state of a single [`PlanUnit::MergeSplitRun`](crate::plan::PlanUnit).
 pub struct MergeSplitRunState {
-    inputs: Vec<ChunkIdx>,
+    slices: Vec<ChunkSlice>,
     target: MergeSplitSettings,
 
-    /// Index into `inputs` of the first chunk not yet fetched.
-    next_unfetched_input: usize,
+    /// Index into `slices` of the first one not yet fetched.
+    next_unfetched_slice: usize,
 
-    /// Already loaded but not yet processed input chunks.
+    /// Loaded input chunks not yet processed.
     ///
-    /// Refilled only when empty, by one `load_chunks` batch; a split chunk's pieces are pushed
-    /// back to its front. So it holds at most one decoded batch plus one split chunk's pieces.
+    /// Refilled only when empty, by one `load_chunks` batch, so it never holds more than one
+    /// decoded batch. An oversized chunk's pieces are pushed to its front and replace it.
     pending: VecDeque<Arc<Chunk>>,
 
     /// The output being accumulated: a stack-like sequence of merged intermediates
@@ -90,11 +91,11 @@ struct AccumulatorEntry {
 }
 
 impl MergeSplitRunState {
-    pub fn new(inputs: Vec<ChunkIdx>, target: MergeSplitSettings) -> Self {
+    pub fn new(slices: Vec<ChunkSlice>, target: MergeSplitSettings) -> Self {
         Self {
-            inputs,
+            slices,
             target,
-            next_unfetched_input: 0,
+            next_unfetched_slice: 0,
             pending: VecDeque::new(),
             accumulator: Vec::new(),
             accumulator_bytes: 0,
@@ -104,7 +105,7 @@ impl MergeSplitRunState {
 
     /// Drive the run until it emits at least one output into `ready` or finishes.
     ///
-    /// Returns [`ControlFlow::Break`] when the run is done: its inputs are exhausted and its
+    /// Returns [`ControlFlow::Break`] when the run is done: its slices are exhausted and its
     /// final output emitted. [`ControlFlow::Continue`] means there is more to step through.
     pub async fn step(
         &mut self,
@@ -164,22 +165,22 @@ impl MergeSplitRunState {
 
                 // The chunk joins the output.
                 self.push_and_compact(chunk, chunk_bytes, chunk_rows)?;
-            } else if self.next_unfetched_input < self.inputs.len() {
+            } else if self.next_unfetched_slice < self.slices.len() {
                 // Fetch the next IO batch: the shortest prefix of the remaining inputs whose
                 // on-disk size reaches the minimum. The loop always takes at least one chunk, so
                 // progress is guaranteed.
-                let mut end = self.next_unfetched_input;
+                let mut end = self.next_unfetched_slice;
                 let mut batch_bytes = 0_u64;
-                while end < self.inputs.len() && batch_bytes < MIN_LOAD_CHUNK_BATCH {
-                    batch_bytes =
-                        batch_bytes.saturating_add(view.chunk(self.inputs[end]).rrd_byte_size);
+                while end < self.slices.len() && batch_bytes < MIN_LOAD_CHUNK_BATCH {
+                    batch_bytes = batch_bytes
+                        .saturating_add(view.chunk(self.slices[end].chunk).rrd_byte_size);
                     end += 1;
                 }
 
                 let batch =
-                    load_in_order(provider, view, &self.inputs[self.next_unfetched_input..end])
+                    load_in_order(provider, view, &self.slices[self.next_unfetched_slice..end])
                         .await?;
-                self.next_unfetched_input = end;
+                self.next_unfetched_slice = end;
                 self.pending = batch.into();
             } else {
                 self.flush_accumulator(ready)?;

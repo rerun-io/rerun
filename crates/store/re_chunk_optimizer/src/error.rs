@@ -1,4 +1,4 @@
-use re_chunk::{ChunkError, ChunkId};
+use re_chunk::{ChunkError, ChunkId, ComponentIdentifier};
 use re_log_encoding::{ChunkProviderError, CodecError};
 use re_log_types::EntityPath;
 
@@ -16,6 +16,12 @@ pub enum Error {
 
     #[error("Failed to compute the chunk index's temporal map: {source}")]
     TemporalMap { source: CodecError },
+
+    #[error("Malformed per-component chunk index column {column:?}: {reason}")]
+    MalformedComponentColumn {
+        column: String,
+        reason: &'static str,
+    },
 
     #[error(
         "Chunk index references chunk {chunk_id}, but no such chunk row exists\nEntity: {entity_path}"
@@ -45,6 +51,25 @@ pub enum Error {
         entity_path: EntityPath,
         source: ChunkError,
     },
+
+    /// The decoded chunk lacks columns the chunk index records for it, or a selection built from
+    /// the index keeps none of its columns. An unrecorded extra column goes undetected.
+    #[error(
+        "Columns of chunk {chunk_id} do not match the index.\nEntity: {entity_path}\nMissing columns: {missing:?}"
+    )]
+    IndexMismatch {
+        chunk_id: ChunkId,
+        entity_path: EntityPath,
+        missing: Vec<ComponentIdentifier>,
+    },
+
+    /// The plan's selection drops every column of the chunk, which the planner never emits for a
+    /// chunk that matches the index.
+    #[error("Column selection keeps no column of chunk {chunk_id}\nEntity: {entity_path}")]
+    EmptySelection {
+        chunk_id: ChunkId,
+        entity_path: EntityPath,
+    },
 }
 
 impl Error {
@@ -54,6 +79,13 @@ impl Error {
 
     pub fn temporal_map(source: CodecError) -> Self {
         Self::TemporalMap { source }
+    }
+
+    pub fn malformed_component_column(column: &str, reason: &'static str) -> Self {
+        Self::MalformedComponentColumn {
+            column: column.to_owned(),
+            reason,
+        }
     }
 
     pub fn unknown_chunk_id(chunk_id: ChunkId, entity_path: &EntityPath) -> Self {
@@ -86,6 +118,25 @@ impl Error {
         Self::MergeChunks {
             entity_path: entity_path.clone(),
             source,
+        }
+    }
+
+    pub fn index_mismatch(
+        chunk_id: ChunkId,
+        entity_path: &EntityPath,
+        missing: Vec<ComponentIdentifier>,
+    ) -> Self {
+        Self::IndexMismatch {
+            chunk_id,
+            entity_path: entity_path.clone(),
+            missing,
+        }
+    }
+
+    pub fn empty_selection(chunk_id: ChunkId, entity_path: &EntityPath) -> Self {
+        Self::EmptySelection {
+            chunk_id,
+            entity_path: entity_path.clone(),
         }
     }
 }

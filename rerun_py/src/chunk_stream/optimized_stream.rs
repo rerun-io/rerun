@@ -9,8 +9,11 @@ use pyo3::prelude::*;
 
 use futures::StreamExt as _;
 use futures::stream::BoxStream;
-use re_chunk::Chunk;
-use re_chunk_optimizer::{MergeSplitSettings, OptimizationSettings};
+use re_chunk::external::re_log_types::{EntityPathFilter, EntityPathSubs};
+use re_chunk::{Chunk, ComponentIdentifier, ComponentType};
+use re_chunk_optimizer::{
+    ColumnSelector, MergeSplitOverride, MergeSplitSettings, OptimizationSettings, OwnChunkRule,
+};
 use re_chunk_store::OptimizationProfile;
 use re_log_encoding::ChunkProvider;
 
@@ -29,6 +32,7 @@ pub fn build_optimization_settings(
     chunk_max_rows: Option<u64>,
     chunk_max_rows_if_unsorted: Option<u64>,
     target_timeline: Option<String>,
+    own_chunk: Option<Vec<OwnChunkRuleArgs>>,
 ) -> PyResult<OptimizationSettings> {
     let profile = OptimizationProfile::OBJECT_STORE;
 
@@ -59,10 +63,120 @@ pub fn build_optimization_settings(
         None
     };
 
+    let own_chunk = if let Some(rules) = own_chunk {
+        rules
+            .into_iter()
+            .map(OwnChunkRuleArgs::into_rule)
+            .collect::<PyResult<Vec<_>>>()?
+    } else {
+        // The reflection set iterates in hash order; sort it so the rule order is stable.
+        let mut types: Vec<ComponentType> = re_sdk_types::reflection::own_chunk_components()
+            .iter()
+            .copied()
+            .collect();
+        types.sort();
+        types
+            .into_iter()
+            .map(|component_type| OwnChunkRule::new(ColumnSelector::Type(component_type)))
+            .collect()
+    };
+
     Ok(OptimizationSettings {
         merge_split,
         target_timeline,
+        own_chunk,
     })
+}
+
+/// One `rerun.experimental._OwnChunkRule`, as the dict its `_to_internal()` produces.
+#[derive(FromPyObject)]
+#[pyo3(from_item_all)]
+pub struct OwnChunkRuleArgs {
+    component_type: Option<String>,
+    component: Option<String>,
+    entity_filter: Option<String>,
+    merge_split: MergeSplitOverrideArgs,
+}
+
+#[derive(FromPyObject)]
+enum MergeSplitOverrideArgs {
+    Named(String),
+    Settings(MergeSplitSettingsArgs),
+}
+
+/// A `rerun.experimental._MergeSplitSettings`, as a dict; `0` disables a row guard.
+#[derive(FromPyObject)]
+#[pyo3(from_item_all)]
+struct MergeSplitSettingsArgs {
+    max_bytes: u64,
+    max_rows: u64,
+    max_rows_if_unsorted: u64,
+}
+
+impl OwnChunkRuleArgs {
+    fn into_rule(self) -> PyResult<OwnChunkRule> {
+        let column = match (self.component_type, self.component) {
+            (Some(component_type), None) => ColumnSelector::Type(
+                ComponentType::try_new(component_type)
+                    .map_err(|err| PyValueError::new_err(err.to_string()))?,
+            ),
+            (None, Some(component)) => ColumnSelector::Column(
+                ComponentIdentifier::try_new(component)
+                    .map_err(|err| PyValueError::new_err(err.to_string()))?,
+            ),
+            _ => {
+                return Err(PyValueError::new_err(
+                    "exactly one of `component_type` and `component` must be set",
+                ));
+            }
+        };
+
+        let entity_filter = self
+            .entity_filter
+            .map(|rules| {
+                let filter = EntityPathFilter::parse_forgiving(&rules);
+                // The planner resolves without substitutions, so an unresolved `$var` would
+                // silently match nothing; reject it here instead.
+                filter
+                    .clone()
+                    .resolve_strict(&EntityPathSubs::empty())
+                    .map_err(|err| PyValueError::new_err(err.to_string()))?;
+                Ok::<_, PyErr>(filter)
+            })
+            .transpose()?;
+
+        let merge_split = match self.merge_split {
+            MergeSplitOverrideArgs::Named(name) => match name.as_str() {
+                "inherit" => MergeSplitOverride::Inherit,
+                "passthrough" => MergeSplitOverride::Passthrough,
+                other => {
+                    return Err(PyValueError::new_err(format!(
+                        "unknown merge_split {other:?}; expected \"inherit\", \"passthrough\", \
+                         or a `_MergeSplitSettings`"
+                    )));
+                }
+            },
+            MergeSplitOverrideArgs::Settings(settings) => {
+                let Some(max_bytes) = std::num::NonZeroU64::new(settings.max_bytes) else {
+                    return Err(PyValueError::new_err(
+                        "an own-chunk merge/split target needs max_bytes > 0; \
+                         use merge_split=\"passthrough\" to disable rechunking",
+                    ));
+                };
+                MergeSplitOverride::MergeSplit(MergeSplitSettings {
+                    max_bytes,
+                    max_rows: std::num::NonZeroU64::new(settings.max_rows),
+                    max_rows_if_unsorted: std::num::NonZeroU64::new(settings.max_rows_if_unsorted),
+                })
+            }
+        };
+
+        Ok(OwnChunkRule {
+            entity_filter,
+            column,
+            merge_split,
+        })
+    }
 }
 
 /// Factory for optimized chunk streams: each `create()` plans and executes the optimization
@@ -75,7 +189,7 @@ pub struct OptimizedStreamFactory {
 impl ChunkStreamFactory for OptimizedStreamFactory {
     fn create(&self) -> Result<Box<dyn ChunkStream>, ChunkPipelineError> {
         let source = self.provider.source();
-        let chunks = re_chunk_optimizer::optimize(Arc::clone(&self.provider), self.settings)
+        let chunks = re_chunk_optimizer::optimize(Arc::clone(&self.provider), &self.settings)
             .map_err(|err| ChunkPipelineError::Optimize {
                 from: source.clone(),
                 reason: err.to_string(),

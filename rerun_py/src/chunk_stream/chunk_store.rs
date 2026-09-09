@@ -14,7 +14,9 @@ use re_log_encoding::{InMemoryChunkProvider, RawRrdManifest};
 use re_log_types::{EntityPathFilter, StoreId, StoreKind};
 
 use super::error::ChunkPipelineError;
-use super::optimized_stream::{OptimizedStreamFactory, build_optimization_settings};
+use super::optimized_stream::{
+    OptimizedStreamFactory, OwnChunkRuleArgs, build_optimization_settings,
+};
 use super::py_stream::PyLazyChunkStreamInternal;
 use super::stream::LazyChunkStream;
 use super::summary::{SummaryRow, format_summary};
@@ -151,7 +153,7 @@ impl PyChunkStoreInternal {
     /// Return a lazy stream of vertically optimized (merged/split) chunks.
     //TODO(ab): this is the new WIP optimizer. We will clean up this API and make it public when it
     //stabilizes.
-    #[pyo3(signature = (*, chunk_max_bytes=None, chunk_max_rows=None, chunk_max_rows_if_unsorted=None, target_timeline=None))]
+    #[pyo3(signature = (*, chunk_max_bytes=None, chunk_max_rows=None, chunk_max_rows_if_unsorted=None, target_timeline=None, own_chunk=None))]
     fn _optimized_stream(
         &self,
         py: Python<'_>,
@@ -159,6 +161,7 @@ impl PyChunkStoreInternal {
         chunk_max_rows: Option<u64>,
         chunk_max_rows_if_unsorted: Option<u64>,
         target_timeline: Option<String>,
+        own_chunk: Option<Vec<OwnChunkRuleArgs>>,
     ) -> PyResult<PyLazyChunkStreamInternal> {
         // Building the provider synthesizes a full manifest (including its heavy sanity checks),
         // so release the GIL for it, like `_chunk_index` does for the same work.
@@ -177,6 +180,7 @@ impl PyChunkStoreInternal {
                 chunk_max_rows,
                 chunk_max_rows_if_unsorted,
                 target_timeline,
+                own_chunk,
             )?,
         };
         Ok(PyLazyChunkStreamInternal::new(

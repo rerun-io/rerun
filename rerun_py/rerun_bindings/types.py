@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, TypeAlias
+from typing import TYPE_CHECKING, Literal, TypeAlias, TypedDict
 
 import numpy as np
 import numpy.typing as npt
@@ -26,3 +26,25 @@ TableLike: TypeAlias = pa.Table | pa.RecordBatch | pa.RecordBatchReader
 """
 A type alias for TableLike pyarrow objects.
 """
+
+
+class MergeSplitSettingsDict(TypedDict):
+    """Wire form of `rerun.experimental._MergeSplitSettings`; `0` disables a row guard."""
+
+    max_bytes: int
+    max_rows: int
+    max_rows_if_unsorted: int
+
+
+class OwnChunkRuleDict(TypedDict):
+    """
+    Wire form of `rerun.experimental._OwnChunkRule`.
+
+    Exactly one of `component_type` and `component` is set. `entity_filter` holds entity path filter
+    rules, newline-separated, or `None` for every entity.
+    """
+
+    component_type: str | None
+    component: str | None
+    entity_filter: str | None
+    merge_split: Literal["inherit", "passthrough"] | MergeSplitSettingsDict

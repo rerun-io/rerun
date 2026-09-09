@@ -595,42 +595,29 @@ impl RawRrdManifest {
             col_num_rows_raw: &'a [u64],
         }
 
-        let mut columns_per_index = HashMap::<String, IndexColumns<'_>>::new();
+        // Two descriptors that share a component identifier but differ in type or archetype get
+        // two sets of columns with the same names, so a column is matched to its `:start` field
+        // by its full metadata, never by name or by `rerun:component` alone.
+        let sibling = |field: &Field, suffix: &str| {
+            itertools::izip!(fields, columns)
+                .find(|(f, _col)| f.name().ends_with(suffix) && f.metadata() == field.metadata())
+                .ok_or_else(|| {
+                    CodecError::from(ChunkError::Malformed {
+                        reason: format!("{suffix} index is missing for {}", field.name()),
+                    })
+                })
+        };
+
+        let mut columns_per_index = Vec::<IndexColumns<'_>>::new();
         for (index, component, field) in indexes {
             let index = index.as_str();
             if index == "rerun:static" {
                 continue;
             }
 
-            let Some((_, col_start)) = itertools::izip!(fields, columns).find(|(f, _col)| {
-                Self::is_specific_index(f, index)
-                    && f.name().ends_with(":start")
-                    && f.metadata().get("rerun:component") == Some(component)
-            }) else {
-                return Err(CodecError::from(ChunkError::Malformed {
-                    reason: format!("start index is missing for {component}"),
-                }));
-            };
-            let Some((_, col_end)) = itertools::izip!(fields, columns).find(|(f, _col)| {
-                Self::is_specific_index(f, index)
-                    && f.name().ends_with(":end")
-                    && f.metadata().get("rerun:component") == Some(component)
-            }) else {
-                return Err(CodecError::from(ChunkError::Malformed {
-                    reason: format!("end index is missing for {component}"),
-                }));
-            };
-            let Some((field_num_rows, col_num_rows)) =
-                itertools::izip!(fields, columns).find(|(f, _col)| {
-                    Self::is_specific_index(f, index)
-                        && f.name().ends_with(":num_rows")
-                        && f.metadata().get("rerun:component") == Some(component)
-                })
-            else {
-                return Err(CodecError::from(ChunkError::Malformed {
-                    reason: format!("num_rows index is missing for {component}"),
-                }));
-            };
+            let (_, col_start) = sibling(field, ":start")?;
+            let (_, col_end) = sibling(field, ":end")?;
+            let (field_num_rows, col_num_rows) = sibling(field, ":num_rows")?;
 
             let (time_type, col_start_raw) =
                 TimeType::from_arrow_array(col_start).map_err(CodecError::ArrowDeserialization)?;
@@ -656,19 +643,16 @@ impl RawRrdManifest {
                 .cloned()
                 .unwrap_or_else(|| NullBuffer::new_valid(col_end.len()));
 
-            columns_per_index.insert(
-                field.name().to_owned(),
-                IndexColumns {
-                    index,
-                    component,
-                    time_type,
-                    col_start_nulls,
-                    col_start_raw,
-                    col_end_nulls,
-                    col_end_raw,
-                    col_num_rows_raw,
-                },
-            );
+            columns_per_index.push(IndexColumns {
+                index,
+                component,
+                time_type,
+                col_start_nulls,
+                col_start_raw,
+                col_end_nulls,
+                col_end_raw,
+                col_num_rows_raw,
+            });
         }
 
         for (i, (chunk_id, is_static, entity_path)) in
@@ -678,7 +662,7 @@ impl RawRrdManifest {
                 continue;
             }
 
-            for columns in columns_per_index.values() {
+            for columns in &columns_per_index {
                 let IndexColumns {
                     index,
                     component,

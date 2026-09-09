@@ -10,8 +10,8 @@ use crate::{Error, OptimizationSettings};
 /// Optimize the chunks of a [`ChunkProvider`] into a pull-based stream.
 pub fn optimize(
     provider: Arc<dyn ChunkProvider>,
-    settings: OptimizationSettings,
-) -> Result<impl Stream<Item = Result<Arc<Chunk>, Error>>, Error> {
+    settings: &OptimizationSettings,
+) -> Result<impl Stream<Item = Result<Arc<Chunk>, Error>> + use<>, Error> {
     let view = crate::view::ChunkIndexView::try_from_raw(provider.raw_manifest())?;
     let units = crate::plan::plan(&view, settings);
     let executor = crate::executor::Executor::new(provider, view, units);

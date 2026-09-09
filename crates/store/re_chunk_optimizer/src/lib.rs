@@ -11,7 +11,9 @@ mod view;
 pub use self::analysis::{ChunkIndexAnalysis, MergeAssessment, analyze_chunk_index};
 pub use self::error::Error;
 pub use self::optimize::optimize;
-pub use self::settings::{MergeSplitSettings, OptimizationSettings};
+pub use self::settings::{
+    ColumnSelector, MergeSplitOverride, MergeSplitSettings, OptimizationSettings, OwnChunkRule,
+};
 
 /// For testing purposes only.
 #[doc(hidden)]

@@ -15,6 +15,7 @@ from typing import Any
 from . import video as video
 from ._hdf5_reader import DatasetInfo as DatasetInfo, Hdf5Reader as Hdf5Reader
 from ._mp4_reader import Mp4Reader as Mp4Reader, Mp4TranscodeOptions as Mp4TranscodeOptions
+from ._optimizer_settings import _MergeSplitSettings as _MergeSplitSettings, _OwnChunkRule as _OwnChunkRule
 from ._parquet_reader import ParquetReader as ParquetReader
 from ._query_metrics import (
     MetricsCollector as MetricsCollector,

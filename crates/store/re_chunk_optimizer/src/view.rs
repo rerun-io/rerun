@@ -1,8 +1,9 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use itertools::izip;
+use itertools::{Either, izip};
 
-use re_chunk::ChunkId;
+use re_chunk::external::arrow::array::BooleanArray;
+use re_chunk::{ArrowArray as _, ChunkId, ComponentIdentifier, ComponentType};
 use re_log_encoding::RawRrdManifest;
 use re_log_types::{AbsoluteTimeRange, EntityPath, StoreId, Timeline};
 
@@ -38,6 +39,11 @@ pub struct ChunkMeta {
     /// the uncompressed Arrow IPC stream on the file path (which charges each chunk a
     /// schema-dependent framing constant), and the decoded heap size on the in-memory path.
     pub byte_size_uncompressed: u64,
+
+    /// Component columns with data in this chunk — a non-null range on some timeline, or the
+    /// static flag — with the type each carries when it has one. An all-null temporal column is
+    /// absent.
+    pub components: BTreeMap<ComponentIdentifier, Option<ComponentType>>,
 }
 
 /// One chunk's presence on one timeline.
@@ -156,6 +162,8 @@ impl ChunkIndexView {
                 ))?,
         );
 
+        let mut components = components_per_chunk(raw)?;
+
         let mut chunks: Vec<ChunkMeta> = Vec::with_capacity(raw.data.num_rows());
         let mut idx_by_chunk_id: BTreeMap<ChunkId, ChunkIdx> = BTreeMap::new();
         let mut entities: BTreeMap<EntityPath, EntityView> = BTreeMap::new();
@@ -190,6 +198,7 @@ impl ChunkIndexView {
                 rrd_byte_offset: byte_offset,
                 rrd_byte_size: byte_size,
                 byte_size_uncompressed,
+                components: std::mem::take(&mut components[i]),
             });
         }
 
@@ -266,15 +275,143 @@ impl ChunkIndexView {
     }
 }
 
+/// Per chunk index row: the component columns with data.
+///
+/// Two descriptors that differ only by type produce two index fields with the same name, so this
+/// iterates the fields and never looks one up by name.
+fn components_per_chunk(
+    raw: &RawRrdManifest,
+) -> Result<Vec<BTreeMap<ComponentIdentifier, Option<ComponentType>>>, Error> {
+    let num_rows = raw.data.num_rows();
+    let mut components = vec![BTreeMap::new(); num_rows];
+
+    let schema = raw.data.schema();
+    for (field, column) in std::iter::zip(schema.fields(), raw.data.columns()) {
+        let Some(component) = field
+            .metadata()
+            .get(re_types_core::FIELD_METADATA_KEY_COMPONENT)
+        else {
+            continue;
+        };
+        let component = ComponentIdentifier::try_new(component).map_err(|_err| {
+            Error::malformed_component_column(field.name(), "empty component identifier")
+        })?;
+        let component_type = field
+            .metadata()
+            .get(re_types_core::FIELD_METADATA_KEY_COMPONENT_TYPE)
+            .map(ComponentType::try_new)
+            .transpose()
+            .map_err(|_err| {
+                Error::malformed_component_column(field.name(), "empty component type")
+            })?;
+
+        // Only the rows with data are visited: for a `:start` column those are its valid rows, for a
+        // `:has_static_data` column its set bits. Both come straight off the buffers, so the walk
+        // is proportional to the number of (chunk, component) presences, not to fields × rows.
+        let rows_with_data: Either<_, _> = if field.name().ends_with(":start") {
+            Either::Left(match column.nulls() {
+                Some(nulls) => Either::Left(nulls.valid_indices()),
+                None => Either::Right(0..num_rows),
+            })
+        } else if field.name().ends_with(":has_static_data") {
+            let flags = column
+                .as_any()
+                .downcast_ref::<BooleanArray>()
+                .ok_or_else(|| {
+                    Error::malformed_component_column(field.name(), "expected a boolean column")
+                })?;
+            Either::Right(flags.values().set_indices())
+        } else {
+            continue;
+        };
+
+        for i in rows_with_data {
+            // A chunk holds one column per identifier, so at most one variant has data here;
+            // should two ever claim it, keep the typed one.
+            components[i]
+                .entry(component)
+                .and_modify(|existing: &mut Option<ComponentType>| {
+                    if existing.is_none() {
+                        *existing = component_type;
+                    }
+                })
+                .or_insert(component_type);
+        }
+    }
+
+    Ok(components)
+}
+
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeMap;
+
     use re_chunk::{Chunk, ChunkId, RowId};
     use re_log_encoding::RawRrdManifest;
-    use re_log_types::example_components::{MyColor, MyPoints};
+    use re_log_types::example_components::{MyColor, MyPoint, MyPoints};
     use re_log_types::{EntityPath, StoreId, StoreKind, TimePoint, Timeline};
-    use re_types_core::ComponentBatch as _;
+    use re_types_core::{Component as _, ComponentBatch as _, ComponentDescriptor};
 
     use super::ChunkIndexView;
+
+    /// The same identifier logged typed under an archetype on one entity and untyped on another
+    /// gives the index two same-named column sets; the view reads both.
+    ///
+    /// Background info in RR-5622.
+    #[test]
+    fn same_identifier_two_descriptors() -> anyhow::Result<()> {
+        let frame = Timeline::new_sequence("frame");
+        let typed = Chunk::builder_with_id(ChunkId::from_u128(1), "real")
+            .with_serialized_batches(
+                RowId::from_u128(1 << 32),
+                [(frame, 0_i64)],
+                [MyPoint::from_iter(0..2).try_serialized(MyPoints::descriptor_points())?],
+            )
+            .build()?;
+        let untyped_descriptor = ComponentDescriptor {
+            archetype: None,
+            component: MyPoints::descriptor_points().component,
+            component_type: None,
+        };
+        let untyped = Chunk::builder_with_id(ChunkId::from_u128(2), "fake")
+            .with_serialized_batches(
+                RowId::from_u128(2 << 32),
+                [(frame, 0_i64)],
+                [
+                    MyPoint::from_iter(0..2).try_serialized(untyped_descriptor)?,
+                    MyColor::from_iter(0..2).try_serialized(MyPoints::descriptor_colors())?,
+                ],
+            )
+            .build()?;
+
+        let store_id = StoreId::new(StoreKind::Recording, "test_app", "test_recording");
+        let raw = RawRrdManifest::build_in_memory_from_chunks(store_id, [typed, untyped].iter())?;
+
+        // Both variants are seen, per chunk and per entity.
+        let view = ChunkIndexView::try_from_raw(&raw)?;
+        let columns = |id: u128| {
+            view.chunks()
+                .find(|(_, meta)| meta.chunk_id == ChunkId::from_u128(id))
+                .map(|(_, meta)| meta.components.keys().copied().collect::<Vec<_>>())
+                .unwrap()
+        };
+        assert_eq!(columns(1), vec![MyPoints::descriptor_points().component]);
+        assert_eq!(
+            columns(2),
+            vec![
+                MyPoints::descriptor_colors().component,
+                MyPoints::descriptor_points().component,
+            ]
+        );
+        assert_eq!(view.entities.len(), 2);
+        for entity in ["real", "fake"] {
+            let entity = &view.entities[&EntityPath::from(entity)];
+            assert_eq!(entity.timeline_sets.len(), 1);
+            assert_eq!(entity.timeline_sets[0].per_timeline[&frame].len(), 1);
+        }
+
+        Ok(())
+    }
 
     #[test]
     fn view_construction() -> anyhow::Result<()> {
@@ -298,18 +435,45 @@ mod tests {
         }
         let temporal = temporal.build()?;
 
+        // A typed column next to an untyped one, on the same rows.
+        let untyped_descriptor = ComponentDescriptor {
+            archetype: None,
+            component: "custom".into(),
+            component_type: None,
+        };
+        let mixed = Chunk::builder_with_id(ChunkId::from_u128(3), "temporal")
+            .with_serialized_batches(
+                RowId::from_u128(3 << 32),
+                [(frame, 20_i64)],
+                [
+                    MyPoint::from_iter(0..2).try_serialized(MyPoints::descriptor_points())?,
+                    MyPoint::from_iter(0..2).try_serialized(untyped_descriptor.clone())?,
+                ],
+            )
+            .build()?;
+
         let store_id = StoreId::new(StoreKind::Recording, "test_app", "test_recording");
-        let chunk_index =
-            RawRrdManifest::build_in_memory_from_chunks(store_id, [static_chunk, temporal].iter())?;
+        let chunk_index = RawRrdManifest::build_in_memory_from_chunks(
+            store_id,
+            [static_chunk, temporal, mixed].iter(),
+        )?;
         let view = ChunkIndexView::try_from_raw(&chunk_index)?;
 
-        assert_eq!(view.num_chunks(), 2);
+        assert_eq!(view.num_chunks(), 3);
         assert_eq!(view.entities.len(), 2);
 
         let static_entity = &view.entities[&EntityPath::from("static_entity")];
         assert_eq!(static_entity.static_chunks.len(), 1);
         assert!(static_entity.timeline_sets.is_empty());
-        assert!(view.chunk(static_entity.static_chunks[0]).is_static);
+        let static_meta = view.chunk(static_entity.static_chunks[0]);
+        assert!(static_meta.is_static);
+        assert_eq!(
+            static_meta.components,
+            BTreeMap::from([(
+                MyPoints::descriptor_colors().component,
+                Some(MyColor::name())
+            )])
+        );
 
         let temporal = &view.entities[&EntityPath::from("temporal")];
         assert!(temporal.static_chunks.is_empty());
@@ -317,10 +481,33 @@ mod tests {
         let group = &temporal.timeline_sets[0];
         assert_eq!(group.timelines.len(), 1);
         let spans = &group.per_timeline[&frame];
-        assert_eq!(spans.len(), 1);
+        assert_eq!(spans.len(), 2);
         assert_eq!(spans[0].time_range.min().as_i64(), 0);
         assert_eq!(spans[0].time_range.max().as_i64(), 10);
-        assert_eq!(view.chunk(spans[0].chunk).num_rows, 2);
+        let colors_meta = view.chunk(spans[0].chunk);
+        assert_eq!(colors_meta.num_rows, 2);
+        assert_eq!(
+            colors_meta.components,
+            BTreeMap::from([(
+                MyPoints::descriptor_colors().component,
+                Some(MyColor::name())
+            )])
+        );
+
+        // The typed column records its type, the untyped one records `None`; neither chunk sees
+        // the other's columns.
+        let mixed_meta = view.chunk(spans[1].chunk);
+        assert_eq!(mixed_meta.chunk_id, ChunkId::from_u128(3));
+        assert_eq!(
+            mixed_meta.components,
+            BTreeMap::from([
+                (
+                    MyPoints::descriptor_points().component,
+                    Some(MyPoint::name())
+                ),
+                (untyped_descriptor.component, None),
+            ])
+        );
 
         Ok(())
     }

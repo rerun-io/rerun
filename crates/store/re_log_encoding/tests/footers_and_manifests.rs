@@ -99,6 +99,56 @@ fn simple_manifest() {
     );
 }
 
+/// The same component identifier logged under two descriptors, typed under an archetype on one
+/// entity and untyped on another, gets two sets of same-named index columns. The temporal map must
+/// read both, or the chunks of one variant vanish from every timeline.
+#[test]
+fn temporal_map_reads_every_descriptor_variant() {
+    use re_log_types::example_components::{MyPoint, MyPoints};
+    use re_log_types::{TimeInt, build_frame_nr};
+    use re_types_core::ComponentDescriptor;
+
+    let points = MyPoint::from_iter(0..2);
+    let typed = Chunk::builder_with_id(ChunkId::from_u128(1), "real")
+        .with_sparse_component_batches(
+            RowId::from_u128(1 << 32),
+            [build_frame_nr(TimeInt::new_temporal(10))],
+            [(MyPoints::descriptor_points(), Some(&points as _))],
+        )
+        .build()
+        .unwrap();
+    let untyped_descriptor = ComponentDescriptor {
+        archetype: None,
+        component: MyPoints::descriptor_points().component,
+        component_type: None,
+    };
+    let untyped = Chunk::builder_with_id(ChunkId::from_u128(2), "fake")
+        .with_sparse_component_batches(
+            RowId::from_u128(2 << 32),
+            [build_frame_nr(TimeInt::new_temporal(20))],
+            [(untyped_descriptor, Some(&points as _))],
+        )
+        .build()
+        .unwrap();
+
+    let manifest = RawRrdManifest::build_in_memory_from_chunks(
+        StoreId::empty_recording(),
+        [typed, untyped].iter(),
+    )
+    .unwrap();
+
+    let temporal_map = manifest.calc_temporal_map().unwrap();
+    for (entity, chunk_id, time) in [("real", 1, 10), ("fake", 2, 20)] {
+        let per_timeline = &temporal_map[&entity.into()];
+        assert_eq!(per_timeline.len(), 1, "{entity}");
+        let per_component = per_timeline.values().next().unwrap();
+        let per_chunk = &per_component[&MyPoints::descriptor_points().component];
+        let entry = &per_chunk[&ChunkId::from_u128(chunk_id)];
+        assert_eq!(entry.num_rows, 1, "{entity}");
+        assert_eq!(entry.time_range.min().as_i64(), time, "{entity}");
+    }
+}
+
 #[test]
 fn footer_roundtrip() {
     let msgs_expected_recording = generate_recording(generate_recording_chunks(1)).collect_vec();

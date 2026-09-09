@@ -232,3 +232,114 @@ def test_sweep_order_observable(
     """
     assert len(optimized_timeline_order) < len(optimized_file_order)
     _assert_reader_equality(optimized_file_order, unoptimized)
+
+
+def _component_columns(chunk: rr.chunk.Chunk) -> set[str]:
+    """The component columns of a chunk, by their `rerun:component` identifier."""
+    return {
+        field.metadata[b"rerun:component"].decode()
+        for field in chunk.to_record_batch().schema
+        if field.metadata is not None and b"rerun:component" in field.metadata
+    }
+
+
+def test_own_chunk_default(tmp_path: Path) -> None:
+    """
+    The IDL `own_chunk` set is the default, and an empty list disables the split.
+
+    `IsKeyframe` is the one tagged type: by default it comes out in chunks of its own. The data is
+    unchanged either way.
+    """
+    rrd_path = tmp_path / "video.rrd"
+    frames_per_chunk = 8
+    with rr.RecordingStream(APP_ID, recording_id=RECORDING_ID) as rec:
+        rec.save(rrd_path)
+        for i in range(4):
+            frames = range(i * frames_per_chunk, (i + 1) * frames_per_chunk)
+            rec.send_columns(
+                "/video",
+                indexes=[rr.TimeColumn("frame", sequence=list(frames))],
+                columns=rr.VideoStream.columns(
+                    sample=[bytes([f % 256]) * 64 for f in frames],
+                    is_keyframe=[f % 4 == 0 for f in frames],
+                ),
+            )
+
+    # The recording also holds a `/__properties` chunk; only the video chunks are of interest.
+    def video_columns(chunks: list[rr.chunk.Chunk]) -> list[set[str]]:
+        return [_component_columns(c) for c in chunks if str(c.entity_path) == "/video"]
+
+    both = {"VideoStream:sample", "VideoStream:is_keyframe"}
+    inputs = list(RrdReader(rrd_path).stream())
+    assert all(columns == both for columns in video_columns(inputs))
+    unoptimized = ChunkStore.from_chunks(inputs)
+
+    # Default: the keyframe column never shares a chunk.
+    split = list(RrdReader(rrd_path).store()._optimized_stream())
+    assert sorted(video_columns(split), key=sorted) == [{"VideoStream:is_keyframe"}, {"VideoStream:sample"}]
+
+    # The data survives the split.
+    optimized = ChunkStore.from_chunks(split)
+    assert row_multiset(optimized.reader(index="frame")) == row_multiset(unoptimized.reader(index="frame"))
+
+    # An empty list disables the split: the merged output holds both columns.
+    mixed = list(RrdReader(rrd_path).store()._optimized_stream(own_chunk=[]))
+    assert video_columns(mixed) == [both]
+
+
+def test_own_chunk_rules(tmp_path: Path) -> None:
+    """Rules select by identifier, apply to the entities their filter names, and rechunk per rule."""
+    from rerun.experimental import _MergeSplitSettings, _OwnChunkRule
+
+    rrd_path = tmp_path / "two_videos.rrd"
+    frames_per_chunk = 8
+    with rr.RecordingStream(APP_ID, recording_id=RECORDING_ID) as rec:
+        rec.save(rrd_path)
+        for entity in ("/cams/a", "/cams/b"):
+            for i in range(3):
+                frames = range(i * frames_per_chunk, (i + 1) * frames_per_chunk)
+                rec.send_columns(
+                    entity,
+                    indexes=[rr.TimeColumn("frame", sequence=list(frames))],
+                    columns=rr.VideoStream.columns(
+                        sample=[bytes([f % 256]) * 64 for f in frames],
+                        is_keyframe=[f % 4 == 0 for f in frames],
+                    ),
+                )
+
+    def columns_by_entity(chunks: list[rr.chunk.Chunk], entity: str) -> list[set[str]]:
+        return [_component_columns(c) for c in chunks if str(c.entity_path) == entity]
+
+    sample, keyframe = {"VideoStream:sample"}, {"VideoStream:is_keyframe"}
+
+    # The sample column of `/cams/a` alone gets its own chunks and is never merged; the rest of
+    # `/cams/a` (the keyframes) merges into one chunk; `/cams/b` stays mixed and merges into one.
+    rules = [_OwnChunkRule.for_column("VideoStream:sample", entity_filter="+ /cams/a", merge_split="passthrough")]
+    outputs = list(RrdReader(rrd_path).store()._optimized_stream(own_chunk=rules))
+    assert sorted(columns_by_entity(outputs, "/cams/a"), key=sorted) == [keyframe, sample, sample, sample]
+    assert columns_by_entity(outputs, "/cams/b") == [sample | keyframe]
+
+    # A per-rule target, on every entity: a one-byte target splits the keyframe column down to one
+    # row per chunk, while the samples still merge toward the stream's target.
+    rules = [
+        _OwnChunkRule.for_type("rerun.components.IsKeyframe", merge_split=_MergeSplitSettings(max_bytes=1)),
+    ]
+    outputs = list(RrdReader(rrd_path).store()._optimized_stream(own_chunk=rules))
+    for entity in ("/cams/a", "/cams/b"):
+        chunks = [c for c in outputs if str(c.entity_path) == entity]
+        keyframe_chunks = [c for c in chunks if _component_columns(c) == keyframe]
+        assert len(keyframe_chunks) == 3 * frames_per_chunk
+        assert all(c.num_rows == 1 for c in keyframe_chunks)
+        assert [_component_columns(c) for c in chunks if c not in keyframe_chunks] == [sample]
+
+    # Malformed rules are rejected up front.
+    with pytest.raises(ValueError):
+        _OwnChunkRule(component_type="rerun.components.IsKeyframe", component="VideoStream:is_keyframe")
+    with pytest.raises(ValueError):
+        _OwnChunkRule()
+    with pytest.raises(ValueError):
+        RrdReader(rrd_path).store()._optimized_stream(
+            own_chunk=[_OwnChunkRule.for_column("x", entity_filter="+ /cams/$origin")]
+        )
+    with pytest.raises(ValueError):
+        RrdReader(rrd_path).store()._optimized_stream(own_chunk=[_OwnChunkRule.for_column("")])

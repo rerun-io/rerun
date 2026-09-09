@@ -3,10 +3,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
     from pathlib import Path
 
     from rerun.catalog import Schema
     from rerun.experimental._chunk_index import ChunkIndex
+    from rerun.experimental._optimizer_settings import _OwnChunkRule
     from rerun_bindings import LazyStoreInternal
 
     from ._lazy_chunk_stream import LazyChunkStream
@@ -77,16 +79,21 @@ class LazyStore:
         chunk_max_rows: int | None = None,
         chunk_max_rows_if_unsorted: int | None = None,
         target_timeline: str | None = None,
+        own_chunk: Sequence[_OwnChunkRule] | None = None,
     ) -> LazyChunkStream:
         """
-        Return a lazy stream of vertically optimized (merged/split) chunks.
+        Return a lazy stream of optimized chunks.
 
-        Private and experimental. The only optimization is vertical: merge and split
-        chunks toward `chunk_max_bytes`, with `chunk_max_rows` as a row guard (`0`
-        disables a limit). `chunk_max_rows_if_unsorted` replaces the row guard for
-        outputs with at least one time-unsorted timeline. It is video-unaware and can
-        undo GoP alignment. Defaults are the object-store profile. `target_timeline`
-        orders the merge sweep by time; `None` means file order.
+        Private and experimental. Merge and split chunks toward `chunk_max_bytes`, with
+        `chunk_max_rows` as a row guard (`0` disables a limit). `chunk_max_rows_if_unsorted`
+        replaces the row guard for outputs with at least one time-unsorted timeline. It is
+        video-unaware and can undo GoP alignment. Defaults are the object-store profile.
+        `target_timeline` orders the merge sweep by time; `None` means file order.
+
+        `own_chunk` lists the components that always get a chunk of their own, as
+        [`_OwnChunkRule`][rerun.experimental._OwnChunkRule]s tried in order. `None` selects
+        every type tagged `own_chunk` in the type definitions, on every entity; an empty
+        sequence disables the split.
         """
         from ._lazy_chunk_stream import LazyChunkStream
 
@@ -96,6 +103,7 @@ class LazyStore:
                 chunk_max_rows=chunk_max_rows,
                 chunk_max_rows_if_unsorted=chunk_max_rows_if_unsorted,
                 target_timeline=target_timeline,
+                own_chunk=None if own_chunk is None else [rule._to_internal() for rule in own_chunk],
             )
         )
 
