@@ -439,7 +439,6 @@ def main() -> None:
     bugs = []
     cpp = []
     dependencies = []
-    dev_experience = []
     docs = []
     enhancement = []
     examples = []
@@ -566,8 +565,6 @@ def main() -> None:
                     enhancement.append(summary)
                 elif "🚜 refactor" in labels:
                     refactor.append(summary)
-                elif "🧑‍💻 dev experience" in labels:
-                    dev_experience.append(summary)
                 elif "💬 discussion" in labels:
                     rfc.append(summary)
                 elif "dependencies" in labels:
@@ -604,7 +601,6 @@ def main() -> None:
     print_section("✨ Other enhancement", enhancement)
     print_section("📈 Analytics", analytics)
     print_section("🗣 Merged RFCs", rfc)
-    print_section("🧑‍💻 Dev-experience", dev_experience)
     print_section("🗣 Refactors", refactor)
     print_section("📦 Dependencies", dependencies)
     print_section("🤷‍ Other", misc)
