@@ -497,8 +497,7 @@ backwards_check = [
   "cpp", # Not implemented
   "rust", # Not implemented
 ]
-"tutorials/getting_started_convert" = [
-  "py", # Requires an input.mcap file
+"howto/process_mcap" = [
   "cpp", # Not implemented
   "rust", # Not implemented
 ]
@@ -653,6 +652,11 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "py",
   "rust",
 ]
+"howto/process_mcap" = [ # Python-only; nothing to compare across languages
+  "cpp",
+  "py",
+  "rust",
+]
 "howto/dataframe_performance" = [ # Cloud examples don't generate rrds
   "cpp",
   "py",
@@ -723,6 +727,7 @@ quick_start = [ # These examples don't have exactly the same implementation.
 ]
 "archetypes/video_manual_frames" = ["$config_dir/../../tests/assets/video/Sintel_1080_10s_av1.mp4"]
 "howto/load_mcap" = ["$config_dir/../../tests/assets/mcap/r2b_galileo.mcap"]
+"howto/process_mcap" = ["$config_dir/../../tests/assets/mcap/r2b_galileo.mcap"]
 # Reuses the committed v3 fixture from the `re_importer` tests rather than duplicating the dataset asset.
 "howto/load_lerobot" = [
   "$config_dir/../../crates/store/re_importer/tests/assets/lerobot/v30_apple_storage",
