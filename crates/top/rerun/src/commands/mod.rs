@@ -23,6 +23,7 @@ impl CallSource {
 
 #[cfg(feature = "auth")]
 mod auth;
+mod cli_data_source;
 mod download;
 
 mod entrypoint;

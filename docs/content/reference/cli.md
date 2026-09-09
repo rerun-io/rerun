@@ -42,6 +42,15 @@ The Rerun command-line interface:
 
 **Options**
 
+* `--asset <PATH>`
+> A path to a `.rrd` file to register as an asset of every dataset containing a specified local recording.
+>
+> Assets hold static data, such as a mesh or a robot model, that is shared by every recording in the dataset. Can be specified multiple times. Every asset applies to all local `.rrd` recordings on the command line, regardless of argument order, so `rerun --asset mesh.rrd robot.rrd other.rrd --asset urdf.rrd` registers both assets with the datasets of both recordings.
+>
+> See <https://www.rerun.io/docs/concepts/query-and-transform/catalog-object-model#assets>
+>
+> The files are then loaded through the Viewer catalog, which turns on the experimental "Load files via Viewer catalog" setting if it is off.
+
 * `--bind <BIND>`
 > What bind address IP to use.
 >

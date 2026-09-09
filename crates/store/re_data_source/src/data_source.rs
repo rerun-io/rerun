@@ -35,6 +35,14 @@ pub enum LogDataSource {
         /// The file's path or, on web, its display name.
         path: std::path::PathBuf,
 
+        /// Recordings holding shared assets.
+        ///
+        /// They are registered with the file's dataset before the file is opened, and only when
+        /// the file goes to the internal catalog with the experimental
+        /// "Load files via Viewer catalog" setting on.
+        #[cfg(not(target_arch = "wasm32"))]
+        assets: Vec<std::path::PathBuf>,
+
         /// The browser file selected through the file dialog or drag-and-drop.
         #[cfg(target_arch = "wasm32")]
         file: web_sys::File,
@@ -150,6 +158,7 @@ impl LogDataSource {
                 return Some(Self::File {
                     file_source: _file_source,
                     path,
+                    assets: Vec::new(),
                 });
             }
 
@@ -157,6 +166,7 @@ impl LogDataSource {
                 return Some(Self::File {
                     file_source: _file_source,
                     path,
+                    assets: Vec::new(),
                 });
             }
         }
@@ -289,6 +299,8 @@ impl LogDataSource {
             Self::File {
                 file_source,
                 path,
+                #[cfg(not(target_arch = "wasm32"))]
+                    assets: _,
                 #[cfg(target_arch = "wasm32")]
                 file,
             } => {

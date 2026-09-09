@@ -621,6 +621,7 @@ impl ViewerOpenUrl {
                 command_sender.send_system(SystemCommand::LoadDataSource(LogDataSource::File {
                     file_source: re_log_types::FileSource::Uri,
                     path,
+                    assets: Vec::new(),
                 }));
             }
             Self::RedapDataset(uri) => {

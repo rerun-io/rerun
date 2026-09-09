@@ -32,6 +32,8 @@ use crate::startup_options::StartupOptions;
 use crate::{AppState, command_palette::CommandPaletteAction};
 
 mod add_data_source;
+#[cfg(not(target_arch = "wasm32"))]
+mod assets;
 mod command_handling;
 mod logic;
 mod ui;
@@ -84,6 +86,7 @@ pub struct App {
     app_env: crate::AppEnvironment,
 
     startup_options: StartupOptions,
+
     start_time: web_time::Instant,
     ram_limit_warner: re_memory::RamLimitWarner,
     pub(crate) egui_ctx: egui::Context,
@@ -486,6 +489,7 @@ impl App {
             build_info,
             app_env,
             startup_options,
+
             start_time: web_time::Instant::now(),
             ram_limit_warner: re_memory::RamLimitWarner::warn_at_fraction_of_max(0.75),
             egui_ctx: creation_context.egui_ctx.clone(),
@@ -1128,6 +1132,7 @@ impl App {
                                 force_store_info,
                             },
                             path: file.path().to_owned(),
+                            assets: Vec::new(),
                         },
                     ));
                 }

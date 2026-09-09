@@ -894,6 +894,7 @@ impl App {
                                 force_store_info,
                             },
                             path: file_path,
+                            assets: Vec::new(),
                         }));
                 }
             }
@@ -926,6 +927,7 @@ impl App {
                                 force_store_info,
                             },
                             path: file_path,
+                            assets: Vec::new(),
                         }));
                 }
             }

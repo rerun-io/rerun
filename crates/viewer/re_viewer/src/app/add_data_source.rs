@@ -107,6 +107,8 @@ impl App {
 
             LogDataSource::File {
                 path,
+                #[cfg(not(target_arch = "wasm32"))]
+                assets,
                 #[cfg(target_arch = "wasm32")]
                 file,
                 ..
@@ -115,6 +117,8 @@ impl App {
                     self.register_via_internal_catalog(
                         path,
                         data_source.analytics(),
+                        #[cfg(not(target_arch = "wasm32"))]
+                        assets,
                         #[cfg(target_arch = "wasm32")]
                         file.clone(),
                     );
@@ -412,15 +416,20 @@ impl App {
     }
 
     /// Registers a file with the internal catalog, then opens the segment it produced.
+    ///
+    /// Assets from the data source are registered with the same dataset.
     fn register_via_internal_catalog(
         &self,
         path: &Path,
         data_source_analytics: LogDataSourceAnalytics,
+        #[cfg(not(target_arch = "wasm32"))] assets: &[std::path::PathBuf],
         #[cfg(target_arch = "wasm32")] file: web_sys::File,
     ) {
         let connection_registry = self.connection_registry.clone();
         let sender = self.command_sender.clone();
         let path = path.to_owned();
+        #[cfg(not(target_arch = "wasm32"))]
+        let assets = assets.to_vec();
         self.async_runtime.spawn_future(async move {
             let registration = register_file(
                 &connection_registry,
@@ -429,6 +438,15 @@ impl App {
                 file,
             )
             .await;
+
+            // Register the assets before opening the segment, so the segment streams with its
+            // asset layers.
+            #[cfg(not(target_arch = "wasm32"))]
+            if let Ok(target) = &registration {
+                super::assets::register_assets(&connection_registry, &sender, target, &assets)
+                    .await;
+            }
+
             match registration {
                 Ok(RegistrationTarget::DatasetSegment(uri)) => {
                     record_catalog_load_analytics(data_source_analytics, Some("internal"), true);
@@ -617,7 +635,7 @@ async fn opfs_upload_matches(path: &Path, expected_size: u64) -> anyhow::Result<
 }
 
 /// Depending on the content of the file, we want to navigate to different parts of the catalog.
-enum RegistrationTarget {
+pub enum RegistrationTarget {
     /// Whenever there is a recording in the file.
     DatasetSegment(Box<re_uri::DatasetUri>),
 

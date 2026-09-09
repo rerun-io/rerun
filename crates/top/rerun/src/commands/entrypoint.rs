@@ -20,6 +20,8 @@ use crate::commands::DownloadCommand;
 use crate::commands::McapCommands;
 use crate::commands::RrdCommands;
 
+use super::cli_data_source::local_recordings_for_assets;
+
 // ---
 
 const LONG_ABOUT: &str = r#"
@@ -135,6 +137,21 @@ struct Args {
     //
     #[command(subcommand)]
     command: Option<Command>,
+
+    /// A path to a `.rrd` file to register as an asset of every dataset containing a specified local recording.
+    ///
+    /// Assets hold static data, such as a mesh or a robot model, that is shared by every recording
+    /// in the dataset. Can be specified multiple times. Every asset applies to all local `.rrd`
+    /// recordings on the command line, regardless of argument order, so
+    /// `rerun --asset mesh.rrd robot.rrd other.rrd --asset urdf.rrd` registers both assets with
+    /// the datasets of both recordings.
+    ///
+    /// See <https://www.rerun.io/docs/concepts/query-and-transform/catalog-object-model#assets>
+    ///
+    /// The files are then loaded through the Viewer catalog, which turns on the experimental
+    /// "Load files via Viewer catalog" setting if it is off.
+    #[clap(long = "asset", value_name = "PATH")]
+    assets: Vec<std::path::PathBuf>,
 
     /// What bind address IP to use.
     ///
@@ -728,6 +745,7 @@ where
 
     use clap::Parser as _;
     let mut args = Args::parse_from(raw_args.iter());
+    let asset_recordings = local_recordings_for_assets(&args.url_or_paths, &args.assets)?;
 
     #[cfg(feature = "native_viewer")]
     if should_relaunch_detached(&args) {
@@ -845,6 +863,7 @@ where
             build_info,
             call_source,
             args,
+            asset_recordings,
             tokio_runtime.handle(),
             #[cfg(feature = "native_viewer")]
             profiler,
@@ -884,6 +903,7 @@ fn should_relaunch_detached(args: &Args) -> bool {
         test_receive,
         version,
 
+        assets: _,
         headless: _,
         integration_test: _,
         bind: _,
@@ -984,9 +1004,21 @@ fn run_impl(
     _build_info: re_build_info::BuildInfo,
     _call_source: CallSource,
     args: Args,
+    _asset_recordings: Vec<std::path::PathBuf>,
     tokio_runtime_handle: &tokio::runtime::Handle,
     #[cfg(feature = "native_viewer")] profiler: re_tracing::Profiler,
 ) -> anyhow::Result<()> {
+    if !args.assets.is_empty() {
+        anyhow::ensure!(
+            !args.serve_grpc
+                && !args.serve_web
+                && args.save.is_none()
+                && !args.test_receive
+                && args.connect.is_none(),
+            "`--asset` only works when this command starts the Rerun Viewer itself"
+        );
+    }
+
     //TODO(#10068): populate token passed with `--token`
     let connection_registry = if args.integration_test {
         re_redap_client::ConnectionRegistry::new_without_stored_credentials()
@@ -1112,6 +1144,12 @@ fn run_impl(
         }
     } else if !wants_new && args.connect.is_none() && is_another_server_already_running(server_addr)
     {
+        if !args.assets.is_empty() {
+            re_log::warn!(
+                "`--asset` can't be passed on to an already open Viewer. Use `--port auto` to start a new one."
+            );
+        }
+
         let receivers = ReceiversFromUrlParams::new(
             url_or_paths,
             &UrlParamProcessingConfig::convert_everything_to_data_sources(),
@@ -1125,6 +1163,7 @@ fn run_impl(
             feature = "native_viewer" => start_native_viewer(
                 &args,
                 url_or_paths,
+                _asset_recordings,
                 _main_thread_token,
                 _build_info,
                 _call_source,
@@ -1148,6 +1187,7 @@ fn run_impl(
 fn start_native_viewer(
     args: &Args,
     url_or_paths: Vec<String>,
+    asset_recordings: Vec<std::path::PathBuf>,
     _main_thread_token: re_viewer::MainThreadToken,
     _build_info: re_build_info::BuildInfo,
     call_source: CallSource,
@@ -1160,12 +1200,26 @@ fn start_native_viewer(
     use re_viewer::external::{eframe, re_viewer_context};
 
     use crate::external::re_ui::{UICommand, UICommandSender as _};
+    use re_viewer_context::SystemCommandSender as _;
+
+    use super::cli_data_source::take_asset_load_request;
 
     let startup_options = native_startup_options_from_args(args)?;
 
     let integration_test = args.integration_test;
     let connect = args.connect.is_some();
     let renderer = args.renderer.as_deref();
+    let assets = args.assets.clone();
+    let mut recordings = std::collections::HashSet::new();
+    for recording in asset_recordings {
+        let path = std::path::absolute(&recording).map_err(|err| {
+            anyhow::anyhow!(
+                "Failed to resolve absolute path: {err}\nFile path: {}",
+                recording.display()
+            )
+        })?;
+        recordings.insert(path);
+    }
     let memory_limit = args
         .memory_limit
         .as_ref()
@@ -1231,11 +1285,21 @@ fn start_native_viewer(
             Some(connection_registry.clone()),
             async_runtime,
             text_log_rx,
-            (command_tx, command_rx),
+            (command_tx.clone(), command_rx),
         );
 
         if let Some(memory_limit) = memory_limit {
             app.app_options_mut().memory_limit = memory_limit;
+        }
+
+        if !assets.is_empty() {
+            let experimental = &mut app.app_options_mut().experimental;
+            if !experimental.use_viewer_catalog {
+                experimental.use_viewer_catalog = true;
+                re_log::warn!(
+                    "`--asset` needs the Viewer catalog, so the experimental \"Load files via Viewer catalog\" setting was turned on."
+                );
+            }
         }
 
         // If we're **not** connecting to an existing server, we spawn a new one and add it to the list of receivers.
@@ -1288,7 +1352,11 @@ fn start_native_viewer(
             app.add_log_receiver(rx);
         }
         for url in urls_to_pass_on_to_viewer {
-            app.open_url_or_file(&url);
+            if let Some(request) = take_asset_load_request(&url, &mut recordings, &assets) {
+                command_tx.send_system(request);
+            } else {
+                app.open_url_or_file(&url);
+            }
         }
         if let Ok(url) = std::env::var("EXAMPLES_MANIFEST_URL") {
             app.set_examples_manifest_url(url);
@@ -1974,6 +2042,7 @@ fn record_cli_command_analytics(args: &Args) {
         detach_process,
 
         // Not logged
+        assets: _,
         detached_process_child: _,
         threads: _,
         url_or_paths: _,
@@ -2064,6 +2133,94 @@ fn record_cli_command_analytics(args: &Args) {
     });
 }
 
+#[cfg(test)]
+mod cli_data_source_tests {
+    use std::path::PathBuf;
+
+    use clap::Parser as _;
+
+    use super::*;
+
+    fn parse(args: &[&str]) -> anyhow::Result<(Vec<PathBuf>, Vec<PathBuf>)> {
+        let args = Args::try_parse_from(args)?;
+        let recordings = local_recordings_for_assets(&args.url_or_paths, &args.assets)?;
+        Ok((recordings, args.assets))
+    }
+
+    #[test]
+    fn assets_apply_to_all_recordings() {
+        for args in [
+            vec![
+                "rerun", "rec0.rrd", "--asset", "a.rrd", "rec1.rrd", "--asset", "b.rrd",
+            ],
+            vec![
+                "rerun",
+                "rec0.rrd",
+                "--asset",
+                "a.rrd",
+                "--asset=b.rrd",
+                "rec1.rrd",
+            ],
+        ] {
+            let (recordings, assets) = parse(&args).unwrap();
+            assert_eq!(
+                recordings,
+                [PathBuf::from("rec0.rrd"), PathBuf::from("rec1.rrd")]
+            );
+            assert_eq!(assets, [PathBuf::from("a.rrd"), PathBuf::from("b.rrd")]);
+        }
+    }
+
+    #[test]
+    fn asset_order_does_not_matter() {
+        let sources = parse(&["rerun", "--asset", "mesh.rrd", "rec.rrd"]).unwrap();
+        assert_eq!(
+            sources,
+            parse(&["rerun", "rec.rrd", "--asset", "mesh.rrd"]).unwrap()
+        );
+        assert_eq!(sources.1, [PathBuf::from("mesh.rrd")]);
+    }
+
+    #[test]
+    fn assets_only_apply_to_local_recordings() {
+        let sources = parse(&[
+            "rerun",
+            "rec.rrd",
+            "blueprint.rbl",
+            "https://example.com/rec.rrd",
+            "--asset",
+            "mesh.rrd",
+        ])
+        .unwrap();
+        assert_eq!(sources.0, [PathBuf::from("rec.rrd")]);
+        assert_eq!(sources.1, [PathBuf::from("mesh.rrd")]);
+    }
+
+    #[test]
+    fn assets_require_a_local_recording() {
+        let err = parse(&["rerun", "--asset", "mesh.rrd"]).unwrap_err();
+        assert_eq!(
+            err.to_string(),
+            "`--asset` needs at least one local `.rrd` recording on the command line"
+        );
+        for source in [
+            "rerun+http://localhost:9877/dataset",
+            "https://example.com/rec.rrd",
+            "example.com/rec.rrd",
+            "file:///does/not/exist.rrd",
+            "blueprint.rbl",
+            "mesh.obj",
+            "-",
+        ] {
+            let err = parse(&["rerun", source, "--asset", "mesh.rrd"]).unwrap_err();
+            assert_eq!(
+                err.to_string(),
+                "`--asset` needs at least one local `.rrd` recording on the command line"
+            );
+        }
+    }
+}
+
 #[cfg(all(test, feature = "native_viewer"))]
 mod tests {
     use super::*;
@@ -2106,6 +2263,39 @@ mod tests {
                 "unexpected second relaunch for {cli_args:?}"
             );
         }
+    }
+
+    #[test]
+    fn detach_preserves_assets_for_all_recordings() {
+        let raw_args = [
+            "rerun",
+            "rec0.rrd",
+            "--asset",
+            "a.rrd",
+            "--detach-process",
+            "--asset=b.rrd",
+            "rec1.rrd",
+            "--asset",
+            "c.rrd",
+            "--",
+            "rec2.rrd",
+        ]
+        .map(std::ffi::OsString::from);
+        let parent = Args::try_parse_from(&raw_args).unwrap();
+        let parent_recordings =
+            local_recordings_for_assets(&parent.url_or_paths, &parent.assets).unwrap();
+        let child = Args::try_parse_from(std::iter::chain(
+            std::iter::once(std::ffi::OsStr::new("rerun")),
+            detached_child_args(&raw_args),
+        ))
+        .unwrap();
+        assert_eq!(
+            local_recordings_for_assets(&child.url_or_paths, &child.assets).unwrap(),
+            parent_recordings
+        );
+        assert_eq!(parent_recordings.len(), 3);
+        assert_eq!(child.assets, parent.assets);
+        assert_eq!(child.assets.len(), 3);
     }
 
     #[test]
