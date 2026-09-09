@@ -144,13 +144,10 @@ impl UiLayout {
         }
 
         let text = widget_text.text();
-        // By default e.g., "droid:full" would be considered a valid URL. We decided we only care
-        // about sane URL formats that include "://". This means e.g., "mailto:hello@world" won't
-        // be considered a URL, but that is preferable to showing links for anything with a colon.
-        if text.contains("://") {
-            // Syntax highlighting may add quotes around strings.
-            let stripped = text.trim_matches(SyntaxHighlightedBuilder::QUOTE_CHAR);
 
+        // On one hand we don't want strict parsing of URLs — if there's just some quotes around, that's still valid.
+        // But on the other hand that large json file you have in a cell is definitely not a URL, even if there's one embedded in it!
+        if let Some(stripped) = extract_standalone_url(text) {
             // Show builtin url types nicely formatted as a button:
             if let Some(decorator) = crate::UrlDecorator::get(ui.ctx())
                 && let Some(link) = decorator(stripped)
@@ -163,10 +160,8 @@ impl UiLayout {
                 return ui.add(link.wrap_mode(wrap_mode));
             }
 
-            if url::Url::parse(stripped).is_ok() {
-                // This is a general link and should not open a new tab unless desired by the user.
-                return ui.re_hyperlink(widget_text.clone(), stripped, false);
-            }
+            // This is a general link and should not open a new tab unless desired by the user.
+            return ui.re_hyperlink(widget_text.clone(), stripped, false);
         }
         let response = ui.label(widget_text);
         ui.sanity_check();
@@ -182,7 +177,7 @@ impl UiLayout {
         }
         let mut wrap_width = ui.available_width();
 
-        if layout_job.text.contains("://") {
+        if extract_standalone_url(&layout_job.text).is_some() {
             // This is a link and will be shown with re_hyperlink, which adds an icon to the
             // left. We need to consider the icon and space so we can wrap correctly (otherwise
             // resizing of table columns breaks). Usually this would be handled by atoms, but since
@@ -232,5 +227,78 @@ impl UiLayout {
         let galley = ui.fonts_mut(|f| f.layout_job(layout_job)); // We control the text layout; not the label
 
         self.decorate_url(ui, galley.into())
+    }
+}
+
+/// Recognize whole-value URLs, not prose containing a URL or opaque URIs like `name:value`.
+fn extract_standalone_url(text: &str) -> Option<&str> {
+    // Syntax highlighting may add quotes around strings, we ignore those.
+    let text = text.trim_matches(SyntaxHighlightedBuilder::QUOTE_CHAR);
+
+    // Does it have a valid scheme with no whitespace in it?
+    let (scheme, _) = text.split_once("://")?;
+    // RFC 3986: a scheme starts with a letter, followed by letters, digits, `+`, `-` or `.`.
+    let mut scheme = scheme.bytes();
+    if !scheme.next().is_some_and(|c| c.is_ascii_alphabetic())
+        || !scheme.all(|c| c.is_ascii_alphanumeric() || matches!(c, b'+' | b'-' | b'.'))
+        || text.chars().any(char::is_whitespace)
+    {
+        return None;
+    }
+
+    url::Url::parse(text).ok().map(|_| text)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{SyntaxHighlightedBuilder, extract_standalone_url};
+
+    /// As syntax highlighting would present a string value.
+    fn quoted(text: &str) -> String {
+        let quote = SyntaxHighlightedBuilder::QUOTE_CHAR;
+        format!("{quote}{text}{quote}")
+    }
+
+    #[test]
+    fn standalone_urls() {
+        for url in [
+            "https://example.com/path?query=value#fragment",
+            "HTTP://example.com",
+            "rerun+http://localhost:8080/catalog",
+            "file:///tmp/recording.rrd",
+            "https://example.com/path%20with%20spaces",
+            // Digits are fine everywhere but the start of the scheme:
+            "h2c://example.com/path",
+            "http://127.0.0.1:9876/status",
+            "https://example.com/v2/data?page=42#section-3",
+        ] {
+            assert_eq!(extract_standalone_url(url), Some(url), "{url:?}");
+            assert_eq!(extract_standalone_url(&quoted(url)), Some(url), "{url:?}");
+        }
+    }
+
+    #[test]
+    fn embedded_urls_are_not_standalone() {
+        for text in [
+            "",
+            "plain text",
+            "droid:full",
+            "mailto:hello@world",
+            "See https://example.com",
+            "notes: see https://example.com",
+            "notes:https://example.com",
+            "https://example.com followed by prose",
+            "https://example.com\nmore text",
+            "https://exam\tple.com",
+            "https://example.com\u{a0}more",
+            "{\"url\":\"https://example.com\"}",
+            "https://",
+            "://example.com",
+            "1http://example.com",
+            "+http://example.com",
+        ] {
+            assert_eq!(extract_standalone_url(text), None, "{text:?}");
+            assert_eq!(extract_standalone_url(&quoted(text)), None, "{text:?}");
+        }
     }
 }
