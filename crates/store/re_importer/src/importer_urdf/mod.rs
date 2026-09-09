@@ -9,9 +9,11 @@ mod urdf_tree;
 pub(crate) use robot_description_parser::build_urdf_chunks_from_xml;
 pub use urdf_tree::UrdfTree;
 
+use std::collections::{BTreeMap, BTreeSet};
+use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 
-use anyhow::{Context as _, bail};
+use anyhow::Context as _;
 use crossbeam::channel::Sender;
 use re_chunk::{Chunk, ChunkBuilder, ChunkId, EntityPath, RowId, TimePoint};
 use re_sdk_types::archetypes::{Asset3D, CoordinateFrame, InstancePoses3D, Transform3D};
@@ -164,6 +166,63 @@ pub(crate) fn emit_robot(
     urdf_tree.emit(emit, timepoint, include_joint_transforms)
 }
 
+/// Describes why loading a ROS resource failed.
+#[derive(Debug, Ord, PartialOrd, Eq, PartialEq, thiserror::Error)]
+enum RosResourceError {
+    #[error("Could not resolve package URI using `ROS_PACKAGE_PATH` or `AMENT_PREFIX_PATH`")]
+    PackageUriResolution,
+
+    #[error("No root directory set for URDF")]
+    MissingRootDirectory,
+
+    #[cfg(target_arch = "wasm32")]
+    #[error("Loading ROS resources is not supported in WebAssembly")]
+    UnsupportedInWasm,
+
+    #[error("{0}")]
+    Other(String),
+}
+
+/// Tracks affected ROS resource paths per error for summary warnings.
+#[derive(Default)]
+struct RosResourceErrorTracker {
+    paths_per_error: BTreeMap<RosResourceError, BTreeSet<String>>,
+}
+
+impl RosResourceErrorTracker {
+    /// Adds a ROS resource-loading failure and records its resource path.
+    fn add(&mut self, err: RosResourceError, resource_path: &str) {
+        self.paths_per_error
+            .entry(err)
+            .or_default()
+            .insert(resource_path.to_owned());
+    }
+
+    /// Formats one warning message for each collected error.
+    ///
+    /// Details are listed on lines starting with `- …` to show up in a details dropdown in the viewer
+    /// (see [`re_error::StructuredError::parse`]).
+    fn summaries(&self) -> Vec<String> {
+        self.paths_per_error
+            .iter()
+            .map(|(error, resource_paths)| {
+                let mut paths = String::new();
+                for resource_path in resource_paths {
+                    write!(paths, "\n- {resource_path}").ok();
+                }
+                format!("{error} ({}x){paths}", resource_paths.len())
+            })
+            .collect()
+    }
+
+    /// Logs one warning for each collected error.
+    fn log_summaries(&self) {
+        for summary in self.summaries() {
+            re_log::warn!("{summary}");
+        }
+    }
+}
+
 impl UrdfTree {
     /// Emit the full robot model (geometry + transforms) as [`Chunk`]s.
     pub fn emit(
@@ -172,6 +231,8 @@ impl UrdfTree {
         timepoint: &TimePoint,
         include_joint_transforms: bool,
     ) -> anyhow::Result<()> {
+        let mut error_tracker = RosResourceErrorTracker::default();
+
         // The robot's root coordinate frame_id.
         emit_archetype(
             emit,
@@ -182,10 +243,12 @@ impl UrdfTree {
         )?;
 
         // Emit all transforms as rows in a single chunk.
-        let transforms = walk_tree(emit, self, timepoint, &self.root().name)?;
+        let transforms = walk_tree(emit, self, timepoint, &self.root().name, &mut error_tracker)?;
         if include_joint_transforms && !transforms.is_empty() {
             emit_static_transforms_batch(emit, &self.log_paths.transforms, &transforms)?;
         }
+
+        error_tracker.log_summaries();
 
         Ok(())
     }
@@ -196,13 +259,14 @@ fn walk_tree(
     urdf_tree: &UrdfTree,
     timepoint: &TimePoint,
     link_name: &str,
+    error_tracker: &mut RosResourceErrorTracker,
 ) -> anyhow::Result<Vec<Transform3D>> {
     let link = urdf_tree
         .get_link(link_name)
         .with_context(|| format!("Link {link_name:?} missing from map"))?;
     re_log::debug_assert_eq!(link_name, link.name);
 
-    emit_link(urdf_tree, timepoint, link, emit)?;
+    emit_link(urdf_tree, timepoint, link, emit, error_tracker)?;
 
     let Some(joints) = urdf_tree.get_children(link_name) else {
         // if there's no more joints connecting this link to anything else we've reached the end of this branch.
@@ -214,7 +278,8 @@ fn walk_tree(
         joint_transforms_for_link.push(get_joint_transform(urdf_tree, joint));
 
         // Recurse
-        let mut child_transforms = walk_tree(emit, urdf_tree, timepoint, &joint.child.link)?;
+        let mut child_transforms =
+            walk_tree(emit, urdf_tree, timepoint, &joint.child.link, error_tracker)?;
         joint_transforms_for_link.append(&mut child_transforms);
     }
 
@@ -328,6 +393,7 @@ fn emit_link(
     timepoint: &TimePoint,
     link: &urdf_rs::Link,
     emit: &mut dyn FnMut(Chunk),
+    error_tracker: &mut RosResourceErrorTracker,
 ) -> anyhow::Result<()> {
     let urdf_rs::Link {
         name: link_name,
@@ -374,6 +440,7 @@ fn emit_link(
             geometry,
             material,
             timepoint,
+            error_tracker,
         )?;
     }
 
@@ -405,6 +472,7 @@ fn emit_link(
             geometry,
             None,
             timepoint,
+            error_tracker,
         )?;
 
         if false {
@@ -434,8 +502,11 @@ fn emit_link(
 /// TODO(emilk): create a trait for this, so that one can use this URDF importer
 /// from e.g. a ROS-bag importer.
 #[cfg(target_arch = "wasm32")]
-fn load_ros_resource(_root_dir: Option<&PathBuf>, resource_path: &str) -> anyhow::Result<Vec<u8>> {
-    bail!("Loading ROS resources is not supported in WebAssembly: {resource_path}");
+fn load_ros_resource(
+    _root_dir: Option<&PathBuf>,
+    _resource_path: &str,
+) -> Result<Vec<u8>, RosResourceError> {
+    Err(RosResourceError::UnsupportedInWasm)
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -443,15 +514,18 @@ fn load_ros_resource(
     // Where the .urdf file is located.
     root_dir: Option<&PathBuf>,
     resource_path: &str,
-) -> anyhow::Result<Vec<u8>> {
+) -> Result<Vec<u8>, RosResourceError> {
     if let Some((scheme, path)) = resource_path.split_once("://") {
         match scheme {
-            "file" => std::fs::read(path).with_context(|| format!("Failed to read file: {path}")),
+            "file" => std::fs::read(path)
+                .with_context(|| format!("Failed to read file: {path}"))
+                .map_err(|err| RosResourceError::Other(err.to_string())),
             "package" => read_ros_package_resource(root_dir, path),
-            "http" | "https" => fetch_http_resource(resource_path),
-            _ => {
-                bail!("Unknown resource scheme: {scheme:?} in {resource_path}");
-            }
+            "http" | "https" => fetch_http_resource(resource_path)
+                .map_err(|err| RosResourceError::Other(err.to_string())),
+            _ => Err(RosResourceError::Other(format!(
+                "Unknown resource scheme: {scheme:?} in {resource_path}"
+            ))),
         }
     } else {
         // Relative path
@@ -459,8 +533,9 @@ fn load_ros_resource(
             let full_path = root_dir.join(resource_path);
             std::fs::read(&full_path)
                 .with_context(|| format!("Failed to read file: {}", full_path.display()))
+                .map_err(|err| RosResourceError::Other(err.to_string()))
         } else {
-            bail!("No root directory set for URDF, cannot load resource: {resource_path}");
+            Err(RosResourceError::MissingRootDirectory)
         }
     }
 }
@@ -513,6 +588,7 @@ fn emit_geometry(
     geometry: &Geometry,
     material: Option<&urdf_rs::Material>,
     timepoint: &TimePoint,
+    error_tracker: &mut RosResourceErrorTracker,
 ) -> anyhow::Result<()> {
     match geometry {
         Geometry::Mesh { filename, scale: _ } => {
@@ -521,7 +597,7 @@ fn emit_geometry(
             let mesh_bytes = match load_ros_resource(urdf_tree.urdf_dir.as_ref(), filename) {
                 Ok(bytes) => bytes,
                 Err(err) => {
-                    re_log::warn!(?filename, "Failed to load mesh: {err}");
+                    error_tracker.add(err, filename);
                     return Ok(());
                 }
             };
@@ -640,36 +716,40 @@ fn quat_from_rpy(rpy: &[f64; 3]) -> glam::Quat {
 fn read_ros_package_resource(
     root_dir: Option<&PathBuf>,
     resource_path: &str,
-) -> anyhow::Result<Vec<u8>> {
+) -> Result<Vec<u8>, RosResourceError> {
     let resolved_path = resolve_package_uri(resource_path)?;
 
     if resolved_path.is_absolute() {
-        std::fs::read(&resolved_path).with_context(|| {
-            format!(
-                "Failed to read package resource: {}",
-                resolved_path.display()
-            )
-        })
+        std::fs::read(&resolved_path)
+            .with_context(|| {
+                format!(
+                    "Failed to read package resource: {}",
+                    resolved_path.display()
+                )
+            })
+            .map_err(|err| RosResourceError::Other(err.to_string()))
     } else if let Some(root_dir) = root_dir {
         // If the path is relative, resolve it relative to the `root_dir`.
         let full_path = root_dir.join(resolved_path);
         std::fs::read(&full_path)
             .with_context(|| format!("Failed to read file: {}", full_path.display()))
+            .map_err(|err| RosResourceError::Other(err.to_string()))
     } else {
         // If no `root_dir` is provided, we cannot resolve the relative path.
-        bail!("No root directory set for URDF, cannot load resource: {resource_path}");
+        Err(RosResourceError::MissingRootDirectory)
     }
 }
 
 /// Try to resolve the `pkg_name/rel/path` part of a ROS `package://` URI,
 /// by scanning `ROS_PACKAGE_PATH` (ROS1) or `AMENT_PREFIX_PATH` (ROS2).
 #[cfg(not(target_arch = "wasm32"))]
-fn resolve_package_uri(uri: &str) -> anyhow::Result<PathBuf> {
+fn resolve_package_uri(uri: &str) -> Result<PathBuf, RosResourceError> {
     use std::env;
 
     let mut parts = uri.splitn(2, '/');
-    let (pkg, rel) = Option::zip(parts.next(), parts.next())
-        .ok_or_else(|| anyhow::anyhow!("Invalid package URI: {uri}"))?;
+    let Some((pkg, rel)) = Option::zip(parts.next(), parts.next()) else {
+        return Err(RosResourceError::PackageUriResolution);
+    };
 
     let rel = PathBuf::from(rel);
 
@@ -699,7 +779,28 @@ fn resolve_package_uri(uri: &str) -> anyhow::Result<PathBuf> {
         }
     }
 
-    bail!(
-        "Failed to resolve package URI: {uri}, tried `ROS_PACKAGE_PATH` and `AMENT_PREFIX_PATH`, but no matching package found"
-    );
+    Err(RosResourceError::PackageUriResolution)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{RosResourceError, RosResourceErrorTracker};
+
+    /// Checks that repeated ROS resource failures use unique paths in one warning per failure reason.
+    #[test]
+    fn ros_resource_errors_are_counted_by_reason() {
+        let mut failures = RosResourceErrorTracker::default();
+        failures.add(RosResourceError::PackageUriResolution, "package/z.stl");
+        failures.add(RosResourceError::PackageUriResolution, "package/z.stl");
+        failures.add(RosResourceError::PackageUriResolution, "package/a.stl");
+        failures.add(RosResourceError::MissingRootDirectory, "meshes/b.stl");
+
+        assert_eq!(
+            failures.summaries(),
+            vec![
+                "Could not resolve package URI using `ROS_PACKAGE_PATH` or `AMENT_PREFIX_PATH` (2x)\n- package/a.stl\n- package/z.stl".to_owned(),
+                "No root directory set for URDF (1x)\n- meshes/b.stl".to_owned(),
+            ]
+        );
+    }
 }
