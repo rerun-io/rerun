@@ -80,7 +80,9 @@ deny = [
 
   { name = "cgmath", reason = "We use glam" },
   { name = "cmake", reason = "Never again" },
-  { name = "derive_more", reason = "Is very slow to compile; see https://github.com/rerun-io/rerun/issues/1316" },
+  { name = "derive_more", wrappers = [
+    "agent-client-protocol-schema",
+  ], reason = "Is very slow to compile; see https://github.com/rerun-io/rerun/issues/1316. Only allowed via the ACP schema crate, which we do not control." },
   { name = "egui_glow", reason = "We use wgpu" },
   { name = "openssl-sys", reason = "We prefer rustls" },
   { name = "openssl", reason = "We prefer rustls" },
@@ -117,6 +119,8 @@ skip = [
   { name = "ordered-float" }, # Old version being used by parquet, but super small!
   { name = "png" }, # `resvg` (via egui_extras) still uses 0.17, `walkers` forces us on 0.18 via `image`.
   { name = "pollster" }, # `rfd` still uses 0.4, we use 1.0
+  { name = "strum" }, # `agent-client-protocol-schema` uses 0.28, we are still on 0.26
+  { name = "strum_macros" }, # `agent-client-protocol-schema` uses 0.28, we are still on 0.26
   { name = "prettyplease" }, # `prost-build`/`tonic-build` use 0.2; `re_types_builder` uses 0.3, which takes the `syn` 3 AST. Build-time only.
   { name = "quick-xml" }, # because of urdf-rs
   { name = "redox_syscall" }, # Plenty of versions in the wild

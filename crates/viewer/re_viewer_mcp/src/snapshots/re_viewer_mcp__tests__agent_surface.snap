@@ -31,37 +31,37 @@ Conventions:
   "name": "batch",
   "description": "Execute a sequence of app-driving tool calls in one round trip (the connection tools `attach`/`disconnect`/`status` are not available here).\nStops on the first error.\nResults are emitted in execution order, interleaved: each step contributes one JSON text item followed by any image items it produced (e.g. screenshots).\n`batch` cannot be nested.\nUse this to act and observe in one call, e.g. a `click` then a `query_tree` or `screenshot`.",
   "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$defs": {
       "BatchAction": {
+        "type": "object",
         "properties": {
-          "args": {
-            "additionalProperties": true,
-            "default": null,
-            "type": "object"
-          },
           "name": {
             "type": "string"
+          },
+          "args": {
+            "type": "object",
+            "additionalProperties": true,
+            "default": null
           }
         },
         "required": [
           "name"
-        ],
-        "type": "object"
+        ]
       }
     },
-    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
     "properties": {
       "actions": {
+        "type": "array",
         "items": {
           "$ref": "#/$defs/BatchAction"
-        },
-        "type": "array"
+        }
       }
     },
     "required": [
       "actions"
-    ],
-    "type": "object"
+    ]
   }
 }
 
@@ -71,68 +71,71 @@ Conventions:
   "name": "click",
   "description": "Click the center of a node's bounding box, or a raw `pos` in logical points.\nSpecify either a locator (`id` from `query_tree`, `role`, or a text match — prefer `content_contains`, which matches `label` or `value`; `label_contains`/`value_contains` match just one field) or `pos: { x, y }`.\n`button` defaults to `primary` (accepts `primary`/`secondary`/`middle`/`extra1`/`extra2`, or aliases `left`/`right`).\n`count: 2` → double-click, `3` → triple.",
   "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$defs": {
+      "Pos2Lit": {
+        "type": "object",
+        "properties": {
+          "x": {
+            "type": "number",
+            "format": "float"
+          },
+          "y": {
+            "type": "number",
+            "format": "float"
+          }
+        },
+        "required": [
+          "x",
+          "y"
+        ]
+      },
       "PointerButtonArg": {
         "description": "Which mouse button a `click`/`drag` uses. `left`/`right` are accepted as aliases for\n`primary`/`secondary`.",
+        "type": "string",
         "enum": [
           "primary",
           "secondary",
           "middle",
           "extra1",
           "extra2"
-        ],
-        "type": "string"
-      },
-      "Pos2Lit": {
-        "properties": {
-          "x": {
-            "format": "float",
-            "type": "number"
-          },
-          "y": {
-            "format": "float",
-            "type": "number"
-          }
-        },
-        "required": [
-          "x",
-          "y"
-        ],
-        "type": "object"
+        ]
       },
       "PressKeyModifiers": {
+        "type": "object",
         "properties": {
-          "alt": {
-            "default": false,
-            "type": "boolean"
-          },
-          "command": {
-            "default": false,
-            "description": "= Cmd on Mac / Ctrl on Win+Linux.",
-            "type": "boolean"
-          },
           "ctrl": {
-            "default": false,
-            "type": "boolean"
-          },
-          "mac_cmd": {
-            "default": false,
-            "type": "boolean"
+            "type": "boolean",
+            "default": false
           },
           "shift": {
-            "default": false,
-            "type": "boolean"
+            "type": "boolean",
+            "default": false
+          },
+          "alt": {
+            "type": "boolean",
+            "default": false
+          },
+          "mac_cmd": {
+            "type": "boolean",
+            "default": false
+          },
+          "command": {
+            "description": "= Cmd on Mac / Ctrl on Win+Linux.",
+            "type": "boolean",
+            "default": false
           }
-        },
-        "type": "object"
+        }
       }
     },
-    "$schema": "https://json-schema.org/draft/2020-12/schema",
     "properties": {
-      "button": {
-        "$ref": "#/$defs/PointerButtonArg",
-        "default": "primary",
-        "description": "`primary`/`secondary`/`middle`/`extra1`/`extra2` (or aliases `left`/`right`). Defaults to `primary`."
+      "id": {
+        "description": "Node id from `query_tree`.",
+        "type": [
+          "string",
+          "null"
+        ],
+        "default": null
       },
       "content_contains": {
         "description": "Case-insensitive substring match against *either* `label` or `value`. Prefer this when you\njust want \"the widget showing this text\" and don't care which field holds it — it's the\nmost robust choice across widget kinds.",
@@ -141,16 +144,8 @@ Conventions:
           "null"
         ]
       },
-      "count": {
-        "default": 1,
-        "description": "`2` → double-click; `3` → triple-click.",
-        "format": "uint32",
-        "minimum": 0,
-        "type": "integer"
-      },
-      "id": {
-        "default": null,
-        "description": "Node id from `query_tree`.",
+      "role": {
+        "description": "Role name, e.g. `Button`, `Label`, `TextInput` (case-insensitive).\nAn unrecognized role is rejected with an error that lists the roles present in the tree.",
         "type": [
           "string",
           "null"
@@ -163,10 +158,15 @@ Conventions:
           "null"
         ]
       },
-      "modifiers": {
-        "$ref": "#/$defs/PressKeyModifiers"
+      "value_contains": {
+        "description": "Case-insensitive substring match against the node's `value` only (e.g. a text field's\ncontents, or a `Label`'s text).",
+        "type": [
+          "string",
+          "null"
+        ]
       },
       "pos": {
+        "description": "Raw position in logical points (use instead of locator fields).",
         "anyOf": [
           {
             "$ref": "#/$defs/Pos2Lit"
@@ -174,22 +174,22 @@ Conventions:
           {
             "type": "null"
           }
-        ],
-        "description": "Raw position in logical points (use instead of locator fields)."
-      },
-      "role": {
-        "description": "Role name, e.g. `Button`, `Label`, `TextInput` (case-insensitive).\nAn unrecognized role is rejected with an error that lists the roles present in the tree.",
-        "type": [
-          "string",
-          "null"
         ]
       },
-      "value_contains": {
-        "description": "Case-insensitive substring match against the node's `value` only (e.g. a text field's\ncontents, or a `Label`'s text).",
-        "type": [
-          "string",
-          "null"
-        ]
+      "button": {
+        "description": "`primary`/`secondary`/`middle`/`extra1`/`extra2` (or aliases `left`/`right`). Defaults to `primary`.",
+        "$ref": "#/$defs/PointerButtonArg",
+        "default": "primary"
+      },
+      "count": {
+        "description": "`2` → double-click; `3` → triple-click.",
+        "type": "integer",
+        "format": "uint32",
+        "minimum": 0,
+        "default": 1
+      },
+      "modifiers": {
+        "$ref": "#/$defs/PressKeyModifiers"
       }
     },
     "type": "object"
@@ -205,12 +205,12 @@ Conventions:
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "properties": {
       "endpoint": {
-        "default": null,
         "description": "gRPC endpoint of the running viewer's `ViewerControlService`.\nDefaults to `http://127.0.0.1:9876`.",
         "type": [
           "string",
           "null"
-        ]
+        ],
+        "default": null
       }
     },
     "type": "object"
@@ -234,53 +234,20 @@ Conventions:
   "name": "drag",
   "description": "Primary-button drag from `start` to `end`.\nEach target accepts the same fields as `click`: locator (`id`/`content_contains`/`role`/`label_contains`/`value_contains`) or `pos: {x, y}`.\n`steps` controls how many intermediate pointer-move events are emitted between press and release.",
   "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$defs": {
-      "Pos2Lit": {
-        "properties": {
-          "x": {
-            "format": "float",
-            "type": "number"
-          },
-          "y": {
-            "format": "float",
-            "type": "number"
-          }
-        },
-        "required": [
-          "x",
-          "y"
-        ],
-        "type": "object"
-      },
-      "PressKeyModifiers": {
-        "properties": {
-          "alt": {
-            "default": false,
-            "type": "boolean"
-          },
-          "command": {
-            "default": false,
-            "description": "= Cmd on Mac / Ctrl on Win+Linux.",
-            "type": "boolean"
-          },
-          "ctrl": {
-            "default": false,
-            "type": "boolean"
-          },
-          "mac_cmd": {
-            "default": false,
-            "type": "boolean"
-          },
-          "shift": {
-            "default": false,
-            "type": "boolean"
-          }
-        },
-        "type": "object"
-      },
       "Target": {
         "description": "The widget-matching constraints shared by `query_tree`'s filter and the action `Target`s.\n\nAn optional `role` plus up to one text predicate. All are case-insensitive and combined with\nlogical AND; an all-`None` `Query` matches every node.",
+        "type": "object",
         "properties": {
+          "id": {
+            "description": "Node id from `query_tree`.",
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
           "content_contains": {
             "description": "Case-insensitive substring match against *either* `label` or `value`. Prefer this when you\njust want \"the widget showing this text\" and don't care which field holds it — it's the\nmost robust choice across widget kinds.",
             "type": [
@@ -288,9 +255,8 @@ Conventions:
               "null"
             ]
           },
-          "id": {
-            "default": null,
-            "description": "Node id from `query_tree`.",
+          "role": {
+            "description": "Role name, e.g. `Button`, `Label`, `TextInput` (case-insensitive).\nAn unrecognized role is rejected with an error that lists the roles present in the tree.",
             "type": [
               "string",
               "null"
@@ -303,7 +269,15 @@ Conventions:
               "null"
             ]
           },
+          "value_contains": {
+            "description": "Case-insensitive substring match against the node's `value` only (e.g. a text field's\ncontents, or a `Label`'s text).",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "pos": {
+            "description": "Raw position in logical points (use instead of locator fields).",
             "anyOf": [
               {
                 "$ref": "#/$defs/Pos2Lit"
@@ -311,50 +285,76 @@ Conventions:
               {
                 "type": "null"
               }
-            ],
-            "description": "Raw position in logical points (use instead of locator fields)."
-          },
-          "role": {
-            "description": "Role name, e.g. `Button`, `Label`, `TextInput` (case-insensitive).\nAn unrecognized role is rejected with an error that lists the roles present in the tree.",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "value_contains": {
-            "description": "Case-insensitive substring match against the node's `value` only (e.g. a text field's\ncontents, or a `Label`'s text).",
-            "type": [
-              "string",
-              "null"
             ]
           }
+        }
+      },
+      "Pos2Lit": {
+        "type": "object",
+        "properties": {
+          "x": {
+            "type": "number",
+            "format": "float"
+          },
+          "y": {
+            "type": "number",
+            "format": "float"
+          }
         },
-        "type": "object"
+        "required": [
+          "x",
+          "y"
+        ]
+      },
+      "PressKeyModifiers": {
+        "type": "object",
+        "properties": {
+          "ctrl": {
+            "type": "boolean",
+            "default": false
+          },
+          "shift": {
+            "type": "boolean",
+            "default": false
+          },
+          "alt": {
+            "type": "boolean",
+            "default": false
+          },
+          "mac_cmd": {
+            "type": "boolean",
+            "default": false
+          },
+          "command": {
+            "description": "= Cmd on Mac / Ctrl on Win+Linux.",
+            "type": "boolean",
+            "default": false
+          }
+        }
       }
     },
-    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
     "properties": {
-      "end": {
-        "$ref": "#/$defs/Target"
-      },
-      "modifiers": {
-        "$ref": "#/$defs/PressKeyModifiers"
-      },
       "start": {
         "$ref": "#/$defs/Target"
       },
+      "end": {
+        "$ref": "#/$defs/Target"
+      },
       "steps": {
-        "default": 8,
+        "type": "integer",
         "format": "uint32",
         "minimum": 0,
-        "type": "integer"
+        "default": 8
+      },
+      "modifiers": {
+        "$ref": "#/$defs/PressKeyModifiers"
       }
     },
     "required": [
       "start",
       "end"
-    ],
-    "type": "object"
+    ]
   }
 }
 
@@ -365,20 +365,41 @@ Conventions:
   "description": "Return a single node by id (from `query_tree`).",
   "inputSchema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "id"
+    ],
+    "type": "object",
     "properties": {
       "id": {
         "type": "string"
       }
-    },
-    "required": [
-      "id"
-    ],
-    "type": "object"
+    }
   },
   "outputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$defs": {
       "NodeView": {
+        "type": "object",
         "properties": {
+          "id": {
+            "description": "Node id, used with `click`, `type_text`, and `get_node`.",
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "label": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "value": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "bounds": {
             "anyOf": [
               {
@@ -389,35 +410,16 @@ Conventions:
               }
             ]
           },
-          "disabled": {
+          "focused": {
             "type": "boolean"
           },
-          "focused": {
+          "disabled": {
             "type": "boolean"
           },
           "hidden": {
             "type": "boolean"
           },
-          "id": {
-            "description": "Node id, used with `click`, `type_text`, and `get_node`.",
-            "type": "string"
-          },
-          "label": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
           "parent_id": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "role": {
-            "type": "string"
-          },
-          "value": {
             "type": [
               "string",
               "null"
@@ -430,26 +432,26 @@ Conventions:
           "focused",
           "disabled",
           "hidden"
-        ],
-        "type": "object"
+        ]
       },
       "RectF": {
+        "type": "object",
         "properties": {
-          "h": {
-            "format": "double",
-            "type": "number"
-          },
-          "w": {
-            "format": "double",
-            "type": "number"
-          },
           "x": {
-            "format": "double",
-            "type": "number"
+            "type": "number",
+            "format": "double"
           },
           "y": {
-            "format": "double",
-            "type": "number"
+            "type": "number",
+            "format": "double"
+          },
+          "w": {
+            "type": "number",
+            "format": "double"
+          },
+          "h": {
+            "type": "number",
+            "format": "double"
           }
         },
         "required": [
@@ -457,11 +459,9 @@ Conventions:
           "y",
           "w",
           "h"
-        ],
-        "type": "object"
+        ]
       }
     },
-    "$schema": "https://json-schema.org/draft/2020-12/schema",
     "properties": {
       "node": {
         "anyOf": [
@@ -484,27 +484,35 @@ Conventions:
   "name": "hover",
   "description": "Move the pointer over a node (or raw `pos`) without clicking.\nTooltips and hover popups only appear after a short delay — follow with `wait_for` (e.g. its `min_steps`) to let them settle before reading the tree or screenshotting.",
   "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$defs": {
       "Pos2Lit": {
+        "type": "object",
         "properties": {
           "x": {
-            "format": "float",
-            "type": "number"
+            "type": "number",
+            "format": "float"
           },
           "y": {
-            "format": "float",
-            "type": "number"
+            "type": "number",
+            "format": "float"
           }
         },
         "required": [
           "x",
           "y"
-        ],
-        "type": "object"
+        ]
       }
     },
-    "$schema": "https://json-schema.org/draft/2020-12/schema",
     "properties": {
+      "id": {
+        "description": "Node id from `query_tree`.",
+        "type": [
+          "string",
+          "null"
+        ],
+        "default": null
+      },
       "content_contains": {
         "description": "Case-insensitive substring match against *either* `label` or `value`. Prefer this when you\njust want \"the widget showing this text\" and don't care which field holds it — it's the\nmost robust choice across widget kinds.",
         "type": [
@@ -512,9 +520,8 @@ Conventions:
           "null"
         ]
       },
-      "id": {
-        "default": null,
-        "description": "Node id from `query_tree`.",
+      "role": {
+        "description": "Role name, e.g. `Button`, `Label`, `TextInput` (case-insensitive).\nAn unrecognized role is rejected with an error that lists the roles present in the tree.",
         "type": [
           "string",
           "null"
@@ -527,7 +534,15 @@ Conventions:
           "null"
         ]
       },
+      "value_contains": {
+        "description": "Case-insensitive substring match against the node's `value` only (e.g. a text field's\ncontents, or a `Label`'s text).",
+        "type": [
+          "string",
+          "null"
+        ]
+      },
       "pos": {
+        "description": "Raw position in logical points (use instead of locator fields).",
         "anyOf": [
           {
             "$ref": "#/$defs/Pos2Lit"
@@ -535,21 +550,6 @@ Conventions:
           {
             "type": "null"
           }
-        ],
-        "description": "Raw position in logical points (use instead of locator fields)."
-      },
-      "role": {
-        "description": "Role name, e.g. `Button`, `Label`, `TextInput` (case-insensitive).\nAn unrecognized role is rejected with an error that lists the roles present in the tree.",
-        "type": [
-          "string",
-          "null"
-        ]
-      },
-      "value_contains": {
-        "description": "Case-insensitive substring match against the node's `value` only (e.g. a text field's\ncontents, or a `Label`'s text).",
-        "type": [
-          "string",
-          "null"
         ]
       }
     },
@@ -564,16 +564,16 @@ Conventions:
   "description": "Open a URL in the Rerun viewer.\nThe URL can be a recording/blueprint file URL, a `rerun://` dataset URI, a redap server/catalog URL, or an intra-recording link.\nRequires `connect`.",
   "inputSchema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "url"
+    ],
+    "type": "object",
     "properties": {
       "url": {
         "description": "The URL to open in the viewer: a recording/blueprint file URL, a `rerun://` dataset URI, a redap server/catalog URL, or an intra-recording link.",
         "type": "string"
       }
-    },
-    "required": [
-      "url"
-    ],
-    "type": "object"
+    }
   }
 }
 
@@ -583,35 +583,36 @@ Conventions:
   "name": "press_key",
   "description": "Send a key press (down + up) to the focused widget.\n`key` is an egui key name such as `Backspace`, `Delete`, `Enter`, `Tab`, `A`–`Z`, `ArrowLeft`, `ArrowRight`, `Home`, `End`, `Escape`.",
   "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$defs": {
       "PressKeyModifiers": {
+        "type": "object",
         "properties": {
-          "alt": {
-            "default": false,
-            "type": "boolean"
-          },
-          "command": {
-            "default": false,
-            "description": "= Cmd on Mac / Ctrl on Win+Linux.",
-            "type": "boolean"
-          },
           "ctrl": {
-            "default": false,
-            "type": "boolean"
-          },
-          "mac_cmd": {
-            "default": false,
-            "type": "boolean"
+            "type": "boolean",
+            "default": false
           },
           "shift": {
-            "default": false,
-            "type": "boolean"
+            "type": "boolean",
+            "default": false
+          },
+          "alt": {
+            "type": "boolean",
+            "default": false
+          },
+          "mac_cmd": {
+            "type": "boolean",
+            "default": false
+          },
+          "command": {
+            "description": "= Cmd on Mac / Ctrl on Win+Linux.",
+            "type": "boolean",
+            "default": false
           }
-        },
-        "type": "object"
+        }
       }
     },
-    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
     "properties": {
       "key": {
         "type": "string"
@@ -622,8 +623,7 @@ Conventions:
     },
     "required": [
       "key"
-    ],
-    "type": "object"
+    ]
   }
 }
 
@@ -642,21 +642,15 @@ Conventions:
           "null"
         ]
       },
-      "label_contains": {
-        "description": "Case-insensitive substring match against the node's `label` (its accessible name) only.\nNote that `Label`/monospace widgets carry their text in `value`, not `label` — for those,\nuse `content_contains` (or `value_contains`).",
+      "role": {
+        "description": "Role name, e.g. `Button`, `Label`, `TextInput` (case-insensitive).\nAn unrecognized role is rejected with an error that lists the roles present in the tree.",
         "type": [
           "string",
           "null"
         ]
       },
-      "limit": {
-        "default": 200,
-        "format": "uint",
-        "minimum": 0,
-        "type": "integer"
-      },
-      "role": {
-        "description": "Role name, e.g. `Button`, `Label`, `TextInput` (case-insensitive).\nAn unrecognized role is rejected with an error that lists the roles present in the tree.",
+      "label_contains": {
+        "description": "Case-insensitive substring match against the node's `label` (its accessible name) only.\nNote that `Label`/monospace widgets carry their text in `value`, not `label` — for those,\nuse `content_contains` (or `value_contains`).",
         "type": [
           "string",
           "null"
@@ -670,16 +664,43 @@ Conventions:
         ]
       },
       "visible_only": {
-        "default": true,
-        "type": "boolean"
+        "type": "boolean",
+        "default": true
+      },
+      "limit": {
+        "type": "integer",
+        "format": "uint",
+        "minimum": 0,
+        "default": 200
       }
     },
     "type": "object"
   },
   "outputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$defs": {
       "NodeView": {
+        "type": "object",
         "properties": {
+          "id": {
+            "description": "Node id, used with `click`, `type_text`, and `get_node`.",
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "label": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "value": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "bounds": {
             "anyOf": [
               {
@@ -690,35 +711,16 @@ Conventions:
               }
             ]
           },
-          "disabled": {
+          "focused": {
             "type": "boolean"
           },
-          "focused": {
+          "disabled": {
             "type": "boolean"
           },
           "hidden": {
             "type": "boolean"
           },
-          "id": {
-            "description": "Node id, used with `click`, `type_text`, and `get_node`.",
-            "type": "string"
-          },
-          "label": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
           "parent_id": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "role": {
-            "type": "string"
-          },
-          "value": {
             "type": [
               "string",
               "null"
@@ -731,26 +733,26 @@ Conventions:
           "focused",
           "disabled",
           "hidden"
-        ],
-        "type": "object"
+        ]
       },
       "RectF": {
+        "type": "object",
         "properties": {
-          "h": {
-            "format": "double",
-            "type": "number"
-          },
-          "w": {
-            "format": "double",
-            "type": "number"
-          },
           "x": {
-            "format": "double",
-            "type": "number"
+            "type": "number",
+            "format": "double"
           },
           "y": {
-            "format": "double",
-            "type": "number"
+            "type": "number",
+            "format": "double"
+          },
+          "w": {
+            "type": "number",
+            "format": "double"
+          },
+          "h": {
+            "type": "number",
+            "format": "double"
           }
         },
         "required": [
@@ -758,23 +760,21 @@ Conventions:
           "y",
           "w",
           "h"
-        ],
-        "type": "object"
-      }
-    },
-    "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "properties": {
-      "nodes": {
-        "items": {
-          "$ref": "#/$defs/NodeView"
-        },
-        "type": "array"
+        ]
       }
     },
     "required": [
       "nodes"
     ],
-    "type": "object"
+    "type": "object",
+    "properties": {
+      "nodes": {
+        "type": "array",
+        "items": {
+          "$ref": "#/$defs/NodeView"
+        }
+      }
+    }
   }
 }
 
@@ -785,23 +785,23 @@ Conventions:
   "description": "Resize the app's viewport to the given logical-point dimensions.",
   "inputSchema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "properties": {
-      "height": {
-        "format": "uint32",
-        "minimum": 0,
-        "type": "integer"
-      },
-      "width": {
-        "format": "uint32",
-        "minimum": 0,
-        "type": "integer"
-      }
-    },
     "required": [
       "width",
       "height"
     ],
-    "type": "object"
+    "type": "object",
+    "properties": {
+      "width": {
+        "type": "integer",
+        "format": "uint32",
+        "minimum": 0
+      },
+      "height": {
+        "type": "integer",
+        "format": "uint32",
+        "minimum": 0
+      }
+    }
   }
 }
 
@@ -814,18 +814,18 @@ Conventions:
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "properties": {
       "pixels_per_point": {
-        "default": 1.0,
         "description": "Output resolution in pixels per logical point.\nDefaults to `1.0`, which makes screenshot pixels line up 1:1 with the logical coordinates used by `click`/`query_tree`.\nHigher values give a sharper image, capped at the display's native scale (no upscaling).",
+        "type": "number",
         "format": "float",
-        "type": "number"
+        "default": 1.0
       },
       "save_path": {
-        "default": null,
         "description": "If set, also write the PNG to this path on the machine running the MCP server (in addition to returning it inline).",
         "type": [
           "string",
           "null"
-        ]
+        ],
+        "default": null
       }
     },
     "type": "object"
@@ -838,53 +838,65 @@ Conventions:
   "name": "scroll",
   "description": "Send a mouse wheel scroll over a node (or raw `pos`).\n`delta` is in logical points: positive Y scrolls down (reveals content below); positive X scrolls right.",
   "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$defs": {
       "Pos2Lit": {
+        "type": "object",
         "properties": {
           "x": {
-            "format": "float",
-            "type": "number"
+            "type": "number",
+            "format": "float"
           },
           "y": {
-            "format": "float",
-            "type": "number"
+            "type": "number",
+            "format": "float"
           }
         },
         "required": [
           "x",
           "y"
-        ],
-        "type": "object"
+        ]
       },
       "PressKeyModifiers": {
+        "type": "object",
         "properties": {
-          "alt": {
-            "default": false,
-            "type": "boolean"
-          },
-          "command": {
-            "default": false,
-            "description": "= Cmd on Mac / Ctrl on Win+Linux.",
-            "type": "boolean"
-          },
           "ctrl": {
-            "default": false,
-            "type": "boolean"
-          },
-          "mac_cmd": {
-            "default": false,
-            "type": "boolean"
+            "type": "boolean",
+            "default": false
           },
           "shift": {
-            "default": false,
-            "type": "boolean"
+            "type": "boolean",
+            "default": false
+          },
+          "alt": {
+            "type": "boolean",
+            "default": false
+          },
+          "mac_cmd": {
+            "type": "boolean",
+            "default": false
+          },
+          "command": {
+            "description": "= Cmd on Mac / Ctrl on Win+Linux.",
+            "type": "boolean",
+            "default": false
           }
-        },
-        "type": "object"
+        }
       }
     },
-    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "delta"
+    ],
+    "type": "object",
     "properties": {
+      "id": {
+        "description": "Node id from `query_tree`.",
+        "type": [
+          "string",
+          "null"
+        ],
+        "default": null
+      },
       "content_contains": {
         "description": "Case-insensitive substring match against *either* `label` or `value`. Prefer this when you\njust want \"the widget showing this text\" and don't care which field holds it — it's the\nmost robust choice across widget kinds.",
         "type": [
@@ -892,13 +904,8 @@ Conventions:
           "null"
         ]
       },
-      "delta": {
-        "$ref": "#/$defs/Pos2Lit",
-        "description": "Logical points.\nPositive Y scrolls down (reveals content below); positive X scrolls right."
-      },
-      "id": {
-        "default": null,
-        "description": "Node id from `query_tree`.",
+      "role": {
+        "description": "Role name, e.g. `Button`, `Label`, `TextInput` (case-insensitive).\nAn unrecognized role is rejected with an error that lists the roles present in the tree.",
         "type": [
           "string",
           "null"
@@ -911,10 +918,15 @@ Conventions:
           "null"
         ]
       },
-      "modifiers": {
-        "$ref": "#/$defs/PressKeyModifiers"
+      "value_contains": {
+        "description": "Case-insensitive substring match against the node's `value` only (e.g. a text field's\ncontents, or a `Label`'s text).",
+        "type": [
+          "string",
+          "null"
+        ]
       },
       "pos": {
+        "description": "Raw position in logical points (use instead of locator fields).",
         "anyOf": [
           {
             "$ref": "#/$defs/Pos2Lit"
@@ -922,28 +934,16 @@ Conventions:
           {
             "type": "null"
           }
-        ],
-        "description": "Raw position in logical points (use instead of locator fields)."
-      },
-      "role": {
-        "description": "Role name, e.g. `Button`, `Label`, `TextInput` (case-insensitive).\nAn unrecognized role is rejected with an error that lists the roles present in the tree.",
-        "type": [
-          "string",
-          "null"
         ]
       },
-      "value_contains": {
-        "description": "Case-insensitive substring match against the node's `value` only (e.g. a text field's\ncontents, or a `Label`'s text).",
-        "type": [
-          "string",
-          "null"
-        ]
+      "delta": {
+        "description": "Logical points.\nPositive Y scrolls down (reveals content below); positive X scrolls right.",
+        "$ref": "#/$defs/Pos2Lit"
+      },
+      "modifiers": {
+        "$ref": "#/$defs/PressKeyModifiers"
       }
-    },
-    "required": [
-      "delta"
-    ],
-    "type": "object"
+    }
   }
 }
 
@@ -953,14 +953,12 @@ Conventions:
   "name": "set_time",
   "description": "Set the time cursor (timeline position) of a recording in the Rerun viewer.\n`time` is a sequence index for sequence timelines or nanoseconds for temporal timelines (call `viewer_state` first for each timeline's type and valid range).\n`store_id` and `timeline` default to the active recording / active timeline.\nIf `play` is unset or `false`, the recording will be paused. If `true`, the recording will play from the selected time.\nRequires `connect`.",
   "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$defs": {
       "StoreIdArg": {
         "description": "JSON representation of a proto [`StoreId`], used both as agent-facing output (see\n`viewer_state`) and as tool input identifying a recording to target.",
+        "type": "object",
         "properties": {
-          "application_id": {
-            "description": "The application id the recording belongs to.",
-            "type": "string"
-          },
           "kind": {
             "description": "The kind of store: `\"recording\"`, `\"blueprint\"`, or `\"unspecified\"`.",
             "type": "string"
@@ -968,24 +966,23 @@ Conventions:
           "recording_id": {
             "description": "The recording id.",
             "type": "string"
+          },
+          "application_id": {
+            "description": "The application id the recording belongs to.",
+            "type": "string"
           }
         },
         "required": [
           "kind",
           "recording_id",
           "application_id"
-        ],
-        "type": "object"
+        ]
       }
     },
-    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
     "properties": {
-      "play": {
-        "default": false,
-        "description": "If true, start playing the recording from the new time cursor position instead of just\nmoving the cursor and staying paused. Defaults to false.",
-        "type": "boolean"
-      },
       "store_id": {
+        "description": "Recording to seek (see `viewer_state`).\nDefaults to the active recording.",
         "anyOf": [
           {
             "$ref": "#/$defs/StoreIdArg"
@@ -994,27 +991,30 @@ Conventions:
             "type": "null"
           }
         ],
-        "default": null,
-        "description": "Recording to seek (see `viewer_state`).\nDefaults to the active recording."
-      },
-      "time": {
-        "description": "Time to seek to: a sequence index for sequence timelines, or nanoseconds for temporal timelines (see each timeline's `type` and `min`/`max` in `viewer_state`).",
-        "format": "int64",
-        "type": "integer"
+        "default": null
       },
       "timeline": {
-        "default": null,
         "description": "Timeline to seek on (see `viewer_state` for available timelines).\nDefaults to the active timeline.",
         "type": [
           "string",
           "null"
-        ]
+        ],
+        "default": null
+      },
+      "time": {
+        "description": "Time to seek to: a sequence index for sequence timelines, or nanoseconds for temporal timelines (see each timeline's `type` and `min`/`max` in `viewer_state`).",
+        "type": "integer",
+        "format": "int64"
+      },
+      "play": {
+        "description": "If true, start playing the recording from the new time cursor position instead of just\nmoving the cursor and staying paused. Defaults to false.",
+        "type": "boolean",
+        "default": false
       }
     },
     "required": [
       "time"
-    ],
-    "type": "object"
+    ]
   }
 }
 
@@ -1025,24 +1025,23 @@ Conventions:
   "description": "Type text into the currently focused widget.\nOptionally focus a node first (by `id`, `role`, or a text match — `content_contains`/`label_contains`/`value_contains`) — this uses an `AccessKit` focus request, not a click, so it won't move the cursor or clear an existing text selection.",
   "inputSchema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "text"
+    ],
     "properties": {
-      "content_contains": {
-        "description": "Case-insensitive substring match against *either* `label` or `value`. Prefer this when you\njust want \"the widget showing this text\" and don't care which field holds it — it's the\nmost robust choice across widget kinds.",
-        "type": [
-          "string",
-          "null"
-        ]
+      "text": {
+        "type": "string"
       },
       "id": {
-        "default": null,
         "description": "Optional focus target: node id from `query_tree` to focus before typing.\nOmit all locator fields to type into whatever is currently focused.",
         "type": [
           "string",
           "null"
-        ]
+        ],
+        "default": null
       },
-      "label_contains": {
-        "description": "Case-insensitive substring match against the node's `label` (its accessible name) only.\nNote that `Label`/monospace widgets carry their text in `value`, not `label` — for those,\nuse `content_contains` (or `value_contains`).",
+      "content_contains": {
+        "description": "Case-insensitive substring match against *either* `label` or `value`. Prefer this when you\njust want \"the widget showing this text\" and don't care which field holds it — it's the\nmost robust choice across widget kinds.",
         "type": [
           "string",
           "null"
@@ -1055,8 +1054,12 @@ Conventions:
           "null"
         ]
       },
-      "text": {
-        "type": "string"
+      "label_contains": {
+        "description": "Case-insensitive substring match against the node's `label` (its accessible name) only.\nNote that `Label`/monospace widgets carry their text in `value`, not `label` — for those,\nuse `content_contains` (or `value_contains`).",
+        "type": [
+          "string",
+          "null"
+        ]
       },
       "value_contains": {
         "description": "Case-insensitive substring match against the node's `value` only (e.g. a text field's\ncontents, or a `Label`'s text).",
@@ -1066,9 +1069,6 @@ Conventions:
         ]
       }
     },
-    "required": [
-      "text"
-    ],
     "type": "object"
   }
 }
@@ -1099,26 +1099,6 @@ Conventions:
           "null"
         ]
       },
-      "label_contains": {
-        "description": "Case-insensitive substring match against the node's `label` (its accessible name) only.\nNote that `Label`/monospace widgets carry their text in `value`, not `label` — for those,\nuse `content_contains` (or `value_contains`).",
-        "type": [
-          "string",
-          "null"
-        ]
-      },
-      "min_matches": {
-        "default": 1,
-        "format": "uint32",
-        "minimum": 0,
-        "type": "integer"
-      },
-      "min_steps": {
-        "default": 0,
-        "description": "Also wait until at least this many frames have rendered since the call began.\nUse it to let animations, tooltips, or other time/frame-driven UI settle (e.g. after a `hover`); `0` means don't wait for frames.",
-        "format": "uint64",
-        "minimum": 0,
-        "type": "integer"
-      },
       "role": {
         "description": "Role name, e.g. `Button`, `Label`, `TextInput` (case-insensitive).\nAn unrecognized role is rejected with an error that lists the roles present in the tree.",
         "type": [
@@ -1126,11 +1106,12 @@ Conventions:
           "null"
         ]
       },
-      "timeout_secs": {
-        "default": 5,
-        "format": "uint64",
-        "minimum": 0,
-        "type": "integer"
+      "label_contains": {
+        "description": "Case-insensitive substring match against the node's `label` (its accessible name) only.\nNote that `Label`/monospace widgets carry their text in `value`, not `label` — for those,\nuse `content_contains` (or `value_contains`).",
+        "type": [
+          "string",
+          "null"
+        ]
       },
       "value_contains": {
         "description": "Case-insensitive substring match against the node's `value` only (e.g. a text field's\ncontents, or a `Label`'s text).",
@@ -1138,6 +1119,25 @@ Conventions:
           "string",
           "null"
         ]
+      },
+      "timeout_secs": {
+        "type": "integer",
+        "format": "uint64",
+        "minimum": 0,
+        "default": 5
+      },
+      "min_matches": {
+        "type": "integer",
+        "format": "uint32",
+        "minimum": 0,
+        "default": 1
+      },
+      "min_steps": {
+        "description": "Also wait until at least this many frames have rendered since the call began.\nUse it to let animations, tooltips, or other time/frame-driven UI settle (e.g. after a `hover`); `0` means don't wait for frames.",
+        "type": "integer",
+        "format": "uint64",
+        "minimum": 0,
+        "default": 0
       }
     },
     "type": "object"

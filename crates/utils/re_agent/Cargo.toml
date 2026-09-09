@@ -1,0 +1,34 @@
+[package]
+authors.workspace = true
+description = "Talk to a coding agent (Claude Code, Codex, …) over the Agent Client Protocol"
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+include.workspace = true
+name = "re_agent"
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+
+[features]
+default = []
+
+## Hooks for feeding an [`AgentSession`] without a running agent, used by UI snapshot tests.
+testing = []
+
+[dependencies]
+re_log.workspace = true
+
+agent-client-protocol.workspace = true
+futures.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+shell-words.workspace = true

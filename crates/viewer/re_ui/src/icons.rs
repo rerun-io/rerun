@@ -147,6 +147,10 @@ pub const RIGHT_PANEL_TOGGLE: Icon = icon_from_path!("../data/icons/right_panel_
 pub const BOTTOM_PANEL_TOGGLE: Icon = icon_from_path!("../data/icons/bottom_panel_toggle.svg");
 pub const LEFT_PANEL_TOGGLE: Icon = icon_from_path!("../data/icons/left_panel_toggle.svg");
 
+pub const PLAN_PENDING: Icon = icon_from_path!("../data/icons/plan_pending.svg");
+pub const PLAN_IN_PROGRESS: Icon = icon_from_path!("../data/icons/plan_in_progress.svg");
+pub const PLAN_COMPLETED: Icon = icon_from_path!("../data/icons/plan_completed.svg");
+
 pub const MINIMIZE: Icon = icon_from_path!("../data/icons/minimize.svg");
 pub const MAXIMIZE: Icon = icon_from_path!("../data/icons/maximize.svg");
 pub const EXPAND: Icon = icon_from_path!("../data/icons/expand.svg");

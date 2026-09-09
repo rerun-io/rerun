@@ -60,6 +60,7 @@ Two MCP servers let an agent see and click a running UI instead of guessing from
 Typical loop: start the app with `EGUI_INSPECTION=1`, call `attach` (host `127.0.0.1`, port `5719`), `query_tree` to find widgets, `click`/`type_text`, then `screenshot` with a `save_path` and look at the image.
 `egui-mcp` needs the app to paint frames: windowed apps must not be occluded on macOS, so prefer a headless harness where one exists.
 A headless `egui_kittest` harness can opt in with `egui_inspection::attach_from_env(&harness.ctx, label)`.
+Example: `EGUI_INSPECTION=1 cargo run -p re_agent_ui --example agent_app -- --headless`.
 
 ## Code generation system
 

@@ -155,6 +155,7 @@ Update instructions:
 
 | Crate                  | Description                                                                                                |
 | ---------------------- | ---------------------------------------------------------------------------------------------------------- |
+| re_agent_ui            | Chat UI for driving a coding agent (Claude Code, Codex, …) over the Agent Client Protocol                  |
 | re_arrow_ui            | Show arrow data in a tree of rerun list_items and format arrow with syntax highlighting.                   |
 | re_blueprint_tree      | The UI for the blueprint tree in the left panel.                                                           |
 | re_chunk_store_ui      | Display the contents of chunk stores.                                                                      |
@@ -253,6 +254,7 @@ Update instructions:
 
 | Crate               | Description                                                                                                                                                                |
 | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| re_agent            | Talk to a coding agent (Claude Code, Codex, …) over the Agent Client Protocol                                                                                              |
 | re_analytics        | Rerun's analytics SDK                                                                                                                                                      |
 | re_arrow_util       | Helpers for working with arrow.                                                                                                                                            |
 | re_async            | Async runtime abstractions for native and WebAssembly targets.                                                                                                             |

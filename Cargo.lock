@@ -129,6 +129,56 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "320119579fcad9c21884f5c4861d16174d0e06250625266f50fe6898340abefa"
 
 [[package]]
+name = "agent-client-protocol"
+version = "2.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6395d81d91fd2ee93f48ea31cfc511356e75b9061ca0389cefd0308507cc11ba"
+dependencies = [
+ "agent-client-protocol-derive",
+ "agent-client-protocol-schema",
+ "async-io",
+ "async-process",
+ "blocking",
+ "futures",
+ "futures-concurrency",
+ "rustc-hash 2.1.3",
+ "rustix 1.1.4",
+ "schemars 1.2.2",
+ "serde",
+ "serde_json",
+ "shell-words",
+ "tracing",
+ "uuid",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "agent-client-protocol-derive"
+version = "2.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7e8d5f32208cdc11238004bec4e4229d68fb937598f900e153468ca084865fa5"
+dependencies = [
+ "quote",
+ "syn 3.0.3",
+]
+
+[[package]]
+name = "agent-client-protocol-schema"
+version = "1.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ca98360c7bb8cc97d7acd49e2a8a851c3f7bee6b2f0535036d8ab86b5fcd223d"
+dependencies = [
+ "anyhow",
+ "derive_more",
+ "schemars 1.2.2",
+ "serde",
+ "serde_json",
+ "serde_with",
+ "strum 0.28.0",
+ "tracing",
+]
+
+[[package]]
 name = "ahash"
 version = "0.8.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1214,7 +1264,7 @@ dependencies = [
  "rerun",
  "serde",
  "serde_json",
- "strum",
+ "strum 0.26.3",
 ]
 
 [[package]]
@@ -1808,6 +1858,15 @@ name = "convert_case"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baaaa0ecca5b51987b9423ccdc971514dd8b0bb7b4060b983d3664dad3f1f89f"
+dependencies = [
+ "unicode-segmentation",
+]
+
+[[package]]
+name = "convert_case"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "633458d4ef8c78b72454de2d54fd6ab2e60f9e02be22f3c6104cdc8a4e0fceb9"
 dependencies = [
  "unicode-segmentation",
 ]
@@ -3092,6 +3151,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "derive_more"
+version = "2.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d751e9e49156b02b44f9c1815bcb94b984cdcc4396ecc32521c739452808b134"
+dependencies = [
+ "derive_more-impl",
+]
+
+[[package]]
+name = "derive_more-impl"
+version = "2.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "799a97264921d8623a957f6c3b9011f3b5492f557bbb7a5a19b7fa6d06ba8dcb"
+dependencies = [
+ "convert_case 0.10.0",
+ "proc-macro2",
+ "quote",
+ "rustc_version",
+ "syn 2.0.119",
+ "unicode-xid",
+]
+
+[[package]]
 name = "devserver_lib"
 version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4008,6 +4090,19 @@ checksum = "262590f4fe6afeb0bc83be1daa64e52657fe185690a958af7f3ad0e92085c5ae"
 dependencies = [
  "futures-core",
  "futures-sink",
+]
+
+[[package]]
+name = "futures-concurrency"
+version = "7.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "175cd8cca9e1d45b87f18ffa75088f2099e3c4fe5e2f83e42de112560bea8ea6"
+dependencies = [
+ "fixedbitset 0.5.7",
+ "futures-core",
+ "futures-lite",
+ "pin-project",
+ "smallvec",
 ]
 
 [[package]]
@@ -5751,7 +5846,7 @@ dependencies = [
  "prost",
  "prost-build",
  "rand 0.9.5",
- "strum",
+ "strum 0.26.3",
  "tokio",
  "tracing",
  "xxhash-rust",
@@ -8664,6 +8759,37 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_agent"
+version = "0.38.0-alpha.1+dev"
+dependencies = [
+ "agent-client-protocol",
+ "futures",
+ "re_log",
+ "serde",
+ "serde_json",
+ "shell-words",
+]
+
+[[package]]
+name = "re_agent_ui"
+version = "0.38.0-alpha.1+dev"
+dependencies = [
+ "base64 0.23.0",
+ "clap",
+ "eframe",
+ "egui",
+ "egui_inspection",
+ "egui_kittest",
+ "egui_tiles",
+ "jiff",
+ "pulldown-cmark",
+ "re_agent",
+ "re_log",
+ "re_ui",
+ "serde_json",
+]
+
+[[package]]
 name = "re_analytics"
 version = "0.38.0-alpha.1+dev"
 dependencies = [
@@ -9207,7 +9333,7 @@ dependencies = [
  "re_viewer_context",
  "re_viewport",
  "re_viewport_blueprint",
- "strum",
+ "strum 0.26.3",
  "thiserror 2.0.19",
  "tokio",
 ]
@@ -9556,7 +9682,7 @@ dependencies = [
  "re_log_types",
  "re_sdk_types",
  "re_tracing",
- "strum",
+ "strum 0.26.3",
 ]
 
 [[package]]
@@ -10001,7 +10127,7 @@ dependencies = [
  "paste",
  "raw-cpuid",
  "static_assertions",
- "strum",
+ "strum 0.26.3",
  "to_method",
  "zerocopy 0.7.35",
 ]
@@ -10239,7 +10365,7 @@ dependencies = [
  "re_cdr",
  "re_log",
  "re_span",
- "strum",
+ "strum 0.26.3",
  "thiserror 2.0.19",
 ]
 
@@ -10454,7 +10580,7 @@ dependencies = [
  "re_tuid",
  "re_types_core",
  "semver",
- "strum",
+ "strum 0.26.3",
  "thiserror 2.0.19",
  "tracing",
  "web-time",
@@ -10687,7 +10813,7 @@ dependencies = [
  "re_tracing",
  "regex-lite",
  "serde",
- "strum",
+ "strum 0.26.3",
  "syn 3.0.3",
  "tempfile",
  "toml",
@@ -10780,8 +10906,8 @@ dependencies = [
  "serde",
  "smallvec",
  "static_assertions",
- "strum",
- "strum_macros",
+ "strum 0.26.3",
+ "strum_macros 0.26.4",
  "thiserror 2.0.19",
  "tonic",
  "url",
@@ -11263,8 +11389,8 @@ dependencies = [
  "serde",
  "serde-wasm-bindgen",
  "serde_json",
- "strum",
- "strum_macros",
+ "strum 0.26.3",
+ "strum_macros 0.26.4",
  "tap",
  "tempfile",
  "thiserror 2.0.19",
@@ -11345,7 +11471,7 @@ dependencies = [
  "slotmap",
  "smallvec",
  "static_assertions",
- "strum_macros",
+ "strum_macros 0.26.4",
  "thiserror 2.0.19",
  "tokio",
  "uuid",
@@ -11842,8 +11968,8 @@ dependencies = [
  "re_video",
  "re_web_viewer_server",
  "rustls",
- "strum",
- "strum_macros",
+ "strum 0.26.3",
+ "strum_macros 0.26.4",
  "tempfile",
  "thiserror 2.0.19",
  "tokio",
@@ -12370,6 +12496,7 @@ version = "1.0.151"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c841b55ecdae098c80dcae9cf767f6f8a0c2cdb3416bbef72181df4d0fe73f14"
 dependencies = [
+ "indexmap 2.14.0",
  "itoa",
  "memchr",
  "serde",
@@ -12517,6 +12644,12 @@ version = "0.38.0-alpha.1+dev"
 dependencies = [
  "rerun",
 ]
+
+[[package]]
+name = "shell-words"
+version = "1.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dc6fe69c597f9c37bfeeeeeb33da3530379845f10be461a66d16d03eca2ded77"
 
 [[package]]
 name = "shlex"
@@ -12923,7 +13056,16 @@ version = "0.26.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8fec0f0aef304996cf250b31b5a10dee7980c85da9d759361292b8bca5a18f06"
 dependencies = [
- "strum_macros",
+ "strum_macros 0.26.4",
+]
+
+[[package]]
+name = "strum"
+version = "0.28.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9628de9b8791db39ceda2b119bbe13134770b56c138ec1d3af810d045c04f9bd"
+dependencies = [
+ "strum_macros 0.28.0",
 ]
 
 [[package]]
@@ -12936,6 +13078,18 @@ dependencies = [
  "proc-macro2",
  "quote",
  "rustversion",
+ "syn 2.0.119",
+]
+
+[[package]]
+name = "strum_macros"
+version = "0.28.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ab85eea0270ee17587ed4156089e10b9e6880ee688791d45a905f5b1ca36f664"
+dependencies = [
+ "heck",
+ "proc-macro2",
+ "quote",
  "syn 2.0.119",
 ]
 

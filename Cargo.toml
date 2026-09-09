@@ -107,6 +107,7 @@ rerun_c = { path = "crates/top/rerun_c", version = "=0.38.0-alpha.1", default-fe
 rerun-cli = { path = "crates/top/rerun-cli", version = "=0.38.0-alpha.1", default-features = false }
 
 # crates/utils:
+re_agent = { path = "crates/utils/re_agent", version = "=0.38.0-alpha.1", default-features = false }
 re_analytics = { path = "crates/utils/re_analytics", version = "=0.38.0-alpha.1", default-features = false }
 re_async = { path = "crates/utils/re_async", version = "=0.38.0-alpha.1", default-features = false }
 re_arrow_util = { path = "crates/utils/re_arrow_util", version = "=0.38.0-alpha.1", default-features = false }
@@ -213,6 +214,7 @@ egui_tiles = "0.17.1" # https://github.com/rerun-io/egui_tiles
 walkers = "0.58.0"
 
 # All of our direct external dependencies should be found here:
+agent-client-protocol = "2.1"
 ahash = "0.8.12"
 anyhow = { version = "1.0", default-features = false }
 argh = "0.1.19"
@@ -376,6 +378,7 @@ prost-types = "0.14.4"
 protoc-bin-vendored = "3.2"
 puffin = "0.20.0"
 puffin_http = "0.17.0"
+pulldown-cmark = { version = "0.13", default-features = false }
 pyo3 = "0.28.3"
 pyo3-build-config = "0.28.3"
 quote = "1.0"
@@ -405,7 +408,11 @@ scuffle-bytes-util = "0.1.5"
 semver = "1.0"
 seq-macro = "0.3.6"
 serde = { version = "1.0", features = ["derive"] }
-serde_json = { version = "1.0", default-features = false, features = ["std"] }
+serde_json = { version = "1.0", default-features = false, features = [
+  "preserve_order", # `agent-client-protocol` turns this on anyway; enabling it everywhere keeps JSON key order predictable
+  "std",
+] }
+shell-words = "1.1"
 serde-wasm-bindgen = "0.6.5"
 sha2 = "0.10.9" # pinned by `jsonwebtoken` (RustCrypto family); see hmac note.
 signature = { version = "2.2", features = [

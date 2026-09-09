@@ -78,7 +78,7 @@ impl ReTextEdit<'_> {
 
     pub fn multiline(text: &mut dyn TextBuffer) -> ReTextEdit<'_> {
         ReTextEdit {
-            text_edit: TextEdit::singleline(text),
+            text_edit: TextEdit::multiline(text),
             size: Size::Small,
             variant: TextEditVariant::Outlined,
             prefix: Atoms::default(),
