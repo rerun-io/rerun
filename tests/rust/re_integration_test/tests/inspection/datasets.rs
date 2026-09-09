@@ -54,13 +54,13 @@ pub async fn dataset_ui_test() {
         .expect("my_dataset label should be present")
         .click();
 
-    harness.step_until("Redap recording id appears", |harness| {
+    harness.step_until("Dataset recording loaded", |harness| {
         harness
             .query_all_by_label_contains("new_recording_id")
             .next()
             .is_some()
+            && !harness.is_loading()
     });
-    harness.step_until_no_loading_indicator();
 
     snapshot_results.add(harness.try_snapshot("dataset_ui_table"));
 }
@@ -77,13 +77,13 @@ pub async fn start_with_dataset_url() {
         ..Default::default()
     });
 
-    harness.step_until("Redap recording id appears", |harness| {
+    harness.step_until("Dataset recording loaded", |harness| {
         harness
             .query_all_by_label_contains("new_recording_id")
             .next()
             .is_some()
+            && !harness.is_loading()
     });
-    harness.step_until_no_loading_indicator();
 
     let back_button = harness
         .query_by_label("go back")
