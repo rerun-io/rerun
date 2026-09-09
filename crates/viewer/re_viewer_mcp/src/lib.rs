@@ -469,6 +469,7 @@ const INSTRUCTIONS: &str = r#"This MCP drives a live Rerun viewer: it reads the 
 Getting oriented:
 - Call `connect` first (it dials the viewer's gRPC server); every other tool errors until then.
 - If no viewer is running, launch one. If the user tells you to work in the background, or no desktop is available, use `--headless`.
+- Every Rerun gRPC endpoint serves gRPC server reflection, so `grpcurl -plaintext <host:port> list` shows which services an address speaks (viewer control, SDK proxy, catalog) before you `connect`, and `describe` shows a service's methods and message types.
 - Start most tasks with `query_tree` to discover widgets and their ids, and/or `screenshot` to see the rendered frame.
 
 Targeting widgets:

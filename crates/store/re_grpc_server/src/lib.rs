@@ -14,6 +14,7 @@ use re_protos::common::v1alpha1::{
     DataframePart as DataframePartProto, StoreKind as StoreKindProto, TableId as TableIdProto,
 };
 use re_protos::log_msg::v1alpha1::LogMsg as LogMsgProto;
+use re_protos::sdk_comms::v1alpha1::message_proxy_service_server::MessageProxyServiceServer;
 use re_protos::sdk_comms::v1alpha1::{
     ReadMessagesRequest, ReadMessagesResponse, ReadTablesRequest, ReadTablesResponse,
     WriteMessagesRequest, WriteMessagesResponse, WriteTableRequest, WriteTableResponse,
@@ -24,6 +25,7 @@ use std::task::{Context, Poll};
 use tokio::net::TcpListener;
 use tokio::sync::oneshot;
 use tokio_stream::{Stream, StreamExt as _};
+use tonic::server::NamedService as _;
 use tonic::transport::Server;
 use tonic::transport::server::TcpIncoming;
 use tower_http::cors::{AllowOrigin, CorsLayer};
@@ -213,6 +215,7 @@ impl tonic::service::Interceptor for LoopbackOnly {
 #[derive(Default)]
 pub struct LoopbackServices {
     builder: tonic::service::RoutesBuilder,
+    service_names: Vec<&'static str>,
 }
 
 impl LoopbackServices {
@@ -235,11 +238,8 @@ impl LoopbackServices {
                 svc,
                 LoopbackOnly,
             ));
+        self.service_names.push(S::NAME);
         self
-    }
-
-    fn into_routes(self) -> tonic::service::Routes {
-        self.builder.routes()
     }
 }
 
@@ -272,7 +272,7 @@ pub async fn serve(
         options,
         message_proxy,
         shutdown,
-        tonic::service::Routes::default(),
+        LoopbackServices::default(),
     )
     .await
 }
@@ -282,7 +282,7 @@ async fn serve_impl(
     options: ServerOptions,
     message_proxy: MessageProxy,
     shutdown: shutdown::Shutdown,
-    extra_services: tonic::service::Routes,
+    extra_services: LoopbackServices,
 ) -> anyhow::Result<()> {
     // TODO(rust-lang/rust#130668): When listening on `::` we want to listen to both ipv6 `::` and ipv4 `0.0.0.0`
     // On Mac & Linux this happens automatically since all sockets are dual-stack by default.
@@ -336,13 +336,17 @@ async fn serve_impl(
     let cors = cors_layer(&options.cors_allowed_origins);
     let grpc_web = tonic_web::GrpcWebLayer::new();
 
-    let routes = extra_services.add_service(
-        re_protos::sdk_comms::v1alpha1::message_proxy_service_server::MessageProxyServiceServer::new(
-            message_proxy,
-        )
-        .max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE)
-        .max_encoding_message_size(MAX_ENCODING_MESSAGE_SIZE),
+    let LoopbackServices {
+        mut builder,
+        mut service_names,
+    } = extra_services;
+    builder.add_service(
+        MessageProxyServiceServer::new(message_proxy)
+            .max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE)
+            .max_encoding_message_size(MAX_ENCODING_MESSAGE_SIZE),
     );
+    service_names.push(MessageProxyServiceServer::<MessageProxy>::NAME);
+    let routes = re_protos::reflection::with_reflection(builder.routes(), service_names)?;
 
     Server::builder()
         .accept_http1(true) // Support `grpc-web` clients
@@ -436,7 +440,7 @@ pub async fn serve_from_channel(
         options,
         message_proxy,
         shutdown,
-        tonic::service::Routes::default(),
+        LoopbackServices::default(),
     )
     .await
     {
@@ -468,7 +472,7 @@ pub fn spawn_from_rx_set(
             options,
             message_proxy,
             shutdown,
-            tonic::service::Routes::default(),
+            LoopbackServices::default(),
         )
         .await
         {
@@ -590,14 +594,8 @@ pub fn spawn_with_recv_and_services(
     );
 
     tokio::spawn(async move {
-        if let Err(err) = serve_impl(
-            addr,
-            options,
-            message_proxy,
-            shutdown,
-            loopback_services.into_routes(),
-        )
-        .await
+        if let Err(err) =
+            serve_impl(addr, options, message_proxy, shutdown, loopback_services).await
         {
             re_log::error!("message proxy server crashed: {err}");
         }
@@ -1351,7 +1349,6 @@ mod tests {
     use re_log_encoding::rrd::Compression;
     use re_log_types::{LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource};
     use re_protos::sdk_comms::v1alpha1::message_proxy_service_client::MessageProxyServiceClient;
-    use re_protos::sdk_comms::v1alpha1::message_proxy_service_server::MessageProxyServiceServer;
     use similar_asserts::assert_eq;
     use tokio::net::TcpListener;
     use tokio_util::sync::CancellationToken;

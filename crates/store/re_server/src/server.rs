@@ -223,6 +223,7 @@ const DEFAULT_ADDRESS: &str = "127.0.0.1:51234";
 pub struct ServerBuilder {
     addr: Option<SocketAddr>,
     routes_builder: RoutesBuilder,
+    service_names: Vec<&'static str>,
     axum_routes: axum::Router,
     artificial_latency: std::time::Duration,
     bandwidth_limit: Option<u64>,
@@ -251,6 +252,7 @@ impl ServerBuilder {
         S::Error: Into<Box<dyn std::error::Error + Send + Sync>> + Send,
     {
         self.routes_builder.add_service(svc);
+        self.service_names.push(S::NAME);
         self
     }
 
@@ -283,13 +285,20 @@ impl ServerBuilder {
         let Self {
             addr,
             routes_builder,
+            service_names,
             axum_routes,
             artificial_latency,
             bandwidth_limit,
             cors_allowed_origins,
         } = self;
 
-        let grpc_routes = routes_builder.routes();
+        let mut grpc_routes = routes_builder.routes();
+        match re_protos::reflection::services(service_names) {
+            Ok((v1, v1alpha)) => {
+                grpc_routes = grpc_routes.add_service(v1).add_service(v1alpha);
+            }
+            Err(err) => error!("Failed to set up gRPC server reflection: {err}"),
+        }
         let grpc_routes = grpc_routes.into_axum_router();
 
         // Apply GrpcWebLayer only to gRPC routes, not HTTP routes

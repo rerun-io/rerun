@@ -25,6 +25,7 @@ include = [
   "../../Cargo.lock", # So that users can pass `--locked` to `cargo install rerun-cli`
   "../../LICENSE-APACHE",
   "../../LICENSE-MIT",
+  "**/*.bin", # protobuf descriptor sets
   "**/*.rs",
   "Cargo.toml",
 ]
@@ -432,6 +433,7 @@ toml = { version = "1.1", default-features = false }
 tonic = { version = "0.14.6", default-features = false }
 tonic-prost = { version = "0.14.6", default-features = false }
 tonic-prost-build = { version = "0.14.6", default-features = false }
+tonic-reflection = { version = "0.14.6", default-features = false, features = ["server"] }
 tonic-web = "0.14.6"
 # tonic-web-wasm-client = "0.8.0" # 0.9 pulls wasm-streams 0.5, duplicating the 0.4 from reqwest 0.12. Update when we update to reqwest 0.13.
 tonic-web-wasm-client = { version = "0.8.1", package = "rerun-tonic-web-wasm-client" } # our fork of 0.8.1

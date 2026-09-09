@@ -123,6 +123,8 @@ web-sys = { workspace = true, features = ["File"] }
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 re_redap_tests.workspace = true
 tempfile.workspace = true
+tonic = { workspace = true, features = ["channel"] }
+tonic-reflection.workspace = true
 
 [build-dependencies]
 re_build_tools.workspace = true

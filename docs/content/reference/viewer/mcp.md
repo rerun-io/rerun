@@ -49,6 +49,8 @@ Or configure any MCP client manually. Most accept a `mcp.json` config like this:
 These assume `rerun` is installed on your `PATH` (see [install rerun](../../getting-started/install-rerun.md)).
 If it is not, replace `rerun` with the absolute path to the binary.
 
+To check whether an address is a Rerun Viewer before connecting, use [gRPC server reflection](../grpc.md): `grpcurl -plaintext 127.0.0.1:9876 list` names the services it speaks.
+
 ## Headless usage
 
 The MCP server works against a headless Viewer too, which is convenient for agents running in the background, in CI or
