@@ -352,10 +352,8 @@ where
         attempts += 1;
     }
 
-    // A retry give-up can absorb meaningful wall-clock time (up to the policy's budget) before the
-    // error surfaces, so log it at `debug` (with elapsed) to aid triage of "why was this slow?".
-    // The error itself is still returned to — and surfaced by — the caller.
-    tracing::debug!(
+    // Elapsed time includes all attempts and backoff waits.
+    tracing::trace!(
         attempts,
         max_attempts = policy.max_attempts,
         elapsed_ms = start.elapsed().as_millis() as u64,

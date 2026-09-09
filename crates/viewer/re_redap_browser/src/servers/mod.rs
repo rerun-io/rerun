@@ -1467,7 +1467,7 @@ async fn watch_events_loop(
                 return;
             }
             Err(err) => {
-                re_log::debug!(
+                re_log::trace!(
                     "{}",
                     re_error::format_with_details(
                         format!("Event stream failed, will reconnect: {err}"),
