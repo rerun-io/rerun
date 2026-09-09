@@ -2,7 +2,7 @@
 name = "rerun-cli"
 authors.workspace = true
 categories = ["visualization", "computer-vision"]
-description = "Log images, point clouds, etc, and visualize them effortlessly"
+description = "The Rerun command-line tool: the `rerun` binary, including the native Viewer"
 edition.workspace = true
 homepage.workspace = true
 include.workspace = true

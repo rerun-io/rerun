@@ -1,5 +1,6 @@
 [package]
 name = "rerun_py" # name of the rust crate
+description = "The Rerun Python SDK"
 edition.workspace = true
 license.workspace = true
 publish = false

@@ -2,7 +2,7 @@
 name = "rerun"
 authors.workspace = true
 categories = ["visualization", "computer-vision"]
-description = "Log images, point clouds, etc, and visualize them effortlessly"
+description = "The Rerun Rust SDK: log images, point clouds, etc, and visualize them effortlessly"
 edition.workspace = true
 homepage.workspace = true
 include.workspace = true
