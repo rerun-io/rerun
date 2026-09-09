@@ -35,11 +35,11 @@ use crate::segment_chunk_manifest::SegmentChunkManifest;
 use re_dataframe::external::re_chunk::{Chunk, TimeColumn};
 
 use super::cpu_worker::CpuWorkerMsg;
-
-/// Target batch size in bytes for grouping segments together in requests.
-/// This reduces the number of round-trips while keeping memory usage bounded (as long
-/// as the concurrency is also bounded).
-const TARGET_BATCH_SIZE_BYTES: usize = 8 * 1024 * 1024; // 8 MB
+#[cfg(test)]
+use super::fetch_plan::BatchingResult;
+use super::fetch_plan::{
+    TARGET_BATCH_SIZE_BYTES, create_request_batches_with_segment_limit, read_start_column,
+};
 
 /// How many concurrent requests to make to the server when fetching chunks.
 const GRPC_BATCH_SIZE: usize = 12;
@@ -137,7 +137,6 @@ fn build_segment_manifests(
     let Some(timeline_name) = filtered_timeline else {
         return Ok(manifests);
     };
-    // `TimelineName: Display` renders its interned string, no extra allocation.
     let start_col_name = format!("{timeline_name}:start");
 
     // All-or-nothing pre-check: if any batch lacks `:start`, fall back
@@ -154,17 +153,8 @@ fn build_segment_manifests(
         let start_col = rb
             .try_get_column(&start_col_name)
             .expect("pre-check above guarantees presence on every batch");
-        // `:start` carries the raw `i64` for the timeline's `time_min`. The OSS server emits
-        // `Int64`; other servers may emit `TimestampNanosecondArray` / `Time64NanosecondArray` /
-        // `DurationNanosecondArray` matching the timeline's native dtype. All four are i64 under
-        // the hood, so we go through `TimeColumn::read_nullable_array` rather than downcasting.
-        let (start_values, start_nulls) = TimeColumn::read_nullable_array(start_col.as_ref())
-            .map_err(|err| {
-                ApiError::internal(
-                    origin,
-                    format!("`{start_col_name}` column has unsupported type: {err}"),
-                )
-            })?;
+        let (start_values, start_nulls) =
+            read_start_column(origin, start_col.as_ref(), &start_col_name)?;
         let segment_ids = QueryDatasetDataframe::COLUMN_CHUNK_SEGMENT_ID
             .extract(rb)
             .map_err(|err| ApiError::internal_quiver(origin, err))?;
@@ -291,12 +281,8 @@ fn extend_distinct_segment_ids(
 /// * the `{timeline}:start` column has an unsupported dtype, or
 /// * every row in the batch has a null `:start` (static chunks only).
 ///
-/// `:start` carries the raw `i64` for the timeline's `time_min`. The OSS
-/// server emits `Int64`; other servers may emit `TimestampNanosecondArray`
-/// / `Time64NanosecondArray` / `DurationNanosecondArray` matching the
-/// timeline's native dtype. All four are i64 under the hood, so we go
-/// through [`TimeColumn::read_nullable_array`] rather than downcasting —
-/// matches what [`build_segment_manifests`] does for the same column.
+/// Reads the array directly rather than through [`read_start_column`], which would turn a
+/// malformed column into a hard error; see there for why the dtype is not downcast.
 fn extract_task_time_min(batch: &RecordBatch, filtered_timeline: Option<&str>) -> TimeInt {
     let Some(timeline) = filtered_timeline else {
         return TimeInt::MAX;
@@ -319,29 +305,6 @@ fn extract_task_time_min(batch: &RecordBatch, filtered_timeline: Option<&str>) -
     }
     min_seen.map_or(TimeInt::MAX, TimeInt::saturated_temporal_i64)
 }
-
-/// Extract segment ID from a `chunk_info` `RecordBatch`. Each `chunk_info` batch contains
-/// chunks *for a single segment*, hence we can just take the first row's `segment_id`. This is
-/// guaranteed by the implementation in `group_chunk_infos_by_segment_id`.
-fn extract_segment_id(origin: &re_uri::Origin, chunk_info: &RecordBatch) -> ApiResult<SegmentId> {
-    let segment_ids = QueryDatasetDataframe::COLUMN_CHUNK_SEGMENT_ID
-        .extract(chunk_info)
-        .map_err(|err| ApiError::internal_quiver(origin, err))?;
-
-    Ok(segment_ids.value_owned(0))
-}
-
-/// Extract chunk sizes (`chunk_byte_len` values) from a `chunk_info` `RecordBatch`.
-fn extract_chunk_sizes(
-    origin: &re_uri::Origin,
-    chunk_info: &RecordBatch,
-) -> ApiResult<quiver::Column<u64>> {
-    QueryDatasetDataframe::COLUMN_CHUNK_BYTE_LEN
-        .extract(chunk_info)
-        .map_err(|err| ApiError::internal_quiver(origin, err))
-}
-
-type BatchingResult = (Vec<RecordBatch>, Vec<SegmentId>);
 
 enum FetchTask {
     Direct(RecordBatch),
@@ -366,162 +329,6 @@ fn split_batches_into_fetch_tasks(batches: &[RecordBatch]) -> (Vec<FetchTask>, u
     (work_items, n_direct, n_grpc)
 }
 
-/// Groups `chunk_infos` into batches targeting the specified size, with special handling
-/// for segments larger than the target size (which get split). Batches smaller than `target_size`
-/// are merged together to reduce the number of requests.
-///
-/// Returns (batches, `segment_order`) where:
-/// - batches: list of merged `RecordBatch`es, each representing a `target_size` request
-/// - `segment_order`: Original order of segments for preserving segment order
-#[tracing::instrument(
-    level = "info",
-    skip_all,
-    fields(
-        num_chunk_infos = chunk_infos.len(),
-        target_size_bytes,
-        output_batches,
-        byte_target_flushes,
-        segment_limit_flushes,
-        large_segment_batches,
-        end_of_input_batches,
-    )
-)]
-fn create_request_batches_with_segment_limit(
-    origin: &re_uri::Origin,
-    chunk_infos: Vec<RecordBatch>,
-    target_size_bytes: u64,
-    segment_limit: usize,
-) -> ApiResult<BatchingResult> {
-    re_tracing::profile_function!();
-    let merge_err = |err: arrow::error::ArrowError, ctx: &'static str| {
-        ApiError::deserialization_with_source(origin, None, err, ctx)
-    };
-
-    let mut request_batches = Vec::new();
-    let mut current_batch = Vec::new();
-    let mut current_batch_size = 0u64;
-    let mut current_batch_segments: HashSet<SegmentId> = HashSet::new();
-    let mut segment_order = Vec::new();
-    let mut segment_seen = HashSet::new();
-    let mut segments_in_wave = 0usize;
-    let mut byte_target_flushes = 0usize;
-    let mut segment_limit_flushes = 0usize;
-    let mut large_segment_batches = 0usize;
-    let mut end_of_input_batches = 0usize;
-
-    for chunk_info in chunk_infos {
-        let segment_id = extract_segment_id(origin, &chunk_info)?;
-        let chunk_sizes = extract_chunk_sizes(origin, &chunk_info)?;
-        let segment_size: u64 = chunk_sizes.iter().sum();
-
-        let is_new_segment = segment_seen.insert(segment_id.clone());
-        if is_new_segment && segments_in_wave == segment_limit {
-            if !current_batch.is_empty() {
-                segment_limit_flushes += 1;
-                let merged_batch = re_arrow_util::concat_polymorphic_batches(&current_batch)
-                    .map_err(|err| merge_err(err, "merging segment-wave boundary batch"))?;
-                request_batches.push(merged_batch);
-                current_batch = Vec::new();
-                current_batch_size = 0;
-                current_batch_segments.clear();
-            }
-            segments_in_wave = 0;
-        }
-        if is_new_segment {
-            segment_order.push(segment_id.clone());
-            segments_in_wave += 1;
-        }
-
-        // Check if this chunk_info would push the current batch past
-        // either the byte target OR the segment-count cap. The
-        // segment-count check matters when small segments would
-        // otherwise merge more than `segment_limit` distinct segments into a
-        // single fetch: the resulting reservation
-        // could never satisfy the segment-count gate in
-        // `PipelineBudget::try_admit` and would deadlock.
-        let adds_new_segment = !current_batch_segments.contains(&segment_id);
-        let would_exceed_size = current_batch_size + segment_size > target_size_bytes;
-        let would_exceed_segments =
-            adds_new_segment && current_batch_segments.len() >= segment_limit;
-        if !current_batch.is_empty() && (would_exceed_size || would_exceed_segments) {
-            if would_exceed_segments {
-                segment_limit_flushes += 1;
-            } else {
-                byte_target_flushes += 1;
-            }
-            // Merge current batch and add to results
-            let merged_batch = re_arrow_util::concat_polymorphic_batches(&current_batch)
-                .map_err(|err| merge_err(err, "merging chunk-info batches"))?;
-            request_batches.push(merged_batch);
-            current_batch = Vec::new();
-            current_batch_size = 0;
-            current_batch_segments.clear();
-        }
-
-        // Split the large segment into multiple requests
-        if segment_size > target_size_bytes {
-            // If current batch is not empty, merge and send it first
-            if !current_batch.is_empty() {
-                byte_target_flushes += 1;
-                let merged_batch = re_arrow_util::concat_polymorphic_batches(&current_batch)
-                    .map_err(|err| merge_err(err, "merging chunk-info batches"))?;
-                request_batches.push(merged_batch);
-                current_batch = Vec::new();
-                current_batch_size = 0;
-                current_batch_segments.clear();
-            }
-
-            let split_batches = split_large_segments(
-                origin,
-                &segment_id,
-                &chunk_info,
-                target_size_bytes,
-                &chunk_sizes,
-            )?;
-            large_segment_batches += split_batches.len();
-
-            // Split batches are already individual RecordBatches, add them directly
-            for split_batch in split_batches {
-                request_batches.push(split_batch);
-            }
-        } else {
-            current_batch.push(chunk_info);
-            current_batch_size += segment_size;
-            current_batch_segments.insert(segment_id);
-        }
-    }
-
-    // Don't forget to merge the last batch
-    if !current_batch.is_empty() {
-        let merged_batch = re_arrow_util::concat_polymorphic_batches(&current_batch)
-            .map_err(|err| merge_err(err, "merging final chunk-info batch"))?;
-        request_batches.push(merged_batch);
-        end_of_input_batches += 1;
-    }
-
-    re_log::debug_assert_eq!(
-        request_batches.len(),
-        byte_target_flushes + segment_limit_flushes + large_segment_batches + end_of_input_batches,
-        "every planned batch must have exactly one flush reason"
-    );
-
-    let span = tracing::Span::current();
-    span.record("output_batches", request_batches.len());
-    span.record("byte_target_flushes", byte_target_flushes);
-    span.record("segment_limit_flushes", segment_limit_flushes);
-    span.record("large_segment_batches", large_segment_batches);
-    span.record("end_of_input_batches", end_of_input_batches);
-
-    tracing::debug!(
-        "Batching complete: {} segments → {} batches (target_size={}KB)",
-        segment_order.len(),
-        request_batches.len(),
-        target_size_bytes / 1024
-    );
-
-    Ok((request_batches, segment_order))
-}
-
 #[cfg(test)]
 fn create_request_batches(
     origin: &re_uri::Origin,
@@ -533,66 +340,8 @@ fn create_request_batches(
         chunk_infos,
         target_size_bytes,
         MAX_CONCURRENT_SEGMENTS,
+        None,
     )
-}
-
-/// Split segment larger than target size into multiple smaller requests. Each request will contain
-/// a subset of the chunks from the original segment, targeting approximately the desired size.
-fn split_large_segments(
-    origin: &re_uri::Origin,
-    segment_id: &SegmentId,
-    chunk_info: &RecordBatch,
-    target_size: u64,
-    chunk_sizes: &quiver::Column<u64>,
-) -> ApiResult<Vec<RecordBatch>> {
-    re_tracing::profile_function!();
-    let take_err = |err: arrow::error::ArrowError| {
-        ApiError::deserialization_with_source(
-            origin,
-            None,
-            err,
-            "slicing large segment into sub-batches",
-        )
-    };
-
-    let mut result_batches = Vec::new();
-    let mut current_indices = Vec::new();
-    let mut current_size = 0u64;
-
-    for row_idx in 0..chunk_info.num_rows() {
-        let chunk_size = chunk_sizes[row_idx];
-
-        // Always include at least one chunk per batch (even if it exceeds target)
-        if current_indices.is_empty() || current_size + chunk_size <= target_size {
-            current_indices.push(row_idx);
-            current_size += chunk_size;
-        } else {
-            // Create batch from current indices
-            let batch =
-                re_arrow_util::take_record_batch(chunk_info, &current_indices).map_err(take_err)?;
-            result_batches.push(batch);
-
-            // Start new batch with current chunk
-            current_indices = vec![row_idx];
-            current_size = chunk_size;
-        }
-    }
-
-    // Don't forget the last batch
-    if !current_indices.is_empty() {
-        let batch =
-            re_arrow_util::take_record_batch(chunk_info, &current_indices).map_err(take_err)?;
-        result_batches.push(batch);
-    }
-
-    tracing::debug!(
-        "Split large segment '{}' ({}) into {} requests",
-        segment_id,
-        re_format::format_bytes(chunk_sizes.iter().sum::<u64>() as _),
-        result_batches.len()
-    );
-
-    Ok(result_batches)
 }
 
 /// Helper function to sort chunks by segment order.
@@ -1057,6 +806,7 @@ pub(super) async fn chunk_stream_io_loop<T: DataframeClientAPI>(
         chunk_infos,
         target_size_bytes,
         segment_limit,
+        filtered_index_timeline,
     )?;
     let (request_batches_by_wave, max_segments_per_batch, max_segments_per_wave) =
         batches_by_segment_wave_with_segment_limit(
@@ -1535,6 +1285,7 @@ mod tests {
             chunk_infos,
             TARGET_BATCH_SIZE_BYTES as u64,
             SEGMENT_LIMIT,
+            None,
         )
         .unwrap();
         let (waves, max_segments_per_batch, max_segments_per_wave) =
@@ -1689,6 +1440,7 @@ mod tests {
             chunk_infos,
             1_000,
             MAX_CONCURRENT_SEGMENTS,
+            None,
         )
         .unwrap();
         let (waves, _, max_segments_per_wave) = batches_by_segment_wave_with_segment_limit(

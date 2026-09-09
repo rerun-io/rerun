@@ -1,4 +1,5 @@
 mod cpu_worker;
+mod fetch_plan;
 mod io_loop;
 
 use std::collections::BTreeMap;
@@ -668,6 +669,8 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
                 })
                 // we end up with 1 batch per (rerun) segment. Order is important and must be preserved.
                 // See SegmentStreamExec::try_new for details on ordering.
+                // The one-batch-per-segment collapse is also load-bearing for the fetch planner,
+                // whose within-segment `:start` sort is per-batch — see `fetch_plan`'s module docs.
                 .map(|(_, batches)| re_arrow_util::concat_polymorphic_batches(batches))
                 .try_collect()
                 .map_err(|err| {
