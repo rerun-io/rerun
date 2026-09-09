@@ -198,6 +198,7 @@ examples = [
   "incremental_logging",
   "lenses",
   "minimal_serve",
+  "ply_stl_tetrahedrons",
   "server_tables",
   "shared_recording",
   "spawn_viewer",

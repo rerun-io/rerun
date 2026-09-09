@@ -62,6 +62,7 @@ namespace rerun::archetypes {
         /// The Media Type of the asset.
         ///
         /// Supported values:
+        /// * `application/x-ply`
         /// * `model/gltf-binary`
         /// * `model/gltf+json`
         /// * `model/obj` (.mtl material files are not supported yet, references are silently ignored)
@@ -183,6 +184,7 @@ namespace rerun::archetypes {
         /// The Media Type of the asset.
         ///
         /// Supported values:
+        /// * `application/x-ply`
         /// * `model/gltf-binary`
         /// * `model/gltf+json`
         /// * `model/obj` (.mtl material files are not supported yet, references are silently ignored)

@@ -1,18 +1,15 @@
 use ply_rs_bw::ply::{Property, PropertyAccess, PropertyAccessResult};
 
-use super::Points3D;
-use crate::components::{Color, Position3D, Radius, Text};
+use super::Points2D;
+use crate::components::{Color, Position2D, Radius, Text};
 use crate::ply;
 
-/// The `vertex` properties a `Points3D` is read out of.
+/// The `vertex` properties a `Points2D` is read out of.
 ///
-/// Anything else in the header is reported as ignored, once. That includes the gaussian
-/// splatting parameters: a reconstruction is read by
-/// [`crate::archetypes::GaussianSplats3D`] instead.
-const SUPPORTED_PROPERTIES: [&str; 9] = [
+/// Anything else in the header is reported as ignored, once.
+const SUPPORTED_PROPERTIES: [&str; 8] = [
     ply::PROP_X,
     ply::PROP_Y,
-    ply::PROP_Z,
     ply::PROP_RED,
     ply::PROP_GREEN,
     ply::PROP_BLUE,
@@ -22,10 +19,9 @@ const SUPPORTED_PROPERTIES: [&str; 9] = [
 ];
 
 #[derive(Default)]
-struct ParsedPoint3D {
+struct ParsedPoint2D {
     x: Option<f32>,
     y: Option<f32>,
-    z: Option<f32>,
     red: Option<u8>,
     green: Option<u8>,
     blue: Option<u8>,
@@ -34,7 +30,7 @@ struct ParsedPoint3D {
     label: Option<Text>,
 }
 
-impl PropertyAccess for ParsedPoint3D {
+impl PropertyAccess for ParsedPoint2D {
     fn new() -> Self {
         Self::default()
     }
@@ -43,7 +39,6 @@ impl PropertyAccess for ParsedPoint3D {
         match property_name {
             ply::PROP_X => ply::set_required_f32(&property, &mut self.x),
             ply::PROP_Y => ply::set_required_f32(&property, &mut self.y),
-            ply::PROP_Z => ply::set_required_f32(&property, &mut self.z),
             ply::PROP_RED => ply::set_color(&property, &mut self.red),
             ply::PROP_GREEN => ply::set_color(&property, &mut self.green),
             ply::PROP_BLUE => ply::set_color(&property, &mut self.blue),
@@ -55,20 +50,19 @@ impl PropertyAccess for ParsedPoint3D {
     }
 }
 
-struct Vertex3D {
-    position: Position3D,
+struct Vertex2D {
+    position: Position2D,
     color: Option<Color>,
     radius: Option<Radius>,
     label: Option<Text>,
 }
 
-impl ParsedPoint3D {
+impl ParsedPoint2D {
     /// `None` for a vertex with no position, which is nothing we can draw.
-    fn into_vertex(self) -> Option<Vertex3D> {
+    fn into_vertex(self) -> Option<Vertex2D> {
         let Self {
             x,
             y,
-            z,
             red,
             green,
             blue,
@@ -81,18 +75,14 @@ impl ParsedPoint3D {
             return None;
         };
 
-        // `.ply` may leave out `z`, in which case the cloud is flat — the same way the viewer
-        // flattens an `x`/`y`-only `.ply` mesh onto `z = 0`.
-        let z = z.unwrap_or(0.0);
-
         let color = if let (Some(r), Some(g), Some(b)) = (red, green, blue) {
             Some(Color::new((r, g, b, alpha.unwrap_or(255))))
         } else {
             None
         };
 
-        Some(Vertex3D {
-            position: Position3D::new(x, y, z),
+        Some(Vertex2D {
+            position: Position2D::new(x, y),
             color,
             radius: radius.map(Radius::from),
             label,
@@ -100,18 +90,16 @@ impl ParsedPoint3D {
     }
 }
 
-impl Points3D {
-    /// Creates a new [`Points3D`] from a `.ply` file.
+impl Points2D {
+    /// Creates a new [`Points2D`] from a `.ply` file.
     ///
     /// ## Supported properties
     ///
     /// This expects the following property names:
-    /// - (Required) Positions of the points: `"x"`, `"y"` & `"z"`.
+    /// - (Required) Positions of the points: `"x"` & `"y"` with no `"z"` property.
     /// - (Optional) Colors of the points: `"red"`, `"green"` & `"blue"`.
     /// - (Optional) Radii of the points: `"radius"`.
     /// - (Optional) Labels of the points: `"label"`.
-    ///
-    /// The media type will be inferred from the path (extension), or the contents if that fails.
     #[cfg(not(target_arch = "wasm32"))]
     pub fn from_file_path(filepath: &std::path::Path) -> std::io::Result<Self> {
         re_tracing::profile_function!(filepath.to_string_lossy());
@@ -121,7 +109,7 @@ impl Points3D {
         read_ply(&mut file)
     }
 
-    /// Creates a new [`Points3D`] from the contents of a `.ply` file.
+    /// Creates a new [`Points2D`] from the contents of a `.ply` file.
     pub fn from_file_contents(contents: &[u8]) -> std::io::Result<Self> {
         re_tracing::profile_function!();
         let mut contents = std::io::Cursor::new(contents);
@@ -129,11 +117,18 @@ impl Points3D {
     }
 }
 
-fn read_ply<T: std::io::BufRead>(reader: &mut T) -> std::io::Result<Points3D> {
+fn read_ply<T: std::io::BufRead>(reader: &mut T) -> std::io::Result<Points2D> {
     re_tracing::profile_function!();
 
-    let (vertices, _vertex_layout) =
-        ply::read_vertex_element::<ParsedPoint3D, _>(reader, &SUPPORTED_PROPERTIES)?;
+    let (vertices, vertex_layout) =
+        ply::read_vertex_element::<ParsedPoint2D, _>(reader, &SUPPORTED_PROPERTIES)?;
+
+    if vertex_layout != ply::PlyVertexLayout::Xy {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            "expected .ply vertex properties \"x\" and \"y\" without \"z\"",
+        ));
+    }
 
     let mut positions = Vec::new();
     let mut colors = Vec::new();
@@ -142,7 +137,7 @@ fn read_ply<T: std::io::BufRead>(reader: &mut T) -> std::io::Result<Points3D> {
 
     for parsed in vertices {
         if let Some(vertex) = parsed.into_vertex() {
-            let Vertex3D {
+            let Vertex2D {
                 position,
                 color,
                 radius,
@@ -161,7 +156,7 @@ fn read_ply<T: std::io::BufRead>(reader: &mut T) -> std::io::Result<Points3D> {
     radii.truncate(positions.len());
     labels.truncate(positions.len());
 
-    let mut arch = Points3D::new(positions);
+    let mut arch = Points2D::new(positions);
     if colors.iter().any(|opt| opt.is_some()) {
         // If some colors have been specified but not others, default the unspecified ones to white.
         let colors = colors
