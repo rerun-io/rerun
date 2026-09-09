@@ -1546,7 +1546,7 @@ def _log_tracing_session_finished(
 #####################################################################################################################
 
 class ChunkStoreInternal:
-    """Internal implementation. Use ChunkStore from rerun.experimental instead."""
+    """Internal implementation. Use ChunkStore from rerun.chunk instead."""
 
     @staticmethod
     def from_chunks(chunks: list[ChunkInternal]) -> ChunkStoreInternal: ...
@@ -1576,7 +1576,7 @@ class ChunkStoreInternal:
     ) -> TableProviderAdapterInternal: ...
 
 class LazyStoreInternal:
-    """Internal implementation. Use LazyStore from rerun.experimental instead."""
+    """Internal implementation. Use LazyStore from rerun.chunk instead."""
 
     def schema(self) -> SchemaInternal: ...
     def num_chunks(self) -> int: ...
@@ -1596,7 +1596,7 @@ class LazyStoreInternal:
     def _chunks_loaded(self) -> int: ...
 
 class StoreEntryInternal:
-    """Internal implementation. Use StoreEntry from rerun.experimental instead."""
+    """Internal implementation. Use StoreEntry from rerun.chunk instead."""
 
     @property
     def kind(self) -> Literal["recording", "blueprint"]: ...
@@ -1606,7 +1606,7 @@ class StoreEntryInternal:
     def recording_id(self) -> str: ...
 
 class RrdReaderInternal:
-    """Internal implementation. Use RrdReader from rerun.experimental instead."""
+    """Internal implementation. Use RrdReader from rerun.chunk instead."""
 
     def __init__(self, path: str) -> None: ...
     def store_entries(self) -> list[StoreEntryInternal]: ...
@@ -1704,7 +1704,7 @@ class _McapInfoInternal:
     def channels(self) -> list[_McapChannelInfoInternal]: ...
 
 class McapReaderInternal:
-    """Internal implementation. Use McapReader from rerun.experimental instead."""
+    """Internal implementation. Use McapReader from rerun.chunk instead."""
 
     def __init__(
         self,
@@ -1797,7 +1797,7 @@ class ParquetReaderInternal:
     def path(self) -> Path: ...
 
 class LazyChunkStreamInternal:
-    """Internal implementation. Use LazyChunkStream from rerun.experimental instead."""
+    """Internal implementation. Use LazyChunkStream from rerun.chunk instead."""
 
     def filter(
         self,

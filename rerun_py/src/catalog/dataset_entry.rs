@@ -531,7 +531,7 @@ impl PyDatasetEntryInternal {
         Ok(PyRegistrationHandleInternal::new(registration))
     }
 
-    /// Open a remote segment as a [`LazyStore`][rerun.experimental.LazyStore].
+    /// Open a remote segment as a [`LazyStore`][rerun.chunk.LazyStore].
     ///
     /// One round-trip on construction for the manifest. With `include_assets`, one more to list
     /// the assets and one for each of their manifests. Chunks are fetched on demand.
