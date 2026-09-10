@@ -1,4 +1,5 @@
 #![allow(clippy::iter_over_hash_type)]
+#![recursion_limit = "512"] // `#[instrument]` on lance futures nests deeply (matches redap_manifest_registry / redap_tables)
 
 //! A Rerun server implementation backed by an in-memory store.
 
