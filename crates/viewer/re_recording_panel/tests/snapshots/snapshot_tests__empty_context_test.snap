@@ -3,7 +3,8 @@ source: crates/viewer/re_recording_panel/tests/snapshot_tests.rs
 expression: data
 ---
 servers: []
-local_apps:
+live_recordings: []
+imported_recordings:
   - app_id: test_app
     is_active: false
     is_selected: false
@@ -14,5 +15,6 @@ local_apps:
           recording_id: test_recording
 local_tables: []
 example_apps: []
+loading_examples: []
 show_example_section: true
 loading_receivers: []

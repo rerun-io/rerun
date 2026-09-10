@@ -59,9 +59,22 @@ pub enum EntityDbClass<'a> {
     Blueprint,
 }
 
-impl EntityDbClass<'_> {
+impl<'a> EntityDbClass<'a> {
+    /// Classifies a recording from its source, including before its [`EntityDb`] exists.
+    pub fn for_recording(data_source: Option<&'a LogSource>) -> Self {
+        match data_source {
+            Some(LogSource::HttpStream { url, .. }) if url.starts_with("https://app.rerun.io") => {
+                Self::ExampleRecording
+            }
+
+            Some(LogSource::RedapGrpcStream { uri, .. }) => Self::DatasetSegment(uri),
+
+            _ => Self::LocalRecording,
+        }
+    }
+
     pub fn is_example(&self) -> bool {
-        matches!(self, EntityDbClass::ExampleRecording)
+        matches!(self, Self::ExampleRecording)
     }
 }
 
@@ -458,17 +471,7 @@ impl EntityDb {
         match self.store_kind() {
             StoreKind::Blueprint => EntityDbClass::Blueprint,
 
-            StoreKind::Recording => match &self.data_source {
-                Some(LogSource::HttpStream { url, .. })
-                    if url.starts_with("https://app.rerun.io") =>
-                {
-                    EntityDbClass::ExampleRecording
-                }
-
-                Some(LogSource::RedapGrpcStream { uri, .. }) => EntityDbClass::DatasetSegment(uri),
-
-                _ => EntityDbClass::LocalRecording,
-            },
+            StoreKind::Recording => EntityDbClass::for_recording(self.data_source.as_ref()),
         }
     }
 
@@ -1393,6 +1396,19 @@ mod tests {
     use re_log_types::{StoreId, TimePoint, Timeline};
 
     use super::*;
+
+    #[test]
+    fn classify_recording_from_source() {
+        let example = LogSource::HttpStream {
+            url: "https://app.rerun.io/version/nightly/examples/dna.rrd".to_owned(),
+        };
+        assert!(EntityDbClass::for_recording(Some(&example)).is_example());
+
+        let imported = LogSource::HttpStream {
+            url: "https://example.com/recording.rrd".to_owned(),
+        };
+        assert!(!EntityDbClass::for_recording(Some(&imported)).is_example());
+    }
 
     #[test]
     fn format_with_components() -> anyhow::Result<()> {
