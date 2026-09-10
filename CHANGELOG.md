@@ -1,5 +1,14 @@
 # Rerun changelog
 
+## [0.37.2](https://github.com/rerun-io/rerun/compare/0.37.1...0.37.2) - 2026-09-10
+
+### 🔎 Details
+
+#### 🪳 Bug fixes
+- Don't display `?url=` with empty url [43f877b](https://github.com/rerun-io/rerun/commit/43f877b94532e969f7b4388cfc37925d72d9d867)
+- Enable importers on wasm [4cb6d57](https://github.com/rerun-io/rerun/commit/4cb6d573f9c42ef2e4774abefb83348e8c485b23)
+
+
 ## [0.37.1](https://github.com/rerun-io/rerun/compare/0.37.0...0.37.1) - 2026-09-04
 
 ### ✨ Overview & highlights
