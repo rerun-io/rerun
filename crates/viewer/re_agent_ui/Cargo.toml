@@ -36,6 +36,7 @@ pulldown-cmark.workspace = true
 serde_json.workspace = true
 
 [dev-dependencies]
+re_agent = { workspace = true, features = ["testing"] }
 re_log = { workspace = true, features = ["setup"] }
 re_ui = { workspace = true, features = ["testing"] }
 

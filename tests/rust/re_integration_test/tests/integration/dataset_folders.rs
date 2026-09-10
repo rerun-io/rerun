@@ -206,10 +206,14 @@ pub async fn dataset_folders() {
         .last()
         .expect("summary dataset card should be present")
         .click();
+    // `egui_table` draws a brand-new table in an invisible sizing pass, where every scroll
+    // region renders every column. If that pass happens to be the frame's last allowed one,
+    // the accessibility tree briefly holds two `rec_summary` cells, so count instead of
+    // asserting a single node.
     viewer_test_utils::step_until(
         "dataset `perception.summary` recording appears",
         &mut harness,
-        |harness| harness.query_by_label_contains("rec_summary").is_some(),
+        |harness| 0 < harness.query_all_by_label_contains("rec_summary").count(),
     );
     harness.step_until_no_loading_indicator();
     assert_route_and_selection(&mut harness, &summary_route);
