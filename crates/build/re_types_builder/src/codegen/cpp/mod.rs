@@ -26,7 +26,7 @@ use crate::codegen::common::collect_snippets_for_api_docs;
 use crate::objects::{EnumIntegerType, ObjectClass};
 use crate::{
     AtomicDataType, CppAttr, Docs, GeneratedFiles, Object, ObjectField, ObjectKind, Objects,
-    Reporter, Type, TypeRegistry, format_path,
+    Reporter, RerunAttr, Type, TypeRegistry, format_path,
 };
 
 type Result<T = (), E = anyhow::Error> = std::result::Result<T, E>;
@@ -482,7 +482,9 @@ impl QuotedObject {
         let required_component_fields = obj
             .fields
             .iter()
-            .filter(|field| !field.is_nullable)
+            .filter(|field| {
+                !field.is_nullable || field.attrs.has(RerunAttr::RequiredForConstructor)
+            })
             .collect_vec();
 
         // Constructors with all required components.

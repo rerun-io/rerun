@@ -25,9 +25,11 @@ pub struct GridMap {
     pub format: rerun::components::ImageFormat,
 
     /// The scene unit size of a single grid cell (e.g. m / pixel).
-    #[rerun(no_ui_edit)]
-    #[rerun(required)]
-    pub cell_size: rerun::components::CellSize,
+    ///
+    /// Defaults to 0.01 scene units per pixel.
+    #[rerun(optional)]
+    #[rerun(required_for_constructor)]
+    pub cell_size: Option<rerun::components::CellSize>,
 
     /// Translation of the lower-left corner of the grid map in space.
     ///

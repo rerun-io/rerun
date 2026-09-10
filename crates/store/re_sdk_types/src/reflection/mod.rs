@@ -2976,8 +2976,8 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         name: "cell_size",
                         display_name: "Cell size",
                         component_type: "rerun.components.CellSize".into(),
-                        docstring_md: "The scene unit size of a single grid cell (e.g. m / pixel).",
-                        flags: ArchetypeFieldFlags::REQUIRED,
+                        docstring_md: "The scene unit size of a single grid cell (e.g. m / pixel).\n\nDefaults to 0.01 scene units per pixel.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
                         name: "translation",

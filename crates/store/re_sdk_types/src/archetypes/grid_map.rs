@@ -85,6 +85,8 @@ pub struct GridMap {
     pub format: Option<SerializedComponentBatch>,
 
     /// The scene unit size of a single grid cell (e.g. m / pixel).
+    ///
+    /// Defaults to 0.01 scene units per pixel.
     pub cell_size: Option<SerializedComponentBatch>,
 
     /// Translation of the lower-left corner of the grid map in space.
@@ -255,21 +257,16 @@ impl GridMap {
     }
 }
 
-static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 3usize]> =
-    std::sync::LazyLock::new(|| {
-        [
-            GridMap::descriptor_data(),
-            GridMap::descriptor_format(),
-            GridMap::descriptor_cell_size(),
-        ]
-    });
+static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 2usize]> =
+    std::sync::LazyLock::new(|| [GridMap::descriptor_data(), GridMap::descriptor_format()]);
 
 static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
     std::sync::LazyLock::new(|| []);
 
-static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 6usize]> =
+static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 7usize]> =
     std::sync::LazyLock::new(|| {
         [
+            GridMap::descriptor_cell_size(),
             GridMap::descriptor_translation(),
             GridMap::descriptor_rotation_axis_angle(),
             GridMap::descriptor_quaternion(),
@@ -295,7 +292,7 @@ static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 9usize]> =
     });
 
 impl GridMap {
-    /// The total number of components in the archetype: 3 required, 0 recommended, 6 optional
+    /// The total number of components in the archetype: 2 required, 0 recommended, 7 optional
     pub const NUM_COMPONENTS: usize = 9usize;
 }
 
@@ -609,6 +606,8 @@ impl GridMap {
     }
 
     /// The scene unit size of a single grid cell (e.g. m / pixel).
+    ///
+    /// Defaults to 0.01 scene units per pixel.
     #[inline]
     pub fn with_cell_size(mut self, cell_size: impl Into<crate::components::CellSize>) -> Self {
         self.cell_size = try_serialize_field(Self::descriptor_cell_size(), [cell_size]);

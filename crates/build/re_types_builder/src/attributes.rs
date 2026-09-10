@@ -90,6 +90,11 @@ pub enum RerunAttr {
     #[strum(serialize = "attr.rerun.no_ui_edit")]
     NoUiEdit,
 
+    /// Require this optional field in generated convenience constructors without making it
+    /// required for recording, reflection, or querying.
+    #[strum(serialize = "attr.rerun.required_for_constructor")]
+    RequiredForConstructor,
+
     /// One of the three lists an archetype field belongs to; see also
     /// [`Recommended`](Self::Recommended) and [`Required`](Self::Required).
     #[strum(serialize = "attr.rerun.optional")]

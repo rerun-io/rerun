@@ -1454,11 +1454,16 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
     // NOTE: Collecting because we need to iterate them more than once.
     let required = fields
         .iter()
-        .filter(|field| !field.is_nullable)
+        // Requiredness in archetypes is all about whether a field must be provided when constructing the object
+        // and what the Viewer's query _expect_ to be around. There is in fact no impact on the schema itself.
+        //
+        // TODO(andreas): The required attribute is a bit redundant to nullability in the archetype schema.
+        // We could either forbid or required `Option` on archetypes to be more clear and only check for attributes here.
+        .filter(|field| !field.is_nullable || field.attrs.has(RerunAttr::RequiredForConstructor))
         .collect::<Vec<_>>();
     let optional = fields
         .iter()
-        .filter(|field| field.is_nullable)
+        .filter(|field| field.is_nullable && !field.attrs.has(RerunAttr::RequiredForConstructor))
         .collect::<Vec<_>>();
 
     let fn_new = {

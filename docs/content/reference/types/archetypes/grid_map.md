@@ -11,9 +11,9 @@ This archetype is intended for robotics applications like occupancy maps or navi
 ### Required
 * `data`: [`ImageBuffer`](../components/image_buffer.md)
 * `format`: [`ImageFormat`](../components/image_format.md)
-* `cell_size`: [`CellSize`](../components/cell_size.md)
 
 ### Optional
+* `cell_size`: [`CellSize`](../components/cell_size.md)
 * `translation`: [`Translation3D`](../components/translation3d.md)
 * `rotation_axis_angle`: [`RotationAxisAngle`](../components/rotation_axis_angle.md)
 * `quaternion`: [`RotationQuat`](../components/rotation_quat.md)

@@ -171,6 +171,8 @@ class GridMap(Archetype):
             The format of the grid's image data.
         cell_size:
             The scene unit size of a single grid cell (e.g. m / pixel).
+
+            Defaults to 0.01 scene units per pixel.
         translation:
             Translation of the lower-left corner of the grid map in space.
 
@@ -272,6 +274,8 @@ class GridMap(Archetype):
             The format of the grid's image data.
         cell_size:
             The scene unit size of a single grid cell (e.g. m / pixel).
+
+            Defaults to 0.01 scene units per pixel.
         translation:
             Translation of the lower-left corner of the grid map in space.
 
@@ -438,6 +442,8 @@ class GridMap(Archetype):
             The format of the grid's image data.
         cell_size:
             The scene unit size of a single grid cell (e.g. m / pixel).
+
+            Defaults to 0.01 scene units per pixel.
         translation:
             Translation of the lower-left corner of the grid map in space.
 
@@ -560,6 +566,8 @@ class GridMap(Archetype):
         converter=components.CellSizeBatch._converter,  # type: ignore[misc]
     )
     # The scene unit size of a single grid cell (e.g. m / pixel).
+    #
+    # Defaults to 0.01 scene units per pixel.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

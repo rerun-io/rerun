@@ -84,6 +84,8 @@ namespace rerun::archetypes {
         std::optional<ComponentBatch> format;
 
         /// The scene unit size of a single grid cell (e.g. m / pixel).
+        ///
+        /// Defaults to 0.01 scene units per pixel.
         std::optional<ComponentBatch> cell_size;
 
         /// Translation of the lower-left corner of the grid map in space.
@@ -216,6 +218,8 @@ namespace rerun::archetypes {
         }
 
         /// The scene unit size of a single grid cell (e.g. m / pixel).
+        ///
+        /// Defaults to 0.01 scene units per pixel.
         GridMap with_cell_size(const rerun::components::CellSize& _cell_size) && {
             cell_size =
                 ComponentBatch::from_loggable(_cell_size, Descriptor_cell_size).value_or_throw();

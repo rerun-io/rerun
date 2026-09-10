@@ -126,10 +126,7 @@ impl GridMapVisualizer {
         if all_formats.is_empty() {
             return;
         }
-        let all_cell_sizes = results.iter_required(GridMap::descriptor_cell_size().component);
-        if all_cell_sizes.is_empty() {
-            return;
-        }
+        let all_cell_sizes = results.iter_optional(GridMap::descriptor_cell_size().component);
         let all_translations = results.iter_optional(GridMap::descriptor_translation().component);
         let all_rotations =
             results.iter_optional(GridMap::descriptor_rotation_axis_angle().component);
@@ -169,7 +166,12 @@ impl GridMapVisualizer {
                         formats?.first()?.0,
                         ImageKind::Color,
                     ),
-                    cell_size: CellSize::from(*cell_sizes?.first()?),
+                    cell_size: cell_sizes
+                        .and_then(|sizes| sizes.first().copied())
+                        .map(CellSize::from)
+                        .unwrap_or_else(|| {
+                            typed_fallback_for(ctx, GridMap::descriptor_cell_size().component)
+                        }),
                     translation: translations
                         .and_then(|t| t.first().copied())
                         .map(Translation3D::from),

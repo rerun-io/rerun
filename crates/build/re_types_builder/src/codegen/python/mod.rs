@@ -23,7 +23,7 @@ use crate::data_type::{AtomicDataType, DataType, Field, UnionMode};
 use crate::objects::{ObjectClass, State};
 use crate::{
     CodeGenerator, Docs, GeneratedFiles, Object, ObjectField, ObjectKind, Objects, PythonAttr,
-    Reporter, Type, TypeRegistry, format_path,
+    Reporter, RerunAttr, Type, TypeRegistry, format_path,
 };
 
 /// The standard python init method.
@@ -2796,14 +2796,28 @@ fn compute_init_parameters(obj: &Object, objects: &Objects) -> Vec<String> {
         let required = obj
             .fields
             .iter()
-            .filter(|field| !field.is_nullable)
-            .map(|field| quote_init_parameter_from_field(field, objects, &obj.fqname))
+            .filter(|field| {
+                !field.is_nullable || field.attrs.has(RerunAttr::RequiredForConstructor)
+            })
+            .map(|field| {
+                let parameter = quote_init_parameter_from_field(field, objects, &obj.fqname);
+                if field.attrs.has(RerunAttr::RequiredForConstructor) {
+                    parameter
+                        .strip_suffix(" | None = None")
+                        .expect("construction-only required fields are nullable")
+                        .to_owned()
+                } else {
+                    parameter
+                }
+            })
             .collect_vec();
 
         let optional = obj
             .fields
             .iter()
-            .filter(|field| field.is_nullable)
+            .filter(|field| {
+                field.is_nullable && !field.attrs.has(RerunAttr::RequiredForConstructor)
+            })
             .map(|field| quote_init_parameter_from_field(field, objects, &obj.fqname))
             .collect_vec();
 

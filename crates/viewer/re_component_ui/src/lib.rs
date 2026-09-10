@@ -47,12 +47,12 @@ use re_sdk_types::blueprint::components::{
     PointsDisplay, RootContainer, TooltipMode, ViewFit, ViewMaximized,
 };
 use re_sdk_types::components::{
-    AggregationPolicy, AlbedoFactor, AxisLength, Color, DepthMeter, DrawOrder, FillMode, FillRatio,
-    GammaCorrection, GraphType, HalfSize3D, ImagePlaneDistance, InterpolationMode, IsKeyframe,
-    Length, LinearSpeed, MagnificationFilter, MarkerSize, MeshFaceRendering, Name, Opacity,
-    PointShading, Position2D, Position3D, Range1D, Scale3D, ShowLabels, SphericalHarmonicsDegree,
-    StrokeWidth, Text, Timestamp, TransformRelation, Translation3D, ValueRange, Vector3D,
-    VideoCodec, Visible,
+    AggregationPolicy, AlbedoFactor, AxisLength, CellSize, Color, DepthMeter, DrawOrder, FillMode,
+    FillRatio, GammaCorrection, GraphType, HalfSize3D, ImagePlaneDistance, InterpolationMode,
+    IsKeyframe, Length, LinearSpeed, MagnificationFilter, MarkerSize, MeshFaceRendering, Name,
+    Opacity, PointShading, Position2D, Position3D, Range1D, Scale3D, ShowLabels,
+    SphericalHarmonicsDegree, StrokeWidth, Text, Timestamp, TransformRelation, Translation3D,
+    ValueRange, Vector3D, VideoCodec, Visible,
 };
 use re_sdk_types::{archetypes, components};
 use re_viewer_context::gpu_bridge::colormap_edit_or_view_ui_with_selection;
@@ -87,6 +87,7 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     // 0-inf float components:
     registry.add_singleline_edit_or_view::<AngularSpeed>(edit_f64_min_to_max_float);
     registry.add_singleline_edit_or_view::<AxisLength>(edit_f32_zero_to_max);
+    registry.add_singleline_edit_or_view::<CellSize>(edit_f32_zero_to_max);
     registry.add_singleline_edit_or_view::<DepthMeter>(edit_f32_zero_to_max);
     registry.add_singleline_edit_or_view::<FillRatio>(edit_f32_zero_to_max);
     registry.add_singleline_edit_or_view::<ForceDistance>(edit_f64_zero_to_max);
