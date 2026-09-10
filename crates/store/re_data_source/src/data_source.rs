@@ -38,8 +38,8 @@ pub enum LogDataSource {
         /// Recordings holding shared assets.
         ///
         /// They are registered with the file's dataset before the file is opened, and only when
-        /// the file goes to the internal catalog with the experimental
-        /// "Load files via Viewer catalog" setting on.
+        /// the file goes to the internal catalog with the "Load files via Viewer catalog" setting
+        /// on.
         #[cfg(not(target_arch = "wasm32"))]
         assets: Vec<std::path::PathBuf>,
 

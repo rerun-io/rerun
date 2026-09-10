@@ -157,7 +157,7 @@ impl<'a> RecordingPanelData<'a> {
         self.local_apps.is_empty()
             && self.local_tables.is_empty()
             && self.example_apps.is_empty()
-            && self.servers.is_empty()
+            && self.servers.iter().all(|server| !server.is_visible())
     }
 
     /// Search for the relevant store id and, if found, return its sibling entity dbs and its index
@@ -309,6 +309,10 @@ impl<'a> ServerData<'a> {
 
     pub fn item(&self) -> Item {
         Item::RedapServer(self.origin.clone())
+    }
+
+    pub fn is_visible(&self) -> bool {
+        !self.is_internal || !self.entries_data.iter_datasets().is_empty()
     }
 }
 

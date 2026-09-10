@@ -91,7 +91,7 @@ impl App {
                                 &self.async_runtime,
                                 &self.egui_ctx,
                             );
-                            if self.app_options().experimental.use_viewer_catalog {
+                            if self.app_options().use_viewer_catalog {
                                 self.state.redap_servers.reveal_internal_catalog();
                             }
                         }

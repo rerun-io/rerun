@@ -34,7 +34,7 @@ Reopening the same file reuses its content-addressed browser-storage copy, when 
 Embedded default blueprints are now preserved when an `.rrd` is registered, so recordings open with their intended layout.
 The Viewer catalog also stays hidden in the recording panel until it contains data.
 
-To try it, open **Settings**, then enable **Load files via Viewer catalog** under **Experimental** before opening the `.rrd` file.
+To try it, open **Settings**, then enable **Load files via Viewer catalog** under **Viewer catalog** before opening the `.rrd` file.
 For large files on the web, also select **Request persistence** under **Origin private filesystem**.
 This asks the browser to protect Viewer catalog files from automatic storage eviction and may increase the storage quota in some browsers; the browser can still deny the request.
 

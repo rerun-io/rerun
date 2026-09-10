@@ -306,7 +306,7 @@ fn server_section_ui(ctx: &AppContext<'_>, ui: &mut egui::Ui, server_data: &Serv
 
     // We hide the section for the internal catalog, until we actually have data.
     // This mirrors the behavior of "Local" in the recording panel.
-    if *is_internal && entries_data.iter_datasets().is_empty() {
+    if !server_data.is_visible() {
         return;
     }
 

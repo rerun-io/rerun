@@ -107,8 +107,8 @@ async fn test_dropped_blueprint_is_applied_to_open_recording() {
     // direct import, which applies the dropped blueprint to the open recording.
     let mut harness = viewer_test_utils::viewer_harness(&viewer_test_utils::HarnessOptions {
         app_options_editor: Some(Box::new(|app_options| {
-            // TODO(grtlr): Removing the flag will break this test since it implies a change in behavior.
-            app_options.experimental.use_viewer_catalog = false;
+            // TODO(RR-5258): Removing the flag will break this test since it implies a change in behavior.
+            app_options.use_viewer_catalog = false;
         })),
         ..Default::default()
     });

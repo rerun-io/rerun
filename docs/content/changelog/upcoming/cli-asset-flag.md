@@ -14,6 +14,6 @@ For example, `rerun --asset mesh.rrd rec0.rrd rec1.rrd --asset robot.rrd` regist
 URLs, blueprints, and other non-recording arguments do not receive assets.
 Passing `--asset` without any local `.rrd` recording produces an error.
 
-`--asset` can be passed several times, and needs the experimental feature "Load files via Viewer catalog" to be enabled, so it automatically enables the setting if it is off.
+`--asset` can be passed several times and needs **Load files via Viewer catalog** under **Settings** → **Viewer catalog** to be enabled, so it automatically enables the setting if it is off.
 
 See [assets](../concepts/query-and-transform/catalog-object-model.md#assets) for what an asset is, and the [CLI manual](../reference/cli.md) for the full list of arguments.

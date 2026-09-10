@@ -266,8 +266,8 @@ async fn test_old_rrds_in_current_viewer() {
             startup_url: Some(file_path),
             max_steps: Some(200),
             app_options_editor: Some(Box::new(|app_options| {
-                // TODO(grtlr): Removing the flag will break this test since it implies a change in behavior.
-                app_options.experimental.use_viewer_catalog = false;
+                // TODO(RR-5258): Removing the flag will break this test since it implies a change in behavior.
+                app_options.use_viewer_catalog = false;
             })),
             ..Default::default()
         });

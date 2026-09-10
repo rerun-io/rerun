@@ -132,9 +132,8 @@ impl App {
                         .and_then(|ext| ext.to_str())
                         .is_some_and(|ext| ext.eq_ignore_ascii_case("rrd"))
                     {
-                        // TODO(RR-5258): Remove this hint when the Viewer catalog is enabled by default.
                         re_log::error!(
-                            "Failed to load file: this file is larger than the web Viewer's 4 GiB direct-load limit. Enable \"Load files via Viewer catalog\" in Settings, then open the file again.\nFile path: {}",
+                            "Failed to load file: this file is larger than the web Viewer's 4 GiB direct-load limit. Under Settings → Viewer catalog, enable \"Load files via Viewer catalog\", then open the file again.\nFile path: {}",
                             path.display()
                         );
                     } else {
@@ -411,7 +410,7 @@ impl App {
         path.extension()
             .and_then(|ext| ext.to_str())
             .is_some_and(|ext| ext.eq_ignore_ascii_case("rrd") || ext.eq_ignore_ascii_case("rbl"))
-            && self.app_options().experimental.use_viewer_catalog
+            && self.app_options().use_viewer_catalog
             && self.connection_registry.internal_origin().is_some()
     }
 

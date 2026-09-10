@@ -148,7 +148,7 @@ struct Args {
     ///
     /// See <https://www.rerun.io/docs/concepts/query-and-transform/catalog-object-model#assets>
     ///
-    /// The files are then loaded through the Viewer catalog, which turns on the experimental
+    /// The files are then loaded through the Viewer catalog, which turns on the
     /// "Load files via Viewer catalog" setting if it is off.
     #[clap(long = "asset", value_name = "PATH")]
     assets: Vec<std::path::PathBuf>,
@@ -1289,11 +1289,11 @@ fn start_native_viewer(
         }
 
         if !assets.is_empty() {
-            let experimental = &mut app.app_options_mut().experimental;
-            if !experimental.use_viewer_catalog {
-                experimental.use_viewer_catalog = true;
+            let app_options = app.app_options_mut();
+            if !app_options.use_viewer_catalog {
+                app_options.use_viewer_catalog = true;
                 re_log::warn!(
-                    "`--asset` needs the Viewer catalog, so the experimental \"Load files via Viewer catalog\" setting was turned on."
+                    "`--asset` needs the Viewer catalog, so \"Load files via Viewer catalog\" was turned on under Settings → Viewer catalog."
                 );
             }
         }

@@ -219,12 +219,7 @@ async fn internal_catalog_load_rbl() {
         .map(|store_id| SegmentId::from(store_id.recording_id()))
         .expect(".rbl should contain a default blueprint activation");
 
-    let mut harness = viewer_test_utils::viewer_harness(&viewer_test_utils::HarnessOptions {
-        app_options_editor: Some(Box::new(|app_options| {
-            app_options.experimental.use_viewer_catalog = true;
-        })),
-        ..Default::default()
-    });
+    let mut harness = viewer_test_utils::viewer_harness(&Default::default());
     harness
         .state()
         .open_url_or_file(&rbl_path.display().to_string());
@@ -329,12 +324,10 @@ async fn internal_catalog_load_rrd() {
 
     fn run_with_catalog(snapshot_results: &mut SnapshotResults, use_viewer_catalog: bool) {
         let (dir, rrd_path) = test_rrd(true);
-        let mut harness = viewer_test_utils::viewer_harness(&viewer_test_utils::HarnessOptions {
-            app_options_editor: Some(Box::new(move |app_options| {
-                app_options.experimental.use_viewer_catalog = use_viewer_catalog;
-            })),
-            ..Default::default()
-        });
+        let mut harness = viewer_test_utils::viewer_harness(&Default::default());
+        if !use_viewer_catalog {
+            harness.state_mut().app_options_mut().use_viewer_catalog = false;
+        }
 
         harness
             .state()

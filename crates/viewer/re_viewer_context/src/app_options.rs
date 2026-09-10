@@ -12,6 +12,14 @@ pub struct AppOptions {
     /// Experimental feature flags.
     pub experimental: ExperimentalAppOptions,
 
+    /// Load `.rrd` files through the Viewer's in-process catalog instead of importing them
+    /// as a live recording.
+    ///
+    /// When enabled, opened `.rrd` files are registered with the catalog and surfaced as redap
+    /// datasets under an internal server in the recording panel. When disabled, files are imported
+    /// directly into the viewer as plain recordings.
+    pub use_viewer_catalog: bool,
+
     /// Warn if the e2e latency exceeds this value.
     pub warn_e2e_latency: f32,
 
@@ -90,10 +98,9 @@ impl Default for AppOptions {
 impl AppOptions {
     fn default_with_custom_window_decorations(custom_window_decorations: bool) -> Self {
         Self {
-            experimental: ExperimentalAppOptions {
-                use_viewer_catalog: cfg!(debug_assertions),
-                ..Default::default()
-            },
+            experimental: ExperimentalAppOptions::default(),
+
+            use_viewer_catalog: true,
 
             warn_e2e_latency: 1.0,
 
@@ -137,12 +144,6 @@ impl AppOptions {
             #[cfg(any(target_os = "windows", target_os = "linux"))]
             custom_window_decorations: false,
             video: VideoOptions::test(),
-
-            experimental: ExperimentalAppOptions {
-                // Currently depends on debug vs release build. We musn't have this distinction on tests since our web builds are sometimes release and sometimes debug.
-                use_viewer_catalog: false,
-                ..Default::default()
-            },
 
             // Always show the full date so timestamps render as `YYYY-MM-DD HH:MM:SS`
             // regardless of when the test runs. The default `HideDateToday` would
@@ -246,12 +247,4 @@ pub struct ExperimentalAppOptions {
     /// Off by default: transparent point clouds are sorted on the CPU every frame, which is
     /// slow for large clouds. Opaque point clouds render much faster.
     pub point_cloud_transparency: bool,
-
-    /// Load `.rrd` files through the Viewer's in-process catalog instead of importing them
-    /// as a live recording.
-    ///
-    /// When enabled, opened `.rrd` files are registered with the catalog and surfaced as redap
-    /// datasets under an internal server in the recording panel. When disabled, files are imported
-    /// directly into the viewer as plain recordings.
-    pub use_viewer_catalog: bool,
 }

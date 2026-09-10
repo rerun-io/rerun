@@ -49,7 +49,7 @@ The Rerun command-line interface:
 >
 > See <https://www.rerun.io/docs/concepts/query-and-transform/catalog-object-model#assets>
 >
-> The files are then loaded through the Viewer catalog, which turns on the experimental "Load files via Viewer catalog" setting if it is off.
+> The files are then loaded through the Viewer catalog, which turns on the "Load files via Viewer catalog" setting if it is off.
 
 * `--bind <BIND>`
 > What bind address IP to use.
