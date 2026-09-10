@@ -1,6 +1,8 @@
-use futures::StreamExt as _;
-use re_log_channel::{DataSourceUiCommand, InspectError, SaveScreenshotError};
+use re_log_channel::{
+    CloseRecordingTarget, DataSourceUiCommand, InspectError, SaveScreenshotError, UiCallback,
+};
 use re_protos::sdk_comms::v1alpha1::{
+    CloseRecordingsRequest, CloseRecordingsResponse, GetViewerLogsRequest, GetViewerLogsResponse,
     GetViewerStateRequest, GetViewerStateResponse, InspectRequest, InspectResponse, OpenUrlRequest,
     OpenUrlResponse, SaveScreenshotRequest, SaveScreenshotResponse, SetTimeCursorRequest,
     SetTimeCursorResponse, viewer_control_service_server,
@@ -30,31 +32,32 @@ impl viewer_control_service_server::ViewerControlService for ViewerControl {
         request: tonic::Request<SaveScreenshotRequest>,
     ) -> tonic::Result<tonic::Response<SaveScreenshotResponse>> {
         let SaveScreenshotRequest { view_id, file_path } = request.into_inner();
-        let (done_tx, mut done_rx) =
-            futures::channel::mpsc::unbounded::<Result<(), SaveScreenshotError>>();
+        let (done_tx, done_rx) = futures::channel::oneshot::channel();
         self.push_ui_command(DataSourceUiCommand::SaveScreenshot {
             file_path: file_path.into(),
             view_id,
-            on_done: Some(done_tx),
+            on_done: Some(UiCallback::new(move |result| {
+                done_tx.send(result).ok();
+            })),
         })
         .await;
 
-        match done_rx.next().await {
-            Some(Ok(())) => Ok(tonic::Response::new(SaveScreenshotResponse {})),
-            Some(Err(err @ SaveScreenshotError::InvalidViewId { .. })) => {
+        match done_rx.await {
+            Ok(Ok(())) => Ok(tonic::Response::new(SaveScreenshotResponse {})),
+            Ok(Err(err @ SaveScreenshotError::InvalidViewId { .. })) => {
                 Err(tonic::Status::invalid_argument(err.to_string()))
             }
-            Some(Err(err @ SaveScreenshotError::ViewNotFound { .. })) => {
+            Ok(Err(err @ SaveScreenshotError::ViewNotFound { .. })) => {
                 Err(tonic::Status::not_found(err.to_string()))
             }
-            Some(Err(err @ SaveScreenshotError::ViewTooSmall { .. })) => {
+            Ok(Err(err @ SaveScreenshotError::ViewTooSmall { .. })) => {
                 Err(tonic::Status::failed_precondition(err.to_string()))
             }
-            Some(Err(
+            Ok(Err(
                 err @ (SaveScreenshotError::InvalidImageData
                 | SaveScreenshotError::SaveToPathFailed { .. }),
             )) => Err(tonic::Status::internal(err.to_string())),
-            None => Err(tonic::Status::internal(
+            Err(_) => Err(tonic::Status::internal(
                 "Screenshot completion signal was dropped before the screenshot was taken",
             )),
         }
@@ -74,21 +77,22 @@ impl viewer_control_service_server::ViewerControlService for ViewerControl {
             .map(re_log_types::StoreId::try_from)
             .transpose()
             .map_err(|err| tonic::Status::invalid_argument(format!("invalid store_id: {err}")))?;
-        let (done_tx, mut done_rx) =
-            futures::channel::mpsc::unbounded::<Result<SetTimeCursorResponse, String>>();
+        let (done_tx, done_rx) = futures::channel::oneshot::channel();
         self.push_ui_command(DataSourceUiCommand::SetTimeCursor {
             store_id,
             timeline: timeline.map(|t| t.name),
             time: time.map(|t| t.time).unwrap_or_default(),
             play,
-            on_done: done_tx,
+            on_done: UiCallback::new(move |result| {
+                done_tx.send(result).ok();
+            }),
         })
         .await;
 
-        match done_rx.next().await {
-            Some(Ok(response)) => Ok(tonic::Response::new(response)),
-            Some(Err(err)) => Err(tonic::Status::invalid_argument(err)),
-            None => Err(tonic::Status::internal(
+        match done_rx.await {
+            Ok(Ok(response)) => Ok(tonic::Response::new(response)),
+            Ok(Err(err)) => Err(tonic::Status::invalid_argument(err)),
+            Err(_) => Err(tonic::Status::internal(
                 "viewer dropped the set-time request before responding (is a viewer running?)",
             )),
         }
@@ -99,17 +103,19 @@ impl viewer_control_service_server::ViewerControlService for ViewerControl {
         request: tonic::Request<OpenUrlRequest>,
     ) -> tonic::Result<tonic::Response<OpenUrlResponse>> {
         let OpenUrlRequest { url } = request.into_inner();
-        let (done_tx, mut done_rx) = futures::channel::mpsc::unbounded::<Result<(), String>>();
+        let (done_tx, done_rx) = futures::channel::oneshot::channel();
         self.push_ui_command(DataSourceUiCommand::OpenUrl {
             url,
-            on_done: done_tx,
+            on_done: UiCallback::new(move |result| {
+                done_tx.send(result).ok();
+            }),
         })
         .await;
 
-        match done_rx.next().await {
-            Some(Ok(())) => Ok(tonic::Response::new(OpenUrlResponse {})),
-            Some(Err(err)) => Err(tonic::Status::invalid_argument(err)),
-            None => Err(tonic::Status::internal(
+        match done_rx.await {
+            Ok(Ok(())) => Ok(tonic::Response::new(OpenUrlResponse {})),
+            Ok(Err(err)) => Err(tonic::Status::invalid_argument(err)),
+            Err(_) => Err(tonic::Status::internal(
                 "viewer dropped the open-url request before responding (is a viewer running?)",
             )),
         }
@@ -128,20 +134,22 @@ impl viewer_control_service_server::ViewerControlService for ViewerControl {
         const INSPECT_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(30);
 
         let request = request.into_inner().request;
-        let (on_done, mut done_rx) =
-            futures::channel::mpsc::unbounded::<Result<Vec<u8>, InspectError>>();
+        let (done_tx, done_rx) = futures::channel::oneshot::channel();
+        let on_done = UiCallback::new(move |result| {
+            done_tx.send(result).ok();
+        });
         self.push_ui_command(DataSourceUiCommand::Inspect { request, on_done })
             .await;
 
-        match tokio::time::timeout(INSPECT_TIMEOUT, done_rx.next()).await {
-            Ok(Some(Ok(response))) => Ok(tonic::Response::new(InspectResponse { response })),
-            Ok(Some(Err(err @ InspectError::DecodeRequest(_)))) => {
+        match tokio::time::timeout(INSPECT_TIMEOUT, done_rx).await {
+            Ok(Ok(Ok(response))) => Ok(tonic::Response::new(InspectResponse { response })),
+            Ok(Ok(Err(err @ InspectError::DecodeRequest(_)))) => {
                 Err(tonic::Status::invalid_argument(err.to_string()))
             }
-            Ok(Some(Err(err @ InspectError::EncodeResponse(_)))) => {
+            Ok(Ok(Err(err @ InspectError::EncodeResponse(_)))) => {
                 Err(tonic::Status::internal(err.to_string()))
             }
-            Ok(None) => Err(tonic::Status::internal(
+            Ok(Err(_)) => Err(tonic::Status::internal(
                 "viewer dropped the inspect request before responding (is a viewer running?)",
             )),
             Err(_) => Err(tonic::Status::deadline_exceeded(
@@ -154,14 +162,78 @@ impl viewer_control_service_server::ViewerControlService for ViewerControl {
         &self,
         _request: tonic::Request<GetViewerStateRequest>,
     ) -> tonic::Result<tonic::Response<GetViewerStateResponse>> {
-        let (done_tx, mut done_rx) = futures::channel::mpsc::unbounded::<GetViewerStateResponse>();
-        self.push_ui_command(DataSourceUiCommand::GetViewerState { on_done: done_tx })
-            .await;
+        let (done_tx, done_rx) = futures::channel::oneshot::channel();
+        self.push_ui_command(DataSourceUiCommand::GetViewerState {
+            on_done: UiCallback::new(move |response| {
+                done_tx.send(response).ok();
+            }),
+        })
+        .await;
 
-        match done_rx.next().await {
-            Some(response) => Ok(tonic::Response::new(response)),
-            None => Err(tonic::Status::internal(
+        match done_rx.await {
+            Ok(response) => Ok(tonic::Response::new(response)),
+            Err(_) => Err(tonic::Status::internal(
                 "viewer dropped the state request before responding (is a viewer running?)",
+            )),
+        }
+    }
+
+    async fn close_recordings(
+        &self,
+        request: tonic::Request<CloseRecordingsRequest>,
+    ) -> tonic::Result<tonic::Response<CloseRecordingsResponse>> {
+        use re_protos::sdk_comms::v1alpha1::close_recordings_request::Target;
+
+        let target = match request.into_inner().target {
+            None | Some(Target::Current(_)) => CloseRecordingTarget::Current,
+            Some(Target::All(_)) => CloseRecordingTarget::All,
+            Some(Target::StoreIds(store_ids)) => CloseRecordingTarget::Some(
+                store_ids
+                    .store_ids
+                    .into_iter()
+                    .map(re_log_types::StoreId::try_from)
+                    .collect::<Result<_, _>>()
+                    .map_err(|err| {
+                        tonic::Status::invalid_argument(format!("invalid store_id: {err}"))
+                    })?,
+            ),
+        };
+        let (done_tx, done_rx) = futures::channel::oneshot::channel();
+        self.push_ui_command(DataSourceUiCommand::CloseRecordings {
+            target,
+            on_done: UiCallback::new(move |result| {
+                done_tx.send(result).ok();
+            }),
+        })
+        .await;
+
+        match done_rx.await {
+            Ok(Ok(response)) => Ok(tonic::Response::new(response)),
+            Ok(Err(err)) => Err(tonic::Status::not_found(err)),
+            Err(_) => Err(tonic::Status::internal(
+                "viewer dropped the close request before responding (is a viewer running?)",
+            )),
+        }
+    }
+
+    async fn get_viewer_logs(
+        &self,
+        request: tonic::Request<GetViewerLogsRequest>,
+    ) -> tonic::Result<tonic::Response<GetViewerLogsResponse>> {
+        let GetViewerLogsRequest { after_sequence } = request.into_inner();
+        let (done_tx, done_rx) = futures::channel::oneshot::channel();
+        self.push_ui_command(DataSourceUiCommand::GetViewerLogs {
+            after_sequence,
+            on_done: UiCallback::new(move |response| {
+                done_tx.send(response).ok();
+            }),
+        })
+        .await;
+
+        match done_rx.await {
+            Ok(response) => Ok(tonic::Response::new(response)),
+            Err(_) => Err(tonic::Status::internal(
+                "viewer dropped the log request before responding (is a viewer running?)",
             )),
         }
     }

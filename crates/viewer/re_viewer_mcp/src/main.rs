@@ -7,5 +7,5 @@ fn main() -> anyhow::Result<()> {
     let rt = tokio::runtime::Builder::new_multi_thread() // NOLINT: the standalone process owns this runtime
         .enable_all()
         .build()?;
-    rt.block_on(re_viewer_mcp::serve())
+    rt.block_on(re_viewer_mcp::serve(None))
 }

@@ -7,7 +7,7 @@ expression: surface
 This MCP drives a live Rerun viewer: it reads the viewer's accessibility tree and synthesizes real input events. Work in an observe → act → verify loop.
 
 Getting oriented:
-- Call `connect` first (it dials the viewer's gRPC server); every other tool errors until then.
+- Call `connect` first (it dials the viewer's gRPC server); every other tool errors until then. A server started for a specific viewer is already connected and says so above.
 - If no viewer is running, launch one. If the user tells you to work in the background, or no desktop is available, use `--headless`.
 - Every Rerun gRPC endpoint serves gRPC server reflection, so `grpcurl -plaintext <host:port> list` shows which services an address speaks (viewer control, SDK proxy, catalog) before you `connect`, and `describe` shows a service's methods and message types.
 - Start most tasks with `query_tree` to discover widgets and their ids, and/or `screenshot` to see the rendered frame.
@@ -19,6 +19,16 @@ Acting and verifying:
 - After an action that changes the UI, confirm it landed: `query_tree` for the expected state, `screenshot` to look, or `wait_for` to poll until async or animated UI settles.
 - Use `batch` to act and observe in one round trip (e.g. `click` then `screenshot`), avoiding an extra turn.
 - To move through time, call `viewer_state` for the recordings/timelines and their valid ranges, then `set_time`.
+- The viewer's log messages (INFO and above) since the previous tool call are appended to every tool result. Read them: a warning or error there usually explains what the user is seeing. `viewer_logs` fetches older messages.
+- `close_recordings` clears recordings away. Iterating on a file you keep regenerating leaves a pile of stale recordings behind, which makes `viewer_state` and the UI hard to read — close them.
+
+Reading the data itself:
+- These tools drive the UI; they do not read data. Never guess an entity path or a component name — the viewer hosts a catalog server, so read the real schema and the real values through the Python API instead.
+- `viewer_state` reports that server as `catalog_url`. Hand it straight to `CatalogClient`; do not hardcode a port, since a viewer may serve on any of them.
+- A recording's `application_id` is the catalog dataset's **id** (not its name) and its `recording_id` is the segment id, so look the dataset up by id:
+  `CatalogClient(catalog_url).get_dataset(id=application_id)`, then `.schema().entity_paths()` for the schema and `.segment_store(recording_id)` for the data.
+- A recording may predate its registration (an SDK stream, or an import from a directory or another file format). It is then absent from the catalog and its `application_id` is the plain application id; read that one from its source on disk instead (`rerun.chunk.RrdReader(path).store(...).schema()` and friends).
+- `close_recordings` only closes recordings in the viewer; registered recordings stay in the catalog and can still be read and reopened afterwards.
 
 Conventions:
 - Everything is in logical points, one shared coordinate frame: raw `pos`, `resize` dimensions, the `bounds` from `query_tree`/`get_node`, and a default (`pixels_per_point: 1.0`) `screenshot`. So a node's `bounds` center is exactly where to `click`, and a pixel in the screenshot is a logical point. There is no fixed screen size; use `resize` to set the viewport.
@@ -196,16 +206,100 @@ Conventions:
   }
 }
 
+## close_recordings
+
+{
+  "name": "close_recordings",
+  "description": "Close recordings in the Rerun viewer, to clear away what is no longer needed.\nPass `target: \"current\"` to close the active recording, `target: \"all\"` to close every\nopen recording, or `target: { \"some\": { \"store_ids\": [ … ] } }` to close named recordings\nfrom `viewer_state`.\nThis only removes the recording from the viewer; files on disk are untouched, but unsaved\nblueprint edits to it are lost.\nRequires `connect`.",
+  "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$defs": {
+      "CloseRecordingsTarget": {
+        "description": "The recordings selected by `close_recordings`.",
+        "oneOf": [
+          {
+            "description": "Close the active recording.",
+            "type": "string",
+            "const": "Current"
+          },
+          {
+            "description": "Close every open recording.",
+            "type": "string",
+            "const": "All"
+          },
+          {
+            "description": "Close these recordings.",
+            "type": "object",
+            "properties": {
+              "Some": {
+                "type": "object",
+                "properties": {
+                  "store_ids": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/StoreIdArg"
+                    }
+                  }
+                },
+                "required": [
+                  "store_ids"
+                ]
+              }
+            },
+            "required": [
+              "Some"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "StoreIdArg": {
+        "description": "JSON representation of a proto [`StoreId`], used both as agent-facing output (see\n`viewer_state`) and as tool input identifying a recording to target.",
+        "type": "object",
+        "properties": {
+          "kind": {
+            "description": "The kind of store: `\"recording\"`, `\"blueprint\"`, or `\"unspecified\"`.",
+            "type": "string"
+          },
+          "recording_id": {
+            "description": "The recording id, also called a segment id or store id.",
+            "type": "string"
+          },
+          "application_id": {
+            "description": "The application id the recording belongs to, also called the catalog dataset id.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "recording_id",
+          "application_id"
+        ]
+      }
+    },
+    "required": [
+      "target"
+    ],
+    "type": "object",
+    "properties": {
+      "target": {
+        "description": "The recordings to close.",
+        "$ref": "#/$defs/CloseRecordingsTarget"
+      }
+    }
+  }
+}
+
 ## connect
 
 {
   "name": "connect",
-  "description": "Connect to a running Rerun viewer over gRPC. The other tools will be available once the connection is established.\n`endpoint` defaults to `http://127.0.0.1:9876` (the viewer's default gRPC address).\nCall `disconnect` to drop the connection.",
+  "description": "Connect to a running Rerun viewer over gRPC.\nThe other tools will be available once the connection is established.\n`endpoint` defaults to the viewer this server was started for, else `http://127.0.0.1:9876`\n(the viewer's default gRPC address).\nConnecting again to the same endpoint is a no-op. Connecting to a different endpoint\nreplaces the old connection once the new connection succeeds. Call `disconnect` to drop\nthe connection without replacing it.",
   "inputSchema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "properties": {
       "endpoint": {
-        "description": "gRPC endpoint of the running viewer's `ViewerControlService`.\nDefaults to `http://127.0.0.1:9876`.",
+        "description": "gRPC endpoint of the running viewer's `ViewerControlService`.\nDefaults to the endpoint the server was started for, else `http://127.0.0.1:9876`.",
         "type": [
           "string",
           "null"
@@ -561,19 +655,19 @@ Conventions:
 
 {
   "name": "open_url",
-  "description": "Open a URL in the Rerun viewer.\nThe URL can be a recording/blueprint file URL, a `rerun://` dataset URI, a redap server/catalog URL, or an intra-recording link.\nRequires `connect`.",
+  "description": "Open a URL in the Rerun viewer.\nThe URL can be a recording/blueprint file URL, a `rerun://` dataset URI, a redap\nserver/catalog URL, or an intra-recording link.\nRequires `connect`.",
   "inputSchema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "required": [
       "url"
     ],
-    "type": "object",
     "properties": {
       "url": {
-        "description": "The URL to open in the viewer: a recording/blueprint file URL, a `rerun://` dataset URI, a redap server/catalog URL, or an intra-recording link.",
+        "description": "The URL to open in the viewer: a recording/blueprint file URL, a `rerun://` dataset URI,\na redap server/catalog URL, or an intra-recording link.",
         "type": "string"
       }
-    }
+    },
+    "type": "object"
   }
 }
 
@@ -951,7 +1045,7 @@ Conventions:
 
 {
   "name": "set_time",
-  "description": "Set the time cursor (timeline position) of a recording in the Rerun viewer.\n`time` is a sequence index for sequence timelines or nanoseconds for temporal timelines (call `viewer_state` first for each timeline's type and valid range).\n`store_id` and `timeline` default to the active recording / active timeline.\nIf `play` is unset or `false`, the recording will be paused. If `true`, the recording will play from the selected time.\nRequires `connect`.",
+  "description": "Set the time cursor (timeline position) of a recording in the Rerun viewer.\n`time` is a sequence index for sequence timelines or nanoseconds for temporal timelines\n(call `viewer_state` first for each timeline's type and valid range).\n`store_id` and `timeline` default to the active recording / active timeline.\nIf `play` is unset or `false`, the recording will be paused. If `true`, the recording will\nplay from the selected time.\nRequires `connect`.",
   "inputSchema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$defs": {
@@ -964,11 +1058,11 @@ Conventions:
             "type": "string"
           },
           "recording_id": {
-            "description": "The recording id.",
+            "description": "The recording id, also called a segment id or store id.",
             "type": "string"
           },
           "application_id": {
-            "description": "The application id the recording belongs to.",
+            "description": "The application id the recording belongs to, also called the catalog dataset id.",
             "type": "string"
           }
         },
@@ -979,6 +1073,9 @@ Conventions:
         ]
       }
     },
+    "required": [
+      "time"
+    ],
     "type": "object",
     "properties": {
       "store_id": {
@@ -1002,7 +1099,7 @@ Conventions:
         "default": null
       },
       "time": {
-        "description": "Time to seek to: a sequence index for sequence timelines, or nanoseconds for temporal timelines (see each timeline's `type` and `min`/`max` in `viewer_state`).",
+        "description": "Time to seek to: a sequence index for sequence timelines, or nanoseconds for temporal\ntimelines (see each timeline's `type` and `min`/`max` in `viewer_state`).",
         "type": "integer",
         "format": "int64"
       },
@@ -1011,10 +1108,7 @@ Conventions:
         "type": "boolean",
         "default": false
       }
-    },
-    "required": [
-      "time"
-    ]
+    }
   }
 }
 
@@ -1073,11 +1167,34 @@ Conventions:
   }
 }
 
+## viewer_logs
+
+{
+  "name": "viewer_logs",
+  "description": "Return the Rerun viewer's recent log messages (INFO and above).\nOldest first, as `[LEVEL target] message` lines prefixed with their sequence number.\nNew log lines are also appended to every other tool result automatically, so call this\nonly to look back at older messages or after a quiet period.\nRequires `connect`.",
+  "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+      "after_sequence": {
+        "description": "Only return entries with a sequence number greater than this.\nOmit for everything the viewer still has buffered.",
+        "type": [
+          "integer",
+          "null"
+        ],
+        "format": "uint64",
+        "minimum": 0,
+        "default": null
+      }
+    },
+    "type": "object"
+  }
+}
+
 ## viewer_state
 
 {
   "name": "viewer_state",
-  "description": "Report the current Rerun viewer state as JSON: the active recording, the current page URL, and every open recording (recording id, application id) with its timelines, their time ranges, and its current time cursor.\nUse this to learn which recording/timeline to drive and what time values are valid before calling `set_time`.\nRequires `connect`.",
+  "description": "Report the current Rerun viewer state as JSON.\nReports the active recording, the current page URL, every open recording (recording id,\napplication id) with its timelines, their time ranges, and its current time cursor, and\nevery view of the current blueprint (id, class, name, origin) with the warnings and errors\nit reports.\nUse this to learn which recording/timeline to drive and what time values are valid before\ncalling `set_time`, and to find out why a view looks wrong: its `reports` say what failed\nto visualize.\nRequires `connect`.",
   "inputSchema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "object"

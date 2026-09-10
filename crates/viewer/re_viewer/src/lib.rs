@@ -46,6 +46,7 @@ mod startup_options;
 mod texture_readback;
 mod ui;
 mod version_check;
+mod viewer_log;
 
 #[cfg(feature = "analytics")]
 mod viewer_analytics;

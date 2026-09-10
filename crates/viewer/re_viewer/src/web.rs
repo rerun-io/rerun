@@ -7,7 +7,6 @@ use std::str::FromStr as _;
 
 use ahash::HashMap;
 use arrow::array::RecordBatch;
-use futures::StreamExt as _;
 use itertools::Itertools as _;
 use re_async::AsyncRuntimeHandle;
 use re_log::ResultExt as _;
@@ -138,14 +137,18 @@ impl WebHandle {
             app.egui_ctx.clone()
         };
 
-        let (reply_tx, mut reply_rx) =
-            futures::channel::mpsc::unbounded::<Result<Vec<u8>, re_log_channel::InspectError>>();
-        crate::app::serve_inspect_request(&egui_ctx, request_bytes, reply_tx);
+        let (reply_tx, reply_rx) = futures::channel::oneshot::channel();
+        crate::app::serve_inspect_request(
+            &egui_ctx,
+            request_bytes,
+            re_log_channel::UiCallback::new(move |result| {
+                reply_tx.send(result).ok();
+            }),
+        );
 
         reply_rx
-            .next()
             .await
-            .ok_or_else(|| JsValue::from_str("Inspection request produced no reply"))?
+            .map_err(|_err| JsValue::from_str("Inspection request produced no reply"))?
             .map_err(|err| {
                 JsValue::from_str(&format!("Failed to encode inspection response: {err}"))
             })

@@ -9760,7 +9760,6 @@ version = "0.38.0-alpha.1+dev"
 dependencies = [
  "camino",
  "crossbeam",
- "futures",
  "parking_lot",
  "re_byte_size",
  "re_log_encoding",
@@ -11506,6 +11505,7 @@ dependencies = [
  "serde_json",
  "tokio",
  "tonic",
+ "url",
 ]
 
 [[package]]

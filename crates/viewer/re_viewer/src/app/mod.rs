@@ -37,10 +37,11 @@ mod assets;
 mod command_handling;
 mod logic;
 mod ui;
+mod viewer_control;
 
 /// Only `web.rs` needs this by name; on native, `logic` calls it directly.
 #[cfg(target_arch = "wasm32")]
-pub(crate) use logic::serve_inspect_request;
+pub(crate) use viewer_control::serve_inspect_request;
 
 // ----------------------------------------------------------------------------
 
@@ -97,7 +98,7 @@ pub struct App {
     /// Notifiers waiting for a file-path screenshot to finish writing.
     pending_screenshot_notifiers: std::collections::HashMap<
         camino::Utf8PathBuf,
-        futures::channel::mpsc::UnboundedSender<Result<(), SaveScreenshotError>>,
+        re_log_channel::UiCallback<Result<(), SaveScreenshotError>>,
     >,
 
     #[cfg(target_arch = "wasm32")]
@@ -134,6 +135,9 @@ pub struct App {
 
     /// Notification panel.
     pub(crate) notifications: notifications::NotificationUi,
+
+    /// Recent log messages, served to agents through `re_viewer_mcp`.
+    pub(crate) viewer_log: crate::viewer_log::ViewerLog,
 
     dev_panel: crate::dev_panel::DevPanel,
     dev_panel_open: bool,
@@ -527,6 +531,7 @@ impl App {
             )),
             table_blueprints: Default::default(),
             notifications: notifications::NotificationUi::new(creation_context.egui_ctx.clone()),
+            viewer_log: Default::default(),
 
             dev_panel: Default::default(),
             dev_panel_open: false,
@@ -1216,9 +1221,7 @@ impl App {
                             ) else {
                                 re_log::error!("Failed to create image from screenshot data");
                                 if let Some(notifier) = notifier {
-                                    notifier
-                                        .unbounded_send(Err(SaveScreenshotError::InvalidImageData))
-                                        .ok();
+                                    notifier.call(Err(SaveScreenshotError::InvalidImageData));
                                 }
                                 return;
                             };
@@ -1249,7 +1252,7 @@ impl App {
                             };
 
                             if let Some(notifier) = notifier {
-                                notifier.unbounded_send(result).ok();
+                                notifier.call(result);
                             }
                         }
                     }

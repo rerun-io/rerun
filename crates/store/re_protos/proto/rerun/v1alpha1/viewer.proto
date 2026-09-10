@@ -39,6 +39,15 @@ service ViewerControlService {
 
   // Returns info about what the viewer is currently showing, so the agent can orient itself via `re_viewer_mcp`
   rpc GetViewerState(GetViewerStateRequest) returns (GetViewerStateResponse) {}
+
+  // Returns the viewer's recent log messages (INFO and above), so an agent can see warnings and
+  // errors the user sees. Entries carry a sequence number for incremental fetching.
+  rpc GetViewerLogs(GetViewerLogsRequest) returns (GetViewerLogsResponse) {}
+
+  // Closes recordings in the viewer, so an agent can clear away what it no longer needs.
+  //
+  // `NOT_FOUND` if the requested recording is not open.
+  rpc CloseRecordings(CloseRecordingsRequest) returns (CloseRecordingsResponse) {}
 }
 
 // SaveScreenshot
@@ -132,6 +141,49 @@ message GetViewerStateResponse {
 
   // Every open recording.
   repeated ViewerRecording recordings = 3;
+
+  // Origin of the catalog server the viewer hosts, e.g. `rerun+http://127.0.0.1:9876`.
+  //
+  // Clients (notably `re_viewer_mcp`) hand this to the Python `CatalogClient` to read the data
+  // behind the open recordings, which this service deliberately does not serve itself.
+  // Unset if the viewer has no catalog, which on native is only the case before it starts up.
+  optional string catalog_url = 4;
+
+  // The views of the current blueprint, with the warnings and errors each one reports.
+  repeated ViewerView views = 5;
+}
+
+// One view in the viewer's current blueprint.
+message ViewerView {
+  // The view id, usable with `SaveScreenshot`.
+  string view_id = 1;
+
+  // The view class, e.g. `3D`, `TimeSeries`.
+  string class = 2;
+
+  // The view's display name.
+  string name = 3;
+
+  // The entity path the view is rooted at.
+  string origin = 4;
+
+  // Whether the view is currently visible.
+  bool visible = 5;
+
+  // Warnings and errors the view and its visualizers reported the last time it was shown.
+  repeated ViewerReport reports = 6;
+}
+
+// A warning or error from a view.
+message ViewerReport {
+  // `"warning"` or `"error"`.
+  string severity = 1;
+
+  // Short description.
+  string summary = 2;
+
+  // Longer explanation, if any.
+  optional string details = 3;
 }
 
 // One open recording in the viewer.
@@ -156,6 +208,65 @@ message ViewerTimeline {
 
   // The inclusive range of time values present on this timeline. Absent if the timeline has no data yet.
   optional rerun.common.v1alpha1.TimeRange time_range = 3;
+}
+
+// GetViewerLogs
+
+// Request for `GetViewerLogs`.
+message GetViewerLogsRequest {
+  // Only return entries with a sequence number greater than this.
+  // Omit for everything still buffered.
+  optional uint64 after_sequence = 1;
+}
+
+// Response for `GetViewerLogs`: the buffered log entries, oldest first.
+message GetViewerLogsResponse {
+  // The matching entries. The viewer keeps a bounded buffer, so old entries drop out.
+  repeated ViewerLogEntry entries = 1;
+}
+
+// One log message emitted by the viewer.
+message ViewerLogEntry {
+  // Increases by one per message. Pass the last seen value back as `after_sequence`.
+  uint64 sequence = 1;
+
+  // Log level: `"INFO"`, `"WARN"`, or `"ERROR"`.
+  string level = 2;
+
+  // The module that logged the message, starting with the crate name.
+  string target = 3;
+
+  // The log message.
+  string message = 4;
+}
+
+// CloseRecordings
+
+// Request for `CloseRecordings`.
+message CloseRecordingsRequest {
+  // The recordings to close. Omit this to close the active recording.
+  oneof target {
+    // Close the active recording.
+    bool current = 1;
+
+    // Close every open recording.
+    bool all = 2;
+
+    // Close these recordings.
+    ViewerRecordingIds store_ids = 3;
+  }
+}
+
+// Recording ids selected by `CloseRecordings`.
+message ViewerRecordingIds {
+  // The recording ids to close.
+  repeated rerun.common.v1alpha1.StoreId store_ids = 1;
+}
+
+// Response for `CloseRecordings`, reporting what was actually closed.
+message CloseRecordingsResponse {
+  // The recordings that were closed.
+  repeated rerun.common.v1alpha1.StoreId closed = 1;
 }
 
 // A position on a timeline.

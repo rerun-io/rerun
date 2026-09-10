@@ -13,8 +13,8 @@ mod receiver_set;
 mod sender;
 
 pub use self::data_source_message::{
-    BlueprintTarget, DataSourceMessage, DataSourceUiCommand, DefaultBlueprintRegistration,
-    InspectError, SaveScreenshotError,
+    BlueprintTarget, CloseRecordingTarget, DataSourceMessage, DataSourceUiCommand,
+    DefaultBlueprintRegistration, InspectError, SaveScreenshotError, UiCallback,
 };
 pub use self::receiver::LogReceiver;
 pub use self::receiver_set::LogReceiverSet;

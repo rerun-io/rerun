@@ -104,6 +104,7 @@ native_viewer = [
   "dep:re_viewer",
   "dep:re_crash_handler",
   "dep:re_viewer_mcp",
+  "dep:url",
   "importers",
 ]
 

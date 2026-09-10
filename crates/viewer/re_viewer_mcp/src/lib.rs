@@ -1,15 +1,30 @@
-//! `re_viewer_mcp` — an MCP server that drives the Rerun viewer.
+//! `re_viewer_mcp` — an MCP server that lets an agent drive the Rerun viewer.
 //!
-//! It reuses the full `egui_mcp` UI tool set (`query_tree`, `screenshot`, `click`, …) but, instead of
-//! dialing a local inspection socket, it drives the viewer over rerun's gRPC `ViewerControlService`.
+//! It sits between two protocols that share nothing but this crate:
 //!
-//! Each egui tool call becomes one `egui_inspection` request/response exchange, carried by a single
-//! `Inspect` RPC.
+//! - **Agent ↔ this server: MCP.** MCP is JSON-RPC over stdio: the agent's harness spawns this
+//!   process and exchanges JSON messages on stdin/stdout. The agent sees only JSON — the tool
+//!   list with JSON Schemas for their arguments, the `INSTRUCTIONS` prose, and JSON or text
+//!   results. It never sees gRPC, so the proto docstrings are unavailable to it and
+//!   `INSTRUCTIONS` and the argument docstrings are what it gets instead.
+//! - **This server ↔ the viewer: gRPC.** Every tool call becomes one call on the viewer's
+//!   `ViewerControlService` (`re_protos`' `viewer.proto`), which the viewer serves on the same port
+//!   as its SDK connections.
 //!
-//! The server is exposed two ways — the standalone `re-viewer-mcp` binary and the `rerun viewer-mcp`
-//! CLI subcommand.
+//! The tools come in two groups.
+//!
+//! The egui UI tools (`query_tree`, `screenshot`, `click`, …) are `egui_mcp`'s, reused unchanged.
+//! Each call becomes one `egui_inspection` request/response exchange carried inside a single
+//! `Inspect` RPC instead of `egui_mcp`'s local inspection socket.
+//!
+//! The Rerun-specific tools (`viewer_state`, `set_time`, `close_recordings`, …) each map to their
+//! own RPC on the same service.
+//!
+//! The server is exposed two ways — the standalone `re-viewer-mcp` binary and the
+//! `rerun viewer-mcp` CLI subcommand.
 
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
 use parking_lot::Mutex;
@@ -26,6 +41,7 @@ use rmcp::{
 };
 use serde::{Deserialize, Serialize};
 use tonic::transport::Channel;
+use url::Url;
 
 use egui_inspection::protocol::{self, PROTOCOL_VERSION, Request, Response};
 use egui_mcp::{BoxFuture, Bridge, PeerInfo, Transport, UiServer};
@@ -33,9 +49,10 @@ use re_protos::common::v1alpha1::{
     ApplicationId, StoreId, StoreKind, TimeRange, TimeType, Timeline,
 };
 use re_protos::sdk_comms::v1alpha1::{
-    GetViewerStateRequest, GetViewerStateResponse, InspectRequest, OpenUrlRequest,
-    SetTimeCursorRequest, SetTimeCursorResponse, TimeCursor, ViewerRecording, ViewerTimeline,
-    viewer_control_service_client::ViewerControlServiceClient,
+    CloseRecordingsRequest, CloseRecordingsResponse, GetViewerLogsRequest, GetViewerStateRequest,
+    GetViewerStateResponse, InspectRequest, OpenUrlRequest, SetTimeCursorRequest,
+    SetTimeCursorResponse, TimeCursor, ViewerLogEntry, ViewerRecording, ViewerReport,
+    ViewerTimeline, ViewerView, viewer_control_service_client::ViewerControlServiceClient,
 };
 
 const DEFAULT_VIEWER_ENDPOINT: &str = "http://127.0.0.1:9876";
@@ -69,9 +86,9 @@ impl Transport for GrpcInspector {
 /// unary `Inspect` RPC) and the gRPC client the rerun-specific tools call through — sharing the
 /// single connection between them.
 async fn connect_grpc(
-    endpoint: &str,
+    endpoint: &Url,
 ) -> Result<(Bridge, ViewerControlServiceClient<Channel>), String> {
-    let channel = tonic::transport::Endpoint::from_shared(endpoint.to_owned())
+    let channel = tonic::transport::Endpoint::from_shared(endpoint.to_string())
         .map_err(|err| err.to_string())?
         .timeout(REQUEST_TIMEOUT)
         .connect()
@@ -92,7 +109,7 @@ async fn connect_grpc(
     let bridge = Bridge::with_transport(
         inspector,
         PeerInfo {
-            transport: endpoint.to_owned(),
+            transport: endpoint.to_string(),
             protocol_version: PROTOCOL_VERSION,
             label,
         },
@@ -107,10 +124,22 @@ async fn connect_grpc(
 struct Connection {
     ui: UiServer,
     client: ViewerControlServiceClient<Channel>,
+
+    /// The Viewer gRPC endpoint this connection was dialed with.
+    viewer_endpoint: Url,
+    peer: PeerInfo,
+
+    /// Sequence number of the last viewer log entry appended to a tool result.
+    /// Starts at the newest entry at connect time, so old logs are not replayed.
+    log_cursor: AtomicU64,
 }
 
-/// The `re_viewer_mcp` server: rerun-specific connection / state tools, plus the reusable `egui_mcp`
-/// [`UiServer`], built on `connect` and dropped on `disconnect`, that drives the live viewer.
+/// Tools whose results cannot include viewer log entries.
+const TOOLS_WITHOUT_LOG: &[&str] = &["disconnect"];
+
+/// The `re_viewer_mcp` server: rerun-specific connection / state tools, plus the reusable
+/// `egui_mcp` [`UiServer`], built on `connect` and dropped on `disconnect`, that drives the live
+/// viewer.
 #[derive(Clone)]
 struct ViewerMcpServer {
     /// The active connection, `Some` while connected and `None` otherwise. Tool handlers clone
@@ -124,19 +153,26 @@ struct ViewerMcpServer {
 
     /// Router for the rerun-specific tools layered on top of the egui ones.
     tool_router: ToolRouter<Self>,
+
+    /// Set when the server was started for one specific viewer, which it connects to on startup.
+    viewer_endpoint: Option<Url>,
 }
 
+/// Arguments for the `connect` tool.
 #[derive(Debug, Default, Deserialize, schemars::JsonSchema)]
 struct ConnectArgs {
     /// gRPC endpoint of the running viewer's `ViewerControlService`.
-    /// Defaults to `http://127.0.0.1:9876`.
+    /// Defaults to the endpoint the server was started for, else `http://127.0.0.1:9876`.
     #[serde(default)]
-    endpoint: Option<String>,
+    #[schemars(with = "Option<String>")]
+    endpoint: Option<Url>,
 }
 
+/// Arguments for the tools that take none.
 #[derive(Debug, Default, Deserialize, schemars::JsonSchema)]
 struct EmptyArgs {}
 
+/// Arguments for the `set_time` tool.
 #[derive(Debug, Default, Deserialize, schemars::JsonSchema)]
 struct SetTimeArgs {
     /// Recording to seek (see `viewer_state`).
@@ -149,7 +185,8 @@ struct SetTimeArgs {
     #[serde(default)]
     timeline: Option<String>,
 
-    /// Time to seek to: a sequence index for sequence timelines, or nanoseconds for temporal timelines (see each timeline's `type` and `min`/`max` in `viewer_state`).
+    /// Time to seek to: a sequence index for sequence timelines, or nanoseconds for temporal
+    /// timelines (see each timeline's `type` and `min`/`max` in `viewer_state`).
     time: i64,
 
     /// If true, start playing the recording from the new time cursor position instead of just
@@ -165,10 +202,10 @@ struct StoreIdArg {
     /// The kind of store: `"recording"`, `"blueprint"`, or `"unspecified"`.
     kind: String,
 
-    /// The recording id.
+    /// The recording id, also called a segment id or store id.
     recording_id: String,
 
-    /// The application id the recording belongs to.
+    /// The application id the recording belongs to, also called the catalog dataset id.
     application_id: String,
 }
 
@@ -208,19 +245,127 @@ impl From<StoreIdArg> for StoreId {
     }
 }
 
+/// Arguments for the `viewer_logs` tool.
+#[derive(Debug, Default, Deserialize, schemars::JsonSchema)]
+struct ViewerLogsArgs {
+    /// Only return entries with a sequence number greater than this.
+    /// Omit for everything the viewer still has buffered.
+    #[serde(default)]
+    after_sequence: Option<u64>,
+}
+
+/// Arguments for the `close_recordings` tool.
+#[derive(Debug, Default, Deserialize, schemars::JsonSchema)]
+struct CloseRecordingsArgs {
+    /// The recordings to close.
+    target: CloseRecordingsTarget,
+}
+
+/// The recordings selected by `close_recordings`.
+#[derive(Debug, Default, Deserialize, schemars::JsonSchema)]
+enum CloseRecordingsTarget {
+    /// Close the active recording.
+    #[default]
+    Current,
+
+    /// Close every open recording.
+    All,
+
+    /// Close these recordings.
+    Some { store_ids: Vec<StoreIdArg> },
+}
+
+/// Arguments for the `open_url` tool.
 #[derive(Debug, Default, Deserialize, schemars::JsonSchema)]
 struct OpenUrlArgs {
-    /// The URL to open in the viewer: a recording/blueprint file URL, a `rerun://` dataset URI, a redap server/catalog URL, or an intra-recording link.
+    /// The URL to open in the viewer: a recording/blueprint file URL, a `rerun://` dataset URI,
+    /// a redap server/catalog URL, or an intra-recording link.
     url: String,
 }
 
 #[tool_router]
 impl ViewerMcpServer {
-    fn new() -> Self {
+    fn new(viewer_endpoint: Option<Url>) -> Self {
         Self {
             conn: Arc::new(Mutex::new(None)),
             ui_router: UiServer::router(),
             tool_router: Self::tool_router(),
+            viewer_endpoint,
+        }
+    }
+
+    /// Dial `endpoint` and install the connection.
+    ///
+    /// Connecting again to the endpoint already connected is a no-op. Connecting to a different
+    /// endpoint replaces the old connection after the new one succeeds.
+    async fn connect_to(&self, endpoint: &Url) -> ToolResult<PeerInfo> {
+        if let Some(conn) = self.conn.lock().as_ref()
+            && conn.viewer_endpoint == *endpoint
+        {
+            return Ok(conn.peer.clone());
+        }
+        let (bridge, mut client) = connect_grpc(endpoint)
+            .await
+            .map_err(|err| format!("connect failed: {err}"))?;
+        let peer = bridge.peer_info.clone();
+        let newest_log = client
+            .get_viewer_logs(GetViewerLogsRequest {
+                after_sequence: None,
+            })
+            .await
+            .ok()
+            .and_then(|response| response.into_inner().entries.last().map(|e| e.sequence))
+            .unwrap_or(0);
+        *self.conn.lock() = Some(Arc::new(Connection {
+            ui: UiServer::new(bridge),
+            client,
+            viewer_endpoint: endpoint.clone(),
+            peer: peer.clone(),
+            log_cursor: AtomicU64::new(newest_log),
+        }));
+        Ok(peer)
+    }
+
+    /// Appends the viewer log entries since the previous tool call to `result`,
+    /// so the agent sees warnings and errors as they happen.
+    async fn append_new_logs(&self, result: &mut CallToolResult) {
+        let conn = self.conn.lock().clone();
+        let Some(conn) = conn else {
+            return;
+        };
+        let after_sequence = conn.log_cursor.load(Ordering::Relaxed);
+        let mut client = conn.client.clone();
+        let Ok(response) = client
+            .get_viewer_logs(GetViewerLogsRequest {
+                after_sequence: Some(after_sequence),
+            })
+            .await
+        else {
+            return;
+        };
+        let entries = response.into_inner().entries;
+        let Some(last) = entries.last() else {
+            return;
+        };
+        conn.log_cursor.store(last.sequence, Ordering::Relaxed);
+        result.content.push(Content::text(format!(
+            "Viewer log since the previous tool call:\n{}",
+            format_log_entries(&entries)
+        )));
+    }
+
+    /// The MCP `instructions`: [`INSTRUCTIONS`], led by the configured viewer's connection state.
+    fn instructions(&self) -> String {
+        match &self.viewer_endpoint {
+            Some(endpoint) if self.conn.lock().is_some() => format!(
+                "This server was started for the Rerun viewer at `{endpoint}` and is already connected to it. \
+                 Do not call `connect`; start using the other tools right away.\n\n{INSTRUCTIONS}"
+            ),
+            Some(endpoint) => format!(
+                "This server was started for the Rerun viewer at `{endpoint}`, but it is not connected yet. \
+                 Call `connect` before using the other tools.\n\n{INSTRUCTIONS}"
+            ),
+            None => INSTRUCTIONS.to_owned(),
         }
     }
 
@@ -235,31 +380,27 @@ impl ViewerMcpServer {
             .ok_or_else(|| "not connected — call `connect` first".to_owned())
     }
 
-    /// Connect to a running Rerun viewer over gRPC. The other tools will be available once the connection is established.
-    /// `endpoint` defaults to `http://127.0.0.1:9876` (the viewer's default gRPC address).
-    /// Call `disconnect` to drop the connection.
+    /// Connect to a running Rerun viewer over gRPC.
+    ///
+    /// The other tools will be available once the connection is established.
+    /// `endpoint` defaults to the viewer this server was started for, else `http://127.0.0.1:9876`
+    /// (the viewer's default gRPC address).
+    /// Connecting again to the same endpoint is a no-op. Connecting to a different endpoint
+    /// replaces the old connection once the new connection succeeds. Call `disconnect` to drop
+    /// the connection without replacing it.
     #[tool]
     async fn connect(
         &self,
         Parameters(args): Parameters<ConnectArgs>,
     ) -> ToolResult<CallToolResult> {
-        if self.conn.lock().is_some() {
-            return Err(
-                "already connected — call `disconnect` first to drop the current connection"
-                    .to_owned(),
-            );
-        }
         let endpoint = args
             .endpoint
-            .unwrap_or_else(|| DEFAULT_VIEWER_ENDPOINT.to_owned());
-        let (bridge, client) = connect_grpc(&endpoint)
-            .await
-            .map_err(|err| format!("connect failed: {err}"))?;
-        let peer = bridge.peer_info.clone();
-        *self.conn.lock() = Some(Arc::new(Connection {
-            ui: UiServer::new(bridge),
-            client,
-        }));
+            .or_else(|| self.viewer_endpoint.clone())
+            .map_or_else(
+                || Url::parse(DEFAULT_VIEWER_ENDPOINT).map_err(|err| err.to_string()),
+                Ok,
+            )?;
+        let peer = self.connect_to(&endpoint).await?;
         Ok(CallToolResult::structured(serde_json::json!({
             "ok": true,
             "connected": endpoint,
@@ -283,8 +424,15 @@ impl ViewerMcpServer {
         }
     }
 
-    /// Report the current Rerun viewer state as JSON: the active recording, the current page URL, and every open recording (recording id, application id) with its timelines, their time ranges, and its current time cursor.
-    /// Use this to learn which recording/timeline to drive and what time values are valid before calling `set_time`.
+    /// Report the current Rerun viewer state as JSON.
+    ///
+    /// Reports the active recording, the current page URL, every open recording (recording id,
+    /// application id) with its timelines, their time ranges, and its current time cursor, and
+    /// every view of the current blueprint (id, class, name, origin) with the warnings and errors
+    /// it reports.
+    /// Use this to learn which recording/timeline to drive and what time values are valid before
+    /// calling `set_time`, and to find out why a view looks wrong: its `reports` say what failed
+    /// to visualize.
     /// Requires `connect`.
     #[tool]
     async fn viewer_state(
@@ -302,10 +450,41 @@ impl ViewerMcpServer {
         )]))
     }
 
+    /// Return the Rerun viewer's recent log messages (INFO and above).
+    ///
+    /// Oldest first, as `[LEVEL target] message` lines prefixed with their sequence number.
+    /// New log lines are also appended to every other tool result automatically, so call this
+    /// only to look back at older messages or after a quiet period.
+    /// Requires `connect`.
+    #[tool]
+    async fn viewer_logs(
+        &self,
+        Parameters(args): Parameters<ViewerLogsArgs>,
+    ) -> ToolResult<CallToolResult> {
+        let mut client = self.client()?;
+        let entries = client
+            .get_viewer_logs(GetViewerLogsRequest {
+                after_sequence: args.after_sequence,
+            })
+            .await
+            .map_err(|err| format!("viewer_logs failed: {err}"))?
+            .into_inner()
+            .entries;
+        let text = if entries.is_empty() {
+            "(no log messages)".to_owned()
+        } else {
+            format_log_entries(&entries)
+        };
+        Ok(CallToolResult::success(vec![Content::text(text)]))
+    }
+
     /// Set the time cursor (timeline position) of a recording in the Rerun viewer.
-    /// `time` is a sequence index for sequence timelines or nanoseconds for temporal timelines (call `viewer_state` first for each timeline's type and valid range).
+    ///
+    /// `time` is a sequence index for sequence timelines or nanoseconds for temporal timelines
+    /// (call `viewer_state` first for each timeline's type and valid range).
     /// `store_id` and `timeline` default to the active recording / active timeline.
-    /// If `play` is unset or `false`, the recording will be paused. If `true`, the recording will play from the selected time.
+    /// If `play` is unset or `false`, the recording will be paused. If `true`, the recording will
+    /// play from the selected time.
     /// Requires `connect`.
     #[tool]
     async fn set_time(
@@ -329,7 +508,9 @@ impl ViewerMcpServer {
     }
 
     /// Open a URL in the Rerun viewer.
-    /// The URL can be a recording/blueprint file URL, a `rerun://` dataset URI, a redap server/catalog URL, or an intra-recording link.
+    ///
+    /// The URL can be a recording/blueprint file URL, a `rerun://` dataset URI, a redap
+    /// server/catalog URL, or an intra-recording link.
     /// Requires `connect`.
     #[tool]
     async fn open_url(
@@ -348,6 +529,56 @@ impl ViewerMcpServer {
             "opened": args.url,
         })))
     }
+
+    /// Close recordings in the Rerun viewer, to clear away what is no longer needed.
+    ///
+    /// Pass `target: "current"` to close the active recording, `target: "all"` to close every
+    /// open recording, or `target: { "some": { "store_ids": [ … ] } }` to close named recordings
+    /// from `viewer_state`.
+    /// This only removes the recording from the viewer; files on disk are untouched, but unsaved
+    /// blueprint edits to it are lost.
+    /// Requires `connect`.
+    #[tool]
+    async fn close_recordings(
+        &self,
+        Parameters(args): Parameters<CloseRecordingsArgs>,
+    ) -> ToolResult<CallToolResult> {
+        let mut client = self.client()?;
+        let response = client
+            .close_recordings(CloseRecordingsRequest {
+                target: Some(match args.target {
+                    CloseRecordingsTarget::Current => {
+                        re_protos::sdk_comms::v1alpha1::close_recordings_request::Target::Current(
+                            true,
+                        )
+                    }
+                    CloseRecordingsTarget::All => {
+                        re_protos::sdk_comms::v1alpha1::close_recordings_request::Target::All(true)
+                    }
+                    CloseRecordingsTarget::Some { store_ids } => {
+                        re_protos::sdk_comms::v1alpha1::close_recordings_request::Target::StoreIds(
+                            re_protos::sdk_comms::v1alpha1::ViewerRecordingIds {
+                                store_ids: store_ids.into_iter().map(StoreId::from).collect(),
+                            },
+                        )
+                    }
+                }),
+            })
+            .await
+            .map_err(|err| format!("close_recordings failed: {err}"))?
+            .into_inner();
+        Ok(CallToolResult::success(vec![Content::text(
+            close_recordings_to_json(response).to_string(),
+        )]))
+    }
+}
+
+/// Render a [`CloseRecordingsResponse`] as the JSON object surfaced to the agent.
+fn close_recordings_to_json(response: CloseRecordingsResponse) -> serde_json::Value {
+    let CloseRecordingsResponse { closed } = response;
+    serde_json::json!({
+        "closed": closed.into_iter().map(StoreIdArg::from).collect::<Vec<_>>(),
+    })
 }
 
 /// Timeline name from a proto [`Timeline`].
@@ -372,10 +603,42 @@ fn viewer_state_to_json(state: GetViewerStateResponse) -> serde_json::Value {
         active_store_id,
         url,
         recordings,
+        catalog_url,
+        views,
     } = state;
     json!({
         "active_store_id": active_store_id.map(StoreIdArg::from),
         "url": url,
+        "catalog_url": catalog_url,
+        "views": views
+            .into_iter()
+            .map(|ViewerView {
+                    view_id,
+                    class,
+                    name,
+                    origin,
+                    visible,
+                    reports,
+                }| {
+                json!({
+                    "view_id": view_id,
+                    "class": class,
+                    "name": name,
+                    "origin": origin,
+                    "visible": visible,
+                    "reports": reports
+                        .into_iter()
+                        .map(|ViewerReport { severity, summary, details }| {
+                            json!({
+                                "severity": severity,
+                                "summary": summary,
+                                "details": details,
+                            })
+                        })
+                        .collect::<Vec<_>>(),
+                })
+            })
+            .collect::<Vec<_>>(),
         "recordings": recordings
             .into_iter()
             .map(|ViewerRecording {
@@ -442,6 +705,23 @@ fn set_time_to_json(response: SetTimeCursorResponse) -> serde_json::Value {
     })
 }
 
+/// One line per entry: `#sequence [LEVEL target] message`.
+fn format_log_entries(entries: &[ViewerLogEntry]) -> String {
+    entries
+        .iter()
+        .map(|entry| {
+            let ViewerLogEntry {
+                sequence,
+                level,
+                target,
+                message,
+            } = entry;
+            format!("#{sequence} [{level} {target}] {message}")
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
 /// A recoverable tool failure (not connected, a bad endpoint, a bridge or gRPC error, …), carried
 /// as a plain message string.
 ///
@@ -467,7 +747,7 @@ fn text_error(msg: impl Into<String>) -> CallToolResult {
 const INSTRUCTIONS: &str = r#"This MCP drives a live Rerun viewer: it reads the viewer's accessibility tree and synthesizes real input events. Work in an observe → act → verify loop.
 
 Getting oriented:
-- Call `connect` first (it dials the viewer's gRPC server); every other tool errors until then.
+- Call `connect` first (it dials the viewer's gRPC server); every other tool errors until then. A server started for a specific viewer is already connected and says so above.
 - If no viewer is running, launch one. If the user tells you to work in the background, or no desktop is available, use `--headless`.
 - Every Rerun gRPC endpoint serves gRPC server reflection, so `grpcurl -plaintext <host:port> list` shows which services an address speaks (viewer control, SDK proxy, catalog) before you `connect`, and `describe` shows a service's methods and message types.
 - Start most tasks with `query_tree` to discover widgets and their ids, and/or `screenshot` to see the rendered frame.
@@ -479,6 +759,16 @@ Acting and verifying:
 - After an action that changes the UI, confirm it landed: `query_tree` for the expected state, `screenshot` to look, or `wait_for` to poll until async or animated UI settles.
 - Use `batch` to act and observe in one round trip (e.g. `click` then `screenshot`), avoiding an extra turn.
 - To move through time, call `viewer_state` for the recordings/timelines and their valid ranges, then `set_time`.
+- The viewer's log messages (INFO and above) since the previous tool call are appended to every tool result. Read them: a warning or error there usually explains what the user is seeing. `viewer_logs` fetches older messages.
+- `close_recordings` clears recordings away. Iterating on a file you keep regenerating leaves a pile of stale recordings behind, which makes `viewer_state` and the UI hard to read — close them.
+
+Reading the data itself:
+- These tools drive the UI; they do not read data. Never guess an entity path or a component name — the viewer hosts a catalog server, so read the real schema and the real values through the Python API instead.
+- `viewer_state` reports that server as `catalog_url`. Hand it straight to `CatalogClient`; do not hardcode a port, since a viewer may serve on any of them.
+- A recording's `application_id` is the catalog dataset's **id** (not its name) and its `recording_id` is the segment id, so look the dataset up by id:
+  `CatalogClient(catalog_url).get_dataset(id=application_id)`, then `.schema().entity_paths()` for the schema and `.segment_store(recording_id)` for the data.
+- A recording may predate its registration (an SDK stream, or an import from a directory or another file format). It is then absent from the catalog and its `application_id` is the plain application id; read that one from its source on disk instead (`rerun.chunk.RrdReader(path).store(...).schema()` and friends).
+- `close_recordings` only closes recordings in the viewer; registered recordings stay in the catalog and can still be read and reopened afterwards.
 
 Conventions:
 - Everything is in logical points, one shared coordinate frame: raw `pos`, `resize` dimensions, the `bounds` from `query_tree`/`get_node`, and a default (`pixels_per_point: 1.0`) `screenshot`. So a node's `bounds` center is exactly where to `click`, and a pixel in the screenshot is a logical point. There is no fixed screen size; use `resize` to set the viewport."#;
@@ -487,7 +777,7 @@ impl ServerHandler for ViewerMcpServer {
     fn get_info(&self) -> ServerInfo {
         ServerInfo::new(ServerCapabilities::builder().enable_tools().build())
             .with_server_info(Implementation::new("viewer-mcp", env!("CARGO_PKG_VERSION")))
-            .with_instructions(INSTRUCTIONS)
+            .with_instructions(self.instructions())
     }
 
     async fn list_tools(
@@ -511,29 +801,50 @@ impl ServerHandler for ViewerMcpServer {
         request: CallToolRequestParams,
         context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, McpError> {
+        let name = request.name.clone();
+
         // Rerun-specific tools run on `self`; everything else is delegated to the attached UI
         // server, which exists only while connected.
-        if self.tool_router.has_route(&request.name) {
-            return self
-                .tool_router
+        let mut result = if self.tool_router.has_route(&name) {
+            self.tool_router
                 .call(ToolCallContext::new(self, request, context))
-                .await;
-        }
-        let conn = self.conn.lock().clone();
-        let Some(conn) = conn else {
-            return Ok(text_error("no app connected — call `connect` first"));
+                .await?
+        } else {
+            let conn = self.conn.lock().clone();
+            let Some(conn) = conn else {
+                return Ok(text_error("no app connected — call `connect` first"));
+            };
+            conn.ui.dispatch(&self.ui_router, request, context).await?
         };
-        conn.ui.dispatch(&self.ui_router, request, context).await
+
+        if !TOOLS_WITHOUT_LOG.contains(&name.as_ref()) {
+            self.append_new_logs(&mut result).await;
+        }
+        Ok(result)
     }
 }
 
-/// Serve the MCP server over stdio until the client disconnects.
+/// Serve the MCP server over stdio until the MCP client (the agent) disconnects.
 ///
-/// Assumes the caller has already set up a Tokio runtime (this must run inside one) and logging.
-/// Both the `rerun viewer-mcp` subcommand and the standalone `re-viewer-mcp` binary call this — each sets up
-/// its own runtime and logging first.
-pub async fn serve() -> anyhow::Result<()> {
-    let server = ViewerMcpServer::new();
+/// `viewer_endpoint` is the gRPC address of a running Rerun viewer's `ViewerControlService`,
+/// e.g. `http://127.0.0.1:9876`, the same port the viewer serves SDK connections on.
+/// When given, the server dials it right away, so the agent can skip `connect`,
+/// and it becomes the default endpoint for later `connect` calls.
+/// When `None`, the agent picks the viewer with `connect`, which defaults to
+/// `http://127.0.0.1:9876`.
+///
+/// A failed eager connect is only logged: the viewer may come up later, and `connect` still works.
+///
+/// Must run inside a Tokio runtime, and assumes logging is already set up.
+/// Both the `rerun viewer-mcp` subcommand and the standalone `re-viewer-mcp` binary call this.
+pub async fn serve(viewer_endpoint: Option<Url>) -> anyhow::Result<()> {
+    let server = ViewerMcpServer::new(viewer_endpoint.clone());
+    if let Some(endpoint) = viewer_endpoint {
+        match server.connect_to(&endpoint).await {
+            Ok(_) => re_log::info!("Connected to viewer at {endpoint}"),
+            Err(err) => re_log::warn!("Failed to connect to viewer at {endpoint}: {err}"),
+        }
+    }
     let running = server.serve(transport::stdio()).await?;
     let _reason = running.waiting().await?;
     Ok(())
@@ -547,13 +858,24 @@ mod tests {
 
     use super::*;
 
+    #[test]
+    fn instructions_mention_the_viewer() {
+        let server = ViewerMcpServer::new(Url::parse("http://127.0.0.1:1234").ok());
+        let instructions = server.instructions();
+        assert!(instructions.starts_with(
+            "This server was started for the Rerun viewer at `http://127.0.0.1:1234/`, but it is not connected yet"
+        ));
+        assert!(instructions.ends_with(INSTRUCTIONS));
+        assert_eq!(ViewerMcpServer::new(None).instructions(), INSTRUCTIONS);
+    }
+
     /// Snapshot of the documentation the llm will see when loading the mcp tools.
     ///
     /// It's useful to look at the snapshot output to check how much llm context the tool
     /// definitions will use.
     #[test]
     fn agent_surface_snapshot() {
-        let server = ViewerMcpServer::new();
+        let server = ViewerMcpServer::new(None);
 
         let mut surface = String::new();
         surface.push_str("# Server instructions\n\n");

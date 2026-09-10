@@ -851,6 +851,16 @@ pub struct GetViewerStateResponse {
     /// Every open recording.
     #[prost(message, repeated, tag = "3")]
     pub recordings: ::prost::alloc::vec::Vec<ViewerRecording>,
+    /// Origin of the catalog server the viewer hosts, e.g. `rerun+<http://127.0.0.1:9876`.>
+    ///
+    /// Clients (notably `re_viewer_mcp`) hand this to the Python `CatalogClient` to read the data
+    /// behind the open recordings, which this service deliberately does not serve itself.
+    /// Unset if the viewer has no catalog, which on native is only the case before it starts up.
+    #[prost(string, optional, tag = "4")]
+    pub catalog_url: ::core::option::Option<::prost::alloc::string::String>,
+    /// The views of the current blueprint, with the warnings and errors each one reports.
+    #[prost(message, repeated, tag = "5")]
+    pub views: ::prost::alloc::vec::Vec<ViewerView>,
 }
 impl ::prost::Name for GetViewerStateResponse {
     const NAME: &'static str = "GetViewerStateResponse";
@@ -860,6 +870,61 @@ impl ::prost::Name for GetViewerStateResponse {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.sdk_comms.v1alpha1.GetViewerStateResponse".into()
+    }
+}
+/// One view in the viewer's current blueprint.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ViewerView {
+    /// The view id, usable with `SaveScreenshot`.
+    #[prost(string, tag = "1")]
+    pub view_id: ::prost::alloc::string::String,
+    /// The view class, e.g. `3D`, `TimeSeries`.
+    #[prost(string, tag = "2")]
+    pub class: ::prost::alloc::string::String,
+    /// The view's display name.
+    #[prost(string, tag = "3")]
+    pub name: ::prost::alloc::string::String,
+    /// The entity path the view is rooted at.
+    #[prost(string, tag = "4")]
+    pub origin: ::prost::alloc::string::String,
+    /// Whether the view is currently visible.
+    #[prost(bool, tag = "5")]
+    pub visible: bool,
+    /// Warnings and errors the view and its visualizers reported the last time it was shown.
+    #[prost(message, repeated, tag = "6")]
+    pub reports: ::prost::alloc::vec::Vec<ViewerReport>,
+}
+impl ::prost::Name for ViewerView {
+    const NAME: &'static str = "ViewerView";
+    const PACKAGE: &'static str = "rerun.sdk_comms.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.sdk_comms.v1alpha1.ViewerView".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.sdk_comms.v1alpha1.ViewerView".into()
+    }
+}
+/// A warning or error from a view.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct ViewerReport {
+    /// `"warning"` or `"error"`.
+    #[prost(string, tag = "1")]
+    pub severity: ::prost::alloc::string::String,
+    /// Short description.
+    #[prost(string, tag = "2")]
+    pub summary: ::prost::alloc::string::String,
+    /// Longer explanation, if any.
+    #[prost(string, optional, tag = "3")]
+    pub details: ::core::option::Option<::prost::alloc::string::String>,
+}
+impl ::prost::Name for ViewerReport {
+    const NAME: &'static str = "ViewerReport";
+    const PACKAGE: &'static str = "rerun.sdk_comms.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.sdk_comms.v1alpha1.ViewerReport".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.sdk_comms.v1alpha1.ViewerReport".into()
     }
 }
 /// One open recording in the viewer.
@@ -906,6 +971,134 @@ impl ::prost::Name for ViewerTimeline {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.sdk_comms.v1alpha1.ViewerTimeline".into()
+    }
+}
+/// Request for `GetViewerLogs`.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct GetViewerLogsRequest {
+    /// Only return entries with a sequence number greater than this.
+    /// Omit for everything still buffered.
+    #[prost(uint64, optional, tag = "1")]
+    pub after_sequence: ::core::option::Option<u64>,
+}
+impl ::prost::Name for GetViewerLogsRequest {
+    const NAME: &'static str = "GetViewerLogsRequest";
+    const PACKAGE: &'static str = "rerun.sdk_comms.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.sdk_comms.v1alpha1.GetViewerLogsRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.sdk_comms.v1alpha1.GetViewerLogsRequest".into()
+    }
+}
+/// Response for `GetViewerLogs`: the buffered log entries, oldest first.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetViewerLogsResponse {
+    /// The matching entries. The viewer keeps a bounded buffer, so old entries drop out.
+    #[prost(message, repeated, tag = "1")]
+    pub entries: ::prost::alloc::vec::Vec<ViewerLogEntry>,
+}
+impl ::prost::Name for GetViewerLogsResponse {
+    const NAME: &'static str = "GetViewerLogsResponse";
+    const PACKAGE: &'static str = "rerun.sdk_comms.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.sdk_comms.v1alpha1.GetViewerLogsResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.sdk_comms.v1alpha1.GetViewerLogsResponse".into()
+    }
+}
+/// One log message emitted by the viewer.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct ViewerLogEntry {
+    /// Increases by one per message. Pass the last seen value back as `after_sequence`.
+    #[prost(uint64, tag = "1")]
+    pub sequence: u64,
+    /// Log level: `"INFO"`, `"WARN"`, or `"ERROR"`.
+    #[prost(string, tag = "2")]
+    pub level: ::prost::alloc::string::String,
+    /// The module that logged the message, starting with the crate name.
+    #[prost(string, tag = "3")]
+    pub target: ::prost::alloc::string::String,
+    /// The log message.
+    #[prost(string, tag = "4")]
+    pub message: ::prost::alloc::string::String,
+}
+impl ::prost::Name for ViewerLogEntry {
+    const NAME: &'static str = "ViewerLogEntry";
+    const PACKAGE: &'static str = "rerun.sdk_comms.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.sdk_comms.v1alpha1.ViewerLogEntry".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.sdk_comms.v1alpha1.ViewerLogEntry".into()
+    }
+}
+/// Request for `CloseRecordings`.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct CloseRecordingsRequest {
+    /// The recordings to close. Omit this to close the active recording.
+    #[prost(oneof = "close_recordings_request::Target", tags = "1, 2, 3")]
+    pub target: ::core::option::Option<close_recordings_request::Target>,
+}
+/// Nested message and enum types in `CloseRecordingsRequest`.
+pub mod close_recordings_request {
+    /// The recordings to close. Omit this to close the active recording.
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Target {
+        /// Close the active recording.
+        #[prost(bool, tag = "1")]
+        Current(bool),
+        /// Close every open recording.
+        #[prost(bool, tag = "2")]
+        All(bool),
+        /// Close these recordings.
+        #[prost(message, tag = "3")]
+        StoreIds(super::ViewerRecordingIds),
+    }
+}
+impl ::prost::Name for CloseRecordingsRequest {
+    const NAME: &'static str = "CloseRecordingsRequest";
+    const PACKAGE: &'static str = "rerun.sdk_comms.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.sdk_comms.v1alpha1.CloseRecordingsRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.sdk_comms.v1alpha1.CloseRecordingsRequest".into()
+    }
+}
+/// Recording ids selected by `CloseRecordings`.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ViewerRecordingIds {
+    /// The recording ids to close.
+    #[prost(message, repeated, tag = "1")]
+    pub store_ids: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::StoreId>,
+}
+impl ::prost::Name for ViewerRecordingIds {
+    const NAME: &'static str = "ViewerRecordingIds";
+    const PACKAGE: &'static str = "rerun.sdk_comms.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.sdk_comms.v1alpha1.ViewerRecordingIds".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.sdk_comms.v1alpha1.ViewerRecordingIds".into()
+    }
+}
+/// Response for `CloseRecordings`, reporting what was actually closed.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct CloseRecordingsResponse {
+    /// The recordings that were closed.
+    #[prost(message, repeated, tag = "1")]
+    pub closed: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::StoreId>,
+}
+impl ::prost::Name for CloseRecordingsResponse {
+    const NAME: &'static str = "CloseRecordingsResponse";
+    const PACKAGE: &'static str = "rerun.sdk_comms.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.sdk_comms.v1alpha1.CloseRecordingsResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.sdk_comms.v1alpha1.CloseRecordingsResponse".into()
     }
 }
 /// A position on a timeline.
@@ -1124,6 +1317,49 @@ pub mod viewer_control_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
+        /// Returns the viewer's recent log messages (INFO and above), so an agent can see warnings and
+        /// errors the user sees. Entries carry a sequence number for incremental fetching.
+        pub async fn get_viewer_logs(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetViewerLogsRequest>,
+        ) -> std::result::Result<tonic::Response<super::GetViewerLogsResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic_prost::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.sdk_comms.v1alpha1.ViewerControlService/GetViewerLogs",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.sdk_comms.v1alpha1.ViewerControlService",
+                "GetViewerLogs",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+        /// Closes recordings in the viewer, so an agent can clear away what it no longer needs.
+        ///
+        /// `NOT_FOUND` if the requested recording is not open.
+        pub async fn close_recordings(
+            &mut self,
+            request: impl tonic::IntoRequest<super::CloseRecordingsRequest>,
+        ) -> std::result::Result<tonic::Response<super::CloseRecordingsResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic_prost::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.sdk_comms.v1alpha1.ViewerControlService/CloseRecordings",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.sdk_comms.v1alpha1.ViewerControlService",
+                "CloseRecordings",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
     }
 }
 /// Generated server implementations.
@@ -1172,6 +1408,19 @@ pub mod viewer_control_service_server {
             &self,
             request: tonic::Request<super::GetViewerStateRequest>,
         ) -> std::result::Result<tonic::Response<super::GetViewerStateResponse>, tonic::Status>;
+        /// Returns the viewer's recent log messages (INFO and above), so an agent can see warnings and
+        /// errors the user sees. Entries carry a sequence number for incremental fetching.
+        async fn get_viewer_logs(
+            &self,
+            request: tonic::Request<super::GetViewerLogsRequest>,
+        ) -> std::result::Result<tonic::Response<super::GetViewerLogsResponse>, tonic::Status>;
+        /// Closes recordings in the viewer, so an agent can clear away what it no longer needs.
+        ///
+        /// `NOT_FOUND` if the requested recording is not open.
+        async fn close_recordings(
+            &self,
+            request: tonic::Request<super::CloseRecordingsRequest>,
+        ) -> std::result::Result<tonic::Response<super::CloseRecordingsResponse>, tonic::Status>;
     }
     /// Remote control of a running viewer.
     ///
@@ -1439,6 +1688,90 @@ pub mod viewer_control_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = GetViewerStateSvc(inner);
+                        let codec = tonic_prost::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.sdk_comms.v1alpha1.ViewerControlService/GetViewerLogs" => {
+                    #[allow(non_camel_case_types)]
+                    struct GetViewerLogsSvc<T: ViewerControlService>(pub Arc<T>);
+                    impl<T: ViewerControlService>
+                        tonic::server::UnaryService<super::GetViewerLogsRequest>
+                        for GetViewerLogsSvc<T>
+                    {
+                        type Response = super::GetViewerLogsResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::GetViewerLogsRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as ViewerControlService>::get_viewer_logs(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = GetViewerLogsSvc(inner);
+                        let codec = tonic_prost::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.sdk_comms.v1alpha1.ViewerControlService/CloseRecordings" => {
+                    #[allow(non_camel_case_types)]
+                    struct CloseRecordingsSvc<T: ViewerControlService>(pub Arc<T>);
+                    impl<T: ViewerControlService>
+                        tonic::server::UnaryService<super::CloseRecordingsRequest>
+                        for CloseRecordingsSvc<T>
+                    {
+                        type Response = super::CloseRecordingsResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::CloseRecordingsRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as ViewerControlService>::close_recordings(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = CloseRecordingsSvc(inner);
                         let codec = tonic_prost::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
