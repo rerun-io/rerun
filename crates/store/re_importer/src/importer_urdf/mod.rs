@@ -169,9 +169,11 @@ pub(crate) fn emit_robot(
 /// Describes why loading a ROS resource failed.
 #[derive(Debug, Ord, PartialOrd, Eq, PartialEq, thiserror::Error)]
 enum RosResourceError {
+    #[cfg(not(target_arch = "wasm32"))]
     #[error("Could not resolve package URI using `ROS_PACKAGE_PATH` or `AMENT_PREFIX_PATH`")]
     PackageUriResolution,
 
+    #[cfg(not(target_arch = "wasm32"))]
     #[error("No root directory set for URDF")]
     MissingRootDirectory,
 
@@ -179,6 +181,7 @@ enum RosResourceError {
     #[error("Loading ROS resources is not supported in WebAssembly")]
     UnsupportedInWasm,
 
+    #[cfg(not(target_arch = "wasm32"))]
     #[error("{0}")]
     Other(String),
 }
