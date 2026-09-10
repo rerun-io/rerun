@@ -70,7 +70,9 @@ re_chunk_store.workspace = true
 re_chunk.workspace = true
 re_component_fallbacks.workspace = true
 re_component_ui.workspace = true
-re_importer.workspace = true
+# The viewer needs to have all importers, so explicitly set that here
+# Rather than relying on an upper crate to do it.
+re_importer = { workspace = true, features = ["all"] }
 re_data_source.workspace = true
 re_data_ui.workspace = true
 re_dataframe_ui.workspace = true

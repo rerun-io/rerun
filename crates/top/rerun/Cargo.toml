@@ -92,7 +92,13 @@ nasm = ["re_video?/nasm"]
 ## This adds a lot of extra dependencies, so only enable this feature if you need it!
 ##
 ## Also enables the `rerun viewer-mcp` command.
-native_viewer = ["dep:libc", "dep:re_viewer", "dep:re_crash_handler", "dep:re_viewer_mcp"]
+native_viewer = [
+  "dep:libc",
+  "dep:re_viewer",
+  "dep:re_crash_handler",
+  "dep:re_viewer_mcp",
+  "importers",
+]
 
 ## Enable the in-memory Rerun data server.
 oss_server = ["dep:re_server"]
