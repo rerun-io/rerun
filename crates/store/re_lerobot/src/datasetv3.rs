@@ -282,11 +282,17 @@ impl LeRobotDatasetV3 {
         let mut rows = Vec::new();
         let mut time_int = TimeInt::ZERO;
         for task_index in task_indices {
-            if let Some(task) = task_index
-                .and_then(|i| usize::try_from(i).ok())
-                .and_then(|i| self.task_by_index(TaskIndex(i)))
-            {
-                rows.push((time_int, task.task.clone()));
+            if let Some(task_index) = task_index {
+                if let Some(task) = usize::try_from(task_index)
+                    .ok()
+                    .and_then(|i| self.task_by_index(TaskIndex(i)))
+                {
+                    rows.push((time_int, task.task.clone()));
+                } else {
+                    re_log::warn_once!(
+                        "Frame references task_index {task_index}, which is not defined in tasks.parquet"
+                    );
+                }
             }
             time_int = time_int.inc();
         }
@@ -731,6 +737,13 @@ impl LeRobotDatasetMetadataV3 {
         let episode_data = LeRobotEpisodeData::load_from_directory(metadir.join("episodes"))?;
         let info = LeRobotDatasetInfoV3::load_from_json_file(metadir.join("info.json"))?;
         let tasks = LeRobotDatasetV3Tasks::load_from_parquet_file(metadir.join("tasks.parquet"))?;
+        if tasks.tasks.len() != info.total_tasks {
+            re_log::warn_once!(
+                "LeRobot dataset declares {} tasks in info.json, but tasks.parquet defines {}",
+                info.total_tasks,
+                tasks.tasks.len()
+            );
+        }
 
         let subtasks_path = metadir.join("subtasks.parquet");
         let subtasks = if subtasks_path.is_file() {
@@ -1112,6 +1125,9 @@ pub struct LeRobotDatasetV3Tasks {
     pub tasks: HashMap<TaskIndex, LeRobotDatasetTask>,
 }
 
+/// Task string column in `tasks.parquet`: named `task` since `LeRobot` 0.5.0, `__index_level_0__` before.
+const TASK_COLUMN_NAMES: [&str; 2] = ["task", "__index_level_0__"];
+
 impl LeRobotDatasetV3Tasks {
     pub fn load_from_parquet_file(filepath: impl AsRef<Path>) -> Result<Self, LeRobotError> {
         let filepath = filepath.as_ref().to_owned();
@@ -1120,33 +1136,51 @@ impl LeRobotDatasetV3Tasks {
 
         let reader = ParquetRecordBatchReaderBuilder::try_new(parquet_data)?.build()?;
 
-        let tasks = reader
-            .filter_map(|record_batch| {
-                let b = record_batch.ok()?;
-                let task_index_col = b.column_by_name("task_index")?;
-                let task_col = b.column_by_name("__index_level_0__")?;
-                let task_index = task_index_col.downcast_array_ref::<Int64Array>()?;
-                let task = task_col.downcast_array_ref::<StringArray>()?;
+        let mut tasks = HashMap::default();
+        for record_batch in reader {
+            let batch = record_batch?;
 
-                let num_rows = b.num_rows();
-                Some(
-                    (0..num_rows)
-                        .map(move |i| {
-                            (
-                                TaskIndex(task_index.value(i) as usize),
-                                LeRobotDatasetTask {
-                                    index: TaskIndex(task_index.value(i) as usize),
-                                    task: task.value(i).to_owned(),
-                                },
-                            )
-                        })
-                        .collect(),
-                )
-            })
-            .flat_map(|e: Vec<(TaskIndex, LeRobotDatasetTask)>| e)
-            .collect::<HashMap<_, _>>();
+            let task_index_col = batch.try_get_column_as::<Int64Array>("task_index")?;
+            let task_col = Self::task_column(&batch)?;
+
+            for (task_index, task) in std::iter::zip(task_index_col, task_col) {
+                let (Some(task_index), Some(task)) = (task_index, task) else {
+                    continue;
+                };
+                let index = TaskIndex(task_index as usize);
+                tasks.insert(
+                    index,
+                    LeRobotDatasetTask {
+                        index,
+                        task: task.to_owned(),
+                    },
+                );
+            }
+        }
 
         Ok(Self { tasks })
+    }
+
+    fn task_column(batch: &RecordBatch) -> Result<&StringArray, LeRobotError> {
+        let Some(name) = TASK_COLUMN_NAMES
+            .iter()
+            .find(|name| batch.schema().index_of(name).is_ok())
+        else {
+            return Err(
+                re_arrow_util::GetColumnError::from(re_arrow_util::MissingColumnError {
+                    missing: TASK_COLUMN_NAMES.join(" or "),
+                    available: batch
+                        .schema()
+                        .fields()
+                        .iter()
+                        .map(|f| f.name().clone())
+                        .collect(),
+                })
+                .into(),
+            );
+        };
+
+        Ok(batch.try_get_column_as::<StringArray>(name)?)
     }
 }
 
@@ -1162,31 +1196,27 @@ impl LeRobotDatasetV3Subtasks {
 
         let reader = ParquetRecordBatchReaderBuilder::try_new(parquet_data)?.build()?;
 
-        let subtasks = reader
-            .filter_map(|record_batch| {
-                let b = record_batch.ok()?;
-                let subtask_index_col = b.column_by_name("subtask_index")?;
-                let subtask_col = b.column_by_name("subtask")?;
-                let subtask_index = subtask_index_col.downcast_array_ref::<Int64Array>()?;
-                let subtask = subtask_col.downcast_array_ref::<StringArray>()?;
+        let mut subtasks = HashMap::default();
+        for record_batch in reader {
+            let batch = record_batch?;
 
-                let num_rows = b.num_rows();
-                Some(
-                    (0..num_rows)
-                        .map(move |i| {
-                            (
-                                SubtaskIndex(subtask_index.value(i) as usize),
-                                LeRobotDatasetSubtask {
-                                    index: SubtaskIndex(subtask_index.value(i) as usize),
-                                    subtask: subtask.value(i).to_owned(),
-                                },
-                            )
-                        })
-                        .collect(),
-                )
-            })
-            .flat_map(|e: Vec<(SubtaskIndex, LeRobotDatasetSubtask)>| e)
-            .collect::<HashMap<_, _>>();
+            let subtask_index_col = batch.try_get_column_as::<Int64Array>("subtask_index")?;
+            let subtask_col = batch.try_get_column_as::<StringArray>("subtask")?;
+
+            for (subtask_index, subtask) in std::iter::zip(subtask_index_col, subtask_col) {
+                let (Some(subtask_index), Some(subtask)) = (subtask_index, subtask) else {
+                    continue;
+                };
+                let index = SubtaskIndex(subtask_index as usize);
+                subtasks.insert(
+                    index,
+                    LeRobotDatasetSubtask {
+                        index,
+                        subtask: subtask.to_owned(),
+                    },
+                );
+            }
+        }
 
         Ok(Self { subtasks })
     }
