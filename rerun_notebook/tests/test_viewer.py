@@ -64,6 +64,14 @@ def test_send_table_shape(ready_viewer: Viewer) -> None:
     mock_send.assert_called_once_with({"type": "table"}, [b"table_bytes"])
 
 
+# --- Startup options ---
+
+
+def test_theme() -> None:
+    assert Viewer(width=100, height=100)._theme is None
+    assert Viewer(width=100, height=100, theme="light")._theme == "light"
+
+
 # --- Instance isolation ---
 
 

@@ -172,7 +172,7 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
     ).tag(sync=True)
 
     _fallback_token = traitlets.Unicode(allow_none=True).tag(sync=True)
-    _theme = traitlets.Unicode(allow_none=True).tag(sync=True)
+    _theme = traitlets.Unicode(default_value=None, allow_none=True).tag(sync=True)
 
     def __init__(
         self,
