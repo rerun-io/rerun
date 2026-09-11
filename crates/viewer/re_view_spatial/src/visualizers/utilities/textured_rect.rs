@@ -31,12 +31,17 @@ pub fn textured_rect_from_image(
         .store_context
         .memoizer_read_or_compute::<ImageStatsCache, _, _>(image);
 
+    // We may still generate colors from class_ids even if there's no annotation context available.
+    let annotations = ent_context
+        .annotations
+        .unwrap_or_else(|| re_viewer_context::Annotations::missing_ref());
+
     gpu_bridge::image_to_gpu(
         ctx.render_ctx(),
         &debug_name,
         image,
         &image_stats,
-        Some(&ent_context.annotations),
+        Some(annotations),
         colormap,
     )
     .map(|colormapped_texture| {

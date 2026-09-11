@@ -3,7 +3,9 @@ use std::borrow::Cow;
 use nohash_hasher::IntSet;
 use re_query::LatestAtResults;
 use re_types_core::ComponentIdentifier;
-use re_viewer_context::{VisualizerComponentMappings, VisualizerComponentSource};
+use re_viewer_context::{
+    AnnotationContextQuery, VisualizerComponentMappings, VisualizerComponentSource,
+};
 
 use crate::ComponentMappingError;
 use crate::blueprint_resolved_results::{
@@ -29,6 +31,7 @@ pub struct ComponentMappingQueryPlan<'a> {
 impl<'a> ComponentMappingQueryPlan<'a> {
     pub fn new(
         component_mappings: Option<&'a VisualizerComponentMappings>,
+        annotation_context: Option<&AnnotationContextQuery>,
         overrides: &LatestAtResults,
         queried_components: IntSet<ComponentIdentifier>,
     ) -> Self {
@@ -77,6 +80,14 @@ impl<'a> ComponentMappingQueryPlan<'a> {
                     ))
                 }
 
+                VisualizerComponentSource::AnnotationContext
+                    if !annotation_context_resolves(annotation_context, *target_component) =>
+                {
+                    checked_source.with_error(ComponentMappingError::AnnotationContextUnavailable(
+                        *target_component,
+                    ))
+                }
+
                 _ => checked_source,
             };
 
@@ -109,6 +120,19 @@ impl<'a> ComponentMappingQueryPlan<'a> {
     }
 }
 
+/// Returns `true` if the given component is resolved by the annotation context.
+pub fn annotation_context_resolves(
+    annotation_context: Option<&AnnotationContextQuery>,
+    component: ComponentIdentifier,
+) -> bool {
+    annotation_context.is_some_and(|context| {
+        context
+            .targets
+            .iter()
+            .any(|target| target.descriptor().component == component)
+    })
+}
+
 /// Returns `true` if the given component has a non-empty override.
 ///
 /// Cleared overrides contain an empty Arrow array and must be treated as absent.
@@ -138,6 +162,7 @@ mod tests {
     ) -> ComponentMappingQueryPlan<'_> {
         ComponentMappingQueryPlan::new(
             Some(mappings),
+            None,
             &re_query::LatestAtResults::empty(
                 EntityPath::root(),
                 re_chunk_store::LatestAtQuery::new_static(),

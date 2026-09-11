@@ -55,6 +55,7 @@ impl VisualizerSystem for SeriesPointsSystem {
             )
             .cloned()
             .collect(),
+            annotation_context: None,
         }
     }
 

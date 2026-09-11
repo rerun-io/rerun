@@ -65,6 +65,11 @@ snippet: tutorials/annotation_context
 Each entity that uses a Class ID component (and optionally Keypoint ID components) will look for
 the nearest ancestor in the [entity path hierarchy](../logging-and-ingestion/entity-path.md#path-hierarchy-functions) that has an Annotation Context defined.
 
+For fields that support annotation context, the Viewer automatically uses recorded values when available, otherwise annotation context when Class IDs or Keypoint IDs are present.
+You can also select annotation context explicitly with a [visualizer component mapping](../../howto/visualization/component-mappings.md).
+Once annotation context is selected as the source for a field, recorded values for that field are ignored.
+The Viewer resolves values from Class IDs and Keypoint IDs, then uses the view default or visualizer fallback when the annotation context does not define a value.
+
 
 ## Segmentation images
 

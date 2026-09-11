@@ -50,6 +50,17 @@ class ComponentSourceKind(Enum):
     a heuristically determined value will be used instead.
     """
 
+    AnnotationContext = 4
+    """
+    Resolve the value from class and keypoint IDs using the recording's annotation context.
+
+    If the annotation context does not provide a value, default values are used instead.
+    (Any overlapping recording values for the target component are ignored.)
+
+    This is only available for visualizers that support annotation context.
+    Selecting it for an unsupported component is an error.
+    """
+
     @classmethod
     def auto(cls, val: str | int | ComponentSourceKind) -> ComponentSourceKind:
         """Best-effort converter, including a case-insensitive string matcher."""
@@ -73,14 +84,32 @@ class ComponentSourceKind(Enum):
 
 ComponentSourceKindLike = (
     ComponentSourceKind
-    | Literal["Default", "Override", "SourceComponent", "default", "override", "sourcecomponent"]
+    | Literal[
+        "AnnotationContext",
+        "Default",
+        "Override",
+        "SourceComponent",
+        "annotationcontext",
+        "default",
+        "override",
+        "sourcecomponent",
+    ]
     | int
 )
 """A type alias for any ComponentSourceKind-like object."""
 
 ComponentSourceKindArrayLike = (
     ComponentSourceKind
-    | Literal["Default", "Override", "SourceComponent", "default", "override", "sourcecomponent"]
+    | Literal[
+        "AnnotationContext",
+        "Default",
+        "Override",
+        "SourceComponent",
+        "annotationcontext",
+        "default",
+        "override",
+        "sourcecomponent",
+    ]
     | int
     | Sequence[ComponentSourceKindLike]
 )

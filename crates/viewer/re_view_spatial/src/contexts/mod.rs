@@ -14,7 +14,7 @@ pub struct SpatialSceneVisualizerInstructionContext<'a> {
     pub visualizer_instruction: VisualizerInstructionId,
     pub transform_info: &'a TransformInfo,
     pub depth_offset: DepthOffset,
-    pub annotations: std::sync::Arc<Annotations>,
+    pub annotations: Option<&'a Annotations>,
 
     pub highlight: &'a re_viewer_context::ViewOutlineMasks, // Not part of the context, but convenient to have here.
     pub view_class_identifier: ViewClassIdentifier,

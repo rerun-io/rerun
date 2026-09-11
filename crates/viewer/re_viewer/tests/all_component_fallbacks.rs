@@ -30,6 +30,7 @@ fn test_all_component_fallbacks() {
                 instruction_id: None,
                 archetype_name: Some(*arch_name),
                 query: test_context.blueprint_query.clone(),
+                annotation_context: None,
             };
             let mut arch_display = String::new();
 

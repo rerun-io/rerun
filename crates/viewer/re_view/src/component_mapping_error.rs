@@ -22,6 +22,9 @@ pub enum ComponentMappingError {
         err: Arc<arrow::error::ArrowError>,
     },
 
+    #[error("Annotation context cannot provide component '{0}'.")]
+    AnnotationContextUnavailable(ComponentIdentifier),
+
     #[error("No override is available for component '{0}'.")]
     OverrideUnavailable(ComponentIdentifier),
 
@@ -76,7 +79,8 @@ impl ComponentMappingError {
             } => {
                 format!("Failed to cast from {source_datatype} to {target_datatype}.")
             }
-            Self::OverrideUnavailable(_)
+            Self::AnnotationContextUnavailable(_)
+            | Self::OverrideUnavailable(_)
             | Self::ComponentNotPresentOnEntity { .. }
             | Self::NoComponentDataForQuery(_)
             | Self::NoComponentDataForQueryButIsFetchable(_) => self.to_string(),
@@ -108,7 +112,8 @@ impl ComponentMappingError {
                     "Components with a matching suffix: {listed_components}{ending}"
                 ))
             }
-            Self::OverrideUnavailable(_)
+            Self::AnnotationContextUnavailable(_)
+            | Self::OverrideUnavailable(_)
             | Self::ComponentNotPresentOnEntity { .. }
             | Self::NoComponentDataForQuery(_)
             | Self::NoComponentDataForQueryButIsFetchable(_) => None,

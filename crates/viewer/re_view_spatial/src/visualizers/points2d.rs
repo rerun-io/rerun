@@ -3,7 +3,7 @@ use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId, PointCloudBuilder
 use re_sdk_types::archetypes::Points2D;
 use re_sdk_types::components::{ClassId, Color, KeypointId, Position2D, Radius, ShowLabels};
 use re_sdk_types::{Archetype as _, ArrowString};
-use re_view::{process_annotation_and_keypoint_slices, process_color_slice};
+use re_view::{process_color_slice, process_keypoint_slices};
 use re_viewer_context::{
     IdentifiedViewSystem, QueryContext, ViewClass as _, ViewContext, ViewContextCollection,
     ViewQuery, ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo,
@@ -55,13 +55,12 @@ impl Points2DVisualizer {
                 .map(|i| PickingLayerInstanceId(i as _))
                 .collect_vec();
 
-            let (annotation_infos, keypoints) = process_annotation_and_keypoint_slices(
+            let keypoints = process_keypoint_slices(
                 query.latest_at,
                 num_instances,
                 positions.iter().copied(),
                 data.keypoint_ids,
                 data.class_ids,
-                &ent_context.annotations,
             );
 
             let radii = process_radius_slice(
@@ -75,7 +74,6 @@ impl Points2DVisualizer {
                 ctx,
                 Points2D::descriptor_colors().component,
                 num_instances,
-                &annotation_infos,
                 data.colors,
             );
 
@@ -134,13 +132,15 @@ impl Points2DVisualizer {
                 SpaceKind::TwoD,
             );
 
-            load_keypoint_connections(
-                line_builder,
-                &ent_context.annotations,
-                world_from_obj,
-                entity_path,
-                &keypoints,
-            )?;
+            if let Some(annotations) = ent_context.annotations {
+                load_keypoint_connections(
+                    line_builder,
+                    annotations,
+                    world_from_obj,
+                    entity_path,
+                    &keypoints,
+                )?;
+            }
 
             view_data.ui_labels.extend(process_labels_2d(
                 LabeledBatch {
@@ -154,7 +154,6 @@ impl Points2DVisualizer {
                     show_labels: data.show_labels.unwrap_or_else(|| {
                         typed_fallback_for(ctx, Points2D::descriptor_show_labels().component)
                     }),
-                    annotation_infos: &annotation_infos,
                 },
                 world_from_obj,
             ));
@@ -199,6 +198,16 @@ impl VisualizerSystem for Points2DVisualizer {
         VisualizerQueryInfo::single_required_component::<Position2D>(
             &Points2D::descriptor_positions(),
             &Points2D::all_components(),
+        )
+        .with_annotation_context(
+            re_viewer_context::AnnotationContextQuery::new(
+                Points2D::descriptor_class_ids().component,
+                [
+                    re_viewer_context::AnnotationContextTarget::color(Points2D::descriptor_colors()),
+                    re_viewer_context::AnnotationContextTarget::label(Points2D::descriptor_labels()),
+                ],
+            )
+            .with_keypoint_ids(Points2D::descriptor_keypoint_ids().component),
         )
     }
 
@@ -323,13 +332,16 @@ impl VisualizerSystem for Points2DVisualizer {
 #[cfg(test)]
 mod tests {
     use re_log_types::{TimeInt, TimePoint};
+    use re_sdk_types::VisualizableArchetype as _;
     use re_sdk_types::archetypes::{AnnotationContext, Points2D};
     use re_sdk_types::blueprint::{
-        archetypes::VisibleTimeRanges, components as blueprint_components,
+        archetypes::VisibleTimeRanges,
+        components as blueprint_components,
+        encodings::{ComponentSourceKind, VisualizerComponentMapping},
     };
     use re_sdk_types::components::{ClassId, Color};
     use re_sdk_types::datatypes::{self, TimeRange, TimeRangeBoundary, VisibleTimeRange};
-    use re_test_context::TestContext;
+    use re_test_context::{TestContext, VisualizerBlueprintContext as _};
     use re_test_viewport::TestContextExt as _;
     use re_viewer_context::{ViewClass as _, ViewId};
     use re_viewport_blueprint::{ViewBlueprint, ViewProperty};
@@ -372,7 +384,8 @@ mod tests {
         // frame:      1             2                 3          4                  5
         // colors:     R/G/B         omitted           []         omitted            blue
         // class IDs:  omitted       3                 omitted    []                 3
-        // expected: manual RGB; annotation label and RGB; annotation 3; manual label only; annotation label and blue
+        // Explicit annotation mappings must ignore the recorded colors and labels, including resets.
+        // Their output follows only the ID batches and the annotation context at the cursor.
         ctx.log_entity("points", |builder| {
             builder.with_archetype_auto_row(
                 [(timeline, 1)],
@@ -434,13 +447,15 @@ mod tests {
         });
         for frame in [1, 2] {
             ctx.log_entity("points", |builder| {
-                builder.with_archetype_auto_row(
-                    [(timeline, frame)],
-                    &Points2D::new([(10.0, frame as f32)])
-                        .with_show_labels(true)
-                        .with_class_ids([3])
-                        .with_keypoint_ids([7]),
-                )
+                let points = Points2D::new([(10.0, frame as f32)])
+                    .with_show_labels(true)
+                    .with_keypoint_ids([7]);
+                let points = if frame == 1 {
+                    points.with_class_ids([3])
+                } else {
+                    points
+                };
+                builder.with_archetype_auto_row([(timeline, frame)], &points)
             });
         }
 
@@ -485,10 +500,16 @@ mod tests {
         labels.into_inner()
     }
 
+    #[track_caller]
     fn assert_labels(labels: &[UiLabel], expected: &[(&str, Color)]) {
-        assert_eq!(expected.len(), labels.len());
+        assert_eq!(
+            labels.len(),
+            expected.len(),
+            "Labels: {:?}",
+            labels.iter().map(|label| &label.text).collect::<Vec<_>>(),
+        );
         for (label, (expected_text, expected_color)) in std::iter::zip(labels.iter(), expected) {
-            assert_eq!(*expected_text, label.text);
+            assert_eq!(label.text, *expected_text);
             assert!(label.style == UiLabelStyle::Color((*expected_color).into()));
         }
     }
@@ -531,7 +552,44 @@ mod tests {
             ))
         });
 
+        test_context.set_time(2);
+        assert_labels(
+            &collect_labels(&test_context, view_id),
+            &[("keypoint", RED)],
+        );
+    }
+
+    #[test]
+    fn keypoint_annotations_default_to_class_zero() {
+        let mut test_context = TestContext::new_with_view_class::<crate::SpatialView2D>();
+        let timeline = re_log_types::Timeline::new_sequence("frame");
+        test_context.log_entity("/", |builder| {
+            builder.with_archetype_auto_row(
+                TimePoint::STATIC,
+                &AnnotationContext::new([datatypes::ClassDescription {
+                    info: (0, "class", ANN.0).into(),
+                    keypoint_annotations: vec![(7, "keypoint", RED.0).into()],
+                    keypoint_connections: Vec::new(),
+                }]),
+            )
+        });
+        test_context.log_entity("points", |builder| {
+            builder.with_archetype_auto_row(
+                [(timeline, 1)],
+                &Points2D::new([(10.0, 1.0)])
+                    .with_show_labels(true)
+                    .with_keypoint_ids([7]),
+            )
+        });
+        test_context.set_active_timeline(*timeline.name());
+
+        let view_id = test_context.setup_viewport_blueprint(|_ctx, blueprint| {
+            blueprint.add_view_at_root(ViewBlueprint::new_with_root_wildcard(
+                crate::SpatialView2D::identifier(),
+            ))
+        });
         test_context.set_time(1);
+
         assert_labels(
             &collect_labels(&test_context, view_id),
             &[("keypoint", RED)],
@@ -550,44 +608,29 @@ mod tests {
         );
     }
 
-    #[test]
-    fn range_empty_class_id_batch_uses_registered_color_fallback() {
-        let mut test_context = TestContext::new_with_view_class::<crate::SpatialView2D>();
-        let timeline = re_log_types::Timeline::new_sequence("frame");
-        test_context.log_entity("/", |builder| {
-            builder.with_archetype_auto_row(
-                TimePoint::STATIC,
-                &AnnotationContext::new([(3, "annotation-label", ANN.0)]),
-            )
+    fn select_annotation_sources(test_context: &mut TestContext, view_id: ViewId) {
+        test_context.setup_viewport_blueprint(|ctx, _blueprint| {
+            ctx.save_visualizers(
+                &"points".into(),
+                view_id,
+                [Points2D::default().visualizer().with_mappings(
+                    [Points2D::descriptor_colors(), Points2D::descriptor_labels()].map(|target| {
+                        VisualizerComponentMapping {
+                            target: target.component.as_str().into(),
+                            source_kind: ComponentSourceKind::AnnotationContext,
+                            source_component: None,
+                            selector: None,
+                        }
+                        .into()
+                    }),
+                )],
+            );
         });
-
-        // In frame 2 there's no class id which should yield the fallback color.
-        for (frame, class_ids) in [(1, vec![3]), (2, vec![]), (3, vec![3])] {
-            test_context.log_entity("points", |builder| {
-                builder.with_archetype_auto_row(
-                    [(timeline, frame)],
-                    &Points2D::new([(10.0, frame as f32)])
-                        .with_show_labels(true)
-                        .with_labels(["marker"])
-                        .with_class_ids(class_ids),
-                )
-            });
-        }
-        test_context.set_active_timeline(*timeline.name());
-        let view_id = setup_view_with_visible_time_range(&mut test_context, 3);
-
-        let labels = collect_labels(&test_context, view_id);
-        let fallback = re_viewer_context::auto_color_for_entity_path(
-            &re_log_types::EntityPath::from("points"),
-        );
-        assert_labels(
-            &labels,
-            &[("marker", ANN), ("marker", fallback), ("marker", ANN)],
-        );
     }
 
+    /// Explicit annotation selection replaces recorded styling; clearing IDs must not reveal recorded labels.
     #[test]
-    fn color_resolution_mixes_manual_colors_and_annotation_context_latest_at() {
+    fn explicit_annotation_source_ignores_recorded_values_latest_at() {
         let mut test_context = TestContext::new_with_view_class::<crate::SpatialView2D>();
         setup_entities(&mut test_context);
 
@@ -607,76 +650,41 @@ mod tests {
             ],
         );
 
+        select_annotation_sources(&mut test_context, view_id);
         test_context.set_time(2);
+        assert_labels(&collect_labels(&test_context, view_id), &[("three", ANN)]);
+
+        test_context.set_time(3);
+        assert_labels(&collect_labels(&test_context, view_id), &[("three", ANN)]);
+
+        test_context.set_time(4);
+        assert!(collect_labels(&test_context, view_id).is_empty());
+
+        test_context.set_time(5);
         assert_labels(
             &collect_labels(&test_context, view_id),
-            &[("three", RED), ("three", GREEN), ("three", BLUE)],
+            &[("three-updated", LATE_ANN)],
         );
+    }
 
+    /// Explicit annotation mappings exclude recorded events across the range and use annotation metadata at the cursor.
+    #[test]
+    fn color_resolution_uses_only_annotation_context_across_range() {
+        let mut test_context = TestContext::new_with_view_class::<crate::SpatialView2D>();
+        setup_entities(&mut test_context);
+
+        let view_id = setup_view_with_visible_time_range(&mut test_context, 5);
+        select_annotation_sources(&mut test_context, view_id);
         test_context.set_time(3);
         assert_labels(
             &collect_labels(&test_context, view_id),
             &[("three", ANN); 3],
         );
 
-        test_context.set_time(4);
-        let no_class_id = collect_labels(&test_context, view_id);
-        assert_eq!(1, no_class_id.len());
-        assert_eq!("manual-label-after-class-reset", no_class_id[0].text);
-        assert!(no_class_id[0].style != UiLabelStyle::Color(ANN.into()));
-
         test_context.set_time(5);
         assert_labels(
             &collect_labels(&test_context, view_id),
-            &[("three-updated", BLUE); 3],
+            &[("three-updated", LATE_ANN); 3],
         );
-    }
-
-    #[test]
-    fn color_resolution_mixes_manual_colors_and_annotation_context_range() {
-        let mut test_context = TestContext::new_with_view_class::<crate::SpatialView2D>();
-        setup_entities(&mut test_context);
-
-        let view_id = setup_view_with_visible_time_range(&mut test_context, 5);
-
-        // Range covers the end-to-end range-zip path: optional colors and class IDs must carry
-        // forward when omitted and reset when logged as empty, independently of one another.
-        // The annotation context is resolved latest-at the cursor and applies to the entire range.
-        test_context.set_time(3);
-        let range = collect_labels(&test_context, view_id);
-        assert_eq!(13, range.len());
-
-        let expected_before_class_reset = [
-            // 1
-            ("manual-red", RED),
-            ("manual-green", GREEN),
-            ("manual-blue", BLUE),
-            // 2
-            ("three", RED),
-            ("three", GREEN),
-            ("three", BLUE),
-            // 3
-            ("three", ANN),
-            ("three", ANN),
-            ("three", ANN),
-        ];
-        assert_labels(&range[..9], &expected_before_class_reset);
-
-        // Don't hard-code the fallback color after the class-id reset: the important behavior is
-        // that the annotation label/color no longer applies, not which fallback color is chosen.
-        assert_eq!("manual-label-after-class-reset", range[9].text);
-        assert!(range[9].style != UiLabelStyle::Color(ANN.into()));
-
-        assert_labels(&range[10..], &[("three", BLUE); 3]);
-
-        test_context.set_time(5);
-        let range_after_context_update = collect_labels(&test_context, view_id);
-        assert_eq!(13, range_after_context_update.len());
-        for index in [3, 4, 5, 6, 7, 8, 10, 11, 12] {
-            assert_eq!("three-updated", range_after_context_update[index].text);
-        }
-        for label in &range_after_context_update[6..9] {
-            assert!(label.style == UiLabelStyle::Color(LATE_ANN.into()));
-        }
     }
 }

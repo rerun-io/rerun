@@ -17,7 +17,7 @@ use re_types_core::external::arrow::array::ArrayRef;
 use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::menu::menu_style;
 use re_ui::{ComboItem, OnResponseExt as _, UiExt as _, design_tokens_of_visuals, list_item};
-use re_view::{ComponentMappingError, latest_at_with_blueprint_resolved_data};
+use re_view::{AnnotationMapCache, ComponentMappingError, latest_at_with_blueprint_resolved_data};
 use re_viewer_context::{
     BlueprintContext as _, DataResult, DatatypeMatch, RecommendedMappings, TryShowEditUiResult,
     UiLayout, ViewContext, ViewSystemIdentifier, ViewerReportSeverity, VisualizableReason,
@@ -90,12 +90,14 @@ a variety of sources. Use the source selector to choose where a component's valu
 A component can use one of the following sources:
 - **Recording component**: A component logged on this entity. The source may be the component the \
 visualizer normally uses or another compatible component selected in the UI.
+- **Annotation context**: A color or label resolved from class and keypoint IDs when the visualizer \
+supports annotation context.
 - **Custom**: A value set in the UI and stored in the blueprint for this visualizer.
 - **View default**: A value set for the current view. If none was set, the visualizer provides a \
 context-sensitive default.
 
 When no source has been selected explicitly, the Viewer automatically chooses an available source, \
-preferring recording data before the view default.";
+preferring recording data and annotation context before the view default.";
 
     ui.section_collapsing_header("Visualizers")
         .with_button(button)
@@ -251,7 +253,6 @@ fn visualizer_components(
     .values()
     .flatten()
     {
-        // TODO(andreas): What about annotation context?
         let target_component = target_component_descr.component;
 
         // Query override & default since we need them later on.
@@ -359,6 +360,8 @@ fn visualizer_components(
             }
         };
 
+        let annotation_map = AnnotationMapCache::for_query(ctx.viewer_ctx, &query_ctx.query);
+        let annotations = annotation_map.find(&data_result.entity_path);
         let add_children = |ui: &mut egui::Ui| {
             let raw_default = raw_default();
             let mapping_ctx = SourceMappingContext {
@@ -369,6 +372,7 @@ fn visualizer_components(
                 instruction,
                 source,
                 raw_default: &raw_default,
+                annotations,
             };
             // Source component (if available).
             source_selector_ui(
@@ -464,12 +468,15 @@ impl<'a> SourceSelectorContext<'a> {
         type_report: Option<&'a re_viewer_context::VisualizerTypeReport>,
     ) -> Self {
         let query_info = visualizer.visualizer_query_info(ctx.viewer_ctx.app_options());
+        let store_query = ctx.current_query();
+        let annotation_map = AnnotationMapCache::for_query(ctx.viewer_ctx, &store_query);
+        let annotations = annotation_map.find(&data_result.entity_path);
 
         // Query fully resolved data.
         let query_result = latest_at_with_blueprint_resolved_data(
             ctx,
-            None,
-            &ctx.current_query(),
+            annotations,
+            &store_query,
             data_result,
             query_info.queried_components(),
             Some(instruction),
@@ -552,6 +559,11 @@ impl<'a> SourceSelectorContext<'a> {
             .flat_map(|r| r.reports_for_component(&self.instruction.id, target_component))
             .collect();
 
+        let annotation_map = AnnotationMapCache::for_query(
+            self.ctx.viewer_ctx,
+            &self.query_result.query_context().query,
+        );
+        let annotations = annotation_map.find(&self.data_result.entity_path);
         let mapping_ctx = SourceMappingContext {
             data_result: self.data_result,
             query_ctx: self.query_result.query_context(),
@@ -560,6 +572,7 @@ impl<'a> SourceSelectorContext<'a> {
             instruction: self.instruction,
             source,
             raw_default: &raw_default,
+            annotations,
         };
 
         ui.push_id(target_component, |ui| {
@@ -742,6 +755,7 @@ struct SourceMappingContext<'a> {
     instruction: &'a VisualizerInstruction,
     source: &'a VisualizerComponentSource,
     raw_default: &'a ArrayRef,
+    annotations: Option<&'a re_viewer_context::Annotations>,
 }
 
 impl<'a> SourceMappingContext<'a> {
@@ -822,6 +836,16 @@ fn source_component_items_ui(
 ) {
     let mut options =
         collect_source_component_options(mapping_ctx, entity_components_with_datatype, query_info);
+
+    if raw_value_for_mapping(
+        mapping_ctx,
+        mapping_ctx.annotations,
+        &VisualizerComponentSource::AnnotationContext,
+    )
+    .is_some_and(|value| !value.is_empty())
+    {
+        options.push(VisualizerComponentSource::AnnotationContext);
+    }
 
     let raw_override = mapping_ctx.viewer_ctx().raw_latest_at_in_current_blueprint(
         &mapping_ctx.instruction.override_path,
@@ -917,13 +941,18 @@ fn extract_recommended_source_options(
     // for the original design & rationale.
 
     let target_component = mapping_ctx.target_component();
+    let has_annotation_context = options.contains(&VisualizerComponentSource::AnnotationContext);
 
     // Rule 1: Identity mapping is recommended.
     if options
         .iter()
         .any(|source| source.is_identity_mapping(target_component))
     {
-        return vec![VisualizerComponentSource::identity(target_component)];
+        let mut recommended = vec![VisualizerComponentSource::identity(target_component)];
+        if has_annotation_context {
+            recommended.push(VisualizerComponentSource::AnnotationContext);
+        }
+        return recommended;
     }
 
     // Rule 2: View-recommended mappings are recommended.
@@ -943,7 +972,7 @@ fn extract_recommended_source_options(
         .all_recommendations()
         .get(&mapping_ctx.instruction.visualizer_type)
     {
-        let recommended: Vec<_> = recommended_mappings
+        let mut recommended: Vec<_> = recommended_mappings
             .iter()
             .filter_map(|mappings| mappings.get_source_for_component(&target_component))
             .filter(|source| options.contains(source))
@@ -951,11 +980,21 @@ fn extract_recommended_source_options(
             .collect();
 
         if !recommended.is_empty() {
+            if has_annotation_context
+                && !recommended.contains(&VisualizerComponentSource::AnnotationContext)
+            {
+                recommended.push(VisualizerComponentSource::AnnotationContext);
+            }
             return recommended;
         }
     }
 
-    // Rule 3: Default is recommended if present in the option list & non-empty.
+    // Rule 3: Annotation context is recommended when it resolves a value.
+    if has_annotation_context {
+        return vec![VisualizerComponentSource::AnnotationContext];
+    }
+
+    // Rule 4: Default is recommended if present in the option list & non-empty.
     if !mapping_ctx.raw_default.is_empty() && options.contains(&VisualizerComponentSource::Default)
     {
         return vec![VisualizerComponentSource::Default];
@@ -975,7 +1014,7 @@ fn source_component_item_ui(
 ) {
     let selected = source == current;
 
-    let raw_value = raw_value_for_mapping(mapping_ctx, source);
+    let raw_value = raw_value_for_mapping(mapping_ctx, mapping_ctx.annotations, source);
 
     let mut item = ComboItem::new(source.summary()).selected(selected);
 
@@ -1017,6 +1056,7 @@ fn source_component_item_ui(
 
 fn raw_value_for_mapping(
     mapping_ctx: &SourceMappingContext<'_>,
+    annotations: Option<&re_viewer_context::Annotations>,
     new_source: &VisualizerComponentSource,
 ) -> Option<Arc<dyn re_chunk::ArrowArray>> {
     let target_component = mapping_ctx.target_component();
@@ -1033,7 +1073,7 @@ fn raw_value_for_mapping(
         };
         let query_result = latest_at_with_blueprint_resolved_data(
             mapping_ctx.view_ctx(),
-            None,
+            annotations,
             &mapping_ctx.query_ctx.query,
             mapping_ctx.data_result,
             [target_component],

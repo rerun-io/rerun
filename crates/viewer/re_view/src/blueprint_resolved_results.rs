@@ -104,6 +104,13 @@ pub struct BlueprintResolvedLatestAtResults<'a> {
 
     /// Hash of the visualizer instruction's component mappings.
     pub(crate) component_mappings_hash: Hash64,
+
+    /// Components resolved from annotation context.
+    pub(crate) annotation_resolved: IntMap<ComponentIdentifier, UnitChunkShared>,
+
+    /// Row ID of the annotation context, needed to invalidate caches when annotation definitions change.
+    /// Synthesized chunks use class/keypoint row IDs, or zero for latest-at results.
+    pub(crate) annotation_context_row_id: Option<re_chunk::RowId>,
 }
 
 pub type ResolvedUnitChunkResult<'a> =
@@ -117,7 +124,7 @@ impl<'a> BlueprintResolvedLatestAtResults<'a> {
             + self.view_defaults.missing_virtual.len()
     }
 
-    /// Returns the [`UnitChunkShared`] for the given component, respecting overrides, store results, and defaults.
+    /// Returns the [`UnitChunkShared`] for the given component, respecting overrides, store results, annotation context, and defaults.
     ///
     /// `force_preserve_store_row_ids`: If true, preserves row IDs from store data.
     /// If false, results are re-indexed to static with zeroed row IDs to allow range zipping.
@@ -167,6 +174,12 @@ impl<'a> BlueprintResolvedLatestAtResults<'a> {
             }
             ComponentSourceKind::Override => self.overrides.get(component),
             ComponentSourceKind::Default => self.view_defaults.get(component),
+            ComponentSourceKind::AnnotationContext => {
+                return Some((
+                    source,
+                    Ok(self.annotation_resolved.get(&component).map(Cow::Borrowed)),
+                ));
+            }
         };
 
         if let Some(unit_chunk) = blueprint_unit_chunk {
@@ -201,6 +214,12 @@ pub struct BlueprintResolvedRangeResults<'a> {
 
     /// Hash of the visualizer instruction's component mappings.
     pub(crate) component_mappings_hash: Hash64,
+
+    /// Components resolved from annotation context.
+    pub(crate) annotation_resolved: IntMap<ComponentIdentifier, Vec<re_chunk::Chunk>>,
+
+    /// See [`BlueprintResolvedLatestAtResults::annotation_context_row_id`].
+    pub(crate) annotation_context_row_id: Option<re_chunk::RowId>,
 }
 
 impl<'a> BlueprintResolvedRangeResults<'a> {
@@ -240,7 +259,8 @@ impl<'a> BlueprintResolvedRangeResults<'a> {
                         Some(
                             ComponentMappingError::ComponentNotPresentOnEntity { .. }
                             | ComponentMappingError::NoComponentDataForQuery(_)
-                            | ComponentMappingError::NoComponentDataForQueryButIsFetchable(_),
+                            | ComponentMappingError::NoComponentDataForQueryButIsFetchable(_)
+                            | ComponentMappingError::AnnotationContextUnavailable(_),
                         ) => {
                             // No component data was found in the bootstrap data.
                             // Data may only exist within the range actual range, if not it has the error already!
@@ -421,8 +441,14 @@ impl BlueprintResolvedResults<'_> {
                         .values()
                         .filter_map(|chunk| chunk.row_id()),
                 );
+                // Synthesized annotation context row IDs are zeroed out, no point in including them.
+                // Class/keypoint ids should already be in the store results.
 
-                Hash64::hash((&indices, r.component_mappings_hash))
+                Hash64::hash((
+                    &indices,
+                    r.component_mappings_hash,
+                    r.annotation_context_row_id,
+                ))
             }
 
             Self::Range(_, r) => {
@@ -450,8 +476,21 @@ impl BlueprintResolvedResults<'_> {
                             .flat_map(|chunk| chunk.component_row_ids(*component))
                     },
                 ));
+                indices.extend(
+                    r.annotation_resolved
+                        .iter()
+                        .flat_map(|(component, chunks)| {
+                            chunks
+                                .iter()
+                                .flat_map(|chunk| chunk.component_row_ids(*component))
+                        }),
+                );
 
-                Hash64::hash((&indices, r.component_mappings_hash))
+                Hash64::hash((
+                    &indices,
+                    r.component_mappings_hash,
+                    r.annotation_context_row_id,
+                ))
             }
         }
     }
@@ -662,6 +701,12 @@ impl BlueprintResolvedResultsExt<'_> for BlueprintResolvedRangeResults<'_> {
                         ])
                     })
             }
+            VisualizerComponentSource::AnnotationContext => self
+                .annotation_resolved
+                .get(&component)
+                .map_or(Cow::Owned(Vec::new()), |chunks| {
+                    Cow::Borrowed(chunks.as_slice())
+                }),
         };
 
         MaybeChunksWithComponent {

@@ -17,10 +17,6 @@ use crate::{
 };
 
 /// Configuration data needed to build a [`VisualizerEntitySubscriber`].
-///
-/// This is the immutable "template" stored in the [`crate::ViewClassRegistry`],
-/// extracted from a visualizer's query info at registration time.
-// We use Arc:s, so this is more or less amortized.
 #[derive(Clone, re_byte_size::SizeBytes)] // Cheap to clone; uses ref-counted data internally.
 pub struct VisualizerEntityConfig {
     /// Visualizer type this config is associated with.

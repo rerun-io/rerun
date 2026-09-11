@@ -257,7 +257,7 @@ impl GridMapVisualizer {
             &entity_path.to_string(),
             &image,
             &image_stats,
-            Some(&spatial_ctx.annotations),
+            spatial_ctx.annotations,
             color_mode.colormap(),
         ) {
             Ok(texture) => texture,

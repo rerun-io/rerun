@@ -44,7 +44,7 @@ where
     let depth_offsets = context_systems.get::<EntityDepthOffsets>(output)?;
 
     let latest_at = query.latest_at_query();
-    let annotations = AnnotationMapCache::for_query(ctx.viewer_ctx, &latest_at);
+    let annotations = AnnotationMapCache::for_query(ctx.viewer_ctx, &query.latest_at_query());
 
     let system_identifier = V::identifier();
     let archetype_kind = spatial_view_kind_from_affinity(visualizer.affinity());
@@ -79,8 +79,12 @@ where
             view_class_identifier: context_systems.view_class_identifier(),
         };
 
-        let results =
-            data_result.query_archetype_with_history::<A>(ctx, query, visualizer_instruction);
+        let results = data_result.query_archetype_with_history::<A>(
+            ctx,
+            query,
+            visualizer_instruction,
+            instruction_context.annotations,
+        );
 
         let visualizer_instruction_result =
             VisualizerInstructionQueryResults::new(visualizer_instruction, &results, output);

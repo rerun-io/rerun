@@ -3,7 +3,7 @@ use std::iter;
 use re_chunk_store::external::re_chunk::ChunkComponentIterItem;
 use re_sdk_types::Archetype as _;
 use re_sdk_types::archetypes::Boxes3D;
-use re_sdk_types::components::{ClassId, Color, FillMode, HalfSize3D, Radius, ShowLabels};
+use re_sdk_types::components::{Color, FillMode, HalfSize3D, Radius, ShowLabels};
 use re_sdk_types::reflection::Enum as _;
 use re_sdk_types::{ArrowString, components};
 use re_viewer_context::{
@@ -59,7 +59,6 @@ impl Boxes3DVisualizer {
                     colors: batch.colors,
                     labels: &batch.labels,
                     show_labels: batch.show_labels,
-                    class_ids: batch.class_ids,
                 },
             )?;
         }
@@ -81,7 +80,6 @@ struct Boxes3DComponentData<'a> {
     colors: &'a [Color],
     radii: &'a [Radius],
     labels: Vec<ArrowString>,
-    class_ids: &'a [ClassId],
 
     // Non-repeated
     show_labels: Option<ShowLabels>,
@@ -106,6 +104,13 @@ impl VisualizerSystem for Boxes3DVisualizer {
             &Boxes3D::descriptor_half_sizes(),
             &Boxes3D::all_components(),
         )
+        .with_annotation_context(re_viewer_context::AnnotationContextQuery::new(
+            Boxes3D::descriptor_class_ids().component,
+            [
+                re_viewer_context::AnnotationContextTarget::color(Boxes3D::descriptor_colors()),
+                re_viewer_context::AnnotationContextTarget::label(Boxes3D::descriptor_labels()),
+            ],
+        ))
     }
 
     fn affinity(&self) -> Option<re_sdk_types::ViewClassIdentifier> {
@@ -123,7 +128,6 @@ impl VisualizerSystem for Boxes3DVisualizer {
         let mut builder = ProcMeshDrawableBuilder::new(
             &mut data,
             ctx.viewer_ctx.render_ctx(),
-            view_query,
             &output,
             "boxes3d",
         );
@@ -159,8 +163,6 @@ impl VisualizerSystem for Boxes3DVisualizer {
                 let all_colors = results.iter_optional(Boxes3D::descriptor_colors().component);
                 let all_radii = results.iter_optional(Boxes3D::descriptor_radii().component);
                 let all_labels = results.iter_optional(Boxes3D::descriptor_labels().component);
-                let all_class_ids =
-                    results.iter_optional(Boxes3D::descriptor_class_ids().component);
                 let all_show_labels =
                     results.iter_optional(Boxes3D::descriptor_show_labels().component);
 
@@ -180,7 +182,7 @@ impl VisualizerSystem for Boxes3DVisualizer {
                     builder.line_builder.reserve_vertices(num_boxes * 16)?;
                 }
 
-                let data = re_query::range_zip_1x8(
+                let data = re_query::range_zip_1x7(
                     all_half_sizes.slice::<[f32; 3]>(),
                     all_centers.slice::<[f32; 3]>(),
                     all_rotation_axis_angles.component_slow::<components::RotationAxisAngle>(),
@@ -188,7 +190,6 @@ impl VisualizerSystem for Boxes3DVisualizer {
                     all_colors.slice::<u32>(),
                     all_radii.slice::<f32>(),
                     all_labels.slice::<String>(),
-                    all_class_ids.slice::<u16>(),
                     all_show_labels.slice::<bool>(),
                 )
                 .map(
@@ -201,7 +202,6 @@ impl VisualizerSystem for Boxes3DVisualizer {
                         colors,
                         radii,
                         labels,
-                        class_ids,
                         show_labels,
                     )| {
                         Boxes3DComponentData {
@@ -214,8 +214,6 @@ impl VisualizerSystem for Boxes3DVisualizer {
                             // fill mode is currently a non-repeated component
                             fill_mode,
                             labels: labels.unwrap_or_default(),
-                            class_ids: class_ids
-                                .map_or(&[], |class_ids| bytemuck::cast_slice(class_ids)),
                             show_labels: show_labels
                                 .map(|b| !b.is_empty() && b.value(0))
                                 .map(Into::into),

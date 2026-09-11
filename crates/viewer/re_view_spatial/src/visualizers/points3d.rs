@@ -16,11 +16,11 @@ use re_sdk_types::components::{
     ClassId, Color, KeypointId, PointShading, Position3D, Radius, ShowLabels,
 };
 use re_sdk_types::reflection::Enum as _;
-use re_view::{process_annotation_and_keypoint_slices, process_color_slice};
+use re_view::{process_color_slice, process_keypoint_slices};
 use re_viewer_context::{
-    Cache, IdentifiedViewSystem, QueryContext, ResolvedAnnotationInfos, ViewClass as _,
-    ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError,
-    VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
+    Cache, IdentifiedViewSystem, QueryContext, ViewClass as _, ViewContext, ViewContextCollection,
+    ViewQuery, ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo,
+    VisualizerSystem, typed_fallback_for,
 };
 
 use super::utilities::LabeledBatch;
@@ -66,7 +66,6 @@ struct Points3DCpu {
     robust_bounds: re_renderer::RobustBounds,
 
     picking_ids: Vec<PickingLayerInstanceId>,
-    annotation_infos: ResolvedAnnotationInfos,
     keypoints: Keypoints,
     colors: Vec<egui::Color32>,
 
@@ -84,7 +83,6 @@ impl Points3DCpu {
         ctx: &QueryContext<'_>,
         entity_path: &re_log_types::EntityPath,
         query: &ViewQuery<'_>,
-        ent_context: &SpatialSceneVisualizerInstructionContext<'_>,
         data: &Points3DComponentData<'_>,
     ) -> Self {
         let num_instances = data.positions.len();
@@ -96,13 +94,12 @@ impl Points3DCpu {
                 .map(|i| PickingLayerInstanceId(i as _))
                 .collect_vec()
         };
-        let (annotation_infos, keypoints) = process_annotation_and_keypoint_slices(
+        let keypoints = process_keypoint_slices(
             query.latest_at,
             num_instances,
             data.positions.iter().map(|p| p.0.into()),
             data.keypoint_ids,
             data.class_ids,
-            &ent_context.annotations,
         );
 
         let positions: &[glam::Vec3] = bytemuck::cast_slice(data.positions);
@@ -123,7 +120,6 @@ impl Points3DCpu {
             ctx,
             Points3D::descriptor_colors().component,
             num_instances,
-            &annotation_infos,
             data.colors,
         );
 
@@ -135,7 +131,6 @@ impl Points3DCpu {
             position_radii,
             robust_bounds,
             picking_ids,
-            annotation_infos,
             keypoints,
             colors,
             has_transparency,
@@ -152,27 +147,6 @@ impl Points3DCpu {
 
 // --- Points3DCache ---
 
-/// All the inputs that affect the output of [`Points3DCpu::compute`],
-/// beyond the point data itself (which is covered by `query_result_hash`).
-struct Points3DCacheKey {
-    /// Hash of the query results (positions, colors, radii, `class_ids`, etc.).
-    query_result_hash: Hash64,
-
-    /// The [`super::Annotations::row_id`] of the resolved annotation context.
-    /// Changes when the annotation context is re-logged.
-    annotation_row_id: re_chunk_store::RowId,
-}
-
-impl Points3DCacheKey {
-    fn hash(&self) -> Hash64 {
-        let Self {
-            query_result_hash,
-            annotation_row_id,
-        } = self;
-        Hash64::hash((query_result_hash, annotation_row_id))
-    }
-}
-
 struct Points3DCacheEntry {
     cpu: Arc<Points3DCpu>,
     last_used_generation: u64,
@@ -186,19 +160,11 @@ pub struct Points3DCache {
 }
 
 impl Points3DCache {
-    fn entry(
-        &mut self,
-        key: &Points3DCacheKey,
-        compute: impl FnOnce() -> Points3DCpu,
-    ) -> Arc<Points3DCpu> {
-        let hash = key.hash();
-        let entry = self
-            .cache
-            .entry(hash)
-            .or_insert_with(|| Points3DCacheEntry {
-                cpu: Arc::new(compute()),
-                last_used_generation: 0,
-            });
+    fn entry(&mut self, key: Hash64, compute: impl FnOnce() -> Points3DCpu) -> Arc<Points3DCpu> {
+        let entry = self.cache.entry(key).or_insert_with(|| Points3DCacheEntry {
+            cpu: Arc::new(compute()),
+            last_used_generation: 0,
+        });
         entry.last_used_generation = self.generation;
         entry.cpu.clone()
     }
@@ -278,14 +244,10 @@ impl Points3DVisualizer {
                 continue;
             }
 
-            let cache_key = Points3DCacheKey {
-                query_result_hash: Hash64::hash((data.query_result_hash, data.index)),
-                annotation_row_id: ent_context.annotations.row_id(),
-            };
-
+            let cache_key = Hash64::hash((data.query_result_hash, data.index));
             let cpu = ctx.store_ctx().memoizer(|c: &mut Points3DCache| {
-                c.entry(&cache_key, || {
-                    Points3DCpu::compute(ctx, entity_path, query, ent_context, &data)
+                c.entry(cache_key, || {
+                    Points3DCpu::compute(ctx, entity_path, query, &data)
                 })
             });
             let point_shading = data.point_shading.unwrap_or_else(|| {
@@ -351,13 +313,15 @@ impl Points3DVisualizer {
                     SpaceKind::ThreeD,
                 );
 
-                load_keypoint_connections(
-                    line_builder,
-                    &ent_context.annotations,
-                    world_from_obj,
-                    entity_path,
-                    &cpu.keypoints,
-                )?;
+                if let Some(annotations) = ent_context.annotations {
+                    load_keypoint_connections(
+                        line_builder,
+                        annotations,
+                        world_from_obj,
+                        entity_path,
+                        &cpu.keypoints,
+                    )?;
+                }
 
                 view_data.ui_labels.extend(process_labels_3d(
                     LabeledBatch {
@@ -371,7 +335,6 @@ impl Points3DVisualizer {
                         show_labels: data.show_labels.unwrap_or_else(|| {
                             typed_fallback_for(ctx, Points3D::descriptor_show_labels().component)
                         }),
-                        annotation_infos: &cpu.annotation_infos,
                     },
                     world_from_obj,
                 ));
@@ -399,6 +362,16 @@ impl VisualizerSystem for Points3DVisualizer {
         VisualizerQueryInfo::single_required_component::<Position3D>(
             &Points3D::descriptor_positions(),
             &Points3D::all_components(),
+        )
+        .with_annotation_context(
+            re_viewer_context::AnnotationContextQuery::new(
+                Points3D::descriptor_class_ids().component,
+                [
+                    re_viewer_context::AnnotationContextTarget::color(Points3D::descriptor_colors()),
+                    re_viewer_context::AnnotationContextTarget::label(Points3D::descriptor_labels()),
+                ],
+            )
+            .with_keypoint_ids(Points3D::descriptor_keypoint_ids().component),
         )
     }
 

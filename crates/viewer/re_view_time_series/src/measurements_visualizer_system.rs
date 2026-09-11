@@ -42,6 +42,7 @@ impl VisualizerSystem for MeasurementsSeriesSystem {
     ) -> VisualizerQueryInfo {
         VisualizerQueryInfo {
             relevant_archetype: archetypes::Measurements::name().into(),
+            annotation_context: None,
             constraints: SingleRequiredComponentConstraint::new::<components::Scalar>(
                 &archetypes::Measurements::descriptor_values(),
             )

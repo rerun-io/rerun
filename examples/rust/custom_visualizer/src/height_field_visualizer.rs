@@ -56,8 +56,12 @@ impl VisualizerSystem for HeightFieldVisualizer {
                 continue;
             };
 
-            let results =
-                data_result.query_archetype_with_history::<HeightField>(ctx, query, instruction);
+            let results = data_result.query_archetype_with_history::<HeightField>(
+                ctx,
+                query,
+                instruction,
+                None,
+            );
             let results = VisualizerInstructionQueryResults::new(instruction, &results, &output);
 
             let transform =

@@ -117,7 +117,8 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
                             selector,
                         } => Some((*source_component, selector.as_str())),
                         VisualizerComponentSource::Override
-                        | VisualizerComponentSource::Default => None,
+                        | VisualizerComponentSource::Default
+                        | VisualizerComponentSource::AnnotationContext => None,
                     }
                 });
 

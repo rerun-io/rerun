@@ -6,13 +6,22 @@ use re_sdk_types::archetypes::GeoPoints;
 use re_sdk_types::components::{LatLon, Radius};
 use re_view::{
     AnnotationMapCache, DataResultQuery as _, VisualizerInstructionQueryResults,
-    process_annotation_slices, process_color_slice,
+    process_color_slice,
 };
 use re_viewer_context::{
     IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewHighlights, ViewQuery,
     ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
     typed_fallback_for,
 };
+
+fn annotation_context_query() -> re_viewer_context::AnnotationContextQuery {
+    re_viewer_context::AnnotationContextQuery::new(
+        GeoPoints::descriptor_class_ids().component,
+        [re_viewer_context::AnnotationContextTarget::color(
+            GeoPoints::descriptor_colors(),
+        )],
+    )
+}
 
 #[derive(Debug, Default, Clone)]
 pub struct GeoPointBatch {
@@ -50,6 +59,7 @@ impl VisualizerSystem for GeoPointsVisualizer {
             &GeoPoints::descriptor_positions(),
             &GeoPoints::all_components(),
         )
+        .with_annotation_context(annotation_context_query())
     }
 
     fn execute(
@@ -66,11 +76,14 @@ impl VisualizerSystem for GeoPointsVisualizer {
         for (data_result, instruction) in
             view_query.iter_visualizer_instruction_for(Self::identifier())
         {
-            let results =
-                data_result.query_archetype_with_history::<GeoPoints>(ctx, view_query, instruction);
+            let entity_annotations = annotations.find(&data_result.entity_path);
+            let results = data_result.query_archetype_with_history::<GeoPoints>(
+                ctx,
+                view_query,
+                instruction,
+                entity_annotations,
+            );
             let results = VisualizerInstructionQueryResults::new(instruction, &results, &output);
-
-            let annotation_context = annotations.find(&data_result.entity_path);
 
             let mut batch_data = GeoPointBatch::default();
 
@@ -78,7 +91,6 @@ impl VisualizerSystem for GeoPointsVisualizer {
             let all_positions = results.iter_required(GeoPoints::descriptor_positions().component);
             let all_colors = results.iter_optional(GeoPoints::descriptor_colors().component);
             let all_radii = results.iter_optional(GeoPoints::descriptor_radii().component);
-            let all_class_ids = results.iter_optional(GeoPoints::descriptor_class_ids().component);
 
             // fallback component values
             let query_context =
@@ -87,29 +99,19 @@ impl VisualizerSystem for GeoPointsVisualizer {
                 typed_fallback_for(&query_context, GeoPoints::descriptor_radii().component);
 
             // iterate over each chunk and find all relevant component slices
-            for (_index, positions, colors, radii, class_ids) in re_query::range_zip_1x3(
+            for (_index, positions, colors, radii) in re_query::range_zip_1x2(
                 all_positions.slice::<[f64; 2]>(),
                 all_colors.slice::<u32>(),
                 all_radii.slice::<f32>(),
-                all_class_ids.slice::<u16>(),
             ) {
                 // required component
                 let num_instances = positions.len();
-
-                // Resolve annotation info (if needed).
-                let annotation_infos = process_annotation_slices(
-                    view_query.latest_at,
-                    num_instances,
-                    class_ids.map_or(&[], |class_ids| bytemuck::cast_slice(class_ids)),
-                    &annotation_context,
-                );
 
                 // optional components
                 let colors = process_color_slice(
                     &query_context,
                     GeoPoints::descriptor_colors().component,
                     num_instances,
-                    &annotation_infos,
                     colors.map_or(&[], |colors| bytemuck::cast_slice(colors)),
                 );
                 let radii = radii.unwrap_or(&[]);

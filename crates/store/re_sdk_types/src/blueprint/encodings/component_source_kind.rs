@@ -49,6 +49,15 @@ pub enum ComponentSourceKind {
     /// If the view doesn't specify a default for the target component name,
     /// a heuristically determined value will be used instead.
     Default = 3,
+
+    /// Resolve the value from class and keypoint IDs using the recording's annotation context.
+    ///
+    /// If the annotation context does not provide a value, default values are used instead.
+    /// (Any overlapping recording values for the target component are ignored.)
+    ///
+    /// This is only available for visualizers that support annotation context.
+    /// Selecting it for an unsupported component is an error.
+    AnnotationContext = 4,
 }
 
 ::re_types_core::macros::impl_into_cow!(ComponentSourceKind);
@@ -135,6 +144,7 @@ impl std::fmt::Display for ComponentSourceKind {
             Self::SourceComponent => write!(f, "SourceComponent"),
             Self::Override => write!(f, "Override"),
             Self::Default => write!(f, "Default"),
+            Self::AnnotationContext => write!(f, "AnnotationContext"),
         }
     }
 }
@@ -144,7 +154,12 @@ impl ::re_types_core::reflection::Enum for ComponentSourceKind {
 
     #[inline]
     fn variants() -> &'static [Self] {
-        &[Self::SourceComponent, Self::Override, Self::Default]
+        &[
+            Self::SourceComponent,
+            Self::Override,
+            Self::Default,
+            Self::AnnotationContext,
+        ]
     }
 
     #[inline]
@@ -158,6 +173,9 @@ impl ::re_types_core::reflection::Enum for ComponentSourceKind {
             }
             Self::Default => {
                 "Default as specified on the view's blueprint.\n\nIf the view doesn't specify a default for the target component name,\na heuristically determined value will be used instead."
+            }
+            Self::AnnotationContext => {
+                "Resolve the value from class and keypoint IDs using the recording's annotation context.\n\nIf the annotation context does not provide a value, default values are used instead.\n(Any overlapping recording values for the target component are ignored.)\n\nThis is only available for visualizers that support annotation context.\nSelecting it for an unsupported component is an error."
             }
         }
     }

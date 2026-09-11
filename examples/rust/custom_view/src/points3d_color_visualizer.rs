@@ -36,6 +36,7 @@ impl VisualizerSystem for Points3DColorVisualizer {
             )
             .into(),
             queried: std::iter::once(rerun::Points3D::descriptor_colors()).collect(),
+            annotation_context: None,
         }
     }
 
@@ -59,6 +60,7 @@ impl VisualizerSystem for Points3DColorVisualizer {
                 query,
                 [rerun::Points3D::descriptor_colors().component],
                 instruction,
+                None,
             );
             let results = VisualizerInstructionQueryResults::new(instruction, &results, &output);
 

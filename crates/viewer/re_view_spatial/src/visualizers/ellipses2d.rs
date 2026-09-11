@@ -1,9 +1,9 @@
 use re_log_types::Instance;
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId};
 use re_sdk_types::archetypes::Ellipses2D;
-use re_sdk_types::components::{ClassId, Color, HalfSize2D, Position2D, Radius, ShowLabels};
+use re_sdk_types::components::{Color, HalfSize2D, Position2D, Radius, ShowLabels};
 use re_sdk_types::{Archetype as _, ArrowString};
-use re_view::{clamped_or, process_annotation_slices, process_color_slice};
+use re_view::{clamped_or, process_color_slice};
 use re_viewer_context::{
     IdentifiedViewSystem, QueryContext, ViewClass as _, ViewContext, ViewContextCollection,
     ViewQuery, ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo,
@@ -36,7 +36,6 @@ impl Ellipses2DVisualizer {
         view_data: &mut SpatialViewVisualizerData,
         ctx: &QueryContext<'_>,
         line_builder: &mut LineDrawableBuilder<'_>,
-        view_query: &ViewQuery<'_>,
         ent_context: &SpatialSceneVisualizerInstructionContext<'_>,
         data: impl Iterator<Item = Ellipses2DComponentData<'a>>,
     ) {
@@ -47,13 +46,6 @@ impl Ellipses2DVisualizer {
             if num_instances == 0 {
                 continue;
             }
-
-            let annotation_infos = process_annotation_slices(
-                view_query.latest_at,
-                num_instances,
-                data.class_ids,
-                &ent_context.annotations,
-            );
 
             let radii = process_radius_slice(
                 ctx,
@@ -66,7 +58,6 @@ impl Ellipses2DVisualizer {
                 ctx,
                 Ellipses2D::descriptor_colors().component,
                 num_instances,
-                &annotation_infos,
                 data.colors,
             );
 
@@ -142,7 +133,6 @@ impl Ellipses2DVisualizer {
                     show_labels: data.show_labels.unwrap_or_else(|| {
                         typed_fallback_for(ctx, Ellipses2D::descriptor_show_labels().component)
                     }),
-                    annotation_infos: &annotation_infos,
                 },
                 std::convert::identity,
             ));
@@ -161,7 +151,6 @@ struct Ellipses2DComponentData<'a> {
     colors: &'a [Color],
     line_radii: &'a [Radius],
     labels: Vec<ArrowString>,
-    class_ids: &'a [ClassId],
 
     // Non-repeated
     show_labels: Option<ShowLabels>,
@@ -182,6 +171,13 @@ impl VisualizerSystem for Ellipses2DVisualizer {
             &Ellipses2D::descriptor_half_sizes(),
             &Ellipses2D::all_components(),
         )
+        .with_annotation_context(re_viewer_context::AnnotationContextQuery::new(
+            Ellipses2D::descriptor_class_ids().component,
+            [
+                re_viewer_context::AnnotationContextTarget::color(Ellipses2D::descriptor_colors()),
+                re_viewer_context::AnnotationContextTarget::label(Ellipses2D::descriptor_labels()),
+            ],
+        ))
     }
 
     fn affinity(&self) -> Option<re_sdk_types::ViewClassIdentifier> {
@@ -234,31 +230,19 @@ impl VisualizerSystem for Ellipses2DVisualizer {
                 let all_line_radii =
                     results.iter_optional(Ellipses2D::descriptor_line_radii().component);
                 let all_labels = results.iter_optional(Ellipses2D::descriptor_labels().component);
-                let all_class_ids =
-                    results.iter_optional(Ellipses2D::descriptor_class_ids().component);
                 let all_show_labels =
                     results.iter_optional(Ellipses2D::descriptor_show_labels().component);
 
-                let results_iter = re_query::range_zip_1x6(
+                let results_iter = re_query::range_zip_1x5(
                     all_half_sizes.slice::<[f32; 2]>(),
                     all_centers.slice::<[f32; 2]>(),
                     all_colors.slice::<u32>(),
                     all_line_radii.slice::<f32>(),
                     all_labels.slice::<String>(),
-                    all_class_ids.slice::<u16>(),
                     all_show_labels.slice::<bool>(),
                 )
                 .map(
-                    |(
-                        _index,
-                        half_sizes,
-                        centers,
-                        colors,
-                        line_radii,
-                        labels,
-                        class_ids,
-                        show_labels,
-                    )| {
+                    |(_index, half_sizes, centers, colors, line_radii, labels, show_labels)| {
                         Ellipses2DComponentData {
                             half_sizes: bytemuck::cast_slice(half_sizes),
                             centers: centers.map_or(&[], |centers| bytemuck::cast_slice(centers)),
@@ -266,8 +250,6 @@ impl VisualizerSystem for Ellipses2DVisualizer {
                             line_radii: line_radii
                                 .map_or(&[], |line_radii| bytemuck::cast_slice(line_radii)),
                             labels: labels.unwrap_or_default(),
-                            class_ids: class_ids
-                                .map_or(&[], |class_ids| bytemuck::cast_slice(class_ids)),
                             show_labels: show_labels
                                 .map(|b| !b.is_empty() && b.value(0))
                                 .map(Into::into),
@@ -279,7 +261,6 @@ impl VisualizerSystem for Ellipses2DVisualizer {
                     &mut view_data,
                     ctx,
                     &mut line_builder,
-                    view_query,
                     spatial_ctx,
                     results_iter,
                 );

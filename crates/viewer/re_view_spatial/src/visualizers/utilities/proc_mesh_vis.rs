@@ -7,12 +7,12 @@ use re_renderer::{PickingLayerInstanceId, RenderContext};
 use re_sdk_types::ComponentIdentifier;
 use re_sdk_types::components::{self, FillMode};
 use re_tf::convert;
-use re_view::{clamped_or_nothing, process_annotation_slices, process_color_slice};
+use re_view::{clamped_or_nothing, process_color_slice};
 #[cfg(doc)]
 use re_viewer_context::VisualizerSystem;
 use re_viewer_context::{
-    QueryContext, ViewQuery, ViewSystemExecutionError, ViewerReportSeverity,
-    VisualizerExecutionOutput, typed_fallback_for,
+    QueryContext, ViewSystemExecutionError, ViewerReportSeverity, VisualizerExecutionOutput,
+    typed_fallback_for,
 };
 use vec1::smallvec_v1::SmallVec1;
 
@@ -44,7 +44,6 @@ pub struct ProcMeshDrawableBuilder<'ctx> {
     /// Accumulates triangle mesh instances to render.
     pub solid_instances: Vec<GpuMeshInstance>,
 
-    pub query: &'ctx ViewQuery<'ctx>,
     pub render_ctx: &'ctx RenderContext,
     pub output: &'ctx VisualizerExecutionOutput,
 }
@@ -72,7 +71,6 @@ pub struct ProcMeshBatch<'a, IMesh, IFill> {
     pub colors: &'a [components::Color],
     pub labels: &'a [re_sdk_types::ArrowString],
     pub show_labels: Option<components::ShowLabels>,
-    pub class_ids: &'a [components::ClassId],
 }
 
 /// Combines transform-like components on the entity with instances pose to view-origin transforms
@@ -139,7 +137,6 @@ impl<'ctx> ProcMeshDrawableBuilder<'ctx> {
     pub fn new(
         data: &'ctx mut SpatialViewVisualizerData,
         render_ctx: &'ctx re_renderer::RenderContext,
-        view_query: &'ctx ViewQuery<'ctx>,
         output: &'ctx VisualizerExecutionOutput,
         line_batch_debug_label: impl Into<re_renderer::Label>,
     ) -> Self {
@@ -153,7 +150,6 @@ impl<'ctx> ProcMeshDrawableBuilder<'ctx> {
             line_builder,
             line_batch_debug_label: line_batch_debug_label.into(),
             solid_instances: Vec::new(),
-            query: view_query,
             render_ctx,
             output,
         }
@@ -213,13 +209,6 @@ impl<'ctx> ProcMeshDrawableBuilder<'ctx> {
 
         let half_sizes = clamped_or_nothing(batch.half_sizes, num_instances);
 
-        let annotation_infos = process_annotation_slices(
-            self.query.latest_at,
-            num_instances,
-            batch.class_ids,
-            &ent_context.annotations,
-        );
-
         let line_radii = process_radius_slice(
             query_context,
             entity_path,
@@ -227,13 +216,8 @@ impl<'ctx> ProcMeshDrawableBuilder<'ctx> {
             batch.line_radii,
             line_radii_component,
         );
-        let colors = process_color_slice(
-            query_context,
-            color_component,
-            num_instances,
-            &annotation_infos,
-            batch.colors,
-        );
+        let colors =
+            process_color_slice(query_context, color_component, num_instances, batch.colors);
 
         let mut line_batch = self
             .line_builder
@@ -379,7 +363,6 @@ impl<'ctx> ProcMeshDrawableBuilder<'ctx> {
                 show_labels: batch
                     .show_labels
                     .unwrap_or_else(|| typed_fallback_for(query_context, show_labels_component)),
-                annotation_infos: &annotation_infos,
             },
             glam::Affine3A::IDENTITY,
         ));
@@ -396,7 +379,6 @@ impl<'ctx> ProcMeshDrawableBuilder<'ctx> {
             line_builder,
             line_batch_debug_label: _,
             solid_instances,
-            query: _,
             render_ctx,
             output: _,
         } = self;

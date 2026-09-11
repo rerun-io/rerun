@@ -2,7 +2,7 @@ use std::iter;
 
 use re_chunk_store::external::re_chunk::ChunkComponentIterItem;
 use re_sdk_types::archetypes::Cylinders3D;
-use re_sdk_types::components::{ClassId, Color, FillMode, HalfSize3D, Length, Radius, ShowLabels};
+use re_sdk_types::components::{Color, FillMode, HalfSize3D, Length, Radius, ShowLabels};
 use re_sdk_types::reflection::Enum as _;
 use re_sdk_types::{Archetype as _, ArrowString, components};
 use re_view::clamped_or_else;
@@ -89,7 +89,6 @@ impl Cylinders3DVisualizer {
                     colors: batch.colors,
                     labels: &batch.labels,
                     show_labels: batch.show_labels,
-                    class_ids: batch.class_ids,
                 },
             )?;
         }
@@ -112,7 +111,6 @@ struct Cylinders3DComponentData<'a> {
     colors: &'a [Color],
     labels: Vec<ArrowString>,
     line_radii: &'a [Radius],
-    class_ids: &'a [ClassId],
 
     // Non-repeated
     show_labels: Option<ShowLabels>,
@@ -141,6 +139,13 @@ impl VisualizerSystem for Cylinders3DVisualizer {
             &Cylinders3D::descriptor_lengths(),
             &Cylinders3D::all_components(),
         )
+        .with_annotation_context(re_viewer_context::AnnotationContextQuery::new(
+            Cylinders3D::descriptor_class_ids().component,
+            [
+                re_viewer_context::AnnotationContextTarget::color(Cylinders3D::descriptor_colors()),
+                re_viewer_context::AnnotationContextTarget::label(Cylinders3D::descriptor_labels()),
+            ],
+        ))
     }
 
     fn affinity(&self) -> Option<re_sdk_types::ViewClassIdentifier> {
@@ -158,7 +163,6 @@ impl VisualizerSystem for Cylinders3DVisualizer {
         let mut builder = ProcMeshDrawableBuilder::new(
             &mut data,
             ctx.viewer_ctx.render_ctx(),
-            view_query,
             &output,
             "cylinders3d",
         );
@@ -191,10 +195,8 @@ impl VisualizerSystem for Cylinders3DVisualizer {
                     results.iter_optional(Cylinders3D::descriptor_line_radii().component);
                 let all_show_labels =
                     results.iter_optional(Cylinders3D::descriptor_show_labels().component);
-                let all_class_ids =
-                    results.iter_optional(Cylinders3D::descriptor_class_ids().component);
 
-                let data = re_query::range_zip_1x10(
+                let data = re_query::range_zip_1x9(
                     all_lengths.slice::<f32>(),
                     all_radii.slice::<f32>(),
                     all_centers.slice::<[f32; 3]>(),
@@ -205,7 +207,6 @@ impl VisualizerSystem for Cylinders3DVisualizer {
                     all_fill_modes.slice::<u8>(),
                     all_labels.slice::<String>(),
                     all_show_labels.slice::<bool>(),
-                    all_class_ids.slice::<u16>(),
                 )
                 .map(
                     |(
@@ -220,7 +221,6 @@ impl VisualizerSystem for Cylinders3DVisualizer {
                         fill_modes,
                         labels,
                         show_labels,
-                        class_ids,
                     )| {
                         Cylinders3DComponentData {
                             lengths: bytemuck::cast_slice(lengths),
@@ -235,8 +235,6 @@ impl VisualizerSystem for Cylinders3DVisualizer {
                             fill_mode: fill_modes
                                 .and_then(|s| FillMode::from_integer_slice(s).next()?)
                                 .unwrap_or_default(),
-                            class_ids: class_ids
-                                .map_or(&[], |class_ids| bytemuck::cast_slice(class_ids)),
                             show_labels: show_labels
                                 .map(|b| !b.is_empty() && b.value(0))
                                 .map(Into::into),

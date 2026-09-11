@@ -43,6 +43,15 @@ namespace rerun::blueprint::encodings {
         /// If the view doesn't specify a default for the target component name,
         /// a heuristically determined value will be used instead.
         Default = 3,
+
+        /// Resolve the value from class and keypoint IDs using the recording's annotation context.
+        ///
+        /// If the annotation context does not provide a value, default values are used instead.
+        /// (Any overlapping recording values for the target component are ignored.)
+        ///
+        /// This is only available for visualizers that support annotation context.
+        /// Selecting it for an unsupported component is an error.
+        AnnotationContext = 4,
     };
 } // namespace rerun::blueprint::encodings
 

@@ -229,6 +229,7 @@ fn execute_video_stream_like(
                             instruction_id: Some(instruction.id),
                             archetype_name: Some(ctx.archetype_name),
                             query: latest_at.clone(),
+                            annotation_context: None,
                         },
                         opacity_component,
                     )

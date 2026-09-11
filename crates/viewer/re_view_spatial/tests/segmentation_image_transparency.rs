@@ -118,3 +118,32 @@ fn run_view_ui_and_save_snapshot(
     harness.run();
     harness.snapshot(format!("{name}_updated_annotation_context"));
 }
+
+/// A segmentation image without any associated annotation context will still use `class_id` generated colors.
+#[test]
+fn test_segmentation_image_without_annotations() {
+    let mut test_context = TestContext::new_with_view_class::<re_view_spatial::SpatialView2D>();
+    test_context.log_entity("segmentation", |builder| {
+        builder.with_archetype(
+            RowId::new(),
+            TimePoint::STATIC,
+            &re_sdk_types::archetypes::SegmentationImage::try_from(ndarray::arr2(&[
+                [0u8, 1],
+                [2, 3],
+            ]))
+            .unwrap(),
+        )
+    });
+    let view_id = test_context.setup_viewport_blueprint(|_ctx, blueprint| {
+        blueprint.add_view_at_root(ViewBlueprint::new_with_root_wildcard(
+            re_view_spatial::SpatialView2D::identifier(),
+        ))
+    });
+    let mut harness = test_context
+        .setup_kittest_for_rendering_3d(egui::vec2(200.0, 200.0))
+        .build_ui(|ui| {
+            test_context.run_with_single_view(ui, view_id);
+        });
+    harness.run();
+    harness.snapshot("segmentation_image_without_annotations");
+}

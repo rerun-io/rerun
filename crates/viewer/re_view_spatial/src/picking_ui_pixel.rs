@@ -80,7 +80,10 @@ pub fn textured_rect_hover_ui(
             ui,
             texture,
             image,
-            &annotations,
+            match annotations {
+                Some(annotations) => annotations,
+                None => re_viewer_context::Annotations::missing_ref(),
+            },
             depth_meter,
             &TextureInteractionId {
                 entity_path: &instance_path.entity_path,

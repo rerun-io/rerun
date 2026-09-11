@@ -116,6 +116,7 @@ fn active_default_ui(
         instruction_id: None,
         archetype_name: None,
         query: blueprint_query.clone(),
+        annotation_context: None,
     };
 
     re_ui::list_item::list_item_scope(ui, "defaults", |ui| {
@@ -325,6 +326,7 @@ fn add_popup_ui(
         instruction_id: None,
         archetype_name: None,
         query: query.clone(),
+        annotation_context: None,
     };
 
     // Present the option to add new components for each component that doesn't

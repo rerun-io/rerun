@@ -283,6 +283,7 @@ impl ViewProperty {
             instruction_id: None,
             archetype_name: Some(self.archetype_name),
             query: self.blueprint_query.clone(),
+            annotation_context: None,
         }
     }
 }

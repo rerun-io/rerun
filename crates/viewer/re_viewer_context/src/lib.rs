@@ -59,8 +59,8 @@ pub use re_ui::UiLayout;
 
 pub use self::active_store_context::ActiveStoreContext;
 pub use self::annotations::{
-    AnnotationContextStoreSubscriber, AnnotationMap, Annotations, ResolvedAnnotationInfo,
-    ResolvedAnnotationInfos,
+    AnnotationContextQuery, AnnotationContextStoreSubscriber, AnnotationContextTarget,
+    AnnotationContextTargetKind, AnnotationMap, Annotations, ResolvedAnnotationInfo,
 };
 pub use self::app_context::{AppContext, AuthContext};
 pub use self::app_options::{AppOptions, ExperimentalAppOptions, VideoOptions};

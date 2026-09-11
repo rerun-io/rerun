@@ -3,7 +3,7 @@ use std::iter;
 use ordered_float::NotNan;
 use re_chunk_store::external::re_chunk::ChunkComponentIterItem;
 use re_sdk_types::archetypes::Capsules3D;
-use re_sdk_types::components::{ClassId, Color, FillMode, HalfSize3D, Length, Radius, ShowLabels};
+use re_sdk_types::components::{Color, FillMode, HalfSize3D, Length, Radius, ShowLabels};
 use re_sdk_types::reflection::Enum as _;
 use re_sdk_types::{Archetype as _, ArrowString, components};
 use re_view::clamped_or_else;
@@ -94,7 +94,6 @@ impl Capsules3DVisualizer {
                     colors: batch.colors,
                     labels: &batch.labels,
                     show_labels: batch.show_labels,
-                    class_ids: batch.class_ids,
                 },
             )?;
         }
@@ -117,7 +116,6 @@ struct Capsules3DComponentData<'a> {
     colors: &'a [Color],
     labels: Vec<ArrowString>,
     line_radii: &'a [Radius],
-    class_ids: &'a [ClassId],
 
     // Non-repeated
     show_labels: Option<ShowLabels>,
@@ -146,6 +144,13 @@ impl VisualizerSystem for Capsules3DVisualizer {
             &Capsules3D::descriptor_lengths(),
             &Capsules3D::all_components(),
         )
+        .with_annotation_context(re_viewer_context::AnnotationContextQuery::new(
+            Capsules3D::descriptor_class_ids().component,
+            [
+                re_viewer_context::AnnotationContextTarget::color(Capsules3D::descriptor_colors()),
+                re_viewer_context::AnnotationContextTarget::label(Capsules3D::descriptor_labels()),
+            ],
+        ))
     }
 
     fn affinity(&self) -> Option<re_sdk_types::ViewClassIdentifier> {
@@ -163,7 +168,6 @@ impl VisualizerSystem for Capsules3DVisualizer {
         let mut builder = ProcMeshDrawableBuilder::new(
             &mut data,
             ctx.viewer_ctx.render_ctx(),
-            view_query,
             &output,
             "capsules3d",
         );
@@ -195,10 +199,8 @@ impl VisualizerSystem for Capsules3DVisualizer {
                     results.iter_optional(Capsules3D::descriptor_fill_mode().component);
                 let all_line_radii =
                     results.iter_optional(Capsules3D::descriptor_line_radii().component);
-                let all_class_ids =
-                    results.iter_optional(Capsules3D::descriptor_class_ids().component);
 
-                let data = re_query::range_zip_1x10(
+                let data = re_query::range_zip_1x9(
                     all_lengths.slice::<f32>(),
                     all_radii.slice::<f32>(),
                     all_translations.slice::<[f32; 3]>(),
@@ -209,7 +211,6 @@ impl VisualizerSystem for Capsules3DVisualizer {
                     all_fill_modes.slice::<u8>(),
                     all_labels.slice::<String>(),
                     all_show_labels.slice::<bool>(),
-                    all_class_ids.slice::<u16>(),
                 )
                 .map(
                     |(
@@ -224,7 +225,6 @@ impl VisualizerSystem for Capsules3DVisualizer {
                         fill_modes,
                         labels,
                         show_labels,
-                        class_ids,
                     )| {
                         Capsules3DComponentData {
                             lengths: bytemuck::cast_slice(lengths),
@@ -239,8 +239,6 @@ impl VisualizerSystem for Capsules3DVisualizer {
                             fill_mode: fill_modes
                                 .and_then(|s| FillMode::from_integer_slice(s).next()?)
                                 .unwrap_or_default(),
-                            class_ids: class_ids
-                                .map_or(&[], |class_ids| bytemuck::cast_slice(class_ids)),
                             show_labels: show_labels
                                 .map(|b| !b.is_empty() && b.value(0))
                                 .map(Into::into),

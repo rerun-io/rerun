@@ -4,6 +4,7 @@
 
 pub mod controls;
 
+mod annotation_context_resolver;
 mod annotation_context_utils;
 mod annotation_map_cache;
 mod blueprint_resolved_results;
@@ -21,9 +22,7 @@ mod visualizer_query;
 
 use std::borrow::Cow;
 
-pub use annotation_context_utils::{
-    process_annotation_and_keypoint_slices, process_annotation_slices, process_color_slice,
-};
+pub use annotation_context_utils::{process_color_slice, process_keypoint_slices};
 pub use annotation_map_cache::AnnotationMapCache;
 pub use blueprint_resolved_results::{
     BlueprintResolvedLatestAtResults, BlueprintResolvedRangeResults, BlueprintResolvedResults,

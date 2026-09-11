@@ -226,6 +226,7 @@ impl SpatialView2D {
                         instruction_id: None,
                         archetype_name: Some(archetypes::Pinhole::name()),
                         query: query.latest_at_query(),
+                        annotation_context: None,
                     };
                     Pinhole {
                         image_from_camera: pinhole.image_from_camera.0.into(),

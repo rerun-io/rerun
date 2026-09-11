@@ -3,7 +3,7 @@ use std::iter;
 use re_chunk_store::external::re_chunk::ChunkComponentIterItem;
 use re_sdk_types::Archetype as _;
 use re_sdk_types::archetypes::Ellipsoids3D;
-use re_sdk_types::components::{ClassId, Color, FillMode, HalfSize3D, Radius, ShowLabels};
+use re_sdk_types::components::{Color, FillMode, HalfSize3D, Radius, ShowLabels};
 use re_sdk_types::reflection::Enum as _;
 use re_sdk_types::{ArrowString, components};
 use re_viewer_context::{
@@ -61,7 +61,6 @@ impl Ellipsoids3DVisualizer {
                     colors: batch.colors,
                     labels: &batch.labels,
                     show_labels: batch.show_labels,
-                    class_ids: batch.class_ids,
                 },
             )?;
         }
@@ -83,7 +82,6 @@ struct Ellipsoids3DComponentData<'a> {
     colors: &'a [Color],
     line_radii: &'a [Radius],
     labels: Vec<ArrowString>,
-    class_ids: &'a [ClassId],
 
     // Non-repeated
     show_labels: Option<ShowLabels>,
@@ -108,6 +106,19 @@ impl VisualizerSystem for Ellipsoids3DVisualizer {
             &Ellipsoids3D::descriptor_half_sizes(),
             &Ellipsoids3D::all_components(),
         )
+        .with_annotation_context(
+            re_viewer_context::AnnotationContextQuery::new(
+                Ellipsoids3D::descriptor_class_ids().component,
+                [
+                    re_viewer_context::AnnotationContextTarget::color(
+                        Ellipsoids3D::descriptor_colors(),
+                    ),
+                    re_viewer_context::AnnotationContextTarget::label(
+                        Ellipsoids3D::descriptor_labels(),
+                    ),
+                ],
+            ),
+        )
     }
 
     fn affinity(&self) -> Option<re_sdk_types::ViewClassIdentifier> {
@@ -125,7 +136,6 @@ impl VisualizerSystem for Ellipsoids3DVisualizer {
         let mut builder = ProcMeshDrawableBuilder::new(
             &mut data,
             ctx.viewer_ctx.render_ctx(),
-            view_query,
             &output,
             "ellipsoids",
         );
@@ -171,12 +181,10 @@ impl VisualizerSystem for Ellipsoids3DVisualizer {
                 let all_fill_modes =
                     results.iter_optional(Ellipsoids3D::descriptor_fill_mode().component);
                 let all_labels = results.iter_optional(Ellipsoids3D::descriptor_labels().component);
-                let all_class_ids =
-                    results.iter_optional(Ellipsoids3D::descriptor_class_ids().component);
                 let all_show_labels =
                     results.iter_optional(Ellipsoids3D::descriptor_show_labels().component);
 
-                let data = re_query::range_zip_1x9(
+                let data = re_query::range_zip_1x8(
                     all_half_sizes.slice::<[f32; 3]>(),
                     all_centers.slice::<[f32; 3]>(),
                     all_rotation_axis_angles.component_slow::<components::RotationAxisAngle>(),
@@ -185,7 +193,6 @@ impl VisualizerSystem for Ellipsoids3DVisualizer {
                     all_line_radii.slice::<f32>(),
                     all_fill_modes.slice::<u8>(),
                     all_labels.slice::<String>(),
-                    all_class_ids.slice::<u16>(),
                     all_show_labels.slice::<bool>(),
                 )
                 .map(
@@ -199,7 +206,6 @@ impl VisualizerSystem for Ellipsoids3DVisualizer {
                         line_radii,
                         fill_modes,
                         labels,
-                        class_ids,
                         show_labels,
                     )| {
                         Ellipsoids3DComponentData {
@@ -215,8 +221,6 @@ impl VisualizerSystem for Ellipsoids3DVisualizer {
                                 .and_then(|s| FillMode::from_integer_slice(s).next()?)
                                 .unwrap_or_default(),
                             labels: labels.unwrap_or_default(),
-                            class_ids: class_ids
-                                .map_or(&[], |class_ids| bytemuck::cast_slice(class_ids)),
                             show_labels: show_labels
                                 .map(|b| !b.is_empty() && b.value(0))
                                 .map(Into::into),

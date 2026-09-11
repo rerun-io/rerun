@@ -60,6 +60,7 @@ impl<'a> ViewContext<'a> {
             instruction_id: instruction_id.into(),
             archetype_name: None,
             query,
+            annotation_context: None,
         }
     }
 

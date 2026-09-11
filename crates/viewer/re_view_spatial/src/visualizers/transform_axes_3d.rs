@@ -48,6 +48,7 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
                 .collect(),
             ),
             queried: TransformAxes3D::all_components().iter().cloned().collect(),
+            annotation_context: None,
         }
     }
 

@@ -42,6 +42,9 @@ pub struct QueryContext<'a> {
 
     /// Query which didn't yield a result for the component at the target entity path.
     pub query: re_chunk_store::LatestAtQuery,
+
+    /// Annotation data available while resolving fallbacks.
+    pub annotation_context: Option<&'a crate::Annotations>,
 }
 
 impl QueryContext<'_> {

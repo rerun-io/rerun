@@ -99,6 +99,7 @@ impl VisualizerSystem for EncodedDepthImageVisualizer {
                     instruction_id: Some(instruction.id),
                     archetype_name: Some(EncodedDepthImage::name()),
                     query: latest_at.clone(),
+                    annotation_context: None,
                 };
 
                 let results = latest_at_with_blueprint_resolved_data(

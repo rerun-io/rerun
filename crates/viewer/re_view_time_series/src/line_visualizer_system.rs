@@ -52,6 +52,7 @@ impl VisualizerSystem for SeriesLinesSystem {
             )
             .cloned()
             .collect(),
+            annotation_context: None,
         }
     }
 

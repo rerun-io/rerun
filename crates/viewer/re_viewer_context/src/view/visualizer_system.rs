@@ -11,8 +11,8 @@ use re_sdk_types::blueprint::components::VisualizerInstructionId;
 use re_sdk_types::{ComponentDescriptor, ComponentIdentifier, ViewClassIdentifier};
 
 use crate::{
-    BufferAndFormatConstraint, SingleRequiredComponentConstraint, ViewContext,
-    ViewContextCollection, ViewQuery, ViewSystemExecutionError, ViewSystemIdentifier,
+    AnnotationContextQuery, BufferAndFormatConstraint, SingleRequiredComponentConstraint,
+    ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError, ViewSystemIdentifier,
     ViewerDiagnostic, ViewerReportSeverity, VisualizabilityConstraints,
 };
 
@@ -61,6 +61,9 @@ pub struct VisualizerQueryInfo {
     ///
     /// We use this to determine which components should be shown in the UI.
     pub queried: SortedComponentSet,
+
+    /// Optional annotation-context processing applied to blueprint-resolved query results.
+    pub annotation_context: Option<AnnotationContextQuery>,
 }
 
 impl VisualizerQueryInfo {
@@ -81,6 +84,7 @@ impl VisualizerQueryInfo {
             )
             .into(),
             queried: all_queried_components.iter().cloned().collect(),
+            annotation_context: None,
         };
 
         re_log::debug_assert!(
@@ -114,6 +118,7 @@ impl VisualizerQueryInfo {
             constraints: SingleRequiredComponentConstraint::new::<C>(target_component_descriptor)
                 .into(),
             queried: all_queried_components.iter().cloned().collect(),
+            annotation_context: None,
         };
 
         re_log::debug_assert!(
@@ -132,7 +137,15 @@ impl VisualizerQueryInfo {
             relevant_archetype: Default::default(),
             constraints: VisualizabilityConstraints::None,
             queried: SortedComponentSet::default(),
+            annotation_context: None,
         }
+    }
+
+    /// Requests annotation-context resolution for selected component slots.
+    #[must_use]
+    pub fn with_annotation_context(mut self, query: AnnotationContextQuery) -> Self {
+        self.annotation_context = Some(query);
+        self
     }
 
     /// Returns the component _identifiers_ for all queried components.

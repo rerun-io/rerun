@@ -11,20 +11,32 @@ use re_viewport_blueprint::{ViewBlueprint, ViewProperty};
 
 #[test]
 fn test_keypoint_annotations_and_connections_2d() {
+    run_keypoint_annotations_and_connections_2d(true);
+}
+
+#[test]
+fn test_keypoint_annotations_and_connections_2d_without_class_ids() {
+    run_keypoint_annotations_and_connections_2d(false);
+}
+
+// Missing class IDs must resolve to class zero for annotations and connections alike,
+// so both cases must match the same snapshot.
+fn run_keypoint_annotations_and_connections_2d(with_class_ids: bool) {
     let mut test_context = TestContext::new_with_view_class::<re_view_spatial::SpatialView2D>();
 
     log_annotation_context(&mut test_context);
 
     test_context.log_entity("points", |builder| {
-        builder.with_archetype(
-            RowId::new(),
-            TimePoint::STATIC,
-            &Points2D::new([(0.0, 0.0), (100.0, 0.0), (50.0, 50.0), (50.0, 100.0)])
-                .with_class_ids([0])
-                .with_keypoint_ids([0, 1, 2, 3])
-                .with_radii([Radius::new_ui_points(8.0)])
-                .with_show_labels(true),
-        )
+        let mut points = Points2D::new([(0.0, 0.0), (100.0, 0.0), (50.0, 50.0), (50.0, 100.0)])
+            .with_class_ids([0])
+            .with_keypoint_ids([0, 1, 2, 3])
+            .with_radii([Radius::new_ui_points(8.0)])
+            .with_show_labels(true);
+        if !with_class_ids {
+            // Remove the component after construction to bypass SDK-provided defaults.
+            points.class_ids = None;
+        }
+        builder.with_archetype(RowId::new(), TimePoint::STATIC, &points)
     });
 
     let view_id = test_context.setup_viewport_blueprint(|_ctx, blueprint| {
@@ -40,30 +52,39 @@ fn test_keypoint_annotations_and_connections_2d() {
             egui::vec2(300.0, 300.0),
             None,
         )
-        .unwrap();
+        .expect("2D keypoint annotations and connections must match the class-zero snapshot");
 }
 
 #[test]
 fn test_keypoint_annotations_and_connections_3d() {
+    run_keypoint_annotations_and_connections_3d(true);
+}
+
+#[test]
+fn test_keypoint_annotations_and_connections_3d_without_class_ids() {
+    run_keypoint_annotations_and_connections_3d(false);
+}
+
+fn run_keypoint_annotations_and_connections_3d(with_class_ids: bool) {
     let mut test_context = TestContext::new_with_view_class::<re_view_spatial::SpatialView3D>();
 
     log_annotation_context(&mut test_context);
 
     test_context.log_entity("points", |builder| {
-        builder.with_archetype(
-            RowId::new(),
-            TimePoint::STATIC,
-            &Points3D::new([
-                (-1.0, 0.0, 0.0),
-                (1.0, 0.0, 0.0),
-                (0.0, 1.0, 1.0),
-                (0.0, -1.0, -1.0),
-            ])
-            .with_class_ids([0])
-            .with_keypoint_ids([0, 1, 2, 3])
-            .with_radii([Radius::new_ui_points(8.0)])
-            .with_show_labels(true),
-        )
+        let mut points = Points3D::new([
+            (-1.0, 0.0, 0.0),
+            (1.0, 0.0, 0.0),
+            (0.0, 1.0, 1.0),
+            (0.0, -1.0, -1.0),
+        ])
+        .with_class_ids([0])
+        .with_keypoint_ids([0, 1, 2, 3])
+        .with_radii([Radius::new_ui_points(8.0)])
+        .with_show_labels(true);
+        if !with_class_ids {
+            points.class_ids = None;
+        }
+        builder.with_archetype(RowId::new(), TimePoint::STATIC, &points)
     });
 
     let view_id = test_context.setup_viewport_blueprint(|ctx, blueprint| {
@@ -94,7 +115,7 @@ fn test_keypoint_annotations_and_connections_3d() {
             egui::vec2(300.0, 300.0),
             None,
         )
-        .unwrap();
+        .expect("3D keypoint annotations and connections must match the class-zero snapshot");
 }
 
 fn log_annotation_context(test_context: &mut TestContext) {

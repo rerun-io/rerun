@@ -3,9 +3,9 @@ use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId, renderer::LineStr
 use re_sdk_types::{
     Archetype as _, ArrowString,
     archetypes::Arrows2D,
-    components::{ClassId, Color, Position2D, Radius, ShowLabels, Vector2D},
+    components::{Color, Position2D, Radius, ShowLabels, Vector2D},
 };
-use re_view::{clamped_or, process_annotation_and_keypoint_slices, process_color_slice};
+use re_view::{clamped_or, process_color_slice};
 use re_viewer_context::{
     IdentifiedViewSystem, QueryContext, ViewClass as _, ViewContext, ViewContextCollection,
     ViewQuery, ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo,
@@ -27,7 +27,6 @@ impl Arrows2DVisualizer {
         data: &mut SpatialViewVisualizerData,
         ctx: &QueryContext<'_>,
         line_builder: &mut re_renderer::LineDrawableBuilder<'_>,
-        query: &ViewQuery<'_>,
         ent_context: &SpatialSceneVisualizerInstructionContext<'_>,
         results_iter: impl Iterator<Item = Arrows2DComponentData<'a>>,
     ) {
@@ -38,15 +37,6 @@ impl Arrows2DVisualizer {
             if num_instances == 0 {
                 continue;
             }
-
-            let (annotation_infos, _) = process_annotation_and_keypoint_slices(
-                query.latest_at,
-                num_instances,
-                ent_data.vectors.iter().map(|_| glam::Vec3::ZERO),
-                &[], // No keypoint ids.
-                ent_data.class_ids,
-                &ent_context.annotations,
-            );
 
             let radii = process_radius_slice(
                 ctx,
@@ -59,7 +49,6 @@ impl Arrows2DVisualizer {
                 ctx,
                 Arrows2D::descriptor_colors().component,
                 num_instances,
-                &annotation_infos,
                 ent_data.colors,
             );
 
@@ -130,7 +119,6 @@ impl Arrows2DVisualizer {
                     show_labels: ent_data.show_labels.unwrap_or_else(|| {
                         typed_fallback_for(ctx, Arrows2D::descriptor_show_labels().component)
                     }),
-                    annotation_infos: &annotation_infos,
                 },
                 world_from_obj,
             ));
@@ -149,7 +137,6 @@ struct Arrows2DComponentData<'a> {
     colors: &'a [Color],
     radii: &'a [Radius],
     labels: Vec<ArrowString>,
-    class_ids: &'a [ClassId],
 
     // Non-repeated
     show_labels: Option<ShowLabels>,
@@ -173,6 +160,13 @@ impl VisualizerSystem for Arrows2DVisualizer {
             &Arrows2D::descriptor_vectors(),
             &Arrows2D::all_components(),
         )
+        .with_annotation_context(re_viewer_context::AnnotationContextQuery::new(
+            Arrows2D::descriptor_class_ids().component,
+            [
+                re_viewer_context::AnnotationContextTarget::color(Arrows2D::descriptor_colors()),
+                re_viewer_context::AnnotationContextTarget::label(Arrows2D::descriptor_labels()),
+            ],
+        ))
     }
 
     fn affinity(&self) -> Option<re_sdk_types::ViewClassIdentifier> {
@@ -225,30 +219,25 @@ impl VisualizerSystem for Arrows2DVisualizer {
                 let all_colors = results.iter_optional(Arrows2D::descriptor_colors().component);
                 let all_radii = results.iter_optional(Arrows2D::descriptor_radii().component);
                 let all_labels = results.iter_optional(Arrows2D::descriptor_labels().component);
-                let all_class_ids =
-                    results.iter_optional(Arrows2D::descriptor_class_ids().component);
                 let all_show_labels =
                     results.iter_optional(Arrows2D::descriptor_show_labels().component);
 
-                let results_iter = re_query::range_zip_1x6(
+                let results_iter = re_query::range_zip_1x5(
                     all_vectors.slice::<[f32; 2]>(),
                     all_origins.slice::<[f32; 2]>(),
                     all_colors.slice::<u32>(),
                     all_radii.slice::<f32>(),
                     all_labels.slice::<String>(),
-                    all_class_ids.slice::<u16>(),
                     all_show_labels.slice::<bool>(),
                 )
                 .map(
-                    |(_index, vectors, origins, colors, radii, labels, class_ids, show_labels)| {
+                    |(_index, vectors, origins, colors, radii, labels, show_labels)| {
                         Arrows2DComponentData {
                             vectors: bytemuck::cast_slice(vectors),
                             origins: origins.map_or(&[], |origins| bytemuck::cast_slice(origins)),
                             colors: colors.map_or(&[], |colors| bytemuck::cast_slice(colors)),
                             radii: radii.map_or(&[], |radii| bytemuck::cast_slice(radii)),
                             labels: labels.unwrap_or_default(),
-                            class_ids: class_ids
-                                .map_or(&[], |class_ids| bytemuck::cast_slice(class_ids)),
                             show_labels: show_labels
                                 .map(|b| !b.is_empty() && b.value(0))
                                 .map(Into::into),
@@ -256,14 +245,7 @@ impl VisualizerSystem for Arrows2DVisualizer {
                     },
                 );
 
-                Self::process_data(
-                    &mut data,
-                    ctx,
-                    &mut line_builder,
-                    view_query,
-                    spatial_ctx,
-                    results_iter,
-                );
+                Self::process_data(&mut data, ctx, &mut line_builder, spatial_ctx, results_iter);
 
                 Ok(())
             },

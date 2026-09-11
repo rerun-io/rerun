@@ -10,8 +10,9 @@ use re_chunk_store::{
 use re_entity_db::EntityPath;
 use re_log_types::StoreId;
 use re_sdk_types::archetypes;
-use re_sdk_types::components::AnnotationContext;
-use re_sdk_types::encodings::{AnnotationInfo, ClassDescription, ClassId, KeypointId};
+use re_sdk_types::components::{AnnotationContext, Color, Text};
+use re_sdk_types::datatypes::{AnnotationInfo, ClassDescription, ClassId, KeypointId};
+use re_types_core::{Component as _, ComponentDescriptor, ComponentIdentifier};
 
 use super::auto_color_egui;
 
@@ -23,6 +24,74 @@ pub struct Annotations {
     class_map: HashMap<ClassId, CachedClassDescription>,
 }
 
+/// The annotation-context value to materialize for a component slot.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AnnotationContextTargetKind {
+    Color,
+    Label,
+}
+
+/// A component slot whose values can be resolved from annotation context.
+#[derive(Clone, Debug)]
+pub struct AnnotationContextTarget {
+    descriptor: ComponentDescriptor,
+    kind: AnnotationContextTargetKind,
+}
+
+impl AnnotationContextTarget {
+    pub fn color(descriptor: ComponentDescriptor) -> Self {
+        re_log::debug_assert_eq!(descriptor.component_type, Some(Color::name()));
+        Self {
+            descriptor,
+            kind: AnnotationContextTargetKind::Color,
+        }
+    }
+
+    pub fn label(descriptor: ComponentDescriptor) -> Self {
+        re_log::debug_assert_eq!(descriptor.component_type, Some(Text::name()));
+        Self {
+            descriptor,
+            kind: AnnotationContextTargetKind::Label,
+        }
+    }
+
+    pub fn descriptor(&self) -> &ComponentDescriptor {
+        &self.descriptor
+    }
+
+    pub fn kind(&self) -> AnnotationContextTargetKind {
+        self.kind
+    }
+}
+
+/// Declares how a visualizer wants annotation context applied to resolved query results.
+#[derive(Clone, Debug)]
+pub struct AnnotationContextQuery {
+    pub class_ids: ComponentIdentifier,
+    pub keypoint_ids: Option<ComponentIdentifier>,
+    pub targets: Vec<AnnotationContextTarget>,
+}
+
+impl AnnotationContextQuery {
+    pub fn new(
+        class_ids: ComponentIdentifier,
+        targets: impl IntoIterator<Item = AnnotationContextTarget>,
+    ) -> Self {
+        Self {
+            class_ids,
+            keypoint_ids: None,
+            targets: targets.into_iter().collect(),
+        }
+    }
+
+    /// Uses keypoint-specific annotation values when keypoint IDs are active.
+    #[must_use]
+    pub fn with_keypoint_ids(mut self, keypoint_ids: ComponentIdentifier) -> Self {
+        self.keypoint_ids = Some(keypoint_ids);
+        self
+    }
+}
+
 impl Annotations {
     #[inline]
     pub fn missing() -> Self {
@@ -32,11 +101,11 @@ impl Annotations {
         }
     }
 
-    /// Fast access to an [`Arc`] sharing the same [`Annotations::missing`] instance.
-    pub fn missing_arc() -> Arc<Self> {
-        use std::sync::OnceLock;
-        static CELL: OnceLock<Arc<Annotations>> = OnceLock::new();
-        CELL.get_or_init(|| Arc::new(Self::missing())).clone()
+    /// Shared empty annotation context for callers that need default values.
+    pub fn missing_ref() -> &'static Self {
+        static CELL: std::sync::LazyLock<Annotations> =
+            std::sync::LazyLock::new(Annotations::missing);
+        &CELL
     }
 
     #[inline]
@@ -172,46 +241,6 @@ impl ResolvedAnnotationInfo {
 
 // ----------------------------------------------------------------------------
 
-/// Many [`ResolvedAnnotationInfo`], with optimization
-/// for a common case where they are all the same.
-#[derive(re_byte_size::SizeBytes)]
-pub enum ResolvedAnnotationInfos {
-    /// All the same
-    Same(usize, ResolvedAnnotationInfo),
-
-    /// All different
-    Many(Vec<ResolvedAnnotationInfo>),
-}
-
-impl ResolvedAnnotationInfos {
-    pub fn iter(&self) -> impl Iterator<Item = &ResolvedAnnotationInfo> {
-        use itertools::Either;
-        match self {
-            Self::Same(n, info) => Either::Left(std::iter::repeat_n(info, *n)),
-            Self::Many(infos) => Either::Right(infos.iter()),
-        }
-    }
-
-    #[inline]
-    pub fn len(&self) -> usize {
-        match self {
-            Self::Same(n, _) => *n,
-            Self::Many(infos) => infos.len(),
-        }
-    }
-
-    #[inline]
-    #[must_use]
-    pub fn is_empty(&self) -> bool {
-        match self {
-            Self::Same(n, _) => *n == 0,
-            Self::Many(infos) => infos.is_empty(),
-        }
-    }
-}
-
-// ----------------------------------------------------------------------------
-
 #[derive(Default, Clone, Debug, re_byte_size::SizeBytes)]
 pub struct AnnotationMap(pub BTreeMap<EntityPath, Arc<Annotations>>);
 
@@ -253,20 +282,18 @@ impl AnnotationMap {
         }
     }
 
-    // Search through the all prefixes of this entity path until we find a
-    // matching annotation. If we find nothing return the default [`Annotations::missing_arc`].
-    pub fn find(&self, entity_path: &EntityPath) -> Arc<Annotations> {
+    /// Finds the nearest annotation context for an entity path.
+    pub fn find(&self, entity_path: &EntityPath) -> Option<&Annotations> {
         let mut next_parent = Some(entity_path.clone());
         while let Some(parent) = next_parent {
             if let Some(legend) = self.0.get(&parent) {
-                return legend.clone();
+                return Some(legend);
             }
 
             next_parent = parent.parent();
         }
 
-        // Otherwise return the missing legend
-        Annotations::missing_arc()
+        None
     }
 }
 

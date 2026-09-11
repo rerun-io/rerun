@@ -31,6 +31,9 @@ pub enum VisualizerComponentSource {
 
     /// See [`ComponentSourceKind::Default`].
     Default,
+
+    /// See [`ComponentSourceKind::AnnotationContext`].
+    AnnotationContext,
 }
 
 impl VisualizerComponentSource {
@@ -60,6 +63,8 @@ impl VisualizerComponentSource {
             ComponentSourceKind::Override => Self::Override,
 
             ComponentSourceKind::Default => Self::Default,
+
+            ComponentSourceKind::AnnotationContext => Self::AnnotationContext,
         })
     }
 
@@ -68,6 +73,7 @@ impl VisualizerComponentSource {
             Self::SourceComponent { .. } => ComponentSourceKind::SourceComponent,
             Self::Override => ComponentSourceKind::Override,
             Self::Default => ComponentSourceKind::Default,
+            Self::AnnotationContext => ComponentSourceKind::AnnotationContext,
         }
     }
 
@@ -104,6 +110,7 @@ impl VisualizerComponentSource {
                     format!("{}{}", source_component.as_str(), selector)
                 }
             }
+            Self::AnnotationContext => "Annotation context".to_owned(),
             Self::Override => "Custom".to_owned(),
             Self::Default => "View default".to_owned(),
         }
@@ -292,6 +299,13 @@ impl VisualizerInstruction {
                     VisualizerComponentSource::Default => VisualizerComponentMapping {
                         target,
                         source_kind: ComponentSourceKind::Default,
+                        source_component: None,
+                        selector: None,
+                    },
+
+                    VisualizerComponentSource::AnnotationContext => VisualizerComponentMapping {
+                        target,
+                        source_kind: ComponentSourceKind::AnnotationContext,
                         source_component: None,
                         selector: None,
                     },

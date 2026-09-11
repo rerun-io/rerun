@@ -1,12 +1,11 @@
 use std::iter;
 
 use egui::Color32;
-use itertools::{Either, izip};
+use itertools::Either;
 use re_entity_db::InstancePathHash;
 use re_log_types::{EntityPath, Instance};
 use re_sdk_types::blueprint::components::VisualizerInstructionId;
 use re_view::clamped_or;
-use re_viewer_context::ResolvedAnnotationInfos;
 
 #[derive(Clone)]
 pub enum UiLabelTarget {
@@ -92,8 +91,6 @@ pub struct LabeledBatch<'a, P: 'a, I: Iterator<Item = P> + 'a> {
     /// If no value is available from the data, use the fallback
     /// registry to obtain it.
     pub show_labels: re_sdk_types::components::ShowLabels,
-
-    pub annotation_infos: &'a ResolvedAnnotationInfos,
 }
 
 /// Produces 3D ui labels from component data.
@@ -138,7 +135,6 @@ pub fn process_labels<'a, P: 'a>(
         labels,
         colors,
         show_labels,
-        annotation_infos,
     } = batch;
     let show_labels = bool::from(show_labels.0);
 
@@ -155,12 +151,7 @@ pub fn process_labels<'a, P: 'a>(
         Either::Right(instance_positions)
     };
 
-    let labels = izip!(
-        annotation_infos.iter(),
-        std::iter::chain(labels.iter().map(Some), std::iter::repeat(None))
-    )
-    .map(|(annotation_info, label)| annotation_info.label(label.map(|l| l.as_str())));
-
+    let labels = labels.iter().map(|label| Some(label.to_string()));
     let colors = clamped_or(colors, &Color32::PLACEHOLDER);
 
     Either::Right(

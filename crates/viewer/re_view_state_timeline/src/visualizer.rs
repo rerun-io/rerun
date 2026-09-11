@@ -314,6 +314,7 @@ impl VisualizerSystem for StateVisualizer {
             relevant_archetype: StateChange::descriptor_state().archetype,
             constraints,
             queried,
+            annotation_context: None,
         }
     }
 
