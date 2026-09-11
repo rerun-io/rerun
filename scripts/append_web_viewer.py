@@ -12,7 +12,7 @@ Usage:
     python3 scripts/append_web_viewer.py <binary_path> <web_viewer_dir>
 
 Example:
-    python3 scripts/append_web_viewer.py target/release/rerun rerun/crates/viewer/re_web_viewer_server/web_viewer
+    python3 scripts/append_web_viewer.py target/release/rerun rerun/crates/top/re_web_viewer_server/web_viewer
 """
 
 from __future__ import annotations

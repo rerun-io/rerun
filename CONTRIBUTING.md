@@ -210,7 +210,7 @@ If output changes, they will fail. Review results with `cargo insta review` (ins
 Some tests render an image and compare it against a checked-in reference image. They run as part of the regular test suite.
 
 These are driven by [egui_kittest](https://github.com/emilk/egui/tree/master/crates/egui_kittest)'s `Harness::snapshot` method.
-We typically use [TestContext](./crates/viewer/re_test_context/src/lib.rs) to mock relevant parts of the viewer.
+We typically use [TestContext](./crates/tests/re_test_context/src/lib.rs) to mock relevant parts of the viewer.
 
 ##### Comparing results & updating images
 

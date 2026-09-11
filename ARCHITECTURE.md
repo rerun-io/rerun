@@ -34,7 +34,7 @@ The easiest way to launch the Viewer is directly from the logging API with `rr.i
 
 You can try running the Viewer in a browser using `rr.serve()` in Python, or using `rerun --web-viewer mydata.rrd`.
 
-The web viewer consists of just a few small files - a thin `.html`, a `.wasm` blob, and an auto-generated `.js` bridge for the wasm. These files are served using the [`re_web_viewer_server`](https://github.com/rerun-io/rerun/tree/latest/crates/viewer/re_web_viewer_server) crate.
+The web viewer consists of just a few small files - a thin `.html`, a `.wasm` blob, and an auto-generated `.js` bridge for the wasm. These files are served using the [`re_web_viewer_server`](https://github.com/rerun-io/rerun/tree/latest/crates/top/re_web_viewer_server?speculative-link) crate.
 
 The web viewer can load `.rrd` files (just drag-drop them into the browser), or read logging data streamed over gRPC.
 
@@ -101,9 +101,9 @@ Here is an overview of the crates included in the project, and how they depend o
 ![Crate dependency graph](crate_graph.svg)
 
 Each band is one folder under `crates/`, with `rerun_py` and `rerun_c` folded into the top band.
-The bands are ordered so that nearly every arrow points downwards, but only one of those layerings is actually enforced:
-`scripts/check_utils_dependencies.py` fails if a crate in `crates/utils` depends on `crates/store`, `crates/top`, or `crates/viewer`.
-Nothing stops the remaining folders from depending upwards, and a few do, which is why some arrows point up.
+Every arrow points downwards, because the folders are layers: a crate may only depend on its own folder or one below it.
+`scripts/check_crate_layers.py` enforces that in CI.
+A `dev-dependency` is exempt, since a test may reach anywhere.
 
 Only direct dependencies are drawn: an arrow is left out when the dependency is already implied by a longer path.
 
@@ -137,17 +137,30 @@ Update instructions:
 
 <!-- crate-tables:start -->
 
+### Test support
+
+[`crates/tests`](./crates/tests)
+
+| Crate            | Description                                                                                                                      |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| re_redap_tests   | Official test suite for the Rerun Data Protocol                                                                                  |
+| re_test_context  | A common context used for tests.                                                                                                 |
+| re_test_mocks    | In-process server doubles (`MockOtlpCollector`, `MockPostHog`) used by tests that need to capture outbound OTel/PostHog traffic. |
+| re_test_viewport | A viewport used for tests                                                                                                        |
+| re_web_tests     | Discovers and runs Rerun web tests                                                                                               |
+
 ### SDK / CLI / Wasm
 
 [`crates/top`](./crates/top)
 
-| Crate     | Description                                                                        |
-| --------- | ---------------------------------------------------------------------------------- |
-| re_sdk    | Rerun logging SDK                                                                  |
-| rerun     | The Rerun Rust SDK: log images, point clouds, etc, and visualize them effortlessly |
-| rerun-cli | The Rerun command-line tool: the `rerun` binary, including the native Viewer       |
-| rerun_c   | Rerun C SDK                                                                        |
-| rerun_py  | The Rerun Python SDK                                                               |
+| Crate                | Description                                                                        |
+| -------------------- | ---------------------------------------------------------------------------------- |
+| re_sdk               | Rerun logging SDK                                                                  |
+| re_web_viewer_server | Serves the Rerun web viewer (Wasm and HTML) over HTTP                              |
+| rerun                | The Rerun Rust SDK: log images, point clouds, etc, and visualize them effortlessly |
+| rerun-cli            | The Rerun command-line tool: the `rerun` binary, including the native Viewer       |
+| rerun_c              | Rerun C SDK                                                                        |
+| rerun_py             | The Rerun Python SDK                                                               |
 
 ### Viewer
 
@@ -172,8 +185,6 @@ Update instructions:
 | re_renderer            | A wgpu based renderer for all your visualization needs.                                                    |
 | re_renderer_examples   | Examples for the re_renderer crate.                                                                        |
 | re_selection_panel     | The UI for the selection panel.                                                                            |
-| re_test_context        | A common context used for tests.                                                                           |
-| re_test_viewport       | A viewport used for tests                                                                                  |
 | re_time_panel          | The time panel of the Rerun Viewer, allowing to control the displayed timeline & time.                     |
 | re_time_ruler          | Time ruler widget shared by the time panel and time-aware views.                                           |
 | re_ui                  | Rerun GUI theme and helpers, built around egui                                                             |
@@ -193,7 +204,6 @@ Update instructions:
 | re_viewer_mcp          | MCP server that allows llm agents to use the Rerun Viewer.                                                 |
 | re_viewport            | The central viewport panel of the Rerun viewer.                                                            |
 | re_viewport_blueprint  | The data model describing the layout of the viewport.                                                      |
-| re_web_viewer_server   | Serves the Rerun web viewer (Wasm and HTML) over HTTP                                                      |
 
 ### Store & data flow
 
@@ -224,7 +234,6 @@ Update instructions:
 | re_protos          | Rerun remote gRPC/protobuf API types                                                          |
 | re_query           | High-level query APIs                                                                         |
 | re_redap_client    | Official gRPC client for the Rerun Data Protocol                                              |
-| re_redap_tests     | Official test suite for the Rerun Data Protocol                                               |
 | re_sdk_types       | The built-in Rerun data types, component types, and archetypes.                               |
 | re_server          | A Rerun server implementation backed by an in-memory store                                    |
 | re_sorbet          | Rerun arrow metadata definitions                                                              |
@@ -238,7 +247,6 @@ Update instructions:
 
 | Crate                    | Description                                                                             |
 | ------------------------ | --------------------------------------------------------------------------------------- |
-| re_build_info            | Information about the build. Use together with re_build_tools                           |
 | re_build_tools           | build.rs helpers for generating build info                                              |
 | re_dev_tools             | Various tools for rerun development                                                     |
 | re_protos_builder        | Code generation for Rerun's Protobuf and gRPC definitions.                              |
@@ -246,7 +254,6 @@ Update instructions:
 | re_types_builder         | Generates code for Rerun's SDKs from the type definitions.                              |
 | re_types_builder_macros  | The `#[rerun_type]` attribute macro used by Rerun's IDL definitions.                    |
 | re_types_builder_prelude | The vocabulary that Rerun's IDL definitions are written against.                        |
-| re_web_tests             | Discovers and runs Rerun web tests                                                      |
 
 ### Utilities
 
@@ -260,6 +267,7 @@ Update instructions:
 | re_async            | Async runtime abstractions for native and WebAssembly targets.                                                                                                             |
 | re_auth             | Authentication helpers for Rerun                                                                                                                                           |
 | re_backoff          | Utilities for retrying operations with backoff.                                                                                                                            |
+| re_build_info       | Information about the build. Use together with re_build_tools                                                                                                              |
 | re_byte_size        | Calculate the heap-allocated size of values at runtime.                                                                                                                    |
 | re_byte_size_derive | Derive macro for the `SizeBytes` trait from `re_byte_size`.                                                                                                                |
 | re_capabilities     | Capability tokens for the Rerun code base.                                                                                                                                 |
@@ -278,7 +286,6 @@ Update instructions:
 | re_rvl              | Support for compressed depth data using the RVL format.                                                                                                                    |
 | re_span             | An integer range that always has a non-negative length                                                                                                                     |
 | re_string_interner  | Yet another string interning library                                                                                                                                       |
-| re_test_mocks       | In-process server doubles (`MockOtlpCollector`, `MockPostHog`) used by tests that need to capture outbound OTel/PostHog traffic.                                           |
 | re_tracing          | Helpers for tracing/spans/flamegraphs and such.                                                                                                                            |
 | re_tuid             | 128-bit Time-based Unique Identifier                                                                                                                                       |
 | re_video            | Rerun video processing utilities.                                                                                                                                          |

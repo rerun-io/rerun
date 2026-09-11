@@ -108,24 +108,24 @@ jobs:
         run: |
           pixi run build-examples rrd --install \
             --channel "release" \
-            crates/viewer/re_web_viewer_server/web_viewer/examples
+            crates/top/re_web_viewer_server/web_viewer/examples
 
       - name: Build & run snippets
         run: |
           pixi run build-examples snippets \
-            crates/viewer/re_web_viewer_server/web_viewer/examples/snippets
+            crates/top/re_web_viewer_server/web_viewer/examples/snippets
 
       - name: Build examples manifest
         run: |
           pixi run build-examples manifest \
             --base-url "https://app.rerun.io/version/${{inputs.release-version}}" \
             --channel "release" \
-            crates/viewer/re_web_viewer_server/web_viewer/examples_manifest.json
+            crates/top/re_web_viewer_server/web_viewer/examples_manifest.json
 
       - name: Upload app.rerun.io (versioned)
         uses: google-github-actions/upload-cloud-storage@6397bd7208e18d13ba2619ee21b9873edc94427a # v3.0.0
         with:
-          path: "crates/viewer/re_web_viewer_server/web_viewer"
+          path: "crates/top/re_web_viewer_server/web_viewer"
           destination: "rerun-web-viewer/version/${{ inputs.release-version }}"
           parent: false
           process_gcloudignore: false
@@ -133,7 +133,7 @@ jobs:
       - name: Upload app.rerun.io (commit)
         uses: google-github-actions/upload-cloud-storage@6397bd7208e18d13ba2619ee21b9873edc94427a # v3.0.0
         with:
-          path: "crates/viewer/re_web_viewer_server/web_viewer"
+          path: "crates/top/re_web_viewer_server/web_viewer"
           destination: "rerun-web-viewer/commit/${{ needs.get-commit-sha.outputs.short-sha }}"
           parent: false
           process_gcloudignore: false
@@ -143,7 +143,7 @@ jobs:
       # origin (app.rerun.io/signed-in), not a versioned path.
       - name: "Upload HTML aliases to bucket root"
         run: |
-          cd crates/viewer/re_web_viewer_server/web_viewer
+          cd crates/top/re_web_viewer_server/web_viewer
           for f in *.html; do
             name="${f%.html}"
             if [ "$name" != "index" ] && [ "$name" != "index_bundled" ]; then

@@ -1,0 +1,8 @@
+---
+source: crates/tests/re_redap_tests/src/tests/create_table.rs
+expression: returned_schema.format_snapshot()
+---
+column_a: non-null Utf8
+column_b: Int64
+column_c: non-null Float64
+column_d: Boolean

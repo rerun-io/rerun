@@ -241,8 +241,8 @@ export interface WebViewerOptions {
    * To use this:
    * 1. Host the `signed-in.html` and `signed-out.html` pages alongside your viewer.
    *    Templates can be found at:
-   *    - https://github.com/rerun-io/rerun/blob/main/crates/viewer/re_web_viewer_server/web_viewer/signed-in.html
-   *    - https://github.com/rerun-io/rerun/blob/main/crates/viewer/re_web_viewer_server/web_viewer/signed-out.html
+   *    - https://github.com/rerun-io/rerun/blob/main/crates/top/re_web_viewer_server/web_viewer/signed-in.html?speculative-link
+   *    - https://github.com/rerun-io/rerun/blob/main/crates/top/re_web_viewer_server/web_viewer/signed-out.html?speculative-link
    * 2. Set the URLs to those pages here.
    * 3. Contact your Rerun representative to have the redirect URLs
    *    and origin whitelisted in the OAuth configuration.

@@ -97,13 +97,13 @@ jobs:
           pixi run build-examples manifest \
             --base-url "https://app.rerun.io/commit/$sha" \
             --channel "${{ inputs.CHANNEL }}" \
-            "crates/viewer/re_web_viewer_server/web_viewer/examples_manifest.json"
+            "crates/top/re_web_viewer_server/web_viewer/examples_manifest.json"
 
       - name: Upload web viewer
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: web_viewer
-          path: "crates/viewer/re_web_viewer_server/web_viewer"
+          path: "crates/top/re_web_viewer_server/web_viewer"
 
       - name: Status comment
         if: failure() && github.event_name == 'pull_request'

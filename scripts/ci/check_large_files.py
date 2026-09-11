@@ -40,7 +40,7 @@ PATH_PREFIXES_ALLOWED_TO_CONTAIN_NON_LFS_PNGS = (
     "crates/viewer/re_ui/data/logo_light_mode.png",
     "crates/viewer/re_viewer/data/app_icon.png",
     "crates/viewer/re_viewer/data/app_icon_mac.png",
-    "crates/viewer/re_web_viewer_server/web_viewer/apple-touch-icon.png",
+    "crates/top/re_web_viewer_server/web_viewer/apple-touch-icon.png",
     "docs/snippets/all/archetypes/ferris.png",
     "docs/snippets/src/snippets/ferris.png",
     "examples/assets/example.png",

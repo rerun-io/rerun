@@ -134,9 +134,9 @@ impl TestEnv {
             return path.clone();
         }
 
-        // <workspace>/crates/viewer/re_web_viewer_server/web_viewer, relative to this crate.
+        // <workspace>/crates/top/re_web_viewer_server/web_viewer, relative to this crate.
         let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../../../crates/viewer/re_web_viewer_server/web_viewer");
+            .join("../../../crates/top/re_web_viewer_server/web_viewer");
 
         assert!(
             dir.join("re_viewer_bg.wasm").exists(),

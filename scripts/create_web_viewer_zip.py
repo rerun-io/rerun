@@ -11,7 +11,7 @@ Usage:
     python3 scripts/create_web_viewer_zip.py <web_viewer_dir> <output_zip>
 
 Example:
-    python3 scripts/create_web_viewer_zip.py crates/viewer/re_web_viewer_server/web_viewer web_viewer.zip
+    python3 scripts/create_web_viewer_zip.py crates/top/re_web_viewer_server/web_viewer web_viewer.zip
 """
 
 from __future__ import annotations

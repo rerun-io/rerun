@@ -70,4 +70,4 @@ The leg is advisory, so an unmarked new test blocks nobody while it's being tria
 
 ## Related test suites
 
-There are more e2e tests in [`re_redap_tests`](../../../crates/store/re_redap_tests/README.md), written in Rust.
+There are more e2e tests in [`re_redap_tests`](../../../crates/tests/re_redap_tests/README.md), written in Rust.

@@ -62,9 +62,10 @@ TABLES_END = "<!-- crate-tables:end -->"
 # the generated tables.
 DEPRECATED_CRATES = {"re_types"}
 
-# One band each, top to bottom. The order is chosen so that almost every
-# dependency points downwards; the few that do not become upward arrows.
+# One band each, top to bottom. `scripts/check_crate_layers.py` enforces this
+# order, so every arrow in the diagram points downwards.
 LAYERS = [
+    ("crates/tests", "Test support", "#d9cdea"),
     ("crates/top", "SDK / CLI / Wasm", "#f7c9a1"),
     ("crates/viewer", "Viewer", "#b9d5f0"),
     ("crates/store", "Store & data flow", "#bfe3bf"),
