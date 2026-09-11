@@ -3,6 +3,9 @@ title: "0.37"
 order: 973
 ---
 
+> [!NOTE]
+> Web users should use Rerun 0.37.2 or later because previous versions accidentally disabled file importers in the web Viewer.
+
 ## New features
 
 ### Assets
