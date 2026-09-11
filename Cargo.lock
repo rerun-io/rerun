@@ -10978,6 +10978,7 @@ dependencies = [
  "serde",
  "smallvec",
  "thiserror 2.0.19",
+ "tiff",
  "wasm-bindgen",
  "web-sys",
  "web-time",
@@ -11169,6 +11170,7 @@ dependencies = [
  "serde",
  "smallvec",
  "thiserror 2.0.19",
+ "tiff",
  "vec1",
 ]
 
@@ -11482,6 +11484,7 @@ dependencies = [
  "static_assertions",
  "strum_macros 0.26.4",
  "thiserror 2.0.19",
+ "tiff",
  "tokio",
  "uuid",
  "vec1",

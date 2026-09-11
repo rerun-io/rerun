@@ -100,3 +100,4 @@ re_ui = { workspace = true, features = ["testing"] }
 
 egui_kittest.workspace = true
 rand = { workspace = true, features = ["std_rng"] }
+tiff.workspace = true

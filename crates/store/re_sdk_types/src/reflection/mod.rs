@@ -2654,14 +2654,14 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         name: "blob",
                         display_name: "Blob",
                         component_type: "rerun.components.Blob".into(),
-                        docstring_md: "The encoded depth payload.\n\nSupported are:\n* single channel PNG\n* RVL with ROS2 metadata (for details see <https://github.com/ros-perception/image_transport_plugins/tree/jazzy>)",
+                        docstring_md: "The encoded depth payload.\n\nSupported are:\n* single channel PNG\n* single channel TIFF with `U8`, `U16`, or `F32` samples\n* RVL with ROS2 metadata (for details see <https://github.com/ros-perception/image_transport_plugins/tree/jazzy>)",
                         flags: ArchetypeFieldFlags::REQUIRED,
                     },
                     ArchetypeFieldReflection {
                         name: "media_type",
                         display_name: "Media type",
                         component_type: "rerun.components.MediaType".into(),
-                        docstring_md: "Media type of the blob, e.g.:\n\n * `application/rvl` (RVL-compressed 16-bit)\n * `image/png`",
+                        docstring_md: "Media type of the blob, e.g.:\n\n * `application/rvl` (RVL-compressed 16-bit)\n * `image/png`\n * `image/tiff`",
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {

@@ -24,7 +24,7 @@ use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 use ::std::borrow::Cow;
 
-/// **Archetype**: A depth image encoded with a codec (e.g. RVL or PNG).
+/// **Archetype**: A depth image encoded with a codec (e.g. RVL, PNG, or TIFF).
 ///
 /// Rerun also supports uncompressed depth images with the [`archetypes.DepthImage`](https://rerun.io/docs/reference/types/archetypes/depth_image).
 ///
@@ -79,6 +79,7 @@ pub struct EncodedDepthImage {
     ///
     /// Supported are:
     /// * single channel PNG
+    /// * single channel TIFF with `U8`, `U16`, or `F32` samples
     /// * RVL with ROS2 metadata (for details see <https://github.com/ros-perception/image_transport_plugins/tree/jazzy>)
     pub blob: Option<SerializedComponentBatch>,
 
@@ -86,6 +87,7 @@ pub struct EncodedDepthImage {
     ///
     ///  * `application/rvl` (RVL-compressed 16-bit)
     ///  * `image/png`
+    ///  * `image/tiff`
     pub media_type: Option<SerializedComponentBatch>,
 
     /// Conversion from native units to meters (e.g. `0.001` for millimeters).
@@ -532,6 +534,7 @@ impl EncodedDepthImage {
     ///
     /// Supported are:
     /// * single channel PNG
+    /// * single channel TIFF with `U8`, `U16`, or `F32` samples
     /// * RVL with ROS2 metadata (for details see <https://github.com/ros-perception/image_transport_plugins/tree/jazzy>)
     #[inline]
     pub fn with_blob(mut self, blob: impl Into<crate::components::Blob>) -> Self {
@@ -556,6 +559,7 @@ impl EncodedDepthImage {
     ///
     ///  * `application/rvl` (RVL-compressed 16-bit)
     ///  * `image/png`
+    ///  * `image/tiff`
     #[inline]
     pub fn with_media_type(mut self, media_type: impl Into<crate::components::MediaType>) -> Self {
         self.media_type = try_serialize_field(Self::descriptor_media_type(), [media_type]);

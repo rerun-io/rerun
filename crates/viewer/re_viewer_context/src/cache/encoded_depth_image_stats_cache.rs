@@ -73,6 +73,17 @@ fn decode_depth_image(
         return Err(ImageLoadError::UnrecognizedMimeType);
     };
 
+    if media_type.as_str() == MediaType::TIFF {
+        let (blob, format) = re_sdk_types::image::blob_and_format_from_tiff(image_bytes)?;
+        return Ok(ImageInfo::from_stored_blob(
+            blob_row_id,
+            blob_component,
+            blob,
+            format,
+            ImageKind::Depth,
+        ));
+    }
+
     if media_type.as_str() == MediaType::RVL {
         let metadata = re_rvl::RosRvlMetadata::parse(image_bytes)
             .map_err(|err| ImageLoadError::DecodeError(err.to_string()))?;
@@ -168,6 +179,30 @@ mod tests {
             .expect("16-bit grayscale PNG should decode");
 
         assert_eq!(stats.finite_range, (0.0, 4000.0));
+    }
+
+    /// A gray F32 TIFF decodes through the dedicated TIFF path; the stats reflect the
+    /// decoded float values.
+    #[test]
+    fn stats_come_from_decoded_tiff_pixels() {
+        let mut buf = std::io::Cursor::new(Vec::new());
+        let mut encoder = tiff::encoder::TiffEncoder::new(&mut buf).unwrap();
+        encoder
+            .write_image::<tiff::encoder::colortype::Gray32Float>(2, 2, &[0.0_f32, 0.5, 2.5, 1.0])
+            .unwrap();
+        let tiff_bytes = buf.into_inner();
+
+        let mut cache = EncodedDepthImageStatsCache::default();
+        let stats = cache
+            .entry(
+                RowId::new(),
+                blob_component(),
+                &tiff_bytes,
+                Some(&MediaType::tiff()),
+            )
+            .expect("32-bit float grayscale TIFF should decode");
+
+        assert_eq!(stats.finite_range, (0.0, 2.5));
     }
 
     /// Without an explicit media type, the media type is guessed from the blob contents.

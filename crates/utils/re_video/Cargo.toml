@@ -71,6 +71,7 @@ ffmpeg-sidecar = { workspace = true, optional = true }
 # Other web images should go through browser decoding instead.
 image = { workspace = true, default-features = false, features = ["png"] }
 bytemuck.workspace = true
+tiff.workspace = true
 
 # We enable re_rav1d on native, UNLESS we're on Linux Arm64
 # See https://github.com/rerun-io/rerun/issues/7755

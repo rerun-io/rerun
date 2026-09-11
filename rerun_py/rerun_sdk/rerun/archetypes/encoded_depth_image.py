@@ -29,7 +29,7 @@ __all__ = ["EncodedDepthImage"]
 @define(str=False, repr=False, init=False)
 class EncodedDepthImage(Archetype, VisualizableArchetype):
     """
-    **Archetype**: A depth image encoded with a codec (e.g. RVL or PNG).
+    **Archetype**: A depth image encoded with a codec (e.g. RVL, PNG, or TIFF).
 
     Rerun also supports uncompressed depth images with the [`archetypes.DepthImage`](https://rerun.io/docs/reference/types/archetypes/depth_image).
 
@@ -105,12 +105,14 @@ class EncodedDepthImage(Archetype, VisualizableArchetype):
 
             Supported are:
             * single channel PNG
+            * single channel TIFF with `U8`, `U16`, or `F32` samples
             * RVL with ROS2 metadata (for details see <https://github.com/ros-perception/image_transport_plugins/tree/jazzy>)
         media_type:
             Media type of the blob, e.g.:
 
              * `application/rvl` (RVL-compressed 16-bit)
              * `image/png`
+             * `image/tiff`
         meter:
             Conversion from native units to meters (e.g. `0.001` for millimeters).
 
@@ -193,12 +195,14 @@ class EncodedDepthImage(Archetype, VisualizableArchetype):
 
             Supported are:
             * single channel PNG
+            * single channel TIFF with `U8`, `U16`, or `F32` samples
             * RVL with ROS2 metadata (for details see <https://github.com/ros-perception/image_transport_plugins/tree/jazzy>)
         media_type:
             Media type of the blob, e.g.:
 
              * `application/rvl` (RVL-compressed 16-bit)
              * `image/png`
+             * `image/tiff`
         meter:
             Conversion from native units to meters (e.g. `0.001` for millimeters).
 
@@ -339,12 +343,14 @@ class EncodedDepthImage(Archetype, VisualizableArchetype):
 
             Supported are:
             * single channel PNG
+            * single channel TIFF with `U8`, `U16`, or `F32` samples
             * RVL with ROS2 metadata (for details see <https://github.com/ros-perception/image_transport_plugins/tree/jazzy>)
         media_type:
             Media type of the blob, e.g.:
 
              * `application/rvl` (RVL-compressed 16-bit)
              * `image/png`
+             * `image/tiff`
         meter:
             Conversion from native units to meters (e.g. `0.001` for millimeters).
 
@@ -435,6 +441,7 @@ class EncodedDepthImage(Archetype, VisualizableArchetype):
     #
     # Supported are:
     # * single channel PNG
+    # * single channel TIFF with `U8`, `U16`, or `F32` samples
     # * RVL with ROS2 metadata (for details see <https://github.com/ros-perception/image_transport_plugins/tree/jazzy>)
     #
     # (Docstring intentionally commented out to hide this field from the docs)
@@ -448,6 +455,7 @@ class EncodedDepthImage(Archetype, VisualizableArchetype):
     #
     #  * `application/rvl` (RVL-compressed 16-bit)
     #  * `image/png`
+    #  * `image/tiff`
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

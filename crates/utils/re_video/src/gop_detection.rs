@@ -72,11 +72,10 @@ pub fn detect_gop_start(
         VideoCodec::VP9 => Ok(detect_vp9_gop(sample_data)),
         VideoCodec::ImageSequence(codec) => {
             // Images are always treated as keyframes.
-            // Each meta function checks magic bytes internally and returns
-            // `WrongFormat` if they don't match vs `InvalidData` if parsing fails.
             let (codec_string, meta) = match codec {
                 Some(codec) if codec == "image/png" => (codec, png_meta(sample_data)?),
                 Some(codec) if codec == "image/jpeg" => (codec, jpeg_meta(sample_data)?),
+                Some(codec) if codec == "image/tiff" => (codec, tiff_meta(sample_data)?),
                 Some(codec) if codec == "application/rvl" => (codec, rvl_meta(sample_data)?),
                 None => guess_image_meta(sample_data)?,
                 Some(_) => {
@@ -106,7 +105,11 @@ pub fn is_start_of_gop(sample_data: &[u8], codec: VideoCodec) -> Result<bool, De
 /// Returns the format string and metadata.
 fn guess_image_meta(sample_data: &[u8]) -> Result<(String, ImageMeta), ImageSizeError> {
     type MetaFn = fn(&[u8]) -> Result<ImageMeta, ImageSizeError>;
-    let formats: &[(&str, MetaFn)] = &[("image/png", png_meta), ("image/jpeg", jpeg_meta)];
+    let formats: &[(&str, MetaFn)] = &[
+        ("image/png", png_meta),
+        ("image/jpeg", jpeg_meta),
+        ("image/tiff", tiff_meta),
+    ];
 
     for &(name, meta_fn) in formats {
         match meta_fn(sample_data) {
@@ -144,7 +147,7 @@ impl From<ImageSizeError> for DetectGopStartError {
             ImageSizeError::WrongFormat(for_format) => {
                 Self::FailedToExtractEncodingDetails(match for_format.as_str() {
                     "" => {
-                        "Image data doesn't match any supported image format (image/png, image/jpeg)".to_owned()
+                        "Image data doesn't match any supported image format (image/png, image/jpeg, image/tiff)".to_owned()
                     }
                     _ => {
                         format!(
@@ -253,6 +256,48 @@ fn jpeg_meta(data: &[u8]) -> Result<ImageMeta, ImageSizeError> {
     }
 }
 
+/// Extract width, height, and bit depth from a TIFF.
+///
+/// After the magic-byte check, the header is parsed with the `tiff` crate,
+/// which reads only the IFD, not the pixel data.
+fn tiff_meta(sample_data: &[u8]) -> Result<ImageMeta, ImageSizeError> {
+    const TIFF_MAGIC_LE: &[u8] = b"II*\0";
+    const TIFF_MAGIC_BE: &[u8] = b"MM\0*";
+
+    let magic = sample_data.get(..4);
+    if magic != Some(TIFF_MAGIC_LE) && magic != Some(TIFF_MAGIC_BE) {
+        return Err(ImageSizeError::WrongFormat("image/tiff".to_owned()));
+    }
+
+    let invalid_data = |err: &dyn std::fmt::Display| {
+        ImageSizeError::InvalidData(format!("Invalid TIFF data: {err}"))
+    };
+
+    let mut decoder = tiff::decoder::Decoder::new(std::io::Cursor::new(sample_data))
+        .map_err(|err| invalid_data(&err))?;
+
+    let (width, height) = decoder.dimensions().map_err(|err| invalid_data(&err))?;
+    let convert_dim = |v: u32| {
+        u16::try_from(v).map_err(|_err| {
+            ImageSizeError::InvalidData("TIFF image dimension too large".to_owned())
+        })
+    };
+    let w = convert_dim(width)?;
+    let h = convert_dim(height)?;
+
+    let color_type = decoder.colortype().map_err(|err| invalid_data(&err))?;
+    let (bit_depth, chroma_subsampling) = match color_type {
+        tiff::ColorType::Gray(bits) => (Some(bits), ChromaSubsamplingModes::Monochrome),
+        _ => (None, ChromaSubsamplingModes::Yuv444),
+    };
+
+    Ok(ImageMeta {
+        coded_dimensions: [w, h],
+        bit_depth,
+        chroma_subsampling,
+    })
+}
+
 /// Extract dimensions from an RVL-compressed depth payload.
 ///
 /// See [`re_rvl::RosRvlMetadata`] for the header layout. RVL has no real magic
@@ -283,6 +328,28 @@ fn rvl_meta(sample_data: &[u8]) -> Result<ImageMeta, ImageSizeError> {
 mod tests {
     use super::*;
     use std::assert_matches;
+
+    /// A gray F32 TIFF reports its dimensions and per-channel bit depth, both when the
+    /// codec is given explicitly and when it must be guessed from the magic bytes.
+    #[test]
+    fn tiff_reports_dimensions_and_bit_depth() {
+        let mut buf = std::io::Cursor::new(Vec::new());
+        let mut encoder = tiff::encoder::TiffEncoder::new(&mut buf).unwrap();
+        encoder
+            .write_image::<tiff::encoder::colortype::Gray32Float>(2, 3, &[0.0_f32; 6])
+            .unwrap();
+        let tiff_bytes = buf.into_inner();
+
+        for codec in [Some("image/tiff".to_owned()), None] {
+            let detected = detect_gop_start(&tiff_bytes, VideoCodec::ImageSequence(codec)).unwrap();
+            let GopStartDetection::StartOfGop(details) = detected else {
+                panic!("images are always keyframes");
+            };
+            assert_eq!(details.codec_string, "image/tiff");
+            assert_eq!(details.coded_dimensions, [2, 3]);
+            assert_eq!(details.bit_depth, Some(32));
+        }
+    }
 
     #[test]
     fn jpeg_rejects_segment_length_below_two() {

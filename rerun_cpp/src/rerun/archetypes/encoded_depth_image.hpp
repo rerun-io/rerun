@@ -22,7 +22,7 @@
 #include <vector>
 
 namespace rerun::archetypes {
-    /// **Archetype**: A depth image encoded with a codec (e.g. RVL or PNG).
+    /// **Archetype**: A depth image encoded with a codec (e.g. RVL, PNG, or TIFF).
     ///
     /// Rerun also supports uncompressed depth images with the [`archetypes.DepthImage`](https://rerun.io/docs/reference/types/archetypes/depth_image).
     ///
@@ -91,6 +91,7 @@ namespace rerun::archetypes {
         ///
         /// Supported are:
         /// * single channel PNG
+        /// * single channel TIFF with `U8`, `U16`, or `F32` samples
         /// * RVL with ROS2 metadata (for details see <https://github.com/ros-perception/image_transport_plugins/tree/jazzy>)
         std::optional<ComponentBatch> blob;
 
@@ -98,6 +99,7 @@ namespace rerun::archetypes {
         ///
         ///  * `application/rvl` (RVL-compressed 16-bit)
         ///  * `image/png`
+        ///  * `image/tiff`
         std::optional<ComponentBatch> media_type;
 
         /// Conversion from native units to meters (e.g. `0.001` for millimeters).
@@ -192,6 +194,7 @@ namespace rerun::archetypes {
         ///
         /// Supported are:
         /// * single channel PNG
+        /// * single channel TIFF with `U8`, `U16`, or `F32` samples
         /// * RVL with ROS2 metadata (for details see <https://github.com/ros-perception/image_transport_plugins/tree/jazzy>)
         EncodedDepthImage with_blob(const rerun::components::Blob& _blob) && {
             blob = ComponentBatch::from_loggable(_blob, Descriptor_blob).value_or_throw();
@@ -211,6 +214,7 @@ namespace rerun::archetypes {
         ///
         ///  * `application/rvl` (RVL-compressed 16-bit)
         ///  * `image/png`
+        ///  * `image/tiff`
         EncodedDepthImage with_media_type(const rerun::components::MediaType& _media_type) && {
             media_type =
                 ComponentBatch::from_loggable(_media_type, Descriptor_media_type).value_or_throw();

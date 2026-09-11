@@ -23,6 +23,11 @@ impl MediaType {
     /// <https://www.iana.org/assignments/media-types/image/png>
     pub const PNG: &'static str = "image/png";
 
+    /// [TIFF image](https://en.wikipedia.org/wiki/TIFF): `image/tiff`.
+    ///
+    /// <https://www.iana.org/assignments/media-types/image/tiff>
+    pub const TIFF: &'static str = "image/tiff";
+
     // -------------------------------------------------------
     // Meshes:
 
@@ -120,6 +125,12 @@ impl MediaType {
     #[inline]
     pub fn png() -> Self {
         Self(Self::PNG.into())
+    }
+
+    /// `image/tiff`
+    #[inline]
+    pub fn tiff() -> Self {
+        Self(Self::TIFF.into())
     }
 
     // -------------------------------------------------------

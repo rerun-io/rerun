@@ -108,6 +108,7 @@ mod webcodecs;
 pub use webcodecs::WebVideoFrame;
 
 mod rvl_decoder;
+mod tiff_decoder;
 
 use crate::{
     FrameNumber, SampleIndex, Time, VideoDataDescription, VideoSource,
@@ -289,6 +290,15 @@ pub fn new_decoder(
                             Box::new(rvl_decoder::RvlDecoder),
                             output_sender,
                         )))
+                    } else if video.image_codec_mime_type() == Some("image/tiff") {
+                        // Must be matched before `WebImageDecoder`: browsers can't decode TIFF,
+                        // and its CPU fallback (the `image` crate) can't represent
+                        // single-channel floating point images.
+                        Ok(Box::new(sync_decoder_wrapper::SyncDecoderWrapper::new(
+                            "tiff decoder".to_owned(),
+                            Box::new(tiff_decoder::TiffDecoder),
+                            output_sender,
+                        )))
                     } else if let Some(decoder) =
                         web_image_decoder::WebImageDecoder::try_new(video, output_sender.clone())
                     {
@@ -344,6 +354,15 @@ pub fn new_decoder(
                         Ok(Box::new(sync_decoder_wrapper::SyncDecoderWrapper::new(
                             "rvl decoder".to_owned(),
                             Box::new(rvl_decoder::RvlDecoder),
+                            output_sender,
+                        )))
+                    } else if video.image_codec_mime_type() == Some("image/tiff") {
+                        // Must be matched before `SyncImageDecoder`, which also accepts TIFF
+                        // but decodes through the `image` crate, which can't represent
+                        // single-channel floating point images.
+                        Ok(Box::new(sync_decoder_wrapper::SyncDecoderWrapper::new(
+                            "tiff decoder".to_owned(),
+                            Box::new(tiff_decoder::TiffDecoder),
                             output_sender,
                         )))
                     } else if let Some(decoder) = image_decoder::SyncImageDecoder::try_new(video) {

@@ -1,7 +1,7 @@
 // This is a Rerun type definition for the SDK, not executable code.
 // It is parsed by `re_types_builder` to generate the Rust, Python and C++ bindings.
 
-/// A depth image encoded with a codec (e.g. RVL or PNG).
+/// A depth image encoded with a codec (e.g. RVL, PNG, or TIFF).
 ///
 /// Rerun also supports uncompressed depth images with the [`archetypes.DepthImage`](https://rerun.io/docs/reference/types/archetypes/depth_image).
 ///
@@ -17,6 +17,7 @@ pub struct EncodedDepthImage {
     ///
     /// Supported are:
     /// * single channel PNG
+    /// * single channel TIFF with `U8`, `U16`, or `F32` samples
     /// * RVL with ROS2 metadata (for details see <https://github.com/ros-perception/image_transport_plugins/tree/jazzy>)
     #[rerun(no_ui_edit)]
     #[rerun(required)]
@@ -26,6 +27,7 @@ pub struct EncodedDepthImage {
     ///
     ///  * `application/rvl` (RVL-compressed 16-bit)
     ///  * `image/png`
+    ///  * `image/tiff`
     #[rerun(recommended)]
     pub media_type: Option<rerun::components::MediaType>,
 

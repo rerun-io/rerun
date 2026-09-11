@@ -86,6 +86,7 @@ half.workspace = true
 insta.workspace = true
 ndarray.workspace = true
 re_mp4.workspace = true
+tiff.workspace = true
 
 [lib]
 bench = false
