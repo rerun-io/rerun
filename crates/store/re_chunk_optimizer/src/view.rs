@@ -287,18 +287,13 @@ fn components_per_chunk(
 
     let schema = raw.data.schema();
     for (field, column) in std::iter::zip(schema.fields(), raw.data.columns()) {
-        let Some(component) = field
-            .metadata()
-            .get(re_types_core::FIELD_METADATA_KEY_COMPONENT)
-        else {
+        let Some(component) = RawRrdManifest::get_component(field) else {
             continue;
         };
         let component = ComponentIdentifier::try_new(component).map_err(|_err| {
             Error::malformed_component_column(field.name(), "empty component identifier")
         })?;
-        let component_type = field
-            .metadata()
-            .get(re_types_core::FIELD_METADATA_KEY_COMPONENT_TYPE)
+        let component_type = RawRrdManifest::get_component_type(field)
             .map(ComponentType::try_new)
             .transpose()
             .map_err(|_err| {
@@ -308,12 +303,12 @@ fn components_per_chunk(
         // Only the rows with data are visited: for a `:start` column those are its valid rows, for a
         // `:has_static_data` column its set bits. Both come straight off the buffers, so the walk
         // is proportional to the number of (chunk, component) presences, not to fields × rows.
-        let rows_with_data: Either<_, _> = if field.name().ends_with(":start") {
+        let rows_with_data: Either<_, _> = if RawRrdManifest::is_index_start(field) {
             Either::Left(match column.nulls() {
                 Some(nulls) => Either::Left(nulls.valid_indices()),
                 None => Either::Right(0..num_rows),
             })
-        } else if field.name().ends_with(":has_static_data") {
+        } else if RawRrdManifest::is_index_has_static_data(field) {
             let flags = column
                 .as_any()
                 .downcast_ref::<BooleanArray>()

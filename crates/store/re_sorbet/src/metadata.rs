@@ -18,6 +18,11 @@ pub const SORBET_ENTITY_PATH: &str = "rerun:entity_path";
 /// field-level metadata.
 pub const RERUN_KIND: &str = "rerun:kind";
 
+/// The key flagging a component column as static in field-level metadata.
+///
+/// Present with the value `"true"` on static columns and absent otherwise.
+pub const SORBET_IS_STATIC: &str = "rerun:is_static";
+
 /// The key used to identify table columns in the Rerun server
 /// associated as a primary index.
 pub const SORBET_IS_TABLE_INDEX: &str = "rerun:is_table_index";

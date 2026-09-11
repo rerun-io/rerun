@@ -12,7 +12,10 @@ use re_chunk::external::nohash_hasher::IntMap;
 use re_chunk::external::re_byte_size;
 use re_chunk::{ArchetypeName, ChunkError, ChunkId, ComponentIdentifier, ComponentType, Timeline};
 use re_log_types::{AbsoluteTimeRange, EntityPath, StoreId, TimeType, TimelineName};
-use re_types_core::ComponentDescriptor;
+use re_types_core::{
+    ComponentDescriptor, FIELD_METADATA_KEY_ARCHETYPE, FIELD_METADATA_KEY_COMPONENT,
+    FIELD_METADATA_KEY_COMPONENT_TYPE,
+};
 
 use crate::{CodecError, CodecResult, Decodable as _, StreamFooterEntry, ToApplication as _};
 
@@ -503,7 +506,7 @@ impl RawRrdManifest {
 
         let has_static_component_data: Vec<_> =
             itertools::izip!(self.data.schema_ref().fields(), self.data.columns(),)
-                .filter(|(f, _c)| f.name().ends_with(":has_static_data"))
+                .filter(|(f, _c)| Self::is_index_has_static_data(f))
                 .map(|(f, c)| {
                     c.try_downcast_array_ref::<arrow::array::BooleanArray>()
                         .map_err(|err| {
@@ -529,7 +532,7 @@ impl RawRrdManifest {
                     continue;
                 }
 
-                let Some(component) = f.metadata().get("rerun:component") else {
+                let Some(component) = f.metadata().get(FIELD_METADATA_KEY_COMPONENT) else {
                     return Err(CodecError::from(ChunkError::Malformed {
                         reason: format!(
                             "column '{}' is missing rerun:component metadata",
@@ -569,10 +572,14 @@ impl RawRrdManifest {
             .iter()
             .filter_map(|f| {
                 f.metadata()
-                    .get("rerun:index")
-                    .and_then(|index| f.metadata().get("rerun:component").map(|c| (index, c, f)))
+                    .get(Self::FIELD_METADATA_KEY_INDEX)
+                    .and_then(|index| {
+                        f.metadata()
+                            .get(FIELD_METADATA_KEY_COMPONENT)
+                            .map(|c| (index, c, f))
+                    })
             })
-            .filter(|(_index, _component, field)| field.name().ends_with(":start"))
+            .filter(|(_index, _component, field)| Self::is_index_start(field))
             .collect_vec();
 
         let mut per_entity: RrdManifestTemporalMap = Default::default();
@@ -598,12 +605,14 @@ impl RawRrdManifest {
         // Two descriptors that share a component identifier but differ in type or archetype get
         // two sets of columns with the same names, so a column is matched to its `:start` field
         // by its full metadata, never by name or by `rerun:component` alone.
-        let sibling = |field: &Field, suffix: &str| {
+        let sibling = |field: &Field, marker: &str| {
             itertools::izip!(fields, columns)
-                .find(|(f, _col)| f.name().ends_with(suffix) && f.metadata() == field.metadata())
+                .find(|(f, _col)| {
+                    Self::has_index_marker(f, marker) && f.metadata() == field.metadata()
+                })
                 .ok_or_else(|| {
                     CodecError::from(ChunkError::Malformed {
-                        reason: format!("{suffix} index is missing for {}", field.name()),
+                        reason: format!("{marker} index is missing for {}", field.name()),
                     })
                 })
         };
@@ -611,13 +620,13 @@ impl RawRrdManifest {
         let mut columns_per_index = Vec::<IndexColumns<'_>>::new();
         for (index, component, field) in indexes {
             let index = index.as_str();
-            if index == "rerun:static" {
+            if index == Self::INDEX_NAME_STATIC {
                 continue;
             }
 
-            let (_, col_start) = sibling(field, ":start")?;
-            let (_, col_end) = sibling(field, ":end")?;
-            let (field_num_rows, col_num_rows) = sibling(field, ":num_rows")?;
+            let (_, col_start) = sibling(field, Self::INDEX_MARKER_START)?;
+            let (_, col_end) = sibling(field, Self::INDEX_MARKER_END)?;
+            let (field_num_rows, col_num_rows) = sibling(field, Self::INDEX_MARKER_NUM_ROWS)?;
 
             let (time_type, col_start_raw) =
                 TimeType::from_arrow_array(col_start).map_err(CodecError::ArrowDeserialization)?;
@@ -738,23 +747,79 @@ impl PartialEq for RawRrdManifest {
 // Index-column helpers.
 //
 // Rerun index columns are tagged with `rerun:*` metadata keys that describe what kind of index
-// they represent (static vs temporal, sequence vs timestamp, start/end/len marker, etc). These
-// helpers centralize the key-name conventions so downstream code doesn't reach into the metadata
-// map directly.
+// they represent (static vs temporal, sequence vs timestamp, per-component or global). The marker
+// (`start`, `end`, `num_rows`, …) is the last `:`-separated part of the column name. These
+// helpers centralize the conventions so downstream code doesn't reach into names or metadata.
 impl RawRrdManifest {
+    /// Field metadata key holding the index name an index column belongs to.
+    const FIELD_METADATA_KEY_INDEX: &str = "rerun:index";
+
+    /// Field metadata key holding the index kind (`"sequence"`, `"timestamp"`, `"duration"`).
+    const FIELD_METADATA_KEY_INDEX_KIND: &str = "rerun:index_kind";
+
+    /// Field metadata key holding the index marker in the Segment Manifest schema, where the RRD
+    /// manifest encodes it as the column name's last `:`-separated part instead.
+    const FIELD_METADATA_KEY_INDEX_MARKER: &str = "rerun:index_marker";
+
+    /// The `rerun:index` value of the static-data pseudo-index.
+    ///
+    /// The Segment Manifest schema tags the same columns with [`Self::INDEX_NAME_STATIC_SEGMENT_MANIFEST`] instead.
+    const INDEX_NAME_STATIC: &str = "rerun:static";
+
+    /// The Segment Manifest's `rerun:index` value of the static-data pseudo-index.
+    const INDEX_NAME_STATIC_SEGMENT_MANIFEST: &str = "static";
+
+    const INDEX_MARKER_START: &str = "start";
+    const INDEX_MARKER_END: &str = "end";
+    const INDEX_MARKER_NUM_ROWS: &str = "num_rows";
+    const INDEX_MARKER_HAS_DATA: &str = "has_data";
+    const INDEX_MARKER_HAS_STATIC_DATA: &str = "has_static_data";
+
+    /// The Segment Manifest's global chunk-length column; the RRD manifest has no such column.
+    const INDEX_MARKER_LEN: &str = "len";
+
     /// `true` if the field is a Rerun index column (temporal or static).
     pub fn is_index(field: &Field) -> bool {
-        field.metadata().contains_key("rerun:index")
+        field
+            .metadata()
+            .contains_key(Self::FIELD_METADATA_KEY_INDEX)
+    }
+
+    /// The component identifier of a per-component index column, if it is one.
+    pub fn get_component(field: &Field) -> Option<&str> {
+        field
+            .metadata()
+            .get(FIELD_METADATA_KEY_COMPONENT)
+            .map(|s| s.as_str())
+    }
+
+    /// The component type of a per-component index column, if its descriptor has one.
+    pub fn get_component_type(field: &Field) -> Option<&str> {
+        field
+            .metadata()
+            .get(FIELD_METADATA_KEY_COMPONENT_TYPE)
+            .map(|s| s.as_str())
+    }
+
+    /// `true` if the field is a per-component index column (as opposed to a global one).
+    pub fn is_index_per_component(field: &Field) -> bool {
+        field.metadata().contains_key(FIELD_METADATA_KEY_COMPONENT)
     }
 
     /// The index name (e.g. `"frame_nr"`, `"log_time"`, `"static"`) for a field, if any.
     pub fn get_index_name(field: &Field) -> Option<&str> {
-        field.metadata().get("rerun:index").map(|s| s.as_str())
+        field
+            .metadata()
+            .get(Self::FIELD_METADATA_KEY_INDEX)
+            .map(|s| s.as_str())
     }
 
     /// The index kind (`"sequence"`, `"timestamp"`, `"duration"`) for a field, if any.
     pub fn get_index_kind(field: &Field) -> Option<&str> {
-        field.metadata().get("rerun:index_kind").map(|s| s.as_str())
+        field
+            .metadata()
+            .get(Self::FIELD_METADATA_KEY_INDEX_KIND)
+            .map(|s| s.as_str())
     }
 
     /// `true` if the field is a Rerun index column with the given name.
@@ -762,43 +827,58 @@ impl RawRrdManifest {
         Self::get_index_name(field) == Some(index_name)
     }
 
-    /// `true` if the field belongs to the static-data pseudo-index.
+    /// `true` if the field belongs to the static-data pseudo-index, in either the RRD manifest or
+    /// the Segment Manifest schema.
     pub fn is_index_static(field: &Field) -> bool {
-        Self::is_specific_index(field, "static")
+        Self::get_index_name(field).is_some_and(|name| {
+            name == Self::INDEX_NAME_STATIC || name == Self::INDEX_NAME_STATIC_SEGMENT_MANIFEST
+        })
     }
 
-    /// `true` if the field is the `:start` marker of an index.
+    /// `true` if the field carries the given marker: a `rerun:index_marker` metadata entry, or
+    /// the name's last `:`-separated part. The manifest writer only sets the latter; the former
+    /// is what the cloud schema uses for the same columns.
+    pub fn has_index_marker(field: &Field, marker: &str) -> bool {
+        field
+            .metadata()
+            .get(Self::FIELD_METADATA_KEY_INDEX_MARKER)
+            .is_some_and(|m| m == marker)
+            || field
+                .name()
+                .rsplit_once(':')
+                .is_some_and(|(_, suffix)| suffix == marker)
+    }
+
+    /// `true` if the field is the `:start` column of an index.
     pub fn is_index_start(field: &Field) -> bool {
-        field
-            .metadata()
-            .get("rerun:index_marker")
-            .map(|s| s.as_str())
-            == Some("start")
+        Self::has_index_marker(field, Self::INDEX_MARKER_START)
     }
 
-    /// `true` if the field is the `:end` marker of an index.
+    /// `true` if the field is the `:end` column of an index.
     pub fn is_index_end(field: &Field) -> bool {
-        field
-            .metadata()
-            .get("rerun:index_marker")
-            .map(|s| s.as_str())
-            == Some("end")
+        Self::has_index_marker(field, Self::INDEX_MARKER_END)
     }
 
-    /// `true` if the field is the `:len` marker of an index.
+    /// `true` if the field is the `:num_rows` column of a per-component index.
+    pub fn is_index_num_rows(field: &Field) -> bool {
+        Self::has_index_marker(field, Self::INDEX_MARKER_NUM_ROWS)
+    }
+
+    /// `true` if the field is the `:len` column of a Segment Manifest global index.
     pub fn is_index_length(field: &Field) -> bool {
-        field
-            .metadata()
-            .get("rerun:index_marker")
-            .map(|s| s.as_str())
-            == Some("len")
+        Self::has_index_marker(field, Self::INDEX_MARKER_LEN)
+    }
+
+    /// `true` if the field is the `:has_static_data` column of a component.
+    pub fn is_index_has_static_data(field: &Field) -> bool {
+        Self::has_index_marker(field, Self::INDEX_MARKER_HAS_STATIC_DATA)
     }
 
     /// `true` if the field is a temporal index column (not static, not per-component).
     pub fn is_index_global_temporal(field: &Field) -> bool {
         Self::is_index(field)
             && !Self::is_index_static(field)
-            && !field.metadata().contains_key("rerun:component")
+            && !Self::is_index_per_component(field)
     }
 }
 
@@ -956,6 +1036,12 @@ impl RawRrdManifest {
         Ok(())
     }
 
+    /// `rerun:kind` value of a Sorbet index column.
+    const SORBET_KIND_INDEX: &str = "index";
+
+    /// `rerun:kind` value of a Sorbet component-data column.
+    const SORBET_KIND_DATA: &str = "data";
+
     /// Cheap.
     fn check_index_columns_are_correct(&self) -> CodecResult<()> {
         {
@@ -963,11 +1049,11 @@ impl RawRrdManifest {
             for field in self.data.schema().fields() {
                 if let Some((_, suffix)) = field.name().rsplit_once(':') {
                     match suffix {
-                        "start" | "end" => {
+                        Self::INDEX_MARKER_START | Self::INDEX_MARKER_END => {
                             // Checked in depth below
                         }
 
-                        "has_static_data" => {
+                        Self::INDEX_MARKER_HAS_STATIC_DATA => {
                             if *field.data_type() != Self::COLUMN_CHUNK_IS_STATIC.data_type() {
                                 return Err(CodecError::from(ChunkError::Malformed {
                                     reason: format!(
@@ -980,7 +1066,7 @@ impl RawRrdManifest {
                             }
                         }
 
-                        "num_rows" => {
+                        Self::INDEX_MARKER_NUM_ROWS => {
                             if *field.data_type() != Self::COLUMN_CHUNK_NUM_ROWS.data_type() {
                                 return Err(CodecError::from(ChunkError::Malformed {
                                     reason: format!(
@@ -1120,8 +1206,8 @@ impl RawRrdManifest {
             .iter()
             .filter_map(|f| {
                 let md = f.metadata();
-                (md.get("rerun:kind").map(|s| s.as_str()) == Some("index"))
-                    .then(|| md.contains_key("rerun:index_name").then_some(f))
+                (md.get(re_sorbet::RERUN_KIND).map(|s| s.as_str()) == Some(Self::SORBET_KIND_INDEX))
+                    .then(|| md.contains_key(re_sorbet::SORBET_INDEX_NAME).then_some(f))
                     .flatten()
             })
             .unique()
@@ -1131,7 +1217,10 @@ impl RawRrdManifest {
             .sorbet_schema
             .fields()
             .iter()
-            .filter(|f| f.metadata().get("rerun:kind").map(|s| s.as_str()) == Some("data"))
+            .filter(|f| {
+                f.metadata().get(re_sorbet::RERUN_KIND).map(|s| s.as_str())
+                    == Some(Self::SORBET_KIND_DATA)
+            })
             .unique()
             .collect_vec();
 
@@ -1139,7 +1228,7 @@ impl RawRrdManifest {
             // If there are any static chunks, then all components must have :has_static_data indexes.
             for column in &sorbet_columns {
                 let md = column.metadata();
-                let Some(component) = md.get("rerun:component") else {
+                let Some(component) = md.get(FIELD_METADATA_KEY_COMPONENT) else {
                     return Err(CodecError::from(ChunkError::Malformed {
                         reason: format!(
                             "column '{}' is missing rerun:component metadata",
@@ -1149,7 +1238,7 @@ impl RawRrdManifest {
                 };
                 let descr = ComponentDescriptor {
                     archetype: md
-                        .get("rerun:archetype")
+                        .get(FIELD_METADATA_KEY_ARCHETYPE)
                         .and_then(|s| ArchetypeName::try_new(s).ok()),
                     component: ComponentIdentifier::try_new(component).map_err(|err| {
                         CodecError::from(ChunkError::Malformed {
@@ -1157,7 +1246,7 @@ impl RawRrdManifest {
                         })
                     })?,
                     component_type: md
-                        .get("rerun:component_type")
+                        .get(FIELD_METADATA_KEY_COMPONENT_TYPE)
                         .and_then(|s| ComponentType::try_new(s).ok()),
                 };
                 let column_name = Self::compute_column_name(
@@ -1165,7 +1254,7 @@ impl RawRrdManifest {
                     None,
                     Some(&descr),
                     None,
-                    Some("has_static_data"),
+                    Some(Self::INDEX_MARKER_HAS_STATIC_DATA),
                 );
 
                 self.data
@@ -1184,7 +1273,7 @@ impl RawRrdManifest {
             .schema_ref()
             .fields()
             .iter()
-            .filter(|f| f.name().ends_with(":start") || f.name().ends_with(":end"))
+            .filter(|f| Self::is_index_start(f) || Self::is_index_end(f))
             .map(|f| (f.name(), f))
             .collect();
 
@@ -1194,7 +1283,7 @@ impl RawRrdManifest {
                 Self::compute_column_name(None, None, None, Some(sorbet_index.name()), None);
 
             // All global indexes should have :start and :end columns of the right type.
-            for suffix in ["start", "end"] {
+            for suffix in [Self::INDEX_MARKER_START, Self::INDEX_MARKER_END] {
                 let field = rrd_manifest_fields.remove(&format!("{sorbet_index_name_normalized}:{suffix}"))
                     .ok_or_else(|| {
                         CodecError::from(ChunkError::Malformed {
@@ -1221,7 +1310,7 @@ impl RawRrdManifest {
             for sorbet_column in &sorbet_columns {
                 let md = sorbet_column.metadata();
 
-                let Some(component) = md.get("rerun:component") else {
+                let Some(component) = md.get(FIELD_METADATA_KEY_COMPONENT) else {
                     return Err(CodecError::from(ChunkError::Malformed {
                         reason: format!(
                             "column '{}' is missing rerun:component metadata",
@@ -1231,7 +1320,7 @@ impl RawRrdManifest {
                 };
                 let descr = ComponentDescriptor {
                     archetype: md
-                        .get("rerun:archetype")
+                        .get(FIELD_METADATA_KEY_ARCHETYPE)
                         .and_then(|s| ArchetypeName::try_new(s).ok()),
                     component: ComponentIdentifier::try_new(component).map_err(|err| {
                         CodecError::from(ChunkError::Malformed {
@@ -1239,11 +1328,11 @@ impl RawRrdManifest {
                         })
                     })?,
                     component_type: md
-                        .get("rerun:component_type")
+                        .get(FIELD_METADATA_KEY_COMPONENT_TYPE)
                         .and_then(|s| ComponentType::try_new(s).ok()),
                 };
 
-                for suffix in ["start", "end"] {
+                for suffix in [Self::INDEX_MARKER_START, Self::INDEX_MARKER_END] {
                     let column_name = Self::compute_column_name(
                         None,
                         None,
@@ -1252,7 +1341,7 @@ impl RawRrdManifest {
                         Some(suffix),
                     );
 
-                    if md.get("rerun:is_static").map(|s| s.as_str()) == Some("true") {
+                    if md.get(re_sorbet::SORBET_IS_STATIC).map(|s| s.as_str()) == Some("true") {
                         // Static columns don't have :start nor :end columns… unless they exist
                         // both temporally and statically, something which is legal in Rerun, and
                         // will end up with a final Sorbet schema that declares those column as
@@ -1383,11 +1472,16 @@ impl RawRrdManifest {
     ];
 
     pub fn field_index_start(timeline: &Timeline, desc: Option<&ComponentDescriptor>) -> Field {
-        Self::any_index_field(timeline, timeline.datatype(), desc, "start")
+        Self::any_index_field(
+            timeline,
+            timeline.datatype(),
+            desc,
+            Self::INDEX_MARKER_START,
+        )
     }
 
     pub fn field_index_end(timeline: &Timeline, desc: Option<&ComponentDescriptor>) -> Field {
-        Self::any_index_field(timeline, timeline.datatype(), desc, "end")
+        Self::any_index_field(timeline, timeline.datatype(), desc, Self::INDEX_MARKER_END)
     }
 
     pub fn field_index_num_rows(timeline: &Timeline, desc: Option<&ComponentDescriptor>) -> Field {
@@ -1395,7 +1489,7 @@ impl RawRrdManifest {
             timeline,
             arrow::datatypes::DataType::UInt64,
             desc,
-            "num_rows",
+            Self::INDEX_MARKER_NUM_ROWS,
         )
     }
 
@@ -1404,28 +1498,42 @@ impl RawRrdManifest {
             timeline,
             arrow::datatypes::DataType::Boolean,
             Some(desc),
-            "has_data",
+            Self::INDEX_MARKER_HAS_DATA,
         )
     }
 
     pub fn field_has_static_data(desc: &ComponentDescriptor) -> Field {
-        let field_name =
-            Self::compute_column_name(None, None, Some(desc), None, Some("has_static_data"));
+        let field_name = Self::compute_column_name(
+            None,
+            None,
+            Some(desc),
+            None,
+            Some(Self::INDEX_MARKER_HAS_STATIC_DATA),
+        );
 
         let mut metadata = std::collections::HashMap::default();
         metadata.extend(
             [
-                Some(("rerun:index".to_owned(), "rerun:static".to_owned())), //
+                Some((
+                    Self::FIELD_METADATA_KEY_INDEX.to_owned(),
+                    Self::INDEX_NAME_STATIC.to_owned(),
+                )),
                 desc.component_type.map(|component_type| {
                     (
-                        "rerun:component_type".to_owned(),
+                        FIELD_METADATA_KEY_COMPONENT_TYPE.to_owned(),
                         component_type.full_name().to_owned(),
                     )
                 }),
-                desc.archetype
-                    .as_ref()
-                    .map(|name| ("rerun:archetype".to_owned(), name.full_name().to_owned())),
-                Some(("rerun:component".to_owned(), desc.component.to_string())),
+                desc.archetype.as_ref().map(|name| {
+                    (
+                        FIELD_METADATA_KEY_ARCHETYPE.to_owned(),
+                        name.full_name().to_owned(),
+                    )
+                }),
+                Some((
+                    FIELD_METADATA_KEY_COMPONENT.to_owned(),
+                    desc.component.to_string(),
+                )),
             ]
             .into_iter()
             .flatten(),
@@ -1450,20 +1558,29 @@ impl RawRrdManifest {
             Self::compute_column_name(None, None, desc, Some(index_name), Some(marker));
 
         let mut metadata = std::collections::HashMap::default();
-        metadata.extend([("rerun:index".to_owned(), timeline.name().to_string())]);
+        metadata.extend([(
+            Self::FIELD_METADATA_KEY_INDEX.to_owned(),
+            timeline.name().to_string(),
+        )]);
         if let Some(desc) = desc {
             metadata.extend(
                 [
                     desc.component_type.map(|component_type| {
                         (
-                            "rerun:component_type".to_owned(),
+                            FIELD_METADATA_KEY_COMPONENT_TYPE.to_owned(),
                             component_type.full_name().to_owned(),
                         )
                     }),
-                    desc.archetype
-                        .as_ref()
-                        .map(|name| ("rerun:archetype".to_owned(), name.full_name().to_owned())),
-                    Some(("rerun:component".to_owned(), desc.component.to_string())),
+                    desc.archetype.as_ref().map(|name| {
+                        (
+                            FIELD_METADATA_KEY_ARCHETYPE.to_owned(),
+                            name.full_name().to_owned(),
+                        )
+                    }),
+                    Some((
+                        FIELD_METADATA_KEY_COMPONENT.to_owned(),
+                        desc.component.to_string(),
+                    )),
                 ]
                 .into_iter()
                 .flatten(),
@@ -1602,7 +1719,7 @@ fn strip_null_mask_on_default_columns(data: RecordBatch) -> CodecResult<RecordBa
         }
 
         let name = field.name().as_str();
-        if name.ends_with(":has_static_data") {
+        if RawRrdManifest::is_index_has_static_data(field) {
             let Some(c) = column.downcast_array_ref::<BooleanArray>() else {
                 return Err(CodecError::ArrowDeserialization(ArrowError::SchemaError(
                     format!(
@@ -1614,7 +1731,7 @@ fn strip_null_mask_on_default_columns(data: RecordBatch) -> CodecResult<RecordBa
             let (bools, _nulls) = c.clone().into_parts();
             *column = std::sync::Arc::new(BooleanArray::new(bools, None));
             *field = std::sync::Arc::new((**field).clone().with_nullable(false));
-        } else if name.ends_with(":num_rows") {
+        } else if RawRrdManifest::is_index_num_rows(field) {
             let Some(c) = column.downcast_array_ref::<UInt64Array>() else {
                 return Err(CodecError::ArrowDeserialization(ArrowError::SchemaError(
                     format!(

@@ -240,7 +240,10 @@ impl ComponentColumnDescriptor {
         }
 
         if *is_static {
-            metadata.insert("rerun:is_static".to_owned(), "true".to_owned());
+            metadata.insert(
+                crate::metadata::SORBET_IS_STATIC.to_owned(),
+                "true".to_owned(),
+            );
         }
         if *is_tombstone {
             metadata.insert("rerun:is_tombstone".to_owned(), "true".to_owned());
@@ -354,7 +357,7 @@ impl ComponentColumnDescriptor {
             component_type: field
                 .get_opt(re_types_core::FIELD_METADATA_KEY_COMPONENT_TYPE)
                 .and_then(|s| ComponentType::try_new(s).ok()),
-            is_static: field.get_bool("rerun:is_static"),
+            is_static: field.get_bool(crate::metadata::SORBET_IS_STATIC),
             is_tombstone: field.get_bool("rerun:is_tombstone"),
             is_semantically_empty: field.get_bool("rerun:is_semantically_empty"),
         };

@@ -49,6 +49,7 @@ pub use self::index_column_descriptor::{IndexColumnDescriptor, IndexColumnError}
 pub use self::ipc::{ipc_from_schema, migrated_schema_from_ipc, raw_schema_from_ipc};
 pub use self::metadata::{
     ArrowBatchMetadata, ArrowFieldMetadata, MetadataExt, MissingFieldMetadata, MissingMetadataKey,
+    RERUN_KIND, SORBET_INDEX_NAME, SORBET_IS_STATIC,
 };
 pub use self::migrations::{migrate_record_batch, migrate_schema_ref};
 pub use self::row_id_column_descriptor::RowIdColumnDescriptor;

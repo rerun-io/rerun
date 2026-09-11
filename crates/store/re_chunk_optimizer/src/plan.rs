@@ -755,11 +755,10 @@ mod tests {
             .map(|(field, column)| {
                 // The same identification `calc_temporal_map` uses for the per-(index, component)
                 // time-range pair columns.
-                let is_pair_range = field.metadata().contains_key("rerun:index")
-                    && field
-                        .metadata()
-                        .contains_key(re_types_core::FIELD_METADATA_KEY_COMPONENT)
-                    && (field.name().ends_with(":start") || field.name().ends_with(":end"));
+                let is_pair_range = RawRrdManifest::is_index(field)
+                    && RawRrdManifest::is_index_per_component(field)
+                    && (RawRrdManifest::is_index_start(field)
+                        || RawRrdManifest::is_index_end(field));
                 if is_pair_range {
                     arrow::compute::nullif(column, &orphan_mask).unwrap()
                 } else {
