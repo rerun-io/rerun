@@ -9,11 +9,21 @@ use re_sdk::TimePoint;
 use re_sdk::external::arrow::array::Float64Array;
 use re_sdk::log::RowId;
 use re_test_context::VisualizerBlueprintContext as _;
+use re_viewer::external::re_chunk_store::ChunkTrackingMode;
 use re_viewer::external::re_log_types::EntityPath;
+use re_viewer::external::re_sdk_types::Archetype as _;
+use re_viewer::external::re_sdk_types::blueprint::archetypes::VisibleTimeRanges;
+use re_viewer::external::re_sdk_types::blueprint::components::VisibleTimeRange;
+use re_viewer::external::re_sdk_types::components::{
+    AggregationPolicy, Color, InterpolationMode, Name, StrokeWidth, Visible,
+};
+use re_viewer::external::re_sdk_types::datatypes::{TimeInt, TimeRange, TimeRangeBoundary};
 use re_viewer::external::re_sdk_types::{self, VisualizableArchetype as _, archetypes};
-use re_viewer::external::re_viewer_context::{RecommendedView, ViewClass as _};
+use re_viewer::external::re_viewer_context::{
+    BlueprintContext as _, Item, QueryRange, RecommendedView, ViewClass as _, ViewId,
+};
 use re_viewer::viewer_test_utils::{self, HarnessOptions};
-use re_viewport_blueprint::ViewBlueprint;
+use re_viewport_blueprint::{ViewBlueprint, ViewContents, entity_path_for_view_property};
 
 /// Test that shows the visualizers section in the selection panel when a view is selected.
 ///
@@ -294,7 +304,7 @@ pub async fn test_view_visualizers_multi_scalar() {
 /// Sets up a harness with two `SeriesLines` entities (`trig/sin` and `trig/cos`) logged into a
 /// single `TimeSeriesView` named "Trig view". The view is expanded and selected, ready for
 /// interaction tests.
-fn setup_trig_view() -> egui_kittest::Harness<'static, re_viewer::App> {
+fn setup_trig_view() -> (egui_kittest::Harness<'static, re_viewer::App>, ViewId) {
     let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions {
         window_size: Some(egui::Vec2::new(1200.0, 1000.0)),
         max_steps: Some(100),
@@ -354,6 +364,7 @@ fn setup_trig_view() -> egui_kittest::Harness<'static, re_viewer::App> {
         RecommendedView::new_subtree("/trig"),
     );
     view.display_name = Some("Trig view".into());
+    let view_id = view.id;
 
     harness.setup_viewport_blueprint(move |_ctx, blueprint| {
         blueprint.add_views(std::iter::once(view), None, None);
@@ -367,7 +378,7 @@ fn setup_trig_view() -> egui_kittest::Harness<'static, re_viewer::App> {
     harness.blueprint_tree().click_label("Trig view");
     harness.run();
 
-    harness
+    (harness, view_id)
 }
 
 /// Test the "+" button on the Visualizers section when a view is selected.
@@ -378,7 +389,7 @@ fn setup_trig_view() -> egui_kittest::Harness<'static, re_viewer::App> {
 /// 3. Hides a visualizer which shouldn't affect the "+" popup options
 #[tokio::test(flavor = "multi_thread")]
 pub async fn test_view_visualizers_add_button() {
-    let mut harness = setup_trig_view();
+    let (mut harness, _view_id) = setup_trig_view();
 
     // Snapshot 1: View selected — all entities already have visualizers, so
     // the "+" button is disabled (nothing new to add).
@@ -403,7 +414,7 @@ pub async fn test_view_visualizers_add_button() {
 /// Test the context menu on visualizer pills.
 #[tokio::test(flavor = "multi_thread")]
 pub async fn test_view_visualizers_context_menu() {
-    let mut harness = setup_trig_view();
+    let (mut harness, _view_id) = setup_trig_view();
 
     // --- Context menu: Hide ---
 
@@ -447,6 +458,190 @@ pub async fn test_view_visualizers_context_menu() {
 
     // Snapshot 5: After removing a visualizer via context menu — only sin remains
     harness.snapshot_app("view_visualizers_ctx_menu_5_after_remove");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+pub async fn test_plot_overrides_and_visible_time_ranges_are_cloned() {
+    let (mut harness, view_id) = setup_trig_view();
+
+    harness.selection_panel().get_nth_label("Default", 0);
+    harness
+        .selection_panel()
+        .get_nth_label("Entire timeline", 0);
+    harness.selection_panel().click_nth_label("trig/cos", 0);
+    harness.run();
+    harness.selection_panel().get_nth_label("Default", 0);
+    harness
+        .selection_panel()
+        .get_nth_label("Entire timeline", 0);
+    harness.blueprint_tree().click_label("Trig view");
+    harness.run();
+
+    let timeline = re_sdk::Timeline::new_sequence("frame");
+    let view_range = TimeRange {
+        start: TimeRangeBoundary::CursorRelative(TimeInt(-10)),
+        end: TimeRangeBoundary::CursorRelative(TimeInt(10)),
+    };
+    let entity_range = TimeRange {
+        start: TimeRangeBoundary::Absolute(TimeInt(20)),
+        end: TimeRangeBoundary::Infinite,
+    };
+
+    harness.setup_viewport_blueprint(move |ctx, blueprint| {
+        let view = blueprint.view(&view_id).expect("test view should exist");
+        let view_range_path = entity_path_for_view_property(
+            view_id,
+            ctx.blueprint_db().storage_engine().store().entity_tree(),
+            VisibleTimeRanges::name(),
+        );
+        ctx.save_blueprint_archetype(
+            view_range_path,
+            &VisibleTimeRanges::new([VisibleTimeRange(
+                re_sdk_types::datatypes::VisibleTimeRange {
+                    timeline: timeline.name().as_str().into(),
+                    range: view_range,
+                },
+            )]),
+        );
+
+        let cos_path = EntityPath::from("trig/cos");
+        ctx.save_blueprint_archetype(
+            ViewContents::base_override_path_for_entity(view_id, &cos_path),
+            &VisibleTimeRanges::new([VisibleTimeRange(
+                re_sdk_types::datatypes::VisibleTimeRange {
+                    timeline: timeline.name().as_str().into(),
+                    range: entity_range,
+                },
+            )]),
+        );
+        ctx.save_visualizers(
+            &cos_path,
+            view.id,
+            [archetypes::SeriesLines::new()
+                .with_colors([[12, 34, 56]])
+                .with_names(["Cloned cosine"])
+                .with_widths([7.0])
+                .with_visible_series([false])
+                .with_aggregation_policy(AggregationPolicy::Average)
+                .with_interpolation_mode(InterpolationMode::StepAfter)
+                .visualizer()],
+        );
+    });
+
+    harness.selection_panel().click_label("Clone this view");
+    harness.run();
+    let selected = harness.run_with_app_context(|ctx| ctx.selection().single_item().cloned());
+    let Some(Item::View(cloned_view_id)) = selected else {
+        panic!("cloning should select the new view, got {selected:?}");
+    };
+    assert_ne!(cloned_view_id, view_id);
+
+    harness.run_with_viewer_context(move |ctx| {
+        for (entity_path, expected_range) in [
+            (EntityPath::from("trig/sin"), view_range),
+            (EntityPath::from("trig/cos"), entity_range),
+        ] {
+            let original = ctx
+                .lookup_query_result(view_id)
+                .tree
+                .lookup_result_by_path(entity_path.hash())
+                .expect("original view should contain the entity");
+            let cloned = ctx
+                .lookup_query_result(cloned_view_id)
+                .tree
+                .lookup_result_by_path(entity_path.hash())
+                .expect("cloned view should contain the entity");
+            assert_eq!(original.query_range, QueryRange::TimeRange(expected_range));
+            assert_eq!(cloned.query_range, original.query_range);
+
+            if entity_path == EntityPath::from("trig/cos") {
+                let original_instruction = original
+                    .visualizer_instructions
+                    .first()
+                    .expect("cosine should have a visualizer instruction");
+                let cloned_instruction = cloned
+                    .visualizer_instructions
+                    .first()
+                    .expect("cloned cosine should have a visualizer instruction");
+                assert_eq!(
+                    cloned_instruction.component_overrides,
+                    original_instruction.component_overrides
+                );
+
+                let components = [
+                    archetypes::SeriesLines::descriptor_colors(),
+                    archetypes::SeriesLines::descriptor_names(),
+                    archetypes::SeriesLines::descriptor_widths(),
+                    archetypes::SeriesLines::descriptor_visible_series(),
+                    archetypes::SeriesLines::descriptor_aggregation_policy(),
+                    archetypes::SeriesLines::descriptor_interpolation_mode(),
+                ];
+                for descriptor in &components {
+                    assert!(
+                        cloned_instruction
+                            .component_overrides
+                            .contains(&descriptor.component),
+                        "cloned visualizer should preserve the {} override",
+                        descriptor.component
+                    );
+                }
+
+                let blueprint_engine = ctx.blueprint_db().storage_engine();
+                let component_ids = components.iter().map(|descriptor| descriptor.component);
+                let original_overrides = blueprint_engine.cache().latest_at(
+                    ChunkTrackingMode::Report,
+                    ctx.blueprint_query,
+                    &original_instruction.override_path,
+                    component_ids.clone(),
+                );
+                let cloned_overrides = blueprint_engine.cache().latest_at(
+                    ChunkTrackingMode::Report,
+                    ctx.blueprint_query,
+                    &cloned_instruction.override_path,
+                    component_ids,
+                );
+
+                macro_rules! assert_cloned_component_values {
+                    ($component_type:ty, $descriptor:expr) => {{
+                        let component = $descriptor.component;
+                        let original_values =
+                            original_overrides.component_batch::<$component_type>(component);
+                        assert!(
+                            original_values.is_some(),
+                            "the original visualizer should contain an override for {component}"
+                        );
+                        assert_eq!(
+                            cloned_overrides.component_batch::<$component_type>(component),
+                            original_values,
+                            "the cloned visualizer should preserve the value of {component}"
+                        );
+                    }};
+                }
+
+                assert_cloned_component_values!(
+                    Color,
+                    archetypes::SeriesLines::descriptor_colors()
+                );
+                assert_cloned_component_values!(Name, archetypes::SeriesLines::descriptor_names());
+                assert_cloned_component_values!(
+                    StrokeWidth,
+                    archetypes::SeriesLines::descriptor_widths()
+                );
+                assert_cloned_component_values!(
+                    Visible,
+                    archetypes::SeriesLines::descriptor_visible_series()
+                );
+                assert_cloned_component_values!(
+                    AggregationPolicy,
+                    archetypes::SeriesLines::descriptor_aggregation_policy()
+                );
+                assert_cloned_component_values!(
+                    InterpolationMode,
+                    archetypes::SeriesLines::descriptor_interpolation_mode()
+                );
+            }
+        }
+    });
 }
 
 /// Test adding multiple new visualizers to a view via the "+" button, using custom message formats.

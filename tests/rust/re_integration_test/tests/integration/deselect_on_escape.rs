@@ -4,7 +4,7 @@ use re_integration_test::HarnessExt as _;
 use re_integration_test::ViewerHarnessExt as _;
 use re_sdk::TimePoint;
 use re_sdk::log::RowId;
-use re_viewer::external::re_viewer_context::ViewClass as _;
+use re_viewer::external::re_viewer_context::{Item, ViewClass as _};
 use re_viewer::external::{re_sdk_types, re_view_spatial};
 use re_viewer::viewer_test_utils::{self, HarnessOptions};
 use re_viewport_blueprint::ViewBlueprint;
@@ -39,6 +39,14 @@ fn make_test_harness<'a>() -> egui_kittest::Harness<'a, re_viewer::App> {
     });
 
     harness
+}
+
+fn assert_recording_selected(harness: &mut egui_kittest::Harness<'_, re_viewer::App>) {
+    let selected = harness.run_with_app_context(|ctx| ctx.selection().single_item().cloned());
+    assert!(
+        matches!(selected, Some(Item::StoreId(_))),
+        "Escape should select the active recording, got {selected:?}"
+    );
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -76,4 +84,14 @@ pub async fn test_deselect_on_escape() {
     harness.key_press(egui::Key::Escape);
     harness.set_selection_panel_opened(false);
     harness.snapshot_app("deselect_on_escape_8");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+pub async fn test_escape_selects_the_active_recording() {
+    let mut harness = make_test_harness();
+
+    harness.blueprint_tree().click_label("3D view");
+    harness.key_press(egui::Key::Escape);
+    harness.run();
+    assert_recording_selected(&mut harness);
 }
