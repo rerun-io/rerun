@@ -15,6 +15,8 @@ from .types import (
     IndexValuesLike as IndexValuesLike,
     MergeSplitSettingsDict as MergeSplitSettingsDict,
     OwnChunkRuleDict as OwnChunkRuleDict,
+    TemporalTimelineType as TemporalTimelineType,
+    TimelineType as TimelineType,
 )
 
 # NOTE
@@ -1373,7 +1375,9 @@ class DeriveLensInternal:
         selector: SelectorInternal,
         cast_to: pa.DataType | Literal["auto"] | None = None,
     ) -> DeriveLensInternal: ...
-    def to_timeline(self, timeline_name: str, timeline_type: str, selector: SelectorInternal) -> DeriveLensInternal: ...
+    def to_timeline(
+        self, timeline_name: str, timeline_type: TimelineType, selector: SelectorInternal
+    ) -> DeriveLensInternal: ...
 
 class MutateLensInternal:
     def __init__(
@@ -1709,7 +1713,7 @@ class McapReaderInternal:
     def __init__(
         self,
         path: str,
-        timeline_type: str,
+        timeline_type: TemporalTimelineType,
         timestamp_offset_ns: int | None,
         decoders: list[str] | None,
         include_topic_regex: list[str] | None,
@@ -1751,7 +1755,7 @@ class Mp4ReaderInternal:
         mode: Literal["asset", "stream"] = "stream",
         chunk_by_gop: bool = True,
         timeline_name: str = "video",
-        timeline_type: Literal["duration", "timestamp"] = "duration",
+        timeline_type: TemporalTimelineType = "duration_ns",
         transcode: Mp4TranscodeOptionsInternal | None = None,
         entity_path: str | None = None,
     ) -> None: ...

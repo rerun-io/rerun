@@ -33,6 +33,7 @@ mod python_bridge;
 mod query_metrics;
 mod selector;
 mod server;
+mod timeline_type;
 mod trace_context;
 mod tracing_session;
 mod urdf;

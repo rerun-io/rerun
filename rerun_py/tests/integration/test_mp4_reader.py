@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import shutil
 from pathlib import Path
+from typing import Literal
 
 import pyarrow as pa
 import pytest
@@ -216,9 +217,10 @@ def test_chunk_by_gop_false_with_asset_mode_rejected() -> None:
         Mp4Reader(H264_NO_BFRAMES, mode="asset", chunk_by_gop=False)  # type: ignore[call-overload]
 
 
-def test_invalid_timeline_type() -> None:
+@pytest.mark.parametrize("invalid", ["sequence", "unknown"])
+def test_invalid_timeline_type(invalid: str) -> None:
     with pytest.raises(ValueError, match="Invalid timeline_type"):
-        Mp4Reader(H264_NO_BFRAMES, timeline_type="sequence")  # type: ignore[call-overload]
+        Mp4Reader(H264_NO_BFRAMES, timeline_type=invalid)  # type: ignore[call-overload]
 
 
 # ---------------------------------------------------------------------------
@@ -413,3 +415,34 @@ def test_optimize_only_coarsens_the_readers_gop_partition(path: Path, gop_size: 
 
 def test_streaming_reader_protocol() -> None:
     assert isinstance(Mp4Reader(H264_NO_BFRAMES), StreamingReader)
+
+
+@pytest.mark.parametrize("kind", ["duration", "timestamp"])
+def test_timeline_aliases(kind: Literal["duration", "timestamp"]) -> None:
+    modes: tuple[Literal["stream"], Literal["asset"]] = ("stream", "asset")
+    for mode in modes:
+        canonical: Literal["duration_ns", "timestamp_ns"] = "duration_ns" if kind == "duration" else "timestamp_ns"
+        short_chunks = Mp4Reader(H264_NO_BFRAMES, mode=mode, timeline_type=kind).stream().to_chunks()
+        canonical_chunks = Mp4Reader(H264_NO_BFRAMES, mode=mode, timeline_type=canonical).stream().to_chunks()
+        _assert_same_timelines(short_chunks, canonical_chunks)
+
+
+def test_default_timeline_type() -> None:
+    default_chunks = Mp4Reader(H264_NO_BFRAMES).stream().to_chunks()
+    explicit_chunks = Mp4Reader(H264_NO_BFRAMES, timeline_type="duration_ns").stream().to_chunks()
+    _assert_same_timelines(default_chunks, explicit_chunks)
+
+
+def _assert_same_timelines(left: list[Chunk], right: list[Chunk]) -> None:
+    assert left
+    assert len(left) == len(right)
+    compared = 0
+    for a, b in zip(left, right, strict=True):
+        assert a.entity_path == b.entity_path
+        assert a.timeline_names == b.timeline_names
+        a_batch, b_batch = a.to_record_batch(), b.to_record_batch()
+        for name in a.timeline_names:
+            assert a_batch.schema.field(name).equals(b_batch.schema.field(name), check_metadata=True)
+            assert a_batch.column(name).equals(b_batch.column(name))
+            compared += 1
+    assert compared > 0

@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from rerun_bindings.rerun_bindings import _McapInfoInternal
+    from rerun_bindings.types import TemporalTimelineType
 
 
 @dataclass(frozen=True)
@@ -164,7 +165,7 @@ class McapReader:
         self,
         path: str | Path,
         *,
-        timeline_type: Literal["timestamp", "duration"] = "timestamp",
+        timeline_type: TemporalTimelineType = "timestamp_ns",
         timestamp_offset_ns: int | None = None,
         decoders: Sequence[str] | None = None,
         include_topic_regex: Sequence[str] | None = None,
@@ -182,7 +183,8 @@ class McapReader:
             Path to the `.mcap` file to read.
         timeline_type:
             Whether to interpret the MCAP `log_time` column as wall-clock timestamps
-            ("timestamp") or as nanosecond durations ("duration").
+            (`"timestamp_ns"`, the default) or as nanosecond durations (`"duration_ns"`).
+            `"timestamp"` and `"duration"` are accepted as aliases.
         timestamp_offset_ns:
             Optional offset in nanoseconds to add to all `TimestampNs` time columns.
         decoders:

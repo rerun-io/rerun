@@ -10,6 +10,8 @@ from ._selector import Selector
 if TYPE_CHECKING:
     import pyarrow as pa
 
+    from rerun_bindings.types import TimelineType
+
 
 class DeriveLens:
     """
@@ -104,7 +106,7 @@ class DeriveLens:
     def to_timeline(
         self,
         timeline_name: str,
-        timeline_type: Literal["sequence", "duration_ns", "timestamp_ns"],
+        timeline_type: TimelineType,
         selector: Selector | str,
     ) -> DeriveLens:
         """
@@ -117,6 +119,7 @@ class DeriveLens:
         timeline_type:
             Type of the timeline: `"sequence"`, `"duration_ns"`,
             or `"timestamp_ns"`.
+            `"duration"` and `"timestamp"` are accepted as aliases; values remain in nanoseconds.
         selector:
             A [`Selector`][rerun.chunk.Selector] or selector query string to extract time
             values (must produce `Int64` arrays).

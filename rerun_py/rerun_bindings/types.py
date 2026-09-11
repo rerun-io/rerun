@@ -27,6 +27,10 @@ TableLike: TypeAlias = pa.Table | pa.RecordBatch | pa.RecordBatchReader
 A type alias for TableLike pyarrow objects.
 """
 
+TemporalTimelineType: TypeAlias = Literal["duration_ns", "timestamp_ns", "duration", "timestamp"]
+
+TimelineType: TypeAlias = TemporalTimelineType | Literal["sequence"]
+
 
 class MergeSplitSettingsDict(TypedDict):
     """Wire form of `rerun.experimental._MergeSplitSettings`; `0` disables a row guard."""

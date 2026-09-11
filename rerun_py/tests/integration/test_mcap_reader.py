@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from collections import Counter
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import pyarrow as pa
 import pytest
@@ -100,9 +100,10 @@ def test_file_not_found(tmp_path: Path) -> None:
         McapReader(tmp_path / "nonexistent.mcap")
 
 
-def test_invalid_timeline_type() -> None:
+@pytest.mark.parametrize("invalid", ["sequence", "unknown"])
+def test_invalid_timeline_type(invalid: str) -> None:
     with pytest.raises(ValueError, match="Invalid timeline_type"):
-        McapReader(POINT_CLOUD_MCAP, timeline_type="sequence")  # type: ignore[arg-type]
+        McapReader(POINT_CLOUD_MCAP, timeline_type=invalid)  # type: ignore[arg-type]
 
 
 # ---------------------------------------------------------------------------
@@ -315,3 +316,32 @@ def test_invalid_start_magic_does_not_suggest_recovery(tmp_path: Path) -> None:
 
 def test_streaming_reader_protocol() -> None:
     assert isinstance(McapReader(POINT_CLOUD_MCAP), StreamingReader)
+
+
+@pytest.mark.parametrize("kind", ["duration", "timestamp"])
+def test_timeline_aliases(kind: Literal["duration", "timestamp"]) -> None:
+    canonical: Literal["duration_ns", "timestamp_ns"] = "duration_ns" if kind == "duration" else "timestamp_ns"
+    short_chunks = McapReader(LOG_MCAP, timestamp_offset_ns=123, timeline_type=kind).stream().to_chunks()
+    canonical_chunks = McapReader(LOG_MCAP, timestamp_offset_ns=123, timeline_type=canonical).stream().to_chunks()
+    _assert_same_timelines(short_chunks, canonical_chunks)
+
+
+def test_default_timeline_type() -> None:
+    default_chunks = McapReader(LOG_MCAP).stream().to_chunks()
+    explicit_chunks = McapReader(LOG_MCAP, timeline_type="timestamp_ns").stream().to_chunks()
+    _assert_same_timelines(default_chunks, explicit_chunks)
+
+
+def _assert_same_timelines(left: list[Chunk], right: list[Chunk]) -> None:
+    assert left
+    assert len(left) == len(right)
+    compared = 0
+    for a, b in zip(left, right, strict=True):
+        assert a.entity_path == b.entity_path
+        assert a.timeline_names == b.timeline_names
+        a_batch, b_batch = a.to_record_batch(), b.to_record_batch()
+        for name in a.timeline_names:
+            assert a_batch.schema.field(name).equals(b_batch.schema.field(name), check_metadata=True)
+            assert a_batch.column(name).equals(b_batch.column(name))
+            compared += 1
+    assert compared > 0

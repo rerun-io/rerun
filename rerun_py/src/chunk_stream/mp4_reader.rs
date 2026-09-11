@@ -4,7 +4,7 @@ use std::sync::Arc;
 use pyo3::exceptions::{PyFileNotFoundError, PyValueError};
 use pyo3::prelude::*;
 use re_chunk::{Chunk, EntityPath};
-use re_log_types::{TimeType, TimelineName};
+use re_log_types::TimelineName;
 use re_mp4_reader::{Mode, Mp4Config};
 use re_sdk_types::components::VideoCodec;
 use re_video::{HwAccel, Mp4TranscodeOptions};
@@ -90,11 +90,11 @@ impl PyMp4ReaderInternal {
             mode = "stream",
             chunk_by_gop = true,
             timeline_name = "video",
-            timeline_type = "duration",
+            timeline_type = "duration_ns",
             transcode = None,
             entity_path = None,
         ),
-        text_signature = "(self, path, mode='stream', chunk_by_gop=True, timeline_name='video', timeline_type='duration', transcode=None, entity_path=None)"
+        text_signature = "(self, path, mode='stream', chunk_by_gop=True, timeline_name='video', timeline_type='duration_ns', transcode=None, entity_path=None)"
     )]
     fn new(
         path: PathBuf,
@@ -112,15 +112,7 @@ impl PyMp4ReaderInternal {
             )));
         }
 
-        let timeline_type = match timeline_type {
-            "duration" => TimeType::DurationNs,
-            "timestamp" => TimeType::TimestampNs,
-            other => {
-                return Err(PyValueError::new_err(format!(
-                    "Invalid timeline_type: {other:?}. Expected \"duration\" or \"timestamp\""
-                )));
-            }
-        };
+        let timeline_type = crate::timeline_type::parse_temporal_timeline_type(timeline_type)?;
 
         let mode = match mode {
             "asset" => {

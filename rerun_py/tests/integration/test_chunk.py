@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import pyarrow as pa
 import pytest
@@ -946,3 +946,36 @@ def test_merge_two_rrds_with_distinct_entity_path_prefixes(tmp_path: Path, send_
 
     paths = set(RrdReader(merged_path).store().schema().entity_paths())
     assert paths == {"/left/points", "/left/log", "/right/points", "/right/log"}
+
+
+@pytest.mark.parametrize(
+    ("kind", "expected"),
+    [
+        ("duration", pa.duration("ns")),
+        ("duration_ns", pa.duration("ns")),
+        ("timestamp", pa.timestamp("ns")),
+        ("timestamp_ns", pa.timestamp("ns")),
+        ("sequence", pa.int64()),
+    ],
+)
+def test_lens_timeline_types(
+    kind: Literal["duration", "duration_ns", "timestamp", "timestamp_ns", "sequence"], expected: pa.DataType
+) -> None:
+    values = [1_000_000_001, 2_000_000_002]
+    data = pa.StructArray.from_arrays([pa.array(values, type=pa.int64())], names=["ts"])
+    chunk = Chunk.from_columns(
+        "/sensor",
+        indexes=[rr.TimeColumn("frame", sequence=[0, 1])],
+        columns=rr.DynamicArchetype.columns(archetype="Sensor", components={"data": data}),
+    )
+    lens = DeriveLens("Sensor:data").to_component("Sensor:timestamp", ".ts").to_timeline("sensor_time", kind, ".ts")
+    results = chunk.apply_lenses(lens)
+    assert len(results) == 1
+    column = results[0].to_record_batch().column("sensor_time")
+    assert column.type == expected
+    assert column.cast(pa.int64()).to_pylist() == values
+
+
+def test_lens_unknown_timeline_type() -> None:
+    with pytest.raises(ValueError, match="Invalid timeline_type"):
+        DeriveLens("Sensor:data").to_timeline("sensor_time", "unknown", ".ts")  # type: ignore[arg-type]

@@ -2,12 +2,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal, overload
+from typing import TYPE_CHECKING, Literal, overload
 
 from rerun_bindings import Mp4ReaderInternal, Mp4TranscodeOptionsInternal
 
 from ..chunk import LazyChunkStream
 from ..components import VideoCodec
+
+if TYPE_CHECKING:
+    from rerun_bindings.types import TemporalTimelineType
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -72,7 +75,7 @@ class Mp4Reader:
         mode: Literal["stream"] = "stream",
         chunk_by_gop: bool = True,
         timeline_name: str = "video",
-        timeline_type: Literal["duration", "timestamp"] = "duration",
+        timeline_type: TemporalTimelineType = "duration_ns",
         transcode: Mp4TranscodeOptions | None = None,
         entity_path: str | None = None,
     ) -> None: ...
@@ -84,7 +87,7 @@ class Mp4Reader:
         *,
         mode: Literal["asset"],
         timeline_name: str = "video",
-        timeline_type: Literal["duration", "timestamp"] = "duration",
+        timeline_type: TemporalTimelineType = "duration_ns",
         entity_path: str | None = None,
     ) -> None: ...
 
@@ -95,7 +98,7 @@ class Mp4Reader:
         mode: Literal["asset", "stream"] = "stream",
         chunk_by_gop: bool = True,
         timeline_name: str = "video",
-        timeline_type: Literal["duration", "timestamp"] = "duration",
+        timeline_type: TemporalTimelineType = "duration_ns",
         transcode: Mp4TranscodeOptions | None = None,
         entity_path: str | None = None,
     ) -> None:
@@ -135,13 +138,14 @@ class Mp4Reader:
             `"video"`.
         timeline_type:
             How to interpret the timeline values.
+            `"duration"` and `"timestamp"` are accepted as aliases of `"duration_ns"` and `"timestamp_ns"`.
 
             The emitted values are the mp4 PTS (nanoseconds since the start of
             the video) only the declared Arrow type changes:
 
-            - `"duration"` (default): the values are typed as a duration, the
+            - `"duration_ns"` (default): the values are typed as a duration, the
               natural mp4 PTS interpretation.
-            - `"timestamp"`: the same PTS values, typed as nanoseconds since the
+            - `"timestamp_ns"`: the same PTS values, typed as nanoseconds since the
               Unix epoch. The reader does not shift them, so until you retag them
               — via a downstream `.map(...)` on the chunk stream with
               caller-supplied wall-clock times (e.g. from a trajectory file) —

@@ -53,15 +53,7 @@ impl PyMcapReaderInternal {
             )));
         }
 
-        let timeline_type = match timeline_type {
-            "timestamp" => TimeType::TimestampNs,
-            "duration" => TimeType::DurationNs,
-            other => {
-                return Err(PyValueError::new_err(format!(
-                    "Invalid timeline_type: {other:?}. Expected \"timestamp\" or \"duration\""
-                )));
-            }
-        };
+        let timeline_type = crate::timeline_type::parse_temporal_timeline_type(timeline_type)?;
 
         let selected_decoders = match decoders {
             None => SelectedDecoders::All,

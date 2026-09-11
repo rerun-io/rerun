@@ -82,7 +82,7 @@ impl PyDeriveLensInternal {
         timeline_type: &str,
         selector: &PySelectorInternal,
     ) -> PyResult<Self> {
-        let parsed_type = parse_timeline_type(timeline_type)?;
+        let parsed_type = crate::timeline_type::parse_timeline_type(timeline_type)?;
         let mut times = self.times.clone();
         times.push((
             timeline_name.to_owned(),
@@ -219,17 +219,6 @@ fn parse_cast_to(cast_to: Option<Bound<'_, PyAny>>) -> PyResult<Option<CastTo>> 
     }
     let PyArrowType(datatype) = obj.extract::<PyArrowType<DataType>>()?;
     Ok(Some(CastTo::Type(datatype)))
-}
-
-fn parse_timeline_type(s: &str) -> PyResult<re_log_types::TimeType> {
-    match s {
-        "sequence" => Ok(re_log_types::TimeType::Sequence),
-        "duration_ns" => Ok(re_log_types::TimeType::DurationNs),
-        "timestamp_ns" => Ok(re_log_types::TimeType::TimestampNs),
-        _ => Err(PyValueError::new_err(format!(
-            "Unknown timeline type '{s}', expected 'sequence', 'duration_ns', or 'timestamp_ns'"
-        ))),
-    }
 }
 
 /// Parse an output mode string from Python.
