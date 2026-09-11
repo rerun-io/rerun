@@ -148,11 +148,13 @@ impl EntityData {
                 false
             };
 
+            // The root can be drawn before any entity has arrived. The collapse state
+            // is persisted on first draw, so it must default to open like a non-leaf root.
             NodeInfo {
                 is_leaf: true,
                 is_this_a_match,
                 children: vec![],
-                default_open: false,
+                default_open: entity_tree.path.is_root(),
             }
         } else {
             let children = entity_tree
