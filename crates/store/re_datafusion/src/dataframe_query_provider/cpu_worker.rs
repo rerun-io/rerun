@@ -5,146 +5,22 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::Arc;
 
-use arrow::array::{ArrayRef, RecordBatch, RecordBatchOptions, StringArray};
+use arrow::array::RecordBatch;
 use arrow::datatypes::Schema;
-use re_dataframe::external::re_chunk::{Chunk, ChunkId, LatestAtQuery};
-use re_dataframe::external::re_chunk_store::{
-    ChunkStore, ChunkTrackingMode, GarbageCollectionOptions,
-};
-use re_dataframe::utils::align_record_batch_to_schema;
-use re_dataframe::{
-    ChunkStoreConfig, ChunkStoreHandle, QueryCache, QueryEngine, QueryExpression, QueryHandle,
-    StorageEngine, TimelineName,
-};
-use re_log_types::{AbsoluteTimeRange, ApplicationId, StoreId, StoreKind, TimeInt};
-use re_protos::cloud::v1alpha1::ext::ScanSegmentTableDataframe;
+use re_dataframe::QueryExpression;
+use re_dataframe::external::re_chunk::Chunk;
+#[cfg(test)]
+use re_log_types::TimeInt;
 use re_protos::common::v1alpha1::ext::SegmentId;
-use re_redap_client::{ApiError, ApiResult};
+use re_redap_client::ApiResult;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tracing::{Instrument as _, instrument};
 
+use super::segment_store::SegmentStore;
 use crate::chunk_fetcher::SortedChunksWithSegment;
-use crate::dataframe_query_common::{
-    DEFAULT_BATCH_BYTES, DEFAULT_BATCH_ROWS, IndexValuesMap, prepend_string_column_schema,
-    schema_with_array_datatypes,
-};
+use crate::dataframe_query_common::IndexValuesMap;
 use crate::pipeline_budget::PipelineBudget;
 use crate::segment_chunk_manifest::SegmentChunkManifest;
-
-/// Per-batch caps used by `send_next_row_batch`.
-///
-/// Accumulating up to `DEFAULT_BATCH_ROWS` rows or `DEFAULT_BATCH_BYTES` bytes
-/// (whichever first) amortizes per-batch overhead (alloc, schema align, async
-/// channel send) while keeping batch memory bounded for wide columns
-/// (e.g. images, large lists, replicated video blobs from retrofill).
-///
-/// These mirror the values used by `SizedCoalesceBatchesExec` so that the
-/// downstream coalescer is mostly a pass-through.
-const FLUSH_BATCH_ROWS: usize = DEFAULT_BATCH_ROWS;
-const FLUSH_BATCH_BYTES: usize = DEFAULT_BATCH_BYTES as usize;
-
-#[tracing::instrument(level = "trace", skip_all, fields(segment_id = %segment_id))]
-async fn send_next_row_batch(
-    origin: &re_uri::Origin,
-    query_handle: &mut QueryHandle<StorageEngine>,
-    segment_id: &SegmentId,
-    target_schema: &Arc<Schema>,
-    output_channel: &Sender<RecordBatch>,
-    rows_sent: &mut usize,
-    limit_rows: Option<usize>,
-) -> ApiResult<Option<()>> {
-    // If we have already sent enough rows, stop early.
-    if limit_rows.is_some_and(|l| *rows_sent >= l) {
-        return Ok(None);
-    }
-
-    let max_rows_this_batch = limit_rows
-        .map(|l| l.saturating_sub(*rows_sent).min(FLUSH_BATCH_ROWS))
-        .unwrap_or(FLUSH_BATCH_ROWS);
-    if max_rows_this_batch == 0 {
-        return Ok(None);
-    }
-
-    let query_schema = Arc::clone(query_handle.schema());
-    let num_fields = query_schema.fields.len();
-
-    // `_next_n_rows` carries its own `profile_function!`, so no extra scope here.
-    // Wrapping the `.await` in a `profile_scope!` would hold a non-`Send` guard
-    // across the suspension point and break `Handle::spawn`'s `Send` bound.
-    let next = query_handle
-        .next_n_rows_async(max_rows_this_batch, FLUSH_BATCH_BYTES)
-        .await;
-    if next.num_rows == 0 {
-        return Ok(None);
-    }
-    if num_fields != next.columns.len() {
-        return Err(ApiError::internal(
-            origin,
-            "Unexpected number of columns returned from query",
-        ));
-    }
-    let total_rows = next.num_rows;
-
-    let mut columns: Vec<ArrayRef> = Vec::with_capacity(num_fields + 1);
-    let sid_array =
-        Arc::new(StringArray::from(vec![segment_id.to_string(); total_rows])) as ArrayRef;
-    columns.push(sid_array);
-    columns.extend(next.columns);
-
-    let output_batch = {
-        re_tracing::profile_scope!("build_and_align_batch");
-        let batch_schema = Arc::new(schema_with_array_datatypes(
-            &prepend_string_column_schema(
-                &query_schema,
-                ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
-            ),
-            &columns,
-        ));
-
-        let batch = RecordBatch::try_new_with_options(
-            batch_schema,
-            columns,
-            &RecordBatchOptions::default().with_row_count(Some(total_rows)),
-        )
-        .map_err(|err| {
-            ApiError::deserialization_with_source(
-                origin,
-                None,
-                err,
-                "building output record batch from chunk-store rows",
-            )
-        })?;
-
-        align_record_batch_to_schema(&batch, target_schema).map_err(|err| {
-            ApiError::internal_with_source(origin, None, err, "DataFusion schema mismatch error")
-        })?
-    };
-
-    // Slice the batch to respect the row limit. We pre-cap `max_rows_this_batch`
-    // by the limit, but a single `next_row()` call can return more than one row
-    // (see `_next_row` for multi-row index values), so a final trim is needed.
-    let output_batch = if let Some(limit_rows) = limit_rows {
-        let remaining = limit_rows.saturating_sub(*rows_sent);
-        if remaining == 0 {
-            return Ok(None);
-        }
-        if output_batch.num_rows() > remaining {
-            output_batch.slice(0, remaining)
-        } else {
-            output_batch
-        }
-    } else {
-        output_batch
-    };
-
-    *rows_sent += output_batch.num_rows();
-
-    output_channel.send(output_batch).await.map_err(|err| {
-        ApiError::internal_with_source(origin, None, err, "output channel closed")
-    })?;
-
-    Ok(Some(()))
-}
 
 /// Message type carried over the IO → CPU channel.
 ///
@@ -191,53 +67,23 @@ pub(super) enum CpuWorkerMsg {
     Chunks(SortedChunksWithSegment),
 }
 
-/// Per-segment in-memory store used by the CPU worker, plus the state
-/// needed to incrementally emit rows + GC chunks as the safe horizon
-/// advances.
+/// v1 wrapper around the shared [`SegmentStore`]: layers the per-entity
+/// [`SegmentChunkManifest`] (the v1 safe-horizon source), the IO-announced
+/// completion count, and the pipeline-budget accounting on top of the
+/// budget-free store/emit/GC core.
 ///
 /// Holds an `Arc<PipelineBudget>` and refunds the bytes currently in
-/// `store` to the budget on [`Drop`]. This covers every exit path
+/// the store to the budget on [`Drop`]. This covers every exit path
 /// uniformly — `flush` success, `flush` error via `?`, worker
 /// early-return on an upstream error, consumer hangup mid-segment,
 /// panic — since `Drop` is guaranteed to run exactly once. Incremental
-/// [`Self::gc_up_to_horizon`] calls also return freed bytes to the
+/// [`Self::flush_incremental`] calls also return freed bytes to the
 /// budget as the horizon advances. Without the refund a `?`
 /// early-return or cancellation would leak the reservation to sibling
 /// partitions for the remainder of the query.
-///
-/// The `QueryHandle` *cannot* be cached across emit cycles:
-/// `QueryHandle` snapshots the store's `view_chunks` at first
-/// `next_n_rows` and never refreshes them, so any chunks inserted after
-/// that first call would be invisible. [`Self::emit_up_to`] therefore
-/// builds a fresh `QueryHandle` per call and uses
-/// `filtered_index_range = (processed_through, horizon]` to avoid
-/// re-emitting rows already produced by earlier cycles.
-///
-/// The `QueryEngine` *is* reusable — it's a thin wrapper around the
-/// store + query cache handles, both of which are live views — so we
-/// build it once in [`Self::new`] and reuse it across every emit cycle,
-/// saving an `Arc::clone` pair per cycle.
 struct CurrentStores {
-    /// The server this query is running against, named in the errors we produce.
-    origin: re_uri::Origin,
+    inner: SegmentStore,
 
-    segment_id: SegmentId,
-    store: ChunkStoreHandle,
-
-    /// Built once and reused across every `emit_up_to` cycle. The
-    /// store + cache handles inside are live views, so post-construction
-    /// chunk inserts and cache updates are visible without rebuilding.
-    engine: QueryEngine<StorageEngine>,
-
-    /// Per-segment specialization of the worker's base `QueryExpression`,
-    /// with `using_index_values` already applied. `emit_up_to` clones
-    /// and mutates `filtered_index_range` on each call.
-    query_expression: QueryExpression,
-
-    /// Cached name of the query's `filtered_index` timeline. `None` for
-    /// static-only queries; matches the manifest's gating on horizon
-    /// emit.
-    filtered_index_timeline: Option<TimelineName>,
     pipeline_budget: Arc<PipelineBudget>,
 
     /// Total number of chunks the server promised for this segment via
@@ -245,7 +91,7 @@ struct CurrentStores {
     /// arrives.
     expected_chunks: Option<usize>,
 
-    /// Cumulative chunks inserted into `store` so far. Compared against
+    /// Cumulative chunks inserted into the store so far. Compared against
     /// `expected_chunks` to detect segment completion.
     received_chunks: usize,
 
@@ -255,55 +101,12 @@ struct CurrentStores {
     /// inside [`Self::flush_incremental`].
     manifest: Option<SegmentChunkManifest>,
 
-    /// Upper bound of the time range already processed by an
-    /// [`Self::emit_up_to`] call (inclusive). Used as
-    /// `filtered_index_range.min - 1` on the next emit cycle so we don't
-    /// re-query rows that have already been considered. `None` means no
-    /// emit cycle has run yet.
-    ///
-    /// Tracks the *processed* range, not the *emitted* row count: a
-    /// cycle that finds zero matching rows in `(prev, horizon]` still
-    /// advances this so the next cycle starts at `horizon + 1`. Without
-    /// that, an empty cycle would re-scan the same range on every
-    /// horizon tick.
-    processed_through_time: Option<TimeInt>,
-
-    /// Most recent value `safe_horizon` returned in `flush_incremental`.
-    /// Carried only to back the `debug_assert!` that the horizon is
-    /// monotonically non-decreasing — if it ever regresses we'd
-    /// re-emit rows we already shipped, or `gc_up_to_horizon` would
-    /// drop chunks whose rows haven't been emitted yet.
-    last_horizon: Option<TimeInt>,
-
-    /// Largest `time_range().max()` seen across every arrived chunk on
-    /// the filtered timeline. `None` until the first temporal chunk
-    /// arrives.
-    ///
-    /// Used by [`Self::flush_incremental`] as a cheap pre-check: if no
-    /// arrived chunk has rows past `processed_through_time`, building a
-    /// fresh `QueryHandle` cannot produce output, so we skip the build.
-    /// `time_max` (not `time_min`) is the right bound because a single
-    /// chunk's rows can straddle a horizon — a chunk at `time_min=10`,
-    /// `time_max=100` still has emittable rows after `processed_through`
-    /// crosses 10.
-    max_arrived_time_max: Option<TimeInt>,
-
     /// Whether this segment has already left the segment-count gate.
     /// Completed segments can wait in `ready_pending` behind earlier
     /// segments, but they no longer need IO admission, so holding their
     /// segment slot would block the missing earlier segments that are
     /// required to make ordered emit progress.
     segment_slot_released: bool,
-
-    /// Scratch storage for the `protected_chunks` set built by
-    /// [`Self::gc_up_to_horizon`]. Kept on the struct (rather than
-    /// allocated per call) so the underlying `HashMap` capacity is
-    /// reused across the many GC ticks that fire once the horizon
-    /// starts advancing. `.clear()` resets size without freeing the
-    /// table; `std::mem::take` moves the populated set into
-    /// `GarbageCollectionOptions` for the `gc()` call, then a swap
-    /// restores ownership (and capacity) to this field.
-    protected_chunks_scratch: ahash::HashSet<ChunkId>,
 }
 
 impl CurrentStores {
@@ -315,55 +118,22 @@ impl CurrentStores {
         index_values: &IndexValuesMap,
         pipeline_budget: Arc<PipelineBudget>,
     ) -> Self {
-        // The application id of this throwaway store is only used for debugging.
-        let application_id = ApplicationId::new_or_unknown(segment_id.as_ref());
-        let store_id = StoreId::random(StoreKind::Recording, application_id);
-        let config = ChunkStoreConfig::ALL_DISABLED; // Don't spend CPU time splitting and joining chunks. Trust the input.
-        let store = ChunkStore::new_handle(store_id.clone(), config);
-        let query_cache = QueryCache::new_handle(store.clone());
-        let engine = QueryEngine::new(store.clone(), query_cache);
-
-        let mut individual_query = query_expression.clone();
-        let values = index_values
-            .as_ref()
-            .and_then(|index_values| index_values.get(&segment_id));
-        if let Some(values) = values {
-            individual_query.using_index_values = Some(values.clone());
-        }
-        let filtered_index_timeline = individual_query.filtered_index;
-
         Self {
-            origin,
-            segment_id,
-            store,
-            engine,
-            query_expression: individual_query,
-            filtered_index_timeline,
+            inner: SegmentStore::new(origin, segment_id, query_expression, index_values),
             pipeline_budget,
             expected_chunks: None,
             received_chunks: 0,
             manifest: None,
-            processed_through_time: None,
-            last_horizon: None,
-            max_arrived_time_max: None,
             segment_slot_released: false,
-            protected_chunks_scratch: ahash::HashSet::default(),
         }
     }
 
     fn release_segment_slot(&mut self) {
         if !self.segment_slot_released {
             self.pipeline_budget
-                .publish_segment_finalized(self.segment_id.as_str());
+                .publish_segment_finalized(self.inner.segment_id.as_str());
             self.segment_slot_released = true;
         }
-    }
-
-    /// Current decoded bytes held in `store`. Reads `ChunkStore` stats so
-    /// the value reflects any post-construction inserts and any chunks
-    /// reclaimed as the safe horizon advances.
-    fn store_bytes(&self) -> u64 {
-        self.store.read().stats().total().total_size_bytes
     }
 
     /// `true` once the IO side has announced the chunk count for this
@@ -374,48 +144,46 @@ impl CurrentStores {
             .is_some_and(|expected| self.received_chunks >= expected)
     }
 
-    /// Record a chunk's arrival on the filtered timeline.
-    /// No-op for static-only queries (no `filtered_index_timeline`) and
-    /// for chunks with no data on that timeline.
+    /// Insert one decoded chunk, then record its arrival against the
+    /// manifest. Insert-first ordering is load-bearing: if insert fails
+    /// the whole worker propagates the error and the query stream
+    /// short-circuits, but recording before insert would briefly leave
+    /// the manifest claiming a chunk arrived that the store doesn't
+    /// actually hold.
     ///
-    /// `max_arrived_time_max` is updated whenever the chunk is temporal
-    /// on the filtered timeline, even if no manifest has been attached
-    /// yet — `flush_incremental`'s path-1b fast-skip relies on it being
-    /// monotonic across the segment's full arrival history. If a chunk
-    /// arrived before the manifest (against current IO-loop ordering,
-    /// but documented as a latent edge case) and we hadn't tracked it
-    /// here, path-1b would later treat the segment as "no arrivals in
-    /// range" and advance `processed_through_time` past rows that were
-    /// actually emittable.
+    /// Every chunk the segment receives must go through here. Inserting
+    /// via `inner.store` leaves the manifest short an arrival, which
+    /// pins `safe_horizon` below the chunk's `time_min` for the rest of
+    /// the segment and stalls emit progress.
+    fn insert_chunk(&mut self, chunk: &Arc<Chunk>) -> ApiResult<()> {
+        self.inner.insert_chunk(chunk)?;
+        self.record_arrival(chunk);
+        Ok(())
+    }
+
+    /// Record a chunk's arrival against the manifest.
+    /// No-op for static-only queries (no `filtered_index_timeline`),
+    /// for chunks with no data on that timeline, and when no manifest
+    /// has been attached yet — the manifest's own bookkeeping doesn't
+    /// exist without it. (The arrival high-water mark that path-1b
+    /// depends on is tracked by [`SegmentStore::insert_chunk`]
+    /// regardless, so pre-manifest arrivals still register there.)
     ///
-    /// `manifest.record_arrival` is only called when a manifest is
-    /// present — the manifest's own bookkeeping doesn't exist without
-    /// it. On manifest/chunk divergence (the `(entity, time_min)` pair
+    /// On manifest/chunk divergence (the `(entity, time_min)` pair
     /// was never announced in the `chunk_info`), `debug_panic!` fires
     /// in debug builds and `error_once!` in release. The chunk still
     /// inserts — silently dropping the chunk would be a worse choice
     /// than emitting it past a now-incorrect horizon — but the log
     /// surfaces the integrity issue so operators can investigate.
     fn record_arrival(&mut self, chunk: &Chunk) {
-        let Some(timeline) = self.filtered_index_timeline.as_ref() else {
+        let Some(timeline) = self.inner.filtered_index_timeline.as_ref() else {
             return;
         };
         let Some(time_col) = chunk.timelines().get(timeline) else {
             return; // chunk has no data on this timeline (static, or other timelines only)
         };
         let entity_path = chunk.entity_path();
-        let time_range = time_col.time_range();
-        let time_min = time_range.min();
-        let time_max = time_range.max();
-
-        // Track the highest `time_max` across all arrivals so
-        // `flush_incremental` can short-circuit when no arrived chunk
-        // has rows past `processed_through_time`. Done outside the
-        // manifest guard so pre-manifest arrivals still register.
-        self.max_arrived_time_max = Some(
-            self.max_arrived_time_max
-                .map_or(time_max, |prev| prev.max(time_max)),
-        );
+        let time_min = time_col.time_range().min();
 
         let Some(manifest) = self.manifest.as_mut() else {
             return;
@@ -437,21 +205,13 @@ impl CurrentStores {
         }
     }
 
-    /// Run the safe-horizon emit + GC step for this segment.
-    ///
-    /// Two paths:
-    /// 1. **Fast skip.** No manifest, or horizon hasn't advanced since
-    ///    the last emit, or already at horizon = max → no work, no
-    ///    `next_n_rows` call.
-    /// 2. **Horizon emit + GC.** Manifest's `safe_horizon` advanced →
-    ///    emit rows up to and including the new horizon, then drop
-    ///    chunks strictly below it from the in-memory store and
-    ///    release the freed bytes to the budget.
+    /// Run the safe-horizon emit + GC step for this segment, using the
+    /// manifest as the horizon source and translating the outcome into
+    /// pipeline-budget verbs (stall-detector notifies + freed-byte
+    /// release).
     ///
     /// Callers MUST only invoke this on the segment at the head of
-    /// `emit_order`. Emitting rows from a non-head segment would
-    /// violate the `[segment_id ASC, sort_index ASC]` ordering claim
-    /// advertised by `SegmentStreamExec::try_new`.
+    /// `emit_order` — see [`SegmentStore::flush_incremental_to`].
     async fn flush_incremental(
         &mut self,
         projected_schema: &Arc<Schema>,
@@ -469,232 +229,39 @@ impl CurrentStores {
         // the later completion flush emits each row exactly once.
         // GC must be skipped too — without incremental emit, dropping
         // pre-horizon chunks would corrupt that final drain.
-        if self.query_expression.using_index_values.is_some() {
+        if self.inner.query_expression.using_index_values.is_some() {
             return Ok(());
         }
         let Some(horizon) = self.manifest.as_ref().and_then(|m| m.safe_horizon()) else {
             // No horizon info available — feeds the stall detector
             // because nothing else will here.
             self.pipeline_budget.notify_empty_emit();
-            return Ok(()); // path 1 — no horizon info available
+            return Ok(());
         };
 
-        // The horizon is required to be monotonically non-decreasing
-        // for the design to hold: a regression would imply either
-        // re-emitting rows already shipped or GC'ing chunks whose
-        // rows still need to emit. Catch it in debug builds while the
-        // damage is recoverable; in release the existing range filter
-        // makes the failure mode silent-but-survivable.
-        re_log::debug_assert!(
-            self.last_horizon.is_none_or(|prev| horizon >= prev),
-            "safe_horizon regressed: prev={:?}, new={}",
-            self.last_horizon.map(|h| h.as_i64()),
-            horizon.as_i64(),
-        );
-        self.last_horizon = Some(horizon);
+        let outcome = self
+            .inner
+            .flush_incremental_to(
+                horizon,
+                projected_schema,
+                output_channel,
+                rows_sent,
+                limit_rows,
+            )
+            .await?;
 
-        // Path 1 (fast skip): horizon hasn't advanced past the range
-        // already processed.
-        if let Some(last) = self.processed_through_time
-            && horizon <= last
-        {
-            self.pipeline_budget.notify_empty_emit();
-            return Ok(());
-        }
-
-        // Path 1b (no-arrivals-in-range fast skip): no arrived chunk
-        // has rows past `processed_through_time`, so the upcoming emit
-        // cycle cannot produce output. Skip the `QueryHandle` build but
-        // still run GC — the horizon advanced (per path 1's check
-        // above), and GC at the new horizon may free chunks even when
-        // no new rows are emittable. Advance `processed_through_time`
-        // so the next cycle's `filtered_index_range.min` skips the
-        // empty range we just confirmed; safe because the manifest
-        // invariant guarantees no future chunk arrives with `time_min`
-        // <= horizon.
-        if self
-            .max_arrived_time_max
-            .is_none_or(|tmax| self.processed_through_time.is_some_and(|p| tmax <= p))
-        {
-            // No emittable rows in range — still an empty emit cycle,
-            // so feed the stall detector before short-circuiting.
-            self.pipeline_budget.notify_empty_emit();
-            self.gc_up_to_horizon(horizon);
-            self.processed_through_time = Some(horizon);
-            return Ok(());
-        }
-
-        // Path 2: emit + GC up to the new horizon.
-        let rows_before = *rows_sent;
-        self.emit_up_to(
-            Some(horizon),
-            projected_schema,
-            output_channel,
-            rows_sent,
-            limit_rows,
-        )
-        .await?;
-        if *rows_sent > rows_before {
+        if outcome.rows_emitted > 0 {
             self.pipeline_budget.notify_row_emitted();
         } else {
             self.pipeline_budget.notify_empty_emit();
         }
-        self.gc_up_to_horizon(horizon);
+        if outcome.freed_bytes > 0 {
+            self.pipeline_budget.release(outcome.freed_bytes as usize);
+        }
         Ok(())
     }
 
-    /// Build a fresh `QueryEngine` + `QueryHandle` constrained to
-    /// `(processed_through_time, horizon]` on the filtered timeline,
-    /// then drain rows from that handle through `send_next_row_batch`
-    /// until it reports exhaustion. Updates `processed_through_time` to
-    /// `horizon` on success, regardless of whether any rows shipped:
-    /// the range has been *considered*, so the next cycle must not
-    /// re-scan it.
-    ///
-    /// `horizon = None` means "up to `TimeInt::MAX`" — the final drain
-    /// path. For queries with no `filtered_index` the range is silently
-    /// ignored by `QueryExpression` (per its documented semantics);
-    /// such queries are static-only and `processed_through_time` is set
-    /// to `MAX` after the first call so subsequent invocations short-
-    /// circuit.
-    async fn emit_up_to(
-        &mut self,
-        horizon: Option<TimeInt>,
-        projected_schema: &Arc<Schema>,
-        output_channel: &Sender<RecordBatch>,
-        rows_sent: &mut usize,
-        limit_rows: Option<usize>,
-    ) -> ApiResult<()> {
-        // Range_min = processed_through + 1, defaulting to MIN on first
-        // emit. `TimeInt::inc` handles the saturating add and the
-        // `processed_through == MAX` edge — `.inc()` of `MAX` returns
-        // `MAX`, so the `range_min > range_max` guard below catches it.
-        let range_min = match self.processed_through_time {
-            Some(t) => {
-                if t == TimeInt::MAX {
-                    return Ok(());
-                }
-                t.inc()
-            }
-            None => TimeInt::MIN,
-        };
-        let range_max = horizon.unwrap_or(TimeInt::MAX);
-        if range_min > range_max {
-            return Ok(());
-        }
-
-        // `QueryEngine::query(QueryExpression)` consumes the expression
-        // by value, so we can't borrow `self.query_expression` here —
-        // each cycle must hand the engine an owned copy. Cloning is
-        // unavoidable until that API gains a by-ref variant; the small
-        // per-cycle allocation cost is acceptable next to the much
-        // larger `next_n_rows` work that follows.
-        let mut q = self.query_expression.clone();
-        q.filtered_index_range = Some(AbsoluteTimeRange::new(range_min, range_max));
-
-        let mut handle: QueryHandle<StorageEngine> = self.engine.query(q);
-        while send_next_row_batch(
-            &self.origin,
-            &mut handle,
-            &self.segment_id,
-            projected_schema,
-            output_channel,
-            rows_sent,
-            limit_rows,
-        )
-        .await?
-        .is_some()
-        {}
-
-        self.processed_through_time = Some(range_max);
-        Ok(())
-    }
-
-    /// Drop chunks no longer needed once the safe horizon has
-    /// advanced, returning the freed bytes to the pipeline budget.
-    /// No-op for queries without a temporal `filtered_index`.
-    ///
-    /// **Carry-forward protection.** A naive "drop everything with
-    /// `time_max < horizon`" would corrupt latest-at semantics:
-    /// rerun queries resolve a row at time `T` to the *most recent*
-    /// component value at or before `T`, so the chunk that holds an
-    /// entity's last-known value before the horizon must stay around
-    /// to keep supplying that value for rows past the horizon.
-    /// Example: entity `/a` has its only chunk at `t=10`; entity
-    /// `/b` has chunks at `t=20, 40`. With horizon `39`, dropping
-    /// `/a@10` would make every row in `[10, 39]` and beyond emit
-    /// `/a` as null instead of carrying its `t=10` value forward.
-    ///
-    /// To preserve that invariant, we ask the chunk store for the
-    /// set of chunks that would satisfy
-    /// `LatestAtQuery::new(timeline, horizon)` for every entity and
-    /// add them to `protected_chunks`. Everything outside that set
-    /// **and** outside `(horizon, +inf]` is fair game.
-    fn gc_up_to_horizon(&mut self, horizon: TimeInt) {
-        let Some(timeline_name) = self.filtered_index_timeline else {
-            return;
-        };
-
-        let bytes_before = self.store_bytes();
-
-        // Collect chunk IDs that supply latest-at carry-forward
-        // values at the horizon — these must survive the GC even
-        // though their entire time range may be ≤ horizon.
-        //
-        // Reuse `protected_chunks_scratch`: `.clear()` drops elements
-        // but keeps the HashMap's allocated buckets. The set is then
-        // `mem::take`'d into `GarbageCollectionOptions` (which needs
-        // ownership for `gc(&options)`), and swapped back after the
-        // call so the next GC tick inherits the capacity.
-        self.protected_chunks_scratch.clear();
-        {
-            let store = self.store.read();
-            let query = LatestAtQuery::new(timeline_name, horizon);
-            for entity_path in store.all_entities() {
-                let results = store.latest_at_relevant_chunks_for_all_components(
-                    ChunkTrackingMode::Ignore,
-                    &query,
-                    &entity_path,
-                    true, // include static
-                );
-                for chunk in &results.chunks {
-                    self.protected_chunks_scratch.insert(chunk.id());
-                }
-            }
-        }
-
-        // Build `GarbageCollectionOptions` via `gc_everything()` so we
-        // inherit the right `IntMap` hasher for `protected_time_ranges`
-        // without needing a direct `nohash_hasher` dependency.
-        let mut options = GarbageCollectionOptions::gc_everything();
-        options.protected_chunks = std::mem::take(&mut self.protected_chunks_scratch);
-        options.protected_time_ranges.insert(
-            timeline_name,
-            AbsoluteTimeRange::new(horizon.inc(), TimeInt::MAX),
-        );
-        options.perform_deep_deletions = true;
-        // `gc` returns the list of removed chunks plus stats; we
-        // measure freed bytes via `store_bytes()` before/after
-        // instead, so the structured return value is intentionally
-        // discarded.
-        let _ = self.store.write().gc(&options);
-        // Restore the populated set to the field so its capacity
-        // survives for the next call. Contents are dropped on the
-        // next entry via `.clear()`; only the table backing storage
-        // is the reuse target.
-        std::mem::swap(
-            &mut self.protected_chunks_scratch,
-            &mut options.protected_chunks,
-        );
-
-        let bytes_after = self.store_bytes();
-        let freed = bytes_before.saturating_sub(bytes_after);
-        if freed > 0 {
-            self.pipeline_budget.release(freed as usize);
-        }
-    }
-
-    /// Final drain. Emits everything still in `store` that's past
+    /// Final drain. Emits everything still in the store that's past
     /// `processed_through_time` through the output channel. Consumes `self`
     /// so the reservation is returned via `Drop` immediately after the
     /// last batch ships — and via the same `Drop` if a
@@ -707,14 +274,9 @@ impl CurrentStores {
         rows_sent: &mut usize,
         limit_rows: Option<usize>,
     ) -> ApiResult<()> {
-        self.emit_up_to(
-            None,
-            projected_schema,
-            output_channel,
-            rows_sent,
-            limit_rows,
-        )
-        .await?;
+        self.inner
+            .flush(projected_schema, output_channel, rows_sent, limit_rows)
+            .await?;
         Ok(())
     }
 }
@@ -724,7 +286,8 @@ impl Drop for CurrentStores {
         // Refund whatever the store currently holds. See the long
         // comment in the CPU worker about why `store_bytes >= reserved_sum`
         // and the resulting under-utilization is benign.
-        self.pipeline_budget.release(self.store_bytes() as usize);
+        self.pipeline_budget
+            .release(self.inner.store_bytes() as usize);
 
         // Free the segment's slot in the segment-count gate so a
         // parked higher-priority reserver can be admitted. The byte
@@ -1017,29 +580,13 @@ pub(super) async fn chunk_store_cpu_worker_thread(
                 {
                     let _insert_span = tracing::debug_span!(
                         "insert_chunks",
-                        segment_id = %stores.segment_id,
+                        segment_id = %stores.inner.segment_id,
                         n = n_chunks,
                     )
                     .entered();
                     re_tracing::profile_scope!("insert_chunks");
                     for chunk in chunks {
-                        // Insert first, then record against the
-                        // manifest only on success. If insert fails
-                        // the whole worker propagates the error and
-                        // the query stream short-circuits, but
-                        // recording before insert would briefly leave
-                        // the manifest claiming a chunk arrived that
-                        // the store doesn't actually hold.
-                        let chunk = Arc::new(chunk);
-                        stores.store.write().insert_chunk(&chunk).map_err(|err| {
-                            ApiError::internal_with_source(
-                                &origin,
-                                None,
-                                err,
-                                "inserting chunk into in-memory store",
-                            )
-                        })?;
-                        stores.record_arrival(&chunk);
+                        stores.insert_chunk(&Arc::new(chunk))?;
                     }
                     stores.received_chunks += n_chunks;
                 }
@@ -1203,9 +750,11 @@ async fn maybe_emit_head(
 
 #[cfg(test)]
 mod tests {
+    use re_dataframe::TimelineName;
     use re_dataframe::external::re_chunk::Chunk;
 
     use super::*;
+    use crate::dataframe_query_provider::test_utils::temporal_chunk;
 
     /// `Drop for CurrentStores` returns the in-store bytes to the budget.
     /// Covers every exit path uniformly: `flush` success, worker `?`
@@ -1687,28 +1236,8 @@ mod tests {
     }
 
     // ----------------------------------------------------------------
-    // gc_up_to_horizon + flush_incremental fast-skip tests
+    // flush_incremental budget-wiring + fast-skip tests
     // ----------------------------------------------------------------
-
-    /// Build a single-row temporal chunk on `timeline_name` at `time`
-    /// carrying one `MyLabel` component, so the chunk has non-zero
-    /// stored bytes and the store's `latest_at` machinery has a
-    /// component to find.
-    fn temporal_chunk(entity: &str, timeline_name: &'static str, time: i64) -> Chunk {
-        use re_dataframe::external::re_chunk::RowId;
-        use re_log_types::Timeline;
-        use re_log_types::example_components::{MyLabel, MyPoints};
-        let timepoint = [(Timeline::new_sequence(timeline_name), time)];
-        let labels = &[MyLabel(format!("{entity}@{time}"))];
-        Chunk::builder(entity)
-            .with_component_batches(
-                RowId::new(),
-                timepoint,
-                [(MyPoints::descriptor_labels(), labels as _)],
-            )
-            .build()
-            .unwrap()
-    }
 
     /// Build a `CurrentStores` wired up with `filtered_index = Some(timeline)`
     /// and a locked, empty manifest (so `safe_horizon` returns `MAX`
@@ -1737,63 +1266,18 @@ mod tests {
         stores
     }
 
-    /// All store contents are required to carry the latest-at value at
-    /// the horizon → GC must drop nothing and the budget must not be
-    /// touched. Exercises the `protected_chunks` path plus the
-    /// `protected_time_ranges = (horizon+1, MAX]` path together.
+    /// The bytes [`SegmentStore::gc_up_to_horizon`] frees must reach the
+    /// pipeline budget: `flush_incremental` is what translates the
+    /// returned delta into `release`.
     ///
-    /// Setup:
-    /// - `/a` has its only chunk at `t=10` → latest-at at `t=50` for
-    ///   `/a` is `/a@10`, protected via `protected_chunks`.
-    /// - `/b` has chunks at `t=20` (latest-at carry-forward at `t=50`,
-    ///   protected via `protected_chunks`) and `t=100` (sits past
-    ///   horizon, protected via `protected_time_ranges`).
-    #[test]
-    fn test_gc_up_to_horizon_preserves_carry_forward() {
-        let budget = Arc::new(PipelineBudget::new(1 << 30, 1));
-        let mut stores = stores_with_timeline("seg", "frame", budget.clone());
-        for chunk in [
-            temporal_chunk("/a", "frame", 10),
-            temporal_chunk("/b", "frame", 20),
-            temporal_chunk("/b", "frame", 100),
-        ] {
-            stores.store.write().insert_chunk(&Arc::new(chunk)).unwrap();
-        }
-
-        let bytes_before = stores.store_bytes();
-        let releases_before = budget.total_releases();
-        let n_chunks_before = stores.store.read().num_physical_chunks();
-        assert_eq!(n_chunks_before, 3);
-
-        stores.gc_up_to_horizon(TimeInt::new_temporal(50));
-
-        let bytes_after = stores.store_bytes();
-        let n_chunks_after = stores.store.read().num_physical_chunks();
-        assert_eq!(
-            n_chunks_after, 3,
-            "carry-forward chunks must survive GC under latest-at semantics",
-        );
-        assert_eq!(
-            bytes_after, bytes_before,
-            "no bytes freed when every chunk is protected",
-        );
-        assert_eq!(
-            budget.total_releases(),
-            releases_before,
-            "release must not fire when freed == 0",
-        );
-    }
-
-    /// Superseded chunks (older than the latest-at value at the horizon
-    /// for their entity) are not protected and must be GC'd. Budget
-    /// gets the freed bytes back.
-    ///
-    /// Setup:
-    /// - `/a` has chunks at `t=10, 20, 30`. Horizon=50 → latest-at for
-    ///   `/a` is `/a@30` (protected). `/a@10` and `/a@20` are
-    ///   superseded → GC'd.
-    #[test]
-    fn test_gc_up_to_horizon_drops_superseded_chunks() {
+    /// Setup: locked empty manifest → `safe_horizon` = `MAX`, and the
+    /// chunks are inserted straight into the store so
+    /// `max_arrived_time_max` stays `None` and path 1b runs GC without
+    /// an emit. `/a` has chunks at `t=10, 20, 30`; latest-at at `MAX`
+    /// is `/a@30` (protected), so `/a@10` and `/a@20` are superseded
+    /// and freed.
+    #[tokio::test]
+    async fn test_flush_incremental_releases_gc_freed_bytes() {
         let budget = Arc::new(PipelineBudget::new(1 << 30, 1));
         let mut stores = stores_with_timeline("seg", "frame", budget.clone());
         for chunk in [
@@ -1801,18 +1285,29 @@ mod tests {
             temporal_chunk("/a", "frame", 20),
             temporal_chunk("/a", "frame", 30),
         ] {
-            stores.store.write().insert_chunk(&Arc::new(chunk)).unwrap();
+            stores
+                .inner
+                .store
+                .write()
+                .insert_chunk(&Arc::new(chunk))
+                .unwrap();
         }
 
-        let bytes_before = stores.store_bytes();
+        let bytes_before = stores.inner.store_bytes();
         let releases_before = budget.total_releases();
-        assert_eq!(stores.store.read().num_physical_chunks(), 3);
+        assert_eq!(stores.inner.store.read().num_physical_chunks(), 3);
 
-        stores.gc_up_to_horizon(TimeInt::new_temporal(50));
+        let schema = Arc::new(Schema::empty());
+        let (output_tx, _output_rx) = tokio::sync::mpsc::channel::<RecordBatch>(4);
+        let mut rows_sent = 0usize;
+        stores
+            .flush_incremental(&schema, &output_tx, &mut rows_sent, None)
+            .await
+            .unwrap();
 
-        let bytes_after = stores.store_bytes();
+        let bytes_after = stores.inner.store_bytes();
         assert_eq!(
-            stores.store.read().num_physical_chunks(),
+            stores.inner.store.read().num_physical_chunks(),
             1,
             "only the latest-at chunk (@30) must remain",
         );
@@ -1827,56 +1322,13 @@ mod tests {
         );
     }
 
-    /// Across multiple `gc_up_to_horizon` calls, the
-    /// `protected_chunks_scratch` `HashSet` must retain its allocated
-    /// capacity (via `clear()` + `mem::swap` back from the
-    /// `GarbageCollectionOptions`). Verifies the scratch reuse contract
-    /// — a future refactor that re-allocates per call would silently
-    /// regress the IO→CPU hot path.
-    #[test]
-    fn test_gc_up_to_horizon_reuses_scratch_capacity() {
-        let budget = Arc::new(PipelineBudget::new(1 << 30, 1));
-        let mut stores = stores_with_timeline("seg", "frame", budget);
-        // Populate enough entities that `protected_chunks_scratch`
-        // grabs a non-trivial capacity on the first call.
-        for i in 0..64 {
-            stores
-                .store
-                .write()
-                .insert_chunk(&Arc::new(temporal_chunk(&format!("/e{i}"), "frame", 0)))
-                .unwrap();
-        }
-        assert_eq!(
-            stores.protected_chunks_scratch.capacity(),
-            0,
-            "fresh CurrentStores starts with zero scratch capacity",
-        );
-
-        stores.gc_up_to_horizon(TimeInt::new_temporal(50));
-        let cap_after_first = stores.protected_chunks_scratch.capacity();
-        assert!(
-            cap_after_first > 0,
-            "scratch must retain capacity after gc (got {cap_after_first})",
-        );
-        // gc returned; the swap-back restores ownership but clear()
-        // happens at the *start* of the next call, so the set may
-        // still hold the inserted IDs here. The contract under test
-        // is capacity, not size.
-
-        stores.gc_up_to_horizon(TimeInt::new_temporal(60));
-        assert!(
-            stores.protected_chunks_scratch.capacity() >= cap_after_first,
-            "capacity must not shrink across calls (before={cap_after_first}, after={})",
-            stores.protected_chunks_scratch.capacity(),
-        );
-    }
-
     /// Without a temporal `filtered_index` (`filtered_index_timeline ==
-    /// None`), `gc_up_to_horizon` must short-circuit. The static-only
-    /// query path otherwise has no timeline to feed to
+    /// None`), GC short-circuits and reports zero freed bytes, so
+    /// `flush_incremental` must not call `release` at all. The
+    /// static-only query path otherwise has no timeline to feed to
     /// `LatestAtQuery::new`.
-    #[test]
-    fn test_gc_up_to_horizon_noop_without_filtered_index() {
+    #[tokio::test]
+    async fn test_flush_incremental_no_release_without_filtered_index() {
         let budget = Arc::new(PipelineBudget::new(1 << 30, 1));
         // Construct without a filtered_index timeline.
         let mut stores = CurrentStores::new(
@@ -1889,20 +1341,27 @@ mod tests {
         let mut manifest = SegmentChunkManifest::new();
         manifest.lock();
         stores.manifest = Some(manifest);
-        assert!(stores.filtered_index_timeline.is_none());
+        assert!(stores.inner.filtered_index_timeline.is_none());
 
         stores
+            .inner
             .store
             .write()
             .insert_chunk(&Arc::new(temporal_chunk("/a", "frame", 10)))
             .unwrap();
-        let bytes_before = stores.store_bytes();
+        let bytes_before = stores.inner.store_bytes();
         let releases_before = budget.total_releases();
 
-        stores.gc_up_to_horizon(TimeInt::new_temporal(50));
+        let schema = Arc::new(Schema::empty());
+        let (output_tx, _output_rx) = tokio::sync::mpsc::channel::<RecordBatch>(4);
+        let mut rows_sent = 0usize;
+        stores
+            .flush_incremental(&schema, &output_tx, &mut rows_sent, None)
+            .await
+            .unwrap();
 
         assert_eq!(
-            stores.store_bytes(),
+            stores.inner.store_bytes(),
             bytes_before,
             "no-op leaves bytes unchanged"
         );
@@ -1949,7 +1408,7 @@ mod tests {
         let mut stores = stores_with_timeline("seg", "frame", budget);
         // Locked + empty manifest → safe_horizon = Some(MAX). Pretend
         // we already processed up to MAX so the fast-skip branch fires.
-        stores.processed_through_time = Some(TimeInt::MAX);
+        stores.inner.processed_through_time = Some(TimeInt::MAX);
 
         let schema = Arc::new(Schema::empty());
         let (output_tx, mut output_rx) = tokio::sync::mpsc::channel::<RecordBatch>(4);
@@ -1977,8 +1436,8 @@ mod tests {
         let mut stores = stores_with_timeline("seg", "frame", budget);
         // Locked + empty manifest → safe_horizon = Some(MAX).
         // max_arrived_time_max is None because no chunks have arrived.
-        assert!(stores.max_arrived_time_max.is_none());
-        assert!(stores.processed_through_time.is_none());
+        assert!(stores.inner.max_arrived_time_max.is_none());
+        assert!(stores.inner.processed_through_time.is_none());
 
         let schema = Arc::new(Schema::empty());
         let (output_tx, mut output_rx) = tokio::sync::mpsc::channel::<RecordBatch>(4);
@@ -1992,7 +1451,7 @@ mod tests {
         assert_eq!(rows_sent, 0);
         assert!(output_rx.try_recv().is_err());
         assert_eq!(
-            stores.processed_through_time,
+            stores.inner.processed_through_time,
             Some(TimeInt::MAX),
             "path 1b must advance processed_through_time to the new horizon",
         );
@@ -2002,7 +1461,7 @@ mod tests {
     // gc_up_to_horizon scaling microbench
     // ----------------------------------------------------------------
 
-    /// Measures per-call cost of [`CurrentStores::gc_up_to_horizon`] as
+    /// Measures per-call cost of [`SegmentStore::gc_up_to_horizon`] as
     /// the number of entities and chunks scales up. Run via:
     ///
     /// ```text
@@ -2041,6 +1500,7 @@ mod tests {
                         // advancing horizon used below.
                         let t = j as i64;
                         stores
+                            .inner
                             .store
                             .write()
                             .insert_chunk(&Arc::new(temporal_chunk(&entity, "frame", t)))
@@ -2052,7 +1512,7 @@ mod tests {
                 // Warm-up call — first GC may pay one-off lazy-index
                 // costs in the chunk store that we don't want to fold
                 // into the per-call number.
-                stores.gc_up_to_horizon(TimeInt::new_temporal(1_000));
+                stores.inner.gc_up_to_horizon(TimeInt::new_temporal(1_000));
 
                 let n_calls: u32 = 20;
                 let bench_start = Instant::now();
@@ -2061,7 +1521,7 @@ mod tests {
                     // path inside `flush_incremental` would never fire
                     // upstream of `gc_up_to_horizon` either.
                     let h = 1_000 + i64::from(k);
-                    stores.gc_up_to_horizon(TimeInt::new_temporal(h));
+                    stores.inner.gc_up_to_horizon(TimeInt::new_temporal(h));
                 }
                 let elapsed = bench_start.elapsed();
                 let per_call = elapsed / n_calls;
@@ -2116,7 +1576,7 @@ mod tests {
         stores.record_arrival(&chunk);
     }
 
-    /// `record_arrival` must track `max_arrived_time_max` whenever the
+    /// Inserting a chunk must track `max_arrived_time_max` whenever the
     /// chunk is temporal on the filtered timeline — even before any
     /// manifest is attached. Otherwise `flush_incremental`'s path-1b
     /// fast-skip (which guards on `max_arrived_time_max`) would later
@@ -2128,7 +1588,7 @@ mod tests {
     /// loop ordering, but defended against in `record_arrival`'s
     /// guard split).
     #[test]
-    fn test_record_arrival_tracks_time_max_without_manifest() {
+    fn test_insert_chunk_tracks_time_max_without_manifest() {
         let budget = Arc::new(PipelineBudget::new(1 << 30, 1));
         let mut stores = CurrentStores::new(
             re_uri::Origin::test(),
@@ -2141,14 +1601,20 @@ mod tests {
             budget,
         );
         assert!(stores.manifest.is_none());
-        assert!(stores.max_arrived_time_max.is_none());
+        assert!(stores.inner.max_arrived_time_max.is_none());
 
-        stores.record_arrival(&temporal_chunk("/a", "frame", 10));
-        stores.record_arrival(&temporal_chunk("/b", "frame", 30));
-        stores.record_arrival(&temporal_chunk("/c", "frame", 20));
+        stores
+            .insert_chunk(&Arc::new(temporal_chunk("/a", "frame", 10)))
+            .unwrap();
+        stores
+            .insert_chunk(&Arc::new(temporal_chunk("/b", "frame", 30)))
+            .unwrap();
+        stores
+            .insert_chunk(&Arc::new(temporal_chunk("/c", "frame", 20)))
+            .unwrap();
 
         assert_eq!(
-            stores.max_arrived_time_max,
+            stores.inner.max_arrived_time_max,
             Some(TimeInt::new_temporal(30)),
             "max_arrived_time_max must reflect pre-manifest temporal arrivals",
         );

@@ -1,6 +1,9 @@
 mod cpu_worker;
 mod fetch_plan;
 mod io_loop;
+mod segment_store;
+#[cfg(test)]
+mod test_utils;
 
 use std::collections::BTreeMap;
 use std::fmt::Debug;
