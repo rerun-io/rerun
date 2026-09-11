@@ -5,7 +5,7 @@ use re_log_types::{
 };
 use re_sdk_types::blueprint::archetypes::TimeAxis;
 use re_sdk_types::blueprint::components::LinkAxis;
-use re_sdk_types::encodings::TimeRange;
+use re_sdk_types::encodings::{TimeRange, TimeRangeBoundary};
 use re_time_ruler::{MAX_ZIG_WIDTH, TimeRangesUi};
 use re_ui::{Help, IconText, MouseButtonText, UiExt as _, icons, list_item};
 use re_viewer_context::{
@@ -624,12 +624,30 @@ impl ViewClass for StateTimelineView {
             }
             ui.request_repaint();
         } else if time_view != original_time_view {
-            // Panned or zoomed: the window stays where the user left it, which also means it stops
-            // following the time cursor.
-            if let Some(global_time_axis) = &global_time_axis {
-                save_linked_view_range(ctx, global_time_axis, view_range_from_time_view(time_view));
+            let min = re_view::time_axis_time_from_plot(time_view.min, 0);
+            let max = re_view::time_axis_time_from_plot(
+                time_view.min + TimeReal::from(time_view.time_spanned),
+                0,
+            );
+            let window = if let Some(view_range) = &view_range {
+                re_view::recover_relative_boundaries_after_zoom_or_pan(
+                    min,
+                    max,
+                    view_range,
+                    query.latest_at.into(),
+                )
             } else {
-                state.set_window(query.timeline, time_view);
+                TimeRange {
+                    start: TimeRangeBoundary::Absolute(min),
+                    end: TimeRangeBoundary::Absolute(max),
+                }
+            };
+            if let Some(global_time_axis) = &global_time_axis {
+                save_linked_view_range(ctx, global_time_axis, window);
+            } else {
+                state
+                    .windows
+                    .insert(query.timeline, ViewWindow::Range(window));
             }
             ui.request_repaint();
         }
@@ -976,27 +994,13 @@ fn resolve_time_view(
 ) -> TimeView {
     let timeline_range = timeline_range
         .unwrap_or_else(|| AbsoluteTimeRange::new(data_min as i64, data_max.ceil() as i64));
-    let range = re_view::resolve_time_axis_range(
-        view_range,
-        timeline_range,
-        re_sdk_types::encodings::TimeInt(latest_at.as_i64()),
-    );
+    let range = re_view::resolve_time_axis_range(view_range, timeline_range, latest_at.into());
 
     let span = ((range.max.as_i64() - range.min.as_i64()) as f64).max(1.0);
     TimeView {
         min: TimeReal::from(range.min.as_i64() as f64),
         time_spanned: span,
     }
-}
-
-/// The view range denoting a pan/zoom window, i.e. the inverse of [`resolve_time_view`].
-fn view_range_from_time_view(time_view: TimeView) -> TimeRange {
-    // We pan/zoom in timeline units already, so there is no plot-space offset to undo.
-    re_view::time_axis_range_from_window(
-        time_view.min,
-        time_view.min + TimeReal::from(time_view.time_spanned),
-        0,
-    )
 }
 
 /// Persist the pan/zoom window to the shared global blueprint view range.

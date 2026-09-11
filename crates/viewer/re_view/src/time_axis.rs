@@ -116,18 +116,39 @@ pub fn set_time_cursor(
     new_view_range
 }
 
-/// Build a `TimeAxis:view_range` for a pan/zoom time window.
+/// Convert a pan/zoom boundary from plot space to an absolute timeline time.
 ///
-/// `min`/`max` are in plot space, rounded down and up respectively, i.e. offset by `time_offset`. Pass `0`
-/// if the window is in timeline units already.
-pub fn time_axis_range_from_window(min: TimeReal, max: TimeReal, time_offset: i64) -> TimeRange {
-    let boundary = |value: TimeReal| {
-        TimeRangeBoundary::Absolute(TimeInt(value.round().as_i64().saturating_add(time_offset)))
+/// Both window boundaries round to the nearest integer, with ties away from zero in plot space,
+/// before adding `time_offset` with saturation. Pass `0` for windows already in timeline units.
+pub fn time_axis_time_from_plot(value: TimeReal, time_offset: i64) -> TimeInt {
+    let rounded: TimeInt = value.round().into();
+    TimeInt(rounded.0.saturating_add(time_offset))
+}
+
+/// Preserve each cursor-relative or infinite boundary after zooming or panning.
+///
+/// `min` and `max` are absolute timeline times. Cursor-relative boundaries become absolute if
+/// their new offset cannot be represented.
+pub fn recover_relative_boundaries_after_zoom_or_pan(
+    min: TimeInt,
+    max: TimeInt,
+    previous: &TimeRange,
+    cursor: TimeInt,
+) -> TimeRange {
+    let boundary = |value: TimeInt, previous| match previous {
+        TimeRangeBoundary::Infinite => TimeRangeBoundary::Infinite,
+        TimeRangeBoundary::CursorRelative(_) => value
+            .0
+            .checked_sub(cursor.0)
+            .map_or(TimeRangeBoundary::Absolute(value), |offset| {
+                TimeRangeBoundary::CursorRelative(TimeInt(offset))
+            }),
+        TimeRangeBoundary::Absolute(_) => TimeRangeBoundary::Absolute(value),
     };
 
     TimeRange {
-        start: boundary(min),
-        end: boundary(max),
+        start: boundary(min, previous.start),
+        end: boundary(max, previous.end),
     }
 }
 

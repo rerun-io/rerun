@@ -919,10 +919,17 @@ impl ViewClass for TimeSeriesView {
                                 return None;
                             }
 
-                            Some(re_view::time_axis_range_from_window(
-                                re_log_types::TimeReal::from(new_x_range.start()),
-                                re_log_types::TimeReal::from(new_x_range.end()),
-                                time_offset,
+                            Some(re_view::recover_relative_boundaries_after_zoom_or_pan(
+                                re_view::time_axis_time_from_plot(
+                                    new_x_range.start().into(),
+                                    time_offset,
+                                ),
+                                re_view::time_axis_time_from_plot(
+                                    new_x_range.end().into(),
+                                    time_offset,
+                                ),
+                                &view_time_range,
+                                view_current_time,
                             ))
                         })
                         .map(re_sdk_types::blueprint::components::TimeRange)

@@ -46,8 +46,9 @@ pub use query::{
     range_with_blueprint_resolved_data_polymorphic, resolve_visible_time_range,
 };
 pub use time_axis::{
-    cursor_centered_default_range, resolve_time_axis_range, set_time_cursor,
-    time_axis_range_after_cursor_move, time_axis_range_from_window,
+    cursor_centered_default_range, recover_relative_boundaries_after_zoom_or_pan,
+    resolve_time_axis_range, set_time_cursor, time_axis_range_after_cursor_move,
+    time_axis_time_from_plot,
 };
 pub use view_property_ui::{
     view_property_component_ui, view_property_component_ui_custom, view_property_ui,
