@@ -773,10 +773,6 @@ impl App {
                 // we give each fetch as much time as possible to finish.
                 db.rrd_manifest_index_mut()
                     .cancel_outdated_requests(self.egui_ctx.time());
-
-                if db.rrd_manifest_index_mut().chunk_requests().has_pending() {
-                    self.egui_ctx.request_repaint(); // check back for more
-                }
             }
         }
     }
@@ -1074,6 +1070,7 @@ impl App {
 
         crate::prefetch_chunks::prefetch_chunks_for_recordings(
             &self.egui_ctx,
+            &self.async_runtime,
             store_hub.store_bundle_mut(),
             &recordings_info,
             total_bytes_in_memory,

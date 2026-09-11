@@ -2,6 +2,7 @@ use ahash::HashMap;
 use arrow::array::RecordBatch;
 
 use itertools::chain;
+use re_async::AsyncRuntimeHandle;
 use re_chunk::Chunk;
 use re_entity_db::{
     ChunkFetcher, ChunkPrefetchOptions, FetchStage, RemainingByteBudget, StoreBundle,
@@ -28,6 +29,7 @@ pub struct RecordingPrefetchInfo {
 /// recordings over background recordings.
 pub fn prefetch_chunks_for_recordings(
     egui_ctx: &egui::Context,
+    async_runtime: &AsyncRuntimeHandle,
     store_bundle: &mut StoreBundle,
     recordings_info: &HashMap<StoreId, RecordingPrefetchInfo>,
     total_bytes_in_memory: u64,
@@ -179,6 +181,7 @@ pub fn prefetch_chunks_for_recordings(
         .map(|state| {
             let load_fn = make_load_fn(
                 egui_ctx,
+                async_runtime,
                 connection_registry.connection_handle(state.origin.clone()),
             );
 
@@ -204,27 +207,35 @@ pub fn prefetch_chunks_for_recordings(
     }
 }
 
-fn make_load_fn(
-    egui_ctx: &egui::Context,
+fn make_load_fn<'a>(
+    egui_ctx: &'a egui::Context,
+    async_runtime: &'a AsyncRuntimeHandle,
     connection: re_redap_client::ConnectionHandle,
-) -> impl Fn(RecordBatch) -> re_entity_db::ChunkPromise + '_ {
+) -> impl Fn(RecordBatch) -> re_entity_db::ChunkPromise + 'a {
     move |rb| {
         egui_ctx.request_repaint();
+        let egui_ctx = egui_ctx.clone();
         let connection = connection.clone();
 
-        let fut = async move {
-            let mut client = connection.client().await.map_err(|err| {
-                re_log::warn_once!("Failed to connect to server: {err}");
-            })?;
-            load_chunks(&mut client, &rb).await.map_err(|err| {
-                re_log::warn_once!("{err}");
-            })
-        };
+        let (sender, promise) = poll_promise::Promise::new();
+        async_runtime.spawn_future(async move {
+            let result = async {
+                let mut client = connection.client().await.map_err(|err| {
+                    re_log::warn_once!("Failed to connect to server: {err}");
+                })?;
+                load_chunks(&mut client, &rb).await.map_err(|err| {
+                    re_log::warn_once!("{err}");
+                })
+            }
+            .await;
 
-        cfg_select! {
-            target_arch = "wasm32" => poll_promise::Promise::spawn_local(fut),
-            _ => poll_promise::Promise::spawn_async(fut),
-        }
+            // The promise must be fulfilled before the repaint is requested,
+            // or the frame it triggers may poll the promise before the result is in it.
+            sender.send(result);
+            egui_ctx.request_repaint();
+        });
+
+        promise
     }
 }
 
