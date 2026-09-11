@@ -20,6 +20,8 @@
 /// \cpp data can be passed in without a copy from raw pointers or by reference from `std::vector`/`std::array`/c-arrays.
 /// \cpp If needed, this "borrow-behavior" can be extended by defining your own `rerun::CollectionAdapter`.
 ///
+/// To show an image as a 3D quad in a [`rerun::blueprint::views::Spatial3DView`] without a projection, see the "Image as a 3D quad" example on [`rerun::archetypes::Mesh3D`].
+///
 /// \example archetypes/image_simple image="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/1200w.png"
 /// \example archetypes/image_formats title="Logging images with various formats" image="https://static.rerun.io/image_formats/182a233fb4d0680eb31912a82f328ddaaa66324e/1200w.png"
 /// \example archetypes/image_advanced !api title="Image from file, PIL & OpenCV" image="https://static.rerun.io/image_advanced/7ea3e3876858879bf16d6efe6de313f7b2403881/1200w.png"
