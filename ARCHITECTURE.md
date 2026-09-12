@@ -105,7 +105,7 @@ Every arrow points downwards, because the folders are layers: a crate may only d
 `scripts/check_crate_layers.py` enforces that in CI.
 A `dev-dependency` is exempt, since a test may reach anywhere.
 
-Only direct dependencies are drawn: an arrow is left out when the dependency is already implied by a longer path.
+Only the arrows *inside* a band are drawn.
 
 The diagram and the crate tables below are both generated from `cargo metadata`, so they cannot drift from the code.
 A crate's description is its `description` field in its own `Cargo.toml`, so there is only one place to write it.
@@ -116,6 +116,8 @@ pixi run crate-graph
 ```
 
 CI runs `pixi run crate-graph-check`, which fails if either is not what the script would write, so neither can be forgotten.
+
+Pass `--edges all` for a version with every dependency drawn, cross-band ones included.
 
 ### Alternative schematic
 This is manually maintained based on [this Figjam](https://www.figma.com/file/Umob8ztK1HmYKLUMSq8aPb/Crates-org):

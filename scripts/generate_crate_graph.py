@@ -33,6 +33,7 @@ the layout.
 from __future__ import annotations
 
 import argparse
+import colorsys
 import difflib
 import functools
 import html
@@ -65,13 +66,21 @@ DEPRECATED_CRATES = {"re_types"}
 # One band each, top to bottom. `scripts/check_crate_layers.py` enforces this
 # order, so every arrow in the diagram points downwards.
 LAYERS = [
-    ("crates/tests", "Test support", "#d9cdea"),
-    ("crates/top", "SDK / CLI / Wasm", "#f7c9a1"),
-    ("crates/viewer", "Viewer", "#b9d5f0"),
-    ("crates/store", "Store & data flow", "#bfe3bf"),
-    ("crates/build", "Build support", "#eec4dd"),
-    ("crates/utils", "Utilities", "#d8d8e4"),
+    ("crates/tests", "Test support"),
+    ("crates/top", "SDK / CLI / Wasm"),
+    ("crates/viewer", "Viewer"),
+    ("crates/store", "Store & data flow"),
+    ("crates/build", "Build support"),
+    ("crates/utils", "Utilities"),
 ]
+
+# Each band gets its own hue, swept from red at the top to violet at the
+# bottom, so the reader can tell how deep a crate sits from its color alone.
+# The sweep stops short of a full turn, or the bottom band would be red again.
+HUE_SWEEP = 0.8
+SATURATION = 0.75
+CRATE_LIGHTNESS = 0.82  # The crate boxes.
+BAND_LIGHTNESS = 0.96  # The band behind them, which must stay far paler.
 
 # Crates that are not part of any workspace directory listed in `LAYERS`.
 EXTRA_CRATES = {
@@ -88,6 +97,7 @@ BAND_PADDING = 14.0  # Between a band's crates and the edge of its box, in point
 BAND_LABEL_HEIGHT = 34.0  # Room for the band label above its crates, in points.
 BAND_GAP = 34.0  # Between two band boxes, in points.
 BAND_LABEL_FONT_SIZE = 19.0
+ARROW_HEAD = 9.0  # The layering arrow drawn in the gap between two bands.
 
 # Shipped by the `fonts-conda-ecosystem` package in `pixi.toml`, so every
 # platform measures the label widths against the exact same TTF.
@@ -131,7 +141,7 @@ def cargo_metadata() -> Metadata:
 
 def layer_of(manifest_path: Path, workspace_root: Path, name: str) -> str | None:
     directory = str(manifest_path.parent.relative_to(workspace_root).parent)
-    if any(directory == layer for layer, _, _ in LAYERS):
+    if any(directory == layer for layer, _ in LAYERS):
         return directory
     return EXTRA_CRATES.get(name)
 
@@ -203,14 +213,25 @@ class Node:
 class Band:
     """A laid-out band: one workspace directory and the crates it contains."""
 
-    def __init__(self, label: str, color: str, nodes: dict[str, Node]) -> None:
+    def __init__(self, label: str, colors: tuple[str, str], nodes: dict[str, Node]) -> None:
         self.label = label
-        self.color = color
+        self.crate_color, self.color = colors
         self.nodes = nodes
         self.left = 0.0
         self.bottom = 0.0
         self.width = 0.0
         self.height = 0.0
+
+
+def hues(index: int) -> tuple[str, str]:
+    """The (crate, band) colors of the band at `index`, as `#rrggbb`."""
+    hue = HUE_SWEEP * index / max(len(LAYERS) - 1, 1)
+
+    def hex_color(lightness: float) -> str:
+        channels = colorsys.hls_to_rgb(hue, lightness, SATURATION)
+        return "#" + "".join(f"{round(channel * 255):02x}" for channel in channels)
+
+    return hex_color(CRATE_LIGHTNESS), hex_color(BAND_LIGHTNESS)
 
 
 @functools.lru_cache(maxsize=1)
@@ -251,9 +272,45 @@ def run_graphviz(engine: str, args: list[str], source: str) -> str:
     return out.stdout
 
 
+def content_size(nodes: dict[str, Node]) -> tuple[float, float]:
+    """The width and height the nodes cover, in points."""
+    return (
+        max(node.x + node.width / 2 for node in nodes.values()),
+        max(node.y + node.height / 2 for node in nodes.values()),
+    )
+
+
 def layout_band(crates: list[str], deps: dict[str, set[str]]) -> dict[str, Node]:
     """Lay out one band on its own, using only the dependencies internal to it."""
     within = set(crates)
+    edges = [(name, dep) for name in crates for dep in sorted(deps[name] & within)]
+    connected = {name for edge in edges for name in edge}
+    # Crates with no dependency inside their band would all land on one rank, which
+    # makes a band like `crates/utils` a single very wide row. Wrapping them over
+    # several ranks fixes that, but how many columns to wrap at cannot be read off
+    # their count alone: the crates that do depend on each other are laid out beside
+    # the wrapped ones and take columns of their own. So every width is tried, and
+    # the narrowest band that is still no taller than it is wide wins — the bands read
+    # as horizontal layers, and one on end stops looking like a layer at all.
+    loose = [name for name in crates if name not in connected]
+
+    def upright_then_narrow(nodes: dict[str, Node]) -> tuple[bool, float]:
+        width, height = content_size(nodes)
+        return (width < height, width)
+
+    return min(
+        (wrapped_band(crates, edges, loose, columns) for columns in range(1, max(len(loose), 1) + 1)),
+        key=upright_then_narrow,
+    )
+
+
+def wrapped_band(
+    crates: list[str],
+    edges: list[tuple[str, str]],
+    loose: list[str],
+    columns: int,
+) -> dict[str, Node]:
+    """Lay the band out with its dependency-free crates wrapped into `columns` columns."""
     lines = [
         "digraph band {",
         "  rankdir=TB",
@@ -262,7 +319,15 @@ def layout_band(crates: list[str], deps: dict[str, set[str]]) -> dict[str, Node]
         f"  {NODE_DEFAULTS}",
     ]
     lines += [f'  "{name}"' for name in crates]
-    lines += [f'  "{name}" -> "{dep}"' for name in crates for dep in sorted(deps[name] & within)]
+    lines += [f'  "{name}" -> "{dep}"' for name, dep in edges]
+
+    rows = [loose[i : i + columns] for i in range(0, len(loose), columns)]
+    for row in rows:
+        lines.append("  { rank=same; " + " ".join(f'"{name}"' for name in row) + " }")
+    # Invisible edges keep the wrapped rows in order, one under the next.
+    for upper, lower in itertools.pairwise(rows):
+        lines.append(f'  "{upper[0]}" -> "{lower[0]}" [style=invis]')
+
     lines.append("}")
 
     nodes: dict[str, Node] = {}
@@ -282,17 +347,16 @@ def layout_band(crates: list[str], deps: dict[str, set[str]]) -> dict[str, Node]
 def stack_bands(layers: dict[str, str], deps: dict[str, set[str]]) -> list[Band]:
     """Lay out every band, then stack them bottom-up into non-overlapping rows."""
     bands = []
-    for layer, label, color in LAYERS:
+    for index, (layer, label) in enumerate(LAYERS):
         crates = sorted(name for name, crate_layer in layers.items() if crate_layer == layer)
-        bands.append(Band(label, color, layout_band(crates, deps)))
+        bands.append(Band(label, hues(index), layout_band(crates, deps)))
 
     # All bands are given the same width so that they read as rows.
-    width = max(max(node.x + node.width / 2 for node in band.nodes.values()) for band in bands) + 2 * BAND_PADDING
+    width = max(content_size(band.nodes)[0] for band in bands) + 2 * BAND_PADDING
 
     bottom = 0.0
     for band in reversed(bands):  # Graphviz y grows upwards, so build bottom-up.
-        height = max(node.y + node.height / 2 for node in band.nodes.values())
-        band_width = max(node.x + node.width / 2 for node in band.nodes.values())
+        band_width, height = content_size(band.nodes)
         indent = (width - 2 * BAND_PADDING - band_width) / 2
         for node in band.nodes.values():
             node.x += indent + BAND_PADDING
@@ -328,7 +392,7 @@ def compose(bands: list[Band], deps: dict[str, set[str]]) -> str:
                 f'  "{name}" [pos="{node.x:.1f},{node.y:.1f}!", '
                 f"width={node.width / POINTS_PER_INCH:.3f}, "
                 f"height={node.height / POINTS_PER_INCH:.3f}, "
-                f'fillcolor="{band.color}"]'
+                f'fillcolor="{band.crate_color}"]'
             )
     lines.append("")
 
@@ -359,19 +423,43 @@ def render_svg(composed: str, bands: list[Band]) -> str:
     return svg.replace(match.group(1), match.group(1) + band_boxes(bands), 1)
 
 
+def layer_arrows(bands: list[Band]) -> str:
+    """A downward arrow in every gap between two bands.
+
+    With the cross-band arrows gone, nothing else shows which way a dependency is
+    allowed to run, so each gap gets one saying "everything above may depend on
+    everything below".
+    """
+    out = []
+    for above, below in itertools.pairwise(bands):
+        # y is flipped in the group these are emitted into.
+        start, end = -above.bottom, -(below.bottom + below.height)
+        x = below.left + below.width / 2
+        out.append(
+            f'\n<path d="M {x:.1f},{start:.1f} L {x:.1f},{end - ARROW_HEAD:.1f}" '
+            f'stroke="#00000044" stroke-width="3" fill="none" />'
+        )
+        out.append(
+            f'\n<path d="M {x - ARROW_HEAD * 0.6:.1f},{end - ARROW_HEAD:.1f} '
+            f"L {x + ARROW_HEAD * 0.6:.1f},{end - ARROW_HEAD:.1f} "
+            f'L {x:.1f},{end:.1f} Z" fill="#00000044" />'
+        )
+    return "".join(out)
+
+
 def band_boxes(bands: list[Band]) -> str:
     """Rounded background boxes with a label, one per band.
 
     The group these are emitted into already flips y, hence the negated
     coordinates.
     """
-    out = []
+    out = [layer_arrows(bands)]
     for band in bands:
         top = -(band.bottom + band.height)
         out.append(
             f'\n<rect x="{band.left:.1f}" y="{top:.1f}" '
             f'width="{band.width:.1f}" height="{band.height:.1f}" '
-            f'rx="8" ry="8" fill="{band.color}44" />'
+            f'rx="8" ry="8" fill="{band.color}" />'
         )
         out.append(
             f'\n<text x="{band.left + BAND_PADDING:.1f}" '
@@ -396,12 +484,12 @@ def crate_tables(metadata: Metadata) -> str:
         if package["id"] not in members or package["name"] in DEPRECATED_CRATES:
             continue
         folder = str(Path(package["manifest_path"]).parent.relative_to(workspace_root).parent)
-        folder = folder if folder in {layer for layer, _, _ in LAYERS} else EXTRA_CRATES.get(package["name"], "")
+        folder = folder if folder in {layer for layer, _ in LAYERS} else EXTRA_CRATES.get(package["name"], "")
         if folder:
             described[package["name"]] = (folder, package["name"], (package.get("description") or "").strip())
 
     blocks = []
-    for layer, label, _ in LAYERS:
+    for layer, label in LAYERS:
         rows = sorted((name, desc) for _, name, desc in described.values() if described[name][0] == layer)
         if not rows:
             continue
@@ -452,10 +540,26 @@ def architecture_with_tables(text: str, tables: str) -> str:
     return text[:start] + "\n\n" + tables + "\n" + text[end:]
 
 
+def within_bands(layers: dict[str, str], deps: dict[str, set[str]]) -> dict[str, set[str]]:
+    """`deps` with every cross-band edge dropped."""
+    return {name: {dep for dep in dependencies if layers[dep] == layers[name]} for name, dependencies in deps.items()}
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT, help="where to write the SVG")
     parser.add_argument("--dot", type=Path, help="also write the composed Graphviz source here")
+    parser.add_argument(
+        "--edges",
+        choices=["all", "within-bands"],
+        default="within-bands",
+        help=(
+            "which arrows to draw. `within-bands` (default) draws only the dependencies inside a band: "
+            "the layering already says a band may only depend downwards, and the hundreds of cross-band "
+            "arrows overlap into noise. `all` draws every dependency, which is worth a look when you "
+            "want to see exactly what a crate pulls in — give `--output` a different path to keep both"
+        ),
+    )
     parser.add_argument(
         "--check",
         action="store_true",
@@ -467,6 +571,9 @@ def main() -> None:
     layers, deps = collect_graph(metadata)
     deps = transitive_reduction(deps)
     bands = stack_bands(layers, deps)
+
+    if args.edges == "within-bands":
+        deps = within_bands(layers, deps)
 
     composed = compose(bands, deps)
     if args.dot:
