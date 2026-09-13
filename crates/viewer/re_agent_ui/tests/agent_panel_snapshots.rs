@@ -14,19 +14,24 @@ use re_agent_ui::acp::schema::v1::{
 };
 use re_agent_ui::{
     AgentEntry, AgentEvent, AgentPanel, AgentProfile, AgentSession, AgentSettings, McpServerConfig,
+    RECOMMENDED_WIDTH,
 };
 
-const SIZE: Vec2 = Vec2::new(600.0, 800.0);
+/// As wide as a host is meant to make the panel, so the snapshots show what users see.
+const SIZE: Vec2 = Vec2::new(RECOMMENDED_WIDTH, 800.0);
+
+fn harness(panel: AgentPanel) -> egui_kittest::Harness<'static, AgentPanel> {
+    re_ui::testing::new_harness(re_ui::testing::TestOptions::Gui, SIZE).build_ui_state(
+        |ui, panel: &mut AgentPanel| {
+            re_ui::apply_style_and_install_loaders(ui.ctx());
+            panel.ui(ui);
+        },
+        panel,
+    )
+}
 
 fn snapshot(name: &str, panel: AgentPanel) {
-    let mut harness = re_ui::testing::new_harness(re_ui::testing::TestOptions::Gui, SIZE)
-        .build_ui_state(
-            |ui, panel: &mut AgentPanel| {
-                re_ui::apply_style_and_install_loaders(ui.ctx());
-                panel.ui(ui);
-            },
-            panel,
-        );
+    let mut harness = harness(panel);
     // `run` would never settle: the chat shows spinners while the agent is busy.
     harness.run_steps(4);
     harness.snapshot(name);
@@ -82,12 +87,81 @@ fn open_session(session: &mut AgentSession) {
                 SessionMode::new("bypassPermissions", "Bypass permissions"),
             ],
         )),
+        config_options: Vec::new(),
     });
 }
 
 #[test]
 fn setup_screen() {
     snapshot("setup_screen", panel());
+}
+
+/// A phrase that only appears once the particulars are on screen.
+const DETAILS_FRAGMENT: &str = "processed on Rerun's behalf by PostHog";
+
+fn snapshot_hovering(name: &str, label: &str) {
+    let mut harness = harness(panel());
+    harness.run_steps(4);
+    harness.get_by_label_contains(label).hover();
+    harness.try_run_realtime().ok();
+    harness.snapshot(name);
+}
+
+/// The particulars are only ever a hover away, so snapshot them where the reader meets them.
+#[test]
+fn prompt_sharing_details_from_the_checkbox() {
+    snapshot_hovering(
+        "prompt_sharing_details_checkbox",
+        "Share redacted prompts with Rerun",
+    );
+}
+
+#[test]
+fn prompt_sharing_details_from_the_link() {
+    snapshot_hovering("prompt_sharing_details_link", "What is shared?");
+}
+
+/// Clicking "What is shared?" opens the particulars, for readers without a steady hover.
+#[test]
+fn analytics_details_open_on_click() {
+    let mut harness = harness(panel());
+    harness.run_steps(4);
+    assert_eq!(
+        harness
+            .query_all_by_label_contains(DETAILS_FRAGMENT)
+            .count(),
+        0,
+        "the details should start closed"
+    );
+
+    harness.get_by_label_contains("What is shared?").click();
+    harness.run_steps(2);
+    assert_eq!(
+        harness
+            .query_all_by_label_contains(DETAILS_FRAGMENT)
+            .count(),
+        1,
+        "clicking should open the details"
+    );
+}
+
+/// Sharing starts on, the checkbox turns it off, and both states say what they mean.
+///
+/// The ticked state is in the `setup_screen` snapshot, which is where the panel starts.
+#[test]
+fn redacted_prompt_sharing_is_opt_out() {
+    let mut harness = harness(panel());
+    harness.run_steps(4);
+
+    // The checkbox must be reachable without expanding "Advanced":
+    assert!(harness.state().settings().share_redacted_prompts);
+    harness
+        .get_by_label_contains("Share redacted prompts with Rerun")
+        .click();
+    harness.run_steps(4);
+
+    assert!(!harness.state().settings().share_redacted_prompts);
+    harness.snapshot("setup_screen_prompt_sharing_off");
 }
 
 #[test]

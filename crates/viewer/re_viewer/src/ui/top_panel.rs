@@ -385,6 +385,18 @@ fn panel_buttons_r2l(
     ui: &mut egui::Ui,
     store_hub: &StoreHub,
 ) {
+    #[cfg(agent_panel)]
+    if app.app_options().experimental.agent_panel {
+        let mut open = app.agent_panel_open();
+        if ui
+            .medium_icon_toggle_button(&re_ui::icons::AGENT, "Agent panel toggle", &mut open)
+            .on_hover_ui(|ui| UICommand::ToggleAgentPanel.tooltip_ui(ui))
+            .clicked()
+        {
+            app.toggle_agent_panel();
+        }
+    }
+
     let route = app.state.navigation.current();
 
     #[cfg(target_arch = "wasm32")]

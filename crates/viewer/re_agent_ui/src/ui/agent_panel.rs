@@ -9,12 +9,25 @@ use super::Screen;
 use super::chat_ui::{ChatInput, chat_ui};
 use super::setup_ui::setup_ui;
 use re_agent::AgentEntry;
-use re_agent::{AgentSession, Phase};
-use re_agent::{AgentSettings, SessionContext};
+use re_agent::{AgentSession, Phase, TurnReport};
+use re_agent::{AgentSettings, LaunchConfig, SessionContext};
 use re_agent::{Transcript, TranscriptItem};
+
+/// How wide a host should make the panel.
+///
+/// Narrower and the transcript's code blocks and tables are unreadable; wider and the chat
+/// takes room from what the agent is there to talk about. Snapshot tests render at this width,
+/// so what they show is what a default install looks like.
+pub const RECOMMENDED_WIDTH: f32 = 420.0;
 
 /// Longest tab title before it is cut with an ellipsis.
 const MAX_TAB_TITLE_CHARS: usize = 24;
+
+/// Horizontal padding inside a tab, around its title.
+const TAB_TITLE_SPACING: f32 = 12.0;
+
+/// Gap between the tabs and the buttons at either end of the tab bar.
+const TAB_BAR_BUTTON_SPACING: f32 = 8.0;
 
 /// One chat with one agent: the content of a tab.
 struct Conversation {
@@ -177,7 +190,9 @@ impl egui_tiles::Behavior<Conversation> for TabsBehavior<'_> {
     }
 
     fn tab_title_for_pane(&mut self, conversation: &Conversation) -> egui::WidgetText {
-        conversation.title(self.settings, self.agents).into()
+        egui::RichText::new(conversation.title(self.settings, self.agents))
+            .strong()
+            .into()
     }
 
     fn is_tab_closable(&self, _tiles: &Tiles<Conversation>, _tile_id: TileId) -> bool {
@@ -202,6 +217,7 @@ impl egui_tiles::Behavior<Conversation> for TabsBehavior<'_> {
         _tile_id: TileId,
         _tabs: &egui_tiles::Tabs,
     ) {
+        ui.add_space(TAB_BAR_BUTTON_SPACING);
         if ui
             .small_icon_button(&icons::ADD, "New conversation")
             .on_hover_text("New conversation")
@@ -227,7 +243,7 @@ impl egui_tiles::Behavior<Conversation> for TabsBehavior<'_> {
         };
         let has_agent = *conversation.session.phase() != Phase::Idle;
 
-        ui.add_space(8.0);
+        ui.add_space(TAB_BAR_BUTTON_SPACING);
         if conversation.screen == Screen::Setup {
             if has_agent
                 && ui
@@ -255,12 +271,60 @@ impl egui_tiles::Behavior<Conversation> for TabsBehavior<'_> {
         }
     }
 
+    // Styling, matching the viewport's tabs:
+
     fn tab_bar_color(&self, visuals: &egui::Visuals) -> egui::Color32 {
         re_ui::design_tokens_of_visuals(visuals).tab_bar_color
     }
 
+    fn tab_bg_color(
+        &self,
+        visuals: &egui::Visuals,
+        _tiles: &Tiles<Conversation>,
+        _tile_id: TileId,
+        state: &egui_tiles::TabState,
+    ) -> egui::Color32 {
+        if state.active {
+            visuals.panel_fill
+        } else {
+            self.tab_bar_color(visuals)
+        }
+    }
+
+    fn tab_outline_stroke(
+        &self,
+        _visuals: &egui::Visuals,
+        _tiles: &Tiles<Conversation>,
+        _tile_id: TileId,
+        _state: &egui_tiles::TabState,
+    ) -> egui::Stroke {
+        egui::Stroke::NONE
+    }
+
+    fn tab_text_color(
+        &self,
+        visuals: &egui::Visuals,
+        _tiles: &Tiles<Conversation>,
+        _tile_id: TileId,
+        state: &egui_tiles::TabState,
+    ) -> egui::Color32 {
+        if state.active {
+            visuals.strong_text_color()
+        } else {
+            visuals.text_color()
+        }
+    }
+
+    fn tab_title_spacing(&self, _visuals: &egui::Visuals) -> f32 {
+        TAB_TITLE_SPACING
+    }
+
     fn tab_bar_height(&self, style: &egui::Style) -> f32 {
         re_ui::design_tokens_of_visuals(&style.visuals).title_bar_height()
+    }
+
+    fn dragged_overlay_color(&self, visuals: &egui::Visuals) -> egui::Color32 {
+        visuals.panel_fill.gamma_multiply(0.5)
     }
 
     fn simplification_options(&self) -> egui_tiles::SimplificationOptions {
@@ -290,16 +354,13 @@ impl AgentPanel {
 
     /// Like [`Self::new`], but with an explicit list of agents instead of probing the machine.
     ///
-    /// On a first run with at least one installed agent, one is picked and started right away;
-    /// the setup screen only appears when nothing is installed.
+    /// The first run shows the setup screen with an installed agent preselected, so the user
+    /// sees which of their local agent CLIs the panel is about to run before it starts.
     pub fn with_agents(mut settings: AgentSettings, agents: Vec<AgentEntry>) -> Self {
-        if settings.profile_id.is_empty() {
-            if let Some(agent) = AgentEntry::pick_default(&agents) {
-                settings.profile_id = agent.profile.id.clone();
-                settings.setup_done = true;
-            } else if let Some(agent) = agents.first() {
-                settings.profile_id = agent.profile.id.clone();
-            }
+        if settings.profile_id.is_empty()
+            && let Some(agent) = AgentEntry::pick_default(&agents).or_else(|| agents.first())
+        {
+            settings.profile_id = agent.profile.id.clone();
         }
 
         let first = Conversation::new(&settings, false);
@@ -333,6 +394,13 @@ impl AgentPanel {
 
     pub fn session_mut(&mut self) -> Option<&mut AgentSession> {
         active_conversation_mut(&mut self.tree).map(|conversation| &mut conversation.session)
+    }
+
+    /// Give the active conversation's prompt input keyboard focus when it is next shown.
+    pub fn request_input_focus(&mut self) {
+        if let Some(conversation) = active_conversation_mut(&mut self.tree) {
+            conversation.input.request_focus();
+        }
     }
 
     /// Switch the active tab to the chat view. Starts its agent if none is running.
@@ -380,6 +448,19 @@ impl AgentPanel {
             .is_some_and(|session| session.send_prompt(text))
     }
 
+    /// What the current settings would launch, for hosts that run side sessions with the same
+    /// agent.
+    pub fn launch_config(&self, context: &SessionContext) -> Result<LaunchConfig, String> {
+        self.settings.launch_config(&self.agents, context)
+    }
+
+    /// Drains the reports of the turns finished in every conversation since the last call.
+    pub fn take_finished_turns(&mut self) -> Vec<TurnReport> {
+        conversations_mut(&mut self.tree)
+            .flat_map(|conversation| conversation.session.take_finished_turns())
+            .collect()
+    }
+
     /// Starts (or restarts) the agent of the active tab with the current settings.
     pub fn start(&mut self, ctx: &egui::Context) {
         let Self {
@@ -425,10 +506,18 @@ impl AgentPanel {
         }
     }
 
-    pub fn ui(&mut self, ui: &mut egui::Ui) {
+    /// Pump every conversation's agent connection.
+    ///
+    /// [`Self::ui`] does this too, but must also be called while the panel is collapsed,
+    /// or messages queue up unseen until the user opens it again.
+    pub fn poll_events(&mut self) {
         for conversation in conversations_mut(&mut self.tree) {
             conversation.session.poll_events();
         }
+    }
+
+    pub fn ui(&mut self, ui: &mut egui::Ui) {
+        self.poll_events();
 
         let mut behavior = TabsBehavior {
             settings: &mut self.settings,

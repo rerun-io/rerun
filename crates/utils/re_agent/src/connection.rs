@@ -6,8 +6,10 @@ use agent_client_protocol::schema::v1::{
     AgentCapabilities, AuthMethod, AuthMethodId, AuthenticateRequest, CancelNotification,
     ContentBlock, CurrentModeUpdate, Implementation, InitializeRequest, McpServer, McpServerStdio,
     NewSessionRequest, PromptRequest, RequestPermissionRequest, RequestPermissionResponse,
-    SessionId, SessionModeId, SessionModeState, SessionNotification, SessionUpdate,
-    SetSessionModeRequest, StopReason,
+    SessionConfigId, SessionConfigKind, SessionConfigOption, SessionConfigOptionCategory,
+    SessionConfigSelectOption, SessionConfigSelectOptions, SessionConfigValueId, SessionId,
+    SessionModeId, SessionModeState, SessionNotification, SessionUpdate,
+    SetSessionConfigOptionRequest, SetSessionModeRequest, StopReason,
 };
 use agent_client_protocol::{
     AcpAgent, AcpAgentConfig, Agent, Client, ConnectionTo, Error, LineDirection, Responder,
@@ -44,6 +46,7 @@ pub struct LaunchConfig {
     pub cwd: PathBuf,
 
     /// Extra directories the agent may read and edit, e.g. one holding skills.
+    /// Read-only tool calls that stay inside them are allowed without asking the user.
     pub additional_directories: Vec<PathBuf>,
 
     /// MCP servers the agent spawns and connects to when the session opens.
@@ -54,6 +57,14 @@ pub struct LaunchConfig {
 
     /// Markdown sent together with the first prompt of the session.
     pub preamble: Option<String>,
+
+    /// Models to prefer for this session, best first.
+    ///
+    /// Each entry is matched, case-insensitively, as a substring of the id and the name of every
+    /// model the agent offers over ACP; the first hit is selected before the session takes its
+    /// first prompt. An agent that offers no model selector, or nothing that matches, keeps
+    /// whatever model it would use on its own.
+    pub model_preferences: Vec<String>,
 }
 
 /// Something the UI wants the agent to do.
@@ -81,6 +92,9 @@ pub enum AgentEvent {
     SessionStarted {
         session_id: SessionId,
         modes: Option<SessionModeState>,
+
+        /// The agent's initial configuration, e.g. which model it is about to use.
+        config_options: Vec<SessionConfigOption>,
     },
 
     /// The agent refused to start a session until the user authenticates.
@@ -353,9 +367,18 @@ async fn start_session(
 
     match cx.send_request(request).block_task().await {
         Ok(response) => {
+            let config_options = response.config_options.as_deref().unwrap_or_default();
+            select_model(
+                cx,
+                &response.session_id,
+                config_options,
+                &config.model_preferences,
+            )
+            .await;
             events.send(AgentEvent::SessionStarted {
                 session_id: response.session_id.clone(),
                 modes: response.modes,
+                config_options: response.config_options.unwrap_or_default(),
             });
             Some(response.session_id)
         }
@@ -374,6 +397,62 @@ async fn start_session(
             None
         }
     }
+}
+
+/// Switches the session to the first preferred model the agent offers.
+///
+/// Awaited before the session is announced, so that the first prompt already runs on the chosen
+/// model. A failure is not fatal: the session then runs on the agent's own default model.
+async fn select_model(
+    cx: &ConnectionTo<Agent>,
+    session_id: &SessionId,
+    config_options: &[SessionConfigOption],
+    preferences: &[String],
+) {
+    let Some((config_id, model)) = pick_model(config_options, preferences) else {
+        return;
+    };
+    let request = SetSessionConfigOptionRequest::new(session_id.clone(), config_id, model);
+    if let Err(err) = cx.send_request(request).block_task().await {
+        re_log::debug!("Failed to select a model: {}", describe_error(&err));
+    }
+}
+
+/// The model selector and the model to set it to, or `None` when there is nothing to do.
+///
+/// `None` also when the preferred model is already the current one, so that an agent that has
+/// no `session/set_config_option` support is never asked for one.
+fn pick_model(
+    config_options: &[SessionConfigOption],
+    preferences: &[String],
+) -> Option<(SessionConfigId, SessionConfigValueId)> {
+    if preferences.is_empty() {
+        return None;
+    }
+
+    let selector = config_options
+        .iter()
+        .find(|option| option.category == Some(SessionConfigOptionCategory::Model))?;
+    let SessionConfigKind::Select(select) = &selector.kind else {
+        return None;
+    };
+    let models: Vec<&SessionConfigSelectOption> = match &select.options {
+        SessionConfigSelectOptions::Ungrouped(models) => models.iter().collect(),
+        SessionConfigSelectOptions::Grouped(groups) => {
+            groups.iter().flat_map(|group| &group.options).collect()
+        }
+        _ => return None,
+    };
+
+    let model = preferences.iter().find_map(|preference| {
+        let preference = preference.to_lowercase();
+        models.iter().find(|model| {
+            model.value.0.to_lowercase().contains(&preference)
+                || model.name.to_lowercase().contains(&preference)
+        })
+    })?;
+
+    (model.value != select.current_value).then(|| (selector.id.clone(), model.value.clone()))
 }
 
 /// Human-readable error text: the message, plus whatever the agent put in `data`.
@@ -403,4 +482,102 @@ fn describe_error(err: &Error) -> String {
         }
     }
     text
+}
+
+#[cfg(test)]
+mod tests {
+    use agent_client_protocol::schema::v1::{SessionConfigSelectGroup, SessionConfigSelectOption};
+
+    use super::*;
+
+    fn claude_models(current: &str) -> Vec<SessionConfigOption> {
+        let models = vec![
+            SessionConfigSelectOption::new("default", "Default"),
+            SessionConfigSelectOption::new("opus", "Opus 4.6"),
+            SessionConfigSelectOption::new("sonnet", "Sonnet 4.5"),
+            SessionConfigSelectOption::new("haiku", "Haiku 4.5"),
+        ];
+        vec![
+            SessionConfigOption::boolean("brave_mode", "Brave Mode", false),
+            SessionConfigOption::select("model", "Model", current.to_owned(), models)
+                .category(SessionConfigOptionCategory::Model),
+        ]
+    }
+
+    fn preferences(models: &[&str]) -> Vec<String> {
+        models.iter().map(|model| (*model).to_owned()).collect()
+    }
+
+    #[test]
+    fn picks_the_first_preferred_model_that_is_offered() {
+        let picked = pick_model(&claude_models("opus"), &preferences(&["flash", "sonnet"]));
+        let (config_id, model) = picked.expect("the model selector");
+        assert_eq!(config_id.0.as_ref(), "model");
+        assert_eq!(model.0.as_ref(), "sonnet");
+    }
+
+    #[test]
+    fn matches_a_preference_inside_a_model_name() {
+        let models = vec![
+            SessionConfigOption::select(
+                "model",
+                "Model",
+                "gemini-2.5-pro",
+                vec![
+                    SessionConfigSelectOption::new("gemini-2.5-pro", "Gemini 2.5 Pro"),
+                    SessionConfigSelectOption::new("gemini-2.5-flash", "Gemini 2.5 Flash"),
+                ],
+            )
+            .category(SessionConfigOptionCategory::Model),
+        ];
+        let picked = pick_model(&models, &preferences(&["sonnet", "flash"]));
+        assert_eq!(picked.expect("a match").1.0.as_ref(), "gemini-2.5-flash");
+    }
+
+    #[test]
+    fn finds_models_inside_groups() {
+        let group = SessionConfigSelectGroup::new(
+            "anthropic",
+            "Anthropic",
+            vec![SessionConfigSelectOption::new("sonnet", "Sonnet 4.5")],
+        );
+        let models = vec![
+            SessionConfigOption::select("model", "Model", "opus", vec![group])
+                .category(SessionConfigOptionCategory::Model),
+        ];
+        assert_eq!(
+            pick_model(&models, &preferences(&["sonnet"]))
+                .expect("a match")
+                .1
+                .0
+                .as_ref(),
+            "sonnet"
+        );
+    }
+
+    #[test]
+    fn leaves_the_agent_alone_when_there_is_nothing_to_do() {
+        // No preferences, and no model selector at all:
+        assert_eq!(pick_model(&claude_models("opus"), &[]), None);
+        let modes = vec![
+            SessionConfigOption::select(
+                "mode",
+                "Mode",
+                "normal",
+                vec![SessionConfigSelectOption::new("normal", "Normal")],
+            )
+            .category(SessionConfigOptionCategory::Mode),
+        ];
+        assert_eq!(pick_model(&modes, &preferences(&["sonnet"])), None);
+
+        // Offered, but not what we asked for, and already what we would ask for:
+        assert_eq!(
+            pick_model(&claude_models("opus"), &preferences(&["flash"])),
+            None
+        );
+        assert_eq!(
+            pick_model(&claude_models("sonnet"), &preferences(&["sonnet"])),
+            None
+        );
+    }
 }

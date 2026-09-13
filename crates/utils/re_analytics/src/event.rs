@@ -423,6 +423,128 @@ impl Properties for HelpButtonFirstClicked {
 
 // -----------------------------------------------
 
+/// Non-content usage statistics for a finished turn in the Rerun Viewer's agent panel.
+///
+/// This event contains no prompt, response, tool output, or error text. It is emitted regardless
+/// of whether the user shares redacted prompts and responses.
+pub struct AgentTurnUsage {
+    /// Which agent handled the prompt, e.g. "Claude Code".
+    pub agent: Option<String>,
+
+    /// From sending the prompt to the agent finishing.
+    pub duration_secs: f64,
+
+    /// How the turn ended: `completed`, `cancelled`, `truncated`, `refused`, `error`, or `aborted`.
+    pub outcome: String,
+
+    /// Tool calls the agent made during the turn.
+    pub tool_calls: u32,
+
+    /// Context-window usage the agent last reported, in tokens.
+    pub tokens_used: Option<u64>,
+    pub token_limit: Option<u64>,
+
+    /// Tool calls and transcript errors that failed, without their text.
+    pub failed_tool_calls: u32,
+    pub errors: u32,
+
+    /// Permission requests the user was asked about, and how many they rejected.
+    pub permissions_requested: u32,
+    pub permissions_rejected: u32,
+}
+
+impl Event for AgentTurnUsage {
+    const NAME: &'static str = "agent_turn_usage";
+}
+
+impl Properties for AgentTurnUsage {
+    fn serialize(self, event: &mut AnalyticsEvent) {
+        let Self {
+            agent,
+            duration_secs,
+            outcome,
+            tool_calls,
+            tokens_used,
+            token_limit,
+            failed_tool_calls,
+            errors,
+            permissions_requested,
+            permissions_rejected,
+        } = self;
+        if let Some(agent) = agent {
+            event.insert("agent", agent);
+        }
+        event.insert("duration_secs", duration_secs);
+        event.insert("outcome", outcome);
+        event.insert("tool_calls", i64::from(tool_calls));
+        event.insert_opt(
+            "tokens_used",
+            tokens_used.and_then(|count| i64::try_from(count).ok()),
+        );
+        event.insert_opt(
+            "token_limit",
+            token_limit.and_then(|count| i64::try_from(count).ok()),
+        );
+        event.insert("failed_tool_calls", i64::from(failed_tool_calls));
+        event.insert("errors", i64::from(errors));
+        event.insert("permissions_requested", i64::from(permissions_requested));
+        event.insert("permissions_rejected", i64::from(permissions_rejected));
+    }
+}
+
+// -----------------------------------------------
+
+/// A coding agent in the Rerun Viewer's agent panel finished a turn (one prompt and its answer).
+///
+/// This event is only emitted by the agent panel, not by standalone users of `re_agent`.
+/// It carries the full prompt and response text, which is processed according to the
+/// [redaction instructions](https://github.com/rerun-io/rerun/blob/main/crates/viewer/re_viewer/src/agent_analytics.rs)
+/// before sending. The agent settings explain this and allow the user to opt out.
+pub struct AgentTurn {
+    /// Non-content statistics about the turn.
+    pub usage: AgentTurnUsage,
+
+    /// What the user typed.
+    pub prompt: String,
+
+    /// The agent's final answer.
+    pub response: String,
+
+    /// Tool calls that failed, as `title: first line of the output`.
+    ///
+    /// Sent as `failed_tool_call_text`, since [`AgentTurnUsage`] already counts them
+    /// under `failed_tool_calls`.
+    pub failed_tool_calls: Vec<String>,
+
+    /// Errors shown in the transcript during the turn.
+    ///
+    /// Sent as `error_text`, since [`AgentTurnUsage`] already counts them under `errors`.
+    pub errors: Vec<String>,
+}
+
+impl Event for AgentTurn {
+    const NAME: &'static str = "agent_turn";
+}
+
+impl Properties for AgentTurn {
+    fn serialize(self, event: &mut AnalyticsEvent) {
+        let Self {
+            usage,
+            prompt,
+            response,
+            failed_tool_calls,
+            errors,
+        } = self;
+        usage.serialize(event);
+        event.insert("prompt", prompt);
+        event.insert("response", response);
+        event.insert("failed_tool_call_text", failed_tool_calls.join("\n"));
+        event.insert("error_text", errors.join("\n"));
+    }
+}
+
+// -----------------------------------------------
+
 /// The user opened the settings screen.
 pub struct SettingsOpened {}
 
@@ -636,6 +758,46 @@ impl Properties for WelcomeScreenNavigation {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The text fields must not overwrite the counts that [`AgentTurnUsage`] already inserted.
+    #[test]
+    fn agent_turn_keeps_both_the_counts_and_the_text() {
+        let usage = AgentTurnUsage {
+            agent: None,
+            duration_secs: 1.0,
+            outcome: "completed".to_owned(),
+            tool_calls: 3,
+            tokens_used: None,
+            token_limit: None,
+            failed_tool_calls: 2,
+            errors: 1,
+            permissions_requested: 0,
+            permissions_rejected: 0,
+        };
+        let mut event = AnalyticsEvent::new(AgentTurn::NAME, AgentTurn::KIND);
+        AgentTurn {
+            usage,
+            prompt: "hi".to_owned(),
+            response: "ho".to_owned(),
+            failed_tool_calls: vec!["a: boom".to_owned(), "b: bang".to_owned()],
+            errors: vec!["oh no".to_owned()],
+        }
+        .serialize(&mut event);
+
+        assert!(matches!(
+            event.props["failed_tool_calls"],
+            Property::Integer(2)
+        ));
+        assert!(matches!(event.props["errors"], Property::Integer(1)));
+        assert!(matches!(
+            &event.props["failed_tool_call_text"],
+            Property::String(text) if text == "a: boom\nb: bang"
+        ));
+        assert!(matches!(
+            &event.props["error_text"],
+            Property::String(text) if text == "oh no"
+        ));
+    }
 
     #[test]
     fn test_root_domain() {

@@ -1,10 +1,13 @@
 //! The chat view: title bar with mode picker, the transcript, and the composer at the bottom
 //! (login and permission prompts, plan, prompt input, agent log).
 
-use egui::{Key, KeyboardShortcut, Modifiers, RichText};
+use egui::text::{CCursor, CCursorRange};
+use egui::text_edit::TextEditState;
+use egui::{EventFilter, Key, KeyboardShortcut, Modifiers, RichText};
 use re_agent::acp::LineDirection;
 use re_agent::acp::schema::v1::{AuthMethod, PermissionOptionKind, SessionMode};
 use re_ui::alert::Alert;
+use re_ui::egui_ext::{CompletionPopup, CompletionQuery, Suggestion};
 use re_ui::{ReButton, UiExt as _, icons};
 
 use super::tool_call_ui::{code_ui, tool_input_ui};
@@ -23,6 +26,69 @@ pub struct ChatInput {
 
     /// Whether the agent log at the bottom is expanded.
     log_open: bool,
+
+    /// Whether the slash command popup was open last frame, so the arrow keys go to it
+    /// instead of the prompt history.
+    completion_open: bool,
+
+    history: PromptHistory,
+}
+
+impl ChatInput {
+    /// Give the prompt input keyboard focus the next time it is shown.
+    pub fn request_focus(&mut self) {
+        self.focus = true;
+    }
+}
+
+/// Prompts sent so far, browsed with the arrow keys the way a shell browses its history.
+#[derive(Default)]
+struct PromptHistory {
+    /// Oldest first. Consecutive duplicates are stored once.
+    entries: Vec<String>,
+
+    /// Index into [`Self::entries`] while browsing; `None` while composing a new prompt.
+    position: Option<usize>,
+
+    /// The unsent text saved when browsing started, restored when browsing past the newest entry.
+    draft: String,
+}
+
+impl PromptHistory {
+    fn push(&mut self, prompt: &str) {
+        if self.entries.last().is_none_or(|last| last != prompt) {
+            self.entries.push(prompt.to_owned());
+        }
+        self.position = None;
+        self.draft.clear();
+    }
+
+    /// The next older entry, saving `current` as the draft when browsing starts.
+    fn back(&mut self, current: &str) -> Option<String> {
+        let position = match self.position {
+            None => {
+                let position = self.entries.len().checked_sub(1)?;
+                self.draft = current.to_owned();
+                position
+            }
+            Some(0) => return None,
+            Some(position) => position - 1,
+        };
+        self.position = Some(position);
+        Some(self.entries[position].clone())
+    }
+
+    /// The next newer entry, or the draft when moving past the newest one.
+    fn forward(&mut self) -> Option<String> {
+        let position = self.position? + 1;
+        if position < self.entries.len() {
+            self.position = Some(position);
+            Some(self.entries[position].clone())
+        } else {
+            self.position = None;
+            Some(std::mem::take(&mut self.draft))
+        }
+    }
 }
 
 /// The whole chat view for one session: transcript on top, composer at the bottom.
@@ -46,7 +112,12 @@ pub fn chat_ui(
         });
 
     egui::CentralPanel::default()
-        .frame(egui::Frame::new().inner_margin(egui::Margin::symmetric(8, 4)))
+        .frame(egui::Frame::new().inner_margin(egui::Margin {
+            left: 12,
+            right: 12,
+            top: 12,
+            bottom: 4,
+        }))
         .show(ui, |ui| {
             egui::ScrollArea::vertical()
                 .auto_shrink(false)
@@ -213,10 +284,14 @@ fn stop_agent(session: &mut AgentSession, input: &mut ChatInput) {
     session.cancel();
 }
 
-/// Mode picker, connection status or token usage, and the agent log toggle.
+/// Mode picker, model, connection status or token usage, and the agent log toggle.
 fn footer_ui(ui: &mut egui::Ui, session: &mut AgentSession, input: &mut ChatInput) {
     ui.horizontal(|ui| {
         mode_picker_ui(ui, session);
+
+        if let Some(model) = session.transcript().current_model() {
+            ui.weak(model).on_hover_text("The model the agent is using");
+        }
 
         match session.phase() {
             Phase::Connecting { status } => {
@@ -375,8 +450,6 @@ fn permissions_ui(ui: &mut egui::Ui, session: &mut AgentSession, input: &mut Cha
 }
 
 fn input_ui(ui: &mut egui::Ui, session: &mut AgentSession, input: &mut ChatInput) {
-    slash_commands_ui(ui, session, input);
-
     let hint = if session.turn_in_progress() {
         "The agent is working… (⏎ to queue a message, Esc to stop)"
     } else if session.is_ready() {
@@ -384,6 +457,9 @@ fn input_ui(ui: &mut egui::Ui, session: &mut AgentSession, input: &mut ChatInput
     } else {
         "Waiting for the agent…"
     };
+
+    let input_id = ui.id().with("chat_input");
+    history_navigation(ui, input, input_id);
 
     let tokens = ui.tokens();
     let response = egui::Frame::new()
@@ -395,15 +471,28 @@ fn input_ui(ui: &mut egui::Ui, session: &mut AgentSession, input: &mut ChatInput
         .corner_radius(6)
         .inner_margin(6)
         .show(ui, |ui| {
-            let response = ui.add(
-                egui::TextEdit::multiline(&mut input.text)
-                    .id_salt("chat_input")
-                    .hint_text(hint)
-                    .desired_rows(2)
-                    .desired_width(f32::INFINITY)
-                    .frame(egui::Frame::new())
-                    .return_key(Some(KeyboardShortcut::new(Modifiers::SHIFT, Key::Enter))),
-            );
+            let output = CompletionPopup::new(input_id)
+                .event_filter(EventFilter {
+                    horizontal_arrows: true,
+                    vertical_arrows: true,
+                    escape: true,
+                    ..Default::default()
+                })
+                .show(
+                    ui,
+                    &mut input.text,
+                    |text| {
+                        egui::TextEdit::multiline(text)
+                            .hint_text(hint)
+                            .desired_rows(2)
+                            .desired_width(f32::INFINITY)
+                            .frame(egui::Frame::new())
+                            .return_key(Some(KeyboardShortcut::new(Modifiers::SHIFT, Key::Enter)))
+                    },
+                    |query| slash_command_suggestions(session, query),
+                );
+            input.completion_open = output.is_open;
+            let response = output.text_edit.response.response;
 
             if session.turn_in_progress() {
                 ui.horizontal(|ui| {
@@ -429,78 +518,88 @@ fn input_ui(ui: &mut egui::Ui, session: &mut AgentSession, input: &mut ChatInput
     }
 
     if response.has_focus() {
-        let enter = ui.input_mut(|i| i.consume_key(Modifiers::NONE, Key::Enter));
-        if enter && session.send_prompt(input.text.trim()) {
-            input.text.clear();
-            response.request_focus();
-        }
-    }
-
-    // egui takes focus away from the text edit on Escape before any widget runs,
-    // so by now the input has already lost it. Take it back: Escape means "stop the agent" here.
-    // TODO(emilk): use `TextEdit::event_filter` to keep focus on Escape instead, once we update to
-    // the egui release containing <https://github.com/emilk/egui/pull/8529>.
-    if response.has_focus() || response.lost_focus() {
-        let escape = ui.input_mut(|i| i.consume_key(Modifiers::NONE, Key::Escape));
-        if escape {
-            if session.turn_in_progress() {
-                stop_agent(session, input);
+        if ui.input_mut(|i| i.consume_key(Modifiers::NONE, Key::Enter)) {
+            let prompt = input.text.trim();
+            if session.send_prompt(prompt) {
+                input.history.push(prompt);
+                input.text.clear();
+                response.request_focus();
             }
-            response.request_focus();
+        }
+
+        // The event filter keeps focus on Escape: here it means "stop the agent", not "leave the input".
+        if ui.input_mut(|i| i.consume_key(Modifiers::NONE, Key::Escape))
+            && session.turn_in_progress()
+        {
+            stop_agent(session, input);
         }
     }
 }
 
-/// Lists matching slash commands while the input starts with `/`.
-///
-/// TODO(emilk): replace with `egui::CompletionPopup` (arrow keys, Tab, Escape) when we update to
-/// the egui release containing <https://github.com/emilk/egui/pull/8529>.
-fn slash_commands_ui(ui: &mut egui::Ui, session: &AgentSession, input: &mut ChatInput) {
-    let Some(query) = input.text.strip_prefix('/') else {
-        return;
-    };
-    if query.contains(char::is_whitespace) {
+/// Up on the first line recalls the previous prompt, down on the last line the next one,
+/// like a shell. Runs before the text edit so the key does not also move the cursor.
+fn history_navigation(ui: &egui::Ui, input: &mut ChatInput, input_id: egui::Id) {
+    if input.completion_open || !ui.memory(|memory| memory.has_focus(input_id)) {
         return;
     }
+    let ChatInput { text, history, .. } = input;
 
-    let matching: Vec<_> = session
+    let mut state = TextEditState::load(ui.ctx(), input_id).unwrap_or_default();
+    let cursor = state
+        .cursor
+        .char_range()
+        .map_or_else(|| text.chars().count(), |range| range.primary.index.into());
+    let byte_offset = text
+        .char_indices()
+        .nth(cursor)
+        .map_or(text.len(), |(offset, _)| offset);
+    let on_first_line = !text[..byte_offset].contains('\n');
+    let on_last_line = !text[byte_offset..].contains('\n');
+
+    let up =
+        on_first_line && ui.input_mut(|input| input.consume_key(Modifiers::NONE, Key::ArrowUp));
+    let down = !up
+        && on_last_line
+        && ui.input_mut(|input| input.consume_key(Modifiers::NONE, Key::ArrowDown));
+
+    let recalled = if up {
+        history.back(text)
+    } else if down {
+        history.forward()
+    } else {
+        None
+    };
+    if let Some(recalled) = recalled {
+        *text = recalled;
+        state
+            .cursor
+            .set_char_range(Some(CCursorRange::one(CCursor::new(text.chars().count()))));
+        state.store(ui.ctx(), input_id);
+    }
+}
+
+/// The slash commands the agent offers, while the cursor is on a leading `/word`.
+fn slash_command_suggestions(
+    session: &AgentSession,
+    query: &CompletionQuery<'_>,
+) -> Vec<Suggestion> {
+    let Some(prefix) = query.word.strip_prefix('/') else {
+        return vec![];
+    };
+    if !query.is_at_start() {
+        return vec![];
+    }
+    session
         .transcript()
         .available_commands
         .iter()
-        .filter(|command| command.name.starts_with(query))
-        .take(8)
-        .collect();
-    if matching.is_empty() {
-        return;
-    }
-
-    let mut completion = None;
-    let tokens = ui.tokens();
-    egui::Frame::new()
-        .fill(tokens.floating_color)
-        .corner_radius(6)
-        .inner_margin(6)
-        .show(ui, |ui| {
-            ui.set_width(ui.available_width());
-            for command in matching {
-                let response = ui.horizontal(|ui| {
-                    let response = ui.selectable_label(
-                        false,
-                        RichText::new(format!("/{}", command.name)).monospace(),
-                    );
-                    ui.weak(&command.description);
-                    response
-                });
-                if response.inner.clicked() {
-                    completion = Some(format!("/{} ", command.name));
-                }
-            }
-        });
-
-    if let Some(completion) = completion {
-        input.text = completion;
-        input.focus = true;
-    }
+        .filter(|command| command.name.starts_with(prefix))
+        .map(|command| {
+            Suggestion::new(format!("/{} ", command.name))
+                .content(RichText::new(format!("/{}", command.name)).monospace())
+                .description(&command.description)
+        })
+        .collect()
 }
 
 fn log_ui(ui: &mut egui::Ui, session: &AgentSession) {
@@ -548,5 +647,34 @@ fn format_tokens(n: u64) -> String {
         format!("{:.1}k", n as f64 / 1_000.0)
     } else {
         format!("{:.2}M", n as f64 / 1_000_000.0)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::PromptHistory;
+
+    #[test]
+    fn history_browsing() {
+        let mut history = PromptHistory::default();
+        assert_eq!(history.back("draft"), None);
+        assert_eq!(history.forward(), None);
+
+        history.push("one");
+        history.push("two");
+        history.push("two");
+        assert_eq!(history.entries, vec!["one", "two"]);
+
+        assert_eq!(history.back("draft").as_deref(), Some("two"));
+        assert_eq!(history.back("ignored").as_deref(), Some("one"));
+        assert_eq!(history.back("ignored"), None);
+        assert_eq!(history.forward().as_deref(), Some("two"));
+        assert_eq!(history.forward().as_deref(), Some("draft"));
+        assert_eq!(history.forward(), None);
+
+        history.back("");
+        history.push("three");
+        assert_eq!(history.position, None);
+        assert_eq!(history.back("").as_deref(), Some("three"));
     }
 }

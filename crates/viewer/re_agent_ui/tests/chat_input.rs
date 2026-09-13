@@ -10,7 +10,7 @@ use re_agent_ui::acp::schema::v1::{
 };
 use re_agent_ui::{AgentEntry, AgentEvent, AgentPanel, AgentProfile, AgentSettings};
 
-const SIZE: Vec2 = Vec2::new(600.0, 800.0);
+const SIZE: Vec2 = Vec2::new(re_agent_ui::RECOMMENDED_WIDTH, 800.0);
 
 fn ready_panel() -> AgentPanel {
     let agents = AgentProfile::builtin()
@@ -42,6 +42,7 @@ fn ready_panel() -> AgentPanel {
                 SessionMode::new("acceptEdits", "Accept edits"),
             ],
         )),
+        config_options: Vec::new(),
     });
     session.handle_event(AgentEvent::Update(SessionUpdate::AvailableCommandsUpdate(
         AvailableCommandsUpdate::new(vec![AvailableCommand::new("help", "Show help")]),
@@ -97,6 +98,30 @@ fn escape_keeps_focus_in_the_input() {
     let input = harness.get_by_role(egui::accesskit::Role::MultilineTextInput);
     assert!(input.accesskit_node().is_focused(), "input lost focus");
     assert_eq!(input.accesskit_node().value(), Some("hi".into()));
+}
+
+/// Opening the host panel asks the chat input to take keyboard focus.
+#[test]
+fn requested_input_focus_is_applied() {
+    let mut harness = re_ui::testing::new_harness(re_ui::testing::TestOptions::Gui, SIZE)
+        .build_ui_state(
+            |ui, panel: &mut AgentPanel| {
+                re_ui::apply_style_and_install_loaders(ui.ctx());
+                panel.ui(ui);
+            },
+            ready_panel(),
+        );
+    harness.run_steps(2);
+
+    harness.get_by_value("Manual").focus();
+    harness.run_steps(2);
+    let input = harness.get_by_role(egui::accesskit::Role::MultilineTextInput);
+    assert!(!input.accesskit_node().is_focused());
+
+    harness.state_mut().request_input_focus();
+    harness.run_steps(2);
+    let input = harness.get_by_role(egui::accesskit::Role::MultilineTextInput);
+    assert!(input.accesskit_node().is_focused());
 }
 
 /// Picking a mode in the footer dropdown asks the agent to switch.

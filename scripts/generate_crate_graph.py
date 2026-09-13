@@ -41,6 +41,7 @@ import itertools
 import json
 import os
 import re
+import struct
 import subprocess
 import sys
 import tempfile
@@ -102,10 +103,18 @@ ARROW_HEAD = 9.0  # The layering arrow drawn in the gap between two bands.
 # Shipped by the `fonts-conda-ecosystem` package in `pixi.toml`, so every
 # platform measures the label widths against the exact same TTF.
 FONT = "DejaVu Sans"
+FONT_FILE = "fonts/DejaVuSans.ttf"  # Relative to the pixi environment.
+NODE_FONT_SIZE = 11.0
+NODE_MARGIN = 0.09  # Inches on each side of a label, matching `NODE_DEFAULTS`.
+MIN_NODE_WIDTH = 0.75  # Inches. Graphviz's own default, kept so narrow names still line up.
 
+# `fixedsize` is what keeps the diagram identical everywhere: every node carries a
+# width this script measured, so graphviz never measures a label itself. It would
+# otherwise use pango on Linux and its own built-in estimates on macOS, and the two
+# lay the same graph out over 100 points apart.
 NODE_DEFAULTS = (
-    f'node [fontname="{FONT}", fontsize=11, shape=box, style="rounded,filled", '
-    'color="#00000033", margin="0.09,0.04", height=0.28]'
+    f'node [fontname="{FONT}", fontsize={NODE_FONT_SIZE:.0f}, shape=box, style="rounded,filled", '
+    'color="#00000033", margin="0.09,0.04", height=0.28, fixedsize=true]'
 )
 EDGE_DEFAULTS = 'edge [color="#00000055", arrowsize=0.6, penwidth=0.8]'
 CORNER_ATTRS = 'style=invis, shape=point, width=0.01, label=""'
@@ -117,12 +126,22 @@ SVG_BACKGROUND = re.compile(r'(<g id="graph0".*?<polygon[^>]*>)', re.DOTALL)
 
 NUMBER = re.compile(r"-?\d+(?:\.\d+)?")
 
-# Graphviz rounds the corners of a node box with a little trigonometry, and the
-# last digit it prints depends on the CPU: aarch64 and x86-64 disagree by 0.01
-# on a handful of control points. `--check` therefore compares the SVG's numbers
-# with this tolerance, in points, rather than byte for byte. Everything else in
-# the file — every position, spline, and label — has to match exactly.
-SVG_TOLERANCE = 0.05
+# A crate's box and the label graphviz centered in it: the `d` of the box holds
+# alternating x and y, so its own extent says where the middle of the box is.
+NODE_LABEL = re.compile(r'(<path[^>]*\bd="([^"]+)"[^>]*/>\s*<text[^>]*\by=")(-?\d+(?:\.\d+)?)(")')
+
+# How far a number in the SVG may drift before `--check` calls the file stale,
+# in points. The check compares the numbers with this tolerance rather than the
+# file byte for byte; everything around them still has to match exactly, so a
+# crate that appears, moves band, or changes name still fails.
+#
+# Two things drift. Graphviz rounds the corners of a node box with a little
+# trigonometry, and the last digit it prints depends on the CPU: aarch64 and
+# x86-64 disagree by 0.01 on a handful of control points. Larger, `dot` lays a
+# band out up to a point wider on one platform than the other even when every
+# node carries a width this script measured, and the widest band sets the width
+# of the canvas, so that point reaches every coordinate in the file.
+SVG_TOLERANCE = 1.5
 
 
 def cargo_metadata() -> Metadata:
@@ -264,6 +283,111 @@ def graphviz_env() -> dict[str, str]:
     return os.environ | {"FONTCONFIG_FILE": str(config), "PANGOCAIRO_BACKEND": "fc"}
 
 
+def font_tables(data: bytes) -> dict[bytes, tuple[int, int]]:
+    """Map each TTF table tag to its `(offset, length)`."""
+    (num_tables,) = struct.unpack_from(">H", data, 4)
+    tables = {}
+    for i in range(num_tables):
+        tag, _checksum, offset, length = struct.unpack_from(">4sLLL", data, 12 + 16 * i)
+        tables[tag] = (offset, length)
+    return tables
+
+
+def character_glyphs(data: bytes, cmap_offset: int) -> dict[int, int]:
+    """Read the Unicode BMP (format 4) subtable of `cmap` into character -> glyph."""
+    (num_subtables,) = struct.unpack_from(">H", data, cmap_offset + 2)
+    subtable = None
+    for i in range(num_subtables):
+        platform, encoding, offset = struct.unpack_from(">HHL", data, cmap_offset + 4 + 8 * i)
+        if (platform, encoding) in {(3, 1), (0, 3), (0, 4)}:
+            subtable = cmap_offset + offset
+            break
+    if subtable is None:
+        raise SystemExit(f"{FONT_FILE} has no Unicode cmap subtable")
+
+    (fmt, _length, _language, segment_count_x2) = struct.unpack_from(">HHHH", data, subtable)
+    if fmt != 4:
+        raise SystemExit(f"{FONT_FILE} uses cmap format {fmt}, which this script cannot read")
+    segments = segment_count_x2 // 2
+
+    ends_at = subtable + 14
+    starts_at = ends_at + segment_count_x2 + 2
+    deltas_at = starts_at + segment_count_x2
+    ranges_at = deltas_at + segment_count_x2
+    ends = struct.unpack_from(f">{segments}H", data, ends_at)
+    starts = struct.unpack_from(f">{segments}H", data, starts_at)
+    deltas = struct.unpack_from(f">{segments}h", data, deltas_at)
+    range_offsets = struct.unpack_from(f">{segments}H", data, ranges_at)
+
+    glyphs: dict[int, int] = {}
+    for i in range(segments):
+        for code in range(starts[i], min(ends[i], 0xFFFF) + 1):
+            if range_offsets[i] == 0:
+                glyph = (code + deltas[i]) & 0xFFFF
+            else:
+                at = ranges_at + 2 * i + range_offsets[i] + 2 * (code - starts[i])
+                (glyph,) = struct.unpack_from(">H", data, at)
+                if glyph != 0:
+                    glyph = (glyph + deltas[i]) & 0xFFFF
+            if glyph != 0:
+                glyphs[code] = glyph
+    return glyphs
+
+
+@functools.cache
+def font() -> tuple[bytes, dict[bytes, tuple[int, int]], int]:
+    """`(the pinned TTF, its tables, its units per em)`."""
+    prefix = os.environ.get("CONDA_PREFIX")
+    if prefix is None:
+        raise SystemExit("Run inside the pixi environment: `pixi run crate-graph`")
+    path = Path(prefix) / FONT_FILE
+    if not path.exists():
+        raise SystemExit(f"The pinned font is missing. Expected it at: {path}")
+    data = path.read_bytes()
+    tables = font_tables(data)
+    (units_per_em,) = struct.unpack_from(">H", data, tables[b"head"][0] + 18)
+    return data, tables, units_per_em
+
+
+@functools.cache
+def cap_height() -> float:
+    """The height of a capital `H`, in points at the node font size."""
+    data, tables, units_per_em = font()
+    glyph = character_glyphs(data, tables[b"cmap"][0])[ord("H")]
+    (long_offsets,) = struct.unpack_from(">h", data, tables[b"head"][0] + 50)
+    if long_offsets:
+        (at,) = struct.unpack_from(">L", data, tables[b"loca"][0] + 4 * glyph)
+    else:
+        (short,) = struct.unpack_from(">H", data, tables[b"loca"][0] + 2 * glyph)
+        at = short * 2
+    (top,) = struct.unpack_from(">h", data, tables[b"glyf"][0] + at + 8)
+    return float(top) * NODE_FONT_SIZE / units_per_em
+
+
+@functools.cache
+def font_metrics() -> tuple[int, dict[int, int]]:
+    """`(units per em, advance width per character)` of the pinned TTF."""
+    data, tables, units_per_em = font()
+    (metric_count,) = struct.unpack_from(">H", data, tables[b"hhea"][0] + 34)
+    hmtx = tables[b"hmtx"][0]
+    advances = struct.unpack_from(f">{metric_count * 2}H", data, hmtx)[::2]
+
+    glyphs = character_glyphs(data, tables[b"cmap"][0])
+    # Glyphs past the last entry of `hmtx` all share its advance, by the spec.
+    width_of = {code: advances[min(glyph, metric_count - 1)] for code, glyph in glyphs.items()}
+    return units_per_em, width_of
+
+
+def node_width(label: str) -> float:
+    """The width in inches graphviz should give `label`'s box."""
+    units_per_em, width_of = font_metrics()
+    missing = [character for character in label if ord(character) not in width_of]
+    if missing:
+        raise SystemExit(f"{FONT} has no glyph for {missing!r} in the label: {label}")
+    em_widths = sum(width_of[ord(character)] for character in label) / units_per_em
+    return max(MIN_NODE_WIDTH, em_widths * NODE_FONT_SIZE / POINTS_PER_INCH + 2 * NODE_MARGIN)
+
+
 def run_graphviz(engine: str, args: list[str], source: str) -> str:
     out = subprocess.run([engine, *args], input=source, text=True, capture_output=True, env=graphviz_env())
     if out.returncode != 0:
@@ -318,7 +442,7 @@ def wrapped_band(
         "  nodesep=0.18",
         f"  {NODE_DEFAULTS}",
     ]
-    lines += [f'  "{name}"' for name in crates]
+    lines += [f'  "{name}" [width={node_width(name):.3f}]' for name in crates]
     lines += [f'  "{name}" -> "{dep}"' for name, dep in edges]
 
     rows = [loose[i : i + columns] for i in range(0, len(loose), columns)]
@@ -417,10 +541,30 @@ def render_svg(composed: str, bands: list[Band]) -> str:
     # sans-serif the reader does have.
     svg = svg.replace(f'font-family="{FONT}"', f'font-family="{FONT},sans-serif"')
 
+    svg = centered_labels(svg)
+
     match = SVG_BACKGROUND.search(svg)
     if match is None:
         raise SystemExit("could not find the background of the SVG that neato produced")
     return svg.replace(match.group(1), match.group(1) + band_boxes(bands), 1)
+
+
+def centered_labels(svg: str) -> str:
+    """Put every crate label's baseline where the pinned font says it belongs.
+
+    Node widths are this script's to give, but the baseline inside the box stays
+    graphviz's, and it derives that from the font's vertical metrics — pango's on
+    Linux, its own estimates on macOS, three quarters of a point apart. Centering
+    the capitals is a rule the TTF answers on its own, so both platforms agree.
+    """
+
+    def recenter(match: re.Match[str]) -> str:
+        coordinates = [float(number) for number in NUMBER.findall(match.group(2))]
+        vertical = coordinates[1::2]
+        middle = (min(vertical) + max(vertical)) / 2
+        return f"{match.group(1)}{middle + cap_height() / 2:.2f}{match.group(4)}"
+
+    return NODE_LABEL.sub(recenter, svg)
 
 
 def layer_arrows(bands: list[Band]) -> str:
@@ -530,6 +674,30 @@ def matches(path: Path, wanted: str) -> bool:
     )
 
 
+def drift_report(path: Path, wanted: str) -> str:
+    """How far the numbers in `path` have drifted from `wanted`, worst first.
+
+    The unified diff below it shows only the first differing lines, which says
+    nothing about the largest drift in the file — the number `SVG_TOLERANCE`
+    has to clear.
+    """
+    if path.suffix != ".svg" or not path.exists():
+        return ""
+    found = NUMBER.findall(path.read_text())
+    generated = NUMBER.findall(wanted)
+    if len(found) != len(generated):
+        return f"The file holds {len(found)} numbers, the generated one {len(generated)}.\n"
+
+    drifts = sorted((abs(float(a) - float(b)), a, b) for a, b in zip(found, generated, strict=True) if a != b)
+    if not drifts:
+        return "Every number matches; the difference is elsewhere in the file.\n"
+    worst = "".join(f"  {found} -> {generated} ({drift:.2f})\n" for drift, found, generated in drifts[-5:])
+    return (
+        f"{len(drifts)} of {len(found)} numbers differ, by at most "
+        f"{drifts[-1][0]:.2f} (tolerance {SVG_TOLERANCE}). Widest:\n{worst}"
+    )
+
+
 def architecture_with_tables(text: str, tables: str) -> str:
     """`ARCHITECTURE.md` with everything between the markers replaced by `tables`."""
     try:
@@ -591,6 +759,7 @@ def main() -> None:
             sys.stderr.write(f"{names} out of date.\nRegenerate with `pixi run crate-graph`, and commit the result.\n")
             for path in stale:
                 sys.stderr.write(f"\nFirst differences in {path.name}:\n")
+                sys.stderr.write(drift_report(path, wanted[path]))
                 diff = difflib.unified_diff(
                     path.read_text().splitlines() if path.exists() else [],
                     wanted[path].splitlines(),

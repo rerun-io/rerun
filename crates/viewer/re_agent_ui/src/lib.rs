@@ -9,6 +9,6 @@ pub use re_agent::{
     AgentCommand, AgentConnection, AgentEntry, AgentEvent, AgentProfile, AgentSession,
     AgentSettings, AuthPrompt, LaunchConfig, LogLine, McpServerConfig, McpStdioServer,
     PendingPermission, Phase, SessionContext, ToolCallState, Transcript, TranscriptEntry,
-    TranscriptItem, acp, find_executable,
+    TranscriptItem, TurnOutcome, TurnReport, acp, find_executable,
 };
-pub use ui::AgentPanel;
+pub use ui::{AgentPanel, RECOMMENDED_WIDTH};

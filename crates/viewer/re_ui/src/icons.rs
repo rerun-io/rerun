@@ -5,6 +5,41 @@ use egui::{Atom, Image, ImageSource};
 
 use crate::DesignTokens;
 
+/// An image (PNG or SVG) embedded in the binary at compile time.
+///
+/// The built-in icons live as constants in [`crate::icons`]; make your own with [`Icon::new`].
+///
+/// Put one in a [`egui::Ui`]:
+/// ```
+/// # egui::__run_test_ui(|ui| {
+/// ui.add(re_ui::icons::PLAY.as_image());
+/// # });
+/// ```
+///
+/// As a clickable button that follows the text color:
+/// ```
+/// # egui::__run_test_ui(|ui| {
+/// if ui.add(re_ui::icons::PLAY.as_button()).clicked() {
+///     // …
+/// }
+/// # });
+/// ```
+///
+/// As an atom, e.g. alongside some text:
+/// ```
+/// # egui::__run_test_ui(|ui| {
+/// ui.add(egui::Button::new((re_ui::icons::PLAY, "Play")));
+/// # });
+/// ```
+///
+/// Prefer the [`crate::UiExt`] helpers where they fit, since they apply the design tokens:
+/// ```
+/// # use re_ui::UiExt as _;
+/// # egui::__run_test_ui(|ui| {
+/// ui.small_icon_button(&re_ui::icons::PLAY, "Play");
+/// ui.small_icon(&re_ui::icons::PLAY, None);
+/// # });
+/// ```
 #[derive(Clone, Copy)]
 pub struct Icon {
     /// Human-readable unique id.
@@ -146,6 +181,7 @@ pub const NOTIFICATION: Icon = icon_from_path!("../data/icons/notification.svg")
 pub const RIGHT_PANEL_TOGGLE: Icon = icon_from_path!("../data/icons/right_panel_toggle.svg");
 pub const BOTTOM_PANEL_TOGGLE: Icon = icon_from_path!("../data/icons/bottom_panel_toggle.svg");
 pub const LEFT_PANEL_TOGGLE: Icon = icon_from_path!("../data/icons/left_panel_toggle.svg");
+pub const AGENT: Icon = icon_from_path!("../data/icons/agent.svg");
 
 pub const PLAN_PENDING: Icon = icon_from_path!("../data/icons/plan_pending.svg");
 pub const PLAN_IN_PROGRESS: Icon = icon_from_path!("../data/icons/plan_in_progress.svg");

@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::connection::{LaunchConfig, McpStdioServer};
 use crate::profiles::{AgentEntry, find_executable};
@@ -14,6 +14,22 @@ pub struct McpServerConfig {
 
     /// Disabled servers stay in the list but are not handed to the agent.
     pub enabled: bool,
+}
+
+impl McpServerConfig {
+    /// Quotes `command` and `args` so that [`Self::command_line`] splits back into them.
+    pub fn new(name: impl Into<String>, command: &Path, args: &[impl AsRef<str>]) -> Self {
+        let command = command.to_string_lossy();
+        let words = std::iter::chain(
+            std::iter::once(command.as_ref()),
+            args.iter().map(AsRef::as_ref),
+        );
+        Self {
+            name: name.into(),
+            command_line: shell_words::join(words),
+            enabled: true,
+        }
+    }
 }
 
 /// What the host app wants every new session to know, on top of the user's settings.
@@ -60,6 +76,9 @@ pub struct AgentSettings {
 
     /// Show every JSON-RPC line exchanged with the agent in the log view.
     pub log_protocol: bool,
+
+    /// Share prompts and responses with Rerun after redacting sensitive text.
+    pub share_redacted_prompts: bool,
 
     /// Set once the user has started an agent from the setup screen.
     /// From then on the panel starts the agent right away instead of showing setup again.
@@ -141,6 +160,7 @@ impl AgentSettings {
             mcp_servers,
             log_protocol: self.log_protocol,
             preamble: context.preamble.clone(),
+            model_preferences: Vec::new(),
         })
     }
 }
@@ -155,6 +175,7 @@ impl Default for AgentSettings {
             mcp_servers: Vec::new(),
             show_thoughts: true,
             log_protocol: false,
+            share_redacted_prompts: true,
             setup_done: false,
         }
     }
@@ -211,7 +232,15 @@ fn take_leading_env_vars(parts: &mut Vec<String>) -> Vec<(String, String)> {
 
 #[cfg(test)]
 mod tests {
-    use super::{parse_env_vars, take_leading_env_vars};
+    use super::{AgentSettings, parse_env_vars, take_leading_env_vars};
+
+    #[test]
+    fn old_settings_enable_redacted_prompt_sharing() {
+        let Ok(settings) = serde_json::from_str::<AgentSettings>("{}") else {
+            panic!("empty settings should deserialize");
+        };
+        assert!(settings.share_redacted_prompts);
+    }
 
     #[test]
     fn env_var_lines() {

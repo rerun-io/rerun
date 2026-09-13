@@ -48,6 +48,17 @@ pub struct AppState {
     /// Global options for the whole viewer.
     pub(crate) app_options: AppOptions,
 
+    /// Settings shared by all conversations in the agent panel.
+    ///
+    /// This stays in `re_viewer` so `re_viewer_context` does not depend on the native-only
+    /// agent UI.
+    #[cfg(agent_panel)]
+    pub(crate) agent_settings: re_agent_ui::AgentSettings,
+
+    /// Whether the agent panel is open. Persisted, so it comes back on the next run.
+    #[cfg(agent_panel)]
+    pub(crate) agent_panel_open: bool,
+
     /// The time control for each recording (found in [`EntityDb`]).
     ///
     /// Created lazily on first use with a given store.
@@ -156,6 +167,10 @@ impl Default for AppState {
     fn default() -> Self {
         Self {
             app_options: Default::default(),
+            #[cfg(agent_panel)]
+            agent_settings: Default::default(),
+            #[cfg(agent_panel)]
+            agent_panel_open: false,
             time_controls: Default::default(),
             app_caches: Default::default(),
             blueprint_undo_state: Default::default(),

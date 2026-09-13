@@ -106,6 +106,7 @@ native_viewer = [
   "dep:re_viewer_mcp",
   "dep:url",
   "importers",
+  "re_viewer?/agent_context",
 ]
 
 ## Enable the in-memory Rerun data server.

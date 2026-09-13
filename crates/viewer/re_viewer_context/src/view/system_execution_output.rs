@@ -141,6 +141,20 @@ impl VisualizerTypeReport {
         }
     }
 
+    /// Every diagnostic of this visualizer type, whichever instruction it belongs to.
+    pub fn diagnostics(&self) -> impl Iterator<Item = &ViewerDiagnostic> {
+        match self {
+            Self::OverallError(report) => {
+                itertools::Either::Left(std::iter::once(&report.diagnostic))
+            }
+            Self::PerInstructionReport(reports) => itertools::Either::Right(
+                reports
+                    .values()
+                    .flat_map(|reports| reports.iter().map(|report| &report.diagnostic)),
+            ),
+        }
+    }
+
     /// Get all reports for a specific instruction.
     ///
     /// Does **not** include the overall error.

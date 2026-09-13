@@ -56,6 +56,9 @@ impl App {
                     ui,
                 );
 
+                #[cfg(agent_panel)]
+                self.agent_panel_ui(ui);
+
                 self.dev_panel_ui(
                     ui,
                     gpu_resource_stats,
@@ -193,6 +196,7 @@ impl App {
         egui::Panel::bottom("dev_panel")
             .default_size(300.0)
             .resizable(true)
+            .drag_to_open(false)
             .frame(frame)
             .show_collapsible(ui, &mut dev_panel_open, |ui| {
                 let response = self.dev_panel.ui(
@@ -215,6 +219,32 @@ impl App {
         self.dev_panel_open = dev_panel_open && !close_requested;
     }
 
+    /// The rightmost panel: a chat with a coding agent that drives this viewer.
+    #[cfg(agent_panel)]
+    fn agent_panel_ui(&mut self, ui: &mut egui::Ui) {
+        if !self.app_options().experimental.agent_panel {
+            return;
+        }
+
+        let viewer_endpoint = self
+            .connection_registry
+            .internal_origin()
+            .map(|origin| origin.as_url());
+        let cache_dir = self.app_options().cache_directory.clone();
+
+        let Self {
+            agent_panel, state, ..
+        } = self;
+
+        agent_panel.show(
+            ui,
+            &mut state.agent_panel_open,
+            &mut state.agent_settings,
+            viewer_endpoint.as_deref(),
+            cache_dir.as_deref(),
+        );
+    }
+
     fn egui_debug_panel_ui(&mut self, ui: &mut egui::Ui) {
         let egui_ctx = ui.ctx().clone();
 
@@ -222,6 +252,7 @@ impl App {
         egui::Panel::left("style_panel")
             .default_size(300.0)
             .resizable(true)
+            .drag_to_open(false)
             .frame(
                 ui.tokens()
                     .top_panel_frame(self.window_frame_config(ui.ctx())),

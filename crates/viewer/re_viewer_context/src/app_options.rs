@@ -239,6 +239,11 @@ impl VideoOptions {
 #[derive(Debug, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize, Clone)]
 #[serde(default)]
 pub struct ExperimentalAppOptions {
+    /// Enable the agent panel: a chat with a coding agent that can drive the viewer.
+    ///
+    /// Native only.
+    pub agent_panel: bool,
+
     /// Enable gamepad navigation in 3D spatial views.
     pub gamepad_navigation: bool,
 

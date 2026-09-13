@@ -1072,6 +1072,10 @@ impl App {
                     app_blueprint.toggle_selection_panel(&self.command_sender);
                 }
             }
+            UICommand::ToggleAgentPanel => {
+                #[cfg(agent_panel)]
+                self.toggle_agent_panel();
+            }
             #[cfg(debug_assertions)]
             UICommand::ToggleEguiDebugPanel => {
                 self.egui_debug_panel_open ^= true;

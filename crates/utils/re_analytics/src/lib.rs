@@ -415,6 +415,14 @@ pub fn record<E: Event>(cb: impl FnOnce() -> E) {
     }
 }
 
+/// Whether [`record`] sends anything at all.
+///
+/// `false` when the user has opted out with `rerun analytics disable`, or when the pipeline
+/// failed to start. Callers that do expensive work to produce an event should check this first.
+pub fn is_enabled() -> bool {
+    Analytics::global_or_init().is_some()
+}
+
 /// Update whether the user is currently logged in.
 pub fn set_logged_in(logged_in: bool) {
     if let Some(analytics) = Analytics::global_or_init_with_login_state(logged_in) {

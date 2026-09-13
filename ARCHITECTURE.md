@@ -107,7 +107,7 @@ A `dev-dependency` is exempt, since a test may reach anywhere.
 
 Only the arrows *inside* a band are drawn.
 
-The diagram and the crate tables below are both generated from `cargo metadata`, so they cannot drift from the code.
+The diagram and the crate tables below are both generated from `cargo metadata`, so neither has to be written by hand.
 A crate's description is its `description` field in its own `Cargo.toml`, so there is only one place to write it.
 Regenerate both after adding, removing, or renaming a crate:
 
@@ -115,7 +115,8 @@ Regenerate both after adding, removing, or renaming a crate:
 pixi run crate-graph
 ```
 
-CI runs `pixi run crate-graph-check`, which fails if either is not what the script would write, so neither can be forgotten.
+**Run that command yourself whenever you add or remove a crate.**
+Nothing checks it for you: `pixi run crate-graph-check` is disabled in CI, because graphviz lays the same graph out slightly differently on macOS and on Linux, so whoever regenerated the diagram last decided whether the check passed.
 
 Pass `--edges all` for a version with every dependency drawn, cross-band ones included.
 

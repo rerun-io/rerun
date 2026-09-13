@@ -141,6 +141,10 @@ pub struct App {
 
     dev_panel: crate::dev_panel::DevPanel,
     dev_panel_open: bool,
+
+    #[cfg(agent_panel)]
+    agent_panel: crate::agent_panel::ViewerAgentPanel,
+
     pub(crate) external_memory_users: crate::external_memory::ExternalMemoryUsers,
 
     /// Cached app overhead: total memory use minus sum of all recording chunk sizes.
@@ -535,6 +539,9 @@ impl App {
 
             dev_panel: Default::default(),
             dev_panel_open: false,
+
+            #[cfg(agent_panel)]
+            agent_panel: Default::default(),
             external_memory_users: crate::external_memory::ExternalMemoryUsers::default_users(),
             cached_app_overhead_bytes: None,
 
@@ -619,6 +626,24 @@ impl App {
     pub fn show_dev_panel_tab(&mut self, tab: crate::dev_panel::DevPanelTab) {
         self.dev_panel_open = true;
         self.dev_panel.select_tab(tab);
+    }
+
+    /// Whether the agent panel is shown. Requires the experimental setting.
+    #[cfg(agent_panel)]
+    pub fn agent_panel_open(&self) -> bool {
+        self.app_options().experimental.agent_panel && self.state.agent_panel_open
+    }
+
+    #[cfg(agent_panel)]
+    pub fn toggle_agent_panel(&mut self) {
+        if self.app_options().experimental.agent_panel {
+            self.state.agent_panel_open ^= true;
+            if self.state.agent_panel_open {
+                self.agent_panel.request_input_focus();
+            }
+        } else {
+            re_log::info!("The agent panel is disabled. Enable it under Settings → Experimental.");
+        }
     }
 
     pub fn app_env(&self) -> &crate::AppEnvironment {

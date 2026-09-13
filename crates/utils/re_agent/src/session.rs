@@ -4,17 +4,20 @@
 //! No egui in here, so a host can drive it from any UI or from a headless test.
 
 use std::collections::VecDeque;
+use std::path::{Component, Path, PathBuf};
+use std::time::Instant;
 
 use agent_client_protocol::schema::v1::{
-    AuthMethod, AuthMethodId, ContentBlock, PermissionOptionId, PermissionOptionKind,
-    RequestPermissionOutcome, RequestPermissionRequest, RequestPermissionResponse,
-    SelectedPermissionOutcome, SessionModeId, SessionModeState, SessionUpdate, StopReason,
-    TextContent,
+    AuthMethod, AuthMethodId, ContentBlock, PermissionOption, PermissionOptionId,
+    PermissionOptionKind, RequestPermissionOutcome, RequestPermissionRequest,
+    RequestPermissionResponse, SelectedPermissionOutcome, SessionModeId, SessionModeState,
+    SessionUpdate, StopReason, TextContent, ToolCallStatus, ToolKind,
 };
 use agent_client_protocol::{LineDirection, Responder};
 
 use crate::connection::{AgentCommand, AgentConnection, AgentEvent, LaunchConfig};
-use crate::transcript::Transcript;
+use crate::transcript::{ToolCallState, Transcript, TranscriptItem};
+use crate::turn::{TurnOutcome, TurnReport, TurnStart, describe_failed_tool_call};
 
 const MAX_LOG_LINES: usize = 500;
 
@@ -90,7 +93,6 @@ pub struct AgentSession {
     auth: Option<AuthPrompt>,
     transcript: Transcript,
     pending_permissions: Vec<PendingPermission>,
-    turn_in_progress: bool,
     log: VecDeque<LogLine>,
     auto_approve: bool,
 
@@ -103,6 +105,16 @@ pub struct AgentSession {
 
     /// Prompts typed while a turn was running. Sent one per turn, in order.
     queue: VecDeque<String>,
+
+    /// The turn started by the last prompt, until the agent finishes it.
+    current_turn: Option<TurnStart>,
+
+    /// Turns finished since the host last called [`Self::take_finished_turns`].
+    finished_turns: Vec<TurnReport>,
+
+    /// Read-only tool calls that stay inside these directories are allowed without asking.
+    /// The host put them there for the agent to read, e.g. skills.
+    readable_directories: Vec<PathBuf>,
 }
 
 impl AgentSession {
@@ -115,6 +127,8 @@ impl AgentSession {
             },
             auto_approve: self.auto_approve,
             preamble: config.preamble.clone(),
+            readable_directories: config.additional_directories.clone(),
+            finished_turns: std::mem::take(&mut self.finished_turns),
             ..Default::default()
         };
         self.connection = Some(AgentConnection::spawn(config, wake));
@@ -126,10 +140,7 @@ impl AgentSession {
             pending.answer(None).ok();
         }
         self.connection = None;
-        if self.turn_in_progress {
-            self.transcript.fail_unfinished_tool_calls("Stopped");
-        }
-        self.turn_in_progress = false;
+        self.finish_turn(TurnOutcome::Aborted, "Stopped");
         self.phase = Phase::Idle;
     }
 
@@ -149,11 +160,11 @@ impl AgentSession {
 
     /// A session is open and the agent is idle.
     pub fn is_ready(&self) -> bool {
-        self.phase == Phase::Ready && !self.turn_in_progress
+        self.phase == Phase::Ready && self.current_turn.is_none()
     }
 
     pub fn turn_in_progress(&self) -> bool {
-        self.turn_in_progress
+        self.current_turn.is_some()
     }
 
     /// What the agent calls itself, once it has told us.
@@ -200,15 +211,14 @@ impl AgentSession {
         if text.trim().is_empty() || self.phase != Phase::Ready {
             return false;
         }
-        if self.turn_in_progress {
+        if self.current_turn.is_some() {
             self.queue.push_back(text);
             return true;
         }
-        let Some(connection) = &self.connection else {
+        if self.connection.is_none() {
             return false;
-        };
-        self.transcript.push_user(text.clone());
-        self.turn_in_progress = true;
+        }
+        self.begin_turn(text.clone());
 
         // The preamble goes only with the first prompt: the agent keeps its own history.
         let mut prompt = Vec::new();
@@ -220,7 +230,9 @@ impl AgentSession {
         prompt.push(ContentBlock::Text(TextContent::new(text)));
         self.prompts_sent += 1;
 
-        connection.send(AgentCommand::Prompt(prompt));
+        if let Some(connection) = &self.connection {
+            connection.send(AgentCommand::Prompt(prompt));
+        }
         true
     }
 
@@ -238,6 +250,92 @@ impl AgentSession {
     /// let the next queued prompt start a new turn.
     pub fn take_queued(&mut self) -> Vec<String> {
         self.queue.drain(..).collect()
+    }
+
+    /// Drains the reports of the turns finished since the last call.
+    pub fn take_finished_turns(&mut self) -> Vec<TurnReport> {
+        std::mem::take(&mut self.finished_turns)
+    }
+
+    fn begin_turn(&mut self, prompt: String) {
+        self.transcript.push_user(prompt.clone());
+        self.current_turn = Some(TurnStart {
+            prompt,
+            started: Instant::now(),
+            transcript_start: self.transcript.items.len(),
+            permissions_requested: 0,
+            permissions_rejected: 0,
+        });
+    }
+
+    /// Closes the current turn, if any, and queues its report.
+    ///
+    /// Tool calls the agent never finished are failed with `unfinished_reason` first,
+    /// so the report counts them.
+    fn finish_turn(&mut self, outcome: TurnOutcome, unfinished_reason: &str) {
+        let Some(turn) = self.current_turn.take() else {
+            return;
+        };
+        self.transcript
+            .fail_unfinished_tool_calls(unfinished_reason);
+        let TurnStart {
+            prompt,
+            started,
+            transcript_start,
+            permissions_requested,
+            permissions_rejected,
+        } = turn;
+
+        let items = self
+            .transcript
+            .items
+            .iter()
+            .skip(transcript_start)
+            .map(|entry| &entry.item);
+        let mut tool_calls = 0;
+        let mut failed_tool_calls = Vec::new();
+        let mut errors = Vec::new();
+        let mut response = String::new();
+        for item in items {
+            match item {
+                TranscriptItem::ToolCall(call) => {
+                    tool_calls += 1;
+                    if call.status == ToolCallStatus::Failed {
+                        failed_tool_calls.push(describe_failed_tool_call(call));
+                    }
+                }
+                TranscriptItem::Note { text, is_error } if *is_error => errors.push(text.clone()),
+                TranscriptItem::Agent { content, .. } => {
+                    let text = content
+                        .iter()
+                        .filter_map(|block| match block {
+                            ContentBlock::Text(text) => Some(text.text.as_str()),
+                            _ => None,
+                        })
+                        .collect::<Vec<_>>()
+                        .join("\n");
+                    if !text.trim().is_empty() {
+                        response = text;
+                    }
+                }
+                TranscriptItem::User { .. } | TranscriptItem::Note { .. } => {}
+            }
+        }
+
+        self.finished_turns.push(TurnReport {
+            agent: self.agent_name.clone(),
+            prompt,
+            duration: started.elapsed(),
+            outcome,
+            response,
+            tool_calls,
+            tokens_used: self.transcript.usage.as_ref().map(|usage| usage.used),
+            token_limit: self.transcript.usage.as_ref().map(|usage| usage.size),
+            failed_tool_calls,
+            errors,
+            permissions_requested,
+            permissions_rejected,
+        });
     }
 
     /// Cancels the current turn. Pending permission requests are answered with "cancelled".
@@ -276,6 +374,16 @@ impl AgentSession {
     pub fn answer_permission(&mut self, index: usize, option_id: Option<PermissionOptionId>) {
         if index < self.pending_permissions.len() {
             let pending = self.pending_permissions.remove(index);
+            let allowed = option_id.as_ref().is_some_and(|option_id| {
+                pending
+                    .request
+                    .options
+                    .iter()
+                    .any(|option| option.option_id == *option_id && allows(option.kind))
+            });
+            if !allowed && let Some(turn) = &mut self.current_turn {
+                turn.permissions_rejected += 1;
+            }
             if let Err(err) = pending.answer(option_id) {
                 self.report_error(format!("Failed to answer permission request: {err}"));
             }
@@ -302,7 +410,7 @@ impl AgentSession {
     /// Pretends a turn is running, without an agent. For UI tests.
     #[cfg(feature = "testing")]
     pub fn begin_test_turn(&mut self) {
-        self.turn_in_progress = true;
+        self.current_turn = Some(TurnStart::testing(self.transcript.items.len()));
     }
 
     /// Adds a permission request that no agent is waiting on. For UI tests.
@@ -327,8 +435,13 @@ impl AgentSession {
             AgentEvent::Initialized { agent_info, .. } => {
                 self.agent_name = agent_info.map(|info| info.title.unwrap_or(info.name));
             }
-            AgentEvent::SessionStarted { modes, .. } => {
+            AgentEvent::SessionStarted {
+                modes,
+                config_options,
+                ..
+            } => {
                 self.modes = modes;
+                self.transcript.config_options = config_options;
                 self.auth = None;
                 self.phase = Phase::Ready;
             }
@@ -351,48 +464,57 @@ impl AgentSession {
                     request,
                     responder: Some(responder),
                 };
-                if self.auto_approve
-                    && let Some(option) = pending.request.options.iter().find(|option| {
-                        matches!(
-                            option.kind,
-                            PermissionOptionKind::AllowOnce | PermissionOptionKind::AllowAlways
-                        )
-                    })
+                let is_harmless_read = self
+                    .transcript
+                    .tool_call(&pending.request.tool_call.tool_call_id)
+                    .is_some_and(|call| is_read_within(call, &self.readable_directories));
+                if (self.auto_approve || is_harmless_read)
+                    && let Some(option) = allow_option(&pending.request.options)
                 {
                     let option_id = option.option_id.clone();
                     pending.answer(Some(option_id)).ok();
                 } else {
+                    if let Some(turn) = &mut self.current_turn {
+                        turn.permissions_requested += 1;
+                    }
                     self.pending_permissions.push(pending);
                 }
             }
             AgentEvent::TurnFinished(result) => {
-                self.turn_in_progress = false;
-                self.transcript.fail_unfinished_tool_calls("Cancelled");
-                if !matches!(result, Ok(StopReason::Cancelled))
-                    && let Some(next) = self.queue.pop_front()
-                {
+                let outcome = match result {
+                    Ok(StopReason::Cancelled) => {
+                        self.transcript.push_note("Cancelled", false);
+                        TurnOutcome::Cancelled
+                    }
+                    Ok(StopReason::MaxTokens) => {
+                        self.transcript
+                            .push_note("Stopped: token limit reached", false);
+                        TurnOutcome::Truncated
+                    }
+                    Ok(StopReason::MaxTurnRequests) => {
+                        self.transcript
+                            .push_note("Stopped: too many tool calls", false);
+                        TurnOutcome::Truncated
+                    }
+                    Ok(StopReason::Refusal) => {
+                        self.transcript
+                            .push_note("The agent declined to continue", false);
+                        TurnOutcome::Refused
+                    }
+                    Ok(_) => TurnOutcome::Completed,
+                    Err(err) => {
+                        self.transcript.push_note(err, true);
+                        TurnOutcome::Error
+                    }
+                };
+                let cancelled = outcome == TurnOutcome::Cancelled;
+                self.finish_turn(outcome, "Cancelled");
+                if !cancelled && let Some(next) = self.queue.pop_front() {
                     let sent = self.send_prompt(next);
                     re_log::debug_assert!(
                         sent,
                         "the session is ready and queued prompts are not empty"
                     );
-                }
-                match result {
-                    Ok(StopReason::Cancelled) => self.transcript.push_note("Cancelled", false),
-                    Ok(StopReason::MaxTokens) => {
-                        self.transcript
-                            .push_note("Stopped: token limit reached", false);
-                    }
-                    Ok(StopReason::MaxTurnRequests) => {
-                        self.transcript
-                            .push_note("Stopped: too many tool calls", false);
-                    }
-                    Ok(StopReason::Refusal) => {
-                        self.transcript
-                            .push_note("The agent declined to continue", false);
-                    }
-                    Ok(_) => {}
-                    Err(err) => self.transcript.push_note(err, true),
                 }
             }
             AgentEvent::Log { direction, line } => {
@@ -404,9 +526,7 @@ impl AgentSession {
             }
             AgentEvent::Error(err) => self.transcript.push_note(err, true),
             AgentEvent::Disconnected => {
-                self.turn_in_progress = false;
-                self.transcript
-                    .fail_unfinished_tool_calls("The agent exited before finishing");
+                self.finish_turn(TurnOutcome::Aborted, "The agent exited before finishing");
                 self.phase = Phase::Disconnected {
                     reason: "The agent exited".to_owned(),
                 };
@@ -417,16 +537,237 @@ impl AgentSession {
     }
 }
 
+fn allows(kind: PermissionOptionKind) -> bool {
+    matches!(
+        kind,
+        PermissionOptionKind::AllowOnce | PermissionOptionKind::AllowAlways
+    )
+}
+
+/// The option that lets the tool call proceed, preferring a one-off allow.
+fn allow_option(options: &[PermissionOption]) -> Option<&PermissionOption> {
+    options
+        .iter()
+        .find(|option| option.kind == PermissionOptionKind::AllowOnce)
+        .or_else(|| options.iter().find(|option| allows(option.kind)))
+}
+
+/// Whether `call` only reads or searches, and every path it touches is inside `directories`.
+///
+/// Paths come from the call's locations and from every path-shaped string in its raw input.
+/// A call without any known path is not considered contained, and neither is one that carries
+/// a relative path: that resolves against the agent's working directory, which is the user's
+/// project and not ours to hand out.
+fn is_read_within(call: &ToolCallState, directories: &[PathBuf]) -> bool {
+    if !matches!(call.kind, ToolKind::Read | ToolKind::Search) {
+        return false;
+    }
+
+    let input_paths = call
+        .raw_input
+        .as_ref()
+        .and_then(serde_json::Value::as_object)
+        .into_iter()
+        .flat_map(serde_json::Map::values)
+        .filter_map(serde_json::Value::as_str)
+        .filter(|value| looks_like_path(value))
+        .map(Path::new);
+    let location_paths = call
+        .locations
+        .iter()
+        .map(|location| location.path.as_path());
+    let mut paths = std::iter::chain(location_paths, input_paths).peekable();
+
+    paths.peek().is_some() && paths.all(|path| is_within(path, directories))
+}
+
+/// Whether `value` names a file or directory, rather than a search pattern, a flag, or a word.
+///
+/// A bare word is ambiguous, so it is left to the caller's other checks; anything with a
+/// separator or a dot-segment is treated as a path and must then pass [`is_within`].
+fn looks_like_path(value: &str) -> bool {
+    value.contains('/') || value.contains('\\') || value == "." || value == ".."
+}
+
+/// Whether `path` is an absolute path inside one of `directories`, without `..` that could
+/// escape it.
+fn is_within(path: &Path, directories: &[PathBuf]) -> bool {
+    let has_parent_dir = path
+        .components()
+        .any(|component| component == Component::ParentDir);
+    path.is_absolute()
+        && !has_parent_dir
+        && directories
+            .iter()
+            .any(|directory| path.starts_with(directory))
+}
+
 #[cfg(test)]
 mod tests {
-    use agent_client_protocol::schema::v1::{SessionUpdate, ToolCall, ToolCallId, ToolCallStatus};
+    use agent_client_protocol::schema::v1::{
+        ContentChunk, SessionUpdate, ToolCall, ToolCallContent, ToolCallId, ToolCallLocation,
+        ToolCallStatus,
+    };
 
     use super::*;
 
     #[test]
+    fn turn_report() {
+        let mut session = AgentSession {
+            agent_name: Some("Test Agent".to_owned()),
+            ..Default::default()
+        };
+        session.begin_turn("do the thing".to_owned());
+        if let Some(turn) = &mut session.current_turn {
+            turn.permissions_requested = 2;
+            turn.permissions_rejected = 1;
+        }
+
+        let text = |text: &str| ContentBlock::Text(TextContent::new(text.to_owned()));
+        for update in [
+            SessionUpdate::AgentMessageChunk(ContentChunk::new(text("Looking…"))),
+            SessionUpdate::ToolCall(
+                ToolCall::new("ok-1", "Read a file").status(ToolCallStatus::Completed),
+            ),
+            SessionUpdate::ToolCall(
+                ToolCall::new("bad-1", "Run tests")
+                    .status(ToolCallStatus::Failed)
+                    .content(vec![ToolCallContent::from(text(
+                        "assertion failed\nmore details",
+                    ))]),
+            ),
+            SessionUpdate::ToolCall(
+                ToolCall::new("bad-2", "Fetch")
+                    .status(ToolCallStatus::Failed)
+                    .raw_output(serde_json::json!("timeout")),
+            ),
+            SessionUpdate::AgentMessageChunk(ContentChunk::new(text("Done. Two tools failed."))),
+        ] {
+            session.handle_event(AgentEvent::Update(update));
+        }
+        session.handle_event(AgentEvent::Error("agent hiccup".to_owned()));
+        assert!(session.take_finished_turns().is_empty());
+
+        session.handle_event(AgentEvent::TurnFinished(Ok(StopReason::EndTurn)));
+        assert!(!session.turn_in_progress());
+        let reports = session.take_finished_turns();
+        assert_eq!(reports.len(), 1);
+        let report = &reports[0];
+        assert_eq!(report.agent.as_deref(), Some("Test Agent"));
+        assert_eq!(report.prompt, "do the thing");
+        assert_eq!(report.outcome, TurnOutcome::Completed);
+        assert_eq!(report.response, "Done. Two tools failed.");
+        assert_eq!(report.tool_calls, 3);
+        assert_eq!(
+            report.failed_tool_calls,
+            vec!["Run tests: assertion failed", "Fetch: timeout"]
+        );
+        assert_eq!(report.errors, vec!["agent hiccup"]);
+        assert_eq!(report.permissions_requested, 2);
+        assert_eq!(report.permissions_rejected, 1);
+        assert!(session.take_finished_turns().is_empty());
+
+        // A turn cut short by the agent going away is still reported.
+        session.begin_turn("again".to_owned());
+        session.handle_event(AgentEvent::Disconnected);
+        let reports = session.take_finished_turns();
+        assert_eq!(reports.len(), 1);
+        assert_eq!(reports[0].outcome, TurnOutcome::Aborted);
+        assert_eq!(reports[0].response, "");
+        assert_eq!(reports[0].tool_calls, 0);
+    }
+
+    fn call(
+        kind: ToolKind,
+        locations: &[&str],
+        raw_input: Option<serde_json::Value>,
+    ) -> ToolCallState {
+        ToolCallState {
+            id: ToolCallId::new("call"),
+            title: String::new(),
+            kind,
+            status: ToolCallStatus::Pending,
+            content: Vec::new(),
+            locations: locations
+                .iter()
+                .map(|path| ToolCallLocation::new(PathBuf::from(path)))
+                .collect(),
+            raw_input,
+            raw_output: None,
+        }
+    }
+
+    #[test]
+    fn read_within_directories() {
+        // Only absolute paths are checked, and a Windows path needs a drive letter to be absolute.
+        let root = if cfg!(windows) {
+            "C:/cache/agent"
+        } else {
+            "/cache/agent"
+        };
+        let elsewhere = if cfg!(windows) {
+            "C:/etc/passwd"
+        } else {
+            "/etc/passwd"
+        };
+        let skill = format!("{root}/skills/SKILL.md");
+        let file = format!("{root}/x.md");
+        let sibling = format!("{root}-other/x.md");
+        let escaping = format!("{root}/../secrets");
+
+        let dirs = vec![PathBuf::from(root)];
+        let within = |kind, locations: &[&str], raw_input| {
+            is_read_within(&call(kind, locations, raw_input), &dirs)
+        };
+
+        assert!(within(ToolKind::Read, &[&skill], None));
+        assert!(within(ToolKind::Search, &[root], None));
+        assert!(within(
+            ToolKind::Read,
+            &[],
+            Some(serde_json::json!({ "filepath": file, "limit": 10 })),
+        ));
+
+        // A pattern is not a path, so it neither contains nor disqualifies the call:
+        assert!(within(
+            ToolKind::Search,
+            &[root],
+            Some(serde_json::json!({ "pattern": "fn .*width" })),
+        ));
+
+        assert!(!within(ToolKind::Read, &[], None));
+        assert!(!within(ToolKind::Read, &[&sibling], None));
+        assert!(!within(ToolKind::Read, &[&escaping], None));
+        assert!(!within(ToolKind::Edit, &[&skill], None));
+        assert!(!within(
+            ToolKind::Read,
+            &[&file],
+            Some(serde_json::json!({ "other": elsewhere })),
+        ));
+
+        // A relative path resolves against the agent's working directory, not ours,
+        // even when the reported location looks contained:
+        assert!(!within(
+            ToolKind::Read,
+            &[&file],
+            Some(serde_json::json!({ "filepath": "../../.ssh/id_rsa" })),
+        ));
+        assert!(!within(
+            ToolKind::Read,
+            &[&file],
+            Some(serde_json::json!({ "filepath": "src/secrets.rs" })),
+        ));
+        assert!(!within(
+            ToolKind::Read,
+            &[],
+            Some(serde_json::json!({ "filepath": "." }))
+        ));
+    }
+
+    #[test]
     fn unfinished_tool_calls_fail_when_the_turn_ends() {
         let mut session = AgentSession {
-            turn_in_progress: true,
+            current_turn: Some(TurnStart::testing(0)),
             ..Default::default()
         };
         for (id, status) in [

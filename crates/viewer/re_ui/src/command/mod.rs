@@ -102,11 +102,13 @@ pub fn listen_for_kb_shortcuts(
     let os = egui_ctx.os();
 
     let commands = itertools::chain!(
-        UICommand::iter().flat_map(|cmd| {
-            cmd.kb_shortcuts(os)
-                .into_iter()
-                .map(move |kb_shortcut| (kb_shortcut, Matched::Ui(cmd)))
-        }),
+        UICommand::iter()
+            .filter(|cmd| cmd.is_supported())
+            .flat_map(|cmd| {
+                cmd.kb_shortcuts(os)
+                    .into_iter()
+                    .map(move |kb_shortcut| (kb_shortcut, Matched::Ui(cmd)))
+            }),
         // Timeline commands (space/arrows) are consumed earlier, in `on_begin_pass`
         // via `consume_timeline_shortcut`, so exclude them here to avoid handling them twice.
         RecordingCommandKind::iter()

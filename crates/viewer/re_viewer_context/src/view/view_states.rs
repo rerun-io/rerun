@@ -265,16 +265,7 @@ impl ViewStates {
             .per_visualizer_type_reports(store_id, view_id)
             .into_iter()
             .flat_map(|reports| reports.values())
-            .flat_map(|report| match report {
-                VisualizerTypeReport::OverallError(report) => {
-                    itertools::Either::Left(std::iter::once(&report.diagnostic))
-                }
-                VisualizerTypeReport::PerInstructionReport(reports) => itertools::Either::Right(
-                    reports
-                        .values()
-                        .flat_map(|reports| reports.iter().map(|report| &report.diagnostic)),
-                ),
-            });
+            .flat_map(VisualizerTypeReport::diagnostics);
         std::iter::chain(
             self.view_reports(store_id, view_id).iter(),
             visualizer_reports,

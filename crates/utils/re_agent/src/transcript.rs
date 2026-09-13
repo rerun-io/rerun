@@ -1,9 +1,10 @@
 use std::collections::HashMap;
 
 use agent_client_protocol::schema::v1::{
-    AvailableCommand, ContentBlock, Plan, SessionModeId, SessionUpdate, TextContent, ToolCall,
-    ToolCallContent, ToolCallId, ToolCallLocation, ToolCallStatus, ToolCallUpdate,
-    ToolCallUpdateFields, ToolKind, UsageUpdate,
+    AvailableCommand, ContentBlock, Plan, SessionConfigKind, SessionConfigOption,
+    SessionConfigOptionCategory, SessionConfigSelectOption, SessionConfigSelectOptions,
+    SessionModeId, SessionUpdate, TextContent, ToolCall, ToolCallContent, ToolCallId,
+    ToolCallLocation, ToolCallStatus, ToolCallUpdate, ToolCallUpdateFields, ToolKind, UsageUpdate,
 };
 
 /// The accumulated state of one tool call, patched by later updates.
@@ -167,6 +168,9 @@ pub struct Transcript {
     /// The permission mode the agent reports being in.
     pub current_mode: Option<SessionModeId>,
 
+    /// The agent's configuration, e.g. its model selector, as of its latest update.
+    pub config_options: Vec<SessionConfigOption>,
+
     /// Context-window usage the agent last reported.
     pub usage: Option<UsageUpdate>,
 
@@ -191,6 +195,36 @@ impl Transcript {
             text: text.into(),
             is_error,
         });
+    }
+
+    /// The name of the model the agent says it is using, if it offers a model selector.
+    pub fn current_model(&self) -> Option<&str> {
+        let selector = self
+            .config_options
+            .iter()
+            .find(|option| option.category == Some(SessionConfigOptionCategory::Model))?;
+        let SessionConfigKind::Select(select) = &selector.kind else {
+            return None;
+        };
+        let mut models: Box<dyn Iterator<Item = &SessionConfigSelectOption>> = match &select.options
+        {
+            SessionConfigSelectOptions::Ungrouped(models) => Box::new(models.iter()),
+            SessionConfigSelectOptions::Grouped(groups) => {
+                Box::new(groups.iter().flat_map(|group| &group.options))
+            }
+            _ => return None,
+        };
+
+        // An agent may report a value it does not offer as an option; show it raw rather than
+        // claim it has no model.
+        Some(
+            models
+                .find(|model| model.value == select.current_value)
+                .map_or_else(
+                    || select.current_value.0.as_ref(),
+                    |model| model.name.as_str(),
+                ),
+        )
     }
 
     pub fn tool_call(&self, id: &ToolCallId) -> Option<&ToolCallState> {
@@ -235,6 +269,9 @@ impl Transcript {
             }
             SessionUpdate::CurrentModeUpdate(update) => {
                 self.current_mode = Some(update.current_mode_id);
+            }
+            SessionUpdate::ConfigOptionUpdate(update) => {
+                self.config_options = update.config_options;
             }
             SessionUpdate::UsageUpdate(usage) => {
                 self.usage = Some(usage);
@@ -359,5 +396,81 @@ impl Transcript {
             }
         }
         out
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use agent_client_protocol::schema::v1::{
+        ConfigOptionUpdate, SessionConfigSelectGroup, SessionConfigSelectOption,
+    };
+
+    use super::*;
+
+    fn transcript(config_options: Vec<SessionConfigOption>) -> Transcript {
+        let mut transcript = Transcript::default();
+        transcript.apply(SessionUpdate::ConfigOptionUpdate(ConfigOptionUpdate::new(
+            config_options,
+        )));
+        transcript
+    }
+
+    fn model_selector(current: &'static str) -> SessionConfigOption {
+        SessionConfigOption::select(
+            "model",
+            "Model",
+            current,
+            vec![
+                SessionConfigSelectOption::new("opus", "Opus 4.6"),
+                SessionConfigSelectOption::new("sonnet", "Sonnet 4.5"),
+            ],
+        )
+        .category(SessionConfigOptionCategory::Model)
+    }
+
+    #[test]
+    fn names_the_selected_model() {
+        let options = vec![
+            SessionConfigOption::boolean("brave_mode", "Brave Mode", false),
+            model_selector("sonnet"),
+        ];
+        assert_eq!(transcript(options).current_model(), Some("Sonnet 4.5"));
+    }
+
+    #[test]
+    fn finds_the_selected_model_inside_a_group() {
+        let group = SessionConfigSelectGroup::new(
+            "anthropic",
+            "Anthropic",
+            vec![SessionConfigSelectOption::new("opus", "Opus 4.6")],
+        );
+        let options = vec![
+            SessionConfigOption::select("model", "Model", "opus", vec![group])
+                .category(SessionConfigOptionCategory::Model),
+        ];
+        assert_eq!(transcript(options).current_model(), Some("Opus 4.6"));
+    }
+
+    #[test]
+    fn falls_back_to_the_raw_value_of_a_model_that_is_not_offered() {
+        assert_eq!(
+            transcript(vec![model_selector("haiku")]).current_model(),
+            Some("haiku")
+        );
+    }
+
+    #[test]
+    fn has_no_model_without_a_model_selector() {
+        assert_eq!(Transcript::default().current_model(), None);
+        let modes = vec![
+            SessionConfigOption::select(
+                "mode",
+                "Mode",
+                "normal",
+                vec![SessionConfigSelectOption::new("normal", "Normal")],
+            )
+            .category(SessionConfigOptionCategory::Mode),
+        ];
+        assert_eq!(transcript(modes).current_model(), None);
     }
 }

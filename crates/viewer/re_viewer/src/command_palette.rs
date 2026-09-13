@@ -152,7 +152,7 @@ impl CommandPaletteProvider<CommandPaletteAction> for CommandPaletteProviderImpl
                 .filter_map(|command| {
                     match_command(
                         command.text(),
-                        true,
+                        command.is_supported(),
                         CommandPaletteAction::UiCommand(command),
                     )
                 })

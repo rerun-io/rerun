@@ -5,7 +5,7 @@ mod setup_ui;
 mod tool_call_ui;
 mod transcript_ui;
 
-pub use agent_panel::AgentPanel;
+pub use agent_panel::{AgentPanel, RECOMMENDED_WIDTH};
 
 /// Which of the two views the panel shows.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

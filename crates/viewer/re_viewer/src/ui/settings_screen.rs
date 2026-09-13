@@ -188,6 +188,7 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
 
     {
         let ExperimentalAppOptions {
+            agent_panel,
             gamepad_navigation,
             point_cloud_transparency,
         } = experimental;
@@ -200,9 +201,12 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
             );
         cfg_select! {
             target_arch = "wasm32" => {
-                let _ = gamepad_navigation;
+                let _ = (agent_panel, gamepad_navigation);
             }
             _ => {
+                ui.re_checkbox(agent_panel, "Agent panel").on_hover_text(
+                    "Experimental: chat with your own coding agent in a panel on the right.",
+                );
                 let gamepad_navigation_response = ui
                     .re_checkbox(gamepad_navigation, "Gamepad navigation")
                     .on_hover_text("Enable gamepad navigation in 3D spatial views.");
