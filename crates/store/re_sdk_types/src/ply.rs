@@ -70,20 +70,45 @@ pub enum PlyGeometryClass {
     MeshOrAsset3D,
 }
 
+/// Can this property hold vertex indices we can read?
+///
+/// Only a list of integers carries topology: a scalar has a single value where a face needs
+/// several, and a list of floats is not an index. The viewer's mesh importer reads the same
+/// set, so classification has to agree with it.
+fn is_vertex_index_list(property_def: &ply_rs_bw::ply::PropertyDef) -> bool {
+    use ply_rs_bw::ply::{PropertyType, ScalarType};
+
+    matches!(
+        property_def.data_type,
+        PropertyType::List(
+            _,
+            ScalarType::Char
+                | ScalarType::UChar
+                | ScalarType::Short
+                | ScalarType::UShort
+                | ScalarType::Int
+                | ScalarType::UInt
+        )
+    )
+}
+
 /// Does the header carry topology the viewer can actually read?
 ///
-/// A `face` element with no index property leaves nothing to build a mesh out of. Reading such
-/// a file as a point cloud shows the user their vertices; calling it a mesh would hand the
-/// viewer an `Asset3D` it can only fail on.
+/// A `face` element with no readable index property leaves nothing to build a mesh out of.
+/// Reading such a file as a point cloud shows the user their vertices; calling it a mesh would
+/// hand the viewer an `Asset3D` it can only fail on.
 fn has_readable_faces(header: &ply_rs_bw::ply::Header) -> bool {
     header
         .elements
         .get(ELEMENT_FACE)
         .is_some_and(|element_def| {
             0 < element_def.count
-                && FACE_INDEX_PROPERTIES
-                    .iter()
-                    .any(|name| element_def.properties.contains_key(*name))
+                && FACE_INDEX_PROPERTIES.iter().any(|name| {
+                    element_def
+                        .properties
+                        .get(*name)
+                        .is_some_and(is_vertex_index_list)
+                })
         })
 }
 
