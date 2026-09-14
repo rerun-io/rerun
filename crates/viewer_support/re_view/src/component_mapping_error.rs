@@ -44,7 +44,7 @@ pub enum ComponentMappingError {
 
 impl ComponentMappingError {
     /// Whether the mapping is valid but its source data is unavailable for the current query.
-    pub fn is_data_unavailable_for_query(&self) -> bool {
+    pub fn is_data_temporarily_unavailable(&self) -> bool {
         matches!(
             self,
             Self::NoComponentDataForQuery(_) | Self::NoComponentDataForQueryButIsFetchable(_)

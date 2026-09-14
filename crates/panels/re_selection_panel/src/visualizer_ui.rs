@@ -299,7 +299,13 @@ fn visualizer_components(
         let value_fn = |ui: &mut egui::Ui, _style| {
             let Some(raw_current_value_array) = &raw_current_value_array else {
                 // There's no data, don't pretend otherwise by fetching a default (we've already handled all those cases earlier).
-                ui.label(egui::RichText::new("Missing").color(ui.tokens().error_fg_color));
+                if maybe_unit_chunk.is_ok()
+                    || (matches!(&maybe_unit_chunk, Err(err) if err.is_data_temporarily_unavailable()))
+                {
+                    ui.weak("-");
+                } else {
+                    ui.label(egui::RichText::new("Missing").color(ui.tokens().error_fg_color));
+                }
                 return;
             };
 

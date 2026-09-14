@@ -179,12 +179,11 @@ fn warn_for_missing_mapping(target_component: ComponentIdentifier) {
 
 fn resolve_current_selection_error<'a>(
     mapping_error: Option<&ComponentMappingError>,
-    is_required: bool,
     component_reports: &'a [&re_viewer_context::VisualizerInstructionReport],
 ) -> Option<Cow<'a, str>> {
-    // Error during mapping - data missing is not an error unless this is a required component (after all we *require* data!).
+    // Error during mapping. Don't show temporary unavailability as an error.
     let mapping_error_summary = mapping_error
-        .filter(|err| is_required || !err.is_data_unavailable_for_query())
+        .filter(|err| !err.is_data_temporarily_unavailable())
         .map(ComponentMappingError::summary);
 
     // Errors other than component mapping:
@@ -238,11 +237,7 @@ pub fn source_selector_ui(
     mapping_error: Option<&ComponentMappingError>,
     component_reports: &[&re_viewer_context::VisualizerInstructionReport],
 ) {
-    let is_required = query_info
-        .constraints
-        .is_required_component(mapping_ctx.target_component());
-    let current_selection_error =
-        resolve_current_selection_error(mapping_error, is_required, component_reports);
+    let current_selection_error = resolve_current_selection_error(mapping_error, component_reports);
 
     ui.push_id("source_component", |ui| {
         ui.list_item_flat_noninteractive(list_item::PropertyContent::new(label).value_fn(

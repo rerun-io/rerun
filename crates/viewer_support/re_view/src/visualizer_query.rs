@@ -72,7 +72,7 @@ impl<'a> VisualizerInstructionQueryResults<'a> {
             Ok(chunks) => chunks,
             Err(err) => {
                 // Don't report an error when the component is just still loading or simply not in our range.
-                if !err.is_data_unavailable_for_query() {
+                if !err.is_data_temporarily_unavailable() {
                     let report = VisualizerInstructionReport {
                         diagnostic: ViewerDiagnostic {
                             // Missing a **required** component is always a full error.
