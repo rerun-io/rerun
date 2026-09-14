@@ -125,8 +125,9 @@ pub fn time_axis_time_from_plot(value: TimeReal, time_offset: i64) -> TimeInt {
     TimeInt(rounded.0.saturating_add(time_offset))
 }
 
-/// Preserve each cursor-relative or infinite boundary after zooming or panning.
+/// Preserve each cursor-relative boundary after zooming or panning.
 ///
+/// Infinite boundaries become absolute so the new window can extend beyond the recording.
 /// `min` and `max` are absolute timeline times. Cursor-relative boundaries become absolute if
 /// their new offset cannot be represented.
 pub fn recover_relative_boundaries_after_zoom_or_pan(
@@ -136,14 +137,15 @@ pub fn recover_relative_boundaries_after_zoom_or_pan(
     cursor: TimeInt,
 ) -> TimeRange {
     let boundary = |value: TimeInt, previous| match previous {
-        TimeRangeBoundary::Infinite => TimeRangeBoundary::Infinite,
         TimeRangeBoundary::CursorRelative(_) => value
             .0
             .checked_sub(cursor.0)
             .map_or(TimeRangeBoundary::Absolute(value), |offset| {
                 TimeRangeBoundary::CursorRelative(TimeInt(offset))
             }),
-        TimeRangeBoundary::Absolute(_) => TimeRangeBoundary::Absolute(value),
+        TimeRangeBoundary::Infinite | TimeRangeBoundary::Absolute(_) => {
+            TimeRangeBoundary::Absolute(value)
+        }
     };
 
     TimeRange {
@@ -155,8 +157,79 @@ pub fn recover_relative_boundaries_after_zoom_or_pan(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use TimeRangeBoundary::{Absolute, CursorRelative, Infinite};
 
-    /// The whole point of shifting the boundaries: the window the range denotes doesn't move.
+    /// Pan/zoom must persist the requested window, including when the full recording was visible.
+    #[test]
+    fn test_pan_zoom_boundary_combinations() {
+        let timeline_range = AbsoluteTimeRange::new(0, 100);
+        let cursor = 50;
+
+        // Combination over three test variables:
+        // * target window
+        // * previous start boundary
+        // * previous end boundary
+        for (target_min, target_max) in [(-50, 50), (50, 150), (-50, 150), (25, 75)] {
+            for (previous_start, expected_start) in [
+                (Infinite, Absolute(TimeInt(target_min))),
+                (Absolute(TimeInt(10)), Absolute(TimeInt(target_min))),
+                (
+                    CursorRelative(TimeInt(-20)),
+                    CursorRelative(TimeInt(target_min - cursor)),
+                ),
+            ] {
+                for (previous_end, expected_end) in [
+                    (Infinite, Absolute(TimeInt(target_max))),
+                    (Absolute(TimeInt(90)), Absolute(TimeInt(target_max))),
+                    (
+                        CursorRelative(TimeInt(30)),
+                        CursorRelative(TimeInt(target_max - cursor)),
+                    ),
+                ] {
+                    let previous = TimeRange {
+                        start: previous_start,
+                        end: previous_end,
+                    };
+                    let recovered_range = recover_relative_boundaries_after_zoom_or_pan(
+                        TimeInt(target_min),
+                        TimeInt(target_max),
+                        &previous,
+                        TimeInt(cursor),
+                    );
+                    assert_eq!(
+                        recovered_range,
+                        TimeRange {
+                            start: expected_start,
+                            end: expected_end
+                        },
+                        "previous={previous:?}, window={target_min}..={target_max}",
+                    );
+
+                    // Test what happens when time advances now.
+                    for delta_t in [0, 25] {
+                        let start_cursor_relative = matches!(previous_start, CursorRelative(..));
+                        let end_cursor_relative = matches!(previous_end, CursorRelative(..));
+                        let expected_range = AbsoluteTimeRange::new(
+                            target_min + if start_cursor_relative { delta_t } else { 0 },
+                            target_max + if end_cursor_relative { delta_t } else { 0 },
+                        );
+                        assert_eq!(
+                            resolve_time_axis_range(
+                                &recovered_range,
+                                timeline_range,
+                                TimeInt(cursor + delta_t)
+                            ),
+                            expected_range,
+                            "previous={previous:?}, window={target_min}..={target_max}, cursor delta={delta_t}",
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    /// Moving the cursor must adjust relative offsets so the visible window stays fixed,
+    /// including when only one endpoint is cursor-relative.
     #[test]
     fn test_time_axis_range_after_cursor_move_keeps_window() {
         let timeline_range = AbsoluteTimeRange::new(0, 10_000);
