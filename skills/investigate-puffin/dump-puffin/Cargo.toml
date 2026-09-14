@@ -1,0 +1,17 @@
+[package]
+name = "dump-puffin"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[workspace]
+
+[[bin]]
+name = "dump-puffin"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+puffin = { version = "0.19", features = ["serialization", "lz4", "zstd"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
