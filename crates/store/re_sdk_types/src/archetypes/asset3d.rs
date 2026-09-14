@@ -69,6 +69,7 @@ pub struct Asset3D {
     /// The Media Type of the asset.
     ///
     /// Supported values:
+    /// * `application/x-ply`
     /// * `model/gltf-binary`
     /// * `model/gltf+json`
     /// * `model/obj` (.mtl material files are not supported yet, references are silently ignored)
@@ -351,6 +352,7 @@ impl Asset3D {
     /// The Media Type of the asset.
     ///
     /// Supported values:
+    /// * `application/x-ply`
     /// * `model/gltf-binary`
     /// * `model/gltf+json`
     /// * `model/obj` (.mtl material files are not supported yet, references are silently ignored)

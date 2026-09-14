@@ -19,11 +19,14 @@ All these file loading methods support loading a single file, many files at once
 The following data types have built-in support in the Rerun Viewer and SDK:
 
 -   Native Rerun files: `rrd`
--   3D models: `gltf`, `glb`, `obj`, `stl`
+-   3D models: `gltf`, `glb`, `obj`, `ply`, `stl`
 -   Images: `avif`, `bmp`, `dds`, `exr`, `farbfeld`, `ff`, `gif`, `hdr`, `ico`, `jpeg`, `jpg`, `pam`, `pbm`, `pgm`, `png`, `ppm`, `tga`, `tif`, `tiff`, `webp`
 -   Point clouds: `ply`
 -   Text files: `md`, `txt`
 -   [LeRobot](https://huggingface.co/docs/lerobot/index) datasets: `directory`
+
+A `.ply` file can hold either a mesh or a point cloud, so it is listed twice: its header decides which one you get.
+Point clouds may leave out `z`, in which case they load as 2D.
 
 With the exception of `rrd` files that can be streamed from an HTTP URL (e.g. `rerun https://demo.rerun.io/version/latest/examples/dna/data.rrd`), we only support loading files from the local filesystem for now, with [plans to make this generic over any URI and protocol in the future](https://github.com/rerun-io/rerun/issues/4525).
 

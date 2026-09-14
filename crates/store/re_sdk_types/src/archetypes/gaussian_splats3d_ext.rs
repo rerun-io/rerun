@@ -1,5 +1,7 @@
 use half::f16;
-use ply_rs_bw::ply::{Addable as _, ElementDef, Property, PropertyAccess, PropertyDef};
+use ply_rs_bw::ply::{
+    Addable as _, ElementDef, Property, PropertyAccess, PropertyAccessResult, PropertyDef,
+};
 
 use super::GaussianSplats3D;
 use crate::components::{Color, Position3D, RotationQuat, Scale3D, SphericalHarmonics3Rgb};
@@ -7,10 +9,14 @@ use crate::encodings::Quaternion;
 
 /// The names of the PLY properties used by 3D Gaussian Splatting (3DGS) training checkpoints,
 /// as produced by the reference INRIA implementation and most tools that followed it.
+///
+/// The positions come from [`crate::ply`], since every archetype spells those the same.
 mod prop {
-    pub const X: &str = "x";
-    pub const Y: &str = "y";
-    pub const Z: &str = "z";
+    use crate::ply;
+
+    pub const X: &str = ply::PROP_X;
+    pub const Y: &str = ply::PROP_Y;
+    pub const Z: &str = ply::PROP_Z;
 
     /// Vestigial normals, always zero in practice. Read nowhere, but expected in the header.
     pub const NORMALS: [&str; 3] = ["nx", "ny", "nz"];
@@ -70,8 +76,7 @@ impl GaussianSplats3D {
         re_tracing::profile_function!(filepath.to_string_lossy());
 
         let file = std::fs::File::open(filepath)?;
-        let mut file = std::io::BufReader::new(file);
-        read_ply(&mut file, Some(filepath))
+        read_ply(std::io::BufReader::new(file), Some(filepath))
     }
 
     /// Creates a new [`GaussianSplats3D`] from the contents of a 3D Gaussian Splatting (3DGS) `.ply` file.
@@ -92,8 +97,14 @@ impl GaussianSplats3D {
         filepath: Option<&std::path::Path>,
     ) -> std::io::Result<Self> {
         re_tracing::profile_function!();
-        let mut contents = std::io::Cursor::new(contents);
-        read_ply(&mut contents, filepath)
+        read_ply(std::io::Cursor::new(contents), filepath)
+    }
+
+    /// Do these `vertex` properties look like a 3D Gaussian Splatting (3DGS) reconstruction?
+    ///
+    /// Lets `crate::ply` classify an already-parsed header without re-reading it.
+    pub(crate) fn is_gaussian_splat_vertex_element(element: &ElementDef) -> bool {
+        has_required_splat_properties(element)
     }
 
     /// Does this look like the contents of a 3D Gaussian Splatting (3DGS) `.ply` file?
@@ -102,14 +113,14 @@ impl GaussianSplats3D {
     /// Requires positions, `f_dc_*`, `opacity`, `scale_*`, and `rot_*` properties on the
     /// `vertex` element; the higher-degree `f_rest_*` coefficients are optional.
     pub fn is_gaussian_splat_ply(contents: &[u8]) -> bool {
-        let mut contents = std::io::Cursor::new(contents);
+        let mut contents = ply_rs_bw::parser::Reader::new(std::io::Cursor::new(contents));
         let parser = ply_rs_bw::parser::Parser::<Splat>::new();
         let Ok(header) = parser.read_header(&mut contents) else {
             return false;
         };
         header
             .elements
-            .get("vertex")
+            .get(crate::ply::ELEMENT_VERTEX)
             .is_some_and(has_required_splat_properties)
     }
 }
@@ -122,27 +133,6 @@ fn has_required_splat_properties(element: &ElementDef) -> bool {
         &prop::ROT,
     )
     .all(|p| element.properties.contains_key(*p))
-}
-
-fn f32(prop: &Property) -> Option<f32> {
-    match *prop {
-        Property::Short(v) => Some(v as f32),
-        Property::UShort(v) => Some(v as f32),
-        Property::Int(v) => Some(v as f32),
-        Property::UInt(v) => Some(v as f32),
-        Property::Float(v) => Some(v),
-        Property::Double(v) => Some(v as f32),
-        Property::Char(_)
-        | Property::UChar(_)
-        | Property::ListChar(_)
-        | Property::ListUChar(_)
-        | Property::ListShort(_)
-        | Property::ListUShort(_)
-        | Property::ListInt(_)
-        | Property::ListUInt(_)
-        | Property::ListFloat(_)
-        | Property::ListDouble(_) => None,
-    }
 }
 
 /// Which [`slot`] a `.ply` property is read into, if any.
@@ -221,14 +211,17 @@ impl PropertyAccess for Splat {
         Self::default()
     }
 
-    fn set_property(&mut self, key: &str, property: Property) {
+    fn set_property(&mut self, key: &str, property: Property) -> PropertyAccessResult {
         // Properties that aren't ours kept a name that never parses as a slot index;
         // we warn about them once, up-front, based on the header (see `read_ply`).
         if let Ok(slot) = key.parse::<usize>()
-            && let Some(value) = f32(&property)
+            && let Some(value) = property.to_f32_lossy()
             && let Some(destination) = self.values.get_mut(slot)
         {
             *destination = value;
+            PropertyAccessResult::Set
+        } else {
+            PropertyAccessResult::Ignored
         }
     }
 }
@@ -306,7 +299,7 @@ impl Splat {
 const SPLATS_PER_BATCH: usize = 64 * 1024;
 
 fn read_ply(
-    reader: &mut impl std::io::BufRead,
+    reader: impl std::io::BufRead,
     filepath: Option<&std::path::Path>,
 ) -> std::io::Result<GaussianSplats3D> {
     re_tracing::profile_function!();
@@ -317,10 +310,11 @@ fn read_ply(
     });
 
     let parser = ply_rs_bw::parser::Parser::<Splat>::new();
+    let mut reader = ply_rs_bw::parser::Reader::new(reader);
 
     let header = {
         re_tracing::profile_scope!("read_header");
-        parser.read_header(reader)?
+        parser.read_header(&mut reader)?
     };
 
     let mut centers = Vec::new();
@@ -332,7 +326,7 @@ fn read_ply(
     let mut read_any_splats = false;
 
     for (key, element) in &header.elements {
-        if key != "vertex" {
+        if key != crate::ply::ELEMENT_VERTEX {
             if read_any_splats {
                 // Everything after the gaussians is ignored; we just stop reading here.
                 re_log::warn_once!("Ignoring {key:?} in .ply file{path_suffix}"); // NOLINT path at end
@@ -375,20 +369,13 @@ fn read_ply(
         };
         let has_sh = 0 < num_sh_per_channel;
 
-        let mut ignored_props = std::collections::BTreeSet::new();
-        for prop_name in element.properties.keys() {
-            // Dropped `f_rest_*` coefficients are covered by the warning above, and the normals
-            // are expected to be present even though we have no use for them.
-            let known = prop_name.starts_with(prop::F_REST_PREFIX)
-                || prop::NORMALS.contains(&prop_name.as_str())
-                || slot_of(prop_name, num_sh_per_channel).is_some();
-            if !known {
-                ignored_props.insert(prop_name.clone());
-            }
-        }
-        if !ignored_props.is_empty() {
-            re_log::warn_once!("Ignored properties of .ply file: {ignored_props:?}{path_suffix}"); // NOLINT path at end
-        }
+        // Dropped `f_rest_*` coefficients are covered by the warning above, and the normals
+        // are expected to be present even though we have no use for them.
+        crate::ply::warn_about_unsupported_properties(element, filepath, |name| {
+            name.starts_with(prop::F_REST_PREFIX)
+                || prop::NORMALS.contains(&name)
+                || slot_of(name, num_sh_per_channel).is_some()
+        });
 
         let mut batch = read_plan(element, num_sh_per_channel);
         let mut remaining = element.count;
@@ -398,7 +385,7 @@ fn read_ply(
 
             let splats = {
                 re_tracing::profile_scope!("read_payload");
-                parser.read_payload_for_element(reader, &batch, &header)?
+                parser.read_payload_for_element(&mut reader, &batch, &header)?
             };
 
             centers.reserve(splats.len());

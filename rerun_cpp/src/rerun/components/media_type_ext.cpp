@@ -82,6 +82,13 @@ namespace rerun {
                 return "model/obj";
             }
 
+            /// [PLY (Polygon File Format)](https://en.wikipedia.org/wiki/PLY_(file_format)): `application/x-ply`.
+            ///
+            /// Holds either a mesh or a point cloud, depending on its header.
+            static MediaType ply() {
+                return "application/x-ply";
+            }
+
             /// [Stereolithography Model `stl`](https://en.wikipedia.org/wiki/STL_(file_format)): `model/stl`.
             ///
             /// Either binary or ASCII.
@@ -137,6 +144,8 @@ namespace rerun {
                 return MediaType::gltf();
             } else if (ext == ".obj") {
                 return MediaType::obj();
+            } else if (ext == ".ply") {
+                return MediaType::ply();
             } else if (ext == ".stl") {
                 return MediaType::stl();
             }
