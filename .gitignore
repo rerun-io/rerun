@@ -109,3 +109,6 @@ justfile
 
 # Saved pytest-benchmark results
 /.benchmarks
+
+# Local Git worktrees
+.worktrees/
