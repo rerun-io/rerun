@@ -254,6 +254,57 @@ end_header
         );
     }
 
+    /// A `vertex_indices` that is a scalar holds one number where a face needs at least three,
+    /// so it is no more readable than a missing index property.
+    #[test]
+    fn scalar_vertex_indices_fall_back_to_points() {
+        let contents = br#"ply
+format ascii 1.0
+element vertex 4
+property float x
+property float y
+element face 1
+property int vertex_indices
+end_header
+0 0
+1 0
+1 1
+0 1
+2
+"#;
+
+        assert_imports_as(
+            "scalar_vertex_indices.ply",
+            contents,
+            &Points2D::new([(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)]),
+        );
+    }
+
+    /// A list of floats is not an index list, so it cannot be read as topology either.
+    #[test]
+    fn float_vertex_indices_fall_back_to_points() {
+        let contents = br#"ply
+format ascii 1.0
+element vertex 4
+property float x
+property float y
+element face 1
+property list uchar float vertex_indices
+end_header
+0 0
+1 0
+1 1
+0 1
+3 0.0 1.0 2.0
+"#;
+
+        assert_imports_as(
+            "float_vertex_indices.ply",
+            contents,
+            &Points2D::new([(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)]),
+        );
+    }
+
     /// A declared but empty face element carries no topology, so this is a point cloud.
     #[test]
     fn zero_faces_load_as_points2d() {
