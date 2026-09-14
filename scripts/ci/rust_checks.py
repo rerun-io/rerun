@@ -262,7 +262,7 @@ def cargo_deny(results: list[Result]) -> None:
     # Installing is quite quick if it's already installed.
     results.append(run_cargo("install", "--locked cargo-deny@^0.19"))
 
-    results.append(run_cargo("deny", "--all-features --exclude-dev --log-level error check"))
+    results.append(run_cargo("deny", "--all-features --exclude-dev --log-level warn check"))
 
 
 def denied_sdk_deps(results: list[Result]) -> None:

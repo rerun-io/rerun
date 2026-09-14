@@ -144,7 +144,11 @@ set(CMAKE_DL_LIBS "dl") # Required by Loguru for backtraces
 include(FetchContent)
 FetchContent_Declare(LoguruGitRepo
     GIT_REPOSITORY "https://github.com/emilk/loguru" # can be a filesystem path
-    GIT_TAG "master"
+    # Pinned to a commit rather than to `master`, which every clean build would otherwise
+    # re-resolve: loguru is compiled into the test and snippet binaries, so whoever can push to
+    # that branch runs code in every Rerun C++ build, CI included.
+    # This is the commit tagged v2.2.0 (2026-09-10). A tag is movable, the commit it points at is not.
+    GIT_TAG "ba2240d19baedc5a6727383040ff309810f0f825"
 )
 
 # Loguru does not support being build with BUILD_SHARED_LIBS=ON on Windows
