@@ -472,6 +472,7 @@ tracing-tracy = { version = "0.11.4", default-features = false, features = [
   "code-transfer",
   "context-switch-tracing",
   "enable",
+  "manual-lifetime", # only start the profiler when we ask for it, not before `main`
   "ondemand", # much nicer for a long-lived program
   "system-tracing",
 ] } # no sampling, it's very noisy and not that useful

@@ -1354,7 +1354,9 @@ impl eframe::App for App {
     /// Called when application need to be repainted
     fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
         #[cfg(all(not(target_arch = "wasm32"), feature = "perf_telemetry_tracy"))]
-        re_perf_telemetry::external::tracing_tracy::client::frame_mark();
+        if let Some(tracy) = re_perf_telemetry::external::tracing_tracy::client::Client::running() {
+            tracy.frame_mark();
+        }
 
         #[cfg(not(target_arch = "wasm32"))]
         if let Some(capture) = &self.profile_capture {
