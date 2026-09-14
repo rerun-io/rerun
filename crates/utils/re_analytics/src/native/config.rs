@@ -94,13 +94,12 @@ impl Config {
     }
 
     pub fn save(&self) -> Result<(), ConfigError> {
-        // create data directory
         std::fs::create_dir_all(self.data_dir())?;
-
-        // create config file
         std::fs::create_dir_all(self.config_dir())?;
-        let file = File::create(self.config_file())?;
-        serde_json::to_writer(file, self).map_err(Into::into)
+
+        atomic_file_write(self.config_file(), |file| {
+            serde_json::to_writer(file, self).map_err(ConfigError::Serde)
+        })
     }
 
     pub fn config_dir(&self) -> &Path {
@@ -124,4 +123,29 @@ impl Config {
     fn project_dirs() -> Result<ProjectDirs, ConfigError> {
         ProjectDirs::from("", "", "rerun").ok_or(ConfigError::UnknownLocation)
     }
+}
+
+/// Write a file atomically.
+///
+/// The contents are written to a temporary file which is then renamed into place,
+/// so that a reader in another process never sees a half-written file.
+fn atomic_file_write(
+    path: &Path,
+    write: impl FnOnce(File) -> Result<(), ConfigError>,
+) -> Result<(), ConfigError> {
+    let mut tmp_path = path.as_os_str().to_os_string();
+    tmp_path.push(format!(".{}.tmp", std::process::id()));
+    let tmp_path = PathBuf::from(tmp_path);
+
+    let result = (|| {
+        write(File::create(&tmp_path)?)?;
+        std::fs::rename(&tmp_path, path)?;
+        Ok(())
+    })();
+
+    if result.is_err() {
+        std::fs::remove_file(&tmp_path).ok();
+    }
+
+    result
 }
