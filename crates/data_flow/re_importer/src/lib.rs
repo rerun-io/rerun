@@ -10,7 +10,7 @@
 use std::collections::BTreeSet;
 use std::sync::{Arc, LazyLock};
 
-use itertools::chain;
+use itertools::{Itertools as _, chain};
 use re_chunk::{Chunk, ChunkResult};
 use re_log_msg::{ArrowMsg, LogMsg};
 use re_log_types::{EntityPath, RecordingId, StoreId, TimePoint};
@@ -601,9 +601,12 @@ pub const SUPPORTED_VIDEO_EXTENSIONS: &[&str] = &["mp4"];
 pub const SUPPORTED_AUDIO_EXTENSIONS: &[&str] =
     &["aac", "flac", "m4a", "mp3", "oga", "ogg", "opus", "wav"];
 
-pub const SUPPORTED_MESH_EXTENSIONS: &[&str] = &["glb", "gltf", "obj", "stl", "dae"];
+/// Note that `.ply` is also in [`SUPPORTED_POINT_CLOUD_EXTENSIONS`]: its header decides
+/// whether a given file holds a mesh or a point cloud.
+pub const SUPPORTED_MESH_EXTENSIONS: &[&str] = &["glb", "gltf", "obj", "ply", "stl", "dae"];
 
-// TODO(#4532): `.ply` importer should support 2D point cloud & meshes
+/// Note that `.ply` is also in [`SUPPORTED_MESH_EXTENSIONS`]: its header decides
+/// whether a given file holds a mesh or a point cloud.
 pub const SUPPORTED_POINT_CLOUD_EXTENSIONS: &[&str] = &["ply"];
 
 pub const SUPPORTED_RERUN_EXTENSIONS: &[&str] = &["rbl", "rrd"];
@@ -631,6 +634,7 @@ pub fn supported_extensions() -> impl Iterator<Item = &'static str> {
         SUPPORTED_TEXT_EXTENSIONS,
     )
     .copied()
+    .unique()
 }
 
 /// Is this a supported file extension by any of our builtin [`Importer`]s?
@@ -679,6 +683,16 @@ fn test_supported_extensions() {
     assert!(is_supported_file_extension("mcap"));
     assert!(is_supported_file_extension("png"));
     assert!(is_supported_file_extension("urdf"));
+
+    // `.ply` holds either, so anyone probing the public lists must find it in both.
+    assert!(SUPPORTED_MESH_EXTENSIONS.contains(&"ply"));
+    assert!(SUPPORTED_POINT_CLOUD_EXTENSIONS.contains(&"ply"));
+
+    // …which must not make it show up twice in a file dialog filter.
+    assert_eq!(
+        supported_extensions().filter(|ext| *ext == "ply").count(),
+        1
+    );
 }
 
 #[test]

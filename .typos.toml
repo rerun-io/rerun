@@ -21,6 +21,7 @@ extend-exclude = [
 FUL = "FUL" # forward-up-left coordinate system
 NED = "NED" # north-east-down coordinate system
 Isse = "Isse" # It's a name
+loca = "loca" # TrueType glyph-location table
 lod = "lod" # level-of-detail
 loca = "loca" # OpenType glyph-location table name
 ND = "ND" # np.NDArray
