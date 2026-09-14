@@ -94,11 +94,9 @@ The Rerun command-line interface:
 > [Default: `true`]
 
 * `--port <PORT>`
-> What port do we listen to for SDKs to connect to over gRPC.
+> What port the local Viewer server listens on.
 >
-> Use `auto` to always start a new viewer with a free port if the default is taken.
->
-> [Default: `9876`]
+> The default port is 9876 when not using `--connect`. Use `auto` to always start a new viewer with a free port if the default is taken.
 
 * `--new <NEW>`
 > Alias for `--port auto`. Always start a new viewer.
@@ -132,12 +130,14 @@ The Rerun command-line interface:
 >
 > [Default: `false`]
 
-* `--connect <CONNECT>`
-> Do not attempt to start a new server, instead try to connect to an existing one.
+* `--connect <url/port>`
+> Connect the Viewer to an existing message proxy.
 >
-> Optionally accepts a URL to a gRPC server.
+> The native Viewer still starts its local Viewer server on a free port by default. Use `--port` to select its port.
 >
-> The scheme must be one of `rerun://`, `rerun+http://`, or `rerun+https://`, and the pathname must be `/proxy`.
+> Optionally accepts a URL or port for the upstream message proxy.
+>
+> A port expands to `rerun+http://127.0.0.1:<PORT>/proxy`. A URL's scheme must be one of `rerun://`, `rerun+http://`, or `rerun+https://`, and its pathname must be `/proxy`.
 >
 > The default is `rerun+http://127.0.0.1:9876/proxy`.
 

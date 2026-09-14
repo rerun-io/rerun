@@ -69,7 +69,7 @@ Examples:
     Host a Rerun gRPC server without spawning a Viewer:
         rerun --serve-grpc
 
-    Spawn a Viewer without also hosting a gRPC server:
+    Open a Viewer connected to the default message proxy, while hosting its Viewer server on a free port:
         rerun --connect
 
     Connect to a Rerun Server:
@@ -78,6 +78,8 @@ Examples:
     Listen for incoming gRPC connections from the logging SDK and stream the results to disk:
         rerun --save new_recording.rrd
 "#;
+
+const DEFAULT_VIEWER_SERVER_PORT: u16 = 9876;
 
 /// Port argument that accepts either a port number or `auto`.
 ///
@@ -92,7 +94,7 @@ impl PortArg {
     fn port(&self) -> u16 {
         match self {
             Self::Port(port) => *port,
-            Self::Auto => 9876,
+            Self::Auto => DEFAULT_VIEWER_SERVER_PORT,
         }
     }
 
@@ -207,12 +209,12 @@ When persisted, the state will be stored at the following locations:
     )]
     persist_state: bool,
 
-    /// What port do we listen to for SDKs to connect to over gRPC.
+    /// What port the local Viewer server listens on.
     ///
+    /// The default port is 9876 when not using `--connect`.
     /// Use `auto` to always start a new viewer with a free port if the default is taken.
-    // Default is `re_grpc_server::DEFAULT_SERVER_PORT`, can't use symbollically if `server` feature is disabled
-    #[clap(long, default_value_t = PortArg::Port(9876))]
-    port: PortArg,
+    #[clap(long)]
+    port: Option<PortArg>,
 
     /// Alias for `--port auto`. Always start a new viewer.
     ///
@@ -252,16 +254,20 @@ When persisted, the state will be stored at the following locations:
     #[clap(long)]
     serve_grpc: bool,
 
-    /// Do not attempt to start a new server, instead try to connect to an existing one.
+    /// Connect the Viewer to an existing message proxy.
     ///
-    /// Optionally accepts a URL to a gRPC server.
+    /// The native Viewer still starts its local Viewer server on a free port by default.
+    /// Use `--port` to select its port.
     ///
-    /// The scheme must be one of `rerun://`, `rerun+http://`, or `rerun+https://`,
-    /// and the pathname must be `/proxy`.
+    /// Optionally accepts a URL or port for the upstream message proxy.
+    ///
+    /// A port expands to `rerun+http://127.0.0.1:<PORT>/proxy`.
+    /// A URL's scheme must be one of `rerun://`, `rerun+http://`, or `rerun+https://`,
+    /// and its pathname must be `/proxy`.
     ///
     /// The default is `rerun+http://127.0.0.1:9876/proxy`.
-    #[clap(long)]
-    #[expect(clippy::option_option)] // Tri-state: none, --connect, --connect <url>.
+    #[clap(long, value_name = "url/port")]
+    #[expect(clippy::option_option)] // Tri-state: none, --connect, --connect <url/port>.
     connect: Option<Option<String>>,
 
     /// This is a hint that we expect a recording to stream in very soon.
@@ -1023,10 +1029,15 @@ fn run_impl(
     };
     let async_runtime = re_async::AsyncRuntimeHandle::new_native(tokio_runtime_handle.clone());
 
-    let wants_new = args.new || args.port.is_auto();
-    let port = args.port.port();
+    let wants_new = args.new || args.port.as_ref().is_some_and(PortArg::is_auto);
+    let port = args
+        .port
+        .as_ref()
+        .map_or(DEFAULT_VIEWER_SERVER_PORT, PortArg::port);
 
-    let server_addr = if wants_new
+    let server_addr = if args.connect.is_some() && args.port.is_none() {
+        std::net::SocketAddr::new(args.bind, find_free_port(args.bind)?)
+    } else if wants_new
         && is_another_server_already_running(std::net::SocketAddr::new(args.bind, port))
     {
         let default_port = port;
@@ -1058,14 +1069,17 @@ fn run_impl(
     #[allow(clippy::allow_attributes, unused_mut)]
     let mut url_or_paths = args.url_or_paths.clone();
 
-    // Passing `--connect` accounts to adding a proxy URL to the list of URLs that we want to process.
+    // Treat `--connect` as another proxy URL to process.
     #[cfg(feature = "server")]
-    if let Some(url) = args.connect.clone() {
-        let url = url.unwrap_or_else(|| format!("rerun+http://{server_addr}/proxy"));
-        if let Err(err) = url.as_str().parse::<re_uri::RedapUri>() {
-            anyhow::bail!("expected `/proxy` endpoint: {err}");
+    if let Some(connect) = args.connect.clone() {
+        let uri = connect_proxy_uri(connect)?;
+        if args.port.is_some() && uri.origin().port == server_addr.port() {
+            re_log::warn!(
+                "The Viewer server and upstream message proxy are both configured to use port {}.",
+                server_addr.port()
+            );
         }
-        url_or_paths.push(url);
+        url_or_paths.push(uri.to_string());
     }
 
     // Now what do we do with the data?
@@ -1203,7 +1217,6 @@ fn start_native_viewer(
     let startup_options = native_startup_options_from_args(args)?;
 
     let integration_test = args.integration_test;
-    let connect = args.connect.is_some();
     let renderer = args.renderer.as_deref();
     let assets = args.assets.clone();
     let mut recordings = std::collections::HashSet::new();
@@ -1298,27 +1311,21 @@ fn start_native_viewer(
             }
         }
 
-        // If we're **not** connecting to an existing server, we spawn a new one and add it to the list of receivers.
         #[cfg(feature = "server")]
-        if !connect {
+        {
             // The internal catalog is served (loopback-only) on the proxy server's port below, and
             // also reached in-process by the viewer.
-            #[cfg(not(target_arch = "wasm32"))]
             let internal_catalog = re_viewer::internal_catalog::build(server_addr);
-            #[cfg(not(target_arch = "wasm32"))]
             connection_registry.set_internal(internal_catalog.connection.clone());
 
-            #[cfg_attr(target_arch = "wasm32", expect(unused_mut))]
-            let mut extra_services = re_grpc_server::LoopbackServices::default();
-
-            #[cfg(not(target_arch = "wasm32"))]
-            extra_services.add_service(internal_catalog.grpc_service());
+            let mut loopback_services = re_grpc_server::LoopbackServices::default();
+            loopback_services.add_service(internal_catalog.grpc_service());
 
             let (log_receiver, grpc_server_handle) = re_grpc_server::spawn_with_recv_and_services(
                 server_addr,
                 server_options,
                 re_grpc_server::shutdown::never(),
-                extra_services,
+                loopback_services,
             );
 
             log_receivers.push(log_receiver);
@@ -1589,6 +1596,20 @@ fn save_or_test_receive(
     } else {
         assert_receive_into_entity_db(&receive_set).map(|_db| ())
     }
+}
+
+#[cfg(feature = "server")]
+fn connect_proxy_uri(connect: Option<String>) -> anyhow::Result<re_uri::RedapUri> {
+    let url = match connect {
+        None => "rerun+http://127.0.0.1:9876/proxy".to_owned(),
+        Some(port_or_url) => match port_or_url.parse::<u16>() {
+            Ok(port) => format!("rerun+http://127.0.0.1:{port}/proxy"),
+            Err(_) => port_or_url,
+        },
+    };
+
+    url.parse()
+        .map_err(|err| anyhow::format_err!("expected a port or `/proxy` endpoint: {err}"))
 }
 
 fn find_free_port(bind: std::net::IpAddr) -> anyhow::Result<u16> {
@@ -2141,6 +2162,36 @@ mod cli_data_source_tests {
         let args = Args::try_parse_from(args)?;
         let recordings = local_recordings_for_assets(&args.url_or_paths, &args.assets)?;
         Ok((recordings, args.assets))
+    }
+
+    #[cfg(feature = "server")]
+    #[test]
+    fn connect_and_viewer_server_ports_are_independent() {
+        let args = Args::try_parse_from(["rerun", "--connect", "--port", "1234"]).unwrap();
+        assert!(matches!(args.port, Some(PortArg::Port(1234))));
+        assert_eq!(
+            connect_proxy_uri(None).unwrap().to_string(),
+            "rerun+http://127.0.0.1:9876/proxy"
+        );
+
+        let args = Args::try_parse_from(["rerun", "--connect"]).unwrap();
+        assert!(args.port.is_none());
+        assert_eq!(
+            connect_proxy_uri(None).unwrap().to_string(),
+            "rerun+http://127.0.0.1:9876/proxy"
+        );
+
+        let args = Args::try_parse_from(["rerun", "--port", "auto"]).unwrap();
+        assert!(matches!(args.port, Some(PortArg::Auto)));
+
+        let args = Args::try_parse_from(["rerun", "--connect", "4321", "--port", "1234"]).unwrap();
+        assert!(matches!(args.port, Some(PortArg::Port(1234))));
+        assert_eq!(
+            connect_proxy_uri(Some("4321".to_owned()))
+                .unwrap()
+                .to_string(),
+            "rerun+http://127.0.0.1:4321/proxy"
+        );
     }
 
     #[test]
