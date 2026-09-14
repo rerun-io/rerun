@@ -205,7 +205,9 @@ impl DataframeClientAPI for ConnectionClient {
         &mut self,
         request: tonic::Request<GetDatasetSchemaRequest>,
     ) -> tonic::Result<tonic::Response<GetDatasetSchemaResponse>> {
-        self.inner().get_dataset_schema(request).await
+        let response = self.inner().get_dataset_schema(request).await?;
+        re_redap_client::dataset_revisions().observe_meta(response.get_ref().meta.as_ref());
+        Ok(response)
     }
 
     async fn query_dataset(
@@ -643,15 +645,16 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
                         let mut time_to_first: Option<Duration> = None;
 
                         while let Some(response) = response_stream.next().await {
-                            if time_to_first.is_none() {
-                                time_to_first = Some(queries_start.elapsed());
-                            }
-
                             let response = response.map_err(|err| {
                                 ApiError::tonic(&origin, err, "query_dataset response stream")
                                     .with_trace_id(trace_id)
                                     .into_df_error()
                             })?;
+                            if time_to_first.is_none() {
+                                time_to_first = Some(queries_start.elapsed());
+                                re_redap_client::dataset_revisions()
+                                    .observe_meta(response.meta.as_ref());
+                            }
                             let Some(dataframe_part) = response.data else {
                                 continue;
                             };

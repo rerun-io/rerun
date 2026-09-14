@@ -17,6 +17,11 @@ pub const RERUN_HTTP_HEADER_ENTRY_ID: &str = "x-rerun-entry-id";
 /// while HTTP2 headers only support ASCII.
 pub const RERUN_HTTP_HEADER_ENTRY_NAME: &str = "x-rerun-entry-name-bin";
 
+/// The HTTP header key to pass a minimum dataset revision to dataset read APIs.
+///
+/// Clients may attach this header to write requests, where it is ignored.
+pub const RERUN_HTTP_HEADER_DATASET_REVISION: &str = "x-rerun-dataset-revision";
+
 /// The HTTP header key that all our official gRPC clients use to specify their identity and version.
 ///
 /// All our official gRPC servers make sure to always return a copy of this header to the client as-is, in

@@ -8,6 +8,7 @@ mod chunk_cache;
 mod connection_client;
 mod connection_handle;
 mod connection_registry;
+mod dataset_revisions;
 mod grpc;
 mod registration_handle;
 mod tasks;
@@ -35,6 +36,7 @@ pub use self::connection_registry::{
     ClientCredentialsError, ConnectionRegistry, ConnectionRegistryHandle, CredentialSource,
     Credentials, SourcedCredentials,
 };
+pub use self::dataset_revisions::{DatasetRevisions, dataset_revisions};
 pub use self::grpc::{
     ChunksWithSegment, RedapClientStack, SegmentDownload, StreamingOptions, channel,
     fetch_chunks_response_to_chunk_and_segment_id, stream_blueprint_and_segment_from_server,

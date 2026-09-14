@@ -397,9 +397,11 @@ pub(crate) fn boxed_redap_grpc_client(
     // issues that otherwise prevent `Send` futures from being inferred at consumer sites (e.g.
     // `re_datafusion`'s `make_future_send`).
     let client_stack = tower::util::BoxCloneSyncService::new(
-        client_stack
-            .map_response(|response| response.map(tonic::body::Body::new))
-            .map_err(tonic::Status::from_error),
+        tonic::service::interceptor::InterceptedService::new(client_stack, |request| {
+            Ok(crate::dataset_revisions().stamp(request))
+        })
+        .map_response(|response| response.map(tonic::body::Body::new))
+        .map_err(tonic::Status::from_error),
     );
 
     RerunCloudServiceClient::new(client_stack).max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE)

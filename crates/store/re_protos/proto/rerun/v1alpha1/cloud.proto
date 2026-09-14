@@ -757,7 +757,8 @@ message ScanSegmentTableResponse {
   // Segments metadata as Arrow RecordBatch, with the columns pinned by
   // [`ScanSegmentTableDataframe`](crate::cloud::v1alpha1::ext::ScanSegmentTableDataframe).
   rerun.common.v1alpha1.DataframePart data = 1;
-  // Dataset identity and revision metadata for this response.
+  // Dataset identity and revision for the entire stream.
+  // Set only on the first response message; omitted from subsequent messages.
   DatasetResponseMeta meta = 100;
 }
 
@@ -805,7 +806,8 @@ message ScanDatasetManifestResponse {
   // with the columns pinned by
   // [`ScanDatasetManifestDataframe`](crate::cloud::v1alpha1::ext::ScanDatasetManifestDataframe).
   rerun.common.v1alpha1.DataframePart data = 1;
-  // Dataset identity and revision metadata for this response.
+  // Dataset identity and revision for the entire stream.
+  // Set only on the first response message; omitted from subsequent messages.
   DatasetResponseMeta meta = 100;
 }
 
@@ -855,7 +857,8 @@ message GetRrdManifestResponse {
   // Points at an encoded `rerun.log_msg.v1alpha1.RrdFooter` payload for the client to fetch and decode.
   RrdManifestKey manifest_key = 2;
 
-  // Dataset identity and revision metadata for this response.
+  // Dataset identity and revision for the entire stream.
+  // Set only on the first response message; omitted from subsequent messages.
   DatasetResponseMeta meta = 100;
 }
 
@@ -963,7 +966,8 @@ message QueryDatasetResponse {
   //
   // Every batch of one stream carries the same schema, so clients can concatenate them.
   rerun.common.v1alpha1.DataframePart data = 1;
-  // Dataset identity and revision metadata for this response.
+  // Dataset identity and revision for the entire stream.
+  // Set only on the first response message; omitted from subsequent messages.
   DatasetResponseMeta meta = 100;
 }
 

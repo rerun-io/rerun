@@ -392,6 +392,9 @@ impl<T> RedapClient<T> {
     }
 
     /// Get a mutable reference to the underlying generated gRPC client.
+    ///
+    /// Callers consuming revision-bearing responses must record them with
+    /// [`crate::dataset_revisions()`] before discarding their protobuf metadata.
     //TODO(#10188): this should disappear once we have wrapper for all endpoints and the client code
     //is using them.
     pub fn inner(&mut self) -> &mut RerunCloudServiceClient<T> {
@@ -450,6 +453,12 @@ impl Connection {
                 .max_decoding_message_size(crate::MAX_DECODING_MESSAGE_SIZE),
             |err: std::convert::Infallible| match err {},
         );
+        let service = tonic::service::interceptor::InterceptedService::new(service, |request| {
+            Ok(crate::dataset_revisions().stamp(request))
+        });
+        let service = tower::ServiceExt::<RedapHttpRequest>::map_response(service, |response| {
+            response.map(tonic::body::Body::new)
+        });
         let client = RerunCloudServiceClient::new(tower::util::BoxCloneSyncService::new(service))
             .max_decoding_message_size(crate::MAX_DECODING_MESSAGE_SIZE);
 
@@ -755,6 +764,7 @@ where
                 .await
                 .map_err(|err| ApiError::tonic(&self.origin, err, "/GetDatasetSchema failed"))?,
         );
+        crate::dataset_revisions().observe_meta(inner.meta.as_ref());
         inner.schema().map_err(|err| {
             ApiError::deserialization_with_source(
                 &self.origin,
@@ -920,6 +930,7 @@ where
                     ApiError::tonic(&self.origin, err, "GetSegmentTableSchema failed")
                 })?,
         );
+        crate::dataset_revisions().observe_meta(inner.meta.as_ref());
         inner
             .schema
             .ok_or_else(|| {
@@ -976,7 +987,10 @@ where
             self.origin.clone(),
             response,
             "/ScanSegmentTable",
-        ))
+        )
+        .inspect_first(|response| {
+            crate::dataset_revisions().observe_meta(response.meta.as_ref());
+        }))
     }
 
     /// The record batch in one item of a `/ScanSegmentTable` stream.
@@ -1085,6 +1099,7 @@ where
                     ApiError::tonic(&self.origin, err, "/GetDatasetManifestSchema failed")
                 })?,
         );
+        crate::dataset_revisions().observe_meta(inner.meta.as_ref());
         inner
             .schema
             .ok_or_else(|| {
@@ -1132,7 +1147,10 @@ where
             self.origin.clone(),
             response,
             "/ScanDatasetManifest",
-        );
+        )
+        .inspect_first(|response| {
+            crate::dataset_revisions().observe_meta(response.meta.as_ref());
+        });
         let trace_id = stream.trace_id();
 
         let mut batches = Vec::new();
@@ -1319,7 +1337,10 @@ where
             self.origin.clone(),
             response,
             "/GetRrdManifest",
-        );
+        )
+        .inspect_first(|response| {
+            crate::dataset_revisions().observe_meta(response.meta.as_ref());
+        });
         let trace_id = stream.trace_id();
         let origin = self.origin.clone();
         let stream = stream.then(move |resp| {
@@ -1461,7 +1482,10 @@ where
                     self.origin.clone(),
                     response,
                     "/QueryDataset",
-                ))
+                )
+                .inspect_first(|response| {
+                    crate::dataset_revisions().observe_meta(response.meta.as_ref());
+                }))
             }
         })
         .await

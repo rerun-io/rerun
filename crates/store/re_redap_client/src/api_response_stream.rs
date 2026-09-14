@@ -84,4 +84,23 @@ impl<T: Send + 'static> ApiResponseStream<T> {
             trace_id,
         }
     }
+
+    /// Inspect the first item if successful, before yielding it, preserving stream context.
+    pub fn inspect_first(self, inspect: impl FnOnce(&T) + Send + 'static) -> Self {
+        let origin = self.origin.clone();
+        let trace_id = self.trace_id;
+        let mut inspect = Some(inspect);
+        Self::new(
+            origin,
+            self.map(move |item| {
+                if let Some(inspect) = inspect.take()
+                    && let Ok(response) = &item
+                {
+                    inspect(response);
+                }
+                item
+            }),
+            trace_id,
+        )
+    }
 }

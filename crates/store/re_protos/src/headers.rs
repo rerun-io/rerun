@@ -21,6 +21,8 @@ pub trait RerunHeadersInjectorExt: Sized {
 
     fn with_entry_name(self, entry_name: EntryName) -> Self;
 
+    fn with_dataset_revision(self, revision: u64) -> Self;
+
     fn with_metadata(self, md: &tonic::metadata::MetadataMap) -> Self;
 }
 
@@ -43,6 +45,12 @@ impl<T> RerunHeadersInjectorExt for tonic::Request<T> {
         self
     }
 
+    fn with_dataset_revision(mut self, revision: u64) -> Self {
+        self.metadata_mut()
+            .insert(RERUN_HTTP_HEADER_DATASET_REVISION, revision.into());
+        self
+    }
+
     fn with_metadata(mut self, md: &tonic::metadata::MetadataMap) -> Self {
         if let Some(entry_id) = md.get(RERUN_HTTP_HEADER_ENTRY_ID).cloned() {
             self.metadata_mut()
@@ -52,6 +60,11 @@ impl<T> RerunHeadersInjectorExt for tonic::Request<T> {
         if let Some(entry_name) = md.get_bin(RERUN_HTTP_HEADER_ENTRY_NAME).cloned() {
             self.metadata_mut()
                 .insert_bin(RERUN_HTTP_HEADER_ENTRY_NAME, entry_name);
+        }
+
+        if let Some(revision) = md.get(RERUN_HTTP_HEADER_DATASET_REVISION).cloned() {
+            self.metadata_mut()
+                .insert(RERUN_HTTP_HEADER_DATASET_REVISION, revision);
         }
 
         if let Some(auth) = md.get(HTTP_HEADER_AUTHORIZATION).cloned() {
@@ -74,6 +87,8 @@ pub trait RerunHeadersExtractorExt {
     fn entry_id(&self) -> tonic::Result<Option<re_log_types::EntryId>>;
 
     fn entry_name(&self) -> tonic::Result<Option<EntryName>>;
+
+    fn dataset_revision(&self) -> tonic::Result<Option<u64>>;
 }
 
 impl<T> RerunHeadersExtractorExt for tonic::Request<T> {
@@ -96,6 +111,25 @@ impl<T> RerunHeadersExtractorExt for tonic::Request<T> {
         })?;
 
         Ok(Some(entry_id))
+    }
+
+    fn dataset_revision(&self) -> tonic::Result<Option<u64>> {
+        const HEADER: &str = RERUN_HTTP_HEADER_DATASET_REVISION;
+
+        let Some(revision) = self.metadata().get(HEADER) else {
+            return Ok(None);
+        };
+        let revision = revision.to_str().map_err(|err| {
+            tonic::Status::invalid_argument(format!(
+                "'{revision:?}' is not a valid value for '{HEADER}': {err:#}"
+            ))
+        })?;
+        let revision = revision.parse().map_err(|err| {
+            tonic::Status::invalid_argument(format!(
+                "'{revision}' is not a valid value for '{HEADER}': {err:#}"
+            ))
+        })?;
+        Ok(Some(revision))
     }
 
     fn entry_name(&self) -> tonic::Result<Option<EntryName>> {

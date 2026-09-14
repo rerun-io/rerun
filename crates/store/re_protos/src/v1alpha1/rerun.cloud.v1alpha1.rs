@@ -759,7 +759,8 @@ pub struct ScanSegmentTableResponse {
     /// [`ScanSegmentTableDataframe`](crate::cloud::v1alpha1::ext::ScanSegmentTableDataframe).
     #[prost(message, optional, tag = "1")]
     pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
-    /// Dataset identity and revision metadata for this response.
+    /// Dataset identity and revision for the entire stream.
+    /// Set only on the first response message; omitted from subsequent messages.
     #[prost(message, optional, tag = "100")]
     pub meta: ::core::option::Option<DatasetResponseMeta>,
 }
@@ -849,7 +850,8 @@ pub struct ScanDatasetManifestResponse {
     /// [`ScanDatasetManifestDataframe`](crate::cloud::v1alpha1::ext::ScanDatasetManifestDataframe).
     #[prost(message, optional, tag = "1")]
     pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
-    /// Dataset identity and revision metadata for this response.
+    /// Dataset identity and revision for the entire stream.
+    /// Set only on the first response message; omitted from subsequent messages.
     #[prost(message, optional, tag = "100")]
     pub meta: ::core::option::Option<DatasetResponseMeta>,
 }
@@ -940,7 +942,8 @@ pub struct GetRrdManifestResponse {
     /// Points at an encoded `rerun.log_msg.v1alpha1.RrdFooter` payload for the client to fetch and decode.
     #[prost(message, optional, tag = "2")]
     pub manifest_key: ::core::option::Option<RrdManifestKey>,
-    /// Dataset identity and revision metadata for this response.
+    /// Dataset identity and revision for the entire stream.
+    /// Set only on the first response message; omitted from subsequent messages.
     #[prost(message, optional, tag = "100")]
     pub meta: ::core::option::Option<DatasetResponseMeta>,
 }
@@ -1076,7 +1079,8 @@ pub struct QueryDatasetResponse {
     /// Every batch of one stream carries the same schema, so clients can concatenate them.
     #[prost(message, optional, tag = "1")]
     pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
-    /// Dataset identity and revision metadata for this response.
+    /// Dataset identity and revision for the entire stream.
+    /// Set only on the first response message; omitted from subsequent messages.
     #[prost(message, optional, tag = "100")]
     pub meta: ::core::option::Option<DatasetResponseMeta>,
 }

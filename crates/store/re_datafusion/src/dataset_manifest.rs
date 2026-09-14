@@ -114,7 +114,10 @@ impl GrpcStreamToTable for DatasetManifestProvider {
             self.origin().clone(),
             response,
             "/ScanDatasetManifest",
-        ))
+        )
+        .inspect_first(|response| {
+            re_redap_client::dataset_revisions().observe_meta(response.meta.as_ref());
+        }))
     }
 
     fn supports_filters_pushdown(

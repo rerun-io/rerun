@@ -114,7 +114,10 @@ impl GrpcStreamToTable for SegmentTableProvider {
             self.origin().clone(),
             response,
             "/ScanSegmentTable",
-        ))
+        )
+        .inspect_first(|response| {
+            re_redap_client::dataset_revisions().observe_meta(response.meta.as_ref());
+        }))
     }
 
     fn supports_filters_pushdown(
