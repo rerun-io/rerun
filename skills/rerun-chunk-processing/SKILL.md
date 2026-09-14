@@ -18,6 +18,7 @@ importer skill for each source:
 | URDF robot model (+ joint states → FK)    | `UrdfTree.from_file_path(...).stream()` | `rerun-urdf`    |
 | Parquet table (trajectories, sensor logs) | `ParquetReader(path).stream()`          | `rerun-parquet` |
 | mp4 camera video                          | `Mp4Reader(path).stream()`              | `rerun-mp4`     |
+| HDF5 file (groups → entities)             | `Hdf5Reader(path).stream()`             | none yet        |
 | LeRobot dataset directory                 | built-in importer, then `RrdReader`     | `rerun-lerobot` |
 | Existing RRD                              | `RrdReader(path)`                       | here, below     |
 | Sidecar files (JSON calib, metadata)      | `Chunk.from_columns` + `from_iter`      | here, below     |
@@ -33,7 +34,8 @@ writing any conversion code — most "build it by hand" instincts are wrong here
 
 1. **Source a reader supports?** Use the reader's `.stream()`; never hand-parse
    and re-log. MCAP→`McapReader`, URDF→`UrdfTree`, parquet→`ParquetReader`,
-   mp4→`Mp4Reader`, RRD→`RrdReader`, LeRobot dir→`log_file_from_path`.
+   mp4→`Mp4Reader`, HDF5→`Hdf5Reader`, RRD→`RrdReader`,
+   LeRobot dir→`log_file_from_path`.
 2. **A decoder already emits the archetype?** Foxglove gives `Transform3D`,
    `Pinhole`, `VideoStream` (real sample bytes) ready-made — **pass it through**,
    do not re-derive. Only custom-protobuf topics arrive as `<Name>:message` and
@@ -132,9 +134,9 @@ merged.write_rrd(out_path, application_id="my_app", recording_id=recording_id)
 
 Use `Chunk.from_columns` ONLY for data no reader or lens can emit — JSON/CSV
 calibration, frame offsets, external metadata. If a reader
-(`McapReader`/`UrdfTree`/`ParquetReader`) decodes the topic or a lens can derive
-it, that is the idiomatic path; do not hand-assemble it here. In the
-`robot_data_preprocessing` example the _only_ hand-built chunk is the JSON
+(`McapReader`/`UrdfTree`/`ParquetReader`/`Hdf5Reader`) decodes the topic or a
+lens can derive it, that is the idiomatic path; do not hand-assemble it here.
+In the `robot_data_preprocessing` example the _only_ hand-built chunk is the JSON
 offsets sidecar; the camera fix, FK→`/tf`, meshes, and recolor are all
 readers + lenses.
 
@@ -160,6 +162,35 @@ sidecar_stream = LazyChunkStream.from_iter([chunk])
 inspection, a `Chunk` exposes `entity_path`, `num_rows`, `is_static`,
 `timeline_names`, `to_record_batch()`, and `format()` (human-readable table).
 
+### Recording properties
+
+Recording properties are the one exception here: do NOT hand-build them.
+`Chunk.from_property(name, values)` mirrors `rr.send_property` and lands a
+static chunk on `/__properties/<name>`.
+
+Do this:
+
+```python
+chunk = Chunk.from_property(
+    "episode",
+    rr.AnyValues(task="pick", duration_sec=12.4),
+)
+```
+
+instead of hand-assembling the same chunk:
+
+```python
+Chunk.from_columns(
+    f"/__properties/{name}",
+    indexes=[],
+    columns=rr.AnyValues.columns(**{name: [value]}),  # type: ignore[arg-type]
+)
+```
+
+- `/__properties/` is Rerun's internal layout; the second version hardcodes it.
+- A dynamic field name makes `AnyValues.columns()` need a
+  `# type: ignore[arg-type]`. That suppression is the signal to switch.
+
 ## Lenses
 
 Lenses reshape, fix, or derive components without iterating rows. Apply with
@@ -182,8 +213,8 @@ Output modes, and **the default is `drop_unmatched`**:
   intermediate streams; silently discards everything else if applied broadly.
 - `forward_unmatched`: lens outputs plus the original components no lens
   consumed. Right for targeted fixes that preserve the rest of the stream.
-- `forward_all`: lens outputs plus all originals, including consumed ones. Can
-  duplicate data.
+- `forward_all`: lens outputs plus every original component, including a
+  `DeriveLens` input. Same as `forward_unmatched` for mutate lenses.
 
 In-place fix (keep Arrow type and length intact):
 

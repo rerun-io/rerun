@@ -19,7 +19,7 @@ For exact signatures, the docs at `rerun.io/docs/concepts/logging-and-ingestion`
 
 Modeling decides _what_ each datum becomes; this decides _how_ it gets there — and the default is **a reader + lenses, not hand-built chunks**:
 
-- **Does a reader exist for this source?** MCAP→`McapReader`, URDF→`UrdfTree`, parquet→`ParquetReader`, RRD→`RrdReader`, LeRobot dir→`log_file_from_path`. **Yes →** `reader.stream()` + lenses; the reader produces the chunks, you do not.
+- **Does a reader exist for this source?** MCAP→`McapReader`, URDF→`UrdfTree`, parquet→`ParquetReader`, HDF5→`Hdf5Reader`, RRD→`RrdReader`, LeRobot dir→`log_file_from_path`. **Yes →** `reader.stream()` + lenses; the reader produces the chunks, you do not.
 - **No, and it is genuine external metadata** (JSON calibration, offsets) or a specific custom use case that can't be covered by a generic reader**→** `Chunk.from_columns`.
 - **Otherwise**: consider if you are about to hand-build something a reader or lens should produce and ask for clarification.
 
@@ -77,6 +77,7 @@ Keep them separate `.rrd`s.
 - **Cameras**: extrinsics (`Transform3D`) + intrinsics (`Pinhole`) on the camera entity, image/depth as **children** so they inherit the projection.
 - **Video**: `VideoStream` for compressed samples — the default for an mp4 (`rerun-mp4`) and what the Foxglove decoder already hands you. `AssetVideo`+`VideoFrameReference` is the fallback for a codec `VideoStream` cannot represent.
 - **Columnar ingest**: for an existing _file_, use the matching reader (`rerun-mcap`/`-parquet`/`-mp4`/`-lerobot`), which produces chunks directly — do not hand-assemble `send_columns` from a custom parser. When you do log columns directly (live logging), `send_columns` adds **no** automatic timelines, so pass every timeline you want.
+- **Custom data**: do not force unsupported data into an unrelated archetype. Consider `DynamicArchetype` or `AnyValues` instead. `DynamicArchetype` is for a meaningful group of custom components; `AnyValues` is for miscellaneous values that do not form a recognizable object or source type.
 
 ## Gotchas that cause real failures
 
