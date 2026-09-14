@@ -288,9 +288,8 @@ pub fn load_keypoint_connections(
         } in &class_description.keypoint_connections
         {
             let (Some(a), Some(b)) = (keypoints_in_class.get(a), keypoints_in_class.get(b)) else {
-                re_log::warn_once!(
-                    "Keypoint connection from index {a:?} to {b:?} could not be resolved in entity {ent_path:?}"
-                );
+                // This may be a user error or we don't have the annotation context loaded yet.
+                // Pretty hard to tell unfortunately, so we just swallow the error for now and don't report it.
                 continue;
             };
             line_batch
