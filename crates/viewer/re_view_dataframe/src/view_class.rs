@@ -4,7 +4,7 @@ use re_chunk_store::{ColumnDescriptor, SparseFillStrategy};
 use re_dataframe::QueryEngine;
 use re_log_types::{EntityPath, TimeInt};
 use re_types_core::ViewClassIdentifier;
-use re_ui::{Help, UiExt as _};
+use re_ui::{Help, UiExt as _, list_item};
 use re_viewer_context::{
     Item, SystemCommand, SystemCommandSender as _, SystemExecutionOutput, ViewClass,
     ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _,
@@ -117,7 +117,9 @@ Configure in the selection panel:
     ) -> Result<(), ViewSystemExecutionError> {
         let state = state.downcast_mut::<DataframeViewState>()?;
         let view_query = view_query::Query::from_blueprint(ctx, view_id);
-        view_query.selection_panel_ui(ctx, ui, view_id, state.view_columns.as_deref())
+        list_item::list_item_scope_in_place(ui, "dataframe_selection_ui", |ui| {
+            view_query.selection_panel_ui(ctx, ui, view_id, state.view_columns.as_deref())
+        })
     }
 
     fn ui(

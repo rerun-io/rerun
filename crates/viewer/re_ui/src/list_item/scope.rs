@@ -218,7 +218,7 @@ impl LayoutInfoStack {
             let stack: &mut Self = writer.get_temp_mut_or_default(egui::Id::NULL);
             let state = stack.0.last();
             if state.is_none() {
-                re_log::warn_once!(
+                re_log::debug_warn_once!(
                     "Attempted to access empty LayoutInfo stack, returning default LayoutInfo. \
                     Wrap all calls to ListItem in a list_item_scope()."
                 );
@@ -264,14 +264,43 @@ impl LayoutInfoStack {
 /// - Uses [`egui::Ui::push_id`] so two sibling `list_item_scope`:s with different ids won't have id clashes within them.
 /// - The `ui.spacing_mut().item_spacing.y` is set to `0.0` to remove the default spacing between
 ///   list items.
+///
+/// See [`list_item_scope_in_place`] for a variant that doesn't create a child [`egui::Ui`].
 pub fn list_item_scope<R>(
     ui: &mut egui::Ui,
     id_salt: impl egui::AsId,
     content: impl FnOnce(&mut egui::Ui) -> R,
 ) -> InnerResponse<R> {
+    let id_salt = egui::Id::new(id_salt); // So we can use it twice
+
+    with_layout_info(ui, id_salt, |ui| {
+        ui.push_id(id_salt, |ui| {
+            ui.spacing_mut().item_spacing.y = 0.0;
+            content(ui)
+        })
+    })
+}
+
+/// Same as [`list_item_scope`], but runs `content` on the given [`egui::Ui`] instead of a child one.
+///
+/// The content stays a direct part of the surrounding layout, and keeps the ui's
+/// `item_spacing`.
+pub fn list_item_scope_in_place<R>(
+    ui: &mut egui::Ui,
+    id_salt: impl egui::AsId,
+    content: impl FnOnce(&mut egui::Ui) -> R,
+) -> R {
+    with_layout_info(ui, egui::Id::new(id_salt), content)
+}
+
+/// Set up the [`LayoutInfo`] for `content`, without touching the layout itself.
+fn with_layout_info<R>(
+    ui: &mut egui::Ui,
+    id_salt: egui::Id,
+    content: impl FnOnce(&mut egui::Ui) -> R,
+) -> R {
     ui.sanity_check();
 
-    let id_salt = egui::Id::new(id_salt); // So we can use it twice
     let scope_id = ui.id().with(id_salt);
 
     // read last frame layout statistics and reset for the new frame
@@ -301,11 +330,8 @@ pub fn list_item_scope<R>(
     let is_root = ListItemNavigation::init_if_root(ui.ctx());
 
     // push, run, pop
-    LayoutInfoStack::push(ui.ctx(), state.clone());
-    let response = ui.push_id(id_salt, |ui| {
-        ui.spacing_mut().item_spacing.y = 0.0;
-        content(ui)
-    });
+    LayoutInfoStack::push(ui.ctx(), state);
+    let result = content(ui);
     LayoutInfoStack::pop(ui.ctx());
 
     if is_root {
@@ -314,5 +340,5 @@ pub fn list_item_scope<R>(
 
     ui.sanity_check();
 
-    response
+    result
 }
