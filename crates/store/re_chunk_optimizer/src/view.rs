@@ -1,4 +1,5 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashSet};
+use std::sync::Arc;
 
 use itertools::{Either, izip};
 
@@ -43,7 +44,32 @@ pub struct ChunkMeta {
     /// Component columns with data in this chunk — a non-null range on some timeline, or the
     /// static flag — with the type each carries when it has one. An all-null temporal column is
     /// absent.
-    pub components: BTreeMap<ComponentIdentifier, Option<ComponentType>>,
+    pub components: ComponentSet,
+}
+
+/// The component columns of one chunk, each with its type when it has one.
+///
+/// Shared by every chunk of the view that carries the same columns. A recording's chunks fall
+/// into a handful of column sets, so an owned map per chunk would grow the view with the chunk
+/// count for no information.
+pub type ComponentSet = Arc<BTreeMap<ComponentIdentifier, Option<ComponentType>>>;
+
+/// Hands out [`ComponentSet`]s, one shared allocation per distinct set.
+#[derive(Default)]
+struct ComponentSetInterner(HashSet<ComponentSet>);
+
+impl ComponentSetInterner {
+    fn intern(
+        &mut self,
+        components: BTreeMap<ComponentIdentifier, Option<ComponentType>>,
+    ) -> ComponentSet {
+        if let Some(set) = self.0.get(&components) {
+            return set.clone();
+        }
+        let set = Arc::new(components);
+        self.0.insert(set.clone());
+        set
+    }
 }
 
 /// One chunk's presence on one timeline.
@@ -163,6 +189,7 @@ impl ChunkIndexView {
         );
 
         let mut components = components_per_chunk(raw)?;
+        let mut component_sets = ComponentSetInterner::default();
 
         let mut chunks: Vec<ChunkMeta> = Vec::with_capacity(raw.data.num_rows());
         let mut idx_by_chunk_id: BTreeMap<ChunkId, ChunkIdx> = BTreeMap::new();
@@ -198,7 +225,7 @@ impl ChunkIndexView {
                 rrd_byte_offset: byte_offset,
                 rrd_byte_size: byte_size,
                 byte_size_uncompressed,
-                components: std::mem::take(&mut components[i]),
+                components: component_sets.intern(std::mem::take(&mut components[i])),
             });
         }
 
@@ -463,7 +490,7 @@ mod tests {
         let static_meta = view.chunk(static_entity.static_chunks[0]);
         assert!(static_meta.is_static);
         assert_eq!(
-            static_meta.components,
+            *static_meta.components,
             BTreeMap::from([(
                 MyPoints::descriptor_colors().component,
                 Some(MyColor::name())
@@ -482,7 +509,7 @@ mod tests {
         let colors_meta = view.chunk(spans[0].chunk);
         assert_eq!(colors_meta.num_rows, 2);
         assert_eq!(
-            colors_meta.components,
+            *colors_meta.components,
             BTreeMap::from([(
                 MyPoints::descriptor_colors().component,
                 Some(MyColor::name())
@@ -494,7 +521,7 @@ mod tests {
         let mixed_meta = view.chunk(spans[1].chunk);
         assert_eq!(mixed_meta.chunk_id, ChunkId::from_u128(3));
         assert_eq!(
-            mixed_meta.components,
+            *mixed_meta.components,
             BTreeMap::from([
                 (
                     MyPoints::descriptor_points().component,

@@ -241,7 +241,7 @@ fn resolve_own_columns(
         BTreeMap::new();
     for (_, meta) in view.chunks() {
         let entity_types = types.entry(&meta.entity_path).or_default();
-        for (&column, component_type) in &meta.components {
+        for (&column, component_type) in meta.components.iter() {
             let column_types = entity_types.entry(column).or_default();
             column_types.extend(component_type);
         }
