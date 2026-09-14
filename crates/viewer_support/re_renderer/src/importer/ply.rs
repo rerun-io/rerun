@@ -394,7 +394,7 @@ fn vertex_unknown_props(element_def: &ply_rs_bw::ply::ElementDef) -> BTreeSet<St
 fn missing_face_indices_error() -> std::io::Error {
     std::io::Error::new(
         std::io::ErrorKind::InvalidData,
-        "PLY mesh faces require \"vertex_indices\" or \"vertex_index\" list properties",
+        "PLY mesh faces require \"vertex_indices\" or \"vertex_index\" as a list of integers",
     )
 }
 
@@ -772,8 +772,10 @@ end_header
         );
     }
 
+    /// A list of floats is not an index list, and the header says so, so this is rejected
+    /// before any payload is read.
     #[test]
-    fn ply_rejects_supported_face_properties_with_unsupported_types() {
+    fn ply_rejects_float_list_face_indices() {
         let contents = br#"ply
 format ascii 1.0
 element vertex 3
@@ -792,7 +794,31 @@ end_header
         let err = parse_ply_mesh_from_buffer(contents).unwrap_err();
 
         assert_eq!(err.kind(), std::io::ErrorKind::InvalidData);
-        assert!(err.to_string().contains("PLY property 'vertex_indices'"));
+        assert!(err.to_string().contains("as a list of integers"));
+    }
+
+    /// A scalar holds one number where a face needs at least three.
+    #[test]
+    fn ply_rejects_scalar_face_indices() {
+        let contents = br#"ply
+format ascii 1.0
+element vertex 3
+property float x
+property float y
+property float z
+element face 1
+property int vertex_indices
+end_header
+0 0 0
+1 0 0
+0 1 0
+2
+"#;
+
+        let err = parse_ply_mesh_from_buffer(contents).unwrap_err();
+
+        assert_eq!(err.kind(), std::io::ErrorKind::InvalidData);
+        assert!(err.to_string().contains("as a list of integers"));
     }
 
     #[test]
