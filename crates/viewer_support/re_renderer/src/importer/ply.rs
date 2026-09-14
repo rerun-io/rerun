@@ -46,6 +46,29 @@ impl PlyFaceIndexProperty {
     }
 }
 
+/// Can this property hold vertex indices we can read?
+///
+/// Only a list of integers carries topology: a scalar has a single value where a face needs
+/// several, and a list of floats is not an index. This is exactly what
+/// [`ply_rs_bw::ply::Property::to_u32_list`] accepts, so a property that passes here is one the
+/// payload reader below can also use.
+fn is_vertex_index_list(property_def: &ply_rs_bw::ply::PropertyDef) -> bool {
+    use ply_rs_bw::ply::{PropertyType, ScalarType};
+
+    matches!(
+        property_def.data_type,
+        PropertyType::List(
+            _,
+            ScalarType::Char
+                | ScalarType::UChar
+                | ScalarType::Short
+                | ScalarType::UShort
+                | ScalarType::Int
+                | ScalarType::UInt
+        )
+    )
+}
+
 fn classify_face_index_property(
     element_def: &ply_rs_bw::ply::ElementDef,
 ) -> Option<PlyFaceIndexProperty> {
@@ -57,7 +80,8 @@ fn classify_face_index_property(
     .find(|property| {
         element_def
             .properties
-            .contains_key(property.property_name())
+            .get(property.property_name())
+            .is_some_and(is_vertex_index_list)
     })
 }
 
@@ -275,6 +299,12 @@ impl ply_rs_bw::ply::PropertyAccess for ParsedMeshVertex {
     }
 }
 
+/// Split a face into triangles by fanning out from its first vertex.
+///
+/// Triangles and quads, which is what `.ply` faces are in practice, come out exact. A concave
+/// polygon with five or more vertices does not: the fan can cover area outside it. Handling
+/// those would take a real triangulator (ear clipping on the face's plane), which no `.ply` we
+/// have seen calls for.
 fn triangulate_face(indices: &[u32]) -> impl Iterator<Item = glam::UVec3> + '_ {
     indices[1..]
         .windows(2)
