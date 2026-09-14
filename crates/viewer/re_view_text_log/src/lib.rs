@@ -2,6 +2,7 @@
 //!
 //! A View that shows `TextLog` entries in a table and scrolls with the active time.
 
+mod row_layout;
 mod view_class;
 mod visualizer_system;
 
