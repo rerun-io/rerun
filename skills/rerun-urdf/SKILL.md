@@ -18,6 +18,35 @@ in the scene connect to one root. The stream/lens plumbing (`LazyChunkStream`,
 tied to a data format: where your joint names, joint values, and calibration
 come from is yours to wire in.
 
+## Getting the URDF
+
+Datasets rarely ship one, and the robot's own repo is not always the fastest route.
+In order:
+
+- [`robot_descriptions.py`](https://github.com/robot-descriptions/robot_descriptions.py) — `pip install robot_descriptions`, then `from robot_descriptions import ur5e_description; ur5e_description.URDF_PATH`.
+  It downloads and caches the upstream description and hands you a plain path with the meshes already next to it.
+  Check its index first; it covers most of the table below.
+- The vendor repo, when the description is newer than the package's pin or is not in it.
+- [MuJoCo Menagerie](https://github.com/google-deepmind/mujoco_menagerie) — MJCF, not URDF, so it needs conversion. Worth it only when nothing else exists.
+
+| Robot                        | Source                                                                                                                    | Notes                                                                                                   |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| SO-100 / SO-101 (LeRobot)    | [TheRobotStudio/SO-ARM100](https://github.com/TheRobotStudio/SO-ARM100)                                                   | `Simulation/SO100/so100.urdf`, `Simulation/SO101/so101_new_calib.urdf`; plain URDF, relative mesh paths |
+| ALOHA (ViperX 300, WidowX)   | [Interbotix/interbotix_ros_manipulators](https://github.com/Interbotix/interbotix_ros_manipulators)                       | xacro                                                                                                   |
+| Franka Panda / FR3           | [frankaemika/franka_description](https://github.com/frankaemika/franka_description)                                       | xacro                                                                                                   |
+| Universal Robots UR3 to UR20 | [UniversalRobots/Universal_Robots_ROS2_Description](https://github.com/UniversalRobots/Universal_Robots_ROS2_Description) | xacro, arm parameters in YAML                                                                           |
+| Kinova Gen3                  | [Kinovarobotics/ros2_kortex](https://github.com/Kinovarobotics/ros2_kortex)                                               | xacro                                                                                                   |
+| UFactory xArm / Lite 6       | [xArm-Developer/xarm_ros2](https://github.com/xArm-Developer/xarm_ros2)                                                   | xacro                                                                                                   |
+| Unitree Z1, G1, H1, Go2      | [unitreerobotics/unitree_ros](https://github.com/unitreerobotics/unitree_ros)                                             | plain URDF per robot                                                                                    |
+
+Two things bite before FK ever runs:
+
+- **xacro is not URDF.** First run `xacro arm.urdf.xacro > arm.urdf` (`pip install xacro`), passing whatever arguments the file requires (gripper variant, arm size).
+  A xacro file handed to `UrdfTree.from_file_path` fails to parse.
+- **`package://` mesh URIs.** The importer resolves them by scanning `ROS_PACKAGE_PATH` (ROS 1) and `AMENT_PREFIX_PATH` (ROS 2) for the package, and otherwise treats the rest of the URI as relative to the URDF's own directory.
+  Outside a sourced ROS workspace, either export one of those variables or lay the meshes out relative to the URDF.
+  Meshes that fail to resolve give you a kinematically correct but invisible robot.
+
 ## The API
 
 ```python
@@ -96,6 +125,39 @@ hand it, and the mapping is not in the URDF. Three things go wrong silently:
   if your source differs.
 
 Get any of these wrong and FK runs and writes a confident, wrong pose.
+
+### Verify joint mapping and limits
+
+Joint values in the source data aren't guaranteed to be within URDF joint limits.
+This can happen with any format (MCAP, Parquet, etc).
+It is therefore useful to check whether joint values in the data match the URDF model's limits.
+Out-of-range values can indicate issues like wrong indexing or model mismatch and should be clarified before calculating the forward kinematics.
+
+To get limits of a URDF model:
+
+```python
+limits = {joint.name: (joint.limit_lower, joint.limit_upper) for joint in urdf.joints() if joint.joint_type != "fixed"}
+# then compare each column's min/max against its joint's range
+```
+
+`scripts/check_joint_mapping.py` is that check worked out for one source shape — a LeRobot-style parquet column of per-frame joint values.
+Read it as the example to copy and adapt for your own format, and run it directly if your data is already a LeRobot-style parquet file:
+
+```bash
+uv run scripts/check_joint_mapping.py <urdf> <values.parquet> --column observation.state --degrees
+```
+
+**Important:** this is a validation meant to be done before full processing — don't run this for _every_ file in a larger dataset.
+Select a single representative file or a small subset for this verification.
+
+For each joint it tries the usual candidate corrections (identity, negate, `% 360`, ±90°/±180° offsets, and their combinations) and reports which ones land inside that joint's limits.
+It reports the fit, not the answer: a joint with two surviving candidates is **ambiguous**, and no amount of range-checking will separate them.
+Validate ambiguous mappings against known poses or geometry for the dataset.
+
+**Read the failures by shape.**
+A whole column outside its range means a wrong sign, unit, or offset — a bug, and the pose will be confidently wrong.
+A few frames a few degrees past a limit is calibration slack — expected, and `clamp=True` is the fix, not a workaround.
+`clamp=True` warns once per offending row, so run it while working out the mapping: a flood of warnings is a mapping smell, and a thin trickle at the extremes of one joint is a healthy recording.
 
 ## Make the joint states readable first
 
@@ -243,6 +305,28 @@ LazyChunkStream.merge(model, fk).collect(optimize=OptimizationProfile.OBJECT_STO
 the only data-specific pieces, and the mapping section above is what makes them
 correct.
 
+## One URDF for a whole dataset (assets)
+
+`urdf.stream()` emits only static chunks — meshes and fixed-joint transforms, with no time index.
+The model does not belong in a per-episode layer, where every segment pays for the same meshes.
+Register it once as a dataset **asset**:
+
+```python
+urdf.stream().collect(optimize=OptimizationProfile.OBJECT_STORE).write_rrd(
+    model_rrd, application_id="urdf", recording_id="so100_model"
+)
+asset_id = dataset.register_asset("s3://bucket/so100_model.rrd")  # uri must be readable by the server
+```
+
+The split is along static vs temporal: the **model** is an asset, and the **FK transforms** stay a per-segment layer keyed by `recording_id`.
+Keeping `include_joint_transforms=True` in the asset costs nothing and gives the rest pose for segments or time ranges the FK layer does not cover.
+
+- The viewer loads a dataset's assets alongside any segment it opens, and caches them across segments.
+- `dataset.segment_store(segment_id)` includes assets; pass `include_assets=False` to skip the extra manifest request per asset.
+- Dataframe queries never see assets — they stay on the dataset's own segments.
+
+Without a catalog, the same split still pays: write the model RRD once and open it next to whichever episode you are looking at, rather than copying it into each one.
+
 ## Gotchas that cause real failures
 
 1. Empty layer, no error: dead joint-state source (decoded to zero rows; see the importer skill for your format) or wrong `JOINT_SOURCE_PATH`/component name.
@@ -251,14 +335,16 @@ correct.
 4. Frames collide: two robots sharing a `frame_prefix`.
 5. Scene looks merged at the origin: unconnected roots logged as identity without a calibration edge.
 6. Catalog ingest rejects or misorders chunks: `OBJECT_STORE` optimization skipped.
+7. Layer opened in a running viewer never merges: opening an `.rrd` **by path** registers it as its own dataset and replaces its `application_id`, so it lands beside the segment instead of on it.
+   To eyeball a layer locally, either merge model + FK + base into one RRD, or send both through a `RecordingStream(application_id, recording_id=segment_id)` pointed at the viewer with `rec.connect_grpc(url="rerun+http://127.0.0.1:9876/proxy")`, which keeps the IDs and merges the stores.
+8. Robot invisible but transforms correct: meshes failed to resolve (see "Getting the URDF").
+9. No 3D view after adding a URDF to an existing recording: the auto-layout does not necessarily rebuild for the new entities. Send an explicit blueprint with `rrb.Spatial3DView(origin="/robot")` (see `rerun-blueprint`).
 
 ## References
 
-- `https://github.com/rerun-io/rerun/tree/main/examples/python/robot_data_preprocessing`
-  (FK two-lens pattern, two robots + scene URDFs, prefixes, recoloring,
-  calibration offsets)
-- `https://github.com/rerun-io/rerun/tree/main/examples/python/animated_urdf`
-  (classic logging API: `log_urdf_to_recording`, per-joint `compute_transform`)
+- `https://github.com/rerun-io/rerun/tree/main/examples/python/robot_data_preprocessing` (FK two-lens pattern, two robots + scene URDFs, prefixes, recoloring, calibration offsets)
+- `https://github.com/rerun-io/rerun/tree/main/examples/python/animated_urdf` (classic logging API: `log_urdf_to_recording`, per-joint `compute_transform`)
+- [Catalog object model: assets](https://rerun.io/docs/concepts/query-and-transform/catalog-object-model#assets) (`register_asset`, the limits, and how assets are read back)
 - `rerun-data-model` (the mapping table this skill consumes)
 - the importer skill for your joint-state source format (making the source readable)
 - `rerun-chunk-processing` (lens/stream, write/optimize mechanics)
