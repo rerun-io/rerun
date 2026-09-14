@@ -10,7 +10,7 @@ use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
     IdentifiedViewSystem, ViewClass as _, ViewContext, ViewContextCollection, ViewQuery,
     ViewSystemExecutionError, ViewerReportSeverity, VisualizabilityConstraints,
-    VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
+    VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
 };
 
 use super::{SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget};
@@ -187,9 +187,19 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
                 Some(instruction),
             );
 
-            let axis_length: f32 = results
-                .get_mono_with_fallback::<AxisLength>(axis_length_identifier)
-                .into();
+            let (axis_length, axis_length_is_fallback) = results
+                .get_mono::<AxisLength>(axis_length_identifier)
+                .map(|axis_length| (axis_length.into(), false))
+                .unwrap_or_else(|| {
+                    (
+                        typed_fallback_for::<AxisLength>(
+                            results.query_context(),
+                            axis_length_identifier,
+                        )
+                        .into(),
+                        true,
+                    )
+                });
 
             if axis_length == 0.0 {
                 // Don't draw axis and don't add to the bounding box!
@@ -229,10 +239,9 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
                     }
                 }
 
-                // Only add the center to the bounding box - the lines may be dependent on the bounding box, causing a feedback loop otherwise.
                 data.add_bounding_box_3d(
                     data_result.entity_path.hash(),
-                    macaw::BoundingBox::ZERO,
+                    axis_bounding_box(axis_length, axis_length_is_fallback),
                     *world_from_obj,
                 );
 
@@ -267,6 +276,22 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
             .with_draw_data([line_builder.into_draw_data()?.into()])
             .with_visualizer_data(data))
     }
+}
+
+/// Returns the bounding box in the local coordinate frame of the transform axes.
+///
+/// Explicit axis lengths include the full gizmo.
+/// Fallback axis lengths depend on scene bounds, so they must remain origin-only to avoid a feedback loop.
+fn axis_bounding_box(axis_length: f32, axis_length_is_fallback: bool) -> macaw::BoundingBox {
+    if axis_length_is_fallback {
+        return macaw::BoundingBox::ZERO;
+    }
+
+    let axis_end = glam::Vec3::splat(axis_length);
+    macaw::BoundingBox::from_min_max(
+        glam::Vec3::ZERO.min(axis_end),
+        glam::Vec3::ZERO.max(axis_end),
+    )
 }
 
 /// Which axes to draw.
@@ -329,5 +354,25 @@ pub fn add_axis_arrows(
                     | LineStripFlags::STRIP_FLAG_CAP_START_ROUND,
             )
             .picking_instance_id(picking_instance_id);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Checks that explicitly configured axis lengths include all arrow endpoints in the bounds.
+    #[test]
+    fn explicit_axis_arrows_expand_the_bounding_box() {
+        assert_eq!(
+            axis_bounding_box(2.0, false),
+            macaw::BoundingBox::from_min_max(glam::Vec3::ZERO, glam::Vec3::splat(2.0)),
+        );
+    }
+
+    /// Checks that fallback axis lengths only contribute their origin to the bounding box.
+    #[test]
+    fn fallback_axis_arrows_do_not_expand_the_bounding_box() {
+        assert_eq!(axis_bounding_box(2.0, true), macaw::BoundingBox::ZERO);
     }
 }
