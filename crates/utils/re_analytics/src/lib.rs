@@ -303,6 +303,32 @@ fn load_config(_user_logged_in: bool) -> Result<Config, ConfigError> {
 
 static GLOBAL_ANALYTICS: OnceLock<Option<Analytics>> = OnceLock::new();
 
+/// Set to a truthy value to send analytics even where they are normally off, e.g. in debug builds.
+///
+/// This does not apply in tests, which never initialize analytics whatever the environment says.
+const ENV_FORCE_ANALYTICS: &str = "FORCE_RERUN_ANALYTICS";
+
+/// Why analytics is off for this whole process, if it is.
+///
+/// This is decided without touching the filesystem, so that tests and CI never read or write
+/// the shared analytics config, and never print the first-run disclaimer.
+fn disabled_reason() -> Option<&'static str> {
+    let is_native = !cfg!(target_arch = "wasm32");
+    if cfg!(any(test, feature = "testing")) {
+        // Checked before `ENV_FORCE_ANALYTICS`: a test must never touch the shared config,
+        // not even in an environment that forces analytics on.
+        Some("in tests")
+    } else if is_native && re_log::env_var_is_truthy(ENV_FORCE_ANALYTICS) {
+        None
+    } else if is_native && std::env::var("CI").is_ok() {
+        Some("on CI")
+    } else if is_native && cfg!(debug_assertions) {
+        Some("in debug builds")
+    } else {
+        None
+    }
+}
+
 impl Analytics {
     /// Get the global analytics instance, initializing it if it's not already initialized.
     ///
@@ -316,6 +342,11 @@ impl Analytics {
     ///
     /// Return `None` if analytics is disabled or some error occurred.
     pub fn global_or_init_with_login_state(user_logged_in: bool) -> Option<&'static Self> {
+        if let Some(reason) = disabled_reason() {
+            re_log::debug_once!("Analytics disabled {reason}");
+            return None;
+        }
+
         GLOBAL_ANALYTICS
             .get_or_init(|| match Self::new(Duration::from_secs(2), user_logged_in) {
                 Ok(analytics) => Some(analytics),
@@ -330,10 +361,20 @@ impl Analytics {
     /// Get the global analytics instance, but only if it has already been initialized with [`Self::global_or_init`].
     ///
     /// Return `None` if analytics is disabled or some error occurred during initialization.
+    /// In particular this is always `None` in tests, where analytics is never initialized.
     ///
     /// Usually it is better to use [`Self::global_or_init`] instead.
     pub fn global_get() -> Option<&'static Self> {
         GLOBAL_ANALYTICS.get()?.as_ref()
+    }
+
+    /// Whether [`Self::global_or_init`] has been called in this process and got past the
+    /// environment checks, whether or not the initialization then succeeded.
+    ///
+    /// Once this is `true` the analytics config on disk has been read, and possibly written.
+    /// Tests use this to assert that they never touch it.
+    pub fn global_init_was_attempted() -> bool {
+        GLOBAL_ANALYTICS.get().is_some()
     }
 
     /// Initialize an analytics pipeline which flushes events every `tick`.
@@ -505,6 +546,18 @@ mod tests {
     use serde_json::Value;
 
     use super::*;
+
+    /// Initializing analytics reads and writes the shared config on disk, which must never happen
+    /// in a test, not even through the lazily-initializing free functions.
+    #[test]
+    fn analytics_is_never_initialized_in_tests() {
+        assert!(Analytics::global_or_init().is_none());
+        assert!(Analytics::global_or_init_with_login_state(true).is_none());
+        record(|| event::HelpButtonFirstClicked {});
+        set_logged_in(true);
+        assert!(Analytics::global_get().is_none());
+        assert!(!Analytics::global_init_was_attempted());
+    }
 
     #[test]
     fn test_analytics_event_serialization() {

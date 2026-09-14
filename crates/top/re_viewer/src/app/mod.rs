@@ -418,7 +418,7 @@ impl App {
         );
 
         #[cfg(feature = "analytics")]
-        if let Some(analytics) = re_analytics::Analytics::global_or_init() {
+        if !is_test && let Some(analytics) = re_analytics::Analytics::global_or_init() {
             use crate::viewer_analytics::event;
 
             analytics.record(event::identify(

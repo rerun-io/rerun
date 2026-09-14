@@ -9641,6 +9641,7 @@ dependencies = [
  "insta",
  "ndarray",
  "parking_lot",
+ "re_analytics",
  "re_arrow_util",
  "re_build_info",
  "re_datafusion",

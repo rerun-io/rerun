@@ -27,7 +27,7 @@ re_sdk_types.workspace = true
 re_server = { workspace = true, features = ["lance"] }
 re_ui = { workspace = true, features = ["testing"] }
 re_uri.workspace = true
-re_viewer = { workspace = true, features = ["testing", "map_view"] }
+re_viewer = { workspace = true, features = ["analytics", "map_view", "testing"] }
 re_viewer_context.workspace = true
 re_viewport_blueprint.workspace = true
 
@@ -50,6 +50,7 @@ re_web_viewer_server = { workspace = true, optional = true, features = ["__exter
 url = { workspace = true, optional = true }
 
 [dev-dependencies]
+re_analytics.workspace = true
 re_arrow_util.workspace = true
 re_datafusion.workspace = true
 re_entity_db.workspace = true
