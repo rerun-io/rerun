@@ -60,20 +60,40 @@ ARCHITECTURE = RERUN_ROOT / "ARCHITECTURE.md"
 TABLES_START = "<!-- crate-tables:start -->"
 TABLES_END = "<!-- crate-tables:end -->"
 
-# Listed under `Deprecated crates`, which is hand-written, so keep them out of
-# the generated tables.
-DEPRECATED_CRATES = {"re_types"}
+# Kept out of the generated tables, for crates listed by hand under a
+# `Deprecated crates` heading instead.
+DEPRECATED_CRATES: set[str] = set()
 
-# One band each, top to bottom. `scripts/check_crate_layers.py` enforces this
-# order, so every arrow in the diagram points downwards.
+# One row per layer, top to bottom, as `(folder, heading, blurb)`.
+# `scripts/check_crate_layers.py` enforces the order, so every arrow in the
+# diagram points downwards. A row with two folders in it holds siblings: they do
+# not depend on each other in either direction — `check_crate_layers.py` enforces
+# that too — so they are drawn side by side rather than stacked.
 LAYERS = [
-    ("crates/tests", "Test support"),
-    ("crates/top", "SDK / CLI / Wasm"),
-    ("crates/viewer", "Viewer"),
-    ("crates/store", "Store & data flow"),
-    ("crates/build", "Build support"),
-    ("crates/utils", "Utilities"),
+    [("crates/tests", "Test support", "only tests depend on these, so they sit at the top of the diagram.")],
+    [("crates/top", "SDK / CLI / Wasm", "the entry points for our users, and the viewer app itself.")],
+    [
+        (
+            "crates/views",
+            "Views",
+            "the visualizations a user can put in the viewport.\nA sibling of `crates/panels`: neither depends on the other.",
+        ),
+        (
+            "crates/panels",
+            "Panels",
+            "the panels the app is assembled from, and the widgets they are built out of.\nA sibling of `crates/views`: neither depends on the other.",
+        ),
+    ],
+    [("crates/viewer_support", "Viewer support", "the UI and rendering machinery the views are built on.")],
+    [("crates/store_app", "Application-level store", "the queryable state a viewer or a server works with.")],
+    [("crates/data_flow", "Data flow", "getting data in and out: clients, servers, and file importers.")],
+    [("crates/store", "Data model & chunk store", "the data model, and the in-memory store that holds it.")],
+    [("crates/build", "Build support", "crates that run at build time.")],
+    [("crates/utils", "Utilities", "small crates that depend on nothing outside `crates/utils`.")],
 ]
+
+# The folders in layer order, ignoring which of them are siblings.
+FOLDERS = [entry for row in LAYERS for entry in row]
 
 # Each band gets its own hue, swept from red at the top to violet at the
 # bottom, so the reader can tell how deep a crate sits from its color alone.
@@ -98,7 +118,7 @@ BAND_PADDING = 14.0  # Between a band's crates and the edge of its box, in point
 BAND_LABEL_HEIGHT = 34.0  # Room for the band label above its crates, in points.
 BAND_GAP = 34.0  # Between two band boxes, in points.
 BAND_LABEL_FONT_SIZE = 19.0
-ARROW_HEAD = 9.0  # The layering arrow drawn in the gap between two bands.
+ARROW_HEAD = 9.0  # The layering arrow drawn in the gap between two rows of bands.
 
 # Shipped by the `fonts-conda-ecosystem` package in `pixi.toml`, so every
 # platform measures the label widths against the exact same TTF.
@@ -160,7 +180,7 @@ def cargo_metadata() -> Metadata:
 
 def layer_of(manifest_path: Path, workspace_root: Path, name: str) -> str | None:
     directory = str(manifest_path.parent.relative_to(workspace_root).parent)
-    if any(directory == layer for layer, _ in LAYERS):
+    if any(directory == layer for layer, _, _ in FOLDERS):
         return directory
     return EXTRA_CRATES.get(name)
 
@@ -244,7 +264,7 @@ class Band:
 
 def hues(index: int) -> tuple[str, str]:
     """The (crate, band) colors of the band at `index`, as `#rrggbb`."""
-    hue = HUE_SWEEP * index / max(len(LAYERS) - 1, 1)
+    hue = HUE_SWEEP * index / max(len(FOLDERS) - 1, 1)
 
     def hex_color(lightness: float) -> str:
         channels = colorsys.hls_to_rgb(hue, lightness, SATURATION)
@@ -469,29 +489,54 @@ def wrapped_band(
 
 
 def stack_bands(layers: dict[str, str], deps: dict[str, set[str]]) -> list[Band]:
-    """Lay out every band, then stack them bottom-up into non-overlapping rows."""
-    bands = []
-    for index, (layer, label) in enumerate(LAYERS):
-        crates = sorted(name for name, crate_layer in layers.items() if crate_layer == layer)
-        bands.append(Band(label, hues(index), layout_band(crates, deps)))
+    """Lay out every band, then stack the rows bottom-up so none of them overlap.
 
-    # All bands are given the same width so that they read as rows.
-    width = max(content_size(band.nodes)[0] for band in bands) + 2 * BAND_PADDING
+    Siblings share a row: they are placed next to each other, and the row is as
+    tall as the taller of the two.
+    """
+    index = 0
+    rows: list[list[Band]] = []
+    for row in LAYERS:
+        laid_out = []
+        for layer, label, _ in row:
+            crates = sorted(name for name, crate_layer in layers.items() if crate_layer == layer)
+            laid_out.append(Band(label, hues(index), layout_band(crates, deps)))
+            index += 1
+        rows.append(laid_out)
+
+    # Every row spans the full width, so the rows read as layers.
+    width = max(
+        sum(content_size(band.nodes)[0] + 2 * BAND_PADDING for band in row) + BAND_GAP * (len(row) - 1) for row in rows
+    )
 
     bottom = 0.0
-    for band in reversed(bands):  # Graphviz y grows upwards, so build bottom-up.
-        band_width, height = content_size(band.nodes)
-        indent = (width - 2 * BAND_PADDING - band_width) / 2
-        for node in band.nodes.values():
-            node.x += indent + BAND_PADDING
-            node.y += bottom + BAND_PADDING
-        band.left = 0.0
-        band.bottom = bottom
-        band.width = width
-        band.height = height + 2 * BAND_PADDING + BAND_LABEL_HEIGHT
-        bottom += band.height + BAND_GAP
+    for band_row in reversed(rows):  # Graphviz y grows upwards, so build bottom-up.
+        sizes = [content_size(band.nodes) for band in band_row]
+        # Share the slack between the bands of the row, in proportion to their content.
+        slack = width - sum(w + 2 * BAND_PADDING for w, _ in sizes) - BAND_GAP * (len(band_row) - 1)
+        total_content = sum(w for w, _ in sizes) or 1.0
+        height = max(h for _, h in sizes) + 2 * BAND_PADDING + BAND_LABEL_HEIGHT
 
-    return bands
+        tallest = max(h for _, h in sizes)
+        left = 0.0
+        for band, (band_width, band_height) in zip(band_row, sizes):
+            box_width = band_width + 2 * BAND_PADDING + slack * band_width / total_content
+            indent = (box_width - band_width) / 2
+            # Hang a short band from the top of the row, under its own label,
+            # instead of leaving a gap between the label and the crates.
+            drop = tallest - band_height
+            for node in band.nodes.values():
+                node.x += left + indent
+                node.y += bottom + BAND_PADDING + drop
+            band.left = left
+            band.bottom = bottom
+            band.width = box_width
+            band.height = height
+            left += box_width + BAND_GAP
+
+        bottom += height + BAND_GAP
+
+    return [band for row in rows for band in row]
 
 
 def compose(bands: list[Band], deps: dict[str, set[str]]) -> str:
@@ -568,26 +613,35 @@ def centered_labels(svg: str) -> str:
 
 
 def layer_arrows(bands: list[Band]) -> str:
-    """A downward arrow in every gap between two bands.
+    """A downward arrow in every gap between two rows of bands.
 
-    With the cross-band arrows gone, nothing else shows which way a dependency is
-    allowed to run, so each gap gets one saying "everything above may depend on
-    everything below".
+    With the cross-band arrows gone, nothing else shows which way a dependency
+    is allowed to run, so each gap gets arrows saying "everything above may
+    depend on everything below". They follow whichever of the two rows has more
+    boxes, so an arrow always starts and lands inside a box rather than in the
+    gap between two siblings.
     """
+    rows = sorted({band.bottom for band in bands}, reverse=True)  # Top row first.
+
     out = []
-    for above, below in itertools.pairwise(bands):
+    for upper, lower in itertools.pairwise(rows):
+        above = [band for band in bands if band.bottom == upper]
+        below = [band for band in bands if band.bottom == lower]
+        lower_top = max(band.bottom + band.height for band in below)
         # y is flipped in the group these are emitted into.
-        start, end = -above.bottom, -(below.bottom + below.height)
-        x = below.left + below.width / 2
-        out.append(
-            f'\n<path d="M {x:.1f},{start:.1f} L {x:.1f},{end - ARROW_HEAD:.1f}" '
-            f'stroke="#00000044" stroke-width="3" fill="none" />'
-        )
-        out.append(
-            f'\n<path d="M {x - ARROW_HEAD * 0.6:.1f},{end - ARROW_HEAD:.1f} '
-            f"L {x + ARROW_HEAD * 0.6:.1f},{end - ARROW_HEAD:.1f} "
-            f'L {x:.1f},{end:.1f} Z" fill="#00000044" />'
-        )
+        start, end = -upper, -lower_top
+
+        for band in below if len(below) > len(above) else above:
+            x = band.left + band.width / 2
+            out.append(
+                f'\n<path d="M {x:.1f},{start:.1f} L {x:.1f},{end - ARROW_HEAD:.1f}" '
+                f'stroke="#00000044" stroke-width="3" fill="none" />'
+            )
+            out.append(
+                f'\n<path d="M {x - ARROW_HEAD * 0.6:.1f},{end - ARROW_HEAD:.1f} '
+                f"L {x + ARROW_HEAD * 0.6:.1f},{end - ARROW_HEAD:.1f} "
+                f'L {x:.1f},{end:.1f} Z" fill="#00000044" />'
+            )
     return "".join(out)
 
 
@@ -622,19 +676,20 @@ def crate_tables(metadata: Metadata) -> str:
     """
     workspace_root = Path(metadata["workspace_root"])
     members = set(metadata["workspace_members"])
+    folders = {layer for layer, _, _ in FOLDERS}
 
-    described: dict[str, tuple[str, str, str]] = {}
+    described: dict[str, tuple[str, str]] = {}
     for package in metadata["packages"]:
         if package["id"] not in members or package["name"] in DEPRECATED_CRATES:
             continue
-        folder = str(Path(package["manifest_path"]).parent.relative_to(workspace_root).parent)
-        folder = folder if folder in {layer for layer, _ in LAYERS} else EXTRA_CRATES.get(package["name"], "")
+        directory = str(Path(package["manifest_path"]).parent.relative_to(workspace_root).parent)
+        folder = directory if directory in folders else EXTRA_CRATES.get(package["name"], "")
         if folder:
-            described[package["name"]] = (folder, package["name"], (package.get("description") or "").strip())
+            described[package["name"]] = (folder, (package.get("description") or "").strip())
 
     blocks = []
-    for layer, label in LAYERS:
-        rows = sorted((name, desc) for _, name, desc in described.values() if described[name][0] == layer)
+    for layer, label, blurb in FOLDERS:
+        rows = sorted((name, desc) for name, (folder, desc) in described.items() if folder == layer)
         if not rows:
             continue
         widths = [
@@ -646,7 +701,7 @@ def crate_tables(metadata: Metadata) -> str:
             f"| {'-' * widths[0]} | {'-' * widths[1]} |",
         ]
         table += [f"| {name.ljust(widths[0])} | {desc.ljust(widths[1])} |" for name, desc in rows]
-        blocks.append(f"### {label}\n\n[`{layer}`](./{layer})\n\n" + "\n".join(table) + "\n")
+        blocks.append(f"### {label}\n\n[`{layer}`](./{layer}) — {blurb}\n\n" + "\n".join(table) + "\n")
 
     return "\n".join(blocks)
 

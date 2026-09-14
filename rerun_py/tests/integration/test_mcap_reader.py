@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 MCAP_ASSETS_DIR = (
     Path(__file__).resolve().parents[3]
     / "crates"
-    / "store"
+    / "data_flow"
     / "re_importer"
     / "src"
     / "importer_mcap"

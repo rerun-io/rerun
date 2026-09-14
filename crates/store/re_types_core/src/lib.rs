@@ -1,4 +1,4 @@
-//! The core types and traits that power Rerun's data model.
+//! The core traits and types that power Rerun's data model.
 //!
 //! The [`Archetype`] trait is the core of this crate and is a good starting point to get familiar
 //! with the code.

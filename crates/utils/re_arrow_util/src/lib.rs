@@ -254,7 +254,7 @@ mod reject_unsupported_widenings_tests {
     }
 
     /// Documents a known over-rejection that surfaces in `re_server`'s `add_layer` flow
-    /// (`crates/store/re_server/src/store/dataset.rs`): when a new field differs from the
+    /// (`crates/store_app/re_server/src/store/dataset.rs`): when a new field differs from the
     /// current one by a non-Union sibling, `Schema::try_merge` would accept the pair cleanly
     /// and preserve any identical Union subtree untouched, but `reject_unsupported_widenings`
     /// walks only the new field and cannot distinguish "safe identical Union" from "unsafe

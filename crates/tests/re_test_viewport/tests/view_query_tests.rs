@@ -55,7 +55,7 @@ fn test_iter_visualizer_instruction() {
         let viewport_blueprint =
             ViewportBlueprint::from_db(ctx.store_context.blueprint, &test_context.blueprint_query);
         let view_blueprint = viewport_blueprint.view(&view_id).unwrap();
-        let view_query = re_viewport::new_view_query(ctx, view_blueprint);
+        let view_query = re_view::new_view_query(ctx, view_blueprint);
 
         // These are the results we want to test.
         let results: Vec<_> = view_query

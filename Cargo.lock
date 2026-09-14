@@ -9340,8 +9340,8 @@ dependencies = [
  "re_types_core",
  "re_ui",
  "re_uri",
+ "re_view",
  "re_viewer_context",
- "re_viewport",
  "re_viewport_blueprint",
  "strum 0.26.3",
  "thiserror 2.0.19",
@@ -10492,7 +10492,6 @@ dependencies = [
  "re_data_ui",
  "re_entity_db",
  "re_format",
- "re_lenses_core",
  "re_log",
  "re_log_types",
  "re_sdk_types",
@@ -10676,8 +10675,8 @@ dependencies = [
  "re_sdk_types",
  "re_test_context",
  "re_ui",
+ "re_view",
  "re_viewer_context",
- "re_viewport",
  "re_viewport_blueprint",
 ]
 
@@ -10790,13 +10789,6 @@ name = "re_type_definitions"
 version = "0.38.0-alpha.1+dev"
 dependencies = [
  "re_types_builder_prelude",
-]
-
-[[package]]
-name = "re_types"
-version = "0.38.0-alpha.1+dev"
-dependencies = [
- "re_sdk_types",
 ]
 
 [[package]]
@@ -10989,13 +10981,17 @@ name = "re_view"
 version = "0.38.0-alpha.1+dev"
 dependencies = [
  "ahash",
+ "arrow",
  "egui",
  "glam",
  "itertools 0.15.0",
  "nohash-hasher",
+ "rayon",
  "re_arrow_util",
+ "re_chunk",
  "re_chunk_store",
  "re_entity_db",
+ "re_format",
  "re_lenses_core",
  "re_log",
  "re_log_types",
@@ -11165,7 +11161,6 @@ dependencies = [
  "re_video",
  "re_view",
  "re_viewer_context",
- "re_viewport",
  "re_viewport_blueprint",
  "serde",
  "smallvec",
@@ -11185,7 +11180,6 @@ dependencies = [
  "re_component_ui",
  "re_log_types",
  "re_sdk_types",
- "re_selection_panel",
  "re_test_context",
  "re_test_viewport",
  "re_time_ruler",
@@ -11520,17 +11514,15 @@ dependencies = [
  "ahash",
  "egui",
  "egui_tiles",
- "nohash-hasher",
  "rayon",
  "re_context_menu",
- "re_entity_db",
  "re_format",
  "re_log",
  "re_log_types",
- "re_renderer",
  "re_sdk_types",
  "re_tracing",
  "re_ui",
+ "re_view",
  "re_viewer_context",
  "re_viewport_blueprint",
  "web-time",
@@ -12230,9 +12222,9 @@ dependencies = [
 
 [[package]]
 name = "rustls"
-version = "0.23.43"
+version = "0.23.45"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0283386ce02abc0151e1761d08802dfe86c173b0b494af5cbc086574e453da06"
+checksum = "0d41d731c7d2f962d1ccc364cec258de3c0e93b38c2fb3ba97ac74513048d634"
 dependencies = [
  "log",
  "once_cell",
@@ -12267,9 +12259,9 @@ dependencies = [
 
 [[package]]
 name = "rustls-webpki"
-version = "0.103.13"
+version = "0.103.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "61c429a8649f110dddef65e2a5ad240f747e85f7758a6bccc7e5777bd33f756e"
+checksum = "f3c3cf1d8b1e7d4927e2d154c3fcb02979afb9939629c62cd9048d4f07b60ac2"
 dependencies = [
  "ring",
  "rustls-pki-types",
@@ -13205,7 +13197,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32497e9a4c7b38532efcdebeef879707aa9f794296a4f0244f6f69e9bc8574bd"
 dependencies = [
  "fastrand",
- "getrandom 0.4.3",
+ "getrandom 0.3.4",
  "once_cell",
  "rustix 1.1.4",
  "windows-sys 0.61.2",
@@ -13923,7 +13915,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c5f7c95348f20c1c913d72157b3c6dee6ea3e30b3d19502c5a7f6d3f160dacbf"
 dependencies = [
  "cc",
- "windows-targets 0.52.6",
+ "windows-targets 0.48.5",
 ]
 
 [[package]]

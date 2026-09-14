@@ -498,7 +498,7 @@ impl Properties for AgentTurnUsage {
 ///
 /// This event is only emitted by the agent panel, not by standalone users of `re_agent`.
 /// It carries the full prompt and response text, which is processed according to the
-/// [redaction instructions](https://github.com/rerun-io/rerun/blob/main/crates/viewer/re_viewer/src/agent_analytics.rs)
+/// [redaction instructions](https://github.com/rerun-io/rerun/blob/main/crates/top/re_viewer/src/agent_analytics.rs)
 /// before sending. The agent settings explain this and allow the user to opt out.
 pub struct AgentTurn {
     /// Non-content statistics about the turn.

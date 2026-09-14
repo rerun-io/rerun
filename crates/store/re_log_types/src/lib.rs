@@ -1,4 +1,9 @@
-//! The different types that make up the rerun log format.
+//! The basic building blocks of the Rerun log format: entity paths, timelines, store ids, and log messages.
+//!
+//! An entity path names *what* was logged, a [`TimePoint`] on one or more timelines names *when*,
+//! and a [`LogMsg`] is the envelope that carries it between the SDK, an `.rrd` file, and the viewer.
+//!
+//! The data itself is described by `re_sdk_types`.
 //!
 //! ## Feature flags
 #![doc = document_features::document_features!()]

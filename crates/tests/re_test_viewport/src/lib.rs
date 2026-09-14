@@ -5,10 +5,10 @@ mod test_view;
 use ahash::HashMap;
 use re_test_context::TestContext;
 use re_test_context::external::egui_kittest::{SnapshotOptions, SnapshotResult};
+use re_view::execute_systems_for_view;
 use re_viewer_context::{
     Contents, MissingChunkReporter, ViewId, ViewerContext, VisitorControlFlow,
 };
-use re_viewport::execute_systems_for_view;
 use re_viewport_blueprint::{ViewBlueprint, ViewportBlueprint};
 pub use test_view::TestView;
 

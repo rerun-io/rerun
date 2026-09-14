@@ -93,7 +93,7 @@ rerun reset
 
 ## Graphics issues
 
-<!-- This section is linked to from `crates/viewer/re_viewer/src/native.rs` -->
+<!-- This section is linked to from `crates/top/re_viewer/src/native.rs` -->
 
 Make sure to keep your graphics drivers updated.
 

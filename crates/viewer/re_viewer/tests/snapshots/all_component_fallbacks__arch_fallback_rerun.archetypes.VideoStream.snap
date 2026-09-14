@@ -1,9 +1,0 @@
----
-source: crates/viewer/re_viewer/tests/all_component_fallbacks.rs
-expression: arch_display
----
-codec: [0]
-sample: [[0]]
-is_keyframe: [false]
-opacity: [1.0]
-draw_order: [-15.0]

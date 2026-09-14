@@ -1,0 +1,7 @@
+---
+source: crates/store_app/re_dataframe/src/query.rs
+expression: DisplayRB(dataframe)
+---
+┌┐
+╞╡
+└┘

@@ -183,7 +183,7 @@ jobs:
           mkdir -p bundle-out
           pixi run python scripts/ci/bundle_macos_app.py \
             --binary "./target/${{ needs.set-config.outputs.TARGET }}/release/${{ needs.set-config.outputs.BIN_NAME }}" \
-            --icon crates/viewer/re_viewer/data/app_icon_mac.png \
+            --icon crates/top/re_viewer/data/app_icon_mac.png \
             --info-plist scripts/ci/macos/Info.plist \
             --version "$version" \
             --output-dir bundle-out

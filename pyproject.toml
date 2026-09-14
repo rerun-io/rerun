@@ -366,7 +366,7 @@ ignore = [
   "S108",
 ]
 
-"crates/viewer/re_viewer/data/quick_start_guides/*" = [
+"crates/top/re_viewer/data/quick_start_guides/*" = [
   # Missing required import: `from __future__ import annotations`
   "I002",
 ]

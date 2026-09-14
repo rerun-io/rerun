@@ -6,7 +6,7 @@
 extend-exclude = [
   ".typos.toml",
   "*.snap",
-  "crates/viewer/re_ui/src/design_tokens.rs",
+  "crates/viewer_support/re_ui/src/design_tokens.rs",
   "examples/assets",
   "rerun_cpp/src/rerun/archetypes/image.hpp", # TODO(emilk): remove once we remove from_greyscale8
   "rerun_cpp/src/rerun/archetypes/image_ext.cpp", # TODO(emilk): remove once we remove from_greyscale8
@@ -242,7 +242,7 @@ extend-ignore-re = [
 
   "Secur32", # Referring to `Secur32.dll` on Windows.
 
-  "muh_scalars", # Weird name introduced in `crates/viewer/re_view_time_series/tests/basic.rs` introduced in https://github.com/rerun-io/rerun/pull/10713
+  "muh_scalars", # Weird name introduced in `crates/views/re_view_time_series/tests/basic.rs` introduced in https://github.com/rerun-io/rerun/pull/10713
 
   "isse", # Name
 

@@ -92,7 +92,7 @@ def bgra2yuy2(bgra: npt.NDArray[np.uint8]) -> npt.NDArray[np.uint8]:
 
 def main() -> None:
     dir_path = os.path.dirname(os.path.realpath(__file__))
-    img_path = os.path.join(dir_path, "../../../crates/viewer/re_ui/data/logo_dark_mode.png")
+    img_path = os.path.join(dir_path, "../../../crates/viewer_support/re_ui/data/logo_dark_mode.png")
     img_bgra = cv2.imread(img_path, cv2.IMREAD_UNCHANGED).astype(np.uint8)
 
     assets: dict[str, npt.NDArray[np.uint8]] = {

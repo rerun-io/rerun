@@ -303,9 +303,9 @@ codec "mp4v"`. Asset mode does accept the file, but only partly: the blob
 - Canonical worked examples: `rerun_py/tests/integration/test_mp4_reader.py`
   (both modes, `chunk_by_gop`, entity paths, `timeline_type`, transcode
   transforms, and the error cases).
-- Rust core: `crates/store/re_mp4_reader/` (`stream.rs` for the GOP/transcode
+- Rust core: `crates/data_flow/re_mp4_reader/` (`stream.rs` for the GOP/transcode
   path, `asset.rs` for the blob+index path), with
-  `crates/store/re_mp4_reader/tests/stream.rs` covering codec pairs and GOP
+  `crates/data_flow/re_mp4_reader/tests/stream.rs` covering codec pairs and GOP
   spacing.
 - `rerun-chunk-processing` (stream/lens mechanics), `rerun-data-model` (where
   video, calibration, and thumbnails belong in the recording).

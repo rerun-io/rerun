@@ -80,7 +80,7 @@ jobs:
             rust_changes:
               # - .github/**/*.yml  -  this is tempting, but leads to constant rebuilds
               - Cargo.lock
-              - crates/viewer/re_ui/data/**/* # parts of data are imported into the viewer and has ramifications on various tests
+              - crates/viewer_support/re_ui/data/**/* # parts of data are imported into the viewer and has ramifications on various tests
               - pixi.lock # maybe our build commands have changed
               - pixi.toml # maybe our build commands have changed
               - "**/*.rs"
@@ -111,7 +111,7 @@ jobs:
               - "**/*.rs"
               - "**/*.toml"
               - "**/yarn.lock"
-              - "crates/viewer/re_ui/data/**"
+              - "crates/viewer_support/re_ui/data/**"
 
   protobuf-checks:
     name: "Protobuf Checks"
