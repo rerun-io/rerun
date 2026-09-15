@@ -10,7 +10,7 @@ use re_auth::client::AuthDecorator;
 use re_byte_size::SizeBytes as _;
 use re_chunk::{Chunk, ChunkId};
 use re_log_channel::{
-    BlueprintTarget, DataSourceMessage, DataSourceUiCommand, DefaultBlueprintRegistration,
+    BlueprintTarget, DataSourceMessage, DefaultBlueprintRegistration, ViewerControlCommand,
 };
 use re_log_types::{
     BlueprintActivationCommand, EntryId, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind,
@@ -925,7 +925,7 @@ async fn stream_segment_from_server(
     if store_id.is_recording() && !fragment.is_empty() {
         if tx
             .send(
-                DataSourceUiCommand::SetUrlFragment {
+                ViewerControlCommand::SetUrlFragment {
                     store_id: store_id.clone(),
                     fragment: fragment.to_string(),
                 }

@@ -11,14 +11,18 @@ mod data_source_message;
 mod receiver;
 mod receiver_set;
 mod sender;
+mod viewer_control;
 
 pub use self::data_source_message::{
-    BlueprintTarget, CloseRecordingTarget, DataSourceMessage, DataSourceUiCommand,
-    DefaultBlueprintRegistration, InspectError, SaveScreenshotError, UiCallback,
+    BlueprintTarget, DataSourceMessage, DefaultBlueprintRegistration,
 };
 pub use self::receiver::LogReceiver;
 pub use self::receiver_set::LogReceiverSet;
 pub use self::sender::LogSender;
+pub use self::viewer_control::{
+    CloseRecordingTarget, InspectError, SaveScreenshotError, UiCallback, ViewerControlCommand,
+    ViewerControlError, ViewerControlErrorCode,
+};
 
 // --- Source ---
 

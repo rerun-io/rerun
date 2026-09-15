@@ -1,0 +1,394 @@
+// Remote control of a running viewer: `ViewerControlService`.
+//
+// This interface is in flux. It carries no backwards-compatibility guarantee yet: operations,
+// fields, and field numbers may change or disappear between releases.
+//
+// Served on the same endpoint as `rerun/v1alpha1/sdk_comms.proto`, but its own package, so the
+// generated code lands in its own file. Serving several packages on one port is normal here:
+// the viewer already serves `rerun.cloud.v1alpha1` alongside these two.
+//
+// Adding an operation means editing two files:
+//
+//   crates/store/re_protos/src/v1alpha1/rerun.viewer_control.v1alpha1.ext.rs
+//     One line in the `viewer_control_ops!` table, pairing the request with its response.
+//   crates/top/re_viewer/src/app/viewer_control.rs
+//     A match arm in `serve_viewer_control`, and what the operation does to the viewer.
+//
+// Optionally, to reach Python:
+//
+//   rerun_py/src/viewer.rs
+//     A `PyViewerClientInternal` method sending the one RPC and validating the response variant.
+//   rerun_py/rerun_sdk/rerun/experimental/_viewer_client.py
+//     The public `ViewerClient` method, with keyword arguments and a docstring.
+//
+// Nothing else needs touching. The transports carry `ViewerControlRequest` without looking
+// inside it, and `crates/top/re_viewer_mcp/src/proto_tools.rs` derives the MCP tool, its JSON
+// Schema, and its description from this file's comments, so an operation added here becomes an
+// agent-facing tool on its own.
+//
+// `EguiInspect` is handled separately, since it is a very different (more low-level) kind of operation
+// ("click here", "look there", …).
+//
+// Comments here are user-facing: they become the tool descriptions an agent reads.
+
+syntax = "proto3";
+
+package rerun.viewer_control.v1alpha1;
+
+import "rerun/v1alpha1/common.proto";
+
+// Remote control of a running viewer.
+//
+// The viewer serves this alongside its SDK comms endpoint. `re_viewer_mcp` is the main client:
+// it drives the viewer on behalf of an agent.
+//
+// `ViewerControl` carries every viewer-control operation in one `oneof`, rather than one RPC per
+// operation, so that every client speaks the same envelope. Transports that cannot serve gRPC —
+// notably the wasm viewer, which has no server at all — accept the same encoded
+// `ViewerControlRequest` and return the same `ViewerControlResponse`, without restating the
+// operation set per transport.
+//
+// `EguiInspect` is deliberately *not* one of those operations. It is an opaque tunnel for a
+// different protocol, driving widgets rather than naming a viewer action, and its payload means
+// nothing to this service. Keeping it out of the `oneof` keeps the envelope a list of things the
+// viewer can be asked to do.
+service ViewerControlService {
+  // Perform one viewer-control operation, named by the request's `kind`.
+  //
+  // The response `kind` always matches the request `kind`. Failures come back as gRPC status
+  // codes, never as a response variant.
+  rpc ViewerControl(ViewerControlRequest) returns (ViewerControlResponse) {}
+
+  // One `egui_inspection` request/response exchange, driving the viewer's widgets directly.
+  //
+  // The bodies are opaque to this service: `egui_mcp`'s UI tools (`click`, `query_tree`,
+  // `screenshot`, …) encode them, and the viewer's `egui_inspection` plugin services them.
+  rpc EguiInspect(EguiInspectRequest) returns (EguiInspectResponse) {}
+}
+
+// One viewer-control operation to perform.
+message ViewerControlRequest {
+  // Which operation to perform. A request with no `kind` set is `INVALID_ARGUMENT`.
+  oneof kind {
+    // Close recordings in the viewer, to clear away what is no longer needed.
+    //
+    // This only removes them from the viewer. Files on disk are untouched, and registered
+    // recordings stay in the catalog and can be reopened, but unsaved blueprint edits are lost.
+    //
+    // Iterating on a file you keep regenerating leaves a pile of stale recordings behind, which
+    // makes the viewer state and the UI hard to read.
+    //
+    // `NOT_FOUND` if the requested recording is not open.
+    CloseRecordingsRequest close_recordings = 1;
+
+    // Return the viewer's recent log messages (INFO and above), oldest first, so a caller sees the
+    // warnings and errors the user sees. A warning here usually explains what the user is seeing.
+    //
+    // Entries carry a sequence number, so passing the last one back fetches only what is new.
+    GetViewerLogsRequest get_viewer_logs = 2;
+
+    // Report what the viewer is currently showing, so a caller can orient itself.
+    //
+    // Covers the active recording, the current page URL, every open recording with its timelines,
+    // their time ranges and its current time cursor, and every view of the current blueprint with
+    // the warnings and errors that view reports.
+    //
+    // Call this to learn which recording and timeline to drive, and which time values are valid,
+    // before moving the time cursor. A view's reports say what failed to visualize.
+    //
+    // Recordings are named by a store id string, `{kind}:{application_id}:{recording_id}`, e.g.
+    // `Recording:my_app:1830B33B45B963E7`. Pass it back whole wherever an operation takes a
+    // recording. To read a part out of one: the kind runs to the first colon, the application id
+    // to the next colon that is not preceded by a backslash, and the recording id is the rest.
+    // Both ids may contain a colon, so the application id's are escaped as `\:` (and `\` as `\\`).
+    GetViewerStateRequest get_viewer_state = 3;
+
+    // Open a URL in the viewer (a recording/blueprint file, a `rerun://` dataset URI, a redap
+    // server/catalog URL, or an intra-recording link).
+    OpenUrlRequest open_url = 4;
+
+    // Take a screenshot of the viewer, or of a single view within it, and write it to disk.
+    //
+    // The screenshot is saved by the viewer process, so the path is resolved on the machine
+    // running the viewer, not on the machine making the request.
+    //
+    // Fails with `INVALID_ARGUMENT` if `view_id` is not a UUID, `NOT_FOUND` if no such view is
+    // currently visible, `FAILED_PRECONDITION` if the view is too small to capture, and
+    // `INTERNAL` if the capture itself or the write to disk failed.
+    SaveScreenshotRequest save_screenshot = 5;
+
+    // Move the time cursor (timeline position) of a recording in the viewer.
+    SetTimeCursorRequest set_time_cursor = 6;
+  }
+}
+
+// The result of one viewer-control operation.
+message ViewerControlResponse {
+  // Always the same variant as the request's `kind`.
+  oneof kind {
+    // Result of `close_recordings`.
+    CloseRecordingsResponse close_recordings = 1;
+
+    // Result of `get_viewer_logs`.
+    GetViewerLogsResponse get_viewer_logs = 2;
+
+    // Result of `get_viewer_state`.
+    GetViewerStateResponse get_viewer_state = 3;
+
+    // Result of `open_url`.
+    OpenUrlResponse open_url = 4;
+
+    // Result of `save_screenshot`.
+    SaveScreenshotResponse save_screenshot = 5;
+
+    // Result of `set_time_cursor`.
+    SetTimeCursorResponse set_time_cursor = 6;
+  }
+}
+
+// ----------------------------------------------------------------------------
+// CloseRecordings
+
+// Request for `CloseRecordings`.
+message CloseRecordingsRequest {
+  // The recordings to close. Exactly one selector, like a Rust enum: there is no default target.
+  oneof target {
+    // Close the active recording. Must be `true`: this is a selector, not a flag.
+    bool current = 1;
+
+    // Close every open recording. Must be `true`: this is a selector, not a flag.
+    bool all = 2;
+
+    // Close these recordings.
+    ViewerRecordingIds store_ids = 3;
+  }
+}
+
+// Recording ids selected by `CloseRecordings`.
+message ViewerRecordingIds {
+  // The recording ids to close, each as `{kind}:{application_id}:{recording_id}`.
+  repeated string store_ids = 1;
+}
+
+// Response for `CloseRecordings`, reporting what was actually closed.
+message CloseRecordingsResponse {
+  // The recordings that were closed, each as `{kind}:{application_id}:{recording_id}`.
+  repeated string closed = 1;
+}
+
+// ----------------------------------------------------------------------------
+// EguiInspect
+
+// Request for `EguiInspect`, wrapping one opaque `egui_inspection` request.
+message EguiInspectRequest {
+  // `egui_inspection` request.
+  bytes request = 1;
+}
+
+// Response for `EguiInspect`, wrapping one opaque `egui_inspection` response.
+message EguiInspectResponse {
+  // `egui_inspection` response.
+  bytes response = 1;
+}
+
+// ----------------------------------------------------------------------------
+// GetViewerLogs
+
+// Request for `GetViewerLogs`.
+message GetViewerLogsRequest {
+  // Only return entries with a sequence number greater than this.
+  // Omit for everything still buffered.
+  optional uint64 after_sequence = 1;
+}
+
+// Response for `GetViewerLogs`: the buffered log entries, oldest first.
+message GetViewerLogsResponse {
+  // The matching entries. The viewer keeps a bounded buffer, so old entries drop out.
+  repeated ViewerLogEntry entries = 1;
+}
+
+// One log message emitted by the viewer.
+message ViewerLogEntry {
+  // Increases by one per message. Pass the last seen value back as `after_sequence`.
+  uint64 sequence = 1;
+
+  // Log level: `"INFO"`, `"WARN"`, or `"ERROR"`.
+  string level = 2;
+
+  // The module that logged the message, starting with the crate name.
+  string target = 3;
+
+  // The log message.
+  string message = 4;
+}
+
+// ----------------------------------------------------------------------------
+// GetViewerState
+
+// Request for `GetViewerState`. Empty: the whole state is always returned.
+message GetViewerStateRequest {}
+
+// Response for `GetViewerState`: a snapshot of what the viewer is currently showing.
+message GetViewerStateResponse {
+  // The current viewer page/route (e.g. which recording or hub page is shown).
+  string url = 1;
+
+  // The active recording, if any, as `{kind}:{application_id}:{recording_id}`.
+  optional string active_store_id = 2;
+
+  // Every open recording.
+  repeated ViewerRecording recordings = 3;
+
+  // Origin of the catalog server the viewer hosts, e.g. `rerun+http://127.0.0.1:9876`.
+  //
+  // Clients (notably `re_viewer_mcp`) hand this to the Python `CatalogClient` to read the data
+  // behind the open recordings, which this service deliberately does not serve itself.
+  // Unset if the viewer has no catalog, which on native is only the case before it starts up.
+  optional string catalog_url = 4;
+
+  // The views of the current blueprint, with the warnings and errors each one reports.
+  repeated ViewerView views = 5;
+}
+
+// One view in the viewer's current blueprint.
+message ViewerView {
+  // The view id, usable with `SaveScreenshot`.
+  string view_id = 1;
+
+  // The view class, e.g. `3D`, `TimeSeries`.
+  string class = 2;
+
+  // The view's display name.
+  string name = 3;
+
+  // The entity path the view is rooted at.
+  string origin = 4;
+
+  // Whether the view is currently visible.
+  bool visible = 5;
+
+  // Warnings and errors the view and its visualizers reported the last time it was shown.
+  repeated ViewerReport reports = 6;
+}
+
+// A warning or error from a view.
+message ViewerReport {
+  // `"warning"` or `"error"`.
+  string severity = 1;
+
+  // Short description.
+  string summary = 2;
+
+  // Longer explanation, if any.
+  optional string details = 3;
+}
+
+// One open recording in the viewer.
+message ViewerRecording {
+  // Store id of the recording.
+  //
+  // `{kind}:{application_id}:{recording_id}`, e.g. `Recording:my_app:1830B33B45B963E7`. `kind` is
+  // `Recording` or `Blueprint`. Both ids may contain a colon, so the application id's are escaped
+  // as `\:` (and `\` as `\\`): the kind runs to the first colon, the application id to the next
+  // unescaped one, and the recording id is the rest. Pass the whole string back wherever an
+  // operation takes a recording.
+  string store_id = 1;
+
+  // The recording's timelines with their time ranges.
+  repeated ViewerTimeline timelines = 2;
+
+  // The recording's current time cursor.
+  TimeCursor current_time = 3;
+}
+
+// A timeline of a recording, with its time range.
+message ViewerTimeline {
+  // The timeline this describes.
+  rerun.common.v1alpha1.Timeline timeline = 1;
+
+  // Timeline type, e.g. `"timestamp"`, `"duration"`, or `"sequence"`.
+  rerun.common.v1alpha1.TimeType time_type = 2;
+
+  // The inclusive range of time values present on this timeline. Absent if the timeline has no data yet.
+  optional rerun.common.v1alpha1.TimeRange time_range = 3;
+}
+
+// ----------------------------------------------------------------------------
+// OpenUrl
+
+// Request for `OpenUrl`.
+message OpenUrlRequest {
+  // The URL to open in the viewer. This can be a recording/blueprint file URL, a `rerun://`
+  // dataset URI, a redap server/catalog URL, or an intra-recording link.
+  string url = 1;
+}
+
+// Response for `OpenUrl`. Empty: an error is reported as a gRPC status instead.
+message OpenUrlResponse {}
+
+// ----------------------------------------------------------------------------
+// SaveScreenshot
+
+// Request for `SaveScreenshot`.
+message SaveScreenshotRequest {
+  // Optional view ID to screenshot. If omitted, screenshots the entire viewer.
+  optional string view_id = 1;
+
+  // Path at which the screenshot will be saved.
+  // This path is relative to the current working directory of the viewer process.
+  string file_path = 2;
+}
+
+// Response for `SaveScreenshot`. Empty: an error is reported as a gRPC status instead.
+//
+// The response is only sent once the screenshot has actually been written to disk.
+message SaveScreenshotResponse {}
+
+// ----------------------------------------------------------------------------
+// SetTimeCursor
+
+// Request for `SetTimeCursor`.
+message SetTimeCursorRequest {
+  // Recording to seek, as `{kind}:{application_id}:{recording_id}`. If omitted, the active
+  // recording is used.
+  optional string store_id = 1;
+
+  // Timeline to seek on. If omitted, the active timeline is used.
+  optional common.v1alpha1.Timeline timeline = 2;
+
+  // Time value to seek to: a sequence index for sequence timelines, or nanoseconds for
+  // temporal timelines (see `GetViewerState` for each timeline's type and range).
+  rerun.common.v1alpha1.TimelineTime time = 3;
+
+  // If true, start playing the recording from the new position. Omit it, or pass false, to
+  // pause the recording instead.
+  optional bool play = 4;
+}
+
+// Response for `SetTimeCursor`, echoing back what the request resolved to.
+message SetTimeCursorResponse {
+  // The recording the cursor was moved in (resolved from the request, or the active recording),
+  // as `{kind}:{application_id}:{recording_id}`.
+  string store_id = 1;
+
+  // The timeline the cursor was moved on (resolved from the request, or the active/first timeline).
+  rerun.common.v1alpha1.Timeline timeline = 2;
+
+  // Timeline type, e.g. `"timestamp"`, `"duration"`, or `"sequence"`.
+  rerun.common.v1alpha1.TimeType time_type = 3;
+
+  // The time the cursor was moved to.
+  rerun.common.v1alpha1.TimelineTime time = 4;
+}
+
+// A position on a timeline.
+message TimeCursor {
+  // The timeline the cursor sits on.
+  rerun.common.v1alpha1.Timeline timeline = 1;
+
+  // Timeline type. May be absent if the recording is still loading.
+  optional rerun.common.v1alpha1.TimeType time_type = 2;
+
+  // Current time on the timeline. Absent if the cursor is not set.
+  optional rerun.common.v1alpha1.TimelineTime time = 3;
+}

@@ -33,7 +33,7 @@ pub(super) const SETTLE_DIAGNOSTIC_MAX_STEPS: u64 = 100;
 
 /// A transport to a viewer that speaks the `egui_inspection` protocol.
 pub(super) enum Connection {
-    /// An out-of-process viewer, driven over the gRPC `Inspect` RPC.
+    /// An out-of-process viewer, driven over the gRPC `egui_inspect` operation.
     Grpc(GrpcConnection),
 
     /// An in-process viewer stepped via [`egui_kittest`], driven through its

@@ -260,8 +260,8 @@ fn test_receive_set() {
     );
 
     tx_sdk
-        .send(crate::DataSourceMessage::UiCommand(
-            crate::DataSourceUiCommand::SetUrlFragment {
+        .send(crate::DataSourceMessage::ViewerControl(
+            crate::ViewerControlCommand::SetUrlFragment {
                 store_id: StoreId::empty_recording(),
                 fragment: "#foo".into(),
             },

@@ -2,7 +2,7 @@
 
 use std::collections::VecDeque;
 
-use re_protos::sdk_comms::v1alpha1::ViewerLogEntry;
+use re_protos::viewer_control::v1alpha1::ViewerLogEntry;
 
 /// Older entries are dropped once the buffer holds this many.
 const MAX_ENTRIES: usize = 1000;

@@ -60,6 +60,11 @@ tonic = { workspace = true, default-features = false, features = [
 ] }
 tonic-reflection.workspace = true
 
+# Only needed by `json`, which transcodes through the embedded descriptor set. Keeping these
+# native-only keeps the descriptor set out of the wasm viewer.
+prost-reflect = { workspace = true, features = ["serde"] }
+serde_json.workspace = true
+
 # Web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 tonic = { workspace = true, default-features = false, features = ["codegen"] }

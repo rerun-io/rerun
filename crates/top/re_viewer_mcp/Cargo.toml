@@ -27,6 +27,8 @@ re_protos.workspace = true
 
 anyhow.workspace = true
 parking_lot.workspace = true
+prost-reflect = { workspace = true, features = ["serde"] }
+prost.workspace = true
 rmcp.workspace = true
 schemars.workspace = true
 serde = { workspace = true, features = ["derive"] }

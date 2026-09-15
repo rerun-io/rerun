@@ -13,19 +13,26 @@ pub fn text(viewer_endpoint: Option<&str>, agent_dir: Option<&Path>) -> String {
          use the viewer, set up blueprints, and debug their Rerun logging code.\n\n",
     );
 
-    text.push_str(
-        "- The `rerun` MCP server is already connected to this very viewer: do not call `connect`. \
-         Use its tools to see what the user sees (`screenshot`, `query_tree`, `viewer_state`) \
-         and to drive the viewer, instead of guessing.",
-    );
+    // The MCP server only dials the viewer on startup when it was given an endpoint, so without
+    // one the agent must be told to connect rather than told not to.
     if let Some(endpoint) = viewer_endpoint {
         write!(
             text,
-            " Only if a tool reports that it is not connected, call `connect` with the endpoint `{endpoint}`."
+            "- The `rerun` MCP server is already connected to this very viewer: do not call `rerun_connect`. \
+             Only if a tool reports that it is not connected, call `rerun_connect` with the endpoint `{endpoint}`."
         )
         .ok();
+    } else {
+        text.push_str(
+            "- The `rerun` MCP server drives this very viewer, but is not connected yet: \
+             call `rerun_connect` before its other tools.",
+        );
     }
-    text.push('\n');
+    text.push_str(
+        " Use its tools to see what the user sees and to drive the viewer, instead of guessing. \
+         Prefer the high-level `rerun_*` tools (`rerun_get_viewer_state`, `rerun_set_time_cursor`, …); \
+         drop to the low-level widget tools (`query_tree`, `click`, `screenshot`, …) only for what they do not cover.\n",
+    );
 
     if let Some(agent_dir) = agent_dir {
         writeln!(

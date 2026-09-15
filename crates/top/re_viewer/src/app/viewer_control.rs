@@ -1,23 +1,227 @@
-//! The viewer-side implementation of the `ViewerControlService` RPCs that `re_viewer_mcp` uses:
-//! state snapshots, time-cursor moves, closing recordings, and `egui_inspection` requests.
+//! The viewer-side implementation of the `ViewerControlService` API, defined by
+//! `viewer_control.proto`: state snapshots, time-cursor moves, closing recordings, and
+//! `egui_inspection` requests.
+//!
+//! That file lists every place an operation has to be added.
 
 use re_chunk::TimelineName;
-use re_log_channel::{InspectError, UiCallback};
+use re_log_channel::{
+    CloseRecordingTarget, InspectError, SaveScreenshotError, UiCallback, ViewerControlError,
+};
 use re_log_types::{StoreId, TimeReal, TimeType};
 use re_protos::common::v1alpha1::TimeType as ProtoTimeType;
-use re_protos::sdk_comms::v1alpha1::{
-    CloseRecordingsResponse, GetViewerStateResponse, SetTimeCursorResponse, TimeCursor,
-    ViewerRecording, ViewerReport, ViewerTimeline, ViewerView,
+use re_protos::viewer_control::v1alpha1::{
+    CloseRecordingsRequest, CloseRecordingsResponse, GetViewerLogsRequest, GetViewerLogsResponse,
+    GetViewerStateResponse, OpenUrlRequest, OpenUrlResponse, SaveScreenshotRequest,
+    SaveScreenshotResponse, SetTimeCursorRequest, SetTimeCursorResponse, TimeCursor,
+    ViewerControlRequest, ViewerControlResponse, ViewerRecording, ViewerReport, ViewerTimeline,
+    ViewerView, viewer_control_request,
 };
+use re_sdk_types::external::uuid;
 use re_viewer_context::{
     Route, StoreHub, SystemCommand, SystemCommandSender as _, TimeControlCommand,
-    open_url::ViewerOpenUrl,
+    open_url::{OpenUrlOptions, ViewerOpenUrl},
 };
 
 use super::App;
 
 impl App {
-    /// Snapshot the current viewer state for `re_viewer_mcp`'s `GetViewerState`:
+    /// Run one operation of the `ViewerControlService` API on the UI thread.
+    ///
+    /// Every transport lands here: the request arrives decoded, and `on_done` carries the matching
+    /// response or a coded failure back to whoever asked. Only `save_screenshot` answers later
+    /// than this call, once the image has been written.
+    pub(super) fn serve_viewer_control(
+        &mut self,
+        request: ViewerControlRequest,
+        on_done: UiCallback<Result<ViewerControlResponse, ViewerControlError>>,
+        store_hub: &StoreHub,
+        egui_ctx: &egui::Context,
+    ) {
+        use viewer_control_request::Kind;
+
+        let Some(kind) = request.kind else {
+            on_done.call(Err(ViewerControlError::invalid_argument(
+                "`ViewerControlRequest.kind` is unset",
+            )));
+            return;
+        };
+
+        match kind {
+            Kind::CloseRecordings(request) => {
+                let result = close_recordings_target(request)
+                    .and_then(|target| {
+                        self.apply_close_recordings(store_hub, target)
+                            .map_err(ViewerControlError::not_found)
+                    })
+                    .map(ViewerControlResponse::from);
+                on_done.call(result);
+            }
+            Kind::GetViewerLogs(GetViewerLogsRequest { after_sequence }) => {
+                on_done.call(Ok(GetViewerLogsResponse {
+                    entries: self.viewer_log.entries_after(after_sequence),
+                }
+                .into()));
+            }
+            Kind::GetViewerState(_) => {
+                on_done.call(Ok(self.collect_viewer_state(store_hub).into()));
+            }
+            Kind::OpenUrl(OpenUrlRequest { url }) => {
+                let parsed = ViewerOpenUrl::parse_with_options(
+                    &url,
+                    &re_data_source::FromUriOptions {
+                        accept_extensionless_http: true,
+                    },
+                );
+                match parsed {
+                    Ok(open_url) => {
+                        open_url.open(egui_ctx, &OpenUrlOptions::default(), &self.command_sender);
+                        on_done.call(Ok(OpenUrlResponse {}.into()));
+                    }
+                    Err(err) => {
+                        on_done.call(Err(ViewerControlError::invalid_argument(format!(
+                            "Failed to open URL {url:?}: {err}"
+                        ))));
+                    }
+                }
+            }
+
+            Kind::SaveScreenshot(request) => self.begin_screenshot(request, on_done),
+
+            Kind::SetTimeCursor(request) => {
+                let SetTimeCursorRequest {
+                    store_id,
+                    timeline,
+                    time,
+                    play,
+                } = request;
+                // `time` is required. Defaulting it would seek to the start of the recording,
+                // which is a move the caller did not ask for, so every transport must be refused
+                // here rather than only in the clients that happen to validate.
+                let time = time.ok_or_else(|| {
+                    ViewerControlError::invalid_argument("`time` is required by `set_time_cursor`")
+                });
+                let store_id = store_id
+                    .map(|store_id| store_id.parse::<StoreId>())
+                    .transpose()
+                    .map_err(|err| {
+                        ViewerControlError::invalid_argument(format!("invalid store_id: {err}"))
+                    });
+                let result = time
+                    .and_then(|time| Ok((time, store_id?)))
+                    .and_then(|(time, store_id)| {
+                        self.apply_set_time_cursor(
+                            store_hub,
+                            store_id,
+                            timeline.map(|timeline| timeline.name).as_deref(),
+                            time.time,
+                            play.unwrap_or(false),
+                            egui_ctx,
+                        )
+                        .map_err(ViewerControlError::invalid_argument)
+                    })
+                    .map(ViewerControlResponse::from);
+                on_done.call(result);
+            }
+        }
+    }
+
+    /// Ask for a screenshot, and answer `on_done` once it has been written.
+    ///
+    /// The capture needs at least one more frame, so the callback is parked until then. Wrapping
+    /// it here keeps the screenshot plumbing typed in terms of its own error.
+    fn begin_screenshot(
+        &mut self,
+        request: SaveScreenshotRequest,
+        on_done: UiCallback<Result<ViewerControlResponse, ViewerControlError>>,
+    ) {
+        let SaveScreenshotRequest { view_id, file_path } = request;
+
+        let view_id = match view_id.map(|view_id| {
+            uuid::Uuid::parse_str(&view_id)
+                .map_err(|_err| SaveScreenshotError::InvalidViewId { view_id })
+        }) {
+            None => None,
+            Some(Ok(uuid)) => Some(uuid.into()),
+            Some(Err(err)) => {
+                on_done.call(Err(ViewerControlError::invalid_argument(err.to_string())));
+                return;
+            }
+        };
+
+        let file_path: camino::Utf8PathBuf = file_path.into();
+        self.pending_screenshot_notifiers.insert(
+            file_path.clone(),
+            UiCallback::new(move |result: Result<(), SaveScreenshotError>| {
+                on_done.call(match result {
+                    Ok(()) => Ok(SaveScreenshotResponse {}.into()),
+                    Err(err @ SaveScreenshotError::InvalidViewId { .. }) => {
+                        Err(ViewerControlError::invalid_argument(err.to_string()))
+                    }
+                    Err(err @ SaveScreenshotError::ViewNotFound { .. }) => {
+                        Err(ViewerControlError::not_found(err.to_string()))
+                    }
+                    Err(err @ SaveScreenshotError::ViewTooSmall { .. }) => {
+                        Err(ViewerControlError::failed_precondition(err.to_string()))
+                    }
+                    Err(
+                        err @ (SaveScreenshotError::InvalidImageData
+                        | SaveScreenshotError::SaveToPathFailed { .. }),
+                    ) => Err(ViewerControlError::internal(err.to_string())),
+                });
+            }),
+        );
+
+        self.command_sender
+            .send_system(SystemCommand::SaveScreenshot {
+                target: re_viewer_context::ScreenshotTarget::SaveToPath(file_path),
+                view_id,
+                notify: false,
+            });
+    }
+}
+
+/// Which recordings a `close_recordings` request selects.
+fn close_recordings_target(
+    request: CloseRecordingsRequest,
+) -> Result<CloseRecordingTarget, ViewerControlError> {
+    use re_protos::viewer_control::v1alpha1::close_recordings_request::Target;
+
+    Ok(match request.target {
+        // A `oneof` is an enum: an unset target names no recording, so there is nothing to
+        // default to without closing something the caller did not ask for.
+        None => {
+            return Err(ViewerControlError::invalid_argument(
+                "`close_recordings` takes exactly one of `current`, `all` or `store_ids`",
+            ));
+        }
+
+        Some(Target::Current(true)) => CloseRecordingTarget::Current,
+        Some(Target::All(true)) => CloseRecordingTarget::All,
+
+        // These are selectors carried as bools, so a `false` says nothing about what to close.
+        // Acting on it would close something the caller did not ask for.
+        Some(Target::Current(false) | Target::All(false)) => {
+            return Err(ViewerControlError::invalid_argument(
+                "`current` and `all` select what to close, so they must be `true`",
+            ));
+        }
+
+        Some(Target::StoreIds(store_ids)) => CloseRecordingTarget::Some(
+            store_ids
+                .store_ids
+                .into_iter()
+                .map(|store_id| store_id.parse::<StoreId>())
+                .collect::<Result<_, _>>()
+                .map_err(|err| {
+                    ViewerControlError::invalid_argument(format!("invalid store_id: {err}"))
+                })?,
+        ),
+    })
+}
+
+impl App {
+    /// Snapshot the current viewer state for the `get_viewer_state` operation:
     /// the active recording, the current page as a sharable URL, the catalog the viewer hosts,
     /// and every open recording's timelines with their time ranges and current time cursor.
     pub(super) fn collect_viewer_state(&mut self, store_hub: &StoreHub) -> GetViewerStateResponse {
@@ -61,7 +265,7 @@ impl App {
                     });
 
                 ViewerRecording {
-                    store_id: Some(store_id.clone().into()),
+                    store_id: store_id.to_string(),
                     timelines,
                     current_time,
                 }
@@ -70,7 +274,7 @@ impl App {
 
         GetViewerStateResponse {
             url,
-            active_store_id: active_id.map(Into::into),
+            active_store_id: active_id.map(|store_id| store_id.to_string()),
             recordings,
             views,
             catalog_url: self
@@ -111,12 +315,12 @@ impl App {
         }
 
         Ok(CloseRecordingsResponse {
-            closed: to_close.into_iter().map(Into::into).collect(),
+            closed: to_close.iter().map(StoreId::to_string).collect(),
         })
     }
 
     /// The views of the current blueprint with the warnings and errors they reported when last
-    /// shown, for `re_viewer_mcp`'s `GetViewerState`.
+    /// shown, for the `get_viewer_state` operation.
     fn collect_views(
         &mut self,
         store_hub: &StoreHub,
@@ -242,7 +446,7 @@ impl App {
         egui_ctx.request_repaint();
 
         Ok(SetTimeCursorResponse {
-            store_id: Some(store_id.into()),
+            store_id: store_id.to_string(),
             timeline: Some(timeline_name.into()),
             time_type: ProtoTimeType::from(time_type) as i32,
             time: Some(time.into()),
@@ -256,9 +460,9 @@ impl App {
 /// take a screenshot, inject pointer or keyboard events, and so on.
 ///
 /// `re_viewer_mcp` is one client of it: that server turns each of its egui UI tool calls
-/// (`click`, `query_tree`, `screenshot`, …) into such requests and sends them over the `Inspect`
-/// gRPC RPC. Its Rerun-specific tools (`viewer_state`, `set_time`, …) use their own RPCs and
-/// never come here. Any other tool speaking the protocol works too.
+/// (`click`, `query_tree`, `screenshot`, …) into such requests and sends them over the
+/// `egui_inspect` gRPC operation. Its Rerun-specific tools (`viewer_state`, `set_time`, …) use
+/// their own operations and never come here. Any other tool speaking the protocol works too.
 ///
 /// `request` and the `Ok` payload are bare `MessagePack` bodies (`rmp-serde`) of an
 /// [`egui_inspection::Request`] and [`egui_inspection::Response`], as produced by
@@ -269,7 +473,7 @@ impl App {
 ///
 /// The response arrives asynchronously via `on_done`, since some requests (screenshots, settling)
 /// need one or more frames to complete.
-pub(crate) fn serve_inspect_request(
+pub(crate) fn serve_egui_inspect_request(
     egui_ctx: &egui::Context,
     request: &[u8],
     on_done: UiCallback<Result<Vec<u8>, InspectError>>,
@@ -297,4 +501,31 @@ pub(crate) fn serve_inspect_request(
     });
 
     egui_ctx.request_repaint();
+}
+
+#[cfg(test)]
+mod tests {
+    use re_log_channel::ViewerControlErrorCode;
+    use re_protos::viewer_control::v1alpha1::close_recordings_request::Target;
+
+    use super::*;
+
+    #[test]
+    fn an_omitted_close_target_is_refused() {
+        let err = close_recordings_target(CloseRecordingsRequest { target: None })
+            .expect_err("an unset target names no recording");
+        assert_eq!(err.code, ViewerControlErrorCode::InvalidArgument);
+    }
+
+    #[test]
+    fn a_false_close_selector_is_refused() {
+        for target in [Target::Current(false), Target::All(false)] {
+            let err = close_recordings_target(CloseRecordingsRequest {
+                target: Some(target),
+            })
+            .expect_err("a false selector says nothing about what to close");
+
+            assert_eq!(err.code, ViewerControlErrorCode::InvalidArgument);
+        }
+    }
 }

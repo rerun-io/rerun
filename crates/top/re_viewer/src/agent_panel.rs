@@ -180,12 +180,16 @@ impl ViewerAgentPanel {
 
 /// `rerun viewer-mcp`, pointed at this viewer.
 ///
-/// Prefers the running executable so that a dev build talks to itself,
-/// and falls back to whatever `rerun` is on the `PATH`.
+/// Prefers the running executable, so that the agent drives the viewer it is embedded in rather
+/// than some other version that happens to be installed.
+///
+/// The name check keeps this honest: `re_viewer` is a library, so the running executable may be a
+/// custom viewer or one of our examples, and only the `rerun` binary has a `viewer-mcp` subcommand.
+/// It is case-insensitive because the macOS bundle names the executable `Rerun`.
 fn rerun_mcp_server(viewer_endpoint: Option<&str>) -> Option<McpServerConfig> {
     let current_exe = std::env::current_exe().ok().filter(|exe| {
         exe.file_stem()
-            .is_some_and(|stem| stem.to_string_lossy().starts_with("rerun"))
+            .is_some_and(|stem| stem.to_string_lossy().to_lowercase().starts_with("rerun"))
     });
     let rerun = current_exe.or_else(|| re_agent_ui::find_executable("rerun"))?;
 

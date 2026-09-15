@@ -138,7 +138,7 @@ impl WebHandle {
         };
 
         let (reply_tx, reply_rx) = futures::channel::oneshot::channel();
-        crate::app::serve_inspect_request(
+        crate::app::serve_egui_inspect_request(
             &egui_ctx,
             request_bytes,
             re_log_channel::UiCallback::new(move |result| {

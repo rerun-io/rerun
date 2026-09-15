@@ -1,12 +1,12 @@
-//! Drive an out-of-process `rerun` viewer over the gRPC `Inspect` RPC.
+//! Drive an out-of-process `rerun` viewer over the gRPC `egui_inspect` operation.
 
 use std::process::{Child, Command, Stdio};
 use std::sync::mpsc;
 use std::time::Duration;
 
 use egui_inspection::protocol::{self, Request, Response};
-use re_protos::sdk_comms::v1alpha1::{
-    InspectRequest, viewer_control_service_client::ViewerControlServiceClient,
+use re_protos::viewer_control::v1alpha1::{
+    EguiInspectRequest, viewer_control_service_client::ViewerControlServiceClient,
 };
 use tonic::transport::{Channel, Endpoint};
 
@@ -25,7 +25,7 @@ struct InspectJob {
 }
 
 /// A blocking connection to an out-of-process viewer's `ViewerControlService`, carrying one
-/// `egui_inspection` request/response exchange per unary `Inspect` call.
+/// `egui_inspection` request/response exchange per unary `egui_inspect` call.
 ///
 /// `tonic` is async-only, so the actual gRPC work runs on a dedicated worker thread that owns a
 /// small tokio runtime and the client. This keeps the transport blocking to callers regardless of
@@ -172,7 +172,7 @@ async fn get_info(client: &mut ViewerControlServiceClient<Channel>) -> bool {
     let Ok(request) = protocol::encode_body(&Request::GetInfo) else {
         return false;
     };
-    match client.inspect(InspectRequest { request }).await {
+    match client.egui_inspect(EguiInspectRequest { request }).await {
         Ok(response) => matches!(
             protocol::decode_body(&response.into_inner().response),
             Ok(Response::Info { .. })
@@ -181,17 +181,17 @@ async fn get_info(client: &mut ViewerControlServiceClient<Channel>) -> bool {
     }
 }
 
-/// One unary `Inspect` exchange. Returns the decoded response, or an error message for a transport
-/// failure or a [`Response::Error`] reply.
+/// One unary `egui_inspect` exchange. Returns the decoded response, or an error message for a
+/// transport failure or a [`Response::Error`] reply.
 async fn do_inspect(
     client: &mut ViewerControlServiceClient<Channel>,
     request: Request,
 ) -> Result<Response, String> {
     let request = protocol::encode_body(&request).expect("Failed to encode inspection request");
     let response = client
-        .inspect(InspectRequest { request })
+        .egui_inspect(EguiInspectRequest { request })
         .await
-        .map_err(|err| format!("inspect rpc failed: {err}"))?
+        .map_err(|err| format!("egui_inspect rpc failed: {err}"))?
         .into_inner();
     match protocol::decode_body(&response.response).expect("Failed to decode inspection response") {
         Response::Error { message } => Err(format!("Viewer returned an error: {message}")),

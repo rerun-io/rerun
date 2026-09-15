@@ -1,15 +1,22 @@
+# The Python surface of the `ViewerControlService` API, defined by
+# `crates/store/re_protos/proto/rerun/v1alpha1/viewer_control.proto`.
+# That file lists every place an operation has to be added.
+
 from __future__ import annotations
 
+import json
 import os
 import signal
 import subprocess
 import warnings
-from typing import TYPE_CHECKING, overload
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any, overload
 
 from rerun._arrow import to_record_batch
 from rerun.time import to_nanos, to_nanos_since_epoch
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
     from datetime import datetime, timedelta
     from types import TracebackType
     from uuid import UUID
@@ -22,6 +29,185 @@ if TYPE_CHECKING:
 
 
 _DEFAULT_URL = "rerun+http://127.0.0.1:9876/proxy"
+
+
+StoreId = str
+"""
+Identifies one recording open in the viewer, as `{kind}:{application_id}:{recording_id}`.
+
+`kind` is `Recording` or `Blueprint`. The application id is the application that logged it, or
+the dataset id for a catalog-backed recording; the recording id is the recording itself, or its
+segment id. Pass the whole string back to the methods that take a recording.
+
+Both ids may contain a colon, so the application id's are escaped as `\\:` (and a backslash as
+`\\\\`): the kind runs to the first colon, the application id to the next unescaped one, and the
+recording id is the rest.
+"""
+
+
+@dataclass
+class Timeline:
+    """One timeline of a recording, with the range of times it holds."""
+
+    name: str
+    """Name of the timeline, e.g. `log_time`."""
+
+    time_type: str
+    """`sequence`, `duration`, or `timestamp`."""
+
+    start: int | None
+    """First time on the timeline, or None if it holds no data yet."""
+
+    end: int | None
+    """Last time on the timeline, or None if it holds no data yet."""
+
+
+@dataclass
+class Recording:
+    """One recording open in the viewer."""
+
+    store_id: StoreId
+    timelines: list[Timeline]
+
+    current_timeline: str | None
+    """The timeline the cursor sits on, if any."""
+
+    current_time: int | None
+    """Where the cursor sits on that timeline, if set."""
+
+
+@dataclass
+class ViewReport:
+    """A warning or an error a view reported the last time it was shown."""
+
+    severity: str
+    """`warning` or `error`."""
+
+    summary: str
+    details: str | None
+
+
+@dataclass
+class View:
+    """One view of the viewer's current blueprint."""
+
+    view_id: str
+    view_class: str
+    name: str
+    origin: str
+    visible: bool
+
+    reports: list[ViewReport]
+    """What failed to visualize. Empty when the view is healthy."""
+
+
+@dataclass
+class ViewerState:
+    """A snapshot of what the viewer is currently showing."""
+
+    url: str
+    """The current page, as a sharable URL. Empty for a page that has none."""
+
+    active_recording: StoreId | None
+    recordings: list[Recording]
+    views: list[View]
+
+    catalog_url: str | None
+    """
+    Origin of the catalog server the viewer hosts.
+
+    Hand this to [`CatalogClient`][rerun.catalog.CatalogClient] to read the data behind the open
+    recordings; this API drives the viewer and deliberately does not serve data itself.
+    """
+
+
+@dataclass
+class LogEntry:
+    """One message the viewer logged."""
+
+    sequence: int
+    """Increases by one per message. Pass the last one back to fetch only what is new."""
+
+    level: str
+    """`INFO`, `WARN`, or `ERROR`."""
+
+    target: str
+    """The module that logged it, starting with the crate name."""
+
+    message: str
+
+
+def _time_type(raw: str | None) -> str:
+    """Turn `TIME_TYPE_TIMESTAMP_NS` into `timestamp`, and the like."""
+    return (raw or "").removeprefix("TIME_TYPE_").removesuffix("_NS").lower()
+
+
+def _int_field(raw: dict[str, Any] | None, name: str) -> int | None:
+    """
+    Read an integer out of an optional message.
+
+    Canonical protobuf JSON omits a scalar that holds its default, so a present-but-zero value
+    arrives as a missing key. Absent means the enclosing message was unset; zero means it was set
+    and happens to be zero.
+    """
+    if raw is None:
+        return None
+    return int(raw.get(name, 0))
+
+
+def _viewer_state_from_json(raw: dict[str, Any]) -> ViewerState:
+    """
+    Build a `ViewerState` out of the canonical protobuf JSON the bindings return.
+
+    Separate from the call that fetches it, so the shape can be tested without a viewer.
+    """
+
+    recordings = []
+    for recording in raw.get("recordings", []):
+        cursor = recording.get("current_time") or {}
+        recordings.append(
+            Recording(
+                store_id=recording.get("store_id", ""),
+                timelines=[
+                    Timeline(
+                        name=timeline.get("timeline", {}).get("name", ""),
+                        time_type=_time_type(timeline.get("time_type")),
+                        start=_int_field(timeline.get("time_range"), "start"),
+                        end=_int_field(timeline.get("time_range"), "end"),
+                    )
+                    for timeline in recording.get("timelines", [])
+                ],
+                current_timeline=cursor.get("timeline", {}).get("name"),
+                current_time=_int_field(cursor.get("time"), "time"),
+            )
+        )
+
+    views = [
+        View(
+            view_id=view.get("view_id", ""),
+            view_class=view.get("class", ""),
+            name=view.get("name", ""),
+            origin=view.get("origin", ""),
+            visible=view.get("visible", False),
+            reports=[
+                ViewReport(
+                    severity=report.get("severity", ""),
+                    summary=report.get("summary", ""),
+                    details=report.get("details"),
+                )
+                for report in view.get("reports", [])
+            ],
+        )
+        for view in raw.get("views", [])
+    ]
+
+    return ViewerState(
+        url=raw.get("url", ""),
+        active_recording=raw.get("active_store_id"),
+        recordings=recordings,
+        views=views,
+        catalog_url=raw.get("catalog_url"),
+    )
 
 
 class ViewerClient:
@@ -218,6 +404,51 @@ class ViewerClient:
         # requires changing the grpc protocol though, or rolling a OSS server sidecar to the Viewer.
         self._internal.send_table(name, to_record_batch(table))
 
+    def close_recordings(
+        self,
+        target: str | Sequence[StoreId] = "current",
+    ) -> list[StoreId]:
+        """
+        Close recordings in the viewer, and return what was closed.
+
+        This only removes them from the viewer. Files on disk are untouched, and registered
+        recordings stay in the catalog and can be reopened, but unsaved blueprint edits are lost.
+
+        !!! warning
+            This API is experimental and may change or be removed in future versions.
+
+        Parameters
+        ----------
+        target:
+            `"current"` to close the active recording, `"all"` to close every open one, or the
+            [`StoreId`][rerun.experimental.StoreId] of a recording to close, or several of them.
+            `viewer_state()` reports the open recordings and their ids.
+
+        """
+        if target in ("current", "all"):
+            assert isinstance(target, str)
+            raw = json.loads(self._internal.close_recordings(target=target))
+        else:
+            store_ids = [target] if isinstance(target, str) else list(target)
+            raw = json.loads(self._internal.close_recordings(store_ids=store_ids))
+        return list(raw.get("closed", []))
+
+    def open_url(self, url: str) -> None:
+        """
+        Open a URL in the viewer.
+
+        !!! warning
+            This API is experimental and may change or be removed in future versions.
+
+        Parameters
+        ----------
+        url:
+            A recording or blueprint file, a `rerun://` dataset URI, a redap server or catalog
+            URL, or an intra-recording link.
+
+        """
+        self._internal.open_url(url)
+
     def save_screenshot(self, file_path: str, view_id: str | UUID | None = None) -> None:
         """
         Save a screenshot to a file.
@@ -249,6 +480,7 @@ class ViewerClient:
         *,
         sequence: int,
         play: bool = False,
+        recording: StoreId | None = None,
     ) -> None: ...
 
     @overload
@@ -258,6 +490,7 @@ class ViewerClient:
         *,
         duration: int | float | timedelta | np.timedelta64,
         play: bool = False,
+        recording: StoreId | None = None,
     ) -> None: ...
 
     @overload
@@ -267,6 +500,7 @@ class ViewerClient:
         *,
         timestamp: int | float | datetime | np.datetime64,
         play: bool = False,
+        recording: StoreId | None = None,
     ) -> None: ...
 
     def set_time(
@@ -277,6 +511,7 @@ class ViewerClient:
         duration: int | float | timedelta | np.timedelta64 | None = None,
         timestamp: int | float | datetime | np.datetime64 | None = None,
         play: bool = False,
+        recording: StoreId | None = None,
     ) -> None:
         """
         Set the viewer's time cursor.
@@ -295,6 +530,9 @@ class ViewerClient:
         play:
             Start playing from the new position.
             The viewer pauses by default.
+        recording:
+            The recording to seek, as reported by `viewer_state()`.
+            If omitted, the viewer uses its active recording.
 
         """
         if sum(value is not None for value in (sequence, duration, timestamp)) != 1:
@@ -308,7 +546,47 @@ class ViewerClient:
             assert timestamp is not None
             time = to_nanos_since_epoch(timestamp)
 
-        self._internal.set_time_cursor(timeline, time, play)
+        self._internal.set_time_cursor(timeline, time, play, recording)
+
+    def viewer_logs(self, after_sequence: int | None = None) -> list[LogEntry]:
+        """
+        Return the viewer's recent log messages, oldest first.
+
+        The viewer keeps a bounded buffer, so old entries drop out.
+
+        !!! warning
+            This API is experimental and may change or be removed in future versions.
+
+        Parameters
+        ----------
+        after_sequence:
+            Only return entries newer than this sequence number.
+            Pass the last one you saw to fetch only what is new. None returns everything buffered.
+
+        """
+        raw = json.loads(self._internal.viewer_logs(after_sequence))
+        return [
+            LogEntry(
+                sequence=entry.get("sequence", 0),
+                level=entry.get("level", ""),
+                target=entry.get("target", ""),
+                message=entry.get("message", ""),
+            )
+            for entry in raw.get("entries", [])
+        ]
+
+    def viewer_state(self) -> ViewerState:
+        """
+        Report what the viewer is currently showing.
+
+        Call this to learn which recording and timeline to drive, and which time values are valid,
+        before moving the time cursor. A view's reports say what failed to visualize.
+
+        !!! warning
+            This API is experimental and may change or be removed in future versions.
+
+        """
+        return _viewer_state_from_json(json.loads(self._internal.viewer_state()))
 
     def close(self) -> None:
         """

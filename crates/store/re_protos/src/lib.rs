@@ -13,6 +13,8 @@ pub mod capabilities;
 
 pub mod headers;
 #[cfg(not(target_arch = "wasm32"))]
+pub mod json;
+#[cfg(not(target_arch = "wasm32"))]
 pub mod reflection;
 pub mod trace_id_layer;
 
@@ -48,6 +50,12 @@ mod v1alpha1 {
 
     #[path = "./rerun.sdk_comms.v1alpha1.rs"]
     pub mod rerun_sdk_comms_v1alpha1;
+
+    #[path = "./rerun.viewer_control.v1alpha1.rs"]
+    pub mod rerun_viewer_control_v1alpha1;
+
+    #[path = "./rerun.viewer_control.v1alpha1.ext.rs"]
+    pub mod rerun_viewer_control_v1alpha1_ext;
 
     #[path = "./rerun.cloud.v1alpha1.rs"]
     pub mod rerun_cloud_v1alpha1;
@@ -113,6 +121,13 @@ pub mod cloud {
 pub mod sdk_comms {
     pub mod v1alpha1 {
         pub use crate::v1alpha1::rerun_sdk_comms_v1alpha1::*;
+    }
+}
+
+pub mod viewer_control {
+    pub mod v1alpha1 {
+        pub use crate::v1alpha1::rerun_viewer_control_v1alpha1::*;
+        pub use crate::v1alpha1::rerun_viewer_control_v1alpha1_ext::*;
     }
 }
 

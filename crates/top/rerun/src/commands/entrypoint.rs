@@ -1713,9 +1713,9 @@ fn assert_receive_into_entity_db(rx: &LogReceiverSet) -> anyhow::Result<re_entit
                             );
                         }
 
-                        DataSourceMessage::UiCommand(ui_command) => {
+                        DataSourceMessage::ViewerControl(command) => {
                             anyhow::bail!(
-                                "Received a UI command which can't be stored in an EntityDb: {ui_command:?}"
+                                "Received a viewer-control command which can't be stored in an EntityDb: {command:?}"
                             );
                         }
                     }

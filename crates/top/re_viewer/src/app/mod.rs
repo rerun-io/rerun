@@ -41,7 +41,7 @@ mod viewer_control;
 
 /// Only `web.rs` needs this by name; on native, `logic` calls it directly.
 #[cfg(target_arch = "wasm32")]
-pub(crate) use viewer_control::serve_inspect_request;
+pub(crate) use viewer_control::serve_egui_inspect_request;
 
 // ----------------------------------------------------------------------------
 

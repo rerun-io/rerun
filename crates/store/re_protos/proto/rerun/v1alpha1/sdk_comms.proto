@@ -3,8 +3,8 @@
 // Defines `MessageProxyService`, a bounded buffer that SDKs write log messages and tables into and
 // that viewers read out of. This is what backs `rerun+http://` connections.
 //
-// The viewer's remote-control API shares this proto package but lives in
-// `rerun/v1alpha1/viewer.proto`.
+// The viewer's remote-control API is served on the same endpoint, but is its own service in its
+// own package: see `rerun/v1alpha1/viewer_control.proto`.
 
 syntax = "proto3";
 

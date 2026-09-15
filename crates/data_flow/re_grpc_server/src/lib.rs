@@ -7,7 +7,7 @@ use std::net::SocketAddr;
 use std::pin::Pin;
 
 use re_byte_size::{MemUsageNode, MemUsageTree, SizeBytes};
-use re_log_channel::{DataSourceMessage, DataSourceUiCommand};
+use re_log_channel::{DataSourceMessage, ViewerControlCommand};
 use re_log_encoding::{ToApplication as _, ToTransport as _};
 use re_log_types::TableMsg;
 use re_protos::common::v1alpha1::{
@@ -586,7 +586,7 @@ pub fn spawn_with_recv_and_services(
     // Serve the viewer-control service alongside the proxy, restricted to loopback connections:
     // it drives the local viewer (e.g. from the MCP server), which only ever connects over 127.0.0.1.
     loopback_services.add_service(
-        re_protos::sdk_comms::v1alpha1::viewer_control_service_server::ViewerControlServiceServer::new(
+        re_protos::viewer_control::v1alpha1::viewer_control_service_server::ViewerControlServiceServer::new(
             message_proxy.viewer_control(),
         )
         .max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE)
@@ -630,7 +630,9 @@ pub fn spawn_with_recv_and_services(
                         }
                     },
 
-                    LogOrTableMsgProto::UiCommand(cmd) => Ok(DataSourceMessage::UiCommand(cmd)),
+                    LogOrTableMsgProto::ViewerControl(cmd) => {
+                        Ok(DataSourceMessage::ViewerControl(cmd))
+                    }
                 },
 
                 Err(async_broadcast_channel::RecvError::Closed) => {
@@ -700,7 +702,7 @@ struct TableMsgProto {
 enum LogOrTableMsgProto {
     LogMsg(LogMsgProto),
     Table(TableMsgProto),
-    UiCommand(DataSourceUiCommand),
+    ViewerControl(ViewerControlCommand),
 }
 
 impl From<LogMsgProto> for LogOrTableMsgProto {
@@ -715,9 +717,9 @@ impl From<TableMsgProto> for LogOrTableMsgProto {
     }
 }
 
-impl From<DataSourceUiCommand> for LogOrTableMsgProto {
-    fn from(value: DataSourceUiCommand) -> Self {
-        Self::UiCommand(value)
+impl From<ViewerControlCommand> for LogOrTableMsgProto {
+    fn from(value: ViewerControlCommand) -> Self {
+        Self::ViewerControl(value)
     }
 }
 
@@ -828,7 +830,7 @@ impl MessageBuffer {
             LogOrTableMsgProto::Table(msg) => {
                 self.disposable.push_back(msg.into());
             }
-            LogOrTableMsgProto::UiCommand(msg) => {
+            LogOrTableMsgProto::ViewerControl(msg) => {
                 self.disposable.push_back(msg.into());
             }
         }
@@ -1197,8 +1199,8 @@ impl MessageProxy {
                         re_log::warn_once!("A log stream got a TableMsg");
                         None
                     }
-                    Ok(ReadLogOrTableMsgResponse::UiCommand) => {
-                        re_log::warn_once!("A log stream got a UiCommandMsg");
+                    Ok(ReadLogOrTableMsgResponse::ViewerControl) => {
+                        re_log::warn_once!("A log stream got a viewer-control command");
                         None
                     }
                     Err(err) => Some(Err(err)),
@@ -1216,8 +1218,8 @@ impl MessageProxy {
                         None
                     }
                     Ok(ReadLogOrTableMsgResponse::TableMsg(msg)) => Some(Ok(msg)),
-                    Ok(ReadLogOrTableMsgResponse::UiCommand) => {
-                        re_log::warn_once!("A log stream got a UiCommandMsg");
+                    Ok(ReadLogOrTableMsgResponse::ViewerControl) => {
+                        re_log::warn_once!("A log stream got a viewer-control command");
                         None
                     }
                     Err(err) => Some(Err(err)),
@@ -1229,7 +1231,7 @@ impl MessageProxy {
 enum ReadLogOrTableMsgResponse {
     LogMsg(ReadMessagesResponse),
     TableMsg(ReadTablesResponse),
-    UiCommand,
+    ViewerControl,
 }
 
 impl From<LogOrTableMsgProto> for ReadLogOrTableMsgResponse {
@@ -1242,7 +1244,7 @@ impl From<LogOrTableMsgProto> for ReadLogOrTableMsgResponse {
                 id: Some(table_msg.id),
                 data: Some(table_msg.data),
             }),
-            LogOrTableMsgProto::UiCommand(_ui_command) => Self::UiCommand,
+            LogOrTableMsgProto::ViewerControl(_command) => Self::ViewerControl,
         }
     }
 }

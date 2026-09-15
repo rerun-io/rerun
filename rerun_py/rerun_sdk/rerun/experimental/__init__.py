@@ -23,7 +23,16 @@ from ._query_metrics import (
     QueryMetrics as QueryMetrics,
     query_metrics as query_metrics,
 )
-from ._viewer_client import ViewerClient as ViewerClient
+from ._viewer_client import (
+    LogEntry as LogEntry,
+    Recording as Recording,
+    StoreId as StoreId,
+    Timeline as Timeline,
+    View as View,
+    ViewerClient as ViewerClient,
+    ViewerState as ViewerState,
+    ViewReport as ViewReport,
+)
 
 # TODO(RR-5534): remove this deprecation shim one release after the chunk API move ships.
 # The names below moved to `rerun.chunk`; `send_chunks` moved to the top-level `rerun`.

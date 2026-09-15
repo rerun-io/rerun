@@ -3,20 +3,18 @@ use std::str::FromStr as _;
 use ahash::HashMap;
 use re_entity_db::LogSource;
 use re_log_channel::{
-    BlueprintTarget, DataSourceMessage, DataSourceUiCommand, DefaultBlueprintRegistration,
-    RecordingOpenBehavior, SaveScreenshotError,
+    BlueprintTarget, DataSourceMessage, DefaultBlueprintRegistration, RecordingOpenBehavior,
+    ViewerControlCommand,
 };
 use re_log_types::{LogMsg, StoreId, StoreKind, TableMsg};
-use re_protos::sdk_comms::v1alpha1::GetViewerLogsResponse;
-use re_sdk_types::external::uuid;
 use re_viewer_context::{
     Item, Route, StoreHub, SystemCommand, SystemCommandSender as _, TableStore,
-    open_url::{OpenUrlOptions, ViewerOpenUrl},
 };
 
 use crate::app_blueprint::AppBlueprint;
 
-use super::viewer_control::serve_inspect_request;
+use super::viewer_control::serve_egui_inspect_request;
+
 use super::{App, WindowDecorationsRequest};
 
 impl App {
@@ -51,7 +49,7 @@ impl App {
         self.run_pending_system_commands(&mut store_hub, egui_ctx);
 
         {
-            // We also need to check for Ui commands, especially `UiCommand::Quit`.
+            // We also need to check for UI commands, especially `UICommand::Quit`.
 
             let route = self.state.navigation.current().clone();
 
@@ -193,7 +191,7 @@ impl App {
                 DataSourceMessage::LogMsg(log_msg) => Some(log_msg.store_id().clone()),
                 DataSourceMessage::DefaultBlueprintRegistration(_)
                 | DataSourceMessage::TableMsg(_)
-                | DataSourceMessage::UiCommand(_) => None,
+                | DataSourceMessage::ViewerControl(_) => None,
             };
 
             let maybe_new_store = msg_store_id
@@ -236,9 +234,9 @@ impl App {
                     self.receive_table_msg(store_hub, egui_ctx, table);
                 }
 
-                DataSourceMessage::UiCommand(ui_command) => {
-                    self.receive_data_source_ui_command(
-                        ui_command,
+                DataSourceMessage::ViewerControl(command) => {
+                    self.receive_viewer_control_command(
+                        command,
                         &channel_source,
                         store_hub,
                         egui_ctx,
@@ -572,16 +570,24 @@ impl App {
         }
     }
 
-    fn receive_data_source_ui_command(
+    /// Run one [`ViewerControlCommand`] on the UI thread.
+    ///
+    /// Most of these are operations of the `ViewerControlService` API, defined by
+    /// `viewer_control.proto`. That file lists every place an operation has to be added.
+    fn receive_viewer_control_command(
         &mut self,
-        ui_command: DataSourceUiCommand,
+        command: ViewerControlCommand,
         channel_source: &LogSource,
         store_hub: &StoreHub,
         egui_ctx: &egui::Context,
     ) {
         re_tracing::profile_function!();
-        match ui_command {
-            DataSourceUiCommand::SetUrlFragment { store_id, fragment } => {
+        match command {
+            ViewerControlCommand::EguiInspect { request, on_done } => {
+                serve_egui_inspect_request(egui_ctx, &request, on_done);
+            }
+
+            ViewerControlCommand::SetUrlFragment { store_id, fragment } => {
                 match re_uri::Fragment::from_str(&fragment) {
                     Ok(fragment) => {
                         self.command_sender
@@ -596,101 +602,8 @@ impl App {
                 }
             }
 
-            DataSourceUiCommand::SaveScreenshot {
-                file_path,
-                view_id,
-                on_done,
-            } => {
-                let view_id = if let Some(view_id) = view_id {
-                    if let Ok(view_id) = uuid::Uuid::parse_str(&view_id) {
-                        Some(view_id.into())
-                    } else {
-                        re_log::error!(
-                            "Failed to parse view id from {view_id:?}. Expected a UUID."
-                        );
-                        if let Some(on_done) = on_done {
-                            on_done.call(Err(SaveScreenshotError::InvalidViewId { view_id }));
-                        }
-                        return;
-                    }
-                } else {
-                    None
-                };
-
-                if let Some(on_done) = on_done {
-                    self.pending_screenshot_notifiers
-                        .insert(file_path.clone(), on_done);
-                }
-
-                self.command_sender
-                    .send_system(SystemCommand::SaveScreenshot {
-                        target: re_viewer_context::ScreenshotTarget::SaveToPath(file_path),
-                        view_id,
-                        notify: false,
-                    });
-            }
-
-            // Handle a `egui_inspection` request.
-            DataSourceUiCommand::Inspect { request, on_done } => {
-                serve_inspect_request(egui_ctx, &request, on_done);
-            }
-
-            // Report current viewer state (re_viewer_mcp's `GetViewerState`).
-            DataSourceUiCommand::GetViewerState { on_done } => {
-                let state = self.collect_viewer_state(store_hub);
-                on_done.call(state);
-            }
-
-            DataSourceUiCommand::CloseRecordings { target, on_done } => {
-                on_done.call(self.apply_close_recordings(store_hub, target));
-            }
-
-            // Report recent log messages (re_viewer_mcp's `GetViewerLogs`).
-            DataSourceUiCommand::GetViewerLogs {
-                after_sequence,
-                on_done,
-            } => {
-                on_done.call(GetViewerLogsResponse {
-                    entries: self.viewer_log.entries_after(after_sequence),
-                });
-            }
-
-            // Open a URL in the viewer (re_viewer_mcp's `OpenUrl`).
-            DataSourceUiCommand::OpenUrl { url, on_done } => {
-                let result = ViewerOpenUrl::parse_with_options(
-                    &url,
-                    &re_data_source::FromUriOptions {
-                        accept_extensionless_http: true,
-                    },
-                );
-                match result {
-                    Ok(open_url) => {
-                        open_url.open(egui_ctx, &OpenUrlOptions::default(), &self.command_sender);
-                        on_done.call(Ok(()));
-                    }
-                    Err(err) => {
-                        on_done.call(Err(format!("Failed to open URL {url:?}: {err}")));
-                    }
-                }
-            }
-
-            // Move the time cursor of a recording (re_viewer_mcp's `SetTimeCursor`).
-            DataSourceUiCommand::SetTimeCursor {
-                store_id,
-                timeline,
-                time,
-                play,
-                on_done,
-            } => {
-                let result = self.apply_set_time_cursor(
-                    store_hub,
-                    store_id,
-                    timeline.as_deref(),
-                    time,
-                    play,
-                    egui_ctx,
-                );
-                on_done.call(result);
+            ViewerControlCommand::ViewerControl { request, on_done } => {
+                self.serve_viewer_control(request, on_done, store_hub, egui_ctx);
             }
         }
     }
