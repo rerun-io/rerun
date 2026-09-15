@@ -148,12 +148,17 @@ pub struct ConnectionRegistryHandle {
     ///
     /// Shared across cloned handles and readable from sync code without taking the async registry
     /// lock.
-    internal: Arc<OnceLock<Connection>>,
+    internal: Arc<OnceLock<InternalConnection>>,
 
     /// Whether to use credentials stored on the host machine by default.
     /// Since some tests run on a single-threaded tokio runtime and this is never updated,
     /// it lives outside the `RwLock`.
     use_stored_credentials: bool,
+}
+
+struct InternalConnection {
+    connection: Connection,
+    storage_dir: std::path::PathBuf,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, re_byte_size::SizeBytes)]
@@ -232,10 +237,10 @@ impl ConnectionRegistryHandle {
     /// connection is made, so an origin we have not connected to yet is
     /// [`ServerCapabilities::unknown`].
     pub fn capabilities(&self, origin: &re_uri::Origin) -> ServerCapabilities {
-        if let Some(connection) = self.internal.get()
-            && connection.origin() == origin
+        if let Some(internal) = self.internal.get()
+            && internal.connection.origin() == origin
         {
-            return connection.capabilities().clone();
+            return internal.connection.capabilities().clone();
         }
 
         wrap_blocking_lock(|| {
@@ -268,14 +273,17 @@ impl ConnectionRegistryHandle {
         self.use_stored_credentials
     }
 
-    pub fn with_internal(self, internal: Connection) -> Self {
-        self.set_internal(internal);
+    pub fn with_internal(self, connection: Connection, storage_dir: std::path::PathBuf) -> Self {
+        self.set_internal(connection, storage_dir);
         self
     }
 
-    pub fn set_internal(&self, internal: Connection) {
-        if let Err(rejected) = self.internal.set(internal) {
-            let new_origin = rejected.origin();
+    pub fn set_internal(&self, connection: Connection, storage_dir: std::path::PathBuf) {
+        if let Err(rejected) = self.internal.set(InternalConnection {
+            connection,
+            storage_dir,
+        }) {
+            let new_origin = rejected.connection.origin();
             let existing_origin = self
                 .internal_origin()
                 .map(|origin| origin.to_string())
@@ -289,7 +297,13 @@ impl ConnectionRegistryHandle {
     pub fn internal_origin(&self) -> Option<re_uri::Origin> {
         self.internal
             .get()
-            .map(|connection| connection.origin().clone())
+            .map(|internal| internal.connection.origin().clone())
+    }
+
+    pub fn internal_storage_dir(&self) -> Option<&std::path::Path> {
+        self.internal
+            .get()
+            .map(|internal| internal.storage_dir.as_path())
     }
 
     pub fn connection_handle(&self, origin: re_uri::Origin) -> crate::ConnectionHandle {
@@ -304,7 +318,7 @@ impl ConnectionRegistryHandle {
     pub fn is_internal_origin(&self, origin: &re_uri::Origin) -> bool {
         self.internal
             .get()
-            .is_some_and(|connection| connection.origin() == origin)
+            .is_some_and(|internal| internal.connection.origin() == origin)
     }
 
     /// Get a connection for the given origin, creating one if it doesn't exist yet.
@@ -322,10 +336,10 @@ impl ConnectionRegistryHandle {
     /// Failing that, no token will be used.
     #[tracing::instrument(level = "info", skip_all)]
     pub(crate) async fn connection(&self, origin: re_uri::Origin) -> ApiResult<Connection> {
-        if let Some(connection) = self.internal.get()
-            && connection.origin() == &origin
+        if let Some(internal) = self.internal.get()
+            && internal.connection.origin() == &origin
         {
-            return Ok(connection.clone());
+            return Ok(internal.connection.clone());
         }
 
         {

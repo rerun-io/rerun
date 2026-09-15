@@ -160,6 +160,9 @@ pub enum TypeConversionError {
     #[error("invalid timeline name: {0}")]
     InvalidTimelineName(#[from] re_types_core::InvalidTimelineNameError),
 
+    #[error(transparent)]
+    InvalidObjectKey(#[from] cloud::v1alpha1::ext::InvalidObjectKeyError),
+
     #[error("failed to parse timestamp: {0}")]
     InvalidTime(#[from] jiff::Error),
 

@@ -10208,6 +10208,7 @@ dependencies = [
  "re_mutex",
  "re_perf_telemetry",
  "re_protos",
+ "re_span",
  "re_tracing",
  "re_types_core",
  "re_uri",
@@ -10502,7 +10503,6 @@ dependencies = [
  "http-body",
  "itertools 0.15.0",
  "jiff",
- "js-sys",
  "lance",
  "nohash-hasher",
  "opentelemetry",
@@ -10544,7 +10544,6 @@ dependencies = [
  "tracing",
  "url",
  "wasm-bindgen-test",
- "web-sys",
 ]
 
 [[package]]
@@ -11279,6 +11278,7 @@ dependencies = [
  "anyhow",
  "arrow",
  "bytemuck",
+ "bytes",
  "camino",
  "cfg_aliases",
  "crossbeam",

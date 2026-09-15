@@ -1,0 +1,90 @@
+use re_async::AsyncReadAt;
+use re_protos::cloud::v1alpha1::ext::{GetWriteAccessGrantResponse, ObjectKey, Redemption};
+use re_span::Span;
+
+use crate::{ApiError, ConnectionHandle};
+
+/// An error writing an object to a catalog's storage.
+#[derive(Debug, thiserror::Error)]
+pub enum WriteObjectError {
+    #[error(transparent)]
+    Api(#[from] ApiError),
+
+    #[error("failed to read the source: {0}")]
+    Read(#[from] std::io::Error),
+
+    #[error("failed to send the source: {0}")]
+    Request(String),
+
+    #[error("the upload was rejected: HTTP {status} {status_text}")]
+    Rejected { status: u16, status_text: String },
+}
+
+impl ConnectionHandle {
+    /// Writes `source` to the catalog's storage under `key` and returns the credential-free URL
+    /// that names the object.
+    ///
+    /// Writing does not register the object: pass the returned URL to
+    /// [`Self::register_with_dataset`], which is a separate operation and may happen much later.
+    ///
+    /// The source must return stable contents for the duration of the upload.
+    ///
+    /// NOTE: `ehttp` sends the body from memory, so this reads the whole source first and is not
+    /// suitable for multi-GB uploads.
+    pub async fn write_object(
+        &self,
+        key: ObjectKey,
+        source: impl AsyncReadAt,
+    ) -> Result<url::Url, WriteObjectError> {
+        let size = source.size().await?;
+        let GetWriteAccessGrantResponse { storage_url, grant } = self
+            .client()
+            .await?
+            .get_write_access_grant(key, size)
+            .await?;
+
+        let body = source
+            .read_exact_at(Span {
+                start: 0,
+                len: size,
+            })
+            .await?;
+
+        let Redemption::HttpRequest(http_request) = grant.redemption;
+        let mut request = ehttp::Request::post(http_request.url.as_str(), Vec::from(body));
+        request.method = ehttp::Method::parse(http_request.method.as_str())
+            .map_err(WriteObjectError::Request)?;
+        request.headers = ehttp::Headers {
+            headers: http_request
+                .headers
+                .iter()
+                .map(|(name, value)| {
+                    (
+                        name.to_string(),
+                        String::from_utf8_lossy(value.as_bytes()).into_owned(),
+                    )
+                })
+                .collect(),
+        };
+
+        cfg_select! {
+            target_family = "wasm" => {
+                let response = re_async::spawn_local_with_result(ehttp::fetch_async(request))
+                    .await
+                    .unwrap_or_else(|_| Err("HTTP request was canceled".to_owned()));
+            }
+            _ => {
+                let response = ehttp::fetch_async(request).await;
+            }
+        }
+        let response = response.map_err(WriteObjectError::Request)?;
+        if !response.ok {
+            return Err(WriteObjectError::Rejected {
+                status: response.status,
+                status_text: response.status_text,
+            });
+        }
+
+        Ok(storage_url)
+    }
+}

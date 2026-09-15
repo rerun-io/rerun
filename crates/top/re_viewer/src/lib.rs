@@ -33,6 +33,7 @@ mod app;
 mod app_blueprint;
 mod app_state;
 mod background_tasks;
+mod catalog_handle;
 mod command_palette;
 mod default_views;
 mod docker_detection;

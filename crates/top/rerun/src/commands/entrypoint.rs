@@ -1316,7 +1316,10 @@ fn start_native_viewer(
             // The internal catalog is served (loopback-only) on the proxy server's port below, and
             // also reached in-process by the viewer.
             let internal_catalog = re_viewer::internal_catalog::build(server_addr);
-            connection_registry.set_internal(internal_catalog.connection.clone());
+            connection_registry.set_internal(
+                internal_catalog.connection.clone(),
+                internal_catalog.storage_dir().to_owned(),
+            );
 
             let mut loopback_services = re_grpc_server::LoopbackServices::default();
             loopback_services.add_service(internal_catalog.grpc_service());

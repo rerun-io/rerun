@@ -569,10 +569,7 @@ impl From<DoMaintenanceRequest> for crate::cloud::v1alpha1::DoMaintenanceRequest
             optimize_indexes: value.optimize_indexes,
             retrain_indexes: value.retrain_indexes,
             compact_fragments: value.compact_fragments,
-            cleanup_before: value.cleanup_before.map(|ts| prost_types::Timestamp {
-                seconds: ts.as_second(),
-                nanos: ts.subsec_nanosecond(),
-            }),
+            cleanup_before: value.cleanup_before.map(common_ext::timestamp_to_proto),
             gc_object_store: value.gc_object_store,
             unsafe_allow_recent_cleanup: value.unsafe_allow_recent_cleanup,
         }
@@ -760,20 +757,8 @@ impl From<EntryDetails> for crate::cloud::v1alpha1::EntryDetails {
             id: Some(value.id.into()),
             name: Some(value.name.to_string()),
             entry_kind: value.kind as _,
-            created_at: {
-                let ts = value.created_at;
-                Some(prost_types::Timestamp {
-                    seconds: ts.as_second(),
-                    nanos: ts.subsec_nanosecond(),
-                })
-            },
-            updated_at: {
-                let ts = value.updated_at;
-                Some(prost_types::Timestamp {
-                    seconds: ts.as_second(),
-                    nanos: ts.subsec_nanosecond(),
-                })
-            },
+            created_at: Some(common_ext::timestamp_to_proto(value.created_at)),
+            updated_at: Some(common_ext::timestamp_to_proto(value.updated_at)),
         }
     }
 }
@@ -2118,6 +2103,324 @@ impl ScanDatasetManifestResponse {
     }
 }
 
+// --- Grants ---
+
+/// The key of one object below a storage location's base, including the file name.
+///
+/// A key is at most [`Self::MAX_LEN`] bytes of slash-separated non-empty segments.
+/// A segment contains only ASCII letters, digits, `.`, `-`, or `_` and neither starts nor ends
+/// with `.`.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ObjectKey(
+    /// Always ASCII, so byte and character lengths agree.
+    String,
+);
+
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+#[error("invalid object key: {reason}")]
+pub struct InvalidObjectKeyError {
+    reason: String,
+}
+
+impl ObjectKey {
+    /// The longest key accepted, well within the limits of every supported storage backend.
+    pub const MAX_LEN: usize = 255;
+
+    pub fn try_new(key: impl Into<String>) -> Result<Self, InvalidObjectKeyError> {
+        let key = key.into();
+        let reject = |reason: String| InvalidObjectKeyError { reason };
+
+        if key.is_empty() {
+            return Err(reject("must not be empty".to_owned()));
+        }
+        if key.len() > Self::MAX_LEN {
+            return Err(reject(format!("must be at most {} bytes", Self::MAX_LEN)));
+        }
+        for segment in key.split('/') {
+            if segment.is_empty() {
+                return Err(reject("segments must not be empty".to_owned()));
+            }
+            if !segment
+                .bytes()
+                .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'-' | b'_'))
+            {
+                return Err(reject(format!(
+                    "segment {segment:?} contains a character other than ASCII letters, digits, `.`, `-`, or `_`"
+                )));
+            }
+            if segment.starts_with('.') || segment.ends_with('.') {
+                return Err(reject(format!(
+                    "segment {segment:?} starts or ends with `.`"
+                )));
+            }
+        }
+        Ok(Self(key))
+    }
+}
+
+impl std::fmt::Display for ObjectKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
+/// Requests authorization to write one object of exactly `size_bytes` bytes at `key`.
+#[derive(Debug, Clone)]
+pub struct GetWriteAccessGrantRequest {
+    pub size_bytes: u64,
+    pub key: ObjectKey,
+
+    /// The requested storage location, or the server's default.
+    pub location: Option<crate::cloud::v1alpha1::Location>,
+}
+
+impl TryFrom<crate::cloud::v1alpha1::GetWriteAccessGrantRequest> for GetWriteAccessGrantRequest {
+    type Error = TypeConversionError;
+
+    fn try_from(
+        value: crate::cloud::v1alpha1::GetWriteAccessGrantRequest,
+    ) -> Result<Self, Self::Error> {
+        let crate::cloud::v1alpha1::GetWriteAccessGrantRequest {
+            size_bytes,
+            key,
+            location,
+        } = value;
+        Ok(Self {
+            size_bytes,
+            key: ObjectKey::try_new(key)?,
+            location,
+        })
+    }
+}
+
+impl From<GetWriteAccessGrantRequest> for crate::cloud::v1alpha1::GetWriteAccessGrantRequest {
+    fn from(value: GetWriteAccessGrantRequest) -> Self {
+        let GetWriteAccessGrantRequest {
+            size_bytes,
+            key,
+            location,
+        } = value;
+        Self {
+            size_bytes,
+            key: key.0,
+            location,
+        }
+    }
+}
+
+/// Authorization to write one object, and the URL that names it once written.
+///
+/// Redeem [`Self::grant`] first, then pass [`Self::storage_url`] to `RegisterWithDataset` as a
+/// separate operation.
+#[derive(Debug, Clone)]
+pub struct GetWriteAccessGrantResponse {
+    /// Stable, credential-free URL naming the object.
+    pub storage_url: url::Url,
+    pub grant: AccessGrant,
+}
+
+impl TryFrom<crate::cloud::v1alpha1::GetWriteAccessGrantResponse> for GetWriteAccessGrantResponse {
+    type Error = TypeConversionError;
+
+    fn try_from(
+        value: crate::cloud::v1alpha1::GetWriteAccessGrantResponse,
+    ) -> Result<Self, Self::Error> {
+        let crate::cloud::v1alpha1::GetWriteAccessGrantResponse { storage_url, grant } = value;
+        Ok(Self {
+            storage_url: storage_url.parse().map_err(|err: url::ParseError| {
+                invalid_field!(
+                    crate::cloud::v1alpha1::GetWriteAccessGrantResponse,
+                    "storage_url",
+                    err.to_string()
+                )
+            })?,
+            grant: grant
+                .ok_or_else(|| {
+                    missing_field!(crate::cloud::v1alpha1::GetWriteAccessGrantResponse, "grant")
+                })?
+                .try_into()?,
+        })
+    }
+}
+
+impl TryFrom<GetWriteAccessGrantResponse> for crate::cloud::v1alpha1::GetWriteAccessGrantResponse {
+    type Error = TypeConversionError;
+
+    fn try_from(value: GetWriteAccessGrantResponse) -> Result<Self, Self::Error> {
+        let GetWriteAccessGrantResponse { storage_url, grant } = value;
+        Ok(Self {
+            storage_url: storage_url.to_string(),
+            grant: Some(grant.try_into()?),
+        })
+    }
+}
+
+/// Authorizes one storage operation until `expires_at`.
+#[derive(Debug, Clone)]
+pub struct AccessGrant {
+    pub expires_at: jiff::Timestamp,
+    pub redemption: Redemption,
+}
+
+/// How the caller redeems an [`AccessGrant`].
+#[derive(Debug, Clone)]
+pub enum Redemption {
+    /// An HTTP request the caller performs directly.
+    HttpRequest(HttpRequest),
+}
+
+impl TryFrom<crate::cloud::v1alpha1::AccessGrant> for AccessGrant {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::cloud::v1alpha1::AccessGrant) -> Result<Self, Self::Error> {
+        let crate::cloud::v1alpha1::AccessGrant {
+            expires_at,
+            redemption,
+        } = value;
+        let expires_at = expires_at
+            .ok_or_else(|| missing_field!(crate::cloud::v1alpha1::AccessGrant, "expires_at"))?;
+        let redemption = match redemption
+            .ok_or_else(|| missing_field!(crate::cloud::v1alpha1::AccessGrant, "redemption"))?
+        {
+            crate::cloud::v1alpha1::access_grant::Redemption::HttpRequest(request) => {
+                Redemption::HttpRequest(request.try_into()?)
+            }
+        };
+        Ok(Self {
+            expires_at: jiff::Timestamp::new(expires_at.seconds, expires_at.nanos)?,
+            redemption,
+        })
+    }
+}
+
+impl TryFrom<AccessGrant> for crate::cloud::v1alpha1::AccessGrant {
+    type Error = TypeConversionError;
+
+    fn try_from(value: AccessGrant) -> Result<Self, Self::Error> {
+        let AccessGrant {
+            expires_at,
+            redemption,
+        } = value;
+        Ok(Self {
+            expires_at: Some(common_ext::timestamp_to_proto(expires_at)),
+            redemption: Some(match redemption {
+                Redemption::HttpRequest(request) => {
+                    crate::cloud::v1alpha1::access_grant::Redemption::HttpRequest(
+                        request.try_into()?,
+                    )
+                }
+            }),
+        })
+    }
+}
+
+/// An HTTP request the caller performs directly to redeem an [`AccessGrant`].
+#[derive(Debug, Clone)]
+pub struct HttpRequest {
+    /// One of [`HttpRequest::SUPPORTED_METHODS`].
+    pub method: http::Method,
+
+    /// Absolute `http(s)` URL.
+    pub url: url::Url,
+
+    /// Headers the request must carry exactly as returned.
+    pub headers: http::HeaderMap,
+}
+
+impl HttpRequest {
+    /// The methods a redeemer must support.
+    pub const SUPPORTED_METHODS: [http::Method; 1] = [http::Method::PUT];
+}
+
+impl TryFrom<crate::cloud::v1alpha1::HttpRequest> for HttpRequest {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::cloud::v1alpha1::HttpRequest) -> Result<Self, Self::Error> {
+        use crate::cloud::v1alpha1::HttpRequest as Proto;
+
+        let Proto {
+            method,
+            url,
+            headers,
+        } = value;
+
+        let method = http::Method::from_bytes(method.as_bytes())
+            .map_err(|err| invalid_field!(Proto, "method", err.to_string()))?;
+        if !Self::SUPPORTED_METHODS.contains(&method) {
+            return Err(invalid_field!(
+                Proto,
+                "method",
+                format!(
+                    "expected one of {:?}, got `{method}`",
+                    Self::SUPPORTED_METHODS
+                )
+            ));
+        }
+
+        let url: url::Url = url
+            .parse()
+            .map_err(|err: url::ParseError| invalid_field!(Proto, "url", err.to_string()))?;
+        if !matches!(url.scheme(), "http" | "https") {
+            return Err(invalid_field!(
+                Proto,
+                "url",
+                format!("expected an absolute http(s) URL, got `{url}`")
+            ));
+        }
+
+        // `HeaderMap::with_capacity` and `append` panic once the map exceeds its maximum size.
+        let mut header_map = http::HeaderMap::new();
+        for crate::cloud::v1alpha1::HttpHeader { name, value } in headers {
+            let name = http::HeaderName::from_bytes(name.as_bytes())
+                .map_err(|err| invalid_field!(Proto, "headers", err.to_string()))?;
+            let value = http::HeaderValue::from_str(&value)
+                .map_err(|err| invalid_field!(Proto, "headers", err.to_string()))?;
+            header_map
+                .try_append(name, value)
+                .map_err(|err| invalid_field!(Proto, "headers", err.to_string()))?;
+        }
+
+        Ok(Self {
+            method,
+            url,
+            headers: header_map,
+        })
+    }
+}
+
+impl TryFrom<HttpRequest> for crate::cloud::v1alpha1::HttpRequest {
+    type Error = TypeConversionError;
+
+    fn try_from(value: HttpRequest) -> Result<Self, Self::Error> {
+        use crate::cloud::v1alpha1::HttpRequest as Proto;
+
+        let HttpRequest {
+            method,
+            url,
+            headers,
+        } = value;
+
+        let headers = headers
+            .iter()
+            .map(|(name, value)| {
+                // The proto field is a `string`, so a non-UTF-8 header value has no representation.
+                let value = std::str::from_utf8(value.as_bytes())
+                    .map_err(|err| invalid_field!(Proto, "headers", err.to_string()))?;
+                Ok(crate::cloud::v1alpha1::HttpHeader {
+                    name: name.to_string(),
+                    value: value.to_owned(),
+                })
+            })
+            .collect::<Result<Vec<_>, TypeConversionError>>()?;
+
+        Ok(Self {
+            method: method.to_string(),
+            url: url.to_string(),
+            headers,
+        })
+    }
+}
+
 // --- DataSource --
 
 /// The file format of a [`DataSource`].
@@ -2875,5 +3178,132 @@ mod tests {
             "scan_segment_table_dataframe_schema",
             format_schema(&ScanSegmentTableDataframe::max_schema())
         );
+    }
+
+    #[test]
+    fn object_key_validation() {
+        let longest = "a".repeat(ObjectKey::MAX_LEN);
+        for valid in ["recording.rrd", "user/project-1/a.rrd", "a.b/c_d", &longest] {
+            assert_eq!(ObjectKey::try_new(valid).unwrap().to_string(), valid);
+        }
+
+        let too_long = "a".repeat(ObjectKey::MAX_LEN + 1);
+        for invalid in [
+            "",
+            "/a.rrd",
+            "a.rrd/",
+            "a//b",
+            ".",
+            "..",
+            "a b",
+            "a\\b",
+            "a/../b",
+            "a/.git/b",
+            "a./b",
+            "\u{e4}.rrd",
+            &too_long,
+        ] {
+            assert!(ObjectKey::try_new(invalid).is_err(), "{invalid:?}");
+        }
+    }
+
+    #[test]
+    fn http_request_conversion_validates_url_and_headers() {
+        let proto = crate::cloud::v1alpha1::HttpRequest {
+            method: "PUT".to_owned(),
+            url: "https://bucket.example/key?sig=1".to_owned(),
+            headers: vec![
+                crate::cloud::v1alpha1::HttpHeader {
+                    name: "Content-Type".to_owned(),
+                    value: "application/octet-stream".to_owned(),
+                },
+                crate::cloud::v1alpha1::HttpHeader {
+                    name: "x-amz-meta-a".to_owned(),
+                    value: "1".to_owned(),
+                },
+                crate::cloud::v1alpha1::HttpHeader {
+                    name: "x-amz-meta-a".to_owned(),
+                    value: "2".to_owned(),
+                },
+                crate::cloud::v1alpha1::HttpHeader {
+                    name: "x-amz-meta-source-name".to_owned(),
+                    value: "über.rrd".to_owned(),
+                },
+            ],
+        };
+
+        let request = HttpRequest::try_from(proto.clone()).unwrap();
+        assert_eq!(request.method, http::Method::PUT);
+        assert_eq!(request.headers.get_all("x-amz-meta-a").iter().count(), 2);
+        let round_tripped = crate::cloud::v1alpha1::HttpRequest::try_from(request).unwrap();
+        let expected = crate::cloud::v1alpha1::HttpRequest {
+            headers: proto
+                .headers
+                .iter()
+                .map(|header| crate::cloud::v1alpha1::HttpHeader {
+                    name: header.name.to_ascii_lowercase(),
+                    ..header.clone()
+                })
+                .collect(),
+            ..proto.clone()
+        };
+        assert_eq!(round_tripped, expected);
+
+        for bad_method in ["put", "POST", "QUERY", "PU T"] {
+            let proto = crate::cloud::v1alpha1::HttpRequest {
+                method: bad_method.to_owned(),
+                ..proto.clone()
+            };
+            assert!(HttpRequest::try_from(proto).is_err(), "{bad_method:?}");
+        }
+
+        for bad_url in ["file:///does/not/exist.rrd", "not a url", "mailto:a@b"] {
+            let proto = crate::cloud::v1alpha1::HttpRequest {
+                url: bad_url.to_owned(),
+                ..proto.clone()
+            };
+            assert!(HttpRequest::try_from(proto).is_err(), "{bad_url:?}");
+        }
+
+        let proto = crate::cloud::v1alpha1::HttpRequest {
+            headers: vec![crate::cloud::v1alpha1::HttpHeader {
+                name: "bad header".to_owned(),
+                value: "1".to_owned(),
+            }],
+            ..proto
+        };
+        assert!(HttpRequest::try_from(proto).is_err());
+    }
+
+    #[test]
+    fn http_request_conversion_rejects_too_many_headers() {
+        // `http::HeaderMap` caps the number of distinct names, not the number of values.
+        let proto = crate::cloud::v1alpha1::HttpRequest {
+            method: "PUT".to_owned(),
+            url: "https://bucket.example/key".to_owned(),
+            headers: (0..1 << 16)
+                .map(|i| crate::cloud::v1alpha1::HttpHeader {
+                    name: format!("x-amz-meta-{i}"),
+                    value: "1".to_owned(),
+                })
+                .collect(),
+        };
+        assert!(HttpRequest::try_from(proto).is_err());
+    }
+
+    #[test]
+    fn http_request_conversion_rejects_a_non_utf8_header_value() {
+        let mut headers = http::HeaderMap::new();
+        headers.insert(
+            http::HeaderName::from_static("x-amz-meta-a"),
+            http::HeaderValue::from_bytes(&[0xff]).expect("valid opaque header value"),
+        );
+        let request = HttpRequest {
+            method: http::Method::PUT,
+            url: "https://bucket.example/key".parse().expect("valid url"),
+            headers,
+        };
+
+        assert!(crate::cloud::v1alpha1::HttpRequest::try_from(request).is_err());
     }
 }

@@ -12,6 +12,7 @@ mod dataset_revisions;
 mod grpc;
 mod registration_handle;
 mod tasks;
+mod write_object;
 
 #[cfg(not(target_arch = "wasm32"))]
 mod segment_chunk_provider;
@@ -44,6 +45,7 @@ pub use self::grpc::{
 };
 pub use self::registration_handle::{RegistrationHandle, SegmentRegistrationResult};
 pub use self::tasks::TaskCompletion;
+pub use self::write_object::WriteObjectError;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub use self::grpc::PoolChannel;

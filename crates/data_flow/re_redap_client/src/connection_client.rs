@@ -12,12 +12,12 @@ use re_protos::cloud::v1alpha1::ext::{
 };
 use re_protos::cloud::v1alpha1::ext::{
     CreateDatasetEntryResponse, CreateTableEntryRequest, DatasetDetails, DatasetEntry,
-    EntryDetails, EntryDetailsUpdate, LanceTable, ProviderDetails, QueryDatasetRequest,
-    QueryTasksOnCompletionRequest, QueryTasksRequest, ReadDatasetEntryResponse,
-    ReadTableEntryResponse, RegisterTableResponse, TableDetails, TableEntry, TableInsertMode,
-    UnregisterFromDatasetRequest, UpdateDatasetEntryRequest, UpdateDatasetEntryResponse,
-    UpdateEntryRequest, UpdateEntryResponse, UpdateTableEntryRequest, UpdateTableEntryResponse,
-    VersionResponse,
+    EntryDetails, EntryDetailsUpdate, GetWriteAccessGrantResponse, LanceTable, ObjectKey,
+    ProviderDetails, QueryDatasetRequest, QueryTasksOnCompletionRequest, QueryTasksRequest,
+    ReadDatasetEntryResponse, ReadTableEntryResponse, RegisterTableResponse, TableDetails,
+    TableEntry, TableInsertMode, UnregisterFromDatasetRequest, UpdateDatasetEntryRequest,
+    UpdateDatasetEntryResponse, UpdateEntryRequest, UpdateEntryResponse, UpdateTableEntryRequest,
+    UpdateTableEntryResponse, VersionResponse,
 };
 use re_protos::cloud::v1alpha1::rerun_cloud_service_client::RerunCloudServiceClient;
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::{
@@ -2108,6 +2108,43 @@ where
 
             Err(err) => Err(err),
         }
+    }
+
+    // --- Grants ---
+
+    /// Requests authorization to write one object of exactly `size_bytes` bytes at `key`.
+    ///
+    /// Writing the object does not register it: redeem the grant, then pass the returned storage
+    /// URL to [`crate::ConnectionHandle::register_with_dataset`], which is a separate operation and
+    /// may happen much later. [`crate::ConnectionHandle::write_object`] does both the request and
+    /// the redemption.
+    #[tracing::instrument(level = "info", skip_all)]
+    pub async fn get_write_access_grant(
+        &mut self,
+        key: ObjectKey,
+        size_bytes: u64,
+    ) -> ApiResult<GetWriteAccessGrantResponse> {
+        let request = cloud_ext::GetWriteAccessGrantRequest {
+            size_bytes,
+            key,
+            location: None,
+        };
+        let (inner, trace_id) = TonicResponseExt::into_inner_and_trace_id(
+            self.inner()
+                .get_write_access_grant(
+                    re_protos::cloud::v1alpha1::GetWriteAccessGrantRequest::from(request),
+                )
+                .await
+                .map_err(|err| ApiError::tonic(&self.origin, err, "/GetWriteAccessGrant failed"))?,
+        );
+        inner.try_into().map_err(|err| {
+            ApiError::deserialization_with_source(
+                &self.origin,
+                trace_id,
+                err,
+                "failed parsing /GetWriteAccessGrant response",
+            )
+        })
     }
 }
 

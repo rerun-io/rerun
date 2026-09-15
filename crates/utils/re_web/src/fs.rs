@@ -12,6 +12,11 @@ use web_sys::{
     DomException, FileSystemDirectoryHandle, FileSystemFileHandle, FileSystemWritableFileStream,
 };
 
+/// The root of the origin private file system.
+pub fn root() -> std::path::PathBuf {
+    std::path::PathBuf::from("/")
+}
+
 pub struct Metadata {
     is_file: bool,
     len: u64,
@@ -177,6 +182,19 @@ pub async fn write_file(path: impl AsRef<Path>, file: web_sys::File) -> io::Resu
     .map_err(io::Error::other)?
 }
 
+/// Write bytes into OPFS through a fresh browser file.
+pub async fn write_bytes(path: impl AsRef<Path>, bytes: bytes::Bytes) -> io::Result<()> {
+    // TODO(grtlr): Write the Wasm-backed bytes directly once
+    // <https://bugs.webkit.org/show_bug.cgi?id=302733> is fixed and WebKit respects typed-array
+    // view bounds in `FileSystemWritableFileStream.write`.
+    let bytes = js_sys::Uint8Array::from(bytes.as_ref());
+    let parts = js_sys::Array::new();
+    parts.push(&bytes);
+    let file = web_sys::File::new_with_u8_array_sequence(&parts, "bytes")
+        .map_err(|err| io::Error::other(crate::Error::from(err)))?;
+    write_file(path, file).await
+}
+
 /// Recursively remove the directory at `path` and everything under it.
 ///
 /// A missing `path` is treated as success, so this is an idempotent "clear".
@@ -332,11 +350,11 @@ mod test {
             .await
             .expect("initial write should succeed");
 
-        let metadata = metadata(file_path.as_ref())
+        let file_metadata = metadata(file_path.as_ref())
             .await
             .expect("metadata should succeed for an OPFS file");
-        assert!(metadata.is_file());
-        assert_eq!(metadata.len(), b"first write".len() as u64);
+        assert!(file_metadata.is_file());
+        assert_eq!(file_metadata.len(), b"first write".len() as u64);
         assert_eq!(
             read(file_path.as_ref())
                 .await
@@ -344,14 +362,21 @@ mod test {
             b"first write",
         );
 
-        write_file(&file_path, file(b"second"))
+        write_bytes(&file_path, bytes::Bytes::from_static(b"other"))
             .await
-            .expect("overwriting an OPFS file should succeed");
+            .expect("overwriting an OPFS file with shorter bytes should succeed");
         assert_eq!(
             read(file_path.as_ref())
                 .await
                 .expect("read should return the overwritten bytes"),
-            b"second",
+            b"other",
+        );
+        assert_eq!(
+            metadata(file_path.as_ref())
+                .await
+                .expect("metadata should succeed")
+                .len(),
+            b"other".len() as u64,
         );
 
         remove_dir_all(test_dir)

@@ -125,6 +125,12 @@ impl RerunCloudHandlerBuilder {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
+    pub fn with_storage_dir(mut self, storage_dir: tempfile::TempDir) -> Self {
+        self.settings.storage_dir = storage_dir;
+        self
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
     pub async fn with_directory_as_dataset(
         mut self,
         directory: &NamedPath,

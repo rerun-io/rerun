@@ -50,26 +50,17 @@ async fn register_rrd_without_footer_from_file_url_in_opfs() {
 /// The placeholder origin is never dialed; requests go straight to `service`.
 fn in_process_connection<T: RerunCloudService>(service: Arc<T>) -> ConnectionHandle {
     let registry = ConnectionRegistry::new_without_stored_credentials();
-    registry.set_internal(Connection::from_service(
-        re_uri::Origin::http_local_host(1),
-        service,
-        re_server::capabilities(),
-    ));
+    registry.set_internal(
+        Connection::from_service(
+            re_uri::Origin::http_local_host(1),
+            service,
+            re_server::capabilities(),
+        ),
+        re_web::fs::root(),
+    );
     registry
         .internal_connection_handle()
         .expect("internal connection is configured")
-}
-
-async fn write_bytes_to_opfs(path: &str, contents: &[u8]) -> std::io::Result<()> {
-    // TODO(grtlr): https://bugs.webkit.org/show_bug.cgi?id=302733
-    // Write the Wasm-backed bytes directly once WebKit respects typed-array
-    // view bounds in `FileSystemWritableFileStream.write`.
-    let bytes = js_sys::Uint8Array::from(contents);
-    let parts = js_sys::Array::new();
-    parts.push(&bytes);
-    let file = web_sys::File::new_with_u8_array_sequence(&parts, path)
-        .map_err(|err| std::io::Error::other(re_web::Error::from(err)))?;
-    re_web::fs::write_file(path, file).await
 }
 
 async fn register_rrd_from_file_url_in_opfs(with_footer: bool) {
@@ -86,7 +77,7 @@ async fn register_rrd_from_file_url_in_opfs(with_footer: bool) {
     let file_name = format!("{}.rrd", re_tuid::Tuid::new());
     let url = format!("file:///{file_name}");
 
-    write_bytes_to_opfs(&file_name, &encode_rrd(with_footer))
+    re_web::fs::write_bytes(&file_name, bytes::Bytes::from(encode_rrd(with_footer)))
         .await
         .expect("failed to write OPFS file");
 

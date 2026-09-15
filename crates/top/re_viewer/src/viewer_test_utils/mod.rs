@@ -69,7 +69,8 @@ pub fn viewer_harness(options: &HarnessOptions) -> Harness<'static, App> {
         let addr =
             std::net::SocketAddr::from((std::net::Ipv4Addr::LOCALHOST, re_uri::DEFAULT_PROXY_PORT));
         let catalog = crate::internal_catalog::build(addr);
-        connection_registry.set_internal(catalog.connection);
+        connection_registry
+            .set_internal(catalog.connection.clone(), catalog.storage_dir().to_owned());
         let mut app = App::new(
             MainThreadToken::i_promise_i_am_only_using_this_for_a_test(),
             build_info!(),

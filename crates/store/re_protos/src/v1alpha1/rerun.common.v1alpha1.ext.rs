@@ -9,6 +9,18 @@ use re_log_types::{RecordingId, TableId};
 
 use crate::{TypeConversionError, invalid_field, missing_field};
 
+/// `google.protobuf.Timestamp` requires `nanos` in `0..=999_999_999`, whereas jiff reports a
+/// negative fraction for instants before the Unix epoch.
+pub fn timestamp_to_proto(ts: jiff::Timestamp) -> prost_types::Timestamp {
+    let mut seconds = ts.as_second();
+    let mut nanos = ts.subsec_nanosecond();
+    if nanos < 0 {
+        seconds -= 1;
+        nanos += 1_000_000_000;
+    }
+    prost_types::Timestamp { seconds, nanos }
+}
+
 /// Compression format used.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
@@ -1258,6 +1270,24 @@ fn record_batch_from_ipc_bytes(
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn timestamp_to_proto_normalizes_pre_epoch_nanos() {
+        for ts in [
+            jiff::Timestamp::MIN,
+            jiff::Timestamp::new(-1, -500_000_000).unwrap(),
+            jiff::Timestamp::UNIX_EPOCH,
+            jiff::Timestamp::new(1, 500_000_000).unwrap(),
+            jiff::Timestamp::MAX,
+        ] {
+            let proto = super::timestamp_to_proto(ts);
+            assert!((0..1_000_000_000).contains(&proto.nanos), "{ts}");
+            assert_eq!(
+                jiff::Timestamp::new(proto.seconds, proto.nanos).unwrap(),
+                ts
+            );
+        }
+    }
 
     #[test]
     fn entity_path_conversion() {

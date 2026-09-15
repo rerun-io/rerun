@@ -14,6 +14,9 @@ use std::time::Duration;
 use anyhow::Context as _;
 use re_protos::cloud::v1alpha1::ext::DataSource;
 use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, SegmentId};
+use re_redap_client::ConnectionHandle;
+
+use crate::catalog_handle::CatalogHandle;
 
 const REGISTRATION_TIMEOUT: Duration = Duration::from_mins(1);
 
@@ -430,13 +433,18 @@ impl App {
         #[cfg(not(target_arch = "wasm32"))]
         let assets = assets.to_vec();
         self.async_runtime.spawn_future(async move {
-            let registration = register_file(
-                &connection_registry,
-                &path,
-                #[cfg(target_arch = "wasm32")]
-                file,
-            )
-            .await;
+            let registration = match CatalogHandle::internal(&connection_registry) {
+                Some(catalog) => {
+                    register_file(
+                        &catalog,
+                        &path,
+                        #[cfg(target_arch = "wasm32")]
+                        file,
+                    )
+                    .await
+                }
+                None => Err(anyhow::anyhow!("internal catalog is not running")),
+            };
 
             // Register the assets before opening the segment, so the segment streams with its
             // asset layers.
@@ -508,12 +516,15 @@ fn record_catalog_load_analytics(
     let _ = (data_source, catalog_kind, started_successfully);
 }
 
-/// Register an `.rrd` file the user picked with the internal catalog.
+/// Register an `.rrd` file the user picked with `catalog`.
 ///
-/// The server reads the file itself, so we only read what we need to name the dataset and to hand
-/// the server a `file://` URL for the same bytes.
+/// The server reads the file itself, so the client only reads what it needs to name the dataset.
+/// The internal catalog reads the original file in place on native, and a copy in its OPFS storage
+/// in the browser. A remote catalog receives the file through a write access grant. Copies and
+/// uploads are keyed by the RRD fingerprint, so re-opening the same file reuses the existing
+/// object.
 async fn register_file(
-    connection_registry: &re_redap_client::ConnectionRegistryHandle,
+    catalog: &CatalogHandle,
     path: &Path,
     #[cfg(target_arch = "wasm32")] file: web_sys::File,
 ) -> anyhow::Result<RegistrationTarget> {
@@ -544,66 +555,16 @@ async fn register_file(
         )
     })?;
 
-    #[cfg(not(target_arch = "wasm32"))]
-    let file_url = url::Url::from_file_path(&abs_path).map_err(|()| {
-        anyhow::anyhow!(
-            "not an absolute file path\nFile path: {}",
-            abs_path.display()
+    let file_url = catalog
+        .write_file(
+            #[cfg(not(target_arch = "wasm32"))]
+            abs_path,
+            #[cfg(target_arch = "wasm32")]
+            file,
         )
-    })?;
-    #[cfg(target_arch = "wasm32")]
-    let file_url = copy_to_opfs(&reader, path, file).await?;
+        .await?;
 
-    register_rrd_file_url(connection_registry, file_url, rrd_metadata).await
-}
-
-/// Copy a browser file into OPFS and return the `file://` URL the server can read it from.
-///
-/// The OPFS path is content-addressed, so re-opening the same file reuses the existing copy.
-#[cfg(target_arch = "wasm32")]
-async fn copy_to_opfs(
-    reader: &impl re_async::AsyncReadAt,
-    path: &Path,
-    file: web_sys::File,
-) -> anyhow::Result<url::Url> {
-    let file_size = reader.size().await.with_context(|| {
-        format!(
-            "failed to read RRD file size\nFile path: {}",
-            path.display(),
-        )
-    })?;
-    let fingerprint = re_log_encoding::RrdFingerprint::compute_for_rrd(reader)
-        .await
-        .with_context(|| format!("failed to fingerprint RRD\nFile path: {}", path.display()))?;
-    let fingerprint = re_log_encoding::sha256_to_hex(fingerprint.as_bytes());
-    let file_name = path
-        .file_name()
-        .filter(|file_name| !file_name.is_empty())
-        .context("OPFS upload path has no file name")?
-        .to_str()
-        .context("OPFS upload file name is not UTF-8")?;
-
-    let opfs_path = std::path::PathBuf::from("/uploads")
-        .join(&fingerprint)
-        .join(file_name);
-    if !opfs_upload_matches(&opfs_path, file_size).await?
-        && let Err(err) = re_web::fs::write_file(&opfs_path, file).await
-    {
-        if err.kind() == std::io::ErrorKind::StorageFull {
-            anyhow::bail!(
-                "Viewer catalog storage quota exceeded. In Settings, under Origin private filesystem, select \"Request persistence\", then try again."
-            );
-        }
-        return Err(err).context("failed to copy file to Viewer catalog storage");
-    }
-
-    // `Url::from_file_path` is unavailable on `wasm32-unknown-unknown`.
-    let mut file_url = url::Url::parse("file:///").expect("`file:///` is a valid base URL");
-    file_url
-        .path_segments_mut()
-        .expect("`file:///` is a base URL")
-        .extend(["uploads", &fingerprint, file_name]);
-    Ok(file_url)
+    register_rrd_file_url(catalog.connection(), file_url, rrd_metadata).await
 }
 
 /// Makes use of the fact that we don't need to scan for `default_blueprint_by_app_id`,
@@ -624,15 +585,6 @@ async fn read_rrd_metadata(reader: &impl re_async::AsyncReadAt) -> anyhow::Resul
     }
 }
 
-#[cfg(target_arch = "wasm32")]
-async fn opfs_upload_matches(path: &Path, expected_size: u64) -> anyhow::Result<bool> {
-    match re_web::fs::metadata(path).await {
-        Ok(metadata) => Ok(metadata.is_file() && metadata.len() == expected_size),
-        Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(false),
-        Err(err) => Err(err).context("failed to inspect Viewer catalog storage"),
-    }
-}
-
 /// Depending on the content of the file, we want to navigate to different parts of the catalog.
 pub enum RegistrationTarget {
     /// Whenever there is a recording in the file.
@@ -642,9 +594,9 @@ pub enum RegistrationTarget {
     Entry(EntryId),
 }
 
-/// Register a `file://` URL the server can read with the internal catalog.
+/// Register a URL the server can read with the catalog behind `connection`.
 async fn register_rrd_file_url(
-    connection_registry: &re_redap_client::ConnectionRegistryHandle,
+    connection: &ConnectionHandle,
     file_url: url::Url,
     rrd_metadata: re_log_encoding::RrdMetadata,
 ) -> anyhow::Result<RegistrationTarget> {
@@ -664,9 +616,6 @@ async fn register_rrd_file_url(
         );
     }
 
-    let connection = connection_registry
-        .internal_connection_handle()
-        .context("internal catalog is not running")?;
     let origin = connection.origin().clone();
     let data_source = DataSource::new_rrd_url(file_url);
     let dataset_name = re_log_types::EntryName::from(application_id.clone());
@@ -697,7 +646,7 @@ async fn register_rrd_file_url(
     };
 
     if let Err(err) = register_blueprints(
-        &connection,
+        connection,
         dataset_id,
         data_source,
         &rrd_metadata,
@@ -727,7 +676,7 @@ async fn register_rrd_file_url(
 /// The blueprint stores live in the same RRD, so the server can select and serve them lazily from
 /// the same data source.
 async fn register_blueprints(
-    connection: &re_redap_client::ConnectionHandle,
+    connection: &ConnectionHandle,
     dataset_id: EntryId,
     data_source: DataSource,
     rrd_metadata: &RrdMetadata,

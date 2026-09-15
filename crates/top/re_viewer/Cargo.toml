@@ -137,6 +137,7 @@ ahash.workspace = true
 anyhow.workspace = true
 arrow.workspace = true
 bytemuck.workspace = true
+bytes.workspace = true
 camino.workspace = true
 crossbeam.workspace = true
 eframe = { workspace = true, default-features = false, features = [
@@ -211,7 +212,6 @@ web-sys = { workspace = true, features = [
 [dev-dependencies]
 re_test_context.workspace = true
 re_test_viewport.workspace = true
-tempfile.workspace = true
 tokio.workspace = true
 insta.workspace = true
 

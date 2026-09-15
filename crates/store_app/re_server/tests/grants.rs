@@ -1,7 +1,7 @@
 //! Client-side write grants against a running `re_server`.
 //!
-//! Exercises the intended API end to end: acquire a grant, redeem it by uploading an in-memory
-//! RRD, then register the credential-free storage URL with a dataset.
+//! Exercises the intended API end to end: acquire a grant, redeem it with an in-memory RRD, then
+//! register the credential-free storage URL with a dataset.
 
 #![cfg(not(target_arch = "wasm32"))]
 
@@ -12,10 +12,8 @@ use re_log_types::example_components::{MyPoint, MyPoints};
 use re_log_types::{
     EntityPath, EntryName, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource,
 };
-use re_protos::cloud::v1alpha1::access_grant::Redemption;
-use re_protos::cloud::v1alpha1::ext::DataSource;
+use re_protos::cloud::v1alpha1::ext::{DataSource, ObjectKey};
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudServiceServer;
-use re_protos::cloud::v1alpha1::{AccessGrant, GetWriteAccessGrantRequest};
 use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
 use re_redap_client::ConnectionRegistry;
 use re_server::{RerunCloudHandlerBuilder, ServerBuilder};
@@ -39,49 +37,9 @@ async fn write_and_register_roundtrip() -> anyhow::Result<()> {
     let origin = format!("rerun+http://{}", handle.connect_addr()).parse()?;
     let connection = ConnectionRegistry::new_without_stored_credentials().connection_handle(origin);
 
-    let mut client = connection.client().await?;
-    let response = client
-        .inner()
-        .get_write_access_grant(GetWriteAccessGrantRequest {
-            size_bytes: rrd.len().try_into()?,
-            key: "user/project/recording.rrd".to_owned(),
-            location: None,
-        })
-        .await?
-        .into_inner();
-
-    let storage_url = response.storage_url.parse()?;
-    let AccessGrant {
-        expires_at,
-        redemption,
-    } = response
-        .grant
-        .ok_or_else(|| anyhow::anyhow!("write access grant is missing"))?;
-    let _expires_at = expires_at.ok_or_else(|| anyhow::anyhow!("grant expiry is missing"))?;
-    let Redemption::HttpRequest(http_request) =
-        redemption.ok_or_else(|| anyhow::anyhow!("grant redemption is missing"))?;
-
-    let upload_response = ehttp::fetch_async(ehttp::Request {
-        method: ehttp::Method::parse(&http_request.method).map_err(anyhow::Error::msg)?,
-        url: http_request.url,
-        body: rrd.to_vec(),
-        headers: ehttp::Headers {
-            headers: http_request
-                .headers
-                .into_iter()
-                .map(|header| (header.name, header.value))
-                .collect(),
-        },
-        timeout: Some(Duration::from_secs(30)),
-    })
-    .await
-    .map_err(anyhow::Error::msg)?;
-    anyhow::ensure!(
-        upload_response.ok,
-        "upload failed: HTTP {} {}",
-        upload_response.status,
-        upload_response.status_text
-    );
+    let storage_url = connection
+        .write_object(ObjectKey::try_new("user/project/recording.rrd")?, rrd)
+        .await?;
 
     let dataset_name = EntryName::new("uploads")?;
     let dataset_id = connection

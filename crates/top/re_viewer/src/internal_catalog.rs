@@ -30,12 +30,19 @@ pub struct InternalCatalog {
     /// The single handler shared between [`Self::connection`] and [`Self::grpc_service`].
     #[cfg(not(target_arch = "wasm32"))]
     handler: Arc<RerunCloudHandler>,
+
+    storage_dir: std::path::PathBuf,
 }
 
 impl InternalCatalog {
     /// The origin under which the catalog is registered.
     pub fn origin(&self) -> &re_uri::Origin {
         self.connection.origin()
+    }
+
+    /// The filesystem root used for objects staged for this catalog.
+    pub fn storage_dir(&self) -> &std::path::Path {
+        &self.storage_dir
     }
 
     /// The catalog as a gRPC service, to be served (loopback-only) on the proxy server's port.
@@ -50,13 +57,22 @@ impl InternalCatalog {
 #[cfg(not(target_arch = "wasm32"))]
 pub fn build(proxy_addr: SocketAddr) -> InternalCatalog {
     let origin = re_uri::Origin::http_local_host(proxy_addr.port());
-
-    let handler = Arc::new(RerunCloudHandlerBuilder::new().build());
+    let storage_dir = tempfile::Builder::new()
+        .prefix("rerun-data-")
+        .tempdir()
+        .expect("failed to create internal catalog storage directory");
+    let storage_path = storage_dir.path().to_owned();
+    let handler = Arc::new(
+        RerunCloudHandlerBuilder::new()
+            .with_storage_dir(storage_dir)
+            .build(),
+    );
     let connection = Connection::from_service(origin, handler.clone(), re_server::capabilities());
 
     InternalCatalog {
         connection,
         handler,
+        storage_dir: storage_path,
     }
 }
 
@@ -71,5 +87,8 @@ pub fn build() -> InternalCatalog {
 
     let connection = Connection::from_service(origin, handler, re_server::capabilities());
 
-    InternalCatalog { connection }
+    InternalCatalog {
+        connection,
+        storage_dir: re_web::fs::root(),
+    }
 }
