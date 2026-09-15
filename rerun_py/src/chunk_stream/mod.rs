@@ -22,6 +22,7 @@ mod engine;
 pub mod error;
 mod hdf5_reader;
 pub mod lazy_store;
+mod lerobot_reader;
 mod mcap_reader;
 mod mp4_reader;
 mod optimized_stream;
@@ -51,6 +52,7 @@ pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<mcap_reader::PyMcapSchemaInfoInternal>()?;
     m.add_class::<mp4_reader::PyMp4ReaderInternal>()?;
     m.add_class::<hdf5_reader::PyHdf5ReaderInternal>()?;
+    m.add_class::<lerobot_reader::PyLeRobotReaderInternal>()?;
     m.add_class::<mp4_reader::PyMp4TranscodeOptions>()?;
     m.add_class::<parquet_reader::PyParquetReaderInternal>()?;
     m.add_class::<py_stream::PyLazyChunkStreamInternal>()?;

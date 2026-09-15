@@ -8,8 +8,7 @@ use re_quota_channel::send_crossbeam;
 
 use crate::{ImportedData, Importer, ImporterError, import_file::prepare_store_info};
 use re_lerobot::{
-    EpisodeIndex, LeRobotDataset, LeRobotDatasetVersion, LeRobotError, common::LeRobotDatasetOps,
-    is_lerobot_dataset,
+    EpisodeIndex, LeRobotConfig, LeRobotDataset, LeRobotDatasetVersion, is_lerobot_dataset,
 };
 
 /// An [`Importer`] for `LeRobot` datasets.
@@ -86,9 +85,10 @@ impl LeRobotDatasetImporter {
                 re_log::info!(
                     "Loading LeRobot dataset from {:?}, with {} episode(s)",
                     dataset.path(),
-                    dataset.iter_episode_indices().count(),
+                    dataset.episodes().count(),
                 );
-                load_and_stream_versioned(&dataset, &application_id, &tx, &loader_name);
+                let config = LeRobotConfig::default();
+                load_and_stream(&dataset, &config, &application_id, &tx, &loader_name);
             })
             .with_context(|| {
                 format!("Failed to spawn IO thread to load LeRobot dataset {filepath:?}")
@@ -124,17 +124,24 @@ fn prepare_episode_chunks(
     store_ids
 }
 
-/// Shared streaming loop for `LeRobot` dataset versions.
-fn load_and_stream_common<Dataset>(
-    dataset: &Dataset,
-    store_ids: &[(EpisodeIndex, StoreId)],
+/// Prepare store info for all episodes and stream them one at a time.
+///
+/// Guarantees the two-phase protocol the viewer relies on: one `SetStoreInfo` per episode,
+/// all sent (in ascending episode order) before any chunk data is streamed.
+///
+/// Chunks are forwarded as each episode's stream yields them. An episode that fails to
+/// stream at all is skipped with a warning; so is any single failed feature within one.
+fn load_and_stream(
+    dataset: &LeRobotDataset,
+    config: &LeRobotConfig,
+    application_id: &ApplicationId,
     tx: &Sender<ImportedData>,
     loader_name: &str,
-    load_episode: impl Fn(&Dataset, EpisodeIndex) -> Result<Vec<Chunk>, LeRobotError>,
 ) {
-    for (episode, store_id) in store_ids {
-        // log episode data to its respective recording
-        match load_episode(dataset, *episode) {
+    let store_ids = prepare_episode_chunks(dataset.episodes(), application_id, tx, loader_name);
+
+    for (episode, store_id) in &store_ids {
+        match dataset.stream(*episode, config) {
             Ok(chunks) => {
                 let recording_info = re_sdk_types::archetypes::RecordingInfo::new()
                     .with_name(format!("Episode {}", episode.0));
@@ -147,14 +154,28 @@ fn load_and_stream_common<Dataset>(
                         "Failed to build recording properties chunk for episode {}",
                         episode.0
                     );
-                    return;
+                    continue;
                 };
 
-                for chunk in std::iter::chain(std::iter::once(initial), chunks) {
-                    let data = ImportedData::Chunk(loader_name.to_owned(), store_id.clone(), chunk);
+                for result in std::iter::chain(std::iter::once(Ok(initial)), chunks) {
+                    match result {
+                        Ok(chunk) => {
+                            let data = ImportedData::Chunk(
+                                loader_name.to_owned(),
+                                store_id.clone(),
+                                chunk,
+                            );
 
-                    if send_crossbeam(tx, data).is_err() {
-                        break; // The other end has decided to hang up, not our problem.
+                            if send_crossbeam(tx, data).is_err() {
+                                break;
+                            }
+                        }
+                        Err(err) => {
+                            re_log::warn!(
+                                "Failed to load a feature of episode {} from LeRobot dataset: {err}",
+                                episode.0
+                            );
+                        }
                     }
                 }
             }
@@ -167,46 +188,20 @@ fn load_and_stream_common<Dataset>(
         }
     }
 }
-
-/// Prepare store info for all episodes and stream them using the provided loader.
-///
-/// Guarantees the two-phase protocol the viewer relies on: one `SetStoreInfo` per episode,
-/// all sent (in ascending episode order) before any chunk data is streamed.
-fn load_and_stream_versioned<D: LeRobotDatasetOps>(
-    dataset: &D,
-    application_id: &ApplicationId,
-    tx: &Sender<ImportedData>,
-    loader_name: &str,
-) {
-    let store_ids = prepare_episode_chunks(
-        dataset.iter_episode_indices(),
-        application_id,
-        tx,
-        loader_name,
-    );
-    load_and_stream_common(dataset, &store_ids, tx, loader_name, |dataset, episode| {
-        dataset.load_episode_chunks(episode)
-    });
-}
 #[cfg(test)]
 mod tests {
-    use std::collections::{BTreeMap, BTreeSet};
+    use std::collections::BTreeMap;
     use std::path::{Path, PathBuf};
 
     use re_log_types::LogMsg;
 
     use super::*;
 
-    use re_sdk_types::archetypes::TextDocument;
-
-    struct TestDataset {
-        episodes: Vec<EpisodeIndex>,
-    }
-
+    /// Everything the importer emitted, in emission order.
     #[derive(Debug)]
-    struct ImportSummary {
-        recording_ids: Vec<String>,
-        entity_paths_by_recording: BTreeMap<String, BTreeSet<String>>,
+    enum Event {
+        StoreInfo(StoreId),
+        Chunk(StoreId, String),
     }
 
     fn fixture(name: &str) -> PathBuf {
@@ -215,7 +210,7 @@ mod tests {
             .join(name)
     }
 
-    fn import_dataset(path: &Path) -> ImportSummary {
+    fn import_dataset(path: &Path) -> Vec<Event> {
         let (tx, rx) = crossbeam::channel::bounded(1);
         LeRobotDatasetImporter
             .import_from_path(
@@ -225,27 +220,17 @@ mod tests {
             )
             .expect("dataset should start importing");
 
-        let mut recording_ids = Vec::new();
-        let mut entity_paths_by_recording = BTreeMap::<_, BTreeSet<_>>::new();
-        for data in rx {
-            match data {
+        rx.into_iter()
+            .filter_map(|data| match data {
                 ImportedData::LogMsg(_, LogMsg::SetStoreInfo(info)) => {
-                    recording_ids.push(info.info.store_id.recording_id().as_str().to_owned());
+                    Some(Event::StoreInfo(info.info.store_id))
                 }
                 ImportedData::Chunk(_, store_id, chunk) => {
-                    entity_paths_by_recording
-                        .entry(store_id.recording_id().as_str().to_owned())
-                        .or_default()
-                        .insert(chunk.entity_path().to_string());
+                    Some(Event::Chunk(store_id, chunk.entity_path().to_string()))
                 }
-                _ => {}
-            }
-        }
-
-        ImportSummary {
-            recording_ids,
-            entity_paths_by_recording,
-        }
+                _ => None,
+            })
+            .collect()
     }
 
     #[test]
@@ -260,110 +245,89 @@ mod tests {
                 Some(expected_version)
             );
 
-            let imported = import_dataset(&path);
+            let events = import_dataset(&path);
+
+            // Two-phase protocol: every `SetStoreInfo` precedes any chunk.
+            let last_store_info = events
+                .iter()
+                .rposition(|event| matches!(event, Event::StoreInfo(_)))
+                .expect("at least one SetStoreInfo");
+            let first_chunk = events
+                .iter()
+                .position(|event| matches!(event, Event::Chunk(..)))
+                .expect("at least one chunk");
+            assert!(
+                last_store_info < first_chunk,
+                "{fixture_name}: all SetStoreInfo must be sent before any chunk"
+            );
+
+            // One recording per episode, announced in ascending order, all for this dataset.
+            let store_ids: Vec<&StoreId> = events
+                .iter()
+                .filter_map(|event| match event {
+                    Event::StoreInfo(store_id) => Some(store_id),
+                    Event::Chunk(..) => None,
+                })
+                .collect();
             assert_eq!(
-                imported.recording_ids,
+                store_ids
+                    .iter()
+                    .map(|store_id| store_id.recording_id().as_str())
+                    .collect::<Vec<_>>(),
                 ["episode_0", "episode_1", "episode_2"]
             );
-            for recording_id in &imported.recording_ids {
-                let entity_paths = &imported.entity_paths_by_recording[recording_id];
-                for expected_path in [
-                    "/__properties",
-                    "/action",
-                    "/observation.state",
-                    "/observation.image",
-                    "/task",
-                ] {
+            assert!(store_ids.iter().all(|store_id| {
+                store_id.is_recording()
+                    && store_id.application_id() == store_ids[0].application_id()
+            }));
+
+            // Each recording starts with its properties chunk and contains the expected entities.
+            let mut entity_paths_by_recording = BTreeMap::<String, Vec<&str>>::new();
+            for event in &events {
+                if let Event::Chunk(store_id, entity_path) = event {
+                    entity_paths_by_recording
+                        .entry(store_id.recording_id().as_str().to_owned())
+                        .or_default()
+                        .push(entity_path);
+                }
+            }
+            // v3 video streams through an ffmpeg transcode (its episode window is sliced
+            // by ffmpeg), so `/observation.image` only appears when ffmpeg is available;
+            // the importer warn-and-skips the feature otherwise.
+            let expect_video = expected_version == LeRobotDatasetVersion::V2
+                || std::process::Command::new("ffmpeg")
+                    .arg("-version")
+                    .output()
+                    .is_ok_and(|output| output.status.success());
+            let mut expected_paths = vec!["/action", "/observation.state", "/task"];
+            if expect_video {
+                expected_paths.push("/observation.image");
+            }
+
+            for (recording_id, entity_paths) in &entity_paths_by_recording {
+                assert_eq!(
+                    entity_paths.first().copied(),
+                    Some("/__properties"),
+                    "{fixture_name} {recording_id} must start with its properties chunk"
+                );
+                // Exactly the importer's own chunk: the parquet file's key-value
+                // metadata (a pandas schema) must not leak onto the same entity.
+                assert_eq!(
+                    entity_paths
+                        .iter()
+                        .filter(|path| **path == "/__properties")
+                        .count(),
+                    1,
+                    "{fixture_name} {recording_id} must have exactly one properties chunk; got {entity_paths:?}"
+                );
+                for expected_path in &expected_paths {
                     assert!(
                         entity_paths.contains(expected_path),
                         "{fixture_name} {recording_id} is missing {expected_path}; got {entity_paths:?}"
                     );
                 }
             }
+            assert_eq!(entity_paths_by_recording.len(), 3, "{fixture_name}");
         }
-    }
-
-    impl LeRobotDatasetOps for TestDataset {
-        fn iter_episode_indices(&self) -> impl Iterator<Item = EpisodeIndex> {
-            self.episodes.iter().copied()
-        }
-
-        fn load_episode_chunks(&self, episode: EpisodeIndex) -> Result<Vec<Chunk>, LeRobotError> {
-            let chunk = Chunk::builder(format!("episode_{}", episode.0))
-                .with_archetype(
-                    RowId::new(),
-                    TimePoint::STATIC,
-                    &TextDocument::new(format!("Episode {}", episode.0)),
-                )
-                .build()?;
-            Ok(vec![chunk])
-        }
-    }
-
-    #[test]
-    fn streams_each_episode_to_its_own_recording() {
-        let dataset = TestDataset {
-            episodes: (0..3).map(EpisodeIndex).collect(),
-        };
-        let application_id = ApplicationId::from("lerobot_test");
-        let loader_name = "rerun.importers.LeRobotDataset";
-        // The loader and receiver run on this test thread, so the queue cannot grow independently.
-        #[expect(
-            clippy::disallowed_methods,
-            reason = "the sender and receiver are on the same thread"
-        )]
-        let (tx, rx) = crossbeam::channel::unbounded();
-
-        load_and_stream_versioned(&dataset, &application_id, &tx, loader_name);
-        drop(tx);
-
-        let imported = rx.into_iter().collect::<Vec<_>>();
-        assert!(
-            imported
-                .iter()
-                .all(|data| data.importer_name() == loader_name)
-        );
-
-        let store_info_ids = imported
-            .iter()
-            .filter_map(|data| match data {
-                ImportedData::LogMsg(_, re_log_types::LogMsg::SetStoreInfo(store_info)) => {
-                    Some(store_info.info.store_id.clone())
-                }
-                _ => None,
-            })
-            .collect::<Vec<_>>();
-        assert_eq!(
-            store_info_ids
-                .iter()
-                .map(|store_id| store_id.recording_id().as_str())
-                .collect::<Vec<_>>(),
-            ["episode_0", "episode_1", "episode_2"]
-        );
-        assert!(store_info_ids.iter().all(|store_id| {
-            store_id.is_recording() && store_id.application_id() == &application_id
-        }));
-
-        let streamed_chunks = imported
-            .iter()
-            .filter_map(|data| match data {
-                ImportedData::Chunk(_, store_id, chunk) => Some((
-                    store_id.recording_id().as_str(),
-                    chunk.entity_path().to_string(),
-                )),
-                _ => None,
-            })
-            .collect::<Vec<_>>();
-        assert_eq!(
-            streamed_chunks,
-            [
-                ("episode_0", EntityPath::properties().to_string()),
-                ("episode_0", "/episode_0".to_owned()),
-                ("episode_1", EntityPath::properties().to_string()),
-                ("episode_1", "/episode_1".to_owned()),
-                ("episode_2", EntityPath::properties().to_string()),
-                ("episode_2", "/episode_2".to_owned()),
-            ]
-        );
     }
 }

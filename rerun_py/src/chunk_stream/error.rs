@@ -69,6 +69,9 @@ pub enum ChunkPipelineError {
     #[error("HDF5 error: {reason}")]
     Hdf5 { reason: String },
 
+    #[error("LeRobot error: {reason}")]
+    LeRobot { reason: String },
+
     #[error("Parquet error: {reason}")]
     Parquet { reason: String },
 
@@ -112,6 +115,7 @@ impl From<ChunkPipelineError> for pyo3::PyErr {
             | ChunkPipelineError::Mcap { .. }
             | ChunkPipelineError::Mp4 { .. }
             | ChunkPipelineError::Hdf5 { .. }
+            | ChunkPipelineError::LeRobot { .. }
             | ChunkPipelineError::Parquet { .. }
             | ChunkPipelineError::Urdf { .. }
             | ChunkPipelineError::ChunkStoreInsert { .. }

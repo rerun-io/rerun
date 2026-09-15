@@ -8,5 +8,3 @@ Part of the [`rerun`](https://github.com/rerun-io/rerun) family of crates.
 ![Apache](https://img.shields.io/badge/license-Apache-blue.svg)
 
 Core LeRobot-to-chunk loading logic for Rerun.
-
-Reads LeRobot datasets (v2 and v3) into Rerun chunks: enumerate episodes with `iter_episode_indices()`, load each episode's chunks with `load_episode_chunks()`.

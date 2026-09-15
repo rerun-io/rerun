@@ -1783,6 +1783,23 @@ class Hdf5ReaderInternal:
     @property
     def path(self) -> Path: ...
 
+class LeRobotReaderInternal:
+    """Internal implementation. Use LeRobotReader from rerun.experimental instead."""
+
+    def __init__(self, path: str) -> None: ...
+    def episodes(self) -> list[int]: ...
+    def stream(
+        self,
+        episode: int,
+        entity_path_prefix: str | None,
+        timeline: str | None,
+        video_mode: str,
+    ) -> LazyChunkStreamInternal: ...
+    @property
+    def version(self) -> Literal["v2", "v3"]: ...
+    @property
+    def path(self) -> Path: ...
+
 class ParquetReaderInternal:
     """Internal implementation. Use ParquetReader from rerun.experimental instead."""
 

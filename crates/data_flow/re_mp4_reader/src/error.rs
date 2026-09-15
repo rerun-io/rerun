@@ -53,3 +53,25 @@ pub enum Mp4Error {
     #[error("MP4 sample conversion: {0}")]
     SampleConversion(String),
 }
+
+impl Mp4Error {
+    /// True when the remedy is to install or configure `FFmpeg`, so callers can
+    /// point the user at that fix instead of a generic video error.
+    pub fn is_ffmpeg_related(&self) -> bool {
+        match self {
+            Self::TranscodeRequiresFfmpeg
+            | Self::Transcode(_)
+            | Self::NoEncoderAvailable { .. } => true,
+
+            Self::Io(_)
+            | Self::Chunk(_)
+            | Self::AssetTooLarge(_)
+            | Self::Demux(_)
+            | Self::TranscodeRequiresSeekableFile
+            | Self::ImageSequenceInStreamMode
+            | Self::SamplesBeforeFirstKeyframe
+            | Self::NoTimescale
+            | Self::SampleConversion(_) => false,
+        }
+    }
+}

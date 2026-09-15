@@ -72,6 +72,7 @@ re_redap_client.workspace = true
 re_grpc_client.workspace = true
 re_grpc_server = { workspace = true, optional = true }
 re_hdf5.workspace = true
+re_lerobot.workspace = true
 re_log = { workspace = true, features = ["setup"] }
 re_log_encoding.workspace = true
 re_log_types.workspace = true
