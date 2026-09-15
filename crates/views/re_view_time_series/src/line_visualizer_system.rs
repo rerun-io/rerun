@@ -169,10 +169,13 @@ pub(crate) fn build_line_draw_data(
     line_builder.reserve_strips(num_strips)?;
     line_builder.reserve_vertices(num_vertices)?;
 
-    // Below 1.5 physical pixels width, we widen the line and fade its color
+    // Below 1 physical pixel width, we widen the line and fade its color
     // to keep sub-pixel strokes visible without aliasing.
+    // This matches what epaint does for thin lines (fade by `width / feathering`
+    // with one physical pixel of feathering), so plots look the same as egui's own,
+    // e.g. the default 0.75px stroke renders at 75% opacity at 1x DPI.
     let pixels_per_point = ctx.viewer_ctx.egui_ctx().pixels_per_point();
-    let min_line_radius_ui = 0.75 / pixels_per_point;
+    let min_line_radius_ui = 0.5 / pixels_per_point;
 
     for series in all_series {
         if !series.visible || series.points.is_empty() {
@@ -188,7 +191,7 @@ pub(crate) fn build_line_draw_data(
             series.radius_ui
         };
 
-        // Lines below 1.5 physical px width look terrible, so instead reduce the opacity to fade them.
+        // Sub-pixel line widths alias, so instead reduce the opacity to fade them.
         if radius_ui < min_line_radius_ui {
             color = color.gamma_multiply(radius_ui / min_line_radius_ui);
             radius_ui = min_line_radius_ui;

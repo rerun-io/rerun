@@ -284,13 +284,24 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
 
     // Span up the vertex away from the line's axis, orthogonal to the direction to the camera
     let dir_up = normalize(cross(camera_ray.direction, quad_dir));
+
+    // Add half a pixel of margin so the antialiasing feather in `compute_coverage`
+    // (which extends half a pixel beyond the line radius) isn't clipped by the quad's edge.
+    // (Same trick as in sphere_quad.wgsl. Coverage itself keeps using the unexpanded radius,
+    // so the rendered line width is unchanged.)
+    // Triangle caps aren't feathered (their silhouette is the quad itself), so no margin there.
+    var quad_margin = 0.5 * approx_pixel_world_size_at(camera_distance);
+    if has_any_flag(fragment_flags, STRIP_FLAG_CAP_TRIANGLE) {
+        quad_margin = 0.0;
+    }
+
     var pos: vec3f;
     if is_cap_triangle && is_at_pointy_arrow_end {
         // We extend the cap triangle far enough to handle triangle caps.
         center_position += quad_dir * (triangle_cap_length * select(-1.0, 1.0, is_right_triangle));
         pos = center_position;
     } else {
-        pos = center_position + (strip_radius * top_bottom * 0.99) * dir_up;
+        pos = center_position + ((strip_radius + quad_margin) * top_bottom) * dir_up;
     }
 
     // Extend the line for rendering smooth joints, as well as round start/end caps.
@@ -298,7 +309,7 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     let is_at_quad_with_round_capped_start = !is_at_quad_end && is_first_quad_after_cap && has_any_flag(strip_data.flags, STRIP_FLAG_CAP_START_ROUND);
     let is_at_quad_with_round_capped_end = is_at_quad_end && is_last_quad_before_cap && has_any_flag(strip_data.flags, STRIP_FLAG_CAP_END_ROUND);
     if is_at_inner_joint || is_at_quad_with_round_capped_start || is_at_quad_with_round_capped_end {
-        let left_right_offset = quad_dir * strip_radius * select(-1.0, 1.0, is_at_quad_end);
+        let left_right_offset = quad_dir * (strip_radius + quad_margin) * select(-1.0, 1.0, is_at_quad_end);
         pos += left_right_offset;
     }
 
