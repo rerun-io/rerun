@@ -17,6 +17,14 @@ const DATASET_TUID: &str = "1830B33B45B963E7774455beb91701ae";
 const DATASET_ENTRY_TUID: &str = "9a3c5e7b1d2f486a0b4c6d8e0f123456";
 const TABLE_ENTRY_TUID: &str = "182755B45B963E7774455beb91701aef";
 
+/// A `file://` URL only names a local path on the platform whose path syntax it uses, so each
+/// platform needs its own spelling to render the same button (and thus the same snapshot).
+const LOCAL_FILE_URL: &str = if cfg!(windows) {
+    "file:///C:/recordings/data.rrd"
+} else {
+    "file:///recordings/data.rrd"
+};
+
 /// All the built-in URL types we recognize, paired with a short description.
 ///
 /// Note: a bare local file path (e.g. `/path/to/file.rrd`) is intentionally absent — `data_label`
@@ -56,7 +64,7 @@ const URLS: &[(&str, &str)] = &[
         "rerun://example.rerun.io/folder/perception.detection",
     ),
     ("Intra-recording selection", "recording://camera/points"),
-    ("Local file (file:// URL)", "file:///recordings/data.rrd"),
+    ("Local file (file:// URL)", LOCAL_FILE_URL),
     ("Remote file", "https://example.com/recordings/data.rrd"),
     (
         "Web-viewer share link",

@@ -37,7 +37,6 @@ re_uri.workspace = true
 
 anyhow.workspace = true
 ehttp.workspace = true
-itertools.workspace = true
 rayon.workspace = true
 url.workspace = true
 

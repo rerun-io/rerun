@@ -90,49 +90,29 @@ impl LogDataSource {
     ) -> Option<Self> {
         #[cfg(not(target_arch = "wasm32"))]
         {
-            use itertools::Itertools as _;
-
-            // See https://learn.microsoft.com/en-us/dotnet/standard/io/file-path-formats
-            fn looks_like_windows_abs_path(path: &str) -> bool {
-                let path = path.as_bytes();
-                path.starts_with(b"\\\\")
-                    || (path.get(1).copied() == Some(b':')
-                        && matches!(path.get(2).copied(), Some(b'/' | b'\\')))
-            }
-
             fn looks_like_a_file_path(uri: &str) -> bool {
                 // Files must have a supported extension.
-                let Some(file_extension) = uri.split('.').next_back() else {
-                    return false;
-                };
+                let file_extension = uri.rsplit_once('.').map_or(uri, |(_, extension)| extension);
                 if !re_importer::is_supported_file_extension(file_extension) {
                     return false;
                 }
 
-                #[expect(clippy::if_same_then_else)]
-                if uri.starts_with('/') {
-                    true // Unix absolute path
-                } else if uri.starts_with("./") || uri.starts_with("../") {
-                    true // Unix relative path
-                } else if looks_like_windows_abs_path(uri) {
-                    true
-                } else if url::Url::parse(uri).is_ok() {
+                if uri.starts_with('/')
+                    || uri.starts_with("./")
+                    || uri.starts_with("../")
+                    || looks_like_windows_abs_path(uri)
+                {
+                    return true;
+                }
+
+                if url::Url::parse(uri).is_ok() {
                     // An explicit URI scheme cannot name a local path. Windows paths are handled
                     // above because the URL parser interprets their drive letter as a scheme.
-                    false
-                } else {
-                    // We use a simple heuristic here: if there are multiple dots, it is likely an url,
-                    // like "example.com/foo.zip".
-                    // If there is only one dot, we treat it as an extension and look it up in a list of common
-                    // file extensions:
-
-                    let parts = uri.split('.').collect_vec();
-                    if parts.len() == 2 {
-                        true
-                    } else {
-                        false // Too many dots; assume an url
-                    }
+                    return false;
                 }
+
+                // Multiple dots probably indicate a URL, such as `example.com/foo.zip`.
+                uri.split('.').count() == 2
             }
 
             // Reading from standard input in non-TTY environments (e.g. GitHub Actions, but I'm sure we can
@@ -145,8 +125,6 @@ impl LogDataSource {
                 return Some(Self::Stdin);
             }
 
-            let path = std::path::Path::new(url).to_path_buf();
-
             if url == "/" {
                 // Technically an existing path, but not likely what the user wants.
                 // In particular, when typing `/` in the command palette,
@@ -154,15 +132,10 @@ impl LogDataSource {
                 return None;
             }
 
-            if url.starts_with("file://") || path.exists() {
-                return Some(Self::File {
-                    file_source: _file_source,
-                    path,
-                    assets: Vec::new(),
-                });
-            }
-
-            if looks_like_a_file_path(url) {
+            let path = std::path::PathBuf::from(url);
+            let path = file_url_to_path(url)
+                .or_else(|| (path.exists() || looks_like_a_file_path(url)).then_some(path));
+            if let Some(path) = path {
                 return Some(Self::File {
                     file_source: _file_source,
                     path,
@@ -491,6 +464,33 @@ pub struct LogDataSourceAnalytics {
     pub file_source: Option<&'static str>,
 }
 
+/// Whether `path` is an absolute Windows path, i.e. a UNC path or one behind a drive letter.
+///
+/// See <https://learn.microsoft.com/en-us/dotnet/standard/io/file-path-formats>.
+#[cfg(not(target_arch = "wasm32"))]
+fn looks_like_windows_abs_path(path: &str) -> bool {
+    let path = path.as_bytes();
+    path.starts_with(br"\\")
+        || (path.get(1).copied() == Some(b':')
+            && matches!(path.get(2).copied(), Some(b'/' | b'\\')))
+}
+
+/// The local path a `file://` URL names, e.g. `/tmp/a b.rrd` for `file:///tmp/a%20b.rrd`.
+///
+/// The meaning of a `file://` URL is platform-specific, so this follows the host platform:
+/// a drive letter and a host naming a UNC share are only paths on Windows.
+/// `None` for anything that is not a `file://` URL naming a path on this platform.
+#[cfg(not(target_arch = "wasm32"))]
+fn file_url_to_path(url: &str) -> Option<std::path::PathBuf> {
+    let url = url::Url::parse(url).ok()?;
+    if url.scheme() != "file" || url.path() == "/" {
+        // A pathless URL such as `file://foo` names no file, and `Url::to_file_path`
+        // debug-asserts on one when compiled for Windows.
+        return None;
+    }
+    url.to_file_path().ok()
+}
+
 #[cfg(test)]
 mod tests {
     use re_log_types::FileSource;
@@ -498,12 +498,85 @@ mod tests {
     use super::*;
 
     #[cfg(not(target_arch = "wasm32"))]
+    fn path_of(url: &str) -> Option<std::path::PathBuf> {
+        match LogDataSource::from_uri(FileSource::Uri, url, &FromUriOptions::default()) {
+            Some(LogDataSource::File { path, .. }) => Some(path),
+            Some(other) => panic!("{url} should be a file or nothing, got {other:?}"),
+            None => None,
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn file_urls_become_paths() {
+        use std::path::PathBuf;
+
+        assert_eq!(
+            path_of("file:///tmp/a.rrd"),
+            Some(PathBuf::from("/tmp/a.rrd"))
+        );
+        assert_eq!(
+            path_of("file:///tmp/a%20b.rrd"),
+            Some(PathBuf::from("/tmp/a b.rrd"))
+        );
+        assert_eq!(
+            path_of("file://localhost/tmp/a.rrd"),
+            Some(PathBuf::from("/tmp/a.rrd"))
+        );
+        assert_eq!(
+            path_of("file://LOCALHOST/tmp/a.rrd"),
+            Some(PathBuf::from("/tmp/a.rrd"))
+        );
+        assert_eq!(path_of("/tmp/a.rrd"), Some(PathBuf::from("/tmp/a.rrd")));
+
+        // Only Windows has hosts and drive letters in its paths.
+        assert_eq!(path_of("file://server/share/a.rrd"), None);
+        assert_eq!(
+            path_of("file:///C:/a.rrd"),
+            Some(PathBuf::from("/C:/a.rrd"))
+        );
+
+        // Neither names a file.
+        assert_eq!(path_of("file://foo"), None);
+        assert_eq!(path_of("file:///"), None);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn file_urls_become_paths() {
+        use std::path::PathBuf;
+
+        assert_eq!(
+            path_of("file:///C:/a.rrd"),
+            Some(PathBuf::from(r"C:\a.rrd"))
+        );
+        assert_eq!(
+            path_of("file:///C:/a%20b.rrd"),
+            Some(PathBuf::from(r"C:\a b.rrd"))
+        );
+        assert_eq!(
+            path_of("file://localhost/C:/a.rrd"),
+            Some(PathBuf::from(r"C:\a.rrd"))
+        );
+        assert_eq!(
+            path_of("file://server/share/a%20b.rrd"),
+            Some(PathBuf::from(r"\\server\share\a b.rrd"))
+        );
+
+        // A Windows path needs a drive letter or a host.
+        assert_eq!(path_of("file:///tmp/a.rrd"), None);
+
+        // Neither names a file.
+        assert_eq!(path_of("file://foo"), None);
+        assert_eq!(path_of("file:///"), None);
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn test_data_source_from_uri() {
         let mut failed = false;
 
         let file = [
-            "file://foo",
             "foo.rrd",
             "foo.png",
             "/foo/bar/baz.rbl",
@@ -564,6 +637,8 @@ mod tests {
             "data:application/octet-stream;base64,UlJEMAo=",
             "data:,inline-text",
             "blob:https://example.com/550e8400-e29b-41d4-a716-446655440000",
+            // A `file://` URL with a host but no path names no file.
+            "file://foo",
             "s3://example-bucket/recording.rrd",
             "gs://bucket/file.rrd",
             "ftp://host/file.rrd",

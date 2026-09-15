@@ -9194,7 +9194,6 @@ version = "0.38.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "ehttp",
- "itertools 0.15.0",
  "rayon",
  "re_async",
  "re_format",
