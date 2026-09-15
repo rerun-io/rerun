@@ -9,5 +9,6 @@ mod helpers;
 mod end_to_end;
 mod merge;
 mod own_chunk;
+mod sequences;
 mod split;
 mod unsorted;

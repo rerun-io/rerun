@@ -1,9 +1,9 @@
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::sync::Arc;
 
+use arrow::array::BooleanArray;
 use itertools::{Either, izip};
 
-use re_chunk::external::arrow::array::BooleanArray;
 use re_chunk::{ArrowArray as _, ChunkId, ComponentIdentifier, ComponentType};
 use re_log_encoding::RawRrdManifest;
 use re_log_types::{AbsoluteTimeRange, EntityPath, StoreId, Timeline};

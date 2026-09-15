@@ -7,15 +7,15 @@ use std::ops::ControlFlow;
 use std::sync::Arc;
 
 use re_byte_size::SizeBytes as _;
-use re_chunk::{Chunk, SplitRowsOptions};
+use re_chunk::Chunk;
 use re_log_encoding::ChunkProvider;
 
+use super::cut::{Budget, cut_to_fit};
+use super::load_in_order;
 use crate::Error;
 use crate::plan::ChunkSlice;
 use crate::settings::MergeSplitSettings;
 use crate::view::ChunkIndexView;
-
-use super::load_in_order;
 
 /// Minimum on-disk bytes (`rrd_byte_size`) requested per `load_chunks` call within a merge run,
 /// to give the provider a chance to coalesce reads. (Note: this is an IO floor, not a memory
@@ -46,6 +46,15 @@ pub fn smallest_non_splitting_target(size: u64) -> u64 {
     let target =
         (u128::from(size) * SPLIT_THRESHOLD_FACTOR_DEN).div_ceil(SPLIT_THRESHOLD_FACTOR_NUM) as u64;
     target
+}
+
+/// The largest measured size the slack band of `max_bytes` holds: [`should_split_chunk`] is false
+/// at this size and true just above it.
+fn largest_non_splitting_size(max_bytes: u64) -> u64 {
+    #[expect(clippy::cast_possible_truncation)] // at most 1.2 × a `u64`, from a real chunk size
+    let size =
+        (u128::from(max_bytes) * SPLIT_THRESHOLD_FACTOR_NUM / SPLIT_THRESHOLD_FACTOR_DEN) as u64;
+    size
 }
 
 /// Executor state of a single [`PlanUnit::MergeSplitRun`](crate::plan::PlanUnit).
@@ -120,36 +129,28 @@ impl MergeSplitRunState {
 
                 if needs_split(&chunk, chunk_bytes, &self.target) {
                     // Replace the oversized chunk by its pieces in the input stream.
-                    // `SplitRowsOptions` follows the legacy convention: `0` disables a limit.
-                    let options = SplitRowsOptions {
-                        chunk_max_bytes: self.target.max_bytes.get(),
-                        chunk_max_rows: self.target.max_rows.map_or(0, NonZeroU64::get),
-                        chunk_max_rows_if_unsorted: self
-                            .target
-                            .max_rows_if_unsorted
-                            .map_or(0, NonZeroU64::get),
-                    };
-                    let pieces = Chunk::split_rows(Arc::clone(&chunk), &options);
-                    if pieces.len() > 1 {
+                    if let Some(pieces) = cut_to_fit(
+                        &chunk,
+                        chunk_bytes,
+                        self.room_budget(&chunk),
+                        &self.full_budget(&chunk),
+                    ) {
                         for piece in pieces.into_iter().rev() {
                             self.pending.push_front(piece);
                         }
                         continue;
                     }
 
-                    // The split made no progress: `split_rows` estimates rows per piece from
-                    // floored average bytes-per-row, which can round `target_rows` up to the whole
-                    // chunk. Re-queueing would loop forever, so discard the copy and admit the
-                    // original as-is — it emits alone, identity preserved, like a band chunk.
+                    // The cut made no progress: a single row, or one that exceeds the target on
+                    // its own. Re-queueing would loop forever, so admit the chunk as-is — it
+                    // emits alone, identity preserved, like a band chunk.
                 }
 
                 let fits_bytes = self.accumulator_bytes.saturating_add(chunk_bytes)
                     <= self.target.max_bytes.get();
-                let max_rows = if chunk.all_timelines_sorted() && !self.is_accumulator_unsorted() {
-                    self.target.max_rows
-                } else {
-                    self.target.max_rows_if_unsorted
-                };
+                let max_rows = self
+                    .target
+                    .row_guard(chunk.all_timelines_sorted() && !self.is_accumulator_unsorted());
                 let fits_rows = max_rows.is_none_or(|max| {
                     self.accumulator_rows.saturating_add(chunk_rows) <= max.get()
                 });
@@ -189,10 +190,48 @@ impl MergeSplitRunState {
         }
     }
 
-    /// Whether any accumulator entry has an unsorted timeline, which switches the row guard to
-    /// `max_rows_if_unsorted`.
+    /// Whether any accumulator entry has an unsorted timeline, which holds the row guard to the
+    /// tighter of `max_rows` and `max_rows_if_unsorted`.
     fn is_accumulator_unsorted(&self) -> bool {
         self.accumulator.iter().any(|entry| !entry.sorted)
+    }
+
+    /// The budget of an oversized chunk's first piece: what is left under the target in bytes and
+    /// rows, so the piece joins the accumulator. `None` when the accumulator is empty, since the
+    /// piece then seeds an output rather than joining one.
+    fn room_budget(&self, chunk: &Chunk) -> Option<Budget> {
+        if self.accumulator.is_empty() {
+            return None;
+        }
+        let row_guard = self
+            .target
+            .row_guard(chunk.all_timelines_sorted() && !self.is_accumulator_unsorted());
+        let room = self
+            .target
+            .max_bytes
+            .get()
+            .saturating_sub(self.accumulator_bytes);
+        Some(Budget {
+            max_row_bytes: room,
+            max_rows: row_guard
+                .map_or(u64::MAX, NonZeroU64::get)
+                .saturating_sub(self.accumulator_rows),
+            max_measured_bytes: room,
+        })
+    }
+
+    /// The budget of a piece that seeds an output of its own: a whole target, confirmed within the
+    /// slack band so it is not split again on admission.
+    fn full_budget(&self, chunk: &Chunk) -> Budget {
+        let max_bytes = self.target.max_bytes.get();
+        Budget {
+            max_row_bytes: max_bytes,
+            max_rows: self
+                .target
+                .row_guard(chunk.all_timelines_sorted())
+                .map_or(u64::MAX, NonZeroU64::get),
+            max_measured_bytes: largest_non_splitting_size(max_bytes),
+        }
     }
 
     /// Push one decoded chunk onto the accumulator and compact it.
@@ -230,26 +269,20 @@ impl MergeSplitRunState {
                 break;
             }
 
-            let Some(merged) =
-                try_merge(&below.chunk, &top.chunk, self.target.max_rows_if_unsorted)?
-            else {
+            let Some(merged) = try_merge(&below.chunk, &top.chunk, &self.target)? else {
                 break;
             };
 
             let merged_bytes = merged.total_size_bytes();
             let merged_sorted = merged.all_timelines_sorted();
             let merged_rows = below.rows.saturating_add(top.rows);
-            let Some(top) = self.accumulator.pop() else {
-                break;
-            };
-            let Some(below) = self.accumulator.pop() else {
-                break;
-            };
             self.accumulator_bytes = self
                 .accumulator_bytes
                 .saturating_sub(below.bytes)
                 .saturating_sub(top.bytes)
                 .saturating_add(merged_bytes);
+            let len = self.accumulator.len();
+            self.accumulator.truncate(len - 2);
             self.accumulator.push(AccumulatorEntry {
                 chunk: Arc::new(merged),
                 bytes: merged_bytes,
@@ -269,7 +302,7 @@ impl MergeSplitRunState {
             .into_iter()
             .map(|entry| entry.chunk)
             .collect();
-        merge_and_emit(ready, chunks, self.target.max_rows_if_unsorted)
+        merge_and_emit(ready, chunks, &self.target)
     }
 }
 
@@ -280,16 +313,16 @@ impl MergeSplitRunState {
 ///
 /// - `Chunk::concatenable`: the rare schema mismatch within a group (same entity and timeline
 ///   set, but a shared component under different datatypes).
-/// - Sortedness: the result must be time-sorted, or within `max_rows_if_unsorted` (if any).
-///   Merging two individually sorted chunks can come out unsorted, and ranges cannot predict it
-///   when the row ids interleave — so the merge is tried and judged on the real result. This is
-///   what keeps every emitted chunk within the unsorted guard.
+/// - Sortedness: the result must be within the row guard for its own sortedness. Merging two
+///   individually sorted chunks can come out unsorted, and ranges cannot predict it when the row
+///   ids interleave — so the merge is tried and judged on the real result. This is what keeps
+///   every emitted chunk within the unsorted guard.
 //TODO(RR-5527): additional data in the index might allow predicting mergeabilty, so we don't have
 //to "try".
 fn try_merge(
     left: &Chunk,
     right: &Chunk,
-    max_rows_if_unsorted: Option<NonZeroU64>,
+    target: &MergeSplitSettings,
 ) -> Result<Option<Chunk>, Error> {
     if !left.concatenable(right) {
         return Ok(None);
@@ -298,8 +331,9 @@ fn try_merge(
     let merged = Chunk::concat_and_sort(left, right)
         .map_err(|err| Error::merge_chunks(left.entity_path(), err))?;
 
-    let acceptable = merged.all_timelines_sorted()
-        || max_rows_if_unsorted.is_none_or(|max| merged.num_rows() as u64 <= max.get());
+    let acceptable = target
+        .row_guard(merged.all_timelines_sorted())
+        .is_none_or(|max| merged.num_rows() as u64 <= max.get());
 
     Ok(acceptable.then_some(merged))
 }
@@ -311,7 +345,7 @@ fn try_merge(
 fn merge_and_emit(
     ready: &mut VecDeque<Arc<Chunk>>,
     mut chunks: Vec<Arc<Chunk>>,
-    max_rows_if_unsorted: Option<NonZeroU64>,
+    target: &MergeSplitSettings,
 ) -> Result<(), Error> {
     let mut skip_first = false;
     let mut rounds_without_merge = 0;
@@ -335,7 +369,7 @@ fn merge_and_emit(
                 next_round.push(left);
                 break;
             };
-            if let Some(merged) = try_merge(&left, &right, max_rows_if_unsorted)? {
+            if let Some(merged) = try_merge(&left, &right, target)? {
                 next_round.push(Arc::new(merged));
                 merged_any = true;
             } else {
@@ -364,11 +398,9 @@ fn needs_split(chunk: &Chunk, measured_bytes: u64, target: &MergeSplitSettings) 
 
     let rows = chunk.num_rows() as u64;
     let over_bytes = should_split_chunk(measured_bytes, target.max_bytes.get());
-    let over_rows = target.max_rows.is_some_and(|max| rows > max.get());
-    let over_rows_unsorted = target
-        .max_rows_if_unsorted
-        .is_some_and(|max| rows > max.get())
-        && !chunk.all_timelines_sorted();
+    let over_rows = target
+        .row_guard(chunk.all_timelines_sorted())
+        .is_some_and(|max| rows > max.get());
 
-    over_bytes || over_rows || over_rows_unsorted
+    over_bytes || over_rows
 }

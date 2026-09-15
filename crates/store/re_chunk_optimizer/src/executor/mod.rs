@@ -2,6 +2,9 @@
 
 pub mod merge_split;
 
+mod cut;
+mod size_estimate;
+
 use std::collections::{BTreeSet, HashMap, VecDeque};
 use std::sync::Arc;
 

@@ -43,11 +43,27 @@ pub struct MergeSplitSettings {
     /// keeps re-optimization of already-optimized chunks a no-op.
     pub max_bytes: NonZeroU64,
 
-    /// Row guard for chunks whose timelines are all sorted; `None` disables it.
+    /// Row guard for every chunk; `None` disables it.
     pub max_rows: Option<NonZeroU64>,
 
-    /// Row guard for chunks with at least one unsorted timeline; `None` disables it.
+    /// Tighter row guard for chunks with at least one unsorted timeline, applied on top of
+    /// [`Self::max_rows`]; `None` disables it.
     pub max_rows_if_unsorted: Option<NonZeroU64>,
+}
+
+impl MergeSplitSettings {
+    /// The row guard for content whose timelines are all sorted, or for content that is not:
+    /// unsorted content is held to the tighter of the two guards.
+    pub fn row_guard(&self, sorted: bool) -> Option<NonZeroU64> {
+        if sorted {
+            self.max_rows
+        } else {
+            match (self.max_rows, self.max_rows_if_unsorted) {
+                (Some(a), Some(b)) => Some(a.min(b)),
+                (guard, None) | (None, guard) => guard,
+            }
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
