@@ -138,9 +138,8 @@ jobs:
           parent: false
           process_gcloudignore: false
 
-      # Upload extensionless HTML aliases (signed-in, signed-out) to the
-      # bucket root with the correct Content-Type. The OAuth redirect uses the
-      # origin (app.rerun.io/signed-in), not a versioned path.
+      # rerun.io/viewer/* maps to the bucket root, so these objects serve
+      # rerun.io/viewer/signed-in and rerun.io/viewer/signed-out.
       - name: "Upload HTML aliases to bucket root"
         run: |
           cd crates/top/re_web_viewer_server/web_viewer
@@ -155,3 +154,13 @@ jobs:
         if: inputs.update-latest
         run: |
           gsutil -m cp -r 'gs://rerun-web-viewer/version/${{ inputs.release-version }}/*' gs://rerun-web-viewer/version/latest
+
+          # app.rerun.io/* maps to version/latest rather than the bucket root.
+          # Recreate its extensionless aliases because the recursive copy only contains *.html.
+          cd crates/top/re_web_viewer_server/web_viewer
+          for f in *.html; do
+            name="${f%.html}"
+            if [ "$name" != "index" ] && [ "$name" != "index_bundled" ]; then
+              gcloud storage cp --content-type="text/html" "$f" "gs://rerun-web-viewer/version/latest/${name}"
+            fi
+          done
