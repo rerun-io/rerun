@@ -132,7 +132,6 @@ skip = [
   # Duplicated by `headless_chrome`, pulled in only by the `browser` feature of the
   # `re_integration_test` browser integration-test harness.
   { name = "convert_case" },
-  { name = "cpufeatures" },
   { name = "rand" },
   { name = "rand_core" },
 ]
