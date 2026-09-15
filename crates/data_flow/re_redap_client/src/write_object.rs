@@ -10,6 +10,9 @@ pub enum WriteObjectError {
     #[error(transparent)]
     Api(#[from] ApiError),
 
+    #[error("the write access grant expired at {expires_at}")]
+    Expired { expires_at: jiff::Timestamp },
+
     #[error("failed to read the source: {0}")]
     Read(#[from] std::io::Error),
 
@@ -43,6 +46,12 @@ impl ConnectionHandle {
             .get_write_access_grant(key, size)
             .await?;
 
+        if jiff::Timestamp::now() >= grant.expires_at {
+            return Err(WriteObjectError::Expired {
+                expires_at: grant.expires_at,
+            });
+        }
+
         let body = source
             .read_exact_at(Span {
                 start: 0,
@@ -51,7 +60,7 @@ impl ConnectionHandle {
             .await?;
 
         let Redemption::HttpRequest(http_request) = grant.redemption;
-        let mut request = ehttp::Request::post(http_request.url.as_str(), Vec::from(body));
+        let mut request = ehttp::Request::post(http_request.url.as_str(), body.to_vec());
         request.method = ehttp::Method::parse(http_request.method.as_str())
             .map_err(WriteObjectError::Request)?;
         request.headers = ehttp::Headers {
