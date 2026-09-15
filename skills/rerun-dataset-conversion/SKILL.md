@@ -1,5 +1,5 @@
 ---
-name: dataset-conversion
+name: rerun-dataset-conversion
 description: "Convert a multi-modal robotics dataset (MCAP, HDF5, LeRobot, parquet, raw video) into layered Rerun recordings (.rrd) and a catalog-ready dataset. Use whenever the user wants a dataset converted or ingested into Rerun, a conversion pipeline reviewed or extended, or a layer added to an existing conversion — even when they only say 'convert X to rrd' or 'ingest this dataset'. Routes to the rerun-* skills for Rerun mechanics."
 ---
 
