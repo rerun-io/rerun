@@ -26,7 +26,13 @@ Unlike `Scalars`, this archetype carries its own styling, so values and style ar
 ```python
 rr.log(
     "pressure",
-    rr.Measurements(values=pressures, variances=variances, units="Pa"),
+    rr.Measurements(
+        values=pressures,
+        variances=variances,
+        units="Pa",
+        colors=[[121, 187, 255], [255, 151, 111]],
+        names=["barometer_a", "barometer_b"],
+    ),
 )
 ```
 
