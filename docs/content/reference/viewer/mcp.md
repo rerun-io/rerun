@@ -65,7 +65,7 @@ Ask the agent to launch the Viewer headless or in the background, and it will st
 
 The tool name says which family it belongs to, and the agent is told to prefer the high-level one.
 
-The `rerun_*` tools (`rerun_get_viewer_state`, `rerun_set_time_cursor`, `rerun_open_url`, `rerun_close_recordings`, `rerun_save_screenshot`, …) are high level: each names a Viewer action and carries it out in one call.
+The `rerun_*` tools (`rerun_get_viewer_state`, `rerun_get_recording_schema`, `rerun_set_time_cursor`, `rerun_open_url`, `rerun_close_recordings`, `rerun_save_screenshot`, …) are high level: each names a Viewer action and carries it out in one call.
 They are generated from `viewer_control.proto`, so they cover exactly what that service can do, and they travel on its `ViewerControl` endpoint.
 
 The remaining tools (`query_tree`, `click`, `type_text`, `hover`, `scroll`, `screenshot`, …) are low level: they drive the widgets one input event at a time.
@@ -82,10 +82,19 @@ Besides the accessibility tree and screenshots, the server gives the agent the s
   That tells the agent why a view is empty or looks wrong without a screenshot.
 - **Viewer logs**: the Viewer's log messages (INFO and above) since the previous tool call are appended to every tool result, and the `rerun_get_viewer_logs` tool returns the recent history.
   The agent notices the same warnings and errors you see in the notification panel.
+- **What is still loading**: `rerun_get_viewer_state` lists the data sources the Viewer is still loading from, the same ones its loading screen spins for.
+  `rerun_open_url` returns as soon as the load starts, so this is how the agent tells a recording that is still arriving from one that arrived empty.
+  It matters most while a large import is running, because the Viewer paints no frames then and the low-level tools all stall — this one keeps answering.
 
 ## Reading the data
 
-The MCP tools drive the UI; they deliberately do not read data.
+`rerun_get_recording_schema` answers what a recording holds: every entity, the components logged on each, whether a component has a static value, and its Arrow datatype.
+It works for any open recording, whatever it was loaded from.
+Without it an agent guesses entity paths and component names from an archetype's documentation, and a query built on a wrong guess comes back empty rather than complaining — so the agent ends up describing data it never read.
+A recording too large to describe in one answer comes back truncated, with a count of the entities left out; the request narrows to a subtree to read the rest.
+It can also ask for the entity paths alone, which lists a whole recording at a size worth reading and leaves the components for a follow-up call.
+
+Values are another matter: the MCP tools drive the UI, and deliberately do not read data.
 Instead, the Viewer hosts a catalog server, and `rerun_get_viewer_state` reports its address as `catalog_url`, along with each recording's `store_id`.
 That `store_id` is a `{kind}:{application_id}:{recording_id}` string, whose application id and recording id are its dataset id and segment id in that catalog.
 Both ids may contain a colon, so the application id's are escaped as `\:`: the kind runs to the first colon, the application id to the next unescaped one, and the recording id is the rest.

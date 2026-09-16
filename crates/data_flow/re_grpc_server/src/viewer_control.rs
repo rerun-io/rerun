@@ -23,7 +23,11 @@ use crate::{Event, LogOrTableMsgProto};
 /// Covers handing the command over as well as waiting for the reply. The channel blocks its
 /// sender under backpressure, so a viewer that has stopped draining it would otherwise hang the
 /// caller before the clock even started.
-const REQUEST_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(30);
+///
+/// Every operation here is answered either from viewer state or within a frame, so a viewer that
+/// takes longer than this is one to fix rather than to wait for. Keep it in step with
+/// `re_viewer_mcp`'s own deadlines: whichever of the two is shorter is the one that fires.
+const REQUEST_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10);
 
 /// Exposes apis to interact with a running Viewer.
 pub struct ViewerControl {

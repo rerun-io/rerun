@@ -4,18 +4,22 @@
 //!
 //! That file lists every place an operation has to be added.
 
+use std::collections::BTreeMap;
+
 use re_chunk::TimelineName;
 use re_log_channel::{
     CloseRecordingTarget, InspectError, SaveScreenshotError, UiCallback, ViewerControlError,
 };
-use re_log_types::{StoreId, TimeReal, TimeType};
+use re_log_types::{EntityPath, StoreId, TimeReal, TimeType};
 use re_protos::common::v1alpha1::TimeType as ProtoTimeType;
 use re_protos::viewer_control::v1alpha1::{
-    CloseRecordingsRequest, CloseRecordingsResponse, GetViewerLogsRequest, GetViewerLogsResponse,
-    GetViewerStateResponse, OpenUrlRequest, OpenUrlResponse, SaveScreenshotRequest,
-    SaveScreenshotResponse, SetTimeCursorRequest, SetTimeCursorResponse, TimeCursor,
-    ViewerControlRequest, ViewerControlResponse, ViewerRecording, ViewerReport, ViewerTimeline,
-    ViewerView, viewer_control_request,
+    CloseRecordingsRequest, CloseRecordingsResponse, GetRecordingSchemaRequest,
+    GetRecordingSchemaResponse, GetViewerLogsRequest, GetViewerLogsResponse,
+    GetViewerStateResponse, OpenUrlRequest, OpenUrlResponse, RecordingComponentSchema,
+    RecordingEntitySchema, SaveScreenshotRequest, SaveScreenshotResponse, SetTimeCursorRequest,
+    SetTimeCursorResponse, TimeCursor, ViewerControlRequest, ViewerControlResponse,
+    ViewerLoadingSource, ViewerRecording, ViewerReport, ViewerTimeline, ViewerView,
+    viewer_control_request,
 };
 use re_sdk_types::external::uuid;
 use re_viewer_context::{
@@ -24,6 +28,19 @@ use re_viewer_context::{
 };
 
 use super::App;
+
+/// How many entities `get_recording_schema` describes when the request does not say.
+///
+/// A recording of a few thousand entities would otherwise answer with more than the caller can
+/// read. The response reports how many entities were left out, so a truncated answer is visibly
+/// truncated rather than silently wrong.
+const DEFAULT_MAX_SCHEMA_ENTITIES: u32 = 100;
+
+/// How many entities `get_recording_schema` names when the request asks for `paths_only`.
+///
+/// Far higher than [`DEFAULT_MAX_SCHEMA_ENTITIES`], because a path costs one line where the
+/// components on it cost many — which is the whole reason to ask for paths alone.
+const DEFAULT_MAX_SCHEMA_PATHS: u32 = 10_000;
 
 impl App {
     /// Run one operation of the `ViewerControlService` API on the UI thread.
@@ -62,6 +79,12 @@ impl App {
                     entries: self.viewer_log.entries_after(after_sequence),
                 }
                 .into()));
+            }
+            Kind::GetRecordingSchema(request) => {
+                on_done.call(
+                    self.collect_recording_schema(store_hub, request)
+                        .map(ViewerControlResponse::from),
+                );
             }
             Kind::GetViewerState(_) => {
                 on_done.call(Ok(self.collect_viewer_state(store_hub).into()));
@@ -241,19 +264,7 @@ impl App {
             .recordings()
             .map(|db| {
                 let store_id = db.store_id();
-                let timelines = db
-                    .timelines()
-                    .values()
-                    .map(|timeline| {
-                        let name = timeline.name();
-                        let range = db.time_range_for(name);
-                        ViewerTimeline {
-                            timeline: Some((*name).into()),
-                            time_type: ProtoTimeType::from(timeline.typ()) as i32,
-                            time_range: range.map(Into::into),
-                        }
-                    })
-                    .collect();
+                let timelines = recording_timelines(db);
 
                 let current_time = self
                     .state
@@ -272,16 +283,123 @@ impl App {
             })
             .collect();
 
+        // `loading_name` is the viewer's own "actively loading" predicate — the one the welcome
+        // screen shows a spinner for — so a source that is only waiting to be sent data is left
+        // out, as it would otherwise never clear.
+        let loading = self
+            .rx_log
+            .sources()
+            .iter()
+            .filter_map(|source| {
+                source.loading_name().map(|name| ViewerLoadingSource {
+                    name,
+                    status: source.status_string(),
+                })
+            })
+            .collect();
+
         GetViewerStateResponse {
             url,
             active_store_id: active_id.map(|store_id| store_id.to_string()),
             recordings,
+            loading,
             views,
             catalog_url: self
                 .connection_registry
                 .internal_origin()
                 .map(|origin| origin.to_string()),
+            viewer_version: Some(self.build_info.version.to_string()),
         }
+    }
+
+    /// Snapshot a recording's schema for the `get_recording_schema` operation: every entity
+    /// with the components ever logged on it, their Arrow datatypes, and whether they are static.
+    ///
+    /// The schema is purely additive and survives garbage collection, so this describes what the
+    /// recording has ever carried rather than what is loaded right now.
+    fn collect_recording_schema(
+        &self,
+        store_hub: &StoreHub,
+        request: GetRecordingSchemaRequest,
+    ) -> Result<GetRecordingSchemaResponse, ViewerControlError> {
+        let GetRecordingSchemaRequest {
+            store_id,
+            entity_path,
+            max_entities,
+            paths_only,
+        } = request;
+        let paths_only = paths_only.unwrap_or(false);
+
+        let store_id = store_id
+            .map(|store_id| store_id.parse::<StoreId>())
+            .transpose()
+            .map_err(|err| {
+                ViewerControlError::invalid_argument(format!("invalid store_id: {err}"))
+            })?
+            .or_else(|| self.state.active_recording_id().cloned())
+            .ok_or_else(|| {
+                ViewerControlError::failed_precondition("no active recording to describe")
+            })?;
+
+        let db = store_hub.entity_db(&store_id).ok_or_else(|| {
+            ViewerControlError::not_found(format!("recording {store_id} is not open"))
+        })?;
+
+        let root = entity_path
+            .map(|entity_path| EntityPath::parse_strict(&entity_path))
+            .transpose()
+            .map_err(|err| {
+                ViewerControlError::invalid_argument(format!("invalid entity_path: {err}"))
+            })?;
+
+        let engine = db.storage_engine();
+        let columns = engine
+            .schema()
+            .all_column_metadata()
+            .map(|(entity_path, entry)| {
+                let component = (!paths_only).then(|| RecordingComponentSchema {
+                    component: entry.descriptor.component.to_string(),
+                    archetype: entry.descriptor.archetype.map(|name| name.to_string()),
+                    component_type: entry
+                        .descriptor
+                        .component_type
+                        .map(|component_type| component_type.to_string()),
+                    datatype: entry.datatype.to_string(),
+                    has_static: Some(entry.metadata_state.is_static),
+                });
+                (entity_path, component)
+            });
+
+        let default_max = if paths_only {
+            DEFAULT_MAX_SCHEMA_PATHS
+        } else {
+            DEFAULT_MAX_SCHEMA_ENTITIES
+        };
+        let (entities, omitted_entities) = group_schema_by_entity(
+            columns,
+            root.as_ref(),
+            max_entities.unwrap_or(default_max) as usize,
+        );
+
+        // An empty answer to a filtered request reads as "this recording holds no such data",
+        // when what actually happened is that the caller named a path the recording never had.
+        // A zero `max_entities` empties the list without saying anything about the path, so the
+        // omitted count has to be clear too.
+        if let Some(root) = &root
+            && entities.is_empty()
+            && omitted_entities == 0
+        {
+            return Err(ViewerControlError::not_found(format!(
+                "recording {store_id} has nothing at or below {root}"
+            )));
+        }
+
+        Ok(GetRecordingSchemaResponse {
+            store_id: store_id.to_string(),
+            timelines: recording_timelines(db),
+            entities,
+            omitted_entities,
+        })
     }
 
     /// Close recordings.
@@ -454,6 +572,67 @@ impl App {
     }
 }
 
+/// A recording's timelines with their time ranges, as both `get_viewer_state` and
+/// `get_recording_schema` report them.
+///
+/// A timeline with no data yet has no range, which is what tells "still arriving" from "empty".
+fn recording_timelines(db: &re_entity_db::EntityDb) -> Vec<ViewerTimeline> {
+    db.timelines()
+        .values()
+        .map(|timeline| {
+            let name = timeline.name();
+            ViewerTimeline {
+                timeline: Some((*name).into()),
+                time_type: ProtoTimeType::from(timeline.typ()) as i32,
+                time_range: db.time_range_for(name).map(Into::into),
+            }
+        })
+        .collect()
+}
+
+/// Group component schemas by entity for the `get_recording_schema` operation.
+///
+/// Returns the entities in path order, each with its components sorted by name, and how many
+/// entities `max_entities` left out.
+///
+/// Only entities at or below `root` are described; `None` describes the whole recording. A column
+/// whose component is `None` names its entity without describing it, which is what `paths_only`
+/// asks for.
+fn group_schema_by_entity<'a>(
+    columns: impl Iterator<Item = (&'a EntityPath, Option<RecordingComponentSchema>)>,
+    root: Option<&EntityPath>,
+    max_entities: usize,
+) -> (Vec<RecordingEntitySchema>, u32) {
+    let mut per_entity: BTreeMap<&EntityPath, Vec<RecordingComponentSchema>> = BTreeMap::new();
+    for (entity_path, component) in columns {
+        // `starts_with` compares whole path parts and is inclusive, so `/world` describes
+        // `/world` itself and everything below it, but not the sibling `/world2`.
+        if root.is_some_and(|root| !entity_path.starts_with(root)) {
+            continue;
+        }
+        // A `None` still names the entity: `paths_only` drops the components, not the path.
+        let entry = per_entity.entry(entity_path).or_default();
+        if let Some(component) = component {
+            entry.push(component);
+        }
+    }
+
+    let omitted_entities = per_entity.len().saturating_sub(max_entities) as u32;
+    let entities = per_entity
+        .into_iter()
+        .take(max_entities)
+        .map(|(entity_path, mut components)| {
+            components.sort_by(|a, b| a.component.cmp(&b.component));
+            RecordingEntitySchema {
+                entity_path: entity_path.to_string(),
+                components,
+            }
+        })
+        .collect();
+
+    (entities, omitted_entities)
+}
+
 /// Handle one `egui_inspection` request against the running viewer UI.
 ///
 /// This is the viewer-side half of the [`egui_inspection`] protocol: read the accessibility tree,
@@ -515,6 +694,110 @@ mod tests {
         let err = close_recordings_target(CloseRecordingsRequest { target: None })
             .expect_err("an unset target names no recording");
         assert_eq!(err.code, ViewerControlErrorCode::InvalidArgument);
+    }
+
+    /// One temporal component named `component` on `entity_path`.
+    fn column(entity_path: &EntityPath, component: &str) -> (EntityPath, RecordingComponentSchema) {
+        (
+            entity_path.clone(),
+            RecordingComponentSchema {
+                component: component.to_owned(),
+                archetype: None,
+                component_type: None,
+                datatype: "Float32".to_owned(),
+                has_static: Some(false),
+            },
+        )
+    }
+
+    #[test]
+    fn a_schema_subtree_takes_whole_path_parts() {
+        let world = EntityPath::from("/world");
+        let columns = [
+            column(&world, "a"),
+            column(&EntityPath::from("/world/robot"), "b"),
+            column(&EntityPath::from("/world2"), "c"),
+            column(&EntityPath::from("/elsewhere"), "d"),
+        ];
+
+        let (entities, omitted) = group_schema_by_entity(
+            columns
+                .iter()
+                .map(|(path, schema)| (path, Some(schema.clone()))),
+            Some(&world),
+            10,
+        );
+
+        let paths: Vec<&str> = entities.iter().map(|e| e.entity_path.as_str()).collect();
+        assert_eq!(paths, ["/world", "/world/robot"]);
+        assert_eq!(omitted, 0);
+    }
+
+    /// A zero limit empties the list while the subtree is perfectly real, which is what tells
+    /// `collect_recording_schema` apart from a path the recording never had.
+    /// `paths_only` names an entity while saying nothing about it, so a column with no component
+    /// still has to produce the entity it belongs to.
+    #[test]
+    fn paths_only_keeps_the_entity_and_drops_its_components() {
+        let world = EntityPath::from("/world");
+        let robot = EntityPath::from("/world/robot");
+
+        let (entities, omitted) = group_schema_by_entity(
+            [(&world, None), (&robot, None), (&robot, None)].into_iter(),
+            None,
+            10,
+        );
+
+        let paths: Vec<&str> = entities.iter().map(|e| e.entity_path.as_str()).collect();
+        assert_eq!(paths, ["/world", "/world/robot"]);
+        assert!(entities.iter().all(|e| e.components.is_empty()));
+        assert_eq!(omitted, 0);
+    }
+
+    #[test]
+    fn a_zero_limit_still_counts_a_matching_subtree() {
+        let world = EntityPath::from("/world");
+        let columns = [column(&world, "a")];
+
+        let (entities, omitted) = group_schema_by_entity(
+            columns
+                .iter()
+                .map(|(path, schema)| (path, Some(schema.clone()))),
+            Some(&world),
+            0,
+        );
+
+        assert!(entities.is_empty());
+        assert_eq!(omitted, 1);
+    }
+
+    #[test]
+    fn a_truncated_schema_reports_what_it_left_out() {
+        let paths: Vec<EntityPath> = (0..5).map(|i| EntityPath::from(format!("/e{i}"))).collect();
+        let columns: Vec<_> = paths.iter().map(|path| column(path, "a")).collect();
+
+        let (entities, omitted) = group_schema_by_entity(
+            columns
+                .iter()
+                .map(|(path, schema)| (path, Some(schema.clone()))),
+            None,
+            2,
+        );
+
+        let kept: Vec<&str> = entities.iter().map(|e| e.entity_path.as_str()).collect();
+        assert_eq!(kept, ["/e0", "/e1"]);
+        assert_eq!(omitted, 3);
+
+        // Asking for nothing still says how much there was.
+        let (entities, omitted) = group_schema_by_entity(
+            columns
+                .iter()
+                .map(|(path, schema)| (path, Some(schema.clone()))),
+            None,
+            0,
+        );
+        assert!(entities.is_empty());
+        assert_eq!(omitted, 5);
     }
 
     #[test]

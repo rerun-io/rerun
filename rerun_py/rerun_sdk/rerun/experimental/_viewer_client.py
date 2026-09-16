@@ -102,6 +102,17 @@ class View:
 
 
 @dataclass
+class LoadingSource:
+    """A data source the viewer is still loading from."""
+
+    name: str
+    """What is being loaded: a file path, a URL's display name, or a segment id."""
+
+    status: str
+    """The same thing the viewer's own loading screen says, e.g. `Loading /path/to/dataset…`."""
+
+
+@dataclass
 class ViewerState:
     """A snapshot of what the viewer is currently showing."""
 
@@ -112,12 +123,29 @@ class ViewerState:
     recordings: list[Recording]
     views: list[View]
 
+    loading: list[LoadingSource]
+    """
+    What the viewer is still loading, empty once everything has arrived.
+
+    `open_url` returns as soon as the load starts, and a recording appears in `recordings` as soon
+    as its first message lands, so a recording with no timelines yet means "still arriving" rather
+    than "empty". Poll until this is empty before concluding that a load finished.
+    """
+
     catalog_url: str | None
     """
     Origin of the catalog server the viewer hosts.
 
     Hand this to [`CatalogClient`][rerun.catalog.CatalogClient] to read the data behind the open
     recordings; this API drives the viewer and deliberately does not serve data itself.
+    """
+
+    viewer_version: str | None
+    """
+    Version of the viewer answering, e.g. `0.38.0-alpha.1`.
+
+    Which Rerun this is decides which API and which docs apply, so read it here rather than
+    shelling out to `rerun --version` and hoping it found the same binary.
     """
 
 
@@ -201,12 +229,18 @@ def _viewer_state_from_json(raw: dict[str, Any]) -> ViewerState:
         for view in raw.get("views", [])
     ]
 
+    loading = [
+        LoadingSource(name=source.get("name", ""), status=source.get("status", "")) for source in raw.get("loading", [])
+    ]
+
     return ViewerState(
         url=raw.get("url", ""),
         active_recording=raw.get("active_store_id"),
         recordings=recordings,
         views=views,
+        loading=loading,
         catalog_url=raw.get("catalog_url"),
+        viewer_version=raw.get("viewer_version"),
     )
 
 

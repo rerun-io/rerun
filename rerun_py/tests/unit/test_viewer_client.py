@@ -245,3 +245,24 @@ def test_viewer_state_of_an_empty_viewer() -> None:
     assert state.catalog_url is None
     assert state.recordings == []
     assert state.views == []
+    assert state.loading == []
+    assert state.viewer_version is None
+
+
+def test_viewer_state_carries_the_viewer_version() -> None:
+    """The version decides which API and which docs apply, so it must survive the JSON."""
+    state = _viewer_state_from_json({"viewer_version": "0.38.0-alpha.1"})
+
+    assert state.viewer_version == "0.38.0-alpha.1"
+
+
+def test_viewer_state_reports_a_load_in_flight() -> None:
+    """A recording whose first message has landed but whose timelines have not is still loading."""
+    state = _viewer_state_from_json({
+        "recordings": [{"store_id": {"application_id": {"id": "app"}, "recording_id": "episode_0"}}],
+        "loading": [{"name": "/tmp/dataset", "status": "Loading /tmp/dataset…"}],
+    })
+
+    assert state.recordings[0].timelines == []
+    (source,) = state.loading
+    assert (source.name, source.status) == ("/tmp/dataset", "Loading /tmp/dataset…")

@@ -24,6 +24,7 @@ from ._query_metrics import (
     query_metrics as query_metrics,
 )
 from ._viewer_client import (
+    LoadingSource as LoadingSource,
     LogEntry as LogEntry,
     Recording as Recording,
     StoreId as StoreId,

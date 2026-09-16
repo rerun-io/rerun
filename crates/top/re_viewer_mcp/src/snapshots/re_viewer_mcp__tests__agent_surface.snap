@@ -19,17 +19,19 @@ Targeting widgets:
 
 Acting and verifying:
 - After an action that changes the UI, confirm it landed: `query_tree` for the expected state, `screenshot` to look, or `wait_for` to poll until async or animated UI settles.
+- Confirm a load with `rerun_get_viewer_state`, not `screenshot`. It names the recordings, timelines and views that appeared, which is what "did it load?" actually asks; a full-window screenshot costs far more and answers less. Screenshot when the question is about looks — framing, layout, colors.
 - Use `batch` to act and observe in one round trip (e.g. `click` then `screenshot`), avoiding an extra turn.
 - To move through time, call `rerun_get_viewer_state` for the recordings/timelines and their valid ranges, then `rerun_set_time_cursor`.
 - The viewer's log messages (INFO and above) since the previous tool call are appended to every tool result. Read them: a warning or error there usually explains what the user is seeing. `rerun_get_viewer_logs` fetches older messages.
 - `rerun_close_recordings` clears recordings away. Iterating on a file you keep regenerating leaves a pile of stale recordings behind, which makes `rerun_get_viewer_state` and the UI hard to read — close them.
 
 Reading the data itself:
-- These tools drive the UI; they do not read data. Never guess an entity path or a component name — the viewer hosts a catalog server, so read the real schema and the real values through the Python API instead.
+- Never guess an entity path or a component name. `rerun_get_recording_schema` names every entity of an open recording, the components logged on each, and their Arrow datatypes, whatever the recording was loaded from. Read it before you write a query, a blueprint, or a sentence describing the data.
+- That is the schema, not the values: it says what was logged at some point, not what is there at the current time. These tools drive the UI and do not read values — the viewer hosts a catalog server, so read the real values through the Python API.
 - `rerun_get_viewer_state` reports that server as `catalog_url`. Hand it straight to `CatalogClient`; do not hardcode a port, since a viewer may serve on any of them.
 - A recording's `store_id` is the string `{kind}:{application_id}:{recording_id}`. The kind runs to the first colon, the application id to the next colon not preceded by a backslash, and the recording id is the rest; a colon inside the application id is escaped as `\:` (and a backslash as `\\`). The application id is the catalog dataset's **id** (not its name) and the recording id is the segment id, so look the dataset up by id:
   `CatalogClient(catalog_url).get_dataset(id=application_id)`, then `.schema().entity_paths()` for the schema and `.segment_store(recording_id)` for the data.
-- A recording may predate its registration (an SDK stream, or an import from a directory or another file format). It is then absent from the catalog and its application id is the plain application id; read that one from its source on disk instead (`rerun.chunk.RrdReader(path).store(...).schema()` and friends).
+- Only local `.rrd` and `.rbl` files are registered, so a recording streamed from an SDK, opened from an `http(s)` URL, or imported from a directory or another file format is absent from the catalog, and its application id is the plain application id rather than a dataset id. Read those from the source instead (`rerun.chunk.RrdReader(path).store(...).schema()` and friends), fetching a URL to a temporary file first.
 - `rerun_close_recordings` only closes recordings in the viewer; registered recordings stay in the catalog and can still be read and reopened afterwards.
 
 Conventions:
@@ -827,6 +829,36 @@ Conventions:
   }
 }
 
+## rerun_get_recording_schema
+
+{
+  "name": "rerun_get_recording_schema",
+  "description": "Report a recording's schema: its timelines, every entity, every component ever logged on\nit, whether that component has a static value, and its Arrow datatype.\n\n`paths_only` answers the cheaper question — which entities exist at all — for a recording\ntoo large to describe in full.\n\nRead this before naming an entity path or a component anywhere else. A component name\nguessed from an archetype's documentation is often not the one the recording carries, and\nthe viewer cannot tell a caller that it guessed wrong — a query for a component that is not\nthere just comes back empty.\n\nThis is the schema, not the data: a component listed here has been logged at some point,\nwhich says nothing about the current time cursor. Read values through the catalog server\n`GetViewerState` reports as `catalog_url`.\n\n`NOT_FOUND` if the requested recording is not open.\n\nRequires `rerun_connect`.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "store_id": {
+        "type": "string",
+        "description": "Recording to describe, as `{kind}:{application_id}:{recording_id}`. If omitted, the active\nrecording is used."
+      },
+      "entity_path": {
+        "type": "string",
+        "description": "Only describe this entity and the entities below it, e.g. `/world/robot`. Omit for the whole\nrecording.\n\nA recording with more entities than one answer holds comes back truncated, and narrowing here\nis how to read the rest of it.\n\n`NOT_FOUND` if nothing in the recording is at or below this path, since an empty answer would\notherwise read as \"the recording has no such data\" rather than \"that path is not in it\"."
+      },
+      "max_entities": {
+        "type": "integer",
+        "minimum": 0,
+        "description": "How many entities to describe at most.\n\nDefaults to 100, or to 10000 with `paths_only`, since a path costs a line where the\ncomponents on it cost many."
+      },
+      "paths_only": {
+        "type": "boolean",
+        "description": "Name the entities without describing what is logged on them.\n\nA whole recording's paths fit in one answer at a size worth reading, where its components\nwould not. Use this to see the shape of an unfamiliar recording, then call again with\n`entity_path` for the components of the entities that turned out to matter."
+      }
+    },
+    "description": "Request for `GetRecordingSchema`."
+  }
+}
+
 ## rerun_get_viewer_logs
 
 {
@@ -861,7 +893,7 @@ Conventions:
 
 {
   "name": "rerun_open_url",
-  "description": "Open a URL in the viewer (a recording/blueprint file, a `rerun://` dataset URI, a redap\nserver/catalog URL, or an intra-recording link).\n\nRequires `rerun_connect`.",
+  "description": "Open a URL in the viewer (a recording/blueprint file, a `rerun://` dataset URI, a redap\nserver/catalog URL, or an intra-recording link).\n\nReturns as soon as the load *starts*. Poll `GetViewerState` until its `loading` list is\nempty; only then does an absent timeline mean an empty recording rather than one still\narriving. Do not drive the UI while it loads — a viewer busy importing paints no frames,\nso anything waiting on one stalls, while `GetViewerState` keeps answering.\n\nRequires `rerun_connect`.",
   "inputSchema": {
     "type": "object",
     "properties": {

@@ -3,7 +3,7 @@
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ViewerControlRequest {
     /// Which operation to perform. A request with no `kind` set is `INVALID_ARGUMENT`.
-    #[prost(oneof = "viewer_control_request::Kind", tags = "1, 2, 3, 4, 5, 6")]
+    #[prost(oneof = "viewer_control_request::Kind", tags = "1, 2, 3, 4, 5, 6, 7")]
     pub kind: ::core::option::Option<viewer_control_request::Kind>,
 }
 /// Nested message and enum types in `ViewerControlRequest`.
@@ -46,6 +46,11 @@ pub mod viewer_control_request {
         GetViewerState(super::GetViewerStateRequest),
         /// Open a URL in the viewer (a recording/blueprint file, a `rerun://` dataset URI, a redap
         /// server/catalog URL, or an intra-recording link).
+        ///
+        /// Returns as soon as the load *starts*. Poll `GetViewerState` until its `loading` list is
+        /// empty; only then does an absent timeline mean an empty recording rather than one still
+        /// arriving. Do not drive the UI while it loads — a viewer busy importing paints no frames,
+        /// so anything waiting on one stalls, while `GetViewerState` keeps answering.
         #[prost(message, tag = "4")]
         OpenUrl(super::OpenUrlRequest),
         /// Take a screenshot of the viewer, or of a single view within it, and write it to disk.
@@ -61,6 +66,24 @@ pub mod viewer_control_request {
         /// Move the time cursor (timeline position) of a recording in the viewer.
         #[prost(message, tag = "6")]
         SetTimeCursor(super::SetTimeCursorRequest),
+        /// Report a recording's schema: its timelines, every entity, every component ever logged on
+        /// it, whether that component has a static value, and its Arrow datatype.
+        ///
+        /// `paths_only` answers the cheaper question — which entities exist at all — for a recording
+        /// too large to describe in full.
+        ///
+        /// Read this before naming an entity path or a component anywhere else. A component name
+        /// guessed from an archetype's documentation is often not the one the recording carries, and
+        /// the viewer cannot tell a caller that it guessed wrong — a query for a component that is not
+        /// there just comes back empty.
+        ///
+        /// This is the schema, not the data: a component listed here has been logged at some point,
+        /// which says nothing about the current time cursor. Read values through the catalog server
+        /// `GetViewerState` reports as `catalog_url`.
+        ///
+        /// `NOT_FOUND` if the requested recording is not open.
+        #[prost(message, tag = "7")]
+        GetRecordingSchema(super::GetRecordingSchemaRequest),
     }
 }
 impl ::prost::Name for ViewerControlRequest {
@@ -77,7 +100,7 @@ impl ::prost::Name for ViewerControlRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ViewerControlResponse {
     /// Always the same variant as the request's `kind`.
-    #[prost(oneof = "viewer_control_response::Kind", tags = "1, 2, 3, 4, 5, 6")]
+    #[prost(oneof = "viewer_control_response::Kind", tags = "1, 2, 3, 4, 5, 6, 7")]
     pub kind: ::core::option::Option<viewer_control_response::Kind>,
 }
 /// Nested message and enum types in `ViewerControlResponse`.
@@ -103,6 +126,9 @@ pub mod viewer_control_response {
         /// Result of `set_time_cursor`.
         #[prost(message, tag = "6")]
         SetTimeCursor(super::SetTimeCursorResponse),
+        /// Result of `get_recording_schema`.
+        #[prost(message, tag = "7")]
+        GetRecordingSchema(super::GetRecordingSchemaResponse),
     }
 }
 impl ::prost::Name for ViewerControlResponse {
@@ -216,6 +242,148 @@ impl ::prost::Name for EguiInspectResponse {
         "/rerun.viewer_control.v1alpha1.EguiInspectResponse".into()
     }
 }
+/// Request for `GetRecordingSchema`.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct GetRecordingSchemaRequest {
+    /// Recording to describe, as `{kind}:{application_id}:{recording_id}`. If omitted, the active
+    /// recording is used.
+    #[prost(string, optional, tag = "1")]
+    pub store_id: ::core::option::Option<::prost::alloc::string::String>,
+    /// Only describe this entity and the entities below it, e.g. `/world/robot`. Omit for the whole
+    /// recording.
+    ///
+    /// A recording with more entities than one answer holds comes back truncated, and narrowing here
+    /// is how to read the rest of it.
+    ///
+    /// `NOT_FOUND` if nothing in the recording is at or below this path, since an empty answer would
+    /// otherwise read as "the recording has no such data" rather than "that path is not in it".
+    #[prost(string, optional, tag = "2")]
+    pub entity_path: ::core::option::Option<::prost::alloc::string::String>,
+    /// How many entities to describe at most.
+    ///
+    /// Defaults to 100, or to 10000 with `paths_only`, since a path costs a line where the
+    /// components on it cost many.
+    #[prost(uint32, optional, tag = "3")]
+    pub max_entities: ::core::option::Option<u32>,
+    /// Name the entities without describing what is logged on them.
+    ///
+    /// A whole recording's paths fit in one answer at a size worth reading, where its components
+    /// would not. Use this to see the shape of an unfamiliar recording, then call again with
+    /// `entity_path` for the components of the entities that turned out to matter.
+    #[prost(bool, optional, tag = "4")]
+    pub paths_only: ::core::option::Option<bool>,
+}
+impl ::prost::Name for GetRecordingSchemaRequest {
+    const NAME: &'static str = "GetRecordingSchemaRequest";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.GetRecordingSchemaRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.GetRecordingSchemaRequest".into()
+    }
+}
+/// Response for `GetRecordingSchema`: the recording's entities and the components on them.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetRecordingSchemaResponse {
+    /// The recording described (resolved from the request, or the active recording), as
+    /// `{kind}:{application_id}:{recording_id}`.
+    #[prost(string, tag = "1")]
+    pub store_id: ::prost::alloc::string::String,
+    /// The recording's timelines with their time ranges.
+    ///
+    /// Not affected by `entity_path` or `max_entities`: a timeline belongs to the recording, and a
+    /// component's time values only mean something against the timeline they were logged on.
+    #[prost(message, repeated, tag = "4")]
+    pub timelines: ::prost::alloc::vec::Vec<ViewerTimeline>,
+    /// The matching entities in path order, each with the components logged on it.
+    ///
+    /// With `paths_only` the components are left out, and an entity here names a path that has had
+    /// something logged on it, nothing more.
+    #[prost(message, repeated, tag = "2")]
+    pub entities: ::prost::alloc::vec::Vec<RecordingEntitySchema>,
+    /// How many matching entities `max_entities` left out.
+    ///
+    /// Anything above zero means this answer describes only part of the recording: narrow with
+    /// `entity_path`, or raise `max_entities`.
+    #[prost(uint32, tag = "3")]
+    pub omitted_entities: u32,
+}
+impl ::prost::Name for GetRecordingSchemaResponse {
+    const NAME: &'static str = "GetRecordingSchemaResponse";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.GetRecordingSchemaResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.GetRecordingSchemaResponse".into()
+    }
+}
+/// One entity of a recording, with every component ever logged on it.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct RecordingEntitySchema {
+    /// The entity path, e.g. `/world/robot/joints`.
+    #[prost(string, tag = "1")]
+    pub entity_path: ::prost::alloc::string::String,
+    /// The components logged on this entity.
+    #[prost(message, repeated, tag = "2")]
+    pub components: ::prost::alloc::vec::Vec<RecordingComponentSchema>,
+}
+impl ::prost::Name for RecordingEntitySchema {
+    const NAME: &'static str = "RecordingEntitySchema";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.RecordingEntitySchema".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.RecordingEntitySchema".into()
+    }
+}
+/// One component column of a recording.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct RecordingComponentSchema {
+    /// What the component is stored as, and what a query asks for, e.g. `Points3D:positions`.
+    ///
+    /// Unique within its entity. This, not `component_type`, is the name to pass along.
+    #[prost(string, tag = "1")]
+    pub component: ::prost::alloc::string::String,
+    /// The archetype it was logged through, e.g. `rerun.archetypes.Points3D`.
+    ///
+    /// Absent if it was not logged through an archetype.
+    #[prost(string, optional, tag = "2")]
+    pub archetype: ::core::option::Option<::prost::alloc::string::String>,
+    /// The semantic type of a value, e.g. `rerun.components.Position3D`.
+    ///
+    /// Absent if the data was logged without one. Two components of different archetypes share a
+    /// type when they mean the same thing, so this is what says a column is comparable to another.
+    #[prost(string, optional, tag = "3")]
+    pub component_type: ::core::option::Option<::prost::alloc::string::String>,
+    /// Arrow datatype of a single value, e.g. `FixedSizeList(3 x non-null Float32)`.
+    ///
+    /// This is the type of one element of the component's list, not of the stored column.
+    #[prost(string, tag = "4")]
+    pub datatype: ::prost::alloc::string::String,
+    /// Whether the component has ever been logged statically.
+    ///
+    /// A static value has no time of its own and answers every query, so `true` means the component
+    /// is readable at any point on any timeline. It does not mean the component is *only* static:
+    /// the same component may also carry temporal data, which takes precedence where it exists,
+    /// and this stays `true`. `false` does mean the component is temporal only.
+    ///
+    /// Always set, so a temporal-only component says `false` rather than saying nothing.
+    #[prost(bool, optional, tag = "5")]
+    pub has_static: ::core::option::Option<bool>,
+}
+impl ::prost::Name for RecordingComponentSchema {
+    const NAME: &'static str = "RecordingComponentSchema";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.RecordingComponentSchema".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.RecordingComponentSchema".into()
+    }
+}
 /// Request for `GetViewerLogs`.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetViewerLogsRequest {
@@ -312,6 +480,24 @@ pub struct GetViewerStateResponse {
     /// The views of the current blueprint, with the warnings and errors each one reports.
     #[prost(message, repeated, tag = "5")]
     pub views: ::prost::alloc::vec::Vec<ViewerView>,
+    /// Version of the viewer answering, e.g. `0.38.0-alpha.1`.
+    ///
+    /// Which Rerun this is decides which API and which docs apply, so clients would otherwise have
+    /// to shell out to `rerun --version` and hope they found the same binary.
+    #[prost(string, optional, tag = "6")]
+    pub viewer_version: ::core::option::Option<::prost::alloc::string::String>,
+    /// What the viewer is still loading, empty once everything has arrived.
+    ///
+    /// `OpenUrl` returns as soon as the load starts, and a recording appears in `recordings` as
+    /// soon as its first message lands, so a recording with no timelines yet means "still arriving"
+    /// rather than "empty". Poll until this list is empty before concluding that a load finished,
+    /// and prefer that over a screenshot: a viewer busy importing does not paint frames, so the
+    /// UI tools stall while this one keeps answering.
+    ///
+    /// Sources that merely wait for someone else to send data — an SDK connection, a message proxy
+    /// — are not listed: they never finish, and the viewer is idle while they wait.
+    #[prost(message, repeated, tag = "7")]
+    pub loading: ::prost::alloc::vec::Vec<ViewerLoadingSource>,
 }
 impl ::prost::Name for GetViewerStateResponse {
     const NAME: &'static str = "GetViewerStateResponse";
@@ -321,6 +507,26 @@ impl ::prost::Name for GetViewerStateResponse {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.viewer_control.v1alpha1.GetViewerStateResponse".into()
+    }
+}
+/// A data source the viewer is currently loading from.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct ViewerLoadingSource {
+    /// What is being loaded: a file path, a URL's display name, or a segment id.
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
+    /// The same thing the viewer's own loading screen says, e.g. `Loading /path/to/dataset…`.
+    #[prost(string, tag = "2")]
+    pub status: ::prost::alloc::string::String,
+}
+impl ::prost::Name for ViewerLoadingSource {
+    const NAME: &'static str = "ViewerLoadingSource";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.ViewerLoadingSource".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.ViewerLoadingSource".into()
     }
 }
 /// One view in the viewer's current blueprint.

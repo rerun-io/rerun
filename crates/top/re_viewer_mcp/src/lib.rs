@@ -57,8 +57,18 @@ use re_protos::viewer_control::v1alpha1::{
 
 const DEFAULT_VIEWER_ENDPOINT: &str = "http://127.0.0.1:9876";
 
-/// Per-request RPC deadline.
-const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
+/// Deadline for one viewer-control operation.
+///
+/// These are answered from viewer state without waiting for a frame, so anything this slow means
+/// the viewer is gone rather than busy.
+const REQUEST_TIMEOUT: Duration = Duration::from_secs(10);
+
+/// Deadline for one `egui_inspection` exchange.
+///
+/// A UI request should be as quick as the interaction it stands for, so this allows only for
+/// network hiccups and for the slow transfer of a screenshot. A viewer that takes longer is one
+/// to fix rather than to wait for.
+const UI_REQUEST_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// Send one viewer-control operation over `ViewerControlService::ViewerControl` and unwrap the
 /// matching response, so callers name a request type rather than the `oneof` variants.
@@ -66,11 +76,14 @@ async fn execute<Op: ViewerControlOp>(
     client: &mut ViewerControlServiceClient<Channel>,
     request: Op,
 ) -> Result<Op::Response, String> {
-    let response = client
-        .viewer_control(request.into_envelope())
-        .await
-        .map_err(|err| err.to_string())?
-        .into_inner();
+    let response = tokio::time::timeout(
+        REQUEST_TIMEOUT,
+        client.viewer_control(request.into_envelope()),
+    )
+    .await
+    .map_err(|_elapsed| format!("The viewer did not answer within {REQUEST_TIMEOUT:?}"))?
+    .map_err(|err| err.to_string())?
+    .into_inner();
     Op::from_envelope(response).map_err(|err| err.to_string())
 }
 
@@ -86,11 +99,22 @@ impl Transport for GrpcInspector {
         Box::pin(async move {
             let request = protocol::encode_body(&req).map_err(|err| err.to_string())?;
             let mut client = self.client.clone();
-            let response = client
-                .egui_inspect(EguiInspectRequest { request })
-                .await
-                .map_err(|err| format!("egui_inspect rpc failed: {err}"))?
-                .into_inner();
+            let response = tokio::time::timeout(
+                UI_REQUEST_TIMEOUT,
+                client.egui_inspect(EguiInspectRequest { request }),
+            )
+            .await
+            .map_err(|_elapsed| {
+                format!(
+                    "The viewer did not paint a frame within {UI_REQUEST_TIMEOUT:?}. \
+                     Every UI tool waits on the frame loop, so a long import or an unresponsive \
+                     window stalls all of them. `rerun_get_viewer_state` and \
+                     `rerun_get_viewer_logs` are answered without a frame and still work: use \
+                     them to see whether the viewer is busy loading, and retry once it is idle."
+                )
+            })?
+            .map_err(|err| format!("egui_inspect rpc failed: {err}"))?
+            .into_inner();
             protocol::decode_body(&response.response).map_err(|err| err.to_string())
         })
     }
@@ -102,9 +126,12 @@ impl Transport for GrpcInspector {
 async fn connect_grpc(
     endpoint: &Url,
 ) -> Result<(Bridge, ViewerControlServiceClient<Channel>), String> {
+    // No `Endpoint::timeout` here: that is one deadline for every RPC on the channel, and the
+    // two kinds of call have very different expectations of how long the viewer may take.
+    // Each call site applies its own instead.
     let channel = tonic::transport::Endpoint::from_shared(endpoint.to_string())
         .map_err(|err| err.to_string())?
-        .timeout(REQUEST_TIMEOUT)
+        .connect_timeout(REQUEST_TIMEOUT)
         .connect()
         .await
         .map_err(|err| err.to_string())?;
@@ -435,17 +462,19 @@ Targeting widgets:
 
 Acting and verifying:
 - After an action that changes the UI, confirm it landed: `query_tree` for the expected state, `screenshot` to look, or `wait_for` to poll until async or animated UI settles.
+- Confirm a load with `rerun_get_viewer_state`, not `screenshot`. It names the recordings, timelines and views that appeared, which is what "did it load?" actually asks; a full-window screenshot costs far more and answers less. Screenshot when the question is about looks — framing, layout, colors.
 - Use `batch` to act and observe in one round trip (e.g. `click` then `screenshot`), avoiding an extra turn.
 - To move through time, call `rerun_get_viewer_state` for the recordings/timelines and their valid ranges, then `rerun_set_time_cursor`.
 - The viewer's log messages (INFO and above) since the previous tool call are appended to every tool result. Read them: a warning or error there usually explains what the user is seeing. `rerun_get_viewer_logs` fetches older messages.
 - `rerun_close_recordings` clears recordings away. Iterating on a file you keep regenerating leaves a pile of stale recordings behind, which makes `rerun_get_viewer_state` and the UI hard to read — close them.
 
 Reading the data itself:
-- These tools drive the UI; they do not read data. Never guess an entity path or a component name — the viewer hosts a catalog server, so read the real schema and the real values through the Python API instead.
+- Never guess an entity path or a component name. `rerun_get_recording_schema` names every entity of an open recording, the components logged on each, and their Arrow datatypes, whatever the recording was loaded from. Read it before you write a query, a blueprint, or a sentence describing the data.
+- That is the schema, not the values: it says what was logged at some point, not what is there at the current time. These tools drive the UI and do not read values — the viewer hosts a catalog server, so read the real values through the Python API.
 - `rerun_get_viewer_state` reports that server as `catalog_url`. Hand it straight to `CatalogClient`; do not hardcode a port, since a viewer may serve on any of them.
 - A recording's `store_id` is the string `{kind}:{application_id}:{recording_id}`. The kind runs to the first colon, the application id to the next colon not preceded by a backslash, and the recording id is the rest; a colon inside the application id is escaped as `\:` (and a backslash as `\\`). The application id is the catalog dataset's **id** (not its name) and the recording id is the segment id, so look the dataset up by id:
   `CatalogClient(catalog_url).get_dataset(id=application_id)`, then `.schema().entity_paths()` for the schema and `.segment_store(recording_id)` for the data.
-- A recording may predate its registration (an SDK stream, or an import from a directory or another file format). It is then absent from the catalog and its application id is the plain application id; read that one from its source on disk instead (`rerun.chunk.RrdReader(path).store(...).schema()` and friends).
+- Only local `.rrd` and `.rbl` files are registered, so a recording streamed from an SDK, opened from an `http(s)` URL, or imported from a directory or another file format is absent from the catalog, and its application id is the plain application id rather than a dataset id. Read those from the source instead (`rerun.chunk.RrdReader(path).store(...).schema()` and friends), fetching a URL to a temporary file first.
 - `rerun_close_recordings` only closes recordings in the viewer; registered recordings stay in the catalog and can still be read and reopened afterwards.
 
 Conventions:
