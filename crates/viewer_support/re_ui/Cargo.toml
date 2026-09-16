@@ -16,7 +16,11 @@ include = [
   "../../LICENSE-MIT",
   "**/*.rs",
   "Cargo.toml",
-  "data/*",
+  "data/**/*.otf",
+  "data/**/*.png",
+  "data/**/*.ron",
+  "data/**/*.svg",
+  "data/**/*.txt",
 ]
 
 [lints]

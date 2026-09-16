@@ -16,7 +16,7 @@ include = [
   "../../LICENSE-MIT",
   "**/*.rs",
   "Cargo.toml",
-  "shader/*",
+  "shader/**/*.wgsl",
 ]
 
 [lints]

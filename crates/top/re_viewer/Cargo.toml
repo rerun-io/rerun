@@ -15,9 +15,21 @@ include = [
   "../../LICENSE-APACHE",
   "../../LICENSE-MIT",
   "**/*.rs",
-  "agent_context/**",
+  "agent_context/**/*.cpp",
+  "agent_context/**/*.in",
+  "agent_context/**/*.md",
+  "agent_context/**/*.py",
+  "agent_context/**/*.rs",
+  "agent_context/**/*.toml",
+  "agent_context/**/*.txt",
+  "agent_context/**/*.yaml",
   "Cargo.toml",
-  "data/*",
+  "data/**/*.cpp",
+  "data/**/*.jpg",
+  "data/**/*.md",
+  "data/**/*.png",
+  "data/**/*.py",
+  "data/**/*.rs",
 ]
 
 [lints]
