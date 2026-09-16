@@ -126,7 +126,7 @@ viewer.set_time(duration=1.5, play=True)
 
 Time series plots can now show the values of all visible series in a shared tooltip at the hovered time.
 
-<picture>
+<picture style="zoom: 0.5">
   <img src="https://static.rerun.io/plot_hover/8e3880a3c3225b3b724209f82a2b4385582f8667/full.png" alt="">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/plot_hover/8e3880a3c3225b3b724209f82a2b4385582f8667/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/plot_hover/8e3880a3c3225b3b724209f82a2b4385582f8667/768w.png">
