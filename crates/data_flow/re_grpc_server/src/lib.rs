@@ -245,7 +245,7 @@ impl LoopbackServices {
 
 // TODO(jan): Refactor `serve`/`spawn` variants into a builder?
 
-/// Start a Rerun server, listening on `addr`.
+/// Starts a Rerun server using `listener`.
 ///
 /// A Rerun server is an in-memory implementation of a Storage Node.
 ///
@@ -262,14 +262,13 @@ impl LoopbackServices {
 /// to the queue. Any messages sent to the server through `WriteMessages` will be proxied
 /// to the open `ReadMessages` stream.
 pub async fn serve(
-    addr: SocketAddr,
+    listener: ServerListener,
     options: ServerOptions,
     shutdown: shutdown::Shutdown,
 ) -> anyhow::Result<()> {
-    let message_proxy = MessageProxy::new(options.clone());
+    let message_proxy = MessageProxy::new(options);
     serve_impl(
-        addr,
-        options,
+        listener,
         message_proxy,
         shutdown,
         LoopbackServices::default(),
@@ -277,63 +276,114 @@ pub async fn serve(
     .await
 }
 
+/// Owns the sockets that reserve a Rerun server's address.
+pub struct ServerListener {
+    listener: std::net::TcpListener,
+    local_addr: SocketAddr,
+    ipv4_fallback: Option<WindowsIpv4Fallback>,
+}
+
+/// Covers IPv4 when a Windows server listens on an unspecified IPv6 address.
+///
+/// Windows sockets are not dual-stack by default, and `TcpListener` cannot enable dual-stack mode.
+///
+/// TODO(rust-lang/rust#130668): drop once `TcpListener::bind` can opt into dual-stack.
+struct WindowsIpv4Fallback {
+    listener: std::net::TcpListener,
+    local_addr: SocketAddr,
+}
+
+type IncomingConnections =
+    Pin<Box<dyn Stream<Item = std::io::Result<tokio::net::TcpStream>> + Send>>;
+
+impl ServerListener {
+    /// Binds `addr` and retains ownership of the resulting socket.
+    ///
+    /// If the requested port is zero, [`Self::local_addr`] returns the OS-assigned port.
+    pub fn bind(addr: SocketAddr) -> std::io::Result<Self> {
+        let listener = std::net::TcpListener::bind(addr)?;
+        let local_addr = listener.local_addr()?;
+
+        let ipv4_fallback = (cfg!(windows)
+            && matches!(addr.ip(), std::net::IpAddr::V6(ipv6) if ipv6.is_unspecified()))
+        .then(|| {
+            // Both sockets must use the same OS-assigned port.
+            let local_addr = SocketAddr::V4(std::net::SocketAddrV4::new(
+                std::net::Ipv4Addr::UNSPECIFIED,
+                local_addr.port(),
+            ));
+            std::net::TcpListener::bind(local_addr).map(|listener| WindowsIpv4Fallback {
+                listener,
+                local_addr,
+            })
+        })
+        .transpose()?;
+
+        Ok(Self {
+            listener,
+            local_addr,
+            ipv4_fallback,
+        })
+    }
+
+    /// Returns the reserved address.
+    pub fn local_addr(&self) -> SocketAddr {
+        self.local_addr
+    }
+
+    fn into_incoming(self) -> std::io::Result<IncomingConnections> {
+        fn incoming(listener: std::net::TcpListener) -> std::io::Result<TcpIncoming> {
+            listener.set_nonblocking(true)?;
+            Ok(TcpIncoming::from(TcpListener::from_std(listener)?).with_nodelay(Some(true)))
+        }
+
+        let Self {
+            listener,
+            ipv4_fallback,
+            ..
+        } = self;
+
+        let incoming_primary = incoming(listener)?;
+        Ok(match ipv4_fallback {
+            Some(fallback) => Box::pin(incoming_primary.merge(incoming(fallback.listener)?)),
+            None => Box::pin(incoming_primary),
+        })
+    }
+}
+
+impl std::fmt::Display for ServerListener {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.local_addr)?;
+        if let Some(fallback) = &self.ipv4_fallback {
+            write!(f, " and {}", fallback.local_addr)?;
+        }
+        Ok(())
+    }
+}
+
 async fn serve_impl(
-    addr: SocketAddr,
-    options: ServerOptions,
+    listener: ServerListener,
     message_proxy: MessageProxy,
     shutdown: shutdown::Shutdown,
     extra_services: LoopbackServices,
 ) -> anyhow::Result<()> {
-    // TODO(rust-lang/rust#130668): When listening on `::` we want to listen to both ipv6 `::` and ipv4 `0.0.0.0`
-    // On Mac & Linux this happens automatically since all sockets are dual-stack by default.
-    // On Windows, the dual stack behavior is opt-in, but `TcpListener::bind` does not expose the option.
-    // To work around this, we explicitly listen on both ipv4 & ipv6 if an unspecified ipv6 address is used.
-    let dual_stack_windows = cfg!(target_os = "windows")
-        && matches!(addr.ip(), std::net::IpAddr::V6(ipv6) if ipv6.is_unspecified());
-
-    let incoming: Pin<Box<dyn Stream<Item = _> + Send>> = if dual_stack_windows {
-        let ipv6_addr = addr;
-        let ipv4_addr = SocketAddr::V4(std::net::SocketAddrV4::new(
-            std::net::Ipv4Addr::UNSPECIFIED,
-            addr.port(),
-        ));
-
-        let tcp_listener_ipv6 = TcpListener::bind(ipv6_addr).await?;
-        let tcp_listener_ipv4 = TcpListener::bind(ipv4_addr).await?;
-
-        let incoming_ipv6 = TcpIncoming::from(tcp_listener_ipv6).with_nodelay(Some(true));
-        let incoming_ipv4 = TcpIncoming::from(tcp_listener_ipv4).with_nodelay(Some(true));
-
-        // Merge both streams into a single stream
-        let merged = tokio_stream::StreamExt::merge(incoming_ipv6, incoming_ipv4);
-
-        let connect_addr = format!("rerun+http://127.0.0.1:{}/proxy", addr.port());
-
-        re_log::info!(
-            "Listening for gRPC connections on {ipv6_addr} and {ipv4_addr}. Connect by running `rerun --connect {connect_addr}`",
-        );
-
-        Box::pin(merged)
+    let local_addr = listener.local_addr();
+    let connect_addr = if local_addr.ip().is_loopback() || local_addr.ip().is_unspecified() {
+        format!("rerun+http://127.0.0.1:{}/proxy", local_addr.port())
     } else {
-        let tcp_listener = TcpListener::bind(addr).await?;
-        let incoming = TcpIncoming::from(tcp_listener).with_nodelay(Some(true));
-
-        let connect_addr = if addr.ip().is_loopback() || addr.ip().is_unspecified() {
-            format!("rerun+http://127.0.0.1:{}/proxy", addr.port())
-        } else {
-            format!("rerun+http://{addr}/proxy")
-        };
-
-        re_log::info!(
-            "Listening for gRPC connections on {addr}. Connect by running `rerun --connect {connect_addr}`",
-        );
-
-        Box::pin(incoming)
+        format!("rerun+http://{local_addr}/proxy")
     };
+    re_log::info!(
+        "Listening for gRPC connections on {listener}. Connect by running `rerun --connect {connect_addr}`",
+    );
+    let incoming = listener.into_incoming()?;
 
-    re_log::debug!("Server memory limit set at {}", options.memory_limit);
+    re_log::debug!(
+        "Server memory limit set at {}",
+        message_proxy.options.memory_limit
+    );
 
-    let cors = cors_layer(&options.cors_allowed_origins);
+    let cors = cors_layer(&message_proxy.options.cors_allowed_origins);
     let grpc_web = tonic_web::GrpcWebLayer::new();
 
     let LoopbackServices {
@@ -363,7 +413,20 @@ async fn serve_impl(
     Ok(())
 }
 
-/// Start a Rerun server, listening on `addr`.
+fn spawn_server(
+    listener: ServerListener,
+    message_proxy: MessageProxy,
+    shutdown: shutdown::Shutdown,
+    extra_services: LoopbackServices,
+) {
+    tokio::spawn(async move {
+        if let Err(err) = serve_impl(listener, message_proxy, shutdown, extra_services).await {
+            re_log::error!("message proxy server crashed: {err}");
+        }
+    });
+}
+
+/// Starts a Rerun server using `listener`.
 ///
 /// The returned future must be polled for the server to make progress.
 ///
@@ -374,12 +437,12 @@ async fn serve_impl(
 ///
 /// See [`serve`] for more information about what a Rerun server is.
 pub async fn serve_from_channel(
-    addr: SocketAddr,
+    listener: ServerListener,
     options: ServerOptions,
     shutdown: shutdown::Shutdown,
     channel_rx: re_log_channel::LogReceiver,
 ) {
-    let message_proxy = MessageProxy::new(options.clone());
+    let message_proxy = MessageProxy::new(options);
     let event_tx = message_proxy.event_tx.clone();
 
     tokio::task::spawn_blocking(move || {
@@ -436,8 +499,7 @@ pub async fn serve_from_channel(
     });
 
     if let Err(err) = serve_impl(
-        addr,
-        options,
+        listener,
         message_proxy,
         shutdown,
         LoopbackServices::default(),
@@ -448,7 +510,7 @@ pub async fn serve_from_channel(
     }
 }
 
-/// Start a Rerun server, listening on `addr`.
+/// Starts a Rerun server using `listener`.
 ///
 /// This function additionally accepts a [`re_log_channel::LogReceiverSet`], from which the
 /// server will read all messages. It is similar to creating a client
@@ -457,28 +519,21 @@ pub async fn serve_from_channel(
 ///
 /// See [`serve`] for more information about what a Rerun server is.
 pub fn spawn_from_rx_set(
-    addr: SocketAddr,
+    listener: ServerListener,
     options: ServerOptions,
     shutdown: shutdown::Shutdown,
     rxs: re_log_channel::LogReceiverSet,
 ) -> MessageProxyHandle {
-    let message_proxy = MessageProxy::new(options.clone());
+    let message_proxy = MessageProxy::new(options);
     let handle = message_proxy.handle();
     let event_tx = handle.event_tx.clone();
 
-    tokio::spawn(async move {
-        if let Err(err) = serve_impl(
-            addr,
-            options,
-            message_proxy,
-            shutdown,
-            LoopbackServices::default(),
-        )
-        .await
-        {
-            re_log::error!("message proxy server crashed: {err}");
-        }
-    });
+    spawn_server(
+        listener,
+        message_proxy,
+        shutdown,
+        LoopbackServices::default(),
+    );
 
     tokio::task::spawn_blocking(move || {
         use re_log_channel::SmartMessagePayload;
@@ -543,7 +598,7 @@ pub fn spawn_from_rx_set(
     handle
 }
 
-/// Start a Rerun server, listening on `addr`.
+/// Starts a Rerun server using `listener`.
 ///
 /// This function additionally creates a smart channel, and returns its receiving end.
 /// Any messages received by the server are sent through the channel. This is similar
@@ -555,32 +610,32 @@ pub fn spawn_from_rx_set(
 ///
 /// See [`serve`] for more information about what a Rerun server is.
 pub fn spawn_with_recv(
-    addr: SocketAddr,
+    listener: ServerListener,
     options: ServerOptions,
     shutdown: shutdown::Shutdown,
 ) -> (re_log_channel::LogReceiver, MessageProxyHandle) {
-    spawn_with_recv_and_services(addr, options, shutdown, LoopbackServices::default())
+    spawn_with_recv_and_services(listener, options, shutdown, LoopbackServices::default())
 }
 
-/// Like [`spawn_with_recv`], but additionally serves `extra_services` on the same port.
+/// Like [`spawn_with_recv`], but also serves `loopback_services` on the same port.
 ///
-/// The extra services are restricted to connections from the local machine (see
+/// Those services are restricted to connections from the local machine (see
 /// [`LoopbackServices`]). The message proxy remains reachable according to the bound address.
 pub fn spawn_with_recv_and_services(
-    addr: SocketAddr,
+    listener: ServerListener,
     options: ServerOptions,
     shutdown: shutdown::Shutdown,
     mut loopback_services: LoopbackServices,
 ) -> (re_log_channel::LogReceiver, MessageProxyHandle) {
     let uri = re_uri::ProxyUri::new(re_uri::Origin::from_scheme_and_socket_addr(
         re_uri::Scheme::RerunHttp,
-        addr,
+        listener.local_addr(),
     ));
 
     let (channel_log_tx, channel_log_rx) =
         re_log_channel::log_channel(re_log_channel::LogSource::MessageProxy(uri));
 
-    let (message_proxy, mut broadcast_log_rx) = MessageProxy::new_with_recv(options.clone());
+    let (message_proxy, mut broadcast_log_rx) = MessageProxy::new_with_recv(options);
     let handle = message_proxy.handle();
 
     // Serve the viewer-control service alongside the proxy, restricted to loopback connections:
@@ -593,13 +648,7 @@ pub fn spawn_with_recv_and_services(
         .max_encoding_message_size(MAX_ENCODING_MESSAGE_SIZE),
     );
 
-    tokio::spawn(async move {
-        if let Err(err) =
-            serve_impl(addr, options, message_proxy, shutdown, loopback_services).await
-        {
-            re_log::error!("message proxy server crashed: {err}");
-        }
-    });
+    spawn_server(listener, message_proxy, shutdown, loopback_services);
 
     tokio::spawn(async move {
         let mut app_id_cache = re_log_encoding::CachingApplicationIdInjector::default();
@@ -1358,6 +1407,18 @@ mod tests {
     use tonic::transport::{Channel, Endpoint};
 
     use super::*;
+
+    #[test]
+    fn server_listener_resolves_and_reserves_an_automatic_port() {
+        let listener = ServerListener::bind("127.0.0.1:0".parse().unwrap()).unwrap();
+        let local_addr = listener.local_addr();
+
+        assert_ne!(local_addr.port(), 0);
+        assert_eq!(
+            std::net::TcpListener::bind(local_addr).unwrap_err().kind(),
+            std::io::ErrorKind::AddrInUse
+        );
+    }
 
     #[test]
     fn loopback_only_rejects_non_loopback_peers() {

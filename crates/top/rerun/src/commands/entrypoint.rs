@@ -1045,16 +1045,12 @@ fn run_impl(
         .map_or(DEFAULT_VIEWER_SERVER_PORT, PortArg::port);
 
     let server_addr = if args.connect.is_some() && args.port.is_none() {
-        std::net::SocketAddr::new(args.bind, find_free_port(args.bind)?)
+        std::net::SocketAddr::new(args.bind, 0)
     } else if wants_new
         && is_another_server_already_running(std::net::SocketAddr::new(args.bind, port))
     {
-        let default_port = port;
-        let free_port = find_free_port(args.bind)?;
-        re_log::info!(
-            "Default port {default_port} is already in use, using port {free_port} instead."
-        );
-        std::net::SocketAddr::new(args.bind, free_port)
+        re_log::info!("Default port {port} is already in use, using a free port instead.");
+        std::net::SocketAddr::new(args.bind, 0)
     } else {
         std::net::SocketAddr::new(args.bind, port)
     };
@@ -1258,6 +1254,19 @@ fn start_native_viewer(
     // so we catch any warnings produced during startup.
     let text_log_rx = re_viewer::register_text_log_receiver();
 
+    // The in-process catalog connection must use the proxy's bound address because `server_addr`
+    // may contain port zero.
+    #[cfg(feature = "server")]
+    let (viewer_server_listener, internal_catalog) = {
+        let listener = re_grpc_server::ServerListener::bind(server_addr)?;
+        let internal_catalog = re_viewer::internal_catalog::build(listener.local_addr());
+        connection_registry.set_internal(
+            internal_catalog.connection.clone(),
+            internal_catalog.storage_dir().to_owned(),
+        );
+        (listener, internal_catalog)
+    };
+
     #[allow(clippy::allow_attributes, unused_mut)]
     let ReceiversFromUrlParams {
         mut log_receivers,
@@ -1269,6 +1278,21 @@ fn start_native_viewer(
         &async_runtime,
         Some(auth_error_handler),
     )?;
+
+    #[cfg(feature = "server")]
+    let grpc_server_handle = {
+        let mut loopback_services = re_grpc_server::LoopbackServices::default();
+        loopback_services.add_service(internal_catalog.grpc_service());
+
+        let (log_receiver, handle) = re_grpc_server::spawn_with_recv_and_services(
+            viewer_server_listener,
+            server_options,
+            re_grpc_server::shutdown::never(),
+            loopback_services,
+        );
+        log_receivers.push(log_receiver);
+        handle
+    };
 
     let create_app = move |cc: &eframe::CreationContext<'_>| -> re_viewer::App {
         {
@@ -1322,26 +1346,6 @@ fn start_native_viewer(
 
         #[cfg(feature = "server")]
         {
-            // The internal catalog is served (loopback-only) on the proxy server's port below, and
-            // also reached in-process by the viewer.
-            let internal_catalog = re_viewer::internal_catalog::build(server_addr);
-            connection_registry.set_internal(
-                internal_catalog.connection.clone(),
-                internal_catalog.storage_dir().to_owned(),
-            );
-
-            let mut loopback_services = re_grpc_server::LoopbackServices::default();
-            loopback_services.add_service(internal_catalog.grpc_service());
-
-            let (log_receiver, grpc_server_handle) = re_grpc_server::spawn_with_recv_and_services(
-                server_addr,
-                server_options,
-                re_grpc_server::shutdown::never(),
-                loopback_services,
-            );
-
-            log_receivers.push(log_receiver);
-
             struct ProxyHandleWrapper {
                 handle: re_grpc_server::MessageProxyHandle,
             }
@@ -1495,11 +1499,15 @@ fn serve_web(
     // Don't spawn a server if there's only a bunch of URIs that we want to view directly.
     let spawn_server = !log_receivers.is_empty() || urls_to_pass_on_to_viewer.is_empty();
     if spawn_server {
-        if server_addr.port() == web_viewer_port {
+        // The proxy URL must use the bound address because `server_addr` may contain port zero.
+        let listener = re_grpc_server::ServerListener::bind(server_addr)?;
+        let local_addr = listener.local_addr();
+
+        if local_addr.port() == web_viewer_port {
             anyhow::bail!(
                 "Trying to spawn a Web Viewer server on {}, but this port is \
                     already used by the server we're connecting to. Please specify a different port.",
-                server_addr.port()
+                local_addr.port()
             );
         }
 
@@ -1507,17 +1515,17 @@ fn serve_web(
         // All `rxs` are consumed by the server.
         // We don't render a dev panel here so we don't need to keep the handle.
         let _ = re_grpc_server::spawn_from_rx_set(
-            server_addr,
+            listener,
             server_options,
             re_grpc_server::shutdown::never(),
             LogReceiverSet::new(log_receivers),
         );
 
         // Add the proxy URL to the url parameters.
-        let proxy_url = if server_addr.ip().is_unspecified() || server_addr.ip().is_loopback() {
-            format!("rerun+http://localhost:{}/proxy", server_addr.port())
+        let proxy_url = if local_addr.ip().is_unspecified() || local_addr.ip().is_loopback() {
+            format!("rerun+http://localhost:{}/proxy", local_addr.port())
         } else {
-            format!("rerun+http://{server_addr}/proxy")
+            format!("rerun+http://{local_addr}/proxy")
         };
 
         re_log::debug_assert!(
@@ -1557,11 +1565,13 @@ fn serve_grpc(
 
     receivers.error_on_unhandled_urls("--serve-grpc")?;
 
+    let listener = re_grpc_server::ServerListener::bind(server_addr)?;
+
     let (signal, shutdown) = re_grpc_server::shutdown::shutdown();
     // Spawn a server which the Web Viewer can connect to.
     // No dev panel in this mode, so we drop the handle.
     let _ = re_grpc_server::spawn_from_rx_set(
-        server_addr,
+        listener,
         server_options,
         shutdown,
         LogReceiverSet::new(receivers.log_receivers),
@@ -1593,7 +1603,7 @@ fn save_or_test_receive(
     #[cfg(feature = "server")]
     {
         let (log_rx, _handle) = re_grpc_server::spawn_with_recv(
-            server_addr,
+            re_grpc_server::ServerListener::bind(server_addr)?,
             server_options,
             re_grpc_server::shutdown::never(),
         );
@@ -1622,11 +1632,6 @@ fn connect_proxy_uri(connect: Option<String>) -> anyhow::Result<re_uri::RedapUri
 
     url.parse()
         .map_err(|err| anyhow::format_err!("expected a port or `/proxy` endpoint: {err}"))
-}
-
-fn find_free_port(bind: std::net::IpAddr) -> anyhow::Result<u16> {
-    let listener = std::net::TcpListener::bind(std::net::SocketAddr::new(bind, 0))?;
-    Ok(listener.local_addr()?.port())
 }
 
 fn is_another_server_already_running(server_addr: std::net::SocketAddr) -> bool {

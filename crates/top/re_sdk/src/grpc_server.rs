@@ -51,12 +51,17 @@ impl GrpcServerSink {
                 builder.enable_all();
                 let rt = builder.build().expect("failed to build tokio runtime");
 
-                rt.block_on(re_grpc_server::serve_from_channel(
-                    grpc_server_addr,
-                    server_options,
-                    shutdown,
-                    channel_rx,
-                ));
+                match re_grpc_server::ServerListener::bind(grpc_server_addr) {
+                    Ok(listener) => rt.block_on(re_grpc_server::serve_from_channel(
+                        listener,
+                        server_options,
+                        shutdown,
+                        channel_rx,
+                    )),
+                    Err(err) => {
+                        re_log::error!("Failed to listen on {grpc_server_addr}: {err}");
+                    }
+                }
             })
             .expect("failed to spawn thread for message proxy server");
 
