@@ -1,14 +1,16 @@
 ---
 name: rerun-lerobot
-description: Ingest a LeRobot (HuggingFace) dataset into Rerun. Read when converting a LeRobot dataset to RRDs, splitting it into per-episode segments, or registering it on a Rerun catalog. Covers the built-in directory importer (log_file_from_path), the RrdReader + send_chunks per-episode split, and when to drop to ParquetReader for custom control.
+description: Ingest a LeRobot (HuggingFace) dataset into Rerun. Read when converting a LeRobot dataset to RRDs, splitting it into per-episode segments, or registering it on a Rerun catalog. Covers the built-in directory importer (log_file_from_path), the per-episode LeRobotReader, and when to drop to ParquetReader for custom control.
 user_invocable: true
 allowed-tools: Read, Grep, Bash, WebFetch
 ---
 
 # Rerun LeRobot ingestion
 
-Rerun has a **built-in LeRobot importer**: point `log_file_from_path` (or the viewer, or `rerun <dir>` on the CLI) at the dataset _directory_ and it ingests episodes, camera videos, and state/action tables with no conversion code.
-There is no chunk-level `LeRobotReader`; the chunk-processing route is to import first, then reprocess the resulting RRD with `RrdReader`.
+There are two ways in, and which one you want depends on whether you are viewing or converting.
+
+- **Just viewing?** Rerun has a **built-in LeRobot importer**: point `log_file_from_path` (or the viewer, or `rerun <dir>` on the CLI) at the dataset _directory_ and it ingests episodes, camera videos, and state/action tables with no conversion code.
+- **Converting?** `rr.experimental.LeRobotReader` reads the dataset one episode at a time as a lazy chunk stream, which is what you want for per-episode RRDs and for lenses.
 
 The download step needs `huggingface_hub`.
 
@@ -16,16 +18,28 @@ The download step needs `huggingface_hub`.
 
 Both scripts below live in `scripts/` next to this file, and run standalone through `uv` — they declare `huggingface_hub` inline, so there is no environment to set up.
 
-`codebase_version` decides whether a partial download is even possible, and the Hub search results do not show it.
-Find candidates and their versions in one call, instead of probing repos one at a time:
+Two facts decide what a dataset costs to fetch, and the Hub search results show neither.
+Get both, for every candidate, in one call:
 
 ```bash
 uv run scripts/find_lerobot_dataset.py <query> --robot-type <robot> --want 5
 ```
 
-- **v2.1 and earlier** store one parquet and one mp4 per episode (`video_path` ends in `episode_{episode_index:06d}.mp4`), so "just the first N episodes" is a small download.
-- **v3.0** concatenates every episode into a few large files (`video_path` ends in `file-{file_index:03d}.mp4`), so any subset costs the whole dataset.
-  If the user asked for a few episodes, prefer a v2.1 dataset.
+**`codebase_version` decides whether a partial download is possible at all.**
+
+- **v2.1 and earlier** store one parquet and one mp4 per episode (`video_path` ends in `episode_{episode_index:06d}.mp4`), so "just the first N episodes" downloads only those episodes.
+- **v3.0** concatenates every episode into a few large files (`video_path` ends in `file-{file_index:03d}.mp4`), so any subset costs the whole download.
+  If the user asked for a few episodes, prefer a v2.1 dataset — for the _download_ only.
+  `LeRobotReader` reads a single episode out of either version once the files are local.
+
+**How camera frames are stored decides the size**, and it varies by two orders of magnitude.
+The `frames` and `MB/ep` columns report it:
+
+- `mp4`: a `video`-dtype feature, one file per episode beside the parquet.
+- `inline`: an `image`-dtype feature, raw frames inside the episode parquet, which is far larger for the same footage.
+
+Both scripts report the actual size for the dataset in hand, so use that number rather than guessing.
+Tell the user the size before you start the download, and prefer `mp4` unless they asked for something only the other set has.
 
 `HF_TOKEN` is not required for public datasets, but without it the Hub rate-limits and throttles downloads.
 If it is unset, say so and point the user at <https://huggingface.co/settings/tokens> to create a read token, then `export HF_TOKEN=hf_…` (or `hf auth login`).
@@ -36,6 +50,9 @@ Do not block on it — carry on unauthenticated and let the user decide.
 ```
 
 ## Step 1: dataset -> one combined RRD
+
+Only needed if you want every episode in one file — to hand someone a single RRD, or to reprocess data you cannot re-read from the dataset directory.
+For per-episode segments, skip to Step 2 and let `LeRobotReader` read the dataset directly.
 
 ```python
 from huggingface_hub import snapshot_download
@@ -50,7 +67,7 @@ with rr.RecordingStream("rerun_example_lerobot") as rec:
 
 The importer emits one recording per episode (recording ids like `episode_1`), plus a metadata-only root recording, all into the single RRD.
 
-`rr.RecordingStream` + `log_file_from_path` here is the **importer bootstrap** — the one place `RecordingStream` is correct in an ingestion pipeline (it drives the built-in importer, not per-message logging). Do not generalize it to `rr.log`-per-message loops; for everything after import, reprocess the RRD with `RrdReader` + lenses (see `rerun-chunk-processing`: Chunk API vs logging API).
+`rr.RecordingStream` + `log_file_from_path` here is the **importer bootstrap** — the one place `RecordingStream` is correct in an ingestion pipeline (it drives the built-in importer, not per-message logging). Do not generalize it to `rr.log`-per-message loops; for everything after import, reprocess with a reader + lenses (see `rerun-chunk-processing`: Chunk API vs logging API).
 
 ### Downloading only the first few episodes
 
@@ -58,7 +75,8 @@ The importer emits one recording per episode (recording ids like `episode_1`), p
 uv run scripts/fetch_lerobot_episodes.py <repo_id> --episodes 5   # prints the dataset directory
 ```
 
-It downloads `meta/*` plus the wanted `episode_%06d` files, trims `meta/` to match, and verifies that exactly the requested episodes landed.
+It reports the download size before starting, downloads `meta/*` plus the wanted `episode_%06d` files, trims `meta/` to match, verifies that exactly the requested episodes landed, and prints what it got.
+Its last line is the dataset directory; do not follow it with `find` or `du`.
 Do the equivalent by hand and three things bite:
 
 - The importer iterates the episode list in `meta/`, so an untrimmed `meta/` warns once per absent episode.
@@ -69,12 +87,34 @@ Do the equivalent by hand and three things bite:
 
 Skip the RRD entirely — the viewer imports the dataset directory itself.
 Pass the plain path (`rerun /path/to/dataset`, or `open_url` over MCP).
-Each episode arrives as its own recording named `Episode N`.
+Each episode arrives as its own recording, with `recording_id` `episode_0`, `episode_1`, ….
 
-## Step 2: split into per-episode RRDs
+## Step 2: one RRD per episode
 
 Catalog segments are one-recording-per-file, and `recording_id` becomes the segment id on registration.
-Split with `RrdReader`:
+
+`LeRobotReader` goes straight there, without building the combined RRD of Step 1 first:
+
+```python
+reader = rr.experimental.LeRobotReader(dataset_dir)  # v2 or v3
+for episode in reader.episodes():
+    episode_id = f"episode_{episode:05d}"  # zero-padded; see below
+    reader.stream(episode).write_rrd(
+        rrd_dir / f"{episode_id}.rrd",
+        application_id="my_dataset",
+        recording_id=episode_id,
+    )
+```
+
+Streaming is lazy end to end, so memory is bounded by chunk size rather than by episode or dataset size, and video is cut to the episode's time window.
+B-frame-free video (AV1, LeRobot's default codec) streams directly; a stream that must be re-encoded — H.264 with B-frames, or a window starting mid-GOP — needs `ffmpeg` on the `PATH`.
+`stream()` also takes `entity_path_prefix`, `timeline`, and `video_mode="skip"` to drop video entirely.
+
+To add lenses, drop topics, or fix data, put them between the stream and the write — see `rerun-chunk-processing`.
+
+### Splitting an RRD you already have
+
+If the combined RRD of Step 1 already exists — or the data came from somewhere other than the dataset directory — split it with `RrdReader` instead:
 
 ```python
 reader = rr.chunk.RrdReader(str(combined_rrd))
@@ -131,14 +171,16 @@ For a whole dataset, the model belongs in a shared asset rather than in every se
 
 ## Gotchas
 
-1. `log_file_from_path` must target the dataset **root directory**, not a file inside it.
+1. `log_file_from_path` must target the dataset **root directory**, not a file inside it. So does `LeRobotReader`.
 2. Unpadded episode ids sort incorrectly downstream; pad before registering.
 3. The combined RRD contains a metadata-only root recording; skip stores with no entity paths or you register an empty segment.
 4. A partially-downloaded dataset imports fine, but warns once per episode listed in `meta/` and missing on disk.
 5. Downloading a subset into a directory an earlier run already populated leaves the older episodes in place; start from an empty directory.
-6. `observation.state` degrees fed to FK as radians, or with a joint's sign left unflipped, produce a confidently wrong arm — the plots and video still look right. Check the mapping, don't eyeball the 3D view.
+6. `image`-dtype (inline) datasets can be ~100x larger per episode than `mp4` ones; check before downloading, not after.
+7. Check signs and units - e.g. an `observation.state` in degrees could produce wrong FK when fed into a robot model that expects radians.
 
 ## References
 
+- `rerun-chunk-processing` (`LazyChunkStream`, lenses, `RrdReader`)
 - `rerun-urdf` (adding the robot model and the joint-value mapping)
 - `https://github.com/rerun-io/rerun/tree/main/examples/python/dataloader` `prepare_dataset.py` (download → import → split → register, complete and runnable) and `train.py` (training-side consumption via `rerun.experimental.dataloader`)

@@ -5,14 +5,17 @@
 # ///
 """Download the first N episodes of a v2.x LeRobot dataset and trim `meta/` to match.
 
-Prints the dataset directory as the last line, ready to hand to the viewer.
+Prints a one-line summary of what landed, then the dataset directory as the last line,
+ready to hand to the viewer.
 
-Two things this gets right that a hand-rolled `snapshot_download` does not:
+Three things this gets right that a hand-rolled `snapshot_download` does not:
 
 - The destination starts empty, so episodes left by an earlier run with a different N
   cannot survive and silently inflate the result.
 - `meta/` is trimmed to the episodes actually on disk, so the importer does not warn
   once per absent episode.
+- The size is reported, so "the first five episodes" of a dataset that stores its camera
+  frames inline in the parquet is not a silent multi-gigabyte download.
 """
 
 from __future__ import annotations
@@ -21,10 +24,57 @@ import argparse
 import json
 import shutil
 import sys
+from fnmatch import fnmatch
 from pathlib import Path
 
-from huggingface_hub import hf_hub_download, snapshot_download
+from huggingface_hub import HfApi, hf_hub_download, snapshot_download
 from huggingface_hub.errors import HfHubHTTPError
+from huggingface_hub.utils import disable_progress_bars
+
+
+def frame_storage(info: dict) -> str:
+    """How the camera frames are stored: `"mp4"` beside the parquet, or `"inline"` within it.
+
+    A dataset may use both, one per camera. Inline frames are what make a download expensive, so
+    they decide the answer: reporting such a dataset as `"mp4"` would hide the very thing the
+    caller is being warned about.
+
+    Copied in `find_lerobot_dataset.py`: each script is a self-contained `uv run --script` file,
+    which a shared module would end.
+    """
+    dtypes = {str(feature.get("dtype")) for feature in info.get("features", {}).values()}
+    if "image" in dtypes:
+        return "inline"
+    if "video" in dtypes:
+        return "mp4"
+    return "none"
+
+
+def bytes_to_download(repo_id: str, patterns: list[str]) -> int | None:
+    """Size of the files `snapshot_download` would fetch, or None if the HF Hub does not report it.
+
+    Worth one request: an `image`-dtype dataset keeps its camera frames inline in the episode
+    parquet, so five episodes can be gigabytes where an mp4 dataset would be tens of megabytes.
+    """
+    try:
+        siblings = HfApi().dataset_info(repo_id, files_metadata=True).siblings or []
+    except (HfHubHTTPError, OSError):
+        return None
+    wanted = [
+        sibling
+        for sibling in siblings
+        if any(fnmatch(sibling.rfilename, pattern) for pattern in patterns) and sibling.size is not None
+    ]
+    return sum(sibling.size for sibling in wanted) if wanted else None
+
+
+def dataset_bytes(dest: Path) -> int:
+    """Size of the dataset itself, ignoring the `.cache/huggingface` bookkeeping beside it."""
+    return sum(
+        path.stat().st_size
+        for path in dest.rglob("*")
+        if path.is_file() and ".cache" not in path.relative_to(dest).parts
+    )
 
 
 def load_info(repo_id: str) -> dict:
@@ -87,6 +137,10 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    # Don't show progress bars in non-interactive shells.
+    if not sys.stderr.isatty():
+        disable_progress_bars()
+
     if args.episodes < 1:
         sys.exit("--episodes must be at least 1")
 
@@ -105,11 +159,21 @@ def main() -> None:
     dest = args.dest_root / args.repo_id.replace("/", "__")
     prepare_dest(dest)
 
+    patterns = ["meta/*"] + [f"**/episode_{i:06d}.*" for i in range(args.episodes)]
+
+    # Print the download size upfront, so a caller can cancel if it's too large.
+    wanted_bytes = bytes_to_download(args.repo_id, patterns)
+    size = "unknown size" if wanted_bytes is None else f"{wanted_bytes / 1e9:.2f} GB"
+    print(
+        f"Fetching {args.episodes} episode(s) of {args.repo_id}: {size}, camera frames stored {frame_storage(info)}",
+        file=sys.stderr,
+    )
+
     snapshot_download(
         repo_id=args.repo_id,
         repo_type="dataset",
         local_dir=dest,
-        allow_patterns=["meta/*"] + [f"**/episode_{i:06d}.*" for i in range(args.episodes)],
+        allow_patterns=patterns,
     )
     trim_meta(dest / "meta", args.episodes)
 
@@ -118,6 +182,8 @@ def main() -> None:
     if got != want:
         sys.exit(f"Downloaded the wrong episodes\nExpected: {want}\nGot: {got}\nPath: {dest}")
 
+    size_gb = dataset_bytes(dest) / 1e9
+    print(f"{args.episodes} episode(s), {size_gb:.2f} GB, camera frames stored {frame_storage(info)}")
     print(dest)
 
 

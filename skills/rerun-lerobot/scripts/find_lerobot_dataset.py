@@ -3,12 +3,18 @@
 # requires-python = ">=3.10"
 # dependencies = ["huggingface_hub"]
 # ///
-"""Search the HF Hub for LeRobot datasets and report each candidate's `codebase_version`.
+"""Search the HF Hub for LeRobot datasets and report what each candidate costs to fetch.
 
-The version is the thing you cannot see from the search results, and it decides whether
-"just the first N episodes" is a small download (v2.x) or the whole dataset (v3.0).
-Checking it up front costs one request per candidate and saves picking a repo you must
-then abandon.
+Neither of the two facts that decide the cost is visible in the search results:
+
+- `codebase_version` decides whether "just the first N episodes" is a partial download
+  (v2.x) or the whole dataset (v3.0).
+- How camera frames are stored decides the size. A `video` feature is a separate mp4;
+  an `image` feature is raw frames inline in the episode parquet, which is roughly two
+  orders of magnitude larger per episode.
+
+Checking both up front costs two requests per candidate and saves picking a repo you must
+then abandon, or waiting out a download an order of magnitude larger than you expected.
 """
 
 from __future__ import annotations
@@ -35,6 +41,41 @@ def dataset_info(repo_id: str) -> dict | None:
     return info if isinstance(info, dict) else None
 
 
+def frame_storage(info: dict) -> str:
+    """How the camera frames are stored: `"mp4"` beside the parquet, or `"inline"` within it.
+
+    A dataset may use both, one per camera, and inline frames then decide the answer.
+
+    Copied in `fetch_lerobot_episodes.py`: each script is a self-contained `uv run --script` file,
+    which a shared module would end.
+    """
+    dtypes = {str(feature.get("dtype")) for feature in info.get("features", {}).values()}
+    if "image" in dtypes:
+        return "inline"
+    if "video" in dtypes:
+        return "mp4"
+    return "none"
+
+
+def repo_bytes(repo_id: str) -> int | None:
+    """Total size of every file in the repo, or None if the Hub does not report it."""
+    try:
+        siblings = HfApi().dataset_info(repo_id, files_metadata=True).siblings or []
+    except (HfHubHTTPError, OSError):
+        return None
+    sizes = [sibling.size for sibling in siblings if sibling.size is not None]
+    return sum(sizes) if sizes else None
+
+
+def per_episode_mb(repo_id: str, info: dict) -> str:
+    """Approximate megabytes per episode, as the whole repo divided by its episode count."""
+    total = repo_bytes(repo_id)
+    episodes = info.get("total_episodes")
+    if total is None or not isinstance(episodes, int) or episodes < 1:
+        return "?"
+    return f"{total / episodes / 1e6:.0f}"
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("query", help="free-text search, e.g. a robot or task name")
@@ -53,9 +94,9 @@ def main() -> None:
         raise SystemExit(f"No datasets found for {args.query!r}")
 
     with ThreadPoolExecutor(max_workers=8) as pool:
-        infos = pool.map(dataset_info, [hit.id for hit in hits])
+        infos = list(pool.map(dataset_info, [hit.id for hit in hits]))
 
-    print(f"{'repo_id':<55} {'version':<8} {'robot':<12} {'eps':>5} {'fps':>4}  downloads")
+    print(f"{'repo_id':<55} {'version':<8} {'robot':<12} {'eps':>5} {'fps':>4} {'frames':>7} {'MB/ep':>6}  downloads")
     matches = 0
     for hit, info in zip(hits, infos):
         if info is None:
@@ -68,7 +109,11 @@ def main() -> None:
             continue
         episodes = info.get("total_episodes", "?")
         fps = info.get("fps", "?")
-        print(f"{hit.id:<55} {version:<8} {robot:<12} {episodes:>5} {fps:>4}  {hit.downloads or 0}")
+        frames = frame_storage(info)
+        size = per_episode_mb(hit.id, info)
+        print(
+            f"{hit.id:<55} {version:<8} {robot:<12} {episodes:>5} {fps:>4} {frames:>7} {size:>6}  {hit.downloads or 0}"
+        )
         matches += 1
         if matches >= args.want:
             break

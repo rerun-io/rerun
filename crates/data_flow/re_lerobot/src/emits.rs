@@ -185,7 +185,7 @@ pub fn build_emits(
             DType::Int64 if key.as_str() == "task_index" || key.as_str() == "subtask_index" => {}
             // TODO(RR-5278): Implement support for Int16, Int64, and Bool dtypes.
             DType::Int16 | DType::Int64 | DType::Bool => {
-                re_log::warn!(
+                re_log::warn_once!(
                     "Loading LeRobot feature ({key}) of dtype `{:?}` into Rerun is not yet implemented",
                     feature.dtype
                 );
