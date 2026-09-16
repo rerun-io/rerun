@@ -1,9 +1,7 @@
 use egui::{Color32, CursorIcon, Id, Rangef, Rect};
-use re_log_types::{
-    AbsoluteTimeRange, AbsoluteTimeRangeF, Duration, TimeReal, TimeType, TimestampFormat,
-};
+use re_log_types::{AbsoluteTimeRange, AbsoluteTimeRangeF, TimeReal, TimeType, TimestampFormat};
 use re_sdk_types::blueprint::components::LoopMode;
-use re_ui::{HasDesignTokens as _, UiExt as _, list_item};
+use re_ui::{HasDesignTokens as _, UiExt as _};
 use re_viewer_context::open_url::ViewerOpenUrl;
 use re_viewer_context::{
     StoreViewContext, SystemCommandSender as _, TimeControl, TimeControlCommand, ViewerContext,
@@ -140,7 +138,7 @@ pub fn loop_selection_ui(
                     .interact(rect, middle_id, egui::Sense::click_and_drag())
                     .on_hover_and_drag_cursor(CursorIcon::Move)
                     .on_hover_ui_at_pointer(|ui| {
-                        TimeLoopPart::Middle.tooltip_ui(
+                        time_selection_tooltip_ui(
                             ui,
                             time_type,
                             selected_range,
@@ -157,7 +155,7 @@ pub fn loop_selection_ui(
                     .interact(left_edge_rect, left_edge_id, egui::Sense::drag())
                     .on_hover_and_drag_cursor(CursorIcon::ResizeWest)
                     .on_hover_ui_at_pointer(|ui| {
-                        TimeLoopPart::Beginning.tooltip_ui(
+                        time_selection_tooltip_ui(
                             ui,
                             time_type,
                             selected_range,
@@ -169,7 +167,7 @@ pub fn loop_selection_ui(
                     .interact(right_edge_rect, right_edge_id, egui::Sense::drag())
                     .on_hover_and_drag_cursor(CursorIcon::ResizeEast)
                     .on_hover_ui_at_pointer(|ui| {
-                        TimeLoopPart::End.tooltip_ui(
+                        time_selection_tooltip_ui(
                             ui,
                             time_type,
                             selected_range,
@@ -410,40 +408,20 @@ fn selection_context_menu(
     }
 }
 
-/// What part of the time loop selection is the user hovering?
-#[derive(Clone, Copy, Debug, Hash)]
-enum TimeLoopPart {
-    Beginning,
-    Middle,
-    End,
-}
-
-impl TimeLoopPart {
-    pub fn tooltip_ui(
-        &self,
-        ui: &mut egui::Ui,
-        time_type: TimeType,
-        range: AbsoluteTimeRangeF,
-        timestamp_format: TimestampFormat,
-    ) {
-        let range = range.to_int();
-        list_item::list_item_scope(ui, self, |ui| {
-            ui.list_item_flat_noninteractive(
-                list_item::PropertyContent::new("Start")
-                    .value_text(time_type.format(range.min, timestamp_format)),
-            );
-            ui.list_item_flat_noninteractive(
-                list_item::PropertyContent::new("Stop")
-                    .value_text(time_type.format(range.max, timestamp_format)),
-            );
-
-            let length = i64::try_from(range.abs_length()).unwrap_or(i64::MAX);
-            ui.list_item_flat_noninteractive(
-                list_item::PropertyContent::new("Length")
-                    .value_text(format_duration(time_type, length.into())),
-            );
-        });
-    }
+fn time_selection_tooltip_ui(
+    ui: &mut egui::Ui,
+    time_type: TimeType,
+    range: AbsoluteTimeRangeF,
+    timestamp_format: TimestampFormat,
+) {
+    let range = range.to_int();
+    re_time_ruler::time_range_tooltip_ui(
+        ui,
+        time_type,
+        range.min.as_i64(),
+        Some(range.max.as_i64()),
+        timestamp_format,
+    );
 }
 
 fn drag_left_loop_selection_edge(
@@ -525,12 +503,4 @@ fn on_drag_loop_selection(
     }
 
     Some(())
-}
-
-/// Human-readable description of a duration
-fn format_duration(time_typ: TimeType, duration: TimeReal) -> String {
-    match time_typ {
-        TimeType::DurationNs | TimeType::TimestampNs => Duration::from(duration).to_string(),
-        TimeType::Sequence => re_format::format_int(duration.round().as_i64()),
-    }
 }

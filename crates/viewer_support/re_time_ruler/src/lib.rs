@@ -17,8 +17,10 @@
 
 mod paint_gaps;
 mod paint_ticks;
+mod time_range_tooltip_ui;
 mod time_ranges_ui;
 
 pub use paint_gaps::{MAX_ZIG_WIDTH, paint_time_ranges_gaps};
 pub use paint_ticks::paint_time_ranges_and_ticks;
+pub use time_range_tooltip_ui::time_range_tooltip_ui;
 pub use time_ranges_ui::{Segment, TimeRangesUi, gap_width};

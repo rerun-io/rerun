@@ -91,6 +91,14 @@ fn test_state_timeline_tooltip() {
         "the tooltip should show the phase start as a plain time-of-day, without the date"
     );
     assert!(
+        harness.query_by_label_contains("5s").is_some(),
+        "the tooltip should show a human-readable phase length"
+    );
+    assert!(
+        harness.query_by_label_contains("+5s").is_none(),
+        "the phase length should not have a plus sign"
+    );
+    assert!(
         harness.query_by_label_contains("2025-04-01").is_none(),
         "no tooltip label should carry a date"
     );
@@ -143,6 +151,6 @@ fn test_state_timeline_tooltip_ongoing() {
     // The last phase sits at the right end, past the trailing overhang.
     harness.hover_at(egui::pos2(size.x * 0.95, LANE_Y));
     harness.run_steps(20);
-    // The snapshot is the assertion here: the `End:` row carries a dash.
+    // The snapshot checks that `Stop` and `Length` carry dashes.
     snapshot_results.add(harness.try_snapshot("state_timeline_tooltip_ongoing"));
 }

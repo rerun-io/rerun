@@ -1,7 +1,7 @@
 use egui::emath::GuiRounding as _;
 use re_log_types::{
-    AbsoluteTimeRange, ComponentPath, DateVisibility, EntityPath, TimeCell, TimeInt, TimeReal,
-    TimeType, TimelineName, TimestampFormat,
+    AbsoluteTimeRange, ComponentPath, DateVisibility, EntityPath, TimeInt, TimeReal, TimeType,
+    TimelineName, TimestampFormat,
 };
 use re_sdk_types::blueprint::archetypes::TimeAxis;
 use re_sdk_types::blueprint::components::LinkAxis;
@@ -25,11 +25,6 @@ const LANE_GAP: f32 = 4.0;
 
 /// Vertical gap between the stacked instance lanes of a multi-instance group.
 const SUB_LANE_GAP: f32 = 1.0;
-
-/// Prefixes of the phase boundary lines in the tooltip. They share a column, so the times
-/// they label line up.
-const START_PREFIX: &str = "Start:";
-const END_PREFIX: &str = "End:";
 
 const TIME_AXIS_HEIGHT: f32 = 20.0;
 const TOP_MARGIN: f32 = 4.0;
@@ -1300,8 +1295,6 @@ fn show_item_tooltip(
         let weak = ui.visuals().weak_text_color();
         let small = egui::FontId::proportional(10.0);
 
-        let format_time = |time: i64| TimeCell::new(time_type, time).format(timestamp_format);
-
         // Reserve the room for the separator between the label and the phase boundaries. The
         // line itself can only be painted once everything has been laid out.
         let separator_space = |ui: &mut egui::Ui| -> f32 {
@@ -1311,42 +1304,28 @@ fn show_item_tooltip(
             y
         };
 
-        let (label, boundaries) = match item {
+        let (label, start_time, end_time) = match item {
             RenderItem::Single {
                 phase, end_time, ..
-            } => {
-                let end = match end_time {
-                    Some(end) => format_time(*end),
-                    // No end time → open-ended last phase.
-                    None => "-".to_owned(),
-                };
-                (
-                    phase
-                        .content
-                        .as_ref()
-                        .map_or("", |s| s.label.as_str())
-                        .to_owned(),
-                    vec![
-                        (START_PREFIX, format_time(phase.start_time)),
-                        (END_PREFIX, end),
-                    ],
-                )
-            }
+            } => (
+                phase
+                    .content
+                    .as_ref()
+                    .map_or("", |s| s.label.as_str())
+                    .to_owned(),
+                phase.start_time,
+                *end_time,
+            ),
             RenderItem::Merged {
                 start_time,
                 end_time,
                 count,
                 ..
-            } => {
-                let mut boundaries = vec![(START_PREFIX, format_time(*start_time))];
-                if let Some(end) = end_time {
-                    boundaries.push((END_PREFIX, format_time(*end)));
-                }
-                (
-                    format!("{count} states (zoom in to see details)"),
-                    boundaries,
-                )
-            }
+            } => (
+                format!("{count} states (zoom in to see details)"),
+                *start_time,
+                *end_time,
+            ),
         };
 
         if let Some(instance) = instance {
@@ -1359,18 +1338,7 @@ fn show_item_tooltip(
         ui.label(label);
         let separator_y = separator_space(ui);
 
-        // A grid, so that the times line up in a column of their own.
-        egui::Grid::new("state_tooltip_boundaries")
-            .num_columns(2)
-            .min_col_width(0.0)
-            .min_row_height(0.0)
-            .show(ui, |ui| {
-                for (prefix, time) in boundaries {
-                    ui.label(egui::RichText::new(prefix).font(small.clone()).color(weak));
-                    ui.label(egui::RichText::new(time).font(small.clone()).color(weak));
-                    ui.end_row();
-                }
-            });
+        re_time_ruler::time_range_tooltip_ui(ui, time_type, start_time, end_time, timestamp_format);
 
         // Span the whole tooltip, bleeding into the frame's margins.
         let margin = ui.spacing().menu_margin;
