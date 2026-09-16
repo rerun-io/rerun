@@ -1620,16 +1620,9 @@ impl eframe::App for App {
                 .as_ref()
                 .map(|ctx| ctx.recording_store_id().clone());
 
-            // The Redap entry currently being viewed (if any), so its commands (e.g. refresh)
+            // The table currently being viewed (if any), so its commands (e.g. refresh)
             // are offered in the command palette.
-            let current_redap_entry = match self.state.navigation.current() {
-                Route::RedapEntry {
-                    origin,
-                    entry_id,
-                    kind: _,
-                } => Some((origin.clone(), *entry_id)),
-                _ => None,
-            };
+            let current_table = self.state.navigation.current().table_reference();
 
             let cmd_env = re_ui::CommandEnvironment {
                 recording: active_recording_id.clone(),
@@ -1637,7 +1630,7 @@ impl eframe::App for App {
                     .as_ref()
                     .is_some_and(|origin| !self.state.redap_servers.is_internal_server(origin)),
                 redap_server: selected_redap_server,
-                redap_entry: current_redap_entry,
+                table: current_table,
             };
 
             // Handle keyboard shortcuts, now that we have a live `CommandEnvironment`:

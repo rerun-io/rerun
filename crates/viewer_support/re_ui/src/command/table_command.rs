@@ -9,20 +9,17 @@ pub trait TableCommandSender {
     fn send_table_command(&self, command: TableCommand);
 }
 
-/// A command that acts on a specific table-like Redap entry (dataset or table).
+/// A command that acts on a specific table.
 ///
-/// Like [`super::RedapServerCommand`], these carry the entry they act on, so they can be
-/// used both from the command palette (acting on the currently viewed entry) and from
-/// other UI acting on a specific entry.
+/// Like [`super::RedapServerCommand`], these carry the table they act on, so they can be
+/// used both from the command palette (acting on the currently viewed table) and from
+/// other UI acting on a specific table.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct TableCommand {
-    /// The server the entry lives on.
-    pub origin: re_uri::Origin,
+    /// The table this command acts on.
+    pub table: re_uri::TableReference,
 
-    /// The entry (dataset or table) this command acts on.
-    pub entry_id: re_log_types::EntryId,
-
-    /// What to do with the entry.
+    /// What to do with the table.
     pub kind: TableCommandKind,
 }
 
@@ -36,11 +33,14 @@ impl TableCommand {
     }
 }
 
-/// What a [`TableCommand`] does to its entry.
+/// What a [`TableCommand`] does to its table.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, strum_macros::EnumIter)]
 pub enum TableCommandKind {
     /// Re-query the contents (the dataframe) of the entry from the server.
     Refresh,
+
+    /// Reset the active blueprint of the table to the default one.
+    ResetBlueprint,
 }
 
 impl TableCommandKind {
@@ -58,19 +58,26 @@ impl TableCommandKind {
                 "Refresh table",
                 "Refresh the contents of the current dataset or table",
             ),
+
+            Self::ResetBlueprint => (
+                "Reset to default blueprint",
+                "Clear the active blueprint of the current table and use the default blueprint instead",
+            ),
         }
     }
 
-    /// Pair this command with the currently viewed entry (from `env`) to make it dispatchable.
+    /// Pair this command with the currently viewed table (from `env`) to make it dispatchable.
     ///
-    /// Returns `None` when no entry is being viewed.
+    /// Returns `None` when no table is being viewed, or when the command does not apply to it.
     pub fn for_environment(self, env: &CommandEnvironment) -> Option<TableCommand> {
-        let (origin, entry_id) = env.redap_entry.clone()?;
-        Some(TableCommand {
-            origin,
-            entry_id,
-            kind: self,
-        })
+        let table = env.table.clone()?;
+
+        // Only a Redap entry can be re-queried from its server.
+        if self == Self::Refresh && !matches!(table, re_uri::TableReference::RedapEntry { .. }) {
+            return None;
+        }
+
+        Some(TableCommand { table, kind: self })
     }
 
     /// All keyboard shortcuts, with the primary first.
@@ -82,6 +89,8 @@ impl TableCommandKind {
             // This intentionally matches `RedapServerCommandKind::Refresh` — both are resolved
             // against the environment, and the table refresh wins when an entry is viewed.
             Self::Refresh => super::refresh_shortcuts(os),
+
+            Self::ResetBlueprint => SmallVec::new(),
         }
     }
 

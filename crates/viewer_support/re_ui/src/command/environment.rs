@@ -12,6 +12,6 @@ pub struct CommandEnvironment {
     /// Is the selected Redap server editable (i.e. not the viewer's built-in catalog)?
     pub has_editable_redap_server: bool,
 
-    /// The Redap entry (dataset or table) currently being viewed, if any.
-    pub redap_entry: Option<(re_uri::Origin, re_log_types::EntryId)>,
+    /// The table currently being viewed, if any.
+    pub table: Option<re_uri::TableReference>,
 }

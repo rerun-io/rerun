@@ -1213,8 +1213,10 @@ fn refresh_button_ui(
         .clicked()
     {
         app_ctx.command_sender().send_table_command(TableCommand {
-            origin: dataset.origin.clone(),
-            entry_id: dataset.id(),
+            table: re_uri::TableReference::RedapEntry {
+                origin: dataset.origin.clone(),
+                entry_id: dataset.id(),
+            },
             kind: TableCommandKind::Refresh,
         });
     }

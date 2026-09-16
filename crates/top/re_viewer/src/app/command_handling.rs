@@ -494,16 +494,20 @@ impl App {
             }
 
             SystemCommand::Table(command) => {
-                let re_ui::TableCommand {
-                    origin,
-                    entry_id,
-                    kind,
-                } = command;
+                let re_ui::TableCommand { table, kind } = command;
                 match kind {
                     re_ui::TableCommandKind::Refresh => {
-                        self.state
-                            .redap_servers
-                            .refresh_entry(&origin, entry_id, egui_ctx);
+                        if let re_uri::TableReference::RedapEntry { origin, entry_id } = &table {
+                            self.state
+                                .redap_servers
+                                .refresh_entry(origin, *entry_id, egui_ctx);
+                        }
+                    }
+                    re_ui::TableCommandKind::ResetBlueprint => {
+                        if let Err(err) = self.table_blueprints.reset(&table, store_hub) {
+                            re_log::warn!("Failed to reset table blueprint: {err}");
+                        }
+                        egui_ctx.request_repaint();
                     }
                 }
             }
