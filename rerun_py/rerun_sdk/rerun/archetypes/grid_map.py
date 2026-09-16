@@ -27,7 +27,8 @@ class GridMap(Archetype):
     """
     **Archetype**: A 2D grid map stored as raster data in an image buffer, with a cell size in scene units and pose.
 
-    This archetype is intended for robotics applications like occupancy maps or navigation costmaps.
+    This archetype is intended for robotics applications like occupancy maps or navigation costmaps,
+    but can also be useful for other use cases where an image buffer needs to be placed in a scene.
 
     Examples
     --------
