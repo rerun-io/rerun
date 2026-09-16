@@ -43,9 +43,9 @@ therefore agree voxel for voxel, the dense volume covering indices `[0, 0, 0]` u
 * [DataframeView](../views/dataframe_view.md)
 
 ## API reference links
- * 🌊 [C++ API docs for `Volume3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Volume3D.html?speculative-link)
- * 🐍 [Python API docs for `Volume3D`](https://ref.rerun.io/docs/python/stable/common/archetypes?speculative-link#rerun.archetypes.Volume3D)
- * 🦀 [Rust API docs for `Volume3D`](https://docs.rs/rerun/latest/rerun/archetypes/struct.Volume3D.html?speculative-link)
+ * 🌊 [C++ API docs for `Volume3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Volume3D.html)
+ * 🐍 [Python API docs for `Volume3D`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.Volume3D)
+ * 🦀 [Rust API docs for `Volume3D`](https://docs.rs/rerun/latest/rerun/archetypes/struct.Volume3D.html)
 
 ## Example
 

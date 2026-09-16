@@ -5,7 +5,6 @@
 ///
 /// A value of `0` is a perfectly known value and draws no error band.
 #[rerun::rerun_type]
-#[docs(unreleased)]
 #[python(aliases = "float")]
 #[python(array_aliases = "float | npt.NDArray[np.float64]")]
 #[rerun(state = "unstable")]

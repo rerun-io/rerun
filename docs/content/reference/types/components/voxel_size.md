@@ -25,5 +25,5 @@ FixedSizeList(3 x non-null Float32)
 
 ## Used by
 
-* [`Volume3D`](../archetypes/volume3d.md?speculative-link)
+* [`Volume3D`](../archetypes/volume3d.md)
 * [`VoxelGridMap`](../archetypes/voxel_grid_map.md)
