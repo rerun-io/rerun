@@ -40,7 +40,8 @@ macro_rules! lazy_field_ref {
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LayerRegistrationStatus {
-    /// Registration for this layer has started, i.e. the synchronous phase is over.
+    /// Legacy value.
+    /// Marks rows that are pending full registration; no current server writes this status.
     Pending = 0,
 
     /// Registration for this layer has completed successfully.
@@ -49,7 +50,8 @@ pub enum LayerRegistrationStatus {
     /// Registration for this layer has failed.
     Error = 2,
 
-    /// This layer has been removed.
+    /// Legacy value.
+    /// Marks rows that have been soft-deleted. This layer has been removed.
     Deleted = 3,
 }
 

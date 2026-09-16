@@ -412,7 +412,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         ----------
         include_diagnostic_data:
             Include diagnostic data in the manifest. That may include rows that correspond to layers which failed
-            registration, were deleted, or are in pending states.
+            registration or otherwise normally invisible internal state.
 
             !!! note
 

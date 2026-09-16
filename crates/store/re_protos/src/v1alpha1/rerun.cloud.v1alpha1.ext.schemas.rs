@@ -127,7 +127,7 @@ pub struct RegisterWithDatasetDataframe {
     /// Where the data source's data is stored.
     pub rerun_storage_url: quiver::Column<quiver::Utf8>,
 
-    /// The id of the registration task, or the sentinel for synchronous success.
+    /// The id of the task that performs the registration.
     pub rerun_task_id: quiver::Column<TaskId>,
 }
 
@@ -216,9 +216,9 @@ pub struct ScanDatasetManifestDataframe {
 
     /// Total number of chunks in this row's source.
     ///
-    /// Nullable: only set once the source has been processed. A segment that is
-    /// still `pending` (or that `errored` during registration) carries a null
-    /// here — the server must not choke on those rows when scanning the manifest.
+    /// Nullable: only set once the source has been processed. A segment whose
+    /// registration errored carries a null here; the server must not choke on
+    /// those rows when scanning the manifest.
     pub rerun_num_chunks: quiver::Column<Option<u64>>,
 
     /// Total size in bytes of this row's source. Nullable for the same reason as
@@ -245,7 +245,7 @@ impl ScanDatasetManifestDataframe {
     /// processed (e.g. the in-memory OSS server, where a registration only exists
     /// once it has succeeded), so `num_chunks` / `size_bytes` / `schema_sha256`
     /// are always present. They are wrapped as `Some` into the nullable columns.
-    /// Callers that need to emit null (pending/errored rows) build the columns
+    /// Callers that need to emit null (errored rows) build the columns
     /// directly against [`Self::min_schema`].
     #[expect(clippy::too_many_arguments)]
     pub fn new(
