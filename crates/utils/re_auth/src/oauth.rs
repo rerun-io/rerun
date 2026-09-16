@@ -84,11 +84,9 @@ pub fn clear_credentials(
     // Load credentials before clearing so we can extract the session ID.
     let outcome = storage::load().ok().flatten().map(|creds| {
         cfg_select! {
-            target_arch = "wasm32" => {
-                LogoutOutcome {
-                    logout_url: api::logout_url(&creds.claims.sid, signed_out_url),
-                }
-            }
+            target_arch = "wasm32" => LogoutOutcome {
+                logout_url: api::logout_url(&creds.claims.sid, signed_out_url),
+            },
             _ => {
                 // On native, start a local callback server so WorkOS can redirect
                 // back to a "logged out" landing page.

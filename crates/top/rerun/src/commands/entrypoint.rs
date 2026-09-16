@@ -1114,12 +1114,7 @@ fn run_impl(
                     &async_runtime,
                     None,
                 )?;
-                serve_grpc(
-                    receivers,
-                    tokio_runtime_handle,
-                    server_addr,
-                    server_options,
-                )
+                serve_grpc(receivers, tokio_runtime_handle, server_addr, server_options)
             }
             _ => Err(anyhow::anyhow!(
                 "rerun-cli must be compiled with the 'server' feature enabled"

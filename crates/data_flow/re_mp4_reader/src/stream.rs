@@ -134,18 +134,16 @@ pub(crate) fn iter_chunks(
                 let _ = (input, transcode, time_window);
                 return Err(Mp4Error::TranscodeRequiresFfmpeg);
             }
-            _ => {
-                Box::new(
-                    transcoded_segments(
-                        input,
-                        desc.codec.clone(),
-                        transcode,
-                        time_window,
-                        debug_name,
-                    )?
-                    .map(|segment| segment.map(|s| (s, None))),
-                )
-            }
+            _ => Box::new(
+                transcoded_segments(
+                    input,
+                    desc.codec.clone(),
+                    transcode,
+                    time_window,
+                    debug_name,
+                )?
+                .map(|segment| segment.map(|s| (s, None))),
+            ),
         }
     } else {
         match time_window

@@ -60,17 +60,18 @@ impl CatalogHandle {
                 let source = re_web::fs::File::from(file.clone());
                 let key = object_key(&source, &file.name()).await?;
                 match self {
-                    Self::Internal { storage_dir, .. } => write_to_opfs(storage_dir, key, file).await,
+                    Self::Internal { storage_dir, .. } => {
+                        write_to_opfs(storage_dir, key, file).await
+                    }
                     // TODO(RR-5489, RR-5490): Implement `GetWriteAccessGrant` on the server.
-                    Self::Remote(connection) => connection
-                        .write_object(key, source)
-                        .await
-                        .map_err(|err| {
+                    Self::Remote(connection) => {
+                        connection.write_object(key, source).await.map_err(|err| {
                             anyhow::anyhow!(
                                 "failed to upload file to {}: {err}",
                                 connection.origin()
                             )
-                        }),
+                        })
+                    }
                 }
             }
             _ => {
@@ -89,7 +90,7 @@ impl CatalogHandle {
                                 file.display()
                             )
                         })
-                    },
+                    }
                     // TODO(RR-5489, RR-5490): Implement `GetWriteAccessGrant` on the server.
                     Self::Remote(connection) => {
                         let source = std::fs::File::open(&file).map_err(|err| {
@@ -237,11 +238,9 @@ fn internal_object_url(storage_dir: &std::path::Path, key: &ObjectKey) -> anyhow
             url.set_path(path_str);
             Ok(url)
         }
-        _ => {
-            url::Url::from_file_path(&path).map_err(|()| {
-                anyhow::anyhow!("not an absolute file path\nFile path: {}", path.display())
-            })
-        }
+        _ => url::Url::from_file_path(&path).map_err(|()| {
+            anyhow::anyhow!("not an absolute file path\nFile path: {}", path.display())
+        }),
     }
 }
 

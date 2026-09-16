@@ -49,9 +49,7 @@ pub(crate) fn read_trace_context_from_python(
             let _guard = trace_headers.attach();
             tracing::span!(tracing::Level::INFO, "sdk", otel.name = name)
         }
-        _ => {
-            tracing::Span::none()
-        }
+        _ => tracing::Span::none(),
     }
 }
 
@@ -70,9 +68,7 @@ pub fn get_trace_context_var(py: Python<'_>) -> PyResult<Py<PyAny>> {
             let context_var = trace_context_var(py)?;
             Ok(context_var.unbind())
         }
-        _ => {
-            Ok(py.None())
-        }
+        _ => Ok(py.None()),
     }
 }
 

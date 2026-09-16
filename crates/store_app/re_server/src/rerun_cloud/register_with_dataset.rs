@@ -260,7 +260,7 @@ fn rrd_path_from_url(storage_url: &url::Url) -> tonic::Result<PathBuf> {
                 Err(())
             }
         }
-        _ => { storage_url.to_file_path() }
+        _ => storage_url.to_file_path(),
     };
 
     let Ok(rrd_path) = rrd_path else {
@@ -432,13 +432,11 @@ async fn register_sources(
 /// `SetStoreInfo` messages for the same store.
 async fn load_store_ids(rrd_path: &Path) -> tonic::Result<BTreeSet<StoreId>> {
     let file = cfg_select! {
-        target_arch = "wasm32" => {
-            re_web::fs::File::open(rrd_path).await.map_err(|err| {
-                tonic::Status::internal(format!(
-                    "Failed to open RRD file: {err:#}\nFile path: {rrd_path:?}"
-                ))
-            })?
-        }
+        target_arch = "wasm32" => re_web::fs::File::open(rrd_path).await.map_err(|err| {
+            tonic::Status::internal(format!(
+                "Failed to open RRD file: {err:#}\nFile path: {rrd_path:?}"
+            ))
+        })?,
         _ => {
             // TODO(tokio-rs/tokio#1529): positional reads block the reactor; use `std::fs::File`
             // until an async positional file API lands (or push reads to `spawn_blocking`).

@@ -30,8 +30,10 @@ pub use self::{
 /// there, so that build does not support registering them.
 pub(crate) fn capability_names() -> Vec<String> {
     cfg_select! {
-        target_arch = "wasm32" => { Vec::new() }
-        _ => { vec![re_protos::capabilities::catalog_write_register("file")] }
+        target_arch = "wasm32" => Vec::new(),
+        _ => {
+            vec![re_protos::capabilities::catalog_write_register("file")]
+        }
     }
 }
 

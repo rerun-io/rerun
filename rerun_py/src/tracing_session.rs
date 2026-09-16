@@ -26,12 +26,8 @@ use pyo3::{Py, PyAny, PyResult, Python, pyfunction};
 #[pyo3(name = "_is_telemetry_active")]
 pub fn is_telemetry_active() -> bool {
     cfg_select! {
-        feature = "perf_telemetry" => {
-            re_perf_telemetry::is_telemetry_active()
-        }
-        _ => {
-            false
-        }
+        feature = "perf_telemetry" => re_perf_telemetry::is_telemetry_active(),
+        _ => false,
     }
 }
 
@@ -49,9 +45,7 @@ pub fn get_tracing_session_var(py: Python<'_>) -> PyResult<Py<PyAny>> {
             let context_var = get_rerun_session_var(py)?;
             Ok(context_var.unbind())
         }
-        _ => {
-            Ok(py.None())
-        }
+        _ => Ok(py.None()),
     }
 }
 

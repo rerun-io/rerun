@@ -152,8 +152,8 @@ async fn fetch_rrd_manifest_via_key(
     }
 
     cfg_select! {
-            target_family = "wasm" => {
-                let response = re_async::spawn_local_with_result(ehttp::fetch_async(request))
+        target_family = "wasm" => {
+            let response = re_async::spawn_local_with_result(ehttp::fetch_async(request))
                 .await
                 .unwrap_or_else(|_| Err("HTTP request was canceled".to_owned()));
         }

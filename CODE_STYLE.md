@@ -172,6 +172,9 @@ We group and order imports (`use` statements) by `std`, other crates, and lastly
 
 We group our `use` statements by module, e.g. `crate_name::module::{a, b, c}`. This is a compromise, being rather terse while still avoiding excessive merge conflicts. See [the cargofmt docs](https://rust-lang.github.io/rustfmt/?version=v1.8.0&search=group#Module%5C%3A) for details.
 
+Both of these are nightly-only rustfmt options (`group_imports` and `imports_granularity`), so the stable `cargo fmt` that CI runs does not enforce them.
+We re-apply them now and then with the `nightly-fmt` skill ([`.claude/skills/nightly-fmt/SKILL.md`](../.claude/skills/nightly-fmt/SKILL.md)), run as `nightly-fmt.sh --imports`.
+
 Use the destructor syntax (`let Self { a, b, c} = self;`) whenever you're accessing most of (or all) of the fields of a struct.
 
 ### `TODO`:s

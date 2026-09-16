@@ -795,8 +795,8 @@ where
     F: FnOnce() -> R,
 {
     cfg_select! {
-        target_arch = "wasm32" => { inner() }
-        _ => { tokio::task::block_in_place(inner) }
+        target_arch = "wasm32" => inner(),
+        _ => tokio::task::block_in_place(inner),
     }
 }
 

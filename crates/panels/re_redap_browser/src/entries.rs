@@ -544,8 +544,8 @@ async fn fetch_table_details(
     );
 
     let tokio_runtime = cfg_select! {
-        target_arch = "wasm32" => { None }
-        _ => { Some(runtime.inner().clone()) }
+        target_arch = "wasm32" => None,
+        _ => Some(runtime.inner().clone()),
     };
 
     let table_kind = TableKind::from(&result.table_entry.provider_details);

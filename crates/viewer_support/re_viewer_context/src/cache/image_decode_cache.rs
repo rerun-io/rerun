@@ -159,8 +159,8 @@ impl Cache for ImageDecodeCache {
 
     fn begin_frame(&mut self) {
         let max_decode_cache_use = cfg_select! {
-            target_arch = "wasm32" => { 1_000_000_000 }
-            _ => { 4_000_000_000 }
+            target_arch = "wasm32" => 1_000_000_000,
+            _ => 4_000_000_000,
         };
 
         // TODO(jleibs): a more incremental purging mechanism, maybe switching to an LRU Cache

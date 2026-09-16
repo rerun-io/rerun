@@ -1847,7 +1847,9 @@ fn serve_grpc(
             };
 
             if re_sdk::forced_sink_path().is_some() {
-                re_log::debug!("Ignored call to `serve_grpc()` since _RERUN_TEST_FORCE_SAVE is set");
+                re_log::debug!(
+                    "Ignored call to `serve_grpc()` since _RERUN_TEST_FORCE_SAVE is set"
+                );
                 return Ok("[_RERUN_TEST_FORCE_SAVE is set]".to_owned());
             }
 
@@ -1954,9 +1956,9 @@ fn serve_web(
             }
 
             let server_options = re_sdk::ServerOptions {
-                memory_limit: re_memory::MemoryLimit::parse(&server_memory_limit).map_err(|err| {
-                    PyRuntimeError::new_err(format!("Bad server_memory_limit: {err}:"))
-                })?,
+                memory_limit: re_memory::MemoryLimit::parse(&server_memory_limit).map_err(
+                    |err| PyRuntimeError::new_err(format!("Bad server_memory_limit: {err}:")),
+                )?,
                 playback_behavior: re_grpc_server::PlaybackBehavior::OldestFirst,
                 cors_allowed_origins: cors_allow_origin,
             };

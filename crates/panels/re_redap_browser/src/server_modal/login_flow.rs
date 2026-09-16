@@ -31,15 +31,13 @@ impl LoginFlow {
         let _ = &signed_in_url; // only used on web
 
         let state = cfg_select! {
-            target_arch = "wasm32" => {
-                State::open(
-                    egui_ctx,
-                    signed_in_url
-                        .ok_or("signed_in_url is required for web login")?
-                        .to_owned(),
-                )?
-            }
-            _ => { State::open(egui_ctx)? }
+            target_arch = "wasm32" => State::open(
+                egui_ctx,
+                signed_in_url
+                    .ok_or("signed_in_url is required for web login")?
+                    .to_owned(),
+            )?,
+            _ => State::open(egui_ctx)?,
         };
         Ok(Self {
             state,

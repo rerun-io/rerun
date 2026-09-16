@@ -164,9 +164,7 @@ fn read_via_reader() -> Option<RerunTracingSessionId> {
             let reader = SESSION_ID_READER.get()?;
             reader()
         }
-        _ => {
-            None
-        }
+        _ => None,
     }
 }
 

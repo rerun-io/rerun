@@ -95,9 +95,7 @@ fn query_dataset_fanout() -> usize {
             const WASM_QUERY_DATASET_FANOUT: usize = 8;
             WASM_QUERY_DATASET_FANOUT
         }
-        _ => {
-            crate::pipeline_budget::query_dataset_max_concurrency()
-        }
+        _ => crate::pipeline_budget::query_dataset_max_concurrency(),
     }
 }
 

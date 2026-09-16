@@ -121,7 +121,7 @@ impl ResolvedStore {
         store_kind: StoreKind,
     ) -> Result<Vec<(StoreId, Self)>, super::Error> {
         let file = cfg_select! {
-            target_arch = "wasm32" => { re_web::fs::File::open(path).await? }
+            target_arch = "wasm32" => re_web::fs::File::open(path).await?,
             _ => {
                 // TODO(tokio-rs/tokio#1529): Positional reads block the reactor; use `std::fs::File`
                 // until an async positional file API lands (or push reads to `spawn_blocking`).
@@ -140,8 +140,8 @@ impl ResolvedStore {
                 }
 
                 let store_file = cfg_select! {
-                    target_arch = "wasm32" => { re_web::fs::File::open(path).await? }
-                    _ => { std::fs::File::open(path)? }
+                    target_arch = "wasm32" => re_web::fs::File::open(path).await?,
+                    _ => std::fs::File::open(path)?,
                 };
 
                 let provider = Arc::new(

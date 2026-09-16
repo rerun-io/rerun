@@ -347,13 +347,11 @@ impl App {
                 && connection_registry.internal_origin().is_none()
             {
                 let catalog = cfg_select! {
-                    target_arch = "wasm32" => { crate::internal_catalog::build() }
-                    _ => {
-                        crate::internal_catalog::build(std::net::SocketAddr::from((
-                            std::net::Ipv4Addr::LOCALHOST,
-                            re_uri::DEFAULT_PROXY_PORT,
-                        )))
-                    }
+                    target_arch = "wasm32" => crate::internal_catalog::build(),
+                    _ => crate::internal_catalog::build(std::net::SocketAddr::from((
+                        std::net::Ipv4Addr::LOCALHOST,
+                        re_uri::DEFAULT_PROXY_PORT,
+                    ))),
                 };
 
                 connection_registry

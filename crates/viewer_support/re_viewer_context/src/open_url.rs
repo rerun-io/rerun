@@ -329,9 +329,7 @@ impl ViewerOpenUrl {
                             "Can't share links to local files on the web."
                         ))
                     }
-                    _ => {
-                        Ok(Self::FilePath(path.clone()))
-                    }
+                    _ => Ok(Self::FilePath(path.clone())),
                 }
             }
 

@@ -58,23 +58,17 @@ pub fn is_safari() -> bool {
                 &JsValue::from("safari"),
             )
         }
-        _ => {
-            false
-        }
+        _ => false,
     }
 }
 
 /// Whether the current browser is Firefox.
 pub fn is_firefox() -> bool {
     cfg_select! {
-        target_arch = "wasm32" => {
-            window()
-                .ok()
-                .and_then(|window| window.navigator().user_agent().ok())
-                .is_some_and(|user_agent| user_agent.to_lowercase().contains("firefox"))
-        }
-        _ => {
-            false
-        }
+        target_arch = "wasm32" => window()
+            .ok()
+            .and_then(|window| window.navigator().user_agent().ok())
+            .is_some_and(|user_agent| user_agent.to_lowercase().contains("firefox")),
+        _ => false,
     }
 }

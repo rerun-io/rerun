@@ -127,10 +127,7 @@ impl Args {
                 cfg_select! {
                     feature = "lance" => {
                         builder = builder
-                            .with_directory_as_table(
-                                table,
-                                ext::IfDuplicateBehavior::Error,
-                            )
+                            .with_directory_as_table(table, ext::IfDuplicateBehavior::Error)
                             .await?;
                     }
                     _ => {

@@ -125,12 +125,8 @@ impl StartupOptions {
     #[allow(clippy::allow_attributes, clippy::unused_self)] // Only used on web.
     pub fn web_history_enabled(&self) -> bool {
         cfg_select! {
-            target_arch = "wasm32" => {
-                self.enable_history
-            }
-            _ => {
-                false
-            }
+            target_arch = "wasm32" => self.enable_history,
+            _ => false,
         }
     }
 
@@ -151,15 +147,11 @@ impl StartupOptions {
             url::Url::parse(&format!("https://rerun.io/viewer/version/{version}")).ok()
         } else {
             cfg_select! {
-                target_arch = "wasm32" => {
-                    re_web::browser::current_page_url()
-                        .ok()
-                        .and_then(|url| url.parse().ok())
-                        .map(|url| re_viewer_context::open_url::base_url(&url))
-                }
-                _ => {
-                    None
-                }
+                target_arch = "wasm32" => re_web::browser::current_page_url()
+                    .ok()
+                    .and_then(|url| url.parse().ok())
+                    .map(|url| re_viewer_context::open_url::base_url(&url)),
+                _ => None,
             }
         }
     }

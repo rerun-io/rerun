@@ -35,12 +35,10 @@ async fn stream_async(
         let url = uri.origin.as_url();
 
         let tonic_client = cfg_select! {
-            target_arch = "wasm32" => {
-                tonic_web_wasm_client::Client::new_with_options(
-                    url,
-                    tonic_web_wasm_client::options::FetchOptions::new(),
-                )
-            }
+            target_arch = "wasm32" => tonic_web_wasm_client::Client::new_with_options(
+                url,
+                tonic_web_wasm_client::options::FetchOptions::new(),
+            ),
             _ => {
                 tonic::transport::Endpoint::new(url)?
                     .http2_adaptive_window(true) // Optimize for throughput

@@ -347,8 +347,8 @@ impl SchemaProvider for RedapSchemaProvider {
         .with_caller(TableQueryCaller::CatalogResolver);
         if let Some(exporter) = self.analytics.clone() {
             let async_runtime = cfg_select! {
-                target_arch = "wasm32" => { AsyncRuntimeHandle::new_web() }
-                _ => { AsyncRuntimeHandle::new_native(self.runtime.clone()) }
+                target_arch = "wasm32" => AsyncRuntimeHandle::new_web(),
+                _ => AsyncRuntimeHandle::new_native(self.runtime.clone()),
             };
             provider = provider.with_analytics(exporter, async_runtime);
         }

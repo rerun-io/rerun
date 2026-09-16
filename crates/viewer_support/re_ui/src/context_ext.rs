@@ -137,10 +137,9 @@ pub trait ContextExt {
 
                     use eframe::WindowChromeMetrics;
 
-                    let metrics = _frame
-                        .window_handle()
-                        .ok()
-                        .and_then(|handle| WindowChromeMetrics::from_window_handle(&handle.as_raw()));
+                    let metrics = _frame.window_handle().ok().and_then(|handle| {
+                        WindowChromeMetrics::from_window_handle(&handle.as_raw())
+                    });
                     if let Some(metrics) = metrics {
                         let WindowChromeMetrics {
                             traffic_lights_size,
@@ -156,7 +155,7 @@ pub trait ContextExt {
                     egui::Vec2::ZERO
                 }
             }
-            _ => { traffic_button_sizes_fallback }
+            _ => traffic_button_sizes_fallback,
         };
 
         let height = if make_room_for_window_buttons {

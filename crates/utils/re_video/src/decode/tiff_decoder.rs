@@ -25,8 +25,8 @@ impl SyncDecoder for TiffDecoder {
         };
 
         let content = cfg_select! {
-            target_arch = "wasm32" => { super::FrameContent::Decoded(decoded) }
-            _ => { decoded }
+            target_arch = "wasm32" => super::FrameContent::Decoded(decoded),
+            _ => decoded,
         };
 
         let _send_error = output_sender.send(Ok(super::Frame {

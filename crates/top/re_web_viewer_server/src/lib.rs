@@ -438,9 +438,7 @@ impl WebViewerServer {
                 let _ = assets_archive_path;
                 Self::with_data(bind_ip, port, WebViewerData::empty())
             }
-            _ => {
-                Self::with_data(bind_ip, port, WebViewerData::load(assets_archive_path)?)
-            }
+            _ => Self::with_data(bind_ip, port, WebViewerData::load(assets_archive_path)?),
         }
     }
 

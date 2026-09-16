@@ -75,18 +75,16 @@ pub fn load_gltf_from_buffer(
 
         // Images don't have names, but textures do. Gather all texture names for debug labeling.
         let texture_names = cfg_select! {
-            debug_assertions => {
-                doc.textures().fold(String::new(), |mut name_list, t| {
-                    if t.source().index() == _index {
-                        if !name_list.is_empty() {
-                            name_list.push_str(", ");
-                        }
-                        name_list.push_str(t.name().unwrap_or(""));
+            debug_assertions => doc.textures().fold(String::new(), |mut name_list, t| {
+                if t.source().index() == _index {
+                    if !name_list.is_empty() {
+                        name_list.push_str(", ");
                     }
-                    name_list
-                })
-            }
-            _ => { "" }
+                    name_list.push_str(t.name().unwrap_or(""));
+                }
+                name_list
+            }),
+            _ => "",
         };
 
         let texture = ImageDataDesc {

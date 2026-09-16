@@ -474,8 +474,8 @@ impl MessageDecoderRunner {
         };
 
         let workers = cfg_select! {
-            target_arch = "wasm32" => { 1 }
-            _ => { rayon::current_num_threads().max(1) }
+            target_arch = "wasm32" => 1,
+            _ => rayon::current_num_threads().max(1),
         };
 
         if workers <= 2 {
