@@ -1,0 +1,30 @@
+[package]
+name = "re_renderer_tests"
+authors.workspace = true
+description = "Snapshot tests for `re_renderer`'s rendering primitives."
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+license.workspace = true
+publish = false
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[lib]
+# This crate is only a home for the integration tests in `tests/`.
+test = false
+doctest = false
+
+[dev-dependencies]
+re_renderer.workspace = true
+re_test_context.workspace = true
+re_viewer_context.workspace = true
+
+egui.workspace = true
+glam.workspace = true
+macaw.workspace = true

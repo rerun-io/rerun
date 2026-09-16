@@ -10354,6 +10354,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_renderer_tests"
+version = "0.38.0-alpha.1+dev"
+dependencies = [
+ "egui",
+ "glam",
+ "macaw",
+ "re_renderer",
+ "re_test_context",
+ "re_viewer_context",
+]
+
+[[package]]
 name = "re_ros_msg"
 version = "0.38.0-alpha.1+dev"
 dependencies = [

@@ -129,13 +129,14 @@ Pass `--edges all` to `scripts/generate_crate_graph.py` for a version with every
 
 [`crates/tests`](./crates/tests) — only tests depend on these, so they sit at the top of the diagram.
 
-| Crate            | Description                                                                                                                      |
-| ---------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| re_redap_tests   | Official test suite for the Rerun Data Protocol                                                                                  |
-| re_test_context  | A common context used for tests.                                                                                                 |
-| re_test_mocks    | In-process server doubles (`MockOtlpCollector`, `MockPostHog`) used by tests that need to capture outbound OTel/PostHog traffic. |
-| re_test_viewport | A viewport used for tests                                                                                                        |
-| re_web_tests     | Discovers and runs Rerun web tests                                                                                               |
+| Crate             | Description                                                                                                                      |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| re_redap_tests    | Official test suite for the Rerun Data Protocol                                                                                  |
+| re_renderer_tests | Snapshot tests for `re_renderer`'s rendering primitives.                                                                         |
+| re_test_context   | A common context used for tests.                                                                                                 |
+| re_test_mocks     | In-process server doubles (`MockOtlpCollector`, `MockPostHog`) used by tests that need to capture outbound OTel/PostHog traffic. |
+| re_test_viewport  | A viewport used for tests                                                                                                        |
+| re_web_tests      | Discovers and runs Rerun web tests                                                                                               |
 
 ### SDK / CLI / Wasm
 
