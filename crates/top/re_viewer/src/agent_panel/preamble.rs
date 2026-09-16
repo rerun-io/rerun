@@ -37,7 +37,8 @@ pub fn text(viewer_endpoint: Option<&str>, agent_dir: Option<&Path>) -> String {
     if let Some(agent_dir) = agent_dir {
         writeln!(
             text,
-            "- Rerun skills (data model, blueprints, MCAP, LeRobot, …) are in `{}`. \
+            "- Rerun skills (data model, blueprints, MCAP, LeRobot, …) are in `{}`, \
+             indexed by the `README.md` there, which says in one line what each one covers. \
              Read the relevant `SKILL.md` before answering questions on those topics.",
             agent_dir.join(SKILLS_SUBDIR).display()
         )
@@ -52,9 +53,53 @@ pub fn text(viewer_endpoint: Option<&str>, agent_dir: Option<&Path>) -> String {
     }
 
     text.push_str(
+        "- Assume no Python environment is set up: the skills and the docs snippets are written in \
+         Python, but a bare `python` here usually has neither `rerun` nor the packages they import. \
+         Where `uv` is installed, `uv run --with rerun-sdk --with <other packages> python …` needs no \
+         setup at all — note that the SDK installs as `rerun-sdk` and imports as `rerun`. \
+         Check what you have before you write a script that assumes it.\n",
+    );
+
+    text.push_str(
+        "- Run Python from a directory you control, and set `PYTHONSAFEPATH=1` where the \
+         interpreter is 3.11 or newer. Without it the interpreter puts the script's directory \
+         first on `sys.path`, so a stray `inspect.py` or `types.py` left there by someone else \
+         shadows the standard library and is executed on the next import; older interpreters \
+         ignore the variable, so there the directory you run from is the whole defense. \
+         When you need a directory to work in, make a fresh one rather than reusing a path you \
+         picked by hand — the invented name is the one another session picks too. `mktemp -d` \
+         where you have it, otherwise `python -c \"import tempfile; print(tempfile.mkdtemp())\"`, \
+         which works anywhere Python does.\n",
+    );
+
+    text.push_str(
+        "- Assume nothing about the machine you are on: Linux, macOS or Windows; a container or a \
+         sandbox; `bash`, `zsh` or something else; any set of installed tools; possibly no network. \
+         Check before you depend on something, keep to portable commands, and read the error you \
+         got rather than assuming the command was wrong. Quoting is part of this — a `zsh` with \
+         `EQUALS` expansion on reads a bare `echo ====` as a command name and fails with \
+         `zsh:1: === not found`, which stops the rest of an `&&` chain.\n",
+    );
+
+    text.push_str(
+        "- Rerun is open source, and its examples are worth reading and worth linking: \
+         <https://rerun.io/examples> shows each one, and its code is under `examples/` in \
+         <https://github.com/rerun-io/rerun>. Larger applications — SLAM, gaussian splatting, \
+         segmentation, depth — are one runnable package each in the Pixi workspace at \
+         <https://github.com/rerun-io/examples-monorepo>. Point the user at the example that \
+         matches what they are building rather than describing one in prose.\n",
+    );
+
+    text.push_str(
         "- When a recording has joint angles but no robot model, suggest adding a URDF: \
          fetch one for that robot, solve forward kinematics from the joint states, \
          and layer the transforms onto the recording. The `rerun-urdf` skill has the sources and the pipeline.\n",
+    );
+
+    text.push_str(
+        "- Say what you are about to do before any command that may run for minutes — a download, \
+         an import, a build. The user is watching a panel that shows nothing while a tool runs, so \
+         silence reads as a hang. One sentence naming the thing and its rough size is enough.\n",
     );
 
     text.push_str("- Teach the user how to do things they could have easily done themselves.\n");
