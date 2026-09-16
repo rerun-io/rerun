@@ -11,7 +11,7 @@ use nohash_hasher::IntMap;
 use parking_lot::Mutex;
 use re_chunk::{
     BatcherFlushError, BatcherHooks, Chunk, ChunkBatcher, ChunkBatcherConfig, ChunkBatcherError,
-    ChunkComponents, ChunkError, ChunkId, PendingRow, RowId, TimeColumn,
+    ChunkComponents, ChunkError, ChunkId, PendingRow, RowId, SplitRowsOptions, TimeColumn,
 };
 use re_log::env_var_flag;
 use re_log_types::{
@@ -1592,6 +1592,21 @@ impl RecordingStream {
     }
 }
 
+/// Split options applied to every chunk before forwarding to sinks.
+///
+/// The gRPC/protobuf wire format uses a signed 32-bit length prefix, so a single message cannot
+/// exceed 2 GiB. Splitting chunks at 1.8 GiB before forwarding keeps each encoded message well
+/// within that limit regardless of which sink is active.
+///
+/// See <https://github.com/rerun-io/rerun/issues/11993>.
+const FORWARDING_CHUNK_SPLIT_OPTIONS: SplitRowsOptions = SplitRowsOptions {
+    // Stay well under the gRPC 2 GiB message size limit.
+    chunk_max_bytes: 1_800_000_000,
+    // Row count is not bounded here; only byte size matters for the transport limit.
+    chunk_max_rows: u64::MAX,
+    chunk_max_rows_if_unsorted: u64::MAX,
+};
+
 #[expect(clippy::needless_pass_by_value)]
 fn forwarding_thread(
     store_info: StoreInfo,
@@ -1694,15 +1709,17 @@ fn forwarding_thread(
         // NOTE: Always pop chunks first, this is what makes `Command::PopPendingChunks` possible,
         // which in turns makes `RecordingStream::flush_blocking` well defined.
         while let Ok(chunk) = chunks.try_recv() {
-            let mut msg = match chunk.to_arrow_msg() {
-                Ok(chunk) => chunk,
-                Err(err) => {
-                    re_log::error!(%err, "couldn't serialize chunk; data dropped (this is a bug in Rerun!)");
-                    continue;
-                }
-            };
-            msg.on_release.clone_from(&on_release);
-            sink.send(LogMsg::ArrowMsg(store_info.store_id.clone(), msg));
+            for chunk in Chunk::split_rows(Arc::new(chunk), &FORWARDING_CHUNK_SPLIT_OPTIONS) {
+                let mut msg = match chunk.to_arrow_msg() {
+                    Ok(msg) => msg,
+                    Err(err) => {
+                        re_log::error!(%err, "couldn't serialize chunk; data dropped (this is a bug in Rerun!)");
+                        continue;
+                    }
+                };
+                msg.on_release.clone_from(&on_release);
+                sink.send(LogMsg::ArrowMsg(store_info.store_id.clone(), msg));
+            }
         }
 
         re_quota_channel::select! {
@@ -1714,15 +1731,16 @@ fn forwarding_thread(
                     break;
                 };
 
-                let msg = match chunk.to_arrow_msg() {
-                    Ok(chunk) => chunk,
-                    Err(err) => {
-                        re_log::error!(%err, "couldn't serialize chunk; data dropped (this is a bug in Rerun!)");
-                        continue;
-                    }
-                };
-
-                sink.send(LogMsg::ArrowMsg(store_info.store_id.clone(), msg));
+                for chunk in Chunk::split_rows(Arc::new(chunk), &FORWARDING_CHUNK_SPLIT_OPTIONS) {
+                    let msg = match chunk.to_arrow_msg() {
+                        Ok(msg) => msg,
+                        Err(err) => {
+                            re_log::error!(%err, "couldn't serialize chunk; data dropped (this is a bug in Rerun!)");
+                            continue;
+                        }
+                    };
+                    sink.send(LogMsg::ArrowMsg(store_info.store_id.clone(), msg));
+                }
             }
 
             recv(cmds_rx) -> res => {
