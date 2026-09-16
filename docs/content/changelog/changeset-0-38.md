@@ -30,8 +30,8 @@ rr.log(
 )
 ```
 
-Docs: ../reference/types/archetypes/measurements.md
-Example: ../reference/types/archetypes/measurements.md#example
+- [Documentation](../reference/types/archetypes/measurements.md)
+- [Example](../reference/types/archetypes/measurements.md#example)
 
 ### Local `.rrd` files load via the Viewer catalog by default
 
@@ -158,7 +158,7 @@ Going to the beginning/end of the timeline moved from `Home`/`End` to `Cmd+Shift
 `EncodedDepthImage` now accepts TIFF blobs (`image/tiff`) next to PNG and RVL.
 The viewer decodes single channel TIFF with `U8`, `U16`, or `F32` samples on demand, so compressed depth stays small in the recording.
 
-[`EncodedDepthImage` reference](../reference/types/archetypes/encoded_depth_image.md)
+See the [`EncodedDepthImage` reference](../reference/types/archetypes/encoded_depth_image.md).
 
 ### `LeRobotReader`: stream LeRobot datasets as lazy chunk streams
 
@@ -213,7 +213,7 @@ Experimental table blueprints can now:
 These features are currently only available through very low-level blueprint archetypes.
 A clean Python API and more configuration options will follow soon!
 
-Example: https://github.com/rerun-io/rerun/blob/latest/examples/python/table_blueprints
+See the [table blueprints example](https://github.com/rerun-io/rerun/blob/latest/examples/python/table_blueprints).
 
 ### Annotation context is a visualizer component source
 
@@ -320,7 +320,7 @@ Previously, `--connect` did not start a Viewer server, and `--connect --port 432
 ### Experimental table blueprint redesigned
 
 The experimental `TableBlueprint` has been overhauled, so existing experimental table blueprints must be regenerated.
-Have a look at the updated example to learn more https://github.com/rerun-io/rerun/blob/latest/examples/python/table_blueprints
+See the updated [table blueprints example](https://github.com/rerun-io/rerun/blob/latest/examples/python/table_blueprints).
 
 
 ### MCAP importer maps ROS scalar sensor messages to `Measurements`
@@ -369,7 +369,7 @@ rr.log(
 Previously, the third point was labeled `car`; now it is unlabeled.
 Log `labels=["first", "second", "car"]` to preserve the previous result, or omit recorded labels to use annotations for all points.
 
-Docs: ../concepts/visualization/annotation-context.md
+See the [annotation context documentation](../concepts/visualization/annotation-context.md).
 
 ### Custom views must now provide reflection metadata
 
