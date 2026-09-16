@@ -1,4 +1,7 @@
-// Log an image as a 3D quad.
+//! Log an image as a 3D quad.
+//!
+//! See also `GridMap` for an alternative way to show image data like robot
+//! maps in 3D, or `Pinhole` to log images under a camera projection.
 
 #include <rerun.hpp>
 
