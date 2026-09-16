@@ -40,6 +40,8 @@ pub trait AsyncReadAt: Send + Sync {
 #[async_trait::async_trait]
 impl AsyncReadAt for std::fs::File {
     async fn read_exact_at(&self, span: Span<u64>) -> io::Result<bytes::Bytes> {
+        re_tracing::profile_function!();
+
         let offset = span.start;
         let len = span_len_usize(span)?;
         let mut buf = vec![0u8; len];

@@ -33,6 +33,8 @@ pub fn cut_to_fit(
     mut room_budget: Option<Budget>,
     full_budget: &Budget,
 ) -> Option<Vec<Arc<Chunk>>> {
+    re_tracing::profile_function!();
+
     let num_rows = chunk.num_rows();
     if num_rows <= 1 {
         return None;

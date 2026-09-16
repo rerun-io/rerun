@@ -99,6 +99,8 @@ type OwnColumns = BTreeMap<ComponentIdentifier, Option<MergeSplitSettings>>;
 
 /// Build a plan.
 pub fn plan(view: &ChunkIndexView, settings: &OptimizationSettings) -> Vec<PlanUnit> {
+    re_tracing::profile_function!();
+
     let mut units = Vec::new();
     let mut claimed = vec![false; view.num_chunks()];
 

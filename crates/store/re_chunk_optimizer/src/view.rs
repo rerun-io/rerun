@@ -153,6 +153,8 @@ impl ChunkIndexView {
     }
 
     pub fn try_from_raw(raw: &RawRrdManifest) -> Result<Self, Error> {
+        re_tracing::profile_function!();
+
         let rows = izip!(
             raw.col_chunk_id_iter()
                 .map_err(|err| Error::read_column(RawRrdManifest::COLUMN_CHUNK_ID.name, err))?,

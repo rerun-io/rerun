@@ -252,6 +252,8 @@ impl MergeSplitRunState {
     // things. That said, we already perform better than legacy on maximally fragmented inputs, so
     // this is likely not the bottleneck.
     fn push_and_compact(&mut self, chunk: Arc<Chunk>, bytes: u64, rows: u64) -> Result<(), Error> {
+        re_tracing::profile_function!();
+
         let sorted = chunk.all_timelines_sorted();
         self.accumulator.push(AccumulatorEntry {
             chunk,
@@ -347,6 +349,8 @@ fn merge_and_emit(
     mut chunks: Vec<Arc<Chunk>>,
     target: &MergeSplitSettings,
 ) -> Result<(), Error> {
+    re_tracing::profile_function!();
+
     let mut skip_first = false;
     let mut rounds_without_merge = 0;
 

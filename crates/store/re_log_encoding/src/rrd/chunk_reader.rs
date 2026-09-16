@@ -34,8 +34,10 @@ pub async fn read_chunks<R: AsyncReadAt>(
     let sizes = manifest.col_chunk_byte_size();
 
     // Build a temporary lookup for the manifest's chunk IDs.
-    let id_to_row: std::collections::HashMap<ChunkId, usize> =
-        all_ids.iter().enumerate().map(|(i, &id)| (id, i)).collect();
+    let id_to_row: std::collections::HashMap<ChunkId, usize> = {
+        re_tracing::profile_scope!("id_to_row");
+        all_ids.iter().enumerate().map(|(i, &id)| (id, i)).collect()
+    };
 
     // Resolve chunk IDs to (chunk_id, byte_span).
     let mut entries: Vec<(ChunkId, Span<u64>)> = chunk_ids
@@ -70,7 +72,10 @@ pub async fn read_chunks<R: AsyncReadAt>(
                 usize::try_from(chunk_span.start - group.byte_span.start)?,
                 usize::try_from(chunk_span.len)?,
             );
-            let chunk = decode_chunk_from_bytes(&buf[local_span.range()])?;
+            let chunk = {
+                re_tracing::profile_scope!("decode_chunk_from_bytes");
+                decode_chunk_from_bytes(&buf[local_span.range()])?
+            };
             result.push(Arc::new(chunk));
         }
     }
