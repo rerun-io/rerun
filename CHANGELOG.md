@@ -1,5 +1,109 @@
 # Rerun changelog
 
+## [0.38.1](https://github.com/rerun-io/rerun/compare/0.37.2...0.38.1) - 2026-09-16
+
+### ✨ Overview & highlights
+
+- Measurements archetype
+- Local `.rrd` files load via the Viewer catalog by default
+- Live and imported recordings
+- `rerun --asset`
+- Drive a running Viewer from Python
+- Control the Viewer time cursor from Python
+- Better time series plot interactions
+- Keep following the time cursor after zooming or panning
+- Tidier playhead controls
+- TIFF support for `EncodedDepthImage`
+- `LeRobotReader`: stream LeRobot datasets as lazy chunk streams
+- gRPC server reflection
+- Experimental agent panel
+- More flexible experimental table blueprints
+- Annotation context is a visualizer component source
+- Server capabilities
+- Viewer new-version notice
+
+📖 Release notes: https://rerun.io/docs/changelog/changeset-0-38#highlights
+
+### ⚠️ Breaking changes
+
+- Chunk API and stable readers moved out of `rerun.experimental`
+- "Log setup for binaries is opt-in with feature `log_setup`"
+- `--connect` also starts a local Viewer server
+- Experimental table blueprint redesigned
+- MCAP importer maps ROS scalar sensor messages to `Measurements`
+- Recorded labels no longer mix with annotation labels
+- Custom views must now provide reflection metadata
+- Python 3.10 is deprecated
+- MCAP importer preserves ROS `/tf_static` message timing
+- ROS 2 MCAP importer outputs `VideoStream:codec` as temporal data
+- TUID parsing requires canonical 32-character hexadecimal strings
+
+🧳 Migration guide: https://rerun.io/docs/changelog/changeset-0-38#breaking-changes
+
+### 🔎 Details
+
+#### 🐍 Python API
+- `py-chunk`: Move stable chunk API & readers out of `experimental` into `rerun.chunk` for 0.38 [ccc27e6](https://github.com/rerun-io/rerun/commit/ccc27e6a7b406a580d6784554c3ace35bb2b7842)
+- Expose ViewerClient time cursor control to Python [43d8836](https://github.com/rerun-io/rerun/commit/43d88369641b355fd57526d73c37271ced072376) (thanks [@pablovela5620](https://github.com/pablovela5620)!)
+- Decode the RRD footer once per `RrdReader` instead of once per `store()` [046bdb6](https://github.com/rerun-io/rerun/commit/046bdb607d411fa62d6a48fe23f7e66919061d17)
+- `re_lerobot`: open(),stream() per-episode lazy chunk streaming [7b63de7](https://github.com/rerun-io/rerun/commit/7b63de7ca0c70ab0fca4e42839ba8cfd0d5ac434)
+- Generalize the `ViewerControl` API [4bdf267](https://github.com/rerun-io/rerun/commit/4bdf26751395a4255cedaf30c91ac69e436b9d25)
+
+#### 🪳 Bug fixes
+- Fix cases of component mappings becoming incorrectly transitive [5b1d730](https://github.com/rerun-io/rerun/commit/5b1d730d56ecb97ddd0e57af1cf466d9939b0e4e)
+- Make sure old marking missing on just-loaded chunks don't cause warnings [3aa1977](https://github.com/rerun-io/rerun/commit/3aa19770025b5b59c32d9ca60ce0d9649e9bdcbf)
+- Fix rare viewer deadlock in renderer [6464bff](https://github.com/rerun-io/rerun/commit/6464bffa99a317d6d64fe81f66b1d1a0ed16a54d)
+- Fix parsing of unicode escapes above U+FFFF in entity paths [#12912](https://github.com/rerun-io/rerun/pull/12912) (thanks [@jaideeppyne](https://github.com/jaideeppyne)!)
+- Report error for missing required components in mappings [655ac44](https://github.com/rerun-io/rerun/commit/655ac442d2a3aa3d6ad8ffbe906e74d125bf9702)
+- Don't display `?url=` with empty url [09f22fd](https://github.com/rerun-io/rerun/commit/09f22fd44d95cb36aaa1acbc97a02a1fd09ba4f1)
+- Fix table recognizing URLs embedded in strings too eagerly [be47aed](https://github.com/rerun-io/rerun/commit/be47aed3787042919d9ab2f48a7d909823f7434b)
+- Grid map's cell_size can now be edited in the UI [d0bef4f](https://github.com/rerun-io/rerun/commit/d0bef4f5aff79d6525391d1b519ccf2d95244952)
+- Enable importers on wasm [ecca42f](https://github.com/rerun-io/rerun/commit/ecca42f7f03d91f77297eed1b1f9be880df28c37)
+- Fix missing task labels for LeRobot v3 datasets written with LeRobot 0.5.0+ [f057ae9](https://github.com/rerun-io/rerun/commit/f057ae9a5efd90314a7b9042380db947a147c1bb)
+- Fix theme warning for embedded viewers in Python notebooks [45c1135](https://github.com/rerun-io/rerun/commit/45c11358d5c3a9d7b03c4de918d785d09850b92f)
+- Fix dataframe UI warning bug [873e86d](https://github.com/rerun-io/rerun/commit/873e86d528d0f51d2edd45f907c6e7c9085e9767)
+- Fix: handle `file://` prefixes on paths [e372ae4](https://github.com/rerun-io/rerun/commit/e372ae43600f1871930140609d42f3a4a7513585)
+
+#### 🌁 Viewer improvements
+- Add Measurement Archetype [a1c8501](https://github.com/rerun-io/rerun/commit/a1c850176b869954ddb51b1f63c44d79199a7766)
+- Add version check on viewer startup [cb5e9d6](https://github.com/rerun-io/rerun/commit/cb5e9d6da5571003d587f995843ca7ac5ec1c463)
+- Overhaul table blueprint datastructures & start making them more powerful [c1ea47a](https://github.com/rerun-io/rerun/commit/c1ea47a3b80b3eb00f2b0e54c8887b589728bec6)
+- Use server capabilities in UI to know what can be registered to the server [bab02d7](https://github.com/rerun-io/rerun/commit/bab02d75f368bc28cefe99d3b5ac655fa36440d7)
+- Improve playhead navigation controls [bc395cc](https://github.com/rerun-io/rerun/commit/bc395cc561eb011ea7848bcd939d73317fe40075)
+- Distinguish between Live and Imported recordings [e926710](https://github.com/rerun-io/rerun/commit/e926710925659d3f220d198d23bd901d3d132b01)
+- Add TIFF support to `EncodedDepthImage` [6f95c34](https://github.com/rerun-io/rerun/commit/6f95c341cbfe128e0c32a992d5bdb6d1f6e290d2)
+- Fix how visualizer menu shows annotation context data & allow selecting it in the ui (and blueprint!) [392b05c](https://github.com/rerun-io/rerun/commit/392b05cc3af46d3649dc315f4baf3afcdbf4d534)
+- Preserve relative time cursor on pan/zoom in time series & state timeline views [8097444](https://github.com/rerun-io/rerun/commit/80974444c39f4a1a67eede8feec6c71511905bed)
+- Add experimental agent panel to the viewer [4ded82a](https://github.com/rerun-io/rerun/commit/4ded82a104fa79a7eb810034d59db3f0af6aa15d)
+- Spawn all viewer services, even for `--connect` (under free port) [785d27c](https://github.com/rerun-io/rerun/commit/785d27c3a13a46ca9fc606f25d4594427cc45837)
+
+#### 🗄️ OSS server
+- Serve gRPC server reflection from all open-source gRPC servers [b9ffa9c](https://github.com/rerun-io/rerun/commit/b9ffa9c1387ce50d1264f9ec4f7a4221d7cda0ce)
+
+#### 🚀 Performance improvements
+- Speed up common entity path ancestor lookup [#12910](https://github.com/rerun-io/rerun/pull/12910) (thanks [@pnn64](https://github.com/pnn64)!)
+- Losslessly compress all non-snapshot PNGs [099aa62](https://github.com/rerun-io/rerun/commit/099aa6294d8779d5b357c5733260b5148c1672ca)
+- Avoid allocations when resolving archetype field names [#12921](https://github.com/rerun-io/rerun/pull/12921) (thanks [@pnn64](https://github.com/pnn64)!)
+- Enable the Viewer catalog by default (and allow opt-out) [3008fb0](https://github.com/rerun-io/rerun/commit/3008fb0d7f571ddd89c8bde81ca73ef26a7e9447)
+
+#### 🖼 UI improvements
+- Time series tooltip: add option to display all series values at once [eb8d373](https://github.com/rerun-io/rerun/commit/eb8d373698963ef19f4b860d1cf0db3b492275bc)
+
+#### 🧢 MCAP
+- Move ROS `TFMessage` to lens & remove `/tf_static` special-casing [2c7a86b](https://github.com/rerun-io/rerun/commit/2c7a86b108595a72d7cb5476c604b6256f08c776)
+- convert ROS2 scalar sensor parsers to Measurements lenses [e6f461f](https://github.com/rerun-io/rerun/commit/e6f461fa112bc1b9c3b42d586a7842148d008d88)
+- MCAP: Port ROS compressed image decoding to lenses [833c268](https://github.com/rerun-io/rerun/commit/833c268bd0b2a1969a41da0cc997052a4f3d01fe)
+
+#### 📦 Dependencies
+- `python`: A deprecation notice for Python 3.10 [dac09e2](https://github.com/rerun-io/rerun/commit/dac09e29c07f89aead640d0bcb3deb80a69059e2)
+
+#### 🤷‍ Other
+- Make `tracing-subscriber` an optional dependency of `re_log` [#12909](https://github.com/rerun-io/rerun/pull/12909) (thanks [@CattleProdigy](https://github.com/CattleProdigy)!)
+- --asset flag to register asset to the viewer catalog [96d4950](https://github.com/rerun-io/rerun/commit/96d49503c712a831f8267a0a5195fa64dee432a5)
+- Bump versions to 0.38.0 [aff9f69](https://github.com/rerun-io/rerun/commit/aff9f692550e2fa3ca7e97db8e82683c0d6304a5)
+- Prepare changeset for `0.38` release [#12934](https://github.com/rerun-io/rerun/pull/12934)
+- remove speculative links [f1f7ebc](https://github.com/rerun-io/rerun/commit/f1f7ebca9d5f51b4e9d503b7b0cf3d195f9d18bc)
+
 ## [0.37.2](https://github.com/rerun-io/rerun/compare/0.37.1...0.37.2) - 2026-09-10
 
 ### 🔎 Details
