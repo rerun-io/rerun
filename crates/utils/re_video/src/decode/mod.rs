@@ -444,6 +444,23 @@ pub struct Chunk {
     pub duration: Option<Time>,
 }
 
+impl Chunk {
+    /// The [`FrameInfo`] of a frame decoded from this chunk alone.
+    ///
+    /// Only correct for decoders that emit exactly one frame per chunk without reordering,
+    /// so that the frame inherits the chunk's timestamps unchanged.
+    pub fn frame_info(&self) -> FrameInfo {
+        FrameInfo {
+            is_sync: Some(self.is_sync),
+            frame_nr: Some(self.frame_nr),
+            source: Some(self.source),
+            presentation_timestamp: self.presentation_timestamp,
+            duration: self.duration,
+            latest_decode_timestamp: Some(self.decode_timestamp),
+        }
+    }
+}
+
 /// CPU-side data for a decoded frame.
 #[derive(re_byte_size::SizeBytes)]
 pub struct DecodedFrameContent {

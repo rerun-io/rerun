@@ -26,6 +26,48 @@ use crate::h265::write_hevc_chunk_to_nalu_stream;
 use crate::nalu::{ANNEXB_NAL_START_CODE, AnnexBStreamState, AnnexBStreamWriteError};
 use crate::{PixelFormat, Time, VideoDataDescription, VideoEncodingDetails};
 
+/// How many frame threads we tell ffmpeg to decode with.
+///
+/// We must pass this explicitly: left to itself ffmpeg derives it from the core count, which would
+/// make [`ffmpeg_output_delay_in_samples`] differ from machine to machine.
+fn num_ffmpeg_decode_threads() -> usize {
+    /// ffmpeg caps frame threads here, so asking for more only grows the output delay.
+    const MAX_FRAME_THREADS: usize = 16;
+
+    static NUM_THREADS: std::sync::LazyLock<usize> = std::sync::LazyLock::new(|| {
+        std::thread::available_parallelism().map_or(1, |num| num.get().min(MAX_FRAME_THREADS))
+    });
+
+    *NUM_THREADS
+}
+
+/// How many samples ffmpeg holds back before the first decoded frame comes out.
+///
+/// It buffers one sample per frame thread, plus the stream's reorder depth so that it can output
+/// in presentation order, and it only flushes the remainder once stdin is closed, which we never
+/// do while playing. The player must therefore enqueue at least this many samples past the one it
+/// wants, or no frame arrives at all.
+///
+/// Measured on ffmpeg 7.1.1 / H.264 / macOS arm64 as `threads + reorder_depth + 2`, over 1, 4 and
+/// 16 threads and over streams of reorder depth 0 and 2.
+///
+/// This is an estimate, not a guarantee. The player keeps enqueueing past it until the decoder has
+/// actually produced a frame, so an underestimate costs decode work rather than every frame.
+fn ffmpeg_output_delay_in_samples(max_num_reorder_frames: Option<u32>) -> usize {
+    /// What ffmpeg holds on top of the thread count and the reorder depth.
+    const EXTRA_HELD_SAMPLES: usize = 2;
+
+    /// Used when the bitstream does not state its reorder depth.
+    ///
+    /// H.264 permits up to 16, but encoders that bother to write the VUI restriction stay at or
+    /// below 4, so assuming the worst case here would only bloat the enqueue-ahead for everyone.
+    const ASSUMED_REORDER_FRAMES: usize = 4;
+
+    let reorder_frames = max_num_reorder_frames.map_or(ASSUMED_REORDER_FRAMES, |num| num as usize);
+
+    num_ffmpeg_decode_threads() + reorder_frames + EXTRA_HELD_SAMPLES
+}
+
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error("Couldn't find an installation of the FFmpeg executable.")]
@@ -302,6 +344,9 @@ impl FFmpegProcessAndListener {
                 "-analyzeduration",
                 "0",
             ])
+            // Pin the decoder's frame threads so that its output delay is the same on every
+            // machine. `ffmpeg_output_delay_in_samples` depends on this number.
+            .args(["-threads", &num_ffmpeg_decode_threads().to_string()])
             // Keep in mind that all arguments that are about the input, need to go before!
             .format(codec_str) // TODO(andreas): should we check ahead of time whether this is available?
             //.fps_mode("0")
@@ -866,6 +911,10 @@ pub struct FFmpegCliDecoder {
     output_sender: Sender<FrameResult>,
     ffmpeg_path: Option<std::path::PathBuf>,
     codec: crate::VideoCodec,
+
+    /// Reorder depth of the stream, as stated by its bitstream. See
+    /// [`VideoEncodingDetails::max_num_reorder_frames`].
+    max_num_reorder_frames: Option<u32>,
 }
 
 impl FFmpegCliDecoder {
@@ -901,6 +950,8 @@ impl FFmpegCliDecoder {
             output_sender,
             ffmpeg_path,
             codec: codec.clone(),
+            max_num_reorder_frames: encoding_details
+                .and_then(|details| details.max_num_reorder_frames),
         })
     }
 }
@@ -965,15 +1016,15 @@ impl AsyncDecoder for FFmpegCliDecoder {
             self.ffmpeg_path.as_deref(),
             &self.codec,
         )?;
+        self.max_num_reorder_frames = video_descr
+            .encoding_details
+            .as_ref()
+            .and_then(|details| details.max_num_reorder_frames);
         Ok(())
     }
 
     fn min_num_samples_to_enqueue_ahead(&self) -> usize {
-        // Until FFmpeg's stdin isn't closed, we don't get the last few frames.
-        // By supplying more than we need we can workaround this a bit.
-        //
-        // *: N is 16 for ffmpeg 7.1, tested on Mac & Windows. For ffmpeg 6.1.2 on Linux it was found to be 18.
-        18
+        ffmpeg_output_delay_in_samples(self.max_num_reorder_frames)
     }
 }
 
@@ -1195,7 +1246,10 @@ impl CodecMeta {
 
 #[cfg(test)]
 mod tests {
-    use super::sanitize_ffmpeg_log_message;
+    use std::time::Duration;
+
+    use super::{FFmpegCliDecoder, FFmpegVersion, sanitize_ffmpeg_log_message};
+    use crate::{AsyncDecoder as _, VideoDataDescription, player::VideoSliceSource};
 
     #[test]
     fn test_sanitize_ffmpeg_log_message() {
@@ -1244,6 +1298,85 @@ mod tests {
         assert_eq!(
             sanitize_ffmpeg_log_message("h264 @ 0x148db8000] something is wrong here"),
             "h264] something is wrong here"
+        );
+    }
+
+    /// [`AsyncDecoder::min_num_samples_to_enqueue_ahead`] is a promise to the video player:
+    /// hand the decoder the requested sample plus that many more, and at least one frame
+    /// comes back. The player enqueues exactly that many and then stops, so if the number is
+    /// lower than the ffmpeg process' real output delay, nothing ever comes out and the view
+    /// shows a loading spinner forever.
+    ///
+    /// ffmpeg's output delay scales with the number of frame threads it uses, which it derives
+    /// from the core count, so a number that holds on one machine can be too low on a bigger one.
+    #[test]
+    fn min_samples_ahead_is_enough_for_a_frame() {
+        if !matches!(
+            FFmpegVersion::for_executable_blocking(None),
+            Ok(version) if version.is_compatible()
+        ) {
+            // Nothing to assert without a usable ffmpeg on this machine.
+            return;
+        }
+
+        let video_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../../tests/assets/video/Big_Buck_Bunny_1080_1s_h264.mp4");
+        let data = std::fs::read(&video_path).unwrap();
+        let video_descr =
+            VideoDataDescription::load_from_bytes(&data, "video/mp4", "ffmpeg delay").unwrap();
+
+        let (frame_tx, frame_rx) = crate::channel("ffmpeg delay");
+        let mut decoder = FFmpegCliDecoder::new(
+            "ffmpeg delay".to_owned(),
+            video_descr.encoding_details.as_ref(),
+            frame_tx,
+            None,
+            &crate::VideoCodec::H264,
+        )
+        .unwrap();
+
+        let promised = decoder.min_num_samples_to_enqueue_ahead();
+
+        // What the player enqueues for a sample at the start of its GOP, which is every sample of
+        // an all-intra video: the sample itself plus the promised amount.
+        let budget = promised + 1;
+        assert!(
+            budget <= video_descr.samples.num_elements(),
+            "test asset is too short to enqueue {budget} samples"
+        );
+
+        // Feed one sample at a time so that a failure can say how many ffmpeg actually wanted.
+        // ffmpeg's stdin stays open throughout, so nothing here is a flush.
+        let mut needed = None;
+        for (num_submitted, (sample_idx, sample)) in
+            video_descr.samples.iter_indexed().take(budget).enumerate()
+        {
+            let sample = sample.sample().unwrap();
+            let chunk = sample.get(&VideoSliceSource(&data), sample_idx).unwrap();
+            decoder.submit_chunk(chunk).unwrap();
+
+            // The last sample gets a real timeout; the earlier ones only a poll, since ffmpeg is
+            // not expected to have produced anything yet.
+            let timeout = if num_submitted + 1 == budget {
+                Duration::from_secs(30)
+            } else {
+                Duration::from_millis(50)
+            };
+            if frame_rx.recv_timeout(timeout).is_ok() {
+                needed = Some(num_submitted);
+                break;
+            }
+        }
+
+        let needed = needed.unwrap_or_else(|| {
+            panic!(
+                "ffmpeg produced no frame from {budget} samples, so its real output delay is \
+                 larger than the {promised} we promise the player"
+            )
+        });
+        assert!(
+            needed <= promised,
+            "ffmpeg needed {needed} samples ahead, more than the {promised} we promise the player"
         );
     }
 }

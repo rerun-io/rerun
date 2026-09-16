@@ -89,6 +89,7 @@ pub fn detect_gop_start(
                 coded_dimensions: meta.coded_dimensions,
                 bit_depth: meta.bit_depth,
                 chroma_subsampling: Some(meta.chroma_subsampling),
+                max_num_reorder_frames: None,
                 stsd: None,
             }))
         }

@@ -2,7 +2,14 @@ mod encoded_depth_image;
 mod encoded_image;
 mod video_stream;
 
-use std::{iter::once, ops::Range, sync::Arc};
+use std::{
+    iter::once,
+    ops::Range,
+    sync::{
+        Arc,
+        atomic::{AtomicUsize, Ordering},
+    },
+};
 
 use crossbeam::channel::{Receiver, Sender};
 use re_chunk::{Chunk, RowId, TimeInt, Timeline};
@@ -24,30 +31,38 @@ struct TestDecoder {
     sender: re_video::Sender<Result<re_video::Frame, re_video::DecodeError>>,
     sample_tx: Sender<SampleIndex>,
     min_num_samples_to_enqueue_ahead: usize,
+
+    /// How many frames this decoder keeps buffered before it hands back the oldest one.
+    ///
+    /// Models ffmpeg, which holds back one sample per frame thread plus the codec's reorder
+    /// depth. A decoder whose delay exceeds `min_num_samples_to_enqueue_ahead` must not be able
+    /// to starve the player.
+    ///
+    /// Shared with the [`TestVideoPlayer`] so that a test can set it after construction.
+    output_delay: Arc<AtomicUsize>,
+
+    pending: std::collections::VecDeque<re_video::Frame>,
 }
 
 impl AsyncDecoder for TestDecoder {
     fn submit_chunk(&mut self, chunk: re_video::Chunk) -> re_video::DecodeResult<()> {
         re_quota_channel::send_crossbeam(&self.sample_tx, chunk.sample_idx).unwrap();
 
-        self.sender
-            .send(Ok(re_video::Frame {
-                content: re_video::FrameContent {
-                    data: Vec::new(),
-                    width: 0,
-                    height: 0,
-                    format: re_video::PixelFormat::Rgb8Unorm,
-                },
-                info: re_video::FrameInfo {
-                    is_sync: Some(chunk.is_sync),
-                    frame_nr: Some(chunk.frame_nr),
-                    source: Some(chunk.source),
-                    presentation_timestamp: chunk.presentation_timestamp,
-                    duration: chunk.duration,
-                    latest_decode_timestamp: Some(chunk.decode_timestamp),
-                },
-            }))
-            .unwrap();
+        self.pending.push_back(re_video::Frame {
+            content: re_video::FrameContent {
+                data: Vec::new(),
+                width: 0,
+                height: 0,
+                format: re_video::PixelFormat::Rgb8Unorm,
+            },
+            info: chunk.frame_info(),
+        });
+
+        if self.output_delay.load(Ordering::Relaxed) < self.pending.len()
+            && let Some(frame) = self.pending.pop_front()
+        {
+            self.sender.send(Ok(frame)).unwrap();
+        }
 
         Ok(())
     }
@@ -56,6 +71,7 @@ impl AsyncDecoder for TestDecoder {
         &mut self,
         _video_descr: &re_video::VideoDataDescription,
     ) -> re_video::DecodeResult<()> {
+        self.pending.clear();
         Ok(())
     }
 
@@ -102,19 +118,26 @@ pub(super) struct TestVideoPlayer {
     video_descr_source: Option<Box<dyn Fn() -> VideoDataDescription>>,
     time: f64,
     last_status: Option<re_video::player::PlayerFrameStatus>,
+    output_delay: Arc<AtomicUsize>,
 }
 
 impl TestVideoPlayer {
     fn from_descr(video_descr: VideoDataDescription) -> Self {
         #![expect(clippy::disallowed_methods)] // it's a test
         let (sample_tx, sample_rx) = crossbeam::channel::unbounded();
+        let output_delay = Arc::new(AtomicUsize::new(0));
         let video = VideoPlayer::new_with_decoder(
-            VideoSampleDecoder::new("test_decoder".to_owned(), |sender| {
-                Ok(Box::new(TestDecoder {
-                    sample_tx,
-                    min_num_samples_to_enqueue_ahead: 2,
-                    sender,
-                }))
+            VideoSampleDecoder::new("test_decoder".to_owned(), {
+                let output_delay = output_delay.clone();
+                |sender| {
+                    Ok(Box::new(TestDecoder {
+                        sample_tx,
+                        min_num_samples_to_enqueue_ahead: 2,
+                        sender,
+                        output_delay,
+                        pending: Default::default(),
+                    }))
+                }
             })
             .unwrap(),
         );
@@ -126,7 +149,14 @@ impl TestVideoPlayer {
             video_descr_source: None,
             time: 0.0,
             last_status: None,
+            output_delay,
         }
+    }
+
+    /// Make the fake decoder hold back `output_delay` frames before it hands back the oldest one.
+    fn with_output_delay(self, output_delay: usize) -> Self {
+        self.output_delay.store(output_delay, Ordering::Relaxed);
+        self
     }
 
     fn from_stream(stream: SharablePlayableVideoStream) -> Self {
@@ -359,6 +389,33 @@ fn test_simple_video(mut video: TestVideoPlayer, count: usize, dt: f64, max_time
     video.play(0.0..max_time, dt * 2.0).unwrap();
 
     video.expect_decoded_samples(0..count);
+}
+
+/// A decoder may hold back more samples than it declares through
+/// `min_num_samples_to_enqueue_ahead`, and the player cannot tell ahead of time: for the ffmpeg
+/// CLI decoder the real delay depends on the thread count and on the codec's reorder depth.
+///
+/// The player used to stop enqueueing at the declared minimum once it was one gop ahead, which for
+/// an all-keyframe video is after two samples. A decoder that needs more than that then never got
+/// enough input, emitted nothing, and the view showed a loading spinner forever.
+#[test]
+fn player_survives_a_decoder_that_holds_back_more_than_it_declares() {
+    let count = 20;
+    let dt = 0.1;
+
+    // Every sample is a keyframe, so each gop is a single sample and the declared minimum of 2 is
+    // reached almost immediately. The decoder needs 8.
+    let mut video = create_video((0..count).map(|t| keyframe(t as f64 * dt)))
+        .unwrap()
+        .with_output_delay(8);
+
+    video.frame_at(0.0, &TestVideoSource::new(|_| {})).unwrap();
+
+    assert_eq!(
+        video.shown_sample_idx(),
+        Some(0),
+        "decoder was starved: it never received enough samples to emit a frame"
+    );
 }
 
 #[test]

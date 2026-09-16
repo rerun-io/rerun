@@ -30,11 +30,18 @@ pub fn encoding_details_from_h265_sps(sps: &Sps) -> VideoEncodingDetails {
         _ => None,
     };
 
+    // The array is indexed by temporal sub-layer; the highest one bounds the whole stream.
+    let max_num_reorder_frames = sps
+        .max_num_reorder_pics
+        .get(sps.max_sub_layers_minus1 as usize)
+        .map(|num| *num as u32);
+
     VideoEncodingDetails {
         codec_string,
         coded_dimensions,
         bit_depth,
         chroma_subsampling,
+        max_num_reorder_frames,
         stsd: None,
     }
 }
@@ -234,6 +241,7 @@ mod test {
                 coded_dimensions: [1920, 1080],
                 bit_depth: Some(8),
                 chroma_subsampling: Some(ChromaSubsamplingModes::Yuv420),
+                max_num_reorder_frames: Some(2),
                 stsd: None,
             }))
         );

@@ -713,7 +713,14 @@ impl<T: Default> VideoPlayer<T> {
             let enqueued_min_amount = last_enqueued >= min_last_sample_idx;
             let enqueued_max_amount = last_enqueued + 1 >= max_last_sample_idx;
             // Have we requested in the next gop?
-            let ahead_one_gop = requested_keyframe_idx + 1 < keyframe_idx;
+            //
+            // Being a gop ahead only tells us the decoder has enough to work with if it has
+            // actually decoded something. Until then `min_num_samples_to_enqueue_ahead` is an
+            // unverified claim, and stopping on it strands a decoder whose real output delay is
+            // larger: it sits on the samples and the view never gets a frame. Keep going to the
+            // maximum instead, so an underestimate costs some decode work rather than every frame.
+            let ahead_one_gop = requested_keyframe_idx + 1 < keyframe_idx
+                && self.sample_decoder.produced_frame_since_reset();
 
             if enqueued_min_amount && (enqueued_max_amount || ahead_one_gop) {
                 break;

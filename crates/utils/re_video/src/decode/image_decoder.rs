@@ -39,6 +39,12 @@ impl SyncDecoder for SyncImageDecoder {
             return;
         }
 
+        let info = crate::FrameInfo {
+            // Every image decodes on its own.
+            is_sync: Some(true),
+            ..chunk.frame_info()
+        };
+
         let mut reader = image::ImageReader::new(std::io::Cursor::new(chunk.data));
 
         reader.set_format(self.image_format);
@@ -51,17 +57,8 @@ impl SyncDecoder for SyncImageDecoder {
             }
         };
 
-        let _send_error = output_sender.send(crate::FrameResult::Ok(crate::Frame {
-            content,
-            info: crate::FrameInfo {
-                is_sync: Some(true),
-                frame_nr: Some(chunk.frame_nr),
-                source: Some(chunk.source),
-                presentation_timestamp: chunk.presentation_timestamp,
-                duration: chunk.duration,
-                latest_decode_timestamp: Some(chunk.decode_timestamp),
-            },
-        }));
+        let _send_error =
+            output_sender.send(crate::FrameResult::Ok(crate::Frame { content, info }));
     }
 
     fn reset(&mut self, descr: &crate::VideoDataDescription) {

@@ -294,6 +294,7 @@ fn codec_details_from_stds(
         coded_dimensions: [track.width, track.height],
         bit_depth: stsd.contents.bit_depth(),
         chroma_subsampling: subsampling_mode(&stsd),
+        max_num_reorder_frames: None,
         stsd: Some(stsd),
     })
 }

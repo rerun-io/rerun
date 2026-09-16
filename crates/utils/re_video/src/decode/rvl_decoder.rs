@@ -46,12 +46,9 @@ impl SyncDecoder for RvlDecoder {
         let _send_error = output_sender.send(Ok(super::Frame {
             content,
             info: super::FrameInfo {
+                // Every image decodes on its own.
                 is_sync: Some(true),
-                frame_nr: Some(chunk.frame_nr),
-                source: Some(chunk.source),
-                presentation_timestamp: chunk.presentation_timestamp,
-                duration: chunk.duration,
-                latest_decode_timestamp: Some(chunk.decode_timestamp),
+                ..chunk.frame_info()
             },
         }));
     }

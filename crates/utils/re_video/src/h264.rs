@@ -45,11 +45,20 @@ pub fn encoding_details_from_h264_sps(
         }
     };
 
+    // Absent when the SPS carries no VUI bitstream restrictions, in which case a decoder falls
+    // back to whatever its level allows.
+    let max_num_reorder_frames = sps
+        .vui_parameters
+        .as_ref()
+        .and_then(|vui| vui.bitstream_restrictions.as_ref())
+        .map(|restrictions| restrictions.max_num_reorder_frames);
+
     Ok(VideoEncodingDetails {
         codec_string,
         coded_dimensions: [coded_dimensions.0 as _, coded_dimensions.1 as _],
         bit_depth: Some(bit_depth),
         chroma_subsampling,
+        max_num_reorder_frames,
         stsd: None,
     })
 }
@@ -218,6 +227,7 @@ mod test {
                 coded_dimensions: [64, 64],
                 bit_depth: Some(8),
                 chroma_subsampling: Some(ChromaSubsamplingModes::Yuv420),
+                max_num_reorder_frames: Some(2),
                 stsd: None,
             }))
         );

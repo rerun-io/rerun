@@ -69,6 +69,12 @@ pub struct VideoSampleDecoder {
 
     /// The [`Chunk::sample_idx`] of the latest submitted sample.
     latest_sample_idx: Option<crate::SampleIndex>,
+
+    /// Has the decoder handed us a frame since it was last reset?
+    ///
+    /// Until it has, [`Self::min_num_samples_to_enqueue_ahead`] is an unverified claim about how
+    /// many samples the decoder needs, so the caller has to keep feeding it.
+    produced_frame_since_reset: bool,
 }
 
 impl VideoSampleDecoder {
@@ -90,6 +96,7 @@ impl VideoSampleDecoder {
             decoder_output: DecoderOutput::default(),
             frame_receiver,
             latest_sample_idx: None,
+            produced_frame_since_reset: false,
         })
     }
 
@@ -106,6 +113,7 @@ impl VideoSampleDecoder {
                             );
                             self.decoder_output.insert_frame(frame, video_descr);
                             self.decoder_output.error = None; // We successfully decoded a frame, reset the error state.
+                            self.produced_frame_since_reset = true;
                         }
                         Err(err) => {
                             // Many of the errors we get from a decoder are recoverable.
@@ -185,6 +193,15 @@ impl VideoSampleDecoder {
         self.decoder.min_num_samples_to_enqueue_ahead()
     }
 
+    /// Has the decoder produced a frame since it was last reset?
+    ///
+    /// While this is false, [`Self::min_num_samples_to_enqueue_ahead`] has not been proven to be
+    /// enough for this decoder, codec and video, so the caller should keep enqueueing samples up
+    /// to [`Self::max_num_samples_to_enqueue_ahead`] rather than stopping at the minimum.
+    pub fn produced_frame_since_reset(&self) -> bool {
+        self.produced_frame_since_reset
+    }
+
     pub fn max_num_samples_to_enqueue_ahead(&self) -> usize {
         // To not fill memory up too much, only queue up a limited amount of samples.
         //
@@ -232,6 +249,7 @@ impl VideoSampleDecoder {
         self.process_decoder_output(video_descr);
         self.decoder_output.clear();
         self.latest_sample_idx = None;
+        self.produced_frame_since_reset = false;
 
         Ok(())
     }

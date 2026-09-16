@@ -464,6 +464,16 @@ pub struct VideoEncodingDetails {
     /// or missing information at this point.
     pub chroma_subsampling: Option<ChromaSubsamplingModes>,
 
+    /// How many frames a decoder may have to hold back before it can output in presentation order.
+    ///
+    /// Read from the bitstream: `max_num_reorder_frames` for H.264, `max_num_reorder_pics` for
+    /// H.265. This bounds a decoder's output delay, so it tells us how many samples we have to
+    /// enqueue before we can expect a frame back.
+    ///
+    /// `None` when the bitstream doesn't state it, which for H.264 means a decoder is allowed to
+    /// assume the worst case its level permits.
+    pub max_num_reorder_frames: Option<u32>,
+
     /// Optional mp4 stsd box from which this data was derived.
     ///
     /// Used by some decoders directly for configuration.
