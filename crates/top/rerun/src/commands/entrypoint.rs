@@ -1257,14 +1257,14 @@ fn start_native_viewer(
     // The in-process catalog connection must use the proxy's bound address because `server_addr`
     // may contain port zero.
     #[cfg(feature = "server")]
-    let (viewer_server_listener, internal_catalog) = {
+    let (viewer_server_listener, internal_catalog, connection_registry) = {
         let listener = re_grpc_server::ServerListener::bind(server_addr)?;
         let internal_catalog = re_viewer::internal_catalog::build(listener.local_addr());
-        connection_registry.set_internal(
+        let connection_registry = connection_registry.with_internal(
             internal_catalog.connection.clone(),
             internal_catalog.storage_dir().to_owned(),
         );
-        (listener, internal_catalog)
+        (listener, internal_catalog, connection_registry)
     };
 
     #[allow(clippy::allow_attributes, unused_mut)]

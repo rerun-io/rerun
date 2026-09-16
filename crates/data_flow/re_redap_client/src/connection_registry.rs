@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 use std::error::Error as _;
 use std::fmt::Write as _;
-use std::sync::{Arc, OnceLock};
+use std::sync::Arc;
 
 use re_auth::Jwt;
 use re_auth::credentials::CredentialsProviderError;
@@ -66,7 +66,7 @@ impl ConnectionRegistry {
                 fallback_token: None,
                 remote_connections: HashMap::new(),
             })),
-            internal: Arc::new(OnceLock::new()),
+            internal: None,
             use_stored_credentials: true,
         }
     }
@@ -83,7 +83,7 @@ impl ConnectionRegistry {
                 fallback_token: None,
                 remote_connections: HashMap::new(),
             })),
-            internal: Arc::new(OnceLock::new()),
+            internal: None,
             use_stored_credentials: false,
         }
     }
@@ -145,10 +145,7 @@ pub struct ConnectionRegistryHandle {
     inner: Arc<RwLock<ConnectionRegistry>>,
 
     /// The in-process internal catalog connection, if enabled.
-    ///
-    /// Shared across cloned handles and readable from sync code without taking the async registry
-    /// lock.
-    internal: Arc<OnceLock<InternalConnection>>,
+    internal: Option<Arc<InternalConnection>>,
 
     /// Whether to use credentials stored on the host machine by default.
     /// Since some tests run on a single-threaded tokio runtime and this is never updated,
@@ -237,7 +234,7 @@ impl ConnectionRegistryHandle {
     /// connection is made, so an origin we have not connected to yet is
     /// [`ServerCapabilities::unknown`].
     pub fn capabilities(&self, origin: &re_uri::Origin) -> ServerCapabilities {
-        if let Some(internal) = self.internal.get()
+        if let Some(internal) = self.internal.as_deref()
             && internal.connection.origin() == origin
         {
             return internal.connection.capabilities().clone();
@@ -273,36 +270,27 @@ impl ConnectionRegistryHandle {
         self.use_stored_credentials
     }
 
-    pub fn with_internal(self, connection: Connection, storage_dir: std::path::PathBuf) -> Self {
-        self.set_internal(connection, storage_dir);
-        self
-    }
-
-    pub fn set_internal(&self, connection: Connection, storage_dir: std::path::PathBuf) {
-        if let Err(rejected) = self.internal.set(InternalConnection {
+    pub fn with_internal(
+        mut self,
+        connection: Connection,
+        storage_dir: std::path::PathBuf,
+    ) -> Self {
+        self.internal = Some(Arc::new(InternalConnection {
             connection,
             storage_dir,
-        }) {
-            let new_origin = rejected.connection.origin();
-            let existing_origin = self
-                .internal_origin()
-                .map(|origin| origin.to_string())
-                .unwrap_or_else(|| "<missing>".to_owned());
-            re_log::debug!(
-                "Ignoring duplicate internal connection for {new_origin}; already set for {existing_origin}"
-            );
-        }
+        }));
+        self
     }
 
     pub fn internal_origin(&self) -> Option<re_uri::Origin> {
         self.internal
-            .get()
+            .as_deref()
             .map(|internal| internal.connection.origin().clone())
     }
 
     pub fn internal_storage_dir(&self) -> Option<&std::path::Path> {
         self.internal
-            .get()
+            .as_deref()
             .map(|internal| internal.storage_dir.as_path())
     }
 
@@ -317,7 +305,7 @@ impl ConnectionRegistryHandle {
 
     pub fn is_internal_origin(&self, origin: &re_uri::Origin) -> bool {
         self.internal
-            .get()
+            .as_deref()
             .is_some_and(|internal| internal.connection.origin() == origin)
     }
 
@@ -336,7 +324,7 @@ impl ConnectionRegistryHandle {
     /// Failing that, no token will be used.
     #[tracing::instrument(level = "info", skip_all)]
     pub(crate) async fn connection(&self, origin: re_uri::Origin) -> ApiResult<Connection> {
-        if let Some(internal) = self.internal.get()
+        if let Some(internal) = self.internal.as_deref()
             && internal.connection.origin() == &origin
         {
             return Ok(internal.connection.clone());

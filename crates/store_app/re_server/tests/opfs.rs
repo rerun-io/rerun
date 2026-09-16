@@ -49,8 +49,7 @@ async fn register_rrd_without_footer_from_file_url_in_opfs() {
 ///
 /// The placeholder origin is never dialed; requests go straight to `service`.
 fn in_process_connection<T: RerunCloudService>(service: Arc<T>) -> ConnectionHandle {
-    let registry = ConnectionRegistry::new_without_stored_credentials();
-    registry.set_internal(
+    let registry = ConnectionRegistry::new_without_stored_credentials().with_internal(
         Connection::from_service(
             re_uri::Origin::http_local_host(1),
             service,
