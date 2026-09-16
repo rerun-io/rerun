@@ -2,8 +2,6 @@
 
 #include <rerun.hpp>
 
-#include <algorithm>
-#include <random>
 #include <vector>
 
 int main(int argc, char* argv[]) {
@@ -47,51 +45,5 @@ int main(int argc, char* argv[]) {
                 rerun::ChannelDatatype::U8
             ))
             .with_albedo_factor(rerun::Rgba32(255, 255, 255, alpha))
-    );
-
-    // Example 3D data
-    std::default_random_engine gen(1);
-    std::uniform_real_distribution<float> uniform(0.1f, 0.9f);
-    std::normal_distribution<float> normal_dist(0.0f, 0.01f);
-    // On MSVC uint8_t distributions are not supported.
-    std::uniform_int_distribution<int> color_dist(40, 254);
-
-    std::vector<rerun::Collection<rerun::Vec3D>> strips;
-    std::vector<rerun::Color> colors;
-    strips.reserve(20);
-    colors.reserve(20);
-
-    for (int i = 0; i < 20; ++i) {
-        float u = uniform(gen);
-        float v = uniform(gen);
-        colors.emplace_back(
-            static_cast<uint8_t>(color_dist(gen)),
-            static_cast<uint8_t>(color_dist(gen)),
-            static_cast<uint8_t>(color_dist(gen))
-        );
-
-        std::vector<rerun::Vec3D> strip;
-        strip.reserve(40);
-        for (int step = 0; step < 40; ++step) {
-            float t = static_cast<float>(step) / static_cast<float>(40 - 1);
-            u = std::clamp(u + normal_dist(gen), 0.0f, 1.0f);
-            v = std::clamp(v + normal_dist(gen), 0.0f, 1.0f);
-            strip.push_back({1.0f - t, 1.0f - u, 1.0f - v});
-        }
-        strips.emplace_back(std::move(strip));
-    }
-
-    rec.log(
-        "tracks",
-        rerun::LineStrips3D(strips).with_colors(colors).with_radii(0.002f)
-    );
-
-    rec.log(
-        "time-axis",
-        rerun::Arrows3D::from_vectors({{1.0f, 0.0f, 0.0f}})
-            .with_origins({{0.0f, 1.0f, 0.0f}})
-            .with_labels({"Time"})
-            .with_colors({{255, 255, 255}})
-            .with_radii({0.005f})
     );
 }
