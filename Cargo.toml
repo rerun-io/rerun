@@ -174,6 +174,7 @@ re_byte_size_derive = { path = "crates/utils/re_byte_size_derive", version = "=0
 re_capabilities = { path = "crates/utils/re_capabilities", version = "=0.38.0-alpha.1", default-features = false }
 re_case = { path = "crates/utils/re_case", version = "=0.38.0-alpha.1", default-features = false }
 re_crash_handler = { path = "crates/utils/re_crash_handler", version = "=0.38.0-alpha.1", default-features = false }
+re_dump_puffin = { path = "crates/utils/re_dump_puffin", version = "=0.38.0-alpha.1", default-features = false }
 re_error = { path = "crates/utils/re_error", version = "=0.38.0-alpha.1", default-features = false }
 re_format = { path = "crates/utils/re_format", version = "=0.38.0-alpha.1", default-features = false }
 re_grpc_headers = { path = "crates/utils/re_grpc_headers", version = "=0.38.0-alpha.1", default-features = false }
@@ -580,6 +581,7 @@ debug = false
 "re_dataframe".debug = true
 "re_datafusion".debug = true
 "re_dev_tools".debug = true
+"re_dump_puffin".debug = true
 "re_entity_db".debug = true
 "re_error".debug = true
 "re_format".debug = true

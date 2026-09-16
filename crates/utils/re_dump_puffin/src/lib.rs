@@ -1,12 +1,15 @@
+//! Converts [puffin](https://github.com/EmbarkStudios/puffin) profiler recordings
+//! (`.puffin` files) into JSON, so the scope tree can be analyzed with tools like `jq`.
+
 use std::{
     collections::BTreeMap,
     fs::File,
-    io::{BufReader, BufWriter},
-    path::PathBuf,
+    io::{BufReader, BufWriter, Write},
+    path::Path,
     sync::Arc,
 };
 
-use anyhow::{Context, Result};
+use anyhow::{Context as _, Result};
 use puffin::{FrameData, Reader, Scope, ScopeCollection, ScopeDetails, ScopeId, Stream};
 use serde::Serialize;
 
@@ -52,7 +55,7 @@ struct ScopeNode {
     start_ns: i64,
     duration_ns: i64,
     data: String,
-    children: Vec<ScopeNode>,
+    children: Vec<Self>,
 }
 
 fn scope_kind(d: &ScopeDetails) -> &'static str {
@@ -89,13 +92,14 @@ fn walk(stream: &Stream, offset: u64, scopes: &BTreeMap<u32, ScopeOut>) -> Resul
     Ok(out)
 }
 
-fn main() -> Result<()> {
-    let path: PathBuf = std::env::args_os()
-        .nth(1)
-        .map(PathBuf::from)
-        .context("usage: dump-puffin <file.puffin>")?;
-
-    let file = File::open(&path).with_context(|| format!("opening {}", path.display()))?;
+/// Reads the `.puffin` recording at `path` and writes it as one JSON document to `writer`.
+///
+/// The JSON layout is `{file, scopes: {id: {name, function, file, line, kind}}, frames: […]}`,
+/// where each frame holds its thread streams as nested scope trees.
+/// The `scopes` registration map may be empty when the capture did not include scope
+/// registration; scope names then fall back to `scope#<id>`.
+pub fn dump_to_json_writer(path: &Path, writer: impl Write) -> Result<()> {
+    let file = File::open(path).with_context(|| format!("opening {}", path.display()))?;
     let mut reader = BufReader::new(file);
 
     let mut header = [0u8; 4];
@@ -118,6 +122,7 @@ fn main() -> Result<()> {
     }
 
     let mut scopes: BTreeMap<u32, ScopeOut> = BTreeMap::new();
+    #[expect(clippy::iter_over_hash_type)] // Inserting into a `BTreeMap`, so order is irrelevant.
     for (id, d) in collection.scopes_by_id() {
         scopes.insert(
             id.0.get(),
@@ -161,8 +166,64 @@ fn main() -> Result<()> {
         frames,
     };
 
-    let stdout = std::io::stdout().lock();
-    let mut w = BufWriter::new(stdout);
-    serde_json::to_writer(&mut w, &out).context("writing JSON")?;
+    let mut writer = BufWriter::new(writer);
+    serde_json::to_writer(&mut writer, &out).context("writing JSON")?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use std::io::Write as _;
+
+    use super::dump_to_json_writer;
+
+    #[test]
+    fn dump_roundtripped_capture() {
+        // Capture one profiled frame the same way `puffin_viewer` exports do.
+        // A test capturing a single frame needs no backpressure.
+        #[expect(clippy::disallowed_methods)]
+        let (frame_tx, frame_rx) = std::sync::mpsc::channel();
+        puffin::set_scopes_on(true);
+        let sink_id = puffin::GlobalProfiler::lock().add_sink(Box::new(move |frame| {
+            frame_tx.send(frame).ok();
+        }));
+        {
+            puffin::profile_scope!("test_scope", "test data");
+        }
+        puffin::GlobalProfiler::lock().new_frame();
+        puffin::GlobalProfiler::lock().remove_sink(sink_id);
+        puffin::set_scopes_on(false);
+
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("test.puffin");
+        {
+            let mut file = std::fs::File::create(&path).unwrap();
+            file.write_all(b"PUF0").unwrap();
+            for frame in frame_rx.try_iter() {
+                frame.write_into(None, &mut file).unwrap();
+            }
+        }
+
+        let mut json_bytes = Vec::new();
+        dump_to_json_writer(&path, &mut json_bytes).unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&json_bytes).unwrap();
+
+        let scope_names: Vec<&str> = json["scopes"]
+            .as_object()
+            .unwrap()
+            .values()
+            .map(|scope| scope["name"].as_str().unwrap())
+            .collect();
+        assert!(
+            scope_names.contains(&"test_scope"),
+            "expected registered scope names to contain `test_scope`, got: {scope_names:?}"
+        );
+
+        let frames = json["frames"].as_array().unwrap();
+        assert!(!frames.is_empty());
+        let threads = frames[0]["threads"].as_array().unwrap();
+        let scopes = threads[0]["scopes"].as_array().unwrap();
+        assert_eq!(scopes[0]["name"], "test_scope");
+        assert_eq!(scopes[0]["data"], "test data");
+    }
 }

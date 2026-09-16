@@ -143,6 +143,7 @@ run = [
   "dep:re_chunk_optimizer",
   "dep:re_crash_handler",
   "dep:re_data_source",
+  "dep:re_dump_puffin",
   "re_log_encoding/decoder",
   "re_log_encoding/encoder",
   "rrd",
@@ -220,6 +221,7 @@ re_chunk_store.workspace = true
 re_crash_handler = { workspace = true, optional = true }
 re_data_source = { workspace = true, optional = true }
 re_dataframe = { workspace = true, optional = true }
+re_dump_puffin = { workspace = true, optional = true }
 re_grpc_server = { workspace = true, optional = true }
 re_mcap = { workspace = true, optional = true }
 mcap = { workspace = true, optional = true }

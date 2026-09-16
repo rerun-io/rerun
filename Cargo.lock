@@ -8333,7 +8333,9 @@ dependencies = [
  "itertools 0.14.0",
  "lz4_flex",
  "parking_lot",
+ "ruzstd",
  "serde",
+ "zstd",
 ]
 
 [[package]]
@@ -9394,6 +9396,17 @@ dependencies = [
  "ureq",
  "url",
  "wasm-bindgen-cli-support",
+]
+
+[[package]]
+name = "re_dump_puffin"
+version = "0.38.0-alpha.1+dev"
+dependencies = [
+ "anyhow",
+ "puffin",
+ "serde",
+ "serde_json",
+ "tempfile",
 ]
 
 [[package]]
@@ -11791,6 +11804,7 @@ dependencies = [
  "re_crash_handler",
  "re_data_source",
  "re_dataframe",
+ "re_dump_puffin",
  "re_entity_db",
  "re_error",
  "re_format",
@@ -12253,6 +12267,15 @@ name = "rustversion"
 version = "1.0.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf54715a573b99ac80df0bc206da022bcd442c974952c7b9720069370852e21f"
+
+[[package]]
+name = "ruzstd"
+version = "0.8.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a7c1c839d570d835527c9a5e4db7cb2198683a988cb9d7293fc8674e6bd58fc8"
+dependencies = [
+ "twox-hash",
+]
 
 [[package]]
 name = "ryu"

@@ -25,6 +25,7 @@ impl CallSource {
 mod auth;
 mod cli_data_source;
 mod download;
+mod dump_puffin;
 
 mod entrypoint;
 #[cfg(feature = "importers")]
@@ -40,6 +41,7 @@ mod analytics;
 #[cfg(feature = "analytics")]
 pub(crate) use self::analytics::AnalyticsCommands;
 pub use self::download::DownloadCommand;
+pub use self::dump_puffin::DumpPuffinCommand;
 pub use self::entrypoint::run;
 #[cfg(feature = "importers")]
 pub use self::mcap::McapCommands;

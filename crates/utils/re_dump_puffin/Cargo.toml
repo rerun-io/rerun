@@ -1,0 +1,28 @@
+[package]
+name = "re_dump_puffin"
+description = "Convert puffin profiler recordings (.puffin files) into JSON for analysis"
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+license.workspace = true
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+
+[dependencies]
+anyhow.workspace = true
+puffin = { workspace = true, features = ["lz4", "serialization", "zstd"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

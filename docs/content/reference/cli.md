@@ -21,6 +21,7 @@ The Rerun command-line interface:
 * `analytics`: Configure the behavior of our analytics.
 * `auth`: Authentication with the redap.
 * `download`: Download recordings and save them as .rrd files.
+* `dump-puffin`: Dump a puffin profiler recording (`.puffin` file) as JSON.
 * `man`: Generates the Rerun CLI manual (markdown).
 * `mcap`: Manipulate the contents of .mcap files.
 * `viewer-mcp`: Run an MCP server that controls a running Rerun Viewer.
@@ -364,6 +365,19 @@ Supports downloading from Rerun Hub as well as any other supported URI.
 > Override the output directory for the downloaded `.rrd` files.
 >
 > Defaults to the current working directory.
+
+## rerun dump-puffin
+
+Dump a puffin profiler recording (`.puffin` file) as JSON.
+
+The output can be large; redirect it to a file and query it with e.g. `jq`.
+
+**Usage**: `rerun dump-puffin <PATH>`
+
+**Arguments**
+
+* `<PATH>`
+> Path to the `.puffin` file to dump.
 
 ## rerun mcap
 

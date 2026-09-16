@@ -1,6 +1,6 @@
 ---
 name: investigate-puffin
-description: Investigate Puffin profiler recordings (.puffin files), find slow scopes, and compare before/after traces using a bundled parser and analysis helpers.
+description: Investigate Puffin profiler recordings (.puffin files), find slow scopes, and compare before/after traces using the `rerun dump-puffin` command and bundled analysis helpers.
 ---
 
 # Investigate puffin traces
@@ -10,17 +10,22 @@ Use the recording path supplied by the user.
 
 ## Setup
 
-Requires Rust/Cargo, Python 3.10 or later, and jq.
+Requires the `rerun` CLI (Rerun 0.38 or later), Python 3.10 or later, and jq.
 The Python helpers use only the standard library.
 Set `PUFFIN_SKILL_DIR` to the absolute directory containing this `SKILL.md`.
 In Claude Code, you can use `export PUFFIN_SKILL_DIR="${CLAUDE_SKILL_DIR}"`; in other agents, resolve the directory from the installed skill location.
 
-Build the dumper (one time), dump the trace to a file, and check scope registration:
+Dump the trace to a file and check scope registration:
 
 ```bash
-cargo build --release --locked --target-dir "${PUFFIN_SKILL_DIR}/dump-puffin/target" --manifest-path "${PUFFIN_SKILL_DIR}/dump-puffin/Cargo.toml"
-"${PUFFIN_SKILL_DIR}/dump-puffin/target/release/dump-puffin" <path> > /tmp/puffin.json
+rerun dump-puffin <path> > /tmp/puffin.json
 jq '.scopes | length' /tmp/puffin.json
+```
+
+If no (recent enough) `rerun` binary is on the path but you are in a Rerun checkout, run the sub-command from source instead:
+
+```bash
+cargo run --quiet -p rerun-cli --no-default-features -- dump-puffin <path> > /tmp/puffin.json
 ```
 
 Always dump to a file.
@@ -35,7 +40,7 @@ Check the registration table after exporting: do not assume that every capture t
 
 Use the application's Puffin capture or export support to save a `.puffin` file.
 For applications serving profiling data through `puffin_http`, connect a compatible `puffin_viewer` and export the recording.
-The bundled dumper uses Puffin 0.19; captures from incompatible format versions may require a matching parser.
+The dumper uses Puffin 0.20; captures from incompatible format versions may require a matching parser.
 
 Rerun-specific examples:
 
@@ -162,7 +167,7 @@ A gap can also represent uninstrumented work, I/O, or scheduler delay.
 
 ```bash
 # dump the second trace
-"${PUFFIN_SKILL_DIR}/dump-puffin/target/release/dump-puffin" <new-path> > /tmp/puffin2.json
+rerun dump-puffin <new-path> > /tmp/puffin2.json
 
 # joined per-(name, data) comparison sorted by |Δtotal|
 # --sort delta is also the default: largest absolute change first.

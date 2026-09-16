@@ -291,6 +291,7 @@ A sibling of `crates/views`: neither depends on the other.
 | re_capabilities     | Capability tokens for the Rerun code base.                                                                                                                                 |
 | re_case             | Case conversions, the way Rerun likes them                                                                                                                                 |
 | re_crash_handler    | Detect panics and signals, logging them and optionally sending them to analytics.                                                                                          |
+| re_dump_puffin      | Convert puffin profiler recordings (.puffin files) into JSON for analysis                                                                                                  |
 | re_error            | Helpers for handling errors.                                                                                                                                               |
 | re_format           | Miscellaneous tools to format and parse numbers, durations, etc.                                                                                                           |
 | re_grpc_headers     | Rerun gRPC header conventions: well-known header names, the `RerunVersionInterceptor`, and the tower `Layer` machinery that propagates them across requests and responses. |

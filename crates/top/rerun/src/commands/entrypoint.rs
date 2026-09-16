@@ -16,6 +16,7 @@ use crate::CallSource;
 #[cfg(feature = "analytics")]
 use crate::commands::AnalyticsCommands;
 use crate::commands::DownloadCommand;
+use crate::commands::DumpPuffinCommand;
 #[cfg(feature = "importers")]
 use crate::commands::McapCommands;
 use crate::commands::RrdCommands;
@@ -648,6 +649,12 @@ enum Command {
     /// Supports downloading from Rerun Hub as well as any other supported URI.
     Download(DownloadCommand),
 
+    /// Dump a puffin profiler recording (`.puffin` file) as JSON.
+    ///
+    /// The output can be large; redirect it to a file and query it with e.g. `jq`.
+    #[command(name = "dump-puffin")]
+    DumpPuffin(DumpPuffinCommand),
+
     /// Generates the Rerun CLI manual (markdown).
     ///
     /// Example: `rerun man > docs/content/reference/cli.md`
@@ -794,6 +801,8 @@ where
             Command::Analytics(analytics) => analytics.run().map_err(Into::into),
 
             Command::Download(cmd) => cmd.run(tokio_runtime.handle()),
+
+            Command::DumpPuffin(cmd) => cmd.run(),
 
             Command::Manual => {
                 let man = Args::generate_markdown_manual();
@@ -2119,6 +2128,8 @@ fn record_cli_command_analytics(args: &Args) {
         Some(Command::ViewerMcp { .. }) => ("viewer-mcp", None),
 
         Some(Command::Download(_)) => ("download", None),
+
+        Some(Command::DumpPuffin(_)) => ("dump-puffin", None),
 
         #[cfg(feature = "native_viewer")]
         Some(Command::Reset) => ("reset", None),
