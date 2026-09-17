@@ -9,7 +9,15 @@ use crate::{Chunk, ChunkId, ChunkResult, RowId, TimeColumn};
 
 // ---
 
-/// Helper to incrementally build a [`Chunk`].
+/// Helper to incrementally build a [`Chunk`], one row at a time.
+///
+/// Every row holds its own arrow array per component, and [`Self::build`] concatenates them all.
+/// That is one allocation per row per component, so this is only meant for a handful of rows or
+/// for data that truly arrives row by row.
+///
+/// To build a chunk of many rows, fill one arrow array per component and hand it to
+/// [`Chunk::from_auto_row_ids`] or [`Chunk::from_native_row_ids`] together with the
+/// [`TimeColumn`]s.
 ///
 /// Can be created using [`Chunk::builder`].
 pub struct ChunkBuilder {
@@ -23,6 +31,8 @@ pub struct ChunkBuilder {
 
 impl Chunk {
     /// Initializes a new [`ChunkBuilder`].
+    ///
+    /// Read the cost of row-by-row building on [`ChunkBuilder`] before reaching for this.
     #[inline]
     pub fn builder(entity_path: impl Into<EntityPath>) -> ChunkBuilder {
         ChunkBuilder::new(ChunkId::new(), entity_path.into())

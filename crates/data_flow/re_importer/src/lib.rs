@@ -19,6 +19,8 @@ use re_log_types::{ArrowMsg, EntityPath, LogMsg, RecordingId, StoreId, TimePoint
 mod import_file;
 mod importer_archetype;
 mod importer_directory;
+#[cfg(feature = "puffin")]
+mod importer_puffin;
 mod importer_rrd;
 #[cfg(feature = "urdf")]
 mod importer_urdf;
@@ -45,6 +47,8 @@ pub use self::importer_lerobot::LeRobotDatasetImporter;
 pub use self::importer_mcap::McapImporter;
 #[cfg(all(feature = "parquet", not(target_arch = "wasm32")))]
 pub use self::importer_parquet::ParquetImporter;
+#[cfg(feature = "puffin")]
+pub use self::importer_puffin::PuffinImporter;
 pub use self::importer_rrd::RrdImporter;
 #[cfg(feature = "urdf")]
 pub use self::importer_urdf::{UrdfImporter, UrdfTree, joint_transform as urdf_joint_transform};
@@ -539,6 +543,8 @@ static BUILTIN_IMPORTERS: LazyLock<Vec<Arc<dyn Importer>>> = LazyLock::new(|| {
         Arc::new(LeRobotDatasetImporter),
         #[cfg(not(target_arch = "wasm32"))]
         Arc::new(ExternalImporter),
+        #[cfg(feature = "puffin")]
+        Arc::new(PuffinImporter),
         #[cfg(feature = "urdf")]
         Arc::new(UrdfImporter),
     ]
@@ -597,7 +603,7 @@ pub const SUPPORTED_POINT_CLOUD_EXTENSIONS: &[&str] = &["ply"];
 pub const SUPPORTED_RERUN_EXTENSIONS: &[&str] = &["rbl", "rrd"];
 
 /// 3rd party formats with built-in support.
-pub const SUPPORTED_THIRD_PARTY_FORMATS: &[&str] = &["mcap", "urdf"];
+pub const SUPPORTED_THIRD_PARTY_FORMATS: &[&str] = &["mcap", "puffin", "urdf"];
 
 pub const SUPPORTED_PARQUET_EXTENSIONS: &[&str] = &["parquet"];
 

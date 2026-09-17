@@ -20,10 +20,10 @@ all-features = true
 
 
 [features]
-default = ["image", "video", "mcap", "lerobot", "parquet", "urdf"]
+default = ["image", "video", "mcap", "lerobot", "parquet", "puffin", "urdf"]
 
 ## Every importer feature.
-all = ["image", "lerobot", "mcap", "parquet", "urdf", "video"]
+all = ["image", "lerobot", "mcap", "parquet", "puffin", "urdf", "video"]
 
 ## Import of common image formats (PNG, JPEG, …) as `EncodedImage`/`EncodedDepthImage`.
 image = ["dep:image", "re_sdk_types/image"]
@@ -38,6 +38,10 @@ mcap = ["dep:mcap", "dep:memmap2", "dep:re_mcap", "dep:re_lenses", "urdf"]
 
 ## Parquet file import.
 parquet = ["dep:parquet", "dep:re_parquet"]
+
+## Import of `.puffin` profiler captures as state changes.
+## See <https://github.com/EmbarkStudios/puffin>.
+puffin = ["dep:puffin"]
 
 ## URDF file import.
 urdf = ["dep:urdf-rs", "dep:ureq"]
@@ -64,6 +68,11 @@ required-features = ["video"]
 [[test]]
 name = "test_ply_importer"
 path = "tests/test_ply_importer.rs"
+
+[[test]]
+name = "test_puffin_importer"
+path = "tests/test_puffin_importer.rs"
+required-features = ["puffin"]
 
 [[test]]
 name = "test_urdf_importer"
@@ -99,6 +108,7 @@ indexmap.workspace = true
 itertools.workspace = true
 mcap = { workspace = true, optional = true }
 parking_lot.workspace = true
+puffin = { workspace = true, features = ["serialization"], optional = true }
 rayon.workspace = true
 serde.workspace = true
 thiserror.workspace = true

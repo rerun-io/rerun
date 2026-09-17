@@ -9588,6 +9588,7 @@ dependencies = [
  "memmap2 0.9.11",
  "parking_lot",
  "parquet",
+ "puffin",
  "rayon",
  "re_arrow_util",
  "re_chunk",

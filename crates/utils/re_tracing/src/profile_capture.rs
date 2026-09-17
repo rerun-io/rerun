@@ -28,6 +28,10 @@ impl ProfileCapture {
             sink_frames.lock().push(frame);
         }));
 
+        // Scope names are sent as a delta, so ask for the names of the scopes that were already
+        // known before this sink was added.
+        puffin::GlobalProfiler::lock().emit_scope_snapshot();
+
         Self {
             frames,
             sink_id,
