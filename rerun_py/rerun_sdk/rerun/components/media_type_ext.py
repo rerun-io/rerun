@@ -60,6 +60,13 @@ class MediaTypeExt:
     <https://www.iana.org/assignments/media-types/model/obj>
     """
 
+    PLY: MediaType = None  # type: ignore[assignment]
+    """
+    [PLY (Polygon File Format)](https://en.wikipedia.org/wiki/PLY_(file_format)): `application/x-ply`.
+
+    Holds either a mesh or a point cloud, depending on its header.
+    """
+
     STL: MediaType = None  # type: ignore[assignment]
     """
     [Stereolithography Model `stl`](https://en.wikipedia.org/wiki/STL_(file_format)): `model/stl`.
@@ -100,6 +107,7 @@ class MediaTypeExt:
         cls.GLB = cls("model/gltf-binary")
         cls.GLTF = cls("model/gltf+json")
         cls.OBJ = cls("model/obj")
+        cls.PLY = cls("application/x-ply")
         cls.STL = cls("model/stl")
 
         cls.RVL = cls("application/rvl")
@@ -125,6 +133,8 @@ class MediaTypeExt:
             return MediaType.GLTF
         elif ext == ".obj":
             return MediaType.OBJ
+        elif ext == ".ply":
+            return MediaType.PLY
         elif ext == ".stl":
             return MediaType.STL
 
