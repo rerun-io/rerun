@@ -3,7 +3,7 @@
 //! Used for things like CI screenshot generation via `ViewerClient::save_screenshot`.
 
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use parking_lot::{Condvar, Mutex};
 
@@ -11,8 +11,21 @@ use crate::App;
 
 type AppCreator = Box<dyn FnOnce(&eframe::CreationContext<'_>) -> App>;
 
+/// Earliest time at which egui has asked us to repaint, if any.
+type RepaintSignal = (Mutex<Option<Instant>>, Condvar);
+
 /// Default headless viewport size (logical points).
 const DEFAULT_HEADLESS_SIZE: (f32, f32) = (1920.0, 1080.0);
+
+/// How long an idle headless viewer sleeps between frames.
+const IDLE_TICK: Duration = Duration::from_secs(1);
+
+/// Shortest time between two headless frames, i.e. a 60 FPS cap.
+///
+/// There is no vsync to pace us, so without this the loop renders as fast as
+/// the machine allows whenever anything asks for a repaint every frame (video
+/// decoding, animations, a spinner, …).
+const MIN_FRAME_TIME: Duration = Duration::from_millis(16);
 
 /// Run the viewer in headless mode.
 ///
@@ -32,11 +45,7 @@ pub fn run_headless_app(
 
     let wgpu_setup = crate::wgpu_options(force_wgpu_backend).wgpu_setup;
 
-    // Signal flipped to `true` whenever something calls `ctx.request_repaint()`.
-    // The headless loop uses this to wake up early instead of waiting the full
-    // 1s idle tick — keeps animations and incoming gRPC data feeling snappy
-    // while still letting an idle viewer sleep most of the time.
-    let repaint_signal: Arc<(Mutex<bool>, Condvar)> = Arc::new((Mutex::new(false), Condvar::new()));
+    let repaint_signal: Arc<RepaintSignal> = Arc::new((Mutex::new(None), Condvar::new()));
 
     let mut init_result = Ok(());
     let init_result_mut = &mut init_result;
@@ -48,10 +57,14 @@ pub fn run_headless_app(
             .wgpu_setup(wgpu_setup)
             .build_eframe(move |cc| {
                 let repaint_signal = repaint_signal.clone();
-                cc.egui_ctx.set_request_repaint_callback(move |_info| {
+                cc.egui_ctx.set_request_repaint_callback(move |info| {
+                    let deadline = Instant::now() + info.delay;
                     let (lock, cvar) = &*repaint_signal;
-                    *lock.lock() = true;
-                    cvar.notify_all();
+                    let mut earliest = lock.lock();
+                    if earliest.is_none_or(|current| deadline < current) {
+                        *earliest = Some(deadline);
+                        cvar.notify_all();
+                    }
                 });
                 *init_result_mut = crate::customize_eframe_and_setup_renderer(cc);
                 app_creator(cc)
@@ -62,8 +75,9 @@ pub fn run_headless_app(
 
     re_log::info!("Headless viewer running at {}x{}.", size.x, size.y);
 
-    let idle_timeout = Duration::from_secs(1);
     loop {
+        let frame_start = Instant::now();
+
         harness.step();
 
         if has_pending_close(&harness) {
@@ -71,13 +85,34 @@ pub fn run_headless_app(
             return Ok(());
         }
 
-        let (lock, cvar) = &*repaint_signal;
-        let mut signaled = lock.lock();
-        if !*signaled {
-            cvar.wait_for(&mut signaled, idle_timeout);
-        }
-        *signaled = false;
+        wait_for_repaint(&repaint_signal, frame_start + MIN_FRAME_TIME);
     }
+}
+
+/// Block until a repaint is due, or until the idle tick elapses.
+///
+/// Never returns before `frame_floor`, which paces the loop even when every
+/// frame asks for an immediate repaint.
+///
+/// `request_repaint_after(delay)` must not wake us before `delay` has passed:
+/// treating a delayed request as "repaint now" turns this loop into a busy spin
+/// that burns a full core, since headless rendering has no vsync to throttle it.
+fn wait_for_repaint(repaint_signal: &RepaintSignal, frame_floor: Instant) {
+    let (lock, cvar) = repaint_signal;
+    let idle_deadline = Instant::now() + IDLE_TICK;
+
+    let mut requested = lock.lock();
+    loop {
+        let deadline = requested
+            .map_or(idle_deadline, |deadline| deadline.min(idle_deadline))
+            .max(frame_floor);
+        let now = Instant::now();
+        if deadline <= now {
+            break;
+        }
+        cvar.wait_for(&mut requested, deadline - now);
+    }
+    *requested = None;
 }
 
 /// Detect `ViewportCommand::Close` in this frame's viewport output.
