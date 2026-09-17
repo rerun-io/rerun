@@ -33,7 +33,9 @@ pub use voxel_grid::{
 };
 pub use world_grid::{WorldGridConfiguration, WorldGridDrawData, WorldGridRenderer};
 
-pub use self::depth_cloud::{DepthCloud, DepthCloudDrawData, DepthCloudRenderer, DepthClouds};
+pub use self::depth_cloud::{
+    DepthCloud, DepthCloudDrawData, DepthCloudRenderer, DepthClouds, depth_cloud_world_space_bbox,
+};
 
 pub mod gpu_data {
     pub use super::gaussian_splat::gpu_data::{

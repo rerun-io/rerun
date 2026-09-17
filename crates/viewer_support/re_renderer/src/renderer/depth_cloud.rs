@@ -170,32 +170,48 @@ impl DepthCloud {
     /// Assumes max extent to be the maximum depth used for colormapping
     /// but ignores the minimum depth, using the frustum's origin instead.
     pub fn world_space_bbox(&self) -> macaw::BoundingBox {
-        let max_depth = self.min_max_depth_in_world[1];
-        let w = self.depth_dimensions.x as f32;
-        let h = self.depth_dimensions.y as f32;
-        let corners = [
-            glam::Vec3::ZERO, // camera origin
-            glam::Vec3::new(0.0, 0.0, max_depth),
-            glam::Vec3::new(0.0, h, max_depth),
-            glam::Vec3::new(w, 0.0, max_depth),
-            glam::Vec3::new(w, h, max_depth),
-        ];
-
-        let intrinsics = self.depth_camera_intrinsics;
-        let focal_length = glam::vec2(intrinsics.col(0).x, intrinsics.col(1).y);
-        let offset = intrinsics.col(2).truncate();
-
-        let mut bbox = macaw::BoundingBox::nothing();
-
-        for corner in corners {
-            let depth = corner.z;
-            let pos_in_obj = ((corner.truncate() - offset) * depth / focal_length).extend(depth);
-            let pos_in_world = self.world_from_rdf.transform_point3(pos_in_obj);
-            bbox.extend(pos_in_world);
-        }
-
-        bbox
+        depth_cloud_world_space_bbox(
+            self.world_from_rdf,
+            self.depth_camera_intrinsics,
+            self.depth_dimensions,
+            self.min_max_depth_in_world[1],
+        )
     }
+}
+
+/// World-space bounding-box of a depth cloud, see [`DepthCloud::world_space_bbox`].
+pub fn depth_cloud_world_space_bbox(
+    world_from_rdf: glam::Affine3A,
+    depth_camera_intrinsics: glam::Mat3,
+    depth_dimensions: glam::UVec2,
+    max_depth_in_world: f32,
+) -> macaw::BoundingBox {
+    let max_depth = max_depth_in_world;
+
+    let w = depth_dimensions.x as f32;
+    let h = depth_dimensions.y as f32;
+    let corners = [
+        glam::Vec3::ZERO, // camera origin
+        glam::Vec3::new(0.0, 0.0, max_depth),
+        glam::Vec3::new(0.0, h, max_depth),
+        glam::Vec3::new(w, 0.0, max_depth),
+        glam::Vec3::new(w, h, max_depth),
+    ];
+
+    let intrinsics = depth_camera_intrinsics;
+    let focal_length = glam::vec2(intrinsics.col(0).x, intrinsics.col(1).y);
+    let offset = intrinsics.col(2).truncate();
+
+    let mut bbox = macaw::BoundingBox::nothing();
+
+    for corner in corners {
+        let depth = corner.z;
+        let pos_in_obj = ((corner.truncate() - offset) * depth / focal_length).extend(depth);
+        let pos_in_world = world_from_rdf.transform_point3(pos_in_obj);
+        bbox.extend(pos_in_world);
+    }
+
+    bbox
 }
 
 pub struct DepthClouds {

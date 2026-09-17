@@ -15,6 +15,7 @@ use re_viewport_blueprint::{ViewProperty, ViewPropertyQueryError};
 
 use crate::pinhole_wrapper::PinholeWrapper;
 use crate::scene_bounding_boxes::SceneBoundingBoxes;
+use crate::ui::SpatialViewState;
 
 /// An eye in a 3D view.
 ///
@@ -155,6 +156,86 @@ impl Eye {
     }
 }
 
+/// The world space planes bounding what an [`Eye`] sees, widened by [`Self::MARGIN`].
+///
+/// All normals point into the frustum, so a point is outside as soon as it has a negative distance
+/// to any one plane. There is no far plane, it is at infinity.
+///
+/// The margin makes this wider than the viewport, so it tells you what is certainly off screen,
+/// not what is on screen.
+#[derive(Clone, Copy, Debug)]
+pub struct ExtendedEyeFrustum {
+    planes: [macaw::Plane3; 5],
+}
+
+impl ExtendedEyeFrustum {
+    /// How much wider than the viewport the frustum is on each side, as a fraction of the half
+    /// angle.
+    ///
+    /// The frustum is one frame behind what is on screen, so this covers the movement in between.
+    const MARGIN: f32 = 0.25;
+
+    /// Largest half angle a side plane may have once the margin is applied.
+    const MAX_HALF_ANGLE: f32 = std::f32::consts::FRAC_PI_2;
+
+    /// Widens a half angle of the field of view by [`Self::MARGIN`], never narrowing it.
+    fn widen(half_fov: f32) -> f32 {
+        half_fov.max((half_fov * (1.0 + Self::MARGIN)).min(Self::MAX_HALF_ANGLE))
+    }
+
+    /// `None` for an orthographic eye, which is bounded by a box rather than by angles.
+    pub fn new(eye: &Eye, aspect_ratio: f32) -> Option<Self> {
+        // TODO(#2497): Implement the orthographic camera frustum.
+        let fov_y = eye.fov_y?;
+
+        let origin = eye.pos_in_world();
+        let rotation = eye.world_from_rub_view.rotation();
+        let right = rotation * Vec3::X;
+        let up = rotation * Vec3::Y;
+        let forward = rotation * -Vec3::Z;
+
+        let half_fov_y = 0.5 * fov_y;
+        let half_fov_x = (half_fov_y.tan() * aspect_ratio).atan();
+
+        let (sin_x, cos_x) = Self::widen(half_fov_x).sin_cos();
+        let (sin_y, cos_y) = Self::widen(half_fov_y).sin_cos();
+
+        Some(Self {
+            planes: [
+                // The near plane sits at the eye itself.
+                macaw::Plane3::from_normal_point(forward, origin),
+                macaw::Plane3::from_normal_point(forward * sin_x + right * cos_x, origin),
+                macaw::Plane3::from_normal_point(forward * sin_x - right * cos_x, origin),
+                macaw::Plane3::from_normal_point(forward * sin_y + up * cos_y, origin),
+                macaw::Plane3::from_normal_point(forward * sin_y - up * cos_y, origin),
+            ],
+        })
+    }
+
+    /// The frustum the 3D view was drawn with last frame, if it has been drawn at all.
+    pub fn last_frame(view_state: &dyn re_viewer_context::ViewState) -> Option<Self> {
+        let state = view_state.as_any().downcast_ref::<SpatialViewState>()?;
+        let eye = state.state_3d.eye_state.last_eye?;
+        let aspect_ratio = state.state_3d.eye_state.last_aspect_ratio?;
+        Self::new(&eye, aspect_ratio)
+    }
+
+    /// Is the entire box on the outside of one of the planes?
+    ///
+    /// Boxes straddling two planes without entering the frustum still count as inside.
+    pub fn is_fully_outside(&self, bbox: &macaw::BoundingBox) -> bool {
+        if !bbox.is_finite() {
+            // Non-finite bounds count as inside.
+            return false;
+        }
+
+        let corners = bbox.corners();
+        self.planes
+            .iter()
+            .any(|plane| corners.iter().all(|corner| plane.distance(*corner) < 0.0))
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, re_byte_size::SizeBytes)]
 struct EyeInterpolation {
     elapsed_time: f32,
@@ -207,6 +288,9 @@ pub struct EyeState {
     spin: Option<f64>,
 
     pub last_eye: Option<Eye>,
+
+    /// Width divided by height of the viewport the last time the view was drawn.
+    pub last_aspect_ratio: Option<f32>,
 
     /// The time this was last interacted with in egui time.
     ///
@@ -1245,5 +1329,85 @@ impl EyeState {
         self.last_eye = Some(eye);
 
         Ok(eye)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// An eye at the origin looking down -Z, which is forward in our RUB view space.
+    fn frustum() -> ExtendedEyeFrustum {
+        ExtendedEyeFrustum::new(
+            &Eye {
+                world_from_rub_view: IsoTransform::IDENTITY,
+                fov_y: Some(Eye::DEFAULT_FOV_Y),
+            },
+            16.0 / 9.0,
+        )
+        .expect("a perspective eye has a frustum")
+    }
+
+    fn unit_box_at(center: Vec3) -> macaw::BoundingBox {
+        macaw::BoundingBox::from_center_size(center, Vec3::ONE)
+    }
+
+    #[test]
+    fn box_straight_ahead_is_inside_and_one_behind_is_not() {
+        assert!(!frustum().is_fully_outside(&unit_box_at(vec3(0.0, 0.0, -10.0))));
+        assert!(frustum().is_fully_outside(&unit_box_at(vec3(0.0, 0.0, 10.0))));
+    }
+
+    #[test]
+    fn box_far_off_to_the_side_or_above_is_outside() {
+        assert!(frustum().is_fully_outside(&unit_box_at(vec3(100.0, 0.0, -10.0))));
+        assert!(frustum().is_fully_outside(&unit_box_at(vec3(-100.0, 0.0, -10.0))));
+        assert!(frustum().is_fully_outside(&unit_box_at(vec3(0.0, 100.0, -10.0))));
+        assert!(frustum().is_fully_outside(&unit_box_at(vec3(0.0, -100.0, -10.0))));
+    }
+
+    /// A box wide enough to reach across the whole view stays inside, even though every one of its
+    /// corners sits outside some plane.
+    #[test]
+    fn box_enclosing_the_eye_is_inside() {
+        let big = macaw::BoundingBox::from_center_size(vec3(0.0, 0.0, -10.0), Vec3::splat(1000.0));
+        assert!(!frustum().is_fully_outside(&big));
+    }
+
+    /// A box at the edge of a very wide field of view is inside.
+    #[test]
+    fn box_at_the_edge_of_a_wide_field_of_view_is_inside() {
+        let fov_y = 170.0_f32.to_radians();
+        let frustum = ExtendedEyeFrustum::new(
+            &Eye {
+                world_from_rub_view: IsoTransform::IDENTITY,
+                fov_y: Some(fov_y),
+            },
+            16.0 / 9.0,
+        )
+        .expect("a perspective eye has a frustum");
+
+        let depth = 10.0;
+        let just_inside_the_top = (0.49 * fov_y).tan() * depth;
+        assert!(!frustum.is_fully_outside(&unit_box_at(vec3(0.0, just_inside_the_top, -depth))));
+    }
+
+    #[test]
+    fn orthographic_eye_has_no_frustum() {
+        let eye = Eye {
+            world_from_rub_view: IsoTransform::IDENTITY,
+            fov_y: None,
+        };
+        assert!(ExtendedEyeFrustum::new(&eye, 16.0 / 9.0).is_none());
+    }
+
+    /// The frustum opens up wider than the viewport, so something just outside the edge still
+    /// counts as inside.
+    #[test]
+    fn box_just_outside_the_viewport_edge_is_inside() {
+        let half_fov_y = 0.5 * Eye::DEFAULT_FOV_Y;
+        let depth = 10.0;
+        let just_past_the_top = half_fov_y.tan() * depth * 1.1;
+        assert!(!frustum().is_fully_outside(&unit_box_at(vec3(0.0, just_past_the_top, -depth))));
     }
 }

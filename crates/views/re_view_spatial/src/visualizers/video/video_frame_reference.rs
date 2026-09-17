@@ -15,14 +15,16 @@ use re_viewer_context::{
     VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
 };
 
-use crate::PickableTexturedRect;
 use crate::contexts::SpatialSceneVisualizerInstructionContext;
+use crate::eye::ExtendedEyeFrustum;
 use crate::visualizers::SpatialViewVisualizerData;
 use crate::visualizers::entity_iterator::process_archetype;
+use crate::visualizers::utilities::spatial_view_kind_from_view_class;
 use crate::visualizers::video::{
     AT_TIME_CURSOR_SALT, VideoFrameRenderInfo, VideoPlaybackIssue, VideoPlaybackIssueSeverity,
-    show_video_frame, video_stream_id, video_stream_processing_issue,
+    is_video_frame_off_screen, show_video_frame, video_stream_id, video_stream_processing_issue,
 };
+use crate::{PickableTexturedRect, SpaceKind};
 
 #[derive(Default)]
 pub struct VideoFrameReferenceVisualizer;
@@ -62,6 +64,14 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
         let mut data = SpatialViewVisualizerData::default();
         let output = VisualizerExecutionOutput::default();
 
+        // The eye is only known once the view is drawn, so this is last frame's frustum.
+        let eye_frustum =
+            if spatial_view_kind_from_view_class(ctx.view_class_identifier) == SpaceKind::ThreeD {
+                ExtendedEyeFrustum::last_frame(ctx.view_state)
+            } else {
+                None
+            };
+
         process_archetype::<VideoFrameReference, _, _>(
             ctx,
             view_query,
@@ -100,6 +110,7 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
                         &mut data,
                         ctx,
                         spatial_ctx,
+                        eye_frustum.as_ref(),
                         video_timestamp,
                         video_references,
                         opacity
@@ -134,6 +145,7 @@ impl VideoFrameReferenceVisualizer {
         data: &mut SpatialViewVisualizerData,
         ctx: &re_viewer_context::QueryContext<'_>,
         spatial_ctx: &SpatialSceneVisualizerInstructionContext<'_>,
+        eye_frustum: Option<&ExtendedEyeFrustum>,
         video_timestamp: &VideoTimestamp,
         video_references: Option<Vec<re_sdk_types::ArrowString>>,
         opacity: Opacity,
@@ -173,6 +185,17 @@ impl VideoFrameReferenceVisualizer {
                 Ok(video) => {
                     if let Some([w, h]) = video.dimensions() {
                         video_resolution = glam::vec2(w as _, h as _);
+                    }
+
+                    // Skip decoding while the frame is off screen.
+                    if is_video_frame_off_screen(
+                        data,
+                        eye_frustum,
+                        entity_path,
+                        world_from_entity,
+                        video_resolution,
+                    ) {
+                        return;
                     }
 
                     let video_time = re_viewer_context::video_timestamp_component_to_video_time(
@@ -223,6 +246,17 @@ impl VideoFrameReferenceVisualizer {
                         Some(first_stream_timestamp) => {
                             if let Some([w, h]) = video.video_renderer.dimensions() {
                                 video_resolution = glam::vec2(w as _, h as _);
+                            }
+
+                            // Skip decoding while the frame is off screen.
+                            if is_video_frame_off_screen(
+                                data,
+                                eye_frustum,
+                                entity_path,
+                                world_from_entity,
+                                video_resolution,
+                            ) {
+                                return;
                             }
 
                             let video_time = first_stream_timestamp.decode_timestamp()

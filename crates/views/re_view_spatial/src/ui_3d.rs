@@ -64,8 +64,10 @@ impl View3DState {
         eye_property.reset_all_components(ctx);
 
         let last_eye = self.eye_state.last_eye;
+        let last_aspect_ratio = self.eye_state.last_aspect_ratio;
         self.eye_state = Default::default();
         self.eye_state.last_eye = last_eye;
+        self.eye_state.last_aspect_ratio = last_aspect_ratio;
 
         self.eye_state.start_interpolation();
     }
@@ -207,6 +209,8 @@ impl SpatialView3D {
         if resolution_in_pixel[0] == 0 || resolution_in_pixel[1] == 0 {
             return Ok(view_ui_output);
         }
+        state.state_3d.eye_state.last_aspect_ratio =
+            Some(resolution_in_pixel[0] as f32 / resolution_in_pixel[1] as f32);
 
         // Various ui interactions draw additional lines.
         let mut line_builder = LineDrawableBuilder::new(ctx.render_ctx());

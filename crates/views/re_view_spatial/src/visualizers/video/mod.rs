@@ -12,6 +12,7 @@ use re_renderer::renderer;
 use re_renderer::resource_managers::{GpuTexture2D, ImageDataDesc};
 use re_sdk_types::blueprint::components::VisualizerInstructionId;
 use re_sdk_types::components::Opacity;
+use re_tf::TransformFrameIdHash;
 use re_ui::ContextExt as _;
 use re_video::player::{VideoPlaybackIssueSeverity, VideoPlayerError};
 use re_view::DataResultQuery as _;
@@ -27,6 +28,7 @@ pub use video_stream::VideoStreamVisualizer;
 use super::{LoadingIndicator, SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget};
 use crate::SpaceKind;
 use crate::contexts::EntityDepthOffsets;
+use crate::eye::ExtendedEyeFrustum;
 use crate::visualizers::DepthImageProcessResult;
 use crate::visualizers::utilities::{
     spatial_view_kind_from_view_class, transform_info_for_archetype_or_report_error,
@@ -175,6 +177,13 @@ fn execute_video_stream_like(
     let latest_at = ctx.view_query.latest_at_query();
     let mut depth_clouds = Vec::new();
 
+    // The eye is only known once the view is drawn, so this is last frame's frustum.
+    let eye_frustum = if view_kind == SpaceKind::ThreeD {
+        ExtendedEyeFrustum::last_frame(ctx.view_state)
+    } else {
+        None
+    };
+
     for (data_result, instruction) in ctx
         .view_query
         .iter_visualizer_instruction_for(ctx.visualizer_name)
@@ -285,20 +294,66 @@ fn execute_video_stream_like(
             continue;
         }
 
-        let bit_depth = video
-            .read()
-            .video_renderer
-            .data_descr()
-            .encoding_details
-            .as_ref()
-            .and_then(|d| d.bit_depth);
-
-        let frame_output = {
+        let bit_depth = {
             let video = video.read();
 
             if let Some([w, h]) = video.video_renderer.dimensions() {
                 video_resolution = glam::vec2(w as _, h as _);
             }
+
+            video
+                .video_renderer
+                .data_descr()
+                .encoding_details
+                .as_ref()
+                .and_then(|d| d.bit_depth)
+        };
+
+        let depth_config = ctx.depth_handler.as_ref().map(|depth_handler| {
+            (depth_handler.get_depth_config)(
+                ctx.view_context,
+                &latest_at,
+                data_result,
+                instruction,
+                &output,
+            )
+        });
+
+        // Skip decoding while what the frame would draw is off screen.
+        // Their bounds are taken into account for scene bounds either way.
+        if let Some(eye_frustum) = &eye_frustum {
+            let depth_bounds = depth_config.as_ref().and_then(|depth_config| {
+                depth_cloud_bounds(
+                    transforms,
+                    transform_info.tree_root(),
+                    depth_config,
+                    video_resolution,
+                )
+            });
+
+            let bounds = depth_bounds
+                .unwrap_or_else(|| video_frame_bounds(world_from_entity, video_resolution));
+
+            if eye_frustum.is_fully_outside(&bounds) {
+                if depth_bounds.is_some() {
+                    ctx.data.add_bounding_box_3d(
+                        entity_path.hash(),
+                        bounds,
+                        glam::Affine3A::IDENTITY,
+                    );
+                } else {
+                    ctx.data.add_bounding_box_2d(
+                        entity_path.hash(),
+                        bounds,
+                        glam::Affine3A::IDENTITY,
+                    );
+                }
+                continue;
+            }
+        }
+
+        let frame_output = {
+            let video = video.read();
 
             let storage_engine = ctx.viewer_ctx.store_context.recording.storage_engine();
 
@@ -323,16 +378,6 @@ fn execute_video_stream_like(
         #[expect(clippy::disallowed_methods)] // This is not a hard-coded color.
         let multiplicative_tint = egui::Rgba::from_white_alpha(opacity.0.clamp(0.0, 1.0));
 
-        let depth_config = ctx.depth_handler.as_ref().map(|depth_handler| {
-            (depth_handler.get_depth_config)(
-                ctx.view_context,
-                &latest_at,
-                data_result,
-                instruction,
-                &output,
-            )
-        });
-
         // In 3D views, depth images should render as point clouds when a pinhole camera is available.
         let rendered_as_depth_cloud = if view_kind == SpaceKind::ThreeD
             && let Some(depth_config) = &depth_config
@@ -342,15 +387,9 @@ fn execute_video_stream_like(
                 .and_then(|t| t.texture.as_ref())
         {
             let tree_root_frame = transform_info.tree_root();
-            if let Some(pinhole_tree_root_info) = transforms.pinhole_tree_root_info(tree_root_frame)
-                && let Some(world_from_view) = transforms.target_from_pinhole_root(tree_root_frame)
+            if let Some((world_from_rdf, pinhole)) = depth_cloud_camera(transforms, tree_root_frame)
             {
                 let colormapped = depth_config.to_colormapped_texture(frame_texture.clone());
-
-                let pinhole = &pinhole_tree_root_info.pinhole_projection;
-                let world_from_view = world_from_view.as_affine3a();
-                let world_from_rdf = world_from_view
-                    * glam::Affine3A::from_mat3(pinhole.view_coordinates.from_rdf());
 
                 let dimensions = glam::UVec2::from_array(colormapped.texture.width_height());
 
@@ -789,6 +828,94 @@ fn show_video_frame(
         },
         SpaceKind::TwoD,
     );
+}
+
+/// World space bounds of the image plane a video frame is drawn on.
+fn video_frame_bounds(
+    world_from_entity: glam::Affine3A,
+    video_resolution: glam::Vec2,
+) -> macaw::BoundingBox {
+    let top_left = world_from_entity.transform_point3(glam::Vec3::ZERO);
+    let extent_u = world_from_entity.transform_vector3(glam::Vec3::X * video_resolution.x);
+    let extent_v = world_from_entity.transform_vector3(glam::Vec3::Y * video_resolution.y);
+
+    re_renderer::util::bounding_box_from_points(
+        [
+            top_left,
+            top_left + extent_u,
+            top_left + extent_v,
+            top_left + extent_u + extent_v,
+        ]
+        .into_iter(),
+    )
+}
+
+/// Is the image plane of a video frame off screen?
+///
+/// The frame's bounds are taken into account for scene bounds either way.
+fn is_video_frame_off_screen(
+    visualizer_data: &mut SpatialViewVisualizerData,
+    eye_frustum: Option<&ExtendedEyeFrustum>,
+    entity_path: &EntityPath,
+    world_from_entity: glam::Affine3A,
+    video_resolution: glam::Vec2,
+) -> bool {
+    let Some(eye_frustum) = eye_frustum else {
+        return false;
+    };
+
+    let bounds = video_frame_bounds(world_from_entity, video_resolution);
+    if !eye_frustum.is_fully_outside(&bounds) {
+        return false;
+    }
+
+    visualizer_data.add_bounding_box_2d(entity_path.hash(), bounds, glam::Affine3A::IDENTITY);
+    true
+}
+
+/// The pinhole that a depth image below it projects its point cloud through.
+///
+/// Returns the transform from RDF camera space to world space, along with the projection.
+fn depth_cloud_camera(
+    transforms: &TransformTreeContext,
+    tree_root_frame: TransformFrameIdHash,
+) -> Option<(glam::Affine3A, &re_tf::ResolvedPinholeProjection)> {
+    let pinhole = &transforms
+        .pinhole_tree_root_info(tree_root_frame)?
+        .pinhole_projection;
+    let world_from_view = transforms
+        .target_from_pinhole_root(tree_root_frame)?
+        .as_affine3a();
+    let world_from_rdf =
+        world_from_view * glam::Affine3A::from_mat3(pinhole.view_coordinates.from_rdf());
+
+    Some((world_from_rdf, pinhole))
+}
+
+/// World space bounds of the point cloud a depth image renders as in a 3D view.
+///
+/// `None` when there is no pinhole to project through, in which case the depth image is drawn as a
+/// flat image instead.
+fn depth_cloud_bounds(
+    transforms: &TransformTreeContext,
+    tree_root_frame: TransformFrameIdHash,
+    depth_config: &DepthTextureConfig,
+    depth_resolution: glam::Vec2,
+) -> Option<macaw::BoundingBox> {
+    let dimensions = depth_resolution.as_uvec2();
+    if dimensions.x == 0 || dimensions.y == 0 {
+        return None;
+    }
+
+    let (world_from_rdf, pinhole) = depth_cloud_camera(transforms, tree_root_frame)?;
+    let world_depth_from_texture_depth = 1.0 / *depth_config.depth_meter.0;
+
+    Some(renderer::depth_cloud_world_space_bbox(
+        world_from_rdf,
+        pinhole.image_from_camera.0.into(),
+        dimensions,
+        world_depth_from_texture_depth * depth_config.range[1],
+    ))
 }
 
 fn register_video_bounds_with_bounding_box(
