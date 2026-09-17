@@ -385,7 +385,7 @@ fn permissions_ui(ui: &mut egui::Ui, session: &mut AgentSession, input: &mut Cha
     }
 
     // Keyboard shortcuts act on the oldest request only.
-    let enter = ui.input_mut(|i| i.consume_key(Modifiers::NONE, Key::Enter));
+    let enter = consume_plain_enter(ui);
     let escape = ui.input_mut(|i| i.consume_key(Modifiers::NONE, Key::Escape));
 
     let mut answered = None;
@@ -518,7 +518,7 @@ fn input_ui(ui: &mut egui::Ui, session: &mut AgentSession, input: &mut ChatInput
     }
 
     if response.has_focus() {
-        if ui.input_mut(|i| i.consume_key(Modifiers::NONE, Key::Enter)) {
+        if consume_plain_enter(ui) {
             let prompt = input.text.trim();
             if session.send_prompt(prompt) {
                 input.history.push(prompt);
@@ -534,6 +534,30 @@ fn input_ui(ui: &mut egui::Ui, session: &mut AgentSession, input: &mut ChatInput
             stop_agent(session, input);
         }
     }
+}
+
+/// Consume a press of `Enter` with no modifier held at all.
+///
+/// [`egui::InputState::consume_key`] matches modifiers logically, which ignores an extra shift or
+/// alt, so it also fires on the modified `Enter` that adds a newline.
+fn consume_plain_enter(ui: &egui::Ui) -> bool {
+    ui.input_mut(|input| {
+        let mut pressed = false;
+        input.events.retain(|event| {
+            let plain_enter = matches!(
+                event,
+                egui::Event::Key {
+                    key: Key::Enter,
+                    modifiers,
+                    pressed: true,
+                    ..
+                } if modifiers.is_none()
+            );
+            pressed |= plain_enter;
+            !plain_enter
+        });
+        pressed
+    })
 }
 
 /// Up on the first line recalls the previous prompt, down on the last line the next one,
