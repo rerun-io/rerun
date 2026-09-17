@@ -397,7 +397,10 @@ impl ConnectionRegistryHandle {
             let connection = Connection {
                 client: RedapClient::new(
                     origin.clone(),
-                    crate::grpc::boxed_redap_grpc_client(client_stack.clone()),
+                    crate::grpc::boxed_redap_grpc_client(tower::ServiceExt::map_err(
+                        client_stack.clone(),
+                        tonic::Status::from_error,
+                    )),
                     Some(crate::ChunkCacheHandle::default()),
                 ),
                 analytics: Some(crate::ConnectionAnalyticsExporter::from_remote_service(

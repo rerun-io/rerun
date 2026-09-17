@@ -6,10 +6,11 @@
 //! necessary conversion code (in the form of `From` and `TryFrom` traits) in this crate.
 
 pub mod external {
-    pub use {prost, re_span};
+    pub use {prost, re_span, tonic_types};
 }
 
 pub mod capabilities;
+pub mod error;
 
 pub mod headers;
 #[cfg(not(target_arch = "wasm32"))]

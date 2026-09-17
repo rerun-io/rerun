@@ -10055,6 +10055,7 @@ dependencies = [
  "tonic",
  "tonic-prost",
  "tonic-reflection",
+ "tonic-types",
  "tower",
  "tracing",
  "url",

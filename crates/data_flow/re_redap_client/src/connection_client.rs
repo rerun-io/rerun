@@ -453,14 +453,7 @@ impl Connection {
                 .max_decoding_message_size(crate::MAX_DECODING_MESSAGE_SIZE),
             |err: std::convert::Infallible| match err {},
         );
-        let service = tonic::service::interceptor::InterceptedService::new(service, |request| {
-            Ok(crate::dataset_revisions().stamp(request))
-        });
-        let service = tower::ServiceExt::<RedapHttpRequest>::map_response(service, |response| {
-            response.map(tonic::body::Body::new)
-        });
-        let client = RerunCloudServiceClient::new(tower::util::BoxCloneSyncService::new(service))
-            .max_decoding_message_size(crate::MAX_DECODING_MESSAGE_SIZE);
+        let client = crate::grpc::boxed_redap_grpc_client(service);
 
         Self {
             client: RedapClient::new(origin, client, None),
@@ -486,7 +479,7 @@ impl Connection {
 
 impl<T> RedapClient<T>
 where
-    T: tonic::client::GrpcService<tonic::body::Body>,
+    T: tonic::client::GrpcService<tonic::body::Body> + Clone,
     T::Error: Into<StdError>,
     T::ResponseBody: Body<Data = Bytes> + std::marker::Send + 'static,
     <T::ResponseBody as Body>::Error: Into<StdError> + std::marker::Send,
@@ -756,13 +749,20 @@ where
     /// Get the Arrow schema for a dataset entry.
     #[tracing::instrument(level = "info", skip_all)]
     pub async fn get_dataset_schema(&mut self, entry_id: EntryId) -> ApiResult<ArrowSchema> {
+        let client = self.inner().clone();
         let (inner, trace_id) = TonicResponseExt::into_inner_and_trace_id(
-            self.inner()
-                .get_dataset_schema(
-                    tonic::Request::new(GetDatasetSchemaRequest {}).with_entry_id(entry_id),
-                )
-                .await
-                .map_err(|err| ApiError::tonic(&self.origin, err, "/GetDatasetSchema failed"))?,
+            crate::rpc_retry::retry(|| {
+                let mut client = client.clone();
+                async move {
+                    client
+                        .get_dataset_schema(
+                            tonic::Request::new(GetDatasetSchemaRequest {}).with_entry_id(entry_id),
+                        )
+                        .await
+                }
+            })
+            .await
+            .map_err(|err| ApiError::tonic(&self.origin, err, "/GetDatasetSchema failed"))?,
         );
         crate::dataset_revisions().observe_meta(inner.meta.as_ref());
         inner.schema().map_err(|err| {
@@ -920,15 +920,21 @@ where
     //TODO(ab): accept entry name
     #[tracing::instrument(level = "info", skip_all)]
     pub async fn get_segment_table_schema(&mut self, entry_id: EntryId) -> ApiResult<ArrowSchema> {
+        let client = self.inner().clone();
         let (inner, trace_id) = TonicResponseExt::into_inner_and_trace_id(
-            self.inner()
-                .get_segment_table_schema(
-                    tonic::Request::new(GetSegmentTableSchemaRequest {}).with_entry_id(entry_id),
-                )
-                .await
-                .map_err(|err| {
-                    ApiError::tonic(&self.origin, err, "GetSegmentTableSchema failed")
-                })?,
+            crate::rpc_retry::retry(|| {
+                let mut client = client.clone();
+                async move {
+                    client
+                        .get_segment_table_schema(
+                            tonic::Request::new(GetSegmentTableSchemaRequest {})
+                                .with_entry_id(entry_id),
+                        )
+                        .await
+                }
+            })
+            .await
+            .map_err(|err| ApiError::tonic(&self.origin, err, "GetSegmentTableSchema failed"))?,
         );
         crate::dataset_revisions().observe_meta(inner.meta.as_ref());
         inner
@@ -969,16 +975,27 @@ where
         // Consumption by the caller is intentionally outside the retry, matching
         // `query_dataset_raw`. Once the stream is open it can't return `ResourceExhausted`.
         let response = crate::with_retry_resource_exhausted("/ScanSegmentTable", || {
-            let mut client = self.clone();
+            let client = self.clone();
             async move {
-                client
-                    .inner()
-                    .scan_segment_table(
-                        tonic::Request::new(ScanSegmentTableRequest::with_columns([column_name]))
-                            .with_entry_id(entry_id),
-                    )
-                    .await
-                    .map_err(|err| ApiError::tonic(&self.origin, err, "/ScanSegmentTable failed"))
+                crate::rpc_retry::retry(|| {
+                    let mut client = client.clone();
+                    async move {
+                        crate::rpc_retry::open_stream(
+                            client
+                                .inner()
+                                .scan_segment_table(
+                                    tonic::Request::new(ScanSegmentTableRequest::with_columns([
+                                        column_name,
+                                    ]))
+                                    .with_entry_id(entry_id),
+                                )
+                                .await?,
+                        )
+                        .await
+                    }
+                })
+                .await
+                .map_err(|err| ApiError::tonic(&self.origin, err, "/ScanSegmentTable failed"))
             }
         })
         .await?;
@@ -1089,15 +1106,23 @@ where
         &mut self,
         entry_id: EntryId,
     ) -> ApiResult<ArrowSchema> {
+        let client = self.inner().clone();
         let (inner, trace_id) = TonicResponseExt::into_inner_and_trace_id(
-            self.inner()
-                .get_dataset_manifest_schema(
-                    tonic::Request::new(GetDatasetManifestSchemaRequest {}).with_entry_id(entry_id),
-                )
-                .await
-                .map_err(|err| {
-                    ApiError::tonic(&self.origin, err, "/GetDatasetManifestSchema failed")
-                })?,
+            crate::rpc_retry::retry(|| {
+                let mut client = client.clone();
+                async move {
+                    client
+                        .get_dataset_manifest_schema(
+                            tonic::Request::new(GetDatasetManifestSchemaRequest {})
+                                .with_entry_id(entry_id),
+                        )
+                        .await
+                }
+            })
+            .await
+            .map_err(|err| {
+                ApiError::tonic(&self.origin, err, "/GetDatasetManifestSchema failed")
+            })?,
         );
         crate::dataset_revisions().observe_meta(inner.meta.as_ref());
         inner
@@ -1132,16 +1157,24 @@ where
         entry_id: EntryId,
         columns: impl IntoIterator<Item = impl Into<String>>,
     ) -> ApiResult<Vec<RecordBatch>> {
-        let response = self
-            .inner()
-            .scan_dataset_manifest(
-                tonic::Request::new(
-                    re_protos::cloud::v1alpha1::ScanDatasetManifestRequest::with_columns(columns),
+        let request = re_protos::cloud::v1alpha1::ScanDatasetManifestRequest::with_columns(columns);
+        let client = self.inner().clone();
+        let response = crate::rpc_retry::retry(|| {
+            let mut client = client.clone();
+            let request = request.clone();
+            async move {
+                crate::rpc_retry::open_stream(
+                    client
+                        .scan_dataset_manifest(
+                            tonic::Request::new(request.clone()).with_entry_id(entry_id),
+                        )
+                        .await?,
                 )
-                .with_entry_id(entry_id),
-            )
-            .await
-            .map_err(|err| ApiError::tonic(&self.origin, err, "/ScanDatasetManifest failed"))?;
+                .await
+            }
+        })
+        .await
+        .map_err(|err| ApiError::tonic(&self.origin, err, "/ScanDatasetManifest failed"))?;
 
         let mut stream = ApiResponseStream::from_tonic_response(
             self.origin.clone(),
@@ -1321,17 +1354,30 @@ where
         segment_id: SegmentId,
         generate_direct_urls: bool,
     ) -> ApiResult<ApiResponseStream<RawRrdManifest>> {
-        let response = self
-            .inner()
-            .get_rrd_manifest(
-                tonic::Request::new(re_protos::cloud::v1alpha1::GetRrdManifestRequest {
-                    segment_id: Some(segment_id.clone().into()),
-                    generate_direct_urls,
-                })
-                .with_entry_id(dataset_id),
-            )
-            .await
-            .map_err(|err| ApiError::tonic(&self.origin, err, "/GetRrdManifest failed"))?;
+        let request_segment_id = segment_id.clone();
+        let client = self.inner().clone();
+        let response = crate::rpc_retry::retry(|| {
+            let mut client = client.clone();
+            let request_segment_id = request_segment_id.clone();
+            async move {
+                crate::rpc_retry::open_stream(
+                    client
+                        .get_rrd_manifest(
+                            tonic::Request::new(
+                                re_protos::cloud::v1alpha1::GetRrdManifestRequest {
+                                    segment_id: Some(request_segment_id.clone().into()),
+                                    generate_direct_urls,
+                                },
+                            )
+                            .with_entry_id(dataset_id),
+                        )
+                        .await?,
+                )
+                .await
+            }
+        })
+        .await
+        .map_err(|err| ApiError::tonic(&self.origin, err, "/GetRrdManifest failed"))?;
 
         let stream = ApiResponseStream::from_tonic_response(
             self.origin.clone(),
@@ -1441,7 +1487,7 @@ where
         // stream is consumed by the caller. `params` is cloned per attempt so we rebuild the
         // request fresh.
         crate::with_retry_resource_exhausted("/QueryDataset", || {
-            let mut client = self.clone();
+            let client = self.clone();
             let SegmentQueryParams {
                 dataset_id,
                 segment_id,
@@ -1470,13 +1516,24 @@ where
                     generate_direct_urls,
                 };
 
-                let response = client
-                    .inner()
-                    .query_dataset(
-                        tonic::Request::new(query_request.into()).with_entry_id(dataset_id),
-                    )
-                    .await
-                    .map_err(|err| ApiError::tonic(&self.origin, err, "/QueryDataset failed"))?;
+                let response = crate::rpc_retry::retry(|| {
+                    let mut client = client.clone();
+                    let query_request = query_request.clone();
+                    async move {
+                        crate::rpc_retry::open_stream(
+                            client
+                                .inner()
+                                .query_dataset(
+                                    tonic::Request::new(query_request.clone().into())
+                                        .with_entry_id(dataset_id),
+                                )
+                                .await?,
+                        )
+                        .await
+                    }
+                })
+                .await
+                .map_err(|err| ApiError::tonic(&self.origin, err, "/QueryDataset failed"))?;
 
                 Ok(ApiResponseStream::from_tonic_response(
                     self.origin.clone(),

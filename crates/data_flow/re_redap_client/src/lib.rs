@@ -11,6 +11,7 @@ mod connection_registry;
 mod dataset_revisions;
 mod grpc;
 mod registration_handle;
+mod rpc_retry;
 mod tasks;
 mod write_object;
 

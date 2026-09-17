@@ -387,21 +387,27 @@ fn redap_grpc_client(client_stack: RedapClientStack) -> RawRedapClient {
     RerunCloudServiceClient::new(client_stack).max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE)
 }
 
-pub(crate) fn boxed_redap_grpc_client(
-    client_stack: RedapClientStack,
-) -> RerunCloudServiceClient<BoxedRedapClientStack> {
+pub fn boxed_redap_grpc_client<S, B>(service: S) -> RerunCloudServiceClient<BoxedRedapClientStack>
+where
+    S: tower::Service<
+            tonic::codegen::http::Request<tonic::body::Body>,
+            Response = tonic::codegen::http::Response<B>,
+            Error = tonic::Status,
+        > + Clone
+        + Send
+        + Sync
+        + 'static,
+    S::Future: Send + 'static,
+    B: tonic::codegen::Body<Data = tonic::codegen::Bytes> + Send + 'static,
+    B::Error: Into<tonic::codegen::StdError>,
+{
     use tower::ServiceExt as _;
 
-    // Map the layered stack's `Box<dyn Error + Send + Sync>` error to a concrete `tonic::Status`
-    // before boxing. Keeping the boxed service's error type concrete avoids HRTB lifetime variance
-    // issues that otherwise prevent `Send` futures from being inferred at consumer sites (e.g.
-    // `re_datafusion`'s `make_future_send`).
     let client_stack = tower::util::BoxCloneSyncService::new(
-        tonic::service::interceptor::InterceptedService::new(client_stack, |request| {
+        tonic::service::interceptor::InterceptedService::new(service, |request| {
             Ok(crate::dataset_revisions().stamp(request))
         })
-        .map_response(|response| response.map(tonic::body::Body::new))
-        .map_err(tonic::Status::from_error),
+        .map_response(|response| response.map(tonic::body::Body::new)),
     );
 
     RerunCloudServiceClient::new(client_stack).max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE)

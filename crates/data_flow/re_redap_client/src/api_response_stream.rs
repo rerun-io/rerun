@@ -53,7 +53,7 @@ impl<T: Send + 'static> ApiResponseStream<T> {
     /// tonic stream errors to [`ApiError`]s.
     pub fn from_tonic_response(
         origin: re_uri::Origin,
-        response: tonic::Response<tonic::Streaming<T>>,
+        response: tonic::Response<impl Stream<Item = tonic::Result<T>> + Send + 'static>,
         endpoint: &'static str,
     ) -> Self {
         let trace_id = extract_trace_id(response.metadata());
