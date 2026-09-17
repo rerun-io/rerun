@@ -8,6 +8,7 @@ use re_protos::cloud::v1alpha1::ext::ScanSegmentTableDataframe;
 use re_quota_channel::send_crossbeam;
 use re_redap_client::{ApiError, Asset, ConnectionHandle, DEFAULT_ASSET_TASK_TIMEOUT};
 use re_ui::egui_ext::card_layout::{CardLayout, CardLayoutItem};
+use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_ui::time::{short_duration_text, short_duration_ui};
 use re_ui::{
     DesignTokens, ReButton, ServerValue, TabBar, TableCommand, TableCommandKind,
@@ -969,6 +970,15 @@ fn no_assets_ui(
 
     const ICON_SIZE: f32 = 20.0;
 
+    /// Space between the button, the words that introduce the SDK call, and the call itself.
+    const ACTION_GAP: f32 = 12.0;
+
+    /// Space around the separator between the limit rules and the link after them.
+    const SEPARATOR_SPACE: f32 = 6.0;
+
+    /// Space between the word a link is made of and the icon that marks it as one.
+    const LINK_ICON_GAP: f32 = 4.0;
+
     const DOC_URL: &str =
         "https://rerun.io/docs/concepts/query-and-transform/catalog-object-model#assets";
 
@@ -998,6 +1008,10 @@ fn no_assets_ui(
         .show(ui, |ui| {
             ui.take_available_width();
 
+            // A child wider than its `Ui` widens that `Ui`, and the card with it, out past the
+            // panel. Everything below fits into this width, read before any of them can widen it.
+            let content_width = ui.available_width();
+
             ui.vertical_centered(|ui| {
                 let (_, box_rect) = ui.allocate_space(egui::Vec2::splat(ICON_BOX_SIZE));
                 ui.painter()
@@ -1018,7 +1032,7 @@ fn no_assets_ui(
                 ui.add_space(6.0);
 
                 ui.allocate_ui_with_layout(
-                    egui::vec2(EXPLANATION_WIDTH, 0.0),
+                    egui::vec2(EXPLANATION_WIDTH.min(content_width), 0.0),
                     egui::Layout::top_down(egui::Align::Center),
                     |ui| {
                         ui.add(
@@ -1036,61 +1050,182 @@ fn no_assets_ui(
                     },
                 );
 
-                ui.add_space(16.0);
+                ui.add_space(20.0);
 
-                centered_row(ui, "asset limits", |ui| {
-                    ui.spacing_mut().item_spacing.x = 6.0;
+                let source_example = asset_sources.source_example();
+                let sdk_label = || egui::RichText::new("or use the SDK").color(tokens.text_subdued);
 
-                    for rule in asset_slots.limit_rules() {
-                        egui::Frame::new()
-                            .fill(tokens.faint_bg_color)
-                            .corner_radius(u8::MAX)
-                            .inner_margin(egui::Margin::symmetric(10, 4))
-                            .show(ui, |ui| {
-                                ui.label(
-                                    egui::RichText::new(rule)
-                                        .monospace()
-                                        .color(tokens.text_subdued),
-                                );
-                            });
+                // The call shrinks into what the row leaves it. Under `SDK_CALL_MIN_WIDTH` too
+                // little of it is left to read, and it takes a line of its own instead.
+                let mut call_needs_own_line = false;
+
+                centered_row(ui, "asset actions", |ui| {
+                    ui.spacing_mut().item_spacing.x = ACTION_GAP;
+
+                    register_asset_button(ctx, asset_target, asset_slots, ui);
+
+                    ui.label(sdk_label());
+
+                    if ui.available_width() >= SDK_CALL_MIN_WIDTH {
+                        sdk_call_ui(ui, &source_example);
+                    } else {
+                        call_needs_own_line = true;
                     }
                 });
 
+                if call_needs_own_line {
+                    ui.add_space(ACTION_GAP);
+
+                    centered_row(ui, "asset sdk call", |ui| {
+                        sdk_call_ui(ui, &source_example);
+                    });
+                }
+
                 ui.add_space(16.0);
 
-                centered_row(ui, "asset actions", |ui| {
-                    register_asset_button(ctx, asset_target, asset_slots, ui);
+                let rules = asset_slots.limit_rules().join(" · ");
 
-                    let link_color = tokens.button_blue.fill;
+                // The link keeps no spacing of its own, so the separator before it is part of the
+                // text that precedes it.
+                let rules_before_link = format!("{rules} ·");
+
+                let link_color = tokens.button_blue.fill;
+
+                let docs_link = |ui: &mut egui::Ui| {
                     if ui
                         .add(
-                            ReButton::new((
-                                egui::RichText::new("Assets in doc").color(link_color),
-                                icons::EXTERNAL_LINK.as_image().tint(link_color),
+                            egui::AtomLayout::new((
+                                egui::RichText::new("docs").monospace().color(link_color),
+                                icons::EXTERNAL_LINK
+                                    .as_image()
+                                    .tint(link_color)
+                                    .atom_max_height_font_size(ui),
                             ))
-                            .ghost()
-                            .small()
-                            .image_tint_follows_text_color(false),
+                            .gap(LINK_ICON_GAP)
+                            .sense(egui::Sense::click()),
                         )
                         .on_hover_cursor(egui::CursorIcon::PointingHand)
                         .clicked()
                     {
                         ui.open_url(egui::OpenUrl::new_tab(DOC_URL));
                     }
-                });
+                };
 
-                ui.add_space(16.0);
+                // The line is text and one icon, so how wide it is takes no laying out. The icon
+                // is square and no taller than the font, so its height stands in for its width.
+                let limits_width =
+                    text_width(ui, egui::RichText::new(&rules_before_link).monospace())
+                        + SEPARATOR_SPACE
+                        + text_width(ui, egui::RichText::new("docs").monospace())
+                        + LINK_ICON_GAP
+                        + ui.text_style_height(&egui::TextStyle::Body);
 
-                ui.label(
-                    egui::RichText::new(format!(
-                        "dataset.register_asset(\"{}\")",
-                        asset_sources.source_example()
-                    ))
-                    .monospace()
-                    .weak(),
-                );
+                if limits_width <= content_width {
+                    centered_row(ui, "asset limits", |ui| {
+                        ui.spacing_mut().item_spacing.x = 0.0;
+
+                        ui.label(
+                            egui::RichText::new(&rules_before_link)
+                                .monospace()
+                                .color(tokens.text_subdued),
+                        );
+
+                        ui.add_space(SEPARATOR_SPACE);
+
+                        docs_link(ui);
+                    });
+                } else {
+                    // The line is wider than the card, so the rules wrap and the link follows
+                    // under them.
+                    ui.allocate_ui_with_layout(
+                        egui::vec2(content_width, 0.0),
+                        egui::Layout::top_down(egui::Align::Center),
+                        |ui| {
+                            ui.add(
+                                egui::Label::new(
+                                    egui::RichText::new(&rules)
+                                        .monospace()
+                                        .color(tokens.text_subdued),
+                                )
+                                .halign(egui::Align::Center)
+                                .wrap(),
+                            );
+                        },
+                    );
+
+                    ui.add_space(SEPARATOR_SPACE);
+
+                    centered_row(ui, "asset limits link", docs_link);
+                }
             });
         });
+}
+
+/// The narrowest the SDK call box gets before the row it sits in breaks instead.
+///
+/// It leaves about twenty characters of the call to read, next to the icon that marks it copyable.
+const SDK_CALL_MIN_WIDTH: f32 = 240.0;
+
+/// The SDK call that registers an asset, in a box that copies the call when clicked.
+///
+/// The call gives up width to whatever else shares its row, and is elided where it is cut. What is
+/// copied is always the whole of it.
+fn sdk_call_ui(ui: &mut egui::Ui, source_example: &str) {
+    /// The rounding of the box, smaller than a card's so the box reads as part of the row.
+    const CORNER_RADIUS: u8 = 6;
+
+    /// Space between the call and the icon that marks it copyable.
+    const GAP: f32 = 8.0;
+
+    let tokens = ui.tokens();
+
+    let call = SyntaxHighlightedBuilder::identifier("dataset")
+        .with_syntax(".")
+        .with_identifier("register_asset")
+        .with_syntax("(")
+        .with_string_value(source_example)
+        .with_syntax(")");
+
+    let frame = egui::Frame::new()
+        .fill(tokens.faint_bg_color)
+        .stroke(tokens.card_stroke)
+        .corner_radius(CORNER_RADIUS)
+        .inner_margin(egui::Margin::symmetric(10, 5));
+
+    // Only the call gives up width: the icon keeps its size, so it never leaves the box.
+    let response = ui
+        .add(
+            egui::AtomLayout::new((
+                call.to_job(ui.style()).atom_shrink(true),
+                icons::COPY
+                    .as_image()
+                    .tint(tokens.text_subdued)
+                    .atom_max_height_font_size(ui),
+            ))
+            .frame(frame)
+            .gap(GAP)
+            .wrap_mode(egui::TextWrapMode::Truncate)
+            .sense(egui::Sense::click()),
+        )
+        .on_hover_cursor(egui::CursorIcon::PointingHand)
+        .on_hover_text("Copy the SDK call");
+
+    if response.clicked() {
+        ui.copy_text(call.text().to_owned());
+    }
+}
+
+/// The width the text takes on a line of its own.
+fn text_width(ui: &egui::Ui, text: egui::RichText) -> f32 {
+    egui::WidgetText::from(text)
+        .into_galley(
+            ui,
+            Some(egui::TextWrapMode::Extend),
+            f32::INFINITY,
+            egui::TextStyle::Body,
+        )
+        .size()
+        .x
 }
 
 /// Shows a row of widgets, centered in the available width.
