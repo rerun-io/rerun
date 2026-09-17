@@ -29,22 +29,15 @@ pub async fn read_chunks<R: AsyncReadAt>(
         return Ok(Vec::new());
     }
 
-    let all_ids = manifest.col_chunk_ids();
     let offsets = manifest.col_chunk_byte_offset();
     let sizes = manifest.col_chunk_byte_size();
-
-    // Build a temporary lookup for the manifest's chunk IDs.
-    let id_to_row: std::collections::HashMap<ChunkId, usize> = {
-        re_tracing::profile_scope!("id_to_row");
-        all_ids.iter().enumerate().map(|(i, &id)| (id, i)).collect()
-    };
 
     // Resolve chunk IDs to (chunk_id, byte_span).
     let mut entries: Vec<(ChunkId, Span<u64>)> = chunk_ids
         .iter()
         .map(|&id| -> Result<_, CodecError> {
-            let &row = id_to_row
-                .get(&id)
+            let row = manifest
+                .chunk_row(id)
                 .ok_or(CodecError::ChunkNotInManifest { chunk_id: id })?;
             Ok((id, Span::from_start_len(offsets[row], sizes[row])))
         })

@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use ahash::HashMap;
 use tokio_stream::StreamExt as _;
 
 use re_chunk::{Chunk, ChunkId};
@@ -29,10 +28,6 @@ pub struct SegmentChunkProvider {
     /// Every chunk this provider serves: the manifest of the segment, followed by one per asset it
     /// references when `include_assets` was set.
     manifest: Arc<RrdManifest>,
-
-    /// Map from `ChunkId` to its row index in `manifest.chunk_fetcher_rb()`.
-    /// Built once at construction; lookups are O(1).
-    chunk_id_to_row: HashMap<ChunkId, usize>,
 }
 
 impl SegmentChunkProvider {
@@ -87,20 +82,12 @@ impl SegmentChunkProvider {
             })?)
         };
 
-        let chunk_id_to_row = manifest
-            .col_chunk_ids()
-            .iter()
-            .enumerate()
-            .map(|(i, id)| (*id, i))
-            .collect();
-
         Ok(Self {
             connection,
             dataset_id,
             segment_id,
             raw_manifest,
             manifest,
-            chunk_id_to_row,
         })
     }
 
@@ -179,9 +166,8 @@ impl ChunkProvider for SegmentChunkProvider {
         let mut row_indices = Vec::with_capacity(ids.len());
         for id in ids {
             let idx = self
-                .chunk_id_to_row
-                .get(id)
-                .copied()
+                .manifest
+                .chunk_row(*id)
                 .ok_or(SegmentProviderError::UnknownChunkId(*id))?;
             row_indices.push(idx);
         }

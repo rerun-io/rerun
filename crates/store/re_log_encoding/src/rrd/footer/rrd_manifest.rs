@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 use arrow::array::RecordBatch;
 use re_chunk::external::re_byte_size;
@@ -79,6 +79,12 @@ pub struct RrdManifest {
 
     static_data_map: RrdManifestStaticMap,
     temporal_data_map: RrdManifestTemporalMap,
+
+    /// Row of every chunk, keyed by id; see [`Self::chunk_row`].
+    ///
+    /// Built on first use: it costs one hash entry per chunk, and most holders of a manifest
+    /// never look chunks up by id.
+    chunk_rows: OnceLock<ahash::HashMap<ChunkId, usize>>,
 }
 
 impl PartialEq for RrdManifest {
@@ -104,6 +110,7 @@ impl PartialEq for RrdManifest {
             chunk_keys,
             static_data_map,
             temporal_data_map,
+            chunk_rows: _, // derived from `chunk_ids`
         } = self;
 
         *chunk_fetcher_rb == other.chunk_fetcher_rb
@@ -148,6 +155,10 @@ impl re_byte_size::SizeBytes for RrdManifest {
             + self.sorbet_schema.heap_size_bytes()
             + self.static_data_map.heap_size_bytes()
             + self.temporal_data_map.heap_size_bytes()
+            + self
+                .chunk_rows
+                .get()
+                .map_or(0, |rows| rows.heap_size_bytes())
     }
 }
 
@@ -245,6 +256,7 @@ impl RrdManifest {
             chunk_keys,
             static_data_map,
             temporal_data_map,
+            chunk_rows: OnceLock::new(),
         })
     }
 
@@ -480,6 +492,7 @@ impl RrdManifest {
             chunk_keys,
             static_data_map,
             temporal_data_map,
+            chunk_rows: OnceLock::new(),
         })
     }
 
@@ -527,6 +540,22 @@ impl RrdManifest {
     #[inline]
     pub fn col_chunk_ids(&self) -> &[ChunkId] {
         self.chunk_ids.as_slice()
+    }
+
+    /// The row of a chunk in this manifest, or `None` if the chunk is not part of it.
+    ///
+    /// The lookup is built on the first call and kept, so reading a manifest's chunks in many
+    /// batches pays for it once, not once per batch.
+    pub fn chunk_row(&self, chunk_id: ChunkId) -> Option<usize> {
+        let rows = self.chunk_rows.get_or_init(|| {
+            re_tracing::profile_scope!("RrdManifest::chunk_rows");
+            self.col_chunk_ids()
+                .iter()
+                .enumerate()
+                .map(|(row, &id)| (id, row))
+                .collect()
+        });
+        rows.get(&chunk_id).copied()
     }
 
     /// Returns the chunk id column of a batch that has a [`Self::COLUMN_CHUNK_ID`] column.
