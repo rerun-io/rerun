@@ -57,10 +57,10 @@ pub enum TabularEmitKind {
     },
 
     /// `task_index` column, joined against the tasks table at execute time.
-    TaskLabels,
+    TaskText,
 
     /// `subtask_index` column, joined against the subtasks table at execute time.
-    SubtaskLabels,
+    SubtaskText,
 
     /// String feature, emitted as a `TextDocument` under the feature's own key.
     Text,
@@ -165,14 +165,14 @@ pub fn build_emits(
                 emits.tabular.push(TabularEmit {
                     column: key.as_str().to_owned(),
                     entity: entity_path(&config.entity_path_prefix, "task"),
-                    kind: TabularEmitKind::TaskLabels,
+                    kind: TabularEmitKind::TaskText,
                 });
             }
             DType::Int64 if key.as_str() == "subtask_index" && !tasks.subtasks.is_empty() => {
                 emits.tabular.push(TabularEmit {
                     column: key.as_str().to_owned(),
                     entity: entity_path(&config.entity_path_prefix, "subtask"),
-                    kind: TabularEmitKind::SubtaskLabels,
+                    kind: TabularEmitKind::SubtaskText,
                 });
             }
             DType::String => {
@@ -389,10 +389,10 @@ mod tests {
             &LeRobotConfig::default(),
         );
         assert_eq!(entity_paths(&emits.tabular), ["/subtask", "/task"]);
-        assert!(matches!(emits.tabular[1].kind, TabularEmitKind::TaskLabels));
+        assert!(matches!(emits.tabular[1].kind, TabularEmitKind::TaskText));
         assert!(matches!(
             emits.tabular[0].kind,
-            TabularEmitKind::SubtaskLabels
+            TabularEmitKind::SubtaskText
         ));
     }
 

@@ -15,17 +15,15 @@ use re_sdk_types::archetypes::{EncodedDepthImage, EncodedImage, Scalars, TextDoc
 use crate::dataset::Tasks;
 use crate::emits::{TabularEmit, TabularEmitKind};
 
-/// A `task_index`-style lookup table with the column's raw `Int64` key type.
-type LabelTable = Arc<ahash::HashMap<i64, String>>;
+/// A `task_index`-style task table with the column's raw `Int64` key type.
+type TaskTable = Arc<ahash::HashMap<i64, String>>;
 
 /// Entries whose index does not fit in `i64` are dropped from the table.
-fn label_table<'a>(entries: impl Iterator<Item = (usize, &'a String)>) -> LabelTable {
+fn task_table<'a>(entries: impl Iterator<Item = (usize, &'a String)>) -> TaskTable {
     Arc::new(
         entries
-            .filter_map(|(index, label)| {
-                i64::try_from(index)
-                    .ok()
-                    .map(|index| (index, label.clone()))
+            .filter_map(|(index, text)| {
+                i64::try_from(index).ok().map(|index| (index, text.clone()))
             })
             .collect(),
     )
@@ -33,8 +31,8 @@ fn label_table<'a>(entries: impl Iterator<Item = (usize, &'a String)>) -> LabelT
 
 /// Build the lens collection for one episode's lens-shaped emits.
 pub fn build_lenses(emits: &[TabularEmit], tasks: &Tasks) -> Result<Lenses, LensBuilderError> {
-    let task_labels = label_table(tasks.tasks.iter().map(|(index, label)| (index.0, label)));
-    let subtask_labels = label_table(tasks.subtasks.iter().map(|(index, label)| (index.0, label)));
+    let tasks_by_index = task_table(tasks.tasks.iter().map(|(index, text)| (index.0, text)));
+    let subtasks_by_index = task_table(tasks.subtasks.iter().map(|(index, text)| (index.0, text)));
 
     let mut lenses = Lenses::new(OutputMode::ForwardUnmatched);
     for emit in emits {
@@ -51,11 +49,11 @@ pub fn build_lenses(emits: &[TabularEmit], tasks: &Tasks) -> Result<Lenses, Lens
             TabularEmitKind::Scalars { vector, .. } => scalars_lens(column, *vector)?,
             TabularEmitKind::Image { depth: false } => encoded_image_lens(column)?,
             TabularEmitKind::Image { depth: true } => depth_image_lens(column)?,
-            TabularEmitKind::TaskLabels => {
-                index_labels_lens(column, emit.entity.clone(), task_labels.clone())?
+            TabularEmitKind::TaskText => {
+                task_text_lens(column, emit.entity.clone(), tasks_by_index.clone())?
             }
-            TabularEmitKind::SubtaskLabels => {
-                index_labels_lens(column, emit.entity.clone(), subtask_labels.clone())?
+            TabularEmitKind::SubtaskText => {
+                task_text_lens(column, emit.entity.clone(), subtasks_by_index.clone())?
             }
             TabularEmitKind::Text => text_lens(column)?,
         };
@@ -131,57 +129,56 @@ fn text_lens(column: ComponentIdentifier) -> Result<Lens, LensBuilderError> {
         .build()
 }
 
-/// Cast a string column to `Utf8`, the `Text` component's canonical type.
+/// Cast a string column to `Utf8`, the `Text` component's canonical type. A non-string
+/// column is a type mismatch, never stringified.
 fn strings_as_utf8() -> impl Fn(&ArrayRef) -> Result<Option<ArrayRef>, Error> + Send + Sync {
     move |source| {
-        Ok(Some(arrow::compute::cast(
-            source,
-            &arrow::datatypes::DataType::Utf8,
-        )?))
+        let strings = crate::features::normalize_string_array(source)?;
+        Ok(Some(re_arrow_util::into_arrow_ref(strings)))
     }
 }
 
-/// Join an index column (`task_index`/`subtask_index`) against its label table, emitting
-/// the labels as a `TextDocument` at `entity`.
+/// Join an index column (`task_index`/`subtask_index`) against its task table, emitting
+/// the task text as a `TextDocument` at `entity`.
 ///
-/// The derived chunk inherits the input chunk's time columns, so the labels land on the
-/// episode timeline. An index without a label warns once and becomes a null row (no
+/// The derived chunk inherits the input chunk's time columns, so the text lands on the
+/// episode timeline. An index without an entry warns once and becomes a null row (no
 /// value logged).
-fn index_labels_lens(
+fn task_text_lens(
     column: ComponentIdentifier,
     entity: EntityPath,
-    labels: LabelTable,
+    table: TaskTable,
 ) -> Result<Lens, LensBuilderError> {
     Lens::derive(column)
         .output_entity(entity)
         .to_component(
             TextDocument::descriptor_text(),
-            Selector::parse(".")?.pipe(lookup_table(labels, column)),
+            Selector::parse(".")?.pipe(lookup_table(table, column)),
         )
         .build()
 }
 
 /// Map each `Int64` index through the table; missing entries become nulls.
 fn lookup_table(
-    table: LabelTable,
+    table: TaskTable,
     column: ComponentIdentifier,
 ) -> impl Fn(&ArrayRef) -> Result<Option<ArrayRef>, Error> + Send + Sync {
     move |source| {
         let indices = try_downcast::<Int64Array>(source, "task index column")?;
-        let labels: StringArray = indices
+        let texts: StringArray = indices
             .iter()
             .map(|index| {
                 let index = index?;
-                let label = table.get(&index);
-                if label.is_none() {
+                let text = table.get(&index);
+                if text.is_none() {
                     re_log::warn_once!(
-                        "A frame references `{column}` {index}, which is not defined in its label table"
+                        "A frame references `{column}` {index}, which is not defined in its task table"
                     );
                 }
-                label.map(String::as_str)
+                text.map(String::as_str)
             })
             .collect();
-        Ok(Some(Arc::new(labels) as ArrayRef))
+        Ok(Some(Arc::new(texts) as ArrayRef))
     }
 }
 
@@ -474,10 +471,10 @@ mod tests {
         assert!(missing.is_null(0), "the null row stays null");
     }
 
-    /// A `task_index` column joins against the label table on its own entity, with the
+    /// A `task_index` column joins against the task table on its own entity, with the
     /// time column carried over and unknown indices left as null rows.
     #[test]
-    fn task_indices_join_to_text_labels() {
+    fn task_indices_join_to_task_text() {
         use crate::dataset::TaskIndex;
 
         let values: ArrayRef = Arc::new(arrow::array::Int64Array::from(vec![0_i64, 7, 1]));
@@ -486,7 +483,7 @@ mod tests {
         let emit = TabularEmit {
             column: "task_index".to_owned(),
             entity: EntityPath::from("/task"),
-            kind: TabularEmitKind::TaskLabels,
+            kind: TabularEmitKind::TaskText,
         };
         let tasks = Tasks {
             tasks: [
@@ -513,7 +510,7 @@ mod tests {
         let values = text.list_array.values();
         let values = values.downcast_array_ref::<StringArray>().unwrap();
         assert_eq!(values.value(0), "pick apple");
-        assert!(values.is_null(1), "an index without a label logs nothing");
+        assert!(values.is_null(1), "an index without an entry logs nothing");
         assert_eq!(values.value(2), "place apple");
     }
 

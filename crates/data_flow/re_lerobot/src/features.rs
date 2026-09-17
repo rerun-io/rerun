@@ -1,5 +1,7 @@
 use std::fmt;
 
+use arrow::array::{Array, StringArray};
+use arrow::datatypes::DataType;
 use serde::{
     Deserialize, Deserializer, Serialize,
     de::{MapAccess, SeqAccess, Visitor},
@@ -102,6 +104,19 @@ impl<'de> Deserialize<'de> for DType {
             }
         })
     }
+}
+
+/// Normalize Arrow string encodings to `Utf8`, rejecting non-string input.
+pub fn normalize_string_array(array: &dyn Array) -> Result<StringArray, arrow::error::ArrowError> {
+    if !array.data_type().is_string() {
+        return Err(arrow::error::ArrowError::CastError(format!(
+            "Expected a string array, got {}",
+            array.data_type(),
+        )));
+    }
+
+    let strings = arrow::compute::cast(array, &DataType::Utf8)?;
+    Ok(arrow::array::as_string_array(strings.as_ref()).clone())
 }
 
 /// Name metadata for a feature in the `LeRobot` dataset.

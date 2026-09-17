@@ -34,8 +34,8 @@
 //! - `meta/`: Contains metadata files:
 //!   - `episodes/`: Per-episode addresses: data file, row range, and video time windows.
 //!   - `info.json`: General dataset metadata (features, fps, number of episodes, etc.).
-//!   - `tasks.parquet`: The task label for each `task_index`.
-//!   - `subtasks.parquet`: Optional subtask labels for each `subtask_index`.
+//!   - `tasks.parquet`: The task text for each `task_index`.
+//!   - `subtasks.parquet`: Optional subtask text for each `subtask_index`.
 //!   - `stats.json`: Summary statistics of dataset features.
 //! - `videos/`: Optional per-feature videos; one file holds the frames of several episodes.
 //!
@@ -48,7 +48,7 @@ use crate::dataset::{
 };
 use crate::emits::{FRAME_INDEX_COLUMN, LEROBOT_DATASET_IGNORED_COLUMNS, TIMESTAMP_COLUMN};
 use crate::error::LeRobotError;
-use crate::features::{DType, Feature, FeatureKey};
+use crate::features::{DType, Feature, FeatureKey, normalize_string_array};
 use crate::language::timestamps_as_f64;
 use crate::version::LeRobotDatasetVersion;
 
@@ -216,7 +216,7 @@ fn validate_against_footers(
             return false;
         };
         // Image is the only dtype validated against its on-disk shape here: scalar
-        // columns cast to Float64 at execute, so any numeric column fits, and the label
+        // columns cast to Float64 at execute, so any numeric column fits, and the task
         // joins error at execute when their column is not `Int64`.
         if feature.dtype == DType::Image && !is_image_bytes_column(field) {
             re_log::warn!(
@@ -468,7 +468,7 @@ impl LeRobotDatasetV3Metadata {
             LeRobotEpisodeV3MetaData::load_from_directory(metadir.join("episodes"))?;
         let info = LeRobotDatasetV3Info::load_from_json_file(metadir.join("info.json"))?;
 
-        // Feature-scoped: a missing or corrupt lookup table drops its label emits (there
+        // Feature-scoped: a missing or corrupt task table drops its text emits (there
         // is nothing to join against), never the dataset.
         let tasks = match load_index_text_parquet(
             metadir.join("tasks.parquet"),
@@ -490,7 +490,7 @@ impl LeRobotDatasetV3Metadata {
             }
             Err(err) => {
                 re_log::warn_once!(
-                    "Dropping task labels for all episodes, the tasks table failed to load: {err}"
+                    "Dropping task text for all episodes, the tasks table failed to load: {err}"
                 );
                 HashMap::default()
             }
@@ -505,7 +505,7 @@ impl LeRobotDatasetV3Metadata {
                     .collect(),
                 Err(err) => {
                     re_log::warn_once!(
-                        "Dropping subtask labels for all episodes, the subtasks table failed to load: {err}"
+                        "Dropping subtask text for all episodes, the subtasks table failed to load: {err}"
                     );
                     HashMap::default()
                 }
@@ -532,7 +532,7 @@ impl LeRobotDatasetV3Metadata {
 
 /// The name pandas gives a dataframe's unnamed index column when writing parquet.
 ///
-/// `LeRobot` label tables hold the label text in the dataframe index: a named index is
+/// `LeRobot` task tables hold the task text in the dataframe index: a named index is
 /// stored under its own name (`task`, `subtask`), an unnamed one under this name.
 /// See <https://pandas.pydata.org/docs/development/developer.html#storing-pandas-dataframe-objects-in-apache-parquet-format>.
 const PANDAS_UNNAMED_INDEX_COLUMN: &str = "__index_level_0__";
@@ -557,17 +557,17 @@ fn load_index_text_parquet(
     for record_batch in reader {
         let batch = record_batch.map_err(|err| {
             LeRobotError::InvalidDatasetInfo(format!(
-                "failed to read the label table: {err}. File path: {}",
+                "failed to read the task table: {err}. File path: {}",
                 filepath.display()
             ))
         })?;
 
         // A column of the wrong type would otherwise yield a silently empty table, and
-        // every label would resolve to nothing with no error to explain why.
+        // every index would resolve to nothing with no error to explain why.
         let column = |name: &str| {
             batch.column_by_name(name).ok_or_else(|| {
                 LeRobotError::InvalidDatasetInfo(format!(
-                    "the label table is missing its `{name}` column. File path: {}",
+                    "the task table is missing its `{name}` column. File path: {}",
                     filepath.display()
                 ))
             })
@@ -576,7 +576,7 @@ fn load_index_text_parquet(
             .downcast_array_ref::<Int64Array>()
             .ok_or_else(|| {
                 LeRobotError::InvalidDatasetInfo(format!(
-                    "the label table's `{index_column}` column is not an `Int64`. File path: {}",
+                    "the task table's `{index_column}` column is not an `Int64`. File path: {}",
                     filepath.display()
                 ))
             })?;
@@ -585,21 +585,14 @@ fn load_index_text_parquet(
             .find_map(|name| batch.column_by_name(name).map(|column| (name, column)))
             .ok_or_else(|| {
                 LeRobotError::InvalidDatasetInfo(format!(
-                    "the label table is missing its `{text_column}` column (and the \
+                    "the task table is missing its `{text_column}` column (and the \
                      `{PANDAS_UNNAMED_INDEX_COLUMN}` fallback). File path: {}",
                     filepath.display()
                 ))
             })?;
-        let texts = text_array
-            .downcast_array_ref::<StringArray>()
-            .ok_or_else(|| {
-                LeRobotError::InvalidDatasetInfo(format!(
-                    "the label table's `{text_name}` column is not a string. File path: {}",
-                    filepath.display()
-                ))
-            })?;
+        let texts = task_texts(text_array, text_name, filepath)?;
 
-        for (index, text) in std::iter::zip(indices, texts) {
+        for (index, text) in std::iter::zip(indices, &texts) {
             let (Some(index), Some(text)) = (index, text) else {
                 continue;
             };
@@ -611,6 +604,23 @@ fn load_index_text_parquet(
     }
 
     Ok(entries)
+}
+
+/// Read a task table's text column in any Arrow string encoding. A non-string column is
+/// rejected loudly rather than stringified.
+///
+/// The subtasks table is read through the same path.
+fn task_texts(
+    array: &arrow::array::ArrayRef,
+    column: &str,
+    filepath: &Path,
+) -> Result<StringArray, LeRobotError> {
+    normalize_string_array(array).map_err(|err| {
+        LeRobotError::InvalidDatasetInfo(format!(
+            "failed to read task text from `{column}`: {err}. File path: {}",
+            filepath.display()
+        ))
+    })
 }
 
 /// File metadata for a specific feature (video or image) in a `LeRobot` dataset.
@@ -1430,7 +1440,7 @@ mod tests {
             );
             assert!(
                 !rows_of(&entities, "/task").is_empty(),
-                "task labels expected"
+                "task text expected"
             );
         }
     }
@@ -1646,9 +1656,9 @@ mod tests {
     // -----------------------------------------------------------------------
     // Feature-scoped
 
-    /// A missing tasks table drops the task labels and nothing else.
+    /// A missing tasks table drops the task text and nothing else.
     #[test]
-    fn missing_tasks_parquet_drops_only_task_labels() {
+    fn missing_tasks_parquet_drops_only_task_text() {
         let dir = tempfile::tempdir().unwrap();
         let root = dir.path();
         write_info(root, &default_info(&scalar_features()));
@@ -1668,9 +1678,80 @@ mod tests {
         );
     }
 
+    /// The task text also loads when it is stored as `LargeUtf8` or `Utf8View`, not only
+    /// plain `Utf8`.
+    #[test]
+    fn non_utf8_string_task_columns_load_text() {
+        let texts: [ArrayRef; 2] = [
+            Arc::new(arrow::array::LargeStringArray::from(vec!["pick the apple"])),
+            Arc::new(arrow::array::StringViewArray::from(vec!["pick the apple"])),
+        ];
+        for texts in texts {
+            let dir = tempfile::tempdir().unwrap();
+            let root = dir.path();
+            write_info(root, &default_info(&scalar_features()));
+            write_episodes_meta(root, &[row(0, Some(0), Some(10))]);
+            write_parquet(
+                &root.join("meta/tasks.parquet"),
+                vec![
+                    Field::new("task_index", DataType::Int64, false),
+                    Field::new("task", texts.data_type().clone(), false),
+                ],
+                vec![Arc::new(Int64Array::from(vec![0_i64])), texts],
+            );
+            write_data(root, &[10], false);
+
+            let dataset = LeRobotDataset::open(root).expect("open must succeed");
+            let mut emitted_text = Vec::new();
+            for chunk in dataset
+                .stream(EpisodeIndex(0), &LeRobotConfig::default())
+                .unwrap()
+            {
+                let chunk = chunk.unwrap();
+                if chunk.entity_path().to_string() != "/task" {
+                    continue;
+                }
+                let text = chunk
+                    .components()
+                    .get(re_sdk_types::archetypes::TextDocument::descriptor_text().component)
+                    .unwrap();
+                let values = text
+                    .list_array
+                    .values()
+                    .downcast_array_ref::<StringArray>()
+                    .unwrap();
+                emitted_text.extend(values.iter().map(|value| value.unwrap().to_owned()));
+            }
+            assert_eq!(emitted_text, vec!["pick the apple"; 10]);
+        }
+    }
+
+    #[test]
+    fn non_string_task_column_is_rejected() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("tasks.parquet");
+        write_parquet(
+            &path,
+            vec![
+                Field::new("task_index", DataType::Int64, false),
+                Field::new("task", DataType::Int64, false),
+            ],
+            vec![
+                Arc::new(Int64Array::from(vec![0_i64])),
+                Arc::new(Int64Array::from(vec![42_i64])),
+            ],
+        );
+
+        let err = load_index_text_parquet(&path, "task_index", "task").unwrap_err();
+        let message = err.to_string();
+        assert!(message.contains("Expected a string array"), "{message}");
+        assert!(message.contains("`task`"), "{message}");
+        assert!(message.contains(path.to_str().unwrap()), "{message}");
+    }
+
     /// The task text also loads from a named `task` column (pandas named-index layout).
     #[test]
-    fn named_task_column_loads_labels() {
+    fn named_task_column_loads_text() {
         let dir = tempfile::tempdir().unwrap();
         let root = dir.path();
         write_info(root, &default_info(&scalar_features()));
@@ -1682,7 +1763,7 @@ mod tests {
         let entities = stream_entities(&dataset, EpisodeIndex(0));
         assert!(
             !rows_of(&entities, "/task").is_empty(),
-            "task labels must load from the named `task` column"
+            "task text must load from the named `task` column"
         );
     }
 
@@ -1773,7 +1854,7 @@ mod tests {
         assert!(rows_of(&entities, "/observation.state").is_empty());
         assert!(
             !rows_of(&entities, "/task").is_empty(),
-            "task labels expected"
+            "task text expected"
         );
     }
 
